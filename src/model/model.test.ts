@@ -165,7 +165,9 @@ describe('schema versioning and migrations (§6, §11.11)', () => {
 
     // One row, carrying what the triple carried, in the same zone.
     expect(migrated.header!.bands).toHaveLength(1);
-    expect(plain(migrated.header!.bands[0].zones.left[0].text!.en)).toBe('Form 5');
+    const migratedField = migrated.header!.bands[0].zones.left[0];
+    expect(migratedField.kind).toBe('text');
+    if (migratedField.kind === 'text') expect(plain(migratedField.text.en)).toBe('Form 5');
     // Settings on the header itself survive the reshape.
     expect(migrated.header!.rule).toBe(true);
     // And the old shape is gone rather than left beside the new one.

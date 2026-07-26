@@ -516,17 +516,37 @@ field commits on blur/Enter rather than per keystroke, so one edit is one undo e
 and holds a local draft string while focused — re-deriving the text from the stored
 twips would delete the decimal point the moment it was typed.
 
-Headers and footers are authored as three slots (left / centre / right), mapped onto
-Word's three-tab convention with the centre and right tab stops **derived from the live
-content width**, so they stay correct after a paper or margin change that a fixed stop
-would silently break. Page numbers are `PAGE` / `NUMPAGES` **fields**, not literal text,
-so they renumber per page and survive editing in Word; the preview shows them as a `#`
-chip rather than a fake "1", because the real value only exists at print time.
+Headers and footers are **lists of `Band` rows** — the very model the masthead uses
+(§ "Constrained layout"). One row was not enough: `real_life_reference/head2.png` stacks
+five, running an exam line beside a page number, three centred title rows, then a marks
+total beside a "Date:____" rule. Reusing `Band` rather than growing a parallel type means
+one editing surface (`BandEditor` serves the masthead, the header and the footer), one
+drag-between-zones interaction and one exporter path.
 
-Parts are omitted entirely when unused — an empty footer produces no `footer1.xml`, no
-content-type override and no `footerReference`. Suppressing either part on page 1 uses
-`w:titlePg`, which switches **both** to their "first" references at once, so the part
-that should still appear on page 1 gets its real content rather than a blank.
+Each row is still **one Word paragraph with tab stops**, with the centre and right stops
+derived from the live content width, so they stay correct after a paper or margin change
+that a fixed stop would silently break. A rule is drawn only on the edge-most row — under
+the last for a header, above the first for a footer — so it frames the block rather than
+putting a hairline between every title line.
+
+**The header is edited on the page, not in the sidebar.** It was the one part of the
+document that rendered on the page but could only be changed through a panel, which made
+it the thing users could not work out how to edit. Clicking header text now opens the
+same in-place editor body text uses, and a field drags between the three zones. The panel
+keeps only what has no visual representation on the page — show/hide, rule, on-page-1 —
+plus **presets** traced from the reference papers, because a teacher who has never built
+a header does not know that "school, paper title, then a Name rule" is the shape.
+
+A **page number is one field with a pattern** (`plain`, `pDot` for "P.5", `longForm` for
+"Page 5 of 12") rather than the three tokens a teacher used to assemble by hand. The
+pattern string lives in `pageNumberPlaceholder` and is shared: the preview substitutes a
+chip for its `#`, and the exporter splits on the same placeholders so only the numbers
+become `PAGE`/`NUMPAGES` fields. Having each backend spell "Page # of N" itself is how a
+footer ends up reading differently on screen than it does in Word.
+
+Fill-in rules ("Name:______") come free from `BandField`, which already had them for the
+masthead — they export as a real ruled run rather than typed underscores that will not
+align.
 
 Clipboard output deliberately carries none of this: pasting into an existing Word
 document must not override that document's page setup or headers.
