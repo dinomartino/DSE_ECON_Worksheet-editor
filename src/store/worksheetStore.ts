@@ -1,0 +1,764 @@
+'use client';
+
+import { create } from 'zustand';
+import {
+  addField,
+  createBand,
+  createTextField,
+  moveField,
+  removeField,
+  updateField,
+  type ZoneName,
+} from '@/model/bands';
+import {
+  applyDeleteTarget,
+  applyEditTarget,
+  applyFormatTarget,
+  applyResizeBlock,
+  replaceBlockById,
+} from '@/model/edits';
+import { createSection, createWorksheet, newId } from '@/model/factories';
+import {
+  flowOf,
+  moveInFlow,
+  moveRunInFlow,
+  nudgeInFlow,
+  type FlowMove,
+} from '@/model/flow';
+import { defaultFooter, defaultHeader, headerFooterOf } from '@/model/page';
+import type {
+  Band,
+  BandField,
+  BiText,
+  ContentBlock,
+  HeaderFooter,
+  LayoutElement,
+  OutputMode,
+  PageSetup,
+  Question,
+  Section,
+  TextFormat,
+  Worksheet,
+} from '@/model/types';
+import type { EditTarget } from '@/render/ir';
+import { listQuestionTypes } from '@/registry';
+
+/**
+ * The document store (§10).
+ *
+ * One rule shapes everything here: **every mutation goes through `commit`**, which
+ * applies a pure recipe to the current worksheet and pushes the previous value onto the
+ * undo stack. Nothing else writes `worksheet`, so undo/redo needs no per-action
+ * knowledge — and because numbering and marks are derived rather than stored (§3.5),
+ * a reorder or a delete needs no renumbering pass either.
+ *
+ * The actions are deliberately thin. The real work lives in pure model functions
+ * (`model/edits`, `model/flow`, `model/bands`) that are unit-tested without a store,
+ * and each action's job is to name the intent and route it through `commit` so it
+ * becomes undoable and autosaved.
+ */
+
+/** How many steps of history to keep. Beyond this the oldest are dropped. */
+const HISTORY_LIMIT = 100;
+
+interface WorksheetState {
+  worksheet: Worksheet;
+  mode: OutputMode;
+  /** Unsaved changes since the last `markSaved`. */
+  dirty: boolean;
+  lastSavedAt?: string;
+  selectedQuestionId?: string;
+  /** The question currently being dragged on the page, if any. */
+  dragQuestionId?: string;
+  past: Worksheet[];
+  future: Worksheet[];
+
+  // --- History ---------------------------------------------------------------
+  commit: (recipe: (draft: Worksheet) => Worksheet) => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
+
+  // --- Document --------------------------------------------------------------
+  /** Load a document. Resets history: a load is not an undoable edit. */
+  replaceWorksheet: (worksheet: Worksheet) => void;
+  updateWorksheet: (patch: Partial<Worksheet>) => void;
+  markSaved: () => void;
+  setMode: (patch: Partial<OutputMode>) => void;
+  select: (questionId?: string) => void;
+  setDragQuestionId: (questionId?: string) => void;
+
+  // --- Sections and questions -------------------------------------------------
+  addSection: () => void;
+  updateSection: (sectionId: string, patch: Partial<Section>) => void;
+  removeSection: (sectionId: string) => void;
+  addQuestion: (sectionId: string, typeId: string) => void;
+  updateQuestion: (questionId: string, patch: Partial<Question>) => void;
+  removeQuestion: (questionId: string) => void;
+  duplicateQuestion: (questionId: string) => void;
+  /** Nudge a question by `delta` places within its own section. */
+  moveQuestion: (questionId: string, delta: number) => void;
+  moveQuestionToSection: (questionId: string, sectionId: string) => void;
+  /** Drag-reorder: put `questionId` immediately before `targetId`, across sections. */
+  reorderQuestion: (questionId: string, targetId: string) => void;
+
+  // --- Layout elements and flow ----------------------------------------------
+  addLayoutElement: (sectionId: string, element: LayoutElement, afterId?: string) => void;
+  updateLayoutElement: (
+    sectionId: string,
+    elementId: string,
+    patch: Partial<LayoutElement>,
+  ) => void;
+  removeLayoutElement: (sectionId: string, elementId: string) => void;
+  nudgeFlowItem: (sectionId: string, id: string, direction: -1 | 1) => void;
+  reorderFlowItem: (
+    sectionId: string,
+    id: string,
+    targetId: string,
+    position?: 'before' | 'after',
+  ) => void;
+  /** Move a whole page's worth of items, as dragged in the page rail. */
+  movePage: (sourceIds: string[], targetIds: string[], position: 'before' | 'after') => void;
+  removeMany: (ids: string[]) => void;
+  duplicateMany: (ids: string[]) => void;
+
+  // --- In-place editing on the page ------------------------------------------
+  applyEdit: (target: EditTarget, next: BiText) => void;
+  deleteTarget: (target: EditTarget) => void;
+  formatTarget: (target: EditTarget, patch: Partial<TextFormat>) => void;
+  resizeBlock: (blockId: string, widthPx: number) => void;
+  /** Replace one block by id — the route a page-opened editor commits through. */
+  replaceBlock: (blockId: string, next: ContentBlock) => void;
+
+  // --- Page setup, masthead bands, header/footer ------------------------------
+  setPageSetup: (patch: Partial<PageSetup>) => void;
+  setBands: (bands: Band[]) => void;
+  addBand: (band?: Band) => void;
+  addBandField: (bandId: string, zone: ZoneName, field: BandField) => void;
+  updateBandField: (fieldId: string, patch: Partial<BandField>) => void;
+  removeBandField: (fieldId: string) => void;
+  moveBandField: (bandId: string, fieldId: string, zone: ZoneName, beforeId?: string) => void;
+
+  setHeaderFooter: (which: 'header' | 'footer', patch: Partial<HeaderFooter>) => void;
+  /**
+   * Header/footer rows.
+   *
+   * The same verbs the masthead uses, because a header row *is* a `Band` — sharing the
+   * model means sharing the mutators rather than maintaining a parallel set that drifts.
+   */
+  addHeaderFooterBand: (which: 'header' | 'footer', band?: Band) => void;
+  removeHeaderFooterBand: (which: 'header' | 'footer', bandId: string) => void;
+  addHeaderFooterField: (
+    which: 'header' | 'footer',
+    bandId: string,
+    zone: ZoneName,
+    field: BandField,
+  ) => void;
+  updateHeaderFooterField: (
+    which: 'header' | 'footer',
+    fieldId: string,
+    patch: Partial<BandField>,
+  ) => void;
+  removeHeaderFooterField: (which: 'header' | 'footer', fieldId: string) => void;
+  moveHeaderFooterField: (
+    which: 'header' | 'footer',
+    bandId: string,
+    fieldId: string,
+    zone: ZoneName,
+    beforeId?: string,
+  ) => void;
+  /** Replace a header/footer's rows wholesale — how a preset is applied. */
+  setHeaderFooterBands: (which: 'header' | 'footer', bands: Band[]) => void;
+}
+
+/** Apply a patch to whichever section owns `questionId`. */
+function mapQuestion(
+  worksheet: Worksheet,
+  questionId: string,
+  patch: (question: Question) => Question,
+): Worksheet {
+  return {
+    ...worksheet,
+    sections: worksheet.sections.map((section) => ({
+      ...section,
+      questions: section.questions.map((question) =>
+        question.id === questionId ? patch(question) : question,
+      ),
+    })),
+  };
+}
+
+/** The section containing `id`, whether it is a question or a layout element. */
+function sectionOf(worksheet: Worksheet, id: string): Section | undefined {
+  return worksheet.sections.find(
+    (section) =>
+      section.questions.some((question) => question.id === id) ||
+      (section.layout ?? []).some((element) => element.id === id),
+  );
+}
+
+/**
+ * Give every id in a question a fresh value.
+ *
+ * Duplicating has to re-id *through* the nested parts and sub-parts, not just the
+ * question: two questions sharing a part id would make an edit to one silently rewrite
+ * the other, and the numbering plan would key two entries to the same address.
+ */
+function withFreshIds(question: Question): Question {
+  const next = { ...question, id: newId() } as Question;
+  const parts = (next as { parts?: Array<Record<string, unknown>> }).parts;
+  if (parts) {
+    (next as { parts: unknown }).parts = parts.map((part) => ({
+      ...part,
+      id: newId(),
+      subParts: (part.subParts as Array<Record<string, unknown>> | undefined)?.map((sub) => ({
+        ...sub,
+        id: newId(),
+      })),
+    }));
+  }
+  return next;
+}
+
+/** Apply a band mutator to whichever masthead band holds `fieldId`. */
+function patchBandHolding(
+  worksheet: Worksheet,
+  fieldId: string,
+  patch: (band: Band) => Band,
+): Worksheet {
+  return {
+    ...worksheet,
+    bands: (worksheet.bands ?? []).map((band) => {
+      const zones = band.zones ?? { left: [], center: [], right: [] };
+      const holds = (['left', 'center', 'right'] as const).some((zone) =>
+        (zones[zone] ?? []).some((field) => field.id === fieldId),
+      );
+      return holds ? patch(band) : band;
+    }),
+  };
+}
+
+/** Apply a band mutator inside a header or footer, addressed by band id. */
+function patchHeaderFooterBand(
+  worksheet: Worksheet,
+  which: 'header' | 'footer',
+  match: (band: Band) => boolean,
+  patch: (band: Band) => Band,
+): Worksheet {
+  const current = headerFooterOf(
+    worksheet[which],
+    which === 'header' ? defaultHeader : defaultFooter,
+  );
+  return {
+    ...worksheet,
+    [which]: {
+      ...current,
+      bands: current.bands.map((band) => (match(band) ? patch(band) : band)),
+    },
+  };
+}
+
+/** Does this band hold a field with this id? */
+function bandHolds(band: Band, fieldId: string): boolean {
+  const zones = band.zones ?? { left: [], center: [], right: [] };
+  return (['left', 'center', 'right'] as const).some((zone) =>
+    (zones[zone] ?? []).some((field) => field.id === fieldId),
+  );
+}
+
+export const useWorksheetStore = create<WorksheetState>((set, get) => ({
+  worksheet: createWorksheet(),
+  mode: { language: 'bilingual', version: 'student' },
+  dirty: false,
+  past: [],
+  future: [],
+
+  // --- History ---------------------------------------------------------------
+  /**
+   * The single write path.
+   *
+   * A recipe that returns the worksheet unchanged commits nothing: that is what makes a
+   * no-op drag (onto itself, onto an unknown target) cost no undo entry, which the store
+   * tests assert directly.
+   */
+  commit: (recipe) =>
+    set((state) => {
+      const next = recipe(state.worksheet);
+      if (next === state.worksheet) return state;
+      return {
+        worksheet: { ...next, updatedAt: new Date().toISOString() },
+        past: [...state.past, state.worksheet].slice(-HISTORY_LIMIT),
+        // A new edit invalidates the redo branch, the way every editor behaves.
+        future: [],
+        dirty: true,
+      };
+    }),
+
+  undo: () =>
+    set((state) => {
+      const previous = state.past.at(-1);
+      if (!previous) return state;
+      return {
+        worksheet: previous,
+        past: state.past.slice(0, -1),
+        future: [state.worksheet, ...state.future],
+        dirty: true,
+      };
+    }),
+
+  redo: () =>
+    set((state) => {
+      const next = state.future[0];
+      if (!next) return state;
+      return {
+        worksheet: next,
+        past: [...state.past, state.worksheet],
+        future: state.future.slice(1),
+        dirty: true,
+      };
+    }),
+
+  canUndo: () => get().past.length > 0,
+  canRedo: () => get().future.length > 0,
+
+  // --- Document --------------------------------------------------------------
+  replaceWorksheet: (worksheet) =>
+    set({ worksheet, past: [], future: [], dirty: false, selectedQuestionId: undefined }),
+
+  updateWorksheet: (patch) => get().commit((draft) => ({ ...draft, ...patch })),
+
+  markSaved: () => set({ dirty: false, lastSavedAt: new Date().toISOString() }),
+
+  /**
+   * Switching language or version is a **view** change, not an edit.
+   *
+   * It therefore bypasses `commit` entirely: it must not enter the history (undo would
+   * appear to do nothing) and must not mark the document dirty. The hidden language's
+   * content is never touched — patch-never-replace (§5.2).
+   */
+  setMode: (patch) => set((state) => ({ mode: { ...state.mode, ...patch } })),
+
+  select: (selectedQuestionId) => set({ selectedQuestionId }),
+  setDragQuestionId: (dragQuestionId) => set({ dragQuestionId }),
+
+  // --- Sections and questions -------------------------------------------------
+  addSection: () =>
+    get().commit((draft) => ({ ...draft, sections: [...draft.sections, createSection()] })),
+
+  updateSection: (sectionId, patch) =>
+    get().commit((draft) => ({
+      ...draft,
+      sections: draft.sections.map((section) =>
+        section.id === sectionId ? { ...section, ...patch } : section,
+      ),
+    })),
+
+  removeSection: (sectionId) =>
+    get().commit((draft) => ({
+      ...draft,
+      sections: draft.sections.filter((section) => section.id !== sectionId),
+    })),
+
+  /**
+   * Add a question of a registered type.
+   *
+   * The type is resolved through the registry rather than switched on here — that is the
+   * extension point (§9), and an unknown id is ignored rather than corrupting the
+   * document with a question no renderer understands.
+   */
+  addQuestion: (sectionId, typeId) => {
+    const definition = listQuestionTypes().find((type) => type.id === typeId);
+    if (!definition) return;
+    const question = definition.create();
+    get().commit((draft) => ({
+      ...draft,
+      sections: draft.sections.map((section) =>
+        section.id === sectionId
+          ? { ...section, questions: [...section.questions, question] }
+          : section,
+      ),
+    }));
+    set({ selectedQuestionId: question.id });
+  },
+
+  updateQuestion: (questionId, patch) =>
+    get().commit((draft) =>
+      mapQuestion(draft, questionId, (question) => ({ ...question, ...patch } as Question)),
+    ),
+
+  removeQuestion: (questionId) =>
+    get().commit((draft) => ({
+      ...draft,
+      sections: draft.sections.map((section) => ({
+        ...section,
+        questions: section.questions.filter((question) => question.id !== questionId),
+        // Drop the flow entry too, so nothing is left pointing at a question that is gone.
+        flow: section.flow?.filter((entry) => entry.id !== questionId),
+      })),
+    })),
+
+  duplicateQuestion: (questionId) =>
+    get().commit((draft) => ({
+      ...draft,
+      sections: draft.sections.map((section) => {
+        const index = section.questions.findIndex((question) => question.id === questionId);
+        if (index < 0) return section;
+        const clone = withFreshIds(section.questions[index]);
+        return {
+          ...section,
+          questions: [
+            ...section.questions.slice(0, index + 1),
+            clone,
+            ...section.questions.slice(index + 1),
+          ],
+        };
+      }),
+    })),
+
+  moveQuestion: (questionId, delta) =>
+    get().commit((draft) => ({
+      ...draft,
+      sections: draft.sections.map((section) => {
+        const index = section.questions.findIndex((question) => question.id === questionId);
+        if (index < 0) return section;
+        const to = index + delta;
+        if (to < 0 || to >= section.questions.length) return section;
+        const questions = [...section.questions];
+        const [moved] = questions.splice(index, 1);
+        questions.splice(to, 0, moved);
+        return { ...section, questions };
+      }),
+    })),
+
+  moveQuestionToSection: (questionId, sectionId) =>
+    get().commit((draft) => {
+      const question = draft.sections
+        .flatMap((section) => section.questions)
+        .find((candidate) => candidate.id === questionId);
+      if (!question) return draft;
+      return {
+        ...draft,
+        sections: draft.sections.map((section) => {
+          if (section.id === sectionId) {
+            return { ...section, questions: [...section.questions, question] };
+          }
+          return {
+            ...section,
+            questions: section.questions.filter((candidate) => candidate.id !== questionId),
+            flow: section.flow?.filter((entry) => entry.id !== questionId),
+          };
+        }),
+      };
+    }),
+
+  /**
+   * Drag-reorder, possibly across sections.
+   *
+   * `questions` stays the authority on question order (§ section flow invariant), so
+   * this rewrites that array rather than the flow. A drag onto itself or onto an id
+   * that is not a question returns the draft untouched, so `commit` records nothing.
+   */
+  reorderQuestion: (questionId, targetId) =>
+    get().commit((draft) => {
+      if (questionId === targetId) return draft;
+
+      const source = draft.sections.find((section) =>
+        section.questions.some((question) => question.id === questionId),
+      );
+      const target = draft.sections.find((section) =>
+        section.questions.some((question) => question.id === targetId),
+      );
+      if (!source || !target) return draft;
+
+      const question = source.questions.find((candidate) => candidate.id === questionId)!;
+
+      return {
+        ...draft,
+        sections: draft.sections.map((section) => {
+          let questions = section.questions;
+          if (section.id === source.id) {
+            questions = questions.filter((candidate) => candidate.id !== questionId);
+          }
+          if (section.id === target.id) {
+            const at = questions.findIndex((candidate) => candidate.id === targetId);
+            questions =
+              at < 0
+                ? [...questions, question]
+                : [...questions.slice(0, at), question, ...questions.slice(at)];
+          }
+          return questions === section.questions
+            ? section
+            : {
+                ...section,
+                questions,
+                flow:
+                  section.id === source.id && section.id !== target.id
+                    ? section.flow?.filter((entry) => entry.id !== questionId)
+                    : section.flow,
+              };
+        }),
+      };
+    }),
+
+  // --- Layout elements and flow ----------------------------------------------
+  /**
+   * Append a layout element, optionally right after an existing item.
+   *
+   * The element lands in `layout` and its position in `flow`; those are the two halves
+   * the flow invariant keeps separate — `layout` owns existence, `flow` owns position.
+   */
+  addLayoutElement: (sectionId, element, afterId) =>
+    get().commit((draft) => ({
+      ...draft,
+      sections: draft.sections.map((section) => {
+        if (section.id !== sectionId) return section;
+        const flow = flowOf(section);
+        const entry = { type: 'layout' as const, id: element.id };
+        const at = afterId ? flow.findIndex((item) => item.id === afterId) : -1;
+        return {
+          ...section,
+          layout: [...(section.layout ?? []), element],
+          flow:
+            at < 0
+              ? [...flow, entry]
+              : [...flow.slice(0, at + 1), entry, ...flow.slice(at + 1)],
+        };
+      }),
+    })),
+
+  updateLayoutElement: (sectionId, elementId, patch) =>
+    get().commit((draft) => ({
+      ...draft,
+      sections: draft.sections.map((section) =>
+        section.id !== sectionId
+          ? section
+          : {
+              ...section,
+              layout: (section.layout ?? []).map((element) =>
+                element.id === elementId ? ({ ...element, ...patch } as LayoutElement) : element,
+              ),
+            },
+      ),
+    })),
+
+  removeLayoutElement: (sectionId, elementId) =>
+    get().commit((draft) => ({
+      ...draft,
+      sections: draft.sections.map((section) =>
+        section.id !== sectionId
+          ? section
+          : {
+              ...section,
+              layout: (section.layout ?? []).filter((element) => element.id !== elementId),
+              flow: section.flow?.filter((entry) => entry.id !== elementId),
+            },
+      ),
+    })),
+
+  nudgeFlowItem: (sectionId, id, direction) =>
+    get().commit((draft) => ({
+      ...draft,
+      sections: draft.sections.map((section) =>
+        section.id === sectionId ? applyFlowMove(section, nudgeInFlow(section, id, direction)) : section,
+      ),
+    })),
+
+  reorderFlowItem: (sectionId, id, targetId, position = 'before') =>
+    get().commit((draft) => ({
+      ...draft,
+      sections: draft.sections.map((section) =>
+        section.id === sectionId
+          ? applyFlowMove(section, moveInFlow(section, id, targetId, position))
+          : section,
+      ),
+    })),
+
+  /**
+   * Move a whole page's worth of items, as dragged in the page rail.
+   *
+   * The rail hands over the target *page's* ids; the run lands relative to the edge
+   * member that position names — before the first when dropping above, after the last
+   * when dropping below — so a page dropped between two sheets lands between them
+   * rather than inside the target.
+   */
+  movePage: (sourceIds, targetIds, position) =>
+    get().commit((draft) => {
+      const anchor = position === 'before' ? targetIds[0] : targetIds.at(-1);
+      if (!anchor) return draft;
+      return {
+        ...draft,
+        sections: draft.sections.map((section) =>
+          applyFlowMove(section, moveRunInFlow(section, sourceIds, anchor, position)),
+        ),
+      };
+    }),
+
+  removeMany: (ids) =>
+    get().commit((draft) => {
+      const set_ = new Set(ids);
+      return {
+        ...draft,
+        sections: draft.sections.map((section) => ({
+          ...section,
+          questions: section.questions.filter((question) => !set_.has(question.id)),
+          layout: (section.layout ?? []).filter((element) => !set_.has(element.id)),
+          flow: section.flow?.filter((entry) => !set_.has(entry.id)),
+        })),
+      };
+    }),
+
+  duplicateMany: (ids) =>
+    get().commit((draft) => {
+      const set_ = new Set(ids);
+      return {
+        ...draft,
+        sections: draft.sections.map((section) => {
+          const questions: Question[] = [];
+          for (const question of section.questions) {
+            questions.push(question);
+            if (set_.has(question.id)) questions.push(withFreshIds(question));
+          }
+          return questions.length === section.questions.length
+            ? section
+            : { ...section, questions };
+        }),
+      };
+    }),
+
+  // --- In-place editing on the page ------------------------------------------
+  applyEdit: (target, next) => get().commit((draft) => applyEditTarget(draft, target, next)),
+  deleteTarget: (target) => get().commit((draft) => applyDeleteTarget(draft, target)),
+  formatTarget: (target, patch) =>
+    get().commit((draft) => applyFormatTarget(draft, target, patch)),
+  resizeBlock: (blockId, widthPx) =>
+    get().commit((draft) => applyResizeBlock(draft, blockId, widthPx)),
+  replaceBlock: (blockId, next) =>
+    get().commit((draft) => replaceBlockById(draft, blockId, next)),
+
+  // --- Page setup, masthead bands, header/footer ------------------------------
+  setPageSetup: (patch) =>
+    get().commit((draft) => ({
+      ...draft,
+      pageSetup: {
+        paper: 'A4',
+        orientation: 'portrait',
+        margins: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
+        ...draft.pageSetup,
+        ...patch,
+      },
+    })),
+
+  setBands: (bands) => get().commit((draft) => ({ ...draft, bands })),
+
+  addBand: (band) =>
+    get().commit((draft) => ({ ...draft, bands: [...(draft.bands ?? []), band ?? createBand()] })),
+
+  addBandField: (bandId, zone, field) =>
+    get().commit((draft) => ({
+      ...draft,
+      bands: (draft.bands ?? []).map((band) =>
+        band.id === bandId ? addField(band, zone, field) : band,
+      ),
+    })),
+
+  // Addressed by field id alone: the caller edits a field it can see, and making it
+  // name the band as well would be a second thing to get wrong for no benefit.
+  updateBandField: (fieldId, patch) =>
+    get().commit((draft) => patchBandHolding(draft, fieldId, (band) =>
+      updateField(band, fieldId, patch),
+    )),
+
+  removeBandField: (fieldId) =>
+    get().commit((draft) => patchBandHolding(draft, fieldId, (band) => removeField(band, fieldId))),
+
+  moveBandField: (bandId, fieldId, zone, beforeId) =>
+    get().commit((draft) => ({
+      ...draft,
+      bands: (draft.bands ?? []).map((band) =>
+        band.id === bandId ? moveField(band, fieldId, zone, beforeId) : band,
+      ),
+    })),
+
+  setHeaderFooter: (which, patch) =>
+    get().commit((draft) => {
+      const current = headerFooterOf(
+        draft[which],
+        which === 'header' ? defaultHeader : defaultFooter,
+      );
+      return { ...draft, [which]: { ...current, ...patch } };
+    }),
+
+  addHeaderFooterBand: (which, band) =>
+    get().commit((draft) => {
+      const current = headerFooterOf(
+        draft[which],
+        which === 'header' ? defaultHeader : defaultFooter,
+      );
+      return {
+        ...draft,
+        // Adding a row to a disabled header is a clear intent to use it.
+        [which]: { ...current, enabled: true, bands: [...current.bands, band ?? createBand()] },
+      };
+    }),
+
+  removeHeaderFooterBand: (which, bandId) =>
+    get().commit((draft) => {
+      const current = headerFooterOf(
+        draft[which],
+        which === 'header' ? defaultHeader : defaultFooter,
+      );
+      return {
+        ...draft,
+        [which]: { ...current, bands: current.bands.filter((band) => band.id !== bandId) },
+      };
+    }),
+
+  addHeaderFooterField: (which, bandId, zone, field) =>
+    get().commit((draft) =>
+      patchHeaderFooterBand(draft, which, (band) => band.id === bandId, (band) =>
+        addField(band, zone, field),
+      ),
+    ),
+
+  updateHeaderFooterField: (which, fieldId, patch) =>
+    get().commit((draft) =>
+      patchHeaderFooterBand(draft, which, (band) => bandHolds(band, fieldId), (band) =>
+        updateField(band, fieldId, patch),
+      ),
+    ),
+
+  removeHeaderFooterField: (which, fieldId) =>
+    get().commit((draft) =>
+      patchHeaderFooterBand(draft, which, (band) => bandHolds(band, fieldId), (band) =>
+        removeField(band, fieldId),
+      ),
+    ),
+
+  moveHeaderFooterField: (which, bandId, fieldId, zone, beforeId) =>
+    get().commit((draft) =>
+      patchHeaderFooterBand(draft, which, (band) => band.id === bandId, (band) =>
+        moveField(band, fieldId, zone, beforeId),
+      ),
+    ),
+
+  setHeaderFooterBands: (which, bands) =>
+    get().commit((draft) => {
+      const current = headerFooterOf(
+        draft[which],
+        which === 'header' ? defaultHeader : defaultFooter,
+      );
+      return { ...draft, [which]: { ...current, enabled: true, bands } };
+    }),
+}));
+
+/**
+ * Apply a flow move to a section.
+ *
+ * `moveInFlow` and friends return the reordered flow plus, when the moved item is a
+ * question, the reordered `questions` array — because `questions` owns question order
+ * and the two must be rewritten together or they disagree about which question is third.
+ */
+function applyFlowMove(section: Section, move: FlowMove): Section {
+  return { ...section, flow: move.flow, questions: move.questions };
+}
