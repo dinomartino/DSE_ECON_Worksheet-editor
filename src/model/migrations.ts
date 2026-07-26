@@ -67,21 +67,23 @@ function slotsToBands(value: unknown): unknown {
 
   const slots = hf.slots as Record<string, Array<RawDoc> | undefined>;
   const zone = (parts: Array<RawDoc> | undefined): RawDoc[] => {
+    const list = parts ?? [];
+    const hasNumber = list.some((p) => p.kind === 'pageNumber');
+    const hasCount = list.some((p) => p.kind === 'pageCount');
+    // "Page " + # + " of " + N was one idiom spelled in four parts. Collapsing it means
+    // dropping the connecting text too: the new field's pattern already prints "Page 3
+    // of 12", so keeping the old literals beside it would read "Page Page 3 of 12 of".
+    const collapsing = hasNumber && hasCount;
+
     const out: RawDoc[] = [];
-    for (const part of parts ?? []) {
+    for (const part of list) {
       if (part.kind === 'text') {
-        out.push({ kind: 'text', id: part.id, text: part.text });
+        if (!collapsing) out.push({ kind: 'text', id: part.id, text: part.text });
       } else if (part.kind === 'pageNumber') {
-        // A following `pageCount` in the same zone was the "of N" half of one idiom.
-        const hasCount = (parts ?? []).some((p) => p.kind === 'pageCount');
-        out.push({
-          kind: 'pageNumber',
-          id: part.id,
-          pattern: hasCount ? 'longForm' : 'plain',
-        });
+        out.push({ kind: 'pageNumber', id: part.id, pattern: collapsing ? 'longForm' : 'plain' });
       }
-      // `pageCount` on its own carried no number a reader could act on, and as the
-      // second half of a pair it is now folded into the field above.
+      // `pageCount` alone carried no number a reader could act on; as the second half of
+      // a pair it is folded into the field above.
     }
     return out;
   };

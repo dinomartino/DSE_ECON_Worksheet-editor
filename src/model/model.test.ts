@@ -125,6 +125,75 @@ describe('schema versioning and migrations (§6, §11.11)', () => {
     expect(plain(migrated.title.en)).toBe('Legacy paper');
   });
 
+  it('folds a v3 header/footer slot triple into a one-band row', () => {
+    // A worksheet as saved by schemaVersion 3: header content in `slots`, and the
+    // "Page N of M" idiom hand-assembled from four separate parts.
+    const v3 = {
+      schemaVersion: 3,
+      id: 'v3-doc',
+      title: { en: [], zh: [] },
+      sections: [],
+      fonts: { latin: 'Times New Roman', eastAsia: 'PMingLiU' },
+      header: {
+        enabled: true,
+        rule: true,
+        slots: {
+          left: [{ kind: 'text', id: 'l', text: { en: [{ text: 'Form 5' }], zh: [] } }],
+          center: [],
+          right: [],
+        },
+      },
+      footer: {
+        enabled: true,
+        slots: {
+          left: [],
+          center: [
+            { kind: 'text', id: 't1', text: { en: [{ text: 'Page ' }], zh: [] } },
+            { kind: 'pageNumber', id: 'p' },
+            { kind: 'text', id: 't2', text: { en: [{ text: ' of ' }], zh: [] } },
+            { kind: 'pageCount', id: 'n' },
+          ],
+          right: [],
+        },
+      },
+      createdAt: '2024-01-01T00:00:00.000Z',
+      updatedAt: '2024-01-01T00:00:00.000Z',
+    };
+
+    const migrated = migrate(v3);
+    expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+
+    // One row, carrying what the triple carried, in the same zone.
+    expect(migrated.header!.bands).toHaveLength(1);
+    expect(plain(migrated.header!.bands[0].zones.left[0].text!.en)).toBe('Form 5');
+    // Settings on the header itself survive the reshape.
+    expect(migrated.header!.rule).toBe(true);
+    // And the old shape is gone rather than left beside the new one.
+    expect((migrated.header as unknown as { slots?: unknown }).slots).toBeUndefined();
+
+    // The four-part "Page N of M" collapses into the single field that always meant.
+    const footerFields = migrated.footer!.bands[0].zones.center;
+    expect(footerFields).toHaveLength(1);
+    expect(footerFields[0].kind).toBe('pageNumber');
+    expect((footerFields[0] as { pattern?: string }).pattern).toBe('longForm');
+  });
+
+  it('leaves a header that is already v4 untouched', () => {
+    // Guards the migration against running twice — on a document written by this build,
+    // or one a newer build already reshaped.
+    const v4 = {
+      schemaVersion: 3,
+      id: 'x',
+      title: { en: [], zh: [] },
+      sections: [],
+      fonts: { latin: 'Times New Roman', eastAsia: 'PMingLiU' },
+      header: { enabled: true, bands: [{ id: 'kept', zones: { left: [], center: [], right: [] } }] },
+    };
+    const migrated = migrate(v4);
+    expect(migrated.header!.bands).toHaveLength(1);
+    expect(migrated.header!.bands[0].id).toBe('kept');
+  });
+
   it('does not mutate the input document', () => {
     const v1 = { schemaVersion: 1, id: 'x', title: { en: [], zh: [] }, sections: [] };
     const snapshot = JSON.stringify(v1);
