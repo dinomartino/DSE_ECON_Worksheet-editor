@@ -1,0 +1,37 @@
+{
+  "name": "econgen",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "vitest run src",
+    "test:watch": "vitest src",
+    "typecheck": "tsc --noEmit",
+    "samples": "vitest run scripts/emit-samples.test.ts"
+  },
+  "dependencies": {
+    "jszip": "^3.10.1",
+    "nanoid": "^6.0.0",
+    "next": "16.2.11",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.0.4",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.11",
+    "fast-xml-parser": "^5.10.1",
+    "playwright-core": "^1.62.0",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^4.1.10"
+  }
+}

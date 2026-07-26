@@ -1,0 +1,290 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens.
+ *
+ * The app is a creative tool wrapped around a printed page, so the palette splits in
+ * two and the split is deliberate:
+ *
+ *   - The *paper* is never themed. A worksheet is black ink on white stock, and the
+ *     preview has to predict Word's output, so the page keeps its own hard-coded
+ *     white/near-black and ignores everything below.
+ *   - The *chrome* around it is themed. It uses a warm neutral ramp rather than the
+ *     blue-grey `slate` default so the white page reads as the brightest, coolest
+ *     thing on screen — the same trick Canva and Figma use to make the artboard pop.
+ *
+ * Semantic names, not raw hex, so a component never hard-codes a colour and dark mode
+ * is one override rather than a `dark:` twin on every element.
+ */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  /* Chrome surfaces, in stacking order: the desk the page sits on, then panels. */
+  --color-desk: var(--desk);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-hover: var(--surface-hover);
+
+  /* Text ramp. `muted` must stay >= 4.5:1 on `surface` — it labels real controls. */
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-subtle: var(--ink-subtle);
+
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+
+  /* One accent. Violet reads as "creative tool" where the old sky blue read as
+     "enterprise form", and it stays distinct from the page's own black text. */
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
+  --color-on-accent: var(--on-accent);
+
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-ink: var(--danger-ink);
+  --color-warn-soft: var(--warn-soft);
+  --color-warn-ink: var(--warn-ink);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-ok-line: var(--ok-line);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Motion. 150-300ms per the UX guidance; anything slower feels laggy on a tool
+     the teacher is clicking through dozens of times. */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root {
+  --background: #f6f5f4;
+  --foreground: #1c1b1a;
+
+  /* The desk is markedly darker than both the panels and the page. That contrast is
+     doing real work: it is what makes the white sheet read as a lit object sitting on
+     a surface rather than as one more white panel among several. */
+  --desk: #dbd7d1;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-sunken: #f6f5f4;
+  --surface-hover: #f0eeec;
+
+  --ink: #1c1b1a;
+  --ink-muted: #6b6764;
+  --ink-subtle: #8f8a86;
+
+  --line: #e3e0dc;
+  --line-strong: #cfcac4;
+
+  --accent: #7c5cff;
+  --accent-hover: #6a48f5;
+  --accent-soft: #f0ecff;
+  --accent-ink: #4a30c2;
+  --on-accent: #ffffff;
+
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
+  --danger-ink: #b91c1c;
+  --warn-soft: #fef6e7;
+  --warn-ink: #92610a;
+  --ok: #047857;
+  --ok-soft: #ecfdf5;
+  --ok-line: #a7f3d0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #17161a;
+    --foreground: #f2f0ee;
+
+    --desk: #100f13;
+    --surface: #1e1d22;
+    --surface-raised: #26242b;
+    --surface-sunken: #17161a;
+    --surface-hover: #2d2b33;
+
+    --ink: #f2f0ee;
+    --ink-muted: #a5a09b;
+    --ink-subtle: #7d7873;
+
+    --line: #322f38;
+    --line-strong: #453f4d;
+
+    --accent: #8f75ff;
+    --accent-hover: #a08bff;
+    --accent-soft: #2a2140;
+    --accent-ink: #c9baff;
+    --on-accent: #14121c;
+
+    --danger: #f87171;
+    --danger-soft: #2c1618;
+    --danger-ink: #fca5a5;
+    --warn-soft: #2e2413;
+    --warn-ink: #fcd34d;
+    --ok: #34d399;
+    --ok-soft: #10281f;
+    --ok-line: #1f5c46;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * The page itself opts out of the theme above. `.paper` is what the A4 sheet wears:
+ * it must look like paper in both themes, because what it shows is a prediction of
+ * what Word will print.
+ */
+.paper {
+  background: #ffffff;
+  color: #111111;
+  color-scheme: light;
+}
+
+/* A soft, layered shadow reads as a sheet lifted off a desk. A single flat shadow
+   reads as a card in a form, which is the impression we're trying to lose. */
+.paper-shadow {
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.06),
+    0 8px 24px -6px rgb(0 0 0 / 0.12),
+    0 24px 48px -12px rgb(0 0 0 / 0.10);
+}
+
+@media (prefers-color-scheme: dark) {
+  .paper-shadow {
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 0.5),
+      0 8px 32px -6px rgb(0 0 0 / 0.6);
+  }
+}
+
+/* Custom scrollbars — the default macOS/Windows bars are the loudest thing in a
+   quiet panel. */
+@supports (scrollbar-width: thin) {
+  .scroll-slim {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+}
+
+/*
+ * Print / "Export as PDF".
+ *
+ * There is no server runtime (the app is a static Vercel deploy), so a PDF cannot be
+ * rendered server-side. It does not need to be: the preview already lays the worksheet
+ * out as real, correctly-sized A4 sheets, so the browser's own print engine — which
+ * every platform exposes as "Save as PDF" — produces the PDF from exactly what is on
+ * screen. That also means the PDF and the preview cannot drift apart.
+ *
+ * The rules below strip the app to the sheets: chrome is hidden, the editor's
+ * selection/hover treatments are cleared so an in-progress selection is not baked
+ * into the output, and the page box is set from `--print-size` / `--print-orientation`
+ * which the Toolbar writes from the worksheet's own page setup before printing.
+ */
+@page {
+  size: var(--print-size, A4) var(--print-orientation, portrait);
+  /* Zero, because the sheet already carries the worksheet's real margins as padding.
+     A non-zero box here would add a second, doubled margin. */
+  margin: 0;
+}
+
+@media print {
+  /* Everything is hidden by default, then the page stack is walked back into view.
+     A blocklist would silently leak any control added later. */
+  body * {
+    visibility: hidden !important;
+  }
+
+  #print-root,
+  #print-root * {
+    visibility: visible !important;
+  }
+
+  #print-root {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: auto !important;
+    background: none !important;
+    /* The on-screen fit/zoom transform must not reach the printed page: the sheet is
+       already at its true physical size. */
+    transform: none !important;
+    gap: 0 !important;
+  }
+
+  #print-root .paper {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    break-after: page;
+    break-inside: avoid;
+  }
+
+  #print-root .paper:last-child {
+    break-after: auto;
+  }
+
+  /* Editing affordances are not part of the document. */
+  #print-root [data-print-hide],
+  #print-root .paper-page-number,
+  #print-root [data-screen-only] {
+    display: none !important;
+  }
+
+  /* Page-number tokens resolve to their real value on paper (see HeaderFooterBand). */
+  #print-root [data-print-only] {
+    display: inline !important;
+  }
+
+  #print-root [data-question-id] {
+    background: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+  }
+
+  #print-root [data-question-id]::before {
+    display: none !important;
+  }
+
+  /* Empty fields print as blank, not as their prompt.
+     "Click to add English" is an instruction to the author; on paper it would read as
+     the question text itself. The element keeps its box so the layout does not shift
+     between preview and print — only the prompt and its dashed rule go. */
+  #print-root [data-empty-placeholder] {
+    visibility: hidden !important;
+  }
+
+  #print-root [role="textbox"] {
+    background: none !important;
+    box-shadow: none !important;
+    text-decoration: none !important;
+  }
+
+  /* Ensure backgrounds/rules the worksheet genuinely uses (table shading, diagram
+     fills) survive the browser's default "economy" print mode. */
+  #print-root {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

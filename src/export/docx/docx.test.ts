@@ -1,0 +1,966 @@
+import JSZip from 'jszip';
+import { describe, expect, it } from 'vitest';
+import { buildDocxParts, docxFileName, exportDocxBuffer } from '.';
+import { buildAcceptanceWorksheet } from '@/test/fixtures';
+import {
+  createBand,
+  createFillInField,
+  createTextField,
+  createTotalMarksField,
+} from '@/model/bands';
+import {
+  createAnswerLinesElement,
+  createDividerElement,
+  createHeadingElement,
+  createLabelListElement,
+  createPageBreakElement,
+  createPartHeaderElement,
+  createSpacerElement,
+} from '@/model/flow';
+import { applyResizeBlock } from '@/model/edits';
+import { MARGIN_PRESETS, cmToTwips } from '@/model/page';
+import { bi } from '@/model/text';
+import type { LayoutElement, OutputMode, Worksheet } from '@/model/types';
+
+const STUDENT_BI: OutputMode = { language: 'bilingual', version: 'student' };
+const TEACHER_BI: OutputMode = { language: 'bilingual', version: 'teacher' };
+
+async function unzip(mode: OutputMode) {
+  const worksheet = buildAcceptanceWorksheet();
+  const bytes = await exportDocxBuffer(worksheet, mode);
+  const zip = await JSZip.loadAsync(bytes);
+  const read = async (path: string) => {
+    const file = zip.file(path);
+    if (!file) throw new Error(`Missing part: ${path}`);
+    return file.async('string');
+  };
+  return { zip, read, worksheet };
+}
+
+describe('docx package structure (§7.1, §11.1)', () => {
+  it('contains every part Word requires, with matching content types', async () => {
+    const { zip, read } = await unzip(STUDENT_BI);
+
+    for (const path of [
+      '[Content_Types].xml',
+      '_rels/.rels',
+      'word/document.xml',
+      'word/styles.xml',
+      'word/numbering.xml',
+      'word/settings.xml',
+      'word/fontTable.xml',
+      'word/header1.xml',
+      'word/footer1.xml',
+      'word/_rels/document.xml.rels',
+      'docProps/core.xml',
+      'docProps/app.xml',
+    ]) {
+      expect(zip.file(path), path).toBeTruthy();
+    }
+
+    const contentTypes = await read('[Content_Types].xml');
+    for (const part of ['/word/document.xml', '/word/numbering.xml', '/word/styles.xml', '/word/header1.xml']) {
+      expect(contentTypes).toContain(`PartName="${part}"`);
+    }
+  });
+
+  it('declares every relationship the document references', async () => {
+    const { read } = await unzip(STUDENT_BI);
+    const document = await read('word/document.xml');
+    const rels = await read('word/_rels/document.xml.rels');
+
+    const referenced = [...document.matchAll(/r:(?:id|embed)="(rId\d+)"/g)].map((m) => m[1]);
+    expect(referenced.length).toBeGreaterThan(0);
+    for (const relId of new Set(referenced)) {
+      expect(rels, `relationship ${relId}`).toContain(`Id="${relId}"`);
+    }
+  });
+
+  it('is well-formed XML in every part', async () => {
+    const { zip } = await unzip(TEACHER_BI);
+    const { XMLValidator } = await import('fast-xml-parser');
+    for (const path of Object.keys(zip.files)) {
+      if (!path.endsWith('.xml') && !path.endsWith('.rels')) continue;
+      const xml = await zip.file(path)!.async('string');
+      const result = XMLValidator.validate(xml);
+      expect(result, `${path}: ${JSON.stringify(result)}`).toBe(true);
+    }
+  });
+});
+
+describe('native numbering (§7.2, §11.2)', () => {
+  it('defines the three abstract multilevel definitions', async () => {
+    const { read } = await unzip(STUDENT_BI);
+    const numbering = await read('word/numbering.xml');
+
+    expect(numbering).toContain('w:abstractNumId="0"');
+    expect(numbering).toContain('w:abstractNumId="1"');
+    expect(numbering).toContain('w:abstractNumId="2"');
+    // Questions: decimal / lowerLetter / lowerRoman with parenthesised labels.
+    expect(numbering).toContain('<w:numFmt w:val="decimal"/>');
+    expect(numbering).toContain('<w:numFmt w:val="lowerLetter"/>');
+    expect(numbering).toContain('<w:numFmt w:val="lowerRoman"/>');
+    expect(numbering).toContain('<w:numFmt w:val="upperLetter"/>');
+    expect(numbering).toContain('<w:lvlText w:val="(%2)"/>');
+    expect(numbering).toContain('<w:lvlText w:val="(%3)"/>');
+    // Every abstract definition must declare nine levels.
+    const levelsPerAbstract = numbering
+      .split('<w:abstractNum ')
+      .slice(1)
+      .map((chunk) => (chunk.match(/<w:lvl w:ilvl=/g) ?? []).length);
+    expect(levelsPerAbstract).toEqual([9, 9, 9]);
+  });
+
+  it('gives every question its own option numbering instance so lettering restarts at A', async () => {
+    const { read, worksheet } = await unzip(STUDENT_BI);
+    const numbering = await read('word/numbering.xml');
+    const document = await read('word/document.xml');
+
+    // One w:num per MCQ referencing the option abstract definition (abstractNumId 1).
+    const optionNums = [...numbering.matchAll(/<w:num w:numId="(\d+)"><w:abstractNumId w:val="1"\/>/g)];
+    const mcqCount = worksheet.sections[0].questions.length;
+    expect(optionNums.length).toBe(mcqCount);
+
+    // Each of those numIds is actually used by option paragraphs in the body.
+    for (const [, numId] of optionNums) {
+      expect(document).toContain(`<w:numId w:val="${numId}"/>`);
+    }
+
+    // Statements likewise get their own per-question instance.
+    const statementNums = [...numbering.matchAll(/<w:abstractNumId w:val="2"\/>/g)];
+    expect(statementNums.length).toBe(1); // only question 2 has statements
+  });
+
+  it('forces each option/statement instance to restart, so options are never E-H', async () => {
+    const { read } = await unzip(STUDENT_BI);
+    const numbering = await read('word/numbering.xml');
+
+    // Instances sharing an abstract definition otherwise continue one counter, which
+    // renders question 2's options as E. F. G. H. instead of A. B. C. D.
+    const instances = [...numbering.matchAll(/<w:num w:numId="\d+">([\s\S]*?)<\/w:num>/g)].map(
+      (m) => m[1],
+    );
+    const optionInstances = instances.filter((body) => body.includes('w:val="1"/>'));
+    expect(optionInstances.length).toBeGreaterThan(1);
+    for (const body of instances) {
+      const abstractId = /<w:abstractNumId w:val="(\d+)"\/>/.exec(body)?.[1];
+      if (abstractId === '1' || abstractId === '2') {
+        expect(body, `abstract ${abstractId} must restart`).toContain('<w:startOverride w:val="1"/>');
+      }
+    }
+  });
+
+  it('restarts question numbering natively when a section asks for it', async () => {
+    const { read } = await unzip(STUDENT_BI);
+    const numbering = await read('word/numbering.xml');
+    const document = await read('word/document.xml');
+
+    const questionNums = [...numbering.matchAll(/<w:num w:numId="(\d+)">((?:(?!<\/w:num>)[\s\S])*)<\/w:num>/g)]
+      .filter(([, , body]) => /<w:abstractNumId w:val="0"\/>/.test(body));
+
+    // The fixture's two sections both restart, so there are two question streams:
+    // the first continuous, the second overriding back to 1.
+    expect(questionNums.length).toBe(2);
+    expect(questionNums[0][2]).not.toContain('w:startOverride');
+    expect(questionNums[1][2]).toContain('<w:startOverride w:val="1"/>');
+    for (const [, numId] of questionNums) {
+      expect(document).toContain(`<w:numId w:val="${numId}"/>`);
+    }
+  });
+
+  it('shares one question stream when a section continues numbering', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    worksheet.sections[1].restartNumbering = false;
+    const { numberingXml, documentXml } = buildDocxParts(worksheet, STUDENT_BI);
+
+    const questionNums = [...numberingXml.matchAll(/<w:num w:numId="(\d+)">((?:(?!<\/w:num>)[\s\S])*)<\/w:num>/g)]
+      .filter(([, , body]) => /<w:abstractNumId w:val="0"\/>/.test(body));
+
+    expect(questionNums.length).toBe(1);
+    expect(questionNums[0][2]).not.toContain('w:startOverride');
+    // Structured parts still ride levels 1-2 of that same shared stream.
+    expect(documentXml).toContain('<w:ilvl w:val="2"/>');
+  });
+
+  it('numbers questions, parts and sub-parts through one shared list, not literal text', async () => {
+    const { read } = await unzip(STUDENT_BI);
+    const document = await read('word/document.xml');
+
+    // Parts/sub-parts ride levels 1 and 2 of the question definition.
+    expect(document).toContain('<w:ilvl w:val="0"/>');
+    expect(document).toContain('<w:ilvl w:val="1"/>');
+    expect(document).toContain('<w:ilvl w:val="2"/>');
+
+    // No question/part/option label is ever typed into the text.
+    expect(document).not.toMatch(/<w:t[^>]*>\s*\d+\.\s*</);
+    expect(document).not.toMatch(/<w:t[^>]*>\s*\(a\)/);
+    expect(document).not.toMatch(/<w:t[^>]*>\s*A\.\s*</);
+  });
+});
+
+describe('styles (§7.3, §11.3)', () => {
+  it('defines all named styles and attaches every paragraph to one', async () => {
+    const { read } = await unzip(TEACHER_BI);
+    const styles = await read('word/styles.xml');
+    const document = await read('word/document.xml');
+
+    for (const name of [
+      'Question Stem', 'MCQ Option', 'Statement', 'Sub-question', 'Sub-sub-question',
+      'Marks', 'Table Caption', 'Image Caption', 'Section Heading', 'Answer', 'Marking Scheme',
+    ]) {
+      expect(styles, name).toContain(`<w:name w:val="${name}"/>`);
+    }
+
+    // Every w:p in the body carries a pStyle.
+    const paragraphs = document.match(/<w:p>(?:(?!<\/w:p>)[\s\S])*<\/w:p>/g) ?? [];
+    expect(paragraphs.length).toBeGreaterThan(10);
+    for (const paragraph of paragraphs) {
+      expect(paragraph, paragraph.slice(0, 120)).toContain('<w:pStyle');
+    }
+  });
+});
+
+describe('fonts and CJK (§7.4, §11.4)', () => {
+  it('sets Latin and eastAsia faces separately on defaults, styles and runs', async () => {
+    const { read } = await unzip(STUDENT_BI);
+    const styles = await read('word/styles.xml');
+    const document = await read('word/document.xml');
+
+    const expected = 'w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:eastAsia="PMingLiU"';
+    expect(styles).toContain('<w:docDefaults>');
+    expect(styles).toContain(expected);
+    expect(document).toContain(expected);
+    expect(styles).toContain('w:eastAsia="zh-HK"');
+
+    // A mixed Latin+CJK string stays in ONE run; Word applies the right font per
+    // character via w:eastAsia, which is what §11.4 asks for.
+    expect(document).toContain('GDP平減物價指數(GDP deflator)');
+  });
+
+  it('honours a per-worksheet font pair', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    worksheet.fonts = { latin: 'Arial', eastAsia: 'Microsoft JhengHei' };
+    const parts = buildDocxParts(worksheet, STUDENT_BI);
+    expect(parts.stylesXml).toContain('w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="Microsoft JhengHei"');
+    expect(parts.fontTableXml).toContain('w:name="Microsoft JhengHei"');
+  });
+});
+
+describe('tables and images (§7.5, §11.5, §11.6)', () => {
+  it('emits real tables with repeating headers, cantSplit rows and merged cells', async () => {
+    const { read } = await unzip(STUDENT_BI);
+    const document = await read('word/document.xml');
+
+    expect(document).toContain('<w:tbl>');
+    expect(document).toContain('<w:tblGrid>');
+    expect(document).toContain('<w:tblHeader/>');
+    expect(document).toContain('<w:cantSplit/>');
+    expect(document).toContain('<w:gridSpan w:val="2"/>');
+    expect(document).toContain('<w:tblBorders>');
+  });
+
+  it('embeds image bytes in word/media with alt text on the drawing', async () => {
+    const { zip, read } = await unzip(STUDENT_BI);
+    const document = await read('word/document.xml');
+    const contentTypes = await read('[Content_Types].xml');
+
+    const media = Object.values(zip.files)
+      .filter((entry) => !entry.dir && entry.name.startsWith('word/media/'))
+      .map((entry) => entry.name);
+    expect(media).toEqual(['word/media/image1.png']);
+
+    const bytes = await zip.file(media[0])!.async('uint8array');
+    // Real PNG magic number — proves actual bytes, not a link (§11.6).
+    expect([...bytes.slice(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47]);
+
+    expect(document).toContain('<w:drawing>');
+    expect(document).toContain('<wp:inline');
+    expect(document).toContain('descr="Demand curve diagram"');
+    expect(document).not.toContain('http://localhost');
+    expect(contentTypes).toContain('Extension="png"');
+  });
+});
+
+describe('page breaks (§7.6, §11.7)', () => {
+  it('keeps question paragraphs together', async () => {
+    const { read } = await unzip(STUDENT_BI);
+    const styles = await read('word/styles.xml');
+    const document = await read('word/document.xml');
+
+    expect(styles).toContain('<w:keepLines/>');
+    expect(document).toContain('<w:keepNext/>');
+  });
+});
+
+describe('student vs teacher output (§11.8)', () => {
+  it('student export contains no answers, explanations or marking scheme anywhere', async () => {
+    const { read, zip } = await unzip(STUDENT_BI);
+    const document = await read('word/document.xml');
+    const core = await read('docProps/core.xml');
+
+    expect(document).not.toContain('Answer:');
+    expect(document).not.toContain('答案');
+    expect(document).not.toContain('Teacher Version');
+    expect(document).not.toContain('Demand shifts left.');
+    expect(document).not.toContain('The price where Qd = Qs.');
+    expect(document).not.toContain(`w:pStyle w:val="Answer"`);
+    expect(document).not.toContain(`w:pStyle w:val="MarkingScheme"`);
+
+    // Metadata must not leak either.
+    expect(core).not.toContain('Teacher');
+    for (const path of Object.keys(zip.files)) {
+      if (!path.endsWith('.xml')) continue;
+      const xml = await zip.file(path)!.async('string');
+      expect(xml, path).not.toContain('Demand shifts left.');
+    }
+  });
+
+  it('teacher export contains answers, marking scheme and a labelled header', async () => {
+    const { read } = await unzip(TEACHER_BI);
+    const document = await read('word/document.xml');
+    const header = await read('word/header1.xml');
+
+    expect(document).toContain('Answer: C');
+    expect(document).toContain('答案：C');
+    expect(document).toContain('Demand shifts left.');
+    expect(document).toContain('The price where Qd = Qs.');
+    expect(document).toContain('w:pStyle w:val="Answer"');
+    expect(document).toContain('w:pStyle w:val="MarkingScheme"');
+    expect(document).toContain('Teacher Version / 教師版');
+    expect(header).toContain('Teacher Version / 教師版');
+  });
+});
+
+describe('language modes (§11.9)', () => {
+  it('EN-only contains no Chinese content and ZH-only no English content', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+
+    const en = buildDocxParts(worksheet, { language: 'en', version: 'student' }).documentXml;
+    const zh = buildDocxParts(worksheet, { language: 'zh', version: 'student' }).documentXml;
+
+    const bodyText = (xml: string) =>
+      [...xml.matchAll(/<w:t[^>]*>([\s\S]*?)<\/w:t>/g)].map((m) => m[1]).join(' ');
+
+    // EN-only must contain none of the zh-side translations. It may still contain
+    // CJK characters that the teacher typed into the English side on purpose —
+    // "GDP平減物價指數(GDP deflator)" is exactly the §11.4 mixed-run case — so the
+    // assertion targets the actual translation strings, not the CJK block.
+    const enText = bodyText(en);
+    for (const zhOnly of [
+      '當需求下降時會發生甚麼？', '價格上升', '經濟科工作紙', '甲部：多項選擇題',
+      '定義均衡價格。', '表一：市場表', '需求量',
+    ]) {
+      expect(enText, zhOnly).not.toContain(zhOnly);
+    }
+    expect(enText).toContain('What happens when demand falls?');
+    expect(enText).toContain('GDP平減物價指數(GDP deflator)');
+
+    const zhText = bodyText(zh);
+    expect(zhText).toMatch(/[一-鿿]/);
+    expect(zhText).not.toContain('What happens when demand falls?');
+    expect(zhText).not.toContain('Price rises');
+  });
+
+  it('bilingual puts English first, stacked inside one paragraph so list numbers are not doubled', async () => {
+    const { read } = await unzip(STUDENT_BI);
+    const document = await read('word/document.xml');
+
+    const enIndex = document.indexOf('What happens when demand falls?');
+    const zhIndex = document.indexOf('當需求下降時會發生甚麼？');
+    expect(enIndex).toBeGreaterThan(-1);
+    expect(zhIndex).toBeGreaterThan(enIndex);
+
+    // The stacked pair is separated by a soft break, inside a single w:p.
+    const between = document.slice(enIndex, zhIndex);
+    expect(between).toContain('<w:br/>');
+    expect(between).not.toContain('</w:p>');
+  });
+});
+
+describe('marks and file naming (§3.5, §7.1)', () => {
+  it('renders per-part marks and a computed question total', async () => {
+    const { read } = await unzip(STUDENT_BI);
+    const document = await read('word/document.xml');
+
+    expect(document).toContain('(3 marks)');
+    expect(document).toContain('（3分）');
+    // Part (b) has sub-parts 2+2+3 = 7; question total 3 + 7 + 5 = 15. The fixture's
+    // first structured question opts in to the total via `showTotalMarks`.
+    expect(document).toContain('(Total: 15 marks)');
+    expect(document).toContain('（共15分）');
+    expect(document).toContain('w:pStyle w:val="Marks"');
+  });
+
+  it('omits the question total unless it is opted in', async () => {
+    // Parts normally carry their own marks, so the trailing sum is off by default —
+    // the fixture's *second* structured question leaves the flag unset. Exactly one
+    // "(Total:" line may appear, from the question that asked for it.
+    const { read } = await unzip(STUDENT_BI);
+    const document = await read('word/document.xml');
+    expect((document.match(/\(Total: /g) ?? []).length).toBe(1);
+  });
+
+  it('names files per the PRD pattern', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    expect(docxFileName(worksheet, TEACHER_BI)).toBe('S5 Economics Test (Teacher) (Bilingual).docx');
+    expect(docxFileName(worksheet, { language: 'en', version: 'student' })).toBe(
+      'S5 Economics Test (Student) (EN).docx',
+    );
+  });
+
+  it('emits a native PAGE field in the footer', async () => {
+    const { read } = await unzip(STUDENT_BI);
+    const footer = await read('word/footer1.xml');
+    expect(footer).toContain('PAGE');
+    expect(footer).toContain('w:fldCharType="begin"');
+    expect(footer).toContain('w:fldCharType="end"');
+  });
+
+  it('sets A4 portrait with 2.54cm margins', async () => {
+    const { read } = await unzip(STUDENT_BI);
+    const document = await read('word/document.xml');
+    expect(document).toContain('<w:pgSz w:w="11906" w:h="16838"/>');
+    expect(document).toContain('w:top="1440"');
+  });
+});
+
+describe('masthead bands, part headers and label lists', () => {
+  async function open(worksheet: Worksheet, mode: OutputMode = STUDENT_BI) {
+    const zip = await JSZip.loadAsync(await exportDocxBuffer(worksheet, mode));
+    return zip.file('word/document.xml')!.async('string');
+  }
+
+  it('prints band zones as one tabbed row, replacing the plain title', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    worksheet.bands = [
+      createBand({
+        left: [createTextField(bi('Form 5', '中五'))],
+        center: [createTextField(bi('Economics Paper 1', '經濟卷一'))],
+        right: [createFillInField(bi('Name:', '姓名：'), 10)],
+      }),
+    ];
+    const document = await open(worksheet);
+
+    expect(document).toContain('Form 5');
+    expect(document).toContain('Economics Paper 1');
+    // A fill-in prints its label plus a rule of the requested width.
+    expect(document).toContain('Name:__________');
+    // Centre and right zones sit at fixed half/full positions of the content width.
+    expect(document).toContain('<w:tab w:val="center" w:pos="4513"/>');
+    expect(document).toContain('<w:tab w:val="right" w:pos="9026"/>');
+    // The bare title paragraph is gone: the title is a band field now.
+    expect(document).not.toContain('w:pStyle w:val="WorksheetTitle"');
+  });
+
+  it('derives "Full marks" from the questions rather than storing it', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    worksheet.bands = [createBand({ left: [createTotalMarksField()] })];
+
+    // The fixture totals 24; adding a 5-mark question must move the printed total.
+    expect(await open(worksheet)).toContain('Full marks: 24 marks');
+
+    const mcq = worksheet.sections[0].questions[0];
+    if (mcq.type === 'mcq') mcq.marks = 6;
+    expect(await open(worksheet)).toContain('Full marks: 29 marks');
+  });
+
+  it('derives a part header total from its own section', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const header = createPartHeaderElement(bi('Part A: Multiple-choice questions', '甲部'));
+    worksheet.sections[0].layout = [header];
+    worksheet.sections[0].flow = [
+      { type: 'layout', id: header.id },
+      ...worksheet.sections[0].questions.map((q) => ({ type: 'question' as const, id: q.id })),
+    ];
+
+    const document = await open(worksheet);
+    // The authored text and the derived suffix are separate runs (rich text is emitted
+    // run per run), so they are asserted separately rather than as one string.
+    expect(document).toContain('Part A: Multiple-choice questions');
+    // Section A is five 1-mark MCQs; section B's 19 must not leak in.
+    expect(document).toContain('>(5 marks)<');
+    expect(document).toContain('>（5分）<');
+    expect(document).not.toContain('(19 marks)');
+  });
+
+  it('omits the marks suffix when a part header opts out', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const header = createPartHeaderElement(bi('Part A', '甲部'));
+    if (header.kind === 'partHeader') header.showMarks = false;
+    worksheet.sections[0].layout = [header];
+
+    const document = await open(worksheet);
+    expect(document).toContain('Part A');
+    expect(document).not.toContain('Part A (');
+  });
+
+  it('exports a label list as borderless tabbed rows, not a table', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const list = createLabelListElement(0);
+    if (list.kind === 'labelList') {
+      list.rows = [
+        { id: 'r1', label: bi('First preference:', '第一選擇：'), value: bi('Watching a movie', '看電影') },
+        { id: 'r2', label: bi('Second preference:', '第二選擇：'), value: bi('Joining a yoga class', '瑜伽課') },
+      ];
+    }
+    worksheet.sections[0].layout = [list];
+
+    const document = await open(worksheet);
+    expect(document).toContain('First preference:');
+    expect(document).toContain('Watching a movie');
+    // Two rows, each a paragraph with one tab stop for the value column.
+    const rows = document.match(/<w:tabs><w:tab w:val="left" w:pos="\d+"\/><\/w:tabs>/g) ?? [];
+    expect(rows.length).toBe(2);
+    // Crucially not a table: a bordered grid is what this element exists to avoid.
+    const tableCount = (document.match(/<w:tbl>/g) ?? []).length;
+    expect(tableCount).toBe((await open(buildAcceptanceWorksheet())).match(/<w:tbl>/g)!.length);
+  });
+
+  it('keeps the plain title when a worksheet has no bands', async () => {
+    const document = await open(buildAcceptanceWorksheet());
+    expect(document).toContain('w:pStyle w:val="WorksheetTitle"');
+  });
+});
+
+describe('MCQ option layout (inline / columns)', () => {
+  async function open(worksheet: Worksheet, mode: OutputMode = STUDENT_BI) {
+    const zip = await JSZip.loadAsync(await exportDocxBuffer(worksheet, mode));
+    return zip.file('word/document.xml')!.async('string');
+  }
+
+  /** Set the first MCQ's layout, leaving everything else alone. */
+  function withLayout(layout: 'stacked' | 'inline' | 'columns2') {
+    const worksheet = buildAcceptanceWorksheet();
+    const mcq = worksheet.sections[0].questions[0];
+    if (mcq.type === 'mcq') mcq.optionLayout = layout;
+    return worksheet;
+  }
+
+  it('stacks by default, keeping option letters as native Word numbering', async () => {
+    const document = await open(buildAcceptanceWorksheet());
+    // The §7.2 invariant: no option letter is ever typed into the text.
+    expect(document).not.toMatch(/<w:t[^>]*>\s*A\.\s*</);
+    expect(document).toContain('<w:ilvl w:val="0"/>');
+  });
+
+  it('puts all four options on one line with tab stops when inline', async () => {
+    const document = await open(withLayout('inline'));
+    // Four options across the row: three tab stops and three tab runs after the first.
+    expect(document).toContain('<w:tab w:val="left"');
+    expect(document).toContain('<w:r><w:tab/></w:r>');
+    // Markers become literal here, because one paragraph cannot carry four list numbers.
+    expect(document).toMatch(/<w:t xml:space="preserve">A\. <\/w:t>/);
+    expect(document).toMatch(/<w:t xml:space="preserve">D\. <\/w:t>/);
+  });
+
+  it('emits two rows of two for the 2-column layout', async () => {
+    const document = await open(withLayout('columns2'));
+    // A and C start their rows, so only B and D follow a tab.
+    const rows = document.match(/<w:tabs><w:tab w:val="left"[^>]*\/><\/w:tabs>/g) ?? [];
+    expect(rows.length).toBe(2);
+    expect(document).toMatch(/<w:t xml:space="preserve">C\. <\/w:t>/);
+  });
+
+  it('derives tab stops from the live content width, not a fixed A4 assumption', async () => {
+    const narrow = withLayout('inline');
+    narrow.pageSetup = {
+      paper: 'A4',
+      orientation: 'portrait',
+      margins: { top: 1440, right: 2880, bottom: 1440, left: 2880 },
+    };
+    const wide = withLayout('inline');
+    wide.pageSetup = {
+      paper: 'A3',
+      orientation: 'landscape',
+      margins: { top: 720, right: 720, bottom: 720, left: 720 },
+    };
+
+    const stops = (xml: string) =>
+      [...xml.matchAll(/<w:tab w:val="left" w:pos="(\d+)"\/>/g)].map((m) => Number(m[1]));
+
+    const narrowStops = stops(await open(narrow));
+    const wideStops = stops(await open(wide));
+    expect(narrowStops.length).toBeGreaterThan(0);
+    // A wider text column pushes every stop further right.
+    expect(Math.max(...wideStops)).toBeGreaterThan(Math.max(...narrowStops));
+  });
+
+  it('still marks the correct answer in the teacher version when inline', async () => {
+    const document = await open(withLayout('inline'), TEACHER_BI);
+    expect(document).toMatch(/Answer: [A-D]/);
+  });
+
+  it('separates a marker from its text with an ordinary space, not a hard one', async () => {
+    // A non-breaking space here stops Word wrapping between the letter and the option,
+    // and is invisible in every diff and screenshot — so it gets asserted instead.
+    const document = await open(withLayout('inline'));
+    expect(document).not.toContain('\u00a0');
+  });
+});
+
+describe('layout elements in the section flow', () => {
+  async function open(worksheet: Worksheet) {
+    const zip = await JSZip.loadAsync(await exportDocxBuffer(worksheet, STUDENT_BI));
+    return zip.file('word/document.xml')!.async('string');
+  }
+
+  /** Put one element after the first question of section A. */
+  function withElement(element: LayoutElement) {
+    const worksheet = buildAcceptanceWorksheet();
+    const section = worksheet.sections[0];
+    section.layout = [element];
+    section.flow = [
+      { type: 'question', id: section.questions[0].id },
+      { type: 'layout', id: element.id },
+      ...section.questions.slice(1).map((q) => ({ type: 'question' as const, id: q.id })),
+    ];
+    return worksheet;
+  }
+
+  it('exports a divider as a bottom-bordered paragraph', async () => {
+    const document = await open(withElement(createDividerElement()));
+    expect(document).toContain('<w:bottom w:val="single" w:sz="6" w:space="1" w:color="808080"/>');
+  });
+
+  it('exports a spacer as an exact-height empty paragraph', async () => {
+    const document = await open(withElement(createSpacerElement(60)));
+    // 60pt is 1200 twentieths of a point.
+    expect(document).toContain('<w:spacing w:line="1200" w:lineRule="exact"/>');
+  });
+
+  it('exports answer lines as one ruled paragraph per line', async () => {
+    const document = await open(withElement(createAnswerLinesElement(5)));
+    expect((document.match(/w:color="A6A6A6"/g) ?? []).length).toBe(5);
+  });
+
+  it('exports a page break as a real Word page break', async () => {
+    const document = await open(withElement(createPageBreakElement()));
+    expect(document).toContain('<w:br w:type="page"/>');
+  });
+
+  it('exports a free heading with its own text and honours its formatting', async () => {
+    const heading = createHeadingElement(bi('Part 1: Short Questions', '第一部分：短問題'));
+    if (heading.kind === 'heading') heading.format = { fontSize: 16, align: 'center' };
+    const document = await open(withElement(heading));
+    expect(document).toContain('Part 1: Short Questions');
+    expect(document).toContain('第一部分：短問題');
+    expect(document).toContain('<w:sz w:val="32"/>');
+    expect(document).toContain('<w:jc w:val="center"/>');
+  });
+
+  it('places the element between the questions it was dropped between', async () => {
+    const worksheet = withElement(createDividerElement());
+    const document = await open(worksheet);
+    const first = document.indexOf('What happens when demand falls?');
+    const rule = document.indexOf('w:color="808080"');
+    const second = document.indexOf('Study the table below');
+    expect(first).toBeGreaterThan(-1);
+    expect(rule).toBeGreaterThan(first);
+    expect(second).toBeGreaterThan(rule);
+  });
+
+  it('leaves question numbering untouched — layout elements take no number', async () => {
+    const document = await open(withElement(createDividerElement()));
+    // Five MCQs still produce exactly five numbered stems in section A's stream.
+    const stems = (document.match(/w:pStyle w:val="QuestionStem"/g) ?? []).length;
+    const baseline = (await open(buildAcceptanceWorksheet())).match(/w:pStyle w:val="QuestionStem"/g);
+    expect(stems).toBe(baseline!.length);
+  });
+});
+
+describe('per-element formatting overrides', () => {
+  async function documentXml(worksheet: Worksheet) {
+    const zip = await JSZip.loadAsync(await exportDocxBuffer(worksheet, STUDENT_BI));
+    return zip.file('word/document.xml')!.async('string');
+  }
+
+  it('writes size, weight, colour, alignment and spacing as direct formatting', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    worksheet.titleFormat = {
+      fontSize: 22,
+      bold: true,
+      italic: true,
+      underline: true,
+      align: 'left',
+      color: 'C00000',
+      spaceBefore: 6,
+      spaceAfter: 12,
+    };
+    const document = await documentXml(worksheet);
+
+    // Word stores half-points, so 22pt is 44.
+    expect(document).toContain('<w:sz w:val="44"/>');
+    expect(document).toContain('<w:szCs w:val="44"/>');
+    expect(document).toContain('<w:color w:val="C00000"/>');
+    expect(document).toContain('<w:jc w:val="left"/>');
+    // Spacing is in twentieths of a point: 6pt -> 120, 12pt -> 240.
+    expect(document).toContain('w:before="120"');
+    expect(document).toContain('w:after="240"');
+    // The named style still supplies everything else.
+    expect(document).toContain('w:pStyle w:val="WorksheetTitle"');
+  });
+
+  it('maps justify onto OOXML "both"', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    worksheet.instructionsFormat = { align: 'justify' };
+    expect(await documentXml(worksheet)).toContain('<w:jc w:val="both"/>');
+  });
+
+  it('applies a per-element font override without changing the rest', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    worksheet.sections[0].headingFormat = {
+      fonts: { latin: 'Arial', eastAsia: 'Microsoft JhengHei' },
+    };
+    const document = await documentXml(worksheet);
+    expect(document).toContain('w:ascii="Arial"');
+    expect(document).toContain('w:eastAsia="Microsoft JhengHei"');
+    // The worksheet default is still used elsewhere.
+    expect(document).toContain('w:ascii="Times New Roman"');
+  });
+
+  it('emits no direct formatting at all when nothing is overridden', async () => {
+    const document = await documentXml(buildAcceptanceWorksheet());
+    // Run-level overrides are absent entirely; named styles supply size and colour.
+    expect(document).not.toContain('<w:sz ');
+    expect(document).not.toContain('<w:color ');
+    // `w:jc` and `w:spacing` also serve table cells and centred images, so the
+    // meaningful check is that the overridable paragraphs carry nothing but their
+    // named style — exactly the output this file produced before formatting existed.
+    expect(document).toContain('<w:pPr><w:pStyle w:val="WorksheetTitle"/></w:pPr>');
+    expect(document).toContain('<w:pPr><w:pStyle w:val="Instructions"/></w:pPr>');
+    expect(document).toContain('<w:pPr><w:pStyle w:val="SectionHeading"/><w:keepNext/></w:pPr>');
+  });
+});
+
+describe('page setup and authored header/footer', () => {
+  /** Unzip an arbitrary worksheet, not just the acceptance fixture. */
+  async function open(worksheet: Worksheet, mode: OutputMode = STUDENT_BI) {
+    const zip = await JSZip.loadAsync(await exportDocxBuffer(worksheet, mode));
+    const read = async (path: string) => {
+      const file = zip.file(path);
+      if (!file) throw new Error(`Missing part: ${path}`);
+      return file.async('string');
+    };
+    return { zip, read };
+  }
+
+  it('writes the chosen paper size, orientation and margins into sectPr', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    worksheet.pageSetup = {
+      paper: 'Letter',
+      orientation: 'landscape',
+      margins: { top: 720, right: 500, bottom: 800, left: 1000 },
+    };
+    const { read } = await open(worksheet);
+    const document = await read('word/document.xml');
+
+    // Letter is 12240 x 15840; landscape swaps them.
+    expect(document).toContain('w:w="15840"');
+    expect(document).toContain('w:h="12240"');
+    expect(document).toContain('w:orient="landscape"');
+    expect(document).toContain('w:top="720"');
+    expect(document).toContain('w:left="1000"');
+  });
+
+  it('renders authored left/centre/right slots separated by tabs', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    worksheet.header = {
+      enabled: true,
+      rule: true,
+      showOnFirstPage: true,
+      slots: {
+        left: [{ kind: 'text', id: 'l', text: bi('Form 5', '中五') }],
+        center: [{ kind: 'text', id: 'c', text: bi('Economics', '經濟') }],
+        right: [{ kind: 'text', id: 'r', text: bi('Name: ______', '姓名：______') }],
+      },
+    };
+    const { read } = await open(worksheet);
+    const header = await read('word/header1.xml');
+
+    expect(header).toContain('Form 5');
+    expect(header).toContain('Economics');
+    expect(header).toContain('Name: ______');
+    // Two tabs separate three occupied slots.
+    expect(header.match(/<w:tab\/>/g)?.length).toBe(2);
+    // Centre and right stops derive from the content width (11906 - 1440 - 1440 = 9026).
+    expect(header).toContain('w:val="center" w:pos="4513"');
+    expect(header).toContain('w:val="right" w:pos="9026"');
+    expect(header).toContain('<w:bottom w:val="single"');
+  });
+
+  it('supports "Page X of Y" as live PAGE and NUMPAGES fields', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    worksheet.footer = {
+      enabled: true,
+      showOnFirstPage: true,
+      slots: {
+        left: [],
+        center: [
+          { kind: 'text', id: 't1', text: bi('Page ', '第') },
+          { kind: 'pageNumber', id: 'p' },
+          { kind: 'text', id: 't2', text: bi(' of ', '頁，共') },
+          { kind: 'pageCount', id: 'n' },
+        ],
+        right: [],
+      },
+    };
+    const { read } = await open(worksheet);
+    const footer = await read('word/footer1.xml');
+
+    expect(footer).toContain('PAGE');
+    expect(footer).toContain('NUMPAGES');
+    expect(footer.match(/w:fldCharType="begin"/g)?.length).toBe(2);
+  });
+
+  it('omits the footer part entirely when the footer is disabled', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    worksheet.header = { enabled: false, slots: { left: [], center: [], right: [] } };
+    worksheet.footer = { enabled: false, slots: { left: [], center: [], right: [] } };
+    const { zip, read } = await open(worksheet);
+
+    expect(zip.file('word/footer1.xml')).toBeNull();
+    expect(zip.file('word/header1.xml')).toBeNull();
+
+    const document = await read('word/document.xml');
+    expect(document).not.toContain('footerReference');
+    expect(document).not.toContain('headerReference');
+
+    // The invariant that matters: no dangling references, and no content type for
+    // a part that is not in the package.
+    const contentTypes = await read('[Content_Types].xml');
+    expect(contentTypes).not.toContain('/word/footer1.xml');
+  });
+
+  it('suppresses a footer on page 1 via titlePg while keeping the header there', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    worksheet.header = {
+      enabled: true,
+      showOnFirstPage: true,
+      slots: { left: [], center: [{ kind: 'text', id: 'c', text: bi('Quiz', '測驗') }], right: [] },
+    };
+    worksheet.footer = {
+      enabled: true,
+      showOnFirstPage: false,
+      slots: { left: [], center: [{ kind: 'pageNumber', id: 'p' }], right: [] },
+    };
+    const { zip, read } = await open(worksheet);
+    const document = await read('word/document.xml');
+
+    expect(document).toContain('<w:titlePg/>');
+    expect(document).toContain('w:type="first"');
+
+    // Page 1's footer is blank, but its header must still carry the real content —
+    // titlePg switches BOTH parts to the "first" reference at once.
+    expect(await read('word/footer2.xml')).not.toContain('PAGE');
+    expect(await read('word/header2.xml')).toContain('Quiz');
+
+    const rels = await read('word/_rels/document.xml.rels');
+    const referenced = [...document.matchAll(/r:(?:id|embed)="(rId\d+)"/g)].map((m) => m[1]);
+    for (const relId of new Set(referenced)) {
+      expect(rels, `relationship ${relId}`).toContain(`Id="${relId}"`);
+    }
+    for (const path of ['word/header2.xml', 'word/footer2.xml']) {
+      expect(zip.file(path), path).toBeTruthy();
+    }
+  });
+
+  it('keeps the teacher marker in the header even with no authored header text', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    worksheet.header = { enabled: false, slots: { left: [], center: [], right: [] } };
+    const { read } = await open(worksheet, TEACHER_BI);
+    expect(await read('word/header1.xml')).toContain('Teacher Version / 教師版');
+  });
+});
+
+/**
+ * A picture resized on the page prints at the size the teacher dragged to.
+ *
+ * The drag writes `widthPx`/`heightPx` on the block, which is the same pair the
+ * sidebar's number field writes — so this pins down that the resize surface added to
+ * the preview cannot produce a document that prints at some other size.
+ */
+describe('resized pictures export at their new size', () => {
+  async function documentXml(worksheet: Worksheet) {
+    const zip = await JSZip.loadAsync(await exportDocxBuffer(worksheet, STUDENT_BI));
+    return zip.file('word/document.xml')!.async('string');
+  }
+
+  const EMU_PER_PX = 9525; // 96 dpi, matching body.ts
+
+  it('writes the dragged width and height into wp:extent', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const image = worksheet.sections[0].questions[1].blocks.find((b) => b.kind === 'image');
+    if (image?.kind !== 'image') throw new Error('fixture has no image block');
+
+    const before = await documentXml(worksheet);
+    expect(before).toContain(
+      `<wp:extent cx="${image.widthPx * EMU_PER_PX}" cy="${image.heightPx * EMU_PER_PX}"/>`,
+    );
+
+    const resized = applyResizeBlock(worksheet, image.id, 320);
+    const after = await documentXml(resized);
+    // 200x150 scaled to 320 wide is 240 tall.
+    expect(after).toContain(`<wp:extent cx="${320 * EMU_PER_PX}" cy="${240 * EMU_PER_PX}"/>`);
+    expect(after).not.toContain(`cx="${image.widthPx * EMU_PER_PX}"`);
+  });
+
+  it('leaves the package structurally sound, with every relationship resolved', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const image = worksheet.sections[0].questions[1].blocks.find((b) => b.kind === 'image');
+    if (image?.kind !== 'image') throw new Error('fixture has no image block');
+
+    const zip = await JSZip.loadAsync(
+      await exportDocxBuffer(applyResizeBlock(worksheet, image.id, 41), STUDENT_BI),
+    );
+    const document = await zip.file('word/document.xml')!.async('string');
+    const rels = await zip.file('word/_rels/document.xml.rels')!.async('string');
+
+    // A resize must not orphan the image part — Word reports a dangling r:embed as a
+    // repair error, which is the failure mode this whole check exists to catch.
+    for (const match of document.matchAll(/r:(?:id|embed)="(rId\d+)"/g)) {
+      expect(rels, `relationship ${match[1]}`).toContain(`Id="${match[1]}"`);
+    }
+    // Even at the floor, no zero-dimension drawing.
+    expect(document).not.toMatch(/<wp:extent cx="0"|cy="0"\/>/);
+  });
+});
+
+/**
+ * Custom and preset margins reach `w:pgMar` untouched.
+ *
+ * Margins are the one page-setup value with two entry points — a preset and the custom
+ * fields — so the contract worth pinning is that both are written to the document
+ * verbatim, in twips, with no unit conversion in between.
+ */
+describe('margin presets and custom margins export verbatim', () => {
+  it('writes the worksheet preset into w:pgMar', async () => {
+    const preset = MARGIN_PRESETS.find((entry) => entry.label.startsWith('Worksheet'))!;
+    const worksheet = buildAcceptanceWorksheet();
+    worksheet.pageSetup = {
+      paper: 'A4',
+      orientation: 'portrait',
+      margins: { ...preset.margins },
+    };
+
+    const zip = await JSZip.loadAsync(await exportDocxBuffer(worksheet, STUDENT_BI));
+    const document = await zip.file('word/document.xml')!.async('string');
+    expect(document).toContain(
+      `<w:pgMar w:top="1440" w:right="850" w:bottom="1440" w:left="850"`,
+    );
+  });
+
+  it('writes an arbitrary custom margin, so the typed value is what prints', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    // 3.2 cm top, as the custom field would store it.
+    worksheet.pageSetup = {
+      paper: 'A4',
+      orientation: 'portrait',
+      margins: { top: cmToTwips(3.2), right: 850, bottom: 1440, left: 850 },
+    };
+
+    const zip = await JSZip.loadAsync(await exportDocxBuffer(worksheet, STUDENT_BI));
+    const document = await zip.file('word/document.xml')!.async('string');
+    expect(document).toContain(`w:top="${cmToTwips(3.2)}"`);
+    expect(cmToTwips(3.2)).toBe(1814);
+  });
+});

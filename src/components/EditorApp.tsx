@@ -1,0 +1,371 @@
+'use client';
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Preview, type PageComposition } from '@/components/preview/Preview';
+import { AddRail } from '@/components/editor/AddRail';
+import { PageRail } from '@/components/editor/PageRail';
+import { Sidebar } from '@/components/editor/Sidebar';
+import { Toolbar } from '@/components/editor/Toolbar';
+import { IconButton } from '@/components/ui';
+import { CloseIcon } from '@/components/ui/icons';
+import { createTextField, type ZoneName } from '@/model/bands';
+import { DiagramCanvas } from '@/components/editor/DiagramCanvas';
+import { findDiagramBlock, formatOfTarget, targetQuestionId } from '@/model/edits';
+import type { BiText } from '@/model/types';
+import type { EditTarget } from '@/render/ir';
+import { useWorksheetStore } from '@/store/worksheetStore';
+import { worksheetStore } from '@/storage';
+
+/** Two-pane shell (§5.1): structural editor on the left, live preview on the right. */
+export function EditorApp() {
+  const worksheet = useWorksheetStore((s) => s.worksheet);
+  const mode = useWorksheetStore((s) => s.mode);
+  const dirty = useWorksheetStore((s) => s.dirty);
+  const selectedQuestionId = useWorksheetStore((s) => s.selectedQuestionId);
+  const select = useWorksheetStore((s) => s.select);
+  const undo = useWorksheetStore((s) => s.undo);
+  const redo = useWorksheetStore((s) => s.redo);
+  const markSaved = useWorksheetStore((s) => s.markSaved);
+  const replaceWorksheet = useWorksheetStore((s) => s.replaceWorksheet);
+  const applyEdit = useWorksheetStore((s) => s.applyEdit);
+  const deleteTarget = useWorksheetStore((s) => s.deleteTarget);
+  const replaceBlock = useWorksheetStore((s) => s.replaceBlock);
+  const formatTarget = useWorksheetStore((s) => s.formatTarget);
+  const resizeBlock = useWorksheetStore((s) => s.resizeBlock);
+  const reorderQuestion = useWorksheetStore((s) => s.reorderQuestion);
+  const reorderFlowItem = useWorksheetStore((s) => s.reorderFlowItem);
+  const moveBandField = useWorksheetStore((s) => s.moveBandField);
+  const updateBandField = useWorksheetStore((s) => s.updateBandField);
+  const removeBandField = useWorksheetStore((s) => s.removeBandField);
+  const addBandField = useWorksheetStore((s) => s.addBandField);
+  const addQuestion = useWorksheetStore((s) => s.addQuestion);
+  const removeQuestion = useWorksheetStore((s) => s.removeQuestion);
+  const removeLayoutElement = useWorksheetStore((s) => s.removeLayoutElement);
+  const removeMany = useWorksheetStore((s) => s.removeMany);
+  const duplicateMany = useWorksheetStore((s) => s.duplicateMany);
+
+  const restored = useRef(false);
+  const scrollerRef = useRef<HTMLElement>(null);
+
+  // How the flow landed on sheets, as reported by the paginator. Pages exist nowhere
+  // in the model — they are measured — so the rail can only be told, never derive it.
+  const [pages, setPages] = useState<PageComposition[]>([]);
+  /**
+   * The diagram opened by double-clicking it on the page, held by **id**.
+   *
+   * An id rather than the block itself, so the canvas always renders the current
+   * geometry: holding the object would freeze it at the moment it was opened, and every
+   * edit would then be applied on top of a stale base.
+   */
+  const [drawingBlockId, setDrawingBlockId] = useState<string | undefined>();
+  const drawingBlock = drawingBlockId
+    ? findDiagramBlock(worksheet, drawingBlockId)
+    : undefined;
+  const [activePage, setActivePage] = useState(0);
+  // The item being dragged on the page, mirrored here so the rail can receive it.
+  const [draggingItemId, setDraggingItemId] = useState<string | undefined>();
+
+  /*
+   * Which sheet the reader is looking at, for the rail's highlight.
+   *
+   * Chosen as the page covering the *upper third* of the viewport rather than the one
+   * with the most pixels visible: at a zoom where two sheets fit on screen, a "most
+   * visible" rule flickers between them on the smallest scroll, while the top of the
+   * viewport is unambiguously where reading happens.
+   *
+   * A scroll listener rather than an IntersectionObserver, because the answer depends
+   * on ordering the candidates by position — which the observer reports piecemeal, one
+   * threshold crossing at a time.
+   */
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+
+    let queued = false;
+    const measure = () => {
+      queued = false;
+      const line = scroller.getBoundingClientRect().top + scroller.clientHeight / 3;
+      const sheets = scroller.querySelectorAll<HTMLElement>(
+        '#print-root [data-page-index]',
+      );
+      let current = 0;
+      for (const sheet of sheets) {
+        const rect = sheet.getBoundingClientRect();
+        if (rect.top <= line) current = Number(sheet.dataset.pageIndex ?? 0);
+        else break;
+      }
+      setActivePage(current);
+    };
+
+    const onScroll = () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(measure);
+    };
+
+    measure();
+    scroller.addEventListener('scroll', onScroll, { passive: true });
+    return () => scroller.removeEventListener('scroll', onScroll);
+  }, [pages.length]);
+
+  // Derived from the reactive worksheet, so pressing Bold re-renders the toolbar with
+  // the button now active rather than leaving it showing the previous state.
+  const formatOf = useCallback(
+    (target: EditTarget) => formatOfTarget(worksheet, target),
+    [worksheet],
+  );
+
+  // Masthead editing, bundled so it threads through one prop. A new field starts as
+  // empty text, which the teacher then types into on the page.
+  const bandEditing = useMemo(
+    () => ({
+      onMove: moveBandField,
+      onEditField: (fieldId: string, text: BiText) => updateBandField(fieldId, { text }),
+      onRemoveField: removeBandField,
+      onAddField: (bandId: string, zone: ZoneName) =>
+        addBandField(bandId, zone, createTextField()),
+    }),
+    [moveBandField, updateBandField, removeBandField, addBandField],
+  );
+
+  // Dragging on the page. A question dragged in from another section has to move
+  // between the two `questions` arrays, which only `reorderQuestion` does; anything
+  // already in this section is a pure flow move.
+  const handleReorder = useCallback(
+    (sectionId: string, id: string, targetId: string, position: 'before' | 'after') => {
+      const home = worksheet.sections.find(
+        (section) =>
+          section.questions.some((q) => q.id === id) ||
+          (section.layout ?? []).some((element) => element.id === id),
+      );
+      if (home && home.id !== sectionId) {
+        reorderQuestion(id, targetId);
+        return;
+      }
+      reorderFlowItem(sectionId, id, targetId, position);
+    },
+    [worksheet, reorderQuestion, reorderFlowItem],
+  );
+
+  /*
+   * Drop a question onto a page card in the rail.
+   *
+   * This is the answer to "I cannot move a question to another page": a native drag
+   * only fires over what is under the pointer, so a destination that is not on screen
+   * cannot receive one. The rail is always on screen and always shows every page, so
+   * dropping onto a card reaches any page regardless of scroll — and unlike edge
+   * auto-scroll, it takes one gesture whether the target is the next page or the
+   * twentieth.
+   *
+   * The item lands at the *end* of the target page, because a card is one target with
+   * no meaningful "between" — the sketch shows bars, not gaps you could aim at. Once
+   * there it can be nudged into place on the page itself, where the edge is visible.
+   *
+   * Dropping onto the page it already ends is a no-op rather than a commit, so an
+   * accidental release does not push an undo entry that changes nothing.
+   */
+  const handleDropItemOnPage = useCallback(
+    (itemId: string, target: PageComposition) => {
+      const ids = target.flowIds.filter((id) => id !== itemId);
+      const anchor = ids[ids.length - 1];
+      if (!anchor) return;
+      if (target.flowIds[target.flowIds.length - 1] === itemId) return;
+
+      const section = worksheet.sections.find(
+        (candidate) =>
+          candidate.questions.some((q) => q.id === anchor) ||
+          (candidate.layout ?? []).some((element) => element.id === anchor),
+      );
+      if (!section) return;
+      handleReorder(section.id, itemId, anchor, 'after');
+    },
+    [worksheet, handleReorder],
+  );
+
+  // Editing text on the page also selects the question it belongs to, so the sidebar
+  // follows along and shows the rest of that question's fields.
+  const handleEdit = useCallback(
+    (target: EditTarget, next: BiText) => {
+      applyEdit(target, next);
+      const owner = targetQuestionId(useWorksheetStore.getState().worksheet, target);
+      if (owner) select(owner);
+    },
+    [applyEdit, select],
+  );
+
+  // Adding from the empty page. It lands in the last section for the same reason the
+  // add rail does — a document grows at its end — and there is always at least one
+  // section, since the factory creates the worksheet with two.
+  const handleAddFirstQuestion = useCallback(
+    (typeId: string) => {
+      const section = worksheet.sections[worksheet.sections.length - 1];
+      if (section) addQuestion(section.id, typeId);
+    },
+    [worksheet, addQuestion],
+  );
+
+  // Deleting a layout element from the page. The store keys removal by section, but a
+  // click on the page only knows the element's own id, so the owning section is looked
+  // up here rather than making every caller carry it.
+  const handleDeleteLayout = useCallback(
+    (elementId: string) => {
+      const section = worksheet.sections.find((candidate) =>
+        (candidate.layout ?? []).some((element) => element.id === elementId),
+      );
+      if (section) removeLayoutElement(section.id, elementId);
+    },
+    [worksheet, removeLayoutElement],
+  );
+
+  // Reopen the most recently edited worksheet on load (§6).
+  useEffect(() => {
+    if (restored.current) return;
+    restored.current = true;
+    void (async () => {
+      const [latest] = await worksheetStore.list();
+      if (!latest) return;
+      const saved = await worksheetStore.load(latest.id);
+      if (saved) replaceWorksheet(saved);
+    })();
+  }, [replaceWorksheet]);
+
+  // Debounced autosave (§6).
+  useEffect(() => {
+    if (!dirty) return;
+    const timer = setTimeout(() => {
+      void worksheetStore.save(worksheet).then(markSaved);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [worksheet, dirty, markSaved]);
+
+  // Undo/redo shortcuts (§11.13).
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'z') return;
+      // While typing, ⌘Z belongs to the text field — it should take back a character,
+      // not roll the whole document to its previous commit. Document-level undo
+      // applies only when focus is outside an input.
+      const active = document.activeElement;
+      if (
+        active instanceof HTMLTextAreaElement ||
+        active instanceof HTMLInputElement ||
+        (active instanceof HTMLElement && active.isContentEditable)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      if (event.shiftKey) redo();
+      else undo();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [undo, redo]);
+
+  return (
+    <div className="flex h-screen flex-col bg-surface">
+      <Toolbar />
+      {/* Three columns: the add rail (how content gets on the page), the page itself
+          (where it is edited), and the sidebar (structure and off-page fields). The
+          rail sits on the left because that is where every creative tool puts its
+          insert affordance, and because it must never be what gets pushed off-screen
+          when the window narrows. */}
+      <div className="flex min-h-0 flex-1">
+        <AddRail />
+        {/* The page rail sits beside the add rail rather than under it: both are
+            full-height columns, and stacking them would give each half a screen —
+            enough for neither a long insert menu nor a long document. */}
+        {pages.length > 1 && (
+          <PageRail
+            pages={pages}
+            activeIndex={activePage}
+            draggingItemId={draggingItemId}
+            onDropItemOnPage={handleDropItemOnPage}
+          />
+        )}
+        {/* `pt-14` rather than `pt-6`: the format toolbar docks inside the top of this
+            scroller, and the reserved band is what keeps it off the paper instead of
+            floating over the first lines of the document. The space is constant rather
+            than appearing with the selection, because growing the padding on click
+            would scroll the page under the pointer mid-edit. */}
+        <main
+          ref={scrollerRef}
+          className="scroll-slim min-w-0 flex-1 overflow-auto bg-desk px-6 pb-16 pt-14"
+        >
+          <Preview
+            worksheet={worksheet}
+            mode={mode}
+            selectedQuestionId={selectedQuestionId}
+            onSelectQuestion={select}
+            onEdit={handleEdit}
+            onDelete={deleteTarget}
+            onDeleteQuestion={removeQuestion}
+            onDeleteLayout={handleDeleteLayout}
+            onBulkDelete={removeMany}
+            onBulkDuplicate={duplicateMany}
+            onFormat={formatTarget}
+            formatOf={formatOf}
+            onResizeBlock={resizeBlock}
+            onOpenBlock={setDrawingBlockId}
+            onReorder={handleReorder}
+            bandEditing={bandEditing}
+            onAddQuestion={handleAddFirstQuestion}
+            // `setPages` is referentially stable, which the preview's publish effect
+            // depends on — a fresh closure each render would re-notify forever.
+            onPagesChange={setPages}
+            onDragItemChange={setDraggingItemId}
+          />
+        </main>
+        <Sidebar />
+      </div>
+
+      {/* The how-to-edit hint. It was a grey line of text pinned above the page, which
+          pushed the document down and read as a disclaimer. As a floating pill it sits
+          out of the document's way and can be dismissed once it has been learned —
+          a permanent instruction is a sign the interface failed to be obvious. */}
+      <HintPill />
+
+      {/* The drawing canvas, opened by double-clicking a diagram on the page.
+          Rendered here rather than inside the sidebar's DiagramEditor because that panel
+          only exists while its question is open — a diagram reached from the page has no
+          panel mounted to host it. Edits commit through `replaceBlock`, which addresses
+          the block by id and so needs no knowledge of which question owns it.
+          `drawingBlock` is looked up fresh each render, so closing and reopening never
+          resurrects stale geometry, and a block deleted while open simply unmounts. */}
+      {drawingBlock && (
+        <DiagramCanvas
+          block={drawingBlock}
+          onChange={(next) => replaceBlock(next.id, next)}
+          onClose={() => setDrawingBlockId(undefined)}
+        />
+      )}
+    </div>
+  );
+}
+
+function HintPill() {
+  const [dismissed, setDismissed] = useState(false);
+
+  // It retires itself. A how-to-edit hint is only useful until it has been read once,
+  // and a permanent instruction strip is a standing admission that the interface is
+  // not self-evident — so it fades after a few seconds rather than living on the
+  // canvas forever. Dismissing early does the same thing sooner.
+  useEffect(() => {
+    const timer = setTimeout(() => setDismissed(true), 9000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (dismissed) return null;
+  return (
+    <div className="pointer-events-none fixed bottom-4 left-[76px] right-[400px] z-20 flex justify-center">
+      <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-line bg-surface-raised/95 py-1.5 pl-4 pr-1.5 text-[12px] text-ink-muted shadow-lg backdrop-blur">
+        <span>
+          Click text to select · click again to edit
+          <span className="ml-2 text-ink-subtle">按頁面文字即可編輯</span>
+        </span>
+        <IconButton label="Dismiss hint" onClick={() => setDismissed(true)}>
+          <CloseIcon size={14} />
+        </IconButton>
+      </div>
+    </div>
+  );
+}

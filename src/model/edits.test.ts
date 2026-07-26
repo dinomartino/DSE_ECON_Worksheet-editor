@@ -1,0 +1,462 @@
+import { describe, expect, it } from 'vitest';
+import {
+  MIN_BLOCK_WIDTH_PX,
+  applyDeleteTarget,
+  applyEditTarget,
+  applyResizeBlock,
+  blockSize,
+  describeDelete,
+  targetQuestionId,
+} from './edits';
+import { createDiagramBlock } from './factories';
+import { bi, plain } from './text';
+import type {
+  ContentBlock,
+  McqQuestion,
+  StructuredQuestion,
+  TableBlock,
+  Worksheet,
+} from './types';
+import { renderWorksheet } from '@/render/worksheet';
+import { buildAcceptanceWorksheet } from '@/test/fixtures';
+import type { EditTarget, TextNode } from '@/render/ir';
+
+/**
+ * In-place editing: clicking text on the previewed page writes back to the model.
+ *
+ * The contract these tests pin down is that an `EditTarget` emitted by the IR
+ * resolves to exactly the field the text was rendered from, and that writing it
+ * cannot damage anything else — in particular the other language.
+ */
+
+const EDIT = bi('EDITED', '已編輯');
+
+describe('edit targets resolve to the field they were rendered from', () => {
+  it('writes the worksheet title and instructions', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const titled = applyEditTarget(worksheet, { kind: 'worksheetTitle' }, EDIT);
+    expect(plain(titled.title.en)).toBe('EDITED');
+
+    const instructed = applyEditTarget(titled, { kind: 'worksheetInstructions' }, EDIT);
+    expect(plain(instructed.instructions!.zh)).toBe('已編輯');
+  });
+
+  it('writes a section heading by id, leaving other sections alone', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const [first, second] = worksheet.sections;
+    const next = applyEditTarget(worksheet, { kind: 'sectionHeading', sectionId: second.id }, EDIT);
+
+    expect(plain(next.sections[1].heading!.en)).toBe('EDITED');
+    expect(plain(next.sections[0].heading!.en)).toBe(plain(first.heading!.en));
+  });
+
+  it('writes a paragraph block at any depth — stem, part and sub-part', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const structured = worksheet.sections[1].questions[0] as StructuredQuestion;
+
+    const stemId = structured.blocks[0].id;
+    const partId = structured.parts[0].blocks[0].id;
+    const subId = structured.parts[1].subParts![0].blocks[0].id;
+
+    let next = worksheet;
+    for (const blockId of [stemId, partId, subId]) {
+      next = applyEditTarget(next, { kind: 'blockText', blockId }, EDIT);
+    }
+
+    const paragraphText = (block: ContentBlock) =>
+      block.kind === 'paragraph' ? plain(block.text.en) : undefined;
+
+    const after = next.sections[1].questions[0] as StructuredQuestion;
+    expect(paragraphText(after.blocks[0])).toBe('EDITED');
+    expect(paragraphText(after.parts[0].blocks[0])).toBe('EDITED');
+    expect(paragraphText(after.parts[1].subParts![0].blocks[0])).toBe('EDITED');
+  });
+
+  it('writes a table cell and a caption by block id', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const mcq = worksheet.sections[0].questions[1] as McqQuestion;
+    const table = mcq.blocks.find((block) => block.kind === 'table') as TableBlock;
+    const cellId = table.rows[0].cells[1].id;
+
+    const withCell = applyEditTarget(
+      worksheet,
+      { kind: 'tableCell', blockId: table.id, cellId },
+      EDIT,
+    );
+    const withCaption = applyEditTarget(
+      withCell,
+      { kind: 'blockCaption', blockId: table.id },
+      EDIT,
+    );
+
+    const after = withCaption.sections[0].questions[1] as McqQuestion;
+    const afterTable = after.blocks.find((block) => block.kind === 'table') as TableBlock;
+    expect(plain(afterTable.rows[0].cells[1].text.en)).toBe('EDITED');
+    expect(plain(afterTable.caption!.en)).toBe('EDITED');
+    // Neighbouring cells are untouched.
+    expect(plain(afterTable.rows[0].cells[0].text.en)).toBe('Price ($)');
+  });
+
+  it('writes MCQ options, statements and the explanation', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const mcq = worksheet.sections[0].questions[1] as McqQuestion;
+
+    let next = applyEditTarget(
+      worksheet,
+      { kind: 'mcqOption', questionId: mcq.id, optionId: mcq.options[2].id },
+      EDIT,
+    );
+    next = applyEditTarget(next, { kind: 'mcqStatement', questionId: mcq.id, index: 1 }, EDIT);
+    next = applyEditTarget(next, { kind: 'mcqExplanation', questionId: mcq.id }, EDIT);
+
+    const after = next.sections[0].questions[1] as McqQuestion;
+    expect(plain(after.options[2].text.en)).toBe('EDITED');
+    expect(plain(after.statements![1].en)).toBe('EDITED');
+    expect(plain(after.explanation!.en)).toBe('EDITED');
+    // The answer index — and the untouched options — survive.
+    expect(after.answerIndex).toBe(mcq.answerIndex);
+    expect(plain(after.options[0].text.en)).toBe('Price rises');
+  });
+
+  it('writes part and sub-part answers', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const structured = worksheet.sections[1].questions[0] as StructuredQuestion;
+    const part = structured.parts[1];
+
+    let next = applyEditTarget(
+      worksheet,
+      { kind: 'partAnswer', questionId: structured.id, partId: structured.parts[0].id },
+      EDIT,
+    );
+    next = applyEditTarget(
+      next,
+      {
+        kind: 'subPartAnswer',
+        questionId: structured.id,
+        partId: part.id,
+        subPartId: part.subParts![2].id,
+      },
+      EDIT,
+    );
+
+    const after = next.sections[1].questions[0] as StructuredQuestion;
+    expect(plain(after.parts[0].answer!.en)).toBe('EDITED');
+    expect(plain(after.parts[1].subParts![2].answer!.en)).toBe('EDITED');
+    expect(plain(after.parts[1].subParts![0].answer!.en)).toBe('Income.');
+  });
+
+  it('drops a stale edit rather than corrupting the document', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const next = applyEditTarget(worksheet, { kind: 'blockText', blockId: 'gone' }, EDIT);
+    expect(JSON.stringify(next)).toBe(JSON.stringify(worksheet));
+  });
+});
+
+describe('deleting the selected element (Delete/Backspace on the page)', () => {
+  it('removes a paragraph block, leaving its siblings behind', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const mcq = worksheet.sections[0].questions[1] as McqQuestion;
+    const before = mcq.blocks.length;
+    const paragraph = mcq.blocks[0];
+
+    const next = applyDeleteTarget(worksheet, { kind: 'blockText', blockId: paragraph.id });
+    const after = next.sections[0].questions[1] as McqQuestion;
+
+    expect(after.blocks).toHaveLength(before - 1);
+    expect(after.blocks.some((block) => block.id === paragraph.id)).toBe(false);
+    // The table and image that shared the stem survive.
+    expect(after.blocks.some((block) => block.kind === 'table')).toBe(true);
+    expect(after.blocks.some((block) => block.kind === 'image')).toBe(true);
+  });
+
+  it('drops a statement so the rest renumber', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const mcq = worksheet.sections[0].questions[1] as McqQuestion;
+    expect(mcq.statements).toHaveLength(3);
+
+    const next = applyDeleteTarget(worksheet, {
+      kind: 'mcqStatement',
+      questionId: mcq.id,
+      index: 0,
+    });
+    const after = next.sections[0].questions[1] as McqQuestion;
+
+    expect(after.statements).toHaveLength(2);
+    // What was (2) becomes (1) — numbering is derived, so nothing else to update.
+    expect(plain(after.statements![0].en)).toBe('Nominal GDP rises');
+  });
+
+  it('clears a table cell rather than breaking the grid', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const mcq = worksheet.sections[0].questions[1] as McqQuestion;
+    const table = mcq.blocks.find((block) => block.kind === 'table') as TableBlock;
+    const widthBefore = table.rows[0].cells.length;
+
+    const next = applyDeleteTarget(worksheet, {
+      kind: 'tableCell',
+      blockId: table.id,
+      cellId: table.rows[0].cells[1].id,
+    });
+    const after = next.sections[0].questions[1] as McqQuestion;
+    const afterTable = after.blocks.find((block) => block.kind === 'table') as TableBlock;
+
+    expect(afterTable.rows[0].cells).toHaveLength(widthBefore);
+    expect(plain(afterTable.rows[0].cells[1].text.en)).toBe('');
+    expect(plain(afterTable.rows[0].cells[0].text.en)).toBe('Price ($)');
+  });
+
+  it('removes answers, explanations and captions', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const mcq = worksheet.sections[0].questions[1] as McqQuestion;
+    const structured = worksheet.sections[1].questions[0] as StructuredQuestion;
+    const table = mcq.blocks.find((block) => block.kind === 'table') as TableBlock;
+
+    let next = applyDeleteTarget(worksheet, { kind: 'mcqExplanation', questionId: mcq.id });
+    next = applyDeleteTarget(next, {
+      kind: 'partAnswer',
+      questionId: structured.id,
+      partId: structured.parts[0].id,
+    });
+    next = applyDeleteTarget(next, { kind: 'blockCaption', blockId: table.id });
+
+    const afterMcq = next.sections[0].questions[1] as McqQuestion;
+    const afterStructured = next.sections[1].questions[0] as StructuredQuestion;
+    const afterTable = afterMcq.blocks.find((block) => block.kind === 'table') as TableBlock;
+
+    expect(afterMcq.explanation).toBeUndefined();
+    expect(afterStructured.parts[0].answer).toBeUndefined();
+    expect(afterTable.caption).toBeUndefined();
+  });
+
+  it('refuses to delete an MCQ option, which must always number four (§7.2)', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const mcq = worksheet.sections[0].questions[0] as McqQuestion;
+
+    const target: EditTarget = {
+      kind: 'mcqOption',
+      questionId: mcq.id,
+      optionId: mcq.options[0].id,
+    };
+    expect(describeDelete(target)).toBeUndefined();
+
+    const next = applyDeleteTarget(worksheet, target);
+    expect((next.sections[0].questions[0] as McqQuestion).options).toHaveLength(4);
+  });
+
+  it('treats fixed worksheet fields as non-deletable', () => {
+    for (const target of [
+      { kind: 'worksheetTitle' },
+      { kind: 'worksheetInstructions' },
+      { kind: 'sectionHeading', sectionId: 'x' },
+    ] as EditTarget[]) {
+      expect(describeDelete(target)).toBeUndefined();
+    }
+  });
+});
+
+describe('in-place editing preserves the other language (§5.2)', () => {
+  it('keeps zh when only en is written, and the reverse', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const mcq = worksheet.sections[0].questions[0] as McqQuestion;
+    const optionId = mcq.options[0].id;
+    const original = mcq.options[0].text;
+
+    // This mirrors what the preview does: patch one side of the existing BiText.
+    const enOnly = applyEditTarget(
+      worksheet,
+      { kind: 'mcqOption', questionId: mcq.id, optionId },
+      { ...original, en: bi('Price soars', '').en },
+    );
+    const after = enOnly.sections[0].questions[0] as McqQuestion;
+    expect(plain(after.options[0].text.en)).toBe('Price soars');
+    expect(plain(after.options[0].text.zh)).toBe('價格上升');
+  });
+});
+
+describe('every authored field on the page carries an edit target', () => {
+  /** Collect the text nodes the preview would render. */
+  const textNodes = (mode: Parameters<typeof renderWorksheet>[1]) => {
+    const worksheet = buildAcceptanceWorksheet();
+    const rendered = renderWorksheet(worksheet, mode);
+    const nodes: TextNode[] = [];
+    const push = (node: unknown) => {
+      if (node && (node as TextNode).kind === 'text') nodes.push(node as TextNode);
+    };
+    push(rendered.title);
+    push(rendered.instructions);
+    for (const section of rendered.sections) {
+      push(section.heading);
+      for (const question of section.questions) question.nodes.forEach(push);
+    }
+    return { worksheet, nodes };
+  };
+
+  it('marks stems, options, statements and answers editable', () => {
+    const { nodes } = textNodes({ language: 'bilingual', version: 'teacher' });
+    const editable = nodes.filter((node) => node.edit);
+    expect(editable.length).toBeGreaterThan(20);
+
+    const kinds = new Set(editable.map((node) => node.edit!.kind));
+    expect(kinds).toContain('worksheetTitle');
+    expect(kinds).toContain('sectionHeading');
+    expect(kinds).toContain('blockText');
+    expect(kinds).toContain('mcqOption');
+    expect(kinds).toContain('mcqStatement');
+    expect(kinds).toContain('partAnswer');
+  });
+
+  it('leaves derived text non-editable, since it has nowhere to be written', () => {
+    const { nodes } = textNodes({ language: 'bilingual', version: 'teacher' });
+    // Marks totals and the "Answer: C" line are computed (§3.5, §4).
+    for (const node of nodes.filter((n) => n.style === 'Marks' || n.style === 'Answer')) {
+      expect(node.edit, `${plain(node.text.en)} must not be editable`).toBeUndefined();
+    }
+  });
+
+  it('resolves a rendered target back to the question that owns it', () => {
+    const { worksheet, nodes } = textNodes({ language: 'bilingual', version: 'teacher' });
+    const question = worksheet.sections[1].questions[0];
+    const stemBlockId = question.blocks[0].id;
+
+    const node = nodes.find(
+      (n) => n.edit?.kind === 'blockText' && n.edit.blockId === stemBlockId,
+    );
+    expect(node).toBeTruthy();
+    expect(targetQuestionId(worksheet, node!.edit as EditTarget)).toBe(question.id);
+  });
+});
+
+/**
+ * Resizing a picture by dragging it on the page (§ResizableBlock).
+ *
+ * The contract: width is the only input, height follows the block's own aspect ratio,
+ * and the model can never be driven to a size that would export as a damaged drawing.
+ * These are the rules both resize surfaces — the sidebar number field and the page
+ * handle — have to agree on, which is why they live here rather than in the component.
+ */
+describe('resizing an image or diagram block', () => {
+  const imageBlockId = (worksheet: Worksheet) => {
+    for (const section of worksheet.sections) {
+      for (const question of section.questions) {
+        const image = question.blocks.find((block) => block.kind === 'image');
+        if (image) return image.id;
+      }
+    }
+    throw new Error('fixture has no image block');
+  };
+
+  const findImage = (worksheet: Worksheet, blockId: string) => {
+    for (const section of worksheet.sections) {
+      for (const question of section.questions) {
+        const match = question.blocks.find((block) => block.id === blockId);
+        if (match && match.kind === 'image') return match;
+      }
+    }
+    throw new Error('block not found');
+  };
+
+  it('keeps the aspect ratio locked, height following from width', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const blockId = imageBlockId(worksheet);
+    // The fixture image is 200x150, so the ratio is 0.75.
+    const next = applyResizeBlock(worksheet, blockId, 400);
+    const image = findImage(next, blockId);
+
+    expect(image.widthPx).toBe(400);
+    expect(image.heightPx).toBe(300);
+  });
+
+  it('clamps to the minimum width, so a flick of the pointer cannot collapse it', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const blockId = imageBlockId(worksheet);
+
+    for (const attempt of [0, -500, 1]) {
+      const image = findImage(applyResizeBlock(worksheet, blockId, attempt), blockId);
+      expect(image.widthPx).toBe(MIN_BLOCK_WIDTH_PX);
+      // A zero height would export as a `w:drawing` Word reports as damaged.
+      expect(image.heightPx).toBeGreaterThan(0);
+    }
+  });
+
+  it('rounds to whole pixels, since a drag produces fractions', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const blockId = imageBlockId(worksheet);
+    const image = findImage(applyResizeBlock(worksheet, blockId, 301.7), blockId);
+
+    expect(Number.isInteger(image.widthPx)).toBe(true);
+    expect(Number.isInteger(image.heightPx)).toBe(true);
+  });
+
+  it('takes the ratio from the intrinsic size, so repeated resizes do not drift', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const blockId = imageBlockId(worksheet);
+
+    // Down to the floor and back out again. Deriving the ratio from the *current*
+    // rounded size each time would compound the rounding error; the natural size does
+    // not change, so the shape returns exactly.
+    let next = worksheet;
+    for (const width of [137, 41, 640, 200]) next = applyResizeBlock(next, blockId, width);
+
+    const image = findImage(next, blockId);
+    expect(image.widthPx).toBe(200);
+    expect(image.heightPx).toBe(150);
+  });
+
+  it('leaves a block with no size alone rather than throwing', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const paragraph = worksheet.sections[0].questions[0].blocks[0];
+
+    expect(applyResizeBlock(worksheet, paragraph.id, 400)).toEqual(worksheet);
+    // A drag against a block deleted mid-gesture is dropped, not an error.
+    expect(applyResizeBlock(worksheet, 'gone', 400)).toEqual(worksheet);
+  });
+
+  it('reports the current size so a drag can start from it', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const blockId = imageBlockId(worksheet);
+
+    expect(blockSize(worksheet, blockId)).toEqual({
+      widthPx: 200,
+      heightPx: 150,
+      ratio: 0.75,
+    });
+    expect(blockSize(worksheet, 'gone')).toBeUndefined();
+  });
+
+  it('gives every image and diagram in the IR a blockId to address it by', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    // The fixture carries an image but no diagram; both kinds have to be addressable,
+    // so the diagram is added here rather than leaving the assertion vacuous for it.
+    worksheet.sections[0].questions[0].blocks.push(createDiagramBlock('ad-as'));
+
+    const rendered = renderWorksheet(worksheet, { language: 'bilingual', version: 'teacher' });
+    const pictures = rendered.sections
+      .flatMap((section) => section.questions)
+      .flatMap((question) => question.nodes)
+      .filter((node) => node.kind === 'image' || node.kind === 'diagram');
+
+    expect(pictures.map((picture) => picture.kind)).toEqual(
+      expect.arrayContaining(['image', 'diagram']),
+    );
+    for (const picture of pictures) {
+      // Without this the preview could only reach a picture through its caption.
+      expect(blockSize(worksheet, picture.blockId)).toBeTruthy();
+    }
+  });
+
+  it('resizes a diagram by width too, since geometry is stored in unit space', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const diagram = createDiagramBlock('ad-as');
+    worksheet.sections[0].questions[0].blocks.push(diagram);
+
+    const next = applyResizeBlock(worksheet, diagram.id, 600);
+    const resized = next.sections[0].questions[0].blocks.find((b) => b.id === diagram.id);
+
+    expect(resized?.kind).toBe('diagram');
+    if (resized?.kind !== 'diagram') throw new Error('unreachable');
+    expect(resized.widthPx).toBe(600);
+    expect(resized.heightPx).toBe(Math.round(600 * (diagram.heightPx / diagram.widthPx)));
+    // The geometry itself is untouched — only the box it renders into changed (§7.5).
+    expect(resized.diagram).toEqual(diagram.diagram);
+  });
+});

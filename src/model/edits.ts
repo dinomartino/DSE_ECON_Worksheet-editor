@@ -1,0 +1,729 @@
+import type {
+  BandField,
+  BiText,
+  ContentBlock,
+  DiagramBlock,
+  LayoutElement,
+  Question,
+  TextFormat,
+  Worksheet,
+} from './types';
+import type { EditTarget } from '@/render/ir';
+
+/**
+ * Applying an in-place edit from the preview.
+ *
+ * The preview renders IR nodes that carry an `EditTarget` naming where their text
+ * came from; this module turns such a target back into a document mutation. Keeping
+ * it here — rather than in the store — means the resolution rules are unit-testable
+ * without a React tree.
+ *
+ * Two properties matter:
+ *
+ *  - **Addressed by id, never by position.** A stale index would write into the
+ *    wrong question after a reorder; ids stay correct.
+ *  - **Patch, never replace.** Every write merges into the existing `BiText`
+ *    (`{ ...text, en }`), so editing in English-only mode cannot clear the Chinese
+ *    side (§5.2) — the same rule the sidebar inputs follow.
+ */
+
+/** Rewrite one paragraph block's text, wherever it sits in a block list. */
+function patchBlocks(
+  blocks: ContentBlock[],
+  blockId: string,
+  patch: (block: ContentBlock) => ContentBlock,
+): ContentBlock[] {
+  return blocks.map((block) => (block.id === blockId ? patch(block) : block));
+}
+
+/**
+ * Every block list a question owns, at any depth. Question types differ in shape,
+ * so this walks the optional `parts`/`subParts` structure generically rather than
+ * switching on a concrete type id (§9).
+ */
+function questionBlockLists(question: Question): ContentBlock[][] {
+  const lists: ContentBlock[][] = [question.blocks];
+  const parts = (question as { parts?: Array<{ blocks: ContentBlock[]; subParts?: Array<{ blocks: ContentBlock[] }> }> })
+    .parts;
+  for (const part of parts ?? []) {
+    lists.push(part.blocks);
+    for (const sub of part.subParts ?? []) lists.push(sub.blocks);
+  }
+  return lists;
+}
+
+/** Does this question contain the given block anywhere? */
+export function questionOwnsBlock(question: Question, blockId: string): boolean {
+  return questionBlockLists(question).some((blocks) =>
+    blocks.some((block) => block.id === blockId),
+  );
+}
+
+/** The question a target belongs to, if it names one. Used to sync selection. */
+export function targetQuestionId(worksheet: Worksheet, target: EditTarget): string | undefined {
+  if ('questionId' in target) return target.questionId;
+  if (target.kind === 'blockText' || target.kind === 'blockCaption' || target.kind === 'tableCell') {
+    for (const section of worksheet.sections) {
+      for (const question of section.questions) {
+        if (questionOwnsBlock(question, target.blockId)) return question.id;
+      }
+    }
+  }
+  return undefined;
+}
+
+/** Apply an edit to a block anywhere in the document. */
+function mapAllBlocks(
+  worksheet: Worksheet,
+  blockId: string,
+  patch: (block: ContentBlock) => ContentBlock,
+): Worksheet {
+  const mapQuestion = (question: Question): Question => {
+    const next = { ...question, blocks: patchBlocks(question.blocks, blockId, patch) } as Question;
+    const parts = (next as { parts?: Array<{ blocks: ContentBlock[]; subParts?: Array<{ blocks: ContentBlock[] }> }> })
+      .parts;
+    if (parts) {
+      (next as { parts: unknown }).parts = parts.map((part) => ({
+        ...part,
+        blocks: patchBlocks(part.blocks, blockId, patch),
+        subParts: part.subParts?.map((sub) => ({
+          ...sub,
+          blocks: patchBlocks(sub.blocks, blockId, patch),
+        })),
+      }));
+    }
+    return next;
+  };
+
+  return {
+    ...worksheet,
+    sections: worksheet.sections.map((section) => ({
+      ...section,
+      questions: section.questions.map(mapQuestion),
+    })),
+  };
+}
+
+/** Write `text` to one band field, leaving field kinds that have no text alone. */
+function patchBandFields(
+  fields: BandField[] | undefined,
+  fieldId: string,
+  text: BiText,
+): BandField[] {
+  return (fields ?? []).map((field) =>
+    field.id === fieldId && field.kind === 'text' ? { ...field, text } : field,
+  );
+}
+
+/** Map one layout element in one section, leaving the rest of the document alone. */
+function mapLayoutElement(
+  worksheet: Worksheet,
+  target: { sectionId: string; elementId: string },
+  patch: (element: LayoutElement) => LayoutElement,
+): Worksheet {
+  return {
+    ...worksheet,
+    sections: worksheet.sections.map((section) =>
+      section.id !== target.sectionId
+        ? section
+        : {
+            ...section,
+            layout: (section.layout ?? []).map((element) =>
+              element.id === target.elementId ? patch(element) : element,
+            ),
+          },
+    ),
+  };
+}
+
+/** Map one question by id, leaving the rest of the document alone. */
+function mapQuestionById(
+  worksheet: Worksheet,
+  questionId: string,
+  patch: (question: Question) => Question,
+): Worksheet {
+  return {
+    ...worksheet,
+    sections: worksheet.sections.map((section) => ({
+      ...section,
+      questions: section.questions.map((question) =>
+        question.id === questionId ? patch(question) : question,
+      ),
+    })),
+  };
+}
+
+/**
+ * Write `text` to the field named by `target`.
+ *
+ * Returns the worksheet unchanged when the target no longer resolves — a block that
+ * was deleted while its editor was open, say — so a stale edit is dropped rather
+ * than throwing or corrupting the document.
+ */
+export function applyEditTarget(
+  worksheet: Worksheet,
+  target: EditTarget,
+  text: BiText,
+): Worksheet {
+  switch (target.kind) {
+    case 'worksheetTitle':
+      return { ...worksheet, title: text };
+
+    case 'worksheetInstructions':
+      return { ...worksheet, instructions: text };
+
+    case 'sectionHeading':
+      return {
+        ...worksheet,
+        sections: worksheet.sections.map((section) =>
+          section.id === target.sectionId ? { ...section, heading: text } : section,
+        ),
+      };
+
+    case 'blockText':
+      return mapAllBlocks(worksheet, target.blockId, (block) =>
+        block.kind === 'paragraph' ? { ...block, text } : block,
+      );
+
+    case 'layoutText':
+      return mapLayoutElement(worksheet, target, (element) =>
+        element.kind === 'heading' || element.kind === 'text' || element.kind === 'partHeader'
+          ? { ...element, text }
+          : element,
+      );
+
+    case 'labelListCell':
+      return mapLayoutElement(worksheet, target, (element) =>
+        element.kind !== 'labelList'
+          ? element
+          : {
+              ...element,
+              rows: element.rows.map((row) =>
+                row.id === target.rowId ? { ...row, [target.column]: text } : row,
+              ),
+            },
+      );
+
+    // Bands live on the worksheet, not in a section, so they get their own walk. Only
+    // authored text is writable; a derived total has nowhere to write back to.
+    case 'bandField':
+      return {
+        ...worksheet,
+        bands: (worksheet.bands ?? []).map((band) => ({
+          ...band,
+          zones: {
+            left: patchBandFields(band.zones?.left, target.fieldId, text),
+            center: patchBandFields(band.zones?.center, target.fieldId, text),
+            right: patchBandFields(band.zones?.right, target.fieldId, text),
+          },
+        })),
+      };
+
+    case 'blockCaption':
+      return mapAllBlocks(worksheet, target.blockId, (block) =>
+        block.kind === 'table' || block.kind === 'image' ? { ...block, caption: text } : block,
+      );
+
+    case 'tableCell':
+      return mapAllBlocks(worksheet, target.blockId, (block) =>
+        block.kind !== 'table'
+          ? block
+          : {
+              ...block,
+              rows: block.rows.map((row) => ({
+                ...row,
+                cells: row.cells.map((cell) =>
+                  cell.id === target.cellId ? { ...cell, text } : cell,
+                ),
+              })),
+            },
+      );
+
+    case 'mcqOption':
+      return mapQuestionById(worksheet, target.questionId, (question) => {
+        const options = (question as { options?: Array<{ id: string }> }).options;
+        if (!options) return question;
+        return {
+          ...question,
+          options: options.map((option) =>
+            option.id === target.optionId ? { ...option, text } : option,
+          ),
+        } as Question;
+      });
+
+    case 'mcqStatement':
+      return mapQuestionById(worksheet, target.questionId, (question) => {
+        const statements = (question as { statements?: BiText[] }).statements;
+        if (!statements || !statements[target.index]) return question;
+        return {
+          ...question,
+          statements: statements.map((statement, index) =>
+            index === target.index ? text : statement,
+          ),
+        } as Question;
+      });
+
+    case 'mcqExplanation':
+      return mapQuestionById(
+        worksheet,
+        target.questionId,
+        (question) => ({ ...question, explanation: text }) as Question,
+      );
+
+    case 'partAnswer':
+      return mapQuestionById(worksheet, target.questionId, (question) => {
+        const parts = (question as { parts?: Array<{ id: string }> }).parts;
+        if (!parts) return question;
+        return {
+          ...question,
+          parts: parts.map((part) => (part.id === target.partId ? { ...part, answer: text } : part)),
+        } as Question;
+      });
+
+    case 'subPartAnswer':
+      return mapQuestionById(worksheet, target.questionId, (question) => {
+        const parts = (question as { parts?: Array<{ id: string; subParts?: Array<{ id: string }> }> })
+          .parts;
+        if (!parts) return question;
+        return {
+          ...question,
+          parts: parts.map((part) =>
+            part.id !== target.partId
+              ? part
+              : {
+                  ...part,
+                  subParts: part.subParts?.map((sub) =>
+                    sub.id === target.subPartId ? { ...sub, answer: text } : sub,
+                  ),
+                },
+          ),
+        } as Question;
+      });
+
+    default:
+      return worksheet;
+  }
+}
+
+/**
+ * Which targets carry their own formatting.
+ *
+ * Formatting attaches to whole elements, not to the two language sides separately: a
+ * heading is one paragraph in Word regardless of how many languages it stacks, so
+ * per-side sizes could not be exported faithfully.
+ */
+export function isFormattable(target: EditTarget): boolean {
+  return (
+    target.kind === 'worksheetTitle' ||
+    target.kind === 'worksheetInstructions' ||
+    target.kind === 'sectionHeading' ||
+    target.kind === 'blockText' ||
+    target.kind === 'layoutText' ||
+    target.kind === 'bandField'
+  );
+}
+
+/**
+ * Merge `patch` into the formatting of the element named by `target`.
+ *
+ * Merging rather than replacing lets the toolbar send one property at a time, and
+ * an explicitly `undefined` value clears an override so the named style takes over
+ * again. Non-formattable targets are returned unchanged.
+ */
+export function applyFormatTarget(
+  worksheet: Worksheet,
+  target: EditTarget,
+  patch: TextFormat,
+): Worksheet {
+  const merge = (current: TextFormat | undefined): TextFormat | undefined => {
+    const next: TextFormat = { ...current, ...patch };
+    // Drop keys that were cleared, then drop the object entirely once nothing is
+    // overridden, so a reset leaves no empty husk in the saved document.
+    for (const key of Object.keys(next) as Array<keyof TextFormat>) {
+      if (next[key] === undefined) delete next[key];
+    }
+    return Object.keys(next).length > 0 ? next : undefined;
+  };
+
+  switch (target.kind) {
+    case 'worksheetTitle':
+      return { ...worksheet, titleFormat: merge(worksheet.titleFormat) };
+
+    case 'worksheetInstructions':
+      return { ...worksheet, instructionsFormat: merge(worksheet.instructionsFormat) };
+
+    case 'sectionHeading':
+      return {
+        ...worksheet,
+        sections: worksheet.sections.map((section) =>
+          section.id === target.sectionId
+            ? { ...section, headingFormat: merge(section.headingFormat) }
+            : section,
+        ),
+      };
+
+    case 'blockText':
+      return mapAllBlocks(worksheet, target.blockId, (block) =>
+        block.kind === 'paragraph' ? { ...block, format: merge(block.format) } : block,
+      );
+
+    case 'layoutText':
+      return mapLayoutElement(worksheet, target, (element) =>
+        element.kind === 'heading' || element.kind === 'text' || element.kind === 'partHeader'
+          ? { ...element, format: merge(element.format) }
+          : element,
+      );
+
+    case 'bandField': {
+      const mapFields = (fields: BandField[] | undefined) =>
+        (fields ?? []).map((field) =>
+          field.id === target.fieldId ? { ...field, format: merge(field.format) } : field,
+        );
+      return {
+        ...worksheet,
+        bands: (worksheet.bands ?? []).map((band) => ({
+          ...band,
+          zones: {
+            left: mapFields(band.zones?.left),
+            center: mapFields(band.zones?.center),
+            right: mapFields(band.zones?.right),
+          },
+        })),
+      };
+    }
+
+    default:
+      return worksheet;
+  }
+}
+
+/** The formatting currently in effect on a target, for showing toolbar state. */
+export function formatOfTarget(
+  worksheet: Worksheet,
+  target: EditTarget,
+): TextFormat | undefined {
+  switch (target.kind) {
+    case 'worksheetTitle':
+      return worksheet.titleFormat;
+    case 'worksheetInstructions':
+      return worksheet.instructionsFormat;
+    case 'sectionHeading':
+      return worksheet.sections.find((section) => section.id === target.sectionId)?.headingFormat;
+    case 'blockText': {
+      for (const section of worksheet.sections) {
+        for (const question of section.questions) {
+          for (const blocks of questionBlockLists(question)) {
+            const match = blocks.find((block) => block.id === target.blockId);
+            if (match && match.kind === 'paragraph') return match.format;
+          }
+        }
+      }
+      return undefined;
+    }
+    case 'layoutText': {
+      const section = worksheet.sections.find((entry) => entry.id === target.sectionId);
+      const element = section?.layout?.find((entry) => entry.id === target.elementId);
+      return element &&
+        (element.kind === 'heading' || element.kind === 'text' || element.kind === 'partHeader')
+        ? element.format
+        : undefined;
+    }
+    case 'bandField': {
+      for (const band of worksheet.bands ?? []) {
+        for (const zone of ['left', 'center', 'right'] as const) {
+          const match = band.zones?.[zone]?.find((field) => field.id === target.fieldId);
+          if (match) return match.format;
+        }
+      }
+      return undefined;
+    }
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * The smallest a resized block may get.
+ *
+ * Matches the sidebar's own floor (§5.3) so the two surfaces cannot disagree about
+ * what is too small, and stops a stray flick of the pointer collapsing a diagram to
+ * nothing — a zero-width block would export as a `w:drawing` Word reports as damaged.
+ */
+export const MIN_BLOCK_WIDTH_PX = 40;
+
+/** The intrinsic aspect ratio a resize keeps locked (height ÷ width). */
+export function blockAspectRatio(block: ContentBlock): number {
+  if (block.kind === 'image') {
+    return block.naturalWidthPx && block.naturalHeightPx
+      ? block.naturalHeightPx / block.naturalWidthPx
+      : block.heightPx / block.widthPx;
+  }
+  if (block.kind === 'diagram') return block.heightPx / block.widthPx;
+  return 1;
+}
+
+/** The current printed size of a sizeable block, or undefined if it has none. */
+export function blockSize(
+  worksheet: Worksheet,
+  blockId: string,
+): { widthPx: number; heightPx: number; ratio: number } | undefined {
+  for (const section of worksheet.sections) {
+    for (const question of section.questions) {
+      for (const blocks of questionBlockLists(question)) {
+        const match = blocks.find((block) => block.id === blockId);
+        if (match && (match.kind === 'image' || match.kind === 'diagram')) {
+          return {
+            widthPx: match.widthPx,
+            heightPx: match.heightPx,
+            ratio: blockAspectRatio(match),
+          };
+        }
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
+ * The diagram block with this id, or undefined.
+ *
+ * Exists so a double-click on the page can open the drawing canvas without the preview
+ * knowing where blocks live: it reports an id, and the host resolves it. Narrowed to
+ * diagrams because they are the only block kind with an editor to open — an uploaded
+ * picture has nothing behind it.
+ */
+export function findDiagramBlock(
+  worksheet: Worksheet,
+  blockId: string,
+): DiagramBlock | undefined {
+  for (const section of worksheet.sections) {
+    for (const question of section.questions) {
+      for (const blocks of questionBlockLists(question)) {
+        const match = blocks.find((block) => block.id === blockId);
+        if (match?.kind === 'diagram') return match;
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Replace one block wherever it lives, by id.
+ *
+ * The sidebar edits blocks through the `onChange(blocks)` chain of the panel that owns
+ * them, which a surface opened from the *page* has no route into. This gives the drawing
+ * canvas one when it is opened by double-clicking a diagram, without either surface
+ * needing to know which question or part the block sits under.
+ */
+export function replaceBlockById(
+  worksheet: Worksheet,
+  blockId: string,
+  next: ContentBlock,
+): Worksheet {
+  // Guarded on kind so a stale handle cannot turn a diagram into a paragraph — the id
+  // is the address, but the kind is what the callers' types were written against.
+  return mapAllBlocks(worksheet, blockId, (block) => (block.kind === next.kind ? next : block));
+}
+
+/**
+ * Resize an image or diagram block to `widthPx`, height following from the block's own
+ * aspect ratio.
+ *
+ * Width is the only input, which is what keeps the two resize surfaces — the sidebar's
+ * number field and the drag handle on the page — from being able to produce a shape the
+ * other cannot. Blocks that carry no size are returned untouched, so a stale drag
+ * against a deleted block is dropped rather than throwing.
+ */
+export function applyResizeBlock(
+  worksheet: Worksheet,
+  blockId: string,
+  widthPx: number,
+): Worksheet {
+  return mapAllBlocks(worksheet, blockId, (block) => {
+    if (block.kind !== 'image' && block.kind !== 'diagram') return block;
+    const width = Math.max(MIN_BLOCK_WIDTH_PX, Math.round(widthPx));
+    return {
+      ...block,
+      widthPx: width,
+      heightPx: Math.max(1, Math.round(width * blockAspectRatio(block))),
+    };
+  });
+}
+
+/**
+ * What pressing Delete on the selected element removes.
+ *
+ * Deleting is not simply "clear the text" — the sensible unit differs per target.
+ * Removing a stem paragraph should remove the *block*; removing a statement should
+ * drop it from the list so the remaining ones renumber; and an MCQ option cannot be
+ * removed at all, because §7.2 fixes the option count at four.
+ */
+export type DeletableKind =
+  | 'block'
+  | 'layout'
+  | 'statement'
+  | 'part'
+  | 'subPart'
+  | 'question'
+  | 'caption'
+  | 'answer'
+  | 'cell';
+
+export interface DeletePlan {
+  kind: DeletableKind;
+  /** Short human description, for the confirmation affordance in the UI. */
+  label: string;
+}
+
+/**
+ * Describe what deleting `target` would do, or `undefined` when the target is not
+ * deletable. The UI uses this both to decide whether Delete does anything and to
+ * name the thing in its hint.
+ */
+export function describeDelete(target: EditTarget): DeletePlan | undefined {
+  switch (target.kind) {
+    case 'blockText':
+      return { kind: 'block', label: 'paragraph' };
+    case 'layoutText':
+      return { kind: 'layout', label: 'element' };
+    case 'blockCaption':
+      return { kind: 'caption', label: 'caption' };
+    case 'tableCell':
+      return { kind: 'cell', label: 'cell contents' };
+    case 'mcqStatement':
+      return { kind: 'statement', label: 'statement' };
+    case 'mcqExplanation':
+      return { kind: 'answer', label: 'explanation' };
+    case 'partAnswer':
+    case 'subPartAnswer':
+      return { kind: 'answer', label: 'answer' };
+    // An MCQ always has exactly four options (§7.2), and the worksheet title,
+    // instructions and section headings are fields rather than list items — for
+    // those, clearing the text is the delete.
+    default:
+      return undefined;
+  }
+}
+
+const EMPTY: BiText = { en: [], zh: [] };
+
+/** Remove a block by id from every list it could belong to. */
+function removeBlock(worksheet: Worksheet, blockId: string): Worksheet {
+  const strip = (blocks: ContentBlock[]) => blocks.filter((block) => block.id !== blockId);
+
+  return {
+    ...worksheet,
+    sections: worksheet.sections.map((section) => ({
+      ...section,
+      questions: section.questions.map((question) => {
+        const next = { ...question, blocks: strip(question.blocks) } as Question;
+        const parts = (next as { parts?: Array<{ blocks: ContentBlock[]; subParts?: Array<{ blocks: ContentBlock[] }> }> })
+          .parts;
+        if (parts) {
+          (next as { parts: unknown }).parts = parts.map((part) => ({
+            ...part,
+            blocks: strip(part.blocks),
+            subParts: part.subParts?.map((sub) => ({ ...sub, blocks: strip(sub.blocks) })),
+          }));
+        }
+        return next;
+      }),
+    })),
+  };
+}
+
+/**
+ * Apply the deletion described by `describeDelete`.
+ *
+ * Returns the worksheet unchanged for targets that are not deletable, so a stray
+ * keypress on a fixed field is a no-op rather than a surprise.
+ */
+export function applyDeleteTarget(worksheet: Worksheet, target: EditTarget): Worksheet {
+  const plan = describeDelete(target);
+  if (!plan) return worksheet;
+
+  switch (target.kind) {
+    case 'blockText':
+      return removeBlock(worksheet, target.blockId);
+
+    // Dropped from both the element list and the flow, so no stale entry is left
+    // behind pointing at something that no longer exists.
+    case 'layoutText':
+      return {
+        ...worksheet,
+        sections: worksheet.sections.map((section) =>
+          section.id !== target.sectionId
+            ? section
+            : {
+                ...section,
+                layout: (section.layout ?? []).filter(
+                  (element) => element.id !== target.elementId,
+                ),
+                flow: section.flow?.filter((entry) => entry.id !== target.elementId),
+              },
+        ),
+      };
+
+    case 'blockCaption':
+      return mapAllBlocks(worksheet, target.blockId, (block) =>
+        block.kind === 'table' || block.kind === 'image'
+          ? { ...block, caption: undefined }
+          : block,
+      );
+
+    // A cell cannot leave the grid without breaking the table's geometry, so
+    // deleting one empties it.
+    case 'tableCell':
+      return applyEditTarget(worksheet, target, EMPTY);
+
+    case 'mcqStatement':
+      return mapQuestionById(worksheet, target.questionId, (question) => {
+        const statements = (question as { statements?: BiText[] }).statements;
+        if (!statements) return question;
+        const next = statements.filter((_, index) => index !== target.index);
+        return { ...question, statements: next.length > 0 ? next : undefined } as Question;
+      });
+
+    case 'mcqExplanation':
+      return mapQuestionById(
+        worksheet,
+        target.questionId,
+        (question) => ({ ...question, explanation: undefined }) as Question,
+      );
+
+    case 'partAnswer':
+      return mapQuestionById(worksheet, target.questionId, (question) => {
+        const parts = (question as { parts?: Array<{ id: string }> }).parts;
+        if (!parts) return question;
+        return {
+          ...question,
+          parts: parts.map((part) =>
+            part.id === target.partId ? { ...part, answer: undefined } : part,
+          ),
+        } as Question;
+      });
+
+    case 'subPartAnswer':
+      return mapQuestionById(worksheet, target.questionId, (question) => {
+        const parts = (question as { parts?: Array<{ id: string; subParts?: Array<{ id: string }> }> })
+          .parts;
+        if (!parts) return question;
+        return {
+          ...question,
+          parts: parts.map((part) =>
+            part.id !== target.partId
+              ? part
+              : {
+                  ...part,
+                  subParts: part.subParts?.map((sub) =>
+                    sub.id === target.subPartId ? { ...sub, answer: undefined } : sub,
+                  ),
+                },
+          ),
+        } as Question;
+      });
+
+    default:
+      return worksheet;
+  }
+}

@@ -1,0 +1,246 @@
+'use client';
+
+import { useRef, useState } from 'react';
+import { copyForWord, worksheetClipboardHtml, worksheetPlainText } from '@/export/clipboard';
+import { renderDiagramImages } from '@/export/diagramImage';
+import { docxFileName, exportDocx } from '@/export/docx';
+import { worksheetMarks } from '@/model/marks';
+import { pageSetupOf } from '@/model/page';
+import type { LanguageMode, VersionMode } from '@/model/types';
+import { requireQuestionType } from '@/registry';
+import { useWorksheetStore } from '@/store/worksheetStore';
+import { downloadWorksheetFile, readWorksheetFile, triggerDownload } from '@/storage';
+import { Button, IconButton, Pill, Segmented } from '@/components/ui';
+import { DownloadIcon, PdfIcon, RedoIcon, UndoIcon } from '@/components/ui/icons';
+import { Menu } from '@/components/ui/Menu';
+
+/**
+ * Output controls, export actions and persistence (§5.4, §6, §7).
+ *
+ * Grouped by what the control is *for* — what the document says (language/version),
+ * then what to do with it (export). Previously nine buttons of identical weight sat
+ * in two rows, so "Export .docx" was as easy to miss as "Open .json"; export is the
+ * point of the app and is now the only filled button on screen.
+ */
+export function Toolbar() {
+  const worksheet = useWorksheetStore((s) => s.worksheet);
+  const mode = useWorksheetStore((s) => s.mode);
+  const setMode = useWorksheetStore((s) => s.setMode);
+  const undo = useWorksheetStore((s) => s.undo);
+  const redo = useWorksheetStore((s) => s.redo);
+  const past = useWorksheetStore((s) => s.past);
+  const future = useWorksheetStore((s) => s.future);
+  const dirty = useWorksheetStore((s) => s.dirty);
+  const lastSavedAt = useWorksheetStore((s) => s.lastSavedAt);
+  const save = useWorksheetStore((s) => s.save);
+  const replaceWorksheet = useWorksheetStore((s) => s.replaceWorksheet);
+  const select = useWorksheetStore((s) => s.select);
+
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState<string | undefined>();
+  const [error, setError] = useState<string | undefined>();
+  const [notice, setNotice] = useState<string | undefined>();
+
+  // Only meaningful in bilingual mode, where a missing side affects the output (§5.2).
+  const untranslated =
+    mode.language !== 'bilingual'
+      ? 0
+      : worksheet.sections.reduce(
+          (sum, section) =>
+            sum +
+            section.questions.reduce((inner, question) => {
+              const definition = requireQuestionType(question);
+              return inner + (definition.countMissingTranslations?.(question) ?? 0);
+            }, 0),
+          0,
+        );
+
+  const flash = (message: string) => {
+    setNotice(message);
+    setTimeout(() => setNotice((current) => (current === message ? undefined : current)), 2400);
+  };
+
+  const handleExport = async () => {
+    setBusy('export');
+    setError(undefined);
+    try {
+      const blob = await exportDocx(worksheet, mode);
+      triggerDownload(blob, docxFileName(worksheet, mode));
+      flash('Exported .docx');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Export failed.');
+    } finally {
+      setBusy(undefined);
+    }
+  };
+
+  const handleCopy = async () => {
+    setBusy('copy');
+    setError(undefined);
+    try {
+      // Diagrams are rasterized first so each one pastes into Word as a single image.
+      const diagramImages = await renderDiagramImages(worksheet, mode);
+      await copyForWord(
+        worksheetClipboardHtml(worksheet, mode, diagramImages),
+        worksheetPlainText(worksheet, mode),
+      );
+      flash('Copied — paste into Word');
+    } catch {
+      setError('Copy failed — the browser blocked clipboard access.');
+    } finally {
+      setBusy(undefined);
+    }
+  };
+
+  /**
+   * Export as PDF.
+   *
+   * There is no server to render on, so this drives the browser's own print engine —
+   * whose "Save as PDF" destination every desktop platform provides — over the real
+   * paginated sheets in the preview. The PDF is therefore produced from exactly what
+   * is on screen and cannot drift from it, which a separate PDF renderer would.
+   *
+   * The `@page` box is written from the worksheet's own page setup first: without it
+   * the browser prints at whatever the user last chose, and an A4 worksheet would
+   * silently come out scaled onto Letter.
+   */
+  const handlePdf = () => {
+    const setup = pageSetupOf(worksheet);
+    const root = document.documentElement;
+    // CSS `size` takes the paper name directly; our PaperSize values are already the
+    // CSS keywords (A4/A3/Letter/Legal).
+    root.style.setProperty('--print-size', setup.paper);
+    root.style.setProperty('--print-orientation', setup.orientation);
+    // Deselect first, so an in-progress selection ring is not captured in the output.
+    select(undefined);
+    // After the deselect has painted.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => window.print());
+    });
+  };
+
+  const handleOpen = async (file: File) => {
+    setError(undefined);
+    try {
+      replaceWorksheet(await readWorksheetFile(file));
+      flash('Worksheet opened');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not open that file.');
+    }
+  };
+
+  return (
+    <div className="border-b border-line bg-surface px-4 py-2.5">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        {/* Identity gets a mark, not just a word. A tool with a face on it reads as a
+            product; a bare bold string reads as a page heading. */}
+        <span className="flex items-center gap-2">
+          <span
+            aria-hidden
+            className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-[13px] font-bold text-on-accent"
+          >
+            W
+          </span>
+          <span className="text-[13px] font-semibold leading-tight text-ink">
+            Worksheet
+            <span className="ml-1.5 hidden text-[11px] font-normal text-ink-subtle lg:inline">
+              HKDSE Economics
+            </span>
+          </span>
+        </span>
+
+        <span className="h-6 w-px bg-line" />
+
+        <Segmented
+          label="Language"
+          value={mode.language}
+          onChange={(language) => setMode({ language: language as LanguageMode })}
+          options={[
+            { value: 'en', label: 'EN', title: 'English only' },
+            { value: 'zh', label: '中文', title: '中文 only' },
+            { value: 'bilingual', label: 'EN+中', title: 'Bilingual' },
+          ]}
+        />
+
+        <Segmented
+          label="Version"
+          value={mode.version}
+          onChange={(version) => setMode({ version: version as VersionMode })}
+          options={[
+            { value: 'student', label: 'Student', title: 'Student version — answers hidden' },
+            { value: 'teacher', label: 'Teacher', title: 'Teacher version / 教師版 — answers shown' },
+          ]}
+        />
+
+        <span className="h-6 w-px bg-line" />
+
+        <span className="flex items-center gap-0.5">
+          <IconButton label="Undo (⌘Z)" size="md" onClick={undo} disabled={past.length === 0}>
+            <UndoIcon />
+          </IconButton>
+          <IconButton label="Redo (⇧⌘Z)" size="md" onClick={redo} disabled={future.length === 0}>
+            <RedoIcon />
+          </IconButton>
+        </span>
+
+        {/* Status sits with the document, not with the actions. */}
+        <span className="ml-auto flex items-center gap-2 text-[11px] text-ink-muted">
+          {notice && <span className="font-medium text-ok">{notice}</span>}
+          {untranslated > 0 && <Pill tone="warn">{untranslated} untranslated</Pill>}
+          <Pill tone="accent">{worksheetMarks(worksheet)} marks</Pill>
+          <span className="hidden sm:inline">
+            {dirty
+              ? 'Unsaved…'
+              : lastSavedAt
+                ? `Saved ${new Date(lastSavedAt).toLocaleTimeString()}`
+                : 'Saved'}
+          </span>
+        </span>
+
+        {/* The two outputs a teacher actually hands in: .docx to keep editing in Word,
+            PDF to print or send. Both are on the bar; .docx stays the filled button
+            because it is the one that preserves editability. */}
+        <Button onClick={handlePdf} title="Print or save as PDF (⌘P)">
+          <PdfIcon size={15} />
+          PDF
+        </Button>
+
+        <Button variant="primary" onClick={handleExport} disabled={busy === 'export'}>
+          <DownloadIcon size={15} />
+          {busy === 'export' ? 'Exporting…' : 'Export .docx'}
+        </Button>
+
+        <Menu
+          label="File and export options"
+          items={[
+            { label: busy === 'copy' ? 'Copying…' : 'Copy for Word', onSelect: () => void handleCopy() },
+            { label: 'Save now', onSelect: () => void save(), separated: true },
+            { label: 'Download .json', onSelect: () => downloadWorksheetFile(worksheet) },
+            { label: 'Open .json…', onSelect: () => fileInput.current?.click() },
+          ]}
+        />
+
+        <input
+          ref={fileInput}
+          type="file"
+          accept="application/json,.json"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) void handleOpen(file);
+            event.target.value = '';
+          }}
+        />
+      </div>
+
+      {error && (
+        <p
+          role="alert"
+          className="mt-2 rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink"
+        >
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
