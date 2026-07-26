@@ -38,6 +38,10 @@ export function EditorApp() {
   const updateBandField = useWorksheetStore((s) => s.updateBandField);
   const removeBandField = useWorksheetStore((s) => s.removeBandField);
   const addBandField = useWorksheetStore((s) => s.addBandField);
+  const moveHeaderFooterField = useWorksheetStore((s) => s.moveHeaderFooterField);
+  const updateHeaderFooterField = useWorksheetStore((s) => s.updateHeaderFooterField);
+  const removeHeaderFooterField = useWorksheetStore((s) => s.removeHeaderFooterField);
+  const addHeaderFooterField = useWorksheetStore((s) => s.addHeaderFooterField);
   const addQuestion = useWorksheetStore((s) => s.addQuestion);
   const removeQuestion = useWorksheetStore((s) => s.removeQuestion);
   const removeLayoutElement = useWorksheetStore((s) => s.removeLayoutElement);
@@ -117,6 +121,35 @@ export function EditorApp() {
 
   // Masthead editing, bundled so it threads through one prop. A new field starts as
   // empty text, which the teacher then types into on the page.
+  // The same four verbs for the page header and footer. They address different band
+  // lists, so they are separate handler sets rather than one shared closure — but the
+  // shape is identical, which is what lets one `BandEditor` serve all three surfaces.
+  const headerEditing = useMemo(
+    () => ({
+      onMove: (bandId: string, fieldId: string, zone: ZoneName, beforeId?: string) =>
+        moveHeaderFooterField('header', bandId, fieldId, zone, beforeId),
+      onEditField: (fieldId: string, text: BiText) =>
+        updateHeaderFooterField('header', fieldId, { text }),
+      onRemoveField: (fieldId: string) => removeHeaderFooterField('header', fieldId),
+      onAddField: (bandId: string, zone: ZoneName) =>
+        addHeaderFooterField('header', bandId, zone, createTextField()),
+    }),
+    [moveHeaderFooterField, updateHeaderFooterField, removeHeaderFooterField, addHeaderFooterField],
+  );
+
+  const footerEditing = useMemo(
+    () => ({
+      onMove: (bandId: string, fieldId: string, zone: ZoneName, beforeId?: string) =>
+        moveHeaderFooterField('footer', bandId, fieldId, zone, beforeId),
+      onEditField: (fieldId: string, text: BiText) =>
+        updateHeaderFooterField('footer', fieldId, { text }),
+      onRemoveField: (fieldId: string) => removeHeaderFooterField('footer', fieldId),
+      onAddField: (bandId: string, zone: ZoneName) =>
+        addHeaderFooterField('footer', bandId, zone, createTextField()),
+    }),
+    [moveHeaderFooterField, updateHeaderFooterField, removeHeaderFooterField, addHeaderFooterField],
+  );
+
   const bandEditing = useMemo(
     () => ({
       onMove: moveBandField,
@@ -308,6 +341,8 @@ export function EditorApp() {
             onOpenBlock={setDrawingBlockId}
             onReorder={handleReorder}
             bandEditing={bandEditing}
+            headerEditing={headerEditing}
+            footerEditing={footerEditing}
             onAddQuestion={handleAddFirstQuestion}
             // `setPages` is referentially stable, which the preview's publish effect
             // depends on — a fresh closure each render would re-notify forever.

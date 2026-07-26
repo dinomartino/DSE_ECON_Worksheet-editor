@@ -273,8 +273,8 @@ describe('save/load round trip preserves every known field', () => {
       instructions: { en: [], zh: [] },
       instructionsFormat: { bold: true },
       bands: [],
-      header: { enabled: true, slots: { left: [], center: [], right: [] } },
-      footer: { enabled: true, slots: { left: [], center: [], right: [] } },
+      header: { enabled: true, bands: [] },
+      footer: { enabled: true, bands: [] },
     };
 
     const unlisted = Object.keys(populated).filter((key) => !KNOWN_KEYS.has(key));

@@ -42,6 +42,7 @@ import type {
 } from '@/model/types';
 import type { EditTarget } from '@/render/ir';
 import { listQuestionTypes } from '@/registry';
+import { worksheetStore } from '@/storage';
 
 /**
  * The document store (§10).
@@ -85,6 +86,8 @@ interface WorksheetState {
   replaceWorksheet: (worksheet: Worksheet) => void;
   updateWorksheet: (patch: Partial<Worksheet>) => void;
   markSaved: () => void;
+  /** Persist to storage now, rather than waiting for the autosave debounce. */
+  save: () => Promise<void>;
   setMode: (patch: Partial<OutputMode>) => void;
   select: (questionId?: string) => void;
   setDragQuestionId: (questionId?: string) => void;
@@ -329,6 +332,18 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   updateWorksheet: (patch) => get().commit((draft) => ({ ...draft, ...patch })),
 
   markSaved: () => set({ dirty: false, lastSavedAt: new Date().toISOString() }),
+
+  /**
+   * Save immediately.
+   *
+   * The autosave debounce (§6) covers ordinary editing; this is the explicit "Save now",
+   * which a teacher reaches for before closing the tab and should not have to trust a
+   * timer for.
+   */
+  save: async () => {
+    await worksheetStore.save(get().worksheet);
+    get().markSaved();
+  },
 
   /**
    * Switching language or version is a **view** change, not an edit.

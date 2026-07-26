@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ZONES, zonesOf, type ZoneName } from '@/model/bands';
 import { plain } from '@/model/text';
 import type { Band, BandField, BiText, LanguageMode } from '@/model/types';
+import { bandFieldText } from '@/render/worksheet';
 import { InlineEditable } from './InlineEditable';
 
 /**
@@ -27,22 +28,6 @@ interface Props {
   onEditField: (fieldId: string, text: BiText) => void;
   onRemoveField: (fieldId: string) => void;
   onAddField: (bandId: string, zone: ZoneName) => void;
-}
-
-/** What a field prints. Mirrors `bandFieldText` in the render layer. */
-function fieldText(field: BandField, totalMarks: number): BiText {
-  if (field.kind === 'text') return field.text;
-  if (field.kind === 'totalMarks') {
-    return {
-      en: [{ text: `${plain(field.label?.en) || 'Full marks:'} ${totalMarks} marks` }],
-      zh: [{ text: `${plain(field.label?.zh) || '總分：'}${totalMarks}分` }],
-    };
-  }
-  const rule = '_'.repeat(Math.max(1, field.widthCh ?? 14));
-  return {
-    en: [{ text: `${plain(field.label.en)}${rule}` }],
-    zh: [{ text: `${plain(field.label.zh)}${rule}` }],
-  };
 }
 
 const ALIGN: Record<ZoneName, string> = {
@@ -159,8 +144,8 @@ export function BandEditor({
                         <span title={field.kind === 'totalMarks' ? 'Computed from question marks' : undefined}>
                           {plain(
                             language === 'zh'
-                              ? fieldText(field, totalMarks).zh
-                              : fieldText(field, totalMarks).en,
+                              ? bandFieldText(field, totalMarks).zh
+                              : bandFieldText(field, totalMarks).en,
                           )}
                         </span>
                       )}

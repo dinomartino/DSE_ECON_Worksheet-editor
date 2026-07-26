@@ -10,14 +10,14 @@ import {
   pageSetupOf,
   twipsToMm,
 } from "@/model/page";
-import type { ZoneName } from "@/model/bands";
+import { zonesOf, type ZoneName } from "@/model/bands";
 import { describeDelete, isFormattable } from "@/model/edits";
 import { worksheetMarks } from "@/model/marks";
 import { plain } from "@/model/text";
 import type {
+  Band,
   BiText,
   HeaderFooter,
-  HeaderFooterSlots,
   LanguageMode,
   OutputMode,
   TextFormat,
@@ -27,7 +27,7 @@ import { isModalLayerOpen } from "@/components/ui/modalLayer";
 import { useWorksheetStore } from "@/store/worksheetStore";
 import { diagramSvg } from "@/render/diagram";
 import type { EditTarget, RenderNode, TextNode } from "@/render/ir";
-import { renderWorksheet } from "@/render/worksheet";
+import { bandFieldText, renderWorksheet } from "@/render/worksheet";
 import { listQuestionTypes, requireQuestionType } from "@/registry";
 import { computeNumbering } from "@/model/numbering";
 
@@ -55,6 +55,21 @@ import {
   StructuredIcon,
 } from "@/components/ui/icons";
 import { BandEditor } from "./BandEditor";
+
+/**
+ * What an editable row of zones needs from its host.
+ *
+ * One shape for the masthead, the header and the footer: they are all `Band[]` and all
+ * edited through `BandEditor`, so a second spelling of these four verbs would only be a
+ * place for them to drift apart.
+ */
+export interface BandEditingHandlers {
+  /** Move a field to a zone, landing before `beforeId` when given. */
+  onMove: (bandId: string, fieldId: string, zone: ZoneName, beforeId?: string) => void;
+  onEditField: (fieldId: string, text: BiText) => void;
+  onRemoveField: (fieldId: string) => void;
+  onAddField: (bandId: string, zone: ZoneName) => void;
+}
 import { FormatToolbar } from "./FormatToolbar";
 import { InlineEditable } from "./InlineEditable";
 import { ResizableBlock } from "./ResizableBlock";
@@ -604,6 +619,8 @@ function HeaderFooterBand({
   edge,
   pageNumber,
   pageCount,
+  totalMarks,
+  editing,
 }: {
   value: HeaderFooter;
   language: LanguageMode;
@@ -611,32 +628,33 @@ function HeaderFooterBand({
   /** 1-based index of the sheet this band belongs to. */
   pageNumber: number;
   pageCount: number;
+  totalMarks: number;
+  /**
+   * Editing handlers, or undefined for a read-only preview.
+   *
+   * Present means the rows render through `BandEditor` — the same surface the masthead
+   * uses — so clicking header text edits it in place and a field can be dragged between
+   * the three zones. That reuse is the whole point of a header row being a `Band`.
+   */
+  editing?: BandEditingHandlers;
 }) {
   if (!isHeaderFooterActive(value)) return null;
 
-  const slot = (key: keyof HeaderFooterSlots, align: string) => (
-    <div className={`flex-1 ${align} truncate`}>
-      {(value.slots[key] ?? []).map((part) => {
-        if (part.kind === "text") {
-          return <span key={part.id}>{richNodes(part.text, language)}</span>;
-        }
-        const real = part.kind === "pageNumber" ? pageNumber : pageCount;
-        return (
-          <span key={part.id}>
-            <span
-              data-screen-only
-              className="mx-0.5 rounded bg-black/10 px-1 text-[0.9em] text-[#4a4643]"
-              title={part.kind === "pageNumber" ? "Page number" : "Total pages"}
-            >
-              {part.kind === "pageNumber" ? "#" : "N"}
-            </span>
-            <span data-print-only className="hidden tabular-nums">
-              {real}
-            </span>
-          </span>
-        );
-      })}
-    </div>
+  const bands = value.bands ?? [];
+  const body = editing ? (
+    <BandEditor
+      bands={bands}
+      language={language}
+      totalMarks={totalMarks}
+      onMove={editing.onMove}
+      onEditField={editing.onEditField}
+      onRemoveField={editing.onRemoveField}
+      onAddField={editing.onAddField}
+    />
+  ) : (
+    bands.map((band) => (
+      <ReadOnlyBandRow key={band.id} band={band} language={language} totalMarks={totalMarks} />
+    ))
   );
 
   return (
@@ -651,9 +669,41 @@ function HeaderFooterBand({
             : "mt-2"
       }`}
     >
-      {slot("left", "text-left")}
-      {slot("center", "text-center")}
-      {slot("right", "text-right")}
+      <div className="flex-1">{body}</div>
+    </div>
+  );
+}
+
+/**
+ * One header row, rendered without any editing chrome.
+ *
+ * Used by the read-only preview and the print path, where `BandEditor`'s zone outlines
+ * and add buttons must not appear at all — not hidden, absent (§ read-only preview).
+ */
+function ReadOnlyBandRow({
+  band,
+  language,
+  totalMarks,
+}: {
+  band: Band;
+  language: LanguageMode;
+  totalMarks: number;
+}) {
+  const zones = zonesOf(band);
+  const cell = (name: ZoneName, align: string) => (
+    <div className={`flex-1 ${align}`}>
+      {zones[name].map((field) => (
+        <span key={field.id} className="mx-0.5">
+          {richNodes(bandFieldText(field, totalMarks), language)}
+        </span>
+      ))}
+    </div>
+  );
+  return (
+    <div className="flex items-baseline gap-2">
+      {cell("left", "text-left")}
+      {cell("center", "text-center")}
+      {cell("right", "text-right")}
     </div>
   );
 }
@@ -999,17 +1049,16 @@ interface Props {
    * Live masthead editing. Omit to render bands read-only, which is what keeps this
    * component usable for a non-interactive preview.
    */
-  bandEditing?: {
-    onMove: (
-      bandId: string,
-      fieldId: string,
-      zone: ZoneName,
-      beforeId?: string,
-    ) => void;
-    onEditField: (fieldId: string, text: BiText) => void;
-    onRemoveField: (fieldId: string) => void;
-    onAddField: (bandId: string, zone: ZoneName) => void;
-  };
+  bandEditing?: BandEditingHandlers;
+  /**
+   * The same four verbs for the page header and footer.
+   *
+   * Separate props rather than one shared set because they address different parts of
+   * the document — a field id is only unique within its own band list — but the shape is
+   * identical, which is what lets `BandEditor` serve all three surfaces.
+   */
+  headerEditing?: BandEditingHandlers;
+  footerEditing?: BandEditingHandlers;
   /**
    * Add a first question straight from the empty page. Omit to render the empty state
    * as plain prose — a read-only preview has nowhere to put the click.
@@ -1109,6 +1158,8 @@ export function Preview({
   onOpenBlock,
   onReorder,
   bandEditing,
+  headerEditing,
+  footerEditing,
   onAddQuestion,
   onPagesChange,
   onDragItemChange,
@@ -2133,6 +2184,8 @@ export function Preview({
                 edge="header"
                 pageNumber={pageIndex + 1}
                 pageCount={pages.length}
+                totalMarks={worksheetMarks(worksheet)}
+                editing={headerEditing}
               />
 
               <div className="min-h-0 flex-1">
@@ -2147,6 +2200,8 @@ export function Preview({
                 edge="footer"
                 pageNumber={pageIndex + 1}
                 pageCount={pages.length}
+                totalMarks={worksheetMarks(worksheet)}
+                editing={footerEditing}
               />
             </div>
 

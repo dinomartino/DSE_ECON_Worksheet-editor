@@ -131,13 +131,24 @@ export function createWorksheet(): Worksheet {
       enabled: true,
       rule: true,
       showOnFirstPage: true,
-      slots: { left: [], center: [{ kind: 'text', id: newId(), text: bi('Economics Worksheet', '經濟科工作紙') }], right: [] },
+      bands: [
+        {
+          id: newId(),
+          zones: {
+            left: [],
+            center: [{ kind: 'text', id: newId(), text: bi('Economics Worksheet', '經濟科工作紙') }],
+            right: [],
+          },
+        },
+      ],
     },
     footer: {
       enabled: true,
       rule: false,
       showOnFirstPage: true,
-      slots: { left: [], center: [{ kind: 'pageNumber', id: newId() }], right: [] },
+      bands: [
+        { id: newId(), zones: { left: [], center: [{ kind: 'pageNumber', id: newId() }], right: [] } },
+      ],
     },
     sections: [
       { ...createSection(bi('Section A: Multiple Choice', '甲部：多項選擇題')), restartNumbering: true },

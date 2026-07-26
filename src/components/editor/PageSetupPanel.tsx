@@ -3,11 +3,13 @@
 import { useState } from 'react';
 import { Collapsible } from '@/components/ui/Collapsible';
 import { Button, CheckField, IconButton, SelectField } from '@/components/ui';
-import { assessmentTitleBlock, createFillInField, createTotalMarksField } from '@/model/bands';
 import {
-  createPageCountPart,
-  createPageNumberPart,
-  createTextPart,
+  assessmentTitleBlock,
+  createFillInField,
+  createTotalMarksField,
+  HEADER_FOOTER_PRESETS,
+} from '@/model/bands';
+import {
   defaultFooter,
   defaultHeader,
   headerFooterOf,
@@ -18,24 +20,20 @@ import {
   twipsToCm,
 } from '@/model/page';
 import { bi, emptyBiText } from '@/model/text';
-import type { HeaderFooterSlots, Orientation, PageMargins, PaperSize } from '@/model/types';
+import type { Orientation, PageMargins, PaperSize } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { BiTextField } from './BiTextField';
 
 /**
  * Page design controls: paper, orientation, margins, and the header/footer content.
  *
- * Header and footer are edited as three slots (left / centre / right) because that is
- * how they print — the same three-tab layout the .docx writes. Page numbers are
- * inserted as a token rather than typed, since the export turns them into live Word
+ * The header and footer content is edited on the *page* rather than here (§ "the
+ * preview is the editor"); this panel keeps the settings that have no visual
+ * representation there. Page numbers are fields rather than typed text, since the
+ * export turns them into live Word
  * fields that renumber per page.
  */
 
-const SLOTS: Array<{ key: keyof HeaderFooterSlots; label: string }> = [
-  { key: 'left', label: 'Left' },
-  { key: 'center', label: 'Centre' },
-  { key: 'right', label: 'Right' },
-];
 
 /** Top/bottom before left/right — the order Word and every print dialog state them in. */
 const MARGIN_EDGES: Array<{ key: keyof PageMargins; label: string }> = [
@@ -99,17 +97,27 @@ function CmField({
   );
 }
 
+/**
+ * Header/footer settings.
+ *
+ * Deliberately small. Everything that has a place on the printed page — the text, the
+ * rows, which zone a field sits in — is edited *on* the page now (§ "the preview is the
+ * editor"); this panel keeps only what has no visual representation there: whether the
+ * band prints at all, whether it carries a rule, and whether page 1 shows it. Presets
+ * live here too because choosing a starting layout is a decision about the document
+ * rather than a manipulation of it.
+ */
 function HeaderFooterEditor({ which }: { which: 'header' | 'footer' }) {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const setHeaderFooter = useWorksheetStore((s) => s.setHeaderFooter);
-  const addPart = useWorksheetStore((s) => s.addHeaderFooterPart);
-  const updatePart = useWorksheetStore((s) => s.updateHeaderFooterPart);
-  const removePart = useWorksheetStore((s) => s.removeHeaderFooterPart);
+  const setBands = useWorksheetStore((s) => s.setHeaderFooterBands);
+  const addBand = useWorksheetStore((s) => s.addHeaderFooterBand);
 
   const value = headerFooterOf(
     worksheet[which],
     which === 'header' ? defaultHeader : defaultFooter,
   );
+  const presets = HEADER_FOOTER_PRESETS.filter((preset) => preset.edge === which);
 
   return (
     <div className="space-y-2">
@@ -131,67 +139,36 @@ function HeaderFooterEditor({ which }: { which: 'header' | 'footer' }) {
         />
       </div>
 
-      {value.enabled &&
-        SLOTS.map(({ key, label }) => (
-          <div key={key} className="rounded-md border border-line p-2 ">
-            <div className="mb-1 flex items-center justify-between">
-              <span className="text-[11px] font-medium text-ink-subtle ">
-                {label}
-              </span>
-              <div className="flex items-center gap-0.5">
-                <IconButton
-                  label={`Add text to ${label.toLowerCase()}`}
-                  onClick={() => addPart(which, key, createTextPart(emptyBiText()))}
-                >
-                  T
-                </IconButton>
-                <IconButton
-                  label={`Insert page number in ${label.toLowerCase()}`}
-                  onClick={() => addPart(which, key, createPageNumberPart())}
-                >
-                  #
-                </IconButton>
-                <IconButton
-                  label={`Insert total page count in ${label.toLowerCase()}`}
-                  onClick={() => addPart(which, key, createPageCountPart())}
-                >
-                  N
-                </IconButton>
-              </div>
-            </div>
+      {value.enabled && (
+        <>
+          <p className="text-[11px] leading-relaxed text-ink-subtle">
+            {value.bands.length === 0
+              ? 'Start from a layout below, or add a row and type on the page.'
+              : 'Click the text on the page to edit it. Drag a field between the left, centre and right zones.'}
+          </p>
 
-            {value.slots[key].length === 0 ? (
-              <p className="text-[11px] text-ink-subtle">Empty</p>
-            ) : (
-              <div className="space-y-1.5">
-                {value.slots[key].map((part) => (
-                  <div key={part.id} className="flex items-start gap-1">
-                    <div className="min-w-0 flex-1">
-                      {part.kind === 'text' ? (
-                        <BiTextField
-                          value={part.text}
-                          rows={1}
-                          onChange={(text) => updatePart(which, key, part.id, text)}
-                        />
-                      ) : (
-                        <span className="inline-block rounded bg-surface-hover px-1.5 py-1 text-[11px] text-ink-muted">
-                          {part.kind === 'pageNumber' ? 'Page number (#)' : 'Total pages (N)'}
-                        </span>
-                      )}
-                    </div>
-                    <IconButton
-                      label="Remove"
-                      variant="danger"
-                      onClick={() => removePart(which, key, part.id)}
-                    >
-                      ✕
-                    </IconButton>
-                  </div>
-                ))}
-              </div>
+          <div className="flex flex-wrap gap-1">
+            {presets.map((preset) => (
+              <Button
+                key={preset.id}
+                size="sm"
+                variant="subtle"
+                onClick={() => setBands(which, preset.build())}
+              >
+                {preset.name}
+              </Button>
+            ))}
+            <Button size="sm" variant="subtle" onClick={() => addBand(which)}>
+              + Row
+            </Button>
+            {value.bands.length > 0 && (
+              <Button size="sm" variant="subtle" onClick={() => setBands(which, [])}>
+                Clear
+              </Button>
             )}
           </div>
-        ))}
+        </>
+      )}
     </div>
   );
 }
@@ -199,7 +176,6 @@ function HeaderFooterEditor({ which }: { which: 'header' | 'footer' }) {
 export function PageSetupPanel() {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const setPageSetup = useWorksheetStore((s) => s.setPageSetup);
-  const addPart = useWorksheetStore((s) => s.addHeaderFooterPart);
   const setBands = useWorksheetStore((s) => s.setBands);
   const addBand = useWorksheetStore((s) => s.addBand);
   const addBandField = useWorksheetStore((s) => s.addBandField);
@@ -306,20 +282,6 @@ export function PageSetupPanel() {
           <HeaderFooterEditor which="footer" />
         </div>
 
-        {/* The line nearly every worksheet needs; typing it out each time is busywork. */}
-        <div className="border-t border-line pt-2 ">
-          <Button
-            size="sm"
-            onClick={() => {
-              addPart('header', 'left', createTextPart(bi('Name: ____________', '姓名：____________')));
-              addPart('header', 'center', createTextPart(bi('Class: ______', '班別：______')));
-              addPart('header', 'right', createTextPart(bi('Date: ______', '日期：______')));
-            }}
-          >
-            + Add Name / Class / Date line
-          </Button>
-        </div>
-
         {/* The masthead. Editing happens on the page itself — this panel only creates it
             and adds rows, because dragging fields between zones belongs where they print. */}
         <div className="space-y-2 border-t border-line pt-2 ">
@@ -353,7 +315,7 @@ export function PageSetupPanel() {
                 on the page
               </p>
               <div className="flex flex-wrap gap-1">
-                <Button size="sm" variant="subtle" onClick={addBand}>
+                <Button size="sm" variant="subtle" onClick={() => addBand()}>
                   + Row
                 </Button>
                 <Button

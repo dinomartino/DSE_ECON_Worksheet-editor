@@ -762,17 +762,22 @@ describe('page setup and authored header/footer', () => {
     expect(document).toContain('w:left="1000"');
   });
 
-  it('renders authored left/centre/right slots separated by tabs', async () => {
+  it('renders authored left/centre/right zones separated by tabs', async () => {
     const worksheet = buildAcceptanceWorksheet();
     worksheet.header = {
       enabled: true,
       rule: true,
       showOnFirstPage: true,
-      slots: {
-        left: [{ kind: 'text', id: 'l', text: bi('Form 5', '中五') }],
-        center: [{ kind: 'text', id: 'c', text: bi('Economics', '經濟') }],
-        right: [{ kind: 'text', id: 'r', text: bi('Name: ______', '姓名：______') }],
-      },
+      bands: [
+        {
+          id: 'b1',
+          zones: {
+            left: [{ kind: 'text', id: 'l', text: bi('Form 5', '中五') }],
+            center: [{ kind: 'text', id: 'c', text: bi('Economics', '經濟') }],
+            right: [{ kind: 'text', id: 'r', text: bi('Name: ______', '姓名：______') }],
+          },
+        },
+      ],
     };
     const { read } = await open(worksheet);
     const header = await read('word/header1.xml');
@@ -793,16 +798,14 @@ describe('page setup and authored header/footer', () => {
     worksheet.footer = {
       enabled: true,
       showOnFirstPage: true,
-      slots: {
-        left: [],
-        center: [
-          { kind: 'text', id: 't1', text: bi('Page ', '第') },
-          { kind: 'pageNumber', id: 'p' },
-          { kind: 'text', id: 't2', text: bi(' of ', '頁，共') },
-          { kind: 'pageCount', id: 'n' },
-        ],
-        right: [],
-      },
+      // One field with the long-form pattern, rather than four parts a teacher had to
+      // assemble by hand. It still emits both live fields.
+      bands: [
+        {
+          id: 'b1',
+          zones: { left: [], center: [{ kind: 'pageNumber', id: 'p', pattern: 'longForm' }], right: [] },
+        },
+      ],
     };
     const { read } = await open(worksheet);
     const footer = await read('word/footer1.xml');
@@ -814,8 +817,8 @@ describe('page setup and authored header/footer', () => {
 
   it('omits the footer part entirely when the footer is disabled', async () => {
     const worksheet = buildAcceptanceWorksheet();
-    worksheet.header = { enabled: false, slots: { left: [], center: [], right: [] } };
-    worksheet.footer = { enabled: false, slots: { left: [], center: [], right: [] } };
+    worksheet.header = { enabled: false, bands: [] };
+    worksheet.footer = { enabled: false, bands: [] };
     const { zip, read } = await open(worksheet);
 
     expect(zip.file('word/footer1.xml')).toBeNull();
@@ -836,12 +839,16 @@ describe('page setup and authored header/footer', () => {
     worksheet.header = {
       enabled: true,
       showOnFirstPage: true,
-      slots: { left: [], center: [{ kind: 'text', id: 'c', text: bi('Quiz', '測驗') }], right: [] },
+      bands: [
+        { id: 'h1', zones: { left: [], center: [{ kind: 'text', id: 'c', text: bi('Quiz', '測驗') }], right: [] } },
+      ],
     };
     worksheet.footer = {
       enabled: true,
       showOnFirstPage: false,
-      slots: { left: [], center: [{ kind: 'pageNumber', id: 'p' }], right: [] },
+      bands: [
+        { id: 'f1', zones: { left: [], center: [{ kind: 'pageNumber', id: 'p' }], right: [] } },
+      ],
     };
     const { zip, read } = await open(worksheet);
     const document = await read('word/document.xml');
@@ -866,7 +873,7 @@ describe('page setup and authored header/footer', () => {
 
   it('keeps the teacher marker in the header even with no authored header text', async () => {
     const worksheet = buildAcceptanceWorksheet();
-    worksheet.header = { enabled: false, slots: { left: [], center: [], right: [] } };
+    worksheet.header = { enabled: false, bands: [] };
     const { read } = await open(worksheet, TEACHER_BI);
     expect(await read('word/header1.xml')).toContain('Teacher Version / 教師版');
   });

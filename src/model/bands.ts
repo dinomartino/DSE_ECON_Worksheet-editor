@@ -1,4 +1,5 @@
 import { newId } from './factories';
+import { createPageNumberField } from './page';
 import { emptyBiText } from './text';
 import type { Band, BandField, BandZones, BiText } from './types';
 
@@ -113,6 +114,109 @@ export function moveField(
 
   return { ...band, zones: { ...without, [toZone]: next } };
 }
+
+/**
+ * Header and footer presets, traced from `real_life_reference/`.
+ *
+ * A preset is only an initial value: it produces plain bands with fresh ids, and nothing
+ * downstream ever looks the preset up again — the same rule `DIAGRAM_TEMPLATES` follows.
+ * That is what lets a teacher take one as a starting point and then edit any part of it
+ * on the page without the preset trying to reassert itself.
+ *
+ * They exist because the alternative is an empty row: a teacher who has never built a
+ * header does not know that "school name, paper title, then a Name rule" is the shape,
+ * and every one of these is the same six drags every time.
+ */
+export interface HeaderFooterPreset {
+  id: string;
+  name: string;
+  /** Which of the two it is meant for; a footer preset in a header is just odd. */
+  edge: 'header' | 'footer';
+  build: () => Band[];
+}
+
+const bold = (text: BiText, fontSize?: number): BandField => ({
+  ...createTextField(text),
+  format: fontSize ? { bold: true, fontSize } : { bold: true },
+});
+
+export const HEADER_FOOTER_PRESETS: HeaderFooterPreset[] = [
+  {
+    id: 'assessment',
+    name: 'Course, title and name line',
+    edge: 'header',
+    // head1.png: a centred course line, then the paper title with a Name rule beside it.
+    build: () => [
+      createBand({
+        center: [bold({ en: [{ text: 'Economics Enhancement Class (2025-26)' }], zh: [] }, 14)],
+      }),
+      createBand({
+        center: [bold({ en: [{ text: 'Assessment 1' }], zh: [] }, 14)],
+        right: [createFillInField({ en: [{ text: 'Name:' }], zh: [{ text: '姓名：' }] })],
+      }),
+    ],
+  },
+  {
+    id: 'exam',
+    name: 'Exam paper (school, paper, date)',
+    edge: 'header',
+    // head2.png: an exam line beside the page number, three centred title rows, then
+    // the marks total beside a date rule.
+    build: () => [
+      createBand({
+        left: [createTextField({ en: [{ text: '2025-2026 S6 Mock Examination' }], zh: [] })],
+        right: [createPageNumberField('plain')],
+      }),
+      createBand({ center: [bold({ en: [{ text: 'SCHOOL NAME' }], zh: [] })] }),
+      createBand({ center: [bold({ en: [{ text: '2025 – 2026 S.6 MOCK EXAMINATION' }], zh: [] })] }),
+      createBand({ center: [bold({ en: [{ text: 'ECONOMICS I' }], zh: [] })] }),
+      createBand({
+        left: [createTotalMarksField()],
+        right: [createFillInField({ en: [{ text: 'Date:' }], zh: [{ text: '日期：' }] }, 10)],
+      }),
+    ],
+  },
+  {
+    id: 'title-only',
+    name: 'Three centred title lines',
+    edge: 'header',
+    // head3.png: the plainest of the three — school, paper, subject, nothing else.
+    build: () => [
+      createBand({ center: [bold({ en: [{ text: 'SCHOOL NAME' }], zh: [] })] }),
+      createBand({ center: [bold({ en: [{ text: 'S.6 Term Test (2025 - 2026)' }], zh: [] })] }),
+      createBand({ center: [bold({ en: [{ text: 'ECONOMICS II' }], zh: [] })] }),
+    ],
+  },
+  {
+    id: 'paper-line',
+    name: 'Paper name and page',
+    edge: 'footer',
+    // foot1.png: one centred line carrying the paper's name and "P.5".
+    build: () => [
+      createBand({
+        center: [
+          createTextField({ en: [{ text: 'Mock Examination S6 Economics Paper 1 2025-2026' }], zh: [] }),
+          createPageNumberField('pDot'),
+        ],
+      }),
+    ],
+  },
+  {
+    id: 'publisher',
+    name: 'Title, page, copyright',
+    edge: 'footer',
+    // foot2.png: a three-zone footer — source on the left, page centred, rights right.
+    build: () => [
+      createBand({
+        left: [
+          { ...createTextField({ en: [{ text: 'NSS Exploring Economics' }], zh: [] }), format: { italic: true } },
+        ],
+        center: [createPageNumberField('plain')],
+        right: [createTextField({ en: [{ text: '© Publisher Limited 2026' }], zh: [] })],
+      }),
+    ],
+  },
+];
 
 /**
  * The masthead of a typical assessment paper, as one band per printed row.
