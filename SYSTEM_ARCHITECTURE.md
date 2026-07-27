@@ -57,28 +57,46 @@ src/
 ├── components/
 │   ├── EditorApp.tsx  # Root shell — orchestrates Toolbar + AddRail + PageRail + Preview + Sidebar
 │   ├── ui/            # Shared primitives
-│   │   ├── index.tsx  #   Button, IconButton, Card, Pill, Segmented
+│   │   ├── index.tsx  #   Button, IconButton, Card, Pill, Segmented, GroupHeader
 │   │   ├── icons.tsx  #   all SVG icon components
 │   │   ├── Collapsible.tsx
+│   │   ├── Dialog.tsx #   modal dialog + vertical tabs + Field
 │   │   ├── Menu.tsx   #   dropdown menu
-│   │   └── DragGhost.tsx
+│   │   ├── DragGhost.tsx
+│   │   ├── modalLayer.ts   #   modal keyboard ownership
+│   │   └── modalLayer.test.ts
 │   ├── editor/        # Right sidebar + left rails
-│   │   ├── Sidebar.tsx, Outline.tsx, Inspector.tsx
+│   │   ├── Sidebar.tsx (Content/Edit tabs), Outline.tsx, Inspector.tsx
 │   │   ├── BiTextField.tsx, BlockEditor.tsx
 │   │   ├── McqEditorPanel.tsx, StructuredEditorPanel.tsx
-│   │   ├── WorksheetSettings.tsx, PageSetupPanel.tsx
+│   │   ├── DocumentSettings.tsx  # once-per-document settings dialog
 │   │   ├── DiagramEditor.tsx (numeric), DiagramCanvas.tsx (drawing overlay)
 │   │   ├── Toolbar.tsx (top bar), AddRail.tsx (left insert rail),
-│   │   │   PageRail.tsx (page thumbnail rail)
+│   │   │   PageRail.tsx (page rail), PageThumb.tsx (live sheet clone)
 │   └── preview/       # Live print preview
 │       ├── Preview.tsx, BandEditor.tsx, FormatToolbar.tsx, InlineEditable.tsx
 │       └── ResizableBlock.tsx  # drag-to-resize handles on images/diagrams
 ├── store/
-│   └── worksheetStore.ts  # Zustand store with undo/redo
+│   ├── worksheetStore.ts  # Zustand store with undo/redo
+│   └── store.test.ts
 ├── storage/
 │   └── index.ts       # WorksheetStore interface + LocalStorage impl
 └── test/
     └── fixtures.ts    # Shared test fixtures
+
+Root-level configuration:
+- next.config.ts, tsconfig.json, eslint.config.mjs, vitest.config.ts, package.json
+
+scripts/               # Build & sample generation
+├── shot.mjs           #   screenshot utility
+└── emit-samples.test.ts #   sample .docx generator
+
+public/                # Static assets (SVG icons: window, globe, next, vercel, file)
+
+real_life_reference/   # Reference DSE exam papers for template tracing
+├── DSE{year}_P1_Q{num}.png
+├── head1.png – head3.png, foot1.png–foot2.png   # header/footer reference crops
+└── DBS_Assessment1.pdf
 ```
 
 ---
@@ -548,6 +566,35 @@ Fill-in rules ("Name:______") come free from `BandField`, which already had them
 masthead — they export as a real ruled run rather than typed underscores that will not
 align.
 
+**Page 1 can differ.** A real exam paper's cover states the school, the paper and a
+"Name:____" rule, while continuation pages carry a running title and a page number — so
+`HeaderFooter` resolves to **three** states rather than a show/hide flag:
+
+| State | Stored as | Page 1 prints |
+|-------|-----------|---------------|
+| Same on every page | neither field | `bands` |
+| Blank on page 1 | `showOnFirstPage: false` | nothing |
+| Its own rows | `firstPage: { bands }` | `firstPage.bands` |
+
+Word models exactly this with `w:titlePg` plus a `w:type="first"` part, so the choice
+costs one flag and one extra part rather than a second section. `firstPageHeaderFooter()`
+resolves the three states in **one place**, shared by the exporter and the preview, so
+the sheet on screen and the page in Word cannot disagree about which state a document is
+in — before this the preview ignored the flag entirely and showed a suppressed header on
+page 1 anyway.
+
+Two consequences worth naming. `w:titlePg` switches page 1 to the "first" references
+*wholesale*, so once either edge differs **both** need a first-page part — the edge that
+should look unchanged gets its running content again, or it would vanish from page 1 as a
+side effect of the other edge differing. And a part is emitted when *either* the running
+rows or page 1's rows would print: a cover-only header has empty running bands, so
+testing only those would drop its content entirely.
+
+Page-1 rows are edited **on page 1**, by the same `BandEditor`, so
+`patchHeaderFooterBand` searches both band lists — a click there reports only a band id.
+The two lists never share ids (`setFirstPageMode` re-ids on copy), or one keystroke would
+edit both.
+
 Clipboard output deliberately carries none of this: pasting into an existing Word
 document must not override that document's page setup or headers.
 
@@ -576,27 +623,65 @@ Enforced by `src/registry/registry.test.ts`: tests fail if any shared module bra
 
 ## Editor Layout (`src/components/`)
 
-The preview is the centrepiece; every input lives in the right sidebar (§5.1). The
-sidebar is three regions with deliberately different surfaces, so they read as
-separate things rather than one undifferentiated column. Two left rails provide
-**insert** (AddRail — how content gets on the page) and **navigation** (PageRail — page
-thumbnails for cross-page drag-and-drop, visible only when the document spans multiple
-sheets).
+The preview is the centrepiece. The right sidebar shows **one thing at a time**, behind
+two tabs. Two left rails provide **insert** (AddRail — how content gets on the page) and
+**navigation** (PageRail — page thumbnails for cross-page drag-and-drop, visible only
+when the document spans multiple sheets).
 
 ```
 ┌────────┬────┬───────────────────────────────┬──────────────────────────┐
-│  Add   │Page│                               │ ▶ Worksheet · <title>    │
-│  Rail  │Rail│          Preview              │   collapsed: title,      │
-│        │    │     (scales-to-fit A4)        │   instructions, fonts    │
+│  Add   │Page│                               │ [ Content 7 ][ Question 2]│
+│  Rail  │Rail│          Preview              ├──────────────────────────┤
+│        │    │     (scales-to-fit A4)        │ <title>        ⚙ Settings│
 │        │    │                               ├──────────────────────────┤
-│  Ques- │ 1  │  ⠿ 1 What happens… MC 1m     │  QUESTIONS           [7] │
+│  Ques- │ 1  │  ⠿ 1 What happens… MC 1m     │  Section A               │
 │  tions │ 2  │  ⠿ 2 Study the tab… MC 1m    │    outline rows          │
 │  Layout│ 3  │  ⠿ 3 …                       │    drag, ⋯ overflow      │
-│  Elems │    │                               │ ═════ drag resize ══════ │
-│        │    │  ← drag item to page card     │  EDITING  Question 2  ✕  │
-│        │    │     to land on that sheet →   │  Stem / Options / Marks  │
+│  Elems │    │                               │  + Add here              │
+│        │    │  ← drag item to page card     │  + Add section           │
+│        │    │     to land on that sheet →   │                          │
 └────────┴────┴───────────────────────────────┴──────────────────────────┘
 ```
+
+### One panel, one job
+
+The sidebar used to stack four regions in the same 400px column: two collapsed settings
+accordions, the outline, a draggable divider, and the inspector. That asked a new user to
+understand the whole panel before using any part of it, and it left both halves of the
+actual work permanently half-height — a structured question's form was clipped mid-scroll
+while a three-question outline sat above it with room to spare. The divider was the tell:
+a control whose only job was refereeing a fight between two panels that should not have
+been sharing the space.
+
+Two tabs replace it. **Content** is the outline; **Edit** is the selection. Each gets the
+full height of the column. The tab **follows the selection** rather than waiting to be
+clicked — selecting a question, on the page or in the outline, *is* the request to edit
+it — which keeps the tabs from becoming one more thing to operate.
+
+### Settings live in a dialog, not in the work column
+
+Title, instructions, fonts, section headings, paper, orientation, margins, header, footer
+and the title block are decided roughly **once per document**. As two accordions pinned
+above the question list they occupied the top third of the sidebar permanently, and
+expanded they were tall enough to push the editor off the bottom of the screen — which is
+what the old `max-h-[50%]` cap existed to fight.
+
+`DocumentSettings` is a tabbed dialog reached from the toolbar's **Setup** button or the
+outline's **Settings** button (both, because both are places a user looks). Nothing was
+removed in the move: every control from the two panels is there, given a real label and a
+line of explanation instead of a 10px uppercase eyebrow. It claims the keyboard via
+`useModalLayer()` for the reason that module documents — otherwise Delete typed into a
+settings field also reaches the preview's delete handlers.
+
+The rule for what belongs in the dialog rather than on the page is unchanged
+(§ "the preview is the editor"): header *text* is typed on the page, while *whether the
+header exists at all* has no visual representation there, so it lives in a panel.
+
+**`GroupHeader` replaces `Eyebrow` for anything naming a region a user works in.** 10px
+uppercase with wide tracking is a typographic texture — at that size the letterforms stop
+resolving into words and the eye reads a grey band, which is why a panel of five such
+headings scanned as one undifferentiated column. Sentence case at a readable size, with
+the explanation beside it rather than crammed underneath in 10px grey.
 
 ### Direct manipulation on the page
 
@@ -710,6 +795,34 @@ hover        → drag grip appears in the margin → drag to reorder, drop indic
 - **Everything routes through `commit()`**, so in-place edits and deletions get
   undo/redo and autosave with no special handling.
 
+- **The page rail shows real pages, not sketches** (`editor/PageThumb.tsx`). Each card
+  is a scaled **clone of the rendered sheet** taken from `#print-root`, so a teacher
+  can find "the page with the tariff diagram" by looking. It was a column of grey
+  proportional bars, on the reasoning that a true thumbnail meant rendering the
+  document a third time and that the text would be illegible at 96px — but legibility
+  was never the point, *recognisability* was, and every sketch card looked alike.
+  Cloning the finished DOM avoids the third render pass entirely. The clone is inert
+  (`cloneNode` copies markup, not handlers) and `aria-hidden`, so the card underneath
+  keeps click, drag and delete and the page's text is not read into the accessibility
+  tree twice. Editing chrome is stripped on the way in, and the selection highlight is
+  found by `aria-current` rather than by its class string — the classes are literal hex
+  per the token rule, and matching on them would give the highlight two places to
+  change. Thumbnails refresh ~200ms after the preview's DOM settles, watched with a
+  `MutationObserver` rather than keyed on the page composition: a retyped title rewrites
+  a sheet without moving a single item between pages. The rail is sized by what the
+  thumbnail has to *show*: at its original 104px a sheet was 80px wide, so a band's
+  three zones were ~26px each and a left-zone field sat close enough to a centred one
+  to read as one clump — placed correctly to the fraction, illegible as a layout.
+  152px puts the zones far enough apart to read as zones.
+
+- **Nothing in the sidebar competes for height any more.** The disclosure panels that
+  used to sit above the outline were tall enough, expanded, to grow the aside past its
+  `h-screen` row and make the whole document scrollable — which slid the preview's own
+  scroller off its frame and stranded the paper above a band of bare desk. They were
+  capped at half the sidebar to contain it. Moving them into `DocumentSettings` removed
+  the conflict rather than refereeing it, so the cap, the divider and the drag-to-resize
+  state all went with them.
+
 Rules the layout follows:
 
 - **Weight matches consequence.** `src/components/ui` exposes one `Button`/`IconButton`
@@ -762,6 +875,15 @@ Rules the layout follows:
 - Every user-visible string is `BiText { en: RichText, zh: RichText }`
 - Rich text uses lightweight inline markers: `**bold**`, `*italic*`, `__underline__`, `^{sup}`, `_{sub}`
 - In bilingual mode, English and Chinese share one paragraph separated by a soft `w:br` (Word) or `<br>` (preview/clipboard) — this ensures one list number per bilingual unit
+- **A hard line break (Shift+Enter) is stored as a plain `\n` inside the run's own text**,
+  not as a distinct run kind. `parseRuns` already preserved the character, so every saved
+  document stays valid and no migration is needed. `runLines()` splits it at the one point
+  where it must become markup, because a raw newline renders as a **space** in all three
+  backends — `<w:t>` collapses it and so does HTML. That was the bug: the editor accepted
+  Shift+Enter, the model stored it faithfully, and every renderer silently flattened it.
+  A break is deliberately *not* a paragraph, for the same reason bilingual stacking is
+  not: two paragraphs consume two list numbers, so one question would print as "1." and
+  then "2.".
 - Per-script fonts: every run carries `w:rFonts` with separate `w:ascii`/`w:hAnsi` (Latin) and `w:eastAsia` (CJK)
 
 ---
