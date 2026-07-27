@@ -31,6 +31,7 @@ src/
 │                     #   masthead bands / drop zones (bands.ts),
 │                     #   diagram geometry (diagram.ts) + templates (diagramTemplates.ts)
 │                     #   + direct-manipulation hit-test/drag/snap (diagramDraw.ts)
+│                     #   + edit helpers (edits.ts)
 ├── registry/         # Question-type extension point (§9)
 │   ├── types.ts      #   QuestionTypeDefinition interface
 │   ├── index.ts      #   registry (mcq + structured registered)
@@ -40,7 +41,8 @@ src/
 ├── render/           # Neutral render IR + worksheet walker + diagram → SVG (diagram.ts)
 │   ├── ir.ts         #   RenderNode types + EditTarget
 │   ├── worksheet.ts  #   renderWorksheet() — full IR assembly
-│   └── diagram.ts    #   diagramSvg() — geometry → SVG
+│   ├── diagram.ts    #   diagramSvg() — geometry → SVG
+│   └── diagram.test.ts
 ├── export/
 │   ├── docx/         # .docx (OOXML) backend
 │   │   ├── index.ts  #   orchestration: buildParts, exportDocx
@@ -190,28 +192,40 @@ Worksheet
 ├── schemaVersion: number    (for migration chain)
 ├── id, title (BiText), instructions (BiText?)
 ├── titleFormat / instructionsFormat: TextFormat?   (per-element overrides)
-├── fonts: { latin, eastAsia }
-├── pageSetup: { paper, orientation, margins }      (twips, mirrors w:pgSz/w:pgMar)
-├── header / footer: HeaderFooter                   (left/centre/right slots)
-│   └── slots[].parts: text | pageNumber | pageCount
+├── fonts: FontPair          { latin, eastAsia }
+├── pageSetup: PageSetup     { paper, orientation, margins }  (twips)
+├── bands?: Band[]           (masthead — school name, date, etc.)
+├── header / footer: HeaderFooter
+│   ├── enabled: boolean
+│   ├── bands: Band[]              (Band rows with BandField[] per zone)
+│   │   └── fields per zone: text | pageNumber (pattern) | fillIn (rule) | totalMarks
+│   ├── rule?: boolean
+│   ├── showOnFirstPage?: boolean
+│   └── firstPage?: { bands: Band[]; rule?: boolean }
 ├── sections: Section[]
 │   ├── id, heading (BiText?), headingFormat?, restartNumbering?
-│   ├── layout: LayoutElement[]   (heading/text/spacer/divider/pageBreak/answerLines)
+│   ├── layout: LayoutElement[]
+│   │     heading/text/spacer/divider/pageBreak/answerLines/partHeader/labelList
 │   ├── flow: SectionItem[]       (positions layout relative to questions)
 │   └── questions: Question[]
 │       ├── McqQuestion (type: 'mcq')
 │       │   ├── blocks: ContentBlock[]     (stem)
 │       │   ├── statements?: BiText[]      (combination MCQ)
-│       │   ├── options[4]: McqOption[]
+│       │   ├── options: McqOption[]
+│       │   ├── optionLayout?: 'stacked' | 'inline' | 'columns2'
 │       │   ├── answerIndex, marks, explanation?
 │       └── StructuredQuestion (type: 'structured')
 │           ├── blocks: ContentBlock[]     (stem)
+│           ├── showTotalMarks?: boolean
 │           └── parts: QuestionPart[]
 │               ├── blocks, marks?
 │               ├── answer?
 │               └── subParts?: QuestionSubPart[]
 │                   ├── blocks, marks
 │                   └── answer?
+├── createdAt: string       (ISO)
+├── updatedAt: string       (ISO)
+└── __unknown?: Record<string, unknown>   (forward compat)
 
 ContentBlock = ParagraphBlock | TableBlock | ImageBlock | DiagramBlock
 DiagramBlock  { diagram: Diagram (unit-space geometry), widthPx, heightPx, caption?, altText }
@@ -467,6 +481,8 @@ TextNode:
   keepNext?: boolean    (prevent page break)
   teacherOnly?: boolean (filtered for student version)
   indent?: number       (extra left indent in twips)
+  format?: TextFormat   (per-element overrides on top of named style)
+  edit?: EditTarget     (model address for in-place editing)
 
 ListRef:
   stream: string        (unique id per numbering stream)
@@ -474,7 +490,7 @@ ListRef:
   level: number         (0=top, 1=sub, 2=sub-sub)
   marker: string        (e.g. "3.", "(a)", "A.")
 
-EditTarget (optional, on TextNode / table cell / caption):
+EditTarget (optional, on TextNode / table cell / diagram caption / image caption):
   the model address the text was rendered from — 'blockText' | 'tableCell' |
   'mcqOption' | 'partAnswer' | 'worksheetTitle' | …, always keyed by **id**
 ```
