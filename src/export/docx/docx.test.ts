@@ -630,7 +630,25 @@ describe('layout elements in the section flow', () => {
 
   it('exports answer lines as one ruled paragraph per line', async () => {
     const document = await open(withElement(createAnswerLinesElement(5)));
-    expect((document.match(/w:color="A6A6A6"/g) ?? []).length).toBe(5);
+    expect((document.match(/<w:bottom w:val="single" w:sz="6" w:space="1" w:color="A6A6A6"\/>/g) ?? []).length).toBe(
+      5,
+    );
+  });
+
+  it('declares a between-border on answer lines so Word draws every rule', async () => {
+    // Word collapses consecutive paragraphs sharing an identical w:pBdr into one
+    // bordered block and draws the bottom rule only once — under the last of them.
+    // w:between is what rules the interior boundaries, so without it a 5-line
+    // answer block prints as a single line. Regression guard for exactly that.
+    const document = await open(withElement(createAnswerLinesElement(5)));
+    expect((document.match(/<w:between w:val="single" w:sz="6" w:space="1" w:color="A6A6A6"\/>/g) ?? []).length).toBe(
+      5,
+    );
+  });
+
+  it('gives each answer line a writing height rather than an empty line', async () => {
+    const document = await open(withElement(createAnswerLinesElement(3)));
+    expect((document.match(/w:line="480" w:lineRule="exact"/g) ?? []).length).toBe(3);
   });
 
   it('exports a page break as a real Word page break', async () => {

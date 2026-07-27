@@ -24,6 +24,13 @@ import { attrs, escapeXml } from './xml';
 export const CONTENT_WIDTH_TWIPS = 9026;
 const EMU_PER_PX = 9525; // 96 dpi
 
+/**
+ * One answer line's writing height, in twips (24pt) — roughly double-spaced for a
+ * 12pt hand, which is what a ruled line on an exam paper has to accommodate.
+ */
+const ANSWER_LINE_HEIGHT_TWIPS = 480;
+const ANSWER_LINE_COLOR = 'A6A6A6';
+
 export interface BodyContext {
   fonts: FontPair;
   language: LanguageMode;
@@ -402,12 +409,29 @@ export function renderNodeXml(node: RenderNode, context: BodyContext): string {
     case 'answerLines':
       // One bottom-bordered paragraph per writing line, so the teacher gets real
       // ruled lines that survive editing in Word rather than a row of underscores.
+      //
+      // Two details are what make Word actually draw N lines rather than one.
+      //
+      // Word *collapses* consecutive paragraphs that share an identical `w:pBdr`
+      // into a single bordered block: the run gets one top rule and one bottom
+      // rule, so N ruled paragraphs printed as one line under the last of them.
+      // That is what `w:between` is for — it names the border drawn *at every
+      // interior boundary* of such a group, which is precisely one rule per line.
+      // Both are declared: `w:between` rules lines 1..N-1 and `w:bottom` closes
+      // the last one.
+      //
+      // An empty paragraph is also only as tall as its line height, which is not a
+      // writing line, so each gets an exact height instead of trailing space —
+      // `w:after` would land outside the border and shrink the writing room.
       return Array.from(
         { length: Math.max(1, node.lines) },
         () =>
           '<w:p><w:pPr>' +
-          '<w:spacing w:before="0" w:after="240"/>' +
-          '<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="A6A6A6"/></w:pBdr>' +
+          `<w:spacing w:before="0" w:after="0" w:line="${ANSWER_LINE_HEIGHT_TWIPS}" w:lineRule="exact"/>` +
+          '<w:pBdr>' +
+          `<w:between w:val="single" w:sz="6" w:space="1" w:color="${ANSWER_LINE_COLOR}"/>` +
+          `<w:bottom w:val="single" w:sz="6" w:space="1" w:color="${ANSWER_LINE_COLOR}"/>` +
+          '</w:pBdr>' +
           '</w:pPr></w:p>',
       ).join('');
     default:
