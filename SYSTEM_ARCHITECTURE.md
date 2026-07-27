@@ -48,7 +48,7 @@ src/
 │   │   ├── index.ts  #   orchestration: buildParts, exportDocx
 │   │   ├── body.ts   #   document body XML (w:tbl, w:p, w:drawing)
 │   │   ├── numbering.ts # numbering.xml: abstract defs + per-stream w:num
-│   │   ├── styles.ts #   styles.xml: 14 named paragraph styles
+│   │   ├── styles.ts #   styles.xml: 15 named paragraph styles
 │   │   ├── runs.ts   #   run-level OOXML (w:rFonts, w:r, w:br)
 │   │   ├── package.ts#   OPC package: Content_Types, rels, JSZip assembly
 │   │   ├── xml.ts    #   XML escaping, sanitization, attribute helpers
@@ -531,10 +531,39 @@ The `listRef.stream` is the key that connects IR nodes to .docx `w:num` instance
 | `index.ts` | Orchestration: render IR → collect images/decode → build parts → zip |
 | `body.ts` | Document body XML: paragraphs, tables, images with `w:tbl`/`w:drawing` |
 | `numbering.ts` | `numbering.xml`: abstract defs + per-stream `w:num` instances with overrides |
-| `styles.ts` | `styles.xml`: 14 named paragraph styles (Question Stem, MCQ Option, etc.) |
+| `styles.ts` | `styles.xml`: 15 named paragraph styles (Question Stem, MCQ Option, etc.) |
 | `runs.ts` | Run-level OOXML: `w:rFonts` (Latin + East-Asia), `w:r` elements, bilingual stacking via `w:br` |
 | `package.ts` | OPC package: `[Content_Types].xml`, relationships, header/footer, `sectPr` page geometry, settings, font table, JSZip assembly |
 | `xml.ts` | XML helpers: escaping, sanitization (illegal chars), attribute builder |
+
+### Answer lines are a style, not direct formatting
+
+A ruled answer line is an empty paragraph with a bottom border, and getting Word to draw
+N of them takes two things that are invisible until a real page is printed.
+
+**Word collapses consecutive paragraphs that share one border set** into a single bordered
+block, drawing the bottom rule once — under the last paragraph. Four ruled lines printed as
+one. `w:between` is the border Word draws at every *interior* boundary of such a group, so
+the style declares both: `w:between` rules lines 1..N-1 and `w:bottom` closes the last, at
+any line count. The exporter emitting one `w:p` per line was never the bug; a test that
+counted those paragraphs passed while the page showed a single rule, which is why the
+regression guard now asserts the border rather than the paragraph.
+
+**An empty paragraph is only as tall as its line height**, which is not a writing line, so
+the style sets an exact 24pt height. Trailing `w:after` space would fall *outside* the
+border rather than above it — a hairline with no room to write on.
+
+Both live in an `AnswerLine` **named style** rather than as direct formatting on each
+paragraph, for the reason § "Per-element formatting" gives generally: Word marks a
+directly-formatted paragraph in the left margin, and a block of forty read as editing
+chrome rather than as a page to write on. It also makes the rule restylable from Word's
+gallery — one edit changes every line.
+
+It is deliberately **not** a `NodeStyle`. That union is the IR's shared vocabulary and all
+three backends must understand every member, but a paragraph border is a Word concern the
+preview and clipboard each draw their own way (`border-bottom`, an `<hr>`) — and the
+`answerLines` node carries no `style` field at all. So the id stays .docx-local, which is
+also what keeps §9's "no type branching" test honest.
 
 ### Page setup and header/footer (`src/model/page.ts`)
 

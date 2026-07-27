@@ -44,9 +44,31 @@ interface StyleSpec {
   keepNext?: boolean;
   keepLines?: boolean;
   outlineLevel?: number;
+  /** Exact line height in twips, for a paragraph whose height is the point of it. */
+  exactLine?: number;
+  /**
+   * Bottom and between borders, as an answer line needs. `between` is what Word draws
+   * at the interior boundaries of a run of consecutive paragraphs sharing one border
+   * set — without it that run collapses to a single rule under the last paragraph.
+   */
+  border?: { color: string; size: number };
 }
 
 const BASE_SIZE = 24; // 12pt
+
+/**
+ * One answer line's writing height, in twips (24pt) — roughly double-spaced for a
+ * 12pt hand, which is what a ruled line on an exam paper has to accommodate.
+ */
+export const ANSWER_LINE_HEIGHT_TWIPS = 480;
+
+/**
+ * Style id for a ruled answer line. Not a `NodeStyle`: the IR's style vocabulary is
+ * shared by all three backends, and an answer line's rule is a Word paragraph-border
+ * concern that the preview and clipboard each draw their own way. The `answerLines`
+ * node carries no `style` field at all, so this stays .docx-local.
+ */
+export const ANSWER_LINE_STYLE_ID = 'AnswerLine';
 
 const STYLE_SPECS: StyleSpec[] = [
   { id: 'WorksheetTitle', name: 'Worksheet Title', size: 32, bold: true, align: 'center', spaceAfter: 240, keepNext: true, keepLines: true, outlineLevel: 0 },
@@ -64,18 +86,44 @@ const STYLE_SPECS: StyleSpec[] = [
   { id: 'Answer', name: 'Answer', size: BASE_SIZE, bold: true, color: 'C00000', spaceBefore: 60, spaceAfter: 60, keepLines: true },
   { id: 'MarkingScheme', name: 'Marking Scheme', size: 22, color: '1F4E79', indentLeft: 360, spaceAfter: 60, keepLines: true },
   { id: 'BodyTextCustom', name: 'Worksheet Body', size: BASE_SIZE, spaceAfter: 60, keepLines: true },
+  // A ruled writing line. The border and the 24pt height live here rather than as
+  // direct formatting on each paragraph: Word flags a directly-formatted paragraph
+  // with a marker in the left margin, and forty of them made the block look like
+  // editing chrome rather than a page to write on. As a style it is also restylable
+  // from Word's gallery — one edit changes the rule colour on every line (§11.3).
+  {
+    id: 'AnswerLine',
+    name: 'Answer Line',
+    size: BASE_SIZE,
+    spaceBefore: 0,
+    spaceAfter: 0,
+    exactLine: ANSWER_LINE_HEIGHT_TWIPS,
+    border: { color: 'A6A6A6', size: 6 },
+  },
 ];
 
 function paragraphProperties(spec: StyleSpec): string {
   const parts: string[] = [];
   if (spec.keepNext) parts.push('<w:keepNext/>');
   if (spec.keepLines) parts.push('<w:keepLines/>');
-  if (spec.spaceBefore !== undefined || spec.spaceAfter !== undefined) {
+  if (
+    spec.spaceBefore !== undefined ||
+    spec.spaceAfter !== undefined ||
+    spec.exactLine !== undefined
+  ) {
     parts.push(
       `<w:spacing${
         spec.spaceBefore !== undefined ? ` w:before="${spec.spaceBefore}"` : ''
-      }${spec.spaceAfter !== undefined ? ` w:after="${spec.spaceAfter}"` : ''}/>`,
+      }${spec.spaceAfter !== undefined ? ` w:after="${spec.spaceAfter}"` : ''}${
+        spec.exactLine !== undefined
+          ? ` w:line="${spec.exactLine}" w:lineRule="exact"`
+          : ''
+      }/>`,
     );
+  }
+  if (spec.border) {
+    const edge = `w:val="single" w:sz="${spec.border.size}" w:space="1" w:color="${spec.border.color}"`;
+    parts.push(`<w:pBdr><w:between ${edge}/><w:bottom ${edge}/></w:pBdr>`);
   }
   if (spec.indentLeft !== undefined || spec.hanging !== undefined) {
     parts.push(

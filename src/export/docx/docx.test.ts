@@ -218,6 +218,25 @@ describe('styles (§7.3, §11.3)', () => {
       expect(paragraph, paragraph.slice(0, 120)).toContain('<w:pStyle');
     }
   });
+
+  it('gives the answer-line style a between-border so Word draws every rule', async () => {
+    // Word collapses consecutive paragraphs sharing one border set into a single
+    // bordered block and draws the bottom rule only once — under the last of them.
+    // w:between rules the interior boundaries, so without it an N-line answer block
+    // prints as a single line. Regression guard for exactly that.
+    const { read } = await unzip(TEACHER_BI);
+    const styles = await read('word/styles.xml');
+
+    const style = styles.match(
+      /<w:style w:type="paragraph" w:styleId="AnswerLine">[\s\S]*?<\/w:style>/,
+    )?.[0];
+    expect(style).toBeDefined();
+    expect(style).toContain('<w:between w:val="single" w:sz="6" w:space="1" w:color="A6A6A6"/>');
+    expect(style).toContain('<w:bottom w:val="single" w:sz="6" w:space="1" w:color="A6A6A6"/>');
+    // An empty paragraph is only as tall as its line height, which is not a writing
+    // line — the style is what gives each rule room to write on.
+    expect(style).toContain('w:line="480" w:lineRule="exact"');
+  });
 });
 
 describe('fonts and CJK (§7.4, §11.4)', () => {
@@ -628,27 +647,19 @@ describe('layout elements in the section flow', () => {
     expect(document).toContain('<w:spacing w:line="1200" w:lineRule="exact"/>');
   });
 
-  it('exports answer lines as one ruled paragraph per line', async () => {
+  it('exports answer lines as one styled paragraph per line', async () => {
     const document = await open(withElement(createAnswerLinesElement(5)));
-    expect((document.match(/<w:bottom w:val="single" w:sz="6" w:space="1" w:color="A6A6A6"\/>/g) ?? []).length).toBe(
-      5,
-    );
+    expect((document.match(/<w:pStyle w:val="AnswerLine"\/>/g) ?? []).length).toBe(5);
   });
 
-  it('declares a between-border on answer lines so Word draws every rule', async () => {
-    // Word collapses consecutive paragraphs sharing an identical w:pBdr into one
-    // bordered block and draws the bottom rule only once — under the last of them.
-    // w:between is what rules the interior boundaries, so without it a 5-line
-    // answer block prints as a single line. Regression guard for exactly that.
-    const document = await open(withElement(createAnswerLinesElement(5)));
-    expect((document.match(/<w:between w:val="single" w:sz="6" w:space="1" w:color="A6A6A6"\/>/g) ?? []).length).toBe(
-      5,
-    );
-  });
-
-  it('gives each answer line a writing height rather than an empty line', async () => {
-    const document = await open(withElement(createAnswerLinesElement(3)));
-    expect((document.match(/w:line="480" w:lineRule="exact"/g) ?? []).length).toBe(3);
+  it('leaves answer-line paragraphs free of direct formatting', async () => {
+    // Word flags a directly formatted paragraph with a marker in the left margin, so
+    // the rule and the writing height belong to the style, not to each paragraph.
+    const document = await open(withElement(createAnswerLinesElement(4)));
+    expect(document).toContain('<w:p><w:pPr><w:pStyle w:val="AnswerLine"/></w:pPr></w:p>');
+    // No paragraph border or exact line height anywhere in the body.
+    expect(document).not.toContain('w:lineRule="exact"');
+    expect(document).not.toContain('A6A6A6');
   });
 
   it('exports a page break as a real Word page break', async () => {
