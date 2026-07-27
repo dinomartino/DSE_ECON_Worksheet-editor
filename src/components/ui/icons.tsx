@@ -282,6 +282,58 @@ export function TableIcon(props: IconProps) {
   );
 }
 
+export function SettingsIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </Svg>
+  );
+}
+
+/** The question/outline list — the sidebar's "Content" tab. */
+export function ListIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M8 6h13M8 12h13M8 18h13" />
+      <circle cx="3.5" cy="6" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="3.5" cy="12" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="3.5" cy="18" r="1.2" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+
+/** A pencil — the sidebar's "Edit" tab, and the on-page edit affordance. */
+export function PencilIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M17 3.5a2.12 2.12 0 0 1 3 3L7.5 19 3 20.5 4.5 16z" />
+    </Svg>
+  );
+}
+
+/** Page geometry — paper, margins, header/footer. */
+export function PageIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="4" y="2.5" width="16" height="19" rx="2" />
+      <path d="M7 7h10M7 17h10" opacity="0.55" />
+      <path d="M7 11h6" />
+    </Svg>
+  );
+}
+
+/** A document with a title line — worksheet-level identity fields. */
+export function DocumentIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M14 2.5H7a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7.5z" />
+      <path d="M14 2.5v5h5" />
+      <path d="M8.5 13h7M8.5 16.5h4" />
+    </Svg>
+  );
+}
+
 /** Maps a `LayoutElement['kind']` to its icon, so rows and menus agree. */
 export const LAYOUT_ICON = {
   heading: HeadingIcon,

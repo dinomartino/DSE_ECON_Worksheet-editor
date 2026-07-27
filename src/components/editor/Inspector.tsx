@@ -5,18 +5,23 @@ import type { NumberingPlan } from '@/model/numbering';
 import { plain } from '@/model/text';
 import { requireQuestionType } from '@/registry';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { Eyebrow, IconButton, Pill } from '@/components/ui';
-import { CloseIcon } from '@/components/ui/icons';
+import { IconButton, Pill } from '@/components/ui';
+import { CloseIcon, ListIcon, PencilIcon } from '@/components/ui/icons';
 
 /**
  * Inputs for whatever is currently selected.
  *
- * Visually separated from the outline above it: a distinct surface, a sticky header
- * naming what is being edited, and its own scroll context — previously the two
- * regions shared one white background and one hairline, which is what made the
- * sidebar hard to read as two different things.
+ * It now owns the full height of the sidebar rather than the bottom half of a split,
+ * which is what makes a structured question with several parts scroll as one form
+ * instead of through a ~200px porthole.
  */
-export function Inspector({ numbering }: { numbering: NumberingPlan }) {
+export function Inspector({
+  numbering,
+  onShowContent,
+}: {
+  numbering: NumberingPlan;
+  onShowContent: () => void;
+}) {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const selectedQuestionId = useWorksheetStore((s) => s.selectedQuestionId);
   const select = useWorksheetStore((s) => s.select);
@@ -27,34 +32,28 @@ export function Inspector({ numbering }: { numbering: NumberingPlan }) {
     .find((question) => question.id === selectedQuestionId);
 
   if (!selected) {
-    // The old version was a centred paragraph in an otherwise empty half-panel — the
-    // largest expanse of nothing on screen, spent telling the user that nothing was
-    // selected. It now shows the shortcuts that are true whether or not something is
-    // selected, so the space at least teaches the tool.
+    // Nothing selected is not an error state — it is the state the app opens in. So
+    // this says what to do next in one sentence, rather than reporting the absence.
     return (
-      <div className="scroll-slim flex min-h-0 flex-1 flex-col overflow-y-auto border-t border-line bg-surface-sunken p-4">
-        <p className="text-xs font-medium text-ink-muted">Nothing selected</p>
-        <p className="mt-0.5 text-[11px] text-ink-subtle">
-          Click a question on the page or in the list above to edit it.
-        </p>
-        <p className="text-[11px] text-ink-subtle">在預覽或上方列表選擇題目</p>
-
-        <dl className="mt-4 space-y-1">
-          {[
-            ['Add content', 'Rail on the left'],
-            ['Edit text', 'Click it twice'],
-            ['Reorder', 'Drag the grip'],
-            ['Undo', '⌘Z'],
-          ].map(([term, hint]) => (
-            <div
-              key={term}
-              className="flex items-center justify-between gap-3 rounded-lg bg-surface px-2.5 py-1.5 ring-1 ring-inset ring-line"
-            >
-              <dt className="text-[11px] text-ink-muted">{term}</dt>
-              <dd className="shrink-0 text-[10px] font-medium text-ink-subtle">{hint}</dd>
-            </div>
-          ))}
-        </dl>
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
+        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-sunken text-ink-subtle">
+          <PencilIcon size={22} />
+        </span>
+        <div>
+          <p className="text-[13px] font-medium text-ink">Pick something to edit</p>
+          <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+            Click a question on the page, or choose one from Content.
+          </p>
+          <p className="text-xs text-ink-subtle">在頁面或內容清單選擇題目</p>
+        </div>
+        <button
+          type="button"
+          onClick={onShowContent}
+          className="flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-accent-ink transition-colors hover:bg-accent-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          <ListIcon size={15} />
+          Browse content
+        </button>
       </div>
     );
   }
@@ -63,12 +62,16 @@ export function Inspector({ numbering }: { numbering: NumberingPlan }) {
   const number = numbering.byQuestionId.get(selected.id)?.number;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col border-t border-line bg-surface-sunken">
-      <header className="sticky top-0 z-10 flex items-center gap-2 border-b border-line bg-surface-sunken/95 px-3 py-2.5 backdrop-blur">
-        <Eyebrow>Editing</Eyebrow>
-        <span className="min-w-0 flex-1 truncate text-xs font-semibold text-ink">
-          Question {number ?? '–'}
-          <span className="ml-1.5 font-normal text-ink-muted">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <header className="flex shrink-0 items-center gap-2 border-b border-line px-3.5 py-3">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent text-[12px] font-bold tabular-nums text-on-accent">
+          {number ?? '–'}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[13px] font-semibold leading-tight text-ink">
+            Question {number ?? '–'}
+          </span>
+          <span className="block truncate text-[11px] text-ink-muted">
             {plain(definition.displayName.en)}
           </span>
         </span>
@@ -78,7 +81,7 @@ export function Inspector({ numbering }: { numbering: NumberingPlan }) {
         </IconButton>
       </header>
 
-      <div className="scroll-slim min-h-0 flex-1 overflow-y-auto p-3">
+      <div className="scroll-slim min-h-0 flex-1 overflow-y-auto p-3.5">
         <definition.EditorPanel
           key={selected.id}
           question={selected}

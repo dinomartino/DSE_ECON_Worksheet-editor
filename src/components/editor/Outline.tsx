@@ -20,7 +20,7 @@ import { bi, plain } from '@/model/text';
 import type { LayoutElement, Question, Section, Worksheet } from '@/model/types';
 import { listQuestionTypes, requireQuestionType } from '@/registry';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { Button, Eyebrow, IconButton, Pill } from '@/components/ui';
+import { Button, IconButton, Pill } from '@/components/ui';
 import { DragGhost, hideNativeDragImage } from '@/components/ui/DragGhost';
 import {
   AnswerLinesIcon,
@@ -35,6 +35,7 @@ import {
   PageBreakIcon,
   PartHeaderIcon,
   PlusIcon,
+  SettingsIcon,
   SpacerIcon,
   StructuredIcon,
   TextIcon,
@@ -210,7 +211,6 @@ function QuestionRow({
   const duplicateQuestion = useWorksheetStore((s) => s.duplicateQuestion);
   const moveQuestion = useWorksheetStore((s) => s.moveQuestion);
   const moveQuestionToSection = useWorksheetStore((s) => s.moveQuestionToSection);
-  const reorderQuestion = useWorksheetStore((s) => s.reorderQuestion);
   const reorderFlowItem = useWorksheetStore((s) => s.reorderFlowItem);
   const dragId = useWorksheetStore((s) => s.dragQuestionId);
   const setDragId = useWorksheetStore((s) => s.setDragQuestionId);
@@ -280,14 +280,11 @@ function QuestionRow({
       onDragLeave={() => setIsOver(false)}
       onDrop={(event) => {
         event.preventDefault();
+        // One route for every case: `reorderFlowItem` finds the dragged item's own
+        // section and moves it across when that differs from this row's, so a question
+        // or a layout element can be dropped into any section from the outline.
         if (dragId && dragId !== question.id) {
-          // A question may be dragged in from another section, which `reorderQuestion`
-          // handles; a layout element only ever moves within its own section's flow.
-          const isQuestion = worksheet.sections.some((candidate) =>
-            candidate.questions.some((entry) => entry.id === dragId),
-          );
-          if (isQuestion) reorderQuestion(dragId, question.id);
-          else reorderFlowItem(section.id, dragId, question.id);
+          reorderFlowItem(section.id, dragId, question.id);
         }
         setDragId(undefined);
         setIsOver(false);
@@ -375,7 +372,13 @@ function dragLabelFor(
   return { label: 'Item' };
 }
 
-export function Outline({ numbering }: { numbering: NumberingPlan }) {
+export function Outline({
+  numbering,
+  onOpenSettings,
+}: {
+  numbering: NumberingPlan;
+  onOpenSettings: () => void;
+}) {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const selectedQuestionId = useWorksheetStore((s) => s.selectedQuestionId);
   const select = useWorksheetStore((s) => s.select);
@@ -386,25 +389,26 @@ export function Outline({ numbering }: { numbering: NumberingPlan }) {
   const addLayoutElement = useWorksheetStore((s) => s.addLayoutElement);
   const dragQuestionId = useWorksheetStore((s) => s.dragQuestionId);
 
-  const totalQuestions = worksheet.sections.reduce(
-    (sum, section) => sum + section.questions.length,
-    0,
-  );
-
   const ghost = dragLabelFor(worksheet, numbering, dragQuestionId);
+
+  const title =
+    plain(worksheet.title.en) || plain(worksheet.title.zh) || 'Untitled worksheet';
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <DragGhost label={ghost?.label} detail={ghost?.detail} />
-      <div className="flex items-center gap-2 px-3 py-2.5">
-        <Eyebrow>Questions</Eyebrow>
-        <Pill>{totalQuestions}</Pill>
-        <span className="ml-auto">
-          <Button size="sm" variant="subtle" onClick={addSection}>
-            <PlusIcon size={13} />
-            Section
-          </Button>
+
+      {/* The document's own name and the way into its settings. This is where a user
+          looks for "where do I change the title?" — next to the title, rather than
+          behind an accordion labelled in 10px capitals. */}
+      <div className="flex items-center gap-2 border-b border-line px-3 py-2.5">
+        <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-ink" title={title}>
+          {title}
         </span>
+        <Button size="sm" variant="subtle" onClick={onOpenSettings} title="Title, paper, margins, header and footer">
+          <SettingsIcon size={14} />
+          Settings
+        </Button>
       </div>
 
       <div className="scroll-slim min-h-0 flex-1 overflow-y-auto px-2 pb-3">
@@ -555,6 +559,14 @@ export function Outline({ numbering }: { numbering: NumberingPlan }) {
             </div>
           </section>
         ))}
+
+        {/* Adding a section belongs after the last one, which is where it lands. */}
+        <div className="px-1 pt-1">
+          <Button size="sm" variant="subtle" onClick={addSection}>
+            <PlusIcon size={13} />
+            Add section
+          </Button>
+        </div>
       </div>
     </div>
   );

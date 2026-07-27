@@ -1,7 +1,9 @@
 import {
+  bandsAreEmpty,
   contentWidth,
   defaultFooter,
   defaultHeader,
+  firstPageHeaderFooter,
   headerFooterOf,
   isHeaderFooterActive,
   pageDimensions,
@@ -11,7 +13,7 @@ import {
 import { zonesOf } from '@/model/bands';
 import { worksheetMarks } from '@/model/marks';
 import { plain } from '@/model/text';
-import type { BandField, FontPair, HeaderFooter, LanguageMode, OutputMode, Worksheet } from '@/model/types';
+import type { Band, BandField, FontPair, HeaderFooter, LanguageMode, OutputMode, Worksheet } from '@/model/types';
 import type { RenderNode } from '@/render/ir';
 import { bandFieldText, collectListStreams, renderWorksheet } from '@/render/worksheet';
 import { renderDiagramImages, type DiagramImageMap } from '../diagramImage';
@@ -33,7 +35,7 @@ import {
   type ImageAsset,
   type PackageParts,
 } from './package';
-import { biTextRuns, rFonts, run } from './runs';
+import { biTextRuns, formatRunOptions, rFonts, run } from './runs';
 import { buildStylesXml, STYLE_IDS } from './styles';
 
 /**
@@ -145,9 +147,15 @@ function zoneRuns(
   language: LanguageMode,
   totalMarks: number,
 ): string {
-  const runProps = `<w:rPr>${rFonts(fonts)}</w:rPr>`;
   return fields
     .map((field) => {
+      // A field's own `TextFormat`, applied as direct formatting on top of the style —
+      // the same layering body text uses (§ "Per-element formatting"), so a header whose
+      // size was set on the page exports at that size instead of silently reverting.
+      const base = formatRunOptions(field.format);
+      const fieldFonts = field.format?.fonts ?? fonts;
+      const runProps = `<w:rPr>${rFonts(fieldFonts)}</w:rPr>`;
+
       if (field.kind === 'pageNumber') {
         // Split the template on its placeholders so the literal parts stay authored
         // text and only the numbers become fields.
@@ -156,17 +164,25 @@ function zoneRuns(
           .map((chunk: string) => {
             if (chunk === '#') return fieldRuns('PAGE', runProps, '1');
             if (chunk === 'N') return fieldRuns('NUMPAGES', runProps, '1');
-            return chunk ? run(chunk, fonts) : '';
+            return chunk ? run(chunk, fieldFonts, base) : '';
           })
           .join('');
       }
-      return biTextRuns(bandFieldText(field, totalMarks), fonts, language);
+      return biTextRuns(bandFieldText(field, totalMarks), fieldFonts, language, base);
     })
     .join('');
 }
 
+/**
+ * Lay out one set of header/footer rows.
+ *
+ * Takes `bands` and `rule` rather than the whole `HeaderFooter` because a document can
+ * need **two** layouts from the same value — the running one and page 1's own, when
+ * `firstPage` is set (§ `HeaderFooter.firstPage`).
+ */
 function headerFooterLayout(
-  value: HeaderFooter,
+  bands: Band[],
+  rule: boolean | undefined,
   fonts: FontPair,
   language: LanguageMode,
   width: number,
@@ -174,7 +190,7 @@ function headerFooterLayout(
   totalMarks: number,
 ): HeaderFooterLayout {
   return {
-    rows: (value.bands ?? []).map((band) => {
+    rows: (bands ?? []).map((band) => {
       const zones = zonesOf(band);
       return {
         left: zoneRuns(zones.left, fonts, language, totalMarks),
@@ -183,7 +199,7 @@ function headerFooterLayout(
       };
     }),
     contentWidth: width,
-    rule: value.rule,
+    rule,
     ruleEdge,
   };
 }
@@ -268,7 +284,7 @@ function buildParts(
     mode.version === 'teacher' ? run('  —  Teacher Version / 教師版', fonts, { bold: true }) : '';
 
   const headerLayout = headerFooterLayout(
-    header, fonts, mode.language, textWidth, 'bottom', worksheetMarks(worksheet),
+    header.bands, header.rule, fonts, mode.language, textWidth, 'bottom', worksheetMarks(worksheet),
   );
   if (teacherMark) {
     // Appended to the rightmost occupied zone of the LAST row, so it never displaces
@@ -283,28 +299,74 @@ function buildParts(
     }
   }
 
-  const hasHeader = isHeaderFooterActive(header) || Boolean(teacherMark);
-  const hasFooter = isHeaderFooterActive(footer);
+  /*
+   * A part is needed when *either* the running rows or page 1's own rows would print.
+   * A cover-page-only header — blank on continuation pages, "Name:____" on page 1 — has
+   * empty running bands, so testing only those would drop the page-1 content entirely.
+   */
+  const printsOnFirstPage = (value: HeaderFooter) =>
+    value.enabled && Boolean(value.firstPage) && !bandsAreEmpty(value.firstPage?.bands ?? []);
+
+  const hasHeader =
+    isHeaderFooterActive(header) || printsOnFirstPage(header) || Boolean(teacherMark);
+  const hasFooter = isHeaderFooterActive(footer) || printsOnFirstPage(footer);
 
   const footerLayout = headerFooterLayout(
-    footer, fonts, mode.language, textWidth, 'top', worksheetMarks(worksheet),
+    footer.bands, footer.rule, fonts, mode.language, textWidth, 'top', worksheetMarks(worksheet),
   );
 
-  const suppressHeaderFirst = hasHeader && header.showOnFirstPage === false;
-  const suppressFooterFirst = hasFooter && footer.showOnFirstPage === false;
-  const differentFirstPage = suppressHeaderFirst || suppressFooterFirst;
+  /*
+   * What page 1 prints.
+   *
+   * Three states per part (§ `HeaderFooter.firstPage`): the same as every page, blank,
+   * or its own rows. Only the last two need `w:titlePg`, and the resolution is shared
+   * with the preview via `firstPageHeaderFooter` so the page on screen and the page in
+   * Word cannot disagree about which state a document is in.
+   */
+  const headerFirst = firstPageHeaderFooter(header);
+  const footerFirst = firstPageHeaderFooter(footer);
+  const differentFirstPage =
+    (hasHeader && headerFirst.differs) || (hasFooter && footerFirst.differs);
 
-  // `w:titlePg` switches page 1 to the "first" references wholesale, so once either
-  // part suppresses, BOTH need a first-page part — the one that should still appear
-  // on page 1 gets its real content, not an empty placeholder.
+  /**
+   * Build the page-1 part for one edge.
+   *
+   * `w:titlePg` switches page 1 to the "first" references *wholesale*, so once either
+   * edge differs BOTH need a first-page part — the one that should look unchanged gets
+   * its running content again rather than an empty placeholder, or it would vanish from
+   * page 1 as a side effect of the other edge differing.
+   */
+  const firstPart = (
+    which: 'hdr' | 'ftr',
+    resolved: ReturnType<typeof firstPageHeaderFooter>,
+    running: HeaderFooterLayout,
+  ) => {
+    const build = which === 'hdr' ? buildHeaderXml : buildFooterXml;
+    if (!resolved.differs) return build(running);
+    if (resolved.bands.length === 0) return buildEmptyHeaderXml(which);
+    // The teacher-version marker deliberately does not ride along here: it is appended
+    // to the running header above, and page 1 carries its own authored rows.
+    return build(
+      headerFooterLayout(
+        resolved.bands,
+        resolved.rule,
+        fonts,
+        mode.language,
+        textWidth,
+        which === 'hdr' ? 'bottom' : 'top',
+        worksheetMarks(worksheet),
+      ),
+    );
+  };
+
   const headerFooter: HeaderFooterParts = {
     ...(hasHeader ? { header: buildHeaderXml(headerLayout) } : {}),
     ...(hasFooter ? { footer: buildFooterXml(footerLayout) } : {}),
     ...(differentFirstPage && hasHeader
-      ? { headerFirst: suppressHeaderFirst ? buildEmptyHeaderXml('hdr') : buildHeaderXml(headerLayout) }
+      ? { headerFirst: firstPart('hdr', headerFirst, headerLayout) }
       : {}),
     ...(differentFirstPage && hasFooter
-      ? { footerFirst: suppressFooterFirst ? buildEmptyHeaderXml('ftr') : buildFooterXml(footerLayout) }
+      ? { footerFirst: firstPart('ftr', footerFirst, footerLayout) }
       : {}),
   };
 

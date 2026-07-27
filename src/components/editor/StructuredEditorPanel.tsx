@@ -6,7 +6,7 @@ import { partLabel, subPartLabel } from '@/model/numbering';
 import { emptyBiText } from '@/model/text';
 import type { QuestionPart, StructuredQuestion } from '@/model/types';
 import type { EditorPanelProps } from '@/registry/types';
-import { Button, CheckField, Eyebrow, IconButton, NumberField, Pill } from '@/components/ui';
+import { Button, CheckField, GroupHeader, IconButton, NumberField, Pill } from '@/components/ui';
 import { BiTextField } from './BiTextField';
 import { BlockEditor } from './BlockEditor';
 
@@ -34,22 +34,26 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
 
   return (
     <div className="space-y-5">
-      <BlockEditor label="Stem" blocks={question.blocks} onChange={(blocks) => onChange({ blocks })} />
+      <BlockEditor
+        label="Stem"
+        labelHint="what the student reads"
+        blocks={question.blocks}
+        onChange={(blocks) => onChange({ blocks })}
+      />
 
       <section className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Eyebrow>Parts</Eyebrow>
-          <Pill>{question.parts.length}</Pill>
-          {/* Off by default: parts carry their own marks, so the trailing sum is
-              opt-in. */}
-          <span className="ml-auto">
+        <GroupHeader
+          title="Parts"
+          hint={`${question.parts.length} · (a), (b), (c)…`}
+          // Off by default: parts carry their own marks, so the trailing sum is opt-in.
+          action={
             <CheckField
               label="Show total"
               checked={Boolean(question.showTotalMarks)}
               onChange={(showTotalMarks) => onChange({ showTotalMarks })}
             />
-          </span>
-        </div>
+          }
+        />
 
         {question.parts.map((part, partIndex) => {
           const subParts = part.subParts ?? [];

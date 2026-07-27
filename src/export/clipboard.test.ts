@@ -76,6 +76,26 @@ describe('Copy for Word (§7.7, §11.12)', () => {
     expect(html).not.toContain('P < MC & Q > 0');
   });
 
+  it('renders a hard line break as <br/>, since a raw newline is HTML whitespace', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const block = worksheet.sections[0].questions[0].blocks[0];
+    if (block.kind === 'paragraph') {
+      block.text.en = [{ text: 'Before break\nAfter break' }];
+    }
+    const html = worksheetClipboardHtml(worksheet, { language: 'en', version: 'student' });
+    expect(html).toContain('Before break<br/>After break');
+  });
+
+  it('keeps a break inside a formatted run wrapped by that formatting', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const block = worksheet.sections[0].questions[0].blocks[0];
+    if (block.kind === 'paragraph') {
+      block.text.en = [{ text: 'Bold one\nbold two', bold: true }];
+    }
+    const html = worksheetClipboardHtml(worksheet, { language: 'en', version: 'student' });
+    expect(html).toContain('<b>Bold one<br/>bold two</b>');
+  });
+
   it('provides a plain-text fallback flavour', () => {
     const text = worksheetPlainText(buildAcceptanceWorksheet(), { language: 'en', version: 'student' });
     expect(text).toContain('1. What happens when demand falls?');

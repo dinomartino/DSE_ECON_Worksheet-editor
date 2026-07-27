@@ -121,6 +121,36 @@ export function Eyebrow({ children, className = '' }: { children: ReactNode; cla
 }
 
 /**
+ * A group heading inside an editor panel.
+ *
+ * Replaces `Eyebrow` for anything that names a *region a user works in*, as opposed to
+ * a passive label. 10px uppercase with wide tracking is a typographic texture: at that
+ * size the letterforms stop resolving into words and the eye reads a grey band, which
+ * is why a panel of five such headings scanned as one undifferentiated column. This is
+ * sentence case at a size that can actually be read, with the optional `hint` carrying
+ * the explanation that used to be crammed alongside in 10px grey.
+ */
+export function GroupHeader({
+  title,
+  hint,
+  action,
+}: {
+  title: string;
+  hint?: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="flex items-baseline gap-2">
+      <div className="min-w-0 flex-1">
+        <span className="text-[13px] font-semibold text-ink">{title}</span>
+        {hint && <span className="ml-1.5 text-[11px] font-normal text-ink-subtle">{hint}</span>}
+      </div>
+      {action && <span className="shrink-0">{action}</span>}
+    </div>
+  );
+}
+
+/**
  * A titled card. `tone` distinguishes nesting depth without adding more borders:
  * blocks sit on `sunken`, parts on `raised`, so a four-level structure stays legible.
  */
@@ -214,21 +244,26 @@ export function NumberField({
   );
 }
 
-/** A labelled dropdown. One treatment for every select in the sidebar. */
+/**
+ * A labelled dropdown. One treatment for every select in the app.
+ *
+ * `label` is optional because a select inside a `Field` already has a heading above
+ * it — repeating the word beside the control makes the row read as two labels.
+ */
 export function SelectField<T extends string | number>({
   label,
   value,
   options,
   onChange,
 }: {
-  label: string;
+  label?: string;
   value: T;
   options: Array<{ value: T; label: string }>;
   onChange: (value: T) => void;
 }) {
   return (
     <label className="flex items-center gap-2 text-xs text-ink-muted">
-      <span className="shrink-0">{label}</span>
+      {label && <span className="shrink-0">{label}</span>}
       <select
         className="h-8 min-w-0 flex-1 cursor-pointer rounded-lg border border-line bg-surface px-2 text-xs text-ink outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/25"
         value={value}

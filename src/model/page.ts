@@ -146,7 +146,37 @@ export function headerFooterOf(
     bands: value.bands ?? [],
     rule: value.rule,
     showOnFirstPage: value.showOnFirstPage ?? true,
+    // Carried through rather than defaulted: absent is a meaningful state ("page 1 is
+    // the same as every other page"), so inventing an empty object here would turn
+    // every document into one that blanks its own first page.
+    ...(value.firstPage ? { firstPage: value.firstPage } : {}),
   };
+}
+
+/**
+ * What page 1 actually prints, and whether that differs from the rest.
+ *
+ * The three states of § `HeaderFooter.firstPage` resolved in one place, so the exporter,
+ * the preview and the settings panel cannot disagree about which one a document is in.
+ */
+export function firstPageHeaderFooter(value: HeaderFooter): {
+  /** Rows page 1 prints. Empty when page 1 is deliberately blank. */
+  bands: Band[];
+  rule: boolean | undefined;
+  /** True when page 1 needs its own part at all (`w:titlePg`). */
+  differs: boolean;
+} {
+  if (value.firstPage) {
+    return {
+      bands: value.firstPage.bands,
+      rule: value.firstPage.rule ?? value.rule,
+      differs: true,
+    };
+  }
+  if (value.showOnFirstPage === false) {
+    return { bands: [], rule: value.rule, differs: true };
+  }
+  return { bands: value.bands ?? [], rule: value.rule, differs: false };
 }
 
 /**

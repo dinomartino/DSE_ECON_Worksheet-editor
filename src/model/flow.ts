@@ -173,6 +173,67 @@ export function moveRunInFlow(
   return applyOrder(section, rest);
 }
 
+/**
+ * Move one item from `source` into `target`, landing next to `targetId`.
+ *
+ * The cross-section counterpart of `moveInFlow`. Both sections are rewritten together
+ * because the move is not expressible as two independent edits: the item has to leave
+ * one `layout`/`questions` array and enter another's, and doing that in two commits
+ * would leave a frame in which the document does not contain it at all.
+ *
+ * Which list it travels in follows from what it *is*, which is the flow invariant doing
+ * its job — a question moves between the two `questions` arrays because those own
+ * question order, while a layout element moves between the two `layout` arrays. Only
+ * the position comes from `flow`.
+ *
+ * `targetId` may be a question or a layout element: a teacher dragging question 3 above
+ * the divider that opens Section B is expressing a real intent, and refusing it because
+ * the target happens not to be a question is the gap this closes.
+ */
+export function moveAcrossSections(
+  source: Section,
+  target: Section,
+  id: string,
+  targetId: string,
+  position: 'before' | 'after' = 'before',
+): { source: Section; target: Section } | undefined {
+  if (source.id === target.id) return undefined;
+
+  const question = source.questions.find((candidate) => candidate.id === id);
+  const element = (source.layout ?? []).find((candidate) => candidate.id === id);
+  if (!question && !element) return undefined;
+
+  // Leave the source: drop it from whichever list holds it, and from the flow.
+  const nextSource: Section = {
+    ...source,
+    questions: question
+      ? source.questions.filter((candidate) => candidate.id !== id)
+      : source.questions,
+    layout: element
+      ? (source.layout ?? []).filter((candidate) => candidate.id !== id)
+      : source.layout,
+    flow: flowOf(source).filter((entry) => entry.id !== id),
+  };
+
+  // Enter the target, then place it with the same single-section logic — so a drop
+  // between two sections honours `position` exactly as a drop within one does.
+  const entered: Section = {
+    ...target,
+    questions: question ? [...target.questions, question] : target.questions,
+    layout: element ? [...(target.layout ?? []), element] : target.layout,
+    flow: [
+      ...flowOf(target),
+      { type: question ? ('question' as const) : ('layout' as const), id },
+    ],
+  };
+
+  const moved = moveInFlow(entered, id, targetId, position);
+  return {
+    source: nextSource,
+    target: { ...entered, questions: moved.questions, flow: moved.flow },
+  };
+}
+
 /** Shift `id` one position up (-1) or down (+1) within its section. */
 export function nudgeInFlow(section: Section, id: string, direction: -1 | 1): FlowMove {
   const entries = flowOf(section);

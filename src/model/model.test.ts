@@ -8,7 +8,7 @@ import {
 } from './migrations';
 import { partMarks, questionMarks, worksheetMarks } from './marks';
 import { computeNumbering, toLowerLetter, toLowerRoman } from './numbering';
-import { parseRuns, plain, serializeRuns } from './text';
+import { hasLineBreak, parseRuns, plain, runLines, serializeRuns } from './text';
 import { createMcqQuestion, createWorksheet } from './factories';
 import { MARGIN_PRESETS, cmToTwips, contentWidth, twipsToCm } from './page';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
@@ -96,6 +96,44 @@ describe('rich text round-trip', () => {
   it('handles CJK and mixed-script text unchanged', () => {
     const runs = parseRuns('GDP平減物價指數(GDP deflator)');
     expect(plain(runs)).toBe('GDP平減物價指數(GDP deflator)');
+  });
+});
+
+/**
+ * Shift+Enter inside one field.
+ *
+ * The break used to survive storage and then be flattened by every renderer, which is
+ * the worst shape of bug: the editor accepted it, the document saved it, and it silently
+ * became a space on the page and in Word. These pin the storage half.
+ */
+describe('hard line breaks (Shift+Enter)', () => {
+  it('keeps a newline through the parse/serialise round trip', () => {
+    const source = 'First line\nSecond line';
+    const runs = parseRuns(source);
+    expect(plain(runs)).toBe(source);
+    expect(serializeRuns(runs)).toBe(source);
+    expect(hasLineBreak(runs)).toBe(true);
+  });
+
+  it('keeps a break that falls inside a formatted span', () => {
+    const runs = parseRuns('**Bold first\nbold second**');
+    expect(runs.find((r) => r.bold)?.text).toBe('Bold first\nbold second');
+    expect(serializeRuns(runs)).toBe('**Bold first\nbold second**');
+  });
+
+  it('splits a run into its lines, keeping empty segments so blank lines survive', () => {
+    expect(runLines('a\nb')).toEqual(['a', 'b']);
+    expect(runLines('a\n\nb')).toEqual(['a', '', 'b']);
+    expect(runLines('no break')).toEqual(['no break']);
+  });
+
+  it('normalises Windows and classic-Mac newlines, which paste from Word carries', () => {
+    expect(runLines('a\r\nb')).toEqual(['a', 'b']);
+    expect(runLines('a\rb')).toEqual(['a', 'b']);
+  });
+
+  it('reports no break for ordinary text', () => {
+    expect(hasLineBreak(parseRuns('one line'))).toBe(false);
   });
 });
 
@@ -332,6 +370,31 @@ describe('save/load round trip preserves every known field', () => {
     expect(restored.instructionsFormat).toEqual({ fontSize: 11, italic: true });
     expect(restored.bands).toHaveLength(1);
     // None of it should have been diverted into the unknown-field bucket.
+    expect(restored.__unknown).toBeUndefined();
+  });
+
+  it('keeps a distinct first-page header through a save/load round trip', () => {
+    // `firstPage` is nested inside `header`, so KNOWN_KEYS does not police it — which is
+    // exactly why it is pinned here. A field that saves and then vanishes on reload has
+    // bitten this document model before.
+    const worksheet: Worksheet = {
+      ...createWorksheet(),
+      header: {
+        enabled: true,
+        rule: true,
+        bands: [{ id: 'run', zones: { left: [], center: [], right: [] } }],
+        firstPage: {
+          bands: [{ id: 'cover', zones: { left: [], center: [], right: [] } }],
+          rule: false,
+        },
+      },
+    };
+
+    const restored = migrate(JSON.parse(JSON.stringify(serializeWorksheet(worksheet))));
+
+    expect(restored.header?.firstPage?.bands.map((b) => b.id)).toEqual(['cover']);
+    expect(restored.header?.firstPage?.rule).toBe(false);
+    expect(restored.header?.bands.map((b) => b.id)).toEqual(['run']);
     expect(restored.__unknown).toBeUndefined();
   });
 

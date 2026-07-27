@@ -1,121 +1,120 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { computeNumbering } from '@/model/numbering';
 import { useWorksheetStore } from '@/store/worksheetStore';
+import { Pill } from '@/components/ui';
+import { ListIcon, PencilIcon } from '@/components/ui/icons';
 import { Inspector } from './Inspector';
 import { Outline } from './Outline';
-import { PageSetupPanel } from './PageSetupPanel';
-import { WorksheetSettings } from './WorksheetSettings';
 
 /**
- * The right sidebar — the editing home (§5.1).
+ * The right sidebar — one panel that shows **one thing at a time**.
  *
- * Three distinct regions, top to bottom: collapsed worksheet settings, the question
- * outline, and the inspector for the selection. The outline/inspector split is
- * draggable, because the previous fixed `max-h-[45%]` meant a long worksheet always
- * showed a clipped list no matter how much room the inspector was wasting.
+ * It used to stack four regions in a 400px column: two collapsed settings accordions,
+ * the question outline, a draggable divider, and the inspector. That asked the user to
+ * understand the whole panel before using any of it, and it made both halves of the
+ * real work permanently half-height — the question editor was clipped mid-form while a
+ * three-question outline sat above it with room to spare. The divider was the tell: a
+ * control whose only job is to referee a fight between two panels that should not have
+ * been sharing the space.
+ *
+ * Now there are two tabs. **Content** is the outline — the structure of the document.
+ * **Edit** is whatever is selected. Each gets the full height of the column, so a long
+ * question list scrolls as a list and a long form scrolls as a form. The once-per-document
+ * settings moved out entirely, into the toolbar's `DocumentSettings` dialog.
+ *
+ * The tab follows the selection rather than waiting to be clicked: selecting a question
+ * — on the page or in the outline — switches to Edit, because selecting something *is*
+ * the request to edit it. Closing the editor returns to Content. That keeps the two-tab
+ * structure from becoming one more thing to operate, which was the original complaint.
  */
 
-const MIN_OUTLINE = 120;
-const MIN_INSPECTOR = 180;
-/**
- * The outline's ceiling before the user takes over the split.
- *
- * Paired with the `max-height` behaviour below, this is a *cap*, not a reservation:
- * a three-question list is three rows tall, and only a long one grows to here. It is
- * deliberately generous — at the old 240px a list started scrolling at about six
- * questions while the inspector underneath still had empty space, which is the worst
- * of both (a scrollbar *and* wasted room).
- */
-const DEFAULT_OUTLINE = 420;
+type Tab = 'content' | 'edit';
 
-export function Sidebar() {
+export function Sidebar({ onOpenSettings }: { onOpenSettings: () => void }) {
   const worksheet = useWorksheetStore((s) => s.worksheet);
+  const selectedQuestionId = useWorksheetStore((s) => s.selectedQuestionId);
   const numbering = computeNumbering(worksheet);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [outlineHeight, setOutlineHeight] = useState(DEFAULT_OUTLINE);
-  const [dragging, setDragging] = useState(false);
-  // Whether the user has taken control of the split. Before they do, the outline is
-  // allowed to shrink to its content (see the style below).
-  const [resized, setResized] = useState(false);
+  const [tab, setTab] = useState<Tab>('content');
 
-  const applyHeight = useCallback((clientY: number) => {
-    const container = containerRef.current;
-    if (!container) return;
-    const bounds = container.getBoundingClientRect();
-    const next = clientY - bounds.top;
-    const max = bounds.height - MIN_INSPECTOR;
-    setOutlineHeight(Math.max(MIN_OUTLINE, Math.min(next, Math.max(MIN_OUTLINE, max))));
-  }, []);
-
+  // Follow the selection. Tracked against the previous id rather than firing on every
+  // render, so a user who deliberately clicks back to Content while a question is still
+  // selected is not yanked to Edit again on the next keystroke.
+  const lastSelection = useRef(selectedQuestionId);
   useEffect(() => {
-    if (!dragging) return;
-    const onMove = (event: MouseEvent) => {
-      event.preventDefault();
-      applyHeight(event.clientY);
-    };
-    const onUp = () => setDragging(false);
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-    return () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-  }, [dragging, applyHeight]);
+    if (selectedQuestionId === lastSelection.current) return;
+    lastSelection.current = selectedQuestionId;
+    setTab(selectedQuestionId ? 'edit' : 'content');
+  }, [selectedQuestionId]);
+
+  const selected = worksheet.sections
+    .flatMap((section) => section.questions)
+    .find((question) => question.id === selectedQuestionId);
+
+  const totalQuestions = worksheet.sections.reduce(
+    (sum, section) => sum + section.questions.length,
+    0,
+  );
+
+  const editLabel = selected
+    ? `Question ${numbering.byQuestionId.get(selected.id)?.number ?? ''}`.trim()
+    : 'Edit';
+
+  const tabs: Array<{ id: Tab; label: string; icon: React.ReactNode; badge?: React.ReactNode }> = [
+    {
+      id: 'content',
+      label: 'Content',
+      icon: <ListIcon size={15} />,
+      badge: <Pill>{totalQuestions}</Pill>,
+    },
+    {
+      id: 'edit',
+      label: editLabel,
+      icon: <PencilIcon size={15} />,
+    },
+  ];
 
   return (
-    <aside className="flex h-full w-[400px] shrink-0 flex-col border-l border-line bg-surface">
-      <WorksheetSettings />
-      <PageSetupPanel />
+    <aside className="flex h-full min-h-0 w-[400px] shrink-0 flex-col overflow-hidden border-l border-line bg-surface">
+      {/* Two tabs, sized like real targets. The old regions were separated by 10px
+          uppercase eyebrows, which read as decoration rather than as the switch between
+          two modes that they effectively were. */}
+      <div role="tablist" aria-label="Sidebar" className="flex shrink-0 gap-1 border-b border-line px-2 pt-2">
+        {tabs.map((entry) => {
+          const active = tab === entry.id;
+          const dim = entry.id === 'edit' && !selected;
+          return (
+            <button
+              key={entry.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setTab(entry.id)}
+              className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-t-lg border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                active
+                  ? 'border-accent text-ink'
+                  : 'border-transparent text-ink-muted hover:bg-surface-hover hover:text-ink'
+              } ${dim && !active ? 'opacity-60' : ''}`}
+            >
+              <span className={active ? 'text-accent' : 'text-ink-subtle'}>{entry.icon}</span>
+              <span className="truncate">{entry.label}</span>
+              {entry.badge}
+            </button>
+          );
+        })}
+      </div>
 
-      <div ref={containerRef} className="flex min-h-0 flex-1 flex-col">
-        {/* Until the divider is dragged the outline is sized by `max-height`, not
-            `height`. A fixed height reserved 240px whether the worksheet had twenty
-            questions or none, which is what left a blank band above the inspector on
-            a new document. Once the user drags, their explicit height wins — they
-            have said how much room the list should have. */}
-        <div
-          className="flex min-h-0 flex-col"
-          style={
-            resized
-              ? { height: outlineHeight, flexShrink: 0 }
-              : { maxHeight: outlineHeight, flexShrink: 0 }
-          }
-        >
-          <Outline numbering={numbering} />
-        </div>
-
-        {/* Draggable divider. Also keyboard-adjustable, since it is a real control. */}
-        <div
-          role="separator"
-          aria-orientation="horizontal"
-          aria-label="Resize question list"
-          tabIndex={0}
-          onMouseDown={(event) => {
-            event.preventDefault();
-            setDragging(true);
-            setResized(true);
-          }}
-          onKeyDown={(event) => {
-            if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
-            setResized(true);
-            if (event.key === 'ArrowUp') setOutlineHeight((h) => Math.max(MIN_OUTLINE, h - 24));
-            else setOutlineHeight((h) => h + 24);
-          }}
-          className={`group relative h-2 shrink-0 cursor-row-resize bg-surface-sunken transition-colors hover:bg-accent-soft focus-visible:bg-accent-soft focus-visible:outline-none ${
-            dragging ? 'bg-accent-soft' : ''
-          }`}
-        >
-          <span
-            className={`pointer-events-none absolute left-1/2 top-1/2 h-1 w-8 -translate-x-1/2 -translate-y-1/2 rounded-full transition-colors group-hover:bg-accent ${
-              dragging ? 'bg-accent' : 'bg-line-strong'
-            }`}
-          />
-        </div>
-
-        <Inspector numbering={numbering} />
+      {/* One region, full height. Both panels are mounted-on-demand rather than hidden,
+          so the outline's scroll position is not silently preserved against a document
+          that changed underneath it while the editor was showing. */}
+      <div className="flex min-h-0 flex-1 flex-col">
+        {tab === 'content' ? (
+          <Outline numbering={numbering} onOpenSettings={onOpenSettings} />
+        ) : (
+          <Inspector numbering={numbering} onShowContent={() => setTab('content')} />
+        )}
       </div>
     </aside>
   );

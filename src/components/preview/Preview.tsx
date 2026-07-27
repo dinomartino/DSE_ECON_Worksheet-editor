@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  bandsAreEmpty,
   defaultFooter,
   defaultHeader,
+  firstPageHeaderFooter,
   headerFooterOf,
   isHeaderFooterActive,
   pageDimensions,
@@ -13,7 +15,7 @@ import {
 import { zonesOf, type ZoneName } from "@/model/bands";
 import { describeDelete, isFormattable } from "@/model/edits";
 import { worksheetMarks } from "@/model/marks";
-import { plain } from "@/model/text";
+import { plain, runLines } from "@/model/text";
 import type {
   Band,
   BiText,
@@ -69,6 +71,12 @@ export interface BandEditingHandlers {
   onEditField: (fieldId: string, text: BiText) => void;
   onRemoveField: (fieldId: string) => void;
   onAddField: (bandId: string, zone: ZoneName) => void;
+  /** Selection, so a band field can carry the format toolbar like any other text. */
+  selection?: {
+    isSelected: (fieldId: string) => boolean;
+    onSelect: (fieldId: string) => void;
+    onClear: () => void;
+  };
 }
 import { FormatToolbar } from "./FormatToolbar";
 import { InlineEditable } from "./InlineEditable";
@@ -88,7 +96,19 @@ const MM_TO_PX = 96 / 25.4;
 
 function runSpans(runs: BiText["en"], key: string) {
   return runs.map((runItem, index) => {
-    let content: React.ReactNode = runItem.text;
+    // A hard line break (Shift+Enter, stored as `\n`) becomes a real <br/>. Rendered
+    // as raw text it would collapse to a space, exactly as it does in Word and in the
+    // clipboard HTML — the page has to agree with what exports.
+    const lines = runLines(runItem.text);
+    let content: React.ReactNode =
+      lines.length === 1
+        ? runItem.text
+        : lines.map((line, lineIndex) => (
+            <Fragment key={lineIndex}>
+              {lineIndex > 0 && <br />}
+              {line}
+            </Fragment>
+          ));
     if (runItem.bold) content = <strong>{content}</strong>;
     if (runItem.italic) content = <em>{content}</em>;
     if (runItem.underline) content = <u>{content}</u>;
@@ -199,7 +219,9 @@ const TARGET_NAME: Record<EditTarget["kind"], string> = {
   partAnswer: "Answer",
   subPartAnswer: "Answer",
   layoutText: "Text element",
-  bandField: "Masthead field",
+  // One name for all five band lists — masthead, header, footer and their page-1
+  // variants — because a `bandField` target does not say which one it came from.
+  bandField: "Field",
   labelListCell: "Label row",
 };
 
@@ -638,9 +660,21 @@ function HeaderFooterBand({
    */
   editing?: BandEditingHandlers;
 }) {
-  if (!isHeaderFooterActive(value)) return null;
+  /*
+   * Page 1 may print something different, or nothing at all (§ `HeaderFooter.firstPage`).
+   * Resolved through the same helper the exporter uses, so what is previewed on page 1 is
+   * what Word puts there — the preview used to ignore this entirely, which is why a
+   * header suppressed on page 1 still appeared on the first sheet on screen.
+   */
+  const resolved =
+    pageNumber === 1
+      ? firstPageHeaderFooter(value)
+      : { bands: value.bands ?? [], rule: value.rule, differs: false };
 
-  const bands = value.bands ?? [];
+  if (!value.enabled) return null;
+  if (bandsAreEmpty(resolved.bands)) return null;
+
+  const bands = resolved.bands;
   const body = editing ? (
     <BandEditor
       bands={bands}
@@ -650,6 +684,7 @@ function HeaderFooterBand({
       onEditField={editing.onEditField}
       onRemoveField={editing.onRemoveField}
       onAddField={editing.onAddField}
+      selection={editing.selection}
     />
   ) : (
     bands.map((band) => (
@@ -661,10 +696,10 @@ function HeaderFooterBand({
     <div
       className={`flex items-baseline gap-2 text-xs text-slate-600 ${
         edge === "header"
-          ? value.rule
+          ? resolved.rule
             ? "mb-2 border-b border-slate-300 pb-1"
             : "mb-2"
-          : value.rule
+          : resolved.rule
             ? "mt-2 border-t border-slate-300 pt-1"
             : "mt-2"
       }`}
@@ -1546,6 +1581,31 @@ export function Preview({
   );
 
 
+  /*
+   * Selection for band text, injected into all three band surfaces.
+   *
+   * Built here rather than in `EditorApp` because the selection lives in this
+   * component's state — the host supplies the *mutations* for each band list, while
+   * which field is selected is a preview concern. One object serves the masthead, the
+   * header and the footer, since a `bandField` target is keyed by field id alone.
+   */
+  const bandSelection = {
+    isSelected: (fieldId: string) =>
+      selectedElement?.target.kind === "bandField" &&
+      selectedElement.target.fieldId === fieldId,
+    onSelect: (fieldId: string) => {
+      setSelectedElement({
+        target: { kind: "bandField", fieldId },
+        side: language === "zh" ? "zh" : "en",
+      });
+      setSelectedBlockId(undefined);
+    },
+    onClear: () => setSelectedElement(undefined),
+  };
+
+  const withSelection = (handlers?: BandEditingHandlers) =>
+    handlers ? { ...handlers, selection: bandSelection } : undefined;
+
   const ctx: EditContext | undefined = onEdit
     ? {
         onEdit: (target, next) => {
@@ -1832,6 +1892,7 @@ export function Preview({
             onEditField={bandEditing.onEditField}
             onRemoveField={bandEditing.onRemoveField}
             onAddField={bandEditing.onAddField}
+            selection={bandSelection}
           />
         ) : (
           rendered.bands.map((node, index) => (
@@ -2185,7 +2246,7 @@ export function Preview({
                 pageNumber={pageIndex + 1}
                 pageCount={pages.length}
                 totalMarks={worksheetMarks(worksheet)}
-                editing={headerEditing}
+                editing={withSelection(headerEditing)}
               />
 
               <div className="min-h-0 flex-1">
@@ -2201,7 +2262,7 @@ export function Preview({
                 pageNumber={pageIndex + 1}
                 pageCount={pages.length}
                 totalMarks={worksheetMarks(worksheet)}
-                editing={footerEditing}
+                editing={withSelection(footerEditing)}
               />
             </div>
 

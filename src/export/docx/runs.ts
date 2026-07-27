@@ -1,3 +1,4 @@
+import { runLines } from '@/model/text';
 import type { BiText, FontPair, LanguageMode, RichText, TextFormat } from '@/model/types';
 import { attrs, escapeXml, sanitizeText } from './xml';
 
@@ -57,14 +58,30 @@ export function formatRunOptions(format: TextFormat | undefined): RunOptions {
   };
 }
 
-/** One `w:r`. `xml:space="preserve"` keeps leading/trailing spaces intact. */
+/**
+ * One `w:r`. `xml:space="preserve"` keeps leading/trailing spaces intact.
+ *
+ * A hard line break inside the text (Shift+Enter, stored as `\n` — see `runLines`)
+ * becomes a real `<w:br/>` between two `w:t` runs. Left as a literal newline it would
+ * reach Word inside `<w:t>` and render as a *space*, which is what made Shift+Enter
+ * look like it did nothing once exported.
+ */
 export function run(text: string, fonts: FontPair, options: RunOptions = {}): string {
   const clean = sanitizeText(text);
   if (!clean) return '';
-  return (
-    `<w:r>${runProperties(fonts, options)}` +
-    `<w:t xml:space="preserve">${escapeXml(clean)}</w:t></w:r>`
-  );
+
+  const properties = runProperties(fonts, options);
+  const one = (piece: string) =>
+    `<w:r>${properties}<w:t xml:space="preserve">${escapeXml(piece)}</w:t></w:r>`;
+
+  const lines = runLines(clean);
+  if (lines.length === 1) return one(clean);
+
+  // An empty segment (two breaks in a row) contributes no `w:t` but must still emit
+  // its break, so a deliberate blank line survives rather than collapsing.
+  return lines
+    .map((piece, index) => (index === 0 ? '' : lineBreak()) + (piece ? one(piece) : ''))
+    .join('');
 }
 
 /** Render a RichText array as runs, merging the model's inline attributes. */

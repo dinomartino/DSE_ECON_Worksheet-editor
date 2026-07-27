@@ -1,4 +1,4 @@
-import { plain } from '@/model/text';
+import { plain, runLines } from '@/model/text';
 import type {
   BiText,
   FontPair,
@@ -33,7 +33,10 @@ function richHtml(text: BiText | undefined, language: LanguageMode): string {
   const side = (runs: BiText['en']) =>
     runs
       .map((runItem) => {
-        let html = escapeHtml(runItem.text);
+        // A hard line break (Shift+Enter, stored as `\n`) has to become a real `<br/>`:
+        // a literal newline is whitespace in HTML and would paste as a space.
+        // Escaped first, so the tag inserted here is the only markup in the output.
+        let html = runLines(escapeHtml(runItem.text)).join('<br/>');
         if (runItem.vertAlign === 'superscript') return `<sup>${html}</sup>`;
         if (runItem.vertAlign === 'subscript') return `<sub>${html}</sub>`;
         if (runItem.bold) html = `<b>${html}</b>`;

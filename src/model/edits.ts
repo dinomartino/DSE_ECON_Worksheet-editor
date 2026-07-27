@@ -1,8 +1,10 @@
 import type {
+  Band,
   BandField,
   BiText,
   ContentBlock,
   DiagramBlock,
+  HeaderFooter,
   LayoutElement,
   Question,
   TextFormat,
@@ -206,18 +208,38 @@ export function applyEditTarget(
 
     // Bands live on the worksheet, not in a section, so they get their own walk. Only
     // authored text is writable; a derived total has nowhere to write back to.
-    case 'bandField':
-      return {
-        ...worksheet,
-        bands: (worksheet.bands ?? []).map((band) => ({
+    //
+    // All five band lists are walked — masthead, header, footer and each edge's page-1
+    // variant — because a `bandField` target carries only a field id and the same `Band`
+    // model backs every one of them.
+    case 'bandField': {
+      const patchBands = (bands: Band[] | undefined) =>
+        (bands ?? []).map((band) => ({
           ...band,
           zones: {
             left: patchBandFields(band.zones?.left, target.fieldId, text),
             center: patchBandFields(band.zones?.center, target.fieldId, text),
             right: patchBandFields(band.zones?.right, target.fieldId, text),
           },
-        })),
+        }));
+      const patchEdge = (value: HeaderFooter | undefined): HeaderFooter | undefined =>
+        value
+          ? {
+              ...value,
+              bands: patchBands(value.bands),
+              ...(value.firstPage
+                ? { firstPage: { ...value.firstPage, bands: patchBands(value.firstPage.bands) } }
+                : {}),
+            }
+          : value;
+
+      return {
+        ...worksheet,
+        bands: worksheet.bands ? patchBands(worksheet.bands) : worksheet.bands,
+        header: patchEdge(worksheet.header),
+        footer: patchEdge(worksheet.footer),
       };
+    }
 
     case 'blockCaption':
       return mapAllBlocks(worksheet, target.blockId, (block) =>
@@ -375,20 +397,44 @@ export function applyFormatTarget(
       );
 
     case 'bandField': {
+      /*
+       * Every band list, not just the masthead.
+       *
+       * A `bandField` target names a field by id alone, and the identical `Band` model
+       * backs the masthead, the header, the footer and each of their page-1 variants —
+       * so formatting that searched only `worksheet.bands` silently did nothing when the
+       * selected field lived in a header, which is exactly what "cannot change the text
+       * settings in the header" looked like.
+       */
       const mapFields = (fields: BandField[] | undefined) =>
         (fields ?? []).map((field) =>
           field.id === target.fieldId ? { ...field, format: merge(field.format) } : field,
         );
-      return {
-        ...worksheet,
-        bands: (worksheet.bands ?? []).map((band) => ({
+      const mapBands = (bands: Band[] | undefined) =>
+        (bands ?? []).map((band) => ({
           ...band,
           zones: {
             left: mapFields(band.zones?.left),
             center: mapFields(band.zones?.center),
             right: mapFields(band.zones?.right),
           },
-        })),
+        }));
+      const mapEdge = (value: HeaderFooter | undefined): HeaderFooter | undefined =>
+        value
+          ? {
+              ...value,
+              bands: mapBands(value.bands),
+              ...(value.firstPage
+                ? { firstPage: { ...value.firstPage, bands: mapBands(value.firstPage.bands) } }
+                : {}),
+            }
+          : value;
+
+      return {
+        ...worksheet,
+        bands: worksheet.bands ? mapBands(worksheet.bands) : worksheet.bands,
+        header: mapEdge(worksheet.header),
+        footer: mapEdge(worksheet.footer),
       };
     }
 
@@ -429,10 +475,21 @@ export function formatOfTarget(
         : undefined;
     }
     case 'bandField': {
-      for (const band of worksheet.bands ?? []) {
-        for (const zone of ['left', 'center', 'right'] as const) {
-          const match = band.zones?.[zone]?.find((field) => field.id === target.fieldId);
-          if (match) return match.format;
+      // Searched in the same order `applyFormatTarget` writes, so the toolbar always
+      // reports the state of the field it is about to change.
+      const lists: Array<Band[] | undefined> = [
+        worksheet.bands,
+        worksheet.header?.bands,
+        worksheet.header?.firstPage?.bands,
+        worksheet.footer?.bands,
+        worksheet.footer?.firstPage?.bands,
+      ];
+      for (const bands of lists) {
+        for (const band of bands ?? []) {
+          for (const zone of ['left', 'center', 'right'] as const) {
+            const match = band.zones?.[zone]?.find((field) => field.id === target.fieldId);
+            if (match) return match.format;
+          }
         }
       }
       return undefined;

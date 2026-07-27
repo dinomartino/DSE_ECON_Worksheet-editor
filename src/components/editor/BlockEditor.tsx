@@ -13,7 +13,7 @@ import { DIAGRAM_TEMPLATES } from '@/model/diagramTemplates';
 import { emptyBiText, plain, serializeRuns, parseRuns } from '@/model/text';
 import type { ContentBlock, ImageBlock, TableBlock } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { Button, Eyebrow, IconButton, NumberField } from '@/components/ui';
+import { Button, Eyebrow, GroupHeader, IconButton, NumberField } from '@/components/ui';
 import { Menu } from '@/components/ui/Menu';
 import { BiTextField } from './BiTextField';
 import { DiagramEditor } from './DiagramEditor';
@@ -33,9 +33,11 @@ interface Props {
   blocks: ContentBlock[];
   onChange: (blocks: ContentBlock[]) => void;
   label?: string;
+  /** One-line explanation beside `label`, for a group whose name is not self-evident. */
+  labelHint?: string;
 }
 
-export function BlockEditor({ blocks, onChange, label }: Props) {
+export function BlockEditor({ blocks, onChange, label, labelHint }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
 
   const replace = (index: number, block: ContentBlock) => {
@@ -97,7 +99,7 @@ export function BlockEditor({ blocks, onChange, label }: Props) {
 
   return (
     <div className="space-y-2">
-      {label && <Eyebrow>{label}</Eyebrow>}
+      {label && <GroupHeader title={label} hint={labelHint} />}
 
       {blocks.map((block, index) => {
         if (block.kind === 'paragraph') {

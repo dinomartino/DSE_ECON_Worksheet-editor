@@ -62,6 +62,36 @@ export function parseRuns(source: string): RichText {
   return runs.filter((r) => r.text.length > 0);
 }
 
+/**
+ * Split one run's text into its lines, so a backend can put its own break between them.
+ *
+ * A **hard line break inside a paragraph** (Shift+Enter) is stored as a plain `\n` in
+ * the run's own text rather than as a distinct run kind. That keeps the stored shape
+ * unchanged — `parseRuns` already preserved the character, every saved document is
+ * still valid, and no migration is needed — while making the break explicit at exactly
+ * the point where it has to become markup.
+ *
+ * It has to become markup because a raw newline renders as a *space* in all three
+ * backends: `<w:t>` collapses it, and so does HTML. That was the bug — the editor
+ * accepted Shift+Enter and appeared to work, the model stored it faithfully, and then
+ * every renderer silently flattened it.
+ *
+ * A break is deliberately not a paragraph. Splitting into two paragraphs would consume
+ * a second list number, so "1." followed by a second line would print as "1." and "2."
+ * — the identical reason bilingual stacking uses a soft break inside one paragraph
+ * rather than two paragraphs (§ Bilingual Text Handling).
+ */
+export function runLines(text: string): string[] {
+  // \r\n and a lone \r both normalise, so text pasted from Word or a Windows file
+  // does not arrive as a break the renderers cannot see.
+  return text.replace(/\r\n?/g, '\n').split('\n');
+}
+
+/** Does this rich text contain a hard line break? */
+export function hasLineBreak(runs: RichText | undefined): boolean {
+  return Boolean(runs?.some((run) => /[\n\r]/.test(run.text)));
+}
+
 export function serializeRuns(runs: RichText | undefined): string {
   if (!runs) return '';
   return runs

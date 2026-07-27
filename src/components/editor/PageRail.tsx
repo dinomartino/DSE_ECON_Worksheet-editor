@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import type { PageComposition } from '@/components/preview/Preview';
 import { pageDimensions, pageSetupOf } from '@/model/page';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { TrashIcon } from '@/components/ui/icons';
+import { ChevronRightIcon, TrashIcon } from '@/components/ui/icons';
 import { useModalLayer } from '@/components/ui/modalLayer';
+import { PageThumb } from './PageThumb';
 
 /**
  * The page rail — a scrolling column of sheets under the add rail.
@@ -27,12 +28,26 @@ import { useModalLayer } from '@/components/ui/modalLayer';
  *   so the repagination that immediately follows cannot reflow the pages back
  *   together.
  *
- * The card is a **proportioned sketch, not a live thumbnail**. A true thumbnail would
- * mean rendering every page a third time (the paginator's hidden probe is already the
- * second), and at 96px wide the text would be illegible anyway. Bars standing in for
- * blocks answer the question the rail is actually asked — how full is this page, and
- * which one is the short one — at a fraction of the cost.
+ * The card is a **live thumbnail** — a scaled clone of the real sheet (`PageThumb`).
+ * It was a proportional sketch of grey bars, on the reasoning that a true thumbnail
+ * would mean rendering the document a third time and that the text would be illegible
+ * anyway. The first half of that was avoidable and the second half was answering the
+ * wrong question: legibility is not the point, *recognisability* is. A teacher looks
+ * at this rail to find the page with the diagram on it, and every sketch card looked
+ * like every other one. Cloning the finished DOM buys the real page without the third
+ * render pass the sketch was chosen to avoid.
  */
+
+/**
+ * How long the rail waits after the preview stops mutating before re-cloning.
+ *
+ * The thumbnails trail the page rather than tracking it keystroke by keystroke: a
+ * re-clone during typing would copy the whole document's DOM on every character, and
+ * a page rail that lags a fraction of a second behind the text is what every design
+ * tool does. Structural changes (a new page) arrive through `pages` and are not
+ * debounced by this.
+ */
+const THUMB_SETTLE_MS = 200;
 
 /**
  * The rail's own width, and the card's within it.
@@ -40,8 +55,15 @@ import { useModalLayer } from '@/components/ui/modalLayer';
  * Kept as arithmetic rather than two independent numbers because they have to agree:
  * a card wider than the rail minus its padding is silently clipped, which reads as a
  * rendering bug rather than as a layout choice.
+ *
+ * Sized by what the thumbnail has to *show*, not by what fits. At the previous 104px
+ * a sheet was 80px wide, so a band's three zones were about 26px each — a left field
+ * and a centred one landed close enough together to read as one clump, even though
+ * both sat at exactly the right fraction of the page. The rail's job is telling pages
+ * apart, and a header's shape is one of the things that distinguishes them, so the
+ * zones have to be far enough apart to look like zones.
  */
-const RAIL_WIDTH_PX = 104;
+const RAIL_WIDTH_PX = 152;
 const RAIL_PADDING_PX = 8;
 const CARD_WIDTH_PX = RAIL_WIDTH_PX - RAIL_PADDING_PX * 2 - 8; // Leaves room for the scrollbar.
 
@@ -50,6 +72,7 @@ export function PageRail({
   activeIndex,
   draggingItemId,
   onDropItemOnPage,
+  onToggle,
 }: {
   pages: PageComposition[];
   /** The page currently scrolled into view, highlighted in the rail. */
@@ -61,6 +84,8 @@ export function PageRail({
   draggingItemId?: string;
   /** Send that item to the end of the given page. */
   onDropItemOnPage?: (itemId: string, page: PageComposition) => void;
+  /** Collapse the rail. */
+  onToggle?: () => void;
 }) {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const removeMany = useWorksheetStore((s) => s.removeMany);
@@ -87,6 +112,37 @@ export function PageRail({
   const { width, height } = pageDimensions(pageSetupOf(worksheet));
   const cardHeight = Math.round((CARD_WIDTH_PX * height) / width);
 
+  /*
+   * Re-clone the thumbnails once the preview's DOM settles.
+   *
+   * The rail cannot re-clone from a React dependency, because the thing it mirrors is
+   * the *output* of the preview's own layout — pagination runs in an effect there, so
+   * by the time this component renders the sheets may not hold their final content
+   * yet. Watching the DOM asks the only source that knows.
+   *
+   * Deliberately not scoped to `pages`: an edit that changes a heading rewrites a
+   * sheet without changing the page composition at all, and keying on composition
+   * alone is what would leave a retyped title missing from the rail.
+   */
+  const [revision, setRevision] = useState(0);
+  useEffect(() => {
+    const root = document.getElementById('print-root');
+    if (!root) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const observer = new MutationObserver(() => {
+      clearTimeout(timer);
+      timer = setTimeout(() => setRevision((r) => r + 1), THUMB_SETTLE_MS);
+    });
+    observer.observe(root, { subtree: true, childList: true, characterData: true });
+    // Clone once on mount too — the preview may already be settled when the rail
+    // appears, in which case no mutation is coming to trigger the first paint.
+    timer = setTimeout(() => setRevision((r) => r + 1), THUMB_SETTLE_MS);
+    return () => {
+      observer.disconnect();
+      clearTimeout(timer);
+    };
+  }, []);
+
   // Scroll the real sheet into view. The preview owns the scroll container, so this
   // reaches for the sheet by its published index rather than trying to compute an
   // offset from page height — zoom, margins and the desk padding all affect that, and
@@ -102,13 +158,24 @@ export function PageRail({
   return (
     <>
       <div
-        className="flex shrink-0 flex-col border-r border-line bg-surface"
+        className="group/page-rail flex shrink-0 flex-col border-r border-line bg-surface"
         style={{ width: RAIL_WIDTH_PX }}
         aria-label="Pages"
       >
-        <p className="px-2 pb-1.5 pt-2.5 text-center text-[9px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
-          Pages
-        </p>
+        <div className="flex items-center justify-between px-2 pb-1.5 pt-2.5">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
+            Pages
+          </p>
+          <button
+            type="button"
+            aria-label="Collapse page rail"
+            title="Collapse"
+            onClick={onToggle}
+            className="flex cursor-pointer items-center justify-center rounded-md p-0.5 text-ink-muted opacity-0 transition-all hover:bg-surface-hover hover:text-ink group-hover/page-rail:opacity-100"
+          >
+            <ChevronRightIcon size={12} className="rotate-180" />
+          </button>
+        </div>
         <div
           className="scroll-slim min-h-0 flex-1 overflow-y-auto pb-3"
           style={{ paddingLeft: RAIL_PADDING_PX, paddingRight: RAIL_PADDING_PX }}
@@ -191,7 +258,7 @@ export function PageRail({
                       if (!source || !target) return;
                       movePage(source.flowIds, target.flowIds, position);
                     }}
-                    className={`group/page relative block cursor-pointer rounded-[3px] border bg-white transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                    className={`group/page relative block cursor-pointer overflow-hidden rounded-[3px] border bg-white transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                       itemOverIndex === index
                         ? // The card the question would land on, called out clearly:
                           // the drop is invisible otherwise, since the rail shows a
@@ -205,7 +272,12 @@ export function PageRail({
                     }`}
                     style={{ width: CARD_WIDTH_PX, height: cardHeight }}
                   >
-                    <PageSketch page={page} />
+                    <PageThumb
+                      pageIndex={index}
+                      width={CARD_WIDTH_PX}
+                      height={cardHeight}
+                      revision={revision}
+                    />
 
                     {/* Deleting is destructive and permanent-feeling, so it stays
                         hidden until the page is hovered — the rail's resting state is
@@ -255,44 +327,6 @@ export function PageRail({
         />
       )}
     </>
-  );
-}
-
-/**
- * A page's contents as proportional bars.
- *
- * Each flow item becomes one bar, so the sketch shows how full a sheet is and where
- * its content sits — enough to tell page 4 from page 5 at a glance, which is all the
- * rail is asked for. Widths are varied deterministically from the id so the sketch
- * looks like text rather than a bar chart, and stays *stable* across re-renders: a
- * sketch that reshuffled on every keystroke would read as the page changing.
- */
-function PageSketch({ page }: { page: PageComposition }) {
-  if (page.structuralOnly) {
-    return (
-      <span className="flex h-full w-full flex-col gap-[3px] p-1.5">
-        <span className="h-1 w-2/3 self-center rounded-full bg-ink-subtle/40" />
-        <span className="h-[3px] w-1/2 self-center rounded-full bg-ink-subtle/25" />
-      </span>
-    );
-  }
-
-  return (
-    <span className="flex h-full w-full flex-col gap-[3px] overflow-hidden p-1.5">
-      {page.flowIds.slice(0, 14).map((id) => {
-        // A cheap stable hash of the id — same id, same width, every render.
-        let hash = 0;
-        for (let i = 0; i < id.length; i += 1) hash = (hash * 31 + id.charCodeAt(i)) | 0;
-        const width = 55 + (Math.abs(hash) % 45);
-        return (
-          <span
-            key={id}
-            className="h-[3px] shrink-0 rounded-full bg-ink-subtle/30"
-            style={{ width: `${width}%` }}
-          />
-        );
-      })}
-    </span>
   );
 }
 

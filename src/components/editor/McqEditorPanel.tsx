@@ -6,7 +6,7 @@ import type { BiText, McqOptionLayout, McqQuestion } from '@/model/types';
 import { resolveOptionLayout, suggestOptionLayout } from '@/registry/mcq';
 import type { EditorPanelProps } from '@/registry/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { Button, Eyebrow, IconButton, NumberField, Segmented } from '@/components/ui';
+import { Button, GroupHeader, IconButton, NumberField, Segmented } from '@/components/ui';
 import { BiTextField } from './BiTextField';
 import { BlockEditor } from './BlockEditor';
 
@@ -29,13 +29,18 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
 
   return (
     <div className="space-y-5">
-      <BlockEditor label="Stem" blocks={question.blocks} onChange={(blocks) => onChange({ blocks })} />
+      <BlockEditor
+        label="Stem"
+        labelHint="what the student reads"
+        blocks={question.blocks}
+        onChange={(blocks) => onChange({ blocks })}
+      />
 
       <section className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Eyebrow>Statements</Eyebrow>
-          <span className="text-[10px] text-ink-subtle">combination MCQ · optional</span>
-          <span className="ml-auto">
+        <GroupHeader
+          title="Statements"
+          hint="combination MCQ · optional"
+          action={
             <Button
               size="sm"
               variant="subtle"
@@ -43,8 +48,8 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
             >
               + Statement
             </Button>
-          </span>
-        </div>
+          }
+        />
         {statements.map((statement, index) => (
           <div key={index} className="group/row flex items-start gap-1.5">
             <span className="mt-1.5 w-6 shrink-0 text-[11px] font-medium tabular-nums text-ink-subtle">
@@ -87,12 +92,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
       </section>
 
       <section className="space-y-2">
-        <div className="flex items-baseline gap-2">
-          <Eyebrow>Options</Eyebrow>
-          <span className="text-[10px] text-ink-subtle">
-            select the correct answer — teacher version only
-          </span>
-        </div>
+        <GroupHeader title="Options" hint="pick the correct answer" />
 
         <div className="flex flex-wrap items-center gap-2">
           <Segmented<McqOptionLayout>

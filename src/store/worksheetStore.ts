@@ -20,6 +20,7 @@ import {
 import { createSection, createWorksheet, newId } from '@/model/factories';
 import {
   flowOf,
+  moveAcrossSections,
   moveInFlow,
   moveRunInFlow,
   nudgeInFlow,
@@ -173,7 +174,20 @@ interface WorksheetState {
   ) => void;
   /** Replace a header/footer's rows wholesale — how a preset is applied. */
   setHeaderFooterBands: (which: 'header' | 'footer', bands: Band[]) => void;
+  /**
+   * Choose what page 1 does (§ `HeaderFooter.firstPage`).
+   *
+   * One action for all three states rather than three, because they are mutually
+   * exclusive: reaching any one of them has to clear the other two, and separate setters
+   * would let a document end up both blank on page 1 *and* carrying first-page rows.
+   */
+  setFirstPageMode: (which: 'header' | 'footer', mode: FirstPageMode) => void;
+  /** Replace the page-1 rows — how a first-page preset is applied. */
+  setFirstPageBands: (which: 'header' | 'footer', bands: Band[]) => void;
 }
+
+/** What page 1 prints, as a single closed choice. */
+export type FirstPageMode = 'same' | 'blank' | 'different';
 
 /** Apply a patch to whichever section owns `questionId`. */
 function mapQuestion(
@@ -253,11 +267,25 @@ function patchHeaderFooterBand(
     worksheet[which],
     which === 'header' ? defaultHeader : defaultFooter,
   );
+
+  /*
+   * Both band lists are searched, because a page-1 variant is edited **on page 1** by
+   * the very same `BandEditor` — a click there reports only a band id and a field id, so
+   * addressing only `bands` would silently drop every edit made to the first-page rows.
+   * Only the list that actually holds the match is rewritten, so an id that appears in
+   * neither leaves the document untouched rather than clearing a list.
+   */
+  const bands = current.bands.map((band) => (match(band) ? patch(band) : band));
+  const firstBands = current.firstPage?.bands.map((band) => (match(band) ? patch(band) : band));
+
   return {
     ...worksheet,
     [which]: {
       ...current,
-      bands: current.bands.map((band) => (match(band) ? patch(band) : band)),
+      bands,
+      ...(current.firstPage && firstBands
+        ? { firstPage: { ...current.firstPage, bands: firstBands } }
+        : {}),
     },
   };
 }
@@ -272,7 +300,7 @@ function bandHolds(band: Band, fieldId: string): boolean {
 
 export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   worksheet: createWorksheet(),
-  mode: { language: 'bilingual', version: 'student' },
+  mode: { language: 'en', version: 'student' },
   dirty: false,
   past: [],
   future: [],
@@ -579,15 +607,51 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
       ),
     })),
 
+  /**
+   * Move an item next to `targetId`, in this section or into another one.
+   *
+   * `sectionId` names where the *target* is, not where the item came from, so a drop is
+   * described by where it landed. When the item lives elsewhere this is a cross-section
+   * move: both sections are rewritten in one commit, which is what makes dragging a
+   * divider — or a question — from Section A into Section B work at all. Previously the
+   * whole operation was scoped to a single section, so a layout element could never
+   * leave its own, and a question could only cross when the thing it was dropped on
+   * happened to be another question.
+   */
   reorderFlowItem: (sectionId, id, targetId, position = 'before') =>
-    get().commit((draft) => ({
-      ...draft,
-      sections: draft.sections.map((section) =>
-        section.id === sectionId
-          ? applyFlowMove(section, moveInFlow(section, id, targetId, position))
-          : section,
-      ),
-    })),
+    get().commit((draft) => {
+      const target = draft.sections.find((section) => section.id === sectionId);
+      const home = draft.sections.find(
+        (section) =>
+          section.questions.some((question) => question.id === id) ||
+          (section.layout ?? []).some((element) => element.id === id),
+      );
+      if (!target || !home) return draft;
+
+      if (home.id === target.id) {
+        return {
+          ...draft,
+          sections: draft.sections.map((section) =>
+            section.id === sectionId
+              ? applyFlowMove(section, moveInFlow(section, id, targetId, position))
+              : section,
+          ),
+        };
+      }
+
+      const moved = moveAcrossSections(home, target, id, targetId, position);
+      if (!moved) return draft;
+      return {
+        ...draft,
+        sections: draft.sections.map((section) =>
+          section.id === moved.source.id
+            ? moved.source
+            : section.id === moved.target.id
+              ? moved.target
+              : section,
+        ),
+      };
+    }),
 
   /**
    * Move a whole page's worth of items, as dragged in the page rail.
@@ -765,7 +829,76 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
       );
       return { ...draft, [which]: { ...current, enabled: true, bands } };
     }),
+
+  setFirstPageMode: (which, mode) =>
+    get().commit((draft) => {
+      const current = headerFooterOf(
+        draft[which],
+        which === 'header' ? defaultHeader : defaultFooter,
+      );
+
+      if (mode === 'same' || mode === 'blank') {
+        // `firstPage` is dropped rather than emptied: an empty-but-present variant would
+        // read as "page 1 deliberately prints nothing", which is the *other* state.
+        const rest = { ...current };
+        delete rest.firstPage;
+        return { ...draft, [which]: { ...rest, showOnFirstPage: mode === 'same' } };
+      }
+
+      // "Different" starts from a *copy* of the running rows rather than an empty list:
+      // a teacher choosing it almost always wants "like the others, but with the school
+      // name" — starting blank would make them rebuild the header they already have.
+      // Ids are regenerated so the two lists never share a band id, which would make
+      // `patchHeaderFooterBand` edit both at once.
+      return {
+        ...draft,
+        [which]: {
+          ...current,
+          enabled: true,
+          showOnFirstPage: true,
+          firstPage: current.firstPage ?? { bands: current.bands.map(cloneBand) },
+        },
+      };
+    }),
+
+  setFirstPageBands: (which, bands) =>
+    get().commit((draft) => {
+      const current = headerFooterOf(
+        draft[which],
+        which === 'header' ? defaultHeader : defaultFooter,
+      );
+      return {
+        ...draft,
+        [which]: {
+          ...current,
+          enabled: true,
+          firstPage: { ...(current.firstPage ?? {}), bands },
+        },
+      };
+    }),
 }));
+
+/**
+ * Copy a band with fresh ids.
+ *
+ * The page-1 list must not share a band or field id with the running list: both are
+ * searched by id when a field is edited on the page, so a shared id would apply one
+ * keystroke to both lists at once.
+ */
+function cloneBand(band: Band): Band {
+  const zones = band.zones ?? { left: [], center: [], right: [] };
+  const copyZone = (fields: BandField[] | undefined) =>
+    (fields ?? []).map((field) => ({ ...field, id: newId() }));
+  return {
+    ...band,
+    id: newId(),
+    zones: {
+      left: copyZone(zones.left),
+      center: copyZone(zones.center),
+      right: copyZone(zones.right),
+    },
+  };
+}
 
 /**
  * Apply a flow move to a section.

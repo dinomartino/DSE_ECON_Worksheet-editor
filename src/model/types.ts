@@ -380,6 +380,29 @@ export interface HeaderFooter {
   rule?: boolean;
   /** When false, the first page omits it (title pages usually should). */
   showOnFirstPage?: boolean;
+  /**
+   * Rows printed on page 1 *instead of* `bands`.
+   *
+   * Page 1 of a real exam paper rarely carries the same header as page 2: the cover
+   * states the school, the paper and a "Name:____" rule, while continuation pages carry
+   * a running title and a page number. Word models exactly this with `w:titlePg` plus a
+   * `w:type="first"` part, so this maps onto one flag and one extra part rather than a
+   * second section.
+   *
+   * Three states, not two, which is why this is a separate field rather than a wider
+   * reading of `showOnFirstPage`:
+   *   - absent, `showOnFirstPage !== false` → page 1 shows `bands` (the default);
+   *   - `showOnFirstPage: false`            → page 1 shows nothing;
+   *   - `firstPage` present                 → page 1 shows *these* rows.
+   *
+   * Absent means "behave exactly as before", so every saved document keeps its output
+   * and no migration is needed.
+   */
+  firstPage?: {
+    bands: Band[];
+    /** Rule on the page-1 variant. Falls back to the main `rule` when absent. */
+    rule?: boolean;
+  };
 }
 
 export interface Worksheet {

@@ -956,6 +956,144 @@ describe('margin presets and custom margins export verbatim', () => {
     );
   });
 
+  it('applies a band field’s own formatting in the exported header', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const field = createTextField(bi('Big bold header', '大字'));
+    field.format = { fontSize: 18, bold: true, color: 'C00000' };
+    worksheet.header = { enabled: true, bands: [createBand({ center: [field] })] };
+
+    const zip = await JSZip.loadAsync(await exportDocxBuffer(worksheet, STUDENT_BI));
+    const header = await zip.file('word/header1.xml')!.async('string');
+
+    // Word stores half-points, so 18pt is w:sz 36.
+    expect(header).toContain('<w:sz w:val="36"/>');
+    expect(header).toContain('<w:b/>');
+    expect(header).toContain('<w:color w:val="C00000"/>');
+    expect(header).toContain('Big bold header');
+  });
+
+  it('formats a field in the footer and the masthead the same way', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const footField = createTextField(bi('Small print', '小字'));
+    footField.format = { fontSize: 8, italic: true };
+    worksheet.footer = { enabled: true, bands: [createBand({ left: [footField] })] };
+
+    const zip = await JSZip.loadAsync(await exportDocxBuffer(worksheet, STUDENT_BI));
+    const footer = await zip.file('word/footer1.xml')!.async('string');
+    expect(footer).toContain('<w:sz w:val="16"/>');
+    expect(footer).toContain('<w:i/>');
+  });
+
+  it('gives page 1 its own header part when firstPage rows are set', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    worksheet.header = {
+      enabled: true,
+      rule: true,
+      bands: [createBand({ left: [createTextField(bi('Running header', '頁眉'))] })],
+      firstPage: {
+        bands: [createBand({ center: [createTextField(bi('Cover page only', '封面'))] })],
+      },
+    };
+
+    const zip = await JSZip.loadAsync(await exportDocxBuffer(worksheet, STUDENT_BI));
+    const document = await zip.file('word/document.xml')!.async('string');
+
+    // w:titlePg plus a first-type reference is how Word models "page 1 differs".
+    expect(document).toContain('<w:titlePg/>');
+    expect(document).toContain('<w:headerReference w:type="first"');
+    expect(document).toContain('<w:headerReference w:type="default"');
+
+    const running = await zip.file('word/header1.xml')!.async('string');
+    const first = await zip.file('word/header2.xml')!.async('string');
+    expect(running).toContain('Running header');
+    expect(running).not.toContain('Cover page only');
+    expect(first).toContain('Cover page only');
+    expect(first).not.toContain('Running header');
+  });
+
+  it('emits a header part when only page 1 carries rows', async () => {
+    // A cover-only header: nothing on continuation pages, a name rule on page 1. The
+    // running bands are empty, so testing only those would drop the part entirely.
+    const worksheet = buildAcceptanceWorksheet();
+    worksheet.header = {
+      enabled: true,
+      bands: [],
+      firstPage: { bands: [createBand({ right: [createFillInField(bi('Name:', '姓名：'))] })] },
+    };
+
+    const zip = await JSZip.loadAsync(await exportDocxBuffer(worksheet, STUDENT_BI));
+    const document = await zip.file('word/document.xml')!.async('string');
+    expect(document).toContain('<w:titlePg/>');
+    expect(zip.file('word/header2.xml')).toBeTruthy();
+    expect(await zip.file('word/header2.xml')!.async('string')).toContain('Name:');
+  });
+
+  it('still blanks page 1 when showOnFirstPage is false', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    worksheet.header = {
+      enabled: true,
+      bands: [createBand({ left: [createTextField(bi('Every page', '每頁'))] })],
+      showOnFirstPage: false,
+    };
+
+    const zip = await JSZip.loadAsync(await exportDocxBuffer(worksheet, STUDENT_BI));
+    const document = await zip.file('word/document.xml')!.async('string');
+    expect(document).toContain('<w:titlePg/>');
+
+    const first = await zip.file('word/header2.xml')!.async('string');
+    expect(first).not.toContain('Every page');
+  });
+
+  it('leaves an unchanged first page with no titlePg at all', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    worksheet.header = {
+      enabled: true,
+      bands: [createBand({ left: [createTextField(bi('Every page', '每頁'))] })],
+    };
+
+    const zip = await JSZip.loadAsync(await exportDocxBuffer(worksheet, STUDENT_BI));
+    const document = await zip.file('word/document.xml')!.async('string');
+    expect(document).not.toContain('<w:titlePg/>');
+    expect(document).not.toContain('w:type="first"');
+  });
+
+  it('exports a hard line break as w:br inside one paragraph, not as a new paragraph', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const question = worksheet.sections[0].questions[0];
+    const stem = question.blocks.find((block) => block.kind === 'paragraph');
+    if (!stem || stem.kind !== 'paragraph') throw new Error('fixture has no stem paragraph');
+    stem.text = bi('Before break\nAfter break', '斷行前\n斷行後');
+
+    const zip = await JSZip.loadAsync(await exportDocxBuffer(worksheet, STUDENT_BI));
+    const document = await zip.file('word/document.xml')!.async('string');
+
+    // The two halves are separate w:t runs joined by a break…
+    expect(document).toContain('<w:t xml:space="preserve">Before break</w:t>');
+    expect(document).toContain('<w:t xml:space="preserve">After break</w:t>');
+    expect(document).toContain('<w:t xml:space="preserve">斷行前</w:t>');
+    // …and no raw newline is left inside a w:t, which Word would render as a space.
+    expect(document).not.toMatch(/<w:t[^>]*>[^<]*\n[^<]*<\/w:t>/);
+  });
+
+  it('keeps a broken line in the same list item, so it takes one number', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const question = worksheet.sections[0].questions[0];
+    const stem = question.blocks.find((block) => block.kind === 'paragraph');
+    if (!stem || stem.kind !== 'paragraph') throw new Error('fixture has no stem paragraph');
+    stem.text = bi('Line one\nLine two', '');
+
+    const zip = await JSZip.loadAsync(await exportDocxBuffer(worksheet, STUDENT_BI));
+    const document = await zip.file('word/document.xml')!.async('string');
+
+    // Both halves live inside a single <w:p>: splitting into two paragraphs would
+    // consume a second list number and print "1." then "2." for one question.
+    const paragraphs = document.split('<w:p>');
+    const owner = paragraphs.find((p) => p.includes('Line one'));
+    expect(owner).toBeDefined();
+    expect(owner).toContain('Line two');
+    expect(owner).toContain('<w:br/>');
+  });
+
   it('writes an arbitrary custom margin, so the typed value is what prints', async () => {
     const worksheet = buildAcceptanceWorksheet();
     // 3.2 cm top, as the custom field would store it.

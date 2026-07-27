@@ -11,7 +11,7 @@ import { requireQuestionType } from '@/registry';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { downloadWorksheetFile, readWorksheetFile, triggerDownload } from '@/storage';
 import { Button, IconButton, Pill, Segmented } from '@/components/ui';
-import { DownloadIcon, PdfIcon, RedoIcon, UndoIcon } from '@/components/ui/icons';
+import { DownloadIcon, PdfIcon, RedoIcon, SettingsIcon, UndoIcon } from '@/components/ui/icons';
 import { Menu } from '@/components/ui/Menu';
 
 /**
@@ -22,7 +22,7 @@ import { Menu } from '@/components/ui/Menu';
  * in two rows, so "Export .docx" was as easy to miss as "Open .json"; export is the
  * point of the app and is now the only filled button on screen.
  */
-export function Toolbar() {
+export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const mode = useWorksheetStore((s) => s.mode);
   const setMode = useWorksheetStore((s) => s.setMode);
@@ -182,6 +182,14 @@ export function Toolbar() {
             <RedoIcon />
           </IconButton>
         </span>
+
+        {/* Page setup, title, header and footer. On the bar rather than in the sidebar
+            because they are decisions about the document as a whole, made once — the
+            sidebar is for the content being worked on now. */}
+        <Button variant="subtle" onClick={onOpenSettings} title="Title, paper, margins, header and footer">
+          <SettingsIcon size={15} />
+          <span className="hidden md:inline">Setup</span>
+        </Button>
 
         {/* Status sits with the document, not with the actions. */}
         <span className="ml-auto flex items-center gap-2 text-[11px] text-ink-muted">

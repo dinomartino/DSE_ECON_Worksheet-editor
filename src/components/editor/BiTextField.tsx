@@ -25,6 +25,13 @@ interface Props {
   rows?: number;
   placeholderEn?: string;
   placeholderZh?: string;
+  /**
+   * Accessible name when the visible label lives outside this component — a field
+   * inside a settings `Field` group already shows its name above, so repeating it
+   * would print the word twice. Without this the textarea is announced as bare
+   * "English", which is the same name every other bilingual field on screen has.
+   */
+  ariaLabel?: string;
 }
 
 const INPUT_CLASS =
@@ -59,7 +66,9 @@ export function BiTextField({
   rows = 2,
   placeholderEn = 'English…',
   placeholderZh = '中文…',
+  ariaLabel,
 }: Props) {
+  const name = ariaLabel ?? label;
   const id = useId();
   const language = useWorksheetStore((s) => s.mode.language);
 
@@ -111,7 +120,7 @@ export function BiTextField({
               lang="en"
               value={enText}
               placeholder={placeholderEn}
-              aria-label={label ? `${label} (English)` : 'English'}
+              aria-label={name ? `${name} (English)` : 'English'}
               // Patching keeps the hidden language's runs intact (§5.2).
               onChange={(event) => onChange({ ...value, en: parseRuns(event.target.value) })}
             />
@@ -128,7 +137,7 @@ export function BiTextField({
               lang="zh-HK"
               value={zhText}
               placeholder={placeholderZh}
-              aria-label={label ? `${label} (中文)` : '中文'}
+              aria-label={name ? `${name} (中文)` : '中文'}
               onChange={(event) => onChange({ ...value, zh: parseRuns(event.target.value) })}
             />
             {bothVisible && tag('中')}

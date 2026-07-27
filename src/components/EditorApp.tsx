@@ -5,9 +5,10 @@ import { Preview, type PageComposition } from '@/components/preview/Preview';
 import { AddRail } from '@/components/editor/AddRail';
 import { PageRail } from '@/components/editor/PageRail';
 import { Sidebar } from '@/components/editor/Sidebar';
+import { DocumentSettings } from '@/components/editor/DocumentSettings';
 import { Toolbar } from '@/components/editor/Toolbar';
 import { IconButton } from '@/components/ui';
-import { CloseIcon } from '@/components/ui/icons';
+import { ChevronRightIcon, CloseIcon } from '@/components/ui/icons';
 import { createTextField, type ZoneName } from '@/model/bands';
 import { DiagramCanvas } from '@/components/editor/DiagramCanvas';
 import { findDiagramBlock, formatOfTarget, targetQuestionId } from '@/model/edits';
@@ -32,7 +33,6 @@ export function EditorApp() {
   const replaceBlock = useWorksheetStore((s) => s.replaceBlock);
   const formatTarget = useWorksheetStore((s) => s.formatTarget);
   const resizeBlock = useWorksheetStore((s) => s.resizeBlock);
-  const reorderQuestion = useWorksheetStore((s) => s.reorderQuestion);
   const reorderFlowItem = useWorksheetStore((s) => s.reorderFlowItem);
   const moveBandField = useWorksheetStore((s) => s.moveBandField);
   const updateBandField = useWorksheetStore((s) => s.updateBandField);
@@ -54,6 +54,8 @@ export function EditorApp() {
   // How the flow landed on sheets, as reported by the paginator. Pages exist nowhere
   // in the model — they are measured — so the rail can only be told, never derive it.
   const [pages, setPages] = useState<PageComposition[]>([]);
+  /** Whether the page rail (left-side page thumbnails) is expanded. */
+  const [pageRailOpen, setPageRailOpen] = useState(true);
   /**
    * The diagram opened by double-clicking it on the page, held by **id**.
    *
@@ -66,6 +68,15 @@ export function EditorApp() {
     ? findDiagramBlock(worksheet, drawingBlockId)
     : undefined;
   const [activePage, setActivePage] = useState(0);
+  /**
+   * Whether the document-settings dialog is open.
+   *
+   * Held here rather than in the toolbar or the sidebar because both open it — the
+   * toolbar for "set up this document", the sidebar's Settings button for "change what
+   * this worksheet is called" — and a dialog owned by either would be unreachable from
+   * the other.
+   */
+  const [settingsOpen, setSettingsOpen] = useState(false);
   // The item being dragged on the page, mirrored here so the rail can receive it.
   const [draggingItemId, setDraggingItemId] = useState<string | undefined>();
 
@@ -161,23 +172,20 @@ export function EditorApp() {
     [moveBandField, updateBandField, removeBandField, addBandField],
   );
 
-  // Dragging on the page. A question dragged in from another section has to move
-  // between the two `questions` arrays, which only `reorderQuestion` does; anything
-  // already in this section is a pure flow move.
+  /*
+   * Dragging on the page.
+   *
+   * One call for every case. `reorderFlowItem` now resolves the item's home section
+   * itself and moves it across when that differs from the drop target's, so questions
+   * *and* layout elements cross sections by the same route. It previously forked to
+   * `reorderQuestion` for a cross-section drag, which could only move questions and
+   * ignored `position` — so a divider dragged into another section silently did nothing.
+   */
   const handleReorder = useCallback(
     (sectionId: string, id: string, targetId: string, position: 'before' | 'after') => {
-      const home = worksheet.sections.find(
-        (section) =>
-          section.questions.some((q) => q.id === id) ||
-          (section.layout ?? []).some((element) => element.id === id),
-      );
-      if (home && home.id !== sectionId) {
-        reorderQuestion(id, targetId);
-        return;
-      }
       reorderFlowItem(sectionId, id, targetId, position);
     },
-    [worksheet, reorderQuestion, reorderFlowItem],
+    [reorderFlowItem],
   );
 
   /*
@@ -296,7 +304,7 @@ export function EditorApp() {
 
   return (
     <div className="flex h-screen flex-col bg-surface">
-      <Toolbar />
+      <Toolbar onOpenSettings={() => setSettingsOpen(true)} />
       {/* Three columns: the add rail (how content gets on the page), the page itself
           (where it is edited), and the sidebar (structure and off-page fields). The
           rail sits on the left because that is where every creative tool puts its
@@ -308,12 +316,51 @@ export function EditorApp() {
             full-height columns, and stacking them would give each half a screen —
             enough for neither a long insert menu nor a long document. */}
         {pages.length > 1 && (
-          <PageRail
-            pages={pages}
-            activeIndex={activePage}
-            draggingItemId={draggingItemId}
-            onDropItemOnPage={handleDropItemOnPage}
-          />
+          <div
+            className="relative flex shrink-0 overflow-hidden border-r border-line bg-surface transition-[width] duration-200 ease-in-out"
+            style={{ width: pageRailOpen ? 152 : 28 }}
+          >
+            <div
+              className="flex shrink-0 transition-opacity duration-150 ease-in-out"
+              style={{
+                width: 152,
+                minWidth: 152,
+                opacity: pageRailOpen ? 1 : 0,
+                // The content fades out before the rail finishes narrowing (opacity
+                // duration < width duration) so nothing is left snapping into the clip
+                // edge — by the time the width animation reaches 28px the content has
+                // already disappeared rather than being cut off mid-fade.
+                transitionDelay: pageRailOpen ? '50ms' : '0ms',
+                pointerEvents: pageRailOpen ? 'auto' : 'none',
+              }}
+            >
+              <PageRail
+                pages={pages}
+                activeIndex={activePage}
+                draggingItemId={draggingItemId}
+                onDropItemOnPage={handleDropItemOnPage}
+                onToggle={() => setPageRailOpen(false)}
+              />
+            </div>
+            <div
+              className="absolute inset-0 flex items-start justify-center pt-3 transition-opacity duration-150 ease-in-out"
+              style={{
+                opacity: pageRailOpen ? 0 : 1,
+                transitionDelay: pageRailOpen ? '0ms' : '100ms',
+                pointerEvents: pageRailOpen ? 'none' : 'auto',
+              }}
+            >
+              <button
+                type="button"
+                aria-label="Show page rail"
+                title="Show page rail"
+                onClick={() => setPageRailOpen(true)}
+                className="flex cursor-pointer items-center justify-center rounded-lg p-1 text-ink-muted hover:bg-surface-hover hover:text-ink transition-colors"
+              >
+                <ChevronRightIcon size={14} />
+              </button>
+            </div>
+          </div>
         )}
         {/* `pt-14` rather than `pt-6`: the format toolbar docks inside the top of this
             scroller, and the reserved band is what keeps it off the paper instead of
@@ -350,8 +397,10 @@ export function EditorApp() {
             onDragItemChange={setDraggingItemId}
           />
         </main>
-        <Sidebar />
+        <Sidebar onOpenSettings={() => setSettingsOpen(true)} />
       </div>
+
+      {settingsOpen && <DocumentSettings onClose={() => setSettingsOpen(false)} />}
 
       {/* The how-to-edit hint. It was a grey line of text pinned above the page, which
           pushed the document down and read as a disclaimer. As a floating pill it sits

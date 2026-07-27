@@ -4,6 +4,7 @@ import {
   createPageBreakElement,
   createSpacerElement,
   flowOf,
+  moveAcrossSections,
   moveInFlow,
   moveRunInFlow,
   nudgeInFlow,
@@ -257,5 +258,98 @@ describe('moveRunInFlow', () => {
       'after',
     );
     expect(moved.questions).toHaveLength(4);
+  });
+});
+
+/**
+ * Moving between sections.
+ *
+ * The cross-section counterpart of `moveInFlow`. Both sections have to change in one
+ * step, and *which* list the item travels in follows from what it is — the flow
+ * invariant again: `questions` owns question order, `layout` owns element existence.
+ */
+describe('moveAcrossSections', () => {
+  it('moves a question into another section, next to a question there', () => {
+    const from = sectionWith(2);
+    const to = sectionWith(2);
+    const moving = from.questions[0].id;
+    const anchor = to.questions[1].id;
+
+    const result = moveAcrossSections(from, to, moving, anchor, 'before')!;
+
+    expect(result.source.questions.map((q) => q.id)).not.toContain(moving);
+    expect(result.target.questions.map((q) => q.id)).toEqual([
+      to.questions[0].id,
+      moving,
+      to.questions[1].id,
+    ]);
+  });
+
+  it('moves a layout element into another section — impossible before', () => {
+    const from = sectionWith(1);
+    const divider = createDividerElement();
+    from.layout = [divider];
+    from.flow = [
+      { type: 'question', id: from.questions[0].id },
+      { type: 'layout', id: divider.id },
+    ];
+    const to = sectionWith(2);
+
+    const result = moveAcrossSections(from, to, divider.id, to.questions[0].id, 'before')!;
+
+    expect((result.source.layout ?? []).map((e) => e.id)).not.toContain(divider.id);
+    expect((result.target.layout ?? []).map((e) => e.id)).toContain(divider.id);
+    expect(resolveFlow(result.target).map((i) => i.id)[0]).toBe(divider.id);
+    // It leaves the source's flow too, so nothing dangles.
+    expect((result.source.flow ?? []).map((e) => e.id)).not.toContain(divider.id);
+  });
+
+  it('lands a question next to a layout element in the other section', () => {
+    // The case the old code could not express: crossing sections only worked when the
+    // drop target happened to be another question.
+    const from = sectionWith(2);
+    const to = sectionWith(1);
+    const divider = createDividerElement();
+    to.layout = [divider];
+    to.flow = [
+      { type: 'question', id: to.questions[0].id },
+      { type: 'layout', id: divider.id },
+    ];
+
+    const moving = from.questions[1].id;
+    const result = moveAcrossSections(from, to, moving, divider.id, 'after')!;
+
+    expect(resolveFlow(result.target).map((i) => i.id)).toEqual([
+      to.questions[0].id,
+      divider.id,
+      moving,
+    ]);
+    expect(result.target.questions.map((q) => q.id)).toEqual([to.questions[0].id, moving]);
+  });
+
+  it('honours before/after, so a drop lands on the edge the pointer chose', () => {
+    const from = sectionWith(1);
+    const to = sectionWith(2);
+    const moving = from.questions[0].id;
+
+    const after = moveAcrossSections(from, to, moving, to.questions[0].id, 'after')!;
+    expect(after.target.questions.map((q) => q.id)).toEqual([
+      to.questions[0].id,
+      moving,
+      to.questions[1].id,
+    ]);
+  });
+
+  it('returns undefined for a move within one section, so the caller uses moveInFlow', () => {
+    const section = sectionWith(2);
+    expect(
+      moveAcrossSections(section, section, section.questions[0].id, section.questions[1].id),
+    ).toBeUndefined();
+  });
+
+  it('returns undefined when the item is not in the source at all', () => {
+    const from = sectionWith(1);
+    const to = sectionWith(1);
+    expect(moveAcrossSections(from, to, 'ghost', to.questions[0].id)).toBeUndefined();
   });
 });

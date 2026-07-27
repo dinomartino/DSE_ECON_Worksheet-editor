@@ -28,6 +28,19 @@ interface Props {
   onEditField: (fieldId: string, text: BiText) => void;
   onRemoveField: (fieldId: string) => void;
   onAddField: (bandId: string, zone: ZoneName) => void;
+  /**
+   * Selection, so band text gets the format toolbar every other text element has.
+   *
+   * Without it a header field could be *typed into* but never *selected*, and the
+   * toolbar only appears for a selection — which is why header text was the one text on
+   * the page whose size, weight and colour could not be changed. The model always
+   * supported it (`isFormattable` accepts `bandField`); nothing emitted the target.
+   */
+  selection?: {
+    isSelected: (fieldId: string) => boolean;
+    onSelect: (fieldId: string) => void;
+    onClear: () => void;
+  };
 }
 
 const ALIGN: Record<ZoneName, string> = {
@@ -44,6 +57,7 @@ export function BandEditor({
   onEditField,
   onRemoveField,
   onAddField,
+  selection,
 }: Props) {
   // Transient drag state; never committed, so it can't reach an undo entry.
   const [dragging, setDragging] = useState<{ bandId: string; fieldId: string } | undefined>();
@@ -123,10 +137,18 @@ export function BandEditor({
                       className={`group/field inline-flex cursor-grab items-baseline active:cursor-grabbing ${
                         dragging?.fieldId === field.id ? 'opacity-40' : ''
                       }`}
+                      // Every `TextFormat` property the toolbar can set, not just three:
+                      // an underline or a colour that applied in the export but not on
+                      // the page would break the rule that the preview is the document.
                       style={{
                         ...(field.format?.fontSize ? { fontSize: `${field.format.fontSize}pt` } : {}),
                         ...(field.format?.bold ? { fontWeight: 700 } : {}),
                         ...(field.format?.italic ? { fontStyle: 'italic' } : {}),
+                        ...(field.format?.underline ? { textDecoration: 'underline' } : {}),
+                        ...(field.format?.color ? { color: `#${field.format.color}` } : {}),
+                        ...(field.format?.fonts?.latin
+                          ? { fontFamily: field.format.fonts.latin }
+                          : {}),
                       }}
                     >
                       {field.kind === 'text' ? (
@@ -135,6 +157,9 @@ export function BandEditor({
                           side={language === 'zh' ? 'zh' : 'en'}
                           placeholder="Click to add text"
                           onCommit={(next) => onEditField(field.id, next)}
+                          selected={selection?.isSelected(field.id) ?? false}
+                          onSelect={selection ? () => selection.onSelect(field.id) : undefined}
+                          onDeselect={selection?.onClear}
                         >
                           {plain(language === 'zh' ? field.text.zh : field.text.en)}
                         </InlineEditable>
