@@ -48,6 +48,7 @@ export function EditorApp() {
   const removeQuestion = useWorksheetStore((s) => s.removeQuestion);
   const removeLayoutElement = useWorksheetStore((s) => s.removeLayoutElement);
   const removeMany = useWorksheetStore((s) => s.removeMany);
+  const movePage = useWorksheetStore((s) => s.movePage);
   const duplicateMany = useWorksheetStore((s) => s.duplicateMany);
 
   const restored = useRef(false);
@@ -182,6 +183,25 @@ export function EditorApp() {
    * longer has to look anything up before delegating.
    */
   const handleReorder = reorderFlowItem;
+
+  /*
+   * Move a whole marquee selection in one drag.
+   *
+   * `movePage` is already exactly this verb — it orders a run of ids relative to an
+   * anchor, in one commit, preserving document order among the members. It was written
+   * for the page rail, where the run happens to be "a page", but nothing about it is
+   * page-specific: a page was only ever a run of ids. So a bulk drag on the page reuses
+   * it rather than adding a second way to reorder several things at once.
+   *
+   * The anchor is wrapped in a one-element array because the rail hands over a whole
+   * page and picks an edge from it; with a single target both edges are that target.
+   */
+  const handleReorderMany = useCallback(
+    (ids: string[], targetId: string, position: 'before' | 'after') => {
+      movePage(ids, [targetId], position);
+    },
+    [movePage],
+  );
 
   /*
    * Drop a question onto a page card in the rail.
@@ -367,6 +387,7 @@ export function EditorApp() {
             onSplitRows={splitLayoutRows}
             onOpenBlock={setDrawingBlockId}
             onReorder={handleReorder}
+            onReorderMany={handleReorderMany}
             bandEditing={bandEditing}
             headerEditing={headerEditing}
             footerEditing={footerEditing}

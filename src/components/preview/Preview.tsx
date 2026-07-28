@@ -912,6 +912,7 @@ function DraggableItem({
   onDragEnd,
   onDrop,
   multiSelected,
+  dragCount,
   children,
   className = "",
 }: {
@@ -922,11 +923,21 @@ function DraggableItem({
   onDrop: (position: "before" | "after") => void;
   /** Part of a marquee/⌘A multi-selection. */
   multiSelected?: boolean;
+  /**
+   * How many items this grip would carry — the selection size when the item is part of
+   * one, otherwise 1. Only used to decide whether the whole selection should read as
+   * in-flight, so the other members dim alongside the one under the pointer.
+   */
+  dragCount?: number;
   children: React.ReactNode;
   className?: string;
 }) {
   const [edge, setEdge] = useState<"before" | "after" | undefined>();
-  const isDragging = dragId === id;
+  // In flight either because this is the grabbed item, or because it travels with it as
+  // part of the same selection. Without the second case a bulk drag dimmed one item
+  // while four others sat still, reading as "only this one is moving".
+  const isDragging =
+    dragId === id || (Boolean(dragId) && multiSelected && (dragCount ?? 1) > 1);
   const isTarget = Boolean(dragId) && !isDragging;
 
   return (
@@ -1270,6 +1281,15 @@ interface Props {
    */
   onReorder?: (id: string, targetId: string, position: "before" | "after") => void;
   /**
+   * Move a whole marquee selection at once, as one undo entry.
+   *
+   * Separate from `onReorder` rather than folded into it as an array: the two are
+   * different store verbs — one orders a single item, the other a run — and a run
+   * preserves *document* order among its members regardless of the order they were
+   * selected in. Omit to leave a multi-selection dragging one item at a time.
+   */
+  onReorderMany?: (ids: string[], targetId: string, position: "before" | "after") => void;
+  /**
    * Live masthead editing. Omit to render bands read-only, which is what keeps this
    * component usable for a non-interactive preview.
    */
@@ -1472,6 +1492,7 @@ export function Preview({
   onSplitRows,
   onOpenBlock,
   onReorder,
+  onReorderMany,
   bandEditing,
   headerEditing,
   footerEditing,
@@ -2447,10 +2468,34 @@ export function Preview({
             id={id}
             dragId={dragId}
             multiSelected={multiIds.has(id)}
+            /*
+             * Dragging a member of a multi-selection moves the whole selection.
+             *
+             * That is what the selection is *for*: having swept five questions, the
+             * natural next move is to drag them somewhere as a group, and moving only
+             * the one under the pointer would silently discard the work of selecting
+             * the rest. Dragging an item that is *not* in the selection stays a
+             * single-item move — grabbing something the selection does not contain is
+             * how a user means "just this one", and it leaves the group intact.
+             */
+            dragCount={multiIds.has(id) ? multiIds.size : 1}
             onDragStart={() => setDragId(id)}
             onDragEnd={() => setDragId(undefined)}
             onDrop={(position) => {
-              if (dragId) onReorder(dragId, id, position);
+              if (dragId) {
+                // Ordered by the flow, not by the set: `moveRunInFlow` re-reads
+                // document order anyway, but passing the set directly would make the
+                // no-op guard below depend on iteration order.
+                const run = multiIds.has(dragId) ? [...multiIds] : undefined;
+                // Dropping a run onto one of its own members would be a move relative
+                // to itself; the store guards this too, but stopping here avoids an
+                // undo entry that changes nothing.
+                if (run && onReorderMany && !run.includes(id)) {
+                  onReorderMany(run, id, position);
+                } else if (!run || !run.includes(id)) {
+                  onReorder(dragId, id, position);
+                }
+              }
               setDragId(undefined);
             }}
           >
@@ -2474,6 +2519,15 @@ export function Preview({
   // whatever text happens to be at the top of it.
   const dragLabel = (() => {
     if (!dragId) return undefined;
+    // Dragging a member of the selection carries the whole selection, so the chip has
+    // to say how many — a ghost reading "Question 3" while five questions move is the
+    // gesture lying about its own scope.
+    if (multiIds.has(dragId) && multiIds.size > 1) {
+      return {
+        label: `${multiIds.size} items`,
+        detail: "Moving together",
+      };
+    }
     const numbering = computeNumbering(worksheet);
     const question = worksheet.questions.find((q) => q.id === dragId);
     if (question) {
