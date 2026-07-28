@@ -1,6 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { questionMarks } from '@/model/marks';
-import { createPageBreakElement, resolveFlow } from '@/model/flow';
+import {
+  createAnswerLinesElement,
+  createPageBreakElement,
+  createSpacerElement,
+  resolveFlow,
+  MIN_ANSWER_LINES,
+  MIN_SPACER_PT,
+} from '@/model/flow';
 import { computeNumbering } from '@/model/numbering';
 import { bi, plain } from '@/model/text';
 import type { McqQuestion, StructuredQuestion } from '@/model/types';
@@ -275,5 +282,164 @@ describe('moving a page (§page rail)', () => {
     const before = orderOf();
     store().movePage(ids, [ids[0]], 'before');
     expect(orderOf()).toEqual(before);
+  });
+});
+
+/**
+ * Sizing answer lines and blank space.
+ *
+ * Both are edited from two surfaces — a stepper in the outline and a drag handle on the
+ * page — so the floor is enforced in the store rather than in either of them. A floor
+ * held in two places is one that eventually disagrees with itself.
+ */
+describe('extending answer lines and blank space', () => {
+  it('sets a line count from either surface through one verb', () => {
+    const element = createAnswerLinesElement(4);
+    store().addLayoutElement(element);
+
+    store().resizeLayoutElement(element.id, 9);
+
+    const stored = store().worksheet.layout.find((e) => e.id === element.id);
+    expect(stored).toMatchObject({ kind: 'answerLines', lines: 9 });
+  });
+
+  it('never drops below one line, however far a drag overshoots', () => {
+    // Zero lines renders as absence: the element is still in the flow and still in the
+    // outline, but invisible on the page — so the teacher adds another one.
+    const element = createAnswerLinesElement(3);
+    store().addLayoutElement(element);
+
+    store().resizeLayoutElement(element.id, -5);
+
+    expect(store().worksheet.layout.find((e) => e.id === element.id)).toMatchObject({
+      lines: MIN_ANSWER_LINES,
+    });
+  });
+
+  it('holds a spacer to a height that still takes space', () => {
+    const element = createSpacerElement(48);
+    store().addLayoutElement(element);
+
+    store().resizeLayoutElement(element.id, 0);
+
+    expect(store().worksheet.layout.find((e) => e.id === element.id)).toMatchObject({
+      heightPt: MIN_SPACER_PT,
+    });
+  });
+
+  it('clamps a size patched in through updateLayoutElement too', () => {
+    // The sidebar's other edits route through the generic patch verb, so the floor
+    // cannot live only in `resizeLayoutElement`.
+    const element = createAnswerLinesElement(4);
+    store().addLayoutElement(element);
+
+    store().updateLayoutElement(element.id, { lines: 0 });
+
+    expect(store().worksheet.layout.find((e) => e.id === element.id)).toMatchObject({
+      lines: MIN_ANSWER_LINES,
+    });
+  });
+
+  it('leaves an element with no size untouched', () => {
+    // A stale handle firing against a since-deleted element must be dropped, not throw.
+    const element = createPageBreakElement();
+    store().addLayoutElement(element);
+
+    store().resizeLayoutElement(element.id, 12);
+
+    expect(store().worksheet.layout.find((e) => e.id === element.id)).toEqual(element);
+  });
+
+  it('is one undo entry per commit', () => {
+    const element = createAnswerLinesElement(4);
+    store().addLayoutElement(element);
+
+    store().resizeLayoutElement(element.id, 10);
+    store().undo();
+
+    expect(store().worksheet.layout.find((e) => e.id === element.id)).toMatchObject({
+      lines: 4,
+    });
+  });
+  it('splits into a second element when a drag asks for more than the page holds', () => {
+    // The cap stops any single element outgrowing a sheet — the one overflow the
+    // paginator cannot fix by moving something — so asking for more has to produce
+    // another element rather than an oversized one.
+    const element = createAnswerLinesElement(20);
+    store().addLayoutElement(element);
+
+    store().splitLayoutRows(element.id, 20, 8, 26);
+
+    const rows = store().worksheet.layout.filter((e) => e.kind === 'answerLines');
+    expect(rows.map((e) => (e as { lines: number }).lines)).toEqual([20, 8]);
+    // The new element is real: its own id, so it is separately movable and deletable.
+    expect(rows[1].id).not.toBe(element.id);
+  });
+
+  it('puts the new element immediately after the one it came from', () => {
+    const first = createAnswerLinesElement(4);
+    const later = createSpacerElement(24);
+    store().addLayoutElement(first);
+    store().addLayoutElement(later);
+
+    store().splitLayoutRows(first.id, 12, 5, 26);
+
+    const created = store().worksheet.layout.find(
+      (e) => e.kind === 'answerLines' && e.id !== first.id,
+    )!;
+    const order = resolveFlow(store().worksheet).map((i) => i.id);
+    expect(order.indexOf(created.id)).toBe(order.indexOf(first.id) + 1);
+    // ...and before whatever already followed, so the overflow reads in document order.
+    expect(order.indexOf(created.id)).toBeLessThan(order.indexOf(later.id));
+  });
+
+  it('is one undo entry, because one gesture made it', () => {
+    const element = createAnswerLinesElement(20);
+    store().addLayoutElement(element);
+
+    store().splitLayoutRows(element.id, 20, 8, 26);
+    store().undo();
+
+    const rows = store().worksheet.layout.filter((e) => e.kind === 'answerLines');
+    expect(rows).toHaveLength(1);
+    expect((rows[0] as { lines: number }).lines).toBe(20);
+  });
+
+  it('refuses to divide a spacer, which is one gap rather than a run', () => {
+    // Two gaps on two pages is not what asking for a taller one means.
+    const element = createSpacerElement(48);
+    store().addLayoutElement(element);
+
+    store().splitLayoutRows(element.id, 48, 20, 26);
+
+    expect(store().worksheet.layout.filter((e) => e.kind === 'spacer')).toHaveLength(1);
+    expect(store().worksheet.layout.filter((e) => e.kind === 'answerLines')).toHaveLength(0);
+  });
+  it('cuts an overflow longer than a page into sheet-sized pieces', () => {
+    // Dragging for 48 lines on a page with room for 16 must not produce 16 + 32: the
+    // 32 would overflow its own sheet, reintroducing the very thing the cap prevents.
+    const element = createAnswerLinesElement(4);
+    store().addLayoutElement(element);
+
+    store().splitLayoutRows(element.id, 16, 32, 26);
+
+    const rows = store()
+      .worksheet.layout.filter((e) => e.kind === 'answerLines')
+      .map((e) => (e as { lines: number }).lines);
+    expect(rows).toEqual([16, 26, 6]);
+  });
+
+  it('keeps the pieces of a long overflow in document order', () => {
+    const element = createAnswerLinesElement(4);
+    store().addLayoutElement(element);
+
+    store().splitLayoutRows(element.id, 16, 32, 26);
+
+    const order = resolveFlow(store().worksheet).map((i) => i.id);
+    const ids = store()
+      .worksheet.layout.filter((e) => e.kind === 'answerLines')
+      .map((e) => e.id);
+    const positions = ids.map((id) => order.indexOf(id));
+    expect(positions).toEqual([...positions].sort((a, b) => a - b));
   });
 });

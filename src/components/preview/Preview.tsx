@@ -81,6 +81,9 @@ export interface BandEditingHandlers {
 import { FormatToolbar } from "./FormatToolbar";
 import { InlineEditable } from "./InlineEditable";
 import { ResizableBlock } from "./ResizableBlock";
+import { ResizableRows } from "./ResizableRows";
+import { MIN_ANSWER_LINES, MIN_SPACER_PT } from "@/model/flow";
+import { ANSWER_LINE_HEIGHT_TWIPS } from "@/export/docx/styles";
 import {
   compositionKey as keyOfComposition,
   composePages,
@@ -104,6 +107,25 @@ export type { PageComposition };
 
 /** CSS reference pixels per millimetre (96 dpi / 25.4). */
 const MM_TO_PX = 96 / 25.4;
+
+/** CSS reference pixels per point (96 dpi / 72). */
+const PT_TO_PX = 96 / 72;
+
+/**
+ * One ruled answer line's pitch, in page pixels.
+ *
+ * Taken from the exporter's `ANSWER_LINE_HEIGHT_TWIPS` rather than chosen here, because
+ * the two have to agree about how tall N lines are. The preview used `1.2em` plus a
+ * `mb-3` margin, which is a different height *and* a font-relative one — so a block of
+ * twenty lines occupied one amount of page on screen and another in Word. That was
+ * cosmetic while the paginator kept every element whole; it stops being cosmetic once
+ * the block can split across a page boundary, since the sheet it splits on is decided
+ * by this number.
+ */
+const ANSWER_LINE_PITCH_PX = (ANSWER_LINE_HEIGHT_TWIPS / 20) * PT_TO_PX;
+
+/** How much one drag step changes a spacer. Points are too fine to drag one at a time. */
+const SPACER_STEP_PT = 6;
 
 function runSpans(runs: BiText["en"], key: string) {
   return runs.map((runItem, index) => {
@@ -271,6 +293,33 @@ export interface EditContext {
      * keeps a plain uploaded picture from advertising an action it does not have.
      */
     onOpenBlock?: (blockId: string) => void;
+  };
+  /**
+   * Extending answer lines and spacers on the page.
+   *
+   * Separate from `resize` above because the two address different things in different
+   * units: `resize` sizes a *block* inside a question by width, these size a *layout
+   * element* by a count of lines or points. Sharing one handler would mean an id whose
+   * meaning depends on which kind of element it happens to name.
+   *
+   * Selection is deliberately not separate — a layout element is already selectable on
+   * the page (that is what arms Delete for it), so the handles simply appear on the
+   * element that selection already points at.
+   */
+  resizeRows?: {
+    /** Preview zoom, so a pointer delta converts to page pixels. */
+    scale: number;
+    selectedElementId?: string;
+    onSelectElement: (elementId: string) => void;
+    onResizeRows: (elementId: string, value: number) => void;
+    /**
+     * Page pixels this element could still grow into before its sheet is full.
+     *
+     * Read at pointer-down rather than passed as a number, because the blocks that
+     * carry the handles are built before this render's pagination has run — see
+     * `slackRef`.
+     */
+    slackFor: (elementId: string) => number;
   };
 }
 
@@ -480,6 +529,81 @@ function SizedBlock({
   );
 }
 
+/**
+ * The ruled lines themselves.
+ *
+ * The pitch is fixed in points rather than in `em`, so N lines occupy the same height
+ * here as the exporter's N `AnswerLine` paragraphs do. The rule sits on the bottom of
+ * each row, which is what makes the *last* line ruled rather than leaving a bare gap —
+ * the same shape `w:between` plus `w:bottom` produces in Word (§"Answer lines are a
+ * style").
+ */
+function AnswerLinesView({ lines }: { lines: number }) {
+  return (
+    <div>
+      {Array.from({ length: Math.max(0, lines) }, (_, index) => (
+        <div
+          key={index}
+          className="border-b border-slate-400"
+          style={{ height: ANSWER_LINE_PITCH_PX }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Answer lines or a spacer, extendable when the host allows editing.
+ *
+ * Two renderings of the same element rather than one that conditionally grows a handle,
+ * for the reason `SizedBlock` gives: a read-only preview and the print output must
+ * contain no interactive chrome at all, not hidden chrome. An element the IR gave no
+ * `elementId` — anything rendered outside the document flow — also takes the plain
+ * path, since there would be nothing for a commit to address.
+ */
+function SizedRows({
+  node,
+  ctx,
+  value,
+  pxPerUnit,
+  min,
+  step,
+  unit,
+  children,
+}: {
+  node: { elementId?: string };
+  ctx?: EditContext;
+  value: number;
+  pxPerUnit: number;
+  min: number;
+  step: number;
+  unit: [string, string];
+  /** Draw at a given size — the in-flight one while dragging, the stored one otherwise. */
+  children: (value: number) => React.ReactNode;
+}) {
+  const resize = ctx?.resizeRows;
+  const elementId = node.elementId;
+  if (!resize || !elementId) return <>{children(value)}</>;
+
+  return (
+    <ResizableRows
+      elementId={elementId}
+      value={value}
+      pxPerUnit={pxPerUnit}
+      min={min}
+      maxFor={() => resize.slackFor(elementId)}
+      step={step}
+      unit={unit}
+      scale={resize.scale}
+      selected={resize.selectedElementId === elementId}
+      onSelect={() => resize.onSelectElement(elementId)}
+      onResize={resize.onResizeRows}
+    >
+      {children}
+    </ResizableRows>
+  );
+}
+
 function NodeView({
   node,
   language,
@@ -570,7 +694,19 @@ function NodeView({
   }
 
   if (node.kind === "spacer") {
-    return <div style={{ height: `${node.heightPt}pt` }} aria-hidden />;
+    return (
+      <SizedRows
+        node={node}
+        ctx={ctx}
+        value={node.heightPt}
+        pxPerUnit={PT_TO_PX}
+        min={MIN_SPACER_PT}
+        step={SPACER_STEP_PT}
+        unit={["pt", "pt"]}
+      >
+        {(heightPt) => <div style={{ height: `${heightPt}pt` }} aria-hidden />}
+      </SizedRows>
+    );
   }
 
   if (node.kind === "divider") {
@@ -579,15 +715,17 @@ function NodeView({
 
   if (node.kind === "answerLines") {
     return (
-      <div className="my-2">
-        {Array.from({ length: Math.max(1, node.lines) }, (_, index) => (
-          <div
-            key={index}
-            className="mb-3 border-b border-slate-400"
-            style={{ height: "1.2em" }}
-          />
-        ))}
-      </div>
+      <SizedRows
+        node={node}
+        ctx={ctx}
+        value={node.lines}
+        pxPerUnit={ANSWER_LINE_PITCH_PX}
+        min={MIN_ANSWER_LINES}
+        step={1}
+        unit={["line", "lines"]}
+      >
+        {(lines) => <AnswerLinesView lines={lines} />}
+      </SizedRows>
     );
   }
 
@@ -934,6 +1072,8 @@ function usePagination(
   pages: FlowBlock[][];
   /** For each page, the id of the manual break that opened it, if one did. */
   openedBy: (string | undefined)[];
+  /** Each block's measured height, for callers that need to reason about a page's fill. */
+  heights: Map<string, number>;
   probeRef: React.RefObject<HTMLDivElement | null>;
 } {
   const probeRef = useRef<HTMLDivElement>(null);
@@ -946,18 +1086,33 @@ function usePagination(
     const probe = probeRef.current;
     if (!probe) return;
 
+    /*
+     * Each block's height is the distance to the *next* block, not its own box plus its
+     * margins.
+     *
+     * Adding `marginTop + marginBottom` to `offsetHeight` looks equivalent and is not:
+     * adjacent margins collapse, so summing both sides counts each gap twice for the
+     * pair that shares it while the last block contributes a trailing margin the page
+     * never shows. On a real worksheet the error ran the other way often enough to let
+     * a page accept one row more than it had room for — the last of 21 answer lines was
+     * drawn 21px below the text column and 13px into the footer.
+     *
+     * Measuring top-to-top asks the browser what it actually did with the gaps, which
+     * is the same question the rendered sheet answers. The final block has no successor
+     * and so is measured to the probe's own end.
+     */
     const measure = () => {
       const next = new Map<string, number>();
-      for (const child of Array.from(probe.children)) {
-        const key = (child as HTMLElement).dataset.blockKey;
+      const children = Array.from(probe.children) as HTMLElement[];
+      const probeEnd = probe.getBoundingClientRect().bottom;
+      for (const [index, child] of children.entries()) {
+        const key = child.dataset.blockKey;
         if (!key) continue;
-        const style = window.getComputedStyle(child);
-        // Margins collapse between siblings but still consume page space, so they
-        // belong in the measurement — omitting them makes long documents under-count
-        // and overflow the last page.
-        const margin =
-          parseFloat(style.marginTop || "0") + parseFloat(style.marginBottom || "0");
-        next.set(key, (child as HTMLElement).offsetHeight + margin);
+        const top = child.getBoundingClientRect().top;
+        const nextTop =
+          children[index + 1]?.getBoundingClientRect().top ??
+          Math.max(probeEnd, child.getBoundingClientRect().bottom);
+        next.set(key, Math.max(0, nextTop - top));
       }
       setHeights((prev) => {
         if (prev.size === next.size && [...next].every(([k, v]) => prev.get(k) === v)) {
@@ -980,7 +1135,7 @@ function usePagination(
     [blocks, heights, contentHeightPx],
   );
 
-  return { pages, openedBy, probeRef };
+  return { pages, openedBy, heights, probeRef };
 }
 
 /**
@@ -1034,6 +1189,28 @@ interface Props {
    * to the handle so a drag cannot fill the undo stack (§ResizableBlock).
    */
   onResizeBlock?: (blockId: string, widthPx: number) => void;
+  /**
+   * Extend answer lines or a spacer dragged on the page. Omit to render them without a
+   * handle, the same way `onResizeBlock` is what makes pictures resizable.
+   *
+   * The value is a line count for `answerLines` and a height in points for `spacer`;
+   * the element's own kind decides which, so the host passes it straight to
+   * `updateLayoutElement`. Called once per gesture, on release.
+   */
+  onResizeRows?: (elementId: string, value: number) => void;
+  /**
+   * Divide answer lines into two elements, when a drag asks for more rows than the
+   * sheet can hold. Omit to cap the drag instead, with no way to exceed a page.
+   *
+   * `keep` stays on this element and `overflow` becomes new ones immediately after it,
+   * each no taller than `perPage` so no piece outgrows its own sheet.
+   */
+  onSplitRows?: (
+    elementId: string,
+    keep: number,
+    overflow: number,
+    perPage: number,
+  ) => void;
   /**
    * Open a block's own editor, from a double-click on the page.
    *
@@ -1248,6 +1425,8 @@ export function Preview({
   onFormat,
   formatOf,
   onResizeBlock,
+  onResizeRows,
+  onSplitRows,
   onOpenBlock,
   onReorder,
   bandEditing,
@@ -1343,6 +1522,33 @@ export function Preview({
   }, [dragId, onDragItemChange]);
 
   /*
+   * End the drag from the window, not from the item that started it.
+   *
+   * `DraggableItem`'s own `dragend` is the happy path and only the happy path: it is
+   * delivered to the *source node*, so it never arrives if the drop unmounted or
+   * re-keyed that node first. Dropping a question on a page card in the rail does
+   * exactly that — the reorder moves the item to another sheet, React re-renders, and
+   * the element the browser was holding a `dragend` for is gone. `dragId` then stayed
+   * set forever, which is what left the question rendered at `opacity-40` on a page it
+   * had already landed on, and kept the rail believing something was still in flight.
+   *
+   * The window sees both terminators for any drag on the page, whoever consumed it, so
+   * this is the one place that can promise the state is transient. The per-item handler
+   * stays as-is — it is harmless once idempotent, and it is what clears the drag on the
+   * common in-page reorder without waiting for the bubble.
+   */
+  useEffect(() => {
+    if (!dragId) return;
+    const end = () => setDragId(undefined);
+    window.addEventListener("dragend", end);
+    window.addEventListener("drop", end);
+    return () => {
+      window.removeEventListener("dragend", end);
+      window.removeEventListener("drop", end);
+    };
+  }, [dragId]);
+
+  /*
    * Auto-scroll while dragging near the top or bottom edge.
    *
    * Without this a question cannot be moved to another page at all. HTML5 drag fires
@@ -1405,6 +1611,40 @@ export function Preview({
   // the sidebar inspects them; a divider or a page break has nothing to inspect, so
   // its selection is local — it exists only to give Delete something to act on.
   const [selectedLayoutId, setSelectedLayoutId] = useState<string | undefined>();
+
+  /*
+   * How much taller this element could get before it runs past the bottom of its page.
+   *
+   * **Measured off the rendered sheet**, not computed from the paginator's numbers.
+   * Both were tried and the arithmetic was wrong on a real document: the packer's own
+   * figures said a 21-line block fitted its column by one pixel, while the last ruled
+   * line was drawn 21px *below* the column and 13px into the footer. The gap is the
+   * on-page wrapper's own chrome — padding and the selection ring that the measurement
+   * probe does not reproduce, because the probe renders the block without them.
+   *
+   * Asking the DOM removes the whole class of error. The distance from this element's
+   * bottom edge to the bottom of the content column it sits in *is* the room left, with
+   * every margin, band and wrapper already accounted for by the browser that drew them.
+   *
+   * It is a function rather than a value because `ctx` is built before the blocks are
+   * packed and the blocks are built from `ctx` — so no number computed this render is
+   * available here. A drag calls it at pointer-down, which is later than render and
+   * exactly when the answer is needed.
+   */
+  const measureSlack = useCallback((elementId: string) => {
+    const root = containerRef.current;
+    const element = root?.querySelector<HTMLElement>(
+      `#print-root [data-layout-id="${CSS.escape(elementId)}"]`,
+    );
+    // The flexible child of the sheet is the text column; the bands around it are not.
+    const column = element?.closest<HTMLElement>(".flex-1");
+    if (!element || !column) return 0;
+    const room =
+      column.getBoundingClientRect().bottom - element.getBoundingClientRect().bottom;
+    // Divided by the preview transform, since both rectangles are in screen pixels and
+    // the caller works in page pixels.
+    return Math.max(0, room / (scale || 1));
+  }, [scale]);
 
   /*
    * Multi-selection, for acting on several items at once.
@@ -1689,6 +1929,24 @@ export function Preview({
               },
               onOpenBlock,
               onResizeBlock,
+            }
+          : undefined,
+        // Reuses `selectedLayoutId` rather than introducing a fourth selection: a
+        // layout element is already selectable on the page — that is what arms Delete
+        // for it — so the handle simply appears on what selection already points at.
+        // A second id for the same element would let the outline and the handle
+        // disagree about which one is current.
+        resizeRows: onResizeRows
+          ? {
+              scale,
+              selectedElementId: selectedLayoutId,
+              onSelectElement: (elementId) => {
+                setSelectedLayoutId(elementId);
+                setSelectedElement(undefined);
+                setSelectedBlockId(undefined);
+              },
+              onResizeRows,
+              slackFor: (elementId) => measureSlack(elementId),
             }
           : undefined,
       }
@@ -2103,23 +2361,104 @@ export function Preview({
     return { label: "Item" };
   })();
 
-  // The usable text column: the sheet minus its margins, minus whatever the header
-  // and footer bands take. Measured from the live page rather than assumed, so a
-  // paper-size or margin change repaginates correctly.
-  const contentHeightPx =
-    (pageHeightMm -
-      twipsToMm(setup.margins.top) -
-      twipsToMm(setup.margins.bottom)) *
+  /*
+   * The usable text column: the sheet minus its margins, minus whatever the header and
+   * footer bands take. Derived from the same twips the exporter writes, so a paper-size
+   * or margin change moves the preview and the .docx together.
+   *
+   * **Floored.** The browser lays the column out at a whole number of pixels, and the
+   * packer comparing against the unrounded value let a page accept one sub-pixel more
+   * than the column had — which is enough to admit a whole 32px ruled line. On a real
+   * document that put the last of 21 answer lines 21px below the column and 13px into
+   * the footer, on screen and again in Word. A fraction of a pixel of optimism is not
+   * worth a row of writing space printed over the page number.
+   */
+  const contentHeightPx = Math.floor(
+    (pageHeightMm - twipsToMm(setup.margins.top) - twipsToMm(setup.margins.bottom)) *
       MM_TO_PX -
-    bandsHeight;
+      bandsHeight,
+  );
 
-  const { pages, openedBy, probeRef } = usePagination(blocks, contentHeightPx, [
+  const {
+    pages,
+    openedBy,
+    heights: heightsOf,
+    probeRef,
+  } = usePagination(blocks, contentHeightPx, [
     worksheet,
     mode,
     selectedQuestionId,
     dragId,
     contentHeightPx,
   ]);
+
+  /*
+   * Hand back the rows that no longer fit, when something above pushed them off.
+   *
+   * The drag handle caps at the page edge, so an element can never be *made* too tall.
+   * It can still *become* too tall: adding a question above a block of answer lines
+   * pushes it down, and rows that used to fit no longer do. Word would flow them onto
+   * the next sheet; the preview keeps every item whole, so without this they run off
+   * the bottom of the paper — the one overflow pagination cannot resolve by moving
+   * something, because the something *is* the oversized element.
+   *
+   * So the overflow becomes its own element on the next page. Three rules keep a
+   * measurement-driven commit from misbehaving, which is the real risk here:
+   *
+   *  - **Only when it genuinely does not fit**, by more than one row. A block sized to
+   *    exactly fill its page must not split on a sub-pixel measurement wobble.
+   *  - **Never during a gesture.** A drag is already reshaping the page every frame;
+   *    splitting mid-drag would rewrite the flow under the pointer.
+   *  - **Once per element per overflow.** `splitting` latches the id until the split has
+   *    been measured, so the effect cannot fire twice for one overflow and cut the same
+   *    element into a dozen pieces before the first commit has repainted.
+   */
+  const splitting = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!onSplitRows || dragId) return;
+    const root = containerRef.current;
+    if (!root) return;
+
+    // Measured off the rendered sheet, exactly as `measureSlack` is, so the cap that
+    // stops a drag and the test that triggers a split can never disagree about where
+    // the page ends.
+    for (const element of worksheet.layout) {
+      if (element.kind !== 'answerLines') continue;
+      const node = root.querySelector<HTMLElement>(
+        `#print-root [data-layout-id="${CSS.escape(element.id)}"]`,
+      );
+      const column = node?.closest<HTMLElement>('.flex-1');
+      if (!node || !column) continue;
+
+      const past =
+        (node.getBoundingClientRect().bottom - column.getBoundingClientRect().bottom) /
+        (scale || 1);
+      // Any real overflow counts, however small: a block hanging 21px off a column is
+      // 21px into the footer, which is what the teacher sees. The tolerance is only
+      // there so a sub-pixel rounding wobble cannot split a block that exactly fills
+      // its page — it is deliberately far below one row rather than equal to it, since
+      // a partial row over the edge still prints on top of the footer.
+      if (past <= 1) continue;
+
+      const over = Math.ceil(past / ANSWER_LINE_PITCH_PX);
+      const keep = Math.max(MIN_ANSWER_LINES, element.lines - over);
+      if (keep >= element.lines) continue;
+
+      // The latch keys on the element *and its size*, so one overflow commits once
+      // while a still-overflowing remainder — a different size — is a fresh case and
+      // splits again. Keying on the id alone stopped after a single cut and left the
+      // block hanging over the footer; keying on nothing would re-fire the identical
+      // commit before its own repaint and shred the element.
+      const attempt = `${element.id}:${element.lines}`;
+      if (splitting.current === attempt) return;
+      splitting.current = attempt;
+      const perPage = Math.max(1, Math.floor(contentHeightPx / ANSWER_LINE_PITCH_PX));
+      onSplitRows(element.id, keep, element.lines - keep, perPage);
+      return;
+    }
+    // Nothing overflows any more, so the latch can be released for the next one.
+    splitting.current = undefined;
+  }, [pages, worksheet, contentHeightPx, onSplitRows, dragId, scale]);
 
   /*
    * Tell the page rail how the flow landed on sheets.

@@ -33,6 +33,8 @@ export function EditorApp() {
   const replaceBlock = useWorksheetStore((s) => s.replaceBlock);
   const formatTarget = useWorksheetStore((s) => s.formatTarget);
   const resizeBlock = useWorksheetStore((s) => s.resizeBlock);
+  const resizeLayoutElement = useWorksheetStore((s) => s.resizeLayoutElement);
+  const splitLayoutRows = useWorksheetStore((s) => s.splitLayoutRows);
   const reorderFlowItem = useWorksheetStore((s) => s.reorderFlowItem);
   const moveBandField = useWorksheetStore((s) => s.moveBandField);
   const updateBandField = useWorksheetStore((s) => s.updateBandField);
@@ -361,6 +363,8 @@ export function EditorApp() {
             onFormat={formatTarget}
             formatOf={formatOf}
             onResizeBlock={resizeBlock}
+            onResizeRows={resizeLayoutElement}
+            onSplitRows={splitLayoutRows}
             onOpenBlock={setDrawingBlockId}
             onReorder={handleReorder}
             bandEditing={bandEditing}

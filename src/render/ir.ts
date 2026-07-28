@@ -220,6 +220,14 @@ export interface ColumnsNode {
 export interface SpacerNode {
   kind: 'spacer';
   heightPt: number;
+  /**
+   * The layout element this came from, so the preview can size it in place.
+   *
+   * The same role `blockId` plays on `ImageNode`: whitespace has no text, so without an
+   * id the only handle on it is the sidebar. It is inert in export for the reason
+   * `EditTarget` is — the .docx and clipboard backends never read it.
+   */
+  elementId?: string;
 }
 
 /** A horizontal rule across the text column. */
@@ -231,6 +239,8 @@ export interface DividerNode {
 export interface AnswerLinesNode {
   kind: 'answerLines';
   lines: number;
+  /** The layout element this came from, so the preview can size it in place. */
+  elementId?: string;
 }
 
 export type RenderNode =

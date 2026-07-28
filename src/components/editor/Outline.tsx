@@ -13,6 +13,8 @@ import {
   createSectionElement,
   createSpacerElement,
   createTextElement,
+  MIN_ANSWER_LINES,
+  MIN_SPACER_PT,
 } from '@/model/flow';
 import { questionMarks } from '@/model/marks';
 import type { NumberingPlan } from '@/model/numbering';
@@ -35,6 +37,7 @@ import {
   LabelListIcon,
   LAYOUT_ICON,
   McqIcon,
+  MinusIcon,
   PageBreakIcon,
   PartHeaderIcon,
   PlusIcon,
@@ -84,6 +87,88 @@ const LAYOUT_NAME: Record<LayoutElement['kind'], string> = {
 };
 
 /**
+ * The size of an answer-lines block or a spacer, editable in place.
+ *
+ * It replaces the row's description rather than sitting beside it, because for these two
+ * elements the size *is* the description — "6 lines" was already the text here, and a
+ * teacher who wants seven should not have to find it behind an overflow menu. That menu
+ * previously offered five fixed presets (2, 4, 6, 8, 12 lines), which is the shape of a
+ * control that cannot express what was asked for: an exam question needing nine lines
+ * had no way to say so.
+ *
+ * The field holds a **local draft string while focused** and commits on blur or Enter,
+ * for the reason the margin fields in `page.ts` do: re-deriving the text from the stored
+ * number on every keystroke deletes a half-typed value, and one commit per keystroke
+ * would make one edit cost several undo presses. Escape abandons the draft.
+ */
+function SizeStepper({
+  value,
+  min,
+  step,
+  unit,
+  label,
+  onCommit,
+}: {
+  value: number;
+  min: number;
+  step: number;
+  /** Printed after the number, e.g. "lines" or "pt". */
+  unit: string;
+  /** Accessible name — the row's icon is the only other clue to what this sizes. */
+  label: string;
+  onCommit: (next: number) => void;
+}) {
+  const [draft, setDraft] = useState<string | undefined>();
+
+  const commit = (raw: string) => {
+    const parsed = Number.parseInt(raw, 10);
+    setDraft(undefined);
+    if (Number.isNaN(parsed)) return;
+    if (parsed !== value) onCommit(Math.max(min, parsed));
+  };
+
+  return (
+    <span className="flex min-w-0 flex-1 items-center gap-1">
+      <IconButton
+        label={`Fewer (${label})`}
+        disabled={value <= min}
+        onClick={() => onCommit(Math.max(min, value - step))}
+      >
+        <MinusIcon size={13} />
+      </IconButton>
+      <input
+        type="text"
+        inputMode="numeric"
+        aria-label={label}
+        value={draft ?? String(value)}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={(event) => commit(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            event.currentTarget.blur();
+          }
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            setDraft(undefined);
+            event.currentTarget.blur();
+          }
+          // The row is `draggable`, and a drag started from inside a text field would
+          // steal the pointer from selecting a word.
+          event.stopPropagation();
+        }}
+        onPointerDown={(event) => event.stopPropagation()}
+        className="w-9 rounded border border-line bg-surface px-1 py-0.5 text-center text-xs tabular-nums text-ink focus:border-accent focus:outline-none"
+      />
+      <IconButton label={`More (${label})`} onClick={() => onCommit(value + step)}>
+        <PlusIcon size={13} />
+      </IconButton>
+      <span className="truncate text-[11px] text-ink-subtle">{unit}</span>
+    </span>
+  );
+}
+
+/**
  * A non-question row in the outline.
  *
  * It shares the question row's drag affordance so the two reorder as one list — the
@@ -93,6 +178,7 @@ function LayoutRow({ element }: { element: LayoutElement }) {
   const mode = useWorksheetStore((s) => s.mode);
   const removeLayoutElement = useWorksheetStore((s) => s.removeLayoutElement);
   const updateLayoutElement = useWorksheetStore((s) => s.updateLayoutElement);
+  const resizeLayoutElement = useWorksheetStore((s) => s.resizeLayoutElement);
   const nudgeFlowItem = useWorksheetStore((s) => s.nudgeFlowItem);
   const reorderFlowItem = useWorksheetStore((s) => s.reorderFlowItem);
   const dragId = useWorksheetStore((s) => s.dragQuestionId);
@@ -114,36 +200,45 @@ function LayoutRow({ element }: { element: LayoutElement }) {
         plain(element.text.zh)
       : element.kind === 'labelList'
         ? `${element.rows.length} row${element.rows.length === 1 ? '' : 's'}`
-        : element.kind === 'spacer'
-        ? `${element.heightPt}pt`
-        : element.kind === 'answerLines'
-          ? `${element.lines} line${element.lines === 1 ? '' : 's'}`
-          : '';
+        : '';
+
+  // Answer lines and blank space describe themselves by their size, so the row spends
+  // its width on a control for that size rather than on text repeating it.
+  const stepper =
+    element.kind === 'answerLines' ? (
+      <SizeStepper
+        value={element.lines}
+        min={MIN_ANSWER_LINES}
+        step={1}
+        unit={element.lines === 1 ? 'line' : 'lines'}
+        label="Answer lines"
+        onCommit={(lines) => resizeLayoutElement(element.id, lines)}
+      />
+    ) : element.kind === 'spacer' ? (
+      <SizeStepper
+        value={element.heightPt}
+        min={MIN_SPACER_PT}
+        step={6}
+        unit="pt"
+        label="Blank space height"
+        onCommit={(heightPt) => resizeLayoutElement(element.id, heightPt)}
+      />
+    ) : undefined;
 
   const sizeItems =
-    element.kind === 'spacer'
-      ? [24, 48, 72, 120].map((heightPt) => ({
-          label: `Height ${heightPt}pt`,
-          onSelect: () => updateLayoutElement(element.id, { heightPt }),
-        }))
-      : element.kind === 'answerLines'
-        ? [2, 4, 6, 8, 12].map((lines) => ({
-            label: `${lines} lines`,
-            onSelect: () => updateLayoutElement(element.id, { lines }),
-          }))
-        : element.kind === 'section'
-          ? [
-              {
-                // The one control a section really needs, on the row that *is* the
-                // section — rather than on a container header the page never showed.
-                label: element.restartNumbering
-                  ? 'Continue numbering from previous'
-                  : 'Restart numbering at 1',
-                onSelect: () =>
-                  updateLayoutElement(element.id, { restartNumbering: !element.restartNumbering }),
-              },
-            ]
-          : [];
+    element.kind === 'section'
+      ? [
+          {
+            // The one control a section really needs, on the row that *is* the
+            // section — rather than on a container header the page never showed.
+            label: element.restartNumbering
+              ? 'Continue numbering from previous'
+              : 'Restart numbering at 1',
+            onSelect: () =>
+              updateLayoutElement(element.id, { restartNumbering: !element.restartNumbering }),
+          },
+        ]
+      : [];
 
   return (
     <li
@@ -188,13 +283,15 @@ function LayoutRow({ element }: { element: LayoutElement }) {
       <span className="shrink-0 text-ink-subtle" title={name}>
         <Icon size={14} />
       </span>
-      <span
-        className={`min-w-0 flex-1 truncate ${
-          isSection ? 'text-[11px] font-semibold text-ink' : 'text-xs text-ink-muted'
-        }`}
-      >
-        {detail || <span className="italic">{name}</span>}
-      </span>
+      {stepper ?? (
+        <span
+          className={`min-w-0 flex-1 truncate ${
+            isSection ? 'text-[11px] font-semibold text-ink' : 'text-xs text-ink-muted'
+          }`}
+        >
+          {detail || <span className="italic">{name}</span>}
+        </span>
+      )}
       {isSection && element.kind === 'section' && element.restartNumbering && (
         <span
           className="shrink-0 rounded bg-surface-hover px-1 text-[9px] font-medium text-ink-subtle"

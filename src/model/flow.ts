@@ -206,8 +206,35 @@ export function createTextElement(text: BiText = emptyBiText()): LayoutElement {
   return { kind: 'text', id: newId(), text };
 }
 
+/*
+ * The floors for the two sizeable layout elements.
+ *
+ * Both are resized by dragging an edge on the page, and a drag that overshoots must
+ * land on something that still reads as the element rather than on nothing at all.
+ * Zero answer lines and a zero-height spacer both render as *absence*: the element is
+ * still in the flow, still selectable in the outline, but invisible on the page — so
+ * the teacher's next move is to add another one, and the document accumulates elements
+ * nobody can see. One line is the smallest thing that still says "this is here".
+ *
+ * They live beside the factories rather than in `edits.ts` next to `MIN_BLOCK_WIDTH_PX`
+ * because every surface that can produce one of these values — factory, sidebar field,
+ * page drag — has to agree, and the factory is what the other two are sizing *from*.
+ */
+export const MIN_ANSWER_LINES = 1;
+export const MIN_SPACER_PT = 6;
+
+/** Clamp a line count to something that still prints. */
+export function clampAnswerLines(lines: number): number {
+  return Math.max(MIN_ANSWER_LINES, Math.round(lines));
+}
+
+/** Clamp a spacer height to something that still occupies space. */
+export function clampSpacerPt(heightPt: number): number {
+  return Math.max(MIN_SPACER_PT, Math.round(heightPt));
+}
+
 export function createSpacerElement(heightPt = 48): LayoutElement {
-  return { kind: 'spacer', id: newId(), heightPt };
+  return { kind: 'spacer', id: newId(), heightPt: clampSpacerPt(heightPt) };
 }
 
 export function createDividerElement(): LayoutElement {
@@ -219,7 +246,7 @@ export function createPageBreakElement(): LayoutElement {
 }
 
 export function createAnswerLinesElement(lines = 4): LayoutElement {
-  return { kind: 'answerLines', id: newId(), lines };
+  return { kind: 'answerLines', id: newId(), lines: clampAnswerLines(lines) };
 }
 
 /**

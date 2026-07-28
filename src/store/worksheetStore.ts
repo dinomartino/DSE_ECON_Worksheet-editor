@@ -19,6 +19,9 @@ import {
 } from '@/model/edits';
 import { createWorksheet, newId } from '@/model/factories';
 import {
+  clampAnswerLines,
+  clampSpacerPt,
+  createAnswerLinesElement,
   flowOf,
   moveInFlow,
   moveRunInFlow,
@@ -119,6 +122,41 @@ interface WorksheetState {
   deleteTarget: (target: EditTarget) => void;
   formatTarget: (target: EditTarget, patch: Partial<TextFormat>) => void;
   resizeBlock: (blockId: string, widthPx: number) => void;
+  /**
+   * Extend a sizeable layout element — answer lines by count, a spacer by points.
+   *
+   * One verb for both, taking a bare number, because the caller is a drag handle on the
+   * page and a stepper in the sidebar: neither should have to know which *field* the
+   * element stores its size in. The element's own kind decides that here, which is what
+   * keeps the two surfaces from spelling the same edit differently.
+   */
+  resizeLayoutElement: (elementId: string, value: number) => void;
+  /**
+   * Divide answer lines in two: `keep` rows stay, `overflow` rows become a **new
+   * element** immediately after.
+   *
+   * This is what a drag past the end of the page means. The cap stops any single
+   * element growing taller than a sheet — the one overflow the paginator cannot fix by
+   * moving something — so asking for more has to produce another element rather than an
+   * oversized one. The new element is real: its own id, its own outline row, its own
+   * entry in the export, separately movable and deletable afterwards.
+   *
+   * It is deliberately one `commit`, so the whole split is a single undo entry, and it
+   * is only ever called from a gesture. A split driven by re-measurement would fire
+   * while typing into the question above and silently rewrite the flow.
+   *
+   * `perPage` is how many rows a *fresh* sheet holds. The overflow is chopped into
+   * elements of that size rather than one long one, because a remainder larger than a
+   * whole page would overflow its own sheet and reintroduce exactly the problem the cap
+   * exists to prevent — dragging for 48 lines on a page with room for 16 produces
+   * 16 + 26 + 6, not 16 + 32.
+   */
+  splitLayoutRows: (
+    elementId: string,
+    keep: number,
+    overflow: number,
+    perPage: number,
+  ) => void;
   /** Replace one block by id — the route a page-opened editor commits through. */
   replaceBlock: (blockId: string, next: ContentBlock) => void;
 
@@ -201,6 +239,25 @@ function mapQuestion(
  * flow is missing entries (older saves never listed every id) would otherwise place the
  * new item relative to a list that does not describe what is on the page.
  */
+/**
+ * Hold a sizeable layout element to its floor.
+ *
+ * Applied on the way *into* the document rather than at each caller, because both
+ * surfaces that size these elements — the sidebar's number field and the page's own
+ * edge drag — end up here, and a floor enforced in two places is a floor that will
+ * eventually disagree with itself. A drag that overshoots therefore lands on one line
+ * rather than on nothing (§`MIN_ANSWER_LINES`).
+ */
+function clampLayoutElement(element: LayoutElement): LayoutElement {
+  if (element.kind === 'answerLines') {
+    return { ...element, lines: clampAnswerLines(element.lines) };
+  }
+  if (element.kind === 'spacer') {
+    return { ...element, heightPt: clampSpacerPt(element.heightPt) };
+  }
+  return element;
+}
+
 function insertIntoFlow(
   worksheet: Worksheet,
   entry: FlowItem,
@@ -489,7 +546,9 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     get().commit((draft) => ({
       ...draft,
       layout: draft.layout.map((element) =>
-        element.id === elementId ? ({ ...element, ...patch } as LayoutElement) : element,
+        element.id === elementId
+          ? clampLayoutElement({ ...element, ...patch } as LayoutElement)
+          : element,
       ),
     })),
 
@@ -580,6 +639,61 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     get().commit((draft) => applyFormatTarget(draft, target, patch)),
   resizeBlock: (blockId, widthPx) =>
     get().commit((draft) => applyResizeBlock(draft, blockId, widthPx)),
+  resizeLayoutElement: (elementId, value) =>
+    get().commit((draft) => ({
+      ...draft,
+      layout: draft.layout.map((element) => {
+        if (element.id !== elementId) return element;
+        if (element.kind === 'answerLines') {
+          return { ...element, lines: clampAnswerLines(value) };
+        }
+        if (element.kind === 'spacer') {
+          return { ...element, heightPt: clampSpacerPt(value) };
+        }
+        // An element with no size is returned untouched rather than throwing, so a
+        // stale handle firing against a since-deleted element is simply dropped.
+        return element;
+      }),
+    })),
+  splitLayoutRows: (elementId, keep, overflow, perPage) =>
+    get().commit((draft) => {
+      const existing = draft.layout.find((element) => element.id === elementId);
+      // Only answer lines divide. A spacer is one deliberate gap, and two gaps on two
+      // pages is not what asking for a taller one means.
+      if (!existing || existing.kind !== 'answerLines') return draft;
+
+      // The remainder is cut into sheet-sized pieces. One long element would overflow
+      // its own page, which is the very thing the cap exists to prevent.
+      const size = Math.max(1, Math.floor(perPage));
+      const created: LayoutElement[] = [];
+      let left = clampAnswerLines(overflow);
+      while (left > 0) {
+        const take = Math.min(size, left);
+        created.push(createAnswerLinesElement(take));
+        left -= take;
+      }
+
+      // Everything lands in one commit, so however many pieces it took, the split costs
+      // the teacher a single undo press — it was one gesture.
+      let next: Worksheet = {
+        ...draft,
+        layout: [
+          ...draft.layout.map((element) =>
+            element.id === elementId
+              ? { ...element, lines: clampAnswerLines(keep) }
+              : element,
+          ),
+          ...created,
+        ],
+      };
+      // Threaded so each piece follows the previous one, keeping document order.
+      let after = elementId;
+      for (const element of created) {
+        next = insertIntoFlow(next, { type: 'layout', id: element.id }, after, {});
+        after = element.id;
+      }
+      return next;
+    }),
   replaceBlock: (blockId, next) =>
     get().commit((draft) => replaceBlockById(draft, blockId, next)),
 

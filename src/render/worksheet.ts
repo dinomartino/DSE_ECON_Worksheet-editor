@@ -259,13 +259,13 @@ function renderLayoutElement(element: LayoutElement, sectionTotal: number): Rend
         },
       ];
     case 'spacer':
-      return [{ kind: 'spacer', heightPt: element.heightPt }];
+      return [{ kind: 'spacer', heightPt: element.heightPt, elementId: element.id }];
     case 'divider':
       return [{ kind: 'divider' }];
     case 'pageBreak':
       return [{ kind: 'pageBreak' }];
     case 'answerLines':
-      return [{ kind: 'answerLines', lines: element.lines }];
+      return [{ kind: 'answerLines', lines: element.lines, elementId: element.id }];
 
     case 'partHeader': {
       // The "(19 marks)" suffix is appended to the authored text rather than stored
