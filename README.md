@@ -8,7 +8,7 @@ fonts.
 It runs entirely in the browser. No account, no server, no database, no API keys.
 
 ```bash
-git clone <your-fork-url>
+git clone https://github.com/dinomartino/DSE_ECON_Worksheet-editor
 cd econ-worksheet-gen
 npm install
 npm run dev          # → http://localhost:3000
@@ -20,17 +20,21 @@ That is the whole setup. If the page loads, you have a working environment.
 
 ## Table of contents
 
-- [Requirements](#requirements)
-- [Getting started](#getting-started)
-- [Project scripts](#project-scripts)
-- [How the app works](#how-the-app-works)
-- [Codebase tour](#codebase-tour)
-- [The five invariants](#the-five-invariants)
-- [Adding a question type](#adding-a-question-type)
-- [Testing](#testing)
-- [Deployment](#deployment)
-- [Contributing](#contributing)
-- [Licence and third-party material](#licence-and-third-party-material)
+- [HKDSE Economics Worksheet Generator](#hkdse-economics-worksheet-generator)
+  - [Table of contents](#table-of-contents)
+  - [Requirements](#requirements)
+  - [Getting started](#getting-started)
+    - [First run](#first-run)
+  - [Project scripts](#project-scripts)
+  - [How the app works](#how-the-app-works)
+    - [What makes the `.docx` a real Word document](#what-makes-the-docx-a-real-word-document)
+  - [Codebase tour](#codebase-tour)
+  - [The five invariants](#the-five-invariants)
+  - [Adding a question type](#adding-a-question-type)
+  - [Testing](#testing)
+  - [Deployment](#deployment)
+  - [Contributing](#contributing)
+  - [Licence and third-party material](#licence-and-third-party-material)
 
 ---
 
