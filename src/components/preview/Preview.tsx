@@ -913,6 +913,8 @@ function DraggableItem({
   onDrop,
   multiSelected,
   dragCount,
+  runRole,
+  runLength,
   children,
   className = "",
 }: {
@@ -929,6 +931,19 @@ function DraggableItem({
    * in-flight, so the other members dim alongside the one under the pointer.
    */
   dragCount?: number;
+  /**
+   * Where this item sits in an unbroken run of selected items.
+   *
+   * A selection of adjacent items shows **one** tall pill spanning the run rather than
+   * a stack of identical small ones: the run moves as a single thing, so one handle is
+   * the honest control for it, and a column of pills invites aiming at a particular one
+   * as though they did different things. `head` draws the pill and stretches it over
+   * the members below; `tail` members draw none. A gap in the selection starts a new
+   * run, so two separate groups keep two separate handles.
+   */
+  runRole?: "head" | "tail";
+  /** How many items the pill must span, when this item is a run's `head`. */
+  runLength?: number;
   children: React.ReactNode;
   className?: string;
 }) {
@@ -940,8 +955,71 @@ function DraggableItem({
     dragId === id || (Boolean(dragId) && multiSelected && (dragCount ?? 1) > 1);
   const isTarget = Boolean(dragId) && !isDragging;
 
+  /*
+   * How far a run's merged pill has to stretch.
+   *
+   * Measured rather than derived: the members are separate siblings of unknown and
+   * unequal height — a one-line divider and a five-part structured question are both
+   * one item — so the span is only knowable from the laid-out DOM. It is re-measured
+   * whenever the run's identity or length changes, and on resize, because a reflow that
+   * rewraps a question changes the run's height without changing its membership.
+   *
+   * The pill is positioned from *this* item's top, so the height wanted is the distance
+   * from here to the last member's bottom.
+   */
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [runHeight, setRunHeight] = useState<number | undefined>();
+  const isRunHead = runRole === "head" && (runLength ?? 1) > 1;
+
+  useEffect(() => {
+    // A stale height on a non-head needs no clearing: the pill below only reads
+    // `runHeight` when `isRunHead`, and the next run this item heads re-measures before
+    // painting. Clearing it here would be a synchronous setState in an effect for a
+    // value nothing is currently rendering.
+    if (!isRunHead) return;
+    const measure = () => {
+      const node = rootRef.current;
+      if (!node) return;
+      /*
+       * Walk the *wrappers*, not this element.
+       *
+       * Each block is rendered inside its own `<div key={block.key}>` on the sheet, so
+       * `DraggableItem`'s root has no siblings at all — walking from it found nothing
+       * and the pill stayed one item tall. The wrapper is what sits in the page's flex
+       * column beside the run's other members.
+       */
+      let last: Element = node.parentElement ?? node;
+      for (let step = 1; step < (runLength ?? 1); step += 1) {
+        const next = last.nextElementSibling;
+        // A run split by a page break loses its remaining members to the next sheet, so
+        // the walk simply stops and the pill spans the part on this page.
+        if (!next) break;
+        last = next;
+      }
+      setRunHeight(
+        last.getBoundingClientRect().bottom - node.getBoundingClientRect().top,
+      );
+    };
+    // After the selection's re-render has committed, so the run is laid out — and so
+    // the first measurement is not a synchronous setState inside the effect, which
+    // cascades a second render before the browser has painted the first.
+    const frame = requestAnimationFrame(measure);
+    const observer = new ResizeObserver(measure);
+    // The run's own box and its last member both move it; observing the page column
+    // catches a reflow anywhere above that shifts the whole run.
+    if (rootRef.current) observer.observe(rootRef.current);
+    // The sheet's flex column: a reflow in any member changes where the run ends.
+    const column = rootRef.current?.parentElement?.parentElement;
+    if (column) observer.observe(column);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [isRunHead, runLength, id]);
+
   return (
     <div
+      ref={rootRef}
       data-flow-id={id}
       onDragOver={(event) => {
         if (!isTarget) return;
@@ -1002,6 +1080,12 @@ function DraggableItem({
        *    because the narrow margin preset leaves only ~48px of paper to the left,
        *    and a wider control would hang off the sheet.
        */}
+      {/*
+       * A run's non-head members draw no grip at all: the head's pill already spans
+       * them, and a second control inside the same span would offer a choice that does
+       * not exist — every one of them moves the identical run.
+       */}
+      {runRole !== "tail" && (
       <span
         draggable
         // Marks the one place a pointer-down belongs to drag-to-reorder rather than to
@@ -1027,20 +1111,43 @@ function DraggableItem({
         title="Drag to reorder"
         // Literal hex throughout: this sits on the paper, which never themes, so a
         // semantic token would paint a dark chip on a white page in dark mode.
+        // A merged pill spans its whole run, so it is sized in px from the measurement
+        // above rather than hugging one item's first line.
+        style={isRunHead && runHeight ? { height: `${runHeight}px` } : undefined}
         className={`absolute -left-[26px] top-0.5 flex w-[18px] cursor-grab flex-col items-center justify-center gap-0 rounded border py-0.5 leading-none transition-colors duration-150 active:cursor-grabbing ${
           isDragging
             ? "border-[#7c5cff] bg-[#7c5cff] text-white shadow-sm"
-            : "border-[#cfc9c2] bg-[#faf9f8] text-[#9a948e] shadow-[0_1px_1.5px_rgba(0,0,0,0.07)] group-hover/drag:border-[#a99cf0] group-hover/drag:bg-white group-hover/drag:text-[#6b6764] hover:!border-[#7c5cff] hover:!bg-[#efeaff] hover:!text-[#7c5cff]"
+            : isRunHead
+              // A selected run's handle is already "on", so it takes the accent at rest
+              // rather than the quiet paper grey — it is describing a live selection,
+              // not offering an affordance that has yet to be engaged.
+              ? "border-[#a78bfa] bg-[#efeaff] text-[#7c5cff] shadow-[0_1px_1.5px_rgba(0,0,0,0.07)] hover:!border-[#7c5cff] hover:!bg-[#e4dcff]"
+              : "border-[#cfc9c2] bg-[#faf9f8] text-[#9a948e] shadow-[0_1px_1.5px_rgba(0,0,0,0.07)] group-hover/drag:border-[#a99cf0] group-hover/drag:bg-white group-hover/drag:text-[#6b6764] hover:!border-[#7c5cff] hover:!bg-[#efeaff] hover:!text-[#7c5cff]"
         }`}
       >
         {/* Resting opacity is carried by the *colour*, not by `opacity`: fading the
             whole pill washed out its border too, which is the part that makes it read
             as a control at all. Colour-only muting keeps the shape crisp while it
             recedes. */}
+        {/*
+         * On a merged pill the chevrons pin to the two ends of the span while the count
+         * holds the middle, so the handle reads as bracketing the run it covers. Packed
+         * together in the centre they described only their own 34px, leaving a tall
+         * pill looking like a short one floating in a tall box.
+         */}
         <ChevronUpIcon size={8} />
-        <GripIcon size={12} />
+        {isRunHead ? (
+          <span className="flex flex-1 flex-col items-center justify-center gap-1">
+            <GripIcon size={12} />
+            <span className="text-[9px] font-semibold tabular-nums">{runLength}</span>
+            <GripIcon size={12} />
+          </span>
+        ) : (
+          <GripIcon size={12} />
+        )}
         <ChevronDownIcon size={8} />
       </span>
+      )}
       {children}
     </div>
   );
@@ -2397,6 +2504,41 @@ export function Preview({
     });
   }
 
+  /*
+   * Selected items grouped into unbroken runs, so each run shows one merged grip.
+   *
+   * Computed over the *flow* rather than over the paginated sheets, because the blocks
+   * are built before pagination has run. A run split across a page boundary therefore
+   * still counts as one, and its pill is measured from the DOM — where the members that
+   * moved to the next sheet are no longer siblings, so the walk stops early and the
+   * pill spans only the part on this page. That is the right answer either way: a
+   * handle cannot stretch across a sheet gap.
+   */
+  const runHeadOf = new Map<string, number>();
+  const runTails = new Set<string>();
+  {
+    const flowIds = rendered.items.map((item) =>
+      item.type === "question" ? item.question.questionId : item.layout.elementId,
+    );
+    let index = 0;
+    while (index < flowIds.length) {
+      if (!multiIds.has(flowIds[index])) {
+        index += 1;
+        continue;
+      }
+      let end = index;
+      while (end + 1 < flowIds.length && multiIds.has(flowIds[end + 1])) end += 1;
+      const length = end - index + 1;
+      // A run of one keeps the ordinary single-item pill: there is nothing to merge,
+      // and a "1" badge would be noise.
+      if (length > 1) {
+        runHeadOf.set(flowIds[index], length);
+        for (let step = index + 1; step <= end; step += 1) runTails.add(flowIds[step]);
+      }
+      index = end + 1;
+    }
+  }
+
   {
     for (const item of rendered.items) {
       const id =
@@ -2479,6 +2621,10 @@ export function Preview({
              * how a user means "just this one", and it leaves the group intact.
              */
             dragCount={multiIds.has(id) ? multiIds.size : 1}
+            runRole={
+              runHeadOf.has(id) ? "head" : runTails.has(id) ? "tail" : undefined
+            }
+            runLength={runHeadOf.get(id)}
             onDragStart={() => setDragId(id)}
             onDragEnd={() => setDragId(undefined)}
             onDrop={(position) => {
