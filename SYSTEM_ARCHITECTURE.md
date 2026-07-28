@@ -1,5 +1,13 @@
 # System Architecture — Bilingual HKDSE Economics Worksheet Generator
 
+This is the deep reference: data flow, the rendering pipeline, numbering, the diagram
+model, pagination, and the reasoning behind each editor-layout decision. For setup,
+scripts and a first tour of the code, start with [`README.md`](./README.md).
+
+**Read this before making structural changes.** Much of what follows records *why* a
+design is the way it is — usually a bug or a constraint that forced it. The invariants
+summarised in the README's "five invariants" section are all explained in full here.
+
 ## Tech Stack
 
 | Layer | Choice |
@@ -26,12 +34,21 @@ src/
 │   ├── EditorHost.tsx#   dynamic client import (ssr: false)
 │   ├── globals.css   #   Tailwind + semantic design tokens
 │   └── favicon.ico
-├── model/            # Document model, numbering, marks, migrations, text, factories,
-│                     #   page setup + header/footer (page.ts), document flow (flow.ts),
-│                     #   masthead bands / drop zones (bands.ts),
-│                     #   diagram geometry (diagram.ts) + templates (diagramTemplates.ts)
-│                     #   + direct-manipulation hit-test/drag/snap (diagramDraw.ts)
-│                     #   + edit helpers (edits.ts)
+├── model/            # Document model
+│   ├── types.ts      #   Worksheet, Question, LayoutElement, ContentBlock, BiText, etc.
+│   ├── numbering.ts, marks.ts  #   derived numbering + marks totals
+│   ├── migrations.ts #   migration chain (v1→v2→v3→v4→v5)
+│   ├── text.ts       #   RichText helpers, parseRuns, runLines, bi(), emptyBiText
+│   ├── page.ts       #   page setup (twips), margins, header/footer
+│   ├── flow.ts       #   resolveFlow() — document-level ordering
+│   ├── bands.ts      #   masthead bands / drop zones
+│   ├── diagram.ts    #   geometry types + diagramPlot(), diagramSvg(), hitTest
+│   ├── diagramTemplates.ts  #   AD-AS, money market, tariff, PPC, import quota templates
+│   ├── diagramDraw.ts#   direct-manipulation hit-test, drag, snap, cursors
+│   ├── edits.ts      #   describeDelete() per target, edit helpers
+│   ├── factories.ts  #   createWorksheet, newId, block/question factory functions
+│   ├── diagramDraw.test.ts, edits.test.ts  #   diagram + edit tests
+│   └── bands.test.ts, flow.test.ts, model.test.ts  #   bands, flow, model tests
 ├── registry/         # Question-type extension point (§9)
 │   ├── types.ts      #   QuestionTypeDefinition interface
 │   ├── index.ts      #   registry (mcq + structured registered)
@@ -69,6 +86,7 @@ src/
 │   │   └── modalLayer.test.ts
 │   ├── editor/        # Right sidebar + left rails
 │   │   ├── Sidebar.tsx (Content/Edit tabs), Outline.tsx, Inspector.tsx
+│   │   ├── outline.test.ts
 │   │   ├── BiTextField.tsx, BlockEditor.tsx
 │   │   ├── McqEditorPanel.tsx, StructuredEditorPanel.tsx
 │   │   ├── DocumentSettings.tsx  # once-per-document settings dialog
@@ -79,7 +97,8 @@ src/
 │       ├── Preview.tsx, BandEditor.tsx, FormatToolbar.tsx, InlineEditable.tsx
 │       ├── pagination.ts       # pure packing: sheets, page breaks, composition
 │       ├── pagination.test.ts
-│       └── ResizableBlock.tsx  # drag-to-resize handles on images/diagrams
+│       ├── ResizableBlock.tsx   # drag-to-resize handles on images/diagrams
+│       └── ResizableRows.tsx    # drag-to-extend for answer lines and spacers
 ├── store/
 │   ├── worksheetStore.ts  # Zustand store with undo/redo
 │   └── store.test.ts
@@ -97,11 +116,13 @@ scripts/               # Build & sample generation
 
 public/                # Static assets (SVG icons: window, globe, next, vercel, file)
 
-real_life_reference/   # Reference DSE exam papers for template tracing
-├── DSE{year}_P1_Q{num}.png
-├── head1.png – head3.png, foot1.png–foot2.png   # header/footer reference crops
-└── DBS_Assessment1.pdf
 ```
+
+> **Not in the repository:** development referred to a local `real_life_reference/`
+> folder of HKDSE past-paper scans and a school assessment PDF, used to trace diagram
+> templates and match header/footer layout. That material is exam-board and school
+> copyright and is **not distributed** — it is gitignored. Notes below that cite a
+> reference paper describe what was observed in it, not a file you will find here.
 
 ---
 
@@ -369,17 +390,37 @@ rather than prose and stacking them would print each curve's name twice.
 
 Two defaults are set by where things actually collide on a DSE diagram rather than by
 symmetry. The x-axis title is anchored just past its **arrowhead**, not right-aligned to
-the SVG edge: the edge is `PAD.right` away — room reserved so a long title cannot clip —
-so right-anchoring stranded a short title like "Quantity" in open space far from the axis
-it names, while a long one still grows leftward into the reserved room. And a point's
-label defaults to **`right`, not `upRight`**: a marked point is nearly always an
-intersection, so the diagonal space above-right of it is exactly where the *other* curve
-runs, and an equilibrium label placed there lands on the line it annotates.
+the SVG edge: right-anchoring stranded a short title like "Quantity" in open space far
+from the axis it names. And a point's label defaults to **`right`, not `upRight`**: a
+marked point is nearly always an intersection, so the diagonal space above-right of it is
+exactly where the *other* curve runs, and an equilibrium label placed there lands on the
+line it annotates.
 
-`DIAGRAM_TEMPLATES` (`model/diagramTemplates.ts`) traces the reference papers in
-`real_life_reference/` — AD-AS, money market, tariff, import quota, PPC. A template is
-only an initial value: it produces plain geometry with fresh ids, and nothing downstream
-ever looks the template up again.
+**The right-hand padding is measured, then capped (`MAX_X_TITLE_SHARE`).** `PAD.right`
+was once a flat 116px — enough for the longest title at the nominal 400px width, and so
+29% of the canvas was reserved for a word even when the title was "$". Against a 64px
+left pad that pushed the plot box well left of centre: a blank 400×300 diagram drew its
+axes in a 220×210 area hugging the left edge, and every template inherited the lopsided
+look. The reserve is now sized from the title's own estimated width and capped at 35% of
+the canvas, so a short title leaves the plot wide and centred.
+
+The cap forces a three-way trade, and the resolution is worth recording because two of
+the three options are silently wrong. Capping the pad alone re-clips long titles at the
+canvas edge ("Output level" → "Output leve") — the exact failure `PAD` existed to
+prevent. Sliding a too-long title back from the edge instead draws it *on top of the
+arrowhead*. So `axisTitleAnchor` clamps the title inside the canvas but never left of the
+arrow tip, and the cap is sized from the longest title the templates actually ship. The
+clamp lives in `axisTitleAnchor` rather than in `diagramSvg` because `DiagramCanvas`
+builds the title's drag handle from that same call — computing it renderer-side would
+leave the handle floating off the text it is meant to grab (§ the shared-projection rule
+below).
+
+`DIAGRAM_TEMPLATES` (`model/diagramTemplates.ts`) ships the shapes the syllabus draws the
+same way every year — AD-AS, money market, tariff, import quota, PPC. They reproduce the
+*conventions* of these standard diagrams (which are not copyrightable) rather than any
+particular paper's artwork; the past-paper scans they were originally traced against are
+not distributed with the repository. A template is only an initial value: it produces
+plain geometry with fresh ids, and nothing downstream ever looks the template up again.
 
 #### Drawing the diagram (`model/diagramDraw.ts`, `components/editor/DiagramCanvas.tsx`)
 
@@ -455,9 +496,10 @@ Three constraints fall out of keeping text attached:
 - **Tick labels slide along their own axis only** — one scalar, not a point. A tick that
   drifted off its axis stops lining up with the drop-line that makes it read as a tick,
   and the cursor advertises the constraint (`ew`/`ns`) before the drag starts.
-- **Axis titles nudge inside the room already reserved for them.** `diagramPlot` still
-  sizes the padding from the title's estimated width, so a long title cannot be pushed
-  into the clip the `PAD` comment warns about.
+- **Axis titles nudge inside the room already reserved for them.** `diagramPlot` sizes
+  the padding from the title's estimated width (capped by `MAX_X_TITLE_SHARE`), and
+  `axisTitleAnchor` clamps the result inside the canvas, so a long title can be neither
+  clipped at the edge nor dragged onto the arrowhead.
 
 A point label is the one place two positioning systems coexist: the eight compass slots
 (`labelSide`) remain what templates ship and what the sidebar restores, and a free drag
@@ -711,7 +753,7 @@ and holds a local draft string while focused — re-deriving the text from the s
 twips would delete the decimal point the moment it was typed.
 
 Headers and footers are **lists of `Band` rows** — the very model the masthead uses
-(§ "Constrained layout"). One row was not enough: `real_life_reference/head2.png` stacks
+(§ "Constrained layout"). One row was not enough: a real school assessment header stacks
 five, running an exam line beside a page number, three centred title rows, then a marks
 total beside a "Date:____" rule. Reusing `Band` rather than growing a parallel type means
 one editing surface (`BandEditor` serves the masthead, the header and the footer), one
