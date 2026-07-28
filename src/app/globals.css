@@ -257,7 +257,7 @@ body {
   }
 
   /* Empty fields print as blank, not as their prompt.
-     "Click to add English" is an instruction to the author; on paper it would read as
+     "Double-click to add English" is an instruction to the author; on paper it would read as
      the question text itself. The element keeps its box so the layout does not shift
      between preview and print — only the prompt and its dashed rule go. */
   #print-root [data-empty-placeholder] {

@@ -155,7 +155,7 @@ export function BandEditor({
                         <InlineEditable
                           value={field.text}
                           side={language === 'zh' ? 'zh' : 'en'}
-                          placeholder="Click to add text"
+                          placeholder="Double-click to add text"
                           onCommit={(next) => onEditField(field.id, next)}
                           selected={selection?.isSelected(field.id) ?? false}
                           onSelect={selection ? () => selection.onSelect(field.id) : undefined}

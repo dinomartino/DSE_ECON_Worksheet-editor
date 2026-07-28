@@ -868,7 +868,7 @@ the printed page.
 ```
 click once   → select the element (outlined)   → Delete / Backspace removes it
                                                → floating format toolbar appears
-click again  → edit the text in place          → Enter commits, Esc cancels
+click again / double-click → edit the text in place          → Enter commits, Esc cancels
 hover        → drag grip appears in the margin → drag to reorder, drop indicator
                                                  marks the insertion edge
 ```

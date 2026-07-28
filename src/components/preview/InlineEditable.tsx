@@ -145,7 +145,7 @@ export function InlineEditable({
       aria-label={side === 'zh' ? 'Edit 中文 text' : 'Edit English text'}
       data-selected={selected ? 'true' : undefined}
       // Marks the prompt shown in place of an empty field. It is authoring guidance,
-      // not content, so the print stylesheet hides it — otherwise "Click to add
+      // not content, so the print stylesheet hides it — otherwise "Double-click to add
       // English" would appear on the printed worksheet as if it were the question.
       data-empty-placeholder={isEmpty ? 'true' : undefined}
       className={`cursor-text rounded-sm transition-colors duration-150 focus:outline-none ${
@@ -179,7 +179,7 @@ export function InlineEditable({
         // removal so that it can pick the right unit for the target.
       }}
     >
-      {isEmpty ? (placeholder ?? 'Click to add text') : children}
+      {isEmpty ? (placeholder ?? 'Double-click to add text') : children}
     </span>
   );
 }

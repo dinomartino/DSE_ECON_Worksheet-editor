@@ -186,7 +186,7 @@ function richNodes(
   };
 
   if (language === "en") return editable("en", "Double-click to add English");
-  if (language === "zh") return editable("zh", "按此輸入中文");
+  if (language === "zh") return editable("zh", "Double-click to add 中文");
 
   // In bilingual mode an empty side still needs a click target, otherwise the only
   // way to add the missing translation would be the sidebar.
@@ -200,9 +200,9 @@ function richNodes(
   // one numbered paragraph separated by `w:br` (§5.4).
   return (
     <>
-      {showEn && editable("en", "Click to add English")}
+      {showEn && editable("en", "Double-click to add English")}
       {showEn && showZh && <br />}
-      {showZh && editable("zh", "按此輸入中文")}
+      {showZh && editable("zh", "Double-click to add 中文")}
     </>
   );
 }

@@ -331,7 +331,7 @@ already covers typing, undo/redo and switching questions.
 
 §6 listed "preview selection is question-level, not block-level" as a known gap. That
 gap is now closed in the stronger form: the previewed page **is** the editor. Click
-text to select it, click again to edit it there, press Delete to remove it.
+text to select it, double-click (or click again) to edit it there, press Delete to remove it.
 
 ### 11.1 The mechanism: an edit address in the IR
 
@@ -351,7 +351,7 @@ bytes, and a grep for target names across every XML part found none.
 
 ### 11.2 Two-step engagement, and why
 
-Click-to-select then click-to-edit is not ceremony; it is what makes a keyboard
+Click-to-select then click/double-click-to-edit is not ceremony; it is what makes a keyboard
 Delete safe. Delete acts only on a selection the user made deliberately, and is
 ignored whenever focus sits in a field. The same guard was retrofitted to `⌘Z`,
 which previously undid an entire document commit while you were typing a character

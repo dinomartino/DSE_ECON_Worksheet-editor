@@ -8,6 +8,9 @@ Implements [`PRD.md`](./PRD.md). See [`IMPLEMENTATION.md`](./IMPLEMENTATION.md) 
 build record: decisions made, bugs found while verifying against real Word output,
 how each acceptance criterion was checked, and known gaps.
 
+For the full system architecture, data flow, rendering pipeline, numbering system,
+diagram model, and editor layout, see [`SYSTEM_ARCHITECTURE.md`](./SYSTEM_ARCHITECTURE.md).
+
 ## Quick start
 
 ```bash
