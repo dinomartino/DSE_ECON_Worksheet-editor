@@ -127,21 +127,20 @@ export function createWorksheet(): Worksheet {
     instructions: bi('Answer ALL questions.', '回答全部問題。'),
     fonts: { ...DEFAULT_FONTS },
     pageSetup: { paper: 'A4', orientation: 'portrait', margins: { top: 1440, right: 1440, bottom: 1440, left: 1440 } },
-    header: {
-      enabled: true,
-      rule: true,
-      showOnFirstPage: true,
-      bands: [
-        {
-          id: newId(),
-          zones: {
-            left: [],
-            center: [{ kind: 'text', id: newId(), text: bi('Economics Worksheet', '經濟科工作紙') }],
-            right: [],
-          },
-        },
-      ],
-    },
+    /*
+     * The header starts empty.
+     *
+     * It used to ship a centre field holding the same words as `title`, so a new
+     * document printed "Economics Worksheet" twice — once in the header and again as
+     * the title block below it. The title is the copy worth keeping: it also names the
+     * document in the outline, the saved-file list and the download filename, so
+     * dropping *it* would leave every new worksheet reading "Untitled".
+     *
+     * Enabled rather than off, so `DocumentSettings` shows its presets and its "type on
+     * the page" hint instead of a bare switch; the rule is off because an empty band
+     * would otherwise print a hairline across every page with nothing above it.
+     */
+    header: { enabled: true, rule: false, showOnFirstPage: true, bands: [] },
     footer: {
       enabled: true,
       rule: false,

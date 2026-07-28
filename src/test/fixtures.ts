@@ -73,6 +73,30 @@ export function buildAcceptanceWorksheet(): Worksheet {
   const worksheet = createWorksheet();
   worksheet.title = bi('S5 Economics Test', '中五經濟科測驗');
 
+  /*
+   * A header, stated here rather than inherited.
+   *
+   * `createWorksheet` ships none — an empty default would print nothing, and the header
+   * it used to carry only repeated the title. This fixture is what the export suite
+   * asserts `word/header1.xml` against, so the part it checks for has to be something
+   * the fixture asked for.
+   */
+  worksheet.header = {
+    enabled: true,
+    rule: true,
+    showOnFirstPage: true,
+    bands: [
+      {
+        id: newId(),
+        zones: {
+          left: [],
+          center: [{ kind: 'text', id: newId(), text: bi('S5 Economics Test', '中五經濟科測驗') }],
+          right: [],
+        },
+      },
+    ],
+  };
+
   const mcqs: McqQuestion[] = [
     mcq('What happens when demand falls?', '當需求下降時會發生甚麼？'),
     mcq('The GDP deflator measures:', 'GDP平減物價指數量度：'),

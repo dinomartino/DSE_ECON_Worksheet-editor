@@ -19,7 +19,8 @@ import {
 } from '@/model/flow';
 import { applyResizeBlock } from '@/model/edits';
 import { MARGIN_PRESETS, cmToTwips } from '@/model/page';
-import { bi } from '@/model/text';
+import { createWorksheet } from '@/model/factories';
+import { bi, plain } from '@/model/text';
 import type { LayoutElement, OutputMode, Worksheet } from '@/model/types';
 
 const STUDENT_BI: OutputMode = { language: 'bilingual', version: 'student' };
@@ -1149,6 +1150,27 @@ describe('margin presets and custom margins export verbatim', () => {
    * the document in the outline and the download filename — so the guard is on the
    * printed paragraph rather than on `worksheet.title`.
    */
+  /*
+   * A new document must not print its own name twice.
+   *
+   * The factory used to ship a header band holding the same words as `title`, so a
+   * fresh worksheet exported "Economics Worksheet" as a running header *and* as the
+   * title block underneath it. The title is the copy that stays, because it also names
+   * the document in the outline and the download filename.
+   */
+  it('prints a new document’s title once, not as a header as well', async () => {
+    const worksheet = createWorksheet();
+    const name = plain(worksheet.title.en);
+    expect(name).toBeTruthy();
+
+    const zip = await JSZip.loadAsync(await exportDocxBuffer(worksheet, STUDENT_BI));
+    const document = await zip.file('word/document.xml')!.async('string');
+    expect(document.split(name)).toHaveLength(2);
+
+    // No header part at all, so there is nowhere for a second copy to hide.
+    expect(zip.file('word/header1.xml')).toBeNull();
+  });
+
   it('drops the title paragraph once the title is cleared', async () => {
     const open = async (worksheet: Worksheet) => {
       const zip = await JSZip.loadAsync(await exportDocxBuffer(worksheet, STUDENT_BI));
