@@ -225,8 +225,11 @@ export function NumberField({
   max?: number;
   suffix?: string;
 }) {
+  // `shrink-0` because a number input has a *correct* width — squeezing it until the
+  // digits clip is worse than wrapping the row it sits in. Rows that hold one must
+  // therefore be `flex-wrap`, or the field pushes past the 400px sidebar.
   return (
-    <label className="inline-flex items-center gap-1.5 text-xs text-ink-muted">
+    <label className="inline-flex shrink-0 items-center gap-1.5 text-xs text-ink-muted">
       {label}
       <input
         type="number"

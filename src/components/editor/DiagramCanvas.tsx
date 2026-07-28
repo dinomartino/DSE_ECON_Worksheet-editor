@@ -277,7 +277,7 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
     }
     for (const axis of ['x', 'y'] as const) {
       if (has(diagram[axis].title)) {
-        const at = axisTitleAnchor(diagram, axis, projection, block.widthPx, 1);
+        const at = axisTitleAnchor(diagram, axis, projection, block.widthPx, 1, language);
         out.push({ handle: { kind: 'axisTitle', axis }, at: toUnitPoint(at.x, at.y) });
       }
       for (const tick of diagram[axis].ticks ?? []) {
@@ -286,7 +286,7 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
       }
     }
     return out;
-  }, [diagram, projection, block.widthPx]);
+  }, [diagram, projection, block.widthPx, language]);
 
   /** Pointer event → unit space, undoing the CSS scale the stage is displayed at. */
   const toUnit = useCallback(

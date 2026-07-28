@@ -68,7 +68,13 @@ export function DiagramEditor({ block, onChange }: Props) {
       {/* The same renderer the page and the .docx use, so this is exactly what prints.
           The SVG is told to fill its box rather than to be `widthPx` wide: the sidebar
           is narrower than the printed diagram, and at print width the right-hand axis
-          title would be cut off by the panel. */}
+          title would be cut off by the panel.
+
+          The selector is `[&_svg]`, not `[&>svg]` — the markup is injected into a
+          wrapping <span>, so the svg is a *grandchild*, and the direct-child form
+          silently matched nothing. The SVG kept its full print width and pushed the
+          panel past the 400px column, which is what scrolled the whole sidebar
+          sideways and clipped "Width" and the x-axis title off the right edge. */}
       {/* The thumbnail is the way into the drawing surface: clicking a picture to edit
           it is the gesture teachers already expect, and it matches the rule the page
           preview follows — what you click is what you edit. */}
@@ -76,7 +82,7 @@ export function DiagramEditor({ block, onChange }: Props) {
         type="button"
         title="Draw on this diagram"
         onClick={() => setDrawing(true)}
-        className="group/preview relative block w-full overflow-hidden rounded border border-line bg-surface [&>svg]:h-auto [&>svg]:w-full "
+        className="group/preview relative block w-full overflow-hidden rounded border border-line bg-surface [&_svg]:h-auto [&_svg]:w-full "
         style={{ lineHeight: 0 }}
       >
         <span dangerouslySetInnerHTML={{ __html: preview }} />
@@ -91,7 +97,11 @@ export function DiagramEditor({ block, onChange }: Props) {
         <DiagramCanvas block={block} onChange={onChange} onClose={() => setDrawing(false)} />
       )}
 
-      <div className="flex items-center gap-2">
+      {/* Wraps, because the three controls have genuinely different needs: Draw and
+          Width are sized by their content, while the template select wants whatever is
+          left. In a 400px column that sum exceeds the row often enough that a second
+          line is the honest answer — squeezing instead clipped "Width" off the edge. */}
+      <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" onClick={() => setDrawing(true)}>
           ✎ Draw
         </Button>
@@ -234,8 +244,8 @@ const XY = ({
   y: number;
   onChange: (x: number, y: number) => void;
 }) => (
-  <div className="flex items-end gap-1">
-    <span className="w-10 pb-1 text-[10px] text-ink-subtle">{label}</span>
+  <div className="flex flex-wrap items-end gap-1">
+    <span className="w-10 shrink-0 pb-1 text-[10px] text-ink-subtle">{label}</span>
     <NumberField label="x" min={0} max={100} suffix="%" value={toPct(x)} onChange={(v) => onChange(fromPct(v), y)} />
     <NumberField label="y" min={0} max={100} suffix="%" value={toPct(y)} onChange={(v) => onChange(x, fromPct(v))} />
   </div>
@@ -268,7 +278,7 @@ function CurveList({
               onChange={(labelText) => list.replace(index, { ...curve, label: labelText })}
               rows={1}
             />
-            <div className="flex gap-1">
+            <div className="flex flex-wrap gap-1">
               <SelectField
                 label="Shape"
                 value={curve.shape}
@@ -305,7 +315,7 @@ function CurveList({
             </div>
 
             {curve.points.map((pt, pointIndex) => (
-              <div key={pointIndex} className="flex items-end gap-1">
+              <div key={pointIndex} className="flex flex-wrap items-end gap-1">
                 <XY
                   label={pointIndex === 0 ? 'from' : pointIndex === curve.points.length - 1 ? 'to' : `pt ${pointIndex + 1}`}
                   x={pt.x}
@@ -525,7 +535,7 @@ function LabelList({
               y={item.at.y}
               onChange={(x, y) => list.replace(index, { ...item, at: { x, y } })}
             />
-            <div className="flex gap-1">
+            <div className="flex flex-wrap gap-1">
               <SelectField
                 label="Align"
                 value={item.align ?? 'center'}

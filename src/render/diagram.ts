@@ -28,7 +28,28 @@ import type { BiText, FontPair, LanguageMode, RichText } from '@/model/types';
  * the end of their curve. Too small a pad does not overflow visibly — the SVG simply
  * clips, which is how "Price level" silently became "Prico lovol".
  */
-const PAD = { top: 44, right: 116, bottom: 46, left: 64 };
+const PAD = { top: 44, right: 30, bottom: 46, left: 64 };
+
+/**
+ * The most of the width the x-axis title may claim.
+ *
+ * `PAD.right` used to be a flat 116px — enough for "Quantity of money" at the nominal
+ * 400px size, and so 29% of the canvas was reserved for a word even when the title was
+ * "$". Against a 64px left pad that pushed the plot well left of centre: a blank 400x300
+ * diagram drew its axes in a 220x210 box hugging the left edge, which is the off-centre
+ * look every template inherited.
+ *
+ * The reserve is now measured from the title and capped here. The cap is deliberately
+ * loose rather than tight: a title that does not fit *must* get its room, because both
+ * alternatives are worse — clipping it at the canvas edge loses the words, and sliding
+ * it back over the arrowhead collides with the axis.
+ *
+ * 0.35 is sized from the longest titles the templates actually ship ("Quantity of Good
+ * X", "Taxable income ($)"), which need ~131px of the nominal 400. Anything below that
+ * put those three back against the right edge. A short title like "Quantity" still only
+ * takes what it measures, so the common case keeps the wide, centred plot.
+ */
+const MAX_X_TITLE_SHARE = 0.35;
 
 const AXIS_WIDTH = 2;
 const CURVE_WIDTH = 2;
@@ -225,7 +246,14 @@ function projection(
 ): Projection {
   const pad = {
     top: PAD.top * scale + extraTop,
-    right: Math.max(PAD.right * scale, rightRoom),
+    // Enough for the title, never more than `MAX_X_TITLE_SHARE` of the canvas. A title
+    // wider than the cap grows leftward from its anchor into the plot's own whitespace
+    // rather than pushing the axes further off-centre — overlapping a stretch of empty
+    // plot is a far smaller sin than drawing every diagram lopsided.
+    right: Math.min(
+      Math.max(PAD.right * scale, rightRoom),
+      width * MAX_X_TITLE_SHARE,
+    ),
     bottom: PAD.bottom * scale,
     left: PAD.left * scale,
   };
@@ -536,10 +564,17 @@ export function arrowLabelAnchor(
 /**
  * Where an axis title is drawn, including any dragged nudge.
  *
- * The anchor stays derived from the plot edges and `diagramPlot` still sizes the padding
- * from the title's own estimated width, so a long title reserves its room and cannot
- * clip (the hazard the `PAD` comment describes). `titleOffset` only moves the title
- * *within* that reserved space.
+ * The anchor stays derived from the plot edges, and the x title is clamped so the whole
+ * of it stays on the canvas: the right pad is capped at `MAX_X_TITLE_SHARE` to keep the
+ * plot centred, so a title can be wider than the room past the arrowhead, and without
+ * the clamp the SVG would quietly cut it to "Quantity of" — the silent truncation the
+ * `PAD` comment warns about. Overlapping a strip of empty plot keeps the words.
+ *
+ * The clamp lives here rather than in `diagramSvg` because `DiagramCanvas` builds the
+ * title's drag handle from this same function (§7.5) — computing it in the renderer
+ * alone would leave the handle floating away from the text it is supposed to grab.
+ *
+ * `titleOffset` still applies on top, so a dragged nudge moves the clamped position.
  */
 export function axisTitleAnchor(
   diagram: Diagram,
@@ -547,6 +582,8 @@ export function axisTitleAnchor(
   proj: Projection,
   width: number,
   scale: number,
+  /** Needed to measure the title for the clamp; defaults to the widest (bilingual) case. */
+  language: LanguageMode = 'bilingual',
 ): { x: number; y: number } {
   const offset = diagram[axis].titleOffset;
   const base =
@@ -558,7 +595,21 @@ export function axisTitleAnchor(
         // reference papers put it, and a long title still grows leftward into the
         // reserved room rather than off the canvas.
         {
-          x: proj.plot.right + AXIS_OVERSHOOT * scale + AXIS_TITLE_GAP * scale,
+          // Just past the arrowhead, pulled back only as far as the canvas edge demands
+          // — and never past the arrow tip itself (`Math.max`), because sliding the
+          // title left of the arrow trades a clipped word for a word drawn *on* the
+          // axis. With the cap above sized to fit the longest template title, the pull
+          // is normally zero; it only engages for a title longer than any shipped one,
+          // where slight overhang beats losing the end of the words.
+          x: Math.max(
+            proj.plot.right + AXIS_OVERSHOOT * scale,
+            Math.min(
+              proj.plot.right + AXIS_OVERSHOOT * scale + AXIS_TITLE_GAP * scale,
+              width -
+                AXIS_TITLE_GAP * scale -
+                estimateWidth(pickSides(diagram.x.title, language), AXIS_TITLE_SIZE * scale),
+            ),
+          ),
           y: proj.plot.bottom,
         }
       : // Sat just under the top of the *SVG* rather than above the axis, so it floated
@@ -665,11 +716,11 @@ export function diagramSvg(diagram: Diagram, options: DiagramSvgOptions): string
     `<path d="M ${n(plot.left)} ${n(plot.bottom)} L ${n(plot.right + overshoot)} ${n(plot.bottom)}" ${axisStroke}/>` +
     `<path d="M ${n(plot.left)} ${n(plot.bottom)} L ${n(plot.left)} ${n(plot.top - overshoot)}" ${axisStroke}/>`;
 
-  // Right-anchored at the very edge, so a long title ("Quantity of Good X") grows back
-  // into the padding reserved for it rather than off the side, where the SVG clips.
-  const xTitleAt = axisTitleAnchor(diagram, 'x', proj, width, scale);
+  // Anchored by the shared `axisTitleAnchor`, which now also clamps a long title back
+  // onto the canvas — the drag handle in `DiagramCanvas` is built from the same call,
+  // so the clamp has to live there or the handle would float off the drawn text.
+  const xTitleAt = axisTitleAnchor(diagram, 'x', proj, width, scale, language);
   const xTitle = textAt(xTitleLines, xTitleAt.x, xTitleAt.y, {
-    // Left-anchored now that it starts at the arrowhead rather than at the far edge.
     anchor: 'start',
     baseline: 'middle',
     fontSize: AXIS_TITLE_SIZE * scale,
