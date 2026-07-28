@@ -9,7 +9,7 @@ import type { Worksheet } from './types';
  *    through an older build never destroys data.
  */
 
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 5;
 
 type RawDoc = Record<string, unknown>;
 
@@ -49,7 +49,125 @@ const MIGRATIONS: Array<(doc: RawDoc) => RawDoc> = [
     header: slotsToBands(doc.header),
     footer: slotsToBands(doc.footer),
   }),
+  // v4 -> v5: a section stopped being a container. It owned `questions`/`layout`/`flow`,
+  // which fought pagination — a page is measured, not modelled, so a sheet shared by two
+  // sections had to be shown as two groups, and every page move had to carry ids between
+  // containers first. A section is now a `section` **layout element** in one
+  // document-wide flow, carrying the `restartNumbering` flag that was always its real
+  // purpose. Each old section contributes its heading as one element followed by its own
+  // items, in order, so the printed document is unchanged.
+  (doc) => ({ ...flattenSections(doc), schemaVersion: 5 }),
 ];
+
+/**
+ * Splice every section's contents into one document-wide flow.
+ *
+ * A heading becomes a `section` element *only when the section actually had one*: a
+ * single untitled section is how a plain document was stored, and emitting an empty
+ * heading for it would put a blank row on the page that was never there before.
+ *
+ * `restartNumbering` moves onto the element, so the restart travels with the heading a
+ * teacher can see and drag rather than with an invisible container.
+ */
+function flattenSections(doc: RawDoc): RawDoc {
+  // Already flat — a v5+ document round-tripping through this build. Matches the
+  // `slotsToBands` guard: migrate what is old, never re-migrate what is current.
+  if (!Array.isArray(doc.sections) || doc.flow) return doc;
+
+  const { sections: _dropped, ...rest } = doc;
+  const questions: unknown[] = [];
+  const layout: unknown[] = [];
+  const flow: Array<{ type: 'question' | 'layout'; id: string }> = [];
+
+  for (const raw of doc.sections as RawDoc[]) {
+    if (!raw || typeof raw !== 'object') continue;
+    const sectionQuestions = Array.isArray(raw.questions) ? (raw.questions as RawDoc[]) : [];
+    const sectionLayout = Array.isArray(raw.layout) ? (raw.layout as RawDoc[]) : [];
+
+    if (!isEmptyHeading(raw.heading)) {
+      const element = {
+        kind: 'section',
+        // Reusing the section's own id keeps any reference to it valid and makes the
+        // migration idempotent in the ids it produces.
+        id: raw.id,
+        text: raw.heading,
+        restartNumbering: raw.restartNumbering === true,
+        ...(raw.headingFormat ? { format: raw.headingFormat } : {}),
+      };
+      layout.push(element);
+      flow.push({ type: 'layout', id: raw.id as string });
+    }
+
+    // Resolve this section's order exactly as the old `resolveFlow` did, so a document
+    // with layout elements keeps the order it was saved with. Inlined rather than
+    // imported to keep migrations free of model imports that could re-enter this file.
+    for (const entry of resolveLegacyOrder(sectionQuestions, sectionLayout, raw.flow)) {
+      flow.push(entry);
+    }
+    questions.push(...sectionQuestions);
+    layout.push(...sectionLayout);
+  }
+
+  return { ...rest, questions, layout, flow };
+}
+
+function isEmptyHeading(heading: unknown): boolean {
+  if (!heading || typeof heading !== 'object') return true;
+  const { en, zh } = heading as { en?: unknown; zh?: unknown };
+  const empty = (runs: unknown) =>
+    !Array.isArray(runs) ||
+    runs.every((run) => !String((run as { text?: unknown })?.text ?? '').trim());
+  return empty(en) && empty(zh);
+}
+
+/**
+ * One section's display order, reproducing pre-v5 `resolveFlow`.
+ *
+ * Questions come out in array order; each layout element follows whichever question
+ * preceded it in the stored flow, and anything the flow never mentioned is appended.
+ */
+function resolveLegacyOrder(
+  questions: RawDoc[],
+  layout: RawDoc[],
+  storedFlow: unknown,
+): Array<{ type: 'question' | 'layout'; id: string }> {
+  const ids = (list: RawDoc[]) => list.map((entry) => String(entry.id));
+  if (layout.length === 0) {
+    return ids(questions).map((id) => ({ type: 'question' as const, id }));
+  }
+
+  const layoutIds = new Set(ids(layout));
+  const questionIds = new Set(ids(questions));
+  const after = new Map<string | null, string[]>();
+  const placed = new Set<string>();
+  let anchor: string | null = null;
+
+  for (const raw of Array.isArray(storedFlow) ? (storedFlow as RawDoc[]) : []) {
+    const id = String(raw?.id);
+    if (raw?.type === 'question') {
+      if (questionIds.has(id)) anchor = id;
+      continue;
+    }
+    if (!layoutIds.has(id) || placed.has(id)) continue;
+    const bucket = after.get(anchor);
+    if (bucket) bucket.push(id);
+    else after.set(anchor, [id]);
+    placed.add(id);
+  }
+
+  const out: Array<{ type: 'question' | 'layout'; id: string }> = [];
+  const emit = (list: string[] | undefined) => {
+    for (const id of list ?? []) out.push({ type: 'layout', id });
+  };
+
+  emit(after.get(null));
+  for (const id of ids(questions)) {
+    out.push({ type: 'question', id });
+    emit(after.get(id));
+  }
+  emit(ids(layout).filter((id) => !placed.has(id)));
+  return out;
+}
 
 /**
  * Rewrite a v3 header/footer (`slots`) as v4 bands.
@@ -121,7 +239,9 @@ export const KNOWN_KEYS = new Set([
   'titleFormat',
   'instructions',
   'instructionsFormat',
-  'sections',
+  'questions',
+  'layout',
+  'flow',
   'fonts',
   'bands',
   'pageSetup',
@@ -185,10 +305,9 @@ function normalize(worksheet: Worksheet): Worksheet {
       orientation: 'portrait',
       margins: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
     },
-    sections: (worksheet.sections ?? []).map((section) => ({
-      ...section,
-      questions: section.questions ?? [],
-    })),
+    questions: worksheet.questions ?? [],
+    layout: worksheet.layout ?? [],
+    flow: worksheet.flow ?? [],
   };
 }
 

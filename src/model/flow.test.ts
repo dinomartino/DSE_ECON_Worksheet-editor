@@ -2,30 +2,36 @@ import { describe, expect, it } from 'vitest';
 import {
   createDividerElement,
   createPageBreakElement,
+  createSectionElement,
   createSpacerElement,
   flowOf,
-  moveAcrossSections,
   moveInFlow,
   moveRunInFlow,
   nudgeInFlow,
   resolveFlow,
+  type FlowDoc,
 } from './flow';
-import { createMcqQuestion, createSection } from './factories';
-import type { Section } from './types';
+import { createMcqQuestion, createWorksheet } from './factories';
+import { computeNumbering } from './numbering';
+import { bi } from './text';
+import type { Worksheet } from './types';
 
 /**
  * The ordering contract: `questions` is authoritative for question order, and `flow`
  * only positions layout elements relative to them. These tests pin that down, because
  * a second source of truth for order is exactly the bug this design exists to avoid.
+ *
+ * The subject is a whole document rather than a section: there is one flow now, and a
+ * section is a layout element inside it.
  */
 
-function sectionWith(questionCount: number): Section {
-  const section = createSection();
-  section.questions = Array.from({ length: questionCount }, () => createMcqQuestion());
-  return section;
+function sectionWith(questionCount: number): FlowDoc {
+  return {
+    questions: Array.from({ length: questionCount }, () => createMcqQuestion()),
+  };
 }
 
-const ids = (section: Section) => resolveFlow(section).map((item) => item.id);
+const ids = (section: FlowDoc) => resolveFlow(section).map((item) => item.id);
 
 describe('resolveFlow', () => {
   it('falls back to plain question order when there is no layout at all', () => {
@@ -140,7 +146,7 @@ describe('moveInFlow / nudgeInFlow', () => {
 
     // Drag the divider down onto question 3.
     const moved = moveInFlow(section, divider.id, section.questions[2].id);
-    const next: Section = { ...section, ...moved };
+    const next: FlowDoc = { ...section, ...moved };
     expect(ids(next)).toEqual([
       section.questions[0].id,
       section.questions[1].id,
@@ -260,96 +266,57 @@ describe('moveRunInFlow', () => {
     expect(moved.questions).toHaveLength(4);
   });
 });
-
 /**
- * Moving between sections.
+ * Moving between sections, without a cross-section move.
  *
- * The cross-section counterpart of `moveInFlow`. Both sections have to change in one
- * step, and *which* list the item travels in follows from what it is — the flow
- * invariant again: `questions` owns question order, `layout` owns element existence.
+ * `moveAcrossSections` is gone. A section owns nothing, so "into Section B" is just
+ * "after Section B's heading" — an ordinary move in the one flow. These pin down that
+ * the replacement really does change which section a question reads under, since that
+ * is the behaviour the deleted function existed to provide.
  */
-describe('moveAcrossSections', () => {
-  it('moves a question into another section, next to a question there', () => {
-    const from = sectionWith(2);
-    const to = sectionWith(2);
-    const moving = from.questions[0].id;
-    const anchor = to.questions[1].id;
+describe('moving past a section marker', () => {
+  const docWith = (questionCount: number) => {
+    const questions = Array.from({ length: questionCount }, () => createMcqQuestion());
+    const sectionB = createSectionElement(bi('Section B', '乙部'));
+    // Two questions, then the Section B heading, then the rest.
+    const doc: FlowDoc = {
+      questions,
+      layout: [sectionB],
+      flow: [
+        { type: 'question', id: questions[0].id },
+        { type: 'question', id: questions[1].id },
+        { type: 'layout', id: sectionB.id },
+        ...questions.slice(2).map((q) => ({ type: 'question' as const, id: q.id })),
+      ],
+    };
+    return { doc, sectionB };
+  };
 
-    const result = moveAcrossSections(from, to, moving, anchor, 'before')!;
+  it('moves a question under another section by landing it after that heading', () => {
+    const { doc, sectionB } = docWith(4);
+    const moving = doc.questions[0].id;
 
-    expect(result.source.questions.map((q) => q.id)).not.toContain(moving);
-    expect(result.target.questions.map((q) => q.id)).toEqual([
-      to.questions[0].id,
-      moving,
-      to.questions[1].id,
-    ]);
+    const moved = moveInFlow(doc, moving, sectionB.id, 'after');
+    const order = moved.flow.map((entry) => entry.id);
+
+    // It now sits immediately after the heading, so it reads under Section B.
+    expect(order.indexOf(moving)).toBe(order.indexOf(sectionB.id) + 1);
+    // And no question was lost on the way — the invariant `applyOrder` protects.
+    expect(moved.questions).toHaveLength(4);
   });
 
-  it('moves a layout element into another section — impossible before', () => {
-    const from = sectionWith(1);
-    const divider = createDividerElement();
-    from.layout = [divider];
-    from.flow = [
-      { type: 'question', id: from.questions[0].id },
-      { type: 'layout', id: divider.id },
-    ];
-    const to = sectionWith(2);
+  it('renumbers from the marker, which is what a section is for', () => {
+    const { doc, sectionB } = docWith(4);
+    sectionB.restartNumbering = true;
+    const worksheet = { ...createWorksheet(), ...doc, layout: [sectionB] } as Worksheet;
 
-    const result = moveAcrossSections(from, to, divider.id, to.questions[0].id, 'before')!;
+    const before = computeNumbering(worksheet);
+    // Questions 1-2 precede the marker; 3-4 follow it and restart at 1.
+    expect(before.questions.map((entry) => entry.number)).toEqual([1, 2, 1, 2]);
 
-    expect((result.source.layout ?? []).map((e) => e.id)).not.toContain(divider.id);
-    expect((result.target.layout ?? []).map((e) => e.id)).toContain(divider.id);
-    expect(resolveFlow(result.target).map((i) => i.id)[0]).toBe(divider.id);
-    // It leaves the source's flow too, so nothing dangles.
-    expect((result.source.flow ?? []).map((e) => e.id)).not.toContain(divider.id);
-  });
-
-  it('lands a question next to a layout element in the other section', () => {
-    // The case the old code could not express: crossing sections only worked when the
-    // drop target happened to be another question.
-    const from = sectionWith(2);
-    const to = sectionWith(1);
-    const divider = createDividerElement();
-    to.layout = [divider];
-    to.flow = [
-      { type: 'question', id: to.questions[0].id },
-      { type: 'layout', id: divider.id },
-    ];
-
-    const moving = from.questions[1].id;
-    const result = moveAcrossSections(from, to, moving, divider.id, 'after')!;
-
-    expect(resolveFlow(result.target).map((i) => i.id)).toEqual([
-      to.questions[0].id,
-      divider.id,
-      moving,
-    ]);
-    expect(result.target.questions.map((q) => q.id)).toEqual([to.questions[0].id, moving]);
-  });
-
-  it('honours before/after, so a drop lands on the edge the pointer chose', () => {
-    const from = sectionWith(1);
-    const to = sectionWith(2);
-    const moving = from.questions[0].id;
-
-    const after = moveAcrossSections(from, to, moving, to.questions[0].id, 'after')!;
-    expect(after.target.questions.map((q) => q.id)).toEqual([
-      to.questions[0].id,
-      moving,
-      to.questions[1].id,
-    ]);
-  });
-
-  it('returns undefined for a move within one section, so the caller uses moveInFlow', () => {
-    const section = sectionWith(2);
-    expect(
-      moveAcrossSections(section, section, section.questions[0].id, section.questions[1].id),
-    ).toBeUndefined();
-  });
-
-  it('returns undefined when the item is not in the source at all', () => {
-    const from = sectionWith(1);
-    const to = sectionWith(1);
-    expect(moveAcrossSections(from, to, 'ghost', to.questions[0].id)).toBeUndefined();
+    // Drag the first question below the heading: it joins Section B's run.
+    const moved = moveInFlow(worksheet, worksheet.questions[0].id, sectionB.id, 'after');
+    const after = computeNumbering({ ...worksheet, ...moved });
+    expect(after.questions.map((entry) => entry.number)).toEqual([1, 1, 2, 3]);
   });
 });

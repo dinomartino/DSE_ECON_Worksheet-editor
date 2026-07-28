@@ -10,6 +10,7 @@ import {
   createLabelListElement,
   createPageBreakElement,
   createPartHeaderElement,
+  createSectionElement,
   createSpacerElement,
   createTextElement,
 } from '@/model/flow';
@@ -17,14 +18,16 @@ import { questionMarks } from '@/model/marks';
 import type { NumberingPlan } from '@/model/numbering';
 import { resolveFlow } from '@/model/flow';
 import { bi, plain } from '@/model/text';
-import type { LayoutElement, Question, Section, Worksheet } from '@/model/types';
+import type { LayoutElement, Question, Worksheet } from '@/model/types';
 import { listQuestionTypes, requireQuestionType } from '@/registry';
 import { useWorksheetStore } from '@/store/worksheetStore';
+import type { PageComposition } from '@/components/preview/pagination';
 import { Button, IconButton, Pill } from '@/components/ui';
 import { DragGhost, hideNativeDragImage } from '@/components/ui/DragGhost';
 import {
   AnswerLinesIcon,
   ChevronDownIcon,
+  ChevronRightIcon,
   ChevronUpIcon,
   DividerIcon,
   GripIcon,
@@ -35,6 +38,7 @@ import {
   PageBreakIcon,
   PartHeaderIcon,
   PlusIcon,
+  SectionIcon,
   SettingsIcon,
   SpacerIcon,
   StructuredIcon,
@@ -68,6 +72,7 @@ function typeBadge(question: Question): string {
 /** Human name per layout kind. The icon comes from `LAYOUT_ICON`, shared with the
     add rail so the same thing looks the same wherever it appears. */
 const LAYOUT_NAME: Record<LayoutElement['kind'], string> = {
+  section: 'Section',
   heading: 'Heading',
   text: 'Text',
   spacer: 'Blank space',
@@ -84,7 +89,7 @@ const LAYOUT_NAME: Record<LayoutElement['kind'], string> = {
  * It shares the question row's drag affordance so the two reorder as one list — the
  * whole point of the flow is that a divider can be dragged between two questions.
  */
-function LayoutRow({ element, section }: { element: LayoutElement; section: Section }) {
+function LayoutRow({ element }: { element: LayoutElement }) {
   const mode = useWorksheetStore((s) => s.mode);
   const removeLayoutElement = useWorksheetStore((s) => s.removeLayoutElement);
   const updateLayoutElement = useWorksheetStore((s) => s.updateLayoutElement);
@@ -96,10 +101,14 @@ function LayoutRow({ element, section }: { element: LayoutElement; section: Sect
   const [isOver, setIsOver] = useState(false);
   const name = LAYOUT_NAME[element.kind];
   const Icon = LAYOUT_ICON[element.kind];
+  const isSection = element.kind === 'section';
 
-  // Headings and notes show their text; the rest describe their own size.
+  // Headings, sections and notes show their text; the rest describe their own size.
   const detail =
-    element.kind === 'heading' || element.kind === 'text' || element.kind === 'partHeader'
+    element.kind === 'heading' ||
+    element.kind === 'text' ||
+    element.kind === 'partHeader' ||
+    element.kind === 'section'
       ? plain(mode.language === 'zh' ? element.text.zh : element.text.en) ||
         plain(element.text.en) ||
         plain(element.text.zh)
@@ -115,14 +124,26 @@ function LayoutRow({ element, section }: { element: LayoutElement; section: Sect
     element.kind === 'spacer'
       ? [24, 48, 72, 120].map((heightPt) => ({
           label: `Height ${heightPt}pt`,
-          onSelect: () => updateLayoutElement(section.id, element.id, { heightPt }),
+          onSelect: () => updateLayoutElement(element.id, { heightPt }),
         }))
       : element.kind === 'answerLines'
         ? [2, 4, 6, 8, 12].map((lines) => ({
             label: `${lines} lines`,
-            onSelect: () => updateLayoutElement(section.id, element.id, { lines }),
+            onSelect: () => updateLayoutElement(element.id, { lines }),
           }))
-        : [];
+        : element.kind === 'section'
+          ? [
+              {
+                // The one control a section really needs, on the row that *is* the
+                // section — rather than on a container header the page never showed.
+                label: element.restartNumbering
+                  ? 'Continue numbering from previous'
+                  : 'Restart numbering at 1',
+                onSelect: () =>
+                  updateLayoutElement(element.id, { restartNumbering: !element.restartNumbering }),
+              },
+            ]
+          : [];
 
   return (
     <li
@@ -143,7 +164,7 @@ function LayoutRow({ element, section }: { element: LayoutElement; section: Sect
       onDragLeave={() => setIsOver(false)}
       onDrop={(event) => {
         event.preventDefault();
-        if (dragId && dragId !== element.id) reorderFlowItem(section.id, dragId, element.id);
+        if (dragId && dragId !== element.id) reorderFlowItem(dragId, element.id);
         setDragId(undefined);
         setIsOver(false);
       }}
@@ -151,7 +172,11 @@ function LayoutRow({ element, section }: { element: LayoutElement; section: Sect
         isOver
           ? 'before:absolute before:inset-x-1 before:-top-px before:h-0.5 before:rounded before:bg-accent'
           : ''
-      } ${dragId === element.id ? 'opacity-40' : ''}`}
+      } ${dragId === element.id ? 'opacity-40' : ''} ${
+        // A section names the run beneath it, so it is weighted to read as a divider in
+        // the list rather than as one more item in it.
+        isSection ? 'mt-1 border-t border-line bg-surface-sunken/50 pt-2 first:mt-0 first:border-t-0' : ''
+      }`}
     >
       <span
         aria-hidden
@@ -163,15 +188,27 @@ function LayoutRow({ element, section }: { element: LayoutElement; section: Sect
       <span className="shrink-0 text-ink-subtle" title={name}>
         <Icon size={14} />
       </span>
-      <span className="min-w-0 flex-1 truncate text-xs text-ink-muted">
+      <span
+        className={`min-w-0 flex-1 truncate ${
+          isSection ? 'text-[11px] font-semibold text-ink' : 'text-xs text-ink-muted'
+        }`}
+      >
         {detail || <span className="italic">{name}</span>}
       </span>
+      {isSection && element.kind === 'section' && element.restartNumbering && (
+        <span
+          className="shrink-0 rounded bg-surface-hover px-1 text-[9px] font-medium text-ink-subtle"
+          title="Numbering restarts at 1 here"
+        >
+          ↻1
+        </span>
+      )}
 
       <span className="flex shrink-0 items-center opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
-        <IconButton label="Move up" onClick={() => nudgeFlowItem(section.id, element.id, -1)}>
+        <IconButton label="Move up" onClick={() => nudgeFlowItem(element.id, -1)}>
           <ChevronUpIcon size={14} />
         </IconButton>
-        <IconButton label="Move down" onClick={() => nudgeFlowItem(section.id, element.id, 1)}>
+        <IconButton label="Move down" onClick={() => nudgeFlowItem(element.id, 1)}>
           <ChevronDownIcon size={14} />
         </IconButton>
         <Menu
@@ -180,7 +217,7 @@ function LayoutRow({ element, section }: { element: LayoutElement; section: Sect
             ...sizeItems,
             {
               label: `Delete ${name.toLowerCase()}`,
-              onSelect: () => removeLayoutElement(section.id, element.id),
+              onSelect: () => removeLayoutElement(element.id),
               danger: true,
               separated: sizeItems.length > 0,
               icon: <TrashIcon size={15} />,
@@ -194,13 +231,11 @@ function LayoutRow({ element, section }: { element: LayoutElement; section: Sect
 
 function QuestionRow({
   question,
-  section,
   numbering,
   isSelected,
   onSelect,
 }: {
   question: Question;
-  section: Section;
   numbering: NumberingPlan;
   isSelected: boolean;
   onSelect: () => void;
@@ -210,7 +245,6 @@ function QuestionRow({
   const removeQuestion = useWorksheetStore((s) => s.removeQuestion);
   const duplicateQuestion = useWorksheetStore((s) => s.duplicateQuestion);
   const moveQuestion = useWorksheetStore((s) => s.moveQuestion);
-  const moveQuestionToSection = useWorksheetStore((s) => s.moveQuestionToSection);
   const reorderFlowItem = useWorksheetStore((s) => s.reorderFlowItem);
   const dragId = useWorksheetStore((s) => s.dragQuestionId);
   const setDragId = useWorksheetStore((s) => s.setDragQuestionId);
@@ -232,7 +266,14 @@ function QuestionRow({
         plain(stem.text.en)
       : '';
 
-  const otherSections = worksheet.sections.filter((candidate) => candidate.id !== section.id);
+  // "Move to section" is now "move to the head of that section's run": a section owns
+  // nothing, so the destination is a position after its heading rather than a container
+  // to be put inside. Sections other than the one this question already sits under.
+  const currentSectionId = numbering.byQuestionId.get(question.id)?.sectionId;
+  const otherSections = worksheet.layout.filter(
+    (element): element is Extract<LayoutElement, { kind: 'section' }> =>
+      element.kind === 'section' && element.id !== currentSectionId,
+  );
 
   const menuItems = [
     { label: 'Duplicate', onSelect: () => duplicateQuestion(question.id) },
@@ -247,8 +288,8 @@ function QuestionRow({
       },
     },
     ...otherSections.map((candidate, index) => ({
-      label: `Move to ${plain(candidate.heading?.en) || `Section ${index + 1}`}`,
-      onSelect: () => moveQuestionToSection(question.id, candidate.id),
+      label: `Move to ${plain(candidate.text.en) || plain(candidate.text.zh) || `Section ${index + 1}`}`,
+      onSelect: () => reorderFlowItem(question.id, candidate.id, 'after'),
       separated: index === 0,
     })),
     {
@@ -280,11 +321,11 @@ function QuestionRow({
       onDragLeave={() => setIsOver(false)}
       onDrop={(event) => {
         event.preventDefault();
-        // One route for every case: `reorderFlowItem` finds the dragged item's own
-        // section and moves it across when that differs from this row's, so a question
-        // or a layout element can be dropped into any section from the outline.
+        // One route for every case. With a single document flow there is no "across"
+        // to handle: landing next to this row is the whole move, and which section the
+        // item ends up in follows from which heading it lands after.
         if (dragId && dragId !== question.id) {
-          reorderFlowItem(section.id, dragId, question.id);
+          reorderFlowItem(dragId, question.id);
         }
         setDragId(undefined);
         setIsOver(false);
@@ -345,6 +386,113 @@ function QuestionRow({
   );
 }
 
+/**
+ * The tab that heads a page's items.
+ *
+ * A page break used to appear in the outline as an ordinary row — an item *between*
+ * two questions — which is a faithful description of the model and a poor description
+ * of what a teacher made. They added a page; the row said "New page" and sat in the
+ * list looking like a divider, giving no clue which of the questions below it were on
+ * that page. So the break is promoted out of the list and becomes the heading of the
+ * run it opens, and its delete action removes the page rather than "the element".
+ *
+ * It is also a drop target: dropping a question on the tab moves it to the **start** of
+ * that page, which is the one position the rows underneath cannot express (they can
+ * only land something before or after themselves).
+ */
+function PageGroupHeader({
+  group,
+  open,
+  onToggle,
+}: {
+  group: PageGroup;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const removeLayoutElement = useWorksheetStore((s) => s.removeLayoutElement);
+  const removeMany = useWorksheetStore((s) => s.removeMany);
+  const reorderFlowItem = useWorksheetStore((s) => s.reorderFlowItem);
+  const dragId = useWorksheetStore((s) => s.dragQuestionId);
+  const setDragId = useWorksheetStore((s) => s.setDragQuestionId);
+  const [isOver, setIsOver] = useState(false);
+
+  const count = group.items.length;
+  const label =
+    group.pageNumber === undefined ? 'Not yet placed' : `Page ${group.pageNumber}`;
+
+  // Dropping onto the tab lands the item at the head of the page. With no items to
+  // aim at, the break itself is the anchor — the same rule the blank sheet follows.
+  const anchor = group.items[0]?.id ?? group.breakId;
+
+  return (
+    <div
+      onDragOver={(event) => {
+        if (!dragId || !anchor || dragId === anchor) return;
+        event.preventDefault();
+        setIsOver(true);
+      }}
+      onDragLeave={() => setIsOver(false)}
+      onDrop={(event) => {
+        event.preventDefault();
+        setIsOver(false);
+        if (!dragId || !anchor || dragId === anchor) return;
+        // `before` the first item puts it at the top of the page; with only a break to
+        // aim at, `after` the break is what lands it on the sheet the break opened.
+        reorderFlowItem(dragId, anchor, group.items.length > 0 ? 'before' : 'after');
+        setDragId(undefined);
+      }}
+      className={`group/page relative mt-1.5 flex items-center gap-1 rounded-md px-1.5 py-1 first:mt-0 ${
+        isOver ? 'bg-accent-soft ring-1 ring-accent/40' : ''
+      }`}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="flex min-w-0 flex-1 cursor-pointer items-center gap-1 text-left"
+      >
+        <span className="shrink-0 text-ink-subtle transition-transform" aria-hidden>
+          {open ? <ChevronDownIcon size={11} /> : <ChevronRightIcon size={11} />}
+        </span>
+        <span className="shrink-0 text-ink-subtle" aria-hidden>
+          <PageBreakIcon size={12} />
+        </span>
+        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-ink-muted">
+          {label}
+        </span>
+        {/* The count is what a collapsed tab is for — it has to say what is inside
+            without being opened. */}
+        <span className="truncate text-[10px] text-ink-subtle">
+          {count === 0 ? 'empty' : `${count} item${count === 1 ? '' : 's'}`}
+        </span>
+      </button>
+
+      {/* Only a page a break actually opened can be deleted: the first page of the
+          document is not something the teacher added, so there is nothing to remove. */}
+      {group.breakId && (
+        <span className="shrink-0 opacity-0 transition-opacity focus-within:opacity-100 group-hover/page:opacity-100">
+          <Menu
+            label={`Actions for ${label}`}
+            items={[
+              {
+                label: 'Remove page break',
+                onSelect: () => removeLayoutElement(group.breakId!),
+              },
+              {
+                label: count === 0 ? 'Delete page' : `Delete page and ${count} item${count === 1 ? '' : 's'}`,
+                onSelect: () => removeMany([group.breakId!, ...group.items.map((i) => i.id)]),
+                danger: true,
+                separated: true,
+                icon: <TrashIcon size={15} />,
+              },
+            ]}
+          />
+        </span>
+      )}
+    </div>
+  );
+}
+
 /** What the drag chip should say for whatever id is in hand. */
 function dragLabelFor(
   worksheet: Worksheet,
@@ -352,42 +500,127 @@ function dragLabelFor(
   dragId: string | undefined,
 ) {
   if (!dragId) return undefined;
-  for (const section of worksheet.sections) {
-    const question = section.questions.find((q) => q.id === dragId);
-    if (question) {
-      const number = numbering.byQuestionId.get(dragId)?.number;
-      const stem = question.blocks.find((b) => b.kind === 'paragraph');
-      const excerpt =
-        stem && stem.kind === 'paragraph' ? plain(stem.text.en) || plain(stem.text.zh) : '';
-      return {
-        label: number ? `Question ${number}` : 'Question',
-        // The type's own name comes from the registry, so a new type labels its ghost
-        // without this file learning about it (§9).
-        detail: excerpt || plain(requireQuestionType(question).displayName.en),
-      };
-    }
-    const element = (section.layout ?? []).find((e) => e.id === dragId);
-    if (element) return { label: LAYOUT_NAME[element.kind], detail: 'Layout element' };
+
+  const question = worksheet.questions.find((q) => q.id === dragId);
+  if (question) {
+    const number = numbering.byQuestionId.get(dragId)?.number;
+    const stem = question.blocks.find((b) => b.kind === 'paragraph');
+    const excerpt =
+      stem && stem.kind === 'paragraph' ? plain(stem.text.en) || plain(stem.text.zh) : '';
+    return {
+      label: number ? `Question ${number}` : 'Question',
+      // The type's own name comes from the registry, so a new type labels its ghost
+      // without this file learning about it (§9).
+      detail: excerpt || plain(requireQuestionType(question).displayName.en),
+    };
   }
+
+  const element = worksheet.layout.find((e) => e.id === dragId);
+  if (element) return { label: LAYOUT_NAME[element.kind], detail: 'Layout element' };
   return { label: 'Item' };
+}
+
+/**
+ * A section's items, cut into the sheets they landed on.
+ *
+ * A page is **measured, not modelled** — there is no `Page` in the document — so this
+ * groups by what the paginator reported rather than by anything stored. Two consequences
+ * follow, and they are the whole reason this is a view over `resolveFlow` rather than a
+ * container in the model:
+ *
+ * - **A group is a result, not a promise.** Adding a question to a full page pushes
+ *   whatever no longer fits onto the next one, exactly as the printed document behaves.
+ *   The groups re-cut themselves on the next measurement; nothing pins them.
+ * - **A section can start mid-sheet**, so the same page number can appear under two
+ *   sections. The page's number is used as a label, never as a key.
+ *
+ * Items the composition does not mention — anything added since the last measurement,
+ * or everything at all before the first one — land in a trailing group with no page
+ * number. That keeps a new question visible in the outline for the frame before the
+ * paginator catches up, rather than having it vanish until measurement lands.
+ */
+interface PageGroup {
+  /** 1-based page number, or undefined for items not yet measured onto a sheet. */
+  pageNumber?: number;
+  /** The page break that opened this sheet, if one did — what makes it deletable. */
+  breakId?: string;
+  items: ReturnType<typeof resolveFlow>;
+}
+
+export function groupByPage(
+  items: ReturnType<typeof resolveFlow>,
+  pages: PageComposition[],
+): PageGroup[] {
+  // Which sheet each id landed on, and which sheet each break opened.
+  const pageOf = new Map<string, number>();
+  for (const page of pages) {
+    for (const id of page.flowIds) pageOf.set(id, page.index);
+  }
+
+  const groups: PageGroup[] = [];
+  let current: PageGroup | undefined;
+
+  for (const item of items) {
+    const index = pageOf.get(item.id);
+    // A run continues while the page number holds. `undefined` (not yet measured) is
+    // its own run, so unmeasured items do not silently join the last real page.
+    if (!current || current.pageNumber !== (index === undefined ? undefined : index + 1)) {
+      current = {
+        pageNumber: index === undefined ? undefined : index + 1,
+        breakId: index === undefined ? undefined : pages[index]?.breakId,
+        items: [],
+      };
+      groups.push(current);
+    }
+    current.items.push(item);
+  }
+
+  // A page the teacher added but has not filled has no items at all, so nothing above
+  // creates a group for it — yet it is the one page most in need of being visible and
+  // droppable. Insert it at the position its break occupies in the flow.
+  for (const page of pages) {
+    if (!page.breakId || page.flowIds.length > 1) continue;
+    if (groups.some((group) => group.pageNumber === page.index + 1)) continue;
+    const at = groups.findIndex(
+      (group) => group.pageNumber !== undefined && group.pageNumber > page.index + 1,
+    );
+    const empty: PageGroup = {
+      pageNumber: page.index + 1,
+      breakId: page.breakId,
+      items: [],
+    };
+    if (at < 0) groups.push(empty);
+    else groups.splice(at, 0, empty);
+  }
+
+  return groups;
 }
 
 export function Outline({
   numbering,
+  pages,
   onOpenSettings,
 }: {
   numbering: NumberingPlan;
+  pages: PageComposition[];
   onOpenSettings: () => void;
 }) {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const selectedQuestionId = useWorksheetStore((s) => s.selectedQuestionId);
   const select = useWorksheetStore((s) => s.select);
   const addQuestion = useWorksheetStore((s) => s.addQuestion);
-  const addSection = useWorksheetStore((s) => s.addSection);
-  const removeSection = useWorksheetStore((s) => s.removeSection);
-  const updateSection = useWorksheetStore((s) => s.updateSection);
   const addLayoutElement = useWorksheetStore((s) => s.addLayoutElement);
   const dragQuestionId = useWorksheetStore((s) => s.dragQuestionId);
+
+  /*
+   * Which page groups are folded away, by group key.
+   *
+   * Collapsed rather than expanded is stored, so a page is open by default — a grouping
+   * nobody has seen before must not start by hiding the content it is grouping. Keyed by
+   * page number rather than by index, so adding a question above does not fold a
+   * different page than the one the teacher folded.
+   */
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
 
   const ghost = dragLabelFor(worksheet, numbering, dragQuestionId);
 
@@ -412,160 +645,168 @@ export function Outline({
       </div>
 
       <div className="scroll-slim min-h-0 flex-1 overflow-y-auto px-2 pb-3">
-        {worksheet.sections.map((section, sectionIndex) => (
-          <section key={section.id} className="mb-3">
-            <header className="flex items-center gap-1.5 rounded-lg bg-surface-sunken px-2 py-1.5">
-              <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-ink">
-                {plain(section.heading?.en) ||
-                  plain(section.heading?.zh) ||
-                  `Section ${sectionIndex + 1}`}
-              </span>
-              {section.restartNumbering && (
-                <span
-                  className="shrink-0 rounded bg-surface-hover px-1 text-[9px] font-medium text-ink-subtle"
-                  title="Numbering restarts at 1 in this section"
-                >
-                  ↻1
-                </span>
-              )}
-              <Menu
-                label={`Actions for section ${sectionIndex + 1}`}
-                items={[
-                  {
-                    label: section.restartNumbering
-                      ? 'Continue numbering from previous'
-                      : 'Restart numbering at 1',
-                    onSelect: () =>
-                      updateSection(section.id, { restartNumbering: !section.restartNumbering }),
-                  },
-                  {
-                    label: 'Delete section',
-                    onSelect: () => removeSection(section.id),
-                    danger: true,
-                    separated: true,
-                    icon: <TrashIcon size={15} />,
-                  },
-                ]}
-              />
-            </header>
+        {(() => {
+          const items = resolveFlow(worksheet);
+          if (items.length === 0) {
+            return (
+              <p className="px-2 py-2.5 text-[11px] italic text-ink-subtle">
+                Empty — add something below.
+              </p>
+            );
+          }
 
-            {(() => {
-              const items = resolveFlow(section);
-              if (items.length === 0) {
-                return (
-                  <p className="px-2 py-2.5 text-[11px] italic text-ink-subtle">
-                    Empty — add something below.
-                  </p>
-                );
-              }
-              return (
-                <ul className="space-y-px">
-                  {items.map((item) =>
-                    item.type === 'question' ? (
-                      <QuestionRow
-                        key={item.id}
-                        question={item.question}
-                        section={section}
-                        numbering={numbering}
-                        isSelected={selectedQuestionId === item.question.id}
-                        onSelect={() => select(item.question.id)}
-                      />
+          /*
+           * A page break is not listed as an item — it heads the run it opened
+           * (§`PageGroupHeader`). Filtering it here rather than inside the grouping
+           * keeps `groupByPage` a pure cut of whatever it is handed, and so testable
+           * without knowing which kinds are drawn.
+           */
+          const visible = items.filter(
+            (item) => !(item.type === 'layout' && item.element.kind === 'pageBreak'),
+          );
+          const groups = groupByPage(visible, pages);
+
+          const renderItems = (group: PageGroup) =>
+            group.items.map((item) =>
+              item.type === 'question' ? (
+                <QuestionRow
+                  key={item.id}
+                  question={item.question}
+                  numbering={numbering}
+                  isSelected={selectedQuestionId === item.question.id}
+                  onSelect={() => select(item.question.id)}
+                />
+              ) : (
+                <LayoutRow key={item.id} element={item.element} />
+              ),
+            );
+
+          // Before the first measurement there is one unnumbered group holding
+          // everything; heading it "Not yet placed" would be noise on a document that
+          // simply has not been measured yet, so the rows render bare.
+          if (groups.length === 1 && groups[0].pageNumber === undefined) {
+            return <ul className="space-y-px">{renderItems(groups[0])}</ul>;
+          }
+
+          /*
+           * Pages are the top level, and a section heading is a row inside one.
+           *
+           * This is the fix the whole flattening was for. Groups used to nest inside a
+           * per-section loop, so a sheet shared by two sections — which every real
+           * paper has, since Section B starts where Section A ends rather than on a
+           * fresh page — was drawn twice: once under each section, each copy holding
+           * only that section's half and each offering its own drop targets for the
+           * same physical page. One sheet is now one group, and the section marker
+           * appears in it at the point the printed page shows it.
+           */
+          return groups.map((group, groupIndex) => {
+            const key = `${group.pageNumber ?? 'unplaced'}-${groupIndex}`;
+            const open = !collapsed.has(key);
+            return (
+              <div key={key}>
+                <PageGroupHeader
+                  group={group}
+                  open={open}
+                  onToggle={() =>
+                    setCollapsed((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(key)) next.delete(key);
+                      else next.add(key);
+                      return next;
+                    })
+                  }
+                />
+                {open && (
+                  <ul className="space-y-px border-l border-line pl-1.5 ml-2">
+                    {group.items.length === 0 ? (
+                      <li className="py-1.5 pl-1 text-[11px] italic text-ink-subtle">
+                        Empty page — drag something here.
+                      </li>
                     ) : (
-                      <LayoutRow key={item.id} element={item.element} section={section} />
+                      renderItems(group)
+                    )}
+                  </ul>
+                )}
+              </div>
+            );
+          });
+        })()}
+
+        {/* One add affordance for the document, not one per section.
+            The add rail on the left is the primary way to insert anything; this row
+            exists for adding at the end without first clearing the selection. Question
+            types come from the registry, which keeps this an extension point (§5.3, §9). */}
+        <div className="mt-1 px-1">
+          <Menu
+            align="left"
+            label="Add to worksheet"
+            trigger={
+              <span className="flex items-center gap-1.5 text-[11px]">
+                <PlusIcon size={13} />
+                Add here
+              </span>
+            }
+            items={[
+              ...listQuestionTypes().map((definition) => ({
+                label: plain(definition.displayName.en),
+                onSelect: () => addQuestion(definition.id),
+                icon:
+                  definition.id === 'mcq' ? <McqIcon size={15} /> : <StructuredIcon size={15} />,
+              })),
+              {
+                label: 'Section (restarts numbering)',
+                onSelect: () => addLayoutElement(createSectionElement()),
+                icon: <SectionIcon size={15} />,
+                separated: true,
+              },
+              {
+                label: 'Part header (with marks)',
+                onSelect: () =>
+                  addLayoutElement(
+                    createPartHeaderElement(
+                      bi('Part A: Multiple-choice questions', '甲部：多項選擇題'),
                     ),
-                  )}
-                </ul>
-              );
-            })()}
-
-            {/* One add affordance per section, not five.
-                The add rail on the left is now the primary way to insert anything, and
-                it targets the selected question's section. This row exists for the case
-                the rail cannot express — adding to a *specific* section that is not the
-                current one — so it is one quiet menu rather than the old row of look-alike
-                links competing with it. The question types still come from the registry,
-                which keeps this the extension point for a new type (§5.3, §9). */}
-            <div className="mt-1 px-1">
-              <Menu
-                align="left"
-                label={`Add to section ${sectionIndex + 1}`}
-                trigger={
-                  <span className="flex items-center gap-1.5 text-[11px]">
-                    <PlusIcon size={13} />
-                    Add here
-                  </span>
-                }
-                items={[
-                  ...listQuestionTypes().map((definition) => ({
-                    label: plain(definition.displayName.en),
-                    onSelect: () => addQuestion(section.id, definition.id),
-                    icon:
-                      definition.id === 'mcq' ? (
-                        <McqIcon size={15} />
-                      ) : (
-                        <StructuredIcon size={15} />
-                      ),
-                  })),
-                  {
-                    label: 'Part header (with marks)',
-                    onSelect: () =>
-                      addLayoutElement(
-                        section.id,
-                        createPartHeaderElement(
-                          bi('Part A: Multiple-choice questions', '甲部：多項選擇題'),
-                        ),
-                      ),
-                    icon: <PartHeaderIcon size={15} />,
-                    separated: true,
-                  },
-                  {
-                    label: 'Heading',
-                    onSelect: () => addLayoutElement(section.id, createHeadingElement()),
-                    icon: <HeadingIcon size={15} />,
-                  },
-                  {
-                    label: 'Label list',
-                    onSelect: () => addLayoutElement(section.id, createLabelListElement()),
-                    icon: <LabelListIcon size={15} />,
-                  },
-                  {
-                    label: 'Text / note',
-                    onSelect: () => addLayoutElement(section.id, createTextElement()),
-                    icon: <TextIcon size={15} />,
-                  },
-                  {
-                    label: 'Answer lines',
-                    onSelect: () => addLayoutElement(section.id, createAnswerLinesElement()),
-                    icon: <AnswerLinesIcon size={15} />,
-                  },
-                  {
-                    label: 'Blank space',
-                    onSelect: () => addLayoutElement(section.id, createSpacerElement()),
-                    icon: <SpacerIcon size={15} />,
-                  },
-                  {
-                    label: 'Divider',
-                    onSelect: () => addLayoutElement(section.id, createDividerElement()),
-                    icon: <DividerIcon size={15} />,
-                  },
-                  {
-                    label: 'New page',
-                    onSelect: () => addLayoutElement(section.id, createPageBreakElement()),
-                    icon: <PageBreakIcon size={15} />,
-                    separated: true,
-                  },
-                ]}
-              />
-            </div>
-          </section>
-        ))}
-
-        {/* Adding a section belongs after the last one, which is where it lands. */}
-        <div className="px-1 pt-1">
-          <Button size="sm" variant="subtle" onClick={addSection}>
-            <PlusIcon size={13} />
-            Add section
-          </Button>
+                  ),
+                icon: <PartHeaderIcon size={15} />,
+              },
+              {
+                label: 'Heading',
+                onSelect: () => addLayoutElement(createHeadingElement()),
+                icon: <HeadingIcon size={15} />,
+              },
+              {
+                label: 'Label list',
+                onSelect: () => addLayoutElement(createLabelListElement()),
+                icon: <LabelListIcon size={15} />,
+              },
+              {
+                label: 'Text / note',
+                onSelect: () => addLayoutElement(createTextElement()),
+                icon: <TextIcon size={15} />,
+              },
+              {
+                label: 'Answer lines',
+                onSelect: () => addLayoutElement(createAnswerLinesElement()),
+                icon: <AnswerLinesIcon size={15} />,
+              },
+              {
+                label: 'Blank space',
+                onSelect: () => addLayoutElement(createSpacerElement()),
+                icon: <SpacerIcon size={15} />,
+              },
+              {
+                label: 'Divider',
+                onSelect: () => addLayoutElement(createDividerElement()),
+                icon: <DividerIcon size={15} />,
+              },
+              {
+                label: 'New page',
+                onSelect: () => addLayoutElement(createPageBreakElement()),
+                icon: <PageBreakIcon size={15} />,
+                separated: true,
+              },
+            ]}
+          />
         </div>
       </div>
     </div>

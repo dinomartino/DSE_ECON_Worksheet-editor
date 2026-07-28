@@ -27,7 +27,7 @@ src/
 │   ├── globals.css   #   Tailwind + semantic design tokens
 │   └── favicon.ico
 ├── model/            # Document model, numbering, marks, migrations, text, factories,
-│                     #   page setup + header/footer (page.ts), section flow (flow.ts),
+│                     #   page setup + header/footer (page.ts), document flow (flow.ts),
 │                     #   masthead bands / drop zones (bands.ts),
 │                     #   diagram geometry (diagram.ts) + templates (diagramTemplates.ts)
 │                     #   + direct-manipulation hit-test/drag/snap (diagramDraw.ts)
@@ -77,6 +77,8 @@ src/
 │   │   │   PageRail.tsx (page rail), PageThumb.tsx (live sheet clone)
 │   └── preview/       # Live print preview
 │       ├── Preview.tsx, BandEditor.tsx, FormatToolbar.tsx, InlineEditable.tsx
+│       ├── pagination.ts       # pure packing: sheets, page breaks, composition
+│       ├── pagination.test.ts
 │       └── ResizableBlock.tsx  # drag-to-resize handles on images/diagrams
 ├── store/
 │   ├── worksheetStore.ts  # Zustand store with undo/redo
@@ -202,27 +204,26 @@ Worksheet
 │   ├── rule?: boolean
 │   ├── showOnFirstPage?: boolean
 │   └── firstPage?: { bands: Band[]; rule?: boolean }
-├── sections: Section[]
-│   ├── id, heading (BiText?), headingFormat?, restartNumbering?
-│   ├── layout: LayoutElement[]
-│   │     heading/text/spacer/divider/pageBreak/answerLines/partHeader/labelList
-│   ├── flow: SectionItem[]       (positions layout relative to questions)
-│   └── questions: Question[]
-│       ├── McqQuestion (type: 'mcq')
-│       │   ├── blocks: ContentBlock[]     (stem)
-│       │   ├── statements?: BiText[]      (combination MCQ)
-│       │   ├── options: McqOption[]
-│       │   ├── optionLayout?: 'stacked' | 'inline' | 'columns2'
-│       │   ├── answerIndex, marks, explanation?
-│       └── StructuredQuestion (type: 'structured')
-│           ├── blocks: ContentBlock[]     (stem)
-│           ├── showTotalMarks?: boolean
-│           └── parts: QuestionPart[]
-│               ├── blocks, marks?
-│               ├── answer?
-│               └── subParts?: QuestionSubPart[]
-│                   ├── blocks, marks
-│                   └── answer?
+├── layout: LayoutElement[]      (one flat list for the whole document)
+│     section/heading/text/spacer/divider/pageBreak/answerLines/partHeader/labelList
+│     └── section: { text, restartNumbering? }  — a marker, not a container
+├── flow: FlowItem[]             (positions layout relative to questions)
+├── questions: Question[]        (every question, in printed order)
+│   ├── McqQuestion (type: 'mcq')
+│   │   ├── blocks: ContentBlock[]     (stem)
+│   │   ├── statements?: BiText[]      (combination MCQ)
+│   │   ├── options: McqOption[]
+│   │   ├── optionLayout?: 'stacked' | 'inline' | 'columns2'
+│   │   ├── answerIndex, marks, explanation?
+│   └── StructuredQuestion (type: 'structured')
+│       ├── blocks: ContentBlock[]     (stem)
+│       ├── showTotalMarks?: boolean
+│       └── parts: QuestionPart[]
+│           ├── blocks, marks?
+│           ├── answer?
+│           └── subParts?: QuestionSubPart[]
+│               ├── blocks, marks
+│               └── answer?
 ├── createdAt: string       (ISO)
 ├── updatedAt: string       (ISO)
 └── __unknown?: Record<string, unknown>   (forward compat)
@@ -235,7 +236,7 @@ RichText = InlineRun[]  (text, bold, italic, underline, vertAlign)
 
 **Key rule:** Numbering is never stored — it is **derived** at render time via `computeNumbering()`. Marks totals are **computed** via `questionMarks()` / `partMarks()`. This makes undo/redo and reordering trivial.
 
-### Section flow (`src/model/flow.ts`)
+### Document flow (`src/model/flow.ts`)
 
 Teachers need design elements that are *not* questions — a free heading, a note, ruled
 answer lines, a spacer, a divider, a page break. These are `LayoutElement`s and sit
@@ -243,7 +244,7 @@ deliberately **outside** the `Question` union: they take no number and carry no 
 putting them in the registry would force numbering and marks totalling to learn about
 types that have neither.
 
-`resolveFlow(section)` produces the display order, under one invariant:
+`resolveFlow(worksheet)` produces the display order, under one invariant:
 
 > **`questions` stays the authority on question order.** `flow` contributes only the
 > position of layout elements *relative to* the questions.
@@ -252,6 +253,50 @@ That is why reordering a question rewrites the `questions` array rather than the
 two sources of truth for "which question is third" would silently disagree. A missing or
 stale `flow` therefore costs an element its *position*, never its existence, and a
 pre-v4 document (no `flow` at all) resolves to exactly its previous order.
+
+### A section is a marker, not a container
+
+There is **one flow for the whole document**. A section is a `section` **layout element**
+inside it, carrying the `restartNumbering` flag that was always its real purpose; the
+questions it names simply follow it.
+
+It used to own `questions`/`layout`/`flow` — and that container job, not the numbering
+job, was the source of a whole class of bugs. A page is *measured, not modelled*, and a
+real paper runs Section B straight on from Section A mid-sheet rather than starting a
+fresh page. So a sheet shared by two sections had no single owner, and everything that
+worked in pages had to route around it:
+
+- The outline nested page groups *inside* sections, so one physical sheet was drawn
+  twice — once under each section, each copy holding half the page and offering its own
+  drop targets.
+- `movePage` had to carry every id into the anchor's section (via a `moveAcrossSections`
+  that existed only for this) before it could order a run, because a page's items need
+  not share a section.
+- Four separate re-implementations of "which section owns this id?" accumulated — in the
+  store, twice in `EditorApp`, and inline in `reorderFlowItem`.
+- `AddRail` had to *guess* a container for every insert ("the selection's section, else
+  the last"), and could not express "after this element" at all.
+
+Flattening deleted all four rather than refereeing them: `moveAcrossSections` is gone,
+`movePage` is one `moveRunInFlow`, an insert is a position, and dragging a question past
+a section heading *is* moving it into that section.
+
+Two derivations key on the section **element's id** rather than a section index, since a
+marker keeps its identity when dragged: `computeNumbering` resets the display counter,
+and `renderWorksheet` opens a new Word list stream (`question:<elementId>`) so the restart
+is native `w:num` rather than a typed number. `sectionMarks(doc, sectionId)` totals the
+run between one marker and the next, which is what a `partHeader`'s derived "(19 marks)"
+means.
+
+A section heading and a free heading **render identically** — same style, same
+`keepNext` — because they differ only in what they mean to numbering, and numbering is
+derived before rendering. That is what kept the flattening invisible in the export: a
+migrated v4 document produces a byte-identical `word/document.xml`.
+
+The v4→v5 migration emits one `section` element per old section, then that section's
+resolved items, preserving printed order exactly. A section that never had a heading
+contributes **no element**, since a single untitled section is how a plain document was
+stored and an empty heading would print a blank line that was never there.
 
 ### Constrained layout: bands and zones (`src/model/bands.ts`)
 
@@ -492,7 +537,9 @@ ListRef:
 
 EditTarget (optional, on TextNode / table cell / diagram caption / image caption):
   the model address the text was rendered from — 'blockText' | 'tableCell' |
-  'mcqOption' | 'partAnswer' | 'worksheetTitle' | …, always keyed by **id**
+  'mcqOption' | 'partAnswer' | 'worksheetTitle' | 'layoutText' | …, always keyed by
+  **id**. A section heading has no target of its own: it is a layout element, so the
+  `layoutText` target that reaches every element reaches it too.
 ```
 
 `edit` is what makes the previewed page directly editable, and it is **inert in
@@ -508,8 +555,12 @@ The `listRef.stream` is the key that connects IR nodes to .docx `w:num` instance
 ## Numbering System (`src/model/numbering.ts` + `src/export/docx/numbering.ts`)
 
 ### Derived numbering (app-level)
-- `computeNumbering()` walks sections/questions, returns a `NumberingPlan`.
-- Numbers are 1-based, continuous across sections unless `section.restartNumbering` is set.
+- `computeNumbering()` walks the one resolved flow, returns a `NumberingPlan`.
+- Numbers are 1-based and continuous until a `section` element sets `restartNumbering`,
+  which resets the counter from that point on. Walking the *flow* rather than a nested
+  section list is what makes the restart happen where the heading actually sits: drag a
+  section marker above question 3 and the questions after it renumber, with no container
+  to move anything between.
 
 ### Native Word numbering (OOXML)
 - Three abstract multilevel definitions in `numbering.xml`:
@@ -564,6 +615,86 @@ three backends must understand every member, but a paragraph border is a Word co
 preview and clipboard each draw their own way (`border-bottom`, an `<hr>`) — and the
 `answerLines` node carries no `style` field at all. So the id stays .docx-local, which is
 also what keeps §9's "no type branching" test honest.
+
+### Pagination: a page is derived, and owns the break that made it
+
+There is no `Page` in the model. A page is whatever the paginator measured onto one
+sheet, so every page-level action — move, delete, drop-onto — has to be expressed in
+ids the store understands. The measuring half must live in the component (heights come
+from a real layout), but the *deciding* half is pure and sits in
+`components/preview/pagination.ts`, which is what lets the break rules be tested
+without a DOM.
+
+**A manual break belongs to the page it opened.** The break consumes no space, so it is
+never packed onto a sheet — but it is the element that puts the sheet there, and
+leaving it out of `PageComposition.flowIds` made every page action operate on a page's
+content while its own break stayed behind. All three symptoms had this one cause:
+dragging page 3 above page 2 moved the questions and stranded the break, so the
+repagination that immediately followed collapsed them back onto one sheet; deleting a
+page removed its questions and left the break, which then showed as a blank page
+appearing from nowhere; and an empty page could not be dropped onto because it had no
+id at all. The break therefore *leads* `flowIds`, matching its position in the flow so
+a moved run reads in document order. Only the delete dialog's item count subtracts it
+again — it is deleted with the page but is not something the teacher put there.
+
+**A trailing empty page survives only if a break opened it.** The two cases pack
+identically — an empty last bucket — and mean opposite things. Incidental slack (the
+flow ended exactly at a boundary) is dropped, because Word emits no sheet for it and
+showing one would have the preview disagree with the export about the document's
+length. A page the teacher *added* is kept: "New page" that visibly changes nothing
+reads as "the element was not inserted", and the natural response is to add it again
+until the flow carries several breaks nobody wanted. That page renders a `BlankPage`
+affordance rather than bare paper — it says it is empty on purpose, accepts a dragged
+item (landing it *after* the break), and offers the add buttons.
+
+Consecutive breaks each open their own page. Testing only "does the current page hold
+content" treated an already-empty page as room to reuse, which silently collapsed a
+deliberate blank page *and* dropped the second break's id, leaving that sheet unnamed
+and so unmovable and undeletable.
+
+`movePage` is now one `moveRunInFlow`. It used to be the hardest action in the store:
+a page's items need not all live in one section, so mapping a single-section move over
+every section quietly did the wrong thing — the section holding the anchor moved the
+members it owned, while every *other* section ran a move whose target it could not find
+and appended its members to its own end, so a page dragged upward left some content
+behind and pushed the rest to the bottom. Every id had to be carried into the anchor's
+section first. With one document-wide flow there are no containers to reconcile: a page
+is a run of ids, which is what the rail always believed it was handing over
+(§ "A section is a marker, not a container").
+
+### The outline groups by page (`editor/Outline.tsx`)
+
+A page break used to appear in the outline as an ordinary row — an item *between* two
+questions. That is a faithful description of the model and a poor description of what a
+teacher made: they added a page, and the row said "New page" while giving no clue which
+of the questions below it were on that page. So `groupByPage()` cuts each section's
+resolved flow into the sheets the paginator reported, and the break is promoted out of
+the list to become the **tab heading the run it opened**. Its menu deletes the page
+rather than "the element".
+
+Two properties follow from a page being *measured, not modelled*, and both are why this
+is a view over `resolveFlow` rather than a container in the document:
+
+- **A group is a result, not a promise.** Dropping a question into a full page pushes
+  whatever no longer fits onto the next one — the auto-flow the printed page already
+  does. Nothing pins a group; they re-cut on the next measurement.
+- **A section can begin mid-sheet**, which every real paper does. Groups are the top
+  level and a section heading is a row *inside* one, so one sheet is one group. While
+  groups nested inside a per-section loop, a shared sheet was drawn twice — once under
+  each section, each copy holding half the page and offering its own drop targets.
+
+A section heading appears as a weighted row at the point the printed page shows it,
+carrying its `↻1` badge and its restart toggle — the section is still visible in the
+outline, as the thing it actually is rather than as a container around the pages. Tabs
+are collapsible and **open by default**: a grouping nobody has seen before must not start by hiding what it groups.
+Items the composition has not placed yet (anything added since the last measurement)
+fall into a trailing unnumbered group, so a new question stays visible for the frame
+before pagination catches up rather than vanishing.
+
+An added-but-empty page has no items, so the run-based cut cannot produce a group for
+it — yet it is the page most in need of being visible. It is inserted at the position
+its break occupies, and dropping on any tab lands the item at the **head** of that page,
+which is the one position the rows underneath cannot express.
 
 ### Page setup and header/footer (`src/model/page.ts`)
 

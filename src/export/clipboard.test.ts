@@ -56,7 +56,7 @@ describe('Copy for Word (§7.7, §11.12)', () => {
 
   it('copies a single question when scoped to one (§7.7)', () => {
     const worksheet = buildAcceptanceWorksheet();
-    const target = worksheet.sections[0].questions[1];
+    const target = worksheet.questions[1];
 
     const html = questionClipboardHtml(worksheet, target.id, STUDENT_BI);
     expect(html).toContain('GDP平減物價指數(GDP deflator)');
@@ -67,7 +67,7 @@ describe('Copy for Word (§7.7, §11.12)', () => {
 
   it('escapes HTML metacharacters in content', () => {
     const worksheet = buildAcceptanceWorksheet();
-    const block = worksheet.sections[0].questions[0].blocks[0];
+    const block = worksheet.questions[0].blocks[0];
     if (block.kind === 'paragraph') {
       block.text.en = [{ text: 'If P < MC & Q > 0, then "profit" falls' }];
     }
@@ -78,7 +78,7 @@ describe('Copy for Word (§7.7, §11.12)', () => {
 
   it('renders a hard line break as <br/>, since a raw newline is HTML whitespace', () => {
     const worksheet = buildAcceptanceWorksheet();
-    const block = worksheet.sections[0].questions[0].blocks[0];
+    const block = worksheet.questions[0].blocks[0];
     if (block.kind === 'paragraph') {
       block.text.en = [{ text: 'Before break\nAfter break' }];
     }
@@ -88,7 +88,7 @@ describe('Copy for Word (§7.7, §11.12)', () => {
 
   it('keeps a break inside a formatted run wrapped by that formatting', () => {
     const worksheet = buildAcceptanceWorksheet();
-    const block = worksheet.sections[0].questions[0].blocks[0];
+    const block = worksheet.questions[0].blocks[0];
     if (block.kind === 'paragraph') {
       block.text.en = [{ text: 'Bold one\nbold two', bold: true }];
     }

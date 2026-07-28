@@ -1,16 +1,20 @@
 import { nanoid } from 'nanoid';
 import { buildFromTemplate, defaultDiagramAltText } from './diagramTemplates';
+// `flow` imports `newId` from here in turn. The cycle is safe because both sides use the
+// other only inside function bodies, never at module top level — the same care the
+// `migrations` import below is commented for.
+import { createSectionElement } from './flow';
 import { CURRENT_SCHEMA_VERSION } from './migrations';
 import { bi, emptyBiText } from './text';
 import type {
   BiText,
   DiagramBlock,
   ImageBlock,
+  LayoutElement,
   McqQuestion,
   ParagraphBlock,
   QuestionPart,
   QuestionSubPart,
-  Section,
   StructuredQuestion,
   TableBlock,
   TableCell,
@@ -114,10 +118,6 @@ export function createStructuredQuestion(): StructuredQuestion {
   };
 }
 
-export function createSection(heading?: BiText): Section {
-  return { id: newId(), heading: heading ?? emptyBiText(), questions: [] };
-}
-
 export function createWorksheet(): Worksheet {
   const now = new Date().toISOString();
   return {
@@ -150,11 +150,26 @@ export function createWorksheet(): Worksheet {
         { id: newId(), zones: { left: [], center: [{ kind: 'pageNumber', id: newId() }], right: [] } },
       ],
     },
-    sections: [
-      { ...createSection(bi('Section A: Multiple Choice', '甲部：多項選擇題')), restartNumbering: true },
-      { ...createSection(bi('Section B: Structured Questions', '乙部：結構性問題')), restartNumbering: true },
-    ],
+    ...emptyFlow([
+      createSectionElement(bi('Section A: Multiple Choice', '甲部：多項選擇題')),
+      createSectionElement(bi('Section B: Structured Questions', '乙部：結構性問題')),
+    ]),
     createdAt: now,
     updatedAt: now,
+  };
+}
+
+/**
+ * A document body holding only layout elements.
+ *
+ * The flow is written out explicitly rather than left absent: `resolveFlow` appends
+ * unmentioned elements, so two headings with no flow would resolve in array order by
+ * luck rather than by intent, and the first question added would land after both.
+ */
+function emptyFlow(layout: LayoutElement[]): Pick<Worksheet, 'questions' | 'layout' | 'flow'> {
+  return {
+    questions: [],
+    layout,
+    flow: layout.map((element) => ({ type: 'layout' as const, id: element.id })),
   };
 }

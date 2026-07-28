@@ -1,11 +1,11 @@
 import { newId } from './factories';
 import { emptyBiText } from './text';
-import type { BiText, LayoutElement, Question, Section, SectionItem } from './types';
+import type { BiText, FlowItem, LayoutElement, Question } from './types';
 
 /**
- * Resolving a section's display order.
+ * Resolving the document's display order.
  *
- * A section holds two lists — `questions` (which numbering walks) and `layout` — plus
+ * A worksheet holds two lists — `questions` (which numbering walks) and `layout` — plus
  * a `flow` that orders them together. Splitting it this way keeps §4 numbering and
  * §3.5 marks totalling untouched: they still walk `questions` and never see a divider
  * or a spacer.
@@ -18,19 +18,30 @@ import type { BiText, LayoutElement, Question, Section, SectionItem } from './ty
  * Concretely: questions come out in array order, and each layout element is placed
  * after whichever question precedes it in the flow (or at the start, if it precedes
  * every question). Anything the flow does not mention is appended, so a document from
- * an older build (no `flow` at all) resolves to exactly its previous order and a lost
- * flow entry costs an element its position, never its existence.
+ * an older build resolves to exactly its previous order and a lost flow entry costs an
+ * element its position, never its existence.
+ *
+ * There is **one flow for the whole document**, not one per section. A section is a
+ * `section` layout element inside it, which is what lets a section begin mid-sheet
+ * without a page and a section disagreeing about which of them owns an item.
  */
+
+/** The two lists a flow orders. `Worksheet` satisfies this, and so does a test stub. */
+export interface FlowDoc {
+  questions: Question[];
+  layout?: LayoutElement[];
+  flow?: FlowItem[];
+}
 
 export type ResolvedItem =
   | { type: 'question'; id: string; question: Question }
   | { type: 'layout'; id: string; element: LayoutElement };
 
-export function resolveFlow(section: Section): ResolvedItem[] {
-  const layout = section.layout ?? [];
+export function resolveFlow(doc: FlowDoc): ResolvedItem[] {
+  const layout = doc.layout ?? [];
   if (layout.length === 0) {
-    // The overwhelmingly common case: no layout elements, so order is array order.
-    return section.questions.map((question) => ({
+    // No layout elements at all, so order is simply question array order.
+    return doc.questions.map((question) => ({
       type: 'question' as const,
       id: question.id,
       question,
@@ -38,7 +49,7 @@ export function resolveFlow(section: Section): ResolvedItem[] {
   }
 
   const byId = new Map(layout.map((element) => [element.id, element]));
-  const questionIds = new Set(section.questions.map((question) => question.id));
+  const questionIds = new Set(doc.questions.map((question) => question.id));
 
   // Bucket each layout element under the question it should follow; `null` keys the
   // elements that come before every question.
@@ -46,7 +57,7 @@ export function resolveFlow(section: Section): ResolvedItem[] {
   const placed = new Set<string>();
   let anchor: string | null = null;
 
-  for (const entry of section.flow ?? []) {
+  for (const entry of doc.flow ?? []) {
     if (entry.type === 'question') {
       if (questionIds.has(entry.id)) anchor = entry.id;
       continue;
@@ -70,7 +81,7 @@ export function resolveFlow(section: Section): ResolvedItem[] {
   };
 
   emit(after.get(null));
-  for (const question of section.questions) {
+  for (const question of doc.questions) {
     resolved.push({ type: 'question', id: question.id, question });
     emit(after.get(question.id));
   }
@@ -79,13 +90,13 @@ export function resolveFlow(section: Section): ResolvedItem[] {
   return resolved;
 }
 
-/** The flow entries a section currently resolves to, for writing back after a move. */
-export function flowOf(section: Section): SectionItem[] {
-  return resolveFlow(section).map((item) => ({ type: item.type, id: item.id }) as SectionItem);
+/** The flow entries a document currently resolves to, for writing back after a move. */
+export function flowOf(doc: FlowDoc): FlowItem[] {
+  return resolveFlow(doc).map((item) => ({ type: item.type, id: item.id }) as FlowItem);
 }
 
 /**
- * The parts of a section a move rewrites.
+ * The parts of a document a move rewrites.
  *
  * Because `questions` stays authoritative for question order, a move has to be able
  * to rewrite either list: dragging a question reorders the array, dragging a divider
@@ -93,12 +104,12 @@ export function flowOf(section: Section): SectionItem[] {
  */
 export interface FlowMove {
   questions: Question[];
-  flow: SectionItem[];
+  flow: FlowItem[];
 }
 
 /** Reorder a resolved item list, then split it back into the two stored lists. */
-function applyOrder(section: Section, ordered: SectionItem[]): FlowMove {
-  const byId = new Map(section.questions.map((question) => [question.id, question]));
+function applyOrder(doc: FlowDoc, ordered: FlowItem[]): FlowMove {
+  const byId = new Map(doc.questions.map((question) => [question.id, question]));
   const questions: Question[] = [];
   for (const entry of ordered) {
     if (entry.type !== 'question') continue;
@@ -106,35 +117,39 @@ function applyOrder(section: Section, ordered: SectionItem[]): FlowMove {
     if (question) questions.push(question);
   }
   // Any question the ordering missed keeps its place at the end rather than vanishing.
-  for (const question of section.questions) {
+  for (const question of doc.questions) {
     if (!questions.includes(question)) questions.push(question);
   }
   return { questions, flow: ordered };
 }
 
 /**
- * Move `id` so it lands next to `targetId` within one section.
+ * Move `id` so it lands next to `targetId`.
  *
  * `position` picks which side of the target to land on, which is what lets the page
  * drag show a drop indicator on the edge the pointer is nearest and then honour it.
  * Removing before inserting means a downward drag lands where the user dropped it
  * rather than one short — the same rule the question-only reorder followed.
+ *
+ * There is no cross-section counterpart any more: with one document-wide flow, dragging
+ * a question past a section heading *is* moving it into that section, because the
+ * section it belongs to is decided by which marker precedes it.
  */
 export function moveInFlow(
-  section: Section,
+  doc: FlowDoc,
   id: string,
   targetId: string,
   position: 'before' | 'after' = 'before',
 ): FlowMove {
-  const entries = flowOf(section);
+  const entries = flowOf(doc);
   const from = entries.findIndex((entry) => entry.id === id);
-  if (from < 0 || id === targetId) return applyOrder(section, entries);
+  if (from < 0 || id === targetId) return applyOrder(doc, entries);
 
   const [moved] = entries.splice(from, 1);
   const to = entries.findIndex((entry) => entry.id === targetId);
   if (to < 0) entries.push(moved);
   else entries.splice(position === 'after' ? to + 1 : to, 0, moved);
-  return applyOrder(section, entries);
+  return applyOrder(doc, entries);
 }
 
 /**
@@ -152,96 +167,35 @@ export function moveInFlow(
  * gets the list back untouched in that case rather than a scrambled one.
  */
 export function moveRunInFlow(
-  section: Section,
+  doc: FlowDoc,
   ids: string[],
   targetId: string,
   position: 'before' | 'after' = 'before',
 ): FlowMove {
-  const entries = flowOf(section);
+  const entries = flowOf(doc);
   const moving = new Set(ids);
-  if (moving.size === 0 || moving.has(targetId)) return applyOrder(section, entries);
+  if (moving.size === 0 || moving.has(targetId)) return applyOrder(doc, entries);
 
   // Preserve document order within the run, not the order the caller happened to list
   // them in, so a page always reads the same after a move as before it.
   const run = entries.filter((entry) => moving.has(entry.id));
-  if (run.length === 0) return applyOrder(section, entries);
+  if (run.length === 0) return applyOrder(doc, entries);
 
   const rest = entries.filter((entry) => !moving.has(entry.id));
   const to = rest.findIndex((entry) => entry.id === targetId);
-  if (to < 0) return applyOrder(section, [...rest, ...run]);
+  if (to < 0) return applyOrder(doc, [...rest, ...run]);
   rest.splice(position === 'after' ? to + 1 : to, 0, ...run);
-  return applyOrder(section, rest);
+  return applyOrder(doc, rest);
 }
 
-/**
- * Move one item from `source` into `target`, landing next to `targetId`.
- *
- * The cross-section counterpart of `moveInFlow`. Both sections are rewritten together
- * because the move is not expressible as two independent edits: the item has to leave
- * one `layout`/`questions` array and enter another's, and doing that in two commits
- * would leave a frame in which the document does not contain it at all.
- *
- * Which list it travels in follows from what it *is*, which is the flow invariant doing
- * its job — a question moves between the two `questions` arrays because those own
- * question order, while a layout element moves between the two `layout` arrays. Only
- * the position comes from `flow`.
- *
- * `targetId` may be a question or a layout element: a teacher dragging question 3 above
- * the divider that opens Section B is expressing a real intent, and refusing it because
- * the target happens not to be a question is the gap this closes.
- */
-export function moveAcrossSections(
-  source: Section,
-  target: Section,
-  id: string,
-  targetId: string,
-  position: 'before' | 'after' = 'before',
-): { source: Section; target: Section } | undefined {
-  if (source.id === target.id) return undefined;
-
-  const question = source.questions.find((candidate) => candidate.id === id);
-  const element = (source.layout ?? []).find((candidate) => candidate.id === id);
-  if (!question && !element) return undefined;
-
-  // Leave the source: drop it from whichever list holds it, and from the flow.
-  const nextSource: Section = {
-    ...source,
-    questions: question
-      ? source.questions.filter((candidate) => candidate.id !== id)
-      : source.questions,
-    layout: element
-      ? (source.layout ?? []).filter((candidate) => candidate.id !== id)
-      : source.layout,
-    flow: flowOf(source).filter((entry) => entry.id !== id),
-  };
-
-  // Enter the target, then place it with the same single-section logic — so a drop
-  // between two sections honours `position` exactly as a drop within one does.
-  const entered: Section = {
-    ...target,
-    questions: question ? [...target.questions, question] : target.questions,
-    layout: element ? [...(target.layout ?? []), element] : target.layout,
-    flow: [
-      ...flowOf(target),
-      { type: question ? ('question' as const) : ('layout' as const), id },
-    ],
-  };
-
-  const moved = moveInFlow(entered, id, targetId, position);
-  return {
-    source: nextSource,
-    target: { ...entered, questions: moved.questions, flow: moved.flow },
-  };
-}
-
-/** Shift `id` one position up (-1) or down (+1) within its section. */
-export function nudgeInFlow(section: Section, id: string, direction: -1 | 1): FlowMove {
-  const entries = flowOf(section);
+/** Shift `id` one position up (-1) or down (+1) in the document flow. */
+export function nudgeInFlow(doc: FlowDoc, id: string, direction: -1 | 1): FlowMove {
+  const entries = flowOf(doc);
   const index = entries.findIndex((entry) => entry.id === id);
   const target = index + direction;
-  if (index < 0 || target < 0 || target >= entries.length) return applyOrder(section, entries);
+  if (index < 0 || target < 0 || target >= entries.length) return applyOrder(doc, entries);
   [entries[index], entries[target]] = [entries[target], entries[index]];
-  return applyOrder(section, entries);
+  return applyOrder(doc, entries);
 }
 
 export function createHeadingElement(text: BiText = emptyBiText()): LayoutElement {
@@ -266,6 +220,20 @@ export function createPageBreakElement(): LayoutElement {
 
 export function createAnswerLinesElement(lines = 4): LayoutElement {
   return { kind: 'answerLines', id: newId(), lines };
+}
+
+/**
+ * A section heading, and the point numbering restarts.
+ *
+ * `restartNumbering` defaults to true because that is what a teacher adding a section
+ * means by it — "Section B" starting at question 1 is the convention every DSE paper
+ * follows, and a section that continued the previous count would look like a mistake.
+ */
+export function createSectionElement(
+  text: BiText = emptyBiText(),
+  restartNumbering = true,
+): Extract<LayoutElement, { kind: 'section' }> {
+  return { kind: 'section', id: newId(), text, restartNumbering };
 }
 
 /** A part header; its marks total is derived from the section at render time. */

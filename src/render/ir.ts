@@ -49,7 +49,6 @@ export type NodeStyle =
 export type EditTarget =
   | { kind: 'worksheetTitle' }
   | { kind: 'worksheetInstructions' }
-  | { kind: 'sectionHeading'; sectionId: string }
   /** A paragraph block anywhere — question stem, part, or sub-part. */
   | { kind: 'blockText'; blockId: string }
   /** A table or image block's caption. */
@@ -61,14 +60,20 @@ export type EditTarget =
   | { kind: 'mcqExplanation'; questionId: string }
   | { kind: 'partAnswer'; questionId: string; partId: string }
   | { kind: 'subPartAnswer'; questionId: string; partId: string; subPartId: string }
-  /** A free heading or text element in a section's layout flow. */
-  | { kind: 'layoutText'; sectionId: string; elementId: string }
+  /**
+   * A text-bearing layout element in the document flow — a free heading, a note, a
+   * part header, or a **section heading**.
+   *
+   * A section heading has no target of its own: a section is a layout element now, so
+   * the one address that reaches every element reaches it too. An element id is enough
+   * to find it, which is why no section id is carried here.
+   */
+  | { kind: 'layoutText'; elementId: string }
   /** An authored text or fill-in field inside a masthead band. */
   | { kind: 'bandField'; fieldId: string }
   /** One label/value row of a label-list element. */
   | {
       kind: 'labelListCell';
-      sectionId: string;
       elementId: string;
       rowId: string;
       column: 'label' | 'value';

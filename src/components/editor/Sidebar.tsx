@@ -6,6 +6,7 @@ import { useWorksheetStore } from '@/store/worksheetStore';
 import { Pill } from '@/components/ui';
 import { ListIcon, PencilIcon } from '@/components/ui/icons';
 import { Inspector } from './Inspector';
+import type { PageComposition } from '@/components/preview/pagination';
 import { Outline } from './Outline';
 
 /**
@@ -32,7 +33,18 @@ import { Outline } from './Outline';
 
 type Tab = 'content' | 'edit';
 
-export function Sidebar({ onOpenSettings }: { onOpenSettings: () => void }) {
+export function Sidebar({
+  pages,
+  onOpenSettings,
+}: {
+  /**
+   * How the flow landed on sheets, from the paginator. Passed through rather than read
+   * from the store because a page is *measured*, not modelled — it is transient view
+   * state, and putting it in the undo-tracked document would make repagination an edit.
+   */
+  pages: PageComposition[];
+  onOpenSettings: () => void;
+}) {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const selectedQuestionId = useWorksheetStore((s) => s.selectedQuestionId);
   const numbering = computeNumbering(worksheet);
@@ -49,14 +61,9 @@ export function Sidebar({ onOpenSettings }: { onOpenSettings: () => void }) {
     setTab(selectedQuestionId ? 'edit' : 'content');
   }, [selectedQuestionId]);
 
-  const selected = worksheet.sections
-    .flatMap((section) => section.questions)
-    .find((question) => question.id === selectedQuestionId);
+  const selected = worksheet.questions.find((question) => question.id === selectedQuestionId);
 
-  const totalQuestions = worksheet.sections.reduce(
-    (sum, section) => sum + section.questions.length,
-    0,
-  );
+  const totalQuestions = worksheet.questions.length;
 
   const editLabel = selected
     ? `Question ${numbering.byQuestionId.get(selected.id)?.number ?? ''}`.trim()
@@ -111,7 +118,7 @@ export function Sidebar({ onOpenSettings }: { onOpenSettings: () => void }) {
           that changed underneath it while the editor was showing. */}
       <div className="flex min-h-0 flex-1 flex-col">
         {tab === 'content' ? (
-          <Outline numbering={numbering} onOpenSettings={onOpenSettings} />
+          <Outline numbering={numbering} pages={pages} onOpenSettings={onOpenSettings} />
         ) : (
           <Inspector numbering={numbering} onShowContent={() => setTab('content')} />
         )}

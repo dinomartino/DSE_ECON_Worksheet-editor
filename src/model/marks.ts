@@ -1,4 +1,5 @@
-import type { Question, QuestionPart, Section, StructuredQuestion, Worksheet } from './types';
+import { resolveFlow, type FlowDoc } from './flow';
+import type { Question, QuestionPart, StructuredQuestion, Worksheet } from './types';
 
 /** A part's marks: its own value, or the sum of its sub-parts (§3.5). */
 export function partMarks(part: QuestionPart): number {
@@ -20,10 +21,35 @@ export function questionMarks(question: Question): number {
   return question.marks || 0;
 }
 
-export function sectionMarks(section: Section): number {
-  return section.questions.reduce((sum, q) => sum + questionMarks(q), 0);
+/**
+ * Marks for the run of questions a `section` element introduces (§3.5).
+ *
+ * A section owns no questions, so "its" marks are the ones between its own marker and
+ * the next — which is exactly what the heading claims on the page. This is what a
+ * `partHeader`'s derived "(19 marks)" suffix totals, so it stays correct when a question
+ * inside the run is added, removed or re-marked.
+ *
+ * With no `sectionId`, the questions *before* the first section marker are totalled;
+ * that is the whole document when it has no sections at all.
+ */
+export function sectionMarks(doc: FlowDoc, sectionId?: string): number {
+  let inScope = sectionId === undefined;
+  let total = 0;
+
+  for (const item of resolveFlow(doc)) {
+    if (item.type === 'layout') {
+      if (item.element.kind !== 'section') continue;
+      // Entering the named section starts the count; the next marker ends it.
+      if (inScope) break;
+      inScope = item.element.id === sectionId;
+      continue;
+    }
+    if (inScope) total += questionMarks(item.question);
+  }
+
+  return total;
 }
 
 export function worksheetMarks(worksheet: Worksheet): number {
-  return worksheet.sections.reduce((sum, s) => sum + sectionMarks(s), 0);
+  return worksheet.questions.reduce((sum, q) => sum + questionMarks(q), 0);
 }

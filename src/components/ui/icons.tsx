@@ -336,6 +336,7 @@ export function DocumentIcon(props: IconProps) {
 
 /** Maps a `LayoutElement['kind']` to its icon, so rows and menus agree. */
 export const LAYOUT_ICON = {
+  section: SectionIcon,
   heading: HeadingIcon,
   text: TextIcon,
   spacer: SpacerIcon,

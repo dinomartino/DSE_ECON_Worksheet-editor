@@ -27,9 +27,7 @@ export function Inspector({
   const select = useWorksheetStore((s) => s.select);
   const updateQuestion = useWorksheetStore((s) => s.updateQuestion);
 
-  const selected = worksheet.sections
-    .flatMap((section) => section.questions)
-    .find((question) => question.id === selectedQuestionId);
+  const selected = worksheet.questions.find((question) => question.id === selectedQuestionId);
 
   if (!selected) {
     // Nothing selected is not an error state — it is the state the app opens in. So

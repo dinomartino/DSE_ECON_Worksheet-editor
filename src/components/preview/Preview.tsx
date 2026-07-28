@@ -81,6 +81,17 @@ export interface BandEditingHandlers {
 import { FormatToolbar } from "./FormatToolbar";
 import { InlineEditable } from "./InlineEditable";
 import { ResizableBlock } from "./ResizableBlock";
+import {
+  compositionKey as keyOfComposition,
+  composePages,
+  packPages,
+  type PackItem,
+  type PageComposition,
+} from "./pagination";
+
+// Re-exported so the page rail keeps importing the type from the component that
+// publishes it, rather than having to know pagination is factored out.
+export type { PageComposition };
 
 /**
  * Live print preview — the centrepiece of the editor (§5.1), and the third consumer
@@ -209,7 +220,6 @@ function marksLabel(marks: number, language: LanguageMode): string {
 const TARGET_NAME: Record<EditTarget["kind"], string> = {
   worksheetTitle: "Title",
   worksheetInstructions: "Instructions",
-  sectionHeading: "Section heading",
   blockText: "Paragraph",
   blockCaption: "Caption",
   tableCell: "Table cell",
@@ -886,23 +896,14 @@ function DraggableItem({
 }
 
 /**
- * One item in the printed flow, as the paginator sees it.
+ * One item in the printed flow, with the node that renders it.
  *
- * `forceBreak` marks a manual page break: the paginator starts a new sheet at that
- * point regardless of how much room is left, which is exactly what "add a new page
- * even though the content has not overflowed" means.
+ * The packing rules — what opens a page, which trailing page survives — live in
+ * `pagination.ts` as pure functions over `PackItem`; this adds only the React node,
+ * which is the part that cannot be tested without a DOM.
  */
-interface FlowBlock {
-  key: string;
+interface FlowBlock extends PackItem {
   node: React.ReactNode;
-  forceBreak?: boolean;
-  /**
-   * True for blocks whose `key` is not a flow id — the masthead, the teacher banner,
-   * the instructions, a section heading, the empty state. Marked at construction
-   * rather than inferred from the key, because a prefix test (`heading-…`) would be
-   * one id collision away from letting the page rail try to delete a section heading.
-   */
-  structural?: boolean;
 }
 
 /**
@@ -929,7 +930,12 @@ function usePagination(
   blocks: FlowBlock[],
   contentHeightPx: number,
   deps: unknown[],
-): { pages: FlowBlock[][]; probeRef: React.RefObject<HTMLDivElement | null> } {
+): {
+  pages: FlowBlock[][];
+  /** For each page, the id of the manual break that opened it, if one did. */
+  openedBy: (string | undefined)[];
+  probeRef: React.RefObject<HTMLDivElement | null>;
+} {
   const probeRef = useRef<HTMLDivElement>(null);
   const [heights, setHeights] = useState<Map<string, number>>(new Map());
 
@@ -969,44 +975,12 @@ function usePagination(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
-  const pages = useMemo(() => {
-    // Before the first measurement everything goes on page one. That renders a single
-    // correct-looking page for one frame instead of flashing an empty one.
-    if (heights.size === 0 || contentHeightPx <= 0) return [blocks];
+  const { pages, openedBy } = useMemo(
+    () => packPages(blocks, heights, contentHeightPx),
+    [blocks, heights, contentHeightPx],
+  );
 
-    const out: FlowBlock[][] = [[]];
-    let used = 0;
-
-    for (const block of blocks) {
-      const height = heights.get(block.key) ?? 0;
-      const current = out[out.length - 1];
-
-      const mustBreak = block.forceBreak && current.length > 0;
-      const overflows = current.length > 0 && used + height > contentHeightPx;
-
-      if (mustBreak || overflows) {
-        out.push([]);
-        used = 0;
-      }
-      // A forced break is a positioning instruction, not content: it starts the new
-      // page but must not occupy space on it.
-      if (block.forceBreak) continue;
-
-      out[out.length - 1].push(block);
-      used += height;
-    }
-
-    // A page break with nothing after it opens a sheet no content ever lands on.
-    // Word does not emit that trailing blank page either, so showing one would be the
-    // preview disagreeing with the export about how long the document is. Only the
-    // *last* page is dropped, and only when empty: a blank page in the middle is a
-    // deliberate arrangement (two breaks in a row) and belongs to the teacher.
-    while (out.length > 1 && out[out.length - 1].length === 0) out.pop();
-
-    return out.length > 0 ? out : [[]];
-  }, [blocks, heights, contentHeightPx]);
-
-  return { pages, probeRef };
+  return { pages, openedBy, probeRef };
 }
 
 /**
@@ -1071,15 +1045,10 @@ interface Props {
   /** Current formatting of a target, so the toolbar can show its state. */
   formatOf?: (target: EditTarget) => TextFormat | undefined;
   /**
-   * Move `id` to `targetId`'s position within a section. Omit to disable page drag.
+   * Move `id` to `targetId`'s position in the document flow. Omit to disable page drag.
    * `position` says which side of the target to land on.
    */
-  onReorder?: (
-    sectionId: string,
-    id: string,
-    targetId: string,
-    position: "before" | "after",
-  ) => void;
+  onReorder?: (id: string, targetId: string, position: "before" | "after") => void;
   /**
    * Live masthead editing. Omit to render bands read-only, which is what keeps this
    * component usable for a non-interactive preview.
@@ -1120,22 +1089,6 @@ interface Props {
 }
 
 /**
- * One sheet, named by what is on it.
- *
- * `flowIds` holds only the ids the store can act on — questions and layout elements.
- * Structural blocks (the masthead, the teacher banner, a section heading) are
- * deliberately excluded: they are not flow items, so they cannot be moved or deleted
- * as page content, and including them would have the rail hand the store ids it would
- * silently fail to find.
- */
-export interface PageComposition {
-  index: number;
-  flowIds: string[];
-  /** True when nothing on the sheet is a flow item — a masthead-only first page. */
-  structuralOnly: boolean;
-}
-
-/**
  * What an empty worksheet offers.
  *
  * The previous version was three lines of grey text telling the teacher to go and
@@ -1172,6 +1125,111 @@ function EmptyState({ onAddQuestion }: { onAddQuestion: (typeId: string) => void
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+/**
+ * What a deliberately added, still-empty page offers.
+ *
+ * A blank sheet is ambiguous on its own — it looks the same whether the teacher added
+ * it or the last question happened to fill the previous page exactly — so it says which
+ * it is, and offers the two things anyone does next: drop something here, or add
+ * something here.
+ *
+ * It is a drop target in its own right. Reordering elsewhere in the preview works by
+ * aiming at a neighbouring item's edge, and an empty page has no neighbour to aim at,
+ * so without this the page could only be filled through the rail. Dropping lands the
+ * item *after the break* that opened the page, which is the only position that puts it
+ * on this sheet.
+ *
+ * Everything here is preview chrome and carries `data-print-hide`, so it stays off the
+ * exported PDF (§"PDF export uses print CSS"); the .docx never sees it at all, since it
+ * consumes the IR rather than this DOM.
+ */
+function BlankPage({
+  breakId,
+  dragId,
+  onDropItem,
+  onAddQuestion,
+  selected,
+  onSelect,
+}: {
+  breakId: string;
+  dragId?: string;
+  onDropItem?: (position: "before" | "after") => void;
+  onAddQuestion?: (typeId: string) => void;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const [over, setOver] = useState(false);
+  const receiving = Boolean(dragId) && dragId !== breakId && Boolean(onDropItem);
+
+  return (
+    <div
+      data-print-hide
+      data-layout-id={breakId}
+      onClick={(event) => {
+        event.stopPropagation();
+        onSelect();
+      }}
+      onDragOver={(event) => {
+        if (!receiving) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+        setOver(true);
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(event) => {
+        if (!receiving) return;
+        event.preventDefault();
+        setOver(false);
+        onDropItem?.("after");
+      }}
+      aria-current={selected}
+      className={`flex h-full min-h-0 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed transition-colors ${
+        over
+          ? "border-[#7c5cff] bg-[#f3efff]"
+          : selected
+            ? "border-[#c4b5fd] bg-[#f9f7ff]"
+            : "border-[#e2ded8] hover:border-[#cfc9c2]"
+      }`}
+    >
+      <p className="text-[13px] font-semibold text-[#6b6764]">
+        {over ? "Drop here to place on this page" : "New page"}
+      </p>
+      <p className="mt-1 text-[12px] text-[#a5a09b]">
+        {over
+          ? "放置於此頁"
+          : "Drag a question here, or add one below · 新頁"}
+      </p>
+
+      {onAddQuestion && !over && (
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+          {listQuestionTypes().map((definition) => (
+            <button
+              key={definition.id}
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onAddQuestion(definition.id);
+              }}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-[#ddd8d2] bg-white px-3 py-1.5 text-[12px] font-medium text-[#4a4643] transition-colors hover:bg-[#f6f5f4]"
+            >
+              {definition.id === "mcq" ? (
+                <McqIcon size={14} />
+              ) : (
+                <StructuredIcon size={14} />
+              )}
+              {plain(definition.displayName.en)}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <p className="mt-4 text-[11px] text-[#b5b0ab]">
+        This page is empty — it will still appear in the exported document.
+      </p>
     </div>
   );
 }
@@ -1576,9 +1634,7 @@ export function Preview({
     };
   }, [selectedElement]);
 
-  const isEmpty = rendered.sections.every(
-    (section) => section.questions.length === 0,
-  );
+  const isEmpty = rendered.questions.length === 0;
 
 
   /*
@@ -1926,18 +1982,8 @@ export function Preview({
     });
   }
 
-  for (const section of rendered.sections) {
-    if (section.heading) {
-      blocks.push({
-        key: `heading-${section.sectionId}`,
-        structural: true,
-        node: (
-          <NodeView node={section.heading} language={language} ctx={ctx} />
-        ),
-      });
-    }
-
-    for (const item of section.items) {
+  {
+    for (const item of rendered.items) {
       const id =
         item.type === "question"
           ? item.question.questionId
@@ -1999,6 +2045,7 @@ export function Preview({
       blocks.push({
         key: id,
         forceBreak: isManualBreak,
+        breakId: isManualBreak ? id : undefined,
         node: !onReorder ? (
           body
         ) : (
@@ -2009,7 +2056,7 @@ export function Preview({
             onDragStart={() => setDragId(id)}
             onDragEnd={() => setDragId(undefined)}
             onDrop={(position) => {
-              if (dragId) onReorder(section.sectionId, dragId, id, position);
+              if (dragId) onReorder(dragId, id, position);
               setDragId(undefined);
             }}
           >
@@ -2034,28 +2081,24 @@ export function Preview({
   const dragLabel = (() => {
     if (!dragId) return undefined;
     const numbering = computeNumbering(worksheet);
-    for (const section of worksheet.sections) {
-      const questionIndex = section.questions.findIndex((q) => q.id === dragId);
-      if (questionIndex >= 0) {
-        const question = section.questions[questionIndex];
-        const number = numbering.byQuestionId.get(dragId)?.number;
-        const stem = question.blocks.find((b) => b.kind === "paragraph");
-        const excerpt =
-          stem && stem.kind === "paragraph"
-            ? plain(stem.text.en) || plain(stem.text.zh)
-            : "";
-        // The type's own name comes from the registry, so a new question type labels
-        // its ghost correctly without this file learning about it (§9).
-        return {
-          label: number ? `Question ${number}` : "Question",
-          detail:
-            excerpt || plain(requireQuestionType(question).displayName.en),
-        };
-      }
-      const element = (section.layout ?? []).find((e) => e.id === dragId);
-      if (element) {
-        return { label: LAYOUT_DRAG_NAME[element.kind], detail: "Layout element" };
-      }
+    const question = worksheet.questions.find((q) => q.id === dragId);
+    if (question) {
+      const number = numbering.byQuestionId.get(dragId)?.number;
+      const stem = question.blocks.find((b) => b.kind === "paragraph");
+      const excerpt =
+        stem && stem.kind === "paragraph"
+          ? plain(stem.text.en) || plain(stem.text.zh)
+          : "";
+      // The type's own name comes from the registry, so a new question type labels
+      // its ghost correctly without this file learning about it (§9).
+      return {
+        label: number ? `Question ${number}` : "Question",
+        detail: excerpt || plain(requireQuestionType(question).displayName.en),
+      };
+    }
+    const element = worksheet.layout.find((e) => e.id === dragId);
+    if (element) {
+      return { label: LAYOUT_DRAG_NAME[element.kind], detail: "Layout element" };
     }
     return { label: "Item" };
   })();
@@ -2070,7 +2113,7 @@ export function Preview({
       MM_TO_PX -
     bandsHeight;
 
-  const { pages, probeRef } = usePagination(blocks, contentHeightPx, [
+  const { pages, openedBy, probeRef } = usePagination(blocks, contentHeightPx, [
     worksheet,
     mode,
     selectedQuestionId,
@@ -2087,22 +2130,14 @@ export function Preview({
    * on identity alone would re-notify the parent on every keystroke and — since the
    * parent stores what it is told — loop.
    */
-  const composition = useMemo<PageComposition[]>(() => {
-    const keys = new Set(blocks.filter((b) => !b.structural).map((b) => b.key));
-    return pages.map((pageBlocks, index) => {
-      const flowIds = pageBlocks
-        .map((block) => block.key)
-        .filter((key) => keys.has(key));
-      return { index, flowIds, structuralOnly: flowIds.length === 0 };
-    });
+  const composition = useMemo<PageComposition[]>(
+    () => composePages({ pages, openedBy }),
     // `blocks` is rebuilt every render by construction; `pages` is the memoised result
-    // that actually changes, and every id in `blocks` that matters is reachable there.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pages]);
+    // that actually changes, and every item that matters is reachable through it.
+    [pages, openedBy],
+  );
 
-  const compositionKey = composition
-    .map((page) => page.flowIds.join(","))
-    .join("|");
+  const compositionKey = keyOfComposition(composition);
 
   useEffect(() => {
     onPagesChange?.(composition);
@@ -2250,9 +2285,40 @@ export function Preview({
               />
 
               <div className="min-h-0 flex-1">
-                {pageBlocks.map((block) => (
-                  <div key={block.key}>{block.node}</div>
-                ))}
+                {pageBlocks.length === 0 && openedBy[pageIndex] ? (
+                  // A page the teacher added that nothing has landed on yet. Rendered
+                  // as an affordance rather than as bare paper, because a truly blank
+                  // sheet gives no clue that it is there on purpose — which is exactly
+                  // the doubt that makes someone add the page a second time.
+                  <BlankPage
+                    breakId={openedBy[pageIndex]!}
+                    dragId={dragId}
+                    selected={selectedLayoutId === openedBy[pageIndex]}
+                    onSelect={() => {
+                      setSelectedLayoutId(openedBy[pageIndex]);
+                      setSelectedElement(undefined);
+                      setSelectedBlockId(undefined);
+                    }}
+                    onAddQuestion={onAddQuestion}
+                    onDropItem={
+                      onReorder
+                        ? (position) => {
+                            // The break's own id is the anchor. Naming the section that
+                            // owned it used to be necessary too, which is why the walk
+                            // above kept a break → section map; a flat flow needs only
+                            // the id.
+                            const breakId = openedBy[pageIndex]!;
+                            if (dragId) onReorder(dragId, breakId, position);
+                            setDragId(undefined);
+                          }
+                        : undefined
+                    }
+                  />
+                ) : (
+                  pageBlocks.map((block) => (
+                    <div key={block.key}>{block.node}</div>
+                  ))
+                )}
               </div>
 
               <HeaderFooterBand

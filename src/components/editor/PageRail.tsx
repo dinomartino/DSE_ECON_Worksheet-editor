@@ -155,6 +155,17 @@ export function PageRail({
 
   const confirmTarget = confirming !== undefined ? pages[confirming] : undefined;
 
+  /*
+   * Can this card be acted on — dropped onto, dragged, deleted?
+   *
+   * `structuralOnly` alone used to answer it, which conflated two different sheets that
+   * both lack flow ids: a masthead-only first page, which really is scenery, and a page
+   * the teacher just added, which is empty precisely *because* it is waiting to be
+   * filled. Refusing the second is refusing the only thing anyone does with a new page.
+   */
+  const isActionable = (page: PageComposition) =>
+    !page.structuralOnly || Boolean(page.breakId);
+
   return (
     <>
       <div
@@ -201,7 +212,7 @@ export function PageRail({
                   <button
                     type="button"
                     draggable={
-                      pages.length > 1 && !page.structuralOnly && !receivingItem
+                      pages.length > 1 && isActionable(page) && !receivingItem
                     }
                     aria-current={isActive}
                     aria-label={`Page ${index + 1}${isActive ? ', current' : ''}`}
@@ -218,7 +229,7 @@ export function PageRail({
                       // A question dragged in from the page: the whole card is one
                       // target, so there is no edge to pick.
                       if (receivingItem) {
-                        if (page.structuralOnly) return;
+                        if (!isActionable(page)) return;
                         event.preventDefault();
                         event.dataTransfer.dropEffect = 'move';
                         setItemOverIndex(index);
@@ -243,7 +254,7 @@ export function PageRail({
                       event.preventDefault();
                       if (receivingItem) {
                         setItemOverIndex(undefined);
-                        if (draggingItemId && !page.structuralOnly) {
+                        if (draggingItemId && isActionable(page)) {
                           onDropItemOnPage?.(draggingItemId, page);
                         }
                         return;
@@ -268,7 +279,7 @@ export function PageRail({
                           ? 'border-accent shadow-[0_0_0_2px_var(--color-accent-soft)]'
                           : 'border-line hover:border-ink-subtle'
                     } ${isDragging ? 'opacity-40' : ''} ${
-                      receivingItem && !page.structuralOnly ? 'cursor-copy' : ''
+                      receivingItem && isActionable(page) ? 'cursor-copy' : ''
                     }`}
                     style={{ width: CARD_WIDTH_PX, height: cardHeight }}
                   >
@@ -282,7 +293,7 @@ export function PageRail({
                     {/* Deleting is destructive and permanent-feeling, so it stays
                         hidden until the page is hovered — the rail's resting state is
                         for navigating, not for editing. */}
-                    {!page.structuralOnly && (
+                    {isActionable(page) && (
                       <span
                         role="button"
                         tabIndex={-1}
@@ -318,7 +329,11 @@ export function PageRail({
       {confirmTarget && (
         <ConfirmDelete
           pageNumber={confirming! + 1}
-          itemCount={confirmTarget.flowIds.length}
+          // The page's own break is deleted with it but is not something the teacher
+          // put on the page, so it does not count towards "3 items will be removed".
+          itemCount={
+            confirmTarget.flowIds.filter((id) => id !== confirmTarget.breakId).length
+          }
           onCancel={() => setConfirming(undefined)}
           onConfirm={() => {
             removeMany(confirmTarget.flowIds);

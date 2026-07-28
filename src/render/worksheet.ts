@@ -27,14 +27,14 @@ export interface RenderedQuestion {
   nodes: RenderNode[];
 }
 
-/** A non-question design element in the section's flow. */
+/** A non-question design element in the document flow. */
 export interface RenderedLayout {
   elementId: string;
   nodes: RenderNode[];
 }
 
 /**
- * The section's contents in display order.
+ * The document's contents in display order.
  *
  * Consumers that only care about questions keep using `questions`; consumers that
  * render the page walk `items`, which interleaves layout elements in the teacher's
@@ -43,15 +43,6 @@ export interface RenderedLayout {
 export type RenderedItem =
   | { type: 'question'; question: RenderedQuestion }
   | { type: 'layout'; layout: RenderedLayout };
-
-export interface RenderedSection {
-  sectionId: string;
-  heading?: RenderNode;
-  /** Questions only, in flow order — what numbering and marks totalling consume. */
-  questions: RenderedQuestion[];
-  /** Everything in the section, questions and layout elements interleaved. */
-  items: RenderedItem[];
-}
 
 export interface RenderedWorksheet {
   /**
@@ -63,7 +54,16 @@ export interface RenderedWorksheet {
   bands: RenderNode[];
   title: RenderNode;
   instructions?: RenderNode;
-  sections: RenderedSection[];
+  /**
+   * Everything in the document body, in printed order.
+   *
+   * One flat list rather than a list of sections: a section is a `section` layout
+   * element inside it, so every backend walks this once instead of nesting a loop that
+   * would have to re-emit a heading between runs.
+   */
+  items: RenderedItem[];
+  /** Questions only, in flow order — what numbering and marks totalling consume. */
+  questions: RenderedQuestion[];
 }
 
 /**
@@ -163,76 +163,80 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
         format: worksheet.instructionsFormat,
       };
 
-  // Sections that restart numbering open a new Word list stream, so the restart is
-  // native rather than a number we typed in; continuing sections share the previous
-  // stream so Word keeps counting across the section break (§4).
-  let currentStream = 'question:0';
+  /*
+   * A section that restarts numbering opens a new Word list stream, so the restart is
+   * native `w:num` rather than a number we typed in; sections that continue share the
+   * previous stream so Word keeps counting across the heading (§4).
+   *
+   * The stream is keyed on the section **element's id** rather than a section index,
+   * because there is no longer an index to key on — a section is a marker in the flow,
+   * and dragging one changes which questions follow it without changing its identity.
+   */
+  let questionStream = 'question:0';
 
-  const sections = worksheet.sections.map((section, sectionIndex) => {
-    if (section.restartNumbering) currentStream = `question:${sectionIndex}`;
-    const questionStream = currentStream;
+  // The section marker the walk has most recently passed. A part header's derived total
+  // is scoped to it, which is what "(19 marks)" under "Section B" means.
+  let currentSectionId: string | undefined;
 
-    const heading: RenderNode | undefined = isBiTextEmpty(section.heading)
-      ? undefined
-      : {
-          kind: 'text',
-          style: 'Section Heading',
-          text: section.heading!,
-          keepNext: true,
-          edit: { kind: 'sectionHeading', sectionId: section.id },
-          format: section.headingFormat,
-        };
-
-    // Derived, so a part header's "(19 marks)" tracks the questions inside it (§3.5).
-    const sectionTotal = sectionMarks(section);
-
-    // One walk over the resolved flow, so questions and layout elements come out in
-    // the teacher's order and the two views below can never disagree.
-    const items: RenderedItem[] = resolveFlow(section).map((item) => {
-      if (item.type === 'layout') {
-        return {
-          type: 'layout',
-          layout: {
-            elementId: item.id,
-            nodes: renderLayoutElement(item.element, section.id, sectionTotal),
-          },
-        };
+  // One walk over the one resolved flow. Questions, layout elements and section
+  // headings come out in the teacher's order, so nothing downstream has to interleave
+  // them and the three backends cannot disagree about what follows what.
+  const items: RenderedItem[] = resolveFlow(worksheet).map((item) => {
+    if (item.type === 'layout') {
+      if (item.element.kind === 'section') {
+        currentSectionId = item.element.id;
+        if (item.element.restartNumbering) questionStream = `question:${item.element.id}`;
       }
+      return {
+        type: 'layout',
+        layout: {
+          elementId: item.id,
+          // Derived, so a part header's "(19 marks)" tracks the questions inside its
+          // own section (§3.5).
+          nodes: renderLayoutElement(
+            item.element,
+            item.element.kind === 'partHeader' ? sectionMarks(worksheet, currentSectionId) : 0,
+          ),
+        },
+      };
+    }
 
-      const question = item.question;
-      const entry = numbering.byQuestionId.get(question.id);
-      const number = entry ? entry.number : 0;
-      const definition = requireQuestionType(question);
-      const nodes = definition
-        .render(question, {
-          mode,
-          questionNumber: number,
-          questionId: question.id,
-          questionStream,
-        })
-        // Student output must contain no teacher content anywhere (§11.8).
-        .filter((node) => includeNode(node, mode));
+    const question = item.question;
+    const entry = numbering.byQuestionId.get(question.id);
+    const number = entry ? entry.number : 0;
+    const definition = requireQuestionType(question);
+    const nodes = definition
+      .render(question, {
+        mode,
+        questionNumber: number,
+        questionId: question.id,
+        questionStream,
+      })
+      // Student output must contain no teacher content anywhere (§11.8).
+      .filter((node) => includeNode(node, mode));
 
-      return { type: 'question', question: { questionId: question.id, number, nodes } };
-    });
-
-    const questions = items
-      .filter((item): item is Extract<RenderedItem, { type: 'question' }> => item.type === 'question')
-      .map((item) => item.question);
-
-    return { sectionId: section.id, heading, questions, items };
+    return { type: 'question', question: { questionId: question.id, number, nodes } };
   });
 
-  return { bands, title, instructions, sections };
+  const questions = items
+    .filter((item): item is Extract<RenderedItem, { type: 'question' }> => item.type === 'question')
+    .map((item) => item.question);
+
+  return { bands, title, instructions, items, questions };
 }
 
 /** Expand a layout element into IR nodes. */
-function renderLayoutElement(
-  element: LayoutElement,
-  sectionId: string,
-  sectionTotal: number,
-): RenderNode[] {
+function renderLayoutElement(element: LayoutElement, sectionTotal: number): RenderNode[] {
   switch (element.kind) {
+    /*
+     * A section heading and a free heading render identically.
+     *
+     * They differ only in what they mean to numbering — a section restarts it — and
+     * numbering is derived before this point. Rendering them the same way is what keeps
+     * the flattening invisible in the exported .docx: a v4 document's section heading
+     * becomes a `section` element and still emits the byte-identical paragraph.
+     */
+    case 'section':
     case 'heading':
       return [
         {
@@ -241,7 +245,7 @@ function renderLayoutElement(
           text: element.text,
           keepNext: true,
           format: element.format,
-          edit: { kind: 'layoutText', sectionId, elementId: element.id },
+          edit: { kind: 'layoutText', elementId: element.id },
         },
       ];
     case 'text':
@@ -251,7 +255,7 @@ function renderLayoutElement(
           style: 'Body',
           text: element.text,
           format: element.format,
-          edit: { kind: 'layoutText', sectionId, elementId: element.id },
+          edit: { kind: 'layoutText', elementId: element.id },
         },
       ];
     case 'spacer':
@@ -281,7 +285,7 @@ function renderLayoutElement(
             : { en: withMarks('en'), zh: withMarks('zh') },
           keepNext: true,
           format: element.format,
-          edit: { kind: 'layoutText', sectionId, elementId: element.id },
+          edit: { kind: 'layoutText', elementId: element.id },
         },
       ];
     }
@@ -299,7 +303,6 @@ function renderLayoutElement(
             format: element.format,
             edit: {
               kind: 'labelListCell',
-              sectionId,
               elementId: element.id,
               rowId: row.id,
               column: 'label',
@@ -311,7 +314,6 @@ function renderLayoutElement(
             format: element.format,
             edit: {
               kind: 'labelListCell',
-              sectionId,
               elementId: element.id,
               rowId: row.id,
               column: 'value',
@@ -331,12 +333,12 @@ export function collectListStreams(
   rendered: RenderedWorksheet,
 ): Array<{ stream: string; definition: 'question' | 'option' | 'statement' }> {
   const seen = new Map<string, 'question' | 'option' | 'statement'>();
-  for (const section of rendered.sections) {
-    for (const question of section.questions) {
-      for (const node of question.nodes) {
-        if (node.kind === 'text' && node.listRef && !seen.has(node.listRef.stream)) {
-          seen.set(node.listRef.stream, node.listRef.definition);
-        }
+  // Questions only, deliberately: a layout element carries no list numbering, and
+  // walking `items` instead would invent `w:num` instances nothing references.
+  for (const question of rendered.questions) {
+    for (const node of question.nodes) {
+      if (node.kind === 'text' && node.listRef && !seen.has(node.listRef.stream)) {
+        seen.set(node.listRef.stream, node.listRef.definition);
       }
     }
   }

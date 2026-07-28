@@ -82,10 +82,10 @@ describe('question-type registry (§9)', () => {
     const worksheet = buildAcceptanceWorksheet();
     const definition = listQuestionTypes()[0];
     const extra = definition.create();
-    worksheet.sections[0].questions.push(extra);
+    worksheet.questions.push(extra);
 
     const rendered = renderWorksheet(worksheet, { language: 'en', version: 'student' });
-    expect(rendered.sections[0].questions.at(-1)!.questionId).toBe(extra.id);
+    expect(rendered.questions.at(-1)!.questionId).toBe(extra.id);
 
     // Every stream the IR declares gets a concrete numbering instance in the docx.
     const streams = collectListStreams(rendered);

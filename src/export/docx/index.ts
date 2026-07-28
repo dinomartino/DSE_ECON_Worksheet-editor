@@ -122,11 +122,9 @@ function collectImages(
     }
   };
 
-  for (const section of rendered.sections) {
-    for (const item of section.items) {
-      const nodes = item.type === 'question' ? item.question.nodes : item.layout.nodes;
-      nodes.forEach(visit);
-    }
+  for (const item of rendered.items) {
+    const nodes = item.type === 'question' ? item.question.nodes : item.layout.nodes;
+    nodes.forEach(visit);
   }
 
   return { assets, bySrc };
@@ -256,16 +254,12 @@ function buildParts(
     chunks.push(renderNodeXml(rendered.instructions, context));
   }
 
-  for (const section of rendered.sections) {
-    if (section.heading) {
-      chunks.push(renderNodeXml(section.heading, context));
-    }
-    // Walk the interleaved flow so layout elements land where the teacher put them.
-    for (const item of section.items) {
-      const nodes = item.type === 'question' ? item.question.nodes : item.layout.nodes;
-      for (const node of nodes) {
-        chunks.push(renderNodeXml(node, context));
-      }
+  // Walk the interleaved flow so layout elements — section headings among them — land
+  // where the teacher put them.
+  for (const item of rendered.items) {
+    const nodes = item.type === 'question' ? item.question.nodes : item.layout.nodes;
+    for (const node of nodes) {
+      chunks.push(renderNodeXml(node, context));
     }
   }
 

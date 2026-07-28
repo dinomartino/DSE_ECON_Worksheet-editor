@@ -36,7 +36,7 @@ function worksheetWithDiagram(templateId = 'ad-as'): Worksheet {
   const block = createDiagramBlock(templateId);
   block.caption = bi('Figure 1', '圖一');
   block.altText = bi('AD-AS diagram', 'AD-AS 圖');
-  worksheet.sections[0].questions[0].blocks.push(block);
+  worksheet.questions[0].blocks.push(block);
   return worksheet;
 }
 
@@ -223,7 +223,7 @@ describe('axis titles sit beside their own axis', () => {
 describe('diagram in the render IR', () => {
   it('reaches the IR as geometry, not as a pre-rendered image', () => {
     const rendered = renderWorksheet(worksheetWithDiagram(), STUDENT_BI);
-    const nodes = rendered.sections[0].questions[0].nodes;
+    const nodes = rendered.questions[0].nodes;
     const diagram = nodes.find((node) => node.kind === 'diagram');
 
     expect(diagram).toBeTruthy();
@@ -236,10 +236,8 @@ describe('diagram in the render IR', () => {
 
   it('finds diagrams placed as layout elements, not only inside questions', () => {
     const worksheet = buildAcceptanceWorksheet();
-    const section = worksheet.sections[0];
     const block = createDiagramBlock('supply-demand');
-    // A diagram in a question, and one in the section's layout flow.
-    section.questions[0].blocks.push(block);
+    worksheet.questions[0].blocks.push(block);
 
     const found = collectDiagramNodes(worksheet, STUDENT_BI);
     expect(found).toHaveLength(1);

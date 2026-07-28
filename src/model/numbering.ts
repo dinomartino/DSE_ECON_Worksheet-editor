@@ -1,3 +1,4 @@
+import { resolveFlow } from './flow';
 import type { Question, Worksheet } from './types';
 
 /**
@@ -8,9 +9,14 @@ import type { Question, Worksheet } from './types';
 
 export interface NumberedQuestion {
   question: Question;
-  sectionIndex: number;
-  /** Index of the question within its section. */
-  indexInSection: number;
+  /**
+   * The `section` element this question falls under, or undefined before the first one.
+   *
+   * A question is not *contained* by a section — it simply follows a marker in the flow
+   * — so this is derived by the same walk that assigns the number, and is what the
+   * exporter keys its Word list stream on.
+   */
+  sectionId?: string;
   /** Display number, honouring per-section restart (1-based). */
   number: number;
 }
@@ -21,20 +27,29 @@ export interface NumberingPlan {
 }
 
 /**
- * Walk the worksheet and assign question numbers. Numbering runs continuously
- * across sections unless a section sets `restartNumbering`.
+ * Walk the document flow and assign question numbers.
+ *
+ * Numbering runs continuously until a `section` element that sets `restartNumbering`,
+ * which resets the counter from that point on. Walking the *flow* rather than a nested
+ * section list is what makes the restart happen where the heading actually sits: drag a
+ * section marker above question 3 and the questions after it renumber, with no container
+ * to move anything between.
  */
 export function computeNumbering(worksheet: Worksheet): NumberingPlan {
   const questions: NumberedQuestion[] = [];
   let counter = 0;
+  let sectionId: string | undefined;
 
-  worksheet.sections.forEach((section, sectionIndex) => {
-    if (section.restartNumbering) counter = 0;
-    section.questions.forEach((question, indexInSection) => {
-      counter += 1;
-      questions.push({ question, sectionIndex, indexInSection, number: counter });
-    });
-  });
+  for (const item of resolveFlow(worksheet)) {
+    if (item.type === 'layout') {
+      if (item.element.kind !== 'section') continue;
+      sectionId = item.element.id;
+      if (item.element.restartNumbering) counter = 0;
+      continue;
+    }
+    counter += 1;
+    questions.push({ question: item.question, sectionId, number: counter });
+  }
 
   const byQuestionId = new Map(questions.map((entry) => [entry.question.id, entry]));
   return { questions, byQuestionId };

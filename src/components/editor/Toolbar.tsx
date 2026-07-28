@@ -45,15 +45,10 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
   const untranslated =
     mode.language !== 'bilingual'
       ? 0
-      : worksheet.sections.reduce(
-          (sum, section) =>
-            sum +
-            section.questions.reduce((inner, question) => {
-              const definition = requireQuestionType(question);
-              return inner + (definition.countMissingTranslations?.(question) ?? 0);
-            }, 0),
-          0,
-        );
+      : worksheet.questions.reduce((sum, question) => {
+          const definition = requireQuestionType(question);
+          return sum + (definition.countMissingTranslations?.(question) ?? 0);
+        }, 0);
 
   const flash = (message: string) => {
     setNotice(message);

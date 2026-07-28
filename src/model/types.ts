@@ -222,6 +222,31 @@ export type LayoutElement =
    */
   | { kind: 'partHeader'; id: string; text: BiText; showMarks?: boolean; format?: TextFormat }
   /**
+   * A section heading, and the point at which question numbering may restart (§4).
+   *
+   * A section is a **marker in the flow, not a container**. It names the run of questions
+   * that follows it and optionally restarts their numbering, while the questions
+   * themselves live in the one document-wide flow. That is what lets a section begin
+   * mid-sheet — which every real paper does, and which the user explicitly wants — without
+   * a page and a section disagreeing about which of them owns an item.
+   *
+   * Before this, a section owned `questions`/`layout`/`flow`, so a sheet shared by two
+   * sections had to be shown as two page groups in the outline, an insert had to guess
+   * which container to land in, and moving a page had to carry ids between containers
+   * first. Making the section a marker deletes all three problems rather than refereeing
+   * them.
+   *
+   * `restartNumbering` travels with the heading a teacher can see and drag, which is why
+   * it lives here rather than on a separate stored list.
+   */
+  | {
+      kind: 'section';
+      id: string;
+      text: BiText;
+      restartNumbering?: boolean;
+      format?: TextFormat;
+    }
+  /**
    * A borderless label/value list: "First preference:  Watching a movie".
    *
    * A table would draw borders and be awkward to edit; this exports as tab stops.
@@ -291,31 +316,32 @@ export interface Band {
 }
 
 /**
- * One entry in a section's flow: either a question or a layout element.
+ * One entry in the document's flow: either a question or a layout element.
  *
- * Sections keep `questions` as the numbering-relevant list and interleave layout
+ * The worksheet keeps `questions` as the numbering-relevant list and interleaves layout
  * elements via `flow`, so a teacher can put a divider or an instruction between
  * question 3 and question 4 and drag any of them past the others.
  */
-export type SectionItem =
+export type FlowItem =
   | { type: 'question'; id: string }
   | { type: 'layout'; id: string };
 
-export interface Section {
+/**
+ * A section as authored before v5, when it was a container.
+ *
+ * Kept only so `migrate` can read a document written by an older build — the same reason
+ * `HeaderSlot` below is kept. Nothing in the app produces these any more: a section is a
+ * `section` **layout element** in the one document flow, so that a page and a section can
+ * no longer disagree about which of them owns a question.
+ */
+export interface LegacySection {
   id: string;
   heading?: BiText;
   headingFormat?: TextFormat;
-  /** Restart question numbering at 1 for this section (§4). */
   restartNumbering?: boolean;
   questions: Question[];
-  /** Non-question design elements, addressed by id from `flow`. */
   layout?: LayoutElement[];
-  /**
-   * Display order of everything in the section. Absent means "questions in their
-   * array order", which is how every pre-v4 document behaves; ids missing from the
-   * flow are appended, so adding a question never depends on the flow being updated.
-   */
-  flow?: SectionItem[];
+  flow?: FlowItem[];
 }
 
 export interface FontPair {
@@ -412,7 +438,23 @@ export interface Worksheet {
   titleFormat?: TextFormat;
   instructions?: BiText;
   instructionsFormat?: TextFormat;
-  sections: Section[];
+  /**
+   * Every question in the document, in printed order.
+   *
+   * This is the authority on question order and the list §4 numbering walks. A section
+   * no longer owns a slice of it — sections are `section` layout elements sitting in
+   * `flow`, so a run of questions belongs to whichever section marker precedes it.
+   */
+  questions: Question[];
+  /** Non-question design elements, addressed by id from `flow`. */
+  layout: LayoutElement[];
+  /**
+   * Display order of everything in the document, questions and layout interleaved.
+   *
+   * Ids missing from the flow are appended, so adding a question never depends on the
+   * flow being updated — the same tolerance the per-section flow had.
+   */
+  flow: FlowItem[];
   fonts: FontPair;
   /**
    * The masthead: bands of left/centre/right zones printed above the instructions.

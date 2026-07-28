@@ -234,12 +234,9 @@ export function worksheetClipboardHtml(
   }
   if (rendered.instructions) parts.push(html(rendered.instructions));
 
-  for (const section of rendered.sections) {
-    if (section.heading) parts.push(html(section.heading));
-    for (const item of section.items) {
-      const nodes = item.type === 'question' ? item.question.nodes : item.layout.nodes;
-      for (const node of nodes) parts.push(html(node));
-    }
+  for (const item of rendered.items) {
+    const nodes = item.type === 'question' ? item.question.nodes : item.layout.nodes;
+    for (const node of nodes) parts.push(html(node));
   }
 
   return wrapHtml(parts.join(''), css);
@@ -254,14 +251,12 @@ export function questionClipboardHtml(
 ): string {
   const rendered = renderWorksheet(worksheet, mode);
   const css = fontCss(worksheet.fonts);
-  for (const section of rendered.sections) {
-    const match = section.questions.find((entry) => entry.questionId === questionId);
-    if (match) {
-      return wrapHtml(
-        match.nodes.map((node) => nodeHtml(node, mode.language, css, diagramImages)).join(''),
-        css,
-      );
-    }
+  const match = rendered.questions.find((entry) => entry.questionId === questionId);
+  if (match) {
+    return wrapHtml(
+      match.nodes.map((node) => nodeHtml(node, mode.language, css, diagramImages)).join(''),
+      css,
+    );
   }
   return wrapHtml('', css);
 }
@@ -323,11 +318,8 @@ export function worksheetPlainText(worksheet: Worksheet, mode: OutputMode): stri
   if (rendered.bands.length > 0) rendered.bands.forEach(push);
   else push(rendered.title);
   if (rendered.instructions) push(rendered.instructions);
-  for (const section of rendered.sections) {
-    if (section.heading) push(section.heading);
-    for (const item of section.items) {
-      (item.type === 'question' ? item.question.nodes : item.layout.nodes).forEach(push);
-    }
+  for (const item of rendered.items) {
+    (item.type === 'question' ? item.question.nodes : item.layout.nodes).forEach(push);
   }
 
   return lines.join('\n');

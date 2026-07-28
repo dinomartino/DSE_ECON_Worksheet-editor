@@ -8,7 +8,44 @@ import {
   newId,
 } from '@/model/factories';
 import { bi } from '@/model/text';
-import type { McqQuestion, StructuredQuestion, Worksheet } from '@/model/types';
+import type {
+  LayoutElement,
+  McqQuestion,
+  Question,
+  StructuredQuestion,
+  Worksheet,
+} from '@/model/types';
+
+/**
+ * Put questions and layout elements into a worksheet, in the order given.
+ *
+ * Tests used to assign `worksheet.sections[0].questions = [...]`, which stated both the
+ * content and its position in one line. With one flat flow that takes three lists kept
+ * in step, so this does the bookkeeping: pass the items in printed order and the
+ * `questions`, `layout` and `flow` lists all follow.
+ *
+ * Existing layout — the section headings `createWorksheet` ships — is kept, and the new
+ * items land after it unless `replaceLayout` is set.
+ */
+export function withFlow(
+  worksheet: Worksheet,
+  items: Array<Question | LayoutElement>,
+  options: { replaceLayout?: boolean } = {},
+): Worksheet {
+  const isQuestion = (item: Question | LayoutElement): item is Question => 'type' in item;
+  const keptLayout = options.replaceLayout ? [] : worksheet.layout;
+
+  worksheet.questions = items.filter(isQuestion);
+  worksheet.layout = [...keptLayout, ...items.filter((item) => !isQuestion(item))] as LayoutElement[];
+  worksheet.flow = [
+    ...keptLayout.map((element) => ({ type: 'layout' as const, id: element.id })),
+    ...items.map((item) => ({
+      type: isQuestion(item) ? ('question' as const) : ('layout' as const),
+      id: item.id,
+    })),
+  ];
+  return worksheet;
+}
 
 /** A 1x1 red PNG, so image-embedding tests carry real bytes. */
 export const TINY_PNG =
@@ -141,7 +178,21 @@ export function buildAcceptanceWorksheet(): Worksheet {
     },
   ];
 
-  worksheet.sections[0].questions = mcqs;
-  worksheet.sections[1].questions = structured;
+  /*
+   * Place the questions under the two section markers the factory ships.
+   *
+   * The flow is written explicitly rather than relying on the append fallback: the
+   * fallback would put every question after *both* headings, which is precisely the
+   * arrangement this fixture exists to rule out — Section B's heading has to sit
+   * between the MCQs and the structured questions for numbering to restart there.
+   */
+  const [sectionA, sectionB] = worksheet.layout.filter((element) => element.kind === 'section');
+  worksheet.questions = [...mcqs, ...structured];
+  worksheet.flow = [
+    { type: 'layout', id: sectionA.id },
+    ...mcqs.map((question) => ({ type: 'question' as const, id: question.id })),
+    { type: 'layout', id: sectionB.id },
+    ...structured.map((question) => ({ type: 'question' as const, id: question.id })),
+  ];
   return worksheet;
 }

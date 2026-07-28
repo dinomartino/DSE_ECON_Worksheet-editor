@@ -17,10 +17,9 @@ import {
   applyResizeBlock,
   replaceBlockById,
 } from '@/model/edits';
-import { createSection, createWorksheet, newId } from '@/model/factories';
+import { createWorksheet, newId } from '@/model/factories';
 import {
   flowOf,
-  moveAcrossSections,
   moveInFlow,
   moveRunInFlow,
   nudgeInFlow,
@@ -36,8 +35,8 @@ import type {
   LayoutElement,
   OutputMode,
   PageSetup,
+  FlowItem,
   Question,
-  Section,
   TextFormat,
   Worksheet,
 } from '@/model/types';
@@ -93,35 +92,23 @@ interface WorksheetState {
   select: (questionId?: string) => void;
   setDragQuestionId: (questionId?: string) => void;
 
-  // --- Sections and questions -------------------------------------------------
-  addSection: () => void;
-  updateSection: (sectionId: string, patch: Partial<Section>) => void;
-  removeSection: (sectionId: string) => void;
-  addQuestion: (sectionId: string, typeId: string) => void;
+  // --- Questions --------------------------------------------------------------
+  /** Add a question, after `afterId` when given and at the end otherwise. */
+  addQuestion: (typeId: string, afterId?: string) => void;
   updateQuestion: (questionId: string, patch: Partial<Question>) => void;
   removeQuestion: (questionId: string) => void;
   duplicateQuestion: (questionId: string) => void;
-  /** Nudge a question by `delta` places within its own section. */
+  /** Nudge a question by `delta` places in the document order. */
   moveQuestion: (questionId: string, delta: number) => void;
-  moveQuestionToSection: (questionId: string, sectionId: string) => void;
-  /** Drag-reorder: put `questionId` immediately before `targetId`, across sections. */
+  /** Drag-reorder: put `questionId` immediately before `targetId`. */
   reorderQuestion: (questionId: string, targetId: string) => void;
 
   // --- Layout elements and flow ----------------------------------------------
-  addLayoutElement: (sectionId: string, element: LayoutElement, afterId?: string) => void;
-  updateLayoutElement: (
-    sectionId: string,
-    elementId: string,
-    patch: Partial<LayoutElement>,
-  ) => void;
-  removeLayoutElement: (sectionId: string, elementId: string) => void;
-  nudgeFlowItem: (sectionId: string, id: string, direction: -1 | 1) => void;
-  reorderFlowItem: (
-    sectionId: string,
-    id: string,
-    targetId: string,
-    position?: 'before' | 'after',
-  ) => void;
+  addLayoutElement: (element: LayoutElement, afterId?: string) => void;
+  updateLayoutElement: (elementId: string, patch: Partial<LayoutElement>) => void;
+  removeLayoutElement: (elementId: string) => void;
+  nudgeFlowItem: (id: string, direction: -1 | 1) => void;
+  reorderFlowItem: (id: string, targetId: string, position?: 'before' | 'after') => void;
   /** Move a whole page's worth of items, as dragged in the page rail. */
   movePage: (sourceIds: string[], targetIds: string[], position: 'before' | 'after') => void;
   removeMany: (ids: string[]) => void;
@@ -189,7 +176,7 @@ interface WorksheetState {
 /** What page 1 prints, as a single closed choice. */
 export type FirstPageMode = 'same' | 'blank' | 'different';
 
-/** Apply a patch to whichever section owns `questionId`. */
+/** Apply a patch to the question with this id. */
 function mapQuestion(
   worksheet: Worksheet,
   questionId: string,
@@ -197,22 +184,34 @@ function mapQuestion(
 ): Worksheet {
   return {
     ...worksheet,
-    sections: worksheet.sections.map((section) => ({
-      ...section,
-      questions: section.questions.map((question) =>
-        question.id === questionId ? patch(question) : question,
-      ),
-    })),
+    questions: worksheet.questions.map((question) =>
+      question.id === questionId ? patch(question) : question,
+    ),
   };
 }
 
-/** The section containing `id`, whether it is a question or a layout element. */
-function sectionOf(worksheet: Worksheet, id: string): Section | undefined {
-  return worksheet.sections.find(
-    (section) =>
-      section.questions.some((question) => question.id === id) ||
-      (section.layout ?? []).some((element) => element.id === id),
-  );
+/**
+ * Place a new item in the flow, after `afterId` when given and at the end otherwise.
+ *
+ * Both kinds of insert share this: a question and a layout element differ only in which
+ * stored list they join, never in how their position is recorded. `patch` carries that
+ * list, so the caller decides what is being added and this decides where it goes.
+ *
+ * The flow is resolved first rather than appended to blindly — a document whose stored
+ * flow is missing entries (older saves never listed every id) would otherwise place the
+ * new item relative to a list that does not describe what is on the page.
+ */
+function insertIntoFlow(
+  worksheet: Worksheet,
+  entry: FlowItem,
+  afterId: string | undefined,
+  patch: Partial<Worksheet>,
+): Worksheet {
+  const flow = flowOf(worksheet);
+  const at = afterId ? flow.findIndex((item) => item.id === afterId) : -1;
+  if (at < 0) flow.push(entry);
+  else flow.splice(at + 1, 0, entry);
+  return { ...worksheet, ...patch, flow };
 }
 
 /**
@@ -385,23 +384,7 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   select: (selectedQuestionId) => set({ selectedQuestionId }),
   setDragQuestionId: (dragQuestionId) => set({ dragQuestionId }),
 
-  // --- Sections and questions -------------------------------------------------
-  addSection: () =>
-    get().commit((draft) => ({ ...draft, sections: [...draft.sections, createSection()] })),
-
-  updateSection: (sectionId, patch) =>
-    get().commit((draft) => ({
-      ...draft,
-      sections: draft.sections.map((section) =>
-        section.id === sectionId ? { ...section, ...patch } : section,
-      ),
-    })),
-
-  removeSection: (sectionId) =>
-    get().commit((draft) => ({
-      ...draft,
-      sections: draft.sections.filter((section) => section.id !== sectionId),
-    })),
+  // --- Questions --------------------------------------------------------------
 
   /**
    * Add a question of a registered type.
@@ -409,18 +392,17 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
    * The type is resolved through the registry rather than switched on here — that is the
    * extension point (§9), and an unknown id is ignored rather than corrupting the
    * document with a question no renderer understands.
+   *
+   * It lands after `afterId` when given, otherwise at the end. There is no container to
+   * choose any more: which section it belongs to follows from which marker precedes it,
+   * so "add here" is a position rather than a parent.
    */
-  addQuestion: (sectionId, typeId) => {
+  addQuestion: (typeId, afterId) => {
     const definition = listQuestionTypes().find((type) => type.id === typeId);
     if (!definition) return;
     const question = definition.create();
-    get().commit((draft) => ({
-      ...draft,
-      sections: draft.sections.map((section) =>
-        section.id === sectionId
-          ? { ...section, questions: [...section.questions, question] }
-          : section,
-      ),
+    get().commit((draft) => insertIntoFlow(draft, { type: 'question', id: question.id }, afterId, {
+      questions: [...draft.questions, question],
     }));
     set({ selectedQuestionId: question.id });
   },
@@ -433,70 +415,41 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   removeQuestion: (questionId) =>
     get().commit((draft) => ({
       ...draft,
-      sections: draft.sections.map((section) => ({
-        ...section,
-        questions: section.questions.filter((question) => question.id !== questionId),
-        // Drop the flow entry too, so nothing is left pointing at a question that is gone.
-        flow: section.flow?.filter((entry) => entry.id !== questionId),
-      })),
+      questions: draft.questions.filter((question) => question.id !== questionId),
+      // Drop the flow entry too, so nothing is left pointing at a question that is gone.
+      flow: draft.flow.filter((entry) => entry.id !== questionId),
     })),
 
   duplicateQuestion: (questionId) =>
-    get().commit((draft) => ({
-      ...draft,
-      sections: draft.sections.map((section) => {
-        const index = section.questions.findIndex((question) => question.id === questionId);
-        if (index < 0) return section;
-        const clone = withFreshIds(section.questions[index]);
-        return {
-          ...section,
-          questions: [
-            ...section.questions.slice(0, index + 1),
-            clone,
-            ...section.questions.slice(index + 1),
-          ],
-        };
-      }),
-    })),
+    get().commit((draft) => {
+      const index = draft.questions.findIndex((question) => question.id === questionId);
+      if (index < 0) return draft;
+      const clone = withFreshIds(draft.questions[index]);
+      // Placed straight after the original in both lists, so the copy appears where the
+      // teacher is looking rather than at the end of the document.
+      return insertIntoFlow(draft, { type: 'question', id: clone.id }, questionId, {
+        questions: [
+          ...draft.questions.slice(0, index + 1),
+          clone,
+          ...draft.questions.slice(index + 1),
+        ],
+      });
+    }),
 
   moveQuestion: (questionId, delta) =>
-    get().commit((draft) => ({
-      ...draft,
-      sections: draft.sections.map((section) => {
-        const index = section.questions.findIndex((question) => question.id === questionId);
-        if (index < 0) return section;
-        const to = index + delta;
-        if (to < 0 || to >= section.questions.length) return section;
-        const questions = [...section.questions];
-        const [moved] = questions.splice(index, 1);
-        questions.splice(to, 0, moved);
-        return { ...section, questions };
-      }),
-    })),
-
-  moveQuestionToSection: (questionId, sectionId) =>
     get().commit((draft) => {
-      const question = draft.sections
-        .flatMap((section) => section.questions)
-        .find((candidate) => candidate.id === questionId);
-      if (!question) return draft;
-      return {
-        ...draft,
-        sections: draft.sections.map((section) => {
-          if (section.id === sectionId) {
-            return { ...section, questions: [...section.questions, question] };
-          }
-          return {
-            ...section,
-            questions: section.questions.filter((candidate) => candidate.id !== questionId),
-            flow: section.flow?.filter((entry) => entry.id !== questionId),
-          };
-        }),
-      };
+      const index = draft.questions.findIndex((question) => question.id === questionId);
+      if (index < 0) return draft;
+      const to = index + delta;
+      if (to < 0 || to >= draft.questions.length) return draft;
+      const questions = [...draft.questions];
+      const [moved] = questions.splice(index, 1);
+      questions.splice(to, 0, moved);
+      return { ...draft, questions };
     }),
 
   /**
-   * Drag-reorder, possibly across sections.
+   * Drag-reorder one question relative to another.
    *
    * `questions` stays the authority on question order (§ section flow invariant), so
    * this rewrites that array rather than the flow. A drag onto itself or onto an id
@@ -505,43 +458,17 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   reorderQuestion: (questionId, targetId) =>
     get().commit((draft) => {
       if (questionId === targetId) return draft;
+      const from = draft.questions.findIndex((question) => question.id === questionId);
+      const to = draft.questions.findIndex((question) => question.id === targetId);
+      if (from < 0 || to < 0) return draft;
 
-      const source = draft.sections.find((section) =>
-        section.questions.some((question) => question.id === questionId),
-      );
-      const target = draft.sections.find((section) =>
-        section.questions.some((question) => question.id === targetId),
-      );
-      if (!source || !target) return draft;
-
-      const question = source.questions.find((candidate) => candidate.id === questionId)!;
-
-      return {
-        ...draft,
-        sections: draft.sections.map((section) => {
-          let questions = section.questions;
-          if (section.id === source.id) {
-            questions = questions.filter((candidate) => candidate.id !== questionId);
-          }
-          if (section.id === target.id) {
-            const at = questions.findIndex((candidate) => candidate.id === targetId);
-            questions =
-              at < 0
-                ? [...questions, question]
-                : [...questions.slice(0, at), question, ...questions.slice(at)];
-          }
-          return questions === section.questions
-            ? section
-            : {
-                ...section,
-                questions,
-                flow:
-                  section.id === source.id && section.id !== target.id
-                    ? section.flow?.filter((entry) => entry.id !== questionId)
-                    : section.flow,
-              };
-        }),
-      };
+      const questions = [...draft.questions];
+      const [moved] = questions.splice(from, 1);
+      // Re-find the target after the removal, so a downward drag lands where it was
+      // dropped rather than one place short.
+      const at = questions.findIndex((question) => question.id === targetId);
+      questions.splice(at < 0 ? questions.length : at, 0, moved);
+      return { ...draft, questions };
     }),
 
   // --- Layout elements and flow ----------------------------------------------
@@ -551,107 +478,41 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
    * The element lands in `layout` and its position in `flow`; those are the two halves
    * the flow invariant keeps separate — `layout` owns existence, `flow` owns position.
    */
-  addLayoutElement: (sectionId, element, afterId) =>
-    get().commit((draft) => ({
-      ...draft,
-      sections: draft.sections.map((section) => {
-        if (section.id !== sectionId) return section;
-        const flow = flowOf(section);
-        const entry = { type: 'layout' as const, id: element.id };
-        const at = afterId ? flow.findIndex((item) => item.id === afterId) : -1;
-        return {
-          ...section,
-          layout: [...(section.layout ?? []), element],
-          flow:
-            at < 0
-              ? [...flow, entry]
-              : [...flow.slice(0, at + 1), entry, ...flow.slice(at + 1)],
-        };
+  addLayoutElement: (element, afterId) =>
+    get().commit((draft) =>
+      insertIntoFlow(draft, { type: 'layout', id: element.id }, afterId, {
+        layout: [...draft.layout, element],
       }),
-    })),
+    ),
 
-  updateLayoutElement: (sectionId, elementId, patch) =>
+  updateLayoutElement: (elementId, patch) =>
     get().commit((draft) => ({
       ...draft,
-      sections: draft.sections.map((section) =>
-        section.id !== sectionId
-          ? section
-          : {
-              ...section,
-              layout: (section.layout ?? []).map((element) =>
-                element.id === elementId ? ({ ...element, ...patch } as LayoutElement) : element,
-              ),
-            },
+      layout: draft.layout.map((element) =>
+        element.id === elementId ? ({ ...element, ...patch } as LayoutElement) : element,
       ),
     })),
 
-  removeLayoutElement: (sectionId, elementId) =>
+  removeLayoutElement: (elementId) =>
     get().commit((draft) => ({
       ...draft,
-      sections: draft.sections.map((section) =>
-        section.id !== sectionId
-          ? section
-          : {
-              ...section,
-              layout: (section.layout ?? []).filter((element) => element.id !== elementId),
-              flow: section.flow?.filter((entry) => entry.id !== elementId),
-            },
-      ),
+      layout: draft.layout.filter((element) => element.id !== elementId),
+      flow: draft.flow.filter((entry) => entry.id !== elementId),
     })),
 
-  nudgeFlowItem: (sectionId, id, direction) =>
-    get().commit((draft) => ({
-      ...draft,
-      sections: draft.sections.map((section) =>
-        section.id === sectionId ? applyFlowMove(section, nudgeInFlow(section, id, direction)) : section,
-      ),
-    })),
+  nudgeFlowItem: (id, direction) =>
+    get().commit((draft) => applyFlowMove(draft, nudgeInFlow(draft, id, direction))),
 
   /**
-   * Move an item next to `targetId`, in this section or into another one.
+   * Move an item next to `targetId`.
    *
-   * `sectionId` names where the *target* is, not where the item came from, so a drop is
-   * described by where it landed. When the item lives elsewhere this is a cross-section
-   * move: both sections are rewritten in one commit, which is what makes dragging a
-   * divider — or a question — from Section A into Section B work at all. Previously the
-   * whole operation was scoped to a single section, so a layout element could never
-   * leave its own, and a question could only cross when the thing it was dropped on
-   * happened to be another question.
+   * There is no cross-section case to handle: with one document-wide flow, dragging a
+   * question past a section heading *is* moving it into that section, because a
+   * question belongs to whichever marker precedes it. This used to need a whole second
+   * branch that rewrote two sections in one commit.
    */
-  reorderFlowItem: (sectionId, id, targetId, position = 'before') =>
-    get().commit((draft) => {
-      const target = draft.sections.find((section) => section.id === sectionId);
-      const home = draft.sections.find(
-        (section) =>
-          section.questions.some((question) => question.id === id) ||
-          (section.layout ?? []).some((element) => element.id === id),
-      );
-      if (!target || !home) return draft;
-
-      if (home.id === target.id) {
-        return {
-          ...draft,
-          sections: draft.sections.map((section) =>
-            section.id === sectionId
-              ? applyFlowMove(section, moveInFlow(section, id, targetId, position))
-              : section,
-          ),
-        };
-      }
-
-      const moved = moveAcrossSections(home, target, id, targetId, position);
-      if (!moved) return draft;
-      return {
-        ...draft,
-        sections: draft.sections.map((section) =>
-          section.id === moved.source.id
-            ? moved.source
-            : section.id === moved.target.id
-              ? moved.target
-              : section,
-        ),
-      };
-    }),
+  reorderFlowItem: (id, targetId, position = 'before') =>
+    get().commit((draft) => applyFlowMove(draft, moveInFlow(draft, id, targetId, position))),
 
   /**
    * Move a whole page's worth of items, as dragged in the page rail.
@@ -665,12 +526,18 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     get().commit((draft) => {
       const anchor = position === 'before' ? targetIds[0] : targetIds.at(-1);
       if (!anchor) return draft;
-      return {
-        ...draft,
-        sections: draft.sections.map((section) =>
-          applyFlowMove(section, moveRunInFlow(section, sourceIds, anchor, position)),
-        ),
-      };
+      if (sourceIds.includes(anchor)) return draft;
+
+      /*
+       * The run is ordered as a unit, in one move.
+       *
+       * This used to be the hardest action in the store: a page's items need not all
+       * live in one section, so every id had to be carried into the anchor's section
+       * first and only then ordered. With one document-wide flow there are no
+       * containers to reconcile — a page is just a run of ids, which is what the rail
+       * always believed it was handing over.
+       */
+      return applyFlowMove(draft, moveRunInFlow(draft, sourceIds, anchor, position));
     }),
 
   removeMany: (ids) =>
@@ -678,31 +545,32 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
       const set_ = new Set(ids);
       return {
         ...draft,
-        sections: draft.sections.map((section) => ({
-          ...section,
-          questions: section.questions.filter((question) => !set_.has(question.id)),
-          layout: (section.layout ?? []).filter((element) => !set_.has(element.id)),
-          flow: section.flow?.filter((entry) => !set_.has(entry.id)),
-        })),
+        questions: draft.questions.filter((question) => !set_.has(question.id)),
+        layout: draft.layout.filter((element) => !set_.has(element.id)),
+        flow: draft.flow.filter((entry) => !set_.has(entry.id)),
       };
     }),
 
   duplicateMany: (ids) =>
     get().commit((draft) => {
       const set_ = new Set(ids);
-      return {
-        ...draft,
-        sections: draft.sections.map((section) => {
-          const questions: Question[] = [];
-          for (const question of section.questions) {
-            questions.push(question);
-            if (set_.has(question.id)) questions.push(withFreshIds(question));
-          }
-          return questions.length === section.questions.length
-            ? section
-            : { ...section, questions };
-        }),
-      };
+      const questions: Question[] = [];
+      const flow = flowOf(draft);
+      for (const question of draft.questions) {
+        questions.push(question);
+        if (!set_.has(question.id)) continue;
+        const clone = withFreshIds(question);
+        questions.push(clone);
+        // Each copy is placed after its own original, so duplicating a selection that
+        // spans a section heading keeps every copy on the side of it that it came from.
+        const at = flow.findIndex((entry) => entry.id === question.id);
+        const entry = { type: 'question' as const, id: clone.id };
+        if (at < 0) flow.push(entry);
+        else flow.splice(at + 1, 0, entry);
+      }
+      return questions.length === draft.questions.length
+        ? draft
+        : { ...draft, questions, flow };
     }),
 
   // --- In-place editing on the page ------------------------------------------
@@ -907,6 +775,6 @@ function cloneBand(band: Band): Band {
  * question, the reordered `questions` array — because `questions` owns question order
  * and the two must be rewritten together or they disagree about which question is third.
  */
-function applyFlowMove(section: Section, move: FlowMove): Section {
-  return { ...section, flow: move.flow, questions: move.questions };
+function applyFlowMove(worksheet: Worksheet, move: FlowMove): Worksheet {
+  return { ...worksheet, flow: move.flow, questions: move.questions };
 }

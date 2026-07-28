@@ -8,6 +8,7 @@ import {
   createLabelListElement,
   createPageBreakElement,
   createPartHeaderElement,
+  createSectionElement,
   createSpacerElement,
   createTextElement,
 } from '@/model/flow';
@@ -43,11 +44,16 @@ import {
  * It costs 64px of width and buys an affordance that never has to be discovered
  * twice — the rail is always in the same place whatever is selected.
  *
- * **Where things land.** Everything inserts into the *selected* question's section
- * when there is a selection, otherwise the last section, which is what "keep typing
- * at the end" means for a document. That keeps a single click useful without asking
- * the teacher to first nominate a target, and the item can still be dragged
- * afterwards — §flow makes position cheap to change.
+ * **Where things land.** Everything inserts straight after the *selected* question,
+ * otherwise at the end, which is what "keep typing at the end" means for a document.
+ * That keeps a single click useful without asking the teacher to first nominate a
+ * target, and the item can still be dragged afterwards — §flow makes position cheap
+ * to change.
+ *
+ * It used to have to pick a *container* — the selection's section, else the last one —
+ * and could not express "after this element" at all. With one document-wide flow an
+ * insert is a position, so there is nothing to guess and no `disabled` state for a
+ * document that happens to have no sections.
  */
 
 type Group = 'questions' | 'layout';
@@ -58,26 +64,21 @@ interface Entry {
   label: string;
   hint: string;
   icon: React.ReactNode;
-  run: (sectionId: string) => void;
+  /** `afterId` is the item to land behind, or undefined to append. */
+  run: (afterId?: string) => void;
 }
 
 export function AddRail() {
-  const worksheet = useWorksheetStore((s) => s.worksheet);
   const selectedQuestionId = useWorksheetStore((s) => s.selectedQuestionId);
   const addQuestion = useWorksheetStore((s) => s.addQuestion);
-  const addSection = useWorksheetStore((s) => s.addSection);
   const addLayoutElement = useWorksheetStore((s) => s.addLayoutElement);
 
   const [open, setOpen] = useState<Group | undefined>();
   const rootRef = useRef<HTMLDivElement>(null);
 
-  // The section a new item belongs to: the one holding the selection, else the last.
-  // Falling back to the last section (rather than the first) matches how a document
-  // grows — you are almost always adding to the end of what you just wrote.
-  const targetSectionId =
-    worksheet.sections.find((section) =>
-      section.questions.some((question) => question.id === selectedQuestionId),
-    )?.id ?? worksheet.sections[worksheet.sections.length - 1]?.id;
+  // New items land after whatever is selected, so a click inserts where the teacher is
+  // working. With nothing selected they append, which is how a document grows.
+  const afterId = selectedQuestionId;
 
   useEffect(() => {
     if (!open) return;
@@ -96,6 +97,7 @@ export function AddRail() {
   }, [open]);
 
   const layoutIcons: Record<LayoutElement['kind'], React.ReactNode> = {
+    section: <SectionIcon size={18} />,
     partHeader: <PartHeaderIcon size={18} />,
     heading: <HeadingIcon size={18} />,
     text: <TextIcon size={18} />,
@@ -113,21 +115,26 @@ export function AddRail() {
     label: plain(definition.displayName.en),
     hint: plain(definition.displayName.zh),
     icon: definition.id === 'mcq' ? <McqIcon size={18} /> : <StructuredIcon size={18} />,
-    run: (sectionId) => addQuestion(sectionId, definition.id),
+    run: (afterId) => addQuestion(definition.id, afterId),
   }));
 
   const layoutEntries: Entry[] = [
+    {
+      id: 'section',
+      label: 'Section',
+      hint: 'restarts numbering · 部分',
+      icon: layoutIcons.section,
+      run: (afterId) => addLayoutElement(createSectionElement(), afterId),
+    },
     {
       id: 'partHeader',
       label: 'Part header',
       hint: 'with marks total',
       icon: layoutIcons.partHeader,
-      run: (sectionId) =>
+      run: (afterId) =>
         addLayoutElement(
-          sectionId,
-          createPartHeaderElement(
-            bi('Part A: Multiple-choice questions', '甲部：多項選擇題'),
-          ),
+          createPartHeaderElement(bi('Part A: Multiple-choice questions', '甲部：多項選擇題')),
+          afterId,
         ),
     },
     {
@@ -135,49 +142,49 @@ export function AddRail() {
       label: 'Heading',
       hint: '標題',
       icon: layoutIcons.heading,
-      run: (sectionId) => addLayoutElement(sectionId, createHeadingElement()),
+      run: (afterId) => addLayoutElement(createHeadingElement(), afterId),
     },
     {
       id: 'text',
       label: 'Text / note',
       hint: '文字',
       icon: layoutIcons.text,
-      run: (sectionId) => addLayoutElement(sectionId, createTextElement()),
+      run: (afterId) => addLayoutElement(createTextElement(), afterId),
     },
     {
       id: 'labelList',
       label: 'Label list',
       hint: 'side-by-side rows',
       icon: layoutIcons.labelList,
-      run: (sectionId) => addLayoutElement(sectionId, createLabelListElement()),
+      run: (afterId) => addLayoutElement(createLabelListElement(), afterId),
     },
     {
       id: 'answerLines',
       label: 'Answer lines',
       hint: 'ruled space',
       icon: layoutIcons.answerLines,
-      run: (sectionId) => addLayoutElement(sectionId, createAnswerLinesElement()),
+      run: (afterId) => addLayoutElement(createAnswerLinesElement(), afterId),
     },
     {
       id: 'spacer',
       label: 'Blank space',
       hint: '留白',
       icon: layoutIcons.spacer,
-      run: (sectionId) => addLayoutElement(sectionId, createSpacerElement()),
+      run: (afterId) => addLayoutElement(createSpacerElement(), afterId),
     },
     {
       id: 'divider',
       label: 'Divider',
       hint: '分隔線',
       icon: layoutIcons.divider,
-      run: (sectionId) => addLayoutElement(sectionId, createDividerElement()),
+      run: (afterId) => addLayoutElement(createDividerElement(), afterId),
     },
     {
       id: 'pageBreak',
       label: 'New page',
       hint: 'start a new page · 分頁',
       icon: layoutIcons.pageBreak,
-      run: (sectionId) => addLayoutElement(sectionId, createPageBreakElement()),
+      run: (afterId) => addLayoutElement(createPageBreakElement(), afterId),
     },
   ];
 
@@ -238,20 +245,6 @@ export function AddRail() {
           );
         })}
 
-        <div className="my-1 h-px w-8 bg-line" />
-
-        <button
-          type="button"
-          onClick={() => {
-            addSection();
-            setOpen(undefined);
-          }}
-          className="flex w-[64px] cursor-pointer flex-col items-center gap-1 rounded-xl px-1 py-2.5 text-ink-muted transition-all duration-150 hover:bg-surface-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-        >
-          <SectionIcon size={20} />
-          <span className="text-[11px] font-semibold leading-none">Section</span>
-          <span className="text-[9px] leading-none text-ink-subtle">分部</span>
-        </button>
       </nav>
 
       {/* The flyout. Rendered beside the rail rather than over the page, so adding
@@ -270,13 +263,11 @@ export function AddRail() {
               key={entry.id}
               type="button"
               role="menuitem"
-              disabled={!targetSectionId}
               onClick={() => {
-                if (!targetSectionId) return;
-                entry.run(targetSectionId);
+                entry.run(afterId);
                 setOpen(undefined);
               }}
-              className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors duration-150 hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors duration-150 hover:bg-accent-soft"
             >
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-ink-muted">
                 {entry.icon}
@@ -289,11 +280,6 @@ export function AddRail() {
               </span>
             </button>
           ))}
-          {!targetSectionId && (
-            <p className="px-2 py-1.5 text-[11px] text-ink-subtle">
-              Add a section first.
-            </p>
-          )}
         </div>
       )}
     </div>

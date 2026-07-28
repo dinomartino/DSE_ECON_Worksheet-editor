@@ -111,8 +111,6 @@ function CmField({
 function DocumentTab() {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const updateWorksheet = useWorksheetStore((s) => s.updateWorksheet);
-  const updateSection = useWorksheetStore((s) => s.updateSection);
-  const addSection = useWorksheetStore((s) => s.addSection);
 
   const fontIndex = FONT_PRESETS.findIndex(
     (preset) =>
@@ -155,28 +153,11 @@ function DocumentTab() {
         />
       </Field>
 
-      <div className="space-y-2.5 border-t border-line pt-4">
-        <Field
-          label="Section headings"
-          hint="Sections group questions and can restart numbering."
-        >
-          <div className="space-y-2.5">
-            {worksheet.sections.map((section, index) => (
-              <BiTextField
-                key={section.id}
-                label={`Section ${index + 1}`}
-                value={section.heading ?? emptyBiText()}
-                rows={1}
-                onChange={(heading) => updateSection(section.id, { heading })}
-              />
-            ))}
-          </div>
-        </Field>
-        <Button size="sm" variant="subtle" onClick={addSection}>
-          <SectionIcon size={14} />
-          Add section
-        </Button>
-      </div>
+      {/* Section headings are typed on the page, not here.
+          A section is a heading in the flow now, so it has a visual representation to
+          click — which is the rule for what belongs on the paper rather than in a panel
+          (§"the preview is the editor"). This list edited headings by index while the
+          page showed them in place, giving two ways to change one thing. */}
     </div>
   );
 }

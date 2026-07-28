@@ -175,18 +175,11 @@ export function EditorApp() {
   /*
    * Dragging on the page.
    *
-   * One call for every case. `reorderFlowItem` now resolves the item's home section
-   * itself and moves it across when that differs from the drop target's, so questions
-   * *and* layout elements cross sections by the same route. It previously forked to
-   * `reorderQuestion` for a cross-section drag, which could only move questions and
-   * ignored `position` — so a divider dragged into another section silently did nothing.
+   * One call for every case, and now a direct pass-through: with a single document
+   * flow there is no home section to resolve and nothing to move "across", so this no
+   * longer has to look anything up before delegating.
    */
-  const handleReorder = useCallback(
-    (sectionId: string, id: string, targetId: string, position: 'before' | 'after') => {
-      reorderFlowItem(sectionId, id, targetId, position);
-    },
-    [reorderFlowItem],
-  );
+  const handleReorder = reorderFlowItem;
 
   /*
    * Drop a question onto a page card in the rail.
@@ -208,19 +201,16 @@ export function EditorApp() {
   const handleDropItemOnPage = useCallback(
     (itemId: string, target: PageComposition) => {
       const ids = target.flowIds.filter((id) => id !== itemId);
-      const anchor = ids[ids.length - 1];
-      if (!anchor) return;
+      // On a page the teacher just added and has not filled, the only id is the page's
+      // own break — and landing *after* the break is exactly what puts an item on the
+      // sheet that break opened. So the empty case needs no special handling beyond
+      // letting a break serve as an anchor.
+      const anchor = ids[ids.length - 1] ?? target.breakId;
+      if (!anchor || anchor === itemId) return;
       if (target.flowIds[target.flowIds.length - 1] === itemId) return;
-
-      const section = worksheet.sections.find(
-        (candidate) =>
-          candidate.questions.some((q) => q.id === anchor) ||
-          (candidate.layout ?? []).some((element) => element.id === anchor),
-      );
-      if (!section) return;
-      handleReorder(section.id, itemId, anchor, 'after');
+      handleReorder(itemId, anchor, 'after');
     },
-    [worksheet, handleReorder],
+    [handleReorder],
   );
 
   // Editing text on the page also selects the question it belongs to, so the sidebar
@@ -234,29 +224,15 @@ export function EditorApp() {
     [applyEdit, select],
   );
 
-  // Adding from the empty page. It lands in the last section for the same reason the
-  // add rail does — a document grows at its end — and there is always at least one
-  // section, since the factory creates the worksheet with two.
+  // Adding from the empty page: it appends, which is what an empty document wants.
   const handleAddFirstQuestion = useCallback(
-    (typeId: string) => {
-      const section = worksheet.sections[worksheet.sections.length - 1];
-      if (section) addQuestion(section.id, typeId);
-    },
-    [worksheet, addQuestion],
+    (typeId: string) => addQuestion(typeId),
+    [addQuestion],
   );
 
-  // Deleting a layout element from the page. The store keys removal by section, but a
-  // click on the page only knows the element's own id, so the owning section is looked
-  // up here rather than making every caller carry it.
-  const handleDeleteLayout = useCallback(
-    (elementId: string) => {
-      const section = worksheet.sections.find((candidate) =>
-        (candidate.layout ?? []).some((element) => element.id === elementId),
-      );
-      if (section) removeLayoutElement(section.id, elementId);
-    },
-    [worksheet, removeLayoutElement],
-  );
+  // Deleting a layout element from the page. A click knows only the element's own id,
+  // which is now all removal needs — this used to have to find the owning section first.
+  const handleDeleteLayout = removeLayoutElement;
 
   // Reopen the most recently edited worksheet on load (§6).
   useEffect(() => {
@@ -397,7 +373,7 @@ export function EditorApp() {
             onDragItemChange={setDraggingItemId}
           />
         </main>
-        <Sidebar onOpenSettings={() => setSettingsOpen(true)} />
+        <Sidebar pages={pages} onOpenSettings={() => setSettingsOpen(true)} />
       </div>
 
       {settingsOpen && <DocumentSettings onClose={() => setSettingsOpen(false)} />}

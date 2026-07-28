@@ -42,17 +42,23 @@ describe('edit targets resolve to the field they were rendered from', () => {
   });
 
   it('writes a section heading by id, leaving other sections alone', () => {
+    // A section heading is a layout element now, so it is reached by the same
+    // `layoutText` target as a free heading — there is no `sectionHeading` kind.
     const worksheet = buildAcceptanceWorksheet();
-    const [first, second] = worksheet.sections;
-    const next = applyEditTarget(worksheet, { kind: 'sectionHeading', sectionId: second.id }, EDIT);
+    const [first, second] = worksheet.layout.filter((element) => element.kind === 'section');
+    const next = applyEditTarget(worksheet, { kind: 'layoutText', elementId: second.id }, EDIT);
 
-    expect(plain(next.sections[1].heading!.en)).toBe('EDITED');
-    expect(plain(next.sections[0].heading!.en)).toBe(plain(first.heading!.en));
+    const headingText = (doc: Worksheet, id: string) => {
+      const element = doc.layout.find((entry) => entry.id === id);
+      return element && element.kind === 'section' ? plain(element.text.en) : undefined;
+    };
+    expect(headingText(next, second.id)).toBe('EDITED');
+    expect(headingText(next, first.id)).toBe(headingText(worksheet, first.id));
   });
 
   it('writes a paragraph block at any depth — stem, part and sub-part', () => {
     const worksheet = buildAcceptanceWorksheet();
-    const structured = worksheet.sections[1].questions[0] as StructuredQuestion;
+    const structured = worksheet.questions[5] as StructuredQuestion;
 
     const stemId = structured.blocks[0].id;
     const partId = structured.parts[0].blocks[0].id;
@@ -66,7 +72,7 @@ describe('edit targets resolve to the field they were rendered from', () => {
     const paragraphText = (block: ContentBlock) =>
       block.kind === 'paragraph' ? plain(block.text.en) : undefined;
 
-    const after = next.sections[1].questions[0] as StructuredQuestion;
+    const after = next.questions[5] as StructuredQuestion;
     expect(paragraphText(after.blocks[0])).toBe('EDITED');
     expect(paragraphText(after.parts[0].blocks[0])).toBe('EDITED');
     expect(paragraphText(after.parts[1].subParts![0].blocks[0])).toBe('EDITED');
@@ -74,7 +80,7 @@ describe('edit targets resolve to the field they were rendered from', () => {
 
   it('writes a table cell and a caption by block id', () => {
     const worksheet = buildAcceptanceWorksheet();
-    const mcq = worksheet.sections[0].questions[1] as McqQuestion;
+    const mcq = worksheet.questions[1] as McqQuestion;
     const table = mcq.blocks.find((block) => block.kind === 'table') as TableBlock;
     const cellId = table.rows[0].cells[1].id;
 
@@ -89,7 +95,7 @@ describe('edit targets resolve to the field they were rendered from', () => {
       EDIT,
     );
 
-    const after = withCaption.sections[0].questions[1] as McqQuestion;
+    const after = withCaption.questions[1] as McqQuestion;
     const afterTable = after.blocks.find((block) => block.kind === 'table') as TableBlock;
     expect(plain(afterTable.rows[0].cells[1].text.en)).toBe('EDITED');
     expect(plain(afterTable.caption!.en)).toBe('EDITED');
@@ -99,7 +105,7 @@ describe('edit targets resolve to the field they were rendered from', () => {
 
   it('writes MCQ options, statements and the explanation', () => {
     const worksheet = buildAcceptanceWorksheet();
-    const mcq = worksheet.sections[0].questions[1] as McqQuestion;
+    const mcq = worksheet.questions[1] as McqQuestion;
 
     let next = applyEditTarget(
       worksheet,
@@ -109,7 +115,7 @@ describe('edit targets resolve to the field they were rendered from', () => {
     next = applyEditTarget(next, { kind: 'mcqStatement', questionId: mcq.id, index: 1 }, EDIT);
     next = applyEditTarget(next, { kind: 'mcqExplanation', questionId: mcq.id }, EDIT);
 
-    const after = next.sections[0].questions[1] as McqQuestion;
+    const after = next.questions[1] as McqQuestion;
     expect(plain(after.options[2].text.en)).toBe('EDITED');
     expect(plain(after.statements![1].en)).toBe('EDITED');
     expect(plain(after.explanation!.en)).toBe('EDITED');
@@ -120,7 +126,7 @@ describe('edit targets resolve to the field they were rendered from', () => {
 
   it('writes part and sub-part answers', () => {
     const worksheet = buildAcceptanceWorksheet();
-    const structured = worksheet.sections[1].questions[0] as StructuredQuestion;
+    const structured = worksheet.questions[5] as StructuredQuestion;
     const part = structured.parts[1];
 
     let next = applyEditTarget(
@@ -139,7 +145,7 @@ describe('edit targets resolve to the field they were rendered from', () => {
       EDIT,
     );
 
-    const after = next.sections[1].questions[0] as StructuredQuestion;
+    const after = next.questions[5] as StructuredQuestion;
     expect(plain(after.parts[0].answer!.en)).toBe('EDITED');
     expect(plain(after.parts[1].subParts![2].answer!.en)).toBe('EDITED');
     expect(plain(after.parts[1].subParts![0].answer!.en)).toBe('Income.');
@@ -155,12 +161,12 @@ describe('edit targets resolve to the field they were rendered from', () => {
 describe('deleting the selected element (Delete/Backspace on the page)', () => {
   it('removes a paragraph block, leaving its siblings behind', () => {
     const worksheet = buildAcceptanceWorksheet();
-    const mcq = worksheet.sections[0].questions[1] as McqQuestion;
+    const mcq = worksheet.questions[1] as McqQuestion;
     const before = mcq.blocks.length;
     const paragraph = mcq.blocks[0];
 
     const next = applyDeleteTarget(worksheet, { kind: 'blockText', blockId: paragraph.id });
-    const after = next.sections[0].questions[1] as McqQuestion;
+    const after = next.questions[1] as McqQuestion;
 
     expect(after.blocks).toHaveLength(before - 1);
     expect(after.blocks.some((block) => block.id === paragraph.id)).toBe(false);
@@ -171,7 +177,7 @@ describe('deleting the selected element (Delete/Backspace on the page)', () => {
 
   it('drops a statement so the rest renumber', () => {
     const worksheet = buildAcceptanceWorksheet();
-    const mcq = worksheet.sections[0].questions[1] as McqQuestion;
+    const mcq = worksheet.questions[1] as McqQuestion;
     expect(mcq.statements).toHaveLength(3);
 
     const next = applyDeleteTarget(worksheet, {
@@ -179,7 +185,7 @@ describe('deleting the selected element (Delete/Backspace on the page)', () => {
       questionId: mcq.id,
       index: 0,
     });
-    const after = next.sections[0].questions[1] as McqQuestion;
+    const after = next.questions[1] as McqQuestion;
 
     expect(after.statements).toHaveLength(2);
     // What was (2) becomes (1) — numbering is derived, so nothing else to update.
@@ -188,7 +194,7 @@ describe('deleting the selected element (Delete/Backspace on the page)', () => {
 
   it('clears a table cell rather than breaking the grid', () => {
     const worksheet = buildAcceptanceWorksheet();
-    const mcq = worksheet.sections[0].questions[1] as McqQuestion;
+    const mcq = worksheet.questions[1] as McqQuestion;
     const table = mcq.blocks.find((block) => block.kind === 'table') as TableBlock;
     const widthBefore = table.rows[0].cells.length;
 
@@ -197,7 +203,7 @@ describe('deleting the selected element (Delete/Backspace on the page)', () => {
       blockId: table.id,
       cellId: table.rows[0].cells[1].id,
     });
-    const after = next.sections[0].questions[1] as McqQuestion;
+    const after = next.questions[1] as McqQuestion;
     const afterTable = after.blocks.find((block) => block.kind === 'table') as TableBlock;
 
     expect(afterTable.rows[0].cells).toHaveLength(widthBefore);
@@ -207,8 +213,8 @@ describe('deleting the selected element (Delete/Backspace on the page)', () => {
 
   it('removes answers, explanations and captions', () => {
     const worksheet = buildAcceptanceWorksheet();
-    const mcq = worksheet.sections[0].questions[1] as McqQuestion;
-    const structured = worksheet.sections[1].questions[0] as StructuredQuestion;
+    const mcq = worksheet.questions[1] as McqQuestion;
+    const structured = worksheet.questions[5] as StructuredQuestion;
     const table = mcq.blocks.find((block) => block.kind === 'table') as TableBlock;
 
     let next = applyDeleteTarget(worksheet, { kind: 'mcqExplanation', questionId: mcq.id });
@@ -219,8 +225,8 @@ describe('deleting the selected element (Delete/Backspace on the page)', () => {
     });
     next = applyDeleteTarget(next, { kind: 'blockCaption', blockId: table.id });
 
-    const afterMcq = next.sections[0].questions[1] as McqQuestion;
-    const afterStructured = next.sections[1].questions[0] as StructuredQuestion;
+    const afterMcq = next.questions[1] as McqQuestion;
+    const afterStructured = next.questions[5] as StructuredQuestion;
     const afterTable = afterMcq.blocks.find((block) => block.kind === 'table') as TableBlock;
 
     expect(afterMcq.explanation).toBeUndefined();
@@ -230,7 +236,7 @@ describe('deleting the selected element (Delete/Backspace on the page)', () => {
 
   it('refuses to delete an MCQ option, which must always number four (§7.2)', () => {
     const worksheet = buildAcceptanceWorksheet();
-    const mcq = worksheet.sections[0].questions[0] as McqQuestion;
+    const mcq = worksheet.questions[0] as McqQuestion;
 
     const target: EditTarget = {
       kind: 'mcqOption',
@@ -240,7 +246,7 @@ describe('deleting the selected element (Delete/Backspace on the page)', () => {
     expect(describeDelete(target)).toBeUndefined();
 
     const next = applyDeleteTarget(worksheet, target);
-    expect((next.sections[0].questions[0] as McqQuestion).options).toHaveLength(4);
+    expect((next.questions[0] as McqQuestion).options).toHaveLength(4);
   });
 
   it('treats fixed worksheet fields as non-deletable', () => {
@@ -257,7 +263,7 @@ describe('deleting the selected element (Delete/Backspace on the page)', () => {
 describe('in-place editing preserves the other language (§5.2)', () => {
   it('keeps zh when only en is written, and the reverse', () => {
     const worksheet = buildAcceptanceWorksheet();
-    const mcq = worksheet.sections[0].questions[0] as McqQuestion;
+    const mcq = worksheet.questions[0] as McqQuestion;
     const optionId = mcq.options[0].id;
     const original = mcq.options[0].text;
 
@@ -267,7 +273,7 @@ describe('in-place editing preserves the other language (§5.2)', () => {
       { kind: 'mcqOption', questionId: mcq.id, optionId },
       { ...original, en: bi('Price soars', '').en },
     );
-    const after = enOnly.sections[0].questions[0] as McqQuestion;
+    const after = enOnly.questions[0] as McqQuestion;
     expect(plain(after.options[0].text.en)).toBe('Price soars');
     expect(plain(after.options[0].text.zh)).toBe('價格上升');
   });
@@ -284,9 +290,9 @@ describe('every authored field on the page carries an edit target', () => {
     };
     push(rendered.title);
     push(rendered.instructions);
-    for (const section of rendered.sections) {
-      push(section.heading);
-      for (const question of section.questions) question.nodes.forEach(push);
+    for (const question of rendered.questions) question.nodes.forEach(push);
+    for (const item of rendered.items) {
+      if (item.type === 'layout') item.layout.nodes.forEach(push);
     }
     return { worksheet, nodes };
   };
@@ -298,7 +304,9 @@ describe('every authored field on the page carries an edit target', () => {
 
     const kinds = new Set(editable.map((node) => node.edit!.kind));
     expect(kinds).toContain('worksheetTitle');
-    expect(kinds).toContain('sectionHeading');
+    // A section heading is reached through `layoutText` like every other element that
+    // carries authored text; there is no `sectionHeading` kind any more.
+    expect(kinds).toContain('layoutText');
     expect(kinds).toContain('blockText');
     expect(kinds).toContain('mcqOption');
     expect(kinds).toContain('mcqStatement');
@@ -315,7 +323,7 @@ describe('every authored field on the page carries an edit target', () => {
 
   it('resolves a rendered target back to the question that owns it', () => {
     const { worksheet, nodes } = textNodes({ language: 'bilingual', version: 'teacher' });
-    const question = worksheet.sections[1].questions[0];
+    const question = worksheet.questions[5];
     const stemBlockId = question.blocks[0].id;
 
     const node = nodes.find(
@@ -336,21 +344,17 @@ describe('every authored field on the page carries an edit target', () => {
  */
 describe('resizing an image or diagram block', () => {
   const imageBlockId = (worksheet: Worksheet) => {
-    for (const section of worksheet.sections) {
-      for (const question of section.questions) {
-        const image = question.blocks.find((block) => block.kind === 'image');
-        if (image) return image.id;
-      }
+    for (const question of worksheet.questions) {
+      const image = question.blocks.find((block) => block.kind === 'image');
+      if (image) return image.id;
     }
     throw new Error('fixture has no image block');
   };
 
   const findImage = (worksheet: Worksheet, blockId: string) => {
-    for (const section of worksheet.sections) {
-      for (const question of section.questions) {
-        const match = question.blocks.find((block) => block.id === blockId);
-        if (match && match.kind === 'image') return match;
-      }
+    for (const question of worksheet.questions) {
+      const match = question.blocks.find((block) => block.id === blockId);
+      if (match && match.kind === 'image') return match;
     }
     throw new Error('block not found');
   };
@@ -404,7 +408,7 @@ describe('resizing an image or diagram block', () => {
 
   it('leaves a block with no size alone rather than throwing', () => {
     const worksheet = buildAcceptanceWorksheet();
-    const paragraph = worksheet.sections[0].questions[0].blocks[0];
+    const paragraph = worksheet.questions[0].blocks[0];
 
     expect(applyResizeBlock(worksheet, paragraph.id, 400)).toEqual(worksheet);
     // A drag against a block deleted mid-gesture is dropped, not an error.
@@ -427,11 +431,10 @@ describe('resizing an image or diagram block', () => {
     const worksheet = buildAcceptanceWorksheet();
     // The fixture carries an image but no diagram; both kinds have to be addressable,
     // so the diagram is added here rather than leaving the assertion vacuous for it.
-    worksheet.sections[0].questions[0].blocks.push(createDiagramBlock('ad-as'));
+    worksheet.questions[0].blocks.push(createDiagramBlock('ad-as'));
 
     const rendered = renderWorksheet(worksheet, { language: 'bilingual', version: 'teacher' });
-    const pictures = rendered.sections
-      .flatMap((section) => section.questions)
+    const pictures = rendered.questions
       .flatMap((question) => question.nodes)
       .filter((node) => node.kind === 'image' || node.kind === 'diagram');
 
@@ -447,10 +450,10 @@ describe('resizing an image or diagram block', () => {
   it('resizes a diagram by width too, since geometry is stored in unit space', () => {
     const worksheet = buildAcceptanceWorksheet();
     const diagram = createDiagramBlock('ad-as');
-    worksheet.sections[0].questions[0].blocks.push(diagram);
+    worksheet.questions[0].blocks.push(diagram);
 
     const next = applyResizeBlock(worksheet, diagram.id, 600);
-    const resized = next.sections[0].questions[0].blocks.find((b) => b.id === diagram.id);
+    const resized = next.questions[0].blocks.find((b) => b.id === diagram.id);
 
     expect(resized?.kind).toBe('diagram');
     if (resized?.kind !== 'diagram') throw new Error('unreachable');

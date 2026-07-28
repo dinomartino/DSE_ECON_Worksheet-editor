@@ -118,7 +118,9 @@ describe('native numbering (§7.2, §11.2)', () => {
 
     // One w:num per MCQ referencing the option abstract definition (abstractNumId 1).
     const optionNums = [...numbering.matchAll(/<w:num w:numId="(\d+)"><w:abstractNumId w:val="1"\/>/g)];
-    const mcqCount = worksheet.sections[0].questions.length;
+    // Counted by what the questions *are* rather than by which section held them —
+    // only option-bearing questions open an option stream.
+    const mcqCount = worksheet.questions.filter((question) => 'options' in question).length;
     expect(optionNums.length).toBe(mcqCount);
 
     // Each of those numIds is actually used by option paragraphs in the body.
@@ -170,7 +172,8 @@ describe('native numbering (§7.2, §11.2)', () => {
 
   it('shares one question stream when a section continues numbering', async () => {
     const worksheet = buildAcceptanceWorksheet();
-    worksheet.sections[1].restartNumbering = false;
+    const sectionB = worksheet.layout.filter((e) => e.kind === 'section')[1];
+    if (sectionB.kind === 'section') sectionB.restartNumbering = false;
     const { numberingXml, documentXml } = buildDocxParts(worksheet, STUDENT_BI);
 
     const questionNums = [...numberingXml.matchAll(/<w:num w:numId="(\d+)">((?:(?!<\/w:num>)[\s\S])*)<\/w:num>/g)]
@@ -478,7 +481,7 @@ describe('masthead bands, part headers and label lists', () => {
     // The fixture totals 24; adding a 5-mark question must move the printed total.
     expect(await open(worksheet)).toContain('Full marks: 24 marks');
 
-    const mcq = worksheet.sections[0].questions[0];
+    const mcq = worksheet.questions[0];
     if (mcq.type === 'mcq') mcq.marks = 6;
     expect(await open(worksheet)).toContain('Full marks: 29 marks');
   });
@@ -486,11 +489,11 @@ describe('masthead bands, part headers and label lists', () => {
   it('derives a part header total from its own section', async () => {
     const worksheet = buildAcceptanceWorksheet();
     const header = createPartHeaderElement(bi('Part A: Multiple-choice questions', '甲部'));
-    worksheet.sections[0].layout = [header];
-    worksheet.sections[0].flow = [
-      { type: 'layout', id: header.id },
-      ...worksheet.sections[0].questions.map((q) => ({ type: 'question' as const, id: q.id })),
-    ];
+    // Directly under Section A's heading, so its derived total is Section A's.
+    const sectionA = worksheet.layout.find((e) => e.kind === 'section')!;
+    worksheet.layout = [...worksheet.layout, header];
+    const at = worksheet.flow.findIndex((entry) => entry.id === sectionA.id);
+    worksheet.flow.splice(at + 1, 0, { type: 'layout', id: header.id });
 
     const document = await open(worksheet);
     // The authored text and the derived suffix are separate runs (rich text is emitted
@@ -506,7 +509,8 @@ describe('masthead bands, part headers and label lists', () => {
     const worksheet = buildAcceptanceWorksheet();
     const header = createPartHeaderElement(bi('Part A', '甲部'));
     if (header.kind === 'partHeader') header.showMarks = false;
-    worksheet.sections[0].layout = [header];
+    worksheet.layout = [...worksheet.layout, header];
+    worksheet.flow = [...worksheet.flow, { type: 'layout', id: header.id }];
 
     const document = await open(worksheet);
     expect(document).toContain('Part A');
@@ -522,7 +526,8 @@ describe('masthead bands, part headers and label lists', () => {
         { id: 'r2', label: bi('Second preference:', '第二選擇：'), value: bi('Joining a yoga class', '瑜伽課') },
       ];
     }
-    worksheet.sections[0].layout = [list];
+    worksheet.layout = [...worksheet.layout, list];
+    worksheet.flow = [...worksheet.flow, { type: 'layout', id: list.id }];
 
     const document = await open(worksheet);
     expect(document).toContain('First preference:');
@@ -550,7 +555,7 @@ describe('MCQ option layout (inline / columns)', () => {
   /** Set the first MCQ's layout, leaving everything else alone. */
   function withLayout(layout: 'stacked' | 'inline' | 'columns2') {
     const worksheet = buildAcceptanceWorksheet();
-    const mcq = worksheet.sections[0].questions[0];
+    const mcq = worksheet.questions[0];
     if (mcq.type === 'mcq') mcq.optionLayout = layout;
     return worksheet;
   }
@@ -623,16 +628,12 @@ describe('layout elements in the section flow', () => {
     return zip.file('word/document.xml')!.async('string');
   }
 
-  /** Put one element after the first question of section A. */
+  /** Put one element after the first question. */
   function withElement(element: LayoutElement) {
     const worksheet = buildAcceptanceWorksheet();
-    const section = worksheet.sections[0];
-    section.layout = [element];
-    section.flow = [
-      { type: 'question', id: section.questions[0].id },
-      { type: 'layout', id: element.id },
-      ...section.questions.slice(1).map((q) => ({ type: 'question' as const, id: q.id })),
-    ];
+    worksheet.layout = [...worksheet.layout, element];
+    const at = worksheet.flow.findIndex((entry) => entry.id === worksheet.questions[0].id);
+    worksheet.flow.splice(at + 1, 0, { type: 'layout', id: element.id });
     return worksheet;
   }
 
@@ -737,9 +738,10 @@ describe('per-element formatting overrides', () => {
 
   it('applies a per-element font override without changing the rest', async () => {
     const worksheet = buildAcceptanceWorksheet();
-    worksheet.sections[0].headingFormat = {
-      fonts: { latin: 'Arial', eastAsia: 'Microsoft JhengHei' },
-    };
+    const heading = worksheet.layout.find((e) => e.kind === 'section')!;
+    if (heading.kind === 'section') {
+      heading.format = { fonts: { latin: 'Arial', eastAsia: 'Microsoft JhengHei' } };
+    }
     const document = await documentXml(worksheet);
     expect(document).toContain('w:ascii="Arial"');
     expect(document).toContain('w:eastAsia="Microsoft JhengHei"');
@@ -925,7 +927,7 @@ describe('resized pictures export at their new size', () => {
 
   it('writes the dragged width and height into wp:extent', async () => {
     const worksheet = buildAcceptanceWorksheet();
-    const image = worksheet.sections[0].questions[1].blocks.find((b) => b.kind === 'image');
+    const image = worksheet.questions[1].blocks.find((b) => b.kind === 'image');
     if (image?.kind !== 'image') throw new Error('fixture has no image block');
 
     const before = await documentXml(worksheet);
@@ -942,7 +944,7 @@ describe('resized pictures export at their new size', () => {
 
   it('leaves the package structurally sound, with every relationship resolved', async () => {
     const worksheet = buildAcceptanceWorksheet();
-    const image = worksheet.sections[0].questions[1].blocks.find((b) => b.kind === 'image');
+    const image = worksheet.questions[1].blocks.find((b) => b.kind === 'image');
     if (image?.kind !== 'image') throw new Error('fixture has no image block');
 
     const zip = await JSZip.loadAsync(
@@ -1088,7 +1090,7 @@ describe('margin presets and custom margins export verbatim', () => {
 
   it('exports a hard line break as w:br inside one paragraph, not as a new paragraph', async () => {
     const worksheet = buildAcceptanceWorksheet();
-    const question = worksheet.sections[0].questions[0];
+    const question = worksheet.questions[0];
     const stem = question.blocks.find((block) => block.kind === 'paragraph');
     if (!stem || stem.kind !== 'paragraph') throw new Error('fixture has no stem paragraph');
     stem.text = bi('Before break\nAfter break', '斷行前\n斷行後');
@@ -1106,7 +1108,7 @@ describe('margin presets and custom margins export verbatim', () => {
 
   it('keeps a broken line in the same list item, so it takes one number', async () => {
     const worksheet = buildAcceptanceWorksheet();
-    const question = worksheet.sections[0].questions[0];
+    const question = worksheet.questions[0];
     const stem = question.blocks.find((block) => block.kind === 'paragraph');
     if (!stem || stem.kind !== 'paragraph') throw new Error('fixture has no stem paragraph');
     stem.text = bi('Line one\nLine two', '');

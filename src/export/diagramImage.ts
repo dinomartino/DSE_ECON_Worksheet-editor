@@ -36,12 +36,9 @@ function* allNodes(worksheet: Worksheet, mode: OutputMode): Generator<RenderNode
   for (const band of rendered.bands) yield band;
   yield rendered.title;
   if (rendered.instructions) yield rendered.instructions;
-  for (const section of rendered.sections) {
-    if (section.heading) yield section.heading;
-    for (const item of section.items) {
-      const nodes = item.type === 'question' ? item.question.nodes : item.layout.nodes;
-      for (const node of nodes) yield node;
-    }
+  for (const item of rendered.items) {
+    const nodes = item.type === 'question' ? item.question.nodes : item.layout.nodes;
+    for (const node of nodes) yield node;
   }
 }
 

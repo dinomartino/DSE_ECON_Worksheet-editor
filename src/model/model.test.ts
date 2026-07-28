@@ -10,6 +10,7 @@ import { partMarks, questionMarks, worksheetMarks } from './marks';
 import { computeNumbering, toLowerLetter, toLowerRoman } from './numbering';
 import { hasLineBreak, parseRuns, plain, runLines, serializeRuns } from './text';
 import { createMcqQuestion, createWorksheet } from './factories';
+import { resolveFlow } from './flow';
 import { MARGIN_PRESETS, cmToTwips, contentWidth, twipsToCm } from './page';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
 import type { StructuredQuestion, Worksheet } from './types';
@@ -17,7 +18,7 @@ import type { StructuredQuestion, Worksheet } from './types';
 describe('marks totalling (§3.5, §11.10)', () => {
   it('derives part totals from sub-parts and question totals from parts', () => {
     const worksheet = buildAcceptanceWorksheet();
-    const structured = worksheet.sections[1].questions[0] as StructuredQuestion;
+    const structured = worksheet.questions[5] as StructuredQuestion;
 
     // Part (b) has sub-parts 2 + 2 + 3; its own `marks` is absent.
     expect(structured.parts[1].marks).toBeUndefined();
@@ -27,7 +28,7 @@ describe('marks totalling (§3.5, §11.10)', () => {
 
   it('recomputes when a sub-part changes, since totals are never stored', () => {
     const worksheet = buildAcceptanceWorksheet();
-    const structured = worksheet.sections[1].questions[0] as StructuredQuestion;
+    const structured = worksheet.questions[5] as StructuredQuestion;
     structured.parts[1].subParts![0].marks = 10;
     expect(questionMarks(structured)).toBe(23);
   });
@@ -42,21 +43,14 @@ describe('marks totalling (§3.5, §11.10)', () => {
 describe('derived numbering (§4, §11.10)', () => {
   it('renumbers instantly when questions are reordered', () => {
     const worksheet = buildAcceptanceWorksheet();
-    const first = worksheet.sections[0].questions[0].id;
-    const second = worksheet.sections[0].questions[1].id;
+    const first = worksheet.questions[0].id;
+    const second = worksheet.questions[1].id;
 
     expect(computeNumbering(worksheet).byQuestionId.get(first)!.number).toBe(1);
 
     const reordered: Worksheet = {
       ...worksheet,
-      sections: worksheet.sections.map((section, index) =>
-        index !== 0
-          ? section
-          : {
-              ...section,
-              questions: [section.questions[1], section.questions[0], ...section.questions.slice(2)],
-            },
-      ),
+      questions: [worksheet.questions[1], worksheet.questions[0], ...worksheet.questions.slice(2)],
     };
 
     const plan = computeNumbering(reordered);
@@ -66,11 +60,12 @@ describe('derived numbering (§4, §11.10)', () => {
 
   it('restarts per section only when configured, otherwise runs continuously', () => {
     const worksheet = buildAcceptanceWorksheet();
-    const structuredFirst = worksheet.sections[1].questions[0].id;
+    const structuredFirst = worksheet.questions[5].id;
 
     expect(computeNumbering(worksheet).byQuestionId.get(structuredFirst)!.number).toBe(1);
 
-    worksheet.sections[1].restartNumbering = false;
+    const sectionB = worksheet.layout.filter((element) => element.kind === 'section')[1];
+    if (sectionB.kind === 'section') sectionB.restartNumbering = false;
     expect(computeNumbering(worksheet).byQuestionId.get(structuredFirst)!.number).toBe(6);
   });
 
@@ -159,7 +154,7 @@ describe('schema versioning and migrations (§6, §11.11)', () => {
     expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     // The v1->v2 step supplies the historical default font pair.
     expect(migrated.fonts).toEqual({ latin: 'Times New Roman', eastAsia: 'PMingLiU' });
-    expect(migrated.sections[0].questions[0].id).toBe('q1');
+    expect(migrated.questions[0].id).toBe('q1');
     expect(plain(migrated.title.en)).toBe('Legacy paper');
   });
 
@@ -271,11 +266,11 @@ describe('schema versioning and migrations (§6, §11.11)', () => {
     expect(JSON.stringify(serializeWorksheet(reloaded))).toBe(json);
 
     // Images survive as embedded data (§6, §11.11).
-    const imageBlock = reloaded.sections[0].questions[1].blocks.find((b) => b.kind === 'image');
+    const imageBlock = reloaded.questions[1].blocks.find((b) => b.kind === 'image');
     expect(imageBlock && imageBlock.kind === 'image' && imageBlock.src.startsWith('data:image/png')).toBe(true);
 
     // Merged table cells survive.
-    const tableQuestion = reloaded.sections[0].questions[2];
+    const tableQuestion = reloaded.questions[2];
     const table = tableQuestion.blocks.find((b) => b.kind === 'table');
     expect(table && table.kind === 'table' && table.rows[0].cells[0].colSpan).toBe(2);
     expect(table && table.kind === 'table' && table.rows[0].cells[1].covered).toBe(true);
@@ -286,6 +281,93 @@ describe('schema versioning and migrations (§6, §11.11)', () => {
     expect(() => migrate('nope')).toThrow(SchemaError);
     expect(() => migrate([])).toThrow(SchemaError);
   });
+
+  /*
+   * v4 -> v5: a section stopped being a container.
+   *
+   * This is the migration most likely to lose a document, because it rewrites the
+   * shape every question lives in. What must survive is not the storage layout but
+   * the *printed page*: the same order and the same numbers.
+   */
+  describe('v4 -> v5: sections flatten into the document flow', () => {
+    const mcq = (id: string) => ({ ...createMcqQuestion(), id });
+    const v4 = () => ({
+      schemaVersion: 4,
+      id: 'doc',
+      title: { en: [{ text: 'T' }], zh: [] },
+      fonts: { latin: 'Times New Roman', eastAsia: 'PMingLiU' },
+      createdAt: '2024-01-01T00:00:00.000Z',
+      updatedAt: '2024-01-01T00:00:00.000Z',
+      sections: [
+        {
+          id: 'sA',
+          heading: { en: [{ text: 'Section A' }], zh: [] },
+          restartNumbering: true,
+          questions: [mcq('q1'), mcq('q2')],
+          layout: [{ kind: 'divider', id: 'd1' }],
+          flow: [
+            { type: 'question', id: 'q1' },
+            { type: 'layout', id: 'd1' },
+            { type: 'question', id: 'q2' },
+          ],
+        },
+        {
+          id: 'sB',
+          heading: { en: [{ text: 'Section B' }], zh: [] },
+          restartNumbering: true,
+          questions: [mcq('q3')],
+        },
+      ],
+    });
+
+    it('preserves the printed order exactly, layout elements included', () => {
+      const migrated = migrate(v4());
+      expect(resolveFlow(migrated).map((item) => item.id)).toEqual([
+        'sA', 'q1', 'd1', 'q2', 'sB', 'q3',
+      ]);
+    });
+
+    it('preserves numbering, including the per-section restart', () => {
+      const plan = computeNumbering(migrate(v4()));
+      expect(plan.questions.map((entry) => entry.number)).toEqual([1, 2, 1]);
+    });
+
+    it('carries each heading over as a section element that still restarts', () => {
+      const sections = migrate(v4()).layout.filter((element) => element.kind === 'section');
+      expect(sections.map((s) => (s.kind === 'section' ? plain(s.text.en) : ''))).toEqual([
+        'Section A',
+        'Section B',
+      ]);
+      expect(sections.every((s) => s.kind === 'section' && s.restartNumbering)).toBe(true);
+    });
+
+    it('adds no heading row for a section that never had one', () => {
+      // A single untitled section is how a plain document was stored; emitting an
+      // empty heading for it would print a blank line that was never there.
+      const untitled = { ...v4(), sections: [{ id: 's1', questions: [mcq('q1')] }] };
+      const migrated = migrate(untitled);
+      expect(migrated.layout.filter((element) => element.kind === 'section')).toHaveLength(0);
+      expect(resolveFlow(migrated).map((item) => item.id)).toEqual(['q1']);
+    });
+
+    it('does not re-flatten a document that is already v5', () => {
+      const once = migrate(v4());
+      const twice = migrate(JSON.parse(JSON.stringify(once)));
+      expect(resolveFlow(twice).map((item) => item.id)).toEqual(
+        resolveFlow(once).map((item) => item.id),
+      );
+    });
+
+    it('keeps the flat lists out of __unknown on reload (§KNOWN_KEYS)', () => {
+      // `questions`, `layout` and `flow` are new top-level keys, and a key missing
+      // from KNOWN_KEYS saves fine and then vanishes on reload.
+      const reloaded = migrate(JSON.parse(JSON.stringify(migrate(v4()))));
+      expect(reloaded.questions).toHaveLength(3);
+      expect(reloaded.layout.length).toBeGreaterThan(0);
+      expect(reloaded.__unknown).toBeUndefined();
+    });
+  });
+
 });
 
 /**

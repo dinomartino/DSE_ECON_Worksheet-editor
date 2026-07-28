@@ -65,10 +65,8 @@ export function questionOwnsBlock(question: Question, blockId: string): boolean 
 export function targetQuestionId(worksheet: Worksheet, target: EditTarget): string | undefined {
   if ('questionId' in target) return target.questionId;
   if (target.kind === 'blockText' || target.kind === 'blockCaption' || target.kind === 'tableCell') {
-    for (const section of worksheet.sections) {
-      for (const question of section.questions) {
-        if (questionOwnsBlock(question, target.blockId)) return question.id;
-      }
+    for (const question of worksheet.questions) {
+      if (questionOwnsBlock(question, target.blockId)) return question.id;
     }
   }
   return undefined;
@@ -97,13 +95,7 @@ function mapAllBlocks(
     return next;
   };
 
-  return {
-    ...worksheet,
-    sections: worksheet.sections.map((section) => ({
-      ...section,
-      questions: section.questions.map(mapQuestion),
-    })),
-  };
+  return { ...worksheet, questions: worksheet.questions.map(mapQuestion) };
 }
 
 /** Write `text` to one band field, leaving field kinds that have no text alone. */
@@ -117,23 +109,38 @@ function patchBandFields(
   );
 }
 
-/** Map one layout element in one section, leaving the rest of the document alone. */
+/**
+ * Layout elements that carry authored text and per-element formatting.
+ *
+ * `section` is one of them: a section heading is typed on the page like any other
+ * heading now, so the same `layoutText` target that reaches a note reaches it too.
+ * Defined once because "which kinds have text?" is asked when writing text, when
+ * merging formatting, and when reading formatting back — three answers that must agree.
+ */
+type TextLayoutElement = Extract<
+  LayoutElement,
+  { kind: 'heading' | 'text' | 'partHeader' | 'section' }
+>;
+
+function isTextLayoutElement(element: LayoutElement): element is TextLayoutElement {
+  return (
+    element.kind === 'heading' ||
+    element.kind === 'text' ||
+    element.kind === 'partHeader' ||
+    element.kind === 'section'
+  );
+}
+
+/** Map one layout element by id, leaving the rest of the document alone. */
 function mapLayoutElement(
   worksheet: Worksheet,
-  target: { sectionId: string; elementId: string },
+  target: { elementId: string },
   patch: (element: LayoutElement) => LayoutElement,
 ): Worksheet {
   return {
     ...worksheet,
-    sections: worksheet.sections.map((section) =>
-      section.id !== target.sectionId
-        ? section
-        : {
-            ...section,
-            layout: (section.layout ?? []).map((element) =>
-              element.id === target.elementId ? patch(element) : element,
-            ),
-          },
+    layout: worksheet.layout.map((element) =>
+      element.id === target.elementId ? patch(element) : element,
     ),
   };
 }
@@ -146,12 +153,9 @@ function mapQuestionById(
 ): Worksheet {
   return {
     ...worksheet,
-    sections: worksheet.sections.map((section) => ({
-      ...section,
-      questions: section.questions.map((question) =>
-        question.id === questionId ? patch(question) : question,
-      ),
-    })),
+    questions: worksheet.questions.map((question) =>
+      question.id === questionId ? patch(question) : question,
+    ),
   };
 }
 
@@ -174,14 +178,6 @@ export function applyEditTarget(
     case 'worksheetInstructions':
       return { ...worksheet, instructions: text };
 
-    case 'sectionHeading':
-      return {
-        ...worksheet,
-        sections: worksheet.sections.map((section) =>
-          section.id === target.sectionId ? { ...section, heading: text } : section,
-        ),
-      };
-
     case 'blockText':
       return mapAllBlocks(worksheet, target.blockId, (block) =>
         block.kind === 'paragraph' ? { ...block, text } : block,
@@ -189,9 +185,7 @@ export function applyEditTarget(
 
     case 'layoutText':
       return mapLayoutElement(worksheet, target, (element) =>
-        element.kind === 'heading' || element.kind === 'text' || element.kind === 'partHeader'
-          ? { ...element, text }
-          : element,
+        isTextLayoutElement(element) ? { ...element, text } : element,
       );
 
     case 'labelListCell':
@@ -338,7 +332,6 @@ export function isFormattable(target: EditTarget): boolean {
   return (
     target.kind === 'worksheetTitle' ||
     target.kind === 'worksheetInstructions' ||
-    target.kind === 'sectionHeading' ||
     target.kind === 'blockText' ||
     target.kind === 'layoutText' ||
     target.kind === 'bandField'
@@ -374,15 +367,6 @@ export function applyFormatTarget(
     case 'worksheetInstructions':
       return { ...worksheet, instructionsFormat: merge(worksheet.instructionsFormat) };
 
-    case 'sectionHeading':
-      return {
-        ...worksheet,
-        sections: worksheet.sections.map((section) =>
-          section.id === target.sectionId
-            ? { ...section, headingFormat: merge(section.headingFormat) }
-            : section,
-        ),
-      };
 
     case 'blockText':
       return mapAllBlocks(worksheet, target.blockId, (block) =>
@@ -391,9 +375,7 @@ export function applyFormatTarget(
 
     case 'layoutText':
       return mapLayoutElement(worksheet, target, (element) =>
-        element.kind === 'heading' || element.kind === 'text' || element.kind === 'partHeader'
-          ? { ...element, format: merge(element.format) }
-          : element,
+        isTextLayoutElement(element) ? { ...element, format: merge(element.format) } : element,
       );
 
     case 'bandField': {
@@ -453,26 +435,18 @@ export function formatOfTarget(
       return worksheet.titleFormat;
     case 'worksheetInstructions':
       return worksheet.instructionsFormat;
-    case 'sectionHeading':
-      return worksheet.sections.find((section) => section.id === target.sectionId)?.headingFormat;
     case 'blockText': {
-      for (const section of worksheet.sections) {
-        for (const question of section.questions) {
-          for (const blocks of questionBlockLists(question)) {
-            const match = blocks.find((block) => block.id === target.blockId);
-            if (match && match.kind === 'paragraph') return match.format;
-          }
+      for (const question of worksheet.questions) {
+        for (const blocks of questionBlockLists(question)) {
+          const match = blocks.find((block) => block.id === target.blockId);
+          if (match && match.kind === 'paragraph') return match.format;
         }
       }
       return undefined;
     }
     case 'layoutText': {
-      const section = worksheet.sections.find((entry) => entry.id === target.sectionId);
-      const element = section?.layout?.find((entry) => entry.id === target.elementId);
-      return element &&
-        (element.kind === 'heading' || element.kind === 'text' || element.kind === 'partHeader')
-        ? element.format
-        : undefined;
+      const element = worksheet.layout.find((entry) => entry.id === target.elementId);
+      return element && isTextLayoutElement(element) ? element.format : undefined;
     }
     case 'bandField': {
       // Searched in the same order `applyFormatTarget` writes, so the toolbar always
@@ -524,17 +498,15 @@ export function blockSize(
   worksheet: Worksheet,
   blockId: string,
 ): { widthPx: number; heightPx: number; ratio: number } | undefined {
-  for (const section of worksheet.sections) {
-    for (const question of section.questions) {
-      for (const blocks of questionBlockLists(question)) {
-        const match = blocks.find((block) => block.id === blockId);
-        if (match && (match.kind === 'image' || match.kind === 'diagram')) {
-          return {
-            widthPx: match.widthPx,
-            heightPx: match.heightPx,
-            ratio: blockAspectRatio(match),
-          };
-        }
+  for (const question of worksheet.questions) {
+    for (const blocks of questionBlockLists(question)) {
+      const match = blocks.find((block) => block.id === blockId);
+      if (match && (match.kind === 'image' || match.kind === 'diagram')) {
+        return {
+          widthPx: match.widthPx,
+          heightPx: match.heightPx,
+          ratio: blockAspectRatio(match),
+        };
       }
     }
   }
@@ -553,12 +525,10 @@ export function findDiagramBlock(
   worksheet: Worksheet,
   blockId: string,
 ): DiagramBlock | undefined {
-  for (const section of worksheet.sections) {
-    for (const question of section.questions) {
-      for (const blocks of questionBlockLists(question)) {
-        const match = blocks.find((block) => block.id === blockId);
-        if (match?.kind === 'diagram') return match;
-      }
+  for (const question of worksheet.questions) {
+    for (const blocks of questionBlockLists(question)) {
+      const match = blocks.find((block) => block.id === blockId);
+      if (match?.kind === 'diagram') return match;
     }
   }
   return undefined;
@@ -670,22 +640,19 @@ function removeBlock(worksheet: Worksheet, blockId: string): Worksheet {
 
   return {
     ...worksheet,
-    sections: worksheet.sections.map((section) => ({
-      ...section,
-      questions: section.questions.map((question) => {
-        const next = { ...question, blocks: strip(question.blocks) } as Question;
-        const parts = (next as { parts?: Array<{ blocks: ContentBlock[]; subParts?: Array<{ blocks: ContentBlock[] }> }> })
-          .parts;
-        if (parts) {
-          (next as { parts: unknown }).parts = parts.map((part) => ({
-            ...part,
-            blocks: strip(part.blocks),
-            subParts: part.subParts?.map((sub) => ({ ...sub, blocks: strip(sub.blocks) })),
-          }));
-        }
-        return next;
-      }),
-    })),
+    questions: worksheet.questions.map((question) => {
+      const next = { ...question, blocks: strip(question.blocks) } as Question;
+      const parts = (next as { parts?: Array<{ blocks: ContentBlock[]; subParts?: Array<{ blocks: ContentBlock[] }> }> })
+        .parts;
+      if (parts) {
+        (next as { parts: unknown }).parts = parts.map((part) => ({
+          ...part,
+          blocks: strip(part.blocks),
+          subParts: part.subParts?.map((sub) => ({ ...sub, blocks: strip(sub.blocks) })),
+        }));
+      }
+      return next;
+    }),
   };
 }
 
@@ -708,17 +675,8 @@ export function applyDeleteTarget(worksheet: Worksheet, target: EditTarget): Wor
     case 'layoutText':
       return {
         ...worksheet,
-        sections: worksheet.sections.map((section) =>
-          section.id !== target.sectionId
-            ? section
-            : {
-                ...section,
-                layout: (section.layout ?? []).filter(
-                  (element) => element.id !== target.elementId,
-                ),
-                flow: section.flow?.filter((entry) => entry.id !== target.elementId),
-              },
-        ),
+        layout: worksheet.layout.filter((element) => element.id !== target.elementId),
+        flow: worksheet.flow.filter((entry) => entry.id !== target.elementId),
       };
 
     case 'blockCaption':
