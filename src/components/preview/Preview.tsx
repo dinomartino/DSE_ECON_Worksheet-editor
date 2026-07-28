@@ -1155,7 +1155,48 @@ function usePagination(
 function isBlankAreaClick(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
   return !target.closest(
-    "[data-question-id],[data-flow-id],[data-band-field],button,a,input,textarea,select,[contenteditable='true']",
+    "[data-question-id],[data-flow-id],[data-doc-field],[data-band-field],button,a,input,textarea,select,[contenteditable='true']",
+  );
+}
+
+/**
+ * The two printed blocks that are document *fields* rather than flow items: the title
+ * and the instructions.
+ *
+ * They occupy a line on the page and can be selected, formatted and deleted like
+ * anything else, but they are top-level `Worksheet` fields — they have no flow id, so
+ * `removeMany` cannot address them and the marquee could not see them. Both symptoms
+ * followed: sweeping the whole page skipped them, and because they matched none of the
+ * selectors in `isBlankAreaClick`, clicking one counted as clicking bare paper and
+ * *cleared* the selection instead of adding to it.
+ *
+ * Marking them with `data-doc-field` fixes the second directly and gives the sweep
+ * something to key on for the first. The value is the `EditTarget` kind rather than an
+ * id, because there is exactly one of each per document — which is also why deleting
+ * them empties the field instead of removing a row (§`describeDelete`).
+ */
+const DOC_FIELD_TARGETS: Record<string, EditTarget> = {
+  worksheetTitle: { kind: "worksheetTitle" },
+  worksheetInstructions: { kind: "worksheetInstructions" },
+};
+
+function DocumentField({
+  target,
+  multiSelected,
+  children,
+}: {
+  target: EditTarget;
+  /** Part of a marquee/⌘A selection — styled exactly as `DraggableItem` styles one. */
+  multiSelected?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      data-doc-field={target.kind}
+      className={`rounded ${multiSelected ? "bg-[#efe9ff] ring-1 ring-[#a78bfa]" : ""}`}
+    >
+      {children}
+    </div>
   );
 }
 
@@ -1688,6 +1729,17 @@ export function Preview({
   const sweptRef = useRef(false);
 
   /**
+   * The document fields a sweep caught, held apart from `multiIds`.
+   *
+   * `multiIds` is a set of *flow* ids, and `removeMany` deletes by filtering the
+   * `questions`, `layout` and `flow` lists — so the title and the instructions can never
+   * be members of it without inventing ids that address nothing. They are deleted by
+   * emptying their field instead, which is a different verb, so they are tracked in a
+   * different set and dispatched to `deleteTarget`.
+   */
+  const [multiFields, setMultiFields] = useState<Set<string>>(new Set());
+
+  /**
    * Runs one sweep, from mousedown to mouseup.
    *
    * The listeners are attached here rather than in an effect keyed on "is sweeping":
@@ -1713,6 +1765,7 @@ export function Preview({
     setSelectedLayoutId(undefined);
     setSelectedBlockId(undefined);
     setMultiIds(new Set());
+    setMultiFields(new Set());
     // The question selection lives in the store rather than here, and the whole-item
     // Delete handler acts on it — so leaving it set meant a blank click deselected
     // everything visible while Delete still removed the entire question.
@@ -1738,6 +1791,8 @@ export function Preview({
        * result, so items swept over once could never be released by shrinking the box.
        */
       baseIds: Set<string>,
+      /** The document fields selected at press time, for the same reason as `baseIds`. */
+      baseFields: Set<string>,
     ) => {
       let box: { x0: number; y0: number; x1: number; y1: number } | undefined;
 
@@ -1776,6 +1831,20 @@ export function Preview({
             if (!id) continue;
             // Touched, not contained — the rule lives in `marqueeCatches`.
             if (marqueeCatches(bounds, node.getBoundingClientRect())) caught.add(id);
+          }
+          return caught;
+        });
+
+        // The title and instructions, swept by the same box but collected separately
+        // because they are deleted by emptying a field rather than by removing a row.
+        setMultiFields(() => {
+          const caught = new Set(additive ? baseFields : []);
+          for (const node of containerRef.current?.querySelectorAll<HTMLElement>(
+            "#print-root [data-doc-field]",
+          ) ?? []) {
+            const kind = node.dataset.docField;
+            if (!kind) continue;
+            if (marqueeCatches(bounds, node.getBoundingClientRect())) caught.add(kind);
           }
           return caught;
         });
@@ -2147,6 +2216,15 @@ export function Preview({
           if (node.dataset.flowId) all.add(node.dataset.flowId);
         }
         setMultiIds(all);
+        // "Everything" means the printed page, so the title and instructions are part
+        // of it — leaving them out would make ⌘A disagree with a sweep of the same area.
+        const fields = new Set<string>();
+        for (const node of containerRef.current?.querySelectorAll<HTMLElement>(
+          "#print-root [data-doc-field]",
+        ) ?? []) {
+          if (node.dataset.docField) fields.add(node.dataset.docField);
+        }
+        setMultiFields(fields);
         return;
       }
 
@@ -2169,21 +2247,29 @@ export function Preview({
       }
 
       if (event.key === "Delete" || event.key === "Backspace") {
-        if (multiIds.size === 0) return;
+        if (multiIds.size === 0 && multiFields.size === 0) return;
         event.preventDefault();
-        onBulkDelete?.([...multiIds]);
+        if (multiIds.size > 0) onBulkDelete?.([...multiIds]);
+        // Two verbs, because the two sets mean different things: a flow item is removed
+        // from the document, a field is emptied and stops rendering.
+        for (const kind of multiFields) {
+          const target = DOC_FIELD_TARGETS[kind];
+          if (target) onDelete?.(target);
+        }
         setMultiIds(new Set());
+        setMultiFields(new Set());
         return;
       }
 
       if (event.key === "Escape") {
         setMultiIds(new Set());
+        setMultiFields(new Set());
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [multiIds, clip, onBulkDelete, onBulkDuplicate]);
+  }, [multiIds, multiFields, clip, onBulkDelete, onBulkDuplicate, onDelete]);
 
   // Selecting a question in the sidebar brings it into view here, so the two panes
   // stay in step instead of scrolling independently.
@@ -2253,7 +2339,12 @@ export function Preview({
           ))
         )
       ) : (
-        <NodeView node={rendered.title!} language={language} ctx={ctx} />
+        <DocumentField
+          target={{ kind: "worksheetTitle" }}
+          multiSelected={multiFields.has("worksheetTitle")}
+        >
+          <NodeView node={rendered.title!} language={language} ctx={ctx} />
+        </DocumentField>
       ),
     });
   }
@@ -2275,7 +2366,12 @@ export function Preview({
       key: "instructions",
       structural: true,
       node: (
-        <NodeView node={rendered.instructions} language={language} ctx={ctx} />
+        <DocumentField
+          target={{ kind: "worksheetInstructions" }}
+          multiSelected={multiFields.has("worksheetInstructions")}
+        >
+          <NodeView node={rendered.instructions} language={language} ctx={ctx} />
+        </DocumentField>
       ),
     });
   }
@@ -2578,6 +2674,7 @@ export function Preview({
           event.shiftKey,
           isBlankAreaClick(target),
           multiIds,
+          multiFields,
         );
       }}
     >
@@ -2785,18 +2882,21 @@ export function Preview({
       {/* What is selected and what can be done with it. A multi-selection is otherwise
           invisible once the pointer is up — the rings alone do not say how many, and
           nothing on screen would mention the shortcuts. */}
-      {multiIds.size > 0 && (
+      {multiIds.size + multiFields.size > 0 && (
         <div className="pointer-events-none fixed bottom-16 left-[76px] right-[400px] z-40 flex justify-center">
           <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-line bg-surface-raised/95 py-2 pl-4 pr-2 text-[12px] shadow-xl backdrop-blur">
             <span className="font-medium text-ink">
-              {multiIds.size} selected
+              {multiIds.size + multiFields.size} selected
             </span>
             <span className="text-[11px] text-ink-subtle">
               ⌘C copy · ⌘V paste · ⌫ delete · Esc clear
             </span>
             <IconButton
               label="Clear selection"
-              onClick={() => setMultiIds(new Set())}
+              onClick={() => {
+                setMultiIds(new Set());
+                setMultiFields(new Set());
+              }}
             >
               <CloseIcon size={14} />
             </IconButton>

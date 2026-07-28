@@ -1,0 +1,195 @@
+{
+  "schemaVersion": 5,
+  "id": "eOexiGeYhZ",
+  "title": {
+    "en": [],
+    "zh": []
+  },
+  "instructions": {
+    "en": [
+      {
+        "text": "Answer ALL questions."
+      }
+    ],
+    "zh": [
+      {
+        "text": "回答全部問題。"
+      }
+    ]
+  },
+  "fonts": {
+    "latin": "Times New Roman",
+    "eastAsia": "PMingLiU"
+  },
+  "pageSetup": {
+    "paper": "A4",
+    "orientation": "portrait",
+    "margins": {
+      "top": 1440,
+      "right": 1440,
+      "bottom": 1440,
+      "left": 1440
+    }
+  },
+  "header": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": []
+  },
+  "footer": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": [
+      {
+        "id": "ba7hNgY0HA",
+        "zones": {
+          "left": [],
+          "center": [
+            {
+              "kind": "pageNumber",
+              "id": "FvxzoUsTLh"
+            }
+          ],
+          "right": []
+        }
+      }
+    ]
+  },
+  "questions": [
+    {
+      "id": "75Uf0q0TMb",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "X7i-Tb2nX1",
+          "text": {
+            "en": [],
+            "zh": []
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "_4HuE2eNq0",
+          "text": {
+            "en": [],
+            "zh": []
+          }
+        },
+        {
+          "id": "56E_O4znUL",
+          "text": {
+            "en": [],
+            "zh": []
+          }
+        },
+        {
+          "id": "KcvPAejkPj",
+          "text": {
+            "en": [],
+            "zh": []
+          }
+        },
+        {
+          "id": "sp6NT3FUfo",
+          "text": {
+            "en": [],
+            "zh": []
+          }
+        }
+      ],
+      "answerIndex": 0
+    },
+    {
+      "id": "SoIw8_YLCU",
+      "type": "structured",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "1c8d17ybfE",
+          "text": {
+            "en": [],
+            "zh": []
+          }
+        }
+      ],
+      "parts": [
+        {
+          "id": "eIQ4BscO4Y",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "kdfrDhJPTm",
+              "text": {
+                "en": [],
+                "zh": []
+              }
+            }
+          ],
+          "marks": 4
+        }
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "kind": "section",
+      "id": "C9r1rdYuRM",
+      "text": {
+        "en": [
+          {
+            "text": "Section A: Multiple Choice"
+          }
+        ],
+        "zh": [
+          {
+            "text": "甲部：多項選擇題"
+          }
+        ]
+      },
+      "restartNumbering": true
+    },
+    {
+      "kind": "section",
+      "id": "3u9uMKGDot",
+      "text": {
+        "en": [
+          {
+            "text": "Section B: Structured Questions"
+          }
+        ],
+        "zh": [
+          {
+            "text": "乙部：結構性問題"
+          }
+        ]
+      },
+      "restartNumbering": true
+    }
+  ],
+  "flow": [
+    {
+      "type": "layout",
+      "id": "C9r1rdYuRM"
+    },
+    {
+      "type": "layout",
+      "id": "3u9uMKGDot"
+    },
+    {
+      "type": "question",
+      "id": "75Uf0q0TMb"
+    },
+    {
+      "type": "question",
+      "id": "SoIw8_YLCU"
+    }
+  ],
+  "createdAt": "2026-07-28T17:32:38.299Z",
+  "updatedAt": "2026-07-28T17:36:36.077Z",
+  "bands": []
+}
