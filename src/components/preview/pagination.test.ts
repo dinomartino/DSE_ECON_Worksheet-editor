@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { compositionKey, composePages, packPages, type PackItem } from './pagination';
+import {
+  compositionKey,
+  composePages,
+  marqueeBounds,
+  marqueeCatches,
+  packPages,
+  type PackItem,
+} from './pagination';
 
 /**
  * The page-break rules, tested without a DOM.
@@ -119,5 +126,52 @@ describe('naming a page for the store', () => {
     const before = compositionKey(composePages(pack([item('q1')])));
     const after = compositionKey(composePages(pack([item('q1'), brk('b1')])));
     expect(after).not.toBe(before);
+  });
+});
+
+/**
+ * What a marquee catches.
+ *
+ * The gesture's own feedback is the reason this is worth pinning: the highlight is
+ * applied on every mouse-move, so the predicate runs continuously during the drag rather
+ * than once at the end. A rule that is a pixel too strict is not a wrong result the user
+ * sees afterwards — it is an item that flickers or never lights up while they are still
+ * dragging over it.
+ */
+describe('marquee hit-testing', () => {
+  const item = { left: 100, right: 500, top: 200, bottom: 240 };
+  const box = (x0: number, y0: number, x1: number, y1: number) =>
+    marqueeBounds({ x0, y0, x1, y1 });
+
+  it('catches an item the box merely touches, not only one it contains', () => {
+    // A sweep down the middle of the column, clipping the item's lower half.
+    expect(marqueeCatches(box(200, 220, 300, 400), item)).toBe(true);
+    // Fully containing it obviously still counts.
+    expect(marqueeCatches(box(50, 150, 600, 300), item)).toBe(true);
+  });
+
+  it('normalises a box dragged up-and-left, so direction never changes the result', () => {
+    const downRight = box(50, 150, 600, 300);
+    const upLeft = box(600, 300, 50, 150);
+    expect(upLeft).toEqual(downRight);
+    expect(marqueeCatches(upLeft, item)).toBe(true);
+  });
+
+  it('catches a zero-height item, which a strict overlap test would drop', () => {
+    // A collapsed spacer. With `>` rather than `>=` it could never be swept at all.
+    const collapsed = { left: 100, right: 500, top: 300, bottom: 300 };
+    expect(marqueeCatches(box(80, 280, 520, 320), collapsed)).toBe(true);
+  });
+
+  it('catches an item the box only grazes by a pixel on one edge', () => {
+    // The boundary case the live highlight makes visible: touching edges count, so an
+    // item does not flicker as the pointer crosses its top edge.
+    expect(marqueeCatches(box(100, 240, 500, 400), item)).toBe(true);
+    expect(marqueeCatches(box(100, 241, 500, 400), item)).toBe(false);
+  });
+
+  it('misses an item the box stops short of on either axis', () => {
+    expect(marqueeCatches(box(100, 100, 500, 199), item)).toBe(false);
+    expect(marqueeCatches(box(501, 100, 600, 400), item)).toBe(false);
   });
 });

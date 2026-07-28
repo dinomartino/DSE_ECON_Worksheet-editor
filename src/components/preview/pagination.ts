@@ -190,3 +190,46 @@ export function composePages<T extends PackItem>({
 export function compositionKey(pages: PageComposition[]): string {
   return pages.map((page) => `${page.breakId ?? ''}:${page.flowIds.join(',')}`).join('|');
 }
+
+/** A rectangle in viewport coordinates. */
+export interface Rect {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
+/**
+ * Whether a marquee box catches an item.
+ *
+ * The box catches what it **touches**, rather than only what it fully contains. Full
+ * containment reads as unfriendly on a worksheet: page items span the whole text column,
+ * so enclosing one means dragging from outside the left margin to outside the right, and
+ * a sweep that clips the last question by two pixels silently drops it. Touching is what
+ * a teacher means by "from here to here".
+ *
+ * Zero-area items — a collapsed spacer — still count, hence `>=` rather than `>`;
+ * otherwise an element with no height could never be swept at all.
+ *
+ * Pure and here rather than inline in the sweep handler for the reason this whole module
+ * exists: it is the *deciding* half of a gesture whose measuring half needs a real
+ * layout, and the rule is worth testing without a DOM.
+ */
+export function marqueeCatches(box: Rect, item: Rect): boolean {
+  return (
+    item.left <= box.right &&
+    item.right >= box.left &&
+    item.top <= box.bottom &&
+    item.bottom >= box.top
+  );
+}
+
+/** Normalise a drag's two corners into a rectangle, whichever way it was drawn. */
+export function marqueeBounds(drag: { x0: number; y0: number; x1: number; y1: number }): Rect {
+  return {
+    left: Math.min(drag.x0, drag.x1),
+    right: Math.max(drag.x0, drag.x1),
+    top: Math.min(drag.y0, drag.y1),
+    bottom: Math.max(drag.y0, drag.y1),
+  };
+}

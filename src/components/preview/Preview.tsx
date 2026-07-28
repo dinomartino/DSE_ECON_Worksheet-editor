@@ -87,6 +87,8 @@ import { ANSWER_LINE_HEIGHT_TWIPS } from "@/export/docx/styles";
 import {
   compositionKey as keyOfComposition,
   composePages,
+  marqueeBounds,
+  marqueeCatches,
   packPages,
   type PackItem,
   type PageComposition,
@@ -1676,6 +1678,16 @@ export function Preview({
   >();
 
   /**
+   * Set when a sweep actually travelled, and read by the click that follows it.
+   *
+   * A drag that ends over blank paper still emits a `click` on the paper, whose handler
+   * drops every page selection — so releasing the mouse cleared the very items the
+   * sweep had just caught. A ref rather than state because the click arrives before any
+   * re-render, and this must be readable synchronously inside that handler.
+   */
+  const sweptRef = useRef(false);
+
+  /**
    * Runs one sweep, from mousedown to mouseup.
    *
    * The listeners are attached here rather than in an effect keyed on "is sweeping":
@@ -1718,8 +1730,56 @@ export function Preview({
        * that item's click to handle, and clearing here would fight it.
        */
       onBlank: boolean,
+      /**
+       * The selection as it stood when the press landed.
+       *
+       * A shift-sweep adds to *that*, not to whatever the last mouse-move produced.
+       * Reading live state instead would make each frame add to the previous frame's
+       * result, so items swept over once could never be released by shrinking the box.
+       */
+      baseIds: Set<string>,
     ) => {
       let box: { x0: number; y0: number; x1: number; y1: number } | undefined;
+
+      /*
+       * Which items the box currently touches.
+       *
+       * Run on every move, not only on release. A marquee whose result appears only
+       * once the mouse is up asks the user to guess what they have caught and check
+       * afterwards, so a sweep that missed by a few pixels is only discoverable by
+       * redoing it. Live highlighting makes the box's meaning visible while it can
+       * still be corrected, which is the whole reason to drag a box rather than
+       * shift-click a list.
+       *
+       * The set is rebuilt from the box each time rather than accumulated, so
+       * *shrinking* the box releases what it no longer covers. Accumulating would make
+       * the gesture one-way: an overshoot could never be taken back without starting
+       * over.
+       */
+      const catchItems = (current: { x0: number; y0: number; x1: number; y1: number }) => {
+        const bounds = marqueeBounds(current);
+
+        setMultiIds(() => {
+          // `additive` (shift) starts from what was already selected; a plain sweep
+          // starts empty. `baseIds` is captured once at press time, so re-running this
+          // mid-drag keeps comparing against the original selection rather than
+          // against the previous frame's result.
+          const caught = new Set(additive ? baseIds : []);
+          // Scoped to `#print-root` — the *visible* sheets. The pagination probe
+          // renders the very same blocks (with the same ids) off-screen to be
+          // measured, so an unscoped query returns every item twice, and the probe's
+          // copies sit at coordinates no marquee can ever contain.
+          for (const node of containerRef.current?.querySelectorAll<HTMLElement>(
+            "#print-root [data-flow-id]",
+          ) ?? []) {
+            const id = node.dataset.flowId;
+            if (!id) continue;
+            // Touched, not contained — the rule lives in `marqueeCatches`.
+            if (marqueeCatches(bounds, node.getBoundingClientRect())) caught.add(id);
+          }
+          return caught;
+        });
+      };
 
       const onMove = (event: MouseEvent) => {
         // A few pixels of slop, so an ordinary click that drifts by a pixel stays a
@@ -1737,7 +1797,11 @@ export function Preview({
         event.preventDefault();
         document.body.style.userSelect = "none";
         box = { x0: originX, y0: originY, x1: event.clientX, y1: event.clientY };
+        // Claim the click that will follow the release, before it can clear what this
+        // sweep is catching.
+        sweptRef.current = true;
         setMarquee(box);
+        catchItems(box);
       };
 
       const onUp = () => {
@@ -1758,39 +1822,9 @@ export function Preview({
           return;
         }
 
-        const bounds = {
-          left: Math.min(box.x0, box.x1),
-          right: Math.max(box.x0, box.x1),
-          top: Math.min(box.y0, box.y1),
-          bottom: Math.max(box.y0, box.y1),
-        };
-
-        setMultiIds((previous) => {
-          const caught = new Set(additive ? previous : []);
-          // Scoped to `#print-root` — the *visible* sheets. The pagination probe
-          // renders the very same blocks (with the same ids) off-screen to be
-          // measured, so an unscoped query returns every item twice, and the probe's
-          // copies sit at coordinates no marquee can ever contain.
-          for (const node of containerRef.current?.querySelectorAll<HTMLElement>(
-            "#print-root [data-flow-id]",
-          ) ?? []) {
-            const id = node.dataset.flowId;
-            if (!id) continue;
-            const rect = node.getBoundingClientRect();
-            // Touched, per the rule above: any overlap on both axes. Zero-area items
-            // (a collapsed spacer) still count, hence >= rather than > — otherwise an
-            // element with no height could never be swept at all.
-            if (
-              rect.left <= bounds.right &&
-              rect.right >= bounds.left &&
-              rect.top <= bounds.bottom &&
-              rect.bottom >= bounds.top
-            ) {
-              caught.add(id);
-            }
-          }
-          return caught;
-        });
+        // The last move already caught everything under the final box, so release only
+        // ends the gesture. Re-running the hit-test here would re-measure a layout that
+        // the highlighting itself may have reflowed.
       };
 
       window.addEventListener("mousemove", onMove);
@@ -2538,7 +2572,13 @@ export function Preview({
         // Shift extends the selection rather than replacing it.
         // One definition of "blank", shared with the paper's own click handler, so the
         // two cannot disagree about whether a click deselects.
-        beginSweep(event.clientX, event.clientY, event.shiftKey, isBlankAreaClick(target));
+        beginSweep(
+          event.clientX,
+          event.clientY,
+          event.shiftKey,
+          isBlankAreaClick(target),
+          multiIds,
+        );
       }}
     >
       {/* Zoom sits with the canvas, floating at its bottom-right the way every
@@ -2616,6 +2656,13 @@ export function Preview({
               // there deselected nothing. `closest` walks up from the target and asks
               // whether anything selectable was under the pointer.
               onClick={(event) => {
+                // A sweep that travelled ends with a click on whatever is under the
+                // pointer, usually blank paper. That is the tail of the drag, not a new
+                // click, so it must not clear what the sweep just selected. Consumed
+                // unconditionally, or a suppressed click would leak into the next one.
+                const swept = sweptRef.current;
+                sweptRef.current = false;
+                if (swept) return;
                 if (isBlankAreaClick(event.target)) clearPageSelection();
               }}
             >
