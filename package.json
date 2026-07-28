@@ -1,7 +1,17 @@
 {
   "name": "econgen",
   "version": "0.1.0",
-  "private": true,
+  "description": "Bilingual HKDSE Economics worksheet editor that exports native Microsoft Word .docx",
+  "license": "MIT",
+  "author": "Tino Ho",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dinomartino/DSE_ECON_Worksheet-editor.git"
+  },
+  "homepage": "https://github.com/dinomartino/DSE_ECON_Worksheet-editor#readme",
+  "bugs": {
+    "url": "https://github.com/dinomartino/DSE_ECON_Worksheet-editor/issues"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",

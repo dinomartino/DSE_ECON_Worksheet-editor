@@ -263,33 +263,19 @@ npm run typecheck && npm test && npm run lint
 
 ## Licence and third-party material
 
-> **Before publishing this repository, resolve the two items below.**
+Licensed under the [MIT Licence](./LICENSE) — © 2026 Tino Ho. Use it, modify it, ship it
+commercially; just keep the copyright notice.
 
-**1. No licence file yet.** `package.json` is marked `"private": true` and there is no
-`LICENSE`. Without one, default copyright applies and nobody may legally reuse the code.
-Add a licence (MIT is the usual choice for a project like this), set the `license` field
-and drop `"private": true`.
-
-**2. `real_life_reference/` contains copyrighted third-party material.** It is currently
-tracked in git and holds HKDSE past-paper question scans (`DSE2014_P1_Q45.png`,
-`DSE2017_P1_Q42.png`, `DSE2026_P1_*.png`) and a school assessment paper
-(`DBS_Assessment1.pdf`). These are exam-board and school copyright — they were reference
-material for tracing diagram templates and matching layout, not original work, and
-republishing them is very likely infringement.
-
-Remove them from the repository *and its history* before going public:
-
-```bash
-git rm -r --cached real_life_reference
-echo "real_life_reference/" >> .gitignore
-# then purge from history, e.g. with git-filter-repo:
-#   git filter-repo --path real_life_reference --invert-paths
-```
-
-Two stray debug screenshots, `.probe-delete.png` and `.probe-labels.png`, are also
-tracked and should be removed at the same time.
+**No exam-board material is distributed with this repository.** Development referred to a
+local folder of HKDSE past-paper question scans and a school assessment PDF, used to
+trace diagram templates and match header/footer layout. Those are exam-board and school
+copyright, so they are gitignored and excluded from the repository and its history. If a
+comment or a doc cites a reference paper, it is describing what was observed in it, not a
+file you will find here.
 
 The diagram templates in `src/model/diagramTemplates.ts` are original code that
 *reproduces the conventional shapes* of standard Economics diagrams (supply and demand,
-AD–AS, PPC). Those conventions are not copyrightable, so the templates themselves are
-fine to ship.
+AD–AS, PPC). Those conventions are not copyrightable, so the templates ship freely.
+
+Worksheets **you** create are yours. The app stores them in your own browser and exports
+them to your own disk; nothing is uploaded anywhere.
