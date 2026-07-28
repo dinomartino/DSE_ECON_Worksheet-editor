@@ -1139,4 +1139,26 @@ describe('margin presets and custom margins export verbatim', () => {
     expect(document).toContain(`w:top="${cmToTwips(3.2)}"`);
     expect(cmToTwips(3.2)).toBe(1814);
   });
+
+  /*
+   * Clearing the title has to remove the paragraph, not just its text.
+   *
+   * An unconditional title node made the block undeletable: emptying it left a blank
+   * centred paragraph holding 12pt of `spaceAfter` at the top of page 1, which reads as
+   * a gap the teacher has no way to reach. The field itself survives — it still names
+   * the document in the outline and the download filename — so the guard is on the
+   * printed paragraph rather than on `worksheet.title`.
+   */
+  it('drops the title paragraph once the title is cleared', async () => {
+    const open = async (worksheet: Worksheet) => {
+      const zip = await JSZip.loadAsync(await exportDocxBuffer(worksheet, STUDENT_BI));
+      return zip.file('word/document.xml')!.async('string');
+    };
+
+    const worksheet = buildAcceptanceWorksheet();
+    expect(await open(worksheet)).toContain('<w:pStyle w:val="WorksheetTitle"/>');
+
+    worksheet.title = { en: [], zh: [] };
+    expect(await open(worksheet)).not.toContain('<w:pStyle w:val="WorksheetTitle"/>');
+  });
 });

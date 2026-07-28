@@ -226,7 +226,7 @@ export function worksheetClipboardHtml(
   // A masthead replaces the bare title, which is one of its own fields.
   if (rendered.bands.length > 0) {
     for (const band of rendered.bands) parts.push(html(band));
-  } else {
+  } else if (rendered.title) {
     parts.push(html(rendered.title));
   }
   if (mode.version === 'teacher') {
@@ -316,7 +316,7 @@ export function worksheetPlainText(worksheet: Worksheet, mode: OutputMode): stri
   };
 
   if (rendered.bands.length > 0) rendered.bands.forEach(push);
-  else push(rendered.title);
+  else if (rendered.title) push(rendered.title);
   if (rendered.instructions) push(rendered.instructions);
   for (const item of rendered.items) {
     (item.type === 'question' ? item.question.nodes : item.layout.nodes).forEach(push);

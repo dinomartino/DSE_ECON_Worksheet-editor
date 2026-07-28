@@ -238,7 +238,7 @@ function buildParts(
   // one of the fields inside them, so emitting both would print it twice.
   if (rendered.bands.length > 0) {
     for (const band of rendered.bands) chunks.push(renderNodeXml(band, context));
-  } else {
+  } else if (rendered.title) {
     chunks.push(renderNodeXml(rendered.title, context));
   }
 

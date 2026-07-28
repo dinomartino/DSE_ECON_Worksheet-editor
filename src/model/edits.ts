@@ -594,7 +594,9 @@ export type DeletableKind =
   | 'question'
   | 'caption'
   | 'answer'
-  | 'cell';
+  | 'cell'
+  /** Emptied in place: the field stays on the worksheet but stops printing. */
+  | 'clear';
 
 export interface DeletePlan {
   kind: DeletableKind;
@@ -624,9 +626,16 @@ export function describeDelete(target: EditTarget): DeletePlan | undefined {
     case 'partAnswer':
     case 'subPartAnswer':
       return { kind: 'answer', label: 'answer' };
-    // An MCQ always has exactly four options (§7.2), and the worksheet title,
-    // instructions and section headings are fields rather than list items — for
-    // those, clearing the text is the delete.
+    // The title and instructions are fields rather than list items, so there is no row
+    // to remove — clearing the text *is* the delete, and an empty one stops rendering.
+    // Delete is offered anyway because the printed block is selectable on the page, and
+    // a selection that ignores the Delete key reads as a broken control.
+    case 'worksheetTitle':
+      return { kind: 'clear', label: 'title' };
+    case 'worksheetInstructions':
+      return { kind: 'clear', label: 'instructions' };
+    // An MCQ always has exactly four options (§7.2), and a section heading is a layout
+    // element reached through `layoutText`.
     default:
       return undefined;
   }
@@ -689,6 +698,13 @@ export function applyDeleteTarget(worksheet: Worksheet, target: EditTarget): Wor
     // A cell cannot leave the grid without breaking the table's geometry, so
     // deleting one empties it.
     case 'tableCell':
+      return applyEditTarget(worksheet, target, EMPTY);
+
+    // Emptied rather than removed: `title` still names the document in the outline, the
+    // saved-file list and the download filename, so the field has to outlive the printed
+    // block. `renderWorksheet` drops both nodes once they are empty.
+    case 'worksheetTitle':
+    case 'worksheetInstructions':
       return applyEditTarget(worksheet, target, EMPTY);
 
     case 'mcqStatement':

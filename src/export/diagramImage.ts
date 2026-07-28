@@ -34,7 +34,7 @@ export type DiagramImageMap = Map<string, string>;
 function* allNodes(worksheet: Worksheet, mode: OutputMode): Generator<RenderNode> {
   const rendered = renderWorksheet(worksheet, mode);
   for (const band of rendered.bands) yield band;
-  yield rendered.title;
+  if (rendered.title) yield rendered.title;
   if (rendered.instructions) yield rendered.instructions;
   for (const item of rendered.items) {
     const nodes = item.type === 'question' ? item.question.nodes : item.layout.nodes;

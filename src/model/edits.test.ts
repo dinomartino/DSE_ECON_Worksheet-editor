@@ -9,7 +9,7 @@ import {
   targetQuestionId,
 } from './edits';
 import { createDiagramBlock } from './factories';
-import { bi, plain } from './text';
+import { bi, isBiTextEmpty, plain } from './text';
 import type {
   ContentBlock,
   McqQuestion,
@@ -249,13 +249,24 @@ describe('deleting the selected element (Delete/Backspace on the page)', () => {
     expect((next.questions[0] as McqQuestion).options).toHaveLength(4);
   });
 
-  it('treats fixed worksheet fields as non-deletable', () => {
+  /*
+   * The title and instructions are emptied, never removed: `title` still names the
+   * document in the outline, the saved-file list and the download filename, so the field
+   * has to outlive the block printed on page 1.
+   */
+  it('clears the title and instructions rather than removing the field', () => {
+    const worksheet = buildAcceptanceWorksheet();
+
     for (const target of [
       { kind: 'worksheetTitle' },
       { kind: 'worksheetInstructions' },
-      { kind: 'sectionHeading', sectionId: 'x' },
     ] as EditTarget[]) {
-      expect(describeDelete(target)).toBeUndefined();
+      expect(describeDelete(target)?.kind).toBe('clear');
+
+      const next = applyDeleteTarget(worksheet, target);
+      const field = target.kind === 'worksheetTitle' ? next.title : next.instructions;
+      expect(field).toBeDefined();
+      expect(isBiTextEmpty(field)).toBe(true);
     }
   });
 });

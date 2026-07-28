@@ -52,7 +52,17 @@ export interface RenderedWorksheet {
    * title is one of the fields inside them, so printing both would duplicate it.
    */
   bands: RenderNode[];
-  title: RenderNode;
+  /**
+   * Absent once the teacher has cleared the title text.
+   *
+   * `worksheet.title` still holds that text — it names the document in the outline, the
+   * saved-file list and the download filename — but an empty title has nothing to print,
+   * and an unconditional node made it undeletable: clearing the text left a blank
+   * `Worksheet Title` paragraph on page 1 and in the .docx, with no affordance to remove
+   * it. Optional here for the same reason `instructions` is, so "delete it" and "leave it
+   * empty" are the same gesture.
+   */
+  title?: RenderNode;
   instructions?: RenderNode;
   /**
    * Everything in the document body, in printed order.
@@ -145,13 +155,15 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
     .map((band) => renderBand(band, total))
     .filter((node): node is RenderNode => node !== undefined);
 
-  const title: RenderNode = {
-    kind: 'text',
-    style: 'Worksheet Title',
-    text: worksheet.title,
-    edit: { kind: 'worksheetTitle' },
-    format: worksheet.titleFormat,
-  };
+  const title: RenderNode | undefined = isBiTextEmpty(worksheet.title)
+    ? undefined
+    : {
+        kind: 'text',
+        style: 'Worksheet Title',
+        text: worksheet.title,
+        edit: { kind: 'worksheetTitle' },
+        format: worksheet.titleFormat,
+      };
 
   const instructions: RenderNode | undefined = isBiTextEmpty(worksheet.instructions)
     ? undefined

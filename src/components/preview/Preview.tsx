@@ -2192,14 +2192,19 @@ export function Preview({
   // element — so a page boundary can fall between any two of them.
   const blocks: FlowBlock[] = [];
 
-  blocks.push({
-    key: "masthead",
-    structural: true,
-    node:
-      worksheet.bands && worksheet.bands.length > 0 ? (
+  // A document with neither a masthead nor a title pushes no block at all. Pushing an
+  // empty one would reserve its height on the sheet, so a cleared title would still
+  // print as a gap the teacher cannot reach — the whole point of letting it go.
+  const mastheadBands =
+    worksheet.bands && worksheet.bands.length > 0 ? worksheet.bands : undefined;
+  if (mastheadBands || rendered.title) {
+    blocks.push({
+      key: "masthead",
+      structural: true,
+      node: mastheadBands ? (
         bandEditing ? (
           <BandEditor
-            bands={worksheet.bands}
+            bands={mastheadBands}
             language={language}
             totalMarks={worksheetMarks(worksheet)}
             onMove={bandEditing.onMove}
@@ -2214,9 +2219,10 @@ export function Preview({
           ))
         )
       ) : (
-        <NodeView node={rendered.title} language={language} ctx={ctx} />
+        <NodeView node={rendered.title!} language={language} ctx={ctx} />
       ),
-  });
+    });
+  }
 
   if (mode.version === "teacher") {
     blocks.push({
