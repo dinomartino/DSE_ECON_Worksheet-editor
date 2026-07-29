@@ -828,6 +828,37 @@ Three implementation notes:
 
 Print CSS neutralizes the dimming and hides the overlay, so PDF export is unaffected.
 
+### Print preview is the print rules, run on screen
+
+The **Edit | Preview** switch (`store.printPreview`) shows the sheets exactly as they
+will print: no chrome, no selection, nothing editable. It is a `Segmented`, like
+Language and Version, and sits with them: the two states are equal and permanent, so a
+button would have to label the state you are *not* in — reading as an instruction while
+leaving the current mode unnamed. "Exactly" is a claim that has to be
+*structurally* true rather than maintained by hand, so the rules that strip the page
+down are written once and shared by `@media print` and `body.print-preview`. A control
+added later needs `data-print-hide` exactly once and is correct in both; a second,
+separately-written impression of printing would drift.
+
+Two things follow that CSS alone cannot deliver:
+
+- **Gestures are disabled in JavaScript, not by `pointer-events`.** The marquee sweep
+  begins on the scrolling column and then tracks on `window`, so making the sheets
+  transparent left drag-to-multi-select fully working over an inert page. `Preview`
+  reads `printPreview` from the store and returns early from the sweep's `mousedown`
+  and from the bulk-shortcut handler. That handler cannot instead ask "is anything
+  selected?" — ⌘A is what *creates* a selection — and it swallows ⌘A rather than
+  ignoring it, or the browser's native select-all highlights the whole app.
+- **`#print-root` keeps its own pointer events** while its descendants lose theirs.
+  Disabling them on the root as well makes the sheet transparent, so a double-click
+  passes through to the sidebar behind it and selects *its* text.
+
+`printPreview` lives beside `mode` in the store, deliberately **not inside** it:
+`OutputMode` is the document's own state and is what the exporter reads, so a view
+toggle that reached `.docx` generation would be a bug waiting to happen. Entering the
+mode clears the question selection, exactly as `handlePdf` does before printing, and
+`HintPill` hides itself there — it teaches an interaction the mode has removed.
+
 ### Both band paths must agree
 
 `BandEditor` (active region) and `ReadOnlyBandRow` (idle region, and the print/PDF path)

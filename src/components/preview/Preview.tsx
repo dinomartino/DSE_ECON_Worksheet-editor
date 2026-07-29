@@ -1978,6 +1978,18 @@ export function Preview({
   const containerRef = useRef<HTMLDivElement>(null);
   const bandsRef = useRef<HTMLDivElement>(null);
 
+  /*
+   * Print preview makes the page a picture, so every *gesture* is off too.
+   *
+   * CSS gets the appearance (`body.print-preview`, shared with `@media print`), but it
+   * cannot stop a gesture that listens on `window`: the marquee sweep starts from a
+   * mousedown on the scrolling column and then tracks globally, so `pointer-events:
+   * none` on the sheets left drag-to-multi-select fully working over an inert page.
+   * The handlers therefore check this directly — read from the store rather than
+   * threaded as a prop, since this component already subscribes.
+   */
+  const printPreview = useWorksheetStore((s) => s.printPreview);
+
   const [fitScale, setFitScale] = useState(1);
   // User zoom, multiplied onto the auto-fit scale rather than replacing it, so
   // "100%" always means "as wide as this column allows" — the reading a teacher
@@ -2956,6 +2968,26 @@ export function Preview({
       // silence them — deleting one curve in the drawing canvas used to fire this
       // handler too and take the whole diagram block with it.
       if (isModalLayerOpen()) return;
+
+      const meta = event.metaKey || event.ctrlKey;
+
+      /*
+       * Print preview owns nothing selectable, so ⌘A/⌘C/⌘X/⌘V and Delete are all off.
+       *
+       * This branch cannot lean on "is anything selected?" the way the single-selection
+       * handlers can: ⌘A is what *creates* the selection, so it would still arm a bulk
+       * selection over a page that is supposed to be a picture.
+       *
+       * ⌘A is additionally *swallowed* rather than merely ignored: returning early hands
+       * it to the browser, whose native select-all then highlights the entire app —
+       * toolbar, rails and sidebar — which is a stranger result than the shortcut doing
+       * nothing at all.
+       */
+      if (printPreview) {
+        if (meta && event.key.toLowerCase() === "a") event.preventDefault();
+        return;
+      }
+
       const active = document.activeElement;
       if (
         active instanceof HTMLTextAreaElement ||
@@ -2964,8 +2996,6 @@ export function Preview({
       ) {
         return;
       }
-
-      const meta = event.metaKey || event.ctrlKey;
 
       if (meta && event.key.toLowerCase() === "a") {
         event.preventDefault();
@@ -3029,7 +3059,7 @@ export function Preview({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [multiIds, multiFields, clip, onBulkDelete, onBulkDuplicate, onDelete]);
+  }, [multiIds, multiFields, clip, onBulkDelete, onBulkDuplicate, onDelete, printPreview]);
 
   // Selecting a question in the sidebar brings it into view here, so the two panes
   // stay in step instead of scrolling independently.
@@ -3533,6 +3563,8 @@ export function Preview({
        */
       onMouseDown={(event) => {
         if (event.button !== 0) return;
+        // Nothing is selectable while the page is a picture of itself.
+        if (printPreview) return;
         const target = event.target as HTMLElement;
         if (target.closest("[data-drag-grip]")) return;
         // A press inside an open editor is text selection within that field, not a

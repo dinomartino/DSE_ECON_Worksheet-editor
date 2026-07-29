@@ -23,6 +23,8 @@ import { worksheetStore } from '@/storage';
 export function EditorApp() {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const mode = useWorksheetStore((s) => s.mode);
+  const printPreview = useWorksheetStore((s) => s.printPreview);
+  const setPrintPreview = useWorksheetStore((s) => s.setPrintPreview);
   const dirty = useWorksheetStore((s) => s.dirty);
   const selectedQuestionId = useWorksheetStore((s) => s.selectedQuestionId);
   const select = useWorksheetStore((s) => s.select);
@@ -325,6 +327,32 @@ export function EditorApp() {
     return () => clearTimeout(timer);
   }, [worksheet, dirty, markSaved]);
 
+  /*
+   * Print preview is a class on `<body>`, not a prop threaded through the preview.
+   *
+   * The rules that strip the page down are the *print* rules, written once for both
+   * `@media print` and `body.print-preview` (see `globals.css`). Driving it from one
+   * class is what guarantees the preview shows what printing produces rather than a
+   * second, separately-maintained impression of it — and it means a control added
+   * later needs `data-print-hide` exactly once to be correct in both.
+   */
+  useEffect(() => {
+    document.body.classList.toggle('print-preview', printPreview);
+    return () => document.body.classList.remove('print-preview');
+  }, [printPreview]);
+
+  // Escape leaves the preview — the way out of any full-surface mode.
+  useEffect(() => {
+    if (!printPreview) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      setPrintPreview(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [printPreview, setPrintPreview]);
+
   // Undo/redo shortcuts (§11.13).
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -479,6 +507,7 @@ export function EditorApp() {
 
 function HintPill() {
   const [dismissed, setDismissed] = useState(false);
+  const printPreview = useWorksheetStore((s) => s.printPreview);
 
   // It retires itself. A how-to-edit hint is only useful until it has been read once,
   // and a permanent instruction strip is a standing admission that the interface is
@@ -489,7 +518,9 @@ function HintPill() {
     return () => clearTimeout(timer);
   }, []);
 
-  if (dismissed) return null;
+  // Not in print preview: it teaches an interaction that mode deliberately removes, so
+  // it would be instructing the teacher to do something the page no longer allows.
+  if (dismissed || printPreview) return null;
   return (
     <div className="pointer-events-none fixed bottom-4 left-[76px] right-[400px] z-20 flex justify-center">
       <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-line bg-surface-raised/95 py-1.5 pl-4 pr-1.5 text-[12px] text-ink-muted shadow-lg backdrop-blur">

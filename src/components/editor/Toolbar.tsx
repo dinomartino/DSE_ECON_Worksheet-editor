@@ -35,6 +35,8 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
   const save = useWorksheetStore((s) => s.save);
   const replaceWorksheet = useWorksheetStore((s) => s.replaceWorksheet);
   const select = useWorksheetStore((s) => s.select);
+  const printPreview = useWorksheetStore((s) => s.printPreview);
+  const setPrintPreview = useWorksheetStore((s) => s.setPrintPreview);
 
   const fileInput = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState<string | undefined>();
@@ -164,6 +166,28 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
           options={[
             { value: 'student', label: 'Student', title: 'Student version — answers hidden' },
             { value: 'teacher', label: 'Teacher', title: 'Teacher version / 教師版 — answers shown' },
+          ]}
+        />
+
+        {/*
+          Edit or look. A switch rather than a button because the two states are equal
+          and permanent: a button has to label the *other* state ("Preview" while
+          editing, "Editing" while previewing), which reads as an instruction and leaves
+          the current mode unnamed. A segmented control names both and shows which one
+          you are in — the same reason Language and Version use it, and why this sits
+          with them among the view controls rather than beside the export actions.
+        */}
+        <Segmented
+          label="Page mode"
+          value={printPreview ? 'preview' : 'edit'}
+          onChange={(next) => setPrintPreview(next === 'preview')}
+          options={[
+            { value: 'edit', label: 'Edit', title: 'Edit the worksheet on the page' },
+            {
+              value: 'preview',
+              label: 'Preview',
+              title: 'See the sheets exactly as they will print (Esc to leave)',
+            },
           ]}
         />
 

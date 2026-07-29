@@ -70,6 +70,16 @@ const HISTORY_LIMIT = 100;
 interface WorksheetState {
   worksheet: Worksheet;
   mode: OutputMode;
+  /**
+   * Showing the sheets as they will print: no editing, no chrome.
+   *
+   * Deliberately *not* part of `OutputMode`. That is the document's own state — which
+   * language, student or teacher — and it is what the exporter reads; a view toggle
+   * that reached `.docx` generation would be a bug waiting to happen. This is a
+   * property of the editor, so it lives beside the mode rather than inside it, and it
+   * is not persisted: a worksheet reopens ready to edit.
+   */
+  printPreview: boolean;
   /** Unsaved changes since the last `markSaved`. */
   dirty: boolean;
   lastSavedAt?: string;
@@ -94,6 +104,7 @@ interface WorksheetState {
   /** Persist to storage now, rather than waiting for the autosave debounce. */
   save: () => Promise<void>;
   setMode: (patch: Partial<OutputMode>) => void;
+  setPrintPreview: (on: boolean) => void;
   select: (questionId?: string) => void;
   setDragQuestionId: (questionId?: string) => void;
 
@@ -398,6 +409,7 @@ function bandHolds(band: Band, fieldId: string): boolean {
 export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   worksheet: createWorksheet(),
   mode: { language: 'en', version: 'student' },
+  printPreview: false,
   dirty: false,
   past: [],
   future: [],
@@ -478,6 +490,20 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
    * content is never touched — patch-never-replace (§5.2).
    */
   setMode: (patch) => set((state) => ({ mode: { ...state.mode, ...patch } })),
+
+  /*
+   * Entering print preview clears the question selection.
+   *
+   * A selection is an editing state, and the preview's whole claim is that nothing on
+   * screen belongs to the editor — a ring left behind would be visible in a view whose
+   * point is to show only what prints. It is also what `handlePdf` does before calling
+   * `window.print()`, for the same reason.
+   *
+   * Like `setMode` this bypasses `commit`: a view toggle is not a document edit, so it
+   * must not enter the undo history or mark the worksheet dirty.
+   */
+  setPrintPreview: (printPreview) =>
+    set(printPreview ? { printPreview, selectedQuestionId: undefined } : { printPreview }),
 
   select: (selectedQuestionId) => set({ selectedQuestionId }),
   setDragQuestionId: (dragQuestionId) => set({ dragQuestionId }),

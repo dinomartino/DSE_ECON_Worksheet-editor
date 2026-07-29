@@ -331,6 +331,76 @@ body {
   margin: 0;
 }
 
+/*
+ * Print preview on screen (`body.print-preview`).
+ *
+ * "Show me the page as it will print" must not be a *second* description of what
+ * printing does, or the two drift and the preview stops being trustworthy. So every
+ * rule that strips the document down is written once, for both
+ * `@media print` and `body.print-preview`, and the only thing the button does is add
+ * the class.
+ *
+ * Consequently a control added later needs `data-print-hide` exactly once and it is
+ * correct in both — which is the same reason the print path uses a hide-everything
+ * default rather than a blocklist.
+ */
+.print-preview #print-root [data-print-hide],
+.print-preview #print-root .paper-page-number,
+.print-preview #print-root [data-screen-only] {
+  display: none !important;
+}
+
+.print-preview #print-root [data-print-only] {
+  display: inline !important;
+}
+
+/*
+ * Inert: no caret, no hover tints, nothing to click or select.
+ *
+ * The *children* are transparent to the pointer while `#print-root` itself keeps
+ * receiving events. Putting `pointer-events: none` on the root as well makes the whole
+ * sheet transparent, so a click passes straight through to whatever sits behind it —
+ * a double-click on the page was landing in the sidebar and selecting its text. The
+ * root absorbs the gesture instead, which is what "the page is a picture" should mean.
+ */
+.print-preview #print-root {
+  cursor: default !important;
+  user-select: none !important;
+}
+
+.print-preview #print-root * {
+  cursor: default !important;
+  user-select: none !important;
+  pointer-events: none !important;
+}
+
+.print-preview #print-root [data-question-id],
+.print-preview #print-root [role="textbox"] {
+  background: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  text-decoration: none !important;
+}
+
+.print-preview #print-root [data-question-id]::before {
+  display: none !important;
+}
+
+/* Dimming is region-focus chrome; on paper every region prints alike. */
+.print-preview .paper-region-idle {
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+.print-preview .paper-region-wake {
+  display: none !important;
+}
+
+/* An author's prompt is not the question. Keeps its box so nothing reflows. */
+.print-preview #print-root [data-empty-placeholder] {
+  visibility: hidden !important;
+}
+
 @media print {
   /* Everything is hidden by default, then the page stack is walked back into view.
      A blocklist would silently leak any control added later. */
