@@ -8,7 +8,7 @@ import type {
   TextNode,
 } from '@/render/ir';
 import { biTextRuns, formatRunOptions, marksRuns, richTextRuns, run } from './runs';
-import { ANSWER_LINE_STYLE_ID, STYLE_IDS } from './styles';
+import { ANSWER_LINE_STYLE_ID, STYLE_IDS, exactLineFor } from './styles';
 import { attrs, escapeXml } from './xml';
 
 /**
@@ -52,12 +52,24 @@ export interface BodyContext {
 export function formatParagraphProps(format: TextFormat | undefined): string {
   if (!format) return '';
   const parts: string[] = [];
-  if (format.spaceBefore !== undefined || format.spaceAfter !== undefined) {
+  // A `w:spacing` is emitted when the teacher set paragraph spacing, and also when they
+  // only enlarged the text: an exact line box does not grow to fit, so a font size the
+  // style's box cannot hold would be clipped unless the box is restated with it.
+  const needsLine = format.fontSize !== undefined;
+  if (format.spaceBefore !== undefined || format.spaceAfter !== undefined || needsLine) {
     // Word measures paragraph spacing in twentieths of a point.
+    //
+    // `w:line` is restated even when only the before/after was overridden: direct
+    // formatting replaces the style's `w:spacing` *element* wholesale rather than
+    // merging attribute by attribute, so emitting before/after alone would silently
+    // drop the fixed 12pt line and drop that one paragraph off the page's rhythm —
+    // visible as a single stem set looser than everything around it.
     parts.push(
       `<w:spacing${attrs({
         'w:before': format.spaceBefore !== undefined ? String(Math.round(format.spaceBefore * 20)) : undefined,
         'w:after': format.spaceAfter !== undefined ? String(Math.round(format.spaceAfter * 20)) : undefined,
+        'w:line': String(exactLineFor(format.fontSize)),
+        'w:lineRule': 'exact',
       })}/>`,
     );
   }
@@ -180,11 +192,16 @@ function textNodeXml(node: TextNode, context: BodyContext): string {
 }
 
 function cellParagraph(cellText: string, align: string): string {
+  // No `w:spacing` override: the cell paragraph takes the Body style's fixed 12pt line
+  // and zero padding like every other paragraph, so a table's rows sit on the same
+  // rhythm as the text around it. The breathing room a cell needs is horizontal and
+  // vertical *cell* margin (`w:tblCellMar` in styles.ts), which is a table concern —
+  // paragraph spacing here would put the gap inside the cell's text flow instead and
+  // desynchronise the row from the page's line grid.
   return (
     '<w:p><w:pPr>' +
     `<w:pStyle w:val="${STYLE_IDS.Body}"/>` +
     `<w:jc w:val="${align}"/>` +
-    '<w:spacing w:before="20" w:after="20"/>' +
     '</w:pPr>' +
     cellText +
     '</w:p>'
@@ -387,8 +404,14 @@ export function renderNodeXml(node: RenderNode, context: BodyContext): string {
       // An empty paragraph whose exact-height line gives the requested gap. Using
       // `w:line`/`exact` rather than a run of blank paragraphs keeps the space stable
       // at any font size.
+      //
+      // It carries the Body style like every other paragraph — the gap is expressed by
+      // the height override alone. Without a `w:pStyle` it would inherit whatever style
+      // Word considers current, which is both a restyling hazard and a break in the
+      // "every paragraph is attached to a named style" invariant (§7.3).
       return (
         '<w:p><w:pPr>' +
+        `<w:pStyle w:val="${STYLE_IDS.Body}"/>` +
         `<w:spacing w:line="${Math.max(1, Math.round(node.heightPt * 20))}" w:lineRule="exact"/>` +
         '</w:pPr></w:p>'
       );

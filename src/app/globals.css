@@ -148,6 +148,54 @@ body {
   background: #ffffff;
   color: #111111;
   color-scheme: light;
+
+  /* The typographic contract with the exporter, mirroring `export/docx/styles.ts`:
+     11pt text on a *fixed* 12pt line, with no paragraph margins anywhere.
+
+     Both halves are load-bearing. The size and leading are stated in `pt` rather than
+     `px` because the sheet is sized in millimetres from the same twips Word gets, so a
+     point here is the point Word will print — and the paginator measures these boxes to
+     decide where a page ends. Left to inherit the app shell's 16px and its default
+     ~1.5 leading, the preview packed roughly a third less onto a sheet than Word did,
+     and every page break landed early.
+
+     `line-height` is a fixed length, not a ratio: `w:lineRule="exact"` does not grow for
+     a tall CJK glyph or a superscript, so a ratio here would let the preview breathe
+     where the print clips. */
+  font-size: 11pt;
+  line-height: 12pt;
+}
+
+/* Paragraph margins are the exporter's `w:before`/`w:after`, and those are zero. Any
+   margin the browser or Tailwind's reset supplies is a gap that exists on screen and
+   not on paper, which the paginator would then measure. */
+.paper p,
+.paper h1,
+.paper h2,
+.paper h3,
+.paper ul,
+.paper ol,
+.paper li {
+  margin-block: 0;
+}
+
+/* Larger styles keep an exact box too, scaled from the 11pt/12pt base by the same
+   ratio as `exactLineFor()` in the exporter, so a heading occupies the same height in
+   both. Kept as named classes rather than inline styles: they are paper typography,
+   and `STYLE_CLASS` is where the preview names the rest of it. */
+.paper-line-16 {
+  font-size: 16pt;
+  line-height: 17.45pt;
+}
+
+.paper-line-14 {
+  font-size: 14pt;
+  line-height: 15.25pt;
+}
+
+.paper-line-10 {
+  font-size: 10pt;
+  line-height: 12pt;
 }
 
 /* One sheet, three regions to edit — body, header, footer — following Word.

@@ -54,7 +54,39 @@ interface StyleSpec {
   border?: { color: string; size: number };
 }
 
-const BASE_SIZE = 24; // 12pt
+const BASE_SIZE = 22; // 11pt — every run in the reference paper is `w:sz="22"`.
+
+/**
+ * The one line height the whole document uses: 12pt, fixed (`w:lineRule="exact"`).
+ *
+ * The reference paper carries `w:line="240" w:lineRule="exact"` on 275 of its 296
+ * paragraphs, over a "No Spacing" style with `w:after="0"`. Its entire vertical rhythm
+ * comes from that fixed line box, not from paragraph spacing — which is why 11pt text
+ * set in a 12pt box reads tight but even, and why a page holds what it does.
+ *
+ * `exact` rather than `atLeast` is the load-bearing half: `atLeast` lets Word grow the
+ * box for a tall CJK glyph, a superscript or an inline image, and a bilingual paper is
+ * full of all three — the rhythm would then vary line by line and the preview, which
+ * pins the height, would disagree with the print.
+ */
+export const FIXED_LINE_TWIPS = 240; // 12pt
+
+/** The body size the fixed 12pt line is calibrated for, in points. */
+const FIXED_LINE_BASE_PT = 11;
+
+/**
+ * The exact line height a paragraph set at `fontSizePt` needs.
+ *
+ * An exact line box does not grow, so text larger than the box is clipped rather than
+ * pushed apart — the one hazard `w:lineRule="exact"` carries. Anything at or below the
+ * 11pt body size keeps the shared 12pt rhythm; larger text gets a box scaled by the
+ * same ratio, which is how the title and section-heading styles get theirs. Rounding to
+ * a whole twip keeps the value one Word will echo back unchanged.
+ */
+export function exactLineFor(fontSizePt: number | undefined): number {
+  if (fontSizePt === undefined || fontSizePt <= FIXED_LINE_BASE_PT) return FIXED_LINE_TWIPS;
+  return Math.round((FIXED_LINE_TWIPS * fontSizePt) / FIXED_LINE_BASE_PT);
+}
 
 /**
  * One answer line's writing height, in twips (24pt) — roughly double-spaced for a
@@ -70,22 +102,38 @@ export const ANSWER_LINE_HEIGHT_TWIPS = 480;
  */
 export const ANSWER_LINE_STYLE_ID = 'AnswerLine';
 
+/*
+ * Every style below sets `spaceBefore: 0, spaceAfter: 0` and inherits the fixed 12pt
+ * line from `Normal`. That is the reference paper's model exactly: one uniform line box
+ * and no paragraph spacing anywhere, so text lands on a consistent 12pt rhythm down the
+ * page regardless of which style a paragraph wears.
+ *
+ * Separation between blocks therefore has to come from something that occupies a whole
+ * line — a spacer element — rather than from a style's own padding. That is a real
+ * trade-off and it is the reference's: a heading no longer carries air above it by
+ * virtue of being a heading. It buys a page whose lines align with every other line,
+ * which is what a paper printed to be written on needs.
+ *
+ * Sizes stay per-style; only the vertical metrics are unified. A 16pt title in a 12pt
+ * fixed box would clip, so the styles that set a larger `size` also set a matching
+ * `exactLine` — see `titleLine` below.
+ */
 const STYLE_SPECS: StyleSpec[] = [
-  { id: 'WorksheetTitle', name: 'Worksheet Title', size: 32, bold: true, align: 'center', spaceAfter: 240, keepNext: true, keepLines: true, outlineLevel: 0 },
-  { id: 'Instructions', name: 'Instructions', size: 24, italic: true, spaceAfter: 240, keepLines: true },
-  { id: 'SectionHeading', name: 'Section Heading', size: 28, bold: true, spaceBefore: 240, spaceAfter: 120, keepNext: true, keepLines: true, outlineLevel: 1 },
-  { id: 'QuestionStem', name: 'Question Stem', size: BASE_SIZE, spaceBefore: 120, spaceAfter: 60, keepLines: true },
-  { id: 'Statement', name: 'Statement', size: BASE_SIZE, spaceAfter: 40, keepLines: true },
-  { id: 'MCQOption', name: 'MCQ Option', size: BASE_SIZE, spaceAfter: 40, keepLines: true },
-  { id: 'Subquestion', name: 'Sub-question', size: BASE_SIZE, spaceBefore: 60, spaceAfter: 60, keepLines: true },
-  { id: 'Subsubquestion', name: 'Sub-sub-question', size: BASE_SIZE, spaceBefore: 40, spaceAfter: 40, keepLines: true },
-  { id: 'Marks', name: 'Marks', size: BASE_SIZE, align: 'right', spaceBefore: 60, spaceAfter: 120, keepLines: true },
-  { id: 'TableCaption', name: 'Table Caption', size: 20, italic: true, align: 'center', spaceAfter: 120, keepLines: true },
-  { id: 'ImageCaption', name: 'Image Caption', size: 20, italic: true, align: 'center', spaceAfter: 120, keepLines: true },
+  { id: 'WorksheetTitle', name: 'Worksheet Title', size: 32, bold: true, align: 'center', spaceBefore: 0, spaceAfter: 0, exactLine: exactLineFor(16), keepNext: true, keepLines: true, outlineLevel: 0 },
+  { id: 'Instructions', name: 'Instructions', size: BASE_SIZE, italic: true, spaceBefore: 0, spaceAfter: 0, keepLines: true },
+  { id: 'SectionHeading', name: 'Section Heading', size: 28, bold: true, spaceBefore: 0, spaceAfter: 0, exactLine: exactLineFor(14), keepNext: true, keepLines: true, outlineLevel: 1 },
+  { id: 'QuestionStem', name: 'Question Stem', size: BASE_SIZE, spaceBefore: 0, spaceAfter: 0, keepLines: true },
+  { id: 'Statement', name: 'Statement', size: BASE_SIZE, spaceBefore: 0, spaceAfter: 0, keepLines: true },
+  { id: 'MCQOption', name: 'MCQ Option', size: BASE_SIZE, spaceBefore: 0, spaceAfter: 0, keepLines: true },
+  { id: 'Subquestion', name: 'Sub-question', size: BASE_SIZE, spaceBefore: 0, spaceAfter: 0, keepLines: true },
+  { id: 'Subsubquestion', name: 'Sub-sub-question', size: BASE_SIZE, spaceBefore: 0, spaceAfter: 0, keepLines: true },
+  { id: 'Marks', name: 'Marks', size: BASE_SIZE, align: 'right', spaceBefore: 0, spaceAfter: 0, keepLines: true },
+  { id: 'TableCaption', name: 'Table Caption', size: 20, italic: true, align: 'center', spaceBefore: 0, spaceAfter: 0, keepLines: true },
+  { id: 'ImageCaption', name: 'Image Caption', size: 20, italic: true, align: 'center', spaceBefore: 0, spaceAfter: 0, keepLines: true },
   // Teacher-version styles are visually distinct (§5.4) but still fully restylable.
-  { id: 'Answer', name: 'Answer', size: BASE_SIZE, bold: true, color: 'C00000', spaceBefore: 60, spaceAfter: 60, keepLines: true },
-  { id: 'MarkingScheme', name: 'Marking Scheme', size: 22, color: '1F4E79', indentLeft: 360, spaceAfter: 60, keepLines: true },
-  { id: 'BodyTextCustom', name: 'Worksheet Body', size: BASE_SIZE, spaceAfter: 60, keepLines: true },
+  { id: 'Answer', name: 'Answer', size: BASE_SIZE, bold: true, color: 'C00000', spaceBefore: 0, spaceAfter: 0, keepLines: true },
+  { id: 'MarkingScheme', name: 'Marking Scheme', size: BASE_SIZE, color: '1F4E79', indentLeft: 360, spaceBefore: 0, spaceAfter: 0, keepLines: true },
+  { id: 'BodyTextCustom', name: 'Worksheet Body', size: BASE_SIZE, spaceBefore: 0, spaceAfter: 0, keepLines: true },
   // A ruled writing line. The border and the 24pt height live here rather than as
   // direct formatting on each paragraph: Word flags a directly-formatted paragraph
   // with a marker in the left margin, and forty of them made the block look like
@@ -106,21 +154,17 @@ function paragraphProperties(spec: StyleSpec): string {
   const parts: string[] = [];
   if (spec.keepNext) parts.push('<w:keepNext/>');
   if (spec.keepLines) parts.push('<w:keepLines/>');
-  if (
-    spec.spaceBefore !== undefined ||
-    spec.spaceAfter !== undefined ||
-    spec.exactLine !== undefined
-  ) {
-    parts.push(
-      `<w:spacing${
-        spec.spaceBefore !== undefined ? ` w:before="${spec.spaceBefore}"` : ''
-      }${spec.spaceAfter !== undefined ? ` w:after="${spec.spaceAfter}"` : ''}${
-        spec.exactLine !== undefined
-          ? ` w:line="${spec.exactLine}" w:lineRule="exact"`
-          : ''
-      }/>`,
-    );
-  }
+  // Every paragraph style states its own line metrics rather than inheriting them from
+  // `Normal`. Word merges `w:spacing` as one element, not attribute by attribute, so a
+  // style that set only `w:before`/`w:after` would be relying on inheritance filling in
+  // `w:line` — which is exactly the kind of thing that differs between Word versions and
+  // between Word and the converters that open these files. Stating it costs nothing and
+  // makes the fixed 12pt rhythm a property of each style rather than of the chain.
+  const line = spec.exactLine ?? FIXED_LINE_TWIPS;
+  parts.push(
+    `<w:spacing w:before="${spec.spaceBefore ?? 0}" w:after="${spec.spaceAfter ?? 0}"` +
+      ` w:line="${line}" w:lineRule="exact"/>`,
+  );
   if (spec.border) {
     const edge = `w:val="single" w:sz="${spec.border.size}" w:space="1" w:color="${spec.border.color}"`;
     parts.push(`<w:pBdr><w:between ${edge}/><w:bottom ${edge}/></w:pBdr>`);
@@ -168,12 +212,18 @@ export function buildStylesXml(fonts: FontPair): string {
     // Tell Word this document's East-Asian language is Traditional Chinese (HK).
     '<w:lang w:val="en-US" w:eastAsia="zh-HK"/>' +
     '</w:rPr></w:rPrDefault>' +
-    '<w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="276" w:lineRule="auto"/></w:pPr></w:pPrDefault>' +
+    // The fixed 12pt line starts here, so anything the exporter does not style
+    // explicitly — a bare paragraph, a table cell — still lands on the same rhythm.
+    `<w:pPrDefault><w:pPr><w:spacing w:before="0" w:after="0" w:line="${FIXED_LINE_TWIPS}" w:lineRule="exact"/></w:pPr></w:pPrDefault>` +
     '</w:docDefaults>';
 
+  // `Normal` restates the spacing rather than leaning on docDefaults alone: Word's own
+  // built-in Normal carries spacing of its own, and a document opened in a template
+  // whose Normal differs would otherwise inherit that instead of this paper's rhythm.
   const normal =
     '<w:style w:type="paragraph" w:default="1" w:styleId="Normal">' +
     '<w:name w:val="Normal"/><w:qFormat/>' +
+    `<w:pPr><w:spacing w:before="0" w:after="0" w:line="${FIXED_LINE_TWIPS}" w:lineRule="exact"/></w:pPr>` +
     `<w:rPr>${rFonts(fonts)}<w:sz w:val="${BASE_SIZE}"/><w:szCs w:val="${BASE_SIZE}"/></w:rPr>` +
     '</w:style>';
 

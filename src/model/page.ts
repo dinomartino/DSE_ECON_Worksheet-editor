@@ -232,12 +232,20 @@ export function bandsShouldRender(bands: Band[], editing: boolean): boolean {
  * their title rows and those are exactly the rows that make a header overflow.
  */
 /*
- * Word's single-spaced line box for an 11pt run is ~264tw (11pt × 1.15 ÷ 20tw-per-pt ×
- * 20). The reference paper's header measures out at roughly this — two rows, one 11pt and
- * one 14pt, inside 873tw of headroom — and neither it nor ours emits paragraph spacing in
- * a header, so the row height is the line box alone.
+ * A band row is one paragraph, and every paragraph this exporter writes sits in the
+ * fixed 12pt (240tw) line box mirrored from the reference paper — so a row's height is
+ * that box exactly, not an estimate of Word's single-spaced leading.
+ *
+ * This used to be 264tw, Word's ~1.15 auto leading for an 11pt run. With
+ * `w:lineRule="exact"` the box no longer depends on the font's own metrics, which is
+ * what makes the height knowable here at all: neither a header nor a footer emits
+ * paragraph spacing, so the row *is* the line.
+ *
+ * Kept in step with `FIXED_LINE_TWIPS` in `export/docx/styles.ts`. It is duplicated
+ * rather than imported because `model/` must not depend on `export/` — a test asserts
+ * the two agree.
  */
-const BAND_ROW_TWIPS = 264;
+export const BAND_ROW_TWIPS = 240;
 const RULE_GAP_TWIPS = 120; // The border and its padding, when a rule is drawn.
 
 export function bandsHeight(bands: Band[], rule?: boolean): number {
