@@ -1,3 +1,8 @@
+import {
+  OPTION_LIST_INDENT,
+  QUESTION_LIST_INDENTS,
+  STATEMENT_LIST_INDENT,
+} from '@/model/numbering';
 import type { FontPair } from '@/model/types';
 import { rFonts } from './runs';
 import { XML_DECL } from './xml';
@@ -91,18 +96,40 @@ export function assignNumIds(streams: NumStream[]): Map<string, number> {
 }
 
 export function buildNumberingXml(streams: NumStream[], fonts: FontPair): string {
-  const questionLevels: LevelSpec[] = [
-    { level: 0, format: 'decimal', text: '%1.', indent: 360, hanging: 360 },
-    { level: 1, format: 'lowerLetter', text: '(%2)', indent: 1080, hanging: 360 },
-    // A 360-twip hang is too narrow for three-character romans: "(iii)" collides
-    // with the text. 540 leaves room up to "(viii)".
-    { level: 2, format: 'lowerRoman', text: '(%3)', indent: 1980, hanging: 540 },
-  ];
+  /*
+   * The geometry comes from `model/numbering.ts`, not from literals here.
+   *
+   * Word reads these values, the preview mirrors them to lay the paper out, and the
+   * registry indents continuation paragraphs to match — three copies that must agree, so
+   * there is one definition and all three read it. Each level's marker starts where its
+   * parent's text starts (§ `QUESTION_LIST_INDENTS`).
+   */
+  const questionFormats = ['decimal', 'lowerLetter', 'lowerRoman'] as const;
+  const questionText = ['%1.', '(%2)', '(%3)'];
+  const questionLevels: LevelSpec[] = QUESTION_LIST_INDENTS.map((indent, level) => ({
+    level,
+    format: questionFormats[level],
+    text: questionText[level],
+    indent: indent.left,
+    hanging: indent.hanging,
+  }));
   const optionLevels: LevelSpec[] = [
-    { level: 0, format: 'upperLetter', text: '%1.', indent: 1080, hanging: 360 },
+    {
+      level: 0,
+      format: 'upperLetter',
+      text: '%1.',
+      indent: OPTION_LIST_INDENT.left,
+      hanging: OPTION_LIST_INDENT.hanging,
+    },
   ];
   const statementLevels: LevelSpec[] = [
-    { level: 0, format: 'decimal', text: '(%1)', indent: 1080, hanging: 360 },
+    {
+      level: 0,
+      format: 'decimal',
+      text: '(%1)',
+      indent: STATEMENT_LIST_INDENT.left,
+      hanging: STATEMENT_LIST_INDENT.hanging,
+    },
   ];
 
   const LEVELS_BY_DEFINITION: Record<NumberingDefinition, LevelSpec[]> = {

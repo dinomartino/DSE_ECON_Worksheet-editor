@@ -22,7 +22,7 @@ the same PR.
 | State | Zustand 5, undo/redo with a 100-entry history |
 | Language | TypeScript strict |
 | Export | Raw OOXML via JSZip (hand-built, no `docx` library) |
-| Test | Vitest 4 — 399 tests across 18 files, ~1s |
+| Test | Vitest 4 — 407 tests across 20 files, ~1s |
 | Runtime | Browser-only: client-side `.docx` generation, no API routes |
 
 ## Project structure
@@ -446,17 +446,56 @@ The preview expressed it as `padding-left: 18pt; text-indent: -18pt`, which is a
 left of every other line — on a real question that reads as "the second line is indented
 to the right", and it disagreed with both Word and the paper.
 
-`LIST_INDENT_TWIPS` in `Preview.tsx` now holds the *same twip values*
-`export/docx/numbering.ts` writes, keyed by `definition:level`, rather than an
-approximation that could drift from them. The marker is drawn **absolutely positioned**
-at `left - hanging`: taking it out of the flow moves the number alone, where an in-flow
-marker has to be pulled left by `text-indent` and drags its whole line with it.
+The marker is drawn **absolutely positioned** at `left - hanging`: taking it out of the
+flow moves the number alone, where an in-flow marker has to be pulled left by
+`text-indent` and drags its whole line with it.
+
+**Each level's marker starts where its parent's text starts.** `1.` hangs in the margin
+with the stem at 360; `(a)` begins *at* 360 — under the stem's first word, not under the
+`1.` — with its own text at 720; `(i)` begins at 720, under part (a)'s text. So
+`left - hanging` at each level equals `left` at the level above, and a part reads as a
+continuation of its stem rather than as a separate indented block. Levels 1 and 2 were
+one full step too deep (1080 and 1980), which started a sub-part a third of the way
+across the column and wrapped long parts well before Word did.
+
+`QUESTION_LIST_INDENTS` in **`model/numbering.ts`** is the one definition. Three
+consumers read it and none may import the others: `export/docx/numbering.ts` writes it
+into `w:ind`, `Preview.tsx` lays the paper out with it, and `registry/structured.ts`
+indents a part's *continuation* paragraphs (`PART_TEXT_INDENT` / `SUBPART_TEXT_INDENT`)
+to line up under its first one. `model/` may not import `export/` and neither may the
+registry, so the constant sits below all three. Getting one copy out of step is silent:
+the preview paginates on geometry Word will not reproduce, so page breaks land in
+different places on screen and on paper.
+
+The style classes must add **no margin of their own**. `Sub-question` and
+`Sub-sub-question` carried `ml-6` / `ml-12` *on top of* that padding, so every part was
+indented twice — once by the numbering the export uses, again by a class the export knows
+nothing about.
 
 - **The preview pins the same numbers.** `.paper` sets `font-size: 11pt` and a fixed
   `line-height: 12pt`, with zero paragraph margins, mirroring the exporter. Left to
   inherit the app shell's 16px and its ~1.5 leading, the preview packed roughly a third
   less onto a sheet than Word did and every page break landed early — the paginator
   measures these boxes.
+
+### "(4 marks)" trails the last line
+
+A part's marks sit at the right-hand end of its **final** line, dropping to a line of
+their own only when the last line leaves no room. The `.docx` gets this for free: it
+appends a `w:tab` run *after* the text against a right-aligned stop at the content edge,
+so the marks flow to the end of the paragraph and land on whichever line that turns out
+to be.
+
+The preview could not use `float: right` for it. A float is placed when the line box it
+sits in is built, so a marks span emitted before the text always attached to the **first**
+line — and it shortened that line, wrapping the stem earlier than Word does. The preview
+therefore disagreed with the export about both the marks' position and where the text
+broke. The span is emitted **after** the text instead, so the final line box is the only
+one it can attach to, and is `whitespace-nowrap` so it wraps whole rather than splitting
+"(4" from "marks)".
+
+A one-line part looks correct either way, which is why this survived: it only shows on a
+part long enough to wrap.
 
 `BAND_ROW_TWIPS` in `model/page.ts` is the same 240tw, since a band row is one paragraph
 in that same box. It is duplicated rather than imported (`model/` must not depend on

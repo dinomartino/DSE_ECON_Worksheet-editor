@@ -7,6 +7,52 @@ import type { Question, Worksheet } from './types';
  * never disagree.
  */
 
+/**
+ * List geometry, in twips: where each level's marker hangs and where its text begins.
+ *
+ * **Each level's marker starts where its parent's text starts.** That is the staircase a
+ * real paper prints — "1." hangs in the margin with the stem at 360, "(a)" begins *at*
+ * 360 under the stem's first word, "(i)" at 720 under part (a)'s text — so
+ * `left - hanging` at each level equals `left` at the level above.
+ *
+ * It lives in `model/` because three places need the same numbers and none of them may
+ * import the others: `export/docx/numbering.ts` writes them into `w:ind`,
+ * `Preview.tsx` lays the paper out with them (and the paginator measures those boxes),
+ * and `registry/structured.ts` indents a part's *continuation* paragraphs to line up
+ * under its first one. `model/` may not import `export/`, and the registry may not
+ * either, so the shared constant has to sit below all three.
+ *
+ * Getting one copy out of step is silent: the preview paginates on geometry Word will
+ * not reproduce, so page breaks land in different places on screen and on paper.
+ */
+export interface ListLevelIndent {
+  /** Where the text column sits. */
+  left: number;
+  /** How far the marker alone is pulled back into the margin. */
+  hanging: number;
+}
+
+export const QUESTION_LIST_INDENTS: readonly ListLevelIndent[] = [
+  { left: 360, hanging: 360 },
+  { left: 720, hanging: 360 },
+  // A 360-twip hang is too narrow for three-character romans: "(iii)" collides with the
+  // text. 450 leaves room up to "(viii)" while still starting the marker at 720.
+  { left: 1170, hanging: 450 },
+];
+
+/** MCQ options and statements are one flat level, indented under the stem. */
+export const OPTION_LIST_INDENT: ListLevelIndent = { left: 1080, hanging: 360 };
+export const STATEMENT_LIST_INDENT: ListLevelIndent = { left: 1080, hanging: 360 };
+
+/**
+ * Where a part's or sub-part's *continuation* paragraphs sit.
+ *
+ * A second paragraph inside part (a) carries no marker, so it is indented directly to
+ * the same text column its first paragraph uses — `left` at that level.
+ */
+export const PART_TEXT_INDENT = QUESTION_LIST_INDENTS[1].left;
+export const SUBPART_TEXT_INDENT = QUESTION_LIST_INDENTS[2].left;
+
 export interface NumberedQuestion {
   question: Question;
   /**

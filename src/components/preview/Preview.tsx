@@ -36,7 +36,12 @@ import { diagramSvg } from "@/render/diagram";
 import type { EditTarget, RenderNode, TextNode } from "@/render/ir";
 import { bandFieldText, renderWorksheet } from "@/render/worksheet";
 import { listQuestionTypes, requireQuestionType } from "@/registry";
-import { computeNumbering } from "@/model/numbering";
+import {
+  computeNumbering,
+  OPTION_LIST_INDENT,
+  QUESTION_LIST_INDENTS,
+  STATEMENT_LIST_INDENT,
+} from "@/model/numbering";
 
 /** Human name per layout kind, for the drag ghost. */
 const LAYOUT_DRAG_NAME: Record<string, string> = {
@@ -267,8 +272,20 @@ const STYLE_CLASS: Record<string, string> = {
   "Question Stem": "",
   Statement: "ml-8",
   "MCQ Option": "ml-8",
-  "Sub-question": "ml-6",
-  "Sub-sub-question": "ml-12",
+  /*
+   * No margin of their own: a part's indent comes from the list geometry.
+   *
+   * These carried `ml-6` / `ml-12` *on top of* the `paddingLeft` derived from
+   * `QUESTION_LIST_INDENTS`, so every part and sub-part was indented twice — once by the
+   * numbering the export uses and again by a class the export knows nothing about. The
+   * preview therefore started (a) and (i) further right than Word does and wrapped their
+   * text earlier, which is half of why long parts broke lines in the wrong places.
+   *
+   * A part with no `listRef` (a continuation paragraph) is positioned by `node.indent`
+   * instead, which the registry sets from the same constants.
+   */
+  "Sub-question": "",
+  "Sub-sub-question": "",
   Marks: "text-right",
   "Table Caption": "text-center italic paper-line-10",
   "Image Caption": "text-center italic paper-line-10",
@@ -343,12 +360,17 @@ function runFormatToTextFormat(run: RunFormat): TextFormat {
  * indented — and it disagreed with both Word and the reference paper, where a stem's
  * wrapped lines align flush under the first word with only the number in the margin.
  */
+/*
+ * The same twips `export/docx/numbering.ts` writes into `w:ind`, taken from the one
+ * definition in `model/numbering.ts` rather than restated — the paginator measures these
+ * boxes, so a preview on different geometry breaks pages where Word will not.
+ */
 const LIST_INDENT_TWIPS: Record<string, { left: number; hanging: number }> = {
-  'question:0': { left: 360, hanging: 360 },
-  'question:1': { left: 1080, hanging: 360 },
-  'question:2': { left: 1980, hanging: 540 },
-  'option:0': { left: 1080, hanging: 360 },
-  'statement:0': { left: 1080, hanging: 360 },
+  'question:0': QUESTION_LIST_INDENTS[0],
+  'question:1': QUESTION_LIST_INDENTS[1],
+  'question:2': QUESTION_LIST_INDENTS[2],
+  'option:0': OPTION_LIST_INDENT,
+  'statement:0': STATEMENT_LIST_INDENT,
 };
 
 /** Twips to points, the unit the preview lays the paper out in. */
@@ -508,11 +530,6 @@ function TextNodeView({
         ...formatStyle(node.format),
       }}
     >
-      {node.marks !== undefined && (
-        <span className="float-right ml-2">
-          {marksLabel(node.marks, language)}
-        </span>
-      )}
       {listIndent && node.listRef && (
         /*
          * The marker is derived, never stored, so it always matches the export.
@@ -531,6 +548,33 @@ function TextNodeView({
         </span>
       )}
       {richNodes(node.text, language, node.edit, ctx)}
+      {node.marks !== undefined && (
+        /*
+         * "(4 marks)" trails the **last** line, as the reference paper prints it and as
+         * the .docx already did.
+         *
+         * The `.docx` appends a `w:tab` run after the text against a right-aligned stop
+         * at the content edge, so the marks flow to the end of the paragraph and land on
+         * whichever line that turns out to be — dropping to their own line only when the
+         * last line leaves no room.
+         *
+         * `float: right` could not reproduce that. A float is placed when the line box it
+         * sits in is built, so it always attached to the *first* line — and worse, it
+         * shortened that line, wrapping the stem earlier than Word does. So the preview
+         * disagreed with the export about both the marks' position and where the text
+         * broke.
+         *
+         * The replacement is a right float emitted **after** the text: `float` still takes
+         * it out of the flow (so it never shortens a line), while coming last means the
+         * only line box it can attach to is the final one.
+         * A `min-width` on the run before it is not needed — the label is
+         * `whitespace-nowrap`, so it wraps whole rather than splitting "(4" from
+         * "marks)".
+         */
+        <span className="float-right whitespace-nowrap pl-4">
+          {marksLabel(node.marks, language)}
+        </span>
+      )}
     </p>
   );
 }

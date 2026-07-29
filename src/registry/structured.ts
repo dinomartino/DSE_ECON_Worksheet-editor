@@ -1,6 +1,11 @@
 import { createStructuredQuestion } from '@/model/factories';
 import { partMarks, questionMarks } from '@/model/marks';
-import { partLabel, subPartLabel } from '@/model/numbering';
+import {
+  PART_TEXT_INDENT,
+  SUBPART_TEXT_INDENT,
+  partLabel,
+  subPartLabel,
+} from '@/model/numbering';
 import { bi, isBiTextEmpty } from '@/model/text';
 import type { StructuredQuestion } from '@/model/types';
 import { blankLine, renderContentBlocks, type RenderContext, type RenderNode } from '@/render/ir';
@@ -79,7 +84,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
         edit: { kind: 'blockText', blockId: partFirst.id },
         listRef: partRef,
       });
-      nodes.push(...renderContentBlocks(partRest, 'Sub-question', { keepNext: true, indent: 720 }));
+      nodes.push(...renderContentBlocks(partRest, 'Sub-question', { keepNext: true, indent: PART_TEXT_INDENT }));
     } else {
       nodes.push({
         kind: 'text',
@@ -89,7 +94,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
         keepNext: true,
         listRef: partRef,
       });
-      nodes.push(...renderContentBlocks(part.blocks, 'Sub-question', { keepNext: true, indent: 720 }));
+      nodes.push(...renderContentBlocks(part.blocks, 'Sub-question', { keepNext: true, indent: PART_TEXT_INDENT }));
     }
 
     if (!hasSubParts && !isBiTextEmpty(part.answer)) {
@@ -98,7 +103,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
         style: 'Marking Scheme',
         teacherOnly: true,
         text: part.answer!,
-        indent: 720,
+        indent: PART_TEXT_INDENT,
         edit: { kind: 'partAnswer', questionId: question.id, partId: part.id },
       });
     }
@@ -128,7 +133,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
           listRef: subRef,
         });
         nodes.push(
-          ...renderContentBlocks(subRest, 'Sub-sub-question', { keepNext: true, indent: 1440 }),
+          ...renderContentBlocks(subRest, 'Sub-sub-question', { keepNext: true, indent: SUBPART_TEXT_INDENT }),
         );
       } else {
         nodes.push({
@@ -140,7 +145,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
           listRef: subRef,
         });
         nodes.push(
-          ...renderContentBlocks(subPart.blocks, 'Sub-sub-question', { keepNext: true, indent: 1440 }),
+          ...renderContentBlocks(subPart.blocks, 'Sub-sub-question', { keepNext: true, indent: SUBPART_TEXT_INDENT }),
         );
       }
 
@@ -150,7 +155,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
           style: 'Marking Scheme',
           teacherOnly: true,
           text: subPart.answer!,
-          indent: 1440,
+          indent: SUBPART_TEXT_INDENT,
           edit: {
             kind: 'subPartAnswer',
             questionId: question.id,
@@ -168,7 +173,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
         style: 'Marking Scheme',
         teacherOnly: true,
         text: part.answer!,
-        indent: 720,
+        indent: PART_TEXT_INDENT,
         edit: { kind: 'partAnswer', questionId: question.id, partId: part.id },
       });
     }
