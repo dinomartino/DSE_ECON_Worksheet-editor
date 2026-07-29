@@ -7,10 +7,12 @@ import type {
   HeaderFooter,
   LayoutElement,
   Question,
+  RunFormatPatch,
   TextFormat,
   Worksheet,
 } from './types';
 import type { EditTarget } from '@/render/ir';
+import { applyRunFormat } from './text';
 
 /**
  * Applying an in-place edit from the preview.
@@ -471,6 +473,87 @@ export function formatOfTarget(
     default:
       return undefined;
   }
+}
+
+/**
+ * The current text of a target, or undefined when it no longer resolves.
+ *
+ * Needed by the per-run path: formatting a *range* has to read the runs it is about to
+ * split, and the toolbar has to report what those characters already carry. Deliberately
+ * built from the same target vocabulary as `applyEditTarget`, so a target that can be
+ * written can also be read.
+ */
+export function textOfTarget(worksheet: Worksheet, target: EditTarget): BiText | undefined {
+  switch (target.kind) {
+    case 'worksheetTitle':
+      return worksheet.title;
+    case 'worksheetInstructions':
+      return worksheet.instructions;
+    case 'blockText': {
+      for (const question of worksheet.questions) {
+        for (const blocks of questionBlockLists(question)) {
+          const match = blocks.find((block) => block.id === target.blockId);
+          if (match && match.kind === 'paragraph') return match.text;
+        }
+      }
+      return undefined;
+    }
+    case 'layoutText': {
+      const element = worksheet.layout.find((entry) => entry.id === target.elementId);
+      return element && isTextLayoutElement(element) ? element.text : undefined;
+    }
+    case 'bandField': {
+      const lists: Array<Band[] | undefined> = [
+        worksheet.bands,
+        worksheet.header?.bands,
+        worksheet.header?.firstPage?.bands,
+        worksheet.footer?.bands,
+        worksheet.footer?.firstPage?.bands,
+      ];
+      for (const bands of lists) {
+        for (const band of bands ?? []) {
+          for (const zone of ['left', 'center', 'right'] as const) {
+            const match = band.zones?.[zone]?.find((field) => field.id === target.fieldId);
+            // A computed field (`totalMarks`) has a label, not authored text, and a
+            // fill-in rule has neither — neither can carry per-run formatting, so they
+            // report nothing rather than a fabricated empty value.
+            if (match) return 'text' in match ? match.text : undefined;
+          }
+        }
+      }
+      return undefined;
+    }
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Format the characters in `[start, end)` of one language side of `target`.
+ *
+ * This is the per-run counterpart to `applyFormatTarget`: instead of an override on the
+ * whole element, it rewrites the element's runs so only the selected characters carry
+ * the new attributes. That is what lets one question stem hold a 14pt bold phrase inside
+ * ordinary body text.
+ *
+ * Built by composing the existing read and write rather than adding a third walk over
+ * the target vocabulary — a new `EditTarget` kind then only has to be taught to
+ * `textOfTarget` and `applyEditTarget` to gain per-run formatting for free.
+ */
+export function applyRunFormatTarget(
+  worksheet: Worksheet,
+  target: EditTarget,
+  side: 'en' | 'zh',
+  start: number,
+  end: number,
+  patch: RunFormatPatch,
+): Worksheet {
+  const current = textOfTarget(worksheet, target);
+  if (!current) return worksheet;
+
+  const next = applyRunFormat(current[side], start, end, patch);
+  if (next === current[side]) return worksheet;
+  return applyEditTarget(worksheet, target, { ...current, [side]: next });
 }
 
 /**

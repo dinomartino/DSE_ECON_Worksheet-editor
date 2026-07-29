@@ -84,7 +84,19 @@ export function run(text: string, fonts: FontPair, options: RunOptions = {}): st
     .join('');
 }
 
-/** Render a RichText array as runs, merging the model's inline attributes. */
+/**
+ * Render a RichText array as runs, merging the model's inline attributes.
+ *
+ * Each run's own attributes win over the element-level `base`, which is what makes
+ * formatting per-text: one paragraph emits several `w:r`, each with its own `w:rPr`, so
+ * a 14pt red phrase can sit inside otherwise ordinary body text.
+ *
+ * Bold/italic/underline **or** with the base rather than overriding it — an element set
+ * bold means every run in it is bold, and a run cannot un-bold itself (nothing in the
+ * UI offers that, and `false` is not distinguishable from "unset" once stored). Size,
+ * colour and fonts **replace** the base, since those are values rather than flags and a
+ * run carrying one is precisely a request to differ from its element.
+ */
 export function richTextRuns(
   text: RichText | undefined,
   fonts: FontPair,
@@ -93,12 +105,14 @@ export function richTextRuns(
   if (!text) return '';
   return text
     .map((inline) =>
-      run(inline.text, fonts, {
+      run(inline.text, inline.fonts ?? fonts, {
         ...base,
         bold: base.bold || inline.bold,
         italic: base.italic || inline.italic,
         underline: base.underline || inline.underline,
         vertAlign: inline.vertAlign ?? base.vertAlign,
+        fontSize: inline.fontSize ?? base.fontSize,
+        color: inline.color ?? base.color,
       }),
     )
     .join('');

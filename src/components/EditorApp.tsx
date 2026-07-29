@@ -12,8 +12,9 @@ import { IconButton } from '@/components/ui';
 import { ChevronRightIcon, CloseIcon } from '@/components/ui/icons';
 import { createTextField, type ZoneName } from '@/model/bands';
 import { DiagramCanvas } from '@/components/editor/DiagramCanvas';
-import { findDiagramBlock, formatOfTarget, targetQuestionId } from '@/model/edits';
-import type { BiText } from '@/model/types';
+import { findDiagramBlock, formatOfTarget, targetQuestionId, textOfTarget } from '@/model/edits';
+import { toRunPatch } from '@/model/text';
+import type { BiText, TextFormat } from '@/model/types';
 import type { EditTarget } from '@/render/ir';
 import { useWorksheetStore, type BandScope } from '@/store/worksheetStore';
 import { worksheetStore } from '@/storage';
@@ -33,6 +34,7 @@ export function EditorApp() {
   const deleteTarget = useWorksheetStore((s) => s.deleteTarget);
   const replaceBlock = useWorksheetStore((s) => s.replaceBlock);
   const formatTarget = useWorksheetStore((s) => s.formatTarget);
+  const formatRuns = useWorksheetStore((s) => s.formatRuns);
   const resizeBlock = useWorksheetStore((s) => s.resizeBlock);
   const resizeLayoutElement = useWorksheetStore((s) => s.resizeLayoutElement);
   const splitLayoutRows = useWorksheetStore((s) => s.splitLayoutRows);
@@ -138,6 +140,35 @@ export function EditorApp() {
   const formatOf = useCallback(
     (target: EditTarget) => formatOfTarget(worksheet, target),
     [worksheet],
+  );
+
+  // The target's current text, so the toolbar can report what a selected *range*
+  // carries rather than what the whole element does.
+  const textOf = useCallback(
+    (target: EditTarget) => textOfTarget(worksheet, target),
+    [worksheet],
+  );
+
+  /*
+   * Format the selected characters rather than the whole element.
+   *
+   * The toolbar speaks `TextFormat` (what an element overrides); a run carries a
+   * `RunFormat`. `toRunPatch` drops the paragraph-only fields — alignment and spacing
+   * cannot belong to three words inside a paragraph — and maps the bar's "clear this"
+   * (`undefined`) onto the run patch's explicit `null`, which is the only way to say
+   * "remove this attribute" in a patch that is spread over an existing run.
+   */
+  const handleFormatRuns = useCallback(
+    (
+      target: EditTarget,
+      side: 'en' | 'zh',
+      start: number,
+      end: number,
+      patch: TextFormat,
+    ) => {
+      formatRuns(target, side, start, end, toRunPatch(patch));
+    },
+    [formatRuns],
   );
 
   // Masthead editing, bundled so it threads through one prop. A new field starts as
@@ -398,7 +429,9 @@ export function EditorApp() {
             onBulkDelete={removeMany}
             onBulkDuplicate={duplicateMany}
             onFormat={formatTarget}
+            onFormatRuns={handleFormatRuns}
             formatOf={formatOf}
+            textOf={textOf}
             onResizeBlock={resizeBlock}
             onResizeRows={resizeLayoutElement}
             onSplitRows={splitLayoutRows}

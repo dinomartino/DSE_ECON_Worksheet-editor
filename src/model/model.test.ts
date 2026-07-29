@@ -8,7 +8,16 @@ import {
 } from './migrations';
 import { partMarks, questionMarks, worksheetMarks } from './marks';
 import { computeNumbering, toLowerLetter, toLowerRoman } from './numbering';
-import { hasLineBreak, parseRuns, plain, runLines, serializeRuns } from './text';
+import {
+  applyRunFormat,
+  commonRunFormat,
+  hasLineBreak,
+  sourceOffsetToText,
+  parseRuns,
+  plain,
+  runLines,
+  serializeRuns,
+} from './text';
 import { createMcqQuestion, createWorksheet } from './factories';
 import { resolveFlow } from './flow';
 import { MARGIN_PRESETS, cmToTwips, contentWidth, twipsToCm } from './page';
@@ -91,6 +100,177 @@ describe('rich text round-trip', () => {
   it('handles CJK and mixed-script text unchanged', () => {
     const runs = parseRuns('GDP平減物價指數(GDP deflator)');
     expect(plain(runs)).toBe('GDP平減物價指數(GDP deflator)');
+  });
+});
+
+/**
+ * Per-run formatting: a range inside one element, not the whole element.
+ *
+ * This is the model half of "different sizes in the same text box". The range maths is
+ * pure, so it is pinned here without a DOM — the editing surface only has to report two
+ * offsets, and everything below is exercised directly.
+ */
+describe('per-run formatting over a character range', () => {
+  it('formats only the selected characters, splitting the run', () => {
+    const runs = parseRuns('Real GDP rises');
+    // "GDP" is characters 5..8.
+    const next = applyRunFormat(runs, 5, 8, { fontSize: 14, color: 'C00000' });
+
+    expect(plain(next)).toBe('Real GDP rises');
+    expect(next.map((r) => r.text)).toEqual(['Real ', 'GDP', ' rises']);
+    expect(next[1]).toMatchObject({ text: 'GDP', fontSize: 14, color: 'C00000' });
+    // The untouched neighbours carry no size of their own — they inherit.
+    expect(next[0].fontSize).toBeUndefined();
+    expect(next[2].fontSize).toBeUndefined();
+  });
+
+  it('preserves formatting already on the runs it splits', () => {
+    const runs = parseRuns('Real **GDP deflator** rises');
+    // Size only the word "GDP" inside the bold run.
+    const start = plain(runs).indexOf('GDP');
+    const next = applyRunFormat(runs, start, start + 3, { fontSize: 18 });
+
+    const sized = next.find((r) => r.fontSize === 18);
+    expect(sized).toMatchObject({ text: 'GDP', bold: true, fontSize: 18 });
+    // The rest of the bold run stays bold and unsized.
+    expect(next.find((r) => r.text === ' deflator')).toMatchObject({ bold: true });
+    expect(next.find((r) => r.text === ' deflator')?.fontSize).toBeUndefined();
+    expect(plain(next)).toBe('Real GDP deflator rises');
+  });
+
+  it('clears an attribute with null and merges the runs back together', () => {
+    const runs = applyRunFormat(parseRuns('Real GDP rises'), 5, 8, { fontSize: 14 });
+    expect(runs.length).toBe(3);
+
+    // Clearing the override should leave one run again, not three identical ones.
+    const cleared = applyRunFormat(runs, 5, 8, { fontSize: null });
+    expect(cleared.length).toBe(1);
+    expect(cleared[0].text).toBe('Real GDP rises');
+    expect(cleared[0].fontSize).toBeUndefined();
+  });
+
+  it('treats an empty or reversed range as a no-op', () => {
+    const runs = parseRuns('Real GDP rises');
+    // A caret with no selection must not reformat the whole element.
+    expect(applyRunFormat(runs, 5, 5, { bold: true })).toBe(runs);
+    // A backwards drag reports end < start; it selects the same characters.
+    const backwards = applyRunFormat(runs, 8, 5, { bold: true });
+    expect(backwards.find((r) => r.bold)?.text).toBe('GDP');
+  });
+
+  it('clamps a range that runs past the end of the text', () => {
+    const runs = parseRuns('Short');
+    const next = applyRunFormat(runs, 0, 999, { bold: true });
+    expect(plain(next)).toBe('Short');
+    expect(next.every((r) => r.bold)).toBe(true);
+  });
+
+  it('reports only the formatting every covered run agrees on', () => {
+    const runs = applyRunFormat(parseRuns('Real GDP rises'), 5, 8, { fontSize: 14 });
+
+    // Inside the sized word: the size is common.
+    expect(commonRunFormat(runs, 5, 8).fontSize).toBe(14);
+    // Spanning sized and unsized text: no single size describes the selection, so the
+    // toolbar must show none rather than claiming the first run's value.
+    expect(commonRunFormat(runs, 0, 14).fontSize).toBeUndefined();
+  });
+
+  it('maps a selection in the marker source onto plain-text offsets', () => {
+    // The editor's textarea holds the serialized form, which contains markers the model
+    // does not. Selecting "deflator" there is a different pair of numbers than in the
+    // plain text, and formatting the wrong range is invisible until export.
+    const source = 'Real **GDP** deflator';
+    expect(plain(parseRuns(source))).toBe('Real GDP deflator');
+
+    // Offset 0 and pure-text spans before any marker are unchanged.
+    expect(sourceOffsetToText(source, 0)).toBe(0);
+    expect(sourceOffsetToText(source, 5)).toBe(5);
+
+    // "deflator" starts at source index 13, text index 9.
+    expect(source.indexOf('deflator')).toBe(13);
+    expect(sourceOffsetToText(source, 13)).toBe(9);
+    expect(sourceOffsetToText(source, source.length)).toBe('Real GDP deflator'.length);
+
+    // A selection landing inside the marked word maps to the word itself.
+    expect(sourceOffsetToText(source, source.indexOf('GDP'))).toBe(5);
+  });
+
+  it('maps every offset consistently, including after a closing marker', () => {
+    /*
+     * The regression that produced a visibly wrong export: selecting a word *after* a
+     * bolded one formatted a range shifted one character left, splitting the next word
+     * mid-way. It survived a spot check because the offsets before the first marker were
+     * right — only the ones past a closing `**` were wrong.
+     */
+    for (const source of [
+      'Explain how **price ceiling** affects',
+      'Real **GDP** deflator',
+      'a *b* c __d__ e',
+      '**all bold**',
+      'plain text only',
+    ]) {
+      const text = plain(parseRuns(source));
+
+      // The whole string maps to the whole text, and the mapping never goes backwards.
+      expect(sourceOffsetToText(source, source.length)).toBe(text.length);
+      let previous = 0;
+      for (let i = 0; i <= source.length; i++) {
+        const mapped = sourceOffsetToText(source, i);
+        expect(mapped).toBeGreaterThanOrEqual(previous);
+        expect(mapped).toBeLessThanOrEqual(text.length);
+        previous = mapped;
+      }
+
+      // Every word starts at the same place in both coordinate systems.
+      for (const word of text.split(' ').filter(Boolean)) {
+        const at = source.indexOf(word);
+        if (at < 0) continue;
+        expect(sourceOffsetToText(source, at), `${word} in ${source}`).toBe(text.indexOf(word));
+      }
+    }
+  });
+
+  it('maps offsets across superscript and subscript markers', () => {
+    const source = 'H_{2}O and x^{2}';
+    expect(plain(parseRuns(source))).toBe('H2O and x2');
+    expect(sourceOffsetToText(source, source.length)).toBe('H2O and x2'.length);
+    // "O and" begins after the subscript token.
+    expect(sourceOffsetToText(source, source.indexOf('O and'))).toBe(2);
+  });
+
+  it('cannot express size or colour in the marker string', () => {
+    /*
+     * The trap behind the one real bug in this feature.
+     *
+     * `serializeRuns` spells bold/italic/underline/sup/sub and nothing else, so a run's
+     * size and colour survive only as long as nobody re-parses the string. The in-place
+     * editor holds exactly that string, which is why it must not re-parse an unchanged
+     * one: doing so silently erased formatting the toolbar had just applied.
+     */
+    const runs = applyRunFormat(parseRuns('Real GDP rises'), 5, 8, {
+      fontSize: 14,
+      color: 'C00000',
+    });
+    const source = serializeRuns(runs);
+    expect(source).toBe('Real GDP rises');
+
+    const reparsed = parseRuns(source);
+    expect(plain(reparsed)).toBe(plain(runs));
+    // The round trip is lossy for run-level values — asserted so the guard in
+    // `InlineEditable.commit` is never removed as a redundant optimisation.
+    expect(reparsed.some((r) => r.fontSize !== undefined)).toBe(false);
+    expect(runs.some((r) => r.fontSize === 14)).toBe(true);
+  });
+
+  it('keeps per-run sizes through a save/load round trip', () => {
+    // The runs are stored as-is, so this is really a guard on `KNOWN_KEYS` and the
+    // migration chain leaving unknown run attributes alone.
+    const runs = applyRunFormat(parseRuns('Real GDP rises'), 5, 8, {
+      fontSize: 14,
+      color: 'C00000',
+    });
+    const round = JSON.parse(JSON.stringify(runs)) as typeof runs;
+    expect(round[1]).toMatchObject({ text: 'GDP', fontSize: 14, color: 'C00000' });
   });
 });
 

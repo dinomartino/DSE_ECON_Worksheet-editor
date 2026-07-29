@@ -14,6 +14,7 @@ import {
   applyDeleteTarget,
   applyEditTarget,
   applyFormatTarget,
+  applyRunFormatTarget,
   applyResizeBlock,
   replaceBlockById,
 } from '@/model/edits';
@@ -40,6 +41,7 @@ import type {
   PageSetup,
   FlowItem,
   Question,
+  RunFormatPatch,
   TextFormat,
   Worksheet,
 } from '@/model/types';
@@ -130,6 +132,20 @@ interface WorksheetState {
   applyEdit: (target: EditTarget, next: BiText) => void;
   deleteTarget: (target: EditTarget) => void;
   formatTarget: (target: EditTarget, patch: Partial<TextFormat>) => void;
+  /**
+   * Format one character range inside a target — the per-run path.
+   *
+   * Separate verb from `formatTarget` because the subject is different: that one
+   * overrides the whole element, this one rewrites the runs so only the selected
+   * characters differ. Both are one `commit`, so either is a single undo entry.
+   */
+  formatRuns: (
+    target: EditTarget,
+    side: 'en' | 'zh',
+    start: number,
+    end: number,
+    patch: RunFormatPatch,
+  ) => void;
   resizeBlock: (blockId: string, widthPx: number) => void;
   /**
    * Extend a sizeable layout element — answer lines by count, a spacer by points.
@@ -682,6 +698,8 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   deleteTarget: (target) => get().commit((draft) => applyDeleteTarget(draft, target)),
   formatTarget: (target, patch) =>
     get().commit((draft) => applyFormatTarget(draft, target, patch)),
+  formatRuns: (target, side, start, end, patch) =>
+    get().commit((draft) => applyRunFormatTarget(draft, target, side, start, end, patch)),
   resizeBlock: (blockId, widthPx) =>
     get().commit((draft) => applyResizeBlock(draft, blockId, widthPx)),
   resizeLayoutElement: (elementId, value) =>

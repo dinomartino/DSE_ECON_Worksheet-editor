@@ -4,9 +4,11 @@ import {
   applyDeleteTarget,
   applyEditTarget,
   applyResizeBlock,
+  applyRunFormatTarget,
   blockSize,
   describeDelete,
   targetQuestionId,
+  textOfTarget,
 } from './edits';
 import { createDiagramBlock } from './factories';
 import { bi, isBiTextEmpty, plain } from './text';
@@ -287,6 +289,57 @@ describe('in-place editing preserves the other language (§5.2)', () => {
     const after = enOnly.questions[0] as McqQuestion;
     expect(plain(after.options[0].text.en)).toBe('Price soars');
     expect(plain(after.options[0].text.zh)).toBe('價格上升');
+  });
+});
+
+/**
+ * Formatting a range through an `EditTarget` — the store-facing half of per-run
+ * formatting. The range maths itself is covered in `model.test.ts`; these pin that it
+ * reaches the right field and writes back through the same target vocabulary.
+ */
+describe('formatting a character range inside a target', () => {
+  it('formats only the selected characters of the named field', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const start = plain(worksheet.title.en).indexOf('Economics');
+    expect(start).toBeGreaterThanOrEqual(0);
+
+    const next = applyRunFormatTarget(
+      worksheet,
+      { kind: 'worksheetTitle' },
+      'en',
+      start,
+      start + 'Economics'.length,
+      { fontSize: 20, color: 'C00000' },
+    );
+
+    // The text is untouched; only the runs are split.
+    expect(plain(next.title.en)).toBe(plain(worksheet.title.en));
+    const sized = next.title.en.find((run) => run.fontSize === 20);
+    expect(sized?.text).toBe('Economics');
+    expect(sized?.color).toBe('C00000');
+    // The Chinese side is left entirely alone.
+    expect(next.title.zh).toEqual(worksheet.title.zh);
+  });
+
+  it('leaves the document unchanged when the target no longer resolves', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const next = applyRunFormatTarget(
+      worksheet,
+      { kind: 'blockText', blockId: 'gone' },
+      'en',
+      0,
+      3,
+      { bold: true },
+    );
+    expect(next).toBe(worksheet);
+  });
+
+  it('reads back the text of a target it can format', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    expect(plain(textOfTarget(worksheet, { kind: 'worksheetTitle' })?.en)).toBe(
+      plain(worksheet.title.en),
+    );
+    expect(textOfTarget(worksheet, { kind: 'blockText', blockId: 'gone' })).toBeUndefined();
   });
 });
 

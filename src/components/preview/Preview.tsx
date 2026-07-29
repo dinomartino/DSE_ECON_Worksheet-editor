@@ -18,13 +18,14 @@ import {
 import { zonesOf, type ZoneName } from "@/model/bands";
 import { describeDelete, isFormattable } from "@/model/edits";
 import { worksheetMarks } from "@/model/marks";
-import { plain, runLines } from "@/model/text";
+import { commonRunFormat, plain, runLines } from "@/model/text";
 import type {
   Band,
   BiText,
   HeaderFooter,
   LanguageMode,
   OutputMode,
+  RunFormat,
   TextFormat,
   Worksheet,
 } from "@/model/types";
@@ -91,7 +92,7 @@ export interface BandEditingHandlers {
   };
 }
 import { FormatToolbar } from "./FormatToolbar";
-import { InlineEditable } from "./InlineEditable";
+import { InlineEditable, type TextSelection } from "./InlineEditable";
 import { ResizableBlock } from "./ResizableBlock";
 import { ResizableRows } from "./ResizableRows";
 import { MIN_ANSWER_LINES, MIN_SPACER_PT } from "@/model/flow";
@@ -161,7 +162,30 @@ function runSpans(runs: BiText["en"], key: string) {
     if (runItem.underline) content = <u>{content}</u>;
     if (runItem.vertAlign === "superscript") content = <sup>{content}</sup>;
     if (runItem.vertAlign === "subscript") content = <sub>{content}</sub>;
-    return <span key={`${key}-${index}`}>{content}</span>;
+
+    /*
+     * A run's own size, colour and font, mirroring `richTextRuns` in the exporter — this
+     * is what makes a 14pt phrase inside an 11pt stem visible on the page rather than
+     * only in Word.
+     *
+     * `lineHeight` is deliberately left alone. The sheet is on a fixed 12pt grid (see
+     * `.paper`), and a taller run inside a line must not push that line apart, exactly
+     * as `w:lineRule="exact"` refuses to grow. So an enlarged run overflows its line box
+     * on screen the same way it does in print.
+     */
+    const style: React.CSSProperties = {};
+    if (runItem.fontSize !== undefined) style.fontSize = `${runItem.fontSize}pt`;
+    if (runItem.color) style.color = `#${runItem.color}`;
+    if (runItem.fonts) {
+      style.fontFamily = `'${runItem.fonts.latin}', '${runItem.fonts.eastAsia}', serif`;
+    }
+    const styled = Object.keys(style).length > 0 ? style : undefined;
+
+    return (
+      <span key={`${key}-${index}`} style={styled}>
+        {content}
+      </span>
+    );
   });
 }
 
@@ -193,6 +217,9 @@ function richNodes(
         onSelect={() => ctx.onSelectElement(edit, sideKey)}
         onDeselect={ctx.onClearSelection}
         onCommit={(next) => ctx.onEdit(edit, next)}
+        onFlush={(next) => ctx.onEditKeepingSelection(edit, next)}
+        onSelectionChange={ctx.onTextSelectionChange}
+        keepEditing={ctx.keepEditing}
       >
         {rendered}
       </InlineEditable>
@@ -221,20 +248,30 @@ function richNodes(
   );
 }
 
+/*
+ * Paper styles carry no vertical margin.
+ *
+ * The .docx sets every paragraph to a fixed 12pt line with `w:before`/`w:after` of zero
+ * (see `export/docx/styles.ts`), mirroring the reference paper, so the preview must not
+ * add margins of its own: a `mt-3` here is a gap that exists on screen and not in Word,
+ * and the paginator measures the screen — every such margin is a page that breaks in the
+ * wrong place. Font size and leading come from `.paper`, which pins both to the exported
+ * values; only the size *deltas* (title, headings, captions) are named here.
+ */
 const STYLE_CLASS: Record<string, string> = {
-  "Worksheet Title": "text-center text-xl font-bold mb-2",
-  Instructions: "italic mb-3",
-  "Section Heading": "text-lg font-bold mt-4 mb-2",
-  "Question Stem": "mt-3",
+  "Worksheet Title": "text-center font-bold paper-line-16",
+  Instructions: "italic",
+  "Section Heading": "font-bold paper-line-14",
+  "Question Stem": "",
   Statement: "ml-8",
   "MCQ Option": "ml-8",
-  "Sub-question": "ml-6 mt-1",
-  "Sub-sub-question": "ml-12 mt-1",
+  "Sub-question": "ml-6",
+  "Sub-sub-question": "ml-12",
   Marks: "text-right",
-  "Table Caption": "text-center text-xs italic",
-  "Image Caption": "text-center text-xs italic",
-  Answer: "font-bold text-red-700 dark:text-red-400 mt-1",
-  "Marking Scheme": "text-[#4a30c2] ml-4 text-sm",
+  "Table Caption": "text-center italic paper-line-10",
+  "Image Caption": "text-center italic paper-line-10",
+  Answer: "font-bold text-red-700 dark:text-red-400",
+  "Marking Scheme": "text-[#4a30c2] ml-4",
   Body: "",
 };
 
@@ -271,6 +308,25 @@ const TARGET_NAME: Record<EditTarget["kind"], string> = {
   labelListCell: "Label row",
 };
 
+/**
+ * A run's shared formatting, in the shape the toolbar already speaks.
+ *
+ * The bar reports and edits a `TextFormat` (an element's overrides); a selection carries
+ * a `RunFormat`. The overlapping fields are the ones a range can actually carry — size,
+ * colour, the three flags — so the adapter is a projection rather than a conversion, and
+ * paragraph-level fields (alignment, spacing) simply have no run equivalent.
+ */
+function runFormatToTextFormat(run: RunFormat): TextFormat {
+  return {
+    ...(run.fontSize !== undefined ? { fontSize: run.fontSize } : {}),
+    ...(run.color !== undefined ? { color: run.color } : {}),
+    ...(run.bold !== undefined ? { bold: run.bold } : {}),
+    ...(run.italic !== undefined ? { italic: run.italic } : {}),
+    ...(run.underline !== undefined ? { underline: run.underline } : {}),
+    ...(run.fonts !== undefined ? { fonts: run.fonts } : {}),
+  };
+}
+
 /** Hanging indent per list level, approximating the docx's `w:ind` values (§7.2). */
 const HANGING_INDENT_PT: Record<number, number> = { 0: 18, 1: 18, 2: 27 };
 
@@ -279,9 +335,30 @@ type EditHandler = (target: EditTarget, next: BiText) => void;
 /** Everything the editable spans need, bundled so it threads through one prop. */
 export interface EditContext {
   onEdit: EditHandler;
+  /**
+   * Commit text **without** ending the selection — used to flush typing that has not
+   * been committed yet before the toolbar formats a range of it.
+   *
+   * Separate from `onEdit` because that one clears `selectedElement` (an edit normally
+   * *is* the end of the interaction), and clearing it here would take the toolbar away
+   * mid-gesture, before the click that opened it could act.
+   */
+  onEditKeepingSelection: EditHandler;
   onSelectElement: (target: EditTarget, side: "en" | "zh") => void;
   onClearSelection: () => void;
   isSelected: (target: EditTarget, side: "en" | "zh") => boolean;
+  /**
+   * The characters selected inside the field being edited, so the format toolbar can
+   * act on a range rather than on the whole element (§ per-run formatting).
+   *
+   * `undefined` means no range — a caret, or no open editor — and the toolbar falls
+   * back to formatting the element as a whole, which is still the right default for
+   * "make this whole heading bigger".
+   */
+  textSelection?: TextSelection;
+  onTextSelectionChange?: (selection: TextSelection | undefined) => void;
+  /** True while a toolbar click is in flight, so the field must not close on blur. */
+  keepEditing?: boolean;
   /**
    * Resizing a picture on the page.
    *
@@ -1530,6 +1607,23 @@ interface Props {
   /** Current formatting of a target, so the toolbar can show its state. */
   formatOf?: (target: EditTarget) => TextFormat | undefined;
   /**
+   * The current text of a target, so the toolbar can read what a selected *range*
+   * already carries. Without it the bar would report the element's formatting for a
+   * selection that overrides it.
+   */
+  textOf?: (target: EditTarget) => BiText | undefined;
+  /**
+   * Format just the characters in `[start, end)` of one language side — the per-run
+   * path. Omit to keep formatting whole-element only.
+   */
+  onFormatRuns?: (
+    target: EditTarget,
+    side: "en" | "zh",
+    start: number,
+    end: number,
+    patch: TextFormat,
+  ) => void;
+  /**
    * Move `id` to `targetId`'s position in the document flow. Omit to disable page drag.
    * `position` says which side of the target to land on.
    */
@@ -1746,6 +1840,8 @@ export function Preview({
   onBulkDuplicate,
   onFormat,
   formatOf,
+  textOf,
+  onFormatRuns,
   onResizeBlock,
   onResizeRows,
   onSplitRows,
@@ -1998,6 +2094,19 @@ export function Preview({
   const [selectedElement, setSelectedElement] = useState<
     { target: EditTarget; side: "en" | "zh" } | undefined
   >();
+
+  /*
+   * The characters selected inside the field being edited.
+   *
+   * Its own state rather than part of `selectedElement`: that one says *which element*
+   * the page is acting on and survives the editor closing, while this says *which
+   * characters within it* and exists only while a range is live. Folding them together
+   * would make every element selection carry a meaningless range.
+   *
+   * `formatting` is held for exactly one commit — see `applyFormat` below.
+   */
+  const [textSelection, setTextSelection] = useState<TextSelection | undefined>();
+  const [formatting, setFormatting] = useState(false);
 
   // The picture selected for resizing. Its own state rather than a variant of
   // `selectedElement`, because a block has no language side and nothing to format —
@@ -2438,6 +2547,35 @@ export function Preview({
    */
   const [selectionPt, setSelectionPt] = useState<number | undefined>();
 
+  /*
+   * The live text range the toolbar should format, with the formatting those characters
+   * already share.
+   *
+   * Present only when a range is genuinely selected inside the element the page is
+   * acting on — a caret publishes no selection, and a range left over from a *different*
+   * element is discarded by the side check, so the bar can never apply a size to text
+   * the teacher is no longer looking at.
+   *
+   * When this is undefined the toolbar formats the whole element, which stays the right
+   * behaviour for "make this entire heading bigger".
+   */
+  const runRange = useMemo(() => {
+    if (!textSelection || !selectedElement) return undefined;
+    if (textSelection.side !== selectedElement.side) return undefined;
+    if (textSelection.start >= textSelection.end) return undefined;
+
+    const text = textOf?.(selectedElement.target);
+    if (!text) return undefined;
+    return {
+      side: textSelection.side,
+      start: textSelection.start,
+      end: textSelection.end,
+      common: runFormatToTextFormat(
+        commonRunFormat(text[textSelection.side], textSelection.start, textSelection.end),
+      ),
+    };
+  }, [textSelection, selectedElement, textOf]);
+
   useEffect(() => {
     // No selection means no toolbar; the render below gates on `selectedElement`, so a
     // stale rect is simply never read rather than needing to be cleared here.
@@ -2511,6 +2649,7 @@ export function Preview({
           onEdit(target, next);
           setSelectedElement(undefined);
         },
+        onEditKeepingSelection: onEdit,
         onSelectElement: (target, side) => {
           setSelectedElement({ target, side });
           // Selecting text drops the picture selection, so the handles never linger
@@ -2521,6 +2660,9 @@ export function Preview({
         isSelected: (target, side) =>
           selectedElement?.side === side &&
           JSON.stringify(selectedElement.target) === JSON.stringify(target),
+        textSelection,
+        onTextSelectionChange: setTextSelection,
+        keepEditing: formatting,
         resize: onResizeBlock
           ? {
               scale,
@@ -3590,11 +3732,55 @@ export function Preview({
         isFormattable(selectedElement.target) && (
           <FormatToolbar
             dock={dockRect}
-            subject={TARGET_NAME[selectedElement.target.kind]}
+            /*
+             * The bar names what a click will change: the selected words when a range is
+             * live, the whole element otherwise. Without this the same button silently
+             * means two different things and the teacher cannot tell which they will get.
+             */
+            subject={
+              runRange
+                ? `${TARGET_NAME[selectedElement.target.kind]} · selected text`
+                : TARGET_NAME[selectedElement.target.kind]
+            }
             inheritedPt={selectionPt}
             onClose={() => setSelectedElement(undefined)}
-            format={formatOf?.(selectedElement.target)}
-            onChange={(patch) => onFormat(selectedElement.target, patch)}
+            /*
+             * Report the *selection's* own formatting when a range is live, so the bar
+             * shows what those characters actually carry — reporting the element's
+             * format there would claim 11pt for a phrase the teacher just set to 14pt.
+             */
+            /*
+             * With a range live the bar reports **only what those characters carry**,
+             * not the element's own overrides merged underneath.
+             *
+             * Merging them was wrong in a way that silently inverted a click: the Title
+             * style is bold, so the merged format said `bold: true` for a selection that
+             * carried no bold of its own, and `toggle` therefore sent "clear bold" —
+             * un-bolding the selection instead of bolding it, while the size dropdown
+             * reported the element's size rather than the selection's.
+             */
+            format={runRange ? runRange.common : formatOf?.(selectedElement.target)}
+            onChange={(patch) => {
+              if (runRange && onFormatRuns) {
+                /*
+                 * Hold the editor open across the commit. The click already blurred the
+                 * textarea; without this flag its blur handler would commit and close,
+                 * throwing away the range before the next click could format it too.
+                 * Released on the following tick, once the store has applied the edit.
+                 */
+                setFormatting(true);
+                onFormatRuns(
+                  selectedElement.target,
+                  runRange.side,
+                  runRange.start,
+                  runRange.end,
+                  patch,
+                );
+                window.setTimeout(() => setFormatting(false), 0);
+                return;
+              }
+              onFormat(selectedElement.target, patch);
+            }}
             onReset={() => {
               const current = formatOf?.(selectedElement.target);
               if (!current) return;

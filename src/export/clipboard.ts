@@ -42,6 +42,16 @@ function richHtml(text: BiText | undefined, language: LanguageMode): string {
         if (runItem.bold) html = `<b>${html}</b>`;
         if (runItem.italic) html = `<i>${html}</i>`;
         if (runItem.underline) html = `<u>${html}</u>`;
+        // A run's own size, colour and font, matching `richTextRuns` in the .docx
+        // backend — pasting into Word must carry the same per-run formatting the
+        // exported file would.
+        const styles: string[] = [];
+        if (runItem.fontSize !== undefined) styles.push(`font-size:${runItem.fontSize}pt;`);
+        if (runItem.color) styles.push(`color:#${runItem.color};`);
+        if (runItem.fonts) {
+          styles.push(`font-family:'${runItem.fonts.latin}','${runItem.fonts.eastAsia}';`);
+        }
+        if (styles.length) html = `<span style="${styles.join('')}">${html}</span>`;
         return html;
       })
       .join('');

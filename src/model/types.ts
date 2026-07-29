@@ -13,13 +13,45 @@ import type { Diagram } from './diagram';
 
 export type VertAlign = 'superscript' | 'subscript';
 
+/**
+ * One stretch of text that shares formatting — the unit Word calls a run.
+ *
+ * Formatting is **per run, not per element**: a single question stem can hold a 14pt
+ * bold phrase next to ordinary body text, because a `RichText` is an array of these and
+ * each carries its own attributes. This mirrors `w:r`/`w:rPr` exactly, which is what
+ * lets one paragraph export as several runs with different properties.
+ *
+ * Every field is optional and means "inherit". A run inherits from the element's own
+ * `TextFormat`, which in turn inherits from the named style — so the three layers
+ * compose and a document that never touches formatting still exports style-only
+ * (§ Per-element formatting).
+ */
 export interface InlineRun {
   text: string;
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
   vertAlign?: VertAlign;
+  /** Point size, e.g. 14. Word stores half-points, so the exporter doubles it. */
+  fontSize?: number;
+  /** Six-digit hex, no leading "#", matching OOXML's `w:color`. */
+  color?: string;
+  /** Override the element's font pair for this run only. */
+  fonts?: FontPair;
 }
+
+/**
+ * The run-level attributes, without the text. What a toolbar applies to a selection.
+ *
+ * `null` clears an attribute back to inherited, which a bare `undefined` cannot express
+ * in a patch — `{ bold: undefined }` is indistinguishable from "not mentioned" once
+ * spread over an existing run.
+ */
+export type RunFormat = Omit<InlineRun, 'text'>;
+
+export type RunFormatPatch = {
+  [K in keyof RunFormat]?: RunFormat[K] | null;
+};
 
 export type RichText = InlineRun[];
 
