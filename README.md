@@ -203,6 +203,12 @@ A sixth, practical one: **`KNOWN_KEYS` in the persistence layer silently drops f
 Add a field to `Worksheet` without adding it there and it will save fine, then vanish on
 reload.
 
+And a seventh: **the two band paths must agree.** `BandEditor` (an active header/footer)
+and `ReadOnlyBandRow` (an idle one, and the print/PDF path) draw the same rows, so they
+share `bandFieldStyle` for formatting and must occupy identical space — editing chrome is
+drawn with `ring` and absolute positioning so it reserves none. A difference between them
+is a preview that lies about the printed page.
+
 ## Adding a question type
 
 Only a registry entry is needed — numbering, marks totalling, persistence and export

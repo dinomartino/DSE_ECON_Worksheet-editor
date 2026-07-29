@@ -150,6 +150,92 @@ body {
   color-scheme: light;
 }
 
+/* One sheet, three regions to edit — body, header, footer — following Word.
+   The region not being edited recedes and goes inert until it is double-clicked, which
+   is what keeps a click meant for the first question out of the header row above it and
+   keeps the header's own chrome from appearing on every hover across the top of a page.
+
+   Word greys the inactive region rather than blurring it, and greying is what survives
+   the size this text is previewed at — a real blur at 11pt turns the line into a smear
+   and stops it reading as the document. So the weight is carried by opacity, with a
+   sub-pixel blur only as a hint of depth.
+
+   Literal colours rather than semantic tokens: this is on the paper, and the paper is
+   white in both themes (see `.paper`, which pins `color-scheme: light`). */
+.paper-region {
+  transition:
+    opacity 140ms ease,
+    filter 140ms ease;
+}
+
+.paper-region-idle {
+  opacity: 0.42;
+  filter: blur(0.4px);
+  /* Inert as well as faint: a dimmed region that still answered clicks would let the
+     pointer edit something the interface is saying is not active. `auto` is restored on
+     the double-click target below, which is the one thing an idle region must answer. */
+  pointer-events: none;
+  user-select: none;
+}
+
+/* The wake target is the one thing an idle region must still answer — it is what makes
+   the region reachable again. Everything else stays inert via the rule above, so the
+   overlay is the only way in and a stray click cannot edit a region that is dimmed.
+
+   The whole region is the target rather than just its text: a header row is mostly empty
+   space, and requiring a hit on the words would make the affordance feel broken. */
+.paper-region-idle > .paper-region-wake {
+  pointer-events: auto;
+}
+
+/* The overlay has to cover rows in a box that has no height of its own: a band box is
+   positioned in the page margin by `top`/`left`/`right` alone (§ "a header lives in the
+   margin"), so `inset: 0` and `height: 100%` both resolve to zero and the click falls
+   through to the paper behind the rows.
+
+   The fix is to give the region a height instead of guessing one for the overlay: a band
+   box wraps its rows, so `height: fit-content` makes it as tall as what it draws while
+   leaving its margin placement untouched. The overlay can then be an ordinary
+   `inset: 0` layer.
+
+   Deliberately NOT `display: grid` on `.paper-region` with everything in one cell: that
+   also stacks the body region's real children — the title, each question — on top of one
+   another, which collapsed the whole page into a single overprinted line. */
+.paper-region {
+  height: fit-content;
+}
+
+/* The body region is a flex child that must keep filling the sheet, so it opts out: its
+   height comes from `flex: 1`, and `fit-content` would shrink it to its content and strand
+   the blank paper below the last question outside any region. */
+.paper-region-body {
+  height: auto;
+}
+
+.paper-region-wake {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  cursor: pointer;
+  /* No fill, no hover tint: the dimming is the affordance, and tinting a region built to
+     recede would undo the effect it exists to create. */
+  background: transparent;
+  border: 0;
+}
+
+/* Printing and PDF export take the real sheets, so the editing state must not reach
+   them: an idle header would otherwise print at 42% grey. */
+@media print {
+  .paper-region-idle {
+    opacity: 1 !important;
+    filter: none !important;
+  }
+
+  .paper-region-wake {
+    display: none !important;
+  }
+}
+
 /* A soft, layered shadow reads as a sheet lifted off a desk. A single flat shadow
    reads as a card in a form, which is the impression we're trying to lose. */
 .paper-shadow {

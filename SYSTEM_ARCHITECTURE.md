@@ -97,7 +97,7 @@ src/
 │   └── preview/       # Live print preview
 │       ├── Preview.tsx, BandEditor.tsx, FormatToolbar.tsx, InlineEditable.tsx
 │       ├── pagination.ts       # pure packing: sheets, page breaks, composition
-│       ├── pagination.test.ts
+│       ├── pagination.test.ts, bandFieldStyle.test.ts
 │       ├── ResizableBlock.tsx   # drag-to-resize handles on images/diagrams
 │       └── ResizableRows.tsx    # drag-to-extend for answer lines and spacers
 ├── store/
@@ -899,8 +899,93 @@ Returning early on `bandsAreEmpty` — which is right for the read-only and prin
 meant a header whose page-1 rows had all been deleted vanished from the sheet, leaving
 nowhere to put the first row back.
 
+That rule is `bandsShouldRender(bands, editing)` in `model/page.ts`, extracted so it can
+be tested without a DOM, and it is keyed on **whether editing is possible at all**, not on
+which region currently has focus. Both distinctions were got wrong first, and both failed
+silently:
+
+- The guard once read `bandsAreEmpty(bands) && (!editing || bands.length > 0)`, which
+  inverts its own intent. `bandsAreEmpty` means *no row carries text* — exactly what a
+  freshly added row is — so the surface rendered only while the list was **literally**
+  empty and unmounted the moment a teacher added a row to it. Deleting the last row that
+  had text took the whole footer off the page, blank rows and all, and the added rows had
+  shown no delete control in the first place.
+- `HeaderFooterBand` therefore takes `editing` (is this region active) **and** `editable`
+  (does this preview allow editing) as separate props. Conflating them meant an idle
+  region received no handlers, so a blank header counted as "nothing to draw" — leaving
+  nothing on the page to double-click back into.
+
+**A hover-revealed control must be reachable.** The per-row `✕` sits in the margin,
+outside the row's own box, and CSS `:hover` follows the element box — so travelling to the
+button left the row, hid the button mid-approach, and the click landed on bare paper. The
+control is wrapped in a `pointer-events-none` strip that spans from the button back to the
+row, putting the pointer's whole path inside the hover area while leaving only the button
+clickable. `opacity`, never `display`, does the revealing: a zero-size box cannot be
+hovered at all.
+
 Clipboard output deliberately carries none of this: pasting into an existing Word
 document must not override that document's page setup or headers.
+
+### One sheet, three regions to edit
+
+A sheet shows the body, the header and the footer at once, but they are separate documents
+to edit — which is exactly how Word treats them. The inactive regions render at `opacity:
+0.42` with a hint of blur and `pointer-events: none`; a **double-click** steps into a
+dimmed header or footer, and a **single click** on the dimmed body returns to it (leaving
+is the cheaper, commoner move, and with the body inert there is no other one-click way
+back). Word greys rather than blurs, and greying is what survives the size this text
+previews at: a real blur at 11pt turns the line into a smear.
+
+The point is not decoration. It keeps a click meant for question 1 out of the header row
+sitting a few pixels above it, and it keeps the header's own chrome — the `✕`, the
+`+ Row`, the zone outlines — off every hover across the top of the page.
+
+Three implementation notes, each of which was wrong first:
+
+- **The wake overlay needs a region with a height.** A band box is placed in the margin by
+  `top`/`left`/`right` alone, so `inset: 0` and `height: 100%` both resolve to zero and the
+  click falls through to the paper behind the rows. `.paper-region { height: fit-content }`
+  gives it one; `.paper-region-body` opts back out, since it is a `flex: 1` child that must
+  keep filling the sheet.
+- **Not a grid.** Making the region `display: grid` with every child in one cell also
+  stacks the body's real children — the title, each question — into a single overprinted
+  line.
+- **Chrome must not be measured.** The paginator reads the band box's height to decide how
+  far to push the text column down; with the overlay inside that box it counted as header
+  height. The measurement therefore targets `[data-band-rows]`, the one child that is the
+  printed content.
+
+Print CSS neutralizes the dimming and hides the overlay, so PDF export is unaffected.
+
+### Both band paths must agree, on formatting and on geometry
+
+`BandEditor` (an active region) and `ReadOnlyBandRow` (an idle region, and the print/PDF
+path) draw the same rows, so any disagreement between them is a preview that lies about
+the document.
+
+**Formatting is one shared function**, `bandFieldStyle`. `ReadOnlyBandRow` used to ignore
+`field.format` completely — dropping size, weight, colour, underline and font — so a 14pt
+bold school name previewed *and printed* at the container's 12pt regular. It presented as
+a bug in region focus, because entering the header appeared to enlarge its text; the idle
+state was the wrong one all along.
+
+**Geometry must be identical too.** The editing path carried `min-h-[1.6em]` and `px-1` on
+each zone plus `mb-3` on the row list, so activating a header grew it from 104px to 137px
+and re-laid-out the page it was previewing. Drop-zone outlines are drawn with `ring`, which
+paints outside the border box without reserving space, and spacing around the list belongs
+to `HeaderFooterBand`, which applies it in both paths. Verify by measuring the *same text
+node* in both states: comparing an ordered list of spans is misleading, because the active
+state inserts a label chip and shifts the list by one.
+
+**Page 1 is measured, not estimated.** `firstPageOverflow` used to scale `bandsHeight()`
+by the ratio the running sheet found, and that estimate cannot see a field's `fontSize` —
+so a cover of 14pt title rows was judged far shorter than it draws, and the first body line
+printed over the title block. The preview has a DOM, so it measures page 1's own rows
+(`measuredFirst`) exactly as it already measures the running ones; Word still gets the
+estimate, because Word lays the rows out itself. The overflow is then computed against
+`edgeOffsets` — the offset page 1 is actually **drawn** at — rather than one re-derived
+from its own height: `bandsOverflow` recomputes the offset internally, and a taller cover
+makes that come out *smaller*, leaving the difference as overlap.
 
 ### Clipboard (`src/export/clipboard.ts`)
 - Same IR consumed as the .docx backend.

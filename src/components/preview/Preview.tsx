@@ -2,9 +2,9 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  bandsAreEmpty,
   bandsHeight,
   bandsOverflow,
+  bandsShouldRender,
   headerFooterOffsets,
   defaultFooter,
   defaultHeader,
@@ -59,7 +59,7 @@ import {
   PlusIcon,
   StructuredIcon,
 } from "@/components/ui/icons";
-import { BandEditor, withPageNumber } from "./BandEditor";
+import { BandEditor, bandFieldStyle, withPageNumber } from "./BandEditor";
 
 /**
  * What an editable row of zones needs from its host.
@@ -786,6 +786,68 @@ function NodeView({
 }
 
 /**
+ * The click target that activates a dimmed region.
+ *
+ * Double-click rather than a single click, matching Word and matching the rule the rest
+ * of the page already follows for text: one click selects, two commit to editing. A
+ * single click here would make the dimming pointless — the pointer crosses the header on
+ * its way to the toolbar constantly, and any of those journeys would activate it.
+ *
+ * It is a `button` rather than a bare div so the region is reachable without a pointer:
+ * `Enter` on the focused button does what the double-click does. It carries no visible
+ * styling of its own — the dimming *is* the affordance, and a hover tint on a region
+ * that is meant to recede would defeat the effect it exists to create.
+ */
+function RegionWake({
+  label,
+  onWake,
+  single,
+}: {
+  label: string;
+  onWake: () => void;
+  /**
+   * Wake on a single click rather than a double.
+   *
+   * Word asks for a double-click to step *into* the furniture, but only a single click to
+   * come back out to the body — leaving is the cheaper, more common move, and the body is
+   * where a worksheet is mostly written. It also keeps the escape route honest: with the
+   * body dimmed and inert, a click on blank paper cannot reach the sheet's own
+   * "clear the selection" handler, so without this there is no one-click way back.
+   */
+  single?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      data-print-hide
+      aria-label={label}
+      title={single ? label : `${label} (double-click)`}
+      className="paper-region-wake"
+      onDoubleClick={(event) => {
+        // The sheet's own click handler treats a landing on non-selectable space as
+        // "clear everything", which includes returning focus to the body — so without
+        // this the activation would be undone by the same gesture that made it.
+        event.stopPropagation();
+        onWake();
+      }}
+      // A single click must not fall through to the paper underneath either: that would
+      // clear the selection as a side effect of aiming at an inactive region.
+      onClick={(event) => {
+        event.stopPropagation();
+        if (single) onWake();
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          event.stopPropagation();
+          onWake();
+        }
+      }}
+    />
+  );
+}
+
+/**
  * Header / footer chrome.
  *
  * Rendered in the page margin at true scale so the teacher sees the printed layout.
@@ -805,6 +867,7 @@ function HeaderFooterBand({
   pageCount,
   totalMarks,
   editing,
+  editable,
 }: {
   value: HeaderFooter;
   language: LanguageMode;
@@ -821,6 +884,18 @@ function HeaderFooterBand({
    * the three zones. That reuse is the whole point of a header row being a `Band`.
    */
   editing?: BandEditingHandlers;
+  /**
+   * Whether this preview allows editing at all — which is *not* the same question as
+   * whether this region is the one currently being edited.
+   *
+   * The two were one flag, and conflating them broke the idle state: an idle region
+   * receives no handlers, so a header whose rows are all blank (the default) counted as
+   * "nothing to draw" and rendered nothing — leaving no rows to see and nothing to
+   * double-click back into. A region must stay visible while it is inactive, or it cannot
+   * be reactivated. Only a genuinely read-only preview (a thumbnail, the print path)
+   * should collapse an empty band list.
+   */
+  editable?: boolean;
 }) {
   /*
    * Page 1 may print something different, or nothing at all (§ `HeaderFooter.firstPage`).
@@ -846,12 +921,18 @@ function HeaderFooterBand({
 
   /*
    * An empty band list still renders while editing, so there is somewhere to put the
-   * first row. Returning null here — which is what happened before — meant a header
-   * whose page-1 rows had all been deleted vanished from the sheet entirely, leaving no
-   * surface to rebuild it on and no way back except the dialog.
+   * first row. Returning null here meant a header whose page-1 rows had all been deleted
+   * vanished from the sheet entirely, leaving no surface to rebuild it on and no way back
+   * except the dialog.
+   *
+   * `bandsShouldRender` owns the rule so it can be tested without a DOM — the inline
+   * version of it was wrong in a way that only showed up as a surface vanishing mid-edit.
+   *
+   * Keyed on `editable`, not on `editing`: an idle region has no handlers but must still
+   * be drawn, or there is nothing left on the page to double-click back into.
    */
   const bands = resolved.bands;
-  if (bandsAreEmpty(bands) && (!editing || bands.length > 0)) return null;
+  if (!bandsShouldRender(bands, Boolean(editing) || Boolean(editable))) return null;
 
   const body = editing ? (
     <BandEditor
@@ -893,6 +974,9 @@ function HeaderFooterBand({
 
   return (
     <div
+      // The printed rows, and the only thing the paginator may measure — the region's
+      // wake overlay is a sibling and would otherwise be counted as header height.
+      data-band-rows
       className={`flex items-baseline gap-2 text-xs text-slate-600 ${
         edge === "header"
           ? resolved.rule
@@ -930,7 +1014,12 @@ function ReadOnlyBandRow({
   const cell = (name: ZoneName, align: string) => (
     <div className={`flex-1 ${align}`}>
       {zones[name].map((field) => (
-        <span key={field.id} className="mx-0.5">
+        // `bandFieldStyle` is shared with `BandEditor` rather than reimplemented, and it
+        // was previously missing here entirely: a field's `fontSize`, weight, colour and
+        // font were dropped, so a 14pt bold title previewed *and printed* at the
+        // container's 12pt. That also made the region focus look like a bug — entering
+        // the header seemed to enlarge its text, when the idle state was the wrong one.
+        <span key={field.id} className="mx-0.5" style={bandFieldStyle(field)}>
           {/* Substituted before rendering rather than inside `bandFieldText`, which is
               shared with the .docx backend — Word must keep the placeholder so it can
               emit a live PAGE field, and baking a literal there would freeze every
@@ -1736,6 +1825,19 @@ export function Preview({
    * have that cover set the geometry for every ordinary page behind it.
    */
   const [measured, setMeasured] = useState<{ header: number; footer: number }>();
+
+  /**
+   * Page 1's own rows, measured rather than estimated.
+   *
+   * `firstPageOverflow` used to scale `bandsHeight()` by the ratio the running sheet
+   * found. That estimate assumes a ~264tw line box per row and cannot know a field's
+   * `fontSize`, so a cover of 14pt title rows came out far short — page 1 reserved less
+   * room than its header occupies and the first line of the body printed on top of the
+   * title block. The preview has a DOM and can simply ask, which is the rule
+   * § "the preview measures the bands; only the exporter estimates them" already sets:
+   * Word still gets the estimate, because Word lays the rows out itself.
+   */
+  const [measuredFirst, setMeasuredFirst] = useState<{ header: number; footer: number }>();
   const sheetsRef = useRef<HTMLDivElement>(null);
 
   /**
@@ -1766,8 +1868,23 @@ export function Preview({
       const sheet =
         root.querySelector<HTMLElement>(`[data-page-index="${measuredPageIndex}"]`) ??
         root.querySelector<HTMLElement>('[data-page-index="0"]');
-      const box = (edge: string) =>
-        sheet?.querySelector<HTMLElement>(`[data-band-box="${edge}"]`)?.offsetHeight ?? 0;
+      /*
+       * Measure the *rows*, not the region box.
+       *
+       * The box now also holds the region-focus wake overlay, which is editing chrome —
+       * and chrome must never reach a measurement the printed page depends on. Reading
+       * the box's own `offsetHeight` let the overlay inflate the header by its own
+       * height, so the padding the paginator derives from this no longer matched the
+       * rows and the first question printed over the header.
+       *
+       * `data-band-rows` names the one child that is the printed content, rather than
+       * assuming a child order the overlay's presence changes.
+       */
+      const box = (edge: string) => {
+        const region = sheet?.querySelector<HTMLElement>(`[data-band-box="${edge}"]`);
+        const rows = region?.querySelector<HTMLElement>('[data-band-rows]');
+        return rows?.offsetHeight ?? region?.offsetHeight ?? 0;
+      };
 
       const next = { header: toTwips(box('header')), footer: toTwips(box('footer')) };
       // Only commit a real change, or the state write re-renders forever.
@@ -1775,6 +1892,25 @@ export function Preview({
         prev && Math.abs(prev.header - next.header) < 1 && Math.abs(prev.footer - next.footer) < 1
           ? prev
           : next,
+      );
+
+      // Page 1 separately, since it may print a taller cover than the running rows and
+      // its padding is applied to that sheet alone (`pageStyleFor`).
+      const first = root.querySelector<HTMLElement>('[data-page-index="0"]');
+      const firstBox = (edge: string) =>
+        first
+          ?.querySelector<HTMLElement>(`[data-band-box="${edge}"]`)
+          ?.querySelector<HTMLElement>('[data-band-rows]')?.offsetHeight ?? 0;
+      const nextFirst = {
+        header: toTwips(firstBox('header')),
+        footer: toTwips(firstBox('footer')),
+      };
+      setMeasuredFirst((prev) =>
+        prev &&
+        Math.abs(prev.header - nextFirst.header) < 1 &&
+        Math.abs(prev.footer - nextFirst.footer) < 1
+          ? prev
+          : nextFirst,
       );
     };
 
@@ -1823,14 +1959,29 @@ export function Preview({
     const f = footer.enabled
       ? bandsHeight(firstPageHeaderFooter(footer).bands, footer.rule)
       : 0;
-    // Scaled by the same ratio the measurement found, so a page-1 cover is judged on the
-    // same footing as the running rows it is compared against.
+    // The measured rows win when they exist: the estimate cannot see a field's font size,
+    // so a cover of 14pt title rows was judged far shorter than it draws and page 1
+    // reserved too little room — the first body line printed over the title block. The
+    // estimate is kept as the pre-layout fallback, scaled the way it always was.
     const ratio = headerEstimate > 0 ? headerRowsTwips / headerEstimate : 1;
-    return bandsOverflow(
-      setup.margins,
-      Math.max(h * ratio, headerRowsTwips),
-      Math.max(f, footerRowsTwips),
-    );
+    const headerRows = Math.max(measuredFirst?.header ?? h * ratio, headerRowsTwips);
+    const footerRows = Math.max(measuredFirst?.footer ?? f, footerRowsTwips);
+
+    /*
+     * Measured against the offset page 1 is actually drawn at, not one re-derived from
+     * its own height.
+     *
+     * `bandsOverflow` recomputes `headerFooterOffsets` internally, and a taller cover
+     * makes that come out *smaller* — but every sheet is placed at `edgeOffsets`, which
+     * is shaped around the running rows (one `w:header` serves the section, § "the
+     * offsets are sized from the running rows"). Page 1 therefore starts lower than the
+     * re-derived offset assumes, and the difference was left as overlap: the cover ran
+     * to 185px while the body began at 156px.
+     */
+    return {
+      header: Math.max(0, edgeOffsets.header + headerRows - setup.margins.top),
+      footer: Math.max(0, edgeOffsets.footer + footerRows - setup.margins.bottom),
+    };
   })();
 
   // Set while handling a click inside the preview, so the scroll effect below does
@@ -2035,6 +2186,43 @@ export function Preview({
   const [multiFields, setMultiFields] = useState<Set<string>>(new Set());
 
   /**
+   * Which of the sheet's three regions is being edited — the rule Word uses.
+   *
+   * A sheet shows the body, the header and the footer at once, but they are separate
+   * documents to edit: in Word the inactive ones grey out and are inert until you
+   * double-click into them. Copying that is what stops a click meant for the first
+   * question from landing in a header row that happens to sit near it, and — more
+   * importantly — it makes the header's own chrome (the ✕, the "+ Row", the zone
+   * outlines) appear only when the teacher has actually asked to work on the header,
+   * rather than on every hover across the top of the page.
+   *
+   * `body` is the default because that is what a worksheet mostly is; the header and
+   * footer are furniture decided once. Returning to it is part of `clearPageSelection`,
+   * so a click on blank paper leaves a region the same way Escape does in Word.
+   */
+  const [focusRegion, setFocusRegion] = useState<"body" | "header" | "footer">("body");
+
+  /**
+   * The classes that make a region active or idle. `relative` is unconditional: the wake
+   * overlay is absolutely positioned and would otherwise escape to the nearest positioned
+   * ancestor — the sheet — and cover the whole page.
+   */
+  const regionClass = (region: "body" | "header" | "footer") =>
+    `paper-region relative${focusRegion === region ? "" : " paper-region-idle"}`;
+
+  /**
+   * Move the edit focus to a region.
+   *
+   * Selections are dropped on the way, because they address the region being left: a
+   * question stays selected when the teacher steps into the header, and Delete would then
+   * remove that question while every visible affordance pointed at the header.
+   */
+  const enterRegion = (region: "body" | "header" | "footer") => {
+    clearPageSelection();
+    setFocusRegion(region);
+  };
+
+  /**
    * Runs one sweep, from mousedown to mouseup.
    *
    * The listeners are attached here rather than in an effect keyed on "is sweeping":
@@ -2065,6 +2253,9 @@ export function Preview({
     // Delete handler acts on it — so leaving it set meant a blank click deselected
     // everything visible while Delete still removed the entire question.
     onSelectQuestion?.(undefined);
+    // Returning to the body is part of dropping the selection, the way Escape is in
+    // Word: a click on blank paper means "I am done with that region".
+    setFocusRegion("body");
   };
 
   const beginSweep = useCallback(
@@ -3180,6 +3371,7 @@ export function Preview({
                 // Measured on the first sheet only; every sheet's bands are the same
                 // height, and observing all of them would just re-report one number.
                 data-band-box="header"
+                className={regionClass("header")}
                 style={bandBoxStyle("header")}
               >
                 <HeaderFooterBand
@@ -3189,11 +3381,31 @@ export function Preview({
                   pageNumber={pageIndex + 1}
                   pageCount={pages.length}
                   totalMarks={worksheetMarks(worksheet)}
-                  editing={withSelection(headerEditing)}
+                  // Editing handlers are withheld while the region is idle, so the band
+                  // renders exactly as it prints — no zone outlines, no ✕, no "+ Row".
+                  // Hiding that chrome with CSS alone would leave it in the tab order and
+                  // reachable by keyboard while the region says it is inactive.
+                  editing={
+                    focusRegion === "header" ? withSelection(headerEditing) : undefined
+                  }
+                  editable={Boolean(headerEditing)}
                 />
+                {focusRegion !== "header" && (
+                  <RegionWake
+                    label="Edit the header"
+                    onWake={() => enterRegion("header")}
+                  />
+                )}
               </div>
 
-              <div className="min-h-0 flex-1">
+              <div className={`min-h-0 flex-1 paper-region-body ${regionClass("body")}`}>
+                {focusRegion !== "body" && (
+                  <RegionWake
+                    single
+                    label="Back to the document body"
+                    onWake={() => enterRegion("body")}
+                  />
+                )}
                 {pageBlocks.length === 0 && openedBy[pageIndex] ? (
                   // A page the teacher added that nothing has landed on yet. Rendered
                   // as an affordance rather than as bare paper, because a truly blank
@@ -3232,6 +3444,7 @@ export function Preview({
 
               <div
                 data-band-box="footer"
+                className={regionClass("footer")}
                 style={bandBoxStyle("footer")}
               >
                 <HeaderFooterBand
@@ -3241,8 +3454,17 @@ export function Preview({
                   pageNumber={pageIndex + 1}
                   pageCount={pages.length}
                   totalMarks={worksheetMarks(worksheet)}
-                  editing={withSelection(footerEditing)}
+                  editing={
+                    focusRegion === "footer" ? withSelection(footerEditing) : undefined
+                  }
+                  editable={Boolean(footerEditing)}
                 />
+                {focusRegion !== "footer" && (
+                  <RegionWake
+                    label="Edit the footer"
+                    onWake={() => enterRegion("footer")}
+                  />
+                )}
               </div>
             </div>
 

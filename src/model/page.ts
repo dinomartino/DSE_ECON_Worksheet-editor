@@ -205,6 +205,22 @@ export function isHeaderFooterActive(value: HeaderFooter): boolean {
 }
 
 /**
+ * Should the preview draw this band list at all?
+ *
+ * Printing skips rows that would draw nothing, but **editing never does**: the surface is
+ * where rows are added, so hiding it when it holds nothing removes the only place to put
+ * something back. A blank row is precisely the state of a row a teacher just created.
+ *
+ * Qualifying this with `bands.length > 0` — the first attempt — inverted it: `bandsAreEmpty`
+ * asks "does any row carry text", so the surface survived only while the list was
+ * *literally* empty and unmounted the moment a row was added to it. Deleting the last row
+ * that had text then took the whole footer off the page, blank rows and all.
+ */
+export function bandsShouldRender(bands: Band[], editing: boolean): boolean {
+  return editing || !bandsAreEmpty(bands);
+}
+
+/**
  * How tall one printed row is, in twips.
  *
  * An estimate, not a measurement: the exporter has no font metrics and Word will lay the

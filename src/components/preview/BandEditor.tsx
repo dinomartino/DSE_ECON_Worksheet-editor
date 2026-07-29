@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ZONES, zonesOf, type ZoneName } from '@/model/bands';
 import { plain } from '@/model/text';
-import type { Band, BiText, LanguageMode } from '@/model/types';
+import type { Band, BandField, BiText, LanguageMode } from '@/model/types';
 import { bandFieldText } from '@/render/worksheet';
 import { InlineEditable } from './InlineEditable';
 
@@ -90,6 +90,30 @@ export function withPageNumber(
   return text.replace(/#/g, String(page.number)).replace(/\bN\b/g, String(page.count));
 }
 
+/**
+ * A band field's `TextFormat` as inline CSS.
+ *
+ * Exported and shared with the read-only row, which is what the print and PDF paths draw.
+ * It used to render `field.format` not at all — so a 14pt bold school name previewed and
+ * *printed* at the container's 12pt regular, while the editing path applied the override
+ * faithfully. Entering the header therefore appeared to enlarge the text, when in truth
+ * the idle state had been silently dropping the formatting all along.
+ *
+ * Every property the toolbar can set, not just size and weight: an underline or a colour
+ * that reached the export but not the page would break the rule that the preview is the
+ * document.
+ */
+export function bandFieldStyle(field: BandField): React.CSSProperties {
+  return {
+    ...(field.format?.fontSize ? { fontSize: `${field.format.fontSize}pt` } : {}),
+    ...(field.format?.bold ? { fontWeight: 700 } : {}),
+    ...(field.format?.italic ? { fontStyle: 'italic' } : {}),
+    ...(field.format?.underline ? { textDecoration: 'underline' } : {}),
+    ...(field.format?.color ? { color: `#${field.format.color}` } : {}),
+    ...(field.format?.fonts?.latin ? { fontFamily: field.format.fonts.latin } : {}),
+  };
+}
+
 const ALIGN: Record<ZoneName, string> = {
   left: 'justify-start text-left',
   center: 'justify-center text-center',
@@ -115,7 +139,10 @@ export function BandEditor({
   const [over, setOver] = useState<{ bandId: string; zone: ZoneName } | undefined>();
 
   return (
-    <div className="group/bands relative mb-3">
+    // No margin of its own: the read-only row this replaces has none, so a `mb-3` here
+    // moved the whole band list the moment its region was activated. Spacing around the
+    // header and footer belongs to `HeaderFooterBand`, which applies it in both paths.
+    <div className="group/bands relative">
       {/* The surface's name, and the control that adds a row to it.
           Absolutely positioned in the margin and revealed on hover, so this is editing
           chrome that never occupies space the printed page would use — the same rule the
@@ -127,7 +154,10 @@ export function BandEditor({
           // Clear of the first row rather than overlapping it: the chrome names the rows
           // below it, so sitting on top of the one it names hides the thing being
           // identified. Negative offset keeps it out of the printed flow entirely.
-          className="pointer-events-none absolute -top-[18px] left-0 right-0 flex items-center gap-1.5 opacity-0 transition-opacity group-hover/bands:opacity-100"
+          // `-top-[18px]` with a matching `pb` rather than a bare offset: the strip has to
+          // reach back down to the first row, or the gap between them belongs to neither
+          // and the pointer loses the hover on the way up (see the per-row ✕ below).
+          className="pointer-events-none absolute -top-[18px] left-0 right-0 flex items-end gap-1.5 pb-[18px] opacity-0 transition-opacity group-hover/bands:opacity-100"
         >
           {label && (
             <span className="pointer-events-auto rounded bg-[#efece7] px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-[#8f8a86]">
@@ -157,18 +187,29 @@ export function BandEditor({
           >
             {/* Remove this printed row. In the left margin rather than inline, because a
                 control between the zones would take width from the row it is deleting and
-                shift the layout being previewed. Hidden until the row is hovered. */}
+                shift the layout being previewed. Hidden until the row is hovered.
+
+                The button sits *outside* the row's own box, so it cannot be the thing that
+                keeps `group-hover/band` true: reaching for it left the row, hid the button
+                mid-approach, and the click landed on bare paper. The wrapper therefore
+                spans from the button's edge back to the row, making the pointer's path part
+                of the group's hover area — it is `pointer-events-none` so only the button
+                itself is clickable and the gap never steals a click from the page. */}
             {onRemoveRow && (
-              <button
-                type="button"
+              <span
                 data-print-hide
-                aria-label="Remove this row"
-                title="Remove this row"
-                onClick={() => onRemoveRow(band.id)}
-                className="absolute -left-5 top-1/2 hidden -translate-y-1/2 cursor-pointer text-[10px] leading-none text-[#a5a09b] transition-colors hover:text-[#dc2626] group-hover/band:block"
+                className="pointer-events-none absolute -left-6 top-0 bottom-0 flex w-6 items-center justify-start opacity-0 transition-opacity group-hover/band:opacity-100"
               >
-                ✕
-              </button>
+                <button
+                  type="button"
+                  aria-label="Remove this row"
+                  title="Remove this row"
+                  onClick={() => onRemoveRow(band.id)}
+                  className="pointer-events-auto cursor-pointer px-1 py-0.5 text-[10px] leading-none text-[#a5a09b] transition-colors hover:text-[#dc2626]"
+                >
+                  ✕
+                </button>
+              </span>
             )}
 
             {ZONES.map((zone) => {
@@ -195,7 +236,21 @@ export function BandEditor({
                     setDragging(undefined);
                     setOver(undefined);
                   }}
-                  className={`flex min-h-[1.6em] flex-1 flex-wrap items-baseline gap-x-2 rounded px-1 transition-colors ${ALIGN[zone]} ${
+                  /*
+                   * The editing surface must occupy exactly the space the printed row
+                   * does, or activating the header changes the layout it is previewing.
+                   * `min-h-[1.6em]` and `px-1` did precisely that — a header grew from
+                   * 104px to 137px on being double-clicked into, and every row's line box
+                   * from 14px to 16px, so the teacher sized their furniture against
+                   * geometry Word will not reproduce.
+                   *
+                   * The drop-zone outline is therefore drawn *outside* the flow: `ring`
+                   * paints beyond the border box without reserving width, and the empty
+                   * zone's own `+` keeps a bare zone clickable without a min-height. The
+                   * horizontal breathing room comes back as a negative-inset ring rather
+                   * than as padding that would shift the text.
+                   */
+                  className={`flex flex-1 flex-wrap items-baseline gap-x-1 rounded transition-colors ${ALIGN[zone]} ${
                     isOver
                       ? 'bg-[#ede8ff] ring-2 ring-[#7c5cff]'
                       : droppable
@@ -234,19 +289,7 @@ export function BandEditor({
                       className={`group/field inline-flex cursor-grab items-baseline active:cursor-grabbing ${
                         dragging?.fieldId === field.id ? 'opacity-40' : ''
                       }`}
-                      // Every `TextFormat` property the toolbar can set, not just three:
-                      // an underline or a colour that applied in the export but not on
-                      // the page would break the rule that the preview is the document.
-                      style={{
-                        ...(field.format?.fontSize ? { fontSize: `${field.format.fontSize}pt` } : {}),
-                        ...(field.format?.bold ? { fontWeight: 700 } : {}),
-                        ...(field.format?.italic ? { fontStyle: 'italic' } : {}),
-                        ...(field.format?.underline ? { textDecoration: 'underline' } : {}),
-                        ...(field.format?.color ? { color: `#${field.format.color}` } : {}),
-                        ...(field.format?.fonts?.latin
-                          ? { fontFamily: field.format.fonts.latin }
-                          : {}),
-                      }}
+                      style={bandFieldStyle(field)}
                     >
                       {field.kind === 'text' ? (
                         <InlineEditable

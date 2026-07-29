@@ -213,14 +213,18 @@ export const HEADER_FOOTER_PRESETS: HeaderFooterPreset[] = [
     id: 'publisher',
     name: 'Title, page, copyright',
     edge: 'footer',
-    // foot2.png: a three-zone footer — source on the left, page centred, rights right.
+    // A three-zone footer — source on the left, page centred, rights right.
+    // The source and rights lines are this project's own name rather than the textbook
+    // and publisher the layout was traced from: a preset is a starting value a teacher
+    // types over, and shipping someone else's imprint as that default would put their
+    // copyright line on every worksheet built from it.
     build: () => [
       createBand({
         left: [
-          { ...createTextField({ en: [{ text: 'NSS Exploring Economics' }], zh: [] }), format: { italic: true } },
+          { ...createTextField({ en: [{ text: 'DSEconMentor' }], zh: [] }), format: { italic: true } },
         ],
         center: [createPageNumberField('plain')],
-        right: [createTextField({ en: [{ text: '© Publisher Limited 2026' }], zh: [] })],
+        right: [createTextField({ en: [{ text: '© DSEconMentor 2026' }], zh: [] })],
       }),
     ],
   },

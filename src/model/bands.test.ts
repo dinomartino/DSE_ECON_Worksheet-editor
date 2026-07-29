@@ -14,7 +14,7 @@ import {
   removeField,
   updateField,
 } from './bands';
-import { bandsHeight, bandsOverflow, headerFooterOffsets } from './page';
+import { bandsHeight, bandsOverflow, bandsShouldRender, headerFooterOffsets } from './page';
 import { bi } from './text';
 
 /**
@@ -281,5 +281,38 @@ describe('an offset moves only when it has to', () => {
     expect(header).toBeGreaterThan(284);
     expect(header).toBeLessThan(720);
     expect(header).toBe(margins.top - height);
+  });
+});
+
+/**
+ * Whether the preview draws a band surface at all.
+ *
+ * The rule reads as one line, and got inverted in exactly the case that matters: a row a
+ * teacher has just added carries no text, so anything keying on "is this list empty"
+ * without also keying on "are we editing" unmounts the surface being worked on.
+ */
+describe('bandsShouldRender', () => {
+  const blank = () => createBand({ left: [createTextField(bi('', ''))] });
+  const filled = () => createBand({ left: [createTextField(bi('S.6 Economics', ''))] });
+
+  it('skips a blank list when not editing, so print emits nothing for it', () => {
+    expect(bandsShouldRender([blank()], false)).toBe(false);
+    expect(bandsShouldRender([], false)).toBe(false);
+  });
+
+  it('draws a list that carries text, editing or not', () => {
+    expect(bandsShouldRender([filled()], false)).toBe(true);
+    expect(bandsShouldRender([filled()], true)).toBe(true);
+  });
+
+  it('keeps a freshly added blank row on screen while editing', () => {
+    // The regression: `bandsAreEmpty` is true here, and a guard that also demanded an
+    // empty *array* hid the surface the moment the first row was added to it.
+    expect(bandsShouldRender([blank()], true)).toBe(true);
+    expect(bandsShouldRender([blank(), blank(), blank()], true)).toBe(true);
+  });
+
+  it('keeps an emptied list on screen while editing, so the rows can be rebuilt', () => {
+    expect(bandsShouldRender([], true)).toBe(true);
   });
 });
