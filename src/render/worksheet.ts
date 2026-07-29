@@ -13,7 +13,7 @@ import type {
   Worksheet,
 } from '@/model/types';
 import { requireQuestionType } from '@/registry';
-import { includeNode, type RenderNode } from './ir';
+import { blankLine, includeNode, type RenderNode } from './ir';
 
 /**
  * Assemble the whole worksheet into render IR. This is the one place that walks
@@ -193,7 +193,7 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
   // One walk over the one resolved flow. Questions, layout elements and section
   // headings come out in the teacher's order, so nothing downstream has to interleave
   // them and the three backends cannot disagree about what follows what.
-  const items: RenderedItem[] = resolveFlow(worksheet).map((item) => {
+  const items: RenderedItem[] = resolveFlow(worksheet).map((item, index) => {
     if (item.type === 'layout') {
       if (item.element.kind === 'section') {
         currentSectionId = item.element.id;
@@ -208,6 +208,7 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
           nodes: renderLayoutElement(
             item.element,
             item.element.kind === 'partHeader' ? sectionMarks(worksheet, currentSectionId) : 0,
+            index === 0,
           ),
         },
       };
@@ -227,7 +228,20 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
       // Student output must contain no teacher content anywhere (§11.8).
       .filter((node) => includeNode(node, mode));
 
-    return { type: 'question', question: { questionId: question.id, number, nodes } };
+    /*
+     * A blank line between consecutive questions, completing the reference paper's
+     * rhythm: a question is separated from the next the same way its own parts are
+     * separated from each other.
+     *
+     * Emitted here rather than inside each question type because it is a property of the
+     * *boundary*, not of either question — a type that appended its own trailing gap
+     * would double up against whatever the walker put before the next item, and would
+     * leave a stray blank at the very end of the document. Suppressed for the first item
+     * for the same reason `ITEM_GAP` is: nothing precedes it to separate from.
+     */
+    const separated = index === 0 ? nodes : [ITEM_GAP, ...nodes];
+
+    return { type: 'question', question: { questionId: question.id, number, nodes: separated } };
   });
 
   const questions = items
@@ -237,8 +251,32 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
   return { bands, title, instructions, items, questions };
 }
 
-/** Expand a layout element into IR nodes. */
-function renderLayoutElement(element: LayoutElement, sectionTotal: number): RenderNode[] {
+/**
+ * The blank line that separates one top-level item from the next — a heading from what
+ * precedes it, and a question from the question before it.
+ *
+ * With the reference paper's spacing model there is no `w:before`/`w:after` anywhere —
+ * every paragraph sits in the same fixed 12pt box — so the only way to open air is to
+ * spend a line on it. That is precisely what the reference does: 102 of its 296
+ * paragraphs are empty. Emitting it here rather than as paragraph spacing keeps every
+ * line on the shared grid, which is the whole point of the fixed rule.
+ *
+ * The same `blankLine()` the question types use for the gaps *inside* a question, so
+ * every gap on the page is one number.
+ */
+const ITEM_GAP: RenderNode = blankLine();
+
+/**
+ * Expand a layout element into IR nodes.
+ *
+ * `first` suppresses a heading's leading blank line when nothing precedes it — a gap
+ * above the very first thing on the page is just a shifted top margin.
+ */
+function renderLayoutElement(
+  element: LayoutElement,
+  sectionTotal: number,
+  first = false,
+): RenderNode[] {
   switch (element.kind) {
     /*
      * A section heading and a free heading render identically.
@@ -251,6 +289,7 @@ function renderLayoutElement(element: LayoutElement, sectionTotal: number): Rend
     case 'section':
     case 'heading':
       return [
+        ...(first ? [] : [ITEM_GAP]),
         {
           kind: 'text',
           style: 'Section Heading',
@@ -289,6 +328,7 @@ function renderLayoutElement(element: LayoutElement, sectionTotal: number): Rend
         return [...authored, { text: suffix }];
       };
       return [
+        ...(first ? [] : [ITEM_GAP]),
         {
           kind: 'text',
           style: 'Section Heading',

@@ -2,7 +2,7 @@ import { createMcqQuestion } from '@/model/factories';
 import { optionLabel, statementLabel } from '@/model/numbering';
 import { bi, isBiTextEmpty, plain } from '@/model/text';
 import type { LanguageMode, McqOptionLayout, McqQuestion } from '@/model/types';
-import { renderContentBlocks, type RenderContext, type RenderNode } from '@/render/ir';
+import { blankLine, renderContentBlocks, type RenderContext, type RenderNode } from '@/render/ir';
 import { McqEditorPanel } from '@/components/editor/McqEditorPanel';
 import type { QuestionTypeDefinition } from './types';
 
@@ -128,7 +128,18 @@ function render(question: McqQuestion, context: RenderContext): RenderNode[] {
     nodes.push(...renderContentBlocks(question.blocks, 'Question Stem', { keepNext: true }));
   }
 
-  (question.statements ?? []).forEach((statement, index) => {
+  /*
+   * A blank line after the stem, and another after the statements.
+   *
+   * This is the reference paper's shape exactly: stem, blank, the numbered (1)(2)(3)
+   * statements, blank, the A–D options. The gap has to be a spent line because the
+   * document runs on a fixed 12pt line with no paragraph spacing anywhere
+   * (§ One fixed line, no paragraph spacing) — there is no `w:after` to grow.
+   */
+  nodes.push(blankLine());
+
+  const statements = question.statements ?? [];
+  statements.forEach((statement, index) => {
     nodes.push({
       kind: 'text',
       style: 'Statement',
@@ -143,6 +154,10 @@ function render(question: McqQuestion, context: RenderContext): RenderNode[] {
       },
     });
   });
+
+  // Only when there were statements: without them the stem's own blank already
+  // separates the question from its options, and a second would double the gap.
+  if (statements.length > 0) nodes.push(blankLine());
 
   const layout = resolveOptionLayout(question);
 

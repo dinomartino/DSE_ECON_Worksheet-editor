@@ -22,7 +22,7 @@ the same PR.
 | State | Zustand 5, undo/redo with a 100-entry history |
 | Language | TypeScript strict |
 | Export | Raw OOXML via JSZip (hand-built, no `docx` library) |
-| Test | Vitest 4 — 354 tests across 15 files, ~1s |
+| Test | Vitest 4 — 381 tests across 15 files, ~1s |
 | Runtime | Browser-only: client-side `.docx` generation, no API routes |
 
 ## Project structure
@@ -199,6 +199,49 @@ it.
 Formatting attaches to whole elements, never to one language side: a bilingual heading is
 a single Word paragraph, so per-side sizes could not be exported faithfully.
 
+### Per-run formatting (`InlineRun`)
+
+`TextFormat` overrides a whole element; an **`InlineRun` overrides a stretch of
+characters**. A `RichText` is an array of runs and each carries its own `fontSize`,
+`color` and `fonts` alongside bold/italic/underline — mirroring `w:r`/`w:rPr`, so one
+paragraph exports as several runs with different properties and a stem can hold a 14pt
+bold phrase inside ordinary body text.
+
+Three layers compose: named style → element `TextFormat` → run. Flags **or** with the
+element (an element set bold means every run is bold, and nothing in the UI offers
+un-bolding one run); size, colour and fonts **replace** it, since a run carrying one is
+precisely a request to differ.
+
+`applyRunFormat(runs, start, end, patch)` (`model/text.ts`) is the whole mechanism: it
+splits runs at both offsets, patches the covered ones, and `normalizeRuns` merges
+identical neighbours back. Without that merge the runs only ever fragment — bolding a
+word and unbolding it would leave three runs where there was one. A `null` in the patch
+**clears** an attribute; `undefined` cannot, being indistinguishable from "not mentioned"
+once spread over a run.
+
+Four rules the editing surface has to keep, each of which failed silently when it did not:
+
+- **The textarea's offsets are not the model's.** It holds `serializeRuns` output, which
+  contains `**` and `^{}` markers the model has no idea about. `sourceOffsetToText`
+  discounts them by walking the string and marking marker characters — an earlier version
+  did arithmetic on token lengths, got the *closing* marker wrong, and formatted a range
+  one character left of the selection, splitting the next word mid-way in the export.
+- **Re-parsing the marker string destroys size and colour.** `serializeRuns` spells only
+  the five flags, so `parseRuns(source)` rebuilds runs that have lost everything else.
+  Committing an unchanged string therefore has to be a no-op, and the "flush unsaved
+  typing" path compares **plain text**, not the serialized form — comparing the latter
+  read "bold was just applied" as "the user typed something" and wiped the formatting.
+- **Bold/italic/underline *do* change the serialized string**, so the draft must re-sync
+  when formatting rewrites the value under an open editor, or closing the field commits
+  the stale string and undoes the emphasis. Done by adjusting state during render, guarded
+  on plain text so it never fights the caret.
+- **The toolbar reports the selection, not the element.** Merging the element's format
+  underneath inverted a click: the Title style is bold, so the bar read `bold: true` for a
+  selection carrying none and sent "clear bold" instead of "set bold". Choosing a font
+  size also blurs the textarea (the bar exempts form controls from its `preventDefault`
+  so the native popup can open), so the blur handler ignores focus moving into
+  `[role="toolbar"]`.
+
 ---
 
 ## Render IR (`src/render/ir.ts`)
@@ -269,6 +312,52 @@ new `w:num` on the question stream, so Word restarts at 1 natively.
 | `runs.ts` | Run-level OOXML: `w:rFonts` (Latin + East-Asia), `w:r`, bilingual `w:br` |
 | `package.ts` | OPC package: content types, rels, header/footer parts, `sectPr`, settings, font table, JSZip assembly |
 | `xml.ts` | Escaping, illegal-character sanitization, attribute builder |
+
+### One fixed line, no paragraph spacing
+
+Every paragraph is set on a **fixed 12pt line** (`w:line="240" w:lineRule="exact"`) with
+`w:before` and `w:after` of **zero**. This is the reference paper's model, taken
+literally: 275 of its 296 paragraphs carry exactly that spacing over a "No Spacing"
+style, and 102 of them are empty. All of its vertical rhythm comes from the line box;
+none comes from paragraph padding.
+
+Four consequences, each of which fails silently if broken:
+
+- **Separation costs a line.** With no `w:after` anywhere, the only way to open air is to
+  spend a blank 12pt line on it. `blankLine()` in `render/ir.ts` is that one line, and
+  every gap on the page goes through it: `ITEM_GAP` in `render/worksheet.ts` separates
+  each top-level item (a heading from what precedes it, a question from the question
+  before it), and the question types use the same helper for the gaps *inside* a
+  question. This is why the gap is an IR node rather than a style property — the preview,
+  the `.docx` and the clipboard then space everything identically for free.
+
+  The reference's sub-unit rhythm, which the question types reproduce exactly: **stem →
+  blank → the (1)(2)(3) statements → blank → the A–D options**, and **stem → blank → (a)
+  → blank → (b) → blank → (i)**. An MCQ with no statements gets only the stem's blank, or
+  the gap before its options would double. The between-item gap lives in the walker
+  rather than in a question type because it belongs to the *boundary*: a type appending
+  its own trailing gap would double against the next item's and leave a stray blank at
+  the end of the document. It is suppressed for the first item, where a gap is just a
+  shifted top margin.
+- **`exact` does not grow.** Unlike `atLeast`, an exact box clips text too tall for it
+  rather than expanding — which is what keeps a bilingual page on one rhythm regardless
+  of CJK glyphs, superscripts and inline images. The cost is that any larger size needs a
+  larger box, so `exactLineFor()` scales one from the 11pt/12pt base and the title and
+  section-heading styles take theirs from it.
+- **Every style states its own metrics.** Word merges `w:spacing` as a whole element, not
+  attribute by attribute, so a style setting only `w:before`/`w:after` would be relying on
+  the inheritance chain to supply `w:line`. Direct formatting has the same hazard, which
+  is why `formatParagraphProps()` restates the line whenever a teacher overrides spacing
+  or font size.
+- **The preview pins the same numbers.** `.paper` sets `font-size: 11pt` and a fixed
+  `line-height: 12pt`, with zero paragraph margins, mirroring the exporter. Left to
+  inherit the app shell's 16px and its ~1.5 leading, the preview packed roughly a third
+  less onto a sheet than Word did and every page break landed early — the paginator
+  measures these boxes.
+
+`BAND_ROW_TWIPS` in `model/page.ts` is the same 240tw, since a band row is one paragraph
+in that same box. It is duplicated rather than imported (`model/` must not depend on
+`export/`) and a test asserts the two agree.
 
 ### Answer lines are a style, not direct formatting
 

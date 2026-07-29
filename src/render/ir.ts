@@ -275,6 +275,28 @@ export function includeNode(node: RenderNode, mode: OutputMode): boolean {
   return !('teacherOnly' in node && node.teacherOnly);
 }
 
+/**
+ * One blank body line, the separator every question type uses between its own parts.
+ *
+ * The reference paper puts a blank line between a stem and its statements, between the
+ * statements and the options, and between each part of a structured question — 102 of
+ * its 296 paragraphs are empty. With the document on a fixed 12pt line and zero
+ * paragraph spacing (§ One fixed line, no paragraph spacing), a spent line is the *only*
+ * way to open that air, so it is a real node rather than a style property.
+ *
+ * Exported here rather than written out in each question type so "how far apart are the
+ * parts of a question" is one number, and so a new question type inherits the paper's
+ * rhythm by using the same helper instead of inventing its own gap.
+ *
+ * It carries no `elementId`: it belongs to the question that emitted it, not to a
+ * `spacer` layout element a teacher can select, drag or resize.
+ */
+export const BLANK_LINE_PT = 12;
+
+export function blankLine(): RenderNode {
+  return { kind: 'spacer', heightPt: BLANK_LINE_PT };
+}
+
 /** Expand a content block into IR nodes (shared by every question type). */
 export function renderContentBlocks(
   blocks: ContentBlock[],

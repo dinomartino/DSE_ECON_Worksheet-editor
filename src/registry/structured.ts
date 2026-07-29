@@ -3,7 +3,7 @@ import { partMarks, questionMarks } from '@/model/marks';
 import { partLabel, subPartLabel } from '@/model/numbering';
 import { bi, isBiTextEmpty } from '@/model/text';
 import type { StructuredQuestion } from '@/model/types';
-import { renderContentBlocks, type RenderContext, type RenderNode } from '@/render/ir';
+import { blankLine, renderContentBlocks, type RenderContext, type RenderNode } from '@/render/ir';
 import { StructuredEditorPanel } from '@/components/editor/StructuredEditorPanel';
 import type { QuestionTypeDefinition } from './types';
 
@@ -49,6 +49,14 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
   question.parts.forEach((part, partIndex) => {
     const hasSubParts = Boolean(part.subParts && part.subParts.length > 0);
     const [partFirst, ...partRest] = part.blocks;
+
+    /*
+     * A blank line before every part — including the first, which separates part (a)
+     * from the stem above it. This is the reference paper's shape: stem, blank, (a),
+     * blank, (b). The gap is a spent line because the page runs on a fixed 12pt line
+     * with no paragraph spacing (§ One fixed line, no paragraph spacing).
+     */
+    nodes.push(blankLine());
     const partRef = {
       stream: context.questionStream,
       definition: 'question' as const,
@@ -99,6 +107,10 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
         level: 2,
         marker: subPartLabel(subIndex),
       };
+
+      // Each (i)/(ii) sub-part gets the same blank line above it that its parent part
+      // gets, so the depths read alike rather than sub-parts running together.
+      nodes.push(blankLine());
 
       if (subFirst && subFirst.kind === 'paragraph') {
         nodes.push({

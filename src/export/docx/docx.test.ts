@@ -18,9 +18,12 @@ import {
   createSpacerElement,
 } from '@/model/flow';
 import { applyResizeBlock } from '@/model/edits';
-import { MARGIN_PRESETS, bandsHeight, cmToTwips } from '@/model/page';
+import { BAND_ROW_TWIPS, MARGIN_PRESETS, bandsHeight, cmToTwips } from '@/model/page';
+import { FIXED_LINE_TWIPS, exactLineFor } from './styles';
 import { createWorksheet } from '@/model/factories';
-import { bi, plain } from '@/model/text';
+import { applyRunFormat, bi, plain } from '@/model/text';
+import { renderWorksheet } from '@/render/worksheet';
+import type { TextNode } from '@/render/ir';
 import type { LayoutElement, OutputMode, Worksheet } from '@/model/types';
 
 const STUDENT_BI: OutputMode = { language: 'bilingual', version: 'student' };
@@ -240,6 +243,187 @@ describe('styles (§7.3, §11.3)', () => {
     // An empty paragraph is only as tall as its line height, which is not a writing
     // line — the style is what gives each rule room to write on.
     expect(style).toContain('w:line="480" w:lineRule="exact"');
+  });
+});
+
+/**
+ * The reference paper's vertical rhythm, mirrored (§7.3).
+ *
+ * `real_life_reference/DBS_Assessment1.docx` carries `w:line="240" w:lineRule="exact"`
+ * on 275 of its 296 paragraphs over a style with `w:after="0"`: all of its rhythm comes
+ * from one fixed 12pt line box and none from paragraph spacing. These guard that shape,
+ * because every part of it fails silently — a dropped `w:line` looks like one paragraph
+ * set slightly loose, which nobody reports as a bug but which shifts every page break
+ * after it.
+ */
+describe('fixed line spacing (§7.3)', () => {
+  it('gives every paragraph style a fixed 12pt line and no paragraph spacing', async () => {
+    const { read } = await unzip(TEACHER_BI);
+    const styles = await read('word/styles.xml');
+
+    const paragraphStyles = [
+      ...styles.matchAll(
+        /<w:style w:type="paragraph"[^>]*w:styleId="([^"]+)"[\s\S]*?<\/w:style>/g,
+      ),
+    ];
+    expect(paragraphStyles.length).toBeGreaterThan(10);
+
+    for (const [xml, id] of paragraphStyles) {
+      const spacing = xml.match(/<w:spacing[^/]*\/>/)?.[0];
+      expect(spacing, `${id} states its own spacing`).toBeDefined();
+      // Never inherited: direct formatting replaces the whole `w:spacing` element, so a
+      // style that omitted `w:line` would depend on the inheritance chain to supply it.
+      expect(spacing, `${id} sets an exact line`).toContain('w:lineRule="exact"');
+      expect(spacing, `${id} has no space before`).toContain('w:before="0"');
+      expect(spacing, `${id} has no space after`).toContain('w:after="0"');
+    }
+  });
+
+  it('sets the body styles to 11pt text in a 12pt box, as the reference does', async () => {
+    const { read } = await unzip(TEACHER_BI);
+    const styles = await read('word/styles.xml');
+
+    const body = styles.match(
+      /<w:style w:type="paragraph" w:styleId="QuestionStem">[\s\S]*?<\/w:style>/,
+    )?.[0];
+    expect(body).toContain('w:line="240" w:lineRule="exact"');
+    expect(body).toContain('<w:sz w:val="22"/>');
+  });
+
+  it('keeps a larger style in a box that can hold it', async () => {
+    // An exact line box does not grow, so a 16pt title in a 12pt box would be clipped.
+    const { read } = await unzip(TEACHER_BI);
+    const styles = await read('word/styles.xml');
+
+    const title = styles.match(
+      /<w:style w:type="paragraph" w:styleId="WorksheetTitle">[\s\S]*?<\/w:style>/,
+    )?.[0];
+    expect(title).toContain(`w:line="${exactLineFor(16)}" w:lineRule="exact"`);
+    expect(exactLineFor(16)).toBeGreaterThan(320); // 16pt needs more than a 16pt box.
+    // Body-sized and smaller text shares the one rhythm.
+    expect(exactLineFor(11)).toBe(240);
+    expect(exactLineFor(10)).toBe(240);
+    expect(exactLineFor(undefined)).toBe(240);
+  });
+
+  it('restates the line when a teacher overrides paragraph spacing', async () => {
+    // Direct formatting replaces the style's `w:spacing` element rather than merging
+    // into it, so an override that emitted only `w:after` would drop that one paragraph
+    // off the fixed rhythm.
+    const worksheet = buildAcceptanceWorksheet();
+    const heading = { ...createHeadingElement(bi('Spaced', '間距')), format: { spaceAfter: 12 } };
+    worksheet.layout = [...worksheet.layout, heading];
+    worksheet.flow = [...worksheet.flow, { type: 'layout', id: heading.id }];
+
+    const zip = await JSZip.loadAsync(await exportDocxBuffer(worksheet, STUDENT_BI));
+    const document = await zip.file('word/document.xml')!.async('string');
+    expect(document).toContain('w:after="240"');
+    expect(document).toMatch(/<w:spacing[^/]*w:after="240"[^/]*w:lineRule="exact"\/>/);
+  });
+
+  it('leaves table cells on the shared rhythm', async () => {
+    // A cell paragraph used to carry its own before/after with no line, which put every
+    // table row off the grid the rest of the page sits on.
+    const { read } = await unzip(STUDENT_BI);
+    const document = await read('word/document.xml');
+    const cell = document.match(/<w:tc>[\s\S]*?<\/w:tc>/)?.[0];
+    expect(cell).toBeDefined();
+    expect(cell).not.toContain('<w:spacing w:before="20" w:after="20"/>');
+  });
+
+  /**
+   * The reference paper separates every sub-unit with a blank line: stem, blank,
+   * the (1)(2)(3) statements, blank, the A–D options; and stem, blank, (a), blank, (b).
+   * With no paragraph spacing anywhere, a spent line is the only way to open that air,
+   * so these assert the *structure* of the emitted paragraphs.
+   */
+  it('separates a stem, its statements and its options with blank lines', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const rendered = renderWorksheet(worksheet, { language: 'en', version: 'student' });
+
+    // Question 2 of the fixture is the MCQ that carries statements.
+    const mcq = rendered.items.find(
+      (item) =>
+        item.type === 'question' &&
+        item.question.nodes.some((node) => node.kind === 'text' && node.listRef?.definition === 'statement'),
+    );
+    expect(mcq?.type).toBe('question');
+    const nodes = mcq!.type === 'question' ? mcq!.question.nodes : [];
+
+    const firstStatement = nodes.findIndex(
+      (n) => n.kind === 'text' && n.listRef?.definition === 'statement',
+    );
+    const lastStatement = nodes.map((n) => n.kind === 'text' && n.listRef?.definition === 'statement')
+      .lastIndexOf(true);
+    const firstOption = nodes.findIndex(
+      (n) =>
+        (n.kind === 'text' && n.listRef?.definition === 'option') ||
+        (n.kind === 'columns' && n.style === 'MCQ Option'),
+    );
+
+    // A blank immediately before the statement block, and another before the options.
+    expect(nodes[firstStatement - 1].kind).toBe('spacer');
+    expect(nodes[lastStatement + 1].kind).toBe('spacer');
+    expect(nodes[firstOption - 1].kind).toBe('spacer');
+  });
+
+  it('separates each part and sub-part of a structured question', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const rendered = renderWorksheet(worksheet, { language: 'en', version: 'student' });
+
+    const structured = rendered.items.find(
+      (item) =>
+        item.type === 'question' &&
+        item.question.nodes.some((node) => node.kind === 'text' && node.style === 'Sub-question'),
+    );
+    const nodes = structured!.type === 'question' ? structured!.question.nodes : [];
+
+    // Every part and sub-part is immediately preceded by a blank line.
+    for (const style of ['Sub-question', 'Sub-sub-question'] as const) {
+      const indices = nodes.flatMap((n, i) => (n.kind === 'text' && n.style === style ? [i] : []));
+      expect(indices.length).toBeGreaterThan(0);
+      // Only the first node of each part carries the list marker; the gap belongs there.
+      for (const i of indices) {
+        if (!(nodes[i].kind === 'text' && (nodes[i] as TextNode).listRef)) continue;
+        expect(nodes[i - 1]?.kind, `${style} at ${i} follows a blank`).toBe('spacer');
+      }
+    }
+  });
+
+  it('separates consecutive questions, but adds no gap before the first item', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const rendered = renderWorksheet(worksheet, { language: 'en', version: 'student' });
+
+    // The very first item opens the document; a gap there is just a shifted top margin.
+    expect(rendered.items[0].type === 'question'
+      ? rendered.items[0].question.nodes[0].kind
+      : rendered.items[0].layout.nodes[0].kind).not.toBe('spacer');
+
+    // Every later question leads with one.
+    const questions = rendered.items.filter((item) => item.type === 'question');
+    for (const item of questions.slice(1)) {
+      const nodes = item.type === 'question' ? item.question.nodes : [];
+      expect(nodes[0].kind).toBe('spacer');
+    }
+  });
+
+  it('exports each blank line as an empty styled paragraph on the shared rhythm', async () => {
+    const { read } = await unzip(STUDENT_BI);
+    const document = await read('word/document.xml');
+
+    // A blank line is a real `w:p` — it has to occupy a line to be a gap at all — and
+    // carries the Body style plus the fixed 12pt box like every other paragraph.
+    const blanks = document.match(
+      /<w:p><w:pPr><w:pStyle w:val="BodyTextCustom"\/><w:spacing w:line="240" w:lineRule="exact"\/><\/w:pPr><\/w:p>/g,
+    );
+    expect(blanks?.length ?? 0).toBeGreaterThan(3);
+  });
+
+  it('measures a band row as the same fixed line the exporter writes', () => {
+    // `model/` cannot import `export/`, so the row height is duplicated there. If the
+    // exported line changes and the estimate does not, every header offset drifts.
+    expect(BAND_ROW_TWIPS).toBe(FIXED_LINE_TWIPS);
+    expect(bandsHeight([createBand()])).toBe(FIXED_LINE_TWIPS);
   });
 });
 
@@ -695,9 +879,16 @@ describe('layout elements in the section flow', () => {
     // the rule and the writing height belong to the style, not to each paragraph.
     const document = await open(withElement(createAnswerLinesElement(4)));
     expect(document).toContain('<w:p><w:pPr><w:pStyle w:val="AnswerLine"/></w:pPr></w:p>');
-    // No paragraph border or exact line height anywhere in the body.
-    expect(document).not.toContain('w:lineRule="exact"');
-    expect(document).not.toContain('A6A6A6');
+    // The border and the writing height appear nowhere in the body — they are the
+    // style's job. Asserted per answer-line paragraph rather than over the whole
+    // document, because a deliberate spacer elsewhere legitimately sets an exact line.
+    const answerLines =
+      document.match(/<w:p><w:pPr><w:pStyle w:val="AnswerLine"\/>[\s\S]*?<\/w:p>/g) ?? [];
+    expect(answerLines.length).toBe(4);
+    for (const paragraph of answerLines) {
+      expect(paragraph).not.toContain('w:lineRule="exact"');
+      expect(paragraph).not.toContain('A6A6A6');
+    }
   });
 
   it('exports a page break as a real Word page break', async () => {
@@ -771,6 +962,84 @@ describe('per-element formatting overrides', () => {
     const worksheet = buildAcceptanceWorksheet();
     worksheet.instructionsFormat = { align: 'justify' };
     expect(await documentXml(worksheet)).toContain('<w:jc w:val="both"/>');
+  });
+
+  /**
+   * Per-run formatting — different sizes and colours inside ONE paragraph.
+   *
+   * The point of the feature: a teacher selects three words in a stem and enlarges just
+   * those. That has to survive as several `w:r` in one `w:p`, each with its own
+   * `w:rPr`, or the export silently flattens the emphasis the page showed.
+   */
+  it('exports differently formatted runs inside a single paragraph', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    // "Answer ALL questions." with only "ALL" enlarged and reddened.
+    const source = worksheet.instructions!.en;
+    const start = plain(source).indexOf('ALL');
+    worksheet.instructions = {
+      ...worksheet.instructions!,
+      en: applyRunFormat(source, start, start + 3, { fontSize: 18, color: 'C00000' }),
+    };
+
+    const document = await documentXml(worksheet);
+    const paragraph = document.match(
+      /<w:p><w:pPr><w:pStyle w:val="Instructions"\/>[\s\S]*?<\/w:p>/,
+    )?.[0];
+    expect(paragraph).toBeDefined();
+
+    // Three runs on the English side: before, the emphasised word, after.
+    expect(paragraph).toContain('<w:t xml:space="preserve">Answer </w:t>');
+    expect(paragraph).toContain('<w:t xml:space="preserve">ALL</w:t>');
+    expect(paragraph).toContain('<w:t xml:space="preserve"> questions.</w:t>');
+
+    // Only the middle run carries the overrides. 18pt is 36 half-points.
+    const emphasised = paragraph!.match(
+      /<w:r>(?:(?!<\/w:r>)[\s\S])*<w:t xml:space="preserve">ALL<\/w:t><\/w:r>/,
+    )?.[0];
+    expect(emphasised).toContain('<w:sz w:val="36"/>');
+    expect(emphasised).toContain('<w:color w:val="C00000"/>');
+
+    const plainRun = paragraph!.match(
+      /<w:r>(?:(?!<\/w:r>)[\s\S])*<w:t xml:space="preserve">Answer <\/w:t><\/w:r>/,
+    )?.[0];
+    expect(plainRun).not.toContain('<w:sz');
+    expect(plainRun).not.toContain('<w:color');
+  });
+
+  it('lets a run override the element font pair', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const source = worksheet.instructions!.en;
+    worksheet.instructions = {
+      ...worksheet.instructions!,
+      en: applyRunFormat(source, 0, 6, {
+        fonts: { latin: 'Arial', eastAsia: 'Microsoft JhengHei' },
+      }),
+    };
+
+    const document = await documentXml(worksheet);
+    expect(document).toContain('w:ascii="Arial"');
+    expect(document).toContain('w:eastAsia="Microsoft JhengHei"');
+    // The rest of the document still uses the worksheet pair.
+    expect(document).toContain('w:ascii="Times New Roman"');
+  });
+
+  it('keeps a run bold when its element is bold, and adds its own size', async () => {
+    // Flags OR with the element; values replace it. A run inside a bold heading stays
+    // bold while carrying its own size.
+    const worksheet = buildAcceptanceWorksheet();
+    worksheet.titleFormat = { bold: true };
+    const source = worksheet.title.en;
+    worksheet.title = {
+      ...worksheet.title,
+      en: applyRunFormat(source, 0, 2, { fontSize: 20 }),
+    };
+
+    const document = await documentXml(worksheet);
+    const sized = document.match(
+      /<w:r>(?:(?!<\/w:r>)[\s\S])*<w:sz w:val="40"\/>(?:(?!<\/w:r>)[\s\S])*<\/w:r>/,
+    )?.[0];
+    expect(sized).toBeDefined();
+    expect(sized).toContain('<w:b/>');
   });
 
   it('applies a per-element font override without changing the rest', async () => {
