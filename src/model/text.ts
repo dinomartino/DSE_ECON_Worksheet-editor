@@ -288,6 +288,63 @@ export function applyRunFormat(
   return normalizeRuns(out);
 }
 
+/**
+ * Replace the characters in `[start, end)` with `insert`, keeping formatting.
+ *
+ * This is what typing does in the on-page editor. The editor renders the runs
+ * themselves — bold looks bold, 14pt looks 14pt — so an edit can no longer be
+ * expressed as "re-parse the whole marker string"; it has to be a *range* operation
+ * that leaves every attribute the edit did not touch exactly where it was.
+ *
+ * The inserted characters take the formatting of the run they land inside, which is
+ * what makes typing in the middle of a bold phrase continue in bold, and typing at a
+ * boundary continue the run on the **left** — the same rule Word follows, and the
+ * reason the caret's "current format" is read from the character before it.
+ *
+ * `at === 0` on empty text has no run to inherit from, so `fallback` supplies one;
+ * that is how the toolbar's pending format ("turn bold on, then type") reaches the
+ * first character.
+ */
+export function replaceRichTextRange(
+  runs: RichText | undefined,
+  start: number,
+  end: number,
+  insert: string,
+  fallback?: RunFormat,
+): RichText {
+  const source = runs ?? [];
+  const length = richTextLength(source);
+  const from = Math.max(0, Math.min(start, end, length));
+  const to = Math.min(length, Math.max(start, end));
+
+  const split = splitAt(splitAt(source, from), to);
+
+  const before: RichText = [];
+  const after: RichText = [];
+  let seen = 0;
+  for (const run of split) {
+    const runEnd = seen + run.text.length;
+    if (runEnd <= from) before.push(run);
+    else if (seen >= to) after.push(run);
+    seen = runEnd;
+  }
+
+  const out = [...before];
+  if (insert) {
+    // Inherit from the run to the left of the caret, then the one to the right, then
+    // the caller's fallback. Left-first is what continues a bold phrase you are typing
+    // inside; falling to the right covers inserting at offset 0.
+    const attrs = before.length
+      ? runAttrs(before[before.length - 1])
+      : after.length
+        ? runAttrs(after[0])
+        : (fallback ?? {});
+    out.push({ ...attrs, text: insert });
+  }
+  out.push(...after);
+  return normalizeRuns(out);
+}
+
 /** The runs covering `[start, end)`, split at both ends. */
 export function sliceRichText(
   runs: RichText | undefined,

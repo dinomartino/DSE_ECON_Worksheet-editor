@@ -103,6 +103,13 @@ function render(question: McqQuestion, context: RenderContext): RenderNode[] {
       style: 'Question Stem',
       text: firstBlock.text,
       keepNext: true,
+      // The numbered paragraph is built by hand rather than through
+      // `renderContentBlocks`, so it has to carry the block's own formatting itself.
+      // Without this the *first* stem paragraph silently ignored alignment, size and
+      // colour while every later one honoured them — and because only the preview
+      // applies alignment via CSS, an aligned stem previewed one way and exported with
+      // no `w:jc` at all.
+      format: firstBlock.format,
       edit: { kind: 'blockText', blockId: firstBlock.id },
       listRef: {
         stream: context.questionStream,

@@ -15,6 +15,7 @@ import {
   sourceOffsetToText,
   parseRuns,
   plain,
+  replaceRichTextRange,
   runLines,
   serializeRuns,
 } from './text';
@@ -173,6 +174,65 @@ describe('per-run formatting over a character range', () => {
     // Spanning sized and unsized text: no single size describes the selection, so the
     // toolbar must show none rather than claiming the first run's value.
     expect(commonRunFormat(runs, 0, 14).fontSize).toBeUndefined();
+  });
+
+  it('keeps every run attribute when text is edited around it', () => {
+    /*
+     * The on-page editor renders runs directly and commits a *range* edit, rather than
+     * re-parsing a marker string. That is the whole reason size and colour survive
+     * typing: `serializeRuns` never spelled them, so the old round-trip dropped them
+     * silently and a 14pt red phrase reverted to body text the moment the field closed.
+     */
+    const runs = applyRunFormat(parseRuns('Real GDP rises'), 5, 8, {
+      fontSize: 14,
+      color: 'C00000',
+    });
+
+    // Type at the very start; the sized, coloured word is untouched.
+    const next = replaceRichTextRange(runs, 0, 0, 'The ');
+    expect(plain(next)).toBe('The Real GDP rises');
+    const sized = next.find((run) => run.fontSize === 14);
+    expect(sized?.text).toBe('GDP');
+    expect(sized?.color).toBe('C00000');
+  });
+
+  it('continues the run to the left of the caret, as Word does', () => {
+    const runs = applyRunFormat(parseRuns('Real GDP rises'), 5, 8, { bold: true });
+
+    // Typing at the *end* of the bold word continues it in bold.
+    const inside = replaceRichTextRange(runs, 8, 8, 'X');
+    expect(inside.find((run) => run.bold)?.text).toBe('GDPX');
+
+    // Typing at offset 0 has nothing on the left, so it takes the run on the right.
+    const atStart = replaceRichTextRange(parseRuns('**GDP**'), 0, 0, 'X');
+    expect(plain(atStart)).toBe('XGDP');
+    expect(atStart.every((run) => run.bold)).toBe(true);
+  });
+
+  it('applies the fallback format only when there is no run to inherit from', () => {
+    // "Turn bold on, then type" in an empty field: nothing to inherit, so the pending
+    // format from the toolbar supplies the first character's attributes.
+    const fresh = replaceRichTextRange([], 0, 0, 'Hi', { bold: true });
+    expect(fresh).toEqual([{ bold: true, text: 'Hi' }]);
+
+    // With text present the neighbour wins, so the fallback cannot override a run the
+    // caret is sitting inside.
+    const existing = replaceRichTextRange(parseRuns('plain'), 5, 5, '!', { bold: true });
+    expect(existing.some((run) => run.bold)).toBe(false);
+  });
+
+  it('deletes a range and merges the neighbours back into one run', () => {
+    const runs = parseRuns('Real GDP rises');
+    const next = replaceRichTextRange(runs, 4, 8, '');
+    expect(plain(next)).toBe('Real rises');
+    // Identical formatting either side of the cut, so it must not stay fragmented.
+    expect(next).toHaveLength(1);
+  });
+
+  it('stores a hard break as a newline inside the run', () => {
+    const next = replaceRichTextRange(parseRuns('one two'), 3, 3, '\n');
+    expect(plain(next)).toBe('one\n two');
+    expect(hasLineBreak(next)).toBe(true);
   });
 
   it('maps a selection in the marker source onto plain-text offsets', () => {

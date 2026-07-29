@@ -22,7 +22,7 @@ the same PR.
 | State | Zustand 5, undo/redo with a 100-entry history |
 | Language | TypeScript strict |
 | Export | Raw OOXML via JSZip (hand-built, no `docx` library) |
-| Test | Vitest 4 — 381 tests across 15 files, ~1s |
+| Test | Vitest 4 — 386 tests across 14 files, ~1s |
 | Runtime | Browser-only: client-side `.docx` generation, no API routes |
 
 ## Project structure
@@ -39,7 +39,8 @@ src/
 │                 diagramImage (PNG pre-pass) · clipboard
 ├── store/        worksheetStore — Zustand with undo/redo
 ├── storage/      WorksheetStore interface + localStorage implementation
-├── components/   EditorApp (shell) · preview/ (the paper, which is the editor) ·
+├── components/   EditorApp (shell) · preview/ (the paper, which is the editor;
+│                 RichTextEditable + richTextDom are the shared WYSIWYG surface) ·
 │                 editor/ (sidebar, rails, dialogs) · ui/ (primitives)
 └── test/         shared fixtures
 ```
@@ -219,28 +220,59 @@ word and unbolding it would leave three runs where there was one. A `null` in th
 **clears** an attribute; `undefined` cannot, being indistinguishable from "not mentioned"
 once spread over a run.
 
-Four rules the editing surface has to keep, each of which failed silently when it did not:
+### The editing surface renders runs, not markers
 
-- **The textarea's offsets are not the model's.** It holds `serializeRuns` output, which
-  contains `**` and `^{}` markers the model has no idea about. `sourceOffsetToText`
-  discounts them by walking the string and marking marker characters — an earlier version
-  did arithmetic on token lengths, got the *closing* marker wrong, and formatted a range
-  one character left of the selection, splitting the next word mid-way in the export.
-- **Re-parsing the marker string destroys size and colour.** `serializeRuns` spells only
-  the five flags, so `parseRuns(source)` rebuilds runs that have lost everything else.
-  Committing an unchanged string therefore has to be a no-op, and the "flush unsaved
-  typing" path compares **plain text**, not the serialized form — comparing the latter
-  read "bold was just applied" as "the user typed something" and wiped the formatting.
-- **Bold/italic/underline *do* change the serialized string**, so the draft must re-sync
-  when formatting rewrites the value under an open editor, or closing the field commits
-  the stale string and undoes the emphasis. Done by adjusting state during render, guarded
-  on plain text so it never fights the caret.
+`**bold**`, `__underline__` and `^{sup}` are a **storage** form — what `serializeRuns`
+produces so a run array can round-trip through a plain string. They are not a thing to
+type at, and every editing surface (`components/preview/RichTextEditable.tsx`, shared by
+the page's `InlineEditable`, the sidebar's `BiTextField` and the table cells) renders the
+runs *as themselves*: a bold run is bold, a 14pt red phrase is 14pt and red. Teachers
+were previously shown `her **opportunity cost** of choosing…` mid-sentence and asked to
+infer what it meant.
+
+That is not only cosmetic — a textarea can hold only a string, and the string is lossy:
+
+- **`serializeRuns` spells five flags and nothing else.** Size, colour and fonts live on
+  the run, so `parseRuns(source)` rebuilt runs that had lost them. A 16pt phrase applied
+  from the toolbar therefore survived only until the field closed. Reading the DOM back
+  reads *attributes* (`data-run-attrs`), so every attribute survives an arbitrary edit.
+- **Offsets needed translating.** A textarea's offsets counted marker characters the
+  model has no idea about, so a selection had to be discounted through
+  `sourceOffsetToText` before it could be formatted. Offsets in the DOM surface are
+  already plain-text offsets — the model's own coordinate space — so there is nothing to
+  translate and nothing to get wrong. (`sourceOffsetToText` survives for the marker
+  string's remaining non-editing uses.)
+- **There is no second copy of the text.** The draft/flush/re-sync dance existed only to
+  keep a string in step with the runs while both were live; with one representation, the
+  class of staleness is gone.
+
+Four rules this surface has to keep, each of which failed silently when it did not:
+
+- **A contenteditable is an *uncontrolled* input.** The browser writes into it directly,
+  so React owns only *whether* the element exists — the runs are painted imperatively
+  (`runToNode`). Rendering them as JSX children makes React reconcile the very nodes the
+  browser is mutating: every keystroke re-inserted the whole accumulated string, so
+  typing "Based" produced `BasedBaseBasBaB`.
+- **The field's own echo must not repaint it.** Typing commits to the store, and the
+  store hands the same value straight back down. `paintedRef` + `sameRuns` recognise that
+  round trip and leave the DOM alone, so only a *genuine* outside change — the toolbar
+  applying bold — repaints, and only then is the caret restored by offset.
+- **Typing is left to the browser.** `onBeforeInput` intercepts only when a *pending*
+  format is waiting ("bold on, then type", which has no run for the browser to continue);
+  everything else is native, which is what keeps IME composition, autocorrect and undo
+  working. Paste is the other exception, forced to plain text so a web page's fonts and
+  colours cannot ride onto the sheet.
 - **The toolbar reports the selection, not the element.** Merging the element's format
   underneath inverted a click: the Title style is bold, so the bar read `bold: true` for a
   selection carrying none and sent "clear bold" instead of "set bold". Choosing a font
-  size also blurs the textarea (the bar exempts form controls from its `preventDefault`
-  so the native popup can open), so the blur handler ignores focus moving into
+  size also blurs the field (the bar exempts form controls from its `preventDefault` so
+  the native popup can open), so the blur handler ignores focus moving into
   `[role="toolbar"]`.
+
+`replaceRichTextRange(runs, start, end, insert, fallback)` in `model/text.ts` is the edit
+primitive underneath: inserted characters inherit from the run on the **left** of the
+caret (then the right, then the caller's fallback), which is what continues a bold phrase
+you are typing inside — the same rule Word follows.
 
 ---
 
@@ -349,6 +381,25 @@ Four consequences, each of which fails silently if broken:
   the inheritance chain to supply `w:line`. Direct formatting has the same hazard, which
   is why `formatParagraphProps()` restates the line whenever a teacher overrides spacing
   or font size.
+### A numbered paragraph indents as a block, not by its first line
+
+Word's list geometry is `w:ind` `left` + `hanging`: the paragraph's text column sits at
+`left`, and the **marker alone** is pulled back by `hanging` into the margin. Every line
+— wrapped lines and lines after a hard break alike — starts at `left`. The reference
+paper prints exactly this: a stem's second and third lines sit flush under its first
+word, with only the number out in the margin.
+
+The preview expressed it as `padding-left: 18pt; text-indent: -18pt`, which is a
+*different* shape. CSS `text-indent` moves the **first line only**, so line 1 began 18pt
+left of every other line — on a real question that reads as "the second line is indented
+to the right", and it disagreed with both Word and the paper.
+
+`LIST_INDENT_TWIPS` in `Preview.tsx` now holds the *same twip values*
+`export/docx/numbering.ts` writes, keyed by `definition:level`, rather than an
+approximation that could drift from them. The marker is drawn **absolutely positioned**
+at `left - hanging`: taking it out of the flow moves the number alone, where an in-flow
+marker has to be pulled left by `text-indent` and drags its whole line with it.
+
 - **The preview pins the same numbers.** `.paper` sets `font-size: 11pt` and a fixed
   `line-height: 12pt`, with zero paragraph margins, mirroring the exporter. Left to
   inherit the app shell's 16px and its ~1.5 leading, the preview packed roughly a third
@@ -807,6 +858,17 @@ A `QuestionTypeDefinition` carries:
 Registered today: `mcq` and `structured`. Adding a type needs only a new definition —
 no changes to numbering, marks, persistence or export orchestration.
 
+**The numbered paragraph is hand-built, so it must copy the block's `format` itself.**
+Every *other* paragraph goes through `renderContentBlocks`, which passes
+`format: block.format` for free; the one carrying the question number is assembled by
+hand (it needs the `listRef`), and all four such sites — the MCQ stem, and the
+structured stem, part and sub-part — omitted it. The failure is silent and
+asymmetric: the first paragraph of a stem ignored alignment, size and colour while
+every later one honoured them. Worse, only the preview applies alignment (as CSS), so
+a right-aligned stem previewed as right-aligned and exported with **no `w:jc` at
+all** — a preview that lies about the document. `registry.test.ts` now sets a format
+on each type's first block and asserts it reaches the IR.
+
 **No shared module may branch on a concrete type.** `registry.test.ts` greps eight
 modules — `model/numbering.ts`, `render/worksheet.ts`, `export/docx/{index,body,numbering}.ts`,
 `export/clipboard.ts`, `model/migrations.ts`, `storage/index.ts` — and fails if one
@@ -910,8 +972,15 @@ hover                     → drag grip in the margin → drag to reorder
 - **Arrow keys nudge a diagram selection**, routed through the same `dragHandles` a drag
   uses, so every handle kind obeys its own rule for free. The step is deliberately not
   scaled by zoom: a nudge is a fixed edit to geometry.
-- **No layout shift while editing.** The editor is an `inline-block` textarea inheriting
+- **No layout shift while editing.** The editor is a plain **`inline`** field inheriting
   font, size and leading, so the list marker stays in its gutter and nothing below moves.
+  `inline`, specifically: an `inline-block` establishes its own formatting context, so
+  its lines cannot inherit the paragraph's hanging indent (`padding-left: 24px` +
+  `text-indent: -24px`), and a `w-full` on top pushed it out to the whole column. Clicking
+  into a numbered stem therefore moved every line ~29px left, out of the gutter the `1.`
+  shares, and moved them back on commit — the text visibly jumped on entry and exit. For
+  the same reason the field must **not** reset `text-indent`: the paragraph's negative
+  indent applies to its own first line, the one the marker sits on.
 - **One language at a time.** In bilingual mode the two halves are separate editable
   spans, so clicking the Chinese line writes `zh` and leaves `en` untouched.
 - **Two-step engagement makes keyboard delete safe.** Delete acts on a deliberate

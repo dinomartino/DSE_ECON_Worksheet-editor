@@ -10,7 +10,8 @@ import {
   newId,
 } from '@/model/factories';
 import { DIAGRAM_TEMPLATES } from '@/model/diagramTemplates';
-import { emptyBiText, plain, serializeRuns, parseRuns } from '@/model/text';
+import { emptyBiText, plain } from '@/model/text';
+import { RichTextEditable } from '@/components/preview/RichTextEditable';
 import type { ContentBlock, ImageBlock, TableBlock } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { Button, Eyebrow, GroupHeader, IconButton, NumberField } from '@/components/ui';
@@ -370,31 +371,32 @@ function TableBlockEditor({
                         }}
                         style={{ textAlign: cell.align ?? 'left' }}
                       >
-                        {/* Cell inputs follow the selected language mode (§5.2). */}
+                        {/* Cell inputs follow the selected language mode (§5.2). They
+                            render their runs rather than a marker string, so a bold
+                            column header reads as bold here and a per-run size survives
+                            being typed next to — the same surface the page uses. */}
                         {showEn && (
-                          <input
+                          <RichTextEditable
                             className={CELL_INPUT}
                             lang="en"
-                            placeholder="EN"
-                            aria-label={`Row ${rowIndex + 1} column ${cellIndex + 1} English`}
-                            value={serializeRuns(cell.text.en)}
-                            onChange={(event) =>
+                            ariaLabel={`Row ${rowIndex + 1} column ${cellIndex + 1} English`}
+                            value={cell.text.en ?? []}
+                            onChange={(next) =>
                               setCell(rowIndex, cellIndex, {
-                                text: { ...cell.text, en: parseRuns(event.target.value) },
+                                text: { ...cell.text, en: next },
                               })
                             }
                           />
                         )}
                         {showZh && (
-                          <input
+                          <RichTextEditable
                             className={CELL_INPUT}
                             lang="zh-HK"
-                            placeholder="中文"
-                            aria-label={`Row ${rowIndex + 1} column ${cellIndex + 1} 中文`}
-                            value={serializeRuns(cell.text.zh)}
-                            onChange={(event) =>
+                            ariaLabel={`Row ${rowIndex + 1} column ${cellIndex + 1} 中文`}
+                            value={cell.text.zh ?? []}
+                            onChange={(next) =>
                               setCell(rowIndex, cellIndex, {
-                                text: { ...cell.text, zh: parseRuns(event.target.value) },
+                                text: { ...cell.text, zh: next },
                               })
                             }
                           />

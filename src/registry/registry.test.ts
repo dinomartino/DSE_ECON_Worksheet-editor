@@ -51,6 +51,39 @@ describe('question-type registry (§9)', () => {
     }
   });
 
+  it('carries the numbered paragraph\'s own formatting into the IR', () => {
+    /*
+     * The paragraph that carries the question number is built by hand rather than
+     * through `renderContentBlocks`, so it is the one place a block's `format` can be
+     * forgotten — and it was, in all four hand-built sites.
+     *
+     * It failed silently and asymmetrically: the *first* stem paragraph ignored
+     * alignment while every later one honoured it, and because only the preview applies
+     * alignment (as CSS) the page showed a right-aligned stem that exported with no
+     * `w:jc` at all. A real worksheet in `real_life_reference/` hit exactly this.
+     */
+    for (const definition of listQuestionTypes()) {
+      const question = definition.create();
+      const first = question.blocks[0];
+      if (!first || first.kind !== 'paragraph') continue;
+      first.format = { align: 'right', fontSize: 14 };
+
+      const nodes = definition.render(question, {
+        mode: { language: 'en', version: 'student' },
+        questionNumber: 1,
+        questionId: 'q-test',
+        questionStream: 'question:0',
+      });
+
+      const numbered = nodes.find((node) => node.kind === 'text' && node.listRef?.level === 0);
+      expect(numbered, `${definition.id} numbered node`).toBeTruthy();
+      expect(
+        numbered && 'format' in numbered ? numbered.format : undefined,
+        `${definition.id} must carry the block's format`,
+      ).toMatchObject({ align: 'right', fontSize: 14 });
+    }
+  });
+
   it('throws loudly on an unknown type instead of silently dropping a question', () => {
     expect(getQuestionType('nope')).toBeUndefined();
     expect(() => requireQuestionType({ type: 'nope' } as unknown as Question)).toThrow(/Unknown question type/);

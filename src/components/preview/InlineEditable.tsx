@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { parseRuns, plain, serializeRuns, sourceOffsetToText } from '@/model/text';
+import { plain } from '@/model/text';
 import type { BiText, RichText } from '@/model/types';
+import { RichTextEditable } from './RichTextEditable';
 
 /**
  * One directly-editable run of text on the page.
@@ -20,17 +21,26 @@ import type { BiText, RichText } from '@/model/types';
  * rendered as two of these, so clicking the Chinese line edits `zh` and leaves `en`
  * untouched — the same patch-don't-replace rule the sidebar follows (§5.2).
  *
- * The source string carries the inline markers the model uses (`**bold**` etc.), so
- * formatting survives a round-trip through the page exactly as it does through the
- * sidebar textareas.
+ * **What you see is what the document holds.** The field renders the runs themselves —
+ * a bold run is bold, a 14pt red run is 14pt and red — rather than exposing the
+ * `**bold**` marker string the model happens to use for its plain-text form. Teachers
+ * were being shown `__above__` and `**opportunity cost**` mid-sentence and asked to
+ * infer what they meant; markup is an implementation detail of storage, not a thing to
+ * type at.
+ *
+ * That choice removes the three hazards the marker string created, rather than managing
+ * them: offsets here are already plain-text offsets so nothing is translated; the runs
+ * are read back as attributes so size, colour and fonts cannot be lost to a re-parse;
+ * and there is no second copy of the text to drift from the model while the field is
+ * open.
  */
 
 /**
  * A live text selection inside one editable field, in **model** offsets.
  *
  * Reported so the format toolbar can act on the selected characters rather than on the
- * whole element (§ per-run formatting). The offsets are into the plain text, already
- * translated out of the textarea's marker-string coordinates.
+ * whole element (§ per-run formatting). The offsets index the plain text, which is also
+ * what the editing surface counts in — so no translation stands between the two.
  */
 export interface TextSelection {
   side: 'en' | 'zh';
@@ -66,7 +76,7 @@ interface Props {
   onSelectionChange?: (selection: TextSelection | undefined) => void;
   /**
    * True while the toolbar is acting on this field's selection. Editing must not end
-   * on blur then, because clicking a toolbar control blurs the textarea — committing
+   * on blur then, because clicking a toolbar control blurs the field — committing
    * there would close the editor and discard the range the click meant to format.
    */
   keepEditing?: boolean;
@@ -87,50 +97,9 @@ export function InlineEditable({
   keepEditing = false,
 }: Props) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState('');
-  const areaRef = useRef<HTMLTextAreaElement>(null);
   const spanRef = useRef<HTMLSpanElement>(null);
 
-  const source = serializeRuns(value[side] as RichText);
-
-  // Size the textarea to its content so a long stem does not scroll inside a
-  // one-line box while being edited.
-  useEffect(() => {
-    const element = areaRef.current;
-    if (!editing || !element) return;
-    element.style.height = 'auto';
-    element.style.height = `${element.scrollHeight}px`;
-  }, [editing, draft]);
-
-  useEffect(() => {
-    if (!editing) return;
-    const element = areaRef.current;
-    if (!element) return;
-    element.focus();
-    element.setSelectionRange(element.value.length, element.value.length);
-  }, [editing]);
-
-  /*
-   * Keep the draft in step when formatting rewrites the value underneath an open editor.
-   *
-   * Size and colour are invisible to `serializeRuns`, but **bold, italic and underline
-   * are not** — applying them to a range adds `**…**` to the serialized form while the
-   * textarea still holds the string it was opened with. Left alone, closing the field
-   * would commit that stale string and undo the emphasis.
-   *
-   * Guarded on the *plain text* so it only ever re-syncs markup, never fights the caret:
-   * while the user is typing, the characters differ and this leaves the draft alone.
-   */
-  const [syncedSource, setSyncedSource] = useState(source);
-  if (editing && source !== syncedSource) {
-    // Adjusting state during render — React's supported alternative to an effect for
-    // "derive from a prop change". It re-renders this component immediately, before
-    // anything can commit the stale draft, and starts no effect cascade.
-    setSyncedSource(source);
-    if (draft !== source && plain(parseRuns(draft)) === plain(value[side])) {
-      setDraft(source);
-    }
-  }
+  const runs = (value[side] ?? []) as RichText;
 
   // Deleting is driven from the page's key handler, which needs this element to
   // hold focus — otherwise Delete would apply to whatever was focused before.
@@ -138,111 +107,63 @@ export function InlineEditable({
     if (selected && !editing) spanRef.current?.focus({ preventScroll: true });
   }, [selected, editing]);
 
-  const beginEditing = () => {
-    setDraft(source);
-    setEditing(true);
-  };
+  const beginEditing = () => setEditing(true);
 
-  /*
-   * Commit the typed text.
-   *
-   * The equality check is load-bearing beyond skipping a redundant undo entry.
-   * `serializeRuns` spells only bold/italic/underline/sup/sub — a run's **size, colour
-   * and font live on the run, not in the marker string** — so `parseRuns(next)` rebuilds
-   * runs that have lost them. Re-parsing an unchanged string would therefore silently
-   * erase every per-run format the toolbar had just applied, which is exactly what
-   * happened when a field was formatted and then closed: the page showed the emphasis
-   * until the click that ended editing, and then dropped it.
-   *
-   * So an untouched string commits nothing, and a genuinely edited one re-parses and
-   * accepts the loss of per-run attributes — the text those attributes described no
-   * longer exists in the same shape, and reconciling offsets across an arbitrary edit is
-   * not something a marker string can express.
-   */
-  const commit = (next: string) => {
+  /** End editing and return the element to a neutral state. */
+  const stopEditing = () => {
     setEditing(false);
     onSelectionChange?.(undefined);
     onDeselect?.();
-    if (next === source) return;
-    onCommit({ ...value, [side]: parseRuns(next) });
-  };
-
-  /*
-   * Publish the caret/selection in model offsets.
-   *
-   * The textarea holds the serialized marker string, so its own offsets count `**` and
-   * `^{}` characters the model has no idea about. `sourceOffsetToText` discounts them,
-   * which is what makes "format the selected words" land on the right characters rather
-   * than a few to the left of them.
-   *
-   * An empty selection publishes `undefined`: a caret is not a range, and a toolbar
-   * click with only a caret must be a no-op rather than reformatting the element.
-   */
-  const publishSelection = (element: HTMLTextAreaElement) => {
-    if (!onSelectionChange) return;
-    const { selectionStart, selectionEnd } = element;
-    if (selectionStart === null || selectionEnd === null || selectionStart === selectionEnd) {
-      onSelectionChange(undefined);
-      return;
-    }
-    const text = element.value;
-
-    /*
-     * Flush genuinely-unsaved **typing** before reporting a range to format.
-     *
-     * The toolbar formats the runs held in the *store*, while the textarea holds an
-     * uncommitted draft. Selecting inside text that was typed but never committed would
-     * format the previous runs, and the draft would then overwrite the result on close.
-     *
-     * The comparison is on the **plain text**, not the marker string, and that is the
-     * load-bearing part. Applying bold to a range rewrites the stored runs, so
-     * `serializeRuns` starts emitting `**price ceiling**` while the textarea still shows
-     * the unmarked string it was opened with. Comparing marker strings therefore read
-     * that as "the user typed something", flushed `parseRuns(text)` over the freshly
-     * formatted runs, and destroyed them — the bolded words vanished from the page
-     * entirely. Only a change in the *characters* means unsaved typing.
-     */
-    if (plain(parseRuns(text)) !== plain(value[side])) {
-      onFlush?.({ ...value, [side]: parseRuns(text) });
-    }
-
-    onSelectionChange({
-      side,
-      start: sourceOffsetToText(text, Math.min(selectionStart, selectionEnd)),
-      end: sourceOffsetToText(text, Math.max(selectionStart, selectionEnd)),
-    });
   };
 
   if (editing) {
     return (
-      <textarea
-        ref={areaRef}
-        value={draft}
-        rows={1}
-        onSelect={(event) => publishSelection(event.currentTarget)}
-        onKeyUp={(event) => publishSelection(event.currentTarget)}
-        onMouseUp={(event) => publishSelection(event.currentTarget)}
+      <RichTextEditable
+        value={runs}
+        /*
+         * Every edit commits immediately, rather than being held as a draft until close.
+         *
+         * That is what keeps the field and the store in step: the toolbar formats what
+         * the *store* holds, so text typed but not yet committed would be formatted in
+         * its previous shape and then overwritten on close. It routes through `onFlush`,
+         * which keeps the page selection alive, so one editing session does not push an
+         * undo entry per keystroke.
+         */
+        onChange={(next) => (onFlush ?? onCommit)({ ...value, [side]: next })}
+        autoFocus
         lang={side === 'zh' ? 'zh-HK' : 'en'}
-        aria-label={side === 'zh' ? 'Edit 中文 text' : 'Edit English text'}
-        // `inline-block` + an auto-grown height keeps the field in the text's own
-        // flow, so the list marker stays on its line and nothing below shifts. A
-        // block-level field would claim the full paragraph width and push the
-        // marker onto a line of its own.
-        // Literal colours, not theme tokens: this field sits *on the paper*, which
-        // never themes, so a token that flips in dark mode would paint a dark box on
-        // a white page. The violet matches the app accent by value.
-        className={`m-0 inline-block w-full max-w-full resize-none overflow-hidden rounded-sm border-0 bg-[#f0ecff] p-0 align-top font-[inherit] text-[length:inherit] leading-[inherit] text-inherit shadow-[0_0_0_2px_#7c5cff] outline-none ${className}`}
-        style={{ textIndent: 0 }}
-        onChange={(event) => setDraft(event.target.value)}
+        ariaLabel={side === 'zh' ? 'Edit 中文 text' : 'Edit English text'}
+        /*
+         * A plain `inline` box, so the text keeps the *paragraph's* line boxes.
+         *
+         * This is what makes editing shift nothing. An `inline-block` establishes its
+         * own formatting context: its inner lines cannot inherit the paragraph's hanging
+         * indent, and `w-full` then pushed it out to the full column width — so clicking
+         * into a numbered stem moved every line ~29px left, out of the gutter the `1.`
+         * marker sits in, and moved them back on commit. The text visibly jumped on
+         * entry and again on exit.
+         *
+         * `text-indent` is deliberately *not* reset here either. The paragraph's
+         * `-24px` applies to its own first line, which is the line the marker shares;
+         * cancelling it inside the field re-indented that line on its own.
+         *
+         * Literal colours, not theme tokens: this sits *on the paper*, which never
+         * themes, so a token that flips in dark mode would paint a dark box on a white
+         * page. The violet matches the app accent by value.
+         */
+        className={`m-0 rounded-sm bg-[#f0ecff] p-0 shadow-[0_0_0_2px_#7c5cff] outline-none ${className}`}
+        // Offsets arrive already in the model's coordinate space, so the toolbar formats
+        // exactly the characters that look selected — no marker string to discount.
+        onSelectionChange={(range) =>
+          onSelectionChange?.(range ? { side, ...range } : undefined)
+        }
         /*
          * Blur normally commits — clicking away from a field is how editing ends.
          *
          * The exception is the format toolbar: clicking one of its controls blurs this
-         * textarea, and committing there would close the editor and drop the selection
-         * the click was meant to format, so the bar could never act on a range. While
-         * `keepEditing` is set the field stays open and keeps its selection; the toolbar
-         * restores focus after applying, so the teacher can format several ranges in a
-         * row without re-entering the field.
+         * field, and ending here would drop the selection the click was meant to format,
+         * so the bar could never act on a range. While `keepEditing` is set the field
+         * stays open and keeps its selection.
          */
         onBlur={(event) => {
           if (keepEditing) return;
@@ -251,32 +172,29 @@ export function InlineEditable({
            *
            * The bar cancels mousedown to keep focus on the page, but it deliberately
            * exempts form controls so the native `<select>` popup can open at all — so
-           * clicking the font-size dropdown really does blur this textarea. Committing
-           * there ends editing and clears the selection, and the range the click was
-           * about is gone before the change event fires. That is why choosing a size
-           * behaved differently from clicking Bold, which never blurs.
+           * clicking the font-size dropdown really does blur this field. Ending editing
+           * there clears the selection, and the range the click was about is gone before
+           * the change event fires. That is why choosing a size behaved differently from
+           * clicking Bold, which never blurs.
            *
            * Tested on the *related target* rather than on a flag, because the blur
            * arrives before any state a click handler could set.
            */
           const next = event.relatedTarget as HTMLElement | null;
           if (next?.closest('[role="toolbar"]')) return;
-          commit(event.target.value);
+          stopEditing();
         }}
         onKeyDown={(event) => {
           // Enter commits — a worksheet field is a line, not a document. Shift+Enter
-          // still inserts a newline for the rare multi-line stem.
+          // falls through to the browser, which inserts the `<br>` that `readRuns` turns
+          // back into the `\n` the model stores for a hard break.
           if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
-            commit(draft);
+            stopEditing();
           }
           if (event.key === 'Escape') {
             event.preventDefault();
-            setEditing(false);
-            // Also drop the selection, so the element returns to a neutral state.
-            // Leaving it selected would make the next click read as a *second*
-            // click and reopen the editor instead of re-arming Delete.
-            onDeselect?.();
+            stopEditing();
           }
           // Let the page's own shortcuts through rather than swallowing them, but
           // never let Delete/Backspace reach the page handler while typing.
@@ -286,7 +204,7 @@ export function InlineEditable({
     );
   }
 
-  const isEmpty = source.trim().length === 0;
+  const isEmpty = plain(runs).trim().length === 0;
 
   return (
     <span

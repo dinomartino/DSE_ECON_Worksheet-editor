@@ -327,8 +327,30 @@ function runFormatToTextFormat(run: RunFormat): TextFormat {
   };
 }
 
-/** Hanging indent per list level, approximating the docx's `w:ind` values (§7.2). */
-const HANGING_INDENT_PT: Record<number, number> = { 0: 18, 1: 18, 2: 27 };
+/**
+ * The `w:ind` geometry of each numbered level, in twips — the *same numbers*
+ * `export/docx/numbering.ts` writes into `numbering.xml`, not an approximation of them.
+ *
+ * Word's model is `left` + `hanging`: the paragraph's text column sits at `left`, and
+ * the **marker alone** is pulled back by `hanging` into the margin. Every line of the
+ * paragraph — wrapped lines and the lines after a hard break alike — starts at `left`.
+ *
+ * The preview used to express this as `padding-left: 18pt; text-indent: -18pt`, which
+ * is a *different* shape: CSS `text-indent` moves the first line only, so line 1 began
+ * 18pt left of every other line. On a real question that read as the second line being
+ * indented — and it disagreed with both Word and the reference paper, where a stem's
+ * wrapped lines align flush under the first word with only the number in the margin.
+ */
+const LIST_INDENT_TWIPS: Record<string, { left: number; hanging: number }> = {
+  'question:0': { left: 360, hanging: 360 },
+  'question:1': { left: 1080, hanging: 360 },
+  'question:2': { left: 1980, hanging: 540 },
+  'option:0': { left: 1080, hanging: 360 },
+  'statement:0': { left: 1080, hanging: 360 },
+};
+
+/** Twips to points, the unit the preview lays the paper out in. */
+const TWIPS_PER_PT = 20;
 
 type EditHandler = (target: EditTarget, next: BiText) => void;
 
@@ -461,19 +483,24 @@ function TextNodeView({
   language: LanguageMode;
   ctx?: EditContext;
 }) {
-  const hanging = node.listRef
-    ? (HANGING_INDENT_PT[node.listRef.level] ?? 18)
-    : 0;
+  const listIndent = node.listRef
+    ? (LIST_INDENT_TWIPS[`${node.listRef.definition}:${node.listRef.level}`] ??
+      LIST_INDENT_TWIPS['question:0'])
+    : undefined;
 
   return (
     <p
       className={`${STYLE_CLASS[node.style] ?? ""} relative`}
       style={{
         ...(node.indent ? { marginLeft: `${node.indent / 20}pt` } : undefined),
-        // Word puts the marker in a hanging gutter; mirror that so the second
-        // language and any wrapped line align under the text, not under the number.
-        ...(hanging
-          ? { paddingLeft: `${hanging}pt`, textIndent: `-${hanging}pt` }
+        /*
+         * Word's `w:ind`, expressed directly: the whole paragraph sits at `left`, and
+         * the marker hangs back into the margin (drawn absolutely, below). *No*
+         * `text-indent` — that moves only the first line, which is what made line 1
+         * start left of every other line and read as "the second line is indented".
+         */
+        ...(listIndent
+          ? { paddingLeft: `${listIndent.left / TWIPS_PER_PT}pt` }
           : undefined),
         // Applied last so a deliberate override beats the style default.
         ...formatStyle(node.format),
@@ -484,11 +511,22 @@ function TextNodeView({
           {marksLabel(node.marks, language)}
         </span>
       )}
-      {node.listRef && (
-        // The marker is derived, never stored, so it always matches the export.
-        // `text-indent` on the paragraph pulls this into the gutter; the trailing
-        // space keeps it clear of the text at every marker width.
-        <span className="font-medium">{node.listRef.marker}&nbsp;</span>
+      {listIndent && node.listRef && (
+        /*
+         * The marker is derived, never stored, so it always matches the export.
+         *
+         * Positioned out of the flow rather than sitting at the head of the text: an
+         * in-flow marker has to be pulled left by `text-indent`, which drags the whole
+         * first *line* with it. Taking it out of the flow moves the number alone and
+         * leaves every line of the paragraph flush at `left`, exactly as Word lays a
+         * `w:hanging` list out and as the reference paper prints.
+         */
+        <span
+          className="absolute font-medium"
+          style={{ left: `${(listIndent.left - listIndent.hanging) / TWIPS_PER_PT}pt` }}
+        >
+          {node.listRef.marker}
+        </span>
       )}
       {richNodes(node.text, language, node.edit, ctx)}
     </p>

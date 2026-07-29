@@ -31,6 +31,9 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
       style: 'Question Stem',
       text: firstBlock.text,
       keepNext: true,
+      // Built by hand rather than through `renderContentBlocks`, so the block's own
+      // formatting has to be carried across explicitly — see the note in `mcq.ts`.
+      format: firstBlock.format,
       edit: { kind: 'blockText', blockId: firstBlock.id },
       listRef: numberedRef,
     });
@@ -72,6 +75,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
         // A leaf part shows its own marks; a part with sub-parts does not (§3.5).
         marks: hasSubParts ? undefined : partMarks(part),
         keepNext: true,
+        format: partFirst.format,
         edit: { kind: 'blockText', blockId: partFirst.id },
         listRef: partRef,
       });
@@ -119,6 +123,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
           text: subFirst.text,
           marks: subPart.marks,
           keepNext: true,
+          format: subFirst.format,
           edit: { kind: 'blockText', blockId: subFirst.id },
           listRef: subRef,
         });

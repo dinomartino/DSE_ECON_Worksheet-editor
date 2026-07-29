@@ -1,8 +1,9 @@
 'use client';
 
-import { useId, useLayoutEffect, useRef } from 'react';
-import { parseRuns, serializeRuns } from '@/model/text';
-import type { BiText } from '@/model/types';
+import { useId } from 'react';
+import { isRichTextEmpty, plain } from '@/model/text';
+import type { BiText, RichText } from '@/model/types';
+import { RichTextEditable } from '@/components/preview/RichTextEditable';
 import { useWorksheetStore } from '@/store/worksheetStore';
 
 /**
@@ -14,8 +15,14 @@ import { useWorksheetStore } from '@/store/worksheetStore';
  * the value object is always patched rather than replaced.
  *
  * In bilingual mode each box carries a small EN/中文 tag. Without it the two
- * side-by-side textareas are indistinguishable when both happen to be empty, which
+ * side-by-side boxes are indistinguishable when both happen to be empty, which
  * was a real source of "which box am I in?" confusion.
+ *
+ * The boxes are `RichTextEditable`, not textareas, so a bold phrase reads as bold here
+ * exactly as it does on the page. A textarea can only hold a string, which forced the
+ * model's `**bold**` storage form into the teacher's view — and, worse, made every
+ * keystroke re-parse it, silently dropping the per-run size, colour and font that the
+ * marker string cannot spell.
  */
 
 interface Props {
@@ -34,29 +41,22 @@ interface Props {
   ariaLabel?: string;
 }
 
-const INPUT_CLASS =
- 'block w-full resize-none overflow-hidden rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:ring-1 focus:ring-accent';
-
-/**
- * Grow the textarea to fit its content.
- *
- * The fixed `rows` the fields used before clipped anything longer than a line or
- * two — a stem would show "Study the table below. GDP平減物" and hide the rest,
- * which is unusable for exactly the long bilingual text this app is for.
+/*
+ * The box grows with its content on its own: a contenteditable is sized by what is in
+ * it, so the `scrollHeight` dance a textarea needed is gone. `min-h` keeps an empty
+ * field the height of the two rows the old `rows={2}` reserved, so a column of empty
+ * fields does not collapse into a row of thin slots.
  */
-function useAutoSize(value: string) {
-  const ref = useRef<HTMLTextAreaElement>(null);
+const INPUT_CLASS =
+  'block w-full rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent';
 
-  // The value is fully controlled, so re-measuring whenever it changes covers
-  // typing, undo/redo and switching to a different question alike.
-  useLayoutEffect(() => {
-    const element = ref.current;
-    if (!element) return;
-    element.style.height = 'auto';
-    element.style.height = `${element.scrollHeight}px`;
-  }, [value]);
-
-  return ref;
+/** Shown in place of an empty field — authoring guidance, so it must not be content. */
+function Placeholder({ text }: { text: string }) {
+  return (
+    <span className="pointer-events-none absolute left-2 top-1.5 select-none text-sm text-ink-subtle">
+      {text}
+    </span>
+  );
 }
 
 export function BiTextField({
@@ -72,22 +72,42 @@ export function BiTextField({
   const id = useId();
   const language = useWorksheetStore((s) => s.mode.language);
 
-  const enText = serializeRuns(value.en);
-  const zhText = serializeRuns(value.zh);
-
-  const enRef = useAutoSize(enText);
-  const zhRef = useAutoSize(zhText);
-
   const showEn = language === 'en' || language === 'bilingual';
   const showZh = language === 'zh' || language === 'bilingual';
   const bothVisible = showEn && showZh;
-  const halfTranslated = bothVisible && Boolean(enText.trim()) !== Boolean(zhText.trim());
+  const halfTranslated =
+    bothVisible && isRichTextEmpty(value.en) !== isRichTextEmpty(value.zh);
+
+  // One line of the field's own text, times the requested rows, plus its padding.
+  const minHeight = `${rows * 1.25 + 0.75}rem`;
 
   const tag = (text: string) => (
     <span className="pointer-events-none absolute right-1.5 top-1 select-none text-[9px] font-medium uppercase tracking-wide text-ink-subtle ">
       {text}
     </span>
   );
+
+  const box = (side: 'en' | 'zh', placeholder: string, langTag: string) => {
+    // The language names the box when nothing else does — never the `lang` tag, which
+    // announces as "en" and says nothing about what the field is for.
+    const sideName = side === 'en' ? 'English' : '中文';
+    return (
+    <div className="relative">
+      <RichTextEditable
+        id={`${id}-${side}`}
+        value={(value[side] ?? []) as RichText}
+        // Patching keeps the hidden language's runs intact (§5.2).
+        onChange={(next) => onChange({ ...value, [side]: next })}
+        className={INPUT_CLASS}
+        style={{ minHeight }}
+        lang={langTag}
+        ariaLabel={name ? `${name} (${sideName})` : sideName}
+      />
+      {isRichTextEmpty(value[side]) && <Placeholder text={placeholder} />}
+      {bothVisible && tag(side === 'en' ? 'en' : '中')}
+    </div>
+    );
+  };
 
   return (
     <div className="space-y-1">
@@ -110,39 +130,8 @@ export function BiTextField({
         </div>
       )}
       <div className={bothVisible ? 'grid grid-cols-2 gap-1.5' : ''}>
-        {showEn && (
-          <div className="relative">
-            <textarea
-              id={`${id}-en`}
-              ref={enRef}
-              className={INPUT_CLASS}
-              rows={rows}
-              lang="en"
-              value={enText}
-              placeholder={placeholderEn}
-              aria-label={name ? `${name} (English)` : 'English'}
-              // Patching keeps the hidden language's runs intact (§5.2).
-              onChange={(event) => onChange({ ...value, en: parseRuns(event.target.value) })}
-            />
-            {bothVisible && tag('en')}
-          </div>
-        )}
-        {showZh && (
-          <div className="relative">
-            <textarea
-              id={`${id}-zh`}
-              ref={zhRef}
-              className={INPUT_CLASS}
-              rows={rows}
-              lang="zh-HK"
-              value={zhText}
-              placeholder={placeholderZh}
-              aria-label={name ? `${name} (中文)` : '中文'}
-              onChange={(event) => onChange({ ...value, zh: parseRuns(event.target.value) })}
-            />
-            {bothVisible && tag('中')}
-          </div>
-        )}
+        {showEn && box('en', placeholderEn, 'en')}
+        {showZh && box('zh', placeholderZh, 'zh-HK')}
       </div>
     </div>
   );
