@@ -1,5 +1,5 @@
 import { bandIsEmpty, ZONES, zonesOf } from '@/model/bands';
-import { pageNumberPlaceholder } from '@/model/page';
+import { bandFieldSegments } from '@/model/bandSegments';
 import { resolveFlow } from '@/model/flow';
 import { sectionMarks, worksheetMarks } from '@/model/marks';
 import { computeNumbering } from '@/model/numbering';
@@ -93,17 +93,30 @@ function renderBand(band: Band, totalMarks: number): RenderNode | undefined {
 
   for (const zone of ZONES) {
     for (const field of zones[zone]) {
+      /*
+       * One cell per field, carrying the field's segments.
+       *
+       * The segments are *not* separate cells: a cell is a tab stop, so a field split
+       * across three of them would scatter "Full marks: 45 marks" across the row with a
+       * `w:tab` between each word. A field is one run of text at one position; the
+       * segments describe its interior.
+       *
+       * `text` stays populated alongside them, so a consumer that only wants the string
+       * (the clipboard, a thumbnail) needs to know nothing about segments — while the
+       * preview and the .docx walk `parts` to tell typed text from computed.
+       */
+      const segments = bandFieldSegments(field, { totalMarks });
       cells.push({
         text: bandFieldText(field, totalMarks),
         at: positions[zone],
         align: alignments[zone],
         format: field.format,
-        // Only authored text can be edited in place; a derived total has nowhere to
-        // write back to, and a fill-in's rule is generated from its width.
-        edit:
-          field.kind === 'text' || field.kind === 'fillIn'
-            ? { kind: 'bandField', fieldId: field.id }
-            : undefined,
+        parts: segments.map((segment) => ({
+          text: segment.text,
+          ...(segment.kind === 'value'
+            ? { token: segment.token }
+            : { edit: { kind: 'bandField' as const, fieldId: field.id, side: segment.side } }),
+        })),
       });
     }
   }
@@ -119,29 +132,24 @@ function renderBand(band: Band, totalMarks: number): RenderNode | undefined {
  * sharing this function is what stops a header field reading differently on the page
  * than it does in Word.
  */
-export function bandFieldText(field: BandField, totalMarks: number): BiText {
-  if (field.kind === 'text') return field.text;
-
-  if (field.kind === 'totalMarks') {
-    const label = field.label;
-    const en = `${plain(label?.en) || 'Full marks:'} ${totalMarks} marks`;
-    const zh = `${plain(label?.zh) || '總分：'}${totalMarks}分`;
-    return { en: [{ text: en }], zh: [{ text: zh }] };
-  }
-
-  // A page number only has a real value at print time. This is the *placeholder* the
-  // preview shows; the .docx backend replaces it with live PAGE/NUMPAGES fields, which
-  // is why the number here is deliberately not a guess at the current page.
-  if (field.kind === 'pageNumber') {
-    const text = pageNumberPlaceholder(field.pattern);
-    return { en: [{ text }], zh: [{ text }] };
-  }
-
-  // A fill-in is its label followed by a rule the teacher writes on.
-  const rule = '_'.repeat(Math.max(1, field.widthCh ?? 14));
+export function bandFieldText(
+  field: BandField,
+  totalMarks: number,
+  page?: { number: number; count: number },
+): BiText {
+  /*
+   * Composed from `bandFieldSegments`, never spelled a second time.
+   *
+   * This function used to assemble each kind's string itself, which put the wording
+   * around every computed value ("Full marks:", " marks", "分") in the renderer where no
+   * teacher could reach it. Concatenating the segments means the string form and the
+   * editable form are the same decomposition, so a retyped prefix reaches the .docx and
+   * the clipboard for free — and the two can never drift apart.
+   */
+  const segments = bandFieldSegments(field, { totalMarks, page });
   return {
-    en: [{ text: `${plain(field.label.en)}${rule}` }],
-    zh: [{ text: `${plain(field.label.zh)}${rule}` }],
+    en: segments.flatMap((segment) => segment.text.en),
+    zh: segments.flatMap((segment) => segment.text.zh),
   };
 }
 

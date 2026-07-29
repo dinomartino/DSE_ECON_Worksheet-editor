@@ -1,9 +1,9 @@
 'use client';
 
 import { ZONES, zonesOf } from '@/model/bands';
-import { pageNumberPlaceholder } from '@/model/page';
 import { plain } from '@/model/text';
 import type { Band, BandField } from '@/model/types';
+import { bandFieldText } from '@/render/worksheet';
 
 /**
  * A miniature of a band list, for choosing between layouts.
@@ -21,12 +21,18 @@ import type { Band, BandField } from '@/model/types';
  * have to stay in step with the first.
  */
 
-/** The literal a field shows in a thumbnail, kept short enough to read at this size. */
+/**
+ * The literal a field shows in a thumbnail, kept short enough to read at this size.
+ *
+ * Composed from `bandFieldText` with a specimen page, rather than each kind's wording
+ * being spelled again here: this used to hardcode "Full marks: 45" and a "Name:" default,
+ * so a teacher who retyped their header saw the *old* wording in the preset picker. The
+ * numbers are specimens (45 marks, page 5 of 12) because a thumbnail illustrates a shape,
+ * not this document.
+ */
 function fieldText(field: BandField): string {
-  if (field.kind === 'pageNumber') return pageNumberPlaceholder(field.pattern).replace('#', '5');
-  if (field.kind === 'totalMarks') return 'Full marks: 45';
-  if (field.kind === 'fillIn') return `${plain(field.label.en) || 'Name:'} ______`;
-  return plain(field.text.en) || plain(field.text.zh) || '—';
+  const text = bandFieldText(field, 45, { number: 5, count: 12 });
+  return plain(text.en) || plain(text.zh) || '—';
 }
 
 export function BandPreview({

@@ -80,6 +80,16 @@ interface Props {
    * there would close the editor and discard the range the click meant to format.
    */
   keepEditing?: boolean;
+  /**
+   * Drop this field from the printed page entirely while it is empty.
+   *
+   * Stronger than `data-empty-placeholder`, which hides the prompt but *keeps the box*
+   * so a stem does not reflow between preview and print. That is wrong for a field which
+   * is only one part of a phrase: an empty side of "Full marks: 45 marks" would reserve
+   * width in the middle of the line. Used for the empty prefix/suffix of a computed band
+   * field, whose `+` is an invitation to add wording rather than wording itself.
+   */
+  printHidden?: boolean;
 }
 
 export function InlineEditable({
@@ -95,6 +105,7 @@ export function InlineEditable({
   onDeselect,
   onSelectionChange,
   keepEditing = false,
+  printHidden = false,
 }: Props) {
   const [editing, setEditing] = useState(false);
   const spanRef = useRef<HTMLSpanElement>(null);
@@ -217,6 +228,9 @@ export function InlineEditable({
       // not content, so the print stylesheet hides it — otherwise "Double-click to add
       // English" would appear on the printed worksheet as if it were the question.
       data-empty-placeholder={isEmpty ? 'true' : undefined}
+      // Chrome, not content: removed from the printed sheet rather than merely made
+      // invisible, so it reserves no width inside the phrase it sits in.
+      data-print-hide={printHidden && isEmpty ? 'true' : undefined}
       className={`cursor-text rounded-sm transition-colors duration-150 focus:outline-none ${
         selected
           ? 'bg-[#e7e0ff] shadow-[0_0_0_2px_#7c5cff]'

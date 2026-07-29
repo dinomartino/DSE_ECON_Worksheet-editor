@@ -22,6 +22,9 @@ import {
 import { createMcqQuestion, createWorksheet } from './factories';
 import { resolveFlow } from './flow';
 import { MARGIN_PRESETS, cmToTwips, contentWidth, twipsToCm } from './page';
+import { DEFAULT_FIELD_WORDING } from './bandSegments';
+import { bandFieldText } from '@/render/worksheet';
+import type { BiText } from './types';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
 import type { StructuredQuestion, Worksheet } from './types';
 
@@ -451,6 +454,107 @@ describe('schema versioning and migrations (§6, §11.11)', () => {
     expect(footerFields).toHaveLength(1);
     expect(footerFields[0].kind).toBe('pageNumber');
     expect((footerFields[0] as { pattern?: string }).pattern).toBe('longForm');
+  });
+
+  it('gives a v5 computed field the wording the renderer used to supply', () => {
+    /*
+     * Before v6 the phrasing around a computed value lived in `bandFieldText`: a
+     * `totalMarks` field stored only a `label` and the renderer added "Full marks: " and
+     * " marks" itself. Migrating has to *preserve the printed output* while moving that
+     * wording into the document, or every existing worksheet silently reprints.
+     */
+    const v5 = {
+      schemaVersion: 5,
+      id: 'v5-doc',
+      title: { en: [], zh: [] },
+      questions: [],
+      layout: [],
+      flow: [],
+      fonts: { latin: 'Times New Roman', eastAsia: 'PMingLiU' },
+      bands: [
+        {
+          id: 'b1',
+          zones: {
+            left: [{ kind: 'totalMarks', id: 'tm' }],
+            center: [],
+            right: [{ kind: 'fillIn', id: 'fi', label: { en: [{ text: 'Name:' }], zh: [] }, widthCh: 10 }],
+          },
+        },
+      ],
+    };
+
+    const migrated = migrate(v5);
+    expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+
+    const total = migrated.bands![0].zones.left[0];
+    expect(total.kind).toBe('totalMarks');
+    // The exact strings the renderer used to concatenate, now stored and editable.
+    expect(plain((total as { prefix: BiText }).prefix.en)).toBe('Full marks: ');
+    expect(plain((total as { suffix: BiText }).suffix.en)).toBe(' marks');
+    expect(plain((total as { prefix: BiText }).prefix.zh)).toBe('總分：');
+    // The deprecated field is dropped, not left beside the new one to drift.
+    expect((total as { label?: unknown }).label).toBeUndefined();
+
+    // A fill-in's stored label was already its prefix, so it moves across unchanged.
+    const fill = migrated.bands![0].zones.right[0];
+    expect(plain((fill as { prefix: BiText }).prefix.en)).toBe('Name:');
+
+    // The printed line is byte-identical to what v5 rendered.
+    expect(plain(bandFieldText(total, 24).en)).toBe('Full marks: 24 marks');
+    expect(plain(bandFieldText(fill, 24).en)).toBe('Name:__________');
+  });
+
+  it('does not overwrite wording a teacher has already retyped', () => {
+    // Guards re-migration: a v6 document round-tripping through this build must keep its
+    // own phrasing rather than being reset to the default.
+    const v6 = {
+      schemaVersion: 5,
+      id: 'x',
+      title: { en: [], zh: [] },
+      questions: [],
+      layout: [],
+      flow: [],
+      bands: [
+        {
+          id: 'b',
+          zones: {
+            left: [
+              { kind: 'totalMarks', id: 'tm', prefix: { en: [{ text: 'TOTAL: ' }], zh: [] } },
+            ],
+            center: [],
+            right: [],
+          },
+        },
+      ],
+    };
+    const field = migrate(v6).bands![0].zones.left[0];
+    expect(plain((field as { prefix: BiText }).prefix.en)).toBe('TOTAL: ');
+  });
+
+  it('migrates the wording to exactly what a new field ships with', () => {
+    /*
+     * `migrateFieldWording` inlines its default strings rather than importing
+     * `DEFAULT_FIELD_WORDING`, because `bandSegments` reaches `factories` through `page`
+     * and `factories` imports `migrations` — closing that cycle would make the chain
+     * load-order dependent. This is the guard that would otherwise be the import: an
+     * old field and a new field must end up saying the same thing.
+     */
+    const migrated = migrate({
+      schemaVersion: 5,
+      id: 'x',
+      title: { en: [], zh: [] },
+      questions: [],
+      layout: [],
+      flow: [],
+      bands: [{ id: 'b', zones: { left: [{ kind: 'totalMarks', id: 't' }], center: [], right: [] } }],
+    });
+    const field = migrated.bands![0].zones.left[0];
+    expect(plain((field as { prefix: BiText }).prefix.en)).toBe(
+      plain(DEFAULT_FIELD_WORDING.totalMarks.prefix.en),
+    );
+    expect(plain((field as { suffix: BiText }).suffix.zh)).toBe(
+      plain(DEFAULT_FIELD_WORDING.totalMarks.suffix.zh),
+    );
   });
 
   it('leaves a header that is already v4 untouched', () => {

@@ -9,7 +9,7 @@ import type { Worksheet } from './types';
  *    through an older build never destroys data.
  */
 
-export const CURRENT_SCHEMA_VERSION = 5;
+export const CURRENT_SCHEMA_VERSION = 6;
 
 type RawDoc = Record<string, unknown>;
 
@@ -57,7 +57,103 @@ const MIGRATIONS: Array<(doc: RawDoc) => RawDoc> = [
   // purpose. Each old section contributes its heading as one element followed by its own
   // items, in order, so the printed document is unchanged.
   (doc) => ({ ...flattenSections(doc), schemaVersion: 5 }),
+  // v5 -> v6: the wording around a computed band field became authored text. A
+  // `totalMarks` field used to store a bare `label` and the renderer supplied the rest
+  // ("Full marks: " + the total + " marks"), so the phrasing on the one row a teacher
+  // most wants to adjust lived in code and could not be typed, sized or coloured.
+  // Each field now carries `prefix`/`suffix` as real rich text, and this writes the old
+  // hardcoded spelling into them — so a migrated document prints exactly what it printed
+  // before, and the teacher can now change it.
+  (doc) => ({ ...migrateFieldWording(doc), schemaVersion: 6 }),
 ];
+
+/**
+ * Give every computed band field the wording the renderer used to supply.
+ *
+ * A stored `label` becomes the prefix, since that is where it printed. Fields that
+ * already carry a `prefix` are left alone: a v6 document round-tripping through this
+ * build must not have a teacher's own wording overwritten with the default.
+ *
+ * The strings are literals rather than an import of `DEFAULT_FIELD_WORDING`, for the
+ * same reason v2 -> v3 inlines the page defaults: `bandSegments` reaches `factories`
+ * through `page`, and `factories` imports this module, so importing them back would
+ * close a cycle and make the chain load-order dependent. `migrations.test.ts` asserts
+ * the two spellings agree, which is the guard that would otherwise be the import.
+ */
+function migrateFieldWording(doc: RawDoc): RawDoc {
+  const DEFAULT_FIELD_WORDING = {
+    totalMarks: {
+      prefix: { en: [{ text: 'Full marks: ' }], zh: [{ text: '總分：' }] },
+      suffix: { en: [{ text: ' marks' }], zh: [{ text: '分' }] },
+    },
+    fillIn: { prefix: { en: [{ text: 'Name:' }], zh: [{ text: '姓名：' }] }, suffix: { en: [], zh: [] } },
+    pageNumber: { prefix: { en: [], zh: [] }, suffix: { en: [], zh: [] } },
+  } as const;
+
+  const field = (raw: unknown): unknown => {
+    if (!raw || typeof raw !== 'object') return raw;
+    const value = raw as RawDoc;
+    const kind = value.kind;
+    if (kind !== 'totalMarks' && kind !== 'fillIn' && kind !== 'pageNumber') return value;
+    if (value.prefix !== undefined || value.suffix !== undefined) return value;
+
+    const defaults = DEFAULT_FIELD_WORDING[kind];
+    const { label, ...rest } = value;
+    return {
+      ...rest,
+      // A `fillIn` with no label printed a bare rule, so an absent label migrates to an
+      // empty prefix rather than to "Name:" — inventing a label would add text to a page
+      // that never had it.
+      prefix: label ?? (kind === 'fillIn' ? { en: [], zh: [] } : defaults.prefix),
+      suffix: defaults.suffix,
+    };
+  };
+
+  const band = (raw: unknown): unknown => {
+    if (!raw || typeof raw !== 'object') return raw;
+    const value = raw as RawDoc;
+    const zones = (value.zones ?? {}) as RawDoc;
+    const zone = (list: unknown) => (Array.isArray(list) ? list.map(field) : list);
+    return {
+      ...value,
+      zones: {
+        ...zones,
+        left: zone(zones.left),
+        center: zone(zones.center),
+        right: zone(zones.right),
+      },
+    };
+  };
+
+  const bands = (raw: unknown): unknown => (Array.isArray(raw) ? raw.map(band) : raw);
+
+  // All five band lists, the same set `applyEditTarget` walks: masthead, each edge's
+  // running rows and each edge's page-1 rows. Missing one would leave a header printing
+  // the old wording through a code path that no longer supplies it.
+  const edge = (raw: unknown): unknown => {
+    if (!raw || typeof raw !== 'object') return raw;
+    const value = raw as RawDoc;
+    return {
+      ...value,
+      bands: bands(value.bands),
+      ...(value.firstPage && typeof value.firstPage === 'object'
+        ? {
+            firstPage: {
+              ...(value.firstPage as RawDoc),
+              bands: bands((value.firstPage as RawDoc).bands),
+            },
+          }
+        : {}),
+    };
+  };
+
+  return {
+    ...doc,
+    ...(doc.bands !== undefined ? { bands: bands(doc.bands) } : {}),
+    ...(doc.header !== undefined ? { header: edge(doc.header) } : {}),
+    ...(doc.footer !== undefined ? { footer: edge(doc.footer) } : {}),
+  };
+}
 
 /**
  * Splice every section's contents into one document-wide flow.

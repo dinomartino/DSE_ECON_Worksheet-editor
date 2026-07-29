@@ -1,5 +1,12 @@
 import type { Diagram } from '@/model/diagram';
-import type { BiText, CellAlign, ContentBlock, OutputMode, TextFormat } from '@/model/types';
+import type {
+  BandFieldSide,
+  BiText,
+  CellAlign,
+  ContentBlock,
+  OutputMode,
+  TextFormat,
+} from '@/model/types';
 
 /**
  * Neutral render IR.
@@ -69,8 +76,19 @@ export type EditTarget =
    * to find it, which is why no section id is carried here.
    */
   | { kind: 'layoutText'; elementId: string }
-  /** An authored text or fill-in field inside a masthead band. */
-  | { kind: 'bandField'; fieldId: string }
+  /**
+   * The authored wording of a band field — masthead, header or footer.
+   *
+   * `side` is what makes a *computed* field editable. Every kind is authored text around
+   * a derived value (§ `bandSegments`), so the target names which half it means: the
+   * prefix of a `totalMarks` field is "Full marks: ", its suffix " marks", and the number
+   * between them carries no target at all, being derived. A plain `text` field is the
+   * degenerate case — all prefix, no value.
+   *
+   * Omitted `side` means `prefix`, so a target built before this existed still resolves
+   * to the same text it always did.
+   */
+  | { kind: 'bandField'; fieldId: string; side?: BandFieldSide }
   /** One label/value row of a label-list element. */
   | {
       kind: 'labelListCell';
@@ -207,6 +225,26 @@ export interface ColumnsNode {
     marker?: string;
     edit?: EditTarget;
     format?: TextFormat;
+    /**
+     * The cell's interior, when it mixes authored text with computed values.
+     *
+     * A band field is the case: "Full marks: 45 marks" is typed, derived, typed. The
+     * parts are *not* separate cells — a cell is a tab stop, so splitting a field across
+     * three would put a `w:tab` between each fragment and scatter it across the row.
+     * They describe what is inside one cell, so the preview knows which stretches to make
+     * editable and the .docx knows where a native `PAGE` field goes.
+     *
+     * `text` above stays the whole concatenated string, so a consumer that does not care
+     * about the distinction (the clipboard, a thumbnail) needs to know nothing about
+     * this. When absent, the cell is entirely `text` and `edit` covers all of it.
+     */
+    parts?: Array<{
+      text: BiText;
+      /** Present on authored text: where to write an edit back to. */
+      edit?: EditTarget;
+      /** Present on a derived value, naming what computed it. Never editable. */
+      token?: 'totalMarks' | 'page' | 'pageCount' | 'rule';
+    }>;
   }>;
   /** Extra left indent in twips before the first cell. */
   indent?: number;

@@ -14,7 +14,7 @@ import { createTextField, type ZoneName } from '@/model/bands';
 import { DiagramCanvas } from '@/components/editor/DiagramCanvas';
 import { findDiagramBlock, formatOfTarget, targetQuestionId, textOfTarget } from '@/model/edits';
 import { toRunPatch } from '@/model/text';
-import type { BiText, TextFormat } from '@/model/types';
+import type { BandFieldSide, BiText, TextFormat } from '@/model/types';
 import type { EditTarget } from '@/render/ir';
 import { useWorksheetStore, type BandScope } from '@/store/worksheetStore';
 import { worksheetStore } from '@/storage';
@@ -43,12 +43,14 @@ export function EditorApp() {
   const reorderFlowItem = useWorksheetStore((s) => s.reorderFlowItem);
   const moveBandField = useWorksheetStore((s) => s.moveBandField);
   const updateBandField = useWorksheetStore((s) => s.updateBandField);
+  const setBandFieldText = useWorksheetStore((s) => s.setBandFieldText);
   const removeBandField = useWorksheetStore((s) => s.removeBandField);
   const addBandField = useWorksheetStore((s) => s.addBandField);
   const addBand = useWorksheetStore((s) => s.addBand);
   const removeBand = useWorksheetStore((s) => s.removeBand);
   const moveHeaderFooterField = useWorksheetStore((s) => s.moveHeaderFooterField);
   const updateHeaderFooterField = useWorksheetStore((s) => s.updateHeaderFooterField);
+  const setHeaderFooterFieldText = useWorksheetStore((s) => s.setHeaderFooterFieldText);
   const removeHeaderFooterField = useWorksheetStore((s) => s.removeHeaderFooterField);
   const addHeaderFooterField = useWorksheetStore((s) => s.addHeaderFooterField);
   const addHeaderFooterBand = useWorksheetStore((s) => s.addHeaderFooterBand);
@@ -184,8 +186,8 @@ export function EditorApp() {
     (which: 'header' | 'footer') => ({
       onMove: (bandId: string, fieldId: string, zone: ZoneName, beforeId?: string) =>
         moveHeaderFooterField(which, bandId, fieldId, zone, beforeId),
-      onEditField: (fieldId: string, text: BiText) =>
-        updateHeaderFooterField(which, fieldId, { text }),
+      onEditField: (fieldId: string, text: BiText, side: BandFieldSide) =>
+        setHeaderFooterFieldText(which, fieldId, side, text),
       onRemoveField: (fieldId: string) => removeHeaderFooterField(which, fieldId),
       onAddField: (bandId: string, zone: ZoneName) =>
         addHeaderFooterField(which, bandId, zone, createTextField()),
@@ -196,7 +198,7 @@ export function EditorApp() {
     }),
     [
       moveHeaderFooterField,
-      updateHeaderFooterField,
+      setHeaderFooterFieldText,
       removeHeaderFooterField,
       addHeaderFooterField,
       addHeaderFooterBand,
@@ -210,7 +212,8 @@ export function EditorApp() {
   const bandEditing = useMemo(
     () => ({
       onMove: moveBandField,
-      onEditField: (fieldId: string, text: BiText) => updateBandField(fieldId, { text }),
+      onEditField: (fieldId: string, text: BiText, side: BandFieldSide) =>
+        setBandFieldText(fieldId, side, text),
       onRemoveField: removeBandField,
       onAddField: (bandId: string, zone: ZoneName) =>
         addBandField(bandId, zone, createTextField()),
@@ -219,7 +222,7 @@ export function EditorApp() {
       onAddRow: () => addBand(),
       onRemoveRow: removeBand,
     }),
-    [moveBandField, updateBandField, removeBandField, addBandField, addBand, removeBand],
+    [moveBandField, setBandFieldText, removeBandField, addBandField, addBand, removeBand],
   );
 
   /*

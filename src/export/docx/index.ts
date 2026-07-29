@@ -9,10 +9,10 @@ import {
   headerFooterOffsets,
   isHeaderFooterActive,
   pageDimensions,
-  pageNumberPlaceholder,
   pageSetupOf,
 } from '@/model/page';
 import { zonesOf } from '@/model/bands';
+import { bandFieldSegments } from '@/model/bandSegments';
 import { worksheetMarks } from '@/model/marks';
 import { plain } from '@/model/text';
 import type { Band, BandField, FontPair, HeaderFooter, LanguageMode, OutputMode, Worksheet } from '@/model/types';
@@ -156,19 +156,34 @@ function zoneRuns(
       const fieldFonts = field.format?.fonts ?? fonts;
       const runProps = `<w:rPr>${rFonts(fieldFonts)}</w:rPr>`;
 
-      if (field.kind === 'pageNumber') {
-        // Split the template on its placeholders so the literal parts stay authored
-        // text and only the numbers become fields.
-        return pageNumberPlaceholder(field.pattern)
-          .split(/(#|N)/)
-          .map((chunk: string) => {
-            if (chunk === '#') return fieldRuns('PAGE', runProps, '1');
-            if (chunk === 'N') return fieldRuns('NUMPAGES', runProps, '1');
-            return chunk ? run(chunk, fieldFonts, base) : '';
-          })
-          .join('');
-      }
-      return biTextRuns(bandFieldText(field, totalMarks), fieldFonts, language, base);
+      /*
+       * Walk the field's segments, which is the same decomposition the page edits.
+       *
+       * Page numbers stay live `PAGE`/`NUMPAGES` fields rather than literal text, so they
+       * renumber per sheet and survive the teacher editing the file in Word. Everything
+       * else — including the authored wording a teacher typed around a computed value —
+       * exports as ordinary runs carrying the field's own formatting.
+       *
+       * Deriving the split from `bandFieldSegments` rather than re-splitting the pattern
+       * here is what stops the exporter and the preview disagreeing about which
+       * characters are authored: there is one answer, and both read it.
+       */
+      return bandFieldSegments(field, { totalMarks })
+        .map((segment) => {
+          if (segment.kind === 'value') {
+            if (segment.token === 'page') {
+              // A pattern literal ("Page ", " of ") rides as a `page` value too, so only
+              // an actual placeholder becomes a field; the rest stays text.
+              const text = plain(segment.text.en);
+              return text === '#'
+                ? fieldRuns('PAGE', runProps, '1')
+                : run(text, fieldFonts, base);
+            }
+            if (segment.token === 'pageCount') return fieldRuns('NUMPAGES', runProps, '1');
+          }
+          return biTextRuns(segment.text, fieldFonts, language, base);
+        })
+        .join('');
     })
     .join('');
 }

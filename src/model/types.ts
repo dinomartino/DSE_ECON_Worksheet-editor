@@ -305,9 +305,29 @@ export type BandField =
   /** Authored text: a title, a subtitle, "Time allowed: 60 minutes". */
   | { kind: 'text'; id: string; text: BiText; format?: TextFormat }
   /** "Full marks: 45 marks", with the total derived from the whole worksheet. */
-  | { kind: 'totalMarks'; id: string; label?: BiText; format?: TextFormat }
+  | {
+      kind: 'totalMarks';
+      id: string;
+      /**
+       * @deprecated Superseded by `prefix`, which is rich text rather than a plain
+       * label. Read only by `migrateFieldWording` (v5→v6); nothing else may consult it.
+       */
+      label?: BiText;
+      prefix?: BiText;
+      suffix?: BiText;
+      format?: TextFormat;
+    }
   /** A ruled fill-in field: "Name: ______". */
-  | { kind: 'fillIn'; id: string; label: BiText; widthCh?: number; format?: TextFormat }
+  | {
+      kind: 'fillIn';
+      id: string;
+      /** @deprecated Superseded by `prefix`; see the note on `totalMarks.label`. */
+      label?: BiText;
+      prefix?: BiText;
+      suffix?: BiText;
+      widthCh?: number;
+      format?: TextFormat;
+    }
   /**
    * A live page number, printed to a pattern.
    *
@@ -322,8 +342,24 @@ export type BandField =
       id: string;
       /** `plain` → "5", `pDot` → "P.5", `longForm` → "Page 5 of 12". */
       pattern?: 'plain' | 'pDot' | 'longForm';
+      prefix?: BiText;
+      suffix?: BiText;
       format?: TextFormat;
     };
+
+/**
+ * The authored wording around a computed value, and which side it sits on.
+ *
+ * Every band field is *authored text · derived value · authored text*. Naming the two
+ * authored halves once is what lets one editing surface, one write path and one
+ * exporter serve all four kinds without branching on the kind at each site — a
+ * computed field differs from a plain text field only in having something inert in
+ * the middle.
+ *
+ * `longForm` page numbers are the reason this is a list rather than a single pair:
+ * "Page 5 of 12" interleaves two derived numbers with three authored gaps.
+ */
+export type BandFieldSide = 'prefix' | 'suffix';
 
 /** Left / centre / right zones of one band. */
 export interface BandZones {

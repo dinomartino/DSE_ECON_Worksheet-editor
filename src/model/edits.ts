@@ -1,6 +1,7 @@
 import type {
   Band,
   BandField,
+  BandFieldSide,
   BiText,
   ContentBlock,
   DiagramBlock,
@@ -12,6 +13,7 @@ import type {
   Worksheet,
 } from './types';
 import type { EditTarget } from '@/render/ir';
+import { applyBandFieldSide, bandFieldSideText } from './bandSegments';
 import { applyRunFormat } from './text';
 
 /**
@@ -101,13 +103,24 @@ function mapAllBlocks(
 }
 
 /** Write `text` to one band field, leaving field kinds that have no text alone. */
+/**
+ * Write authored text into one side of a band field.
+ *
+ * Every kind is writable now, not just `text`. A computed field is authored wording
+ * around a derived value, and `applyBandFieldSide` knows where each kind stores its
+ * wording — so this no longer decides which fields are editable, only which field is
+ * named. The previous `field.kind === 'text'` guard was the reason a `fillIn` label
+ * could be typed into and silently discarded: the IR advertised it as editable while
+ * this dropped the write on the floor.
+ */
 function patchBandFields(
   fields: BandField[] | undefined,
   fieldId: string,
+  side: BandFieldSide,
   text: BiText,
 ): BandField[] {
   return (fields ?? []).map((field) =>
-    field.id === fieldId && field.kind === 'text' ? { ...field, text } : field,
+    field.id === fieldId ? applyBandFieldSide(field, side, text) : field,
   );
 }
 
@@ -209,13 +222,16 @@ export function applyEditTarget(
     // variant — because a `bandField` target carries only a field id and the same `Band`
     // model backs every one of them.
     case 'bandField': {
+      // Defaulted rather than required, so a target built before sides existed still
+      // writes the text it always wrote — a `text` field's prefix is its whole text.
+      const side = target.side ?? 'prefix';
       const patchBands = (bands: Band[] | undefined) =>
         (bands ?? []).map((band) => ({
           ...band,
           zones: {
-            left: patchBandFields(band.zones?.left, target.fieldId, text),
-            center: patchBandFields(band.zones?.center, target.fieldId, text),
-            right: patchBandFields(band.zones?.right, target.fieldId, text),
+            left: patchBandFields(band.zones?.left, target.fieldId, side, text),
+            center: patchBandFields(band.zones?.center, target.fieldId, side, text),
+            right: patchBandFields(band.zones?.right, target.fieldId, side, text),
           },
         }));
       const patchEdge = (value: HeaderFooter | undefined): HeaderFooter | undefined =>
@@ -514,10 +530,10 @@ export function textOfTarget(worksheet: Worksheet, target: EditTarget): BiText |
         for (const band of bands ?? []) {
           for (const zone of ['left', 'center', 'right'] as const) {
             const match = band.zones?.[zone]?.find((field) => field.id === target.fieldId);
-            // A computed field (`totalMarks`) has a label, not authored text, and a
-            // fill-in rule has neither — neither can carry per-run formatting, so they
-            // report nothing rather than a fabricated empty value.
-            if (match) return 'text' in match ? match.text : undefined;
+            // Every kind reports text now: a computed field's *wording* is authored, so
+            // it carries runs and can take per-run formatting like any other text. Only
+            // the derived value between the two sides cannot, and that is not a target.
+            if (match) return bandFieldSideText(match, target.side ?? 'prefix');
           }
         }
       }

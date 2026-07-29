@@ -21,6 +21,7 @@ import { worksheetMarks } from "@/model/marks";
 import { commonRunFormat, plain, runLines } from "@/model/text";
 import type {
   Band,
+  BandFieldSide,
   BiText,
   HeaderFooter,
   LanguageMode,
@@ -72,7 +73,8 @@ import { BandEditor, bandFieldStyle, withPageNumber } from "./BandEditor";
 export interface BandEditingHandlers {
   /** Move a field to a zone, landing before `beforeId` when given. */
   onMove: (bandId: string, fieldId: string, zone: ZoneName, beforeId?: string) => void;
-  onEditField: (fieldId: string, text: BiText) => void;
+  /** Write authored text into one side of a field; see `BandEditor`'s own prop. */
+  onEditField: (fieldId: string, text: BiText, side: BandFieldSide) => void;
   onRemoveField: (fieldId: string) => void;
   onAddField: (bandId: string, zone: ZoneName) => void;
   /**
@@ -86,8 +88,8 @@ export interface BandEditingHandlers {
   onRemoveRow?: (bandId: string) => void;
   /** Selection, so a band field can carry the format toolbar like any other text. */
   selection?: {
-    isSelected: (fieldId: string) => boolean;
-    onSelect: (fieldId: string) => void;
+    isSelected: (fieldId: string, side: BandFieldSide) => boolean;
+    onSelect: (fieldId: string, side: BandFieldSide) => void;
     onClear: () => void;
   };
 }
@@ -1146,14 +1148,20 @@ function ReadOnlyBandRow({
         // font were dropped, so a 14pt bold title previewed *and printed* at the
         // container's 12pt. That also made the region focus look like a bug — entering
         // the header seemed to enlarge its text, when the idle state was the wrong one.
-        <span key={field.id} className="mx-0.5" style={bandFieldStyle(field)}>
-          {/* Substituted before rendering rather than inside `bandFieldText`, which is
-              shared with the .docx backend — Word must keep the placeholder so it can
-              emit a live PAGE field, and baking a literal there would freeze every
-              exported footer to whichever page the preview happened to draw. */}
-          {field.kind === 'pageNumber' && page
-            ? withPageNumber(plain(bandFieldText(field, totalMarks).en), page)
-            : richNodes(bandFieldText(field, totalMarks), language)}
+        // `whitespace-pre-wrap` for the reason `BandEditor` sets it: a field's wording
+        // carries its own spacing ("Full marks: " · 45 · " marks"), and HTML would
+        // collapse it away — here on the path that actually prints and becomes the PDF.
+        <span key={field.id} className="mx-0.5 whitespace-pre-wrap" style={bandFieldStyle(field)}>
+          {/* The sheet is passed to `bandFieldText`, which substitutes the page number
+              only when one is given — the .docx backend passes none, so Word still gets
+              the placeholder it needs to emit a live PAGE field rather than a literal
+              frozen to whichever page the preview happened to draw.
+
+              Rendered through `richNodes` in every case, including page numbers: the
+              wording around a number is authored rich text now, so flattening it to
+              `plain` here would drop a bold or coloured run that the editing path and
+              the export both honour. */}
+          {richNodes(bandFieldText(field, totalMarks, page), language)}
         </span>
       ))}
     </div>
@@ -2755,14 +2763,19 @@ export function Preview({
    * component's state — the host supplies the *mutations* for each band list, while
    * which field is selected is a preview concern. One object serves the masthead, the
    * header and the footer, since a `bandField` target is keyed by field id alone.
+   *
+   * Field *and* side, because a computed field has two independently authored halves:
+   * selecting "Full marks: " must not also select " marks", or the toolbar would format
+   * both and there would be no way to make only the label bold.
    */
   const bandSelection = {
-    isSelected: (fieldId: string) =>
+    isSelected: (fieldId: string, side: BandFieldSide) =>
       selectedElement?.target.kind === "bandField" &&
-      selectedElement.target.fieldId === fieldId,
-    onSelect: (fieldId: string) => {
+      selectedElement.target.fieldId === fieldId &&
+      (selectedElement.target.side ?? "prefix") === side,
+    onSelect: (fieldId: string, side: BandFieldSide) => {
       setSelectedElement({
-        target: { kind: "bandField", fieldId },
+        target: { kind: "bandField", fieldId, side },
         side: language === "zh" ? "zh" : "en",
       });
       setSelectedBlockId(undefined);

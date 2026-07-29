@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { ZONES, zonesOf, type ZoneName } from '@/model/bands';
+import { bandFieldSegments } from '@/model/bandSegments';
 import { plain } from '@/model/text';
-import type { Band, BandField, BiText, LanguageMode } from '@/model/types';
-import { bandFieldText } from '@/render/worksheet';
+import type { Band, BandField, BandFieldSide, BiText, LanguageMode } from '@/model/types';
 import { InlineEditable } from './InlineEditable';
 
 /**
@@ -25,7 +25,14 @@ interface Props {
   totalMarks: number;
   /** Move a field to a zone, landing before `beforeId` when given. */
   onMove: (bandId: string, fieldId: string, zone: ZoneName, beforeId?: string) => void;
-  onEditField: (fieldId: string, text: BiText) => void;
+  /**
+   * Write authored text back to one side of a field.
+   *
+   * `side` is what makes a computed field editable: "Full marks: " is the prefix,
+   * " marks" the suffix, and the total between them is derived and carries no side at
+   * all. A plain `text` field is all prefix.
+   */
+  onEditField: (fieldId: string, text: BiText, side: BandFieldSide) => void;
   onRemoveField: (fieldId: string) => void;
   onAddField: (bandId: string, zone: ZoneName) => void;
   /**
@@ -69,8 +76,10 @@ interface Props {
    * supported it (`isFormattable` accepts `bandField`); nothing emitted the target.
    */
   selection?: {
-    isSelected: (fieldId: string) => boolean;
-    onSelect: (fieldId: string) => void;
+    // Keyed by field *and* side, so selecting "Full marks: " and selecting " marks"
+    // are different selections — the toolbar formats one without the other.
+    isSelected: (fieldId: string, side: BandFieldSide) => boolean;
+    onSelect: (fieldId: string, side: BandFieldSide) => void;
     onClear: () => void;
   };
 }
@@ -290,44 +299,97 @@ export function BandEditor({
                         setDragging(undefined);
                         setOver(undefined);
                       }}
-                      className={`group/field inline-flex cursor-grab items-baseline active:cursor-grabbing ${
+                      /*
+                       * `whitespace-pre-wrap`, because a field's wording carries its own
+                       * spacing.
+                       *
+                       * "Full marks: " ends in a space and " marks" begins with one — that
+                       * is what separates them from the number between. HTML collapses
+                       * whitespace at an inline boundary, so the three segments rendered
+                       * as "Full marks:5marks" while the .docx (which writes
+                       * `xml:space="preserve"`) spaced them correctly: a preview that
+                       * lied about the document. `pre-wrap` rather than `pre` so a long
+                       * header row still wraps.
+                       */
+                      className={`group/field inline-flex cursor-grab items-baseline whitespace-pre-wrap active:cursor-grabbing ${
                         dragging?.fieldId === field.id ? 'opacity-40' : ''
                       }`}
                       style={bandFieldStyle(field)}
                     >
-                      {field.kind === 'text' ? (
-                        <InlineEditable
-                          value={field.text}
-                          side={language === 'zh' ? 'zh' : 'en'}
-                          placeholder="Double-click to add text"
-                          onCommit={(next) => onEditField(field.id, next)}
-                          selected={selection?.isSelected(field.id) ?? false}
-                          onSelect={selection ? () => selection.onSelect(field.id) : undefined}
-                          onDeselect={selection?.onClear}
-                        >
-                          {plain(language === 'zh' ? field.text.zh : field.text.en)}
-                        </InlineEditable>
-                      ) : (
-                        // A derived total and a generated rule are not editable text:
-                        // there would be nowhere to write a change back to.
-                        <span
-                          title={
-                            field.kind === 'totalMarks'
-                              ? 'Computed from question marks'
-                              : field.kind === 'pageNumber'
-                                ? 'Numbered by Word when the document is opened'
+                      {/*
+                        Every kind is editable, segment by segment.
+
+                        A field is authored wording around a derived value, so the two
+                        halves get different treatment rather than the whole field being
+                        one dead `<span>`: each authored segment is a full `InlineEditable`
+                        — typing, Shift+Enter, and the format toolbar via its own
+                        selection — while the computed value between them is inert and
+                        says so on hover.
+
+                        The segments come from `bandFieldSegments`, the same
+                        decomposition the IR and the .docx use, so what is editable here
+                        is exactly what carries an `EditTarget` there.
+                      */}
+                      {bandFieldSegments(field, { totalMarks, page }).map((segment, index) =>
+                        segment.kind === 'text' ? (
+                          <InlineEditable
+                            // Keyed by side, not by index: a page-number pattern change
+                            // reshapes the middle of the list, and an index key would
+                            // hand a prefix's editing state to a suffix.
+                            key={`${field.id}:${segment.side}`}
+                            value={segment.text}
+                            side={language === 'zh' ? 'zh' : 'en'}
+                            placeholder={
+                              field.kind === 'text' ? 'Double-click to add text' : '+'
+                            }
+                            /*
+                             * An *empty* side of a computed field is pure affordance.
+                             *
+                             * A `pageNumber` ships with no wording at all, so both its
+                             * sides are empty and each renders a `+` inviting one. That is
+                             * editing chrome, not content: without `data-print-hide` the
+                             * bare `+` printed on the sheet and appeared in the PDF beside
+                             * every page number. The plain `text` field is exempt — its
+                             * prompt is the existing "Double-click to add text", which the
+                             * `data-empty-placeholder` rule already hides while keeping
+                             * the box, since an empty text field *is* the whole field.
+                             */
+                            printHidden={
+                              field.kind !== 'text' &&
+                              plain(segment.text.en).length === 0 &&
+                              plain(segment.text.zh).length === 0
+                            }
+                            onCommit={(next) => onEditField(field.id, next, segment.side)}
+                            selected={selection?.isSelected(field.id, segment.side) ?? false}
+                            onSelect={
+                              selection
+                                ? () => selection.onSelect(field.id, segment.side)
                                 : undefined
-                          }
-                        >
-                          {withPageNumber(
-                            plain(
-                              language === 'zh'
-                                ? bandFieldText(field, totalMarks).zh
-                                : bandFieldText(field, totalMarks).en,
-                            ),
-                            page,
-                          )}
-                        </span>
+                            }
+                            onDeselect={selection?.onClear}
+                          >
+                            {plain(language === 'zh' ? segment.text.zh : segment.text.en)}
+                          </InlineEditable>
+                        ) : (
+                          // Derived: computed at render time, so there is nowhere to
+                          // write a change back to. It still takes the field's format,
+                          // so "Full marks: 45 marks" stays one visual phrase when the
+                          // teacher makes the wording 14pt bold.
+                          <span
+                            key={`${field.id}:value:${index}`}
+                            data-band-value
+                            title={
+                              segment.token === 'totalMarks'
+                                ? 'Computed from the question marks'
+                                : segment.token === 'rule'
+                                  ? 'A ruled space, sized by the field width'
+                                  : 'Numbered by Word when the document is opened'
+                            }
+                            className="cursor-default"
+                          >
+                            {plain(language === 'zh' ? segment.text.zh : segment.text.en)}
+                          </span>
+                        ),
                       )}
                       <button
                         type="button"

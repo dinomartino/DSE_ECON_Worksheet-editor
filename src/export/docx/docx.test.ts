@@ -686,8 +686,10 @@ describe('masthead bands, part headers and label lists', () => {
 
     expect(document).toContain('Form 5');
     expect(document).toContain('Economics Paper 1');
-    // A fill-in prints its label plus a rule of the requested width.
-    expect(document).toContain('Name:__________');
+    // A fill-in prints its label plus a rule of the requested width. Two runs, because
+    // the label is authored text and the rule is generated from `widthCh`.
+    expect(document).toContain('Name:');
+    expect(document).toContain('>__________<');
     // Centre and right zones sit at fixed half/full positions of the content width.
     expect(document).toContain('<w:tab w:val="center" w:pos="4513"/>');
     expect(document).toContain('<w:tab w:val="right" w:pos="9026"/>');
@@ -699,12 +701,21 @@ describe('masthead bands, part headers and label lists', () => {
     const worksheet = buildAcceptanceWorksheet();
     worksheet.bands = [createBand({ left: [createTotalMarksField()] })];
 
-    // The fixture totals 24; adding a 5-mark question must move the printed total.
-    expect(await open(worksheet)).toContain('Full marks: 24 marks');
+    /*
+     * The wording and the total are separate runs: a field's prefix and suffix are
+     * authored rich text a teacher can format independently, so the derived number
+     * between them cannot share a `w:t` with them. Asserted as the runs actually
+     * emitted, which is also what proves the number is still derived — the total moves
+     * while the wording around it does not.
+     */
+    const before = await open(worksheet);
+    expect(before).toContain('Full marks: ');
+    expect(before).toContain('>24<');
+    expect(before).toContain(' marks');
 
     const mcq = worksheet.questions[0];
     if (mcq.type === 'mcq') mcq.marks = 6;
-    expect(await open(worksheet)).toContain('Full marks: 29 marks');
+    expect(await open(worksheet)).toContain('>29<');
   });
 
   it('derives a part header total from its own section', async () => {

@@ -29,10 +29,12 @@ import {
   nudgeInFlow,
   type FlowMove,
 } from '@/model/flow';
+import { applyBandFieldSide } from '@/model/bandSegments';
 import { defaultFooter, defaultHeader, headerFooterOf } from '@/model/page';
 import type {
   Band,
   BandField,
+  BandFieldSide,
   BiText,
   ContentBlock,
   HeaderFooter,
@@ -204,6 +206,13 @@ interface WorksheetState {
   removeBand: (bandId: string) => void;
   addBandField: (bandId: string, zone: ZoneName, field: BandField) => void;
   updateBandField: (fieldId: string, patch: Partial<BandField>) => void;
+  /**
+   * Write authored text into one side of a masthead field.
+   *
+   * Distinct from `updateBandField` because the destination depends on the field's kind,
+   * which only the store has in hand — see `bandFieldSidePatch`.
+   */
+  setBandFieldText: (fieldId: string, side: BandFieldSide, text: BiText) => void;
   removeBandField: (fieldId: string) => void;
   moveBandField: (bandId: string, fieldId: string, zone: ZoneName, beforeId?: string) => void;
 
@@ -226,6 +235,13 @@ interface WorksheetState {
     which: 'header' | 'footer',
     fieldId: string,
     patch: Partial<BandField>,
+  ) => void;
+  /** `setBandFieldText` for a header or footer. */
+  setHeaderFooterFieldText: (
+    which: 'header' | 'footer',
+    fieldId: string,
+    side: BandFieldSide,
+    text: BiText,
   ) => void;
   removeHeaderFooterField: (which: 'header' | 'footer', fieldId: string) => void;
   moveHeaderFooterField: (
@@ -362,6 +378,40 @@ function patchBandHolding(
       return holds ? patch(band) : band;
     }),
   };
+}
+
+/**
+ * The `updateField` patch that writes `text` into one side of a field.
+ *
+ * Resolved from the field itself, because where authored text lives depends on the kind:
+ * a `text` field stores it as `text`, a computed one as `prefix` or `suffix`. Looking the
+ * field up here keeps that branching inside `applyBandFieldSide` and off every caller —
+ * a component editing a header knows which *side* it clicked, never which kind it is.
+ *
+ * Returns an empty patch for a field that no longer exists, so a stale commit from a
+ * field deleted mid-edit is a no-op rather than an error.
+ */
+function bandFieldSidePatch(
+  band: Band,
+  fieldId: string,
+  side: BandFieldSide,
+  text: BiText,
+): Partial<BandField> {
+  const zones = band.zones ?? { left: [], center: [], right: [] };
+  for (const zone of ['left', 'center', 'right'] as const) {
+    const field = (zones[zone] ?? []).find((entry) => entry.id === fieldId);
+    if (!field) continue;
+    // Diffed against the field so the patch carries only what changed — `updateField`
+    // spreads it, and handing back the whole field would overwrite a concurrent format.
+    const next = applyBandFieldSide(field, side, text) as Record<string, unknown>;
+    const current = field as unknown as Record<string, unknown>;
+    const patch: Record<string, unknown> = {};
+    for (const key of new Set([...Object.keys(next), ...Object.keys(current)])) {
+      if (next[key] !== current[key]) patch[key] = next[key];
+    }
+    return patch as Partial<BandField>;
+  }
+  return {};
 }
 
 /** Apply a band mutator inside a header or footer, addressed by band id. */
@@ -825,6 +875,22 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
       updateField(band, fieldId, patch),
     )),
 
+  /*
+   * Write authored text into one side of a masthead field.
+   *
+   * Separate from `updateBandField` because *where* the text goes depends on the field's
+   * kind — a `text` field stores it as `text`, a computed one as `prefix` or `suffix` —
+   * and only the store has the field in hand to ask. Callers would otherwise have to
+   * look the kind up themselves to build the patch, which is exactly the branching
+   * `applyBandFieldSide` exists to remove.
+   */
+  setBandFieldText: (fieldId, side, text) =>
+    get().commit((draft) =>
+      patchBandHolding(draft, fieldId, (band) =>
+        updateField(band, fieldId, bandFieldSidePatch(band, fieldId, side, text)),
+      ),
+    ),
+
   removeBandField: (fieldId) =>
     get().commit((draft) => patchBandHolding(draft, fieldId, (band) => removeField(band, fieldId))),
 
@@ -914,6 +980,14 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     get().commit((draft) =>
       patchHeaderFooterBand(draft, which, (band) => bandHolds(band, fieldId), (band) =>
         updateField(band, fieldId, patch),
+      ),
+    ),
+
+  /** `setBandFieldText` for a header or footer; see the note there on why it is its own action. */
+  setHeaderFooterFieldText: (which, fieldId, side, text) =>
+    get().commit((draft) =>
+      patchHeaderFooterBand(draft, which, (band) => bandHolds(band, fieldId), (band) =>
+        updateField(band, fieldId, bandFieldSidePatch(band, fieldId, side, text)),
       ),
     ),
 

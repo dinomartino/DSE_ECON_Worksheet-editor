@@ -22,7 +22,7 @@ the same PR.
 | State | Zustand 5, undo/redo with a 100-entry history |
 | Language | TypeScript strict |
 | Export | Raw OOXML via JSZip (hand-built, no `docx` library) |
-| Test | Vitest 4 — 388 tests across 15 files, ~1s |
+| Test | Vitest 4 — 399 tests across 18 files, ~1s |
 | Runtime | Browser-only: client-side `.docx` generation, no API routes |
 
 ## Project structure
@@ -32,7 +32,8 @@ src/
 ├── app/          Next.js shell. EditorHost dynamically imports the editor with
 │                 ssr:false, because the store is browser-only.
 ├── model/        types · numbering · marks · migrations · text · page · flow ·
-│                 bands · edits · factories · diagram · diagramTemplates · diagramDraw
+│                 bands · bandSegments · edits · factories · diagram ·
+│                 diagramTemplates · diagramDraw
 ├── registry/     Question-type extension point: types · index · mcq · structured
 ├── render/       ir (RenderNode + EditTarget) · worksheet (the walker) · diagram (SVG)
 ├── export/       docx/ (index · body · numbering · styles · runs · package · xml) ·
@@ -94,7 +95,7 @@ The editor layout the preview sits in:
 
 ```
 Worksheet
-├── schemaVersion              CURRENT_SCHEMA_VERSION = 5
+├── schemaVersion              CURRENT_SCHEMA_VERSION = 6
 ├── id · title · titleFormat? · instructions? · instructionsFormat?
 ├── fonts: FontPair            { latin, eastAsia }
 ├── pageSetup?: PageSetup      paper · orientation · margins, all in twips
@@ -175,6 +176,55 @@ Two field kinds print a **computed** number: `totalMarks` from `worksheetMarks()
 the `partHeader` element's "(19 marks)" suffix from `sectionMarks()`. They are their own
 kinds rather than typed text because a stored total goes stale the moment a question is
 re-marked.
+
+### A field is authored wording around a derived value
+
+Every `BandField` has the same shape underneath — **authored text · derived value ·
+authored text** — and `bandFieldSegments()` (`model/bandSegments.ts`) is the one place
+that says so. A plain `text` field is the degenerate case with no middle; "Full marks: 45
+marks" has one; "Page 5 of 12" interleaves two.
+
+That decomposition is what makes a computed field **editable**. It previously was not:
+`totalMarks`, `fillIn` and `pageNumber` rendered as a dead `<span>`, and the wording
+around each number ("Full marks: ", " marks", "分") was a string literal inside
+`bandFieldText` — so the row a teacher most wants to adjust was the one row whose text
+could not be retyped, sized, coloured or line-broken. The number stays derived; only the
+phrasing became `prefix`/`suffix` rich text. A `fillIn` was worse than inert: it emitted
+an `EditTarget` while `patchBandFields` wrote only `kind === 'text'`, so typing into it
+appeared to work and was silently discarded.
+
+Four consequences:
+
+- **`bandFieldText` composes, never respells.** It concatenates the segments, so the
+  string form and the editable form are the same decomposition and a retyped prefix
+  reaches the `.docx`, the clipboard and the preset thumbnails for free.
+- **The `.docx` walks segments too**, so only an actual placeholder becomes a native
+  `PAGE`/`NUMPAGES` field and the authored wording around it stays ordinary runs. Both
+  backends read one answer to "which characters are authored".
+- **A `bandField` target names a `side`.** Selecting "Full marks: " must not also select
+  " marks", or the toolbar could not bold the label alone. Omitted `side` means `prefix`,
+  so a `text` field is all prefix and older targets still resolve.
+- **Segments are not separate cells.** A `ColumnsNode` cell *is* a tab stop, so splitting
+  a field across three would emit a `w:tab` between each fragment and scatter it across
+  the row. They ride as `parts` inside one cell.
+
+Two things fail silently if got wrong, both of which did:
+
+- **The wording carries its own spacing.** "Full marks: " ends in a space and " marks"
+  opens with one; as separate DOM nodes, HTML collapses both at the inline boundary. Both
+  band paths set `whitespace-pre-wrap`, or the page reads "Full marks:45marks" while the
+  `.docx` — which writes `xml:space="preserve"` — spaces it correctly.
+- **An empty side is an affordance, and affordances print.** A `pageNumber` ships with no
+  wording, so both its sides render a `+` inviting some; unmarked, that `+` appeared
+  beside every page number in the PDF. It takes `data-print-hide`, deliberately *not*
+  `data-empty-placeholder` — that hides the prompt but keeps the box, which is right for a
+  whole paragraph and wrong for a fragment, where the reserved box opens a gap mid-phrase.
+
+The v5→v6 migration writes the old hardcoded spelling into `prefix`/`suffix`, so a
+migrated document prints exactly what it printed before. Its defaults are inlined rather
+than imported from `DEFAULT_FIELD_WORDING`: `bandSegments` reaches `factories` through
+`page`, and `factories` imports `migrations`, so the import would close a cycle — a test
+asserts the two spellings agree instead.
 
 ### One row, many uses: `ColumnsNode`
 
@@ -301,8 +351,10 @@ Two rules about `edit`:
 
 - **It is inert in export.** The `.docx` and clipboard backends never read it, so adding
   it left exported files byte-for-byte identical.
-- **Derived text carries no target** — marks totals, the "Answer: C" line. It is computed
-  rather than stored, so typing over it would have nowhere to go.
+- **Derived text carries no target** — marks totals, the "Answer: C" line, the number
+  inside a band field. It is computed rather than stored, so typing over it would have
+  nowhere to go. The authored wording *around* such a number is a different thing and does
+  carry one (§ a field is authored wording around a derived value).
 
 `listRef.stream` is the key connecting IR nodes to `.docx` `w:num` instances: each
 distinct stream becomes one `w:num` in `numbering.xml`.
@@ -1090,8 +1142,8 @@ is called on pointer-up only, or one drag floods the undo stack with dozens of e
   by `LocalStorageWorksheetStore`.
 - **Autosave** debounced 1.2s after the last change.
 - **File download/upload** as `.worksheet.json`, images included base64.
-- **Migration chain**: `migrate()` runs ordered pure functions v1→v5
-  (`CURRENT_SCHEMA_VERSION = 5`) on load.
+- **Migration chain**: `migrate()` runs ordered pure functions v1→v6
+  (`CURRENT_SCHEMA_VERSION = 6`) on load.
 - **Forward compatibility**: unknown top-level fields are preserved in `__unknown` through
   load and save.
 - **`KNOWN_KEYS` must list every top-level field.** An unlisted key is treated as written
