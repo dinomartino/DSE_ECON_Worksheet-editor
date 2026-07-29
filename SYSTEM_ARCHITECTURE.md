@@ -22,7 +22,7 @@ the same PR.
 | State | Zustand 5, undo/redo with a 100-entry history |
 | Language | TypeScript strict |
 | Export | Raw OOXML via JSZip (hand-built, no `docx` library) |
-| Test | Vitest 4 — 386 tests across 14 files, ~1s |
+| Test | Vitest 4 — 388 tests across 15 files, ~1s |
 | Runtime | Browser-only: client-side `.docx` generation, no API routes |
 
 ## Project structure
@@ -969,6 +969,16 @@ hover                     → drag grip in the margin → drag to reorder
   against the paper node — the sheet is a stack of nested divs, so the empty space below
   the last question belongs to a child. The paper's handler and the marquee sweep share
   that definition, and all selections drop together.
+
+  **The exemption list must name attributes something renders.** Clearing includes
+  *returning focus to the body*, so an element the selector fails to match does not
+  merely fail to select — clicking it silently leaves the region being edited. The list
+  named `data-band-field`, which no component has ever rendered, while header and footer
+  fields carry `data-field-id`: every click inside an active header therefore counted as
+  blank paper and deactivated the header, so the region could be entered by double-click
+  but never worked in. The selector is valid CSS and the components are correct; only the
+  two *together* are wrong, which is why `blankClick.test.ts` greps the preview
+  components for each attribute the list exempts.
 - **Arrow keys nudge a diagram selection**, routed through the same `dragHandles` a drag
   uses, so every handle kind obeys its own rule for free. The step is deliberately not
   scaled by zoom: a nudge is a fixed edit to geometry.

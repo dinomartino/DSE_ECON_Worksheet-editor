@@ -1092,13 +1092,25 @@ function HeaderFooterBand({
       // The printed rows, and the only thing the paginator may measure — the region's
       // wake overlay is a sibling and would otherwise be counted as header height.
       data-band-rows
-      className={`flex items-baseline gap-2 text-xs text-slate-600 ${
+      /*
+       * Header and footer text is **black**, like every other mark on the paper.
+       *
+       * It was `text-slate-600`, which is wrong twice over. The exporter writes no
+       * `w:color` for these runs, so Word prints them black — a grey preview was
+       * therefore lying about the document, the same way the dropped `w:jc` was. And a
+       * `slate` token is a *chrome* colour: the paper never themes, so anything drawn on
+       * it takes a literal value (§ UI tokens vs the paper).
+       *
+       * The rule keeps its own grey: it is a hairline, and `#999999` is the literal the
+       * exporter puts in `w:pBdr`.
+       */
+      className={`flex items-baseline gap-2 text-xs text-[#111111] ${
         edge === "header"
           ? resolved.rule
-            ? "mb-2 border-b border-slate-300 pb-1"
+            ? "mb-2 border-b border-[#999999] pb-1"
             : "mb-2"
           : resolved.rule
-            ? "mt-2 border-t border-slate-300 pt-1"
+            ? "mt-2 border-t border-[#999999] pt-1"
             : "mt-2"
       }`}
     >
@@ -1232,6 +1244,39 @@ function DraggableItem({
   const rootRef = useRef<HTMLDivElement>(null);
   const [runHeight, setRunHeight] = useState<number | undefined>();
   const isRunHead = runRole === "head" && (runLength ?? 1) > 1;
+
+  /*
+   * This item's own height, so the grip can never be taller than the row it belongs to.
+   *
+   * The document runs on a fixed 12pt line with no paragraph spacing (§ One fixed line),
+   * so a one-line item's row is ~20px while the grip's intrinsic content — two chevrons,
+   * a grip glyph and its padding — is 34px. Every short row therefore grew a pill that
+   * spilled 14–26px into its neighbours, and a column of headings and questions rendered
+   * as a stack of overlapping chips.
+   */
+  const [itemHeight, setItemHeight] = useState<number | undefined>();
+
+  useEffect(() => {
+    const node = rootRef.current;
+    if (!node) return;
+    const measure = () => setItemHeight(node.getBoundingClientRect().height);
+    const frame = requestAnimationFrame(measure);
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [id]);
+
+  /*
+   * Does this row have room for the chevrons?
+   *
+   * The full pill is 34px: 12px grip + two 8px chevrons + 2px padding. Below that the
+   * chevrons come off and the grip glyph alone stands in. A merged pill always keeps
+   * them, since it spans a whole run and is tall by construction.
+   */
+  const showChevrons = isRunHead || itemHeight === undefined || itemHeight >= 34;
 
   useEffect(() => {
     // A stale height on a non-head needs no clearing: the pill below only reads
@@ -1371,12 +1416,25 @@ function DraggableItem({
         data-print-hide
         aria-label="Drag to reorder"
         title="Drag to reorder"
-        // Literal hex throughout: this sits on the paper, which never themes, so a
-        // semantic token would paint a dark chip on a white page in dark mode.
-        // A merged pill spans its whole run, so it is sized in px from the measurement
-        // above rather than hugging one item's first line.
-        style={isRunHead && runHeight ? { height: `${runHeight}px` } : undefined}
-        className={`absolute -left-[26px] top-0.5 flex w-[18px] cursor-grab flex-col items-center justify-center gap-0 rounded border py-0.5 leading-none transition-colors duration-150 active:cursor-grabbing ${
+        /*
+         * Literal hex throughout: this sits on the paper, which never themes, so a
+         * semantic token would paint a dark chip on a white page in dark mode.
+         *
+         * Height: a merged pill spans its whole run, so it is sized in px from the
+         * measurement above rather than hugging one item's first line. Every other grip
+         * is **capped at its own row's height**, because on a 12pt line an item can be
+         * shorter than the grip's intrinsic content and the overflow lands on top of the
+         * neighbouring grips. `top-0.5` is dropped from the budget so the cap accounts
+         * for the offset the pill is already sitting at.
+         */
+        style={
+          isRunHead && runHeight
+            ? { height: `${runHeight}px` }
+            : itemHeight
+              ? { maxHeight: `${Math.max(itemHeight - 2, 12)}px` }
+              : undefined
+        }
+        className={`absolute -left-[26px] top-0.5 flex w-[18px] cursor-grab flex-col items-center justify-center gap-0 overflow-hidden rounded border py-0.5 leading-none transition-colors duration-150 active:cursor-grabbing ${
           isDragging
             ? "border-[#7c5cff] bg-[#7c5cff] text-white shadow-sm"
             : isRunHead
@@ -1396,8 +1454,13 @@ function DraggableItem({
          * holds the middle, so the handle reads as bracketing the run it covers. Packed
          * together in the centre they described only their own 34px, leaving a tall
          * pill looking like a short one floating in a tall box.
+         *
+         * They are **dropped entirely on a short row**. The chevrons are decorative —
+         * they say "this can move up or down", which the grip glyph already implies —
+         * and they are the ~16px that does not fit beside a single 12pt line. Clipping
+         * them instead would leave half an arrowhead against the pill's edge.
          */}
-        <ChevronUpIcon size={8} />
+        {showChevrons && <ChevronUpIcon size={8} />}
         {isRunHead ? (
           <span className="flex flex-1 flex-col items-center justify-center gap-1">
             <GripIcon size={12} />
@@ -1407,7 +1470,7 @@ function DraggableItem({
         ) : (
           <GripIcon size={12} />
         )}
-        <ChevronDownIcon size={8} />
+        {showChevrons && <ChevronDownIcon size={8} />}
       </span>
       )}
       {children}
@@ -1529,15 +1592,32 @@ function usePagination(
  * background" for the most obvious place a teacher clicks to deselect.
  *
  * The selectable things are marked in the DOM already — questions carry `data-question-id`,
- * flow items `data-flow-id`, and every piece of interactive chrome is a real `button`.
- * Anything that matches none of them is page background.
+ * flow items `data-flow-id`, header/footer and masthead fields `data-field-id`, and every
+ * piece of interactive chrome is a real `button`. Anything that matches none of them is
+ * page background.
+ *
+ * `data-field-id` is load-bearing and was the bug: the list named `data-band-field`, an
+ * attribute nothing has ever rendered, so **every click inside an active header counted
+ * as blank paper**. `clearPageSelection` then ran, and returning to the body is part of
+ * clearing — so clicking a header row to edit it immediately deactivated the header. The
+ * region could be entered but never worked in.
+ *
+ * A selector naming an attribute that does not exist fails silently and always in the
+ * same direction, so a test asserts the two agree.
  */
 function isBlankAreaClick(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
-  return !target.closest(
-    "[data-question-id],[data-flow-id],[data-doc-field],[data-band-field],button,a,input,textarea,select,[contenteditable='true']",
-  );
+  return !target.closest(BLANK_CLICK_EXEMPT);
 }
+
+/**
+ * What a click may land on without counting as "blank paper".
+ *
+ * Exported so a test can mount the real band rows and assert every field they draw is
+ * matched by it — the mismatch above was invisible from either side alone.
+ */
+export const BLANK_CLICK_EXEMPT =
+  "[data-question-id],[data-flow-id],[data-doc-field],[data-field-id],[data-band-rows],button,a,input,textarea,select,[contenteditable='true']";
 
 /**
  * The two printed blocks that are document *fields* rather than flow items: the title

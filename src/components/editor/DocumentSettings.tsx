@@ -26,7 +26,7 @@ import {
   twipsToCm,
 } from '@/model/page';
 import { bi, emptyBiText, plain } from '@/model/text';
-import type { Band, HeaderFooter, Orientation, PageMargins, PaperSize } from '@/model/types';
+import type { Band, HeaderFooter, PageMargins, PaperSize } from '@/model/types';
 import { useWorksheetStore, type FirstPageMode } from '@/store/worksheetStore';
 import { BandPreview, BandPresetCard } from './BandPreview';
 import { BiTextField } from './BiTextField';
@@ -221,15 +221,14 @@ function PageTab() {
         />
       </Field>
 
-      <Field label="Orientation">
-        <SelectField<Orientation>
-          value={setup.orientation}
-          options={[
-            { value: 'portrait', label: 'Portrait' },
-            { value: 'landscape', label: 'Landscape' },
-          ]}
-          onChange={(orientation) => setPageSetup({ orientation })}
-        />
+      {/* Portrait only. Shown rather than hidden so the page setup still reads as
+          complete — a missing row invites "where did orientation go?" — but stated as
+          a fact instead of a one-option `<select>`, which looks interactive and does
+          nothing when clicked. The model keeps `Orientation` as a two-value union and
+          the exporter still writes `w:orient`, so restoring the choice is one edit
+          here. */}
+      <Field label="Orientation" hint="Worksheets print portrait.">
+        <span className="block text-xs text-ink-muted">Portrait</span>
       </Field>
 
       {/* Margins: a preset, or Custom to type all four edges.

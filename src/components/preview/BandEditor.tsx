@@ -181,8 +181,12 @@ export function BandEditor({
         return (
           <div
             key={band.id}
+            // The rule takes the literal `#999999` the exporter writes into `w:pBdr`,
+            // matching `ReadOnlyBandRow` — the two paths draw the same rows, so a
+            // `slate` token here would redraw the hairline the moment the region is
+            // focused (§ Both band paths must agree).
             className={`group/band relative flex items-baseline gap-1 ${
-              band.rule ? 'border-b border-slate-400 pb-0.5' : ''
+              band.rule ? 'border-b border-[#999999] pb-0.5' : ''
             }`}
           >
             {/* Remove this printed row. In the left margin rather than inline, because a
