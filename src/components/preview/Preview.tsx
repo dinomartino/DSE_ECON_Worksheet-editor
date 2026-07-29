@@ -1572,14 +1572,19 @@ interface Props {
    */
   onPagesChange?: (pages: PageComposition[]) => void;
   /**
-   * The flow item being dragged on the page, or undefined when none is.
+   * The flow items being dragged on the page, or undefined when none are.
    *
    * Published so the page rail can offer its cards as drop targets — the only way to
    * move an item to a page that is not currently on screen. The drag state itself
    * stays local here: it is transient interaction state that must never reach an undo
    * entry, which is also why it is reported rather than lifted.
+   *
+   * It is the *run*, not the grabbed id, for the same reason `onDrop` sends a run: a
+   * drag that starts on a member of a multi-selection carries the whole selection
+   * (§dragCount). Reporting one id let the rail move one item out of five, silently
+   * discarding the sweep — the drop target has no way to know the rest were selected.
    */
-  onDragItemChange?: (id: string | undefined) => void;
+  onDragItemChange?: (ids: string[] | undefined) => void;
 }
 
 /**
@@ -2004,12 +2009,6 @@ export function Preview({
   // transient interaction state that must never reach an undo entry or a save.
   const [dragId, setDragId] = useState<string | undefined>();
 
-  // Tell the page rail what is in flight. An effect rather than a call beside each
-  // `setDragId`, so every path that ends a drag — drop, escape, dragend — reports it.
-  useEffect(() => {
-    onDragItemChange?.(dragId);
-  }, [dragId, onDragItemChange]);
-
   /*
    * End the drag from the window, not from the item that started it.
    *
@@ -2184,6 +2183,21 @@ export function Preview({
    * different set and dispatched to `deleteTarget`.
    */
   const [multiFields, setMultiFields] = useState<Set<string>>(new Set());
+
+  // Tell the page rail what is in flight. An effect rather than a call beside each
+  // `setDragId`, so every path that ends a drag — drop, escape, dragend — reports it.
+  //
+  // The payload is the whole run the drag carries, resolved by the same rule the
+  // in-page drop uses: a member of the multi-selection brings the selection with it,
+  // anything else travels alone. Reporting only the grabbed id is what let a drop on
+  // the rail move one item out of a swept five — the rail cannot infer the rest.
+  useEffect(() => {
+    if (!dragId) {
+      onDragItemChange?.(undefined);
+      return;
+    }
+    onDragItemChange?.(multiIds.has(dragId) ? [...multiIds] : [dragId]);
+  }, [dragId, multiIds, onDragItemChange]);
 
   /**
    * Which of the sheet's three regions is being edited — the rule Word uses.
@@ -3429,7 +3443,18 @@ export function Preview({
                             // above kept a break → section map; a flat flow needs only
                             // the id.
                             const breakId = openedBy[pageIndex]!;
-                            if (dragId) onReorder(dragId, breakId, position);
+                            if (dragId) {
+                              // Carries the whole selection when the drag started
+                              // inside one — the same rule `DraggableItem`'s drop
+                              // follows, or filling a new page with a swept group
+                              // would move one item and leave the rest behind.
+                              const run = multiIds.has(dragId) ? [...multiIds] : undefined;
+                              if (run && onReorderMany && !run.includes(breakId)) {
+                                onReorderMany(run, breakId, position);
+                              } else if (!run || !run.includes(breakId)) {
+                                onReorder(dragId, breakId, position);
+                              }
+                            }
                             setDragId(undefined);
                           }
                         : undefined

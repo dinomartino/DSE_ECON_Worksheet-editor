@@ -24,9 +24,11 @@ import { PageThumb } from './PageThumb';
  *
  * - *navigate* scrolls to the sheet, touching no state at all;
  * - *delete* is `removeMany` over the page's flow ids, in one commit;
- * - *reorder* is `movePage`, which moves that run and pins the seams with page breaks
- *   so the repagination that immediately follows cannot reflow the pages back
- *   together.
+ * - *reorder* is `movePage`, which orders that whole run against one anchor in a single
+ *   commit, preserving document order among its members;
+ * - *receive* is the same verb pointed the other way: a run dragged off the page lands
+ *   at the end of the card it is dropped on. What arrives is whatever the preview put
+ *   in flight, which is the entire multi-selection when the drag began inside one.
  *
  * The card is a **live thumbnail** — a scaled clone of the real sheet (`PageThumb`).
  * It was a proportional sketch of grey bars, on the reasoning that a true thumbnail
@@ -70,20 +72,24 @@ const CARD_WIDTH_PX = RAIL_WIDTH_PX - RAIL_PADDING_PX * 2 - 8; // Leaves room fo
 export function PageRail({
   pages,
   activeIndex,
-  draggingItemId,
-  onDropItemOnPage,
+  draggingItemIds,
+  onDropItemsOnPage,
   onToggle,
 }: {
   pages: PageComposition[];
   /** The page currently scrolled into view, highlighted in the rail. */
   activeIndex: number;
   /**
-   * The flow item currently being dragged on the page, if any. While this is set the
-   * cards act as drop targets for *it* rather than as draggable pages.
+   * The flow items currently being dragged on the page, if any. While this is set the
+   * cards act as drop targets for *them* rather than as draggable pages.
+   *
+   * A run rather than one id, because a drag begun on a member of a multi-selection
+   * carries the whole selection — the rail is a destination for whatever the page put
+   * in flight, and it has no way to re-derive the selection itself.
    */
-  draggingItemId?: string;
-  /** Send that item to the end of the given page. */
-  onDropItemOnPage?: (itemId: string, page: PageComposition) => void;
+  draggingItemIds?: string[];
+  /** Send those items to the end of the given page, in one commit. */
+  onDropItemsOnPage?: (itemIds: string[], page: PageComposition) => void;
   /** Collapse the rail. */
   onToggle?: () => void;
 }) {
@@ -102,7 +108,7 @@ export function PageRail({
 
   // A question being dragged makes the rail a set of destinations rather than a set of
   // draggable pages — a question cannot be dropped *between* pages, only onto one.
-  const receivingItem = Boolean(draggingItemId);
+  const receivingItem = Boolean(draggingItemIds?.length);
   // The page awaiting delete confirmation. Held by index because that is what the
   // dialog names ("Delete page 3?"); the ids are read at confirm time.
   const [confirming, setConfirming] = useState<number | undefined>();
@@ -165,6 +171,21 @@ export function PageRail({
    */
   const isActionable = (page: PageComposition) =>
     !page.structuralOnly || Boolean(page.breakId);
+
+  /*
+   * Can this card *receive* a dragged run? A weaker test than `isActionable`.
+   *
+   * The first sheet is the exception the general rule cannot cover. It can never carry
+   * a break — nothing precedes it — so once its content is dragged elsewhere it reads
+   * as `structuralOnly` with no `breakId`, exactly like a masthead-only page, and
+   * `isActionable` refuses it. That made emptying page 1 permanent: the items were
+   * gone, the only route back was a card that no longer accepted drops, and the page
+   * stayed blank with no way to say "put these here".
+   *
+   * Receiving needs no id to act on, because the destination is positional — the head
+   * of the document — so page 0 always qualifies.
+   */
+  const canReceive = (page: PageComposition) => isActionable(page) || page.index === 0;
 
   return (
     <>
@@ -229,7 +250,7 @@ export function PageRail({
                       // A question dragged in from the page: the whole card is one
                       // target, so there is no edge to pick.
                       if (receivingItem) {
-                        if (!isActionable(page)) return;
+                        if (!canReceive(page)) return;
                         event.preventDefault();
                         event.dataTransfer.dropEffect = 'move';
                         setItemOverIndex(index);
@@ -254,8 +275,8 @@ export function PageRail({
                       event.preventDefault();
                       if (receivingItem) {
                         setItemOverIndex(undefined);
-                        if (draggingItemId && isActionable(page)) {
-                          onDropItemOnPage?.(draggingItemId, page);
+                        if (draggingItemIds?.length && canReceive(page)) {
+                          onDropItemsOnPage?.(draggingItemIds, page);
                         }
                         return;
                       }
@@ -279,7 +300,7 @@ export function PageRail({
                           ? 'border-accent shadow-[0_0_0_2px_var(--color-accent-soft)]'
                           : 'border-line hover:border-ink-subtle'
                     } ${isDragging ? 'opacity-40' : ''} ${
-                      receivingItem && isActionable(page) ? 'cursor-copy' : ''
+                      receivingItem && canReceive(page) ? 'cursor-copy' : ''
                     }`}
                     style={{ width: CARD_WIDTH_PX, height: cardHeight }}
                   >

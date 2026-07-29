@@ -285,6 +285,44 @@ describe('moving a page (§page rail)', () => {
     store().movePage(ids, [ids[0]], 'before');
     expect(orderOf()).toEqual(before);
   });
+
+  /*
+   * Getting back to page 1.
+   *
+   * The first sheet is the one destination no anchor can name: nothing precedes it, so
+   * it can never carry a page break, and once its content is dragged away it has no
+   * members either. Dropping onto its card had nothing to order against, which left an
+   * emptied page 1 permanently blank — the items were gone and the only route back
+   * refused the drop.
+   */
+  it('lands a run at the head of the document', () => {
+    const ids = orderOf();
+    const run = ids.slice(-2);
+
+    store().moveToDocumentStart(run);
+
+    // The run leads the document and kept its own order.
+    expect(orderOf().slice(0, 2)).toEqual(run);
+  });
+
+  it('puts the run in front of a leading layout element too', () => {
+    // The head of the *flow*, not just of `questions` — page 1 may open with a section
+    // heading, and landing after it would put the items under the wrong section.
+    const heading = store().worksheet.layout.filter((e) => e.kind === 'section')[0];
+    const run = orderOf().slice(-1);
+
+    store().moveToDocumentStart(run);
+
+    const order = flowIds();
+    expect(order.indexOf(run[0])).toBeLessThan(order.indexOf(heading.id));
+  });
+
+  it('does nothing when the run is the whole document', () => {
+    const all = flowIds();
+    const before = flowIds();
+    store().moveToDocumentStart(all);
+    expect(flowIds()).toEqual(before);
+  });
 });
 
 /**

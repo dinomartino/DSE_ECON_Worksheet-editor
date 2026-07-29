@@ -191,6 +191,49 @@ export function compositionKey(pages: PageComposition[]): string {
   return pages.map((page) => `${page.breakId ?? ''}:${page.flowIds.join(',')}`).join('|');
 }
 
+/**
+ * Where a run dropped on a page card in the rail should land, or `undefined` for
+ * "nothing to do".
+ *
+ * The rail is the only way to reach a page that is not on screen, and what it hands
+ * over is whatever the page put in flight — which is a *run* whenever the drag began
+ * inside a multi-selection. Answering for one id was the bug: five swept questions
+ * dropped on page 3 moved one and left four behind, and the rail cannot re-derive the
+ * selection to notice.
+ *
+ * The run lands after the target page's last member that is not itself moving. A card
+ * is one target with no meaningful "between" — the thumbnail shows content, not gaps
+ * you could aim at — so the end of the page is the only position it can name; from
+ * there the items are nudged into place on the page itself, where edges are visible.
+ *
+ * Two cases return `undefined` rather than an anchor, so an accidental release costs no
+ * undo entry:
+ *
+ * - every id on the target page is moving, leaving nothing to order against (a run
+ *   cannot land relative to itself — `moveRunInFlow` guards this too, but stopping here
+ *   means no commit at all rather than a commit that changes nothing);
+ * - the run already *is* the tail of that page, in which case the drop is a no-op.
+ *
+ * An empty page added by the teacher has only its own break, and landing after that
+ * break is exactly what puts an item on the sheet the break opened — so the empty case
+ * needs no special handling beyond letting a break serve as an anchor.
+ */
+export function dropRunAnchor(
+  itemIds: string[],
+  page: Pick<PageComposition, 'flowIds' | 'breakId'>,
+): string | undefined {
+  if (itemIds.length === 0) return undefined;
+  const moving = new Set(itemIds);
+
+  const tail = page.flowIds.slice(-moving.size);
+  if (tail.length === moving.size && tail.every((id) => moving.has(id))) return undefined;
+
+  const staying = page.flowIds.filter((id) => !moving.has(id));
+  const anchor = staying[staying.length - 1] ?? page.breakId;
+  if (!anchor || moving.has(anchor)) return undefined;
+  return anchor;
+}
+
 /** A rectangle in viewport coordinates. */
 export interface Rect {
   left: number;

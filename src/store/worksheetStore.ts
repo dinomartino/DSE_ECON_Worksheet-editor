@@ -114,6 +114,15 @@ interface WorksheetState {
   reorderFlowItem: (id: string, targetId: string, position?: 'before' | 'after') => void;
   /** Move a whole page's worth of items, as dragged in the page rail. */
   movePage: (sourceIds: string[], targetIds: string[], position: 'before' | 'after') => void;
+  /**
+   * Move a run to the very front of the document, keeping its order.
+   *
+   * The one position no anchor can name. Every other drop is expressed relative to an
+   * existing item, but the first sheet has nothing before it to aim at — and if its
+   * content has all been dragged away it has no members to aim at either, which is what
+   * left an emptied page 1 permanently unfillable.
+   */
+  moveToDocumentStart: (ids: string[]) => void;
   removeMany: (ids: string[]) => void;
   duplicateMany: (ids: string[]) => void;
 
@@ -613,6 +622,26 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
        * always believed it was handing over.
        */
       return applyFlowMove(draft, moveRunInFlow(draft, sourceIds, anchor, position));
+    }),
+
+  /*
+   * Land a run at the head of the document.
+   *
+   * Expressed as "before the first item that is not itself moving" rather than as a
+   * splice, so it goes through the same `moveRunInFlow` every other reorder uses and
+   * inherits its one guarantee: document order is preserved among the members
+   * regardless of the order they were selected in.
+   *
+   * With nothing staying put the document is entirely this run, so its order is already
+   * whatever it is and there is nothing to commit.
+   */
+  moveToDocumentStart: (ids) =>
+    get().commit((draft) => {
+      const moving = new Set(ids);
+      if (moving.size === 0) return draft;
+      const first = flowOf(draft).find((entry) => !moving.has(entry.id));
+      if (!first) return draft;
+      return applyFlowMove(draft, moveRunInFlow(draft, ids, first.id, 'before'));
     }),
 
   removeMany: (ids) =>

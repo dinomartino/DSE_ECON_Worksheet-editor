@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   compositionKey,
   composePages,
+  dropRunAnchor,
   marqueeBounds,
   marqueeCatches,
   packPages,
@@ -126,6 +127,59 @@ describe('naming a page for the store', () => {
     const before = compositionKey(composePages(pack([item('q1')])));
     const after = compositionKey(composePages(pack([item('q1'), brk('b1')])));
     expect(after).not.toBe(before);
+  });
+});
+
+/**
+ * Where a run dropped on a page card lands.
+ *
+ * The rail is the only route to a page that is off screen, and it is the one drop whose
+ * target names no position — a card is a whole page, not an edge — so the anchor is
+ * derived rather than pointed at. Worth pinning because both failure modes are silent:
+ * the wrong anchor moves items to a page nobody aimed at, and a missing one is a
+ * gesture that simply does nothing.
+ */
+describe('dropping a run on a page card', () => {
+  it('anchors after the page’s last item', () => {
+    const page = { flowIds: ['a', 'b', 'c'] };
+    expect(dropRunAnchor(['x'], page)).toBe('c');
+  });
+
+  it('skips members of the run when picking the anchor', () => {
+    // `x` is already on this page but not at its end, so the drop is a real move and
+    // the anchor has to be the last id that is *staying* — ordering a run against one
+    // of its own members would be a move relative to itself.
+    const page = { flowIds: ['x', 'a', 'b'] };
+    expect(dropRunAnchor(['x', 'y'], page)).toBe('b');
+  });
+
+  it('moves a whole selection, not just the grabbed item', () => {
+    // The regression this exists for: five swept items dropped on another page used to
+    // move one. All five have to resolve to the same single anchor.
+    const page = { flowIds: ['p', 'q'] };
+    expect(dropRunAnchor(['a', 'b', 'c', 'd', 'e'], page)).toBe('q');
+  });
+
+  it('uses the break of a page the teacher added but never filled', () => {
+    // Landing *after* the break is what puts an item on the sheet that break opened.
+    const page = { flowIds: ['brk'], breakId: 'brk' };
+    expect(dropRunAnchor(['x'], page)).toBe('brk');
+  });
+
+  it('declines a run that already ends the page', () => {
+    const page = { flowIds: ['a', 'x', 'y'] };
+    expect(dropRunAnchor(['x', 'y'], page)).toBeUndefined();
+  });
+
+  it('declines when every id on the page is moving', () => {
+    // Nothing left to order against. The first sheet reaches this and is rescued
+    // positionally by `moveToDocumentStart`, which needs no anchor at all.
+    const page = { flowIds: ['x', 'y'] };
+    expect(dropRunAnchor(['x', 'y'], page)).toBeUndefined();
+  });
+
+  it('declines an empty run', () => {
+    expect(dropRunAnchor([], { flowIds: ['a'] })).toBeUndefined();
   });
 });
 

@@ -22,7 +22,7 @@ the same PR.
 | State | Zustand 5, undo/redo with a 100-entry history |
 | Language | TypeScript strict |
 | Export | Raw OOXML via JSZip (hand-built, no `docx` library) |
-| Test | Vitest 4 — 343 tests across 14 files, ~1s |
+| Test | Vitest 4 — 354 tests across 15 files, ~1s |
 | Runtime | Browser-only: client-side `.docx` generation, no API routes |
 
 ## Project structure
@@ -471,6 +471,32 @@ rules be tested without a DOM.
 were containers; with one document-wide flow, a page is just a run of ids — which is what
 the rail always believed it was handing over.
 
+### A drop target receives the run, not the grabbed id
+
+Dragging a member of a multi-selection carries the whole selection (§direct
+manipulation). That rule lives in the *drag*, so every target has to honour it, and a
+target cannot re-derive the selection for itself — which is why `onDragItemChange`
+publishes `string[]`, the run resolved once at the source. Publishing the grabbed id
+alone let the page rail move one item out of a swept five, silently discarding the
+sweep; the same bug sat in the `BlankPage` drop target. Both now route through
+`movePage`, so a bulk drop is one commit and one undo entry.
+
+`dropRunAnchor()` (`preview/pagination.ts`) decides where a run dropped on a rail card
+lands: after the target page's last member that is not itself moving. A card is one
+target with no meaningful "between" — the thumbnail shows content, not gaps you could
+aim at — so the end of the page is the only position it can name. It returns nothing
+when the run already *is* that page's tail, so an accidental release costs no undo
+entry. It is pure and lives beside the break rules for the same reason they do.
+
+**The first sheet is the one destination no anchor can name.** Nothing precedes it, so
+it can never carry a page break, and once its content is dragged away it has no members
+either — it then reads as `structuralOnly` with no `breakId`, exactly like a
+masthead-only page, and the rail's `isActionable` refused it. That made emptying page 1
+permanent: the content was gone and the only route back was a card that no longer
+accepted drops. Receiving is therefore a weaker test than acting (`canReceive`), because
+the destination is *positional*: `moveToDocumentStart` orders the run before the first
+item that is not itself moving, needing no id to act on at all.
+
 ### The outline groups by page (`editor/Outline.tsx`)
 
 A page break as an ordinary outline row is a faithful description of the model and a poor
@@ -767,7 +793,9 @@ hover                     → drag grip in the margin → drag to reorder
 - **Dragging grabs a margin grip, not the text**, which is already a click target for
   editing. The drop indicator marks the hovered item's leading or trailing edge depending
   on which half the pointer is in, and the drop honours that edge. Layout elements drag in
-  the same list as questions — that is the whole point of the flow.
+  the same list as questions — that is the whole point of the flow. Dragging a member of
+  a multi-selection carries the whole selection, and that is the *drag's* rule, not any
+  one target's: every drop target has to honour it (§a drop target receives the run).
 - **Pictures resize where they are** (`preview/ResizableBlock.tsx`). Four rules:
   **width is the only output**, height following the block's aspect ratio via
   `applyResizeBlock` (which is why the handles are corners, not edges — an edge handle

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Preview, type PageComposition } from '@/components/preview/Preview';
+import { dropRunAnchor } from '@/components/preview/pagination';
 import { AddRail } from '@/components/editor/AddRail';
 import { PageRail } from '@/components/editor/PageRail';
 import { Sidebar } from '@/components/editor/Sidebar';
@@ -53,6 +54,7 @@ export function EditorApp() {
   const removeLayoutElement = useWorksheetStore((s) => s.removeLayoutElement);
   const removeMany = useWorksheetStore((s) => s.removeMany);
   const movePage = useWorksheetStore((s) => s.movePage);
+  const moveToDocumentStart = useWorksheetStore((s) => s.moveToDocumentStart);
   const duplicateMany = useWorksheetStore((s) => s.duplicateMany);
 
   const restored = useRef(false);
@@ -84,8 +86,9 @@ export function EditorApp() {
    * the other.
    */
   const [settingsOpen, setSettingsOpen] = useState(false);
-  // The item being dragged on the page, mirrored here so the rail can receive it.
-  const [draggingItemId, setDraggingItemId] = useState<string | undefined>();
+  // The items being dragged on the page, mirrored here so the rail can receive them.
+  // A run, because a drag begun inside a multi-selection carries all of it.
+  const [draggingItemIds, setDraggingItemIds] = useState<string[] | undefined>();
 
   /*
    * Which sheet the reader is looking at, for the rail's highlight.
@@ -224,26 +227,29 @@ export function EditorApp() {
    * auto-scroll, it takes one gesture whether the target is the next page or the
    * twentieth.
    *
-   * The item lands at the *end* of the target page, because a card is one target with
+   * The items land at the *end* of the target page, because a card is one target with
    * no meaningful "between" — the sketch shows bars, not gaps you could aim at. Once
-   * there it can be nudged into place on the page itself, where the edge is visible.
+   * there they can be nudged into place on the page itself, where the edge is visible.
    *
-   * Dropping onto the page it already ends is a no-op rather than a commit, so an
+   * It takes a *run*, not one id, for the same reason the in-page drop does: a drag
+   * begun on a member of a multi-selection carries the whole selection, and moving only
+   * the grabbed item would silently discard the sweep. `movePage` is the verb for it —
+   * one commit, document order preserved among the members — which is also what keeps
+   * the whole gesture a single undo entry.
+   *
+   * Dropping a run that already ends the page is a no-op rather than a commit, so an
    * accidental release does not push an undo entry that changes nothing.
    */
-  const handleDropItemOnPage = useCallback(
-    (itemId: string, target: PageComposition) => {
-      const ids = target.flowIds.filter((id) => id !== itemId);
-      // On a page the teacher just added and has not filled, the only id is the page's
-      // own break — and landing *after* the break is exactly what puts an item on the
-      // sheet that break opened. So the empty case needs no special handling beyond
-      // letting a break serve as an anchor.
-      const anchor = ids[ids.length - 1] ?? target.breakId;
-      if (!anchor || anchor === itemId) return;
-      if (target.flowIds[target.flowIds.length - 1] === itemId) return;
-      handleReorder(itemId, anchor, 'after');
+  const handleDropItemsOnPage = useCallback(
+    (itemIds: string[], target: PageComposition) => {
+      const anchor = dropRunAnchor(itemIds, target);
+      if (anchor) movePage(itemIds, [anchor], 'after');
+      // A page that has no anchor at all — every id on it is moving, or it is the empty
+      // first sheet, which can carry no break because nothing precedes it — is reached
+      // by landing the run at the very front of the document instead.
+      else if (itemIds.length > 0 && target.index === 0) moveToDocumentStart(itemIds);
     },
-    [handleReorder],
+    [movePage, moveToDocumentStart],
   );
 
   // Editing text on the page also selects the question it belongs to, so the sidebar
@@ -346,8 +352,8 @@ export function EditorApp() {
               <PageRail
                 pages={pages}
                 activeIndex={activePage}
-                draggingItemId={draggingItemId}
-                onDropItemOnPage={handleDropItemOnPage}
+                draggingItemIds={draggingItemIds}
+                onDropItemsOnPage={handleDropItemsOnPage}
                 onToggle={() => setPageRailOpen(false)}
               />
             </div>
@@ -406,7 +412,7 @@ export function EditorApp() {
             // `setPages` is referentially stable, which the preview's publish effect
             // depends on — a fresh closure each render would re-notify forever.
             onPagesChange={setPages}
-            onDragItemChange={setDraggingItemId}
+            onDragItemChange={setDraggingItemIds}
           />
         </main>
         <Sidebar pages={pages} onOpenSettings={() => setSettingsOpen(true)} />
