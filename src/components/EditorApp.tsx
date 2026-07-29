@@ -14,7 +14,7 @@ import { DiagramCanvas } from '@/components/editor/DiagramCanvas';
 import { findDiagramBlock, formatOfTarget, targetQuestionId } from '@/model/edits';
 import type { BiText } from '@/model/types';
 import type { EditTarget } from '@/render/ir';
-import { useWorksheetStore } from '@/store/worksheetStore';
+import { useWorksheetStore, type BandScope } from '@/store/worksheetStore';
 import { worksheetStore } from '@/storage';
 
 /** Two-pane shell (§5.1): structural editor on the left, live preview on the right. */
@@ -40,10 +40,14 @@ export function EditorApp() {
   const updateBandField = useWorksheetStore((s) => s.updateBandField);
   const removeBandField = useWorksheetStore((s) => s.removeBandField);
   const addBandField = useWorksheetStore((s) => s.addBandField);
+  const addBand = useWorksheetStore((s) => s.addBand);
+  const removeBand = useWorksheetStore((s) => s.removeBand);
   const moveHeaderFooterField = useWorksheetStore((s) => s.moveHeaderFooterField);
   const updateHeaderFooterField = useWorksheetStore((s) => s.updateHeaderFooterField);
   const removeHeaderFooterField = useWorksheetStore((s) => s.removeHeaderFooterField);
   const addHeaderFooterField = useWorksheetStore((s) => s.addHeaderFooterField);
+  const addHeaderFooterBand = useWorksheetStore((s) => s.addHeaderFooterBand);
+  const removeHeaderFooterBand = useWorksheetStore((s) => s.removeHeaderFooterBand);
   const addQuestion = useWorksheetStore((s) => s.addQuestion);
   const removeQuestion = useWorksheetStore((s) => s.removeQuestion);
   const removeLayoutElement = useWorksheetStore((s) => s.removeLayoutElement);
@@ -138,31 +142,34 @@ export function EditorApp() {
   // The same four verbs for the page header and footer. They address different band
   // lists, so they are separate handler sets rather than one shared closure — but the
   // shape is identical, which is what lets one `BandEditor` serve all three surfaces.
-  const headerEditing = useMemo(
-    () => ({
+  // One factory for both edges: they differ only in which band list they name, so two
+  // hand-written copies would only be somewhere for the six verbs to drift apart.
+  const edgeEditing = useCallback(
+    (which: 'header' | 'footer') => ({
       onMove: (bandId: string, fieldId: string, zone: ZoneName, beforeId?: string) =>
-        moveHeaderFooterField('header', bandId, fieldId, zone, beforeId),
+        moveHeaderFooterField(which, bandId, fieldId, zone, beforeId),
       onEditField: (fieldId: string, text: BiText) =>
-        updateHeaderFooterField('header', fieldId, { text }),
-      onRemoveField: (fieldId: string) => removeHeaderFooterField('header', fieldId),
+        updateHeaderFooterField(which, fieldId, { text }),
+      onRemoveField: (fieldId: string) => removeHeaderFooterField(which, fieldId),
       onAddField: (bandId: string, zone: ZoneName) =>
-        addHeaderFooterField('header', bandId, zone, createTextField()),
+        addHeaderFooterField(which, bandId, zone, createTextField()),
+      // The scope comes from the sheet the click landed on, so a row added while looking
+      // at page 1 of a document whose page 1 differs joins page 1's own list.
+      onAddRow: (scope: BandScope) => addHeaderFooterBand(which, undefined, scope),
+      onRemoveRow: (bandId: string) => removeHeaderFooterBand(which, bandId),
     }),
-    [moveHeaderFooterField, updateHeaderFooterField, removeHeaderFooterField, addHeaderFooterField],
+    [
+      moveHeaderFooterField,
+      updateHeaderFooterField,
+      removeHeaderFooterField,
+      addHeaderFooterField,
+      addHeaderFooterBand,
+      removeHeaderFooterBand,
+    ],
   );
 
-  const footerEditing = useMemo(
-    () => ({
-      onMove: (bandId: string, fieldId: string, zone: ZoneName, beforeId?: string) =>
-        moveHeaderFooterField('footer', bandId, fieldId, zone, beforeId),
-      onEditField: (fieldId: string, text: BiText) =>
-        updateHeaderFooterField('footer', fieldId, { text }),
-      onRemoveField: (fieldId: string) => removeHeaderFooterField('footer', fieldId),
-      onAddField: (bandId: string, zone: ZoneName) =>
-        addHeaderFooterField('footer', bandId, zone, createTextField()),
-    }),
-    [moveHeaderFooterField, updateHeaderFooterField, removeHeaderFooterField, addHeaderFooterField],
-  );
+  const headerEditing = useMemo(() => edgeEditing('header'), [edgeEditing]);
+  const footerEditing = useMemo(() => edgeEditing('footer'), [edgeEditing]);
 
   const bandEditing = useMemo(
     () => ({
@@ -171,8 +178,12 @@ export function EditorApp() {
       onRemoveField: removeBandField,
       onAddField: (bandId: string, zone: ZoneName) =>
         addBandField(bandId, zone, createTextField()),
+      // The masthead has one list, so its scope is fixed — the argument is accepted and
+      // ignored rather than the handler having a different shape from the other two.
+      onAddRow: () => addBand(),
+      onRemoveRow: removeBand,
     }),
-    [moveBandField, updateBandField, removeBandField, addBandField],
+    [moveBandField, updateBandField, removeBandField, addBandField, addBand, removeBand],
   );
 
   /*

@@ -9,6 +9,8 @@ import {
   MIN_SPACER_PT,
 } from '@/model/flow';
 import { computeNumbering } from '@/model/numbering';
+import { HEADER_FOOTER_PRESETS } from '@/model/bands';
+import { defaultHeader, headerFooterOf } from '@/model/page';
 import { bi, plain } from '@/model/text';
 import type { McqQuestion, StructuredQuestion } from '@/model/types';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
@@ -441,5 +443,62 @@ describe('extending answer lines and blank space', () => {
       .map((e) => e.id);
     const positions = ids.map((id) => order.indexOf(id));
     expect(positions).toEqual([...positions].sort((a, b) => a - b));
+  });
+});
+
+/**
+ * A header in "different" mode holds two independent row lists, and every structural
+ * action has to say which one it means. Before `BandScope`, "+ Row" and every preset
+ * wrote to the running list unconditionally — so a teacher looking at page 1, clicking
+ * the controls that page 1 offers, changed page 2 and saw nothing happen where they
+ * were looking. Both failure directions are silent, so both are asserted here.
+ */
+describe('first-page header rows (§ page 1 can differ)', () => {
+  const header = () => headerFooterOf(store().worksheet.header, defaultHeader);
+
+  beforeEach(() => {
+    store().setHeaderFooterBands('header', HEADER_FOOTER_PRESETS[0].build());
+    store().setFirstPageMode('header', 'different');
+  });
+
+  it('starts page 1 as a copy of the running rows, with its own ids', () => {
+    const value = header();
+    expect(value.firstPage?.bands).toHaveLength(value.bands.length);
+    const runningIds = new Set(value.bands.map((b) => b.id));
+    expect(value.firstPage!.bands.every((b) => !runningIds.has(b.id))).toBe(true);
+  });
+
+  it('adds a row to page 1 without touching the running rows', () => {
+    const before = header();
+    store().addHeaderFooterBand('header', undefined, 'firstPage');
+    const after = header();
+    expect(after.firstPage!.bands).toHaveLength(before.firstPage!.bands.length + 1);
+    expect(after.bands).toHaveLength(before.bands.length);
+  });
+
+  it('applies a preset to page 1 without touching the running rows', () => {
+    const runningBefore = header().bands;
+    store().setHeaderFooterBands('header', HEADER_FOOTER_PRESETS[2].build(), 'firstPage');
+    const after = header();
+    expect(after.firstPage!.bands).toHaveLength(3);
+    expect(after.bands.map((b) => b.id)).toEqual(runningBefore.map((b) => b.id));
+  });
+
+  it('still writes to the running rows by default', () => {
+    const before = header();
+    store().addHeaderFooterBand('header');
+    const after = header();
+    expect(after.bands).toHaveLength(before.bands.length + 1);
+    expect(after.firstPage!.bands).toHaveLength(before.firstPage!.bands.length);
+  });
+
+  it('deletes a page-1 row by its own id, leaving the running rows alone', () => {
+    const before = header();
+    const target = before.firstPage!.bands[0].id;
+    store().removeHeaderFooterBand('header', target);
+    const after = header();
+    expect(after.firstPage!.bands.some((b) => b.id === target)).toBe(false);
+    expect(after.firstPage!.bands).toHaveLength(before.firstPage!.bands.length - 1);
+    expect(after.bands).toHaveLength(before.bands.length);
   });
 });

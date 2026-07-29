@@ -311,6 +311,13 @@ export interface SectionOptions {
    * header referencing an empty part, enabled by `w:titlePg`.
    */
   differentFirstPage: boolean;
+  /**
+   * Where the header and footer start, from the page edge (`w:header` / `w:footer`).
+   *
+   * Passed in rather than fixed here because it depends on how tall the bands are —
+   * see `headerFooterOffsets`. Optional so a caller with no header keeps Word's default.
+   */
+  edgeOffsets?: { header: number; footer: number };
 }
 
 /** Page geometry plus header/footer references (§7.1). */
@@ -334,7 +341,11 @@ export function buildSectionProperties(options: SectionOptions): string {
     '/>' +
     `<w:pgMar w:top="${options.margins.top}" w:right="${options.margins.right}" ` +
     `w:bottom="${options.margins.bottom}" w:left="${options.margins.left}" ` +
-    'w:header="720" w:footer="720" w:gutter="0"/>' +
+    // Derived from the band heights so a tall header sits in the margin rather than
+    // pushing the body text down the page (§ `headerFooterOffsets`). These were both a
+    // hardcoded 720, which is what made adding a header cost content space.
+    `w:header="${options.edgeOffsets?.header ?? 720}" ` +
+    `w:footer="${options.edgeOffsets?.footer ?? 720}" w:gutter="0"/>` +
     '<w:cols w:space="708"/>' +
     '<w:docGrid w:linePitch="360"/>' +
     '</w:sectPr>'

@@ -203,3 +203,110 @@ export function bandsAreEmpty(bands: Band[]): boolean {
 export function isHeaderFooterActive(value: HeaderFooter): boolean {
   return value.enabled && !bandsAreEmpty(value.bands ?? []);
 }
+
+/**
+ * How tall one printed row is, in twips.
+ *
+ * An estimate, not a measurement: the exporter has no font metrics and Word will lay the
+ * text out itself. It only has to be close enough to place the header's *starting* edge,
+ * and it errs on the generous side — a row assumed slightly too tall costs a little
+ * unused margin, while one assumed too short puts the header back into the text.
+ *
+ * A band's own font size wins where a field sets one, since the exam presets set 14pt on
+ * their title rows and those are exactly the rows that make a header overflow.
+ */
+/*
+ * Word's single-spaced line box for an 11pt run is ~264tw (11pt × 1.15 ÷ 20tw-per-pt ×
+ * 20). The reference paper's header measures out at roughly this — two rows, one 11pt and
+ * one 14pt, inside 873tw of headroom — and neither it nor ours emits paragraph spacing in
+ * a header, so the row height is the line box alone.
+ */
+const BAND_ROW_TWIPS = 264;
+const RULE_GAP_TWIPS = 120; // The border and its padding, when a rule is drawn.
+
+export function bandsHeight(bands: Band[], rule?: boolean): number {
+  const rows = bands.reduce((total, band) => {
+    const zones = band.zones ?? { left: [], center: [], right: [] };
+    const sizes = (['left', 'center', 'right'] as const)
+      .flatMap((zone) => zones[zone] ?? [])
+      .map((field) => field.format?.fontSize)
+      .filter((size): size is number => typeof size === 'number');
+    const largest = sizes.length > 0 ? Math.max(...sizes) : 11;
+    // Scale the row against the 11pt body default the estimate is calibrated for.
+    return total + Math.round(BAND_ROW_TWIPS * (largest / 11));
+  }, 0);
+  return rows + (rule ? RULE_GAP_TWIPS : 0);
+}
+
+/**
+ * Where the header and footer start, measured from the page edge (`w:header`/`w:footer`).
+ *
+ * **A header must use the margin before it uses the page.** Word grows a header *downward*
+ * from `w:header` and only pushes the body text down once it passes `w:top`; the same in
+ * reverse for the footer. So the room a header has to grow into is `top - header`, and
+ * with both hardcoded — `w:header="720"` against a 1440 top margin — a five-row exam
+ * header had 720 twips to fit into, overflowed, and shoved the questions down the page.
+ * That is the bug this exists to fix: adding a header silently cost content space.
+ *
+ * The offset is therefore derived from what the header actually contains — pulled up
+ * toward the page edge until the rows fit inside the margin — rather than fixed. A header
+ * taller than the whole margin still pushes the body down, because there is genuinely
+ * nowhere else for it to go, but it now does so only when the margin is really full.
+ *
+ * `MIN_EDGE_TWIPS` is the floor every desktop printer can reach; the reference paper uses
+ * 567 (1 cm), which is comfortably above it.
+ */
+const MIN_EDGE_TWIPS = 284; // 0.5 cm — inside the non-printable area of most printers.
+const DEFAULT_EDGE_TWIPS = 720; // 1.27 cm, the value Word itself defaults to.
+
+/**
+ * By how much a header/footer overruns the margin it was given, in twips.
+ *
+ * Zero in the normal case — the whole point of `headerFooterOffsets` is to keep it there.
+ * A positive number is the amount Word will push the body text by, and is what the
+ * paginator subtracts from the text column so the preview and the export agree about it.
+ * It is also worth surfacing: a header that eats content is nearly always a sign the top
+ * margin is too small for the rows the teacher has added, and the fix (a wider margin, or
+ * one fewer row) is theirs to choose.
+ */
+export function bandsOverflow(
+  margins: PageMargins,
+  headerHeight: number,
+  footerHeight: number,
+): { header: number; footer: number } {
+  const offsets = headerFooterOffsets(margins, headerHeight, footerHeight);
+  return {
+    header: Math.max(0, offsets.header + headerHeight - margins.top),
+    footer: Math.max(0, offsets.footer + footerHeight - margins.bottom),
+  };
+}
+
+export function headerFooterOffsets(
+  margins: PageMargins,
+  headerHeight: number,
+  footerHeight: number,
+): { header: number; footer: number } {
+  /*
+   * **The default is left alone unless the rows genuinely do not fit.**
+   *
+   * Word's own 1.27 cm is what a teacher expects a header to look like, and it is what
+   * every document that has never overflowed should keep. Only a header too tall for the
+   * room under that default gets moved, and then only as far as it needs — the first
+   * version of this computed `margin - height` unconditionally, which *always* pushed the
+   * header up to fill the margin, so even a one-row header ended up flattened against the
+   * page edge for no reason.
+   */
+  const fit = (height: number, margin: number) => {
+    if (height <= 0) return DEFAULT_EDGE_TWIPS;
+    // Does it already fit in the space the default leaves? Then nothing to do.
+    if (DEFAULT_EDGE_TWIPS + height <= margin) return DEFAULT_EDGE_TWIPS;
+    // It does not, so pull it up — but never past the printable edge, and never further
+    // than the rows actually need.
+    return Math.max(MIN_EDGE_TWIPS, margin - height);
+  };
+
+  return {
+    header: fit(headerHeight, margins.top),
+    footer: fit(footerHeight, margins.bottom),
+  };
+}

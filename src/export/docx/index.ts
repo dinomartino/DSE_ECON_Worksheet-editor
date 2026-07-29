@@ -1,10 +1,12 @@
 import {
   bandsAreEmpty,
+  bandsHeight,
   contentWidth,
   defaultFooter,
   defaultHeader,
   firstPageHeaderFooter,
   headerFooterOf,
+  headerFooterOffsets,
   isHeaderFooterActive,
   pageDimensions,
   pageNumberPlaceholder,
@@ -364,6 +366,23 @@ function buildParts(
       : {}),
   };
 
+  /*
+   * Where the header and footer start, from the page edge.
+   *
+   * Sized from the **running** rows, not the tallest of the two lists. One `w:header`
+   * serves the whole section, so a document whose page 1 carries a five-row exam cover
+   * over a one-row running header cannot have both — and taking the max meant the cover
+   * dictated the geometry of every *other* page, flattening an ordinary one-line header
+   * against the paper edge on pages 2 onward. The running rows print on nearly every
+   * sheet, so they are the ones the margin should be shaped around; page 1 keeps its own
+   * proportions because a cover page is mostly title anyway.
+   */
+  const edgeOffsets = headerFooterOffsets(
+    setup.margins,
+    hasHeader ? bandsHeight(header.bands ?? [], header.rule) : 0,
+    hasFooter ? bandsHeight(footer.bands ?? [], footer.rule) : 0,
+  );
+
   return {
     documentXml: buildDocumentXml(chunks.join(''), {
       pageWidth,
@@ -373,6 +392,7 @@ function buildParts(
       hasHeader,
       hasFooter,
       differentFirstPage,
+      edgeOffsets,
     }),
     stylesXml: buildStylesXml(fonts),
     numberingXml: buildNumberingXml(streams, fonts),

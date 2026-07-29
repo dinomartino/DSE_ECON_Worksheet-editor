@@ -18,7 +18,7 @@ import {
   createSpacerElement,
 } from '@/model/flow';
 import { applyResizeBlock } from '@/model/edits';
-import { MARGIN_PRESETS, cmToTwips } from '@/model/page';
+import { MARGIN_PRESETS, bandsHeight, cmToTwips } from '@/model/page';
 import { createWorksheet } from '@/model/factories';
 import { bi, plain } from '@/model/text';
 import type { LayoutElement, OutputMode, Worksheet } from '@/model/types';
@@ -444,6 +444,42 @@ describe('marks and file naming (§3.5, §7.1)', () => {
     const document = await read('word/document.xml');
     expect(document).toContain('<w:pgSz w:w="11906" w:h="16838"/>');
     expect(document).toContain('w:top="1440"');
+  });
+
+  /*
+   * A header lives in the margin, not in the text column.
+   *
+   * `w:header` is where the header *starts* from the page edge; Word grows it downward
+   * and only pushes body text down once it passes `w:top`. Both offsets used to be a
+   * hardcoded 720 against a 1440 top margin, so a multi-row header overflowed and shoved
+   * the questions down — adding a header silently cost content space. The reference paper
+   * this project is modelled on uses 567, comfortably clearing its own header.
+   */
+  it('pulls w:header up so a tall header stays inside the top margin', async () => {
+    const worksheet = buildAcceptanceWorksheet();
+    worksheet.header = {
+      enabled: true,
+      rule: true,
+      bands: Array.from({ length: 3 }, () =>
+        createBand({ center: [createTextField(bi('SCHOOL NAME', ''))] }),
+      ),
+    };
+
+    const zip = await JSZip.loadAsync(await exportDocxBuffer(worksheet, STUDENT_BI));
+    const document = await zip.file('word/document.xml')!.async('string');
+
+    const offset = Number(/w:header="(\d+)"/.exec(document)?.[1]);
+    expect(offset).toBeLessThan(720);
+    // The rows end at or before where the body text starts.
+    expect(offset + bandsHeight(worksheet.header.bands, true)).toBeLessThanOrEqual(1440);
+  });
+
+  it('leaves a one-line footer at Word’s own default offset', async () => {
+    const { read } = await unzip(STUDENT_BI);
+    const document = await read('word/document.xml');
+    // The fixture's footer is a single page-number row, which fits under 720 easily —
+    // so nothing should be pulled toward the edge for no reason.
+    expect(document).toContain('w:footer="720"');
   });
 });
 

@@ -141,18 +141,26 @@ const bold = (text: BiText, fontSize?: number): BandField => ({
 });
 
 export const HEADER_FOOTER_PRESETS: HeaderFooterPreset[] = [
+  /*
+   * A running line, not a cover.
+   *
+   * This preset used to build a centred course line plus a paper title with a "Name:"
+   * rule beside it — which is `assessmentTitleBlock` almost row for row. Two controls in
+   * two places produced the same printed thing, so whichever a teacher found first
+   * looked like the answer and the other looked broken when it printed a second copy.
+   *
+   * The masthead keeps that job (it prints once, on page 1, which is what a cover is).
+   * A *header* repeats on every sheet, so what belongs here is the short identifying
+   * line a marker reads on page 7 — the paper's name and where they are in it.
+   */
   {
-    id: 'assessment',
-    name: 'Course, title and name line',
+    id: 'running-title',
+    name: 'Paper name and page',
     edge: 'header',
-    // head1.png: a centred course line, then the paper title with a Name rule beside it.
     build: () => [
       createBand({
-        center: [bold({ en: [{ text: 'Economics Enhancement Class (2025-26)' }], zh: [] }, 14)],
-      }),
-      createBand({
-        center: [bold({ en: [{ text: 'Assessment 1' }], zh: [] }, 14)],
-        right: [createFillInField({ en: [{ text: 'Name:' }], zh: [{ text: '姓名：' }] })],
+        left: [createTextField({ en: [{ text: 'S.6 Economics — Assessment 1' }], zh: [] })],
+        right: [createPageNumberField('longForm')],
       }),
     ],
   },
@@ -217,6 +225,35 @@ export const HEADER_FOOTER_PRESETS: HeaderFooterPreset[] = [
     ],
   },
 ];
+
+/**
+ * Which computed field kinds appear more than once across a document's printed rows.
+ *
+ * `totalMarks` is derived from the questions, so two of them print the same number in
+ * two places — always a mistake, and one that is easy to create without noticing: the
+ * "Exam paper" header preset carries a marks total and so does the title block, so
+ * choosing both (a reasonable thing to want) silently prints "Full marks: 45" twice.
+ *
+ * Reported rather than prevented: which copy is the unwanted one is the teacher's call,
+ * and a preset that quietly dropped a field would be harder to understand than one that
+ * says what it did. Text fields are not checked — two rows legitimately saying "S.6" is
+ * a layout, not a duplicate.
+ */
+export function duplicateComputedFields(lists: Array<Band[] | undefined>): BandField['kind'][] {
+  const counts = new Map<BandField['kind'], number>();
+  for (const bands of lists) {
+    for (const band of bands ?? []) {
+      const zones = zonesOf(band);
+      for (const zone of ZONES) {
+        for (const field of zones[zone]) {
+          if (field.kind !== 'totalMarks') continue;
+          counts.set(field.kind, (counts.get(field.kind) ?? 0) + 1);
+        }
+      }
+    }
+  }
+  return [...counts.entries()].filter(([, n]) => n > 1).map(([kind]) => kind);
+}
 
 /**
  * The masthead of a typical assessment paper, as one band per printed row.

@@ -164,6 +164,8 @@ interface WorksheetState {
   setPageSetup: (patch: Partial<PageSetup>) => void;
   setBands: (bands: Band[]) => void;
   addBand: (band?: Band) => void;
+  /** Remove one masthead row, so a row added on the page can be taken back there. */
+  removeBand: (bandId: string) => void;
   addBandField: (bandId: string, zone: ZoneName, field: BandField) => void;
   updateBandField: (fieldId: string, patch: Partial<BandField>) => void;
   removeBandField: (fieldId: string) => void;
@@ -176,7 +178,7 @@ interface WorksheetState {
    * The same verbs the masthead uses, because a header row *is* a `Band` — sharing the
    * model means sharing the mutators rather than maintaining a parallel set that drifts.
    */
-  addHeaderFooterBand: (which: 'header' | 'footer', band?: Band) => void;
+  addHeaderFooterBand: (which: 'header' | 'footer', band?: Band, scope?: BandScope) => void;
   removeHeaderFooterBand: (which: 'header' | 'footer', bandId: string) => void;
   addHeaderFooterField: (
     which: 'header' | 'footer',
@@ -198,7 +200,7 @@ interface WorksheetState {
     beforeId?: string,
   ) => void;
   /** Replace a header/footer's rows wholesale — how a preset is applied. */
-  setHeaderFooterBands: (which: 'header' | 'footer', bands: Band[]) => void;
+  setHeaderFooterBands: (which: 'header' | 'footer', bands: Band[], scope?: BandScope) => void;
   /**
    * Choose what page 1 does (§ `HeaderFooter.firstPage`).
    *
@@ -213,6 +215,20 @@ interface WorksheetState {
 
 /** What page 1 prints, as a single closed choice. */
 export type FirstPageMode = 'same' | 'blank' | 'different';
+
+/**
+ * Which of a header/footer's two row lists a structural edit targets.
+ *
+ * A header in "different" mode holds two independent lists — the running rows and page
+ * 1's own — and *adding* or *replacing* a row has to say which it means. Field-level
+ * edits do not need this because they address a field by id and `patchHeaderFooterBand`
+ * finds whichever list holds it; a row being *created* has no id to find yet.
+ *
+ * Defaulting to `'running'` keeps every existing caller correct: before this, "+ Row"
+ * and every preset wrote to `bands` unconditionally, which is exactly the bug — a
+ * teacher looking at page 1 clicked "+ Row" and the row appeared on page 2.
+ */
+export type BandScope = 'running' | 'firstPage';
 
 /** Apply a patch to the question with this id. */
 function mapQuestion(
@@ -715,6 +731,12 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   addBand: (band) =>
     get().commit((draft) => ({ ...draft, bands: [...(draft.bands ?? []), band ?? createBand()] })),
 
+  removeBand: (bandId) =>
+    get().commit((draft) => ({
+      ...draft,
+      bands: (draft.bands ?? []).filter((band) => band.id !== bandId),
+    })),
+
   addBandField: (bandId, zone, field) =>
     get().commit((draft) => ({
       ...draft,
@@ -750,16 +772,33 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
       return { ...draft, [which]: { ...current, ...patch } };
     }),
 
-  addHeaderFooterBand: (which, band) =>
+  addHeaderFooterBand: (which, band, scope = 'running') =>
     get().commit((draft) => {
       const current = headerFooterOf(
         draft[which],
         which === 'header' ? defaultHeader : defaultFooter,
       );
+      const row = band ?? createBand();
+
+      // A row added while page 1 is the surface being edited joins page 1's list. The
+      // scope is passed rather than inferred from `current.firstPage` being present,
+      // because a document in "different" mode still has running rows a teacher edits
+      // from page 2 — presence tells us the list exists, not which one is meant.
+      if (scope === 'firstPage' && current.firstPage) {
+        return {
+          ...draft,
+          [which]: {
+            ...current,
+            enabled: true,
+            firstPage: { ...current.firstPage, bands: [...current.firstPage.bands, row] },
+          },
+        };
+      }
+
       return {
         ...draft,
         // Adding a row to a disabled header is a clear intent to use it.
-        [which]: { ...current, enabled: true, bands: [...current.bands, band ?? createBand()] },
+        [which]: { ...current, enabled: true, bands: [...current.bands, row] },
       };
     }),
 
@@ -769,9 +808,25 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
         draft[which],
         which === 'header' ? defaultHeader : defaultFooter,
       );
+
+      // Both lists are filtered, for the reason `patchHeaderFooterBand` searches both: a
+      // row deleted on page 1 reports only its own id, and the two lists never share one
+      // (`cloneBand` re-ids on copy), so filtering both removes exactly the row clicked.
+      // Addressing only `bands` left a page-1 row undeletable.
       return {
         ...draft,
-        [which]: { ...current, bands: current.bands.filter((band) => band.id !== bandId) },
+        [which]: {
+          ...current,
+          bands: current.bands.filter((band) => band.id !== bandId),
+          ...(current.firstPage
+            ? {
+                firstPage: {
+                  ...current.firstPage,
+                  bands: current.firstPage.bands.filter((band) => band.id !== bandId),
+                },
+              }
+            : {}),
+        },
       };
     }),
 
@@ -803,12 +858,24 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
       ),
     ),
 
-  setHeaderFooterBands: (which, bands) =>
+  setHeaderFooterBands: (which, bands, scope = 'running') =>
     get().commit((draft) => {
       const current = headerFooterOf(
         draft[which],
         which === 'header' ? defaultHeader : defaultFooter,
       );
+
+      // Applying a preset to page 1 replaces page 1's rows only. Sending it to the
+      // running list instead — which is what happened before the scope existed — reads
+      // to the teacher as the preset having done nothing at all, since the page they
+      // are looking at is unchanged.
+      if (scope === 'firstPage' && current.firstPage) {
+        return {
+          ...draft,
+          [which]: { ...current, enabled: true, firstPage: { ...current.firstPage, bands } },
+        };
+      }
+
       return { ...draft, [which]: { ...current, enabled: true, bands } };
     }),
 

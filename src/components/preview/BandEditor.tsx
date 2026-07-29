@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ZONES, zonesOf, type ZoneName } from '@/model/bands';
 import { plain } from '@/model/text';
-import type { Band, BandField, BiText, LanguageMode } from '@/model/types';
+import type { Band, BiText, LanguageMode } from '@/model/types';
 import { bandFieldText } from '@/render/worksheet';
 import { InlineEditable } from './InlineEditable';
 
@@ -29,6 +29,38 @@ interface Props {
   onRemoveField: (fieldId: string) => void;
   onAddField: (bandId: string, zone: ZoneName) => void;
   /**
+   * Add a printed row, and remove one.
+   *
+   * Rows were the one part of a band list with no on-page control: a teacher could edit
+   * every field on the header in front of them but had to open a dialog — which covers
+   * that header — to add a line to it. Worse, on page 1 the dialog's "+ Row" wrote to
+   * the *other* pages, so the documented "edit it directly on the first sheet" was not
+   * something the interface actually allowed.
+   *
+   * Optional: a masthead in a read-only preview has no row controls at all.
+   */
+  onAddRow?: () => void;
+  onRemoveRow?: (bandId: string) => void;
+  /**
+   * What this list of rows is, shown on hover.
+   *
+   * Three band lists can print on one sheet — the page header, the masthead, the page
+   * footer — and they look alike, so a teacher clicking one has no way to tell which
+   * they are about to change. Naming the surface is what makes "this is page 1's own
+   * header, not every page's" visible at the point of editing.
+   */
+  label?: string;
+  /**
+   * The sheet these rows are printing on, so a page-number field shows a number.
+   *
+   * `bandFieldText` returns the *placeholder* ("P.#", "Page # of N") because the model
+   * has no page to report — the number only exists once the flow has been packed onto
+   * sheets, and the .docx backend substitutes a live `PAGE` field rather than a literal.
+   * The preview does know, so leaving a bare `#` on the paper made the one part of the
+   * footer a teacher most wants to check unreadable.
+   */
+  page?: { number: number; count: number };
+  /**
    * Selection, so band text gets the format toolbar every other text element has.
    *
    * Without it a header field could be *typed into* but never *selected*, and the
@@ -41,6 +73,21 @@ interface Props {
     onSelect: (fieldId: string) => void;
     onClear: () => void;
   };
+}
+
+/**
+ * Substitute a page-number placeholder for the sheet actually being drawn.
+ *
+ * The placeholders are the ones `pageNumberPlaceholder` defines, so the two cannot drift:
+ * `#` is the page and `N` the total. Without a page (a preset thumbnail, a document not
+ * yet paginated) the placeholder is left alone rather than guessed at.
+ */
+export function withPageNumber(
+  text: string,
+  page?: { number: number; count: number },
+): string {
+  if (!page) return text;
+  return text.replace(/#/g, String(page.number)).replace(/\bN\b/g, String(page.count));
 }
 
 const ALIGN: Record<ZoneName, string> = {
@@ -57,6 +104,10 @@ export function BandEditor({
   onEditField,
   onRemoveField,
   onAddField,
+  onAddRow,
+  onRemoveRow,
+  label,
+  page,
   selection,
 }: Props) {
   // Transient drag state; never committed, so it can't reach an undo entry.
@@ -64,16 +115,62 @@ export function BandEditor({
   const [over, setOver] = useState<{ bandId: string; zone: ZoneName } | undefined>();
 
   return (
-    <div className="mb-3">
+    <div className="group/bands relative mb-3">
+      {/* The surface's name, and the control that adds a row to it.
+          Absolutely positioned in the margin and revealed on hover, so this is editing
+          chrome that never occupies space the printed page would use — the same rule the
+          reorder grip and the page number follow. `data-print-hide` keeps it out of the
+          PDF path, which prints the real sheets. */}
+      {(label || onAddRow) && (
+        <div
+          data-print-hide
+          // Clear of the first row rather than overlapping it: the chrome names the rows
+          // below it, so sitting on top of the one it names hides the thing being
+          // identified. Negative offset keeps it out of the printed flow entirely.
+          className="pointer-events-none absolute -top-[18px] left-0 right-0 flex items-center gap-1.5 opacity-0 transition-opacity group-hover/bands:opacity-100"
+        >
+          {label && (
+            <span className="pointer-events-auto rounded bg-[#efece7] px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-[#8f8a86]">
+              {label}
+            </span>
+          )}
+          {onAddRow && (
+            <button
+              type="button"
+              onClick={onAddRow}
+              className="pointer-events-auto cursor-pointer rounded px-1.5 py-0.5 text-[9px] font-medium text-[#8f8a86] transition-colors hover:bg-[#ede8ff] hover:text-[#6a48f5]"
+            >
+              + Row
+            </button>
+          )}
+        </div>
+      )}
+
       {bands.map((band) => {
         const zones = zonesOf(band);
         return (
           <div
             key={band.id}
-            className={`group/band flex items-baseline gap-1 ${
+            className={`group/band relative flex items-baseline gap-1 ${
               band.rule ? 'border-b border-slate-400 pb-0.5' : ''
             }`}
           >
+            {/* Remove this printed row. In the left margin rather than inline, because a
+                control between the zones would take width from the row it is deleting and
+                shift the layout being previewed. Hidden until the row is hovered. */}
+            {onRemoveRow && (
+              <button
+                type="button"
+                data-print-hide
+                aria-label="Remove this row"
+                title="Remove this row"
+                onClick={() => onRemoveRow(band.id)}
+                className="absolute -left-5 top-1/2 hidden -translate-y-1/2 cursor-pointer text-[10px] leading-none text-[#a5a09b] transition-colors hover:text-[#dc2626] group-hover/band:block"
+              >
+                ✕
+              </button>
+            )}
+
             {ZONES.map((zone) => {
               const isOver = over?.bandId === band.id && over.zone === zone;
               // Only the band being dragged from can be dropped into: a field belongs to
@@ -166,11 +263,22 @@ export function BandEditor({
                       ) : (
                         // A derived total and a generated rule are not editable text:
                         // there would be nowhere to write a change back to.
-                        <span title={field.kind === 'totalMarks' ? 'Computed from question marks' : undefined}>
-                          {plain(
-                            language === 'zh'
-                              ? bandFieldText(field, totalMarks).zh
-                              : bandFieldText(field, totalMarks).en,
+                        <span
+                          title={
+                            field.kind === 'totalMarks'
+                              ? 'Computed from question marks'
+                              : field.kind === 'pageNumber'
+                                ? 'Numbered by Word when the document is opened'
+                                : undefined
+                          }
+                        >
+                          {withPageNumber(
+                            plain(
+                              language === 'zh'
+                                ? bandFieldText(field, totalMarks).zh
+                                : bandFieldText(field, totalMarks).en,
+                            ),
+                            page,
                           )}
                         </span>
                       )}

@@ -88,6 +88,7 @@ src/
 │   │   ├── Sidebar.tsx (Content/Edit tabs), Outline.tsx, Inspector.tsx
 │   │   ├── outline.test.ts
 │   │   ├── BiTextField.tsx, BlockEditor.tsx
+│   │   ├── BandPreview.tsx  # miniature of a band list, for picking a layout
 │   │   ├── McqEditorPanel.tsx, StructuredEditorPanel.tsx
 │   │   ├── DocumentSettings.tsx  # once-per-document settings dialog
 │   │   ├── DiagramEditor.tsx (numeric), DiagramCanvas.tsx (drawing overlay)
@@ -759,6 +760,66 @@ total beside a "Date:____" rule. Reusing `Band` rather than growing a parallel t
 one editing surface (`BandEditor` serves the masthead, the header and the footer), one
 drag-between-zones interaction and one exporter path.
 
+### A header lives in the margin, not in the text column
+
+Word grows a header **downward from `w:header`** and only pushes the body text down once
+it passes `w:top`; the footer works the same way in reverse. The room a header has is
+therefore `top - header`, and both offsets were a hardcoded `720` against a 1440 top
+margin — so a multi-row exam header had 720 twips to fit into, overflowed, and shoved the
+questions down the page. **Adding a header silently cost content space**, which is not
+what a margin is for and not what the reference paper does: it pairs the same 1440 top
+margin with `w:header="567"`, leaving 873 twips of headroom its two-row header fits inside.
+
+`headerFooterOffsets()` derives the offset from what the bands actually contain — but
+**only when they do not already fit**. Word's 1.27 cm default is what a header is expected
+to look like and what every document that has never overflowed keeps; a header is moved
+only if it is too tall for the room under that default, and then only as far as it needs,
+clamped at `MIN_EDGE_TWIPS` (284, 0.5 cm) so a band is never placed inside the printer's
+dead zone. Computing `margin - height` unconditionally — the first attempt — *always*
+pushed the header up to fill the margin, so even a one-row header was flattened against
+the paper edge and a document that needed no adjustment at all got one.
+
+**The offsets are sized from the running rows, not the tallest of the two lists.** One
+`w:header` serves the whole section, so a document whose page 1 carries a five-row exam
+cover over a one-row running header cannot give each its own offset. Taking the max let
+the cover dictate the geometry of every *other* sheet, squashing an ordinary one-line
+header against the paper edge on pages 2 onward. The running rows print on nearly every
+page, so they are what the margin is shaped around; page 1's cover instead hangs further
+down and takes its overflow as extra padding **on page 1 only** (`pageStyleFor`), which is
+why the preview's padding is per-sheet rather than one document-wide value. Row height is estimated
+rather than measured — the exporter has no font metrics and Word lays the text out itself
+— from the ~264tw line box an 11pt run occupies, scaled by any font size a field sets,
+since the 14pt title rows are exactly the ones that make a header overflow.
+
+The **preview had the same bug in its own geometry**: it stacked the bands as sheet
+children inside the padded box, so every header row cost a row of content on screen, and
+the paginator subtracted their whole measured height. The bands are now positioned
+absolutely in the margin at the same offsets the exporter writes, and what the paginator
+subtracts is `bandsOverflow()` — the amount by which the rows exceed their margin, which
+is normally zero.
+
+Two details are what make that actually work on screen, and both were wrong first:
+
+- **The overflow moves the text column; it does not merely shrink its budget.** Subtracting
+  the total from `contentHeightPx` alone made the column shorter without moving its top, so
+  a tall header printed *over* the first question — the rule cutting through "Section A" —
+  rather than pushing it clear. The two edges are therefore kept separate and added to the
+  padding: the header's overflow moves the top down, the footer's moves the bottom up,
+  which is what Word does.
+- **The preview measures the bands; only the exporter estimates them.** `bandsHeight()` has
+  to guess, since Word lays the text out itself, and a guess even slightly short reports no
+  overflow at all — so nothing moved while the browser was drawing the rows 46px taller
+  than the estimate claimed. The preview has a DOM, so it measures the real boxes through a
+  `ResizeObserver` and falls back to the estimate only before first layout. Word still gets
+  the estimate, which is correct: it is placing rows *it* will lay out, so a browser
+  measurement would be the wrong number to hand it.
+
+One case remains genuinely unsolvable: rows taller than the entire margin have nowhere to
+go, so Word displaces the body and the preview agrees. That is reported rather than fixed
+(`BandOverflowNotice`), because widening the margin and dropping a row are both reasonable
+answers and the symptom — content missing from the *bottom* of the sheet — gives no clue
+that a header at the top caused it.
+
 Each row is still **one Word paragraph with tab stops**, with the centre and right stops
 derived from the live content width, so they stay correct after a paper or margin change
 that a fixed stop would silently break. A rule is drawn only on the edge-most row — under
@@ -812,6 +873,31 @@ Page-1 rows are edited **on page 1**, by the same `BandEditor`, so
 `patchHeaderFooterBand` searches both band lists — a click there reports only a band id.
 The two lists never share ids (`setFirstPageMode` re-ids on copy), or one keystroke would
 edit both.
+
+**A structural edit has to name which list it means (`BandScope`).** Searching both lists
+works for a *field*, which arrives with an id to find; a row being **created** has no id
+yet, so "+ Row" and every preset wrote to `bands` unconditionally. The result was a
+first-page mode that could only be half-used: a teacher looking at page 1 could retype
+existing text there, but adding a row, clearing, or applying a layout silently changed
+pages 2 onward while page 1 sat unmoved — and the panel's own copy told them to "edit it
+directly on the first sheet". `addHeaderFooterBand` and `setHeaderFooterBands` therefore
+take a `'running' | 'firstPage'` scope, resolved in `HeaderFooterBand` from the sheet the
+click landed on (`pageNumber === 1 && value.firstPage`). Deletion needs no scope — it
+carries a band id, so `removeHeaderFooterBand` filters both lists, which is also what made
+a page-1 row deletable at all.
+
+The promise is only true if the sheet offers the controls, so `BandEditor` grew them:
+a hover-revealed **`+ Row`** and a per-row **✕** in the margin, plus a label naming the
+surface (`PAGE 1 HEADER`, `Header · pages 2+`, `Title block`). Three band lists can print
+on one sheet and they look alike, so "which of these am I changing" has to be answerable
+where the change is made rather than only in a dialog that covers the page. All of it is
+`data-print-hide` chrome positioned outside the flow, so it never occupies space the
+printed page would use.
+
+One consequence in `HeaderFooterBand`: an empty band list still renders **while editing**.
+Returning early on `bandsAreEmpty` — which is right for the read-only and print paths —
+meant a header whose page-1 rows had all been deleted vanished from the sheet, leaving
+nowhere to put the first row back.
 
 Clipboard output deliberately carries none of this: pasting into an existing Word
 document must not override that document's page setup or headers.
@@ -894,6 +980,40 @@ settings field also reaches the preview's delete handlers.
 The rule for what belongs in the dialog rather than on the page is unchanged
 (§ "the preview is the editor"): header *text* is typed on the page, while *whether the
 header exists at all* has no visual representation there, so it lives in a panel.
+
+**The tabs group by where a thing prints, not by which field stores it.** "Title block"
+was its own tab while printing on page 1 immediately below the header and *replacing* the
+title set on the "Worksheet" tab — one decision spread across three places, none of which
+mentioned the other two. A teacher who added a title block watched their typed title
+disappear with nothing connecting the two actions. Four tabs are now three, and
+`furniture` reads down the page: title, then header, then footer.
+
+Two rules follow from that tab having to explain overlapping things:
+
+- **A choice between two layouts is shown, not named.** The presets were name-only
+  buttons ("Course, title and name line"), so the only way to learn what one did was to
+  apply it — destroying whatever was there — close the dialog covering the page, and
+  look. `BandPreview` draws the actual zones at their actual weights, and the three
+  page-1 states each draw the rows they would print, so "Same / Blank / Different"
+  stops being a description of the model. These are deliberately **not** `BandEditor`:
+  nothing is editable or draggable and sizes are fixed, so a picture of a choice never
+  becomes a second editing surface to keep in step with the first.
+- **Deriving the same number twice is reported.** The "Exam paper" header preset carried
+  a `totalMarks` field and so did `assessmentTitleBlock`, so choosing both — reasonable,
+  since one is the running header and the other the cover — printed "Full marks: 45"
+  twice. `duplicateComputedFields()` detects it and the panel says so. Reported rather
+  than prevented: which copy is unwanted depends on the paper, and a preset that quietly
+  dropped a field would be harder to understand than one that explains itself. The
+  header preset that duplicated the masthead outright was replaced with the short running
+  line a header is actually for — a paper name and a page number.
+
+**The preview substitutes a page number; the exporter must not.** `bandFieldText` returns
+the *placeholder* (`P.#`, `Page # of N`) because the model has no page to report and the
+.docx backend needs the token intact to emit a live `PAGE` field. The preview does know
+which sheet it is drawing, so it substitutes at render time via `withPageNumber` — leaving
+a bare `#` on the paper made the one part of a footer a teacher most wants to check the
+one part they could not read. Baking the number into `bandFieldText` instead would freeze
+every exported footer to whichever page the preview happened to draw.
 
 **`GroupHeader` replaces `Eyebrow` for anything naming a region a user works in.** 10px
 uppercase with wide tracking is a typographic texture — at that size the letterforms stop

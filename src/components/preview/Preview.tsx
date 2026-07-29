@@ -3,6 +3,9 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   bandsAreEmpty,
+  bandsHeight,
+  bandsOverflow,
+  headerFooterOffsets,
   defaultFooter,
   defaultHeader,
   firstPageHeaderFooter,
@@ -26,7 +29,7 @@ import type {
   Worksheet,
 } from "@/model/types";
 import { isModalLayerOpen } from "@/components/ui/modalLayer";
-import { useWorksheetStore } from "@/store/worksheetStore";
+import { useWorksheetStore, type BandScope } from "@/store/worksheetStore";
 import { diagramSvg } from "@/render/diagram";
 import type { EditTarget, RenderNode, TextNode } from "@/render/ir";
 import { bandFieldText, renderWorksheet } from "@/render/worksheet";
@@ -56,7 +59,7 @@ import {
   PlusIcon,
   StructuredIcon,
 } from "@/components/ui/icons";
-import { BandEditor } from "./BandEditor";
+import { BandEditor, withPageNumber } from "./BandEditor";
 
 /**
  * What an editable row of zones needs from its host.
@@ -71,6 +74,15 @@ export interface BandEditingHandlers {
   onEditField: (fieldId: string, text: BiText) => void;
   onRemoveField: (fieldId: string) => void;
   onAddField: (bandId: string, zone: ZoneName) => void;
+  /**
+   * Add a whole printed row, and remove one.
+   *
+   * On the page rather than only in the settings dialog, because a header's *rows* are
+   * as visible as its text and the dialog is the one place you cannot see them — it
+   * covers the page it is describing. Optional so a read-only preview stays read-only.
+   */
+  onAddRow?: (scope: BandScope) => void;
+  onRemoveRow?: (bandId: string) => void;
   /** Selection, so a band field can carry the format toolbar like any other text. */
   selection?: {
     isSelected: (fieldId: string) => boolean;
@@ -822,9 +834,25 @@ function HeaderFooterBand({
       : { bands: value.bands ?? [], rule: value.rule, differs: false };
 
   if (!value.enabled) return null;
-  if (bandsAreEmpty(resolved.bands)) return null;
 
+  /*
+   * Which of the two row lists a structural edit here belongs to.
+   *
+   * Page 1 only owns its rows when the document is actually in "different" mode; in
+   * "same" mode the first sheet shows the *running* rows, and adding a row there must
+   * add it to every page — which is what the teacher is looking at and editing.
+   */
+  const scope: BandScope = pageNumber === 1 && value.firstPage ? "firstPage" : "running";
+
+  /*
+   * An empty band list still renders while editing, so there is somewhere to put the
+   * first row. Returning null here — which is what happened before — meant a header
+   * whose page-1 rows had all been deleted vanished from the sheet entirely, leaving no
+   * surface to rebuild it on and no way back except the dialog.
+   */
   const bands = resolved.bands;
+  if (bandsAreEmpty(bands) && (!editing || bands.length > 0)) return null;
+
   const body = editing ? (
     <BandEditor
       bands={bands}
@@ -834,11 +862,32 @@ function HeaderFooterBand({
       onEditField={editing.onEditField}
       onRemoveField={editing.onRemoveField}
       onAddField={editing.onAddField}
+      onAddRow={editing.onAddRow ? () => editing.onAddRow!(scope) : undefined}
+      onRemoveRow={editing.onRemoveRow}
+      page={{ number: pageNumber, count: pageCount }}
+      // Named per surface, and page 1 says so — three band lists print on one sheet and
+      // they look alike, so "which header am I changing" has to be visible where the
+      // change is made rather than only in a dialog that covers it.
+      label={
+        scope === "firstPage"
+          ? `Page 1 ${edge}`
+          : value.firstPage
+            ? `${edge === "header" ? "Header" : "Footer"} · pages 2+`
+            : edge === "header"
+              ? "Header · every page"
+              : "Footer · every page"
+      }
       selection={editing.selection}
     />
   ) : (
     bands.map((band) => (
-      <ReadOnlyBandRow key={band.id} band={band} language={language} totalMarks={totalMarks} />
+      <ReadOnlyBandRow
+        key={band.id}
+        band={band}
+        language={language}
+        totalMarks={totalMarks}
+        page={{ number: pageNumber, count: pageCount }}
+      />
     ))
   );
 
@@ -869,17 +918,26 @@ function ReadOnlyBandRow({
   band,
   language,
   totalMarks,
+  page,
 }: {
   band: Band;
   language: LanguageMode;
   totalMarks: number;
+  /** The sheet being drawn, so a page-number field prints its number (§ `withPageNumber`). */
+  page?: { number: number; count: number };
 }) {
   const zones = zonesOf(band);
   const cell = (name: ZoneName, align: string) => (
     <div className={`flex-1 ${align}`}>
       {zones[name].map((field) => (
         <span key={field.id} className="mx-0.5">
-          {richNodes(bandFieldText(field, totalMarks), language)}
+          {/* Substituted before rendering rather than inside `bandFieldText`, which is
+              shared with the .docx backend — Word must keep the placeholder so it can
+              emit a live PAGE field, and baking a literal there would freeze every
+              exported footer to whichever page the preview happened to draw. */}
+          {field.kind === 'pageNumber' && page
+            ? withPageNumber(plain(bandFieldText(field, totalMarks).en), page)
+            : richNodes(bandFieldText(field, totalMarks), language)}
         </span>
       ))}
     </div>
@@ -1610,38 +1668,7 @@ export function Preview({
   const rendered = renderWorksheet(worksheet, mode);
   const { language } = mode;
   const containerRef = useRef<HTMLDivElement>(null);
-  // The header and footer bands eat into the text column, so the paginator has to
-  // know how tall they are. Measured off the first rendered sheet rather than
-  // assumed, because their height depends on whether they are in use at all and on
-  // how many lines their slots hold.
   const bandsRef = useRef<HTMLDivElement>(null);
-  const [bandsHeight, setBandsHeight] = useState(0);
-
-  useEffect(() => {
-    const node = bandsRef.current;
-    if (!node) {
-      setBandsHeight(0);
-      return;
-    }
-    const measure = () => {
-      // The sheet's own children, minus the flexible content column, are exactly the
-      // vertical space the content does not get.
-      const total = Array.from(node.children).reduce(
-        (sum, child) =>
-          child.classList.contains("flex-1")
-            ? sum
-            : sum + (child as HTMLElement).offsetHeight,
-        0,
-      );
-      setBandsHeight(total);
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(node);
-    return () => observer.disconnect();
-    // The observer catches band content changes on its own; this only needs to re-run
-    // when the sheet itself is replaced, which a paper or margin change does.
-  }, [worksheet.header, worksheet.footer, worksheet.pageSetup]);
 
   const [fitScale, setFitScale] = useState(1);
   // User zoom, multiplied onto the auto-fit scale rather than replacing it, so
@@ -1666,6 +1693,146 @@ export function Preview({
   );
   const header = headerFooterOf(worksheet.header, defaultHeader);
   const footer = headerFooterOf(worksheet.footer, defaultFooter);
+
+  /*
+   * Where the bands sit in the margin, and how much text column they cost — normally
+   * **none**.
+   *
+   * A header sits in the top margin and grows downward from `w:header`; only the part
+   * that runs past `w:top` displaces body text (§ `headerFooterOffsets`). The preview
+   * used to stack the bands as sheet children and subtract their whole measured height,
+   * on the assumption that they always ate the text column. So every header row cost a
+   * row of content — visibly on screen, and in the export through the same wrong
+   * geometry. What is subtracted now is only the genuine overflow: the amount by which
+   * the rows exceed the margin they were given.
+   *
+   * Sized from the **running** rows, matching the exporter: one `w:header` serves the
+   * whole section, and letting a five-row page-1 cover dictate the geometry flattened the
+   * ordinary one-row header on every other sheet against the paper edge. The running rows
+   * print on nearly every page, so they are what the margin is shaped around.
+   */
+  const runningBands = (value: HeaderFooter) =>
+    value.enabled ? bandsHeight(value.bands ?? [], value.rule) : 0;
+
+  const headerEstimate = runningBands(header);
+  const footerEstimate = runningBands(footer);
+  const edgeOffsets = headerFooterOffsets(setup.margins, headerEstimate, footerEstimate);
+
+  /*
+   * The rendered height of the bands, measured rather than estimated.
+   *
+   * `bandsHeight` has to guess — the exporter has no DOM and Word lays the text out
+   * itself — and a guess that is even slightly short is what let a five-row header print
+   * *on top of* the first question: the estimate said the rows fitted the margin, so no
+   * overflow was computed and nothing moved, while the browser was drawing them 46px
+   * taller than that. The preview does have a DOM, so here it measures the real boxes and
+   * only falls back to the estimate before the first layout.
+   *
+   * Word still gets the estimate, which is correct: it is placing rows *it* will lay out,
+   * so a browser measurement would be the wrong number to hand it.
+   *
+   * Measured off a **running** sheet rather than page 1, for the reason the estimate uses
+   * the running rows: a document whose page 1 is a five-row exam cover would otherwise
+   * have that cover set the geometry for every ordinary page behind it.
+   */
+  const [measured, setMeasured] = useState<{ header: number; footer: number }>();
+  const sheetsRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * The sheet whose bands are measured: the first one showing the *running* rows.
+   *
+   * Page 1 only differs when the document says so, so in the ordinary case this is 0 and
+   * nothing changes. When page 1 does carry its own cover, sheet 1 is the first that
+   * shows what the rest of the document prints — and if there is no sheet 1, there is no
+   * running page to shape the margin around, so the estimate stands.
+   */
+  const measuredPageIndex =
+    header.firstPage || footer.firstPage || header.showOnFirstPage === false ? 1 : 0;
+
+  /*
+   * Read from the DOM rather than through refs on the band boxes.
+   *
+   * Which sheet to measure depends on `pages`, and `pages` comes out of the paginator
+   * that consumes this measurement — a ref pinned at render time would close the loop.
+   * Querying the container by `data-page-index` breaks it: the effect runs after layout,
+   * so it simply asks what is on screen now.
+   */
+  useEffect(() => {
+    const root = sheetsRef.current;
+    if (!root) return;
+
+    const read = () => {
+      const toTwips = (px: number) => (px / 96) * 1440;
+      const sheet =
+        root.querySelector<HTMLElement>(`[data-page-index="${measuredPageIndex}"]`) ??
+        root.querySelector<HTMLElement>('[data-page-index="0"]');
+      const box = (edge: string) =>
+        sheet?.querySelector<HTMLElement>(`[data-band-box="${edge}"]`)?.offsetHeight ?? 0;
+
+      const next = { header: toTwips(box('header')), footer: toTwips(box('footer')) };
+      // Only commit a real change, or the state write re-renders forever.
+      setMeasured((prev) =>
+        prev && Math.abs(prev.header - next.header) < 1 && Math.abs(prev.footer - next.footer) < 1
+          ? prev
+          : next,
+      );
+    };
+
+    read();
+    // Observing the whole sheet container catches both a band's own content changing and
+    // a repagination that moves which sheet is the running one.
+    const observer = new ResizeObserver(read);
+    observer.observe(root);
+    root.querySelectorAll('[data-band-box]').forEach((node) => observer.observe(node));
+    return () => observer.disconnect();
+  });
+
+  const headerRowsTwips = measured?.header ?? headerEstimate;
+  const footerRowsTwips = measured?.footer ?? footerEstimate;
+
+  /*
+   * What the bands overrun their margin by, per edge.
+   *
+   * Kept as two numbers rather than a sum, because they do two different things: the
+   * header's overflow moves the top of the text column **down**, and the footer's moves
+   * the bottom **up**. Only subtracting the total from the pagination budget — which is
+   * all this did at first — shrinks the column without moving it, so the header simply
+   * printed on top of the first lines of content instead of pushing them clear.
+   */
+  const overflow = bandsOverflow(setup.margins, headerRowsTwips, footerRowsTwips);
+  // The paginator works in CSS pixels at 96dpi; twips are 1/1440".
+  const bandsOverflowPx = ((overflow.header + overflow.footer) / 1440) * 96;
+
+  /*
+   * Page 1's own overflow, when it prints different rows.
+   *
+   * The offsets are shaped around the running header (one `w:header` serves the section),
+   * so a page-1 cover taller than that header overruns the margin *on page 1 only*. Its
+   * text has to start below the cover, while every other sheet keeps the plain margin —
+   * applying one document-wide padding would push every page down to accommodate a cover
+   * that only page 1 prints, which is the complaint this whole change answers.
+   *
+   * Estimated rather than measured: the measurement deliberately reads a running sheet,
+   * and page 1's rows are usually a superset of the running ones, so the estimate is the
+   * consistent basis for both. It only has to be close enough to clear the cover.
+   */
+  const firstPageOverflow = (() => {
+    const h = header.enabled
+      ? bandsHeight(firstPageHeaderFooter(header).bands, header.rule)
+      : 0;
+    const f = footer.enabled
+      ? bandsHeight(firstPageHeaderFooter(footer).bands, footer.rule)
+      : 0;
+    // Scaled by the same ratio the measurement found, so a page-1 cover is judged on the
+    // same footing as the running rows it is compared against.
+    const ratio = headerEstimate > 0 ? headerRowsTwips / headerEstimate : 1;
+    return bandsOverflow(
+      setup.margins,
+      Math.max(h * ratio, headerRowsTwips),
+      Math.max(f, footerRowsTwips),
+    );
+  })();
+
   // Set while handling a click inside the preview, so the scroll effect below does
   // not yank the page under someone who just clicked what they were already looking at.
   const selfSelected = useRef(false);
@@ -2459,6 +2626,9 @@ export function Preview({
             onEditField={bandEditing.onEditField}
             onRemoveField={bandEditing.onRemoveField}
             onAddField={bandEditing.onAddField}
+            onAddRow={bandEditing.onAddRow ? () => bandEditing.onAddRow!("running") : undefined}
+            onRemoveRow={bandEditing.onRemoveRow}
+            label="Title block"
             selection={bandSelection}
           />
         ) : (
@@ -2712,7 +2882,9 @@ export function Preview({
   const contentHeightPx = Math.floor(
     (pageHeightMm - twipsToMm(setup.margins.top) - twipsToMm(setup.margins.bottom)) *
       MM_TO_PX -
-      bandsHeight,
+      // Only what the bands genuinely overflow their margin by, which is usually zero —
+      // a header living inside the top margin costs the text column nothing.
+      bandsOverflowPx,
   );
 
   const {
@@ -2821,17 +2993,55 @@ export function Preview({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compositionKey, onPagesChange]);
 
-  const pageStyle: React.CSSProperties = {
-    width: `${pageWidthMm}mm`,
-    height: `${pageHeightMm}mm`,
-    // Margins are authored in twips and mirrored here, so the text column the
-    // teacher sees is the one Word will use.
-    paddingTop: `${twipsToMm(setup.margins.top)}mm`,
-    paddingRight: `${twipsToMm(setup.margins.right)}mm`,
-    paddingBottom: `${twipsToMm(setup.margins.bottom)}mm`,
-    paddingLeft: `${twipsToMm(setup.margins.left)}mm`,
-    fontFamily: `'${worksheet.fonts.latin}', '${worksheet.fonts.eastAsia}', serif`,
+  /*
+   * The header and footer live in the margin, not in the text column.
+   *
+   * Word grows a header downward from `w:header` and only pushes the body text down once
+   * it passes `w:top`. The preview stacked them inside the padded box instead, so every
+   * header row ate a row of content — the sheet on screen disagreed with the exported
+   * page, and both disagreed with what a teacher expects a margin to be for.
+   *
+   * Mirroring Word means positioning the bands absolutely in the margin and leaving the
+   * padding to define the text column, so the two views cannot drift (§ `headerFooterOffsets`).
+   */
+  /*
+   * Per sheet, because page 1 can print taller rows than every other page.
+   *
+   * The overflow is added to the margin rather than replacing it: a header that runs past
+   * `w:top` pushes the body text down by exactly that much, which is what Word does and
+   * what stops the header printing over the first question. In the ordinary case both
+   * numbers are zero and every sheet gets the plain authored margin.
+   */
+  const pageStyleFor = (pageIndex: number): React.CSSProperties => {
+    const over = pageIndex === 0 ? firstPageOverflow : overflow;
+    return {
+      width: `${pageWidthMm}mm`,
+      height: `${pageHeightMm}mm`,
+      // Margins are authored in twips and mirrored here, so the text column the
+      // teacher sees is the one Word will use.
+      paddingTop: `${twipsToMm(setup.margins.top + over.header)}mm`,
+      paddingRight: `${twipsToMm(setup.margins.right)}mm`,
+      paddingBottom: `${twipsToMm(setup.margins.bottom + over.footer)}mm`,
+      paddingLeft: `${twipsToMm(setup.margins.left)}mm`,
+      fontFamily: `'${worksheet.fonts.latin}', '${worksheet.fonts.eastAsia}', serif`,
+    };
   };
+
+  /**
+   * Where a band sits in the margin, matching the `w:header`/`w:footer` offset.
+   *
+   * The same offset on every sheet, including a page 1 whose rows are taller: Word has
+   * one `w:header` per section, so a cover that outgrows it hangs further *down* rather
+   * than starting further up — which is why page 1 gets the extra padding instead.
+   */
+  const bandBoxStyle = (edge: "header" | "footer"): React.CSSProperties => ({
+    position: "absolute",
+    left: `${twipsToMm(setup.margins.left)}mm`,
+    right: `${twipsToMm(setup.margins.right)}mm`,
+    ...(edge === "header"
+      ? { top: `${twipsToMm(edgeOffsets.header)}mm` }
+      : { bottom: `${twipsToMm(edgeOffsets.footer)}mm` }),
+  });
 
   return (
     <div
@@ -2918,6 +3128,7 @@ export function Preview({
       */}
       <div
         id="print-root"
+        ref={sheetsRef}
         className="mx-auto flex flex-col items-center gap-6"
         style={{
           width: `${pageWidthMm}mm`,
@@ -2940,8 +3151,10 @@ export function Preview({
           <div key={pageIndex} data-page-index={pageIndex} className="relative">
             <div
               ref={pageIndex === 0 ? bandsRef : undefined}
-              className="paper paper-shadow flex flex-col overflow-hidden rounded-[2px]"
-              style={pageStyle}
+              // `relative` so the header and footer can be placed in the margin rather
+              // than stacked in the text column (§ `bandBoxStyle`).
+              className="paper paper-shadow relative flex flex-col overflow-hidden rounded-[2px]"
+              style={pageStyleFor(pageIndex)}
               lang={language === "zh" ? "zh-HK" : "en"}
               // Clicking the page background drops the selection, so Delete stops
               // being armed once the user has moved on.
@@ -2963,15 +3176,22 @@ export function Preview({
                 if (isBlankAreaClick(event.target)) clearPageSelection();
               }}
             >
-              <HeaderFooterBand
-                value={header}
-                language={language}
-                edge="header"
-                pageNumber={pageIndex + 1}
-                pageCount={pages.length}
-                totalMarks={worksheetMarks(worksheet)}
-                editing={withSelection(headerEditing)}
-              />
+              <div
+                // Measured on the first sheet only; every sheet's bands are the same
+                // height, and observing all of them would just re-report one number.
+                data-band-box="header"
+                style={bandBoxStyle("header")}
+              >
+                <HeaderFooterBand
+                  value={header}
+                  language={language}
+                  edge="header"
+                  pageNumber={pageIndex + 1}
+                  pageCount={pages.length}
+                  totalMarks={worksheetMarks(worksheet)}
+                  editing={withSelection(headerEditing)}
+                />
+              </div>
 
               <div className="min-h-0 flex-1">
                 {pageBlocks.length === 0 && openedBy[pageIndex] ? (
@@ -3010,15 +3230,20 @@ export function Preview({
                 )}
               </div>
 
-              <HeaderFooterBand
-                value={footer}
-                language={language}
-                edge="footer"
-                pageNumber={pageIndex + 1}
-                pageCount={pages.length}
-                totalMarks={worksheetMarks(worksheet)}
-                editing={withSelection(footerEditing)}
-              />
+              <div
+                data-band-box="footer"
+                style={bandBoxStyle("footer")}
+              >
+                <HeaderFooterBand
+                  value={footer}
+                  language={language}
+                  edge="footer"
+                  pageNumber={pageIndex + 1}
+                  pageCount={pages.length}
+                  totalMarks={worksheetMarks(worksheet)}
+                  editing={withSelection(footerEditing)}
+                />
+              </div>
             </div>
 
             {/* Page number, on the desk beside the sheet rather than printed on it —
