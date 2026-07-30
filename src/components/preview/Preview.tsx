@@ -1420,6 +1420,18 @@ function ReadOnlyBandRow({
  * element's text is already a click target for editing — making the text itself
  * draggable would make it impossible to select a word.
  */
+/*
+ * How tall a row must be to carry the grip's chevrons.
+ *
+ * The full pill is 34px: a 12px grip glyph, two 8px chevrons and 2px of padding. Below
+ * that the chevrons come off and the glyph alone stands in, so a short row's handle cannot
+ * spill onto its neighbours'.
+ *
+ * The 34 is deliberately a **constant, not a measurement** — see `showChevrons` for why
+ * measuring it closes a loop.
+ */
+const CHEVRON_MIN_HEIGHT_PX = 34;
+
 function DraggableItem({
   id,
   dragId,
@@ -1509,10 +1521,28 @@ function DraggableItem({
    */
   const [itemHeight, setItemHeight] = useState<number | undefined>();
 
+  /*
+   * Measured, and **only stored when it actually changes**.
+   *
+   * This is a `ResizeObserver` whose result feeds a style on a child of the very node it
+   * observes (the grip's `maxHeight`), which is a feedback loop by construction: measure →
+   * setState → re-style → observe → measure. It stayed quiet while the two values happened
+   * to agree, and ran away as soon as they could not — sub-pixel heights never settle, so
+   * React saw an unbounded update chain and threw "Maximum update depth exceeded".
+   *
+   * Rounding is what closes it. A fractional height read back from `getBoundingClientRect`
+   * differs from the integer that produced it, so every pass looked like a change; whole
+   * pixels give the loop a fixed point to land on. Comparing before setting then makes the
+   * steady state cost nothing at all, which also stops the observer re-rendering a page of
+   * items whenever anything reflows.
+   */
   useEffect(() => {
     const node = rootRef.current;
     if (!node) return;
-    const measure = () => setItemHeight(node.getBoundingClientRect().height);
+    const measure = () => {
+      const next = Math.round(node.getBoundingClientRect().height);
+      setItemHeight((current) => (current === next ? current : next));
+    };
     const frame = requestAnimationFrame(measure);
     const observer = new ResizeObserver(measure);
     observer.observe(node);
@@ -1525,11 +1555,31 @@ function DraggableItem({
   /*
    * Does this row have room for the chevrons?
    *
-   * The full pill is 34px: 12px grip + two 8px chevrons + 2px padding. Below that the
-   * chevrons come off and the grip glyph alone stands in. A merged pill always keeps
-   * them, since it spans a whole run and is tall by construction.
+   * A merged pill always keeps them, spanning a whole run and so tall by construction.
+   * Every other row decides from `itemHeight` — and that decision is a **feedback loop**,
+   * because the chevrons live inside the grip, the grip is inside the box the
+   * `ResizeObserver` above watches, and the pill is `overflow-hidden` under a `maxHeight`
+   * cap taken from the same measurement. Dropping the chevrons changes the pill's content
+   * height, the observer fires, the height re-reads on the other side of the threshold,
+   * and they come back. That is bistable rather than convergent, so it never settles and
+   * React eventually reports "Maximum update depth exceeded" from this component's
+   * `measure`.
+   *
+   * Two things keep it closed, and both are needed:
+   *
+   *  - **A fixed threshold**, never one derived from what is currently drawn. The
+   *    comparison is against a constant, so for a given measured height the answer is the
+   *    same every pass. That is what makes the state a fixed point: the observer can fire
+   *    as often as it likes and the decision does not move.
+   *  - **Rounding, in the observer.** A real item measures 36.3535…, so an unguarded
+   *    `setItemHeight` wrote a different number every pass and kept the chain alive even
+   *    when the chevron decision was stable.
+   *
+   * Before first measurement the chevrons are **off** rather than on. Either default is a
+   * guess for one frame, and hiding is the safe one: a pill drawn too tall for its row
+   * overlaps its neighbours, where one drawn too short merely looks plain.
    */
-  const showChevrons = isRunHead || itemHeight === undefined || itemHeight >= 34;
+  const showChevrons = isRunHead || (itemHeight ?? 0) >= CHEVRON_MIN_HEIGHT_PX;
 
   useEffect(() => {
     // A stale height on a non-head needs no clearing: the pill below only reads
@@ -1556,9 +1606,13 @@ function DraggableItem({
         if (!next) break;
         last = next;
       }
-      setRunHeight(
+      // Rounded and compared before storing, for the same reason `itemHeight` is: this
+      // observes the whole page column and writes a `height` back onto a node inside it,
+      // so an unconditional setState is a loop that a fractional pixel keeps alive.
+      const next = Math.round(
         last.getBoundingClientRect().bottom - node.getBoundingClientRect().top,
       );
+      setRunHeight((current) => (current === next ? current : next));
     };
     // After the selection's re-render has committed, so the run is laid out — and so
     // the first measurement is not a synchronous setState inside the effect, which
