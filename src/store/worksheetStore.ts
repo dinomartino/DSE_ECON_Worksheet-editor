@@ -919,17 +919,27 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
       );
       const row = band ?? createBand();
 
-      // A row added while page 1 is the surface being edited joins page 1's list. The
-      // scope is passed rather than inferred from `current.firstPage` being present,
-      // because a document in "different" mode still has running rows a teacher edits
-      // from page 2 — presence tells us the list exists, not which one is meant.
-      if (scope === 'firstPage' && current.firstPage) {
+      /*
+       * A row added while page 1 is the surface being edited joins page 1's list. The
+       * scope is passed rather than inferred from `current.firstPage` being present,
+       * because a document in "different" mode still has running rows a teacher edits
+       * from page 2 — presence tells us the list exists, not which one is meant.
+       *
+       * Writing to page 1 **creates** the separation when there is none. Requiring
+       * `firstPage` to exist first meant a page-1 row silently landed in the running
+       * list, so the surface a teacher was looking at was not the one they edited — the
+       * same "separate it first, then edit it" ordering the panel used to impose. A row
+       * aimed at page 1 is itself the request for page 1 to differ.
+       */
+      if (scope === 'firstPage') {
+        const existing = current.firstPage?.bands ?? [];
         return {
           ...draft,
           [which]: {
             ...current,
             enabled: true,
-            firstPage: { ...current.firstPage, bands: [...current.firstPage.bands, row] },
+            showOnFirstPage: true,
+            firstPage: { ...current.firstPage, bands: [...existing, row] },
           },
         };
       }
@@ -1012,14 +1022,25 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
         which === 'header' ? defaultHeader : defaultFooter,
       );
 
-      // Applying a preset to page 1 replaces page 1's rows only. Sending it to the
-      // running list instead — which is what happened before the scope existed — reads
-      // to the teacher as the preset having done nothing at all, since the page they
-      // are looking at is unchanged.
-      if (scope === 'firstPage' && current.firstPage) {
+      /*
+       * Applying a preset to page 1 replaces page 1's rows only. Sending it to the
+       * running list instead — which is what happened before the scope existed — reads
+       * to the teacher as the preset having done nothing at all, since the page they
+       * are looking at is unchanged.
+       *
+       * As with `addHeaderFooterBand`, a write aimed at page 1 **creates** the separation
+       * rather than requiring it: choosing a cover layout is the request for page 1 to
+       * differ, so it must not first be routed into the running rows.
+       */
+      if (scope === 'firstPage') {
         return {
           ...draft,
-          [which]: { ...current, enabled: true, firstPage: { ...current.firstPage, bands } },
+          [which]: {
+            ...current,
+            enabled: true,
+            showOnFirstPage: true,
+            firstPage: { ...current.firstPage, bands },
+          },
         };
       }
 

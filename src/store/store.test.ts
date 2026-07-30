@@ -10,7 +10,7 @@ import {
 } from '@/model/flow';
 import { computeNumbering } from '@/model/numbering';
 import { HEADER_FOOTER_PRESETS } from '@/model/bands';
-import { defaultHeader, headerFooterOf } from '@/model/page';
+import { defaultHeader, firstPageHeaderFooter, headerFooterOf } from '@/model/page';
 import { bi, plain } from '@/model/text';
 import type { McqQuestion, StructuredQuestion } from '@/model/types';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
@@ -538,5 +538,61 @@ describe('first-page header rows (§ page 1 can differ)', () => {
     expect(after.firstPage!.bands.some((b) => b.id === target)).toBe(false);
     expect(after.firstPage!.bands).toHaveLength(before.firstPage!.bands.length - 1);
     expect(after.bands).toHaveLength(before.bands.length);
+  });
+});
+
+/**
+ * A write aimed at page 1 **creates** the separation rather than requiring it.
+ *
+ * The panel used to make a teacher build a running header first, then choose "Its own
+ * rows" — which copied it — then edit the copy. That is backwards from how a paper is
+ * made: the cover is the first thing decided. The store enforced the same ordering, and
+ * silently: with `scope: 'firstPage'` but no `firstPage` yet, the row fell through to the
+ * running list, so the surface being looked at was not the one being edited.
+ */
+describe('page 1 can be built first (§ page 1 can differ)', () => {
+  const header = () => headerFooterOf(store().worksheet.header, defaultHeader);
+
+  // A header with no rows yet — the state a teacher starts a cover from. The acceptance
+  // fixture ships one, which would hide exactly the fall-through this guards against.
+  beforeEach(() => {
+    store().setHeaderFooterBands('header', []);
+  });
+
+  it('a page-1 preset on a fresh header writes page 1, not the running rows', () => {
+    store().setHeaderFooterBands('header', HEADER_FOOTER_PRESETS[1].build(), 'firstPage');
+    const value = header();
+    expect(value.firstPage?.bands).toHaveLength(HEADER_FOOTER_PRESETS[1].build().length);
+    // The running list stays empty: choosing a cover says nothing about later pages.
+    expect(value.bands).toHaveLength(0);
+  });
+
+  it('a page-1 row on a fresh header writes page 1, not the running rows', () => {
+    store().addHeaderFooterBand('header', undefined, 'firstPage');
+    const value = header();
+    expect(value.firstPage?.bands).toHaveLength(1);
+    expect(value.bands).toHaveLength(0);
+  });
+
+  it('enables the edge and prints on page 1, since building it is the intent to use it', () => {
+    store().addHeaderFooterBand('header', undefined, 'firstPage');
+    const value = header();
+    expect(value.enabled).toBe(true);
+    // Not `showOnFirstPage: false`, which is the *other* state — deliberately blank.
+    expect(value.showOnFirstPage).toBe(true);
+  });
+
+  it('leaves the running rows alone when page 1 is built after them', () => {
+    store().setHeaderFooterBands('header', HEADER_FOOTER_PRESETS[0].build());
+    const runningIds = header().bands.map((b) => b.id);
+    store().setHeaderFooterBands('header', HEADER_FOOTER_PRESETS[1].build(), 'firstPage');
+    const value = header();
+    expect(value.bands.map((b) => b.id)).toEqual(runningIds);
+    expect(value.firstPage?.bands).toHaveLength(HEADER_FOOTER_PRESETS[1].build().length);
+  });
+
+  it('resolves to page 1 differing, so the .docx emits a first-page part', () => {
+    store().addHeaderFooterBand('header', undefined, 'firstPage');
+    expect(firstPageHeaderFooter(header()).differs).toBe(true);
   });
 });

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Dialog, DialogTabs, Field } from '@/components/ui/Dialog';
-import { Button, CheckField, SelectField } from '@/components/ui';
+import { Button, CheckField, GroupHeader, SelectField } from '@/components/ui';
 import { DocumentIcon, PageIcon, TextIcon } from '@/components/ui/icons';
 import {
   assessmentTitleBlock,
@@ -27,7 +27,7 @@ import {
 } from '@/model/page';
 import { bi, emptyBiText, plain } from '@/model/text';
 import type { Band, HeaderFooter, PageMargins, PaperSize } from '@/model/types';
-import { useWorksheetStore, type FirstPageMode } from '@/store/worksheetStore';
+import { useWorksheetStore, type BandScope } from '@/store/worksheetStore';
 import { BandPreview, BandPresetCard } from './BandPreview';
 import { BiTextField } from './BiTextField';
 
@@ -295,97 +295,6 @@ function PageTab() {
  * whether it carries a rule, what page 1 does, and the presets, because choosing a
  * starting layout is a decision about the document rather than a manipulation of it.
  */
-/** Which of the three page-1 states a stored header/footer is in. */
-function firstPageModeOf(value: HeaderFooter): FirstPageMode {
-  if (value.firstPage) return 'different';
-  return value.showOnFirstPage === false ? 'blank' : 'same';
-}
-
-/**
- * What page 1 does, as three pictures rather than three words.
- *
- * "Same / Blank / Different" describes the *model*; it does not tell a teacher what
- * their first sheet will look like, which is the only thing they are choosing between.
- * Each option draws the rows it would actually print, so the consequence is visible
- * before the click rather than after closing the dialog.
- */
-function FirstPageChoice({
-  which,
-  value,
-}: {
-  which: 'header' | 'footer';
-  value: HeaderFooter;
-}) {
-  const setFirstPageMode = useWorksheetStore((s) => s.setFirstPageMode);
-  const mode = firstPageModeOf(value);
-  const running = value.bands ?? [];
-
-  const options: Array<{ value: FirstPageMode; label: string; bands: Band[]; empty?: string }> = [
-    { value: 'same', label: 'Same as the rest', bands: running },
-    { value: 'blank', label: 'Nothing on page 1', bands: [], empty: 'Blank' },
-    {
-      value: 'different',
-      label: 'Its own rows',
-      bands: value.firstPage?.bands ?? running,
-    },
-  ];
-
-  return (
-    <div className="space-y-2">
-      <div>
-        <span className="block text-[13px] font-medium text-ink">Page 1</span>
-        <span className="block text-[11px] text-ink-muted">
-          A cover page often names the school and leaves the page number to later sheets.
-        </span>
-      </div>
-
-      <div className="grid grid-cols-3 gap-2">
-        {options.map((option) => {
-          const active = option.value === mode;
-          return (
-            <button
-              key={option.value}
-              type="button"
-              role="radio"
-              aria-checked={active}
-              onClick={() => setFirstPageMode(which, option.value)}
-              className={`flex cursor-pointer flex-col gap-1.5 rounded-lg border p-2 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-                active
-                  ? 'border-accent bg-accent/5 ring-1 ring-accent'
-                  : 'border-line bg-surface hover:border-ink-subtle'
-              }`}
-            >
-              <div className="rounded border border-line/70 bg-[#fdfcfa] py-1 text-[#3f3b38]">
-                <BandPreview bands={option.bands} edge={which} emptyLabel={option.empty} />
-              </div>
-              <span
-                className={`text-[11px] font-medium ${active ? 'text-accent' : 'text-ink-muted'}`}
-              >
-                {option.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/*
-        Where page 1's rows are edited, stated only when there are any.
-        The old copy promised "edit it directly on the first sheet" while the sheet
-        offered no way to add or remove a row — every structural control in this dialog
-        wrote to the *running* list. Rows are now added on the sheet itself, so the
-        sentence is true; it points at the page rather than offering a second surface
-        here, which is the rule the whole editor follows.
-      */}
-      {mode === 'different' && (
-        <p className="rounded-lg bg-surface-sunken px-2.5 py-2 text-[11px] leading-relaxed text-ink-muted">
-          Page 1 started as a copy of the rows above. Edit it on the first sheet — hover the{' '}
-          {which} there to type, add a row or remove one. Later pages keep the rows set above.
-        </p>
-      )}
-    </div>
-  );
-}
-
 /**
  * Says when the same computed field prints twice.
  *
@@ -469,26 +378,156 @@ function BandOverflowNotice() {
   );
 }
 
+/**
+ * One editable row list — either page 1's or the running rows.
+ *
+ * Both surfaces are the same thing (a `Band[]` printed at one edge), so they get one
+ * component: the only differences are which list the writes are scoped to and what the
+ * surface is called. Two hand-written copies would drift, and the pair has to look alike
+ * for the split to read as "the same choice, made twice".
+ */
+function BandSurface({
+  which,
+  scope,
+  label,
+  hint,
+  bands,
+  rule,
+  onRule,
+  extraAction,
+}: {
+  which: 'header' | 'footer';
+  scope: BandScope;
+  label: string;
+  hint: string;
+  bands: Band[];
+  rule: boolean | undefined;
+  onRule?: (rule: boolean) => void;
+  extraAction?: React.ReactNode;
+}) {
+  const setBands = useWorksheetStore((s) => s.setHeaderFooterBands);
+  const addBand = useWorksheetStore((s) => s.addHeaderFooterBand);
+  const presets = HEADER_FOOTER_PRESETS.filter((preset) => preset.edge === which);
+
+  return (
+    <div className="space-y-2">
+      <GroupHeader title={label} hint={hint} />
+
+      {/*
+        An empty surface offers exactly one way forward — pick a layout. With rows present
+        it offers the opposite: what is printing now, and the controls to adjust it.
+        Showing both at once gave three competing answers to "how do I start".
+      */}
+      {bands.length === 0 ? (
+        <div className="space-y-1.5">
+          <div className="grid grid-cols-2 gap-2">
+            {presets.map((preset) => (
+              <BandPresetCard
+                key={preset.id}
+                name={preset.name}
+                bands={preset.build()}
+                edge={which}
+                onClick={() => setBands(which, preset.build(), scope)}
+              />
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <Button size="sm" variant="subtle" onClick={() => addBand(which, undefined, scope)}>
+              Or start with an empty row
+            </Button>
+            {extraAction}
+          </div>
+        </div>
+      ) : (
+        <>
+          <div>
+            <div className="rounded-lg border border-line bg-[#fdfcfa] py-1.5 text-[#3f3b38]">
+              <BandPreview bands={bands} rule={rule} edge={which} />
+            </div>
+            <p className="mt-1 text-[11px] text-ink-muted">
+              Click this {which} on the page to type in it, or drag a field between the left,
+              centre and right zones.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+            {onRule && (
+              <CheckField label="Rule line" checked={Boolean(rule)} onChange={onRule} />
+            )}
+            <Button size="sm" variant="subtle" onClick={() => addBand(which, undefined, scope)}>
+              + Row
+            </Button>
+            <Button size="sm" variant="subtle" onClick={() => setBands(which, [], scope)}>
+              Clear
+            </Button>
+            {extraAction}
+          </div>
+
+          {/* Presets as pictures. A name told a teacher nothing about the layout, so the
+              only way to compare them was to apply each in turn — destroying whatever was
+              there each time. */}
+          <details className="pt-0.5">
+            <summary className="cursor-pointer list-none text-[11px] font-medium text-ink-muted hover:text-ink">
+              Replace with a different layout ▾
+            </summary>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              {presets.map((preset) => (
+                <BandPresetCard
+                  key={preset.id}
+                  name={preset.name}
+                  bands={preset.build()}
+                  edge={which}
+                  onClick={() => setBands(which, preset.build(), scope)}
+                />
+              ))}
+            </div>
+          </details>
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * One edge, presented as the two surfaces it actually prints on.
+ *
+ * **Page 1 comes first, and is edited directly.** It used to be defined *relative to* the
+ * running rows: a teacher wanting a cover had to build a header for pages 2+ they might
+ * not want, then choose "Its own rows" — which copied it — then edit the copy. That is
+ * backwards from how a paper is made, where the cover is the first thing decided and the
+ * running line is the afterthought. Now each surface owns its rows, its presets and its
+ * rule, and choosing a page-1 layout writes `firstPage` directly (the store creates the
+ * separation on the first page-1 write rather than demanding it already exist).
+ *
+ * The two are still linked, because most papers do repeat one header: "Same as page 1"
+ * copies across, and "Same as pages 2+" collapses the split back to one list. Those are
+ * offered as quiet actions rather than as the mode a teacher must pass through.
+ */
 function HeaderFooterSection({ which }: { which: 'header' | 'footer' }) {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const setHeaderFooter = useWorksheetStore((s) => s.setHeaderFooter);
-  const setBands = useWorksheetStore((s) => s.setHeaderFooterBands);
-  const addBand = useWorksheetStore((s) => s.addHeaderFooterBand);
+  const setFirstPageMode = useWorksheetStore((s) => s.setFirstPageMode);
+  const setFirstPageBands = useWorksheetStore((s) => s.setFirstPageBands);
 
   const value = headerFooterOf(
     worksheet[which],
     which === 'header' ? defaultHeader : defaultFooter,
   );
-  const presets = HEADER_FOOTER_PRESETS.filter((preset) => preset.edge === which);
   const name = which === 'header' ? 'Header' : 'Footer';
-  const where = which === 'header' ? 'Printed at the top of every page.' : 'Printed at the bottom of every page.';
+  const edge = which === 'header' ? 'top' : 'bottom';
+
+  // Resolved in the model, so the panel cannot disagree with the page about which of the
+  // three states this document is in (§ Page 1 can differ).
+  const firstPage = firstPageHeaderFooter(value);
+  const separated = Boolean(value.firstPage);
+  const blankOnFirst = !separated && value.showOnFirstPage === false;
 
   return (
     <section className="space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-[13px] font-semibold text-ink">{name}</h3>
-          <p className="text-[11px] text-ink-muted">{where}</p>
+          <p className="text-[11px] text-ink-muted">Printed at the {edge} of the page.</p>
         </div>
         <CheckField
           label="Show"
@@ -500,87 +539,97 @@ function HeaderFooterSection({ which }: { which: 'header' | 'footer' }) {
       {value.enabled && (
         <div className="space-y-3.5 rounded-xl border border-line bg-surface-sunken p-3.5">
           {/*
-            An empty edge offers exactly one way forward — pick a layout.
-            With rows present it offers the opposite: what is printing now, and the
-            controls to adjust it. Showing both sets at once (an empty dashed box, a
-            "+ Row" button *and* the preset cards) gave three competing answers to
-            "how do I start", which is the state a new document opens in.
+            Page 1 first: it is the sheet a teacher builds first, and the one they are
+            looking at when they open this dialog.
           */}
-          {value.bands.length === 0 ? (
-            <div className="space-y-1.5">
-              <span className="block text-[11px] font-medium text-ink-muted">
-                Nothing printing yet — start from a layout
-              </span>
-              <div className="grid grid-cols-2 gap-2">
-                {presets.map((preset) => (
-                  <BandPresetCard
-                    key={preset.id}
-                    name={preset.name}
-                    bands={preset.build()}
-                    edge={which}
-                    onClick={() => setBands(which, preset.build())}
-                  />
-                ))}
-              </div>
-              <Button size="sm" variant="subtle" onClick={() => addBand(which)}>
-                Or start with an empty row
+          {blankOnFirst ? (
+            <div className="space-y-2">
+              <GroupHeader title="Page 1" hint="Nothing prints on the first sheet." />
+              <Button size="sm" variant="subtle" onClick={() => setFirstPageMode(which, 'same')}>
+                Print the {which} on page 1 too
               </Button>
             </div>
           ) : (
-            <>
-              {/* What is there now, so the dialog says what the page it covers shows. */}
-              <div>
-                <span className="mb-1 block text-[11px] font-medium text-ink-muted">
-                  Now printing
-                </span>
-                <div className="rounded-lg border border-line bg-[#fdfcfa] py-1.5 text-[#3f3b38]">
-                  <BandPreview bands={value.bands} rule={value.rule} edge={which} />
-                </div>
-                <p className="mt-1 text-[11px] text-ink-muted">
-                  Click this {which} on the page to type in it, or drag a field between the
-                  left, centre and right zones.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-                <CheckField
-                  label="Rule line"
-                  checked={Boolean(value.rule)}
-                  onChange={(rule) => setHeaderFooter(which, { rule })}
-                />
-                <Button size="sm" variant="subtle" onClick={() => addBand(which)}>
-                  + Row
+            <BandSurface
+              which={which}
+              scope={separated ? 'firstPage' : 'running'}
+              label="Page 1"
+              hint={
+                separated
+                  ? 'Its own rows — the cover.'
+                  : 'Currently the same rows as later pages.'
+              }
+              bands={firstPage.bands}
+              rule={firstPage.rule}
+              onRule={
+                separated
+                  ? (rule) =>
+                      setHeaderFooter(which, { firstPage: { ...value.firstPage!, rule } })
+                  : (rule) => setHeaderFooter(which, { rule })
+              }
+              extraAction={
+                <Button
+                  size="sm"
+                  variant="subtle"
+                  onClick={() => setFirstPageMode(which, 'blank')}
+                >
+                  Leave page 1 blank
                 </Button>
-                <Button size="sm" variant="subtle" onClick={() => setBands(which, [])}>
-                  Clear
-                </Button>
-              </div>
-
-              {/* Presets as pictures. A name told a teacher nothing about the layout, so
-                  the only way to compare them was to apply each in turn — destroying
-                  whatever was there each time. */}
-              <details className="border-t border-line pt-3">
-                <summary className="cursor-pointer list-none text-[11px] font-medium text-ink-muted hover:text-ink">
-                  Replace with a different layout ▾
-                </summary>
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  {presets.map((preset) => (
-                    <BandPresetCard
-                      key={preset.id}
-                      name={preset.name}
-                      bands={preset.build()}
-                      edge={which}
-                      onClick={() => setBands(which, preset.build())}
-                    />
-                  ))}
-                </div>
-              </details>
-            </>
+              }
+            />
           )}
 
-          <div className="border-t border-line pt-3">
-            <FirstPageChoice which={which} value={value} />
+          <div className="space-y-2 border-t border-line pt-3">
+            {separated ? (
+              <BandSurface
+                which={which}
+                scope="running"
+                label="Pages 2 onward"
+                hint="The running line, repeated on every later sheet."
+                bands={value.bands}
+                rule={value.rule}
+                onRule={(rule) => setHeaderFooter(which, { rule })}
+                extraAction={
+                  <Button
+                    size="sm"
+                    variant="subtle"
+                    onClick={() => setFirstPageMode(which, 'same')}
+                  >
+                    Same as page 1
+                  </Button>
+                }
+              />
+            ) : (
+              <div className="space-y-1.5">
+                <GroupHeader
+                  title="Pages 2 onward"
+                  hint={
+                    blankOnFirst ? 'The rows above print from page 2.' : 'The same rows as page 1.'
+                  }
+                />
+                {/*
+                  The one action that opens the split, offered *after* page 1 is built
+                  rather than required before it. It copies the current rows, since a
+                  teacher separating the two almost always wants "like the others, but
+                  with the school name" — starting blank would make them rebuild it.
+                */}
+                <Button
+                  size="sm"
+                  variant="subtle"
+                  onClick={() => setFirstPageMode(which, 'different')}
+                >
+                  Give page 1 its own {which}
+                </Button>
+              </div>
+            )}
           </div>
+
+          {separated && (
+            <p className="rounded-lg bg-surface px-2.5 py-2 text-[11px] leading-relaxed text-ink-muted">
+              Both are edited on the page too — hover the {which} on the sheet you want to
+              change and type, add a row or remove one.
+            </p>
+          )}
         </div>
       )}
     </section>
