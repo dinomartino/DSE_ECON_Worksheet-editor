@@ -1335,6 +1335,9 @@ function DraggableItem({
   dragCount,
   runRole,
   runLength,
+  isInsertAnchor,
+  onAnchorHere,
+  onInsertHere,
   children,
   className = "",
 }: {
@@ -1364,6 +1367,15 @@ function DraggableItem({
   runRole?: "head" | "tail";
   /** How many items the pill must span, when this item is a run's `head`. */
   runLength?: number;
+  /**
+   * This item is the add rail's insertion anchor: the next thing added lands directly
+   * below it, and the caret says so.
+   */
+  isInsertAnchor?: boolean;
+  /** Claim this item's trailing edge as the insert position, from the gap's `+`. */
+  onAnchorHere?: () => void;
+  /** Open the insert menu for this position. */
+  onInsertHere?: () => void;
   children: React.ReactNode;
   className?: string;
 }) {
@@ -1506,6 +1518,94 @@ function DraggableItem({
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#7c5cff]" />
           <span className="h-0.5 flex-1 bg-[#7c5cff]" />
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#7c5cff]" />
+        </span>
+      )}
+
+      {/*
+       * The insert gap: where the next item lands, and a target for aiming at it.
+       *
+       * **It reserves no space.** The strip is absolutely positioned across the item's
+       * trailing edge, so it neither moves the text nor changes what the paginator
+       * measures — the page must break in exactly the places Word will break it, and a
+       * hover affordance that pushed content down would make the preview lie about the
+       * document. It draws *outside* the flow for the same reason the drag grip does.
+       *
+       * **The caret is the drop indicator's shape**, deliberately: dot–line–dot in the
+       * same violet. A drag drop and an insert put an item in the identical position, so
+       * showing them differently would invent a distinction the document does not have.
+       * The anchored state is solid; hovering an unanchored gap previews it at half
+       * strength, which is what makes the whole strip discoverable by sweeping down the
+       * page rather than by being told.
+       *
+       * It is `data-print-hide` chrome, and hidden entirely in print preview — the mode
+       * claims to show the sheet exactly as it prints (§print preview is the print
+       * rules), so an insertion affordance there would be a lie about the paper.
+       */}
+      {onInsertHere && (
+        /*
+         * Hovering **previews** the position; it does not take it.
+         *
+         * An earlier version moved the anchor on `mouseenter`, which meant sweeping the
+         * pointer down the page silently rewrote where the rail would insert — the
+         * destination then depended on where the mouse came to rest, which is not a
+         * decision anyone made. The anchor moves on a click or on the `+`; the gap under
+         * the pointer just shows what taking it would mean.
+         */
+        <span
+          data-print-hide
+          className="group/gap absolute inset-x-0 -bottom-1.5 z-10 flex h-3 items-center"
+        >
+          {/*
+           * Three weights, because these are three different claims. The anchored gap is
+           * a *standing* state — it sits on the page until something moves it, so at full
+           * strength it reads as a rule the document owns, and on the last item it looks
+           * like a divider. Half strength says "here" without competing with the text.
+           * Hovering is fainter still: it is only a preview.
+           */}
+          <span
+            aria-hidden
+            className={`pointer-events-none flex flex-1 items-center transition-opacity ${
+              isInsertAnchor
+                ? "opacity-55 group-hover/gap:opacity-100"
+                : "opacity-0 group-hover/gap:opacity-30"
+            }`}
+          >
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#7c5cff]" />
+            <span className="h-0.5 flex-1 bg-[#7c5cff]" />
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#7c5cff]" />
+          </span>
+          {/*
+           * The button sits **on** the caret line, centred, not in the margin.
+           *
+           * The margin is already a column: the drag grip occupies `-left-7` for its
+           * whole row, and a gap sits *between* two rows — so a `+` there overlapped the
+           * grip above it and the grip below it at once, three controls fighting for one
+           * 28px strip. Centring it moves it into space nothing else claims, and it
+           * gains a meaning it did not have out there: the line is where the item lands
+           * and the button is on the line.
+           *
+           * It carries the paper's own background so the rule appears to pass behind it
+           * rather than through it — the literal hex is the token rule, since this is
+           * drawn on the sheet and must not follow the app's theme.
+           */}
+          <button
+            type="button"
+            data-print-hide
+            aria-label="Insert here"
+            title="Insert here"
+            onClick={(event) => {
+              event.stopPropagation();
+              onAnchorHere?.();
+              onInsertHere();
+            }}
+            className={`absolute left-1/2 flex h-4 w-4 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-[#c4b5fd] bg-white text-[#7c5cff] shadow-sm transition-opacity hover:border-[#7c5cff] hover:bg-[#f6f3ff] ${
+              isInsertAnchor
+                ? "opacity-55 group-hover/gap:opacity-100"
+                : "opacity-0 group-hover/gap:opacity-100"
+            }`}
+          >
+            <PlusIcon size={10} />
+          </button>
         </span>
       )}
       {/*
@@ -2145,6 +2245,18 @@ export function Preview({
    * threaded as a prop, since this component already subscribes.
    */
   const printPreview = useWorksheetStore((s) => s.printPreview);
+
+  /*
+   * Where the add rail will put the next item.
+   *
+   * Read from the store for the same reason `printPreview` is: the rail lives outside
+   * this component, so a prop would have to be threaded through `EditorApp` for no
+   * reason other than to arrive back here. The page both *sets* it — selecting an item,
+   * or pointing at a gap — and *draws* it, as the insertion caret.
+   */
+  const insertAnchorId = useWorksheetStore((s) => s.insertAnchorId);
+  const setInsertAnchor = useWorksheetStore((s) => s.setInsertAnchor);
+  const requestInsertMenu = useWorksheetStore((s) => s.requestInsertMenu);
 
   const [fitScale, setFitScale] = useState(1);
   // User zoom, multiplied onto the auto-fit scale rather than replacing it, so
@@ -3392,6 +3504,10 @@ export function Preview({
               setSelectedLayoutId(id);
               setSelectedElement(undefined);
               setSelectedBlockId(undefined);
+              // Selecting a layout element points the rail at it, exactly as selecting
+              // a question does. Without this the rail could not see this selection at
+              // all — it is local to the preview — and silently appended instead.
+              setInsertAnchor(id);
             }}
             aria-current={selectedLayoutId === id}
             className={`relative cursor-pointer rounded px-1 transition-colors ${
@@ -3451,6 +3567,17 @@ export function Preview({
               runHeadOf.has(id) ? "head" : runTails.has(id) ? "tail" : undefined
             }
             runLength={runHeadOf.get(id)}
+            isInsertAnchor={insertAnchorId === id}
+            onAnchorHere={() => setInsertAnchor(id)}
+            /*
+             * The gap is offered only where inserting is possible at all: a read-only
+             * preview has no reorder handler, and in print preview the sheet must show
+             * exactly what prints (§print preview is the print rules) — so the
+             * affordance disappears rather than merely being unclickable.
+             */
+            onInsertHere={
+              printPreview ? undefined : () => requestInsertMenu(id)
+            }
             onDragStart={() => setDragId(id)}
             onDragEnd={() => setDragId(undefined)}
             onDrop={(position) => {

@@ -25,6 +25,8 @@ beforeEach(() => {
     future: [],
     mode: { language: 'bilingual', version: 'student' },
     selectedQuestionId: undefined,
+    insertAnchorId: undefined,
+    insertMenuRequest: 0,
     dirty: false,
   });
 });
@@ -594,5 +596,121 @@ describe('page 1 can be built first (§ page 1 can differ)', () => {
   it('resolves to page 1 differing, so the .docx emits a first-page part', () => {
     store().addHeaderFooterBand('header', undefined, 'firstPage');
     expect(firstPageHeaderFooter(header()).differs).toBe(true);
+  });
+});
+
+/*
+ * The insertion anchor: where the add rail puts the next item.
+ *
+ * The bug these guard is silent in both directions — an insert that lands somewhere
+ * other than where the rail said costs a teacher an undo and a hunt through the
+ * document, and nothing on screen explains it.
+ */
+describe('insertion anchor (§where things land)', () => {
+  const flowIds = () => resolveFlow(store().worksheet).map((item) => item.id);
+
+  it('points at a question when one is selected', () => {
+    const questionId = store().worksheet.questions[1].id;
+    store().select(questionId);
+    expect(store().insertAnchorId).toBe(questionId);
+  });
+
+  it('clears when the selection is cleared, so the rail returns to appending', () => {
+    store().select(store().worksheet.questions[0].id);
+    store().select(undefined);
+    expect(store().insertAnchorId).toBeUndefined();
+  });
+
+  it('holds a layout element, which selectedQuestionId could never express', () => {
+    // The original bug: a heading or divider is selectable on the page, but that
+    // selection lives in the preview, so the rail saw nothing and appended.
+    const element = store().worksheet.layout[0];
+    store().setInsertAnchor(element.id);
+    expect(store().insertAnchorId).toBe(element.id);
+  });
+
+  it('inserts a question after the anchored layout element, not at the end', () => {
+    const element = store().worksheet.layout[0];
+    store().setInsertAnchor(element.id);
+    store().addQuestion('mcq');
+
+    const ids = flowIds();
+    const added = store().selectedQuestionId!;
+    expect(ids.indexOf(added)).toBe(ids.indexOf(element.id) + 1);
+    // The tell for the old behaviour: it would have gone last.
+    expect(ids.at(-1)).not.toBe(added);
+  });
+
+  it('advances onto what was just added, so consecutive inserts read down the page', () => {
+    const first = store().worksheet.questions[0].id;
+    store().setInsertAnchor(first);
+
+    store().addQuestion('mcq');
+    const one = store().selectedQuestionId!;
+    expect(store().insertAnchorId).toBe(one);
+
+    store().addQuestion('mcq');
+    const two = store().selectedQuestionId!;
+
+    const ids = flowIds();
+    // Without the advance the second lands *above* the first and the document reads
+    // backwards from what the teacher clicked.
+    expect(ids.indexOf(two)).toBe(ids.indexOf(one) + 1);
+  });
+
+  it('advances onto a layout element too', () => {
+    store().setInsertAnchor(store().worksheet.questions[0].id);
+    store().addLayoutElement(createSpacerElement());
+    const spacer = store().worksheet.layout.at(-1)!;
+    expect(store().insertAnchorId).toBe(spacer.id);
+  });
+
+  it('drops an anchor whose item was deleted, rather than pointing at a ghost', () => {
+    const questionId = store().worksheet.questions[0].id;
+    store().setInsertAnchor(questionId);
+    store().removeQuestion(questionId);
+    // A dangling id inserts like no id at all, so the rail would claim a position and
+    // silently append. Clearing it makes the label tell the truth instead.
+    expect(store().insertAnchorId).toBeUndefined();
+  });
+
+  it('drops an anchor onto a deleted layout element', () => {
+    const element = store().worksheet.layout[0];
+    store().setInsertAnchor(element.id);
+    store().removeLayoutElement(element.id);
+    expect(store().insertAnchorId).toBeUndefined();
+  });
+
+  it('survives an edit that does not remove the anchored item', () => {
+    const questionId = store().worksheet.questions[0].id;
+    store().setInsertAnchor(questionId);
+    store().updateQuestion(questionId, { marks: 3 });
+    expect(store().insertAnchorId).toBe(questionId);
+  });
+
+  it('drops the anchor when undo removes the item it advanced onto', () => {
+    store().setInsertAnchor(store().worksheet.questions[0].id);
+    store().addQuestion('mcq');
+    const added = store().insertAnchorId;
+    store().undo();
+    expect(added).toBeDefined();
+    expect(store().insertAnchorId).toBeUndefined();
+  });
+
+  it('clears on loading another document, whose ids are unrelated', () => {
+    store().setInsertAnchor(store().worksheet.questions[0].id);
+    store().replaceWorksheet(buildAcceptanceWorksheet());
+    expect(store().insertAnchorId).toBeUndefined();
+  });
+
+  it('counts each menu request, so a second gap re-opens the menu', () => {
+    // A boolean already true would make the second click a no-op and the affordance
+    // would read as dead on every gap after the first.
+    const target = store().worksheet.questions[1].id;
+    store().requestInsertMenu(target);
+    const first = store().insertMenuRequest;
+    store().requestInsertMenu(store().worksheet.layout[0].id);
+    expect(store().insertMenuRequest).toBeGreaterThan(first);
+    expect(store().insertAnchorId).toBe(store().worksheet.layout[0].id);
   });
 });

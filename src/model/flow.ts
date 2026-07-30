@@ -1,5 +1,5 @@
 import { newId } from './factories';
-import { emptyBiText } from './text';
+import { emptyBiText, plain } from './text';
 import type { BiText, FlowItem, LayoutElement, Question } from './types';
 
 /**
@@ -107,8 +107,16 @@ export interface FlowMove {
   flow: FlowItem[];
 }
 
-/** Reorder a resolved item list, then split it back into the two stored lists. */
-function applyOrder(doc: FlowDoc, ordered: FlowItem[]): FlowMove {
+/**
+ * Reorder a resolved item list, then split it back into the two stored lists.
+ *
+ * Exported because an **insert** needs it as much as a move does. `questions` owns
+ * question order, so writing a new question's position into `flow` alone does nothing:
+ * `resolveFlow` emits questions in array order and the flow entry is ignored. A
+ * question appended to the array therefore printed last however the flow read — which
+ * is what made "insert after this heading" put the question at the end of the document.
+ */
+export function applyOrder(doc: FlowDoc, ordered: FlowItem[]): FlowMove {
   const byId = new Map(doc.questions.map((question) => [question.id, question]));
   const questions: Question[] = [];
   for (const entry of ordered) {
@@ -196,6 +204,66 @@ export function nudgeInFlow(doc: FlowDoc, id: string, direction: -1 | 1): FlowMo
   if (index < 0 || target < 0 || target >= entries.length) return applyOrder(doc, entries);
   [entries[index], entries[target]] = [entries[target], entries[index]];
   return applyOrder(doc, entries);
+}
+
+/**
+ * The human name of a layout kind.
+ *
+ * Shared rather than spelled per surface: the add rail, the outline row and the
+ * insertion label all name the same nine things, and three copies would drift the
+ * moment a tenth kind is added — the rail would offer "Blank space" while the outline
+ * called the result something else.
+ */
+export const LAYOUT_NAME: Record<LayoutElement['kind'], string> = {
+  section: 'Section',
+  heading: 'Heading',
+  text: 'Text',
+  spacer: 'Blank space',
+  divider: 'Divider',
+  pageBreak: 'New page',
+  answerLines: 'Answer lines',
+  partHeader: 'Part header',
+  labelList: 'Label list',
+};
+
+/**
+ * Name the item a new insert would land behind, for the add rail's destination label.
+ *
+ * A question is named by its **number**, because that is what a teacher calls it and
+ * what the page shows; the number is derived, so the caller passes the one it already
+ * computed rather than making this recompute a numbering plan.
+ *
+ * A layout element prefers **its own text** over its kind. "after section" is ambiguous
+ * the moment a paper has two of them — which is every real paper — so a heading that
+ * says "Section B" names itself. Text is truncated because these are headings, not
+ * prose, and an untitled element falls back to its kind rather than to an empty label.
+ *
+ * Returns undefined when the id names nothing, which is what "append to the end" looks
+ * like: the rail then says so rather than naming a ghost.
+ */
+const MAX_LABEL_CHARS = 24;
+
+export function flowItemLabel(
+  doc: FlowDoc,
+  id: string | undefined,
+  questionNumber?: (questionId: string) => number | undefined,
+): string | undefined {
+  if (!id) return undefined;
+  const question = doc.questions.find((item) => item.id === id);
+  if (question) {
+    const number = questionNumber?.(question.id);
+    return number === undefined ? 'question' : `Q${number}`;
+  }
+
+  const element = (doc.layout ?? []).find((item) => item.id === id);
+  if (!element) return undefined;
+  const kind = LAYOUT_NAME[element.kind].toLowerCase();
+  if (!('text' in element)) return kind;
+
+  // Either language will do — a teacher working in Chinese should see the Chinese.
+  const text = (plain(element.text.en) || plain(element.text.zh)).trim();
+  if (!text) return kind;
+  return text.length > MAX_LABEL_CHARS ? `${text.slice(0, MAX_LABEL_CHARS).trimEnd()}…` : text;
 }
 
 export function createHeadingElement(text: BiText = emptyBiText()): LayoutElement {

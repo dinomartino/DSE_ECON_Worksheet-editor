@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyOrder,
   createDividerElement,
   createPageBreakElement,
   createSectionElement,
@@ -14,7 +15,10 @@ import {
 import { createMcqQuestion, createWorksheet } from './factories';
 import { computeNumbering } from './numbering';
 import { bi } from './text';
-import type { Worksheet } from './types';
+import type { FlowItem, Worksheet } from './types';
+
+/** An MCQ with a chosen id, so an ordering assertion can name it. */
+const q = (id: string) => ({ ...createMcqQuestion(), id });
 
 /**
  * The ordering contract: `questions` is authoritative for question order, and `flow`
@@ -318,5 +322,50 @@ describe('moving past a section marker', () => {
     const moved = moveInFlow(worksheet, worksheet.questions[0].id, sectionB.id, 'after');
     const after = computeNumbering({ ...worksheet, ...moved });
     expect(after.questions.map((entry) => entry.number)).toEqual([1, 1, 2, 3]);
+  });
+});
+
+/*
+ * `questions` owns question order, so a *position* must be written into both lists.
+ *
+ * This is the invariant's sharpest edge and it cost a real bug: an insert that recorded
+ * its position in `flow` alone had no effect on a question at all — `resolveFlow` emits
+ * questions in array order — so "add after this heading" put the question on the last
+ * page while the flow claimed otherwise. A layout element never showed the fault,
+ * because `layout` carries existence only and `flow` alone positions it.
+ */
+describe('applyOrder writes a position into both lists', () => {
+  it('moves a question in `questions`, not only in `flow`', () => {
+    const doc: FlowDoc = {
+      questions: [q('q1'), q('q2'), q('q3')],
+      layout: [{ kind: 'divider', id: 'd1' }],
+      flow: [
+        { type: 'question', id: 'q1' },
+        { type: 'layout', id: 'd1' },
+        { type: 'question', id: 'q2' },
+        { type: 'question', id: 'q3' },
+      ],
+    };
+
+    // The order an insert after `d1` would produce.
+    const ordered: FlowItem[] = [
+      { type: 'question', id: 'q1' },
+      { type: 'layout', id: 'd1' },
+      { type: 'question', id: 'q3' },
+      { type: 'question', id: 'q2' },
+    ];
+
+    const moved = applyOrder(doc, ordered);
+    // The array itself has to change, or resolving reverts the move.
+    expect(moved.questions.map((question) => question.id)).toEqual(['q1', 'q3', 'q2']);
+    expect(
+      resolveFlow({ ...doc, ...moved }).map((item) => item.id),
+    ).toEqual(['q1', 'd1', 'q3', 'q2']);
+  });
+
+  it('keeps a question the ordering never mentioned, rather than dropping it', () => {
+    const doc: FlowDoc = { questions: [q('q1'), q('q2')] };
+    const moved = applyOrder(doc, [{ type: 'question', id: 'q2' }]);
+    expect(moved.questions.map((question) => question.id)).toEqual(['q2', 'q1']);
   });
 });

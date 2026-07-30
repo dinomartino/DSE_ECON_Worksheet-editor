@@ -13,6 +13,7 @@ import {
   createSectionElement,
   createSpacerElement,
   createTextElement,
+  LAYOUT_NAME,
   MIN_ANSWER_LINES,
   MIN_SPACER_PT,
 } from '@/model/flow';
@@ -72,19 +73,8 @@ function typeBadge(question: Question): string {
     .toUpperCase();
 }
 
-/** Human name per layout kind. The icon comes from `LAYOUT_ICON`, shared with the
-    add rail so the same thing looks the same wherever it appears. */
-const LAYOUT_NAME: Record<LayoutElement['kind'], string> = {
-  section: 'Section',
-  heading: 'Heading',
-  text: 'Text',
-  spacer: 'Blank space',
-  divider: 'Divider',
-  pageBreak: 'New page',
-  answerLines: 'Answer lines',
-  partHeader: 'Part header',
-  labelList: 'Label list',
-};
+/* `LAYOUT_NAME` comes from `model/flow` — the rail, this outline and the add rail's
+   destination label all name the same nine kinds, and separate copies would drift. */
 
 /**
  * The size of an answer-lines block or a spacer, editable in place.

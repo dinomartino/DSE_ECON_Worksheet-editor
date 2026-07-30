@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   createAnswerLinesElement,
   createDividerElement,
@@ -11,7 +11,9 @@ import {
   createSectionElement,
   createSpacerElement,
   createTextElement,
+  flowItemLabel,
 } from '@/model/flow';
+import { computeNumbering } from '@/model/numbering';
 import { bi, plain } from '@/model/text';
 import type { LayoutElement } from '@/model/types';
 import { listQuestionTypes } from '@/registry';
@@ -44,16 +46,26 @@ import {
  * It costs 64px of width and buys an affordance that never has to be discovered
  * twice — the rail is always in the same place whatever is selected.
  *
- * **Where things land.** Everything inserts straight after the *selected* question,
- * otherwise at the end, which is what "keep typing at the end" means for a document.
- * That keeps a single click useful without asking the teacher to first nominate a
- * target, and the item can still be dragged afterwards — §flow makes position cheap
- * to change.
+ * **Where things land.** Everything inserts after the store's `insertAnchorId`, and at
+ * the end when there is none — which is what "keep typing at the end" means for a
+ * document. A single click stays useful without first nominating a target, and the item
+ * can still be dragged afterwards; §flow makes position cheap to change.
  *
  * It used to have to pick a *container* — the selection's section, else the last one —
  * and could not express "after this element" at all. With one document-wide flow an
  * insert is a position, so there is nothing to guess and no `disabled` state for a
  * document that happens to have no sections.
+ *
+ * **The destination is read from the store, not from the question selection.** Reading
+ * `selectedQuestionId` directly meant the rail could only see *one of the three* things
+ * a teacher can select on the page: choosing a heading or a divider left it undefined
+ * and the new item silently went to the end of the document, several sheets from where
+ * they were working. The anchor holds any flow id, and the gap affordance sets it with
+ * nothing selected at all (§insertion anchor).
+ *
+ * **And the flyout says where.** Placement that can only be discovered by committing to
+ * it is placement a teacher has to undo to learn; the header names the destination
+ * before the click.
  */
 
 type Group = 'questions' | 'layout';
@@ -69,16 +81,57 @@ interface Entry {
 }
 
 export function AddRail() {
-  const selectedQuestionId = useWorksheetStore((s) => s.selectedQuestionId);
+  const worksheet = useWorksheetStore((s) => s.worksheet);
+  const insertAnchorId = useWorksheetStore((s) => s.insertAnchorId);
   const addQuestion = useWorksheetStore((s) => s.addQuestion);
   const addLayoutElement = useWorksheetStore((s) => s.addLayoutElement);
 
   const [open, setOpen] = useState<Group | undefined>();
   const rootRef = useRef<HTMLDivElement>(null);
 
-  // New items land after whatever is selected, so a click inserts where the teacher is
-  // working. With nothing selected they append, which is how a document grows.
-  const afterId = selectedQuestionId;
+  /*
+   * The page's `+` opens this menu.
+   *
+   * **Subscribed, not rendered.** This is an *event* — "the page asked for the menu" —
+   * and reading the counter during render to mirror it into state with an effect makes
+   * every request a second render pass, which is what the cascading-render lint catches.
+   * `subscribe` fires outside the render cycle, so the request opens the menu directly.
+   *
+   * A counter rather than a flag, so clicking a second gap re-opens rather than being
+   * swallowed as "already open"; and it keys on the counter rather than on the anchor,
+   * because merely *moving* the anchor — selecting a question — must not pop a menu
+   * open over the document.
+   *
+   * It opens the questions group: adding a question is far and away the commonest
+   * insert, and a menu that opened on whichever group was last used would make the same
+   * click do different things on different days.
+   */
+  useEffect(
+    () =>
+      useWorksheetStore.subscribe((state, previous) => {
+        if (state.insertMenuRequest !== previous.insertMenuRequest) setOpen('questions');
+      }),
+    [],
+  );
+
+  // New items land after the anchor, so a click inserts where the teacher is working.
+  // With no anchor they append, which is how a document grows.
+  const afterId = insertAnchorId;
+
+  /*
+   * What the flyout header says the click will do.
+   *
+   * The number comes from the same `computeNumbering` the page renders with, so the
+   * label names the question by the number actually printed on it rather than by an
+   * array index — those differ the moment a section restarts numbering, and a label
+   * reading "after Q1" beside a question printed "5." is worse than no label.
+   */
+  const numbering = useMemo(() => computeNumbering(worksheet), [worksheet]);
+  const anchorLabel = flowItemLabel(
+    worksheet,
+    afterId,
+    (questionId) => numbering.byQuestionId.get(questionId)?.number,
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -255,8 +308,21 @@ export function AddRail() {
           aria-label={`Add ${active.label}`}
           className="absolute left-[76px] top-2 w-[260px] rounded-2xl border border-line bg-surface-raised p-2 shadow-2xl"
         >
-          <p className="px-2 pb-1.5 pt-1 text-[10px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
+          {/* The destination, stated before the click rather than discovered after it.
+              Two lines: what is being added, then where it goes — the second is the one
+              that changes as the teacher moves around the document, so it gets the
+              colour and the first stays a quiet section label. */}
+          <p className="px-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
             Add {active.label}
+          </p>
+          <p className="px-2 pb-1.5 text-[11px] text-ink-muted">
+            {anchorLabel ? (
+              <>
+                Inserts after <span className="font-semibold text-ink">{anchorLabel}</span>
+              </>
+            ) : (
+              'Inserts at the end'
+            )}
           </p>
           {active.entries.map((entry) => (
             <button

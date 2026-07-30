@@ -20,6 +20,7 @@ import {
 } from '@/model/edits';
 import { createWorksheet, newId } from '@/model/factories';
 import {
+  applyOrder,
   clampAnswerLines,
   clampSpacerPt,
   createAnswerLinesElement,
@@ -86,6 +87,40 @@ interface WorksheetState {
   dirty: boolean;
   lastSavedAt?: string;
   selectedQuestionId?: string;
+  /**
+   * The flow id a new item lands after, or undefined to append.
+   *
+   * **The add rail can only insert where it can see.** Its destination used to be
+   * `selectedQuestionId` alone, so selecting a *layout* element — a heading, a
+   * divider, a page break — left it undefined and the new item silently went to the
+   * end of the document. That selection lives in `Preview`'s local state, because a
+   * divider has nothing for the sidebar to inspect, and the rail sits outside the
+   * preview; there was no way for it to know.
+   *
+   * So the anchor is a **position**, not a selection: one id naming the item to land
+   * behind, whatever kind it is. Selecting anything on the page sets it, and the gap
+   * affordance sets it without selecting anything at all — which is the case that
+   * has no neighbour to nominate.
+   *
+   * It is deliberately not derived from the three selections. Two of them are local
+   * to the preview and the third means "show this in the inspector"; folding a
+   * *destination* into them would make clearing the inspector also move where content
+   * lands, and a marquee of five items would have no single answer to give.
+   */
+  insertAnchorId?: string;
+  /**
+   * A request from the page to open the add rail's insert menu.
+   *
+   * The `+` in a gap and the rail's own buttons open the same menu, so the page has to
+   * be able to raise it. It is a counter rather than a boolean: two clicks on two
+   * different gaps must both open the menu, and a boolean already true the second time
+   * would be a no-op — the affordance would work once and then appear dead.
+   *
+   * The rail still owns *rendering* the menu; this only asks. That keeps the flyout's
+   * markup, its outside-click handling and its Escape key in one place instead of
+   * giving the page a second copy to keep in step.
+   */
+  insertMenuRequest: number;
   /** The question currently being dragged on the page, if any. */
   dragQuestionId?: string;
   past: Worksheet[];
@@ -108,6 +143,10 @@ interface WorksheetState {
   setMode: (patch: Partial<OutputMode>) => void;
   setPrintPreview: (on: boolean) => void;
   select: (questionId?: string) => void;
+  /** Point the add rail at a position: new items land after `flowId`. */
+  setInsertAnchor: (flowId?: string) => void;
+  /** Anchor at `flowId` and ask the rail to open its insert menu. */
+  requestInsertMenu: (flowId?: string) => void;
   setDragQuestionId: (questionId?: string) => void;
 
   // --- Questions --------------------------------------------------------------
@@ -297,17 +336,6 @@ function mapQuestion(
 }
 
 /**
- * Place a new item in the flow, after `afterId` when given and at the end otherwise.
- *
- * Both kinds of insert share this: a question and a layout element differ only in which
- * stored list they join, never in how their position is recorded. `patch` carries that
- * list, so the caller decides what is being added and this decides where it goes.
- *
- * The flow is resolved first rather than appended to blindly — a document whose stored
- * flow is missing entries (older saves never listed every id) would otherwise place the
- * new item relative to a list that does not describe what is on the page.
- */
-/**
  * Hold a sizeable layout element to its floor.
  *
  * Applied on the way *into* the document rather than at each caller, because both
@@ -326,17 +354,63 @@ function clampLayoutElement(element: LayoutElement): LayoutElement {
   return element;
 }
 
+/**
+ * Drop an insertion anchor that no longer names anything in the document.
+ *
+ * Deleting the anchored item would otherwise leave the rail pointing at a ghost, and
+ * `insertIntoFlow` treats an id it cannot find exactly like no id at all — so the next
+ * insert would quietly append to the end while the rail's label still claimed a
+ * position. That is the same silent-append failure the anchor exists to remove.
+ *
+ * It runs in `commit` rather than in the four removal actions because `commit` is the
+ * single write path: undo, redo and any future action that drops an item are all
+ * covered without knowing they exist. The cost is one flow scan per edit, on a document
+ * whose flow the paginator already walks several times per render.
+ */
+function livingAnchor(anchorId: string | undefined, next: Worksheet): string | undefined {
+  if (!anchorId) return undefined;
+  return flowOf(next).some((item) => item.id === anchorId) ? anchorId : undefined;
+}
+
+/**
+ * Place a new item in the flow, after `afterId` when given and at the end otherwise.
+ *
+ * Both kinds of insert share this: a question and a layout element differ only in which
+ * stored list they join, never in how their position is recorded. `patch` carries that
+ * list, so the caller decides what is being added and this decides where it goes.
+ *
+ * The flow is resolved first rather than appended to blindly — a document whose stored
+ * flow is missing entries (older saves never listed every id) would otherwise place the
+ * new item relative to a list that does not describe what is on the page.
+ *
+ * **The position has to be written into both lists**, not just `flow`. `questions` is
+ * the authority on question order (§flow), so a question appended to that array prints
+ * last no matter where its flow entry sits — which is exactly what happened when an
+ * insert was anchored anywhere but the end: the flow said "after the Section B
+ * heading", `resolveFlow` read the array, and the question appeared on the last page.
+ * A layout element never showed the fault, since `layout` carries existence only and
+ * `flow` alone positions it.
+ *
+ * `applyOrder` is the one rule for splitting an ordered flow back into the two stored
+ * lists, shared with every move. Deriving `questions` here by hand would be a second
+ * copy of it, and the two would eventually disagree about a case like this one.
+ */
 function insertIntoFlow(
   worksheet: Worksheet,
   entry: FlowItem,
   afterId: string | undefined,
   patch: Partial<Worksheet>,
 ): Worksheet {
+  // The patch carries the new item into `questions` or `layout`; ordering below reads
+  // that merged document, so the entry resolves to something that exists.
+  const merged = { ...worksheet, ...patch } as Worksheet;
   const flow = flowOf(worksheet);
   const at = afterId ? flow.findIndex((item) => item.id === afterId) : -1;
   if (at < 0) flow.push(entry);
   else flow.splice(at + 1, 0, entry);
-  return { ...worksheet, ...patch, flow };
+
+  const ordered = applyOrder(merged, flow);
+  return { ...merged, questions: ordered.questions, flow: ordered.flow };
 }
 
 /**
@@ -461,6 +535,7 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   mode: { language: 'en', version: 'student' },
   printPreview: false,
   dirty: false,
+  insertMenuRequest: 0,
   past: [],
   future: [],
 
@@ -482,6 +557,7 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
         // A new edit invalidates the redo branch, the way every editor behaves.
         future: [],
         dirty: true,
+        insertAnchorId: livingAnchor(state.insertAnchorId, next),
       };
     }),
 
@@ -494,6 +570,8 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
         past: state.past.slice(0, -1),
         future: [state.worksheet, ...state.future],
         dirty: true,
+        // Undoing an insert removes the item the anchor just advanced onto.
+        insertAnchorId: livingAnchor(state.insertAnchorId, previous),
       };
     }),
 
@@ -506,6 +584,7 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
         past: [...state.past, state.worksheet],
         future: state.future.slice(1),
         dirty: true,
+        insertAnchorId: livingAnchor(state.insertAnchorId, next),
       };
     }),
 
@@ -514,7 +593,15 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
 
   // --- Document --------------------------------------------------------------
   replaceWorksheet: (worksheet) =>
-    set({ worksheet, past: [], future: [], dirty: false, selectedQuestionId: undefined }),
+    set({
+      worksheet,
+      past: [],
+      future: [],
+      dirty: false,
+      selectedQuestionId: undefined,
+      // An anchor names an id in the document being replaced, so it means nothing here.
+      insertAnchorId: undefined,
+    }),
 
   updateWorksheet: (patch) => get().commit((draft) => ({ ...draft, ...patch })),
 
@@ -555,7 +642,24 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   setPrintPreview: (printPreview) =>
     set(printPreview ? { printPreview, selectedQuestionId: undefined } : { printPreview }),
 
-  select: (selectedQuestionId) => set({ selectedQuestionId }),
+  /*
+   * Selecting a question also points the rail at it.
+   *
+   * "Add after the thing I am looking at" is what a single click already meant before
+   * the anchor existed, and keeping that costs nothing — the anchor is simply now able
+   * to hold a layout element too. Clearing the selection clears the anchor, so a click
+   * on blank paper returns the rail to appending, which is what an empty page means.
+   */
+  select: (selectedQuestionId) =>
+    set({ selectedQuestionId, insertAnchorId: selectedQuestionId }),
+
+  setInsertAnchor: (insertAnchorId) => set({ insertAnchorId }),
+
+  requestInsertMenu: (insertAnchorId) =>
+    set((state) => ({
+      insertAnchorId,
+      insertMenuRequest: state.insertMenuRequest + 1,
+    })),
   setDragQuestionId: (dragQuestionId) => set({ dragQuestionId }),
 
   // --- Questions --------------------------------------------------------------
@@ -567,18 +671,32 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
    * extension point (§9), and an unknown id is ignored rather than corrupting the
    * document with a question no renderer understands.
    *
-   * It lands after `afterId` when given, otherwise at the end. There is no container to
-   * choose any more: which section it belongs to follows from which marker precedes it,
-   * so "add here" is a position rather than a parent.
+   * It lands after `afterId`, **defaulting to the stored insertion anchor**, and at the
+   * end when there is neither. There is no container to choose any more: which section
+   * it belongs to follows from which marker precedes it, so "add here" is a position
+   * rather than a parent.
+   *
+   * The default matters because the anchor is the store's own answer to "where is the
+   * teacher working". Requiring every caller to pass it means each new surface — the
+   * rail, the outline's menu, a keyboard shortcut — has to remember to, and the one
+   * that forgets appends silently. Defaulting here makes them right without knowing the
+   * anchor exists; an explicit `afterId` still wins, which is what a drop target needs.
+   *
+   * **The anchor advances onto what was just added**, so a second insert lands after
+   * the first rather than beside it. Leaving it on the original neighbour makes each
+   * new item land *above* the previous one, so adding three questions writes them into
+   * the document backwards — with the rail's own label the only clue, and it would be
+   * telling the truth.
    */
   addQuestion: (typeId, afterId) => {
     const definition = listQuestionTypes().find((type) => type.id === typeId);
     if (!definition) return;
     const question = definition.create();
-    get().commit((draft) => insertIntoFlow(draft, { type: 'question', id: question.id }, afterId, {
+    const anchor = afterId ?? get().insertAnchorId;
+    get().commit((draft) => insertIntoFlow(draft, { type: 'question', id: question.id }, anchor, {
       questions: [...draft.questions, question],
     }));
-    set({ selectedQuestionId: question.id });
+    set({ selectedQuestionId: question.id, insertAnchorId: question.id });
   },
 
   updateQuestion: (questionId, patch) =>
@@ -652,12 +770,19 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
    * The element lands in `layout` and its position in `flow`; those are the two halves
    * the flow invariant keeps separate — `layout` owns existence, `flow` owns position.
    */
-  addLayoutElement: (element, afterId) =>
+  addLayoutElement: (element, afterId) => {
+    // Defaults to the stored anchor, exactly as `addQuestion` does — the two must place
+    // things by the same rule or the rail's label would be true for one and not the other.
+    const anchor = afterId ?? get().insertAnchorId;
     get().commit((draft) =>
-      insertIntoFlow(draft, { type: 'layout', id: element.id }, afterId, {
+      insertIntoFlow(draft, { type: 'layout', id: element.id }, anchor, {
         layout: [...draft.layout, element],
       }),
-    ),
+    );
+    // The anchor advances onto the new element, for the same reason it does after a
+    // question: consecutive inserts must read down the page, not up it.
+    set({ insertAnchorId: element.id });
+  },
 
   updateLayoutElement: (elementId, patch) =>
     get().commit((draft) => ({

@@ -22,7 +22,7 @@ the same PR.
 | State | Zustand 5, undo/redo with a 100-entry history |
 | Language | TypeScript strict |
 | Export | Raw OOXML via JSZip (hand-built, no `docx` library) |
-| Test | Vitest 4 — 407 tests across 20 files, ~1s |
+| Test | Vitest 4 — 454 tests across 20 files, ~1s |
 | Runtime | Browser-only: client-side `.docx` generation, no API routes |
 
 ## Project structure
@@ -137,6 +137,16 @@ about types that have neither.
 So reordering a question rewrites `questions`, not the flow — two sources of truth for
 "which question is third" would silently disagree. A missing or stale flow costs an
 element its *position*, never its existence; ids absent from the flow are appended.
+
+**An insert is a move, and must write both lists.** The invariant cuts both ways: a new
+question whose position is recorded only in `flow` does not move at all, because
+`resolveFlow` emits questions in array order and reads the flow entry for layout
+elements alone. Appending to `questions` while splicing into `flow` therefore printed
+the question *last* however the flow read — so "add after this heading" put it on the
+final sheet. `applyOrder()` is the one rule for splitting an ordered flow back into the
+two stored lists, and `insertIntoFlow` in the store goes through it exactly as every
+move does; deriving `questions` by hand at the insert site is what let the two disagree.
+A layout element never showed the fault, since `layout` carries existence only.
 
 ### A section is a marker, not a container
 
@@ -1136,11 +1146,57 @@ Two rules follow:
 uppercase with wide tracking is a typographic texture, and a panel of five such headings
 scans as one undifferentiated grey column.
 
+### Where a new item lands: the insertion anchor
+
+`insertAnchorId` in the store is **a position, not a selection**: one flow id naming the
+item a new question or element lands behind, and undefined meaning "append". Both
+`addQuestion` and `addLayoutElement` default to it, so a surface is correct without
+knowing it exists; an explicit `afterId` still wins, which is what a drop target needs.
+
+It exists because the add rail could previously see only `selectedQuestionId`. A page
+carries **three** selections and two of them are local to `Preview` — so selecting a
+heading or a divider left the destination undefined and the new item went silently to
+the end of the document, several sheets from where the teacher was working. Folding the
+destination into the selections themselves is not the fix: two are preview-local, the
+third means "show this in the inspector", and a marquee of five items has no single
+answer to give.
+
+Four rules, three of which failed silently when they did not hold:
+
+- **The anchor advances onto what was just added.** Left on the original neighbour, each
+  insert lands *above* the previous one and three questions enter the document backwards
+  — with the rail's own label the only clue, and it would be telling the truth.
+- **A dead anchor is cleared, not left dangling.** `insertIntoFlow` treats an id it
+  cannot find exactly like no id at all, so deleting the anchored item would return the
+  rail to appending while its label still claimed a position. `livingAnchor()` runs in
+  `commit` — the single write path — rather than in the four removal actions, so undo,
+  redo and any future action that drops an item are covered without knowing they exist.
+- **The flyout states its destination.** Placement discoverable only by committing to it
+  is placement a teacher has to undo to learn. `flowItemLabel()` names a question by its
+  *derived* number (an array index disagrees with the page the moment a section restarts
+  numbering) and a layout element by its own text, falling back to its kind — "after
+  section" is ambiguous on every real paper, which has two.
+- **Hovering previews the position; it does not take it.** Moving the anchor on
+  `mouseenter` meant sweeping the pointer down the page rewrote where the rail would
+  insert, so the destination depended on where the mouse came to rest — not a decision
+  anyone made. It moves on a click or the gap's `+`.
+
+The gap affordance is chrome in the item's trailing edge, absolutely positioned so it
+**reserves no space**: the page must break where Word breaks it, and an affordance that
+pushed content down would make the preview lie about the document. It draws the drop
+indicator's own dot–line–dot in the same violet, deliberately — a drag and an insert put
+an item in the identical position, so two visual languages would invent a distinction
+the document does not have. The `+` sits *centred on the line*, not in the margin: the
+margin is already the drag grip's column, and a gap sits between two rows, so a button
+there overlapped the grip above and the grip below at once. It is `data-print-hide` and
+absent entirely in print preview.
+
 ### Direct manipulation on the page
 
 ```
 click once                → select (outlined) → Delete removes it, format toolbar appears
 click again / double-click → edit text in place → Enter commits, Esc cancels
+hover in a gap            → insert caret + "+" → adds there, not at the end
 hover                     → drag grip in the margin → drag to reorder
 ```
 
