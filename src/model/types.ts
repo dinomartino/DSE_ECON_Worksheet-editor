@@ -141,6 +141,16 @@ export interface TableRow {
   cells: TableCell[];
   /** Padding for every cell in this row, unless a cell overrides it. */
   cellPadding?: CellPadding;
+  /**
+   * A floor on the row's height, in twips — never a ceiling.
+   *
+   * Exports as `w:trHeight` with `hRule="atLeast"`, which is Word's own default: a row
+   * whose text needs more space still grows, so dragging a row taller can never clip what
+   * is typed into it later. `hRule="exact"` would match the paragraph line box, but a
+   * table cell is the one place in this document where content, not the grid, decides the
+   * height — the reference tables' rows are as tall as their wrapped labels need.
+   */
+  minHeight?: number;
 }
 
 /**
@@ -173,13 +183,33 @@ export interface TableBlock {
    */
   columnPadding?: (CellPadding | undefined)[];
   /**
-   * Column widths as fractions of the content width, in column order.
+   * Column widths as fractions of the table's own width, in column order.
    *
    * Undefined means equal columns, which is what every table did before widths existed.
    * Fractions rather than twips so a table keeps its proportions when the paper size or
    * the margins change — the same reason `ColumnsNode` positions are fractions.
+   *
+   * Of the *table's* width, not the page's: a narrowed table's columns keep their shares
+   * of whatever it now spans, so resizing the table as a whole and resizing one column
+   * stay independent gestures.
    */
   columnWidths?: number[];
+  /**
+   * How much of the content width the table spans, as a fraction. Undefined means all.
+   *
+   * A real paper's table often does not fill the column — the distribution table in the
+   * reference set is inset from both sides — and Word models that with a `w:tblW` under
+   * the content width rather than by padding the outer cells.
+   */
+  width?: number;
+  /**
+   * The table's left edge, as a fraction of the content width from the left margin.
+   *
+   * Separate from `width` because they are what the two outer-edge drags each change:
+   * pulling the right edge resizes alone, pulling the left edge resizes *and* indents.
+   * Exports as `w:tblInd`.
+   */
+  indent?: number;
 }
 
 export interface ImageBlock {

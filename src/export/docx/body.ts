@@ -268,12 +268,17 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
    * independently leaves the grid a few twips short or long, and Word resolves that
    * disagreement by stretching the final column — visibly, on a table with many columns.
    */
+  // The table's own box. `columnWidths` are fractions of *this*, not of the page, so a
+  // narrowed table keeps its column proportions.
+  const tableWidth = Math.max(1, Math.round(node.width * CONTENT_WIDTH_TWIPS));
+  const tableIndent = Math.round(node.indent * CONTENT_WIDTH_TWIPS);
+
   const columnWidths = (() => {
     const widths = node.columnWidths.map((fraction) =>
-      Math.max(1, Math.round(fraction * CONTENT_WIDTH_TWIPS)),
+      Math.max(1, Math.round(fraction * tableWidth)),
     );
     if (widths.length === 0) return widths;
-    const drift = CONTENT_WIDTH_TWIPS - widths.reduce((sum, value) => sum + value, 0);
+    const drift = tableWidth - widths.reduce((sum, value) => sum + value, 0);
     widths[widths.length - 1] += drift;
     return widths;
   })();
@@ -282,7 +287,7 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
   const spanWidth = (index: number, span: number) =>
     columnWidths.slice(index, index + span).reduce((sum, value) => sum + value, 0) ||
     columnWidths[index] ||
-    Math.floor(CONTENT_WIDTH_TWIPS / Math.max(1, node.columnCount));
+    Math.floor(tableWidth / Math.max(1, node.columnCount));
 
   const grid =
     '<w:tblGrid>' +
@@ -295,7 +300,10 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
   const tblPr =
     '<w:tblPr>' +
     '<w:tblStyle w:val="TableNormal"/>' +
-    `<w:tblW w:w="${CONTENT_WIDTH_TWIPS}" w:type="dxa"/>` +
+    `<w:tblW w:w="${tableWidth}" w:type="dxa"/>` +
+    // Emitted only when the table is actually inset, so a full-width table's XML is
+    // unchanged from before outer edges could be dragged.
+    (tableIndent > 0 ? `<w:tblInd w:w="${tableIndent}" w:type="dxa"/>` : '') +
     '<w:tblLayout w:type="fixed"/>' +
     '<w:tblBorders>' +
     ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map(border).join('') +
@@ -306,10 +314,16 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
     .map((row, rowIndex) => {
       // No `w:tblHeader`, and no shading or bold: an HKDSE table is uniform, plain-ruled
       // cells throughout (§tables). Emphasis is per-cell formatting like any other text.
+      const minHeight = node.rowHeights[rowIndex];
       const trPr =
         '<w:trPr>' +
         // Never split a row across pages (§7.6).
         '<w:cantSplit/>' +
+        // `atLeast`, never `exact`: a dragged height is a floor, so a row whose text
+        // needs more space still grows and nothing typed later is clipped.
+        (minHeight !== undefined
+          ? `<w:trHeight w:val="${Math.round(minHeight)}" w:hRule="atLeast"/>`
+          : '') +
         '</w:trPr>';
 
       const cells = row

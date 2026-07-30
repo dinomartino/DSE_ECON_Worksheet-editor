@@ -11,15 +11,20 @@ import {
   mergeDown,
   mergeRight,
   MIN_COLUMN_FRACTION,
+  MIN_ROW_HEIGHT_TWIPS,
+  MIN_TABLE_FRACTION,
   nextCell,
   patchCell,
   removeColumn,
   removeRow,
   resizeColumn,
+  resizeTableEdge,
   resolveCellPadding,
   resolveColumnWidths,
+  resolveTableBox,
   restoreColumn,
   setPadding,
+  setRowHeight,
   spannedColumnCount,
   unmerge,
 } from './table';
@@ -401,5 +406,83 @@ describe('column widths', () => {
     expect(widths[2]).toBeCloseTo(1 / 3);
     // 0.8 : 0.2 preserved in what is left over.
     expect(widths[0] / widths[1]).toBeCloseTo(4);
+  });
+});
+
+describe('the table’s own box', () => {
+  it('spans the whole content width until an edge is dragged', () => {
+    expect(resolveTableBox(createTableBlock(2, 3))).toEqual({ width: 1, indent: 0 });
+  });
+
+  it('narrows from the right without moving the left edge', () => {
+    const block = resizeTableEdge(createTableBlock(2, 3), 'right', -0.3);
+    expect(resolveTableBox(block)).toEqual({ width: 0.7, indent: 0 });
+  });
+
+  it('indents from the left while the right edge stays put', () => {
+    // Otherwise dragging the left edge would slide the table sideways rather than
+    // resize it, which is not what grabbing an edge means.
+    const block = resizeTableEdge(createTableBlock(2, 3), 'left', 0.25);
+    const box = resolveTableBox(block);
+    expect(box.indent).toBeCloseTo(0.25);
+    expect(box.indent + box.width).toBeCloseTo(1);
+  });
+
+  it('reproduces the reference distribution table, inset from both sides', () => {
+    // table2.png: the table does not fill the text column. Word models that with a
+    // narrower w:tblW plus a w:tblInd, not by padding the outer cells.
+    let block = createTableBlock(5, 3);
+    block = resizeTableEdge(block, 'left', 0.2);
+    block = resizeTableEdge(block, 'right', -0.1);
+    const box = resolveTableBox(block);
+    expect(box.indent).toBeCloseTo(0.2);
+    expect(box.width).toBeCloseTo(0.7);
+  });
+
+  it('keeps column proportions when the table is resized as a whole', () => {
+    // `columnWidths` are fractions of the *table*, so resizing the box and resizing one
+    // column stay independent gestures.
+    let block = createTableBlock(2, 3);
+    block = { ...block, columnWidths: [0.5, 0.25, 0.25] };
+    const before = resolveColumnWidths(block, 3);
+    const after = resolveColumnWidths(resizeTableEdge(block, 'right', -0.4), 3);
+    expect(after).toEqual(before);
+  });
+
+  it('cannot be dragged off the page or into nothing', () => {
+    expect(resolveTableBox(resizeTableEdge(createTableBlock(2, 2), 'right', -5)).width).toBeCloseTo(
+      MIN_TABLE_FRACTION,
+    );
+    const pushed = resolveTableBox(resizeTableEdge(createTableBlock(2, 2), 'left', 5));
+    expect(pushed.width).toBeCloseTo(MIN_TABLE_FRACTION);
+    expect(pushed.indent + pushed.width).toBeCloseTo(1);
+  });
+
+  it('stores nothing once dragged back to full width', () => {
+    // An untouched table must carry no record, so it exports exactly as it did before
+    // edges could be dragged.
+    const block = resizeTableEdge(resizeTableEdge(createTableBlock(2, 2), 'right', -0.3), 'right', 0.3);
+    expect(block.width).toBeUndefined();
+    expect(block.indent).toBeUndefined();
+  });
+});
+
+describe('row heights', () => {
+  it('stores a floor, clamped to something clickable', () => {
+    const block = setRowHeight(createTableBlock(2, 2), 0, 800);
+    expect(block.rows[0].minHeight).toBe(800);
+    expect(setRowHeight(block, 0, 10).rows[0].minHeight).toBe(MIN_ROW_HEIGHT_TWIPS);
+  });
+
+  it('clears back to being sized by content', () => {
+    let block = setRowHeight(createTableBlock(2, 2), 0, 800);
+    block = setRowHeight(block, 0, undefined);
+    expect(block.rows[0].minHeight).toBeUndefined();
+    expect('minHeight' in block.rows[0]).toBe(false);
+  });
+
+  it('touches only the row it names', () => {
+    const block = setRowHeight(createTableBlock(3, 2), 1, 600);
+    expect(block.rows.map((row) => row.minHeight)).toEqual([undefined, 600, undefined]);
   });
 });

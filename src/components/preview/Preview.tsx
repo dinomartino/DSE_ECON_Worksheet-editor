@@ -17,6 +17,7 @@ import {
   twipsToPt,
 } from "@/model/page";
 import { TableColumnResizer } from "./TableColumnResizer";
+import { TableGridControls } from "./TableGridControls";
 import { zonesOf, type ZoneName } from "@/model/bands";
 import { describeDelete, isFormattable } from "@/model/edits";
 import { worksheetMarks } from "@/model/marks";
@@ -543,6 +544,25 @@ export interface EditContext {
       delta: number,
       columnCount: number,
     ) => void;
+    /** An outer edge, moved by a fraction of the content width. */
+    onResizeEdge: (blockId: string, side: 'left' | 'right', delta: number) => void;
+    /** A floor on one row's height, in twips. */
+    onResizeRow: (blockId: string, index: number, twips: number) => void;
+  };
+  /**
+   * Adding and removing rows and columns on the page.
+   *
+   * Separate from `tableColumns` because these are *structural* — they change what the
+   * table is, not how big it is — and a host may reasonably offer one without the other:
+   * the print path and the thumbnails take neither, while a future read-only-but-resizable
+   * preview could take the drags alone.
+   */
+  tableGrid?: {
+    scale: number;
+    onInsertRow: (blockId: string, index: number) => void;
+    onRemoveRow: (blockId: string, index: number) => void;
+    onInsertColumn: (blockId: string, index: number) => void;
+    onRemoveColumn: (blockId: string, index: number) => void;
   };
   /**
    * Resizing a picture on the page.
@@ -945,10 +965,22 @@ function TableNodeView({
    * without every intermediate width becoming an undo entry.
    */
   const [draftWidths, setDraftWidths] = useState<number[] | undefined>();
+  /** The table's own box while an outer edge is being dragged. */
+  const [draftBox, setDraftBox] = useState<{ width: number; indent: number } | undefined>();
+  /** The row height being dragged towards, if any. */
+  const [draftRow, setDraftRow] = useState<{ index: number; twips: number } | undefined>();
   const tableRef = useRef<HTMLTableElement>(null);
 
   const resize = ctx?.tableColumns;
+  const grid = ctx?.tableGrid;
   const widths = draftWidths ?? node.columnWidths;
+  const box = draftBox ?? { width: node.width, indent: node.indent };
+  const rowHeights = node.rowHeights;
+
+  /** Interior column boundaries, cumulative, shared by the resizer and the + buttons. */
+  const columnOffsets = widths.slice(0, -1).map((_, i) =>
+    widths.slice(0, i + 1).reduce((sum, w) => sum + w, 0),
+  );
 
   /*
    * Tab order: every editable cell, row by row.
@@ -991,9 +1023,47 @@ function TableNodeView({
 
   return (
     <div className="my-2">
-      {/* `relative` so the column handles can be positioned against the table's own
-          box; they are absolute and `data-print-hide`, so they reserve no space. */}
-      <div className="relative">
+      {/* `relative` so the handles can be positioned against the table's own box; they
+          are absolute and `data-print-hide`, so they reserve no space.
+
+          The wrapper takes the table's width and indent rather than the `<table>` itself,
+          so the handles' percentage offsets are measured against the same box the columns
+          divide — a handle positioned inside a full-width parent would drift as soon as
+          the table was narrowed. */}
+      {/*
+        The hover zone reaches past the table, into the margins its chrome sits in.
+
+        The outer-edge grips straddle the table's border and the `+` buttons sit outside
+        it entirely, so a group whose box stopped at the table would go un-hovered exactly
+        as the pointer arrived at one — the control turning inert as it is reached (§ hover
+        chrome needs a hit path). CSS `:hover` follows the element box, so the box has to
+        be the bigger one.
+
+        It is the *wrapper* that grows, with the table held at its true size by an inner
+        div: growing the positioning context instead would move every handle's 0% and
+        100%, which are the table's edges. The padding is `data-print-hide` chrome in the
+        sense that matters — it is transparent and the sheet's own layout is unchanged,
+        because the wrapper is `absolute`-positioned padding around a block that still
+        occupies exactly the table's height.
+      */}
+      <div
+        className="group/table relative"
+        style={{ width: `${box.width * 100}%`, marginLeft: `${box.indent * 100}%` }}
+      >
+        {/*
+          The hover pad: an absolutely-positioned transparent box, larger than the table,
+          giving `group-hover/table` a reach into the margins the chrome sits in.
+
+          Absolute, so it reserves no space — the page must break where Word breaks it.
+          It *does* take pointer events, since that is the whole point (`:hover` follows
+          a box that can be hit), but `-z-10` puts it behind the table, so every click on
+          a cell reaches the cell and only the surrounding margin lands here.
+        */}
+        <div
+          aria-hidden
+          data-print-hide
+          className="absolute -top-12 -right-4 -bottom-4 -left-12 -z-10"
+        />
         <table
           ref={tableRef}
           data-table-block={node.blockId}
@@ -1006,7 +1076,23 @@ function TableNodeView({
           </colgroup>
           <tbody>
             {node.rows.map((row, rowIndex) => (
-              <tr key={rowIndex}>
+              <tr
+                key={rowIndex}
+                style={{
+                  // A floor, matching `w:trHeight hRule="atLeast"`: CSS `height` on a
+                  // table row is already a minimum, so a row whose text needs more space
+                  // still grows and the paginator measures the taller box.
+                  height:
+                    (draftRow?.index === rowIndex ? draftRow.twips : rowHeights[rowIndex]) !==
+                    undefined
+                      ? `${twipsToPt(
+                          (draftRow?.index === rowIndex
+                            ? draftRow.twips
+                            : rowHeights[rowIndex]) as number,
+                        )}pt`
+                      : undefined,
+                }}
+              >
                 {row.map((cell, cellIndex) => {
                   if (cell.covered) return null;
                   const address =
@@ -1086,16 +1172,65 @@ function TableNodeView({
 
         {/* Handles only where the preview is editable, so a read-only sheet, the
             print path and the page-rail thumbnails stay free of them. */}
-        {resize && widths.length > 1 && (
+        {resize && (
           <TableColumnResizer
             widths={widths}
+            box={box}
+            rowHeights={rowHeights}
             scale={resize.scale}
             tableRef={tableRef}
-            onPreview={setDraftWidths}
-            onResize={(index, delta) =>
+            onPreviewWidths={setDraftWidths}
+            onPreviewBox={setDraftBox}
+            onPreviewRow={setDraftRow}
+            onResizeColumn={(index, delta) =>
               resize.onResizeColumn(node.blockId, index, delta, node.columnCount)
             }
+            onResizeEdge={(side, delta) => resize.onResizeEdge(node.blockId, side, delta)}
+            onResizeRow={(index, twips) => resize.onResizeRow(node.blockId, index, twips)}
           />
+        )}
+
+        {/*
+          Insert and delete, revealed together on hover.
+
+          Revealed with `opacity`, never `display`: a zero-size box cannot be hovered at
+          all. And revealed from the *wrapper* rather than per button, because these sit
+          outside the table — above it and in the left margin — so a per-element `:hover`
+          would hide each one as the pointer travelled to it (§ hover chrome needs a hit
+          path). `pointer-events` follows the opacity so the hidden layer cannot swallow
+          a click meant for the text underneath.
+        */}
+        {grid && (
+          <div
+            /*
+             * The layer is *inset negatively* so it spans the table plus the margins the
+             * buttons sit in. A layer clipped to the table would end at its border, and
+             * the pointer would leave the hover zone on its way to a button that lives
+             * outside it — the button vanishing as it is reached (§ hover chrome needs a
+             * hit path). This box is what `group-hover/table` covers.
+             */
+            /*
+             * Flush with the table (`inset-0`), because every control inside positions
+             * itself from the table's own edges — a row's measured `top`, a column
+             * boundary's percentage. An inset layer adds its own offset on top of those,
+             * which put the chips a wrapper's-worth above the table and over the heading
+             * before it. Reaching *past* the table is the hover pad's job, not this one's.
+             */
+            className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-150 group-hover/table:opacity-100 focus-within:opacity-100"
+            data-print-hide
+          >
+            <TableGridControls
+              columnOffsets={columnOffsets}
+              columnCount={node.columnCount}
+              rowCount={node.rows.length}
+              scale={grid.scale}
+              tableRef={tableRef}
+              onInsertRow={(index) => grid.onInsertRow(node.blockId, index)}
+              onRemoveRow={(index) => grid.onRemoveRow(node.blockId, index)}
+              onInsertColumn={(index) => grid.onInsertColumn(node.blockId, index)}
+              onRemoveColumn={(index) => grid.onRemoveColumn(node.blockId, index)}
+            />
+          </div>
         )}
       </div>
       {node.caption && (
@@ -2213,6 +2348,18 @@ interface Props {
     delta: number,
     columnCount: number,
   ) => void;
+  /** Move a table's outer edge, resizing it as a whole. Paired with the above. */
+  onResizeTableEdge?: (blockId: string, side: 'left' | 'right', delta: number) => void;
+  /** Set a floor on one table row's height, in twips. Paired with the above. */
+  onResizeTableRow?: (blockId: string, index: number, twips: number) => void;
+  /**
+   * Add and remove table rows and columns from the page. Omit all four to render tables
+   * without insert/delete chrome, which is what the print path and the thumbnails want.
+   */
+  onInsertTableRow?: (blockId: string, index: number) => void;
+  onRemoveTableRow?: (blockId: string, index: number) => void;
+  onInsertTableColumn?: (blockId: string, index: number) => void;
+  onRemoveTableColumn?: (blockId: string, index: number) => void;
   /**
    * Divide answer lines into two elements, when a drag asks for more rows than the
    * sheet can hold. Omit to cap the drag instead, with no way to exceed a page.
@@ -2475,6 +2622,12 @@ export function Preview({
   onResizeBlock,
   onResizeRows,
   onResizeTableColumn,
+  onResizeTableEdge,
+  onResizeTableRow,
+  onInsertTableRow,
+  onRemoveTableRow,
+  onInsertTableColumn,
+  onRemoveTableColumn,
   onSplitRows,
   onOpenBlock,
   onReorder,
@@ -3366,9 +3519,25 @@ export function Preview({
         // No selection of its own: a column boundary is not a selectable object — there
         // is nothing to delete or format — so the handles are revealed on hover and need
         // no click-to-arm step, unlike a picture or a run of answer lines.
-        tableColumns: onResizeTableColumn
-          ? { scale, onResizeColumn: onResizeTableColumn }
-          : undefined,
+        tableColumns:
+          onResizeTableColumn && onResizeTableEdge && onResizeTableRow
+            ? {
+                scale,
+                onResizeColumn: onResizeTableColumn,
+                onResizeEdge: onResizeTableEdge,
+                onResizeRow: onResizeTableRow,
+              }
+            : undefined,
+        tableGrid:
+          onInsertTableRow && onRemoveTableRow && onInsertTableColumn && onRemoveTableColumn
+            ? {
+                scale,
+                onInsertRow: onInsertTableRow,
+                onRemoveRow: onRemoveTableRow,
+                onInsertColumn: onInsertTableColumn,
+                onRemoveColumn: onRemoveTableColumn,
+              }
+            : undefined,
         resize: onResizeBlock
           ? {
               scale,

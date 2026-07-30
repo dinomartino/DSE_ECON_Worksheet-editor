@@ -482,6 +482,99 @@ export function resizeColumn(
   return { ...block, columnWidths: next };
 }
 
+/* ------------------------------------------------- the table's own box */
+
+/** A table may not be dragged narrower than this fraction of the content width. */
+export const MIN_TABLE_FRACTION = 0.15;
+
+/** How much of the content width the table spans, and where its left edge sits. */
+export function resolveTableBox(block: TableBlock): { width: number; indent: number } {
+  const width =
+    typeof block.width === 'number' && Number.isFinite(block.width) && block.width > 0
+      ? Math.min(1, block.width)
+      : 1;
+  const indent =
+    typeof block.indent === 'number' && Number.isFinite(block.indent) && block.indent > 0
+      ? block.indent
+      : 0;
+  // Clamped as a pair: a stored indent that would push a full-width table off the page
+  // is a file that has to render anyway, and the right edge is the one that must hold.
+  return { width, indent: Math.max(0, Math.min(indent, 1 - width)) };
+}
+
+/**
+ * Drag one of the table's **outer** edges, resizing it as a whole.
+ *
+ * Word's behaviour, and the one that reproduces the reference distribution table: the
+ * table narrows or widens as a unit and every column keeps its share, because
+ * `columnWidths` are fractions of the *table*, not of the page. Nothing about the columns
+ * is touched here at all.
+ *
+ * The two edges differ in what they mean. Pulling the **right** edge moves only the width;
+ * pulling the **left** edge moves the width and the indent together, since the right edge
+ * has to stay where it is — otherwise dragging the left edge would slide the whole table
+ * sideways rather than resize it.
+ */
+export function resizeTableEdge(
+  block: TableBlock,
+  edge: 'left' | 'right',
+  delta: number,
+): TableBlock {
+  const { width, indent } = resolveTableBox(block);
+
+  if (edge === 'right') {
+    // Floored at the minimum and capped at what is left of the page beyond the indent.
+    const next = Math.min(Math.max(width + delta, MIN_TABLE_FRACTION), 1 - indent);
+    return { ...block, width: next >= 1 ? undefined : next, indent: indent || undefined };
+  }
+
+  const right = indent + width;
+  const nextIndent = Math.min(Math.max(indent + delta, 0), right - MIN_TABLE_FRACTION);
+  const nextWidth = right - nextIndent;
+  return {
+    ...block,
+    // Dropped rather than stored when they mean "full width, flush left", so an untouched
+    // table carries no record and exports exactly as it did before edges could be dragged.
+    width: nextWidth >= 1 ? undefined : nextWidth,
+    indent: nextIndent > 0 ? nextIndent : undefined,
+  };
+}
+
+/* --------------------------------------------------------- row heights */
+
+/** Rows have a floor of one 12pt line; below that a row cannot be clicked back open. */
+export const MIN_ROW_HEIGHT_TWIPS = 240;
+export const MAX_ROW_HEIGHT_TWIPS = 5000;
+
+/**
+ * Set a floor on one row's height, or clear it.
+ *
+ * A *floor*, not a fixed size (`hRule="atLeast"`): a row whose content needs more space
+ * still grows, so dragging a row taller can never hide text typed into it later. Passing
+ * `undefined` clears the override, which is what returns the row to being sized purely by
+ * its content.
+ */
+export function setRowHeight(
+  block: TableBlock,
+  rowIndex: number,
+  twips: number | undefined,
+): TableBlock {
+  return {
+    ...block,
+    rows: block.rows.map((row, r) => {
+      if (r !== rowIndex) return row;
+      if (twips === undefined) {
+        const { minHeight: _drop, ...rest } = row;
+        return rest;
+      }
+      return {
+        ...row,
+        minHeight: Math.min(MAX_ROW_HEIGHT_TWIPS, Math.max(MIN_ROW_HEIGHT_TWIPS, Math.round(twips))),
+      };
+    }),
+  };
+}
+
 /**
  * Keep stored widths in step with a column count that just changed.
  *

@@ -18,7 +18,13 @@ import {
   createSpacerElement,
 } from '@/model/flow';
 import { applyResizeBlock } from '@/model/edits';
-import { DEFAULT_CELL_PADDING, patchCell, setPadding } from '@/model/table';
+import {
+  DEFAULT_CELL_PADDING,
+  patchCell,
+  resizeTableEdge,
+  setPadding,
+  setRowHeight,
+} from '@/model/table';
 import { BAND_ROW_TWIPS, MARGIN_PRESETS, bandsHeight, cmToTwips } from '@/model/page';
 import { FIXED_LINE_TWIPS, exactLineFor } from './styles';
 import { createWorksheet } from '@/model/factories';
@@ -607,6 +613,42 @@ describe('tables and images (§7.5, §11.5, §11.6)', () => {
     const firstCell = table.slice(0, table.indexOf('</w:tc>'));
     expect(firstCell).toContain('<w:b/>');
     expect(firstCell).toContain('<w:sz w:val="28"/>');
+  });
+
+  it('narrows and indents the table, reproducing the reference distribution table', async () => {
+    // table2.png does not span the text column. Word models that with a w:tblW under the
+    // content width plus a w:tblInd, not by padding the outer cells.
+    const document = await withTable((block) =>
+      resizeTableEdge(resizeTableEdge(block, 'left', 0.2), 'right', -0.1),
+    );
+    const total = Number(/<w:tblW w:w="(\d+)"/.exec(document)![1]);
+    const indent = Number(/<w:tblInd w:w="(\d+)"/.exec(document)![1]);
+
+    // 0.7 and 0.2 of the 9026tw content width.
+    expect(total).toBeCloseTo(9026 * 0.7, -2);
+    expect(indent).toBeCloseTo(9026 * 0.2, -2);
+    // The grid still sums to the table, not to the page: columns are fractions of the
+    // table, so narrowing it keeps their proportions.
+    const grid = /<w:tblGrid>(.*?)<\/w:tblGrid>/.exec(document)![1];
+    const widths = [...grid.matchAll(/w:w="(\d+)"/g)].map(([, w]) => Number(w));
+    expect(widths.reduce((sum, w) => sum + w, 0)).toBe(total);
+  });
+
+  it('writes no w:tblInd for a table nobody has moved', async () => {
+    // An untouched table must be byte-identical to what it was before outer edges could
+    // be dragged, the rule the padding default follows too.
+    const document = await withTable((block) => block);
+    expect(document).not.toContain('<w:tblInd');
+  });
+
+  it('sets a row height floor, never a fixed height', async () => {
+    // `atLeast`, so a row whose text needs more space still grows: a dragged height must
+    // not be able to clip what is typed into the row later.
+    const document = await withTable((block) => setRowHeight(block, 1, 700));
+    expect(document).toContain('<w:trHeight w:val="700" w:hRule="atLeast"/>');
+    expect(document).not.toContain('w:hRule="exact"');
+    // Only the row it names.
+    expect((document.match(/<w:trHeight/g) ?? []).length).toBe(1);
   });
 
   it('keeps the cell’s own alignment over any align in its format', async () => {

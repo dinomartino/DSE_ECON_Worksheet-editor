@@ -9,7 +9,7 @@ import type {
   TextFormat,
 } from '@/model/types';
 import { trailingBlankLines } from '@/model/text';
-import { resolveCellPadding, resolveColumnWidths } from '@/model/table';
+import { resolveCellPadding, resolveColumnWidths, resolveTableBox } from '@/model/table';
 
 /**
  * Neutral render IR.
@@ -167,6 +167,16 @@ export interface TableNode {
    * same numbers and cannot disagree about where a column edge falls.
    */
   columnWidths: number[];
+  /**
+   * The table's own box: how much of the content width it spans, and where it starts.
+   *
+   * Always resolved, like `columnWidths`, so no backend decides what "not stored" means.
+   * `columnWidths` are fractions of `width`, not of the page.
+   */
+  width: number;
+  indent: number;
+  /** A floor on each row's height in twips, in row order; undefined means content-sized. */
+  rowHeights: (number | undefined)[];
   /** Which block this came from, so the preview can resize its columns. */
   blockId: string;
   /** Edit target for the caption. */
@@ -446,6 +456,8 @@ export function renderContentBlocks(
         // Resolved once, here, so the preview's colgroup and the exporter's w:gridCol
         // divide the identical numbers — the paginator measures boxes Word must reproduce.
         columnWidths: resolveColumnWidths(block, columnCount),
+        ...resolveTableBox(block),
+        rowHeights: block.rows.map((row) => row.minHeight),
         blockId: block.id,
         caption: block.caption,
         keepNext: options.keepNext,

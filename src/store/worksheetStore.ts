@@ -19,7 +19,15 @@ import {
   mapTableBlock,
   replaceBlockById,
 } from '@/model/edits';
-import { resizeColumn } from '@/model/table';
+import {
+  insertColumn,
+  insertRow,
+  removeColumn,
+  removeRow,
+  resizeColumn,
+  resizeTableEdge,
+  setRowHeight,
+} from '@/model/table';
 import { createWorksheet, newId } from '@/model/factories';
 import {
   applyOrder,
@@ -267,6 +275,21 @@ interface WorksheetState {
     delta: number,
     columnCount: number,
   ) => void;
+  /** Move one of a table's outer edges, resizing it as a whole. */
+  resizeTableEdge: (blockId: string, side: 'left' | 'right', delta: number) => void;
+  /** Set a floor on one row's height, in twips. */
+  setTableRowHeight: (blockId: string, index: number, twips: number | undefined) => void;
+  /**
+   * Structural table edits addressed by position, for the page's own affordances.
+   *
+   * The sidebar reaches the same verbs through its `onChange(blocks)` chain, which a
+   * surface on the page has no route into; both end at the pure functions in
+   * `model/table.ts`, so the two surfaces cannot diverge (§tables).
+   */
+  insertTableRow: (blockId: string, index: number) => void;
+  removeTableRow: (blockId: string, index: number) => void;
+  insertTableColumn: (blockId: string, index: number) => void;
+  removeTableColumn: (blockId: string, index: number) => void;
 
   // --- Page setup, masthead bands, header/footer ------------------------------
   setPageSetup: (patch: Partial<PageSetup>) => void;
@@ -997,6 +1020,22 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     get().commit((draft) =>
       mapTableBlock(draft, blockId, (block) => resizeColumn(block, index, delta, columnCount)),
     ),
+  resizeTableEdge: (blockId, side, delta) =>
+    get().commit((draft) =>
+      mapTableBlock(draft, blockId, (block) => resizeTableEdge(block, side, delta)),
+    ),
+  setTableRowHeight: (blockId, index, twips) =>
+    get().commit((draft) =>
+      mapTableBlock(draft, blockId, (block) => setRowHeight(block, index, twips)),
+    ),
+  insertTableRow: (blockId, index) =>
+    get().commit((draft) => mapTableBlock(draft, blockId, (block) => insertRow(block, index))),
+  removeTableRow: (blockId, index) =>
+    get().commit((draft) => mapTableBlock(draft, blockId, (block) => removeRow(block, index))),
+  insertTableColumn: (blockId, index) =>
+    get().commit((draft) => mapTableBlock(draft, blockId, (block) => insertColumn(block, index))),
+  removeTableColumn: (blockId, index) =>
+    get().commit((draft) => mapTableBlock(draft, blockId, (block) => removeColumn(block, index))),
 
   // --- Page setup, masthead bands, header/footer ------------------------------
   setPageSetup: (patch) =>

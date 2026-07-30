@@ -40,6 +40,12 @@ export function EditorApp() {
   const resizeBlock = useWorksheetStore((s) => s.resizeBlock);
   const resizeLayoutElement = useWorksheetStore((s) => s.resizeLayoutElement);
   const resizeTableColumn = useWorksheetStore((s) => s.resizeTableColumn);
+  const resizeTableEdge = useWorksheetStore((s) => s.resizeTableEdge);
+  const setTableRowHeight = useWorksheetStore((s) => s.setTableRowHeight);
+  const insertTableRow = useWorksheetStore((s) => s.insertTableRow);
+  const removeTableRow = useWorksheetStore((s) => s.removeTableRow);
+  const insertTableColumn = useWorksheetStore((s) => s.insertTableColumn);
+  const removeTableColumn = useWorksheetStore((s) => s.removeTableColumn);
   const splitLayoutRows = useWorksheetStore((s) => s.splitLayoutRows);
   const reorderFlowItem = useWorksheetStore((s) => s.reorderFlowItem);
   const moveBandField = useWorksheetStore((s) => s.moveBandField);
@@ -467,6 +473,12 @@ export function EditorApp() {
             onResizeBlock={resizeBlock}
             onResizeRows={resizeLayoutElement}
             onResizeTableColumn={resizeTableColumn}
+            onResizeTableEdge={resizeTableEdge}
+            onResizeTableRow={setTableRowHeight}
+            onInsertTableRow={insertTableRow}
+            onRemoveTableRow={removeTableRow}
+            onInsertTableColumn={insertTableColumn}
+            onRemoveTableColumn={removeTableColumn}
             onSplitRows={splitLayoutRows}
             onOpenBlock={setDrawingBlockId}
             onReorder={handleReorder}

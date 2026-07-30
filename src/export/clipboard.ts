@@ -132,7 +132,7 @@ function nodeHtml(
 
   if (node.kind === 'table') {
     const rows = node.rows
-      .map((row) => {
+      .map((row, rowIndex) => {
         const cells = row
           .map((cell) => {
             if (cell.covered) return '';
@@ -154,7 +154,12 @@ function nodeHtml(
             return `<td style="${style}"${span}>${richHtml(cell.text, language) || '&nbsp;'}</td>`;
           })
           .join('');
-        return `<tr>${cells}</tr>`;
+        const minHeight = node.rowHeights[rowIndex];
+        // A floor, matching `w:trHeight hRule="atLeast"`, so pasted content can still
+        // grow the row rather than being clipped by it.
+        const height =
+          minHeight !== undefined ? ` style="height:${twipsToPt(minHeight)}pt"` : '';
+        return `<tr${height}>${cells}</tr>`;
       })
       .join('');
     const caption = node.caption
@@ -169,8 +174,14 @@ function nodeHtml(
         .map((fraction) => `<col style="width:${(fraction * 100).toFixed(3)}%"/>`)
         .join('') +
       '</colgroup>';
+    // The table's own box as a percentage and a left margin. Percentages rather than
+    // absolute widths because the clipboard carries no page setup of its own, so the
+    // table has to keep its proportions in whatever document it is pasted into.
+    const box =
+      `width:${(node.width * 100).toFixed(3)}%;` +
+      (node.indent > 0 ? `margin-left:${(node.indent * 100).toFixed(3)}%;` : '');
     return (
-      `<table style="border-collapse:collapse;width:100%;table-layout:fixed;${fontCss}">` +
+      `<table style="border-collapse:collapse;${box}table-layout:fixed;${fontCss}">` +
       `${colgroup}<tbody>${rows}</tbody></table>` +
       caption
     );

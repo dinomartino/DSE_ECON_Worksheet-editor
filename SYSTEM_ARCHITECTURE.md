@@ -22,7 +22,7 @@ the same PR.
 | State | Zustand 5, undo/redo with a 100-entry history |
 | Language | TypeScript strict |
 | Export | Raw OOXML via JSZip (hand-built, no `docx` library) |
-| Test | Vitest 4 — 521 tests across 23 files, ~1s |
+| Test | Vitest 4 — 534 tests across 23 files, ~1s |
 | Runtime | Browser-only: client-side `.docx` generation, no API routes |
 
 ## Project structure
@@ -116,9 +116,10 @@ Worksheet
 ContentBlock = ParagraphBlock | TableBlock | ImageBlock | DiagramBlock
 BiText { en: RichText, zh: RichText }        RichText = InlineRun[]
 
-TableBlock   rows · caption? · columnWidths?      fractions of the content width
+TableBlock   rows · caption? · width? · indent?    the table's box, fractions of content
+             columnWidths?                        fractions of the *table*
              cellPadding? · columnPadding?[]      padding resolves cell → column
-  TableRow     cells · cellPadding?                → row → table → default
+  TableRow     cells · cellPadding? · minHeight?    → row → table → default
     TableCell    text · colSpan? · rowSpan? · align? · covered? · padding? · format?
 ```
 
@@ -670,6 +671,58 @@ zero-width column cannot be dragged back out.
 `insertColumn`/`removeColumn` carry the widths and the per-column padding with them, both
 being addressed by index. Dropping the arrays on any change would be simpler and wrong:
 deleting one column would discard every other width that had been set.
+
+### The table's own box, and row heights
+
+A real paper's table often does not fill the text column — the reference distribution
+table is inset from both sides — so `width` and `indent` (fractions of the content width)
+store its box, exporting as `w:tblW` and `w:tblInd`. **`columnWidths` are fractions of
+the table, not of the page**, which is what keeps resizing the box and resizing a column
+independent: narrowing the table preserves every column's share.
+
+The two outer edges mean different things, and `resizeTableEdge` is the one place that
+says so. Pulling the **right** edge moves the width alone; pulling the **left** edge moves
+the width *and* the indent, because the right edge has to stay put — otherwise dragging
+the left edge would slide the table sideways rather than resize it.
+
+`TableRow.minHeight` is a **floor, never a fixed height** (`w:trHeight` with
+`hRule="atLeast"`). A row whose text needs more space still grows, so a dragged height can
+never clip what is typed into the row later. This is the one place in the document where
+content rather than the grid decides height — everywhere else the line box is `exact`.
+
+Everything is dropped from the model once it means "unchanged": a table dragged back to
+full width stores no `width` or `indent`, and emits no `w:tblInd`, so an untouched table
+is byte-identical to what it was before edges could be dragged.
+
+### Everything structural is reachable on the page
+
+The panel is no longer the only route to a table's structure. The page carries three drag
+gestures — column boundaries, outer edges, row heights — plus insert and delete for rows
+and columns, because a table is legible at full width and illegible in a 380px column: the
+position a teacher means ("a column *here*") is one they can only point at on the paper.
+The panel keeps the exact values, the way the diagram editor's panel keeps coordinates
+while the canvas drags. Both routes end at the same pure verbs in `model/table.ts`.
+
+Four rules, each of which failed in the browser before it held:
+
+- **Only the pointed-at row and column get controls.** Showing every boundary at once put
+  twelve chips around a four-row table; they collided in the margin and, being stacked
+  above the table, landed on the *heading before it*. A button beside eleven identical
+  buttons also does not say which row it means.
+- **A grip may not be gated on hover.** `pointer-events: none` stops the browser routing
+  *any* event to an element, so the pointer-down that would begin a drag never arrives —
+  and the left-edge grip is approached from outside the table, where the group is not
+  hovered. The grips are always live; what made that a problem was **size**, not liveness,
+  so a row grip is 7px centred on its border rather than a band across the cells.
+- **Horizontal and vertical grips must not cross.** A row grip spanning the full width
+  overlapped the outer-edge grips and, rendered later, won the z-order tie — swallowing
+  every press meant for an edge, so that drag silently did nothing. Row grips are inset by
+  a grip's width at both ends.
+- **The control layer sits flush with the table** (`inset-0`), because each control
+  positions itself from the table's own edges. An inset layer adds its offset on top of
+  theirs. Reaching *past* the table is a separate transparent hover pad's job — `:hover`
+  follows an element box, so the box has to be the bigger one (§hover chrome needs a hit
+  path), and it is `-z-10` so clicks still reach the cells.
 
 ### A cell formats like any other text
 
@@ -1408,10 +1461,13 @@ hover                     → drag grip in the margin → drag to reorder
   **divides by the preview scale**; the in-flight size is **local state committed once on
   release**, so a drag costs one undo entry; and the drag **clamps to the text column**,
   since a wider picture is clipped on screen and rescaled by Word.
-- **A table's column boundaries drag** (`preview/TableColumnResizer.tsx`), by the same
-  three rules: local in-flight state committed once on release, the delta divided by the
-  preview scale, and Escape to abandon. No selection step, a boundary being nothing you
-  could delete or format (§columns are fractions).
+- **A table is sized and reshaped entirely on the page.** Three drags
+  (`preview/TableColumnResizer.tsx`) — column boundaries, the two outer edges, each row's
+  height — by the same three rules: local in-flight state committed once on release, the
+  delta divided by the preview scale, and Escape to abandon. No selection step, a boundary
+  being nothing you could delete or format. Insert and delete for rows and columns are
+  hover chrome on the pointed-at row and column (`preview/TableGridControls.tsx`).
+  (§the table's own box, §everything structural is reachable on the page.)
 - **A picture's click target stays mounted while selected.** Unmounting it left only a
   `pointer-events-none` outline, so the next click fell through to the question wrapper
   and cleared `selectedBlockId` — which is why Delete on a selected picture appeared to do
