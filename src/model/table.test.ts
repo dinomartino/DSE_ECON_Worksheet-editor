@@ -4,6 +4,7 @@ import {
   columnCountOf,
   insertColumn,
   insertRow,
+  isDegenerate,
   isMerged,
   locateCell,
   mergeDown,
@@ -12,9 +13,12 @@ import {
   patchCell,
   removeColumn,
   removeRow,
+  restoreColumn,
   spannedColumnCount,
   unmerge,
 } from './table';
+import type { TableBlock } from './types';
+import { renderContentBlocks } from '@/render/ir';
 
 /**
  * Table structure, the shape a real paper needs.
@@ -184,5 +188,79 @@ describe('Tab order', () => {
     const last = block.rows[1].cells[1];
     expect(nextCell(block, last.id)).toBeUndefined();
     expect(nextCell(block, block.rows[0].cells[0].id, -1)).toBeUndefined();
+  });
+});
+
+/*
+ * A table with rows but no cells in them.
+ *
+ * Found in a real saved document: the old panel's column ✕ had no floor, so clicking it
+ * once per column emptied the table completely. It then printed nothing while the panel
+ * still claimed it had a column — and every recovery route was built on that claim.
+ */
+describe('a table that lost all its columns', () => {
+  const broken = (): TableBlock => ({
+    kind: 'table',
+    id: 't',
+    rows: [
+      { id: 'r1', cells: [] },
+      { id: 'r2', cells: [] },
+      { id: 'r3', cells: [] },
+    ],
+  });
+
+  it('reports zero columns rather than flooring the count at one', () => {
+    // The floor belongs in the mutators. A *measurement* that cannot return zero cannot
+    // describe a table that needs repairing, and the panel printed "3 rows × 1 column"
+    // over a table that rendered as nothing.
+    expect(columnCountOf(broken())).toBe(0);
+    expect(spannedColumnCount(broken())).toBe(0);
+    expect(isDegenerate(broken())).toBe(true);
+  });
+
+  it('is not confused with an ordinary table', () => {
+    expect(isDegenerate(createTableBlock(2, 2))).toBe(false);
+    // No rows at all is a different thing, and not something the editor can produce.
+    expect(isDegenerate({ kind: 'table', id: 't', rows: [] })).toBe(false);
+  });
+
+  it('restores one cell per row, uniformly', () => {
+    expect(shape(restoreColumn(broken()))).toEqual([1, 1, 1]);
+  });
+
+  it('leaves a healthy table alone', () => {
+    const healthy = createTableBlock(2, 3);
+    expect(restoreColumn(healthy)).toBe(healthy);
+  });
+
+  it('recovers through "add column" without inventing a second one', () => {
+    // The old count of 1 made `insertColumn` pad to the imaginary column and then insert,
+    // so the first click produced *two* columns.
+    expect(shape(insertColumn(broken(), 0))).toEqual([1, 1, 1]);
+  });
+
+  it('recovers through "add row" without leaving the table ragged', () => {
+    // Previously the new row got one cell and the existing three kept none: [1,0,0,0].
+    expect(shape(insertRow(broken(), 0))).toEqual([1, 1, 1, 1]);
+  });
+
+  it('emits no node at all from the render IR', () => {
+    // The IR is where this must hold, not the preview: one node stream feeds the
+    // paginator's off-screen probe, the real sheet, the .docx and the clipboard. An empty
+    // <table> measured zero in the probe but spent a line on the sheet, so the two passes
+    // disagreed about the document's height forever — the sheet count oscillated 1 ↔ 2
+    // and React reported "Maximum update depth exceeded" from the item measurement.
+    expect(renderContentBlocks([broken()], 'Question Stem')).toEqual([]);
+    // A healthy table still renders; the guard must not widen into "any short table".
+    expect(
+      renderContentBlocks([createTableBlock(2, 2)], 'Question Stem').map((n) => n.kind),
+    ).toEqual(['table']);
+  });
+
+  it('cannot be produced by removeColumn any more', () => {
+    let block = createTableBlock(2, 3);
+    for (let i = 0; i < 5; i += 1) block = removeColumn(block, 0);
+    expect(columnCountOf(block)).toBe(1);
+    expect(isDegenerate(block)).toBe(false);
   });
 });

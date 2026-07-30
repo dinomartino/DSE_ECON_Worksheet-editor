@@ -9,7 +9,7 @@ import type { Worksheet } from './types';
  *    through an older build never destroys data.
  */
 
-export const CURRENT_SCHEMA_VERSION = 6;
+export const CURRENT_SCHEMA_VERSION = 7;
 
 type RawDoc = Record<string, unknown>;
 
@@ -65,6 +65,16 @@ const MIGRATIONS: Array<(doc: RawDoc) => RawDoc> = [
   // hardcoded spelling into them — so a migrated document prints exactly what it printed
   // before, and the teacher can now change it.
   (doc) => ({ ...migrateFieldWording(doc), schemaVersion: 6 }),
+  // v6 -> v7: tables lost `headerRowCount`. It drove `w:tblHeader`, a grey EFEFEF fill and
+  // bold runs, and defaulted to 1 — while no HKDSE table has any of them, so the default
+  // produced a grey bold top row a teacher's first action was to undo. It also could not
+  // describe a real paper: a distribution table's top-left cell is empty, with headings
+  // running across the top *and* down the left, which is not a count of rows. Emphasis is
+  // ordinary per-cell formatting now.
+  //
+  // This only drops the dead field. The rows are untouched, so a migrated table prints
+  // exactly what the new build prints for it — plain uniform cells, which is the point.
+  (doc) => ({ ...stripTableHeaderRows(doc), schemaVersion: 7 }),
 ];
 
 /**
@@ -80,6 +90,35 @@ const MIGRATIONS: Array<(doc: RawDoc) => RawDoc> = [
  * close a cycle and make the chain load-order dependent. `migrations.test.ts` asserts
  * the two spellings agree, which is the guard that would otherwise be the import.
  */
+/**
+ * Drop `headerRowCount` from every table, wherever it sits.
+ *
+ * Walked generically rather than by following `questions → blocks`, `parts → blocks`,
+ * `subParts → blocks`: a table is insertable at every level (§3.3), so an explicit walk
+ * would need updating whenever a new nesting appears and the one that was forgotten would
+ * keep the dead field forever. Recursing over plain objects and arrays cannot miss one.
+ *
+ * It rewrites only the objects it actually changes, so a document with no tables comes back
+ * with its arrays untouched.
+ */
+function stripTableHeaderRows(doc: RawDoc): RawDoc {
+  const strip = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(strip);
+    if (!value || typeof value !== 'object') return value;
+
+    const source = value as RawDoc;
+    const next: RawDoc = {};
+    for (const [key, child] of Object.entries(source)) {
+      // Only on a table: `headerRowCount` is not a name anything else uses, but scoping it
+      // to the block that had it keeps the migration honest about what it is for.
+      if (key === 'headerRowCount' && source.kind === 'table') continue;
+      next[key] = strip(child);
+    }
+    return next;
+  };
+  return strip(doc) as RawDoc;
+}
+
 function migrateFieldWording(doc: RawDoc): RawDoc {
   const DEFAULT_FIELD_WORDING = {
     totalMarks: {

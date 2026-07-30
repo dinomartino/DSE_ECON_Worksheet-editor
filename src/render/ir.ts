@@ -402,6 +402,22 @@ export function renderContentBlocks(
           row.cells.reduce((sum, cell) => sum + (cell.covered ? 0 : cell.colSpan ?? 1), 0),
         ),
       );
+      /*
+       * A table with rows but no cells in them emits **no node at all**.
+       *
+       * Such a table is reachable from documents saved before `removeColumn` had a floor,
+       * and it broke pagination outright: an empty `<table>` measures zero in the
+       * paginator's off-screen probe but still occupies a line in the real sheet, so the
+       * two passes disagreed about the document's height forever. The sheet count
+       * oscillated 1 ↔ 2 and React reported "Maximum update depth exceeded" from the item
+       * measurement — a symptom several components away from the cause.
+       *
+       * Skipping it here rather than in the preview is what makes the two agree: one IR
+       * feeds the probe, the sheet, the `.docx` and the clipboard, so *nothing*
+       * renders it and no measurement can differ. The block stays in the document, and the
+       * sidebar offers to give it a column back (§tables).
+       */
+      if (block.rows.every((row) => row.cells.length === 0)) continue;
       nodes.push({
         kind: 'table',
         columnCount,

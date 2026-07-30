@@ -20,19 +20,51 @@ import type { TableBlock, TableCell } from './types';
  * merged table lands in a different visual place on each row.
  */
 
-/** The widest row's cell count — the number of columns a new row must supply. */
+/**
+ * The widest row's cell count — the number of columns a new row must supply.
+ *
+ * **Reports zero for a table that has none**, rather than flooring at 1. An earlier
+ * version claimed 1, and a saved document proved why that is wrong: a table whose columns
+ * had all been deleted (the old panel's column ✕ had no floor) read as "3 rows × 1 column"
+ * while rendering as nothing, and every recovery route was built on the lie — "Add column"
+ * padded to the imaginary column and produced *two*, and "Add row" gave the new row one
+ * cell while the existing rows kept none, leaving `[1,0,0,0]`.
+ *
+ * A floor belongs in the mutators, which is where it now is; a *measurement* that cannot
+ * return zero cannot describe a table that needs repairing.
+ */
 export function columnCountOf(block: TableBlock): number {
-  return Math.max(1, ...block.rows.map((row) => row.cells.length));
+  return block.rows.reduce((widest, row) => Math.max(widest, row.cells.length), 0);
 }
 
 /** The visual column count, counting a merged cell once per column it spans. */
 export function spannedColumnCount(block: TableBlock): number {
-  return Math.max(
-    1,
-    ...block.rows.map((row) =>
-      row.cells.reduce((sum, cell) => sum + (cell.covered ? 0 : cell.colSpan ?? 1), 0),
-    ),
+  return block.rows.reduce(
+    (widest, row) =>
+      Math.max(
+        widest,
+        row.cells.reduce((sum, cell) => sum + (cell.covered ? 0 : cell.colSpan ?? 1), 0),
+      ),
+    0,
   );
+}
+
+/**
+ * A table with rows but no cells in them, which renders as nothing at all.
+ *
+ * Reachable only from documents saved before `removeColumn` had a floor, but they exist —
+ * so the repair has to live somewhere. It is *not* a migration: a document is not corrupt,
+ * it is a table the teacher can no longer see or fix, and silently rewriting saved content
+ * on load is a heavier act than offering the fix where the problem is visible.
+ */
+export function isDegenerate(block: TableBlock): boolean {
+  return block.rows.length > 0 && columnCountOf(block) === 0;
+}
+
+/** Give every row one empty cell, restoring a table that lost all its columns. */
+export function restoreColumn(block: TableBlock): TableBlock {
+  if (!isDegenerate(block)) return block;
+  return { ...block, rows: block.rows.map((row) => ({ ...row, cells: [createTableCell()] })) };
 }
 
 /**
@@ -53,12 +85,20 @@ export function locateCell(
   return undefined;
 }
 
-/** Insert a blank row at `index` (clamped), pushing the rest down. */
+/**
+ * Insert a blank row at `index` (clamped), pushing the rest down.
+ *
+ * A table that has lost all its columns is **repaired first**, so the insert widens every
+ * row rather than adding a one-cell row above three empty ones — which would be ragged and
+ * still invisible. Adding a row is a reasonable way to try to revive such a table, so it
+ * had better work.
+ */
 export function insertRow(block: TableBlock, index: number): TableBlock {
-  const at = Math.max(0, Math.min(index, block.rows.length));
-  const rows = [...block.rows];
-  rows.splice(at, 0, createTableRow(columnCountOf(block)));
-  return { ...block, rows };
+  const base = restoreColumn(block);
+  const at = Math.max(0, Math.min(index, base.rows.length));
+  const rows = [...base.rows];
+  rows.splice(at, 0, createTableRow(columnCountOf(base)));
+  return { ...base, rows };
 }
 
 /**

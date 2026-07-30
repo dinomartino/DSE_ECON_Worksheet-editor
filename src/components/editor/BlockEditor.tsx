@@ -11,6 +11,7 @@ import {
   columnCountOf,
   insertColumn,
   insertRow,
+  isDegenerate,
   isMerged,
   locateCell,
   mergeDown,
@@ -18,6 +19,7 @@ import {
   patchCell,
   removeColumn,
   removeRow,
+  restoreColumn,
   unmerge,
 } from '@/model/table';
 import { DIAGRAM_TEMPLATES } from '@/model/diagramTemplates';
@@ -314,6 +316,30 @@ function TableBlockEditor({
           </span>
         )}
       </div>
+
+      {/*
+       * A table with rows but no cells prints nothing, and so offers nothing to click.
+       *
+       * Reachable only from documents saved before `removeColumn` had a floor — the old
+       * panel's column ✕ would empty a table completely — but those documents exist, and in
+       * one the table was invisible on the page while the panel still claimed it had a
+       * column. There is no cell to select, so every per-cell route is unreachable and the
+       * teacher's only option was to delete the block and start again.
+       *
+       * Stated plainly with the one action that fixes it, rather than repaired silently on
+       * load: a migration that rewrites saved content is a heavier act than a button, and
+       * the problem is only meaningful where it is visible.
+       */}
+      {isDegenerate(block) && (
+        <div className="flex items-center gap-2 rounded-md border border-line bg-surface-sunken px-2 py-1.5">
+          <span className="min-w-0 flex-1 text-[11px] leading-snug text-ink-muted">
+            This table has no columns, so it prints nothing.
+          </span>
+          <Button size="sm" variant="subtle" onClick={() => apply(restoreColumn(block))}>
+            Add a column
+          </Button>
+        </div>
+      )}
 
       {/* Rows and columns. Insert-above and insert-left need a position, so they are
           offered only with a cell chosen; append never does, which is why the fallback

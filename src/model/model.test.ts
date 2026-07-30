@@ -854,3 +854,105 @@ describe('save/load round trip preserves every known field', () => {
     expect(serializeWorksheet(restored).somethingNew).toBe(42);
   });
 });
+
+/*
+ * v6 -> v7: tables lost `headerRowCount`.
+ *
+ * It drove `w:tblHeader`, a grey EFEFEF fill and bold runs, and defaulted to 1 — while no
+ * HKDSE table has any of them, so the default printed a grey bold top row a teacher's
+ * first action was to undo.
+ */
+describe('table header rows are dropped (v6 -> v7)', () => {
+  const withTables = (headerRowCount: number) => ({
+    schemaVersion: 6,
+    id: 'x',
+    title: { en: [], zh: [] },
+    layout: [],
+    flow: [],
+    questions: [
+      {
+        id: 'q1',
+        type: 'mcq',
+        marks: 1,
+        options: [],
+        answerIndex: 0,
+        blocks: [
+          {
+            kind: 'table',
+            id: 't1',
+            headerRowCount,
+            rows: [{ id: 'r1', cells: [{ id: 'c1', text: { en: [], zh: [] } }] }],
+          },
+        ],
+      },
+      {
+        id: 'q2',
+        type: 'structured',
+        blocks: [],
+        parts: [
+          {
+            id: 'p1',
+            marks: 2,
+            blocks: [
+              {
+                kind: 'table',
+                id: 't2',
+                headerRowCount,
+                rows: [{ id: 'r2', cells: [{ id: 'c2', text: { en: [], zh: [] } }] }],
+              },
+            ],
+            subParts: [
+              {
+                id: 's1',
+                blocks: [
+                  {
+                    kind: 'table',
+                    id: 't3',
+                    headerRowCount,
+                    rows: [{ id: 'r3', cells: [{ id: 'c3', text: { en: [], zh: [] } }] }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+
+  const tablesOf = (worksheet: ReturnType<typeof migrate>) => {
+    const found: Record<string, unknown>[] = [];
+    const walk = (value: unknown) => {
+      if (Array.isArray(value)) return value.forEach(walk);
+      if (!value || typeof value !== 'object') return;
+      const record = value as Record<string, unknown>;
+      if (record.kind === 'table') found.push(record);
+      Object.values(record).forEach(walk);
+    };
+    walk(worksheet.questions);
+    return found;
+  };
+
+  it('strips the field at every nesting a table can appear in', () => {
+    // A table is insertable in a stem, a part and a sub-part, so the migration walks
+    // generically rather than following a hand-written path that a new nesting would
+    // silently escape.
+    const tables = tablesOf(migrate(withTables(1)));
+    expect(tables).toHaveLength(3);
+    for (const table of tables) expect('headerRowCount' in table).toBe(false);
+  });
+
+  it('leaves the rows themselves untouched', () => {
+    // Only the dead field goes: a migrated table must print exactly what this build
+    // prints for it, which is plain uniform cells.
+    const tables = tablesOf(migrate(withTables(2)));
+    for (const table of tables) {
+      expect((table.rows as unknown[])).toHaveLength(1);
+    }
+  });
+
+  it('reports the current schema version', () => {
+    expect(migrate(withTables(1)).schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(CURRENT_SCHEMA_VERSION).toBe(7);
+  });
+});

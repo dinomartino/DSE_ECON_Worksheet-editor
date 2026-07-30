@@ -2522,9 +2522,24 @@ export function Preview({
 
     const read = () => {
       const toTwips = (px: number) => (px / 96) * 1440;
-      const sheet =
-        root.querySelector<HTMLElement>(`[data-page-index="${measuredPageIndex}"]`) ??
-        root.querySelector<HTMLElement>('[data-page-index="0"]');
+      /*
+       * No fallback to page 1 when the running sheet is absent — the measurement is
+       * **skipped**, not redirected.
+       *
+       * This used to fall back to `[data-page-index="0"]`, which on a document with a
+       * page-1 cover reads the cover's rows *as* the running header. That closed a loop
+       * through the paginator: a document hovering near one page measured the tall cover
+       * while it had one sheet (big overflow → smaller text column → two sheets), then
+       * measured the short running rows once sheet 1 existed (→ one sheet again). Neither
+       * state could hold, the sheet count oscillated 1 ↔ 2 forever, and React reported
+       * "Maximum update depth exceeded" from `DraggableItem`'s measurement — two
+       * components away from this line. The § comment above (`measuredPageIndex`) already
+       * states the rule the fallback broke: with no running sheet on screen, the estimate
+       * (or the last real measurement) stands.
+       */
+      const sheet = root.querySelector<HTMLElement>(
+        `[data-page-index="${measuredPageIndex}"]`,
+      );
       /*
        * Measure the *rows*, not the region box.
        *
@@ -2543,13 +2558,17 @@ export function Preview({
         return rows?.offsetHeight ?? region?.offsetHeight ?? 0;
       };
 
-      const next = { header: toTwips(box('header')), footer: toTwips(box('footer')) };
-      // Only commit a real change, or the state write re-renders forever.
-      setMeasured((prev) =>
-        prev && Math.abs(prev.header - next.header) < 1 && Math.abs(prev.footer - next.footer) < 1
-          ? prev
-          : next,
-      );
+      if (sheet) {
+        const next = { header: toTwips(box('header')), footer: toTwips(box('footer')) };
+        // Only commit a real change, or the state write re-renders forever.
+        setMeasured((prev) =>
+          prev &&
+          Math.abs(prev.header - next.header) < 1 &&
+          Math.abs(prev.footer - next.footer) < 1
+            ? prev
+            : next,
+        );
+      }
 
       // Page 1 separately, since it may print a taller cover than the running rows and
       // its padding is applied to that sheet alone (`pageStyleFor`).
