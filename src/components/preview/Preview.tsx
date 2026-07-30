@@ -18,7 +18,13 @@ import {
 import { zonesOf, type ZoneName } from "@/model/bands";
 import { describeDelete, isFormattable } from "@/model/edits";
 import { worksheetMarks } from "@/model/marks";
-import { commonRunFormat, plain, runLines } from "@/model/text";
+import {
+  commonRunFormat,
+  marksAnchorRuns,
+  plain,
+  runLines,
+  trailingBlankLines,
+} from "@/model/text";
 import type {
   Band,
   BandFieldSide,
@@ -303,6 +309,102 @@ function marksLabel(marks: number, language: LanguageMode): string {
 }
 
 /**
+ * "(4 marks)" sits at the right-hand end of the paragraph's **last line**.
+ *
+ * The `.docx` gets this from a right tab stop: a `w:tab` run after the text against a
+ * stop at the content edge, so the marks flow to the end of the paragraph and land on
+ * whichever line that turns out to be. A tab stop reserves nothing on the *other* lines
+ * — only the final line is shortened — which is why the body text has to wrap exactly as
+ * it would with no marks at all.
+ *
+ * No single CSS property expresses that, and the two obvious ones both fail:
+ *
+ * - **`float: right` is placed on the first line with room**, not the last. A float is
+ *   positioned when a line box is built and does not participate in inline layout, so
+ *   emitting it after the text does not pin it to the final line: when the last line's
+ *   remaining width is narrower than the label, the float moves *down*, and because it is
+ *   out of flow the paragraph does not grow to contain it — the marks then print in the
+ *   next paragraph's 12pt line box and overprint it. That is visible only on the lengths
+ *   where the tail happens not to fit, which is why it read as intermittent.
+ * - **`text-align-last: justify`** stretches the body text's word spacing, and a
+ *   full-width flexible gap wraps to its own line regardless.
+ *
+ * So the reserve and the placement are separated, and the reserve *is* the label:
+ *
+ * - An **invisible twin** rides inline at the very end of the text. Being in flow, it
+ *   shortens only the line the text actually ends on, and being the label itself it
+ *   reserves exactly the right width at any font size — no measurement, nothing to keep
+ *   in step. A fixed-width shim cannot do this: where the shim fits but the label does
+ *   not, the two overprint.
+ * - The **visible copy is pinned bottom-right**. The paragraph's last line *is* its
+ *   bottom, so `bottom: 0` lands on that line whatever the paragraph's height, and
+ *   `right: 0` right-aligns it at the content edge like the tab stop. (The paragraph is
+ *   already `relative`, for the list marker.)
+ *
+ * When the marks genuinely do not fit, the twin wraps and carries the last word with it,
+ * so both end up on a new final line together — which is what Word's tab stop does too.
+ *
+ * `aria-hidden` on the twin keeps the label out of the accessibility tree twice, and both
+ * copies are `nowrap` so neither splits "(4" from "marks)".
+ */
+function MarksTrail({
+  marks,
+  language,
+  blankLines,
+}: {
+  marks: number;
+  language: LanguageMode;
+  blankLines: number;
+}) {
+  const label = marksLabel(marks, language);
+  return (
+    <>
+      {/*
+        The reserve can only ride at the very end of the inline flow: the text is owned by
+        a contenteditable (`InlineEditable`), and injecting a sibling inside it would put
+        React in charge of nodes the browser is mutating (\u00a7 a contenteditable is an
+        uncontrolled input). So when the text ends in hard breaks the reserve lands on the
+        trailing blank line and shortens *that* \u2014 harmless, since nothing is written there.
+
+        It means the reserve protects only the common case, where the marks share the last
+        line with wrapped text. A *hard-broken* final line that already reaches the right
+        edge can still be overlapped, and Word is in exactly the same position: a right
+        tab stop cannot push a line that a `w:br` has already ended either. Matching that
+        is the point \u2014 the preview must not invent a wrap the .docx will not reproduce.
+      */}
+      <span className="whitespace-nowrap" aria-hidden style={{ visibility: "hidden" }}>
+        {/*
+          An em space (U+2003), spelled as an escape because an invisible character
+          cannot be seen to be load-bearing. It must not be a plain space: the twin
+          abuts the text's own inline content and HTML collapses a space at that
+          boundary, so the gap would vanish and the marks could butt against the last
+          word. It rides inside the hidden twin, so it reserves room without printing.
+        */}
+        {`\u2003${label}`}
+      </span>
+      <span
+        className="absolute right-0 whitespace-nowrap"
+        style={{
+          /*
+           * `bottom: 0` is the paragraph's last line \u2014 which is an *empty* one when the
+           * text ends in hard breaks. Lifting by one line-height per trailing blank line
+           * puts the label back on the last line that says something, while the blank
+           * lines still print as the vertical space they are.
+           *
+           * `lh` resolves against this element's own computed line-height, so it stays
+           * correct on the styles that scale their exact line box (\u00a7 `exact` does not
+           * grow) instead of assuming the 12pt body grid.
+           */
+          bottom: blankLines ? `${blankLines}lh` : 0,
+        }}
+      >
+        {label}
+      </span>
+    </>
+  );
+}
+
+/**
  * What the docked format toolbar says it is acting on.
  *
  * The bar sits at the top of the column rather than beside its subject, so it has to
@@ -549,31 +651,14 @@ function TextNodeView({
       )}
       {richNodes(node.text, language, node.edit, ctx)}
       {node.marks !== undefined && (
-        /*
-         * "(4 marks)" trails the **last** line, as the reference paper prints it and as
-         * the .docx already did.
-         *
-         * The `.docx` appends a `w:tab` run after the text against a right-aligned stop
-         * at the content edge, so the marks flow to the end of the paragraph and land on
-         * whichever line that turns out to be — dropping to their own line only when the
-         * last line leaves no room.
-         *
-         * `float: right` could not reproduce that. A float is placed when the line box it
-         * sits in is built, so it always attached to the *first* line — and worse, it
-         * shortened that line, wrapping the stem earlier than Word does. So the preview
-         * disagreed with the export about both the marks' position and where the text
-         * broke.
-         *
-         * The replacement is a right float emitted **after** the text: `float` still takes
-         * it out of the flow (so it never shortens a line), while coming last means the
-         * only line box it can attach to is the final one.
-         * A `min-width` on the run before it is not needed — the label is
-         * `whitespace-nowrap`, so it wraps whole rather than splitting "(4" from
-         * "marks)".
-         */
-        <span className="float-right whitespace-nowrap pl-4">
-          {marksLabel(node.marks, language)}
-        </span>
+        <MarksTrail
+          marks={node.marks}
+          language={language}
+          // Trailing hard breaks print, but the marks must not hang on an empty final
+          // line. Counted from the text actually being shown, so a language mode that
+          // renders only one side counts that side's breaks.
+          blankLines={trailingBlankLines(marksAnchorRuns(node.text, language))}
+        />
       )}
     </p>
   );

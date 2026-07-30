@@ -1,4 +1,11 @@
-import type { BiText, InlineRun, RichText, RunFormat, RunFormatPatch } from './types';
+import type {
+  BiText,
+  InlineRun,
+  LanguageMode,
+  RichText,
+  RunFormat,
+  RunFormatPatch,
+} from './types';
 
 /** Build a single-run RichText from a plain string. */
 export function rt(text: string, attrs: Omit<InlineRun, 'text'> = {}): RichText {
@@ -90,6 +97,53 @@ export function runLines(text: string): string[] {
 /** Does this rich text contain a hard line break? */
 export function hasLineBreak(runs: RichText | undefined): boolean {
   return Boolean(runs?.some((run) => /[\n\r]/.test(run.text)));
+}
+
+/**
+ * How many hard line breaks trail the end of this rich text with no text after them.
+ *
+ * A trailing Shift+Enter is a **real blank line** — it prints, and deleting it would
+ * silently change the document — but a trailing marks label like "(3 marks)" must not
+ * attach to it. Marks belong at the right-hand end of the last line that *says*
+ * something; hung on an empty final line they read as sitting below the part rather than
+ * on it.
+ *
+ * Both backends need this and neither may derive it for itself: the preview pins the
+ * label to the paragraph's last line box, and the exporter appends a `w:tab` run after
+ * the text — so with a trailing `<w:br/>` Word lands the marks on the blank line too.
+ * They must count the same breaks or the page and the `.docx` disagree.
+ *
+ * Counts only breaks with nothing but further breaks after them; a blank line in the
+ * *middle* of the text is content and is left alone. Whitespace-only lines count as
+ * empty, since a line holding one space is not a line with text on it either.
+ */
+/**
+ * Which language side the trailing marks label sits against.
+ *
+ * In bilingual mode both sides share one paragraph, English then Chinese, so the
+ * paragraph's last line belongs to the Chinese side and its trailing breaks are the ones
+ * that decide where the marks land. An empty side contributes no lines, so it falls
+ * through to the other — otherwise a part with no Chinese would count zero blank lines
+ * while the page plainly shows English ones.
+ *
+ * Shared by the preview and the `.docx` exporter: both must agree which side they are
+ * measuring, or the marks land on different lines on screen and on paper.
+ */
+export function marksAnchorRuns(text: BiText, language: LanguageMode): RichText {
+  if (language === 'en') return text.en;
+  if (language === 'zh') return text.zh;
+  return text.zh.length ? text.zh : text.en;
+}
+
+export function trailingBlankLines(runs: RichText | undefined): number {
+  if (!runs?.length) return 0;
+  // The runs form one continuous string of lines, so a break at the end of one run and
+  // text at the start of the next is *not* a trailing break — the lines have to be
+  // counted across the whole array, not per run.
+  const lines = runLines(runs.map((run) => run.text).join(''));
+  let blank = 0;
+  for (let i = lines.length - 1; i > 0 && lines[i].trim() === ''; i--) blank++;
+  return blank;
 }
 
 /**

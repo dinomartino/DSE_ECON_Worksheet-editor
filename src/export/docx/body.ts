@@ -7,8 +7,9 @@ import type {
   TableNode,
   TextNode,
 } from '@/render/ir';
-import { biTextRuns, formatRunOptions, marksRuns, richTextRuns, run } from './runs';
+import { biTextRuns, formatRunOptions, lineBreak, marksRuns, richTextRuns, run } from './runs';
 import { ANSWER_LINE_STYLE_ID, STYLE_IDS, exactLineFor } from './styles';
+import { marksAnchorRuns, trailingBlankLines } from '@/model/text';
 import { attrs, escapeXml } from './xml';
 
 /**
@@ -171,7 +172,33 @@ function textNodeXml(node: TextNode, context: BodyContext): string {
   let runs = biTextRuns(node.text, fonts, context.language, formatRunOptions(node.format));
 
   if (node.marks !== undefined) {
-    runs += '<w:r><w:tab/></w:r>' + marksRuns(node.marks, context.fonts, context.language);
+    const marks =
+      '<w:r><w:tab/></w:r>' + marksRuns(node.marks, context.fonts, context.language);
+    /*
+     * The marks go on the last line that has text, not after a trailing hard break.
+     *
+     * A trailing Shift+Enter is a real blank line and still prints, but appending the tab
+     * run after its `<w:br/>` lands "(3 marks)" on the empty line — reading as though the
+     * marks sit below the part rather than on it. So the trailing breaks are moved to
+     * *after* the marks: the label joins the last text line, then the blank lines follow.
+     *
+     * The preview lifts its label by the same count (`trailingBlankLines`), which is why
+     * that helper is shared rather than counted here — the page and the .docx must place
+     * the marks on the same line.
+     */
+    const blanks = trailingBlankLines(marksAnchorRuns(node.text, context.language));
+    if (blanks > 0) {
+      const trailing = lineBreak().repeat(blanks);
+      // Only a run-final break can be hoisted; `biTextRuns` emits the trailing breaks as
+      // the last thing in the string, so this is a suffix swap rather than a re-render.
+      if (runs.endsWith(trailing)) {
+        runs = runs.slice(0, -trailing.length) + marks + trailing;
+      } else {
+        runs += marks;
+      }
+    } else {
+      runs += marks;
+    }
   }
 
   // Word drops a completely empty numbered paragraph's usefulness, but the number
