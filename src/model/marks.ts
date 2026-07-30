@@ -50,6 +50,36 @@ export function sectionMarks(doc: FlowDoc, sectionId?: string): number {
   return total;
 }
 
+/**
+ * Every section's marks total, in one walk.
+ *
+ * `sectionMarks` answers for one section and re-resolves the flow to do it, so asking it
+ * per heading is O(sections x document) — a paper with a dozen part headers walked the
+ * whole flow a dozen times on every render. This computes the same answers in a single
+ * pass, keyed by section id, with the pre-section run under `undefined` exactly as
+ * `sectionMarks(doc)` reports it.
+ *
+ * `sectionMarks` stays the answer for a single section, since a caller that wants one
+ * total should not have to build a map to read it.
+ */
+export function sectionMarksById(doc: FlowDoc): Map<string | undefined, number> {
+  const totals = new Map<string | undefined, number>();
+  let current: string | undefined;
+
+  for (const item of resolveFlow(doc)) {
+    if (item.type === 'layout') {
+      if (item.element.kind !== 'section') continue;
+      current = item.element.id;
+      // Seeded so a section holding no questions still reports 0 rather than absent.
+      if (!totals.has(current)) totals.set(current, 0);
+      continue;
+    }
+    totals.set(current, (totals.get(current) ?? 0) + questionMarks(item.question));
+  }
+
+  return totals;
+}
+
 export function worksheetMarks(worksheet: Worksheet): number {
   return worksheet.questions.reduce((sum, q) => sum + questionMarks(q), 0);
 }

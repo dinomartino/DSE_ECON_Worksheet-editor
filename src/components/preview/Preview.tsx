@@ -601,12 +601,21 @@ function DiagramNodeView({
   // Rendered at the stored size and then scaled to whatever the drag is showing, so an
   // in-flight resize does not re-run the SVG renderer on every pointer move — the
   // geometry is unchanged, only the box it fills is.
-  const svg = diagramSvg(node.diagram, {
-    widthPx: node.widthPx,
-    heightPx: node.heightPx,
-    language,
-    fonts,
-  });
+  //
+  // Memoised on exactly the four inputs, because the string is handed to
+  // `dangerouslySetInnerHTML`: a fresh-but-identical string makes React replace the
+  // markup, so the browser reparses and re-lays-out the whole SVG. Unmemoised that
+  // happened on every ancestor render — every hover, every marquee frame — which is the
+  // one case where re-running a pure function is not the expensive half.
+  const svg = useMemo(
+    () => diagramSvg(node.diagram, {
+      widthPx: node.widthPx,
+      heightPx: node.heightPx,
+      language,
+      fonts,
+    }),
+    [node.diagram, node.widthPx, node.heightPx, language, fonts],
+  );
 
   const picture = (
     <div
@@ -2025,7 +2034,17 @@ export function Preview({
   onPagesChange,
   onDragItemChange,
 }: Props) {
-  const rendered = renderWorksheet(worksheet, mode);
+  /*
+   * The one document walk, memoised on its only two inputs.
+   *
+   * `renderWorksheet` resolves the flow, computes numbering, totals marks and renders
+   * every question's nodes — the whole document, every call. This component holds ~25
+   * pieces of view state (hover, drag, marquee, zoom, text selection, dock rect), and a
+   * bare call re-ran that walk on every one of them: a marquee sweep or a resize drag
+   * re-rendered the entire worksheet on each pointer frame. The output depends on
+   * nothing else, so it only has to be rebuilt when the document or the mode changes.
+   */
+  const rendered = useMemo(() => renderWorksheet(worksheet, mode), [worksheet, mode]);
   const { language } = mode;
   const containerRef = useRef<HTMLDivElement>(null);
   const bandsRef = useRef<HTMLDivElement>(null);

@@ -1,7 +1,7 @@
 import { bandIsEmpty, ZONES, zonesOf } from '@/model/bands';
 import { bandFieldSegments } from '@/model/bandSegments';
 import { resolveFlow } from '@/model/flow';
-import { sectionMarks, worksheetMarks } from '@/model/marks';
+import { sectionMarksById, worksheetMarks } from '@/model/marks';
 import { computeNumbering } from '@/model/numbering';
 import { isBiTextEmpty, plain } from '@/model/text';
 import type {
@@ -159,6 +159,10 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
   // Derived once and passed down, so a band's "Full marks" can never disagree with the
   // questions it totals (§3.5).
   const total = worksheetMarks(worksheet);
+
+  // Every section's total in one walk, rather than one walk per heading — see
+  // `sectionMarksById`. Same numbers, computed before the item walk needs them.
+  const sectionTotals = sectionMarksById(worksheet);
   const bands = (worksheet.bands ?? [])
     .map((band) => renderBand(band, total))
     .filter((node): node is RenderNode => node !== undefined);
@@ -215,7 +219,7 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
           // own section (§3.5).
           nodes: renderLayoutElement(
             item.element,
-            item.element.kind === 'partHeader' ? sectionMarks(worksheet, currentSectionId) : 0,
+            item.element.kind === 'partHeader' ? (sectionTotals.get(currentSectionId) ?? 0) : 0,
             index === 0,
           ),
         },
