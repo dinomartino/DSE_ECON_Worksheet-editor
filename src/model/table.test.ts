@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createTableBlock } from './factories';
 import {
   columnCountOf,
+  DEFAULT_CELL_PADDING,
   insertColumn,
   insertRow,
   isDegenerate,
@@ -9,11 +10,16 @@ import {
   locateCell,
   mergeDown,
   mergeRight,
+  MIN_COLUMN_FRACTION,
   nextCell,
   patchCell,
   removeColumn,
   removeRow,
+  resizeColumn,
+  resolveCellPadding,
+  resolveColumnWidths,
   restoreColumn,
+  setPadding,
   spannedColumnCount,
   unmerge,
 } from './table';
@@ -262,5 +268,138 @@ describe('a table that lost all its columns', () => {
     for (let i = 0; i < 5; i += 1) block = removeColumn(block, 0);
     expect(columnCountOf(block)).toBe(1);
     expect(isDegenerate(block)).toBe(false);
+  });
+});
+
+describe('cell padding', () => {
+  const at = (rowIndex: number, cellIndex: number) => ({ rowIndex, cellIndex });
+
+  it('falls back to the built-in default, which is what the .docx already wrote', () => {
+    // These are the numbers `w:tblCellMar` carried before padding was settable. A table
+    // nobody has touched must export byte-identically, the rule TextFormat follows.
+    expect(resolveCellPadding(createTableBlock(2, 2), 0, 0)).toEqual(DEFAULT_CELL_PADDING);
+  });
+
+  it('resolves cell over column over row over table', () => {
+    let block = createTableBlock(2, 2);
+    block = setPadding(block, 'table', at(0, 0), { top: 10 });
+    expect(resolveCellPadding(block, 1, 1).top).toBe(10);
+
+    block = setPadding(block, 'row', at(1, 1), { top: 20 });
+    expect(resolveCellPadding(block, 1, 1).top).toBe(20);
+    // The other row still sees the table's value: a row speaks for itself alone.
+    expect(resolveCellPadding(block, 0, 1).top).toBe(10);
+
+    block = setPadding(block, 'column', at(1, 1), { top: 30 });
+    expect(resolveCellPadding(block, 1, 1).top).toBe(30);
+
+    block = setPadding(block, 'cell', at(1, 1), { top: 40 });
+    expect(resolveCellPadding(block, 1, 1).top).toBe(40);
+  });
+
+  it('resolves each edge on its own, so two levels compose', () => {
+    // An all-or-nothing object pick would let the column's left silently discard the
+    // row's top, and the second setting a teacher made would appear to do nothing.
+    let block = createTableBlock(2, 2);
+    block = setPadding(block, 'row', at(0, 0), { top: 200 });
+    block = setPadding(block, 'column', at(0, 0), { left: 300 });
+    expect(resolveCellPadding(block, 0, 0)).toEqual({
+      top: 200,
+      left: 300,
+      right: DEFAULT_CELL_PADDING.right,
+      bottom: DEFAULT_CELL_PADDING.bottom,
+    });
+  });
+
+  it('treats zero as a real value, not as absent', () => {
+    // "Tighten this cell to the border" must not fall through to the table's roomier
+    // setting, which is what a truthiness test would do.
+    let block = createTableBlock(2, 2);
+    block = setPadding(block, 'table', at(0, 0), { left: 400 });
+    block = setPadding(block, 'cell', at(0, 0), { left: 0 });
+    expect(resolveCellPadding(block, 0, 0).left).toBe(0);
+  });
+
+  it('clears back to inheritance and leaves no husk behind', () => {
+    let block = createTableBlock(2, 2);
+    block = setPadding(block, 'cell', at(0, 0), { top: 500 });
+    block = setPadding(block, 'cell', at(0, 0), { top: undefined });
+    expect(block.rows[0].cells[0].padding).toBeUndefined();
+    expect(resolveCellPadding(block, 0, 0).top).toBe(DEFAULT_CELL_PADDING.top);
+  });
+
+  it('keeps per-column padding on its own column across an insert', () => {
+    // Addressed by index, so without a shift every column past the new one would take
+    // its neighbour's padding.
+    let block = createTableBlock(2, 3);
+    block = setPadding(block, 'column', at(0, 2), { left: 600 });
+    block = insertColumn(block, 0);
+    expect(resolveCellPadding(block, 0, 3).left).toBe(600);
+    expect(resolveCellPadding(block, 0, 2).left).toBe(DEFAULT_CELL_PADDING.left);
+  });
+});
+
+describe('column widths', () => {
+  it('defaults to equal columns, as every table did before widths existed', () => {
+    expect(resolveColumnWidths(createTableBlock(2, 4), 4)).toEqual([0.25, 0.25, 0.25, 0.25]);
+  });
+
+  it('falls back rather than throwing when stored widths do not match the count', () => {
+    // A saved document can disagree with itself: a column added by an older build, or a
+    // hand-edited file. A table is a thing a teacher is looking at, so it must render.
+    const block = { ...createTableBlock(2, 3), columnWidths: [0.5, 0.5] };
+    expect(resolveColumnWidths(block, 3)).toEqual([1 / 3, 1 / 3, 1 / 3]);
+  });
+
+  it('normalises drifted widths back to the content width', () => {
+    const block = { ...createTableBlock(2, 2), columnWidths: [0.3, 0.3] };
+    expect(resolveColumnWidths(block, 2)).toEqual([0.5, 0.5]);
+  });
+
+  it('moves one boundary and leaves every other column alone', () => {
+    const block = resizeColumn(createTableBlock(2, 4), 0, 0.1);
+    const widths = resolveColumnWidths(block, 4);
+    expect(widths[0]).toBeCloseTo(0.35);
+    expect(widths[1]).toBeCloseTo(0.15);
+    // The columns the drag did not touch keep their size, so the pointer stays on the
+    // edge it grabbed instead of reflowing the whole table.
+    expect(widths[2]).toBeCloseTo(0.25);
+    expect(widths[3]).toBeCloseTo(0.25);
+  });
+
+  it('floors both sides so a column cannot be dragged out of existence', () => {
+    const block = resizeColumn(createTableBlock(2, 2), 0, 5);
+    const widths = resolveColumnWidths(block, 2);
+    expect(widths[1]).toBeCloseTo(MIN_COLUMN_FRACTION);
+    expect(widths[0] + widths[1]).toBeCloseTo(1);
+  });
+
+  it('reproduces the reference cost-output table: one wide label column', () => {
+    // table1.png: the label column is roughly three times a data column, which equal
+    // columns cannot express — the reason widths exist at all.
+    let block = createTableBlock(2, 8);
+    block = { ...block, columnWidths: [0.3, ...Array(7).fill(0.1)] };
+    const widths = resolveColumnWidths(block, 8);
+    expect(widths[0]).toBeCloseTo(0.3);
+    expect(widths[1]).toBeCloseTo(0.1);
+  });
+
+  it('keeps the remaining columns proportional when one is removed', () => {
+    // Dropping the whole array would be simpler and would throw away every other width
+    // because one column was deleted.
+    let block = createTableBlock(2, 3);
+    block = { ...block, columnWidths: [0.5, 0.25, 0.25] };
+    const widths = resolveColumnWidths(removeColumn(block, 2), 2);
+    expect(widths[0]).toBeCloseTo(2 / 3);
+    expect(widths[1]).toBeCloseTo(1 / 3);
+  });
+
+  it('gives an inserted column an equal share without redistributing the rest', () => {
+    let block = createTableBlock(2, 2);
+    block = { ...block, columnWidths: [0.8, 0.2] };
+    const widths = resolveColumnWidths(insertColumn(block, 2), 3);
+    expect(widths[2]).toBeCloseTo(1 / 3);
+    // 0.8 : 0.2 preserved in what is left over.
+    expect(widths[0] / widths[1]).toBeCloseTo(4);
   });
 });

@@ -1,5 +1,5 @@
 import { createTableCell, createTableRow } from './factories';
-import type { TableBlock, TableCell } from './types';
+import type { CellPadding, TableBlock, TableCell } from './types';
 
 /**
  * Table structure: the shape of a table, separate from what is typed into it.
@@ -111,7 +111,7 @@ export function insertRow(block: TableBlock, index: number): TableBlock {
 export function insertColumn(block: TableBlock, index: number): TableBlock {
   const width = columnCountOf(block);
   const at = Math.max(0, Math.min(index, width));
-  return {
+  const grown: TableBlock = {
     ...block,
     rows: block.rows.map((row) => {
       const cells = [...row.cells];
@@ -119,7 +119,17 @@ export function insertColumn(block: TableBlock, index: number): TableBlock {
       cells.splice(at, 0, createTableCell());
       return { ...row, cells };
     }),
+    // Per-column padding is addressed by index, so it has to shift with the insert or
+    // every column past the new one would inherit its neighbour's padding.
+    columnPadding: block.columnPadding
+      ? (() => {
+          const next = [...block.columnPadding];
+          next.splice(at, 0, undefined);
+          return next;
+        })()
+      : undefined,
   };
+  return syncColumnWidths(grown, block.columnWidths, width, at, 'insert');
 }
 
 /**
@@ -137,14 +147,19 @@ export function removeRow(block: TableBlock, index: number): TableBlock {
 
 /** Remove a column, keeping at least one. */
 export function removeColumn(block: TableBlock, index: number): TableBlock {
-  if (columnCountOf(block) <= 1) return block;
-  return {
+  const width = columnCountOf(block);
+  if (width <= 1) return block;
+  const shrunk: TableBlock = {
     ...block,
     rows: block.rows.map((row) => ({
       ...row,
       cells: row.cells.filter((_, i) => i !== index),
     })),
+    columnPadding: block.columnPadding
+      ? block.columnPadding.filter((_, i) => i !== index)
+      : undefined,
   };
+  return syncColumnWidths(shrunk, block.columnWidths, width, index, 'remove');
 }
 
 /** Patch one cell, addressed by position. */
@@ -274,4 +289,228 @@ export function nextCell(
   const at = flat.findIndex((cell) => cell.id === cellId);
   if (at < 0) return undefined;
   return flat[at + direction]?.id;
+}
+
+/* ------------------------------------------------------------------ padding */
+
+/**
+ * What a cell is padded by when nothing overrides it.
+ *
+ * These are the exact numbers `w:tblCellMar` carried in `styles.ts` before padding was
+ * settable, so a table nobody has touched exports byte-identically — the same rule
+ * `TextFormat` follows for named styles. The left/right pair is wider than the top/bottom
+ * because that is Word's own default proportion, and it is what the reference papers show:
+ * text sits well clear of the vertical rules while the rows stay compact.
+ */
+export const DEFAULT_CELL_PADDING: Required<CellPadding> = {
+  top: 60,
+  right: 108,
+  bottom: 60,
+  left: 108,
+};
+
+/** The widest padding a teacher can dial in, per edge — about 1.3 cm. */
+export const MAX_CELL_PADDING_TWIPS = 720;
+
+export type PaddingScope = 'cell' | 'row' | 'column' | 'table';
+
+/**
+ * The padding actually in effect on one cell, resolved **per edge**.
+ *
+ * Precedence runs inward: cell → column → row → table → the built-in default. Each edge
+ * resolves on its own, so "this row is roomy on top" and "this column is tight on the
+ * left" compose instead of one silently discarding the other — an all-or-nothing object
+ * pick would make the second setting appear to do nothing.
+ *
+ * The row is *outside* the column deliberately. A row is a visible thing a teacher points
+ * at ("make this row taller"), a column is the axis a distribution table's headings run
+ * down, and where the two disagree the narrower, more deliberate statement should win.
+ *
+ * Resolution happens here rather than in each backend because Word has no row- or
+ * column-level margin at all: the `.docx` can only write the winner onto every `w:tcMar`,
+ * so the preview and the clipboard have to read the same winner or the page would show a
+ * padding the exported file does not have.
+ */
+export function resolveCellPadding(
+  block: TableBlock,
+  rowIndex: number,
+  cellIndex: number,
+): Required<CellPadding> {
+  const levels = [
+    block.rows[rowIndex]?.cells[cellIndex]?.padding,
+    block.columnPadding?.[cellIndex],
+    block.rows[rowIndex]?.cellPadding,
+    block.cellPadding,
+  ];
+
+  const edge = (side: keyof CellPadding): number => {
+    // `?? undefined` per level, not a truthiness test: 0 is a padding a teacher can
+    // choose, and treating it as absent would make "tighten to the border" fall through
+    // to whatever the level above says.
+    for (const level of levels) {
+      const value = level?.[side];
+      if (value !== undefined) return value;
+    }
+    return DEFAULT_CELL_PADDING[side];
+  };
+
+  return { top: edge('top'), right: edge('right'), bottom: edge('bottom'), left: edge('left') };
+}
+
+/** The padding stored at one level, before resolution — what the panel shows as set. */
+export function paddingAt(
+  block: TableBlock,
+  scope: PaddingScope,
+  at: { rowIndex: number; cellIndex: number },
+): CellPadding | undefined {
+  if (scope === 'cell') return block.rows[at.rowIndex]?.cells[at.cellIndex]?.padding;
+  if (scope === 'row') return block.rows[at.rowIndex]?.cellPadding;
+  if (scope === 'column') return block.columnPadding?.[at.cellIndex];
+  return block.cellPadding;
+}
+
+/**
+ * Write padding at one level, dropping the record once it says nothing.
+ *
+ * An edge set to `undefined` in the patch **clears** it back to inheritance, mirroring
+ * `applyFormatTarget`: without that, the only way back from a padding you regret would be
+ * to retype the default, which pins the value and stops it tracking a later table-level
+ * change. An empty object is deleted entirely so a reset leaves no husk in the saved file.
+ */
+export function setPadding(
+  block: TableBlock,
+  scope: PaddingScope,
+  at: { rowIndex: number; cellIndex: number },
+  patch: CellPadding,
+): TableBlock {
+  const merge = (current: CellPadding | undefined): CellPadding | undefined => {
+    const next: CellPadding = { ...current, ...patch };
+    for (const key of Object.keys(next) as Array<keyof CellPadding>) {
+      if (next[key] === undefined) delete next[key];
+    }
+    return Object.keys(next).length > 0 ? next : undefined;
+  };
+
+  if (scope === 'table') return { ...block, cellPadding: merge(block.cellPadding) };
+
+  if (scope === 'row') {
+    return {
+      ...block,
+      rows: block.rows.map((row, r) =>
+        r === at.rowIndex ? { ...row, cellPadding: merge(row.cellPadding) } : row,
+      ),
+    };
+  }
+
+  if (scope === 'column') {
+    // Padded out to the column being written, so index `n` stays column `n`; the holes
+    // are genuinely "says nothing" and resolve through to the row.
+    const width = Math.max(columnCountOf(block), at.cellIndex + 1);
+    const columnPadding = Array.from({ length: width }, (_, i) =>
+      i === at.cellIndex ? merge(block.columnPadding?.[i]) : block.columnPadding?.[i],
+    );
+    return {
+      ...block,
+      columnPadding: columnPadding.some((entry) => entry !== undefined)
+        ? columnPadding
+        : undefined,
+    };
+  }
+
+  return patchCell(block, at.rowIndex, at.cellIndex, {
+    padding: merge(block.rows[at.rowIndex]?.cells[at.cellIndex]?.padding),
+  });
+}
+
+/* ------------------------------------------------------------ column widths */
+
+/** No column may be dragged narrower than this fraction of the content width. */
+export const MIN_COLUMN_FRACTION = 0.04;
+
+/**
+ * Column widths as fractions summing to 1, for a table of `count` columns.
+ *
+ * Undefined, short, long or malformed stored widths all resolve to something usable
+ * rather than throwing: a table is a thing a teacher is looking at, and a saved document
+ * whose widths disagree with its column count (a column added by an older build, a hand-
+ * edited file) must still render. Equal columns are the fallback, which is what every
+ * table did before widths existed.
+ */
+export function resolveColumnWidths(block: TableBlock, count: number): number[] {
+  const equal = () => Array.from({ length: count }, () => 1 / Math.max(1, count));
+  const stored = block.columnWidths;
+  if (!stored || stored.length !== count) return equal();
+
+  const clean = stored.map((value) =>
+    typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0,
+  );
+  const total = clean.reduce((sum, value) => sum + value, 0);
+  if (total <= 0) return equal();
+
+  // Normalised rather than trusted: widths are stored as fractions of the content width,
+  // and a rounding drift across a dozen drags would otherwise leave the table narrower
+  // than the column or spilling past it.
+  return clean.map((value) => value / total);
+}
+
+/**
+ * Move the boundary between column `index` and the one after it by `delta` (a fraction).
+ *
+ * Only the two columns either side change, so dragging one border never reflows the whole
+ * table — the pointer stays on the edge it grabbed. Both are floored at
+ * `MIN_COLUMN_FRACTION`, since a zero-width column is unclickable and cannot be dragged
+ * back out.
+ */
+export function resizeColumn(
+  block: TableBlock,
+  index: number,
+  delta: number,
+  count = spannedColumnCount(block),
+): TableBlock {
+  const widths = resolveColumnWidths(block, count);
+  if (index < 0 || index + 1 >= widths.length) return block;
+
+  const pair = widths[index] + widths[index + 1];
+  const left = Math.min(
+    Math.max(widths[index] + delta, MIN_COLUMN_FRACTION),
+    pair - MIN_COLUMN_FRACTION,
+  );
+
+  const next = [...widths];
+  next[index] = left;
+  next[index + 1] = pair - left;
+  return { ...block, columnWidths: next };
+}
+
+/**
+ * Keep stored widths in step with a column count that just changed.
+ *
+ * Called after `insertColumn`/`removeColumn`, which know nothing about widths. Dropping
+ * the array whenever the count changes would be simpler and wrong: deleting the last
+ * column of a carefully sized table would throw away every other width with it.
+ */
+export function syncColumnWidths(
+  block: TableBlock,
+  previous: number[] | undefined,
+  previousCount: number,
+  index: number,
+  change: 'insert' | 'remove',
+): TableBlock {
+  if (!previous || previous.length !== previousCount) return block;
+
+  if (change === 'insert') {
+    // The new column takes an equal share and the rest keep their proportions, so an
+    // insert widens the table's grid without redistributing what was already set.
+    const share = 1 / (previousCount + 1);
+    const next = previous.map((value) => value * (1 - share));
+    next.splice(Math.max(0, Math.min(index, previousCount)), 0, share);
+    return { ...block, columnWidths: next };
+  }
+
+  const next = previous.filter((_, i) => i !== index);
+  if (next.length === 0) return { ...block, columnWidths: undefined };
+  const total = next.reduce((sum, value) => sum + value, 0);
+  // The removed column's width is shared out proportionally, which is what keeps the
+  // remaining columns' relative sizes intact.
+  return { ...block, columnWidths: total > 0 ? next.map((value) => value / total) : undefined };
 }

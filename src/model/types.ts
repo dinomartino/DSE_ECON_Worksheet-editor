@@ -95,6 +95,24 @@ export interface ParagraphBlock {
   format?: TextFormat;
 }
 
+/**
+ * The breathing room inside a cell's borders, per edge, in **twips**.
+ *
+ * Twips because that is what Word's `w:tcMar` takes and what `pageSetup` already stores,
+ * so the exporter writes these numbers straight out and the preview converts once — the
+ * same reason margins are not held in points or millimetres.
+ *
+ * Every edge is optional and means "inherit the next level up" (§ padding resolves in one
+ * direction). An edge set to 0 is a real value, deliberately distinct from absent: a
+ * teacher tightening a dense table to the border must not read as having said nothing.
+ */
+export interface CellPadding {
+  top?: number;
+  right?: number;
+  bottom?: number;
+  left?: number;
+}
+
 export interface TableCell {
   id: string;
   text: BiText;
@@ -103,11 +121,26 @@ export interface TableCell {
   align?: CellAlign;
   /** True when this cell is covered by a merge from above/left and must not render. */
   covered?: boolean;
+  /**
+   * Padding for this cell alone — the innermost level, beating its column, row and table.
+   */
+  padding?: CellPadding;
+  /**
+   * Formatting for the cell's text, layered over the Body style like every other element.
+   *
+   * A cell is a `w:p` inside a `w:tc`, so it takes direct formatting exactly as a stem
+   * paragraph does; this is what lets the toolbar bold a heading cell. Emphasis in an
+   * HKDSE table is per-cell precisely because the papers have no header row to carry it
+   * (see the note on this block).
+   */
+  format?: TextFormat;
 }
 
 export interface TableRow {
   id: string;
   cells: TableCell[];
+  /** Padding for every cell in this row, unless a cell overrides it. */
+  cellPadding?: CellPadding;
 }
 
 /**
@@ -129,6 +162,24 @@ export interface TableBlock {
   id: string;
   rows: TableRow[];
   caption?: BiText;
+  /** The table's own default padding, under every row, column and cell. */
+  cellPadding?: CellPadding;
+  /**
+   * Padding by column index, sitting between the row's and the cell's.
+   *
+   * Sparse by design: a hole means "that column says nothing", which is not the same as
+   * a column padded to zero. Word has no column-level margin, so this is flattened onto
+   * each `w:tcMar` at export (§ padding resolves in one direction).
+   */
+  columnPadding?: (CellPadding | undefined)[];
+  /**
+   * Column widths as fractions of the content width, in column order.
+   *
+   * Undefined means equal columns, which is what every table did before widths existed.
+   * Fractions rather than twips so a table keeps its proportions when the paper size or
+   * the margins change — the same reason `ColumnsNode` positions are fractions.
+   */
+  columnWidths?: number[];
 }
 
 export interface ImageBlock {

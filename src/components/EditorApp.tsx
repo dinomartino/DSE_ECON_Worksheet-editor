@@ -39,6 +39,7 @@ export function EditorApp() {
   const formatRuns = useWorksheetStore((s) => s.formatRuns);
   const resizeBlock = useWorksheetStore((s) => s.resizeBlock);
   const resizeLayoutElement = useWorksheetStore((s) => s.resizeLayoutElement);
+  const resizeTableColumn = useWorksheetStore((s) => s.resizeTableColumn);
   const splitLayoutRows = useWorksheetStore((s) => s.splitLayoutRows);
   const reorderFlowItem = useWorksheetStore((s) => s.reorderFlowItem);
   const moveBandField = useWorksheetStore((s) => s.moveBandField);
@@ -465,6 +466,7 @@ export function EditorApp() {
             textOf={textOf}
             onResizeBlock={resizeBlock}
             onResizeRows={resizeLayoutElement}
+            onResizeTableColumn={resizeTableColumn}
             onSplitRows={splitLayoutRows}
             onOpenBlock={setDrawingBlockId}
             onReorder={handleReorder}

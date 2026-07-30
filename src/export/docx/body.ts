@@ -218,29 +218,75 @@ function textNodeXml(node: TextNode, context: BodyContext): string {
   });
 }
 
-function cellParagraph(cellText: string, align: string): string {
+function cellParagraph(cellText: string, align: string, format?: TextFormat): string {
   // No `w:spacing` override: the cell paragraph takes the Body style's fixed 12pt line
   // and zero padding like every other paragraph, so a table's rows sit on the same
   // rhythm as the text around it. The breathing room a cell needs is horizontal and
-  // vertical *cell* margin (`w:tblCellMar` in styles.ts), which is a table concern —
-  // paragraph spacing here would put the gap inside the cell's text flow instead and
-  // desynchronise the row from the page's line grid.
+  // vertical *cell* margin (`w:tcMar` per cell), which is a table concern — paragraph
+  // spacing here would put the gap inside the cell's text flow instead and desynchronise
+  // the row from the page's line grid.
+  //
+  // The cell's own alignment wins over any `align` in its format: `CellAlign` is the
+  // thing the panel and the page both set, and a `TextFormat.align` arriving from the
+  // shared toolbar must not quietly overrule the control that names the cell.
   return (
     '<w:p><w:pPr>' +
     `<w:pStyle w:val="${STYLE_IDS.Body}"/>` +
     `<w:jc w:val="${align}"/>` +
+    formatParagraphProps(format ? { ...format, align: undefined } : undefined) +
     '</w:pPr>' +
     cellText +
     '</w:p>'
   );
 }
 
+/**
+ * The per-cell margins, written onto every `w:tc`.
+ *
+ * Word has table-level `w:tblCellMar` and cell-level `w:tcMar` and **nothing in
+ * between** — no row or column margin exists in OOXML. So the resolver's winner is
+ * flattened onto each cell here; a teacher's "this row is roomy" survives as an editable
+ * statement in the model and reaches Word as the only thing Word can express.
+ */
+function cellMargins(padding: TableNode['rows'][number][number]['padding']): string {
+  return (
+    '<w:tcMar>' +
+    `<w:top w:w="${Math.round(padding.top)}" w:type="dxa"/>` +
+    `<w:left w:w="${Math.round(padding.left)}" w:type="dxa"/>` +
+    `<w:bottom w:w="${Math.round(padding.bottom)}" w:type="dxa"/>` +
+    `<w:right w:w="${Math.round(padding.right)}" w:type="dxa"/>` +
+    '</w:tcMar>'
+  );
+}
+
 function tableNodeXml(node: TableNode, context: BodyContext): string {
-  const columnWidth = Math.floor(CONTENT_WIDTH_TWIPS / Math.max(1, node.columnCount));
+  /*
+   * Column widths in twips, from the IR's fractions.
+   *
+   * The last column takes the rounding remainder rather than being rounded on its own,
+   * so the columns always sum to exactly `CONTENT_WIDTH_TWIPS`. Rounding each
+   * independently leaves the grid a few twips short or long, and Word resolves that
+   * disagreement by stretching the final column — visibly, on a table with many columns.
+   */
+  const columnWidths = (() => {
+    const widths = node.columnWidths.map((fraction) =>
+      Math.max(1, Math.round(fraction * CONTENT_WIDTH_TWIPS)),
+    );
+    if (widths.length === 0) return widths;
+    const drift = CONTENT_WIDTH_TWIPS - widths.reduce((sum, value) => sum + value, 0);
+    widths[widths.length - 1] += drift;
+    return widths;
+  })();
+
+  /** The width of a cell spanning `span` columns from `index`. */
+  const spanWidth = (index: number, span: number) =>
+    columnWidths.slice(index, index + span).reduce((sum, value) => sum + value, 0) ||
+    columnWidths[index] ||
+    Math.floor(CONTENT_WIDTH_TWIPS / Math.max(1, node.columnCount));
 
   const grid =
     '<w:tblGrid>' +
-    Array.from({ length: node.columnCount }, () => `<w:gridCol w:w="${columnWidth}"/>`).join('') +
+    columnWidths.map((width) => `<w:gridCol w:w="${width}"/>`).join('') +
     '</w:tblGrid>';
 
   const border = (side: string) =>
@@ -276,20 +322,26 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
           if (cell.covered && !coveredVertically) return '';
 
           const props: string[] = [
-            `<w:tcW w:w="${columnWidth * cell.colSpan}" w:type="dxa"/>`,
+            `<w:tcW w:w="${spanWidth(cellIndex, cell.colSpan)}" w:type="dxa"/>`,
           ];
           if (cell.colSpan > 1) props.push(`<w:gridSpan w:val="${cell.colSpan}"/>`);
           if (coveredVertically) props.push('<w:vMerge/>');
           else if (cell.rowSpan > 1) props.push('<w:vMerge w:val="restart"/>');
+          props.push(cellMargins(cell.padding));
           props.push('<w:vAlign w:val="center"/>');
 
           const runs = coveredVertically
             ? ''
-            : biTextRuns(cell.text, context.fonts, context.language);
+            : biTextRuns(
+                cell.text,
+                context.fonts,
+                context.language,
+                formatRunOptions(cell.format),
+              );
 
           return (
             `<w:tc><w:tcPr>${props.join('')}</w:tcPr>` +
-            cellParagraph(runs, cell.align) +
+            cellParagraph(runs, cell.align, cell.format) +
             '</w:tc>'
           );
         })

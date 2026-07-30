@@ -3,11 +3,13 @@ import type {
   BandFieldSide,
   BiText,
   CellAlign,
+  CellPadding,
   ContentBlock,
   OutputMode,
   TextFormat,
 } from '@/model/types';
 import { trailingBlankLines } from '@/model/text';
+import { resolveCellPadding, resolveColumnWidths } from '@/model/table';
 
 /**
  * Neutral render IR.
@@ -137,6 +139,16 @@ export interface TableNodeCell {
   rowSpan: number;
   align: CellAlign;
   covered: boolean;
+  /**
+   * The padding in effect on this cell, in twips, already resolved.
+   *
+   * Fully resolved here rather than per backend because Word has no row- or column-level
+   * cell margin: the `.docx` can only write the winner onto each `w:tcMar`, so a backend
+   * that re-derived it could show the page a padding the exported file does not have.
+   */
+  padding: Required<CellPadding>;
+  /** Direct formatting for the cell's text, over the Body style. */
+  format?: TextFormat;
   edit?: EditTarget;
 }
 
@@ -147,6 +159,16 @@ export interface TableNode {
   keepNext?: boolean;
   teacherOnly?: boolean;
   columnCount: number;
+  /**
+   * Column widths as fractions of the content width, one per column, summing to 1.
+   *
+   * Always present and always resolved, so no backend has to decide what "no widths
+   * stored" means — the preview's `colgroup` and the exporter's `w:gridCol` divide the
+   * same numbers and cannot disagree about where a column edge falls.
+   */
+  columnWidths: number[];
+  /** Which block this came from, so the preview can resize its columns. */
+  blockId: string;
   /** Edit target for the caption. */
   captionEdit?: EditTarget;
 }
@@ -421,17 +443,23 @@ export function renderContentBlocks(
       nodes.push({
         kind: 'table',
         columnCount,
+        // Resolved once, here, so the preview's colgroup and the exporter's w:gridCol
+        // divide the identical numbers — the paginator measures boxes Word must reproduce.
+        columnWidths: resolveColumnWidths(block, columnCount),
+        blockId: block.id,
         caption: block.caption,
         keepNext: options.keepNext,
         teacherOnly: options.teacherOnly,
         captionEdit: { kind: 'blockCaption', blockId: block.id },
-        rows: block.rows.map((row) =>
-          row.cells.map((cell) => ({
+        rows: block.rows.map((row, rowIndex) =>
+          row.cells.map((cell, cellIndex) => ({
             text: cell.text,
             colSpan: cell.colSpan ?? 1,
             rowSpan: cell.rowSpan ?? 1,
             align: cell.align ?? 'left',
             covered: Boolean(cell.covered),
+            padding: resolveCellPadding(block, rowIndex, cellIndex),
+            format: cell.format,
             edit: { kind: 'tableCell', blockId: block.id, cellId: cell.id },
           })),
         ),

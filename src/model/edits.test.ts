@@ -3,10 +3,13 @@ import {
   MIN_BLOCK_WIDTH_PX,
   applyDeleteTarget,
   applyEditTarget,
+  applyFormatTarget,
   applyResizeBlock,
   applyRunFormatTarget,
   blockSize,
   describeDelete,
+  formatOfTarget,
+  isFormattable,
   targetQuestionId,
   textOfTarget,
 } from './edits';
@@ -340,6 +343,101 @@ describe('formatting a character range inside a target', () => {
       plain(worksheet.title.en),
     );
     expect(textOfTarget(worksheet, { kind: 'blockText', blockId: 'gone' })).toBeUndefined();
+  });
+});
+
+/*
+ * A table cell formats like every other text element.
+ *
+ * It was the one editable surface on the page the toolbar refused: typing worked, but
+ * bold, size and colour did not. That gap matters most in a table, because an HKDSE table
+ * has no header row — per-cell formatting is the only mechanism a distribution table's
+ * headings have (§tables).
+ */
+describe('formatting a table cell', () => {
+  /** The first table in the acceptance fixture, with its address. */
+  const firstCell = (worksheet: Worksheet) => {
+    for (const question of worksheet.questions) {
+      for (const block of question.blocks) {
+        if (block.kind === 'table') {
+          return { blockId: block.id, cellId: block.rows[0].cells[0].id };
+        }
+      }
+    }
+    throw new Error('fixture has no table');
+  };
+
+  const cellOf = (worksheet: Worksheet, address: { blockId: string; cellId: string }) => {
+    for (const question of worksheet.questions) {
+      for (const block of question.blocks) {
+        if (block.kind === 'table' && block.id === address.blockId) {
+          for (const row of block.rows) {
+            const cell = row.cells.find((entry) => entry.id === address.cellId);
+            if (cell) return cell;
+          }
+        }
+      }
+    }
+    return undefined;
+  };
+
+  it('is formattable at all', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    expect(isFormattable({ kind: 'tableCell', ...firstCell(worksheet) })).toBe(true);
+  });
+
+  it('writes an element-level override onto the cell', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const address = firstCell(worksheet);
+    const target = { kind: 'tableCell' as const, ...address };
+
+    const next = applyFormatTarget(worksheet, target, { bold: true, fontSize: 14 });
+    expect(cellOf(next, address)?.format).toEqual({ bold: true, fontSize: 14 });
+    // And the toolbar reads back what it just wrote, or its buttons would invert.
+    expect(formatOfTarget(next, target)).toEqual({ bold: true, fontSize: 14 });
+  });
+
+  it('clears an override back to the style, leaving no husk', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const address = firstCell(worksheet);
+    const target = { kind: 'tableCell' as const, ...address };
+
+    let next = applyFormatTarget(worksheet, target, { bold: true });
+    next = applyFormatTarget(next, target, { bold: undefined });
+    expect(cellOf(next, address)?.format).toBeUndefined();
+  });
+
+  it('formats a character range inside a cell', () => {
+    // Per-run formatting comes free from `textOfTarget` + `applyEditTarget` being the
+    // read and write `applyRunFormatTarget` composes. `textOfTarget` did not know the
+    // kind, so bolding a phrase inside a cell resolved to no text and did nothing.
+    const worksheet = buildAcceptanceWorksheet();
+    const address = firstCell(worksheet);
+    const target = { kind: 'tableCell' as const, ...address };
+
+    const before = textOfTarget(worksheet, target);
+    expect(before).toBeDefined();
+    const text = plain(before!.en);
+    const start = text.indexOf('Price');
+    expect(start).toBeGreaterThanOrEqual(0);
+
+    const next = applyRunFormatTarget(worksheet, target, 'en', start, start + 5, {
+      bold: true,
+    });
+    const runs = cellOf(next, address)!.text.en;
+    expect(plain(runs)).toBe(text);
+    expect(runs.find((run) => run.bold)?.text).toBe('Price');
+  });
+
+  it('leaves the document alone for a cell id that no longer resolves', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const address = firstCell(worksheet);
+    expect(
+      formatOfTarget(worksheet, { kind: 'tableCell', blockId: address.blockId, cellId: 'gone' }),
+    ).toBeUndefined();
+    expect(
+      textOfTarget(worksheet, { kind: 'tableCell', blockId: 'gone', cellId: address.cellId }),
+    ).toBeUndefined();
   });
 });
 

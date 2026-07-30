@@ -18,13 +18,14 @@ import {
   createSpacerElement,
 } from '@/model/flow';
 import { applyResizeBlock } from '@/model/edits';
+import { DEFAULT_CELL_PADDING, patchCell, setPadding } from '@/model/table';
 import { BAND_ROW_TWIPS, MARGIN_PRESETS, bandsHeight, cmToTwips } from '@/model/page';
 import { FIXED_LINE_TWIPS, exactLineFor } from './styles';
 import { createWorksheet } from '@/model/factories';
 import { applyRunFormat, bi, plain } from '@/model/text';
 import { renderWorksheet } from '@/render/worksheet';
 import type { TextNode } from '@/render/ir';
-import type { LayoutElement, OutputMode, Worksheet } from '@/model/types';
+import type { LayoutElement, OutputMode, TableBlock, Worksheet } from '@/model/types';
 
 const STUDENT_BI: OutputMode = { language: 'bilingual', version: 'student' };
 const TEACHER_BI: OutputMode = { language: 'bilingual', version: 'teacher' };
@@ -509,6 +510,115 @@ describe('tables and images (§7.5, §11.5, §11.6)', () => {
 
     expect(document).not.toContain('<w:tblHeader/>');
     expect(document).not.toContain('EFEFEF');
+  });
+
+  /*
+   * Cell padding and column widths (§tables).
+   *
+   * Word has table-level `w:tblCellMar` and cell-level `w:tcMar` and nothing between, so
+   * a row's or a column's padding can only reach Word flattened onto the cells it covers.
+   * These assert the flattening, and that a table nobody has touched is unchanged.
+   */
+  const withTable = async (edit: (block: TableBlock) => TableBlock) => {
+    const worksheet = buildAcceptanceWorksheet();
+    const question = worksheet.questions[1];
+    question.blocks = question.blocks.map((block) =>
+      block.kind === 'table' && !block.rows.some((row) => row.cells.some((c) => c.covered))
+        ? edit(block)
+        : block,
+    );
+    const bytes = await exportDocxBuffer(worksheet, STUDENT_BI);
+    const zip = await JSZip.loadAsync(bytes);
+    return zip.file('word/document.xml')!.async('string');
+  };
+
+  /** The `w:tcMar` of every cell in the fixture's 3×3 schedule table, in order. */
+  const marginsOf = (document: string) => {
+    const table = document.slice(document.indexOf('<w:tbl>'), document.indexOf('</w:tbl>'));
+    return [...table.matchAll(/<w:tcMar>(.*?)<\/w:tcMar>/g)].map(([, body]) => ({
+      top: Number(/w:top w:w="(\d+)"/.exec(body)?.[1]),
+      left: Number(/w:left w:w="(\d+)"/.exec(body)?.[1]),
+      bottom: Number(/w:bottom w:w="(\d+)"/.exec(body)?.[1]),
+      right: Number(/w:right w:w="(\d+)"/.exec(body)?.[1]),
+    }));
+  };
+
+  it('writes the built-in padding onto every cell, unchanged from the old default', async () => {
+    // 60/108 are the numbers `w:tblCellMar` alone used to carry. An untouched table must
+    // print exactly as it did before padding was settable — the rule TextFormat follows.
+    const document = await withTable((block) => block);
+    for (const margin of marginsOf(document)) {
+      expect(margin).toEqual(DEFAULT_CELL_PADDING);
+    }
+  });
+
+  it('flattens a row’s padding onto that row’s cells only', async () => {
+    const document = await withTable((block) =>
+      setPadding(block, 'row', { rowIndex: 1, cellIndex: 0 }, { top: 300, bottom: 300 }),
+    );
+    const margins = marginsOf(document);
+    // Row 1 is cells 3–5 of a 3×3 grid.
+    expect(margins.slice(3, 6).map((m) => m.top)).toEqual([300, 300, 300]);
+    expect(margins.slice(0, 3).map((m) => m.top)).toEqual([60, 60, 60]);
+    expect(margins.slice(6).map((m) => m.top)).toEqual([60, 60, 60]);
+  });
+
+  it('flattens a column’s padding down the column', async () => {
+    const document = await withTable((block) =>
+      setPadding(block, 'column', { rowIndex: 0, cellIndex: 0 }, { left: 400 }),
+    );
+    const margins = marginsOf(document);
+    expect([margins[0].left, margins[3].left, margins[6].left]).toEqual([400, 400, 400]);
+    expect([margins[1].left, margins[4].left, margins[7].left]).toEqual([108, 108, 108]);
+  });
+
+  it('sizes w:gridCol from the stored widths and sums them to the content width', async () => {
+    // The reference cost-output table: one wide label column, the rest narrow. Equal
+    // thirds cannot express it, and the preview would then paginate on geometry Word
+    // will not reproduce.
+    const document = await withTable((block) => ({ ...block, columnWidths: [0.5, 0.25, 0.25] }));
+    const grid = /<w:tblGrid>(.*?)<\/w:tblGrid>/.exec(document)![1];
+    const widths = [...grid.matchAll(/w:w="(\d+)"/g)].map(([, w]) => Number(w));
+
+    expect(widths).toHaveLength(3);
+    expect(widths[0]).toBeCloseTo(widths[1] * 2, -1);
+    // Exactly the content width: rounding each column on its own leaves the grid short
+    // or long, and Word settles that by visibly stretching the final column.
+    expect(widths.reduce((sum, w) => sum + w, 0)).toBe(
+      Number(/<w:tblW w:w="(\d+)"/.exec(document)![1]),
+    );
+  });
+
+  it('gives a merged cell the summed width of the columns it spans', async () => {
+    const document = await withTable((block) => ({ ...block, columnWidths: [0.5, 0.25, 0.25] }));
+    const total = Number(/<w:tblW w:w="(\d+)"/.exec(document)![1]);
+    const table = document.slice(document.indexOf('<w:tbl>'), document.indexOf('</w:tbl>'));
+    const first = Number(/<w:tcW w:w="(\d+)"/.exec(table)![1]);
+    expect(first).toBeCloseTo(total / 2, -1);
+  });
+
+  it('carries a cell’s own formatting into its runs', async () => {
+    // A cell is a `w:p` in a `w:tc`, so it takes direct formatting like a stem does —
+    // which is what lets the toolbar bold a heading cell in a paper that has no header row.
+    const document = await withTable((block) =>
+      patchCell(block, 0, 0, { format: { bold: true, fontSize: 14 } }),
+    );
+    const table = document.slice(document.indexOf('<w:tbl>'), document.indexOf('</w:tbl>'));
+    const firstCell = table.slice(0, table.indexOf('</w:tc>'));
+    expect(firstCell).toContain('<w:b/>');
+    expect(firstCell).toContain('<w:sz w:val="28"/>');
+  });
+
+  it('keeps the cell’s own alignment over any align in its format', async () => {
+    // `CellAlign` is what the panel and the page both set; a `TextFormat.align` arriving
+    // from the shared toolbar must not quietly overrule the control that names the cell.
+    const document = await withTable((block) =>
+      patchCell(block, 0, 0, { align: 'center', format: { align: 'right' } }),
+    );
+    const table = document.slice(document.indexOf('<w:tbl>'), document.indexOf('</w:tbl>'));
+    const firstCell = table.slice(0, table.indexOf('</w:tc>'));
+    expect(firstCell).toContain('<w:jc w:val="center"/>');
+    expect(firstCell).not.toContain('<w:jc w:val="right"/>');
   });
 
   it('embeds image bytes in word/media with alt text on the drawing', async () => {

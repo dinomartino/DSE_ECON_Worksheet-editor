@@ -22,7 +22,7 @@ the same PR.
 | State | Zustand 5, undo/redo with a 100-entry history |
 | Language | TypeScript strict |
 | Export | Raw OOXML via JSZip (hand-built, no `docx` library) |
-| Test | Vitest 4 — 476 tests across 21 files, ~1s |
+| Test | Vitest 4 — 521 tests across 23 files, ~1s |
 | Runtime | Browser-only: client-side `.docx` generation, no API routes |
 
 ## Project structure
@@ -95,7 +95,7 @@ The editor layout the preview sits in:
 
 ```
 Worksheet
-├── schemaVersion              CURRENT_SCHEMA_VERSION = 6
+├── schemaVersion              CURRENT_SCHEMA_VERSION = 7
 ├── id · title · titleFormat? · instructions? · instructionsFormat?
 ├── fonts: FontPair            { latin, eastAsia }
 ├── pageSetup?: PageSetup      paper · orientation · margins, all in twips
@@ -115,6 +115,11 @@ Worksheet
 
 ContentBlock = ParagraphBlock | TableBlock | ImageBlock | DiagramBlock
 BiText { en: RichText, zh: RichText }        RichText = InlineRun[]
+
+TableBlock   rows · caption? · columnWidths?      fractions of the content width
+             cellPadding? · columnPadding?[]      padding resolves cell → column
+  TableRow     cells · cellPadding?                → row → table → default
+    TableCell    text · colSpan? · rowSpan? · align? · covered? · padding? · format?
 ```
 
 **Numbering and marks are never stored.** `computeNumbering()` derives numbers at render
@@ -599,6 +604,86 @@ next load, which is exactly what the papers look like. Two regression tests asse
 absence — `not.toContain('<w:tblHeader/>')` and `not.toContain('EFEFEF')` — because this
 is a fault whose only symptom is on paper.
 
+### Padding resolves in one direction; Word only understands the answer
+
+A teacher sizes padding on **a cell, a row, a column or the whole table**, and both
+reference tables need at least two of those: their rows are visibly taller than one 12pt
+line, and their left-hand label column sits well clear of the vertical rule.
+
+OOXML has table-level `w:tblCellMar` and cell-level `w:tcMar` and **nothing in between** —
+no row or column margin exists. So the four levels live in the model, where they stay
+editable statements of intent, and `resolveCellPadding()` picks the winner that the `.docx`
+then flattens onto **every** `w:tc`. Storing only per-cell padding would match Word exactly
+and lose the intent: a column added later would inherit nothing, and "this table is roomy"
+could not be said once.
+
+Precedence runs inward — **cell → column → row → table → `DEFAULT_CELL_PADDING`** — and
+three things about it are load-bearing:
+
+- **Each edge resolves on its own.** "This row is roomy on top" and "this column is tight
+  on the left" compose; an all-or-nothing object pick would let the second setting a
+  teacher made appear to do nothing.
+- **Zero is a value, not absence.** Tightening a dense table to its border must not fall
+  through to the roomier level above, which is what a truthiness test would do.
+- **The default is the old hardcoded pair** (60/108 twips, Word's own proportion), so a
+  table nobody has touched exports byte-identically — the rule `TextFormat` follows for
+  named styles. `styles.ts` spells its `w:tblCellMar` *from* the constant rather than a
+  second time.
+
+The row sits **outside** the column deliberately: a row is a thing a teacher points at,
+a column is the axis a distribution table's headings run down, and the narrower statement
+should win where they disagree.
+
+### Columns are fractions, and the preview must lay them out fixed
+
+Neither reference table has equal columns — the cost-output table's label column is about
+three times a data column. `columnWidths` stores fractions of the content width (not
+twips), so a table keeps its proportions when the paper or the margins change, the same
+reason `ColumnsNode` positions are fractions. Undefined means equal columns, which is what
+every table did before.
+
+**The preview has to be `table-layout: fixed` with a `colgroup`.** Browser auto-layout
+sizes columns from their *content* while Word sizes them from `w:gridCol`, and nothing
+reconciles the two — the paginator measures these boxes, so an auto-layout table breaks the
+page somewhere Word will not. `tableGeometry.test.ts` pins that, along with the two
+related rules: the exporter gives the **last column the rounding remainder** so the grid
+sums to exactly `CONTENT_WIDTH_TWIPS` (rounding each independently leaves Word visibly
+stretching the final column), and a merged cell's `w:tcW` is the **sum of the columns it
+spans**, not one column's width times the span.
+
+**Text wraps and the row grows**, as Word does. The preview used to wrap tables in
+`overflow-x-auto`, which is a scrollbar on a sheet of paper: it hid an over-wide table
+instead of showing it, and the sheet then measured the *scroller* rather than the content,
+so the overflow was invisible to pagination. Cells also set `overflow-wrap: break-word`,
+since `table-fixed` holds the column and an unbroken string would otherwise cross the
+border.
+
+Widths are dragged on the page (`TableColumnResizer`) and follow the page's other two
+gestures: the in-flight value is **local state committed once on pointer-up**, the delta
+**divides by the preview scale**, and Escape abandons it. A boundary is not a selectable
+object — there is nothing to delete or format — so the handles are revealed on hover with
+no click-to-arm step, and they are absolutely positioned `data-print-hide` chrome that
+reserves no space. `resizeColumn` moves **only the two columns either side**, so the
+pointer stays on the edge it grabbed, and floors both at `MIN_COLUMN_FRACTION` because a
+zero-width column cannot be dragged back out.
+
+`insertColumn`/`removeColumn` carry the widths and the per-column padding with them, both
+being addressed by index. Dropping the arrays on any change would be simpler and wrong:
+deleting one column would discard every other width that had been set.
+
+### A cell formats like any other text
+
+`tableCell` is in `isFormattable`, so the page's format toolbar serves a cell exactly as it
+serves a stem. It was the one editable surface the toolbar refused — a teacher could type
+into a cell but not bold it — which matters most here, because an HKDSE table has **no
+header row**: per-cell formatting is the only mechanism a distribution table's headings
+have.
+
+Per-run formatting inside a cell came free from teaching `textOfTarget` the kind, since
+`applyRunFormatTarget` composes that read with `applyEditTarget`, which already knew it.
+The cell's own `CellAlign` still wins over any `TextFormat.align`, or the shared toolbar
+would quietly overrule the control that names the cell.
+
 `model/table.ts` holds the structure verbs (insert/remove row and column, merge, unmerge,
 `nextCell`) as pure functions, because **two surfaces perform the same edits** — the
 sidebar panel and the page — and a verb implemented twice eventually means two things.
@@ -624,7 +709,24 @@ wrapping or borders that make a table readable are visible there.
 Word's division is the one that works and the one a teacher arrives knowing: **structure
 from a panel, content in the document.** So the panel offers only the verbs with no
 representation on the page — insert row above/below, insert column left/right, delete,
-align, merge — and points at the page for typing.
+align, merge, and the four padding edges — and points at the page for typing.
+
+Padding is the one setting offered in **both** places, and the split is the diagram's:
+the panel types exact values, the page drags. It follows two rules of its own:
+
+- **The scope is chosen before the numbers** (Cell / Row / Col / All), because the same
+  four fields mean four different edits and a control whose target was implied by whatever
+  was last clicked would silently change meaning. With no cell selected it falls back to
+  the whole table rather than hiding, that being what most tables want anyway.
+- **Every field shows what is in effect, and says whether it is inherited.** Blank boxes
+  over a padded cell would read as "no padding", which is a different claim; and an
+  override is otherwise indistinguishable from an inherited value that happens to match,
+  leaving no way back. A level that has its own value says so and offers Reset.
+
+Each edge holds a **local draft string while focused** and commits on blur or Enter, the
+same as the margin fields and for a sharper version of the same reason: the displayed
+number is *derived*, so re-reading it per keystroke fights the typing. Typing "10" over a
+"3" committed each digit and re-resolved before the next arrived, landing on 36.
 
 Every one of those verbs needs a subject, so the page reports the clicked cell as
 `activeCell` in the store (the sidebar is a sibling component, the same reason
@@ -1306,6 +1408,10 @@ hover                     → drag grip in the margin → drag to reorder
   **divides by the preview scale**; the in-flight size is **local state committed once on
   release**, so a drag costs one undo entry; and the drag **clamps to the text column**,
   since a wider picture is clipped on screen and rescaled by Word.
+- **A table's column boundaries drag** (`preview/TableColumnResizer.tsx`), by the same
+  three rules: local in-flight state committed once on release, the delta divided by the
+  preview scale, and Escape to abandon. No selection step, a boundary being nothing you
+  could delete or format (§columns are fractions).
 - **A picture's click target stays mounted while selected.** Unmounting it left only a
   `pointer-events-none` outline, so the next click fell through to the question wrapper
   and cleared `selectedBlockId` — which is why Delete on a selected picture appeared to do
@@ -1411,8 +1517,8 @@ is called on pointer-up only, or one drag floods the undo stack with dozens of e
   by `LocalStorageWorksheetStore`.
 - **Autosave** debounced 1.2s after the last change.
 - **File download/upload** as `.worksheet.json`, images included base64.
-- **Migration chain**: `migrate()` runs ordered pure functions v1→v6
-  (`CURRENT_SCHEMA_VERSION = 6`) on load.
+- **Migration chain**: `migrate()` runs ordered pure functions v1→v7
+  (`CURRENT_SCHEMA_VERSION = 7`) on load.
 - **Forward compatibility**: unknown top-level fields are preserved in `__unknown` through
   load and save.
 - **`KNOWN_KEYS` must list every top-level field.** An unlisted key is treated as written

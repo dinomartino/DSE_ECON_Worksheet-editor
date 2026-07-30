@@ -14,7 +14,9 @@ import {
   pageDimensions,
   pageSetupOf,
   twipsToMm,
+  twipsToPt,
 } from "@/model/page";
+import { TableColumnResizer } from "./TableColumnResizer";
 import { zonesOf, type ZoneName } from "@/model/bands";
 import { describeDelete, isFormattable } from "@/model/edits";
 import { worksheetMarks } from "@/model/marks";
@@ -39,7 +41,7 @@ import type {
 import { isModalLayerOpen } from "@/components/ui/modalLayer";
 import { useWorksheetStore, type BandScope } from "@/store/worksheetStore";
 import { diagramSvg } from "@/render/diagram";
-import type { EditTarget, RenderNode, TextNode } from "@/render/ir";
+import type { EditTarget, RenderNode, TableNode, TextNode } from "@/render/ir";
 import { bandFieldText, renderWorksheet } from "@/render/worksheet";
 import { listQuestionTypes, requireQuestionType } from "@/registry";
 import {
@@ -522,6 +524,27 @@ export interface EditContext {
   activeCell?: { blockId: string; cellId: string };
   onActivateCell?: (cell: { blockId: string; cellId: string }) => void;
   /**
+   * Dragging a table's column boundaries on the page.
+   *
+   * Separate from `resize` (pictures) and `resizeRows` (answer lines) because it names a
+   * *boundary inside* a block rather than the block itself, and its unit is a fraction of
+   * the table rather than pixels or a count of lines. Folding it into either would need an
+   * index whose meaning depends on what kind of thing the id happens to point at.
+   *
+   * Omitted when the host passes no handler, which keeps the print path, the read-only
+   * preview and the page-rail thumbnails free of handles.
+   */
+  tableColumns?: {
+    /** Preview zoom, so a pointer delta converts back to page pixels. */
+    scale: number;
+    onResizeColumn: (
+      blockId: string,
+      index: number,
+      delta: number,
+      columnCount: number,
+    ) => void;
+  };
+  /**
    * Resizing a picture on the page.
    *
    * Separate from the text selection above because a block has no language side: a
@@ -887,6 +910,203 @@ function SizedRows({
   );
 }
 
+/**
+ * A table on the page: sized columns, per-cell padding, and text that wraps.
+ *
+ * Three things here have to match the exporter exactly, because the paginator measures
+ * these boxes and a preview that lies about the height breaks the page in a place Word
+ * will not:
+ *
+ * - **`table-layout: fixed` with a `colgroup`.** The `.docx` writes `w:gridCol` from the
+ *   same fractions, and Word's tables are fixed-layout. Browser auto-layout sizes columns
+ *   from their *content*, so the same table drew differently on screen than on paper, and
+ *   the widths a teacher dragged would not have survived the trip.
+ * - **Padding in points from the resolved twips.** One resolver feeds this and `w:tcMar`,
+ *   so a row's or a column's padding cannot mean one thing here and another in Word.
+ * - **Text wraps and the row grows**, which is what Word does. The old `overflow-x-auto`
+ *   was a scrollbar on a sheet of paper: it hid an over-wide table instead of showing it,
+ *   and the sheet measured the *scroller*, not the content, so a table that overflowed
+ *   was invisible to pagination.
+ */
+function TableNodeView({
+  node,
+  language,
+  ctx,
+}: {
+  node: TableNode;
+  language: LanguageMode;
+  ctx?: EditContext;
+}) {
+  /*
+   * Widths being dragged towards, or undefined when no gesture is running.
+   *
+   * Local, and committed to the store only on pointer-up (§ drag gestures commit once).
+   * The table redraws under the pointer from this, so the boundary tracks the cursor
+   * without every intermediate width becoming an undo entry.
+   */
+  const [draftWidths, setDraftWidths] = useState<number[] | undefined>();
+  const tableRef = useRef<HTMLTableElement>(null);
+
+  const resize = ctx?.tableColumns;
+  const widths = draftWidths ?? node.columnWidths;
+
+  /*
+   * Tab order: every editable cell, row by row.
+   *
+   * Built from the IR rather than from the DOM, so it is the document's own order and
+   * not whatever the browser's focus traversal makes of nested contenteditables.
+   * Covered cells are excluded — they print nothing, so landing in one would write
+   * text that never appears.
+   */
+  const tabOrder = node.rows
+    .flatMap((row) => row)
+    .filter((cell) => !cell.covered && cell.edit?.kind === "tableCell")
+    .map((cell) => cell.edit as { blockId: string; cellId: string });
+
+  /**
+   * Move to the neighbouring cell, or report that there is none.
+   *
+   * Focus is moved by *asking the next cell's field to open*, which the page does by
+   * clicking it — the fields are contenteditables created on demand, so there is no
+   * persistent element to `.focus()`. `requestAnimationFrame` waits for the outgoing
+   * field to unmount first; without it the click lands on a node React is replacing.
+   */
+  const moveCell = (fromCellId: string, backwards: boolean): boolean => {
+    const at = tabOrder.findIndex((cell) => cell.cellId === fromCellId);
+    const next = at < 0 ? undefined : tabOrder[at + (backwards ? -1 : 1)];
+    if (!next) return false;
+    ctx?.onActivateCell?.(next);
+    requestAnimationFrame(() => {
+      const cellNode = document.querySelector<HTMLElement>(
+        `[data-table-cell="${CSS.escape(next.cellId)}"] [role="textbox"]`,
+      );
+      // A double-click is what opens a field on the page, so that is what a Tab has to
+      // reproduce; focusing the idle span alone would only select it.
+      cellNode?.dispatchEvent(
+        new MouseEvent("dblclick", { bubbles: true, cancelable: true }),
+      );
+    });
+    return true;
+  };
+
+  return (
+    <div className="my-2">
+      {/* `relative` so the column handles can be positioned against the table's own
+          box; they are absolute and `data-print-hide`, so they reserve no space. */}
+      <div className="relative">
+        <table
+          ref={tableRef}
+          data-table-block={node.blockId}
+          className="w-full table-fixed border-collapse"
+        >
+          <colgroup>
+            {widths.map((fraction, index) => (
+              <col key={index} style={{ width: `${(fraction * 100).toFixed(4)}%` }} />
+            ))}
+          </colgroup>
+          <tbody>
+            {node.rows.map((row, rowIndex) => (
+              <tr key={rowIndex}>
+                {row.map((cell, cellIndex) => {
+                  if (cell.covered) return null;
+                  const address =
+                    cell.edit?.kind === "tableCell" ? cell.edit : undefined;
+                  const isActive =
+                    address !== undefined &&
+                    ctx?.activeCell?.blockId === address.blockId &&
+                    ctx.activeCell.cellId === address.cellId;
+                  return (
+                    <td
+                      key={cellIndex}
+                      data-table-cell={address?.cellId}
+                      colSpan={cell.colSpan > 1 ? cell.colSpan : undefined}
+                      rowSpan={cell.rowSpan > 1 ? cell.rowSpan : undefined}
+                      /*
+                       * Uniform, plain-ruled cells — no header shading or bold, which no
+                       * HKDSE table has (§tables). Literal hex is the token rule, since
+                       * this is drawn on the paper and must not follow the app theme.
+                       *
+                       * An inset ring marks the active cell, not a tint: the selected
+                       * *question* already paints `#f6f3ff` across its whole box, so a
+                       * tinted cell was invisible inside it — which left the sidebar
+                       * saying "cell R2C1" with nothing on the page to say which one that
+                       * was. A ring paints inside the border box, so it also reserves no
+                       * space and cannot shift the table's geometry.
+                       */
+                      className={`border border-slate-500 align-middle ${
+                        isActive ? "ring-2 ring-inset ring-[#7c5cff]" : ""
+                      }`}
+                      style={{
+                        textAlign: cell.align,
+                        // Points from the resolved twips, the same winner `w:tcMar` gets.
+                        paddingTop: `${twipsToPt(cell.padding.top)}pt`,
+                        paddingRight: `${twipsToPt(cell.padding.right)}pt`,
+                        paddingBottom: `${twipsToPt(cell.padding.bottom)}pt`,
+                        paddingLeft: `${twipsToPt(cell.padding.left)}pt`,
+                        /*
+                         * Wrap long words rather than letting one push the column wider.
+                         * `table-fixed` already holds the column, so without this a long
+                         * unbroken string (a URL, a run of digits) overflows the cell's
+                         * border instead of wrapping — Word breaks it.
+                         */
+                        overflowWrap: "break-word",
+                        ...formatStyle(cell.format),
+                      }}
+                      /*
+                       * Capture, not bubble.
+                       *
+                       * The cell's editable text calls `stopPropagation` on click —
+                       * rightly, since selecting the *question* is the wrapper's job and
+                       * a click on the text means the text. But that also stopped the
+                       * cell ever being reported, so the sidebar's align and merge
+                       * buttons had no subject and never appeared. Capture runs on the
+                       * way down, before the child can stop anything, and it changes
+                       * nothing about what the click then goes on to do.
+                       */
+                      onClickCapture={() => {
+                        if (address) ctx?.onActivateCell?.(address);
+                      }}
+                    >
+                      {richNodes(
+                        cell.text,
+                        language,
+                        cell.edit,
+                        ctx,
+                        address
+                          ? (backwards) => moveCell(address.cellId, backwards)
+                          : undefined,
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {/* Handles only where the preview is editable, so a read-only sheet, the
+            print path and the page-rail thumbnails stay free of them. */}
+        {resize && widths.length > 1 && (
+          <TableColumnResizer
+            widths={widths}
+            scale={resize.scale}
+            tableRef={tableRef}
+            onPreview={setDraftWidths}
+            onResize={(index, delta) =>
+              resize.onResizeColumn(node.blockId, index, delta, node.columnCount)
+            }
+          />
+        )}
+      </div>
+      {node.caption && (
+        <p className={STYLE_CLASS["Table Caption"]}>
+          {richNodes(node.caption, language, node.captionEdit, ctx)}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function NodeView({
   node,
   language,
@@ -900,123 +1120,7 @@ function NodeView({
     return <TextNodeView node={node} language={language} ctx={ctx} />;
 
   if (node.kind === "table") {
-    /*
-     * Tab order: every editable cell, row by row.
-     *
-     * Built from the IR rather than from the DOM, so it is the document's own order and
-     * not whatever the browser's focus traversal makes of nested contenteditables.
-     * Covered cells are excluded — they print nothing, so landing in one would write
-     * text that never appears.
-     */
-    const tabOrder = node.rows
-      .flatMap((row) => row)
-      .filter((cell) => !cell.covered && cell.edit?.kind === "tableCell")
-      .map((cell) => (cell.edit as { blockId: string; cellId: string }));
-
-    /**
-     * Move to the neighbouring cell, or report that there is none.
-     *
-     * Focus is moved by *asking the next cell's field to open*, which the page does by
-     * clicking it — the fields are contenteditables created on demand, so there is no
-     * persistent element to `.focus()`. `requestAnimationFrame` waits for the outgoing
-     * field to unmount first; without it the click lands on a node React is replacing.
-     */
-    const moveCell = (fromCellId: string, backwards: boolean): boolean => {
-      const at = tabOrder.findIndex((cell) => cell.cellId === fromCellId);
-      const next = at < 0 ? undefined : tabOrder[at + (backwards ? -1 : 1)];
-      if (!next) return false;
-      ctx?.onActivateCell?.(next);
-      requestAnimationFrame(() => {
-        const cellNode = document.querySelector<HTMLElement>(
-          `[data-table-cell="${CSS.escape(next.cellId)}"] [role="textbox"]`,
-        );
-        // A double-click is what opens a field on the page, so that is what a Tab has to
-        // reproduce; focusing the idle span alone would only select it.
-        cellNode?.dispatchEvent(
-          new MouseEvent("dblclick", { bubbles: true, cancelable: true }),
-        );
-      });
-      return true;
-    };
-
-    return (
-      <div className="my-2">
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
-            <tbody>
-              {node.rows.map((row, rowIndex) => (
-                <tr key={rowIndex}>
-                  {row.map((cell, cellIndex) => {
-                    if (cell.covered) return null;
-                    const address =
-                      cell.edit?.kind === "tableCell" ? cell.edit : undefined;
-                    const isActive =
-                      address !== undefined &&
-                      ctx?.activeCell?.blockId === address.blockId &&
-                      ctx.activeCell.cellId === address.cellId;
-                    return (
-                      <td
-                        key={cellIndex}
-                        data-table-cell={address?.cellId}
-                        colSpan={cell.colSpan > 1 ? cell.colSpan : undefined}
-                        rowSpan={cell.rowSpan > 1 ? cell.rowSpan : undefined}
-                        /*
-                         * Uniform, plain-ruled cells — no header shading or bold, which no
-                         * HKDSE table has (§tables). Literal hex is the token rule, since
-                         * this is drawn on the paper and must not follow the app theme.
-                         *
-                         * The active cell takes a tint so the sidebar's "cell R2C3" and
-                         * its align/merge buttons have a visible subject; it is
-                         * `data-print-hide`-equivalent by being a background only, which
-                         * the print rules already neutralise.
-                         */
-                        /*
-                         * An inset ring, not a tint: the selected *question* already
-                         * paints `#f6f3ff` across its whole box, so a tinted cell was
-                         * invisible inside it — which left the sidebar saying "cell R2C1"
-                         * with nothing on the page to say which one that was. A ring
-                         * paints inside the border box, so it also reserves no space and
-                         * cannot shift the table's geometry.
-                         */
-                        className={`border border-slate-500 px-1.5 py-1 align-middle ${
-                          isActive ? "ring-2 ring-inset ring-[#7c5cff]" : ""
-                        }`}
-                        style={{ textAlign: cell.align }}
-                        /*
-                         * Capture, not bubble.
-                         *
-                         * The cell's editable text calls `stopPropagation` on click —
-                         * rightly, since selecting the *question* is the wrapper's job and
-                         * a click on the text means the text. But that also stopped the
-                         * cell ever being reported, so the sidebar's align and merge
-                         * buttons had no subject and never appeared. Capture runs on the
-                         * way down, before the child can stop anything, and it changes
-                         * nothing about what the click then goes on to do.
-                         */
-                        onClickCapture={() => {
-                          if (address) ctx?.onActivateCell?.(address);
-                        }}
-                      >
-                        {richNodes(cell.text, language, cell.edit, ctx,
-                          address
-                            ? (backwards) => moveCell(address.cellId, backwards)
-                            : undefined,
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {node.caption && (
-          <p className={STYLE_CLASS["Table Caption"]}>
-            {richNodes(node.caption, language, node.captionEdit, ctx)}
-          </p>
-        )}
-      </div>
-    );
+    return <TableNodeView node={node} language={language} ctx={ctx} />;
   }
 
   if (node.kind === "columns") {
@@ -2097,6 +2201,19 @@ interface Props {
    */
   onResizeRows?: (elementId: string, value: number) => void;
   /**
+   * Move a table's column boundary, dragged on the page. Omit to render tables without
+   * boundary handles, which is what keeps the print path and the thumbnails clean.
+   *
+   * `delta` is a fraction of the table's width; `index` names the boundary *after* that
+   * column. Called once per gesture, on release, like the other two resize handlers.
+   */
+  onResizeTableColumn?: (
+    blockId: string,
+    index: number,
+    delta: number,
+    columnCount: number,
+  ) => void;
+  /**
    * Divide answer lines into two elements, when a drag asks for more rows than the
    * sheet can hold. Omit to cap the drag instead, with no way to exceed a page.
    *
@@ -2357,6 +2474,7 @@ export function Preview({
   onFormatRuns,
   onResizeBlock,
   onResizeRows,
+  onResizeTableColumn,
   onSplitRows,
   onOpenBlock,
   onReorder,
@@ -3245,6 +3363,12 @@ export function Preview({
         keepEditing: formatting,
         activeCell,
         onActivateCell: setActiveCell,
+        // No selection of its own: a column boundary is not a selectable object — there
+        // is nothing to delete or format — so the handles are revealed on hover and need
+        // no click-to-arm step, unlike a picture or a run of answer lines.
+        tableColumns: onResizeTableColumn
+          ? { scale, onResizeColumn: onResizeTableColumn }
+          : undefined,
         resize: onResizeBlock
           ? {
               scale,

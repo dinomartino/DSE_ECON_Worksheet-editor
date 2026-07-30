@@ -33,6 +33,9 @@ export const PAPER_SIZES: Record<PaperSize, { width: number; height: number; lab
 export const twipsToMm = (twips: number) => twips / TWIPS_PER_MM;
 export const twipsToCm = (twips: number) => twips / TWIPS_PER_CM;
 export const cmToTwips = (cm: number) => Math.round(cm * TWIPS_PER_CM);
+/** 20 twips to the point. Cell padding is authored in twips and drawn in points. */
+export const twipsToPt = (twips: number) => twips / 20;
+export const ptToTwips = (pt: number) => Math.round(pt * 20);
 
 /** 2.54 cm all round — the previous hardcoded default (§7.1). */
 export const DEFAULT_MARGINS: PageMargins = { top: 1440, right: 1440, bottom: 1440, left: 1440 };

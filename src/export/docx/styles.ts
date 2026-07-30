@@ -1,5 +1,6 @@
 import type { FontPair } from '@/model/types';
 import type { NodeStyle } from '@/render/ir';
+import { DEFAULT_CELL_PADDING } from '@/model/table';
 import { rFonts } from './runs';
 import { XML_DECL } from './xml';
 
@@ -227,12 +228,22 @@ export function buildStylesXml(fonts: FontPair): string {
     `<w:rPr>${rFonts(fonts)}<w:sz w:val="${BASE_SIZE}"/><w:szCs w:val="${BASE_SIZE}"/></w:rPr>` +
     '</w:style>';
 
+  /*
+   * The table default, spelled from `DEFAULT_CELL_PADDING` rather than a second time.
+   *
+   * Every `w:tc` now carries its own resolved `w:tcMar`, so this is only what Word falls
+   * back to — but it is what a teacher sees in Word's own Table Properties dialog, and
+   * two hardcoded copies of the same four numbers would eventually disagree about what
+   * "untouched" means.
+   */
   const tableNormal =
     '<w:style w:type="table" w:default="1" w:styleId="TableNormal">' +
     '<w:name w:val="Normal Table"/>' +
     '<w:tblPr><w:tblCellMar>' +
-    '<w:top w:w="60" w:type="dxa"/><w:left w:w="108" w:type="dxa"/>' +
-    '<w:bottom w:w="60" w:type="dxa"/><w:right w:w="108" w:type="dxa"/>' +
+    `<w:top w:w="${DEFAULT_CELL_PADDING.top}" w:type="dxa"/>` +
+    `<w:left w:w="${DEFAULT_CELL_PADDING.left}" w:type="dxa"/>` +
+    `<w:bottom w:w="${DEFAULT_CELL_PADDING.bottom}" w:type="dxa"/>` +
+    `<w:right w:w="${DEFAULT_CELL_PADDING.right}" w:type="dxa"/>` +
     '</w:tblCellMar></w:tblPr></w:style>';
 
   const defaultParagraphFont =

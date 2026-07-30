@@ -1,4 +1,5 @@
 import { plain, runLines } from '@/model/text';
+import { twipsToPt } from '@/model/page';
 import type {
   BiText,
   FontPair,
@@ -138,7 +139,15 @@ function nodeHtml(
             // Every cell is a plain `td`: uniform borders, no shading or bold, which is
             // what an HKDSE table looks like (§tables). A `th` would also re-introduce
             // the browser's own bold-and-centred default on paste.
-            const style = `border:1px solid #000;padding:3pt;text-align:${cell.align};`;
+            //
+            // Padding comes from the IR already resolved, so a row's or column's setting
+            // reaches the clipboard as the same winner the `.docx` flattens onto `w:tcMar`.
+            const pad = cell.padding;
+            const style =
+              'border:1px solid #000;' +
+              `padding:${twipsToPt(pad.top)}pt ${twipsToPt(pad.right)}pt ` +
+              `${twipsToPt(pad.bottom)}pt ${twipsToPt(pad.left)}pt;` +
+              `text-align:${cell.align};${formatCss(cell.format)}`;
             const span =
               (cell.colSpan > 1 ? ` colspan="${cell.colSpan}"` : '') +
               (cell.rowSpan > 1 ? ` rowspan="${cell.rowSpan}"` : '');
@@ -151,8 +160,18 @@ function nodeHtml(
     const caption = node.caption
       ? `<p style="${fontCss}${NODE_CSS['Table Caption']}">${richHtml(node.caption, language)}</p>`
       : '';
+    // A `colgroup` carries the widths, which is what Word's paste path reads to set the
+    // grid; percentages so the table keeps its proportions in whatever document it lands
+    // in, since the clipboard deliberately carries no page setup of its own.
+    const colgroup =
+      '<colgroup>' +
+      node.columnWidths
+        .map((fraction) => `<col style="width:${(fraction * 100).toFixed(3)}%"/>`)
+        .join('') +
+      '</colgroup>';
     return (
-      `<table style="border-collapse:collapse;width:100%;${fontCss}"><tbody>${rows}</tbody></table>` +
+      `<table style="border-collapse:collapse;width:100%;table-layout:fixed;${fontCss}">` +
+      `${colgroup}<tbody>${rows}</tbody></table>` +
       caption
     );
   }

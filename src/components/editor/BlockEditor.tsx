@@ -14,20 +14,26 @@ import {
   isDegenerate,
   isMerged,
   locateCell,
+  MAX_CELL_PADDING_TWIPS,
   mergeDown,
   mergeRight,
+  paddingAt,
   patchCell,
   removeColumn,
   removeRow,
+  resolveCellPadding,
   restoreColumn,
+  setPadding,
   unmerge,
+  type PaddingScope,
 } from '@/model/table';
+import { ptToTwips, twipsToPt } from '@/model/page';
 import { DIAGRAM_TEMPLATES } from '@/model/diagramTemplates';
 import { emptyBiText, plain } from '@/model/text';
 import { RichTextEditable } from '@/components/preview/RichTextEditable';
 import type { ContentBlock, ImageBlock, TableBlock } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { Button, Eyebrow, GroupHeader, IconButton, NumberField } from '@/components/ui';
+import { Button, Eyebrow, GroupHeader, IconButton, NumberField, Segmented } from '@/components/ui';
 import { Menu } from '@/components/ui/Menu';
 import { TableSizePicker } from '@/components/ui/TableSizePicker';
 import { BiTextField } from './BiTextField';
@@ -414,6 +420,8 @@ function TableBlockEditor({
         </div>
       </div>
 
+      <TablePaddingSection block={block} at={at} onChange={apply} />
+
       {cell && at ? (
         <div className="space-y-1.5 border-t border-line pt-2">
           <div className="flex items-center gap-1">
@@ -483,6 +491,190 @@ function TableBlockEditor({
         onChange={(caption) => onChange({ ...block, caption })}
         rows={1}
       />
+    </div>
+  );
+}
+
+/**
+ * One padding edge, typed in points but stored in twips.
+ *
+ * Points because that is the unit Word's own Table Properties dialog uses and what a
+ * teacher reads off a ruler; twips because that is what `w:tcMar` takes, so nothing
+ * rounds between the panel and the exported file.
+ *
+ * A local draft string rather than a controlled number, for the reason `CmField` holds
+ * one: the displayed value is *derived* — it is the resolved padding, which changes the
+ * moment a keystroke commits — so re-deriving the text on every keystroke fights the
+ * typing. Entering "10" over a "3" produced 3 → 1 → 10 → … and landed on 36, because each
+ * digit committed and the field re-read the new resolved value before the next arrived.
+ * It also deletes a decimal point as soon as it is typed.
+ *
+ * Committing on blur and Enter is the other half: one edit is then one undo entry rather
+ * than one per digit.
+ */
+function PtField({
+  label,
+  twips,
+  onChange,
+}: {
+  label: string;
+  twips: number;
+  onChange: (twips: number) => void;
+}) {
+  const asText = (value: number) => String(Math.round(twipsToPt(value) * 10) / 10);
+  const [draft, setDraft] = useState<string | undefined>();
+  const maxPt = twipsToPt(MAX_CELL_PADDING_TWIPS);
+
+  const commit = (raw: string) => {
+    setDraft(undefined);
+    const parsed = Number.parseFloat(raw);
+    if (!Number.isFinite(parsed)) return; // Empty or nonsense reverts to the stored value.
+    onChange(ptToTwips(Math.min(maxPt, Math.max(0, parsed))));
+  };
+
+  return (
+    <label className="inline-flex shrink-0 items-center gap-1.5 text-xs text-ink-muted">
+      {label}
+      <input
+        type="number"
+        inputMode="decimal"
+        step={0.5}
+        min={0}
+        max={maxPt}
+        value={draft ?? asText(twips)}
+        className="h-8 w-14 rounded-lg border border-line bg-surface px-2 text-xs tabular-nums text-ink outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/25"
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={(event) => commit(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') commit((event.target as HTMLInputElement).value);
+        }}
+      />
+      <span className="text-ink-subtle">pt</span>
+    </label>
+  );
+}
+
+/**
+ * Cell padding, at whichever level the teacher aims it.
+ *
+ * Word has table-level and per-cell margins and nothing between, but "make this row
+ * roomier" and "give the label column some air" are the two things the reference papers
+ * actually need — table1's rows are visibly taller than one line, and both tables inset
+ * their left-hand column well clear of the rule. So the model keeps all four levels and
+ * the exporter flattens the winner onto every `w:tcMar` (§tables).
+ *
+ * Three rules this panel keeps:
+ *
+ * - **The scope is chosen before the numbers**, because the same four fields mean four
+ *   different edits. A row of inputs whose target was implied by whatever was last
+ *   clicked would be a control that silently changes meaning.
+ * - **Inherited values are shown, not blank.** Every field displays what is *in effect*,
+ *   so the panel always describes the page. Empty boxes over a padded cell would read as
+ *   "no padding", which is a different thing from "not overridden here".
+ * - **Overriding is visible and reversible.** A level that has its own value says so and
+ *   offers Reset, since an override is otherwise indistinguishable from an inherited
+ *   value that happens to match — and there would be no way back to inheriting.
+ *
+ * Authored in **points**, stored in twips: a teacher reads a ruler in points, and Word's
+ * own Table Properties dialog is in points (or cm). The conversion is the one place it
+ * happens, so the stored unit stays what `w:tcMar` takes.
+ */
+function TablePaddingSection({
+  block,
+  at,
+  onChange,
+}: {
+  block: TableBlock;
+  at: { rowIndex: number; cellIndex: number } | undefined;
+  onChange: (block: TableBlock) => void;
+}) {
+  const [scope, setScope] = useState<PaddingScope>('table');
+
+  // Per-cell, per-row and per-column all need a subject. Falling back to the table keeps
+  // the section usable with nothing selected, rather than hiding it — the whole-table
+  // padding is the setting most tables want anyway.
+  const effectiveScope: PaddingScope = at ? scope : 'table';
+  const position = at ?? { rowIndex: 0, cellIndex: 0 };
+
+  const inEffect = resolveCellPadding(block, position.rowIndex, position.cellIndex);
+  const own = paddingAt(block, effectiveScope, position);
+  const overridden = own !== undefined && Object.keys(own).length > 0;
+
+  const EDGES = [
+    ['top', 'Top'],
+    ['bottom', 'Bottom'],
+    ['left', 'Left'],
+    ['right', 'Right'],
+  ] as const;
+
+  const scopeLabel =
+    effectiveScope === 'table'
+      ? 'the whole table'
+      : effectiveScope === 'row'
+        ? `row ${position.rowIndex + 1}`
+        : effectiveScope === 'column'
+          ? `column ${position.cellIndex + 1}`
+          : `cell R${position.rowIndex + 1}C${position.cellIndex + 1}`;
+
+  return (
+    <div className="space-y-1.5 border-t border-line pt-2">
+      <div className="flex items-center gap-2">
+        <span className="w-14 shrink-0 text-[11px] text-ink-subtle">Padding</span>
+        {at ? (
+          <Segmented
+            label="Padding applies to"
+            value={effectiveScope}
+            onChange={setScope}
+            options={[
+              { value: 'cell', label: 'Cell' },
+              { value: 'row', label: 'Row' },
+              { value: 'column', label: 'Col' },
+              { value: 'table', label: 'All' },
+            ]}
+          />
+        ) : (
+          <span className="text-[11px] text-ink-subtle">whole table</span>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 pl-14">
+        {EDGES.map(([edge, label]) => (
+          <PtField
+            key={edge}
+            label={label}
+            // What is *in effect*, so the panel always describes the page — an inherited
+            // value shown as an empty box would read as "no padding".
+            twips={inEffect[edge]}
+            onChange={(twips) =>
+              onChange(setPadding(block, effectiveScope, position, { [edge]: twips }))
+            }
+          />
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2 pl-14">
+        <span className="text-[11px] leading-snug text-ink-subtle">
+          {overridden ? `Set on ${scopeLabel}.` : `Inherited — typing sets ${scopeLabel}.`}
+        </span>
+        {overridden && (
+          <Button
+            size="sm"
+            variant="subtle"
+            onClick={() =>
+              onChange(
+                setPadding(block, effectiveScope, position, {
+                  top: undefined,
+                  right: undefined,
+                  bottom: undefined,
+                  left: undefined,
+                }),
+              )
+            }
+          >
+            Reset
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

@@ -16,8 +16,10 @@ import {
   applyFormatTarget,
   applyRunFormatTarget,
   applyResizeBlock,
+  mapTableBlock,
   replaceBlockById,
 } from '@/model/edits';
+import { resizeColumn } from '@/model/table';
 import { createWorksheet, newId } from '@/model/factories';
 import {
   applyOrder,
@@ -251,6 +253,20 @@ interface WorksheetState {
   ) => void;
   /** Replace one block by id — the route a page-opened editor commits through. */
   replaceBlock: (blockId: string, next: ContentBlock) => void;
+  /**
+   * Move one table column boundary, addressed by the block it belongs to.
+   *
+   * Its own action rather than a `replaceBlock` assembled at the call site: the caller is
+   * a drag handle on the page, which knows a boundary index and a fraction and should not
+   * have to resolve the block, read its current widths and rebuild it — that is the same
+   * "deriving the edit at the call site" that let inserts write one list and not the other.
+   */
+  resizeTableColumn: (
+    blockId: string,
+    index: number,
+    delta: number,
+    columnCount: number,
+  ) => void;
 
   // --- Page setup, masthead bands, header/footer ------------------------------
   setPageSetup: (patch: Partial<PageSetup>) => void;
@@ -977,6 +993,10 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     }),
   replaceBlock: (blockId, next) =>
     get().commit((draft) => replaceBlockById(draft, blockId, next)),
+  resizeTableColumn: (blockId, index, delta, columnCount) =>
+    get().commit((draft) =>
+      mapTableBlock(draft, blockId, (block) => resizeColumn(block, index, delta, columnCount)),
+    ),
 
   // --- Page setup, masthead bands, header/footer ------------------------------
   setPageSetup: (patch) =>

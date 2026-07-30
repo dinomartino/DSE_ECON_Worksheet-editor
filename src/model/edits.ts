@@ -9,6 +9,7 @@ import type {
   LayoutElement,
   Question,
   RunFormatPatch,
+  TableBlock,
   TextFormat,
   Worksheet,
 } from './types';
@@ -352,7 +353,17 @@ export function isFormattable(target: EditTarget): boolean {
     target.kind === 'worksheetInstructions' ||
     target.kind === 'blockText' ||
     target.kind === 'layoutText' ||
-    target.kind === 'bandField'
+    target.kind === 'bandField' ||
+    /*
+     * A table cell formats like any other text element.
+     *
+     * It was the one editable surface on the page the toolbar refused: a teacher could
+     * type into a cell but not bold it, so the panel's own note ("type on the page") led
+     * to a field the page's own controls did not serve. That matters more in a table than
+     * anywhere else, because an HKDSE table has no header row to carry emphasis —
+     * per-cell formatting is *the* mechanism a distribution table's headings use (§tables).
+     */
+    target.kind === 'tableCell'
   );
 }
 
@@ -390,6 +401,17 @@ export function applyFormatTarget(
       return mapAllBlocks(worksheet, target.blockId, (block) =>
         block.kind === 'paragraph' ? { ...block, format: merge(block.format) } : block,
       );
+
+    case 'tableCell':
+      return mapTableBlock(worksheet, target.blockId, (block) => ({
+        ...block,
+        rows: block.rows.map((row) => ({
+          ...row,
+          cells: row.cells.map((cell) =>
+            cell.id === target.cellId ? { ...cell, format: merge(cell.format) } : cell,
+          ),
+        })),
+      }));
 
     case 'layoutText':
       return mapLayoutElement(worksheet, target, (element) =>
@@ -462,6 +484,22 @@ export function formatOfTarget(
       }
       return undefined;
     }
+    case 'tableCell': {
+      // Searched the same way `applyFormatTarget` writes, so the toolbar reports the
+      // state of the cell it is about to change.
+      for (const question of worksheet.questions) {
+        for (const blocks of questionBlockLists(question)) {
+          const match = blocks.find((block) => block.id === target.blockId);
+          if (match && match.kind === 'table') {
+            for (const row of match.rows) {
+              const cell = row.cells.find((entry) => entry.id === target.cellId);
+              if (cell) return cell.format;
+            }
+          }
+        }
+      }
+      return undefined;
+    }
     case 'layoutText': {
       const element = worksheet.layout.find((entry) => entry.id === target.elementId);
       return element && isTextLayoutElement(element) ? element.format : undefined;
@@ -510,6 +548,24 @@ export function textOfTarget(worksheet: Worksheet, target: EditTarget): BiText |
         for (const blocks of questionBlockLists(question)) {
           const match = blocks.find((block) => block.id === target.blockId);
           if (match && match.kind === 'paragraph') return match.text;
+        }
+      }
+      return undefined;
+    }
+    case 'tableCell': {
+      // Reported here so a cell gains **per-run** formatting for free: this and
+      // `applyEditTarget` are the read and the write `applyRunFormatTarget` composes,
+      // and `applyEditTarget` already knew the kind. Without this side, bolding a phrase
+      // inside a cell resolved to no text and silently did nothing.
+      for (const question of worksheet.questions) {
+        for (const blocks of questionBlockLists(question)) {
+          const match = blocks.find((block) => block.id === target.blockId);
+          if (match && match.kind === 'table') {
+            for (const row of match.rows) {
+              const cell = row.cells.find((entry) => entry.id === target.cellId);
+              if (cell) return cell.text;
+            }
+          }
         }
       }
       return undefined;
@@ -649,6 +705,28 @@ export function replaceBlockById(
   // Guarded on kind so a stale handle cannot turn a diagram into a paragraph — the id
   // is the address, but the kind is what the callers' types were written against.
   return mapAllBlocks(worksheet, blockId, (block) => (block.kind === next.kind ? next : block));
+}
+
+/**
+ * Transform one table block in place, by id.
+ *
+ * `replaceBlockById` needs the finished block, which means the caller must first find it
+ * — and a drag handle on the page holds a boundary index and a fraction, not a table. This
+ * hands the current block to a pure verb from `model/table.ts` and puts the result back,
+ * so the page and the sidebar reach the same verbs by the same route (§tables: a verb
+ * implemented twice eventually means two things).
+ *
+ * A block of another kind is left alone rather than thrown over: an id can go stale
+ * between a pointer-down and the commit on release.
+ */
+export function mapTableBlock(
+  worksheet: Worksheet,
+  blockId: string,
+  patch: (block: TableBlock) => TableBlock,
+): Worksheet {
+  return mapAllBlocks(worksheet, blockId, (block) =>
+    block.kind === 'table' ? patch(block) : block,
+  );
 }
 
 /**
