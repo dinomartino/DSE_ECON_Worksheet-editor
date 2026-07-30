@@ -421,8 +421,30 @@ Four consequences, each of which fails silently if broken:
   the gap before its options would double. The between-item gap lives in the walker
   rather than in a question type because it belongs to the *boundary*: a type appending
   its own trailing gap would double against the next item's and leave a stray blank at
-  the end of the document. It is suppressed for the first item, where a gap is just a
-  shifted top margin.
+  the end of the document.
+
+  **A gap counts what is already there.** Because separation *is* a spent line, anything
+  else that spends one at the same boundary makes the gap double. Text ending in a
+  trailing hard break (Shift+Enter) prints its own blank line, so a separator pushed after
+  it put the next part two lines down while its neighbours sat one — a difference with no
+  visible cause in the document. `pushGap()` and `endsInBlankLine()` in `render/ir.ts` are
+  the one rule: push a blank line *unless* the stream already ends in one, counting both
+  an explicit `blankLine()` and a text node whose own last line is empty. The break still
+  prints; it counts as the gap rather than adding to one. Every gap site goes through it —
+  the walker's `ITEM_GAP`, the part and sub-part separators, the MCQ stem and statement
+  gaps. `endsInBlankLine` is deliberately **language-neutral**, testing both sides: one IR
+  feeds all three backends, so a per-language gap would make the preview and the `.docx`
+  disagree about the document's height, and the paginator measures these boxes.
+
+  **The gap is suppressed only at the true top of the page**, not at flow index 0. The
+  masthead bands, the title and the instructions all print *above* the flow, so a section
+  sitting first in the flow usually has a title directly over it and needs its gap like
+  any other heading. Keying on the index alone made the same element space differently
+  depending only on position — "Section A" printed tight under the header rule while an
+  identical "Section B" had air above it, and the gap reappeared the moment anything was
+  dragged in front of the section, so the cause looked like unrelated content.
+  `somethingAboveFlow` in `render/worksheet.ts` is that test; a genuinely bare page still
+  spends no line, where a gap would only shift the top margin.
 - **`exact` does not grow.** Unlike `atLeast`, an exact box clips text too tall for it
   rather than expanding — which is what keeps a bilingual page on one rhythm regardless
   of CJK glyphs, superscripts and inline images. The cost is that any larger size needs a
@@ -478,24 +500,68 @@ nothing about.
   less onto a sheet than Word did and every page break landed early — the paginator
   measures these boxes.
 
-### "(4 marks)" trails the last line
+### "(4 marks)" sits on the last line with text
 
 A part's marks sit at the right-hand end of its **final** line, dropping to a line of
-their own only when the last line leaves no room. The `.docx` gets this for free: it
-appends a `w:tab` run *after* the text against a right-aligned stop at the content edge,
-so the marks flow to the end of the paragraph and land on whichever line that turns out
-to be.
+their own only when that line leaves no room. The `.docx` gets the position from a
+right-aligned tab stop at the content edge: a `w:tab` run *after* the text, so the marks
+flow to the end of the paragraph and land on whichever line that turns out to be. A tab
+stop reserves nothing on the *other* lines, so the body text must wrap exactly as it would
+with no marks at all — the paginator measures those boxes.
 
-The preview could not use `float: right` for it. A float is placed when the line box it
-sits in is built, so a marks span emitted before the text always attached to the **first**
-line — and it shortened that line, wrapping the stem earlier than Word does. The preview
-therefore disagreed with the export about both the marks' position and where the text
-broke. The span is emitted **after** the text instead, so the final line box is the only
-one it can attach to, and is `whitespace-nowrap` so it wraps whole rather than splitting
-"(4" from "marks)".
+**No CSS property expresses that**, and the preview has been wrong three times reaching
+for one:
 
-A one-line part looks correct either way, which is why this survived: it only shows on a
-part long enough to wrap.
+- **`float: right` is placed on the first line with *room*, not the last.** A float is
+  positioned when a line box is built and never participates in inline layout. Emitted
+  *before* the text it attached to the first line and shortened it, wrapping the stem
+  earlier than Word. Emitted *after* the text it still failed whenever the last line's
+  remaining width was narrower than the label: the float dropped down, and being out of
+  flow it did not grow the paragraph, so the marks printed into the **next** paragraph's
+  12pt box and overprinted it. That depends on the tail's length, which is why it read as
+  intermittent.
+- **`text-align-last: justify`** stretches the body text's word spacing, and a full-width
+  flexible gap wraps to its own line regardless.
+
+So reserving the room and placing the label are **separate**, and the reserve *is* the
+label (`MarksTrail` in `Preview.tsx`):
+
+- An **invisible twin** of the label rides inline at the end of the text. Being in flow it
+  shortens only the line the text actually ends on; being the label itself it reserves
+  exactly the right width at any font size, with nothing to measure or keep in step. A
+  fixed-width shim cannot do this — where the shim fits but the label does not, the two
+  overprint.
+- The **visible copy is pinned `bottom: 0; right: 0`**. The paragraph's last line is its
+  bottom, so it lands there at any height, right-aligned at the content edge like the tab
+  stop. (The paragraph is already `relative`, for the list marker.)
+
+**A trailing hard break is a blank line the marks must not hang on.** Text ending in
+Shift+Enter has a real empty final line — it prints, and dropping it would change the
+document — but `bottom: 0` is *that* line, so the label appeared below the part rather
+than on it. Word had the same fault from the same cause: the tab run came after the
+trailing `<w:br/>`. `trailingBlankLines()` in `model/text.ts` counts them for both
+backends, which is why it is shared rather than derived twice — the page and the `.docx`
+must choose the same line. The preview lifts its label by that many `lh` (resolving
+against the element's own line-height, so it stays right on the styles that scale their
+exact line box), and the exporter **moves the trailing breaks after the marks** so the
+label joins the last text line and the blank lines follow. `marksAnchorRuns()` picks which
+side to count in bilingual mode: Chinese renders last, falling back to English when there
+is no Chinese, or an untranslated part would count zero blank lines while the page shows
+them.
+
+Two residual limits, both deliberate:
+
+- The reserve can only ride at the **end of the inline flow**, because the text belongs to
+  a contenteditable and a sibling injected inside it would put React in charge of nodes
+  the browser mutates. So with trailing breaks the reserve lands on the blank line. It is
+  harmless there, but it means a *hard-broken* final line already reaching the right edge
+  can still be overlapped — and Word is in the identical position, since a tab stop cannot
+  push a line a `w:br` has already ended. Matching that is the point: the preview must not
+  invent a wrap the `.docx` will not reproduce.
+- Both copies are `whitespace-nowrap`, so neither splits "(4" from "marks)".
+
+A one-line part looks correct under every one of these schemes, which is why the bug
+survived so long: it only shows on a part long enough to wrap, or one ending in a break.
 
 `BAND_ROW_TWIPS` in `model/page.ts` is the same 240tw, since a band row is one paragraph
 in that same box. It is duplicated rather than imported (`model/` must not depend on
@@ -841,14 +907,36 @@ running content again or it vanishes from page 1 as a side effect. And a part is
 when *either* the running rows or page 1's rows would print, since a cover-only header
 has empty running bands.
 
+**A write aimed at page 1 creates the separation.** The three states are a *model*
+distinction; they must not become an order of operations. Both `addHeaderFooterBand` and
+`setHeaderFooterBands` used to require `firstPage` to already exist before honouring
+`scope: 'firstPage'`, and fell through to the running list when it did not — so the
+surface a teacher was looking at was not the one they edited, silently. Page 1 rows now
+create `firstPage` on first write (and set `showOnFirstPage: true`, since building a cover
+is the intent to print it), which is what lets the cover be built before any decision
+about later pages.
+
+The panel follows the same order. `HeaderFooterSection` renders **two labelled surfaces —
+"Page 1" first, then "Pages 2 onward"** — each with its own rows, rule, presets and
+`BandSurface` (one component used twice, because two hand-written copies would drift and
+the pair has to look alike for the split to read as one choice made twice). Previously
+page 1 was defined *relative to* the running rows: a teacher wanting a cover had to build
+a header for pages 2+ they might not want, choose "Its own rows" to copy it, then edit the
+copy — backwards from how a paper is made, where the cover is decided first and the
+running line is the afterthought. The link between them survives as two quiet actions
+("Same as page 1", "Give page 1 its own header") rather than as a mode that must be passed
+through, since most papers do repeat one header.
+
 ### Editing bands on the page
 
 **The header is edited on the page, not in the sidebar.** It was the one part of the
 document that rendered on the page but could only be changed through a panel. Clicking
 header text opens the same in-place editor body text uses, and a field drags between the
 three zones. The panel keeps only what has no visual representation on the page —
-show/hide, rule, on-page-1 — plus **presets**, because a teacher who has never built a
-header does not know that "school, paper title, then a Name rule" is the shape.
+show/hide, rule, and whether page 1 has its own rows — plus **presets**, because a teacher
+who has never built a header does not know that "school, paper title, then a Name rule" is
+the shape. Which *rows* page 1 carries is decided in the panel's "Page 1" surface or on
+sheet 1 itself; both write the same `firstPage` list (§ Page 1 can differ).
 
 **A page number is one field with a pattern** (`plain`, `pDot` → "P.5", `longForm` →
 "Page 5 of 12"), not three tokens assembled by hand. The pattern string lives in
