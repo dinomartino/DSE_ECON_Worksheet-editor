@@ -483,16 +483,32 @@ describe('fonts and CJK (§7.4, §11.4)', () => {
 });
 
 describe('tables and images (§7.5, §11.5, §11.6)', () => {
-  it('emits real tables with repeating headers, cantSplit rows and merged cells', async () => {
+  it('emits real tables with cantSplit rows and merged cells', async () => {
     const { read } = await unzip(STUDENT_BI);
     const document = await read('word/document.xml');
 
     expect(document).toContain('<w:tbl>');
     expect(document).toContain('<w:tblGrid>');
-    expect(document).toContain('<w:tblHeader/>');
     expect(document).toContain('<w:cantSplit/>');
     expect(document).toContain('<w:gridSpan w:val="2"/>');
     expect(document).toContain('<w:tblBorders>');
+  });
+
+  /*
+   * An HKDSE table is uniform: plain ruled cells, no shaded or bold header row.
+   *
+   * There was a `headerRowCount` driving `w:tblHeader`, an `EFEFEF` fill and bold runs,
+   * defaulting to 1 — so every table exported with a grey bold top row that none of the
+   * reference papers has. It also could not describe a distribution table, whose headings
+   * run across the top *and* down the left with an empty corner, which is why emphasis is
+   * per-cell formatting now rather than a row count.
+   */
+  it('rules every cell alike, with no header shading, bold or repeat', async () => {
+    const { read } = await unzip(STUDENT_BI);
+    const document = await read('word/document.xml');
+
+    expect(document).not.toContain('<w:tblHeader/>');
+    expect(document).not.toContain('EFEFEF');
   });
 
   it('embeds image bytes in word/media with alt text on the drawing', async () => {

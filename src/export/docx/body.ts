@@ -258,14 +258,12 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
 
   const rows = node.rows
     .map((row, rowIndex) => {
-      const isHeader = rowIndex < node.headerRowCount;
-
+      // No `w:tblHeader`, and no shading or bold: an HKDSE table is uniform, plain-ruled
+      // cells throughout (§tables). Emphasis is per-cell formatting like any other text.
       const trPr =
         '<w:trPr>' +
         // Never split a row across pages (§7.6).
         '<w:cantSplit/>' +
-        // Header rows repeat on every page (§7.5, §11.5).
-        (isHeader ? '<w:tblHeader/>' : '') +
         '</w:trPr>';
 
       const cells = row
@@ -284,11 +282,10 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
           if (coveredVertically) props.push('<w:vMerge/>');
           else if (cell.rowSpan > 1) props.push('<w:vMerge w:val="restart"/>');
           props.push('<w:vAlign w:val="center"/>');
-          if (cell.header) props.push('<w:shd w:val="clear" w:color="auto" w:fill="EFEFEF"/>');
 
           const runs = coveredVertically
             ? ''
-            : biTextRuns(cell.text, context.fonts, context.language, { bold: cell.header });
+            : biTextRuns(cell.text, context.fonts, context.language);
 
           return (
             `<w:tc><w:tcPr>${props.join('')}</w:tcPr>` +

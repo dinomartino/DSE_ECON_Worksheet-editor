@@ -135,14 +135,14 @@ function nodeHtml(
         const cells = row
           .map((cell) => {
             if (cell.covered) return '';
-            const tag = cell.header ? 'th' : 'td';
-            const style =
-              `border:1px solid #000;padding:3pt;text-align:${cell.align};` +
-              (cell.header ? 'background:#EFEFEF;font-weight:bold;' : '');
+            // Every cell is a plain `td`: uniform borders, no shading or bold, which is
+            // what an HKDSE table looks like (§tables). A `th` would also re-introduce
+            // the browser's own bold-and-centred default on paste.
+            const style = `border:1px solid #000;padding:3pt;text-align:${cell.align};`;
             const span =
               (cell.colSpan > 1 ? ` colspan="${cell.colSpan}"` : '') +
               (cell.rowSpan > 1 ? ` rowspan="${cell.rowSpan}"` : '');
-            return `<${tag} style="${style}"${span}>${richHtml(cell.text, language) || '&nbsp;'}</${tag}>`;
+            return `<td style="${style}"${span}>${richHtml(cell.text, language) || '&nbsp;'}</td>`;
           })
           .join('');
         return `<tr>${cells}</tr>`;

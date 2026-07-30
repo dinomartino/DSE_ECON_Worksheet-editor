@@ -137,14 +137,12 @@ export interface TableNodeCell {
   rowSpan: number;
   align: CellAlign;
   covered: boolean;
-  header: boolean;
   edit?: EditTarget;
 }
 
 export interface TableNode {
   kind: 'table';
   rows: TableNodeCell[][];
-  headerRowCount: number;
   caption?: BiText;
   keepNext?: boolean;
   teacherOnly?: boolean;
@@ -407,19 +405,17 @@ export function renderContentBlocks(
       nodes.push({
         kind: 'table',
         columnCount,
-        headerRowCount: block.headerRowCount,
         caption: block.caption,
         keepNext: options.keepNext,
         teacherOnly: options.teacherOnly,
         captionEdit: { kind: 'blockCaption', blockId: block.id },
-        rows: block.rows.map((row, rowIndex) =>
+        rows: block.rows.map((row) =>
           row.cells.map((cell) => ({
             text: cell.text,
             colSpan: cell.colSpan ?? 1,
             rowSpan: cell.rowSpan ?? 1,
             align: cell.align ?? 'left',
             covered: Boolean(cell.covered),
-            header: rowIndex < block.headerRowCount,
             edit: { kind: 'tableCell', blockId: block.id, cellId: cell.id },
           })),
         ),

@@ -53,7 +53,6 @@ export function createTableBlock(rows = 3, columns = 3): TableBlock {
     kind: 'table',
     id: newId(),
     rows: Array.from({ length: rows }, () => createTableRow(columns)),
-    headerRowCount: 1,
   };
 }
 

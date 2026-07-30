@@ -90,6 +90,18 @@ interface Props {
    * field, whose `+` is an invitation to add wording rather than wording itself.
    */
   printHidden?: boolean;
+  /**
+   * Handle Tab while editing — how a table walks from cell to cell.
+   *
+   * Word's behaviour, and the single biggest reason filling a 13-row table there feels
+   * quick: type, Tab, type, Tab, without reaching for the mouse. The field commits first
+   * and then hands over, so the text is in the store before focus leaves. Returning
+   * `true` means the move was handled; `false` lets Tab do its normal thing, which is
+   * what should happen at the end of a table rather than trapping focus in it.
+   *
+   * Only tables pass this. Everywhere else Tab stays the browser's own focus move.
+   */
+  onTab?: (backwards: boolean) => boolean;
 }
 
 export function InlineEditable({
@@ -106,6 +118,7 @@ export function InlineEditable({
   onSelectionChange,
   keepEditing = false,
   printHidden = false,
+  onTab,
 }: Props) {
   const [editing, setEditing] = useState(false);
   const spanRef = useRef<HTMLSpanElement>(null);
@@ -206,6 +219,21 @@ export function InlineEditable({
           if (event.key === 'Escape') {
             event.preventDefault();
             stopEditing();
+          }
+          /*
+           * Tab walks to the next cell, in a table.
+           *
+           * The order matters: `stopEditing` first, so this field's text is committed and
+           * the field is closed *before* the next one opens. Moving first would leave two
+           * editors mounted, and the outgoing one's blur would then commit over whatever
+           * the incoming one had already been given.
+           *
+           * `onTab` returning false means there is nowhere to go, and Tab falls through
+           * to the browser rather than trapping focus inside the table.
+           */
+          if (event.key === 'Tab' && onTab) {
+            stopEditing();
+            if (onTab(event.shiftKey)) event.preventDefault();
           }
           // Let the page's own shortcuts through rather than swallowing them, but
           // never let Delete/Backspace reach the page handler while typing.

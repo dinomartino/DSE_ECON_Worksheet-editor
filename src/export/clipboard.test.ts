@@ -12,10 +12,13 @@ describe('Copy for Word (§7.7, §11.12)', () => {
 
     expect(html).toContain('<table');
     expect(html).toContain('border-collapse:collapse');
-    expect(html).toContain('<th');
     expect(html).toContain('colspan="2"');
     expect(html).toContain('Quantity demanded');
     expect(html).toContain('需求量');
+    // Every cell is a plain `td`: no header row, matching the reference papers — and a
+    // `th` would also re-apply the browser's own bold-and-centred default on paste.
+    expect(html).not.toContain('<th');
+    expect(html).not.toContain('EFEFEF');
   });
 
   it('inlines images as data URIs so the paste carries the picture', () => {

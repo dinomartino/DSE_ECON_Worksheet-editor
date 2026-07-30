@@ -121,6 +121,19 @@ interface WorksheetState {
    * giving the page a second copy to keep in step.
    */
   insertMenuRequest: number;
+  /**
+   * The table cell last clicked on the page, as `{ blockId, cellId }`.
+   *
+   * The sidebar's table panel is **structure only** — insert a row, merge, align — and
+   * every one of those verbs needs a subject. The subject is whichever cell the teacher
+   * is in, and they are in it *on the page*, because that is where the table is legible
+   * at full width. So the page reports the cell and the panel acts on it, rather than the
+   * panel rendering a second grid of inputs to click in.
+   *
+   * It is not part of the document: which cell has focus is editor state, and persisting
+   * it would restore a selection into a table that may have been reshaped since.
+   */
+  activeCell?: { blockId: string; cellId: string };
   /** The question currently being dragged on the page, if any. */
   dragQuestionId?: string;
   past: Worksheet[];
@@ -147,6 +160,8 @@ interface WorksheetState {
   setInsertAnchor: (flowId?: string) => void;
   /** Anchor at `flowId` and ask the rail to open its insert menu. */
   requestInsertMenu: (flowId?: string) => void;
+  /** Report which table cell the page is in, so the sidebar can act on it. */
+  setActiveCell: (cell?: { blockId: string; cellId: string }) => void;
   setDragQuestionId: (questionId?: string) => void;
 
   // --- Questions --------------------------------------------------------------
@@ -660,6 +675,8 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
       insertAnchorId,
       insertMenuRequest: state.insertMenuRequest + 1,
     })),
+
+  setActiveCell: (activeCell) => set({ activeCell }),
   setDragQuestionId: (dragQuestionId) => set({ dragQuestionId }),
 
   // --- Questions --------------------------------------------------------------

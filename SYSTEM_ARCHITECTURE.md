@@ -22,7 +22,7 @@ the same PR.
 | State | Zustand 5, undo/redo with a 100-entry history |
 | Language | TypeScript strict |
 | Export | Raw OOXML via JSZip (hand-built, no `docx` library) |
-| Test | Vitest 4 — 454 tests across 20 files, ~1s |
+| Test | Vitest 4 — 476 tests across 21 files, ~1s |
 | Runtime | Browser-only: client-side `.docx` generation, no API routes |
 
 ## Project structure
@@ -32,7 +32,7 @@ src/
 ├── app/          Next.js shell. EditorHost dynamically imports the editor with
 │                 ssr:false, because the store is browser-only.
 ├── model/        types · numbering · marks · migrations · text · page · flow ·
-│                 bands · bandSegments · edits · factories · diagram ·
+│                 bands · bandSegments · edits · factories · table · diagram ·
 │                 diagramTemplates · diagramDraw
 ├── registry/     Question-type extension point: types · index · mcq · structured
 ├── render/       ir (RenderNode + EditTarget) · worksheet (the walker) · diagram (SVG)
@@ -576,6 +576,92 @@ survived so long: it only shows on a part long enough to wrap, or one ending in 
 `BAND_ROW_TWIPS` in `model/page.ts` is the same 240tw, since a band row is one paragraph
 in that same box. It is duplicated rather than imported (`model/` must not depend on
 `export/`) and a test asserts the two agree.
+
+### Tables have no header row (`src/model/table.ts`)
+
+A `TableBlock` is rows of cells and **nothing about which of them is a "header"**. There
+was a `headerRowCount`, and it was wrong about real papers in two separate ways.
+
+It was wrong about **output**: it drove `w:tblHeader` (repeat across pages), a grey
+`EFEFEF` fill and bold runs, and defaulted to 1 — while no HKDSE table has any of them.
+The reference papers rule plain uniform borders and set every cell in the same weight, so
+the default produced a grey bold top row that a teacher's first action was to undo. Both
+other backends carried the same fault: the clipboard emitted `<th>` (which also re-applies
+the browser's own bold-and-centred default on paste) and the preview shaded row 0.
+
+It was wrong about **structure**: a distribution table's top-left cell is empty, with
+headings running across the top *and* down the left. That is not a count of rows, so no
+value of `headerRowCount` could describe it. Emphasis is therefore ordinary per-cell
+formatting, which reaches a left-hand column as easily as a top row.
+
+Removal was taken without a migration, deliberately: existing header rows become plain on
+next load, which is exactly what the papers look like. Two regression tests assert the
+absence — `not.toContain('<w:tblHeader/>')` and `not.toContain('EFEFEF')` — because this
+is a fault whose only symptom is on paper.
+
+`model/table.ts` holds the structure verbs (insert/remove row and column, merge, unmerge,
+`nextCell`) as pure functions, because **two surfaces perform the same edits** — the
+sidebar panel and the page — and a verb implemented twice eventually means two things.
+Three rules it keeps:
+
+- **Ragged rows are real.** A `colSpan` merge leaves rows holding different numbers of
+  cell objects, so nothing may treat `rows[0].cells.length` as the width. `insertColumn`
+  pads short rows first, or a column inserted into a merged table zig-zags.
+- **A covered cell is neither a merge target nor a source.** It prints nothing, so growing
+  its span would silently consume the cell beyond it into something invisible.
+- **One row and one column are the floor**, for the reason `MIN_ANSWER_LINES` exists: an
+  empty table renders as absence, still in the document and invisible on the page, so the
+  teacher adds another and the document accumulates tables nobody can see.
+
+### Editing a table: structure in the panel, content on the page
+
+The sidebar's table panel used to render a **second full grid of text inputs** — a 13-row
+table became 26 rich-text fields a few characters wide in a 380px column, duplicating
+cells already editable on the page through the `tableCell` edit target. Two places to type
+the same content, and the sidebar's was the illegible one: none of the column widths,
+wrapping or borders that make a table readable are visible there.
+
+Word's division is the one that works and the one a teacher arrives knowing: **structure
+from a panel, content in the document.** So the panel offers only the verbs with no
+representation on the page — insert row above/below, insert column left/right, delete,
+align, merge — and points at the page for typing.
+
+Every one of those verbs needs a subject, so the page reports the clicked cell as
+`activeCell` in the store (the sidebar is a sibling component, the same reason
+`insertAnchorId` lives there). Four details:
+
+- **The report is on `onClickCapture`.** The cell's editable text calls
+  `stopPropagation` — rightly, since selecting the *question* is the wrapper's job — which
+  meant the cell was never reported and the align and merge buttons had no subject, so
+  they never appeared at all. Capture runs before the child can stop anything.
+- **The active cell takes a ring, not a tint.** A selected question already paints
+  `#f6f3ff` across its whole box, so a tinted cell was invisible inside it, leaving the
+  panel saying "cell R2C1" with nothing on the page to say which one. A ring also paints
+  inside the border box, so it cannot shift the table's geometry.
+- **A stale anchor falls back.** `locateCell` returns undefined once the row holding the
+  active cell is deleted, and the panel then shows whole-table actions rather than acting
+  on a position that no longer exists.
+- **Missing per-cell controls are explained, not greyed out.** With no cell chosen the
+  panel says where to click; four disabled buttons whose names do not say what they need
+  is worse.
+
+**Tab walks the table**, as in Word — the single biggest reason filling a 13-row table
+there feels quick. `InlineEditable` takes an `onTab` that only tables supply, so Tab stays
+the browser's own focus move everywhere else. Order matters: the field commits and closes
+*before* the next opens, or the outgoing blur commits over what the incoming field was
+given. The order itself comes from the IR, not the DOM, so it is document order rather
+than whatever focus traversal makes of nested contenteditables, and covered cells are
+skipped since text typed into one never prints. Returning false at the end lets Tab fall
+through rather than trapping focus in the table.
+
+**Inserting a table picks its size first** (`ui/TableSizePicker.tsx`) — Word's hover grid,
+with the live "2 × 13 table" caption. "+ Table" used to create a fixed 3×3, the wrong size
+for every table in the reference papers (13×2, 8×2, 4×3), so inserting was always followed
+by a run of "+ Row" clicks. The grid **grows as the pointer reaches its edge**, because a
+fixed 8×5 would cap the GDP table and send the teacher back to "+ Row" anyway; the ceiling
+is 16×8, beyond which the panel's own "Add row" is the better tool. It opens **downward**:
+upward put the grid through the sidebar's tab bar, which overlapped the top rows, clipped
+the caption and swallowed their pointer events.
 
 ### Answer lines are a style, not direct formatting
 

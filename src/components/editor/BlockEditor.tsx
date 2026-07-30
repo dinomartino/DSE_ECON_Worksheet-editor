@@ -1,14 +1,25 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   createDiagramBlock,
   createImageBlock,
   createParagraphBlock,
   createTableBlock,
-  createTableCell,
-  newId,
 } from '@/model/factories';
+import {
+  columnCountOf,
+  insertColumn,
+  insertRow,
+  isMerged,
+  locateCell,
+  mergeDown,
+  mergeRight,
+  patchCell,
+  removeColumn,
+  removeRow,
+  unmerge,
+} from '@/model/table';
 import { DIAGRAM_TEMPLATES } from '@/model/diagramTemplates';
 import { emptyBiText, plain } from '@/model/text';
 import { RichTextEditable } from '@/components/preview/RichTextEditable';
@@ -16,6 +27,7 @@ import type { ContentBlock, ImageBlock, TableBlock } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { Button, Eyebrow, GroupHeader, IconButton, NumberField } from '@/components/ui';
 import { Menu } from '@/components/ui/Menu';
+import { TableSizePicker } from '@/components/ui/TableSizePicker';
 import { BiTextField } from './BiTextField';
 import { DiagramEditor } from './DiagramEditor';
 
@@ -148,9 +160,9 @@ export function BlockEditor({ blocks, onChange, label, labelHint }: Props) {
         >
           + Paragraph
         </Button>
-        <Button size="sm" variant="subtle" onClick={() => onChange([...blocks, createTableBlock()])}>
-          + Table
-        </Button>
+        <TableInsertButton
+          onPick={(rows, columns) => onChange([...blocks, createTableBlock(rows, columns)])}
+        />
         <Button size="sm" variant="subtle" onClick={() => fileInput.current?.click()}>
           + Image
         </Button>
@@ -181,9 +193,81 @@ export function BlockEditor({ blocks, onChange, label, labelHint }: Props) {
   );
 }
 
-const CELL_INPUT =
- 'w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-ink outline-none hover:border-line focus:border-accent focus:bg-surface focus:ring-1 focus:ring-accent';
+/**
+ * "+ Table", opening Word's grid picker rather than inserting a blind 3×3.
+ *
+ * The old button created a fixed 3×3 — the wrong size for every table in the reference
+ * papers (13×2, 8×2, 4×3) — so inserting was always followed by a run of "+ Row" clicks.
+ * Choosing the size first is both fewer actions and the interaction a teacher already
+ * knows from Word.
+ */
+function TableInsertButton({ onPick }: { onPick: (rows: number, columns: number) => void }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <Button
+        size="sm"
+        variant="subtle"
+        aria-expanded={open}
+        aria-haspopup="grid"
+        onClick={() => setOpen((current) => !current)}
+      >
+        + Table
+      </Button>
+      {open && (
+        /*
+         * Opens **downward and rightward**, deliberately.
+         *
+         * Upward put a 20-row grid straight through the sidebar's tab bar, which sits a
+         * couple of hundred pixels above: the tabs overlapped the top rows and, being
+         * later in the stack, swallowed their pointer events — so the caption was clipped
+         * off and the tallest sizes could not be hovered at all. Downward there is open
+         * panel below, and `right-0` keeps the wider sizes from running off the 380px
+         * column into the page.
+         */
+        <div className="absolute right-0 top-full z-40 mt-1 rounded-xl border border-line bg-surface-raised p-1.5 shadow-2xl">
+          <TableSizePicker
+            onDismiss={() => setOpen(false)}
+            onPick={(rows, columns) => {
+              onPick(rows, columns);
+              setOpen(false);
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The table panel: **structure only**. Text is typed on the page.
+ *
+ * This used to render a second full grid of text inputs — so a 13-row table put 26
+ * rich-text fields into a 380px column, each a few characters wide, duplicating cells
+ * that were already editable on the page via the `tableCell` edit target. Two places to
+ * type the same content, and the sidebar's was the illegible one: a teacher could not see
+ * the column widths, the wrapping or the borders that make a table readable.
+ *
+ * Word's division is the one that works, and the one a teacher arrives already knowing:
+ * **structure from a panel, content in the document.** So this offers the verbs that have
+ * no representation on the page — insert a row above, delete a column, merge — and points
+ * at the page for everything else.
+ *
+ * Every verb acts on the cell the page reports through `activeCell`. With no cell chosen
+ * the per-cell controls are hidden rather than disabled-and-mysterious, and the
+ * whole-table actions (append a row or column) still work, so the panel is never inert.
+ */
 function TableBlockEditor({
   block,
   onChange,
@@ -191,292 +275,181 @@ function TableBlockEditor({
   block: TableBlock;
   onChange: (block: TableBlock) => void;
 }) {
-  const language = useWorksheetStore((s) => s.mode.language);
-  const showEn = language === 'en' || language === 'bilingual';
-  const showZh = language === 'zh' || language === 'bilingual';
-  const columnCount = Math.max(...block.rows.map((row) => row.cells.length), 1);
+  const activeCell = useWorksheetStore((s) => s.activeCell);
+  const setActiveCell = useWorksheetStore((s) => s.setActiveCell);
 
-  // Which cell's toolbar is showing. Keeping it to one cell at a time is the whole
-  // point: previously every cell rendered an align select and two merge buttons,
-  // so a 3x3 table put 27 controls in a 380px column.
-  const [activeCell, setActiveCell] = useState<string | undefined>();
+  const rowCount = block.rows.length;
+  const columnCount = columnCountOf(block);
 
-  const setCell = (
-    rowIndex: number,
-    cellIndex: number,
-    patch: Partial<TableBlock['rows'][0]['cells'][0]>,
-  ) => {
-    const rows = block.rows.map((row, r) =>
-      r === rowIndex
-        ? {
-            ...row,
-            cells: row.cells.map((cell, c) => (c === cellIndex ? { ...cell, ...patch } : cell)),
-          }
-        : row,
-    );
-    onChange({ ...block, rows });
-  };
-
-  const addRow = () =>
-    onChange({
-      ...block,
-      rows: [
-        ...block.rows,
-        { id: newId(), cells: Array.from({ length: columnCount }, () => createTableCell()) },
-      ],
-    });
-
-  const removeRow = (rowIndex: number) =>
-    onChange({ ...block, rows: block.rows.filter((_, r) => r !== rowIndex) });
-
-  const addColumn = () =>
-    onChange({
-      ...block,
-      rows: block.rows.map((row) => ({ ...row, cells: [...row.cells, createTableCell()] })),
-    });
-
-  const removeColumn = (cellIndex: number) =>
-    onChange({
-      ...block,
-      rows: block.rows.map((row) => ({
-        ...row,
-        cells: row.cells.filter((_, c) => c !== cellIndex),
-      })),
-    });
-
-  /**
-   * Merge right / down by growing the span and flagging the absorbed neighbour as
-   * covered, which is exactly what the exporter's gridSpan/vMerge logic expects.
+  /*
+   * Which cell the verbs apply to.
+   *
+   * Resolved from the store's `activeCell` only when it names a cell *in this table* —
+   * two tables in one question each render a panel, and a cell selected in the other one
+   * must not make this panel act on a position it does not have. `locateCell` returning
+   * undefined also covers the stale case, where the row holding the active cell has since
+   * been deleted.
    */
-  const mergeRight = (rowIndex: number, cellIndex: number) => {
-    const row = block.rows[rowIndex];
-    const neighbour = row.cells[cellIndex + 1];
-    if (!neighbour || neighbour.covered) return;
-    const rows = block.rows.map((r, ri) =>
-      ri !== rowIndex
-        ? r
-        : {
-            ...r,
-            cells: r.cells.map((cell, ci) => {
-              if (ci === cellIndex)
-                return { ...cell, colSpan: (cell.colSpan ?? 1) + (neighbour.colSpan ?? 1) };
-              if (ci === cellIndex + 1) return { ...cell, covered: true };
-              return cell;
-            }),
-          },
-    );
-    onChange({ ...block, rows });
-  };
+  const at =
+    activeCell?.blockId === block.id ? locateCell(block, activeCell.cellId) : undefined;
+  const cell = at ? block.rows[at.rowIndex]?.cells[at.cellIndex] : undefined;
 
-  const mergeDown = (rowIndex: number, cellIndex: number) => {
-    const below = block.rows[rowIndex + 1]?.cells[cellIndex];
-    if (!below || below.covered) return;
-    const rows = block.rows.map((r, ri) => {
-      if (ri === rowIndex) {
-        return {
-          ...r,
-          cells: r.cells.map((cell, ci) =>
-            ci === cellIndex ? { ...cell, rowSpan: (cell.rowSpan ?? 1) + (below.rowSpan ?? 1) } : cell,
-          ),
-        };
-      }
-      if (ri === rowIndex + 1) {
-        return {
-          ...r,
-          cells: r.cells.map((cell, ci) => (ci === cellIndex ? { ...cell, covered: true } : cell)),
-        };
-      }
-      return r;
-    });
-    onChange({ ...block, rows });
-  };
-
-  const unmerge = (rowIndex: number, cellIndex: number) => {
-    const cell = block.rows[rowIndex].cells[cellIndex];
-    const colSpan = cell.colSpan ?? 1;
-    const rowSpan = cell.rowSpan ?? 1;
-    const rows = block.rows.map((r, ri) => ({
-      ...r,
-      cells: r.cells.map((c, ci) => {
-        if (ri === rowIndex && ci === cellIndex) return { ...c, colSpan: 1, rowSpan: 1 };
-        const withinCols = ci > cellIndex && ci < cellIndex + colSpan && ri === rowIndex;
-        const withinRows = ri > rowIndex && ri < rowIndex + rowSpan && ci === cellIndex;
-        if (withinCols || withinRows) return { ...c, covered: false };
-        return c;
-      }),
-    }));
-    onChange({ ...block, rows });
+  // Acting through one helper keeps the active cell pointing at a live position: a
+  // structural edit can delete the very row the panel is aimed at.
+  const apply = (next: TableBlock) => {
+    onChange(next);
+    if (at && !locateCell(next, activeCell!.cellId)) setActiveCell(undefined);
   };
 
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <NumberField
-          label="Header rows"
-          value={block.headerRowCount}
-          onChange={(headerRowCount) => onChange({ ...block, headerRowCount })}
-        />
-        <span className="ml-auto flex gap-1">
-          <Button size="sm" variant="subtle" onClick={addRow}>
-            + Row
-          </Button>
-          <Button size="sm" variant="subtle" onClick={addColumn}>
-            + Column
-          </Button>
+    <div className="space-y-2.5">
+      <div className="flex items-center gap-2">
+        <span className="text-xs tabular-nums text-ink-muted">
+          {rowCount} {rowCount === 1 ? 'row' : 'rows'} × {columnCount}{' '}
+          {columnCount === 1 ? 'column' : 'columns'}
         </span>
+        {at && (
+          <span className="ml-auto text-[11px] tabular-nums text-ink-subtle">
+            cell R{at.rowIndex + 1}C{at.cellIndex + 1}
+          </span>
+        )}
       </div>
 
-      <div className="overflow-x-auto rounded-md border border-line ">
-        <table className="w-full border-collapse text-xs">
-          <tbody>
-            {block.rows.map((row, rowIndex) => {
-              const isHeader = rowIndex < block.headerRowCount;
-              return (
-                <tr key={row.id} className="group/row">
-                  {row.cells.map((cell, cellIndex) => {
-                    if (cell.covered) {
-                      return (
-                        <td
-                          key={cell.id}
-                          className="border border-dashed border-line bg-surface-hover/70 p-1 text-center align-middle text-[10px] text-ink-subtle "
-                        >
-                          merged
-                          <button
-                            type="button"
-                            className="ml-1 underline hover:text-ink-muted"
-                            onClick={() => unmerge(rowIndex, cellIndex)}
-                          >
-                            undo
-                          </button>
-                        </td>
-                      );
-                    }
+      {/* Rows and columns. Insert-above and insert-left need a position, so they are
+          offered only with a cell chosen; append never does, which is why the fallback
+          is a plain "Add" rather than a greyed-out pair of directional buttons. */}
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-1">
+          <span className="w-14 shrink-0 text-[11px] text-ink-subtle">Rows</span>
+          {at ? (
+            <>
+              <Button size="sm" variant="subtle" onClick={() => apply(insertRow(block, at.rowIndex))}>
+                Above
+              </Button>
+              <Button
+                size="sm"
+                variant="subtle"
+                onClick={() => apply(insertRow(block, at.rowIndex + 1))}
+              >
+                Below
+              </Button>
+              <IconButton
+                label={`Delete row ${at.rowIndex + 1}`}
+                variant="danger"
+                disabled={rowCount <= 1}
+                onClick={() => apply(removeRow(block, at.rowIndex))}
+              >
+                <span aria-hidden>✕</span>
+              </IconButton>
+            </>
+          ) : (
+            <Button size="sm" variant="subtle" onClick={() => apply(insertRow(block, rowCount))}>
+              Add row
+            </Button>
+          )}
+        </div>
 
-                    const key = `${rowIndex}:${cellIndex}`;
-                    const isActive = activeCell === key;
-
-                    return (
-                      <td
-                        key={cell.id}
-                        className={`border border-line p-1 align-top  ${
-                          isHeader ? 'bg-surface-sunken ' : ''
-                        }`}
-                        colSpan={cell.colSpan ?? 1}
-                        rowSpan={cell.rowSpan ?? 1}
-                        onFocus={() => setActiveCell(key)}
-                        onBlur={(event) => {
-                          if (!event.currentTarget.contains(event.relatedTarget as Node)) {
-                            setActiveCell((current) => (current === key ? undefined : current));
-                          }
-                        }}
-                        style={{ textAlign: cell.align ?? 'left' }}
-                      >
-                        {/* Cell inputs follow the selected language mode (§5.2). They
-                            render their runs rather than a marker string, so a bold
-                            column header reads as bold here and a per-run size survives
-                            being typed next to — the same surface the page uses. */}
-                        {showEn && (
-                          <RichTextEditable
-                            className={CELL_INPUT}
-                            lang="en"
-                            ariaLabel={`Row ${rowIndex + 1} column ${cellIndex + 1} English`}
-                            value={cell.text.en ?? []}
-                            onChange={(next) =>
-                              setCell(rowIndex, cellIndex, {
-                                text: { ...cell.text, en: next },
-                              })
-                            }
-                          />
-                        )}
-                        {showZh && (
-                          <RichTextEditable
-                            className={CELL_INPUT}
-                            lang="zh-HK"
-                            ariaLabel={`Row ${rowIndex + 1} column ${cellIndex + 1} 中文`}
-                            value={cell.text.zh ?? []}
-                            onChange={(next) =>
-                              setCell(rowIndex, cellIndex, {
-                                text: { ...cell.text, zh: next },
-                              })
-                            }
-                          />
-                        )}
-
-                        {/* Formatting appears only for the focused cell. */}
-                        {isActive && (
-                          <div className="mt-1 flex items-center gap-0.5 border-t border-line pt-1 ">
-                            {(['left', 'center', 'right'] as const).map((align) => (
-                              <button
-                                key={align}
-                                type="button"
-                                title={`Align ${align}`}
-                                aria-label={`Align ${align}`}
-                                aria-pressed={(cell.align ?? 'left') === align}
-                                onClick={() => setCell(rowIndex, cellIndex, { align })}
-                                className={`rounded px-1 text-[10px] ${
-                                  (cell.align ?? 'left') === align
-                                    ? 'bg-accent-soft text-accent-ink '
-                                    : 'text-ink-subtle hover:bg-surface-hover '
-                                }`}
-                              >
-                                {align[0].toUpperCase()}
-                              </button>
-                            ))}
-                            <span className="mx-0.5 h-3 w-px bg-line" />
-                            <button
-                              type="button"
-                              className="rounded px-1 text-[10px] text-ink-subtle hover:bg-surface-hover "
-                              title="Merge with cell to the right"
-                              aria-label="Merge right"
-                              onClick={() => mergeRight(rowIndex, cellIndex)}
-                            >
-                              →
-                            </button>
-                            <button
-                              type="button"
-                              className="rounded px-1 text-[10px] text-ink-subtle hover:bg-surface-hover "
-                              title="Merge with cell below"
-                              aria-label="Merge down"
-                              onClick={() => mergeDown(rowIndex, cellIndex)}
-                            >
-                              ↓
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    );
-                  })}
-                  <td className="w-6 p-0 text-center align-middle">
-                    <span className="opacity-0 transition-opacity group-hover/row:opacity-100">
-                      <IconButton
-                        label={`Delete row ${rowIndex + 1}`}
-                        variant="danger"
-                        onClick={() => removeRow(rowIndex)}
-                      >
-                        <span aria-hidden>✕</span>
-                      </IconButton>
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
-            <tr>
-              {Array.from({ length: columnCount }, (_, cellIndex) => (
-                <td key={cellIndex} className="p-0 text-center">
-                  <IconButton
-                    label={`Delete column ${cellIndex + 1}`}
-                    variant="danger"
-                    onClick={() => removeColumn(cellIndex)}
-                  >
-                    <span aria-hidden>✕</span>
-                  </IconButton>
-                </td>
-              ))}
-              <td />
-            </tr>
-          </tbody>
-        </table>
+        <div className="flex items-center gap-1">
+          <span className="w-14 shrink-0 text-[11px] text-ink-subtle">Columns</span>
+          {at ? (
+            <>
+              <Button
+                size="sm"
+                variant="subtle"
+                onClick={() => apply(insertColumn(block, at.cellIndex))}
+              >
+                Left
+              </Button>
+              <Button
+                size="sm"
+                variant="subtle"
+                onClick={() => apply(insertColumn(block, at.cellIndex + 1))}
+              >
+                Right
+              </Button>
+              <IconButton
+                label={`Delete column ${at.cellIndex + 1}`}
+                variant="danger"
+                disabled={columnCount <= 1}
+                onClick={() => apply(removeColumn(block, at.cellIndex))}
+              >
+                <span aria-hidden>✕</span>
+              </IconButton>
+            </>
+          ) : (
+            <Button
+              size="sm"
+              variant="subtle"
+              onClick={() => apply(insertColumn(block, columnCount))}
+            >
+              Add column
+            </Button>
+          )}
+        </div>
       </div>
+
+      {cell && at ? (
+        <div className="space-y-1.5 border-t border-line pt-2">
+          <div className="flex items-center gap-1">
+            <span className="w-14 shrink-0 text-[11px] text-ink-subtle">Align</span>
+            {(['left', 'center', 'right'] as const).map((align) => (
+              <button
+                key={align}
+                type="button"
+                title={`Align ${align}`}
+                aria-label={`Align ${align}`}
+                aria-pressed={(cell.align ?? 'left') === align}
+                onClick={() => apply(patchCell(block, at.rowIndex, at.cellIndex, { align }))}
+                className={`cursor-pointer rounded px-1.5 py-0.5 text-[11px] ${
+                  (cell.align ?? 'left') === align
+                    ? 'bg-accent-soft text-accent-ink'
+                    : 'text-ink-subtle hover:bg-surface-hover'
+                }`}
+              >
+                {align === 'left' ? 'L' : align === 'center' ? 'C' : 'R'}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-1">
+            <span className="w-14 shrink-0 text-[11px] text-ink-subtle">Merge</span>
+            {isMerged(cell) ? (
+              <Button
+                size="sm"
+                variant="subtle"
+                onClick={() => apply(unmerge(block, at.rowIndex, at.cellIndex))}
+              >
+                Split
+              </Button>
+            ) : (
+              <>
+                <Button
+                  size="sm"
+                  variant="subtle"
+                  onClick={() => apply(mergeRight(block, at.rowIndex, at.cellIndex))}
+                >
+                  → Right
+                </Button>
+                <Button
+                  size="sm"
+                  variant="subtle"
+                  onClick={() => apply(mergeDown(block, at.rowIndex, at.cellIndex))}
+                >
+                  ↓ Down
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      ) : (
+        /* Not a disabled control: the reason the per-cell verbs are missing is that
+           nothing has been aimed at, and saying where to aim is more use than greying
+           out four buttons whose names do not explain what they need. */
+        <p className="border-t border-line pt-2 text-[11px] leading-snug text-ink-subtle">
+          Click a cell in the table on the page to align or merge it — and to type, which
+          happens there rather than here.
+        </p>
+      )}
 
       <BiTextField
         label="Caption"

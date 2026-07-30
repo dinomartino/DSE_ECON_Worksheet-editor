@@ -215,6 +215,8 @@ function richNodes(
   language: LanguageMode,
   edit?: EditTarget,
   ctx?: EditContext,
+  /** Tab handler, supplied only by table cells so a table walks like Word's. */
+  onTab?: (backwards: boolean) => boolean,
 ) {
   if (!text) return null;
 
@@ -233,6 +235,7 @@ function richNodes(
         onFlush={(next) => ctx.onEditKeepingSelection(edit, next)}
         onSelectionChange={ctx.onTextSelectionChange}
         keepEditing={ctx.keepEditing}
+        onTab={onTab}
       >
         {rendered}
       </InlineEditable>
@@ -507,6 +510,17 @@ export interface EditContext {
   onTextSelectionChange?: (selection: TextSelection | undefined) => void;
   /** True while a toolbar click is in flight, so the field must not close on blur. */
   keepEditing?: boolean;
+  /**
+   * The table cell being worked in, and how to change it.
+   *
+   * The sidebar's table panel is structure-only (§tables): its align, merge and
+   * insert-row-above verbs all need a subject, and the subject is chosen here, on the
+   * page, because that is where a table is legible at full width. So the page reports
+   * the cell and the panel acts on it — the alternative was the panel rendering its own
+   * grid of inputs, which is what made a 13-row table 26 tiny fields in a 380px column.
+   */
+  activeCell?: { blockId: string; cellId: string };
+  onActivateCell?: (cell: { blockId: string; cellId: string }) => void;
   /**
    * Resizing a picture on the page.
    *
@@ -886,6 +900,45 @@ function NodeView({
     return <TextNodeView node={node} language={language} ctx={ctx} />;
 
   if (node.kind === "table") {
+    /*
+     * Tab order: every editable cell, row by row.
+     *
+     * Built from the IR rather than from the DOM, so it is the document's own order and
+     * not whatever the browser's focus traversal makes of nested contenteditables.
+     * Covered cells are excluded — they print nothing, so landing in one would write
+     * text that never appears.
+     */
+    const tabOrder = node.rows
+      .flatMap((row) => row)
+      .filter((cell) => !cell.covered && cell.edit?.kind === "tableCell")
+      .map((cell) => (cell.edit as { blockId: string; cellId: string }));
+
+    /**
+     * Move to the neighbouring cell, or report that there is none.
+     *
+     * Focus is moved by *asking the next cell's field to open*, which the page does by
+     * clicking it — the fields are contenteditables created on demand, so there is no
+     * persistent element to `.focus()`. `requestAnimationFrame` waits for the outgoing
+     * field to unmount first; without it the click lands on a node React is replacing.
+     */
+    const moveCell = (fromCellId: string, backwards: boolean): boolean => {
+      const at = tabOrder.findIndex((cell) => cell.cellId === fromCellId);
+      const next = at < 0 ? undefined : tabOrder[at + (backwards ? -1 : 1)];
+      if (!next) return false;
+      ctx?.onActivateCell?.(next);
+      requestAnimationFrame(() => {
+        const cellNode = document.querySelector<HTMLElement>(
+          `[data-table-cell="${CSS.escape(next.cellId)}"] [role="textbox"]`,
+        );
+        // A double-click is what opens a field on the page, so that is what a Tab has to
+        // reproduce; focusing the idle span alone would only select it.
+        cellNode?.dispatchEvent(
+          new MouseEvent("dblclick", { bubbles: true, cancelable: true }),
+        );
+      });
+      return true;
+    };
+
     return (
       <div className="my-2">
         <div className="overflow-x-auto">
@@ -893,23 +946,65 @@ function NodeView({
             <tbody>
               {node.rows.map((row, rowIndex) => (
                 <tr key={rowIndex}>
-                  {row.map((cell, cellIndex) =>
-                    cell.covered ? null : (
+                  {row.map((cell, cellIndex) => {
+                    if (cell.covered) return null;
+                    const address =
+                      cell.edit?.kind === "tableCell" ? cell.edit : undefined;
+                    const isActive =
+                      address !== undefined &&
+                      ctx?.activeCell?.blockId === address.blockId &&
+                      ctx.activeCell.cellId === address.cellId;
+                    return (
                       <td
                         key={cellIndex}
+                        data-table-cell={address?.cellId}
                         colSpan={cell.colSpan > 1 ? cell.colSpan : undefined}
                         rowSpan={cell.rowSpan > 1 ? cell.rowSpan : undefined}
+                        /*
+                         * Uniform, plain-ruled cells — no header shading or bold, which no
+                         * HKDSE table has (§tables). Literal hex is the token rule, since
+                         * this is drawn on the paper and must not follow the app theme.
+                         *
+                         * The active cell takes a tint so the sidebar's "cell R2C3" and
+                         * its align/merge buttons have a visible subject; it is
+                         * `data-print-hide`-equivalent by being a background only, which
+                         * the print rules already neutralise.
+                         */
+                        /*
+                         * An inset ring, not a tint: the selected *question* already
+                         * paints `#f6f3ff` across its whole box, so a tinted cell was
+                         * invisible inside it — which left the sidebar saying "cell R2C1"
+                         * with nothing on the page to say which one that was. A ring
+                         * paints inside the border box, so it also reserves no space and
+                         * cannot shift the table's geometry.
+                         */
                         className={`border border-slate-500 px-1.5 py-1 align-middle ${
-                          cell.header
-                            ? "bg-slate-100 font-semibold dark:bg-slate-700"
-                            : ""
+                          isActive ? "ring-2 ring-inset ring-[#7c5cff]" : ""
                         }`}
                         style={{ textAlign: cell.align }}
+                        /*
+                         * Capture, not bubble.
+                         *
+                         * The cell's editable text calls `stopPropagation` on click —
+                         * rightly, since selecting the *question* is the wrapper's job and
+                         * a click on the text means the text. But that also stopped the
+                         * cell ever being reported, so the sidebar's align and merge
+                         * buttons had no subject and never appeared. Capture runs on the
+                         * way down, before the child can stop anything, and it changes
+                         * nothing about what the click then goes on to do.
+                         */
+                        onClickCapture={() => {
+                          if (address) ctx?.onActivateCell?.(address);
+                        }}
                       >
-                        {richNodes(cell.text, language, cell.edit, ctx)}
+                        {richNodes(cell.text, language, cell.edit, ctx,
+                          address
+                            ? (backwards) => moveCell(address.cellId, backwards)
+                            : undefined,
+                        )}
                       </td>
-                    ),
-                  )}
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>
@@ -2258,6 +2353,15 @@ export function Preview({
   const setInsertAnchor = useWorksheetStore((s) => s.setInsertAnchor);
   const requestInsertMenu = useWorksheetStore((s) => s.requestInsertMenu);
 
+  /*
+   * Which table cell the sidebar's structure panel acts on.
+   *
+   * In the store rather than local state because the *sidebar* is the consumer, and it is
+   * a sibling of this component — the same reason `insertAnchorId` lives there.
+   */
+  const activeCell = useWorksheetStore((s) => s.activeCell);
+  const setActiveCell = useWorksheetStore((s) => s.setActiveCell);
+
   const [fitScale, setFitScale] = useState(1);
   // User zoom, multiplied onto the auto-fit scale rather than replacing it, so
   // "100%" always means "as wide as this column allows" — the reading a teacher
@@ -3066,6 +3170,8 @@ export function Preview({
         textSelection,
         onTextSelectionChange: setTextSelection,
         keepEditing: formatting,
+        activeCell,
+        onActivateCell: setActiveCell,
         resize: onResizeBlock
           ? {
               scale,

@@ -110,11 +110,24 @@ export interface TableRow {
   cells: TableCell[];
 }
 
+/**
+ * A table: rows of cells, and nothing about which of them is a "header".
+ *
+ * There was a `headerRowCount` here, and it was wrong about real papers. It drove three
+ * things in the `.docx` — `w:tblHeader`, grey `EFEFEF` shading and bold text — while
+ * **no HKDSE table has any of them**: the reference papers rule plain uniform borders
+ * and set every cell in the same weight. So the default of 1 produced output a teacher's
+ * first action was to undo.
+ *
+ * It could not express the papers either. A distribution table's top-left cell is empty
+ * with headings running across the top *and* down the left side, which is not a count of
+ * rows. Emphasis is therefore per-cell formatting like any other text, which reaches a
+ * left-hand column as easily as a top row.
+ */
 export interface TableBlock {
   kind: 'table';
   id: string;
   rows: TableRow[];
-  headerRowCount: number;
   caption?: BiText;
 }
 
