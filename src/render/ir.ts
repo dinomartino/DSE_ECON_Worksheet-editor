@@ -7,6 +7,7 @@ import type {
   OutputMode,
   TextFormat,
 } from '@/model/types';
+import { trailingBlankLines } from '@/model/text';
 
 /**
  * Neutral render IR.
@@ -333,6 +334,48 @@ export const BLANK_LINE_PT = 12;
 
 export function blankLine(): RenderNode {
   return { kind: 'spacer', heightPt: BLANK_LINE_PT };
+}
+
+/**
+ * Push a separating blank line, unless the page already ends in one.
+ *
+ * A gap is a property of the *boundary*, so it has to count what is already there. Text
+ * ending in a trailing hard break (Shift+Enter) prints its own blank line, and a
+ * separator pushed blindly after it opened a **double** gap — a part typed with a
+ * trailing break sat twice as far from the next part as its neighbours did, for a reason
+ * invisible in the document.
+ *
+ * The trailing break still prints; it simply *counts as* the gap instead of adding to
+ * one. So every gap is exactly one line however the text happened to be typed, which is
+ * the invariant the fixed 12pt rhythm depends on (§ One fixed line, no paragraph
+ * spacing).
+ *
+ * Both cases are checked because both spend a line: an explicit `blankLine()` already
+ * pushed, and a text node whose own last line is empty.
+ */
+export function pushGap(nodes: RenderNode[]): void {
+  if (!endsInBlankLine(nodes)) nodes.push(blankLine());
+}
+
+/**
+ * Does this node stream already end in a spent line?
+ *
+ * Deliberately **language-neutral**, like the rest of the IR: one IR feeds all three
+ * backends, so the gap cannot be decided per language without the preview and the `.docx`
+ * disagreeing about the document's height — and the paginator measures these boxes. A
+ * trailing break on *either* side therefore counts, so the shape is the same whichever
+ * language is being shown.
+ */
+export function endsInBlankLine(nodes: RenderNode[]): boolean {
+  const last = nodes[nodes.length - 1];
+  if (!last) return false;
+  if (last.kind === 'spacer') return true;
+  // A text node ending in a hard break leaves an empty final line, which is the same
+  // spent line a spacer would have contributed.
+  if (last.kind === 'text') {
+    return trailingBlankLines(last.text.en) > 0 || trailingBlankLines(last.text.zh) > 0;
+  }
+  return false;
 }
 
 /** Expand a content block into IR nodes (shared by every question type). */

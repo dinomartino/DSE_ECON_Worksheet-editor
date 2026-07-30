@@ -8,7 +8,7 @@ import {
 } from '@/model/numbering';
 import { bi, isBiTextEmpty } from '@/model/text';
 import type { StructuredQuestion } from '@/model/types';
-import { blankLine, renderContentBlocks, type RenderContext, type RenderNode } from '@/render/ir';
+import { pushGap, renderContentBlocks, type RenderContext, type RenderNode } from '@/render/ir';
 import { StructuredEditorPanel } from '@/components/editor/StructuredEditorPanel';
 import type { QuestionTypeDefinition } from './types';
 
@@ -64,7 +64,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
      * blank, (b). The gap is a spent line because the page runs on a fixed 12pt line
      * with no paragraph spacing (§ One fixed line, no paragraph spacing).
      */
-    nodes.push(blankLine());
+    pushGap(nodes);
     const partRef = {
       stream: context.questionStream,
       definition: 'question' as const,
@@ -118,8 +118,10 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
       };
 
       // Each (i)/(ii) sub-part gets the same blank line above it that its parent part
-      // gets, so the depths read alike rather than sub-parts running together.
-      nodes.push(blankLine());
+      // gets, so the depths read alike rather than sub-parts running together. Via
+      // `pushGap`, so a part whose text ends in a trailing hard break does not open a
+      // double gap before its first sub-part.
+      pushGap(nodes);
 
       if (subFirst && subFirst.kind === 'paragraph') {
         nodes.push({

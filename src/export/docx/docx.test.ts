@@ -390,14 +390,25 @@ describe('fixed line spacing (§7.3)', () => {
     }
   });
 
-  it('separates consecutive questions, but adds no gap before the first item', () => {
+  it('separates consecutive questions, and gaps the first item below a title', () => {
     const worksheet = buildAcceptanceWorksheet();
     const rendered = renderWorksheet(worksheet, { language: 'en', version: 'student' });
 
-    // The very first item opens the document; a gap there is just a shifted top margin.
-    expect(rendered.items[0].type === 'question'
-      ? rendered.items[0].question.nodes[0].kind
-      : rendered.items[0].layout.nodes[0].kind).not.toBe('spacer');
+    /*
+     * The acceptance worksheet has a title, which prints *above* the flow — so its first
+     * item is not at the top of the page and needs its gap like any other item.
+     *
+     * This assertion used to demand the opposite, because the rule keyed on flow index 0
+     * alone. That made the same element space differently depending only on position: a
+     * section first in the flow printed tight under the header rule, while an identical
+     * one further down had air above it, and the gap reappeared as soon as anything was
+     * dragged in front of it.
+     */
+    const firstNodes = rendered.items[0].type === 'question'
+      ? rendered.items[0].question.nodes
+      : rendered.items[0].layout.nodes;
+    expect(rendered.title).toBeDefined();
+    expect(firstNodes[0].kind).toBe('spacer');
 
     // Every later question leads with one.
     const questions = rendered.items.filter((item) => item.type === 'question');
@@ -405,6 +416,24 @@ describe('fixed line spacing (§7.3)', () => {
       const nodes = item.type === 'question' ? item.question.nodes : [];
       expect(nodes[0].kind).toBe('spacer');
     }
+  });
+
+  it('adds no gap before the first item at the true top of the page', () => {
+    // Nothing above the flow — no masthead, no title, no instructions — so a gap there
+    // would only shift the top margin.
+    const worksheet = buildAcceptanceWorksheet();
+    const bare = {
+      ...worksheet,
+      bands: [],
+      title: { en: [], zh: [] },
+      instructions: { en: [], zh: [] },
+    };
+    const rendered = renderWorksheet(bare, { language: 'en', version: 'student' });
+
+    const firstNodes = rendered.items[0].type === 'question'
+      ? rendered.items[0].question.nodes
+      : rendered.items[0].layout.nodes;
+    expect(firstNodes[0].kind).not.toBe('spacer');
   });
 
   it('exports each blank line as an empty styled paragraph on the shared rhythm', async () => {

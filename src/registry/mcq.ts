@@ -2,7 +2,7 @@ import { createMcqQuestion } from '@/model/factories';
 import { optionLabel, statementLabel } from '@/model/numbering';
 import { bi, isBiTextEmpty, plain } from '@/model/text';
 import type { LanguageMode, McqOptionLayout, McqQuestion } from '@/model/types';
-import { blankLine, renderContentBlocks, type RenderContext, type RenderNode } from '@/render/ir';
+import { pushGap, renderContentBlocks, type RenderContext, type RenderNode } from '@/render/ir';
 import { McqEditorPanel } from '@/components/editor/McqEditorPanel';
 import type { QuestionTypeDefinition } from './types';
 
@@ -142,8 +142,11 @@ function render(question: McqQuestion, context: RenderContext): RenderNode[] {
    * statements, blank, the A–D options. The gap has to be a spent line because the
    * document runs on a fixed 12pt line with no paragraph spacing anywhere
    * (§ One fixed line, no paragraph spacing) — there is no `w:after` to grow.
+   *
+   * Via `pushGap`, so a stem whose text ends in a trailing hard break already spends the
+   * line and does not get a second one on top of it.
    */
-  nodes.push(blankLine());
+  pushGap(nodes);
 
   const statements = question.statements ?? [];
   statements.forEach((statement, index) => {
@@ -164,7 +167,7 @@ function render(question: McqQuestion, context: RenderContext): RenderNode[] {
 
   // Only when there were statements: without them the stem's own blank already
   // separates the question from its options, and a second would double the gap.
-  if (statements.length > 0) nodes.push(blankLine());
+  if (statements.length > 0) pushGap(nodes);
 
   const layout = resolveOptionLayout(question);
 

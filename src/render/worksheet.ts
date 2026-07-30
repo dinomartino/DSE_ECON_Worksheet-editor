@@ -13,7 +13,7 @@ import type {
   Worksheet,
 } from '@/model/types';
 import { requireQuestionType } from '@/registry';
-import { blankLine, includeNode, type RenderNode } from './ir';
+import { blankLine, endsInBlankLine, includeNode, type RenderNode } from './ir';
 
 /**
  * Assemble the whole worksheet into render IR. This is the one place that walks
@@ -198,9 +198,32 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
    */
   let questionStream = 'question:0';
 
+  /*
+   * Does anything print above the flow?
+   *
+   * A heading's leading blank line is suppressed only at the **true top of the page**,
+   * where a gap is just a shifted top margin. Flow index 0 is not that place: the
+   * masthead bands, the title and the instructions all render above the flow, so a
+   * section sitting first in the flow usually has a title directly over it and needs its
+   * gap exactly like every other heading.
+   *
+   * Keying on the index alone made the same element space differently depending only on
+   * where it sat — "Section A" printed tight under the header rule while "Section B",
+   * identical in every other way, had air above it. Worse, the gap reappeared the moment
+   * anything was dragged in front of the section, so the fix looked like it depended on
+   * unrelated content.
+   */
+  const somethingAboveFlow =
+    bands.length > 0 || title !== undefined || instructions !== undefined;
+
   // The section marker the walk has most recently passed. A part header's derived total
   // is scoped to it, which is what "(19 marks)" under "Section B" means.
   let currentSectionId: string | undefined;
+
+  // What the previous item emitted, so a gap can tell whether the boundary already has
+  // a spent line on it. Reset per walk rather than derived afterwards, because the
+  // decision has to be made while the run is being built.
+  let previousNodes: RenderNode[] = [];
 
   // One walk over the one resolved flow. Questions, layout elements and section
   // headings come out in the teacher's order, so nothing downstream has to interleave
@@ -211,17 +234,22 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
         currentSectionId = item.element.id;
         if (item.element.restartNumbering) questionStream = `question:${item.element.id}`;
       }
+      const nodes = renderLayoutElement(
+        item.element,
+        item.element.kind === 'partHeader' ? (sectionTotals.get(currentSectionId) ?? 0) : 0,
+        // A heading's leading gap is skipped at the true top of the page, and also when
+        // the previous item already spent a line — otherwise a note ending in a trailing
+        // hard break would sit two lines above the next heading.
+        (index === 0 && !somethingAboveFlow) || endsInBlankLine(previousNodes),
+      );
+      previousNodes = nodes;
       return {
         type: 'layout',
         layout: {
           elementId: item.id,
           // Derived, so a part header's "(19 marks)" tracks the questions inside its
           // own section (§3.5).
-          nodes: renderLayoutElement(
-            item.element,
-            item.element.kind === 'partHeader' ? (sectionTotals.get(currentSectionId) ?? 0) : 0,
-            index === 0,
-          ),
+          nodes,
         },
       };
     }
@@ -248,10 +276,17 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
      * Emitted here rather than inside each question type because it is a property of the
      * *boundary*, not of either question — a type that appended its own trailing gap
      * would double up against whatever the walker put before the next item, and would
-     * leave a stray blank at the very end of the document. Suppressed for the first item
-     * for the same reason `ITEM_GAP` is: nothing precedes it to separate from.
+     * leave a stray blank at the very end of the document. Suppressed only when nothing
+     * precedes it at all — including the title, instructions and masthead that render
+     * above the flow — since a gap there is just a shifted top margin.
+     *
+     * It is also suppressed when the previous item already ended in a spent line, so an
+     * item whose last text carries a trailing hard break does not sit two lines from the
+     * next one while its neighbours sit one (§ a gap counts what is already there).
      */
-    const separated = index === 0 ? nodes : [ITEM_GAP, ...nodes];
+    const atTrueTop = index === 0 && !somethingAboveFlow;
+    const separated = atTrueTop || endsInBlankLine(previousNodes) ? nodes : [ITEM_GAP, ...nodes];
+    previousNodes = separated;
 
     return { type: 'question', question: { questionId: question.id, number, nodes: separated } };
   });
