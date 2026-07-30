@@ -104,19 +104,39 @@ export async function renderDiagramImages(
   const images: DiagramImageMap = new Map();
   if (typeof document === 'undefined') return images;
 
-  for (const node of collectDiagramNodes(worksheet, mode)) {
-    const svg = diagramSvg(node.diagram, {
-      widthPx: node.widthPx,
-      heightPx: node.heightPx,
-      language,
-      fonts: worksheet.fonts,
-      scale: EXPORT_SCALE,
-    });
-    images.set(
-      node.blockId,
-      await rasterize(svg, node.widthPx * EXPORT_SCALE, node.heightPx * EXPORT_SCALE),
-    );
-  }
+  /*
+   * Rasterized together rather than one after another.
+   *
+   * Almost all of `rasterize`'s wall time is spent *waiting*: an `<img>` decoding an SVG
+   * data URL is the browser's own asynchronous work, not ours, and it happens off the
+   * main thread. Awaiting inside the loop serialized those waits, so a worksheet with
+   * twelve diagrams paid twelve decodes end to end while the export button sat spinning.
+   * Issuing them together lets the browser overlap the decodes and only the `drawImage`
+   * / `toDataURL` calls queue on the main thread.
+   *
+   * The fan-out is bounded by the number of distinct diagrams in one worksheet — tens at
+   * the very most, since each is a hand-drawn figure — so this needs no concurrency
+   * limit. `collectDiagramNodes` has already deduplicated by block id, so nothing is
+   * rasterized twice.
+   *
+   * The results are written into the map after the fact, in `collectDiagramNodes` order,
+   * so the map's iteration order is document order exactly as it was before.
+   */
+  const nodes = collectDiagramNodes(worksheet, mode);
+  const rasterized = await Promise.all(
+    nodes.map((node) => {
+      const svg = diagramSvg(node.diagram, {
+        widthPx: node.widthPx,
+        heightPx: node.heightPx,
+        language,
+        fonts: worksheet.fonts,
+        scale: EXPORT_SCALE,
+      });
+      return rasterize(svg, node.widthPx * EXPORT_SCALE, node.heightPx * EXPORT_SCALE);
+    }),
+  );
+
+  nodes.forEach((node, index) => images.set(node.blockId, rasterized[index]));
 
   return images;
 }

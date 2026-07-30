@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { nanoid } from 'nanoid';
 import type {
   Diagram,
@@ -56,12 +56,24 @@ export function DiagramEditor({ block, onChange }: Props) {
   const diagram = block.diagram;
   const patch = (next: Partial<Diagram>) => onChange({ ...block, diagram: { ...diagram, ...next } });
 
-  const preview = diagramSvg(diagram, {
-    widthPx: block.widthPx,
-    heightPx: block.heightPx,
-    language,
-    fonts,
-  });
+  /*
+   * Memoised for the reason `DiagramNodeView` memoises its copy: the string goes to
+   * `dangerouslySetInnerHTML`, so a fresh-but-identical string makes React replace the
+   * markup and the browser reparse and re-lay-out the whole SVG. This panel re-renders
+   * on every keystroke in every field it hosts — a curve's label, an axis title, a tab
+   * change — and the thumbnail only depends on the geometry and the fonts, so all of
+   * those were re-running the renderer and reparsing the picture for nothing.
+   */
+  const preview = useMemo(
+    () =>
+      diagramSvg(diagram, {
+        widthPx: block.widthPx,
+        heightPx: block.heightPx,
+        language,
+        fonts,
+      }),
+    [diagram, block.widthPx, block.heightPx, language, fonts],
+  );
 
   return (
     <div className="space-y-2">

@@ -3,7 +3,6 @@
 import { useRef, useState } from 'react';
 import { copyForWord, worksheetClipboardHtml, worksheetPlainText } from '@/export/clipboard';
 import { renderDiagramImages } from '@/export/diagramImage';
-import { docxFileName, exportDocx } from '@/export/docx';
 import { worksheetMarks } from '@/model/marks';
 import { pageSetupOf } from '@/model/page';
 import type { LanguageMode, VersionMode } from '@/model/types';
@@ -57,10 +56,25 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
     setTimeout(() => setNotice((current) => (current === message ? undefined : current)), 2400);
   };
 
+  /**
+   * Export as .docx, with the writer fetched on demand.
+   *
+   * `@/export/docx` is the heaviest thing this app can reach: the OOXML builders plus
+   * JSZip, which alone is ~100 KB of the main chunk. None of it runs until this button
+   * is pressed, and a teacher opening the editor to type a question never presses it —
+   * so a static import made every page load pay for the deflate implementation before
+   * the first paint. Importing it here moves the whole subtree into its own chunk that
+   * is fetched during the click, behind the `busy` spinner this handler already shows.
+   *
+   * The import sits inside the `try` deliberately: a chunk that fails to load (offline,
+   * a stale deployment) is an export failure like any other and belongs in the same
+   * error message rather than as an unhandled rejection.
+   */
   const handleExport = async () => {
     setBusy('export');
     setError(undefined);
     try {
+      const { docxFileName, exportDocx } = await import('@/export/docx');
       const blob = await exportDocx(worksheet, mode);
       triggerDownload(blob, docxFileName(worksheet, mode));
       flash('Exported .docx');
