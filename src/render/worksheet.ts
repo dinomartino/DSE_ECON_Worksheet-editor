@@ -10,6 +10,7 @@ import type {
   BiText,
   LayoutElement,
   OutputMode,
+  Question,
   Worksheet,
 } from '@/model/types';
 import { requireQuestionType } from '@/registry';
@@ -153,6 +154,35 @@ export function bandFieldText(
   };
 }
 
+/**
+ * One rendered question per question *object*, so an edit to question 3 does not
+ * rebuild questions 1–20.
+ *
+ * Every store commit maps `questions` and replaces only the object it touched
+ * (`mapQuestion`), so object identity is exactly "this question has not changed" — a
+ * `WeakMap` keyed on it needs no invalidation and cannot leak. The entry also records
+ * everything *outside* the question that shaped its nodes — the mode, the derived
+ * number, the list stream and whether a leading gap was spent — and a hit requires all
+ * of them to match, so a dragged section marker still renumbers and re-streams every
+ * question behind it.
+ *
+ * The payoff is not the walk itself (which is cheap) but **referential stability**: the
+ * preview memoises each item's subtree on its nodes array, so a keystroke in one stem
+ * re-renders one question instead of the whole document — twice, since the pagination
+ * probe renders the very same blocks. The cache changes identity only, never content;
+ * a cold cache produces byte-identical output.
+ */
+const questionRenderCache = new WeakMap<
+  Question,
+  {
+    mode: OutputMode;
+    number: number;
+    stream: string;
+    gapped: boolean;
+    nodes: RenderNode[];
+  }
+>();
+
 export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): RenderedWorksheet {
   const numbering = computeNumbering(worksheet);
 
@@ -257,16 +287,6 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
     const question = item.question;
     const entry = numbering.byQuestionId.get(question.id);
     const number = entry ? entry.number : 0;
-    const definition = requireQuestionType(question);
-    const nodes = definition
-      .render(question, {
-        mode,
-        questionNumber: number,
-        questionId: question.id,
-        questionStream,
-      })
-      // Student output must contain no teacher content anywhere (§11.8).
-      .filter((node) => includeNode(node, mode));
 
     /*
      * A blank line between consecutive questions, completing the reference paper's
@@ -285,7 +305,40 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
      * next one while its neighbours sit one (§ a gap counts what is already there).
      */
     const atTrueTop = index === 0 && !somethingAboveFlow;
-    const separated = atTrueTop || endsInBlankLine(previousNodes) ? nodes : [ITEM_GAP, ...nodes];
+    const gapped = !(atTrueTop || endsInBlankLine(previousNodes));
+
+    // The leading gap is part of the cached array, so an unchanged question hands back
+    // one stable identity for the preview to memoise on (see `questionRenderCache`).
+    const cached = questionRenderCache.get(question);
+    let separated: RenderNode[];
+    if (
+      cached &&
+      cached.mode === mode &&
+      cached.number === number &&
+      cached.stream === questionStream &&
+      cached.gapped === gapped
+    ) {
+      separated = cached.nodes;
+    } else {
+      const definition = requireQuestionType(question);
+      const nodes = definition
+        .render(question, {
+          mode,
+          questionNumber: number,
+          questionId: question.id,
+          questionStream,
+        })
+        // Student output must contain no teacher content anywhere (§11.8).
+        .filter((node) => includeNode(node, mode));
+      separated = gapped ? [ITEM_GAP, ...nodes] : nodes;
+      questionRenderCache.set(question, {
+        mode,
+        number,
+        stream: questionStream,
+        gapped,
+        nodes: separated,
+      });
+    }
     previousNodes = separated;
 
     return { type: 'question', question: { questionId: question.id, number, nodes: separated } };

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   bandsHeight,
   bandsOverflow,
@@ -43,7 +43,7 @@ import { isModalLayerOpen } from "@/components/ui/modalLayer";
 import { useWorksheetStore, type BandScope } from "@/store/worksheetStore";
 import { diagramSvg } from "@/render/diagram";
 import type { EditTarget, RenderNode, TableNode, TextNode } from "@/render/ir";
-import { bandFieldText, renderWorksheet } from "@/render/worksheet";
+import { bandFieldText, renderWorksheet, type RenderedItem } from "@/render/worksheet";
 import { listQuestionTypes, requireQuestionType } from "@/registry";
 import {
   computeNumbering,
@@ -2271,6 +2271,28 @@ function usePagination(
  * A selector naming an attribute that does not exist fails silently and always in the
  * same direction, so a test asserts the two agree.
  */
+/**
+ * Two edit targets naming the same model address.
+ *
+ * Every `EditTarget` is a flat record of scalars, so key-by-key equality is the whole
+ * comparison. This runs once per editable node per render — the page asks it for every
+ * text on the sheet — which is why it is not a `JSON.stringify` pair: serializing both
+ * sides of a comparison that almost always fails on `kind` alone spent the cost of the
+ * whole string on its first character.
+ */
+function sameTarget(a: EditTarget, b: EditTarget): boolean {
+  if (a === b) return true;
+  if (a.kind !== b.kind) return false;
+  // The union of both key sets, so a key present-but-undefined on one side compares
+  // equal to the same key absent on the other — the reading `JSON.stringify` gave it.
+  for (const key of new Set([...Object.keys(a), ...Object.keys(b)])) {
+    if ((a as Record<string, unknown>)[key] !== (b as Record<string, unknown>)[key]) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function isBlankAreaClick(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
   return !target.closest(BLANK_CLICK_EXEMPT);
@@ -2324,6 +2346,182 @@ function DocumentField({
       {children}
     </div>
   );
+}
+
+/**
+ * One flow item's printed body — the memo boundary that makes a keystroke cheap.
+ *
+ * Every state change in `Preview` used to re-render every `NodeView` on the document,
+ * twice: once in the visible sheets and once in the pagination probe, which renders the
+ * very same blocks to be measured. This component cuts that off: its subtree re-renders
+ * only when something that can change its *output* changes, so typing in one stem
+ * re-renders that one question while the rest of the document — both copies — bails in
+ * the comparator. The other half of the win is `renderWorksheet`'s per-question cache,
+ * which keeps an untouched question's `nodes` array referentially stable across
+ * commits; without it every keystroke would rebuild every identity and the memo would
+ * never hit.
+ *
+ * The comparator deliberately ignores the identity of `ctx` and `onSelect`, which are
+ * rebuilt every render. That is safe under two contracts, and unsafe otherwise:
+ *
+ *  - **Everything volatile the ctx closures capture that can change rendered output is
+ *    flattened into `ctxStamp`.** A skipped item keeps the previous render's closures,
+ *    which is fine for *event* handlers (they call store actions and `useState` setters,
+ *    both stable) but wrong for anything read at render time — so the selection, the
+ *    active cell, the preview scale and the content width are all in the stamp, and a
+ *    change to any of them re-renders every item, exactly as before. Those change on
+ *    discrete clicks; keystrokes and pointer frames leave the stamp alone.
+ *  - **Handlers passed from the host close over stable things.** `EditorApp` binds its
+ *    handlers with `useCallback` over store actions and reads fresh state via
+ *    `getState()`, so a closure held across skipped renders never acts on a stale
+ *    document.
+ */
+interface ItemBodyProps {
+  item: RenderedItem;
+  language: LanguageMode;
+  ctx?: EditContext;
+  /** Flattened render-relevant volatile state — see the contract above. */
+  ctxStamp: string;
+  /** This item is the page's single selection (question or layout element). */
+  selected: boolean;
+  onSelect: (event: React.MouseEvent) => void;
+}
+
+const itemBodyNodes = (item: RenderedItem) =>
+  item.type === "question" ? item.question.nodes : item.layout.nodes;
+const itemBodyId = (item: RenderedItem) =>
+  item.type === "question" ? item.question.questionId : item.layout.elementId;
+
+const ItemBody = memo(
+  function ItemBody({ item, language, ctx, selected, onSelect }: ItemBodyProps) {
+    const nodes = itemBodyNodes(item);
+    if (item.type === "layout") {
+      // Layout elements take no number and have nothing for the sidebar to inspect,
+      // but they still need to be selectable — otherwise a divider or a page break
+      // could be added on the page and then only removed from the sidebar. Selecting
+      // one is what arms Delete for it.
+      return (
+        <div
+          data-layout-id={item.layout.elementId}
+          onClick={onSelect}
+          aria-current={selected}
+          className={`relative cursor-pointer rounded px-1 transition-colors ${
+            selected
+              ? "bg-[#f6f3ff] ring-1 ring-[#c4b5fd]"
+              : "hover:bg-black/[0.03]"
+          }`}
+        >
+          {nodes.map((node, index) => (
+            <NodeView key={index} node={node} language={language} ctx={ctx} />
+          ))}
+        </div>
+      );
+    }
+    return (
+      <div
+        data-question-id={item.question.questionId}
+        onClick={onSelect}
+        aria-current={selected}
+        className={`relative cursor-pointer rounded px-1 transition-colors ${
+          selected
+            ? "bg-[#f6f3ff] ring-1 ring-[#c4b5fd] before:absolute before:-left-1 before:top-0 before:h-full before:w-1 before:rounded-full before:bg-[#7c5cff]"
+            : "hover:bg-black/[0.03]"
+        }`}
+      >
+        {nodes.map((node, index) => (
+          <NodeView key={index} node={node} language={language} ctx={ctx} />
+        ))}
+      </div>
+    );
+  },
+  (prev, next) =>
+    // The nodes array is the content: `renderWorksheet` returns the same array for an
+    // unchanged question and a new one for any change, including renumbering.
+    itemBodyNodes(prev.item) === itemBodyNodes(next.item) &&
+    itemBodyId(prev.item) === itemBodyId(next.item) &&
+    prev.item.type === next.item.type &&
+    prev.language === next.language &&
+    prev.selected === next.selected &&
+    prev.ctxStamp === next.ctxStamp &&
+    // Editable and read-only renders differ structurally, so ctx presence matters even
+    // though its identity does not.
+    (prev.ctx === undefined) === (next.ctx === undefined),
+);
+
+/**
+ * The format toolbar plus the measurement that places it, in a component of its own.
+ *
+ * Where the bar docks: horizontally across the page, vertically pinned to the top of
+ * the scrolling area. The two axes come from different elements on purpose.
+ * `left`/`width` track the *sheet*, so the bar spans exactly the document it is acting
+ * on and follows a zoom change. `top` tracks the *scroll container*, so the bar sits
+ * just inside the viewport's page area and stays put while the document scrolls
+ * underneath — deriving `top` from the sheet made the bar ride up over the page's own
+ * top edge as soon as the first sheet scrolled away.
+ *
+ * Re-measured on scroll and resize because the bar is `fixed`: it does not travel with
+ * the page, so it has to be told where the page currently is. That re-measure is the
+ * reason this is a separate component: the dock rect used to be `Preview` state, so
+ * every scroll frame with a selection live re-rendered the entire document — sheets and
+ * pagination probe both — to move a fixed bar that sits outside the page.
+ *
+ * `inheritedPt` is the point size the selection renders at, so the size control can
+ * show the real current value rather than a blank "Size". Measured from the page rather
+ * than looked up from a table of style defaults: the rendered value already accounts
+ * for the named style, the preview's own CSS and any override, and it is the number the
+ * teacher is looking at. 1pt = 1/72in and CSS px are 1/96in, hence 0.75.
+ */
+function ToolbarDock({
+  containerRef,
+  selectionKey,
+  ...toolbar
+}: Omit<React.ComponentProps<typeof FormatToolbar>, "dock" | "inheritedPt"> & {
+  containerRef: React.RefObject<HTMLDivElement | null>;
+  /** Re-measure when the selection moves; the parent only mounts this while one is live. */
+  selectionKey: unknown;
+}) {
+  const [dockRect, setDockRect] = useState<
+    { left: number; width: number; top: number } | undefined
+  >();
+  const [selectionPt, setSelectionPt] = useState<number | undefined>();
+
+  useEffect(() => {
+    const container = containerRef.current;
+    const sheet = container?.querySelector<HTMLElement>("#print-root .paper");
+    if (!container || !sheet) return;
+
+    // The nearest scrolling ancestor is the page column; its top edge is where the bar
+    // belongs. Found rather than passed so the preview stays self-contained.
+    const scroller = container.closest<HTMLElement>(".overflow-auto") ?? container;
+
+    const measure = () => {
+      const paper = sheet.getBoundingClientRect();
+      const view = scroller.getBoundingClientRect();
+      setDockRect({ left: paper.left, width: paper.width, top: view.top + 8 });
+
+      // The selected text's own paragraph carries the size; the editable span inherits it.
+      const selected = container.querySelector<HTMLElement>('[data-selected="true"]');
+      const box = selected?.closest("p, td, th, span") ?? selected;
+      const px = box ? Number.parseFloat(getComputedStyle(box).fontSize) : NaN;
+      setSelectionPt(Number.isFinite(px) ? Math.round(px * 0.75) : undefined);
+    };
+    // After the click's re-render has committed, so the sheet is laid out.
+    const frame = requestAnimationFrame(measure);
+    window.addEventListener("scroll", measure, true);
+    window.addEventListener("resize", measure);
+    const observer = new ResizeObserver(measure);
+    observer.observe(sheet);
+    observer.observe(scroller);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", measure, true);
+      window.removeEventListener("resize", measure);
+      observer.disconnect();
+    };
+  }, [selectionKey, containerRef]);
+
+  if (!dockRect) return null;
+  return <FormatToolbar dock={dockRect} inheritedPt={selectionPt} {...toolbar} />;
 }
 
 interface Props {
@@ -3146,9 +3344,16 @@ export function Preview({
    * effectively a vertical-span test, which is exactly the gesture being made.
    */
   const [multiIds, setMultiIds] = useState<Set<string>>(new Set());
-  const [marquee, setMarquee] = useState<
-    { x0: number; y0: number; x1: number; y1: number } | undefined
-  >();
+  /*
+   * The sweep rectangle, positioned imperatively rather than through state.
+   *
+   * The rectangle moves on every mousemove of a sweep, and holding it in state meant
+   * every one of those frames re-rendered this entire component — the whole document,
+   * twice over (sheets and pagination probe) — to move one absolutely-positioned div.
+   * The overlay is always mounted and hidden; the gesture writes its geometry straight
+   * onto the node, which is chrome the document never measures.
+   */
+  const marqueeRef = useRef<HTMLDivElement>(null);
 
   /**
    * Set when a sweep actually travelled, and read by the click that follows it.
@@ -3301,7 +3506,7 @@ export function Preview({
       const catchItems = (current: { x0: number; y0: number; x1: number; y1: number }) => {
         const bounds = marqueeBounds(current);
 
-        setMultiIds(() => {
+        setMultiIds((prev) => {
           // `additive` (shift) starts from what was already selected; a plain sweep
           // starts empty. `baseIds` is captured once at press time, so re-running this
           // mid-drag keeps comparing against the original selection rather than
@@ -3319,12 +3524,18 @@ export function Preview({
             // Touched, not contained — the rule lives in `marqueeCatches`.
             if (marqueeCatches(bounds, node.getBoundingClientRect())) caught.add(id);
           }
+          // Most frames of a sweep catch exactly what the last frame caught; returning
+          // the previous set then skips the re-render, so the document only re-renders
+          // on the frames where the selection genuinely changed.
+          if (caught.size === prev.size && [...caught].every((id) => prev.has(id))) {
+            return prev;
+          }
           return caught;
         });
 
         // The title and instructions, swept by the same box but collected separately
         // because they are deleted by emptying a field rather than by removing a row.
-        setMultiFields(() => {
+        setMultiFields((prev) => {
           const caught = new Set(additive ? baseFields : []);
           for (const node of containerRef.current?.querySelectorAll<HTMLElement>(
             "#print-root [data-doc-field]",
@@ -3332,6 +3543,9 @@ export function Preview({
             const kind = node.dataset.docField;
             if (!kind) continue;
             if (marqueeCatches(bounds, node.getBoundingClientRect())) caught.add(kind);
+          }
+          if (caught.size === prev.size && [...caught].every((kind) => prev.has(kind))) {
+            return prev;
           }
           return caught;
         });
@@ -3356,7 +3570,14 @@ export function Preview({
         // Claim the click that will follow the release, before it can clear what this
         // sweep is catching.
         sweptRef.current = true;
-        setMarquee(box);
+        const overlay = marqueeRef.current;
+        if (overlay) {
+          overlay.style.display = "block";
+          overlay.style.left = `${Math.min(box.x0, box.x1)}px`;
+          overlay.style.top = `${Math.min(box.y0, box.y1)}px`;
+          overlay.style.width = `${Math.abs(box.x1 - box.x0)}px`;
+          overlay.style.height = `${Math.abs(box.y1 - box.y0)}px`;
+        }
         catchItems(box);
       };
 
@@ -3364,7 +3585,7 @@ export function Preview({
         window.removeEventListener("mousemove", onMove);
         window.removeEventListener("mouseup", onUp);
         document.body.style.userSelect = "";
-        setMarquee(undefined);
+        if (marqueeRef.current) marqueeRef.current.style.display = "none";
 
         if (!box) {
           // A click rather than a sweep. On empty paper that means "deselect"; on an
@@ -3396,36 +3617,6 @@ export function Preview({
   const [clip, setClip] = useState<string[]>([]);
 
   /*
-   * Where the format toolbar docks: horizontally across the page, vertically pinned to
-   * the top of the scrolling area.
-   *
-   * The two axes come from different elements on purpose. `left`/`width` track the
-   * *sheet*, so the bar spans exactly the document it is acting on and follows a zoom
-   * change. `top` tracks the *scroll container*, so the bar sits just inside the
-   * viewport's page area and stays put while the document scrolls underneath —
-   * deriving `top` from the sheet made the bar ride up over the page's own top edge as
-   * soon as the first sheet scrolled away.
-   *
-   * Re-measured on scroll and resize because the bar is `fixed`: it does not travel
-   * with the page, so it has to be told where the page currently is.
-   */
-  const [dockRect, setDockRect] = useState<
-    { left: number; width: number; top: number } | undefined
-  >();
-
-  /*
-   * The point size the selection renders at, so the toolbar's size control can show the
-   * real current value rather than a blank "Size".
-   *
-   * Measured from the page rather than looked up from a table of style defaults: the
-   * rendered value already accounts for the named style, the preview's own CSS and any
-   * override, and it is the number the teacher is looking at. `scale` is divided out
-   * because the sheet sits inside a `scale()` transform — `getComputedStyle` reports the
-   * pre-transform value, but the CSS pixel figure still has to be converted to points.
-   */
-  const [selectionPt, setSelectionPt] = useState<number | undefined>();
-
-  /*
    * The live text range the toolbar should format, with the formatting those characters
    * already share.
    *
@@ -3453,45 +3644,6 @@ export function Preview({
       ),
     };
   }, [textSelection, selectedElement, textOf]);
-
-  useEffect(() => {
-    // No selection means no toolbar; the render below gates on `selectedElement`, so a
-    // stale rect is simply never read rather than needing to be cleared here.
-    if (!selectedElement) return;
-    const container = containerRef.current;
-    const sheet = container?.querySelector<HTMLElement>("#print-root .paper");
-    if (!container || !sheet) return;
-
-    // The nearest scrolling ancestor is the page column; its top edge is where the bar
-    // belongs. Found rather than passed so the preview stays self-contained.
-    const scroller = container.closest<HTMLElement>(".overflow-auto") ?? container;
-
-    const measure = () => {
-      const paper = sheet.getBoundingClientRect();
-      const view = scroller.getBoundingClientRect();
-      setDockRect({ left: paper.left, width: paper.width, top: view.top + 8 });
-
-      // The selected text's own paragraph carries the size; the editable span inherits
-      // it. 1pt = 1/72in and CSS px are 1/96in, hence 0.75.
-      const selected = container.querySelector<HTMLElement>('[data-selected="true"]');
-      const box = selected?.closest("p, td, th, span") ?? selected;
-      const px = box ? Number.parseFloat(getComputedStyle(box).fontSize) : NaN;
-      setSelectionPt(Number.isFinite(px) ? Math.round(px * 0.75) : undefined);
-    };
-    // After the click's re-render has committed, so the sheet is laid out.
-    const frame = requestAnimationFrame(measure);
-    window.addEventListener("scroll", measure, true);
-    window.addEventListener("resize", measure);
-    const observer = new ResizeObserver(measure);
-    observer.observe(sheet);
-    observer.observe(scroller);
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", measure, true);
-      window.removeEventListener("resize", measure);
-      observer.disconnect();
-    };
-  }, [selectedElement]);
 
   const isEmpty = rendered.questions.length === 0;
 
@@ -3541,8 +3693,7 @@ export function Preview({
         },
         onClearSelection: () => setSelectedElement(undefined),
         isSelected: (target, side) =>
-          selectedElement?.side === side &&
-          JSON.stringify(selectedElement.target) === JSON.stringify(target),
+          selectedElement?.side === side && sameTarget(selectedElement.target, target),
         textSelection,
         onTextSelectionChange: setTextSelection,
         keepEditing: formatting,
@@ -3603,6 +3754,25 @@ export function Preview({
           : undefined,
       }
     : undefined;
+
+  /*
+   * Everything volatile that `ctx`'s closures capture *and read at render time*,
+   * flattened for `ItemBody`'s comparator (see its contract). A value missing from
+   * this list is a silent staleness bug: the item skips its re-render and keeps
+   * painting the old value. Kept beside the ctx it describes so the two are reviewed
+   * together.
+   */
+  const ctxStamp = [
+    selectedElement
+      ? `${JSON.stringify(selectedElement.target)}|${selectedElement.side}`
+      : "",
+    formatting ? "1" : "0",
+    activeCell ? JSON.stringify(activeCell) : "",
+    scale,
+    contentWidthPx,
+    selectedBlockId ?? "",
+    selectedLayoutId ?? "",
+  ].join("·");
 
   // Delete / Backspace removes the selected element. Scoped to the page and skipped
   // whenever focus sits in a field, so it can never eat a character being typed.
@@ -3995,55 +4165,38 @@ export function Preview({
         item.type === "layout" &&
         item.layout.nodes.some((node) => node.kind === "pageBreak");
 
-      const body =
-        item.type === "layout" ? (
-          // Layout elements take no number and have nothing for the sidebar to
-          // inspect, but they still need to be selectable — otherwise a divider or a
-          // page break could be added on the page and then only removed from the
-          // sidebar. Selecting one is what arms Delete for it.
-          <div
-            data-layout-id={id}
-            onClick={(event) => {
-              event.stopPropagation();
-              setSelectedLayoutId(id);
-              setSelectedElement(undefined);
-              setSelectedBlockId(undefined);
-              // Selecting a layout element points the rail at it, exactly as selecting
-              // a question does. Without this the rail could not see this selection at
-              // all — it is local to the preview — and silently appended instead.
-              setInsertAnchor(id);
-            }}
-            aria-current={selectedLayoutId === id}
-            className={`relative cursor-pointer rounded px-1 transition-colors ${
-              selectedLayoutId === id
-                ? "bg-[#f6f3ff] ring-1 ring-[#c4b5fd]"
-                : "hover:bg-black/[0.03]"
-            }`}
-          >
-            {item.layout.nodes.map((node, index) => (
-              <NodeView key={index} node={node} language={language} ctx={ctx} />
-            ))}
-          </div>
-        ) : (
-          <div
-            data-question-id={id}
-            onClick={() => {
-              selfSelected.current = true;
-              onSelectQuestion?.(id);
-              setSelectedLayoutId(undefined);
-            }}
-            aria-current={selectedQuestionId === id}
-            className={`relative cursor-pointer rounded px-1 transition-colors ${
-              selectedQuestionId === id
-                ? "bg-[#f6f3ff] ring-1 ring-[#c4b5fd] before:absolute before:-left-1 before:top-0 before:h-full before:w-1 before:rounded-full before:bg-[#7c5cff]"
-                : "hover:bg-black/[0.03]"
-            }`}
-          >
-            {item.question.nodes.map((node, index) => (
-              <NodeView key={index} node={node} language={language} ctx={ctx} />
-            ))}
-          </div>
-        );
+      const body = (
+        <ItemBody
+          item={item}
+          language={language}
+          ctx={ctx}
+          ctxStamp={ctxStamp}
+          selected={
+            item.type === "layout"
+              ? selectedLayoutId === id
+              : selectedQuestionId === id
+          }
+          onSelect={
+            item.type === "layout"
+              ? (event) => {
+                  event.stopPropagation();
+                  setSelectedLayoutId(id);
+                  setSelectedElement(undefined);
+                  setSelectedBlockId(undefined);
+                  // Selecting a layout element points the rail at it, exactly as
+                  // selecting a question does. Without this the rail could not see this
+                  // selection at all — it is local to the preview — and silently
+                  // appended instead.
+                  setInsertAnchor(id);
+                }
+              : () => {
+                  selfSelected.current = true;
+                  onSelectQuestion?.(id);
+                  setSelectedLayoutId(undefined);
+                }
+          }
+        />
+      );
 
       blocks.push({
         key: id,
@@ -4180,10 +4333,13 @@ export function Preview({
     heights: heightsOf,
     probeRef,
   } = usePagination(blocks, contentHeightPx, [
+    // Deliberately *not* keyed on the selection or the drag: selection chrome paints
+    // rings and absolutely-positioned grips that reserve no space (that is its own
+    // invariant — an affordance that pushed content down would make the preview lie
+    // about the document), so re-measuring every block on each click was pure waste.
+    // The ResizeObserver inside still catches anything that genuinely changes size.
     worksheet,
     mode,
-    selectedQuestionId,
-    dragId,
     contentHeightPx,
   ]);
 
@@ -4621,19 +4777,15 @@ export function Preview({
 
       {/* The sweep rectangle. Fixed-positioned in viewport coordinates because it is
           drawn from raw pointer coordinates — deriving it inside the preview's
-          `scale()` transform would put it under the cursor at any zoom but 100%. */}
-      {marquee && (
-        <div
-          aria-hidden
-          className="pointer-events-none fixed z-40 rounded-sm border border-accent bg-accent/10"
-          style={{
-            left: Math.min(marquee.x0, marquee.x1),
-            top: Math.min(marquee.y0, marquee.y1),
-            width: Math.abs(marquee.x1 - marquee.x0),
-            height: Math.abs(marquee.y1 - marquee.y0),
-          }}
-        />
-      )}
+          `scale()` transform would put it under the cursor at any zoom but 100%.
+          Always mounted and positioned imperatively by the sweep (§beginSweep), so a
+          pointer frame moves one div instead of re-rendering the document. */}
+      <div
+        ref={marqueeRef}
+        aria-hidden
+        className="pointer-events-none fixed z-40 rounded-sm border border-accent bg-accent/10"
+        style={{ display: "none" }}
+      />
 
       {/* What is selected and what can be done with it. A multi-selection is otherwise
           invisible once the pointer is up — the rings alone do not say how many, and
@@ -4669,11 +4821,11 @@ export function Preview({
       {/* Only formattable targets get a toolbar; a table cell or MCQ option has no
           paragraph of its own to carry direct formatting. */}
       {onFormat &&
-        dockRect &&
         selectedElement &&
         isFormattable(selectedElement.target) && (
-          <FormatToolbar
-            dock={dockRect}
+          <ToolbarDock
+            containerRef={containerRef}
+            selectionKey={selectedElement}
             /*
              * The bar names what a click will change: the selected words when a range is
              * live, the whole element otherwise. Without this the same button silently
@@ -4684,7 +4836,6 @@ export function Preview({
                 ? `${TARGET_NAME[selectedElement.target.kind]} · selected text`
                 : TARGET_NAME[selectedElement.target.kind]
             }
-            inheritedPt={selectionPt}
             onClose={() => setSelectedElement(undefined)}
             /*
              * Report the *selection's* own formatting when a range is live, so the bar
