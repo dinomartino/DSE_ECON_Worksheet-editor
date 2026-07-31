@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { createTableBlock } from '@/model/factories';
 import { renderContentBlocks } from '@/render/ir';
-import { DEFAULT_CELL_PADDING, setPadding, setTableAlign } from '@/model/table';
+import { DEFAULT_CELL_PADDING, defaultTableIndent, setPadding, setTableAlign } from '@/model/table';
 import { renderNodeXml } from '@/export/docx/body';
 import type { ContentBlock } from '@/model/types';
 
@@ -139,6 +139,18 @@ describe('a centred table exports the way the reference paper does', () => {
     const props = tblPr({ ...createTableBlock(2, 2), indent: 0.25, width: 0.5 });
     expect(props).toContain('w:tblInd');
     expect(props).not.toContain('w:jc');
+  });
+
+  it('writes the default indent, and a width that fills the rest of the column', () => {
+    /*
+     * The end-to-end guard for the fault the unit test above describes: every layer
+     * agreed the indent was stored, and only the resolved box dropped it, so a table
+     * printed flush in the question number's gutter with nothing in the file to explain
+     * why. `w:tblInd` is the stem column and `w:tblW` is what remains of the 9026.
+     */
+    const props = tblPr({ ...createTableBlock(2, 4), indent: defaultTableIndent(9026) });
+    expect(props).toContain('<w:tblInd w:w="360" w:type="dxa"/>');
+    expect(props).toContain(`<w:tblW w:w="${9026 - 360}" w:type="dxa"/>`);
   });
 
   it('writes neither for a table nobody has placed', () => {

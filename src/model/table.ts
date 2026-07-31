@@ -524,20 +524,34 @@ export function resolveTableBox(block: TableBlock): {
   indent: number;
   align: TableAlign;
 } {
-  const width =
-    typeof block.width === 'number' && Number.isFinite(block.width) && block.width > 0
-      ? Math.min(1, block.width)
-      : 1;
   const align = resolveTableAlign(block);
   const indent =
     align === 'left' &&
     typeof block.indent === 'number' &&
     Number.isFinite(block.indent) &&
     block.indent > 0
-      ? block.indent
+      ? Math.max(0, Math.min(block.indent, 1 - MIN_TABLE_FRACTION))
       : 0;
-  // Clamped as a pair: a stored indent that would push a full-width table off the page
-  // is a file that has to render anyway, and the right edge is the one that must hold.
+
+  /*
+   * No stored width means "as wide as there is room for", which is `1 - indent` — not 1.
+   *
+   * This is the order the two have to resolve in, and getting it the other way round is
+   * silent: the clamp below is `min(indent, 1 - width)`, so a width of 1 annihilated the
+   * indent of any table nobody had dragged. A default-indented table therefore stored
+   * 360tw, resolved to 0, and printed flush in the question number's gutter — the model
+   * was right and only the render disagreed, so nothing about the stored file looked wrong.
+   *
+   * An explicit width is still honoured as-is: that one was dragged, and `resizeTableEdge`
+   * already keeps the pair inside the page.
+   */
+  const width =
+    typeof block.width === 'number' && Number.isFinite(block.width) && block.width > 0
+      ? Math.min(1, block.width)
+      : 1 - indent;
+
+  // Clamped as a pair: a stored indent that would push a table off the page is a file that
+  // has to render anyway, and the right edge is the one that must hold.
   return { width, indent: Math.max(0, Math.min(indent, 1 - width)), align };
 }
 

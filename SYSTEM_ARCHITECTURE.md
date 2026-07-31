@@ -703,6 +703,16 @@ divides it into the fraction `indent` stores. A table belongs to a question, and
 0 put it a step *left* of the sentence introducing it, hanging in the question number's
 gutter — where all six indented tables in the reference `.docx` carry a `w:tblInd`.
 
+**The width resolves *from* the indent, and that order is load-bearing.** No stored width
+means "as wide as there is room for", which is `1 - indent`, not 1. The pair is clamped
+with `min(indent, 1 - width)`, so resolving the width first at 1 **annihilated the indent
+of every table nobody had dragged**: the model stored 360tw, `resolveTableBox` reported 0,
+and the table printed flush in the gutter. Nothing about the stored file looked wrong —
+every layer agreed on the value and only the resolved box dropped it — which is why the
+guard is asserted twice, once on the box and once on the emitted `w:tblInd`/`w:tblW`. An
+explicit width is still honoured as stored: that table was dragged, and `resizeTableEdge`
+already keeps the pair on the page.
+
 ### Alignment and indent are alternatives, not a pair
 
 `align` (`w:jc` on the table) is genuinely **not** the same mechanism as `indent`: Q19 of

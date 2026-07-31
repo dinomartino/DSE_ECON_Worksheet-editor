@@ -440,6 +440,29 @@ describe('the table’s own box', () => {
     expect(defaultTableIndent(contentWidth / 2)).toBeCloseTo(fraction * 2);
   });
 
+  it('spans the room left of an indent, rather than losing it', () => {
+    /*
+     * The width has to resolve *from* the indent, not before it. The pair is clamped with
+     * `min(indent, 1 - width)`, so a default width of 1 annihilated the indent of any
+     * table nobody had dragged: the model stored 360tw and the render placed it at 0, so
+     * a defaulted table printed flush in the question number's gutter while the stored
+     * file looked entirely correct.
+     */
+    const indent = defaultTableIndent(9026);
+    const box = resolveTableBox({ ...createTableBlock(2, 4), indent });
+
+    expect(box.indent).toBeCloseTo(indent);
+    expect(box.width).toBeCloseTo(1 - indent);
+    // Still reaching the right margin: an indent moves the left edge, not the whole table.
+    expect(box.indent + box.width).toBeCloseTo(1);
+  });
+
+  it('honours an explicit width against an indent, since that one was dragged', () => {
+    const box = resolveTableBox({ ...createTableBlock(2, 3), indent: 0.25, width: 0.5 });
+    expect(box.width).toBeCloseTo(0.5);
+    expect(box.indent).toBeCloseTo(0.25);
+  });
+
   it('places a centred table by alignment rather than by indent', () => {
     /*
      * Word models these as alternatives and honours only `w:jc` once it is set, which is
