@@ -177,9 +177,18 @@ function nodeHtml(
     // The table's own box as a percentage and a left margin. Percentages rather than
     // absolute widths because the clipboard carries no page setup of its own, so the
     // table has to keep its proportions in whatever document it is pasted into.
+    // Alignment rides as `auto` margins, the same shape the preview uses and the same
+    // thing Word means by `w:jc` — placed from the column's edges rather than from a
+    // stored offset. `indent` is already 0 for anything but `left`, so only one applies.
     const box =
       `width:${(node.width * 100).toFixed(3)}%;` +
-      (node.indent > 0 ? `margin-left:${(node.indent * 100).toFixed(3)}%;` : '');
+      (node.align === 'center'
+        ? 'margin-left:auto;margin-right:auto;'
+        : node.align === 'right'
+          ? 'margin-left:auto;margin-right:0;'
+          : node.indent > 0
+            ? `margin-left:${(node.indent * 100).toFixed(3)}%;`
+            : '');
     return (
       `<table style="border-collapse:collapse;${box}table-layout:fixed;${fontCss}">` +
       `${colgroup}<tbody>${rows}</tbody></table>` +

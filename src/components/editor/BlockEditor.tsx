@@ -9,6 +9,7 @@ import {
 } from '@/model/factories';
 import {
   columnCountOf,
+  defaultTableIndent,
   insertColumn,
   insertRow,
   isDegenerate,
@@ -22,16 +23,18 @@ import {
   removeColumn,
   removeRow,
   resolveCellPadding,
+  resolveTableAlign,
   restoreColumn,
   setPadding,
+  setTableAlign,
   unmerge,
   type PaddingScope,
 } from '@/model/table';
-import { ptToTwips, twipsToPt } from '@/model/page';
+import { contentWidth, pageSetupOf, ptToTwips, twipsToPt } from '@/model/page';
 import { DIAGRAM_TEMPLATES } from '@/model/diagramTemplates';
 import { emptyBiText, plain } from '@/model/text';
 import { RichTextEditable } from '@/components/preview/RichTextEditable';
-import type { ContentBlock, ImageBlock, TableBlock } from '@/model/types';
+import type { ContentBlock, ImageBlock, TableAlign, TableBlock } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { Button, Eyebrow, GroupHeader, IconButton, NumberField, Segmented } from '@/components/ui';
 import { Menu } from '@/components/ui/Menu';
@@ -60,6 +63,16 @@ interface Props {
 
 export function BlockEditor({ blocks, onChange, label, labelHint }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
+  /*
+   * The content width a new table's default indent is a fraction of.
+   *
+   * `indent` is stored as a fraction (§columns are fractions), but the default it starts
+   * at is a *twip* offset — the stem's text column — so it has to be divided by the
+   * column this particular worksheet has. Read from the store rather than threaded in as
+   * a prop: page geometry has nothing else to do with a block editor, and every other
+   * caller would have to learn about it to pass it down.
+   */
+  const contentWidthTwips = useWorksheetStore((s) => contentWidth(pageSetupOf(s.worksheet)));
 
   const replace = (index: number, block: ContentBlock) => {
     const next = [...blocks];
@@ -169,7 +182,15 @@ export function BlockEditor({ blocks, onChange, label, labelHint }: Props) {
           + Paragraph
         </Button>
         <TableInsertButton
-          onPick={(rows, columns) => onChange([...blocks, createTableBlock(rows, columns)])}
+          onPick={(rows, columns) =>
+            onChange([
+              ...blocks,
+              // Starts at the stem's own text column, where a question's table belongs —
+              // flush at 0 puts it a step left of the sentence introducing it, out in the
+              // question number's gutter.
+              { ...createTableBlock(rows, columns), indent: defaultTableIndent(contentWidthTwips) },
+            ])
+          }
         />
         <Button size="sm" variant="subtle" onClick={() => fileInput.current?.click()}>
           + Image
@@ -418,6 +439,37 @@ function TableBlockEditor({
             </Button>
           )}
         </div>
+      </div>
+
+      {/*
+        Where the whole table sits, which is not the same control as a cell's own align
+        below — that one places text inside one cell and needs a cell chosen first. This
+        needs no subject beyond the table, so it sits outside the `cell && at` branch and
+        is always available, like the padding section's whole-table fallback.
+
+        Q19 of the reference paper is the case it exists for: a narrow two-column table
+        centred in the column, which no amount of dragging the left edge reproduces —
+        an indent that looks centred stops being centred when the margins change.
+      */}
+      <div className="flex items-center gap-1 border-t border-line pt-2">
+        <span className="w-14 shrink-0 text-[11px] text-ink-subtle">Table</span>
+        {(['left', 'center', 'right'] as TableAlign[]).map((align) => (
+          <button
+            key={align}
+            type="button"
+            title={`Align table ${align}`}
+            aria-label={`Align table ${align}`}
+            aria-pressed={resolveTableAlign(block) === align}
+            onClick={() => apply(setTableAlign(block, align))}
+            className={`cursor-pointer rounded px-1.5 py-0.5 text-[11px] ${
+              resolveTableAlign(block) === align
+                ? 'bg-accent-soft text-accent-ink'
+                : 'text-ink-subtle hover:bg-surface-hover'
+            }`}
+          >
+            {align === 'left' ? 'L' : align === 'center' ? 'C' : 'R'}
+          </button>
+        ))}
       </div>
 
       <TablePaddingSection block={block} at={at} onChange={apply} />

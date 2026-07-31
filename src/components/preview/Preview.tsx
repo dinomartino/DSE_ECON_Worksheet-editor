@@ -985,7 +985,15 @@ function TableNodeView({
   const resize = ctx?.tableColumns;
   const grid = ctx?.tableGrid;
   const widths = draftWidths ?? node.columnWidths;
-  const box = draftBox ?? { width: node.width, indent: node.indent };
+  /*
+   * An in-flight edge drag places the table by its indent, whatever it was aligned as.
+   * Dragging the left edge *is* choosing an indent (`resizeTableEdge` clears `align` on
+   * commit), so a centred table that kept `margin: auto` under the pointer would sit
+   * still while the draft indent changed, then jump on release.
+   */
+  const box = draftBox
+    ? { ...draftBox, align: 'left' as const }
+    : { width: node.width, indent: node.indent, align: node.align };
   const rowHeights = node.rowHeights;
 
   /** Interior column boundaries, cumulative, shared by the resizer and the + buttons. */
@@ -1057,9 +1065,22 @@ function TableNodeView({
         because the wrapper is `absolute`-positioned padding around a block that still
         occupies exactly the table's height.
       */}
+      {/*
+        Alignment is `auto` margins, not a computed offset.
+
+        That is the same thing Word does — a centred table is positioned from the column's
+        edges rather than from a stored left edge — so the two stay agreed when the paper
+        or the margins change, which is exactly what an indent chosen to look centred does
+        not do. `box.indent` is already 0 for anything but `left` (`resolveTableBox`), so
+        the two placements cannot both apply.
+      */}
       <div
         className="group/table relative"
-        style={{ width: `${box.width * 100}%`, marginLeft: `${box.indent * 100}%` }}
+        style={{
+          width: `${box.width * 100}%`,
+          marginLeft: box.align === 'left' ? `${box.indent * 100}%` : 'auto',
+          marginRight: box.align === 'left' ? undefined : box.align === 'center' ? 'auto' : 0,
+        }}
       >
         {/*
           The hover pad: an absolutely-positioned transparent box, larger than the table,

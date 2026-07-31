@@ -1,5 +1,6 @@
 import { createTableCell, createTableRow } from './factories';
-import type { CellPadding, TableBlock, TableCell } from './types';
+import { QUESTION_LIST_INDENTS } from './numbering';
+import type { CellPadding, TableAlign, TableBlock, TableCell } from './types';
 
 /**
  * Table structure: the shape of a table, separate from what is typed into it.
@@ -487,19 +488,70 @@ export function resizeColumn(
 /** A table may not be dragged narrower than this fraction of the content width. */
 export const MIN_TABLE_FRACTION = 0.15;
 
-/** How much of the content width the table spans, and where its left edge sits. */
-export function resolveTableBox(block: TableBlock): { width: number; indent: number } {
+/**
+ * Where a table's left edge sits when nobody has moved it.
+ *
+ * A table belongs to a question, and a question's text starts at
+ * `QUESTION_LIST_INDENTS[0].left` — the stem column, with only the `1.` out in the
+ * margin. A table flush at 0 therefore started a step *left* of the sentence introducing
+ * it, hanging in the number's gutter, which is not what any reference table does: all six
+ * indented tables in `DBS_Assessment1.docx` carry a `w:tblInd`.
+ *
+ * Derived from the list geometry rather than typed as its own number, so a table follows
+ * the stem if that staircase ever moves. Expressed as a fraction of the content width
+ * because that is the unit `indent` stores (§columns are fractions).
+ */
+export const DEFAULT_TABLE_INDENT_TWIPS = QUESTION_LIST_INDENTS[0].left;
+
+/** The default indent as a fraction of the content width the table is placed in. */
+export const defaultTableIndent = (contentWidthTwips: number) =>
+  contentWidthTwips > 0 ? DEFAULT_TABLE_INDENT_TWIPS / contentWidthTwips : 0;
+
+/** How the table sits in the column; `left` means "placed by `indent`". */
+export function resolveTableAlign(block: TableBlock): TableAlign {
+  return block.align === 'center' || block.align === 'right' ? block.align : 'left';
+}
+
+/**
+ * How much of the content width the table spans, and where its left edge sits.
+ *
+ * `indent` is only meaningful under `align: 'left'`. Word places a centred or right
+ * aligned table from the column's edges and ignores `w:tblInd` entirely, so reporting a
+ * non-zero indent for one would let the preview offset a table the `.docx` does not.
+ */
+export function resolveTableBox(block: TableBlock): {
+  width: number;
+  indent: number;
+  align: TableAlign;
+} {
   const width =
     typeof block.width === 'number' && Number.isFinite(block.width) && block.width > 0
       ? Math.min(1, block.width)
       : 1;
+  const align = resolveTableAlign(block);
   const indent =
-    typeof block.indent === 'number' && Number.isFinite(block.indent) && block.indent > 0
+    align === 'left' &&
+    typeof block.indent === 'number' &&
+    Number.isFinite(block.indent) &&
+    block.indent > 0
       ? block.indent
       : 0;
   // Clamped as a pair: a stored indent that would push a full-width table off the page
   // is a file that has to render anyway, and the right edge is the one that must hold.
-  return { width, indent: Math.max(0, Math.min(indent, 1 - width)) };
+  return { width, indent: Math.max(0, Math.min(indent, 1 - width)), align };
+}
+
+/**
+ * Choose how the table sits in the column.
+ *
+ * Centring drops `indent`, because the two are alternative answers to "where is the left
+ * edge" and Word honours only `w:jc` once it is set — a kept indent would be a stored
+ * value with no effect, which reappears the moment the table is dragged back to `left`
+ * and reads as the drag having remembered something it should not have.
+ */
+export function setTableAlign(block: TableBlock, align: TableAlign): TableBlock {
+  if (align === 'left') return { ...block, align: undefined };
+  return { ...block, align, indent: undefined };
 }
 
 /**
@@ -537,6 +589,10 @@ export function resizeTableEdge(
     // table carries no record and exports exactly as it did before edges could be dragged.
     width: nextWidth >= 1 ? undefined : nextWidth,
     indent: nextIndent > 0 ? nextIndent : undefined,
+    // Placing the left edge by hand *is* choosing an indent, so it takes the table off
+    // centre rather than storing an indent Word would then ignore. Without this the drag
+    // appeared to do nothing on a centred table: the value changed and nothing moved.
+    align: undefined,
   };
 }
 

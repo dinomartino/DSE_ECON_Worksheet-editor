@@ -6,6 +6,7 @@ import type {
   CellPadding,
   ContentBlock,
   OutputMode,
+  TableAlign,
   TextFormat,
 } from '@/model/types';
 import { trailingBlankLines } from '@/model/text';
@@ -175,6 +176,14 @@ export interface TableNode {
    */
   width: number;
   indent: number;
+  /**
+   * How the table sits in the content column (`w:jc` on the table).
+   *
+   * Resolved alongside the box because the two are one decision: `indent` is already
+   * zeroed here for a centred table, so a backend places by `align` and offsets by
+   * `indent` without having to know they are alternatives.
+   */
+  align: TableAlign;
   /** A floor on each row's height in twips, in row order; undefined means content-sized. */
   rowHeights: (number | undefined)[];
   /** Which block this came from, so the preview can resize its columns. */

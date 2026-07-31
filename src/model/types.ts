@@ -62,6 +62,14 @@ export interface BiText {
 
 export type CellAlign = 'left' | 'center' | 'right';
 
+/**
+ * Where a whole table sits in the content column — `w:jc` on `w:tblPr`.
+ *
+ * Distinct from `CellAlign`, which places text inside one cell. Same three words, two
+ * unrelated decisions: a left-aligned table can hold centred cells and usually does.
+ */
+export type TableAlign = 'left' | 'center' | 'right';
+
 export type TextAlign = 'left' | 'center' | 'right' | 'justify';
 
 /**
@@ -208,8 +216,26 @@ export interface TableBlock {
    * Separate from `width` because they are what the two outer-edge drags each change:
    * pulling the right edge resizes alone, pulling the left edge resizes *and* indents.
    * Exports as `w:tblInd`.
+   *
+   * Only meaningful while `align` is `left`: the two are alternative ways to place the
+   * same edge, and Word lets only one of them speak (see `align`).
    */
   indent?: number;
+  /**
+   * How the table sits in the content column. Undefined means `left`.
+   *
+   * Word models this as `w:jc` on the table, and it is genuinely *not* the same thing as
+   * an indent: Q19 of the reference paper centres its table with `<w:jc w:val="center"/>`
+   * and no `w:tblInd` at all, while its six sibling tables carry an indent and no `w:jc`.
+   * A centred table stays centred when the paper or the margins change, where an indent
+   * chosen to look centred does not — which is the whole reason Word offers both.
+   *
+   * So they are mutually exclusive by construction rather than by convention: choosing
+   * centre or right drops `indent`, and dragging the left edge returns `align` to `left`.
+   * Storing both would leave two answers to "where is the left edge" and let the page and
+   * the `.docx` pick different ones.
+   */
+  align?: TableAlign;
 }
 
 export interface ImageBlock {

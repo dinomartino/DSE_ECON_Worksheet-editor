@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { createTableBlock } from './factories';
+import { QUESTION_LIST_INDENTS } from './numbering';
 import {
   columnCountOf,
   DEFAULT_CELL_PADDING,
+  defaultTableIndent,
   insertColumn,
   insertRow,
   isDegenerate,
@@ -21,10 +23,12 @@ import {
   resizeTableEdge,
   resolveCellPadding,
   resolveColumnWidths,
+  resolveTableAlign,
   resolveTableBox,
   restoreColumn,
   setPadding,
   setRowHeight,
+  setTableAlign,
   spannedColumnCount,
   unmerge,
 } from './table';
@@ -411,12 +415,60 @@ describe('column widths', () => {
 
 describe('the table’s own box', () => {
   it('spans the whole content width until an edge is dragged', () => {
-    expect(resolveTableBox(createTableBlock(2, 3))).toEqual({ width: 1, indent: 0 });
+    expect(resolveTableBox(createTableBlock(2, 3))).toEqual({
+      width: 1,
+      indent: 0,
+      align: 'left',
+    });
   });
 
   it('narrows from the right without moving the left edge', () => {
     const block = resizeTableEdge(createTableBlock(2, 3), 'right', -0.3);
-    expect(resolveTableBox(block)).toEqual({ width: 0.7, indent: 0 });
+    expect(resolveTableBox(block)).toEqual({ width: 0.7, indent: 0, align: 'left' });
+  });
+
+  it('starts a new table at the stem’s own text column', () => {
+    /*
+     * A table belongs to a question, and a question's text starts at the stem column with
+     * only the "1." out in the margin. Flush at 0 put a table a step left of the sentence
+     * introducing it — every indented table in the reference paper carries a `w:tblInd`.
+     */
+    const contentWidth = 9026;
+    const fraction = defaultTableIndent(contentWidth);
+    expect(fraction * contentWidth).toBeCloseTo(QUESTION_LIST_INDENTS[0].left);
+    // A fraction of the column, so it holds its proportion when the paper changes.
+    expect(defaultTableIndent(contentWidth / 2)).toBeCloseTo(fraction * 2);
+  });
+
+  it('places a centred table by alignment rather than by indent', () => {
+    /*
+     * Word models these as alternatives and honours only `w:jc` once it is set, which is
+     * exactly what Q19 of the reference paper does: `<w:jc w:val="center"/>` and no
+     * `w:tblInd` at all. Reporting both would leave two answers to "where is the left
+     * edge" and let the page and the .docx pick different ones.
+     */
+    const indented = { ...createTableBlock(2, 3), indent: 0.2, width: 0.5 };
+    const centred = setTableAlign(indented, 'center');
+
+    expect(centred.indent).toBeUndefined();
+    expect(resolveTableBox(centred)).toEqual({ width: 0.5, indent: 0, align: 'center' });
+  });
+
+  it('takes a table off centre when its left edge is dragged', () => {
+    // Dragging the left edge *is* choosing an indent. Left aligned, the table would sit
+    // still under the pointer while the stored value moved, then jump on release.
+    const centred = setTableAlign({ ...createTableBlock(2, 3), width: 0.5 }, 'center');
+    const dragged = resizeTableEdge(centred, 'left', 0.2);
+
+    expect(resolveTableAlign(dragged)).toBe('left');
+    expect(resolveTableBox(dragged).indent).toBeCloseTo(0.2);
+  });
+
+  it('drops alignment entirely when set back to left', () => {
+    // `left` is Word's own default, so it must store nothing — a table nobody has aligned
+    // has to export byte-identically to what it did before alignment existed.
+    const block = setTableAlign(setTableAlign(createTableBlock(2, 3), 'right'), 'left');
+    expect(block.align).toBeUndefined();
   });
 
   it('indents from the left while the right edge stays put', () => {

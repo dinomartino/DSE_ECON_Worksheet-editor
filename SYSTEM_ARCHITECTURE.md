@@ -696,6 +696,39 @@ says so. Pulling the **right** edge moves the width alone; pulling the **left** 
 the width *and* the indent, because the right edge has to stay put — otherwise dragging
 the left edge would slide the table sideways rather than resize it.
 
+**A new table starts at the stem's own text column**, not flush at 0.
+`DEFAULT_TABLE_INDENT_TWIPS` is `QUESTION_LIST_INDENTS[0].left`, derived rather than typed
+so a table follows the staircase if it ever moves; `defaultTableIndent(contentWidth)`
+divides it into the fraction `indent` stores. A table belongs to a question, and flush at
+0 put it a step *left* of the sentence introducing it, hanging in the question number's
+gutter — where all six indented tables in the reference `.docx` carry a `w:tblInd`.
+
+### Alignment and indent are alternatives, not a pair
+
+`align` (`w:jc` on the table) is genuinely **not** the same mechanism as `indent`: Q19 of
+the reference paper centres its table with `<w:jc w:val="center"/>` and no `w:tblInd` at
+all, while its six sibling tables carry an indent and no `w:jc`. A centred table stays
+centred when the paper or the margins change; an indent chosen to *look* centred does not.
+That is the whole reason Word offers both, so both are offered here.
+
+They are made exclusive **by construction rather than by convention**, because two stored
+answers to "where is the left edge" is two things the page and the `.docx` can disagree
+about:
+
+- `setTableAlign` drops `indent` when centring, and stores **nothing** for `left` — Word's
+  own default — so a table nobody has aligned exports byte-identically to before.
+- `resolveTableBox` reports `indent: 0` for anything but `left`, so the IR hands both
+  backends a resolved pair and neither has to know the two are alternatives — the same
+  rule `columnWidths` and cell padding already follow.
+- Dragging the **left edge returns `align` to `left`**, since placing that edge by hand
+  *is* choosing an indent. Without it the drag silently did nothing on a centred table:
+  the stored value moved and the table did not.
+
+The preview expresses alignment as **`auto` margins**, which is what Word means by `w:jc`
+— placed from the column's edges, not from a stored offset — so the two cannot drift. An
+in-flight edge drag renders as `left` for the same reason the commit clears `align`, or a
+centred table would sit still under the pointer and jump on release.
+
 `TableRow.minHeight` is a **floor, never a fixed height** (`w:trHeight` with
 `hRule="atLeast"`). A row whose text needs more space still grows, so a dragged height can
 never clip what is typed into the row later. This is the one place in the document where
@@ -774,6 +807,12 @@ Word's division is the one that works and the one a teacher arrives knowing: **s
 from a panel, content in the document.** So the panel offers only the verbs with no
 representation on the page — insert row above/below, insert column left/right, delete,
 align, merge, and the four padding edges — and points at the page for typing.
+
+**Table alignment sits outside the per-cell branch**, unlike the cell's own align: it
+needs no subject beyond the table, so it is always available rather than waiting for a
+cell to be clicked. The two controls read alike and mean unrelated things — one places the
+whole table in the column, the other places text inside one cell — so the table's is
+labelled `Table` and kept with the whole-table settings.
 
 Padding is the one setting offered in **both** places, and the split is the diagram's:
 the panel types exact values, the page drags. It follows two rules of its own:

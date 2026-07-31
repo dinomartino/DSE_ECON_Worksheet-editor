@@ -301,6 +301,16 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
     '<w:tblPr>' +
     '<w:tblStyle w:val="TableNormal"/>' +
     `<w:tblW w:w="${tableWidth}" w:type="dxa"/>` +
+    /*
+     * Alignment and indent are alternatives, and the IR has already made them exclusive:
+     * `resolveTableBox` reports indent 0 for anything but `left`, so at most one of these
+     * two lines emits. That is what Q19 of the reference paper does — `w:jc` with no
+     * `w:tblInd` — while its six sibling tables carry the indent and no `w:jc`.
+     *
+     * `left` writes nothing at all, being Word's own default, so a table nobody has
+     * aligned exports byte-identically to what it did before alignment existed.
+     */
+    (node.align !== 'left' ? `<w:jc w:val="${node.align}"/>` : '') +
     // Emitted only when the table is actually inset, so a full-width table's XML is
     // unchanged from before outer edges could be dragged.
     (tableIndent > 0 ? `<w:tblInd w:w="${tableIndent}" w:type="dxa"/>` : '') +

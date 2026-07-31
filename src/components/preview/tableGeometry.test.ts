@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { createTableBlock } from '@/model/factories';
 import { renderContentBlocks } from '@/render/ir';
-import { DEFAULT_CELL_PADDING, setPadding } from '@/model/table';
+import { DEFAULT_CELL_PADDING, setPadding, setTableAlign } from '@/model/table';
+import { renderNodeXml } from '@/export/docx/body';
+import type { ContentBlock } from '@/model/types';
 
 /**
  * The preview must lay a table out the way Word will, because **the paginator measures
@@ -91,5 +93,59 @@ describe('the IR hands every backend the same numbers', () => {
     const [node] = renderContentBlocks([block], 'Question Stem');
     if (node.kind !== 'table') throw new Error('expected a table node');
     expect(node.blockId).toBe(block.id);
+  });
+
+  it('resolves alignment and zeroes the indent it replaces', () => {
+    // Both backends then place by `align` and offset by `indent` without either having to
+    // know the two are alternatives — the same reason widths and padding arrive resolved.
+    const block = setTableAlign({ ...createTableBlock(2, 2), indent: 0.3 }, 'center');
+    const [node] = renderContentBlocks([block], 'Question Stem');
+    if (node.kind !== 'table') throw new Error('expected a table node');
+
+    expect(node.align).toBe('center');
+    expect(node.indent).toBe(0);
+  });
+});
+
+describe('a centred table exports the way the reference paper does', () => {
+  /*
+   * Q19 of `DBS_Assessment1.docx` is the shape being reproduced: `<w:jc w:val="center"/>`
+   * on `w:tblPr` and no `w:tblInd` at all, while its six sibling tables carry a
+   * `w:tblInd` and no `w:jc`. Word treats them as alternatives, so emitting both would
+   * leave the file saying two different things about where the left edge is.
+   */
+  /** The real export path, so this cannot pass against a helper the exporter stopped using. */
+  const tblPr = (block: ContentBlock) => {
+    const [node] = renderContentBlocks([block], 'Question Stem');
+    if (node.kind !== 'table') throw new Error('expected a table node');
+    const xml = renderNodeXml(node, {
+      fonts: { latin: 'Times New Roman', eastAsia: 'PMingLiU' },
+      language: 'en',
+      contentWidth: 9026,
+      numIds: new Map(),
+      imageRelId: () => undefined,
+      nextDrawingId: () => 1,
+    });
+    return xml.slice(xml.indexOf('<w:tblPr>'), xml.indexOf('</w:tblPr>'));
+  };
+
+  it('writes w:jc and no w:tblInd for a centred table', () => {
+    const props = tblPr(setTableAlign({ ...createTableBlock(2, 2), indent: 0.3 }, 'center'));
+    expect(props).toContain('<w:jc w:val="center"/>');
+    expect(props).not.toContain('w:tblInd');
+  });
+
+  it('writes w:tblInd and no w:jc for an indented one', () => {
+    const props = tblPr({ ...createTableBlock(2, 2), indent: 0.25, width: 0.5 });
+    expect(props).toContain('w:tblInd');
+    expect(props).not.toContain('w:jc');
+  });
+
+  it('writes neither for a table nobody has placed', () => {
+    // `left` is Word's own default, so an untouched table's XML has to be unchanged from
+    // before alignment existed.
+    const props = tblPr(createTableBlock(2, 2));
+    expect(props).not.toContain('w:jc');
+    expect(props).not.toContain('w:tblInd');
   });
 });
