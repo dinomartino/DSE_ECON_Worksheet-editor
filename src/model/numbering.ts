@@ -40,9 +40,24 @@ export const QUESTION_LIST_INDENTS: readonly ListLevelIndent[] = [
   { left: 1170, hanging: 450 },
 ];
 
-/** MCQ options and statements are one flat level, indented under the stem. */
+/** MCQ options are one flat level, indented under the stem. */
 export const OPTION_LIST_INDENT: ListLevelIndent = { left: 1080, hanging: 360 };
-export const STATEMENT_LIST_INDENT: ListLevelIndent = { left: 1080, hanging: 360 };
+
+/**
+ * Statements start *at* the stem's own text column, not indented under it.
+ *
+ * The reference paper prints "(1)" flush under the first word of the stem — the same
+ * column the question text runs in — and reserves the deeper indent for the A–D options
+ * alone. That difference is what makes the two lists read as different things: the
+ * statements are part of the question being asked, the options are the answers to it.
+ * Sharing the option indent stacked them in one block with nothing but the marker shape
+ * to tell them apart.
+ *
+ * So the marker hangs back into the question-number gutter at 360, exactly where the
+ * stem's text begins, with the statement text a step further in at 720 — the same
+ * marker-starts-where-its-parent's-text-starts rule the question levels follow.
+ */
+export const STATEMENT_LIST_INDENT: ListLevelIndent = { left: 720, hanging: 360 };
 
 /**
  * Where a part's or sub-part's *continuation* paragraphs sit.

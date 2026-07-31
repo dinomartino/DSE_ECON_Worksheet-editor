@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import JSZip from 'jszip';
 import {
+  OPTION_LIST_INDENT,
   PART_TEXT_INDENT,
   QUESTION_LIST_INDENTS,
+  STATEMENT_LIST_INDENT,
   SUBPART_TEXT_INDENT,
 } from './numbering';
 import { exportDocxBuffer } from '@/export/docx';
@@ -48,6 +50,24 @@ describe('list indent geometry', () => {
     expect(SUBPART_TEXT_INDENT).toBe(QUESTION_LIST_INDENTS[2].left);
   });
 
+  it('starts a statement marker at the stems own text column', () => {
+    /*
+     * The reference paper prints "(1)" flush under the first word of the stem and
+     * reserves the deeper indent for the A-D options alone — the same
+     * marker-starts-where-its-parents-text-starts rule the question levels follow, with
+     * the stem as the parent.
+     *
+     * Statements shared the option indent, so the two lists stacked in one block with
+     * nothing but the marker shape to separate the question from its answers.
+     */
+    expect(STATEMENT_LIST_INDENT.left - STATEMENT_LIST_INDENT.hanging).toBe(
+      QUESTION_LIST_INDENTS[0].left,
+    );
+
+    // Options stay a step deeper than the statements, or the distinction is lost again.
+    expect(OPTION_LIST_INDENT.left).toBeGreaterThan(STATEMENT_LIST_INDENT.left);
+  });
+
   it('writes exactly these twips into numbering.xml', async () => {
     const mode: OutputMode = { language: 'bilingual', version: 'student' };
     const zip = await JSZip.loadAsync(await exportDocxBuffer(buildAcceptanceWorksheet(), mode));
@@ -68,11 +88,16 @@ describe('list indent geometry', () => {
     expect(source).toContain('QUESTION_LIST_INDENTS[0]');
     expect(source).toContain('QUESTION_LIST_INDENTS[1]');
     expect(source).toContain('QUESTION_LIST_INDENTS[2]');
+    expect(source).toContain('STATEMENT_LIST_INDENT');
+    expect(source).toContain('OPTION_LIST_INDENT');
 
-    // And the styles must not re-indent on top of it: `ml-6` / `ml-12` on these two
-    // stacked a second indent over the list geometry, so parts sat further right in the
-    // preview than in the export.
+    // And the styles must not re-indent on top of it: `ml-6` / `ml-12` on the two
+    // sub-question styles, and `ml-8` on Statement and MCQ Option, stacked a second
+    // indent over the list geometry, so all four sat further right in the preview than
+    // in the export. Only the paper shows it, and the paginator measures the difference.
     expect(source).toMatch(/"Sub-question":\s*""/);
     expect(source).toMatch(/"Sub-sub-question":\s*""/);
+    expect(source).toMatch(/\bStatement:\s*""/);
+    expect(source).toMatch(/"MCQ Option":\s*""/);
   });
 });

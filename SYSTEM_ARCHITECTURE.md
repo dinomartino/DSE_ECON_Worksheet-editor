@@ -505,10 +505,21 @@ registry, so the constant sits below all three. Getting one copy out of step is 
 the preview paginates on geometry Word will not reproduce, so page breaks land in
 different places on screen and on paper.
 
+**The same rule reaches the MCQ lists, with the stem as the parent.** A statement's `(1)`
+begins *at* 360 — under the stem's first word, exactly where `(a)` begins — so
+`STATEMENT_LIST_INDENT` is `{ left: 720, hanging: 360 }`, and only the A–D options sit a
+step deeper at 1080 (`OPTION_LIST_INDENT`). That difference is what makes the two lists
+read as different things: the statements are part of the question being asked, the options
+are the answers to it. Sharing one indent stacked them in a single block with nothing but
+the marker shape to tell them apart, which is not what any real paper prints.
+
 The style classes must add **no margin of their own**. `Sub-question` and
-`Sub-sub-question` carried `ml-6` / `ml-12` *on top of* that padding, so every part was
-indented twice — once by the numbering the export uses, again by a class the export knows
-nothing about.
+`Sub-sub-question` carried `ml-6` / `ml-12` *on top of* that padding, and `Statement` and
+`MCQ Option` carried `ml-8`, so all four were indented twice — once by the numbering the
+export uses, again by a class the export knows nothing about. The `ml-8` also defeated the
+statement indent outright: no value of `left`/`hanging` can put a marker at the stem's text
+column while a class adds 32px underneath it. `listIndent.test.ts` greps `Preview.tsx` for
+all four, the fault being one that only a printed page shows.
 
 - **The preview pins the same numbers.** `.paper` sets `font-size: 11pt` and a fixed
   `line-height: 12pt`, with zero paragraph margins, mirroring the exporter. Left to

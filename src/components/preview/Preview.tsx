@@ -282,8 +282,19 @@ const STYLE_CLASS: Record<string, string> = {
   Instructions: "italic",
   "Section Heading": "font-bold paper-line-14",
   "Question Stem": "",
-  Statement: "ml-8",
-  "MCQ Option": "ml-8",
+  /*
+   * No margin of their own, for the same reason the sub-question styles below carry
+   * none: the indent is list geometry, and list geometry is what exports.
+   *
+   * These carried `ml-8` *on top of* the `paddingLeft` derived from
+   * `STATEMENT_LIST_INDENT` / `OPTION_LIST_INDENT`, so both blocks sat 32px right of
+   * where Word puts them — invisible until compared against a real paper, and wrong for
+   * pagination, which measures these boxes. It also defeated the statement indent
+   * itself: a statement marker is meant to start exactly where the stem's text starts,
+   * and no value of `left`/`hanging` can land there while a class adds 32px underneath.
+   */
+  Statement: "",
+  "MCQ Option": "",
   /*
    * No margin of their own: a part's indent comes from the list geometry.
    *
