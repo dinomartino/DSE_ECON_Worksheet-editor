@@ -7,6 +7,7 @@ import {
   type DiagramPoint,
   type DiagramPointMark,
 } from './diagram';
+import type { BiText } from './types';
 
 /**
  * Direct manipulation of diagram geometry (§7.5).
@@ -44,7 +45,8 @@ export type DiagramHandle =
   | { kind: 'arrowLabel'; arrowId: string }
   | { kind: 'pointTick'; pointId: string; axis: 'x' | 'y' }
   | { kind: 'axisTick'; axis: 'x' | 'y'; tickId: string }
-  | { kind: 'axisTitle'; axis: 'x' | 'y' };
+  | { kind: 'axisTitle'; axis: 'x' | 'y' }
+  | { kind: 'diagramTitle' };
 
 /** Do these two handles address the same thing? */
 export function sameHandle(a: DiagramHandle | null, b: DiagramHandle | null): boolean {
@@ -164,9 +166,11 @@ export function handleId(handle: DiagramHandle): string {
       return handle.labelId;
     case 'axisTick':
       return handle.tickId;
-    // The axes are singletons, so the axis name is the whole address.
+    // The axes and the caption are singletons, so the kind is the whole address.
     case 'axisTitle':
       return `axis-${handle.axis}`;
+    case 'diagramTitle':
+      return 'diagram-title';
     default:
       return handle.arrowId;
   }
@@ -182,9 +186,27 @@ export function handleId(handle: DiagramHandle): string {
 export interface LabelAnchor {
   handle: DiagramHandle;
   at: DiagramPoint;
+  /**
+   * The box the text actually occupies, in unit space, if the caller could measure it.
+   *
+   * `at` is a *drawing* anchor — a baseline, sitting at the start, middle or end of the
+   * text depending on how that piece is anchored — so it is nowhere near the centre of
+   * the word for most labels. Hit-testing on distance to `at` alone therefore made a
+   * long caption reachable only near one edge and a baseline below the letters: you
+   * could see the words and not click them.
+   *
+   * Optional because the anchors remain useful without it (a marquee still catches by
+   * position, and the drag rings are drawn at `at`). When present, `hitTest` treats a
+   * click anywhere inside the box as a hit on the text.
+   */
+  box?: { x0: number; y0: number; x1: number; y1: number };
 }
 
 const dist = (a: DiagramPoint, b: DiagramPoint) => Math.hypot(a.x - b.x, a.y - b.y);
+
+/** Is a point inside a label's drawn box? */
+const withinBox = (p: DiagramPoint, box: NonNullable<LabelAnchor['box']>) =>
+  p.x >= box.x0 && p.x <= box.x1 && p.y >= box.y0 && p.y <= box.y1;
 
 /** Shortest distance from `p` to the segment `a`–`b`, in unit space. */
 function distanceToSegment(p: DiagramPoint, a: DiagramPoint, b: DiagramPoint): number {
@@ -235,7 +257,12 @@ export function hitTest(
   // which is what makes a label grabbable at all: a curve's name is drawn right beside
   // the line it names, and losing to that line would leave it unreachable.
   for (const label of labels) {
-    consider(label.handle, dist(at, label.at));
+    // Inside the drawn box counts as a direct hit — distance zero — so clicking the
+    // middle of a word beats a vertex that happens to be nearer the text's baseline
+    // anchor. Without this the anchor's position alone decided, and for `end`-anchored
+    // or centred text that point is not where the words are.
+    if (label.box && withinBox(at, label.box)) consider(label.handle, 0);
+    else consider(label.handle, dist(at, label.at));
   }
   for (const curve of diagram.curves) {
     curve.points.forEach((point, index) => {
@@ -406,6 +433,8 @@ export function applyDrag(
           titleOffset: nudge(diagram[handle.axis].titleOffset, dx, dy),
         },
       };
+    case 'diagramTitle':
+      return { ...diagram, titleOffset: nudge(diagram.titleOffset, dx, dy) };
   }
 }
 
@@ -429,6 +458,110 @@ function sideSeed(side: DiagramPointMark['labelSide']): DiagramPoint | undefined
   const x = side.includes('Right') || side === 'right' ? step : side.includes('Left') || side === 'left' ? -step : 0;
   const y = side.startsWith('up') ? step : side.startsWith('down') ? -step : 0;
   return { x, y };
+}
+
+/**
+ * The text a handle addresses, or null if it addresses geometry rather than writing.
+ *
+ * This and `setHandleText` are the one place that knows which field of which element a
+ * given piece of text lives in. The canvas edits text in place by asking here, so the
+ * editor cannot open on a label whose value it would then write somewhere else — and a
+ * handle kind added later that forgets to appear in both simply has no editor, rather
+ * than silently editing the wrong thing.
+ *
+ * Note this deliberately answers for **text handles only**. A `curve` handle addresses
+ * the line, not its name: the two are separately selectable and separately draggable, so
+ * folding them together here would make double-clicking a line retype its label.
+ */
+export function handleText(diagram: Diagram, handle: DiagramHandle): BiText | null {
+  switch (handle.kind) {
+    case 'curveLabel':
+      return diagram.curves.find((c) => c.id === handle.curveId)?.label ?? emptyText();
+    case 'pointLabel':
+      return diagram.points.find((p) => p.id === handle.pointId)?.label ?? emptyText();
+    case 'arrowLabel':
+      return diagram.arrows.find((a) => a.id === handle.arrowId)?.label ?? emptyText();
+    case 'label':
+      return diagram.labels.find((l) => l.id === handle.labelId)?.text ?? emptyText();
+    case 'pointTick': {
+      const mark = diagram.points.find((p) => p.id === handle.pointId);
+      if (!mark) return null;
+      return (handle.axis === 'x' ? mark.xTickLabel : mark.yTickLabel) ?? emptyText();
+    }
+    case 'axisTick':
+      return (diagram[handle.axis].ticks ?? []).find((t) => t.id === handle.tickId)?.label ?? null;
+    case 'axisTitle':
+      return diagram[handle.axis].title ?? emptyText();
+    case 'diagramTitle':
+      return diagram.title ?? emptyText();
+    default:
+      return null;
+  }
+}
+
+/** Can this handle's text be edited in place? */
+export function isTextHandle(handle: DiagramHandle): boolean {
+  return (
+    handle.kind === 'curveLabel' ||
+    handle.kind === 'pointLabel' ||
+    handle.kind === 'arrowLabel' ||
+    handle.kind === 'label' ||
+    handle.kind === 'pointTick' ||
+    handle.kind === 'axisTick' ||
+    handle.kind === 'axisTitle' ||
+    handle.kind === 'diagramTitle'
+  );
+}
+
+const emptyText = (): BiText => ({ en: [], zh: [] });
+
+/** Write a handle's text back. The mirror of `handleText`; see its note. */
+export function setHandleText(diagram: Diagram, handle: DiagramHandle, text: BiText): Diagram {
+  switch (handle.kind) {
+    case 'curveLabel':
+      return {
+        ...diagram,
+        curves: mapById(diagram.curves, handle.curveId, (c) => ({ ...c, label: text })),
+      };
+    case 'pointLabel':
+      return {
+        ...diagram,
+        points: mapById(diagram.points, handle.pointId, (p) => ({ ...p, label: text })),
+      };
+    case 'arrowLabel':
+      return {
+        ...diagram,
+        arrows: mapById(diagram.arrows, handle.arrowId, (a) => ({ ...a, label: text })),
+      };
+    case 'label':
+      return {
+        ...diagram,
+        labels: mapById(diagram.labels, handle.labelId, (l) => ({ ...l, text })),
+      };
+    case 'pointTick':
+      return {
+        ...diagram,
+        points: mapById(diagram.points, handle.pointId, (p) =>
+          handle.axis === 'x' ? { ...p, xTickLabel: text } : { ...p, yTickLabel: text },
+        ),
+      };
+    case 'axisTick':
+      return {
+        ...diagram,
+        [handle.axis]: {
+          ...diagram[handle.axis],
+          ticks: (diagram[handle.axis].ticks ?? []).map((t) =>
+            t.id === handle.tickId ? { ...t, label: text } : t,
+          ),
+        },
+      };
+    case 'axisTitle':
+      return { ...diagram, [handle.axis]: { ...diagram[handle.axis], title: text } };
+    case 'diagramTitle':
+      return { ...diagram, title: text };
+    default:
+      return diagram;
+  }
 }
 
 /** Remove whatever a handle addresses. A vertex removal falls back to the whole curve. */
@@ -501,6 +634,11 @@ export function deleteHandle(diagram: Diagram, handle: DiagramHandle): Diagram {
         ...diagram,
         [handle.axis]: (({ title, titleOffset, ...rest }) => rest)(diagram[handle.axis]),
       };
+    // Deleting the caption clears the text *and* the nudge, for the reason a point label
+    // does: a later re-titling should start centred over the plot rather than inheriting
+    // a position nothing has been visible at since.
+    case 'diagramTitle':
+      return (({ title, titleOffset, ...rest }) => rest)(diagram);
 
     default:
       return { ...diagram, arrows: diagram.arrows.filter((a) => a.id !== handle.arrowId) };
@@ -567,6 +705,56 @@ export function snapPoint(
   }
 
   return best ? (best as { point: DiagramPoint }).point : at;
+}
+
+/**
+ * How near flat a line must be, in **screen** degrees, before the assist straightens it.
+ *
+ * Small on purpose. A DSE demand curve is often genuinely shallow, and a catch radius
+ * wide enough to be effortless is also wide enough to flatten a curve the teacher drew
+ * deliberately — a silent edit to geometry they were happy with. 5° catches the wobble
+ * in a hand-drawn "horizontal" without reaching any slope that reads as sloped.
+ */
+export const AXIS_SNAP_DEGREES = 5;
+
+/**
+ * Straighten a near-horizontal or near-vertical line, the way a drawing tool does.
+ *
+ * Papers are full of lines that must be *exactly* flat — a world price, an import quota,
+ * a price ceiling — and freehand dragging cannot land on exact. Shift already forces the
+ * nearest axis, but that requires knowing the shortcut and deciding *before* the drag;
+ * this catches the far commoner case of someone simply drawing what they intended to be
+ * horizontal and missing by two degrees.
+ *
+ * The angle is measured in **screen space, not unit space**. Unit space is square while
+ * the plot is drawn wider than tall, so an identical stored slope prints at a different
+ * visible angle: judging in unit space would snap lines that look sloped and ignore lines
+ * that look flat. `aspect` is the plot's pixel width ÷ height, which the canvas takes
+ * from the shared projection.
+ *
+ * Returns `to` unchanged when the line is not near an axis, so the caller can apply this
+ * unconditionally.
+ */
+export function snapToAxis(
+  from: DiagramPoint,
+  to: DiagramPoint,
+  aspect: number,
+  degrees: number = AXIS_SNAP_DEGREES,
+): DiagramPoint {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  // A zero-length line has no angle to judge; every direction is equally near.
+  if (dx === 0 && dy === 0) return to;
+
+  // Into screen proportions before measuring, then the comparison is a plain angle.
+  const sx = dx * aspect;
+  const sy = dy;
+  const tolerance = Math.tan((degrees * Math.PI) / 180);
+
+  // Nearer horizontal than vertical: flatten y, keep the length the drag actually had.
+  if (Math.abs(sy) <= Math.abs(sx) * tolerance) return clampPoint({ x: to.x, y: from.y });
+  if (Math.abs(sx) <= Math.abs(sy) * tolerance) return clampPoint({ x: from.x, y: to.y });
+  return to;
 }
 
 /** Every crossing between two polylines, treating both as straight segment chains. */
@@ -734,10 +922,12 @@ export function copyHandles(diagram: Diagram, handles: DiagramHandle[]): Diagram
       case 'label':
         labelIds.add(handle.labelId);
         break;
-      // The axes are part of the diagram itself rather than free elements, so there is
-      // nothing to copy — a pasted "Price" would have no second axis to belong to.
+      // The axes and the caption are part of the diagram itself rather than free
+      // elements, so there is nothing to copy — a pasted "Price" would have no second
+      // axis to belong to, and a pasted caption no second diagram.
       case 'axisTick':
       case 'axisTitle':
+      case 'diagramTitle':
         break;
       default:
         arrowIds.add(handle.arrowId);

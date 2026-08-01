@@ -2,6 +2,7 @@ import type { Diagram } from '@/model/diagram';
 import type {
   BandFieldSide,
   BiText,
+  CaptionPlacement,
   CellAlign,
   CellPadding,
   ContentBlock,
@@ -190,6 +191,13 @@ export interface TableNode {
   blockId: string;
   /** Edit target for the caption. */
   captionEdit?: EditTarget;
+  /**
+   * Which side the caption prints on. **Always resolved**, like `columnWidths` and the
+   * table box: no backend should have to decide what an unstored placement means, and
+   * three of them deciding separately is three chances to disagree about where the words
+   * go.
+   */
+  captionPlacement: CaptionPlacement;
 }
 
 export interface ImageNode {
@@ -203,6 +211,8 @@ export interface ImageNode {
   teacherOnly?: boolean;
   /** Edit target for the caption. */
   captionEdit?: EditTarget;
+  /** Which side the caption prints on; always resolved. See `TableNode`. */
+  captionPlacement: CaptionPlacement;
   /** Which block this came from, so the preview can select and resize it. */
   blockId: string;
 }
@@ -231,6 +241,8 @@ export interface DiagramNode {
   keepNext?: boolean;
   teacherOnly?: boolean;
   captionEdit?: EditTarget;
+  /** Which side the caption prints on; always resolved. See `TableNode`. */
+  captionPlacement: CaptionPlacement;
   /** Which block this came from, so the preview can select and edit it. */
   blockId: string;
 }
@@ -469,6 +481,7 @@ export function renderContentBlocks(
         rowHeights: block.rows.map((row) => row.minHeight),
         blockId: block.id,
         caption: block.caption,
+        captionPlacement: block.captionPlacement ?? 'below',
         keepNext: options.keepNext,
         teacherOnly: options.teacherOnly,
         captionEdit: { kind: 'blockCaption', blockId: block.id },
@@ -493,6 +506,7 @@ export function renderContentBlocks(
         heightPx: block.heightPx,
         altText: block.altText,
         caption: block.caption,
+        captionPlacement: block.captionPlacement ?? 'below',
         keepNext: options.keepNext,
         teacherOnly: options.teacherOnly,
         captionEdit: { kind: 'blockCaption', blockId: block.id },
@@ -506,6 +520,7 @@ export function renderContentBlocks(
         heightPx: block.heightPx,
         altText: block.altText,
         caption: block.caption,
+        captionPlacement: block.captionPlacement ?? 'below',
         keepNext: options.keepNext,
         teacherOnly: options.teacherOnly,
         captionEdit: { kind: 'blockCaption', blockId: block.id },

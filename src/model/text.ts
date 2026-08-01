@@ -201,9 +201,14 @@ export function toRunPatch(patch: {
   italic?: boolean;
   underline?: boolean;
   fonts?: InlineRun['fonts'];
+  vertAlign?: InlineRun['vertAlign'];
 }): RunFormatPatch {
   const out: RunFormatPatch = {};
-  const carry = ['fontSize', 'color', 'bold', 'italic', 'underline', 'fonts'] as const;
+  // `vertAlign` rides here like any other run attribute. It was missing while the model,
+  // the storage markers (`_{1}`) and all three renderers already understood it — so
+  // "S₁" could be written down and printed but never *applied* from a toolbar, which is
+  // the one way anyone would think to reach it.
+  const carry = ['fontSize', 'color', 'bold', 'italic', 'underline', 'fonts', 'vertAlign'] as const;
   for (const key of carry) {
     if (key in patch) {
       const value = patch[key];

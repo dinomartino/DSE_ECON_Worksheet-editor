@@ -7,15 +7,20 @@ import {
   deleteHandle,
   deleteHandles,
   dragHandles,
+  handleText,
   hitTest,
   insertVertex,
   isBody,
   isClipEmpty,
+  isTextHandle,
   pasteInto,
   pointAt,
   sameHandle,
   selectWithin,
+  setHandleText,
   snapPoint,
+  snapToAxis,
+  AXIS_SNAP_DEGREES,
   type DiagramHandle,
 } from './diagramDraw';
 import { diagramPlot } from '@/render/diagram';
@@ -586,5 +591,136 @@ describe('projection inverse', () => {
       { widthPx: 480, heightPx: 360, language: 'en' },
     );
     expect(long.plot.right).toBeLessThan(short.plot.right);
+  });
+});
+
+describe('straightening a near-flat line (§axis assist)', () => {
+  // The plot is wider than it is tall, so the same stored slope prints at a different
+  // visible angle. Every case here is stated in the aspect the canvas actually passes.
+  const proj = diagramPlot(blank(), { widthPx: 480, heightPx: 360, language: 'en' });
+  const aspect = (proj.plot.right - proj.plot.left) / (proj.plot.bottom - proj.plot.top);
+
+  /**
+   * A point `degrees` above horizontal **as it prints**, expressed in unit space.
+   *
+   * The screen rise is `dx * aspect * tan(deg)` and unit y is that rise unscaled, so the
+   * aspect multiplies here. Dividing instead — the easy slip — describes a line a third
+   * shallower than asked for, and every threshold case then tests the wrong angle.
+   */
+  const at = (degrees: number, length = 0.5) => {
+    const dx = length;
+    return { x: 0.2 + dx, y: 0.5 + dx * aspect * Math.tan((degrees * Math.PI) / 180) };
+  };
+
+  it('flattens a line drawn a couple of degrees off horizontal', () => {
+    const from = { x: 0.2, y: 0.5 };
+    const snapped = snapToAxis(from, at(3), aspect);
+    expect(snapped.y).toBe(from.y);
+    // The length the drag had is kept: only the cross-axis coordinate is corrected.
+    expect(snapped.x).toBeCloseTo(at(3).x, 5);
+  });
+
+  it('leaves a genuinely sloped line alone', () => {
+    const from = { x: 0.2, y: 0.5 };
+    const target = at(20);
+    expect(snapToAxis(from, target, aspect)).toEqual(target);
+  });
+
+  it('straightens a near-vertical line onto the vertical', () => {
+    // A quota line: nearly all rise, a wobble of run. The x is corrected to the fixed
+    // end and the height the drag reached is kept.
+    const from = { x: 0.5, y: 0.2 };
+    const snapped = snapToAxis(from, { x: from.x + 0.01, y: 0.7 }, aspect);
+    expect(snapped.x).toBe(from.x);
+    expect(snapped.y).toBeCloseTo(0.7, 5);
+  });
+
+  it('judges the angle on screen, not in unit space', () => {
+    // This is the whole reason `aspect` is a parameter. The plot is drawn wider than it
+    // is tall, so a given rise is *compressed* on screen relative to the run: a line the
+    // teacher sees at 4° — plainly flat, plainly meant to be horizontal — measures 5.7°
+    // in unit space, over the threshold. Judging in unit space would refuse to straighten
+    // it; judging on screen catches it, which is what was asked for.
+    const from = { x: 0.2, y: 0.5 };
+    const target = at(4);
+    const unitDegrees = (Math.atan2(target.y - from.y, target.x - from.x) * 180) / Math.PI;
+    expect(unitDegrees).toBeGreaterThan(AXIS_SNAP_DEGREES);
+
+    expect(snapToAxis(from, target, aspect)).toEqual({ x: target.x, y: from.y });
+    expect(snapToAxis(from, target, 1)).toEqual(target);
+  });
+
+  it('has no angle to judge on a zero-length line', () => {
+    const p = { x: 0.4, y: 0.4 };
+    expect(snapToAxis(p, p, aspect)).toEqual(p);
+  });
+
+  it('clamps the straightened point into the unit square', () => {
+    const snapped = snapToAxis({ x: 0.2, y: 0.5 }, { x: 1.4, y: 0.51 }, aspect);
+    expect(snapped.x).toBeLessThanOrEqual(1);
+  });
+});
+
+describe('text behind a handle (§in-place editing)', () => {
+  const titled = (): Diagram => ({
+    ...blank(),
+    title: { en: [{ text: 'Australian wine sold in China' }], zh: [] },
+    x: { title: { en: [{ text: 'Quantity' }], zh: [] } },
+    curves: [{ id: 'c1', points: [{ x: 0, y: 0 }, { x: 1, y: 1 }], shape: 'straight', label: { en: [{ text: 'S' }], zh: [] } }],
+  });
+
+  it('reads and writes through the same address', () => {
+    // The editor opens on whatever `handleText` reports and saves through
+    // `setHandleText`. If the two ever addressed different fields, an edit would appear
+    // to work and land somewhere invisible — so they are tested as a round trip.
+    const cases: DiagramHandle[] = [
+      { kind: 'diagramTitle' },
+      { kind: 'axisTitle', axis: 'x' },
+      { kind: 'curveLabel', curveId: 'c1' },
+    ];
+    for (const handle of cases) {
+      const next = setHandleText(titled(), handle, { en: [{ text: 'typed' }], zh: [] });
+      expect(handleText(next, handle)?.en[0].text).toBe('typed');
+    }
+  });
+
+  it('reports no text for geometry handles, so they get no editor', () => {
+    expect(handleText(titled(), { kind: 'curve', curveId: 'c1' })).toBeNull();
+    expect(isTextHandle({ kind: 'curve', curveId: 'c1' })).toBe(false);
+    // A curve's *name* is separately addressable, which is what lets double-clicking the
+    // label retype it while double-clicking the line still adds a kink.
+    expect(isTextHandle({ kind: 'curveLabel', curveId: 'c1' })).toBe(true);
+  });
+
+  it('offers empty text for a label that has none yet', () => {
+    // A title just created by "Add a title" has no runs. It still has to be editable, or
+    // it could be created and never typed into.
+    expect(handleText(blank(), { kind: 'diagramTitle' })).toEqual({ en: [], zh: [] });
+  });
+});
+
+describe('the diagram title as a handle', () => {
+  const titled = (): Diagram => ({
+    ...blank(),
+    title: { en: [{ text: 'Figure 1' }], zh: [] },
+  });
+
+  it('drags its own offset, not an absolute position', () => {
+    const next = applyDrag(titled(), { kind: 'diagramTitle' }, { x: 0.5, y: 0.5 }, { x: 0.6, y: 0.55 });
+    expect(next.titleOffset?.x).toBeCloseTo(0.1);
+    expect(next.titleOffset?.y).toBeCloseTo(0.05);
+    expect(next.title).toEqual(titled().title);
+  });
+
+  it('deletes the text and the nudge together', () => {
+    const dragged = applyDrag(titled(), { kind: 'diagramTitle' }, { x: 0.5, y: 0.5 }, { x: 0.6, y: 0.5 });
+    const cleared = deleteHandle(dragged, { kind: 'diagramTitle' });
+    expect(cleared.title).toBeUndefined();
+    expect(cleared.titleOffset).toBeUndefined();
+  });
+
+  it('is not copyable — a pasted caption has no second diagram to belong to', () => {
+    const clip = copyHandles(titled(), [{ kind: 'diagramTitle' }]);
+    expect(isClipEmpty(clip)).toBe(true);
   });
 });

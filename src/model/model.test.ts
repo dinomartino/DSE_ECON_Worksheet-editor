@@ -18,6 +18,7 @@ import {
   replaceRichTextRange,
   runLines,
   serializeRuns,
+  toRunPatch,
 } from './text';
 import { createMcqQuestion, createWorksheet } from './factories';
 import { resolveFlow } from './flow';
@@ -954,5 +955,61 @@ describe('table header rows are dropped (v6 -> v7)', () => {
   it('reports the current schema version', () => {
     expect(migrate(withTables(1)).schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(CURRENT_SCHEMA_VERSION).toBe(7);
+  });
+});
+
+describe('subscripts survive the editing round trip (§S₁)', () => {
+  it('parses a subscript marker into a real run', () => {
+    // "S₁" is the naming convention of every DSE diagram. The canvas editor holds the
+    // storage form and commits through `parseRuns`, so this is the shape a wrapped
+    // selection has to produce.
+    const runs = parseRuns('S_{1}');
+    expect(runs).toEqual([{ text: 'S' }, { text: '1', vertAlign: 'subscript' }]);
+  });
+
+  it('round-trips through the storage form unchanged', () => {
+    for (const source of ['S_{1}', 'm^{2}', 'P_{1}+t', 'Q^{d}_{2}']) {
+      expect(serializeRuns(parseRuns(source))).toBe(source);
+    }
+  });
+
+  it('carries vertAlign through a run patch, which is what a toolbar sends', () => {
+    // `toRunPatch` silently dropped this: the model, the markers and all three renderers
+    // understood a subscript, but it could never be *applied* from a button.
+    expect(toRunPatch({ vertAlign: 'subscript' })).toEqual({ vertAlign: 'subscript' });
+    // `undefined` means "clear it", which the patch spells as an explicit null.
+    expect(toRunPatch({ vertAlign: undefined })).toEqual({ vertAlign: null });
+  });
+
+  it('applies a subscript to a character range and re-merges the neighbours', () => {
+    const runs = parseRuns('S1');
+    const next = applyRunFormat(runs, 1, 2, { vertAlign: 'subscript' });
+    expect(serializeRuns(next)).toBe('S_{1}');
+  });
+});
+
+describe('the toolbar path for a subscript (§the wiring, not the pixels)', () => {
+  it('reaches a stored run through the same call the toolbar makes', () => {
+    // The toolbar hands `{ vertAlign }` to `onFormatRuns`, which converts it with
+    // `toRunPatch` and applies it to the selected characters. This is that chain, minus
+    // the DOM — the part that was broken (`toRunPatch` dropped the field silently).
+    const runs = parseRuns('S1 shifts right');
+    const patched = applyRunFormat(runs, 1, 2, toRunPatch({ vertAlign: 'subscript' }));
+    expect(serializeRuns(patched)).toBe('S_{1} shifts right');
+  });
+
+  it('clears it again when the active button is toggled off', () => {
+    const runs = parseRuns('S_{1}');
+    const cleared = applyRunFormat(runs, 1, 2, toRunPatch({ vertAlign: undefined }));
+    // Back to one plain run: `normalizeRuns` re-merges the neighbours it split.
+    expect(serializeRuns(cleared)).toBe('S1');
+  });
+
+  it('reports what the selection carries, which is what lights the button', () => {
+    const runs = parseRuns('S_{1}');
+    expect(commonRunFormat(runs, 1, 2).vertAlign).toBe('subscript');
+    // Spanning both runs, the two disagree, so nothing is reported and neither button
+    // shows as active — the same rule bold already follows.
+    expect(commonRunFormat(runs, 0, 2).vertAlign).toBeUndefined();
   });
 });

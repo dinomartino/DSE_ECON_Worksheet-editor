@@ -165,6 +165,27 @@ export interface DiagramAxis {
  * them, ready to be drawn on.
  */
 export interface Diagram {
+  /**
+   * A caption printed above the plot: "Australian wine sold in China".
+   *
+   * Part of the diagram rather than a paragraph above it, because the reference papers
+   * centre it over the *plot* and underline it — a heading in the document flow would
+   * centre on the text column and drift away from the picture as the diagram is resized
+   * or realigned. Keeping it here also means it rasterizes into the same single PNG, so
+   * a stray click in Word cannot separate a diagram from its own caption.
+   *
+   * Optional, and absent by default: most DSE diagrams carry no title, and an empty one
+   * would reserve the room it needs whether or not anything was ever typed.
+   */
+  title?: BiText;
+  /**
+   * Nudge for the title, in unit space, from its computed anchor.
+   *
+   * The anchor stays derived — centred on the plot, above the y-axis title — and the top
+   * padding is still sized from the title itself, so this only moves it *within* the room
+   * already reserved. Same rule as `DiagramAxis.titleOffset`.
+   */
+  titleOffset?: DiagramPoint;
   x: DiagramAxis;
   y: DiagramAxis;
   curves: DiagramCurve[];

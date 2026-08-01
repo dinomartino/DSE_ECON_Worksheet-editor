@@ -10,23 +10,27 @@ import {
   dragHandles,
   drawn,
   handleId,
+  handleText,
   hitTest,
   insertVertex,
   isBody,
   isClipEmpty,
+  isTextHandle,
+  setHandleText,
   normalizeRect,
   pasteInto,
   pointAt,
   sameHandle,
   selectWithin,
   snapPoint,
+  snapToAxis,
   type DiagramClip,
   type DiagramHandle,
   type DiagramRect,
   type LabelAnchor,
 } from '@/model/diagramDraw';
-import { emptyBiText, plain } from '@/model/text';
-import type { DiagramBlock } from '@/model/types';
+import { emptyBiText, isBiTextEmpty, parseRuns, plain, serializeRuns } from '@/model/text';
+import type { BiText, DiagramBlock, LanguageMode } from '@/model/types';
 import {
   arrowLabelAnchor,
   axisTickAnchor,
@@ -34,6 +38,7 @@ import {
   curveLabelAnchor,
   diagramPlot,
   diagramSvg,
+  diagramTitleAnchor,
   pointLabelAnchor,
 } from '@/render/diagram';
 import { useWorksheetStore } from '@/store/worksheetStore';
@@ -116,14 +121,43 @@ const NUDGE: Array<{ key: string; dx: number; dy: number }> = [
   { key: 'ArrowDown', dx: 0, dy: -1 },
 ];
 
+/**
+ * The fixed end a line-shaping drag pivots about, or null if this is not one.
+ *
+ * The axis assist straightens a line relative to its *own other end*, so it only applies
+ * to a handle that moves one end of something with two: a curve vertex or an arrow's tip.
+ * A whole-body drag has no angle to change, and a label has no line at all.
+ *
+ * The anchor comes from the geometry captured at pointer-down, so a drag that has already
+ * straightened once keeps measuring from where the far end really is rather than from a
+ * value this gesture has been rewriting.
+ */
+function lineAnchorFor(base: Diagram, handle: DiagramHandle): DiagramPoint | null {
+  if (handle.kind === 'vertex') {
+    const curve = base.curves.find((c) => c.id === handle.curveId);
+    if (!curve || curve.points.length < 2) return null;
+    // The neighbouring vertex, not the far end: on a kinked curve each segment is
+    // straightened against the corner it actually meets, which is how a quota's vertical
+    // step is drawn without flattening the sloped section attached to it.
+    const neighbour = handle.index === 0 ? curve.points[1] : curve.points[handle.index - 1];
+    return neighbour ?? null;
+  }
+  if (handle.kind === 'arrowTo' || handle.kind === 'arrowFrom') {
+    const arrow = base.arrows.find((a) => a.id === handle.arrowId);
+    if (!arrow) return null;
+    return handle.kind === 'arrowTo' ? arrow.from : arrow.to;
+  }
+  return null;
+}
+
 type Tool = 'select' | 'curve' | 'point' | 'label' | 'arrow';
 
 const TOOLS: Array<{ id: Tool; glyph: string; name: string; hint: string }> = [
   { id: 'select', glyph: '↖', name: 'Select', hint: 'Drag to move — it lets go on release. Click to select and edit. Drag empty space to box-select.' },
-  { id: 'curve', glyph: '╱', name: 'Curve', hint: 'Drag to draw a line. Shift constrains it to horizontal or vertical.' },
+  { id: 'curve', glyph: '╱', name: 'Curve', hint: 'Drag to draw a line. A near-flat one straightens itself — hold Shift to keep a shallow slope. Double-click text to retype it.' },
   { id: 'point', glyph: '•', name: 'Point', hint: 'Click to mark a point. It snaps to curve intersections.' },
   { id: 'label', glyph: 'A', name: 'Label', hint: 'Click to place free text — the "a b c d" areas of a tariff diagram.' },
-  { id: 'arrow', glyph: '→', name: 'Arrow', hint: 'Drag to draw a shift arrow between two curves.' },
+  { id: 'arrow', glyph: '→', name: 'Arrow', hint: 'Drag to draw a shift arrow between two curves. A near-flat one straightens itself — hold Shift to keep a shallow angle.' },
 ];
 
 interface Props {
@@ -174,6 +208,23 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
   const [snapping, setSnapping] = useState(true);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [marquee, setMarquee] = useState<DiagramRect | null>(null);
+  /**
+   * The line the axis assist is currently straightening, or null.
+   *
+   * Drawn as a guide while the drag is live, then dropped on release. Without it the
+   * assist is invisible until you let go and look: the pointer says one thing and the
+   * geometry quietly does another, which reads as the canvas ignoring you rather than
+   * helping. The guide is what makes "it snapped" a thing you can see happening.
+   */
+  const [axisGuide, setAxisGuide] = useState<{ from: DiagramPoint; to: DiagramPoint } | null>(null);
+  /**
+   * The piece of text being edited in place, if any.
+   *
+   * Held as a handle rather than a value, so the field reads through `handleText` on
+   * every render and cannot drift from the model — the same reason the sidebar's fields
+   * are derived rather than copied.
+   */
+  const [editing, setEditing] = useState<DiagramHandle | null>(null);
   /**
    * What the in-flight drag is moving.
    *
@@ -235,6 +286,50 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
   );
 
   /**
+   * The drawn text boxes, measured from the real SVG rather than estimated.
+   *
+   * A label's anchor is a *baseline*, positioned at the start, middle or end of the text
+   * depending on how that piece is anchored — so it is not where the words are, and
+   * hit-testing on it alone left a long caption clickable only near one edge. The browser
+   * has already laid the text out, so `getBBox()` answers exactly where each string sits,
+   * including the parts an estimate gets wrong (CJK widths, superscripts, the font that
+   * actually loaded).
+   *
+   * Matched to handles **in draw order**: `diagramSvg` emits text in a fixed sequence and
+   * `labelAnchors` is built in that same order, so the nth measurable `<text>` is the nth
+   * anchor. Re-measured whenever the SVG string changes, which is every edit.
+   */
+  const [textBoxes, setTextBoxes] = useState<Map<string, LabelAnchor['box']>>(new Map());
+  useEffect(() => {
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    const nodes = surface.querySelectorAll<SVGTextElement>('svg text');
+    const next = new Map<string, LabelAnchor['box']>();
+    for (const node of nodes) {
+      const key = node.textContent?.trim();
+      if (!key) continue;
+      let bbox: DOMRect;
+      try {
+        bbox = node.getBBox();
+      } catch {
+        continue; // Not laid out yet; the next render will catch it.
+      }
+      // Keyed by the text itself rather than by index: two labels reading the same thing
+      // are interchangeable for this purpose (either box is a fair target for either),
+      // and a key survives the element being re-created on every keystroke.
+      if (!next.has(key)) {
+        next.set(key, {
+          x0: projection.ux(bbox.x),
+          y0: projection.uy(bbox.y + bbox.height),
+          x1: projection.ux(bbox.x + bbox.width),
+          y1: projection.uy(bbox.y),
+        });
+      }
+    }
+    setTextBoxes(next);
+  }, [svg, projection]);
+
+  /**
    * Every piece of anchored text, at the unit-space position it is actually drawn.
    *
    * Built from the render's own anchor functions and then run back through the shared
@@ -250,43 +345,62 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
     const toUnitPoint = (x: number, y: number) => ({ x: projection.ux(x), y: projection.uy(y) });
     const has = (text?: { en?: unknown[]; zh?: unknown[] }) =>
       Boolean(text && ((text.en?.length ?? 0) > 0 || (text.zh?.length ?? 0) > 0));
+    /**
+     * The measured box for a piece of text, looked up by what it says.
+     *
+     * The side shown is what the browser laid out, so the lookup tries the language on
+     * screen first and falls back — a bilingual diagram draws whichever side is populated.
+     */
+    const boxOf = (text?: BiText) => {
+      if (!text) return undefined;
+      const sides = language === 'zh' ? [text.zh, text.en] : [text.en, text.zh];
+      for (const side of sides) {
+        const key = plain(side).trim();
+        if (key && textBoxes.has(key)) return textBoxes.get(key);
+      }
+      return undefined;
+    };
 
     for (const curve of diagram.curves) {
       if (!has(curve.label)) continue;
       const at = curveLabelAnchor(curve, projection, 1);
-      if (at) out.push({ handle: { kind: 'curveLabel', curveId: curve.id }, at: toUnitPoint(at.x, at.y) });
+      if (at) out.push({ handle: { kind: 'curveLabel', curveId: curve.id }, at: toUnitPoint(at.x, at.y), box: boxOf(curve.label) });
     }
     for (const mark of diagram.points) {
       if (has(mark.label)) {
         const at = pointLabelAnchor(mark, projection, 1);
-        out.push({ handle: { kind: 'pointLabel', pointId: mark.id }, at: toUnitPoint(at.x, at.y) });
+        out.push({ handle: { kind: 'pointLabel', pointId: mark.id }, at: toUnitPoint(at.x, at.y), box: boxOf(mark.label) });
       }
       if (has(mark.xTickLabel)) {
         const x = projection.px(mark.at.x) + (mark.xTickOffset ?? 0) * (projection.plot.right - projection.plot.left);
-        out.push({ handle: { kind: 'pointTick', pointId: mark.id, axis: 'x' }, at: toUnitPoint(x, projection.plot.bottom + 8) });
+        out.push({ handle: { kind: 'pointTick', pointId: mark.id, axis: 'x' }, at: toUnitPoint(x, projection.plot.bottom + 8), box: boxOf(mark.xTickLabel) });
       }
       if (has(mark.yTickLabel)) {
         const y = projection.py(mark.at.y) - (mark.yTickOffset ?? 0) * (projection.plot.bottom - projection.plot.top);
-        out.push({ handle: { kind: 'pointTick', pointId: mark.id, axis: 'y' }, at: toUnitPoint(projection.plot.left - 8, y) });
+        out.push({ handle: { kind: 'pointTick', pointId: mark.id, axis: 'y' }, at: toUnitPoint(projection.plot.left - 8, y), box: boxOf(mark.yTickLabel) });
       }
     }
     for (const arrow of diagram.arrows) {
       if (!has(arrow.label)) continue;
       const at = arrowLabelAnchor(arrow, projection, 1);
-      out.push({ handle: { kind: 'arrowLabel', arrowId: arrow.id }, at: toUnitPoint(at.x, at.y) });
+      out.push({ handle: { kind: 'arrowLabel', arrowId: arrow.id }, at: toUnitPoint(at.x, at.y), box: boxOf(arrow.label) });
+    }
+    if (has(diagram.title)) {
+      const at = diagramTitleAnchor(diagram, projection, 1, language);
+      out.push({ handle: { kind: 'diagramTitle' }, at: toUnitPoint(at.x, at.y), box: boxOf(diagram.title) });
     }
     for (const axis of ['x', 'y'] as const) {
       if (has(diagram[axis].title)) {
         const at = axisTitleAnchor(diagram, axis, projection, block.widthPx, 1, language);
-        out.push({ handle: { kind: 'axisTitle', axis }, at: toUnitPoint(at.x, at.y) });
+        out.push({ handle: { kind: 'axisTitle', axis }, at: toUnitPoint(at.x, at.y), box: boxOf(diagram[axis].title) });
       }
       for (const tick of diagram[axis].ticks ?? []) {
         const at = axisTickAnchor(tick, axis, projection, 1);
-        out.push({ handle: { kind: 'axisTick', axis, tickId: tick.id }, at: toUnitPoint(at.x, at.y) });
+        out.push({ handle: { kind: 'axisTick', axis, tickId: tick.id }, at: toUnitPoint(at.x, at.y), box: boxOf(tick.label) });
       }
     }
     return out;
-  }, [diagram, projection, block.widthPx, language]);
+  }, [diagram, projection, block.widthPx, language, textBoxes]);
 
   /** Pointer event → unit space, undoing the CSS scale the stage is displayed at. */
   const toUnit = useCallback(
@@ -321,6 +435,21 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
       drag: DRAG_MIN_PX / span,
     };
   }, [projection, zoom]);
+
+  /**
+   * The plot's pixel width ÷ height.
+   *
+   * The axis assist judges "near horizontal" as it *looks*, and unit space is square
+   * while the plot is drawn wider than tall — so the angle has to be measured in screen
+   * proportions. Taken from the shared projection rather than from `block.widthPx`: the
+   * padding the axis titles claim is part of the difference, and a diagram with a long
+   * x-axis title has a visibly narrower plot than its canvas suggests.
+   */
+  const plotAspect = useMemo(() => {
+    const w = projection.plot.right - projection.plot.left;
+    const h = projection.plot.bottom - projection.plot.top;
+    return h > 0 ? w / h : 1;
+  }, [projection]);
 
   const maybeSnap = useCallback(
     (at: DiagramPoint, exceptCurveId?: string) =>
@@ -479,19 +608,39 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
       setDragging(gesture.handles);
     }
 
-    // Shift constrains to the axis the drag has travelled furthest along. Papers are
-    // full of lines that must be exactly vertical (a quota) or exactly horizontal (a
-    // world price), and freehand cannot hit those.
+    // Straightening the line being drawn or reshaped. This applies to the *shape* of a
+    // line — an endpoint moving relative to its own other end — and never to a body drag
+    // or a group, where "the angle" is not a thing the gesture is changing.
+    //
+    // Shift **turns the assist off** rather than forcing an axis, which is the inverse of
+    // what it used to mean. Auto-straightening handles the case Shift was really for
+    // (a line meant to be flat), and once it does, the modifier is far more useful as the
+    // escape hatch for the rarer opposite intent: a deliberately shallow slope the assist
+    // would otherwise flatten every time.
     const single = gesture.handles.length === 1 ? gesture.handles[0] : null;
-    if (event.shiftKey) {
-      const dx = Math.abs(at.x - gesture.from.x);
-      const dy = Math.abs(at.y - gesture.from.y);
-      at = dx > dy ? { x: at.x, y: gesture.from.y } : { x: gesture.from.x, y: at.y };
-    } else if (single && single.kind !== 'curve' && single.kind !== 'arrow') {
-      // Only a lone endpoint drag snaps. Dragging a whole body — or a multi-selection —
-      // by its snapped position would jump everything the moment the pointer passed an
-      // intersection, which is exactly what a group move must not do.
-      at = maybeSnap(at, single.kind === 'vertex' ? single.curveId : undefined);
+
+    // Point-snapping first. Only a lone endpoint drag snaps: dragging a whole body — or a
+    // multi-selection — by its snapped position would jump everything the moment the
+    // pointer passed an intersection, which is exactly what a group move must not do.
+    const canPointSnap = Boolean(single && single.kind !== 'curve' && single.kind !== 'arrow');
+    const pointSnapped = canPointSnap
+      ? maybeSnap(at, single!.kind === 'vertex' ? single!.curveId : undefined)
+      : at;
+    const caughtAPoint = pointSnapped !== at;
+    at = pointSnapped;
+
+    // Then straightening — but never over a caught intersection. The order is the
+    // priority: landing an endpoint exactly on an existing point is a stronger, more
+    // specific intent than making the line flat, and straightening afterwards would drag
+    // the end back off the point it had just caught.
+    const lineEnd = single && !event.shiftKey && !caughtAPoint ? lineAnchorFor(gesture.base, single) : null;
+    if (lineEnd) {
+      const straightened = snapToAxis(lineEnd, at, plotAspect);
+      const engaged = straightened.x !== at.x || straightened.y !== at.y;
+      setAxisGuide(engaged ? { from: lineEnd, to: straightened } : null);
+      at = straightened;
+    } else {
+      setAxisGuide(null);
     }
 
     gesture.moved = true;
@@ -503,6 +652,9 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
     gestureRef.current = null;
     setMarquee(null);
     setDragging([]);
+    // The guide reports a live gesture, so it goes with the gesture. Leaving it drawn
+    // would turn a transient hint into a line on the diagram that nothing can select.
+    setAxisGuide(null);
     if (!gesture) return;
 
     if (gesture.kind === 'marquee') {
@@ -550,13 +702,26 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
     if (gesture.kind === 'create') setTool('select');
   };
 
-  /** Double-click on a curve puts a kink exactly where the pointer is. */
+  /**
+   * Double-click edits text where it is drawn, or puts a kink in a curve.
+   *
+   * Text wins, and it wins because `hitTest` already prefers anchored text to the body
+   * under it — a curve's name sits right beside its line, so without that preference
+   * double-clicking "S₁" would kink the supply curve instead of retyping the label. The
+   * two outcomes share the gesture because they never share a target.
+   */
   const onDoubleClick = (event: React.MouseEvent) => {
     const at = toUnit(event);
     const handle = hitTest(diagram, at, radii.grab, labelAnchors);
-    if (handle?.kind === 'curve') {
-      setDiagram(insertVertex(diagram, handle.curveId, at));
+    if (!handle) return;
+    if (isTextHandle(handle)) {
+      // The selection follows the edit, so the sidebar is already showing the same thing
+      // the caret is in — two views of one element rather than two different subjects.
+      setSelected([handle]);
+      setEditing(handle);
+      return;
     }
+    if (handle.kind === 'curve') setDiagram(insertVertex(diagram, handle.curveId, at));
   };
 
   const doCopy = useCallback(() => {
@@ -671,6 +836,27 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
   }, [selected, diagram, labelAnchors, setDiagram, onClose, doCopy, doPaste, doDelete]);
 
   const activeTool = TOOLS.find((t) => t.id === tool);
+
+  const editingText = editing ? handleText(diagram, editing) : null;
+  /**
+   * Where the in-place editor opens, in the SVG's own pixel coordinates.
+   *
+   * Read from `labelAnchors` when the text is drawn, so the field lands on the words.
+   * Text that is *empty* is deliberately absent from that list — an invisible drag target
+   * is worse than none — but it still has to be editable, or a title could be created and
+   * never typed into. `anchorFallback` computes the position such a label will occupy
+   * once it has content, from the same anchor functions the renderer uses.
+   */
+  const editingAt = useMemo(() => {
+    if (!editing) return null;
+    const drawn = labelAnchors.find((label) => sameHandle(label.handle, editing));
+    if (drawn) return { x: projection.px(drawn.at.x), y: projection.py(drawn.at.y) };
+    if (editing.kind === 'diagramTitle') return diagramTitleAnchor(diagram, projection, 1, language);
+    if (editing.kind === 'axisTitle') {
+      return axisTitleAnchor(diagram, editing.axis, projection, block.widthPx, 1, language);
+    }
+    return null;
+  }, [editing, labelAnchors, projection, diagram, language, block.widthPx]);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/80 backdrop-blur-sm">
@@ -806,7 +992,26 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
               marquee={marquee}
               zoom={zoom}
               labels={labelAnchors}
+              axisGuide={axisGuide}
+              editing={editing}
             />
+
+            {/* In-place text editing. Anchored from `labelAnchors` — the same list that
+                positions the drag rings — so the field opens exactly over the words it
+                is replacing rather than at a second guess at where they are. */}
+            {editingAt && editingText && (
+              <TextEditor
+                at={editingAt}
+                value={editingText}
+                language={language}
+                zoom={zoom}
+                onCommit={(text) => {
+                  setDiagram(setHandleText(diagram, editing!, text));
+                  setEditing(null);
+                }}
+                onCancel={() => setEditing(null)}
+              />
+            )}
           </div>
         </div>
 
@@ -817,9 +1022,161 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
             onChange={setDiagram}
             onDelete={doDelete}
             onSelect={(handles) => setSelected(handles)}
+            onEdit={(handle) => {
+              setSelected([handle]);
+              setEditing(handle);
+            }}
           />
         </aside>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Editing one piece of the diagram's text, in place, where it is drawn.
+ *
+ * The sidebar can already retype every one of these, so this exists for a different
+ * reason than capability: the panel makes you find the element, look away from the
+ * picture, and match a field name to the thing you meant. Double-clicking the words is
+ * how a teacher expects to fix a typo, and it keeps their eyes on the diagram.
+ *
+ * A plain `<input>` rather than the app's `RichTextEditable`: diagram text is short
+ * symbols ("S₁", "Price"), the surrounding surface is an SVG that cannot host a
+ * contenteditable inline anyway, and the panel remains the place to reach anything
+ * richer. What is typed goes through `parseRuns`, so the storage markers (`^{1}` for a
+ * superscript) still work and the value round-trips through `serializeRuns` unchanged.
+ *
+ * Positioned from the same anchor that draws the text, so the field opens exactly over
+ * the words it replaces (§7.5) — the whole point is that the text appears to become
+ * editable, not that a box appears somewhere nearby.
+ */
+function TextEditor({
+  at,
+  value,
+  language,
+  zoom,
+  onCommit,
+  onCancel,
+}: {
+  at: { x: number; y: number };
+  value: BiText;
+  language: LanguageMode;
+  zoom: number;
+  onCommit: (text: BiText) => void;
+  onCancel: () => void;
+}) {
+  // Which side is being edited: the one the canvas is currently showing. Editing the
+  // English of a diagram displayed in Chinese would retype text that is not on screen.
+  const side: 'en' | 'zh' = language === 'zh' ? 'zh' : 'en';
+  const [draft, setDraft] = useState(() => serializeRuns(value[side]));
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Select the whole value on open: this gesture is almost always "replace this", and
+    // an empty-but-placed label would otherwise need a manual select-all before typing.
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
+
+  const commit = () => onCommit({ ...value, [side]: parseRuns(draft) });
+
+  /**
+   * Wrap the selected characters in a storage marker — `_{1}` or `^{2}`.
+   *
+   * "S₁", "P₁+t", "Q₂" are the naming convention of the whole subject, so this is not a
+   * decoration but the commonest edit a curve label needs. The field holds the *storage*
+   * form (`serializeRuns`), so raising a character is literally wrapping it: the markers
+   * round-trip through `parseRuns` on commit and reach the SVG as a real `baseline-shift`
+   * tspan, and thence the exported PNG.
+   *
+   * With nothing selected it takes the character before the caret, which is what the
+   * gesture means when you have just typed "S1" and want the 1 down.
+   */
+  const wrap = (marker: '_' | '^') => {
+    const input = inputRef.current;
+    if (!input) return;
+    let start = input.selectionStart ?? draft.length;
+    const end = input.selectionEnd ?? start;
+    if (start === end) start = Math.max(0, end - 1);
+    if (start === end) return; // Nothing typed yet — nothing to raise or lower.
+
+    const inner = draft.slice(start, end);
+    const next = `${draft.slice(0, start)}${marker}{${inner}}${draft.slice(end)}`;
+    setDraft(next);
+    // Keep the caret after what was just wrapped, so typing continues where it left off.
+    const caret = start + inner.length + 3;
+    requestAnimationFrame(() => {
+      input.focus();
+      input.setSelectionRange(caret, caret);
+    });
+  };
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: at.x * zoom,
+        top: at.y * zoom,
+        transform: 'translate(-50%, -50%)',
+      }}
+      className="z-10 flex items-center gap-1"
+    >
+    <input
+      ref={inputRef}
+      value={draft}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        // Scoped here rather than in the canvas's window handler: while this field has
+        // focus it owns the keyboard, and Escape must abandon the edit rather than reach
+        // past it to clear the selection or close the whole canvas.
+        event.stopPropagation();
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          commit();
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          onCancel();
+        }
+      }}
+      // Centred on the anchor and sized in the SVG's own coordinates, then scaled by the
+      // stage's zoom like everything else drawn on it, so the field stays the same size
+      // relative to the text it is replacing at every zoom level.
+      style={{
+        width: `${Math.max(90, draft.length * 9 + 40)}px`,
+        font: `${13 * zoom}px/1.2 inherit`,
+        textAlign: 'center',
+      }}
+      className="rounded border-2 border-sky-500 bg-white px-1.5 py-0.5 text-slate-900 shadow-lg outline-none"
+      aria-label="Edit diagram text"
+    />
+      {/* Subscript and superscript, beside the field rather than in a menu: "S₁" is the
+          commonest thing a curve label needs, and the storage marker `_{1}` is not
+          something anyone should have to know to get it.
+
+          `onMouseDown` + `preventDefault` rather than `onClick`: a click would blur the
+          input first, and the blur handler commits and closes the editor — so the button
+          would never run. Preventing the default keeps focus, and therefore the
+          selection, on the field being formatted. */}
+      {([
+        ['_', 'Subscript', <>X<sub>2</sub></>],
+        ['^', 'Superscript', <>X<sup>2</sup></>],
+      ] as const).map(([marker, label, glyph]) => (
+        <button
+          key={marker}
+          type="button"
+          title={`${label} — ${marker === '_' ? 'S₁' : 'm²'}`}
+          aria-label={label}
+          onMouseDown={(event) => {
+            event.preventDefault();
+            wrap(marker);
+          }}
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-slate-300 bg-white text-[11px] font-medium text-slate-700 shadow hover:bg-slate-100"
+        >
+          <span aria-hidden>{glyph}</span>
+        </button>
+      ))}
     </div>
   );
 }
@@ -840,6 +1197,8 @@ function HandleOverlay({
   marquee,
   zoom,
   labels,
+  axisGuide,
+  editing,
 }: {
   diagram: Diagram;
   projection: ReturnType<typeof diagramPlot>;
@@ -849,6 +1208,9 @@ function HandleOverlay({
   marquee: DiagramRect | null;
   zoom: number;
   labels: LabelAnchor[];
+  axisGuide: { from: DiagramPoint; to: DiagramPoint } | null;
+  /** Text with an open editor over it: its ring is hidden so it does not show through. */
+  editing: DiagramHandle | null;
 }) {
   // Handles are drawn in the SVG's own coordinate system, which the stage then scales
   // by `zoom`. Dividing the sizes back out keeps a handle the same size on screen at
@@ -942,6 +1304,8 @@ function HandleOverlay({
           label's marker sits above the curve it names. */}
       {labels.map((label) => {
         const on = isOn(label.handle);
+        // The ring would sit under the open field and read as a stray mark on it.
+        if (editing && sameHandle(editing, label.handle)) return null;
         return (
           <circle
             key={`text-${label.handle.kind}-${handleId(label.handle)}-${
@@ -958,6 +1322,31 @@ function HandleOverlay({
           />
         );
       })}
+
+      {/* The axis-assist guide: a thin rule through the straightened line, extended to
+          the edges of the plot. Extended rather than drawn end-to-end because the line
+          itself is already visible underneath — what the guide has to communicate is
+          *alignment*, and a rule that runs past both ends reads as "level with the axis"
+          in a way a segment sitting exactly on the line cannot. */}
+      {axisGuide && (
+        <line
+          x1={
+            axisGuide.from.y === axisGuide.to.y ? projection.plot.left : projection.px(axisGuide.to.x)
+          }
+          y1={
+            axisGuide.from.y === axisGuide.to.y ? projection.py(axisGuide.to.y) : projection.plot.top
+          }
+          x2={
+            axisGuide.from.y === axisGuide.to.y ? projection.plot.right : projection.px(axisGuide.to.x)
+          }
+          y2={
+            axisGuide.from.y === axisGuide.to.y ? projection.py(axisGuide.to.y) : projection.plot.bottom
+          }
+          stroke="#f97316"
+          strokeWidth={1.25 / zoom}
+          strokeDasharray={`${5 / zoom},${3 / zoom}`}
+        />
+      )}
 
       {box && (
         <rect
@@ -1026,18 +1415,21 @@ function SelectionInspector({
   onChange,
   onDelete,
   onSelect,
+  onEdit,
 }: {
   diagram: Diagram;
   selected: DiagramHandle[];
   onChange: (diagram: Diagram) => void;
   onDelete: () => void;
   onSelect: (handles: DiagramHandle[]) => void;
+  /** Open the in-place editor on a handle — how "Add a title" gets a caret immediately. */
+  onEdit: (handle: DiagramHandle) => void;
 }) {
   // Nothing selected is the state the panel is in most often, so it earns real content
   // rather than a sentence: an index of what is on the diagram, where each row selects
   // its element. Clicking a name is how you reach a curve whose line is under another.
   if (selected.length === 0) {
-    return <ElementIndex diagram={diagram} onSelect={onSelect} />;
+    return <ElementIndex diagram={diagram} onSelect={onSelect} onChange={onChange} onEdit={onEdit} />;
   }
 
   // A multi-selection has no single set of properties to show — a curve's stroke and a
@@ -1075,7 +1467,37 @@ function SelectionInspector({
   const handle = selected[0];
   const id = handleId(handle);
 
-  // The axes are not elements in a list, so they get their own panel.
+  // The axes and the caption belong to the diagram rather than to the element list, so
+  // they get their own panels.
+  if (handle.kind === 'diagramTitle') {
+    return (
+      <div>
+        <header className="mb-2 flex items-center gap-1">
+          <Eyebrow>Diagram title</Eyebrow>
+          <span className="flex-1" />
+          <IconButton label="Delete" variant="danger" onClick={onDelete}>
+            <span aria-hidden>✕</span>
+          </IconButton>
+        </header>
+        <div className="space-y-2">
+          <BiTextField
+            label="Title"
+            value={diagram.title ?? emptyBiText()}
+            rows={1}
+            onChange={(title) => onChange({ ...diagram, title })}
+          />
+          <ResetLabelPosition
+            moved={Boolean(diagram.titleOffset)}
+            onReset={() => onChange((({ titleOffset, ...rest }) => rest)(diagram))}
+          />
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+            Printed centred and underlined above the plot. Double-click it on the diagram
+            to retype it there.
+          </p>
+        </div>
+      </div>
+    );
+  }
   if (handle.kind === 'axisTitle' || handle.kind === 'axisTick') {
     return <AxisInspector diagram={diagram} handle={handle} onChange={onChange} onDelete={onDelete} />;
   }
@@ -1271,20 +1693,40 @@ function SelectionInspector({
   }
 
   if (label) {
+    const patchLabel = (next: Partial<typeof label>) =>
+      onChange({
+        ...diagram,
+        labels: diagram.labels.map((l) => (l.id === id ? { ...l, ...next } : l)),
+      });
     return (
       <div>
         {header(plain(label.text.en) || 'Label')}
-        <BiTextField
-          label="Text"
-          value={label.text}
-          rows={1}
-          onChange={(text) =>
-            onChange({
-              ...diagram,
-              labels: diagram.labels.map((l) => (l.id === id ? { ...l, text } : l)),
-            })
-          }
-        />
+        <div className="space-y-2">
+          <BiTextField
+            label="Text"
+            value={label.text}
+            rows={1}
+            onChange={(text) => patchLabel({ text })}
+          />
+          {/* Which side of its own point the text grows from — not where the point is,
+              which is set by dragging. It matters for the area letters of a tariff
+              diagram, where "a" must sit inside a wedge rather than centred across it. */}
+          <SelectField
+            label="Align"
+            value={label.align ?? 'center'}
+            options={[
+              { value: 'center', label: 'Centre' },
+              { value: 'left', label: 'Left' },
+              { value: 'right', label: 'Right' },
+            ]}
+            onChange={(align) => patchLabel({ align: align as typeof label.align })}
+          />
+          <CheckField
+            label="Italic"
+            checked={Boolean(label.italic)}
+            onChange={(italic) => patchLabel({ italic })}
+          />
+        </div>
       </div>
     );
   }
@@ -1499,10 +1941,15 @@ function describeHandle(diagram: Diagram, handle: DiagramHandle): string {
 function ElementIndex({
   diagram,
   onSelect,
+  onChange,
+  onEdit,
 }: {
   diagram: Diagram;
   onSelect: (handles: DiagramHandle[]) => void;
+  onChange: (diagram: Diagram) => void;
+  onEdit: (handle: DiagramHandle) => void;
 }) {
+  const titled = !isBiTextEmpty(diagram.title);
   const rows: Array<{ handle: DiagramHandle; name: string; kind: string }> = [
     ...diagram.curves.map((c) => ({
       handle: { kind: 'curve', curveId: c.id } as DiagramHandle,
@@ -1528,6 +1975,76 @@ function ElementIndex({
 
   return (
     <div>
+      {/* The caption sits above the element list because it names the whole picture
+          rather than being one thing in it — and because an untitled diagram gives no
+          hint anywhere else that a title is even available. Adding one opens the caret
+          on the diagram immediately: a title created but not typed is an empty
+          underline, so the create and the typing are one gesture. */}
+      <div className="mb-3 border-b border-slate-200 pb-3 dark:border-slate-700">
+        <Eyebrow>Title</Eyebrow>
+        {titled ? (
+          <button
+            type="button"
+            onClick={() => onSelect([{ kind: 'diagramTitle' }])}
+            className="mt-1.5 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-slate-700 transition-colors hover:bg-sky-50 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            <span className="truncate font-medium">
+              {plain(diagram.title?.en) || plain(diagram.title?.zh)}
+            </span>
+            <span className="flex-1" />
+            <span className="shrink-0 text-[10px] uppercase tracking-wide text-slate-400">
+              Caption
+            </span>
+          </button>
+        ) : (
+          <div className="mt-1.5">
+            <Button
+              size="sm"
+              variant="subtle"
+              onClick={() => {
+                onChange({ ...diagram, title: emptyBiText() });
+                onEdit({ kind: 'diagramTitle' });
+              }}
+            >
+              Add a title
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* A whole-diagram setting, so it sits with the title rather than in the element
+          list — there is nothing on the canvas to select in order to reach it, and it was
+          otherwise unreachable once the sidebar's axes tab was removed. */}
+      <div className="mb-3 border-b border-slate-200 pb-3 dark:border-slate-700">
+        <Eyebrow>Axes</Eyebrow>
+        <div className="mt-1.5 space-y-1.5">
+          {/* An axis whose title has been deleted draws nothing, so there is no text to
+              double-click and no way back — every other route to an axis title is the
+              text itself. These rows restore it: they appear only when the title is
+              missing, and open the caret straight on the diagram. */}
+          {(['x', 'y'] as const).map((axis) =>
+            isBiTextEmpty(diagram[axis].title) ? (
+              <Button
+                key={axis}
+                size="sm"
+                variant="subtle"
+                onClick={() => {
+                  onChange({ ...diagram, [axis]: { ...diagram[axis], title: emptyBiText() } });
+                  onEdit({ kind: 'axisTitle', axis });
+                }}
+              >
+                Name the {axis}-axis
+              </Button>
+            ) : null,
+          )}
+          <CheckField
+            label='Show "0" at the origin'
+            checked={diagram.showOrigin !== false}
+            onChange={(showOrigin) => onChange({ ...diagram, showOrigin })}
+          />
+        </div>
+      </div>
+
       <Eyebrow>On this diagram</Eyebrow>
       {rows.length === 0 ? (
         <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">

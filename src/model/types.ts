@@ -175,11 +175,26 @@ export interface TableRow {
  * rows. Emphasis is therefore per-cell formatting like any other text, which reaches a
  * left-hand column as easily as a top row.
  */
+/**
+ * Which side of its block a caption prints on.
+ *
+ * `below` is the default and stays **unstored**, so every existing document exports
+ * byte-identically (§formatting layers over named styles — the same rule: only a
+ * deviation is written down).
+ *
+ * Both conventions are real in the reference material and they are not interchangeable:
+ * a table's heading conventionally sits *above* it, while a figure's caption sits below.
+ * The choice is per block rather than per document because one paper legitimately uses
+ * both.
+ */
+export type CaptionPlacement = 'above' | 'below';
+
 export interface TableBlock {
   kind: 'table';
   id: string;
   rows: TableRow[];
   caption?: BiText;
+  captionPlacement?: CaptionPlacement;
   /** The table's own default padding, under every row, column and cell. */
   cellPadding?: CellPadding;
   /**
@@ -249,6 +264,7 @@ export interface ImageBlock {
   naturalWidthPx?: number;
   naturalHeightPx?: number;
   caption?: BiText;
+  captionPlacement?: CaptionPlacement;
   altText: BiText;
 }
 
@@ -270,6 +286,7 @@ export interface DiagramBlock {
   widthPx: number;
   heightPx: number;
   caption?: BiText;
+  captionPlacement?: CaptionPlacement;
   altText: BiText;
 }
 

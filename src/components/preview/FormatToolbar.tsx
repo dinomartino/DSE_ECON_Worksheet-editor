@@ -65,6 +65,21 @@ interface Props {
   inheritedPt?: number;
   format: TextFormat | undefined;
   onChange: (patch: TextFormat) => void;
+  /**
+   * Raise or lower the selected characters — "S₁", "P₁+t", the naming convention of
+   * every DSE diagram and half its prose.
+   *
+   * A separate channel from `onChange` because `vertAlign` is **run-only** and must stay
+   * that way: `TextFormat` is what an *element* overrides, and a paragraph set entirely
+   * in subscript is not a thing anyone wants. Passing it through the element patch would
+   * make that the easiest mistake to make.
+   *
+   * Absent when the selection is not a character range — the bar then hides the control
+   * rather than offering one that would have nothing to act on.
+   */
+  onVertAlign?: (value: 'superscript' | 'subscript' | undefined) => void;
+  /** The vertical alignment the selected characters already carry, if uniform. */
+  vertAlign?: 'superscript' | 'subscript';
   onReset: () => void;
   /** Dismiss the bar, clearing the page selection. */
   onClose?: () => void;
@@ -86,6 +101,8 @@ export function FormatToolbar({
   inheritedPt,
   format,
   onChange,
+  onVertAlign,
+  vertAlign,
   onReset,
   onClose,
   onDelete,
@@ -218,6 +235,39 @@ export function FormatToolbar({
       >
         U
       </button>
+
+      {/* Subscript and superscript, offered only for a character selection — "S₁" and
+          "P₁+t" are the naming convention of the whole subject, and typing the storage
+          marker `_{1}` is not something anyone should have to know. Toggling the active
+          one clears it, like every other control here. */}
+      {onVertAlign && (
+        <>
+          <button
+            type="button"
+            aria-label="Subscript"
+            aria-pressed={vertAlign === 'subscript'}
+            title="Subscript — S₁"
+            className={`${BTN} ${vertAlign === 'subscript' ? ACTIVE : IDLE}`}
+            onClick={() => onVertAlign(vertAlign === 'subscript' ? undefined : 'subscript')}
+          >
+            <span aria-hidden>
+              X<sub className="text-[9px]">2</sub>
+            </span>
+          </button>
+          <button
+            type="button"
+            aria-label="Superscript"
+            aria-pressed={vertAlign === 'superscript'}
+            title="Superscript — m²"
+            className={`${BTN} ${vertAlign === 'superscript' ? ACTIVE : IDLE}`}
+            onClick={() => onVertAlign(vertAlign === 'superscript' ? undefined : 'superscript')}
+          >
+            <span aria-hidden>
+              X<sup className="text-[9px]">2</sup>
+            </span>
+          </button>
+        </>
+      )}
 
       <span className="mx-0.5 h-5 w-px bg-slate-700" aria-hidden />
 

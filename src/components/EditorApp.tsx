@@ -175,7 +175,10 @@ export function EditorApp() {
       side: 'en' | 'zh',
       start: number,
       end: number,
-      patch: TextFormat,
+      // `vertAlign` is run-only and has no place on `TextFormat` (§per-run formatting):
+      // an element cannot sensibly be wholly subscript, so it rides as an extra field
+      // rather than being added to the element type.
+      patch: TextFormat & { vertAlign?: 'superscript' | 'subscript' },
     ) => {
       formatRuns(target, side, start, end, toRunPatch(patch));
     },

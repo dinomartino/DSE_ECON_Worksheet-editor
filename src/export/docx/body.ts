@@ -1,4 +1,4 @@
-import type { BiText, FontPair, LanguageMode, TextFormat } from '@/model/types';
+import type { BiText, CaptionPlacement, FontPair, LanguageMode, TextFormat } from '@/model/types';
 import type {
   ColumnsNode,
   DiagramNode,
@@ -375,23 +375,30 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
     })
     .join('');
 
+  const above = node.captionPlacement === 'above';
+
   const caption = node.caption
     ? paragraph({
         styleId: STYLE_IDS['Table Caption'],
         runs: biTextRuns(node.caption, context.fonts, context.language),
-        keepNext: node.keepNext,
+        // Above the table it must keep with the table below it, or the page can break
+        // between a heading and the rows it names.
+        keepNext: above ? true : node.keepNext,
       })
     : '';
 
   // A table must be followed by a paragraph; Word requires it and it also gives the
-  // table somewhere to attach keep-with-next behaviour.
+  // table somewhere to attach keep-with-next behaviour. This stays *after* the table
+  // whichever side the caption takes — it is a structural requirement of the format,
+  // not part of the caption group.
   const spacer = paragraph({
     styleId: STYLE_IDS.Body,
     runs: '',
     keepNext: node.keepNext,
   });
 
-  return `<w:tbl>${tblPr}${grid}${rows}</w:tbl>${caption}${spacer}`;
+  const table = `<w:tbl>${tblPr}${grid}${rows}</w:tbl>`;
+  return above ? `${caption}${table}${spacer}` : `${table}${caption}${spacer}`;
 }
 
 /** Is this covered cell covered from above (vertical merge) rather than from the left? */
@@ -418,6 +425,7 @@ function pictureXml(
     heightPx: number;
     altText: BiText;
     caption?: BiText;
+    captionPlacement?: CaptionPlacement;
     keepNext?: boolean;
   },
   context: BodyContext,
@@ -455,11 +463,16 @@ function pictureXml(
     '</pic:spPr></pic:pic></a:graphicData></a:graphic>' +
     '</wp:inline></w:drawing>';
 
+  const above = node.captionPlacement === 'above';
+
   const imageParagraph =
     '<w:p><w:pPr>' +
     `<w:pStyle w:val="${STYLE_IDS.Body}"/>` +
     '<w:jc w:val="center"/>' +
-    (node.keepNext || node.caption ? '<w:keepNext/>' : '') +
+    // A picture keeps with what follows when something follows it that belongs to it —
+    // a caption printed *below*. With the caption above, the picture is the last thing
+    // in the group and only `keepNext` from the caller applies.
+    (node.keepNext || (node.caption && !above) ? '<w:keepNext/>' : '') +
     '</w:pPr>' +
     `<w:r>${drawing}</w:r>` +
     '</w:p>';
@@ -468,11 +481,14 @@ function pictureXml(
     ? paragraph({
         styleId: STYLE_IDS['Image Caption'],
         runs: biTextRuns(node.caption, context.fonts, context.language),
-        keepNext: node.keepNext,
+        // A caption above must keep with the picture under it, or Word will happily
+        // break the page between a heading and the figure it names — which is exactly
+        // the orphan the placement was chosen to avoid.
+        keepNext: above ? true : node.keepNext,
       })
     : '';
 
-  return imageParagraph + caption;
+  return above ? caption + imageParagraph : imageParagraph + caption;
 }
 
 function imageNodeXml(node: ImageNode, context: BodyContext): string {

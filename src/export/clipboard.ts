@@ -189,11 +189,10 @@ function nodeHtml(
           : node.indent > 0
             ? `margin-left:${(node.indent * 100).toFixed(3)}%;`
             : '');
-    return (
+    const table =
       `<table style="border-collapse:collapse;${box}table-layout:fixed;${fontCss}">` +
-      `${colgroup}<tbody>${rows}</tbody></table>` +
-      caption
-    );
+      `${colgroup}<tbody>${rows}</tbody></table>`;
+    return node.captionPlacement === 'above' ? caption + table : table + caption;
   }
 
   if (node.kind === 'columns') {
@@ -248,10 +247,10 @@ function nodeHtml(
     const caption = node.caption
       ? `<p style="${fontCss}${NODE_CSS['Image Caption']}">${richHtml(node.caption, language)}</p>`
       : '';
-    return (
+    const picture =
       `<p style="text-align:center"><img src="${src}" width="${node.widthPx}" ` +
-      `height="${node.heightPx}" alt="${alt}"/></p>${caption}`
-    );
+      `height="${node.heightPx}" alt="${alt}"/></p>`;
+    return node.captionPlacement === 'above' ? caption + picture : picture + caption;
   }
 
   return '';

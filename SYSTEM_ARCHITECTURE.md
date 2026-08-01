@@ -202,6 +202,19 @@ both offsets, patches, and `normalizeRuns` re-merges identical neighbours (witho
 merge, runs only ever fragment). `null` in a patch **clears**; `undefined` cannot
 (indistinguishable from "not mentioned" once spread).
 
+### Sub- and superscript are run-only, and reachable by button
+
+"S₁", "P₁+t", "Q₂" are the naming convention of the subject, so `vertAlign` is offered in
+both editing surfaces: the page toolbar (on a character selection) and the diagram canvas's
+in-place editor (which wraps the selection in the storage marker `_{1}`). The model, the
+markers and all three renderers already understood it — but `toRunPatch` silently dropped
+the field, so a subscript could be written down and printed yet never *applied* from a
+control, which is the only way anyone would think to reach it.
+
+**It stays off `TextFormat`.** That type is what an *element* overrides, and a paragraph
+set wholly in subscript is meaningless; it rides as an explicit extra field on the
+`onFormatRuns` patch instead, so the element path cannot reach it by accident.
+
 ### The editing surface renders runs, not markers
 
 `**bold**`, `__underline__`, `^{sup}` are a **storage** form (`serializeRuns`), not a
@@ -537,6 +550,23 @@ directly-formatted paragraphs in the margin, and it stays restylable in one edit
 Deliberately **not** a `NodeStyle` (all three backends must understand every member;
 `AnswerLinesNode` carries no `style`).
 
+### A caption prints above or below its block
+
+`captionPlacement` on a table, image or diagram block; `below` is the default and stays
+**unstored**, so an untouched document exports byte-identically. Both conventions are real
+in the reference material — a table's heading sits above it, a figure's caption below —
+and one paper legitimately uses both, so it is per block rather than per document.
+
+- **Resolved once, in the IR**, like `columnWidths` and the table box: three backends each
+  deciding what "unstored" means is three chances to disagree about where the words go.
+- **A caption above must `keepNext`**, or Word breaks the page between a heading and the
+  figure it names — the orphan the placement was chosen to avoid. Below, the *picture*
+  keeps with the caption instead; the flag moves with the group.
+- A caption remains **optional and absent by default**: no caption means no paragraph and
+  no reserved space, and the placement control is not offered until there is one to place.
+- The table's trailing spacer paragraph stays after the table whichever side the caption
+  takes — Word requires it, and it is not part of the caption group.
+
 ### Clipboard (`src/export/clipboard.ts`)
 
 Same IR; writes `text/html` + `text/plain` via `ClipboardItem`. Numbering becomes
@@ -574,22 +604,59 @@ Renderer rules that only show on a real page:
 - **A point's label defaults to `right`** — a marked point is nearly always an
   intersection, and up-right is where the other curve runs.
 
+A `title` is the diagram's own caption — centred **on the plot** (which is off-centre by
+design, so centring on the canvas sits it left of the picture), underlined, above the
+y-axis title. It lives in the diagram rather than as a paragraph above it: a heading in
+the flow centres on the text column and drifts as the diagram is resized, and only text
+inside the geometry rasterizes into the same single PNG. `titleRoom()` is shared by the
+projection (which reserves the space) and `diagramTitleAnchor()` (which places the text in
+it) — and the y-axis title's floor is measured against it, or the two collide on a plot
+that starts near the top. An absent title must reserve nothing.
+
 `DIAGRAM_TEMPLATES` ships nine starting shapes (blank, supply-demand, demand-shift,
 AD-AS, money market, tariff, import quota, proportional tax, PPC). A template is only an
 initial value — plain geometry, fresh ids, never looked up again.
 
 ### Drawing (`model/diagramDraw.ts`, `components/editor/DiagramCanvas.tsx`)
 
-Two editing surfaces over one geometry: the sidebar types coordinates (exact), **Draw**
-drags them (quick); either refines the other's work. The canvas draws handles in a
-separate `pointer-events-none` SVG **over** the real one, so the geometry underneath
-stays byte-identical to what exports.
+**The canvas owns the geometry; the panel owns everything else.** `DiagramEditor` was once
+a second complete editor — five tabs, every element re-listed, every coordinate typed as a
+percentage — and it failed the way the table panel's grid of text inputs failed: you
+cannot see what you are editing, and a diagram is illegible in a 400px column. It now
+keeps only what the canvas has no opinion about (Template, Width, Alt text, Caption) plus
+the live thumbnail that opens the canvas. A cut like this must lose no capability:
+`showOrigin` and a free label's align/italic existed *only* in the deleted tabs and moved
+to the canvas, and an axis title deleted to nothing gets a "Name the x-axis" affordance —
+empty text draws nothing, so there would otherwise be no way back.
+
+The canvas draws handles in a separate `pointer-events-none` SVG **over** the real one, so
+the geometry underneath stays byte-identical to what exports.
 
 - **The projection is shared, not re-derived**: `diagramPlot()` returns the projection
   `diagramSvg()` uses (with inverses `ux`/`uy`); label anchors (`curveLabelAnchor` etc.)
   are exported from the render module and fed to `hitTest`.
 - **Gestures replay from geometry captured at pointer-down** — one idempotent
   transform, never accumulating.
+- **A near-flat line straightens itself** (`snapToAxis`, ±5°), because a world price or a
+  quota must be *exactly* level and freehand cannot hit exact. The angle is judged in
+  **screen space, not unit space**: the plot is drawn wider than tall, so the two disagree
+  — a line the teacher sees at 4° measures 5.7° stored, and a unit-space test refuses to
+  straighten what plainly looks flat. **Shift turns the assist off** (the inverse of its
+  old meaning) — auto-straightening covers what Shift was for, so the modifier is worth
+  more as the escape hatch for a deliberately shallow slope. Point-snapping wins over it:
+  landing on an intersection is the more specific intent, and straightening afterwards
+  would drag the end back off the point it caught. An orange guide reports it, or the
+  assist is invisible until you let go.
+- **Any text is edited where it is drawn** — double-click opens a caret on the words
+  (single click still selects, so drag-to-move survives). `handleText`/`setHandleText` are
+  the one address for a handle's writing, so the editor cannot open on one field and save
+  to another; a `curve` handle deliberately carries no text, which is what lets
+  double-clicking a line still add a kink while double-clicking its *name* retypes it.
+- **A label's hit target is its drawn box, not its anchor.** An anchor is a *baseline*
+  positioned at the start, middle or end of the text depending on how it is anchored — so
+  it is not where the words are, and distance-to-anchor left a long caption clickable only
+  near one edge. `LabelAnchor.box` carries the browser's own `getBBox()` measurement
+  (exact where an estimate is not: CJK widths, superscripts, the font that really loaded).
 - **A drag lets go of what it moved**: press arms, ~4px begins, release **deselects** a
   single dragged element (else the next reach moves the previous shape). Multi-element
   selections survive their drag; shift-click toggles membership.

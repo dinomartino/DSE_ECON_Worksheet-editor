@@ -55,6 +55,25 @@ const AXIS_WIDTH = 2;
 const CURVE_WIDTH = 2;
 const FONT_SIZE = 13;
 const AXIS_TITLE_SIZE = 13;
+/**
+ * The diagram's own caption, printed above everything else.
+ *
+ * A shade larger than the axis titles and underlined, which is exactly how the reference
+ * papers set it — the underline is what distinguishes a diagram's caption from the
+ * y-axis title sitting just below it, since both are short centred phrases in the same
+ * face.
+ */
+const TITLE_SIZE = 14;
+/** Gap between the title's baseline block and whatever is under it. */
+const TITLE_GAP = 10;
+/**
+ * Space above the caption's first baseline.
+ *
+ * Not merely one line height: at that value the words sit hard against the top of the
+ * white ground with the underline nearly touching the edge, which reads as a rendering
+ * mistake rather than as a heading. A little air above is what makes it a caption.
+ */
+const TITLE_TOP = 8;
 /** How far each axis line runs past the plot, carrying its arrowhead. */
 const AXIS_OVERSHOOT = 14;
 /** Gap between an axis arrowhead and the title that sits past it. */
@@ -164,6 +183,7 @@ interface TextOptions {
   fontSize?: number;
   italic?: boolean;
   bold?: boolean;
+  underline?: boolean;
 }
 
 /** One or two stacked lines of text at a pixel position. */
@@ -179,6 +199,10 @@ function textAt(
   const style: string[] = [];
   if (options.italic) style.push('font-style:italic');
   if (options.bold) style.push('font-weight:bold');
+  // On the whole `<text>` rather than per-run, so the rule runs unbroken under a caption
+  // whose runs differ — an underline that stopped at every bold word would read as a
+  // mistake rather than as the single rule the reference papers draw.
+  if (options.underline) style.push('text-decoration:underline');
 
   return lines
     .map((line, index) => {
@@ -621,14 +645,61 @@ export function axisTitleAnchor(
         // really protecting.
         {
           x: proj.plot.left - AXIS_TITLE_INDENT * scale,
+          // The floor is one line height below whatever sits above — the canvas edge
+          // normally, but the diagram's caption when there is one. Clamping to the edge
+          // regardless would push the axis title up *through* a caption on a diagram
+          // whose plot starts near the top, which is precisely the collision the caption's
+          // reserved room exists to prevent.
           y: Math.max(
-            AXIS_TITLE_SIZE * scale * 1.1,
+            titleRoom(diagram, language, scale) + AXIS_TITLE_SIZE * scale * 1.1,
             proj.plot.top - AXIS_OVERSHOOT * scale - AXIS_TITLE_GAP * scale,
           ),
         };
   return {
     x: base.x + (offset ? offset.x * plotSpanX(proj) : 0),
     y: base.y - (offset ? offset.y * plotSpanY(proj) : 0),
+  };
+}
+
+/**
+ * How many lines the diagram's title occupies, and the room they need.
+ *
+ * Shared by the projection (which reserves the space) and the anchor (which places the
+ * text in it), so the caption cannot be drawn somewhere the padding did not account for.
+ * Zero when there is no title: an absent caption must cost no room at all, or every
+ * untitled diagram would render with a blank strip on top.
+ */
+function titleRoom(diagram: Diagram, language: LanguageMode, scale: number): number {
+  const lines = pickSides(diagram.title, language);
+  if (lines.length === 0) return 0;
+  return TITLE_TOP * scale + lines.length * TITLE_SIZE * scale * 1.15 + TITLE_GAP * scale;
+}
+
+/**
+ * Where the diagram's title is drawn.
+ *
+ * Centred on the **plot**, not on the canvas: the plot is off-centre by design (a wide
+ * left pad for the y-axis ticks against a narrow right one), so centring on the SVG
+ * would sit the caption visibly left of the picture it names. The reference paper centres
+ * it over the axes.
+ *
+ * Exported for the same reason `axisTitleAnchor` is: `DiagramCanvas` builds the title's
+ * drag handle and its in-place editor from this one call, so the handle cannot drift away
+ * from the text it grabs (§7.5).
+ */
+export function diagramTitleAnchor(
+  diagram: Diagram,
+  proj: Projection,
+  scale: number,
+  language: LanguageMode = 'bilingual',
+): { x: number; y: number } {
+  const offset = diagram.titleOffset;
+  return {
+    // The first baseline sits one line height below the canvas top, so a two-line
+    // bilingual caption grows downward into the room `titleRoom` reserved for it rather
+    // than upward off the canvas.
+    x: (proj.plot.left + proj.plot.right) / 2 + (offset ? offset.x * plotSpanX(proj) : 0),
+    y: (TITLE_TOP + TITLE_SIZE * 1.1) * scale - (offset ? offset.y * plotSpanY(proj) : 0),
   };
 }
 
@@ -665,7 +736,12 @@ export function axisTickAnchor(
 export function diagramPlot(diagram: Diagram, options: DiagramSvgOptions): Projection {
   const scale = options.scale ?? 1;
   const yTitleLines = pickSides(diagram.y.title, options.language);
-  const extraTop = Math.max(0, yTitleLines.length - 1) * AXIS_TITLE_SIZE * scale * 1.15;
+  // The caption is stacked *above* the y-axis title, so its room adds to the same top
+  // pad rather than competing for it — otherwise a titled diagram would print its
+  // caption straight through "Price (Renminbi)".
+  const extraTop =
+    Math.max(0, yTitleLines.length - 1) * AXIS_TITLE_SIZE * scale * 1.15 +
+    titleRoom(diagram, options.language, scale);
   const xTitleLines = pickSides(diagram.x.title, options.language);
   const rightRoom = estimateWidth(xTitleLines, AXIS_TITLE_SIZE * scale) + 30 * scale;
   return projection(
@@ -731,11 +807,22 @@ export function diagramSvg(diagram: Diagram, options: DiagramSvgOptions): string
   // every reference paper prints it, and rotated CJK would be unreadable. Its baseline
   // is measured down from the top of the SVG rather than up from the plot, so the text
   // is always inside the canvas however tall the top padding is.
-  const yTitleAt = axisTitleAnchor(diagram, 'y', proj, width, scale);
+  // The language is passed here too, not left to default: the y title's floor is now
+  // measured against the caption's room, and that depends on how many sides the caption
+  // prints. Defaulting to bilingual would reserve a two-line gap on an English-only page.
+  const yTitleAt = axisTitleAnchor(diagram, 'y', proj, width, scale, language);
   const yTitle = textAt(yTitleLines, yTitleAt.x, yTitleAt.y, {
     anchor: 'start',
     fontSize: AXIS_TITLE_SIZE * scale,
     bold: true,
+  });
+
+  // The caption, centred over the plot and underlined, as the reference papers set it.
+  const titleAt = diagramTitleAnchor(diagram, proj, scale, language);
+  const title = textAt(pickSides(diagram.title, language), titleAt.x, titleAt.y, {
+    anchor: 'middle',
+    fontSize: TITLE_SIZE * scale,
+    underline: true,
   });
 
   const origin =
@@ -774,6 +861,7 @@ export function diagramSvg(diagram: Diagram, options: DiagramSvgOptions): string
     axes,
     origin,
     axisTicks,
+    title,
     xTitle,
     yTitle,
     ...diagram.curves.map((curve) => curveSvg(curve, proj, language, scale)),

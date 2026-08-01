@@ -9,7 +9,7 @@ import { bi } from '@/model/text';
 import type { OutputMode, Worksheet } from '@/model/types';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
 import { renderWorksheet } from './worksheet';
-import { diagramSvg } from './diagram';
+import { axisTitleAnchor, diagramPlot, diagramSvg, diagramTitleAnchor } from './diagram';
 
 /**
  * Diagrams (§3.3, §7.5).
@@ -329,5 +329,160 @@ describe('diagram export: one image per diagram', () => {
       new Map([[node.blockId, FAKE_PNG]]),
     );
     expect(documentXml).not.toContain('Teacher Version');
+  });
+});
+
+describe('the diagram title (§the caption)', () => {
+  const titled = () => ({
+    ...createBlankDiagram(),
+    title: bi('Australian wine sold in China', '在中國銷售的澳洲葡萄酒'),
+    y: { title: bi('Price (Renminbi)', '價格') },
+  });
+
+  it('prints centred over the plot and underlined', () => {
+    const svg = diagramSvg(titled(), { widthPx: 480, heightPx: 360, language: 'en' });
+    expect(svg).toContain('Australian wine sold in China');
+    expect(svg).toContain('text-anchor="middle"');
+    // The underline is what distinguishes a caption from the y-axis title just below it,
+    // and it is how the reference paper sets it.
+    expect(svg).toContain('text-decoration:underline');
+  });
+
+  it('centres on the plot, not on the canvas', () => {
+    // The plot is deliberately off-centre — a wide left pad for the y-axis ticks against
+    // a narrow right one — so centring on the SVG would sit the caption visibly left of
+    // the picture it names.
+    const proj = diagramPlot(titled(), { widthPx: 480, heightPx: 360, language: 'en' });
+    const at = diagramTitleAnchor(titled(), proj, 1, 'en');
+    expect(at.x).toBeCloseTo((proj.plot.left + proj.plot.right) / 2);
+    expect(at.x).not.toBeCloseTo(240);
+  });
+
+  it('reserves its own room, pushing the plot down', () => {
+    const without = diagramPlot(createBlankDiagram(), { widthPx: 480, heightPx: 360, language: 'en' });
+    const with_ = diagramPlot(titled(), { widthPx: 480, heightPx: 360, language: 'en' });
+    expect(with_.plot.top).toBeGreaterThan(without.plot.top);
+  });
+
+  it('costs an untitled diagram nothing', () => {
+    // An absent caption must reserve no room at all, or every untitled diagram renders
+    // with a blank strip on top.
+    const bare = createBlankDiagram();
+    const a = diagramPlot(bare, { widthPx: 480, heightPx: 360, language: 'en' });
+    const b = diagramPlot({ ...bare, title: undefined }, { widthPx: 480, heightPx: 360, language: 'en' });
+    expect(a.plot.top).toBe(b.plot.top);
+  });
+
+  it('does not collide with the y-axis title beneath it', () => {
+    // The y title's floor used to be the canvas edge; with a caption above, that let the
+    // two overlap on a diagram whose plot starts near the top.
+    const diagram = titled();
+    const proj = diagramPlot(diagram, { widthPx: 480, heightPx: 360, language: 'en' });
+    const caption = diagramTitleAnchor(diagram, proj, 1, 'en');
+    const yTitle = axisTitleAnchor(diagram, 'y', proj, 480, 1, 'en');
+    expect(yTitle.y).toBeGreaterThan(caption.y);
+  });
+
+  it('stacks both languages in bilingual mode', () => {
+    const svg = diagramSvg(titled(), { widthPx: 480, heightPx: 360, language: 'bilingual' });
+    expect(svg).toContain('Australian wine sold in China');
+    expect(svg).toContain('在中國銷售的澳洲葡萄酒');
+  });
+
+  it('carries into the exported PNG like everything else — one image, no extra parts', async () => {
+    // The caption rides inside the same rasterized picture rather than being a paragraph
+    // beside it, so a stray click in Word cannot separate a diagram from its own title.
+    const worksheet = worksheetWithDiagram();
+    const block = worksheet.questions[0].blocks.find((b) => b.kind === 'diagram');
+    if (block?.kind !== 'diagram') throw new Error('fixture lost its diagram block');
+    block.diagram = { ...block.diagram, title: titled().title };
+    const images: DiagramImageMap = new Map(
+      collectDiagramNodes(worksheet, STUDENT_BI).map((node) => [node.blockId, FAKE_PNG]),
+    );
+    const buffer = await exportDocxBuffer(worksheet, STUDENT_BI, images);
+    const zip = await JSZip.loadAsync(buffer);
+    const media = Object.keys(zip.files).filter((name) => name.startsWith('word/media/'));
+    expect(media.length).toBeGreaterThan(0);
+    const document = await zip.file('word/document.xml')!.async('string');
+    // The caption is drawn into the picture, so it must NOT also appear as document text.
+    expect(document).not.toContain('Australian wine sold in China');
+  });
+});
+
+describe('caption placement (§a caption prints above or below)', () => {
+  /** A worksheet whose diagram carries a caption, on the given side. */
+  const withCaption = (placement?: 'above' | 'below') => {
+    const worksheet = worksheetWithDiagram();
+    const block = worksheet.questions[0].blocks.find((b) => b.kind === 'diagram');
+    if (block?.kind !== 'diagram') throw new Error('fixture lost its diagram block');
+    block.caption = bi('Figure 1: the market for wine', '圖一');
+    if (placement) block.captionPlacement = placement;
+    return { worksheet, blockId: block.id };
+  };
+
+  const docxFor = async (worksheet: Worksheet) => {
+    const images: DiagramImageMap = new Map(
+      collectDiagramNodes(worksheet, STUDENT_BI).map((node) => [node.blockId, FAKE_PNG]),
+    );
+    const buffer = await exportDocxBuffer(worksheet, STUDENT_BI, images);
+    const zip = await JSZip.loadAsync(buffer);
+    return zip.file('word/document.xml')!.async('string');
+  };
+
+  it('puts the caption after the picture by default', async () => {
+    const { worksheet } = withCaption();
+    const xml = await docxFor(worksheet);
+    expect(xml.indexOf('w:drawing')).toBeLessThan(xml.indexOf('Figure 1'));
+  });
+
+  it('puts it before the picture when asked', async () => {
+    const { worksheet } = withCaption('above');
+    const xml = await docxFor(worksheet);
+    expect(xml.indexOf('Figure 1')).toBeLessThan(xml.indexOf('w:drawing'));
+  });
+
+  it('keeps an above-caption with the picture it names', async () => {
+    // Word will otherwise break the page between a heading and its figure — the orphan
+    // the placement was chosen to avoid in the first place.
+    const { worksheet } = withCaption('above');
+    const xml = await docxFor(worksheet);
+    const caption = xml.indexOf('Figure 1');
+    const paragraphStart = xml.lastIndexOf('<w:p>', caption);
+    expect(xml.slice(paragraphStart, caption)).toContain('<w:keepNext/>');
+  });
+
+  it('costs an uncaptioned diagram nothing at all', async () => {
+    // A caption is optional and most diagrams carry none. Storing a placement must never
+    // conjure an empty paragraph, in any backend — the default is unstored, so an
+    // untouched document has to export byte-identically.
+    const bare = worksheetWithDiagram();
+    const stated = worksheetWithDiagram();
+    const block = stated.questions[0].blocks.find((b) => b.kind === 'diagram');
+    if (block?.kind !== 'diagram') throw new Error('fixture lost its diagram block');
+    block.captionPlacement = 'below';
+    expect(await docxFor(stated)).toBe(await docxFor(bare));
+  });
+
+  it('reaches the clipboard on the same side', () => {
+    // The PNG has to be supplied: without it a diagram emits no <img> at all, and there
+    // would be nothing for the caption to be ordered against.
+    const html = (placement: 'above' | 'below') => {
+      const { worksheet, blockId } = withCaption(placement);
+      return worksheetClipboardHtml(worksheet, STUDENT_BI, new Map([[blockId, FAKE_PNG]]));
+    };
+    const above = html('above');
+    const below = html('below');
+    expect(above.indexOf('Figure 1')).toBeLessThan(above.indexOf('<img'));
+    expect(below.indexOf('<img')).toBeLessThan(below.indexOf('Figure 1'));
+  });
+
+  it('resolves the placement once, in the IR, so no backend has to guess', () => {
+    // Unstored means `below` *in the IR*, not in three separate backends each deciding
+    // for themselves — that is what stops the page and the .docx disagreeing.
+    const { worksheet } = withCaption();
+    // `collectDiagramNodes` already walks the rendered tree to find diagram nodes, which
+    // is exactly the set this is asking about.
+    const [diagram] = collectDiagramNodes(worksheet, STUDENT_BI);
+    expect(diagram.captionPlacement).toBe('below');
   });
 });

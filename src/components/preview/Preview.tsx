@@ -33,6 +33,7 @@ import type {
   BandFieldSide,
   BiText,
   HeaderFooter,
+  CaptionPlacement,
   LanguageMode,
   OutputMode,
   RunFormat,
@@ -740,6 +741,35 @@ function TextNodeView({
  * Its own component because it needs the worksheet font pair from the store, and a
  * hook cannot live inside `NodeView`'s branch.
  */
+/**
+ * A block's caption, on whichever side it prints.
+ *
+ * One helper for all three block kinds, so a caption cannot end up above the diagram and
+ * below the table by accident. Returns nothing when there is no caption — a block without
+ * one reserves no space at all, which is what keeps the caption genuinely optional rather
+ * than an empty line every picture has to carry.
+ */
+function BlockCaption({
+  node,
+  side,
+  style,
+  language,
+  ctx,
+}: {
+  node: { caption?: BiText; captionPlacement: CaptionPlacement; captionEdit?: EditTarget };
+  side: CaptionPlacement;
+  style: 'Image Caption' | 'Table Caption';
+  language: LanguageMode;
+  ctx?: EditContext;
+}) {
+  if (!node.caption || node.captionPlacement !== side) return null;
+  return (
+    <p className={STYLE_CLASS[style]}>
+      {richNodes(node.caption, language, node.captionEdit, ctx)}
+    </p>
+  );
+}
+
 function DiagramNodeView({
   node,
   language,
@@ -784,6 +814,7 @@ function DiagramNodeView({
 
   return (
     <div className="my-2 text-center">
+      <BlockCaption node={node} side="above" style="Image Caption" language={language} ctx={ctx} />
       <SizedBlock
         blockId={node.blockId}
         widthPx={node.widthPx}
@@ -794,11 +825,7 @@ function DiagramNodeView({
       >
         {picture}
       </SizedBlock>
-      {node.caption && (
-        <p className={STYLE_CLASS["Image Caption"]}>
-          {richNodes(node.caption, language, node.captionEdit, ctx)}
-        </p>
-      )}
+      <BlockCaption node={node} side="below" style="Image Caption" language={language} ctx={ctx} />
     </div>
   );
 }
@@ -1042,6 +1069,10 @@ function TableNodeView({
 
   return (
     <div className="my-2">
+      {/* Above the table, and outside the `relative` wrapper below: the caption is
+          document text, not part of the box the column handles measure themselves
+          against. */}
+      <BlockCaption node={node} side="above" style="Table Caption" language={language} ctx={ctx} />
       {/* `relative` so the handles can be positioned against the table's own box; they
           are absolute and `data-print-hide`, so they reserve no space.
 
@@ -1265,11 +1296,7 @@ function TableNodeView({
           </div>
         )}
       </div>
-      {node.caption && (
-        <p className={STYLE_CLASS["Table Caption"]}>
-          {richNodes(node.caption, language, node.captionEdit, ctx)}
-        </p>
-      )}
+      <BlockCaption node={node} side="below" style="Table Caption" language={language} ctx={ctx} />
     </div>
   );
 }
@@ -1379,6 +1406,7 @@ function NodeView({
   if (node.kind === "image") {
     return (
       <div className="my-2 text-center">
+        <BlockCaption node={node} side="above" style="Image Caption" language={language} ctx={ctx} />
         <SizedBlock
           blockId={node.blockId}
           widthPx={node.widthPx}
@@ -1394,11 +1422,7 @@ function NodeView({
             className="mx-auto inline-block"
           />
         </SizedBlock>
-        {node.caption && (
-          <p className={STYLE_CLASS["Image Caption"]}>
-            {richNodes(node.caption, language, node.captionEdit, ctx)}
-          </p>
-        )}
+        <BlockCaption node={node} side="below" style="Image Caption" language={language} ctx={ctx} />
       </div>
     );
   }
@@ -2628,7 +2652,15 @@ interface Props {
     side: "en" | "zh",
     start: number,
     end: number,
-    patch: TextFormat,
+    /**
+     * The element-level fields, plus the one that is **run-only**.
+     *
+     * `vertAlign` deliberately does not live on `TextFormat`: a whole paragraph set in
+     * subscript is meaningless, so it must not be reachable from the element path. It is
+     * spelled out here instead of cast in at the call site, so the type says which fields
+     * this channel really carries.
+     */
+    patch: TextFormat & { vertAlign?: "superscript" | "subscript" },
   ) => void;
   /**
    * Move `id` to `targetId`'s position in the document flow. Omit to disable page drag.
@@ -3635,13 +3667,16 @@ export function Preview({
 
     const text = textOf?.(selectedElement.target);
     if (!text) return undefined;
+    const common = commonRunFormat(text[textSelection.side], textSelection.start, textSelection.end);
     return {
       side: textSelection.side,
       start: textSelection.start,
       end: textSelection.end,
-      common: runFormatToTextFormat(
-        commonRunFormat(text[textSelection.side], textSelection.start, textSelection.end),
-      ),
+      common: runFormatToTextFormat(common),
+      // Carried beside `common` rather than folded into it: `vertAlign` is a run-only
+      // attribute and `TextFormat` describes what an *element* overrides, where a
+      // wholly-subscript paragraph is meaningless.
+      vertAlign: common.vertAlign,
     };
   }, [textSelection, selectedElement, textOf]);
 
@@ -4853,6 +4888,27 @@ export function Preview({
              * reported the element's size rather than the selection's.
              */
             format={runRange ? runRange.common : formatOf?.(selectedElement.target)}
+            vertAlign={runRange?.vertAlign}
+            /* Offered only with characters selected: raising or lowering needs a range
+               to act on, and there is no sensible element-wide meaning for it. */
+            onVertAlign={
+              runRange && onFormatRuns
+                ? (value) => {
+                    // Same hold-open dance as `onChange`: the click has already blurred
+                    // the field, and without the flag its blur handler would commit and
+                    // close, discarding the range before the format could be applied.
+                    setFormatting(true);
+                    onFormatRuns(
+                      selectedElement.target,
+                      runRange.side,
+                      runRange.start,
+                      runRange.end,
+                      { vertAlign: value },
+                    );
+                    window.setTimeout(() => setFormatting(false), 0);
+                  }
+                : undefined
+            }
             onChange={(patch) => {
               if (runRange && onFormatRuns) {
                 /*
