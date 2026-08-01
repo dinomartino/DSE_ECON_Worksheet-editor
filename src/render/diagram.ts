@@ -233,6 +233,15 @@ export interface Projection {
   ux: (px: number) => number;
   uy: (py: number) => number;
   plot: { left: number; right: number; top: number; bottom: number };
+  /**
+   * The drawn canvas height, in the same pixels as `plot`.
+   *
+   * Carried so anything positioned against the *edge* rather than the plot can find it
+   * without being handed the options again. A title printed below is measured back from
+   * this edge: measuring forward from the plot overshot the room reserved for it and put
+   * the words outside the picture.
+   */
+  canvasHeight: number;
 }
 
 /**
@@ -302,6 +311,7 @@ function projection(
     ux: (pixel) => (pixel - left) / spanX,
     uy: (pixel) => (bottom - pixel) / spanY,
     plot: { left, right, top, bottom },
+    canvasHeight: height,
   };
 }
 
@@ -703,12 +713,14 @@ export function diagramTitleAnchor(
   proj: Projection,
   scale: number,
   /**
-   * Unused: the anchor is derived from the plot edges alone now that the title's room is
-   * reserved per side by `diagramPlot`. Kept in the signature because three call sites
-   * pass it positionally and it belongs to the same family as `axisTitleAnchor`, which
-   * genuinely does measure its text.
+   * Needed for the `below` case only, to count the title's *lines*.
+   *
+   * `textAt` draws the first line at the anchor and stacks the rest downward, so a
+   * bilingual title anchored at the foot of its reserved block prints its second line
+   * past the canvas edge — which is exactly what happened: the English fitted and the
+   * Chinese underneath it did not.
    */
-  _language: LanguageMode = 'bilingual',
+  language: LanguageMode = 'bilingual',
 ): { x: number; y: number } {
   const offset = diagram.titleOffset;
   const below = diagram.titlePlacement === 'below';
@@ -718,13 +730,20 @@ export function diagramTitleAnchor(
     // bilingual title grows downward into the room `titleRoom` reserved for it rather
     // than upward off the canvas.
     //
-    // Below: measured from the plot's bottom edge, *not* from the canvas bottom. The
-    // bottom pad also carries the x-axis tick labels, so anchoring to the canvas would
-    // let a title with no ticks float far from the plot and one with ticks land on top
-    // of them; starting at the plot edge and clearing the same `TITLE_GAP` keeps the
-    // words the same distance from the axes either way.
+    // Below: measured *back from the canvas edge*, so the block cannot leave it.
+    // Measuring forward from the plot instead — plot.bottom + PAD.bottom + a line —
+    // overshot the room `titleRoom` had reserved and left the baseline 11px from the
+    // foot of a 300px canvas, printing the underline and every descender outside the
+    // picture.
+    //
+    // The anchor is the FIRST line, and `textAt` stacks any others below it, so the
+    // extra lines have to be subtracted too — a bilingual title fitted its English and
+    // pushed its Chinese off the canvas until this counted them.
     y: below
-      ? proj.plot.bottom + PAD.bottom * scale + (TITLE_TOP + TITLE_SIZE * 1.1) * scale -
+      ? proj.canvasHeight -
+        TITLE_GAP * scale -
+        TITLE_SIZE * 0.3 * scale -
+        Math.max(0, pickSides(diagram.title, language).length - 1) * TITLE_SIZE * 1.15 * scale -
         (offset ? offset.y * plotSpanY(proj) : 0)
       : (TITLE_TOP + TITLE_SIZE * 1.1) * scale - (offset ? offset.y * plotSpanY(proj) : 0),
   };

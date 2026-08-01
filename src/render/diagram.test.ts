@@ -505,6 +505,54 @@ describe('a diagram carries its words inside its own image', () => {
     expect(below!).toBeGreaterThan(above!);
   });
 
+  it('keeps a title below the plot inside the picture, at any scale or language', () => {
+    /*
+     * The whole point of the title living in the geometry is that it rasterizes into the
+     * same PNG — so a baseline past the canvas edge is not a cosmetic slip, it is words
+     * that do not exist in the exported image.
+     *
+     * It went wrong twice, in opposite directions. Measuring *forward* from the plot
+     * (`plot.bottom + PAD.bottom + a line`) overshot the room `titleRoom` had reserved
+     * and left the baseline 11px from the foot of a 300px canvas, putting the underline
+     * and every descender outside. Measuring back from the edge fixed English and still
+     * failed bilingual, because `textAt` anchors the *first* line and stacks the rest
+     * downward — the Chinese second line hung off the bottom.
+     *
+     * Asserted across scales because the exporter rasterizes at 3×, and across languages
+     * because only the bilingual case has a second line.
+     */
+    const base = buildFromTemplate('supply-demand');
+    for (const language of ['en', 'bilingual'] as const) {
+      for (const scale of [1, 3]) {
+        const diagram = {
+          ...base,
+          title: bi('The market for wine', '葡萄酒市場'),
+          titlePlacement: 'below' as const,
+        };
+        const height = 300 * scale;
+        const svg = diagramSvg(diagram, { widthPx: 400, heightPx: 300, language, scale });
+
+        // Every line is its own `<text>` with its own y, so the lowest baseline drawn is
+        // simply the largest of them — measured off the real output rather than
+        // recomputed from the constants, which is what lets this fail when the anchor
+        // is wrong.
+        const baselines = [...svg.matchAll(/<text[^>]*\sy="([\d.]+)"/g)].map((m) => Number(m[1]));
+        const lowest = Math.max(...baselines);
+        const label = `${language}@${scale}x`;
+
+        // Room for the underline and descenders under the last baseline. The broken
+        // anchor left 10.7px at 1× — the underline printed on the canvas edge and the
+        // bilingual second line past it.
+        expect(height - lowest, `${label} needs room under the last line`).toBeGreaterThanOrEqual(
+          13 * scale,
+        );
+        // And genuinely below the plot, not floating inside it.
+        const proj = diagramPlot(diagram, { widthPx: 400, heightPx: 300, language, scale });
+        expect(lowest, `${label} must clear the plot`).toBeGreaterThan(proj.plot.bottom);
+      }
+    }
+  });
+
   it('costs an untitled diagram no room at all', () => {
     // An absent title must reserve nothing, or every untitled diagram prints with a
     // blank strip. The plot of a bare diagram starts exactly where the padding puts it.
