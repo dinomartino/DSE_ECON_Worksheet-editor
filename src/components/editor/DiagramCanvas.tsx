@@ -164,6 +164,16 @@ interface Props {
   block: DiagramBlock;
   onChange: (block: DiagramBlock) => void;
   onClose: () => void;
+  /**
+   * A handle to open the caret on as soon as the canvas mounts.
+   *
+   * For the one case the canvas cannot discover for itself: text that exists but is
+   * *empty*. An empty title draws nothing, so there is no glyph to double-click and the
+   * element list does not offer it either — the panel's "Add a title" creates the field
+   * and hands the caret over in the same gesture, which is what stops a title being
+   * created and then invisibly stranded.
+   */
+  openEdit?: DiagramHandle;
 }
 
 /**
@@ -193,7 +203,7 @@ type Gesture =
   | { kind: 'create'; handles: DiagramHandle[]; from: DiagramPoint; base: Diagram; moved: boolean }
   | { kind: 'marquee'; from: DiagramPoint; base: Diagram; moved: boolean; additive: boolean };
 
-export function DiagramCanvas({ block, onChange, onClose }: Props) {
+export function DiagramCanvas({ block, onChange, onClose, openEdit }: Props) {
   // The canvas owns the keyboard while it is open. Without this, the preview's own
   // Delete handler fires on the same keypress and removes the whole diagram block that
   // is selected underneath — deleting one curve took the entire picture with it.
@@ -224,7 +234,7 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
    * every render and cannot drift from the model — the same reason the sidebar's fields
    * are derived rather than copied.
    */
-  const [editing, setEditing] = useState<DiagramHandle | null>(null);
+  const [editing, setEditing] = useState<DiagramHandle | null>(openEdit ?? null);
   /**
    * What the in-flight drag is moving.
    *

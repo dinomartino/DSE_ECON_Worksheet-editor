@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { DIAGRAM_TEMPLATES, buildFromTemplate } from '@/model/diagramTemplates';
-import { isBiTextEmpty, plain } from '@/model/text';
+import { emptyBiText, isBiTextEmpty, plain } from '@/model/text';
 import type { CaptionPlacement, DiagramBlock } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { diagramSvg } from '@/render/diagram';
@@ -31,10 +31,13 @@ import { DiagramCanvas } from './DiagramCanvas';
  *   picture rather than an edit within it;
  * - **Width** — the printed size, which the canvas deliberately ignores (it draws at a
  *   zoom so the stored size stays a *print* size);
- * - **Alt text** and **Caption** — `.docx` metadata that never appears in the drawing at
- *   all. The caption is ordinary document text printed above or below the picture (it is
- *   optional, and most diagrams carry none); the diagram's own *title* is inside the
- *   geometry, is centred and underlined over the plot, and is edited on the canvas.
+ * - **Alt text** — `.docx` metadata that never appears in the drawing at all;
+ * - **Title** — whether the picture has one, and which side of the plot it prints on.
+ *   A diagram has no caption: its words live *inside* the geometry, centred and
+ *   underlined over the plot, and rasterize into the same PNG. Typing them belongs to
+ *   the canvas, where they are drawn — but an absent title has nothing on the canvas to
+ *   click, so creating one is offered here, exactly as `Name the x-axis` is offered for
+ *   an axis title deleted to nothing.
  *
  * The live SVG is the way in, for the reason the page preview is: what you click is what
  * you edit. It is the very renderer the preview and exporter use, so the thumbnail cannot
@@ -50,6 +53,14 @@ export function DiagramEditor({ block, onChange }: Props) {
   const language = useWorksheetStore((s) => s.mode.language);
   const fonts = useWorksheetStore((s) => s.worksheet.fonts);
   const [drawing, setDrawing] = useState(false);
+  /*
+   * Set when Draw is opened *in order to* write something, rather than to draw.
+   *
+   * An empty title draws no glyph, so the canvas has nothing to double-click and its own
+   * element list does not offer one — opening the canvas alone would strand the field
+   * that was just created. Cleared on close so the next plain Draw opens no caret.
+   */
+  const [openEdit, setOpenEdit] = useState<{ kind: 'diagramTitle' } | undefined>();
 
   const diagram = block.diagram;
 
@@ -101,7 +112,15 @@ export function DiagramEditor({ block, onChange }: Props) {
       </button>
 
       {drawing && (
-        <DiagramCanvas block={block} onChange={onChange} onClose={() => setDrawing(false)} />
+        <DiagramCanvas
+          block={block}
+          onChange={onChange}
+          openEdit={openEdit}
+          onClose={() => {
+            setDrawing(false);
+            setOpenEdit(undefined);
+          }}
+        />
       )}
 
       {/* Draw is the weightiest control in this panel, because every edit to the picture
@@ -162,12 +181,28 @@ export function DiagramEditor({ block, onChange }: Props) {
         onChange={(altText) => onChange({ ...block, altText })}
         rows={1}
       />
-      {/* Which side of the plot the title prints on. Offered only once there *is* a
-          title: most DSE diagrams carry none, and a placement control over an empty
-          field asks about something that does not exist. The title itself is typed on
-          the canvas, where it is drawn — this panel only owns the choice that has no
-          visual handle to grab. */}
-      {!isBiTextEmpty(block.diagram.title) && (
+      {/* The title, which is drawn *inside* the picture rather than printed beside it.
+          Typing it belongs to the canvas, where the words are — but whether the diagram
+          has one at all has no handle to grab when the answer is no, exactly like an
+          axis title deleted to nothing. Without this button the only route in was to
+          open Draw and notice the Title section, and the placement control below could
+          never appear, since it is gated on a title this panel gave no way to create. */}
+      {isBiTextEmpty(block.diagram.title) ? (
+        <Button
+          size="sm"
+          variant="subtle"
+          onClick={() => {
+            onChange({ ...block, diagram: { ...block.diagram, title: emptyBiText() } });
+            // Straight onto the canvas with the caret already on the title: a title
+            // created but not typed draws nothing, so creating it and writing it have to
+            // be one gesture or the field is stranded the moment it exists.
+            setOpenEdit({ kind: 'diagramTitle' });
+            setDrawing(true);
+          }}
+        >
+          Add a title
+        </Button>
+      ) : (
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-ink-subtle">Title sits</span>
           <Segmented<CaptionPlacement>
