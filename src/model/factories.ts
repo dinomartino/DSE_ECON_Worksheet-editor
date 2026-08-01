@@ -82,7 +82,17 @@ export function createImageBlock(src: string, widthPx: number, heightPx: number)
  */
 export const DEFAULT_DIAGRAM_SIZE = { widthPx: 400, heightPx: 300 };
 
-export function createDiagramBlock(templateId = 'blank'): DiagramBlock {
+export function createDiagramBlock(
+  templateId = 'blank',
+  /**
+   * Printed width in px. Defaults to the full-column figure a question stem wants.
+   *
+   * Passed in by callers that know the figure is going somewhere narrower — chiefly an
+   * MCQ option, where *four* diagrams stack in one question and a stem-width default
+   * would put each one a third of the way down the sheet.
+   */
+  widthPx: number = DEFAULT_DIAGRAM_SIZE.widthPx,
+): DiagramBlock {
   const diagram = buildFromTemplate(templateId);
   return {
     kind: 'diagram',
@@ -91,10 +101,18 @@ export function createDiagramBlock(templateId = 'blank'): DiagramBlock {
     // Measured rather than assumed: a template with a two-line bilingual axis title needs
     // a taller box than a bare one, and starting at a flat 4:3 would squash it from the
     // moment it is inserted.
-    ...diagramSize(diagram, DEFAULT_DIAGRAM_SIZE.widthPx, 'bilingual'),
+    ...diagramSize(diagram, widthPx, 'bilingual'),
     altText: defaultDiagramAltText(templateId),
   };
 }
+
+/**
+ * Width for a figure inside an MCQ option.
+ *
+ * Four of these stack in one question, so they have to fit a page together — the
+ * reference paper (DSE 2021 P1 Q36) prints its four AD-AS plots at roughly this size.
+ */
+export const OPTION_DIAGRAM_WIDTH_PX = 240;
 
 export function createMcqQuestion(): McqQuestion {
   return {

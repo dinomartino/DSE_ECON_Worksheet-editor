@@ -121,6 +121,14 @@ function collectImages(
     else if (node.kind === 'diagram') {
       const src = diagramImages.get(node.blockId);
       if (src) add(src);
+    } else if (node.kind === 'table') {
+      // A picture inside a cell (§ a boxed stimulus with a photograph in it). Missed
+      // here it would still be *emitted* by the body writer, leaving a `r:embed`
+      // pointing at a relationship that does not exist — which Word reports as a
+      // repair error on the whole file rather than as one missing picture.
+      for (const row of node.rows) {
+        for (const cell of row) if (cell.image) add(cell.image.src);
+      }
     }
   };
 

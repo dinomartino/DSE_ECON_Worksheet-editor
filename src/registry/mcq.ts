@@ -1,5 +1,5 @@
 import { createMcqQuestion } from '@/model/factories';
-import { optionLabel, statementLabel } from '@/model/numbering';
+import { OPTION_LIST_INDENT, optionLabel, statementLabel } from '@/model/numbering';
 import { bi, isBiTextEmpty, plain } from '@/model/text';
 import type { LanguageMode, McqOptionLayout, McqQuestion } from '@/model/types';
 import { pushGap, renderContentBlocks, type RenderContext, type RenderNode } from '@/render/ir';
@@ -58,6 +58,14 @@ function displayWidth(text: string): number {
  * states rather than something re-derived (and re-derivable differently) at render time.
  */
 export function resolveOptionLayout(question: McqQuestion): McqOptionLayout {
+  // An option carrying blocks forces the stacked layout, whatever is stored.
+  //
+  // The side-by-side layouts are one paragraph with tab stops, and a paragraph cannot
+  // hold a picture per cell — the figures would be dropped silently, which is the worst
+  // way for this to fail (the option letters still print, so the question looks complete
+  // and is simply unanswerable). Enforced here rather than validated on write, because
+  // that keeps it true for documents authored before options could carry blocks.
+  if (question.options.some((option) => (option.blocks?.length ?? 0) > 0)) return 'stacked';
   return question.optionLayout ?? 'stacked';
 }
 
@@ -173,12 +181,17 @@ function render(question: McqQuestion, context: RenderContext): RenderNode[] {
 
   if (layout === 'stacked') {
     question.options.forEach((option, index) => {
+      const blocks = option.blocks ?? [];
+      const last = index === question.options.length - 1;
       nodes.push({
         kind: 'text',
         style: 'MCQ Option',
         // Keep every option with the next one so the A-D block never splits; the last
-        // option is free to break unless a teacher answer follows.
-        keepNext: index < question.options.length - 1 || context.mode.version === 'teacher',
+        // option is free to break unless a teacher answer follows. An option carrying
+        // blocks must also keep with its own figure, or Word breaks the page between
+        // the letter and the diagram that answers it.
+        keepNext:
+          blocks.length > 0 || !last || context.mode.version === 'teacher',
         text: option.text,
         edit: { kind: 'mcqOption', questionId: question.id, optionId: option.id },
         listRef: {
@@ -188,6 +201,24 @@ function render(question: McqQuestion, context: RenderContext): RenderNode[] {
           marker: optionLabel(index),
         },
       });
+
+      // The option's own figure, printed under its letter. Not in the numbered
+      // paragraph: a `w:drawing` inside a list item takes the marker's hanging indent
+      // and prints half a line up, and the picture paragraph needs `lineRule="auto"`
+      // that the option style cannot give it.
+      if (blocks.length > 0) {
+        nodes.push(
+          ...renderContentBlocks(blocks, 'MCQ Option', {
+            keepNext: !last || context.mode.version === 'teacher',
+            // Aligned with the option's own *text*, not the page margin: the blocks
+            // continue the answer the letter introduces, so they start where its words
+            // do. Taken from `OPTION_LIST_INDENT` rather than restated, since that is the
+            // one definition the exporter's `w:ind` and the preview's padding both read —
+            // a second copy is how the page and the paper end up disagreeing.
+            indent: OPTION_LIST_INDENT.left,
+          }),
+        );
+      }
     });
   } else {
     // Side-by-side options are one paragraph with tab stops, so they cannot use the

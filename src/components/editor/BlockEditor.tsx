@@ -34,9 +34,24 @@ import { contentWidth, pageSetupOf, ptToTwips, twipsToPt } from '@/model/page';
 import { DIAGRAM_TEMPLATES } from '@/model/diagramTemplates';
 import { emptyBiText, plain } from '@/model/text';
 import { RichTextEditable } from '@/components/preview/RichTextEditable';
-import type { ContentBlock, ImageBlock, TableAlign, TableBlock } from '@/model/types';
+import type {
+  CellImage,
+  ContentBlock,
+  ImageBlock,
+  TableAlign,
+  TableBlock,
+  TableBorders,
+} from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { Button, Eyebrow, GroupHeader, IconButton, NumberField, Segmented } from '@/components/ui';
+import {
+  Button,
+  Eyebrow,
+  FigureAlignField,
+  GroupHeader,
+  IconButton,
+  NumberField,
+  Segmented,
+} from '@/components/ui';
 import { Menu } from '@/components/ui/Menu';
 import { TableSizePicker } from '@/components/ui/TableSizePicker';
 import { BiTextField } from './BiTextField';
@@ -60,9 +75,17 @@ interface Props {
   label?: string;
   /** One-line explanation beside `label`, for a group whose name is not self-evident. */
   labelHint?: string;
+  /**
+   * Width a newly inserted figure starts at, in px.
+   *
+   * Defaults to the full-column figure a question stem wants. An MCQ option passes
+   * something narrower, because four figures stack in one question and each would
+   * otherwise arrive a third of a page tall.
+   */
+  figureWidth?: number;
 }
 
-export function BlockEditor({ blocks, onChange, label, labelHint }: Props) {
+export function BlockEditor({ blocks, onChange, label, labelHint, figureWidth }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
   /*
    * The content width a new table's default indent is a fraction of.
@@ -97,8 +120,9 @@ export function BlockEditor({ blocks, onChange, label, labelHint }: Props) {
       const src = String(reader.result);
       const img = new Image();
       img.onload = () => {
-        // Fit to a sensible default width, aspect ratio preserved (§5.3).
-        const maxWidth = 420;
+        // Fit to a sensible default width, aspect ratio preserved (§5.3). Narrower
+        // inside an MCQ option, where four figures share a question.
+        const maxWidth = figureWidth ?? 420;
         const scale = img.width > maxWidth ? maxWidth / img.width : 1;
         const block = createImageBlock(
           src,
@@ -204,7 +228,7 @@ export function BlockEditor({ blocks, onChange, label, labelHint }: Props) {
           trigger={<span className="text-[11px] font-medium">+ Diagram ▾</span>}
           items={DIAGRAM_TEMPLATES.map((template) => ({
             label: plain(template.name.en),
-            onSelect: () => onChange([...blocks, createDiagramBlock(template.id)]),
+            onSelect: () => onChange([...blocks, createDiagramBlock(template.id, figureWidth)]),
           }))}
         />
         <input
@@ -473,6 +497,30 @@ function TableBlockEditor({
         ))}
       </div>
 
+      {/*
+        Ruled grid, or a frame with nothing ruled inside it.
+
+        A whole-table decision like alignment above, so it needs no cell chosen either.
+        The reference paper boxes a stimulus four times — a news extract, a pay
+        arrangement, three numbered proposals — and that last one is the shape a grid
+        cannot express at any padding: one frame, three rows, no rule between them.
+      */}
+      <div className="flex items-center gap-2 border-t border-line pt-2">
+        <span className="w-14 shrink-0 text-[11px] text-ink-subtle">Rules</span>
+        <Segmented<TableBorders>
+          label="Table rules"
+          value={block.borders ?? 'all'}
+          options={[
+            { value: 'all', label: 'Grid', title: 'Rule every cell — an ordinary table' },
+            { value: 'box', label: 'Box', title: 'Rule the frame only — a boxed stimulus' },
+          ]}
+          // `all` is written as nothing, so an untouched table exports byte-identically.
+          onChange={(borders) =>
+            apply({ ...block, borders: borders === 'all' ? undefined : borders })
+          }
+        />
+      </div>
+
       <TablePaddingSection block={block} at={at} onChange={apply} />
 
       {cell && at ? (
@@ -527,6 +575,14 @@ function TableBlockEditor({
               </>
             )}
           </div>
+
+          {/* A picture inside the cell, printed under its words — the boxed stimulus
+              that frames an extract and a photograph together. Per cell rather than per
+              table, because that is the thing it belongs to. */}
+          <CellImageField
+            image={cell.image}
+            onChange={(image) => apply(patchCell(block, at.rowIndex, at.cellIndex, { image }))}
+          />
         </div>
       ) : (
         /* Not a disabled control: the reason the per-cell verbs are missing is that
@@ -735,6 +791,108 @@ function TablePaddingSection({
   );
 }
 
+/**
+ * The picture inside one table cell.
+ *
+ * A cell's picture, not a block: it prints under the cell's words inside the same frame,
+ * which is what DSE 2021 P1 Q30 needs — a news extract and a photograph boxed together,
+ * a shape no arrangement of sibling blocks reproduces. It therefore takes no caption
+ * (the cell's text is the caption) and no alignment (it centres in its cell).
+ *
+ * Width is offered because a photograph dropped in at full size would push the column
+ * wider than the page; the height follows the aspect ratio, as everywhere else.
+ */
+function CellImageField({
+  image,
+  onChange,
+}: {
+  image: CellImage | undefined;
+  onChange: (image: CellImage | undefined) => void;
+}) {
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  const read = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const src = String(reader.result);
+      const probe = new Image();
+      probe.onload = () => {
+        // Fits inside a cell rather than the text column, so a full-size photograph does
+        // not arrive wider than the table it sits in.
+        const maxWidth = 240;
+        const scale = probe.width > maxWidth ? maxWidth / probe.width : 1;
+        onChange({
+          src,
+          widthPx: Math.round(probe.width * scale),
+          heightPx: Math.round(probe.height * scale),
+          altText: emptyBiText(),
+        });
+      };
+      probe.src = src;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-1">
+        <span className="w-14 shrink-0 text-[11px] text-ink-subtle">Picture</span>
+        {image ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={image.src}
+              alt=""
+              className="max-h-10 rounded border border-line object-contain"
+            />
+            <NumberField
+              label="Width"
+              min={40}
+              suffix="px"
+              value={image.widthPx}
+              onChange={(widthPx) => {
+                const ratio = image.heightPx / image.widthPx;
+                const next = Math.max(40, widthPx);
+                onChange({ ...image, widthPx: next, heightPx: Math.round(next * ratio) });
+              }}
+            />
+            <IconButton
+              label="Remove picture from cell"
+              variant="danger"
+              onClick={() => onChange(undefined)}
+            >
+              <span aria-hidden>✕</span>
+            </IconButton>
+          </>
+        ) : (
+          <Button size="sm" variant="subtle" onClick={() => fileInput.current?.click()}>
+            + Picture
+          </Button>
+        )}
+      </div>
+      {image && (
+        <BiTextField
+          label="Picture alt text"
+          value={image.altText}
+          rows={1}
+          onChange={(altText) => onChange({ ...image, altText })}
+        />
+      )}
+      <input
+        ref={fileInput}
+        type="file"
+        accept="image/png,image/jpeg"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) read(file);
+          event.target.value = '';
+        }}
+      />
+    </div>
+  );
+}
+
 function ImageBlockEditor({
   block,
   onChange,
@@ -771,6 +929,10 @@ function ImageBlockEditor({
           <div className="text-[10px] text-ink-subtle">Height: {block.heightPx}px</div>
         </div>
       </div>
+      <FigureAlignField
+        value={block.align}
+        onChange={(align) => onChange({ ...block, align })}
+      />
       <BiTextField
         label="Alt text"
         value={block.altText}
@@ -786,3 +948,4 @@ function ImageBlockEditor({
     </div>
   );
 }
+

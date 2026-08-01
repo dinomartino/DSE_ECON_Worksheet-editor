@@ -349,3 +349,36 @@ export function Segmented<T extends string>({
     </div>
   );
 }
+
+/**
+ * Where a figure sits in the content column — `w:jc` on the picture's paragraph.
+ *
+ * Centre is the default and every figure in the reference papers uses it, so this exists
+ * for the exception rather than the rule. One component serves both picture kinds: an
+ * image and a diagram answer the identical question, and two controls would be two
+ * chances to spell the same choice differently. It lives here rather than in
+ * `BlockEditor` because `DiagramEditor` needs it too and is imported *by* `BlockEditor` —
+ * reaching back up would close a cycle.
+ */
+export function FigureAlignField({
+  value,
+  onChange,
+}: {
+  value: 'left' | 'center' | 'right' | undefined;
+  onChange: (align: 'left' | 'center' | 'right' | undefined) => void;
+}) {
+  return (
+    <Segmented<'left' | 'center' | 'right'>
+      label="Position"
+      value={value ?? 'center'}
+      options={[
+        { value: 'left', label: 'Left', title: 'Align the figure with the text column' },
+        { value: 'center', label: 'Centre', title: 'Centre the figure (the usual choice)' },
+        { value: 'right', label: 'Right', title: 'Align the figure to the right margin' },
+      ]}
+      // Centre is written as *nothing*, so an untouched figure stores no alignment and
+      // exports byte-identically to what it did before this control existed.
+      onChange={(align) => onChange(align === 'center' ? undefined : align)}
+    />
+  );
+}

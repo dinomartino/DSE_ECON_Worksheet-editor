@@ -37,6 +37,7 @@ export function EditorApp() {
   const replaceBlock = useWorksheetStore((s) => s.replaceBlock);
   const formatTarget = useWorksheetStore((s) => s.formatTarget);
   const formatRuns = useWorksheetStore((s) => s.formatRuns);
+  const insertBlank = useWorksheetStore((s) => s.insertBlank);
   const resizeBlock = useWorksheetStore((s) => s.resizeBlock);
   const resizeLayoutElement = useWorksheetStore((s) => s.resizeLayoutElement);
   const resizeTableColumn = useWorksheetStore((s) => s.resizeTableColumn);
@@ -471,6 +472,7 @@ export function EditorApp() {
             onBulkDuplicate={duplicateMany}
             onFormat={formatTarget}
             onFormatRuns={handleFormatRuns}
+            onInsertBlank={insertBlank}
             formatOf={formatOf}
             textOf={textOf}
             onResizeBlock={resizeBlock}

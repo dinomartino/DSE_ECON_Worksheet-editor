@@ -25,7 +25,7 @@ import type { EditTarget } from '@/render/ir';
  */
 import { diagramSize } from '@/render/diagram';
 import { applyBandFieldSide, bandFieldSideText } from './bandSegments';
-import { applyRunFormat } from './text';
+import { applyRunFormat, insertBlank } from './text';
 
 /**
  * Applying an in-place edit from the preview.
@@ -65,6 +65,14 @@ function questionBlockLists(question: Question): ContentBlock[][] {
   for (const part of parts ?? []) {
     lists.push(part.blocks);
     for (const sub of part.subParts ?? []) lists.push(sub.blocks);
+  }
+  // An option may carry its own blocks — a diagram answering the question, as in a
+  // "which of these diagrams…" MCQ. Read structurally like `parts` above, so this stays
+  // one generic walk rather than a branch on a concrete type id (§9): any future type
+  // with `options` gets the same reach for free.
+  const options = (question as { options?: Array<{ blocks?: ContentBlock[] }> }).options;
+  for (const option of options ?? []) {
+    if (option.blocks) lists.push(option.blocks);
   }
   return lists;
 }
@@ -106,6 +114,15 @@ function mapAllBlocks(
           blocks: patchBlocks(sub.blocks, blockId, patch),
         })),
       }));
+    }
+    // An option's own blocks, so a diagram inside an option resizes and edits by exactly
+    // the same route as one in a stem. Read structurally, mirroring `questionBlockLists`
+    // — the two must reach the same lists or a block would be findable but unwritable.
+    const options = (next as { options?: Array<{ blocks?: ContentBlock[] }> }).options;
+    if (options) {
+      (next as { options: unknown }).options = options.map((option) =>
+        option.blocks ? { ...option, blocks: patchBlocks(option.blocks, blockId, patch) } : option,
+      );
     }
     return next;
   };
@@ -636,6 +653,30 @@ export function applyRunFormatTarget(
   const next = applyRunFormat(current[side], start, end, patch);
   if (next === current[side]) return worksheet;
   return applyEditTarget(worksheet, target, { ...current, [side]: next });
+}
+
+/**
+ * Insert a fill-in blank into one side of a target's text.
+ *
+ * Addressed exactly like `applyRunFormatTarget` — same read, same write-back — because a
+ * blank is characters in a run, not a new kind of thing: everything downstream (export,
+ * clipboard, the marks trail's offset counting) is already correct for it by
+ * construction. Only one side is written, so a blank added in English cannot disturb the
+ * Chinese (§5.2).
+ */
+export function applyInsertBlank(
+  worksheet: Worksheet,
+  target: EditTarget,
+  side: 'en' | 'zh',
+  start: number,
+  end: number,
+): Worksheet {
+  const current = textOfTarget(worksheet, target);
+  if (!current) return worksheet;
+  return applyEditTarget(worksheet, target, {
+    ...current,
+    [side]: insertBlank(current[side], start, end),
+  });
 }
 
 /**

@@ -6,7 +6,7 @@ import { emptyBiText, isBiTextEmpty, plain } from '@/model/text';
 import type { CaptionPlacement, DiagramBlock } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { diagramSize, diagramSvg } from '@/render/diagram';
-import { Button, NumberField, Segmented, SelectField } from '@/components/ui';
+import { Button, FigureAlignField, NumberField, Segmented, SelectField } from '@/components/ui';
 import { BiTextField } from './BiTextField';
 import { DiagramCanvas } from './DiagramCanvas';
 
@@ -156,6 +156,10 @@ export function DiagramEditor({ block, onChange }: Props) {
             const next = Math.max(160, widthPx);
             onChange({ ...block, ...diagramSize(block.diagram, next, language) });
           }}
+        />
+        <FigureAlignField
+          value={block.align}
+          onChange={(align) => onChange({ ...block, align })}
         />
       </div>
 

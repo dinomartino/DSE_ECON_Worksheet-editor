@@ -37,6 +37,7 @@ import type {
   LanguageMode,
   OutputMode,
   RunFormat,
+  TableAlign,
   TextFormat,
   Worksheet,
 } from "@/model/types";
@@ -770,6 +771,20 @@ function BlockCaption({
   );
 }
 
+/**
+ * How a figure sits in the content column, as the CSS equivalent of `w:jc` on the
+ * picture's paragraph.
+ *
+ * `text-align` rather than a flex or `mx-auto` rule, because that is the property Word's
+ * `w:jc` actually maps to — the picture is an inline box in a paragraph, and centring it
+ * any other way would place it correctly on screen while the `.docx` used a different
+ * mechanism. `mx-auto` in particular reads as "centre" whatever `align` says, which is
+ * why neither figure carries it any more.
+ */
+function figureAlignClass(align: TableAlign): string {
+  return align === "center" ? "text-center" : align === "right" ? "text-right" : "text-left";
+}
+
 function DiagramNodeView({
   node,
   language,
@@ -802,7 +817,7 @@ function DiagramNodeView({
 
   const picture = (
     <div
-      className="mx-auto inline-block h-full w-full"
+      className="inline-block h-full w-full"
       style={{ lineHeight: 0 }}
       role="img"
       aria-label={
@@ -816,7 +831,7 @@ function DiagramNodeView({
   // above and rasterized into the same PNG on export. The page must show exactly what
   // Word will print, so there is nothing to add around the picture here.
   return (
-    <div className="my-2 text-center">
+    <div className={`my-2 ${figureAlignClass(node.align)}`}>
       <SizedBlock
         blockId={node.blockId}
         widthPx={node.widthPx}
@@ -1131,7 +1146,11 @@ function TableNodeView({
         <table
           ref={tableRef}
           data-table-block={node.blockId}
-          className="w-full table-fixed border-collapse"
+          className={`w-full table-fixed border-collapse ${
+            // The frame of a boxed stimulus, on the table rather than its edge cells so
+            // it stays one unbroken rectangle however the rows are merged.
+            node.borders === "box" ? "border border-slate-500" : ""
+          }`}
         >
           <colgroup>
             {widths.map((fraction, index) => (
@@ -1183,9 +1202,11 @@ function TableNodeView({
                        * was. A ring paints inside the border box, so it also reserves no
                        * space and cannot shift the table's geometry.
                        */
-                      className={`border border-slate-500 align-middle ${
-                        isActive ? "ring-2 ring-inset ring-[#7c5cff]" : ""
-                      }`}
+                      className={`${
+                        // A boxed stimulus rules its frame only — the frame is on the
+                        // <table>, so the cells inside carry no rule of their own.
+                        node.borders === "box" ? "" : "border border-slate-500"
+                      } align-middle ${isActive ? "ring-2 ring-inset ring-[#7c5cff]" : ""}`}
                       style={{
                         textAlign: cell.align,
                         // Points from the resolved twips, the same winner `w:tcMar` gets.
@@ -1225,6 +1246,24 @@ function TableNodeView({
                         address
                           ? (backwards) => moveCell(address.cellId, backwards)
                           : undefined,
+                      )}
+                      {/* A picture inside the cell, under its words — the boxed
+                          stimulus that frames an extract and a photograph together. */}
+                      {cell.image && (
+                        <div className="text-center">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={cell.image.src}
+                            alt={
+                              plain(cell.image.altText.en) ||
+                              plain(cell.image.altText.zh) ||
+                              ""
+                            }
+                            width={cell.image.widthPx}
+                            height={cell.image.heightPx}
+                            className="inline-block"
+                          />
+                        </div>
                       )}
                     </td>
                   );
@@ -1406,7 +1445,7 @@ function NodeView({
 
   if (node.kind === "image") {
     return (
-      <div className="my-2 text-center">
+      <div className={`my-2 ${figureAlignClass(node.align)}`}>
         <BlockCaption node={node} side="above" style="Image Caption" language={language} ctx={ctx} />
         <SizedBlock
           blockId={node.blockId}
@@ -1420,7 +1459,7 @@ function NodeView({
             alt={plain(node.altText.en) || plain(node.altText.zh) || ""}
             width={node.widthPx}
             height={node.heightPx}
-            className="mx-auto inline-block"
+            className="inline-block"
           />
         </SizedBlock>
         <BlockCaption node={node} side="below" style="Image Caption" language={language} ctx={ctx} />
@@ -2664,6 +2703,18 @@ interface Props {
     patch: TextFormat & { vertAlign?: "superscript" | "subscript" },
   ) => void;
   /**
+   * Insert a fill-in blank at the caret, replacing `[start, end)`.
+   *
+   * A text edit, not a format, so it is its own channel rather than a `onFormatRuns`
+   * patch — the paper's "…using ______ to solve the problem of ______." shape.
+   */
+  onInsertBlank?: (
+    target: EditTarget,
+    side: "en" | "zh",
+    start: number,
+    end: number,
+  ) => void;
+  /**
    * Move `id` to `targetId`'s position in the document flow. Omit to disable page drag.
    * `position` says which side of the target to land on.
    */
@@ -2882,6 +2933,7 @@ export function Preview({
   formatOf,
   textOf,
   onFormatRuns,
+  onInsertBlank,
   onResizeBlock,
   onResizeRows,
   onResizeTableColumn,
@@ -3680,6 +3732,25 @@ export function Preview({
       vertAlign: common.vertAlign,
     };
   }, [textSelection, selectedElement, textOf]);
+
+  /**
+   * Where an *insertion* would land — a caret, not a range.
+   *
+   * Deliberately separate from `runRange`, which requires `start < end` because
+   * formatting nothing is meaningless. Inserting into nothing is the ordinary case: a
+   * fill-in blank goes *between* two words, so gating it on a selection would make the
+   * teacher select the very characters they do not want to lose. A range still works and
+   * replaces what it covers, matching how typing behaves.
+   */
+  const runCaret = useMemo(() => {
+    if (!textSelection || !selectedElement) return undefined;
+    if (textSelection.side !== selectedElement.side) return undefined;
+    return {
+      side: textSelection.side,
+      start: textSelection.start,
+      end: textSelection.end,
+    };
+  }, [textSelection, selectedElement]);
 
   const isEmpty = rendered.questions.length === 0;
 
@@ -4905,6 +4976,25 @@ export function Preview({
                       runRange.start,
                       runRange.end,
                       { vertAlign: value },
+                    );
+                    window.setTimeout(() => setFormatting(false), 0);
+                  }
+                : undefined
+            }
+            /* A caret is enough, unlike the format channels above: a blank goes
+               *between* two words, and demanding a selection would mean selecting the
+               characters you do not want to lose. A live range still works and replaces
+               what it covers, exactly as typing does. Same hold-open dance — the click
+               has already blurred the field. */
+            onInsertBlank={
+              runCaret && onInsertBlank
+                ? () => {
+                    setFormatting(true);
+                    onInsertBlank(
+                      selectedElement.target,
+                      runCaret.side,
+                      runCaret.start,
+                      runCaret.end,
                     );
                     window.setTimeout(() => setFormatting(false), 0);
                   }

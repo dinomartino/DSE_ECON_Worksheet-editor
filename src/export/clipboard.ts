@@ -144,14 +144,24 @@ function nodeHtml(
             // reaches the clipboard as the same winner the `.docx` flattens onto `w:tcMar`.
             const pad = cell.padding;
             const style =
-              'border:1px solid #000;' +
+              // A boxed stimulus rules its frame only; the frame itself is on the
+              // `<table>` below, so the cells inside carry no rule of their own.
+              (node.borders === 'box' ? 'border:none;' : 'border:1px solid #000;') +
               `padding:${twipsToPt(pad.top)}pt ${twipsToPt(pad.right)}pt ` +
               `${twipsToPt(pad.bottom)}pt ${twipsToPt(pad.left)}pt;` +
               `text-align:${cell.align};${formatCss(cell.format)}`;
             const span =
               (cell.colSpan > 1 ? ` colspan="${cell.colSpan}"` : '') +
               (cell.rowSpan > 1 ? ` rowspan="${cell.rowSpan}"` : '');
-            return `<td style="${style}"${span}>${richHtml(cell.text, language) || '&nbsp;'}</td>`;
+            // A picture inside the cell prints under its words, centred — the boxed
+            // stimulus that frames an extract and a photograph together.
+            const cellImage = cell.image
+              ? `<p style="text-align:center;margin:0"><img src="${cell.image.src}" ` +
+                `width="${cell.image.widthPx}" height="${cell.image.heightPx}" ` +
+                `alt="${escapeHtml(plain(cell.image.altText.en) || plain(cell.image.altText.zh) || 'Image')}"/></p>`
+              : '';
+            const body = (richHtml(cell.text, language) || (cellImage ? '' : '&nbsp;')) + cellImage;
+            return `<td style="${style}"${span}>${body}</td>`;
           })
           .join('');
         const minHeight = node.rowHeights[rowIndex];
@@ -189,8 +199,11 @@ function nodeHtml(
           : node.indent > 0
             ? `margin-left:${(node.indent * 100).toFixed(3)}%;`
             : '');
+    // The frame of a boxed stimulus. On the table rather than on the edge cells, so it
+    // stays one unbroken rectangle however the rows are merged or spanned.
+    const frame = node.borders === 'box' ? 'border:1px solid #000;' : '';
     const table =
-      `<table style="border-collapse:collapse;${box}table-layout:fixed;${fontCss}">` +
+      `<table style="border-collapse:collapse;${frame}${box}table-layout:fixed;${fontCss}">` +
       `${colgroup}<tbody>${rows}</tbody></table>`;
     return node.captionPlacement === 'above' ? caption + table : table + caption;
   }
@@ -245,7 +258,7 @@ function nodeHtml(
     // A data: URI survives the paste into Word as an embedded image.
     const alt = escapeHtml(plain(node.altText.en) || plain(node.altText.zh) || 'Image');
     const picture =
-      `<p style="text-align:center"><img src="${src}" width="${node.widthPx}" ` +
+      `<p style="text-align:${node.align}"><img src="${src}" width="${node.widthPx}" ` +
       `height="${node.heightPx}" alt="${alt}"/></p>`;
 
     // Only a picture has a caption beside it. A diagram's words are drawn inside its own

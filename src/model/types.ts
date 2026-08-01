@@ -124,6 +124,20 @@ export interface CellPadding {
 export interface TableCell {
   id: string;
   text: BiText;
+  /**
+   * A picture printed inside the cell, under its text.
+   *
+   * DSE 2021 P1 Q30 boxes a news extract with a photograph inside the same frame, which
+   * no arrangement of separate blocks reproduces — a picture *beside* the box is a
+   * different thing on the page, and the frame has to enclose both.
+   *
+   * An image rather than a general `ContentBlock[]`: a cell is one `w:p` in the `.docx`,
+   * and a picture is the one thing that can join those runs without the cell becoming a
+   * recursive structure every backend would have to re-walk. A table inside a table, or
+   * a diagram that must rasterize before its own container can measure, are the cases
+   * this deliberately does not open.
+   */
+  image?: CellImage;
   colSpan?: number;
   rowSpan?: number;
   align?: CellAlign;
@@ -189,12 +203,49 @@ export interface TableRow {
  */
 export type CaptionPlacement = 'above' | 'below';
 
+/**
+ * Which rules a table draws.
+ *
+ * `all` is the ordinary ruled grid and stays **unstored**, so every existing table
+ * exports byte-identically.
+ *
+ * `box` is the other shape the reference papers use, and it is a genuinely different
+ * thing rather than a styling preference: DSE 2021 P1 boxes a stimulus four times — a
+ * news extract (Q18), a pay arrangement (Q7), three numbered proposals (Q21) — and what
+ * the box means is "this material is set apart", not "these are cells". Q21 in
+ * particular is one framed block whose three rows carry *no* rule between them, which a
+ * uniform grid cannot express at any padding.
+ *
+ * Deliberately two named modes rather than per-edge border control. Per-cell borders
+ * were removed once already for being wrong about real papers (see the note above), and
+ * the papers only ever draw these two: everything else would be a setting nobody needs
+ * and every backend would have to agree about.
+ */
+export type TableBorders = 'all' | 'box';
+
+/**
+ * A picture inside a table cell.
+ *
+ * Its own small type rather than reusing `ImageBlock`: a cell's picture takes no caption
+ * (the cell's text is its caption) and no `captionPlacement`, and it is not a block in
+ * the document flow, so it carries no id anything else addresses.
+ */
+export interface CellImage {
+  /** data: URL or app-managed asset id. Never a remote URL. */
+  src: string;
+  widthPx: number;
+  heightPx: number;
+  altText: BiText;
+}
+
 export interface TableBlock {
   kind: 'table';
   id: string;
   rows: TableRow[];
   caption?: BiText;
   captionPlacement?: CaptionPlacement;
+  /** Which rules the table draws. Undefined means `all`. */
+  borders?: TableBorders;
   /** The table's own default padding, under every row, column and cell. */
   cellPadding?: CellPadding;
   /**
@@ -265,6 +316,20 @@ export interface ImageBlock {
   naturalHeightPx?: number;
   caption?: BiText;
   captionPlacement?: CaptionPlacement;
+  /**
+   * How the picture sits in the content column. Undefined means `left`.
+   *
+   * The same decision a table makes with `w:jc`, and stored the same way: only a
+   * deviation is written down, so an untouched image exports byte-identically. Word
+   * models a picture's placement as `w:jc` on the *paragraph* that holds the drawing —
+   * there is no alignment property on the drawing itself — which is why this rides on
+   * the block rather than on the image.
+   *
+   * Unlike a table it takes no `indent` companion: a picture has an intrinsic width and
+   * no column grid, so "centre" is the whole answer and there is no second way to
+   * express it that could disagree.
+   */
+  align?: TableAlign;
   altText: BiText;
 }
 
@@ -299,6 +364,8 @@ export interface DiagramBlock {
    * Tables and images keep their captions: neither can bake text into itself.
    */
   altText: BiText;
+  /** How the picture sits in the content column. Undefined means `left`; see `ImageBlock`. */
+  align?: TableAlign;
 }
 
 export type ContentBlock = ParagraphBlock | TableBlock | ImageBlock | DiagramBlock;
@@ -315,6 +382,26 @@ export interface QuestionBase {
 export interface McqOption {
   id: string;
   text: BiText;
+  /**
+   * Content printed *under* the option's own line — a diagram, a picture, a table.
+   *
+   * DSE 2021 P1 Q36 is the case this exists for: the four options are AD-AS diagrams
+   * rather than sentences, and the question is unanswerable without them. `text` stays
+   * the option's words (usually empty when blocks carry the whole answer), so an
+   * ordinary option is untouched and stores nothing here.
+   *
+   * Blocks rather than a single figure because the same shape covers a picture with a
+   * caption under it, and because `renderContentBlocks` already knows how to walk a
+   * list — a one-off "optionDiagram" field would have needed its own renderer in each
+   * of the three backends.
+   *
+   * A blocks-bearing option is always **stacked**: a side-by-side row exports as one
+   * paragraph with tab stops (§ ColumnsNode is the row primitive), and a paragraph
+   * cannot hold four pictures side by side. `resolveOptionLayout` enforces that rather
+   * than leaving it to the author, since the failure is silent — the layout would
+   * simply drop the figures.
+   */
+  blocks?: ContentBlock[];
 }
 
 /**

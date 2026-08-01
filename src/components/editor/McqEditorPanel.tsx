@@ -2,7 +2,8 @@
 
 import { statementLabel, optionLabel } from '@/model/numbering';
 import { emptyBiText } from '@/model/text';
-import type { BiText, McqOptionLayout, McqQuestion } from '@/model/types';
+import { OPTION_DIAGRAM_WIDTH_PX, createParagraphBlock } from '@/model/factories';
+import type { BiText, ContentBlock, McqOptionLayout, McqQuestion } from '@/model/types';
 import { resolveOptionLayout, suggestOptionLayout } from '@/registry/mcq';
 import type { EditorPanelProps } from '@/registry/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
@@ -18,6 +19,23 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
 
   const setStatements = (next: BiText[]) =>
     onChange({ statements: next.length > 0 ? next : undefined });
+
+  /**
+   * Set (or clear) the blocks an option carries.
+   *
+   * Emptying it drops the key rather than storing `[]`, so an option that briefly had a
+   * figure is indistinguishable from one that never did — the same rule every optional
+   * field follows, and what keeps `resolveOptionLayout` from pinning a question to
+   * `stacked` because of a figure that is no longer there.
+   */
+  const setOptionBlocks = (index: number, blocks: ContentBlock[]) =>
+    onChange({
+      options: question.options.map((option, i) =>
+        i === index
+          ? { ...option, blocks: blocks.length > 0 ? blocks : undefined }
+          : option,
+      ),
+    });
 
   const moveStatement = (index: number, delta: number) => {
     const target = index + delta;
@@ -157,7 +175,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
                     {optionLabel(index)}
                   </span>
                 </label>
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 space-y-1.5">
                   <BiTextField
                     value={option.text}
                     rows={1}
@@ -167,6 +185,30 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
                       })
                     }
                   />
+                  {/* An option can be a *figure* — "which of the following diagrams best
+                      describes…", where the four answers are AD–AS plots rather than
+                      sentences and the question cannot be asked without them.
+
+                      The same `BlockEditor` the stem uses, so a diagram in an option is
+                      inserted, templated and edited exactly as one in a stem; only shown
+                      once there is something to show, since the overwhelmingly common
+                      option is a line of text and a permanent insert row under all four
+                      would bury it. */}
+                  {(option.blocks?.length ?? 0) > 0 ? (
+                    <BlockEditor
+                      blocks={option.blocks ?? []}
+                      onChange={(blocks) => setOptionBlocks(index, blocks)}
+                      figureWidth={OPTION_DIAGRAM_WIDTH_PX}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      className="cursor-pointer text-[11px] text-ink-subtle underline-offset-2 hover:text-ink hover:underline"
+                      onClick={() => setOptionBlocks(index, [createParagraphBlock(emptyBiText())])}
+                    >
+                      + Add a figure to this option
+                    </button>
+                  )}
                 </div>
               </div>
             );

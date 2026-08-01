@@ -120,6 +120,13 @@ function n(value: number): string {
  * So a bilingual diagram prints the English label with the Chinese beneath it *only*
  * where the label is a standalone axis title, and prefers the single populated side
  * everywhere else. `pickSides` returns the lines to draw, in order.
+ *
+ * Each side is then cut at its own hard breaks. A newline is ordinary run text
+ * (§ newline is run text), so a renderer that does not split it prints a space instead —
+ * and `textAt` already stacks a list of lines, which is how a bilingual label prints
+ * two. The reference paper needs this for a y-axis title set as "Nominal / interest
+ * rate" and a curve label set as "average / growth rate": one line each would run them
+ * together and, being longer, would also widen the reserved margin around the plot.
  */
 function pickSides(text: BiText | undefined, language: LanguageMode): RichText[] {
   if (!text) return [];
@@ -128,19 +135,45 @@ function pickSides(text: BiText | undefined, language: LanguageMode): RichText[]
   const hasEn = en.some((run) => run.text.trim() !== '');
   const hasZh = zh.some((run) => run.text.trim() !== '');
 
-  if (language === 'en') return hasEn ? [en] : hasZh ? [zh] : [];
-  if (language === 'zh') return hasZh ? [zh] : hasEn ? [en] : [];
+  if (language === 'en') return hasEn ? richLines(en) : hasZh ? richLines(zh) : [];
+  if (language === 'zh') return hasZh ? richLines(zh) : hasEn ? richLines(en) : [];
 
   const sides: RichText[] = [];
-  if (hasEn) sides.push(en);
+  if (hasEn) sides.push(...richLines(en));
   // Curve and point names are symbols, not prose: "AD", "LRAS", "E₀" and "Q₁" are
   // written the same in both languages, and a teacher fills both sides so the label
   // survives whichever mode the worksheet is printed in. Stacking two identical lines
   // would print "AD" twice on top of the curve, so an identical side is dropped —
   // only a genuine translation ("Price level" / "價格水平") stacks.
-  if (hasZh && !(hasEn && sameText(en, zh))) sides.push(zh);
+  if (hasZh && !(hasEn && sameText(en, zh))) sides.push(...richLines(zh));
   return sides;
 }
+
+/**
+ * One side's runs, cut into printed lines at every hard break.
+ *
+ * Run-aware, unlike `runLines` in `model/text.ts`, which splits a plain string: a
+ * diagram label is exactly where formatting must survive a break, since "M" + subscript
+ * "d1" is one run pair and a label like "average\ngrowth rate" may carry bold on one
+ * word. Splitting the flattened string and re-parsing would drop `vertAlign`, which is
+ * the whole naming convention of DSE diagrams.
+ *
+ * A run holding no newline passes through untouched, so the common single-line label
+ * allocates one array and keeps its run identity.
+ */
+function richLines(runs: RichText): RichText[] {
+  const lines: RichText[] = [[]];
+  for (const run of runs) {
+    const pieces = run.text.replace(/\r\n?/g, '\n').split('\n');
+    pieces.forEach((piece, index) => {
+      // Every piece after the first opens a new line; the break itself prints nothing.
+      if (index > 0) lines.push([]);
+      if (piece !== '') lines[lines.length - 1].push({ ...run, text: piece });
+    });
+  }
+  return lines;
+}
+
 
 /** Do these two sides render to the same string? */
 function sameText(a: RichText, b: RichText): boolean {

@@ -404,6 +404,70 @@ export function replaceRichTextRange(
   return normalizeRuns(out);
 }
 
+/**
+ * The characters a fill-in blank is made of.
+ *
+ * Spaces carrying `underline`, not underscores: Word rules a blank the same way, so the
+ * exported run is what a teacher would have typed by hand, and the line stays a
+ * continuous rule at any font size instead of a row of glyphs with gaps between them.
+ * `xml:space="preserve"` on every `w:t` is what keeps them from collapsing (§ per-run
+ * formatting).
+ *
+ * Twelve is the reference paper's common width — "…regarded as ____________ because" —
+ * wide enough to write an answer in and narrow enough that two fit on a line.
+ */
+const BLANK_WIDTH = 12;
+
+/**
+ * Insert a fill-in blank at the caret.
+ *
+ * DSE Paper 1 runs this shape through a third of its questions ("This is an example of
+ * using ______ to solve the problem of ______."), so it is a single action rather than
+ * something a teacher assembles by holding the space bar and underlining the result.
+ *
+ * Deliberately **not** a new run kind or a storage marker. An underlined space already
+ * exports, pastes and prints correctly through all three backends and needs no
+ * migration; a `blank` run type would have to be taught to each of them, and would print
+ * as nothing in any build that did not know it yet. What was missing was never the
+ * representation — only a way to reach it.
+ *
+ * The format is forced rather than inherited: `replaceRichTextRange` continues the run
+ * to the caret's left, which for a blank typed after ordinary prose is exactly the wrong
+ * answer — it would insert twelve invisible spaces.
+ */
+export function insertBlank(
+  runs: RichText | undefined,
+  start: number,
+  end: number,
+  width: number = BLANK_WIDTH,
+): RichText {
+  const source = runs ?? [];
+  const length = richTextLength(source);
+  const from = Math.max(0, Math.min(start, end, length));
+  const to = Math.min(length, Math.max(start, end));
+
+  const split = splitAt(splitAt(source, from), to);
+  const before: RichText = [];
+  const after: RichText = [];
+  let seen = 0;
+  for (const run of split) {
+    const runEnd = seen + run.text.length;
+    if (runEnd <= from) before.push(run);
+    else if (seen >= to) after.push(run);
+    seen = runEnd;
+  }
+
+  // Only `underline` carries over from the surrounding run; size, colour and font follow
+  // the text the blank sits in, so a blank inside a 14pt line rules at 14pt.
+  const neighbour = before.length ? before[before.length - 1] : after.length ? after[0] : undefined;
+  const attrs = neighbour ? runAttrs(neighbour) : {};
+  return normalizeRuns([
+    ...before,
+    { ...attrs, text: ' '.repeat(Math.max(1, width)), underline: true, vertAlign: undefined },
+    ...after,
+  ]);
+}
+
 /** The runs covering `[start, end)`, split at both ends. */
 export function sliceRichText(
   runs: RichText | undefined,

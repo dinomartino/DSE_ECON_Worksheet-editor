@@ -4,10 +4,12 @@ import type {
   BiText,
   CaptionPlacement,
   CellAlign,
+  CellImage,
   CellPadding,
   ContentBlock,
   OutputMode,
   TableAlign,
+  TableBorders,
   TextFormat,
 } from '@/model/types';
 import { trailingBlankLines } from '@/model/text';
@@ -151,6 +153,8 @@ export interface TableNodeCell {
   padding: Required<CellPadding>;
   /** Direct formatting for the cell's text, over the Body style. */
   format?: TextFormat;
+  /** A picture printed under the cell's text; see `TableCell.image`. */
+  image?: CellImage;
   edit?: EditTarget;
 }
 
@@ -185,6 +189,11 @@ export interface TableNode {
    * `indent` without having to know they are alternatives.
    */
   align: TableAlign;
+  /**
+   * Which rules the table draws. **Always resolved**, like the box and the column
+   * widths — an unstored value means `all`, and no backend should decide that alone.
+   */
+  borders: TableBorders;
   /** A floor on each row's height in twips, in row order; undefined means content-sized. */
   rowHeights: (number | undefined)[];
   /** Which block this came from, so the preview can resize its columns. */
@@ -213,6 +222,14 @@ export interface ImageNode {
   captionEdit?: EditTarget;
   /** Which side the caption prints on; always resolved. See `TableNode`. */
   captionPlacement: CaptionPlacement;
+  /**
+   * How the picture sits in the content column (`w:jc` on its paragraph).
+   *
+   * **Always resolved**, like `captionPlacement` and the table box: an unstored
+   * alignment means `left`, and three backends each deciding that separately is three
+   * chances to disagree about where the figure sits.
+   */
+  align: TableAlign;
   /** Which block this came from, so the preview can select and resize it. */
   blockId: string;
 }
@@ -248,6 +265,8 @@ export interface DiagramNode {
    * drift away from the figure. Every backend therefore renders a diagram as exactly one
    * image and nothing else.
    */
+  /** How the picture sits in the content column; always resolved. See `ImageNode`. */
+  align: TableAlign;
   /** Which block this came from, so the preview can select and edit it. */
   blockId: string;
 }
@@ -484,6 +503,7 @@ export function renderContentBlocks(
         columnWidths: resolveColumnWidths(block, columnCount),
         ...resolveTableBox(block),
         rowHeights: block.rows.map((row) => row.minHeight),
+        borders: block.borders ?? 'all',
         blockId: block.id,
         caption: block.caption,
         captionPlacement: block.captionPlacement ?? 'below',
@@ -499,6 +519,7 @@ export function renderContentBlocks(
             covered: Boolean(cell.covered),
             padding: resolveCellPadding(block, rowIndex, cellIndex),
             format: cell.format,
+            image: cell.image,
             edit: { kind: 'tableCell', blockId: block.id, cellId: cell.id },
           })),
         ),
@@ -512,6 +533,7 @@ export function renderContentBlocks(
         altText: block.altText,
         keepNext: options.keepNext,
         teacherOnly: options.teacherOnly,
+        align: block.align ?? 'center',
         blockId: block.id,
       });
     } else {
@@ -523,6 +545,7 @@ export function renderContentBlocks(
         altText: block.altText,
         caption: block.caption,
         captionPlacement: block.captionPlacement ?? 'below',
+        align: block.align ?? 'center',
         keepNext: options.keepNext,
         teacherOnly: options.teacherOnly,
         captionEdit: { kind: 'blockCaption', blockId: block.id },

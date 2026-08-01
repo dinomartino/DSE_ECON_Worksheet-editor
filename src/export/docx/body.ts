@@ -1,4 +1,11 @@
-import type { BiText, CaptionPlacement, FontPair, LanguageMode, TextFormat } from '@/model/types';
+import type {
+  BiText,
+  CaptionPlacement,
+  FontPair,
+  LanguageMode,
+  TableAlign,
+  TextFormat,
+} from '@/model/types';
 import type {
   ColumnsNode,
   DiagramNode,
@@ -316,7 +323,22 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
     (tableIndent > 0 ? `<w:tblInd w:w="${tableIndent}" w:type="dxa"/>` : '') +
     '<w:tblLayout w:type="fixed"/>' +
     '<w:tblBorders>' +
-    ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map(border).join('') +
+    /*
+     * A boxed stimulus rules its frame and nothing inside it.
+     *
+     * `w:val="none"` rather than omitting the inner elements: Word inherits an unstated
+     * border from the table style, so leaving them out draws the grid the box exists to
+     * suppress. The frame's four sides are unchanged, which is what keeps an ordinary
+     * table byte-identical.
+     */
+    ['top', 'left', 'bottom', 'right'].map(border).join('') +
+    ['insideH', 'insideV']
+      .map((side) =>
+        node.borders === 'box'
+          ? `<w:${side} w:val="none" w:sz="0" w:space="0" w:color="auto"/>`
+          : border(side),
+      )
+      .join('') +
     '</w:tblBorders>' +
     '</w:tblPr>';
 
@@ -363,9 +385,27 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
                 formatRunOptions(cell.format),
               );
 
+          // A picture inside the cell, as its own paragraph under the text — a cell's
+          // first paragraph carries the words, and a drawing needs the `lineRule="auto"`
+          // that `pictureXml` sets and `cellParagraph` cannot.
+          const picture =
+            !coveredVertically && cell.image
+              ? pictureXml(
+                  {
+                    src: cell.image.src,
+                    widthPx: cell.image.widthPx,
+                    heightPx: cell.image.heightPx,
+                    altText: cell.image.altText,
+                    align: 'center',
+                  },
+                  context,
+                )
+              : '';
+
           return (
             `<w:tc><w:tcPr>${props.join('')}</w:tcPr>` +
             cellParagraph(runs, cell.align, cell.format) +
+            picture +
             '</w:tc>'
           );
         })
@@ -427,6 +467,7 @@ function pictureXml(
     caption?: BiText;
     captionPlacement?: CaptionPlacement;
     keepNext?: boolean;
+    align?: TableAlign;
   },
   context: BodyContext,
 ): string {
@@ -468,7 +509,11 @@ function pictureXml(
   const imageParagraph =
     '<w:p><w:pPr>' +
     `<w:pStyle w:val="${STYLE_IDS.Body}"/>` +
-    '<w:jc w:val="center"/>' +
+    // A picture is placed by `w:jc` on its own paragraph — there is no alignment
+    // property on the drawing itself. Centre is the default rather than `left` because
+    // every figure in the reference papers is centred; `align` only records a teacher
+    // who chose otherwise, so untouched documents keep exporting exactly as before.
+    `<w:jc w:val="${node.align ?? 'center'}"/>` +
     // The picture's line must be allowed to grow to the picture.
     //
     // Every other paragraph carries the document's fixed 12pt line

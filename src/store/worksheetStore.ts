@@ -14,6 +14,7 @@ import {
   applyDeleteTarget,
   applyEditTarget,
   applyFormatTarget,
+  applyInsertBlank,
   applyRunFormatTarget,
   applyResizeBlock,
   mapTableBlock,
@@ -223,6 +224,14 @@ interface WorksheetState {
     end: number,
     patch: RunFormatPatch,
   ) => void;
+  /**
+   * Insert a fill-in blank at the caret, replacing any selected characters.
+   *
+   * Its own verb rather than a `formatRuns` patch, because it changes the *text* — the
+   * paper's "…using ______ to solve the problem of ______." shape, which a third of its
+   * questions use.
+   */
+  insertBlank: (target: EditTarget, side: 'en' | 'zh', start: number, end: number) => void;
   resizeBlock: (blockId: string, widthPx: number) => void;
   /**
    * Extend a sizeable layout element — answer lines by count, a spacer by points.
@@ -957,6 +966,8 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     get().commit((draft) => applyFormatTarget(draft, target, patch)),
   formatRuns: (target, side, start, end, patch) =>
     get().commit((draft) => applyRunFormatTarget(draft, target, side, start, end, patch)),
+  insertBlank: (target, side, start, end) =>
+    get().commit((draft) => applyInsertBlank(draft, target, side, start, end)),
   resizeBlock: (blockId, widthPx) =>
     get().commit((draft) => applyResizeBlock(draft, blockId, widthPx)),
   resizeLayoutElement: (elementId, value) =>

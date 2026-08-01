@@ -18,7 +18,7 @@ and the code disagree, the code is right — fix the document in the same PR.
 | State | Zustand 5, undo/redo, 100-entry history |
 | Language | TypeScript strict |
 | Export | Raw OOXML via JSZip (hand-built, no `docx` library) |
-| Test | Vitest 4 — ~580 tests across 23 files, ~1s |
+| Test | Vitest 4 — ~606 tests across 30 files, ~1s |
 | Runtime | Browser-only: client-side `.docx`, no API routes |
 
 ## Project structure
@@ -81,7 +81,7 @@ Worksheet
 ├── header? / footer?: HeaderFooter
 │     enabled · bands · rule? · showOnFirstPage? · firstPage?: { bands, rule? }
 ├── questions: Question[]      every question, in printed order
-│     ├── McqQuestion         blocks · statements? · options · optionLayout? · answerIndex · marks · explanation?
+│     ├── McqQuestion         blocks · statements? · options[ text · blocks? ] · optionLayout? · answerIndex · marks · explanation?
 │     └── StructuredQuestion  blocks · showTotalMarks? · parts[ blocks · marks? · answer? · subParts? ]
 ├── layout: LayoutElement[]    section · heading · text · spacer · divider · pageBreak ·
 │                              answerLines · partHeader · labelList
@@ -94,8 +94,11 @@ BiText { en: RichText, zh: RichText }        RichText = InlineRun[]
 
 TableBlock   rows · caption? · width? · indent?  (box, fractions of content width)
              columnWidths? (fractions of the *table*) · cellPadding? · columnPadding?[]
+             borders? ('all' | 'box' — a boxed stimulus rules its frame only)
   TableRow     cells · cellPadding? · minHeight?     padding resolves cell → column → row → table → default
-    TableCell    text · colSpan? · rowSpan? · align? · covered? · padding? · format?
+    TableCell    text · image? · colSpan? · rowSpan? · align? · covered? · padding? · format?
+
+ImageBlock / DiagramBlock also carry `align?` (`w:jc` on the picture's paragraph).
 ```
 
 **Numbering and marks are never stored.** `computeNumbering()` and
@@ -185,6 +188,33 @@ Cell positions are fractions of the row's own width (after `indent`), so they su
 paper/margin changes. Cost: inline MCQ options get literal `A.`–`D.` text (one paragraph
 cannot carry four list numbers); stacked options keep native `w:num`.
 
+### An option can be a picture, and then it must stack
+
+`McqOption.blocks` exists for the "which of the following **diagrams**…" question (DSE
+2021 P1 Q36), where the four options *are* figures and the question is unanswerable
+without them. The blocks render after the option's own numbered paragraph — not inside
+it, since a `w:drawing` in a list item takes the marker's hanging indent and needs the
+`lineRule="auto"` an option style cannot give it.
+
+- **A blocks-bearing option forces `stacked`**, in `resolveOptionLayout` rather than on
+  write, so it stays true for documents authored before options could carry blocks. A
+  side-by-side row is one paragraph of tab stops and cannot hold a picture per cell — the
+  figures would be dropped *silently*, leaving a question that looks complete and cannot
+  be answered.
+- **The option letter keeps with its own figure** (`keepNext`), including the last one,
+  or Word breaks the page between "D." and the diagram that answers it.
+- `questionBlockLists` and `mapAllBlocks` both read `options` **structurally**, like
+  `parts` — no branch on a concrete type id (§registry). The two must reach the same
+  lists, or a block is findable but unwritable.
+- **The blocks indent to the option's own text column** (`OPTION_LIST_INDENT.left`, not
+  restated), because they continue the answer the letter introduces. An unset indent puts
+  them at the page margin — correct-looking in every unit test, wrong on the page.
+- Authored through the **same `BlockEditor` the stem uses**, so a diagram in an option is
+  inserted and templated identically. It takes a `figureWidth`: four figures stack in one
+  question, and the stem's full-column default would put each a third of a page down.
+  Offered behind an affordance rather than a permanent insert row — the common option is a
+  line of text, and four insert rows would bury it.
+
 ### Per-element formatting (`TextFormat`)
 
 Named styles supply defaults; `TextFormat` records **only deltas**, applied as direct
@@ -256,9 +286,24 @@ Rules the surface must keep (each failed silently before):
   inverted clicks: Title is bold → bar sent "clear bold"). The blur handler ignores
   focus moving into `[role="toolbar"]`.
 
+- **A collapsed caret is published, and only when it changes.** The surface used to drop
+  it, since the sole consumer was the format toolbar and formatting an empty range is
+  meaningless — but *inserting* at a caret is the ordinary case, so a control needing one
+  simply never appeared. Publishing it exposed the second half: `selectionOffsets` builds
+  a fresh object per call, so an unconditional publish sets state to a value that is
+  equal but never identical, and the render that follows republishes it until React bails
+  out ("Maximum update depth exceeded"). `sameSelection` compares by value; consumers
+  wanting a genuine range check `start < end` themselves (`runRange` vs `runCaret` in
+  `Preview.tsx`). Both directions are invisible to a unit test of the feature — the
+  button's absence and the loop both only show in a browser.
+
 `replaceRichTextRange(runs, start, end, insert, fallback)` is the edit primitive:
 inserted characters inherit from the run left of the caret (then right, then fallback) —
-Word's rule.
+Word's rule. **`insertBlank` is the deliberate exception**: a fill-in blank ("…using
+______ to solve…", a third of DSE P1's questions) forces `underline` instead of
+inheriting, or a blank typed after ordinary prose is twelve invisible spaces. It stays
+underlined spaces rather than a new run kind or marker — that already exports, pastes and
+prints through all three backends, so what was missing was only a way to reach it.
 
 ---
 
@@ -354,6 +399,13 @@ vertical rhythm comes from the line box. Consequences (each fails silently):
   simply looks empty. `auto` is what Word writes for an inline picture, so an edited file
   round-trips. Separation around the figure stays a blank line, never spacing on this
   paragraph.
+- **A picture is placed by `w:jc` on that same paragraph** — there is no alignment
+  property on the drawing itself. `align` on `ImageBlock`/`DiagramBlock` is resolved in
+  the IR (like the table box) and defaults to **`center`**, not `left`: both backends
+  hardcoded centring before this existed, every figure in the reference papers is
+  centred, and only a teacher who chose otherwise stores anything. The preview expresses
+  it as `text-align` — the property `w:jc` actually maps to — so neither figure may carry
+  `mx-auto`, which reads as "centre" whatever `align` says.
 - **Every style states its own metrics.** Word merges `w:spacing` as a whole element, so
   a style setting only `w:before`/`w:after` silently drops `w:line`;
   `formatParagraphProps()` restates the line whenever a teacher overrides spacing or
@@ -426,6 +478,27 @@ ordinary per-cell formatting. Removed without migration (existing header rows be
 plain, which is what the papers look like); regression tests assert
 `not.toContain('<w:tblHeader/>')` and `not.toContain('EFEFEF')` — the only symptom is on
 paper.
+
+### A boxed stimulus is a frame with nothing ruled inside it
+
+`TableBorders` is `'all' | 'box'` — two named modes, deliberately not per-edge control
+(which was removed once already for being wrong about real papers). The papers draw only
+these two: DSE 2021 P1 boxes a stimulus four times, and Q21 is one frame around three
+proposals with **no rule between them**, which a uniform grid cannot express at any
+padding.
+
+- **`box` writes `w:val="none"` on `insideH`/`insideV`, it does not omit them** — Word
+  inherits an unstated border from the table style, so omitting draws the very grid the
+  box exists to suppress. The frame's four sides are unchanged, which keeps an ordinary
+  table byte-identical (pinned by a test comparing stored `'all'` against unstored).
+- **The frame sits on the table, the cells go borderless** in both HTML backends, so it
+  stays one unbroken rectangle however the rows are merged.
+- **`TableCell.image` is the other half** (Q30: an extract and a photograph inside one
+  frame). An image, not a `ContentBlock[]`: a cell is one `w:p`, and a picture is the one
+  thing that can join those runs without making a cell recursive for every backend. It
+  must be added to `collectImages`' walk — emitted but uncollected is a dangling
+  `r:embed`, which Word reports as a repair error on the **whole file** rather than as
+  one missing picture.
 
 ### Padding resolves in one direction; Word only understands the answer
 
@@ -635,6 +708,14 @@ Renderer rules that only show on a real page:
   canvas but never left of the arrow tip. The clamp lives there (not `diagramSvg`)
   because `DiagramCanvas` builds the drag handle from the same call.
 - **Bilingual labels with identical sides print once** ("AD", "E₀" are symbols).
+- **Every side is then cut at its own hard breaks** (`richLines`, fed by `pickSides` —
+  the one funnel from `BiText` to drawn lines, so all seven text kinds get it). A newline
+  is ordinary run text, so a renderer that does not split prints a *space*: the reference
+  paper sets a y-axis title as "Nominal / interest rate" and a curve label as "average /
+  growth rate". Run-aware, not `runLines` on the flattened string — a diagram label is
+  exactly where `vertAlign` must survive a break ("M" + subscript "d1"). The measurements
+  follow for free: `titleRoom` counts lines, and `estimateWidth` takes the *widest*, so
+  breaking a long axis title correctly **narrows** the reserved margin.
 - **A point's label defaults to `right`** — a marked point is nearly always an
   intersection, and up-right is where the other curve runs.
 

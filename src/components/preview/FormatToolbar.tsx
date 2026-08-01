@@ -80,6 +80,14 @@ interface Props {
   onVertAlign?: (value: 'superscript' | 'subscript' | undefined) => void;
   /** The vertical alignment the selected characters already carry, if uniform. */
   vertAlign?: 'superscript' | 'subscript';
+  /**
+   * Insert a fill-in blank at the caret, replacing any selected characters.
+   *
+   * A text edit rather than a format, so it travels on its own channel like
+   * `onVertAlign` — and absent for the same reason: with no character caret there is
+   * nowhere to put it, and the bar hides the control rather than offering a dead one.
+   */
+  onInsertBlank?: () => void;
   onReset: () => void;
   /** Dismiss the bar, clearing the page selection. */
   onClose?: () => void;
@@ -103,6 +111,7 @@ export function FormatToolbar({
   onChange,
   onVertAlign,
   vertAlign,
+  onInsertBlank,
   onReset,
   onClose,
   onDelete,
@@ -267,6 +276,22 @@ export function FormatToolbar({
             </span>
           </button>
         </>
+      )}
+
+      {/* A fill-in blank. Its own action rather than a format, because it inserts
+          characters: the paper runs "…is an example of using ______ to solve…" through a
+          third of its questions, and the alternative is holding the space bar and
+          underlining the result by hand. */}
+      {onInsertBlank && (
+        <button
+          type="button"
+          aria-label="Insert blank"
+          title="Insert a fill-in blank"
+          className={`${BTN} ${IDLE}`}
+          onClick={onInsertBlank}
+        >
+          <span aria-hidden className="underline">&nbsp;&nbsp;&nbsp;</span>
+        </button>
       )}
 
       <span className="mx-0.5 h-5 w-px bg-slate-700" aria-hidden />

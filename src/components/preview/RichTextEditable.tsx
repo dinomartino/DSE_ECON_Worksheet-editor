@@ -55,6 +55,24 @@ interface Props {
   onBlur?: (event: React.FocusEvent<HTMLSpanElement>) => void;
 }
 
+/**
+ * Do these two describe the same selection?
+ *
+ * Compared by value because `selectionOffsets` builds a fresh object every call: an
+ * identity check would report every caret as new, and since publishing one causes a
+ * render that republishes it, the pair loops until React bails out with "Maximum update
+ * depth exceeded". Exported so the rule is tested where it is used, rather than restated
+ * in a test that could drift from it.
+ */
+export function sameSelection(
+  next: { start: number; end: number } | undefined,
+  previous: { start: number; end: number } | undefined,
+): boolean {
+  if (next === previous) return true;
+  if (!next || !previous) return false;
+  return next.start === previous.start && next.end === previous.end;
+}
+
 export function RichTextEditable({
   value,
   onChange,
@@ -72,6 +90,8 @@ export function RichTextEditable({
 }: Props) {
   const hostRef = useRef<HTMLSpanElement>(null);
   const paintedRef = useRef<RichText | undefined>(undefined);
+  /** The last selection handed upward, so an unchanged one is not republished. */
+  const publishedRef = useRef<{ start: number; end: number } | undefined>(undefined);
 
   // Stable reference, so the paint effect does not fire on every render — which would
   // move the caret on every keystroke.
@@ -106,8 +126,30 @@ export function RichTextEditable({
     if (!onSelectionChange) return;
     const host = hostRef.current;
     if (!host) return;
-    const at = selectionOffsets(host);
-    onSelectionChange(at && at.start !== at.end ? at : undefined);
+    /*
+     * Only a *changed* selection is published.
+     *
+     * `selectionOffsets` builds a fresh object every call, so an unconditional publish
+     * sets state to a value that is equal but never identical — and with the caret now
+     * published as well, the resulting render re-runs this and the pair loops until
+     * React gives up ("Maximum update depth exceeded"). While only non-empty ranges were
+     * reported the loop was rarer and went unnoticed; comparing by value is what
+     * actually makes it correct.
+     */
+    const next = selectionOffsets(host);
+    if (sameSelection(next, publishedRef.current)) return;
+    publishedRef.current = next;
+    /*
+     * A collapsed caret is published too, not discarded.
+     *
+     * It used to be dropped here because the only consumer was the format toolbar, and
+     * formatting an empty range is meaningless. But a caret is a real position, and
+     * *inserting* at one is the ordinary case — a fill-in blank goes between two words,
+     * so requiring a selection would mean selecting the characters you do not want to
+     * lose. Consumers that need a genuine range check `start < end` themselves
+     * (`runRange` in `Preview.tsx`), which is where that rule belongs.
+     */
+    onSelectionChange(next);
   };
 
   /** Read the browser's edit back into runs. */
