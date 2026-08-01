@@ -616,7 +616,17 @@ Word gets a raster (SVG support varies; one image = one object a stray click can
 pull apart). Rasterizing needs a canvas, so it is the one browser-only async part:
 `export/diagramImage.ts` is a pre-pass returning `Map<blockId, pngDataUrl>`, keeping
 `buildParts`/clipboard synchronous and unit-testable. No map → a diagram emits **no
-drawing at all** (a dangling relationship is a Word repair error).
+drawing at all** (a dangling relationship is a Word repair error) — so `exportDocx`
+**refuses to export** instead, naming the diagram by its alt text. Emitting nothing is
+correct but silent, and a missing figure is indistinguishable from one nobody added;
+that ambiguity turned a correct export into a session-long misdiagnosis once already.
+`exportDocxBuffer` skips the check and takes its map as an argument, which is what lets
+tests and scripts drive the synchronous path.
+
+`collectImages` walks only `rendered.items` while the pre-pass also walks bands, title
+and instructions. **Not a bug**: a band renders as `columns` and title/instructions as
+`text`, so none can hold a picture — pinned by a test, since two walks that disagree
+would otherwise be exactly how a rasterized image goes unembedded.
 
 Renderer rules that only show on a real page:
 

@@ -18,7 +18,7 @@ import { plain } from '@/model/text';
 import type { Band, BandField, FontPair, HeaderFooter, LanguageMode, OutputMode, Worksheet } from '@/model/types';
 import type { RenderNode } from '@/render/ir';
 import { bandFieldText, collectListStreams, renderWorksheet } from '@/render/worksheet';
-import { renderDiagramImages, type DiagramImageMap } from '../diagramImage';
+import { collectDiagramNodes, renderDiagramImages, type DiagramImageMap } from '../diagramImage';
 import { renderNodeXml, type BodyContext } from './body';
 import { assignNumIds, buildNumberingXml } from './numbering';
 import {
@@ -124,6 +124,16 @@ function collectImages(
     }
   };
 
+  /*
+   * Only the items, deliberately — unlike `allNodes` in `diagramImage.ts`, which also
+   * walks the bands, the title and the instructions.
+   *
+   * The difference is not a bug: those three cannot contain a picture. A band renders as
+   * a `columns` node and the title and instructions as `text` nodes, so there is nothing
+   * for `visit` to find in them. The pre-pass is broader because it is a generic node
+   * walk; widening this to match would add two dead loops and imply a case that the
+   * renderer cannot produce.
+   */
   for (const item of rendered.items) {
     const nodes = item.type === 'question' ? item.question.nodes : item.layout.nodes;
     nodes.forEach(visit);
@@ -427,7 +437,52 @@ export async function exportDocx(worksheet: Worksheet, mode: OutputMode): Promis
   // Diagrams are rasterized first so the rest of the pipeline stays synchronous and
   // sees a diagram as just another embedded picture.
   const diagramImages = await renderDiagramImages(worksheet, mode);
+  assertEveryDiagramRasterized(worksheet, mode, diagramImages);
   return zipPackage(buildParts(worksheet, mode, diagramImages));
+}
+
+/**
+ * Refuse to export a worksheet whose diagrams did not all become images.
+ *
+ * `diagramNodeXml` emits **nothing** for a diagram with no rasterized PNG, and it has to:
+ * a `w:drawing` pointing at a relationship that was never written is a Word repair error,
+ * which is worse than a gap. But silence is its own failure — the `.docx` simply arrives
+ * without the figure, and a missing image is indistinguishable from a diagram that was
+ * never added. That ambiguity cost a full debugging session: an export that *looked*
+ * broken was in fact correct, and the real fault was elsewhere entirely.
+ *
+ * So the gap is detected here, where both halves are in hand: the diagrams the document
+ * contains, and the images the pre-pass produced. Throwing is right rather than
+ * degrading, because the caller already renders failures — `Toolbar.handleExport` catches
+ * this and shows the message — and a teacher would rather be told than hand out a paper
+ * with a hole where the supply curve was.
+ *
+ * `renderDiagramImages` returns an empty map outside a browser (rasterizing needs a
+ * canvas), so this would fire on every server-side call. It cannot: export is client-only
+ * by design, and `exportDocxBuffer` — the path tests and scripts use — deliberately skips
+ * this and takes its map as an argument.
+ */
+function assertEveryDiagramRasterized(
+  worksheet: Worksheet,
+  mode: OutputMode,
+  diagramImages: DiagramImageMap,
+): void {
+  const missing = collectDiagramNodes(worksheet, mode).filter(
+    (node) => !diagramImages.get(node.blockId),
+  );
+  if (missing.length === 0) return;
+
+  // Named by their alt text where there is one: "diagram 2 of 5" tells a teacher nothing
+  // about which picture to go and look at.
+  const names = missing
+    .map((node) => plain(node.altText.en) || plain(node.altText.zh))
+    .filter(Boolean);
+
+  throw new Error(
+    missing.length === 1
+      ? `A diagram could not be turned into an image${names[0] ? ` (${names[0]})` : ''}, so the export was stopped rather than dropping it.`
+      : `${missing.length} diagrams could not be turned into images${names.length ? ` (${names.join(', ')})` : ''}, so the export was stopped rather than dropping them.`,
+  );
 }
 
 /** Node-friendly variant used by the export tests. */

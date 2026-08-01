@@ -1,6 +1,6 @@
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
-import { buildDocxParts, exportDocxBuffer } from '@/export/docx';
+import { buildDocxParts, exportDocx, exportDocxBuffer } from '@/export/docx';
 import { worksheetClipboardHtml, worksheetPlainText } from '@/export/clipboard';
 import { collectDiagramNodes, type DiagramImageMap } from '@/export/diagramImage';
 import { createDiagramBlock } from '@/model/factories';
@@ -466,6 +466,65 @@ describe('a diagram carries its words inside its own image', () => {
     // And the diagram's own words are nowhere in the document at all — the check that
     // actually distinguishes "drawn into the PNG" from "printed beside the picture".
     expect(xml).not.toContain('The market for wine');
+  });
+
+  it('refuses to export rather than dropping a diagram that did not rasterize', async () => {
+    /*
+     * `diagramNodeXml` emits nothing when a diagram has no PNG, and it must: a
+     * `w:drawing` pointing at a relationship that was never written is a Word repair
+     * error. But silence is its own failure — the file arrives without the figure, and a
+     * missing image is indistinguishable from a diagram nobody added. That ambiguity is
+     * what made an export that *looked* broken take a full session to diagnose as
+     * correct.
+     *
+     * Under the node test runner there is no canvas, so `renderDiagramImages` returns an
+     * empty map and this is exactly the failure being described.
+     */
+    const { worksheet } = withTitle();
+    await expect(exportDocx(worksheet, STUDENT_BI)).rejects.toThrow(/could not be turned into an image/);
+  });
+
+  it('names the diagram it could not rasterize, so a teacher knows where to look', async () => {
+    // "diagram 2 of 5" says nothing about which picture to go and fix; the alt text is
+    // the one human-readable handle a diagram carries.
+    const { worksheet } = withTitle();
+    await expect(exportDocx(worksheet, STUDENT_BI)).rejects.toThrow(/AD-AS diagram/);
+  });
+
+  it('exports normally once every diagram has its image', async () => {
+    // The guard must not fire on the ordinary path — it is the browser's rasterizer that
+    // fills this map in real use.
+    const { worksheet } = withTitle();
+    const images: DiagramImageMap = new Map(
+      collectDiagramNodes(worksheet, STUDENT_BI).map((node) => [node.blockId, FAKE_PNG]),
+    );
+    const buffer = await exportDocxBuffer(worksheet, STUDENT_BI, images);
+    expect(buffer.byteLength).toBeGreaterThan(0);
+  });
+
+  it('has nothing picture-shaped outside the items, which is why the two walks differ', () => {
+    /*
+     * `collectImages` (the exporter) walks only `rendered.items`, while `allNodes` (the
+     * rasterization pre-pass) also walks the bands, the title and the instructions. Two
+     * passes disagreeing about what a document contains is normally a bug — a picture
+     * rasterized but never embedded — so the reason this one is safe is worth pinning:
+     * those three simply cannot hold a picture. A band renders as a `columns` node, and
+     * the title and instructions as `text` nodes.
+     *
+     * If that ever stops being true, this fails and `collectImages` has to widen.
+     */
+    const worksheet = worksheetWithDiagram();
+    const rendered = renderWorksheet(worksheet, STUDENT_BI);
+
+    const outside = [rendered.title, rendered.instructions, ...rendered.bands].filter(
+      (node): node is NonNullable<typeof node> => Boolean(node),
+    );
+    expect(outside.length).toBeGreaterThan(0);
+    for (const node of outside) {
+      expect(node.kind, 'a picture outside the items would be dropped by collectImages')
+        .not.toBe('diagram');
+      expect(node.kind).not.toBe('image');
+    }
   });
 
   it('pastes as the image alone', () => {
