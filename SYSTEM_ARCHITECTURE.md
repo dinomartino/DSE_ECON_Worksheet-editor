@@ -612,30 +612,47 @@ Renderer rules that only show on a real page:
 - **A point's label defaults to `right`** — a marked point is nearly always an
   intersection, and up-right is where the other curve runs.
 
-### A diagram's words live inside its own image
+### A diagram's words live inside its own image, and the picture is measured
 
-A `title` is the diagram's **only** label — centred on the plot (which is off-centre by
-design, so centring on the canvas sits it left of the picture), underlined, and drawn
-into the geometry so it rasterizes into the same single PNG. `titlePlacement` (`above` |
+A `title` is the diagram's **only** label — centred on the plot, underlined, drawn into
+the geometry so it rasterizes into the same single PNG. `titlePlacement` (`above` |
 `below`, reusing the block-level `CaptionPlacement`; `above` default and unstored) picks
-the side.
+the side. A `DiagramBlock` therefore has **no `caption`**, alone among captionable
+blocks, and `DiagramNode` carries none for a backend to print: a caption paragraph is
+what let the words break onto their own line and drift away from the figure.
 
-A `DiagramBlock` therefore has **no `caption`**, alone among captionable blocks, and
-`DiagramNode` carries none for a backend to print. The caption was the wrong mechanism
-twice over: it printed as its own paragraph, which a stray click in Word could separate
-from the picture, and it centred on the *text column* rather than the plot, so it slid out
-from under the figure as the diagram was resized. Tables and images keep theirs — neither
-can bake text into itself.
+**Edited in the sidebar and nowhere else.** The canvas *draws* the title — it must show
+the printed picture — but it is inert there: no hit target, no element-list row, no
+inspector, and `applyDrag`/`deleteHandle` both return the diagram unchanged for a
+`diagramTitle` handle. Writing belongs in a field; one address for a diagram's words
+means no second surface to disagree with. There is deliberately **no `titleOffset`**
+(unlike `DiagramAxis`, whose title shares a crowded margin): the box is sized around the
+title, so it always has its own room and a nudge would only make two diagrams in one
+paper sit differently.
 
+**`diagramSize()` measures the box from what is drawn.** `heightPx` used to be a flat
+`width * 3/4`, which made the *canvas* 4:3 and left the plot to absorb everything around
+it — adding a title visibly squashed the curves, and an untitled diagram still exported
+the strip a title would have used. Now the plot keeps `PLOT_ASPECT` and each side grows
+by exactly the room its text needs.
+
+- **Width stays the teacher's number** (it decides how much of the text column the figure
+  takes); only the height is derived.
+- **The printed size follows the labels.** Renaming an axis or adding a title changes the
+  exported picture and the page reflows — the accepted cost of never clipping and never
+  padding.
+- **Every writer re-measures**: the factory, the panel's width field, the panel's title
+  field, and `applyResizeBlock` (a drag must re-measure, not scale the old ratio, or a
+  titled diagram carries its extra room forward at every new width).
+- `model/edits.ts` and `model/factories.ts` take a **value** import from `render/diagram`.
+  Safe because `render/diagram.ts` imports only *types* from `model/`, so the edge stays
+  one-way — and a second copy of the measurement is exactly what the shared-projection
+  rule exists to prevent.
 - `titleRoom()` is shared by the projection (which reserves the space) and
-  `diagramTitleAnchor()` (which places the text in it), and the room is reserved **on the
-  title's own side only** — adding it to both leaves a blank strip opposite the words.
-- **A title below is measured from the plot's bottom edge, not the canvas**: that pad also
-  carries the x-axis tick labels, so anchoring to the canvas would let an untick'd title
-  float away and a ticked one land on top of them.
-- The y-axis title's floor counts the title's room only when it prints **above**; below,
-  it contends for nothing up there.
-- An absent title must reserve nothing.
+  `diagramTitleAnchor()` (which places the text in it), reserved **on the title's own
+  side only**. A title below is measured back from the canvas edge, minus its extra
+  lines: measuring forward from the plot overshot the reserved room and printed the
+  underline and a bilingual second line outside the picture.
 
 `DIAGRAM_TEMPLATES` ships nine starting shapes (blank, supply-demand, demand-shift,
 AD-AS, money market, tariff, import quota, proportional tax, PPC). A template is only an

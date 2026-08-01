@@ -24,6 +24,7 @@ import type {
 } from './types';
 import { renderWorksheet } from '@/render/worksheet';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
+import { diagramSize } from '@/render/diagram';
 import type { EditTarget, TextNode } from '@/render/ir';
 
 /**
@@ -620,7 +621,10 @@ describe('resizing an image or diagram block', () => {
     expect(resized?.kind).toBe('diagram');
     if (resized?.kind !== 'diagram') throw new Error('unreachable');
     expect(resized.widthPx).toBe(600);
-    expect(resized.heightPx).toBe(Math.round(600 * (diagram.heightPx / diagram.widthPx)));
+    // The height is *measured* at the new width, not scaled from the old proportion: a
+    // diagram's box is the plot plus exactly the text drawn around it, so carrying the
+    // old ratio forward would grow a blank strip on anything taller than a bare 4:3.
+    expect(resized.heightPx).toBe(diagramSize(diagram.diagram, 600, 'bilingual').heightPx);
     // The geometry itself is untouched — only the box it renders into changed (§7.5).
     expect(resized.diagram).toEqual(diagram.diagram);
   });

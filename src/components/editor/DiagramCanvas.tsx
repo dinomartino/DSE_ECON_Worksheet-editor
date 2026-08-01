@@ -164,16 +164,6 @@ interface Props {
   block: DiagramBlock;
   onChange: (block: DiagramBlock) => void;
   onClose: () => void;
-  /**
-   * A handle to open the caret on as soon as the canvas mounts.
-   *
-   * For the one case the canvas cannot discover for itself: text that exists but is
-   * *empty*. An empty title draws nothing, so there is no glyph to double-click and the
-   * element list does not offer it either — the panel's "Add a title" creates the field
-   * and hands the caret over in the same gesture, which is what stops a title being
-   * created and then invisibly stranded.
-   */
-  openEdit?: DiagramHandle;
 }
 
 /**
@@ -203,7 +193,7 @@ type Gesture =
   | { kind: 'create'; handles: DiagramHandle[]; from: DiagramPoint; base: Diagram; moved: boolean }
   | { kind: 'marquee'; from: DiagramPoint; base: Diagram; moved: boolean; additive: boolean };
 
-export function DiagramCanvas({ block, onChange, onClose, openEdit }: Props) {
+export function DiagramCanvas({ block, onChange, onClose }: Props) {
   // The canvas owns the keyboard while it is open. Without this, the preview's own
   // Delete handler fires on the same keypress and removes the whole diagram block that
   // is selected underneath — deleting one curve took the entire picture with it.
@@ -234,7 +224,7 @@ export function DiagramCanvas({ block, onChange, onClose, openEdit }: Props) {
    * every render and cannot drift from the model — the same reason the sidebar's fields
    * are derived rather than copied.
    */
-  const [editing, setEditing] = useState<DiagramHandle | null>(openEdit ?? null);
+  const [editing, setEditing] = useState<DiagramHandle | null>(null);
   /**
    * What the in-flight drag is moving.
    *
@@ -395,10 +385,9 @@ export function DiagramCanvas({ block, onChange, onClose, openEdit }: Props) {
       const at = arrowLabelAnchor(arrow, projection, 1);
       out.push({ handle: { kind: 'arrowLabel', arrowId: arrow.id }, at: toUnitPoint(at.x, at.y), box: boxOf(arrow.label) });
     }
-    if (has(diagram.title)) {
-      const at = diagramTitleAnchor(diagram, projection, 1, language);
-      out.push({ handle: { kind: 'diagramTitle' }, at: toUnitPoint(at.x, at.y), box: boxOf(diagram.title) });
-    }
+    // The diagram's title is deliberately NOT a hit target. It is edited in the sidebar
+    // and auto-placed, so there is nothing on the canvas to select, drag or retype — it
+    // is drawn (the canvas must still show the printed picture) but inert.
     for (const axis of ['x', 'y'] as const) {
       if (has(diagram[axis].title)) {
         const at = axisTitleAnchor(diagram, axis, projection, block.widthPx, 1, language);
@@ -1477,37 +1466,9 @@ function SelectionInspector({
   const handle = selected[0];
   const id = handleId(handle);
 
-  // The axes and the caption belong to the diagram rather than to the element list, so
-  // they get their own panels.
-  if (handle.kind === 'diagramTitle') {
-    return (
-      <div>
-        <header className="mb-2 flex items-center gap-1">
-          <Eyebrow>Diagram title</Eyebrow>
-          <span className="flex-1" />
-          <IconButton label="Delete" variant="danger" onClick={onDelete}>
-            <span aria-hidden>✕</span>
-          </IconButton>
-        </header>
-        <div className="space-y-2">
-          <BiTextField
-            label="Title"
-            value={diagram.title ?? emptyBiText()}
-            rows={1}
-            onChange={(title) => onChange({ ...diagram, title })}
-          />
-          <ResetLabelPosition
-            moved={Boolean(diagram.titleOffset)}
-            onReset={() => onChange((({ titleOffset, ...rest }) => rest)(diagram))}
-          />
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            Printed centred and underlined above the plot. Double-click it on the diagram
-            to retype it there.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // The axes belong to the diagram rather than to the element list, so they get their
+  // own panel. The title has none here: it is edited in the sidebar and is inert on the
+  // canvas, so no selection can ever name it.
   if (handle.kind === 'axisTitle' || handle.kind === 'axisTick') {
     return <AxisInspector diagram={diagram} handle={handle} onChange={onChange} onDelete={onDelete} />;
   }
@@ -1959,7 +1920,6 @@ function ElementIndex({
   onChange: (diagram: Diagram) => void;
   onEdit: (handle: DiagramHandle) => void;
 }) {
-  const titled = !isBiTextEmpty(diagram.title);
   const rows: Array<{ handle: DiagramHandle; name: string; kind: string }> = [
     ...diagram.curves.map((c) => ({
       handle: { kind: 'curve', curveId: c.id } as DiagramHandle,
@@ -1985,46 +1945,9 @@ function ElementIndex({
 
   return (
     <div>
-      {/* The caption sits above the element list because it names the whole picture
-          rather than being one thing in it — and because an untitled diagram gives no
-          hint anywhere else that a title is even available. Adding one opens the caret
-          on the diagram immediately: a title created but not typed is an empty
-          underline, so the create and the typing are one gesture. */}
-      <div className="mb-3 border-b border-slate-200 pb-3 dark:border-slate-700">
-        <Eyebrow>Title</Eyebrow>
-        {titled ? (
-          <button
-            type="button"
-            onClick={() => onSelect([{ kind: 'diagramTitle' }])}
-            className="mt-1.5 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-slate-700 transition-colors hover:bg-sky-50 dark:text-slate-200 dark:hover:bg-slate-800"
-          >
-            <span className="truncate font-medium">
-              {plain(diagram.title?.en) || plain(diagram.title?.zh)}
-            </span>
-            <span className="flex-1" />
-            <span className="shrink-0 text-[10px] uppercase tracking-wide text-slate-400">
-              Caption
-            </span>
-          </button>
-        ) : (
-          <div className="mt-1.5">
-            <Button
-              size="sm"
-              variant="subtle"
-              onClick={() => {
-                onChange({ ...diagram, title: emptyBiText() });
-                onEdit({ kind: 'diagramTitle' });
-              }}
-            >
-              Add a title
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* A whole-diagram setting, so it sits with the title rather than in the element
-          list — there is nothing on the canvas to select in order to reach it, and it was
-          otherwise unreachable once the sidebar's axes tab was removed. */}
+      {/* Whole-diagram settings, which no element in the list can be selected to reach.
+          The diagram's *title* is deliberately not among them — it is edited in the
+          sidebar, so the canvas neither lists it nor lets it be clicked. */}
       <div className="mb-3 border-b border-slate-200 pb-3 dark:border-slate-700">
         <Eyebrow>Axes</Eyebrow>
         <div className="mt-1.5 space-y-1.5">

@@ -5,7 +5,7 @@ import { DIAGRAM_TEMPLATES, buildFromTemplate } from '@/model/diagramTemplates';
 import { emptyBiText, isBiTextEmpty, plain } from '@/model/text';
 import type { CaptionPlacement, DiagramBlock } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { diagramSvg } from '@/render/diagram';
+import { diagramSize, diagramSvg } from '@/render/diagram';
 import { Button, NumberField, Segmented, SelectField } from '@/components/ui';
 import { BiTextField } from './BiTextField';
 import { DiagramCanvas } from './DiagramCanvas';
@@ -53,14 +53,6 @@ export function DiagramEditor({ block, onChange }: Props) {
   const language = useWorksheetStore((s) => s.mode.language);
   const fonts = useWorksheetStore((s) => s.worksheet.fonts);
   const [drawing, setDrawing] = useState(false);
-  /*
-   * Set when Draw is opened *in order to* write something, rather than to draw.
-   *
-   * An empty title draws no glyph, so the canvas has nothing to double-click and its own
-   * element list does not offer one — opening the canvas alone would strand the field
-   * that was just created. Cleared on close so the next plain Draw opens no caret.
-   */
-  const [openEdit, setOpenEdit] = useState<{ kind: 'diagramTitle' } | undefined>();
 
   const diagram = block.diagram;
 
@@ -112,15 +104,7 @@ export function DiagramEditor({ block, onChange }: Props) {
       </button>
 
       {drawing && (
-        <DiagramCanvas
-          block={block}
-          onChange={onChange}
-          openEdit={openEdit}
-          onClose={() => {
-            setDrawing(false);
-            setOpenEdit(undefined);
-          }}
-        />
+        <DiagramCanvas block={block} onChange={onChange} onClose={() => setDrawing(false)} />
       )}
 
       {/* Draw is the weightiest control in this panel, because every edit to the picture
@@ -165,9 +149,12 @@ export function DiagramEditor({ block, onChange }: Props) {
           suffix="px"
           value={block.widthPx}
           onChange={(widthPx) => {
+            // Width is the teacher's number — it decides how much of the text column the
+            // figure takes. The height is *measured* from what the diagram draws, so a
+            // title or a two-line axis name grows the picture instead of squashing the
+            // plot inside a fixed 4:3 box.
             const next = Math.max(160, widthPx);
-            // The 4:3 proportion is kept so the axis titles keep their room.
-            onChange({ ...block, widthPx: next, heightPx: Math.round((next * 3) / 4) });
+            onChange({ ...block, ...diagramSize(block.diagram, next, language) });
           }}
         />
       </div>
@@ -181,28 +168,32 @@ export function DiagramEditor({ block, onChange }: Props) {
         onChange={(altText) => onChange({ ...block, altText })}
         rows={1}
       />
-      {/* The title, which is drawn *inside* the picture rather than printed beside it.
-          Typing it belongs to the canvas, where the words are — but whether the diagram
-          has one at all has no handle to grab when the answer is no, exactly like an
-          axis title deleted to nothing. Without this button the only route in was to
-          open Draw and notice the Title section, and the placement control below could
-          never appear, since it is gated on a title this panel gave no way to create. */}
-      {isBiTextEmpty(block.diagram.title) ? (
-        <Button
-          size="sm"
-          variant="subtle"
-          onClick={() => {
-            onChange({ ...block, diagram: { ...block.diagram, title: emptyBiText() } });
-            // Straight onto the canvas with the caret already on the title: a title
-            // created but not typed draws nothing, so creating it and writing it have to
-            // be one gesture or the field is stranded the moment it exists.
-            setOpenEdit({ kind: 'diagramTitle' });
-            setDrawing(true);
-          }}
-        >
-          Add a title
-        </Button>
-      ) : (
+      {/* The title, edited here and **only** here.
+
+          It is drawn inside the picture and rasterizes into the same PNG, so it is not a
+          caption printed beside the figure — but it is still writing, and writing belongs
+          in a field. The canvas draws it so the drawing surface shows the printed picture,
+          and deliberately does not let it be selected, dragged or retyped there: one
+          address for a diagram's words, with no second surface to disagree with. */}
+      <BiTextField
+        label="Title"
+        value={block.diagram.title ?? emptyBiText()}
+        onChange={(title) =>
+          onChange({
+            ...block,
+            // The picture is measured, so gaining or losing a title resizes it. Doing
+            // this on every keystroke keeps the stored size honest — a title added and
+            // never re-measured would print into room nothing reserved.
+            ...diagramSize({ ...block.diagram, title }, block.widthPx, language),
+            diagram: { ...block.diagram, title },
+          })
+        }
+        rows={1}
+      />
+      {/* Which side of the plot it prints on. Offered only once there *is* a title:
+          most DSE diagrams carry none, and a placement control over an empty field asks
+          about something that does not exist. */}
+      {!isBiTextEmpty(block.diagram.title) && (
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-ink-subtle">Title sits</span>
           <Segmented<CaptionPlacement>

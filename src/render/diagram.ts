@@ -697,6 +697,54 @@ function titleRoom(diagram: Diagram, language: LanguageMode, scale: number): num
 }
 
 /**
+ * The plot's own printed size, before anything around it is counted.
+ *
+ * The 4:3 the templates are drawn against. It is the *plot* that holds this shape, not
+ * the canvas: a supply-demand cross looks wrong stretched, and it is the axes a teacher
+ * is judging when they set a width.
+ */
+const PLOT_ASPECT = 3 / 4;
+
+/**
+ * The size a diagram needs, measured from what it actually draws.
+ *
+ * The stored `heightPx` used to be a flat `width * 3/4`, which made the *canvas* 4:3 and
+ * left the plot to absorb everything drawn around it. So a title, a two-line bilingual
+ * axis name and a row of tick labels all ate the picture rather than the page: adding a
+ * title visibly squashed the curves, and an untitled diagram still exported the blank
+ * strip a title would have used.
+ *
+ * Measuring instead: the plot keeps its 4:3, and each side grows by exactly the room the
+ * text on that side needs. Consequences worth knowing:
+ *
+ * - **The printed size follows the labels.** Renaming an axis or adding a title changes
+ *   the exported picture's height, and the page reflows. That is the trade the shape is
+ *   worth — the alternative is a fixed box that is either too tight for a long title or
+ *   mostly whitespace for a short one.
+ * - **`widthPx` stays the teacher's number**, since it decides how much of the text
+ *   column the figure takes. Only the height is derived.
+ * - Shared with `diagramPlot`, so the projection and the canvas cannot disagree about
+ *   where the plot sits inside the picture.
+ */
+export function diagramSize(
+  diagram: Diagram,
+  widthPx: number,
+  language: LanguageMode,
+): { widthPx: number; heightPx: number } {
+  const plotWidth = widthPx - (PAD.left + PAD.right);
+  const plotHeight = Math.max(1, plotWidth) * PLOT_ASPECT;
+
+  // Both axis titles print outside the plot, and a bilingual pair stacks two lines.
+  const yTitleLines = pickSides(diagram.y.title, language).length;
+  const topRoom = PAD.top + Math.max(0, yTitleLines - 1) * AXIS_TITLE_SIZE * 1.15;
+
+  return {
+    widthPx,
+    heightPx: Math.round(plotHeight + topRoom + PAD.bottom + titleRoom(diagram, language, 1)),
+  };
+}
+
+/**
  * Where the diagram's title is drawn.
  *
  * Centred on the **plot**, not on the canvas: the plot is off-centre by design (a wide
@@ -704,9 +752,9 @@ function titleRoom(diagram: Diagram, language: LanguageMode, scale: number): num
  * would sit the caption visibly left of the picture it names. The reference paper centres
  * it over the axes.
  *
- * Exported for the same reason `axisTitleAnchor` is: `DiagramCanvas` builds the title's
- * drag handle and its in-place editor from this one call, so the handle cannot drift away
- * from the text it grabs (§7.5).
+ * Exported so `DiagramCanvas` can draw the title in the same place the renderer does —
+ * it is inert there (it is edited in the sidebar), but the canvas must still show the
+ * picture as it will print.
  */
 export function diagramTitleAnchor(
   diagram: Diagram,
@@ -717,35 +765,28 @@ export function diagramTitleAnchor(
    *
    * `textAt` draws the first line at the anchor and stacks the rest downward, so a
    * bilingual title anchored at the foot of its reserved block prints its second line
-   * past the canvas edge — which is exactly what happened: the English fitted and the
-   * Chinese underneath it did not.
+   * past the canvas edge — which is exactly what happened once: the English fitted and
+   * the Chinese underneath it did not.
    */
   language: LanguageMode = 'bilingual',
 ): { x: number; y: number } {
-  const offset = diagram.titleOffset;
   const below = diagram.titlePlacement === 'below';
   return {
-    x: (proj.plot.left + proj.plot.right) / 2 + (offset ? offset.x * plotSpanX(proj) : 0),
+    // Centred on the plot, with no stored nudge to apply: the canvas is sized around the
+    // title, so it always has its own room and never needs moving out of anything.
+    x: (proj.plot.left + proj.plot.right) / 2,
     // Above: the first baseline sits one line height below the canvas top, so a two-line
     // bilingual title grows downward into the room `titleRoom` reserved for it rather
     // than upward off the canvas.
     //
-    // Below: measured *back from the canvas edge*, so the block cannot leave it.
-    // Measuring forward from the plot instead — plot.bottom + PAD.bottom + a line —
-    // overshot the room `titleRoom` had reserved and left the baseline 11px from the
-    // foot of a 300px canvas, printing the underline and every descender outside the
-    // picture.
-    //
-    // The anchor is the FIRST line, and `textAt` stacks any others below it, so the
-    // extra lines have to be subtracted too — a bilingual title fitted its English and
-    // pushed its Chinese off the canvas until this counted them.
+    // Below: measured *back from the canvas edge*, so the block cannot leave it, and the
+    // extra lines are subtracted because the anchor is the FIRST of them.
     y: below
       ? proj.canvasHeight -
         TITLE_GAP * scale -
         TITLE_SIZE * 0.3 * scale -
-        Math.max(0, pickSides(diagram.title, language).length - 1) * TITLE_SIZE * 1.15 * scale -
-        (offset ? offset.y * plotSpanY(proj) : 0)
-      : (TITLE_TOP + TITLE_SIZE * 1.1) * scale - (offset ? offset.y * plotSpanY(proj) : 0),
+        Math.max(0, pickSides(diagram.title, language).length - 1) * TITLE_SIZE * 1.15 * scale
+      : (TITLE_TOP + TITLE_SIZE * 1.1) * scale,
   };
 }
 

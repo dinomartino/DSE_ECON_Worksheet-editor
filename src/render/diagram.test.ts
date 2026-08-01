@@ -9,7 +9,7 @@ import { bi } from '@/model/text';
 import type { OutputMode, Worksheet } from '@/model/types';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
 import { renderWorksheet } from './worksheet';
-import { axisTitleAnchor, diagramPlot, diagramSvg, diagramTitleAnchor } from './diagram';
+import { axisTitleAnchor, diagramPlot, diagramSize, diagramSvg, diagramTitleAnchor } from './diagram';
 
 /**
  * Diagrams (§3.3, §7.5).
@@ -551,6 +551,51 @@ describe('a diagram carries its words inside its own image', () => {
         expect(lowest, `${label} must clear the plot`).toBeGreaterThan(proj.plot.bottom);
       }
     }
+  });
+
+  it('measures the picture from what it draws, rather than padding a fixed box', () => {
+    /*
+     * `heightPx` used to be a flat `width * 3/4`, which made the *canvas* 4:3 and left
+     * the plot to absorb everything drawn around it — so adding a title visibly squashed
+     * the curves, and an untitled diagram still exported the blank strip a title would
+     * have used. The plot now keeps its shape and the box grows instead.
+     */
+    const base = buildFromTemplate('supply-demand');
+    const title = bi('The market for wine', '葡萄酒市場');
+
+    const bare = diagramSize(base, 400, 'en');
+    const titled = diagramSize({ ...base, title }, 400, 'en');
+    const below = diagramSize({ ...base, title, titlePlacement: 'below' }, 400, 'en');
+    const bilingual = diagramSize({ ...base, title }, 400, 'bilingual');
+
+    // Width is the teacher's number and is never derived.
+    for (const size of [bare, titled, below, bilingual]) expect(size.widthPx).toBe(400);
+
+    // A title costs height, on whichever side it prints — and the same height either way.
+    expect(titled.heightPx).toBeGreaterThan(bare.heightPx);
+    expect(below.heightPx).toBe(titled.heightPx);
+    // A second line (the bilingual stack) costs more again.
+    expect(bilingual.heightPx).toBeGreaterThan(titled.heightPx);
+
+    // The plot itself keeps its proportions rather than absorbing the difference: that is
+    // the whole point, since a squashed supply-demand cross is what this replaced.
+    // Each diagram is measured against *its own* box — that pairing is the point: the
+    // titled one is taller, and its plot comes out the same size as the bare one's
+    // because the extra height went to the title rather than to the axes.
+    const plotOf = (diagram: typeof base, size: { widthPx: number; heightPx: number }) => {
+      const proj = diagramPlot(diagram, {
+        widthPx: size.widthPx,
+        heightPx: size.heightPx,
+        language: 'en' as const,
+      });
+      return { w: proj.plot.right - proj.plot.left, h: proj.plot.bottom - proj.plot.top };
+    };
+    const barePlot = plotOf(base, bare);
+    const titledPlot = plotOf({ ...base, title }, titled);
+    expect(titledPlot.w).toBeCloseTo(barePlot.w, 5);
+    // Within a pixel: `diagramSize` rounds its height to a whole pixel, so the two plots
+    // agree to the rounding and not beyond it.
+    expect(Math.abs(titledPlot.h - barePlot.h)).toBeLessThanOrEqual(1);
   });
 
   it('costs an untitled diagram no room at all', () => {

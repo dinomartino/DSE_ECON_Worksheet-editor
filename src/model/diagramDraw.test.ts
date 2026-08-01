@@ -705,18 +705,18 @@ describe('the diagram title as a handle', () => {
     title: { en: [{ text: 'Figure 1' }], zh: [] },
   });
 
-  it('drags its own offset, not an absolute position', () => {
+  it('cannot be dragged: the title is auto-placed, not positioned by hand', () => {
+    // Every other text in a diagram is nudgeable because it shares a crowded margin. The
+    // title has its own room by construction — the canvas is measured around it — so a
+    // stored offset would only let two diagrams in one paper sit differently.
     const next = applyDrag(titled(), { kind: 'diagramTitle' }, { x: 0.5, y: 0.5 }, { x: 0.6, y: 0.55 });
-    expect(next.titleOffset?.x).toBeCloseTo(0.1);
-    expect(next.titleOffset?.y).toBeCloseTo(0.05);
-    expect(next.title).toEqual(titled().title);
+    expect(next).toEqual(titled());
   });
 
-  it('deletes the text and the nudge together', () => {
-    const dragged = applyDrag(titled(), { kind: 'diagramTitle' }, { x: 0.5, y: 0.5 }, { x: 0.6, y: 0.5 });
-    const cleared = deleteHandle(dragged, { kind: 'diagramTitle' });
-    expect(cleared.title).toBeUndefined();
-    expect(cleared.titleOffset).toBeUndefined();
+  it('cannot be deleted from the canvas, where it is inert', () => {
+    // It is edited in the sidebar and nothing on the canvas can select it, so a Delete
+    // aimed at a stale selection must not silently remove a teacher's words.
+    expect(deleteHandle(titled(), { kind: 'diagramTitle' })).toEqual(titled());
   });
 
   it('is not copyable — a pasted caption has no second diagram to belong to', () => {

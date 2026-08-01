@@ -6,6 +6,9 @@ import { buildFromTemplate, defaultDiagramAltText } from './diagramTemplates';
 import { createSectionElement } from './flow';
 import { CURRENT_SCHEMA_VERSION } from './migrations';
 import { bi, emptyBiText } from './text';
+// Value import from `render/` — safe for the reason spelled out in `model/edits.ts`:
+// `render/diagram.ts` takes only types from `model/`, so the edge stays one-way.
+import { diagramSize } from '@/render/diagram';
 import type {
   BiText,
   DiagramBlock,
@@ -73,18 +76,22 @@ export function createImageBlock(src: string, widthPx: number, heightPx: number)
  * Default printed size for a diagram, in px at 96dpi.
  *
  * About 4.2in wide — a little over half the A4 text column, which is how large the
- * reference papers print theirs. The 4:3 ratio leaves room for the axis titles that sit
- * outside the plot area without squashing the plot itself.
+ * reference papers print theirs. Only the width is a choice: the height is measured from
+ * what the diagram draws, so the constant's `heightPx` is the *bare* template's measured
+ * height and exists only for callers that need a size before a diagram exists.
  */
 export const DEFAULT_DIAGRAM_SIZE = { widthPx: 400, heightPx: 300 };
 
 export function createDiagramBlock(templateId = 'blank'): DiagramBlock {
+  const diagram = buildFromTemplate(templateId);
   return {
     kind: 'diagram',
     id: newId(),
-    diagram: buildFromTemplate(templateId),
-    widthPx: DEFAULT_DIAGRAM_SIZE.widthPx,
-    heightPx: DEFAULT_DIAGRAM_SIZE.heightPx,
+    diagram,
+    // Measured rather than assumed: a template with a two-line bilingual axis title needs
+    // a taller box than a bare one, and starting at a flat 4:3 would squash it from the
+    // moment it is inserted.
+    ...diagramSize(diagram, DEFAULT_DIAGRAM_SIZE.widthPx, 'bilingual'),
     altText: defaultDiagramAltText(templateId),
   };
 }

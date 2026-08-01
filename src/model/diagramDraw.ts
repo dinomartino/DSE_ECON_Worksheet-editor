@@ -433,9 +433,10 @@ export function applyDrag(
           titleOffset: nudge(diagram[handle.axis].titleOffset, dx, dy),
         },
       };
-    case 'diagramTitle':
-      return { ...diagram, titleOffset: nudge(diagram.titleOffset, dx, dy) };
+    // `diagramTitle` is deliberately absent: the title is edited in the sidebar and
+    // auto-placed, so there is no handle on the canvas to drag (§the title is sidebar-only).
   }
+  return diagram;
 }
 
 /** Accumulate a pointer delta onto an optional offset. */
@@ -634,11 +635,10 @@ export function deleteHandle(diagram: Diagram, handle: DiagramHandle): Diagram {
         ...diagram,
         [handle.axis]: (({ title, titleOffset, ...rest }) => rest)(diagram[handle.axis]),
       };
-    // Deleting the caption clears the text *and* the nudge, for the reason a point label
-    // does: a later re-titling should start centred over the plot rather than inheriting
-    // a position nothing has been visible at since.
+    // The title is not selectable on the canvas — it is edited in the sidebar — so
+    // nothing here can be aimed at it, and it is removed by clearing that field.
     case 'diagramTitle':
-      return (({ title, titleOffset, ...rest }) => rest)(diagram);
+      return diagram;
 
     default:
       return { ...diagram, arrows: diagram.arrows.filter((a) => a.id !== handle.arrowId) };

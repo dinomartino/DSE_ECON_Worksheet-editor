@@ -178,14 +178,16 @@ export interface Diagram {
    * would reserve the room it needs whether or not anything was ever typed.
    */
   title?: BiText;
-  /**
-   * Nudge for the title, in unit space, from its computed anchor.
+  /*
+   * Deliberately **no `titleOffset`**, unlike `DiagramAxis`.
    *
-   * The anchor stays derived — centred on the plot, above the y-axis title — and the top
-   * padding is still sized from the title itself, so this only moves it *within* the room
-   * already reserved. Same rule as `DiagramAxis.titleOffset`.
+   * An axis title is nudgeable because it sits in a crowded margin beside ticks, an
+   * arrowhead and whatever the curves do near the edge — a teacher genuinely needs to
+   * move it. The diagram's title has none of that: the canvas is now sized *around* it
+   * (§the picture is measured, not padded), so it always has exactly its own room, and
+   * it is centred on the plot with nothing to collide with. A nudge would only let two
+   * diagrams in one paper sit differently for no reason anybody could see.
    */
-  titleOffset?: DiagramPoint;
   /**
    * Which side of the plot the title prints on. `above` is the default and stays
    * **unstored**, matching the reference papers and the rule that only a deviation is

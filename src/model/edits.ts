@@ -14,6 +14,16 @@ import type {
   Worksheet,
 } from './types';
 import type { EditTarget } from '@/render/ir';
+/*
+ * A *value* import from `render/`, which `model/` otherwise avoids.
+ *
+ * It is safe here and only here: `render/diagram.ts` imports nothing but **types** from
+ * `model/`, so the edge is one-way at runtime and no cycle forms. The alternative — a
+ * second copy of the measurement in `model/` — is the thing the whole "one projection,
+ * shared" rule exists to prevent: the panel, the page drag and the renderer would each
+ * have their own idea of how tall a titled diagram is.
+ */
+import { diagramSize } from '@/render/diagram';
 import { applyBandFieldSide, bandFieldSideText } from './bandSegments';
 import { applyRunFormat } from './text';
 
@@ -746,6 +756,15 @@ export function applyResizeBlock(
   return mapAllBlocks(worksheet, blockId, (block) => {
     if (block.kind !== 'image' && block.kind !== 'diagram') return block;
     const width = Math.max(MIN_BLOCK_WIDTH_PX, Math.round(widthPx));
+
+    // A diagram is *measured*, not scaled. Its height is whatever the plot plus the text
+    // around it needs at this width, so dragging it wider must re-measure rather than
+    // keep the old proportion — otherwise a titled diagram, whose box is taller than 4:3,
+    // would carry that extra room forward at every new width and grow a blank strip.
+    if (block.kind === 'diagram') {
+      return { ...block, ...diagramSize(block.diagram, width, 'bilingual') };
+    }
+
     return {
       ...block,
       widthPx: width,
