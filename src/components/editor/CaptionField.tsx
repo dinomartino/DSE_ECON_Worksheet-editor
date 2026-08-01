@@ -30,7 +30,7 @@ export function CaptionField({
 }: {
   value?: BiText;
   placement?: CaptionPlacement;
-  onChange: (patch: { caption: BiText; captionPlacement?: CaptionPlacement }) => void;
+  onChange: (patch: { caption?: BiText; captionPlacement?: CaptionPlacement }) => void;
   noun: string;
 }) {
   return (
@@ -38,7 +38,21 @@ export function CaptionField({
       <BiTextField
         label="Caption"
         value={value ?? emptyBiText()}
-        onChange={(caption) => onChange({ caption, captionPlacement: placement })}
+        onChange={(caption) =>
+          /*
+           * A field cleared to nothing stores nothing — not the husk the editing surface
+           * returns. A contenteditable emptied with ⌘A-Backspace hands back a run holding
+           * `"\n"`, which is whitespace: `isBiTextEmpty` hides the control below and the
+           * renderers draw nothing, so the deletion looks complete while the husk stays
+           * in the document, reaches the exporter and prints a phantom blank line. That
+           * `{"en":[{"text":"\n"}]}` is exactly what turned up in the reference
+           * worksheets. The placement goes too — with no caption it has no subject, and
+           * leaving it makes a later re-captioning inherit a side nobody chose.
+           */
+          isBiTextEmpty(caption)
+            ? onChange({ caption: undefined, captionPlacement: undefined })
+            : onChange({ caption, captionPlacement: placement })
+        }
         rows={1}
       />
       {!isBiTextEmpty(value) && (

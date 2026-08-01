@@ -215,6 +215,22 @@ control, which is the only way anyone would think to reach it.
 set wholly in subscript is meaningless; it rides as an explicit extra field on the
 `onFormatRuns` patch instead, so the element path cannot reach it by accident.
 
+### A field cleared to nothing stores nothing
+
+"Empty" has two spellings, and only one of them is `[]`. A contenteditable emptied with
+⌘A-Backspace hands back a run holding `"\n"` — whitespace, so `isBiTextEmpty` reports
+true and every renderer draws nothing. The husk is therefore **invisible in the app while
+still being in the document**: it saves, reloads, reaches the exporter and prints a
+phantom blank line. Two of the reference worksheets carried exactly
+`{"en":[{"text":"\n"}]}` in a diagram caption.
+
+So every optional-text write path drops the field when `isBiTextEmpty` is true, rather
+than storing what the surface returned (`DiagramEditor`'s title, `CaptionField`'s
+caption). **Its placement goes with it** — `titlePlacement`/`captionPlacement` answer
+"which side does this print on", and with nothing to print the question has no subject;
+leaving it behind makes a later re-titling silently inherit a side nobody chose. Dropping
+the keys also restores the measured size, since an absent title reserves no room.
+
 ### The editing surface renders runs, not markers
 
 `**bold**`, `__underline__`, `^{sup}` are a **storage** form (`serializeRuns`), not a

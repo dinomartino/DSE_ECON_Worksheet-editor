@@ -178,16 +178,37 @@ export function DiagramEditor({ block, onChange }: Props) {
       <BiTextField
         label="Title"
         value={block.diagram.title ?? emptyBiText()}
-        onChange={(title) =>
+        onChange={(title) => {
+          /*
+           * Clearing the field deletes the title outright, rather than storing the empty
+           * husk the editing surface hands back.
+           *
+           * A contenteditable emptied with ⌘A-Backspace does not return `[]` — it returns
+           * a run holding `"\n"`. That is whitespace, so `isBiTextEmpty` correctly hides
+           * the placement control and `pickSides` draws nothing, and the deletion *looks*
+           * complete. But the husk is still in the document: it reaches the exporter, it
+           * round-trips through save/load, and it is exactly the `{"en":[{"text":"\\n"}]}`
+           * that turned up in the reference worksheets and printed a phantom blank line.
+           * A field cleared to nothing must store nothing.
+           *
+           * `titlePlacement` goes with it. It answers "which side does the title print
+           * on"; with no title the question has no subject, and leaving it behind means a
+           * later re-titling silently inherits a side the teacher never chose for it.
+           */
+          const cleared = isBiTextEmpty(title);
+          const next = cleared
+            ? (({ title: _t, titlePlacement: _p, ...rest }) => rest)(block.diagram)
+            : { ...block.diagram, title };
+
           onChange({
             ...block,
             // The picture is measured, so gaining or losing a title resizes it. Doing
             // this on every keystroke keeps the stored size honest — a title added and
             // never re-measured would print into room nothing reserved.
-            ...diagramSize({ ...block.diagram, title }, block.widthPx, language),
-            diagram: { ...block.diagram, title },
-          })
-        }
+            ...diagramSize(next, block.widthPx, language),
+            diagram: next,
+          });
+        }}
         rows={1}
       />
       {/* Which side of the plot it prints on. Offered only once there *is* a title:

@@ -12,6 +12,7 @@ import {
   applyRunFormat,
   commonRunFormat,
   hasLineBreak,
+  isBiTextEmpty,
   sourceOffsetToText,
   parseRuns,
   plain,
@@ -342,6 +343,38 @@ describe('per-run formatting over a character range', () => {
  * the worst shape of bug: the editor accepted it, the document saved it, and it silently
  * became a space on the page and in Word. These pin the storage half.
  */
+/**
+ * A field cleared to nothing must store nothing.
+ *
+ * The trap is that "empty" has two spellings. A contenteditable emptied with
+ * ⌘A-Backspace does not hand back `[]` — it hands back a run holding `"\n"`. That is
+ * whitespace, so `isBiTextEmpty` reports true and every renderer draws nothing, which
+ * makes the husk invisible in the app while it is still in the document: it saves, it
+ * reloads, it reaches the exporter, and it prints a phantom blank line. Two of the
+ * reference worksheets carried exactly `{"en":[{"text":"\n"}]}` in a diagram caption.
+ *
+ * These pin the predicate the write paths test against. `DiagramEditor` and
+ * `CaptionField` both drop the field (and its placement, which has no subject without
+ * it) when this returns true.
+ */
+describe('an emptied field reads as empty', () => {
+  it('treats the husk a cleared contenteditable returns as empty', () => {
+    expect(isBiTextEmpty({ en: parseRuns('\n'), zh: [] })).toBe(true);
+    expect(isBiTextEmpty({ en: [{ text: '\n' }], zh: [] })).toBe(true);
+    expect(isBiTextEmpty({ en: [{ text: '   ' }], zh: [] })).toBe(true);
+    expect(isBiTextEmpty({ en: [], zh: [] })).toBe(true);
+    expect(isBiTextEmpty(undefined)).toBe(true);
+  });
+
+  it('still reports real text as present, including a single character', () => {
+    expect(isBiTextEmpty({ en: [{ text: 'x' }], zh: [] })).toBe(false);
+    // One side populated is enough: a Chinese-only caption is a caption.
+    expect(isBiTextEmpty({ en: [{ text: '\n' }], zh: [{ text: '圖一' }] })).toBe(false);
+    // Text either side of a break is not whitespace.
+    expect(isBiTextEmpty({ en: [{ text: 'a\nb' }], zh: [] })).toBe(false);
+  });
+});
+
 describe('hard line breaks (Shift+Enter)', () => {
   it('keeps a newline through the parse/serialise round trip', () => {
     const source = 'First line\nSecond line';
