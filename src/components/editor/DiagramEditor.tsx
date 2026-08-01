@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { DIAGRAM_TEMPLATES, buildFromTemplate } from '@/model/diagramTemplates';
-import { emptyBiText, isBiTextEmpty, plain } from '@/model/text';
+import { isBiTextEmpty, plain } from '@/model/text';
 import type { CaptionPlacement, DiagramBlock } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { diagramSvg } from '@/render/diagram';
@@ -153,37 +153,33 @@ export function DiagramEditor({ block, onChange }: Props) {
         />
       </div>
 
-      {/* Document metadata, not geometry: neither appears in the drawing. The caption is
-          ordinary text printed beside the picture — the diagram's *own* title is inside
-          the geometry and is typed on the canvas. */}
+      {/* Alt text is document metadata, not geometry: it never appears in the drawing.
+          A diagram has no caption — its words are `diagram.title`, typed on the canvas
+          and drawn inside the image itself. */}
       <BiTextField
         label="Alt text"
         value={block.altText}
         onChange={(altText) => onChange({ ...block, altText })}
         rows={1}
       />
-      <BiTextField
-        label="Caption"
-        value={block.caption ?? emptyBiText()}
-        onChange={(caption) => onChange({ ...block, caption })}
-        rows={1}
-      />
-      {/* Which side the caption prints on. Offered only once there *is* a caption: a
-          caption is optional and most diagrams carry none, so a placement control on an
-          empty field would be asking about something that does not exist. Both
-          conventions are real in the reference papers — a figure's caption below, a
-          heading above — which is why this is a choice rather than a fixed rule. */}
-      {!isBiTextEmpty(block.caption) && (
+      {/* Which side of the plot the title prints on. Offered only once there *is* a
+          title: most DSE diagrams carry none, and a placement control over an empty
+          field asks about something that does not exist. The title itself is typed on
+          the canvas, where it is drawn — this panel only owns the choice that has no
+          visual handle to grab. */}
+      {!isBiTextEmpty(block.diagram.title) && (
         <div className="flex items-center gap-2">
-          <span className="text-[11px] text-ink-subtle">Caption sits</span>
+          <span className="text-[11px] text-ink-subtle">Title sits</span>
           <Segmented<CaptionPlacement>
-            label="Caption placement"
-            value={block.captionPlacement ?? 'below'}
+            label="Title placement"
+            value={block.diagram.titlePlacement ?? 'above'}
             options={[
-              { value: 'above', label: 'Above', title: 'Print the caption above the diagram' },
-              { value: 'below', label: 'Below', title: 'Print the caption below the diagram' },
+              { value: 'above', label: 'Above', title: 'Draw the title above the plot' },
+              { value: 'below', label: 'Below', title: 'Draw the title below the plot' },
             ]}
-            onChange={(captionPlacement) => onChange({ ...block, captionPlacement })}
+            onChange={(titlePlacement) =>
+              onChange({ ...block, diagram: { ...block.diagram, titlePlacement } })
+            }
           />
         </div>
       )}

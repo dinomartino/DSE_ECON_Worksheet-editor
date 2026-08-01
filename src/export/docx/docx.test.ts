@@ -683,6 +683,28 @@ describe('tables and images (§7.5, §11.5, §11.6)', () => {
     expect(document).not.toContain('http://localhost');
     expect(contentTypes).toContain('Extension="png"');
   });
+
+  /*
+   * The one paragraph that may not carry the document's fixed line.
+   *
+   * Everything else is `w:lineRule="exact"` at 12pt, and `exact` clips rather than
+   * grows. A picture is taller than a line by design, so inheriting that box drew a
+   * 12pt slice of the figure and painted the rest behind the text above it: the image
+   * was invisible on the page while still selecting at full size in Word. Nothing else
+   * about the export was wrong — the PNG bytes, the extent and the relationship were
+   * all correct — which is exactly why this needs its own assertion. Every other test
+   * here passed while the exported worksheet showed no diagram at all.
+   */
+  it('lets a picture paragraph grow to the picture instead of clipping it', async () => {
+    const { read } = await unzip(STUDENT_BI);
+    const document = await read('word/document.xml');
+
+    const start = document.lastIndexOf('<w:p>', document.indexOf('<w:drawing>'));
+    const pictureParagraph = document.slice(start, document.indexOf('<w:drawing>'));
+
+    expect(pictureParagraph).toContain('<w:spacing w:line="240" w:lineRule="auto"/>');
+    expect(pictureParagraph).not.toContain('w:lineRule="exact"');
+  });
 });
 
 describe('page breaks (§7.6, §11.7)', () => {

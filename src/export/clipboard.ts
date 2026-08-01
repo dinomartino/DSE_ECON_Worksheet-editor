@@ -244,12 +244,18 @@ function nodeHtml(
 
     // A data: URI survives the paste into Word as an embedded image.
     const alt = escapeHtml(plain(node.altText.en) || plain(node.altText.zh) || 'Image');
-    const caption = node.caption
-      ? `<p style="${fontCss}${NODE_CSS['Image Caption']}">${richHtml(node.caption, language)}</p>`
-      : '';
     const picture =
       `<p style="text-align:center"><img src="${src}" width="${node.widthPx}" ` +
       `height="${node.heightPx}" alt="${alt}"/></p>`;
+
+    // Only a picture has a caption beside it. A diagram's words are drawn inside its own
+    // PNG, so it pastes as the image alone — there is nothing here that could arrive in
+    // Word as a separate paragraph.
+    if (node.kind === 'diagram') return picture;
+
+    const caption = node.caption
+      ? `<p style="${fontCss}${NODE_CSS['Image Caption']}">${richHtml(node.caption, language)}</p>`
+      : '';
     return node.captionPlacement === 'above' ? caption + picture : picture + caption;
   }
 

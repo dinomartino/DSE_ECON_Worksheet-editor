@@ -18,7 +18,7 @@ and the code disagree, the code is right — fix the document in the same PR.
 | State | Zustand 5, undo/redo, 100-entry history |
 | Language | TypeScript strict |
 | Export | Raw OOXML via JSZip (hand-built, no `docx` library) |
-| Test | Vitest 4 — ~550 tests across 24 files, ~1s |
+| Test | Vitest 4 — ~580 tests across 23 files, ~1s |
 | Runtime | Browser-only: client-side `.docx`, no API routes |
 
 ## Project structure
@@ -330,6 +330,14 @@ vertical rhythm comes from the line box. Consequences (each fails silently):
 - **`exact` does not grow** (unlike `atLeast` it clips) — that keeps a bilingual page on
   one rhythm through CJK glyphs and inline images. Larger sizes need a larger box:
   `exactLineFor()` scales from the 11pt/12pt base.
+- **A picture's paragraph is the one exception, and must say so** (`w:lineRule="auto"` in
+  `pictureXml`). A figure is taller than a line by design — a 300px diagram is ~225pt
+  asking to sit in a 12pt box — and `exact` clipped it to a 12pt slice, painting the rest
+  *behind* the text above. The symptom is the worst kind: the image selects at full size
+  in Word, the PNG bytes, `wp:extent` and the relationship are all correct, and the page
+  simply looks empty. `auto` is what Word writes for an inline picture, so an edited file
+  round-trips. Separation around the figure stays a blank line, never spacing on this
+  paragraph.
 - **Every style states its own metrics.** Word merges `w:spacing` as a whole element, so
   a style setting only `w:before`/`w:after` silently drops `w:line`;
   `formatParagraphProps()` restates the line whenever a teacher overrides spacing or
@@ -604,14 +612,30 @@ Renderer rules that only show on a real page:
 - **A point's label defaults to `right`** — a marked point is nearly always an
   intersection, and up-right is where the other curve runs.
 
-A `title` is the diagram's own caption — centred **on the plot** (which is off-centre by
-design, so centring on the canvas sits it left of the picture), underlined, above the
-y-axis title. It lives in the diagram rather than as a paragraph above it: a heading in
-the flow centres on the text column and drifts as the diagram is resized, and only text
-inside the geometry rasterizes into the same single PNG. `titleRoom()` is shared by the
-projection (which reserves the space) and `diagramTitleAnchor()` (which places the text in
-it) — and the y-axis title's floor is measured against it, or the two collide on a plot
-that starts near the top. An absent title must reserve nothing.
+### A diagram's words live inside its own image
+
+A `title` is the diagram's **only** label — centred on the plot (which is off-centre by
+design, so centring on the canvas sits it left of the picture), underlined, and drawn
+into the geometry so it rasterizes into the same single PNG. `titlePlacement` (`above` |
+`below`, reusing the block-level `CaptionPlacement`; `above` default and unstored) picks
+the side.
+
+A `DiagramBlock` therefore has **no `caption`**, alone among captionable blocks, and
+`DiagramNode` carries none for a backend to print. The caption was the wrong mechanism
+twice over: it printed as its own paragraph, which a stray click in Word could separate
+from the picture, and it centred on the *text column* rather than the plot, so it slid out
+from under the figure as the diagram was resized. Tables and images keep theirs — neither
+can bake text into itself.
+
+- `titleRoom()` is shared by the projection (which reserves the space) and
+  `diagramTitleAnchor()` (which places the text in it), and the room is reserved **on the
+  title's own side only** — adding it to both leaves a blank strip opposite the words.
+- **A title below is measured from the plot's bottom edge, not the canvas**: that pad also
+  carries the x-axis tick labels, so anchoring to the canvas would let an untick'd title
+  float away and a ticked one land on top of them.
+- The y-axis title's floor counts the title's room only when it prints **above**; below,
+  it contends for nothing up there.
+- An absent title must reserve nothing.
 
 `DIAGRAM_TEMPLATES` ships nine starting shapes (blank, supply-demand, demand-shift,
 AD-AS, money market, tariff, import quota, proportional tax, PPC). A template is only an

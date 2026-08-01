@@ -267,6 +267,15 @@ function projection(
   extraTop = 0,
   /** Room the x-axis title needs beyond the axis, so it never sits on the arrowhead. */
   rightRoom = 0,
+  /**
+   * Extra bottom room for a title printed *below* the plot.
+   *
+   * Separate from `extraTop` rather than one signed number: the two are reserved against
+   * different padding constants (`PAD.top` clears the y-axis title, `PAD.bottom` clears
+   * the x-axis tick labels), so a single value would have to know which side it was
+   * being added to anyway.
+   */
+  extraBottom = 0,
 ): Projection {
   const pad = {
     top: PAD.top * scale + extraTop,
@@ -278,7 +287,7 @@ function projection(
       Math.max(PAD.right * scale, rightRoom),
       width * MAX_X_TITLE_SHARE,
     ),
-    bottom: PAD.bottom * scale,
+    bottom: PAD.bottom * scale + extraBottom,
     left: PAD.left * scale,
   };
   const left = pad.left;
@@ -646,12 +655,14 @@ export function axisTitleAnchor(
         {
           x: proj.plot.left - AXIS_TITLE_INDENT * scale,
           // The floor is one line height below whatever sits above — the canvas edge
-          // normally, but the diagram's caption when there is one. Clamping to the edge
-          // regardless would push the axis title up *through* a caption on a diagram
-          // whose plot starts near the top, which is precisely the collision the caption's
-          // reserved room exists to prevent.
+          // normally, but the diagram's title when one prints *there*. Clamping to the
+          // edge regardless would push the axis title up through it on a diagram whose
+          // plot starts near the top, which is precisely the collision the title's
+          // reserved room exists to prevent. A title placed below sits under the plot
+          // and contends for nothing up here, so it contributes no floor.
           y: Math.max(
-            titleRoom(diagram, language, scale) + AXIS_TITLE_SIZE * scale * 1.1,
+            (diagram.titlePlacement === 'below' ? 0 : titleRoom(diagram, language, scale)) +
+              AXIS_TITLE_SIZE * scale * 1.1,
             proj.plot.top - AXIS_OVERSHOOT * scale - AXIS_TITLE_GAP * scale,
           ),
         };
@@ -691,15 +702,31 @@ export function diagramTitleAnchor(
   diagram: Diagram,
   proj: Projection,
   scale: number,
-  language: LanguageMode = 'bilingual',
+  /**
+   * Unused: the anchor is derived from the plot edges alone now that the title's room is
+   * reserved per side by `diagramPlot`. Kept in the signature because three call sites
+   * pass it positionally and it belongs to the same family as `axisTitleAnchor`, which
+   * genuinely does measure its text.
+   */
+  _language: LanguageMode = 'bilingual',
 ): { x: number; y: number } {
   const offset = diagram.titleOffset;
+  const below = diagram.titlePlacement === 'below';
   return {
-    // The first baseline sits one line height below the canvas top, so a two-line
-    // bilingual caption grows downward into the room `titleRoom` reserved for it rather
-    // than upward off the canvas.
     x: (proj.plot.left + proj.plot.right) / 2 + (offset ? offset.x * plotSpanX(proj) : 0),
-    y: (TITLE_TOP + TITLE_SIZE * 1.1) * scale - (offset ? offset.y * plotSpanY(proj) : 0),
+    // Above: the first baseline sits one line height below the canvas top, so a two-line
+    // bilingual title grows downward into the room `titleRoom` reserved for it rather
+    // than upward off the canvas.
+    //
+    // Below: measured from the plot's bottom edge, *not* from the canvas bottom. The
+    // bottom pad also carries the x-axis tick labels, so anchoring to the canvas would
+    // let a title with no ticks float far from the plot and one with ticks land on top
+    // of them; starting at the plot edge and clearing the same `TITLE_GAP` keeps the
+    // words the same distance from the axes either way.
+    y: below
+      ? proj.plot.bottom + PAD.bottom * scale + (TITLE_TOP + TITLE_SIZE * 1.1) * scale -
+        (offset ? offset.y * plotSpanY(proj) : 0)
+      : (TITLE_TOP + TITLE_SIZE * 1.1) * scale - (offset ? offset.y * plotSpanY(proj) : 0),
   };
 }
 
@@ -736,12 +763,17 @@ export function axisTickAnchor(
 export function diagramPlot(diagram: Diagram, options: DiagramSvgOptions): Projection {
   const scale = options.scale ?? 1;
   const yTitleLines = pickSides(diagram.y.title, options.language);
-  // The caption is stacked *above* the y-axis title, so its room adds to the same top
+  // The title's room is reserved on whichever side it prints, and on that side only.
+  // Adding it to both would leave an untitled strip opposite the words — the same
+  // "absent title must cost nothing" rule, applied per side.
+  const room = titleRoom(diagram, options.language, scale);
+  const below = diagram.titlePlacement === 'below';
+  // Above, the title is stacked over the y-axis title, so its room adds to the same top
   // pad rather than competing for it — otherwise a titled diagram would print its
-  // caption straight through "Price (Renminbi)".
+  // words straight through "Price (Renminbi)".
   const extraTop =
     Math.max(0, yTitleLines.length - 1) * AXIS_TITLE_SIZE * scale * 1.15 +
-    titleRoom(diagram, options.language, scale);
+    (below ? 0 : room);
   const xTitleLines = pickSides(diagram.x.title, options.language);
   const rightRoom = estimateWidth(xTitleLines, AXIS_TITLE_SIZE * scale) + 30 * scale;
   return projection(
@@ -750,6 +782,7 @@ export function diagramPlot(diagram: Diagram, options: DiagramSvgOptions): Proje
     scale,
     extraTop,
     rightRoom,
+    below ? room : 0,
   );
 }
 

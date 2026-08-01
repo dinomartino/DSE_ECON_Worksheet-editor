@@ -34,7 +34,6 @@ const FAKE_PNG =
 function worksheetWithDiagram(templateId = 'ad-as'): Worksheet {
   const worksheet = buildAcceptanceWorksheet();
   const block = createDiagramBlock(templateId);
-  block.caption = bi('Figure 1', '圖一');
   block.altText = bi('AD-AS diagram', 'AD-AS 圖');
   worksheet.questions[0].blocks.push(block);
   return worksheet;
@@ -409,14 +408,20 @@ describe('the diagram title (§the caption)', () => {
   });
 });
 
-describe('caption placement (§a caption prints above or below)', () => {
-  /** A worksheet whose diagram carries a caption, on the given side. */
-  const withCaption = (placement?: 'above' | 'below') => {
+describe('a diagram carries its words inside its own image', () => {
+  /** A worksheet whose diagram carries a title, on the given side. */
+  const withTitle = (placement?: 'above' | 'below') => {
     const worksheet = worksheetWithDiagram();
     const block = worksheet.questions[0].blocks.find((b) => b.kind === 'diagram');
     if (block?.kind !== 'diagram') throw new Error('fixture lost its diagram block');
-    block.caption = bi('Figure 1: the market for wine', '圖一');
-    if (placement) block.captionPlacement = placement;
+    // Deliberately not "Figure 1"/"圖一": the acceptance fixture's `ImageBlock` caption
+    // is exactly that, and it *is* legitimate document text. Sharing the wording would
+    // make every "the title never prints" assertion here match the wrong block.
+    block.diagram = {
+      ...block.diagram,
+      title: bi('The market for wine', '葡萄酒市場'),
+      ...(placement ? { titlePlacement: placement } : {}),
+    };
     return { worksheet, blockId: block.id };
   };
 
@@ -429,60 +434,89 @@ describe('caption placement (§a caption prints above or below)', () => {
     return zip.file('word/document.xml')!.async('string');
   };
 
-  it('puts the caption after the picture by default', async () => {
-    const { worksheet } = withCaption();
+  it('never prints the title as document text, on either side', async () => {
+    // The whole point of the title superseding the old block caption: the words are
+    // rasterized into the PNG, so Word receives one object. A title that leaked into
+    // document.xml would be a paragraph again — separable from the picture by a stray
+    // click, and free to drift out from under it.
+    for (const placement of ['above', 'below'] as const) {
+      const { worksheet } = withTitle(placement);
+      const xml = await docxFor(worksheet);
+      // Scoped to this diagram's own wording, both languages. The acceptance fixture
+      // also carries a captioned `ImageBlock` ("Figure 1"/"圖一") whose caption
+      // legitimately *is* document text, so a search for that wording would match the
+      // wrong block and pass regardless of what the diagram did.
+      expect(xml).not.toContain('The market for wine');
+      expect(xml).not.toContain('葡萄酒市場');
+    }
+  });
+
+  it('emits the picture as one paragraph with no words beside it', async () => {
+    const { worksheet } = withTitle('below');
     const xml = await docxFor(worksheet);
-    expect(xml.indexOf('w:drawing')).toBeLessThan(xml.indexOf('Figure 1'));
+    // The diagram is the *last* picture in the fixture — the acceptance worksheet also
+    // has a captioned `ImageBlock` earlier — so anchor on its own drawing.
+    const drawing = xml.lastIndexOf('<w:drawing>');
+    const start = xml.lastIndexOf('<w:p>', drawing);
+    const end = xml.indexOf('</w:p>', drawing);
+    const paragraph = xml.slice(start, end);
+
+    // The paragraph carries the drawing and no text runs of its own.
+    expect(paragraph).not.toContain('<w:t');
+    // And the diagram's own words are nowhere in the document at all — the check that
+    // actually distinguishes "drawn into the PNG" from "printed beside the picture".
+    expect(xml).not.toContain('The market for wine');
   });
 
-  it('puts it before the picture when asked', async () => {
-    const { worksheet } = withCaption('above');
-    const xml = await docxFor(worksheet);
-    expect(xml.indexOf('Figure 1')).toBeLessThan(xml.indexOf('w:drawing'));
+  it('pastes as the image alone', () => {
+    const { worksheet, blockId } = withTitle('above');
+    const html = worksheetClipboardHtml(worksheet, STUDENT_BI, new Map([[blockId, FAKE_PNG]]));
+    expect(html).toContain('<img');
+    // Scoped to *this* diagram's own words: the acceptance fixture separately carries a
+    // captioned `ImageBlock`, and an unscoped search would match that instead and pass
+    // whatever the diagram did.
+    expect(html).not.toContain('The market for wine');
   });
 
-  it('keeps an above-caption with the picture it names', async () => {
-    // Word will otherwise break the page between a heading and its figure — the orphan
-    // the placement was chosen to avoid in the first place.
-    const { worksheet } = withCaption('above');
-    const xml = await docxFor(worksheet);
-    const caption = xml.indexOf('Figure 1');
-    const paragraphStart = xml.lastIndexOf('<w:p>', caption);
-    expect(xml.slice(paragraphStart, caption)).toContain('<w:keepNext/>');
-  });
-
-  it('costs an uncaptioned diagram nothing at all', async () => {
-    // A caption is optional and most diagrams carry none. Storing a placement must never
-    // conjure an empty paragraph, in any backend — the default is unstored, so an
-    // untouched document has to export byte-identically.
-    const bare = worksheetWithDiagram();
-    const stated = worksheetWithDiagram();
-    const block = stated.questions[0].blocks.find((b) => b.kind === 'diagram');
-    if (block?.kind !== 'diagram') throw new Error('fixture lost its diagram block');
-    block.captionPlacement = 'below';
-    expect(await docxFor(stated)).toBe(await docxFor(bare));
-  });
-
-  it('reaches the clipboard on the same side', () => {
-    // The PNG has to be supplied: without it a diagram emits no <img> at all, and there
-    // would be nothing for the caption to be ordered against.
-    const html = (placement: 'above' | 'below') => {
-      const { worksheet, blockId } = withCaption(placement);
-      return worksheetClipboardHtml(worksheet, STUDENT_BI, new Map([[blockId, FAKE_PNG]]));
+  it('draws the title into the SVG on the side asked for', () => {
+    // Above and below must be genuinely different geometry, not the same picture with a
+    // stored flag nobody reads. The plot is pushed down by a title above and up by one
+    // below, so the drawn y of the words differs.
+    const yOf = (placement: 'above' | 'below') => {
+      const { worksheet } = withTitle(placement);
+      const block = worksheet.questions[0].blocks.find((b) => b.kind === 'diagram');
+      if (block?.kind !== 'diagram') throw new Error('fixture lost its diagram block');
+      const svg = diagramSvg(block.diagram, {
+        widthPx: 400,
+        heightPx: 300,
+        language: 'en',
+        scale: 1,
+      });
+      expect(svg).toContain('The market for wine');
+      // The words sit in a <tspan> inside the <text>, so the y has to be read off the
+      // element rather than from the same tag as the string.
+      const match = /<text[^>]*\sy="([\d.]+)"[^>]*>(?:(?!<\/text>).)*The market for wine/.exec(svg);
+      return match ? Number(match[1]) : undefined;
     };
-    const above = html('above');
-    const below = html('below');
-    expect(above.indexOf('Figure 1')).toBeLessThan(above.indexOf('<img'));
-    expect(below.indexOf('<img')).toBeLessThan(below.indexOf('Figure 1'));
+    const above = yOf('above');
+    const below = yOf('below');
+    expect(above).toBeDefined();
+    expect(below).toBeDefined();
+    expect(below!).toBeGreaterThan(above!);
   });
 
-  it('resolves the placement once, in the IR, so no backend has to guess', () => {
-    // Unstored means `below` *in the IR*, not in three separate backends each deciding
-    // for themselves — that is what stops the page and the .docx disagreeing.
-    const { worksheet } = withCaption();
-    // `collectDiagramNodes` already walks the rendered tree to find diagram nodes, which
-    // is exactly the set this is asking about.
-    const [diagram] = collectDiagramNodes(worksheet, STUDENT_BI);
-    expect(diagram.captionPlacement).toBe('below');
+  it('costs an untitled diagram no room at all', () => {
+    // An absent title must reserve nothing, or every untitled diagram prints with a
+    // blank strip. The plot of a bare diagram starts exactly where the padding puts it.
+    const bare = worksheetWithDiagram();
+    const block = bare.questions[0].blocks.find((b) => b.kind === 'diagram');
+    if (block?.kind !== 'diagram') throw new Error('fixture lost its diagram block');
+    const options = { widthPx: 400, heightPx: 300, language: 'en' as const, scale: 1 };
+    const plain = diagramPlot(block.diagram, options);
+    const titled = diagramPlot(
+      { ...block.diagram, title: bi('The market for wine', '葡萄酒市場') },
+      options,
+    );
+    expect(titled.plot.top).toBeGreaterThan(plain.plot.top);
   });
 });

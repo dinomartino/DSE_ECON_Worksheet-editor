@@ -812,9 +812,11 @@ function DiagramNodeView({
     />
   );
 
+  // No caption either side: a diagram's words are `diagram.title`, drawn inside the SVG
+  // above and rasterized into the same PNG on export. The page must show exactly what
+  // Word will print, so there is nothing to add around the picture here.
   return (
     <div className="my-2 text-center">
-      <BlockCaption node={node} side="above" style="Image Caption" language={language} ctx={ctx} />
       <SizedBlock
         blockId={node.blockId}
         widthPx={node.widthPx}
@@ -825,7 +827,6 @@ function DiagramNodeView({
       >
         {picture}
       </SizedBlock>
-      <BlockCaption node={node} side="below" style="Image Caption" language={language} ctx={ctx} />
     </div>
   );
 }

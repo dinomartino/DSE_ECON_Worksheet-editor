@@ -469,6 +469,23 @@ function pictureXml(
     '<w:p><w:pPr>' +
     `<w:pStyle w:val="${STYLE_IDS.Body}"/>` +
     '<w:jc w:val="center"/>' +
+    // The picture's line must be allowed to grow to the picture.
+    //
+    // Every other paragraph carries the document's fixed 12pt line
+    // (`w:line="240" w:lineRule="exact"`, inherited from the Body style) because that
+    // exact box is what keeps a bilingual page on one rhythm through CJK glyphs and
+    // mixed run sizes. `exact` does not grow — it *clips* — and a picture is the one
+    // thing in the document that is taller than a line by design: a 300px diagram is
+    // ~225pt asking to live in a 12pt box. Word drew the 12pt slice and painted the
+    // rest behind the text above it, so the figure was invisible on the page while
+    // still selectable at full size — the geometry, the PNG bytes and the relationship
+    // were all correct, and only the line box was wrong.
+    //
+    // `auto` is also what Word itself writes for an inline picture, so a teacher who
+    // edits and re-saves the file round-trips this paragraph unchanged. The vertical
+    // rhythm around the figure is unaffected: separation is a blank line either side
+    // (§one fixed line, no paragraph spacing), never spacing on this paragraph.
+    '<w:spacing w:line="240" w:lineRule="auto"/>' +
     // A picture keeps with what follows when something follows it that belongs to it —
     // a caption printed *below*. With the caption above, the picture is the last thing
     // in the group and only `keepNext` from the caller applies.

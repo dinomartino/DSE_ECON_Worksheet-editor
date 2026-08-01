@@ -1,4 +1,4 @@
-import type { BiText } from './types';
+import type { BiText, CaptionPlacement } from './types';
 
 /**
  * Economics diagram model.
@@ -186,6 +186,24 @@ export interface Diagram {
    * already reserved. Same rule as `DiagramAxis.titleOffset`.
    */
   titleOffset?: DiagramPoint;
+  /**
+   * Which side of the plot the title prints on. `above` is the default and stays
+   * **unstored**, matching the reference papers and the rule that only a deviation is
+   * written down.
+   *
+   * This is the *only* label a diagram has. A diagram block used to carry a `caption`
+   * too — an ordinary paragraph in the document flow — and it was the wrong mechanism
+   * twice over: it printed as a separate line that a stray click in Word could pull
+   * away from the picture, and being a paragraph it obeyed the text column rather than
+   * the plot, so it drifted out from under the figure it named as the diagram was
+   * resized. The title supersedes it because it rasterizes *into the same PNG*: one
+   * object, one thing to move, and words that cannot come unstuck from the drawing.
+   *
+   * Typed as the block-level `CaptionPlacement` rather than a parallel type of its own —
+   * it answers the identical question, and two spellings of `'above' | 'below'` is two
+   * things to keep in step.
+   */
+  titlePlacement?: CaptionPlacement;
   x: DiagramAxis;
   y: DiagramAxis;
   curves: DiagramCurve[];

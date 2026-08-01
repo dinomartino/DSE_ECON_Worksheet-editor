@@ -285,8 +285,19 @@ export interface DiagramBlock {
   /** Printed size. Height follows from the diagram's own aspect ratio. */
   widthPx: number;
   heightPx: number;
-  caption?: BiText;
-  captionPlacement?: CaptionPlacement;
+  /**
+   * Deliberately **no `caption`**, unlike every other captionable block.
+   *
+   * A caption is a paragraph in the document flow, and for a diagram that was the wrong
+   * shape: it printed as its own line, which a stray click in Word could separate from
+   * the picture, and it centred on the text column rather than the plot, so it slid out
+   * from under the figure whenever the diagram was resized. `Diagram.title` replaces it
+   * and is strictly better for this one block type, because a diagram is the only block
+   * that can draw its own words *inside* the image it exports — one PNG, one object,
+   * nothing to come unstuck. `titlePlacement` puts it above or below the plot.
+   *
+   * Tables and images keep their captions: neither can bake text into itself.
+   */
   altText: BiText;
 }
 

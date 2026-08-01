@@ -237,12 +237,17 @@ export interface DiagramNode {
   widthPx: number;
   heightPx: number;
   altText: BiText;
-  caption?: BiText;
   keepNext?: boolean;
   teacherOnly?: boolean;
-  captionEdit?: EditTarget;
-  /** Which side the caption prints on; always resolved. See `TableNode`. */
-  captionPlacement: CaptionPlacement;
+  /**
+   * No caption, unlike `TableNode` and `ImageNode`.
+   *
+   * A diagram's words are `diagram.title`, drawn *inside* the geometry and rasterized
+   * into the same PNG. There is deliberately nothing here for a backend to print beside
+   * the picture: a caption paragraph is what let the words break onto their own line and
+   * drift away from the figure. Every backend therefore renders a diagram as exactly one
+   * image and nothing else.
+   */
   /** Which block this came from, so the preview can select and edit it. */
   blockId: string;
 }
@@ -505,11 +510,8 @@ export function renderContentBlocks(
         widthPx: block.widthPx,
         heightPx: block.heightPx,
         altText: block.altText,
-        caption: block.caption,
-        captionPlacement: block.captionPlacement ?? 'below',
         keepNext: options.keepNext,
         teacherOnly: options.teacherOnly,
-        captionEdit: { kind: 'blockCaption', blockId: block.id },
         blockId: block.id,
       });
     } else {
