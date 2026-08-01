@@ -40,6 +40,7 @@ import { Button, Eyebrow, GroupHeader, IconButton, NumberField, Segmented } from
 import { Menu } from '@/components/ui/Menu';
 import { TableSizePicker } from '@/components/ui/TableSizePicker';
 import { BiTextField } from './BiTextField';
+import { CaptionField } from './CaptionField';
 import { DiagramEditor } from './DiagramEditor';
 
 /**
@@ -537,11 +538,14 @@ function TableBlockEditor({
         </p>
       )}
 
-      <BiTextField
-        label="Caption"
-        value={block.caption ?? emptyBiText()}
-        onChange={(caption) => onChange({ ...block, caption })}
-        rows={1}
+      {/* A table's heading conventionally sits *above* it, unlike a figure's caption —
+          both are real in the reference papers and one paper legitimately uses both,
+          which is why this is a per-block choice rather than a document-wide rule. */}
+      <CaptionField
+        value={block.caption}
+        placement={block.captionPlacement}
+        noun="table"
+        onChange={(patch) => onChange({ ...block, ...patch })}
       />
     </div>
   );
@@ -773,11 +777,11 @@ function ImageBlockEditor({
         onChange={(altText) => onChange({ ...block, altText })}
         rows={1}
       />
-      <BiTextField
-        label="Caption"
-        value={block.caption ?? emptyBiText()}
-        onChange={(caption) => onChange({ ...block, caption })}
-        rows={1}
+      <CaptionField
+        value={block.caption}
+        placement={block.captionPlacement}
+        noun="picture"
+        onChange={(patch) => onChange({ ...block, ...patch })}
       />
     </div>
   );

@@ -73,7 +73,7 @@ Editor layout: AddRail | PageRail | Preview (scales-to-fit A4 sheets) | sidebar
 
 ```
 Worksheet
-├── schemaVersion              CURRENT_SCHEMA_VERSION = 7
+├── schemaVersion              CURRENT_SCHEMA_VERSION = 1
 ├── id · title · titleFormat? · instructions? · instructionsFormat?
 ├── fonts: FontPair            { latin, eastAsia }
 ├── pageSetup?: PageSetup      paper · orientation · margins, all twips
@@ -1125,7 +1125,13 @@ local; the store is called on pointer-up, or one drag floods the undo stack.
   implementation today.
 - **Autosave** debounced 1.2s. **File download/upload** as `.worksheet.json`, images
   base64.
-- **Migration chain** `migrate()`: ordered pure functions v1→v7.
+- **Migration chain** `migrate()`: ordered pure functions, currently **empty**. The model
+  changed seven times before the app shipped, but a migration exists to carry *real* data
+  across a change and no document had ever been saved by a released build — so the seven
+  steps upgraded documents that do not exist, and the version was reset to 1 rather than
+  carrying them forever. The machinery around them is kept and still runs on every load:
+  validation, `__unknown` stashing, and `normalize`'s defaulting. Adding a real migration
+  means appending to `MIGRATIONS` and bumping the constant; the loop needs no edit.
 - **Forward compatibility**: unknown top-level fields preserved in `__unknown`.
 - **`KNOWN_KEYS` must list every top-level field.** An unlisted key is treated as from
   a newer build: stripped into `__unknown`, persisted but never reaching the model —

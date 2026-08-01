@@ -20,6 +20,15 @@ export interface WorksheetStore {
   load(id: string): Promise<Worksheet | undefined>;
   save(worksheet: Worksheet): Promise<void>;
   remove(id: string): Promise<void>;
+  /**
+   * Forget every saved document.
+   *
+   * Distinct from `remove` per id because the editor reopens the most recently saved
+   * worksheet on load, so "start completely fresh" is a statement about the *store*,
+   * not about one document — deleting them one at a time would need the caller to
+   * enumerate what it is trying to forget.
+   */
+  clear(): Promise<void>;
 }
 
 const PREFIX = 'econ-worksheet:';
@@ -87,6 +96,18 @@ export class LocalStorageWorksheetStore implements WorksheetStore {
     storage.removeItem(PREFIX + id);
     const summaries = await this.list();
     storage.setItem(INDEX_KEY, JSON.stringify(summaries.filter((entry) => entry.id !== id)));
+  }
+
+  async clear(): Promise<void> {
+    const storage = this.storage;
+    if (!storage) return;
+    // Only this app's own keys. `localStorage` is shared with everything else served
+    // from the same origin, so clearing it wholesale — or reaching for the browser's
+    // "clear site data" — destroys more than this app has any business touching.
+    const mine = Object.keys(storage).filter(
+      (key) => key === INDEX_KEY || key.startsWith(PREFIX),
+    );
+    for (const key of mine) storage.removeItem(key);
   }
 }
 

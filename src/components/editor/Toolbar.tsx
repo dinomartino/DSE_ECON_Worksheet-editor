@@ -3,15 +3,17 @@
 import { useRef, useState } from 'react';
 import { copyForWord, worksheetClipboardHtml, worksheetPlainText } from '@/export/clipboard';
 import { renderDiagramImages } from '@/export/diagramImage';
+import { createWorksheet } from '@/model/factories';
 import { worksheetMarks } from '@/model/marks';
 import { pageSetupOf } from '@/model/page';
 import type { LanguageMode, VersionMode } from '@/model/types';
 import { requireQuestionType } from '@/registry';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { downloadWorksheetFile, readWorksheetFile, triggerDownload } from '@/storage';
+import { downloadWorksheetFile, readWorksheetFile, triggerDownload, worksheetStore } from '@/storage';
 import { Button, IconButton, Pill, Segmented } from '@/components/ui';
 import { DownloadIcon, PdfIcon, RedoIcon, SettingsIcon, UndoIcon } from '@/components/ui/icons';
 import { Menu } from '@/components/ui/Menu';
+import { Dialog } from '@/components/ui/Dialog';
 
 /**
  * Output controls, export actions and persistence (§5.4, §6, §7).
@@ -41,6 +43,7 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
   const [busy, setBusy] = useState<string | undefined>();
   const [error, setError] = useState<string | undefined>();
   const [notice, setNotice] = useState<string | undefined>();
+  const [confirmingClear, setConfirmingClear] = useState(false);
 
   // Only meaningful in bilingual mode, where a missing side affects the output (§5.2).
   const untranslated =
@@ -137,6 +140,43 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
       flash('Worksheet opened');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not open that file.');
+    }
+  };
+
+  /**
+   * Start a new document.
+   *
+   * Non-destructive: the current worksheet stays in storage under its own id, and this
+   * one is saved beside it on the next autosave. Nothing is deleted, so this needs no
+   * confirmation — but it *does* switch which document reopens next time, since the
+   * editor restores whichever was saved most recently.
+   */
+  const handleNew = () => {
+    replaceWorksheet(createWorksheet());
+    flash('New worksheet');
+  };
+
+  /**
+   * Forget every saved document and start over.
+   *
+   * The editor reopens the most recently saved worksheet on load, which is what makes a
+   * document seem to survive a dev-server restart — it lives in `localStorage`, not in
+   * the build. That is the intended behaviour and also the only way to get genuinely
+   * clean state when a stored document is the thing being debugged.
+   *
+   * Irreversible, and there is no server-side copy, so it is confirmed rather than
+   * offered as a plain menu item, and the dialog points at "Download .json" as the way
+   * to keep a copy first.
+   */
+  const handleClearAll = async () => {
+    setConfirmingClear(false);
+    setError(undefined);
+    try {
+      await worksheetStore.clear();
+      replaceWorksheet(createWorksheet());
+      flash('Saved documents cleared');
+    } catch {
+      setError('Could not clear saved documents.');
     }
   };
 
@@ -255,9 +295,16 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
           label="File and export options"
           items={[
             { label: busy === 'copy' ? 'Copying…' : 'Copy for Word', onSelect: () => void handleCopy() },
-            { label: 'Save now', onSelect: () => void save(), separated: true },
+            { label: 'New worksheet', onSelect: handleNew, separated: true },
+            { label: 'Save now', onSelect: () => void save() },
             { label: 'Download .json', onSelect: () => downloadWorksheetFile(worksheet) },
             { label: 'Open .json…', onSelect: () => fileInput.current?.click() },
+            {
+              label: 'Clear saved documents…',
+              onSelect: () => setConfirmingClear(true),
+              danger: true,
+              separated: true,
+            },
           ]}
         />
 
@@ -281,6 +328,52 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
         >
           {error}
         </p>
+      )}
+
+      {/* Confirmed rather than immediate: this is the one action in the app that
+          destroys work with no undo and no copy anywhere else. The dialog says how many
+          documents are at stake and offers the download first, because "save a copy"
+          is the thing a teacher wants the moment they read the warning. */}
+      {confirmingClear && (
+        <Dialog
+          title="Clear saved documents?"
+          description="Every worksheet saved in this browser will be deleted and a blank one opened. This cannot be undone — nothing is stored on a server."
+          width={460}
+          onClose={() => setConfirmingClear(false)}
+          footer={
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                variant="subtle"
+                onClick={() => {
+                  downloadWorksheetFile(worksheet);
+                  flash('Downloaded a copy');
+                }}
+              >
+                Download this one first
+              </Button>
+              <Button variant="subtle" onClick={() => setConfirmingClear(false)}>
+                Cancel
+              </Button>
+              {/* Filled, not the `danger` variant. That one is deliberately quiet — it
+                  recedes until hovered, which is right for a row's ✕ but wrong here:
+                  this is the confirming action of a destructive dialog and has to read
+                  as destructive *at rest*, or it looks like the same weight as Cancel. */}
+              <button
+                type="button"
+                onClick={() => void handleClearAll()}
+                className="inline-flex h-[34px] items-center justify-center rounded-lg border border-transparent bg-danger px-3 text-[13px] font-medium text-white shadow-sm transition-colors hover:brightness-95 active:scale-[0.97]"
+              >
+                Clear everything
+              </button>
+            </div>
+          }
+        >
+          <p className="text-[13px] leading-relaxed text-ink-subtle">
+            The editor reopens whichever worksheet was saved most recently, which is why
+            your work comes back after a restart — it lives in this browser, not in the
+            code. Clearing is the way to start genuinely fresh.
+          </p>
+        </Dialog>
       )}
     </div>
   );

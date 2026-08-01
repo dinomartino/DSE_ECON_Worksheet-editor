@@ -20,11 +20,8 @@ import {
   serializeRuns,
   toRunPatch,
 } from './text';
-import { createMcqQuestion, createWorksheet } from './factories';
-import { resolveFlow } from './flow';
+import { createWorksheet } from './factories';
 import { MARGIN_PRESETS, cmToTwips, contentWidth, twipsToCm } from './page';
-import { DEFAULT_FIELD_WORDING } from './bandSegments';
-import { bandFieldText } from '@/render/worksheet';
 import type { BiText } from './types';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
 import type { StructuredQuestion, Worksheet } from './types';
@@ -376,209 +373,40 @@ describe('hard line breaks (Shift+Enter)', () => {
   });
 });
 
-describe('schema versioning and migrations (§6, §11.11)', () => {
-  it('migrates a v1 fixture to the current version', () => {
-    // A worksheet as saved by schemaVersion 1: no `fonts` field at all.
-    const v1 = {
-      schemaVersion: 1,
-      id: 'old-doc',
-      title: { en: [{ text: 'Legacy paper' }], zh: [] },
-      sections: [
-        {
-          id: 's1',
-          heading: { en: [{ text: 'Section A' }], zh: [] },
-          questions: [{ ...createMcqQuestion(), id: 'q1' }],
-        },
-      ],
-      createdAt: '2024-01-01T00:00:00.000Z',
-      updatedAt: '2024-01-01T00:00:00.000Z',
-    };
+/**
+ * Loading and saving a document (§6, §11.11).
+ *
+ * The migration *chain* is empty — this build is v1 and nothing it could upgrade was
+ * ever saved by a released build — but everything around it runs on every single load:
+ * validation, unknown-field stashing, defaulting, and the round-trip that persistence
+ * depends on. Those are what is asserted here. When a real migration is added, its own
+ * before/after fixture belongs beside these.
+ */
+describe('schema versioning and document round-trip (§6, §11.11)', () => {
+  it('defaults a document that omits every optional structure', () => {
+    // The minimum a document can be and still load. `normalize` is what lets the rest
+    // of the app assume these exist rather than checking at every use.
+    const bare = migrate({ schemaVersion: 1, id: 'bare', title: { en: [], zh: [] } });
 
-    const migrated = migrate(v1);
-    expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-    // The v1->v2 step supplies the historical default font pair.
-    expect(migrated.fonts).toEqual({ latin: 'Times New Roman', eastAsia: 'PMingLiU' });
-    expect(migrated.questions[0].id).toBe('q1');
-    expect(plain(migrated.title.en)).toBe('Legacy paper');
+    expect(bare.fonts).toEqual({ latin: 'Times New Roman', eastAsia: 'PMingLiU' });
+    expect(bare.pageSetup?.paper).toBe('A4');
+    expect(bare.pageSetup?.margins.top).toBe(1440);
+    expect(bare.questions).toEqual([]);
+    expect(bare.layout).toEqual([]);
+    expect(bare.flow).toEqual([]);
   });
 
-  it('folds a v3 header/footer slot triple into a one-band row', () => {
-    // A worksheet as saved by schemaVersion 3: header content in `slots`, and the
-    // "Page N of M" idiom hand-assembled from four separate parts.
-    const v3 = {
-      schemaVersion: 3,
-      id: 'v3-doc',
-      title: { en: [], zh: [] },
-      sections: [],
-      fonts: { latin: 'Times New Roman', eastAsia: 'PMingLiU' },
-      header: {
-        enabled: true,
-        rule: true,
-        slots: {
-          left: [{ kind: 'text', id: 'l', text: { en: [{ text: 'Form 5' }], zh: [] } }],
-          center: [],
-          right: [],
-        },
-      },
-      footer: {
-        enabled: true,
-        slots: {
-          left: [],
-          center: [
-            { kind: 'text', id: 't1', text: { en: [{ text: 'Page ' }], zh: [] } },
-            { kind: 'pageNumber', id: 'p' },
-            { kind: 'text', id: 't2', text: { en: [{ text: ' of ' }], zh: [] } },
-            { kind: 'pageCount', id: 'n' },
-          ],
-          right: [],
-        },
-      },
-      createdAt: '2024-01-01T00:00:00.000Z',
-      updatedAt: '2024-01-01T00:00:00.000Z',
-    };
-
-    const migrated = migrate(v3);
-    expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-
-    // One row, carrying what the triple carried, in the same zone.
-    expect(migrated.header!.bands).toHaveLength(1);
-    const migratedField = migrated.header!.bands[0].zones.left[0];
-    expect(migratedField.kind).toBe('text');
-    if (migratedField.kind === 'text') expect(plain(migratedField.text.en)).toBe('Form 5');
-    // Settings on the header itself survive the reshape.
-    expect(migrated.header!.rule).toBe(true);
-    // And the old shape is gone rather than left beside the new one.
-    expect((migrated.header as unknown as { slots?: unknown }).slots).toBeUndefined();
-
-    // The four-part "Page N of M" collapses into the single field that always meant.
-    const footerFields = migrated.footer!.bands[0].zones.center;
-    expect(footerFields).toHaveLength(1);
-    expect(footerFields[0].kind).toBe('pageNumber');
-    expect((footerFields[0] as { pattern?: string }).pattern).toBe('longForm');
-  });
-
-  it('gives a v5 computed field the wording the renderer used to supply', () => {
-    /*
-     * Before v6 the phrasing around a computed value lived in `bandFieldText`: a
-     * `totalMarks` field stored only a `label` and the renderer added "Full marks: " and
-     * " marks" itself. Migrating has to *preserve the printed output* while moving that
-     * wording into the document, or every existing worksheet silently reprints.
-     */
-    const v5 = {
-      schemaVersion: 5,
-      id: 'v5-doc',
-      title: { en: [], zh: [] },
-      questions: [],
-      layout: [],
-      flow: [],
-      fonts: { latin: 'Times New Roman', eastAsia: 'PMingLiU' },
-      bands: [
-        {
-          id: 'b1',
-          zones: {
-            left: [{ kind: 'totalMarks', id: 'tm' }],
-            center: [],
-            right: [{ kind: 'fillIn', id: 'fi', label: { en: [{ text: 'Name:' }], zh: [] }, widthCh: 10 }],
-          },
-        },
-      ],
-    };
-
-    const migrated = migrate(v5);
-    expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-
-    const total = migrated.bands![0].zones.left[0];
-    expect(total.kind).toBe('totalMarks');
-    // The exact strings the renderer used to concatenate, now stored and editable.
-    expect(plain((total as { prefix: BiText }).prefix.en)).toBe('Full marks: ');
-    expect(plain((total as { suffix: BiText }).suffix.en)).toBe(' marks');
-    expect(plain((total as { prefix: BiText }).prefix.zh)).toBe('總分：');
-    // The deprecated field is dropped, not left beside the new one to drift.
-    expect((total as { label?: unknown }).label).toBeUndefined();
-
-    // A fill-in's stored label was already its prefix, so it moves across unchanged.
-    const fill = migrated.bands![0].zones.right[0];
-    expect(plain((fill as { prefix: BiText }).prefix.en)).toBe('Name:');
-
-    // The printed line is byte-identical to what v5 rendered.
-    expect(plain(bandFieldText(total, 24).en)).toBe('Full marks: 24 marks');
-    expect(plain(bandFieldText(fill, 24).en)).toBe('Name:__________');
-  });
-
-  it('does not overwrite wording a teacher has already retyped', () => {
-    // Guards re-migration: a v6 document round-tripping through this build must keep its
-    // own phrasing rather than being reset to the default.
-    const v6 = {
-      schemaVersion: 5,
-      id: 'x',
-      title: { en: [], zh: [] },
-      questions: [],
-      layout: [],
-      flow: [],
-      bands: [
-        {
-          id: 'b',
-          zones: {
-            left: [
-              { kind: 'totalMarks', id: 'tm', prefix: { en: [{ text: 'TOTAL: ' }], zh: [] } },
-            ],
-            center: [],
-            right: [],
-          },
-        },
-      ],
-    };
-    const field = migrate(v6).bands![0].zones.left[0];
-    expect(plain((field as { prefix: BiText }).prefix.en)).toBe('TOTAL: ');
-  });
-
-  it('migrates the wording to exactly what a new field ships with', () => {
-    /*
-     * `migrateFieldWording` inlines its default strings rather than importing
-     * `DEFAULT_FIELD_WORDING`, because `bandSegments` reaches `factories` through `page`
-     * and `factories` imports `migrations` — closing that cycle would make the chain
-     * load-order dependent. This is the guard that would otherwise be the import: an
-     * old field and a new field must end up saying the same thing.
-     */
-    const migrated = migrate({
-      schemaVersion: 5,
-      id: 'x',
-      title: { en: [], zh: [] },
-      questions: [],
-      layout: [],
-      flow: [],
-      bands: [{ id: 'b', zones: { left: [{ kind: 'totalMarks', id: 't' }], center: [], right: [] } }],
-    });
-    const field = migrated.bands![0].zones.left[0];
-    expect(plain((field as { prefix: BiText }).prefix.en)).toBe(
-      plain(DEFAULT_FIELD_WORDING.totalMarks.prefix.en),
+  it('treats a document with no schemaVersion as the earliest one', () => {
+    expect(migrate({ id: 'x', title: { en: [], zh: [] } }).schemaVersion).toBe(
+      CURRENT_SCHEMA_VERSION,
     );
-    expect(plain((field as { suffix: BiText }).suffix.zh)).toBe(
-      plain(DEFAULT_FIELD_WORDING.totalMarks.suffix.zh),
-    );
-  });
-
-  it('leaves a header that is already v4 untouched', () => {
-    // Guards the migration against running twice — on a document written by this build,
-    // or one a newer build already reshaped.
-    const v4 = {
-      schemaVersion: 3,
-      id: 'x',
-      title: { en: [], zh: [] },
-      sections: [],
-      fonts: { latin: 'Times New Roman', eastAsia: 'PMingLiU' },
-      header: { enabled: true, bands: [{ id: 'kept', zones: { left: [], center: [], right: [] } }] },
-    };
-    const migrated = migrate(v4);
-    expect(migrated.header!.bands).toHaveLength(1);
-    expect(migrated.header!.bands[0].id).toBe('kept');
   });
 
   it('does not mutate the input document', () => {
-    const v1 = { schemaVersion: 1, id: 'x', title: { en: [], zh: [] }, sections: [] };
-    const snapshot = JSON.stringify(v1);
-    migrate(v1);
-    expect(JSON.stringify(v1)).toBe(snapshot);
+    const input = { schemaVersion: 1, id: 'x', title: { en: [], zh: [] } };
+    const snapshot = JSON.stringify(input);
+    migrate(input);
+    expect(JSON.stringify(input)).toBe(snapshot);
   });
 
   it('preserves unknown fields from a newer version through load and save', () => {
@@ -604,6 +432,12 @@ describe('schema versioning and migrations (§6, §11.11)', () => {
     expect(saved.schemaVersion).toBe(99);
   });
 
+  it('keeps a newer document at its own version rather than downgrading it', () => {
+    // Saving must never claim a document is older than it is, or the build that wrote
+    // it would re-migrate its own fields on the next load.
+    expect(migrate({ ...serializeWorksheet(createWorksheet()), schemaVersion: 42 }).schemaVersion).toBe(42);
+  });
+
   it('round-trips a current worksheet byte-for-byte, images included', () => {
     const worksheet = buildAcceptanceWorksheet();
     const json = JSON.stringify(serializeWorksheet(worksheet));
@@ -627,100 +461,33 @@ describe('schema versioning and migrations (§6, §11.11)', () => {
     expect(() => migrate([])).toThrow(SchemaError);
   });
 
-  /*
-   * v4 -> v5: a section stopped being a container.
-   *
-   * This is the migration most likely to lose a document, because it rewrites the
-   * shape every question lives in. What must survive is not the storage layout but
-   * the *printed page*: the same order and the same numbers.
-   */
-  describe('v4 -> v5: sections flatten into the document flow', () => {
-    const mcq = (id: string) => ({ ...createMcqQuestion(), id });
-    const v4 = () => ({
-      schemaVersion: 4,
-      id: 'doc',
-      title: { en: [{ text: 'T' }], zh: [] },
-      fonts: { latin: 'Times New Roman', eastAsia: 'PMingLiU' },
-      createdAt: '2024-01-01T00:00:00.000Z',
-      updatedAt: '2024-01-01T00:00:00.000Z',
-      sections: [
-        {
-          id: 'sA',
-          heading: { en: [{ text: 'Section A' }], zh: [] },
-          restartNumbering: true,
-          questions: [mcq('q1'), mcq('q2')],
-          layout: [{ kind: 'divider', id: 'd1' }],
-          flow: [
-            { type: 'question', id: 'q1' },
-            { type: 'layout', id: 'd1' },
-            { type: 'question', id: 'q2' },
-          ],
-        },
-        {
-          id: 'sB',
-          heading: { en: [{ text: 'Section B' }], zh: [] },
-          restartNumbering: true,
-          questions: [mcq('q3')],
-        },
-      ],
-    });
-
-    it('preserves the printed order exactly, layout elements included', () => {
-      const migrated = migrate(v4());
-      expect(resolveFlow(migrated).map((item) => item.id)).toEqual([
-        'sA', 'q1', 'd1', 'q2', 'sB', 'q3',
-      ]);
-    });
-
-    it('preserves numbering, including the per-section restart', () => {
-      const plan = computeNumbering(migrate(v4()));
-      expect(plan.questions.map((entry) => entry.number)).toEqual([1, 2, 1]);
-    });
-
-    it('carries each heading over as a section element that still restarts', () => {
-      const sections = migrate(v4()).layout.filter((element) => element.kind === 'section');
-      expect(sections.map((s) => (s.kind === 'section' ? plain(s.text.en) : ''))).toEqual([
-        'Section A',
-        'Section B',
-      ]);
-      expect(sections.every((s) => s.kind === 'section' && s.restartNumbering)).toBe(true);
-    });
-
-    it('adds no heading row for a section that never had one', () => {
-      // A single untitled section is how a plain document was stored; emitting an
-      // empty heading for it would print a blank line that was never there.
-      const untitled = { ...v4(), sections: [{ id: 's1', questions: [mcq('q1')] }] };
-      const migrated = migrate(untitled);
-      expect(migrated.layout.filter((element) => element.kind === 'section')).toHaveLength(0);
-      expect(resolveFlow(migrated).map((item) => item.id)).toEqual(['q1']);
-    });
-
-    it('does not re-flatten a document that is already v5', () => {
-      const once = migrate(v4());
-      const twice = migrate(JSON.parse(JSON.stringify(once)));
-      expect(resolveFlow(twice).map((item) => item.id)).toEqual(
-        resolveFlow(once).map((item) => item.id),
-      );
-    });
-
-    it('keeps the flat lists out of __unknown on reload (§KNOWN_KEYS)', () => {
-      // `questions`, `layout` and `flow` are new top-level keys, and a key missing
-      // from KNOWN_KEYS saves fine and then vanishes on reload.
-      const reloaded = migrate(JSON.parse(JSON.stringify(migrate(v4()))));
-      expect(reloaded.questions).toHaveLength(3);
-      expect(reloaded.layout.length).toBeGreaterThan(0);
-      expect(reloaded.__unknown).toBeUndefined();
-    });
+  it('rejects a version below the first one', () => {
+    expect(() => migrate({ schemaVersion: 0, id: 'x' })).toThrow(SchemaError);
   });
 
+  it('lists every top-level field of a populated worksheet in KNOWN_KEYS', () => {
+    // A key missing from the set is not merely unrecognised: `migrate` strips it into
+    // `__unknown`, so it saves correctly and then vanishes on reload. `titleFormat`,
+    // `instructionsFormat` and `bands` were each missing once, and the symptom — a
+    // control that works until you reopen the document — points nowhere near this file.
+    //
+    // Asserted against a *populated* worksheet so every optional field is actually
+    // present to be checked; an empty one omits exactly the fields most likely to have
+    // been forgotten.
+    const populated = {
+      ...serializeWorksheet(buildAcceptanceWorksheet()),
+      titleFormat: { bold: true },
+      instructionsFormat: { italic: true },
+      bands: [],
+    };
+    const missing = Object.keys(populated).filter((key) => !KNOWN_KEYS.has(key));
+    expect(missing).toEqual([]);
+
+    // And nothing was quietly stashed on the way through.
+    expect(migrate(populated).__unknown).toBeUndefined();
+  });
 });
 
-/**
- * Margin presets and custom margins.
- *
- * Presets are labelled in centimetres but stored in twips, so the risk is a label that
- * says one thing while the exported `w:pgMar` says another. These pin the two together.
- */
 describe('margin presets', () => {
   it('offers the worksheet preset at 2.54 cm top/bottom and 1.5 cm sides', () => {
     const preset = MARGIN_PRESETS.find((entry) => entry.label.startsWith('Worksheet'));
@@ -768,193 +535,6 @@ describe('margin presets', () => {
 
     // The whole point of the preset: more usable width than Normal for the same paper.
     expect(columnOf(preset.margins)).toBeGreaterThan(columnOf(normal.margins));
-  });
-});
-
-/**
- * Every top-level worksheet field survives a save/load round trip.
- *
- * `migrate` deletes any key missing from `KNOWN_KEYS` off the worksheet and stashes it
- * in `__unknown`, so an unlisted field is written to disk and then silently dropped on
- * load. That is how `titleFormat` came to save correctly and vanish on reload: the font
- * size was stored, but the reopened document never saw it.
- *
- * These tests are the guard. The first pins the specific regression; the second fails
- * whenever a new optional field is added to `Worksheet` without listing it.
- */
-describe('save/load round trip preserves every known field', () => {
-  it('keeps per-element formatting and the masthead through migrate()', () => {
-    const worksheet: Worksheet = {
-      ...createWorksheet(),
-      titleFormat: { fontSize: 24, bold: true },
-      instructionsFormat: { fontSize: 11, italic: true },
-      bands: [{ id: 'b1', zones: { left: [], center: [], right: [] } }],
-    };
-
-    const restored = migrate(JSON.parse(JSON.stringify(serializeWorksheet(worksheet))));
-
-    expect(restored.titleFormat).toEqual({ fontSize: 24, bold: true });
-    expect(restored.instructionsFormat).toEqual({ fontSize: 11, italic: true });
-    expect(restored.bands).toHaveLength(1);
-    // None of it should have been diverted into the unknown-field bucket.
-    expect(restored.__unknown).toBeUndefined();
-  });
-
-  it('keeps a distinct first-page header through a save/load round trip', () => {
-    // `firstPage` is nested inside `header`, so KNOWN_KEYS does not police it — which is
-    // exactly why it is pinned here. A field that saves and then vanishes on reload has
-    // bitten this document model before.
-    const worksheet: Worksheet = {
-      ...createWorksheet(),
-      header: {
-        enabled: true,
-        rule: true,
-        bands: [{ id: 'run', zones: { left: [], center: [], right: [] } }],
-        firstPage: {
-          bands: [{ id: 'cover', zones: { left: [], center: [], right: [] } }],
-          rule: false,
-        },
-      },
-    };
-
-    const restored = migrate(JSON.parse(JSON.stringify(serializeWorksheet(worksheet))));
-
-    expect(restored.header?.firstPage?.bands.map((b) => b.id)).toEqual(['cover']);
-    expect(restored.header?.firstPage?.rule).toBe(false);
-    expect(restored.header?.bands.map((b) => b.id)).toEqual(['run']);
-    expect(restored.__unknown).toBeUndefined();
-  });
-
-  it('lists every field a fully-populated worksheet carries in KNOWN_KEYS', () => {
-    // Built by hand rather than from the type, since types are erased at runtime. Any
-    // field added to `Worksheet` should be added here too — that is the point.
-    const populated: Worksheet = {
-      ...createWorksheet(),
-      titleFormat: { bold: true },
-      instructions: { en: [], zh: [] },
-      instructionsFormat: { bold: true },
-      bands: [],
-      header: { enabled: true, bands: [] },
-      footer: { enabled: true, bands: [] },
-    };
-
-    const unlisted = Object.keys(populated).filter((key) => !KNOWN_KEYS.has(key));
-    expect(
-      unlisted,
-      `these worksheet fields would be dropped on load: ${unlisted.join(', ')}`,
-    ).toEqual([]);
-  });
-
-  it('still stashes genuinely unknown fields from a newer build', () => {
-    // The feature KNOWN_KEYS exists for must keep working: a field this build has
-    // never heard of is preserved rather than deleted.
-    const fromFuture = { ...serializeWorksheet(createWorksheet()), somethingNew: 42 };
-    const restored = migrate(JSON.parse(JSON.stringify(fromFuture)));
-
-    expect(restored.__unknown).toEqual({ somethingNew: 42 });
-    expect(serializeWorksheet(restored).somethingNew).toBe(42);
-  });
-});
-
-/*
- * v6 -> v7: tables lost `headerRowCount`.
- *
- * It drove `w:tblHeader`, a grey EFEFEF fill and bold runs, and defaulted to 1 — while no
- * HKDSE table has any of them, so the default printed a grey bold top row a teacher's
- * first action was to undo.
- */
-describe('table header rows are dropped (v6 -> v7)', () => {
-  const withTables = (headerRowCount: number) => ({
-    schemaVersion: 6,
-    id: 'x',
-    title: { en: [], zh: [] },
-    layout: [],
-    flow: [],
-    questions: [
-      {
-        id: 'q1',
-        type: 'mcq',
-        marks: 1,
-        options: [],
-        answerIndex: 0,
-        blocks: [
-          {
-            kind: 'table',
-            id: 't1',
-            headerRowCount,
-            rows: [{ id: 'r1', cells: [{ id: 'c1', text: { en: [], zh: [] } }] }],
-          },
-        ],
-      },
-      {
-        id: 'q2',
-        type: 'structured',
-        blocks: [],
-        parts: [
-          {
-            id: 'p1',
-            marks: 2,
-            blocks: [
-              {
-                kind: 'table',
-                id: 't2',
-                headerRowCount,
-                rows: [{ id: 'r2', cells: [{ id: 'c2', text: { en: [], zh: [] } }] }],
-              },
-            ],
-            subParts: [
-              {
-                id: 's1',
-                blocks: [
-                  {
-                    kind: 'table',
-                    id: 't3',
-                    headerRowCount,
-                    rows: [{ id: 'r3', cells: [{ id: 'c3', text: { en: [], zh: [] } }] }],
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  });
-
-  const tablesOf = (worksheet: ReturnType<typeof migrate>) => {
-    const found: Record<string, unknown>[] = [];
-    const walk = (value: unknown) => {
-      if (Array.isArray(value)) return value.forEach(walk);
-      if (!value || typeof value !== 'object') return;
-      const record = value as Record<string, unknown>;
-      if (record.kind === 'table') found.push(record);
-      Object.values(record).forEach(walk);
-    };
-    walk(worksheet.questions);
-    return found;
-  };
-
-  it('strips the field at every nesting a table can appear in', () => {
-    // A table is insertable in a stem, a part and a sub-part, so the migration walks
-    // generically rather than following a hand-written path that a new nesting would
-    // silently escape.
-    const tables = tablesOf(migrate(withTables(1)));
-    expect(tables).toHaveLength(3);
-    for (const table of tables) expect('headerRowCount' in table).toBe(false);
-  });
-
-  it('leaves the rows themselves untouched', () => {
-    // Only the dead field goes: a migrated table must print exactly what this build
-    // prints for it, which is plain uniform cells.
-    const tables = tablesOf(migrate(withTables(2)));
-    for (const table of tables) {
-      expect((table.rows as unknown[])).toHaveLength(1);
-    }
-  });
-
-  it('reports the current schema version', () => {
-    expect(migrate(withTables(1)).schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(7);
   });
 });
 
