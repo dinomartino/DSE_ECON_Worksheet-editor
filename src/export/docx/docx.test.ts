@@ -646,11 +646,24 @@ describe('tables and images (§7.5, §11.5, §11.6)', () => {
   it('sets a row height floor, never a fixed height', async () => {
     // `atLeast`, so a row whose text needs more space still grows: a dragged height must
     // not be able to clip what is typed into the row later.
+    //
+    // 580, not 700: `w:trHeight` measures the row *without* its cell margins, and Word
+    // lays it out at `trHeight + w:tcMar top + bottom`. The stored 700 is the rendered
+    // box the drag measured off the page, so the default 60+60 comes back off here or
+    // the row prints 120tw taller than it appears (§ the trHeight note in `body.ts`).
     const document = await withTable((block) => setRowHeight(block, 1, 700));
-    expect(document).toContain('<w:trHeight w:val="700" w:hRule="atLeast"/>');
+    expect(document).toContain('<w:trHeight w:val="580" w:hRule="atLeast"/>');
     expect(document).not.toContain('w:hRule="exact"');
     // Only the row it names.
     expect((document.match(/<w:trHeight/g) ?? []).length).toBe(1);
+  });
+
+  it('takes the cell margins off a row dragged to its floor', async () => {
+    // `setRowHeight` clamps to `MIN_ROW_HEIGHT_TWIPS` (240, one 12pt line), so the
+    // smallest row that can be stored still exports 120 once its 60+60 padding is
+    // removed — and never a negative measurement, which is not valid OOXML.
+    const document = await withTable((block) => setRowHeight(block, 1, 100));
+    expect(document).toContain('<w:trHeight w:val="120" w:hRule="atLeast"/>');
   });
 
   it('keeps the cell’s own alignment over any align in its format', async () => {
@@ -1153,6 +1166,17 @@ describe('layout elements in the section flow', () => {
     expect(style).toContain('<w:u w:val="dotted"/>');
     // No paragraph border anywhere in it — the dots are an underline, not a rule.
     expect(style).not.toContain('<w:pBdr>');
+
+    // 1.5pt above each line (§ `LQ_LINE_SPACE_BEFORE_TWIPS`). The dots are drawn by a
+    // run's underline, so they sit on the baseline rather than at the foot of the line
+    // box; without this gap the descenders of the line above land on them. The one
+    // place the fixed-line model takes paragraph spacing, and it must stay on the
+    // *style* — a document of forty directly formatted paragraphs reads as editing
+    // chrome in Word's margin.
+    expect(style).toContain('w:before="30"');
+    for (const paragraph of lines) {
+      expect(paragraph).not.toContain('w:before');
+    }
   });
 
   it('adds the answer-space style only to documents that use it', async () => {

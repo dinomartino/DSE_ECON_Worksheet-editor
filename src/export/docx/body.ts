@@ -369,14 +369,37 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
       // No `w:tblHeader`, and no shading or bold: an HKDSE table is uniform, plain-ruled
       // cells throughout (§tables). Emphasis is per-cell formatting like any other text.
       const minHeight = node.rowHeights[rowIndex];
+      /*
+       * `w:trHeight` measures the row **without** its cell margins: Word lays the row
+       * out at `trHeight + w:tcMar top + bottom`, so writing the stored height straight
+       * out made every dragged row print that much taller than it appears on the page.
+       * On the reference document a 373tw row (18.65pt) rendered at 25.44pt — two such
+       * rows pushed a full sheet of answer lines past the page, so the preview offered
+       * one more line than Word would take.
+       *
+       * The stored value is the *rendered* box, because that is what the drag measured
+       * off the page, so the margins come back off here. The tallest pair on the row
+       * wins, matching Word: one `w:trHeight` covers a row whose cells may pad
+       * differently, and the roomiest cell is the one that sets the row's floor.
+       */
+      const marginTwips = row.reduce(
+        (max, cell) => Math.max(max, cell.padding.top + cell.padding.bottom),
+        0,
+      );
+      const trHeight =
+        minHeight === undefined
+          ? undefined
+          : // Never below zero: a row dragged to its floor is shorter than its own
+            // padding, and a negative `w:trHeight` is not valid OOXML.
+            Math.max(0, Math.round(minHeight - marginTwips));
       const trPr =
         '<w:trPr>' +
         // Never split a row across pages (§7.6).
         '<w:cantSplit/>' +
         // `atLeast`, never `exact`: a dragged height is a floor, so a row whose text
         // needs more space still grows and nothing typed later is clipped.
-        (minHeight !== undefined
-          ? `<w:trHeight w:val="${Math.round(minHeight)}" w:hRule="atLeast"/>`
+        (trHeight !== undefined
+          ? `<w:trHeight w:val="${trHeight}" w:hRule="atLeast"/>`
           : '') +
         '</w:trPr>';
 
