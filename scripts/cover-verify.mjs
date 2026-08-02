@@ -51,9 +51,17 @@ const collectPage = (prefix, dest) => {
   process.exit(1);
 };
 
-const run = (cmd, cmdArgs, label) => {
+/**
+ * @param soft When true, a failure returns `undefined` instead of ending the run — for
+ *   an optional tool whose absence should cost one check, not the whole harness.
+ */
+const run = (cmd, cmdArgs, label, soft = false) => {
   const res = spawnSync(cmd, cmdArgs, { stdio: 'pipe', encoding: 'utf8' });
   if (res.status !== 0) {
+    if (soft) {
+      console.log(`skipped: ${label} (${res.error?.code ?? `exit ${res.status}`})`);
+      return undefined;
+    }
     console.error(`FAILED: ${label}\n${res.stdout}\n${res.stderr}`);
     process.exit(1);
   }
@@ -70,9 +78,41 @@ if (!args.includes('--skip-fixtures')) {
 }
 
 // ── 2. .docx leg: LibreOffice → PDF → page 1 PNG ────────────────────────────────
+/*
+ * How many sheets a cover fixture must occupy.
+ *
+ * The fixture is a cover plus one question, so the answer is exactly 2 — and getting it
+ * wrong is invisible to every other leg of this harness, which rasterises page 1 alone.
+ * That blind spot is how a **blank page 2** shipped: the cover ended with a `continuous`
+ * section break *and* the exporter emitted a `<w:br w:type="page"/>`, so the two
+ * mechanisms stacked and the body began on sheet 3. Page 1 looked perfect throughout.
+ *
+ * Counted from the rendered PDF rather than asserted against the XML, because the XML is
+ * what was wrong: a unit test can only pin the spelling it was written against, while
+ * the sheet count is the thing a teacher actually complains about.
+ */
+const EXPECTED_PAGES = 2;
+const pageFailures = [];
+
 for (const { name } of PAPERS) {
   const docx = `${OUT}/cover-${name}.docx`;
   run(SOFFICE, ['--headless', '--convert-to', 'pdf', '--outdir', OUT, docx], `soffice ${name}`);
+
+  const info = run('pdfinfo', [`${OUT}/cover-${name}.pdf`], `pdfinfo ${name}`, true);
+  const pages = Number(/^Pages:\s*(\d+)$/m.exec(info ?? '')?.[1]);
+  if (Number.isFinite(pages)) {
+    const ok = pages === EXPECTED_PAGES;
+    console.log(`${ok ? '✓' : '✗'} ${name}: ${pages} page(s), expected ${EXPECTED_PAGES}`);
+    if (!ok) {
+      pageFailures.push(
+        `${name}: ${pages} pages, expected ${EXPECTED_PAGES}` +
+          (pages > EXPECTED_PAGES ? ' — a blank sheet between the cover and the body?' : ''),
+      );
+    }
+  } else {
+    console.log(`could not read a page count for ${name} — skipping the sheet-count check`);
+  }
+
   run('pdftoppm', ['-r', '90', '-png', '-f', '1', '-l', '1', `${OUT}/cover-${name}.pdf`, `${OUT}/${name}-docx`], `pdftoppm docx ${name}`);
   collectPage(`${OUT}/${name}-docx`, `${OUT}/${name}-docx.png`);
 }
@@ -111,9 +151,11 @@ try {
   for (const { name } of PAPERS) {
     const json = readFileSync(`${OUT}/cover-${name}.worksheet.json`, 'utf8');
     const worksheet = JSON.parse(json);
-    // Seed the store the app actually loads from: the most recent index entry wins.
+    // Seed the store the app actually loads from. The title is what the start screen
+    // shows on the row this harness then clicks, so it has to be distinctive.
+    const title = `Cover harness ${name}`;
     const index = JSON.stringify([
-      { id: worksheet.id, title: `Cover harness ${name}`, updatedAt: worksheet.updatedAt },
+      { id: worksheet.id, title, updatedAt: worksheet.updatedAt },
     ]);
     const context = await browser.newContext({
       // Tall enough that a whole A4 sheet fits: the sheets scroll in an inner
@@ -131,6 +173,15 @@ try {
     const page = await context.newPage();
     page.on('pageerror', (e) => console.log(`PAGE ERR (${name}):`, e.message));
     await page.goto(URL_BASE, { waitUntil: 'networkidle' });
+    /*
+     * Open the seeded document from the start screen.
+     *
+     * The app opens on the file list rather than reopening the most recently saved
+     * worksheet, so seeding storage is no longer enough to reach the editor — this leg
+     * timed out on `[data-cover]` the moment the start screen shipped. Clicking the row
+     * is also what a teacher does, so the harness now exercises the real route in.
+     */
+    await page.getByRole('button', { name: new RegExp(title) }).first().click();
     await page.waitForSelector('[data-cover]', { timeout: 15_000 });
     await page.waitForTimeout(800);
 
@@ -172,4 +223,12 @@ try {
 const compare = spawnSync('python3', ['scripts/cover-compare.py', OUT], {
   stdio: 'inherit',
 });
+
+// Reported after the contact sheet is written, so a sheet-count failure still leaves the
+// images to look at — the question "why is there an extra page?" is answered by seeing
+// them. Non-zero either way, so this cannot pass unnoticed in a script.
+if (pageFailures.length > 0) {
+  console.error(`\nsheet count wrong:\n  ${pageFailures.join('\n  ')}`);
+  process.exit(1);
+}
 process.exit(compare.status ?? 1);

@@ -646,10 +646,11 @@ export { paragraph, richTextRuns };
  * The cover page, as a two-column Word section (§ `model/cover.ts`).
  *
  * The reference's own mechanism, and the only one that produces the shape: the cover is
- * a section with `w:cols w:num="2" w:equalWidth="0"`, and a **continuous section break**
- * at the end of it returns the body to one column. So the cover's own geometry is
- * carried by a `sectPr` inside the last cover paragraph — which is where Word stores the
- * properties of the section a paragraph *ends*, not the one it begins.
+ * a section with `w:cols w:num="2" w:equalWidth="0"`, and a **`nextPage` section break**
+ * at the end of it returns the body to one column *and* starts it on the next sheet. So
+ * the cover's own geometry is carried by a `sectPr` inside the last cover paragraph —
+ * which is where Word stores the properties of the section a paragraph *ends*, not the
+ * one it begins.
  *
  * A `w:br w:type="column"` moves from the left column to the right; there is no
  * "position this in the right column" property, because Word columns are a flow.
@@ -731,11 +732,19 @@ export function coverXml(
   }
 
   /*
-   * The section break that ends the cover.
+   * The section break that ends the cover, and starts the body on a fresh sheet.
    *
-   * `w:type="continuous"` rather than `nextPage`, because the *page* break is the
-   * caller's job (a cover ends its sheet whether or not the columns change) and a
-   * `nextPage` here would emit a second blank sheet between them.
+   * `w:type="nextPage"`, because a section break **is** the page transition — that is
+   * what `w:type` names. This carried `continuous` plus a separate
+   * `<w:br w:type="page"/>` emitted by the caller, which is one mechanism too many: the
+   * continuous break ended the section, the page break then advanced a sheet, and the
+   * body began on page 3 with a blank page 2 between. Reported from a real export, and
+   * reproduced at 3 pages for *both* cover styles.
+   *
+   * Dropping the caller's break alone also yields 2 pages, but only by accident:
+   * changing `w:cols` from two columns to one forces a page transition of its own. That
+   * side effect disappears for any cover whose column count matches the body's, so the
+   * intent is stated here instead of being left to fall out of the geometry.
    */
   const columns =
     `<w:cols w:num="2" w:equalWidth="0" w:space="${cover.columns.gap}">` +
@@ -747,7 +756,7 @@ export function coverXml(
   chunks.push(
     '<w:p><w:pPr><w:sectPr>' +
       footerRef +
-      '<w:type w:val="continuous"/>' +
+      '<w:type w:val="nextPage"/>' +
       sectionGeometry +
       (cover.panel.present ? columns : '<w:cols w:space="708"/>') +
       '</w:sectPr></w:pPr></w:p>',

@@ -241,8 +241,23 @@ to coordinates), but the slots are areas of a sheet rather than thirds of a row.
   frame is new.
 - **The `.docx` is a real two-column section**: a `w:br w:type="column"` moves into the
   right column (Word columns are a flow; there is no "put this on the right" property),
-  and a **continuous** `sectPr` ends the cover so the body returns to one column without
-  an extra blank sheet. `nextPage` there would emit one.
+  and a **`nextPage`** `sectPr` ends the cover — returning the body to one column *and*
+  starting it on sheet 2.
+- **The section break is the page break; emitting both leaves a blank sheet.** This
+  shipped as a `continuous` `sectPr` *plus* a `<w:br w:type="page"/>` from `docx/index.ts`,
+  on the reasoning that a continuous break contributes no page transition and the caller
+  must supply one. Both halves were wrong: `w:type` is precisely what names the
+  transition, so the two stacked and the body began on sheet 3 with a blank sheet 2 —
+  for **both** cover styles. Reported from a real export; page 1 looked perfect
+  throughout, which is why nothing caught it.
+  - Dropping the caller's break while keeping `continuous` also yields two sheets, but
+    only by accident: changing `w:cols` from two columns to one forces a page transition
+    of its own. That side effect disappears for any cover whose column count matches the
+    body's, so the intent is stated in `w:type` rather than left to the geometry.
+  - **`cover-verify.mjs` counts sheets** (`pdfinfo`, expecting 2 for a cover + one
+    question). Every other leg of that harness rasterises page 1 alone, which is exactly
+    the blind spot this fell into — and a unit test can only pin the XML spelling it was
+    written against, while the sheet count is what a teacher actually complains about.
 - **An empty panel prints one wide column**, not a narrow one beside a blank strip —
   `coverHasPanel()` decides, and both backends read it.
 - **Instruction numbers are derived from position**, never stored, as questions are:

@@ -271,9 +271,10 @@ function buildParts(
   /*
    * The cover comes first, and owns its own sheet.
    *
-   * It ends with a continuous section break carrying its two-column geometry
-   * (`coverXml`), then a page break starts the body on sheet 2 — a cover that shares a
-   * page with question 1 is not a cover.
+   * `coverXml` ends it with a `nextPage` section break carrying its own column
+   * geometry, which is what puts the body on sheet 2 — a cover that shares a page with
+   * question 1 is not a cover. No page break is added here: a section break already
+   * *is* one, and emitting both left a blank sheet between the cover and question 1.
    */
   if (rendered.cover) {
     chunks.push(
@@ -291,7 +292,6 @@ function buildParts(
           : '',
       ),
     );
-    chunks.push('<w:p><w:r><w:br w:type="page"/></w:r></w:p>');
   }
 
   // Routed through the shared node renderer rather than hand-built here, so

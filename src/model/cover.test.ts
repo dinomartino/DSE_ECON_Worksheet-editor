@@ -47,10 +47,18 @@ describe('mock-exam cover', () => {
     expect(document).toContain('<w:col w:w="3845"');
     // A column break is what moves the panel into the right column.
     expect(document).toContain('w:br w:type="column"');
-    // Continuous, so the body returns to one column without an extra blank sheet.
-    expect(document).toContain('<w:type w:val="continuous"/>');
-    // The cover still owns its sheet.
-    expect(document).toContain('w:br w:type="page"');
+    /*
+     * The section break both returns the body to one column and starts it on the next
+     * sheet — a section break *is* a page transition, which is what `w:type` names.
+     *
+     * This pins the fix for a real bug: the cover ended with `continuous` **and** the
+     * caller emitted a `<w:br w:type="page"/>`, so the two mechanisms stacked and the
+     * body began on sheet 3 with a blank sheet 2 between. Both cover styles were
+     * affected. The page break must therefore be *absent*, and the assertion is written
+     * that way round because "no blank page" is a statement about what is not there.
+     */
+    expect(document).toContain('<w:type w:val="nextPage"/>');
+    expect(document).not.toContain('w:br w:type="page"');
   });
 
   it('restates the page geometry on the cover’s own sectPr', () => {
@@ -61,9 +69,9 @@ describe('mock-exam cover', () => {
     for (const style of ['mcq', 'writeIn'] as const) {
       const document = buildDocxParts(coverWorksheet(style), EN).documentXml;
       const coverSect = document.match(
-        /<w:sectPr>(?:<w:footerReference[^>]*\/>)?<w:type w:val="continuous"\/>(.*?)<\/w:sectPr>/,
+        /<w:sectPr>(?:<w:footerReference[^>]*\/>)?<w:type w:val="nextPage"\/>(.*?)<\/w:sectPr>/,
       );
-      expect(coverSect, 'continuous sectPr present').toBeTruthy();
+      expect(coverSect, 'cover sectPr present').toBeTruthy();
       expect(coverSect![1]).toContain('<w:pgSz');
       expect(coverSect![1]).toContain('<w:pgMar');
     }
@@ -390,7 +398,7 @@ describe('mock-exam cover', () => {
           .toContain(sentinel);
       }
       expect(parts.documentXml, `${style}: cover footer is referenced`).toContain(
-        '<w:footerReference w:type="default" r:id="rId9"/><w:type w:val="continuous"/>',
+        '<w:footerReference w:type="default" r:id="rId9"/><w:type w:val="nextPage"/>',
       );
 
       // The panel's write-in boxes are cells, not text — check the grid instead.
