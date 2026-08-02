@@ -92,10 +92,12 @@ describe('sub-parts sharing one marks label', () => {
   it('emits no marks run for an unmarked sub-part in the .docx', () => {
     const document = buildDocxParts(worksheetWith(sharedLabelPart()), STUDENT_EN).documentXml;
 
-    expect(document).toContain('(5 marks)');
+    // The .docx label's interior space is a no-break space (§ `marksText`), so the
+    // label can never tear across a line wrap.
+    expect(document).toContain('(5\u00a0marks)');
     // The bug this replaces: `marks: 0` on (i) printed a literal "(0 marks)".
-    expect(document).not.toContain('(0 marks)');
-    expect(document.match(/\(5 marks\)/g)).toHaveLength(1);
+    expect(document).not.toContain('(0\u00a0marks)');
+    expect(document.match(/\(5\u00a0marks\)/g)).toHaveLength(1);
   });
 
   it('agrees with the .docx in the clipboard backend', () => {

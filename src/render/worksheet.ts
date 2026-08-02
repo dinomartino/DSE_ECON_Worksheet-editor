@@ -216,7 +216,7 @@ const questionRenderCache = new WeakMap<
  * cover's instructions are not part of the question numbering and putting them on that
  * stream would renumber them as questions are added.
  */
-function renderCover(cover: CoverPage): CoverRenderNode {
+function renderCover(cover: CoverPage, baseFontSize?: number): CoverRenderNode {
   /*
    * The cover's own font reaches every line.
    *
@@ -256,8 +256,9 @@ function renderCover(cover: CoverPage): CoverRenderNode {
       text: cover.instructionsHeading!,
       keepNext: true,
       // At the body size, not the heading style's 14pt: the reference sets
-      // "INSTRUCTIONS" at its own body size — the word is a label, not a title.
-      format: { ...withFonts(undefined), fontSize: 11 },
+      // "INSTRUCTIONS" at its own body size — the word is a label, not a title. The
+      // *document's* body size, so a 10pt QAB prints a 10pt label (§ baseFontSize).
+      format: { ...withFonts(undefined), fontSize: baseFontSize ?? 11 },
       edit: { kind: 'coverField', field: 'instructionsHeading' },
     });
     instructions.push(blankLine());
@@ -343,7 +344,9 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
     .map((band) => renderBand(band, total))
     .filter((node): node is RenderNode => node !== undefined);
 
-  const cover = worksheet.cover ? renderCover(worksheet.cover) : undefined;
+  const cover = worksheet.cover
+    ? renderCover(worksheet.cover, worksheet.baseFontSize)
+    : undefined;
 
   const title: RenderNode | undefined = isBiTextEmpty(worksheet.title)
     ? undefined

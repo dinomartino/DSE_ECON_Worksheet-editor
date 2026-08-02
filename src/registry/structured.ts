@@ -2,6 +2,7 @@ import { createStructuredQuestion } from '@/model/factories';
 import { partMarks, questionMarks } from '@/model/marks';
 import {
   PART_TEXT_INDENT,
+  STEM_TEXT_INDENT,
   SUBPART_TEXT_INDENT,
   partLabel,
   subPartLabel,
@@ -52,7 +53,15 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
       edit: { kind: 'blockText', blockId: firstBlock.id },
       listRef: numberedRef,
     });
-    nodes.push(...renderContentBlocks(restBlocks, 'Question Stem', { keepNext: true }));
+    // Continuation blocks indent to the stem's own text column, exactly as a part's do
+    // to theirs (§ STEM_TEXT_INDENT) — without it a paragraph after the stem's table
+    // printed at the page margin, hanging in the question number's gutter.
+    nodes.push(
+      ...renderContentBlocks(restBlocks, 'Question Stem', {
+        keepNext: true,
+        indent: STEM_TEXT_INDENT,
+      }),
+    );
   } else {
     nodes.push({
       kind: 'text',
@@ -62,7 +71,12 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
       keepNext: true,
       listRef: numberedRef,
     });
-    nodes.push(...renderContentBlocks(question.blocks, 'Question Stem', { keepNext: true }));
+    nodes.push(
+      ...renderContentBlocks(question.blocks, 'Question Stem', {
+        keepNext: true,
+        indent: STEM_TEXT_INDENT,
+      }),
+    );
   }
 
   /*

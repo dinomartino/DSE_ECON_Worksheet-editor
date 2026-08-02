@@ -287,13 +287,24 @@ to coordinates), but the slots are areas of a sheet rather than thirds of a row.
   keyword names the gradient's axis of travel while its stops lay a band *perpendicular*
   to it. Check by cropping the render and printing dark-pixel x per y.
 - **The corner block is the reference's own geometry, and the text size is what makes
-  it fit.** The reference sets its corner lines in Arial bold at the body size (11pt);
-  at 18pt they wrapped, which forced a wider textbox (`1900` vs the reference's `1520`)
-  and shortened the diagonal to the strip beside the text. At the body size the
-  reference's numbers hold as-is: textbox `(0,312) 1520×1350`, diagonal spanning the
-  full `2725×2710` child space corner-to-corner, as its does. The diagonal's lower tail
-  lands in the page margin, left of the text column, so it cannot strike the identity
-  lines.
+  it fit.** The reference sets its code lines in Arial bold at 11pt — stored per line,
+  not inherited, since a QAB document's own body is 10pt (§ baseFontSize) and the
+  corner must not shrink with it. At 18pt they wrapped, which forced a wider textbox
+  (`1900` vs the reference's `1520`) and shortened the diagonal to the strip beside the
+  text. At 11pt the reference's numbers hold as-is: textbox `(0,312) 1520×1350`,
+  diagonal spanning the full `2725×2710` child space corner-to-corner, as its does. The
+  diagonal's lower tail lands in the page margin, left of the text column, so it cannot
+  strike the identity lines.
+  - **The paper line is quieter than the code above it**: "PAPER 2" is regular weight
+    at 10.5pt with a small gap above (`w:before="115"` — the reference's own setting,
+    `w:before="120"` plain Arial in its `document.xml`). Bold like its neighbours it
+    read as three lines of one heading rather than a code with the paper number hung
+    under it. The gap rides as `TextFormat.spaceBefore` on the line, so both backends
+    draw it from the one stored number.
+  - **The title pair is 14pt bold** (`sz=28` in the 2019 paper and the manually
+    refined export); 16pt shipped once and read visibly heavier than the reference
+    page beside it. The timing and language lines carry no size at all — they are body
+    text and follow the document's base, 10pt on a QAB.
 - **The cover's `sectPr` must restate `w:pgSz`/`w:pgMar`.** A section that omits them
   does not inherit from its neighbours — Word falls back to its application default
   (Letter on a US-locale install), so the cover printed on different paper than the
@@ -658,6 +669,12 @@ uses `padding-left` and draws the marker **absolutely positioned** at `left - ha
   `registry/structured.ts` continuation indents) may not import each other, so the
   constant sits below all three. One stale copy = page breaks in different places on
   screen vs paper.
+- **A stem's continuation blocks indent to the stem's own text column**
+  (`STEM_TEXT_INDENT` = level 0's `left`), exactly as a part's continuations indent to
+  `PART_TEXT_INDENT`. A second stem block — the paragraph after a table, the sentence
+  carrying the marks — has no `1.` marker, and unindented it printed at the page
+  margin, hanging in the question number's gutter. Both registries pass it; a registry
+  test walks every type.
 - **MCQ lists follow the same rule with the stem as parent**: statements
   `{left: 720, hanging: 360}` (marker at stem text, like `(a)`); options one step deeper
   at 1080 — the statements are part of the question, the options are answers to it.
@@ -687,10 +704,19 @@ stretches word spacing). So reserving and placing are separate (`MarksTrail` in
   the `.docx` must choose the same line. The preview lifts the label by that many `lh`;
   the exporter **moves trailing breaks after the marks**. `marksAnchorRuns()` picks the
   side to count in bilingual mode (Chinese renders last; falls back to English).
-- Limits, deliberate: the reserve rides only at the **end of the inline flow** (a
-  sibling inside the contenteditable would put React in charge of browser-mutated
-  nodes), so a hard-broken final line reaching the right edge can still be overlapped —
-  as in Word, where a tab stop cannot push a line a `w:br` already ended. Both copies
+- **A full anchor line pushes the whole label to the next line, in both backends.**
+  The .docx label's interior space is a **no-break space** (`marksText`), so Word can
+  never tear it — "(2" at the end of the text line, "marks)" alone at the start of the
+  next is exactly what a plain space shipped. Unbreakable, the label wraps whole and
+  the right tab re-aligns it at the content edge of the new line. The preview matches
+  by **measuring**: when the text ends in trailing breaks the reserve sits after them
+  (it cannot ride inside the contenteditable) and protects nothing on the lifted-to
+  line, so `MarksTrail` measures the last text character against the room the label
+  needs — the label's own width, deliberately *without* the twin's em gap, since
+  Word's tab needs exactly the label and the em pushed a borderline paragraph the
+  .docx kept on one line — and renders an explicit extra line for the label to sit on.
+  Before this the preview overprinted the text ("continua(2ffaarks)") while Word
+  wrapped, a one-line height disagreement on exactly that paragraph. Both copies
   `whitespace-nowrap`.
 
 A one-line part looks correct under every wrong scheme — the bug only shows on a part
@@ -1082,6 +1108,24 @@ space is the product and the page count is decided by how much room each questio
 *given* (`LQ_MODE_HANDOFF.md`). Everything here is opt-in data — a new element kind, new
 optional fields, a conditional style — so a document that uses none of it exports
 byte-identically (asserted: no `LqAnswerLine` in styles.xml, no anchors in the header).
+
+### The booklet is a 10pt document
+
+`Worksheet.baseFontSize` (points, absent = 11, in `KNOWN_KEYS`) is the document's body
+size; `lqMock` seeds 10. A **document** property, not per-element formatting: the
+reference booklet's whole body — stems, parts, marks, table cells — is 10pt (its every
+run is `w:sz="20"`, confirmed by the manually refined export), and seeding it as
+`TextFormat` on each element would revert to 11pt on the first question the teacher
+types. Three consumers: `buildStylesXml` scales docDefaults, `Normal` and every
+body-sized style (display styles — title, section heading, captions — keep their own
+sizes); the preview sets the same size inline on `.paper` sheets *and the pagination
+probe*; `renderCover` prints "INSTRUCTIONS" at it. The **fixed 12pt line does not
+shrink** — 10pt text rides the same 240-twip rhythm, which is exactly how the reference
+sets it, and why `exactLineFor` clamps everything ≤11pt to 240. The preview's
+`formatStyle` mirrors that clamp (`lineHeight: 12pt` at ≤11pt) — the bare `12/11` ratio
+it used shrank a 10pt line to a box Word never prints, invisible while every override
+was ≥11pt. Absent exports byte-identical styles; cover lines that must not follow the
+body size (identity lines, corner code) store their own 11pt.
 
 ### The dotted answer line is a different primitive
 

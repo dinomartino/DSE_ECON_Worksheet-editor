@@ -150,10 +150,20 @@ export function biTextRuns(
   return en || zh;
 }
 
-/** "(4 marks)" / "（4分）" per §3.5, matching the active language mode. */
+/**
+ * "(4 marks)" / "（4分）" per §3.5, matching the active language mode.
+ *
+ * The space inside the English label is a **no-break space** (U+00A0). The label rides
+ * a right tab at the content edge, and when the text line has no room left Word breaks
+ * an ordinary space — printing "(2" at the end of the text line and "marks)" alone at
+ * the start of the next, the label torn in half. Unbreakable, the whole label wraps to
+ * the next line together, where the tab right-aligns it at the content edge — which is
+ * where a reader expects the marks when the text has filled its own last line. An NBSP
+ * measures exactly as a space, so a label that fits is placed identically.
+ */
 export function marksText(marks: number): BiText {
   return {
-    en: [{ text: `(${marks} ${marks === 1 ? 'mark' : 'marks'})` }],
+    en: [{ text: `(${marks}\u00a0${marks === 1 ? 'mark' : 'marks'})` }],
     zh: [{ text: `（${marks}分）` }],
   };
 }
@@ -163,5 +173,7 @@ export function marksRuns(marks: number, fonts: FontPair, language: LanguageMode
   const text = marksText(marks);
   if (language === 'en') return richTextRuns(text.en, fonts, {});
   if (language === 'zh') return richTextRuns(text.zh, fonts, {});
-  return richTextRuns([...text.en, { text: ' ' }, ...text.zh], fonts, {});
+  // The joiner is a no-break space too, or the bilingual label can part between its
+  // English and Chinese halves at the same edge the English label used to tear at.
+  return richTextRuns([...text.en, { text: '\u00a0' }, ...text.zh], fonts, {});
 }

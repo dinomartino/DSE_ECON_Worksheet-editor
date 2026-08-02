@@ -57,7 +57,16 @@ interface StyleSpec {
   underline?: 'dotted';
 }
 
-const BASE_SIZE = 22; // 11pt — every run in the reference paper is `w:sz="22"`.
+/**
+ * The default body size in points, and its half-point spelling.
+ *
+ * 11pt is the classroom reference's size — every run in that paper is `w:sz="22"`. A
+ * document may carry its own `baseFontSize` (the QAB booklet is 10pt, as both the 2019
+ * paper and the manually refined export set it), which scales docDefaults, `Normal` and
+ * every body-sized style below while the fixed 12pt line stays put — 10pt text on the
+ * 240-twip rhythm is exactly how the reference booklet is set.
+ */
+export const DEFAULT_BASE_FONT_SIZE_PT = 11;
 
 /**
  * The one line height the whole document uses: 12pt, fixed (`w:lineRule="exact"`).
@@ -154,15 +163,15 @@ export const LQ_LINE_ADVANCE_TWIPS = LQ_LINE_PITCH_TWIPS + LQ_LINE_SPACE_BEFORE_
  */
 export const LQ_ANSWER_LINE_STYLE_ID = 'LqAnswerLine';
 
-const LQ_ANSWER_LINE_SPEC: StyleSpec = {
+const lqAnswerLineSpec = (baseSize: number): StyleSpec => ({
   id: LQ_ANSWER_LINE_STYLE_ID,
   name: 'Answer Space Line',
-  size: BASE_SIZE,
+  size: baseSize,
   spaceBefore: LQ_LINE_SPACE_BEFORE_TWIPS,
   spaceAfter: 0,
   exactLine: LQ_LINE_PITCH_TWIPS,
   underline: 'dotted',
-};
+});
 
 /*
  * Every style below sets `spaceBefore: 0, spaceAfter: 0` and inherits the fixed 12pt
@@ -180,22 +189,22 @@ const LQ_ANSWER_LINE_SPEC: StyleSpec = {
  * fixed box would clip, so the styles that set a larger `size` also set a matching
  * `exactLine` — see `titleLine` below.
  */
-const STYLE_SPECS: StyleSpec[] = [
+const styleSpecs = (baseSize: number): StyleSpec[] => [
   { id: 'WorksheetTitle', name: 'Worksheet Title', size: 32, bold: true, align: 'center', spaceBefore: 0, spaceAfter: 0, exactLine: exactLineFor(16), keepNext: true, keepLines: true, outlineLevel: 0 },
-  { id: 'Instructions', name: 'Instructions', size: BASE_SIZE, italic: true, spaceBefore: 0, spaceAfter: 0, keepLines: true },
+  { id: 'Instructions', name: 'Instructions', size: baseSize, italic: true, spaceBefore: 0, spaceAfter: 0, keepLines: true },
   { id: 'SectionHeading', name: 'Section Heading', size: 28, bold: true, spaceBefore: 0, spaceAfter: 0, exactLine: exactLineFor(14), keepNext: true, keepLines: true, outlineLevel: 1 },
-  { id: 'QuestionStem', name: 'Question Stem', size: BASE_SIZE, spaceBefore: 0, spaceAfter: 0, keepLines: true },
-  { id: 'Statement', name: 'Statement', size: BASE_SIZE, spaceBefore: 0, spaceAfter: 0, keepLines: true },
-  { id: 'MCQOption', name: 'MCQ Option', size: BASE_SIZE, spaceBefore: 0, spaceAfter: 0, keepLines: true },
-  { id: 'Subquestion', name: 'Sub-question', size: BASE_SIZE, spaceBefore: 0, spaceAfter: 0, keepLines: true },
-  { id: 'Subsubquestion', name: 'Sub-sub-question', size: BASE_SIZE, spaceBefore: 0, spaceAfter: 0, keepLines: true },
-  { id: 'Marks', name: 'Marks', size: BASE_SIZE, align: 'right', spaceBefore: 0, spaceAfter: 0, keepLines: true },
+  { id: 'QuestionStem', name: 'Question Stem', size: baseSize, spaceBefore: 0, spaceAfter: 0, keepLines: true },
+  { id: 'Statement', name: 'Statement', size: baseSize, spaceBefore: 0, spaceAfter: 0, keepLines: true },
+  { id: 'MCQOption', name: 'MCQ Option', size: baseSize, spaceBefore: 0, spaceAfter: 0, keepLines: true },
+  { id: 'Subquestion', name: 'Sub-question', size: baseSize, spaceBefore: 0, spaceAfter: 0, keepLines: true },
+  { id: 'Subsubquestion', name: 'Sub-sub-question', size: baseSize, spaceBefore: 0, spaceAfter: 0, keepLines: true },
+  { id: 'Marks', name: 'Marks', size: baseSize, align: 'right', spaceBefore: 0, spaceAfter: 0, keepLines: true },
   { id: 'TableCaption', name: 'Table Caption', size: 20, italic: true, align: 'center', spaceBefore: 0, spaceAfter: 0, keepLines: true },
   { id: 'ImageCaption', name: 'Image Caption', size: 20, italic: true, align: 'center', spaceBefore: 0, spaceAfter: 0, keepLines: true },
   // Teacher-version styles are visually distinct (§5.4) but still fully restylable.
-  { id: 'Answer', name: 'Answer', size: BASE_SIZE, bold: true, color: 'C00000', spaceBefore: 0, spaceAfter: 0, keepLines: true },
-  { id: 'MarkingScheme', name: 'Marking Scheme', size: BASE_SIZE, color: '1F4E79', indentLeft: 360, spaceBefore: 0, spaceAfter: 0, keepLines: true },
-  { id: 'BodyTextCustom', name: 'Worksheet Body', size: BASE_SIZE, spaceBefore: 0, spaceAfter: 0, keepLines: true },
+  { id: 'Answer', name: 'Answer', size: baseSize, bold: true, color: 'C00000', spaceBefore: 0, spaceAfter: 0, keepLines: true },
+  { id: 'MarkingScheme', name: 'Marking Scheme', size: baseSize, color: '1F4E79', indentLeft: 360, spaceBefore: 0, spaceAfter: 0, keepLines: true },
+  { id: 'BodyTextCustom', name: 'Worksheet Body', size: baseSize, spaceBefore: 0, spaceAfter: 0, keepLines: true },
   // A ruled writing line. The border and the 24pt height live here rather than as
   // direct formatting on each paragraph: Word flags a directly-formatted paragraph
   // with a marker in the left margin, and forty of them made the block look like
@@ -204,7 +213,7 @@ const STYLE_SPECS: StyleSpec[] = [
   {
     id: 'AnswerLine',
     name: 'Answer Line',
-    size: BASE_SIZE,
+    size: baseSize,
     spaceBefore: 0,
     spaceAfter: 0,
     exactLine: ANSWER_LINE_HEIGHT_TWIPS,
@@ -269,12 +278,20 @@ function styleXml(spec: StyleSpec, fonts: FontPair): string {
 
 export function buildStylesXml(
   fonts: FontPair,
-  options: { answerSpace?: boolean } = {},
+  options: { answerSpace?: boolean; baseFontSize?: number } = {},
 ): string {
+  /*
+   * The document's own body size, in half-points. Absent stays 11pt, so every
+   * document saved before the field existed — and every non-QAB document — exports
+   * byte-identical styles. The line boxes deliberately do not shrink with it:
+   * `exactLineFor` keeps everything at or under 11pt on the shared 240-twip line,
+   * which is exactly how the manually refined booklet is set (10pt runs, 240 line).
+   */
+  const baseSize = Math.round((options.baseFontSize ?? DEFAULT_BASE_FONT_SIZE_PT) * 2);
   const docDefaults =
     '<w:docDefaults>' +
     `<w:rPrDefault><w:rPr>${rFonts(fonts)}` +
-    `<w:sz w:val="${BASE_SIZE}"/><w:szCs w:val="${BASE_SIZE}"/>` +
+    `<w:sz w:val="${baseSize}"/><w:szCs w:val="${baseSize}"/>` +
     // Tell Word this document's East-Asian language is Traditional Chinese (HK).
     '<w:lang w:val="en-US" w:eastAsia="zh-HK"/>' +
     '</w:rPr></w:rPrDefault>' +
@@ -290,7 +307,7 @@ export function buildStylesXml(
     '<w:style w:type="paragraph" w:default="1" w:styleId="Normal">' +
     '<w:name w:val="Normal"/><w:qFormat/>' +
     `<w:pPr><w:spacing w:before="0" w:after="0" w:line="${FIXED_LINE_TWIPS}" w:lineRule="exact"/></w:pPr>` +
-    `<w:rPr>${rFonts(fonts)}<w:sz w:val="${BASE_SIZE}"/><w:szCs w:val="${BASE_SIZE}"/></w:rPr>` +
+    `<w:rPr>${rFonts(fonts)}<w:sz w:val="${baseSize}"/><w:szCs w:val="${baseSize}"/></w:rPr>` +
     '</w:style>';
 
   /*
@@ -322,10 +339,10 @@ export function buildStylesXml(
     normal +
     defaultParagraphFont +
     tableNormal +
-    STYLE_SPECS.map((spec) => styleXml(spec, fonts)).join('') +
+    styleSpecs(baseSize).map((spec) => styleXml(spec, fonts)).join('') +
     // Conditional, so a document without an answer space keeps its styles.xml
     // byte-identical to every build before the style existed.
-    (options.answerSpace ? styleXml(LQ_ANSWER_LINE_SPEC, fonts) : '') +
+    (options.answerSpace ? styleXml(lqAnswerLineSpec(baseSize), fonts) : '') +
     '</w:styles>'
   );
 }

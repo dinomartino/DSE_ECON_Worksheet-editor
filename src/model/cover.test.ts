@@ -78,6 +78,63 @@ describe('mock-exam cover', () => {
     }
   });
 
+  it('sets the corner block as the reference does: bold code, quiet paper line', () => {
+    /*
+     * Measured out of the 2019 QAB's own `document.xml` and confirmed by the manually
+     * refined export (`Manually refine worksheet.docx`): "2025-26" and "ECON" are 11pt
+     * Arial bold, while "PAPER 2" is **regular weight at 10.5pt with a small gap
+     * above** (`sz="21"`, `w:spacing w:before="115"` — 5.75pt). The sizes are stored,
+     * not inherited, because a QAB document's own body is 10pt (§ baseFontSize) and
+     * the corner block must not shrink with it.
+     */
+    for (const style of STYLES) {
+      const [code, subject, paper] = coverLines(createCoverPage({ paperStyle: style }), 'corner');
+      expect(code.format).toMatchObject({ bold: true, fontSize: 11 });
+      expect(subject.format).toMatchObject({ bold: true, fontSize: 11 });
+      expect(paper.format?.bold).toBeUndefined();
+      expect(paper.format?.fontSize).toBe(10.5);
+      expect(paper.format?.spaceBefore).toBe(5.75);
+    }
+  });
+
+  it('exports the paper line’s setting: sz 21, plain, spaced above', () => {
+    const document = buildDocxParts(coverWorksheet('writeIn'), EN).documentXml;
+    const corner = document.match(/<w:txbxContent>([\s\S]*?)<\/w:txbxContent>/);
+    expect(corner, 'corner textbox present').toBeTruthy();
+    const paperLine = corner![1].match(/<w:p>(?:(?!<\/w:p>)[\s\S])*PAPER 2(?:(?!<\/w:p>)[\s\S])*<\/w:p>/);
+    expect(paperLine, 'PAPER 2 paragraph present').toBeTruthy();
+    expect(paperLine![0]).toContain('w:before="115"');
+    expect(paperLine![0]).toContain('<w:sz w:val="21"/>');
+    expect(paperLine![0]).not.toContain('<w:b/>');
+  });
+
+  it('sets the title pair at 14pt bold, the reference’s own size', () => {
+    // `sz=28` in both the 2019 paper and the manually refined export. 16pt shipped
+    // once and read visibly heavier than the reference page beside it.
+    for (const style of STYLES) {
+      const head = coverLines(createCoverPage({ paperStyle: style }), 'head');
+      const titles = head.filter((line) => line.format?.bold);
+      expect(titles).toHaveLength(2);
+      for (const title of titles) expect(title.format?.fontSize).toBe(14);
+      // The identity lines hold 11pt whatever the document's body size.
+      expect(head[0].format?.fontSize).toBe(11);
+    }
+  });
+
+  it('prints INSTRUCTIONS at the document’s own body size', () => {
+    // The heading wears the Section Heading style but at the body size — the word is a
+    // label, not a title (§ renderCover). "Body size" is the *document's*: a QAB body
+    // is 10pt, and an 11pt label over a 10pt list read as a second title.
+    const worksheet = coverWorksheet('writeIn');
+    const heading = (ws: Worksheet) => {
+      const node = renderWorksheet(ws, EN).cover!.instructions[0];
+      if (node.kind !== 'text') throw new Error('unreachable');
+      return node.format?.fontSize;
+    };
+    expect(heading(worksheet)).toBe(11);
+    expect(heading({ ...worksheet, baseFontSize: 10 })).toBe(10);
+  });
+
   it('survives a save/load round trip intact', () => {
     // The load path strips any key `KNOWN_KEYS` lacks into `__unknown` — a field that
     // "works" then vanishes on reload is exactly how three worksheet fields were lost

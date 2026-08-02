@@ -94,6 +94,17 @@ export interface NewWorksheetOptions {
   seedSample?: boolean;
 }
 
+/**
+ * The Question-Answer Book's body size, in points.
+ *
+ * The reference booklet sets its whole body at 10pt — measured out of the 2019 paper's
+ * `document.xml` and confirmed by the manually refined export
+ * (`real_life_reference/Manually refine worksheet.docx`), whose every body run is
+ * `w:sz="20"` on the unchanged 240-twip line. The classroom worksheet stays at the
+ * default 11 (§ `Worksheet.baseFontSize`).
+ */
+export const QAB_BASE_FONT_SIZE = 10;
+
 /** The section headings a new exam-shaped document starts with. */
 function defaultSections(): LayoutElement[] {
   return [
@@ -117,7 +128,10 @@ function qabSections(): LayoutElement[] {
   const heading = (en: string, zh: string): LayoutElement => ({
     ...createSectionElement(bi(en, zh), false),
     showMarks: true,
-    format: { fontSize: 11, bold: true },
+    // The booklet's body size (§ `QAB_BASE_FONT_SIZE`), overriding the heading style's
+    // 14pt — the reference prints "Section A (22 marks)" at the same 10pt as the
+    // questions under it, bold being the only emphasis.
+    format: { fontSize: QAB_BASE_FONT_SIZE, bold: true },
   });
   const chooseOne: LayoutElement = {
     kind: 'text',
@@ -323,6 +337,10 @@ export function createWorksheetFrom(options: NewWorksheetOptions = {}): Workshee
     // centred — and it is always on (§ `qabFooter`).
     ...(documentType === 'lqMock'
       ? {
+          // The booklet's 10pt body — stems, parts, marks, table cells — on the
+          // unchanged 12pt line, exactly as the reference booklet is set
+          // (§ `QAB_BASE_FONT_SIZE`).
+          baseFontSize: QAB_BASE_FONT_SIZE,
           pageFurniture: createQabFurniture(),
           // The same code the cover's corner block prints: both fall back to the
           // derived academic year, so the footer and the cover cannot disagree

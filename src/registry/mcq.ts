@@ -1,5 +1,5 @@
 import { createMcqQuestion } from '@/model/factories';
-import { OPTION_LIST_INDENT, optionLabel, statementLabel } from '@/model/numbering';
+import { OPTION_LIST_INDENT, STEM_TEXT_INDENT, optionLabel, statementLabel } from '@/model/numbering';
 import { bi, isBiTextEmpty, plain } from '@/model/text';
 import type { LanguageMode, McqOptionLayout, McqQuestion } from '@/model/types';
 import { pushGap, renderContentBlocks, type RenderContext, type RenderNode } from '@/render/ir';
@@ -126,7 +126,14 @@ function render(question: McqQuestion, context: RenderContext): RenderNode[] {
         marker: `${context.questionNumber}.`,
       },
     });
-    nodes.push(...renderContentBlocks(restBlocks, 'Question Stem', { keepNext: true }));
+    // Continuation blocks indent to the stem's text column (§ STEM_TEXT_INDENT) —
+    // unindented, a paragraph after the stem's table printed at the page margin.
+    nodes.push(
+      ...renderContentBlocks(restBlocks, 'Question Stem', {
+        keepNext: true,
+        indent: STEM_TEXT_INDENT,
+      }),
+    );
   } else {
     nodes.push({
       kind: 'text',
@@ -140,7 +147,12 @@ function render(question: McqQuestion, context: RenderContext): RenderNode[] {
         marker: `${context.questionNumber}.`,
       },
     });
-    nodes.push(...renderContentBlocks(question.blocks, 'Question Stem', { keepNext: true }));
+    nodes.push(
+      ...renderContentBlocks(question.blocks, 'Question Stem', {
+        keepNext: true,
+        indent: STEM_TEXT_INDENT,
+      }),
+    );
   }
 
   /*

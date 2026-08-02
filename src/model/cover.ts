@@ -346,11 +346,18 @@ export function createCoverPage(options: CoverOptions): CoverPage {
 
   return {
     /*
-     * The reference sets its whole corner block in Arial bold at the body size (its
-     * style is `sz=22` half-points — 11pt, which is `Body` here, so no size is stored).
-     * The block was once 18pt, and that oversize is what forced a wider textbox and a
-     * shortened diagonal in the export — at the body size the reference's own geometry
-     * fits placeholders too (§ `cornerGroupXml`).
+     * The corner block is set at 11pt Arial whatever the document's own body size — a
+     * QAB body is 10pt (§ `baseFontSize`) but its corner code is not, so the size is
+     * stored rather than inherited. The block was once 18pt, and that oversize is what
+     * forced a wider textbox and a shortened diagonal in the export — at 11pt the
+     * reference's own geometry fits placeholders too (§ `cornerGroupXml`).
+     *
+     * **The paper line is quieter than the code above it**: regular weight at 10.5pt
+     * with a small gap above — the reference's own setting (its "PAPER 2" paragraph is
+     * plain Arial with `w:spacing w:before="120"`; the manually refined export uses
+     * `sz="21"` and `w:before="115"`, which is what these numbers spell). Bolding it
+     * like its neighbours shipped once and read as three lines of one heading instead
+     * of a code block with the paper number hung under it.
      */
     /*
      * The corner block is a code, not a sentence — the year, the subject's short form
@@ -359,9 +366,9 @@ export function createCoverPage(options: CoverOptions): CoverPage {
      * that is language at all; the rest is read the same way in both.
      */
     cornerLines: [
-      line(code, code, { ...sans, bold: true }),
-      line(subject, '經濟', { ...sans, bold: true }),
-      line(paperLabel, mcq ? '卷一' : '卷二', { ...sans, bold: true }, 1),
+      line(code, code, { ...sans, bold: true, fontSize: 11 }),
+      line(subject, '經濟', { ...sans, bold: true, fontSize: 11 }),
+      line(paperLabel, mcq ? '卷一' : '卷二', { ...sans, fontSize: 10.5, spaceBefore: 5.75 }, 1),
     ],
     cornerRule: true,
 
@@ -374,19 +381,20 @@ export function createCoverPage(options: CoverOptions): CoverPage {
      */
     /*
      * Sizes are the reference's own, measured out of its cover XML, not chosen for
-     * emphasis: the identity line at the body size, the examination line *smaller*
-     * (`sz=16` — 8pt — its longest line, set small to hold one line), and the paper's
-     * name plus its kind at `sz=28` — **14pt, regular weight**. This cover once set
-     * the title at 28pt bold, which read as a poster beside the reference's page; the
-     * largest thing on a DSE cover is quiet by this app's standards, and the weight
-     * hierarchy is carried by size alone.
+     * emphasis: the identity lines at 11pt (stored, so a 10pt QAB body does not shrink
+     * them — § `baseFontSize`), and the paper's name plus its kind at **14pt bold**
+     * (`sz=28` in both the 2019 paper and the manually refined export). The title
+     * shipped at 16pt once and read visibly heavier than the reference page beside it;
+     * the largest thing on a DSE cover is quiet by this app's standards. The timing and
+     * language lines carry no size, deliberately: they are body text and follow the
+     * document's own base — 10pt on a QAB, which is where the reference sets them.
      */
     headLines: [
-      line(school, schoolZh, { ...headFormat, ...sans }, 1),
+      line(school, schoolZh, { ...headFormat, ...sans, fontSize: 11 }, 1),
       line(examName, examNameZh, { ...headFormat, ...sans, fontSize: 11 }, 2),
       // The line a candidate identifies the paper by — sans on both papers.
-      line(paperName, paperNameZh, { ...headFormat, ...sans, fontSize: 16, bold: true }),
-      line(paperKind, paperKindZh, { ...headFormat, ...sans, fontSize: 16, bold: true }, 1),
+      line(paperName, paperNameZh, { ...headFormat, ...sans, fontSize: 14, bold: true }),
+      line(paperKind, paperKindZh, { ...headFormat, ...sans, fontSize: 14, bold: true }, 1),
       // Read properly rather than at a glance, so serif on Paper 1.
       line(timeAllowed, timeAllowedZh, { ...headFormat, ...body }),
       line(languageNote, languageNoteZh, { ...headFormat, ...body }, 6),

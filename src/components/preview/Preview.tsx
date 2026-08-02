@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   bandsHeight,
   bandsOverflow,
@@ -404,20 +404,94 @@ function MarksTrail({
   blankLines: number;
 }) {
   const label = marksLabel(marks, language);
+  const labelRef = useRef<HTMLSpanElement>(null);
+  /*
+   * Whether the label needs a line of its own because the anchor line has no room.
+   *
+   * Only the trailing-break case needs this. With no trailing breaks the hidden twin
+   * rides directly after the text, in flow, so a full last line wraps the twin \u2014 and
+   * with it the pinned label \u2014 onto a fresh line by itself. But when the text ends in
+   * hard breaks the twin sits *after* them (it cannot ride inside the contenteditable),
+   * reserving room on the trailing blank line while the visible label is lifted up onto
+   * the last text line \u2014 which was free to run to the right edge. The label then
+   * overprinted the text on screen while Word, given the same paragraph, wrapped the
+   * label to the next line: the one place the two backends disagreed about a
+   * paragraph's height.
+   *
+   * So the anchor line is measured, and when the label cannot fit beside its last
+   * character the trail renders an explicit extra line for the label to sit on \u2014 the
+   * same line Word's wrap produces, in the same place: directly after the text, with
+   * the trailing blank lines following.
+   */
+  const [needsOwnLine, setNeedsOwnLine] = useState(false);
+
+  useLayoutEffect(() => {
+    if (blankLines === 0) {
+      setNeedsOwnLine(false);
+      return;
+    }
+    const visibleLabel = labelRef.current;
+    // The trail's own wrapper is an inline span; the box to measure against is the
+    // paragraph that owns the line — the nearest block ancestor.
+    const paragraph = visibleLabel?.closest('p');
+    if (!visibleLabel || !paragraph) return;
+
+    /*
+     * The last character of the *text*, not of the paragraph: the twin and the label
+     * are excluded, and so are the trailing blank lines (a `<br>`'s rect is the empty
+     * line, not the text). The room asked for is the **label's own width, without the
+     * twin's em gap** \u2014 Word's tab needs exactly the label (it right-aligns at the
+     * content edge however small the gap to the text), and including the em pushed a
+     * borderline paragraph the .docx kept on one line: a one-line pagination
+     * disagreement on precisely the boundary this measurement exists to agree about.
+     *
+     * Position-independent on purpose: it compares the text's edge with the room the
+     * label needs, never with where the label currently is \u2014 measuring the label's own
+     * *position* would un-push after every push and loop. Its width is stable either
+     * way.
+     */
+    const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT, {
+      acceptNode: (node) =>
+        node.parentElement?.closest('[data-marks-trail]')
+          ? NodeFilter.FILTER_REJECT
+          : NodeFilter.FILTER_ACCEPT,
+    });
+    let lastText: Text | undefined;
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if ((node.textContent ?? '').trim().length > 0) lastText = node as Text;
+    }
+    if (!lastText) {
+      setNeedsOwnLine(false);
+      return;
+    }
+    // The last *visible* character. The node's own tail can be the trailing `\n`
+    // itself (newline is run text), and a newline's rect sits on the blank line it
+    // opens — measuring it would report the empty line's left edge and never push.
+    const content = lastText.textContent ?? '';
+    const end = content.replace(/\s+$/, '').length;
+    const range = document.createRange();
+    range.setStart(lastText, Math.max(0, end - 1));
+    range.setEnd(lastText, end);
+    const lastCharRect = range.getBoundingClientRect();
+    const paragraphRect = paragraph.getBoundingClientRect();
+    const room = visibleLabel.getBoundingClientRect().width;
+    setNeedsOwnLine(lastCharRect.right + room > paragraphRect.right + 0.5);
+  });
+
   return (
-    <>
+    <span data-marks-trail>
+      {/*
+        The extra line the label sits on when the anchor line is full \u2014 rendered only
+        then, so the ordinary case keeps its height. Word produces the same line by
+        wrapping the (unbreakable \u2014 \u00a7 `marksText`) label at the same width.
+      */}
+      {needsOwnLine && <br aria-hidden />}
       {/*
         The reserve can only ride at the very end of the inline flow: the text is owned by
         a contenteditable (`InlineEditable`), and injecting a sibling inside it would put
         React in charge of nodes the browser is mutating (\u00a7 a contenteditable is an
         uncontrolled input). So when the text ends in hard breaks the reserve lands on the
         trailing blank line and shortens *that* \u2014 harmless, since nothing is written there.
-
-        It means the reserve protects only the common case, where the marks share the last
-        line with wrapped text. A *hard-broken* final line that already reaches the right
-        edge can still be overlapped, and Word is in exactly the same position: a right
-        tab stop cannot push a line that a `w:br` has already ended either. Matching that
-        is the point \u2014 the preview must not invent a wrap the .docx will not reproduce.
       */}
       <span className="whitespace-nowrap" aria-hidden style={{ visibility: "hidden" }}>
         {/*
@@ -430,13 +504,17 @@ function MarksTrail({
         {`\u2003${label}`}
       </span>
       <span
+        ref={labelRef}
         className="absolute right-0 whitespace-nowrap"
         style={{
           /*
            * `bottom: 0` is the paragraph's last line \u2014 which is an *empty* one when the
            * text ends in hard breaks. Lifting by one line-height per trailing blank line
            * puts the label back on the last line that says something, while the blank
-           * lines still print as the vertical space they are.
+           * lines still print as the vertical space they are. When the label takes its
+           * own line the same lift lands it there \u2014 the extra line grew the paragraph
+           * by one, so `blankLines` up from the bottom is now the line after the text,
+           * exactly where Word's wrap puts it.
            *
            * `lh` resolves against this element's own computed line-height, so it stays
            * correct on the styles that scale their exact line box (\u00a7 `exact` does not
@@ -447,7 +525,7 @@ function MarksTrail({
       >
         {label}
       </span>
-    </>
+    </span>
   );
 }
 
@@ -683,7 +761,14 @@ function formatStyle(format: TextFormat | undefined): React.CSSProperties {
      * measures the height Word will print.
      */
     ...(format.fontSize !== undefined
-      ? { fontSize: `${format.fontSize}pt`, lineHeight: 12 / 11 }
+      ? {
+          fontSize: `${format.fontSize}pt`,
+          // `exactLineFor`'s rule exactly: at or under 11pt stays on the shared 12pt
+          // line (the exporter emits `w:line="240"` for those); only larger text grows
+          // its box. The bare ratio shrank a 10pt line to 10.9pt — a box Word never
+          // prints, which the paginator would then measure.
+          lineHeight: format.fontSize <= 11 ? "12pt" : 12 / 11,
+        }
       : {}),
     ...(format.bold !== undefined
       ? { fontWeight: format.bold ? 700 : 400 }
@@ -5155,6 +5240,13 @@ export function Preview({
       paddingBottom: `${twipsToMm(setup.margins.bottom + over.footer)}mm`,
       paddingLeft: `${twipsToMm(setup.margins.left)}mm`,
       fontFamily: `'${worksheet.fonts.latin}', '${worksheet.fonts.eastAsia}', serif`,
+      // The document's own body size (the QAB is 10pt), over `.paper`'s 11pt default.
+      // The line-height deliberately stays `.paper`'s fixed 12pt: the exporter keeps
+      // every ≤11pt size on the shared 240-twip line (§ `exactLineFor`), so shrinking
+      // the leading here would pack sheets Word does not print.
+      ...(worksheet.baseFontSize !== undefined
+        ? { fontSize: `${worksheet.baseFontSize}pt` }
+        : {}),
     };
   };
 
@@ -5509,6 +5601,11 @@ export function Preview({
           left: -99999,
           width: `calc(${pageWidthMm}mm - ${twipsToMm(setup.margins.left)}mm - ${twipsToMm(setup.margins.right)}mm)`,
           fontFamily: `'${worksheet.fonts.latin}', '${worksheet.fonts.eastAsia}', serif`,
+          // The probe must measure at the size the sheets draw (§ pageStyleFor), or
+          // every wrapped line is counted at the wrong width and pages break early.
+          ...(worksheet.baseFontSize !== undefined
+            ? { fontSize: `${worksheet.baseFontSize}pt` }
+            : {}),
         }}
       >
         <div ref={probeRef}>

@@ -876,6 +876,20 @@ export interface Worksheet {
   flow: FlowItem[];
   fonts: FontPair;
   /**
+   * The document's body text size, in points. Absent means 11 — the classroom
+   * reference's size, which every document used before the field existed.
+   *
+   * A *document* property, not a style override: the DSE Question-Answer Book sets its
+   * whole body — stems, parts, marks, table cells — at 10pt (measured off the manually
+   * refined booklet and the 2019 paper's own `document.xml`), and expressing that as a
+   * per-element `TextFormat` on every seeded element would revert to 11pt on the first
+   * question the teacher types. The exporter scales its named styles and docDefaults
+   * from this; the preview sets the same size on `.paper`. The fixed 12pt line is
+   * untouched — 10pt text rides the same 240-twip rhythm, exactly as the reference
+   * booklet does.
+   */
+  baseFontSize?: number;
+  /**
    * The masthead: bands of left/centre/right zones printed above the instructions.
    *
    * Absent means "just render `title`", which is how every pre-v5 document behaves, so

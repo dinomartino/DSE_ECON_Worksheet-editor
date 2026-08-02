@@ -67,6 +67,13 @@ export const STATEMENT_LIST_INDENT: ListLevelIndent = { left: 720, hanging: 360 
  */
 export const PART_TEXT_INDENT = QUESTION_LIST_INDENTS[1].left;
 export const SUBPART_TEXT_INDENT = QUESTION_LIST_INDENTS[2].left;
+/**
+ * The stem's own continuation column. A second stem paragraph — the block after a
+ * table, the sentence that carries the marks — has no `1.` marker, so without this it
+ * fell back to the page margin and printed hanging in the question number's gutter,
+ * out of line with every other line of the question it belongs to.
+ */
+export const STEM_TEXT_INDENT = QUESTION_LIST_INDENTS[0].left;
 
 export interface NumberedQuestion {
   question: Question;

@@ -151,4 +151,27 @@ describe('sections', () => {
     const classroom = createWorksheetFrom({ documentType: 'classroom' });
     expect(stripIds(classroom.footer)).toEqual(stripIds(createWorksheet().footer));
   });
+
+  it('sets the booklet’s body at 10pt, and no other type’s', () => {
+    /*
+     * The reference booklet's whole body — stems, parts, marks, table cells — is 10pt
+     * on the unchanged 12pt line (§ `QAB_BASE_FONT_SIZE`). A document-level size, not
+     * per-element formatting, so the first question the teacher types is 10pt too.
+     */
+    expect(createWorksheetFrom({ documentType: 'lqMock' }).baseFontSize).toBe(10);
+    for (const documentType of ['classroom', 'paper1', 'lqWorksheet'] as const) {
+      expect(createWorksheetFrom({ documentType }).baseFontSize).toBeUndefined();
+    }
+  });
+
+  it('sets the booklet’s section headings at its own body size, bold', () => {
+    // "Section A (22 marks)" prints at the same 10pt as the questions under it —
+    // bold is the only emphasis the booklet's headings carry.
+    const worksheet = createWorksheetFrom({ documentType: 'lqMock' });
+    const headings = worksheet.layout.filter((element) => element.kind === 'section');
+    expect(headings).toHaveLength(3);
+    for (const heading of headings) {
+      expect(heading.format).toEqual({ fontSize: 10, bold: true });
+    }
+  });
 });

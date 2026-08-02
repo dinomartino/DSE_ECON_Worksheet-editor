@@ -489,6 +489,38 @@ describe('fonts and CJK (§7.4, §11.4)', () => {
     expect(parts.stylesXml).toContain('w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="Microsoft JhengHei"');
     expect(parts.fontTableXml).toContain('w:name="Microsoft JhengHei"');
   });
+
+  it('scales the body styles to the document’s own base size', () => {
+    /*
+     * The QAB booklet is a 10pt document (§ `Worksheet.baseFontSize`): docDefaults,
+     * Normal and every body-sized style follow it, so stems, parts, marks and table
+     * cells all print at the reference's `w:sz="20"`. The fixed 240-twip line stays —
+     * 10pt text on the 12pt rhythm is exactly how the reference booklet is set.
+     */
+    const worksheet = { ...buildAcceptanceWorksheet(), baseFontSize: 10 };
+    const styles = buildDocxParts(worksheet, STUDENT_BI).stylesXml;
+    expect(styles).toContain('<w:sz w:val="20"/><w:szCs w:val="20"/>');
+    expect(styles).not.toContain('<w:sz w:val="22"/>');
+    const stem = styles.match(/<w:style w:type="paragraph" w:styleId="QuestionStem">[\s\S]*?<\/w:style>/);
+    expect(stem![0]).toContain('<w:sz w:val="20"/>');
+    expect(stem![0]).toContain(`w:line="${FIXED_LINE_TWIPS}" w:lineRule="exact"`);
+    // The display styles keep their own sizes — only the body follows the base.
+    expect(styles).toContain('<w:style w:type="paragraph" w:styleId="WorksheetTitle"><w:name w:val="Worksheet Title"/>');
+    const title = styles.match(/<w:style w:type="paragraph" w:styleId="WorksheetTitle">[\s\S]*?<\/w:style>/);
+    expect(title![0]).toContain('<w:sz w:val="32"/>');
+  });
+
+  it('keeps the 11pt styles byte-identical when no base size is stored', () => {
+    // Every document saved before the field existed — and every non-QAB document —
+    // must export exactly the styles it always has.
+    const plain = buildDocxParts(buildAcceptanceWorksheet(), STUDENT_BI).stylesXml;
+    const explicit = buildDocxParts(
+      { ...buildAcceptanceWorksheet(), baseFontSize: 11 },
+      STUDENT_BI,
+    ).stylesXml;
+    expect(plain).toContain('<w:sz w:val="22"/><w:szCs w:val="22"/>');
+    expect(explicit).toBe(plain);
+  });
 });
 
 describe('tables and images (§7.5, §11.5, §11.6)', () => {
@@ -823,7 +855,8 @@ describe('marks and file naming (§3.5, §7.1)', () => {
     const { read } = await unzip(STUDENT_BI);
     const document = await read('word/document.xml');
 
-    expect(document).toContain('(3 marks)');
+    // The interior space is a no-break space (§ `marksText`), so the label cannot tear.
+    expect(document).toContain('(3\u00a0marks)');
     expect(document).toContain('（3分）');
     // Part (b) has sub-parts 2+2+3 = 7; question total 3 + 7 + 5 = 15. The fixture's
     // first structured question opts in to the total via `showTotalMarks`.
@@ -966,9 +999,9 @@ describe('masthead bands, part headers and label lists', () => {
     // run per run), so they are asserted separately rather than as one string.
     expect(document).toContain('Part A: Multiple-choice questions');
     // Section A is five 1-mark MCQs; section B's 19 must not leak in.
-    expect(document).toContain('>(5 marks)<');
+    expect(document).toContain('>(5\u00a0marks)<');
     expect(document).toContain('>（5分）<');
-    expect(document).not.toContain('(19 marks)');
+    expect(document).not.toContain('(19\u00a0marks)');
   });
 
   it('omits the marks suffix when a part header opts out', async () => {
@@ -1083,8 +1116,10 @@ describe('MCQ option layout (inline / columns)', () => {
   it('separates a marker from its text with an ordinary space, not a hard one', async () => {
     // A non-breaking space here stops Word wrapping between the letter and the option,
     // and is invisible in every diff and screenshot — so it gets asserted instead.
+    // Scoped to the marker: the marks label deliberately *is* non-breaking
+    // (§ `marksText`), so a whole-document sweep would flag it.
     const document = await open(withLayout('inline'));
-    expect(document).not.toContain('\u00a0');
+    expect(document).not.toMatch(/[A-D]\.\u00a0/);
   });
 });
 

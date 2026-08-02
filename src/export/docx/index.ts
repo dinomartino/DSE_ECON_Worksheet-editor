@@ -493,6 +493,9 @@ function buildParts(
           (node) => node.kind === 'answerSpace',
         ),
       ),
+      // The document's own body size (the QAB is 10pt); absent keeps the 11pt default
+      // and a byte-identical styles.xml (§ `Worksheet.baseFontSize`).
+      baseFontSize: worksheet.baseFontSize,
     }),
     numberingXml: buildNumberingXml(streams, fonts),
     headerFooter,

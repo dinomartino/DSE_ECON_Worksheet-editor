@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { STEM_TEXT_INDENT } from '@/model/numbering';
 import { readFileSync } from 'node:fs';
 import { questionMarks } from '@/model/marks';
 import { plain } from '@/model/text';
@@ -81,6 +82,44 @@ describe('question-type registry (§9)', () => {
         numbered && 'format' in numbered ? numbered.format : undefined,
         `${definition.id} must carry the block's format`,
       ).toMatchObject({ align: 'right', fontSize: 14 });
+    }
+  });
+
+  it('indents stem continuation blocks to the stem’s own text column', () => {
+    /*
+     * A second stem block — the paragraph after a table, the sentence carrying the
+     * marks — has no `1.` marker, so without an explicit indent it printed at the
+     * page margin, hanging in the question number's gutter and out of line with
+     * every other line of the question (§ STEM_TEXT_INDENT).
+     */
+    for (const definition of listQuestionTypes()) {
+      const question = definition.create();
+      const first = question.blocks[0];
+      if (!first || first.kind !== 'paragraph') continue;
+      question.blocks.push({
+        kind: 'paragraph',
+        id: 'continuation',
+        text: { en: [{ text: 'And the paragraph after the table.' }], zh: [] },
+      });
+
+      const nodes = definition.render(question, {
+        mode: { language: 'en', version: 'student' },
+        questionNumber: 1,
+        questionId: 'q-test',
+        questionStream: 'question:0',
+      });
+
+      const continuation = nodes.find(
+        (node) =>
+          node.kind === 'text' &&
+          node.edit?.kind === 'blockText' &&
+          node.edit.blockId === 'continuation',
+      );
+      expect(continuation, `${definition.id} continuation node`).toBeTruthy();
+      expect(
+        continuation && 'indent' in continuation ? continuation.indent : undefined,
+        `${definition.id} continuation must sit at the stem text column`,
+      ).toBe(STEM_TEXT_INDENT);
     }
   });
 
