@@ -290,6 +290,15 @@ export function worksheetClipboardHtml(
   const parts: string[] = [];
   const html = (node: RenderNode) => nodeHtml(node, mode.language, css, diagramImages);
 
+  /*
+   * The cover is deliberately not copied, by the same rule that keeps page setup and
+   * headers out of this backend: pasting must not impose this document's page furniture
+   * on the destination. A cover is exactly that — and clipboard HTML cannot carry any of
+   * its mechanisms (a section's unequal columns, the anchored corner group, the
+   * column-rule shape), so it could only arrive as a stack of bare paragraphs that reads
+   * as lost content. The .docx export is the fidelity path and carries it.
+   */
+
   // A masthead replaces the bare title, which is one of its own fields.
   if (rendered.bands.length > 0) {
     for (const band of rendered.bands) parts.push(html(band));

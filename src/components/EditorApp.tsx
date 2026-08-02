@@ -544,7 +544,13 @@ function HintPill() {
   // it would be instructing the teacher to do something the page no longer allows.
   if (dismissed || printPreview) return null;
   return (
-    <div className="pointer-events-none fixed bottom-4 left-[76px] right-[400px] z-20 flex justify-center">
+    // `data-print-hide` so anything that strips page chrome (print CSS, the screenshot
+    // harness) drops the pill — it floats over the sheet, so a capture of the page
+    // otherwise carries it.
+    <div
+      data-print-hide
+      className="pointer-events-none fixed bottom-4 left-[76px] right-[400px] z-20 flex justify-center"
+    >
       <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-line bg-surface-raised/95 py-1.5 pl-4 pr-1.5 text-[12px] text-ink-muted shadow-lg backdrop-blur">
         <span>
           Click text to select · double-click to edit

@@ -11,8 +11,10 @@ import {
 } from './cover';
 import { bi, plain } from './text';
 import { createWorksheet } from './factories';
+import { parseWorksheet, stringifyWorksheet } from '@/storage';
 import { renderWorksheet } from '@/render/worksheet';
 import { buildDocxParts } from '@/export/docx';
+import { worksheetClipboardHtml } from '@/export/clipboard';
 import type { OutputMode, Worksheet } from './types';
 
 const EN: OutputMode = { language: 'en', version: 'student' };
@@ -49,6 +51,51 @@ describe('mock-exam cover', () => {
     expect(document).toContain('<w:type w:val="continuous"/>');
     // The cover still owns its sheet.
     expect(document).toContain('w:br w:type="page"');
+  });
+
+  it('restates the page geometry on the cover’s own sectPr', () => {
+    // A sectPr that omits `w:pgSz`/`w:pgMar` does not inherit from the section that
+    // follows — Word falls back to its application default (Letter on a US-locale
+    // install), so the cover printed on different paper than the body it fronts.
+    // The symptom only shows in an opened export, never on screen.
+    for (const style of ['mcq', 'writeIn'] as const) {
+      const document = buildDocxParts(coverWorksheet(style), EN).documentXml;
+      const coverSect = document.match(
+        /<w:sectPr>(?:<w:footerReference[^>]*\/>)?<w:type w:val="continuous"\/>(.*?)<\/w:sectPr>/,
+      );
+      expect(coverSect, 'continuous sectPr present').toBeTruthy();
+      expect(coverSect![1]).toContain('<w:pgSz');
+      expect(coverSect![1]).toContain('<w:pgMar');
+    }
+  });
+
+  it('survives a save/load round trip intact', () => {
+    // The load path strips any key `KNOWN_KEYS` lacks into `__unknown` — a field that
+    // "works" then vanishes on reload is exactly how three worksheet fields were lost
+    // before (§ KNOWN_KEYS). This pins the cover, including nested fields like
+    // `footNote`, through serialize → parse → migrate.
+    for (const style of STYLES) {
+      const worksheet = coverWorksheet(style);
+      const reloaded = parseWorksheet(stringifyWorksheet(worksheet));
+      expect(reloaded.cover).toEqual(worksheet.cover);
+    }
+  });
+
+  it('is deliberately absent from the clipboard', () => {
+    // Same rule that keeps page setup and headers out of "Copy for Word": pasting must
+    // not impose this document's page furniture on the destination — and clipboard HTML
+    // could not express the cover's mechanisms anyway. The .docx carries it instead.
+    for (const style of STYLES) {
+      const worksheet = coverWorksheet(style);
+      const clip = worksheetClipboardHtml(worksheet, EN);
+      for (const region of ['corner', 'head', 'instructions', 'foot'] as const) {
+        for (const line of coverLines(worksheet.cover!, region)) {
+          const text = plain(line.text.en);
+          if (text) expect(clip).not.toContain(text);
+        }
+      }
+      expect(clip).not.toContain('INSTRUCTIONS');
+    }
   });
 
   it('prints as one wide column when the panel is empty', () => {
@@ -316,6 +363,7 @@ describe('mock-exam cover', () => {
       marked = {
         ...marked,
         instructionsHeading: bi('ZZ-heading-ZZ', 'ZZ-heading-ZZ'),
+        footNote: bi('ZZ-footNote-ZZ', 'ZZ-footNote-ZZ'),
         ...(coverHasPanel(cover)
           ? {
               panelNote: bi('ZZ-panelNote-ZZ', 'ZZ-panelNote-ZZ'),
@@ -323,17 +371,33 @@ describe('mock-exam cover', () => {
             }
           : {}),
       };
-      expected.push('ZZ-heading-ZZ');
+      expected.push('ZZ-heading-ZZ', 'ZZ-footNote-ZZ');
       if (coverHasPanel(cover)) expected.push('ZZ-panelNote-ZZ', 'ZZ-panelLabel-ZZ');
 
-      const document = buildDocxParts({ ...worksheet, cover: marked }, EN).documentXml;
+      /*
+       * The foot block prints from the cover section's own footer part, not the body
+       * (§ `coverXml`) — so the search space is the document plus that part, and the
+       * footer reference must actually be on the cover's sectPr or the part is an
+       * orphan Word never opens.
+       */
+      const parts = buildDocxParts({ ...worksheet, cover: marked }, EN);
+      const searchable = parts.documentXml + (parts.headerFooter.footerCover ?? '');
       for (const sentinel of expected) {
-        expect(document, `${style}: ${sentinel}`).toContain(sentinel);
+        expect(searchable, `${style}: ${sentinel}`).toContain(sentinel);
       }
+      for (const sentinel of expected.filter((name) => name.startsWith('ZZ-foot'))) {
+        expect(parts.headerFooter.footerCover ?? '', `${style}: ${sentinel} in footer part`)
+          .toContain(sentinel);
+      }
+      expect(parts.documentXml, `${style}: cover footer is referenced`).toContain(
+        '<w:footerReference w:type="default" r:id="rId9"/><w:type w:val="continuous"/>',
+      );
 
       // The panel's write-in boxes are cells, not text — check the grid instead.
       if ((cover.panelBoxes ?? 0) > 0) {
-        expect(document, `${style}: panel boxes`).toContain('w:tblLayout w:type="fixed"');
+        expect(parts.documentXml, `${style}: panel boxes`).toContain(
+          'w:tblLayout w:type="fixed"',
+        );
       }
     }
   });

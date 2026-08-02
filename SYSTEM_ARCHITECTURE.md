@@ -265,10 +265,46 @@ to coordinates), but the slots are areas of a sheet rather than thirds of a row.
   both the opposite of the obvious guess, and each shipped backwards once. The CSS
   keyword names the gradient's axis of travel while its stops lay a band *perpendicular*
   to it. Check by cropping the render and printing dark-pixel x per y.
-- **The corner textbox must not wrap.** The reference's own `1520` child width fits its
-  short codes ("2019-DSE", "ECON"); a teacher's placeholder is longer, and at that width
-  "2025-26" and "PAPER 1" both broke onto two lines. It takes `1900`, and the diagonal
-  starts past it.
+- **The corner block is the reference's own geometry, and the text size is what makes
+  it fit.** The reference sets its corner lines in Arial bold at the body size (11pt);
+  at 18pt they wrapped, which forced a wider textbox (`1900` vs the reference's `1520`)
+  and shortened the diagonal to the strip beside the text. At the body size the
+  reference's numbers hold as-is: textbox `(0,312) 1520×1350`, diagonal spanning the
+  full `2725×2710` child space corner-to-corner, as its does. The diagonal's lower tail
+  lands in the page margin, left of the text column, so it cannot strike the identity
+  lines.
+- **The cover's `sectPr` must restate `w:pgSz`/`w:pgMar`.** A section that omits them
+  does not inherit from its neighbours — Word falls back to its application default
+  (Letter on a US-locale install), so the cover printed on different paper than the
+  body it fronts. Invisible on screen; the harness's LibreOffice leg caught it as a
+  765×990 raster beside 744×1053 pages.
+- **The foot block is the cover section's own footer part** (`footer3.xml`, its own
+  relationship id), which is the reference's own mechanism — its authority lines and
+  paper code are `footer1.xml`, not flow paragraphs. A footer is what pins the block to
+  the page bottom whatever the columns above it do. The preview mirrors it as an
+  absolutely positioned strip at the exported `w:footer` offset (0.5in). `footNote` —
+  the boxed note the reference's Paper 1 carries bottom-right — prints beside the foot
+  lines inside that part, as a one-row borderless table whose note cell alone is framed
+  (a `ColumnsNode` cannot hold a multi-line bordered box, and a footer is not a list
+  item, so the "never a table" rule for rows does not bind).
+- **The vertical rhythm is measured, not chosen.** The reference spends blank
+  paragraphs in exact runs — 8 under the corner block, 1 inside the identity pair, 2
+  before the title pair, 1 before the timing, 6 before INSTRUCTIONS, 1 between
+  instructions — and the generator's `gapAfter` values encode exactly those. The gaps
+  live in the IR as blank lines (single source); the exporter and preview add no
+  structural spacing of their own between head and instructions, which each once did,
+  differently.
+- **The panel grid is the reference's numbers, shared through `COVER_PANEL`**
+  (`model/cover.ts`, twips): tables indented 340 into the column, label cell 1558,
+  write-in cells 290 wide in a 504-exact row, the framed note at least 1584 tall (the
+  stature of the reference's barcode box). The preview draws the same constants as
+  inches; two copies is how the backends would drift.
+- **`scripts/cover-verify.mjs` is the harness** that answers "do the three outputs
+  agree, and do they look like the reference?" in one command: per paper style it
+  rasterises the exported `.docx` (LibreOffice), the preview sheet (Playwright), and
+  Chrome's print PDF, sets them beside the reference scan on a labelled contact sheet,
+  and prints pairwise diff scores (`scripts/cover-compare.py`). The reference legs skip
+  gracefully where the gitignored scans are absent.
 - **The two papers use different font schemes.** Paper 2 is Arial throughout. Paper 1
   mixes: Arial for the corner block, the identity lines and the paper's name — read at a
   glance — and Times New Roman for the timing, "INSTRUCTIONS" and the instruction body,
@@ -813,8 +849,12 @@ and one paper legitimately uses both, so it is per block rather than per documen
 ### Clipboard (`src/export/clipboard.ts`)
 
 Same IR; writes `text/html` + `text/plain` via `ClipboardItem`. Numbering becomes
-literal text (clipboard HTML cannot carry Word numbering). Carries **no page setup or
-headers** — pasting must not override the destination document's own.
+literal text (clipboard HTML cannot carry Word numbering). Carries **no page setup,
+headers, or cover** — pasting must not impose this document's page furniture on the
+destination. The cover exclusion is a decision, not an omission: clipboard HTML cannot
+express any of its mechanisms (unequal section columns, the anchored corner group, the
+column-rule shape), so it could only paste as bare paragraphs that read as lost
+content; the `.docx` is the fidelity path and carries it. A test pins the exclusion.
 
 ---
 

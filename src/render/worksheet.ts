@@ -313,6 +313,17 @@ function renderCover(cover: CoverPage): CoverRenderNode {
       present: panelPresent,
     },
     foot: withGaps(coverLines(cover, 'foot')),
+    ...(isBiTextEmpty(cover.footNote)
+      ? {}
+      : {
+          footNote: {
+            kind: 'text',
+            style: 'Body',
+            text: cover.footNote!,
+            format: withFonts(undefined),
+            edit: { kind: 'coverField', field: 'footNote' },
+          } satisfies RenderNode,
+        }),
   };
 }
 

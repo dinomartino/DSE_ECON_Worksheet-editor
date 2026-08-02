@@ -213,6 +213,34 @@ export function PageRail({
           style={{ paddingLeft: RAIL_PADDING_PX, paddingRight: RAIL_PADDING_PX }}
         >
           <ol className="flex flex-col items-center gap-2.5">
+            {/*
+              The cover, when there is one. A card so the sheet can be navigated to and
+              recognised like any other — but not draggable and not deletable here: it
+              is not in the flow (there is nothing to reorder it against), and removing
+              it is a document-settings decision, not a rail gesture. The preview
+              publishes it as sheet -1, which is also its clone selector.
+            */}
+            {Boolean(worksheet.cover) && (
+              <li className="relative">
+                <button
+                  type="button"
+                  aria-label="Cover page"
+                  onClick={() => goToPage(-1)}
+                  className="group/page relative block cursor-pointer overflow-hidden rounded-[3px] border border-line bg-white transition-all duration-150 hover:border-ink-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  style={{ width: CARD_WIDTH_PX, height: cardHeight }}
+                >
+                  <PageThumb
+                    pageIndex={-1}
+                    width={CARD_WIDTH_PX}
+                    height={cardHeight}
+                    revision={revision}
+                  />
+                </button>
+                <span className="mt-1 block text-center text-[10px] leading-none text-ink-subtle">
+                  Cover
+                </span>
+              </li>
+            )}
             {pages.map((page, index) => {
               const isActive = index === activeIndex;
               const isDragging = dragIndex === index;

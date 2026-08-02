@@ -4,7 +4,12 @@
 HKDSE cover, for both Paper 1 and Paper 2, and it comes out identical in the `.docx`, in
 the on-screen preview, and in the printed / PDF output.**
 
-Not yet reached. This records what exists, what is known-wrong, and where the
+**Status (2026-08-02): reached, to the limit of what is deliberately different.** The
+work items in §4 and the order in §8 are done — see the addendum at the end of this
+file for what changed and what remains open. The traps in §5 and the copyright
+constraint in §6 still hold and are still worth reading first.
+
+This originally recorded what existed, what was known-wrong, and where the
 verification traps are, so the next person does not rediscover them.
 
 Written by the previous implementer. Where something is unverified or uncertain it says
@@ -340,3 +345,51 @@ for n in z.namelist():
 
 Context for the whole system: `SYSTEM_ARCHITECTURE.md` (the cover has its own section,
 "A cover is a page of regions"). Companion analysis: `DSE2019_P2_GAP_ANALYSIS.md`.
+
+---
+
+## 9. Addendum — the work above is done (2026-08-02)
+
+Everything in §8's order landed, in this sequence:
+
+1. **The harness exists**: `node scripts/cover-verify.mjs` (fixtures from
+   `scripts/cover-fixtures.test.ts`, comparison in `scripts/cover-compare.py`). Per
+   style it produces `<p>-{docx,preview,print,ref}.png`, a labelled `<p>-contact.png`,
+   and pairwise mean-|Δ| scores. It starts its own dev server if none is running.
+2. **§4.3 (print diagonal) no longer reproduces** — measured at matched 96dpi, the
+   preview and print diagonals are pixel-identical. It was evidently fixed by the final
+   corner-block rework before the cover commit. The harness pins it from now on.
+3. **§4.2 (clipboard) was decided, not implemented**: the cover is deliberately absent
+   from the clipboard, by the same rule that keeps page setup and headers out — pasting
+   must not impose this document's page furniture on the destination, and clipboard
+   HTML cannot express any of the cover's mechanisms anyway. Written down in
+   `clipboard.ts`, `SYSTEM_ARCHITECTURE.md`, and pinned by a test.
+4. **§4.1 (geometry) is encoded from the reference**: blank-paragraph rhythm
+   (8/1/2/1/6/1) as `gapAfter` values; corner block at the reference's own numbers
+   (11pt body-size corner lines are what make its 1520-wide textbox and full-span
+   diagonal fit); panel grid via `COVER_PANEL` (tblInd 340, label 1558, boxes 290×504,
+   note ≥1584); the foot block moved into the cover section's **own footer part**
+   (`footer3.xml` / rId9), which is the reference's mechanism and pins it to the page
+   bottom. The harness also caught that the cover `sectPr` omitted `w:pgSz`/`w:pgMar`
+   and therefore printed on **Letter** in a default-locale Word — it now restates the
+   document's geometry (test-pinned).
+5. **§4.5**: the P1 boxed footer note exists (`CoverPage.footNote`, edited on the page
+   via a `coverField` target, printed beside the foot lines in the footer part);
+   `instructionMarker` and `panelBoxes` have live controls in the Cover tab
+   (`CoverOptions`); the cover has a navigable card in the page rail; a round-trip
+   test guards persistence.
+
+Final harness numbers (mean |Δ| on 620×877 grayscale): preview↔print 3.7/4.7,
+preview↔docx 5.6/5.5, print↔docx 6.1/6.4 (P1/P2). The `ref` distances (~11 P1, ~22 P2)
+are the deliberate differences — our wording, no barcode apparatus, the teacher's own
+margins — plus scan noise.
+
+Still open, by choice:
+
+- `columns` and `fonts` remain JSON-only — no teacher has asked to move the column
+  split, and per-line fonts are already editable on the page.
+- The cover's margins follow the worksheet's page setup rather than the reference's
+  tighter cover-specific ones (top 648 / sides 1296). If a teacher wants the exact
+  HKEAA look, that would need a per-cover margin override.
+- The reference flows into its right column with padding paragraphs and no column
+  break; ours uses an explicit `w:br type="column"`, which is sturdier. Deliberate.

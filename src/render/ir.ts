@@ -111,7 +111,10 @@ export type EditTarget =
    */
   | { kind: 'coverLine'; lineId: string }
   /** A cover's single-value fields, which are not lists and so have no line id. */
-  | { kind: 'coverField'; field: 'instructionsHeading' | 'panelNote' | 'panelFieldLabel' };
+  | {
+      kind: 'coverField';
+      field: 'instructionsHeading' | 'panelNote' | 'panelFieldLabel' | 'footNote';
+    };
 
 export interface ListRef {
   /** Identifies the numbering stream; each distinct id becomes one `w:num`. */
@@ -409,6 +412,8 @@ export interface CoverRenderNode {
   panel: CoverPanelRender;
   /** Footer block at the bottom of the left column. */
   foot: RenderNode[];
+  /** Boxed note at the bottom-right (the reference's P1 carries one). */
+  footNote?: RenderNode;
 }
 
 export interface CoverPanelRender {

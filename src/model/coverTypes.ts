@@ -126,6 +126,13 @@ export interface CoverPage {
   footLines?: CoverLine[];
 
   /**
+   * A boxed note at the bottom-right of the page — the reference's Paper 1 carries one
+   * ("keep the paper on your desk" territory, in this project's own words). It prints
+   * beside the foot block, framed; empty or absent draws nothing.
+   */
+  footNote?: BiText;
+
+  /**
    * The face the cover's *unstyled* lines take.
    *
    * A cover is typographically its own thing, but the two reference papers differ in how

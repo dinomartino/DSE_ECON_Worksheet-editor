@@ -19,6 +19,7 @@ import type {
 import { biTextRuns, formatRunOptions, lineBreak, marksRuns, richTextRuns, run } from './runs';
 import { ANSWER_LINE_STYLE_ID, STYLE_IDS, exactLineFor } from './styles';
 import { marksAnchorRuns, trailingBlankLines } from '@/model/text';
+import { COVER_PANEL } from '@/model/cover';
 import { attrs, escapeXml } from './xml';
 
 /**
@@ -655,7 +656,23 @@ export { paragraph, richTextRuns };
  * Everything before the break lands left, everything after lands right — which is why the
  * regions are emitted in exactly that order.
  */
-export function coverXml(cover: CoverRenderNode, context: BodyContext): string {
+export function coverXml(
+  cover: CoverRenderNode,
+  context: BodyContext,
+  /**
+   * The document's `w:pgSz` + `w:pgMar`, restated verbatim (§ `pageGeometryXml`). A
+   * `sectPr` that omits them gets Word's application default — Letter on a US-locale
+   * install — so the cover printed on a different paper size than the body it fronts.
+   */
+  sectionGeometry: string,
+  /**
+   * A `<w:footerReference/>` naming the cover's own footer part, or ''. The foot block
+   * prints there, not in the flow — a footer is what pins it to the bottom of the page
+   * whatever the columns above it do, which is the reference's own mechanism
+   * (its authority lines and paper code are `footer1.xml`, not body paragraphs).
+   */
+  footerRef: string,
+): string {
   const chunks: string[] = [];
 
   const region = (nodes: RenderNode[]) => {
@@ -689,15 +706,12 @@ export function coverXml(cover: CoverRenderNode, context: BodyContext): string {
     for (let i = 0; i < CORNER_CLEARANCE_LINES; i += 1) chunks.push(blankParagraph(context));
   }
 
+  // The gap between the head and INSTRUCTIONS is the last head line's own `gapAfter`
+  // (six blanks in the reference), already in the IR — a structural blank here doubled
+  // it, and doubled it differently from the preview's CSS margin.
   region(cover.head);
-  if (cover.head.length > 0) chunks.push(blankParagraph(context));
 
   region(cover.instructions);
-
-  if (cover.foot.length > 0) {
-    chunks.push(blankParagraph(context));
-    region(cover.foot);
-  }
 
   // ---- right column ------------------------------------------------------
   if (cover.panel.present) {
@@ -729,14 +743,61 @@ export function coverXml(cover: CoverRenderNode, context: BodyContext): string {
     `<w:col w:w="${cover.columns.right}"/>` +
     '</w:cols>';
 
+  // Children in schema order: references, type, pgSz, pgMar, cols.
   chunks.push(
     '<w:p><w:pPr><w:sectPr>' +
-      (cover.panel.present ? columns : '<w:cols w:space="708"/>') +
+      footerRef +
       '<w:type w:val="continuous"/>' +
+      sectionGeometry +
+      (cover.panel.present ? columns : '<w:cols w:space="708"/>') +
       '</w:sectPr></w:pPr></w:p>',
   );
 
   return chunks.join('');
+}
+
+/** The boxed foot note's width — sized from the reference's own box (~2.2in). */
+const COVER_FOOT_NOTE_WIDTH = 3200;
+
+/**
+ * The cover footer's body: the foot lines, and beside them the boxed note when there
+ * is one (the reference's P1 places its "not to be taken away" box bottom-right, level
+ * with the authority lines).
+ *
+ * A one-row borderless table is what puts the two side by side inside a footer — the
+ * `ColumnsNode` tab-stop mechanism cannot hold a multi-line bordered box, and a footer
+ * is not a numbered list item, so the "never a table" rule for rows does not bind here.
+ * Only the note's own cell draws a frame.
+ */
+export function coverFooterBodyXml(cover: CoverRenderNode, context: BodyContext): string {
+  const lines = cover.foot.map((node) => renderNodeXml(node, context)).join('');
+  if (!cover.footNote) return lines || blankParagraph(context);
+
+  const leftWidth = Math.max(0, context.contentWidth - COVER_FOOT_NOTE_WIDTH);
+  const note = renderNodeXml(cover.footNote, context);
+  return (
+    `<w:tbl><w:tblPr><w:tblW w:w="${context.contentWidth}" w:type="dxa"/>` +
+    '<w:tblBorders>' +
+    ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']
+      .map((edge) => `<w:${edge} w:val="none" w:sz="0" w:space="0" w:color="auto"/>`)
+      .join('') +
+    '</w:tblBorders>' +
+    '<w:tblLayout w:type="fixed"/></w:tblPr>' +
+    '<w:tr>' +
+    `<w:tc><w:tcPr><w:tcW w:w="${leftWidth}" w:type="dxa"/><w:vAlign w:val="bottom"/></w:tcPr>` +
+    (lines || blankParagraph(context)) +
+    '</w:tc>' +
+    `<w:tc><w:tcPr><w:tcW w:w="${COVER_FOOT_NOTE_WIDTH}" w:type="dxa"/>` +
+    '<w:tcBorders>' +
+    ['top', 'left', 'bottom', 'right']
+      .map((edge) => `<w:${edge} w:val="single" w:sz="4" w:space="0" w:color="auto"/>`)
+      .join('') +
+    '</w:tcBorders><w:vAlign w:val="bottom"/></w:tcPr>' +
+    note +
+    '</w:tc></w:tr></w:tbl>' +
+    // Word requires a paragraph after a table, even at the end of a footer part.
+    blankParagraph(context)
+  );
 }
 
 /** An empty paragraph on the page's own line box — the one way to open vertical air. */
@@ -751,15 +812,22 @@ function blankParagraph(context: BodyContext): string {
  * measures itself against the section's full text width unless told otherwise, so `auto`
  * drew a frame that ran off the right edge of the page.
  */
-function framedNoteXml(note: RenderNode, context: BodyContext, width: number): string {
+function framedNoteXml(note: RenderNode, context: BodyContext, columnWidth: number): string {
+  // Inset by the panel indent and held to the reference's minimum height — this box is
+  // the structural slot its barcode box occupies, and at text height it read as a
+  // caption rather than as a panel.
+  const width = columnWidth - COVER_PANEL.indent;
   return (
-    `<w:tbl><w:tblPr><w:tblW w:w="${width}" w:type="dxa"/><w:tblLayout w:type="fixed"/>` +
+    `<w:tbl><w:tblPr><w:tblW w:w="${width}" w:type="dxa"/>` +
+    `<w:tblInd w:w="${COVER_PANEL.indent}" w:type="dxa"/>` +
+    '<w:tblLayout w:type="fixed"/>' +
     '<w:tblBorders>' +
     ['top', 'left', 'bottom', 'right']
       .map((edge) => `<w:${edge} w:val="single" w:sz="4" w:space="0" w:color="auto"/>`)
       .join('') +
     '</w:tblBorders></w:tblPr>' +
-    `<w:tr><w:tc><w:tcPr><w:tcW w:w="${width}" w:type="dxa"/></w:tcPr>` +
+    `<w:tr><w:trPr><w:cantSplit/><w:trHeight w:val="${COVER_PANEL.noteMinHeight}"/></w:trPr>` +
+    `<w:tc><w:tcPr><w:tcW w:w="${width}" w:type="dxa"/></w:tcPr>` +
     renderNodeXml(note, context) +
     '</w:tc></w:tr></w:tbl>' +
     // Word requires a paragraph after a table, or the next one merges into it.
@@ -778,8 +846,10 @@ function panelBoxesXml(panel: CoverPanelRender, context: BodyContext): string {
     return panel.fieldLabel ? renderNodeXml(panel.fieldLabel, context) : '';
   }
 
+  // The reference's own grid: label cell 1558, write-in cells 290 wide in a 504-high
+  // exact row, the table indented 340 into the column (§ `COVER_PANEL`).
   const label = panel.fieldLabel
-    ? '<w:tc><w:tcPr><w:tcW w:w="1554" w:type="dxa"/><w:tcBorders>' +
+    ? `<w:tc><w:tcPr><w:tcW w:w="${COVER_PANEL.labelWidth}" w:type="dxa"/><w:tcBorders>` +
       ['top', 'left', 'bottom', 'right']
         .map((edge) => `<w:${edge} w:val="nil"/>`)
         .join('') +
@@ -791,21 +861,26 @@ function panelBoxesXml(panel: CoverPanelRender, context: BodyContext): string {
   const boxes = Array.from({ length: panel.boxes })
     .map(
       () =>
-        '<w:tc><w:tcPr><w:tcW w:w="340" w:type="dxa"/></w:tcPr>' +
+        `<w:tc><w:tcPr><w:tcW w:w="${COVER_PANEL.boxWidth}" w:type="dxa"/></w:tcPr>` +
         blankParagraph(context) +
         '</w:tc>',
     )
     .join('');
 
+  const width =
+    (panel.fieldLabel ? COVER_PANEL.labelWidth : 0) + panel.boxes * COVER_PANEL.boxWidth;
+
   return (
-    '<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/>' +
+    `<w:tbl><w:tblPr><w:tblW w:w="${width}" w:type="dxa"/>` +
+    `<w:tblInd w:w="${COVER_PANEL.indent}" w:type="dxa"/>` +
     '<w:tblBorders>' +
     ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']
       .map((edge) => `<w:${edge} w:val="single" w:sz="4" w:space="0" w:color="auto"/>`)
       .join('') +
     '</w:tblBorders>' +
     '<w:tblLayout w:type="fixed"/></w:tblPr>' +
-    `<w:tr>${label}${boxes}</w:tr></w:tbl>` +
+    `<w:tr><w:trPr><w:cantSplit/><w:trHeight w:hRule="exact" w:val="${COVER_PANEL.boxHeight}"/></w:trPr>` +
+    `${label}${boxes}</w:tr></w:tbl>` +
     blankParagraph(context)
   );
 }
@@ -903,14 +978,14 @@ function cornerGroupXml(cover: CoverRenderNode, context: BodyContext): string {
     '" name="Corner text"/><wps:cNvSpPr txBox="1"/>' +
     '<wps:spPr bwMode="auto">' +
     /*
-     * Wide enough for the longest code line, which is the whole job of this box.
-     *
-     * At the reference's own 1520 (of a 2725 child space, ~0.94in) "2025-26" and
-     * "PAPER 1" both wrapped onto two lines — its own code lines are shorter
-     * ("2019-DSE", "ECON", "PAPER 2" at 9pt). A placeholder a teacher types over can be
-     * longer than that, so the box takes the room and the diagonal starts past it.
+     * The reference's own box: (0,312), 1520×1350 of the 2725-wide child space (~1.06in).
+     * It once took 1900 because 18pt code lines wrapped at 1520 — but the reference sets
+     * its corner block at the body size (11pt Arial bold), and at that size "2025-26"
+     * and "PAPER 1" fit the reference's own width. The generator now matches
+     * (§ `createCoverPage`), so the box does too, and the diagonal can span the full
+     * group as the reference's does.
      */
-    `<a:xfrm><a:off x="0" y="312"/><a:ext cx="1900" cy="1350"/></a:xfrm>` +
+    `<a:xfrm><a:off x="0" y="312"/><a:ext cx="1520" cy="1350"/></a:xfrm>` +
     '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>' +
     // Invisible: the box positions the text, it is not itself drawn.
     '<a:noFill/><a:ln><a:noFill/></a:ln></wps:spPr>' +
@@ -935,14 +1010,12 @@ function cornerGroupXml(cover: CoverRenderNode, context: BodyContext): string {
        * `flipV` is the one. (`flipH` produced the mirror image, which is what shipped
        * once and read as a backslash.)
        */
-      // Starts past the widest code line, so it separates the block from the page rather
-      // than striking through the paper's own name. `childW - 1900` is exactly the room
-      // the textbox above does not use.
-      // Ends above the identity lines: the textbox occupies 312..1662 of the child space,
-      // so the diagonal runs the same band and cannot reach into the flow below it. Full
-      // height let its tail cross the first identity line on Paper 2, whose narrower
-      // column starts higher.
-      `<a:xfrm flipV="1"><a:off x="1900" y="150"/><a:ext cx="${childW - 1900}" cy="1550"/></a:xfrm>` +
+      // The reference's own span: the full child space, corner to corner. At the body
+      // size the code lines occupy only the upper-left of the square, so the diagonal
+      // clears them — it was a short stroke beside the text only while the text was
+      // 18pt and left it no room. Its lower tail lands in the page margin, left of the
+      // text column, so it cannot strike the identity lines either.
+      `<a:xfrm flipV="1"><a:off x="0" y="0"/><a:ext cx="${childW}" cy="${childH}"/></a:xfrm>` +
       '<a:prstGeom prst="line"><a:avLst/></a:prstGeom><a:noFill/>' +
       // 38100 EMU = 3pt, twice the column rule's weight, as the reference has it.
       '<a:ln w="38100"><a:solidFill><a:srgbClr val="000000"/></a:solidFill><a:round/></a:ln>' +

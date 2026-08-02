@@ -64,6 +64,8 @@ export const REL_HEADER = 'rId5';
 export const REL_FOOTER = 'rId6';
 export const REL_HEADER_FIRST = 'rId7';
 export const REL_FOOTER_FIRST = 'rId8';
+/** The cover section's own footer — the reference prints its foot block there. */
+export const REL_FOOTER_COVER = 'rId9';
 /** Image relationship ids start after the fixed parts. */
 export const REL_IMAGE_BASE = 100;
 
@@ -74,6 +76,12 @@ export interface HeaderFooterParts {
   /** Empty page-1 overrides, present only when the first page suppresses them. */
   headerFirst?: string;
   footerFirst?: string;
+  /**
+   * The cover section's own footer part. The reference's foot block (its authority
+   * lines and paper code) is a *footer*, not flow content — that is what pins it to
+   * the bottom of the page whatever the columns above it do.
+   */
+  footerCover?: string;
 }
 
 /** The `word/` entries for the header/footer parts that exist, in relationship order. */
@@ -102,7 +110,19 @@ function headerFooterFiles(parts: HeaderFooterParts): Array<{
       type: 'footer',
       xml: parts.footerFirst,
     });
+  if (parts.footerCover !== undefined)
+    files.push({
+      name: 'footer3.xml',
+      relId: REL_FOOTER_COVER,
+      type: 'footer',
+      xml: parts.footerCover,
+    });
   return files;
+}
+
+/** A footer part holding pre-rendered body XML — the cover's foot block. */
+export function buildCoverFooterXml(body: string): string {
+  return XML_DECL + `<w:ftr ${WML_NS}>` + body + '</w:ftr>';
 }
 
 export function buildDocumentRelsXml(assets: ImageAsset[], hf: HeaderFooterParts = {}): string {
@@ -325,6 +345,30 @@ export interface SectionOptions {
   edgeOffsets?: { header: number; footer: number };
 }
 
+/**
+ * The `w:pgSz` + `w:pgMar` pair, shared by the body section and the cover's own
+ * `sectPr`. A section that omits them does not inherit from its neighbours — Word
+ * falls back to its application default (Letter on a US-locale install), so a cover
+ * section stating only its columns printed on a different paper size than the body
+ * it fronts. Every emitted `sectPr` must restate the geometry.
+ */
+export function pageGeometryXml(
+  options: Pick<SectionOptions, 'pageWidth' | 'pageHeight' | 'margins' | 'landscape' | 'edgeOffsets'>,
+): string {
+  return (
+    `<w:pgSz w:w="${options.pageWidth}" w:h="${options.pageHeight}"` +
+    (options.landscape ? ' w:orient="landscape"' : '') +
+    '/>' +
+    `<w:pgMar w:top="${options.margins.top}" w:right="${options.margins.right}" ` +
+    `w:bottom="${options.margins.bottom}" w:left="${options.margins.left}" ` +
+    // Derived from the band heights so a tall header sits in the margin rather than
+    // pushing the body text down the page (§ `headerFooterOffsets`). These were both a
+    // hardcoded 720, which is what made adding a header cost content space.
+    `w:header="${options.edgeOffsets?.header ?? 720}" ` +
+    `w:footer="${options.edgeOffsets?.footer ?? 720}" w:gutter="0"/>`
+  );
+}
+
 /** Page geometry plus header/footer references (§7.1). */
 export function buildSectionProperties(options: SectionOptions): string {
   const refs =
@@ -341,16 +385,7 @@ export function buildSectionProperties(options: SectionOptions): string {
     '<w:sectPr>' +
     refs +
     (options.differentFirstPage ? '<w:titlePg/>' : '') +
-    `<w:pgSz w:w="${options.pageWidth}" w:h="${options.pageHeight}"` +
-    (options.landscape ? ' w:orient="landscape"' : '') +
-    '/>' +
-    `<w:pgMar w:top="${options.margins.top}" w:right="${options.margins.right}" ` +
-    `w:bottom="${options.margins.bottom}" w:left="${options.margins.left}" ` +
-    // Derived from the band heights so a tall header sits in the margin rather than
-    // pushing the body text down the page (§ `headerFooterOffsets`). These were both a
-    // hardcoded 720, which is what made adding a header cost content space.
-    `w:header="${options.edgeOffsets?.header ?? 720}" ` +
-    `w:footer="${options.edgeOffsets?.footer ?? 720}" w:gutter="0"/>` +
+    pageGeometryXml(options) +
     '<w:cols w:space="708"/>' +
     '<w:docGrid w:linePitch="360"/>' +
     '</w:sectPr>'

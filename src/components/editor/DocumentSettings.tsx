@@ -747,6 +747,8 @@ function CoverTab({ onClose }: { onClose: () => void }) {
         {field('Time allowed', timeAllowed, setTimeAllowed, '8:30 am – 9:30 am (1 hour)')}
       </div>
 
+      {hasCover && <CoverOptions />}
+
       {hasCover && (
         <p className="rounded-lg border border-line bg-surface-sunken p-2.5 text-[11px] leading-relaxed text-ink-muted">
           This document already has a cover. Building another replaces it.
@@ -785,6 +787,73 @@ function CoverTab({ onClose }: { onClose: () => void }) {
           {hasCover ? 'Replace cover' : 'Add cover page'}
         </Button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Live settings for the cover that already exists.
+ *
+ * These are the structural knobs with no visual handle on the page — a marker style is
+ * a convention, not a thing to click; a box count only shows as boxes. Text stays on
+ * the page, as everywhere. Writes go through `updateCover` immediately: unlike the
+ * generator form above, there is a live subject to act on.
+ */
+function CoverOptions() {
+  const cover = useWorksheetStore((s) => s.worksheet.cover);
+  const updateCover = useWorksheetStore((s) => s.updateCover);
+  if (!cover) return null;
+
+  const marker = cover.instructionMarker ?? 'paren';
+  return (
+    <div className="space-y-3 rounded-lg border border-line bg-surface p-3">
+      <h4 className="text-[12px] font-semibold text-ink">Cover options</h4>
+
+      <Field
+        label="Instruction numbers"
+        hint="A house style: the reference’s Paper 1 numbers “1.”, its Paper 2 “(1)”."
+      >
+        <div className="flex gap-2" role="radiogroup">
+          {(
+            [
+              ['dot', '1.'],
+              ['paren', '(1)'],
+            ] as Array<['dot' | 'paren', string]>
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={marker === value}
+              onClick={() => updateCover({ instructionMarker: value })}
+              className={`h-8 flex-1 cursor-pointer rounded-lg border text-[13px] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                marker === value
+                  ? 'border-accent bg-accent/5 font-medium text-accent ring-1 ring-accent'
+                  : 'border-line bg-surface text-ink hover:border-ink-subtle'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </Field>
+
+      <Field
+        label="Write-in boxes"
+        hint="Boxes beside the panel label. 0 draws none; with an empty note that removes the panel and the cover prints one wide column."
+      >
+        <input
+          type="number"
+          min={0}
+          max={10}
+          value={cover.panelBoxes ?? 0}
+          className="h-9 w-24 rounded-lg border border-line bg-surface px-2.5 text-[13px] text-ink outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/25"
+          onChange={(event) => {
+            const next = Math.max(0, Math.min(10, Math.round(Number(event.target.value))));
+            if (Number.isFinite(next)) updateCover({ panelBoxes: next });
+          }}
+        />
+      </Field>
     </div>
   );
 }

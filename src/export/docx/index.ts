@@ -19,11 +19,14 @@ import type { Band, BandField, FontPair, HeaderFooter, LanguageMode, OutputMode,
 import type { RenderNode } from '@/render/ir';
 import { bandFieldText, collectListStreams, renderWorksheet } from '@/render/worksheet';
 import { collectDiagramNodes, renderDiagramImages, type DiagramImageMap } from '../diagramImage';
-import { coverXml, renderNodeXml, type BodyContext } from './body';
+import { coverFooterBodyXml, coverXml, renderNodeXml, type BodyContext } from './body';
 import { assignNumIds, buildNumberingXml } from './numbering';
 import {
   buildCorePropsXml,
+  buildCoverFooterXml,
   buildDocumentXml,
+  pageGeometryXml,
+  REL_FOOTER_COVER,
   buildEmptyHeaderXml,
   buildFontTableXml,
   buildFooterXml,
@@ -273,7 +276,21 @@ function buildParts(
    * page with question 1 is not a cover.
    */
   if (rendered.cover) {
-    chunks.push(coverXml(rendered.cover, context));
+    chunks.push(
+      coverXml(
+        rendered.cover,
+        context,
+        pageGeometryXml({
+          pageWidth,
+          pageHeight,
+          margins: setup.margins,
+          landscape: setup.orientation === 'landscape',
+        }),
+        rendered.cover.foot.length > 0 || rendered.cover.footNote
+          ? `<w:footerReference w:type="default" r:id="${REL_FOOTER_COVER}"/>`
+          : '',
+      ),
+    );
     chunks.push('<w:p><w:r><w:br w:type="page"/></w:r></w:p>');
   }
 
@@ -403,6 +420,12 @@ function buildParts(
   const headerFooter: HeaderFooterParts = {
     ...(hasHeader ? { header: buildHeaderXml(headerLayout) } : {}),
     ...(hasFooter ? { footer: buildFooterXml(footerLayout) } : {}),
+    // The cover's foot block is the cover section's own footer, as the reference has
+    // it — a footer is what pins it to the page bottom (§ `coverXml`). Foot lines are
+    // text-only, so the part can never need an image relationship of its own.
+    ...(rendered.cover && (rendered.cover.foot.length > 0 || rendered.cover.footNote)
+      ? { footerCover: buildCoverFooterXml(coverFooterBodyXml(rendered.cover, context)) }
+      : {}),
     ...(differentFirstPage && hasHeader
       ? { headerFirst: firstPart('hdr', headerFirst, headerLayout) }
       : {}),

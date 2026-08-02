@@ -13,6 +13,26 @@ export function coverColumns(cover: CoverPage) {
 }
 
 /**
+ * The candidate panel's geometry, in twips — the reference's own numbers, read out of
+ * its `word/document.xml` (`tblInd=340`, label cell `1558`, digit cells `290` wide in a
+ * row `504` exact-high; the barcode box above them is `1584` tall). One definition for
+ * both backends: the preview draws these as inches, the `.docx` writes them as `w:tcW`/
+ * `w:trHeight`, and two copies is how the two would drift apart.
+ */
+export const COVER_PANEL = {
+  /** `w:tblInd` — how far the panel's tables sit into the right column. */
+  indent: 340,
+  /** The label cell ("Candidate Number" in the reference; "Class No." here). */
+  labelWidth: 1558,
+  /** One write-in box. */
+  boxWidth: 290,
+  /** The write-in row's exact height. */
+  boxHeight: 504,
+  /** The framed note (the reference's barcode box) reserves at least this. */
+  noteMinHeight: 1584,
+} as const;
+
+/**
  * Whether the right column has anything to print.
  *
  * Drives the column rule and, on export, whether the section is two columns at all: a
@@ -203,28 +223,37 @@ export function createCoverPage(options: CoverOptions): CoverPage {
   const headFormat = hasPanel ? {} : { align: 'center' as const };
 
   return {
+    /*
+     * The reference sets its whole corner block in Arial bold at the body size (its
+     * style is `sz=22` half-points — 11pt, which is `Body` here, so no size is stored).
+     * The block was once 18pt, and that oversize is what forced a wider textbox and a
+     * shortened diagonal in the export — at the body size the reference's own geometry
+     * fits placeholders too (§ `cornerGroupXml`).
+     */
     cornerLines: [
-      line(code, '', { ...sans, bold: true, fontSize: 18 }),
-      line(subject, '', { ...sans, bold: true, fontSize: 18 }),
-      line(paperLabel, '', { ...sans, fontSize: 18 }, 1),
+      line(code, '', { ...sans, bold: true }),
+      line(subject, '', { ...sans, bold: true }),
+      line(paperLabel, '', { ...sans, bold: true }, 1),
     ],
     cornerRule: true,
 
     /*
-     * Air between the groups, as the reference has it: the identity lines, then the paper
-     * name and its kind as a pair, then the timing. A cover that runs its lines together
-     * reads as one block of text rather than as a title page.
+     * Air between the groups, exactly as the reference spends blank paragraphs: one
+     * inside the identity pair, two before the title pair, one before the timing, six
+     * before INSTRUCTIONS. Measured off its `word/document.xml`, not chosen by eye — a
+     * cover that runs its lines together reads as one block of text rather than as a
+     * title page, and one that spaces them differently reads as a different paper.
      */
     headLines: [
-      line(school, '', { ...headFormat, ...sans, fontSize: 18 }),
+      line(school, '', { ...headFormat, ...sans, fontSize: 18 }, 1),
       line(examName, '', { ...headFormat, ...sans, fontSize: 16 }, 2),
       // The paper's name is the largest thing on the page, as in the reference, and is
       // sans on both papers — it is the line a candidate identifies the paper by.
       line(paperName, '', { ...headFormat, ...sans, bold: true, fontSize: 28 }),
-      line(paperKind, '', { ...headFormat, ...sans, bold: true, fontSize: 24 }, 2),
+      line(paperKind, '', { ...headFormat, ...sans, bold: true, fontSize: 24 }, 1),
       // Read properly rather than at a glance, so serif on Paper 1.
       line(timeAllowed, '', { ...headFormat, ...body }),
-      line(languageNote, '', { ...headFormat, ...body }, 2),
+      line(languageNote, '', { ...headFormat, ...body }, 6),
     ],
 
     instructionsHeading: bi('INSTRUCTIONS', '考生須知'),
@@ -245,6 +274,17 @@ export function createCoverPage(options: CoverOptions): CoverPage {
       : { panelBoxes: 0 }),
 
     footLines: [line(school, '', { ...sans, fontSize: 16 })],
+
+    // The reference's Paper 1 boxes a note bottom-right; the write-in paper has none.
+    // This project's own words, as everywhere (§ the copyright constraint).
+    ...(hasPanel
+      ? {}
+      : {
+          footNote: bi(
+            'Keep this question paper on your desk until the end of the examination.',
+            '請將試卷放在桌上，直至考試結束。',
+          ),
+        }),
 
     // The default for anything not carrying its own face — the instruction list
     // among them, which is serif on Paper 1 and sans on Paper 2.

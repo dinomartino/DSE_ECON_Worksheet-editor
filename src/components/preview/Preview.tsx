@@ -19,6 +19,7 @@ import {
 import { TableColumnResizer } from "./TableColumnResizer";
 import { TableGridControls } from "./TableGridControls";
 import { zonesOf, type ZoneName } from "@/model/bands";
+import { COVER_PANEL } from "@/model/cover";
 import { describeDelete, isFormattable } from "@/model/edits";
 import { worksheetMarks } from "@/model/marks";
 import {
@@ -1375,10 +1376,13 @@ function CoverSheet({
   cover,
   language,
   ctx,
+  margins,
 }: {
   cover: CoverRenderNode;
   language: LanguageMode;
   ctx?: EditContext;
+  /** The page margins in twips, for pinning the foot block inside the bottom one. */
+  margins: { left: number; right: number };
 }) {
   const { left, gap, right } = cover.columns;
   const total = left + gap + right;
@@ -1419,22 +1423,20 @@ function CoverSheet({
         */}
         {cover.corner.length > 0 && (
           <div
-            className="absolute whitespace-nowrap pb-2"
-            style={{ left: "-0.65in", top: "-0.25in", width: "1.9in" }}
+            className="absolute"
+            // The exported group's own box: 1730375×1720850 EMU (§ `cornerGroupXml`),
+            // anchored the same distance outside the text column.
+            style={{ left: "-0.65in", top: "-0.25in", width: "1.893in", height: "1.882in" }}
           >
-            {region(cover.corner, "corner")}
+            {/* The textbox: child (0,312) 1520×1350 of the 2725-wide space, in inches. */}
+            <div className="whitespace-nowrap" style={{ paddingTop: "0.217in", width: "1.056in" }}>
+              {region(cover.corner, "corner")}
+            </div>
             {cover.cornerRule && (
-              // The diagonal runs through the block's right-hand padding, clear of the
-              // words — in the reference it separates the code from the page, it does not
-              // strike it through.
-              <span
-                aria-hidden
-                // Positioned as the exported shape is: it starts at 70% across the
-                // block (child x=1900 of 2725) and runs the textbox's own vertical band,
-                // so preview and .docx put the line in the same place.
-                className="pointer-events-none absolute"
-                style={{ left: "70%", right: 0, top: "6%", bottom: "12%" }}
-              >
+              // The diagonal spans the whole corner square, corner to corner, as the
+              // reference's does — at the body size the code lines occupy only the
+              // square's upper-left, so the line clears them (§ `cornerGroupXml`).
+              <span aria-hidden className="pointer-events-none absolute inset-0">
                 <span
                   className="block h-full w-full"
                   style={{
@@ -1446,9 +1448,11 @@ function CoverSheet({
                        * the mirror image, which shipped once and read as a backslash.
                        * Verified by measuring the rendered pixels, as the .docx flip was
                        * (§ `cornerGroupXml`), rather than by reasoning about the keyword.
+                       *
+                       * 1.5pt each side of centre = the 3pt weight the shape exports.
                        */
                     background:
-                      "linear-gradient(to bottom right, transparent calc(50% - 0.6px), #000 calc(50% - 0.6px), #000 calc(50% + 0.6px), transparent calc(50% + 0.6px))",
+                      "linear-gradient(to bottom right, transparent calc(50% - 1.5pt), #000 calc(50% - 1.5pt), #000 calc(50% + 1.5pt), transparent calc(50% + 1.5pt))",
                   }}
                 />
               </span>
@@ -1456,10 +1460,43 @@ function CoverSheet({
           </div>
         )}
 
-        {cover.head.length > 0 && <div className="mb-8">{region(cover.head, "head")}</div>}
+        {/* The head→INSTRUCTIONS gap is the last head line's own gapAfter, already in
+            the IR — a CSS margin here doubled it, and doubled it differently from the
+            .docx's blank paragraph. */}
+        {region(cover.head, "head")}
         {region(cover.instructions, "instructions")}
-        {cover.foot.length > 0 && <div className="mt-10">{region(cover.foot, "foot")}</div>}
       </div>
+
+      {/*
+        The foot block is the cover's *footer*, as the reference has it — pinned to the
+        page bottom, not flowed after the instructions. The `.paper` is the positioned
+        ancestor, so the offsets measure from the sheet edge: 0.5in is the `w:footer`
+        offset the exported section carries, and the sides are the page margins the
+        flex row above expresses as padding.
+      */}
+      {(cover.foot.length > 0 || cover.footNote) && (
+        <div
+          className="absolute flex items-end"
+          style={{
+            bottom: "0.5in",
+            left: `${margins.left / 1440}in`,
+            right: `${margins.right / 1440}in`,
+          }}
+        >
+          <div className="min-w-0 flex-1">{region(cover.foot, "foot")}</div>
+          {cover.footNote && (
+            // The reference P1's boxed note, bottom-right, level with the foot lines.
+            // 3200tw wide, matching `COVER_FOOT_NOTE_WIDTH` in the .docx.
+            <div
+              className="border border-[#000] p-1"
+              style={{ width: `${3200 / 1440}in` }}
+              data-cover-region="footNote"
+            >
+              <NodeView node={cover.footNote} language={language} ctx={ctx} />
+            </div>
+          )}
+        </div>
+      )}
 
       {cover.panel.present && (
         // The rule between the columns is the *column boundary*, which Word draws as the
@@ -1476,15 +1513,29 @@ function CoverSheet({
           }}
           data-cover-region="panel"
         >
+          {/* The panel's geometry is the reference's, shared with the .docx through
+              `COVER_PANEL` (twips, drawn here as inches: 1440tw/in). */}
           {cover.panel.note && (
-            <div className="mb-4 border border-[#000] p-2">
+            <div
+              className="mb-4 border border-[#000] p-2"
+              style={{
+                marginLeft: `${COVER_PANEL.indent / 1440}in`,
+                minHeight: `${COVER_PANEL.noteMinHeight / 1440}in`,
+              }}
+            >
               <NodeView node={cover.panel.note} language={language} ctx={ctx} />
             </div>
           )}
           {(cover.panel.fieldLabel || cover.panel.boxes > 0) && (
-            <div className="flex items-stretch">
+            <div
+              className="flex items-stretch"
+              style={{ marginLeft: `${COVER_PANEL.indent / 1440}in` }}
+            >
               {cover.panel.fieldLabel && (
-                <div className="flex items-center pr-1.5">
+                <div
+                  className="flex items-center"
+                  style={{ width: `${COVER_PANEL.labelWidth / 1440}in` }}
+                >
                   <NodeView node={cover.panel.fieldLabel} language={language} ctx={ctx} />
                 </div>
               )}
@@ -1493,9 +1544,11 @@ function CoverSheet({
                   key={index}
                   aria-hidden
                   className="border border-[#000]"
-                  // Sized in em so the boxes track the paper's own font size rather than
-                  // a pixel guess that would drift as the sheet scales.
-                  style={{ width: "1.6em", height: "1.6em", marginLeft: index ? "-1px" : 0 }}
+                  style={{
+                    width: `${COVER_PANEL.boxWidth / 1440}in`,
+                    height: `${COVER_PANEL.boxHeight / 1440}in`,
+                    marginLeft: index ? "-1px" : 0,
+                  }}
                 />
               ))}
             </div>
@@ -4898,7 +4951,12 @@ export function Preview({
               }}
             >
               <div className="flex-1">
-                <CoverSheet cover={rendered.cover} language={language} ctx={ctx} />
+                <CoverSheet
+                  cover={rendered.cover}
+                  language={language}
+                  ctx={ctx}
+                  margins={setup.margins}
+                />
               </div>
             </div>
           </div>
