@@ -227,6 +227,15 @@ export function AnswerLinesIcon(props: IconProps) {
   );
 }
 
+/** Dotted writing lines — the QAB answer space. Dashed where `AnswerLinesIcon` is solid. */
+export function AnswerSpaceIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 8h16M4 13h16M4 18h10" opacity="0.9" strokeDasharray="1.5 3" />
+    </Svg>
+  );
+}
+
 export function PartHeaderIcon(props: IconProps) {
   return (
     <Svg {...props}>
@@ -343,6 +352,7 @@ export const LAYOUT_ICON = {
   divider: DividerIcon,
   pageBreak: PageBreakIcon,
   answerLines: AnswerLinesIcon,
+  answerSpace: AnswerSpaceIcon,
   partHeader: PartHeaderIcon,
   labelList: LabelListIcon,
 } as const;

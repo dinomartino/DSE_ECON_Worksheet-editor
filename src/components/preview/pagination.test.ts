@@ -6,6 +6,7 @@ import {
   marqueeBounds,
   marqueeCatches,
   packPages,
+  resolveFillCounts,
   type PackItem,
 } from './pagination';
 
@@ -227,5 +228,138 @@ describe('marquee hit-testing', () => {
   it('misses an item the box stops short of on either axis', () => {
     expect(marqueeCatches(box(100, 100, 500, 199), item)).toBe(false);
     expect(marqueeCatches(box(501, 100, 600, 400), item)).toBe(false);
+  });
+});
+
+describe('resolveFillCounts (§3.2)', () => {
+  const item = (key: string): PackItem => ({ key });
+  const heights = (entries: Record<string, number>) => new Map(Object.entries(entries));
+  /** Every fill line is 10px tall in these cases; `q` items are questions. */
+  const pitchOf = (fills: string[]) => (key: string) =>
+    fills.includes(key) ? 10 : undefined;
+
+  it('gives a fill element the room its sheet has left, in whole lines', () => {
+    const pages = [[item('q1'), item('fill')]];
+    const counts = resolveFillCounts(
+      pages,
+      heights({ q1: 42, fill: 30 }),
+      100,
+      pitchOf(['fill']),
+      1,
+    );
+    // 100 - 42 = 58px of slack → 5 whole lines. The fill's own measured 30px is not a
+    // claim on the page — the element is what is being sized.
+    expect(counts.get('fill')).toBe(5);
+  });
+
+  it('resolves a fill alone on a sheet to a full page of lines', () => {
+    // The reference's pure answer pages are exactly this: a fill element after a page
+    // break, nothing else on the sheet.
+    const counts = resolveFillCounts(
+      [[item('fill')]],
+      heights({ fill: 10 }),
+      100,
+      pitchOf(['fill']),
+      1,
+    );
+    expect(counts.get('fill')).toBe(10);
+  });
+
+  it('floors at minLines when the sheet is already full', () => {
+    const counts = resolveFillCounts(
+      [[item('q1'), item('fill')]],
+      heights({ q1: 99, fill: 10 }),
+      100,
+      pitchOf(['fill']),
+      2,
+    );
+    expect(counts.get('fill')).toBe(2);
+  });
+
+  it('gives a second fill on the same sheet only the floor', () => {
+    // The first fill takes the slack — there is no more room to share, and the floor
+    // keeps the second visible enough to notice and move.
+    const counts = resolveFillCounts(
+      [[item('q1'), item('a'), item('b')]],
+      heights({ q1: 40, a: 10, b: 10 }),
+      100,
+      pitchOf(['a', 'b']),
+      1,
+    );
+    expect(counts.get('a')).toBe(6);
+    expect(counts.get('b')).toBe(1);
+  });
+
+  it('resolves each sheet independently', () => {
+    const counts = resolveFillCounts(
+      [
+        [item('q1'), item('a')],
+        [item('q2'), item('b')],
+      ],
+      heights({ q1: 42, a: 10, q2: 77, b: 10 }),
+      100,
+      pitchOf(['a', 'b']),
+      1,
+    );
+    expect(counts.get('a')).toBe(5);
+    expect(counts.get('b')).toBe(2);
+  });
+
+  it('returns nothing for a document with no fill elements', () => {
+    const counts = resolveFillCounts(
+      [[item('q1')]],
+      heights({ q1: 42 }),
+      100,
+      () => undefined,
+      1,
+    );
+    expect(counts.size).toBe(0);
+  });
+});
+
+describe('packing a fill element (§3.2)', () => {
+  it('keeps a fill on the current sheet whatever its stored height says', () => {
+    // The fill's measured height is only its *last-resolved* count. Packing by it gave
+    // two stable states — absorb this sheet's remainder, or take a fresh sheet whole —
+    // and which one a document landed in depended on the stale number it stored.
+    const items: PackItem[] = [
+      { key: 'q1' },
+      { key: 'fill', fillsPage: true },
+      { key: 'q2' },
+    ];
+    // q1 half a page, the fill claiming a FULL page of measured height.
+    const heights = new Map([
+      ['q1', 50],
+      ['fill', 100],
+      ['q2', 50],
+    ]);
+    const { pages } = packPages(items, heights, 100);
+    expect(pages.map((page) => page.map((i) => i.key))).toEqual([['q1', 'fill'], ['q2']]);
+  });
+
+  it('starts the next item on a fresh sheet — a fill ends its page', () => {
+    const items: PackItem[] = [
+      { key: 'q1' },
+      { key: 'fill', fillsPage: true },
+      { key: 'q2' },
+    ];
+    // Even a tiny fill consumes the rest of the sheet: q2 cannot share it.
+    const heights = new Map([
+      ['q1', 10],
+      ['fill', 5],
+      ['q2', 10],
+    ]);
+    const { pages } = packPages(items, heights, 100);
+    expect(pages.map((page) => page.map((i) => i.key))).toEqual([['q1', 'fill'], ['q2']]);
+  });
+
+  it('moves a fill to the next sheet only when its sheet is genuinely full', () => {
+    const items: PackItem[] = [{ key: 'q1' }, { key: 'fill', fillsPage: true }];
+    const heights = new Map([
+      ['q1', 100],
+      ['fill', 10],
+    ]);
+    const { pages } = packPages(items, heights, 100);
+    expect(pages.map((page) => page.map((i) => i.key))).toEqual([['q1'], ['fill']]);
   });
 });

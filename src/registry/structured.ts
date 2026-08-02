@@ -181,6 +181,12 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
           },
         });
       }
+
+      // The QAB's writing room, directly under the sub-part it answers (§ the LQ
+      // line). Absent prints nothing, like marks.
+      if (subPart.answerSpace !== undefined && subPart.answerSpace > 0) {
+        nodes.push({ kind: 'answerSpace', lines: subPart.answerSpace });
+      }
     });
 
     // A part with sub-parts still shows its aggregate answer, if the teacher wrote one.
@@ -193,6 +199,12 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
         indent: PART_TEXT_INDENT,
         edit: { kind: 'partAnswer', questionId: question.id, partId: part.id },
       });
+    }
+
+    // The part's own writing room, after the whole group. Each sub-part's space is its
+    // own field, so this is the per-part room a QAB grants a leaf part.
+    if (part.answerSpace !== undefined && part.answerSpace > 0) {
+      nodes.push({ kind: 'answerSpace', lines: part.answerSpace });
     }
   });
 

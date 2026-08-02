@@ -1042,6 +1042,154 @@ copying takes the whole anchor.
 
 ---
 
+## The LQ mode (Question-Answer Book)
+
+A Paper 2 booklet is mostly writing room: the candidate answers *in* it, so the answer
+space is the product and the page count is decided by how much room each question is
+*given* (`LQ_MODE_HANDOFF.md`). Everything here is opt-in data — a new element kind, new
+optional fields, a conditional style — so a document that uses none of it exports
+byte-identically (asserted: no `LqAnswerLine` in styles.xml, no anchors in the header).
+
+### The dotted answer line is a different primitive
+
+`answerSpace` (model, IR and element kind) is **not** `answerLines` with a flag: the
+mechanism (dotted underline drawn over a right-aligned tab vs a paragraph bottom
+border), the pitch (22.1pt vs 24pt) and the Word style all differ, and folding them
+together would make existing documents' meaning depend on a variant flag they never
+stored.
+
+- **The pitch is measured, not chosen**: the reference booklet's dotted lines land 46px
+  apart in a 150dpi raster — 22.08pt ≈ **`LQ_LINE_PITCH_TWIPS` = 442**. The reference
+  reaches it as `w:before="240"` plus an auto line at its 10pt default face; this app
+  spells the same height as **one exact line box**, keeping the fixed-line invariant
+  unbroken and the pitch identical in Word, LibreOffice, the preview and the paginator —
+  an auto line is whatever the renderer's font metrics say, which is exactly the
+  disagreement the fixed-line model exists to prevent. (`w:before="320" w:after="240"`,
+  once recorded as the reference's spelling, occurs **once** in 425 dotted paragraphs;
+  the dominant spelling is `w:before="240"` alone. Re-measure before trusting.)
+- **The tab stop is the live content width** — the reference's `w:pos="9300"` is nothing
+  but *its* content width (11909 − 1296 − 1309).
+- **The tab run restates `w:u w:val="dotted"`**: Word underlines a tab only when the run
+  wearing it is underlined; the style's own `w:u` alone dots nothing.
+- **The style is emitted only when the document uses an answer space**, keyed on the
+  **rendered IR**, not the layout list — an answer space also comes from a question part,
+  and keying on the layout alone shipped paragraphs referencing a style the package
+  lacked (LibreOffice then fell back to default tab stops and drew half-inch stubs).
+- The preview draws each line as a `border-bottom: 1px dotted` row at the same twips;
+  `scripts/lq-pitch.py` measures the rendered pitch rather than trusting either spelling.
+
+### Answer space lives on the part, and also in the flow
+
+`QuestionPart.answerSpace` / `QuestionSubPart.answerSpace` (optional line counts) print
+dotted lines directly after the part or sub-part — where the reference puts the room:
+1.(a), its lines, then (b). A flow element cannot sit inside a question, which is why
+the fields exist; the flow-level `answerSpace` element remains the shape for whole-sheet
+runs. Absent prints nothing, like marks. Both are edited in the structured panel
+(clearable number fields); the flow element resizes on the page like answer lines and
+splits across sheets with its own pitch.
+
+**A QAB question starts at a page top, by explicit break.** The preview keeps items
+whole while Word splits a too-tall question mid-space, so a question sized near a page
+boundary is exactly where the two backends part company. The reference's own convention
+— every question opens a fresh page, pure-space sheets between — is what keeps them
+agreeing, and `scripts/lq-fixtures.test.ts` encodes it.
+
+### A section can carry its derived total
+
+`section.showMarks` appends the derived "(44 marks)" suffix exactly as `partHeader`
+does — the QAB's heading is "Section A (44 marks)" on one line, and its numbering runs
+1..14 across all three sections, so the marks cannot ride on a separate restart-bearing
+element. The QAB's sections set `restartNumbering: false`.
+
+### Fill-to-page: the count is the paginator's output
+
+`answerSpace.fill` inverts the sizing: `lines` becomes the **resolved** value the
+paginator last wrote, not the author's input.
+
+- **Resolution is a single pass over the packed layout** (`resolveFillCounts`,
+  `pagination.ts`): a fill element absorbs its sheet's slack and therefore *ends* the
+  sheet, so resolving it never changes what anything before it packed onto — no
+  fixed-point iteration. The first fill on a sheet takes the slack; a second gets the
+  floor.
+- **The packer places a fill by intent, not by measured height** (`PackItem.fillsPage`):
+  its height is only the last-resolved count, and packing by it gave two stable states —
+  absorb this sheet's remainder, or take the next sheet whole — with the outcome decided
+  by whichever stale number the document happened to store. A fill lands on the current
+  sheet and consumes the rest of it; the next item starts a fresh sheet.
+- **The resolved count is written into the model** by `resolveAnswerSpaceFills` — the
+  one deliberate bypass of `commit()`: the value is derived, so recording it must not
+  spend an undo entry (resolution fires per measurement pass and would interleave
+  derived entries between every real edit). Double-gated by value comparison in the
+  effect and the store, which is what stops the measure → write → measure loop. Written
+  into the model rather than kept beside it so the exporter, clipboard and thumbnails
+  read the number the preview resolved instead of recomputing it — two computations of
+  this number is how the preview and the paper would disagree about where pages break.
+- The page withholds the resize handle on a fill element (a dragged value would be
+  overwritten by the next resolution); the outline shows a "fills page" pill instead of
+  a stepper.
+
+### Per-page furniture is one running header of anchored shapes
+
+`worksheet.pageFurniture` (`frame` + `marginNote`, in `KNOWN_KEYS`) reproduces the
+reference's page frame and rotated margin sentences. Its mechanism is the reference's
+own — anchored shapes in the header (`prstGeom prst="rect"`, two `bodyPr vert="vert270"`
+textboxes) — but as **one running header**, not the reference's 21: those exist only so
+Word can vary incidental apparatus per page, and stripped of that the furniture is
+identical on every sheet, so no per-page sections are needed (§ a page is derived).
+
+- **Geometry is measured out of the reference's `header2.xml`** (EMU ÷ 635) and shared
+  through `model/pageFurniture.ts` (`furnitureBoxes`): frame spanning the text column
+  ±140tw, from 1280tw below the page top to 1592tw above the bottom, 0.75pt stroke;
+  notes ~245tw wide, 4409tw tall, in the margins. Everything is positioned
+  `relativeFrom="page"` so the frame ignores whatever else the header holds; resolved
+  from the live page setup so a margin change moves the frame with the column it frames.
+- **The furniture forces a header part** even when no band would print, rides on the
+  page-1 part whatever the band state ("blank on page 1" blanks the bands, not the
+  frame), and the cover stays frame-free because the cover's section carries no header
+  reference — all as the reference has it.
+- The preview mirrors it as an absolutely positioned per-sheet layer (`vertical-rl`
+  rotated 180° for `vert270`), deliberately **not** `data-print-hide` — the one on-page
+  layer that must print.
+- **Wording is authorable with a neutral default** ("Do not write in this margin."):
+  the reference's own margin sentence is rubric, and structure is reproduced, never
+  prose. The phrase blocklist pins it.
+
+### The document type leads the wizard
+
+`NewWorksheetOptions.documentType` names the four documents this app makes —
+`classroom`, `paper1`, `lqWorksheet`, `lqMock` — and the form asks it **first**, as
+cards, deriving cover, sections, furniture and seeding from the one answer. It used to
+be assembled from parts (a cover radio plus a sections checkbox), which made choosing
+"Paper 2 cover" + "sections" secretly mean the QAB while the plain LQ worksheet was not
+reachable at all. The older `cover` option maps onto the type (`mcq` → `paper1`,
+`writeIn` → `lqMock`) so pre-type callers produce exactly what they produced.
+
+- **`lqWorksheet` is the plain long-question set**: dotted answer space with no exam
+  apparatus — no cover, no furniture, no sections.
+- **`lqMock` is the booklet**: Paper 2 cover, Sections A/B/C with derived totals and
+  continuous numbering, the "Answer any ONE question." note as its own element, and the
+  page furniture. Its sections are its shape, so the checkbox is not offered; the form
+  says what the type decided instead of silently taking the option away.
+- **Both LQ types seed one sample question** (`seedSample`, on by default, invented
+  wording under the copyright window): per-part answer space lives inside the
+  structured panel, so an empty LQ document hides its whole point until the teacher
+  discovers the field. The mock places the sample directly under Section A. The harness
+  fixture opts out — it authors its own questions and rebuilds the flow positionally.
+
+### `scripts/lq-verify.mjs` is the booklet's harness
+
+Modelled on `cover-verify.mjs`, and aimed at its blind spot: it asserts the **page
+count** in all three backends (a booklet is a length claim), rasterises the **pure
+answer page** — an interior sheet, not page 1 — against the reference's page 10, and
+**measures the dotted pitch** off a 150dpi raster (`lq-pitch.py`, expecting the
+reference's 46px). It also asserts §3.2's contract live: the browser's resolved fill
+count must equal the count the fixture stored — which is what the `.docx` exported, so
+equality *is* the preview and the paper agreeing about the last sheet. Copyright guards
+mirror the cover's: a phrase blocklist that always runs, and a 6-word sliding window
+over the gitignored reference.
+
+---
+
 ## Pagination and pages
 
 ### A page is derived, and owns the break that made it
@@ -1296,8 +1444,9 @@ once-per-document decisions before the first question exists.
   by id, so dropping the layout entries alone leaves the flow pointing at elements that
   no longer exist (§ the flow invariant).
 - **The wizard is a form, not steps**, and every field has a working default — it is a
-  way to answer sooner, never a gate. The cover cards preselect a style and nothing else;
-  all three open the same form.
+  way to answer sooner, never a gate. The start cards preselect a **document type** and
+  nothing else; all four open the same form, and the type derives cover, sections,
+  furniture and seeding in one answer (§ the document type leads the wizard).
 - **The row opens the document; the menu holds the filing actions** (rename, duplicate,
   download, delete). Burying "open" among four rarer siblings would make resuming work
   the slowest thing on the screen. Duplicating **saves without opening** — the teacher is

@@ -46,10 +46,13 @@ describe('defaults', () => {
     expect(createWorksheetFrom().id).not.toBe(createWorksheetFrom().id);
   });
 
-  it('keeps the placeholder title when the box is left empty', () => {
-    // An empty box means "not decided", and "" would name the document "Untitled" in the
-    // file list and download as `worksheet.docx`.
-    expect(plain(createWorksheetFrom({ title: '   ' }).title.en)).toBe('Economics Worksheet');
+  it('leaves the title empty when the box is left empty', () => {
+    // No default heading is stamped into a new document: an untitled paper must not
+    // open with words nobody wrote printed at the top. Empty renders no title node,
+    // lists as "Untitled", and downloads under the generic name until renamed.
+    const worksheet = createWorksheetFrom({ title: '   ' });
+    expect(plain(worksheet.title.en)).toBe('');
+    expect(plain(worksheet.title.zh)).toBe('');
   });
 });
 

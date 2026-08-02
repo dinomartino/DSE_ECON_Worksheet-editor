@@ -190,7 +190,7 @@ export function createCoverPage(options: CoverOptions): CoverPage {
     school = 'SCHOOL NAME',
     examName = 'S.6 MOCK EXAMINATION 2025 – 2026',
     paperName = paperStyle === 'mcq' ? 'ECONOMICS   PAPER 1' : 'ECONOMICS   PAPER 2',
-    paperKind = paperStyle === 'mcq' ? 'Multiple-choice Questions' : 'Question Booklet',
+    paperKind = paperStyle === 'mcq' ? 'Multiple-choice Questions' : 'Question-Answer Book',
     timeAllowed = paperStyle === 'mcq'
       ? '8:30 am – 9:30 am (1 hour)'
       : '10:15 am – 12:45 pm (2 hours 30 minutes)',
@@ -244,13 +244,21 @@ export function createCoverPage(options: CoverOptions): CoverPage {
      * cover that runs its lines together reads as one block of text rather than as a
      * title page, and one that spaces them differently reads as a different paper.
      */
+    /*
+     * Sizes are the reference's own, measured out of its cover XML, not chosen for
+     * emphasis: the identity line at the body size, the examination line *smaller*
+     * (`sz=16` — 8pt — its longest line, set small to hold one line), and the paper's
+     * name plus its kind at `sz=28` — **14pt, regular weight**. This cover once set
+     * the title at 28pt bold, which read as a poster beside the reference's page; the
+     * largest thing on a DSE cover is quiet by this app's standards, and the weight
+     * hierarchy is carried by size alone.
+     */
     headLines: [
-      line(school, '', { ...headFormat, ...sans, fontSize: 18 }, 1),
-      line(examName, '', { ...headFormat, ...sans, fontSize: 16 }, 2),
-      // The paper's name is the largest thing on the page, as in the reference, and is
-      // sans on both papers — it is the line a candidate identifies the paper by.
-      line(paperName, '', { ...headFormat, ...sans, bold: true, fontSize: 28 }),
-      line(paperKind, '', { ...headFormat, ...sans, bold: true, fontSize: 24 }, 1),
+      line(school, '', { ...headFormat, ...sans }, 1),
+      line(examName, '', { ...headFormat, ...sans, fontSize: 11 }, 2),
+      // The line a candidate identifies the paper by — sans on both papers.
+      line(paperName, '', { ...headFormat, ...sans, fontSize: 16, bold: true }),
+      line(paperKind, '', { ...headFormat, ...sans, fontSize: 16, bold: true }, 1),
       // Read properly rather than at a glance, so serif on Paper 1.
       line(timeAllowed, '', { ...headFormat, ...body }),
       line(languageNote, '', { ...headFormat, ...body }, 6),
@@ -273,7 +281,8 @@ export function createCoverPage(options: CoverOptions): CoverPage {
         }
       : { panelBoxes: 0 }),
 
-    footLines: [line(school, '', { ...sans, fontSize: 16 })],
+    // The reference's foot line is 12pt bold (its `footer1.xml`, `sz=24` + `w:b`).
+    footLines: [line(school, '', { ...sans, bold: true, fontSize: 12 })],
 
     // The reference's Paper 1 boxes a note bottom-right; the write-in paper has none.
     // This project's own words, as everywhere (§ the copyright constraint).

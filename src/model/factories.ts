@@ -147,18 +147,27 @@ export function createWorksheet(): Worksheet {
   return {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     id: newId(),
-    title: bi('Economics Worksheet', '經濟科工作紙'),
+    /*
+     * The title starts empty — no "Economics Worksheet" stamp.
+     *
+     * A default title looked like content: it printed at the top of every new document
+     * and named it in the file list, so an untitled paper carried a heading nobody
+     * wrote and three of them in the list were indistinguishable. Empty prints
+     * nothing (`renderWorksheet` drops the node), lists as "Untitled", and downloads
+     * as `Worksheet (…)` until the teacher names it — in the wizard, in Setup, or via
+     * Rename.
+     */
+    title: emptyBiText(),
     instructions: bi('Answer ALL questions.', '回答全部問題。'),
     fonts: { ...DEFAULT_FONTS },
     pageSetup: { paper: 'A4', orientation: 'portrait', margins: { top: 1440, right: 1440, bottom: 1440, left: 1440 } },
     /*
      * The header starts empty.
      *
-     * It used to ship a centre field holding the same words as `title`, so a new
-     * document printed "Economics Worksheet" twice — once in the header and again as
-     * the title block below it. The title is the copy worth keeping: it also names the
-     * document in the outline, the saved-file list and the download filename, so
-     * dropping *it* would leave every new worksheet reading "Untitled".
+     * It used to ship a centre field holding the same words as the then-default
+     * title, so a new document printed the same heading twice — once in the header
+     * and again as the title block below it. The header field is the copy that went;
+     * the title is the teacher's own, typed when they name the document.
      *
      * Enabled rather than off, so `DocumentSettings` shows its presets and its "type on
      * the page" hint instead of a bare switch; the rule is off because an empty band

@@ -139,6 +139,19 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                   />
                 )}
 
+                {/*
+                 * The QAB's writing room, printed after this part (after the whole
+                 * sub-part group when there is one). Clearable because absent and zero
+                 * differ — absent prints nothing, the ordinary worksheet state.
+                 */}
+                <NumberField
+                  label="Answer space (dotted lines)"
+                  value={part.answerSpace}
+                  clearable
+                  placeholder="none"
+                  onChange={(answerSpace) => patchPart(partIndex, { answerSpace })}
+                />
+
                 <BiTextField
                   label="Answer / marking scheme"
                   value={part.answer ?? emptyBiText()}
@@ -214,6 +227,20 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                             patchPart(partIndex, {
                               subParts: subParts.map((s, i) =>
                                 i === subIndex ? { ...s, marks } : s,
+                              ),
+                            })
+                          }
+                        />
+
+                        <NumberField
+                          label="Answer space (dotted lines)"
+                          value={subPart.answerSpace}
+                          clearable
+                          placeholder="none"
+                          onChange={(answerSpace) =>
+                            patchPart(partIndex, {
+                              subParts: subParts.map((s, i) =>
+                                i === subIndex ? { ...s, answerSpace } : s,
                               ),
                             })
                           }

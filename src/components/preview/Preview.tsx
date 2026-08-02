@@ -37,11 +37,14 @@ import type {
   CaptionPlacement,
   LanguageMode,
   OutputMode,
+  PageFurniture,
+  PageSetup,
   RunFormat,
   TableAlign,
   TextFormat,
   Worksheet,
 } from "@/model/types";
+import { furnitureBoxes } from "@/model/pageFurniture";
 import { isModalLayerOpen } from "@/components/ui/modalLayer";
 import { useWorksheetStore, type BandScope } from "@/store/worksheetStore";
 import { diagramSvg } from "@/render/diagram";
@@ -69,6 +72,7 @@ const LAYOUT_DRAG_NAME: Record<string, string> = {
   divider: "Divider",
   pageBreak: "New page",
   answerLines: "Answer lines",
+  answerSpace: "Answer space",
   partHeader: "Part header",
   labelList: "Label list",
 };
@@ -121,13 +125,14 @@ import { InlineEditable, type TextSelection } from "./InlineEditable";
 import { ResizableBlock } from "./ResizableBlock";
 import { ResizableRows } from "./ResizableRows";
 import { MIN_ANSWER_LINES, MIN_SPACER_PT } from "@/model/flow";
-import { ANSWER_LINE_HEIGHT_TWIPS } from "@/export/docx/styles";
+import { ANSWER_LINE_HEIGHT_TWIPS, LQ_LINE_PITCH_TWIPS } from "@/export/docx/styles";
 import {
   compositionKey as keyOfComposition,
   composePages,
   marqueeBounds,
   marqueeCatches,
   packPages,
+  resolveFillCounts,
   type PackItem,
   type PageComposition,
 } from "./pagination";
@@ -163,6 +168,9 @@ const PT_TO_PX = 96 / 72;
  * by this number.
  */
 const ANSWER_LINE_PITCH_PX = (ANSWER_LINE_HEIGHT_TWIPS / 20) * PT_TO_PX;
+
+/** One QAB dotted line's pitch, from the exporter's constant for the same reason. */
+const LQ_LINE_PITCH_PX = (LQ_LINE_PITCH_TWIPS / 20) * PT_TO_PX;
 
 /** How much one drag step changes a spacer. Points are too fine to drag one at a time. */
 const SPACER_STEP_PT = 6;
@@ -952,6 +960,99 @@ function AnswerLinesView({ lines }: { lines: number }) {
 }
 
 /**
+ * The QAB's dotted answer space, at the exporter's own pitch.
+ *
+ * A dotted bottom border stands in for Word's dotted underline over a tab — the nearest
+ * CSS mechanism; per the token rule anything on the paper takes a literal colour. The
+ * rule sits on the bottom of each row for the reason `AnswerLinesView` puts it there:
+ * the last line must be dotted too.
+ */
+function AnswerSpaceView({ lines }: { lines: number }) {
+  return (
+    <div>
+      {Array.from({ length: Math.max(0, lines) }, (_, index) => (
+        <div
+          key={index}
+          style={{
+            height: LQ_LINE_PITCH_PX,
+            borderBottom: "1px dotted #000000",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * The QAB's per-page furniture: frame and rotated margin notes, one layer per sheet.
+ *
+ * Mirrors the exported header's anchored shapes (§ `furnitureHeaderXml`) — same
+ * geometry, from the same `furnitureBoxes`, drawn here as absolutely positioned CSS.
+ * `pointer-events-none` and `aria-hidden` because the layer is print output, not an
+ * editing surface, and it must swallow no click aimed at the page. Deliberately *not*
+ * `data-print-hide`: the furniture is the one piece of on-page chrome that must print.
+ *
+ * `vert270` (bottom-to-top) is expressed as `vertical-rl` rotated 180° — the CSS
+ * `sideways-lr` value that names it directly is not yet safe cross-browser.
+ */
+function PageFurnitureLayer({
+  furniture,
+  setup,
+  language,
+}: {
+  furniture: PageFurniture;
+  setup: PageSetup;
+  language: LanguageMode;
+}) {
+  const { width, height } = pageDimensions(setup);
+  const boxes = furnitureBoxes(width, height, setup.margins);
+  const mm = (twips: number) => `${twipsToMm(twips)}mm`;
+  const place = (box: { left: number; top: number; width: number; height: number }) => ({
+    left: mm(box.left),
+    top: mm(box.top),
+    width: mm(box.width),
+    height: mm(box.height),
+  });
+  const note = furniture.marginNote;
+  const noteText = note
+    ? language === 'zh'
+      ? plain(note.zh) || plain(note.en)
+      : plain(note.en) || plain(note.zh)
+    : '';
+
+  const noteStyle = (box: Parameters<typeof place>[0]): React.CSSProperties => ({
+    position: 'absolute',
+    ...place(box),
+    writingMode: 'vertical-rl',
+    transform: 'rotate(180deg)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '9pt',
+    lineHeight: 1,
+    color: '#000000',
+    whiteSpace: 'nowrap',
+  });
+
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0">
+      {furniture.frame && (
+        <div
+          className="absolute"
+          style={{ ...place(boxes.frame), border: '0.75pt solid #000000' }}
+        />
+      )}
+      {noteText && (
+        <>
+          <div style={noteStyle(boxes.noteLeft)}>{noteText}</div>
+          <div style={noteStyle(boxes.noteRight)}>{noteText}</div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
  * Answer lines or a spacer, extendable when the host allows editing.
  *
  * Two renderings of the same element rather than one that conditionally grows a handle,
@@ -1660,6 +1761,24 @@ function NodeView({
         unit={["line", "lines"]}
       >
         {(lines) => <AnswerLinesView lines={lines} />}
+      </SizedRows>
+    );
+  }
+
+  if (node.kind === "answerSpace") {
+    return (
+      <SizedRows
+        node={node}
+        // A fill element's count is the paginator's output, so the drag handle is
+        // withheld — a dragged value would be overwritten by the next resolution.
+        ctx={node.fill ? undefined : ctx}
+        value={node.lines}
+        pxPerUnit={LQ_LINE_PITCH_PX}
+        min={MIN_ANSWER_LINES}
+        step={1}
+        unit={["line", "lines"]}
+      >
+        {(lines) => <AnswerSpaceView lines={lines} />}
       </SizedRows>
     );
   }
@@ -2901,6 +3020,15 @@ interface Props {
     perPage: number,
   ) => void;
   /**
+   * Report the resolved line counts for `fill` answer spaces, after pagination.
+   *
+   * The paginator is the only place that knows the remaining room on a sheet (§3.2),
+   * so the preview resolves and the host records — into the model, so the exporter
+   * reads the same number rather than recomputing it. Omit to leave fill elements at
+   * their stored counts (read-only hosts, thumbnails).
+   */
+  onResolveFills?: (counts: Map<string, number>) => void;
+  /**
    * Open a block's own editor, from a double-click on the page.
    *
    * Only diagrams have one. The preview does not know what that editor is — it reports
@@ -3177,6 +3305,7 @@ export function Preview({
   onInsertTableColumn,
   onRemoveTableColumn,
   onSplitRows,
+  onResolveFills,
   onOpenBlock,
   onReorder,
   onReorderMany,
@@ -4505,6 +4634,14 @@ export function Preview({
         item.type === "layout" &&
         item.layout.nodes.some((node) => node.kind === "pageBreak");
 
+      // A fill answer space consumes whatever is left of its sheet, whatever its
+      // stored (last-resolved) count says (§3.2) — packing it by measured height let a
+      // stale count jump it onto its own fresh sheet, a second stable state nobody
+      // asked for.
+      const fillsPage =
+        item.type === "layout" &&
+        item.layout.nodes.some((node) => node.kind === "answerSpace" && node.fill);
+
       const body = (
         <ItemBody
           item={item}
@@ -4542,6 +4679,7 @@ export function Preview({
         key: id,
         forceBreak: isManualBreak,
         breakId: isManualBreak ? id : undefined,
+        fillsPage,
         node: !onReorder ? (
           body
         ) : (
@@ -4714,7 +4852,14 @@ export function Preview({
     // stops a drag and the test that triggers a split can never disagree about where
     // the page ends.
     for (const element of worksheet.layout) {
-      if (element.kind !== 'answerLines') continue;
+      if (element.kind !== 'answerLines' && element.kind !== 'answerSpace') continue;
+      // A fill element's size is the paginator's own output — it can never genuinely
+      // overflow, and splitting it would turn a derived value into two stored ones.
+      if (element.kind === 'answerSpace' && element.fill) continue;
+      // The two line elements split identically; only the pitch dividing overflow into
+      // rows differs, and each uses its own (§ the LQ line is a different primitive).
+      const pitch =
+        element.kind === 'answerSpace' ? LQ_LINE_PITCH_PX : ANSWER_LINE_PITCH_PX;
       const node = root.querySelector<HTMLElement>(
         `#print-root [data-layout-id="${CSS.escape(element.id)}"]`,
       );
@@ -4731,7 +4876,7 @@ export function Preview({
       // a partial row over the edge still prints on top of the footer.
       if (past <= 1) continue;
 
-      const over = Math.ceil(past / ANSWER_LINE_PITCH_PX);
+      const over = Math.ceil(past / pitch);
       const keep = Math.max(MIN_ANSWER_LINES, element.lines - over);
       if (keep >= element.lines) continue;
 
@@ -4743,13 +4888,57 @@ export function Preview({
       const attempt = `${element.id}:${element.lines}`;
       if (splitting.current === attempt) return;
       splitting.current = attempt;
-      const perPage = Math.max(1, Math.floor(contentHeightPx / ANSWER_LINE_PITCH_PX));
+      const perPage = Math.max(1, Math.floor(contentHeightPx / pitch));
       onSplitRows(element.id, keep, element.lines - keep, perPage);
       return;
     }
     // Nothing overflows any more, so the latch can be released for the next one.
     splitting.current = undefined;
   }, [pages, worksheet, contentHeightPx, onSplitRows, dragId, scale]);
+
+  /*
+   * Resolve every fill answer-space to the room left on its sheet (§3.2).
+   *
+   * Runs off the same packed pages the sheets draw, so the resolved count and the page
+   * it fills cannot disagree. Publishing is double-gated — here against the stored
+   * counts, and in the store against the same — because the effect re-fires per
+   * measurement pass and an unconditional write would loop measure → write → measure.
+   * Never during a drag, for the auto-split's reason: a gesture is already reshaping
+   * the page every frame.
+   */
+  useEffect(() => {
+    if (!onResolveFills || dragId) return;
+    const fillPitch = new Map<string, number>();
+    for (const element of worksheet.layout) {
+      if (element.kind === 'answerSpace' && element.fill) {
+        fillPitch.set(element.id, LQ_LINE_PITCH_PX);
+      }
+    }
+    if (fillPitch.size === 0) return;
+
+    const counts = resolveFillCounts(
+      pages,
+      heightsOf,
+      contentHeightPx,
+      (key) => fillPitch.get(key),
+      MIN_ANSWER_LINES,
+    );
+    if (counts.size === 0) return;
+
+    const stored = new Map(
+      worksheet.layout
+        .filter((element) => element.kind === 'answerSpace')
+        .map((element) => [element.id, element.lines]),
+    );
+    let differs = false;
+    for (const [id, lines] of counts) {
+      if (stored.get(id) !== lines) {
+        differs = true;
+        break;
+      }
+    }
+    if (differs) onResolveFills(counts);
+  }, [pages, heightsOf, contentHeightPx, worksheet, onResolveFills, dragId]);
 
   /*
    * Tell the page rail how the flow landed on sheets.
@@ -4994,6 +5183,13 @@ export function Preview({
                 if (isBlankAreaClick(event.target)) clearPageSelection();
               }}
             >
+              {worksheet.pageFurniture && (
+                <PageFurnitureLayer
+                  furniture={worksheet.pageFurniture}
+                  setup={setup}
+                  language={language}
+                />
+              )}
               <div
                 // Measured on the first sheet only; every sheet's bands are the same
                 // height, and observing all of them would just re-report one number.

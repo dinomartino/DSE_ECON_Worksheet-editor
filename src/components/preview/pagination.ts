@@ -32,6 +32,14 @@ export interface PackItem {
    * letting the page rail try to delete a section heading.
    */
   structural?: boolean;
+  /**
+   * A fill answer space: lands on the current sheet and consumes whatever room is left
+   * of it (§3.2). Packed by intent rather than by measured height, because the height
+   * is the *last-resolved* count — packing by it gave the system two stable states (on
+   * this sheet at the remainder, or alone on the next at a full page), and which one a
+   * document landed in depended on the count it happened to store.
+   */
+  fillsPage?: boolean;
 }
 
 export interface PackedPages<T extends PackItem> {
@@ -80,7 +88,11 @@ export function packPages<T extends PackItem>(
      */
     const openedAlready = openedBy[openedBy.length - 1] !== undefined;
     const mustBreak = item.forceBreak && (current.length > 0 || openedAlready);
-    const overflows = current.length > 0 && used + height > contentHeightPx;
+    // A fill item overflows only when its sheet is genuinely full — its measured
+    // height is the count it resolved to *last* time, not a claim on this sheet.
+    const overflows =
+      current.length > 0 &&
+      (item.fillsPage ? used >= contentHeightPx : used + height > contentHeightPx);
 
     if (mustBreak || overflows) {
       pages.push([]);
@@ -97,7 +109,9 @@ export function packPages<T extends PackItem>(
     if (item.forceBreak) continue;
 
     pages[pages.length - 1].push(item);
-    used += height;
+    // A fill ends its sheet: anything after it starts the next one, which is what
+    // makes the resolution a single pass (§ resolveFillCounts).
+    used = item.fillsPage ? contentHeightPx : used + height;
   }
 
   /*
@@ -232,6 +246,54 @@ export function dropRunAnchor(
   const anchor = staying[staying.length - 1] ?? page.breakId;
   if (!anchor || moving.has(anchor)) return undefined;
   return anchor;
+}
+
+/**
+ * Resolve every fill answer-space to the room left on its sheet.
+ *
+ * The paginator is the one place that knows the remaining height (§ the line count is
+ * not authorable — it is "fill the page"), so this is where a fill element's count
+ * becomes a number. Deliberately a **single pass over an already-packed layout** rather
+ * than an iteration to a fixed point: a fill element absorbs its sheet's slack and
+ * therefore *ends* the sheet, so resolving it never changes which sheet anything before
+ * it landed on — and anything after it starts the next sheet whatever count is chosen.
+ *
+ * `fillPitchOf` names the fill items and their line pitch (px). The first fill on a
+ * sheet takes all the slack; a second fill on the same sheet resolves to the floor —
+ * there is no more room to share, and the floor keeps it visible enough to notice and
+ * move (§`MIN_ANSWER_LINES`).
+ *
+ * The fill item's own measured height is excluded from "used": the element is being
+ * re-sized, so its current size is not a claim on the page.
+ */
+export function resolveFillCounts<T extends PackItem>(
+  pages: T[][],
+  heights: Map<string, number>,
+  contentHeightPx: number,
+  fillPitchOf: (key: string) => number | undefined,
+  minLines: number,
+): Map<string, number> {
+  const counts = new Map<string, number>();
+  if (contentHeightPx <= 0) return counts;
+
+  for (const page of pages) {
+    const fills = page.filter((item) => fillPitchOf(item.key) !== undefined);
+    if (fills.length === 0) continue;
+
+    const used = page.reduce(
+      (sum, item) =>
+        fillPitchOf(item.key) !== undefined ? sum : sum + (heights.get(item.key) ?? 0),
+      0,
+    );
+
+    fills.forEach((item, index) => {
+      const pitch = fillPitchOf(item.key)!;
+      const room = contentHeightPx - used;
+      const lines = index === 0 ? Math.floor(room / pitch) : minLines;
+      counts.set(item.key, Math.max(minLines, lines));
+    });
+  }
+  return counts;
 }
 
 /** A rectangle in viewport coordinates. */

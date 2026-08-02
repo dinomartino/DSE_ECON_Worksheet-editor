@@ -61,6 +61,7 @@ export const KNOWN_KEYS = new Set([
   'fonts',
   'bands',
   'cover',
+  'pageFurniture',
   'pageSetup',
   'header',
   'footer',

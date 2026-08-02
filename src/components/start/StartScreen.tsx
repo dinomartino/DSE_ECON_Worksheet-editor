@@ -4,10 +4,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui';
 import { Dialog } from '@/components/ui/Dialog';
 import { Menu } from '@/components/ui/Menu';
-import { DocumentIcon, McqIcon, PageIcon, StructuredIcon } from '@/components/ui/icons';
+import {
+  AnswerSpaceIcon,
+  DocumentIcon,
+  McqIcon,
+  PageIcon,
+  StructuredIcon,
+} from '@/components/ui/icons';
 import { NEW_WORKSHEET_FORM_ID, NewWorksheetForm } from './NewWorksheetForm';
 import { newId } from '@/model/factories';
-import type { CoverPaperStyle } from '@/model/cover';
+import type { DocumentType } from '@/model/newWorksheet';
 import type { LanguageMode, Worksheet } from '@/model/types';
 import {
   downloadWorksheetFile,
@@ -47,7 +53,7 @@ export function StartScreen({
 }) {
   const [summaries, setSummaries] = useState<WorksheetSummary[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [creating, setCreating] = useState<CoverPaperStyle | 'blank' | undefined>();
+  const [creating, setCreating] = useState<DocumentType | undefined>();
   const [error, setError] = useState<string | undefined>();
   const [renaming, setRenaming] = useState<WorksheetSummary | undefined>();
   const [confirmingDelete, setConfirmingDelete] = useState<WorksheetSummary | undefined>();
@@ -170,26 +176,32 @@ export function StartScreen({
         <section className="mt-9">
           <h2 className="text-[13px] font-semibold text-ink">Start a new worksheet</h2>
           <p className="mt-0.5 text-[11px] text-ink-muted">
-            Each opens the same form — the card only preselects the cover page.
+            Each opens the same form — the card only preselects the document type.
           </p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <StartCard
               icon={<DocumentIcon size={18} />}
-              title="Blank worksheet"
-              hint="No cover page. The ordinary classroom worksheet."
-              onClick={() => setCreating('blank')}
+              title="Classroom worksheet"
+              hint="MCQ + structured questions. No cover."
+              onClick={() => setCreating('classroom')}
+            />
+            <StartCard
+              icon={<AnswerSpaceIcon size={18} />}
+              title="LQ worksheet"
+              hint="Long questions with dotted answer space. No exam furniture."
+              onClick={() => setCreating('lqWorksheet')}
             />
             <StartCard
               icon={<McqIcon size={18} />}
-              title="Paper 1 · MCQ"
-              hint="Mock-exam cover, answers on a separate answer sheet."
-              onClick={() => setCreating('mcq')}
+              title="Paper 1 mock · MCQ"
+              hint="Exam cover; answers on a separate answer sheet."
+              onClick={() => setCreating('paper1')}
             />
             <StartCard
               icon={<StructuredIcon size={18} />}
-              title="Paper 2 · Write-in"
-              hint="Mock-exam cover with a candidate panel."
-              onClick={() => setCreating('writeIn')}
+              title="Paper 2 mock · booklet"
+              hint="Question-Answer Book: cover, Sections A–C, page frame."
+              onClick={() => setCreating('lqMock')}
             />
           </div>
           <div className="mt-3">
@@ -301,7 +313,7 @@ export function StartScreen({
               header's rule and the hints run into the panel edge. */}
           <div className="px-5 py-5">
             <NewWorksheetForm
-              initialCover={creating === 'blank' ? undefined : creating}
+              initialType={creating}
               onCreate={(worksheet, language) => {
                 setCreating(undefined);
                 onOpen(worksheet, language);
@@ -522,7 +534,7 @@ function RenameDialog({
           type="text"
           value={title}
           autoFocus
-          placeholder="Economics Worksheet"
+          placeholder="Worksheet title"
           onChange={(event) => setTitle(event.target.value)}
           className="h-9 w-full rounded-lg border border-line bg-surface px-2.5 text-[13px] text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
         />

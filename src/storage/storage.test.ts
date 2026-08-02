@@ -152,7 +152,14 @@ describe('duplicating', () => {
   });
 
   it('sorts to the top of the list, where the teacher is looking for it', async () => {
-    const worksheet = { ...createWorksheet(), updatedAt: '2020-01-01T00:00:00.000Z' };
+    // Titled, because "(copy)" is appended to a title — a new document starts with
+    // none (§ `createWorksheet`), and duplicating an untitled one lists as another
+    // "Untitled" row.
+    const worksheet = {
+      ...createWorksheet(),
+      title: bi('S.6 Mock', ''),
+      updatedAt: '2020-01-01T00:00:00.000Z',
+    };
     await store().save(worksheet);
     await store().save(duplicateWorksheet(worksheet, newId()));
 

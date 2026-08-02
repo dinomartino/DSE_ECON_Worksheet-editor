@@ -53,6 +53,8 @@ interface StyleSpec {
    * set — without it that run collapses to a single rule under the last paragraph.
    */
   border?: { color: string; size: number };
+  /** Run underline, as the QAB's dotted answer line needs (`w:u`). */
+  underline?: 'dotted';
 }
 
 const BASE_SIZE = 22; // 11pt — every run in the reference paper is `w:sz="22"`.
@@ -102,6 +104,38 @@ export const ANSWER_LINE_HEIGHT_TWIPS = 480;
  * node carries no `style` field at all, so this stays .docx-local.
  */
 export const ANSWER_LINE_STYLE_ID = 'AnswerLine';
+
+/**
+ * One QAB dotted answer line's pitch, in twips.
+ *
+ * **Measured, not chosen**: the reference booklet's dotted lines land 46px apart in a
+ * 150dpi raster — 22.08pt ≈ 442 twips. The reference reaches that pitch as
+ * `w:before="240"` plus an auto line at its default 10pt Times face; this app instead
+ * spells the same height as a single exact line box, which keeps the fixed-line
+ * invariant unbroken (§ one fixed line, no paragraph spacing) and makes the pitch
+ * identical in Word, LibreOffice, the preview and the paginator — an auto line is
+ * whatever the renderer's font metrics say it is, which is exactly the disagreement the
+ * fixed-line model exists to prevent.
+ */
+export const LQ_LINE_PITCH_TWIPS = 442;
+
+/**
+ * Style id for a QAB dotted answer line. Like `AnswerLine`, .docx-local and not a
+ * `NodeStyle`. Emitted into styles.xml **only when the document contains an answer
+ * space** — a style every document carries would change every existing export's
+ * styles.xml, and an untouched document must export byte-identically.
+ */
+export const LQ_ANSWER_LINE_STYLE_ID = 'LqAnswerLine';
+
+const LQ_ANSWER_LINE_SPEC: StyleSpec = {
+  id: LQ_ANSWER_LINE_STYLE_ID,
+  name: 'Answer Space Line',
+  size: BASE_SIZE,
+  spaceBefore: 0,
+  spaceAfter: 0,
+  exactLine: LQ_LINE_PITCH_TWIPS,
+  underline: 'dotted',
+};
 
 /*
  * Every style below sets `spaceBefore: 0, spaceAfter: 0` and inherits the fixed 12pt
@@ -189,6 +223,7 @@ function runProperties(spec: StyleSpec, fonts: FontPair): string {
   if (spec.bold) parts.push('<w:b/>', '<w:bCs/>');
   if (spec.italic) parts.push('<w:i/>', '<w:iCs/>');
   if (spec.color) parts.push(`<w:color w:val="${spec.color}"/>`);
+  if (spec.underline) parts.push(`<w:u w:val="${spec.underline}"/>`);
   if (spec.size) parts.push(`<w:sz w:val="${spec.size}"/>`, `<w:szCs w:val="${spec.size}"/>`);
   return `<w:rPr>${parts.join('')}</w:rPr>`;
 }
@@ -205,7 +240,10 @@ function styleXml(spec: StyleSpec, fonts: FontPair): string {
   );
 }
 
-export function buildStylesXml(fonts: FontPair): string {
+export function buildStylesXml(
+  fonts: FontPair,
+  options: { answerSpace?: boolean } = {},
+): string {
   const docDefaults =
     '<w:docDefaults>' +
     `<w:rPrDefault><w:rPr>${rFonts(fonts)}` +
@@ -258,6 +296,9 @@ export function buildStylesXml(fonts: FontPair): string {
     defaultParagraphFont +
     tableNormal +
     STYLE_SPECS.map((spec) => styleXml(spec, fonts)).join('') +
+    // Conditional, so a document without an answer space keeps its styles.xml
+    // byte-identical to every build before the style existed.
+    (options.answerSpace ? styleXml(LQ_ANSWER_LINE_SPEC, fonts) : '') +
     '</w:styles>'
   );
 }

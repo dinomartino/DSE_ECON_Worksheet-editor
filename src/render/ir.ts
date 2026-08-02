@@ -385,6 +385,28 @@ export interface AnswerLinesNode {
 }
 
 /**
+ * Dotted writing lines — the Question-Answer Book's answer space.
+ *
+ * Exported as one paragraph per line whose only run is a right-aligned tab wearing a
+ * dotted underline (`w:u w:val="dotted"`), the reference booklet's own mechanism. Not
+ * `answerLines` with a flag: the pitch, the drawing mechanism and the Word style all
+ * differ, and the two must stay independently restylable (§ the LQ line is a different
+ * primitive).
+ */
+export interface AnswerSpaceNode {
+  kind: 'answerSpace';
+  lines: number;
+  /** The layout element this came from, so the preview can size it in place. */
+  elementId?: string;
+  /**
+   * The count is paginator-resolved, not authored (§`LayoutElement.answerSpace.fill`).
+   * The preview reads it to withhold the resize handle — dragging a derived size would
+   * be overwritten by the next resolution. Inert in export, like `edit`.
+   */
+  fill?: boolean;
+}
+
+/**
  * The cover page: a two-column sheet of regions.
  *
  * Deliberately **not** a `RenderNode`. Every member of that union is something that
@@ -436,7 +458,8 @@ export type RenderNode =
   | PageBreakNode
   | SpacerNode
   | DividerNode
-  | AnswerLinesNode;
+  | AnswerLinesNode
+  | AnswerSpaceNode;
 
 /** Context handed to a question type's `render` function. */
 export interface RenderContext {

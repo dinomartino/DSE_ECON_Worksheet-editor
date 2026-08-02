@@ -195,13 +195,17 @@ function LayoutRow({ element }: { element: LayoutElement }) {
   // Answer lines and blank space describe themselves by their size, so the row spends
   // its width on a control for that size rather than on text repeating it.
   const stepper =
-    element.kind === 'answerLines' ? (
+    element.kind === 'answerSpace' && element.fill ? (
+      // A fill element's count is derived by the paginator, so the row reports the
+      // state instead of offering a stepper that the next resolution would overwrite.
+      <Pill>fills page</Pill>
+    ) : element.kind === 'answerLines' || element.kind === 'answerSpace' ? (
       <SizeStepper
         value={element.lines}
         min={MIN_ANSWER_LINES}
         step={1}
         unit={element.lines === 1 ? 'line' : 'lines'}
-        label="Answer lines"
+        label={element.kind === 'answerSpace' ? 'Answer space lines' : 'Answer lines'}
         onCommit={(lines) => resizeLayoutElement(element.id, lines)}
       />
     ) : element.kind === 'spacer' ? (

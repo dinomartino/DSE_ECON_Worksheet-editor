@@ -10,6 +10,7 @@ import {
 } from '@/model/bands';
 import {
   createAnswerLinesElement,
+  createAnswerSpaceElement,
   createDividerElement,
   createHeadingElement,
   createLabelListElement,
@@ -18,6 +19,7 @@ import {
   createSpacerElement,
 } from '@/model/flow';
 import { applyResizeBlock } from '@/model/edits';
+import { createQabFurniture } from '@/model/pageFurniture';
 import {
   DEFAULT_CELL_PADDING,
   patchCell,
@@ -1121,6 +1123,80 @@ describe('layout elements in the section flow', () => {
     }
   });
 
+  it('exports an answer space as dotted-underline-over-tab paragraphs', async () => {
+    // The QAB's own mechanism (§ the LQ line): one paragraph per line whose only run
+    // is a right-aligned tab wearing a dotted underline. The tab stop sits at the live
+    // content width — the reference's 9300 is nothing but *its* content width.
+    const zip = await JSZip.loadAsync(
+      await exportDocxBuffer(withElement(createAnswerSpaceElement(6)), STUDENT_BI),
+    );
+    const document = await zip.file('word/document.xml')!.async('string');
+    const lines =
+      document.match(/<w:p><w:pPr><w:pStyle w:val="LqAnswerLine"\/>[\s\S]*?<\/w:p>/g) ?? [];
+    expect(lines.length).toBe(6);
+    for (const paragraph of lines) {
+      expect(paragraph).toContain('<w:tab w:val="right" w:pos="9026"/>');
+      // The run restates the underline: Word dots a tab only when the run wearing it
+      // is underlined — the style's own w:u is not enough.
+      expect(paragraph).toContain('<w:r><w:rPr><w:u w:val="dotted"/></w:rPr><w:tab/></w:r>');
+    }
+
+    // The style carries the measured pitch as an exact line box, keeping the
+    // fixed-line invariant (§ one fixed line): 442tw = the reference's rendered
+    // 22.08pt dotted-line pitch, measured off a 150dpi raster of page 10.
+    const styles = await zip.file('word/styles.xml')!.async('string');
+    const style = styles.match(
+      /<w:style w:type="paragraph" w:styleId="LqAnswerLine">[\s\S]*?<\/w:style>/,
+    )?.[0];
+    expect(style).toBeDefined();
+    expect(style).toContain('w:line="442" w:lineRule="exact"');
+    expect(style).toContain('<w:u w:val="dotted"/>');
+    // No paragraph border anywhere in it — the dots are an underline, not a rule.
+    expect(style).not.toContain('<w:pBdr>');
+  });
+
+  it('adds the answer-space style only to documents that use it', async () => {
+    // The style is conditional so a document without an answer space keeps its
+    // styles.xml — and therefore its exported package — byte-identical to every build
+    // before the style existed.
+    const zip = await JSZip.loadAsync(
+      await exportDocxBuffer(buildAcceptanceWorksheet(), STUDENT_BI),
+    );
+    const styles = await zip.file('word/styles.xml')!.async('string');
+    expect(styles).not.toContain('LqAnswerLine');
+  });
+
+  it('puts the page furniture in the running header, as anchored page-relative shapes', async () => {
+    // The reference's own mechanism (§ `model/pageFurniture.ts`): a frame rect and two
+    // vert270 margin notes anchored in the header, so they repeat on every sheet while
+    // reserving no space in the text column.
+    const worksheet = buildAcceptanceWorksheet();
+    worksheet.pageFurniture = createQabFurniture();
+    const zip = await JSZip.loadAsync(await exportDocxBuffer(worksheet, STUDENT_BI));
+    const header = await zip.file('word/header1.xml')!.async('string');
+
+    expect(header).toContain('<a:prstGeom prst="rect">');
+    expect((header.match(/vert="vert270"/g) ?? []).length).toBe(2);
+    // Page-relative, so the frame sits at the same place whatever the header holds.
+    expect(header).toContain('<wp:positionH relativeFrom="page">');
+    // The reference's stroke: 0.75pt black.
+    expect(header).toContain('<a:ln w="9525">');
+    // wrapNone: the furniture must reserve no space in the text column.
+    expect((header.match(/<wp:wrapNone\/>/g) ?? []).length).toBe(3);
+  });
+
+  it('emits no furniture and no header part for a document without it', async () => {
+    const zip = await JSZip.loadAsync(
+      await exportDocxBuffer(buildAcceptanceWorksheet(), STUDENT_BI),
+    );
+    // The acceptance worksheet has its own header bands, so a header part exists — but
+    // it must carry no shapes. A furniture-free export stays byte-identical.
+    const header = zip.file('word/header1.xml');
+    if (header) {
+      expect(await header.async('string')).not.toContain('wp:anchor');
+    }
+  });
+
   it('exports a page break as a real Word page break', async () => {
     const document = await open(withElement(createPageBreakElement()));
     expect(document).toContain('<w:br w:type="page"/>');
@@ -1693,8 +1769,9 @@ describe('margin presets and custom margins export verbatim', () => {
    * title block underneath it. The title is the copy that stays, because it also names
    * the document in the outline and the download filename.
    */
-  it('prints a new document’s title once, not as a header as well', async () => {
-    const worksheet = createWorksheet();
+  it('prints a titled document’s title once, not as a header as well', async () => {
+    // A new document starts untitled (§ `createWorksheet`), so the title is typed in.
+    const worksheet = { ...createWorksheet(), title: bi('S.6 Mock Paper', '') };
     const name = plain(worksheet.title.en);
     expect(name).toBeTruthy();
 

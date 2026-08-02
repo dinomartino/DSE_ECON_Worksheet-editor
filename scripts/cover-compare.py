@@ -60,8 +60,11 @@ def contact_sheet(images: dict[str, Image.Image], out: Path) -> None:
 
 def main() -> int:
     outdir = Path(sys.argv[1] if len(sys.argv) > 1 else "/tmp/cover-verify")
+    # Extra args name the documents to compare; the cover pair stays the default so
+    # `cover-verify.mjs` needs no change. `lq-verify.mjs` passes its own name.
+    papers = sys.argv[2:] or ["p1", "p2"]
     failed = False
-    for paper in ["p1", "p2"]:
+    for paper in papers:
         images = {}
         for leg in LEGS:
             img = load(outdir / f"{paper}-{leg}.png")

@@ -222,6 +222,7 @@ export const LAYOUT_NAME: Record<LayoutElement['kind'], string> = {
   divider: 'Divider',
   pageBreak: 'New page',
   answerLines: 'Answer lines',
+  answerSpace: 'Answer space',
   partHeader: 'Part header',
   labelList: 'Label list',
 };
@@ -315,6 +316,20 @@ export function createPageBreakElement(): LayoutElement {
 
 export function createAnswerLinesElement(lines = 4): LayoutElement {
   return { kind: 'answerLines', id: newId(), lines: clampAnswerLines(lines) };
+}
+
+/**
+ * The QAB answer space (§ dotted lines). Eight lines is the smallest block the
+ * reference booklet ever grants a part, so a fresh element reads as writing room
+ * rather than as a stray rule.
+ */
+export function createAnswerSpaceElement(lines = 8, fill = false): LayoutElement {
+  return {
+    kind: 'answerSpace',
+    id: newId(),
+    lines: clampAnswerLines(lines),
+    ...(fill ? { fill: true } : {}),
+  };
 }
 
 /**

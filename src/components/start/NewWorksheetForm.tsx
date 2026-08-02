@@ -4,21 +4,28 @@ import { useState } from 'react';
 import { CheckField, Segmented, SelectField } from '@/components/ui';
 import { Field } from '@/components/ui/Dialog';
 import { FONT_PRESETS } from '@/model/factories';
-import { createWorksheetFrom, type NewWorksheetOptions } from '@/model/newWorksheet';
+import {
+  createWorksheetFrom,
+  type DocumentType,
+  type NewWorksheetOptions,
+} from '@/model/newWorksheet';
 import { MARGIN_PRESETS } from '@/model/page';
-import type { CoverPaperStyle } from '@/model/cover';
 import type { LanguageMode, PageMargins, PaperSize, Worksheet } from '@/model/types';
 
 /**
  * The once-per-document decisions, asked before the first question exists.
  *
- * A **form, not a wizard of steps**: all six answers fit on one screen, and a teacher
- * who wants none of them presses Create immediately. Multi-step would turn a set of
- * defaults into a gate — and every field here already has a working default, so there
- * is nothing that must be answered before the editor can open.
+ * A **form, not a wizard of steps**: everything fits on one screen, and a teacher who
+ * wants none of it presses Create immediately. Every field has a working default, so
+ * there is nothing that must be answered before the editor can open.
  *
- * The cover choice sits last because it is the only one that changes what the document
- * *contains* rather than how it is set: the other five are properties of the page.
+ * The **document type leads** and everything else follows from it. It used to be the
+ * other way around — the cover was one question, sections another — which made the
+ * teacher assemble a booklet out of parts the form could have derived: choosing
+ * "Paper 2 cover" and "sections" *was* choosing the QAB, but nothing said so, and the
+ * plain LQ worksheet (answer space with no exam apparatus) was not reachable at all.
+ * One card up front answers cover, sections, furniture and seeding in a stroke; the
+ * rest of the form is page properties.
  */
 /**
  * Id linking the form to its submit button.
@@ -31,32 +38,78 @@ import type { LanguageMode, PageMargins, PaperSize, Worksheet } from '@/model/ty
  */
 export const NEW_WORKSHEET_FORM_ID = 'new-worksheet-form';
 
+/**
+ * The four documents, in the order a teacher meets them: the everyday sheet first,
+ * then the two mocks, with the plain LQ set between them beside the booklet it
+ * resembles. Each card names what the choice *includes*, because the whole point of
+ * the type is that nothing else needs asking.
+ */
+const DOCUMENT_TYPES: Array<{
+  value: DocumentType;
+  label: string;
+  hint: string;
+}> = [
+  {
+    value: 'classroom',
+    label: 'Classroom worksheet',
+    hint: 'MCQ + structured questions. No cover.',
+  },
+  {
+    value: 'lqWorksheet',
+    label: 'LQ worksheet',
+    hint: 'Long questions with dotted answer space. No exam furniture.',
+  },
+  {
+    value: 'paper1',
+    label: 'Paper 1 mock · MCQ',
+    hint: 'Exam cover; answers go on a separate sheet.',
+  },
+  {
+    value: 'lqMock',
+    label: 'Paper 2 mock · booklet',
+    hint: 'Question-Answer Book: cover, Sections A–C, page frame.',
+  },
+];
+
+/** Which types carry a mock-exam cover, and so ask for its fields. */
+const HAS_COVER: Record<DocumentType, boolean> = {
+  classroom: false,
+  lqWorksheet: false,
+  paper1: true,
+  lqMock: true,
+};
+
+/** Which types offer the section-headings choice (the others decide it themselves). */
+const ASKS_SECTIONS: Record<DocumentType, boolean> = {
+  classroom: true,
+  lqWorksheet: false,
+  paper1: true,
+  lqMock: false,
+};
+
 export function NewWorksheetForm({
-  /** Preselected cover style, from the card the teacher pressed on the start screen. */
-  initialCover,
+  /** Preselected document type, from the card the teacher pressed on the start screen. */
+  initialType,
   onCreate,
 }: {
-  initialCover?: CoverPaperStyle;
+  initialType?: DocumentType;
   onCreate: (worksheet: Worksheet, language: LanguageMode) => void;
 }) {
-  const [title, setTitle] = useState('');
-  const [titleZh, setTitleZh] = useState('');
+  const [documentType, setDocumentType] = useState<DocumentType>(initialType ?? 'classroom');
   const [language, setLanguage] = useState<LanguageMode>('en');
   const [paper, setPaper] = useState<PaperSize>('A4');
   const [marginIndex, setMarginIndex] = useState(0);
   const [fontIndex, setFontIndex] = useState(0);
-  const [cover, setCover] = useState<CoverPaperStyle | 'none'>(initialCover ?? 'none');
   const [sections, setSections] = useState(true);
-  // Only shown once a cover is chosen: they are that cover's own fields, and five boxes
-  // for a document that will have no cover is a form asking about something that does
-  // not exist.
+  // Only shown once the type carries a cover: they are that cover's own fields, and
+  // boxes for a document that will have no cover is a form asking about something that
+  // does not exist.
   const [school, setSchool] = useState('');
   const [examName, setExamName] = useState('');
 
   const submit = () => {
     const options: NewWorksheetOptions = {
-      title,
-      titleZh,
+      documentType,
       paper,
       margins: MARGIN_PRESETS[marginIndex]?.margins as PageMargins,
       fonts: {
@@ -64,9 +117,7 @@ export function NewWorksheetForm({
         eastAsia: FONT_PRESETS[fontIndex].eastAsia,
       },
       sections,
-      ...(cover === 'none'
-        ? {}
-        : { cover, coverDetails: { school, examName } }),
+      ...(HAS_COVER[documentType] ? { coverDetails: { school, examName } } : {}),
     };
     onCreate(createWorksheetFrom(options), language);
   };
@@ -80,22 +131,81 @@ export function NewWorksheetForm({
         submit();
       }}
     >
-      <div className="grid gap-3 sm:grid-cols-2">
-        <TextField
-          label="Title"
-          value={title}
-          onChange={setTitle}
-          placeholder="Economics Worksheet"
-          autoFocus
-        />
-        <TextField
-          label="Title (中文)"
-          value={titleZh}
-          onChange={setTitleZh}
-          placeholder="經濟科工作紙"
-        />
-      </div>
+      <Field
+        label="Document type"
+        hint="Decides the cover, sections and page furniture — everything else below is paper."
+      >
+        <div role="radiogroup" className="grid grid-cols-2 items-stretch gap-2">
+          {DOCUMENT_TYPES.map(({ value, label, hint }) => (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={documentType === value}
+              onClick={() => setDocumentType(value)}
+              className={`flex cursor-pointer flex-col gap-0.5 rounded-lg border px-3 py-2.5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                documentType === value
+                  ? 'border-accent bg-accent/5 ring-1 ring-accent'
+                  : 'border-line bg-surface hover:border-ink-subtle'
+              }`}
+            >
+              <span
+                className={`text-[12px] font-medium ${
+                  documentType === value ? 'text-accent' : 'text-ink'
+                }`}
+              >
+                {label}
+              </span>
+              <span className="text-[11px] leading-snug text-ink-muted">{hint}</span>
+            </button>
+          ))}
+        </div>
+      </Field>
 
+      {/* Indented under the type they belong to, rather than floating as top-level
+          boxes: they appear and disappear with it, and at the same level they read as
+          document fields that happen to vanish. */}
+      {HAS_COVER[documentType] && (
+        <div className="ml-0.5 grid gap-3 border-l-2 border-accent/25 pl-3 sm:grid-cols-2">
+          <TextField
+            label="School"
+            value={school}
+            onChange={setSchool}
+            placeholder="SCHOOL NAME"
+          />
+          <TextField
+            label="Examination"
+            value={examName}
+            onChange={setExamName}
+            // Shortened from the cover's own full default: a placeholder that truncates
+            // mid-word teaches the shape of the value worse than a shorter one that fits.
+            placeholder="S.6 MOCK EXAM 2025–26"
+          />
+        </div>
+      )}
+
+      {ASKS_SECTIONS[documentType] ? (
+        <CheckField
+          label="Start with Section A / Section B headings"
+          checked={sections}
+          onChange={setSections}
+        />
+      ) : (
+        // The types that decide sections for themselves say what they decided, so the
+        // vanished checkbox does not read as an option quietly taken away.
+        <p className="text-[11px] text-ink-subtle">
+          {documentType === 'lqMock'
+            ? 'Starts with Sections A–C (derived marks totals) and one sample long question.'
+            : 'Starts with one sample long question — no section headings.'}
+        </p>
+      )}
+
+      {/*
+        No title fields. A new document starts untitled — nothing is stamped into it
+        (§ `createWorksheet`) — and the name is given where naming happens: typed onto
+        the page, in Setup, or via Rename in the file list. Asking here was a box most
+        teachers skipped, which then printed a heading nobody wrote.
+      */}
       <Field
         label="Language"
         hint="Which side the editor shows. Both are always stored."
@@ -135,14 +245,23 @@ export function NewWorksheetForm({
           />
         </Field>
         <Field label="Margins">
-          <SelectField
-            value={marginIndex}
-            onChange={setMarginIndex}
-            options={MARGIN_PRESETS.map((preset, index) => ({
-              value: index,
-              label: preset.label,
-            }))}
-          />
+          {documentType === 'lqMock' ? (
+            // The booklet's margins are the reference's own — the page frame, the
+            // dotted pitch and the lines-per-page were all measured against that
+            // column, so the answer is fixed rather than offered (§ `QAB_MARGINS`).
+            <p className="flex h-9 items-center rounded-lg border border-line bg-surface-sunken px-2.5 text-[12px] text-ink-muted">
+              Booklet (fixed)
+            </p>
+          ) : (
+            <SelectField
+              value={marginIndex}
+              onChange={setMarginIndex}
+              options={MARGIN_PRESETS.map((preset, index) => ({
+                value: index,
+                label: preset.label,
+              }))}
+            />
+          )}
         </Field>
         <Field label="Fonts">
           <SelectField
@@ -154,76 +273,6 @@ export function NewWorksheetForm({
             }))}
           />
         </Field>
-      </div>
-
-      <Field
-        label="Cover page"
-        hint="A mock-exam front page. Only a write-in booklet gets a candidate panel."
-      >
-        {/* `items-stretch` so all three cards take the height of the tallest: one hint
-            wraps to two lines and the others do not, and without it the row reads as
-            three cards of three different sizes. */}
-        <div role="radiogroup" className="grid grid-cols-3 items-stretch gap-2">
-          {(
-            [
-              ['none', 'None', 'Classroom worksheet'],
-              ['mcq', 'Paper 1', 'Answers on a sheet'],
-              ['writeIn', 'Paper 2', 'Answers in the booklet'],
-            ] as Array<[CoverPaperStyle | 'none', string, string]>
-          ).map(([value, label, hint]) => (
-            <button
-              key={value}
-              type="button"
-              role="radio"
-              aria-checked={cover === value}
-              onClick={() => setCover(value)}
-              className={`flex cursor-pointer flex-col gap-0.5 rounded-lg border px-3 py-2.5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-                cover === value
-                  ? 'border-accent bg-accent/5 ring-1 ring-accent'
-                  : 'border-line bg-surface hover:border-ink-subtle'
-              }`}
-            >
-              <span
-                className={`text-[12px] font-medium ${
-                  cover === value ? 'text-accent' : 'text-ink'
-                }`}
-              >
-                {label}
-              </span>
-              <span className="text-[11px] leading-snug text-ink-muted">{hint}</span>
-            </button>
-          ))}
-        </div>
-      </Field>
-
-      {/* Indented under the cover choice they belong to, rather than floating as a
-          third pair of top-level boxes: they appear and disappear with it, and at the
-          same level they read as document fields that happen to vanish. */}
-      {cover !== 'none' && (
-        <div className="ml-0.5 grid gap-3 border-l-2 border-accent/25 pl-3 sm:grid-cols-2">
-          <TextField
-            label="School"
-            value={school}
-            onChange={setSchool}
-            placeholder="SCHOOL NAME"
-          />
-          <TextField
-            label="Examination"
-            value={examName}
-            onChange={setExamName}
-            // Shortened from the cover's own full default: a placeholder that truncates
-            // mid-word teaches the shape of the value worse than a shorter one that fits.
-            placeholder="S.6 MOCK EXAM 2025–26"
-          />
-        </div>
-      )}
-
-      <div className="border-t border-line pt-4">
-        <CheckField
-          label="Start with Section A / Section B headings"
-          checked={sections}
-          onChange={setSections}
-        />
       </div>
     </form>
   );

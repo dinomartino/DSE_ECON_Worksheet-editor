@@ -445,6 +445,15 @@ export interface QuestionSubPart {
    */
   marks?: number;
   answer?: BiText;
+  /**
+   * Dotted writing lines printed after this sub-part — the QAB's answer space.
+   *
+   * Lives on the sub-part rather than only as a flow element because that is where the
+   * reference booklet puts the room: 2(a)(i), its lines, then (ii), then its lines. A
+   * flow element cannot sit inside a question. Absent prints nothing, so a document
+   * authored before the field existed is untouched (§ absent marks is not zero).
+   */
+  answerSpace?: number;
 }
 
 export interface QuestionPart {
@@ -460,6 +469,13 @@ export interface QuestionPart {
   marks?: number;
   subParts?: QuestionSubPart[];
   answer?: BiText;
+  /**
+   * Dotted writing lines printed after this part (§`QuestionSubPart.answerSpace`).
+   *
+   * On a part with sub-parts it prints after the whole group — each sub-part's own
+   * space is that sub-part's field.
+   */
+  answerSpace?: number;
 }
 
 export interface StructuredQuestion extends QuestionBase {
@@ -504,6 +520,38 @@ export type LayoutElement =
   /** Ruled writing lines for a handwritten answer. */
   | { kind: 'answerLines'; id: string; lines: number }
   /**
+   * Dotted writing lines, the Question-Answer Book's answer space.
+   *
+   * Deliberately a different primitive from `answerLines`, not a variant of it: the two
+   * have different mechanisms (a dotted underline drawn over a right-aligned tab vs a
+   * paragraph bottom border), different pitches (the reference booklet's measured
+   * ~22.1pt vs the worksheet's 24pt), and different users — `answerLines` is a
+   * worksheet's ruled space, this is the writing room a candidate answers a whole long
+   * question in. Folding them into one element would make every existing document's
+   * meaning depend on a variant flag it never stored.
+   */
+  | {
+      kind: 'answerSpace';
+      id: string;
+      /**
+       * The printed line count. For a `fill` element this is the **resolved** value the
+       * paginator last wrote (§ the line count is not authorable), kept in the model so
+       * every backend — .docx, clipboard, thumbnails — reads the same number the
+       * preview showed rather than recomputing it. Two computations of this number is
+       * exactly how the preview and the paper would start disagreeing about where pages
+       * break.
+       */
+      lines: number;
+      /**
+       * Fill the rest of the sheet: the count above becomes the paginator's output, not
+       * the author's input. A QAB's answer space is "whatever is left on the page" —
+       * the reference's pure-space sheets are this element alone. A fill element always
+       * *ends* its sheet, which is what makes the resolution a single pass rather than
+       * a fixed-point iteration.
+       */
+      fill?: boolean;
+    }
+  /**
    * A part header: "Part A: Multiple-choice questions (19 marks)".
    *
    * The marks total is derived from the questions in the enclosing section, so it stays
@@ -533,6 +581,12 @@ export type LayoutElement =
       id: string;
       text: BiText;
       restartNumbering?: boolean;
+      /**
+       * Append the derived "(44 marks)" suffix, as `partHeader` does. Opt-in: the QAB's
+       * section line carries its total, an ordinary worksheet's does not, and absent
+       * keeps every existing document byte-identical.
+       */
+      showMarks?: boolean;
       format?: TextFormat;
     }
   /**
@@ -768,6 +822,20 @@ export interface HeaderFooter {
   };
 }
 
+/**
+ * Per-page furniture: the QAB's page frame and rotated margin notes.
+ *
+ * Geometry and rationale live in `model/pageFurniture.ts`; the type sits here because
+ * `Worksheet` carries it and the model's root types file must not import from the
+ * modules built on top of it.
+ */
+export interface PageFurniture {
+  /** Draw the page frame rectangle on every sheet. */
+  frame?: boolean;
+  /** Rotated note down both vertical margins. Absent draws no notes. */
+  marginNote?: BiText;
+}
+
 export interface Worksheet {
   schemaVersion: number;
   id: string;
@@ -808,6 +876,12 @@ export interface Worksheet {
    * Absent means the document has no cover, which is every worksheet by default.
    */
   cover?: CoverPage;
+  /**
+   * The QAB's per-page furniture: frame and rotated margin notes, repeated on every
+   * body sheet via one running header (§ `model/pageFurniture.ts`). Absent draws
+   * nothing, which is every worksheet by default.
+   */
+  pageFurniture?: PageFurniture;
   /** Paper, orientation and margins. Optional for documents saved before v3. */
   pageSetup?: PageSetup;
   header?: HeaderFooter;

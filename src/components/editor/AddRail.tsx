@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   createAnswerLinesElement,
+  createAnswerSpaceElement,
   createDividerElement,
   createHeadingElement,
   createLabelListElement,
@@ -20,6 +21,7 @@ import { listQuestionTypes } from '@/registry';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import {
   AnswerLinesIcon,
+  AnswerSpaceIcon,
   DividerIcon,
   HeadingIcon,
   LabelListIcon,
@@ -156,6 +158,7 @@ export function AddRail() {
     text: <TextIcon size={18} />,
     labelList: <LabelListIcon size={18} />,
     answerLines: <AnswerLinesIcon size={18} />,
+    answerSpace: <AnswerSpaceIcon size={18} />,
     spacer: <SpacerIcon size={18} />,
     divider: <DividerIcon size={18} />,
     pageBreak: <PageBreakIcon size={18} />,
@@ -217,6 +220,20 @@ export function AddRail() {
       hint: 'ruled space',
       icon: layoutIcons.answerLines,
       run: (afterId) => addLayoutElement(createAnswerLinesElement(), afterId),
+    },
+    {
+      id: 'answerSpace',
+      label: 'Answer space',
+      hint: 'dotted QAB lines',
+      icon: layoutIcons.answerSpace,
+      run: (afterId) => addLayoutElement(createAnswerSpaceElement(), afterId),
+    },
+    {
+      id: 'answerSpaceFill',
+      label: 'Answer space · fill',
+      hint: 'dotted lines to page end',
+      icon: layoutIcons.answerSpace,
+      run: (afterId) => addLayoutElement(createAnswerSpaceElement(8, true), afterId),
     },
     {
       id: 'spacer',

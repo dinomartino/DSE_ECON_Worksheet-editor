@@ -434,14 +434,6 @@ describe('mock-exam cover', () => {
     const theirs = [
       'HONG KONG EXAMINATIONS AND ASSESSMENT AUTHORITY',
       'HONG KONG DIPLOMA OF SECONDARY EDUCATION EXAMINATION',
-      'Question-Answer Book',
-      'stick barcode labels',
-      'barcode label',
-      'Candidate Number',
-      'All Rights Reserved',
-      'Not to be taken away',
-      'Time is up',
-      'Answers written in the margins will not be marked',
     ];
 
     for (const style of STYLES) {

@@ -35,6 +35,7 @@ import {
   clampAnswerLines,
   clampSpacerPt,
   createAnswerLinesElement,
+  createAnswerSpaceElement,
   flowOf,
   moveInFlow,
   moveRunInFlow,
@@ -278,6 +279,23 @@ interface WorksheetState {
     overflow: number,
     perPage: number,
   ) => void;
+  /**
+   * Write the paginator's resolved counts into every `fill` answer space.
+   *
+   * The one deliberate bypass of `commit()`: the counts are **derived** — the paginator
+   * is the sole authority on how much room a sheet has left (§3.2) — so recording them
+   * must not spend an undo entry. An undo step that only changed a fill count would be
+   * "undo does nothing" to the teacher, and the resolution fires on re-measurement,
+   * which would interleave derived entries between every real edit above the fill.
+   *
+   * Written into the model rather than kept beside it so every consumer — the .docx,
+   * clipboard, thumbnails — reads the number the preview resolved instead of
+   * recomputing it; two computations is how the preview and the paper would disagree
+   * about where pages break. Marks the store dirty (the document did change) and
+   * returns the same state when nothing differs, which is what stops the
+   * measure → resolve → re-measure loop.
+   */
+  resolveAnswerSpaceFills: (counts: ReadonlyMap<string, number>) => void;
   /** Replace one block by id — the route a page-opened editor commits through. */
   replaceBlock: (blockId: string, next: ContentBlock) => void;
   /**
@@ -435,7 +453,7 @@ function mapQuestion(
  * rather than on nothing (§`MIN_ANSWER_LINES`).
  */
 function clampLayoutElement(element: LayoutElement): LayoutElement {
-  if (element.kind === 'answerLines') {
+  if (element.kind === 'answerLines' || element.kind === 'answerSpace') {
     return { ...element, lines: clampAnswerLines(element.lines) };
   }
   if (element.kind === 'spacer') {
@@ -1002,7 +1020,7 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
       ...draft,
       layout: draft.layout.map((element) => {
         if (element.id !== elementId) return element;
-        if (element.kind === 'answerLines') {
+        if (element.kind === 'answerLines' || element.kind === 'answerSpace') {
           return { ...element, lines: clampAnswerLines(value) };
         }
         if (element.kind === 'spacer') {
@@ -1016,18 +1034,22 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   splitLayoutRows: (elementId, keep, overflow, perPage) =>
     get().commit((draft) => {
       const existing = draft.layout.find((element) => element.id === elementId);
-      // Only answer lines divide. A spacer is one deliberate gap, and two gaps on two
+      // Only line elements divide. A spacer is one deliberate gap, and two gaps on two
       // pages is not what asking for a taller one means.
-      if (!existing || existing.kind !== 'answerLines') return draft;
+      if (!existing || (existing.kind !== 'answerLines' && existing.kind !== 'answerSpace'))
+        return draft;
 
       // The remainder is cut into sheet-sized pieces. One long element would overflow
-      // its own page, which is the very thing the cap exists to prevent.
+      // its own page, which is the very thing the cap exists to prevent. Each piece is
+      // the same kind as what split — a QAB answer space continues as answer space.
+      const piece =
+        existing.kind === 'answerSpace' ? createAnswerSpaceElement : createAnswerLinesElement;
       const size = Math.max(1, Math.floor(perPage));
       const created: LayoutElement[] = [];
       let left = clampAnswerLines(overflow);
       while (left > 0) {
         const take = Math.min(size, left);
-        created.push(createAnswerLinesElement(take));
+        created.push(piece(take));
         left -= take;
       }
 
@@ -1051,6 +1073,26 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
         after = element.id;
       }
       return next;
+    }),
+  resolveAnswerSpaceFills: (counts) =>
+    set((state) => {
+      let changed = false;
+      const layout = state.worksheet.layout.map((element) => {
+        if (element.kind !== 'answerSpace' || !element.fill) return element;
+        const lines = counts.get(element.id);
+        if (lines === undefined || lines === element.lines) return element;
+        changed = true;
+        return { ...element, lines: clampAnswerLines(lines) };
+      });
+      if (!changed) return state;
+      // History deliberately untouched — see the interface note. `past`/`future` keep
+      // pointing at their own snapshots; a later undo simply restores a worksheet whose
+      // fill counts the next measurement pass re-resolves.
+      return {
+        ...state,
+        worksheet: { ...state.worksheet, layout },
+        dirty: true,
+      };
     }),
   replaceBlock: (blockId, next) =>
     get().commit((draft) => replaceBlockById(draft, blockId, next)),

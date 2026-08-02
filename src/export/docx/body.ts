@@ -17,7 +17,12 @@ import type {
   TextNode,
 } from '@/render/ir';
 import { biTextRuns, formatRunOptions, lineBreak, marksRuns, richTextRuns, run } from './runs';
-import { ANSWER_LINE_STYLE_ID, STYLE_IDS, exactLineFor } from './styles';
+import {
+  ANSWER_LINE_STYLE_ID,
+  LQ_ANSWER_LINE_STYLE_ID,
+  STYLE_IDS,
+  exactLineFor,
+} from './styles';
 import { marksAnchorRuns, trailingBlankLines } from '@/model/text';
 import { COVER_PANEL } from '@/model/cover';
 import { attrs, escapeXml } from './xml';
@@ -635,6 +640,26 @@ export function renderNodeXml(node: RenderNode, context: BodyContext): string {
         { length: Math.max(1, node.lines) },
         () => `<w:p><w:pPr><w:pStyle w:val="${ANSWER_LINE_STYLE_ID}"/></w:pPr></w:p>`,
       ).join('');
+    case 'answerSpace': {
+      // The QAB's dotted line, the reference booklet's own mechanism: a dotted
+      // underline drawn over a single right-aligned tab, one paragraph per line. The
+      // underline and the exact pitch live in the `Answer Space Line` style; only the
+      // tab stop is per-paragraph, because it sits at the live content width (the
+      // reference's own 9300 is nothing but *its* content width) and must follow the
+      // document's paper and margins.
+      //
+      // The tab run restates `w:u` even though the style already declares it: Word
+      // underlines a tab only when the *run* wearing it is underlined — the style
+      // alone dots nothing, which is invisible in the XML and obvious on the page.
+      const dotted =
+        '<w:p><w:pPr>' +
+        `<w:pStyle w:val="${LQ_ANSWER_LINE_STYLE_ID}"/>` +
+        `<w:tabs><w:tab w:val="right" w:pos="${context.contentWidth}"/></w:tabs>` +
+        '</w:pPr>' +
+        '<w:r><w:rPr><w:u w:val="dotted"/></w:rPr><w:tab/></w:r>' +
+        '</w:p>';
+      return Array.from({ length: Math.max(1, node.lines) }, () => dotted).join('');
+    }
     default:
       return '';
   }

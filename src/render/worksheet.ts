@@ -255,7 +255,9 @@ function renderCover(cover: CoverPage): CoverRenderNode {
       style: 'Section Heading',
       text: cover.instructionsHeading!,
       keepNext: true,
-      format: withFonts(undefined),
+      // At the body size, not the heading style's 14pt: the reference sets
+      // "INSTRUCTIONS" at its own body size — the word is a label, not a title.
+      format: { ...withFonts(undefined), fontSize: 11 },
       edit: { kind: 'coverField', field: 'instructionsHeading' },
     });
     instructions.push(blankLine());
@@ -412,7 +414,9 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
       }
       const nodes = renderLayoutElement(
         item.element,
-        item.element.kind === 'partHeader' ? (sectionTotals.get(currentSectionId) ?? 0) : 0,
+        item.element.kind === 'partHeader' || item.element.kind === 'section'
+          ? (sectionTotals.get(currentSectionId) ?? 0)
+          : 0,
         // A heading's leading gap is skipped at the true top of the page, and also when
         // the previous item already spent a line — otherwise a note ending in a trailing
         // hard break would sit two lines above the next heading.
@@ -533,18 +537,29 @@ function renderLayoutElement(
      * becomes a `section` element and still emits the byte-identical paragraph.
      */
     case 'section':
-    case 'heading':
+    case 'heading': {
+      // A section may opt into the derived "(44 marks)" suffix a part header carries —
+      // the QAB's own heading is "Section A (44 marks)" on one line, and its numbering
+      // runs 1..14 across all three sections, so the marks cannot ride on a separate
+      // restart-bearing element. Opt-in and appended at render, never stored, for the
+      // reason partHeader's is: a stored total goes stale on the next re-mark.
+      const showMarks = element.kind === 'section' && element.showMarks;
+      const withMarks = (side: 'en' | 'zh') => {
+        const suffix = side === 'en' ? ` (${sectionTotal} marks)` : `（${sectionTotal}分）`;
+        return [...element.text[side], { text: suffix }];
+      };
       return [
         ...(first ? [] : [ITEM_GAP]),
         {
           kind: 'text',
           style: 'Section Heading',
-          text: element.text,
+          text: showMarks ? { en: withMarks('en'), zh: withMarks('zh') } : element.text,
           keepNext: true,
           format: element.format,
           edit: { kind: 'layoutText', elementId: element.id },
         },
       ];
+    }
     case 'text':
       return [
         {
@@ -563,6 +578,15 @@ function renderLayoutElement(
       return [{ kind: 'pageBreak' }];
     case 'answerLines':
       return [{ kind: 'answerLines', lines: element.lines, elementId: element.id }];
+    case 'answerSpace':
+      return [
+        {
+          kind: 'answerSpace',
+          lines: element.lines,
+          elementId: element.id,
+          ...(element.fill ? { fill: true } : {}),
+        },
+      ];
 
     case 'partHeader': {
       // The "(19 marks)" suffix is appended to the authored text rather than stored

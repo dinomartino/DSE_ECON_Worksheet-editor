@@ -245,6 +245,17 @@ function nodeHtml(
     ).join('');
   }
 
+  if (node.kind === 'answerSpace') {
+    // The dotted QAB line. Clipboard HTML cannot carry a Word underline-over-tab, so a
+    // dotted bottom border is the nearest paste-safe spelling; the pitch matches the
+    // .docx's exact line box (§ LQ_LINE_PITCH_TWIPS: 442tw ≈ 22.1pt → ~10pt of body
+    // plus the border leaves the same rhythm once margins collapse).
+    return Array.from(
+      { length: Math.max(1, node.lines) },
+      () => `<p style="${fontCss}border-bottom:1px dotted #000000;margin:0 0 10pt 0">&nbsp;</p>`,
+    ).join('');
+  }
+
   if (node.kind === 'pageBreak') {
     return '<p style="page-break-before:always"></p>';
   }
@@ -384,7 +395,7 @@ export function worksheetPlainText(worksheet: Worksheet, mode: OutputMode): stri
       lines.push(`[${plain(node.altText.en) || plain(node.altText.zh) || fallback}]`);
     } else if (node.kind === 'divider') {
       lines.push('---');
-    } else if (node.kind === 'answerLines') {
+    } else if (node.kind === 'answerLines' || node.kind === 'answerSpace') {
       for (let i = 0; i < Math.max(1, node.lines); i += 1) lines.push('');
     } else if (node.kind === 'spacer' || node.kind === 'pageBreak') {
       lines.push('');

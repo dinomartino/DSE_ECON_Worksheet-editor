@@ -14,6 +14,7 @@ import {
 import { zonesOf } from '@/model/bands';
 import { bandFieldSegments } from '@/model/bandSegments';
 import { worksheetMarks } from '@/model/marks';
+import { furnitureHeaderXml } from './furniture';
 import { plain } from '@/model/text';
 import type { Band, BandField, FontPair, HeaderFooter, LanguageMode, OutputMode, Worksheet } from '@/model/types';
 import type { RenderNode } from '@/render/ir';
@@ -365,8 +366,22 @@ function buildParts(
   const printsOnFirstPage = (value: HeaderFooter) =>
     value.enabled && Boolean(value.firstPage) && !bandsAreEmpty(value.firstPage?.bands ?? []);
 
+  // The page furniture rides in the running header (§ `furnitureHeaderXml`), so its
+  // presence alone forces a header part even when no band would print.
+  const furnitureXml = furnitureHeaderXml(
+    worksheet.pageFurniture,
+    pageWidth,
+    pageHeight,
+    setup.margins,
+    fonts,
+    mode.language,
+  );
+
   const hasHeader =
-    isHeaderFooterActive(header) || printsOnFirstPage(header) || Boolean(teacherMark);
+    isHeaderFooterActive(header) ||
+    printsOnFirstPage(header) ||
+    Boolean(teacherMark) ||
+    Boolean(furnitureXml);
   const hasFooter = isHeaderFooterActive(footer) || printsOnFirstPage(footer);
 
   const footerLayout = headerFooterLayout(
@@ -399,9 +414,13 @@ function buildParts(
     resolved: ReturnType<typeof firstPageHeaderFooter>,
     running: HeaderFooterLayout,
   ) => {
+    // The furniture prints on every page including page 1, so it rides on the header's
+    // first-page part whatever the band state — "blank on page 1" blanks the bands, not
+    // the frame, as the reference's pure answer pages show.
+    const extra = which === 'hdr' ? furnitureXml : '';
     const build = which === 'hdr' ? buildHeaderXml : buildFooterXml;
-    if (!resolved.differs) return build(running);
-    if (resolved.bands.length === 0) return buildEmptyHeaderXml(which);
+    if (!resolved.differs) return build(running, extra);
+    if (resolved.bands.length === 0) return buildEmptyHeaderXml(which, extra);
     // The teacher-version marker deliberately does not ride along here: it is appended
     // to the running header above, and page 1 carries its own authored rows.
     return build(
@@ -414,11 +433,12 @@ function buildParts(
         which === 'hdr' ? 'bottom' : 'top',
         worksheetMarks(worksheet),
       ),
+      extra,
     );
   };
 
   const headerFooter: HeaderFooterParts = {
-    ...(hasHeader ? { header: buildHeaderXml(headerLayout) } : {}),
+    ...(hasHeader ? { header: buildHeaderXml(headerLayout, furnitureXml) } : {}),
     ...(hasFooter ? { footer: buildFooterXml(footerLayout) } : {}),
     // The cover's foot block is the cover section's own footer, as the reference has
     // it — a footer is what pins it to the page bottom (§ `coverXml`). Foot lines are
@@ -462,7 +482,18 @@ function buildParts(
       differentFirstPage,
       edgeOffsets,
     }),
-    stylesXml: buildStylesXml(fonts),
+    stylesXml: buildStylesXml(fonts, {
+      // Conditional on the rendered IR, so a document without an answer space keeps
+      // its styles.xml — and therefore its whole package — byte-identical to before
+      // the style existed. The IR rather than the layout list, because an answer
+      // space also comes from a question part (§ per-part answer space); keying on
+      // the layout alone shipped paragraphs referencing a style the package lacked.
+      answerSpace: rendered.items.some((item) =>
+        (item.type === 'question' ? item.question.nodes : item.layout.nodes).some(
+          (node) => node.kind === 'answerSpace',
+        ),
+      ),
+    }),
     numberingXml: buildNumberingXml(streams, fonts),
     headerFooter,
     fontTableXml: buildFontTableXml(fonts),

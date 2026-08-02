@@ -276,12 +276,14 @@ function headerFooterBody(layout: HeaderFooterLayout): string {
     .join('');
 }
 
-export function buildHeaderXml(layout: HeaderFooterLayout): string {
-  return XML_DECL + `<w:hdr ${WML_NS}>` + headerFooterBody(layout) + '</w:hdr>';
+export function buildHeaderXml(layout: HeaderFooterLayout, extraXml = ''): string {
+  // `extraXml` carries the page furniture's anchored shapes (§ `furnitureHeaderXml`) —
+  // a whole collapsed paragraph, appended after the band rows so it displaces nothing.
+  return XML_DECL + `<w:hdr ${WML_NS}>` + headerFooterBody(layout) + extraXml + '</w:hdr>';
 }
 
-export function buildFooterXml(layout: HeaderFooterLayout): string {
-  return XML_DECL + `<w:ftr ${WML_NS}>` + headerFooterBody(layout) + '</w:ftr>';
+export function buildFooterXml(layout: HeaderFooterLayout, extraXml = ''): string {
+  return XML_DECL + `<w:ftr ${WML_NS}>` + headerFooterBody(layout) + extraXml + '</w:ftr>';
 }
 
 /**
@@ -402,8 +404,11 @@ export function buildDocumentXml(body: string, section: SectionOptions): string 
 }
 
 /** An empty header/footer part, used as the page-1 override for `w:titlePg`. */
-export function buildEmptyHeaderXml(tag: 'hdr' | 'ftr'): string {
-  return XML_DECL + `<w:${tag} ${WML_NS}><w:p/></w:${tag}>`;
+export function buildEmptyHeaderXml(tag: 'hdr' | 'ftr', extraXml = ''): string {
+  // "Empty" refers to the band rows; the page furniture still prints on a sheet whose
+  // header bands are blanked, exactly as the reference's pure answer pages keep their
+  // frame while carrying no other header content.
+  return XML_DECL + `<w:${tag} ${WML_NS}>${extraXml || '<w:p/>'}</w:${tag}>`;
 }
 
 export { WML_NS };
