@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
+  academicYear,
   coverColumns,
   coverHasPanel,
   coverLines,
@@ -120,21 +121,22 @@ describe('mock-exam cover', () => {
   it('numbers instructions from position, so deleting one renumbers the rest', () => {
     const cover = createCoverPage({ paperStyle: 'writeIn' });
     const worksheet: Worksheet = { ...createWorksheet(), cover };
-    const first = coverLines(cover, 'instructions')[0];
+    const lines = coverLines(cover, 'instructions');
+    // Counted from the model, not written in: the wording is editorial and the list
+    // has grown before. What is being asserted is that the *last* number equals the
+    // number of lines and that removing one takes the highest number away with it.
+    const count = lines.length;
 
-    expect(buildDocxParts(worksheet, EN).documentXml).toContain('(6)');
+    expect(buildDocxParts(worksheet, EN).documentXml).toContain(`(${count})`);
 
     const trimmed: Worksheet = {
       ...worksheet,
-      cover: {
-        ...cover,
-        instructions: coverLines(cover, 'instructions').filter((line) => line.id !== first.id),
-      },
+      cover: { ...cover, instructions: lines.filter((line) => line.id !== lines[0].id) },
     };
     const after = buildDocxParts(trimmed, EN).documentXml;
-    // Five left, numbered (1)–(5) — no hole where the deleted one was.
-    expect(after).toContain('(5)');
-    expect(after).not.toContain('(6)');
+    // One fewer, contiguous — no hole where the deleted one was.
+    expect(after).toContain(`(${count - 1})`);
+    expect(after).not.toContain(`(${count})`);
   });
 
   it('numbers each paper the way its reference does', () => {
@@ -159,6 +161,22 @@ describe('mock-exam cover', () => {
     expect(document).not.toContain('w:br w:type="column"');
     // And its identity lines are centred across the page, as the reference has them.
     expect(document).toContain('<w:jc w:val="center"/>');
+  });
+
+  it('centres the head lines on both papers — each within its own column', () => {
+    /*
+     * The reference's Paper 2 centres its head lines within the narrow left column (a
+     * centre tab at the column's midpoint); Paper 1 centres across its one wide column.
+     * The booklet's head once ranged left, which read as a draft beside the centred
+     * candidate panel.
+     */
+    for (const style of ['mcq', 'writeIn'] as const) {
+      const lines = createCoverPage({ paperStyle: style }).headLines ?? [];
+      expect(lines.length).toBeGreaterThan(0);
+      for (const line of lines) {
+        expect(line.format?.align, `${style} head line`).toBe('center');
+      }
+    }
   });
 
   it('draws the column rule as a line shape, at the reference’s weight', () => {
@@ -434,6 +452,17 @@ describe('mock-exam cover', () => {
     const theirs = [
       'HONG KONG EXAMINATIONS AND ASSESSMENT AUTHORITY',
       'HONG KONG DIPLOMA OF SECONDARY EDUCATION EXAMINATION',
+      /*
+       * The Chinese edition's own authority lines, blocked for the same reason as the
+       * English pair above and added with the Chinese defaults: a cover that ships
+       * Chinese text needs a Chinese guard. The 6-word window below cannot supply one —
+       * it splits on whitespace, and Chinese has none, so it silently passes over every
+       * Chinese string. This list is the only guard that runs against them.
+       */
+      '香港考試及評核局',
+      '香港中學文憑考試',
+      '請在此貼上電腦條碼',
+      '考生編號',
     ];
 
     for (const style of STYLES) {
@@ -442,6 +471,77 @@ describe('mock-exam cover', () => {
         expect(generated, `${style}: ${phrase}`).not.toContain(phrase.toLowerCase());
       }
     }
+  });
+
+  /**
+   * Every head line prints in Chinese too.
+   *
+   * The cover shipped with `zh` empty on every line it generates, so a Chinese export
+   * was a blank sheet carrying a candidate panel — the English looked finished and the
+   * mode this app exists for showed nothing. Asserted per line rather than by sampling:
+   * one line left behind is exactly the failure this replaces, and it is invisible in
+   * any English-mode check.
+   */
+  it('fills both language sides of every generated line', () => {
+    for (const style of STYLES) {
+      const cover = createCoverPage({ paperStyle: style });
+      for (const region of ['corner', 'head', 'foot', 'instructions'] as const) {
+        for (const line of coverLines(cover, region)) {
+          const en = plain(line.text.en).trim();
+          if (!en) continue; // A deliberate spacer line has neither side.
+          expect(plain(line.text.zh).trim(), `${style}/${region}: "${en}"`).not.toBe('');
+        }
+      }
+    }
+  });
+
+  /**
+   * The year is derived, and derived once.
+   *
+   * The corner code, the examination line and the QAB footer's paper code all print it,
+   * and all three were separate literals — two chances to disagree and three things to
+   * remember every August. The boundary is pinned through an injected date rather than
+   * the clock, or the test would pass for eight months a year.
+   */
+  it('derives the academic year, turning it over in September', () => {
+    expect(academicYear(new Date('2026-08-31T12:00:00Z'))).toEqual({
+      short: '2025-26',
+      long: '2025 – 2026',
+    });
+    expect(academicYear(new Date('2026-09-01T12:00:00Z'))).toEqual({
+      short: '2026-27',
+      long: '2026 – 2027',
+    });
+
+    // And the cover spends it in both places that print it.
+    const cover = createCoverPage({ paperStyle: 'writeIn', now: new Date('2026-09-01T12:00:00Z') });
+    expect(plain(coverLines(cover, 'corner')[0].text.en)).toBe('2026-27');
+    expect(plain(coverLines(cover, 'head')[1].text.en)).toContain('2026 – 2027');
+  });
+
+  /**
+   * A booklet's cover must say which sections are compulsory.
+   *
+   * A QAB ships Sections A/B/C with "Answer any ONE question." on C, and the cover's
+   * instructions never mentioned it — the one fact a candidate cannot recover from
+   * getting wrong was reachable only by paging to the back.
+   */
+  it('tells a booklet’s candidate what to answer and where', () => {
+    const instructions = coverLines(createCoverPage({ paperStyle: 'writeIn' }), 'instructions').map(
+      (line) => plain(line.text.en),
+    );
+    const joined = instructions.join(' ');
+    expect(joined).toContain('Section C');
+    // The margin rule is a marks consequence, not a formatting preference, so it is
+    // stated on the cover as well as printed down every margin as furniture.
+    expect(joined).toContain('margins will not be marked');
+    // An MCQ paper has neither: it has no sections to choose between and no margins to
+    // write in, and carrying them over would describe a booklet that isn't there.
+    const mcq = coverLines(createCoverPage({ paperStyle: 'mcq' }), 'instructions')
+      .map((line) => plain(line.text.en))
+      .join(' ');
+    expect(mcq).not.toContain('Section C');
+    expect(mcq).not.toContain('margins will not be marked');
   });
 
   /**

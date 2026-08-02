@@ -36,11 +36,37 @@ export const FURNITURE_GEOMETRY = {
   /** Margin note box: top from the page's top edge, then its size. */
   noteTop: 6247,
   noteHeight: 4409,
+  /**
+   * The strip's width for a **rotated** note — the reference's own number, and the
+   * thickness of one laid-down Latin line.
+   */
   noteWidth: 245,
+  /**
+   * The strip's width for an **upright vertical** note (Chinese).
+   *
+   * A rotated line's strip only has to be as thick as the line; an upright vertical one
+   * has to be as wide as a whole glyph. At 9pt a CJK character is a full 180tw em plus
+   * side bearings, so the rotated 245tw leaves nothing to round with: LibreOffice wrapped
+   * the sentence into a second and third column inside the strip and dropped characters
+   * off the end — the margin read as scattered fragments. Wide enough for one glyph and
+   * its bearings, and no wider: the strip sits between the frame and the page edge, and
+   * the inset that positions it is measured from the text column.
+   */
+  noteWidthVertical: 380,
   /** The left note's left edge sits this far left of the text column. */
   noteLeftInset: 400,
   /** The right note's left edge sits this far right of the text column. */
   noteRightInset: 165,
+  /**
+   * The horizontal bottom note — the same sentence again, printed left-aligned just
+   * below the frame's bottom edge, above the footer line. The reference anchors it in
+   * each footer part (`footer2.xml`, a textbox riding above the footer paragraph); here
+   * it joins the other furniture in the running header, anchored to the same place on
+   * the page. Measured off the reference's page 10 raster: the text band sits
+   * ~1100–1400tw above the page's bottom edge.
+   */
+  noteBottomTop: 1430,
+  noteBottomHeight: 250,
 } as const;
 
 /**
@@ -60,20 +86,30 @@ export interface FurnitureBoxes {
   frame: { left: number; top: number; width: number; height: number };
   noteLeft: { left: number; top: number; width: number; height: number };
   noteRight: { left: number; top: number; width: number; height: number };
+  noteBottom: { left: number; top: number; width: number; height: number };
 }
 
 /**
  * Where the furniture sits on a page, resolved from the live page setup so a margin or
  * paper change moves the frame with the text column it frames.
+ *
+ * `verticalNote` widens the two margin strips for upright vertical text (§
+ * `noteWidthVertical`). It is an argument rather than a second function because both
+ * backends must agree about the box: the preview draws these numbers as millimetres and
+ * the exporter writes them as EMU, and a strip that is 245tw in one and 420tw in the
+ * other is the drift this module exists to prevent. Both note strips take it together —
+ * the same sentence prints in both margins, so they are never set differently.
  */
 export function furnitureBoxes(
   pageWidth: number,
   pageHeight: number,
   margins: PageMargins,
+  options?: { verticalNote?: boolean },
 ): FurnitureBoxes {
   const g = FURNITURE_GEOMETRY;
   const columnLeft = margins.left;
   const columnRight = pageWidth - margins.right;
+  const noteWidth = options?.verticalNote ? g.noteWidthVertical : g.noteWidth;
   return {
     frame: {
       left: columnLeft - g.frameOutset,
@@ -81,19 +117,44 @@ export function furnitureBoxes(
       width: columnRight - columnLeft + 2 * g.frameOutset,
       height: pageHeight - g.frameTop - g.frameBottom,
     },
+    /*
+     * A wider strip is grown *away* from the text column on each side, so the frame it
+     * sits beside does not move: the left strip keeps its right edge against the column
+     * and extends toward the page edge, and the right strip simply starts at the same
+     * inset and is wider. Growing the left one rightward would print it over the frame.
+     */
     noteLeft: {
-      left: columnLeft - g.noteLeftInset,
+      left: columnLeft - g.noteLeftInset - (noteWidth - g.noteWidth),
       top: g.noteTop,
-      width: g.noteWidth,
+      width: noteWidth,
       height: g.noteHeight,
     },
     noteRight: {
       left: columnRight + g.noteRightInset,
       top: g.noteTop,
-      width: g.noteWidth,
+      width: noteWidth,
       height: g.noteHeight,
     },
+    noteBottom: {
+      left: columnLeft,
+      top: pageHeight - g.noteBottomTop,
+      width: columnRight - columnLeft,
+      height: g.noteBottomHeight,
+    },
   };
+}
+
+/**
+ * Whether a document is the Question-Answer Book.
+ *
+ * The furniture is the booklet's shape — only `lqMock` creates it — so its presence is
+ * the marker, the same way `coverHasPanel()` is the one switch for a cover's shape.
+ * What hangs off it: the booklet always prints its footer and never offers a header
+ * (the header part is the furniture's own vehicle), so `DocumentSettings` reads this
+ * to withhold those controls rather than offering switches the mode forbids.
+ */
+export function isQabDocument(worksheet: { pageFurniture?: PageFurniture }): boolean {
+  return worksheet.pageFurniture !== undefined;
 }
 
 /**
@@ -103,6 +164,6 @@ export function furnitureBoxes(
 export function createQabFurniture(): PageFurniture {
   return {
     frame: true,
-    marginNote: bi('Do not write in this margin.', '請勿在此邊界內書寫。'),
+    marginNote: bi('Answers written in the margins will not be marked.', '寫於邊界以外的答案，將不予評閱。'),
   };
 }

@@ -1,4 +1,4 @@
-import { createCoverPage, type CoverPaperStyle } from './cover';
+import { createCoverPage, defaultCoverCode, type CoverPaperStyle } from './cover';
 import { createSectionElement } from './flow';
 import { DEFAULT_FONTS, createWorksheet, newId } from './factories';
 import { DEFAULT_MARGINS } from './page';
@@ -131,6 +131,48 @@ function qabSections(): LayoutElement[] {
     heading('Section C', '丙部'),
     chooseOne,
   ];
+}
+
+/**
+ * The Question-Answer Book's running footer, in the reference's own shape.
+ *
+ * `footer2.xml` of the reference is one tabbed paragraph: the paper code with a live
+ * page number at the left, small — "2019-DSE-ECON 2–14" at 9pt — and the bare page
+ * number again at the centre, large (14pt), which is the number a candidate flips to.
+ * Both are the existing `pageNumber` band field: the code is authored `prefix` wording
+ * around the derived number, so it stays editable on the page and the number stays a
+ * live `PAGE` field (§ a field is authored wording around a derived value).
+ *
+ * The booklet always prints this footer — `DocumentSettings` withholds the switch for
+ * a QAB document — and never a header: the header part is the furniture's vehicle
+ * (§ `isQabDocument`).
+ */
+function qabFooter(code: string): Worksheet['footer'] {
+  return {
+    enabled: true,
+    rule: false,
+    showOnFirstPage: true,
+    bands: [
+      {
+        id: newId(),
+        zones: {
+          left: [
+            {
+              kind: 'pageNumber',
+              id: newId(),
+              pattern: 'plain',
+              prefix: bi(`${code}-ECON 2–`, `${code}-ECON 2–`),
+              format: { fontSize: 9 },
+            },
+          ],
+          center: [
+            { kind: 'pageNumber', id: newId(), pattern: 'plain', format: { fontSize: 14 } },
+          ],
+          right: [],
+        },
+      },
+    ],
+  };
 }
 
 /**
@@ -277,7 +319,17 @@ export function createWorksheetFrom(options: NewWorksheetOptions = {}): Workshee
     // The booklet gets the QAB's page furniture: the frame and margin notes are as
     // much its shape as the sections are (§ `model/pageFurniture.ts`). Neutral default
     // wording — the reference's own margin sentence is rubric (§ copyright).
-    ...(documentType === 'lqMock' ? { pageFurniture: createQabFurniture() } : {}),
+    // Its running footer is the reference's too — paper code left, big page number
+    // centred — and it is always on (§ `qabFooter`).
+    ...(documentType === 'lqMock'
+      ? {
+          pageFurniture: createQabFurniture(),
+          // The same code the cover's corner block prints: both fall back to the
+          // derived academic year, so the footer and the cover cannot disagree
+          // about which year's paper this is (§ `academicYear`).
+          footer: qabFooter(options.coverDetails?.code?.trim() || defaultCoverCode()),
+        }
+      : {}),
     ...(coverStyle
       ? {
           cover: createCoverPage({

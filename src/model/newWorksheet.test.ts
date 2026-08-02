@@ -115,4 +115,40 @@ describe('sections', () => {
     );
     expect(resolveFlow(worksheet)).toHaveLength(2);
   });
+
+  it('gives the booklet the reference’s running footer, always on', () => {
+    /*
+     * The QAB's footer is part of its shape (§ `qabFooter`): the paper code with a live
+     * page number at the left, small, and the bare number again at the centre, large —
+     * the reference's own `footer2.xml` layout. The code stem is the cover's code, so
+     * the corner block and the footer ship agreeing.
+     */
+    const worksheet = createWorksheetFrom({
+      documentType: 'lqMock',
+      coverDetails: { code: '2024-25' },
+    });
+    const footer = worksheet.footer!;
+    expect(footer.enabled).toBe(true);
+
+    const [band] = footer.bands;
+    const left = band.zones.left[0];
+    expect(left.kind).toBe('pageNumber');
+    if (left.kind !== 'pageNumber') throw new Error('unreachable');
+    expect(left.prefix?.en[0]?.text).toBe('2024-25-ECON 2–');
+    expect(left.format?.fontSize).toBe(9);
+
+    const centre = band.zones.center[0];
+    expect(centre.kind).toBe('pageNumber');
+    if (centre.kind !== 'pageNumber') throw new Error('unreachable');
+    // The bare number, larger — the number a candidate flips to.
+    expect(centre.prefix).toBeUndefined();
+    expect(centre.format?.fontSize).toBe(14);
+
+    // Every other document type keeps the factory's own footer untouched (ids are
+    // fresh per document, so compare the shape, not the instances).
+    const stripIds = (value: unknown) =>
+      JSON.parse(JSON.stringify(value, (key, v) => (key === 'id' ? undefined : v)));
+    const classroom = createWorksheetFrom({ documentType: 'classroom' });
+    expect(stripIds(classroom.footer)).toEqual(stripIds(createWorksheet().footer));
+  });
 });

@@ -1177,12 +1177,16 @@ describe('layout elements in the section flow', () => {
 
     expect(header).toContain('<a:prstGeom prst="rect">');
     expect((header.match(/vert="vert270"/g) ?? []).length).toBe(2);
+    // The bottom note is the same sentence again, horizontal and ranged left — the
+    // reference prints it above its footer line on every interior page.
+    expect(header).toContain('vert="horz"');
     // Page-relative, so the frame sits at the same place whatever the header holds.
     expect(header).toContain('<wp:positionH relativeFrom="page">');
     // The reference's stroke: 0.75pt black.
     expect(header).toContain('<a:ln w="9525">');
-    // wrapNone: the furniture must reserve no space in the text column.
-    expect((header.match(/<wp:wrapNone\/>/g) ?? []).length).toBe(3);
+    // wrapNone: the furniture must reserve no space in the text column — frame, two
+    // margin notes, and the bottom note.
+    expect((header.match(/<wp:wrapNone\/>/g) ?? []).length).toBe(4);
   });
 
   it('emits no furniture and no header part for a document without it', async () => {

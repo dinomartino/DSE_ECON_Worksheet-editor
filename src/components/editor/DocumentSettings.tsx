@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Dialog, DialogTabs, Field } from '@/components/ui/Dialog';
 import { Button, CheckField, GroupHeader, SelectField } from '@/components/ui';
 import { DocumentIcon, PageIcon, TextIcon } from '@/components/ui/icons';
@@ -25,8 +25,9 @@ import {
   pageSetupOf,
   twipsToCm,
 } from '@/model/page';
+import { isQabDocument } from '@/model/pageFurniture';
 import { bi, emptyBiText, plain } from '@/model/text';
-import type { CoverPaperStyle } from '@/model/cover';
+import { academicYear, type CoverPaperStyle } from '@/model/cover';
 import type { Band, HeaderFooter, PageMargins, PaperSize } from '@/model/types';
 import { useWorksheetStore, type BandScope } from '@/store/worksheetStore';
 import { BandPreview, BandPresetCard } from './BandPreview';
@@ -504,7 +505,17 @@ function BandSurface({
  * copies across, and "Same as pages 2+" collapses the split back to one list. Those are
  * offered as quiet actions rather than as the mode a teacher must pass through.
  */
-function HeaderFooterSection({ which }: { which: 'header' | 'footer' }) {
+function HeaderFooterSection({
+  which,
+  alwaysOn = false,
+}: {
+  which: 'header' | 'footer';
+  /**
+   * Withhold the on/off switch — the booklet's footer is part of its shape, not an
+   * option (§ `EdgeSections`). The rows themselves stay fully editable.
+   */
+  alwaysOn?: boolean;
+}) {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const setHeaderFooter = useWorksheetStore((s) => s.setHeaderFooter);
   const setFirstPageMode = useWorksheetStore((s) => s.setFirstPageMode);
@@ -516,6 +527,7 @@ function HeaderFooterSection({ which }: { which: 'header' | 'footer' }) {
   );
   const name = which === 'header' ? 'Header' : 'Footer';
   const edge = which === 'header' ? 'top' : 'bottom';
+  const enabled = alwaysOn || value.enabled;
 
   // Resolved in the model, so the panel cannot disagree with the page about which of the
   // three states this document is in (§ Page 1 can differ).
@@ -528,16 +540,22 @@ function HeaderFooterSection({ which }: { which: 'header' | 'footer' }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-[13px] font-semibold text-ink">{name}</h3>
-          <p className="text-[11px] text-ink-muted">Printed at the {edge} of the page.</p>
+          <p className="text-[11px] text-ink-muted">
+            {alwaysOn
+              ? `Always printed on a Question-Answer Book.`
+              : `Printed at the ${edge} of the page.`}
+          </p>
         </div>
-        <CheckField
-          label="Show"
-          checked={value.enabled}
-          onChange={(enabled) => setHeaderFooter(which, { enabled })}
-        />
+        {!alwaysOn && (
+          <CheckField
+            label="Show"
+            checked={value.enabled}
+            onChange={(on) => setHeaderFooter(which, { enabled: on })}
+          />
+        )}
       </div>
 
-      {value.enabled && (
+      {enabled && (
         <div className="space-y-3.5 rounded-xl border border-line bg-surface-sunken p-3.5">
           {/*
             Page 1 first: it is the sheet a teacher builds first, and the one they are
@@ -664,6 +682,10 @@ function CoverTab({ onClose }: { onClose: () => void }) {
   const removeCover = useWorksheetStore((s) => s.removeCover);
   const hasCover = useWorksheetStore((s) => Boolean(s.worksheet.cover));
 
+  // Read once per open: the year cannot change while a dialog is up, and re-deriving it
+  // per render would make the placeholders a new object on every keystroke.
+  const coverYear = useMemo(() => academicYear(), []);
+
   const [paperStyle, setPaperStyle] = useState<CoverPaperStyle>('mcq');
   const [code, setCode] = useState('');
   const [school, setSchool] = useState('');
@@ -739,10 +761,13 @@ function CoverTab({ onClose }: { onClose: () => void }) {
       {/* Every field is optional: left blank, the cover carries a placeholder the teacher
           types over on the page, which is faster than filling a form for a value they
           were going to see and edit anyway. */}
+      {/* The year placeholders are derived from the same helper the cover uses, not
+          retyped: a placeholder promising "2025-26" while the cover builds 2026-27 is
+          a worse lie than no placeholder (§ `academicYear`). */}
       <div className="grid grid-cols-2 gap-3">
-        {field('Corner code', code, setCode, '2025-26')}
+        {field('Corner code', code, setCode, coverYear.short)}
         {field('School', school, setSchool, 'SCHOOL NAME')}
-        {field('Examination', examName, setExamName, 'S.6 MOCK EXAMINATION 2025 – 2026')}
+        {field('Examination', examName, setExamName, `S.6 MOCK EXAMINATION ${coverYear.long}`)}
         {field('Paper', paperName, setPaperName, 'ECONOMICS   PAPER 1')}
         {field('Time allowed', timeAllowed, setTimeAllowed, '8:30 am – 9:30 am (1 hour)')}
       </div>
@@ -975,6 +1000,39 @@ function TitleSection() {
   );
 }
 
+/**
+ * The header and footer sections, shaped by what the document is.
+ *
+ * A Question-Answer Book always prints its footer and never offers a header: the
+ * header part is the vehicle for the page frame and margin notes, and no page of the
+ * reference booklet carries a headed line. The controls are **withheld, not greyed
+ * out** — a disabled switch invites the question "why can't I", while a sentence
+ * answers it (§ missing per-cell controls are explained).
+ */
+function EdgeSections() {
+  const qab = useWorksheetStore((s) => isQabDocument(s.worksheet));
+  return (
+    <>
+      <div className="border-t border-line pt-5">
+        {qab ? (
+          <section>
+            <h3 className="text-[13px] font-semibold text-ink">Header</h3>
+            <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+              A Question-Answer Book prints no header — the page frame and the margin
+              notes occupy the top of every sheet, as the reference booklet has it.
+            </p>
+          </section>
+        ) : (
+          <HeaderFooterSection which="header" />
+        )}
+      </div>
+      <div className="border-t border-line pt-5">
+        <HeaderFooterSection which="footer" alwaysOn={qab} />
+      </div>
+    </>
+  );
+}
+
 export function DocumentSettings({
   initialTab = 'document',
   onClose,
@@ -1032,12 +1090,7 @@ export function DocumentSettings({
             <BandOverflowNotice />
             <DuplicateFieldNotice />
             <TitleSection />
-            <div className="border-t border-line pt-5">
-              <HeaderFooterSection which="header" />
-            </div>
-            <div className="border-t border-line pt-5">
-              <HeaderFooterSection which="footer" />
-            </div>
+            <EdgeSections />
           </div>
         )}
       </DialogTabs>

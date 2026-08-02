@@ -68,6 +68,35 @@ const line = (
  *
  * So the sans face is applied per line, not per page.
  */
+/**
+ * The academic year a cover created *now* belongs to.
+ *
+ * Three places print the year and must agree — the corner code, the examination line,
+ * and the QAB footer's paper code ("2025-26-ECON 2–5"). They shipped as three separate
+ * literals, which is two chances to disagree and three things to remember every August;
+ * a document made in 2027 was stamped 2025-26 on all three.
+ *
+ * Derived rather than constant because the answer is knowable: a school year turns over
+ * in September, so `MOCK_YEAR_START_MONTH` is the cut. A mock sat in November 2026
+ * belongs to 2026-27; one sat in March 2027 belongs to the same year, not to 2027-28.
+ * Takes its `now` as an argument so a test pins the boundary rather than the clock.
+ *
+ * It remains a **default**: every line it feeds is editable on the page, and
+ * `CoverOptions.code` overrides it outright.
+ */
+const MOCK_YEAR_START_MONTH = 8; // September, zero-based.
+
+export function academicYear(now: Date = new Date()): { short: string; long: string } {
+  const start = now.getMonth() >= MOCK_YEAR_START_MONTH ? now.getFullYear() : now.getFullYear() - 1;
+  const end = start + 1;
+  // The corner code abbreviates ("2025-26"); the examination line spells both years out
+  // with the spaced en dash the reference's own line uses.
+  return { short: `${start}-${String(end).slice(-2)}`, long: `${start} – ${end}` };
+}
+
+/** The corner block's default code line, for callers wanting only the short form. */
+export const defaultCoverCode = (now?: Date) => academicYear(now).short;
+
 export const COVER_SANS = { latin: 'Arial', eastAsia: 'Microsoft JhengHei' };
 export const COVER_SERIF = { latin: 'Times New Roman', eastAsia: 'PMingLiU' };
 
@@ -114,6 +143,25 @@ const instruction = (en: string, zh: string): CoverLine => ({
  * thing a candidate needs, in this project's own words. A teacher who wants their
  * centre's exact rubric types it over — the same relationship every preset in this app
  * has to its reference.
+ *
+ * **An instruction earns its place by describing this booklet.** The list is ordered the
+ * way the reference orders its own — identify yourself, then what to answer, then where
+ * to write it, then the incidentals — because that is the order a candidate needs them
+ * in, and it is the order the page is used in. Two rules that follow from it:
+ *
+ * - **The paper's *structure* comes before its mechanics.** A QAB ships Sections A/B/C
+ *   with "Answer any ONE question." on C (§ `qabSections`), and the cover said nothing
+ *   about it: the one fact a candidate must not get wrong — which sections are compulsory
+ *   — was reachable only by paging to the back. The reference makes it instruction two,
+ *   and so does this.
+ * - **The margin rule belongs here too.** The booklet already prints "Do not write in
+ *   this margin." down both edges as page furniture (§ `pageFurniture`), but furniture is
+ *   read once the candidate is already writing. It is stated on the cover for the same
+ *   reason the reference states it: answers outside the ruled space are not marked, which
+ *   is a marks consequence, not a formatting preference.
+ *
+ * Nothing here reproduces the apparatus this app does not model — no barcodes, no
+ * candidate-number grids, no invigilation timing rubric (§ structure, not wording).
  */
 function instructionLines(style: CoverPaperStyle): CoverLine[] {
   const shared: Array<[string, string]> = [
@@ -139,9 +187,21 @@ function instructionLines(style: CoverPaperStyle): CoverLine[] {
           ['No marks are deducted for a wrong answer.', '答錯不會扣分。'],
         ]
       : [
+          // What to answer, before how to answer it — the section rule is the one a
+          // candidate cannot recover from getting wrong.
           [
-            'Answer ALL questions in the spaces provided in this booklet.',
-            '請在本試卷指定的空位內作答所有題目。',
+            'Answer ALL questions in Section A and Section B. Answer any ONE question in Section C.',
+            '甲部及乙部所有題目均須作答。丙部只須選答一題。',
+          ],
+          [
+            'Write your answers in the spaces provided in this booklet.',
+            '請在本試題答題簿指定的空位內作答。',
+          ],
+          // The furniture prints this down every margin; the cover is where it is read
+          // before any of it has been written on.
+          [
+            'Answers written in the margins will not be marked.',
+            '寫於邊界以外的答案，將不予評閱。',
           ],
           [
             'Write your answers legibly in ink. Working may be written in pencil.',
@@ -160,18 +220,33 @@ function instructionLines(style: CoverPaperStyle): CoverLine[] {
   return [...shared, ...rest].map(([en, zh]) => instruction(en, zh));
 }
 
+/**
+ * A cover value as the teacher may give it: one side, or both.
+ *
+ * Every head line is bilingual, so an option that could only carry English would make
+ * the Chinese cover unfillable from the wizard. A bare string sets the English side and
+ * leaves the Chinese default in place, which is what a caller written before the
+ * Chinese defaults existed means by it.
+ */
+export type CoverText = string | { en?: string; zh?: string };
+
+const sideOf = (value: CoverText | undefined, side: 'en' | 'zh'): string | undefined =>
+  typeof value === 'string' ? (side === 'en' ? value : undefined) : value?.[side];
+
 export interface CoverOptions {
   paperStyle: CoverPaperStyle;
   /** Corner block: a short code, the subject, and which paper this is. */
   code?: string;
   subject?: string;
   paperLabel?: string;
-  school?: string;
-  examName?: string;
-  paperName?: string;
-  paperKind?: string;
-  timeAllowed?: string;
-  languageNote?: string;
+  school?: CoverText;
+  examName?: CoverText;
+  paperName?: CoverText;
+  paperKind?: CoverText;
+  timeAllowed?: CoverText;
+  languageNote?: CoverText;
+  /** Overrides the derived academic year; tests pin the boundary through it. */
+  now?: Date;
 }
 
 /**
@@ -180,22 +255,62 @@ export interface CoverOptions {
  * Every value is a placeholder the teacher edits on the page, so leaving one out yields
  * the generic version rather than a blank — the cover is never a form to fill before it
  * can be looked at.
+ *
+ * **Both sides carry defaults.** Every line shipped with `zh` empty, so a cover viewed
+ * in Chinese was a blank sheet with a candidate panel on it: the mode this app exists to
+ * serve showed nothing at all, while English looked finished. The Chinese is this
+ * project's own school-mock wording, matching the English line for line — deliberately
+ * *not* the reference's authority lines (§ structure is reproduced, wording is not),
+ * which name the HKEAA and its public examination and belong to neither a school mock
+ * nor this repository.
  */
 export function createCoverPage(options: CoverOptions): CoverPage {
-  const {
-    paperStyle,
-    code = '2025-26',
-    subject = 'ECON',
-    paperLabel = paperStyle === 'mcq' ? 'PAPER 1' : 'PAPER 2',
-    school = 'SCHOOL NAME',
-    examName = 'S.6 MOCK EXAMINATION 2025 – 2026',
-    paperName = paperStyle === 'mcq' ? 'ECONOMICS   PAPER 1' : 'ECONOMICS   PAPER 2',
-    paperKind = paperStyle === 'mcq' ? 'Multiple-choice Questions' : 'Question-Answer Book',
-    timeAllowed = paperStyle === 'mcq'
-      ? '8:30 am – 9:30 am (1 hour)'
-      : '10:15 am – 12:45 pm (2 hours 30 minutes)',
-    languageNote = 'This paper must be answered in English',
-  } = options;
+  const { paperStyle, now } = options;
+  const year = academicYear(now);
+  const mcq = paperStyle === 'mcq';
+
+  const code = options.code ?? year.short;
+  const subject = options.subject ?? 'ECON';
+  const paperLabel = options.paperLabel ?? (mcq ? 'PAPER 1' : 'PAPER 2');
+
+  /*
+   * Each line's two sides, resolved independently: a teacher who types an English
+   * school name keeps the Chinese placeholder rather than blanking it, which is the
+   * only behaviour that lets a half-filled form still produce a readable cover.
+   */
+  const school = sideOf(options.school, 'en') ?? 'SCHOOL NAME';
+  const schoolZh = sideOf(options.school, 'zh') ?? '學校名稱';
+  // The examination line is the year's other home; both sides spell it from `year`.
+  const examName = sideOf(options.examName, 'en') ?? `S.6 MOCK EXAMINATION ${year.long}`;
+  const examNameZh = sideOf(options.examName, 'zh') ?? `${year.long} 年度中六模擬考試`;
+  const paperName =
+    sideOf(options.paperName, 'en') ?? (mcq ? 'ECONOMICS   PAPER 1' : 'ECONOMICS   PAPER 2');
+  const paperNameZh = sideOf(options.paperName, 'zh') ?? (mcq ? '經濟  試卷一' : '經濟  試卷二');
+  const paperKind =
+    sideOf(options.paperKind, 'en') ?? (mcq ? 'Multiple-choice Questions' : 'Question-Answer Book');
+  const paperKindZh = sideOf(options.paperKind, 'zh') ?? (mcq ? '多項選擇題' : '試題答題簿');
+  const timeAllowed =
+    sideOf(options.timeAllowed, 'en') ??
+    (mcq ? '8:30 am – 9:30 am (1 hour)' : '10:15 am – 12:45 pm (2 hours 30 minutes)');
+  /*
+   * The Chinese timing line carries its own break.
+   *
+   * Written as one sentence it overran the 5328tw column at 11pt and wrapped wherever
+   * the renderer chose — which orphaned the closing bracket onto a line of its own
+   * directly beneath a centred title. Chinese spells clock times in characters rather
+   * than digits, so the line is simply longer than its English counterpart and no
+   * rewording gets it under the column width; the reference breaks it too. `\n` is
+   * ordinary run text (§ newline is run text), so both backends split it identically
+   * and the break lands where it was chosen rather than where the column ran out.
+   */
+  const timeAllowedZh =
+    sideOf(options.timeAllowed, 'zh') ??
+    (mcq
+      ? '一小時完卷\n（上午八時三十分至九時三十分）'
+      : '兩小時三十分完卷\n（上午十時十五分至下午十二時四十五分）');
+  const languageNote =
+    sideOf(options.languageNote, 'en') ?? 'This paper must be answered in English';
+  const languageNoteZh = sideOf(options.languageNote, 'zh') ?? '本試卷必須用中文作答';
 
   /*
    * Only a write-in paper gets a side panel, and that decides the whole page.
@@ -219,8 +334,15 @@ export function createCoverPage(options: CoverOptions): CoverPage {
    */
   const sans = { fonts: { ...COVER_SANS } };
   const body = hasPanel ? sans : { fonts: { ...COVER_SERIF } };
-  // Centred in one wide column, ranged left in a narrow one — matching each reference.
-  const headFormat = hasPanel ? {} : { align: 'center' as const };
+  /*
+   * Centred on both papers — each within its own column. Paper 1's one wide column
+   * centres across the page; Paper 2 centres within the narrow left column, which is
+   * the reference's own arrangement (its head lines ride a centre tab at 2610, the
+   * midpoint of its 5328tw column — `w:jc` centring lands within ~54tw of the same
+   * place without the negative indents the tab trick needs). Ranged-left was wrong
+   * for the booklet: beside the centred candidate panel it read as a draft.
+   */
+  const headFormat = { align: 'center' as const };
 
   return {
     /*
@@ -230,10 +352,16 @@ export function createCoverPage(options: CoverOptions): CoverPage {
      * shortened diagonal in the export — at the body size the reference's own geometry
      * fits placeholders too (§ `cornerGroupXml`).
      */
+    /*
+     * The corner block is a code, not a sentence — the year, the subject's short form
+     * and which paper this is. The reference prints its own code block identically on
+     * the Chinese and English editions but for the subject, which is the one word in it
+     * that is language at all; the rest is read the same way in both.
+     */
     cornerLines: [
-      line(code, '', { ...sans, bold: true }),
-      line(subject, '', { ...sans, bold: true }),
-      line(paperLabel, '', { ...sans, bold: true }, 1),
+      line(code, code, { ...sans, bold: true }),
+      line(subject, '經濟', { ...sans, bold: true }),
+      line(paperLabel, mcq ? '卷一' : '卷二', { ...sans, bold: true }, 1),
     ],
     cornerRule: true,
 
@@ -254,14 +382,14 @@ export function createCoverPage(options: CoverOptions): CoverPage {
      * hierarchy is carried by size alone.
      */
     headLines: [
-      line(school, '', { ...headFormat, ...sans }, 1),
-      line(examName, '', { ...headFormat, ...sans, fontSize: 11 }, 2),
+      line(school, schoolZh, { ...headFormat, ...sans }, 1),
+      line(examName, examNameZh, { ...headFormat, ...sans, fontSize: 11 }, 2),
       // The line a candidate identifies the paper by — sans on both papers.
-      line(paperName, '', { ...headFormat, ...sans, fontSize: 16, bold: true }),
-      line(paperKind, '', { ...headFormat, ...sans, fontSize: 16, bold: true }, 1),
+      line(paperName, paperNameZh, { ...headFormat, ...sans, fontSize: 16, bold: true }),
+      line(paperKind, paperKindZh, { ...headFormat, ...sans, fontSize: 16, bold: true }, 1),
       // Read properly rather than at a glance, so serif on Paper 1.
-      line(timeAllowed, '', { ...headFormat, ...body }),
-      line(languageNote, '', { ...headFormat, ...body }, 6),
+      line(timeAllowed, timeAllowedZh, { ...headFormat, ...body }),
+      line(languageNote, languageNoteZh, { ...headFormat, ...body }, 6),
     ],
 
     instructionsHeading: bi('INSTRUCTIONS', '考生須知'),
@@ -282,7 +410,8 @@ export function createCoverPage(options: CoverOptions): CoverPage {
       : { panelBoxes: 0 }),
 
     // The reference's foot line is 12pt bold (its `footer1.xml`, `sz=24` + `w:b`).
-    footLines: [line(school, '', { ...sans, bold: true, fontSize: 12 })],
+    // The same school name as the head line, so both sides follow it.
+    footLines: [line(school, schoolZh, { ...sans, bold: true, fontSize: 12 })],
 
     // The reference's Paper 1 boxes a note bottom-right; the write-in paper has none.
     // This project's own words, as everywhere (§ the copyright constraint).

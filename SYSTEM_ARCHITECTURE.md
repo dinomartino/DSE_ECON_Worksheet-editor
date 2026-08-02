@@ -229,7 +229,11 @@ to coordinates), but the slots are areas of a sheet rather than thirds of a row.
   no panel, therefore **one full-width column**, with its identity lines centred across
   the page and instructions numbered `1.`. Paper 2 is the booklet the candidate writes in,
   so it carries the panel and the two-column split that makes room for it, numbering
-  `(1)`. `coverHasPanel()` is the single switch both backends read; `instructionMarker` is
+  `(1)`. **Both papers centre their head lines — each within its own column**: the
+  reference's Paper 2 rides a centre tab at 2610, the midpoint of its 5328tw column
+  (`w:jc` centring lands within ~54tw of the same place without the negative indents the
+  tab trick needs). The booklet's head once ranged left, which read as a draft beside
+  the centred candidate panel. `coverHasPanel()` is the single switch both backends read; `instructionMarker` is
   stored rather than derived, since it is a house style a school may have a view on.
 - **`worksheet.cover` is its own field**, so the paginator never sees it: a cover neither
   flows nor shares a sheet with question 1, and giving it to the packer would mean
@@ -350,6 +354,35 @@ to coordinates), but the slots are areas of a sheet rather than thirds of a row.
   name/class/number — a school identifies candidates by name. Two tests guard it: a phrase
   blocklist, and a 6-word sliding window over the reference `.docx` (skipped where the
   gitignored file is absent).
+  - **The sliding window is blind to Chinese** — it splits on whitespace, and Chinese has
+    none, so it passes over every Chinese string without examining it. The blocklist is
+    therefore the *only* guard on the Chinese defaults, and carries the Chinese authority
+    lines explicitly (香港考試及評核局, 香港中學文憑考試, and the barcode/candidate-number
+    labels).
+- **Both language sides carry defaults.** Every generated line shipped with `zh` empty, so
+  a cover viewed or exported in Chinese was a blank sheet with a candidate panel on it —
+  the mode this app exists for showed nothing while English looked finished. Each side
+  resolves independently (`CoverText` is a string or `{en, zh}`), so a teacher who types an
+  English school name keeps the Chinese placeholder rather than blanking it. A test walks
+  every region and fails on any line with one side filled and the other empty; sampling
+  would miss exactly the one line left behind.
+  - **The Chinese timing line carries its own `\n`.** Chinese spells clock times in
+    characters, so the line is simply longer than its English counterpart and overran the
+    5328tw column at 11pt — wrapping wherever the renderer chose and orphaning the closing
+    bracket under a centred title. No rewording fits it; the reference breaks it too.
+- **The academic year is derived, not typed** (`academicYear`, turning over in September).
+  It prints in three places that must agree — the corner code, the examination line and the
+  QAB footer's paper code — which shipped as three separate literals: two chances to
+  disagree, three things to remember every August, and a document made in 2027 stamped
+  2025-26 on all three. The `DocumentSettings` and wizard placeholders read the same
+  helper, since a placeholder promising a year the cover will not build is worse than none.
+- **A booklet's cover states what to answer and the margin rule.** A QAB ships Sections
+  A/B/C with "Answer any ONE question." on C, and the instruction list never mentioned it —
+  the one fact a candidate cannot recover from getting wrong was reachable only by paging
+  to the back. The margin rule joins it for the same reason: the furniture prints it down
+  every margin, but furniture is read once the candidate is already writing, and answers
+  outside the ruled space are a marks consequence. Neither appears on an MCQ cover, which
+  has no sections to choose between and no margins to write in.
 
 ### One row, many uses: `ColumnsNode`
 
@@ -1147,12 +1180,62 @@ identical on every sheet, so no per-page sections are needed (§ a page is deriv
   page-1 part whatever the band state ("blank on page 1" blanks the bands, not the
   frame), and the cover stays frame-free because the cover's section carries no header
   reference — all as the reference has it.
-- The preview mirrors it as an absolutely positioned per-sheet layer (`vertical-rl`
-  rotated 180° for `vert270`), deliberately **not** `data-print-hide` — the one on-page
-  layer that must print.
+- The preview mirrors it as an absolutely positioned per-sheet layer, deliberately
+  **not** `data-print-hide` — the one on-page layer that must print.
+- **The margin note's direction is per script, and the two mechanisms are different
+  things.** Latin has no vertical typesetting convention, so the whole line is *rotated*:
+  `vert270` in the `.docx`, `rotate(-90deg)` over a horizontal line in the preview
+  (swapping the strip's width and height, then re-centring on the box). Chinese does have
+  one, and the reference booklet uses it: glyphs stay **upright** and stack one per line,
+  top-to-bottom — `vert="eaVert"` in the `.docx`, `writing-mode: vertical-rl` with no
+  rotation at all in the preview. Both single-mechanism answers have shipped and both were
+  wrong for one script: `vertical-rl` + `rotate(180deg)` for everything printed Chinese
+  upside down and bottom-to-top (a vertical writing mode orients glyphs per script, so the
+  180° stands Latin up and inverts CJK), and rotating everything `-90°` stood the Chinese
+  back up but laid it sideways, a quarter turn off the reference.
+  - **`upright="1"` belongs to the rotated case only.** It means "keep the glyphs
+    horizontal whatever the frame does", which is meaningful for `vert270` and
+    contradicts `eaVert` outright.
+  - **An upright strip must be wider than a rotated one** (`noteWidthVertical`): a
+    rotated strip need only be as thick as the line, an upright one as wide as a whole
+    glyph. `furnitureBoxes` takes `verticalNote` so both backends resolve the same box —
+    the exporter writes it as EMU and the preview as millimetres, and two widths is the
+    drift that module exists to prevent. The wider strip grows *away* from the text
+    column, or the left one prints over the frame.
+  - **LibreOffice mis-renders `eaVert`**, splitting the run across two overlapping
+    columns regardless of box width, height, `wrap`, `w:jc` or `upright`. The emitted
+    part is one correct run per box, so this is a renderer limitation, not a defect in
+    the file — but it means the `lq-verify` LibreOffice leg cannot judge a Chinese
+    margin note, and the preview is the surface to check it on.
+- **The same sentence prints a third time, horizontal, below the frame's bottom edge**
+  — the reference anchors it in each footer part (`footer2.xml`, a textbox riding above
+  the footer paragraph), but here it joins the other furniture in the running header,
+  page-anchored to the same place (~1100–1400tw above the page bottom, ranged left at
+  the text column, measured off page 10's raster). One vehicle for all four shapes.
 - **Wording is authorable with a neutral default** ("Do not write in this margin."):
   the reference's own margin sentence is rubric, and structure is reproduced, never
   prose. The phrase blocklist pins it.
+
+### The booklet's running footer is part of its shape
+
+`qabFooter()` (`model/newWorksheet.ts`) seeds `lqMock` with the reference's own footer
+(`footer2.xml`): one band — the paper code with a live page number at the left, small
+("2025-26-ECON 2–14" at 9pt), and the bare number again at the centre, large (14pt),
+the number a candidate flips to. Both are the existing `pageNumber` band field: the
+code is authored `prefix` wording around the derived number, so it stays editable on
+the page and the numbers stay live `PAGE` fields. No new export mechanism.
+
+- **A QAB always prints its footer and never offers a header.** `isQabDocument()`
+  (furniture present — only `lqMock` creates it) is the switch; `DocumentSettings`
+  **withholds** the header section and the footer's on/off toggle rather than greying
+  them out, with a sentence saying why. The header part is the furniture's own vehicle,
+  and no page of the reference booklet carries a headed line.
+- **The cover is page 1, and the preview must count it.** Word's `PAGE` field counts
+  the cover's sheet (the reference's cover footer prints "1"), but the paginator never
+  sees the cover, so the preview's band numbers add the offset back. Without it the
+  preview's footer read one lower than the exported file's on every covered page —
+  caught by the lq-verify contact sheet (preview "3" beside docx "4" on the same
+  physical sheet), invisible to any single-backend check.
 
 ### The document type leads the wizard
 

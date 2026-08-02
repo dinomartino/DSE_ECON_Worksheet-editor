@@ -9,6 +9,7 @@ import {
   type DocumentType,
   type NewWorksheetOptions,
 } from '@/model/newWorksheet';
+import { academicYear } from '@/model/cover';
 import { MARGIN_PRESETS } from '@/model/page';
 import type { LanguageMode, PageMargins, PaperSize, Worksheet } from '@/model/types';
 
@@ -179,7 +180,8 @@ export function NewWorksheetForm({
             onChange={setExamName}
             // Shortened from the cover's own full default: a placeholder that truncates
             // mid-word teaches the shape of the value worse than a shorter one that fits.
-            placeholder="S.6 MOCK EXAM 2025–26"
+            // The year is still derived, so it never advertises a stale one.
+            placeholder={`S.6 MOCK EXAM ${academicYear().short}`}
           />
         </div>
       )}

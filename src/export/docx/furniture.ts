@@ -50,12 +50,30 @@ function frameXml(box: { left: number; top: number; width: number; height: numbe
   );
 }
 
+/**
+ * How a margin note's text sits in its strip, in OOXML's own vocabulary.
+ *
+ * - `vert270` turns the laid-out line a quarter turn anticlockwise: bottom-to-top with
+ *   the glyphs on their side. The reference's direction for a **Latin** note, which has
+ *   no vertical typesetting convention to follow.
+ * - `eaVert` is East-Asian vertical setting: glyphs stay **upright** and stack one per
+ *   line, top-to-bottom. This is how the Chinese booklet prints the same sentence, and
+ *   it is a different mechanism, not a rotation of the first.
+ * - `horz` is the ordinary horizontal line, for the note below the frame.
+ *
+ * So the script chooses, and the preview mirrors the same three cases.
+ */
+type NoteDirection = 'vert270' | 'eaVert' | 'horz';
+
 function noteXml(
   box: { left: number; top: number; width: number; height: number },
   runs: string,
   id: number,
   name: string,
+  options?: { direction?: NoteDirection },
 ): string {
+  const direction = options?.direction ?? 'vert270';
+  const horizontal = direction === 'horz';
   return (
     '<w:r><w:drawing>' +
     '<wp:anchor distT="0" distB="0" distL="114300" distR="114300" simplePos="0" ' +
@@ -74,10 +92,19 @@ function noteXml(
     '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>' +
     // Invisible box: the note is the words, not a frame around them.
     '<a:noFill/><a:ln><a:noFill/></a:ln></wps:spPr>' +
-    `<wps:txbx><w:txbxContent><w:p><w:pPr><w:jc w:val="center"/></w:pPr>${runs}</w:p></w:txbxContent></wps:txbx>` +
-    // `vert270` reads bottom-to-top, the reference's own direction on both margins.
-    '<wps:bodyPr rot="0" vert="vert270" wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" ' +
-    'anchor="t" anchorCtr="0" upright="1"><a:noAutofit/></wps:bodyPr></wps:wsp>' +
+    // The vertical notes centre along their strip; the bottom note ranges left, as the
+    // reference's own footer textbox does.
+    `<wps:txbx><w:txbxContent><w:p><w:pPr><w:jc w:val="${horizontal ? 'left' : 'center'}"/></w:pPr>${runs}</w:p></w:txbxContent></wps:txbx>` +
+    /*
+     * `upright="1"` says "keep the glyphs in their horizontal orientation whatever the
+     * frame does" — meaningful for a *rotated* frame, and actively wrong for `eaVert`,
+     * whose whole point is that the glyphs are already upright and stacked. Emitting it
+     * alongside `eaVert` gave LibreOffice two contradictory instructions and it spread
+     * the sentence down the strip in fragments. Stated per direction rather than always.
+     */
+    `<wps:bodyPr rot="0" vert="${direction}" wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" ` +
+    `anchor="t" anchorCtr="0"${direction === 'eaVert' ? '' : ' upright="1"'}>` +
+    '<a:noAutofit/></wps:bodyPr></wps:wsp>' +
     '</a:graphicData></a:graphic></wp:anchor>' +
     '</w:drawing></w:r>'
   );
@@ -99,7 +126,19 @@ export function furnitureHeaderXml(
   language: LanguageMode,
 ): string {
   if (!furniture) return '';
-  const boxes = furnitureBoxes(pageWidth, pageHeight, margins);
+  /*
+   * Chinese sets upright and vertical, Latin rotates (§ `NoteDirection`). Keyed on what
+   * `biTextRuns` will actually emit: only a pure `zh` export puts Chinese alone in the
+   * box, while `bilingual` stacks both sides and must stay rotated — setting a Latin
+   * sentence `eaVert` would print it one letter per line down the margin.
+   *
+   * Decided before the boxes, because it also decides how wide the strips are.
+   */
+  const eaVertical =
+    language === 'zh' &&
+    !!furniture.marginNote &&
+    !isBiTextEmpty({ en: [], zh: furniture.marginNote.zh });
+  const boxes = furnitureBoxes(pageWidth, pageHeight, margins, { verticalNote: eaVertical });
   const parts: string[] = [];
 
   if (furniture.frame) parts.push(frameXml(boxes.frame));
@@ -107,8 +146,18 @@ export function furnitureHeaderXml(
   if (furniture.marginNote && !isBiTextEmpty(furniture.marginNote)) {
     // 9pt, the size a strip this narrow can hold; per-run formatting can override.
     const runs = biTextRuns(furniture.marginNote, fonts, language, { fontSize: 9 });
-    parts.push(noteXml(boxes.noteLeft, runs, FURNITURE_DRAWING_ID_BASE + 1, 'Margin note left'));
-    parts.push(noteXml(boxes.noteRight, runs, FURNITURE_DRAWING_ID_BASE + 2, 'Margin note right'));
+    const side: { direction: NoteDirection } = {
+      direction: eaVertical ? 'eaVert' : 'vert270',
+    };
+    parts.push(noteXml(boxes.noteLeft, runs, FURNITURE_DRAWING_ID_BASE + 1, 'Margin note left', side));
+    parts.push(noteXml(boxes.noteRight, runs, FURNITURE_DRAWING_ID_BASE + 2, 'Margin note right', side));
+    // The same sentence once more, horizontal, just below the frame's bottom edge —
+    // the reference prints it above its footer line on every interior page.
+    parts.push(
+      noteXml(boxes.noteBottom, runs, FURNITURE_DRAWING_ID_BASE + 3, 'Margin note bottom', {
+        direction: 'horz',
+      }),
+    );
   }
 
   if (parts.length === 0) return '';

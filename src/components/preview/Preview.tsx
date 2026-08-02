@@ -992,8 +992,7 @@ function AnswerSpaceView({ lines }: { lines: number }) {
  * editing surface, and it must swallow no click aimed at the page. Deliberately *not*
  * `data-print-hide`: the furniture is the one piece of on-page chrome that must print.
  *
- * `vert270` (bottom-to-top) is expressed as `vertical-rl` rotated 180° — the CSS
- * `sideways-lr` value that names it directly is not yet safe cross-browser.
+ * The margin note's direction is **per script**, and `noteStyle` says why.
  */
 function PageFurnitureLayer({
   furniture,
@@ -1005,7 +1004,6 @@ function PageFurnitureLayer({
   language: LanguageMode;
 }) {
   const { width, height } = pageDimensions(setup);
-  const boxes = furnitureBoxes(width, height, setup.margins);
   const mm = (twips: number) => `${twipsToMm(twips)}mm`;
   const place = (box: { left: number; top: number; width: number; height: number }) => ({
     left: mm(box.left),
@@ -1014,25 +1012,55 @@ function PageFurnitureLayer({
     height: mm(box.height),
   });
   const note = furniture.marginNote;
+  const zhSide = language === 'zh' && !!note && !!plain(note.zh);
   const noteText = note
-    ? language === 'zh'
-      ? plain(note.zh) || plain(note.en)
+    ? zhSide
+      ? plain(note.zh)
       : plain(note.en) || plain(note.zh)
     : '';
+  // Upright vertical text needs a strip a whole glyph wide, so the box depends on the
+  // script — resolved from the same helper the exporter calls, with the same flag.
+  const boxes = furnitureBoxes(width, height, setup.margins, { verticalNote: zhSide });
 
-  const noteStyle = (box: Parameters<typeof place>[0]): React.CSSProperties => ({
-    position: 'absolute',
-    ...place(box),
-    writingMode: 'vertical-rl',
-    transform: 'rotate(180deg)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '9pt',
-    lineHeight: 1,
-    color: '#000000',
-    whiteSpace: 'nowrap',
-  });
+  /*
+   * Latin is rotated; Chinese is set vertically. Not a workaround for CSS — it is what
+   * the two scripts are, and the reference booklet prints both that way.
+   *
+   * A Latin margin note has no vertical typesetting convention, so the whole line is
+   * laid out horizontally and turned -90° (reading bottom-to-top). Chinese does have
+   * one: glyphs stay upright and stack one per line, top-to-bottom, which is precisely
+   * `writing-mode: vertical-rl` with no rotation at all.
+   *
+   * Both wrong answers have shipped. `vertical-rl` + `rotate(180deg)` for everything
+   * printed Chinese upside down and bottom-to-top; rotating everything -90° stood the
+   * Chinese back up but laid it sideways, a quarter turn off the reference. The script
+   * decides the mechanism, and the two mechanisms are genuinely different — hence the
+   * swapped box below for the rotated case only.
+   */
+  const noteStyle = (box: Parameters<typeof place>[0]): React.CSSProperties => {
+    const shared: React.CSSProperties = {
+      position: 'absolute',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: '9pt',
+      lineHeight: 1,
+      color: '#000000',
+      whiteSpace: 'nowrap',
+    };
+    // Vertical Chinese needs no rotation, so it simply fills the strip as it stands.
+    if (zhSide) return { ...shared, ...place(box), writingMode: 'vertical-rl' };
+    // The rotated case lays the line out at the strip's *length*, so width and height
+    // swap against the box; the square-centred origin puts the turned line back in it.
+    return {
+      ...shared,
+      left: mm(box.left + box.width / 2 - box.height / 2),
+      top: mm(box.top + box.height / 2 - box.width / 2),
+      width: mm(box.height),
+      height: mm(box.width),
+      transform: 'rotate(-90deg)',
+    };
+  };
 
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0">
@@ -1046,6 +1074,20 @@ function PageFurnitureLayer({
         <>
           <div style={noteStyle(boxes.noteLeft)}>{noteText}</div>
           <div style={noteStyle(boxes.noteRight)}>{noteText}</div>
+          {/* The same sentence horizontal below the frame, as the reference's footer
+              textbox has it — ranged left, not centred. */}
+          <div
+            style={{
+              position: 'absolute',
+              ...place(boxes.noteBottom),
+              fontSize: '9pt',
+              lineHeight: 1,
+              color: '#000000',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {noteText}
+          </div>
         </>
       )}
     </div>
@@ -4984,6 +5026,16 @@ export function Preview({
    * what stops the header printing over the first question. In the ordinary case both
    * numbers are zero and every sheet gets the plain authored margin.
    */
+  /*
+   * The cover is a real sheet, and Word's `PAGE` field counts it: the reference's own
+   * cover footer prints "1", and the first body sheet of a covered booklet prints "2".
+   * The paginator never sees the cover (§ `worksheet.cover` is its own field), so the
+   * band numbers must add it back — without this the preview's footer read one lower
+   * than the exported file's on every covered page, caught by the lq-verify contact
+   * sheet (preview "3" beside docx "4" on the same physical sheet).
+   */
+  const pageNumberOffset = rendered.cover ? 1 : 0;
+
   const pageStyleFor = (pageIndex: number): React.CSSProperties => {
     const over = pageIndex === 0 ? firstPageOverflow : overflow;
     return {
@@ -5201,8 +5253,8 @@ export function Preview({
                   value={header}
                   language={language}
                   edge="header"
-                  pageNumber={pageIndex + 1}
-                  pageCount={pages.length}
+                  pageNumber={pageIndex + 1 + pageNumberOffset}
+                  pageCount={pages.length + pageNumberOffset}
                   totalMarks={worksheetMarks(worksheet)}
                   // Editing handlers are withheld while the region is idle, so the band
                   // renders exactly as it prints — no zone outlines, no ✕, no "+ Row".
@@ -5285,8 +5337,8 @@ export function Preview({
                   value={footer}
                   language={language}
                   edge="footer"
-                  pageNumber={pageIndex + 1}
-                  pageCount={pages.length}
+                  pageNumber={pageIndex + 1 + pageNumberOffset}
+                  pageCount={pages.length + pageNumberOffset}
                   totalMarks={worksheetMarks(worksheet)}
                   editing={
                     focusRegion === "footer" ? withSelection(footerEditing) : undefined
