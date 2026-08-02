@@ -13,12 +13,27 @@ export interface WorksheetSummary {
   id: string;
   title: string;
   updatedAt: string;
+  /**
+   * How much is in the document, for the file list.
+   *
+   * Stored in the index rather than derived on demand: the list shows every saved
+   * document at once, and deriving these would mean parsing and migrating every
+   * worksheet in storage on every visit to the start screen — the one screen that has
+   * to be instant, since it is what the app opens on.
+   *
+   * Optional because an index written by an earlier build has neither, and a file list
+   * that refuses to show those documents would look like the work had been lost.
+   */
+  questionCount?: number;
+  hasCover?: boolean;
 }
 
 export interface WorksheetStore {
   list(): Promise<WorksheetSummary[]>;
   load(id: string): Promise<Worksheet | undefined>;
   save(worksheet: Worksheet): Promise<void>;
+  /** Give a saved document a new title, without opening it. */
+  rename(id: string, title: string): Promise<void>;
   remove(id: string): Promise<void>;
   /**
    * Forget every saved document.
@@ -41,6 +56,68 @@ export function parseWorksheet(json: string): Worksheet {
 
 export function stringifyWorksheet(worksheet: Worksheet): string {
   return JSON.stringify(serializeWorksheet(worksheet), null, 2);
+}
+
+/**
+ * What to call this document when something other than the page has to name it.
+ *
+ * One definition because the fallback chain is a decision, not an incidental: a
+ * bilingual worksheet titled only in Chinese is *not* untitled, so English-then-Chinese
+ * is the order, and only a document with neither reads "Untitled". The file list, the
+ * download filename and the rename field all have to agree, or renaming a document
+ * appears not to have taken effect in the list beside it.
+ */
+export function worksheetTitle(worksheet: Worksheet): string {
+  return plain(worksheet.title.en) || plain(worksheet.title.zh) || 'Untitled';
+}
+
+/** The index entry for a document — the shape the file list reads. */
+export function summarize(worksheet: Worksheet): WorksheetSummary {
+  return {
+    id: worksheet.id,
+    title: worksheetTitle(worksheet),
+    updatedAt: worksheet.updatedAt,
+    questionCount: worksheet.questions.length,
+    hasCover: Boolean(worksheet.cover),
+  };
+}
+
+/**
+ * A copy of a document, saved beside the original.
+ *
+ * Only the **document** id changes. Every id *inside* it addresses something within
+ * this one document — questions, blocks, flow entries, band fields — so they stay
+ * unique after the copy and re-iding them would be work with no observable effect.
+ * (This is the opposite of duplicating a question *inside* a document, where the clone
+ * lands in the same id space as its original and must be re-idded.)
+ *
+ * `createdAt` is reset because the copy is new; `updatedAt` is what the list sorts on,
+ * so a fresh one puts the copy where the teacher is looking for it.
+ */
+export function duplicateWorksheet(worksheet: Worksheet, id: string): Worksheet {
+  const now = new Date().toISOString();
+  return {
+    ...worksheet,
+    id,
+    title: {
+      en: worksheet.title.en.length > 0 ? appendCopy(worksheet.title.en) : worksheet.title.en,
+      zh: worksheet.title.zh,
+    },
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+/**
+ * Mark a title as a copy, on the last run so it inherits that run's formatting.
+ *
+ * Appending a bare run would leave " (copy)" unformatted beside a bolded title, which
+ * prints as a visibly different suffix on the page rather than as part of the name.
+ */
+function appendCopy(runs: Worksheet['title']['en']): Worksheet['title']['en'] {
+  const last = runs.at(-1);
+  if (!last) return runs;
+  return [...runs.slice(0, -1), { ...last, text: `${last.text} (copy)` }];
 }
 
 export class LocalStorageWorksheetStore implements WorksheetStore {
@@ -81,13 +158,37 @@ export class LocalStorageWorksheetStore implements WorksheetStore {
     storage.setItem(PREFIX + worksheet.id, stringifyWorksheet(worksheet));
 
     const summaries = await this.list();
-    const summary: WorksheetSummary = {
-      id: worksheet.id,
-      title: plain(worksheet.title.en) || plain(worksheet.title.zh) || 'Untitled',
-      updatedAt: worksheet.updatedAt,
-    };
-    const next = [summary, ...summaries.filter((entry) => entry.id !== worksheet.id)];
+    const next = [
+      summarize(worksheet),
+      ...summaries.filter((entry) => entry.id !== worksheet.id),
+    ];
     storage.setItem(INDEX_KEY, JSON.stringify(next));
+  }
+
+  /**
+   * Rename a saved document.
+   *
+   * A rename writes `worksheet.title` — the document's own name, which is also what the
+   * masthead prints and what the `.docx` downloads as — rather than a label kept beside
+   * it in the index. A separate display name would be a second answer to "what is this
+   * called", and the two would part company the moment the title was edited on the page.
+   *
+   * It therefore loads and re-saves rather than patching the index in place: the index
+   * is derived from the document (§`summarize`), so writing only the entry would be
+   * undone by the next autosave.
+   *
+   * Only the English side is written. The rename field is one box, and blanking a
+   * document's Chinese title as a side effect of renaming it in English would be a
+   * silent loss of authored text.
+   */
+  async rename(id: string, title: string): Promise<void> {
+    const worksheet = await this.load(id);
+    if (!worksheet) return;
+    await this.save({
+      ...worksheet,
+      title: { ...worksheet.title, en: [{ text: title }] },
+      updatedAt: new Date().toISOString(),
+    });
   }
 
   async remove(id: string): Promise<void> {
@@ -113,8 +214,7 @@ export class LocalStorageWorksheetStore implements WorksheetStore {
 
 /** Download the worksheet as a .json file (portable across machines). */
 export function downloadWorksheetFile(worksheet: Worksheet): void {
-  const title = plain(worksheet.title.en) || plain(worksheet.title.zh) || 'worksheet';
-  const fileName = `${title.replace(/[\\/:*?"<>|]/g, '-')}.worksheet.json`;
+  const fileName = `${worksheetTitle(worksheet).replace(/[\\/:*?"<>|]/g, '-')}.worksheet.json`;
   const blob = new Blob([stringifyWorksheet(worksheet)], { type: 'application/json' });
   triggerDownload(blob, fileName);
 }

@@ -25,18 +25,20 @@ and the code disagree, the code is right — fix the document in the same PR.
 
 ```
 src/
-├── app/          Next.js shell; EditorHost imports the editor ssr:false (store is browser-only)
+├── app/          Next.js shell; EditorHost gates start screen vs editor, the latter
+│                 imported ssr:false (store is browser-only)
 ├── model/        types · numbering · marks · migrations · text · page · flow ·
-│                 bands · bandSegments · edits · factories · table · diagram ·
-│                 diagramTemplates · diagramDraw · cover · coverTypes
+│                 bands · bandSegments · edits · factories · newWorksheet · table ·
+│                 diagram · diagramTemplates · diagramDraw · cover · coverTypes
 ├── registry/     Question-type extension point: types · index · mcq · structured
 ├── render/       ir (RenderNode + EditTarget) · worksheet (the walker) · diagram (SVG)
 ├── export/       docx/ (index · body · numbering · styles · runs · package · xml) ·
 │                 diagramImage (PNG pre-pass) · clipboard
 ├── store/        worksheetStore — Zustand with undo/redo
 ├── storage/      WorksheetStore interface + localStorage implementation
-├── components/   EditorApp · preview/ (the paper IS the editor; RichTextEditable +
-│                 richTextDom are the shared WYSIWYG surface) · editor/ · ui/
+├── components/   EditorApp · start/ (StartScreen + NewWorksheetForm) · preview/ (the
+│                 paper IS the editor; RichTextEditable + richTextDom are the shared
+│                 WYSIWYG surface) · editor/ · ui/
 └── test/         shared fixtures
 ```
 
@@ -1244,6 +1246,51 @@ definition — no changes to numbering, marks, persistence or export.
 
 ---
 
+## The start screen (`src/components/start/`)
+
+The app opens on a list of documents, not on a document. Storage has held many
+worksheets since it shipped, but the only reachable one was the most recently saved —
+the editor restored that one on mount and offered no list — so every other document was
+effectively lost the moment a second was started, and "New worksheet" was in practice an
+archive button. `StartScreen` is the list plus the way in; `NewWorksheetForm` asks the
+once-per-document decisions before the first question exists.
+
+- **The gate lives in `EditorHost`, outside the editor**, and is session state (`chosen`)
+  rather than a stored preference: it answers "has a document been picked in this tab",
+  which resets on reload, so the app always opens at the list. An overlay *inside* the
+  editor would mount the whole preview behind it and run the paginator over a blank
+  worksheet on every visit to the file list.
+- **Leaving the editor must flush the autosave.** The 1.2s debounce lives in an effect
+  inside `EditorApp`, so unmounting it cancels a pending save — up to a second of typing
+  dropped by the act of going to look at the file list, and a stale "updated" time on the
+  very document just edited. Both departure paths save **by value**: `store.save()` reads
+  `getState().worksheet`, which `replaceWorksheet` has already swapped by the time the
+  awaited write runs, so the outgoing document would be skipped and the incoming one
+  written twice.
+- **A new document is saved before it is edited.** `replaceWorksheet` marks the store
+  clean — correctly, nothing has changed yet — and autosave only fires on `dirty`, so a
+  worksheet created and then left alone was never written anywhere: answer the form, go
+  back to the list, and it is gone. Found in a browser, not in a test; the model layer
+  was right and the lifecycle was not.
+- **`createWorksheetFrom` layers over `createWorksheet()`** rather than assembling a
+  document: that factory is the one definition of what a new document *is*, and a second
+  full constructor beside it is a second thing to update whenever the model grows a
+  field. A test pins the two to the same shape, so "skip every question" and "New
+  worksheet" cannot drift.
+- **Turning sections off rewrites `flow` and `layout` together.** The flow names elements
+  by id, so dropping the layout entries alone leaves the flow pointing at elements that
+  no longer exist (§ the flow invariant).
+- **The wizard is a form, not steps**, and every field has a working default — it is a
+  way to answer sooner, never a gate. The cover cards preselect a style and nothing else;
+  all three open the same form.
+- **The row opens the document; the menu holds the filing actions** (rename, duplicate,
+  download, delete). Burying "open" among four rarer siblings would make resuming work
+  the slowest thing on the screen. Duplicating **saves without opening** — the teacher is
+  looking at a list and making a copy for later.
+- **A summary can outlive the document it names** (a half-finished `clear`, storage
+  evicted under quota): opening one says so and drops the row, rather than leaving a
+  button that silently does nothing.
+
 ## Editor layout (`src/components/`)
 
 The preview is the centrepiece; the right sidebar shows **one thing at a time** behind
@@ -1431,10 +1478,24 @@ local; the store is called on pointer-up, or one drag floods the undo stack.
 
 ### Persistence (`src/storage/index.ts`, `src/model/migrations.ts`)
 
-- `WorksheetStore` interface (`list`/`load`/`save`/`remove`); localStorage
-  implementation today.
+- `WorksheetStore` interface (`list`/`load`/`save`/`rename`/`remove`/`clear`);
+  localStorage implementation today.
 - **Autosave** debounced 1.2s. **File download/upload** as `.worksheet.json`, images
   base64.
+- **The index is what the file list reads**, never the documents: a `WorksheetSummary`
+  carries `questionCount`/`hasCover` so the start screen shows every saved worksheet
+  without parsing and migrating each one on the app's first paint. Both are optional —
+  an index written by an earlier build has neither, and a list that refused to show
+  those rows would look like the work had been lost.
+- **A rename writes `worksheet.title`**, the document's own name — which the masthead
+  prints and the `.docx` downloads as — rather than a label kept beside it in the index.
+  A separate display name is a second answer to "what is this called", and the two part
+  company the moment the title is edited on the page. So `rename` loads and re-saves;
+  patching the index alone would be undone by the next autosave (§`summarize`).
+- **A worksheet copy re-ids the document and nothing inside it.** Every id *within* a
+  worksheet addresses something in that one document, so they stay unique after the
+  copy — the opposite of duplicating a question, where the clone lands in the same id
+  space as its original and `withFreshIds` must walk it.
 - **Migration chain** `migrate()`: ordered pure functions, currently **empty**. The model
   changed seven times before the app shipped, but a migration exists to carry *real* data
   across a change and no document had ever been saved by a released build — so the seven

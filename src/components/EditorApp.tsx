@@ -20,7 +20,7 @@ import { useWorksheetStore, type BandScope } from '@/store/worksheetStore';
 import { worksheetStore } from '@/storage';
 
 /** Two-pane shell (§5.1): structural editor on the left, live preview on the right. */
-export function EditorApp() {
+export function EditorApp({ onOpenFiles }: { onOpenFiles: () => void }) {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const mode = useWorksheetStore((s) => s.mode);
   const printPreview = useWorksheetStore((s) => s.printPreview);
@@ -31,7 +31,6 @@ export function EditorApp() {
   const undo = useWorksheetStore((s) => s.undo);
   const redo = useWorksheetStore((s) => s.redo);
   const markSaved = useWorksheetStore((s) => s.markSaved);
-  const replaceWorksheet = useWorksheetStore((s) => s.replaceWorksheet);
   const applyEdit = useWorksheetStore((s) => s.applyEdit);
   const deleteTarget = useWorksheetStore((s) => s.deleteTarget);
   const replaceBlock = useWorksheetStore((s) => s.replaceBlock);
@@ -71,7 +70,6 @@ export function EditorApp() {
   const moveToDocumentStart = useWorksheetStore((s) => s.moveToDocumentStart);
   const duplicateMany = useWorksheetStore((s) => s.duplicateMany);
 
-  const restored = useRef(false);
   const scrollerRef = useRef<HTMLElement>(null);
 
   // How the flow landed on sheets, as reported by the paginator. Pages exist nowhere
@@ -320,18 +318,6 @@ export function EditorApp() {
   // which is now all removal needs — this used to have to find the owning section first.
   const handleDeleteLayout = removeLayoutElement;
 
-  // Reopen the most recently edited worksheet on load (§6).
-  useEffect(() => {
-    if (restored.current) return;
-    restored.current = true;
-    void (async () => {
-      const [latest] = await worksheetStore.list();
-      if (!latest) return;
-      const saved = await worksheetStore.load(latest.id);
-      if (saved) replaceWorksheet(saved);
-    })();
-  }, [replaceWorksheet]);
-
   // Debounced autosave (§6).
   useEffect(() => {
     if (!dirty) return;
@@ -392,7 +378,7 @@ export function EditorApp() {
 
   return (
     <div className="flex h-screen flex-col bg-surface">
-      <Toolbar onOpenSettings={() => setSettingsOpen(true)} />
+      <Toolbar onOpenSettings={() => setSettingsOpen(true)} onOpenFiles={onOpenFiles} />
       {/* Three columns: the add rail (how content gets on the page), the page itself
           (where it is edited), and the sidebar (structure and off-page fields). The
           rail sits on the left because that is where every creative tool puts its

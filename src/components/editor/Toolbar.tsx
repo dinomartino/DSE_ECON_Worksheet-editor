@@ -1,15 +1,14 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { copyForWord, worksheetClipboardHtml, worksheetPlainText } from '@/export/clipboard';
 import { renderDiagramImages } from '@/export/diagramImage';
-import { createWorksheet } from '@/model/factories';
 import { worksheetMarks } from '@/model/marks';
 import { pageSetupOf } from '@/model/page';
 import type { LanguageMode, VersionMode } from '@/model/types';
 import { requireQuestionType } from '@/registry';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { downloadWorksheetFile, readWorksheetFile, triggerDownload, worksheetStore } from '@/storage';
+import { downloadWorksheetFile, triggerDownload, worksheetStore } from '@/storage';
 import { Button, IconButton, Pill, Segmented } from '@/components/ui';
 import { DownloadIcon, PdfIcon, RedoIcon, SettingsIcon, UndoIcon } from '@/components/ui/icons';
 import { Menu } from '@/components/ui/Menu';
@@ -23,7 +22,14 @@ import { Dialog } from '@/components/ui/Dialog';
  * in two rows, so "Export .docx" was as easy to miss as "Open .json"; export is the
  * point of the app and is now the only filled button on screen.
  */
-export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
+export function Toolbar({
+  onOpenSettings,
+  onOpenFiles,
+}: {
+  onOpenSettings: () => void;
+  /** Show the start screen: the saved-worksheet list, and the new-document form. */
+  onOpenFiles: () => void;
+}) {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const mode = useWorksheetStore((s) => s.mode);
   const setMode = useWorksheetStore((s) => s.setMode);
@@ -34,12 +40,10 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
   const dirty = useWorksheetStore((s) => s.dirty);
   const lastSavedAt = useWorksheetStore((s) => s.lastSavedAt);
   const save = useWorksheetStore((s) => s.save);
-  const replaceWorksheet = useWorksheetStore((s) => s.replaceWorksheet);
   const select = useWorksheetStore((s) => s.select);
   const printPreview = useWorksheetStore((s) => s.printPreview);
   const setPrintPreview = useWorksheetStore((s) => s.setPrintPreview);
 
-  const fileInput = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState<string | undefined>();
   const [error, setError] = useState<string | undefined>();
   const [notice, setNotice] = useState<string | undefined>();
@@ -133,48 +137,28 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
     });
   };
 
-  const handleOpen = async (file: File) => {
-    setError(undefined);
-    try {
-      replaceWorksheet(await readWorksheetFile(file));
-      flash('Worksheet opened');
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not open that file.');
-    }
-  };
-
-  /**
-   * Start a new document.
-   *
-   * Non-destructive: the current worksheet stays in storage under its own id, and this
-   * one is saved beside it on the next autosave. Nothing is deleted, so this needs no
-   * confirmation — but it *does* switch which document reopens next time, since the
-   * editor restores whichever was saved most recently.
-   */
-  const handleNew = () => {
-    replaceWorksheet(createWorksheet());
-    flash('New worksheet');
-  };
-
   /**
    * Forget every saved document and start over.
    *
-   * The editor reopens the most recently saved worksheet on load, which is what makes a
-   * document seem to survive a dev-server restart — it lives in `localStorage`, not in
-   * the build. That is the intended behaviour and also the only way to get genuinely
-   * clean state when a stored document is the thing being debugged.
+   * A worksheet lives in `localStorage`, not in the build — which is what makes one
+   * survive a dev-server restart. That is the intended behaviour and also the only way
+   * to get genuinely clean state when a stored document is the thing being debugged.
    *
    * Irreversible, and there is no server-side copy, so it is confirmed rather than
    * offered as a plain menu item, and the dialog points at "Download .json" as the way
    * to keep a copy first.
+   *
+   * It ends on the **start screen**, not on a fresh blank document: having just emptied
+   * the list, dropping the teacher into an untitled worksheet would put them straight
+   * back into a document they did not ask to start, with no sign the clear had done
+   * anything. The empty list is the honest result.
    */
   const handleClearAll = async () => {
     setConfirmingClear(false);
     setError(undefined);
     try {
       await worksheetStore.clear();
-      replaceWorksheet(createWorksheet());
-      flash('Saved documents cleared');
+      onOpenFiles();
     } catch {
       setError('Could not clear saved documents.');
     }
@@ -295,10 +279,16 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
           label="File and export options"
           items={[
             { label: busy === 'copy' ? 'Copying…' : 'Copy for Word', onSelect: () => void handleCopy() },
-            { label: 'New worksheet', onSelect: handleNew, separated: true },
+            /*
+             * One door to every document, rather than "New" and "Open" as separate
+             * items that each did half the job. The start screen lists what is saved and
+             * offers the new-document form, so both intentions arrive at the same place —
+             * and "New" no longer silently archives the document on screen by being the
+             * only way to leave it (the old menu had no way *back* to what it replaced).
+             */
+            { label: 'Worksheets…', onSelect: onOpenFiles, separated: true },
             { label: 'Save now', onSelect: () => void save() },
             { label: 'Download .json', onSelect: () => downloadWorksheetFile(worksheet) },
-            { label: 'Open .json…', onSelect: () => fileInput.current?.click() },
             {
               label: 'Clear saved documents…',
               onSelect: () => setConfirmingClear(true),
@@ -308,17 +298,6 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
           ]}
         />
 
-        <input
-          ref={fileInput}
-          type="file"
-          accept="application/json,.json"
-          className="hidden"
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            if (file) void handleOpen(file);
-            event.target.value = '';
-          }}
-        />
       </div>
 
       {error && (
@@ -337,7 +316,7 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
       {confirmingClear && (
         <Dialog
           title="Clear saved documents?"
-          description="Every worksheet saved in this browser will be deleted and a blank one opened. This cannot be undone — nothing is stored on a server."
+          description="Every worksheet saved in this browser will be deleted. This cannot be undone — nothing is stored on a server."
           width={460}
           onClose={() => setConfirmingClear(false)}
           footer={
@@ -369,9 +348,9 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
           }
         >
           <p className="text-[13px] leading-relaxed text-ink-subtle">
-            The editor reopens whichever worksheet was saved most recently, which is why
-            your work comes back after a restart — it lives in this browser, not in the
-            code. Clearing is the way to start genuinely fresh.
+            Every worksheet on the start screen lives in this browser, not in the code,
+            which is why your work comes back after a restart. Clearing empties that list
+            and returns you to it.
           </p>
         </Dialog>
       )}
