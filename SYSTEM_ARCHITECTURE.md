@@ -28,7 +28,7 @@ src/
 ├── app/          Next.js shell; EditorHost imports the editor ssr:false (store is browser-only)
 ├── model/        types · numbering · marks · migrations · text · page · flow ·
 │                 bands · bandSegments · edits · factories · table · diagram ·
-│                 diagramTemplates · diagramDraw
+│                 diagramTemplates · diagramDraw · cover · coverTypes
 ├── registry/     Question-type extension point: types · index · mcq · structured
 ├── render/       ir (RenderNode + EditTarget) · worksheet (the walker) · diagram (SVG)
 ├── export/       docx/ (index · body · numbering · styles · runs · package · xml) ·
@@ -105,6 +105,29 @@ ImageBlock / DiagramBlock also carry `align?` (`w:jc` on the picture's paragraph
 `questionMarks()`/`partMarks()`/`sectionMarks()`/`worksheetMarks()` derive them at
 render time — which is what makes reordering and undo/redo trivial.
 
+### A group of sub-parts can share one marks label
+
+`QuestionSubPart.marks` is **optional**, and absent is not zero. Real papers routinely
+mark a *group*: DSE 2019 P2 Q13(b) prints nothing on (i) and "(5 marks)" on (ii), and
+Q8(a) and Q12(a) do the same — the label belongs to the pair, not to either half.
+
+- **Absent prints nothing; `0` prints "(0 marks)".** All three backends already gated on
+  `marks !== undefined`, so making the field optional was enough to reach the shape. Before
+  it, the only way to write Q13(b) was `marks: 0` on (i), which printed a literal
+  "(0 marks)" — the paper's shape was unreachable and the workaround was visibly wrong.
+- **`partMarks` falls back to the part when no sub-part is marked.** Summing regardless
+  would report 0 for a part plainly worth 5, silently understating the question, its
+  section and the paper total. Any sub-part carrying its own marks flips the rule back to
+  summing, so the ordinary case is untouched.
+- **The label prints on the last sub-part of the group**, where the reference puts it. On
+  the part's own line it would read as marks for the lead-in text, which is not what is
+  being marked.
+- The panel mirrors the model: an unmarked sub-part's pill reads `shared` rather than
+  interpolating an absent number (which rendered a bare `m`), and the part's own marks box
+  — hidden whenever sub-parts exist — returns as "Marks for (i)–(ii) together", labelled
+  from the real sub-part labels. `NumberField`'s `clearable` is a discriminated union, so
+  only a caller that opts in is handed an `undefined` its model has room for.
+
 ### Document flow (`src/model/flow.ts`)
 
 Layout elements are deliberately outside the `Question` union: they take no number and
@@ -179,6 +202,102 @@ emitted an `EditTarget` that `patchBandFields` silently discarded.)
   inlined, not imported from `DEFAULT_FIELD_WORDING` (import would close a
   bandSegments→page→factories→migrations cycle); a test asserts the spellings agree.
 
+### A cover is a page of regions, not a stack of rows (`src/model/cover.ts`)
+
+A mock-exam cover is **two unequal columns side by side** — identity lines and
+instructions on the left, a candidate panel on the right, a rule between them. The
+reference's own mechanism, read out of its `word/document.xml`:
+
+```
+<w:cols w:num="2" w:equalWidth="0">
+  <w:col w:w="5328" w:space="144"/>   left  — identity, title, instructions
+  <w:col w:w="3845"/>                 right — the candidate panel
+</w:cols>
+```
+
+The first attempt built covers out of masthead `Band`s plus flow elements and **could not
+produce the shape at all**: a band is one printed row across the full text column, so a
+stack of them makes a stack of centred lines. No arrangement of full-width rows reaches a
+two-column page. So `CoverPage` models what a cover is — *named regions of a page* —
+holding `CoverLine[]`. Still slot-based (a teacher fills regions, they do not drag boxes
+to coordinates), but the slots are areas of a sheet rather than thirds of a row.
+
+- **The two papers get different *shapes*, not just different wording.** An MCQ candidate
+  answers on a separate machine-read sheet, so a Paper 1 cover has nothing to write on:
+  no panel, therefore **one full-width column**, with its identity lines centred across
+  the page and instructions numbered `1.`. Paper 2 is the booklet the candidate writes in,
+  so it carries the panel and the two-column split that makes room for it, numbering
+  `(1)`. `coverHasPanel()` is the single switch both backends read; `instructionMarker` is
+  stored rather than derived, since it is a house style a school may have a view on.
+- **`worksheet.cover` is its own field**, so the paginator never sees it: a cover neither
+  flows nor shares a sheet with question 1, and giving it to the packer would mean
+  teaching every measurement path about a page that can never split.
+- **`CoverRenderNode` is deliberately not a `RenderNode`.** Every member of that union is
+  something that flows in the body; adding a whole page to it would force every backend's
+  node walk to handle a case that cannot appear inside a question. Its regions *are*
+  `RenderNode[]`, so the backends reuse the paragraph and columns emitters — only the
+  frame is new.
+- **The `.docx` is a real two-column section**: a `w:br w:type="column"` moves into the
+  right column (Word columns are a flow; there is no "put this on the right" property),
+  and a **continuous** `sectPr` ends the cover so the body returns to one column without
+  an extra blank sheet. `nextPage` there would emit one.
+- **An empty panel prints one wide column**, not a narrow one beside a blank strip —
+  `coverHasPanel()` decides, and both backends read it.
+- **Instruction numbers are derived from position**, never stored, as questions are:
+  deleting (2) renumbers the rest. They are literal text on a hung `ColumnsNode` rather
+  than a `w:num` stream, since a cover's instructions are not part of question numbering.
+- **Lines are addressed by id** (`coverLine` / `coverField` `EditTarget`s), so they are
+  clicked, typed and formatted on the page like everything else, and an edit survives a
+  line being added above it.
+- **A framed note pins `w:tblW` to the column width.** A table inside a Word column still
+  measures against the section's full text width unless told otherwise, so `auto` drew a
+  frame that ran off the page edge.
+- **The corner block floats; it is not in the flow.** The reference anchors a `wpg:wgp`
+  group at (−0.65in, −0.25in) — outside the text column — holding a textbox of the code
+  lines and the diagonal beside it, in a `chExt` child space so the two keep their
+  relative positions. Emitted as ordinary paragraphs the lines sit *in* the column: they
+  push the identity lines down and can never reach the corner. A `wrapNone` anchor
+  reserves no space, so the flow needs `CORNER_CLEARANCE_LINES` blank lines to print
+  below it — without them P2's narrow column printed straight through the block.
+- **The diagonal's direction is measured, not reasoned.** It runs bottom-left to
+  top-right; the reference scan goes y 30→130 while x goes 222→122. Drawing that takes
+  `a:xfrm flipV="1"` in the `.docx` and `linear-gradient(to bottom right, …)` in CSS —
+  both the opposite of the obvious guess, and each shipped backwards once. The CSS
+  keyword names the gradient's axis of travel while its stops lay a band *perpendicular*
+  to it. Check by cropping the render and printing dark-pixel x per y.
+- **The corner textbox must not wrap.** The reference's own `1520` child width fits its
+  short codes ("2019-DSE", "ECON"); a teacher's placeholder is longer, and at that width
+  "2025-26" and "PAPER 1" both broke onto two lines. It takes `1900`, and the diagonal
+  starts past it.
+- **The two papers use different font schemes.** Paper 2 is Arial throughout. Paper 1
+  mixes: Arial for the corner block, the identity lines and the paper's name — read at a
+  glance — and Times New Roman for the timing, "INSTRUCTIONS" and the instruction body,
+  read properly. So `CoverPage.fonts` is a **default** that any line overrides through its
+  own `format.fonts`; a single cover-wide font could express Paper 2 and not Paper 1.
+- **The operative word in an instruction is bolded per run** — "Answer **ALL**
+  questions", "mark only **ONE** answer" — since it is a stretch of characters, not a
+  property of the line (§ per-run formatting).
+- **The column rule is a shape, not a border.** The reference draws no `w:pgBorders`, no
+  `w:cols w:sep` and no `w:pBdr` — the divider is an anchored `prstGeom prst="line"`
+  connector, zero width by full page height, `a:ln w="19050"` (1.5pt). It is the only one
+  of the four mechanisms that puts a line of a *chosen weight* down a column's full
+  height. This export drew no rule at all until it was added: the preview showed one and
+  Word showed nothing, which only opening the exported file reveals. The preview draws a
+  1.5pt `border-left` in the same place — the one piece of cover geometry where the two
+  backends use genuinely different mechanisms, so the weight is stated on both sides.
+- **Every region must reach the `.docx`.** The regions are separate lists and `coverXml`
+  walks them by hand, so one left out is invisible until someone opens the exported file —
+  the page looks right and the document is missing a block. A test walks the *model* and
+  asserts each line arrives, using a **unique sentinel per line**: the generated defaults
+  repeat themselves (the school name is both a head line and the foot line), and searching
+  for stock text found the other copy and passed even with a whole region dropped.
+  Verified by deleting each of the four regions in turn.
+- **Structure is reproduced; wording is not.** No rubric prose, authority or examination
+  lines, barcode/candidate-number apparatus, or copyright notice. The panel is
+  name/class/number — a school identifies candidates by name. Two tests guard it: a phrase
+  blocklist, and a 6-word sliding window over the reference `.docx` (skipped where the
+  gitignored file is absent).
+
 ### One row, many uses: `ColumnsNode`
 
 The single IR primitive behind every side-by-side layout (band zones, inline MCQ
@@ -187,6 +306,33 @@ table — a table is still a table in Word and cannot sit inside a numbered list
 Cell positions are fractions of the row's own width (after `indent`), so they survive
 paper/margin changes. Cost: inline MCQ options get literal `A.`–`D.` text (one paragraph
 cannot carry four list numbers); stacked options keep native `w:num`.
+
+**A long row needs `hanging`, or its wrapped lines break the column.** The row is one
+paragraph, so without a hanging indent a wrapped cell's continuation returns to `indent`
+— under the *marker*, not under the text it belongs to. Invisible on the short rows this
+primitive was built for (band zones, inline options) and wrong on the long ones: an exam
+cover's numbered instructions wrap heavily, and both reference papers hang them.
+
+- **`hanging` and `indent` are one `w:ind`** — Word merges the element as a whole, so
+  emitting them separately drops whichever came first (the same trap `formatParagraphProps`
+  handles for `w:line`).
+- **With a hang, the second cell is placed from `indent`, not from `at`** — it *is* the
+  text column, and that is where Word returns each wrapped line. Placing it by fraction
+  puts the tab stop somewhere inside the column and the wrap fails to line up. The preview
+  matches by giving the marker cell exactly the gutter as a fixed width.
+- `labelList.hanging` supersedes `valueAt`: the hang already says where the value column
+  starts, and storing both is two answers to one question.
+
+### An enlarged line box follows its font size
+
+Wherever the preview writes `fontSize` it must write `lineHeight` too — in `formatStyle`
+(every element) and `bandFieldStyle` (band fields). The page runs on a fixed 12pt line
+with no paragraph spacing, so a 28pt title drawn into a 12pt box **overprints the line
+above**: three cover title lines landed on top of each other, and so did three masthead
+rows. The exporter already restates `w:line` from `exactLineFor()` whenever `fontSize` is
+set (`formatParagraphProps`), and `bandsHeight()` already scales its estimate by the
+largest field size — so without this the DOM disagreed with both the exporter and the
+paginator. One rule, two units: a unitless multiple on the page, twips in the `.docx`.
 
 ### An option can be a picture, and then it must stack
 

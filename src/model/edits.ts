@@ -1,3 +1,4 @@
+import { findCoverLine, setCoverLineFormat, setCoverLineText } from './cover';
 import type {
   Band,
   BandField,
@@ -243,6 +244,18 @@ export function applyEditTarget(
             },
       );
 
+    // The cover is a page of its own, not part of the flow, so it gets its own writes
+    // rather than a walk (§ `model/cover.ts`).
+    case 'coverLine':
+      return worksheet.cover
+        ? { ...worksheet, cover: setCoverLineText(worksheet.cover, target.lineId, text) }
+        : worksheet;
+
+    case 'coverField':
+      return worksheet.cover
+        ? { ...worksheet, cover: { ...worksheet.cover, [target.field]: text } }
+        : worksheet;
+
     // Bands live on the worksheet, not in a section, so they get their own walk. Only
     // authored text is writable; a derived total has nowhere to write back to.
     //
@@ -381,6 +394,9 @@ export function isFormattable(target: EditTarget): boolean {
     target.kind === 'blockText' ||
     target.kind === 'layoutText' ||
     target.kind === 'bandField' ||
+    // A cover line is ordinary text on the page: its size and weight are the whole point
+    // of a cover, so the toolbar has to reach it (§ `model/cover.ts`).
+    target.kind === 'coverLine' ||
     /*
      * A table cell formats like any other text element.
      *
@@ -444,6 +460,11 @@ export function applyFormatTarget(
       return mapLayoutElement(worksheet, target, (element) =>
         isTextLayoutElement(element) ? { ...element, format: merge(element.format) } : element,
       );
+
+    case 'coverLine':
+      return worksheet.cover
+        ? { ...worksheet, cover: setCoverLineFormat(worksheet.cover, target.lineId, patch) }
+        : worksheet;
 
     case 'bandField': {
       /*
@@ -531,6 +552,10 @@ export function formatOfTarget(
       const element = worksheet.layout.find((entry) => entry.id === target.elementId);
       return element && isTextLayoutElement(element) ? element.format : undefined;
     }
+    case 'coverLine':
+      return worksheet.cover
+        ? findCoverLine(worksheet.cover, target.lineId)?.format
+        : undefined;
     case 'bandField': {
       // Searched in the same order `applyFormatTarget` writes, so the toolbar always
       // reports the state of the field it is about to change.
@@ -601,6 +626,11 @@ export function textOfTarget(worksheet: Worksheet, target: EditTarget): BiText |
       const element = worksheet.layout.find((entry) => entry.id === target.elementId);
       return element && isTextLayoutElement(element) ? element.text : undefined;
     }
+    case 'coverLine':
+      return worksheet.cover ? findCoverLine(worksheet.cover, target.lineId)?.text : undefined;
+
+    case 'coverField':
+      return worksheet.cover?.[target.field];
     case 'bandField': {
       const lists: Array<Band[] | undefined> = [
         worksheet.bands,

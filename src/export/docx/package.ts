@@ -175,6 +175,11 @@ const WML_NS =
   'xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" ' +
   'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ' +
   'xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture" ' +
+  // Shapes, for the cover's vertical rule — a `prstGeom prst="line"` connector, which
+  // is what the reference draws (§ `coverRuleXml`).
+  'xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" ' +
+  // Shape groups, for the cover's floating corner block (§ `cornerGroupXml`).
+  'xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup" ' +
   'xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"';
 
 /**

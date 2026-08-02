@@ -102,7 +102,16 @@ export type EditTarget =
       elementId: string;
       rowId: string;
       column: 'label' | 'value';
-    };
+    }
+  /**
+   * One line of a cover region, addressed by its own id.
+   *
+   * Id rather than region+index, so an edit survives a line being added or removed above
+   * it — the same reason every other target names an id.
+   */
+  | { kind: 'coverLine'; lineId: string }
+  /** A cover's single-value fields, which are not lists and so have no line id. */
+  | { kind: 'coverField'; field: 'instructionsHeading' | 'panelNote' | 'panelFieldLabel' };
 
 export interface ListRef {
   /** Identifies the numbering stream; each distinct id becomes one `w:num`. */
@@ -324,6 +333,21 @@ export interface ColumnsNode {
   }>;
   /** Extra left indent in twips before the first cell. */
   indent?: number;
+  /**
+   * Pull the row's **first line** back by this many twips, Word's `w:ind w:hanging`.
+   *
+   * A row of tab stops is one paragraph, so without this a wrapped cell's continuation
+   * lines return to `indent` — under the *marker* rather than under the text it belongs
+   * to. That is invisible on the short rows this primitive was built for (band zones,
+   * inline MCQ options) and wrong on the long ones: an exam cover's numbered instructions
+   * wrap heavily, and both reference papers hang them under their own text column.
+   *
+   * Expressed as a hanging indent rather than a per-line rule because that is the shape
+   * Word has, and the same shape a numbered paragraph already uses (§ a numbered
+   * paragraph indents as a block). `indent` still positions the block; this only decides
+   * where its first line starts.
+   */
+  hanging?: number;
   /** Hairline rule under the row, used by masthead bands. */
   rule?: boolean;
   keepNext?: boolean;
@@ -355,6 +379,47 @@ export interface AnswerLinesNode {
   lines: number;
   /** The layout element this came from, so the preview can size it in place. */
   elementId?: string;
+}
+
+/**
+ * The cover page: a two-column sheet of regions.
+ *
+ * Deliberately **not** a `RenderNode`. Every member of that union is something that
+ * flows in the document body, and a cover is the opposite of that — it is a whole page
+ * with its own column geometry, printed before the body begins. Adding it to the union
+ * would have forced every backend's node walk to handle a case that can never appear
+ * inside a question.
+ *
+ * Regions hold `RenderNode[]` so the backends reuse the paragraph and columns emitters
+ * they already have; only the *frame* around them is new.
+ */
+export interface CoverRenderNode {
+  kind: 'cover';
+  /** Column widths in twips, mirroring `w:cols w:equalWidth="0"`. */
+  columns: { left: number; gap: number; right: number };
+  /** Top-left code block, hung above the identity lines. */
+  corner: RenderNode[];
+  /** Diagonal rule across the corner block. */
+  cornerRule: boolean;
+  /** Identity lines: school, examination, paper name, timing. */
+  head: RenderNode[];
+  /** "INSTRUCTIONS" plus the numbered list, already numbered. */
+  instructions: RenderNode[];
+  /** The right column. Empty means the sheet prints as one wide column. */
+  panel: CoverPanelRender;
+  /** Footer block at the bottom of the left column. */
+  foot: RenderNode[];
+}
+
+export interface CoverPanelRender {
+  /** Framed note at the top of the right column. */
+  note?: RenderNode;
+  /** Label beside the boxed grid. */
+  fieldLabel?: RenderNode;
+  /** How many write-in boxes the grid draws. */
+  boxes: number;
+  /** False when nothing in the panel would print. */
+  present: boolean;
 }
 
 export type RenderNode =

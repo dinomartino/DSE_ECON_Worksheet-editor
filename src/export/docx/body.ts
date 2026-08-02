@@ -8,6 +8,8 @@ import type {
 } from '@/model/types';
 import type {
   ColumnsNode,
+  CoverPanelRender,
+  CoverRenderNode,
   DiagramNode,
   ImageNode,
   RenderNode,
@@ -143,9 +145,17 @@ function columnsNodeXml(node: ColumnsNode, context: BodyContext): string {
 
   const stops = node.cells
     .slice(1)
-    .map((cell) => {
+    .map((cell, index) => {
       const value = cell.align === 'right' ? 'right' : cell.align === 'center' ? 'center' : 'left';
-      return `<w:tab w:val="${value}" w:pos="${Math.round(indent + cell.at * width)}"/>`;
+      /*
+       * With a hang, the *second* cell is the text column: it starts at `indent`, which
+       * is where Word returns every wrapped line to. Placing it from `at` instead would
+       * put the stop somewhere inside the text column and the wrap would not line up
+       * (§ ColumnsNode.hanging). Later cells still measure from `at`.
+       */
+      const pos =
+        node.hanging && index === 0 ? indent : indent + cell.at * width;
+      return `<w:tab w:val="${value}" w:pos="${Math.round(pos)}"/>`;
     })
     .join('');
 
@@ -164,7 +174,13 @@ function columnsNodeXml(node: ColumnsNode, context: BodyContext): string {
     `<w:pStyle w:val="${STYLE_IDS[node.style]}"/>` +
     (node.keepNext ? '<w:keepNext/>' : '') +
     (stops ? `<w:tabs>${stops}</w:tabs>` : '') +
-    (node.indent ? `<w:ind w:left="${node.indent}"/>` : '') +
+    // One `w:ind`, since Word merges the element as a whole — emitting `left` and
+    // `hanging` separately would drop whichever came first.
+    (node.indent || node.hanging
+      ? `<w:ind${node.indent ? ` w:left="${node.indent}"` : ''}${
+          node.hanging ? ` w:hanging="${node.hanging}"` : ''
+        }/>`
+      : '') +
     (node.rule
       ? '<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="808080"/></w:pBdr>'
       : '');
@@ -624,3 +640,384 @@ export function renderNodeXml(node: RenderNode, context: BodyContext): string {
 }
 
 export { paragraph, richTextRuns };
+
+/**
+ * The cover page, as a two-column Word section (§ `model/cover.ts`).
+ *
+ * The reference's own mechanism, and the only one that produces the shape: the cover is
+ * a section with `w:cols w:num="2" w:equalWidth="0"`, and a **continuous section break**
+ * at the end of it returns the body to one column. So the cover's own geometry is
+ * carried by a `sectPr` inside the last cover paragraph — which is where Word stores the
+ * properties of the section a paragraph *ends*, not the one it begins.
+ *
+ * A `w:br w:type="column"` moves from the left column to the right; there is no
+ * "position this in the right column" property, because Word columns are a flow.
+ * Everything before the break lands left, everything after lands right — which is why the
+ * regions are emitted in exactly that order.
+ */
+export function coverXml(cover: CoverRenderNode, context: BodyContext): string {
+  const chunks: string[] = [];
+
+  const region = (nodes: RenderNode[]) => {
+    for (const node of nodes) chunks.push(renderNodeXml(node, context));
+  };
+
+  // ---- left column -------------------------------------------------------
+  /*
+   * The corner block **floats**; it is not in the text flow.
+   *
+   * The reference anchors a `wgp` group at (-0.65in, -0.25in) — outside the text column,
+   * in the page's top-left corner — holding a textbox of the code lines and the diagonal
+   * beside it. That position is the point of the block: it hangs off the corner of the
+   * sheet, above and left of where any paragraph could start.
+   *
+   * Emitting the lines as ordinary paragraphs (which this did first) put them *in* the
+   * column, so they pushed the identity lines down the page and could never reach the
+   * corner. One anchored group reproduces it and costs the flow nothing.
+   */
+  if (cover.corner.length > 0) {
+    chunks.push(cornerGroupXml(cover, context));
+    /*
+     * Headroom for the floated block.
+     *
+     * A `wrapNone` anchor reserves no space, which is the point — but it also means the
+     * flow starts at the top of the column and the identity lines print *through* the
+     * corner block. The reference leaves the same room with blank paragraphs (its cover
+     * has eight before the authority lines). Sized to the group's own height so the two
+     * always agree.
+     */
+    for (let i = 0; i < CORNER_CLEARANCE_LINES; i += 1) chunks.push(blankParagraph(context));
+  }
+
+  region(cover.head);
+  if (cover.head.length > 0) chunks.push(blankParagraph(context));
+
+  region(cover.instructions);
+
+  if (cover.foot.length > 0) {
+    chunks.push(blankParagraph(context));
+    region(cover.foot);
+  }
+
+  // ---- right column ------------------------------------------------------
+  if (cover.panel.present) {
+    // The column break is what puts the panel on the right; nothing else can.
+    chunks.push('<w:p><w:r><w:br w:type="column"/></w:r></w:p>');
+    // The rule dividing the two columns, drawn as a shape (§ `coverRuleXml`).
+    chunks.push(coverRuleXml(cover, context));
+    if (cover.panel.note) {
+      // A bordered single-cell table is how a framed note is drawn — the same `box`
+      // treatment a stimulus gets, so it needs no new vocabulary.
+      chunks.push(framedNoteXml(cover.panel.note, context, cover.columns.right));
+      chunks.push(blankParagraph(context));
+    }
+    if (cover.panel.fieldLabel || cover.panel.boxes > 0) {
+      chunks.push(panelBoxesXml(cover.panel, context));
+    }
+  }
+
+  /*
+   * The section break that ends the cover.
+   *
+   * `w:type="continuous"` rather than `nextPage`, because the *page* break is the
+   * caller's job (a cover ends its sheet whether or not the columns change) and a
+   * `nextPage` here would emit a second blank sheet between them.
+   */
+  const columns =
+    `<w:cols w:num="2" w:equalWidth="0" w:space="${cover.columns.gap}">` +
+    `<w:col w:w="${cover.columns.left}" w:space="${cover.columns.gap}"/>` +
+    `<w:col w:w="${cover.columns.right}"/>` +
+    '</w:cols>';
+
+  chunks.push(
+    '<w:p><w:pPr><w:sectPr>' +
+      (cover.panel.present ? columns : '<w:cols w:space="708"/>') +
+      '<w:type w:val="continuous"/>' +
+      '</w:sectPr></w:pPr></w:p>',
+  );
+
+  return chunks.join('');
+}
+
+/** An empty paragraph on the page's own line box — the one way to open vertical air. */
+function blankParagraph(context: BodyContext): string {
+  return renderNodeXml({ kind: 'text', style: 'Body', text: { en: [], zh: [] } }, context);
+}
+
+/**
+ * A framed note: one bordered cell, the `box` treatment a boxed stimulus already uses.
+ *
+ * Width is **pinned to the column**, not `auto`. A table inside a Word column still
+ * measures itself against the section's full text width unless told otherwise, so `auto`
+ * drew a frame that ran off the right edge of the page.
+ */
+function framedNoteXml(note: RenderNode, context: BodyContext, width: number): string {
+  return (
+    `<w:tbl><w:tblPr><w:tblW w:w="${width}" w:type="dxa"/><w:tblLayout w:type="fixed"/>` +
+    '<w:tblBorders>' +
+    ['top', 'left', 'bottom', 'right']
+      .map((edge) => `<w:${edge} w:val="single" w:sz="4" w:space="0" w:color="auto"/>`)
+      .join('') +
+    '</w:tblBorders></w:tblPr>' +
+    `<w:tr><w:tc><w:tcPr><w:tcW w:w="${width}" w:type="dxa"/></w:tcPr>` +
+    renderNodeXml(note, context) +
+    '</w:tc></w:tr></w:tbl>' +
+    // Word requires a paragraph after a table, or the next one merges into it.
+    blankParagraph(context)
+  );
+}
+
+/**
+ * The label and its row of write-in boxes.
+ *
+ * A real table, unlike everything else on the cover: the boxes are *cells with borders*,
+ * which is the one thing tab stops cannot draw.
+ */
+function panelBoxesXml(panel: CoverPanelRender, context: BodyContext): string {
+  if (panel.boxes <= 0) {
+    return panel.fieldLabel ? renderNodeXml(panel.fieldLabel, context) : '';
+  }
+
+  const label = panel.fieldLabel
+    ? '<w:tc><w:tcPr><w:tcW w:w="1554" w:type="dxa"/><w:tcBorders>' +
+      ['top', 'left', 'bottom', 'right']
+        .map((edge) => `<w:${edge} w:val="nil"/>`)
+        .join('') +
+      '</w:tcBorders></w:tcPr>' +
+      renderNodeXml(panel.fieldLabel, context) +
+      '</w:tc>'
+    : '';
+
+  const boxes = Array.from({ length: panel.boxes })
+    .map(
+      () =>
+        '<w:tc><w:tcPr><w:tcW w:w="340" w:type="dxa"/></w:tcPr>' +
+        blankParagraph(context) +
+        '</w:tc>',
+    )
+    .join('');
+
+  return (
+    '<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/>' +
+    '<w:tblBorders>' +
+    ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']
+      .map((edge) => `<w:${edge} w:val="single" w:sz="4" w:space="0" w:color="auto"/>`)
+      .join('') +
+    '</w:tblBorders>' +
+    '<w:tblLayout w:type="fixed"/></w:tblPr>' +
+    `<w:tr>${label}${boxes}</w:tr></w:tbl>` +
+    blankParagraph(context)
+  );
+}
+
+
+/**
+ * Blank lines reserving room for the floated corner block.
+ *
+ * The group is 1.72in tall and hangs 0.25in above the text, so ~1.5in of it overlaps the
+ * column — nine 12pt lines. Expressed in lines rather than a spacing value because the
+ * page runs on a fixed line box and separation costs a line (§ one fixed line).
+ */
+const CORNER_CLEARANCE_LINES = 9;
+
+/** EMU per twip: 914400 EMU per inch, 1440 twips per inch. */
+const EMU_PER_TWIP = 635;
+
+/**
+ * The vertical rule dividing a cover's two columns.
+ *
+ * **Not** a column separator, a page border or a paragraph border — the reference draws
+ * none of those. It is an anchored `prstGeom prst="line"` connector of zero width and
+ * full page height, offset just left of the right column:
+ *
+ * ```
+ * <wp:extent cx="0" cy="8058150"/>        0 x 8.81in
+ * <a:ln w="19050">                        1.5pt solid black
+ * <wp:positionH><wp:posOffset>-151130     0.165in left of the column
+ * ```
+ *
+ * Worth spelling out because every cheaper mechanism was tried by the file's authors and
+ * rejected: `w:cols` has a `w:sep` flag and the reference does not set it (it draws a
+ * hairline at a fixed position Word chooses), `w:pgBorders` frames the whole sheet, and a
+ * `w:pBdr` follows one paragraph rather than the column. A shape is the only one of the
+ * four that puts a line of a chosen weight down the full height of a column.
+ *
+ * The preview draws the same line as a `border-left` on the right column, which lands in
+ * the same place — this is the one piece of cover geometry where the two backends use
+ * genuinely different mechanisms to reach the same picture.
+ */
+function coverRuleXml(cover: CoverRenderNode, context: BodyContext): string {
+  // Full text height: the page's own height less its margins is not known here, so the
+  // reference's own 8.81in is the height a cover rule runs to.
+  const heightEmu = 8058150;
+  // Half the gap, so the rule sits midway between the columns rather than against either.
+  const offsetEmu = Math.round((cover.columns.gap / 2) * EMU_PER_TWIP);
+
+  return lineShapeXml(context, {
+    x: -offsetEmu,
+    y: 0,
+    cx: 0,
+    cy: heightEmu,
+    // 19050 EMU = 1.5pt, the reference's own weight for the column divider.
+    weight: 19050,
+    name: 'Cover rule',
+  });
+}
+
+/**
+ * The corner code block: a floating group of a textbox and a diagonal.
+ *
+ * This is the reference's own structure, read out of its `document.xml`:
+ *
+ * ```
+ * <wp:anchor>  positionH -0.65in, positionV -0.25in   (outside the text column)
+ *   <wpg:wgp>  chExt 2725 x 2710                      (child coordinate space)
+ *     <wps:wsp prst="rect">  off 0,312  ext 1520x1350  — the code lines
+ *     <wps:wsp prst="line">  off 0,0    ext 2725x2710  — the diagonal, flipH
+ * ```
+ *
+ * A group rather than two separate anchors, because the textbox and the line are one
+ * object on the page: the diagonal is positioned *relative to the text it crosses*, so
+ * moving the block must carry both. The child coordinate space is what lets those
+ * relative positions stay in the reference's own numbers rather than being recomputed
+ * into EMU by hand.
+ *
+ * The textbox has `noFill` and no outline — it is a positioning device, not a visible
+ * box.
+ */
+function cornerGroupXml(cover: CoverRenderNode, context: BodyContext): string {
+  const id = context.nextDrawingId();
+  // The reference's own extents, so the block sits where its does.
+  const groupW = 1730375;
+  const groupH = 1720850;
+  const childW = 2725;
+  const childH = 2710;
+
+  const lines = cover.corner
+    .map((node) => renderNodeXml(node, context))
+    .join('');
+
+  const textBox =
+    '<wps:wsp><wps:cNvPr id="' +
+    (id + 1) +
+    '" name="Corner text"/><wps:cNvSpPr txBox="1"/>' +
+    '<wps:spPr bwMode="auto">' +
+    /*
+     * Wide enough for the longest code line, which is the whole job of this box.
+     *
+     * At the reference's own 1520 (of a 2725 child space, ~0.94in) "2025-26" and
+     * "PAPER 1" both wrapped onto two lines — its own code lines are shorter
+     * ("2019-DSE", "ECON", "PAPER 2" at 9pt). A placeholder a teacher types over can be
+     * longer than that, so the box takes the room and the diagonal starts past it.
+     */
+    `<a:xfrm><a:off x="0" y="312"/><a:ext cx="1900" cy="1350"/></a:xfrm>` +
+    '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>' +
+    // Invisible: the box positions the text, it is not itself drawn.
+    '<a:noFill/><a:ln><a:noFill/></a:ln></wps:spPr>' +
+    `<wps:txbx><w:txbxContent>${lines}</w:txbxContent></wps:txbx>` +
+    '<wps:bodyPr rot="0" vert="horz" wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" ' +
+    'anchor="t" anchorCtr="0"><a:noAutofit/></wps:bodyPr></wps:wsp>';
+
+  const diagonal = cover.cornerRule
+    ? '<wps:wsp><wps:cNvPr id="' +
+      (id + 2) +
+      '" name="Corner rule"/><wps:cNvCnPr/>' +
+      '<wps:spPr bwMode="auto">' +
+      /*
+       * Bottom-left to top-right, which takes **`flipV`**.
+       *
+       * A DrawingML `line` runs from its box's top-left corner to the bottom-right; a
+       * flip in either axis mirrors that into the other diagonal. Which flag to use is
+       * not worth reasoning about — it was settled by measuring both.
+       *
+       * Reference scan: as y goes 30 -> 130 (down the page), x goes 222 -> 122 (left).
+       * `flipV` export: as y goes 140 -> 220, x goes 304 -> 231. Same direction, so
+       * `flipV` is the one. (`flipH` produced the mirror image, which is what shipped
+       * once and read as a backslash.)
+       */
+      // Starts past the widest code line, so it separates the block from the page rather
+      // than striking through the paper's own name. `childW - 1900` is exactly the room
+      // the textbox above does not use.
+      // Ends above the identity lines: the textbox occupies 312..1662 of the child space,
+      // so the diagonal runs the same band and cannot reach into the flow below it. Full
+      // height let its tail cross the first identity line on Paper 2, whose narrower
+      // column starts higher.
+      `<a:xfrm flipV="1"><a:off x="1900" y="150"/><a:ext cx="${childW - 1900}" cy="1550"/></a:xfrm>` +
+      '<a:prstGeom prst="line"><a:avLst/></a:prstGeom><a:noFill/>' +
+      // 38100 EMU = 3pt, twice the column rule's weight, as the reference has it.
+      '<a:ln w="38100"><a:solidFill><a:srgbClr val="000000"/></a:solidFill><a:round/></a:ln>' +
+      '</wps:spPr><wps:bodyPr/></wps:wsp>'
+    : '';
+
+  return (
+    `<w:p><w:pPr><w:pStyle w:val="${STYLE_IDS.Body}"/>` +
+    '<w:spacing w:line="20" w:lineRule="exact"/></w:pPr>' +
+    '<w:r><w:drawing>' +
+    '<wp:anchor distT="0" distB="0" distL="114300" distR="114300" simplePos="0" ' +
+    'relativeHeight="251633664" behindDoc="0" locked="0" layoutInCell="0" allowOverlap="1">' +
+    '<wp:simplePos x="0" y="0"/>' +
+    // Outside the text column, in the corner of the sheet — the whole point of the block.
+    '<wp:positionH relativeFrom="column"><wp:posOffset>-591185</wp:posOffset></wp:positionH>' +
+    '<wp:positionV relativeFrom="paragraph"><wp:posOffset>-230505</wp:posOffset></wp:positionV>' +
+    `<wp:extent cx="${groupW}" cy="${groupH}"/>` +
+    '<wp:effectExtent l="19050" t="19050" r="22225" b="31750"/><wp:wrapNone/>' +
+    `<wp:docPr id="${id}" name="Corner block ${id}"/>` +
+    '<wp:cNvGraphicFramePr/>' +
+    '<a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup">' +
+    '<wpg:wgp><wpg:cNvGrpSpPr/><wpg:grpSpPr bwMode="auto">' +
+    `<a:xfrm><a:off x="0" y="0"/><a:ext cx="${groupW}" cy="${groupH}"/>` +
+    `<a:chOff x="0" y="0"/><a:chExt cx="${childW}" cy="${childH}"/></a:xfrm></wpg:grpSpPr>` +
+    textBox +
+    diagonal +
+    '</wpg:wgp>' +
+    '</a:graphicData></a:graphic></wp:anchor>' +
+    '</w:drawing></w:r></w:p>'
+  );
+}
+
+/**
+ * One straight line, as an anchored DrawingML shape.
+ *
+ * The cover's two rules — the column divider and the corner diagonal — are both lines of
+ * a chosen weight at a chosen place, which is the one thing Word's border vocabulary
+ * cannot express (§ `coverRuleXml`). A shape carries **no relationship**, unlike an
+ * image, so an incorrect one prints wrong rather than making Word report the whole file
+ * as needing repair.
+ */
+function lineShapeXml(
+  context: BodyContext,
+  shape: {
+    x: number;
+    y: number;
+    cx: number;
+    cy: number;
+    weight: number;
+    flipH?: boolean;
+    name: string;
+  },
+): string {
+  const id = context.nextDrawingId();
+  return (
+    `<w:p><w:pPr><w:pStyle w:val="${STYLE_IDS.Body}"/>` +
+    '<w:spacing w:line="20" w:lineRule="exact"/></w:pPr>' +
+    '<w:r><w:drawing>' +
+    '<wp:anchor distT="0" distB="0" distL="114300" distR="114300" simplePos="0" ' +
+    'relativeHeight="251634688" behindDoc="0" locked="0" layoutInCell="1" allowOverlap="1">' +
+    '<wp:simplePos x="0" y="0"/>' +
+    `<wp:positionH relativeFrom="column"><wp:posOffset>${shape.x}</wp:posOffset></wp:positionH>` +
+    `<wp:positionV relativeFrom="paragraph"><wp:posOffset>${shape.y}</wp:posOffset></wp:positionV>` +
+    `<wp:extent cx="${shape.cx}" cy="${shape.cy}"/>` +
+    '<wp:effectExtent l="0" t="0" r="19050" b="19050"/><wp:wrapNone/>' +
+    `<wp:docPr id="${id}" name="${shape.name} ${id}"/>` +
+    '<wp:cNvGraphicFramePr><a:graphicFrameLocks/></wp:cNvGraphicFramePr>' +
+    '<a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape">' +
+    '<wps:wsp><wps:cNvCnPr/><wps:spPr bwMode="auto">' +
+    `<a:xfrm${shape.flipH ? ' flipH="1"' : ''}>` +
+    `<a:off x="0" y="0"/><a:ext cx="${shape.cx}" cy="${shape.cy}"/></a:xfrm>` +
+    '<a:prstGeom prst="line"><a:avLst/></a:prstGeom><a:noFill/>' +
+    `<a:ln w="${shape.weight}"><a:solidFill><a:srgbClr val="000000"/></a:solidFill><a:round/></a:ln>` +
+    '</wps:spPr><wps:bodyPr/></wps:wsp>' +
+    '</a:graphicData></a:graphic></wp:anchor>' +
+    '</w:drawing></w:r></w:p>'
+  );
+}

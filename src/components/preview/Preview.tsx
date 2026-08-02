@@ -44,7 +44,13 @@ import type {
 import { isModalLayerOpen } from "@/components/ui/modalLayer";
 import { useWorksheetStore, type BandScope } from "@/store/worksheetStore";
 import { diagramSvg } from "@/render/diagram";
-import type { EditTarget, RenderNode, TableNode, TextNode } from "@/render/ir";
+import type {
+  CoverRenderNode,
+  EditTarget,
+  RenderNode,
+  TableNode,
+  TextNode,
+} from "@/render/ir";
 import { bandFieldText, renderWorksheet, type RenderedItem } from "@/render/worksheet";
 import { listQuestionTypes, requireQuestionType } from "@/registry";
 import {
@@ -446,6 +452,8 @@ const TARGET_NAME: Record<EditTarget["kind"], string> = {
   // variants — because a `bandField` target does not say which one it came from.
   bandField: "Field",
   labelListCell: "Label row",
+  coverLine: "Cover line",
+  coverField: "Cover field",
 };
 
 /**
@@ -642,8 +650,18 @@ export interface EditContext {
 function formatStyle(format: TextFormat | undefined): React.CSSProperties {
   if (!format) return {};
   return {
+    /*
+     * An enlarged element needs a line box to match, or it overprints the line above.
+     *
+     * The page runs on a fixed 12pt line with no paragraph spacing (§ one fixed line),
+     * and a 28pt title drawn into a 12pt box spills over its neighbours — three cover
+     * title lines landed on top of each other. The exporter already restates `w:line`
+     * from `exactLineFor()` whenever `fontSize` is set (`formatParagraphProps`); this is
+     * the same rule in the same place for the page, so the two agree and the paginator
+     * measures the height Word will print.
+     */
     ...(format.fontSize !== undefined
-      ? { fontSize: `${format.fontSize}pt` }
+      ? { fontSize: `${format.fontSize}pt`, lineHeight: 12 / 11 }
       : {}),
     ...(format.bold !== undefined
       ? { fontWeight: format.bold ? 700 : 400 }
@@ -1341,6 +1359,153 @@ function TableNodeView({
   );
 }
 
+/**
+ * The cover page (§ `model/cover.ts`).
+ *
+ * Mirrors what the `.docx` emits, which is the rule the whole preview follows: the
+ * exporter writes a two-column section, so this draws two columns at the *same twip
+ * widths*, converted to a percentage of the text column. Anything else and the preview
+ * would be lying about where the panel sits.
+ *
+ * Regions are ordinary `RenderNode`s, so each one goes through `NodeView` and inherits
+ * click-to-select and double-click-to-edit for free — the cover is edited on the page
+ * exactly like everything else, not in a dialog.
+ */
+function CoverSheet({
+  cover,
+  language,
+  ctx,
+}: {
+  cover: CoverRenderNode;
+  language: LanguageMode;
+  ctx?: EditContext;
+}) {
+  const { left, gap, right } = cover.columns;
+  const total = left + gap + right;
+  const pct = (value: number) => `${(value / total) * 100}%`;
+
+  const region = (nodes: RenderNode[], name: string) =>
+    nodes.length === 0 ? null : (
+      <div data-cover-region={name}>
+        {nodes.map((node, index) => (
+          <NodeView key={index} node={node} language={language} ctx={ctx} />
+        ))}
+      </div>
+    );
+
+  return (
+    <div data-cover className="flex" style={{ gap: pct(gap) }}>
+      <div
+        className="relative min-w-0"
+        // Padded to clear the floated corner block, which occupies no flow space.
+        style={{
+          width: cover.panel.present ? pct(left) : "100%",
+          paddingTop: cover.corner.length > 0 ? "1.5in" : undefined,
+        }}
+      >
+        {/*
+          The corner block, with the reference's diagonal.
+
+          The rule is drawn with a CSS gradient rather than an SVG or a border: it is one
+          line across a box, it must not be selectable or printable chrome, and a gradient
+          needs no extra element in the flow to reserve space.
+        */}
+        {/*
+          The corner block **floats**, matching the anchored group the .docx emits
+          (§ `cornerGroupXml`): it hangs off the top-left of the sheet, outside the text
+          column, so it costs the flow no vertical space and the identity lines start at
+          the top of the page. In the flow it pushed everything down and could never
+          reach the corner.
+        */}
+        {cover.corner.length > 0 && (
+          <div
+            className="absolute whitespace-nowrap pb-2"
+            style={{ left: "-0.65in", top: "-0.25in", width: "1.9in" }}
+          >
+            {region(cover.corner, "corner")}
+            {cover.cornerRule && (
+              // The diagonal runs through the block's right-hand padding, clear of the
+              // words — in the reference it separates the code from the page, it does not
+              // strike it through.
+              <span
+                aria-hidden
+                // Positioned as the exported shape is: it starts at 70% across the
+                // block (child x=1900 of 2725) and runs the textbox's own vertical band,
+                // so preview and .docx put the line in the same place.
+                className="pointer-events-none absolute"
+                style={{ left: "70%", right: 0, top: "6%", bottom: "12%" }}
+              >
+                <span
+                  className="block h-full w-full"
+                  style={{
+                    /*
+                      `to bottom right` draws the "/" diagonal, not the "\\" one.
+                       *
+                       * The keyword names the gradient's *axis of travel*, and the stops
+                       * lay a band **perpendicular** to it — so `to top right` produced
+                       * the mirror image, which shipped once and read as a backslash.
+                       * Verified by measuring the rendered pixels, as the .docx flip was
+                       * (§ `cornerGroupXml`), rather than by reasoning about the keyword.
+                       */
+                    background:
+                      "linear-gradient(to bottom right, transparent calc(50% - 0.6px), #000 calc(50% - 0.6px), #000 calc(50% + 0.6px), transparent calc(50% + 0.6px))",
+                  }}
+                />
+              </span>
+            )}
+          </div>
+        )}
+
+        {cover.head.length > 0 && <div className="mb-8">{region(cover.head, "head")}</div>}
+        {region(cover.instructions, "instructions")}
+        {cover.foot.length > 0 && <div className="mt-10">{region(cover.foot, "foot")}</div>}
+      </div>
+
+      {cover.panel.present && (
+        // The rule between the columns is the *column boundary*, which Word draws as the
+        // gap between two columns — here a left border on the right column, so it sits in
+        // the same place at any split.
+        <div
+          className="min-w-0 pl-4"
+          style={{
+            width: pct(right),
+            // 1.5pt, matching the shape the .docx draws (§ `coverRuleXml`) — the one
+            // place the two backends use different mechanisms for the same picture, so
+            // the weight has to be stated on both sides or only one of them is right.
+            borderLeft: "1.5pt solid #000",
+          }}
+          data-cover-region="panel"
+        >
+          {cover.panel.note && (
+            <div className="mb-4 border border-[#000] p-2">
+              <NodeView node={cover.panel.note} language={language} ctx={ctx} />
+            </div>
+          )}
+          {(cover.panel.fieldLabel || cover.panel.boxes > 0) && (
+            <div className="flex items-stretch">
+              {cover.panel.fieldLabel && (
+                <div className="flex items-center pr-1.5">
+                  <NodeView node={cover.panel.fieldLabel} language={language} ctx={ctx} />
+                </div>
+              )}
+              {Array.from({ length: cover.panel.boxes }).map((_, index) => (
+                <span
+                  key={index}
+                  aria-hidden
+                  className="border border-[#000]"
+                  // Sized in em so the boxes track the paper's own font size rather than
+                  // a pixel guess that would drift as the sheet scales.
+                  style={{ width: "1.6em", height: "1.6em", marginLeft: index ? "-1px" : 0 }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function NodeView({
   node,
   language,
@@ -1368,7 +1533,17 @@ function NodeView({
           node.rule ? "border-b border-slate-400 pb-0.5" : ""
         }`}
         style={{
-          marginLeft: node.indent ? `${node.indent / 20}pt` : undefined,
+          /*
+           * `hanging` pulls the first line back in Word (§ ColumnsNode.hanging). Here the
+           * cells are already separate flex boxes, so a wrapped cell hangs at its own left
+           * edge for free — what has to match is the *block's* position: Word's text
+           * column sits at `left`, with the marker pulled back into the gutter at
+           * `left - hanging`. So the row starts there and the marker cell is given that
+           * gutter as its width, which lands both columns where the .docx puts them.
+           */
+          marginLeft: node.indent
+            ? `${(node.indent - (node.hanging ?? 0)) / 20}pt`
+            : undefined,
         }}
       >
         {node.cells.map((cell, index) => (
@@ -1377,10 +1552,15 @@ function NodeView({
             className="min-w-0"
             style={{
               // The last cell takes the rest of the row so long text can still wrap.
+              // With a hang, the first cell is exactly the gutter the marker sits in —
+              // a fixed pt width, not a fraction, so the text column lands on `indent`
+              // in both backends (§ ColumnsNode.hanging).
               flex:
-                index < node.cells.length - 1
-                  ? `0 0 ${span(cell.at, node.cells[index + 1].at)}`
-                  : "1 1 auto",
+                node.hanging && index === 0
+                  ? `0 0 ${node.hanging / 20}pt`
+                  : index < node.cells.length - 1
+                    ? `0 0 ${span(cell.at, node.cells[index + 1].at)}`
+                    : "1 1 auto",
               textAlign: cell.align,
               ...formatStyle(cell.format),
             }}
@@ -4696,6 +4876,34 @@ export function Preview({
               : `${(scale - 1) * pageHeightMm * pages.length}mm`,
         }}
       >
+        {/*
+          The cover is its own sheet, ahead of everything the paginator packed.
+
+          It is deliberately outside `pages`: the paginator measures body content into
+          sheets, and a cover neither flows nor shares a page with question 1. Giving it
+          to the packer would mean teaching every measurement path about a page that is
+          never split — for a sheet whose height is fixed by definition.
+        */}
+        {rendered.cover && (
+          <div data-page-index={-1} data-cover-page className="relative">
+            <div
+              className="paper paper-shadow relative flex flex-col overflow-hidden rounded-[2px]"
+              style={pageStyleFor(0)}
+              lang={language === "zh" ? "zh-HK" : "en"}
+              onClick={(event) => {
+                const swept = sweptRef.current;
+                sweptRef.current = false;
+                if (swept) return;
+                if (isBlankAreaClick(event.target)) clearPageSelection();
+              }}
+            >
+              <div className="flex-1">
+                <CoverSheet cover={rendered.cover} language={language} ctx={ctx} />
+              </div>
+            </div>
+          </div>
+        )}
+
         {pages.map((pageBlocks, pageIndex) => (
           // `data-page-index` is what the page rail scrolls to. The sheet is the
           // scroll target rather than its first block, so a click lands on the top of

@@ -3,7 +3,7 @@ import { bandFieldSegments } from '@/model/bandSegments';
 import { resolveFlow } from '@/model/flow';
 import { sectionMarksById, worksheetMarks } from '@/model/marks';
 import { computeNumbering } from '@/model/numbering';
-import { isBiTextEmpty, plain } from '@/model/text';
+import { bi, isBiTextEmpty, plain } from '@/model/text';
 import type {
   Band,
   BandField,
@@ -14,7 +14,20 @@ import type {
   Worksheet,
 } from '@/model/types';
 import { requireQuestionType } from '@/registry';
-import { blankLine, endsInBlankLine, includeNode, type RenderNode } from './ir';
+import {
+  blankLine,
+  endsInBlankLine,
+  includeNode,
+  type CoverRenderNode,
+  type NodeStyle,
+  type RenderNode,
+} from './ir';
+import { coverColumns, coverHasPanel, coverLines } from '@/model/cover';
+import type { CoverLine, CoverPage } from '@/model/coverTypes';
+
+/** Twips: the gutter a "(1)" sits in, and where the instruction text column starts. */
+const COVER_INSTRUCTION_INDENT = 480;
+const COVER_INSTRUCTION_HANGING = 480;
 
 /**
  * Assemble the whole worksheet into render IR. This is the one place that walks
@@ -53,6 +66,14 @@ export interface RenderedWorksheet {
    * title is one of the fields inside them, so printing both would duplicate it.
    */
   bands: RenderNode[];
+  /**
+   * The cover page, when the document has one.
+   *
+   * Kept beside `bands` rather than inside `items`, because a cover is not part of the
+   * document flow — it is a whole sheet with its own column geometry printed before the
+   * body begins (§ `model/cover.ts`).
+   */
+  cover?: CoverRenderNode;
   /**
    * Absent once the teacher has cleared the title text.
    *
@@ -183,6 +204,118 @@ const questionRenderCache = new WeakMap<
   }
 >();
 
+/**
+ * The cover page's IR (§ `model/cover.ts`).
+ *
+ * Each region becomes ordinary `RenderNode`s, so the backends reuse the paragraph and
+ * columns emitters they already have — only the two-column frame around them is new.
+ *
+ * Instruction numbers are **derived here from position**, never stored, the same rule
+ * questions follow: deleting instruction (2) renumbers the rest rather than leaving a
+ * hole. They are literal text on a `columns` row rather than a `w:num` list, because a
+ * cover's instructions are not part of the question numbering and putting them on that
+ * stream would renumber them as questions are added.
+ */
+function renderCover(cover: CoverPage): CoverRenderNode {
+  /*
+   * The cover's own font reaches every line.
+   *
+   * Both reference papers set the whole front page in Arial while the body behind it is
+   * Times New Roman, so the face is a property of the cover rather than something
+   * inherited from the worksheet. Merged *under* the line's own format, so a teacher who
+   * sets a face on one line still wins.
+   */
+  const withFonts = (format: CoverLine['format']) =>
+    cover.fonts ? { fonts: cover.fonts, ...format } : format;
+
+  /** A region's lines, each followed by the blank lines it asks for. */
+  const withGaps = (lines: CoverLine[]): RenderNode[] =>
+    lines.flatMap((line) => [
+      asText(line),
+      ...Array.from({ length: line.gapAfter ?? 0 }, () => blankLine()),
+    ]);
+
+  const asText = (line: CoverLine, style: NodeStyle = 'Body'): RenderNode => ({
+    kind: 'text',
+    style,
+    text: line.text,
+    format: withFonts(line.format),
+    edit: { kind: 'coverLine', lineId: line.id },
+  });
+
+  const instructionLines = coverLines(cover, 'instructions');
+  // Derived from position like every other number in this app, so deleting one
+  // instruction renumbers the rest instead of leaving a hole.
+  const marker = (index: number) =>
+    cover.instructionMarker === 'dot' ? `${index + 1}.` : `(${index + 1})`;
+  const instructions: RenderNode[] = [];
+  if (!isBiTextEmpty(cover.instructionsHeading)) {
+    instructions.push({
+      kind: 'text',
+      style: 'Section Heading',
+      text: cover.instructionsHeading!,
+      keepNext: true,
+      format: withFonts(undefined),
+      edit: { kind: 'coverField', field: 'instructionsHeading' },
+    });
+    instructions.push(blankLine());
+  }
+  instructionLines.forEach((line, index) => {
+    instructions.push({
+      kind: 'columns',
+      style: 'Body',
+      indent: COVER_INSTRUCTION_INDENT,
+      // Hung, so a wrapped instruction stays in its own column rather than running back
+      // under its own number (§ ColumnsNode.hanging).
+      hanging: COVER_INSTRUCTION_HANGING,
+      cells: [
+        { text: bi(marker(index), marker(index)), at: 0, format: withFonts(undefined) },
+        {
+          text: line.text,
+          at: 0.5,
+          format: withFonts(line.format),
+          edit: { kind: 'coverLine', lineId: line.id },
+        },
+      ],
+    });
+    if (index < instructionLines.length - 1) instructions.push(blankLine());
+  });
+
+  const panelPresent = coverHasPanel(cover);
+
+  return {
+    kind: 'cover',
+    columns: coverColumns(cover),
+    corner: withGaps(coverLines(cover, 'corner')),
+    cornerRule: cover.cornerRule ?? false,
+    head: withGaps(coverLines(cover, 'head')),
+    instructions,
+    panel: {
+      note: isBiTextEmpty(cover.panelNote)
+        ? undefined
+        : {
+            kind: 'text',
+            style: 'Body',
+            text: cover.panelNote!,
+            format: withFonts(undefined),
+            edit: { kind: 'coverField', field: 'panelNote' },
+          },
+      fieldLabel: isBiTextEmpty(cover.panelFieldLabel)
+        ? undefined
+        : {
+            kind: 'text',
+            style: 'Body',
+            text: cover.panelFieldLabel!,
+            format: withFonts(undefined),
+            edit: { kind: 'coverField', field: 'panelFieldLabel' },
+          },
+      boxes: cover.panelBoxes ?? 0,
+      present: panelPresent,
+    },
+    foot: withGaps(coverLines(cover, 'foot')),
+  };
+}
+
 export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): RenderedWorksheet {
   const numbering = computeNumbering(worksheet);
 
@@ -196,6 +329,8 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
   const bands = (worksheet.bands ?? [])
     .map((band) => renderBand(band, total))
     .filter((node): node is RenderNode => node !== undefined);
+
+  const cover = worksheet.cover ? renderCover(worksheet.cover) : undefined;
 
   const title: RenderNode | undefined = isBiTextEmpty(worksheet.title)
     ? undefined
@@ -348,7 +483,7 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
     .filter((item): item is Extract<RenderedItem, { type: 'question' }> => item.type === 'question')
     .map((item) => item.question);
 
-  return { bands, title, instructions, items, questions };
+  return { bands, cover, title, instructions, items, questions };
 }
 
 /**
@@ -443,11 +578,29 @@ function renderLayoutElement(
     }
 
     case 'labelList': {
+      const indent = element.indent ?? 480;
+      /*
+       * A hanging label keeps its wrapped value text in one column
+       * (§ ColumnsNode.hanging).
+       *
+       * The hang *is* the label column: the row begins at `indent - hanging`, the label
+       * prints in that gutter, and the value starts at `indent` — where every wrapped
+       * line then also starts, which is the whole point of hanging it. So `valueAt` is
+       * not authored in this mode; it is exactly where the hang ends, and storing one
+       * too would be a second answer to the same question.
+       *
+       * The backends place the value cell from `hanging` directly rather than from a
+       * fraction, because only they know the row's real width — `render/` may not import
+       * the exporter's page constants, and threading page setup down here to compute a
+       * fraction would buy nothing the backends cannot already do.
+       */
+      const hanging = element.hanging;
       const valueAt = element.valueAt ?? 0.35;
       return element.rows.map((row) => ({
         kind: 'columns',
         style: 'Body',
-        indent: element.indent ?? 480,
+        indent,
+        hanging,
         cells: [
           {
             text: row.label,

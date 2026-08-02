@@ -60,6 +60,7 @@ export const KNOWN_KEYS = new Set([
   'flow',
   'fonts',
   'bands',
+  'cover',
   'pageSetup',
   'header',
   'footer',

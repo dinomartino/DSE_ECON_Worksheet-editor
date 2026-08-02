@@ -24,7 +24,20 @@ describe('bandFieldStyle', () => {
   });
 
   it('renders fontSize in points, the unit the model stores', () => {
-    expect(bandFieldStyle(field({ fontSize: 14 }))).toEqual({ fontSize: '14pt' });
+    expect(bandFieldStyle(field({ fontSize: 14 }))).toEqual({
+      fontSize: '14pt',
+      lineHeight: 12 / 11,
+    });
+  });
+
+  it('grows the line box with the size, or a tall row overprints the one above', () => {
+    // A band row inherits the page's fixed 12pt line, so `fontSize` alone drew outside
+    // it: two enlarged rows in one masthead landed on top of each other. `bandsHeight()`
+    // already scales its estimate by the largest field size, so the DOM has to agree or
+    // the preview disagrees with both the exporter and the paginator.
+    expect(bandFieldStyle(field({ fontSize: 28 })).lineHeight).toBe(12 / 11);
+    // Unset size keeps the row on the page's own rhythm — no override at all.
+    expect(bandFieldStyle(field({ bold: true })).lineHeight).toBeUndefined();
   });
 
   it('carries every property the format toolbar can set', () => {
@@ -44,6 +57,7 @@ describe('bandFieldStyle', () => {
     );
     expect(style).toEqual({
       fontSize: '14pt',
+      lineHeight: 12 / 11,
       fontWeight: 700,
       fontStyle: 'italic',
       textDecoration: 'underline',

@@ -42,6 +42,16 @@ import {
   type FlowMove,
 } from '@/model/flow';
 import { applyBandFieldSide } from '@/model/bandSegments';
+import {
+  addCoverLine,
+  createCoverPage,
+  removeCoverLine,
+  setCoverLineFormat,
+  setCoverLineText,
+  type CoverOptions,
+  type CoverPage,
+  type CoverRegion,
+} from '@/model/cover';
 import { defaultFooter, defaultHeader, headerFooterOf } from '@/model/page';
 import type {
   Band,
@@ -302,6 +312,23 @@ interface WorksheetState {
 
   // --- Page setup, masthead bands, header/footer ------------------------------
   setPageSetup: (patch: Partial<PageSetup>) => void;
+  /**
+   * Put a mock-exam cover at the front of the document.
+   *
+   * One commit for the whole thing — masthead rows, instructions and the page break are
+   * a single gesture and must cost a single undo press. See `model/cover.ts` for why
+   * this generates plain elements rather than introducing a `Cover` type.
+   */
+  applyCover: (options: CoverOptions) => void;
+  /** Drop the cover page entirely. */
+  removeCover: () => void;
+  /** Patch the cover's non-line settings (columns, panel boxes, the diagonal rule). */
+  updateCover: (patch: Partial<CoverPage>) => void;
+  /** Rewrite one cover line, addressed by id — what an in-place page edit commits. */
+  setCoverLineText: (lineId: string, text: BiText) => void;
+  formatCoverLine: (lineId: string, patch: Partial<TextFormat>) => void;
+  addCoverLine: (region: Exclude<CoverRegion, 'panel'>, afterId?: string) => void;
+  removeCoverLine: (lineId: string) => void;
   setBands: (bands: Band[]) => void;
   addBand: (band?: Band) => void;
   /** Remove one masthead row, so a row added on the page can be taken back there. */
@@ -1061,6 +1088,31 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
       },
     })),
 
+  applyCover: (options) =>
+    // One field, so one assignment — the payoff of modelling a cover as a page rather
+    // than as a run of layout elements to thread into the flow.
+    get().commit((draft) => ({ ...draft, cover: createCoverPage(options) })),
+  removeCover: () => get().commit((draft) => ({ ...draft, cover: undefined })),
+  updateCover: (patch) =>
+    get().commit((draft) =>
+      draft.cover ? { ...draft, cover: { ...draft.cover, ...patch } } : draft,
+    ),
+  setCoverLineText: (lineId, text) =>
+    get().commit((draft) =>
+      draft.cover ? { ...draft, cover: setCoverLineText(draft.cover, lineId, text) } : draft,
+    ),
+  formatCoverLine: (lineId, patch) =>
+    get().commit((draft) =>
+      draft.cover ? { ...draft, cover: setCoverLineFormat(draft.cover, lineId, patch) } : draft,
+    ),
+  addCoverLine: (region, afterId) =>
+    get().commit((draft) =>
+      draft.cover ? { ...draft, cover: addCoverLine(draft.cover, region, afterId) } : draft,
+    ),
+  removeCoverLine: (lineId) =>
+    get().commit((draft) =>
+      draft.cover ? { ...draft, cover: removeCoverLine(draft.cover, lineId) } : draft,
+    ),
   setBands: (bands) => get().commit((draft) => ({ ...draft, bands })),
 
   addBand: (band) =>

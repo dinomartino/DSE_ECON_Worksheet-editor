@@ -26,6 +26,7 @@ import {
   twipsToCm,
 } from '@/model/page';
 import { bi, emptyBiText, plain } from '@/model/text';
+import type { CoverPaperStyle } from '@/model/cover';
 import type { Band, HeaderFooter, PageMargins, PaperSize } from '@/model/types';
 import { useWorksheetStore, type BandScope } from '@/store/worksheetStore';
 import { BandPreview, BandPresetCard } from './BandPreview';
@@ -56,7 +57,7 @@ import { BiTextField } from './BiTextField';
  * places, none of which mentioned the other two. They are now one tab ordered down the
  * page: title, then header, then footer.
  */
-type Tab = 'document' | 'page' | 'furniture';
+type Tab = 'document' | 'page' | 'furniture' | 'cover';
 
 /** Top/bottom before left/right — the order Word and every print dialog state them in. */
 const MARGIN_EDGES: Array<{ key: keyof PageMargins; label: string }> = [
@@ -650,6 +651,144 @@ function HeaderFooterSection({ which }: { which: 'header' | 'footer' }) {
  * So the choice is stated once, as a choice, with the consequence drawn under each
  * option rather than discovered by trying it.
  */
+/**
+ * Build a mock-exam cover.
+ *
+ * A once-per-document decision with its own options, so it lives here rather than on the
+ * add rail — and it is deliberately a *form with a button*, not a live-bound section: the
+ * cover it produces is plain elements a teacher then edits on the page (see
+ * `model/cover.ts`). Re-running it replaces the cover rather than stacking a second one.
+ */
+function CoverTab({ onClose }: { onClose: () => void }) {
+  const applyCover = useWorksheetStore((s) => s.applyCover);
+  const removeCover = useWorksheetStore((s) => s.removeCover);
+  const hasCover = useWorksheetStore((s) => Boolean(s.worksheet.cover));
+
+  const [paperStyle, setPaperStyle] = useState<CoverPaperStyle>('mcq');
+  const [code, setCode] = useState('');
+  const [school, setSchool] = useState('');
+  const [examName, setExamName] = useState('');
+  const [paperName, setPaperName] = useState('');
+  const [timeAllowed, setTimeAllowed] = useState('');
+
+  const field = (
+    label: string,
+    value: string,
+    onChange: (next: string) => void,
+    placeholder: string,
+  ) => (
+    <label className="flex flex-col gap-1.5 text-[13px]">
+      <span className="font-medium text-ink">{label}</span>
+      <input
+        type="text"
+        value={value}
+        placeholder={placeholder}
+        className="h-9 rounded-lg border border-line bg-surface px-2.5 text-[13px] text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </label>
+  );
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h3 className="text-[13px] font-semibold text-ink">Mock exam cover</h3>
+        <p className="text-[11px] leading-relaxed text-ink-muted">
+          A two-column front page: the paper’s identity and instructions on the left, a
+          candidate panel on the right. Every line is edited on the page afterwards, like
+          any other text.
+        </p>
+      </div>
+
+      <Field
+        label="Paper style"
+        hint="The two differ in where candidates put their answers, which is what the instructions have to say."
+      >
+        <div className="grid grid-cols-2 gap-2">
+          {(
+            [
+              ['mcq', 'Multiple choice', 'Answers on a separate answer sheet'],
+              ['writeIn', 'Write-in booklet', 'Answers in the spaces provided'],
+            ] as Array<[CoverPaperStyle, string, string]>
+          ).map(([value, label, hint]) => (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={paperStyle === value}
+              onClick={() => setPaperStyle(value)}
+              className={`flex cursor-pointer flex-col gap-1 rounded-lg border p-2.5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                paperStyle === value
+                  ? 'border-accent bg-accent/5 ring-1 ring-accent'
+                  : 'border-line bg-surface hover:border-ink-subtle'
+              }`}
+            >
+              <span
+                className={`text-[12px] font-medium ${
+                  paperStyle === value ? 'text-accent' : 'text-ink'
+                }`}
+              >
+                {label}
+              </span>
+              <span className="text-[11px] leading-snug text-ink-muted">{hint}</span>
+            </button>
+          ))}
+        </div>
+      </Field>
+
+      {/* Every field is optional: left blank, the cover carries a placeholder the teacher
+          types over on the page, which is faster than filling a form for a value they
+          were going to see and edit anyway. */}
+      <div className="grid grid-cols-2 gap-3">
+        {field('Corner code', code, setCode, '2025-26')}
+        {field('School', school, setSchool, 'SCHOOL NAME')}
+        {field('Examination', examName, setExamName, 'S.6 MOCK EXAMINATION 2025 – 2026')}
+        {field('Paper', paperName, setPaperName, 'ECONOMICS   PAPER 1')}
+        {field('Time allowed', timeAllowed, setTimeAllowed, '8:30 am – 9:30 am (1 hour)')}
+      </div>
+
+      {hasCover && (
+        <p className="rounded-lg border border-line bg-surface-sunken p-2.5 text-[11px] leading-relaxed text-ink-muted">
+          This document already has a cover. Building another replaces it.
+        </p>
+      )}
+
+      <div className="flex items-center justify-between border-t border-line pt-4">
+        {hasCover ? (
+          <Button
+            variant="danger"
+            onClick={() => {
+              removeCover();
+              onClose();
+            }}
+          >
+            Remove cover
+          </Button>
+        ) : (
+          <span />
+        )}
+        <Button
+          variant="primary"
+          onClick={() => {
+            applyCover({
+              paperStyle,
+              code: code.trim() || undefined,
+              school: school.trim() || undefined,
+              examName: examName.trim() || undefined,
+              paperName: paperName.trim() || undefined,
+              timeAllowed: timeAllowed.trim() || undefined,
+            });
+            // The result is on the page, so get out of the way and let them look at it.
+            onClose();
+          }}
+        >
+          {hasCover ? 'Replace cover' : 'Add cover page'}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function TitleSection() {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const setBands = useWorksheetStore((s) => s.setBands);
@@ -806,9 +945,16 @@ export function DocumentSettings({
             hint: 'Header, footer, page 1',
             icon: <TextIcon size={16} />,
           },
+          {
+            id: 'cover',
+            label: 'Cover',
+            hint: 'Mock exam front page',
+            icon: <DocumentIcon size={16} />,
+          },
         ]}
       >
         {tab === 'document' && <DocumentTab />}
+        {tab === 'cover' && <CoverTab onClose={onClose} />}
         {tab === 'page' && <PageTab />}
         {/* Ordered down the page — title, then the top of every page, then the bottom —
             so the panel reads in the order the printed sheet does. */}

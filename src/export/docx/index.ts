@@ -19,7 +19,7 @@ import type { Band, BandField, FontPair, HeaderFooter, LanguageMode, OutputMode,
 import type { RenderNode } from '@/render/ir';
 import { bandFieldText, collectListStreams, renderWorksheet } from '@/render/worksheet';
 import { collectDiagramNodes, renderDiagramImages, type DiagramImageMap } from '../diagramImage';
-import { renderNodeXml, type BodyContext } from './body';
+import { coverXml, renderNodeXml, type BodyContext } from './body';
 import { assignNumIds, buildNumberingXml } from './numbering';
 import {
   buildCorePropsXml,
@@ -264,6 +264,18 @@ function buildParts(
   };
 
   const chunks: string[] = [];
+
+  /*
+   * The cover comes first, and owns its own sheet.
+   *
+   * It ends with a continuous section break carrying its two-column geometry
+   * (`coverXml`), then a page break starts the body on sheet 2 — a cover that shares a
+   * page with question 1 is not a cover.
+   */
+  if (rendered.cover) {
+    chunks.push(coverXml(rendered.cover, context));
+    chunks.push('<w:p><w:r><w:br w:type="page"/></w:r></w:p>');
+  }
 
   // Routed through the shared node renderer rather than hand-built here, so
   // per-element formatting reaches the title, instructions and section headings the

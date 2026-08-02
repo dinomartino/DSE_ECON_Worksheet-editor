@@ -114,7 +114,21 @@ export function withPageNumber(
  */
 export function bandFieldStyle(field: BandField): React.CSSProperties {
   return {
-    ...(field.format?.fontSize ? { fontSize: `${field.format.fontSize}pt` } : {}),
+    /*
+     * An enlarged field needs a line box to match, or it overprints the row above.
+     *
+     * A band row inherits the page's fixed 12pt line (§ one fixed line, no paragraph
+     * spacing), and `fontSize` alone left a 14pt school name drawing outside it — two
+     * large rows in one masthead landed on top of each other. `bandsHeight()` already
+     * scales its estimate by the largest field size, so without this the DOM disagreed
+     * with the height the exporter and the paginator were both working from.
+     *
+     * Expressed as a unitless multiple of the field's own size, which is what
+     * `exactLineFor` computes in twips for the .docx — one rule, two units.
+     */
+    ...(field.format?.fontSize
+      ? { fontSize: `${field.format.fontSize}pt`, lineHeight: 12 / 11 }
+      : {}),
     ...(field.format?.bold ? { fontWeight: 700 } : {}),
     ...(field.format?.italic ? { fontStyle: 'italic' } : {}),
     ...(field.format?.underline ? { textDecoration: 'underline' } : {}),
