@@ -1,10 +1,22 @@
 import { resolveFlow, type FlowDoc } from './flow';
 import type { Question, QuestionPart, StructuredQuestion, Worksheet } from './types';
 
-/** A part's marks: its own value, or the sum of its sub-parts (§3.5). */
+/**
+ * A part's marks: its own value, or the sum of its sub-parts (§3.5).
+ *
+ * Sub-parts win when any of them is separately marked, so re-marking a sub-part still
+ * moves the question total without anyone maintaining a second copy of the sum.
+ *
+ * When **no** sub-part carries marks, the part's own value is the total. That is the
+ * shared-label shape real papers use — DSE 2019 P2 Q13(b) prints one "(5 marks)" for
+ * (i) and (ii) together — where the sub-parts genuinely have no individual value to add
+ * up. Summing them anyway would report 0 marks for a part plainly worth 5, silently
+ * understating the question, the section and the paper.
+ */
 export function partMarks(part: QuestionPart): number {
-  if (part.subParts && part.subParts.length > 0) {
-    return part.subParts.reduce((sum, sub) => sum + (sub.marks || 0), 0);
+  const subParts = part.subParts ?? [];
+  if (subParts.some((sub) => sub.marks !== undefined)) {
+    return subParts.reduce((sum, sub) => sum + (sub.marks || 0), 0);
   }
   return part.marks || 0;
 }

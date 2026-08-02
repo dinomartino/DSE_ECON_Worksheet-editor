@@ -208,6 +208,29 @@ export function Pill({
   );
 }
 
+interface NumberFieldBase {
+  label: string;
+  min?: number;
+  /** Upper bound, clamped on the way out so a caller never sees an out-of-range value. */
+  max?: number;
+  suffix?: string;
+  placeholder?: string;
+}
+
+/**
+ * `clearable` decides the field's *type*, not just its behaviour.
+ *
+ * A caller that cannot be emptied keeps the plain `number` signature it always had, so
+ * it never has to handle an `undefined` its model has no room for. Only a caller that
+ * opts in is asked to — which is what keeps "absent" from leaking into the many places
+ * where a marks box genuinely means zero.
+ */
+type NumberFieldProps = NumberFieldBase &
+  (
+    | { clearable: true; value: number | undefined; onChange: (value: number | undefined) => void }
+    | { clearable?: false; value: number; onChange: (value: number) => void }
+  );
+
 /** A labelled number input — used for marks at every level. */
 export function NumberField({
   label,
@@ -216,15 +239,9 @@ export function NumberField({
   min = 0,
   max,
   suffix,
-}: {
-  label: string;
-  value: number;
-  onChange: (value: number) => void;
-  min?: number;
-  /** Upper bound, clamped on the way out so a caller never sees an out-of-range value. */
-  max?: number;
-  suffix?: string;
-}) {
+  clearable = false,
+  placeholder,
+}: NumberFieldProps) {
   // `shrink-0` because a number input has a *correct* width — squeezing it until the
   // digits clip is worse than wrapping the row it sits in. Rows that hold one must
   // therefore be `flex-wrap`, or the field pushes past the 400px sidebar.
@@ -235,9 +252,16 @@ export function NumberField({
         type="number"
         min={min}
         max={max}
-        value={value}
-        className="h-8 w-16 rounded-lg border border-line bg-surface px-2 text-xs tabular-nums text-ink outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/25"
+        value={value ?? ''}
+        placeholder={placeholder}
+        className="h-8 w-16 rounded-lg border border-line bg-surface px-2 text-xs tabular-nums text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
         onChange={(event) => {
+          // An emptied box is only "no value" where the caller says so; everywhere else
+          // it stays the 0 this field has always reported.
+          if (clearable && event.target.value.trim() === '') {
+            (onChange as (value: number | undefined) => void)(undefined);
+            return;
+          }
           const raw = Math.max(min, Number(event.target.value) || 0);
           onChange(max === undefined ? raw : Math.min(max, raw));
         }}

@@ -58,6 +58,8 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
         {question.parts.map((part, partIndex) => {
           const subParts = part.subParts ?? [];
           const hasSubParts = subParts.length > 0;
+          // No sub-part separately marked = one label for the group, carried by the part.
+          const sharesMarks = hasSubParts && subParts.every((s) => s.marks === undefined);
 
           const moveSubPart = (index: number, delta: number) => {
             const target = index + delta;
@@ -116,6 +118,27 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                   />
                 )}
 
+                {/*
+                 * Sub-parts normally carry the marks and the part derives its total from
+                 * them — so its own box stays hidden, or there would be two answers to
+                 * the same question. It comes back for the one shape that needs it: a
+                 * group sharing a single label, where no sub-part has a value to sum and
+                 * the part's own marks are the group's (§`QuestionSubPart.marks`).
+                 */}
+                {hasSubParts && sharesMarks && (
+                  <NumberField
+                    // Named for the span it actually covers — "(i)–(ii)" — so it is clear
+                    // the number is the group's, not the part's lead-in text's.
+                    label={
+                      subParts.length > 1
+                        ? `Marks for ${subPartLabel(0)}–${subPartLabel(subParts.length - 1)} together`
+                        : `Marks for ${subPartLabel(0)}`
+                    }
+                    value={part.marks ?? 0}
+                    onChange={(marks) => patchPart(partIndex, { marks })}
+                  />
+                )}
+
                 <BiTextField
                   label="Answer / marking scheme"
                   value={part.answer ?? emptyBiText()}
@@ -130,7 +153,16 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                           <span className="text-[11px] font-semibold text-ink-subtle ">
                             {subPartLabel(subIndex)}
                           </span>
-                          <Pill>{subPart.marks}m</Pill>
+                          {/*
+                            * An unmarked sub-part has no total of its own — the group's
+                            * label covers it — so the pill names that instead of the
+                            * marks it lacks. Interpolating the absent number rendered a
+                            * bare "m", which reads as a broken value rather than a
+                            * deliberate one (§`QuestionSubPart.marks`).
+                            */}
+                          <Pill>
+                            {subPart.marks === undefined ? 'shared' : `${subPart.marks}m`}
+                          </Pill>
                           <span className="ml-auto flex items-center opacity-0 transition-opacity focus-within:opacity-100 group-hover/sub:opacity-100">
                             <IconButton
                               label="Move sub-part up"
@@ -174,6 +206,10 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                         <NumberField
                           label="Marks"
                           value={subPart.marks}
+                          clearable
+                          // Empty is a real state here, and the placeholder has to say
+                          // which one: the group's shared label, not "unmarked".
+                          placeholder="—"
                           onChange={(marks) =>
                             patchPart(partIndex, {
                               subParts: subParts.map((s, i) =>
@@ -206,8 +242,16 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                   onClick={() =>
                     patchPart(partIndex, {
                       subParts: [...subParts, createSubPart()],
-                      // A part with sub-parts derives its marks from them (§3.5).
-                      marks: undefined,
+                      /*
+                       * The part's own marks are *kept*, not cleared.
+                       *
+                       * A new sub-part is created marked, so `partMarks` sums the
+                       * sub-parts and the part's value is ignored — clearing it changes
+                       * no total while destroying the number an author typed. It matters
+                       * once they empty the sub-part boxes to share one label: the part's
+                       * marks become the group's total, and a wipe here would have thrown
+                       * away exactly the figure that case needs (§`QuestionSubPart.marks`).
+                       */
                     })
                   }
                 >

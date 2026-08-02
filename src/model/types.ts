@@ -9,6 +9,7 @@
  *    registry (§9) without touching numbering / persistence / export plumbing.
  */
 
+import type { CoverPage } from './coverTypes';
 import type { Diagram } from './diagram';
 
 export type VertAlign = 'superscript' | 'subscript';
@@ -427,14 +428,35 @@ export interface McqQuestion extends QuestionBase {
 export interface QuestionSubPart {
   id: string;
   blocks: ContentBlock[];
-  marks: number;
+  /**
+   * Omitted when this sub-part is not separately marked.
+   *
+   * Real papers routinely give **one marks label to a group** of sub-parts rather than
+   * to each: DSE 2019 P2 Q13(b) prints nothing on (i) and "(5 marks)" on (ii), and Q8(a)
+   * and Q12(a) do the same. The label belongs to the pair, not to either half.
+   *
+   * Optional rather than `0`, because the two mean different things and only one of them
+   * prints correctly. All three backends gate the marks trail on `marks !== undefined`,
+   * so an absent value renders no label at all — while `0` renders a literal
+   * "(0 marks)", which is what this model used to force an author to write.
+   *
+   * When no sub-part carries marks the group's total comes from the part's own `marks`;
+   * see `partMarks`.
+   */
+  marks?: number;
   answer?: BiText;
 }
 
 export interface QuestionPart {
   id: string;
   blocks: ContentBlock[];
-  /** Omitted when the part has sub-parts; totals then derive from them. */
+  /**
+   * The part's own marks.
+   *
+   * Normally omitted when the part has sub-parts, since the total then derives from
+   * them. It is still read in the one case the sub-parts cannot answer: when they are a
+   * **group sharing a single label** and so carry no marks of their own (§`QuestionSubPart.marks`).
+   */
   marks?: number;
   subParts?: QuestionSubPart[];
   answer?: BiText;
@@ -525,6 +547,18 @@ export type LayoutElement =
       /** Where the value column starts, as a fraction of the row width. */
       valueAt?: number;
       indent?: number;
+      /**
+       * Hang the value column, so a wrapped value stays in its own column.
+       *
+       * Set for numbered instructions — "(1)  After the announcement…" — where the text
+       * runs to several lines and every one must start under the first, not under the
+       * "(1)". Both reference covers do this. When set it supersedes `valueAt`, since the
+       * hang already says where the value column is (§ ColumnsNode.hanging).
+       *
+       * Absent for the label/value lists this element was built for ("First preference:
+       * Watching a movie"), whose values are short and never wrap.
+       */
+      hanging?: number;
       format?: TextFormat;
     };
 
@@ -766,6 +800,14 @@ export interface Worksheet {
    * adding this changes nothing until a teacher builds a title block.
    */
   bands?: Band[];
+  /**
+   * A mock-exam cover page, printed before everything else.
+   *
+   * Its own field rather than layout elements because a cover is a **two-column page**
+   * with regions, which no stack of full-width rows can express (§ `model/cover.ts`).
+   * Absent means the document has no cover, which is every worksheet by default.
+   */
+  cover?: CoverPage;
   /** Paper, orientation and margins. Optional for documents saved before v3. */
   pageSetup?: PageSetup;
   header?: HeaderFooter;

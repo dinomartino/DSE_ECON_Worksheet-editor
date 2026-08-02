@@ -55,8 +55,21 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
   }
 
   question.parts.forEach((part, partIndex) => {
-    const hasSubParts = Boolean(part.subParts && part.subParts.length > 0);
+    const subParts = part.subParts ?? [];
+    const hasSubParts = subParts.length > 0;
     const [partFirst, ...partRest] = part.blocks;
+
+    /*
+     * A group of sub-parts sharing one marks label (§`QuestionSubPart.marks`).
+     *
+     * When no sub-part is separately marked, the part's total belongs to the group as a
+     * whole. The reference prints it against the **last** sub-part — DSE 2019 P2 Q13(b)
+     * puts "(5 marks)" after (ii), covering (i) and (ii) together — so that is where it
+     * goes. On the part's own line it would read as marks for the part's lead-in text,
+     * which is not what is being marked.
+     */
+    const sharedMarks = hasSubParts && subParts.every((sub) => sub.marks === undefined);
+    const sharedMarksIndex = sharedMarks ? subParts.length - 1 : -1;
 
     /*
      * A blank line before every part — including the first, which separates part (a)
@@ -108,8 +121,10 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
       });
     }
 
-    (part.subParts ?? []).forEach((subPart, subIndex) => {
+    subParts.forEach((subPart, subIndex) => {
       const [subFirst, ...subRest] = subPart.blocks;
+      // Its own marks, or — for a group sharing one label — the part's total on the last.
+      const subMarks = subIndex === sharedMarksIndex ? partMarks(part) : subPart.marks;
       const subRef = {
         stream: context.questionStream,
         definition: 'question' as const,
@@ -128,7 +143,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
           kind: 'text',
           style: 'Sub-sub-question',
           text: subFirst.text,
-          marks: subPart.marks,
+          marks: subMarks,
           keepNext: true,
           format: subFirst.format,
           edit: { kind: 'blockText', blockId: subFirst.id },
@@ -142,7 +157,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
           kind: 'text',
           style: 'Sub-sub-question',
           text: { en: [], zh: [] },
-          marks: subPart.marks,
+          marks: subMarks,
           keepNext: true,
           listRef: subRef,
         });
