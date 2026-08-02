@@ -53,17 +53,20 @@ const MAX_X_TITLE_SHARE = 0.35;
 
 const AXIS_WIDTH = 2;
 const CURVE_WIDTH = 2;
-const FONT_SIZE = 13;
-const AXIS_TITLE_SIZE = 13;
 /**
- * The diagram's own caption, printed above everything else.
+ * Every piece of diagram text prints at 10pt.
  *
- * A shade larger than the axis titles and underlined, which is exactly how the reference
- * papers set it — the underline is what distinguishes a diagram's caption from the
- * y-axis title sitting just below it, since both are short centred phrases in the same
- * face.
+ * The SVG is laid out in CSS pixels and exported at its natural size (96dpi —
+ * `EMU_PER_PX`), so a printed point is 96/72 of a pixel: 10pt is 13⅓px. The labels
+ * were 13px (9.75pt) and the title 14px (10.5pt), which read as *almost* the body size
+ * beside a QAB's 10pt text — close enough to look like a mistake rather than a choice.
+ * One size for labels, axis titles and the caption; the caption keeps its underline,
+ * which is what actually distinguishes it in the reference papers.
  */
-const TITLE_SIZE = 14;
+const PX_PER_PT = 96 / 72;
+const FONT_SIZE = 10 * PX_PER_PT;
+const AXIS_TITLE_SIZE = 10 * PX_PER_PT;
+const TITLE_SIZE = 10 * PX_PER_PT;
 /** Gap between the title's baseline block and whatever is under it. */
 const TITLE_GAP = 10;
 /**

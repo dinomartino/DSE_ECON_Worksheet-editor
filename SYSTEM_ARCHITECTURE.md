@@ -980,6 +980,11 @@ Renderer rules that only show on a real page:
   breaking a long axis title correctly **narrows** the reserved margin.
 - **A point's label defaults to `right`** — a marked point is nearly always an
   intersection, and up-right is where the other curve runs.
+- **Every piece of diagram text is 10pt** (13⅓px — the SVG lays out in CSS pixels and
+  exports at 96dpi, so a printed point is 96/72 px). Labels were 13px (9.75pt) and the
+  title 14px (10.5pt): *almost* the QAB's 10pt body beside real 10pt text, which reads
+  as a mistake rather than a choice. The title keeps its underline, which is what
+  actually distinguishes it in the reference papers.
 
 ### A diagram's words live inside its own image, and the picture is measured
 

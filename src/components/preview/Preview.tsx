@@ -5004,6 +5004,22 @@ export function Preview({
   ]);
 
   /*
+   * Whether the probe has reported a height for every rendered block.
+   *
+   * Until it has, `pages` is packed from missing numbers and the sheets paint a
+   * transient layout — on a cold mount every item lands on sheet 1. The three effects
+   * below all *write into the model* from what they measure, and measuring that
+   * transient wrote real damage: a leaf question's 11-line answer space hung far past
+   * the first sheet's column, was "trimmed" to 1, and autosave persisted the cut —
+   * every reload shrank it again. A trim only ever shrinks, so unlike the fill
+   * resolver it cannot heal when the settled layout arrives a frame later.
+   */
+  const measurementsSettled = useMemo(
+    () => blocks.every((block) => heightsOf.has(block.key)),
+    [blocks, heightsOf],
+  );
+
+  /*
    * Hand back the rows that no longer fit, when something above pushed them off.
    *
    * The drag handle caps at the page edge, so an element can never be *made* too tall.
@@ -5026,7 +5042,7 @@ export function Preview({
    */
   const splitting = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (!onSplitRows || dragId) return;
+    if (!onSplitRows || dragId || !measurementsSettled) return;
     const root = containerRef.current;
     if (!root) return;
 
@@ -5076,7 +5092,7 @@ export function Preview({
     }
     // Nothing overflows any more, so the latch can be released for the next one.
     splitting.current = undefined;
-  }, [pages, worksheet, contentHeightPx, onSplitRows, dragId, scale]);
+  }, [pages, worksheet, contentHeightPx, onSplitRows, dragId, scale, measurementsSettled]);
 
   /*
    * Trim a leaf question's answer space to what its sheet can hold.
@@ -5093,7 +5109,7 @@ export function Preview({
    */
   const trimming = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (!onTrimQuestionAnswerSpace || dragId) return;
+    if (!onTrimQuestionAnswerSpace || dragId || !measurementsSettled) return;
     const root = containerRef.current;
     if (!root) return;
 
@@ -5128,7 +5144,7 @@ export function Preview({
       return;
     }
     trimming.current = undefined;
-  }, [pages, worksheet, contentHeightPx, onTrimQuestionAnswerSpace, dragId, scale]);
+  }, [pages, worksheet, contentHeightPx, onTrimQuestionAnswerSpace, dragId, scale, measurementsSettled]);
 
   /*
    * Resolve every fill answer-space to the room left on its sheet (§3.2).
@@ -5141,7 +5157,9 @@ export function Preview({
    * the page every frame.
    */
   useEffect(() => {
-    if (!onResolveFills || dragId) return;
+    // Settled-gated like the trim above: a resolution against the transient packing
+    // self-heals a frame later, but it still writes junk counts through autosave.
+    if (!onResolveFills || dragId || !measurementsSettled) return;
     const fillPitch = new Map<string, number>();
     for (const element of worksheet.layout) {
       if (element.kind === 'answerSpace' && element.fill) {
@@ -5172,7 +5190,7 @@ export function Preview({
       }
     }
     if (differs) onResolveFills(counts);
-  }, [pages, heightsOf, contentHeightPx, worksheet, onResolveFills, dragId]);
+  }, [pages, heightsOf, contentHeightPx, worksheet, onResolveFills, dragId, measurementsSettled]);
 
   /*
    * Tell the page rail how the flow landed on sheets.
