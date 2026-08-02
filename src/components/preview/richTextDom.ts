@@ -150,6 +150,43 @@ export function sameRuns(a: RichText, b: RichText): boolean {
  * newline the model already stores (§ newline is run text) with no conversion. A `<br>`
  * is still read as `\n` for the paths that paint one (the idle preview, a paste).
  */
+/**
+ * Emphasis the *browser* put between a text node and its run element.
+ *
+ * Cmd+B / Cmd+I / Cmd+U in a contenteditable are native editing commands: the browser
+ * wraps the selection in its own `<b>`, `<i>` or `<u>` **inside** the run span, without
+ * touching `data-run-attrs`. Reading attributes from the run element alone therefore saw
+ * an unformatted run and threw the emphasis away the moment the field was left — the
+ * shortcut appeared to work and then silently undid itself, while the toolbar (which
+ * writes the model directly) survived.
+ *
+ * So the tags between the text and its owner are read as well, and they *add* to the
+ * run's own attributes: a keystroke inside an already-14pt phrase means "bold as well",
+ * never "bold instead". Walking up to the owner rather than inspecting the immediate
+ * parent is what catches `<b><i>text</i></b>`, which two shortcuts in a row produce.
+ */
+function nativeEmphasis(node: Node, owner: HTMLElement | null): RunFormat {
+  const found: RunFormat = {};
+  let current = node.parentElement;
+  while (current && current !== owner) {
+    switch (current.tagName) {
+      case 'B':
+      case 'STRONG':
+        found.bold = true;
+        break;
+      case 'I':
+      case 'EM':
+        found.italic = true;
+        break;
+      case 'U':
+        found.underline = true;
+        break;
+    }
+    current = current.parentElement;
+  }
+  return found;
+}
+
 export function readRuns(host: HTMLElement): RichText {
   const out: RichText = [];
   let lastAttrs: RunFormat = {};
@@ -167,7 +204,10 @@ export function readRuns(host: HTMLElement): RichText {
     const owner = (node.parentElement?.closest(`[${RUN_ATTR}]`) ?? null) as HTMLElement | null;
     // No owner means the browser inserted this text outside any run element; it belongs
     // to whatever was being typed into, which is the previous run's formatting.
-    const attrs = owner ? attrsOf(owner) : lastAttrs;
+    const base = owner ? attrsOf(owner) : lastAttrs;
+    // The run's stored attributes first, so a native `<b>` adds bold to a phrase that
+    // already carries a size and a colour instead of replacing them.
+    const attrs = { ...base, ...nativeEmphasis(node, owner) };
     if (owner) lastAttrs = attrs;
     out.push({ ...attrs, text });
   }
