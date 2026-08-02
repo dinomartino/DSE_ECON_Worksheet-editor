@@ -296,6 +296,16 @@ interface WorksheetState {
    * measure → resolve → re-measure loop.
    */
   resolveAnswerSpaceFills: (counts: ReadonlyMap<string, number>) => void;
+  /**
+   * Cut a leaf question's answer space down to the lines its sheet can hold.
+   *
+   * Outside history for the same reason as `resolveAnswerSpaceFills`: the count is the
+   * paginator's answer, not the teacher's, so an undo press must step over it to reach
+   * the edit that changed the page. A question is one atomic block, so an answer space a
+   * few pixels too tall does not lose its last line — it moves the whole question to the
+   * next sheet and strands a blank one (§`onTrimQuestionAnswerSpace`).
+   */
+  trimQuestionAnswerSpace: (questionId: string, lines: number) => void;
   /** Replace one block by id — the route a page-opened editor commits through. */
   replaceBlock: (blockId: string, next: ContentBlock) => void;
   /**
@@ -1091,6 +1101,24 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
       return {
         ...state,
         worksheet: { ...state.worksheet, layout },
+        dirty: true,
+      };
+    }),
+  trimQuestionAnswerSpace: (questionId, lines) =>
+    set((state) => {
+      let changed = false;
+      const questions = state.worksheet.questions.map((question) => {
+        if (question.id !== questionId || question.type !== 'structured') return question;
+        const next = clampAnswerLines(lines);
+        if (question.answerSpace === undefined || question.answerSpace === next) return question;
+        changed = true;
+        return { ...question, answerSpace: next };
+      });
+      if (!changed) return state;
+      // History untouched, exactly as `resolveAnswerSpaceFills` leaves it.
+      return {
+        ...state,
+        worksheet: { ...state.worksheet, questions },
         dirty: true,
       };
     }),

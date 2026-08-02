@@ -120,6 +120,33 @@ export const ANSWER_LINE_STYLE_ID = 'AnswerLine';
 export const LQ_LINE_PITCH_TWIPS = 442;
 
 /**
+ * Space above each dotted answer line, in twips (1.5pt).
+ *
+ * The dotted rule is drawn by the *underline* of a tab run, so it sits on the run's
+ * baseline rather than at the bottom of the line box. Without a gap the descenders of
+ * whatever was written on the line above land on the dots. This lifts each line off the
+ * one before it, which is the adjustment made by hand in
+ * `real_life_reference/Worksheet (Student) (EN) (2).docx` — `w:before="30"` on every
+ * answer-space paragraph.
+ *
+ * It is the one place the fixed-line model (§ one fixed line, no paragraph spacing)
+ * takes paragraph spacing, and deliberately so: an answer line is a *ruled box to write
+ * in*, not a line of text, so its height is the point of it rather than an accident of
+ * the rhythm. Spelled on the style so the paragraphs stay free of direct formatting —
+ * Word flags a directly formatted paragraph in the margin, and a page of forty would
+ * read as editing chrome rather than as a page to write on.
+ */
+export const LQ_LINE_SPACE_BEFORE_TWIPS = 30;
+
+/**
+ * The full vertical advance of one dotted answer line: its line box plus the gap above
+ * it. What the preview and the paginator must both step by, since Word advances the
+ * page by the sum and a preview stepping by the box alone would drift a line every
+ * fifteen (§ the preview paginates on geometry Word reproduces).
+ */
+export const LQ_LINE_ADVANCE_TWIPS = LQ_LINE_PITCH_TWIPS + LQ_LINE_SPACE_BEFORE_TWIPS;
+
+/**
  * Style id for a QAB dotted answer line. Like `AnswerLine`, .docx-local and not a
  * `NodeStyle`. Emitted into styles.xml **only when the document contains an answer
  * space** — a style every document carries would change every existing export's
@@ -131,7 +158,7 @@ const LQ_ANSWER_LINE_SPEC: StyleSpec = {
   id: LQ_ANSWER_LINE_STYLE_ID,
   name: 'Answer Space Line',
   size: BASE_SIZE,
-  spaceBefore: 0,
+  spaceBefore: LQ_LINE_SPACE_BEFORE_TWIPS,
   spaceAfter: 0,
   exactLine: LQ_LINE_PITCH_TWIPS,
   underline: 'dotted',

@@ -42,8 +42,16 @@ const EXPECTED_PAGES = 6;
 /** The pure answer sheet: PDF page number, and preview body index (cover excluded). */
 const PURE_PAGE = 4;
 const PURE_BODY_INDEX = 2;
-/** The reference's dotted pitch: 46px at 150dpi = 22.08pt (§ LQ_LINE_PITCH_TWIPS). */
-const EXPECTED_PITCH_PX = 46;
+/**
+ * The dotted pitch measured on the page: 49px at 150dpi.
+ *
+ * Rule to rule is the *advance*, not the line box — 442tw of box plus the 30tw (1.5pt)
+ * gap above each line = 472tw = 23.6pt, which is 49.2px at 150dpi
+ * (§ `LQ_LINE_ADVANCE_TWIPS`). The reference booklet's own 46px measures its 442tw box
+ * alone; this paper lifts each line off the one above so descenders clear the dots, so
+ * the printed gap is correspondingly larger.
+ */
+const EXPECTED_PITCH_PX = 49;
 
 mkdirSync(OUT, { recursive: true });
 

@@ -44,7 +44,7 @@ import type {
   TextFormat,
   Worksheet,
 } from "@/model/types";
-import { furnitureBoxes } from "@/model/pageFurniture";
+import { frameBottomIntrusion, furnitureBoxes } from "@/model/pageFurniture";
 import { isModalLayerOpen } from "@/components/ui/modalLayer";
 import { useWorksheetStore, type BandScope } from "@/store/worksheetStore";
 import { diagramSvg } from "@/render/diagram";
@@ -125,7 +125,11 @@ import { InlineEditable, type TextSelection } from "./InlineEditable";
 import { ResizableBlock } from "./ResizableBlock";
 import { ResizableRows } from "./ResizableRows";
 import { MIN_ANSWER_LINES, MIN_SPACER_PT } from "@/model/flow";
-import { ANSWER_LINE_HEIGHT_TWIPS, LQ_LINE_PITCH_TWIPS } from "@/export/docx/styles";
+import {
+  ANSWER_LINE_HEIGHT_TWIPS,
+  LQ_LINE_PITCH_TWIPS,
+  LQ_LINE_SPACE_BEFORE_TWIPS,
+} from "@/export/docx/styles";
 import {
   compositionKey as keyOfComposition,
   composePages,
@@ -171,6 +175,15 @@ const ANSWER_LINE_PITCH_PX = (ANSWER_LINE_HEIGHT_TWIPS / 20) * PT_TO_PX;
 
 /** One QAB dotted line's pitch, from the exporter's constant for the same reason. */
 const LQ_LINE_PITCH_PX = (LQ_LINE_PITCH_TWIPS / 20) * PT_TO_PX;
+
+/** The 1.5pt gap above each dotted line, from the same constant the style spells. */
+const LQ_LINE_SPACE_BEFORE_PX = (LQ_LINE_SPACE_BEFORE_TWIPS / 20) * PT_TO_PX;
+
+/**
+ * One dotted line's full advance — box plus the gap above it. The paginator steps by
+ * this, not by the pitch, or the preview fits more lines per sheet than Word does.
+ */
+const LQ_LINE_ADVANCE_PX = LQ_LINE_PITCH_PX + LQ_LINE_SPACE_BEFORE_PX;
 
 /** How much one drag step changes a spacer. Points are too fine to drag one at a time. */
 const SPACER_STEP_PT = 6;
@@ -966,6 +979,15 @@ function AnswerLinesView({ lines }: { lines: number }) {
  * CSS mechanism; per the token rule anything on the paper takes a literal colour. The
  * rule sits on the bottom of each row for the reason `AnswerLinesView` puts it there:
  * the last line must be dotted too.
+ *
+ * The 1.5pt `w:before` is drawn as **padding inside each row**, not as a margin above
+ * it. Visually the two are identical — the dots stay at the foot of the row either way —
+ * but a margin on the first child escapes the element's own border box, so the measured
+ * height came to `lines × advance − gap` while the element actually began a gap lower on
+ * the page. Every consumer of that height is then off by one gap in the same direction:
+ * `resolveFillCounts` divided a room it had overstated, and the last sheet of a booklet
+ * came back one line short of what genuinely fitted. Padding keeps the box honest, so
+ * measured height is exactly `lines × LQ_LINE_ADVANCE_PX`.
  */
 function AnswerSpaceView({ lines }: { lines: number }) {
   return (
@@ -974,7 +996,14 @@ function AnswerSpaceView({ lines }: { lines: number }) {
         <div
           key={index}
           style={{
-            height: LQ_LINE_PITCH_PX,
+            // The row's *outer* box is the whole advance, with the gap as padding
+            // inside it — `border-box` so the padding and the dotted border come out of
+            // that height rather than adding to it. Sized any other way the rendered
+            // pitch stops matching `LQ_LINE_ADVANCE_PX`, and the paginator's arithmetic
+            // and the drawn page part company.
+            height: LQ_LINE_ADVANCE_PX,
+            paddingTop: LQ_LINE_SPACE_BEFORE_PX,
+            boxSizing: "border-box",
             borderBottom: "1px dotted #000000",
           }}
         />
@@ -1815,7 +1844,7 @@ function NodeView({
         // withheld — a dragged value would be overwritten by the next resolution.
         ctx={node.fill ? undefined : ctx}
         value={node.lines}
-        pxPerUnit={LQ_LINE_PITCH_PX}
+        pxPerUnit={LQ_LINE_ADVANCE_PX}
         min={MIN_ANSWER_LINES}
         step={1}
         unit={["line", "lines"]}
@@ -3062,6 +3091,20 @@ interface Props {
     perPage: number,
   ) => void;
   /**
+   * Trim a question's own answer space to the lines that actually fit its sheet.
+   *
+   * The layout element splits, spilling its remainder into fresh elements; a question
+   * cannot. Its writing room is a field on the question, so there is nothing to spill
+   * *into* — and a question is one atomic block to the paginator, so an answer space a
+   * few pixels too tall does not lose a line, it moves the whole question to the next
+   * sheet and leaves the one behind it blank.
+   *
+   * Trimming is what a teacher means by "fill the rest of this page": the lines that fit
+   * stay where they are, and the ones that do not are given up rather than dragging the
+   * question with them.
+   */
+  onTrimQuestionAnswerSpace?: (questionId: string, lines: number) => void;
+  /**
    * Report the resolved line counts for `fill` answer spaces, after pagination.
    *
    * The paginator is the only place that knows the remaining room on a sheet (§3.2),
@@ -3347,6 +3390,7 @@ export function Preview({
   onInsertTableColumn,
   onRemoveTableColumn,
   onSplitRows,
+  onTrimQuestionAnswerSpace,
   onResolveFills,
   onOpenBlock,
   onReorder,
@@ -4839,12 +4883,23 @@ export function Preview({
    * the footer, on screen and again in Word. A fraction of a pixel of optimism is not
    * worth a row of writing space printed over the page number.
    */
+  /*
+   * The QAB frame closes above the bottom margin, so on a framed page it — not the
+   * margin — is where the writing area ends (§ `frameBottomIntrusion`). Taken off only
+   * when the frame is actually drawn, so an ordinary worksheet keeps exactly the column
+   * it had and repaginates not at all.
+   */
+  const framePx = worksheet.pageFurniture?.frame
+    ? twipsToMm(frameBottomIntrusion(setup.margins)) * MM_TO_PX
+    : 0;
+
   const contentHeightPx = Math.floor(
     (pageHeightMm - twipsToMm(setup.margins.top) - twipsToMm(setup.margins.bottom)) *
       MM_TO_PX -
       // Only what the bands genuinely overflow their margin by, which is usually zero —
       // a header living inside the top margin costs the text column nothing.
-      bandsOverflowPx,
+      bandsOverflowPx -
+      framePx,
   );
 
   const {
@@ -4901,7 +4956,7 @@ export function Preview({
       // The two line elements split identically; only the pitch dividing overflow into
       // rows differs, and each uses its own (§ the LQ line is a different primitive).
       const pitch =
-        element.kind === 'answerSpace' ? LQ_LINE_PITCH_PX : ANSWER_LINE_PITCH_PX;
+        element.kind === 'answerSpace' ? LQ_LINE_ADVANCE_PX : ANSWER_LINE_PITCH_PX;
       const node = root.querySelector<HTMLElement>(
         `#print-root [data-layout-id="${CSS.escape(element.id)}"]`,
       );
@@ -4939,6 +4994,58 @@ export function Preview({
   }, [pages, worksheet, contentHeightPx, onSplitRows, dragId, scale]);
 
   /*
+   * Trim a leaf question's answer space to what its sheet can hold.
+   *
+   * The same measure-off-the-page rule as the split above, and the same latch, but the
+   * remedy differs: a layout element spills its overflow into new elements, a question
+   * has nowhere to spill to (§`onTrimQuestionAnswerSpace`). So the count comes down
+   * until the block fits, and the lines that did not fit are simply not printed.
+   *
+   * Measured against the question's *own* box rather than the answer space's, because
+   * that is the box the paginator packs: an atomic block one pixel too tall moves whole,
+   * so the pixels to recover are the ones by which the block overflows, not the ones by
+   * which its last dotted line does.
+   */
+  const trimming = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!onTrimQuestionAnswerSpace || dragId) return;
+    const root = containerRef.current;
+    if (!root) return;
+
+    for (const question of worksheet.questions) {
+      if (question.type !== 'structured') continue;
+      // Only the part-less shape carries its own room (§`StructuredQuestion.answerSpace`).
+      const lines = question.parts.length === 0 ? question.answerSpace : undefined;
+      if (lines === undefined || lines <= MIN_ANSWER_LINES) continue;
+
+      const node = root.querySelector<HTMLElement>(
+        `#print-root [data-question-id="${CSS.escape(question.id)}"]`,
+      );
+      const column = node?.closest<HTMLElement>('.paper-region-body');
+      if (!node || !column) continue;
+
+      // The column's own padding is the frame's reserved band (§`frameBottomIntrusion`),
+      // so the usable edge is inside it — the same edge `contentHeightPx` was floored to.
+      const pad = parseFloat(getComputedStyle(column).paddingBottom || '0') || 0;
+      const edge = column.getBoundingClientRect().bottom - pad;
+      const past = (node.getBoundingClientRect().bottom - edge) / (scale || 1);
+      // The split's tolerance, for its reason: a sub-pixel wobble must not trim a
+      // question that exactly fills its page.
+      if (past <= 1) continue;
+
+      const keep = Math.max(MIN_ANSWER_LINES, lines - Math.ceil(past / LQ_LINE_ADVANCE_PX));
+      if (keep >= lines) continue;
+
+      const attempt = `${question.id}:${lines}`;
+      if (trimming.current === attempt) return;
+      trimming.current = attempt;
+      onTrimQuestionAnswerSpace(question.id, keep);
+      return;
+    }
+    trimming.current = undefined;
+  }, [pages, worksheet, contentHeightPx, onTrimQuestionAnswerSpace, dragId, scale]);
+
+  /*
    * Resolve every fill answer-space to the room left on its sheet (§3.2).
    *
    * Runs off the same packed pages the sheets draw, so the resolved count and the page
@@ -4953,7 +5060,7 @@ export function Preview({
     const fillPitch = new Map<string, number>();
     for (const element of worksheet.layout) {
       if (element.kind === 'answerSpace' && element.fill) {
-        fillPitch.set(element.id, LQ_LINE_PITCH_PX);
+        fillPitch.set(element.id, LQ_LINE_ADVANCE_PX);
       }
     }
     if (fillPitch.size === 0) return;
@@ -5273,7 +5380,16 @@ export function Preview({
                 )}
               </div>
 
-              <div className={`min-h-0 flex-1 paper-region-body ${regionClass("body")}`}>
+              {/*
+                `paddingBottom` for the frame's intrusion, so the drawn column ends where
+                the paginator says it does. Without it the region still stretched to the
+                bottom margin and happily drew the very line the packer had excluded —
+                below the frame, across the margin note.
+              */}
+              <div
+                className={`min-h-0 flex-1 paper-region-body ${regionClass("body")}`}
+                style={framePx ? { paddingBottom: framePx } : undefined}
+              >
                 {focusRegion !== "body" && (
                   <RegionWake
                     single
@@ -5374,11 +5490,19 @@ export function Preview({
         document flow and out of the accessibility tree. Heights can only be measured
         from a real layout — font metrics, bilingual stacking and wrapping are the
         browser's to decide — so this exists to be measured, never to be seen.
+
+        It carries `.paper` for the same reason the sheet does: that class *is* the
+        typographic contract with the exporter (11pt on a fixed 12pt line, no paragraph
+        margins). Measuring without it let the probe inherit the app shell's 16px/24px,
+        so every text block measured taller than it renders — 24px against 16px, and a
+        question 528.89 against 504.89 — and the packer, told a page was fuller than it
+        was, ended each sheet early. `.paper` is what makes the measured box the box the
+        page actually draws.
       */}
       <div
         aria-hidden
         data-print-hide
-        className="pointer-events-none invisible absolute -z-10"
+        className="paper pointer-events-none invisible absolute -z-10"
         style={{
           position: "absolute",
           top: 0,

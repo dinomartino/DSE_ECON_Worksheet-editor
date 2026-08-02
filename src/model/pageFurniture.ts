@@ -90,6 +90,28 @@ export interface FurnitureBoxes {
 }
 
 /**
+ * How far the frame's bottom edge cuts into the text column, in twips.
+ *
+ * The frame is measured from the page edge (`frameBottom`), the text column from the
+ * bottom margin, and on the reference's geometry the two do not meet: the frame closes
+ * 152tw — about 10px — above where the column ends. Content is free to fill the column,
+ * so the last line of a full page landed *below the frame*, printed across the margin
+ * note with the rule above it. On screen and in Word alike, since both draw the frame
+ * from these same numbers.
+ *
+ * On a Question-Answer Book the frame **is** the writing area, so this is the amount the
+ * paginator has to give back before deciding what fits. Zero when the margin already
+ * clears the frame, which is the ordinary worksheet with no furniture at all.
+ *
+ * Returned as a number rather than folded into `furnitureBoxes` because the paginator
+ * asks a different question from the renderer: not "where is the frame" but "how much
+ * room does it cost me".
+ */
+export function frameBottomIntrusion(margins: PageMargins): number {
+  return Math.max(0, FURNITURE_GEOMETRY.frameBottom - margins.bottom);
+}
+
+/**
  * Where the furniture sits on a page, resolved from the live page setup so a margin or
  * paper change moves the frame with the text column it frames.
  *

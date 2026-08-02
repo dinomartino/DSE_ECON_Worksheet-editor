@@ -109,10 +109,16 @@ it('emits the LQ fixture', async () => {
    * room left on the last sheet, and `lq-verify` asserts the browser's resolution
    * equals the count stored here — which is what the .docx exported, so the two
    * agreeing is the whole §3.2 contract ("the resolved value must reach the exporter").
-   * The stored 2 is the calibrated answer for this fixture's geometry; a drift in
+   * The stored 1 is the calibrated answer for this fixture's geometry; a drift in
    * measurement, pitch or packing shows up as the harness printing a different number.
+   * It has moved three times: down to 1 when each dotted line grew by the 1.5pt gap
+   * above it (§ `LQ_LINE_SPACE_BEFORE_TWIPS`), back to 2 once the measurement probe was
+   * given `.paper` and stopped reporting every text block taller than it renders, then
+   * down to 1 again when the paginator started reserving the band the page frame closes
+   * above the bottom margin (§ `frameBottomIntrusion`) — a framed sheet genuinely holds
+   * ~10px less than the margins alone suggest.
    */
-  const closingFill = createAnswerSpaceElement(2, true);
+  const closingFill = createAnswerSpaceElement(1, true);
   worksheet.layout = [
     ...worksheet.layout,
     breakQ2,

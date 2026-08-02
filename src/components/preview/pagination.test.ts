@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   compositionKey,
@@ -361,5 +362,34 @@ describe('packing a fill element (§3.2)', () => {
     ]);
     const { pages } = packPages(items, heights, 100);
     expect(pages.map((page) => page.map((i) => i.key))).toEqual([['q1'], ['fill']]);
+  });
+});
+
+/**
+ * The probe must measure the boxes the sheet draws.
+ *
+ * Every height the packer reasons about comes from the offscreen measurement probe, so
+ * the probe and the sheet have to wear the same typography. They did not: `.paper`
+ * carries the contract with the exporter (11pt on a fixed 12pt line) and the probe was
+ * left to inherit the app shell's 16px/24px, so every text block measured taller than
+ * it rendered — 24px against 16px, a question 528.89 against 504.89. The packer, told
+ * each sheet was ~40px fuller than it was, ended pages early and a fill answer space
+ * came back a line short of what fitted.
+ *
+ * No DOM here, so this asserts the wiring, exactly as `listIndent.test.ts` does for the
+ * list geometry: the probe container has to carry the class. The failure it guards is
+ * silent — the preview looks plausible and simply disagrees with Word about where a
+ * page ends.
+ */
+describe('the measurement probe', () => {
+  it('wears .paper, so it measures what the sheet draws', () => {
+    const source = readFileSync('src/components/preview/Preview.tsx', 'utf8');
+    // `left: -99999` is the probe's own signature — it is the one element parked
+    // offscreen — so the window is anchored to it rather than to a class name that
+    // appears all over the file.
+    const offscreen = source.indexOf('left: -99999');
+    expect(offscreen).toBeGreaterThan(-1);
+    const probe = source.slice(offscreen - 600, offscreen);
+    expect(probe).toMatch(/className="paper[\s"]/);
   });
 });

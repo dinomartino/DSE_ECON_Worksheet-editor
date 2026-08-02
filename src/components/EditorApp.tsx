@@ -47,6 +47,7 @@ export function EditorApp({ onOpenFiles }: { onOpenFiles: () => void }) {
   const insertTableColumn = useWorksheetStore((s) => s.insertTableColumn);
   const removeTableColumn = useWorksheetStore((s) => s.removeTableColumn);
   const splitLayoutRows = useWorksheetStore((s) => s.splitLayoutRows);
+  const trimQuestionAnswerSpace = useWorksheetStore((s) => s.trimQuestionAnswerSpace);
   const resolveAnswerSpaceFills = useWorksheetStore((s) => s.resolveAnswerSpaceFills);
   const reorderFlowItem = useWorksheetStore((s) => s.reorderFlowItem);
   const moveBandField = useWorksheetStore((s) => s.moveBandField);
@@ -472,6 +473,7 @@ export function EditorApp({ onOpenFiles }: { onOpenFiles: () => void }) {
             onInsertTableColumn={insertTableColumn}
             onRemoveTableColumn={removeTableColumn}
             onSplitRows={splitLayoutRows}
+            onTrimQuestionAnswerSpace={trimQuestionAnswerSpace}
             onResolveFills={resolveAnswerSpaceFills}
             onOpenBlock={setDrawingBlockId}
             onReorder={handleReorder}
