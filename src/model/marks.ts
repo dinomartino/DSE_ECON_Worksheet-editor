@@ -28,6 +28,10 @@ export function partMarks(part: QuestionPart): number {
 export function questionMarks(question: Question): number {
   if (question.type === 'structured') {
     const structured = question as StructuredQuestion;
+    // A question with no parts is marked as a whole — a booklet essay numbered "1."
+    // with nothing to split. Summing an empty part list would report 0 for a question
+    // plainly worth 8, the same understatement `partMarks` avoids for a shared label.
+    if (structured.parts.length === 0) return structured.marks || 0;
     return structured.parts.reduce((sum, part) => sum + partMarks(part), 0);
   }
   return question.marks || 0;

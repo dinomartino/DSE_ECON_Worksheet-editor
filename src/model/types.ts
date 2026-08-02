@@ -482,6 +482,20 @@ export interface StructuredQuestion extends QuestionBase {
   type: 'structured';
   parts: QuestionPart[];
   /**
+   * Dotted writing room under the stem, for a question that asks one thing.
+   *
+   * A booklet question is not always split into (a), (b), (c) — a whole-question essay
+   * is numbered "1." and answered on the lines beneath it, with no part to hang them
+   * on. `QuestionPart.answerSpace` cannot reach that case, because there is no part.
+   *
+   * Only rendered when the question has **no parts**. With parts, the room belongs to
+   * whichever part is being answered and a second block under the stem would print
+   * writing space before the first question had been asked.
+   *
+   * Absent prints nothing, exactly like `marks` and the per-part field.
+   */
+  answerSpace?: number;
+  /**
    * Print the trailing "(Total: N marks)" line. **Off by default.**
    *
    * A multi-part question is normally marked purely per-part, so repeating the sum at

@@ -30,11 +30,21 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
     marker: `${context.questionNumber}.`,
   };
 
+  /*
+   * With no parts the question *is* the leaf: the stem carries the marks label and the
+   * writing room follows it, exactly as a part would (§`StructuredQuestion.answerSpace`).
+   * With parts the stem is a lead-in, so marks belong on whichever part is being marked
+   * and hanging them here would label the introduction rather than the question.
+   */
+  const isLeaf = question.parts.length === 0;
+  const stemMarks = isLeaf ? questionMarks(question) || undefined : undefined;
+
   if (firstBlock && firstBlock.kind === 'paragraph') {
     nodes.push({
       kind: 'text',
       style: 'Question Stem',
       text: firstBlock.text,
+      marks: restBlocks.length === 0 ? stemMarks : undefined,
       keepNext: true,
       // Built by hand rather than through `renderContentBlocks`, so the block's own
       // formatting has to be carried across explicitly — see the note in `mcq.ts`.
@@ -48,10 +58,28 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
       kind: 'text',
       style: 'Question Stem',
       text: { en: [], zh: [] },
+      marks: question.blocks.length === 0 ? stemMarks : undefined,
       keepNext: true,
       listRef: numberedRef,
     });
     nodes.push(...renderContentBlocks(question.blocks, 'Question Stem', { keepNext: true }));
+  }
+
+  /*
+   * The marks label belongs on the stem's *last* line, so a multi-paragraph stem does
+   * not print "(8 marks)" against its opening sentence with three more to follow. The
+   * branches above claim it only when they emitted the whole stem themselves; otherwise
+   * it lands here, on the trailing block `renderContentBlocks` produced.
+   */
+  if (isLeaf && stemMarks !== undefined) {
+    const last = nodes[nodes.length - 1];
+    if (last && last.kind === 'text' && last.marks === undefined) last.marks = stemMarks;
+  }
+
+  // The leaf question's own writing room, under the stem it answers (§ the LQ line).
+  // Absent prints nothing, like marks.
+  if (isLeaf && question.answerSpace !== undefined && question.answerSpace > 0) {
+    nodes.push({ kind: 'answerSpace', lines: question.answerSpace });
   }
 
   question.parts.forEach((part, partIndex) => {

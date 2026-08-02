@@ -8,6 +8,7 @@ import type {
   Worksheet,
 } from '@/model/types';
 import { renderWorksheet } from '@/render/worksheet';
+import { questionMarks } from '@/model/marks';
 import { createWorksheet } from '@/model/factories';
 import { createWorksheetFrom } from '@/model/newWorksheet';
 
@@ -94,6 +95,81 @@ describe('per-part answer space', () => {
       worksheetWith([{ id: 'a', blocks: [paragraph('pa', 'State it.')], marks: 3 }]),
     );
     expect(shape.some((s) => s.startsWith('space:'))).toBe(false);
+  });
+});
+
+/**
+ * A booklet question that asks one thing (§`StructuredQuestion.answerSpace`).
+ *
+ * Numbered "1." and answered on the lines beneath it, with no (a) to hang marks or
+ * writing room on. Before these fields existed the only way to mark such a question or
+ * give it space was to invent a part it does not have.
+ */
+describe('a structured question with no parts', () => {
+  const leafWorksheet = (question: Partial<StructuredQuestion>): Worksheet => {
+    const worksheet = createWorksheet();
+    worksheet.questions = [
+      {
+        id: 'q1',
+        type: 'structured',
+        blocks: [paragraph('stem', 'Explain why the policy raises welfare.')],
+        parts: [],
+        ...question,
+      } as StructuredQuestion,
+    ];
+    worksheet.flow = [{ type: 'question', id: 'q1' }];
+    return worksheet;
+  };
+
+  it('prints the question\'s own dotted lines under the stem', () => {
+    const shape = shapeOf(leafWorksheet({ marks: 8, answerSpace: 10 }));
+    expect(shape).toContain('space:10');
+    expect(shape.indexOf('space:10')).toBeGreaterThan(shape.indexOf('1.'));
+  });
+
+  it('totals its own marks rather than summing an empty part list', () => {
+    // The regression this exists for: `parts.reduce(...)` over `[]` is 0, so a question
+    // plainly worth 8 reported nothing to the section total or the marks label.
+    const question = leafWorksheet({ marks: 8 }).questions[0];
+    expect(questionMarks(question)).toBe(8);
+  });
+
+  it('prints the marks label on the stem', () => {
+    const nodes = renderWorksheet(leafWorksheet({ marks: 8 }), STUDENT_EN).items.flatMap(
+      (item) => (item.type === 'question' ? item.question.nodes : []),
+    );
+    expect(nodes.some((node) => node.kind === 'text' && node.marks === 8)).toBe(true);
+  });
+
+  it('puts the marks label on the stem\'s last line, not its first', () => {
+    // A multi-paragraph stem must not print "(8 marks)" against its opening sentence
+    // with three more paragraphs still to come.
+    const worksheet = leafWorksheet({
+      blocks: [paragraph('s1', 'A long lead-in.'), paragraph('s2', 'The question itself.')],
+      marks: 8,
+    });
+    const texts = renderWorksheet(worksheet, STUDENT_EN)
+      .items.flatMap((item) => (item.type === 'question' ? item.question.nodes : []))
+      .filter((node) => node.kind === 'text');
+    expect(texts[0].marks).toBeUndefined();
+    expect(texts[texts.length - 1].marks).toBe(8);
+  });
+
+  it('yields to the parts once one exists', () => {
+    // Both fields are ignored with parts present: the marks belong to the part, and a
+    // space under the stem would print writing room before the first question is asked.
+    const shape = shapeOf(
+      leafWorksheet({
+        marks: 8,
+        answerSpace: 10,
+        parts: [{ id: 'a', blocks: [paragraph('pa', 'State it.')], marks: 3 }],
+      }),
+    );
+    expect(shape.some((s) => s.startsWith('space:'))).toBe(false);
+    expect(questionMarks(leafWorksheet({
+      marks: 8,
+      parts: [{ id: 'a', blocks: [paragraph('pa', 'State it.')], marks: 3 }],
+    }).questions[0])).toBe(3);
   });
 });
 

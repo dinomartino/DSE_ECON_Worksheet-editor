@@ -41,6 +41,33 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
         onChange={(blocks) => onChange({ blocks })}
       />
 
+      {/*
+       * With no parts the question is the leaf, so it takes the two fields a part would
+       * carry (§`StructuredQuestion.answerSpace`). A booklet essay is numbered "1." and
+       * answered on the lines under it, and until these existed there was no way to mark
+       * it or give it room without inventing a part (a) it does not have.
+       *
+       * They disappear the moment a part is added: the marks then belong to the part and
+       * the room follows whichever part is being answered, so leaving them here would
+       * offer two places to say the same thing.
+       */}
+      {question.parts.length === 0 && (
+        <section className="space-y-2">
+          <NumberField
+            label="Marks"
+            value={question.marks ?? 0}
+            onChange={(marks) => onChange({ marks })}
+          />
+          <NumberField
+            label="Answer space (dotted lines)"
+            value={question.answerSpace}
+            clearable
+            placeholder="none"
+            onChange={(answerSpace) => onChange({ answerSpace })}
+          />
+        </section>
+      )}
+
       <section className="space-y-3">
         <GroupHeader
           title="Parts"
