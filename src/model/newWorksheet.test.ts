@@ -174,4 +174,39 @@ describe('sections', () => {
       expect(heading.format).toEqual({ fontSize: 10, bold: true });
     }
   });
+
+  it('closes each of Sections A and B, and the whole booklet, the reference’s way', () => {
+    /*
+     * The reference prints a bold centred "END OF SECTION A/B" after each of the first
+     * two sections and "END OF PAPER" at the very end — Section C has no closing line
+     * of its own. Seeded as ordinary text elements (like the "Answer any ONE question."
+     * note), so a teacher can keep, move or reword them; the sample question must land
+     * *inside* Section A, before its END line.
+     */
+    const worksheet = createWorksheetFrom({ documentType: 'lqMock' });
+    const texts = worksheet.layout
+      .filter((element) => element.kind === 'text')
+      .map((element) => element.text?.en[0]?.text);
+    expect(texts).toEqual([
+      'END OF SECTION A',
+      'END OF SECTION B',
+      'Answer any ONE question.',
+      'END OF PAPER',
+    ]);
+    for (const element of worksheet.layout.filter((el) => el.kind === 'text')) {
+      if (element.text?.en[0]?.text === 'Answer any ONE question.') continue;
+      expect(element.format).toEqual({ bold: true, align: 'center' });
+      // Both language sides carry defaults (§ the bilingual rule).
+      expect(element.text?.zh[0]?.text).toBeTruthy();
+    }
+
+    const flowIds = worksheet.flow.map((entry) => entry.id);
+    const textElements = worksheet.layout.filter((el) => el.kind === 'text');
+    const endA = textElements.find((el) => el.text?.en[0]?.text === 'END OF SECTION A')!;
+    const sample = worksheet.questions[0];
+    expect(flowIds.indexOf(sample.id)).toBeLessThan(flowIds.indexOf(endA.id));
+    // END OF PAPER is the document's last flow entry.
+    const endPaper = textElements.find((el) => el.text?.en[0]?.text === 'END OF PAPER')!;
+    expect(flowIds[flowIds.length - 1]).toBe(endPaper.id);
+  });
 });

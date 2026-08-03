@@ -123,6 +123,14 @@ function defaultSections(): LayoutElement[] {
  * worksheet's 14pt heading style stays for worksheets). Section C's "Answer any ONE
  * question." rides as its own text element rather than inside the heading, so the
  * derived marks suffix stays attached to the section name it belongs to.
+ *
+ * The reference also closes each of Sections A and B with a bold centred
+ * "END OF SECTION A/B" line, and the whole booklet with "END OF PAPER" — Section C has
+ * no closing line of its own; the paper's end is its end. Seeded as ordinary text
+ * elements, like the "Answer any ONE question." note: they are landmarks a teacher
+ * drags questions in front of, not derived furniture, so a reworked paper may keep,
+ * move or reword them. The Chinese sides are the HKDSE Chinese version's convention
+ * (甲部完／乙部完／全卷完).
  */
 function qabSections(): LayoutElement[] {
   const heading = (en: string, zh: string): LayoutElement => ({
@@ -133,6 +141,12 @@ function qabSections(): LayoutElement[] {
     // questions under it, bold being the only emphasis.
     format: { fontSize: QAB_BASE_FONT_SIZE, bold: true },
   });
+  const endLine = (en: string, zh: string): LayoutElement => ({
+    kind: 'text',
+    id: newId(),
+    text: bi(en, zh),
+    format: { bold: true, align: 'center' },
+  });
   const chooseOne: LayoutElement = {
     kind: 'text',
     id: newId(),
@@ -141,9 +155,12 @@ function qabSections(): LayoutElement[] {
   };
   return [
     heading('Section A', '甲部'),
+    endLine('END OF SECTION A', '甲部完'),
     heading('Section B', '乙部'),
+    endLine('END OF SECTION B', '乙部完'),
     heading('Section C', '丙部'),
     chooseOne,
+    endLine('END OF PAPER', '全卷完'),
   ];
 }
 
