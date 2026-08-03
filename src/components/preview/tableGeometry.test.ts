@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { createTableBlock } from '@/model/factories';
-import { renderContentBlocks } from '@/render/ir';
+import { renderContentBlocks, type NodeStyle, type RenderNode } from '@/render/ir';
 import { DEFAULT_CELL_PADDING, defaultTableIndent, setPadding, setTableAlign } from '@/model/table';
 import { renderNodeXml } from '@/export/docx/body';
 import type { ContentBlock } from '@/model/types';
+
+/** `renderContentBlocks` appends into the caller's stream; these tests start one fresh. */
+const renderBlocks = (blocks: ContentBlock[], style: NodeStyle): RenderNode[] => {
+  const nodes: RenderNode[] = [];
+  renderContentBlocks(nodes, blocks, style);
+  return nodes;
+};
 
 /**
  * The preview must lay a table out the way Word will, because **the paginator measures
@@ -59,11 +66,20 @@ describe('the previewed table matches the geometry Word is given', () => {
     // this is set. Word breaks it.
     expect(tableView).toContain('overflowWrap');
   });
+
+  it('spaces itself with document blank lines, not its own margins', () => {
+    // The gap above a table is the IR's separating blank line; the gap below is the
+    // structural empty paragraph Word requires, drawn as a real 12pt block. A CSS
+    // margin is a third spelling neither the exporter nor the paginator can see —
+    // `my-2` showed ~6pt where the paper printed 12, unequal above and below.
+    expect(tableView).not.toContain('my-2');
+    expect(tableView).toContain('BLANK_LINE_PT');
+  });
 });
 
 describe('the IR hands every backend the same numbers', () => {
   it('resolves widths to one fraction per column, summing to one', () => {
-    const [node] = renderContentBlocks([createTableBlock(2, 3)], 'Question Stem');
+    const [node] = renderBlocks([createTableBlock(2, 3)], 'Question Stem');
     expect(node.kind).toBe('table');
     if (node.kind !== 'table') return;
 
@@ -78,7 +94,7 @@ describe('the IR hands every backend the same numbers', () => {
     let block = createTableBlock(2, 2);
     block = setPadding(block, 'row', { rowIndex: 1, cellIndex: 0 }, { top: 300 });
 
-    const [node] = renderContentBlocks([block], 'Question Stem');
+    const [node] = renderBlocks([block], 'Question Stem');
     if (node.kind !== 'table') throw new Error('expected a table node');
 
     expect(node.rows[0][0].padding).toEqual(DEFAULT_CELL_PADDING);
@@ -90,7 +106,7 @@ describe('the IR hands every backend the same numbers', () => {
 
   it('carries a table block id, so the page can address its columns', () => {
     const block = createTableBlock(2, 2);
-    const [node] = renderContentBlocks([block], 'Question Stem');
+    const [node] = renderBlocks([block], 'Question Stem');
     if (node.kind !== 'table') throw new Error('expected a table node');
     expect(node.blockId).toBe(block.id);
   });
@@ -99,7 +115,7 @@ describe('the IR hands every backend the same numbers', () => {
     // Both backends then place by `align` and offset by `indent` without either having to
     // know the two are alternatives — the same reason widths and padding arrive resolved.
     const block = setTableAlign({ ...createTableBlock(2, 2), indent: 0.3 }, 'center');
-    const [node] = renderContentBlocks([block], 'Question Stem');
+    const [node] = renderBlocks([block], 'Question Stem');
     if (node.kind !== 'table') throw new Error('expected a table node');
 
     expect(node.align).toBe('center');
@@ -116,7 +132,7 @@ describe('a centred table exports the way the reference paper does', () => {
    */
   /** The real export path, so this cannot pass against a helper the exporter stopped using. */
   const tblPr = (block: ContentBlock) => {
-    const [node] = renderContentBlocks([block], 'Question Stem');
+    const [node] = renderBlocks([block], 'Question Stem');
     if (node.kind !== 'table') throw new Error('expected a table node');
     const xml = renderNodeXml(node, {
       fonts: { latin: 'Times New Roman', eastAsia: 'PMingLiU' },

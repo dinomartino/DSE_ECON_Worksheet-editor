@@ -399,6 +399,14 @@ export interface SpacerNode {
    * `EditTarget` is — the .docx and clipboard backends never read it.
    */
   elementId?: string;
+  /**
+   * Keep this gap on the same page as what follows it.
+   *
+   * A separating blank line can sit inside a keep-together chain — stem, gap, table —
+   * and without its own `w:keepNext` the gap is exactly where Word breaks the chain the
+   * stem's flag was set to hold.
+   */
+  keepNext?: boolean;
 }
 
 /** A horizontal rule across the text column. */
@@ -530,7 +538,7 @@ export function includeNode(node: RenderNode, mode: OutputMode): boolean {
  */
 export const BLANK_LINE_PT = 12;
 
-export function blankLine(): RenderNode {
+export function blankLine(): SpacerNode {
   return { kind: 'spacer', heightPt: BLANK_LINE_PT };
 }
 
@@ -576,13 +584,20 @@ export function endsInBlankLine(nodes: RenderNode[]): boolean {
   return false;
 }
 
-/** Expand a content block into IR nodes (shared by every question type). */
+/**
+ * Expand content blocks into IR nodes, appending to the caller's stream (shared by
+ * every question type).
+ *
+ * Appends rather than returns: a table takes a separating blank line **before** it
+ * (§ separation costs a line), and a gap is a property of the boundary — it has to see
+ * what the stream already ends in (`pushGap`), which a locally-built array cannot.
+ */
 export function renderContentBlocks(
+  nodes: RenderNode[],
   blocks: ContentBlock[],
   style: NodeStyle,
   options: { keepNext?: boolean; teacherOnly?: boolean; indent?: number } = {},
-): RenderNode[] {
-  const nodes: RenderNode[] = [];
+): void {
   for (const block of blocks) {
     if (block.kind === 'paragraph') {
       nodes.push({
@@ -618,6 +633,21 @@ export function renderContentBlocks(
        * sidebar offers to give it a column back (§tables).
        */
       if (block.rows.every((row) => row.cells.length === 0)) continue;
+      /*
+       * One blank line before every table — the reference papers' shape: the stem's
+       * sentence, air, then the figure it introduces. Via the `pushGap` rule (a gap
+       * counts what is already there), so a preceding paragraph ending in a trailing
+       * hard break does not open a double gap. Skipped at the head of the stream: the
+       * callers always precede these blocks with the stem/part paragraph, so an empty
+       * stream only occurs in isolation, where there is no boundary to space.
+       *
+       * The gap carries the caller's `keepNext` — it sits inside the keep-together
+       * chain (stem → gap → table), and a plain blank is exactly where Word would
+       * break the chain the stem's own flag was set to hold.
+       */
+      if (nodes.length > 0 && !endsInBlankLine(nodes)) {
+        nodes.push({ ...blankLine(), keepNext: options.keepNext });
+      }
       nodes.push({
         kind: 'table',
         columnCount,
@@ -682,5 +712,4 @@ export function renderContentBlocks(
       });
     }
   }
-  return nodes;
 }

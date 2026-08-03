@@ -128,12 +128,10 @@ function render(question: McqQuestion, context: RenderContext): RenderNode[] {
     });
     // Continuation blocks indent to the stem's text column (§ STEM_TEXT_INDENT) —
     // unindented, a paragraph after the stem's table printed at the page margin.
-    nodes.push(
-      ...renderContentBlocks(restBlocks, 'Question Stem', {
-        keepNext: true,
-        indent: STEM_TEXT_INDENT,
-      }),
-    );
+    renderContentBlocks(nodes, restBlocks, 'Question Stem', {
+      keepNext: true,
+      indent: STEM_TEXT_INDENT,
+    });
   } else {
     nodes.push({
       kind: 'text',
@@ -147,12 +145,10 @@ function render(question: McqQuestion, context: RenderContext): RenderNode[] {
         marker: `${context.questionNumber}.`,
       },
     });
-    nodes.push(
-      ...renderContentBlocks(question.blocks, 'Question Stem', {
-        keepNext: true,
-        indent: STEM_TEXT_INDENT,
-      }),
-    );
+    renderContentBlocks(nodes, question.blocks, 'Question Stem', {
+      keepNext: true,
+      indent: STEM_TEXT_INDENT,
+    });
   }
 
   /*
@@ -219,17 +215,15 @@ function render(question: McqQuestion, context: RenderContext): RenderNode[] {
       // and prints half a line up, and the picture paragraph needs `lineRule="auto"`
       // that the option style cannot give it.
       if (blocks.length > 0) {
-        nodes.push(
-          ...renderContentBlocks(blocks, 'MCQ Option', {
-            keepNext: !last || context.mode.version === 'teacher',
-            // Aligned with the option's own *text*, not the page margin: the blocks
-            // continue the answer the letter introduces, so they start where its words
-            // do. Taken from `OPTION_LIST_INDENT` rather than restated, since that is the
-            // one definition the exporter's `w:ind` and the preview's padding both read —
-            // a second copy is how the page and the paper end up disagreeing.
-            indent: OPTION_LIST_INDENT.left,
-          }),
-        );
+        renderContentBlocks(nodes, blocks, 'MCQ Option', {
+          keepNext: !last || context.mode.version === 'teacher',
+          // Aligned with the option's own *text*, not the page margin: the blocks
+          // continue the answer the letter introduces, so they start where its words
+          // do. Taken from `OPTION_LIST_INDENT` rather than restated, since that is the
+          // one definition the exporter's `w:ind` and the preview's padding both read —
+          // a second copy is how the page and the paper end up disagreeing.
+          indent: OPTION_LIST_INDENT.left,
+        });
       }
     });
   } else {

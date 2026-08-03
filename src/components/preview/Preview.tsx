@@ -45,15 +45,17 @@ import type {
   Worksheet,
 } from "@/model/types";
 import { frameBottomIntrusion, furnitureBoxes } from "@/model/pageFurniture";
+import { cellsInRange } from "@/model/table";
 import { isModalLayerOpen } from "@/components/ui/modalLayer";
 import { useWorksheetStore, type BandScope } from "@/store/worksheetStore";
 import { diagramSvg } from "@/render/diagram";
-import type {
-  CoverRenderNode,
-  EditTarget,
-  RenderNode,
-  TableNode,
-  TextNode,
+import {
+  BLANK_LINE_PT,
+  type CoverRenderNode,
+  type EditTarget,
+  type RenderNode,
+  type TableNode,
+  type TextNode,
 } from "@/render/ir";
 import { bandFieldText, renderWorksheet, type RenderedItem } from "@/render/worksheet";
 import { listQuestionTypes, requireQuestionType } from "@/registry";
@@ -674,6 +676,15 @@ export interface EditContext {
    */
   activeCell?: { blockId: string; cellId: string };
   onActivateCell?: (cell: { blockId: string; cellId: string }) => void;
+  /**
+   * A rectangular run of cells swept by dragging across the table — Excel's selection,
+   * for the panel's bulk verbs (align every caught cell at once). Corner ids, not
+   * positions, so the live table re-derives the rectangle (§ `cellsInRange`).
+   */
+  cellSelection?: { blockId: string; anchorId: string; focusId: string };
+  onSelectCells?: (
+    selection: { blockId: string; anchorId: string; focusId: string } | undefined,
+  ) => void;
   /**
    * Dragging a table's column boundaries on the page.
    *
@@ -1330,6 +1341,16 @@ function TableNodeView({
   const [draftRow, setDraftRow] = useState<{ index: number; twips: number } | undefined>();
   const tableRef = useRef<HTMLTableElement>(null);
 
+  /*
+   * The in-flight cell sweep: anchor and focus cell of a drag that has not been
+   * released. Local while the pointer is down (§ drag gestures commit once — the store
+   * is written on pointer-up), so live highlight costs no undo entries and no sibling
+   * re-renders.
+   */
+  const [sweepRange, setSweepRange] = useState<
+    { anchorId: string; focusId: string } | undefined
+  >();
+
   const resize = ctx?.tableColumns;
   const grid = ctx?.tableGrid;
   const widths = draftWidths ?? node.columnWidths;
@@ -1388,8 +1409,139 @@ function TableNodeView({
     return true;
   };
 
+  /*
+   * Drag across cells to select a rectangle — Excel's gesture, for the panel's bulk
+   * verbs (§ `cellSelection`). A press on a cell arms; ~4px of travel begins the sweep,
+   * so an ordinary click stays a click; release commits the range to the store **once**
+   * (§ drag gestures commit once). The focus cell is found by `elementFromPoint`, which
+   * respects the handle overlays' `pointer-events-none` — no coordinate math against
+   * the preview scale.
+   *
+   * A press inside an *open* editor is text selection within that field and never arms.
+   * On an idle cell, `selectstart` is suppressed for the duration of the press: the
+   * idle spans are plain text, so the browser would otherwise paint its own blue
+   * selection across them mid-sweep.
+   */
+  const beginCellSweep = (event: React.PointerEvent) => {
+    const commitSelection = ctx?.onSelectCells;
+    if (!commitSelection || event.button !== 0) return;
+    const target = event.target as HTMLElement;
+    // Only an *open* editor blocks the sweep — a press there is text selection within
+    // that field. The idle spans also carry role="textbox" (they are the same
+    // component, unfocused), so the test must be contenteditable, not the role.
+    if (target.isContentEditable) return;
+    const pressed = target.closest<HTMLElement>("td[data-table-cell]");
+    if (!pressed || !tableRef.current?.contains(pressed)) return;
+    const anchorId = pressed.dataset.tableCell;
+    if (!anchorId) return;
+
+    const startX = event.clientX;
+    const startY = event.clientY;
+    let dragging = false;
+    let focusId = anchorId;
+
+    const blockNativeSelection = (e: Event) => e.preventDefault();
+    const onMove = (e: PointerEvent) => {
+      if (!dragging && Math.hypot(e.clientX - startX, e.clientY - startY) < 4) return;
+      if (!dragging) {
+        dragging = true;
+        // A selection may have begun on the press itself — drop it with the sweep live.
+        window.getSelection()?.removeAllRanges();
+      }
+      const over = document
+        .elementFromPoint(e.clientX, e.clientY)
+        ?.closest<HTMLElement>("td[data-table-cell]");
+      // Clamped to this table: a sweep that leaves it keeps its last in-table focus,
+      // as Excel clamps a drag to the sheet's grid.
+      if (!over || !tableRef.current?.contains(over)) return;
+      const id = over.dataset.tableCell;
+      if (id && id !== focusId) {
+        focusId = id;
+        setSweepRange({ anchorId, focusId: id });
+      }
+    };
+    const finish = (commit: boolean) => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onCancel);
+      window.removeEventListener("selectstart", blockNativeSelection);
+      // A sweep that travelled commits its rectangle; one that never left the anchor
+      // is a click, which the cell's own click handling already reports.
+      if (commit && dragging && focusId !== anchorId) {
+        commitSelection({ blockId: node.blockId, anchorId, focusId });
+      }
+      setSweepRange(undefined);
+    };
+    const onUp = () => finish(true);
+    const onCancel = () => finish(false);
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onCancel);
+    window.addEventListener("selectstart", blockNativeSelection);
+  };
+
+  /*
+   * The rectangle to paint: the live sweep while the pointer is down, else the store's
+   * committed range when it names this table. Re-derived from the node's own rows, so
+   * the highlight is exactly the set the panel's bulk verb will touch — one helper
+   * (`cellsInRange`) serves both, which is what keeps them from disagreeing over a
+   * merged cell at the rectangle's edge.
+   *
+   * The paint is Excel's language: a light fill on every caught cell and **one
+   * continuous outline around the range's outer boundary** — each cell draws only the
+   * boundary edges its own grid rect touches. While a range is active no cell is
+   * special, so the anchor's single-cell ring is withheld: two selection chromes at
+   * once read as a locked cell inside the sweep, which is not a state that exists.
+   */
+  const activeRange =
+    sweepRange ??
+    (ctx?.cellSelection && ctx.cellSelection.blockId === node.blockId
+      ? ctx.cellSelection
+      : undefined);
+  const rangeEdges = (() => {
+    if (!activeRange) return undefined;
+    const rects = cellsInRange(
+      node.rows,
+      activeRange.anchorId,
+      activeRange.focusId,
+      (_, rowIndex, cellIndex) => {
+        const edit = node.rows[rowIndex][cellIndex].edit;
+        return edit?.kind === "tableCell" ? edit.cellId : undefined;
+      },
+    );
+    if (rects.length < 2) return undefined;
+    const r0 = Math.min(...rects.map((rect) => rect.r0));
+    const c0 = Math.min(...rects.map((rect) => rect.c0));
+    const r1 = Math.max(...rects.map((rect) => rect.r1));
+    const c1 = Math.max(...rects.map((rect) => rect.c1));
+    const edges = new Map<
+      string,
+      { top: boolean; left: boolean; bottom: boolean; right: boolean }
+    >();
+    for (const rect of rects) {
+      const edit = node.rows[rect.rowIndex][rect.cellIndex].edit;
+      if (edit?.kind !== "tableCell") continue;
+      edges.set(edit.cellId, {
+        top: rect.r0 === r0,
+        left: rect.c0 === c0,
+        bottom: rect.r1 === r1,
+        right: rect.c1 === c1,
+      });
+    }
+    return edges;
+  })();
+
   return (
-    <div className="my-2">
+    /*
+     * No margins of its own: the space around a table is the document's, not the view's.
+     * Above, the IR's separating blank line (§ a table takes one blank line before it);
+     * below, the strip drawn at the bottom of this block. The old CSS margin pair was a
+     * third spelling of the gap that neither the exporter nor the paginator could see —
+     * margins sit outside the measured box — so the page showed ~6pt where the paper
+     * printed 12, unequal above and below (guarded in tableGeometry.test.ts).
+     */
+    <div>
       {/* Above the table, and outside the `relative` wrapper below: the caption is
           document text, not part of the box the column handles measure themselves
           against. */}
@@ -1451,6 +1603,7 @@ function TableNodeView({
         <table
           ref={tableRef}
           data-table-block={node.blockId}
+          onPointerDown={beginCellSweep}
           className={`w-full table-fixed border-collapse ${
             // The frame of a boxed stimulus, on the table rather than its edge cells so
             // it stays one unbroken rectangle however the rows are merged.
@@ -1485,10 +1638,28 @@ function TableNodeView({
                   if (cell.covered) return null;
                   const address =
                     cell.edit?.kind === "tableCell" ? cell.edit : undefined;
+                  // The single-cell ring steps aside while a range is active — the
+                  // range is the selection then, and no cell inside it is special.
                   const isActive =
                     address !== undefined &&
+                    !rangeEdges &&
                     ctx?.activeCell?.blockId === address.blockId &&
                     ctx.activeCell.cellId === address.cellId;
+                  // Caught by the swept rectangle — a light fill, plus this cell's
+                  // share of the range's outer outline. Inset box-shadow segments, so
+                  // the outline reserves no space and cannot shift the grid; literal
+                  // hex per the paper rule.
+                  const rangeEdge = address ? rangeEdges?.get(address.cellId) : undefined;
+                  const rangeOutline = rangeEdge
+                    ? [
+                        rangeEdge.top ? "inset 0 2px 0 0 #7c5cff" : "",
+                        rangeEdge.bottom ? "inset 0 -2px 0 0 #7c5cff" : "",
+                        rangeEdge.left ? "inset 2px 0 0 0 #7c5cff" : "",
+                        rangeEdge.right ? "inset -2px 0 0 0 #7c5cff" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(", ")
+                    : undefined;
                   return (
                     <td
                       key={cellIndex}
@@ -1515,7 +1686,9 @@ function TableNodeView({
                         node.borders === "box" || cell.edges
                           ? ""
                           : "border border-slate-500"
-                      } align-middle ${isActive ? "ring-2 ring-inset ring-[#7c5cff]" : ""}`}
+                      } align-middle ${isActive ? "ring-2 ring-inset ring-[#7c5cff]" : ""} ${
+                        rangeEdge ? "bg-[#7c5cff]/[0.12]" : ""
+                      }`}
                       style={{
                         textAlign: cell.align,
                         /*
@@ -1548,6 +1721,8 @@ function TableNodeView({
                          * border instead of wrapping — Word breaks it.
                          */
                         overflowWrap: "break-word",
+                        // This cell's share of the range outline (see `rangeOutline`).
+                        ...(rangeOutline ? { boxShadow: rangeOutline } : {}),
                         ...formatStyle(cell.format),
                       }}
                       /*
@@ -1667,6 +1842,13 @@ function TableNodeView({
         )}
       </div>
       <BlockCaption node={node} side="below" style="Table Caption" language={language} ctx={ctx} />
+      {/*
+        The structural blank line Word requires after every table: `tableNodeXml` emits
+        an empty Body paragraph — one fixed 12pt line — after the table (and the below
+        caption), so the preview draws the identical 12pt. A real block, not a margin,
+        because the paginator measures boxes and a margin sits outside them.
+      */}
+      <div style={{ height: `${BLANK_LINE_PT}pt` }} aria-hidden />
     </div>
   );
 }
@@ -3588,6 +3770,9 @@ export function Preview({
    */
   const activeCell = useWorksheetStore((s) => s.activeCell);
   const setActiveCell = useWorksheetStore((s) => s.setActiveCell);
+  // The swept rectangle, for the same sibling (§ `cellSelection` in the store).
+  const cellSelection = useWorksheetStore((s) => s.cellSelection);
+  const setCellSelection = useWorksheetStore((s) => s.setCellSelection);
 
   const [fitScale, setFitScale] = useState(1);
   // User zoom, multiplied onto the auto-fit scale rather than replacing it, so
@@ -4393,6 +4578,8 @@ export function Preview({
         keepEditing: formatting,
         activeCell,
         onActivateCell: setActiveCell,
+        cellSelection,
+        onSelectCells: setCellSelection,
         // No selection of its own: a column boundary is not a selectable object — there
         // is nothing to delete or format — so the handles are revealed on hover and need
         // no click-to-arm step, unlike a picture or a run of answer lines.
@@ -4462,6 +4649,7 @@ export function Preview({
       : "",
     formatting ? "1" : "0",
     activeCell ? JSON.stringify(activeCell) : "",
+    cellSelection ? JSON.stringify(cellSelection) : "",
     scale,
     contentWidthPx,
     selectedBlockId ?? "",
@@ -5370,6 +5558,10 @@ export function Preview({
         // A press inside an open editor is text selection within that field, not a
         // sweep across the page.
         if (target.isContentEditable) return;
+        // A press on a table cell is the table's own gesture — the Excel-style cell
+        // sweep — and the page marquee running under it would select items through
+        // the very drag that is choosing cells.
+        if (target.closest("[data-table-cell]")) return;
         // Ignore the floating chrome (zoom, selection badge) layered over the canvas.
         if (target.closest("button, a, input, textarea, select")) return;
         // Shift extends the selection rather than replacing it.

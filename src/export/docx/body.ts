@@ -664,6 +664,9 @@ export function renderNodeXml(node: RenderNode, context: BodyContext): string {
       return (
         '<w:p><w:pPr>' +
         `<w:pStyle w:val="${STYLE_IDS.Body}"/>` +
+        // A gap inside a keep-together chain (stem → gap → table) must carry the flag
+        // itself, or it is exactly where Word breaks the chain around it.
+        (node.keepNext ? '<w:keepNext/>' : '') +
         `<w:spacing w:line="${Math.max(1, Math.round(node.heightPt * 20))}" w:lineRule="exact"/>` +
         '</w:pPr></w:p>'
       );

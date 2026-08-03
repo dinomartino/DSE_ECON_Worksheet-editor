@@ -56,12 +56,10 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
     // Continuation blocks indent to the stem's own text column, exactly as a part's do
     // to theirs (§ STEM_TEXT_INDENT) — without it a paragraph after the stem's table
     // printed at the page margin, hanging in the question number's gutter.
-    nodes.push(
-      ...renderContentBlocks(restBlocks, 'Question Stem', {
-        keepNext: true,
-        indent: STEM_TEXT_INDENT,
-      }),
-    );
+    renderContentBlocks(nodes, restBlocks, 'Question Stem', {
+      keepNext: true,
+      indent: STEM_TEXT_INDENT,
+    });
   } else {
     nodes.push({
       kind: 'text',
@@ -71,12 +69,10 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
       keepNext: true,
       listRef: numberedRef,
     });
-    nodes.push(
-      ...renderContentBlocks(question.blocks, 'Question Stem', {
-        keepNext: true,
-        indent: STEM_TEXT_INDENT,
-      }),
-    );
+    renderContentBlocks(nodes, question.blocks, 'Question Stem', {
+      keepNext: true,
+      indent: STEM_TEXT_INDENT,
+    });
   }
 
   /*
@@ -134,12 +130,10 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
      */
     const interlude = part.blocksBefore ?? [];
     if (interlude.length > 0) {
-      nodes.push(
-        ...renderContentBlocks(interlude, 'Question Stem', {
-          keepNext: true,
-          indent: STEM_TEXT_INDENT,
-        }),
-      );
+      renderContentBlocks(nodes, interlude, 'Question Stem', {
+        keepNext: true,
+        indent: STEM_TEXT_INDENT,
+      });
       pushGap(nodes);
     }
 
@@ -162,7 +156,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
         edit: { kind: 'blockText', blockId: partFirst.id },
         listRef: partRef,
       });
-      nodes.push(...renderContentBlocks(partRest, 'Sub-question', { keepNext: true, indent: PART_TEXT_INDENT }));
+      renderContentBlocks(nodes, partRest, 'Sub-question', { keepNext: true, indent: PART_TEXT_INDENT });
     } else {
       nodes.push({
         kind: 'text',
@@ -172,7 +166,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
         keepNext: true,
         listRef: partRef,
       });
-      nodes.push(...renderContentBlocks(part.blocks, 'Sub-question', { keepNext: true, indent: PART_TEXT_INDENT }));
+      renderContentBlocks(nodes, part.blocks, 'Sub-question', { keepNext: true, indent: PART_TEXT_INDENT });
     }
 
     if (!hasSubParts && !isBiTextEmpty(part.answer)) {
@@ -214,9 +208,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
           edit: { kind: 'blockText', blockId: subFirst.id },
           listRef: subRef,
         });
-        nodes.push(
-          ...renderContentBlocks(subRest, 'Sub-sub-question', { keepNext: true, indent: SUBPART_TEXT_INDENT }),
-        );
+        renderContentBlocks(nodes, subRest, 'Sub-sub-question', { keepNext: true, indent: SUBPART_TEXT_INDENT });
       } else {
         nodes.push({
           kind: 'text',
@@ -226,9 +218,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
           keepNext: true,
           listRef: subRef,
         });
-        nodes.push(
-          ...renderContentBlocks(subPart.blocks, 'Sub-sub-question', { keepNext: true, indent: SUBPART_TEXT_INDENT }),
-        );
+        renderContentBlocks(nodes, subPart.blocks, 'Sub-sub-question', { keepNext: true, indent: SUBPART_TEXT_INDENT });
       }
 
       if (!isBiTextEmpty(subPart.answer)) {

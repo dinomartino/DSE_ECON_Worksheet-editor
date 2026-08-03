@@ -629,6 +629,20 @@ vertical rhythm comes from the line box. Consequences (each fails silently):
   the stream already ends in one. Every gap site uses it. `endsInBlankLine` is
   **language-neutral** (tests both sides): one IR feeds all backends, and the paginator
   measures these boxes.
+- **A table takes one blank line before it** — the reference papers' shape: the stem's
+  sentence, air, then the figure it introduces. The gap lives in `renderContentBlocks`,
+  which **appends into the caller's stream** rather than returning a local array, so the
+  boundary rule above can see what actually precedes the table (a preceding trailing
+  hard break must not open a double gap). The gap spacer carries the caller's `keepNext`
+  (`SpacerNode.keepNext` → `w:keepNext`): it sits inside the stem → gap → table
+  keep-together chain, and a plain blank is exactly where Word would break it. Cover
+  panel tables are out of scope — a cover's rhythm is its own measured `gapAfter`s.
+  **The preview draws the same two lines and no margins of its own**: below the table it
+  renders the structural empty paragraph Word requires (`tableNodeXml`'s trailing
+  spacer) as a real `BLANK_LINE_PT` block. `TableNodeView`'s old CSS margin pair was a
+  third spelling of the gap that neither the exporter nor the paginator could see —
+  margins sit outside the measured box — so the page showed ~6pt where the paper printed
+  12, unequal above and below. `tableGeometry.test.ts` greps both directions.
 - **The gap is suppressed only at the true top of the page**, not flow index 0 — the
   masthead/title/instructions print above the flow (`somethingAboveFlow` in
   `render/worksheet.ts`). Keying on index made "Section A" and an identical "Section B"
@@ -955,6 +969,46 @@ Rules that failed in the browser before holding:
   edges. Reaching past the table is a transparent hover pad's job — hover chrome needs
   a hit path: `:hover` follows an element box, so the box must be the bigger one — at
   `-z-10` so clicks reach cells.
+
+### A rectangle of cells can be swept, and the panel acts on all of it
+
+Dragging across cells selects a rectangle — Excel's gesture — so aligning a column of
+figures is one sweep and one click instead of a click per cell. Stored in the store as
+`cellSelection` (**two corner ids**, beside `activeCell`): ids, not positions, so the
+rectangle is re-derived from the live table and a structural edit cannot leave it
+naming cells that have moved. Committing a sweep aims `activeCell` at the anchor;
+a plain click sets `activeCell` and collapses the range — one selection, two extents.
+
+- **`cellRects` uses the browser's own grid placement** (also Word's, via
+  `w:gridSpan`/`vMerge`): a `rowSpan` occupies its columns in the rows it spans, and a
+  covered placeholder occupies nothing. `resolveCellEdges`'s simpler per-row
+  accumulation stays as is — the T-account never merges vertically; a range must
+  handle both axes.
+- **`cellsInRange` expands to a fixed point over merged cells** it cuts through, as
+  Excel does — a sliced merge would highlight a non-rectangular region and act outside
+  what the highlight shows. Anchor/focus order is immaterial; a stale id yields the
+  empty range, and the panel falls back to the single active cell.
+- **The page and the panel share the one helper** (`TableNodeView` highlights from the
+  IR's rows, `TableBlockEditor` resolves from the block's), so the tinted cells are
+  exactly the set the bulk verb writes. Align applies through `patchCells` in **one
+  commit** (one undo entry); a button reads pressed only when the whole range agrees.
+- **A range paints as one selection, not a special cell inside a sweep**: a light fill
+  on every caught cell plus a single continuous outline around the range's outer
+  boundary — each cell draws only the boundary edges its grid rect touches, as inset
+  box-shadow segments (no reserved space). The anchor's single-cell ring is **withheld
+  while a range is active**: both chromes at once read as a locked cell inside the
+  selection, which is not a state that exists. The anchor still quietly feeds the
+  panel's structural verbs.
+- **The in-flight sweep is local state; the store is written on pointer-up** (§ drag
+  gestures commit once). The focus cell comes from `elementFromPoint` — no coordinate
+  math against the preview scale — clamped to the table it started in.
+- **A press on a cell belongs to the table's gesture**: the page marquee exempts
+  `[data-table-cell]`, or it would select questions through the very drag choosing
+  cells. The guard for "press inside an open editor" tests **`isContentEditable`, not
+  `role="textbox"`** — the idle spans are the same component unfocused and carry the
+  role too, which silently killed every sweep until a browser run caught it.
+- **Merge and the cell image step aside over a range** rather than silently acting on
+  the anchor alone — the highlight would say otherwise.
 
 ### A cell formats like any other text
 
@@ -1456,6 +1510,13 @@ reachable at all. The older `cover` option maps onto the type (`mcq` → `paper1
   continuous numbering, the "Answer any ONE question." note as its own element, and the
   page furniture. Its sections are its shape, so the checkbox is not offered; the form
   says what the type decided instead of silently taking the option away.
+  - **The booklet closes its sections the reference's way**: bold centred
+    "END OF SECTION A/B" after each of the first two sections and "END OF PAPER" at the
+    very end (Section C has none — the paper's end is its end; Chinese sides 甲部完／
+    乙部完／全卷完). Seeded as ordinary text elements like the "Answer any ONE
+    question." note — landmarks a teacher drags questions in front of, not derived
+    furniture — and the seeded sample question lands *inside* Section A, before its END
+    line.
 - **Both LQ types seed one sample question** (`seedSample`, on by default, invented
   wording under the copyright window): per-part answer space lives inside the
   structured panel, so an empty LQ document hides its whole point until the teacher

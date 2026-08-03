@@ -33,7 +33,15 @@ import {
   unmerge,
 } from './table';
 import type { TableBlock } from './types';
-import { renderContentBlocks } from '@/render/ir';
+import { cellsInRange, patchCells } from './table';
+import { renderContentBlocks, type RenderNode } from '@/render/ir';
+
+/** `renderContentBlocks` appends into the caller's stream; these tests start one fresh. */
+const renderBlocks = (blocks: TableBlock[]): RenderNode[] => {
+  const nodes: RenderNode[] = [];
+  renderContentBlocks(nodes, blocks, 'Question Stem');
+  return nodes;
+};
 
 /**
  * Table structure, the shape a real paper needs.
@@ -265,11 +273,30 @@ describe('a table that lost all its columns', () => {
     // <table> measured zero in the probe but spent a line on the sheet, so the two passes
     // disagreed about the document's height forever — the sheet count oscillated 1 ↔ 2
     // and React reported "Maximum update depth exceeded" from the item measurement.
-    expect(renderContentBlocks([broken()], 'Question Stem')).toEqual([]);
+    expect(renderBlocks([broken()])).toEqual([]);
     // A healthy table still renders; the guard must not widen into "any short table".
-    expect(
-      renderContentBlocks([createTableBlock(2, 2)], 'Question Stem').map((n) => n.kind),
-    ).toEqual(['table']);
+    expect(renderBlocks([createTableBlock(2, 2)]).map((n) => n.kind)).toEqual(['table']);
+  });
+
+  it('takes one blank line before it, carried inside the keep-together chain', () => {
+    // The reference papers' shape: the stem's sentence, air, then the table it
+    // introduces. The gap rides the caller's keepNext, or it is exactly where Word
+    // breaks the chain the stem's own flag was set to hold.
+    const nodes: RenderNode[] = [
+      { kind: 'text', style: 'Question Stem', text: { en: [{ text: 'The table below.' }], zh: [] }, keepNext: true },
+    ];
+    renderContentBlocks(nodes, [createTableBlock(2, 2)], 'Question Stem', { keepNext: true });
+    expect(nodes.map((n) => n.kind)).toEqual(['text', 'spacer', 'table']);
+    expect(nodes[1]).toMatchObject({ kind: 'spacer', keepNext: true });
+  });
+
+  it('does not double the gap when the text above already ends in a blank line', () => {
+    // A trailing hard break spends the line itself (§ pushGap); the table must count it.
+    const nodes: RenderNode[] = [
+      { kind: 'text', style: 'Question Stem', text: { en: [{ text: 'See below:\n' }], zh: [] } },
+    ];
+    renderContentBlocks(nodes, [createTableBlock(2, 2)], 'Question Stem');
+    expect(nodes.map((n) => n.kind)).toEqual(['text', 'table']);
   });
 
   it('cannot be produced by removeColumn any more', () => {
@@ -559,5 +586,79 @@ describe('row heights', () => {
   it('touches only the row it names', () => {
     const block = setRowHeight(createTableBlock(3, 2), 1, 600);
     expect(block.rows.map((row) => row.minHeight)).toEqual([undefined, 600, undefined]);
+  });
+});
+
+describe('a swept range of cells', () => {
+  /** The id at a position, as both the page and the panel address cells. */
+  const idAt = (block: TableBlock, rowIndex: number, cellIndex: number) =>
+    block.rows[rowIndex].cells[cellIndex].id;
+  const range = (block: TableBlock, anchorId: string, focusId: string) =>
+    cellsInRange(
+      block.rows.map((row) => row.cells),
+      anchorId,
+      focusId,
+      (_, rowIndex, cellIndex) => block.rows[rowIndex]?.cells[cellIndex]?.id,
+    );
+
+  it('catches the rectangle between its two corners, in either drag direction', () => {
+    const block = createTableBlock(3, 3);
+    const forward = range(block, idAt(block, 0, 1), idAt(block, 1, 2));
+    expect(forward.map((p) => [p.rowIndex, p.cellIndex])).toEqual([
+      [0, 1],
+      [0, 2],
+      [1, 1],
+      [1, 2],
+    ]);
+    // A drag travelling up-left is the same rectangle.
+    const backward = range(block, idAt(block, 1, 2), idAt(block, 0, 1));
+    expect(backward).toEqual(forward);
+  });
+
+  it('expands over a horizontally merged cell it cuts through, as Excel does', () => {
+    // Row 0's first cell spans grid columns 0-1. A sweep from (1,1) to the plain cell
+    // at (0,2) bounds columns 1-2 — which slices the header — so the rectangle must
+    // widen to column 0 and catch everything, or the highlight would show a
+    // non-rectangular region the bulk verb then acts outside of.
+    let block = createTableBlock(2, 3);
+    block = mergeRight(block, 0, 0);
+    const caught = range(block, idAt(block, 1, 1), idAt(block, 0, 2));
+    expect(caught.map((p) => [p.rowIndex, p.cellIndex])).toEqual([
+      [0, 0],
+      [0, 2],
+      [1, 0],
+      [1, 1],
+      [1, 2],
+    ]);
+  });
+
+  it('expands over a vertically merged cell, using the grid the browser lays out', () => {
+    // Column 0 of rows 0-1 is one tall cell. A sweep anchored beside its lower half
+    // must still catch it, which only works when the covered placeholder is given no
+    // grid column of its own — the rowSpan from above already occupies it.
+    let block = createTableBlock(2, 2);
+    block = mergeDown(block, 0, 0);
+    const caught = range(block, idAt(block, 1, 1), idAt(block, 0, 0));
+    expect(caught.map((p) => [p.rowIndex, p.cellIndex])).toEqual([
+      [0, 0],
+      [0, 1],
+      [1, 1],
+    ]);
+  });
+
+  it('returns nothing for a stale id, rather than a guess', () => {
+    const block = createTableBlock(2, 2);
+    expect(range(block, idAt(block, 0, 0), 'gone')).toEqual([]);
+  });
+
+  it('patches every caught cell in one pass', () => {
+    const block = createTableBlock(2, 2);
+    const caught = range(block, idAt(block, 0, 0), idAt(block, 1, 1));
+    const aligned = patchCells(block, caught, { align: 'center' });
+    expect(
+      aligned.rows.flatMap((row) => row.cells.map((cell) => cell.align)),
+    ).toEqual(['center', 'center', 'center', 'center']);
+    // The source block is untouched — the verbs stay pure.
+    expect(block.rows[0].cells[0].align).toBeUndefined();
   });
 });

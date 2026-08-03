@@ -156,6 +156,16 @@ interface WorksheetState {
    * it would restore a selection into a table that may have been reshaped since.
    */
   activeCell?: { blockId: string; cellId: string };
+  /**
+   * A rectangular run of cells swept on the page — Excel's drag selection.
+   *
+   * Stored as its two corner cell **ids**, not a list of positions: the rectangle is
+   * re-derived from the live table (`cellsInRange`), so a structural edit in between
+   * cannot leave the selection naming positions that have moved. Editor state like
+   * `activeCell`, and for the same reason: the sidebar's align control is the consumer,
+   * and it is a sibling of the page that swept the range.
+   */
+  cellSelection?: { blockId: string; anchorId: string; focusId: string };
   /** The question currently being dragged on the page, if any. */
   dragQuestionId?: string;
   past: Worksheet[];
@@ -184,6 +194,9 @@ interface WorksheetState {
   requestInsertMenu: (flowId?: string) => void;
   /** Report which table cell the page is in, so the sidebar can act on it. */
   setActiveCell: (cell?: { blockId: string; cellId: string }) => void;
+  setCellSelection: (
+    selection?: { blockId: string; anchorId: string; focusId: string },
+  ) => void;
   setDragQuestionId: (questionId?: string) => void;
 
   // --- Questions --------------------------------------------------------------
@@ -779,7 +792,20 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
       insertMenuRequest: state.insertMenuRequest + 1,
     })),
 
-  setActiveCell: (activeCell) => set({ activeCell }),
+  // A plain click collapses any swept range, as it does in Excel — the two are one
+  // selection with two extents, so setting either clears the other's leftovers.
+  setActiveCell: (activeCell) => set({ activeCell, cellSelection: undefined }),
+  /**
+   * Committing a sweep also aims `activeCell` at its anchor, so the panel's structural
+   * verbs (insert row above, merge) keep a subject and the range needs no second click.
+   */
+  setCellSelection: (cellSelection) =>
+    set({
+      cellSelection,
+      activeCell: cellSelection
+        ? { blockId: cellSelection.blockId, cellId: cellSelection.anchorId }
+        : undefined,
+    }),
   setDragQuestionId: (dragQuestionId) => set({ dragQuestionId }),
 
   // --- Questions --------------------------------------------------------------

@@ -292,6 +292,135 @@ export function nextCell(
   return flat[at + direction]?.id;
 }
 
+/* ------------------------------------------------------- multi-cell ranges */
+
+/**
+ * The structural shape a range needs — shared by `TableCell` (the model) and the IR's
+ * `TableNodeCell`, so the page can highlight the identical range the panel acts on
+ * without either importing the other's full type.
+ */
+export interface RangeCellShape {
+  covered?: boolean;
+  colSpan?: number;
+  rowSpan?: number;
+}
+
+/** A cell's rectangle in grid coordinates, inclusive on both ends. */
+export interface CellRect {
+  rowIndex: number;
+  cellIndex: number;
+  r0: number;
+  c0: number;
+  r1: number;
+  c1: number;
+}
+
+/**
+ * Where every printing cell sits on the grid.
+ *
+ * This is the **browser's own placement algorithm** (which is also Word's, via
+ * `w:gridSpan`/`vMerge`): a `rowSpan` from above occupies its columns in the rows it
+ * spans, pushing later cells right, and a covered placeholder occupies nothing — the
+ * preview renders it as `null`, so a range computed any other way would highlight cells
+ * the eye places elsewhere. `resolveCellEdges` keeps its simpler per-row accumulation
+ * because the T-account it serves never merges vertically; this one must handle both
+ * axes, since a range is dragged over whatever the table holds.
+ */
+export function cellRects(rows: RangeCellShape[][]): CellRect[] {
+  const rects: CellRect[] = [];
+  // Per grid column, how many further rows a rowSpan from above still occupies.
+  const occupied: number[] = [];
+  rows.forEach((row, rowIndex) => {
+    let column = 0;
+    row.forEach((cell, cellIndex) => {
+      if (cell.covered) return;
+      while ((occupied[column] ?? 0) > 0) column += 1;
+      const colSpan = cell.colSpan ?? 1;
+      const rowSpan = cell.rowSpan ?? 1;
+      rects.push({
+        rowIndex,
+        cellIndex,
+        r0: rowIndex,
+        c0: column,
+        r1: rowIndex + rowSpan - 1,
+        c1: column + colSpan - 1,
+      });
+      for (let i = column; i < column + colSpan; i += 1) {
+        occupied[i] = Math.max(occupied[i] ?? 0, rowSpan);
+      }
+      column += colSpan;
+    });
+    for (let i = 0; i < occupied.length; i += 1) {
+      if (occupied[i] > 0) occupied[i] -= 1;
+    }
+  });
+  return rects;
+}
+
+/**
+ * The cells inside the rectangle spanned by two cells — Excel's drag selection.
+ *
+ * The rectangle **expands until it contains every merged cell it touches**, iterating
+ * to a fixed point exactly as Excel does: a range that sliced a merged cell in half
+ * would highlight a non-rectangular region and act on cells the highlight does not
+ * show. Order of anchor and focus is immaterial (a drag can travel up-left), and either
+ * id missing — a stale selection after the row it named was deleted — returns nothing
+ * rather than a guess.
+ */
+export function cellsInRange(
+  rows: RangeCellShape[][],
+  anchorId: string,
+  focusId: string,
+  idOf: (cell: RangeCellShape, rowIndex: number, cellIndex: number) => string | undefined,
+): CellRect[] {
+  const rects = cellRects(rows);
+  const withIds = rects.map((rect) => ({
+    rect,
+    id: idOf(rows[rect.rowIndex][rect.cellIndex], rect.rowIndex, rect.cellIndex),
+  }));
+  const anchor = withIds.find((entry) => entry.id === anchorId)?.rect;
+  const focus = withIds.find((entry) => entry.id === focusId)?.rect;
+  if (!anchor || !focus) return [];
+
+  let r0 = Math.min(anchor.r0, focus.r0);
+  let c0 = Math.min(anchor.c0, focus.c0);
+  let r1 = Math.max(anchor.r1, focus.r1);
+  let c1 = Math.max(anchor.c1, focus.c1);
+
+  // Grow over any merged cell the rectangle cuts through, until nothing sticks out.
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const { rect } of withIds) {
+      const touches = rect.r1 >= r0 && rect.r0 <= r1 && rect.c1 >= c0 && rect.c0 <= c1;
+      if (!touches) continue;
+      if (rect.r0 < r0 || rect.c0 < c0 || rect.r1 > r1 || rect.c1 > c1) {
+        r0 = Math.min(r0, rect.r0);
+        c0 = Math.min(c0, rect.c0);
+        r1 = Math.max(r1, rect.r1);
+        c1 = Math.max(c1, rect.c1);
+        grew = true;
+      }
+    }
+  }
+
+  return rects.filter(
+    (rect) => rect.r1 >= r0 && rect.r0 <= r1 && rect.c1 >= c0 && rect.c0 <= c1,
+  );
+}
+
+/** Patch every cell in a list of positions — the range's bulk edit, one commit. */
+export function patchCells(
+  block: TableBlock,
+  positions: ReadonlyArray<{ rowIndex: number; cellIndex: number }>,
+  patch: Partial<TableCell>,
+): TableBlock {
+  return positions.reduce(
+    (current, position) => patchCell(current, position.rowIndex, position.cellIndex, patch),
+    block,
+  );
+}
+
 /* ------------------------------------------------------------------ padding */
 
 /**

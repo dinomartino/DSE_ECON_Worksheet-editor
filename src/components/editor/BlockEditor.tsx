@@ -8,6 +8,7 @@ import {
   createTableBlock,
 } from '@/model/factories';
 import {
+  cellsInRange,
   columnCountOf,
   defaultTableIndent,
   insertColumn,
@@ -20,6 +21,7 @@ import {
   mergeRight,
   paddingAt,
   patchCell,
+  patchCells,
   removeColumn,
   removeRow,
   resolveCellPadding,
@@ -376,6 +378,7 @@ function TableBlockEditor({
 }) {
   const activeCell = useWorksheetStore((s) => s.activeCell);
   const setActiveCell = useWorksheetStore((s) => s.setActiveCell);
+  const cellSelection = useWorksheetStore((s) => s.cellSelection);
 
   const rowCount = block.rows.length;
   const columnCount = columnCountOf(block);
@@ -393,6 +396,24 @@ function TableBlockEditor({
     activeCell?.blockId === block.id ? locateCell(block, activeCell.cellId) : undefined;
   const cell = at ? block.rows[at.rowIndex]?.cells[at.cellIndex] : undefined;
 
+  /*
+   * The swept rectangle, re-derived from the live table (§ `cellSelection` in the
+   * store) — the same `cellsInRange` the page highlights with, so the cells the panel
+   * acts on are exactly the cells the teacher sees caught. Stale ids resolve to an
+   * empty range and the panel falls back to the single active cell.
+   */
+  const range =
+    cellSelection?.blockId === block.id
+      ? cellsInRange(
+          block.rows.map((row) => row.cells),
+          cellSelection.anchorId,
+          cellSelection.focusId,
+          (_, rowIndex, cellIndex) => block.rows[rowIndex]?.cells[cellIndex]?.id,
+        )
+      : [];
+  const rangeCells = range.map((position) => block.rows[position.rowIndex].cells[position.cellIndex]);
+  const multi = range.length > 1;
+
   // Acting through one helper keeps the active cell pointing at a live position: a
   // structural edit can delete the very row the panel is aimed at.
   const apply = (next: TableBlock) => {
@@ -407,10 +428,16 @@ function TableBlockEditor({
           {rowCount} {rowCount === 1 ? 'row' : 'rows'} × {columnCount}{' '}
           {columnCount === 1 ? 'column' : 'columns'}
         </span>
-        {at && (
+        {multi ? (
           <span className="ml-auto text-[11px] tabular-nums text-ink-subtle">
-            cell R{at.rowIndex + 1}C{at.cellIndex + 1}
+            {range.length} cells selected
           </span>
+        ) : (
+          at && (
+            <span className="ml-auto text-[11px] tabular-nums text-ink-subtle">
+              cell R{at.rowIndex + 1}C{at.cellIndex + 1}
+            </span>
+          )
         )}
       </div>
 
@@ -580,62 +607,87 @@ function TableBlockEditor({
         <div className="space-y-1.5 border-t border-line pt-2">
           <div className="flex items-center gap-1">
             <span className="w-14 shrink-0 text-[11px] text-ink-subtle">Align</span>
-            {(['left', 'center', 'right'] as const).map((align) => (
-              <button
-                key={align}
-                type="button"
-                title={`Align ${align}`}
-                aria-label={`Align ${align}`}
-                aria-pressed={(cell.align ?? 'left') === align}
-                onClick={() => apply(patchCell(block, at.rowIndex, at.cellIndex, { align }))}
-                className={`cursor-pointer rounded px-1.5 py-0.5 text-[11px] ${
-                  (cell.align ?? 'left') === align
-                    ? 'bg-accent-soft text-accent-ink'
-                    : 'text-ink-subtle hover:bg-surface-hover'
-                }`}
-              >
-                {align === 'left' ? 'L' : align === 'center' ? 'C' : 'R'}
-              </button>
-            ))}
+            {(['left', 'center', 'right'] as const).map((align) => {
+              /*
+               * With a swept range the buttons act on every caught cell in one commit
+               * (one undo entry), and a button reads pressed only when the whole range
+               * already agrees — a mixed range shows none pressed, like Word's toolbar
+               * over a mixed selection.
+               */
+              const subject = multi ? rangeCells : [cell];
+              const pressed = subject.every((c) => (c.align ?? 'left') === align);
+              return (
+                <button
+                  key={align}
+                  type="button"
+                  title={`Align ${align}`}
+                  aria-label={`Align ${align}`}
+                  aria-pressed={pressed}
+                  onClick={() =>
+                    apply(
+                      multi
+                        ? patchCells(block, range, { align })
+                        : patchCell(block, at.rowIndex, at.cellIndex, { align }),
+                    )
+                  }
+                  className={`cursor-pointer rounded px-1.5 py-0.5 text-[11px] ${
+                    pressed
+                      ? 'bg-accent-soft text-accent-ink'
+                      : 'text-ink-subtle hover:bg-surface-hover'
+                  }`}
+                >
+                  {align === 'left' ? 'L' : align === 'center' ? 'C' : 'R'}
+                </button>
+              );
+            })}
           </div>
 
-          <div className="flex items-center gap-1">
-            <span className="w-14 shrink-0 text-[11px] text-ink-subtle">Merge</span>
-            {isMerged(cell) ? (
-              <Button
-                size="sm"
-                variant="subtle"
-                onClick={() => apply(unmerge(block, at.rowIndex, at.cellIndex))}
-              >
-                Split
-              </Button>
-            ) : (
-              <>
-                <Button
-                  size="sm"
-                  variant="subtle"
-                  onClick={() => apply(mergeRight(block, at.rowIndex, at.cellIndex))}
-                >
-                  → Right
-                </Button>
-                <Button
-                  size="sm"
-                  variant="subtle"
-                  onClick={() => apply(mergeDown(block, at.rowIndex, at.cellIndex))}
-                >
-                  ↓ Down
-                </Button>
-              </>
-            )}
-          </div>
+          {/* Merge and the cell picture keep a single subject; over a swept range they
+              would silently act on the anchor alone, which is not what the highlight
+              says — so they step aside rather than mislead. */}
+          {!multi && (
+            <>
+              <div className="flex items-center gap-1">
+                <span className="w-14 shrink-0 text-[11px] text-ink-subtle">Merge</span>
+                {isMerged(cell) ? (
+                  <Button
+                    size="sm"
+                    variant="subtle"
+                    onClick={() => apply(unmerge(block, at.rowIndex, at.cellIndex))}
+                  >
+                    Split
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="subtle"
+                      onClick={() => apply(mergeRight(block, at.rowIndex, at.cellIndex))}
+                    >
+                      → Right
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="subtle"
+                      onClick={() => apply(mergeDown(block, at.rowIndex, at.cellIndex))}
+                    >
+                      ↓ Down
+                    </Button>
+                  </>
+                )}
+              </div>
 
-          {/* A picture inside the cell, printed under its words — the boxed stimulus
-              that frames an extract and a photograph together. Per cell rather than per
-              table, because that is the thing it belongs to. */}
-          <CellImageField
-            image={cell.image}
-            onChange={(image) => apply(patchCell(block, at.rowIndex, at.cellIndex, { image }))}
-          />
+              {/* A picture inside the cell, printed under its words — the boxed stimulus
+                  that frames an extract and a photograph together. Per cell rather than per
+                  table, because that is the thing it belongs to. */}
+              <CellImageField
+                image={cell.image}
+                onChange={(image) =>
+                  apply(patchCell(block, at.rowIndex, at.cellIndex, { image }))
+                }
+              />
+            </>
+          )}
         </div>
       ) : (
         /* Not a disabled control: the reason the per-cell verbs are missing is that
