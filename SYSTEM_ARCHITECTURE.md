@@ -18,7 +18,7 @@ and the code disagree, the code is right — fix the document in the same PR.
 | State | Zustand 5, undo/redo, 100-entry history |
 | Language | TypeScript strict |
 | Export | Raw OOXML via JSZip (hand-built, no `docx` library) |
-| Test | Vitest 4 — ~734 tests across 41 files, ~1s |
+| Test | Vitest 4 — 750 tests across 41 files, ~1.2s |
 | Runtime | Browser-only: client-side `.docx`, no API routes |
 
 ## Project structure
@@ -28,13 +28,13 @@ src/
 ├── app/          Next.js shell; EditorHost gates start screen vs editor, the latter
 │                 imported ssr:false (store is browser-only)
 ├── model/        types · numbering · marks · migrations · text · page · flow ·
-│                 bands · bandSegments · edits · factories · newWorksheet · table ·
-│                 tableTemplates · diagram · diagramTemplates · diagramDraw ·
-│                 cover · coverTypes
+│                 bands · bandSegments · pageFurniture · edits · factories ·
+│                 newWorksheet · table · tableTemplates · diagram ·
+│                 diagramTemplates · diagramDraw · cover · coverTypes
 ├── registry/     Question-type extension point: types · index · mcq · structured
 ├── render/       ir (RenderNode + EditTarget) · worksheet (the walker) · diagram (SVG)
-├── export/       docx/ (index · body · numbering · styles · runs · package · xml) ·
-│                 diagramImage (PNG pre-pass) · clipboard
+├── export/       docx/ (index · body · numbering · styles · runs · package · furniture ·
+│                 xml) · diagramImage (PNG pre-pass) · clipboard
 ├── store/        worksheetStore — Zustand with undo/redo
 ├── storage/      WorksheetStore interface + localStorage implementation
 ├── components/   EditorApp · start/ (StartScreen + NewWorksheetForm) · preview/ (the
@@ -79,8 +79,11 @@ Worksheet
 ├── schemaVersion              CURRENT_SCHEMA_VERSION = 1
 ├── id · title · titleFormat? · instructions? · instructionsFormat?
 ├── fonts: FontPair            { latin, eastAsia }
+├── baseFontSize?: number      body size in points; absent = 11, a QAB seeds 10
 ├── pageSetup?: PageSetup      paper · orientation · margins, all twips
 ├── bands?: Band[]             masthead / title block
+├── cover?: CoverPage          a page of regions; never seen by the paginator
+├── pageFurniture?             frame + margin notes, one running header of shapes
 ├── header? / footer?: HeaderFooter
 │     enabled · bands · rule? · showOnFirstPage? · firstPage?: { bands, rule? }
 ├── questions: Question[]      every question, in printed order
@@ -88,7 +91,7 @@ Worksheet
 │     └── StructuredQuestion  blocks · showTotalMarks? ·
 │                             parts[ blocksBefore? · blocks · marks? · answer? · subParts? ]
 ├── layout: LayoutElement[]    section · heading · text · spacer · divider · pageBreak ·
-│                              answerLines · partHeader · labelList
+│                              answerLines · answerSpace · partHeader · labelList
 ├── flow: FlowItem[]           display order of questions + layout, interleaved
 ├── createdAt · updatedAt
 └── __unknown?                 fields from a newer build, preserved verbatim
@@ -557,6 +560,7 @@ prints through all three backends, so what was missing was only a way to reach i
 ```
 RenderNode = TextNode | ColumnsNode | TableNode | ImageNode | DiagramNode
            | PageBreakNode | SpacerNode | DividerNode | AnswerLinesNode
+           | AnswerSpaceNode
 
 TextNode: style (one of 14) · text: BiText · listRef? {stream, definition, level, marker}
           marks? · keepNext? · teacherOnly? · indent? · format? · edit?: EditTarget
@@ -565,7 +569,8 @@ TextNode: style (one of 14) · text: BiText · listRef? {stream, definition, lev
 `EditTarget` is a discriminated union keyed by **id**: `worksheetTitle`,
 `worksheetInstructions`, `blockText`, `blockCaption`, `tableCell`, `mcqOption`,
 `mcqStatement`, `mcqExplanation`, `partAnswer`, `subPartAnswer`, `layoutText`,
-`bandField`, `labelListCell`. (A section heading is reached via `layoutText`.)
+`bandField`, `labelListCell`, `coverLine`, `coverField`. (A section heading is reached
+via `layoutText`.)
 
 - **`edit` is inert in export** — docx/clipboard never read it.
 - **Derived text carries no target** (marks totals, "Answer: C", the number in a band
@@ -608,6 +613,7 @@ stream.
 | `styles.ts` | The 14 `NodeStyle` styles + `AnswerLine` |
 | `runs.ts` | `w:rFonts` (Latin + East-Asia), `w:r`, bilingual `w:br` |
 | `package.ts` | OPC: content types, rels, header/footer parts, `sectPr`, JSZip |
+| `furniture.ts` | The QAB's page frame and margin notes as anchored header shapes |
 | `xml.ts` | Escaping, illegal-char sanitization, attribute builder |
 
 ### One fixed line, no paragraph spacing
@@ -680,6 +686,11 @@ uses `padding-left` and draws the marker **absolutely positioned** at `left - ha
 - **Each level's marker starts where its parent's text starts**: `(a)` begins at the
   stem's text column (360), `(i)` at part text (720) — `left - hanging` at each level
   equals `left` above. (Levels 1–2 were once a full step too deep.)
+  - **Level 2 widens the hang rather than moving the marker**: `{left: 1170, hanging:
+    450}`, not 1080/360. A 360-twip hang is too narrow for a three-character roman —
+    "(iii)" collides with its own text — so the *text* column moves out to 1170 while
+    `left - hanging` stays 720, keeping the marker where the rule puts it. Room holds
+    through "(viii)".
 - `QUESTION_LIST_INDENTS` in **`model/numbering.ts`** is the one definition; three
   consumers (`export/docx/numbering.ts` → `w:ind`, `Preview.tsx` layout,
   `registry/structured.ts` continuation indents) may not import each other, so the
@@ -1318,9 +1329,8 @@ copying takes the whole anchor.
 
 A Paper 2 booklet is mostly writing room: the candidate answers *in* it, so the answer
 space is the product and the page count is decided by how much room each question is
-*given* (`LQ_MODE_HANDOFF.md`). Everything here is opt-in data — a new element kind, new
-optional fields, a conditional style — so a document that uses none of it exports
-byte-identically (asserted: no `LqAnswerLine` in styles.xml, no anchors in the header).
+*given*. Everything here is opt-in data — a new element kind, new optional fields, a
+conditional style — so a document that uses none of it exports byte-identically (asserted: no `LqAnswerLine` in styles.xml, no anchors in the header).
 
 ### The booklet is a 10pt document
 
@@ -1529,8 +1539,8 @@ Modelled on `cover-verify.mjs`, and aimed at its blind spot: it asserts the **pa
 count** in all three backends (a booklet is a length claim), rasterises the **pure
 answer page** — an interior sheet, not page 1 — against the reference's page 10, and
 **measures the dotted pitch** off a 150dpi raster (`lq-pitch.py`, expecting the
-reference's 46px). It also asserts §3.2's contract live: the browser's resolved fill
-count must equal the count the fixture stored — which is what the `.docx` exported, so
+reference's 46px). It also asserts fill-to-page's contract live: the browser's resolved
+fill count must equal the count the fixture stored — which is what the `.docx` exported, so
 equality *is* the preview and the paper agreeing about the last sheet. Copyright guards
 mirror the cover's: a phrase blocklist that always runs, and a 6-word sliding window
 over the gitignored reference.

@@ -9,7 +9,7 @@ It runs entirely in the browser. No account, no server, no database, no API keys
 
 ```bash
 git clone https://github.com/dinomartino/DSE_ECON_Worksheet-editor
-cd econ-worksheet-gen
+cd DSE_ECON_Worksheet-editor
 npm install
 npm run dev          # → http://localhost:3000
 ```
@@ -66,12 +66,18 @@ Then, to check your environment is sound before you change anything:
 
 ```bash
 npm run typecheck    # tsc --noEmit
-npm test             # 312 unit + export tests, ~1s
+npm test             # 750 unit + export tests, ~1s
 npm run lint
 ```
 
-All three should pass on a clean checkout. `npm run lint` currently reports ~26
-pre-existing warnings (unused vars) and **zero errors**; treat new errors as breakage.
+`typecheck` and `test` pass clean on a fresh checkout. `npm run lint` reports ~41
+pre-existing warnings (unused vars, exhaustive-deps) and **2 pre-existing errors**, both
+in `MarksTrail` (`src/components/preview/Preview.tsx`) from the React Compiler's
+`set-state-in-effect` and memoization rules. They flag a deliberate, documented pattern:
+the marks label's placement can only be decided by measuring the laid-out line, so the
+measurement must run in a layout effect and set state (see *"(4 marks)" sits on the last
+line with text* in [`SYSTEM_ARCHITECTURE.md`](./SYSTEM_ARCHITECTURE.md)). Treat any *new*
+error as breakage.
 
 ### First run
 
@@ -145,7 +151,7 @@ requirements include constructs most libraries cannot express:
 | Section restarts | A section flagged "restart numbering" opens a new numbering stream — the restart is Word's, not typed text. |
 | Named styles | `styles.xml` defines `Question Stem`, `MCQ Option`, `Marks`, `Section Heading`, `Answer`, `Marking Scheme` and more. Every paragraph attaches to one; direct formatting stays minimal. |
 | Per-script fonts | Every run carries `w:rFonts` with separate `w:ascii`/`w:hAnsi` (Latin) and `w:eastAsia` (CJK), so `GDP平減物價指數(GDP deflator)` renders each script in its own font. |
-| Tables | Real `w:tbl` with `gridSpan`/`vMerge` merges, `w:tblHeader` repeating headers and `cantSplit` rows. |
+| Tables | Real `w:tbl` with `gridSpan`/`vMerge` merges, `cantSplit` rows, and named border modes (`all` / `box` / `headerRule`) that reach the boxed stimulus and T-account shapes the papers actually draw. Deliberately **no** header row: no HKDSE table has one, so nothing emits `w:tblHeader`, grey fill or automatic bold. |
 | Images and diagrams | Embedded in `word/media/`, inline with text, alt text on the drawing. Never linked. |
 | Page breaks | `keepNext`/`keepLines` across a question's paragraphs, so questions are not split across pages. |
 
@@ -159,7 +165,8 @@ src/
 ├── app/          Next.js App Router shell; EditorHost dynamically imports the
 │                 editor with ssr:false (the store is browser-only)
 ├── model/        Document model, derived numbering, marks, migrations, page setup,
-│                 document flow, diagram geometry + templates
+│                 document flow, bands, cover page, page furniture, table and
+│                 diagram geometry + templates
 ├── registry/     Question-type extension point — the one place types are declared
 ├── render/       Neutral render IR, worksheet walker, diagram SVG renderer
 ├── export/       .docx (hand-built OOXML) and clipboard HTML backends
