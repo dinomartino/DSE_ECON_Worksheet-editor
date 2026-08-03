@@ -143,10 +143,24 @@ function nodeHtml(
             // Padding comes from the IR already resolved, so a row's or column's setting
             // reaches the clipboard as the same winner the `.docx` flattens onto `w:tcMar`.
             const pad = cell.padding;
+            /*
+             * A T-account's own edges (§`TableCellEdges`), resolved in the IR so this
+             * paints the identical table the `.docx` and the preview draw. Every side is
+             * stated, `none` included: a pasted table lands in a document with its own
+             * table styling, and an unstated edge inherits it.
+             */
+            const edges = cell.edges;
             const style =
-              // A boxed stimulus rules its frame only; the frame itself is on the
-              // `<table>` below, so the cells inside carry no rule of their own.
-              (node.borders === 'box' ? 'border:none;' : 'border:1px solid #000;') +
+              (edges
+                ? `border-top:${edges.top ? '1px solid #000' : 'none'};` +
+                  `border-left:${edges.left ? '1px solid #000' : 'none'};` +
+                  `border-bottom:${edges.bottom ? '1px solid #000' : 'none'};` +
+                  `border-right:${edges.right ? '1px solid #000' : 'none'};`
+                : // A boxed stimulus rules its frame only; the frame itself is on the
+                  // `<table>` below, so the cells inside carry no rule of their own.
+                  node.borders === 'box'
+                  ? 'border:none;'
+                  : 'border:1px solid #000;') +
               `padding:${twipsToPt(pad.top)}pt ${twipsToPt(pad.right)}pt ` +
               `${twipsToPt(pad.bottom)}pt ${twipsToPt(pad.left)}pt;` +
               `text-align:${cell.align};${formatCss(cell.format)}`;

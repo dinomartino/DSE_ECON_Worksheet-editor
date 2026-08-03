@@ -120,6 +120,29 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
      * with no paragraph spacing (§ One fixed line, no paragraph spacing).
      */
     pushGap(nodes);
+
+    /*
+     * The mid-question interlude (§`QuestionPart.blocksBefore`): unnumbered blocks that
+     * revise the scenario before this part is asked.
+     *
+     * At `STEM_TEXT_INDENT`, not `PART_TEXT_INDENT` — it is level with the stem because
+     * it addresses the whole group of parts below it, and indenting it to the part would
+     * read as a continuation of (a) above. `keepNext` holds it against the part it
+     * introduces, or Word breaks the page between the new scenario and the only question
+     * that uses it. Its trailing gap goes through `pushGap`, so an interlude ending in a
+     * hard break does not open a double blank before the part's number.
+     */
+    const interlude = part.blocksBefore ?? [];
+    if (interlude.length > 0) {
+      nodes.push(
+        ...renderContentBlocks(interlude, 'Question Stem', {
+          keepNext: true,
+          indent: STEM_TEXT_INDENT,
+        }),
+      );
+      pushGap(nodes);
+    }
+
     const partRef = {
       stream: context.questionStream,
       definition: 'question' as const,
@@ -275,6 +298,7 @@ function countMissingTranslations(question: StructuredQuestion): number {
   };
   checkBlocks(question.blocks);
   question.parts.forEach((part) => {
+    checkBlocks(part.blocksBefore ?? []);
     checkBlocks(part.blocks);
     check(part.answer);
     (part.subParts ?? []).forEach((sub) => {

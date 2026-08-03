@@ -32,6 +32,7 @@ import {
 } from '@/model/table';
 import { contentWidth, pageSetupOf, ptToTwips, twipsToPt } from '@/model/page';
 import { DIAGRAM_TEMPLATES } from '@/model/diagramTemplates';
+import { TABLE_TEMPLATES, buildTableFromTemplate } from '@/model/tableTemplates';
 import { emptyBiText, plain } from '@/model/text';
 import { RichTextEditable } from '@/components/preview/RichTextEditable';
 import type {
@@ -216,6 +217,15 @@ export function BlockEditor({ blocks, onChange, label, labelHint, figureWidth }:
               { ...createTableBlock(rows, columns), indent: defaultTableIndent(contentWidthTwips) },
             ])
           }
+          onPickTemplate={(templateId) =>
+            /*
+             * A template carries its own box — a balance sheet is centred and narrower
+             * than the column, as the reference prints it — so it is inserted as built,
+             * without the default indent a blank table takes. Overriding it here would
+             * throw away the geometry the template exists to supply.
+             */
+            onChange([...blocks, buildTableFromTemplate(templateId)])
+          }
         />
         <Button size="sm" variant="subtle" onClick={() => fileInput.current?.click()}>
           + Image
@@ -255,7 +265,13 @@ export function BlockEditor({ blocks, onChange, label, labelHint, figureWidth }:
  * Choosing the size first is both fewer actions and the interaction a teacher already
  * knows from Word.
  */
-function TableInsertButton({ onPick }: { onPick: (rows: number, columns: number) => void }) {
+function TableInsertButton({
+  onPick,
+  onPickTemplate,
+}: {
+  onPick: (rows: number, columns: number) => void;
+  onPickTemplate: (templateId: string) => void;
+}) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -291,6 +307,35 @@ function TableInsertButton({ onPick }: { onPick: (rows: number, columns: number)
          * column into the page.
          */
         <div className="absolute right-0 top-full z-40 mt-1 rounded-xl border border-line bg-surface-raised p-1.5 shadow-2xl">
+          {/*
+            The named shapes come **first**, above the size grid.
+
+            A teacher inserting a balance sheet wants the balance sheet, not a 3×4 grid
+            they then have to merge two header cells in and re-rule — and the whole point
+            of a template is that they should not have to know it is a 4-column table at
+            all. The grid stays underneath for everything the templates do not name,
+            which is most tables.
+          */}
+          <div className="mb-1 border-b border-line pb-1">
+            {TABLE_TEMPLATES.map((template) => (
+              <button
+                key={template.id}
+                type="button"
+                className="block w-full rounded-md px-2 py-1 text-left hover:bg-surface-sunken"
+                onClick={() => {
+                  onPickTemplate(template.id);
+                  setOpen(false);
+                }}
+              >
+                <span className="block text-xs font-medium text-ink">
+                  {plain(template.name.en)}
+                </span>
+                <span className="block text-[10px] text-ink-subtle">
+                  {plain(template.hint.en)}
+                </span>
+              </button>
+            ))}
+          </div>
           <TableSizePicker
             onDismiss={() => setOpen(false)}
             onPick={(rows, columns) => {
@@ -498,12 +543,14 @@ function TableBlockEditor({
       </div>
 
       {/*
-        Ruled grid, or a frame with nothing ruled inside it.
+        Ruled grid, a frame with nothing ruled inside it, or a T-account.
 
         A whole-table decision like alignment above, so it needs no cell chosen either.
         The reference paper boxes a stimulus four times — a news extract, a pay
         arrangement, three numbered proposals — and that last one is the shape a grid
-        cannot express at any padding: one frame, three rows, no rule between them.
+        cannot express at any padding: one frame, three rows, no rule between them. The
+        T-account is the third shape it draws (a bank's balance sheet, DSE 2019 P2 Q6):
+        a frame, one rule under the head, one down the middle (§`TableBorders`).
       */}
       <div className="flex items-center gap-2 border-t border-line pt-2">
         <span className="w-14 shrink-0 text-[11px] text-ink-subtle">Rules</span>
@@ -513,6 +560,12 @@ function TableBlockEditor({
           options={[
             { value: 'all', label: 'Grid', title: 'Rule every cell — an ordinary table' },
             { value: 'box', label: 'Box', title: 'Rule the frame only — a boxed stimulus' },
+            {
+              value: 'headerRule',
+              label: 'T-account',
+              title:
+                'Frame, a rule under the top row and one down the middle — a balance sheet',
+            },
           ]}
           // `all` is written as nothing, so an untouched table exports byte-identically.
           onChange={(borders) =>

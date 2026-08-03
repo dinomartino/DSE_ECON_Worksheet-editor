@@ -13,7 +13,12 @@ import type {
   TextFormat,
 } from '@/model/types';
 import { trailingBlankLines } from '@/model/text';
-import { resolveCellPadding, resolveColumnWidths, resolveTableBox } from '@/model/table';
+import {
+  resolveCellEdges,
+  resolveCellPadding,
+  resolveColumnWidths,
+  resolveTableBox,
+} from '@/model/table';
 
 /**
  * Neutral render IR.
@@ -149,6 +154,20 @@ export interface TextNode {
   format?: TextFormat;
 }
 
+/**
+ * Which of a cell's own edges are ruled. `true` draws, `false` explicitly does not.
+ *
+ * Explicit `false` matters as much as `true`: Word inherits an unstated border from the
+ * table style, so a backend that simply omits the edge draws the very rule the shape
+ * exists to suppress — the same trap `box` documents for `insideH`/`insideV`.
+ */
+export interface TableCellEdges {
+  top: boolean;
+  left: boolean;
+  bottom: boolean;
+  right: boolean;
+}
+
 export interface TableNodeCell {
   text: BiText;
   colSpan: number;
@@ -163,6 +182,17 @@ export interface TableNodeCell {
    * that re-derived it could show the page a padding the exported file does not have.
    */
   padding: Required<CellPadding>;
+  /**
+   * Which of this cell's own four edges are ruled, already resolved from the table's
+   * border mode and the cell's position.
+   *
+   * Only `headerRule` populates it — `all` and `box` are uniform, so they say what they
+   * mean on the table itself and every cell answers alike. The T-account is the one
+   * shape whose rules depend on *where a cell is* (§`TableBorders`), and resolving that
+   * here rather than in each backend is the same rule the padding above follows: three
+   * renderers working out the same geometry is three chances to draw a different table.
+   */
+  edges?: TableCellEdges;
   /** Direct formatting for the cell's text, over the Body style. */
   format?: TextFormat;
   /** A picture printed under the cell's text; see `TableCell.image`. */
@@ -611,6 +641,12 @@ export function renderContentBlocks(
             align: cell.align ?? 'left',
             covered: Boolean(cell.covered),
             padding: resolveCellPadding(block, rowIndex, cellIndex),
+            // Only the T-account rules by position; `all` and `box` are uniform and say
+            // so on the table itself (§`TableCellEdges`).
+            edges:
+              block.borders === 'headerRule'
+                ? resolveCellEdges(block, rowIndex, cellIndex, columnCount)
+                : undefined,
             format: cell.format,
             image: cell.image,
             edit: { kind: 'tableCell', blockId: block.id, cellId: cell.id },

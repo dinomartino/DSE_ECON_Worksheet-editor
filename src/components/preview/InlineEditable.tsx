@@ -102,6 +102,25 @@ interface Props {
    * Only tables pass this. Everywhere else Tab stays the browser's own focus move.
    */
   onTab?: (backwards: boolean) => boolean;
+  /**
+   * While **empty**, stretch to the width of the container instead of shrinking to the
+   * prompt.
+   *
+   * For a field whose prompt had to be shortened to fit its box — a table cell, whose
+   * column is as narrow as "5 000" (§`compactPlaceholder`). The short prompt solved the
+   * row height and created a second problem: a one-character `·` is a few pixels of hit
+   * target, and the hover tint that signals "this is editable" was too small to notice,
+   * so an empty cell read as blank paper rather than as a field.
+   *
+   * Filling the cell makes the *whole cell* the target and the whole cell light up on
+   * hover, which is what a teacher is already aiming at. Deliberately width only: it
+   * stays `inline-block` at one line's height, so the row measures exactly as it prints
+   * — reserving height is the bug this whole path exists to avoid.
+   *
+   * Only while empty. A cell with text in it is an ordinary inline field, and stretching
+   * it would put the hover box somewhere other than the words.
+   */
+  fillWidth?: boolean;
 }
 
 export function InlineEditable({
@@ -118,6 +137,7 @@ export function InlineEditable({
   onSelectionChange,
   keepEditing = false,
   printHidden = false,
+  fillWidth = false,
   onTab,
 }: Props) {
   const [editing, setEditing] = useState(false);
@@ -267,6 +287,21 @@ export function InlineEditable({
         isEmpty
           ? 'italic text-[#9a8ad6] underline decoration-[#c4b5fd] decoration-dashed underline-offset-4'
           : ''
+      } ${
+        /*
+         * An empty cell claims its whole column, so the target is what the teacher is
+         * already aiming at (§`fillWidth`). `inline-block` + `w-full` takes width only —
+         * the box stays one line tall, which is what keeps the row measuring as it
+         * prints. `text-left` because the cell's own `text-align` may be `right` for a
+         * figure column, and a prompt hugging the right edge reads as content.
+         *
+         * Full width is also what turns the empty style's dashed underline into the
+         * affordance: ruled across the cell it reads as a form field waiting to be
+         * filled, where under a one-character prompt it was a few invisible pixels. A
+         * faint tint carries it the rest of the way — hover alone cannot advertise a
+         * field you have not yet thought to point at.
+         */
+        fillWidth && isEmpty ? 'inline-block w-full text-left bg-[#faf8ff]' : ''
       } ${className}`}
       onClick={(event) => {
         // Selecting the question is the parent's job; selection/editing is ours.

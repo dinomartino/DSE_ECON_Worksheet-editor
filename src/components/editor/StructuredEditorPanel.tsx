@@ -1,6 +1,6 @@
 'use client';
 
-import { createPart, createSubPart } from '@/model/factories';
+import { createParagraphBlock, createPart, createSubPart } from '@/model/factories';
 import { partMarks, questionMarks } from '@/model/marks';
 import { partLabel, subPartLabel } from '@/model/numbering';
 import { emptyBiText } from '@/model/text';
@@ -85,6 +85,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
         {question.parts.map((part, partIndex) => {
           const subParts = part.subParts ?? [];
           const hasSubParts = subParts.length > 0;
+          const interlude = part.blocksBefore ?? [];
           // No sub-part separately marked = one label for the group, carried by the part.
           const sharesMarks = hasSubParts && subParts.every((s) => s.marks === undefined);
 
@@ -132,6 +133,55 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
               </header>
 
               <div className="space-y-2 p-2.5">
+                {/*
+                 * The mid-question interlude (§`QuestionPart.blocksBefore`): unnumbered
+                 * text — often a revised table — that resets the scenario before this
+                 * part is asked.
+                 *
+                 * Rendered *above* the part's own blocks, where it prints, so the panel
+                 * reads down the page in the order the paper does. Behind an affordance
+                 * rather than a permanent second block editor: the ordinary part has no
+                 * interlude, and two identical-looking editors on every part card would
+                 * bury the one that holds the question.
+                 */}
+                {interlude.length > 0 ? (
+                  <div className="space-y-1 rounded-md border border-dashed border-line p-2">
+                    <GroupHeader
+                      title="Text before this part"
+                      hint="Unnumbered, at the stem's indent"
+                      action={
+                        <IconButton
+                          label="Remove text before this part"
+                          variant="danger"
+                          onClick={() => patchPart(partIndex, { blocksBefore: undefined })}
+                        >
+                          <span aria-hidden>✕</span>
+                        </IconButton>
+                      }
+                    />
+                    <BlockEditor
+                      blocks={interlude}
+                      onChange={(blocksBefore) =>
+                        // Emptied back to nothing drops the field, rather than storing an
+                        // empty array that reads as "an interlude that prints nothing".
+                        patchPart(partIndex, {
+                          blocksBefore: blocksBefore.length > 0 ? blocksBefore : undefined,
+                        })
+                      }
+                    />
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="subtle"
+                    onClick={() =>
+                      patchPart(partIndex, { blocksBefore: [createParagraphBlock(emptyBiText())] })
+                    }
+                  >
+                    + Text before this part
+                  </Button>
+                )}
+
                 <BlockEditor
                   blocks={part.blocks}
                   onChange={(blocks) => patchPart(partIndex, { blocks })}

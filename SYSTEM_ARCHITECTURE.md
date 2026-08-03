@@ -18,7 +18,7 @@ and the code disagree, the code is right — fix the document in the same PR.
 | State | Zustand 5, undo/redo, 100-entry history |
 | Language | TypeScript strict |
 | Export | Raw OOXML via JSZip (hand-built, no `docx` library) |
-| Test | Vitest 4 — ~606 tests across 30 files, ~1s |
+| Test | Vitest 4 — ~734 tests across 41 files, ~1s |
 | Runtime | Browser-only: client-side `.docx`, no API routes |
 
 ## Project structure
@@ -29,7 +29,8 @@ src/
 │                 imported ssr:false (store is browser-only)
 ├── model/        types · numbering · marks · migrations · text · page · flow ·
 │                 bands · bandSegments · edits · factories · newWorksheet · table ·
-│                 diagram · diagramTemplates · diagramDraw · cover · coverTypes
+│                 tableTemplates · diagram · diagramTemplates · diagramDraw ·
+│                 cover · coverTypes
 ├── registry/     Question-type extension point: types · index · mcq · structured
 ├── render/       ir (RenderNode + EditTarget) · worksheet (the walker) · diagram (SVG)
 ├── export/       docx/ (index · body · numbering · styles · runs · package · xml) ·
@@ -84,7 +85,8 @@ Worksheet
 │     enabled · bands · rule? · showOnFirstPage? · firstPage?: { bands, rule? }
 ├── questions: Question[]      every question, in printed order
 │     ├── McqQuestion         blocks · statements? · options[ text · blocks? ] · optionLayout? · answerIndex · marks · explanation?
-│     └── StructuredQuestion  blocks · showTotalMarks? · parts[ blocks · marks? · answer? · subParts? ]
+│     └── StructuredQuestion  blocks · showTotalMarks? ·
+│                             parts[ blocksBefore? · blocks · marks? · answer? · subParts? ]
 ├── layout: LayoutElement[]    section · heading · text · spacer · divider · pageBreak ·
 │                              answerLines · partHeader · labelList
 ├── flow: FlowItem[]           display order of questions + layout, interleaved
@@ -737,13 +739,118 @@ plain, which is what the papers look like); regression tests assert
 `not.toContain('<w:tblHeader/>')` and `not.toContain('EFEFEF')` — the only symptom is on
 paper.
 
+### A part can carry unnumbered text above it
+
+`QuestionPart.blocksBefore` is the **mid-question interlude**: DSE 2019 P2 Q6 asks (a) off
+a balance sheet, prints "Suppose the central bank sells $200 million…" as a plain
+paragraph, then asks (b) and (c) about the new situation. It takes no letter and no marks,
+and it prints at `STEM_TEXT_INDENT` — level with the stem, a step left of the parts —
+because it revises the scenario for everything below rather than continuing (a).
+
+- **It belongs to the part below, not the one above.** The interlude is a lead-in; it
+  exists to set up (b) and (c), so deleting or moving (b) must carry it. Hung off (a)
+  instead, deleting the part it introduces strands a scenario nothing asks about.
+- **A full `ContentBlock[]`**, not text: the interlude is regularly a second table or
+  figure (a revised balance sheet, another extract). Free, because `questionBlockLists`
+  and `mapAllBlocks` read `parts` structurally — but both had to be told, or the block
+  would be findable and unwritable.
+- Separated by a blank line on each side, through `pushGap`, and `keepNext` holds it
+  against the part it introduces — Word would otherwise break the page between the new
+  scenario and the only question that uses it.
+- Distinct from a second entry in the part's own `blocks`, which continues (a) and
+  indents to `PART_TEXT_INDENT`. Offered behind an affordance in the panel: the ordinary
+  part has no interlude, and two identical block editors per part card would bury the one
+  holding the question.
+
 ### A boxed stimulus is a frame with nothing ruled inside it
 
-`TableBorders` is `'all' | 'box'` — two named modes, deliberately not per-edge control
-(which was removed once already for being wrong about real papers). The papers draw only
-these two: DSE 2021 P1 boxes a stimulus four times, and Q21 is one frame around three
-proposals with **no rule between them**, which a uniform grid cannot express at any
-padding.
+`TableBorders` is `'all' | 'box' | 'headerRule'` — named modes, deliberately not per-edge
+control (which was removed once already for being wrong about real papers). DSE 2021 P1
+boxes a stimulus four times, and Q21 is one frame around three proposals with **no rule
+between them**, which a uniform grid cannot express at any padding.
+
+`headerRule` is the **T-account**: a frame, one rule under the top row, one down the
+middle, nothing else — how DSE 2019 P2 Q6/Q7 draw a bank's balance sheet, and the most
+border-worked table in that paper. Neither `all` (rules everything) nor `box` (suppresses
+the header rule that names the two sides) reaches it.
+
+- **The shape says "two sides, each a list."** The label and its figure are one entry, so
+  a rule between them would divide what belongs together; Reserves and Loans are
+  successive entries, so a rule between *them* would read as separate facts.
+- **A mode earns its place by being a shape the syllabus draws the same way every year.**
+  A paper that does draw a bespoke arrangement draws a genuinely one-off one — Q10's
+  re-export table notches a corner with four cells' own edges — which no mode should try
+  to reach.
+- **Resolved per cell in the IR** (`resolveCellEdges` → `TableNodeCell.edges`), like
+  padding and the column widths: the rules depend on *where a cell is*, and three
+  renderers deriving that separately is three chances to draw a different table. Only
+  `headerRule` populates it; `all` and `box` are uniform and say so on the table.
+- **Resolved from grid position, not cell index.** The header cells span two grid columns
+  each, so "is this against the middle" cannot be answered by counting cells — and a
+  `covered` cell occupies **no** grid column of its own, since the span covering it already
+  counted that column. Adding 1 for it put the "Liabilities" header at grid columns 3–5 of
+  a 4-column table, so the header row silently lost its outer rules while every un-spanned
+  row looked correct.
+- **The table itself then draws nothing** — all six `w:val="none"`, never omitted, or the
+  table style puts the grid back underneath the cells' own edges (the trap `box` records).
+  `w:tcBorders` must precede `w:tcMar` and `w:vAlign`: `CT_TcPr` is a sequence, and out of
+  order Word reports a repair error on the whole file rather than one wrong table.
+- **An odd column count has no midpoint**, so the divider is omitted rather than drawn
+  off-centre — the shape is meaningless there and it degrades to a framed block.
+
+### A table can start from a named shape (`src/model/tableTemplates.ts`)
+
+`TABLE_TEMPLATES` ships the shapes the syllabus draws every year — a bank's balance sheet,
+a two-period comparison, a boxed extract — exactly as `DIAGRAM_TEMPLATES` does, and for the
+same reason: a teacher inserting a balance sheet wants the balance sheet, not a 3×4 grid
+they must then merge two header cells in and re-rule. Offered at insert time, above the size
+grid in the `+ Table` popover, so there is one "insert a table" affordance rather than two.
+
+- **A template is only an initial value**: plain `TableBlock` geometry with fresh ids, never
+  looked up again. There is deliberately no `templateId` — a stored one invites a
+  "re-apply" that has to decide what to do with edited cells.
+- **What is constant ships; what is this question's data does not.** A balance sheet is
+  always Assets/Liabilities over Reserves and Loans against Deposits, so those are seeded;
+  the figures stay empty, because a seeded number is one a teacher can miss.
+- **Both language sides are filled** for everything it ships (§ both language sides carry
+  defaults) — a template seeding English alone hands over a half-translated table in the one
+  app that exists for bilingual papers. A test walks every template and fails on any cell
+  with one side filled and the other empty.
+- The balance sheet is **four columns, not two**: each side is a label column and a figure
+  column, so "Reserves" ranges left while its figure ranges right with no rule between
+  them. Two columns cannot place the figures without either ruling between a name and its
+  number or relying on typed spaces that reflow the moment the column is dragged. Its
+  header cells span 2+2 and carry `covered` placeholders, exactly as `mergeRight` leaves
+  them.
+
+### An empty cell's prompt must fit its column
+
+`richNodes` takes `compactPlaceholder`, and table cells pass it. "Double-click to add
+English" is four words of italic prose and a figure column is as wide as "5 000", so the
+prompt wrapped to four lines and pushed the row to nearly double the height it prints at.
+Not merely untidy: the paginator measures these boxes, so the preview and Word disagreed
+about the height of any table holding an empty cell — and `data-empty-placeholder` hides
+the prompt in print by `visibility`, which deliberately *keeps the box*. The prompt is
+shortened rather than dropped: an empty cell still has to advertise that it can be typed
+in, and with nothing there a teacher cannot tell an empty cell from a covered one.
+
+**Shortening it then hid the target, so the empty field takes the cell's width**
+(`InlineEditable.fillWidth`). A one-character prompt is a few pixels to aim at, and the
+hover tint that signals "editable" was too small to notice — the cell read as blank paper.
+Full width makes the whole cell the target, and turns the empty style's dashed underline
+into the affordance: ruled across the cell it reads as a form field, where under a `·` it
+was invisible. A faint resting tint carries it the rest of the way, since hover cannot
+advertise a field nobody has thought to point at yet.
+
+- **Width only, never height** — `inline-block w-full`, no padding or `min-h`. Reserving
+  height is exactly the bug the short prompt was introduced to fix, and it is silent in
+  both directions: a reserved height looks fine on screen and breaks pagination, a missing
+  width looks fine to the paginator and leaves the cell unclickable. `emptyCellField.test.ts`
+  greps for both.
+- **`text-left` regardless of the cell's own alignment**: a figure column ranges right, and
+  a prompt hugging the right edge reads as content.
+- Only cells opt in — a stem has the width of the text column, so the long prompt fits
+  there and says more.
 
 - **`box` writes `w:val="none"` on `insideH`/`insideV`, it does not omit them** — Word
   inherits an unstated border from the table style, so omitting draws the very grid the

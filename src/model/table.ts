@@ -455,6 +455,64 @@ export function resolveColumnWidths(block: TableBlock, count: number): number[] 
 }
 
 /**
+ * Which edges each cell of a `headerRule` table draws — the T-account (§`TableBorders`).
+ *
+ * The shape is a frame, one rule under the top row, and one vertical rule down the
+ * middle. Everything else is explicitly off. Read off DSE 2019 P2 Q6's own
+ * `document.xml`, where each interior cell spells `nil` on the edges facing its
+ * side-mates and `single` on the ones that reach the frame or the divider.
+ *
+ * Resolved from **grid** position, not cell index: the header cells span two grid
+ * columns each, so "is this cell against the middle divider" cannot be answered by
+ * counting cells in the row. Each cell's starting grid column is accumulated from the
+ * spans before it, exactly as `w:gridSpan` makes Word do.
+ *
+ * The divider sits at the grid's midpoint, which is what makes the two sides equal
+ * halves. An odd column count has no midpoint — the shape is meaningless there — so the
+ * divider is simply omitted and the table prints as a framed block with a header rule,
+ * which is the nearest true thing rather than a rule drawn off-centre.
+ */
+export function resolveCellEdges(
+  block: TableBlock,
+  rowIndex: number,
+  cellIndex: number,
+  columnCount = spannedColumnCount(block),
+): { top: boolean; left: boolean; bottom: boolean; right: boolean } {
+  const rows = block.rows;
+  const row = rows[rowIndex]?.cells ?? [];
+
+  /*
+   * A covered cell occupies **no** grid column of its own: the span that covers it has
+   * already counted the column, so adding 1 for it counts the same column twice and
+   * every cell after it in the row resolves one place too far right. On the balance
+   * sheet that put the "Liabilities" header at grid columns 3–5 of a 4-column table, so
+   * neither the divider nor the frame's right edge was drawn on it — the header row
+   * simply lost its outer rules while every un-spanned row looked correct.
+   *
+   * This is `spannedColumnCount`'s own rule, applied per cell.
+   */
+  let start = 0;
+  for (let i = 0; i < cellIndex; i += 1) {
+    const previous = rows[rowIndex]?.cells[i];
+    if (!previous || previous.covered) continue;
+    start += previous.colSpan ?? 1;
+  }
+  const span = row[cellIndex]?.colSpan ?? 1;
+  const end = start + span;
+
+  const middle = columnCount % 2 === 0 ? columnCount / 2 : -1;
+
+  return {
+    // The frame's top edge, and the header rule is drawn as the *bottom* of row 0 (as
+    // the reference draws it) rather than the top of row 1 — one rule, one owner.
+    top: rowIndex === 0,
+    left: start === 0 || start === middle,
+    bottom: rowIndex === 0 || rowIndex === rows.length - 1,
+    right: end === columnCount || end === middle,
+  };
+}
+
+/**
  * Move the boundary between column `index` and the one after it by `delta` (a fraction).
  *
  * Only the two columns either side change, so dragging one border never reflows the whole

@@ -61,9 +61,20 @@ function patchBlocks(
  */
 function questionBlockLists(question: Question): ContentBlock[][] {
   const lists: ContentBlock[][] = [question.blocks];
-  const parts = (question as { parts?: Array<{ blocks: ContentBlock[]; subParts?: Array<{ blocks: ContentBlock[] }> }> })
-    .parts;
+  const parts = (
+    question as {
+      parts?: Array<{
+        blocks: ContentBlock[];
+        blocksBefore?: ContentBlock[];
+        subParts?: Array<{ blocks: ContentBlock[] }>;
+      }>;
+    }
+  ).parts;
   for (const part of parts ?? []) {
+    // The unnumbered interlude above the part (§`QuestionPart.blocksBefore`), so a table
+    // or diagram inside it edits, resizes and deletes by exactly the same route as one
+    // in a stem.
+    if (part.blocksBefore) lists.push(part.blocksBefore);
     lists.push(part.blocks);
     for (const sub of part.subParts ?? []) lists.push(sub.blocks);
   }
@@ -104,11 +115,21 @@ function mapAllBlocks(
 ): Worksheet {
   const mapQuestion = (question: Question): Question => {
     const next = { ...question, blocks: patchBlocks(question.blocks, blockId, patch) } as Question;
-    const parts = (next as { parts?: Array<{ blocks: ContentBlock[]; subParts?: Array<{ blocks: ContentBlock[] }> }> })
-      .parts;
+    const parts = (
+      next as {
+        parts?: Array<{
+          blocks: ContentBlock[];
+          blocksBefore?: ContentBlock[];
+          subParts?: Array<{ blocks: ContentBlock[] }>;
+        }>;
+      }
+    ).parts;
     if (parts) {
       (next as { parts: unknown }).parts = parts.map((part) => ({
         ...part,
+        blocksBefore: part.blocksBefore
+          ? patchBlocks(part.blocksBefore, blockId, patch)
+          : part.blocksBefore,
         blocks: patchBlocks(part.blocks, blockId, patch),
         subParts: part.subParts?.map((sub) => ({
           ...sub,
@@ -918,11 +939,21 @@ function removeBlock(worksheet: Worksheet, blockId: string): Worksheet {
     ...worksheet,
     questions: worksheet.questions.map((question) => {
       const next = { ...question, blocks: strip(question.blocks) } as Question;
-      const parts = (next as { parts?: Array<{ blocks: ContentBlock[]; subParts?: Array<{ blocks: ContentBlock[] }> }> })
-        .parts;
+      const parts = (
+        next as {
+          parts?: Array<{
+            blocks: ContentBlock[];
+            blocksBefore?: ContentBlock[];
+            subParts?: Array<{ blocks: ContentBlock[] }>;
+          }>;
+        }
+      ).parts;
       if (parts) {
         (next as { parts: unknown }).parts = parts.map((part) => ({
           ...part,
+          // The interlude's blocks are deletable exactly like a stem's
+          // (§`QuestionPart.blocksBefore`).
+          blocksBefore: part.blocksBefore ? strip(part.blocksBefore) : part.blocksBefore,
           blocks: strip(part.blocks),
           subParts: part.subParts?.map((sub) => ({ ...sub, blocks: strip(sub.blocks) })),
         }));

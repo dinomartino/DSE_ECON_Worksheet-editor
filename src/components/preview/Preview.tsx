@@ -250,6 +250,24 @@ function richNodes(
   ctx?: EditContext,
   /** Tab handler, supplied only by table cells so a table walks like Word's. */
   onTab?: (backwards: boolean) => boolean,
+  /**
+   * Render empty sides with a **short** prompt, for a field whose box cannot absorb a
+   * sentence.
+   *
+   * A table cell is that field. "Double-click to add English" is four words of italic
+   * prose, and a figure column is as wide as "5 000" — so the prompt wrapped to four
+   * lines and pushed the row to nearly double the height it prints at. Worse than
+   * untidy: the paginator measures these boxes, so the preview and Word disagreed about
+   * the height of any table holding an empty cell.
+   *
+   * The prompt is not dropped altogether — an empty cell still needs to advertise that
+   * it can be typed in, and with nothing there at all a teacher cannot tell an empty
+   * cell from a covered one. It is shortened to a symbol that fits any column, and the
+   * field is stretched to the cell's width (`fillWidth`) so that shortening it does not
+   * shrink the thing you have to click: the whole cell is the target and the whole cell
+   * lights up on hover, while the box stays one line tall.
+   */
+  compactPlaceholder?: boolean,
 ) {
   if (!text) return null;
 
@@ -268,6 +286,7 @@ function richNodes(
         onFlush={(next) => ctx.onEditKeepingSelection(edit, next)}
         onSelectionChange={ctx.onTextSelectionChange}
         keepEditing={ctx.keepEditing}
+        fillWidth={compactPlaceholder}
         onTab={onTab}
       >
         {rendered}
@@ -275,8 +294,18 @@ function richNodes(
     );
   };
 
-  if (language === "en") return editable("en", "Double-click to add English");
-  if (language === "zh") return editable("zh", "Double-click to add 中文");
+  /*
+   * The prompt each empty side shows. A cell takes the compact form for the reason
+   * `compactPlaceholder` records: the long one wraps and changes the row's height.
+   *
+   * A middle dot rather than a truncated sentence — it reads as "there is a field
+   * here", fits the narrowest figure column at any font size, and cannot be mistaken
+   * for content the way an abbreviated instruction ("Add English…") could.
+   */
+  const prompt = (long: string) => (compactPlaceholder ? "·" : long);
+
+  if (language === "en") return editable("en", prompt("Double-click to add English"));
+  if (language === "zh") return editable("zh", prompt("Double-click to add 中文"));
 
   // In bilingual mode an empty side still needs a click target, otherwise the only
   // way to add the missing translation would be the sidebar.
@@ -290,9 +319,9 @@ function richNodes(
   // one numbered paragraph separated by `w:br` (§5.4).
   return (
     <>
-      {showEn && editable("en", "Double-click to add English")}
+      {showEn && editable("en", prompt("Double-click to add English"))}
       {showEn && showZh && <br />}
-      {showZh && editable("zh", "Double-click to add 中文")}
+      {showZh && editable("zh", prompt("Double-click to add 中文"))}
     </>
   );
 }
@@ -1480,11 +1509,33 @@ function TableNodeView({
                        */
                       className={`${
                         // A boxed stimulus rules its frame only — the frame is on the
-                        // <table>, so the cells inside carry no rule of their own.
-                        node.borders === "box" ? "" : "border border-slate-500"
+                        // <table>, so the cells inside carry no rule of their own. A
+                        // T-account rules per cell and draws its edges below, so it
+                        // takes no uniform border either.
+                        node.borders === "box" || cell.edges
+                          ? ""
+                          : "border border-slate-500"
                       } align-middle ${isActive ? "ring-2 ring-inset ring-[#7c5cff]" : ""}`}
                       style={{
                         textAlign: cell.align,
+                        /*
+                         * A T-account's own edges (§`TableCellEdges`), from the IR the
+                         * exporter reads — the two must draw the identical table.
+                         *
+                         * Literal hex rather than a token, per the paper rule, and the
+                         * same `slate-500` the uniform border resolves to. `border-collapse`
+                         * on the table already shares an edge between neighbours, so the
+                         * divider is drawn once by the cell on each side of it and the
+                         * two coincide.
+                         */
+                        ...(cell.edges
+                          ? {
+                              borderTop: cell.edges.top ? "1px solid #64748b" : "none",
+                              borderLeft: cell.edges.left ? "1px solid #64748b" : "none",
+                              borderBottom: cell.edges.bottom ? "1px solid #64748b" : "none",
+                              borderRight: cell.edges.right ? "1px solid #64748b" : "none",
+                            }
+                          : {}),
                         // Points from the resolved twips, the same winner `w:tcMar` gets.
                         paddingTop: `${twipsToPt(cell.padding.top)}pt`,
                         paddingRight: `${twipsToPt(cell.padding.right)}pt`,
@@ -1522,6 +1573,9 @@ function TableNodeView({
                         address
                           ? (backwards) => moveCell(address.cellId, backwards)
                           : undefined,
+                        // A cell's box is as narrow as its column, so the prompt has to
+                        // fit one (§`compactPlaceholder`).
+                        true,
                       )}
                       {/* A picture inside the cell, under its words — the boxed
                           stimulus that frames an extract and a photograph together. */}

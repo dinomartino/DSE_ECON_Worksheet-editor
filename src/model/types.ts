@@ -217,12 +217,28 @@ export type CaptionPlacement = 'above' | 'below';
  * particular is one framed block whose three rows carry *no* rule between them, which a
  * uniform grid cannot express at any padding.
  *
- * Deliberately two named modes rather than per-edge border control. Per-cell borders
+ * `headerRule` is the T-account: a frame, **one rule under the top row**, and one
+ * vertical rule down the middle — nothing else. This is how DSE 2019 P2 Q6/Q7 draw a
+ * bank's balance sheet, and it is the most border-worked table in that paper: the header
+ * cells span two grid columns each and carry only `w:bottom`, while every interior cell
+ * spells `nil` on the edges facing its own side's neighbours. What the shape says is
+ * "two sides, each a list" — the label and its figure are one entry, so a rule between
+ * them would divide what belongs together, and Reserves/Loans are successive entries in
+ * one list, so a rule between *them* would read as separate facts.
+ *
+ * `all` cannot express it (it rules every boundary) and neither can `box` (which
+ * suppresses the header rule that names the two sides). It is a shape, not a styling
+ * preference — the same test `box` passed.
+ *
+ * Deliberately three named modes rather than per-edge border control. Per-cell borders
  * were removed once already for being wrong about real papers (see the note above), and
- * the papers only ever draw these two: everything else would be a setting nobody needs
- * and every backend would have to agree about.
+ * a paper that does draw a bespoke arrangement draws a genuinely one-off one — DSE 2019
+ * P2 Q10's re-export table notches a corner by giving four cells their own edges, which
+ * no mode should try to reach. A named mode earns its place by being a shape the
+ * syllabus draws the same way every year; that is true of these three and of nothing
+ * else observed.
  */
-export type TableBorders = 'all' | 'box';
+export type TableBorders = 'all' | 'box' | 'headerRule';
 
 /**
  * A picture inside a table cell.
@@ -458,6 +474,32 @@ export interface QuestionSubPart {
 
 export interface QuestionPart {
   id: string;
+  /**
+   * Unnumbered blocks printed **above** this part's own number, at the stem's text
+   * column — the mid-question interlude.
+   *
+   * A real paper does not always ask everything from one stem. DSE 2019 P2 Q6 asks
+   * (a) off a balance sheet, then prints "Suppose the central bank sells $200 million
+   * worth of government bonds…" as a plain paragraph, then asks (b) and (c) about the
+   * new situation. The sentence takes no letter and no marks, and it sits at
+   * `STEM_TEXT_INDENT` — level with the stem, a step left of the parts — because it
+   * revises the scenario for everything below rather than continuing (a).
+   *
+   * **It belongs to the part below it, not the one above.** The interlude is a lead-in:
+   * it exists to set up (b) and (c), so deleting or moving (b) has to carry it. Attached
+   * to (a) instead, deleting the part it introduces would strand a scenario nothing
+   * asks about.
+   *
+   * A full `ContentBlock[]` rather than text: the interlude is regularly a second table
+   * or figure — another extract, a revised balance sheet — and every block walk here
+   * reads `parts` structurally, so tables and diagrams arrive for free.
+   *
+   * Distinct from `blocks`, which are the part's *own* numbered text. A trailing
+   * paragraph continuing (a) is a second entry in (a)'s `blocks` and indents to
+   * `PART_TEXT_INDENT`; this one is outdented and unnumbered. Absent prints nothing, so
+   * a document authored before the field existed is untouched.
+   */
+  blocksBefore?: ContentBlock[];
   blocks: ContentBlock[];
   /**
    * The part's own marks.

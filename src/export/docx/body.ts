@@ -325,6 +325,17 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
 
   const border = (side: string) =>
     `<w:${side} w:val="single" w:sz="6" w:space="0" w:color="000000"/>`;
+  const noBorder = (side: string) => `<w:${side} w:val="none" w:sz="0" w:space="0" w:color="auto"/>`;
+
+  /*
+   * A T-account rules per cell, so the table itself must draw nothing at all.
+   *
+   * `none` on all six rather than omitting them: an unstated border is *inherited* from
+   * the table style, which would put the grid back underneath the cells' own edges —
+   * the same trap the `box` note above records, and the reason that mode spells its
+   * inner rules out too.
+   */
+  const perCellBorders = node.borders === 'headerRule';
 
   const tblPr =
     '<w:tblPr>' +
@@ -353,12 +364,12 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
      * suppress. The frame's four sides are unchanged, which is what keeps an ordinary
      * table byte-identical.
      */
-    ['top', 'left', 'bottom', 'right'].map(border).join('') +
+    ['top', 'left', 'bottom', 'right']
+      .map((side) => (perCellBorders ? noBorder(side) : border(side)))
+      .join('') +
     ['insideH', 'insideV']
       .map((side) =>
-        node.borders === 'box'
-          ? `<w:${side} w:val="none" w:sz="0" w:space="0" w:color="auto"/>`
-          : border(side),
+        node.borders === 'box' || perCellBorders ? noBorder(side) : border(side),
       )
       .join('') +
     '</w:tblBorders>' +
@@ -418,6 +429,24 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
           if (cell.colSpan > 1) props.push(`<w:gridSpan w:val="${cell.colSpan}"/>`);
           if (coveredVertically) props.push('<w:vMerge/>');
           else if (cell.rowSpan > 1) props.push('<w:vMerge w:val="restart"/>');
+          /*
+           * A T-account's rules, per cell (§`TableCellEdges`). The edges are resolved in
+           * the IR, so this only spells them.
+           *
+           * Placed here deliberately: `CT_TcPr` is a *sequence*, and `w:tcBorders` must
+           * precede `w:tcMar` and `w:vAlign` — a `w:tcPr` in the wrong order is the kind
+           * of malformed XML Word reports as a repair error on the whole file rather
+           * than as one wrong table.
+           */
+          if (cell.edges) {
+            props.push(
+              '<w:tcBorders>' +
+                (['top', 'left', 'bottom', 'right'] as const)
+                  .map((side) => (cell.edges![side] ? border(side) : noBorder(side)))
+                  .join('') +
+                '</w:tcBorders>',
+            );
+          }
           props.push(cellMargins(cell.padding));
           props.push('<w:vAlign w:val="center"/>');
 
