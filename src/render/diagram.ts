@@ -1,6 +1,7 @@
 import type {
   Diagram,
   DiagramArrow,
+  DiagramCrop,
   DiagramCurve,
   DiagramLabel,
   DiagramPointMark,
@@ -278,6 +279,19 @@ export interface Projection {
    * the words outside the picture.
    */
   canvasHeight: number;
+  /**
+   * Where the **measured** canvas edges sit, in the same pixels as `plot`.
+   *
+   * Equal to the real edges (0 and `canvasHeight`) whenever the frame is auto-sized —
+   * which is why every anchor formula reads these instead of the literals. Under a
+   * teacher's crop the two part company: the crop moves the real edges, and anything
+   * that anchored to them would drift away from the plot as the frame was dragged. The
+   * title and the axis titles are *content*; a crop chooses the white around content,
+   * it must not reposition it — so they lay out against this frame, staying put
+   * relative to the plot, and a frame cropped tighter than they need visibly clips
+   * them, which is the canvas telling the teacher the crop is too tight.
+   */
+  frame: { top: number; bottom: number };
 }
 
 /**
@@ -321,8 +335,10 @@ function projection(
    * being added to anyway.
    */
   extraBottom = 0,
+  /** A teacher's cropped frame, at nominal size. Replaces every derived pad. */
+  crop?: DiagramCrop,
 ): Projection {
-  const pad = {
+  const autoPad = {
     top: PAD.top * scale + extraTop,
     // Enough for the title, never more than `MAX_X_TITLE_SHARE` of the canvas. A title
     // wider than the cap grows leftward from its anchor into the plot's own whitespace
@@ -335,6 +351,14 @@ function projection(
     bottom: PAD.bottom * scale + extraBottom,
     left: PAD.left * scale,
   };
+  const pad = crop
+    ? {
+        top: crop.top * scale,
+        right: crop.right * scale,
+        bottom: crop.bottom * scale,
+        left: crop.left * scale,
+      }
+    : autoPad;
   const left = pad.left;
   const right = width - pad.right;
   const top = pad.top;
@@ -348,6 +372,10 @@ function projection(
     uy: (pixel) => (bottom - pixel) / spanY,
     plot: { left, right, top, bottom },
     canvasHeight: height,
+    // The measured edges: exactly the real ones under auto sizing, and the positions
+    // the auto pads *would* have put them under a crop — so content anchored to the
+    // frame holds still while the crop drags the real edges around it.
+    frame: { top: top - autoPad.top, bottom: bottom + autoPad.bottom },
   };
 }
 
@@ -706,8 +734,12 @@ export function axisTitleAnchor(
           // plot starts near the top, which is precisely the collision the title's
           // reserved room exists to prevent. A title placed below sits under the plot
           // and contends for nothing up here, so it contributes no floor.
+          // Measured from `frame.top`, not 0: under a crop the real canvas edge is the
+          // teacher's to move, and the floor must hold the title still beside the plot
+          // rather than follow the frame up into the new whitespace.
           y: Math.max(
-            (diagram.titlePlacement === 'below' ? 0 : titleRoom(diagram, language, scale)) +
+            proj.frame.top +
+              (diagram.titlePlacement === 'below' ? 0 : titleRoom(diagram, language, scale)) +
               AXIS_TITLE_SIZE * scale * 1.1,
             proj.plot.top - AXIS_OVERSHOOT * scale - AXIS_TITLE_GAP * scale,
           ),
@@ -757,8 +789,13 @@ const PLOT_ASPECT = 3 / 4;
  *   the exported picture's height, and the page reflows. That is the trade the shape is
  *   worth — the alternative is a fixed box that is either too tight for a long title or
  *   mostly whitespace for a short one.
- * - **`widthPx` stays the teacher's number**, since it decides how much of the text
- *   column the figure takes. Only the height is derived.
+ * - **`widthPx` stays the teacher's number, floored by what the title needs.** The
+ *   width decides how much of the text column the figure takes — but the title is drawn
+ *   at a fixed 10pt however small the figure, so a canvas narrower than the words
+ *   clipped them at both edges ("ure 1: … econom") and the teacher's number was
+ *   printing a picture missing its own name. The floor widens the canvas (and with it
+ *   the plot) just far enough that the centred title fits; a width that already fits is
+ *   returned untouched.
  * - Shared with `diagramPlot`, so the projection and the canvas cannot disagree about
  *   where the plot sits inside the picture.
  */
@@ -767,7 +804,21 @@ export function diagramSize(
   widthPx: number,
   language: LanguageMode,
 ): { widthPx: number; heightPx: number } {
-  const plotWidth = widthPx - (PAD.left + PAD.right);
+  // A cropped diagram is sized by its frame, not by measuring: the teacher chose the
+  // clearance on every side, so the plot takes what the width leaves after their pads
+  // and the height follows from the plot's aspect plus their top and bottom. Language
+  // deliberately stops mattering here — a chosen frame must not resize itself when the
+  // paper is switched to bilingual.
+  if (diagram.crop) {
+    const { left, top, right, bottom } = diagram.crop;
+    const croppedPlotWidth = Math.max(1, widthPx - (left + right));
+    return {
+      widthPx,
+      heightPx: Math.round(croppedPlotWidth * PLOT_ASPECT + top + bottom),
+    };
+  }
+  const width = titleWidthFloor(diagram, widthPx, language);
+  const plotWidth = width - (PAD.left + PAD.right);
   const plotHeight = Math.max(1, plotWidth) * PLOT_ASPECT;
 
   // Both axis titles print outside the plot, and a bilingual pair stacks two lines.
@@ -775,9 +826,40 @@ export function diagramSize(
   const topRoom = PAD.top + Math.max(0, yTitleLines - 1) * AXIS_TITLE_SIZE * 1.15;
 
   return {
-    widthPx,
+    widthPx: width,
     heightPx: Math.round(plotHeight + topRoom + PAD.bottom + titleRoom(diagram, language, 1)),
   };
+}
+
+/**
+ * The narrowest canvas on which the centred title fits, never less than `widthPx`.
+ *
+ * The title is centred on the *plot*, and the plot sits off the canvas centre (a wide
+ * left pad against a measured right one) — so the width the words need is their own
+ * width plus the pads' imbalance, not simply the words plus the pads. Solving the
+ * centring: a title of width T centred at `(padLeft − padRight + w) / 2` stays on a
+ * canvas of width `w ≥ T + |padLeft − padRight|`.
+ *
+ * The right pad depends on the width through its `MAX_X_TITLE_SHARE` cap, so the floor
+ * is settled in two passes — the second recomputes the pad at the widened width, which
+ * is where the cap can only loosen, so two passes reach a fixed point.
+ *
+ * A small cushion rides on top because `estimateWidth` is an estimate: a title clipped
+ * by two pixels reads as a rendering bug just as surely as one clipped by forty.
+ */
+function titleWidthFloor(diagram: Diagram, widthPx: number, language: LanguageMode): number {
+  const lines = pickSides(diagram.title, language);
+  if (lines.length === 0) return widthPx;
+  const title = estimateWidth(lines, TITLE_SIZE);
+  const rightRoom =
+    estimateWidth(pickSides(diagram.x.title, language), AXIS_TITLE_SIZE) + 30;
+  const CUSHION = 10;
+  let width = widthPx;
+  for (let pass = 0; pass < 2; pass += 1) {
+    const padRight = Math.min(Math.max(PAD.right, rightRoom), width * MAX_X_TITLE_SHARE);
+    width = Math.max(widthPx, Math.ceil(title + Math.abs(PAD.left - padRight)) + CUSHION);
+  }
+  return width;
 }
 
 /**
@@ -811,18 +893,21 @@ export function diagramTitleAnchor(
     // Centred on the plot, with no stored nudge to apply: the canvas is sized around the
     // title, so it always has its own room and never needs moving out of anything.
     x: (proj.plot.left + proj.plot.right) / 2,
-    // Above: the first baseline sits one line height below the canvas top, so a two-line
+    // Above: the first baseline sits one line height below the frame's top, so a two-line
     // bilingual title grows downward into the room `titleRoom` reserved for it rather
     // than upward off the canvas.
     //
-    // Below: measured *back from the canvas edge*, so the block cannot leave it, and the
-    // extra lines are subtracted because the anchor is the FIRST of them.
+    // Below: measured *back from the frame's bottom edge*, so the block cannot leave it,
+    // and the extra lines are subtracted because the anchor is the FIRST of them.
+    //
+    // Both read the frame, not the canvas: under a crop the words must hold their place
+    // beside the plot while the teacher drags the real edges around them.
     y: below
-      ? proj.canvasHeight -
+      ? proj.frame.bottom -
         TITLE_GAP * scale -
         TITLE_SIZE * 0.3 * scale -
         Math.max(0, pickSides(diagram.title, language).length - 1) * TITLE_SIZE * 1.15 * scale
-      : (TITLE_TOP + TITLE_SIZE * 1.1) * scale,
+      : proj.frame.top + (TITLE_TOP + TITLE_SIZE * 1.1) * scale,
   };
 }
 
@@ -879,6 +964,7 @@ export function diagramPlot(diagram: Diagram, options: DiagramSvgOptions): Proje
     extraTop,
     rightRoom,
     below ? room : 0,
+    diagram.crop,
   );
 }
 

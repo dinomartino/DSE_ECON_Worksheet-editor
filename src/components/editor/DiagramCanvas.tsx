@@ -37,6 +37,7 @@ import {
   axisTitleAnchor,
   curveLabelAnchor,
   diagramPlot,
+  diagramSize,
   diagramSvg,
   diagramTitleAnchor,
   pointLabelAnchor,
@@ -152,6 +153,26 @@ function lineAnchorFor(base: Diagram, handle: DiagramHandle): DiagramPoint | nul
 
 type Tool = 'select' | 'curve' | 'point' | 'label' | 'arrow';
 
+/**
+ * The white the crop workspace shows beyond the current frame, in workspace pixels
+ * (the diagram's own 1× coordinates — the zoom multiplies it like everything else).
+ *
+ * The frame can only be dragged over ground that is drawn, so this is how far outward a
+ * single gesture can grow the picture. Committing at the edge re-derives the workspace
+ * around the new frame, so a teacher who wants more keeps dragging — the margin is a
+ * step size, not a ceiling. 120px is roomy against the 44/64px measured pads without
+ * shrinking the diagram to a stamp inside the stage.
+ */
+const CROP_MARGIN = 120;
+
+/** A crop frame in workspace coordinates: absolute edges, not pads. */
+interface CropRect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
 const TOOLS: Array<{ id: Tool; glyph: string; name: string; hint: string }> = [
   { id: 'select', glyph: '↖', name: 'Select', hint: 'Drag to move — it lets go on release. Click to select and edit. Drag empty space to box-select.' },
   { id: 'curve', glyph: '╱', name: 'Curve', hint: 'Drag to draw a line. A near-flat one straightens itself — hold Shift to keep a shallow slope. Double-click text to retype it.' },
@@ -207,6 +228,21 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
   const [selected, setSelected] = useState<DiagramHandle[]>([]);
   const [snapping, setSnapping] = useState(true);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
+  /**
+   * Whether the stage is showing the crop workspace instead of the drawing surface.
+   *
+   * A mode rather than always-on handles: the frame's grab strips live exactly where
+   * the drawing gestures start (the canvas edges are where marquees begin and axis
+   * titles sit), and two gesture owners on one surface is the collision the modal-layer
+   * rule exists to prevent.
+   */
+  const [cropping, setCropping] = useState(false);
+  /**
+   * The frame mid-drag, in workspace coordinates. Null outside a gesture: the resting
+   * frame is *derived* from the block (it is the block's own edges), so only the
+   * in-flight value is state — the standard drag rule, committed once on release.
+   */
+  const [cropRect, setCropRect] = useState<CropRect | null>(null);
   const [marquee, setMarquee] = useState<DiagramRect | null>(null);
   /**
    * The line the axis assist is currently straightening, or null.
@@ -284,6 +320,112 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
     () => diagramSvg(diagram, { widthPx: block.widthPx, heightPx: block.heightPx, language, fonts }),
     [diagram, block.widthPx, block.heightPx, language, fonts],
   );
+
+  /**
+   * The crop workspace: the same diagram redrawn with `CROP_MARGIN` of extra white on
+   * every side of the current frame, so there is ground to drag the frame *outward*
+   * onto — the fix for a clipped title is a wider frame, and a workspace the size of
+   * the current canvas could only ever crop inward.
+   *
+   * Built by handing the renderer an inflated crop rather than by scaling or padding
+   * the drawn result: the projection stays the shared one (§7.5), so the plot, the
+   * title and every label sit in the workspace exactly where the committed picture
+   * will put them — the frame overlay is the only thing here the exporter never sees.
+   * The current pads are read off the live projection (`plot` against the stored box),
+   * which makes the resting frame the block's own edges whether they were measured or
+   * previously cropped.
+   */
+  const cropStage = useMemo(() => {
+    if (!cropping) return null;
+    const pads = {
+      left: projection.plot.left,
+      top: projection.plot.top,
+      right: block.widthPx - projection.plot.right,
+      bottom: block.heightPx - projection.plot.bottom,
+    };
+    const width = block.widthPx + CROP_MARGIN * 2;
+    const inflated: Diagram = {
+      ...diagram,
+      crop: {
+        left: pads.left + CROP_MARGIN,
+        top: pads.top + CROP_MARGIN,
+        right: pads.right + CROP_MARGIN,
+        bottom: pads.bottom + CROP_MARGIN,
+      },
+    };
+    // Sized by `diagramSize` on the inflated crop, NOT by the stored height plus the
+    // margins: an auto-measured height embeds a plot that is not exactly 4:3 (the
+    // measured x-title reserve narrows the plot after the height was derived), while a
+    // committed crop holds the plot to its true aspect. The workspace must show the
+    // shape a release will store, or the picture visibly changes on commit — which it
+    // did: a west-edge drag flattened the curves the moment the pointer let go.
+    const height = diagramSize(inflated, width, language).heightPx;
+    return {
+      width,
+      height,
+      svg: diagramSvg(inflated, { widthPx: width, heightPx: height, language, fonts }),
+      /** The plot's edges in workspace coordinates — the frame may never cross them. */
+      plot: {
+        left: pads.left + CROP_MARGIN,
+        top: pads.top + CROP_MARGIN,
+        right: width - (pads.right + CROP_MARGIN),
+        bottom: height - (pads.bottom + CROP_MARGIN),
+      },
+      /** The resting frame: the block's current edges, inset by the margin. */
+      rest: {
+        left: CROP_MARGIN,
+        top: CROP_MARGIN,
+        right: width - CROP_MARGIN,
+        bottom: height - CROP_MARGIN,
+      } as CropRect,
+    };
+  }, [cropping, diagram, block.widthPx, block.heightPx, language, fonts, projection]);
+
+  /**
+   * Release writes the frame into the model: pads stored plot-relative (`Diagram.crop`),
+   * and the block takes the frame's own size — the crop *is* the printed picture, so
+   * cropping tighter shrinks the figure on the page and cropping wider grows it, with
+   * the plot printing the same size throughout (§ frame = printed size).
+   */
+  const commitCrop = useCallback(
+    (rect: CropRect) => {
+      if (!cropStage) return;
+      const crop = {
+        left: Math.max(0, Math.round(cropStage.plot.left - rect.left)),
+        top: Math.max(0, Math.round(cropStage.plot.top - rect.top)),
+        right: Math.max(0, Math.round(rect.right - cropStage.plot.right)),
+        bottom: Math.max(0, Math.round(rect.bottom - cropStage.plot.bottom)),
+      };
+      const next: Diagram = { ...diagram, crop };
+      const plotWidth = cropStage.plot.right - cropStage.plot.left;
+      setCropRect(null);
+      onChange({
+        ...block,
+        diagram: next,
+        ...diagramSize(next, Math.round(plotWidth + crop.left + crop.right), language),
+      });
+    },
+    [cropStage, diagram, block, onChange, language],
+  );
+
+  /** Back to the measured frame: drop the crop and let `diagramSize` decide again. */
+  const resetCrop = useCallback(() => {
+    if (!diagram.crop) return;
+    const next: Diagram = { ...diagram };
+    delete next.crop;
+    setCropRect(null);
+    onChange({ ...block, diagram: next, ...diagramSize(next, block.widthPx, language) });
+  }, [diagram, block, onChange, language]);
+
+  const toggleCrop = useCallback(() => {
+    setCropping((current) => !current);
+    setCropRect(null);
+    // The crop owns the stage while it is up; a live selection or caret would leave
+    // Delete and the arrow keys aimed at something no longer visible to point at.
+    setSelected([]);
+    setEditing(null);
+    setMarquee(null);
+  }, []);
 
   /**
    * The drawn text boxes, measured from the real SVG rather than estimated.
@@ -760,14 +902,20 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
       if (event.key === 'Escape') {
         if (typing) return;
         event.preventDefault();
-        // Escape peels back one layer at a time: clear the selection first, close only
-        // when there is nothing left to deselect. Closing out from under a selection
-        // would lose the drawing context with no warning.
-        if (selected.length > 0) setSelected([]);
+        // Escape peels back one layer at a time: leave crop mode first, then clear the
+        // selection, and close only when there is nothing left to peel. Closing out
+        // from under a selection would lose the drawing context with no warning.
+        if (cropping) {
+          setCropping(false);
+          setCropRect(null);
+        } else if (selected.length > 0) setSelected([]);
         else onClose();
         return;
       }
       if (typing) return;
+      // Every other shortcut acts on the drawing, and the crop workspace is not it —
+      // ⌘A would build a selection there is no surface to show.
+      if (cropping) return;
 
       const accel = event.metaKey || event.ctrlKey;
       if (accel && event.key.toLowerCase() === 'c') {
@@ -832,7 +980,7 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selected, diagram, labelAnchors, setDiagram, onClose, doCopy, doPaste, doDelete]);
+  }, [selected, diagram, labelAnchors, setDiagram, onClose, doCopy, doPaste, doDelete, cropping]);
 
   const activeTool = TOOLS.find((t) => t.id === tool);
 
@@ -938,9 +1086,37 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
           </select>
         </label>
 
+        <span className="h-8 w-px bg-slate-600" />
+
+        {/* The frame is cropped here, on the picture, for the reason everything else is
+            drawn here: white space is only judgeable by looking at it. The button is a
+            mode, styled like the tools it locks out. */}
+        <button
+          type="button"
+          aria-pressed={cropping}
+          title="Crop — drag the frame to choose the white space around the plot. The frame becomes the printed size; the plot keeps its own."
+          onClick={toggleCrop}
+          className={
+            'flex h-11 items-center gap-1.5 rounded-lg border px-3 text-base transition-colors ' +
+            (cropping
+              ? 'border-sky-400 bg-sky-500 text-white'
+              : 'border-slate-600 bg-slate-700 text-slate-200 hover:bg-slate-600')
+          }
+        >
+          <span aria-hidden className="text-lg leading-none">⛶</span>
+          <span className="text-xs font-medium">Crop</span>
+        </button>
+        {cropping && diagram.crop && (
+          <ToolbarButton label="Auto frame" hint="measure again" onClick={resetCrop} />
+        )}
+
         <span className="flex-1" />
         <span className="text-xs text-slate-400">
-          {selected.length > 1 ? `${selected.length} selected` : activeTool?.hint}
+          {cropping
+            ? 'Drag the frame edges — a wider frame is how a long title gets its room.'
+            : selected.length > 1
+              ? `${selected.length} selected`
+              : activeTool?.hint}
         </span>
         <Button onClick={onClose}>Done</Button>
       </header>
@@ -949,6 +1125,33 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
         {/* Stage. The SVG is rendered at its stored pixel size and scaled to fit, so
             what is drawn on is exactly the geometry that will be exported. */}
         <div className="flex min-w-0 flex-1 items-center justify-center overflow-auto p-8">
+          {cropping && cropStage ? (
+            /* The crop workspace: the same renderer drawing the same geometry with
+               extra white on every side, and the frame overlaid on it. Nothing here is
+               a second projection — the workspace *is* a diagram with a bigger crop. */
+            <div
+              className="relative select-none bg-white shadow-2xl"
+              style={{
+                width: cropStage.width * zoom,
+                height: cropStage.height * zoom,
+                touchAction: 'none',
+              }}
+            >
+              <div
+                className="pointer-events-none absolute inset-0 [&>svg]:h-full [&>svg]:w-full"
+                dangerouslySetInnerHTML={{ __html: cropStage.svg }}
+              />
+              <CropFrame
+                rect={cropRect ?? cropStage.rest}
+                plot={cropStage.plot}
+                bounds={{ width: cropStage.width, height: cropStage.height }}
+                zoom={zoom}
+                onDrag={setCropRect}
+                onCommit={commitCrop}
+              />
+            </div>
+          ) : (
+          <>
           {/* The stage is sized by the zoom rather than CSS-transformed, so the browser
               lays the SVG out at the larger size and text stays crisp. `toUnit` divides
               the pointer position by the same factor, so unit space never notices. */}
@@ -1012,6 +1215,8 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
               />
             )}
           </div>
+          </>
+          )}
         </div>
 
         <aside className="w-80 shrink-0 overflow-y-auto border-l border-slate-700 bg-white p-4 dark:bg-slate-900">
@@ -1361,6 +1566,161 @@ function HandleOverlay({
         />
       )}
     </svg>
+  );
+}
+
+/** Which edges of the crop frame one grip moves. */
+interface CropEdges {
+  left?: boolean;
+  top?: boolean;
+  right?: boolean;
+  bottom?: boolean;
+}
+
+/**
+ * The crop frame: a border, a shade over what the crop discards, and eight grips.
+ *
+ * Gesture rules are the canvas's own: the in-flight rect lives in the parent's state
+ * (`onDrag`), the model is written once on release (`onCommit`), and the release
+ * recomputes its rect from the gesture rather than reading the state — `onPointerUp`
+ * runs in the same tick as the final move, and reading state there would commit a frame
+ * one event stale (the `marqueeEnd` trap).
+ *
+ * Each grip clamps against the **plot**, not just the workspace: the frame chooses the
+ * white around the picture, and a frame dragged across the axes would not be a crop but
+ * a deletion — of geometry this surface has no way to show is gone. A release that
+ * never travelled commits nothing, so a stray click on a grip costs no undo entry.
+ */
+function CropFrame({
+  rect,
+  plot,
+  bounds,
+  zoom,
+  onDrag,
+  onCommit,
+}: {
+  rect: CropRect;
+  plot: CropRect;
+  bounds: { width: number; height: number };
+  zoom: number;
+  onDrag: (rect: CropRect | null) => void;
+  onCommit: (rect: CropRect) => void;
+}) {
+  const gesture = useRef<{ x: number; y: number; base: CropRect; edges: CropEdges; moved: boolean } | null>(null);
+
+  const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+  const applyDelta = (event: React.PointerEvent): CropRect => {
+    const g = gesture.current!;
+    const dx = (event.clientX - g.x) / zoom;
+    const dy = (event.clientY - g.y) / zoom;
+    const next = { ...g.base };
+    if (g.edges.left) next.left = clamp(g.base.left + dx, 0, plot.left);
+    if (g.edges.right) next.right = clamp(g.base.right + dx, plot.right, bounds.width);
+    if (g.edges.top) next.top = clamp(g.base.top + dy, 0, plot.top);
+    if (g.edges.bottom) next.bottom = clamp(g.base.bottom + dy, plot.bottom, bounds.height);
+    if (Math.abs(dx) + Math.abs(dy) > 2) g.moved = true;
+    return next;
+  };
+
+  const startDrag = (edges: CropEdges) => (event: React.PointerEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    gesture.current = { x: event.clientX, y: event.clientY, base: rect, edges, moved: false };
+  };
+  const moveDrag = (event: React.PointerEvent) => {
+    if (!gesture.current) return;
+    onDrag(applyDelta(event));
+  };
+  const endDrag = (event: React.PointerEvent) => {
+    const g = gesture.current;
+    if (!g) return;
+    const final = applyDelta(event);
+    gesture.current = null;
+    if (g.moved) onCommit(final);
+    else onDrag(null);
+  };
+
+  /** One grip: a strip along an edge or a square on a corner, in workspace px × zoom. */
+  const grip = (
+    key: string,
+    edges: CropEdges,
+    style: React.CSSProperties,
+    cursor: string,
+  ) => (
+    <div
+      key={key}
+      role="presentation"
+      className="absolute"
+      style={{ ...style, cursor, touchAction: 'none' }}
+      onPointerDown={startDrag(edges)}
+      onPointerMove={moveDrag}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+    />
+  );
+
+  const z = (value: number) => value * zoom;
+  const width = rect.right - rect.left;
+  const height = rect.bottom - rect.top;
+  // Grips: 14px strips centred on the border, corners drawn after so they win the tie.
+  const GRIP = 14;
+  const CORNER = 18;
+
+  const shade = 'absolute bg-slate-900/25';
+  const cornerClass =
+    'absolute rounded-sm border-2 border-sky-500 bg-white shadow';
+
+  return (
+    <div className="absolute inset-0">
+      {/* What the crop discards, dimmed so the kept picture reads as the picture. */}
+      <div className={shade} style={{ left: 0, top: 0, width: '100%', height: z(rect.top) }} />
+      <div className={shade} style={{ left: 0, top: z(rect.bottom), width: '100%', bottom: 0 }} />
+      <div className={shade} style={{ left: 0, top: z(rect.top), width: z(rect.left), height: z(height) }} />
+      <div className={shade} style={{ left: z(rect.right), right: 0, top: z(rect.top), height: z(height) }} />
+
+      {/* The frame itself. */}
+      <div
+        className="pointer-events-none absolute border-2 border-sky-500"
+        style={{ left: z(rect.left), top: z(rect.top), width: z(width), height: z(height) }}
+      />
+      {/* The committed size, which is what the page will be handed. */}
+      <div
+        className="pointer-events-none absolute left-1/2 -translate-x-1/2 rounded bg-slate-900/80 px-2 py-0.5 text-[11px] font-medium text-white"
+        style={{ top: z(rect.bottom) + 6 }}
+      >
+        {Math.round(width)} × {Math.round(height)} px
+      </div>
+
+      {/* Edge strips… */}
+      {grip('w', { left: true }, { left: z(rect.left) - GRIP / 2, top: z(rect.top), width: GRIP, height: z(height) }, 'ew-resize')}
+      {grip('e', { right: true }, { left: z(rect.right) - GRIP / 2, top: z(rect.top), width: GRIP, height: z(height) }, 'ew-resize')}
+      {grip('n', { top: true }, { left: z(rect.left), top: z(rect.top) - GRIP / 2, width: z(width), height: GRIP }, 'ns-resize')}
+      {grip('s', { bottom: true }, { left: z(rect.left), top: z(rect.bottom) - GRIP / 2, width: z(width), height: GRIP }, 'ns-resize')}
+
+      {/* …and corners, drawn last so they win where the strips overlap. */}
+      {grip('nw', { left: true, top: true }, { left: z(rect.left) - CORNER / 2, top: z(rect.top) - CORNER / 2, width: CORNER, height: CORNER }, 'nwse-resize')}
+      {grip('se', { right: true, bottom: true }, { left: z(rect.right) - CORNER / 2, top: z(rect.bottom) - CORNER / 2, width: CORNER, height: CORNER }, 'nwse-resize')}
+      {grip('ne', { right: true, top: true }, { left: z(rect.right) - CORNER / 2, top: z(rect.top) - CORNER / 2, width: CORNER, height: CORNER }, 'nesw-resize')}
+      {grip('sw', { left: true, bottom: true }, { left: z(rect.left) - CORNER / 2, top: z(rect.bottom) - CORNER / 2, width: CORNER, height: CORNER }, 'nesw-resize')}
+
+      {/* Visible corner markers under the grips (the grips are transparent hit areas). */}
+      {(
+        [
+          [rect.left, rect.top],
+          [rect.right, rect.top],
+          [rect.left, rect.bottom],
+          [rect.right, rect.bottom],
+        ] as const
+      ).map(([x, y], index) => (
+        <div
+          key={index}
+          className={`pointer-events-none ${cornerClass}`}
+          style={{ left: z(x) - 5, top: z(y) - 5, width: 10, height: 10 }}
+        />
+      ))}
+    </div>
   );
 }
 

@@ -158,6 +158,26 @@ export interface DiagramAxis {
 }
 
 /**
+ * A user-chosen frame around the plot: the distance from each plot edge to the canvas
+ * edge, in pixels at the diagram's nominal (1×) size.
+ *
+ * Absent means the frame is **measured** — the renderer derives each side's padding from
+ * the text drawn there (§ the picture is measured, not padded). Present means the teacher
+ * cropped the picture on the canvas and their frame replaces every derived pad: a title
+ * wider than the measured canvas clips at its edge, and no amount of measuring fixes that
+ * without also deciding how much white a teacher wants — so the frame is theirs to drag,
+ * photo-crop style. The plot keeps its aspect and its printed size; only the white around
+ * it is chosen, which is why the values are stored plot-relative rather than as a canvas
+ * size — resizing the block later moves the plot, never the chosen clearances.
+ */
+export interface DiagramCrop {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+/**
  * A complete diagram.
  *
  * Everything is optional except the axes, because the default state — what a teacher
@@ -206,6 +226,11 @@ export interface Diagram {
    * things to keep in step.
    */
   titlePlacement?: CaptionPlacement;
+  /**
+   * The cropped frame, when the teacher has chosen one on the canvas. Absent, the
+   * canvas is sized from what the diagram draws. See `DiagramCrop`.
+   */
+  crop?: DiagramCrop;
   x: DiagramAxis;
   y: DiagramAxis;
   curves: DiagramCurve[];

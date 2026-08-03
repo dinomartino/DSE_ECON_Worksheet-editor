@@ -672,3 +672,127 @@ describe('a diagram carries its words inside its own image', () => {
     expect(titled.plot.top).toBeGreaterThan(plain.plot.top);
   });
 });
+
+describe('a cropped frame (§the crop)', () => {
+  /**
+   * The teacher's crop replaces the measured padding wholesale. The invariant under
+   * test throughout: a crop chooses the white around the content, it never moves the
+   * content — the plot and every word anchored to it hold still while the frame drags.
+   */
+  const title = bi('Figure 1: Market of agricultural products in the small open economy', '圖一');
+
+  /** The measured pads of a diagram at its own measured size — the auto frame. */
+  function measuredPads(diagram: ReturnType<typeof buildFromTemplate>, language: 'en' | 'zh' | 'bilingual') {
+    const size = diagramSize(diagram, 400, language);
+    const proj = diagramPlot(diagram, { ...size, language });
+    return {
+      size,
+      crop: {
+        left: proj.plot.left,
+        top: proj.plot.top,
+        right: size.widthPx - proj.plot.right,
+        bottom: size.heightPx - proj.plot.bottom,
+      },
+    };
+  }
+
+  it('renders byte-identically when the crop equals the measured padding', () => {
+    // The strongest statement of "a crop moves nothing": freezing the auto frame as a
+    // crop must reproduce the exact SVG — plot, title, axis titles, everything.
+    for (const placement of ['above', 'below'] as const) {
+      for (const language of ['en', 'bilingual'] as const) {
+        const diagram = { ...buildFromTemplate('supply-demand'), title, titlePlacement: placement };
+        const { size, crop } = measuredPads(diagram, language);
+        const auto = diagramSvg(diagram, { ...size, language });
+        const cropped = diagramSvg({ ...diagram, crop }, { ...size, language });
+        expect(cropped, `${placement} · ${language}`).toBe(auto);
+      }
+    }
+  });
+
+  it('sizes the box from the frame: plot aspect plus the chosen pads', () => {
+    const diagram = { ...buildFromTemplate('supply-demand'), crop: { left: 80, top: 30, right: 90, bottom: 40 } };
+    const size = diagramSize(diagram, 400, 'en');
+    expect(size.widthPx).toBe(400);
+    // The plot takes what the width leaves after the pads, and keeps 4:3.
+    expect(size.heightPx).toBe(Math.round((400 - 80 - 90) * (3 / 4) + 30 + 40));
+    // A chosen frame must not resize itself when the paper switches language.
+    expect(diagramSize(diagram, 400, 'bilingual')).toEqual(size);
+  });
+
+  it('puts the plot edges exactly at the cropped pads, ignoring every derived reserve', () => {
+    // A long x-axis title normally grows the right pad; under a crop the teacher's
+    // number wins, even when it is tighter than the measurement would demand.
+    const diagram = {
+      ...buildFromTemplate('supply-demand'),
+      crop: { left: 70, top: 20, right: 25, bottom: 35 },
+    };
+    const size = diagramSize(diagram, 400, 'bilingual');
+    const proj = diagramPlot(diagram, { ...size, language: 'bilingual' });
+    expect(proj.plot.left).toBe(70);
+    expect(proj.plot.top).toBe(20);
+    expect(proj.plot.right).toBe(400 - 25);
+    expect(proj.plot.bottom).toBe(size.heightPx - 35);
+  });
+
+  it('keeps the title beside the plot while the frame grows around it', () => {
+    // Cropping wider is the fix for a clipped title — the new white must appear
+    // *around* the words, not between the words and the plot they caption.
+    const base = { ...buildFromTemplate('supply-demand'), title };
+    const { crop } = measuredPads(base, 'en');
+    const wide = {
+      ...base,
+      crop: { left: crop.left + 60, top: crop.top + 50, right: crop.right + 60, bottom: crop.bottom + 50 },
+    };
+    const size = diagramSize(wide, 520, 'en');
+    const proj = diagramPlot(wide, { ...size, language: 'en' });
+    const at = diagramTitleAnchor(wide, proj, 1, 'en');
+    const tight = measuredPads(base, 'en');
+    const tightProj = diagramPlot(base, { ...tight.size, language: 'en' });
+    const tightAt = diagramTitleAnchor(base, tightProj, 1, 'en');
+    // Same distance above the plot in both frames.
+    expect(at.y - proj.plot.top).toBeCloseTo(tightAt.y - tightProj.plot.top, 5);
+    // And the axis title holds its floor beside the plot too.
+    const axis = axisTitleAnchor(wide, 'y', proj, size.widthPx, 1, 'en');
+    const tightAxis = axisTitleAnchor(base, 'y', tightProj, tight.size.widthPx, 1, 'en');
+    expect(axis.y - proj.plot.top).toBeCloseTo(tightAxis.y - tightProj.plot.top, 5);
+  });
+});
+
+describe('the auto frame widens for a long title', () => {
+  const longTitle = bi(
+    'Figure 1: Market of agricultural products in the small open economy',
+    '圖一：小型開放經濟中的農產品市場',
+  );
+
+  it('floors the width so the centred title fits on the canvas', () => {
+    const diagram = { ...buildFromTemplate('import-tariff'), title: longTitle };
+    const size = diagramSize(diagram, 400, 'en');
+    expect(size.widthPx).toBeGreaterThan(400);
+
+    // And not merely wider: the drawn title's span sits inside the canvas. The title
+    // is centred at `at.x`, so it fits iff the nearer edge is half the title away.
+    // The width is re-estimated here with the renderer's own arithmetic (Latin glyphs
+    // at 0.55 em of the 10pt title size) rather than exported from the module — the
+    // test should fail if the floor and the drawing ever use different estimates.
+    const proj = diagramPlot(diagram, { ...size, language: 'en' as const });
+    const at = diagramTitleAnchor(diagram, proj, 1, 'en');
+    const estimated = 'Figure 1: Market of agricultural products in the small open economy'
+      .length * 0.55 * (10 * (96 / 72));
+    expect(Math.min(at.x, size.widthPx - at.x) * 2).toBeGreaterThanOrEqual(estimated);
+  });
+
+  it('leaves a width that already fits untouched', () => {
+    const diagram = { ...buildFromTemplate('supply-demand'), title: bi('Fig. 1', '圖一') };
+    expect(diagramSize(diagram, 400, 'bilingual').widthPx).toBe(400);
+  });
+
+  it('defers to a teacher\'s crop: a chosen frame is never widened', () => {
+    const diagram = {
+      ...buildFromTemplate('supply-demand'),
+      title: longTitle,
+      crop: { left: 64, top: 44, right: 30, bottom: 46 },
+    };
+    expect(diagramSize(diagram, 400, 'en').widthPx).toBe(400);
+  });
+});

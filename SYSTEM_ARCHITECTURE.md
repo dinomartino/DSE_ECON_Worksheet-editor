@@ -1117,8 +1117,13 @@ it — adding a title visibly squashed the curves, and an untitled diagram still
 the strip a title would have used. Now the plot keeps `PLOT_ASPECT` and each side grows
 by exactly the room its text needs.
 
-- **Width stays the teacher's number** (it decides how much of the text column the figure
-  takes); only the height is derived.
+- **Width stays the teacher's number, floored by what the title needs** (it decides how
+  much of the text column the figure takes; only the height is otherwise derived). The
+  title draws at a fixed 10pt however small the figure, so a canvas narrower than the
+  words clipped them at both edges — `titleWidthFloor` widens the canvas (and the plot
+  with it) just far enough that the centred title fits, and a width that already fits is
+  returned untouched. A teacher's crop bypasses the floor: a chosen frame is theirs,
+  and clipping inside it is the canvas reporting the crop is too tight.
 - **The printed size follows the labels.** Renaming an axis or adding a title changes the
   exported picture and the page reflows — the accepted cost of never clipping and never
   padding.
@@ -1138,6 +1143,48 @@ by exactly the room its text needs.
 `DIAGRAM_TEMPLATES` ships nine starting shapes (blank, supply-demand, demand-shift,
 AD-AS, money market, tariff, import quota, proportional tax, PPC). A template is only an
 initial value — plain geometry, fresh ids, never looked up again.
+
+### A teacher can crop the frame, and the frame is the printed size
+
+Measuring reserves *vertical* room for the title but the canvas width stays the
+teacher's number — so a title wider than the picture clips at both edges ("ure 1: …
+econom"), and no measurement can fix it without also deciding how much white a teacher
+wants. `Diagram.crop` is that decision: four pads from the plot's edges to the canvas
+edges (px at nominal size), replacing **every** derived pad when present. Absent means
+measured, so untouched documents render byte-identically (pinned by a test that freezes
+the measured pads as a crop and asserts the same SVG).
+
+- **Photo-crop semantics: the frame is the printed size.** The plot keeps its printed
+  size and its 4:3; cropping tighter shrinks the block on the page, cropping wider (the
+  fix for a long title) widens it. Committing writes `crop` *and* the block's
+  `widthPx`/`heightPx` in one change.
+- **A crop chooses the white around content; it must not move the content.** The title
+  and axis titles anchor to `Projection.frame` — where the measured edges *would* sit —
+  not to the real canvas edges, so dragging the frame reveals white rather than
+  towing the words away from the plot. Under auto sizing `frame` equals the real edges,
+  which is what keeps the auto path byte-identical. A frame cropped tighter than the
+  words need visibly clips them on the canvas — the surface saying the crop is too
+  tight, deliberately not prevented.
+- **Cropped, the size ignores language**: a chosen frame must not resize itself when
+  the paper switches to bilingual, so `diagramSize`'s crop branch reads only the pads.
+- **The crop workspace is the same renderer, not a second projection**: the canvas's
+  Crop mode redraws the diagram with the current pads inflated by `CROP_MARGIN` and
+  overlays a draggable frame; the margin is a step size, not a ceiling (committing at
+  the workspace edge re-derives the workspace around the new frame). The workspace
+  height comes from `diagramSize` on that inflated crop, **not** from the stored height
+  plus margins: an auto-measured height embeds a plot that is not exactly 4:3 (the
+  measured x-title reserve narrows the plot after the height was derived), and building
+  the workspace from it showed one shape while release stored another — a west-edge
+  drag flattened the curves the moment the pointer let go.
+- **Frame gestures follow the canvas's own rules**: in-flight rect in state, one commit
+  on pointer-up, the release recomputing its rect from the gesture rather than reading
+  state (the `marqueeEnd` trap), and a release that never travelled commits nothing. The
+  grips clamp against the plot — a frame dragged across the axes would not be a crop
+  but a silent deletion of geometry.
+- **Crop is a mode**, not always-on handles: the frame's grips live exactly where
+  drawing gestures start. Entering it clears the selection and the caret; every
+  shortcut but Escape is inert while it is up; "Auto frame" drops the crop and lets
+  measuring decide again.
 
 ### Drawing (`model/diagramDraw.ts`, `components/editor/DiagramCanvas.tsx`)
 
