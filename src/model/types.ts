@@ -612,6 +612,23 @@ export interface PageFurniture {
 export interface Worksheet {
   schemaVersion: number;
   id: string;
+  /**
+   * What to **call** this document — the file list, the toolbar and the `.docx`
+   * filename. Never printed.
+   *
+   * Separate from `title` because the two answer different questions and only look like
+   * one field on a plain worksheet. `title` is the heading that prints on page 1;
+   * this is what the file is called for filing. Naming a document "DSE Mock 2026 (final
+   * version)" is a filing decision, and stamping it across the top of the paper is not
+   * what anyone asking for it wants — but it *was* what happened while renaming wrote
+   * `title`.
+   *
+   * Optional, and absent means the old behaviour exactly: `worksheetTitle()` falls back
+   * to `title`, so every document saved before this field existed keeps naming itself
+   * the way it always did. Only renaming writes it.
+   */
+  name?: string;
+  /** The heading printed at the top of page 1. A title block supersedes it. */
   title: BiText;
   titleFormat?: TextFormat;
   instructions?: BiText;

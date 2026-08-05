@@ -1,5 +1,5 @@
 import { migrate, serializeWorksheet } from '@/model/migrations';
-import { plain } from '@/model/text';
+import { documentName } from '@/model/text';
 import type { Worksheet } from '@/model/types';
 
 /**
@@ -32,8 +32,8 @@ export interface WorksheetStore {
   list(): Promise<WorksheetSummary[]>;
   load(id: string): Promise<Worksheet | undefined>;
   save(worksheet: Worksheet): Promise<void>;
-  /** Give a saved document a new title, without opening it. */
-  rename(id: string, title: string): Promise<void>;
+  /** Give a saved document a new name, without opening it. Never touches its title. */
+  rename(id: string, name: string): Promise<void>;
   remove(id: string): Promise<void>;
   /**
    * Forget every saved document.
@@ -61,14 +61,12 @@ export function stringifyWorksheet(worksheet: Worksheet): string {
 /**
  * What to call this document when something other than the page has to name it.
  *
- * One definition because the fallback chain is a decision, not an incidental: a
- * bilingual worksheet titled only in Chinese is *not* untitled, so English-then-Chinese
- * is the order, and only a document with neither reads "Untitled". The file list, the
- * download filename and the rename field all have to agree, or renaming a document
- * appears not to have taken effect in the list beside it.
+ * The chain itself is `documentName` (`model/text.ts`), shared with the `.docx`
+ * filename — the file list and the download must agree, or renaming a document appears
+ * not to have taken effect. This adds only the list's own fallback word.
  */
 export function worksheetTitle(worksheet: Worksheet): string {
-  return plain(worksheet.title.en) || plain(worksheet.title.zh) || 'Untitled';
+  return documentName(worksheet) ?? 'Untitled';
 }
 
 /** The index entry for a document — the shape the file list reads. */
@@ -196,25 +194,21 @@ export class LocalStorageWorksheetStore implements WorksheetStore {
   /**
    * Rename a saved document.
    *
-   * A rename writes `worksheet.title` — the document's own name, which is also what the
-   * masthead prints and what the `.docx` downloads as — rather than a label kept beside
-   * it in the index. A separate display name would be a second answer to "what is this
-   * called", and the two would part company the moment the title was edited on the page.
+   * A rename writes `worksheet.name` — what the document is *called* — and deliberately
+   * leaves `worksheet.title`, the heading printed on page 1, alone. Renaming a file is a
+   * filing decision; stamping the new name across the top of the paper is not part of
+   * what it asks for, and that is precisely what happened while a rename wrote `title`.
    *
-   * It therefore loads and re-saves rather than patching the index in place: the index
-   * is derived from the document (§`summarize`), so writing only the entry would be
-   * undone by the next autosave.
-   *
-   * Only the English side is written. The rename field is one box, and blanking a
-   * document's Chinese title as a side effect of renaming it in English would be a
-   * silent loss of authored text.
+   * It stays a field on the document rather than a label in the index: the index is
+   * *derived* from the document (§`summarize`), so writing only the entry would be
+   * undone by the next autosave. Hence load-and-re-save rather than patching in place.
    */
-  async rename(id: string, title: string): Promise<void> {
+  async rename(id: string, name: string): Promise<void> {
     const worksheet = await this.load(id);
     if (!worksheet) return;
     await this.save({
       ...worksheet,
-      title: { ...worksheet.title, en: [{ text: title }] },
+      name,
       updatedAt: new Date().toISOString(),
     });
   }

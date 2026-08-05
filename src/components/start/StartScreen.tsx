@@ -505,7 +505,7 @@ function RenameDialog({
   return (
     <Dialog
       title="Rename worksheet"
-      description="The document’s own title — it prints on the page and names the exported file."
+      description="What this document is called here and what the exported file is named. The heading printed on the page is set in the document itself."
       width={420}
       onClose={onClose}
       footer={
@@ -534,7 +534,7 @@ function RenameDialog({
           type="text"
           value={title}
           autoFocus
-          placeholder="Worksheet title"
+          placeholder="Document name"
           onChange={(event) => setTitle(event.target.value)}
           className="h-9 w-full rounded-lg border border-line bg-surface px-2.5 text-[13px] text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
         />

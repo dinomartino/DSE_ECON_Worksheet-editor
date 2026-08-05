@@ -141,12 +141,16 @@ function DocumentTab() {
           changes: the bands replace the plain title on the page, so a teacher typing
           here and seeing nothing move is looking at a control that genuinely is not
           doing what its label promises. Saying so beats leaving them to work it out. */}
+      {/* Since renaming writes `worksheet.name`, this field is now only ever about what
+          *prints*. The old hint said "Used for the file name", which stopped being true
+          the moment the two separated — and a hint that describes a effect the field no
+          longer has is worse than none. */}
       <Field
         label="Title"
         hint={
           usingTitleBlock
-            ? 'Used for the file name. The title block prints on page 1 instead — edit that on the page.'
-            : 'Printed at the top of the first page.'
+            ? 'The title block prints on page 1 instead — edit that on the page. To rename the file, click its name in the toolbar.'
+            : 'Printed at the top of the first page. To rename the file, click its name in the toolbar.'
         }
       >
         <BiTextField

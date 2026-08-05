@@ -69,7 +69,8 @@ Editor layout: AddRail | PageRail | Preview (scales-to-fit A4 sheets) | sidebar
 ```
 Worksheet
 ├── schemaVersion              CURRENT_SCHEMA_VERSION = 1
-├── id · title · titleFormat? · instructions? · instructionsFormat?
+├── id · name?                 what it is *called*; `title` is what it *prints*
+├── title · titleFormat? · instructions? · instructionsFormat?
 ├── fonts: FontPair            { latin, eastAsia }
 ├── baseFontSize?: number      body size in points; absent = 11, a QAB seeds 10
 ├── pageSetup?: PageSetup      paper · orientation · margins, all twips
@@ -1195,6 +1196,38 @@ The preview is the centrepiece; the right sidebar shows **one thing at a time** 
 two tabs (Content = outline, Edit = selection); the tab follows the selection. Two left
 rails: AddRail (insert) and PageRail (navigation, multi-sheet only).
 
+### What a document is called is not what it prints
+
+`Worksheet.name` (optional, plain string, in `KNOWN_KEYS`) is what the document is
+**called**: the toolbar, the outline header, the file list, the `.docx` filename.
+`title` is the bilingual heading **printed** on page 1. They coincide on a plain
+worksheet, which is why one field served both — and why renaming used to stamp a filing
+decision ("DSE Mock 2026 (final)") across the top of the paper.
+
+- **A rename writes `name` and never touches `title`.** Both routes — the toolbar and
+  the start screen's dialog — go through `worksheetStore.rename`.
+- **`documentName()` (`model/text.ts`) is the one fallback chain**: `name` → `title.en`
+  → `title.zh` → undefined. It lives in `model/` because `export/` and `storage/` both
+  need it and neither may depend on the other. Every consumer reads it (or
+  `worksheetTitle()`, which adds the list's "Untitled"); a test greps all four. Two
+  respelled copies existed, and each one kept showing the *printed title* after a
+  rename.
+- **Absent `name` means the old behaviour exactly** — a document saved before the field
+  existed names itself by its title, as it always did. No migration, no version bump.
+- **`docProps` in the `.docx` is not this** — it carries the printed, language-aware
+  `title` and must not follow the file name.
+
+The toolbar's mark carries the app; the word beside it is the document's name
+(`editor/DocumentName.tsx`), renamed in place on click.
+
+- **Blank and unchanged both store nothing** — the first is a slip that would leave the
+  document reading "Untitled", the second would spend an undo entry renaming nothing.
+  The decision is `renamedName()`, pure and tested; the component is the shell.
+- **The box opens on the stored `name` only** — `worksheetTitle()` may be showing a
+  fallback, and neither the printed title nor "Untitled" is text typed *here*.
+- The name truncates at `22ch` with the full name as its tooltip, or a long one pushes
+  Export off the bar.
+
 ### Settings live in a dialog
 
 Once-per-document decisions → `DocumentSettings`, a tabbed dialog from the toolbar's
@@ -1343,9 +1376,10 @@ in-flight values stay local; the store is called on pointer-up.
 - **The index is what the file list reads**, never the documents. `WorksheetSummary`
   carries optional `questionCount`/`hasCover`; entries are validated **per row** — one
   malformed summary must not empty the list.
-- **A rename writes `worksheet.title`** (loads and re-saves) — a separate display name
-  would part company on the first on-page edit, and patching the index alone is undone
-  by the next autosave.
+- **A rename writes `worksheet.name`** (loads and re-saves), never `title` — see § *What
+  a document is called is not what it prints*. It stays a field on the document because
+  the index is derived from it, so patching the entry alone is undone by the next
+  autosave.
 - **A worksheet copy re-ids the document and nothing inside it** (the opposite of
   duplicating a question, where `withFreshIds` must walk the clone).
 - **Migration chain** `migrate()`: ordered pure functions, currently empty because v1

@@ -20,7 +20,7 @@ import {
 import { questionMarks } from '@/model/marks';
 import type { NumberingPlan } from '@/model/numbering';
 import { resolveFlow } from '@/model/flow';
-import { bi, plain } from '@/model/text';
+import { bi, documentName, plain } from '@/model/text';
 import type { LayoutElement, Question, Worksheet } from '@/model/types';
 import { listQuestionTypes, requireQuestionType } from '@/registry';
 import { useWorksheetStore } from '@/store/worksheetStore';
@@ -715,8 +715,11 @@ export function Outline({
 
   const ghost = dragLabelFor(worksheet, numbering, dragQuestionId);
 
-  const title =
-    plain(worksheet.title.en) || plain(worksheet.title.zh) || 'Untitled worksheet';
+  // The shared chain, so the outline, the toolbar, the file list and the `.docx`
+  // filename give one answer to "what is this document called". Spelling the fallback
+  // out here again is how this header kept naming the document by its *printed* title
+  // after a rename had given it a different name everywhere else.
+  const title = documentName(worksheet) ?? 'Untitled worksheet';
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">

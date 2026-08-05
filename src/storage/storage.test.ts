@@ -98,27 +98,31 @@ describe('the file list', () => {
 });
 
 describe('renaming', () => {
-  it('writes the document’s own title, so the list agrees with the page', async () => {
-    // A display name kept beside the document in the index would part company with
-    // `worksheet.title` the moment the title was edited on the page.
+  it('writes the document’s name, so the list shows it', async () => {
+    // It stays a field on the document rather than a label in the index: the index is
+    // derived from the document, so writing only the entry is undone by the next save.
     const worksheet = createWorksheet();
     await store().save(worksheet);
 
     await store().rename(worksheet.id, 'Renamed paper');
 
     expect((await store().list())[0].title).toBe('Renamed paper');
-    expect(plain((await store().load(worksheet.id))!.title.en)).toBe('Renamed paper');
+    expect((await store().load(worksheet.id))!.name).toBe('Renamed paper');
   });
 
-  it('leaves the Chinese title alone', async () => {
-    // The rename field is one box; blanking authored Chinese as a side effect of
-    // renaming in English would be a silent loss.
-    const worksheet = { ...createWorksheet(), title: bi('Old', '舊標題') };
+  it('leaves the printed title completely alone', async () => {
+    // Renaming a file is a filing decision. Stamping the new name across the top of
+    // page 1 is not part of what it asks for — and is what happened while a rename
+    // wrote `title`. Both language sides must survive untouched.
+    const worksheet = { ...createWorksheet(), title: bi('Printed heading', '印刷標題') };
     await store().save(worksheet);
 
-    await store().rename(worksheet.id, 'New');
+    await store().rename(worksheet.id, 'DSE Mock 2026');
 
-    expect(plain((await store().load(worksheet.id))!.title.zh)).toBe('舊標題');
+    const loaded = (await store().load(worksheet.id))!;
+    expect(plain(loaded.title.en)).toBe('Printed heading');
+    expect(plain(loaded.title.zh)).toBe('印刷標題');
+    expect((await store().list())[0].title).toBe('DSE Mock 2026');
   });
 
   it('does nothing for an id that is not there', async () => {

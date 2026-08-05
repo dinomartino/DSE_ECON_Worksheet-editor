@@ -17,7 +17,7 @@ import { listIndentScheme } from '@/model/numbering';
 import { bandFieldSegments } from '@/model/bandSegments';
 import { worksheetMarks } from '@/model/marks';
 import { furnitureHeaderXml } from './furniture';
-import { plain } from '@/model/text';
+import { documentName, plain } from '@/model/text';
 import type { Band, BandField, FontPair, HeaderFooter, LanguageMode, OutputMode, Worksheet } from '@/model/types';
 import type { RenderNode } from '@/render/ir';
 import { bandFieldText, collectListStreams, renderWorksheet } from '@/render/worksheet';
@@ -578,10 +578,15 @@ const LANGUAGE_TAG: Record<OutputMode['language'], string> = {
   bilingual: 'Bilingual',
 };
 
-/** `<title> (<Student|Teacher>) (<EN|ZH|Bilingual>).docx` per §7.1. */
+/**
+ * `<name> (<Student|Teacher>) (<EN|ZH|Bilingual>).docx` per §7.1.
+ *
+ * The name comes from `documentName`, the same chain the file list reads. It used to
+ * spell the fallback out again here, which meant a renamed document downloaded under
+ * its old title — the list and the download disagreeing about what the file is called.
+ */
 export function docxFileName(worksheet: Worksheet, mode: OutputMode): string {
-  const rawTitle =
-    plain(worksheet.title.en) || plain(worksheet.title.zh) || 'Worksheet';
+  const rawTitle = documentName(worksheet) ?? 'Worksheet';
   // Strip characters that are illegal in Windows/macOS filenames.
   const title = rawTitle.replace(/[\\/:*?"<>|]/g, '-').trim() || 'Worksheet';
   const version = mode.version === 'teacher' ? 'Teacher' : 'Student';

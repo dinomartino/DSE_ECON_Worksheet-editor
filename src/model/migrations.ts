@@ -43,6 +43,7 @@ const MIGRATIONS: Array<(doc: RawDoc) => RawDoc> = [];
 export const KNOWN_KEYS = new Set([
   'schemaVersion',
   'id',
+  'name',
   'title',
   'titleFormat',
   'instructions',

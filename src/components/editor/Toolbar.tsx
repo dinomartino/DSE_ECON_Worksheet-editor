@@ -13,6 +13,7 @@ import { Button, IconButton, Pill, Segmented } from '@/components/ui';
 import { DownloadIcon, PdfIcon, RedoIcon, SettingsIcon, UndoIcon } from '@/components/ui/icons';
 import { Menu } from '@/components/ui/Menu';
 import { Dialog } from '@/components/ui/Dialog';
+import { DocumentName } from './DocumentName';
 
 /**
  * Output controls, export actions and persistence (§5.4, §6, §7).
@@ -168,20 +169,22 @@ export function Toolbar({
     <div className="border-b border-line bg-surface px-4 py-2.5">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         {/* Identity gets a mark, not just a word. A tool with a face on it reads as a
-            product; a bare bold string reads as a page heading. */}
-        <span className="flex items-center gap-2">
+            product; a bare bold string reads as a page heading.
+
+            The mark carries the app; the word beside it names the *document*. Printing
+            the app's own name there spent the most prominent slot on the one fact a
+            teacher already knows, while the document's name — which the `.docx`
+            downloads as, and which is all that distinguishes one mock paper from the
+            next — appeared nowhere in the editor. */}
+        <span className="flex items-center gap-1.5">
           <span
             aria-hidden
-            className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-[13px] font-bold text-on-accent"
+            title="Worksheet — HKDSE Economics"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent text-[13px] font-bold text-on-accent"
           >
             W
           </span>
-          <span className="text-[13px] font-semibold leading-tight text-ink">
-            Worksheet
-            <span className="ml-1.5 hidden text-[11px] font-normal text-ink-subtle lg:inline">
-              HKDSE Economics
-            </span>
-          </span>
+          <DocumentName />
         </span>
 
         <span className="h-6 w-px bg-line" />

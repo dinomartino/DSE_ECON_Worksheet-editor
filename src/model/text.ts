@@ -28,6 +28,36 @@ export function plain(text: RichText | undefined): string {
   return text.map((r) => r.text).join('');
 }
 
+/**
+ * What to call a document when something other than the page has to name it.
+ *
+ * The one definition, because the fallback chain is a decision and three consumers make
+ * it: the file list, the toolbar's name, and the `.docx` filename. A second copy is not
+ * a tidiness problem — it is a document that renames itself in the list and downloads
+ * under its old name, which is exactly what a duplicated chain in `docxFileName` did.
+ *
+ * `name` leads: it is the answer to *this* question — what the document is called —
+ * while `title` is the heading printed on page 1. They coincide on a plain worksheet,
+ * which is why one field served both for so long. Falling back to `title` is what keeps
+ * every document saved before `name` existed naming itself exactly as it did, and a
+ * worksheet titled only in Chinese is *not* untitled, so English-then-Chinese is the
+ * order. Only a document with none of the three reads "Untitled".
+ *
+ * It lives in `model/` because `export/` and `storage/` both need it and neither may
+ * depend on the other.
+ */
+export function documentName(worksheet: {
+  name?: string;
+  title: BiText;
+}): string | undefined {
+  return (
+    worksheet.name?.trim() ||
+    plain(worksheet.title.en) ||
+    plain(worksheet.title.zh) ||
+    undefined
+  );
+}
+
 export function isRichTextEmpty(text: RichText | undefined): boolean {
   return plain(text).trim().length === 0;
 }
