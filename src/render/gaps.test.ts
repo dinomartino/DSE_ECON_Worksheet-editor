@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { blankLine, endsInBlankLine, pushGap, type RenderNode } from './ir';
 import { renderWorksheet } from './worksheet';
 import { createWorksheet } from '@/model/factories';
+import { createWorksheetFrom } from '@/model/newWorksheet';
 import { bi, rt } from '@/model/text';
-import type { LayoutElement, StructuredQuestion, Worksheet } from '@/model/types';
+import type { LayoutElement, McqQuestion, StructuredQuestion, Worksheet } from '@/model/types';
 
 /**
  * Every gap on the page is exactly one spent line, however the text was typed.
@@ -157,6 +158,151 @@ describe('a gap counts what is already there', () => {
 
     it('goes without at the true top of a bare page, where a gap is only top margin', () => {
       expect(firstKinds(withSection({}))).toEqual(['text']);
+    });
+  });
+
+  /*
+   * An exam paper spaces its questions wider than a worksheet does.
+   *
+   * Measured off the reference (DSE 2021 P1): consecutive MCQs sit three empty
+   * paragraphs apart, while a stem sits one line from its own options — the boundary
+   * between two self-contained questions has to read as a stronger break than the
+   * boundary inside one.
+   *
+   * The number lives on the type definition (`examGapLines`) and the walker only asks
+   * for it, because `render/worksheet.ts` may not name a concrete type id
+   * (`registry.test.ts` greps it). The scope is what these tests pin.
+   */
+  describe('the wide boundary between two MCQs on a Paper 1', () => {
+    const mcq = (id: string): McqQuestion => ({
+      id,
+      type: 'mcq',
+      blocks: [{ id: `${id}-b`, kind: 'paragraph', text: { en: rt(`stem ${id}`), zh: [] } }],
+      options: [
+        { id: `${id}-o1`, text: { en: rt('one'), zh: [] } },
+        { id: `${id}-o2`, text: { en: rt('two'), zh: [] } },
+        { id: `${id}-o3`, text: { en: rt('three'), zh: [] } },
+        { id: `${id}-o4`, text: { en: rt('four'), zh: [] } },
+      ],
+      answerIndex: 0,
+      marks: 1,
+    });
+
+    /** Two MCQs in a document of the given shape, with nothing else in the flow. */
+    const twoQuestions = (
+      base: Worksheet,
+      questions: Worksheet['questions'] = [mcq('q1'), mcq('q2')],
+    ): Worksheet =>
+      ({
+        ...base,
+        questions,
+        layout: [],
+        flow: questions.map((q) => ({ type: 'question' as const, id: q.id })),
+      }) as Worksheet;
+
+    /** The leading spacers on question 2 — the boundary's actual width. */
+    const leadingGap = (w: Worksheet): number => {
+      const nodes = renderWorksheet(w, { language: 'en', version: 'student' }).questions[1].nodes;
+      return nodes.findIndex((n) => n.kind !== 'spacer');
+    };
+
+    // A real Paper 1 from the wizard, so the shape is genuinely derived from the cover
+    // rather than asserted — a hand-built document must space identically (§ derived,
+    // never stored).
+    const paper1 = () => createWorksheetFrom({ documentType: 'paper1', seedSample: false });
+
+    it('spends three blank lines, not one', () => {
+      expect(leadingGap(twoQuestions(paper1()))).toBe(3);
+    });
+
+    it('leaves a classroom worksheet holding the same questions at one', () => {
+      // Its questions are answered on the sheet itself; it is not the reference paper,
+      // and widening it would re-paginate documents teachers already have.
+      expect(leadingGap(twoQuestions(createWorksheet()))).toBe(1);
+    });
+
+    it('counts a trailing break towards the three, as every other gap does', () => {
+      // The break prints its own line, so the boundary owes two more — not three on top
+      // of it. One rule, whatever the text happens to end in.
+      const first = mcq('q1');
+      const ended: McqQuestion = {
+        ...first,
+        options: first.options.map((option, i) =>
+          i === 3 ? { ...option, text: { en: rt('four\n'), zh: [] } } : option,
+        ),
+      };
+      expect(leadingGap(twoQuestions(paper1(), [ended, mcq('q2')]))).toBe(2);
+    });
+
+    it('never widens the first question, which has no question before it', () => {
+      // These two documents differ only in what precedes question 1: nothing at all
+      // (the true top of the page, which owes no gap) versus a title above the flow
+      // (one line, the ordinary boundary). Neither is ever the wide one — three lines
+      // of air under the top margin would read as a missing question.
+      const leading = (w: Worksheet) => {
+        const nodes = renderWorksheet(w, { language: 'en', version: 'student' }).questions[0].nodes;
+        return nodes.findIndex((n) => n.kind !== 'spacer');
+      };
+      expect(leading(twoQuestions(paper1()))).toBe(0);
+      expect(leading({ ...twoQuestions(paper1()), title: bi('Paper 1', '') } as Worksheet)).toBe(1);
+    });
+
+    /*
+     * The lead-in is rubric addressed to the candidate before they start, not a caption
+     * on question 1 — so it stands off by two lines: more than the one that separates
+     * ordinary neighbours, less than the three between two whole questions, since it
+     * still belongs to the run it introduces.
+     */
+    it('gives the lead-in two lines above question 1, not one and not three', () => {
+      // The wizard's own Paper 1, so the seeded lead-in element is the real one.
+      const base = createWorksheetFrom({ documentType: 'paper1', seedSample: false });
+      const leadIn = base.layout.find((el) => el.kind === 'questionCount');
+      expect(leadIn, 'a Paper 1 seeds a questionCount lead-in').toBeDefined();
+
+      const questions = [mcq('q1'), mcq('q2')];
+      const w = {
+        ...base,
+        questions,
+        layout: [leadIn!],
+        flow: [
+          { type: 'layout' as const, id: leadIn!.id },
+          ...questions.map((q) => ({ type: 'question' as const, id: q.id })),
+        ],
+      } as Worksheet;
+
+      const rendered = renderWorksheet(w, { language: 'en', version: 'student' });
+      const lead = rendered.questions[0].nodes.findIndex((n) => n.kind !== 'spacer');
+      expect(lead).toBe(2);
+      // …and the question boundary behind it is still the wide one, unaffected.
+      expect(leadingGap(w)).toBe(3);
+    });
+
+    it('leaves every other layout element at its ordinary single gap', () => {
+      // "END OF PAPER" three lines under the last option would read as detached from the
+      // paper rather than as the end of it; a heading owns its own leading gap already.
+      const note: LayoutElement = { id: 'n1', kind: 'text', text: bi('Note', '') };
+      const questions = [mcq('q1')];
+      const w = {
+        ...createWorksheetFrom({ documentType: 'paper1', seedSample: false }),
+        questions,
+        layout: [note],
+        flow: [
+          { type: 'layout' as const, id: 'n1' },
+          { type: 'question' as const, id: 'q1' },
+        ],
+      } as Worksheet;
+      const nodes = renderWorksheet(w, { language: 'en', version: 'student' }).questions[0].nodes;
+      expect(nodes.findIndex((n) => n.kind !== 'spacer')).toBe(1);
+    });
+
+    it('does not widen a boundary against an unlike question', () => {
+      const structured: StructuredQuestion = {
+        id: 'q2',
+        type: 'structured',
+        blocks: [{ id: 'sb', kind: 'paragraph', text: bi('Stem', '') }],
+        parts: [{ id: 'sp', blocks: [{ id: 'spb', kind: 'paragraph', text: bi('a', '') }], marks: 2 }],
+      };
+      expect(leadingGap(twoQuestions(paper1(), [mcq('q1'), structured]))).toBe(1);
     });
   });
 });

@@ -290,11 +290,28 @@ function countMissingTranslations(question: McqQuestion): number {
   return missing;
 }
 
+/**
+ * Three blank lines between two MCQs on an exam paper, against the ordinary one.
+ *
+ * Measured off the reference (DSE 2021 P1): consecutive questions there sit three empty
+ * paragraphs apart, while a stem sits one line from its own options. The paper is airier
+ * than a worksheet on purpose — each question is self-contained and answered on a
+ * separate machine-read sheet — so the boundary between two questions must read as a
+ * stronger break than the boundary inside one. At one line the two read alike and the
+ * options of Q7 crowd the stem of Q8.
+ *
+ * Applies **only on a Paper 1**, and only between two MCQs: `renderWorksheet` asks for it
+ * on no other shape, so a classroom worksheet holding MCQs keeps the one-line rhythm it
+ * has always printed.
+ */
+const MCQ_EXAM_GAP_LINES = 3;
+
 export const mcqType: QuestionTypeDefinition<McqQuestion> = {
   id: 'mcq',
   displayName: bi('Multiple Choice', '多項選擇題'),
   create: createMcqQuestion,
   render,
+  examGapLines: MCQ_EXAM_GAP_LINES,
   EditorPanel: McqEditorPanel,
   countMissingTranslations,
 };

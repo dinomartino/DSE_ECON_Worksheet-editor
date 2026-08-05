@@ -25,6 +25,20 @@ export interface QuestionTypeDefinition<Q extends Question = Question> {
    * consume this, so a type implements rendering exactly once.
    */
   render: (question: Q, context: RenderContext) => RenderNode[];
+  /**
+   * How many blank lines this type wants between two consecutive instances of itself on
+   * an exam paper, when the reference paper spaces them wider than the ordinary one line.
+   *
+   * Absent means the ordinary boundary, which is what every worksheet uses. It is asked
+   * only on a paper whose shape is the reference's (§ `model/documentShape.ts`) — a
+   * classroom worksheet keeps the one-line rhythm whatever its questions are.
+   *
+   * It lives on the definition rather than in the walker because the walker may not
+   * branch on a concrete type id (`registry.test.ts` greps it, along with numbering,
+   * marks and the three export backends). The rhythm between two MCQs is a fact about
+   * MCQs, so the type states it and the walker only asks.
+   */
+  examGapLines?: number;
   /** The type's editor panel. */
   EditorPanel: ComponentType<EditorPanelProps<Q>>;
   /** Count of untranslated BiText fields, for the editor's warning badge (§5.2). */

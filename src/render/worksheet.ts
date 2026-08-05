@@ -1,5 +1,6 @@
 import { bandIsEmpty, ZONES, zonesOf } from '@/model/bands';
 import { bandFieldSegments } from '@/model/bandSegments';
+import { documentShape, type DocumentShape } from '@/model/documentShape';
 import { DEFAULT_QUESTION_COUNT_WORDING, resolveFlow } from '@/model/flow';
 import { sectionMarksById, worksheetMarks } from '@/model/marks';
 import { computeNumbering } from '@/model/numbering';
@@ -200,7 +201,7 @@ const questionRenderCache = new WeakMap<
     mode: OutputMode;
     number: number;
     stream: string;
-    gapped: boolean;
+    gap: number;
     nodes: RenderNode[];
   }
 >();
@@ -407,6 +408,23 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
   // decision has to be made while the run is being built.
   let previousNodes: RenderNode[] = [];
 
+  /*
+   * What the previous flow item *was*, not merely what it printed.
+   *
+   * A boundary's width depends on what sits on both sides of it (§ `boundaryGapLines`),
+   * and that is only knowable while the run is being built — `previousNodes` records the
+   * nodes, which cannot say whether a question or a lead-in produced them.
+   */
+  let previous: { question?: Question; layout?: LayoutElement } | undefined;
+
+  /*
+   * Which of the four papers this is, read once (§ `model/documentShape.ts`).
+   *
+   * Derived from the document rather than passed in, so a Paper 1 assembled by hand or
+   * loaded from an older build spaces its questions exactly as one the wizard built.
+   */
+  const shape = documentShape(worksheet);
+
   // One walk over the one resolved flow. Questions, layout elements and section
   // headings come out in the teacher's order, so nothing downstream has to interleave
   // them and the three backends cannot disagree about what follows what.
@@ -431,6 +449,7 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
         numbering.questions.length,
       );
       previousNodes = nodes;
+      previous = { layout: item.element };
       return {
         type: 'layout',
         layout: {
@@ -463,7 +482,17 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
      * next one while its neighbours sit one (§ a gap counts what is already there).
      */
     const atTrueTop = index === 0 && !somethingAboveFlow;
-    const gapped = !(atTrueTop || endsInBlankLine(previousNodes));
+    const wanted = boundaryGapLines(shape, previous, question);
+    /*
+     * How many lines this boundary still owes, after counting what is already spent.
+     *
+     * `endsInBlankLine` reports one spent line, never more, so the subtraction is by one
+     * — a question ending in a trailing hard break contributes that break towards the
+     * gap instead of adding to it, exactly as the one-line rule has always worked
+     * (§ a gap counts what is already there). At the true top of the page the boundary
+     * owes nothing: a gap there is only a shifted top margin.
+     */
+    const gap = atTrueTop ? 0 : Math.max(0, wanted - (endsInBlankLine(previousNodes) ? 1 : 0));
 
     // The leading gap is part of the cached array, so an unchanged question hands back
     // one stable identity for the preview to memoise on (see `questionRenderCache`).
@@ -474,7 +503,7 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
       cached.mode === mode &&
       cached.number === number &&
       cached.stream === questionStream &&
-      cached.gapped === gapped
+      cached.gap === gap
     ) {
       separated = cached.nodes;
     } else {
@@ -488,16 +517,17 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
         })
         // Student output must contain no teacher content anywhere (§11.8).
         .filter((node) => includeNode(node, mode));
-      separated = gapped ? [ITEM_GAP, ...nodes] : nodes;
+      separated = gap > 0 ? [...Array.from({ length: gap }, blankLine), ...nodes] : nodes;
       questionRenderCache.set(question, {
         mode,
         number,
         stream: questionStream,
-        gapped,
+        gap,
         nodes: separated,
       });
     }
     previousNodes = separated;
+    previous = { question };
 
     return { type: 'question', question: { questionId: question.id, number, nodes: separated } };
   });
@@ -521,8 +551,70 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
  *
  * The same `blankLine()` the question types use for the gaps *inside* a question, so
  * every gap on the page is one number.
+ *
+ * One line is the default width of a boundary; `boundaryGapLines` is what decides
+ * whether a given boundary is wider than that.
  */
 const ITEM_GAP: RenderNode = blankLine();
+
+/** The ordinary boundary: one spent line, the same gap a question's own parts get. */
+const DEFAULT_GAP_LINES = 1;
+
+/**
+ * How many blank lines sit under the MCQ paper's lead-in, before question 1.
+ *
+ * Measured off the reference (DSE 2021 P1), like the gap between two questions: the
+ * "There are 45 questions in this paper." sentence is rubric addressed to the candidate
+ * before they start, not a caption on question 1, so it stands off from the paper by more
+ * than the single line that separates ordinary neighbours — but by less than the three
+ * that separate two whole questions, since it still belongs to the run it introduces.
+ */
+const QUESTION_COUNT_GAP_LINES = 2;
+
+/**
+ * The width of the boundary between two consecutive flow items, in blank lines.
+ *
+ * The reference exam papers space their parts wider than a worksheet does, and a
+ * boundary's width is therefore a question of what sits on *both* sides of it. Two
+ * boundaries on a Paper 1 are wider than the ordinary one line:
+ *
+ * - **question → question**, three lines. `examGapLines` on the type definition is where
+ *   a type states its own number; this function only decides when to honour it, because
+ *   the walker may not name a concrete type id (`registry.test.ts` greps it).
+ * - **lead-in → question**, two lines, for the rubric reason above.
+ *
+ * Deliberately narrow, each clause load-bearing:
+ *
+ * - **Only on an exam paper** (§ `model/documentShape.ts`). A classroom worksheet holding
+ *   the same questions keeps the one-line rhythm: it is answered on the sheet itself and
+ *   is not trying to be the reference paper. Widening there would re-paginate documents
+ *   teachers already have for no reason they asked for.
+ * - **Only between two questions of the same type.** The wide gap separates two
+ *   self-contained questions of one kind; a boundary between unlike questions has no
+ *   measured width to copy.
+ * - **Every other layout element keeps its single leading gap**, which
+ *   `renderLayoutElement` already owns — "END OF PAPER" three lines under the last option
+ *   reads as detached from the paper rather than as the end of it.
+ * - **Never on the first item of the page**, which has nothing before it to stand off
+ *   from; the caller suppresses that case outright.
+ */
+function boundaryGapLines(
+  shape: DocumentShape,
+  previous: { question?: Question; layout?: LayoutElement } | undefined,
+  next: Question,
+): number {
+  if (shape !== 'paper1' || !previous) return DEFAULT_GAP_LINES;
+
+  if (previous.layout) {
+    return previous.layout.kind === 'questionCount'
+      ? QUESTION_COUNT_GAP_LINES
+      : DEFAULT_GAP_LINES;
+  }
+
+  if (previous.question?.type !== next.type) return DEFAULT_GAP_LINES;
+  const wide = requireQuestionType(next).examGapLines;
+  return wide !== undefined && wide > DEFAULT_GAP_LINES ? wide : DEFAULT_GAP_LINES;
+}
 
 /**
  * Expand a layout element into IR nodes.
