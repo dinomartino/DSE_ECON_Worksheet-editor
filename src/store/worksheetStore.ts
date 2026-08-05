@@ -76,18 +76,9 @@ import { listQuestionTypes } from '@/registry';
 import { worksheetStore } from '@/storage';
 
 /**
- * The document store (§10).
- *
- * One rule shapes everything here: **every mutation goes through `commit`**, which
- * applies a pure recipe to the current worksheet and pushes the previous value onto the
- * undo stack. Nothing else writes `worksheet`, so undo/redo needs no per-action
- * knowledge — and because numbering and marks are derived rather than stored (§3.5),
- * a reorder or a delete needs no renumbering pass either.
- *
- * The actions are deliberately thin. The real work lives in pure model functions
- * (`model/edits`, `model/flow`, `model/bands`) that are unit-tested without a store,
- * and each action's job is to name the intent and route it through `commit` so it
- * becomes undoable and autosaved.
+ * The document store. **Every mutation goes through `commit`** — a pure recipe plus an
+ * undo push — so undo/redo needs no per-action knowledge. Actions are thin; the real
+ * work lives in pure model functions (`model/edits`, `model/flow`, `model/bands`).
  */
 
 /** How many steps of history to keep. Beyond this the oldest are dropped. */
@@ -97,13 +88,8 @@ interface WorksheetState {
   worksheet: Worksheet;
   mode: OutputMode;
   /**
-   * Showing the sheets as they will print: no editing, no chrome.
-   *
-   * Deliberately *not* part of `OutputMode`. That is the document's own state — which
-   * language, student or teacher — and it is what the exporter reads; a view toggle
-   * that reached `.docx` generation would be a bug waiting to happen. This is a
-   * property of the editor, so it lives beside the mode rather than inside it, and it
-   * is not persisted: a worksheet reopens ready to edit.
+   * Showing the sheets as they will print. Deliberately not part of `OutputMode`
+   * (that is what the exporter reads); editor state, not persisted.
    */
   printPreview: boolean;
   /** Unsaved changes since the last `markSaved`. */
@@ -111,60 +97,25 @@ interface WorksheetState {
   lastSavedAt?: string;
   selectedQuestionId?: string;
   /**
-   * The flow id a new item lands after, or undefined to append.
-   *
-   * **The add rail can only insert where it can see.** Its destination used to be
-   * `selectedQuestionId` alone, so selecting a *layout* element — a heading, a
-   * divider, a page break — left it undefined and the new item silently went to the
-   * end of the document. That selection lives in `Preview`'s local state, because a
-   * divider has nothing for the sidebar to inspect, and the rail sits outside the
-   * preview; there was no way for it to know.
-   *
-   * So the anchor is a **position**, not a selection: one id naming the item to land
-   * behind, whatever kind it is. Selecting anything on the page sets it, and the gap
-   * affordance sets it without selecting anything at all — which is the case that
-   * has no neighbour to nominate.
-   *
-   * It is deliberately not derived from the three selections. Two of them are local
-   * to the preview and the third means "show this in the inspector"; folding a
-   * *destination* into them would make clearing the inspector also move where content
-   * lands, and a marquee of five items would have no single answer to give.
+   * The flow id a new item lands after, or undefined to append. A **position**, not a
+   * selection (two of the page's selections are preview-local and the rail cannot see
+   * them). Selecting anything sets it; the gap affordance sets it without selecting.
    */
   insertAnchorId?: string;
   /**
-   * A request from the page to open the add rail's insert menu.
-   *
-   * The `+` in a gap and the rail's own buttons open the same menu, so the page has to
-   * be able to raise it. It is a counter rather than a boolean: two clicks on two
-   * different gaps must both open the menu, and a boolean already true the second time
-   * would be a no-op — the affordance would work once and then appear dead.
-   *
-   * The rail still owns *rendering* the menu; this only asks. That keeps the flyout's
-   * markup, its outside-click handling and its Escape key in one place instead of
-   * giving the page a second copy to keep in step.
+   * A request from the page to open the add rail's insert menu. A counter, not a
+   * boolean — two clicks on two gaps must both open it. The rail owns rendering it.
    */
   insertMenuRequest: number;
   /**
-   * The table cell last clicked on the page, as `{ blockId, cellId }`.
-   *
-   * The sidebar's table panel is **structure only** — insert a row, merge, align — and
-   * every one of those verbs needs a subject. The subject is whichever cell the teacher
-   * is in, and they are in it *on the page*, because that is where the table is legible
-   * at full width. So the page reports the cell and the panel acts on it, rather than the
-   * panel rendering a second grid of inputs to click in.
-   *
-   * It is not part of the document: which cell has focus is editor state, and persisting
-   * it would restore a selection into a table that may have been reshaped since.
+   * The table cell last clicked on the page. The sidebar's structural verbs need a
+   * subject, and the teacher is in the cell *on the page*. Editor state, never
+   * persisted.
    */
   activeCell?: { blockId: string; cellId: string };
   /**
-   * A rectangular run of cells swept on the page — Excel's drag selection.
-   *
-   * Stored as its two corner cell **ids**, not a list of positions: the rectangle is
-   * re-derived from the live table (`cellsInRange`), so a structural edit in between
-   * cannot leave the selection naming positions that have moved. Editor state like
-   * `activeCell`, and for the same reason: the sidebar's align control is the consumer,
-   * and it is a sibling of the page that swept the range.
+   * A rectangular run of swept cells, stored as two corner **ids** (re-derived from
+   * the live table so a structural edit cannot strand it). Editor state.
    */
   cellSelection?: { blockId: string; anchorId: string; focusId: string };
   /** The question currently being dragged on the page, if any. */
@@ -220,12 +171,8 @@ interface WorksheetState {
   /** Move a whole page's worth of items, as dragged in the page rail. */
   movePage: (sourceIds: string[], targetIds: string[], position: 'before' | 'after') => void;
   /**
-   * Move a run to the very front of the document, keeping its order.
-   *
-   * The one position no anchor can name. Every other drop is expressed relative to an
-   * existing item, but the first sheet has nothing before it to aim at — and if its
-   * content has all been dragged away it has no members to aim at either, which is what
-   * left an emptied page 1 permanently unfillable.
+   * Move a run to the very front of the document — the one position no anchor can
+   * name (an emptied page 1 has no member to aim at).
    */
   moveToDocumentStart: (ids: string[]) => void;
   removeMany: (ids: string[]) => void;
@@ -236,11 +183,8 @@ interface WorksheetState {
   deleteTarget: (target: EditTarget) => void;
   formatTarget: (target: EditTarget, patch: Partial<TextFormat>) => void;
   /**
-   * Format one character range inside a target — the per-run path.
-   *
-   * Separate verb from `formatTarget` because the subject is different: that one
-   * overrides the whole element, this one rewrites the runs so only the selected
-   * characters differ. Both are one `commit`, so either is a single undo entry.
+   * Format one character range — the per-run path. Separate from `formatTarget`
+   * (whole element); each is one commit, one undo entry.
    */
   formatRuns: (
     target: EditTarget,
@@ -250,42 +194,21 @@ interface WorksheetState {
     patch: RunFormatPatch,
   ) => void;
   /**
-   * Insert a fill-in blank at the caret, replacing any selected characters.
-   *
-   * Its own verb rather than a `formatRuns` patch, because it changes the *text* — the
-   * paper's "…using ______ to solve the problem of ______." shape, which a third of its
-   * questions use.
+   * Insert a fill-in blank at the caret. Its own verb, not a `formatRuns` patch — it
+   * changes the *text*.
    */
   insertBlank: (target: EditTarget, side: 'en' | 'zh', start: number, end: number) => void;
   resizeBlock: (blockId: string, widthPx: number) => void;
   /**
    * Extend a sizeable layout element — answer lines by count, a spacer by points.
-   *
-   * One verb for both, taking a bare number, because the caller is a drag handle on the
-   * page and a stepper in the sidebar: neither should have to know which *field* the
-   * element stores its size in. The element's own kind decides that here, which is what
-   * keeps the two surfaces from spelling the same edit differently.
+   * One verb: the element's own kind decides which field holds its size.
    */
   resizeLayoutElement: (elementId: string, value: number) => void;
   /**
-   * Divide answer lines in two: `keep` rows stay, `overflow` rows become a **new
-   * element** immediately after.
-   *
-   * This is what a drag past the end of the page means. The cap stops any single
-   * element growing taller than a sheet — the one overflow the paginator cannot fix by
-   * moving something — so asking for more has to produce another element rather than an
-   * oversized one. The new element is real: its own id, its own outline row, its own
-   * entry in the export, separately movable and deletable afterwards.
-   *
-   * It is deliberately one `commit`, so the whole split is a single undo entry, and it
-   * is only ever called from a gesture. A split driven by re-measurement would fire
-   * while typing into the question above and silently rewrite the flow.
-   *
-   * `perPage` is how many rows a *fresh* sheet holds. The overflow is chopped into
-   * elements of that size rather than one long one, because a remainder larger than a
-   * whole page would overflow its own sheet and reintroduce exactly the problem the cap
-   * exists to prevent — dragging for 48 lines on a page with room for 16 produces
-   * 16 + 26 + 6, not 16 + 32.
+   * Divide answer lines: `keep` rows stay, `overflow` becomes new element(s) after —
+   * what a drag past the end of the page means. Chopped into `perPage`-sized pieces
+   * (a remainder taller than a sheet would overflow its own page). One commit, one
+   * undo entry; only ever called from a gesture, never from re-measurement.
    */
   splitLayoutRows: (
     elementId: string,
@@ -294,41 +217,22 @@ interface WorksheetState {
     perPage: number,
   ) => void;
   /**
-   * Write the paginator's resolved counts into every `fill` answer space.
-   *
-   * The one deliberate bypass of `commit()`: the counts are **derived** — the paginator
-   * is the sole authority on how much room a sheet has left (§3.2) — so recording them
-   * must not spend an undo entry. An undo step that only changed a fill count would be
-   * "undo does nothing" to the teacher, and the resolution fires on re-measurement,
-   * which would interleave derived entries between every real edit above the fill.
-   *
-   * Written into the model rather than kept beside it so every consumer — the .docx,
-   * clipboard, thumbnails — reads the number the preview resolved instead of
-   * recomputing it; two computations is how the preview and the paper would disagree
-   * about where pages break. Marks the store dirty (the document did change) and
-   * returns the same state when nothing differs, which is what stops the
-   * measure → resolve → re-measure loop.
+   * Write the paginator's resolved counts into every `fill` answer space. The one
+   * deliberate bypass of `commit()` — the counts are derived, so they must not spend
+   * undo entries. Marks dirty; returns the same state when nothing differs, which is
+   * what stops the measure → resolve → re-measure loop.
    */
   resolveAnswerSpaceFills: (counts: ReadonlyMap<string, number>) => void;
   /**
-   * Cut a leaf question's answer space down to the lines its sheet can hold.
-   *
-   * Outside history for the same reason as `resolveAnswerSpaceFills`: the count is the
-   * paginator's answer, not the teacher's, so an undo press must step over it to reach
-   * the edit that changed the page. A question is one atomic block, so an answer space a
-   * few pixels too tall does not lose its last line — it moves the whole question to the
-   * next sheet and strands a blank one (§`onTrimQuestionAnswerSpace`).
+   * Cut a leaf question's answer space to the lines its sheet can hold. Outside
+   * history for the same reason as `resolveAnswerSpaceFills`.
    */
   trimQuestionAnswerSpace: (questionId: string, lines: number) => void;
   /** Replace one block by id — the route a page-opened editor commits through. */
   replaceBlock: (blockId: string, next: ContentBlock) => void;
   /**
-   * Move one table column boundary, addressed by the block it belongs to.
-   *
-   * Its own action rather than a `replaceBlock` assembled at the call site: the caller is
-   * a drag handle on the page, which knows a boundary index and a fraction and should not
-   * have to resolve the block, read its current widths and rebuild it — that is the same
-   * "deriving the edit at the call site" that let inserts write one list and not the other.
+   * Move one table column boundary. Its own action so a drag handle need not resolve
+   * the block and rebuild it at the call site.
    */
   resizeTableColumn: (
     blockId: string,
@@ -341,11 +245,8 @@ interface WorksheetState {
   /** Set a floor on one row's height, in twips. */
   setTableRowHeight: (blockId: string, index: number, twips: number | undefined) => void;
   /**
-   * Structural table edits addressed by position, for the page's own affordances.
-   *
-   * The sidebar reaches the same verbs through its `onChange(blocks)` chain, which a
-   * surface on the page has no route into; both end at the pure functions in
-   * `model/table.ts`, so the two surfaces cannot diverge (§tables).
+   * Structural table edits by position, for the page's affordances. Both surfaces end
+   * at the pure functions in `model/table.ts`, so they cannot diverge.
    */
   insertTableRow: (blockId: string, index: number) => void;
   removeTableRow: (blockId: string, index: number) => void;
@@ -354,13 +255,7 @@ interface WorksheetState {
 
   // --- Page setup, masthead bands, header/footer ------------------------------
   setPageSetup: (patch: Partial<PageSetup>) => void;
-  /**
-   * Put a mock-exam cover at the front of the document.
-   *
-   * One commit for the whole thing — masthead rows, instructions and the page break are
-   * a single gesture and must cost a single undo press. See `model/cover.ts` for why
-   * this generates plain elements rather than introducing a `Cover` type.
-   */
+  /** Put a mock-exam cover at the front of the document. One commit, one undo press. */
   applyCover: (options: CoverOptions) => void;
   /** Drop the cover page entirely. */
   removeCover: () => void;
@@ -378,22 +273,16 @@ interface WorksheetState {
   addBandField: (bandId: string, zone: ZoneName, field: BandField) => void;
   updateBandField: (fieldId: string, patch: Partial<BandField>) => void;
   /**
-   * Write authored text into one side of a masthead field.
-   *
-   * Distinct from `updateBandField` because the destination depends on the field's kind,
-   * which only the store has in hand — see `bandFieldSidePatch`.
+   * Write authored text into one side of a masthead field. Distinct from
+   * `updateBandField`: the destination depends on the field's kind — see
+   * `bandFieldSidePatch`.
    */
   setBandFieldText: (fieldId: string, side: BandFieldSide, text: BiText) => void;
   removeBandField: (fieldId: string) => void;
   moveBandField: (bandId: string, fieldId: string, zone: ZoneName, beforeId?: string) => void;
 
   setHeaderFooter: (which: 'header' | 'footer', patch: Partial<HeaderFooter>) => void;
-  /**
-   * Header/footer rows.
-   *
-   * The same verbs the masthead uses, because a header row *is* a `Band` — sharing the
-   * model means sharing the mutators rather than maintaining a parallel set that drifts.
-   */
+  /** Header/footer rows — the same verbs the masthead uses; a header row *is* a `Band`. */
   addHeaderFooterBand: (which: 'header' | 'footer', band?: Band, scope?: BandScope) => void;
   removeHeaderFooterBand: (which: 'header' | 'footer', bandId: string) => void;
   addHeaderFooterField: (
@@ -425,11 +314,8 @@ interface WorksheetState {
   /** Replace a header/footer's rows wholesale — how a preset is applied. */
   setHeaderFooterBands: (which: 'header' | 'footer', bands: Band[], scope?: BandScope) => void;
   /**
-   * Choose what page 1 does (§ `HeaderFooter.firstPage`).
-   *
-   * One action for all three states rather than three, because they are mutually
-   * exclusive: reaching any one of them has to clear the other two, and separate setters
-   * would let a document end up both blank on page 1 *and* carrying first-page rows.
+   * Choose what page 1 does. One action for all three mutually exclusive states —
+   * separate setters could leave a document both blank and carrying first-page rows.
    */
   setFirstPageMode: (which: 'header' | 'footer', mode: FirstPageMode) => void;
   /** Replace the page-1 rows — how a first-page preset is applied. */
@@ -440,16 +326,9 @@ interface WorksheetState {
 export type FirstPageMode = 'same' | 'blank' | 'different';
 
 /**
- * Which of a header/footer's two row lists a structural edit targets.
- *
- * A header in "different" mode holds two independent lists — the running rows and page
- * 1's own — and *adding* or *replacing* a row has to say which it means. Field-level
- * edits do not need this because they address a field by id and `patchHeaderFooterBand`
- * finds whichever list holds it; a row being *created* has no id to find yet.
- *
- * Defaulting to `'running'` keeps every existing caller correct: before this, "+ Row"
- * and every preset wrote to `bands` unconditionally, which is exactly the bug — a
- * teacher looking at page 1 clicked "+ Row" and the row appeared on page 2.
+ * Which of a header/footer's two row lists a structural edit targets. A row being
+ * *created* has no id to find, so add/replace must name their list; field edits
+ * address by id and need no scope. Defaults to `'running'`.
  */
 export type BandScope = 'running' | 'firstPage';
 
@@ -468,13 +347,8 @@ function mapQuestion(
 }
 
 /**
- * Hold a sizeable layout element to its floor.
- *
- * Applied on the way *into* the document rather than at each caller, because both
- * surfaces that size these elements — the sidebar's number field and the page's own
- * edge drag — end up here, and a floor enforced in two places is a floor that will
- * eventually disagree with itself. A drag that overshoots therefore lands on one line
- * rather than on nothing (§`MIN_ANSWER_LINES`).
+ * Hold a sizeable layout element to its floor — applied on the way into the document,
+ * so both sizing surfaces share one floor.
  */
 function clampLayoutElement(element: LayoutElement): LayoutElement {
   if (element.kind === 'answerLines' || element.kind === 'answerSpace') {
@@ -487,17 +361,9 @@ function clampLayoutElement(element: LayoutElement): LayoutElement {
 }
 
 /**
- * Drop an insertion anchor that no longer names anything in the document.
- *
- * Deleting the anchored item would otherwise leave the rail pointing at a ghost, and
- * `insertIntoFlow` treats an id it cannot find exactly like no id at all — so the next
- * insert would quietly append to the end while the rail's label still claimed a
- * position. That is the same silent-append failure the anchor exists to remove.
- *
- * It runs in `commit` rather than in the four removal actions because `commit` is the
- * single write path: undo, redo and any future action that drops an item are all
- * covered without knowing they exist. The cost is one flow scan per edit, on a document
- * whose flow the paginator already walks several times per render.
+ * Drop an insertion anchor that no longer names anything — a dead anchor silently
+ * appends while the rail's label claims a position. Runs in `commit` (the single
+ * write path), so undo/redo and future removals are covered without knowing it.
  */
 function livingAnchor(anchorId: string | undefined, next: Worksheet): string | undefined {
   if (!anchorId) return undefined;
@@ -505,30 +371,11 @@ function livingAnchor(anchorId: string | undefined, next: Worksheet): string | u
 }
 
 /**
- * Place a new item in the flow, after `afterId` when given and at the end otherwise.
- *
- * Both kinds of insert share this: a question and a layout element differ only in which
- * stored list they join, never in how their position is recorded. `patch` carries that
- * list, so the caller decides what is being added and this decides where it goes.
- *
- * The flow is resolved first rather than appended to blindly — a document whose stored
- * flow is missing entries (older saves never listed every id) would otherwise place the
- * new item relative to a list that does not describe what is on the page.
- *
- * **The position has to be written into both lists**, not just `flow`. `questions` is
- * the authority on question order (§flow), so a question appended to that array prints
- * last no matter where its flow entry sits — which is exactly what happened when an
- * insert was anchored anywhere but the end: the flow said "after the Section B
- * heading", `resolveFlow` read the array, and the question appeared on the last page.
- * A layout element never showed the fault, since `layout` carries existence only and
- * `flow` alone positions it.
- *
- * `applyOrder` is the one rule for splitting an ordered flow back into the two stored
- * lists, shared with every move. Deriving `questions` here by hand would be a second
- * copy of it, and the two would eventually disagree about a case like this one.
- *
- * **An unanchored question lands after the last question, not at the very end** — see
- * `appendIndexFor`.
+ * Place a new item in the flow, after `afterId` when given. An insert is a move and
+ * must write **both** lists — `questions` owns question order, so a question
+ * positioned only in `flow` prints last. `applyOrder` is the one rule for splitting
+ * an ordered flow back into the two lists. An unanchored question lands via
+ * `appendIndexFor`, not at the very end.
  */
 function insertIntoFlow(
   worksheet: Worksheet,
@@ -549,33 +396,11 @@ function insertIntoFlow(
 }
 
 /**
- * Where an *unanchored* item joins the flow.
- *
- * "At the end" is the wrong answer for a question on an exam paper, because both exam
- * papers *end in a closing line*: a Paper 1 prints "END OF PAPER" after its last
- * question, and the booklet prints "END OF SECTION A/B" and "END OF PAPER". Appending
- * blindly put every added question after the line announcing the paper had finished —
- * and the paper's own cover tells the candidate to check for exactly that line after the
- * last question, so the seeded document actively contradicted itself. `paper1Layout`'s
- * seeded sample hid it for question 1 only; the next question a teacher added went
- * astray, which is where it was found.
- *
- * **Derived from the document's shape, never from a stored flag.** A closing line is
- * deliberately an ordinary text element — a landmark a teacher may drag, reword or delete,
- * not derived furniture (§ the booklet closes its sections the reference's way) — so
- * marking one would be a second answer to a question the content already settles, and the
- * two would part company the moment someone retyped the line.
- *
- * The rule is therefore scoped to the two shapes that are *known* to end in one
- * (§ `model/documentShape.ts`), and asks only what is unambiguously true of them: a
- * question belongs before the trailing run of layout elements that closes the paper. On a
- * classroom or plain LQ worksheet nothing is known to close the document, so appending
- * stays correct and untouched — a teacher's trailing note keeps whatever position they
- * gave it.
- *
- * Only questions are placed this way. A layout element appended with no anchor genuinely
- * means the end: adding a divider, a note or a page break after "END OF PAPER" is a thing
- * a teacher may want, and there is no closing line for *it* to fall behind.
+ * Where an *unanchored* item joins the flow. Both exam papers end in a closing line
+ * ("END OF PAPER"), so a question must land ahead of the trailing closing lines, not
+ * at the very end. Derived from shape and format, never a stored flag; scoped to
+ * `paper1`/`lqMock`; questions only (an unanchored layout element genuinely means the
+ * end).
  */
 function appendIndexFor(worksheet: Worksheet, flow: FlowItem[], entry: FlowItem): number {
   if (entry.type !== 'question') return flow.length;
@@ -583,33 +408,10 @@ function appendIndexFor(worksheet: Worksheet, flow: FlowItem[], entry: FlowItem)
   const shape = documentShape(worksheet);
   if (shape !== 'paper1' && shape !== 'lqMock') return flow.length;
 
-  /*
-   * Back over the paper's trailing *closing lines* to the last position still inside the
-   * questions.
-   *
-   * On a seeded-but-empty exam paper there is no question to sit behind, and the first
-   * one added must *still* land ahead of the closing lines — which is exactly what a
-   * "put it after the last question" rule gets wrong, and why this walks the tail
-   * instead.
-   *
-   * **Only a centred text element is walked past**, and that is the whole rule. Centring
-   * is what makes a closing line a closing line: "END OF PAPER" and "END OF SECTION A/B"
-   * are bold and centred in both reference papers, while everything else at the tail of a
-   * paper introduces the questions rather than closing them and is ranged left. The two
-   * that matter, each found by walking too far —
-   *
-   * - **Paper 1's `questionCount` lead-in.** "There are 45 questions in this paper."
-   *   introduces the run; a question placed above it makes the sentence print *after* the
-   *   questions it counts.
-   * - **The booklet's "Answer any ONE question."** note, which tells the candidate how to
-   *   treat Section C's questions and must stay above them.
-   *
-   * Reading the format is reading the document, not guessing at prose: it holds for a
-   * reworded or translated line, and a teacher who centres their own closing line gets
-   * the same behaviour for the same visible reason. A section marker stops the walk for
-   * free, being no kind of text element — which is what keeps a new question under the
-   * last section rather than filed at the end of the one before it.
-   */
+  // Walk back over the trailing closing lines. Only a *centred* text element is
+  // walked past — centring is what makes a closing line a closing line; ranged-left
+  // tail elements (the lead-in, "Answer any ONE question.") introduce what follows.
+  // A section marker stops the walk, keeping a new question under the last section.
   const layout = new Map((worksheet.layout ?? []).map((element) => [element.id, element]));
   const closesThePaper = (item: FlowItem): boolean => {
     if (item.type !== 'layout') return false;
@@ -664,15 +466,9 @@ function patchBandHolding(
 }
 
 /**
- * The `updateField` patch that writes `text` into one side of a field.
- *
- * Resolved from the field itself, because where authored text lives depends on the kind:
- * a `text` field stores it as `text`, a computed one as `prefix` or `suffix`. Looking the
- * field up here keeps that branching inside `applyBandFieldSide` and off every caller —
- * a component editing a header knows which *side* it clicked, never which kind it is.
- *
- * Returns an empty patch for a field that no longer exists, so a stale commit from a
- * field deleted mid-edit is a no-op rather than an error.
+ * The `updateField` patch writing `text` into one side of a field. Where the text
+ * lives depends on the field's kind, so it is resolved here via `applyBandFieldSide`.
+ * Returns an empty patch for a field that no longer exists (stale commit = no-op).
  */
 function bandFieldSidePatch(
   band: Band,
@@ -709,13 +505,8 @@ function patchHeaderFooterBand(
     which === 'header' ? defaultHeader : defaultFooter,
   );
 
-  /*
-   * Both band lists are searched, because a page-1 variant is edited **on page 1** by
-   * the very same `BandEditor` — a click there reports only a band id and a field id, so
-   * addressing only `bands` would silently drop every edit made to the first-page rows.
-   * Only the list that actually holds the match is rewritten, so an id that appears in
-   * neither leaves the document untouched rather than clearing a list.
-   */
+  // Both band lists are searched — a click on a page-1 row reports only ids, so
+  // addressing only `bands` would silently drop first-page edits.
   const bands = current.bands.map((band) => (match(band) ? patch(band) : band));
   const firstBands = current.firstPage?.bands.map((band) => (match(band) ? patch(band) : band));
 
@@ -749,13 +540,8 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   future: [],
 
   // --- History ---------------------------------------------------------------
-  /**
-   * The single write path.
-   *
-   * A recipe that returns the worksheet unchanged commits nothing: that is what makes a
-   * no-op drag (onto itself, onto an unknown target) cost no undo entry, which the store
-   * tests assert directly.
-   */
+  // The single write path. A recipe returning the worksheet unchanged commits
+  // nothing, so a no-op drag costs no undo entry.
   commit: (recipe) =>
     set((state) => {
       const next = recipe(state.worksheet);
@@ -816,49 +602,22 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
 
   markSaved: () => set({ dirty: false, lastSavedAt: new Date().toISOString() }),
 
-  /**
-   * Save immediately.
-   *
-   * The autosave debounce (§6) covers ordinary editing; this is the explicit "Save now",
-   * which a teacher reaches for before closing the tab and should not have to trust a
-   * timer for.
-   */
+  // Explicit "Save now", not waiting for the autosave debounce.
   save: async () => {
     await worksheetStore.save(get().worksheet);
     get().markSaved();
   },
 
-  /**
-   * Switching language or version is a **view** change, not an edit.
-   *
-   * It therefore bypasses `commit` entirely: it must not enter the history (undo would
-   * appear to do nothing) and must not mark the document dirty. The hidden language's
-   * content is never touched — patch-never-replace (§5.2).
-   */
+  // A view change, not an edit: bypasses `commit`, so no history entry and no dirty.
   setMode: (patch) => set((state) => ({ mode: { ...state.mode, ...patch } })),
 
-  /*
-   * Entering print preview clears the question selection.
-   *
-   * A selection is an editing state, and the preview's whole claim is that nothing on
-   * screen belongs to the editor — a ring left behind would be visible in a view whose
-   * point is to show only what prints. It is also what `handlePdf` does before calling
-   * `window.print()`, for the same reason.
-   *
-   * Like `setMode` this bypasses `commit`: a view toggle is not a document edit, so it
-   * must not enter the undo history or mark the worksheet dirty.
-   */
+  // Entering print preview clears the question selection (a ring is editor chrome in
+  // a view whose point is what prints). Bypasses `commit` like setMode.
   setPrintPreview: (printPreview) =>
     set(printPreview ? { printPreview, selectedQuestionId: undefined } : { printPreview }),
 
-  /*
-   * Selecting a question also points the rail at it.
-   *
-   * "Add after the thing I am looking at" is what a single click already meant before
-   * the anchor existed, and keeping that costs nothing — the anchor is simply now able
-   * to hold a layout element too. Clearing the selection clears the anchor, so a click
-   * on blank paper returns the rail to appending, which is what an empty page means.
-   */
+  // Selecting a question also points the rail at it; clearing the selection clears
+  // the anchor so a click on blank paper returns the rail to appending.
   select: (selectedQuestionId) =>
     set({ selectedQuestionId, insertAnchorId: selectedQuestionId }),
 
@@ -889,28 +648,10 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   // --- Questions --------------------------------------------------------------
 
   /**
-   * Add a question of a registered type.
-   *
-   * The type is resolved through the registry rather than switched on here — that is the
-   * extension point (§9), and an unknown id is ignored rather than corrupting the
-   * document with a question no renderer understands.
-   *
-   * It lands after `afterId`, **defaulting to the stored insertion anchor**, and at the
-   * end when there is neither. There is no container to choose any more: which section
-   * it belongs to follows from which marker precedes it, so "add here" is a position
-   * rather than a parent.
-   *
-   * The default matters because the anchor is the store's own answer to "where is the
-   * teacher working". Requiring every caller to pass it means each new surface — the
-   * rail, the outline's menu, a keyboard shortcut — has to remember to, and the one
-   * that forgets appends silently. Defaulting here makes them right without knowing the
-   * anchor exists; an explicit `afterId` still wins, which is what a drop target needs.
-   *
-   * **The anchor advances onto what was just added**, so a second insert lands after
-   * the first rather than beside it. Leaving it on the original neighbour makes each
-   * new item land *above* the previous one, so adding three questions writes them into
-   * the document backwards — with the rail's own label the only clue, and it would be
-   * telling the truth.
+   * Add a question of a registered type (unknown ids are ignored). Lands after
+   * `afterId`, defaulting to the stored insertion anchor — callers stay right without
+   * knowing the anchor exists; an explicit `afterId` wins. The anchor then advances
+   * onto what was just added, or consecutive inserts enter backwards.
    */
   addQuestion: (typeId, afterId) => {
     const definition = listQuestionTypes().find((type) => type.id === typeId);
@@ -964,13 +705,8 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
       return { ...draft, questions };
     }),
 
-  /**
-   * Drag-reorder one question relative to another.
-   *
-   * `questions` stays the authority on question order (§ section flow invariant), so
-   * this rewrites that array rather than the flow. A drag onto itself or onto an id
-   * that is not a question returns the draft untouched, so `commit` records nothing.
-   */
+  // Drag-reorder one question: rewrites `questions` (the authority on order). A no-op
+  // drag returns the draft untouched, so commit records nothing.
   reorderQuestion: (questionId, targetId) =>
     get().commit((draft) => {
       if (questionId === targetId) return draft;
@@ -988,23 +724,15 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     }),
 
   // --- Layout elements and flow ----------------------------------------------
-  /**
-   * Append a layout element, optionally right after an existing item.
-   *
-   * The element lands in `layout` and its position in `flow`; those are the two halves
-   * the flow invariant keeps separate — `layout` owns existence, `flow` owns position.
-   */
+  // Append a layout element: existence in `layout`, position in `flow`. Defaults to
+  // the stored anchor, exactly as addQuestion does.
   addLayoutElement: (element, afterId) => {
-    // Defaults to the stored anchor, exactly as `addQuestion` does — the two must place
-    // things by the same rule or the rail's label would be true for one and not the other.
     const anchor = afterId ?? get().insertAnchorId;
     get().commit((draft) =>
       insertIntoFlow(draft, { type: 'layout', id: element.id }, anchor, {
         layout: [...draft.layout, element],
       }),
     );
-    // The anchor advances onto the new element, for the same reason it does after a
-    // question: consecutive inserts must read down the page, not up it.
     set({ insertAnchorId: element.id });
   },
 
@@ -1028,54 +756,23 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   nudgeFlowItem: (id, direction) =>
     get().commit((draft) => applyFlowMove(draft, nudgeInFlow(draft, id, direction))),
 
-  /**
-   * Move an item next to `targetId`.
-   *
-   * There is no cross-section case to handle: with one document-wide flow, dragging a
-   * question past a section heading *is* moving it into that section, because a
-   * question belongs to whichever marker precedes it. This used to need a whole second
-   * branch that rewrote two sections in one commit.
-   */
+  // Move an item next to `targetId`. No cross-section case: with one flow, dragging
+  // past a section heading *is* moving into that section.
   reorderFlowItem: (id, targetId, position = 'before') =>
     get().commit((draft) => applyFlowMove(draft, moveInFlow(draft, id, targetId, position))),
 
-  /**
-   * Move a whole page's worth of items, as dragged in the page rail.
-   *
-   * The rail hands over the target *page's* ids; the run lands relative to the edge
-   * member that position names — before the first when dropping above, after the last
-   * when dropping below — so a page dropped between two sheets lands between them
-   * rather than inside the target.
-   */
+  // Move a whole page's worth of items; the run lands relative to the edge member the
+  // position names.
   movePage: (sourceIds, targetIds, position) =>
     get().commit((draft) => {
       const anchor = position === 'before' ? targetIds[0] : targetIds.at(-1);
       if (!anchor) return draft;
       if (sourceIds.includes(anchor)) return draft;
-
-      /*
-       * The run is ordered as a unit, in one move.
-       *
-       * This used to be the hardest action in the store: a page's items need not all
-       * live in one section, so every id had to be carried into the anchor's section
-       * first and only then ordered. With one document-wide flow there are no
-       * containers to reconcile — a page is just a run of ids, which is what the rail
-       * always believed it was handing over.
-       */
       return applyFlowMove(draft, moveRunInFlow(draft, sourceIds, anchor, position));
     }),
 
-  /*
-   * Land a run at the head of the document.
-   *
-   * Expressed as "before the first item that is not itself moving" rather than as a
-   * splice, so it goes through the same `moveRunInFlow` every other reorder uses and
-   * inherits its one guarantee: document order is preserved among the members
-   * regardless of the order they were selected in.
-   *
-   * With nothing staying put the document is entirely this run, so its order is already
-   * whatever it is and there is nothing to commit.
-   */
+  // Land a run at the head of the document: "before the first item not itself moving",
+  // through the same moveRunInFlow every other reorder uses.
   moveToDocumentStart: (ids) =>
     get().commit((draft) => {
       const moving = new Set(ids);
@@ -1313,15 +1010,6 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
       updateField(band, fieldId, patch),
     )),
 
-  /*
-   * Write authored text into one side of a masthead field.
-   *
-   * Separate from `updateBandField` because *where* the text goes depends on the field's
-   * kind — a `text` field stores it as `text`, a computed one as `prefix` or `suffix` —
-   * and only the store has the field in hand to ask. Callers would otherwise have to
-   * look the kind up themselves to build the patch, which is exactly the branching
-   * `applyBandFieldSide` exists to remove.
-   */
   setBandFieldText: (fieldId, side, text) =>
     get().commit((draft) =>
       patchBandHolding(draft, fieldId, (band) =>
@@ -1357,18 +1045,8 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
       );
       const row = band ?? createBand();
 
-      /*
-       * A row added while page 1 is the surface being edited joins page 1's list. The
-       * scope is passed rather than inferred from `current.firstPage` being present,
-       * because a document in "different" mode still has running rows a teacher edits
-       * from page 2 — presence tells us the list exists, not which one is meant.
-       *
-       * Writing to page 1 **creates** the separation when there is none. Requiring
-       * `firstPage` to exist first meant a page-1 row silently landed in the running
-       * list, so the surface a teacher was looking at was not the one they edited — the
-       * same "separate it first, then edit it" ordering the panel used to impose. A row
-       * aimed at page 1 is itself the request for page 1 to differ.
-       */
+      // A write aimed at page 1 *creates* the separation when there is none — a row
+      // aimed at page 1 is itself the request for page 1 to differ.
       if (scope === 'firstPage') {
         const existing = current.firstPage?.bands ?? [];
         return {
@@ -1396,10 +1074,8 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
         which === 'header' ? defaultHeader : defaultFooter,
       );
 
-      // Both lists are filtered, for the reason `patchHeaderFooterBand` searches both: a
-      // row deleted on page 1 reports only its own id, and the two lists never share one
-      // (`cloneBand` re-ids on copy), so filtering both removes exactly the row clicked.
-      // Addressing only `bands` left a page-1 row undeletable.
+      // Both lists are filtered (the two never share an id), or a page-1 row is
+      // undeletable.
       return {
         ...draft,
         [which]: {
@@ -1460,16 +1136,8 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
         which === 'header' ? defaultHeader : defaultFooter,
       );
 
-      /*
-       * Applying a preset to page 1 replaces page 1's rows only. Sending it to the
-       * running list instead — which is what happened before the scope existed — reads
-       * to the teacher as the preset having done nothing at all, since the page they
-       * are looking at is unchanged.
-       *
-       * As with `addHeaderFooterBand`, a write aimed at page 1 **creates** the separation
-       * rather than requiring it: choosing a cover layout is the request for page 1 to
-       * differ, so it must not first be routed into the running rows.
-       */
+      // A preset aimed at page 1 replaces page 1's rows only, creating the separation
+      // when there is none (as addHeaderFooterBand does).
       if (scope === 'firstPage') {
         return {
           ...draft,

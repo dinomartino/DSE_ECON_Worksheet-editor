@@ -77,14 +77,8 @@ export interface RenderedWorksheet {
    */
   cover?: CoverRenderNode;
   /**
-   * Absent once the teacher has cleared the title text.
-   *
-   * `worksheet.title` still holds that text — it names the document in the outline, the
-   * saved-file list and the download filename — but an empty title has nothing to print,
-   * and an unconditional node made it undeletable: clearing the text left a blank
-   * `Worksheet Title` paragraph on page 1 and in the .docx, with no affordance to remove
-   * it. Optional here for the same reason `instructions` is, so "delete it" and "leave it
-   * empty" are the same gesture.
+   * Absent once the teacher has cleared the title text — an empty title has nothing
+   * to print, and an unconditional node made it undeletable.
    */
   title?: RenderNode;
   instructions?: RenderNode;
@@ -117,18 +111,9 @@ function renderBand(band: Band, totalMarks: number): RenderNode | undefined {
 
   for (const zone of ZONES) {
     for (const field of zones[zone]) {
-      /*
-       * One cell per field, carrying the field's segments.
-       *
-       * The segments are *not* separate cells: a cell is a tab stop, so a field split
-       * across three of them would scatter "Full marks: 45 marks" across the row with a
-       * `w:tab` between each word. A field is one run of text at one position; the
-       * segments describe its interior.
-       *
-       * `text` stays populated alongside them, so a consumer that only wants the string
-       * (the clipboard, a thumbnail) needs to know nothing about segments — while the
-       * preview and the .docx walk `parts` to tell typed text from computed.
-       */
+      // One cell per field (a cell is a tab stop; splitting segments across cells would
+      // scatter the field). `text` stays populated for consumers that only want the
+      // string; `parts` tells typed text from computed.
       const segments = bandFieldSegments(field, { totalMarks });
       cells.push({
         text: bandFieldText(field, totalMarks),
@@ -149,27 +134,16 @@ function renderBand(band: Band, totalMarks: number): RenderNode | undefined {
 }
 
 /**
- * The printed text of a band field, computing what must not be stored (§3.5).
- *
- * Exported because the .docx backend needs the identical string for header rows: it
- * cannot reuse the IR node there (a header is not part of the document body), so
- * sharing this function is what stops a header field reading differently on the page
- * than it does in Word.
+ * The printed text of a band field. Exported for the .docx header rows (a header is
+ * not part of the document body, so the IR node cannot be reused there).
  */
 export function bandFieldText(
   field: BandField,
   totalMarks: number,
   page?: { number: number; count: number },
 ): BiText {
-  /*
-   * Composed from `bandFieldSegments`, never spelled a second time.
-   *
-   * This function used to assemble each kind's string itself, which put the wording
-   * around every computed value ("Full marks:", " marks", "分") in the renderer where no
-   * teacher could reach it. Concatenating the segments means the string form and the
-   * editable form are the same decomposition, so a retyped prefix reaches the .docx and
-   * the clipboard for free — and the two can never drift apart.
-   */
+  // Composed from `bandFieldSegments`, never spelled a second time — string form and
+  // editable form are the same decomposition, so they cannot drift.
   const segments = bandFieldSegments(field, { totalMarks, page });
   return {
     en: segments.flatMap((segment) => segment.text.en),
@@ -178,22 +152,12 @@ export function bandFieldText(
 }
 
 /**
- * One rendered question per question *object*, so an edit to question 3 does not
- * rebuild questions 1–20.
- *
- * Every store commit maps `questions` and replaces only the object it touched
- * (`mapQuestion`), so object identity is exactly "this question has not changed" — a
- * `WeakMap` keyed on it needs no invalidation and cannot leak. The entry also records
- * everything *outside* the question that shaped its nodes — the mode, the derived
- * number, the list stream and whether a leading gap was spent — and a hit requires all
- * of them to match, so a dragged section marker still renumbers and re-streams every
- * question behind it.
- *
- * The payoff is not the walk itself (which is cheap) but **referential stability**: the
- * preview memoises each item's subtree on its nodes array, so a keystroke in one stem
- * re-renders one question instead of the whole document — twice, since the pagination
- * probe renders the very same blocks. The cache changes identity only, never content;
- * a cold cache produces byte-identical output.
+ * One rendered question per question *object* (WeakMap): commits replace only the
+ * touched object, so identity means "unchanged" — no invalidation, no leak. The entry
+ * records everything outside the question that shaped its nodes (mode, number, stream,
+ * gap); a hit requires all to match. The payoff is referential stability for the
+ * preview's memo boundary. Identity only, never content: a cold cache is
+ * byte-identical.
  */
 const questionRenderCache = new WeakMap<
   Question,
@@ -207,26 +171,13 @@ const questionRenderCache = new WeakMap<
 >();
 
 /**
- * The cover page's IR (§ `model/cover.ts`).
- *
- * Each region becomes ordinary `RenderNode`s, so the backends reuse the paragraph and
- * columns emitters they already have — only the two-column frame around them is new.
- *
- * Instruction numbers are **derived here from position**, never stored, the same rule
- * questions follow: deleting instruction (2) renumbers the rest rather than leaving a
- * hole. They are literal text on a `columns` row rather than a `w:num` list, because a
- * cover's instructions are not part of the question numbering and putting them on that
- * stream would renumber them as questions are added.
+ * The cover page's IR (§ `model/cover.ts`). Each region becomes ordinary
+ * `RenderNode`s so the backends reuse their emitters; only the two-column frame is
+ * new. Instruction numbers are derived from position, as literal text (a cover's
+ * instructions are not part of question numbering).
  */
 function renderCover(cover: CoverPage, baseFontSize?: number): CoverRenderNode {
-  /*
-   * The cover's own font reaches every line.
-   *
-   * Both reference papers set the whole front page in Arial while the body behind it is
-   * Times New Roman, so the face is a property of the cover rather than something
-   * inherited from the worksheet. Merged *under* the line's own format, so a teacher who
-   * sets a face on one line still wins.
-   */
+  // The cover's own font reaches every line, merged *under* the line's own format.
   const withFonts = (format: CoverLine['format']) =>
     cover.fonts ? { fonts: cover.fonts, ...format } : format;
 
@@ -370,59 +321,29 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
         format: worksheet.instructionsFormat,
       };
 
-  /*
-   * A section that restarts numbering opens a new Word list stream, so the restart is
-   * native `w:num` rather than a number we typed in; sections that continue share the
-   * previous stream so Word keeps counting across the heading (§4).
-   *
-   * The stream is keyed on the section **element's id** rather than a section index,
-   * because there is no longer an index to key on — a section is a marker in the flow,
-   * and dragging one changes which questions follow it without changing its identity.
-   */
+  // A restarting section opens a new Word list stream (native `w:num`), keyed on the
+  // section element's id — a dragged marker keeps its identity.
   let questionStream = 'question:0';
 
-  /*
-   * Does anything print above the flow?
-   *
-   * A heading's leading blank line is suppressed only at the **true top of the page**,
-   * where a gap is just a shifted top margin. Flow index 0 is not that place: the
-   * masthead bands, the title and the instructions all render above the flow, so a
-   * section sitting first in the flow usually has a title directly over it and needs its
-   * gap exactly like every other heading.
-   *
-   * Keying on the index alone made the same element space differently depending only on
-   * where it sat — "Section A" printed tight under the header rule while "Section B",
-   * identical in every other way, had air above it. Worse, the gap reappeared the moment
-   * anything was dragged in front of the section, so the fix looked like it depended on
-   * unrelated content.
-   */
+  // A leading gap is suppressed only at the *true top* of the page. Flow index 0 is
+  // not that place: the masthead, title and instructions render above the flow.
   const somethingAboveFlow =
     bands.length > 0 || title !== undefined || instructions !== undefined;
 
-  // The section marker the walk has most recently passed. A part header's derived total
-  // is scoped to it, which is what "(19 marks)" under "Section B" means.
+  // The section marker the walk has most recently passed; a part header's derived
+  // total is scoped to it.
   let currentSectionId: string | undefined;
 
-  // What the previous item emitted, so a gap can tell whether the boundary already has
-  // a spent line on it. Reset per walk rather than derived afterwards, because the
-  // decision has to be made while the run is being built.
+  // What the previous item emitted, so a gap can tell whether the boundary already
+  // has a spent line on it.
   let previousNodes: RenderNode[] = [];
 
-  /*
-   * What the previous flow item *was*, not merely what it printed.
-   *
-   * A boundary's width depends on what sits on both sides of it (§ `boundaryGapLines`),
-   * and that is only knowable while the run is being built — `previousNodes` records the
-   * nodes, which cannot say whether a question or a lead-in produced them.
-   */
+  // What the previous flow item *was* — a boundary's width depends on both sides
+  // (§ boundaryGapLines), which the nodes alone cannot say.
   let previous: { question?: Question; layout?: LayoutElement } | undefined;
 
-  /*
-   * Which of the four papers this is, read once (§ `model/documentShape.ts`).
-   *
-   * Derived from the document rather than passed in, so a Paper 1 assembled by hand or
-   * loaded from an older build spaces its questions exactly as one the wizard built.
-   */
+  // Which of the four papers this is, derived (not passed in) so a hand-assembled
+  // Paper 1 spaces exactly as a wizard-built one.
   const shape = documentShape(worksheet);
 
   // One walk over the one resolved flow. Questions, layout elements and section
@@ -465,33 +386,12 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
     const entry = numbering.byQuestionId.get(question.id);
     const number = entry ? entry.number : 0;
 
-    /*
-     * A blank line between consecutive questions, completing the reference paper's
-     * rhythm: a question is separated from the next the same way its own parts are
-     * separated from each other.
-     *
-     * Emitted here rather than inside each question type because it is a property of the
-     * *boundary*, not of either question — a type that appended its own trailing gap
-     * would double up against whatever the walker put before the next item, and would
-     * leave a stray blank at the very end of the document. Suppressed only when nothing
-     * precedes it at all — including the title, instructions and masthead that render
-     * above the flow — since a gap there is just a shifted top margin.
-     *
-     * It is also suppressed when the previous item already ended in a spent line, so an
-     * item whose last text carries a trailing hard break does not sit two lines from the
-     * next one while its neighbours sit one (§ a gap counts what is already there).
-     */
+    // The blank line(s) between consecutive items. Emitted here because it is a
+    // property of the *boundary*, not of either question; suppressed at the true top
+    // of the page, and reduced by a line the previous item already spent
+    // (§ a gap counts what is already there).
     const atTrueTop = index === 0 && !somethingAboveFlow;
     const wanted = boundaryGapLines(shape, previous, question);
-    /*
-     * How many lines this boundary still owes, after counting what is already spent.
-     *
-     * `endsInBlankLine` reports one spent line, never more, so the subtraction is by one
-     * — a question ending in a trailing hard break contributes that break towards the
-     * gap instead of adding to it, exactly as the one-line rule has always worked
-     * (§ a gap counts what is already there). At the true top of the page the boundary
-     * owes nothing: a gap there is only a shifted top margin.
-     */
     const gap = atTrueTop ? 0 : Math.max(0, wanted - (endsInBlankLine(previousNodes) ? 1 : 0));
 
     // The leading gap is part of the cached array, so an unchanged question hands back
@@ -540,20 +440,9 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
 }
 
 /**
- * The blank line that separates one top-level item from the next — a heading from what
- * precedes it, and a question from the question before it.
- *
- * With the reference paper's spacing model there is no `w:before`/`w:after` anywhere —
- * every paragraph sits in the same fixed 12pt box — so the only way to open air is to
- * spend a line on it. That is precisely what the reference does: 102 of its 296
- * paragraphs are empty. Emitting it here rather than as paragraph spacing keeps every
- * line on the shared grid, which is the whole point of the fixed rule.
- *
- * The same `blankLine()` the question types use for the gaps *inside* a question, so
- * every gap on the page is one number.
- *
- * One line is the default width of a boundary; `boundaryGapLines` is what decides
- * whether a given boundary is wider than that.
+ * The blank line separating one top-level item from the next. With no
+ * `w:before`/`w:after` anywhere, air is bought by spending a line — the same
+ * `blankLine()` the question types use, so every gap on the page is one number.
  */
 const ITEM_GAP: RenderNode = blankLine();
 
@@ -561,42 +450,17 @@ const ITEM_GAP: RenderNode = blankLine();
 const DEFAULT_GAP_LINES = 1;
 
 /**
- * How many blank lines sit under the MCQ paper's lead-in, before question 1.
- *
- * Measured off the reference (DSE 2021 P1), like the gap between two questions: the
- * "There are 45 questions in this paper." sentence is rubric addressed to the candidate
- * before they start, not a caption on question 1, so it stands off from the paper by more
- * than the single line that separates ordinary neighbours — but by less than the three
- * that separate two whole questions, since it still belongs to the run it introduces.
+ * Blank lines under the MCQ paper's lead-in, before question 1. Measured off the
+ * reference: rubric stands off by more than a neighbour, less than a whole question.
  */
 const QUESTION_COUNT_GAP_LINES = 2;
 
 /**
  * The width of the boundary between two consecutive flow items, in blank lines.
- *
- * The reference exam papers space their parts wider than a worksheet does, and a
- * boundary's width is therefore a question of what sits on *both* sides of it. Two
- * boundaries on a Paper 1 are wider than the ordinary one line:
- *
- * - **question → question**, three lines. `examGapLines` on the type definition is where
- *   a type states its own number; this function only decides when to honour it, because
- *   the walker may not name a concrete type id (`registry.test.ts` greps it).
- * - **lead-in → question**, two lines, for the rubric reason above.
- *
- * Deliberately narrow, each clause load-bearing:
- *
- * - **Only on an exam paper** (§ `model/documentShape.ts`). A classroom worksheet holding
- *   the same questions keeps the one-line rhythm: it is answered on the sheet itself and
- *   is not trying to be the reference paper. Widening there would re-paginate documents
- *   teachers already have for no reason they asked for.
- * - **Only between two questions of the same type.** The wide gap separates two
- *   self-contained questions of one kind; a boundary between unlike questions has no
- *   measured width to copy.
- * - **Every other layout element keeps its single leading gap**, which
- *   `renderLayoutElement` already owns — "END OF PAPER" three lines under the last option
- *   reads as detached from the paper rather than as the end of it.
- * - **Never on the first item of the page**, which has nothing before it to stand off
- *   from; the caller suppresses that case outright.
+ * Wider only on an exam paper (§ documentShape), only between two questions of the
+ * same type (`examGapLines` on the type definition states the number; this function
+ * only decides when to honour it — the walker may not name a concrete type id), and
+ * never on the first item of the page.
  */
 function boundaryGapLines(
   shape: DocumentShape,
@@ -636,14 +500,8 @@ function renderLayoutElement(
   questionTotal = 0,
 ): RenderNode[] {
   switch (element.kind) {
-    /*
-     * A section heading and a free heading render identically.
-     *
-     * They differ only in what they mean to numbering — a section restarts it — and
-     * numbering is derived before this point. Rendering them the same way is what keeps
-     * the flattening invisible in the exported .docx: a v4 document's section heading
-     * becomes a `section` element and still emits the byte-identical paragraph.
-     */
+    // A section heading and a free heading render identically; they differ only in
+    // what they mean to numbering, which is derived before this point.
     case 'section':
     case 'heading': {
       // A section may opt into the derived "(44 marks)" suffix a part header carries —
@@ -668,20 +526,9 @@ function renderLayoutElement(
         },
       ];
     }
-    /*
-     * A free line of prose, and the one layout element that stands *between* items.
-     *
-     * It takes the same leading gap a heading does. Without one, a closing landmark
-     * printed flush against whatever it follows: "END OF PAPER" sat directly under the
-     * last option, and the QAB's "END OF SECTION A" under the last answer line, which
-     * reads as another line of the question rather than the end of it. The reference
-     * puts clear air there — on DSE 2021 P1's last page the options sit 9px apart at
-     * 130dpi and "END OF PAPER" sits 159px below the last of them.
-     *
-     * Suppressed at the true top of the page and after anything that already spent a
-     * line, through the same `first` flag every other element uses (§ a gap counts what
-     * is already there), so a note leading a sheet is not pushed down by a stray blank.
-     */
+    // A free line of prose. Takes the same leading gap a heading does (a closing
+    // landmark like "END OF PAPER" must not print flush under the last option),
+    // suppressed at the true top and after an already-spent line via `first`.
     case 'text':
       return [
         ...(first ? [] : [ITEM_GAP]),
@@ -693,19 +540,9 @@ function renderLayoutElement(
           edit: { kind: 'layoutText', elementId: element.id },
         },
       ];
-    /*
-     * The MCQ paper's lead-in, with the count derived at render time.
-     *
-     * Composed as authored prefix · number · authored suffix, exactly as a band field
-     * is (§ a field is authored wording around a derived value) — so the wording stays
-     * editable while the number cannot go stale. The two sides fall back to the
-     * reference's phrasing when the teacher has never retyped them, which is what keeps
-     * an untouched document storing nothing.
-     *
-     * The number carries no `EditTarget` of its own: typing over derived text would
-     * have nowhere to go. Only the wording around it is addressable, and it is reached
-     * through `layoutText` like every other element's words.
-     */
+    // The MCQ paper's lead-in: authored prefix · derived number · authored suffix
+    // (the band-field decomposition). The number carries no EditTarget; the wording
+    // is reached through `layoutText`.
     case 'questionCount': {
       const side = (which: 'en' | 'zh'): RichText => {
         const prefix = element.prefix?.[which] ?? DEFAULT_QUESTION_COUNT_WORDING.prefix[which];
@@ -766,21 +603,9 @@ function renderLayoutElement(
 
     case 'labelList': {
       const indent = element.indent ?? 480;
-      /*
-       * A hanging label keeps its wrapped value text in one column
-       * (§ ColumnsNode.hanging).
-       *
-       * The hang *is* the label column: the row begins at `indent - hanging`, the label
-       * prints in that gutter, and the value starts at `indent` — where every wrapped
-       * line then also starts, which is the whole point of hanging it. So `valueAt` is
-       * not authored in this mode; it is exactly where the hang ends, and storing one
-       * too would be a second answer to the same question.
-       *
-       * The backends place the value cell from `hanging` directly rather than from a
-       * fraction, because only they know the row's real width — `render/` may not import
-       * the exporter's page constants, and threading page setup down here to compute a
-       * fraction would buy nothing the backends cannot already do.
-       */
+      // With a hang, the hang *is* the label column and supersedes `valueAt`
+      // (§ ColumnsNode.hanging). The backends place the value cell from `hanging`
+      // directly — only they know the row's real width.
       const hanging = element.hanging;
       const valueAt = element.valueAt ?? 0.35;
       return element.rows.map((row) => ({

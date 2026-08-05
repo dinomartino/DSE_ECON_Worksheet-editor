@@ -4,27 +4,10 @@ import { useEffect, useRef, useState } from 'react';
 import type { TextAlign, TextFormat } from '@/model/types';
 
 /**
- * Contextual formatting toolbar for the element selected on the page.
- *
- * It **docks along the top of the page column** rather than floating over the
- * selection. Floating put it directly on the paper, where it covered the two or three
- * lines immediately above whatever was being edited — so formatting a section heading
- * hid the instruction line the heading has to sit correctly beneath, which is exactly
- * the context needed while making the change. A docked bar is in a fixed, learnable
- * place and never occludes the document.
- *
- * It stays `fixed` in viewport coordinates, which keeps it clear of the preview's
- * `scale()` transform; a bar positioned inside the transformed page would shrink with
- * the zoom and land in the wrong place at any zoom other than 1.
- *
- * A label names the element being formatted, because the bar is no longer beside its
- * subject — without it, a toolbar at the top of the screen would not say what it acts
- * on. The page keeps its own violet outline on the selection, so the two ends of the
- * link are both visible.
- *
- * Every button reports the current state so the toolbar reads as a view of the
- * element, not a set of write-only actions. `undefined` on a property means "inherit
- * from the named style", and toggling an active button clears it back to that.
+ * Contextual formatting toolbar, docked along the top of the page column (floating
+ * covered the lines above the selection). `fixed` in viewport coordinates, clear of
+ * the preview's `scale()`. A label names the element being formatted; every button
+ * reports current state, and toggling an active one clears back to the named style.
  */
 
 const SIZES = [9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 40];

@@ -1,11 +1,11 @@
 # System Architecture — Bilingual HKDSE Economics Worksheet Generator
 
-The deep reference: data flow, render pipeline, numbering, diagrams, pagination,
-header/footer geometry. Setup and first tour: [`README.md`](./README.md).
+Data flow, render pipeline, numbering, diagrams, pagination, header/footer geometry.
+Setup and first tour: [`README.md`](./README.md).
 
-**Read this before structural changes.** It records the rules a change must keep and,
-where a rule is counter-intuitive, the constraint that forced it. Where this document
-and the code disagree, the code is right — fix the document in the same PR.
+**Read this before structural changes.** It records the rules a change must keep.
+Where this document and the code disagree, the code is right — fix the document in the
+same PR.
 
 ---
 
@@ -18,53 +18,45 @@ and the code disagree, the code is right — fix the document in the same PR.
 | State | Zustand 5, undo/redo, 100-entry history |
 | Language | TypeScript strict |
 | Export | Raw OOXML via JSZip (hand-built, no `docx` library) |
-| Test | Vitest 4 — 818 tests across 43 files, ~1.3s |
+| Test | Vitest |
 | Runtime | Browser-only: client-side `.docx`, no API routes |
 
 ## Project structure
 
 ```
 src/
-├── app/          Next.js shell; EditorHost gates start screen vs editor, the latter
-│                 imported ssr:false (store is browser-only)
+├── app/          Next.js shell; EditorHost gates start screen vs editor (ssr:false)
 ├── model/        types · numbering · marks · migrations · text · page · flow ·
 │                 bands · bandSegments · pageFurniture · edits · factories ·
 │                 newWorksheet · table · tableTemplates · diagram ·
 │                 diagramTemplates · diagramDraw · cover · coverTypes
 ├── registry/     Question-type extension point: types · index · mcq · structured
 ├── render/       ir (RenderNode + EditTarget) · worksheet (the walker) · diagram (SVG)
-├── export/       docx/ (index · body · numbering · styles · runs · package · furniture ·
-│                 xml) · diagramImage (PNG pre-pass) · clipboard
+├── export/       docx/ · diagramImage (PNG pre-pass) · clipboard
 ├── store/        worksheetStore — Zustand with undo/redo
 ├── storage/      WorksheetStore interface + localStorage implementation
-├── components/   EditorApp · start/ (StartScreen + NewWorksheetForm) · preview/ (the
-│                 paper IS the editor; RichTextEditable + richTextDom are the shared
-│                 WYSIWYG surface) · editor/ · ui/
+├── components/   EditorApp · start/ · preview/ (the paper IS the editor) · editor/ · ui/
 └── test/         shared fixtures
 ```
 
-Tests sit beside what they test. `scripts/` holds the screenshot harness and
-sample-`.docx` emitter.
+Tests sit beside what they test. `scripts/` holds the screenshot harness, the
+sample-`.docx` emitter, and the cover/LQ verify harnesses.
 
 > **Not in the repository:** the HKDSE past-paper scans and school assessment PDF used
-> as reference are copyright and gitignored. "The reference paper" cites what was
-> observed in them.
+> as reference are copyright and gitignored. "The reference paper" cites them.
 
 ---
 
 ## The central principle: one IR, three backends
 
-A question type's `render()` emits neutral IR (`src/render/ir.ts`) once; three consumers
-read it, so preview, `.docx` and clipboard cannot disagree about numbering, ordering or
-teacher-only filtering.
+A question type's `render()` emits neutral IR (`src/render/ir.ts`) once; preview,
+`.docx` and clipboard all consume it, so they cannot disagree about numbering, ordering
+or teacher-only filtering.
 
 ```
 Question ──registry.render()──► RenderNode[] ──┬──► Preview.tsx      (React DOM)
                                                ├──► docx/index.ts    (raw OOXML)
                                                └──► clipboard.ts     (text/html)
-
-edit ──► store.commit() ──► React re-render ──► renderWorksheet()
-         (computeNumbering + registry.render) ──► preview live · .docx on Export · clipboard on Copy
 ```
 
 Editor layout: AddRail | PageRail | Preview (scales-to-fit A4 sheets) | sidebar
@@ -85,488 +77,233 @@ Worksheet
 ├── cover?: CoverPage          a page of regions; never seen by the paginator
 ├── pageFurniture?             frame + margin notes, one running header of shapes
 ├── header? / footer?: HeaderFooter
-│     enabled · bands · rule? · showOnFirstPage? · firstPage?: { bands, rule? }
-├── questions: Question[]      every question, in printed order
-│     ├── McqQuestion         blocks · statements? · options[ text · blocks? ] · optionLayout? · answerIndex · marks · explanation?
-│     └── StructuredQuestion  blocks · showTotalMarks? ·
-│                             parts[ blocksBefore? · blocks · marks? · answer? · subParts? ]
+├── questions: Question[]      every question, in printed order (McqQuestion | StructuredQuestion)
 ├── layout: LayoutElement[]    section · heading · text · spacer · divider · pageBreak ·
-│                              answerLines · answerSpace · partHeader · labelList
+│                              answerLines · answerSpace · partHeader · labelList · questionCount
 ├── flow: FlowItem[]           display order of questions + layout, interleaved
 ├── createdAt · updatedAt
 └── __unknown?                 fields from a newer build, preserved verbatim
 
 ContentBlock = ParagraphBlock | TableBlock | ImageBlock | DiagramBlock
 BiText { en: RichText, zh: RichText }        RichText = InlineRun[]
-
-TableBlock   rows · caption? · width? · indent?  (box, fractions of content width)
-             columnWidths? (fractions of the *table*) · cellPadding? · columnPadding?[]
-             borders? ('all' | 'box' — a boxed stimulus rules its frame only)
-  TableRow     cells · cellPadding? · minHeight?     padding resolves cell → column → row → table → default
-    TableCell    text · image? · colSpan? · rowSpan? · align? · covered? · padding? · format?
-
-ImageBlock / DiagramBlock also carry `align?` (`w:jc` on the picture's paragraph).
 ```
 
-**Numbering and marks are never stored.** `computeNumbering()` and
-`questionMarks()`/`partMarks()`/`sectionMarks()`/`worksheetMarks()` derive them at
-render time — which is what makes reordering and undo/redo trivial.
+**Numbering and marks are never stored.** `computeNumbering()` and the marks helpers
+derive them at render time, which is what makes reordering and undo/redo trivial.
 
-### A group of sub-parts can share one marks label
+### Marks
 
-`QuestionSubPart.marks` is **optional**, and absent is not zero. Real papers routinely
-mark a *group*: DSE 2019 P2 Q13(b) prints nothing on (i) and "(5 marks)" on (ii), and
-Q8(a) and Q12(a) do the same — the label belongs to the pair, not to either half.
-
-- **Absent prints nothing; `0` prints "(0 marks)".** All three backends already gated on
-  `marks !== undefined`, so making the field optional was enough to reach the shape. Before
-  it, the only way to write Q13(b) was `marks: 0` on (i), which printed a literal
-  "(0 marks)" — the paper's shape was unreachable and the workaround was visibly wrong.
-- **`partMarks` falls back to the part when no sub-part is marked.** Summing regardless
-  would report 0 for a part plainly worth 5, silently understating the question, its
-  section and the paper total. Any sub-part carrying its own marks flips the rule back to
-  summing, so the ordinary case is untouched.
-- **The label prints on the last sub-part of the group**, where the reference puts it. On
-  the part's own line it would read as marks for the lead-in text, which is not what is
-  being marked.
-- The panel mirrors the model: an unmarked sub-part's pill reads `shared` rather than
-  interpolating an absent number (which rendered a bare `m`), and the part's own marks box
-  — hidden whenever sub-parts exist — returns as "Marks for (i)–(ii) together", labelled
-  from the real sub-part labels. `NumberField`'s `clearable` is a discriminated union, so
-  only a caller that opts in is handed an `undefined` its model has room for.
+- `QuestionSubPart.marks` is optional; **absent prints nothing, `0` prints "(0 marks)"**
+  — real papers mark a *group* of sub-parts with one label.
+- `partMarks` falls back to the part's own marks when no sub-part is marked; any marked
+  sub-part flips the rule back to summing.
+- A shared label prints on the **last** sub-part of the group. The panel shows `shared`
+  pills and a "Marks for (i)–(ii) together" field on the part.
 
 ### Document flow (`src/model/flow.ts`)
-
-Layout elements are deliberately outside the `Question` union: they take no number and
-carry no marks, so registering them would force numbering/marks to learn about types
-that have neither. `resolveFlow(worksheet)` produces display order under one invariant:
 
 > **`questions` owns question order. `flow` contributes only the position of layout
 > elements relative to the questions.**
 
-- Two sources of truth for "which question is third" would silently disagree; a missing
-  or stale flow costs an element its *position*, never its existence (unlisted ids
-  append).
-- **An insert is a move and must write both lists.** `resolveFlow` emits questions in
-  array order, so a new question positioned only in `flow` prints last regardless.
-  `applyOrder()` is the one rule for splitting an ordered flow back into the two lists;
-  `insertIntoFlow` goes through it exactly as every move does — deriving `questions` by
-  hand at an insert site is what let them disagree.
+- A missing or stale flow costs an element its *position*, never its existence
+  (unlisted ids append).
+- **An insert is a move and must write both lists.** `applyOrder()` is the one rule for
+  splitting an ordered flow back into the two lists; `insertIntoFlow` goes through it.
 
 ### A section is a marker, not a container
 
 One flow for the whole document; a `section` is a layout element carrying
-`restartNumbering`, and the questions it names simply follow it. Sections used to own
-`questions`/`layout`/`flow` — but a real paper runs Section B on mid-sheet, so a shared
-sheet had no single owner; flattening deleted four "which section owns this id?"
-implementations and reduced `movePage` to one `moveRunInFlow`.
+`restartNumbering`, and the questions it names simply follow it. Derivations key on the
+section element's **id**, not an index: `computeNumbering` resets the counter;
+`renderWorksheet` opens stream `question:<elementId>` so the restart is native `w:num`.
+A section heading and a free heading render identically (same style, `keepNext`); they
+differ only in meaning to numbering.
 
-- Derivations key on the section element's **id**, not an index (a dragged marker keeps
-  its identity): `computeNumbering` resets the counter; `renderWorksheet` opens stream
-  `question:<elementId>` so the restart is native `w:num`.
-- A section heading and a free heading **render identically** (same style, `keepNext`);
-  they differ only in meaning to numbering, derived before rendering — which is why the
-  v4→v5 flattening left `word/document.xml` byte-identical. A migrated section that
-  never had a heading contributes **no element** (an empty heading would print a blank
-  line that was never there).
-
-### Constrained layout: bands and zones (`src/model/bands.ts`)
+### Bands and zones (`src/model/bands.ts`)
 
 Placement is **slot-based, never free**: a `Band` is one printed row with three drop
-zones (left/centre/right) so every arrangement maps onto one Word paragraph with tab
-stops. Zone positions are **fixed thirds** (0, 0.5, 1) — a centre field is centred on
-the page, not on the content, and doesn't drift as fields are added.
-
-Two field kinds print a **computed** number — `totalMarks` (`worksheetMarks()`) and the
-`partHeader` "(19 marks)" suffix (`sectionMarks()`) — because a stored total goes stale
-the moment a question is re-marked.
+zones (left/centre/right), one Word paragraph with tab stops. Zone positions are fixed
+thirds (0, 0.5, 1). `totalMarks` and the `partHeader` suffix print **computed** numbers
+— a stored total goes stale.
 
 ### A field is authored wording around a derived value
 
 Every `BandField` is **authored text · derived value · authored text**;
-`bandFieldSegments()` (`model/bandSegments.ts`) is the one place that says so. A plain
-`text` field has no middle; "Page 5 of 12" interleaves two values. This is what makes a
-computed field *editable*: the number stays derived, only the wording is
-`prefix`/`suffix` rich text. (Before this, computed fields were dead spans, and `fillIn`
-emitted an `EditTarget` that `patchBandFields` silently discarded.)
+`bandFieldSegments()` (`model/bandSegments.ts`) is the one decomposition. The number
+stays derived; only the wording is `prefix`/`suffix` rich text.
 
-- **`bandFieldText` composes segments, never respells them** — string form and editable
-  form are the same decomposition, so a retyped prefix reaches `.docx`, clipboard and
-  thumbnails for free.
-- **The `.docx` walks segments too**: only a genuine placeholder becomes a native
-  `PAGE`/`NUMPAGES` field; authored wording stays ordinary runs.
-- **A `bandField` target names a `side`** (omitted = `prefix`), or bolding "Full marks: "
-  would also bold " marks".
-- **Segments are not separate cells** — a cell is a tab stop, so splitting would scatter
-  the field across the row. They ride as `parts` in one cell.
-- **Wording carries its own spacing**: both band paths set `whitespace-pre-wrap`, or
-  HTML collapses the boundary spaces ("Full marks:45marks") while the `.docx`
-  (`xml:space="preserve"`) prints them.
-- **An empty side renders a `+` affordance, and affordances print** — it takes
-  `data-print-hide`, deliberately *not* `data-empty-placeholder` (which reserves a box:
-  right for a paragraph, a mid-phrase gap for a fragment).
-- v5→v6 writes the old hardcoded spellings into `prefix`/`suffix`. Its defaults are
-  inlined, not imported from `DEFAULT_FIELD_WORDING` (import would close a
-  bandSegments→page→factories→migrations cycle); a test asserts the spellings agree.
+- `bandFieldText` composes segments, never respells them.
+- The `.docx` walks segments too: only a genuine placeholder becomes a native
+  `PAGE`/`NUMPAGES` field.
+- A `bandField` edit target names a `side` (omitted = `prefix`).
+- Segments ride as `parts` in **one** cell (a cell is a tab stop; splitting scatters
+  the field).
+- Both band paths set `whitespace-pre-wrap`, or HTML collapses boundary spaces the
+  `.docx` (`xml:space="preserve"`) prints.
+- An empty side renders a `+` affordance with `data-print-hide` (not
+  `data-empty-placeholder`, which reserves a box).
+- v5→v6 inlines its default wordings (importing `DEFAULT_FIELD_WORDING` would create an
+  import cycle); a test asserts the spellings agree.
 
-### A cover is a page of regions, not a stack of rows (`src/model/cover.ts`)
+### A cover is a page of regions (`src/model/cover.ts`)
 
-A mock-exam cover is **two unequal columns side by side** — identity lines and
-instructions on the left, a candidate panel on the right, a rule between them. The
-reference's own mechanism, read out of its `word/document.xml`:
+A mock-exam cover is **two unequal columns** (identity/instructions left, candidate
+panel right, a rule between) — a shape no stack of full-width bands can make, so
+`CoverPage` models named regions of a page holding `CoverLine[]`. Still slot-based.
 
-```
-<w:cols w:num="2" w:equalWidth="0">
-  <w:col w:w="5328" w:space="144"/>   left  — identity, title, instructions
-  <w:col w:w="3845"/>                 right — the candidate panel
-</w:cols>
-```
-
-The first attempt built covers out of masthead `Band`s plus flow elements and **could not
-produce the shape at all**: a band is one printed row across the full text column, so a
-stack of them makes a stack of centred lines. No arrangement of full-width rows reaches a
-two-column page. So `CoverPage` models what a cover is — *named regions of a page* —
-holding `CoverLine[]`. Still slot-based (a teacher fills regions, they do not drag boxes
-to coordinates), but the slots are areas of a sheet rather than thirds of a row.
-
-- **The two papers get different *shapes*, not just different wording.** An MCQ candidate
-  answers on a separate machine-read sheet, so a Paper 1 cover has nothing to write on:
-  no panel, therefore **one full-width column**, with its identity lines centred across
-  the page and instructions numbered `1.`. Paper 2 is the booklet the candidate writes in,
-  so it carries the panel and the two-column split that makes room for it, numbering
-  `(1)`. **Both papers centre their head lines — each within its own column**: the
-  reference's Paper 2 rides a centre tab at 2610, the midpoint of its 5328tw column
-  (`w:jc` centring lands within ~54tw of the same place without the negative indents the
-  tab trick needs). The booklet's head once ranged left, which read as a draft beside
-  the centred candidate panel. `coverHasPanel()` is the single switch both backends read; `instructionMarker` is
-  stored rather than derived, since it is a house style a school may have a view on.
-- **`worksheet.cover` is its own field**, so the paginator never sees it: a cover neither
-  flows nor shares a sheet with question 1, and giving it to the packer would mean
-  teaching every measurement path about a page that can never split.
-- **`CoverRenderNode` is deliberately not a `RenderNode`.** Every member of that union is
-  something that flows in the body; adding a whole page to it would force every backend's
-  node walk to handle a case that cannot appear inside a question. Its regions *are*
-  `RenderNode[]`, so the backends reuse the paragraph and columns emitters — only the
-  frame is new.
-- **The `.docx` is a real two-column section**: a `w:br w:type="column"` moves into the
-  right column (Word columns are a flow; there is no "put this on the right" property),
-  and a **`nextPage`** `sectPr` ends the cover — returning the body to one column *and*
-  starting it on sheet 2.
-- **The section break is the page break; emitting both leaves a blank sheet.** This
-  shipped as a `continuous` `sectPr` *plus* a `<w:br w:type="page"/>` from `docx/index.ts`,
-  on the reasoning that a continuous break contributes no page transition and the caller
-  must supply one. Both halves were wrong: `w:type` is precisely what names the
-  transition, so the two stacked and the body began on sheet 3 with a blank sheet 2 —
-  for **both** cover styles. Reported from a real export; page 1 looked perfect
-  throughout, which is why nothing caught it.
-  - Dropping the caller's break while keeping `continuous` also yields two sheets, but
-    only by accident: changing `w:cols` from two columns to one forces a page transition
-    of its own. That side effect disappears for any cover whose column count matches the
-    body's, so the intent is stated in `w:type` rather than left to the geometry.
-  - **`cover-verify.mjs` counts sheets** (`pdfinfo`, expecting 2 for a cover + one
-    question). Every other leg of that harness rasterises page 1 alone, which is exactly
-    the blind spot this fell into — and a unit test can only pin the XML spelling it was
-    written against, while the sheet count is what a teacher actually complains about.
-- **An empty panel prints one wide column**, not a narrow one beside a blank strip —
-  `coverHasPanel()` decides, and both backends read it.
-- **Instruction numbers are derived from position**, never stored, as questions are:
-  deleting (2) renumbers the rest. They are literal text on a hung `ColumnsNode` rather
-  than a `w:num` stream, since a cover's instructions are not part of question numbering.
-- **Lines are addressed by id** (`coverLine` / `coverField` `EditTarget`s), so they are
-  clicked, typed and formatted on the page like everything else, and an edit survives a
-  line being added above it.
-- **The instruction list is the one cover region a teacher may lengthen or shorten**, and
-  it is done on the page: a ✕ in the margin of each numbered line, a "+ Instruction" under
-  the list. `addCoverLine`/`removeCoverLine` and their store actions shipped with the
-  cover, but nothing called them — an instruction could be reworded and never added or
-  deleted, so a school whose rules differ from the reference's six could not say so. The
-  head, corner and foot lines take no such controls: their number is the shape the
-  reference draws, while the instruction count is genuinely the paper's own.
-  - Deleting renumbers, because the numbers are derived (above) — verified through the
-    `.docx`, where removing instruction 2 prints 1–6 with no hole.
-  - The controls are `data-print-hide` and absolutely positioned, so they reserve no space
-    and never reach the PDF (`window.print()` runs over these very sheets). Each sits in a
-    `pointer-events-none` strip spanning back to its line, or reaching for a control
-    outside its own row hides it mid-approach (§ hover chrome needs a hit path).
-  - Reached through `EditContext.coverLines`, optional like `tableGrid`: a preview given
-    neither stays read-only, which is what the print path and the page thumbnails want.
-- **A framed note pins `w:tblW` to the column width.** A table inside a Word column still
-  measures against the section's full text width unless told otherwise, so `auto` drew a
-  frame that ran off the page edge.
-- **The corner block floats; it is not in the flow.** The reference anchors a `wpg:wgp`
-  group at (−0.65in, −0.25in) — outside the text column — holding a textbox of the code
-  lines and the diagonal beside it, in a `chExt` child space so the two keep their
-  relative positions. Emitted as ordinary paragraphs the lines sit *in* the column: they
-  push the identity lines down and can never reach the corner. A `wrapNone` anchor
-  reserves no space, so the flow needs `CORNER_CLEARANCE_LINES` blank lines to print
-  below it — without them P2's narrow column printed straight through the block.
-- **The diagonal's direction is measured, not reasoned.** It runs bottom-left to
-  top-right; the reference scan goes y 30→130 while x goes 222→122. Drawing that takes
-  `a:xfrm flipV="1"` in the `.docx` and `linear-gradient(to bottom right, …)` in CSS —
-  both the opposite of the obvious guess, and each shipped backwards once. The CSS
-  keyword names the gradient's axis of travel while its stops lay a band *perpendicular*
-  to it. Check by cropping the render and printing dark-pixel x per y.
-- **The corner block is the reference's own geometry, and the text size is what makes
-  it fit.** The reference sets its code lines in Arial bold at 11pt — stored per line,
-  not inherited, since a QAB document's own body is 10pt (§ baseFontSize) and the
-  corner must not shrink with it. At 18pt they wrapped, which forced a wider textbox
-  (`1900` vs the reference's `1520`) and shortened the diagonal to the strip beside the
-  text. At 11pt the reference's numbers hold as-is: textbox `(0,312) 1520×1350`,
-  diagonal spanning the full `2725×2710` child space corner-to-corner, as its does. The
-  diagonal's lower tail lands in the page margin, left of the text column, so it cannot
-  strike the identity lines.
-  - **The paper line is quieter than the code above it**: "PAPER 2" is regular weight
-    at 10.5pt with a small gap above (`w:before="115"` — the reference's own setting,
-    `w:before="120"` plain Arial in its `document.xml`). Bold like its neighbours it
-    read as three lines of one heading rather than a code with the paper number hung
-    under it. The gap rides as `TextFormat.spaceBefore` on the line, so both backends
-    draw it from the one stored number.
-  - **The title pair is 14pt bold** (`sz=28` in the 2019 paper and the manually
-    refined export); 16pt shipped once and read visibly heavier than the reference
-    page beside it. The timing and language lines carry no size at all — they are body
-    text and follow the document's base, 10pt on a QAB.
-- **The cover's `sectPr` must restate `w:pgSz`/`w:pgMar`.** A section that omits them
-  does not inherit from its neighbours — Word falls back to its application default
-  (Letter on a US-locale install), so the cover printed on different paper than the
-  body it fronts. Invisible on screen; the harness's LibreOffice leg caught it as a
-  765×990 raster beside 744×1053 pages.
-- **The foot block is the cover section's own footer part** (`footer3.xml`, its own
-  relationship id), which is the reference's own mechanism — its authority lines and
-  paper code are `footer1.xml`, not flow paragraphs. A footer is what pins the block to
-  the page bottom whatever the columns above it do. The preview mirrors it as an
-  absolutely positioned strip at the exported `w:footer` offset (0.5in). `footNote` —
-  the boxed note the reference's Paper 1 carries bottom-right — prints beside the foot
-  lines inside that part, as a one-row borderless table whose note cell alone is framed
-  (a `ColumnsNode` cannot hold a multi-line bordered box, and a footer is not a list
-  item, so the "never a table" rule for rows does not bind).
-- **The vertical rhythm is measured, not chosen.** The reference spends blank
-  paragraphs in exact runs — 8 under the corner block, 1 inside the identity pair, 2
-  before the title pair, 1 before the timing, 6 before INSTRUCTIONS, 1 between
-  instructions — and the generator's `gapAfter` values encode exactly those. The gaps
-  live in the IR as blank lines (single source); the exporter and preview add no
-  structural spacing of their own between head and instructions, which each once did,
-  differently.
-- **The panel grid is the reference's numbers, shared through `COVER_PANEL`**
-  (`model/cover.ts`, twips): tables indented 340 into the column, label cell 1558,
-  write-in cells 290 wide in a 504-exact row, the framed note at least 1584 tall (the
-  stature of the reference's barcode box). The preview draws the same constants as
-  inches; two copies is how the backends would drift.
-- **`scripts/cover-verify.mjs` is the harness** that answers "do the three outputs
-  agree, and do they look like the reference?" in one command: per paper style it
-  rasterises the exported `.docx` (LibreOffice), the preview sheet (Playwright), and
-  Chrome's print PDF, sets them beside the reference scan on a labelled contact sheet,
-  and prints pairwise diff scores (`scripts/cover-compare.py`). The reference legs skip
-  gracefully where the gitignored scans are absent.
-- **The two papers use different font schemes.** Paper 2 is Arial throughout. Paper 1
-  mixes: Arial for the corner block, the identity lines and the paper's name — read at a
-  glance — and Times New Roman for the timing, "INSTRUCTIONS" and the instruction body,
-  read properly. So `CoverPage.fonts` is a **default** that any line overrides through its
-  own `format.fonts`; a single cover-wide font could express Paper 2 and not Paper 1.
-- **The operative word in an instruction is bolded per run** — "Answer **ALL**
-  questions", "mark only **ONE** answer" — since it is a stretch of characters, not a
-  property of the line (§ per-run formatting).
-- **The column rule is a shape, not a border.** The reference draws no `w:pgBorders`, no
-  `w:cols w:sep` and no `w:pBdr` — the divider is an anchored `prstGeom prst="line"`
-  connector, zero width by full page height, `a:ln w="19050"` (1.5pt). It is the only one
-  of the four mechanisms that puts a line of a *chosen weight* down a column's full
-  height. This export drew no rule at all until it was added: the preview showed one and
-  Word showed nothing, which only opening the exported file reveals. The preview draws a
-  1.5pt `border-left` in the same place — the one piece of cover geometry where the two
-  backends use genuinely different mechanisms, so the weight is stated on both sides.
-- **Every region must reach the `.docx`.** The regions are separate lists and `coverXml`
-  walks them by hand, so one left out is invisible until someone opens the exported file —
-  the page looks right and the document is missing a block. A test walks the *model* and
-  asserts each line arrives, using a **unique sentinel per line**: the generated defaults
-  repeat themselves (the school name is both a head line and the foot line), and searching
-  for stock text found the other copy and passed even with a whole region dropped.
-  Verified by deleting each of the four regions in turn.
-- **Structure is reproduced; wording is not.** No rubric prose, authority or examination
-  lines, barcode/candidate-number apparatus, or copyright notice. The panel is
-  name/class/number — a school identifies candidates by name. Two tests guard it: a phrase
-  blocklist, and a 6-word sliding window over the reference `.docx` (skipped where the
-  gitignored file is absent).
-  - **The sliding window is blind to Chinese** — it splits on whitespace, and Chinese has
-    none, so it passes over every Chinese string without examining it. The blocklist is
-    therefore the *only* guard on the Chinese defaults, and carries the Chinese authority
-    lines explicitly (香港考試及評核局, 香港中學文憑考試, and the barcode/candidate-number
-    labels).
-- **Both language sides carry defaults.** Every generated line shipped with `zh` empty, so
-  a cover viewed or exported in Chinese was a blank sheet with a candidate panel on it —
-  the mode this app exists for showed nothing while English looked finished. Each side
-  resolves independently (`CoverText` is a string or `{en, zh}`), so a teacher who types an
-  English school name keeps the Chinese placeholder rather than blanking it. A test walks
-  every region and fails on any line with one side filled and the other empty; sampling
-  would miss exactly the one line left behind.
-  - **The Chinese timing line carries its own `\n`.** Chinese spells clock times in
-    characters, so the line is simply longer than its English counterpart and overran the
-    5328tw column at 11pt — wrapping wherever the renderer chose and orphaning the closing
-    bracket under a centred title. No rewording fits it; the reference breaks it too.
-- **The academic year is derived, not typed** (`academicYear`, turning over in September).
-  It prints in three places that must agree — the corner code, the examination line and the
-  QAB footer's paper code — which shipped as three separate literals: two chances to
-  disagree, three things to remember every August, and a document made in 2027 stamped
-  2025-26 on all three. The `DocumentSettings` and wizard placeholders read the same
-  helper, since a placeholder promising a year the cover will not build is worse than none.
-- **A booklet's cover states what to answer and the margin rule.** A QAB ships Sections
-  A/B/C with "Answer any ONE question." on C, and the instruction list never mentioned it —
-  the one fact a candidate cannot recover from getting wrong was reachable only by paging
-  to the back. The margin rule joins it for the same reason: the furniture prints it down
-  every margin, but furniture is read once the candidate is already writing, and answers
-  outside the ruled space are a marks consequence. Neither appears on an MCQ cover, which
-  has no sections to choose between and no margins to write in.
+- **Paper 1 (MCQ) has no panel** → one full-width column, instructions numbered `1.`;
+  Paper 2 carries the panel and the two-column split, numbering `(1)`. Both centre
+  their head lines within their own column. `coverHasPanel()` is the single switch both
+  backends read; `instructionMarker` is stored (house style).
+- **`worksheet.cover` is its own field** — the paginator never sees it; a cover neither
+  flows nor shares a sheet with question 1.
+- **`CoverRenderNode` is deliberately not a `RenderNode`** — its regions *are*
+  `RenderNode[]`, so backends reuse the paragraph/columns emitters; only the frame is new.
+- **The `.docx` is a real two-column section**: `w:br w:type="column"` moves to the
+  right column; a **`nextPage`** `sectPr` ends the cover. **The section break IS the
+  page break — emitting both leaves a blank sheet.** `cover-verify.mjs` counts sheets.
+- **The cover's `sectPr` must restate `w:pgSz`/`w:pgMar`** — an omitting section falls
+  back to Word's application default paper, not its neighbour's.
+- **Instruction numbers are derived from position**, literal text on a hung
+  `ColumnsNode` (not a `w:num` stream).
+- **Lines are addressed by id** (`coverLine`/`coverField` edit targets).
+- **The instruction list is the one region a teacher may lengthen/shorten**, on the
+  page: a ✕ per line, "+ Instruction" below. Controls are `data-print-hide`, absolutely
+  positioned, each in a `pointer-events-none` strip spanning back to its line. Reached
+  through `EditContext.coverLines`, optional like `tableGrid`.
+- **A framed note pins `w:tblW` to the column width** (auto measures against the
+  section's full text width and overflows).
+- **The corner block floats** — an anchored `wpg:wgp` group at (−0.65in, −0.25in), a
+  textbox + diagonal in a `chExt` child space. `wrapNone` reserves no space, so the flow
+  needs `CORNER_CLEARANCE_LINES` blank lines. Code lines are Arial bold **11pt stored
+  per line** (must not follow a QAB's 10pt body); textbox `(0,312) 1520×1350`, diagonal
+  full `2725×2710` corner-to-corner.
+- **The diagonal runs bottom-left → top-right**: `a:xfrm flipV="1"` in `.docx`,
+  `linear-gradient(to bottom right, …)` in CSS — both the opposite of the obvious guess.
+- The "PAPER 2" line is regular weight 10.5pt with `spaceBefore` (the reference's
+  `w:before="115"`); the title pair is 14pt bold; timing/language lines follow the body
+  size.
+- **The foot block is the cover section's own footer part** (`footer3.xml`) — a footer
+  pins it to the page bottom whatever the columns do. `footNote` (Paper 1's boxed note)
+  prints inside that part as a one-row borderless table whose note cell alone is framed.
+- **Vertical rhythm is measured off the reference** and encoded as `gapAfter` blank
+  lines in the IR — neither backend adds structural spacing of its own.
+- **The panel grid is shared constants** (`COVER_PANEL`, twips): tables indented 340,
+  label cell 1558, write-in cells 290 in a 504 row, framed note ≥1584 tall.
+- **The column rule is an anchored `prstGeom prst="line"` connector** (1.5pt), not
+  `w:pgBorders`/`w:cols w:sep`/`w:pBdr` — the only mechanism with a chosen weight down
+  the full column height. The preview draws a 1.5pt `border-left`; the weight is stated
+  on both sides.
+- **Every region must reach the `.docx`** — `coverXml` walks the region lists by hand;
+  a test walks the model with a **unique sentinel per line** (defaults repeat, so stock
+  text finds the other copy).
+- **Structure is reproduced; wording is not** — no rubric prose, authority lines,
+  barcode apparatus, or copyright notice. Guards: a phrase blocklist (the only guard
+  covering Chinese — the 6-word sliding window splits on whitespace and is blind to it)
+  plus that window over the reference `.docx`.
+- **Both language sides carry defaults**; a test walks every region and fails on any
+  line with one side filled and the other empty. The Chinese timing line carries its own
+  `\n` (it overruns the column otherwise).
+- **The academic year is derived** (`academicYear`, turning over in September) and feeds
+  all three places it prints (corner code, examination line, QAB footer code) plus the
+  settings/wizard placeholders.
+- **Two font schemes**: Paper 2 is Arial throughout; Paper 1 mixes Arial (corner,
+  identity, paper name) and Times (timing, instructions). So `CoverPage.fonts` is a
+  default any line's own `format.fonts` overrides.
+- Operative words in instructions are bolded **per run** ("Answer **ALL** questions").
+- **A booklet's cover states what to answer and the margin rule** in its instruction
+  list (a candidate must not have to page to the back for them); an MCQ cover carries
+  neither.
 
 ### One row, many uses: `ColumnsNode`
 
 The single IR primitive behind every side-by-side layout (band zones, inline MCQ
-options, labelList). Exports as **one paragraph with tab stops**, never a borderless
-table — a table is still a table in Word and cannot sit inside a numbered list item.
-Cell positions are fractions of the row's own width (after `indent`), so they survive
-paper/margin changes. Cost: inline MCQ options get literal `A.`–`D.` text (one paragraph
-cannot carry four list numbers); stacked options keep native `w:num`.
+options, labelList). Exports as **one paragraph with tab stops, never a table** — a
+table cannot sit inside a numbered list item. Cell positions are fractions of the row's
+own width (after `indent`). Cost: inline MCQ options get literal `A.`–`D.` text;
+stacked options keep native `w:num`.
 
-**A long row needs `hanging`, or its wrapped lines break the column.** The row is one
-paragraph, so without a hanging indent a wrapped cell's continuation returns to `indent`
-— under the *marker*, not under the text it belongs to. Invisible on the short rows this
-primitive was built for (band zones, inline options) and wrong on the long ones: an exam
-cover's numbered instructions wrap heavily, and both reference papers hang them.
-
-- **`hanging` and `indent` are one `w:ind`** — Word merges the element as a whole, so
-  emitting them separately drops whichever came first (the same trap `formatParagraphProps`
-  handles for `w:line`).
-- **With a hang, the second cell is placed from `indent`, not from `at`** — it *is* the
-  text column, and that is where Word returns each wrapped line. Placing it by fraction
-  puts the tab stop somewhere inside the column and the wrap fails to line up. The preview
-  matches by giving the marker cell exactly the gutter as a fixed width.
-- `labelList.hanging` supersedes `valueAt`: the hang already says where the value column
-  starts, and storing both is two answers to one question.
+- **A long row needs `hanging`**, or wrapped lines return to `indent` — under the
+  marker, not the text. Both reference papers hang their cover instructions.
+- **`hanging` and `indent` are one `w:ind`** — emitting them separately drops one.
+- **With a hang, the second cell is placed from `indent`, not from `at`** — that is
+  where Word returns each wrapped line. The preview gives the marker cell exactly the
+  gutter as a fixed width.
+- `labelList.hanging` supersedes `valueAt`.
 
 ### An enlarged line box follows its font size
 
-Wherever the preview writes `fontSize` it must write `lineHeight` too — in `formatStyle`
-(every element) and `bandFieldStyle` (band fields). The page runs on a fixed 12pt line
-with no paragraph spacing, so a 28pt title drawn into a 12pt box **overprints the line
-above**: three cover title lines landed on top of each other, and so did three masthead
-rows. The exporter already restates `w:line` from `exactLineFor()` whenever `fontSize` is
-set (`formatParagraphProps`), and `bandsHeight()` already scales its estimate by the
-largest field size — so without this the DOM disagreed with both the exporter and the
-paginator. One rule, two units: a unitless multiple on the page, twips in the `.docx`.
+Wherever the preview writes `fontSize` it must write `lineHeight` too (`formatStyle`,
+`bandFieldStyle`) — the page runs on a fixed 12pt line, so a 28pt title in a 12pt box
+overprints the line above. The exporter (`formatParagraphProps` → `exactLineFor()`) and
+`bandsHeight()` already scale; the DOM must agree. One rule, two units: unitless
+multiple on the page, twips in the `.docx`.
 
 ### An option can be a picture, and then it must stack
 
-`McqOption.blocks` exists for the "which of the following **diagrams**…" question (DSE
-2021 P1 Q36), where the four options *are* figures and the question is unanswerable
-without them. The blocks render after the option's own numbered paragraph — not inside
-it, since a `w:drawing` in a list item takes the marker's hanging indent and needs the
-`lineRule="auto"` an option style cannot give it.
+`McqOption.blocks` exists for figure-option questions. The blocks render after the
+option's numbered paragraph (a `w:drawing` in a list item takes the marker's hanging
+indent and needs `lineRule="auto"`).
 
-- **A blocks-bearing option forces `stacked`**, in `resolveOptionLayout` rather than on
-  write, so it stays true for documents authored before options could carry blocks. A
-  side-by-side row is one paragraph of tab stops and cannot hold a picture per cell — the
-  figures would be dropped *silently*, leaving a question that looks complete and cannot
-  be answered.
-- **The option letter keeps with its own figure** (`keepNext`), including the last one,
-  or Word breaks the page between "D." and the diagram that answers it.
-- `questionBlockLists` and `mapAllBlocks` both read `options` **structurally**, like
-  `parts` — no branch on a concrete type id (§registry). The two must reach the same
-  lists, or a block is findable but unwritable.
-- **The blocks indent to the option's own text column** (`OPTION_LIST_INDENT.left`, not
-  restated), because they continue the answer the letter introduces. An unset indent puts
-  them at the page margin — correct-looking in every unit test, wrong on the page.
-- Authored through the **same `BlockEditor` the stem uses**, so a diagram in an option is
-  inserted and templated identically. It takes a `figureWidth`: four figures stack in one
-  question, and the stem's full-column default would put each a third of a page down.
-  Offered behind an affordance rather than a permanent insert row — the common option is a
-  line of text, and four insert rows would bury it.
+- **A blocks-bearing option forces `stacked`** in `resolveOptionLayout` (a tab-stop row
+  cannot hold a picture per cell — figures would drop silently).
+- **The option letter keeps with its own figure** (`keepNext`), including the last one.
+- `questionBlockLists` and `mapAllBlocks` read `options` structurally, like `parts`.
+- **The blocks indent to `OPTION_LIST_INDENT.left`** (they continue the answer the
+  letter introduces).
+- Authored through the same `BlockEditor` the stem uses, with `figureWidth`; offered
+  behind an affordance.
 
 ### Per-element formatting (`TextFormat`)
 
-Named styles supply defaults; `TextFormat` records **only deltas**, applied as direct
-formatting on top. An untouched document exports byte-identically to the style-only
-baseline. Formatting attaches to whole elements, never one language side — a bilingual
-heading is a single Word paragraph, so per-side sizes could not export.
+Named styles supply defaults; `TextFormat` records **only deltas**. An untouched
+document exports byte-identically to the style-only baseline. Formatting attaches to
+whole elements, never one language side (a bilingual heading is one Word paragraph).
 
 ### Per-run formatting (`InlineRun`)
 
 A run overrides a stretch of characters (`fontSize`, `color`, `fonts`,
 bold/italic/underline), mirroring `w:r`/`w:rPr`. Three layers compose: named style →
 element `TextFormat` → run. Flags **or** with the element; size/colour/fonts
-**replace** it. `applyRunFormat(runs, start, end, patch)` (`model/text.ts`) splits at
-both offsets, patches, and `normalizeRuns` re-merges identical neighbours (without the
-merge, runs only ever fragment). `null` in a patch **clears**; `undefined` cannot
-(indistinguishable from "not mentioned" once spread).
+**replace**. `applyRunFormat` splits at both offsets, patches, and `normalizeRuns`
+re-merges identical neighbours. `null` in a patch **clears**; `undefined` cannot.
 
-### Sub- and superscript are run-only, and reachable by button
+### Sub/superscript are run-only, reachable by button
 
-"S₁", "P₁+t", "Q₂" are the naming convention of the subject, so `vertAlign` is offered in
-both editing surfaces: the page toolbar (on a character selection) and the diagram canvas's
-in-place editor (which wraps the selection in the storage marker `_{1}`). The model, the
-markers and all three renderers already understood it — but `toRunPatch` silently dropped
-the field, so a subscript could be written down and printed yet never *applied* from a
-control, which is the only way anyone would think to reach it.
-
-**It stays off `TextFormat`.** That type is what an *element* overrides, and a paragraph
-set wholly in subscript is meaningless; it rides as an explicit extra field on the
-`onFormatRuns` patch instead, so the element path cannot reach it by accident.
+`vertAlign` is offered in the page toolbar and the diagram canvas's in-place editor
+(storage marker `_{1}`). It stays **off `TextFormat`** (a paragraph wholly in subscript
+is meaningless); it rides as an explicit extra field on the `onFormatRuns` patch.
 
 ### A field cleared to nothing stores nothing
 
-"Empty" has two spellings, and only one of them is `[]`. A contenteditable emptied with
-⌘A-Backspace hands back a run holding `"\n"` — whitespace, so `isBiTextEmpty` reports
-true and every renderer draws nothing. The husk is therefore **invisible in the app while
-still being in the document**: it saves, reloads, reaches the exporter and prints a
-phantom blank line. Two of the reference worksheets carried exactly
-`{"en":[{"text":"\n"}]}` in a diagram caption.
-
-So every optional-text write path drops the field when `isBiTextEmpty` is true, rather
-than storing what the surface returned (`DiagramEditor`'s title, `CaptionField`'s
-caption). **Its placement goes with it** — `titlePlacement`/`captionPlacement` answer
-"which side does this print on", and with nothing to print the question has no subject;
-leaving it behind makes a later re-titling silently inherit a side nobody chose. Dropping
-the keys also restores the measured size, since an absent title reserves no room.
+A contenteditable emptied with ⌘A-Backspace hands back a run holding `"\n"` —
+invisible in the app but still in the document, printing a phantom blank line. Every
+optional-text write path drops the field when `isBiTextEmpty` is true, **and its
+placement with it** (`titlePlacement`/`captionPlacement`), restoring the measured size.
 
 ### The editing surface renders runs, not markers
 
-`**bold**`, `__underline__`, `^{sup}` are a **storage** form (`serializeRuns`), not a
-thing to type at. Every editing surface (`RichTextEditable`, shared by the page, the
-sidebar's `BiTextField` and table cells) renders runs as themselves. The string form is
-lossy — `serializeRuns` spells five flags and nothing else, so round-tripping dropped
-size/colour/fonts; the DOM surface reads attributes back (`data-run-attrs`) and its
-offsets are already the model's plain-text offsets (no `sourceOffsetToText`
-translation, which survives only for non-editing uses). One representation = no
-draft/flush staleness.
+`**bold**`, `^{sup}` are a **storage** form (`serializeRuns`, lossy — flags only).
+Every editing surface (`RichTextEditable`, shared by page, sidebar `BiTextField` and
+table cells) renders runs as themselves and reads attributes back (`data-run-attrs`);
+its offsets are the model's plain-text offsets. Rules (each failed silently before):
 
-Rules the surface must keep (each failed silently before):
-
-- **A contenteditable is uncontrolled.** Runs are painted imperatively (`runToNode`);
-  rendering them as JSX children makes React reconcile nodes the browser mutates
-  (typing "Based" produced `BasedBaseBasBaB`).
-- **The field's own echo must not repaint it.** `paintedRef` + `sameRuns` recognise the
-  store round-trip; only a genuine outside change repaints, then restores the caret.
-- **Typing is left to the browser** (keeps IME, autocorrect, undo). `onBeforeInput`
-  intercepts only a *pending* format ("bold on, then type"); paste is forced to plain
-  text.
-- **The toolbar reports the selection, not the element** (element-merged format
-  inverted clicks: Title is bold → bar sent "clear bold"). The blur handler ignores
-  focus moving into `[role="toolbar"]`.
-
-- **A collapsed caret is published, and only when it changes.** The surface used to drop
-  it, since the sole consumer was the format toolbar and formatting an empty range is
-  meaningless — but *inserting* at a caret is the ordinary case, so a control needing one
-  simply never appeared. Publishing it exposed the second half: `selectionOffsets` builds
-  a fresh object per call, so an unconditional publish sets state to a value that is
-  equal but never identical, and the render that follows republishes it until React bails
-  out ("Maximum update depth exceeded"). `sameSelection` compares by value; consumers
-  wanting a genuine range check `start < end` themselves (`runRange` vs `runCaret` in
-  `Preview.tsx`). Both directions are invisible to a unit test of the feature — the
-  button's absence and the loop both only show in a browser.
+- **A contenteditable is uncontrolled** — runs are painted imperatively (`runToNode`);
+  JSX children make React reconcile nodes the browser mutates.
+- **The field's own echo must not repaint it** — `paintedRef` + `sameRuns` recognise
+  the store round-trip; only outside changes repaint, then restore the caret.
+- **Typing is left to the browser** (IME, autocorrect, undo). `onBeforeInput`
+  intercepts only a pending format; paste is forced to plain text.
+- **The toolbar reports the selection, not the element**; blur ignores focus moving
+  into `[role="toolbar"]`.
+- **A collapsed caret is published, and only when it changes** — `sameSelection`
+  compares by value (a fresh object per call would republish until React bails out);
+  consumers wanting a genuine range check `start < end`.
 
 `replaceRichTextRange(runs, start, end, insert, fallback)` is the edit primitive:
-inserted characters inherit from the run left of the caret (then right, then fallback) —
-Word's rule. **`insertBlank` is the deliberate exception**: a fill-in blank ("…using
-______ to solve…", a third of DSE P1's questions) forces `underline` instead of
-inheriting, or a blank typed after ordinary prose is twelve invisible spaces. It stays
-underlined spaces rather than a new run kind or marker — that already exports, pastes and
-prints through all three backends, so what was missing was only a way to reach it.
+inserted characters inherit from the run left of the caret (then right, then fallback).
+**`insertBlank` is the deliberate exception**: a fill-in blank forces `underline` —
+otherwise it is twelve invisible spaces. It stays underlined spaces, not a new run kind.
 
 ---
 
@@ -584,13 +321,11 @@ TextNode: style (one of 14) · text: BiText · listRef? {stream, definition, lev
 `EditTarget` is a discriminated union keyed by **id**: `worksheetTitle`,
 `worksheetInstructions`, `blockText`, `blockCaption`, `tableCell`, `mcqOption`,
 `mcqStatement`, `mcqExplanation`, `partAnswer`, `subPartAnswer`, `layoutText`,
-`bandField`, `labelListCell`, `coverLine`, `coverField`. (A section heading is reached
-via `layoutText`.)
+`bandField`, `labelListCell`, `coverLine`, `coverField`.
 
 - **`edit` is inert in export** — docx/clipboard never read it.
-- **Derived text carries no target** (marks totals, "Answer: C", the number in a band
-  field) — typing over it would have nowhere to go. The authored wording *around* a
-  number does carry one.
+- **Derived text carries no target** (marks totals, "Answer: C", numbers in band
+  fields); the authored wording around a number does.
 
 `listRef.stream` connects IR to `.docx`: each distinct stream becomes one `w:num`.
 
@@ -599,8 +334,7 @@ via `layoutText`.)
 ## Numbering (`src/model/numbering.ts` + `src/export/docx/numbering.ts`)
 
 **Derived, app-level:** `computeNumbering()` walks the resolved flow; numbers are
-1-based, continuous until a `section` sets `restartNumbering`. Walking the flow is what
-makes a restart happen where the heading actually sits.
+1-based, continuous until a `section` sets `restartNumbering`.
 
 **Native, in OOXML:** three abstract multilevel definitions —
 
@@ -611,8 +345,7 @@ makes a restart happen where the heading actually sits.
 | 2 | statements | `(1)` decimal |
 
 Each IR stream gets a concrete `w:num`. Options/statements get one per question with
-`w:startOverride` (restart at A); a section restart is a new `w:num` on the question
-stream.
+`w:startOverride`; a section restart is a new `w:num` on the question stream.
 
 ---
 
@@ -634,490 +367,278 @@ stream.
 ### One fixed line, no paragraph spacing
 
 Every paragraph: `w:line="240" w:lineRule="exact"`, `w:before`/`w:after` zero — the
-reference paper's model (275/296 paragraphs carry exactly that; 102 are empty). All
-vertical rhythm comes from the line box. Consequences (each fails silently):
+reference paper's model. All vertical rhythm comes from the line box. Consequences
+(each fails silently):
 
-- **Separation costs a line.** `blankLine()` in `render/ir.ts` is that line; every gap
-  goes through it (`ITEM_GAP` in the walker for boundaries between items; question
-  types use the same helper inside a question). The gap is an IR node, not a style
-  property, so all three backends space identically. Reference rhythm: stem → blank →
-  statements → blank → options; stem → blank → (a) → blank → (b). An MCQ with no
-  statements gets only the stem's blank. The between-item gap lives in the walker
-  because it belongs to the *boundary* — a type appending its own would double up and
-  leave a stray blank at document end.
-- **A gap counts what is already there.** Text ending in a trailing hard break already
-  spent a line; `pushGap()`/`endsInBlankLine()` (`render/ir.ts`) push a blank *unless*
-  the stream already ends in one. Every gap site uses it. `endsInBlankLine` is
-  **language-neutral** (tests both sides): one IR feeds all backends, and the paginator
-  measures these boxes.
-- **A table takes one blank line before it** — the reference papers' shape: the stem's
-  sentence, air, then the figure it introduces. The gap lives in `renderContentBlocks`,
-  which **appends into the caller's stream** rather than returning a local array, so the
-  boundary rule above can see what actually precedes the table (a preceding trailing
-  hard break must not open a double gap). The gap spacer carries the caller's `keepNext`
-  (`SpacerNode.keepNext` → `w:keepNext`): it sits inside the stem → gap → table
-  keep-together chain, and a plain blank is exactly where Word would break it. Cover
-  panel tables are out of scope — a cover's rhythm is its own measured `gapAfter`s.
-  **The preview draws the same two lines and no margins of its own**: below the table it
-  renders the structural empty paragraph Word requires (`tableNodeXml`'s trailing
-  spacer) as a real `BLANK_LINE_PT` block. `TableNodeView`'s old CSS margin pair was a
-  third spelling of the gap that neither the exporter nor the paginator could see —
-  margins sit outside the measured box — so the page showed ~6pt where the paper printed
-  12, unequal above and below. `tableGeometry.test.ts` greps both directions.
+- **Separation costs a line.** `blankLine()` is that line; every gap goes through it
+  (`ITEM_GAP` in the walker for boundaries; question types use the same helper inside a
+  question). The gap is an IR node, not a style property, so all three backends space
+  identically. The between-item gap lives in the walker because it belongs to the
+  boundary.
+- **A gap counts what is already there.** `pushGap()`/`endsInBlankLine()` push a blank
+  *unless* the stream already ends in one. `endsInBlankLine` is language-neutral.
+- **A table takes one blank line before it.** The gap lives in `renderContentBlocks`,
+  which **appends into the caller's stream** (so the boundary rule can see what
+  precedes). The gap spacer carries the caller's `keepNext`. The preview renders the
+  trailing structural empty paragraph as a real `BLANK_LINE_PT` block — CSS margins are
+  invisible to the paginator. `tableGeometry.test.ts` greps both directions.
 - **The gap is suppressed only at the true top of the page**, not flow index 0 — the
-  masthead/title/instructions print above the flow (`somethingAboveFlow` in
-  `render/worksheet.ts`). Keying on index made "Section A" and an identical "Section B"
-  space differently.
-- **`exact` does not grow** (unlike `atLeast` it clips) — that keeps a bilingual page on
-  one rhythm through CJK glyphs and inline images. Larger sizes need a larger box:
-  `exactLineFor()` scales from the 11pt/12pt base.
-- **A picture's paragraph is the one exception, and must say so** (`w:lineRule="auto"` in
-  `pictureXml`). A figure is taller than a line by design — a 300px diagram is ~225pt
-  asking to sit in a 12pt box — and `exact` clipped it to a 12pt slice, painting the rest
-  *behind* the text above. The symptom is the worst kind: the image selects at full size
-  in Word, the PNG bytes, `wp:extent` and the relationship are all correct, and the page
-  simply looks empty. `auto` is what Word writes for an inline picture, so an edited file
-  round-trips. Separation around the figure stays a blank line, never spacing on this
-  paragraph.
-- **A picture is placed by `w:jc` on that same paragraph** — there is no alignment
-  property on the drawing itself. `align` on `ImageBlock`/`DiagramBlock` is resolved in
-  the IR (like the table box) and defaults to **`center`**, not `left`: both backends
-  hardcoded centring before this existed, every figure in the reference papers is
-  centred, and only a teacher who chose otherwise stores anything. The preview expresses
-  it as `text-align` — the property `w:jc` actually maps to — so neither figure may carry
-  `mx-auto`, which reads as "centre" whatever `align` says.
-- **Every style states its own metrics.** Word merges `w:spacing` as a whole element, so
-  a style setting only `w:before`/`w:after` silently drops `w:line`;
-  `formatParagraphProps()` restates the line whenever a teacher overrides spacing or
-  size.
+  masthead/title/instructions print above the flow (`somethingAboveFlow`).
+- **`exact` does not grow** (it clips) — that keeps a bilingual page on one rhythm.
+  Larger sizes need a larger box: `exactLineFor()` scales from the 11pt/12pt base.
+- **A picture's paragraph is the one exception** (`w:lineRule="auto"` in `pictureXml`) —
+  `exact` clips a 225pt figure to a 12pt slice painted behind the text above, while the
+  image still selects at full size in Word. Separation around the figure stays a blank
+  line.
+- **A picture is placed by `w:jc` on that paragraph**; `align` on
+  `ImageBlock`/`DiagramBlock` resolves in the IR, defaulting to **`center`** (every
+  reference figure is centred). The preview expresses it as `text-align` — no `mx-auto`.
+- **Every style states its own metrics.** Word merges `w:spacing` as a whole element;
+  `formatParagraphProps()` restates the line whenever spacing or size is overridden.
 
-### A numbered paragraph indents as a block, not by its first line
+### A numbered paragraph indents as a block
 
-Word list geometry is `w:ind` `left` + `hanging`: text column at `left`, **marker
-alone** pulled back by `hanging`. Every wrapped line starts at `left`. CSS `text-indent`
-moves the first line only — a different shape that disagreed with Word — so the preview
-uses `padding-left` and draws the marker **absolutely positioned** at `left - hanging`.
+Word list geometry is `w:ind` `left` + `hanging`: text column at `left`, marker pulled
+back by `hanging`, every wrapped line at `left`. CSS `text-indent` moves the first line
+only, so the preview uses `padding-left` and draws the marker **absolutely positioned**
+at `left - hanging`.
 
-- **Each level's marker starts where its parent's text starts**: `(a)` begins at the
-  stem's text column (360), `(i)` at part text (720) — `left - hanging` at each level
-  equals `left` above. (Levels 1–2 were once a full step too deep.)
-  - **Level 2 widens the hang rather than moving the marker**: `{left: 1170, hanging:
-    450}`, not 1080/360. A 360-twip hang is too narrow for a three-character roman —
-    "(iii)" collides with its own text — so the *text* column moves out to 1170 while
-    `left - hanging` stays 720, keeping the marker where the rule puts it. Room holds
-    through "(viii)".
-- `QUESTION_LIST_INDENTS` in **`model/numbering.ts`** is the one definition; three
-  consumers (`export/docx/numbering.ts` → `w:ind`, `Preview.tsx` layout,
-  `registry/structured.ts` continuation indents) may not import each other, so the
-  constant sits below all three. One stale copy = page breaks in different places on
-  screen vs paper.
-- **A stem's continuation blocks indent to the stem's own text column**
-  (`STEM_TEXT_INDENT` = level 0's `left`), exactly as a part's continuations indent to
-  `PART_TEXT_INDENT`. A second stem block — the paragraph after a table, the sentence
-  carrying the marks — has no `1.` marker, and unindented it printed at the page
-  margin, hanging in the question number's gutter. Both registries pass it; a registry
-  test walks every type.
+- **Each level's marker starts where its parent's text starts**: `(a)` at 360, `(i)` at
+  720. Level 2 widens the hang rather than moving the marker: `{left: 1170, hanging:
+  450}` — room for "(viii)" while `left - hanging` stays 720.
+- `QUESTION_LIST_INDENTS` in **`model/numbering.ts`** is the one definition; its three
+  consumers (docx numbering, `Preview.tsx`, `registry/structured.ts`) may not import
+  each other. One stale copy = page breaks in different places on screen vs paper.
+- **A stem's continuation blocks indent to `STEM_TEXT_INDENT`** (level 0's `left`), as
+  a part's do to `PART_TEXT_INDENT`. A registry test walks every type.
 - **MCQ lists follow the same rule with the stem as parent**: statements
-  `{left: 720, hanging: 360}` (marker at stem text, like `(a)`); options one step deeper
-  at 1080 — the statements are part of the question, the options are answers to it.
-- **Style classes must add no margin of their own** — `ml-*` under list geometry
-  double-indents and defeats the statement indent outright. `listIndent.test.ts` greps
-  `Preview.tsx` for the four offenders.
+  `{left: 720, hanging: 360}`, options one step deeper at 1080.
+- **Style classes must add no margin of their own** — `listIndent.test.ts` greps
+  `Preview.tsx`.
 - **The preview pins the same numbers**: `.paper` sets 11pt / fixed 12pt line, zero
-  paragraph margins — inheriting the shell's 16px/1.5 packed ~⅓ less per sheet than
-  Word and every break landed early.
+  paragraph margins.
 
 ### "(4 marks)" sits on the last line with text
 
-The `.docx` uses a right-aligned tab stop at the content edge, `w:tab` run *after* the
-text: marks land on the final line, dropping only when it has no room, and reserve
-nothing on other lines. **No CSS property expresses that** (`float:right` is placed on
-the first line with room and overprints when it drops; `text-align-last: justify`
-stretches word spacing). So reserving and placing are separate (`MarksTrail` in
-`Preview.tsx`):
+The `.docx` uses a right-aligned tab stop at the content edge, `w:tab` after the text.
+No CSS property expresses that, so the preview separates reserving and placing
+(`MarksTrail` in `Preview.tsx`):
 
-- An **invisible twin** of the label rides inline at the end of the text — in flow, so
-  it shortens only the actual last line, and being the label it reserves exactly the
-  right width at any font size (a fixed shim overprints when the label is wider).
-- The **visible copy is pinned `bottom: 0; right: 0`** in the (already `relative`)
-  paragraph.
+- An **invisible twin** of the label rides inline at the end of the text (reserves
+  exactly the right width on the actual last line); the **visible copy is pinned
+  `bottom: 0; right: 0`** in the relative paragraph.
 - **A trailing hard break is a blank line the marks must not hang on.**
-  `trailingBlankLines()` (`model/text.ts`) counts them for both backends — the page and
-  the `.docx` must choose the same line. The preview lifts the label by that many `lh`;
-  the exporter **moves trailing breaks after the marks**. `marksAnchorRuns()` picks the
-  side to count in bilingual mode (Chinese renders last; falls back to English).
-- **A full anchor line pushes the whole label to the next line, in both backends.**
-  The .docx label's interior space is a **no-break space** (`marksText`), so Word can
-  never tear it — "(2" at the end of the text line, "marks)" alone at the start of the
-  next is exactly what a plain space shipped. Unbreakable, the label wraps whole and
-  the right tab re-aligns it at the content edge of the new line. The preview matches
-  by **measuring**: when the text ends in trailing breaks the reserve sits after them
-  (it cannot ride inside the contenteditable) and protects nothing on the lifted-to
-  line, so `MarksTrail` measures the last text character against the room the label
-  needs — the label's own width, deliberately *without* the twin's em gap, since
-  Word's tab needs exactly the label and the em pushed a borderline paragraph the
-  .docx kept on one line — and renders an explicit extra line for the label to sit on.
-  Before this the preview overprinted the text ("continua(2ffaarks)") while Word
-  wrapped, a one-line height disagreement on exactly that paragraph. Both copies
-  `whitespace-nowrap`.
+  `trailingBlankLines()` counts them for both backends; the preview lifts the label by
+  that many `lh`, the exporter moves trailing breaks after the marks.
+  `marksAnchorRuns()` picks the side to count in bilingual mode.
+- **A full anchor line pushes the whole label to the next line in both backends.** The
+  docx label's interior space is a **no-break space** (`marksText`) so Word wraps it
+  whole; the preview **measures** the last text character against the label's own width
+  (deliberately without the twin's em gap) and renders an explicit extra line when
+  needed. Both copies `whitespace-nowrap`.
 
 A one-line part looks correct under every wrong scheme — the bug only shows on a part
 that wraps or ends in a break.
 
-`BAND_ROW_TWIPS` (`model/page.ts`) duplicates the 240tw (a band row is one such
-paragraph); duplicated because `model/` may not depend on `export/`; a test asserts
-agreement.
+`BAND_ROW_TWIPS` (`model/page.ts`) duplicates the 240tw (`model/` may not depend on
+`export/`); a test asserts agreement.
 
 ### Tables have no header row (`src/model/table.ts`)
 
-`headerRowCount` was removed — wrong twice for real papers. Output: it drove
-`w:tblHeader`, grey `EFEFEF` fill and bold (no HKDSE table has any; the clipboard's
-`<th>` re-applied browser bold-centred on paste). Structure: a distribution table's
-headings run across the top *and* down the left — not a count of rows. Emphasis is
-ordinary per-cell formatting. Removed without migration (existing header rows become
-plain, which is what the papers look like); regression tests assert
-`not.toContain('<w:tblHeader/>')` and `not.toContain('EFEFEF')` — the only symptom is on
-paper.
+`headerRowCount` was removed — no HKDSE table has grey/bold header treatment, and a
+distribution table's headings run across the top *and* down the left. Emphasis is
+per-cell formatting. Regression tests assert `not.toContain('<w:tblHeader/>')` and
+`not.toContain('EFEFEF')`.
 
 ### A part can carry unnumbered text above it
 
-`QuestionPart.blocksBefore` is the **mid-question interlude**: DSE 2019 P2 Q6 asks (a) off
-a balance sheet, prints "Suppose the central bank sells $200 million…" as a plain
-paragraph, then asks (b) and (c) about the new situation. It takes no letter and no marks,
-and it prints at `STEM_TEXT_INDENT` — level with the stem, a step left of the parts —
-because it revises the scenario for everything below rather than continuing (a).
+`QuestionPart.blocksBefore` is the mid-question interlude (a revised scenario between
+(a) and (b)). It takes no letter and no marks, prints at `STEM_TEXT_INDENT`.
 
-- **It belongs to the part below, not the one above.** The interlude is a lead-in; it
-  exists to set up (b) and (c), so deleting or moving (b) must carry it. Hung off (a)
-  instead, deleting the part it introduces strands a scenario nothing asks about.
-- **A full `ContentBlock[]`**, not text: the interlude is regularly a second table or
-  figure (a revised balance sheet, another extract). Free, because `questionBlockLists`
-  and `mapAllBlocks` read `parts` structurally — but both had to be told, or the block
-  would be findable and unwritable.
-- Separated by a blank line on each side, through `pushGap`, and `keepNext` holds it
-  against the part it introduces — Word would otherwise break the page between the new
-  scenario and the only question that uses it.
-- Distinct from a second entry in the part's own `blocks`, which continues (a) and
-  indents to `PART_TEXT_INDENT`. Offered behind an affordance in the panel: the ordinary
-  part has no interlude, and two identical block editors per part card would bury the one
-  holding the question.
+- **It belongs to the part below** — deleting or moving (b) carries its lead-in.
+- **A full `ContentBlock[]`** (interludes are regularly tables/figures);
+  `questionBlockLists` and `mapAllBlocks` must both know it.
+- Separated by a blank line each side via `pushGap`; `keepNext` holds it to the part it
+  introduces. Offered behind an affordance in the panel.
 
 ### A boxed stimulus is a frame with nothing ruled inside it
 
-`TableBorders` is `'all' | 'box' | 'headerRule'` — named modes, deliberately not per-edge
-control (which was removed once already for being wrong about real papers). DSE 2021 P1
-boxes a stimulus four times, and Q21 is one frame around three proposals with **no rule
-between them**, which a uniform grid cannot express at any padding.
+`TableBorders` is `'all' | 'box' | 'headerRule'` — named modes, deliberately not
+per-edge control. `headerRule` is the **T-account**: frame, one rule under the top row,
+one down the middle.
 
-`headerRule` is the **T-account**: a frame, one rule under the top row, one down the
-middle, nothing else — how DSE 2019 P2 Q6/Q7 draw a bank's balance sheet, and the most
-border-worked table in that paper. Neither `all` (rules everything) nor `box` (suppresses
-the header rule that names the two sides) reaches it.
-
-- **The shape says "two sides, each a list."** The label and its figure are one entry, so
-  a rule between them would divide what belongs together; Reserves and Loans are
-  successive entries, so a rule between *them* would read as separate facts.
-- **A mode earns its place by being a shape the syllabus draws the same way every year.**
-  A paper that does draw a bespoke arrangement draws a genuinely one-off one — Q10's
-  re-export table notches a corner with four cells' own edges — which no mode should try
-  to reach.
-- **Resolved per cell in the IR** (`resolveCellEdges` → `TableNodeCell.edges`), like
-  padding and the column widths: the rules depend on *where a cell is*, and three
-  renderers deriving that separately is three chances to draw a different table. Only
-  `headerRule` populates it; `all` and `box` are uniform and say so on the table.
-- **Resolved from grid position, not cell index.** The header cells span two grid columns
-  each, so "is this against the middle" cannot be answered by counting cells — and a
-  `covered` cell occupies **no** grid column of its own, since the span covering it already
-  counted that column. Adding 1 for it put the "Liabilities" header at grid columns 3–5 of
-  a 4-column table, so the header row silently lost its outer rules while every un-spanned
-  row looked correct.
-- **The table itself then draws nothing** — all six `w:val="none"`, never omitted, or the
-  table style puts the grid back underneath the cells' own edges (the trap `box` records).
-  `w:tcBorders` must precede `w:tcMar` and `w:vAlign`: `CT_TcPr` is a sequence, and out of
-  order Word reports a repair error on the whole file rather than one wrong table.
-- **An odd column count has no midpoint**, so the divider is omitted rather than drawn
-  off-centre — the shape is meaningless there and it degrades to a framed block.
+- **Resolved per cell in the IR** (`resolveCellEdges` → `TableNodeCell.edges`); only
+  `headerRule` populates it.
+- **Resolved from grid position, not cell index** — spans occupy multiple grid columns
+  and a `covered` cell occupies **none**.
+- **The table itself then draws nothing** — all six `w:val="none"`, never omitted (the
+  table style puts the grid back). `w:tcBorders` must precede `w:tcMar`/`w:vAlign`
+  (`CT_TcPr` is a sequence; out of order = repair error on the whole file).
+- **An odd column count has no midpoint** — the divider is omitted.
+- **`box` writes `w:val="none"` on `insideH`/`insideV`, never omits** (Word inherits
+  unstated borders from the table style). The frame's four sides are untouched, keeping
+  ordinary tables byte-identical (pinned).
+- **The frame sits on the table, the cells go borderless** in both HTML backends.
+- **`TableCell.image`**: an image, not `ContentBlock[]` (a cell is one `w:p`; a picture
+  is the one thing that joins those runs without recursion). Must be in
+  `collectImages`' walk — emitted but uncollected is a dangling `r:embed` = repair
+  error on the whole file.
 
 ### A table can start from a named shape (`src/model/tableTemplates.ts`)
 
-`TABLE_TEMPLATES` ships the shapes the syllabus draws every year — a bank's balance sheet,
-a two-period comparison, a boxed extract — exactly as `DIAGRAM_TEMPLATES` does, and for the
-same reason: a teacher inserting a balance sheet wants the balance sheet, not a 3×4 grid
-they must then merge two header cells in and re-rule. Offered at insert time, above the size
-grid in the `+ Table` popover, so there is one "insert a table" affordance rather than two.
+`TABLE_TEMPLATES` ships the shapes the syllabus draws every year (balance sheet,
+two-period comparison, boxed extract), offered above the size grid in the `+ Table`
+popover.
 
-- **A template is only an initial value**: plain `TableBlock` geometry with fresh ids, never
-  looked up again. There is deliberately no `templateId` — a stored one invites a
-  "re-apply" that has to decide what to do with edited cells.
-- **What is constant ships; what is this question's data does not.** A balance sheet is
-  always Assets/Liabilities over Reserves and Loans against Deposits, so those are seeded;
-  the figures stay empty, because a seeded number is one a teacher can miss.
-- **Both language sides are filled** for everything it ships (§ both language sides carry
-  defaults) — a template seeding English alone hands over a half-translated table in the one
-  app that exists for bilingual papers. A test walks every template and fails on any cell
-  with one side filled and the other empty.
-- The balance sheet is **four columns, not two**: each side is a label column and a figure
-  column, so "Reserves" ranges left while its figure ranges right with no rule between
-  them. Two columns cannot place the figures without either ruling between a name and its
-  number or relying on typed spaces that reflow the moment the column is dragged. Its
-  header cells span 2+2 and carry `covered` placeholders, exactly as `mergeRight` leaves
-  them.
+- **A template is only an initial value** — fresh ids, no stored `templateId`.
+- **What is constant ships; the figures stay empty** (a seeded number is one a teacher
+  can miss).
+- **Both language sides are filled** (a test walks every template).
+- The balance sheet is **four columns** (label + figure per side, no rule between);
+  header cells span 2+2 with `covered` placeholders.
 
 ### An empty cell's prompt must fit its column
 
-`richNodes` takes `compactPlaceholder`, and table cells pass it. "Double-click to add
-English" is four words of italic prose and a figure column is as wide as "5 000", so the
-prompt wrapped to four lines and pushed the row to nearly double the height it prints at.
-Not merely untidy: the paginator measures these boxes, so the preview and Word disagreed
-about the height of any table holding an empty cell — and `data-empty-placeholder` hides
-the prompt in print by `visibility`, which deliberately *keeps the box*. The prompt is
-shortened rather than dropped: an empty cell still has to advertise that it can be typed
-in, and with nothing there a teacher cannot tell an empty cell from a covered one.
+`richNodes` takes `compactPlaceholder`; table cells pass it — the long prompt wrapped
+to four lines and changed the measured row height (the paginator measures these boxes;
+`data-empty-placeholder` hides by `visibility`, keeping the box). The empty field takes
+the cell's width (`InlineEditable.fillWidth`) so the whole cell is the click target,
+with the dashed underline as the affordance and a faint resting tint.
 
-**Shortening it then hid the target, so the empty field takes the cell's width**
-(`InlineEditable.fillWidth`). A one-character prompt is a few pixels to aim at, and the
-hover tint that signals "editable" was too small to notice — the cell read as blank paper.
-Full width makes the whole cell the target, and turns the empty style's dashed underline
-into the affordance: ruled across the cell it reads as a form field, where under a `·` it
-was invisible. A faint resting tint carries it the rest of the way, since hover cannot
-advertise a field nobody has thought to point at yet.
+- **Width only, never height** — `inline-block w-full`, no padding or `min-h`.
+  `emptyCellField.test.ts` greps for both directions.
+- **`text-left` regardless of the cell's own alignment.**
 
-- **Width only, never height** — `inline-block w-full`, no padding or `min-h`. Reserving
-  height is exactly the bug the short prompt was introduced to fix, and it is silent in
-  both directions: a reserved height looks fine on screen and breaks pagination, a missing
-  width looks fine to the paginator and leaves the cell unclickable. `emptyCellField.test.ts`
-  greps for both.
-- **`text-left` regardless of the cell's own alignment**: a figure column ranges right, and
-  a prompt hugging the right edge reads as content.
-- Only cells opt in — a stem has the width of the text column, so the long prompt fits
-  there and says more.
+### Padding resolves in one direction
 
-- **`box` writes `w:val="none"` on `insideH`/`insideV`, it does not omit them** — Word
-  inherits an unstated border from the table style, so omitting draws the very grid the
-  box exists to suppress. The frame's four sides are unchanged, which keeps an ordinary
-  table byte-identical (pinned by a test comparing stored `'all'` against unstored).
-- **The frame sits on the table, the cells go borderless** in both HTML backends, so it
-  stays one unbroken rectangle however the rows are merged.
-- **`TableCell.image` is the other half** (Q30: an extract and a photograph inside one
-  frame). An image, not a `ContentBlock[]`: a cell is one `w:p`, and a picture is the one
-  thing that can join those runs without making a cell recursive for every backend. It
-  must be added to `collectImages`' walk — emitted but uncollected is a dangling
-  `r:embed`, which Word reports as a repair error on the **whole file** rather than as
-  one missing picture.
+Teachers size padding on cell, row, column or table; OOXML has only `w:tblCellMar` and
+`w:tcMar`. `resolveCellPadding()` flattens the winner onto every `w:tc`.
 
-### Padding resolves in one direction; Word only understands the answer
-
-Teachers size padding on cell, row, column or table; OOXML has only table `w:tblCellMar`
-and cell `w:tcMar`. The four levels live in the model as editable intent;
-`resolveCellPadding()` flattens the winner onto every `w:tc`. Load-bearing:
-
-- **Each edge resolves on its own** ("roomy on top" + "tight on the left" compose).
-- **Zero is a value, not absence** (truthiness would fall through to a roomier level).
-- **The default is the old hardcoded pair** (60/108 twips), so untouched tables export
-  byte-identically; `styles.ts` spells `w:tblCellMar` *from* the constant.
-- Precedence cell → **column → row** → table: a row is what a teacher points at, a
-  column is the distribution table's axis; the narrower statement wins.
+- **Each edge resolves on its own.**
+- **Zero is a value, not absence.**
+- **The default is the old hardcoded pair** (60/108 twips) so untouched tables export
+  byte-identically.
+- Precedence cell → **column → row** → table (the narrower statement wins).
 
 ### Columns are fractions, and the preview must lay them out fixed
 
-`columnWidths` stores fractions of content width (undefined = equal), so proportions
-survive paper/margin changes. **The preview must be `table-layout: fixed` with a
-`colgroup`** — browser auto-layout sizes from content, Word from `w:gridCol`, and the
-paginator measures these boxes. `tableGeometry.test.ts` also pins: the **last column
-takes the rounding remainder** (grid sums exactly to `CONTENT_WIDTH_TWIPS`); a merged
-cell's `w:tcW` is the **sum of spanned columns**. Text wraps and the row grows (no
-`overflow-x-auto` — a scrollbar on paper hid overflow from pagination); cells set
-`overflow-wrap: break-word`.
+`columnWidths` stores fractions of content width (undefined = equal). **The preview
+must be `table-layout: fixed` with a `colgroup`** — browser auto-layout sizes from
+content, Word from `w:gridCol`, and the paginator measures these boxes.
+`tableGeometry.test.ts` pins: last column takes the rounding remainder; a merged cell's
+`w:tcW` is the sum of spanned columns. Text wraps and the row grows (no
+`overflow-x-auto`); cells set `overflow-wrap: break-word`.
 
-Widths drag on the page (`TableColumnResizer`) under the standard gesture rules
-(in-flight value local, committed once on pointer-up; delta ÷ preview scale; Escape
-abandons). Boundaries are not selectable (nothing to delete/format) — hover-revealed
-`data-print-hide` chrome reserving no space. `resizeColumn` moves **only the two
-neighbouring columns** (pointer stays on the grabbed edge), floored at
-`MIN_COLUMN_FRACTION`. `insertColumn`/`removeColumn` carry widths and per-column padding
-with them (index-addressed; dropping the arrays would discard every other set width).
+Widths drag on the page (`TableColumnResizer`): in-flight value local, committed on
+pointer-up, delta ÷ preview scale, Escape abandons. `resizeColumn` moves **only the two
+neighbouring columns**, floored at `MIN_COLUMN_FRACTION`. `insertColumn`/`removeColumn`
+carry widths and per-column padding with them.
 
 ### The table's own box, and row heights
 
-`width` and `indent` (fractions of content width) store the table's box → `w:tblW` +
-`w:tblInd`. `columnWidths` are fractions **of the table**, keeping box-resize and
-column-resize independent. `resizeTableEdge`: right edge moves width alone; left edge
-moves width *and* indent (the right edge stays put, or the drag slides instead of
-resizing).
+`width`/`indent` (fractions of content width) → `w:tblW` + `w:tblInd`. `columnWidths`
+are fractions **of the table**. `resizeTableEdge`: right edge moves width alone; left
+edge moves width *and* indent.
 
-- **A new table starts at the stem's text column**: `DEFAULT_TABLE_INDENT_TWIPS` =
-  `QUESTION_LIST_INDENTS[0].left` (derived, not typed). Flush at 0 hung it in the
-  question number's gutter; all six indented reference tables carry `w:tblInd`.
-- **The width resolves *from* the indent, and that order is load-bearing.** No stored
-  width means `1 - indent`, not 1; the pair clamps `min(indent, 1 - width)`. Resolving
-  width first at 1 annihilated every untouched table's indent — nothing stored looked
-  wrong; only the resolved box dropped it. Guarded twice (box + emitted
-  `w:tblInd`/`w:tblW`). An explicit width is honoured as stored.
+- **A new table starts at `DEFAULT_TABLE_INDENT_TWIPS` = `QUESTION_LIST_INDENTS[0].left`**
+  (flush at 0 hangs in the question number's gutter).
+- **Width resolves *from* the indent**: no stored width means `1 - indent`, not 1; the
+  pair clamps `min(indent, 1 - width)`. Guarded twice.
 
-### Alignment and indent are alternatives, not a pair
+### Alignment and indent are alternatives
 
-`align` (`w:jc`) is genuinely not `indent`: a centred table stays centred when paper or
-margins change (reference Q19 centres with `w:jc` and no `w:tblInd`; six siblings do the
-opposite). Exclusive **by construction** — two stored answers to "where is the left
-edge" is two things to disagree about:
+`align` (`w:jc`) is not `indent`: a centred table stays centred when margins change.
+Exclusive by construction:
 
-- `setTableAlign` drops `indent` when centring and stores **nothing** for `left`
-  (Word's default → untouched tables byte-identical).
-- `resolveTableBox` reports `indent: 0` for anything but `left`, so neither backend has
-  to know they are alternatives.
-- Dragging the **left edge returns `align` to `left`** — placing that edge by hand *is*
-  choosing an indent (without it the drag silently did nothing on a centred table).
-- The preview expresses alignment as **`auto` margins** (what `w:jc` means); an
-  in-flight edge drag renders as `left`, or a centred table jumps on release.
+- `setTableAlign` drops `indent` when centring and stores nothing for `left`.
+- `resolveTableBox` reports `indent: 0` for anything but `left`.
+- Dragging the **left edge returns `align` to `left`**.
+- The preview expresses alignment as `auto` margins; an in-flight edge drag renders as
+  `left`.
 
-`TableRow.minHeight` is a **floor** (`w:trHeight hRule="atLeast"`) — a dragged height
-can never clip later typing; the one place content decides height. Everything meaning
-"unchanged" is dropped from the model (full-width table stores no `width`/`indent`,
-emits no `w:tblInd`).
+`TableRow.minHeight` is a floor (`w:trHeight hRule="atLeast"`). Everything meaning
+"unchanged" is dropped from the model.
 
 ### Everything structural is reachable on the page
 
-The page carries three drags (column boundaries, outer edges, row heights) plus
-insert/delete for rows and columns — a table is illegible in a 380px panel; the position
-a teacher means is one they point at. The panel keeps exact values (as the diagram
-panel keeps coordinates). Both routes end at the same pure verbs in `model/table.ts`.
-Rules that failed in the browser before holding:
+Three drags (column boundaries, outer edges, row heights) plus insert/delete for rows
+and columns; the panel keeps exact values. Both routes end at the same pure verbs in
+`model/table.ts`. Browser-proven rules:
 
-- **Only the pointed-at row and column get controls** (all-at-once = twelve colliding
-  chips landing on the heading above).
-- **A grip may not be gated on hover** — `pointer-events: none` swallows the
-  pointer-down that would begin the drag, and the left-edge grip is approached from
-  outside the table. Grips are always live; the fix for accidental grabs was **size**
-  (7px on the border), not liveness.
-- **Horizontal and vertical grips must not cross** — a full-width row grip won the
-  z-order tie and swallowed edge drags. Row grips are inset by a grip's width.
-- **The control layer sits flush (`inset-0`)** — controls position from the table's own
-  edges. Reaching past the table is a transparent hover pad's job — hover chrome needs
-  a hit path: `:hover` follows an element box, so the box must be the bigger one — at
-  `-z-10` so clicks reach cells.
+- **Only the pointed-at row and column get controls.**
+- **A grip may not be gated on hover** (`pointer-events: none` swallows the
+  pointer-down); grips are always live, sized 7px.
+- **Horizontal and vertical grips must not cross** — row grips are inset by a grip's
+  width.
+- **The control layer sits flush (`inset-0`)**; reaching past the table is a
+  transparent hover pad's job, at `-z-10` so clicks reach cells.
 
-### A rectangle of cells can be swept, and the panel acts on all of it
+### A rectangle of cells can be swept
 
-Dragging across cells selects a rectangle — Excel's gesture — so aligning a column of
-figures is one sweep and one click instead of a click per cell. Stored in the store as
-`cellSelection` (**two corner ids**, beside `activeCell`): ids, not positions, so the
-rectangle is re-derived from the live table and a structural edit cannot leave it
-naming cells that have moved. Committing a sweep aims `activeCell` at the anchor;
-a plain click sets `activeCell` and collapses the range — one selection, two extents.
+`cellSelection` (two corner ids, beside `activeCell`) — ids, not positions, so a
+structural edit cannot leave it naming moved cells. A sweep aims `activeCell` at the
+anchor; a click collapses the range.
 
-- **`cellRects` uses the browser's own grid placement** (also Word's, via
-  `w:gridSpan`/`vMerge`): a `rowSpan` occupies its columns in the rows it spans, and a
-  covered placeholder occupies nothing. `resolveCellEdges`'s simpler per-row
-  accumulation stays as is — the T-account never merges vertically; a range must
-  handle both axes.
-- **`cellsInRange` expands to a fixed point over merged cells** it cuts through, as
-  Excel does — a sliced merge would highlight a non-rectangular region and act outside
-  what the highlight shows. Anchor/focus order is immaterial; a stale id yields the
-  empty range, and the panel falls back to the single active cell.
-- **The page and the panel share the one helper** (`TableNodeView` highlights from the
-  IR's rows, `TableBlockEditor` resolves from the block's), so the tinted cells are
-  exactly the set the bulk verb writes. Align applies through `patchCells` in **one
-  commit** (one undo entry); a button reads pressed only when the whole range agrees.
-- **A range paints as one selection, not a special cell inside a sweep**: a light fill
-  on every caught cell plus a single continuous outline around the range's outer
-  boundary — each cell draws only the boundary edges its grid rect touches, as inset
-  box-shadow segments (no reserved space). The anchor's single-cell ring is **withheld
-  while a range is active**: both chromes at once read as a locked cell inside the
-  selection, which is not a state that exists. The anchor still quietly feeds the
-  panel's structural verbs.
-- **The in-flight sweep is local state; the store is written on pointer-up** (§ drag
-  gestures commit once). The focus cell comes from `elementFromPoint` — no coordinate
-  math against the preview scale — clamped to the table it started in.
-- **A press on a cell belongs to the table's gesture**: the page marquee exempts
-  `[data-table-cell]`, or it would select questions through the very drag choosing
-  cells. The guard for "press inside an open editor" tests **`isContentEditable`, not
-  `role="textbox"`** — the idle spans are the same component unfocused and carry the
-  role too, which silently killed every sweep until a browser run caught it.
-- **Merge and the cell image step aside over a range** rather than silently acting on
-  the anchor alone — the highlight would say otherwise.
+- **`cellRects` uses the browser's own grid placement** (also Word's): a `rowSpan`
+  occupies its columns in spanned rows, a covered placeholder occupies nothing.
+- **`cellsInRange` expands to a fixed point over merged cells** (Excel's rule). A stale
+  id yields the empty range; the panel falls back to the active cell.
+- **The page and the panel share the one helper**; align applies through `patchCells`
+  in one commit; a button reads pressed only when the whole range agrees.
+- **A range paints as one selection**: light fill per cell + one continuous outline as
+  inset box-shadow segments; the anchor's single-cell ring is withheld while a range is
+  active.
+- **In-flight sweep is local state; store written on pointer-up.** Focus cell from
+  `elementFromPoint`, clamped to the starting table.
+- **The page marquee exempts `[data-table-cell]`**; the "inside an open editor" guard
+  tests **`isContentEditable`, not `role="textbox"`** (idle spans carry the role too).
+- **Merge and the cell image step aside over a range** rather than acting on the anchor.
 
 ### A cell formats like any other text
 
-`tableCell` is in `isFormattable` — per-cell formatting is the only emphasis mechanism a
-header-row-less HKDSE table has. Per-run formatting came free from teaching
-`textOfTarget` the kind. The cell's own `CellAlign` still wins over `TextFormat.align`.
-`model/table.ts` holds the structure verbs as pure functions (two surfaces perform the
-same edits). Rules: **ragged rows are real** (colSpan merges leave different cell
-counts; `insertColumn` pads short rows first, or it zig-zags); **a covered cell is
-neither merge target nor source** (growing its span consumes cells into something
-invisible); **one row and one column are the floor**, for the reason
-`MIN_ANSWER_LINES` exists (an empty table renders as absence and accumulates).
+`tableCell` is in `isFormattable`; per-run formatting via `textOfTarget`. `CellAlign`
+wins over `TextFormat.align`. `model/table.ts` rules: **ragged rows are real**
+(`insertColumn` pads short rows first); **a covered cell is neither merge target nor
+source**; **one row and one column are the floor**.
 
 ### Editing a table: structure in the panel, content on the page
 
-The panel used to render a second full grid of text inputs (a 13-row table = 26 fields
-in a 380px column) duplicating cells already editable on the page. Word's division
-holds: **structure from a panel, content in the document** — insert/delete, align,
-merge, padding; it points at the page for typing.
+Word's division: insert/delete, align, merge, padding in the panel; typing on the page.
 
-- **Table alignment sits outside the per-cell branch** (needs no subject) and is
-  labelled `Table` — it reads like the cell's align control but means an unrelated
-  thing.
-- Padding is offered in both places (panel types exact values, page drags). **Scope is
-  chosen before the numbers** (Cell/Row/Col/All — the same four fields mean four edits);
-  no cell selected falls back to the whole table. **Every field shows what is in effect
-  and whether it is inherited** (blank boxes read as "no padding"; an override must be
-  distinguishable and resettable).
-- Each edge holds a **local draft while focused**, committing on blur/Enter — the
-  displayed number is derived, so re-reading per keystroke fought the typing ("10" over
-  "3" landed on 36).
-- The page reports the clicked cell as `activeCell` in the store (the sidebar is a
-  sibling). Details: reported on **`onClickCapture`** (the cell's editable text rightly
-  stops propagation, which starved the panel of a subject); the active cell takes a
-  **ring, not a tint** (invisible inside a selected question's fill; a ring can't shift
-  geometry); a stale anchor falls back to whole-table actions (`locateCell`
-  undefined); missing per-cell controls are **explained, not greyed out**.
-- **Tab walks the table** as in Word. `InlineEditable` takes an `onTab` only tables
-  supply. The field commits and closes *before* the next opens (or the outgoing blur
-  commits over the incoming field); order comes from the **IR, not the DOM**; covered
-  cells are skipped; returning false at the end lets Tab fall through.
-- **Inserting a table picks its size first** (`ui/TableSizePicker.tsx`, Word's hover
-  grid with live caption; grows toward the pointer to 16×8; opens **downward** —
-  upward went through the sidebar tab bar).
+- Table alignment sits outside the per-cell branch, labelled `Table`.
+- Padding scope is chosen before the numbers (Cell/Row/Col/All); every field shows the
+  effective value and whether inherited; each edge holds a local draft while focused,
+  committing on blur/Enter.
+- The page reports the clicked cell as `activeCell` on **`onClickCapture`** (cell text
+  stops propagation); the active cell takes a ring, not a tint; a stale anchor falls
+  back to whole-table actions; missing per-cell controls are explained, not greyed out.
+- **Tab walks the table** (`InlineEditable.onTab`): commit and close before the next
+  opens; order from the **IR, not the DOM**; covered cells skipped; false at the end
+  lets Tab fall through.
+- **Inserting a table picks its size first** (`ui/TableSizePicker.tsx`, opens downward).
 
 ### Answer lines are a style, not direct formatting
 
-A ruled line is an empty paragraph with a bottom border. Two print-only facts: **Word
-collapses consecutive paragraphs sharing one border set** and draws the rule once —
-`AnswerLine` declares both `w:between` and `w:bottom`, ruling N lines at any N (the
-regression guard asserts the *border*, since counting `w:p` passed while the page showed
-one rule); an empty paragraph is only line-height tall, so the style sets an exact 24pt
-(trailing `w:after` falls *outside* the border). A named style because Word flags
-directly-formatted paragraphs in the margin, and it stays restylable in one edit.
-Deliberately **not** a `NodeStyle` (all three backends must understand every member;
-`AnswerLinesNode` carries no `style`).
+A ruled line is an empty paragraph with a bottom border. `AnswerLine` declares both
+`w:between` and `w:bottom` (Word collapses consecutive same-border paragraphs — the
+guard asserts the *border*, not `w:p` count) and an exact 24pt line. A named style so
+Word doesn't flag direct formatting; deliberately **not** a `NodeStyle`.
 
 ### A caption prints above or below its block
 
-`captionPlacement` on a table, image or diagram block; `below` is the default and stays
-**unstored**, so an untouched document exports byte-identically. Both conventions are real
-in the reference material — a table's heading sits above it, a figure's caption below —
-and one paper legitimately uses both, so it is per block rather than per document.
+`captionPlacement` on table/image/diagram blocks; `below` default and unstored.
 
-- **Resolved once, in the IR**, like `columnWidths` and the table box: three backends each
-  deciding what "unstored" means is three chances to disagree about where the words go.
-- **A caption above must `keepNext`**, or Word breaks the page between a heading and the
-  figure it names — the orphan the placement was chosen to avoid. Below, the *picture*
-  keeps with the caption instead; the flag moves with the group.
-- A caption remains **optional and absent by default**: no caption means no paragraph and
-  no reserved space, and the placement control is not offered until there is one to place.
-- The table's trailing spacer paragraph stays after the table whichever side the caption
-  takes — Word requires it, and it is not part of the caption group.
+- **Resolved once, in the IR.**
+- **A caption above must `keepNext`**; below, the picture keeps with the caption.
+- Optional and absent by default; the placement control appears only with a caption.
+- The table's trailing spacer paragraph stays after the table either way.
 
 ### Clipboard (`src/export/clipboard.ts`)
 
 Same IR; writes `text/html` + `text/plain` via `ClipboardItem`. Numbering becomes
-literal text (clipboard HTML cannot carry Word numbering). Carries **no page setup,
-headers, or cover** — pasting must not impose this document's page furniture on the
-destination. The cover exclusion is a decision, not an omission: clipboard HTML cannot
-express any of its mechanisms (unequal section columns, the anchored corner group, the
-column-rule shape), so it could only paste as bare paragraphs that read as lost
-content; the `.docx` is the fidelity path and carries it. A test pins the exclusion.
+literal text. Carries **no page setup, headers, or cover** — pasting must not impose
+this document's furniture; the cover cannot be expressed in clipboard HTML at all (the
+`.docx` is the fidelity path). A test pins the exclusion.
 
 ---
 
@@ -1125,502 +646,294 @@ content; the `.docx` is the fidelity path and carries it. A test pins the exclus
 
 ### Geometry in, one image out (`model/diagram.ts`, `render/diagram.ts`)
 
-A `DiagramBlock` models the DSE vocabulary in **unit space** (0..1, origin bottom-left),
-not a free drawing surface — one stored diagram renders crisply at any size and stays
-re-labellable.
+A `DiagramBlock` models the DSE vocabulary in **unit space** (0..1, origin
+bottom-left).
 
 ```
 Diagram ──diagramSvg()──┬──► preview: live inline SVG
                         └──► rasterize @3x ──► one PNG ──► .docx w:drawing · clipboard <img>
 ```
 
-Word gets a raster (SVG support varies; one image = one object a stray click cannot
-pull apart). Rasterizing needs a canvas, so it is the one browser-only async part:
-`export/diagramImage.ts` is a pre-pass returning `Map<blockId, pngDataUrl>`, keeping
-`buildParts`/clipboard synchronous and unit-testable. No map → a diagram emits **no
-drawing at all** (a dangling relationship is a Word repair error) — so `exportDocx`
-**refuses to export** instead, naming the diagram by its alt text. Emitting nothing is
-correct but silent, and a missing figure is indistinguishable from one nobody added;
-that ambiguity turned a correct export into a session-long misdiagnosis once already.
-`exportDocxBuffer` skips the check and takes its map as an argument, which is what lets
-tests and scripts drive the synchronous path.
+Word gets a raster (one image = one object). Rasterizing needs a canvas, so
+`export/diagramImage.ts` is a browser-only async pre-pass returning
+`Map<blockId, pngDataUrl>`, keeping `buildParts`/clipboard synchronous. No map →
+`exportDocx` **refuses to export**, naming the diagram (silently emitting nothing made
+a missing figure indistinguishable from one nobody added). `exportDocxBuffer` takes its
+map as an argument for tests/scripts.
 
-`collectImages` walks only `rendered.items` while the pre-pass also walks bands, title
-and instructions. **Not a bug**: a band renders as `columns` and title/instructions as
-`text`, so none can hold a picture — pinned by a test, since two walks that disagree
-would otherwise be exactly how a rasterized image goes unembedded.
+`collectImages` walks only `rendered.items`; the pre-pass also walks bands, title and
+instructions. Not a bug (none of those can hold a picture) — pinned by a test.
 
-Renderer rules that only show on a real page:
+Renderer rules:
 
-- **Axis titles lay out outside the plot**: right padding sized from the title's
-  estimated width, capped at `MAX_X_TITLE_SHARE`; `axisTitleAnchor` clamps inside the
-  canvas but never left of the arrow tip. The clamp lives there (not `diagramSvg`)
-  because `DiagramCanvas` builds the drag handle from the same call.
-- **Bilingual labels with identical sides print once** ("AD", "E₀" are symbols).
-- **Every side is then cut at its own hard breaks** (`richLines`, fed by `pickSides` —
-  the one funnel from `BiText` to drawn lines, so all seven text kinds get it). A newline
-  is ordinary run text, so a renderer that does not split prints a *space*: the reference
-  paper sets a y-axis title as "Nominal / interest rate" and a curve label as "average /
-  growth rate". Run-aware, not `runLines` on the flattened string — a diagram label is
-  exactly where `vertAlign` must survive a break ("M" + subscript "d1"). The measurements
-  follow for free: `titleRoom` counts lines, and `estimateWidth` takes the *widest*, so
-  breaking a long axis title correctly **narrows** the reserved margin.
-- **A point's label defaults to `right`** — a marked point is nearly always an
-  intersection, and up-right is where the other curve runs.
-- **Every piece of diagram text is 10pt** (13⅓px — the SVG lays out in CSS pixels and
-  exports at 96dpi, so a printed point is 96/72 px). Labels were 13px (9.75pt) and the
-  title 14px (10.5pt): *almost* the QAB's 10pt body beside real 10pt text, which reads
-  as a mistake rather than a choice. The title keeps its underline, which is what
-  actually distinguishes it in the reference papers.
+- **Axis titles lay out outside the plot**: right padding from estimated width, capped
+  at `MAX_X_TITLE_SHARE`; `axisTitleAnchor` clamps inside the canvas, never left of the
+  arrow tip (lives there because `DiagramCanvas` builds the drag handle from it).
+- **Bilingual labels with identical sides print once** (symbols like "AD", "E₀").
+- **Every side is cut at its own hard breaks** (`richLines`, fed by `pickSides` — the
+  one funnel from `BiText` to drawn lines). Run-aware, so `vertAlign` survives a break.
+  `titleRoom` counts lines and `estimateWidth` takes the widest.
+- **A point's label defaults to `right`** (intersections).
+- **Every piece of diagram text is 10pt** (13⅓px — SVG lays out in CSS px, exports at
+  96dpi). The title keeps its underline.
 
-### A diagram's words live inside its own image, and the picture is measured
+### A diagram's words live inside its own image
 
-A `title` is the diagram's **only** label — centred on the plot, underlined, drawn into
-the geometry so it rasterizes into the same single PNG. `titlePlacement` (`above` |
-`below`, reusing the block-level `CaptionPlacement`; `above` default and unstored) picks
-the side. A `DiagramBlock` therefore has **no `caption`**, alone among captionable
-blocks, and `DiagramNode` carries none for a backend to print: a caption paragraph is
-what let the words break onto their own line and drift away from the figure.
+`title` is the diagram's **only** label — drawn into the geometry, rasterized into the
+same PNG. `titlePlacement` (`above` default, unstored) picks the side. A `DiagramBlock`
+has **no `caption`** and `DiagramNode` carries none — a caption paragraph is what let
+the words drift from the figure.
 
-**Edited in the sidebar and nowhere else.** The canvas *draws* the title — it must show
-the printed picture — but it is inert there: no hit target, no element-list row, no
-inspector, and `applyDrag`/`deleteHandle` both return the diagram unchanged for a
-`diagramTitle` handle. Writing belongs in a field; one address for a diagram's words
-means no second surface to disagree with. There is deliberately **no `titleOffset`**
-(unlike `DiagramAxis`, whose title shares a crowded margin): the box is sized around the
-title, so it always has its own room and a nudge would only make two diagrams in one
-paper sit differently.
+**Edited in the sidebar and nowhere else.** The canvas draws the title but it is inert
+there (`applyDrag`/`deleteHandle` return unchanged for a `diagramTitle` handle). No
+`titleOffset` — the box is sized around the title.
 
-**`diagramSize()` measures the box from what is drawn.** `heightPx` used to be a flat
-`width * 3/4`, which made the *canvas* 4:3 and left the plot to absorb everything around
-it — adding a title visibly squashed the curves, and an untitled diagram still exported
-the strip a title would have used. Now the plot keeps `PLOT_ASPECT` and each side grows
-by exactly the room its text needs.
+**`diagramSize()` measures the box from what is drawn.** The plot keeps `PLOT_ASPECT`;
+each side grows by exactly the room its text needs.
 
-- **Width stays the teacher's number, floored by what the title needs** (it decides how
-  much of the text column the figure takes; only the height is otherwise derived). The
-  title draws at a fixed 10pt however small the figure, so a canvas narrower than the
-  words clipped them at both edges — `titleWidthFloor` widens the canvas (and the plot
-  with it) just far enough that the centred title fits, and a width that already fits is
-  returned untouched. A teacher's crop bypasses the floor: a chosen frame is theirs,
-  and clipping inside it is the canvas reporting the crop is too tight.
-- **The printed size follows the labels.** Renaming an axis or adding a title changes the
-  exported picture and the page reflows — the accepted cost of never clipping and never
-  padding.
-- **Every writer re-measures**: the factory, the panel's width field, the panel's title
-  field, and `applyResizeBlock` (a drag must re-measure, not scale the old ratio, or a
-  titled diagram carries its extra room forward at every new width).
-- `model/edits.ts` and `model/factories.ts` take a **value** import from `render/diagram`.
-  Safe because `render/diagram.ts` imports only *types* from `model/`, so the edge stays
-  one-way — and a second copy of the measurement is exactly what the shared-projection
-  rule exists to prevent.
-- `titleRoom()` is shared by the projection (which reserves the space) and
-  `diagramTitleAnchor()` (which places the text in it), reserved **on the title's own
-  side only**. A title below is measured back from the canvas edge, minus its extra
-  lines: measuring forward from the plot overshot the reserved room and printed the
-  underline and a bilingual second line outside the picture.
+- **Width stays the teacher's number, floored by what the title needs**
+  (`titleWidthFloor`). A teacher's crop bypasses the floor.
+- **The printed size follows the labels** — renaming an axis reflows the page; the
+  accepted cost of never clipping and never padding.
+- **Every writer re-measures**: factory, panel width field, panel title field,
+  `applyResizeBlock` (a drag re-measures, never scales the old ratio).
+- `model/edits.ts` and `model/factories.ts` take a value import from `render/diagram`
+  (safe: `render/diagram` imports only types from `model/`).
+- `titleRoom()` is shared by the projection and `diagramTitleAnchor()`, reserved on the
+  title's own side only; a title below is measured back from the canvas edge.
 
-`DIAGRAM_TEMPLATES` ships nine starting shapes (blank, supply-demand, demand-shift,
-AD-AS, money market, tariff, import quota, proportional tax, PPC). A template is only an
-initial value — plain geometry, fresh ids, never looked up again.
+`DIAGRAM_TEMPLATES` ships nine starting shapes. A template is only an initial value.
 
 ### A teacher can crop the frame, and the frame is the printed size
 
-Measuring reserves *vertical* room for the title but the canvas width stays the
-teacher's number — so a title wider than the picture clips at both edges ("ure 1: …
-econom"), and no measurement can fix it without also deciding how much white a teacher
-wants. `Diagram.crop` is that decision: four pads from the plot's edges to the canvas
-edges (px at nominal size), replacing **every** derived pad when present. Absent means
-measured, so untouched documents render byte-identically (pinned by a test that freezes
-the measured pads as a crop and asserts the same SVG).
+`Diagram.crop` is four pads from the plot's edges to the canvas edges (px at nominal
+size), replacing **every** derived pad when present. Absent means measured — untouched
+documents render byte-identically (pinned by a freeze test).
 
-- **Photo-crop semantics: the frame is the printed size.** The plot keeps its printed
-  size and its 4:3; cropping tighter shrinks the block on the page, cropping wider (the
-  fix for a long title) widens it. Committing writes `crop` *and* the block's
-  `widthPx`/`heightPx` in one change.
-- **A crop chooses the white around content; it must not move the content.** The title
-  and axis titles anchor to `Projection.frame` — where the measured edges *would* sit —
-  not to the real canvas edges, so dragging the frame reveals white rather than
-  towing the words away from the plot. Under auto sizing `frame` equals the real edges,
-  which is what keeps the auto path byte-identical. A frame cropped tighter than the
-  words need visibly clips them on the canvas — the surface saying the crop is too
-  tight, deliberately not prevented.
-- **Cropped, the size ignores language**: a chosen frame must not resize itself when
-  the paper switches to bilingual, so `diagramSize`'s crop branch reads only the pads.
-- **The crop workspace is the same renderer, not a second projection**: the canvas's
-  Crop mode redraws the diagram with the current pads inflated by `CROP_MARGIN` and
-  overlays a draggable frame; the margin is a step size, not a ceiling (committing at
-  the workspace edge re-derives the workspace around the new frame). The workspace
-  height comes from `diagramSize` on that inflated crop, **not** from the stored height
-  plus margins: an auto-measured height embeds a plot that is not exactly 4:3 (the
-  measured x-title reserve narrows the plot after the height was derived), and building
-  the workspace from it showed one shape while release stored another — a west-edge
-  drag flattened the curves the moment the pointer let go.
-- **Frame gestures follow the canvas's own rules**: in-flight rect in state, one commit
-  on pointer-up, the release recomputing its rect from the gesture rather than reading
-  state (the `marqueeEnd` trap), and a release that never travelled commits nothing. The
-  grips clamp against the plot — a frame dragged across the axes would not be a crop
-  but a silent deletion of geometry.
-- **Crop is a mode**, not always-on handles: the frame's grips live exactly where
-  drawing gestures start. Entering it clears the selection and the caret; every
-  shortcut but Escape is inert while it is up; "Auto frame" drops the crop and lets
-  measuring decide again.
+- **Photo-crop semantics**: the plot keeps its printed size and 4:3; committing writes
+  `crop` *and* `widthPx`/`heightPx` in one change.
+- **A crop must not move the content**: title and axis titles anchor to
+  `Projection.frame` (where measured edges would sit). Under auto sizing `frame` equals
+  the real edges. A too-tight frame visibly clips — deliberately not prevented.
+- **Cropped, the size ignores language** (a chosen frame must not resize on language
+  switch).
+- **The crop workspace is the same renderer**: Crop mode redraws with pads inflated by
+  `CROP_MARGIN` (a step size, not a ceiling); workspace height comes from `diagramSize`
+  on the inflated crop, **not** stored height plus margins.
+- **Frame gestures follow canvas rules**: in-flight rect in state, one commit on
+  pointer-up, release recomputes from the gesture, no-travel commits nothing. Grips
+  clamp against the plot.
+- **Crop is a mode**: entering clears selection and caret; every shortcut but Escape is
+  inert; "Auto frame" drops the crop.
 
 ### Drawing (`model/diagramDraw.ts`, `components/editor/DiagramCanvas.tsx`)
 
-**The canvas owns the geometry; the panel owns everything else.** `DiagramEditor` was once
-a second complete editor — five tabs, every element re-listed, every coordinate typed as a
-percentage — and it failed the way the table panel's grid of text inputs failed: you
-cannot see what you are editing, and a diagram is illegible in a 400px column. It now
-keeps only what the canvas has no opinion about (Template, Width, Alt text, Caption) plus
-the live thumbnail that opens the canvas. A cut like this must lose no capability:
-`showOrigin` and a free label's align/italic existed *only* in the deleted tabs and moved
-to the canvas, and an axis title deleted to nothing gets a "Name the x-axis" affordance —
-empty text draws nothing, so there would otherwise be no way back.
+**The canvas owns the geometry; the panel owns everything else** (Template, Width, Alt
+text, Caption + the thumbnail that opens the canvas). `showOrigin` and free-label
+align/italic live on the canvas; an axis title deleted to nothing gets a "Name the
+x-axis" affordance.
 
-The canvas draws handles in a separate `pointer-events-none` SVG **over** the real one, so
-the geometry underneath stays byte-identical to what exports.
+Handles draw in a separate `pointer-events-none` SVG **over** the real one, so the
+geometry underneath stays byte-identical to what exports.
 
 - **The projection is shared, not re-derived**: `diagramPlot()` returns the projection
-  `diagramSvg()` uses (with inverses `ux`/`uy`); label anchors (`curveLabelAnchor` etc.)
-  are exported from the render module and fed to `hitTest`.
-- **Gestures replay from geometry captured at pointer-down** — one idempotent
-  transform, never accumulating.
-- **A near-flat line straightens itself** (`snapToAxis`, ±5°), because a world price or a
-  quota must be *exactly* level and freehand cannot hit exact. The angle is judged in
-  **screen space, not unit space**: the plot is drawn wider than tall, so the two disagree
-  — a line the teacher sees at 4° measures 5.7° stored, and a unit-space test refuses to
-  straighten what plainly looks flat. **Shift turns the assist off** (the inverse of its
-  old meaning) — auto-straightening covers what Shift was for, so the modifier is worth
-  more as the escape hatch for a deliberately shallow slope. Point-snapping wins over it:
-  landing on an intersection is the more specific intent, and straightening afterwards
-  would drag the end back off the point it caught. An orange guide reports it, or the
-  assist is invisible until you let go.
-- **Any text is edited where it is drawn** — double-click opens a caret on the words
-  (single click still selects, so drag-to-move survives). `handleText`/`setHandleText` are
-  the one address for a handle's writing, so the editor cannot open on one field and save
-  to another; a `curve` handle deliberately carries no text, which is what lets
-  double-clicking a line still add a kink while double-clicking its *name* retypes it.
-- **A label's hit target is its drawn box, not its anchor.** An anchor is a *baseline*
-  positioned at the start, middle or end of the text depending on how it is anchored — so
-  it is not where the words are, and distance-to-anchor left a long caption clickable only
-  near one edge. `LabelAnchor.box` carries the browser's own `getBBox()` measurement
-  (exact where an estimate is not: CJK widths, superscripts, the font that really loaded).
-- **A drag lets go of what it moved**: press arms, ~4px begins, release **deselects** a
-  single dragged element (else the next reach moves the previous shape). Multi-element
-  selections survive their drag; shift-click toggles membership.
-- **Cursors are bucketed in screen space** (`cursorFor`); unit y grows up, screen y
-  down — the wrong negation silently swaps the two diagonals.
-- Hit-testing prefers **handles over bodies**, topmost among bodies; text competes with
-  vertices and both beat bodies (a curve's name is drawn beside its line). Snapping
-  catches intersections and existing points, stores nothing; `pointAt()` selects an
-  existing point rather than stacking an invisible twin on it.
-- **Selection is a set.** Marquee catches only elements **fully** inside (curves span
-  the plot — partial overlap would catch everything). Clicking a selected element keeps
-  the selection; multi-drags never snap (snapping the anchor teleports the group).
-- `⌘C/V/X/D` use a **canvas-local clipboard** (no sensible text/plain form; the system
-  clipboard prompts mid-drawing). `pasteInto` re-ids and offsets (repeatable), and
-  paste selects what it created — copy → paste → drag builds "S₁ → S₂".
-- The stage renders at a **zoom multiple** (default 2×) of stored size; zoom scales
-  display only (`toUnit` divides back; handle radii divide too), asserted by comparing
-  path data across zoom.
+  `diagramSvg()` uses (with inverses `ux`/`uy`); label anchors are exported from the
+  render module and fed to `hitTest`.
+- **Gestures replay from geometry captured at pointer-down** — idempotent, never
+  accumulating.
+- **A near-flat line straightens itself** (`snapToAxis`, ±5°, judged in **screen
+  space** — the plot is wider than tall, so unit space disagrees). **Shift turns the
+  assist off.** Point-snapping wins over it. An orange guide reports it.
+- **Any text is edited where it is drawn** — double-click opens a caret
+  (`handleText`/`setHandleText` are the one address); a `curve` handle carries no text,
+  so double-clicking a line adds a kink while double-clicking its name retypes it.
+- **A label's hit target is its drawn box, not its anchor** (`LabelAnchor.box` carries
+  `getBBox()`).
+- **A drag lets go of what it moved**: press arms, ~4px begins, release deselects a
+  single dragged element. Multi-element selections survive their drag.
+- **Cursors are bucketed in screen space** (`cursorFor`); the wrong y negation swaps
+  the two diagonals.
+- Hit-testing prefers handles over bodies, topmost among bodies; text competes with
+  vertices. Snapping catches intersections and points, stores nothing; `pointAt()`
+  selects an existing point rather than stacking a twin.
+- `⌘C/V/X/D` use a **canvas-local clipboard**; `pasteInto` re-ids and offsets, and
+  paste selects what it created.
+- The stage renders at a zoom multiple (default 2×); zoom scales display only,
+  asserted by comparing path data across zoom.
 
 ### Every label moves, and stays attached
 
 All seven text kinds drag. Only free `DiagramLabel`s store absolute positions;
-everything else stores an **offset from its own anchor** (`labelOffset`, tick `offset`,
-`titleOffset`), so re-dragging a curve carries its name. Constraints: a drag
-**accumulates the pointer delta onto the offset** (never snapping to the pointer);
-**tick labels slide along their own axis only** (one scalar; `ew`/`ns` cursor advertises
-it); axis titles nudge inside their reserved room. A point label has two systems: the
-eight compass slots (`labelSide`, what templates ship) and a free-drag `labelOffset`
-that **supersedes** them; picking a side clears the offset, `ResetLabelPosition` does
-the same elsewhere. Deleting anchored text deletes the **text**, never its anchor;
-copying takes the whole anchor.
+everything else stores an **offset from its own anchor**, so re-dragging a curve
+carries its name. A drag accumulates the pointer delta onto the offset; tick labels
+slide along their own axis only; axis titles nudge inside their reserved room. A point
+label: eight compass slots (`labelSide`) or a free-drag `labelOffset` that supersedes
+them; picking a side clears the offset. Deleting anchored text deletes the text, never
+its anchor.
 
 ---
 
 ## The LQ mode (Question-Answer Book)
 
-A Paper 2 booklet is mostly writing room: the candidate answers *in* it, so the answer
-space is the product and the page count is decided by how much room each question is
-*given*. Everything here is opt-in data — a new element kind, new optional fields, a
-conditional style — so a document that uses none of it exports byte-identically (asserted: no `LqAnswerLine` in styles.xml, no anchors in the header).
+Everything here is opt-in data, so a document using none of it exports byte-identically
+(asserted: no `LqAnswerLine` in styles.xml, no anchors in the header).
 
 ### The booklet is a 10pt document
 
-`Worksheet.baseFontSize` (points, absent = 11, in `KNOWN_KEYS`) is the document's body
-size; `lqMock` seeds 10. A **document** property, not per-element formatting: the
-reference booklet's whole body — stems, parts, marks, table cells — is 10pt (its every
-run is `w:sz="20"`, confirmed by the manually refined export), and seeding it as
-`TextFormat` on each element would revert to 11pt on the first question the teacher
-types. Three consumers: `buildStylesXml` scales docDefaults, `Normal` and every
-body-sized style (display styles — title, section heading, captions — keep their own
-sizes); the preview sets the same size inline on `.paper` sheets *and the pagination
-probe*; `renderCover` prints "INSTRUCTIONS" at it. The **fixed 12pt line does not
-shrink** — 10pt text rides the same 240-twip rhythm, which is exactly how the reference
-sets it, and why `exactLineFor` clamps everything ≤11pt to 240. The preview's
-`formatStyle` mirrors that clamp (`lineHeight: 12pt` at ≤11pt) — the bare `12/11` ratio
-it used shrank a 10pt line to a box Word never prints, invisible while every override
-was ≥11pt. Absent exports byte-identical styles; cover lines that must not follow the
-body size (identity lines, corner code) store their own 11pt.
+`Worksheet.baseFontSize` (points, absent = 11, in `KNOWN_KEYS`); `lqMock` seeds 10. A
+**document** property, not per-element formatting (seeding `TextFormat` per element
+would revert on the first typed question). Three consumers: `buildStylesXml` scales
+docDefaults/`Normal`/body-sized styles (display styles keep their sizes); the preview
+sets the same size on `.paper` sheets *and the pagination probe*; `renderCover` prints
+"INSTRUCTIONS" at it. **The fixed 12pt line does not shrink** — `exactLineFor` clamps
+everything ≤11pt to 240, and the preview's `formatStyle` mirrors the clamp. Cover lines
+that must not follow the body size store their own 11pt.
 
 ### The dotted answer line is a different primitive
 
-`answerSpace` (model, IR and element kind) is **not** `answerLines` with a flag: the
-mechanism (dotted underline drawn over a right-aligned tab vs a paragraph bottom
-border), the pitch (22.1pt vs 24pt) and the Word style all differ, and folding them
-together would make existing documents' meaning depend on a variant flag they never
-stored.
+`answerSpace` is **not** `answerLines` with a flag: the mechanism (dotted underline
+over a right-aligned tab vs a paragraph bottom border), the pitch (22.1pt vs 24pt) and
+the Word style all differ.
 
-- **The pitch is measured, not chosen**: the reference booklet's dotted lines land 46px
-  apart in a 150dpi raster — 22.08pt ≈ **`LQ_LINE_PITCH_TWIPS` = 442**. The reference
-  reaches it as `w:before="240"` plus an auto line at its 10pt default face; this app
-  spells the same height as **one exact line box**, keeping the fixed-line invariant
-  unbroken and the pitch identical in Word, LibreOffice, the preview and the paginator —
-  an auto line is whatever the renderer's font metrics say, which is exactly the
-  disagreement the fixed-line model exists to prevent. (`w:before="320" w:after="240"`,
-  once recorded as the reference's spelling, occurs **once** in 425 dotted paragraphs;
-  the dominant spelling is `w:before="240"` alone. Re-measure before trusting.)
-- **The tab stop is the live content width** — the reference's `w:pos="9300"` is nothing
-  but *its* content width (11909 − 1296 − 1309).
-- **The tab run restates `w:u w:val="dotted"`**: Word underlines a tab only when the run
-  wearing it is underlined; the style's own `w:u` alone dots nothing.
-- **The style is emitted only when the document uses an answer space**, keyed on the
-  **rendered IR**, not the layout list — an answer space also comes from a question part,
-  and keying on the layout alone shipped paragraphs referencing a style the package
-  lacked (LibreOffice then fell back to default tab stops and drew half-inch stubs).
-- The preview draws each line as a `border-bottom: 1px dotted` row at the same twips;
-  `scripts/lq-pitch.py` measures the rendered pitch rather than trusting either spelling.
+- **The pitch is measured**: `LQ_LINE_PITCH_TWIPS` = 442, spelled as **one exact line
+  box** (an auto line is whatever the renderer's metrics say — the disagreement the
+  fixed-line model exists to prevent).
+- **The tab stop is the live content width.**
+- **The tab run restates `w:u w:val="dotted"`** — Word underlines a tab only when the
+  run wearing it is underlined.
+- **The style is emitted only when the rendered IR uses an answer space** (an answer
+  space also comes from a question part; keying on layout alone shipped a dangling
+  style reference).
+- The preview draws `border-bottom: 1px dotted` rows at the same twips;
+  `scripts/lq-pitch.py` measures the rendered pitch.
 
 ### Answer space lives on the part, and also in the flow
 
 `QuestionPart.answerSpace` / `QuestionSubPart.answerSpace` (optional line counts) print
-dotted lines directly after the part or sub-part — where the reference puts the room:
-1.(a), its lines, then (b). A flow element cannot sit inside a question, which is why
-the fields exist; the flow-level `answerSpace` element remains the shape for whole-sheet
-runs. Absent prints nothing, like marks. Both are edited in the structured panel
-(clearable number fields); the flow element resizes on the page like answer lines and
-splits across sheets with its own pitch.
+dotted lines directly after the part/sub-part; the flow-level `answerSpace` element
+remains the shape for whole-sheet runs. Absent prints nothing.
 
-**A QAB question starts at a page top, by explicit break.** The preview keeps items
-whole while Word splits a too-tall question mid-space, so a question sized near a page
-boundary is exactly where the two backends part company. The reference's own convention
-— every question opens a fresh page, pure-space sheets between — is what keeps them
-agreeing, and `scripts/lq-fixtures.test.ts` encodes it.
+**A QAB question starts at a page top, by explicit break** — the preview keeps items
+whole while Word splits a too-tall question, so the reference's own convention (every
+question opens a fresh page) is what keeps the backends agreeing
+(`scripts/lq-fixtures.test.ts`).
 
 ### A section can carry its derived total
 
-`section.showMarks` appends the derived "(44 marks)" suffix exactly as `partHeader`
-does — the QAB's heading is "Section A (44 marks)" on one line, and its numbering runs
-1..14 across all three sections, so the marks cannot ride on a separate restart-bearing
+`section.showMarks` appends the derived "(44 marks)" suffix as `partHeader` does — the
+QAB numbers 1..14 across three sections, so the marks cannot ride on a restart-bearing
 element. The QAB's sections set `restartNumbering: false`.
 
 ### Fill-to-page: the count is the paginator's output
 
 `answerSpace.fill` inverts the sizing: `lines` becomes the **resolved** value the
-paginator last wrote, not the author's input.
+paginator last wrote.
 
-- **Resolution is a single pass over the packed layout** (`resolveFillCounts`,
-  `pagination.ts`): a fill element absorbs its sheet's slack and therefore *ends* the
-  sheet, so resolving it never changes what anything before it packed onto — no
-  fixed-point iteration. The first fill on a sheet takes the slack; a second gets the
-  floor.
-- **The packer places a fill by intent, not by measured height** (`PackItem.fillsPage`):
-  its height is only the last-resolved count, and packing by it gave two stable states —
-  absorb this sheet's remainder, or take the next sheet whole — with the outcome decided
-  by whichever stale number the document happened to store. A fill lands on the current
-  sheet and consumes the rest of it; the next item starts a fresh sheet.
+- **Resolution is a single pass over the packed layout** (`resolveFillCounts`): a fill
+  absorbs its sheet's slack and *ends* the sheet — no fixed-point iteration. First fill
+  takes the slack; a second gets the floor.
+- **The packer places a fill by intent, not measured height** (`PackItem.fillsPage`) —
+  its height is only the last-resolved count, and packing by it gave two stable states.
 - **The resolved count is written into the model** by `resolveAnswerSpaceFills` — the
-  one deliberate bypass of `commit()`: the value is derived, so recording it must not
-  spend an undo entry (resolution fires per measurement pass and would interleave
-  derived entries between every real edit). Double-gated by value comparison in the
-  effect and the store, which is what stops the measure → write → measure loop. Written
-  into the model rather than kept beside it so the exporter, clipboard and thumbnails
-  read the number the preview resolved instead of recomputing it — two computations of
-  this number is how the preview and the paper would disagree about where pages break.
-- The page withholds the resize handle on a fill element (a dragged value would be
-  overwritten by the next resolution); the outline shows a "fills page" pill instead of
-  a stepper.
+  one deliberate bypass of `commit()` (derived, must not spend undo entries).
+  Double-gated by value comparison in the effect and the store, which stops the
+  measure → write → measure loop. Written into the model so exporter/clipboard/
+  thumbnails read the number the preview resolved.
+- The page withholds the resize handle on a fill element; the outline shows a "fills
+  page" pill.
 
 ### Per-page furniture is one running header of anchored shapes
 
 `worksheet.pageFurniture` (`frame` + `marginNote`, in `KNOWN_KEYS`) reproduces the
-reference's page frame and rotated margin sentences. Its mechanism is the reference's
-own — anchored shapes in the header (`prstGeom prst="rect"`, two `bodyPr vert="vert270"`
-textboxes) — but as **one running header**, not the reference's 21: those exist only so
-Word can vary incidental apparatus per page, and stripped of that the furniture is
-identical on every sheet, so no per-page sections are needed (§ a page is derived).
+reference's page frame and rotated margin sentences as anchored shapes in **one running
+header** (the reference's 21 headers exist only to vary incidental apparatus).
 
-- **Geometry is measured out of the reference's `header2.xml`** (EMU ÷ 635) and shared
-  through `model/pageFurniture.ts` (`furnitureBoxes`): frame spanning the text column
-  ±140tw, from 1280tw below the page top to 1592tw above the bottom, 0.75pt stroke;
-  notes ~245tw wide, 4409tw tall, in the margins. Everything is positioned
-  `relativeFrom="page"` so the frame ignores whatever else the header holds; resolved
-  from the live page setup so a margin change moves the frame with the column it frames.
+- **Geometry is measured out of the reference's `header2.xml`** and shared through
+  `model/pageFurniture.ts` (`furnitureBoxes`), positioned `relativeFrom="page"`,
+  resolved from live page setup.
 - **The furniture forces a header part** even when no band would print, rides on the
-  page-1 part whatever the band state ("blank on page 1" blanks the bands, not the
-  frame), and the cover stays frame-free because the cover's section carries no header
-  reference — all as the reference has it.
-- The preview mirrors it as an absolutely positioned per-sheet layer, deliberately
-  **not** `data-print-hide` — the one on-page layer that must print.
-- **The margin note's direction is per script, and the two mechanisms are different
-  things.** Latin has no vertical typesetting convention, so the whole line is *rotated*:
-  `vert270` in the `.docx`, `rotate(-90deg)` over a horizontal line in the preview
-  (swapping the strip's width and height, then re-centring on the box). Chinese does have
-  one, and the reference booklet uses it: glyphs stay **upright** and stack one per line,
-  top-to-bottom — `vert="eaVert"` in the `.docx`, `writing-mode: vertical-rl` with no
-  rotation at all in the preview. Both single-mechanism answers have shipped and both were
-  wrong for one script: `vertical-rl` + `rotate(180deg)` for everything printed Chinese
-  upside down and bottom-to-top (a vertical writing mode orients glyphs per script, so the
-  180° stands Latin up and inverts CJK), and rotating everything `-90°` stood the Chinese
-  back up but laid it sideways, a quarter turn off the reference.
-  - **`upright="1"` belongs to the rotated case only.** It means "keep the glyphs
-    horizontal whatever the frame does", which is meaningful for `vert270` and
-    contradicts `eaVert` outright.
-  - **An upright strip must be wider than a rotated one** (`noteWidthVertical`): a
-    rotated strip need only be as thick as the line, an upright one as wide as a whole
-    glyph. `furnitureBoxes` takes `verticalNote` so both backends resolve the same box —
-    the exporter writes it as EMU and the preview as millimetres, and two widths is the
-    drift that module exists to prevent. The wider strip grows *away* from the text
-    column, or the left one prints over the frame.
-  - **LibreOffice mis-renders `eaVert`**, splitting the run across two overlapping
-    columns regardless of box width, height, `wrap`, `w:jc` or `upright`. The emitted
-    part is one correct run per box, so this is a renderer limitation, not a defect in
-    the file — but it means the `lq-verify` LibreOffice leg cannot judge a Chinese
-    margin note, and the preview is the surface to check it on.
-- **The same sentence prints a third time, horizontal, below the frame's bottom edge**
-  — the reference anchors it in each footer part (`footer2.xml`, a textbox riding above
-  the footer paragraph), but here it joins the other furniture in the running header,
-  page-anchored to the same place (~1100–1400tw above the page bottom, ranged left at
-  the text column, measured off page 10's raster). One vehicle for all four shapes.
-- **Wording is authorable with a neutral default** ("Do not write in this margin."):
-  the reference's own margin sentence is rubric, and structure is reproduced, never
-  prose. The phrase blocklist pins it.
+  page-1 part whatever the band state, and the cover stays frame-free (its section
+  carries no header reference).
+- The preview mirrors it as an absolutely positioned per-sheet layer — deliberately
+  **not** `data-print-hide` (the one on-page layer that must print).
+- **The margin note's direction is per script**: Latin is *rotated* (`vert270` /
+  `rotate(-90deg)`); Chinese stacks upright glyphs (`vert="eaVert"` /
+  `writing-mode: vertical-rl`, no rotation). `upright="1"` belongs to the rotated case
+  only. An upright strip must be wider than a rotated one (`noteWidthVertical`, via
+  `furnitureBoxes` so both backends resolve the same box), growing away from the text
+  column. LibreOffice mis-renders `eaVert` — the preview is the surface to check
+  Chinese notes on.
+- The same sentence prints a third time, horizontal, below the frame's bottom edge, in
+  the same running header.
+- **Wording is authorable with a neutral default** ("Do not write in this margin.") —
+  the reference's own sentence is rubric. The phrase blocklist pins it.
 
 ### The booklet's running footer is part of its shape
 
-`qabFooter()` (`model/newWorksheet.ts`) seeds `lqMock` with the reference's own footer
-(`footer2.xml`): one band — the paper code with a live page number at the left, small
-("2025-26-ECON 2–14" at 9pt), and the bare number again at the centre, large (14pt),
-the number a candidate flips to. Both are the existing `pageNumber` band field: the
-code is authored `prefix` wording around the derived number, so it stays editable on
-the page and the numbers stay live `PAGE` fields. No new export mechanism.
+`qabFooter()` seeds `lqMock` with the reference's footer: paper code + live page number
+left (9pt), bare number centred (14pt). Both are the existing `pageNumber` band field —
+authored prefix around the derived number, live `PAGE` fields.
 
 - **A QAB always prints its footer and never offers a header.** `isQabDocument()`
-  (furniture present — only `lqMock` creates it) is the switch; `DocumentSettings`
-  **withholds** the header section and the footer's on/off toggle rather than greying
-  them out, with a sentence saying why. The header part is the furniture's own vehicle,
-  and no page of the reference booklet carries a headed line.
-- **The cover is page 1, and the preview must count it.** Word's `PAGE` field counts
-  the cover's sheet (the reference's cover footer prints "1"), but the paginator never
-  sees the cover, so the preview's band numbers add the offset back. Without it the
-  preview's footer read one lower than the exported file's on every covered page —
-  caught by the lq-verify contact sheet (preview "3" beside docx "4" on the same
-  physical sheet), invisible to any single-backend check.
+  (furniture present) is the switch; `DocumentSettings` **withholds** the header
+  section and the footer toggle, with a sentence saying why.
+- **The cover is page 1, and the preview must count it** — Word's `PAGE` field counts
+  the cover's sheet but the paginator never sees it, so the preview's band numbers add
+  the offset back.
 
 ### The document type leads the wizard
 
-`NewWorksheetOptions.documentType` names the four documents this app makes —
-`classroom`, `paper1`, `lqWorksheet`, `lqMock` — and the form asks it **first**, as
-cards, deriving cover, sections, furniture and seeding from the one answer. It used to
-be assembled from parts (a cover radio plus a sections checkbox), which made choosing
-"Paper 2 cover" + "sections" secretly mean the QAB while the plain LQ worksheet was not
-reachable at all. The older `cover` option maps onto the type (`mcq` → `paper1`,
-`writeIn` → `lqMock`) so pre-type callers produce exactly what they produced.
+`NewWorksheetOptions.documentType` — `classroom`, `paper1`, `lqWorksheet`, `lqMock` —
+is asked **first**, as cards, deriving cover, sections, furniture and seeding. The
+older `cover` option maps onto the type.
 
-- **`paper1` is the MCQ paper**: the Paper 1 cover, a running footer, the derived lead-in
-  and "END OF PAPER" — and **no sections**, because the reference (DSE 2021 P1) runs as
-  one unbroken sequence of questions. See § the MCQ paper's own shape.
-- **`lqWorksheet` is the plain long-question set**: dotted answer space with no exam
-  apparatus — no cover, no furniture, no sections.
-- **`lqMock` is the booklet**: Paper 2 cover, Sections A/B/C with derived totals and
-  continuous numbering, the "Answer any ONE question." note as its own element, and the
-  page furniture. Its sections are its shape, so the checkbox is not offered; the form
-  says what the type decided instead of silently taking the option away.
-  - **The booklet closes its sections the reference's way**: bold centred
-    "END OF SECTION A/B" after each of the first two sections and "END OF PAPER" at the
-    very end (Section C has none — the paper's end is its end; Chinese sides 甲部完／
-    乙部完／全卷完). Seeded as ordinary text elements like the "Answer any ONE
-    question." note — landmarks a teacher drags questions in front of, not derived
-    furniture — and the seeded sample question lands *inside* Section A, before its END
-    line.
+- **`paper1`**: Paper 1 cover, running footer, derived lead-in, "END OF PAPER", **no
+  sections** (the reference runs unbroken).
+- **`lqWorksheet`**: dotted answer space, no exam apparatus.
+- **`lqMock`**: Paper 2 cover, Sections A/B/C with derived totals and continuous
+  numbering, the "Answer any ONE question." note, page furniture. Closing lines are
+  seeded as ordinary text elements (bold centred "END OF SECTION A/B" / "END OF PAPER";
+  Section C has none; Chinese 甲部完／乙部完／全卷完), and the sample question lands
+  inside Section A before its END line.
 - **Both LQ types seed one sample question** (`seedSample`, on by default, invented
-  wording under the copyright window): per-part answer space lives inside the
-  structured panel, so an empty LQ document hides its whole point until the teacher
-  discovers the field. The mock places the sample directly under Section A. The harness
-  fixture opts out — it authors its own questions and rebuilds the flow positionally.
+  wording) — an empty LQ document hides its whole point. The harness fixture opts out.
 
 ### `scripts/lq-verify.mjs` is the booklet's harness
 
-Modelled on `cover-verify.mjs`, and aimed at its blind spot: it asserts the **page
-count** in all three backends (a booklet is a length claim), rasterises the **pure
-answer page** — an interior sheet, not page 1 — against the reference's page 10, and
-**measures the dotted pitch** off a 150dpi raster (`lq-pitch.py`, expecting the
-reference's 46px). It also asserts fill-to-page's contract live: the browser's resolved
-fill count must equal the count the fixture stored — which is what the `.docx` exported, so
-equality *is* the preview and the paper agreeing about the last sheet. Copyright guards
-mirror the cover's: a phrase blocklist that always runs, and a 6-word sliding window
-over the gitignored reference.
+Asserts the **page count** in all three backends, rasterises a pure answer page against
+the reference's page 10, measures the dotted pitch (`lq-pitch.py`), and asserts the
+browser's resolved fill count equals the stored count (= the preview and the paper
+agreeing about the last sheet). Copyright guards mirror the cover's.
 
 ---
 
 ## The MCQ paper (Paper 1)
 
-Three things the reference (DSE 2021 P1) carries that a worksheet does not, all seeded by
-`paper1Layout()` / `examFooter()` and all editable afterwards like any other content.
+Seeded by `paper1Layout()` / `examFooter()`, all editable afterwards.
 
 ### The lead-in counts the questions, and the count is derived
 
-"There are 45 questions in this paper.  Choose the **BEST** answer for each question." is
-the `questionCount` layout element: **authored `prefix` · derived number · authored
-`suffix`**, the same decomposition a `BandField` uses (§ a field is authored wording
-around a derived value). The wording stays rewordable — a school writing "This paper
-contains 45 items." retypes two sides — while the number cannot go stale.
-
-- **The count comes from the numbering plan**, not `questions.length`: the plan is what
-  the printed numbers come from, so the sentence counts exactly the questions a candidate
-  can see and number through.
-- **It has more teeth than a stale marks total.** The paper's own cover tells the
-  candidate to check that every question is there ("Look for the words 'END OF PAPER'
-  after the last question"), so a wrong count sends them hunting for a page that was never
-  missing.
-- **Both sides stay unstored until retyped**, so an untouched element picks up any later
-  correction to the default phrasing, and "BEST" is bold **per run** — a stretch of
-  characters, not a property of the line (§ per-run formatting).
+The `questionCount` layout element: **authored `prefix` · derived number · authored
+`suffix`** (the `BandField` decomposition). The count comes from the numbering plan,
+not `questions.length`. Both sides stay unstored until retyped; "BEST" is bold per run.
 
 ### One footer shape, two papers
 
-`examFooter(code, paperNumber)` serves both: paper code left, page number centred, the
-paper number in the code the only thing that differs ("…-ECON 1–17" against "…-ECON 2–14").
-Two seeded footers would be two places to fix one wording change.
+`examFooter(code, paperNumber)` serves both; the papers' one real disagreement is the
+centre number's size (14pt booklet, 9pt Paper 1 — measured off the references).
 
-- **The centre number's size is the papers' one real disagreement** — 14pt on the booklet,
-  9pt on Paper 1. Measured off page 2 of the 2021 paper at 150dpi: both clusters ~13–14px
-  tall against the booklet's 16px, the number centred on the page (x 623 against a page
-  centre of 620.5) and the code ranged left at the margin (x 147 ≈ 1"). A QAB is a booklet
-  a candidate flips through; an MCQ paper is read straight through and answered elsewhere.
-- **A `PAGE` field must carry the field's whole formatting, not just its fonts.** The
-  field is five runs (begin · instruction · separate · fallback · end) and Word takes the
-  displayed number's size from *them* — built from `rFonts` alone, a sized page number
-  silently reverted to the document default while the authored wording beside it printed
-  correctly. The QAB's footer shipped like that, its "big number" printing at 11pt.
-  Invisible outside the exported file: the model is right and the preview draws its own
-  chip at the right size. `bandWording.test.ts` asserts every field run carries the size.
+- **A `PAGE` field must carry the field's whole formatting, not just fonts** — the
+  field is five runs and Word takes the displayed number's size from them.
+  `bandWording.test.ts` asserts every field run carries the size.
 
 ### A paper with a cover states its rubric once
 
-`createWorksheet` seeds "Answer ALL questions." as body instructions — right for a
-worksheet handed out alone, wrong under a cover that already says it (Paper 1's
-instruction 3, the booklet's too). Both cover-bearing types clear it; the settings hint
-points at the cover instead of suggesting wording it already carries.
+Both cover-bearing types clear the seeded "Answer ALL questions." body instruction (the
+cover already says it); the settings hint points at the cover.
 
 ### The exam paper's boundaries are wider than a worksheet's
 
-An exam paper stands its parts further apart than a worksheet does, and the widths are
-measured off the reference (DSE 2021 P1), not chosen. Two boundaries on a Paper 1 are
-wider than the ordinary one line, both spelled as blank lines on the same fixed 12pt grid
-(§ separation costs a line) so the paginator, the preview and Word cannot disagree:
+Measured off DSE 2021 P1, spelled as blank lines on the same fixed 12pt grid:
 
 | Boundary | Blank lines |
 |---|---|
@@ -1628,70 +941,40 @@ wider than the ordinary one line, both spelled as blank lines on the same fixed 
 | the `questionCount` lead-in → question 1 | **2** |
 | everything else | 1 |
 
-- **Three between two questions**, against the one line separating a stem from its own
-  options. Each MCQ is self-contained — read it, mark a separate machine-read sheet, move
-  on — so the boundary *between* two questions has to read as a stronger break than the
-  boundary *inside* one. At one line the two read alike and the options of Q7 crowd the
-  stem of Q8.
-- **Two under the lead-in.** "There are 45 questions in this paper." is rubric addressed
-  to the candidate before they start, not a caption on question 1, so it stands off by
-  more than an ordinary neighbour — but by less than a whole question, since it still
-  introduces the run below it.
-- **The number lives on the question type, not in the walker.** `examGapLines` on
-  `QuestionTypeDefinition` is where a type states its own gap; `boundaryGapLines`
-  (`render/worksheet.ts`) only decides when to honour it. The walker is one of the eight
-  shared modules `registry.test.ts` greps for `'mcq'`/`'structured'` literals (§ the
-  registry allows no type branching), so naming the type there is exactly the branch that
-  guard exists to catch — and the rhythm between two MCQs is a fact about MCQs anyway.
-- **Only on a Paper 1**, decided by `documentShape()` (§ a document offers only what its
-  own paper can contain). A classroom worksheet holding the same MCQs keeps the one-line
-  rhythm: it is answered on the sheet itself, and widening it would silently re-paginate
-  documents teachers already have. Derived rather than stored, so a Paper 1 assembled by
-  hand or loaded from an older build spaces identically to one the wizard built.
-- **A wide gap still counts what is already there.** `endsInBlankLine` reports one spent
-  line, so a question whose last option ends in a trailing hard break owes two more, not
-  three on top of it — the same rule every other gap follows, so the boundary is the same
-  width however the text happened to be typed.
-- **The first item of the page is never widened**: at the true top a gap is only a shifted
-  top margin, and three lines of air under it reads as a missing question.
-- **The gap count is part of the render cache key** (`gap`, replacing the old `gapped`
-  boolean), or a question dragged across a boundary of a different width would hand back
-  its previously-spaced nodes.
-- Verified in the exported XML, which is the only place it can be: two and three empty
-  `<w:p>` respectively, each carrying `w:line="240" w:lineRule="exact"`.
+- **The number lives on the question type** (`examGapLines` on
+  `QuestionTypeDefinition`); `boundaryGapLines` (`render/worksheet.ts`) only decides
+  when to honour it — the walker may not name a concrete type (`registry.test.ts`
+  greps).
+- **Only on a Paper 1**, decided by `documentShape()` — a classroom worksheet keeps
+  the one-line rhythm; widening would silently re-paginate existing documents. Derived,
+  never stored.
+- **A wide gap still counts what is already there** (`endsInBlankLine` reports one
+  spent line).
+- **The first item of the page is never widened.**
+- **The gap count is part of the render cache key** (`gap`), or a dragged question
+  hands back its previously-spaced nodes.
 
 ### A closing line needs the air a heading gets
 
-A `text` layout element now takes the same leading `ITEM_GAP` a heading does. Without it
-"END OF PAPER" printed flush under the last option and the QAB's "END OF SECTION A" flush
-under the last answer line — reading as one more line of the question rather than the end
-of it. Measured on the reference's last page at 130dpi: options sit 9px apart and
-"END OF PAPER" sits **159px** below the last of them. Suppressed at the true top of a page
-and after anything that already spent a line, through the same `first` flag every other
-element uses.
+A `text` layout element takes the same leading `ITEM_GAP` a heading does (otherwise
+"END OF PAPER" prints flush under the last option). Suppressed at the true top and
+after anything that already spent a line.
 
 ### A document offers only what its own paper can contain
 
-`model/documentShape.ts` derives which of the four documents this is — furniture means
-the booklet, a panel-less cover means Paper 1 — and answers what that shape permits.
-**Derived, never stored**: a document assembled by hand, pasted, or loaded from an older
-build gets the same answer as one the wizard built, and a stored `documentType` would be a
-second answer to a question the content already settles.
+`model/documentShape.ts` derives which of the four documents this is (furniture = the
+booklet, a panel-less cover = Paper 1). **Derived, never stored.**
 
 | Shape | Withheld | Why |
 |---|---|---|
-| `paper1` | `answerLines`, `answerSpace`, `section`, `partHeader` | Its candidate answers on a separate machine-read sheet, and it runs as one unbroken sequence |
-| `lqMock` | `answerLines`, `questionCount` | Its answer space is the dotted primitive at the reference's pitch; the 24pt ruled lines are a second, disagreeing rhythm |
+| `paper1` | `answerLines`, `answerSpace`, `section`, `partHeader` | Answered on a separate sheet; runs unbroken |
+| `lqMock` | `answerLines`, `questionCount` | Its answer space is the dotted primitive; ruled lines are a second rhythm |
 | others | `questionCount` | The lead-in is the MCQ paper's |
 
-- **Withheld, not greyed out.** A dead control invites "why can't I"; an absent one with a
-  sentence reads as a tool that knows what it is making. The booklet's Page tab states its
-  paper size and margins as fixed *and says what would break* — the furniture is positioned
-  against that column and the lines-per-page were counted in it, so another size moves the
-  frame off the text it frames.
-- **The cut must not overreach**: heading, note, divider, page break and blank space stay
-  on every shape, because both papers print all of them. `documentShape.test.ts` pins that
-  in both directions.
+- **Withheld, not greyed out**, with a sentence saying why. The booklet's Page tab
+  states its paper size/margins as fixed and what would break.
+- **The cut must not overreach**: heading, note, divider, page break and blank space
+  stay on every shape. `documentShape.test.ts` pins both directions.
 
 ---
 
@@ -1699,91 +982,71 @@ second answer to a question the content already settles.
 
 ### A page is derived, and owns the break that made it
 
-No `Page` in the model — a page is whatever the paginator measured onto one sheet, so
-page actions must be expressed in ids. Measuring lives in the component; the *deciding*
-half is pure in `components/preview/pagination.ts` (testable without a DOM).
+No `Page` in the model — a page is whatever the paginator measured onto one sheet.
+Measuring lives in the component; the deciding half is pure in
+`components/preview/pagination.ts`.
 
-- **A manual break belongs to the page it opened.** It consumes no space but *leads*
-  that page's `flowIds` (in flow position) — leaving it out made moving a page collapse
-  it, deleting one leave a stray blank page, and an empty page unaddressable. Only the
-  delete dialog's item count subtracts it.
-- **A trailing empty page survives only if a break opened it.** Incidental slack is
-  dropped (Word emits no sheet for it); a deliberate page renders `BlankPage` — says it
-  is empty on purpose, accepts drops (landing *after* the break), offers add buttons.
-- **Consecutive breaks each open their own page** — reusing an already-empty page
-  collapses a deliberate blank and leaves the second break's sheet unnamed and
-  unmovable.
+- **A manual break belongs to the page it opened**: it consumes no space but *leads*
+  that page's `flowIds` — otherwise moving a page collapses it, deleting one leaves a
+  stray blank, and an empty page is unaddressable.
+- **A trailing empty page survives only if a break opened it** (incidental slack is
+  dropped — Word emits no sheet for it); a deliberate page renders `BlankPage`.
+- **Consecutive breaks each open their own page.**
 
 `movePage` is one `moveRunInFlow` — a page is just a run of ids.
 
 ### A drop target receives the run, not the grabbed id
 
-Dragging a member of a multi-selection carries the whole selection; that rule lives in
-the *drag*, and a target cannot re-derive it — so `onDragItemChange` publishes
-`string[]`, resolved once at the source (the grabbed id alone let the rail move one item
-out of a swept five). All drops route through `movePage`: one commit, one undo entry.
-`dropRunAnchor()` lands a run after the target page's last non-moving member (a rail
-card has no meaningful "between"); it returns nothing when the run already is the tail,
-so an accidental release costs no undo entry.
+Dragging a multi-selection member carries the whole selection; that rule lives in the
+*drag*, so `onDragItemChange` publishes `string[]` resolved once at the source. All
+drops route through `movePage`: one commit. `dropRunAnchor()` lands a run after the
+target page's last non-moving member; it returns nothing when the run already is the
+tail.
 
-**The first sheet is the destination no anchor can name** — nothing precedes it, so it
-never carries a break, and emptied of content it reads `structuralOnly` with no
-`breakId`. Receiving is therefore weaker than acting (`canReceive`);
-`moveToDocumentStart` orders the run before the first non-moving item, needing no id.
+**The first sheet is the destination no anchor can name** (never carries a break) —
+receiving is weaker than acting (`canReceive`); `moveToDocumentStart` orders the run
+before the first non-moving item.
 
 ### The outline groups by page (`editor/Outline.tsx`)
 
 `groupByPage()` cuts the resolved flow into the paginator's sheets and promotes each
-break to the **tab heading** of the run it opened (its menu deletes the page). Because a
-page is measured, not modelled: **a group is a result, not a promise** (nothing pins
-one; they re-cut per measurement), and **a section can begin mid-sheet** — groups are
-the top level, a section heading is a row inside one (nesting drew a shared sheet
-twice). Tabs open by default (a new grouping must not start by hiding its contents);
-unplaced items fall into a trailing unnumbered group; an added-but-empty page is
-inserted at its break's position; dropping on a tab lands at the **head** of that page —
-the one position rows cannot express.
+break to the tab heading of the run it opened. **A group is a result, not a promise**
+(they re-cut per measurement) and **a section can begin mid-sheet** — groups are the
+top level, a section heading is a row inside one. Tabs open by default; unplaced items
+fall into a trailing unnumbered group; dropping on a tab lands at the head of that
+page.
 
 ---
 
 ## Page setup, headers and footers (`src/model/page.ts`)
 
 Paper, orientation, margins stored in **twips**: the exporter writes them straight into
-`w:pgSz`/`w:pgMar`; the preview converts the same numbers to mm. `MARGIN_PRESETS`
-labels are asserted against stored values. **Custom…** shows per-edge cm fields clamped
-0–5, committing on blur/Enter with a local draft while focused (re-deriving text from
-twips deletes the decimal as it is typed).
+`w:pgSz`/`w:pgMar`; the preview converts to mm. `MARGIN_PRESETS` labels are asserted
+against stored values. **Custom…** shows per-edge cm fields clamped 0–5, committing on
+blur/Enter with a local draft while focused.
 
-Headers and footers are **lists of `Band` rows** (same model as the masthead — a real
-school header stacks five). One model = one editing surface (`BandEditor` serves all
-three), one drag interaction, one exporter path.
+Headers and footers are **lists of `Band` rows** (same model as the masthead) — one
+model, one editing surface (`BandEditor`), one exporter path.
 
 ### A header lives in the margin, not in the text column
 
 Word grows a header **downward from `w:header`**; body text moves only past `w:top`.
-Room = `top - header`. `headerFooterOffsets()` derives the offset from the bands — but
-**only when they do not already fit** under Word's 1.27 cm default, then only as far as
-needed, clamped at `MIN_EDGE_TWIPS` (0.5 cm printer dead zone). Unconditional
-`margin - height` flattens a one-row header against the paper edge.
+Room = `top - header`. `headerFooterOffsets()` derives the offset from the bands —
+**only when they do not already fit** under Word's 1.27cm default, then only as far as
+needed, clamped at `MIN_EDGE_TWIPS`.
 
-- **Offsets are sized from the running rows**, not the taller list: one `w:header`
-  serves the section, and letting a five-row page-1 cover dictate would squash every
-  other sheet. The cover takes its overflow as extra padding **on page 1 only**
-  (`pageStyleFor`) — preview padding is per-sheet.
-- **Word gets an estimate; the preview measures.** `bandsHeight()` estimates (~264tw per
-  11pt row, scaled by field font size) — correct for Word, which lays rows out itself.
-  The preview measures real boxes via `ResizeObserver` (`measuredFirst` for page 1),
-  falling back to the estimate only before first layout.
-- **Overflow moves the text column, not merely its budget**: header overflow moves the
-  top down, footer overflow the bottom up — separately (subtracting a total shortened
-  the column without moving its top, printing headers over question 1). Page 1's
-  overflow is computed against `edgeOffsets` (the offset it is drawn at), not re-derived
-  from its own height, which comes out *smaller* for a taller cover.
-- Rows taller than the whole margin are genuinely unsolvable — reported
-  (`BandOverflowNotice`), not fixed; the symptom (content missing from the *bottom*)
-  gives no clue a header caused it.
+- **Offsets are sized from the running rows**, not the taller page-1 list; the cover
+  takes its overflow as extra padding on page 1 only (`pageStyleFor`).
+- **Word gets an estimate; the preview measures.** `bandsHeight()` estimates (~264tw
+  per 11pt row, scaled by field font size); the preview measures real boxes via
+  `ResizeObserver` (`measuredFirst` for page 1).
+- **Overflow moves the text column, not merely its budget** — header overflow moves the
+  top down, footer overflow the bottom up, separately. Page 1's overflow is computed
+  against `edgeOffsets`.
+- Rows taller than the whole margin are reported (`BandOverflowNotice`), not fixed.
 
-Each row exports as **one paragraph with tab stops**, centre/right stops derived from
-live content width. A rule draws only on the edge-most row (frames the block).
+Each row exports as one paragraph with tab stops from live content width. A rule draws
+only on the edge-most row.
 
 ### Page 1 can differ
 
@@ -1793,266 +1056,162 @@ live content width. A rule draws only on the edge-most row (frames the block).
 | Blank on page 1 | `showOnFirstPage: false` | nothing |
 | Its own rows | `firstPage: { bands }` | `firstPage.bands` |
 
-Word models this as `w:titlePg` + a `w:type="first"` part.
-`firstPageHeaderFooter()` resolves the three states in one place, shared by exporter
-and preview. Consequences: `w:titlePg` switches page 1 *wholesale*, so once either edge
-differs **both** need a first-page part (or the unchanged edge vanishes from page 1);
-a part is emitted when *either* the running rows or page 1's would print (a cover-only
-header has empty running bands).
+Word models this as `w:titlePg` + a `w:type="first"` part. `firstPageHeaderFooter()`
+resolves the three states in one place, shared by exporter and preview. `w:titlePg`
+switches page 1 *wholesale*, so once either edge differs **both** need a first-page
+part; a part is emitted when either the running rows or page 1's would print.
 
-**A write aimed at page 1 creates the separation**: `addHeaderFooterBand`/
-`setHeaderFooterBands` with `scope: 'firstPage'` create `firstPage` on first write (and
-set `showOnFirstPage: true`) — requiring it to exist first meant the surface a teacher
-looked at was silently not the one they edited. The panel renders **two labelled
-surfaces — "Page 1" first, then "Pages 2 onward"** (one `BandSurface` component used
-twice), because a cover is decided first and the running line is the afterthought; the
-link survives as two quiet actions ("Same as page 1" / "Give page 1 its own header"),
-not a mode.
+**A write aimed at page 1 creates the separation**: `scope: 'firstPage'` creates
+`firstPage` on first write (and sets `showOnFirstPage: true`). The panel renders two
+labelled surfaces — "Page 1" first, then "Pages 2 onward" — with two quiet link actions
+("Same as page 1" / "Give page 1 its own header").
 
 ### Editing bands on the page
 
-**Header text is edited on the page**; the panel keeps only what has no visual
-representation there (show/hide, rule, page-1 state) plus **presets** (a teacher who
-never built a header doesn't know the shape). Page-1 rows are edited on sheet 1 by the
-same `BandEditor`.
+Header text is edited on the page; the panel keeps show/hide, rule, page-1 state and
+presets.
 
-- **A page number is one field with a pattern** (`plain`, `pDot` → "P.5", `longForm` →
-  "Page 5 of 12"). The pattern lives in `pageNumberPlaceholder`, shared: the preview
-  substitutes a chip via `withPageNumber`; the exporter splits on the same placeholders
-  so only numbers become `PAGE`/`NUMPAGES`. `bandFieldText` returns the *placeholder*
-  (the model has no page to report; baking one in freezes exported footers). Fill-in
-  rules ("Name:______") export as real ruled runs.
-- `patchHeaderFooterBand` searches both band lists (a click reports only a field id);
-  the lists never share ids (`setFirstPageMode` re-ids on copy) or one keystroke would
-  edit both.
+- **A page number is one field with a pattern** (`plain`, `pDot`, `longForm`), shared
+  via `pageNumberPlaceholder`: the preview substitutes a chip (`withPageNumber`); the
+  exporter splits on the same placeholders so only numbers become `PAGE`/`NUMPAGES`.
+  `bandFieldText` returns the placeholder. Fill-in rules export as real ruled runs.
+- `patchHeaderFooterBand` searches both band lists; the lists never share ids
+  (`setFirstPageMode` re-ids on copy).
 - **A structural edit must name its list (`BandScope`)**: a row being created has no id
-  yet, so `addHeaderFooterBand`/`setHeaderFooterBands` take `'running' | 'firstPage'`,
-  resolved from the sheet the click landed on. Without it "+ Row" and presets wrote to
-  `bands` unconditionally. Deletion needs no scope (carries an id; filters both).
+  yet, so add/set take `'running' | 'firstPage'`, resolved from the sheet the click
+  landed on. Deletion needs no scope.
 - `BandEditor` offers hover-revealed `+ Row`, per-row `✕`, and a label naming the
-  surface (`PAGE 1 HEADER`, `Header · pages 2+`, `Title block`) — three look-alike band
-  lists can print on one sheet. All `data-print-hide`, positioned outside the flow.
+  surface. All `data-print-hide`, positioned outside the flow.
 - **An empty band list still renders while editing** (`bandsShouldRender(bands,
-  editable)`, testable without a DOM) — returning early on empty leaves nowhere to put
-  the first row back. Keys on *whether editing is possible*, not current focus (hence
-  separate `editing`/`editable` props).
-- **A hover-revealed control must be reachable**: the `✕` sits outside the row's box and
-  `:hover` follows the element box — it is wrapped in a `pointer-events-none` strip
-  spanning back to the row, revealed with `opacity`, never `display` (a zero-size box
-  cannot be hovered).
+  editable)`) — returning early on empty leaves nowhere to put the first row back.
+- **A hover-revealed control must be reachable**: the `✕` sits outside the row's box,
+  wrapped in a `pointer-events-none` strip spanning back to the row, revealed with
+  `opacity`, never `display`.
 
 ### One sheet, three regions to edit
 
-Body, header and footer are separate documents to edit (Word's rule). Inactive regions:
-`opacity: 0.42`, slight blur, `pointer-events: none`. **Double-click** enters a dimmed
-header/footer; **single click** on the dimmed body returns (leaving is the commoner
-move, and with the body inert there is no other one-click way back). Not decoration: it
-keeps a click meant for question 1 out of the header above it, and the header's chrome
-off every hover across the page top.
+Body, header and footer are separate documents (Word's rule). Inactive regions:
+`opacity: 0.42`, blur, `pointer-events: none`. **Double-click** enters a dimmed
+header/footer; **single click** on the dimmed body returns.
 
-- **The wake overlay needs a region with a height**: band boxes are placed by
-  `top`/`left`/`right`, so `inset: 0` resolves to zero height. `.paper-region { height:
-  fit-content }`; `.paper-region-body` opts out (a `flex: 1` child must fill).
-- **Not a grid** — one-cell grid stacks the body's children into an overprinted line.
-- **Chrome must not be measured**: the paginator reads `[data-band-rows]`, the one
-  printed child, not the overlay.
+- **The wake overlay needs a region with a height**: `.paper-region { height:
+  fit-content }`; `.paper-region-body` opts out.
+- **Not a grid** — a one-cell grid stacks the body's children.
+- **Chrome must not be measured**: the paginator reads `[data-band-rows]`.
 
 Print CSS neutralizes dimming and hides the overlay.
 
 ### Print preview is the print rules, run on screen
 
-**Edit | Preview** (`store.printPreview`) shows the sheets exactly as they print. A
-`Segmented` beside Language and Version (two equal permanent states; a button would
-label the state you are *not* in). "Exactly" is structural: the strip-down rules are
-written once, shared by `@media print` and `body.print-preview` — new chrome needs
-`data-print-hide` exactly once and is correct in both. CSS alone cannot deliver two
-things:
+**Edit | Preview** (`store.printPreview`). The strip-down rules are written once,
+shared by `@media print` and `body.print-preview` — new chrome needs `data-print-hide`
+exactly once. CSS alone cannot deliver two things:
 
-- **Gestures are disabled in JavaScript**: the marquee tracks on `window`, so
-  `pointer-events: none` on sheets left drag-select working over an inert page.
-  `Preview` returns early from the sweep and the bulk-shortcut handler ("is anything
-  selected" can't gate ⌘A — ⌘A *creates* the selection; it swallows ⌘A or the browser
-  selects the whole app).
-- **`#print-root` keeps its own pointer events** while descendants lose theirs, or a
-  double-click passes through the transparent sheet into the sidebar.
+- **Gestures are disabled in JavaScript** (the marquee tracks on `window`); the
+  bulk-shortcut handler swallows ⌘A.
+- **`#print-root` keeps its own pointer events** while descendants lose theirs.
 
 `printPreview` lives beside `mode`, deliberately **not inside** it — `OutputMode` is
-what the exporter reads; a view toggle reaching `.docx` generation is a bug waiting.
-Entering clears the question selection (as `handlePdf` does); `HintPill` hides (it
-teaches an interaction the mode removed).
+what the exporter reads. Entering clears the question selection; `HintPill` hides.
 
 ### Both band paths must agree
 
-`BandEditor` (active) and `ReadOnlyBandRow` (idle + print/PDF) draw the same rows; any
-disagreement is a preview that lies. **Formatting is one shared function**
-(`bandFieldStyle` — `ReadOnlyBandRow` once ignored `field.format`, so a 14pt school
-name printed 12pt: an idle-state bug presenting as region focus). **Geometry must be
-identical**: chrome reserves no space (drop-zone outlines use `ring`; spacing belongs to
-`HeaderFooterBand`, applied in both paths). Verify by measuring the *same text node* in
-both states — the active state inserts a label chip that shifts any span-list
-comparison.
+`BandEditor` (active) and `ReadOnlyBandRow` (idle + print/PDF) draw the same rows.
+Formatting is one shared function (`bandFieldStyle`); chrome reserves no space
+(drop-zone outlines use `ring`; spacing belongs to `HeaderFooterBand`, applied in both
+paths). Verify by measuring the same text node in both states.
 
 ---
 
 ## Question-type registry (`src/registry/`)
 
 `QuestionTypeDefinition`: `id` · `displayName` (bilingual) · `create()` ·
-`render(question, context) → RenderNode[]` (feeds all three backends) · `EditorPanel` ·
-`countMissingTranslations?`. Registered: `mcq`, `structured`. A new type needs only a
-definition — no changes to numbering, marks, persistence or export.
+`render(question, context) → RenderNode[]` · `EditorPanel` ·
+`countMissingTranslations?` · `examGapLines?`. Registered: `mcq`, `structured`. A new
+type needs only a definition.
 
-- **The hand-built numbered paragraph must copy the block's `format` itself.**
-  `renderContentBlocks` passes it for free; the four hand-assembled sites (MCQ stem;
-  structured stem, part, sub-part) each omitted it once — silently and asymmetrically
-  (first paragraph ignored alignment/size/colour; and only the preview applies
-  alignment as CSS, so a right-aligned stem previewed right and exported with no
-  `w:jc`). `registry.test.ts` sets a format on each type's first block and asserts it
-  reaches the IR.
+- **The hand-built numbered paragraph must copy the block's `format` itself** — the
+  four hand-assembled sites (MCQ stem; structured stem, part, sub-part) each omitted it
+  once. `registry.test.ts` asserts it reaches the IR for every type.
 - **No shared module may branch on a concrete type.** `registry.test.ts` greps eight
-  modules (`model/numbering`, `render/worksheet`, `export/docx/{index,body,numbering}`,
-  `export/clipboard`, `model/migrations`, `storage/index`) for `'mcq'`/`'structured'`.
+  modules for `'mcq'`/`'structured'` literals.
 
 ---
 
 ## The start screen (`src/components/start/`)
 
-The app opens on a list of documents, not on a document. Storage has held many
-worksheets since it shipped, but the only reachable one was the most recently saved —
-the editor restored that one on mount and offered no list — so every other document was
-effectively lost the moment a second was started, and "New worksheet" was in practice an
-archive button. `StartScreen` is the list plus the way in; `NewWorksheetForm` asks the
-once-per-document decisions before the first question exists.
+The app opens on a list of documents, not on a document. `StartScreen` is the list plus
+the way in; `NewWorksheetForm` asks the once-per-document decisions.
 
-- **The gate lives in `EditorHost`, outside the editor**, and is session state (`chosen`)
-  rather than a stored preference: it answers "has a document been picked in this tab",
-  which resets on reload, so the app always opens at the list. An overlay *inside* the
-  editor would mount the whole preview behind it and run the paginator over a blank
-  worksheet on every visit to the file list.
-- **Leaving the editor must flush the autosave.** The 1.2s debounce lives in an effect
-  inside `EditorApp`, so unmounting it cancels a pending save — up to a second of typing
-  dropped by the act of going to look at the file list, and a stale "updated" time on the
-  very document just edited. Both departure paths save **by value**: `store.save()` reads
-  `getState().worksheet`, which `replaceWorksheet` has already swapped by the time the
-  awaited write runs, so the outgoing document would be skipped and the incoming one
-  written twice.
-- **A new document is saved before it is edited.** `replaceWorksheet` marks the store
-  clean — correctly, nothing has changed yet — and autosave only fires on `dirty`, so a
-  worksheet created and then left alone was never written anywhere: answer the form, go
-  back to the list, and it is gone. Found in a browser, not in a test; the model layer
-  was right and the lifecycle was not.
-- **`createWorksheetFrom` layers over `createWorksheet()`** rather than assembling a
-  document: that factory is the one definition of what a new document *is*, and a second
-  full constructor beside it is a second thing to update whenever the model grows a
-  field. A test pins the two to the same shape, so "skip every question" and "New
-  worksheet" cannot drift.
-- **Turning sections off rewrites `flow` and `layout` together.** The flow names elements
-  by id, so dropping the layout entries alone leaves the flow pointing at elements that
-  no longer exist (§ the flow invariant).
-- **The wizard is a form, not steps**, and every field has a working default — it is a
-  way to answer sooner, never a gate. The start cards preselect a **document type** and
-  nothing else; all four open the same form, and the type derives cover, sections,
-  furniture and seeding in one answer (§ the document type leads the wizard).
-- **The row opens the document; the menu holds the filing actions** (rename, duplicate,
-  download, delete). Burying "open" among four rarer siblings would make resuming work
-  the slowest thing on the screen. Duplicating **saves without opening** — the teacher is
-  looking at a list and making a copy for later.
-- **A summary can outlive the document it names** (a half-finished `clear`, storage
-  evicted under quota): opening one says so and drops the row, rather than leaving a
-  button that silently does nothing.
+- **The gate lives in `EditorHost`, outside the editor**, as session state (`chosen`) —
+  it resets on reload, and an overlay inside the editor would run the paginator over a
+  blank worksheet on every visit to the list.
+- **Leaving the editor must flush the autosave** (the 1.2s debounce dies with
+  `EditorApp`'s unmount). Both departure paths save **by value** — `store.save()` reads
+  `getState().worksheet`, which `replaceWorksheet` has already swapped.
+- **A new document is saved before it is edited** — `replaceWorksheet` marks the store
+  clean and autosave only fires on dirty, so an untouched new worksheet was never
+  written.
+- **`createWorksheetFrom` layers over `createWorksheet()`** — one definition of a new
+  document; a test pins the two to the same shape.
+- **Turning sections off rewrites `flow` and `layout` together** (the flow names
+  elements by id).
+- **The wizard is a form, not steps**; every field has a working default. The start
+  cards preselect a document type and nothing else.
+- **The row opens the document; the menu holds the filing actions.** Duplicating saves
+  without opening.
+- **A summary can outlive the document it names** — opening one says so and drops the
+  row.
 
 ## Editor layout (`src/components/`)
 
 The preview is the centrepiece; the right sidebar shows **one thing at a time** behind
-two tabs; two left rails: insert (AddRail) and navigation (PageRail, multi-sheet only).
-
-### One panel, one job
-
-**Content** is the outline; **Edit** is the selection; each gets the full column height.
-The tab **follows the selection** — selecting a question *is* the request to edit it.
-(This replaced four stacked regions whose draggable divider only refereed a fight
-between panels that shouldn't share the space.)
+two tabs (Content = outline, Edit = selection); the tab follows the selection. Two left
+rails: AddRail (insert) and PageRail (navigation, multi-sheet only).
 
 ### Settings live in a dialog
 
-Title, instructions, fonts, paper, margins, header, footer, title block are decided
-about once per document → `DocumentSettings`, a tabbed dialog from the toolbar's
-**Setup** and the outline's **Settings** (both places users look). It claims the
-keyboard via `useModalLayer()`. Split rule: header *text* is typed on the page; whether
-the header *exists* has no visual representation there.
+Once-per-document decisions → `DocumentSettings`, a tabbed dialog from the toolbar's
+**Setup** and the outline's **Settings**. It claims the keyboard via `useModalLayer()`.
+Header *text* is typed on the page; whether the header *exists* lives here.
 
-- **Tabs group by where a thing prints, not which field stores it** — the `furniture`
-  tab reads down the page: title, header, footer. (Title block was its own tab while
-  printing on page 1 and replacing the title from another tab.)
-- **A choice between two layouts is shown, not named**: `BandPreview` draws actual zones
-  at actual weights; deliberately not `BandEditor` (a picture must not become a second
-  editing surface).
-- **Deriving the same number twice is reported** (`duplicateComputedFields()`): the
-  "Exam paper" preset and `assessmentTitleBlock` both carry `totalMarks` — reported,
-  not prevented, since which copy is unwanted depends on the paper.
+- **Tabs group by where a thing prints** — the `furniture` tab reads down the page.
+- **A choice between two layouts is shown, not named** (`BandPreview` draws actual
+  zones; deliberately not `BandEditor`).
+- **Deriving the same number twice is reported** (`duplicateComputedFields()`), not
+  prevented.
 
-`GroupHeader` (not `Eyebrow`) names regions a user works in — five 10px-uppercase
-headings scan as one grey column.
+`GroupHeader` (not `Eyebrow`) names regions a user works in.
 
 ### Where a new item lands: the insertion anchor
 
-`insertAnchorId` in the store is **a position, not a selection**: the flow id a new item
-lands behind (undefined = append). `addQuestion`/`addLayoutElement` default to it; an
-explicit `afterId` wins (drop targets need that). It exists because the add rail could
-see only `selectedQuestionId`, while two of the page's three selections are
-preview-local — selecting a heading sent new items silently to document end.
+`insertAnchorId` in the store is **a position, not a selection**: the flow id a new
+item lands behind (undefined = append). An explicit `afterId` wins.
 
-- **The anchor advances onto what was just added** — else three inserts enter
-  backwards.
-- **A dead anchor is cleared, not left dangling**: `livingAnchor()` runs in `commit` —
-  the single write path — so undo/redo and future removals are covered without knowing
-  they exist.
-- **The flyout states its destination** (`flowItemLabel()`: derived question number —
-  an array index disagrees once a section restarts — or the element's own text;
-  "after section" is ambiguous on every real paper).
-- **Hovering previews the position; it does not take it** — moving the anchor on
-  `mouseenter` made the destination depend on where the mouse came to rest.
+- **The anchor advances onto what was just added.**
+- **A dead anchor is cleared in `commit`** (`livingAnchor()`) — the single write path
+  covers undo/redo and removals.
+- **The flyout states its destination** (`flowItemLabel()`: derived question number or
+  the element's own text).
+- **Hovering previews the position; it does not take it.**
 
 ### Nothing lands after "END OF PAPER"
 
-With no anchor, a question used to append to the end of the flow — and both exam papers
-*end in a closing line*. So every question a teacher added to a Paper 1 landed after the
-line announcing the paper had finished, and the paper's own cover tells the candidate to
-check for exactly that line after the last question (§ the MCQ paper). The seeded sample
-hid it for question 1 only; the next question added went astray, which is where it was
-found — in a browser, not a test.
-
+With no anchor a question would append after the closing line both exam papers end in.
 `appendIndexFor` (`store/worksheetStore.ts`) walks back over the tail before splicing.
 
-- **Derived from shape and format, never a stored flag.** A closing line is deliberately
-  an ordinary text element — a landmark a teacher may drag, reword or delete (§ the
-  booklet closes its sections the reference's way) — so marking one would be a second
-  answer to a question the content already settles, and the two would part company the
-  moment someone retyped the line.
-- **Only a centred text element is walked past, and that is the whole rule.** Centring is
-  what makes a closing line a closing line: "END OF PAPER" and "END OF SECTION A/B" are
-  bold and centred in both reference papers, while everything else at a paper's tail
-  *introduces* the questions and is ranged left. It holds for a reworded or translated
-  line, and a teacher who centres their own gets the same behaviour for the same visible
-  reason.
-- **Two elements were found by walking too far**, neither visible in a test of the closing
-  line alone: Paper 1's `questionCount` lead-in (above it, "There are 45 questions in this
-  paper." prints *after* the questions it counts) and the booklet's "Answer any ONE
-  question." note, which must stay above the Section C questions it governs. A section
-  marker stops the walk for free, being no kind of text element — which keeps a new
-  question under the last section rather than filed at the end of the one before it.
-- **Scoped to `paper1` and `lqMock`** (§ `model/documentShape.ts`). Nothing is known to
-  close a classroom or plain LQ worksheet, so appending stays correct there and a
-  teacher's trailing note keeps whatever position they gave it.
-- **Questions only.** A layout element appended with no anchor genuinely means the end —
-  a divider or note after "END OF PAPER" is a thing a teacher may want, and there is no
-  closing line for *it* to fall behind.
+- **Derived from shape and format, never a stored flag** (a closing line is an ordinary
+  text element a teacher may drag or reword).
+- **Only a centred text element is walked past** — centring is what makes a closing
+  line a closing line in both reference papers; ranged-left tail elements (the
+  lead-in, "Answer any ONE question.") introduce what follows and must not be passed. A
+  section marker stops the walk, keeping a new question under the last section.
+- **Scoped to `paper1` and `lqMock`**; **questions only** (a layout element appended
+  with no anchor genuinely means the end).
 
-The gap affordance is chrome in the item's trailing edge, absolutely positioned so it
-**reserves no space** (the page must break where Word breaks). It draws the drop
-indicator's own dot–line–dot in the same violet — a drag and an insert put an item in
-the identical position, so two visual languages would invent a distinction the document
-lacks. The `+` sits centred on the line (the margin is the drag grip's column; a gap
-button there overlaps both grips). `data-print-hide`; absent in print preview.
+The gap affordance is chrome in the item's trailing edge, absolutely positioned
+(**reserves no space**), drawing the drop indicator's own dot–line–dot (an insert and a
+drop put an item in the identical position). `data-print-hide`.
 
 ### Direct manipulation on the page
 
@@ -2064,110 +1223,81 @@ hover                      → margin drag grip → reorder
 ```
 
 - **The format toolbar docks along the top of the page column**, `fixed` in viewport
-  coordinates (inside the preview's `scale()` it would shrink with zoom), `left`/`width`
-  from the sheet, `top` from the scroll container; the scroller reserves the band
-  (`pt-14`). Controls report current state; toggling an active one clears back to the
-  named style.
-- **Dragging grabs a margin grip, not the text** (already a click target). The drop
-  indicator marks the hovered edge by pointer half; layout elements drag in the same
-  list as questions. Dragging a multi-selection member carries the whole selection —
-  the *drag's* rule; every target must honour it (§a drop target receives the run).
+  coordinates (inside the preview's `scale()` it would shrink), `left`/`width` from the
+  sheet; the scroller reserves the band (`pt-14`).
+- **Dragging grabs a margin grip, not the text.** Dragging a multi-selection member
+  carries the whole selection.
 - **Pictures resize where they are** (`ResizableBlock`): width is the only output
-  (height follows aspect via `applyResizeBlock` — hence corner handles, not edges);
-  delta ÷ preview scale; in-flight size local, committed once; clamped to the text
-  column (wider is clipped on screen and rescaled by Word).
-- **A table is sized and reshaped entirely on the page** — same three gesture rules;
-  no selection step (§everything structural is reachable on the page).
+  (height follows aspect via `applyResizeBlock` — corner handles, not edges); delta ÷
+  preview scale; committed once; clamped to the text column.
 - **A picture's click target stays mounted while selected** (unmounting let the next
-  click fall through and clear `selectedBlockId`, so Delete appeared dead); while
-  selected it insets 6px clear of the corner handles.
-- **Double-clicking a diagram opens the drawing canvas.** The preview reports only the
-  double-click; `EditorApp` hosts the canvas (the sidebar's `DiagramEditor` only exists
-  while its question is open; the preview stays read-only-capable). Edits commit via
-  `replaceBlock` by id.
+  click fall through and clear `selectedBlockId`); while selected it insets 6px clear
+  of the corner handles.
+- **Double-clicking a diagram opens the drawing canvas**; `EditorApp` hosts it. Edits
+  commit via `replaceBlock` by id.
 - **Clicking blank paper clears every page selection.** "Blank" is decided by what the
-  click *landed on* (`isBlankAreaClick` walks up), shared with the marquee sweep.
-  **The exemption list must name attributes something renders**: it once named
-  `data-band-field` (never rendered) while fields carry `data-field-id` — every click
-  in an active header counted as blank and deactivated it (clearing includes returning
-  focus to the body). `blankClick.test.ts` greps the components for each exempted
-  attribute.
+  click landed on (`isBlankAreaClick`), shared with the marquee. **The exemption list
+  must name attributes something renders** — `blankClick.test.ts` greps the components
+  for each exempted attribute.
 - **Arrow keys nudge a diagram selection** through the same `dragHandles` a drag uses;
-  the step is deliberately not zoom-scaled (a nudge is a fixed geometry edit).
+  the step is not zoom-scaled.
 - **No layout shift while editing**: the in-place editor is a plain **`inline`** field
-  inheriting font/size/leading. `inline` specifically — an `inline-block` establishes
-  its own context and cannot inherit the paragraph's hanging indent, so entering a
-  numbered stem shifted every line ~29px. The field must not reset `text-indent` (the
-  paragraph's negative indent applies to the marker's line).
+  (an `inline-block` cannot inherit the paragraph's hanging indent) and must not reset
+  `text-indent`.
 - **One language at a time** — bilingual halves are separate editable spans.
 - **Two-step engagement makes keyboard delete safe**: Delete acts on a deliberate
   selection, ignored while focus is in a field; `⌘Z` scoped the same way.
-- **Only one layer owns the keyboard** (`ui/modalLayer.ts`). Every keydown listener is
-  on `window`, so `stopPropagation` cannot separate them — all fire (Delete in the
-  canvas once also deleted the whole block). Overlays call `useModalLayer()`;
-  page-level handlers ask `isModalLayerOpen()`. A module-level **counter** (synchronous
-  inside the event; two stacked overlays release on the last close). Both failure
-  directions are silent → unit-tested.
+- **Only one layer owns the keyboard** (`ui/modalLayer.ts`): every keydown listener is
+  on `window`, so all fire. Overlays call `useModalLayer()`; page handlers ask
+  `isModalLayerOpen()`. A module-level counter, synchronous inside the event.
 - **Delete picks the right unit per target** (`describeDelete`, `model/edits.ts`): a
-  stem paragraph removes the block; a statement leaves the list (rest renumber); a
-  table cell is emptied (removal breaks the grid); an MCQ option cannot be deleted
-  (count fixed at four).
+  stem paragraph removes the block; a statement leaves the list; a table cell is
+  emptied; an MCQ option cannot be deleted.
 - **Everything routes through `commit()`** — undo/redo and autosave with no special
   handling.
 
 **The page rail shows real pages** (`editor/PageThumb.tsx`): each card is a scaled
 **clone of the rendered sheet** from `#print-root` (no third render pass), inert
-(`cloneNode`, `aria-hidden`) so the card keeps click/drag/delete. Editing chrome is
-stripped; selection is found by `aria-current` (classes are literal hex per the token
-rule). Refresh ~200ms after the DOM settles via `MutationObserver` — not keyed on
-composition, since a retyped title rewrites a sheet without moving pages. 152px wide,
-sized by what a thumbnail must show (at 104px a band's zones read as one clump).
+(`cloneNode`, `aria-hidden`). Editing chrome is stripped; selection found by
+`aria-current`. Refresh ~200ms after the DOM settles via `MutationObserver`. 152px wide
+(at 104px a band's zones read as one clump).
 
 ### Layout rules
 
 - **Weight matches consequence**: one `Button`/`IconButton`; `primary` reserved for
   Export, `danger` destructive, `subtle` recedes until hovered.
-- **Row actions are progressive**: width goes to the stem excerpt;
-  duplicate/copy/move/delete behind `⋯`. Glyph-only buttons take a required `label`
-  (tooltip + accessible name).
-- **Selection is bidirectional**: either pane selects, the other scrolls into view; the
-  preview suppresses its own scroll when the click originated there.
-- **Depth is carried by rule and label, not more boxes**: parts use a left rule and a
-  marks pill.
+- **Row actions are progressive**: width goes to the stem excerpt; the rest behind `⋯`.
+  Glyph-only buttons take a required `label`.
+- **Selection is bidirectional**: either pane selects, the other scrolls into view.
+- **Depth is carried by rule and label, not more boxes.**
 
 ---
 
 ## The per-keystroke render path
 
 Typing commits per input, so the pipeline — `renderWorksheet`, the sheets *and* the
-pagination probe (same blocks rendered again to measure) — used to run twice per
-keystroke over the whole document, and once per pointer frame during a sweep. The pure
-walk is not the cost (≈0.5 ms at 70 questions); reconciling two full React trees is.
+pagination probe — used to run twice per keystroke over the whole document. The pure
+walk is not the cost (≈0.5ms at 70 questions); reconciling two full React trees is.
 Four rules bound it:
 
 - **`renderWorksheet` caches per question, keyed on the question object** (`WeakMap`).
   Commits replace only the touched object (`mapQuestion`), so identity *is*
-  "unchanged" — no invalidation, no leak. A hit also requires mode, derived number,
-  list stream and leading-gap flag to match, so a dragged section still renumbers
-  everything behind it (`renderCache.test.ts`). Identity only, never content: a cold
-  cache is byte-identical. Contract: questions are immutable — in-place mutation would
-  show stale nodes.
+  "unchanged". A hit also requires mode, derived number, list stream and leading-gap
+  count to match (`renderCache.test.ts`). Identity only, never content: a cold cache is
+  byte-identical. Contract: questions are immutable.
 - **`ItemBody` is the memo boundary** (`Preview.tsx`): skipped when its nodes array,
-  selection, language and `ctxStamp` are unchanged. The comparator ignores
-  `ctx`/handler identity, safe under two contracts: everything ctx closures **read at
-  render time** is flattened into `ctxStamp` (selection, active cell, scale, content
-  width — a missing value is a silent staleness bug), and host handlers close over
-  stable things (`EditorApp` binds `useCallback` over store actions, reads fresh state
-  via `getState()`). Event handlers held across skipped renders are safe by
-  construction.
+  selection, language and `ctxStamp` are unchanged. The comparator ignores ctx/handler
+  identity, safe under two contracts: everything ctx closures **read at render time**
+  is flattened into `ctxStamp` (a missing value is a silent staleness bug), and host
+  handlers close over stable things (`useCallback` over store actions, fresh state via
+  `getState()`).
 - **Per-frame chrome is imperative, not state**: the marquee rectangle is an
-  always-mounted hidden div the sweep positions directly; the catch-sets bail to the
-  previous `Set` when membership is unchanged; the toolbar dock rect lives in
-  `ToolbarDock`, its own component, so scroll/resize re-measures don't re-render the
-  page.
+  always-mounted hidden div positioned directly; catch-sets bail to the previous `Set`
+  when membership is unchanged; the toolbar dock rect lives in `ToolbarDock`, its own
+  component.
 - **Pagination re-measures on content and geometry, not selection or drag** —
-  selection chrome reserves no space (its own invariant), and the probe's
-  `ResizeObserver` catches anything that genuinely changes size.
+  selection chrome reserves no space; the probe's `ResizeObserver` catches anything
+  that genuinely changes size.
 
 ---
 
@@ -2176,103 +1306,69 @@ Four rules bound it:
 ### Store (`src/store/worksheetStore.ts`)
 
 Zustand, 100-entry undo. Every mutation goes through `commit(recipe)`: apply, push
-`past`, clear `future`. Loading resets history. Undo/redo are plain stack moves —
-numbering and marks are derived. **Drag gestures commit once**: in-flight values stay
-local; the store is called on pointer-up, or one drag floods the undo stack.
+`past`, clear `future`. Loading resets history. **Drag gestures commit once**:
+in-flight values stay local; the store is called on pointer-up.
 
 ### Persistence (`src/storage/index.ts`, `src/model/migrations.ts`)
 
-- `WorksheetStore` interface (`list`/`load`/`save`/`rename`/`remove`/`clear`);
-  localStorage implementation today.
-- **Autosave** debounced 1.2s. **File download/upload** as `.worksheet.json`, images
+- `WorksheetStore` interface; localStorage implementation today.
+- **Autosave** debounced 1.2s. File download/upload as `.worksheet.json`, images
   base64.
-- **The index is what the file list reads**, never the documents: a `WorksheetSummary`
-  carries `questionCount`/`hasCover` so the start screen shows every saved worksheet
-  without parsing and migrating each one on the app's first paint. Both are optional —
-  an index written by an earlier build has neither, and a list that refused to show
-  those rows would look like the work had been lost. Entries are validated **per row**
-  (§ the published-document promise): one malformed summary must not empty the list.
-- **A rename writes `worksheet.title`**, the document's own name — which the masthead
-  prints and the `.docx` downloads as — rather than a label kept beside it in the index.
-  A separate display name is a second answer to "what is this called", and the two part
-  company the moment the title is edited on the page. So `rename` loads and re-saves;
-  patching the index alone would be undone by the next autosave (§`summarize`).
-- **A worksheet copy re-ids the document and nothing inside it.** Every id *within* a
-  worksheet addresses something in that one document, so they stay unique after the
-  copy — the opposite of duplicating a question, where the clone lands in the same id
-  space as its original and `withFreshIds` must walk it.
-- **Migration chain** `migrate()`: ordered pure functions, currently **empty** — because
-  v1 is current, *not* because migrations are optional. The model changed seven times
-  before the app shipped and those steps were deleted (they upgraded documents that never
-  existed), but **that reasoning expired at release**: see § the published-document
-  promise below. The machinery is kept and runs on every load: validation, `__unknown`
-  stashing, and `normalize`'s defaulting. Adding a real migration means appending to
-  `MIGRATIONS` and bumping the constant; the loop needs no edit.
+- **The index is what the file list reads**, never the documents. `WorksheetSummary`
+  carries optional `questionCount`/`hasCover`; entries are validated **per row** — one
+  malformed summary must not empty the list.
+- **A rename writes `worksheet.title`** (loads and re-saves) — a separate display name
+  would part company on the first on-page edit, and patching the index alone is undone
+  by the next autosave.
+- **A worksheet copy re-ids the document and nothing inside it** (the opposite of
+  duplicating a question, where `withFreshIds` must walk the clone).
+- **Migration chain** `migrate()`: ordered pure functions, currently empty because v1
+  is current — the machinery runs on every load (validation, `__unknown` stashing,
+  `normalize` defaulting). Adding a migration = append to `MIGRATIONS` + bump the
+  constant.
 - **Forward compatibility**: unknown top-level fields preserved in `__unknown`.
-- **`KNOWN_KEYS` must list every top-level field.** An unlisted key is treated as from
-  a newer build: stripped into `__unknown`, persisted but never reaching the model —
-  presenting as a control that "works" then vanishes on reload (`titleFormat`,
-  `instructionsFormat`, `bands` were each missing once). A test fails when a populated
+- **`KNOWN_KEYS` must list every top-level field** — an unlisted key is stripped into
+  `__unknown`: it saves fine and vanishes on reload. A test fails when a populated
   worksheet carries a key the set lacks.
 
 ### The published-document promise
 
-**The app is public and schema v1 has shipped**, so real worksheets exist on real
-machines. A document saved by any released build must keep opening, keep its content,
-and keep rendering — a file that will not open is a teacher's work destroyed, with no
-undo. This outranks tidiness in the model layer.
-
-A change to `Worksheet` or its nested types must take one of three routes:
+**The app is public and schema v1 has shipped.** A document saved by any released build
+must keep opening, keep its content, and keep rendering. This outranks tidiness.
 
 | Change | What it costs |
 |---|---|
-| **Add an optional field** | Free. Older documents lack it, `normalize` defaults it, no version bump. **Add it to `KNOWN_KEYS`** or it saves and vanishes on reload. |
-| **Change a field's meaning or shape** | A step in `MIGRATIONS` + a `CURRENT_SCHEMA_VERSION` bump, proved against the frozen corpus. |
-| **Remove a field** | Only by migrating its data elsewhere first. Deleting outright discards whatever teachers stored in it. |
+| **Add an optional field** | Free — but add it to `KNOWN_KEYS` |
+| **Change a field's meaning or shape** | A `MIGRATIONS` step + version bump, proved against the frozen corpus |
+| **Remove a field** | Only by migrating its data elsewhere first |
 
-**The promise covers saved documents, not exported bytes.** A teacher's `.worksheet.json`
-must always reopen; an untouched document exporting byte-identically stays a strong
-convention (many tests pin it, and it is how a formatting delta proves it changed nothing
-else) but is deliberately *not* a guarantee — freezing it would mean a layout defect could
-never be fixed for documents that already exist. Changing how an old document *prints* is
-allowed; breaking its ability to *open* is not.
+**The promise covers saved documents, not exported bytes.** Byte-identical export of
+untouched documents stays a strong convention (many tests pin it) but is not a
+guarantee — changing how an old document *prints* is allowed; breaking *open* is not.
 
-- **A migration step is pure and total.** It receives whatever a real saved document
-  contained — including fields this build has never seen — and may not assume any
-  optional structure is present.
-- **The frozen corpus is the only witness.** `src/test/corpus/v1-published.json` is a
-  fully-populated v1 document (cover, page furniture, QAB footer, 10pt base, all four
-  block kinds, a shared-marks sub-part pair) written **once** and never regenerated.
-  Every other schema test round-trips a worksheet *this build just constructed*, which
-  proves only that the build agrees with itself and structurally cannot catch a
-  migration that drops a field. Only a fixture written by an older build can.
-  `scripts/emit-v1-corpus.test.ts` regenerates it, and is run only when cutting a **new**
-  version — never to "update" v1 after a model change, which would rewrite the evidence
-  instead of migrating it. Ids are stable slugs so the file diffs meaningfully.
-- **`backwardCompat.test.ts` asserts six things** about that corpus: it loads with
-  nothing stashed in `__unknown`, keeps every top-level structure, keeps all four block
-  kinds, keeps an unmarked sub-part *unmarked* (a migration defaulting it to `0` would
-  print a "(0 marks)" nobody wrote), loses no authored text (counted over every run), and
-  survives load → save → load unchanged. Verified to bite: a simulated v2 step dropping
-  `cover` fails the structural and text-count assertions independently.
+- **A migration step is pure and total** — it may not assume optional structure is
+  present.
+- **The frozen corpus is the only witness.** `src/test/corpus/v1-published.json` was
+  written once by the v1 build and is **never regenerated** — every other schema test
+  round-trips a document this build constructed, which cannot catch a migration that
+  drops a field. `scripts/emit-v1-corpus.test.ts` runs only when cutting a **new**
+  version; a new version gets a new corpus file beside the old.
+- **`backwardCompat.test.ts` asserts six things** about the corpus: loads with nothing
+  in `__unknown`, keeps every top-level structure, keeps all four block kinds, keeps an
+  unmarked sub-part unmarked, loses no authored text, survives load → save → load.
+  Verified to bite against a simulated field-dropping migration.
 
-**The index fails independently of the documents, and more quietly.** A worksheet lives in
-storage as two halves — the document under `econ-worksheet:<id>` and its summary in the
-`econ-worksheet-index` array — and the start screen is the only route in, so a document
-whose entry is missing or unreadable is *intact but unreachable*.
+**The index fails independently of the documents.** Storage is two halves — the
+document under `econ-worksheet:<id>` and its summary in `econ-worksheet-index` — and
+the start screen is the only route in, so a broken index entry leaves a document
+intact but unreachable.
 
-- **One damaged entry may not cost the whole list.** `list()` cast the parsed array
-  unvalidated and sorted on `updatedAt`; a single row lacking that field threw inside the
-  sort, hit the catch, and returned `[]` — every saved worksheet vanishing from the file
-  list while sitting untouched in storage, which reads to a teacher as total loss. Entries
-  are now judged one at a time: a row shows when it carries an `id` to open and a `title`
-  to print, an undated row sorts last rather than being dropped, and unknown fields pass
-  through (a newer build's entry survives an older build's read, as `__unknown` does for
-  documents). Only an unparseable index as a whole yields `[]`.
-- `legacyIndex.test.ts` writes the storage keys as **literals**, deliberately not imports:
-  they are not an implementation detail to keep in sync, they are the published contract
-  with every browser that already holds data under them. A change that makes those
-  literals wrong orphans real documents, and that is where it must fail.
+- **One damaged entry may not cost the whole list**: entries are judged one at a time
+  (an `id` to open and a `title` to print shows the row; undated rows sort last;
+  unknown fields pass through). Only an unparseable index as a whole yields `[]`.
+- `legacyIndex.test.ts` writes the storage keys as **literals**, deliberately not
+  imports — they are the published contract with every browser holding data under
+  them.
 
 ### Bilingual text (`src/model/text.ts`)
 
@@ -2280,10 +1376,9 @@ whose entry is missing or unreadable is *intact but unreachable*.
 - Storage markers: `**bold**`, `*italic*`, `__underline__`, `^{sup}`, `_{sub}`.
 - Bilingual mode: both languages share **one paragraph**, separated by soft `w:br` /
   `<br>` — one list number per bilingual unit.
-- **Newline is run text**: Shift+Enter is a plain `\n` inside run text (no new run
-  kind; no migration).
-  `runLines()` splits at the one point it must become markup — a raw newline renders as
-  a **space** in `<w:t>` and HTML alike. A break is deliberately not a paragraph.
+- **Newline is run text**: Shift+Enter is a plain `\n` inside run text. `runLines()`
+  splits at the one point it must become markup — a raw newline renders as a **space**
+  in `<w:t>` and HTML alike.
 - Per-script fonts: every run carries `w:rFonts` with `w:ascii`/`w:hAnsi` +
   `w:eastAsia`.
 
@@ -2296,6 +1391,5 @@ Vercel (or any static host): Next.js build → fully prerendered. No API routes,
 Browser: .docx via JSZip client-side · localStorage autosave · file up/download · PDF via window.print()
 ```
 
-Nothing in `src/` reads `process.env` or the filesystem at runtime — client-side export
-is a design constraint. New on-page chrome needs `data-print-hide`, or it appears in
-the PDF.
+Nothing in `src/` reads `process.env` or the filesystem at runtime. New on-page chrome
+needs `data-print-hide`, or it appears in the PDF.

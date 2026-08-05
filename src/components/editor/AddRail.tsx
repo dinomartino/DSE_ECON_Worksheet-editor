@@ -39,38 +39,10 @@ import {
 } from '@/components/ui/icons';
 
 /**
- * The add rail — the app's answer to "how do I put something on the page?".
- *
- * Before this existed the only way to add a question was an 11px grey text link
- * (`+ Multiple Choice`) sitting under a collapsed accordion in the right sidebar,
- * below the fold on a short window. Adding content is the single most common thing a
- * teacher does here and it was the least visible control on screen.
- *
- * The rail borrows Canva's shape deliberately: a permanent vertical strip of large
- * icon targets on the left edge, each opening a flyout of concrete things to insert.
- * It costs 64px of width and buys an affordance that never has to be discovered
- * twice — the rail is always in the same place whatever is selected.
- *
- * **Where things land.** Everything inserts after the store's `insertAnchorId`, and at
- * the end when there is none — which is what "keep typing at the end" means for a
- * document. A single click stays useful without first nominating a target, and the item
- * can still be dragged afterwards; §flow makes position cheap to change.
- *
- * It used to have to pick a *container* — the selection's section, else the last one —
- * and could not express "after this element" at all. With one document-wide flow an
- * insert is a position, so there is nothing to guess and no `disabled` state for a
- * document that happens to have no sections.
- *
- * **The destination is read from the store, not from the question selection.** Reading
- * `selectedQuestionId` directly meant the rail could only see *one of the three* things
- * a teacher can select on the page: choosing a heading or a divider left it undefined
- * and the new item silently went to the end of the document, several sheets from where
- * they were working. The anchor holds any flow id, and the gap affordance sets it with
- * nothing selected at all (§insertion anchor).
- *
- * **And the flyout says where.** Placement that can only be discovered by committing to
- * it is placement a teacher has to undo to learn; the header names the destination
- * before the click.
+ * The add rail: a permanent vertical strip of icon targets (Canva's shape), each
+ * opening a flyout of things to insert. Everything inserts after the store's
+ * `insertAnchorId` (append when none) — the anchor holds any flow id, not just a
+ * question selection, and the flyout's header names the destination before the click.
  */
 
 type Group = 'questions' | 'layout';

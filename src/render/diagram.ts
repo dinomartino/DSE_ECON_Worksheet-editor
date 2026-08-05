@@ -32,23 +32,10 @@ import type { BiText, FontPair, LanguageMode, RichText } from '@/model/types';
 const PAD = { top: 44, right: 30, bottom: 46, left: 64 };
 
 /**
- * The most of the width the x-axis title may claim.
- *
- * `PAD.right` used to be a flat 116px — enough for "Quantity of money" at the nominal
- * 400px size, and so 29% of the canvas was reserved for a word even when the title was
- * "$". Against a 64px left pad that pushed the plot well left of centre: a blank 400x300
- * diagram drew its axes in a 220x210 box hugging the left edge, which is the off-centre
- * look every template inherited.
- *
- * The reserve is now measured from the title and capped here. The cap is deliberately
- * loose rather than tight: a title that does not fit *must* get its room, because both
- * alternatives are worse — clipping it at the canvas edge loses the words, and sliding
- * it back over the arrowhead collides with the axis.
- *
- * 0.35 is sized from the longest titles the templates actually ship ("Quantity of Good
- * X", "Taxable income ($)"), which need ~131px of the nominal 400. Anything below that
- * put those three back against the right edge. A short title like "Quantity" still only
- * takes what it measures, so the common case keeps the wide, centred plot.
+ * The most of the width the x-axis title may claim. The reserve is measured from the
+ * title and capped loosely — a title that does not fit must get its room (clipping
+ * loses words; sliding back collides with the axis). 0.35 fits the longest shipped
+ * template titles; short titles take only what they measure.
  */
 const MAX_X_TITLE_SHARE = 0.35;
 
@@ -117,20 +104,10 @@ function n(value: number): string {
 }
 
 /**
- * Pick the side of a `BiText` to draw.
- *
- * Diagrams differ from body text here: a bilingual worksheet stacks EN over ZH in a
- * paragraph, but stacking two lines on every curve label would collide with the curves.
- * So a bilingual diagram prints the English label with the Chinese beneath it *only*
- * where the label is a standalone axis title, and prefers the single populated side
- * everywhere else. `pickSides` returns the lines to draw, in order.
- *
- * Each side is then cut at its own hard breaks. A newline is ordinary run text
- * (§ newline is run text), so a renderer that does not split it prints a space instead —
- * and `textAt` already stacks a list of lines, which is how a bilingual label prints
- * two. The reference paper needs this for a y-axis title set as "Nominal / interest
- * rate" and a curve label set as "average / growth rate": one line each would run them
- * together and, being longer, would also widen the reserved margin around the plot.
+ * Pick the side(s) of a `BiText` to draw — the one funnel to drawn lines. Bilingual
+ * stacks EN over ZH only on standalone axis titles (two lines on every curve label
+ * would collide with the curves); each side is then cut at its own hard breaks (a
+ * newline is run text and would otherwise print as a space).
  */
 function pickSides(text: BiText | undefined, language: LanguageMode): RichText[] {
   if (!text) return [];
@@ -669,19 +646,10 @@ export function arrowLabelAnchor(
 }
 
 /**
- * Where an axis title is drawn, including any dragged nudge.
- *
- * The anchor stays derived from the plot edges, and the x title is clamped so the whole
- * of it stays on the canvas: the right pad is capped at `MAX_X_TITLE_SHARE` to keep the
- * plot centred, so a title can be wider than the room past the arrowhead, and without
- * the clamp the SVG would quietly cut it to "Quantity of" — the silent truncation the
- * `PAD` comment warns about. Overlapping a strip of empty plot keeps the words.
- *
- * The clamp lives here rather than in `diagramSvg` because `DiagramCanvas` builds the
- * title's drag handle from this same function (§7.5) — computing it in the renderer
- * alone would leave the handle floating away from the text it is supposed to grab.
- *
- * `titleOffset` still applies on top, so a dragged nudge moves the clamped position.
+ * Where an axis title is drawn, plus any dragged nudge. The x title is clamped inside
+ * the canvas (overlapping empty plot beats silent truncation). The clamp lives here,
+ * not `diagramSvg`, because `DiagramCanvas` builds the drag handle from this same
+ * function. `titleOffset` applies on top.
  */
 export function axisTitleAnchor(
   diagram: Diagram,
@@ -774,30 +742,11 @@ function titleRoom(diagram: Diagram, language: LanguageMode, scale: number): num
 const PLOT_ASPECT = 3 / 4;
 
 /**
- * The size a diagram needs, measured from what it actually draws.
- *
- * The stored `heightPx` used to be a flat `width * 3/4`, which made the *canvas* 4:3 and
- * left the plot to absorb everything drawn around it. So a title, a two-line bilingual
- * axis name and a row of tick labels all ate the picture rather than the page: adding a
- * title visibly squashed the curves, and an untitled diagram still exported the blank
- * strip a title would have used.
- *
- * Measuring instead: the plot keeps its 4:3, and each side grows by exactly the room the
- * text on that side needs. Consequences worth knowing:
- *
- * - **The printed size follows the labels.** Renaming an axis or adding a title changes
- *   the exported picture's height, and the page reflows. That is the trade the shape is
- *   worth — the alternative is a fixed box that is either too tight for a long title or
- *   mostly whitespace for a short one.
- * - **`widthPx` stays the teacher's number, floored by what the title needs.** The
- *   width decides how much of the text column the figure takes — but the title is drawn
- *   at a fixed 10pt however small the figure, so a canvas narrower than the words
- *   clipped them at both edges ("ure 1: … econom") and the teacher's number was
- *   printing a picture missing its own name. The floor widens the canvas (and with it
- *   the plot) just far enough that the centred title fits; a width that already fits is
- *   returned untouched.
- * - Shared with `diagramPlot`, so the projection and the canvas cannot disagree about
- *   where the plot sits inside the picture.
+ * The size a diagram needs, measured from what it draws: the plot keeps its 4:3 and
+ * each side grows by the room its text needs. The printed size follows the labels
+ * (the page reflows — the accepted cost of never clipping and never padding);
+ * `widthPx` stays the teacher's number, floored by what the title needs
+ * (`titleWidthFloor`). Shared with `diagramPlot`, so projection and canvas agree.
  */
 export function diagramSize(
   diagram: Diagram,
@@ -832,20 +781,10 @@ export function diagramSize(
 }
 
 /**
- * The narrowest canvas on which the centred title fits, never less than `widthPx`.
- *
- * The title is centred on the *plot*, and the plot sits off the canvas centre (a wide
- * left pad against a measured right one) — so the width the words need is their own
- * width plus the pads' imbalance, not simply the words plus the pads. Solving the
- * centring: a title of width T centred at `(padLeft − padRight + w) / 2` stays on a
- * canvas of width `w ≥ T + |padLeft − padRight|`.
- *
- * The right pad depends on the width through its `MAX_X_TITLE_SHARE` cap, so the floor
- * is settled in two passes — the second recomputes the pad at the widened width, which
- * is where the cap can only loosen, so two passes reach a fixed point.
- *
- * A small cushion rides on top because `estimateWidth` is an estimate: a title clipped
- * by two pixels reads as a rendering bug just as surely as one clipped by forty.
+ * The narrowest canvas on which the centred title fits, never less than `widthPx`:
+ * `w ≥ T + |padLeft − padRight|` (the title centres on the plot, which sits off the
+ * canvas centre). Two passes reach a fixed point (the cap can only loosen at the
+ * widened width); a small cushion covers `estimateWidth`'s error.
  */
 function titleWidthFloor(diagram: Diagram, widthPx: number, language: LanguageMode): number {
   const lines = pickSides(diagram.title, language);

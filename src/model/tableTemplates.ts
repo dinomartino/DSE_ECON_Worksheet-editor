@@ -8,27 +8,11 @@ import type { BiText, TableBlock, TableCell, TableRow } from './types';
 const newId = () => nanoid(10);
 
 /**
- * Starting shapes for a table.
- *
- * The syllabus draws a handful of tables the same way every year — a bank's balance
- * sheet is always two sides of a T-account with the same four headings — so rebuilding
- * one cell by cell, then getting its border shape right, is work a teacher should not
- * repeat. These are traced from the reference papers in `real_life_reference/`, borders,
- * column proportions and all.
- *
- * **A template is only an initial value.** It produces a plain `TableBlock` with fresh
- * ids, and from that moment the teacher's copy is independent: the numbers are edited on
- * the page, rows are added and deleted, columns are dragged. Nothing downstream ever
- * looks the template up again — exactly as `DIAGRAM_TEMPLATES` works, and for the same
- * reason. There is deliberately no `templateId` on the block: a stored one would invite
- * a later "re-apply the template" that has to decide what to do with edited cells.
- *
- * The wording that *names* the shape ships filled in (the headings a balance sheet
- * always carries); the wording that is this question's data ships **empty**, since a
- * placeholder number a teacher forgets to change is worse than a blank cell. Both
- * language sides are filled for every heading — the app exists for bilingual papers, and
- * a template that seeds English alone hands over a half-translated table (§ both
- * language sides carry defaults).
+ * Starting shapes for a table — what the syllabus draws the same way every year,
+ * traced from the reference papers. **A template is only an initial value**: fresh
+ * ids, never looked up again, deliberately no `templateId`. Headings ship filled (in
+ * both languages — a template seeding English alone is a half-translated table);
+ * figures ship empty (a seeded number is one a teacher can miss).
  */
 export interface TableTemplate {
   id: string;
@@ -54,25 +38,11 @@ function row(cells: TableCell[], minHeight?: number): TableRow {
 const BALANCE_ROW_TWIPS = 340;
 
 /**
- * A bank's balance sheet — the T-account of DSE 2019 P2 Q6 and Q7.
- *
- * **Four columns, not two.** Each side is a label column and a figure column: "Reserves"
- * ranges left while "1 000" ranges right, with no rule between them, which is what makes
- * the two read as one entry. A two-column table cannot place the figures without either
- * ruling between the name and its number or relying on typed spaces that reflow the
- * moment the column is dragged.
- *
- * The header cells each span their side's two columns, and the whole table takes
- * `headerRule` borders — the frame, the rule under the head, the divider down the middle
- * (§`TableBorders`). The two sides are exactly equal halves; within a side the reference's
- * own proportions put the wider share on the label.
- *
- * **The entry labels ship too.** A banking system's balance sheet is always Reserves and
- * Loans against Deposits — that is what the account *is*, not what this question happens
- * to ask, and DSE 2019 P2 Q6 and Q7 both print exactly those three. Only the figures are
- * left empty: "1 000" is this question's data, and a seeded number is one a teacher can
- * miss. The fourth cell has no label because the liabilities side carries one entry, so
- * it stays blank as the reference leaves it.
+ * A bank's balance sheet — the T-account. **Four columns, not two**: each side is a
+ * label column and a figure column with no rule between (two columns cannot place the
+ * figures without ruling name from number or relying on typed spaces). Header cells
+ * span 2+2; `headerRule` borders. Labels ship (Reserves/Loans against Deposits is
+ * what the account *is*); figures stay empty.
  */
 function balanceSheet(): TableBlock {
   const assets = bi('Assets ($ million)', '資產（百萬元）');

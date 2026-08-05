@@ -3,27 +3,11 @@
 import { useEffect, useRef } from 'react';
 
 /**
- * A live thumbnail of one real sheet.
- *
- * The rail used to draw a proportional *sketch* — one grey bar per flow item. That
- * answered "how full is this page" but not "is this the page with the tariff diagram",
- * which is the question a teacher actually navigates by. So the card now shows the
- * page itself.
- *
- * It is a **clone of the rendered sheet**, not a second render of the document. The
- * preview has already laid every page out inside `#print-root`; re-rendering the IR
- * per card would be the third full pass over the document (the paginator's hidden
- * probe is the second) and would duplicate the paper geometry, header/footer and
- * margin logic that `Preview` owns. Cloning takes the finished pixels instead, so a
- * thumbnail cannot drift from the page it represents — there is no second code path
- * for it to drift *through*.
- *
- * The clone is deliberately **inert**: `cloneNode` copies markup, not React handlers,
- * and the wrapper is `pointer-events-none`. The card underneath owns click, drag and
- * delete, so a thumbnail that swallowed pointer events would break the rail's whole
- * purpose. `aria-hidden` for the same reason — the button already names itself
- * "Page 3", and the clone would otherwise read the entire page's text into the
- * accessibility tree twice.
+ * A live thumbnail of one real sheet: a **clone of the rendered sheet** from
+ * `#print-root` (no third render pass, no second code path to drift through).
+ * Deliberately inert — `cloneNode` copies markup, the wrapper is
+ * `pointer-events-none` and `aria-hidden`, so the card underneath keeps click, drag
+ * and delete.
  */
 export function PageThumb({
   pageIndex,

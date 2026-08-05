@@ -9,35 +9,11 @@ import { useModalLayer } from '@/components/ui/modalLayer';
 import { PageThumb } from './PageThumb';
 
 /**
- * The page rail — a scrolling column of sheets under the add rail.
- *
- * A long worksheet is navigated by *page*, not by question: a teacher checking that
- * Part B starts on a fresh sheet is looking for a place in the printed artifact, and
- * the outline in the right sidebar cannot answer that because it lists questions
- * without knowing where any of them lands. This is the only view of the document that
- * is organised the way the output is.
- *
- * **Pages are derived, not stored.** There is no `Page` in the model — a page is
- * whatever the paginator measured onto one sheet (§preview), and it is reported here
- * through `onPagesChange`. So every action has to be expressed in terms the store
- * understands, which is flow ids:
- *
- * - *navigate* scrolls to the sheet, touching no state at all;
- * - *delete* is `removeMany` over the page's flow ids, in one commit;
- * - *reorder* is `movePage`, which orders that whole run against one anchor in a single
- *   commit, preserving document order among its members;
- * - *receive* is the same verb pointed the other way: a run dragged off the page lands
- *   at the end of the card it is dropped on. What arrives is whatever the preview put
- *   in flight, which is the entire multi-selection when the drag began inside one.
- *
- * The card is a **live thumbnail** — a scaled clone of the real sheet (`PageThumb`).
- * It was a proportional sketch of grey bars, on the reasoning that a true thumbnail
- * would mean rendering the document a third time and that the text would be illegible
- * anyway. The first half of that was avoidable and the second half was answering the
- * wrong question: legibility is not the point, *recognisability* is. A teacher looks
- * at this rail to find the page with the diagram on it, and every sketch card looked
- * like every other one. Cloning the finished DOM buys the real page without the third
- * render pass the sketch was chosen to avoid.
+ * The page rail: the one view organised the way the output is. Pages are derived, so
+ * every action is expressed in flow ids — navigate scrolls, delete is `removeMany`,
+ * reorder is `movePage`, receive lands the in-flight run at the card's end. Cards are
+ * live thumbnails (scaled clones of the real sheets, `PageThumb`) — recognisability,
+ * not legibility, is the point, with no third render pass.
  */
 
 /**

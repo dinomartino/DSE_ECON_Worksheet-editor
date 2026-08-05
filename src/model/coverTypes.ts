@@ -1,41 +1,12 @@
 import type { BiText, FontPair, TextFormat } from './types';
 
 /**
- * A mock-exam cover page.
- *
- * ## Why a cover is its own model, and not layout elements
- *
- * A first attempt built covers out of the existing pieces — masthead `Band`s plus flow
- * elements — and it could not produce the shape at all. A band is one printed row across
- * the full text column, so a stack of them makes a stack of centred lines. The reference
- * cover is nothing like that: **two unequal columns side by side**, a corner block hung
- * outside the text column, and a bordered panel in the right column. No arrangement of
- * full-width rows reaches it.
- *
- * The reference's own mechanism, read out of its `word/document.xml`:
- *
- * ```
- * <w:cols w:num="2" w:equalWidth="0">
- *   <w:col w:w="5328" w:space="144"/>   left  — identity, title, instructions
- *   <w:col w:w="3845"/>                 right — the candidate panel
- * </w:cols>
- * ```
- *
- * So a cover is modelled as what it is: **a page divided into named regions**, each
- * holding lines of text. That is still slot-based — a teacher fills regions rather than
- * dragging boxes to arbitrary coordinates (§ layout is slot-based, never free) — but the
- * slots are *areas of a page* rather than thirds of a row.
- *
- * ## What is reproduced and what is not
- *
- * The **structure** is reproduced: a two-column exam cover is a layout, not anybody's
- * property. The **wording is this project's own** — none of the reference's rubric prose,
- * authority or examination lines, or copyright notice. `cover.test.ts` guards that with a
- * phrase blocklist and a sliding-window check against the real file.
- *
- * The right-hand panel is deliberately **name / class / class number**, not a barcode box
- * and candidate number: those are the HKEAA's own apparatus, and a school mock identifies
- * its candidates by name anyway. Same slot, same place, doing the job a school needs.
+ * A mock-exam cover page: **a page divided into named regions** — the reference is two
+ * unequal columns (`w:cols w:equalWidth="0"`: 5328 left, 3845 right) with a corner
+ * block outside the text column, a shape no stack of full-width bands can make. Still
+ * slot-based; the slots are areas of a page. Structure is reproduced, wording is this
+ * project's own (`cover.test.ts` guards it); the panel is name/class/number, not the
+ * HKEAA's barcode apparatus.
  */
 
 /**

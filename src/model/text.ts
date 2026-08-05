@@ -70,23 +70,10 @@ export function parseRuns(source: string): RichText {
 }
 
 /**
- * Split one run's text into its lines, so a backend can put its own break between them.
- *
- * A **hard line break inside a paragraph** (Shift+Enter) is stored as a plain `\n` in
- * the run's own text rather than as a distinct run kind. That keeps the stored shape
- * unchanged — `parseRuns` already preserved the character, every saved document is
- * still valid, and no migration is needed — while making the break explicit at exactly
- * the point where it has to become markup.
- *
- * It has to become markup because a raw newline renders as a *space* in all three
- * backends: `<w:t>` collapses it, and so does HTML. That was the bug — the editor
- * accepted Shift+Enter and appeared to work, the model stored it faithfully, and then
- * every renderer silently flattened it.
- *
- * A break is deliberately not a paragraph. Splitting into two paragraphs would consume
- * a second list number, so "1." followed by a second line would print as "1." and "2."
- * — the identical reason bilingual stacking uses a soft break inside one paragraph
- * rather than two paragraphs (§ Bilingual Text Handling).
+ * Split one run's text into its lines. A hard break (Shift+Enter) is a plain `\n` in
+ * run text (no new run kind, no migration); it must become markup at exactly this
+ * point, because a raw newline renders as a *space* in `<w:t>` and HTML alike. A
+ * break is deliberately not a paragraph — that would consume a second list number.
  */
 export function runLines(text: string): string[] {
   // \r\n and a lone \r both normalise, so text pasted from Word or a Windows file
@@ -100,22 +87,9 @@ export function hasLineBreak(runs: RichText | undefined): boolean {
 }
 
 /**
- * How many hard line breaks trail the end of this rich text with no text after them.
- *
- * A trailing Shift+Enter is a **real blank line** — it prints, and deleting it would
- * silently change the document — but a trailing marks label like "(3 marks)" must not
- * attach to it. Marks belong at the right-hand end of the last line that *says*
- * something; hung on an empty final line they read as sitting below the part rather than
- * on it.
- *
- * Both backends need this and neither may derive it for itself: the preview pins the
- * label to the paragraph's last line box, and the exporter appends a `w:tab` run after
- * the text — so with a trailing `<w:br/>` Word lands the marks on the blank line too.
- * They must count the same breaks or the page and the `.docx` disagree.
- *
- * Counts only breaks with nothing but further breaks after them; a blank line in the
- * *middle* of the text is content and is left alone. Whitespace-only lines count as
- * empty, since a line holding one space is not a line with text on it either.
+ * How many hard breaks trail the text with nothing after them — the blank lines the
+ * marks label must not hang on. Counted here for both backends (they must choose the
+ * same line). Only trailing breaks count; whitespace-only lines are empty.
  */
 /**
  * Which language side the trailing marks label sits against.
@@ -301,19 +275,9 @@ function splitAt(runs: RichText, offset: number): RichText {
 }
 
 /**
- * Apply a run-level format to the characters in `[start, end)`.
- *
- * This is what makes formatting per-text rather than per-element: the toolbar hands in
- * the selection's offsets and only those characters change, so one paragraph can hold a
- * 14pt bold phrase inside ordinary body text.
- *
- * A `null` in the patch **clears** that attribute back to inherited, which `undefined`
- * cannot express — spread over an existing run, `{ bold: undefined }` is
- * indistinguishable from a patch that never mentioned bold.
- *
- * An empty or reversed range is returned unchanged rather than treated as "all", so a
- * toolbar click with only a caret (no selection) is a no-op instead of silently
- * reformatting the whole element.
+ * Apply a run-level format to `[start, end)`. `null` in the patch **clears** back to
+ * inherited (`undefined` cannot — spread makes it "not mentioned"). An empty or
+ * reversed range is a no-op, never "all".
  */
 export function applyRunFormat(
   runs: RichText | undefined,
@@ -348,21 +312,9 @@ export function applyRunFormat(
 }
 
 /**
- * Replace the characters in `[start, end)` with `insert`, keeping formatting.
- *
- * This is what typing does in the on-page editor. The editor renders the runs
- * themselves — bold looks bold, 14pt looks 14pt — so an edit can no longer be
- * expressed as "re-parse the whole marker string"; it has to be a *range* operation
- * that leaves every attribute the edit did not touch exactly where it was.
- *
- * The inserted characters take the formatting of the run they land inside, which is
- * what makes typing in the middle of a bold phrase continue in bold, and typing at a
- * boundary continue the run on the **left** — the same rule Word follows, and the
- * reason the caret's "current format" is read from the character before it.
- *
- * `at === 0` on empty text has no run to inherit from, so `fallback` supplies one;
- * that is how the toolbar's pending format ("turn bold on, then type") reaches the
- * first character.
+ * Replace `[start, end)` with `insert`, keeping formatting — the edit primitive.
+ * Inserted characters inherit from the run left of the caret (Word's rule), then
+ * right, then `fallback` (how a pending "bold on, then type" reaches character 1).
  */
 export function replaceRichTextRange(
   runs: RichText | undefined,
@@ -419,21 +371,10 @@ export function replaceRichTextRange(
 const BLANK_WIDTH = 12;
 
 /**
- * Insert a fill-in blank at the caret.
- *
- * DSE Paper 1 runs this shape through a third of its questions ("This is an example of
- * using ______ to solve the problem of ______."), so it is a single action rather than
- * something a teacher assembles by holding the space bar and underlining the result.
- *
- * Deliberately **not** a new run kind or a storage marker. An underlined space already
- * exports, pastes and prints correctly through all three backends and needs no
- * migration; a `blank` run type would have to be taught to each of them, and would print
- * as nothing in any build that did not know it yet. What was missing was never the
- * representation — only a way to reach it.
- *
- * The format is forced rather than inherited: `replaceRichTextRange` continues the run
- * to the caret's left, which for a blank typed after ordinary prose is exactly the wrong
- * answer — it would insert twelve invisible spaces.
+ * Insert a fill-in blank at the caret. Deliberately underlined spaces, not a new run
+ * kind (already exports/pastes/prints everywhere, no migration). The underline is
+ * forced, not inherited — after ordinary prose, inheritance is twelve invisible
+ * spaces.
  */
 export function insertBlank(
   runs: RichText | undefined,

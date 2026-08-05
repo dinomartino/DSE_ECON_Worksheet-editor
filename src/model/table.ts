@@ -3,22 +3,11 @@ import { QUESTION_LIST_INDENTS } from './numbering';
 import type { CellPadding, TableAlign, TableBlock, TableCell } from './types';
 
 /**
- * Table structure: the shape of a table, separate from what is typed into it.
- *
- * These are pure functions over a `TableBlock` because **two surfaces perform the same
- * edits** — the sidebar's structure panel and the page's own row/column controls — and a
- * verb implemented twice is a verb that will eventually mean two things. They also make
- * the awkward cases (merges, ragged rows) testable without a DOM.
- *
- * There is no notion of a "header" row here, and deliberately so. A `headerRowCount`
- * used to drive `w:tblHeader`, grey shading and bold text, and no HKDSE table has any of
- * them; worse, it could not describe a distribution table, whose headings run across the
- * top *and* down the left with an empty corner. Emphasis is per-cell formatting.
- *
- * **Ragged rows are real.** Merging with `colSpan` leaves rows holding different numbers
- * of cell objects, so nothing here may assume `rows[0].cells.length` is the width. Every
- * function that adds cells pads to the widest row instead, or a column inserted into a
- * merged table lands in a different visual place on each row.
+ * Table structure verbs, as pure functions — two surfaces (sidebar panel, on-page
+ * controls) perform the same edits. No "header row" concept (no HKDSE table has one;
+ * emphasis is per-cell formatting). **Ragged rows are real**: merges leave rows with
+ * different cell counts, so nothing may assume `rows[0].cells.length` is the width —
+ * functions that add cells pad to the widest row.
  */
 
 /**
@@ -445,21 +434,9 @@ export const MAX_CELL_PADDING_TWIPS = 720;
 export type PaddingScope = 'cell' | 'row' | 'column' | 'table';
 
 /**
- * The padding actually in effect on one cell, resolved **per edge**.
- *
- * Precedence runs inward: cell → column → row → table → the built-in default. Each edge
- * resolves on its own, so "this row is roomy on top" and "this column is tight on the
- * left" compose instead of one silently discarding the other — an all-or-nothing object
- * pick would make the second setting appear to do nothing.
- *
- * The row is *outside* the column deliberately. A row is a visible thing a teacher points
- * at ("make this row taller"), a column is the axis a distribution table's headings run
- * down, and where the two disagree the narrower, more deliberate statement should win.
- *
- * Resolution happens here rather than in each backend because Word has no row- or
- * column-level margin at all: the `.docx` can only write the winner onto every `w:tcMar`,
- * so the preview and the clipboard have to read the same winner or the page would show a
- * padding the exported file does not have.
+ * The padding in effect on one cell, resolved **per edge**, precedence cell → column
+ * → row → table → default (the narrower statement wins). Resolved here because Word
+ * has no row/column margin — every backend must read the same winner.
  */
 export function resolveCellPadding(
   block: TableBlock,
@@ -584,22 +561,10 @@ export function resolveColumnWidths(block: TableBlock, count: number): number[] 
 }
 
 /**
- * Which edges each cell of a `headerRule` table draws — the T-account (§`TableBorders`).
- *
- * The shape is a frame, one rule under the top row, and one vertical rule down the
- * middle. Everything else is explicitly off. Read off DSE 2019 P2 Q6's own
- * `document.xml`, where each interior cell spells `nil` on the edges facing its
- * side-mates and `single` on the ones that reach the frame or the divider.
- *
- * Resolved from **grid** position, not cell index: the header cells span two grid
- * columns each, so "is this cell against the middle divider" cannot be answered by
- * counting cells in the row. Each cell's starting grid column is accumulated from the
- * spans before it, exactly as `w:gridSpan` makes Word do.
- *
- * The divider sits at the grid's midpoint, which is what makes the two sides equal
- * halves. An odd column count has no midpoint — the shape is meaningless there — so the
- * divider is simply omitted and the table prints as a framed block with a header rule,
- * which is the nearest true thing rather than a rule drawn off-centre.
+ * Which edges each cell of a `headerRule` table draws — the T-account: frame, one
+ * rule under the top row, one down the middle, everything else explicitly off.
+ * Resolved from **grid** position (spans occupy multiple columns), not cell index.
+ * An odd column count has no midpoint, so the divider is omitted.
  */
 export function resolveCellEdges(
   block: TableBlock,

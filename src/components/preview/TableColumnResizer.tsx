@@ -9,37 +9,12 @@ import {
 import { ptToTwips } from '@/model/page';
 
 /**
- * Drag a table's geometry on the page: column boundaries, outer edges and row heights.
- *
- * The reference papers settle why all three are needed. Neither table has equal columns —
- * the cost-output table's label column is about three times a data column. The
- * distribution table does not span the text column at all, being inset from both sides.
- * And both have rows visibly taller than the 12pt line their text sits on.
- *
- * The point of doing it here rather than in the sidebar is that a table is only legible at
- * full width, on the paper: sizing it by typing numbers into a 380px column means looking
- * away from the thing being sized. The panel keeps the exact values, the way the diagram
- * editor's panel keeps coordinates while the canvas drags.
- *
- * Every gesture follows the page's existing two (`ResizableBlock`, `ResizableRows`):
- *
- * - **The in-flight value is local state**, committed once on pointer-up. A drag that
- *   wrote every move would put dozens of entries on the undo stack for one gesture.
- * - **The delta divides by the preview scale**, so the edge tracks the cursor at any zoom.
- * - **Escape abandons it**, matching every other cancellable interaction here.
- * - **Geometry is captured at pointer-down**, never re-read mid-drag: the table redraws
- *   under the pointer, so a box measured every move would shift beneath the gesture
- *   causing it. (It is also the ref-during-render React warns about.)
- *
- * What none of them share is the selection dance. A boundary is not a selectable object —
- * there is nothing to delete or format — so handles are revealed on hover and need no
- * click-to-arm step.
- *
- * The three differ in one respect worth stating, because it is the source of the only
- * subtlety here: **columns and edges are fractions, rows are absolute.** A column's share
- * is meaningless without a table to be a share *of*, and a table's share is meaningless
- * without a page; a row's height is just a height. So the first two divide by a measured
- * width and the third does not.
+ * Drag a table's geometry on the page: column boundaries, outer edges, row heights.
+ * Standard gesture rules: in-flight value local, committed once on pointer-up; delta
+ * ÷ preview scale; Escape abandons; geometry captured at pointer-down. Boundaries are
+ * not selectable (nothing to delete/format), so handles reveal on hover.
+ * **Columns and edges are fractions, rows are absolute** — the first two divide by a
+ * measured width, the third does not.
  */
 
 /** Half a grip's width, in screen pixels — the reach of every boundary handle. */

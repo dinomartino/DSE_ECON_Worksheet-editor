@@ -772,29 +772,11 @@ function PtField({
 }
 
 /**
- * Cell padding, at whichever level the teacher aims it.
- *
- * Word has table-level and per-cell margins and nothing between, but "make this row
- * roomier" and "give the label column some air" are the two things the reference papers
- * actually need — table1's rows are visibly taller than one line, and both tables inset
- * their left-hand column well clear of the rule. So the model keeps all four levels and
- * the exporter flattens the winner onto every `w:tcMar` (§tables).
- *
- * Three rules this panel keeps:
- *
- * - **The scope is chosen before the numbers**, because the same four fields mean four
- *   different edits. A row of inputs whose target was implied by whatever was last
- *   clicked would be a control that silently changes meaning.
- * - **Inherited values are shown, not blank.** Every field displays what is *in effect*,
- *   so the panel always describes the page. Empty boxes over a padded cell would read as
- *   "no padding", which is a different thing from "not overridden here".
- * - **Overriding is visible and reversible.** A level that has its own value says so and
- *   offers Reset, since an override is otherwise indistinguishable from an inherited
- *   value that happens to match — and there would be no way back to inheriting.
- *
- * Authored in **points**, stored in twips: a teacher reads a ruler in points, and Word's
- * own Table Properties dialog is in points (or cm). The conversion is the one place it
- * happens, so the stored unit stays what `w:tcMar` takes.
+ * Cell padding at whichever level the teacher aims it (all four levels; the exporter
+ * flattens the winner onto `w:tcMar`). Scope is chosen before the numbers (the same
+ * four fields mean four edits); inherited values are shown, not blank; an override
+ * says so and offers Reset. Authored in points, stored in twips — the one place the
+ * conversion happens.
  */
 function TablePaddingSection({
   block,

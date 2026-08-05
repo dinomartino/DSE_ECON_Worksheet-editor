@@ -2,23 +2,10 @@ import { normalizeRuns, runLines } from '@/model/text';
 import type { InlineRun, RichText, RunFormat } from '@/model/types';
 
 /**
- * The bridge between a `RichText` and the contenteditable that edits it.
- *
- * The on-page editor renders the runs *as themselves* — a bold run is a `<strong>`, a
- * 14pt run is a span with a font size — rather than showing the `**bold**` marker
- * string a teacher never asked to learn. That is the whole point of this module, and it
- * is what removes three problems the marker string caused:
- *
- *  - **Nothing to decode.** Offsets here are plain-text offsets, so a selection needs no
- *    translation and `sourceOffsetToText` has no work to do on this path.
- *  - **Nothing to lose.** `serializeRuns` spells only bold/italic/underline/sup/sub, so
- *    re-parsing its output dropped every run's size, colour and font. Reading the DOM
- *    back reads *attributes*, so all of them survive an edit.
- *  - **Nothing to keep in step.** There is no second representation of the text that can
- *    drift from the model while an editor is open.
- *
- * Every run becomes exactly one element carrying a `data-run` index, so reading back is
- * a walk rather than a parse.
+ * The bridge between a `RichText` and the contenteditable: runs render as themselves
+ * (never the marker string), so offsets are plain-text offsets, attributes read back
+ * losslessly, and there is no second representation to drift. Every run is one
+ * element with a `data-run` index — reading back is a walk, not a parse.
  */
 
 /** Marks the element that owns one run, so the reader can recover its attributes. */
@@ -75,21 +62,11 @@ export function attrsPayload(run: InlineRun): string {
 }
 
 /**
- * Build the DOM for one run — the formatting it carries, made visible.
- *
- * Real nodes rather than React elements, because these are painted into a
- * contenteditable the browser also writes to: letting React reconcile children into an
- * element the browser is mutating fights it for the same nodes and destroys the caret.
- *
- * The semantic elements do the emphasis (`<strong>`/`<em>`/`<u>`, and `<sup>`/`<sub>`
- * for vertical alignment) and the inline style carries what has no element — size,
- * colour, fonts. `data-run-attrs` rides along so `readRuns` can recover the exact
- * attributes rather than inferring them from computed CSS, which would quantise 11pt to
- * `14.6667px` and turn an untouched run into a changed one on the way back.
- *
- * A hard break is a real `<br>`, matching how the idle preview draws it, so the caret
- * can sit on either side of it and `readRuns` turns it back into the `\n` the model
- * stores.
+ * Build the DOM for one run: real nodes, not React elements (React reconciling into a
+ * browser-mutated contenteditable destroys the caret). Semantic elements carry
+ * emphasis, inline style the rest; `data-run-attrs` lets `readRuns` recover exact
+ * attributes (computed CSS would quantise 11pt to 14.6667px). A hard break is a real
+ * `<br>` that reads back as `\n`.
  */
 export function runToNode(run: InlineRun, index: number): HTMLElement {
   const holder = document.createElement('span');
@@ -151,19 +128,10 @@ export function sameRuns(a: RichText, b: RichText): boolean {
  * is still read as `\n` for the paths that paint one (the idle preview, a paste).
  */
 /**
- * Emphasis the *browser* put between a text node and its run element.
- *
- * Cmd+B / Cmd+I / Cmd+U in a contenteditable are native editing commands: the browser
- * wraps the selection in its own `<b>`, `<i>` or `<u>` **inside** the run span, without
- * touching `data-run-attrs`. Reading attributes from the run element alone therefore saw
- * an unformatted run and threw the emphasis away the moment the field was left — the
- * shortcut appeared to work and then silently undid itself, while the toolbar (which
- * writes the model directly) survived.
- *
- * So the tags between the text and its owner are read as well, and they *add* to the
- * run's own attributes: a keystroke inside an already-14pt phrase means "bold as well",
- * never "bold instead". Walking up to the owner rather than inspecting the immediate
- * parent is what catches `<b><i>text</i></b>`, which two shortcuts in a row produce.
+ * Emphasis the *browser* put between a text node and its run element (Cmd+B wraps the
+ * selection in its own `<b>` inside the run span, untouched `data-run-attrs`). The
+ * tags between text and owner are read and *add* to the run's attributes; walking up
+ * to the owner catches `<b><i>text</i></b>`.
  */
 function nativeEmphasis(node: Node, owner: HTMLElement | null): RunFormat {
   const found: RunFormat = {};

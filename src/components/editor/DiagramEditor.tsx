@@ -11,37 +11,12 @@ import { BiTextField } from './BiTextField';
 import { DiagramCanvas } from './DiagramCanvas';
 
 /**
- * The diagram block's panel: **everything except the drawing** (§5.3).
- *
- * This used to be a second, complete editor — five tabs (curves, points, labels, arrows,
- * axes), every element re-listed as a card, and every coordinate typed as a percentage of
- * the plot. It was the same mistake the table panel made with its grid of text inputs, and
- * it fails for the same reason: **you cannot see what you are editing.** Typing "x 62%" at
- * a curve you are not looking at is not how anyone places a supply curve, and the panel
- * could not show the intersections, the labels or the crowding that decide whether the
- * number is right.
- *
- * The canvas answers all of it, and answers it better: drag to place, arrow keys to nudge
- * a fifth of a percent at a time, snapping to real intersections, double-click any text to
- * retype it where it is drawn, and an element index for reaching a curve hidden under
- * another. So the tabs are gone rather than duplicated, and what remains is the set of
- * things the canvas has no opinion about:
- *
- * - **Template** — replaces the geometry wholesale, which is a decision about the whole
- *   picture rather than an edit within it;
- * - **Width** — the printed size, which the canvas deliberately ignores (it draws at a
- *   zoom so the stored size stays a *print* size);
- * - **Alt text** — `.docx` metadata that never appears in the drawing at all;
- * - **Title** — whether the picture has one, and which side of the plot it prints on.
- *   A diagram has no caption: its words live *inside* the geometry, centred and
- *   underlined over the plot, and rasterize into the same PNG. Typing them belongs to
- *   the canvas, where they are drawn — but an absent title has nothing on the canvas to
- *   click, so creating one is offered here, exactly as `Name the x-axis` is offered for
- *   an axis title deleted to nothing.
- *
- * The live SVG is the way in, for the reason the page preview is: what you click is what
- * you edit. It is the very renderer the preview and exporter use, so the thumbnail cannot
- * show something the printed page will not.
+ * The diagram block's panel: **everything except the drawing** — the canvas owns the
+ * geometry (the old five-tab coordinate editor failed because you cannot see what you
+ * are editing). What remains is what the canvas has no opinion about: Template
+ * (wholesale replacement), Width (print size; the canvas draws at a zoom), Alt text,
+ * and Title creation/placement (an absent title has nothing on the canvas to click).
+ * The live thumbnail is the same renderer the exporter uses.
  */
 
 interface Props {

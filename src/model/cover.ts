@@ -69,20 +69,11 @@ const line = (
  * So the sans face is applied per line, not per page.
  */
 /**
- * The academic year a cover created *now* belongs to.
- *
- * Three places print the year and must agree — the corner code, the examination line,
- * and the QAB footer's paper code ("2025-26-ECON 2–5"). They shipped as three separate
- * literals, which is two chances to disagree and three things to remember every August;
- * a document made in 2027 was stamped 2025-26 on all three.
- *
- * Derived rather than constant because the answer is knowable: a school year turns over
- * in September, so `MOCK_YEAR_START_MONTH` is the cut. A mock sat in November 2026
- * belongs to 2026-27; one sat in March 2027 belongs to the same year, not to 2027-28.
- * Takes its `now` as an argument so a test pins the boundary rather than the clock.
- *
- * It remains a **default**: every line it feeds is editable on the page, and
- * `CoverOptions.code` overrides it outright.
+ * The academic year a cover created *now* belongs to — one derivation feeding the
+ * three places that print it (corner code, examination line, QAB footer code). Turns
+ * over in September (`MOCK_YEAR_START_MONTH`); takes `now` as an argument so tests
+ * pin the boundary. A default only: every line stays editable and
+ * `CoverOptions.code` overrides it.
  */
 const MOCK_YEAR_START_MONTH = 8; // September, zero-based.
 
@@ -137,31 +128,11 @@ const instruction = (en: string, zh: string): CoverLine => ({
 });
 
 /**
- * Instruction wording, per paper style.
- *
- * Written for a school mock rather than transcribed: each says the plain operational
- * thing a candidate needs, in this project's own words. A teacher who wants their
- * centre's exact rubric types it over — the same relationship every preset in this app
- * has to its reference.
- *
- * **An instruction earns its place by describing this booklet.** The list is ordered the
- * way the reference orders its own — identify yourself, then what to answer, then where
- * to write it, then the incidentals — because that is the order a candidate needs them
- * in, and it is the order the page is used in. Two rules that follow from it:
- *
- * - **The paper's *structure* comes before its mechanics.** A QAB ships Sections A/B/C
- *   with "Answer any ONE question." on C (§ `qabSections`), and the cover said nothing
- *   about it: the one fact a candidate must not get wrong — which sections are compulsory
- *   — was reachable only by paging to the back. The reference makes it instruction two,
- *   and so does this.
- * - **The margin rule belongs here too.** The booklet already prints "Do not write in
- *   this margin." down both edges as page furniture (§ `pageFurniture`), but furniture is
- *   read once the candidate is already writing. It is stated on the cover for the same
- *   reason the reference states it: answers outside the ruled space are not marked, which
- *   is a marks consequence, not a formatting preference.
- *
- * Nothing here reproduces the apparatus this app does not model — no barcodes, no
- * candidate-number grids, no invigilation timing rubric (§ structure, not wording).
+ * Instruction wording, per paper style — this project's own words, ordered as the
+ * reference orders its own. A booklet's cover states what to answer (which sections
+ * are compulsory) and the margin rule — both are marks consequences a candidate must
+ * not discover by paging to the back. No reproduced apparatus (barcodes, grids,
+ * invigilation rubric).
  */
 function instructionLines(style: CoverPaperStyle): CoverLine[] {
   const shared: Array<[string, string]> = [
@@ -250,19 +221,10 @@ export interface CoverOptions {
 }
 
 /**
- * Build a cover in the reference's shape, with this project's wording.
- *
- * Every value is a placeholder the teacher edits on the page, so leaving one out yields
- * the generic version rather than a blank — the cover is never a form to fill before it
- * can be looked at.
- *
- * **Both sides carry defaults.** Every line shipped with `zh` empty, so a cover viewed
- * in Chinese was a blank sheet with a candidate panel on it: the mode this app exists to
- * serve showed nothing at all, while English looked finished. The Chinese is this
- * project's own school-mock wording, matching the English line for line — deliberately
- * *not* the reference's authority lines (§ structure is reproduced, wording is not),
- * which name the HKEAA and its public examination and belong to neither a school mock
- * nor this repository.
+ * Build a cover in the reference's shape with this project's wording. Every value is
+ * an editable placeholder. **Both language sides carry defaults** — `zh` empty made a
+ * Chinese cover a blank sheet — and the Chinese is this project's own wording, never
+ * the reference's authority lines.
  */
 export function createCoverPage(options: CoverOptions): CoverPage {
   const { paperStyle, now } = options;

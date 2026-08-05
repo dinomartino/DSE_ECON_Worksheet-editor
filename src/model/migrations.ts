@@ -1,44 +1,17 @@
 import type { Worksheet } from './types';
 
 /**
- * Schema versioning (§6). Rules:
- *  - Never change the meaning of an existing field; add new fields as optional.
- *  - Every **released** version gets a pure migration function to the next version.
- *  - Documents from NEWER versions still load: their unrecognised top-level fields
- *    are stashed in `__unknown` and written back out on save, so a round-trip
- *    through an older build never destroys data.
- *
- * ## The app has shipped: documents exist in the wild
- *
- * **Schema v1 is published.** Real teachers have real worksheets saved by it, so from
- * here on every change to the stored shape has to carry those documents forward. This
- * is the constraint that outranks tidiness in this file: a document that will not open
- * is a teacher's work destroyed, and there is no undo for it.
- *
- * Concretely, a change to `Worksheet` and its nested types must do one of:
- *
- *  - **Add an optional field.** Free — an older document simply lacks it, `normalize`
- *    defaults it, and no version bump is needed. Add the key to `KNOWN_KEYS` (see
- *    below) or it will save and then vanish on reload.
- *  - **Change the meaning or shape of an existing field.** Append a step to
- *    `MIGRATIONS`, bump `CURRENT_SCHEMA_VERSION`, and prove it against the frozen
- *    corpus (`src/model/backwardCompat.test.ts`). The loop below needs no edit.
- *  - **Remove a field.** Only ever by migrating its data somewhere else first. Deleting
- *    it outright silently discards whatever teachers had stored in it.
- *
- * ## Why the chain is still empty
- *
- * Because v1 *is* the current version — not because migrations are optional here. The
- * model did change seven times (a font pair, page setup, banded headers, flattened
- * sections, authored field wording, dropped table header rows, per-block captions), but
- * every one of those predates the release, so their migration steps upgraded documents
- * that never existed and were deleted rather than carried forever. That reasoning
- * expired the day the app shipped: the *next* shape change is the first one with real
- * data on the other side of it, and it needs a real step here.
- *
- * The machinery is fully built and exercised on every load: `migrate` validates,
- * normalizes, runs the chain, and stashes unknown fields so a document from a newer
- * build survives a round-trip through an older one.
+ * Schema versioning. **Schema v1 is published — real documents exist in the wild.**
+ * A change to the stored shape must do one of:
+ *  - **Add an optional field** — free, but add it to `KNOWN_KEYS` or it saves and
+ *    vanishes on reload.
+ *  - **Change a field's meaning/shape** — append to `MIGRATIONS`, bump
+ *    `CURRENT_SCHEMA_VERSION`, prove against the frozen corpus.
+ *  - **Remove a field** — only by migrating its data elsewhere first.
+ * The chain is empty because v1 *is* current (pre-release steps upgraded documents
+ * that never existed), not because migrations are optional. `migrate` still runs on
+ * every load: validate, normalize, run the chain, stash unknown fields in
+ * `__unknown` so a newer build's document survives a round-trip.
  */
 
 export const CURRENT_SCHEMA_VERSION = 1;

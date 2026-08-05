@@ -3,27 +3,11 @@ import { emptyBiText, parseRuns, plain } from './text';
 import type { BiText, FlowItem, LayoutElement, Question } from './types';
 
 /**
- * Resolving the document's display order.
- *
- * A worksheet holds two lists — `questions` (which numbering walks) and `layout` — plus
- * a `flow` that orders them together. Splitting it this way keeps §4 numbering and
- * §3.5 marks totalling untouched: they still walk `questions` and never see a divider
- * or a spacer.
- *
- * **`questions` stays the authority on question order.** The flow contributes only the
- * position of layout elements *relative to* the questions, so there is exactly one
- * source of truth for "which question comes third" — otherwise reordering would have
- * to write both lists and they could silently disagree.
- *
- * Concretely: questions come out in array order, and each layout element is placed
- * after whichever question precedes it in the flow (or at the start, if it precedes
- * every question). Anything the flow does not mention is appended, so a document from
- * an older build resolves to exactly its previous order and a lost flow entry costs an
- * element its position, never its existence.
- *
- * There is **one flow for the whole document**, not one per section. A section is a
- * `section` layout element inside it, which is what lets a section begin mid-sheet
- * without a page and a section disagreeing about which of them owns an item.
+ * Resolving display order. **`questions` is the authority on question order**; `flow`
+ * contributes only the position of layout elements relative to them. Anything the
+ * flow does not mention is appended — a lost flow entry costs position, never
+ * existence. One flow for the whole document; a section is a layout element inside
+ * it, which is what lets a section begin mid-sheet.
  */
 
 /** The two lists a flow orders. `Worksheet` satisfies this, and so does a test stub. */

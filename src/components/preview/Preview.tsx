@@ -253,21 +253,10 @@ function richNodes(
   /** Tab handler, supplied only by table cells so a table walks like Word's. */
   onTab?: (backwards: boolean) => boolean,
   /**
-   * Render empty sides with a **short** prompt, for a field whose box cannot absorb a
-   * sentence.
-   *
-   * A table cell is that field. "Double-click to add English" is four words of italic
-   * prose, and a figure column is as wide as "5 000" — so the prompt wrapped to four
-   * lines and pushed the row to nearly double the height it prints at. Worse than
-   * untidy: the paginator measures these boxes, so the preview and Word disagreed about
-   * the height of any table holding an empty cell.
-   *
-   * The prompt is not dropped altogether — an empty cell still needs to advertise that
-   * it can be typed in, and with nothing there at all a teacher cannot tell an empty
-   * cell from a covered one. It is shortened to a symbol that fits any column, and the
-   * field is stretched to the cell's width (`fillWidth`) so that shortening it does not
-   * shrink the thing you have to click: the whole cell is the target and the whole cell
-   * lights up on hover, while the box stays one line tall.
+   * Render empty sides with a **short** prompt (a table cell cannot absorb a
+   * sentence — the long prompt wrapped and changed the measured row height). The
+   * field stretches to the cell's width (`fillWidth`) so the whole cell stays the
+   * click target while the box stays one line tall.
    */
   compactPlaceholder?: boolean,
 ) {
@@ -387,43 +376,18 @@ function marksLabel(marks: number, language: LanguageMode): string {
 }
 
 /**
- * "(4 marks)" sits at the right-hand end of the paragraph's **last line**.
+ * "(4 marks)" sits at the right-hand end of the paragraph's **last line** — the
+ * .docx's right tab stop. No CSS property expresses that (`float:right` lands on the
+ * first line with room and overprints when it drops; `text-align-last: justify`
+ * stretches word spacing), so reserving and placing are separated:
  *
- * The `.docx` gets this from a right tab stop: a `w:tab` run after the text against a
- * stop at the content edge, so the marks flow to the end of the paragraph and land on
- * whichever line that turns out to be. A tab stop reserves nothing on the *other* lines
- * — only the final line is shortened — which is why the body text has to wrap exactly as
- * it would with no marks at all.
+ * - an **invisible twin** of the label rides inline at the end of the text — in flow,
+ *   it shortens only the actual last line and reserves exactly the label's width;
+ * - the **visible copy is pinned `bottom: 0; right: 0`** in the (already relative)
+ *   paragraph.
  *
- * No single CSS property expresses that, and the two obvious ones both fail:
- *
- * - **`float: right` is placed on the first line with room**, not the last. A float is
- *   positioned when a line box is built and does not participate in inline layout, so
- *   emitting it after the text does not pin it to the final line: when the last line's
- *   remaining width is narrower than the label, the float moves *down*, and because it is
- *   out of flow the paragraph does not grow to contain it — the marks then print in the
- *   next paragraph's 12pt line box and overprint it. That is visible only on the lengths
- *   where the tail happens not to fit, which is why it read as intermittent.
- * - **`text-align-last: justify`** stretches the body text's word spacing, and a
- *   full-width flexible gap wraps to its own line regardless.
- *
- * So the reserve and the placement are separated, and the reserve *is* the label:
- *
- * - An **invisible twin** rides inline at the very end of the text. Being in flow, it
- *   shortens only the line the text actually ends on, and being the label itself it
- *   reserves exactly the right width at any font size — no measurement, nothing to keep
- *   in step. A fixed-width shim cannot do this: where the shim fits but the label does
- *   not, the two overprint.
- * - The **visible copy is pinned bottom-right**. The paragraph's last line *is* its
- *   bottom, so `bottom: 0` lands on that line whatever the paragraph's height, and
- *   `right: 0` right-aligns it at the content edge like the tab stop. (The paragraph is
- *   already `relative`, for the list marker.)
- *
- * When the marks genuinely do not fit, the twin wraps and carries the last word with it,
- * so both end up on a new final line together — which is what Word's tab stop does too.
- *
- * `aria-hidden` on the twin keeps the label out of the accessibility tree twice, and both
- * copies are `nowrap` so neither splits "(4" from "marks)".
+ * When the marks don't fit, the twin wraps and carries the last word with it — Word's
+ * behaviour. `aria-hidden` on the twin; both copies `nowrap`.
  */
 function MarksTrail({
   marks,
@@ -437,22 +401,11 @@ function MarksTrail({
   const label = marksLabel(marks, language);
   const labelRef = useRef<HTMLSpanElement>(null);
   /*
-   * Whether the label needs a line of its own because the anchor line has no room.
-   *
-   * Only the trailing-break case needs this. With no trailing breaks the hidden twin
-   * rides directly after the text, in flow, so a full last line wraps the twin \u2014 and
-   * with it the pinned label \u2014 onto a fresh line by itself. But when the text ends in
-   * hard breaks the twin sits *after* them (it cannot ride inside the contenteditable),
-   * reserving room on the trailing blank line while the visible label is lifted up onto
-   * the last text line \u2014 which was free to run to the right edge. The label then
-   * overprinted the text on screen while Word, given the same paragraph, wrapped the
-   * label to the next line: the one place the two backends disagreed about a
-   * paragraph's height.
-   *
-   * So the anchor line is measured, and when the label cannot fit beside its last
-   * character the trail renders an explicit extra line for the label to sit on \u2014 the
-   * same line Word's wrap produces, in the same place: directly after the text, with
-   * the trailing blank lines following.
+   * Whether the label needs a line of its own. Only the trailing-break case: the twin
+   * sits *after* the breaks (it cannot ride inside the contenteditable), so it
+   * protects nothing on the lifted-to line. The anchor line is measured, and when the
+   * label cannot fit beside its last character the trail renders an explicit extra
+   * line \u2014 the same line Word's wrap produces.
    */
   const [needsOwnLine, setNeedsOwnLine] = useState(false);
 
@@ -468,18 +421,11 @@ function MarksTrail({
     if (!visibleLabel || !paragraph) return;
 
     /*
-     * The last character of the *text*, not of the paragraph: the twin and the label
-     * are excluded, and so are the trailing blank lines (a `<br>`'s rect is the empty
-     * line, not the text). The room asked for is the **label's own width, without the
-     * twin's em gap** \u2014 Word's tab needs exactly the label (it right-aligns at the
-     * content edge however small the gap to the text), and including the em pushed a
-     * borderline paragraph the .docx kept on one line: a one-line pagination
-     * disagreement on precisely the boundary this measurement exists to agree about.
-     *
-     * Position-independent on purpose: it compares the text's edge with the room the
-     * label needs, never with where the label currently is \u2014 measuring the label's own
-     * *position* would un-push after every push and loop. Its width is stable either
-     * way.
+     * The last character of the *text* (twin, label and trailing blank lines
+     * excluded), against the **label's own width without the twin's em gap** \u2014 Word's
+     * tab needs exactly the label, and the em pushed a borderline paragraph the .docx
+     * kept on one line. Position-independent: measuring the label's own position
+     * would un-push after every push and loop.
      */
     const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT, {
       acceptNode: (node) =>
@@ -607,18 +553,10 @@ function runFormatToTextFormat(run: RunFormat): TextFormat {
 }
 
 /**
- * The `w:ind` geometry of each numbered level, in twips — the *same numbers*
- * `export/docx/numbering.ts` writes into `numbering.xml`, not an approximation of them.
- *
- * Word's model is `left` + `hanging`: the paragraph's text column sits at `left`, and
- * the **marker alone** is pulled back by `hanging` into the margin. Every line of the
- * paragraph — wrapped lines and the lines after a hard break alike — starts at `left`.
- *
- * The preview used to express this as `padding-left: 18pt; text-indent: -18pt`, which
- * is a *different* shape: CSS `text-indent` moves the first line only, so line 1 began
- * 18pt left of every other line. On a real question that read as the second line being
- * indented — and it disagreed with both Word and the reference paper, where a stem's
- * wrapped lines align flush under the first word with only the number in the margin.
+ * The `w:ind` geometry of each numbered level, in twips — the same numbers the docx
+ * numbering writes. Word's model: text column at `left`, marker alone pulled back by
+ * `hanging`, every wrapped line at `left`. CSS `text-indent` is a different shape
+ * (first line only), hence `padding-left` + absolutely positioned marker.
  */
 /*
  * The same twips `export/docx/numbering.ts` writes into `w:ind`, taken from the one
@@ -726,18 +664,9 @@ export interface EditContext {
     onRemoveColumn: (blockId: string, index: number) => void;
   };
   /**
-   * Adding and removing a cover's instruction lines on the page.
-   *
-   * Structural, like `tableGrid` and for the same reason: typing in a line and deciding
-   * how many lines there are are different acts, and a read-only preview (print, the
-   * page thumbnails) takes neither. The model and the store have had `addCoverLine` and
-   * `removeCoverLine` since the cover shipped — what was missing was any way to reach
-   * them, so an instruction could be reworded but a paper could never gain or lose one.
-   *
-   * Instructions only. The head, corner and foot lines are the paper's identity, fixed
-   * in number by the shape the reference draws; the instruction list is the one region
-   * whose length is genuinely the teacher's (§ instruction numbers are derived from
-   * position, so adding or deleting renumbers the rest).
+   * Adding/removing a cover's instruction lines on the page. Structural like
+   * `tableGrid`; a read-only preview takes neither. Instructions only — the other
+   * regions' line counts are the paper's identity.
    */
   coverLines?: {
     onAdd: (afterId?: string) => void;
@@ -1116,21 +1045,11 @@ function AnswerLinesView({ lines }: { lines: number }) {
 }
 
 /**
- * The QAB's dotted answer space, at the exporter's own pitch.
- *
- * A dotted bottom border stands in for Word's dotted underline over a tab — the nearest
- * CSS mechanism; per the token rule anything on the paper takes a literal colour. The
- * rule sits on the bottom of each row for the reason `AnswerLinesView` puts it there:
- * the last line must be dotted too.
- *
- * The 1.5pt `w:before` is drawn as **padding inside each row**, not as a margin above
- * it. Visually the two are identical — the dots stay at the foot of the row either way —
- * but a margin on the first child escapes the element's own border box, so the measured
- * height came to `lines × advance − gap` while the element actually began a gap lower on
- * the page. Every consumer of that height is then off by one gap in the same direction:
- * `resolveFillCounts` divided a room it had overstated, and the last sheet of a booklet
- * came back one line short of what genuinely fitted. Padding keeps the box honest, so
- * measured height is exactly `lines × LQ_LINE_ADVANCE_PX`.
+ * The QAB's dotted answer space at the exporter's pitch: a dotted bottom border per
+ * row. The 1.5pt `w:before` is drawn as **padding inside each row**, never a margin —
+ * a first-child margin escapes the border box and understates the measured height by
+ * one gap, so `resolveFillCounts` divided an overstated room. Padding keeps measured
+ * height exactly `lines × LQ_LINE_ADVANCE_PX`.
  */
 function AnswerSpaceView({ lines }: { lines: number }) {
   return (
@@ -1195,18 +1114,9 @@ function PageFurnitureLayer({
   const boxes = furnitureBoxes(width, height, setup.margins, { verticalNote: zhSide });
 
   /*
-   * Latin is rotated; Chinese is set vertically. Not a workaround for CSS — it is what
-   * the two scripts are, and the reference booklet prints both that way.
-   *
-   * A Latin margin note has no vertical typesetting convention, so the whole line is
-   * laid out horizontally and turned -90° (reading bottom-to-top). Chinese does have
-   * one: glyphs stay upright and stack one per line, top-to-bottom, which is precisely
-   * `writing-mode: vertical-rl` with no rotation at all.
-   *
-   * Both wrong answers have shipped. `vertical-rl` + `rotate(180deg)` for everything
-   * printed Chinese upside down and bottom-to-top; rotating everything -90° stood the
-   * Chinese back up but laid it sideways, a quarter turn off the reference. The script
-   * decides the mechanism, and the two mechanisms are genuinely different — hence the
+   * Latin is rotated (-90° over a horizontal line); Chinese is set vertically
+   * (`writing-mode: vertical-rl`, upright glyphs, no rotation). The script decides the
+   * mechanism — either single-mechanism answer prints one script wrong — hence the
    * swapped box below for the rotated case only.
    */
   const noteStyle = (box: Parameters<typeof place>[0]): React.CSSProperties => {
@@ -1319,22 +1229,11 @@ function SizedRows({
 }
 
 /**
- * A table on the page: sized columns, per-cell padding, and text that wraps.
- *
- * Three things here have to match the exporter exactly, because the paginator measures
- * these boxes and a preview that lies about the height breaks the page in a place Word
- * will not:
- *
- * - **`table-layout: fixed` with a `colgroup`.** The `.docx` writes `w:gridCol` from the
- *   same fractions, and Word's tables are fixed-layout. Browser auto-layout sizes columns
- *   from their *content*, so the same table drew differently on screen than on paper, and
- *   the widths a teacher dragged would not have survived the trip.
- * - **Padding in points from the resolved twips.** One resolver feeds this and `w:tcMar`,
- *   so a row's or a column's padding cannot mean one thing here and another in Word.
- * - **Text wraps and the row grows**, which is what Word does. The old `overflow-x-auto`
- *   was a scrollbar on a sheet of paper: it hid an over-wide table instead of showing it,
- *   and the sheet measured the *scroller*, not the content, so a table that overflowed
- *   was invisible to pagination.
+ * A table on the page. Three things must match the exporter exactly (the paginator
+ * measures these boxes): `table-layout: fixed` with a `colgroup` (Word is
+ * fixed-layout; browser auto-layout sizes from content); padding in points from the
+ * resolved twips (one resolver feeds this and `w:tcMar`); text wraps and the row
+ * grows (no `overflow-x-auto` — a scrollbar hid overflow from pagination).
  */
 function TableNodeView({
   node,
@@ -1572,20 +1471,10 @@ function TableNodeView({
           divide — a handle positioned inside a full-width parent would drift as soon as
           the table was narrowed. */}
       {/*
-        The hover zone reaches past the table, into the margins its chrome sits in.
-
-        The outer-edge grips straddle the table's border and the `+` buttons sit outside
-        it entirely, so a group whose box stopped at the table would go un-hovered exactly
-        as the pointer arrived at one — the control turning inert as it is reached (§ hover
-        chrome needs a hit path). CSS `:hover` follows the element box, so the box has to
-        be the bigger one.
-
-        It is the *wrapper* that grows, with the table held at its true size by an inner
-        div: growing the positioning context instead would move every handle's 0% and
-        100%, which are the table's edges. The padding is `data-print-hide` chrome in the
-        sense that matters — it is transparent and the sheet's own layout is unchanged,
-        because the wrapper is `absolute`-positioned padding around a block that still
-        occupies exactly the table's height.
+        The hover zone reaches past the table into the margins its chrome sits in
+        (§ hover chrome needs a hit path). The *wrapper* grows while an inner div holds
+        the table at its true size — growing the positioning context would move every
+        handle's 0%/100%. The padding is transparent and reserves no printed space.
       */}
       {/*
         Alignment is `auto` margins, not a computed offset.
@@ -1909,24 +1798,11 @@ function CoverSheet({
     );
 
   /*
-   * The instructions region, with the one piece of chrome the cover needs.
-   *
-   * Every other region is drawn by `region()` above. This one is separate because its
-   * *length* is the teacher's decision — a school's paper has however many instructions
-   * it has — while the head, corner and foot lines are the shape the reference draws.
-   *
-   * Each numbered line gets a ✕ in the margin; the block gets a "+ Instruction" that
-   * appends. The chrome follows the rules the band editor's already does, each of which
-   * failed silently before it was written down: it is `data-print-hide` so the PDF path
-   * (which prints these very sheets) never sees it, absolutely positioned so it reserves
-   * no space the printed page would use, and wrapped in a `pointer-events-none` strip
-   * that spans back to the line — a control outside its group's box otherwise hides
-   * itself as the pointer travels toward it (§ hover chrome needs a hit path).
-   *
-   * A line's id comes from the node's own edit target rather than from a parallel list:
-   * the marker cell is derived and carries none, so the *authored* cell is the one that
-   * names the line, and reading it here is what keeps the ✕ pointed at the line the
-   * teacher is hovering rather than at an index that a re-render could shift.
+   * The instructions region: the one cover region whose *length* is the teacher's.
+   * Each line gets a ✕; the block gets "+ Instruction". Chrome is `data-print-hide`,
+   * absolutely positioned (reserves no space), and wrapped in a `pointer-events-none`
+   * strip back to its line (§ hover chrome needs a hit path). A line's id comes from
+   * the authored cell's own edit target, not an index a re-render could shift.
    */
   const instructionsRegion = () => {
     const lines = cover.instructions;
@@ -2313,17 +2189,9 @@ function NodeView({
 }
 
 /**
- * The click target that activates a dimmed region.
- *
- * Double-click rather than a single click, matching Word and matching the rule the rest
- * of the page already follows for text: one click selects, two commit to editing. A
- * single click here would make the dimming pointless — the pointer crosses the header on
- * its way to the toolbar constantly, and any of those journeys would activate it.
- *
- * It is a `button` rather than a bare div so the region is reachable without a pointer:
- * `Enter` on the focused button does what the double-click does. It carries no visible
- * styling of its own — the dimming *is* the affordance, and a hover tint on a region
- * that is meant to recede would defeat the effect it exists to create.
+ * The click target that activates a dimmed region. Double-click (Word's rule — a
+ * single click would activate on every journey to the toolbar); a `button` so Enter
+ * works without a pointer; no styling of its own — the dimming is the affordance.
  */
 function RegionWake({
   label,
@@ -2699,19 +2567,10 @@ function DraggableItem({
   const [itemHeight, setItemHeight] = useState<number | undefined>();
 
   /*
-   * Measured, and **only stored when it actually changes**.
-   *
-   * This is a `ResizeObserver` whose result feeds a style on a child of the very node it
-   * observes (the grip's `maxHeight`), which is a feedback loop by construction: measure →
-   * setState → re-style → observe → measure. It stayed quiet while the two values happened
-   * to agree, and ran away as soon as they could not — sub-pixel heights never settle, so
-   * React saw an unbounded update chain and threw "Maximum update depth exceeded".
-   *
-   * Rounding is what closes it. A fractional height read back from `getBoundingClientRect`
-   * differs from the integer that produced it, so every pass looked like a change; whole
-   * pixels give the loop a fixed point to land on. Comparing before setting then makes the
-   * steady state cost nothing at all, which also stops the observer re-rendering a page of
-   * items whenever anything reflows.
+   * Measured, and only stored when it actually changes. The observer's result styles a
+   * child of the node it observes — a feedback loop. Rounding gives it a fixed point
+   * (sub-pixel heights never settle → "Maximum update depth exceeded"), and comparing
+   * before setting makes the steady state free.
    */
   useEffect(() => {
     const node = rootRef.current;
@@ -2730,31 +2589,11 @@ function DraggableItem({
   }, [id]);
 
   /*
-   * Does this row have room for the chevrons?
-   *
-   * A merged pill always keeps them, spanning a whole run and so tall by construction.
-   * Every other row decides from `itemHeight` — and that decision is a **feedback loop**,
-   * because the chevrons live inside the grip, the grip is inside the box the
-   * `ResizeObserver` above watches, and the pill is `overflow-hidden` under a `maxHeight`
-   * cap taken from the same measurement. Dropping the chevrons changes the pill's content
-   * height, the observer fires, the height re-reads on the other side of the threshold,
-   * and they come back. That is bistable rather than convergent, so it never settles and
-   * React eventually reports "Maximum update depth exceeded" from this component's
-   * `measure`.
-   *
-   * Two things keep it closed, and both are needed:
-   *
-   *  - **A fixed threshold**, never one derived from what is currently drawn. The
-   *    comparison is against a constant, so for a given measured height the answer is the
-   *    same every pass. That is what makes the state a fixed point: the observer can fire
-   *    as often as it likes and the decision does not move.
-   *  - **Rounding, in the observer.** A real item measures 36.3535…, so an unguarded
-   *    `setItemHeight` wrote a different number every pass and kept the chain alive even
-   *    when the chevron decision was stable.
-   *
-   * Before first measurement the chevrons are **off** rather than on. Either default is a
-   * guess for one frame, and hiding is the safe one: a pill drawn too tall for its row
-   * overlaps its neighbours, where one drawn too short merely looks plain.
+   * Does this row have room for the chevrons? A merged pill always keeps them; other
+   * rows decide from `itemHeight` — a bistable feedback loop unless the threshold is a
+   * **fixed constant** (never derived from what is drawn) and the observer rounds.
+   * Before first measurement chevrons are off: a pill drawn too tall overlaps its
+   * neighbours, one too short merely looks plain.
    */
   const showChevrons = isRunHead || (itemHeight ?? 0) >= CHEVRON_MIN_HEIGHT_PX;
 
@@ -2848,24 +2687,10 @@ function DraggableItem({
       )}
 
       {/*
-       * The insert gap: where the next item lands, and a target for aiming at it.
-       *
-       * **It reserves no space.** The strip is absolutely positioned across the item's
-       * trailing edge, so it neither moves the text nor changes what the paginator
-       * measures — the page must break in exactly the places Word will break it, and a
-       * hover affordance that pushed content down would make the preview lie about the
-       * document. It draws *outside* the flow for the same reason the drag grip does.
-       *
-       * **The caret is the drop indicator's shape**, deliberately: dot–line–dot in the
-       * same violet. A drag drop and an insert put an item in the identical position, so
-       * showing them differently would invent a distinction the document does not have.
-       * The anchored state is solid; hovering an unanchored gap previews it at half
-       * strength, which is what makes the whole strip discoverable by sweeping down the
-       * page rather than by being told.
-       *
-       * It is `data-print-hide` chrome, and hidden entirely in print preview — the mode
-       * claims to show the sheet exactly as it prints (§print preview is the print
-       * rules), so an insertion affordance there would be a lie about the paper.
+       * The insert gap. Reserves no space (absolutely positioned across the trailing
+       * edge — the page must break where Word breaks). The caret is the drop
+       * indicator's own dot–line–dot shape: a drop and an insert put an item in the
+       * identical position. `data-print-hide`; absent in print preview.
        */}
       {onInsertHere && (
         /*
@@ -2901,18 +2726,9 @@ function DraggableItem({
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#7c5cff]" />
           </span>
           {/*
-           * The button sits **on** the caret line, centred, not in the margin.
-           *
-           * The margin is already a column: the drag grip occupies `-left-7` for its
-           * whole row, and a gap sits *between* two rows — so a `+` there overlapped the
-           * grip above it and the grip below it at once, three controls fighting for one
-           * 28px strip. Centring it moves it into space nothing else claims, and it
-           * gains a meaning it did not have out there: the line is where the item lands
-           * and the button is on the line.
-           *
-           * It carries the paper's own background so the rule appears to pass behind it
-           * rather than through it — the literal hex is the token rule, since this is
-           * drawn on the sheet and must not follow the app's theme.
+           * The + sits centred **on** the caret line, not in the margin (the margin
+           * is the drag grips' column). It carries the paper's own background so the
+           * rule passes behind it — literal hex per the token rule.
            */}
           <button
             type="button"
@@ -2935,29 +2751,11 @@ function DraggableItem({
         </span>
       )}
       {/*
-       * Sits in the page margin so it never covers content.
-       *
-       * It reads as a *control* rather than as ink: a filled pill with a border and a
-       * grip flanked by two chevrons. The previous version was six 14px dots at
-       * `#b9b4ae` on bare paper, which at the preview's fit-to-width scale was fainter
-       * than the document's own text and looked like a printing artifact — several
-       * teachers' first question about reordering was where the handle *was*.
-       *
-       * Three deliberate choices:
-       *  - **A quiet resting state instead of none.** It is visible at all times, so
-       *    the affordance can be discovered without first guessing that hovering
-       *    reveals something; hovering the item darkens it and hovering the grip itself
-       *    turns it violet. Fully hiding it is what made reordering undiscoverable,
-       *    while painting it at full strength always would run a row of hard controls
-       *    down the margin of what is meant to look like paper. The muting is done
-       *    with colour rather than `opacity`, because fading the pill also faded its
-       *    border — the very part that makes it read as a control.
-       *  - **Chevrons around the grip.** Six dots say "handle"; an up/down pair says
-       *    which axis it moves on, which is the thing being asked of it here.
-       *  - **A real hit target.** The pill is ~20x30 rather than a 14px glyph, so it
-       *    can be grabbed without pixel-hunting. It stays inside `-left-7` (28px)
-       *    because the narrow margin preset leaves only ~48px of paper to the left,
-       *    and a wider control would hang off the sheet.
+       * The drag grip, in the page margin so it never covers content. A quiet but
+       * always-visible pill (hiding it made reordering undiscoverable; muted with
+       * colour, not opacity, which faded the border that makes it read as a control),
+       * chevrons to say which axis it moves, ~20x30 hit target held inside `-left-7`
+       * so the narrow margin preset doesn't hang it off the sheet.
        */}
       {/*
        * A run's non-head members draw no grip at all: the head's pill already spans
@@ -3062,24 +2860,11 @@ interface FlowBlock extends PackItem {
 }
 
 /**
- * Splits the flow across real sheets of paper.
- *
- * The preview used to be a single container with `minHeight: A4` that simply grew:
- * a worksheet twice as long as a page rendered as one sheet of double height. That
- * silently disagreed with the .docx — Word paginates, so the teacher could not see
- * where their questions would actually land, which is most of the point of a print
- * preview.
- *
- * Pagination has to be *measured* rather than computed, because the height of a
- * question depends on font metrics, bilingual stacking and wrapping that only the
- * browser knows. So this renders the flow once in a hidden probe at the true content
- * width, records each block's height, and then packs blocks into page-height buckets.
- *
- * Blocks are kept whole. Splitting a question across a page boundary would need Word's
- * own line-breaking to agree with ours to be worth anything, and a question that runs
- * over the boundary is better shown intact on the next page than cut at a place Word
- * will not cut. A block taller than a whole page gets its own page and is allowed to
- * overflow, which is the honest rendering of "this cannot fit".
+ * Splits the flow across real sheets. Pagination is *measured*, not computed (only
+ * the browser knows font metrics, bilingual stacking and wrapping): the flow renders
+ * once in a hidden probe at true content width, heights are recorded, blocks pack
+ * into page-height buckets. Blocks are kept whole; one taller than a page gets its
+ * own page and overflows honestly.
  */
 function usePagination(
   blocks: FlowBlock[],
@@ -3104,19 +2889,10 @@ function usePagination(
     if (!probe) return;
 
     /*
-     * Each block's height is the distance to the *next* block, not its own box plus its
-     * margins.
-     *
-     * Adding `marginTop + marginBottom` to `offsetHeight` looks equivalent and is not:
-     * adjacent margins collapse, so summing both sides counts each gap twice for the
-     * pair that shares it while the last block contributes a trailing margin the page
-     * never shows. On a real worksheet the error ran the other way often enough to let
-     * a page accept one row more than it had room for — the last of 21 answer lines was
-     * drawn 21px below the text column and 13px into the footer.
-     *
-     * Measuring top-to-top asks the browser what it actually did with the gaps, which
-     * is the same question the rendered sheet answers. The final block has no successor
-     * and so is measured to the probe's own end.
+     * Each block's height is the distance to the *next* block — summing box + margins
+     * double-counts collapsed margins and let a page accept a row too many. Top-to-top
+     * asks the browser what it actually did; the final block measures to the probe's
+     * end.
      */
     const measure = () => {
       const next = new Map<string, number>();
@@ -3156,26 +2932,12 @@ function usePagination(
 }
 
 /**
- * Did this click land on empty page, rather than on something selectable?
- *
- * Asked of the click's *target*, walking up from it, because the sheet is a stack of
- * nested layout divs: the whitespace below the last question is a child of the paper,
- * not the paper itself, so an identity test against the paper node reported "not
- * background" for the most obvious place a teacher clicks to deselect.
- *
- * The selectable things are marked in the DOM already — questions carry `data-question-id`,
- * flow items `data-flow-id`, header/footer and masthead fields `data-field-id`, and every
- * piece of interactive chrome is a real `button`. Anything that matches none of them is
- * page background.
- *
- * `data-field-id` is load-bearing and was the bug: the list named `data-band-field`, an
- * attribute nothing has ever rendered, so **every click inside an active header counted
- * as blank paper**. `clearPageSelection` then ran, and returning to the body is part of
- * clearing — so clicking a header row to edit it immediately deactivated the header. The
- * region could be entered but never worked in.
- *
- * A selector naming an attribute that does not exist fails silently and always in the
- * same direction, so a test asserts the two agree.
+ * Did this click land on empty page? Asked of the click's *target*, walking up
+ * (whitespace below the last question is a child of the paper). Anything matching no
+ * selectable marker (`data-question-id`, `data-flow-id`, `data-field-id`, a real
+ * `button`) is background. The exemption list must name attributes something actually
+ * renders — a selector for a non-existent attribute fails silently — so
+ * `blankClick.test.ts` asserts the two agree.
  */
 /**
  * Two edit targets naming the same model address.
@@ -3214,20 +2976,11 @@ export const BLANK_CLICK_EXEMPT =
   "[data-question-id],[data-flow-id],[data-doc-field],[data-field-id],[data-band-rows],button,a,input,textarea,select,[contenteditable='true']";
 
 /**
- * The two printed blocks that are document *fields* rather than flow items: the title
- * and the instructions.
- *
- * They occupy a line on the page and can be selected, formatted and deleted like
- * anything else, but they are top-level `Worksheet` fields — they have no flow id, so
- * `removeMany` cannot address them and the marquee could not see them. Both symptoms
- * followed: sweeping the whole page skipped them, and because they matched none of the
- * selectors in `isBlankAreaClick`, clicking one counted as clicking bare paper and
- * *cleared* the selection instead of adding to it.
- *
- * Marking them with `data-doc-field` fixes the second directly and gives the sweep
- * something to key on for the first. The value is the `EditTarget` kind rather than an
- * id, because there is exactly one of each per document — which is also why deleting
- * them empties the field instead of removing a row (§`describeDelete`).
+ * The two printed blocks that are document *fields*, not flow items: title and
+ * instructions. They have no flow id, so they carry `data-doc-field` (keyed by
+ * `EditTarget` kind — there is exactly one of each) so the marquee can catch them and
+ * a click on one is not blank paper. Deleting empties the field rather than removing
+ * a row.
  */
 const DOC_FIELD_TARGETS: Record<string, EditTarget> = {
   worksheetTitle: { kind: "worksheetTitle" },
@@ -3255,32 +3008,13 @@ function DocumentField({
 }
 
 /**
- * One flow item's printed body — the memo boundary that makes a keystroke cheap.
- *
- * Every state change in `Preview` used to re-render every `NodeView` on the document,
- * twice: once in the visible sheets and once in the pagination probe, which renders the
- * very same blocks to be measured. This component cuts that off: its subtree re-renders
- * only when something that can change its *output* changes, so typing in one stem
- * re-renders that one question while the rest of the document — both copies — bails in
- * the comparator. The other half of the win is `renderWorksheet`'s per-question cache,
- * which keeps an untouched question's `nodes` array referentially stable across
- * commits; without it every keystroke would rebuild every identity and the memo would
- * never hit.
- *
- * The comparator deliberately ignores the identity of `ctx` and `onSelect`, which are
- * rebuilt every render. That is safe under two contracts, and unsafe otherwise:
- *
- *  - **Everything volatile the ctx closures capture that can change rendered output is
- *    flattened into `ctxStamp`.** A skipped item keeps the previous render's closures,
- *    which is fine for *event* handlers (they call store actions and `useState` setters,
- *    both stable) but wrong for anything read at render time — so the selection, the
- *    active cell, the preview scale and the content width are all in the stamp, and a
- *    change to any of them re-renders every item, exactly as before. Those change on
- *    discrete clicks; keystrokes and pointer frames leave the stamp alone.
- *  - **Handlers passed from the host close over stable things.** `EditorApp` binds its
- *    handlers with `useCallback` over store actions and reads fresh state via
- *    `getState()`, so a closure held across skipped renders never acts on a stale
- *    document.
+ * One flow item's printed body — the memo boundary that makes a keystroke cheap
+ * (paired with `renderWorksheet`'s per-question cache, which keeps an untouched
+ * question's nodes array referentially stable). The comparator ignores ctx/handler
+ * identity, safe under two contracts: everything ctx closures **read at render time**
+ * is flattened into `ctxStamp` (selection, active cell, scale, content width — a
+ * missing value is a silent staleness bug), and host handlers close over stable
+ * things (`useCallback` over store actions, fresh state via `getState()`).
  */
 interface ItemBodyProps {
   item: RenderedItem;
@@ -3355,27 +3089,12 @@ const ItemBody = memo(
 );
 
 /**
- * The format toolbar plus the measurement that places it, in a component of its own.
- *
- * Where the bar docks: horizontally across the page, vertically pinned to the top of
- * the scrolling area. The two axes come from different elements on purpose.
- * `left`/`width` track the *sheet*, so the bar spans exactly the document it is acting
- * on and follows a zoom change. `top` tracks the *scroll container*, so the bar sits
- * just inside the viewport's page area and stays put while the document scrolls
- * underneath — deriving `top` from the sheet made the bar ride up over the page's own
- * top edge as soon as the first sheet scrolled away.
- *
- * Re-measured on scroll and resize because the bar is `fixed`: it does not travel with
- * the page, so it has to be told where the page currently is. That re-measure is the
- * reason this is a separate component: the dock rect used to be `Preview` state, so
- * every scroll frame with a selection live re-rendered the entire document — sheets and
- * pagination probe both — to move a fixed bar that sits outside the page.
- *
- * `inheritedPt` is the point size the selection renders at, so the size control can
- * show the real current value rather than a blank "Size". Measured from the page rather
- * than looked up from a table of style defaults: the rendered value already accounts
- * for the named style, the preview's own CSS and any override, and it is the number the
- * teacher is looking at. 1pt = 1/72in and CSS px are 1/96in, hence 0.75.
+ * The format toolbar plus the measurement that places it. `left`/`width` track the
+ * *sheet* (follows zoom); `top` tracks the *scroll container* (stays put while the
+ * document scrolls). Its own component so scroll/resize re-measures don't re-render
+ * the page — the dock rect used to be `Preview` state. `inheritedPt` is measured from
+ * the page (the rendered value already accounts for style + CSS + override); px→pt is
+ * 0.75.
  */
 function ToolbarDock({
   containerRef,
@@ -3518,17 +3237,9 @@ interface Props {
     perPage: number,
   ) => void;
   /**
-   * Trim a question's own answer space to the lines that actually fit its sheet.
-   *
-   * The layout element splits, spilling its remainder into fresh elements; a question
-   * cannot. Its writing room is a field on the question, so there is nothing to spill
-   * *into* — and a question is one atomic block to the paginator, so an answer space a
-   * few pixels too tall does not lose a line, it moves the whole question to the next
-   * sheet and leaves the one behind it blank.
-   *
-   * Trimming is what a teacher means by "fill the rest of this page": the lines that fit
-   * stay where they are, and the ones that do not are given up rather than dragging the
-   * question with them.
+   * Trim a question's own answer space to what fits its sheet. Unlike a layout
+   * element it cannot split — a question is one atomic block, so a space a few pixels
+   * too tall moves the whole question to the next sheet and strands a blank one.
    */
   onTrimQuestionAnswerSpace?: (questionId: string, lines: number) => void;
   /**
@@ -3630,17 +3341,9 @@ interface Props {
    */
   onPagesChange?: (pages: PageComposition[]) => void;
   /**
-   * The flow items being dragged on the page, or undefined when none are.
-   *
-   * Published so the page rail can offer its cards as drop targets — the only way to
-   * move an item to a page that is not currently on screen. The drag state itself
-   * stays local here: it is transient interaction state that must never reach an undo
-   * entry, which is also why it is reported rather than lifted.
-   *
-   * It is the *run*, not the grabbed id, for the same reason `onDrop` sends a run: a
-   * drag that starts on a member of a multi-selection carries the whole selection
-   * (§dragCount). Reporting one id let the rail move one item out of five, silently
-   * discarding the sweep — the drop target has no way to know the rest were selected.
+   * The flow items being dragged, published so the rail can offer its cards as drop
+   * targets. It is the *run*, not the grabbed id — a drag on a multi-selection member
+   * carries the whole selection, and the target cannot re-derive it.
    */
   onDragItemChange?: (ids: string[] | undefined) => void;
 }
@@ -3687,22 +3390,9 @@ function EmptyState({ onAddQuestion }: { onAddQuestion: (typeId: string) => void
 }
 
 /**
- * What a deliberately added, still-empty page offers.
- *
- * A blank sheet is ambiguous on its own — it looks the same whether the teacher added
- * it or the last question happened to fill the previous page exactly — so it says which
- * it is, and offers the two things anyone does next: drop something here, or add
- * something here.
- *
- * It is a drop target in its own right. Reordering elsewhere in the preview works by
- * aiming at a neighbouring item's edge, and an empty page has no neighbour to aim at,
- * so without this the page could only be filled through the rail. Dropping lands the
- * item *after the break* that opened the page, which is the only position that puts it
- * on this sheet.
- *
- * Everything here is preview chrome and carries `data-print-hide`, so it stays off the
- * exported PDF (§"PDF export uses print CSS"); the .docx never sees it at all, since it
- * consumes the IR rather than this DOM.
+ * A deliberately added, still-empty page: says it is empty on purpose, accepts drops
+ * (landing *after the break* that opened it — the only position on this sheet), and
+ * offers add buttons. All chrome is `data-print-hide`.
  */
 function BlankPage({
   breakId,
@@ -3908,20 +3598,9 @@ export function Preview({
 
   /*
    * Where the bands sit in the margin, and how much text column they cost — normally
-   * **none**.
-   *
-   * A header sits in the top margin and grows downward from `w:header`; only the part
-   * that runs past `w:top` displaces body text (§ `headerFooterOffsets`). The preview
-   * used to stack the bands as sheet children and subtract their whole measured height,
-   * on the assumption that they always ate the text column. So every header row cost a
-   * row of content — visibly on screen, and in the export through the same wrong
-   * geometry. What is subtracted now is only the genuine overflow: the amount by which
-   * the rows exceed the margin they were given.
-   *
-   * Sized from the **running** rows, matching the exporter: one `w:header` serves the
-   * whole section, and letting a five-row page-1 cover dictate the geometry flattened the
-   * ordinary one-row header on every other sheet against the paper edge. The running rows
-   * print on nearly every page, so they are what the margin is shaped around.
+   * none: only genuine overflow past the margin is subtracted (§ headerFooterOffsets).
+   * Sized from the **running** rows, matching the exporter — a five-row page-1 cover
+   * must not dictate every other sheet's geometry.
    */
   const runningBands = (value: HeaderFooter) =>
     value.enabled ? bandsHeight(value.bands ?? [], value.rule) : 0;
@@ -3931,21 +3610,9 @@ export function Preview({
   const edgeOffsets = headerFooterOffsets(setup.margins, headerEstimate, footerEstimate);
 
   /*
-   * The rendered height of the bands, measured rather than estimated.
-   *
-   * `bandsHeight` has to guess — the exporter has no DOM and Word lays the text out
-   * itself — and a guess that is even slightly short is what let a five-row header print
-   * *on top of* the first question: the estimate said the rows fitted the margin, so no
-   * overflow was computed and nothing moved, while the browser was drawing them 46px
-   * taller than that. The preview does have a DOM, so here it measures the real boxes and
-   * only falls back to the estimate before the first layout.
-   *
-   * Word still gets the estimate, which is correct: it is placing rows *it* will lay out,
-   * so a browser measurement would be the wrong number to hand it.
-   *
-   * Measured off a **running** sheet rather than page 1, for the reason the estimate uses
-   * the running rows: a document whose page 1 is a five-row exam cover would otherwise
-   * have that cover set the geometry for every ordinary page behind it.
+   * The rendered height of the bands, measured (the estimate falls back only before
+   * first layout). Word still gets the estimate — it lays the rows out itself.
+   * Measured off a **running** sheet, never page 1's cover.
    */
   const [measured, setMeasured] = useState<{ header: number; footer: number }>();
 
@@ -3990,18 +3657,8 @@ export function Preview({
       const toTwips = (px: number) => (px / 96) * 1440;
       /*
        * No fallback to page 1 when the running sheet is absent — the measurement is
-       * **skipped**, not redirected.
-       *
-       * This used to fall back to `[data-page-index="0"]`, which on a document with a
-       * page-1 cover reads the cover's rows *as* the running header. That closed a loop
-       * through the paginator: a document hovering near one page measured the tall cover
-       * while it had one sheet (big overflow → smaller text column → two sheets), then
-       * measured the short running rows once sheet 1 existed (→ one sheet again). Neither
-       * state could hold, the sheet count oscillated 1 ↔ 2 forever, and React reported
-       * "Maximum update depth exceeded" from `DraggableItem`'s measurement — two
-       * components away from this line. The § comment above (`measuredPageIndex`) already
-       * states the rule the fallback broke: with no running sheet on screen, the estimate
-       * (or the last real measurement) stands.
+       * skipped, not redirected. Falling back read a page-1 cover *as* the running
+       * header and the sheet count oscillated 1 ↔ 2 forever.
        */
       const sheet = root.querySelector<HTMLElement>(
         `[data-page-index="${measuredPageIndex}"]`,
@@ -4082,17 +3739,9 @@ export function Preview({
   const bandsOverflowPx = ((overflow.header + overflow.footer) / 1440) * 96;
 
   /*
-   * Page 1's own overflow, when it prints different rows.
-   *
-   * The offsets are shaped around the running header (one `w:header` serves the section),
-   * so a page-1 cover taller than that header overruns the margin *on page 1 only*. Its
-   * text has to start below the cover, while every other sheet keeps the plain margin —
-   * applying one document-wide padding would push every page down to accommodate a cover
-   * that only page 1 prints, which is the complaint this whole change answers.
-   *
-   * Estimated rather than measured: the measurement deliberately reads a running sheet,
-   * and page 1's rows are usually a superset of the running ones, so the estimate is the
-   * consistent basis for both. It only has to be close enough to clear the cover.
+   * Page 1's own overflow, when it prints different rows: the cover's extra height
+   * pads page 1 only, while every other sheet keeps the plain margin. Estimated, not
+   * measured — the measurement deliberately reads a running sheet.
    */
   const firstPageOverflow = (() => {
     const h = header.enabled
@@ -4160,20 +3809,10 @@ export function Preview({
   const [dragId, setDragId] = useState<string | undefined>();
 
   /*
-   * End the drag from the window, not from the item that started it.
-   *
-   * `DraggableItem`'s own `dragend` is the happy path and only the happy path: it is
-   * delivered to the *source node*, so it never arrives if the drop unmounted or
-   * re-keyed that node first. Dropping a question on a page card in the rail does
-   * exactly that — the reorder moves the item to another sheet, React re-renders, and
-   * the element the browser was holding a `dragend` for is gone. `dragId` then stayed
-   * set forever, which is what left the question rendered at `opacity-40` on a page it
-   * had already landed on, and kept the rail believing something was still in flight.
-   *
-   * The window sees both terminators for any drag on the page, whoever consumed it, so
-   * this is the one place that can promise the state is transient. The per-item handler
-   * stays as-is — it is harmless once idempotent, and it is what clears the drag on the
-   * common in-page reorder without waiting for the bubble.
+   * End the drag from the window: `dragend` is delivered to the source node, which a
+   * cross-sheet drop unmounts first — `dragId` then stuck forever. The window sees
+   * both terminators whoever consumed the drop; the per-item handler stays for the
+   * common in-page case.
    */
   useEffect(() => {
     if (!dragId) return;
@@ -4187,21 +3826,11 @@ export function Preview({
   }, [dragId]);
 
   /*
-   * Auto-scroll while dragging near the top or bottom edge.
-   *
-   * Without this a question cannot be moved to another page at all. HTML5 drag fires
-   * `dragover` only on the element under the pointer, and the browser does not scroll
-   * a container during a drag — so once the item being dragged is on screen, anything
-   * on the next sheet is below the fold and can never receive the drop. The reorder
-   * itself was always page-agnostic; the *gesture* simply could not reach that far.
-   *
-   * Speed ramps with how deep into the hot zone the pointer is, so easing toward the
-   * edge creeps and pinning against it moves fast — a single fixed speed is either too
-   * slow to cross a page or too fast to stop on a target.
-   *
-   * `dragover` is the pointer source because `mousemove` does not fire during a native
-   * drag. It is listened for on the window so the scroll continues while the pointer is
-   * over the sidebar or the rail, which is exactly where a long drag strays.
+   * Auto-scroll while dragging near the top/bottom edge — the browser does not scroll
+   * a container during a native drag, so a drop on another sheet was unreachable.
+   * Speed ramps with depth into the hot zone; `dragover` on the window is the pointer
+   * source (`mousemove` doesn't fire during a drag, and the pointer strays over the
+   * rails).
    */
   useEffect(() => {
     if (!dragId) return;
@@ -4251,23 +3880,10 @@ export function Preview({
   const [selectedLayoutId, setSelectedLayoutId] = useState<string | undefined>();
 
   /*
-   * How much taller this element could get before it runs past the bottom of its page.
-   *
-   * **Measured off the rendered sheet**, not computed from the paginator's numbers.
-   * Both were tried and the arithmetic was wrong on a real document: the packer's own
-   * figures said a 21-line block fitted its column by one pixel, while the last ruled
-   * line was drawn 21px *below* the column and 13px into the footer. The gap is the
-   * on-page wrapper's own chrome — padding and the selection ring that the measurement
-   * probe does not reproduce, because the probe renders the block without them.
-   *
-   * Asking the DOM removes the whole class of error. The distance from this element's
-   * bottom edge to the bottom of the content column it sits in *is* the room left, with
-   * every margin, band and wrapper already accounted for by the browser that drew them.
-   *
-   * It is a function rather than a value because `ctx` is built before the blocks are
-   * packed and the blocks are built from `ctx` — so no number computed this render is
-   * available here. A drag calls it at pointer-down, which is later than render and
-   * exactly when the answer is needed.
+   * How much taller this element could get before running past its page. Measured off
+   * the rendered sheet (the probe omits on-page wrapper chrome, so the packer's
+   * numbers were wrong by it). A function, not a value: `ctx` is built before the
+   * blocks are packed, and a drag calls this at pointer-down.
    */
   const measureSlack = useCallback((elementId: string) => {
     const root = containerRef.current;
@@ -4285,28 +3901,11 @@ export function Preview({
   }, [scale]);
 
   /*
-   * Multi-selection, for acting on several items at once.
-   *
-   * Held as a set of flow ids (questions *and* layout elements together), because the
-   * whole point is to sweep a run of the page — "these four questions and the divider
-   * between them" — and act on it as one. It is deliberately separate from
-   * `selectedQuestionId`: that one drives the sidebar inspector, which can only show
-   * a single question, so overloading it would mean a marquee either broke the
-   * inspector or silently kept only the last item.
-   *
-   * The marquee catches an item the sweep **touches**, rather than only one it fully
-   * contains. Full containment reads as unfriendly on a worksheet: page items span the
-   * whole text column, so enclosing one means dragging from outside the left margin to
-   * outside the right, and a sweep that clips the last question by two pixels silently
-   * drops it. Touching is what a teacher means by "from here to here".
-   *
-   * This is the one place the page deliberately parts company with the diagram canvas,
-   * which keeps full containment — there a curve spans the whole plot, so touching
-   * would make every box catch every curve. On the page the axes are not symmetric:
-   * vertically the items are stacked and disjoint, so a vertical overlap is a real
-   * statement of intent, while horizontally they all occupy the same column and a
-   * horizontal test says almost nothing. Intersection on both axes is therefore
-   * effectively a vertical-span test, which is exactly the gesture being made.
+   * Multi-selection: a set of flow ids (questions and layout elements together),
+   * separate from `selectedQuestionId` (which drives the single-question inspector).
+   * The marquee catches what it **touches** — page items span the whole column, so
+   * full containment would mean dragging margin-to-margin (the diagram canvas keeps
+   * containment, because there a curve spans the whole plot).
    */
   const [multiIds, setMultiIds] = useState<Set<string>>(new Set());
   /*
@@ -4357,19 +3956,10 @@ export function Preview({
   }, [dragId, multiIds, onDragItemChange]);
 
   /**
-   * Which of the sheet's three regions is being edited — the rule Word uses.
-   *
-   * A sheet shows the body, the header and the footer at once, but they are separate
-   * documents to edit: in Word the inactive ones grey out and are inert until you
-   * double-click into them. Copying that is what stops a click meant for the first
-   * question from landing in a header row that happens to sit near it, and — more
-   * importantly — it makes the header's own chrome (the ✕, the "+ Row", the zone
-   * outlines) appear only when the teacher has actually asked to work on the header,
-   * rather than on every hover across the top of the page.
-   *
-   * `body` is the default because that is what a worksheet mostly is; the header and
-   * footer are furniture decided once. Returning to it is part of `clearPageSelection`,
-   * so a click on blank paper leaves a region the same way Escape does in Word.
+   * Which of the sheet's three regions is being edited — Word's rule: inactive
+   * regions grey out and go inert until double-clicked, keeping clicks and header
+   * chrome out of regions the teacher isn't working in. `body` is the default;
+   * returning to it is part of `clearPageSelection`.
    */
   const [focusRegion, setFocusRegion] = useState<"body" | "header" | "footer">("body");
 
@@ -4394,17 +3984,9 @@ export function Preview({
   };
 
   /**
-   * Runs one sweep, from mousedown to mouseup.
-   *
-   * The listeners are attached here rather than in an effect keyed on "is sweeping":
-   * the gesture's start is a ref (it must not re-render), and an effect cannot see a
-   * ref change, so it would never attach them. Owning the whole gesture in one
-   * closure also means the box and the additive flag are read from live locals rather
-   * than from state that a mid-drag render could have staled.
-   *
-   * They go on `window`, because a sweep that begins on the paper routinely continues
-   * past its edge — ending it there would make the result depend on how steady the
-   * user's hand was.
+   * Runs one sweep, mousedown to mouseup, in one closure (the gesture's start is a
+   * ref, which an effect cannot see; locals cannot be staled by a mid-drag render).
+   * Listeners go on `window` — a sweep routinely continues past the paper's edge.
    */
   /**
    * Drop every page-level selection at once, so none can be left silently armed.
@@ -4454,19 +4036,9 @@ export function Preview({
       let box: { x0: number; y0: number; x1: number; y1: number } | undefined;
 
       /*
-       * Which items the box currently touches.
-       *
-       * Run on every move, not only on release. A marquee whose result appears only
-       * once the mouse is up asks the user to guess what they have caught and check
-       * afterwards, so a sweep that missed by a few pixels is only discoverable by
-       * redoing it. Live highlighting makes the box's meaning visible while it can
-       * still be corrected, which is the whole reason to drag a box rather than
-       * shift-click a list.
-       *
-       * The set is rebuilt from the box each time rather than accumulated, so
-       * *shrinking* the box releases what it no longer covers. Accumulating would make
-       * the gesture one-way: an overshoot could never be taken back without starting
-       * over.
+       * Which items the box currently touches — run on every move so the catch is
+       * visible while it can still be corrected, and rebuilt (not accumulated) so
+       * shrinking the box releases what it no longer covers.
        */
       const catchItems = (current: { x0: number; y0: number; x1: number; y1: number }) => {
         const bounds = marqueeBounds(current);
@@ -4843,17 +4415,9 @@ export function Preview({
   }, [selectedBlockId, onDelete]);
 
   /*
-   * Delete / Backspace on a whole selected item.
-   *
-   * The effect above only covers a selected *text* target — the question a teacher
-   * clicked on the page had no keyboard delete at all, so removing one meant hunting
-   * for the overflow menu in the sidebar. This handles the two page-level selections:
-   * a question, and a layout element (divider, page break, answer lines…).
-   *
-   * The same two guards apply as everywhere else: it never fires while focus is in a
-   * field, so it cannot eat a character being typed, and it defers to the text-target
-   * handler when one is selected, because that is the more specific selection and
-   * deleting the whole question would be a much larger action than the user asked for.
+   * Delete / Backspace on a whole selected item (question or layout element). Never
+   * fires while focus is in a field, and defers to the text-target handler when one
+   * is selected — the more specific selection wins.
    */
   useEffect(() => {
     if (selectedElement) return; // The finer-grained handler above owns this key.
@@ -5374,25 +4938,11 @@ export function Preview({
   );
 
   /*
-   * Hand back the rows that no longer fit, when something above pushed them off.
-   *
-   * The drag handle caps at the page edge, so an element can never be *made* too tall.
-   * It can still *become* too tall: adding a question above a block of answer lines
-   * pushes it down, and rows that used to fit no longer do. Word would flow them onto
-   * the next sheet; the preview keeps every item whole, so without this they run off
-   * the bottom of the paper — the one overflow pagination cannot resolve by moving
-   * something, because the something *is* the oversized element.
-   *
-   * So the overflow becomes its own element on the next page. Three rules keep a
-   * measurement-driven commit from misbehaving, which is the real risk here:
-   *
-   *  - **Only when it genuinely does not fit**, by more than one row. A block sized to
-   *    exactly fill its page must not split on a sub-pixel measurement wobble.
-   *  - **Never during a gesture.** A drag is already reshaping the page every frame;
-   *    splitting mid-drag would rewrite the flow under the pointer.
-   *  - **Once per element per overflow.** `splitting` latches the id until the split has
-   *    been measured, so the effect cannot fire twice for one overflow and cut the same
-   *    element into a dozen pieces before the first commit has repainted.
+   * Hand back rows that no longer fit when something above pushed them off: the
+   * overflow becomes its own element on the next page. Three rules keep a
+   * measurement-driven commit safe: only when it misses by more than one row (no
+   * sub-pixel wobble splits), never during a gesture, and once per element per
+   * overflow (`splitting` latches the id until the split is measured).
    */
   const splitting = useRef<string | undefined>(undefined);
   useEffect(() => {
@@ -5449,17 +4999,10 @@ export function Preview({
   }, [pages, worksheet, contentHeightPx, onSplitRows, dragId, scale, measurementsSettled]);
 
   /*
-   * Trim a leaf question's answer space to what its sheet can hold.
-   *
-   * The same measure-off-the-page rule as the split above, and the same latch, but the
-   * remedy differs: a layout element spills its overflow into new elements, a question
-   * has nowhere to spill to (§`onTrimQuestionAnswerSpace`). So the count comes down
-   * until the block fits, and the lines that did not fit are simply not printed.
-   *
-   * Measured against the question's *own* box rather than the answer space's, because
-   * that is the box the paginator packs: an atomic block one pixel too tall moves whole,
-   * so the pixels to recover are the ones by which the block overflows, not the ones by
-   * which its last dotted line does.
+   * Trim a leaf question's answer space to what its sheet can hold — same
+   * measure-off-the-page rule and latch as the split above, but a question has
+   * nowhere to spill, so the count comes down. Measured against the question's *own*
+   * box: that is the atomic block the paginator packs.
    */
   const trimming = useRef<string | undefined>(undefined);
   useEffect(() => {
@@ -5643,23 +5186,10 @@ export function Preview({
       ref={containerRef}
       className="w-full"
       /*
-       * A sweep begins anywhere that is not an item — the paper's margins, the gap
-       * between sheets, the desk beside them. It is bound here, on the whole preview
-       * area, rather than on `.paper`: the sheet is `overflow-hidden` with the content
-       * column stretched across it, so most of the "empty" space a user would
-       * naturally start a sweep from belongs to a child element, not to the sheet.
-       *
-       * A sweep may also begin *on* an item. Requiring empty paper was the single
-       * biggest thing making bulk selection feel awkward: page items span the whole
-       * text column, so on a full sheet there is often nowhere blank to start from,
-       * and the user had to hunt for margin. The gesture that genuinely conflicts is
-       * drag-to-reorder, and that one only ever starts on the hover-revealed grip in
-       * the margin (`data-drag-grip`) — so the two divide by where the press lands,
-       * and only the grip is conceded.
-       *
-       * This does not cost click-to-edit: `beginSweep` treats anything under 4px of
-       * travel as a click and leaves it entirely to the item's own handlers, so a
-       * press that never moves still selects, and a second click still edits.
+       * A sweep begins anywhere — including *on* an item (a full sheet often has no
+       * blank paper to start from); only the drag grip (`data-drag-grip`) is conceded
+       * to reorder. Bound on the whole preview area, not `.paper`. Click-to-edit is
+       * safe: under 4px of travel is a click and belongs to the item's own handlers.
        */
       onMouseDown={(event) => {
         if (event.button !== 0) return;
@@ -5952,20 +5482,11 @@ export function Preview({
       </div>
 
       {/*
-        The measurement probe.
-
-        The same blocks, rendered once at the true content width but kept out of the
-        document flow and out of the accessibility tree. Heights can only be measured
-        from a real layout — font metrics, bilingual stacking and wrapping are the
-        browser's to decide — so this exists to be measured, never to be seen.
-
-        It carries `.paper` for the same reason the sheet does: that class *is* the
-        typographic contract with the exporter (11pt on a fixed 12pt line, no paragraph
-        margins). Measuring without it let the probe inherit the app shell's 16px/24px,
-        so every text block measured taller than it renders — 24px against 16px, and a
-        question 528.89 against 504.89 — and the packer, told a page was fuller than it
-        was, ended each sheet early. `.paper` is what makes the measured box the box the
-        page actually draws.
+        The measurement probe: the same blocks rendered once at true content width,
+        out of flow and out of the accessibility tree — it exists to be measured. It
+        must carry `.paper` (the typographic contract with the exporter); without it
+        the probe inherits the shell's 16px/1.5 and measures every block taller than
+        it renders.
       */}
       <div
         aria-hidden

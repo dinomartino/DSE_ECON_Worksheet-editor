@@ -72,24 +72,10 @@ export function isBody(handle: DiagramHandle): boolean {
 }
 
 /**
- * The CSS cursor for whatever is under the pointer.
- *
- * Two grabs on the same curve do very different things — an endpoint reshapes the line,
- * the body slides all of it — and they used to look identical, so the only way to find
- * out which one you had was to make the edit and undo it. The cursor says it up front:
- *
- * - **body** (a whole curve or arrow, or any multi-selection) → `grab` / `grabbing`,
- *   the universal "pick this up and put it somewhere" pointer;
- * - **endpoint or vertex** → a directional resize arrow, oriented along the segment it
- *   will stretch, because that gesture changes the line's shape rather than its position;
- * - **a point or label** → `move`, which has no single axis to point along;
- * - **a tick label**, which slides along its own axis only → that axis's arrow, so the
- *   constraint is visible before the drag rather than discovered during it.
- *
- * The resize arrow is picked from the four the platform actually ships (`ns`, `ew`,
- * `nwse`, `nesw`) by bucketing the segment's angle into 45° quadrants — CSS has no
- * free-rotation cursor, and the nearest of four reads correctly on a diagram whose lines
- * are mostly diagonal or axis-parallel anyway.
+ * The CSS cursor for whatever is under the pointer: body → grab/grabbing;
+ * endpoint/vertex → a directional resize arrow along its segment; point/label →
+ * move; tick label → its own axis's arrow (the constraint visible before the drag).
+ * The resize arrow buckets the angle into the four cursors CSS ships.
  */
 export function cursorFor(
   diagram: Diagram,
@@ -718,22 +704,10 @@ export function snapPoint(
 export const AXIS_SNAP_DEGREES = 5;
 
 /**
- * Straighten a near-horizontal or near-vertical line, the way a drawing tool does.
- *
- * Papers are full of lines that must be *exactly* flat — a world price, an import quota,
- * a price ceiling — and freehand dragging cannot land on exact. Shift already forces the
- * nearest axis, but that requires knowing the shortcut and deciding *before* the drag;
- * this catches the far commoner case of someone simply drawing what they intended to be
- * horizontal and missing by two degrees.
- *
- * The angle is measured in **screen space, not unit space**. Unit space is square while
- * the plot is drawn wider than tall, so an identical stored slope prints at a different
- * visible angle: judging in unit space would snap lines that look sloped and ignore lines
- * that look flat. `aspect` is the plot's pixel width ÷ height, which the canvas takes
- * from the shared projection.
- *
- * Returns `to` unchanged when the line is not near an axis, so the caller can apply this
- * unconditionally.
+ * Straighten a near-flat line (a world price or quota must be *exactly* level and
+ * freehand cannot hit exact). Judged in **screen space, not unit space** — the plot
+ * is wider than tall, so the two disagree; `aspect` comes from the shared projection.
+ * Returns `to` unchanged when not near an axis.
  */
 export function snapToAxis(
   from: DiagramPoint,

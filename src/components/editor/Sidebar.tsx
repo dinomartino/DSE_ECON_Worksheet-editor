@@ -10,25 +10,10 @@ import type { PageComposition } from '@/components/preview/pagination';
 import { Outline } from './Outline';
 
 /**
- * The right sidebar — one panel that shows **one thing at a time**.
- *
- * It used to stack four regions in a 400px column: two collapsed settings accordions,
- * the question outline, a draggable divider, and the inspector. That asked the user to
- * understand the whole panel before using any of it, and it made both halves of the
- * real work permanently half-height — the question editor was clipped mid-form while a
- * three-question outline sat above it with room to spare. The divider was the tell: a
- * control whose only job is to referee a fight between two panels that should not have
- * been sharing the space.
- *
- * Now there are two tabs. **Content** is the outline — the structure of the document.
- * **Edit** is whatever is selected. Each gets the full height of the column, so a long
- * question list scrolls as a list and a long form scrolls as a form. The once-per-document
- * settings moved out entirely, into the toolbar's `DocumentSettings` dialog.
- *
- * The tab follows the selection rather than waiting to be clicked: selecting a question
- * — on the page or in the outline — switches to Edit, because selecting something *is*
- * the request to edit it. Closing the editor returns to Content. That keeps the two-tab
- * structure from becoming one more thing to operate, which was the original complaint.
+ * The right sidebar: one panel, one thing at a time. **Content** is the outline,
+ * **Edit** is the selection; each gets the full column height. Once-per-document
+ * settings live in `DocumentSettings`. The tab follows the selection — selecting a
+ * question *is* the request to edit it; closing the editor returns to Content.
  */
 
 type Tab = 'content' | 'edit';

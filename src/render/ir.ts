@@ -21,17 +21,9 @@ import {
 } from '@/model/table';
 
 /**
- * Neutral render IR.
- *
- * A question type emits this once (via its registry entry); the preview, the .docx
- * exporter and the clipboard exporter are three consumers of the same IR. This is
- * what makes §9 hold: a new question type ships one `render` function and gets all
- * three outputs, and none of the export orchestration changes.
- *
- * `listRef` is what carries native Word numbering. A node that belongs to a live
- * list names its numbering stream and level; the docx backend maps each distinct
- * `stream` to a `w:num` instance (restarting per question where required, §7.2),
- * while the preview and clipboard backends fall back to the literal `marker`.
+ * Neutral render IR: a question type emits this once; preview, .docx and clipboard
+ * consume it. `listRef` carries native Word numbering — the docx backend maps each
+ * distinct `stream` to a `w:num`; preview/clipboard fall back to the literal marker.
  */
 
 export type NodeStyle =
@@ -51,19 +43,9 @@ export type NodeStyle =
   | 'Body';
 
 /**
- * Where a piece of rendered text came from in the document model.
- *
- * This is what makes the preview directly editable: a node carries the address of
- * the `BiText` it was rendered from, so clicking the text on the page can write
- * back to exactly that field. Every variant addresses its target by **id** rather
- * than by position, so an edit stays correct if questions are reordered mid-edit.
- *
- * Only user-authored text gets a target. Derived text — a marks total, the
- * "Answer: C" line — deliberately has none, because it is computed rather than
- * stored (§4, §3.5) and typing over it would have nowhere to go.
- *
- * The .docx and clipboard backends ignore this field entirely; it exists purely for
- * the preview, and adding it leaves exported output byte-for-byte unchanged.
+ * Where a piece of rendered text came from — what makes the preview directly
+ * editable. Targets address by **id**, never position. Only authored text gets one
+ * (derived text has nowhere to write to). Inert in export.
  */
 export type EditTarget =
   | { kind: 'worksheetTitle' }
@@ -79,26 +61,11 @@ export type EditTarget =
   | { kind: 'mcqExplanation'; questionId: string }
   | { kind: 'partAnswer'; questionId: string; partId: string }
   | { kind: 'subPartAnswer'; questionId: string; partId: string; subPartId: string }
-  /**
-   * A text-bearing layout element in the document flow — a free heading, a note, a
-   * part header, or a **section heading**.
-   *
-   * A section heading has no target of its own: a section is a layout element now, so
-   * the one address that reaches every element reaches it too. An element id is enough
-   * to find it, which is why no section id is carried here.
-   */
+  /** A text-bearing layout element — heading, note, part header, section heading. */
   | { kind: 'layoutText'; elementId: string }
   /**
-   * The authored wording of a band field — masthead, header or footer.
-   *
-   * `side` is what makes a *computed* field editable. Every kind is authored text around
-   * a derived value (§ `bandSegments`), so the target names which half it means: the
-   * prefix of a `totalMarks` field is "Full marks: ", its suffix " marks", and the number
-   * between them carries no target at all, being derived. A plain `text` field is the
-   * degenerate case — all prefix, no value.
-   *
-   * Omitted `side` means `prefix`, so a target built before this existed still resolves
-   * to the same text it always did.
+   * The authored wording of a band field. `side` names which authored half is meant
+   * (the derived value between them carries no target); omitted means `prefix`.
    */
   | { kind: 'bandField'; fieldId: string; side?: BandFieldSide }
   /** One label/value row of a label-list element. */
@@ -108,12 +75,7 @@ export type EditTarget =
       rowId: string;
       column: 'label' | 'value';
     }
-  /**
-   * One line of a cover region, addressed by its own id.
-   *
-   * Id rather than region+index, so an edit survives a line being added or removed above
-   * it — the same reason every other target names an id.
-   */
+  /** One line of a cover region, addressed by its own id. */
   | { kind: 'coverLine'; lineId: string }
   /** A cover's single-value fields, which are not lists and so have no line id. */
   | {
@@ -155,11 +117,9 @@ export interface TextNode {
 }
 
 /**
- * Which of a cell's own edges are ruled. `true` draws, `false` explicitly does not.
- *
- * Explicit `false` matters as much as `true`: Word inherits an unstated border from the
- * table style, so a backend that simply omits the edge draws the very rule the shape
- * exists to suppress — the same trap `box` documents for `insideH`/`insideV`.
+ * Which of a cell's own edges are ruled. Explicit `false` matters: Word inherits an
+ * unstated border from the table style, so omitting an edge draws the very rule the
+ * shape exists to suppress.
  */
 export interface TableCellEdges {
   top: boolean;
@@ -175,22 +135,13 @@ export interface TableNodeCell {
   align: CellAlign;
   covered: boolean;
   /**
-   * The padding in effect on this cell, in twips, already resolved.
-   *
-   * Fully resolved here rather than per backend because Word has no row- or column-level
-   * cell margin: the `.docx` can only write the winner onto each `w:tcMar`, so a backend
-   * that re-derived it could show the page a padding the exported file does not have.
+   * The padding in effect, in twips, resolved once here — three backends re-deriving
+   * it is three chances to draw a different table.
    */
   padding: Required<CellPadding>;
   /**
-   * Which of this cell's own four edges are ruled, already resolved from the table's
-   * border mode and the cell's position.
-   *
-   * Only `headerRule` populates it — `all` and `box` are uniform, so they say what they
-   * mean on the table itself and every cell answers alike. The T-account is the one
-   * shape whose rules depend on *where a cell is* (§`TableBorders`), and resolving that
-   * here rather than in each backend is the same rule the padding above follows: three
-   * renderers working out the same geometry is three chances to draw a different table.
+   * Ruled edges, resolved from border mode + grid position. Only `headerRule`
+   * populates it; `all` and `box` are uniform and say so on the table.
    */
   edges?: TableCellEdges;
   /** Direct formatting for the cell's text, over the Body style. */
@@ -208,33 +159,22 @@ export interface TableNode {
   teacherOnly?: boolean;
   columnCount: number;
   /**
-   * Column widths as fractions of the content width, one per column, summing to 1.
-   *
-   * Always present and always resolved, so no backend has to decide what "no widths
-   * stored" means — the preview's `colgroup` and the exporter's `w:gridCol` divide the
-   * same numbers and cannot disagree about where a column edge falls.
+   * Column widths as fractions of the content width, summing to 1. Always resolved,
+   * so no backend decides what "not stored" means.
    */
   columnWidths: number[];
   /**
-   * The table's own box: how much of the content width it spans, and where it starts.
-   *
-   * Always resolved, like `columnWidths`, so no backend decides what "not stored" means.
-   * `columnWidths` are fractions of `width`, not of the page.
+   * The table's own box, always resolved. `columnWidths` are fractions of `width`,
+   * not of the page.
    */
   width: number;
   indent: number;
   /**
-   * How the table sits in the content column (`w:jc` on the table).
-   *
-   * Resolved alongside the box because the two are one decision: `indent` is already
-   * zeroed here for a centred table, so a backend places by `align` and offsets by
-   * `indent` without having to know they are alternatives.
+   * `w:jc` on the table; `indent` is already zeroed for a centred table, so backends
+   * need not know the two are alternatives.
    */
   align: TableAlign;
-  /**
-   * Which rules the table draws. **Always resolved**, like the box and the column
-   * widths — an unstored value means `all`, and no backend should decide that alone.
-   */
+  /** Which rules the table draws. Always resolved. */
   borders: TableBorders;
   /** A floor on each row's height in twips, in row order; undefined means content-sized. */
   rowHeights: (number | undefined)[];
@@ -242,12 +182,7 @@ export interface TableNode {
   blockId: string;
   /** Edit target for the caption. */
   captionEdit?: EditTarget;
-  /**
-   * Which side the caption prints on. **Always resolved**, like `columnWidths` and the
-   * table box: no backend should have to decide what an unstored placement means, and
-   * three of them deciding separately is three chances to disagree about where the words
-   * go.
-   */
+  /** Which side the caption prints on. Always resolved. */
   captionPlacement: CaptionPlacement;
 }
 
@@ -264,31 +199,18 @@ export interface ImageNode {
   captionEdit?: EditTarget;
   /** Which side the caption prints on; always resolved. See `TableNode`. */
   captionPlacement: CaptionPlacement;
-  /**
-   * How the picture sits in the content column (`w:jc` on its paragraph).
-   *
-   * **Always resolved**, like `captionPlacement` and the table box: an unstored
-   * alignment means `left`, and three backends each deciding that separately is three
-   * chances to disagree about where the figure sits.
-   */
+  /** How the picture sits in the content column (`w:jc` on its paragraph). Always resolved. */
   align: TableAlign;
   /** Which block this came from, so the preview can select and resize it. */
   blockId: string;
 }
 
 /**
- * An economics diagram, carried as geometry rather than as pixels.
- *
- * It reaches the page as **exactly one image** in both export backends — the whole
- * diagram is a single `w:drawing` in Word and a single `<img>` on the clipboard —
- * because a Word document that held the axes, curves and labels as separate shapes
- * would let a stray click in Word pull the diagram apart, and could not be moved or
- * resized as one thing.
- *
- * The geometry rides in the IR rather than a pre-rendered data URL so the preview can
- * draw a crisp, live SVG at any zoom while the exporters rasterize the same geometry at
- * print resolution. Rasterizing needs a browser canvas, so it happens in the export
- * step (`export/diagramImage.ts`) rather than here — keeping this module pure.
+ * An economics diagram, carried as geometry. Exports as **exactly one image** (a
+ * multi-shape diagram could be pulled apart in Word). The geometry rides in the IR so
+ * the preview draws live SVG; rasterizing needs a canvas and happens in
+ * `export/diagramImage.ts`, keeping this module pure. Deliberately no caption —
+ * a diagram's words are `diagram.title`, drawn inside the image.
  */
 export interface DiagramNode {
   kind: 'diagram';
@@ -298,15 +220,6 @@ export interface DiagramNode {
   altText: BiText;
   keepNext?: boolean;
   teacherOnly?: boolean;
-  /**
-   * No caption, unlike `TableNode` and `ImageNode`.
-   *
-   * A diagram's words are `diagram.title`, drawn *inside* the geometry and rasterized
-   * into the same PNG. There is deliberately nothing here for a backend to print beside
-   * the picture: a caption paragraph is what let the words break onto their own line and
-   * drift away from the figure. Every backend therefore renders a diagram as exactly one
-   * image and nothing else.
-   */
   /** How the picture sits in the content column; always resolved. See `ImageNode`. */
   align: TableAlign;
   /** Which block this came from, so the preview can select and edit it. */
@@ -318,17 +231,10 @@ export interface PageBreakNode {
 }
 
 /**
- * Several pieces of text sharing one line at fixed horizontal positions.
- *
- * This is the one primitive behind every side-by-side layout the app offers: inline MCQ
- * options, a label/value list, and the title block's left/centre/right bands. It exports
- * as a single paragraph with tab stops rather than as a table, because a borderless
- * table would still be a table in Word — awkward to edit, and it would break the
- * numbering stream a question's options belong to.
- *
- * Positions are fractions (0..1) of the row's **own** width — that is, of what remains
- * after `indent` — so every backend can use them directly and they stay correct when the
- * paper size or margins change.
+ * Several pieces of text sharing one line — the primitive behind every side-by-side
+ * layout. Exports as one paragraph with tab stops, never a table. Positions are
+ * fractions (0..1) of the row's own width after `indent`, so they survive
+ * paper/margin changes.
  */
 export interface ColumnsNode {
   kind: 'columns';
@@ -344,17 +250,9 @@ export interface ColumnsNode {
     edit?: EditTarget;
     format?: TextFormat;
     /**
-     * The cell's interior, when it mixes authored text with computed values.
-     *
-     * A band field is the case: "Full marks: 45 marks" is typed, derived, typed. The
-     * parts are *not* separate cells — a cell is a tab stop, so splitting a field across
-     * three would put a `w:tab` between each fragment and scatter it across the row.
-     * They describe what is inside one cell, so the preview knows which stretches to make
-     * editable and the .docx knows where a native `PAGE` field goes.
-     *
-     * `text` above stays the whole concatenated string, so a consumer that does not care
-     * about the distinction (the clipboard, a thumbnail) needs to know nothing about
-     * this. When absent, the cell is entirely `text` and `edit` covers all of it.
+     * The cell's interior when it mixes authored text with computed values (a band
+     * field). Parts are not separate cells (a cell is a tab stop); `text` above stays
+     * the whole string for consumers that don't care. Absent = entirely `text`.
      */
     parts?: Array<{
       text: BiText;
@@ -367,18 +265,9 @@ export interface ColumnsNode {
   /** Extra left indent in twips before the first cell. */
   indent?: number;
   /**
-   * Pull the row's **first line** back by this many twips, Word's `w:ind w:hanging`.
-   *
-   * A row of tab stops is one paragraph, so without this a wrapped cell's continuation
-   * lines return to `indent` — under the *marker* rather than under the text it belongs
-   * to. That is invisible on the short rows this primitive was built for (band zones,
-   * inline MCQ options) and wrong on the long ones: an exam cover's numbered instructions
-   * wrap heavily, and both reference papers hang them under their own text column.
-   *
-   * Expressed as a hanging indent rather than a per-line rule because that is the shape
-   * Word has, and the same shape a numbered paragraph already uses (§ a numbered
-   * paragraph indents as a block). `indent` still positions the block; this only decides
-   * where its first line starts.
+   * Pull the row's first line back by this many twips (`w:ind w:hanging`). Without it
+   * a wrapped cell's continuation returns to `indent` — under the marker, not the
+   * text. Long rows (cover instructions) need it.
    */
   hanging?: number;
   /** Hairline rule under the row, used by masthead bands. */
@@ -391,20 +280,11 @@ export interface ColumnsNode {
 export interface SpacerNode {
   kind: 'spacer';
   heightPt: number;
-  /**
-   * The layout element this came from, so the preview can size it in place.
-   *
-   * The same role `blockId` plays on `ImageNode`: whitespace has no text, so without an
-   * id the only handle on it is the sidebar. It is inert in export for the reason
-   * `EditTarget` is — the .docx and clipboard backends never read it.
-   */
+  /** The layout element this came from, so the preview can size it in place. Inert in export. */
   elementId?: string;
   /**
-   * Keep this gap on the same page as what follows it.
-   *
-   * A separating blank line can sit inside a keep-together chain — stem, gap, table —
-   * and without its own `w:keepNext` the gap is exactly where Word breaks the chain the
-   * stem's flag was set to hold.
+   * Keep this gap with what follows: inside a stem → gap → table chain, a plain blank
+   * is exactly where Word would break.
    */
   keepNext?: boolean;
 }
@@ -423,13 +303,9 @@ export interface AnswerLinesNode {
 }
 
 /**
- * Dotted writing lines — the Question-Answer Book's answer space.
- *
- * Exported as one paragraph per line whose only run is a right-aligned tab wearing a
- * dotted underline (`w:u w:val="dotted"`), the reference booklet's own mechanism. Not
- * `answerLines` with a flag: the pitch, the drawing mechanism and the Word style all
- * differ, and the two must stay independently restylable (§ the LQ line is a different
- * primitive).
+ * Dotted writing lines — the QAB's answer space. One paragraph per line: a
+ * right-aligned tab wearing a dotted underline. Not `answerLines` with a flag; the
+ * pitch, mechanism and Word style all differ.
  */
 export interface AnswerSpaceNode {
   kind: 'answerSpace';
@@ -437,24 +313,16 @@ export interface AnswerSpaceNode {
   /** The layout element this came from, so the preview can size it in place. */
   elementId?: string;
   /**
-   * The count is paginator-resolved, not authored (§`LayoutElement.answerSpace.fill`).
-   * The preview reads it to withhold the resize handle — dragging a derived size would
-   * be overwritten by the next resolution. Inert in export, like `edit`.
+   * The count is paginator-resolved, not authored; the preview withholds the resize
+   * handle. Inert in export.
    */
   fill?: boolean;
 }
 
 /**
- * The cover page: a two-column sheet of regions.
- *
- * Deliberately **not** a `RenderNode`. Every member of that union is something that
- * flows in the document body, and a cover is the opposite of that — it is a whole page
- * with its own column geometry, printed before the body begins. Adding it to the union
- * would have forced every backend's node walk to handle a case that can never appear
- * inside a question.
- *
- * Regions hold `RenderNode[]` so the backends reuse the paragraph and columns emitters
- * they already have; only the *frame* around them is new.
+ * The cover page: a two-column sheet of regions. Deliberately **not** a `RenderNode`
+ * (nothing in that union is a whole page); regions hold `RenderNode[]` so backends
+ * reuse their emitters — only the frame is new.
  */
 export interface CoverRenderNode {
   kind: 'cover';
@@ -521,20 +389,9 @@ export function includeNode(node: RenderNode, mode: OutputMode): boolean {
 }
 
 /**
- * One blank body line, the separator every question type uses between its own parts.
- *
- * The reference paper puts a blank line between a stem and its statements, between the
- * statements and the options, and between each part of a structured question — 102 of
- * its 296 paragraphs are empty. With the document on a fixed 12pt line and zero
- * paragraph spacing (§ One fixed line, no paragraph spacing), a spent line is the *only*
- * way to open that air, so it is a real node rather than a style property.
- *
- * Exported here rather than written out in each question type so "how far apart are the
- * parts of a question" is one number, and so a new question type inherits the paper's
- * rhythm by using the same helper instead of inventing its own gap.
- *
- * It carries no `elementId`: it belongs to the question that emitted it, not to a
- * `spacer` layout element a teacher can select, drag or resize.
+ * One blank body line, the separator every gap on the page goes through. A real node,
+ * not a style property — on the fixed 12pt line a spent line is the only way to open
+ * air. Carries no `elementId`: it belongs to the question, not to a `spacer` element.
  */
 export const BLANK_LINE_PT = 12;
 
@@ -543,34 +400,18 @@ export function blankLine(): SpacerNode {
 }
 
 /**
- * Push a separating blank line, unless the page already ends in one.
- *
- * A gap is a property of the *boundary*, so it has to count what is already there. Text
- * ending in a trailing hard break (Shift+Enter) prints its own blank line, and a
- * separator pushed blindly after it opened a **double** gap — a part typed with a
- * trailing break sat twice as far from the next part as its neighbours did, for a reason
- * invisible in the document.
- *
- * The trailing break still prints; it simply *counts as* the gap instead of adding to
- * one. So every gap is exactly one line however the text happened to be typed, which is
- * the invariant the fixed 12pt rhythm depends on (§ One fixed line, no paragraph
- * spacing).
- *
- * Both cases are checked because both spend a line: an explicit `blankLine()` already
- * pushed, and a text node whose own last line is empty.
+ * Push a separating blank line, unless the stream already ends in one. A gap counts
+ * what is already there: a trailing hard break counts *as* the gap instead of adding
+ * to it, so every gap is exactly one line however the text was typed.
  */
 export function pushGap(nodes: RenderNode[]): void {
   if (!endsInBlankLine(nodes)) nodes.push(blankLine());
 }
 
 /**
- * Does this node stream already end in a spent line?
- *
- * Deliberately **language-neutral**, like the rest of the IR: one IR feeds all three
- * backends, so the gap cannot be decided per language without the preview and the `.docx`
- * disagreeing about the document's height — and the paginator measures these boxes. A
- * trailing break on *either* side therefore counts, so the shape is the same whichever
- * language is being shown.
+ * Does this node stream already end in a spent line? Deliberately language-neutral
+ * (a trailing break on either side counts) — one IR feeds all backends, and the
+ * paginator measures these boxes.
  */
 export function endsInBlankLine(nodes: RenderNode[]): boolean {
   const last = nodes[nodes.length - 1];
@@ -585,12 +426,8 @@ export function endsInBlankLine(nodes: RenderNode[]): boolean {
 }
 
 /**
- * Expand content blocks into IR nodes, appending to the caller's stream (shared by
- * every question type).
- *
- * Appends rather than returns: a table takes a separating blank line **before** it
- * (§ separation costs a line), and a gap is a property of the boundary — it has to see
- * what the stream already ends in (`pushGap`), which a locally-built array cannot.
+ * Expand content blocks into IR nodes, appending to the caller's stream — appends
+ * rather than returns so the table-gap rule can see what the stream already ends in.
  */
 export function renderContentBlocks(
   nodes: RenderNode[],
@@ -617,34 +454,14 @@ export function renderContentBlocks(
           row.cells.reduce((sum, cell) => sum + (cell.covered ? 0 : cell.colSpan ?? 1), 0),
         ),
       );
-      /*
-       * A table with rows but no cells in them emits **no node at all**.
-       *
-       * Such a table is reachable from documents saved before `removeColumn` had a floor,
-       * and it broke pagination outright: an empty `<table>` measures zero in the
-       * paginator's off-screen probe but still occupies a line in the real sheet, so the
-       * two passes disagreed about the document's height forever. The sheet count
-       * oscillated 1 ↔ 2 and React reported "Maximum update depth exceeded" from the item
-       * measurement — a symptom several components away from the cause.
-       *
-       * Skipping it here rather than in the preview is what makes the two agree: one IR
-       * feeds the probe, the sheet, the `.docx` and the clipboard, so *nothing*
-       * renders it and no measurement can differ. The block stays in the document, and the
-       * sidebar offers to give it a column back (§tables).
-       */
+      // A table with rows but no cells emits no node at all — an empty <table>
+      // measures zero in the probe but occupies a line on the sheet, so pagination
+      // oscillated forever. Skipped here so *nothing* renders it; the block stays in
+      // the document and the sidebar offers a column back.
       if (block.rows.every((row) => row.cells.length === 0)) continue;
-      /*
-       * One blank line before every table — the reference papers' shape: the stem's
-       * sentence, air, then the figure it introduces. Via the `pushGap` rule (a gap
-       * counts what is already there), so a preceding paragraph ending in a trailing
-       * hard break does not open a double gap. Skipped at the head of the stream: the
-       * callers always precede these blocks with the stem/part paragraph, so an empty
-       * stream only occurs in isolation, where there is no boundary to space.
-       *
-       * The gap carries the caller's `keepNext` — it sits inside the keep-together
-       * chain (stem → gap → table), and a plain blank is exactly where Word would
-       * break the chain the stem's own flag was set to hold.
-       */
+      // One blank line before every table, via the gap-counting rule; skipped at the
+      // head of the stream. Carries the caller's keepNext (a plain blank is exactly
+      // where Word would break the stem → gap → table chain).
       if (nodes.length > 0 && !endsInBlankLine(nodes)) {
         nodes.push({ ...blankLine(), keepNext: options.keepNext });
       }

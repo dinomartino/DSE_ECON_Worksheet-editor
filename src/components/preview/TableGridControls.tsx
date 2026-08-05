@@ -3,32 +3,11 @@
 import { useLayoutEffect, useState } from 'react';
 
 /**
- * Word's table affordances: insert a row or column where you point, delete the one you
- * are in.
- *
- * These live on the paper rather than only in the sidebar for the reason the drags do: a
- * table is legible at full width and illegible in a 380px column, so the position a
- * teacher means ("a column *here*") is one they can only point at on the page. The panel
- * keeps the same verbs — it is still the route with a name for every action — but it
- * should not be the only one.
- *
- * **Only the pointed-at row and column get controls**, which is the rule that makes this
- * usable rather than a rash of chips. Showing every boundary at once put twelve buttons
- * around a four-row table: they collided with each other in the margin and, being
- * positioned above the table, landed on the heading *above* it. Word shows one insert
- * mark at the boundary you are near, and that is both quieter and less ambiguous — a
- * button next to eleven identical buttons does not say which row it means.
- *
- * Three rules hold everything else:
- *
- * - **Chrome reserves no space and never prints.** Absolutely positioned,
- *   `data-print-hide`. The page must break where Word breaks it.
- * - **A control outside its group's box needs a hit path** (§hover chrome). These sit in
- *   the margins, so the hover pad in `TableNodeView` extends the group to reach them, and
- *   the layer is revealed with `opacity`, never `display` — a zero-size box cannot be
- *   hovered at all.
- * - **Positions come from the DOM.** Rows are content-sized, so only layout knows where a
- *   boundary falls.
+ * Word's table affordances on the paper: insert a row/column where you point, delete
+ * the one you are in. **Only the pointed-at row and column get controls** (all at
+ * once = twelve colliding chips). Chrome reserves no space and never prints
+ * (`data-print-hide`); margin controls get a hit path via the hover pad, revealed
+ * with `opacity`, never `display`; positions come from the DOM.
  */
 
 interface Props {

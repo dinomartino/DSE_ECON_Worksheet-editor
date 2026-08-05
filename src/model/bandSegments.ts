@@ -3,23 +3,10 @@ import { emptyBiText, plain } from './text';
 import type { BandField, BandFieldSide, BiText, RichText } from './types';
 
 /**
- * A band field, decomposed into the parts a teacher may type and the parts they may not.
- *
- * Every field kind is the same shape underneath: **authored text · derived value ·
- * authored text**. A plain `text` field is the degenerate case with no derived middle;
- * "Full marks: 45 marks" has one; "Page 5 of 12" has two. Saying that once, here, is what
- * lets the editing surface, the write path and all three backends stay free of
- * `field.kind` branching — they walk segments and ask only "can I type here?".
- *
- * This exists because the alternative was a dead `<span>`. `totalMarks`, `fillIn` and
- * `pageNumber` printed a string assembled inside `bandFieldText`, so the wording around
- * the number ("marks", "分") was spelled in the renderer and reachable from nowhere: a
- * teacher could neither retype "Full marks:" nor set its size, colour or weight, and the
- * one field on the header they most want to adjust was the one field that could not be.
- *
- * The derived value stays derived. Nothing here stores a total or a page number — a
- * `value` segment is computed at render time from arguments the caller passes in, which
- * is the invariant that keeps a re-marked question from leaving a stale header behind.
+ * A band field decomposed into **authored text · derived value · authored text** —
+ * said once, here, so surfaces and backends walk segments instead of branching on
+ * `field.kind`. The derived value stays derived: a `value` segment is computed at
+ * render time, never stored.
  */
 
 /** One piece of a field's printed line. */

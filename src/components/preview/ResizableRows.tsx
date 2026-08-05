@@ -3,36 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
- * Drag-to-extend for answer lines and spacers, on the page itself.
- *
- * How much room a student needs to write is the same kind of visual judgement sizing a
- * picture is — "enough for a short paragraph", "the rest of this page" — so it belongs
- * where the lines are, not behind a preset menu in the sidebar. This wraps the rendered
- * element, draws a handle on its bottom edge once selected, and turns a vertical drag
- * into a count.
- *
- * It is a sibling of `ResizableBlock` rather than a mode of it, because the two size
- * different things in different units. A picture is sized by *width* with height
- * following its aspect ratio; these are sized by *height alone*, in whole steps — lines
- * or points — and have no width to offer. Folding them together would mean a component
- * whose every rule is conditional on which of the two it is.
- *
- * The shared rules are the ones the page's other gestures already follow:
- *
- *  - **The drag divides by the preview's scale**, since the page sits inside a
- *    `scale()` transform and a raw client delta would outrun the pointer.
- *  - **The in-flight value is local state, committed once on release.** A drag crosses
- *    dozens of line counts; committing each would push dozens of undo entries and
- *    re-paginate on every frame (§"Drag gestures commit once").
- *  - **The gesture replays from the value captured at pointer-down**, so it is one
- *    idempotent transform rather than an accumulating one.
- *  - **Pointer capture, not window listeners**, so the gesture survives the pointer
- *    leaving the sheet — which a drag that adds twenty lines reliably does.
- *
- * Only the bottom edge is offered. The model has one number to set, and a handle on
- * the top edge would promise that the element could grow *upward* into the question
- * above it — which is not a size change at all but a reorder, and the margin grip
- * already does that.
+ * Drag-to-extend for answer lines and spacers: a handle on the bottom edge turns a
+ * vertical drag into a count. A sibling of `ResizableBlock`, not a mode (height-only
+ * in whole steps vs width-with-aspect). Standard gesture rules: delta ÷ scale,
+ * in-flight value local + one commit, replay from pointer-down, pointer capture.
+ * Bottom edge only — a top handle would promise growing upward, which is a reorder.
  */
 
 interface Props {

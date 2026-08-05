@@ -12,27 +12,11 @@ import {
 } from './richTextDom';
 
 /**
- * A contenteditable that edits a `RichText` **as what it looks like**.
- *
- * Bold reads as bold, a 14pt red phrase reads as a 14pt red phrase. The model's
- * `**bold**` marker string is a plain-text *storage* form, not something a teacher
- * should be asked to type or decode — the sidebar and the page both used to show it
- * mid-sentence (`her **opportunity cost** of choosing…`), which is markup leaking into
- * the document.
- *
- * Shared by the page's `InlineEditable` and the sidebar's `BiTextField`, so the two
- * surfaces cannot disagree about what an edit does to a run.
- *
- * ## The rule that keeps the caret alive
- *
- * A contenteditable is an **uncontrolled** input: the browser writes into it directly.
- * React therefore owns only *whether* this element exists, never its children — the
- * runs are painted imperatively below. Rendering them as JSX children makes React
- * reconcile the same nodes the browser is mutating; the visible symptom was every
- * keystroke re-inserting the whole accumulated string.
- *
- * `paintedRef` is what separates a genuine outside change (the toolbar applying bold)
- * from the field's own echo (its text going to the store and coming back).
+ * A contenteditable that edits `RichText` **as what it looks like**, never the marker
+ * string. Shared by the page's `InlineEditable` and the sidebar's `BiTextField`.
+ * A contenteditable is uncontrolled: React owns only whether it exists; runs are
+ * painted imperatively (JSX children make React fight the browser's mutations).
+ * `paintedRef` separates a genuine outside change from the field's own store echo.
  */
 
 interface Props {

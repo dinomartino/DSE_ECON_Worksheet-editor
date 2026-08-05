@@ -29,20 +29,10 @@ import { applyBandFieldSide, bandFieldSideText } from './bandSegments';
 import { applyRunFormat, insertBlank } from './text';
 
 /**
- * Applying an in-place edit from the preview.
- *
- * The preview renders IR nodes that carry an `EditTarget` naming where their text
- * came from; this module turns such a target back into a document mutation. Keeping
- * it here — rather than in the store — means the resolution rules are unit-testable
- * without a React tree.
- *
- * Two properties matter:
- *
- *  - **Addressed by id, never by position.** A stale index would write into the
- *    wrong question after a reorder; ids stay correct.
- *  - **Patch, never replace.** Every write merges into the existing `BiText`
- *    (`{ ...text, en }`), so editing in English-only mode cannot clear the Chinese
- *    side (§5.2) — the same rule the sidebar inputs follow.
+ * Turn an `EditTarget` back into a document mutation (unit-testable without React).
+ * Two properties: **addressed by id, never position**, and **patch, never replace** —
+ * every write merges into the existing `BiText`, so English-only editing cannot clear
+ * the Chinese side.
  */
 
 /** Rewrite one paragraph block's text, wherever it sits in a block list. */

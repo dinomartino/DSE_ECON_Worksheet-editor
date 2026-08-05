@@ -6,33 +6,12 @@ import type { BiText, RichText } from '@/model/types';
 import { RichTextEditable } from './RichTextEditable';
 
 /**
- * One directly-editable run of text on the page.
- *
- * Editing happens where the text is: click it and a textarea takes the exact place
- * of the rendered span, inheriting font, size, weight and alignment so the line does
- * not reflow when it becomes editable. That "no layout shift" property is what makes
- * this feel like editing the document rather than opening a form on top of it.
- *
- * Two levels of engagement, which is what makes keyboard delete safe:
- *  - **click once** selects the element (outlined), and Delete/Backspace removes it;
- *  - **click again**, or press Enter, starts editing the text.
- *
- * One language at a time. In bilingual mode the English and Chinese halves are
- * rendered as two of these, so clicking the Chinese line edits `zh` and leaves `en`
- * untouched — the same patch-don't-replace rule the sidebar follows (§5.2).
- *
- * **What you see is what the document holds.** The field renders the runs themselves —
- * a bold run is bold, a 14pt red run is 14pt and red — rather than exposing the
- * `**bold**` marker string the model happens to use for its plain-text form. Teachers
- * were being shown `__above__` and `**opportunity cost**` mid-sentence and asked to
- * infer what they meant; markup is an implementation detail of storage, not a thing to
- * type at.
- *
- * That choice removes the three hazards the marker string created, rather than managing
- * them: offsets here are already plain-text offsets so nothing is translated; the runs
- * are read back as attributes so size, colour and fonts cannot be lost to a re-parse;
- * and there is no second copy of the text to drift from the model while the field is
- * open.
+ * One directly-editable run of text on the page: the field takes the exact place of
+ * the rendered span (no layout shift). Two levels of engagement — click selects (and
+ * makes Delete safe), click again edits. One language at a time; patch, never
+ * replace. The field renders the runs as themselves, never the marker string —
+ * offsets are plain-text offsets, attributes read back losslessly, no second copy to
+ * drift.
  */
 
 /**

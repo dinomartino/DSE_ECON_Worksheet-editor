@@ -8,22 +8,11 @@ import type { Question, Worksheet } from './types';
  */
 
 /**
- * List geometry, in twips: where each level's marker hangs and where its text begins.
- *
- * **Each level's marker starts where its parent's text starts.** That is the staircase a
- * real paper prints — "1." hangs in the margin with the stem at 360, "(a)" begins *at*
- * 360 under the stem's first word, "(i)" at 720 under part (a)'s text — so
- * `left - hanging` at each level equals `left` at the level above.
- *
- * It lives in `model/` because three places need the same numbers and none of them may
- * import the others: `export/docx/numbering.ts` writes them into `w:ind`,
- * `Preview.tsx` lays the paper out with them (and the paginator measures those boxes),
- * and `registry/structured.ts` indents a part's *continuation* paragraphs to line up
- * under its first one. `model/` may not import `export/`, and the registry may not
- * either, so the shared constant has to sit below all three.
- *
- * Getting one copy out of step is silent: the preview paginates on geometry Word will
- * not reproduce, so page breaks land in different places on screen and on paper.
+ * List geometry, in twips. **Each level's marker starts where its parent's text
+ * starts** (`left - hanging` equals the level above's `left`). Lives in `model/`
+ * because its three consumers (docx numbering, Preview.tsx, registry/structured) may
+ * not import each other; one stale copy = page breaks in different places on screen
+ * vs paper.
  */
 export interface ListLevelIndent {
   /** Where the text column sits. */

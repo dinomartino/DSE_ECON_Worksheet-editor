@@ -3,27 +3,11 @@
 import { useEffect } from 'react';
 
 /**
- * Who owns the keyboard right now.
- *
- * The editor has several independent `window` keydown listeners — the preview's four
- * delete handlers, the drawing canvas's shortcuts — and `window` is the same target for
- * all of them, so `stopPropagation` cannot separate one from another and the listener
- * that happens to be registered first does not win in any useful sense. They all fire.
- *
- * That was a real bug, not a theoretical one: with a diagram selected on the page and
- * the drawing canvas open on top of it, pressing Delete to remove one curve **also ran
- * the preview's handler and deleted the entire diagram block**. The canvas called
- * `preventDefault`, which does nothing to a sibling listener on the same target.
- *
- * So ownership is tracked explicitly instead. A modal surface registers itself while it
- * is open, and every listener that belongs to the page underneath asks
- * `isModalLayerOpen()` before acting. Deliberately a plain module-level counter rather
- * than React state or context: a keydown handler needs the answer *synchronously* inside
- * an event, before the next render, and every consumer is already a `useEffect` closure
- * that would otherwise have to re-subscribe to get a fresh value.
- *
- * A counter rather than a boolean, so two stacked overlays (the canvas, then a confirm
- * dialog inside it) release the keyboard only when the last of them closes.
+ * Who owns the keyboard. Every keydown listener is on `window`, so all fire and
+ * `stopPropagation` cannot separate them (Delete in the canvas once also deleted the
+ * whole diagram block). Overlays register while open; page handlers ask
+ * `isModalLayerOpen()`. A module-level **counter** — synchronous inside the event,
+ * and two stacked overlays release only on the last close.
  */
 let openCount = 0;
 

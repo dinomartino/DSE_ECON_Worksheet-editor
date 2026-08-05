@@ -529,25 +529,11 @@ export async function exportDocx(worksheet: Worksheet, mode: OutputMode): Promis
 }
 
 /**
- * Refuse to export a worksheet whose diagrams did not all become images.
- *
- * `diagramNodeXml` emits **nothing** for a diagram with no rasterized PNG, and it has to:
- * a `w:drawing` pointing at a relationship that was never written is a Word repair error,
- * which is worse than a gap. But silence is its own failure — the `.docx` simply arrives
- * without the figure, and a missing image is indistinguishable from a diagram that was
- * never added. That ambiguity cost a full debugging session: an export that *looked*
- * broken was in fact correct, and the real fault was elsewhere entirely.
- *
- * So the gap is detected here, where both halves are in hand: the diagrams the document
- * contains, and the images the pre-pass produced. Throwing is right rather than
- * degrading, because the caller already renders failures — `Toolbar.handleExport` catches
- * this and shows the message — and a teacher would rather be told than hand out a paper
- * with a hole where the supply curve was.
- *
- * `renderDiagramImages` returns an empty map outside a browser (rasterizing needs a
- * canvas), so this would fire on every server-side call. It cannot: export is client-only
- * by design, and `exportDocxBuffer` — the path tests and scripts use — deliberately skips
- * this and takes its map as an argument.
+ * Refuse to export when a diagram did not become an image. Emitting nothing is
+ * correct (a dangling relationship is a repair error) but silent — a missing figure
+ * is indistinguishable from one never added, which once cost a full debugging
+ * session. Throwing is right: the caller renders the message. `exportDocxBuffer`
+ * (tests/scripts) skips this and takes its map as an argument.
  */
 function assertEveryDiagramRasterized(
   worksheet: Worksheet,

@@ -3,25 +3,11 @@ import { isQabDocument } from './pageFurniture';
 import type { LayoutElement, Worksheet } from './types';
 
 /**
- * What shape a document is, and what that shape permits.
- *
- * The four documents this app makes are not four sets of features — they are four
- * *papers*, and most of the toolbox does not apply to any one of them. An MCQ paper has
- * no answer space (the candidate marks a separate answer sheet) and no sections; a
- * Question-Answer Book has no ruled worksheet lines and no header. Offering those
- * anyway is not neutral: a teacher who adds dotted answer space to a Paper 1 has built
- * something the real paper cannot be, and nothing tells them until it prints.
- *
- * **Derived from the document, never stored.** `isQabDocument` reads the furniture and
- * `coverHasPanel` reads the panel, both because the shape *is* those things rather than
- * a flag beside them — a document assembled by hand, pasted, or loaded from an older
- * build gets the same answer as one the wizard built. A stored `documentType` would be
- * a second answer to a question the content already settles, and the two would part
- * company the first time a teacher deleted a cover.
- *
- * The rule this file exists to keep: **withhold, and say why — never grey out in
- * silence.** A control that is present but dead reads as a bug; a control that is
- * absent with a sentence explaining it reads as a decision (§ `DocumentSettings`).
+ * What shape a document is, and what that shape permits. **Derived from the document,
+ * never stored** — a hand-assembled or older-build document gets the same answer as a
+ * wizard-built one, and a stored `documentType` would be a second answer to a
+ * question the content settles. The rule: withhold and say why, never grey out in
+ * silence.
  */
 
 export type DocumentShape = 'classroom' | 'paper1' | 'lqWorksheet' | 'lqMock';
@@ -43,23 +29,10 @@ export function documentShape(worksheet: Worksheet): DocumentShape {
 }
 
 /**
- * Layout elements this document has no use for.
- *
- * Not a matter of taste: each of these produces something the paper it is offered on
- * cannot contain.
- *
- * - **An MCQ paper has no writing room.** Its candidate answers on a machine-read sheet
- *   (the reference's own cover instruction 1 says so), so ruled lines, dotted answer
- *   space and fill-to-page all describe a page that does not exist. It also runs as one
- *   unbroken sequence of questions, so a section marker would restart numbering the
- *   paper never restarts.
- * - **A Question-Answer Book has no ruled worksheet lines.** Its answer space is the
- *   dotted `answerSpace` primitive at the reference's own pitch; `answerLines` is the
- *   worksheet's 24pt ruled space and a different mechanism entirely (§ the dotted
- *   answer line is a different primitive). Both on one page is two rhythms.
- *
- * Everything absent from this list stays offered. A heading, a note, a divider, a page
- * break and blank space are all things a real paper of either kind carries.
+ * Layout elements this document has no use for — each produces something the paper
+ * cannot contain: an MCQ paper has no writing room and no numbering restarts; a QAB's
+ * answer space is the dotted primitive, so ruled lines are a second rhythm.
+ * Everything absent from this list stays offered.
  */
 export function hiddenLayoutKinds(shape: DocumentShape): ReadonlySet<LayoutElement['kind']> {
   switch (shape) {

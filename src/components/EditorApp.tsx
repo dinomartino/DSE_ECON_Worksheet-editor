@@ -282,27 +282,9 @@ export function EditorApp({ onOpenFiles }: { onOpenFiles: () => void }) {
   );
 
   /*
-   * Drop a question onto a page card in the rail.
-   *
-   * This is the answer to "I cannot move a question to another page": a native drag
-   * only fires over what is under the pointer, so a destination that is not on screen
-   * cannot receive one. The rail is always on screen and always shows every page, so
-   * dropping onto a card reaches any page regardless of scroll — and unlike edge
-   * auto-scroll, it takes one gesture whether the target is the next page or the
-   * twentieth.
-   *
-   * The items land at the *end* of the target page, because a card is one target with
-   * no meaningful "between" — the sketch shows bars, not gaps you could aim at. Once
-   * there they can be nudged into place on the page itself, where the edge is visible.
-   *
-   * It takes a *run*, not one id, for the same reason the in-page drop does: a drag
-   * begun on a member of a multi-selection carries the whole selection, and moving only
-   * the grabbed item would silently discard the sweep. `movePage` is the verb for it —
-   * one commit, document order preserved among the members — which is also what keeps
-   * the whole gesture a single undo entry.
-   *
-   * Dropping a run that already ends the page is a no-op rather than a commit, so an
-   * accidental release does not push an undo entry that changes nothing.
+   * Drop a question onto a page card — the way to reach a page that is off screen.
+   * The run (never one id) lands at the end of the target page via `movePage`: one
+   * commit, order preserved. A run already ending the page is a no-op, not a commit.
    */
   const handleDropItemsOnPage = useCallback(
     (itemIds: string[], target: PageComposition) => {

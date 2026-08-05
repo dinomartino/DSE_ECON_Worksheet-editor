@@ -206,31 +206,12 @@ export function compositionKey(pages: PageComposition[]): string {
 }
 
 /**
- * Where a run dropped on a page card in the rail should land, or `undefined` for
- * "nothing to do".
- *
- * The rail is the only way to reach a page that is not on screen, and what it hands
- * over is whatever the page put in flight — which is a *run* whenever the drag began
- * inside a multi-selection. Answering for one id was the bug: five swept questions
- * dropped on page 3 moved one and left four behind, and the rail cannot re-derive the
- * selection to notice.
- *
- * The run lands after the target page's last member that is not itself moving. A card
- * is one target with no meaningful "between" — the thumbnail shows content, not gaps
- * you could aim at — so the end of the page is the only position it can name; from
- * there the items are nudged into place on the page itself, where edges are visible.
- *
- * Two cases return `undefined` rather than an anchor, so an accidental release costs no
- * undo entry:
- *
- * - every id on the target page is moving, leaving nothing to order against (a run
- *   cannot land relative to itself — `moveRunInFlow` guards this too, but stopping here
- *   means no commit at all rather than a commit that changes nothing);
- * - the run already *is* the tail of that page, in which case the drop is a no-op.
- *
- * An empty page added by the teacher has only its own break, and landing after that
- * break is exactly what puts an item on the sheet the break opened — so the empty case
- * needs no special handling beyond letting a break serve as an anchor.
+ * Where a run dropped on a page card should land, or `undefined` for "nothing to do".
+ * The run (never one id — a drag on a multi-selection member carries the selection)
+ * lands after the target page's last non-moving member; a card has no meaningful
+ * "between". `undefined` when everything on the page is moving or the run already is
+ * the tail, so an accidental release costs no undo entry. An empty page's own break
+ * serves as the anchor.
  */
 export function dropRunAnchor(
   itemIds: string[],

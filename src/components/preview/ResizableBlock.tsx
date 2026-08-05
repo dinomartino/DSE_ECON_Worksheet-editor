@@ -4,32 +4,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { MIN_BLOCK_WIDTH_PX } from '@/model/edits';
 
 /**
- * Drag-to-resize for an image or diagram, on the page itself.
- *
- * Sizing a picture is a visual judgement — "as wide as the text", "small enough to fit
- * beside the table" — so it belongs where the picture is, not behind a number field in
- * the sidebar. This wraps the rendered block, draws corner handles once it is selected,
- * and turns a pointer drag into a width.
- *
- * Four decisions carry the behaviour:
- *
- *  - **Width is the only output.** Height follows the block's own aspect ratio
- *    (`applyResizeBlock`), the identical rule the sidebar's width field obeys, so
- *    neither surface can produce a shape the other cannot. That is also why the
- *    handles are corners rather than edges: an edge handle would promise independent
- *    width and height, which the model deliberately does not offer.
- *  - **The drag divides by the preview's scale.** The page sits inside a `scale()`
- *    transform, so a 100px pointer move is fewer than 100 page pixels at fit-to-width.
- *    Using raw client deltas would make the block grow faster than the cursor.
- *  - **The in-flight size is local state, committed once on release.** A drag emits
- *    dozens of widths a second; committing each would push dozens of undo entries and
- *    re-run pagination on every frame. The live width is applied as a CSS override
- *    instead, so what is on screen tracks the pointer exactly while the document sees
- *    a single edit — the same rule the page's drag-to-reorder follows by keeping
- *    `dragId` out of the store.
- *  - **Pointer capture, not window listeners.** `setPointerCapture` keeps the gesture
- *    with this handle even when the pointer outruns the block or leaves the sheet,
- *    which a drag that shrinks the block by 200px reliably does.
+ * Drag-to-resize for an image or diagram, on the page. Width is the only output
+ * (height follows aspect via `applyResizeBlock` — hence corner handles, not edges);
+ * delta ÷ preview scale; in-flight size local, committed once on release; pointer
+ * capture so the gesture survives leaving the sheet.
  */
 
 interface Props {

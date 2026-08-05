@@ -15,35 +15,17 @@ import type {
 } from './types';
 
 /**
- * What a teacher is asked before the first question exists.
- *
- * These are exactly the decisions that are made **once per document** and are painful
- * to change later — not because the app cannot change them (Setup can, and the cover
- * can be rebuilt), but because each one silently reflows everything authored under the
- * old answer: a paper-size change re-paginates, a font change re-measures every line,
- * and a cover added afterwards renumbers nothing but does move the whole body onto
- * sheet 2. Asking up front means the first question is typed into a document that is
- * already the shape it will be handed in as.
- *
- * Every field is optional and every default is the one `createWorksheet()` already
- * produces, so "skip the questions and give me a blank worksheet" is `{}` — the wizard
- * is a way to answer these sooner, never a form that must be completed first.
+ * The once-per-document decisions, asked before the first question exists (each one
+ * reflows everything authored under the old answer). Every field is optional and
+ * every default is `createWorksheet()`'s own, so `{}` is a blank worksheet — the
+ * wizard is a way to answer sooner, never a gate.
  */
 /**
- * What kind of document the teacher is starting.
- *
- * The one answer everything else hangs off: it decides the cover, the sections, the
- * page furniture and what (if anything) is seeded — so the form asks it **first**, as
- * cards, and derives the rest instead of asking four separate questions whose answers
- * mostly imply each other. The four are the four real documents this app makes:
- *
- * - `classroom` — the ordinary worksheet. No cover, MCQ/structured sections.
- * - `paper1` — a Paper 1 mock: MCQ cover, answers on a separate sheet.
- * - `lqWorksheet` — a **plain long-question worksheet**: structured questions with
- *   dotted answer space, no exam apparatus at all. For practice sets and homework.
- * - `lqMock` — the **Question-Answer Book mimic**: Paper 2 cover with a candidate
- *   panel, Sections A/B/C with derived totals, continuous numbering, and the page
- *   frame + margin notes on every sheet (§ The LQ mode).
+ * What kind of document the teacher is starting — the one answer everything else
+ * hangs off (cover, sections, furniture, seeding), asked first as cards:
+ * `classroom` (ordinary worksheet), `paper1` (MCQ mock), `lqWorksheet` (dotted
+ * answer space, no exam apparatus), `lqMock` (the QAB: Paper 2 cover, Sections A/B/C,
+ * page furniture).
  */
 export type DocumentType = 'classroom' | 'paper1' | 'lqWorksheet' | 'lqMock';
 
@@ -142,23 +124,11 @@ function paper1Layout(): LayoutElement[] {
 }
 
 /**
- * The Question-Answer Book's three sections.
- *
- * The reference booklet's own shape, structure only: "Section A (44 marks)" with the
- * total **derived** (`showMarks`), numbering running 1..14 straight through all three
- * sections (`restartNumbering: false` — a QAB never restarts at a section), and the
- * heading set at the body size in bold, which is how the booklet prints it (the
- * worksheet's 14pt heading style stays for worksheets). Section C's "Answer any ONE
- * question." rides as its own text element rather than inside the heading, so the
- * derived marks suffix stays attached to the section name it belongs to.
- *
- * The reference also closes each of Sections A and B with a bold centred
- * "END OF SECTION A/B" line, and the whole booklet with "END OF PAPER" — Section C has
- * no closing line of its own; the paper's end is its end. Seeded as ordinary text
- * elements, like the "Answer any ONE question." note: they are landmarks a teacher
- * drags questions in front of, not derived furniture, so a reworked paper may keep,
- * move or reword them. The Chinese sides are the HKDSE Chinese version's convention
- * (甲部完／乙部完／全卷完).
+ * The QAB's three sections: derived totals (`showMarks`), continuous numbering
+ * (`restartNumbering: false`), body-size bold headings. "Answer any ONE question."
+ * and the closing lines ("END OF SECTION A/B", "END OF PAPER"; Section C has none;
+ * Chinese 甲部完／乙部完／全卷完) are ordinary text elements — landmarks a teacher may
+ * move or reword, not derived furniture.
  */
 function qabSections(): LayoutElement[] {
   const heading = (en: string, zh: string): LayoutElement => ({
@@ -211,24 +181,11 @@ function qabFooter(code: string): Worksheet['footer'] {
 }
 
 /**
- * The running footer both exam papers carry: paper code left, page number centred.
- *
- * One shape serves Paper 1 and Paper 2 because the reference papers use one shape — the
- * paper number in the code is the only thing that differs ("…-ECON 1–17" against
- * "…-ECON 2–14"). Splitting them into two seeded footers would be two places to fix a
- * wording change, and they would drift the first time only one was touched.
- *
- * **The centre number's size is the papers' one real disagreement.** Paper 2's is 14pt,
- * large because a Question-Answer Book is a booklet a candidate flips through to find
- * where they are writing. Paper 1's is the size of the code beside it — measured off
- * page 2 of the 2021 paper at 150dpi, both clusters ~13–14px tall against Paper 2's 16px,
- * with the number centred on the page (x 623 against a page centre of 620.5) and the code
- * ranged left at the margin (x 147 ≈ 1"). An MCQ paper is read straight through and
- * answered on a separate sheet, so nothing about it needs flipping to.
- *
- * Both fields are the existing `pageNumber` band field: the code is authored `prefix`
- * wording around the derived number, so it stays editable on the page and the numbers
- * stay live `PAGE` fields (§ a field is authored wording around a derived value).
+ * The running footer both exam papers carry: paper code left, page number centred —
+ * one shape, since only the paper number in the code differs. The centre number's
+ * size is the papers' one real disagreement (14pt booklet, 9pt Paper 1, measured off
+ * the references). Both fields are the `pageNumber` band field: authored prefix
+ * around a live `PAGE` field.
  */
 function examFooter(code: string, paperNumber: 1 | 2): Worksheet['footer'] {
   const centreSize = paperNumber === 2 ? 14 : 9;

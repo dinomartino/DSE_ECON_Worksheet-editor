@@ -3,31 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 
 /**
- * Word's table grid picker: hover to size, click to insert.
- *
- * Inserting a table used to mean clicking "+ Table" and getting a fixed 3×3, which is
- * the wrong size for every table in the reference papers — they run 13×2, 8×2 and 4×3.
- * So the first thing a teacher did after inserting was click "+ Row" ten times, and the
- * control that was supposed to create the table only created a starting point for
- * repairing it.
- *
- * This is the affordance Word has trained them on, copied deliberately down to the live
- * caption ("5 × 3 table"): the grid *is* the size input, so the number of rows is chosen
- * by pointing at rows rather than by typing into a field whose effect is invisible until
- * committed. Recognition rather than recall is the whole point — the reason to imitate a
- * competitor here is that the muscle memory already exists.
- *
- * Three details that matter:
- *
- * - **The grid grows as you reach the edge.** A fixed 10×8 would cap the common case
- *   badly: the GDP table is 13 rows, so a teacher aiming at it would hit the bottom of
- *   the grid and have to fall back to "+ Row" anyway. Hovering the last row or column
- *   adds another, up to a sane ceiling, so the picker can name the size the paper needs.
- * - **Keyboard reaches every size.** Arrow keys move the size and Enter commits, because
- *   a grid of hover targets is unusable without a pointer and this is the only way to
- *   insert a table.
- * - **Nothing is created until the click.** Hover only previews, so backing out costs no
- *   undo entry.
+ * Word's table grid picker: hover to size, click to insert, live caption. The grid
+ * grows as you reach the edge (the reference's tables run to 13 rows); arrow keys +
+ * Enter make it usable without a pointer; nothing is created until the click.
  */
 
 /*

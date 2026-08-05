@@ -723,19 +723,11 @@ export function renderNodeXml(node: RenderNode, context: BodyContext): string {
 export { paragraph, richTextRuns };
 
 /**
- * The cover page, as a two-column Word section (§ `model/cover.ts`).
- *
- * The reference's own mechanism, and the only one that produces the shape: the cover is
- * a section with `w:cols w:num="2" w:equalWidth="0"`, and a **`nextPage` section break**
- * at the end of it returns the body to one column *and* starts it on the next sheet. So
- * the cover's own geometry is carried by a `sectPr` inside the last cover paragraph —
- * which is where Word stores the properties of the section a paragraph *ends*, not the
- * one it begins.
- *
- * A `w:br w:type="column"` moves from the left column to the right; there is no
- * "position this in the right column" property, because Word columns are a flow.
- * Everything before the break lands left, everything after lands right — which is why the
- * regions are emitted in exactly that order.
+ * The cover as a two-column Word section: `w:cols w:equalWidth="0"` carried by a
+ * `sectPr` in the last cover paragraph (the section a paragraph *ends*), a
+ * `w:br w:type="column"` moving to the right column (columns are a flow — order of
+ * emission is placement), and a `nextPage` break returning the body to one column on
+ * the next sheet.
  */
 export function coverXml(
   cover: CoverRenderNode,
@@ -812,19 +804,10 @@ export function coverXml(
   }
 
   /*
-   * The section break that ends the cover, and starts the body on a fresh sheet.
-   *
-   * `w:type="nextPage"`, because a section break **is** the page transition — that is
-   * what `w:type` names. This carried `continuous` plus a separate
-   * `<w:br w:type="page"/>` emitted by the caller, which is one mechanism too many: the
-   * continuous break ended the section, the page break then advanced a sheet, and the
-   * body began on page 3 with a blank page 2 between. Reported from a real export, and
-   * reproduced at 3 pages for *both* cover styles.
-   *
-   * Dropping the caller's break alone also yields 2 pages, but only by accident:
-   * changing `w:cols` from two columns to one forces a page transition of its own. That
-   * side effect disappears for any cover whose column count matches the body's, so the
-   * intent is stated here instead of being left to fall out of the geometry.
+   * `w:type="nextPage"`: the section break IS the page transition. `continuous` plus
+   * a separate page break stacked and left a blank sheet 2; relying on the column
+   * change to force the transition works only while the counts differ, so the intent
+   * is stated here.
    */
   const columns =
     `<w:cols w:num="2" w:equalWidth="0" w:space="${cover.columns.gap}">` +
@@ -988,27 +971,12 @@ const CORNER_CLEARANCE_LINES = 9;
 const EMU_PER_TWIP = 635;
 
 /**
- * The vertical rule dividing a cover's two columns.
- *
- * **Not** a column separator, a page border or a paragraph border — the reference draws
- * none of those. It is an anchored `prstGeom prst="line"` connector of zero width and
- * full page height, offset just left of the right column:
- *
- * ```
- * <wp:extent cx="0" cy="8058150"/>        0 x 8.81in
- * <a:ln w="19050">                        1.5pt solid black
- * <wp:positionH><wp:posOffset>-151130     0.165in left of the column
- * ```
- *
- * Worth spelling out because every cheaper mechanism was tried by the file's authors and
- * rejected: `w:cols` has a `w:sep` flag and the reference does not set it (it draws a
- * hairline at a fixed position Word chooses), `w:pgBorders` frames the whole sheet, and a
- * `w:pBdr` follows one paragraph rather than the column. A shape is the only one of the
- * four that puts a line of a chosen weight down the full height of a column.
- *
- * The preview draws the same line as a `border-left` on the right column, which lands in
- * the same place — this is the one piece of cover geometry where the two backends use
- * genuinely different mechanisms to reach the same picture.
+ * The vertical rule dividing a cover's two columns: an anchored
+ * `prstGeom prst="line"` connector, zero width by full page height, 1.5pt
+ * (`a:ln w="19050"`), just left of the right column. Not `w:cols w:sep` (hairline at
+ * Word's chosen position), `w:pgBorders` (frames the sheet) or `w:pBdr` (follows one
+ * paragraph) — a shape is the only mechanism with a chosen weight down a column's
+ * full height. The preview draws a `border-left` in the same place.
  */
 function coverRuleXml(cover: CoverRenderNode, context: BodyContext): string {
   // Full text height: the page's own height less its margins is not known here, so the
@@ -1029,25 +997,11 @@ function coverRuleXml(cover: CoverRenderNode, context: BodyContext): string {
 }
 
 /**
- * The corner code block: a floating group of a textbox and a diagonal.
- *
- * This is the reference's own structure, read out of its `document.xml`:
- *
- * ```
- * <wp:anchor>  positionH -0.65in, positionV -0.25in   (outside the text column)
- *   <wpg:wgp>  chExt 2725 x 2710                      (child coordinate space)
- *     <wps:wsp prst="rect">  off 0,312  ext 1520x1350  — the code lines
- *     <wps:wsp prst="line">  off 0,0    ext 2725x2710  — the diagonal, flipH
- * ```
- *
- * A group rather than two separate anchors, because the textbox and the line are one
- * object on the page: the diagonal is positioned *relative to the text it crosses*, so
- * moving the block must carry both. The child coordinate space is what lets those
- * relative positions stay in the reference's own numbers rather than being recomputed
- * into EMU by hand.
- *
- * The textbox has `noFill` and no outline — it is a positioning device, not a visible
- * box.
+ * The corner code block: one floating `wpg:wgp` group (anchor −0.65in/−0.25in,
+ * `chExt` 2725×2710) holding the code-lines textbox (`off 0,312 ext 1520×1350`,
+ * noFill, no outline — a positioning device) and the diagonal (full child space).
+ * A group, not two anchors: the diagonal is positioned relative to the text it
+ * crosses, and moving the block must carry both.
  */
 function cornerGroupXml(cover: CoverRenderNode, context: BodyContext): string {
   const id = context.nextDrawingId();

@@ -48,22 +48,10 @@ import { useModalLayer } from '@/components/ui/modalLayer';
 import { BiTextField } from './BiTextField';
 
 /**
- * The drawing surface (§5.3).
- *
- * The numeric panel is precise but it is not how anyone thinks about a supply curve —
- * a teacher wants to *draw* the line where it goes and label it. This overlay is that
- * surface, and it deliberately sits **on top of** the same live SVG the exporter uses
- * rather than being a second renderer: the drawing is the real diagram at every moment,
- * so there is no "apply" step and nothing that can render differently once closed.
- *
- * It edits the same unit-space geometry the panel does (§7.5). Drawing a curve produces
- * exactly the `DiagramCurve` the panel would have produced by typing four numbers, so
- * the two surfaces are interchangeable and neither owns anything the other cannot see.
- *
- * Every gesture is applied to the geometry captured at *pointer-down* rather than to
- * the latest state, so a drag is one idempotent transform replayed as the pointer
- * moves — no accumulated rounding, and releasing outside the plot still lands where
- * the pointer is rather than where the last frame happened to be.
+ * The drawing surface: an overlay on the same live SVG the exporter uses (no second
+ * renderer, no "apply" step), editing the same unit-space geometry the panel does.
+ * Every gesture replays one idempotent transform from the geometry captured at
+ * pointer-down — no accumulated rounding.
  */
 
 const newId = () => nanoid(10);
@@ -188,19 +176,10 @@ interface Props {
 }
 
 /**
- * A drag in progress, holding the geometry it started from.
- *
- * `move` drags a selection, `create` draws a new element, `marquee` sweeps a box. All
- * three carry `base` — the diagram at pointer-down — so every pointer move re-applies
- * one idempotent transform rather than compounding onto the previous frame.
- *
- * `moved` means "travelled past the threshold", not "the pointer produced an event". A
- * gesture that never sets it wrote no geometry, so releasing it is a click.
- *
- * A `move` also records whether it was a **transient** grab — a plain press on an element
- * the user had not already selected. Those release back to no selection, so grabbing a
- * curve, dropping it and clicking the next one cannot drag something the user believed
- * they had let go of.
+ * A drag in progress (`move`/`create`/`marquee`), holding `base` — the diagram at
+ * pointer-down — so each move re-applies one idempotent transform. `moved` means
+ * past-threshold (unset = a click). A transient grab (press on an unselected element)
+ * releases back to no selection.
  */
 type Gesture =
   | {
@@ -1238,22 +1217,10 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
 }
 
 /**
- * Editing one piece of the diagram's text, in place, where it is drawn.
- *
- * The sidebar can already retype every one of these, so this exists for a different
- * reason than capability: the panel makes you find the element, look away from the
- * picture, and match a field name to the thing you meant. Double-clicking the words is
- * how a teacher expects to fix a typo, and it keeps their eyes on the diagram.
- *
- * A plain `<input>` rather than the app's `RichTextEditable`: diagram text is short
- * symbols ("S₁", "Price"), the surrounding surface is an SVG that cannot host a
- * contenteditable inline anyway, and the panel remains the place to reach anything
- * richer. What is typed goes through `parseRuns`, so the storage markers (`^{1}` for a
- * superscript) still work and the value round-trips through `serializeRuns` unchanged.
- *
- * Positioned from the same anchor that draws the text, so the field opens exactly over
- * the words it replaces (§7.5) — the whole point is that the text appears to become
- * editable, not that a box appears somewhere nearby.
+ * Editing diagram text in place, where it is drawn. A plain `<input>` (short symbols;
+ * SVG can't host a contenteditable) going through `parseRuns`, so storage markers
+ * (`^{1}`) round-trip. Positioned from the same anchor that draws the text, so the
+ * field opens exactly over the words it replaces.
  */
 function TextEditor({
   at,
