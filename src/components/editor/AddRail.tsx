@@ -9,11 +9,13 @@ import {
   createLabelListElement,
   createPageBreakElement,
   createPartHeaderElement,
+  createQuestionCountElement,
   createSectionElement,
   createSpacerElement,
   createTextElement,
   flowItemLabel,
 } from '@/model/flow';
+import { documentShape, offersLayoutKind } from '@/model/documentShape';
 import { computeNumbering } from '@/model/numbering';
 import { bi, plain } from '@/model/text';
 import type { LayoutElement } from '@/model/types';
@@ -29,6 +31,7 @@ import {
   PageBreakIcon,
   PartHeaderIcon,
   PlusIcon,
+  QuestionCountIcon,
   SectionIcon,
   SpacerIcon,
   StructuredIcon,
@@ -154,6 +157,7 @@ export function AddRail() {
   const layoutIcons: Record<LayoutElement['kind'], React.ReactNode> = {
     section: <SectionIcon size={18} />,
     partHeader: <PartHeaderIcon size={18} />,
+    questionCount: <QuestionCountIcon size={18} />,
     heading: <HeadingIcon size={18} />,
     text: <TextIcon size={18} />,
     labelList: <LabelListIcon size={18} />,
@@ -192,6 +196,14 @@ export function AddRail() {
           createPartHeaderElement(bi('Part A: Multiple-choice questions', '甲部：多項選擇題')),
           afterId,
         ),
+    },
+    {
+      id: 'questionCount',
+      label: 'Question count',
+      // The number is the point: it says what the element does that a text line cannot.
+      hint: 'There are 45 questions…',
+      icon: layoutIcons.questionCount,
+      run: (afterId) => addLayoutElement(createQuestionCountElement(), afterId),
     },
     {
       id: 'heading',
@@ -258,6 +270,27 @@ export function AddRail() {
     },
   ];
 
+  /*
+   * Withhold what this paper cannot contain.
+   *
+   * An MCQ paper's candidate answers on a separate machine-read sheet, so ruled lines,
+   * dotted answer space and fill-to-page all describe a page it does not have; it also
+   * runs as one unbroken sequence, so a section marker would restart numbering it never
+   * restarts. A Question-Answer Book has its own dotted answer space at the reference's
+   * pitch, so the worksheet's 24pt ruled lines are a second, disagreeing rhythm.
+   *
+   * Withheld rather than disabled: a dead row in a menu reads as a bug, while a menu
+   * that simply does not offer the thing reads as a tool that knows what it is making
+   * (§ `documentShape`). The elements every paper does carry — heading, note, divider,
+   * page break, blank space — are untouched.
+   */
+  const shape = documentShape(worksheet);
+  const offeredLayout = layoutEntries.filter((entry) => {
+    // The two fill variants are the same element kind under different starting values.
+    const kind = (entry.id === 'answerSpaceFill' ? 'answerSpace' : entry.id) as LayoutElement['kind'];
+    return offersLayoutKind(shape, kind);
+  });
+
   const groups: Array<{
     id: Group;
     label: string;
@@ -277,7 +310,7 @@ export function AddRail() {
       label: 'Element',
       sub: '版面',
       icon: <TextIcon size={20} />,
-      entries: layoutEntries,
+      entries: offeredLayout,
     },
   ];
 

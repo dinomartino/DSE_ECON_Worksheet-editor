@@ -18,7 +18,7 @@ and the code disagree, the code is right — fix the document in the same PR.
 | State | Zustand 5, undo/redo, 100-entry history |
 | Language | TypeScript strict |
 | Export | Raw OOXML via JSZip (hand-built, no `docx` library) |
-| Test | Vitest 4 — 759 tests across 39 files, ~1.2s |
+| Test | Vitest 4 — 781 tests across 41 files, ~1.3s |
 | Runtime | Browser-only: client-side `.docx`, no API routes |
 
 ## Project structure
@@ -1514,6 +1514,9 @@ be assembled from parts (a cover radio plus a sections checkbox), which made cho
 reachable at all. The older `cover` option maps onto the type (`mcq` → `paper1`,
 `writeIn` → `lqMock`) so pre-type callers produce exactly what they produced.
 
+- **`paper1` is the MCQ paper**: the Paper 1 cover, a running footer, the derived lead-in
+  and "END OF PAPER" — and **no sections**, because the reference (DSE 2021 P1) runs as
+  one unbroken sequence of questions. See § the MCQ paper's own shape.
 - **`lqWorksheet` is the plain long-question set**: dotted answer space with no exam
   apparatus — no cover, no furniture, no sections.
 - **`lqMock` is the booklet**: Paper 2 cover, Sections A/B/C with derived totals and
@@ -1544,6 +1547,91 @@ fill count must equal the count the fixture stored — which is what the `.docx`
 equality *is* the preview and the paper agreeing about the last sheet. Copyright guards
 mirror the cover's: a phrase blocklist that always runs, and a 6-word sliding window
 over the gitignored reference.
+
+---
+
+## The MCQ paper (Paper 1)
+
+Three things the reference (DSE 2021 P1) carries that a worksheet does not, all seeded by
+`paper1Layout()` / `examFooter()` and all editable afterwards like any other content.
+
+### The lead-in counts the questions, and the count is derived
+
+"There are 45 questions in this paper.  Choose the **BEST** answer for each question." is
+the `questionCount` layout element: **authored `prefix` · derived number · authored
+`suffix`**, the same decomposition a `BandField` uses (§ a field is authored wording
+around a derived value). The wording stays rewordable — a school writing "This paper
+contains 45 items." retypes two sides — while the number cannot go stale.
+
+- **The count comes from the numbering plan**, not `questions.length`: the plan is what
+  the printed numbers come from, so the sentence counts exactly the questions a candidate
+  can see and number through.
+- **It has more teeth than a stale marks total.** The paper's own cover tells the
+  candidate to check that every question is there ("Look for the words 'END OF PAPER'
+  after the last question"), so a wrong count sends them hunting for a page that was never
+  missing.
+- **Both sides stay unstored until retyped**, so an untouched element picks up any later
+  correction to the default phrasing, and "BEST" is bold **per run** — a stretch of
+  characters, not a property of the line (§ per-run formatting).
+
+### One footer shape, two papers
+
+`examFooter(code, paperNumber)` serves both: paper code left, page number centred, the
+paper number in the code the only thing that differs ("…-ECON 1–17" against "…-ECON 2–14").
+Two seeded footers would be two places to fix one wording change.
+
+- **The centre number's size is the papers' one real disagreement** — 14pt on the booklet,
+  9pt on Paper 1. Measured off page 2 of the 2021 paper at 150dpi: both clusters ~13–14px
+  tall against the booklet's 16px, the number centred on the page (x 623 against a page
+  centre of 620.5) and the code ranged left at the margin (x 147 ≈ 1"). A QAB is a booklet
+  a candidate flips through; an MCQ paper is read straight through and answered elsewhere.
+- **A `PAGE` field must carry the field's whole formatting, not just its fonts.** The
+  field is five runs (begin · instruction · separate · fallback · end) and Word takes the
+  displayed number's size from *them* — built from `rFonts` alone, a sized page number
+  silently reverted to the document default while the authored wording beside it printed
+  correctly. The QAB's footer shipped like that, its "big number" printing at 11pt.
+  Invisible outside the exported file: the model is right and the preview draws its own
+  chip at the right size. `bandWording.test.ts` asserts every field run carries the size.
+
+### A paper with a cover states its rubric once
+
+`createWorksheet` seeds "Answer ALL questions." as body instructions — right for a
+worksheet handed out alone, wrong under a cover that already says it (Paper 1's
+instruction 3, the booklet's too). Both cover-bearing types clear it; the settings hint
+points at the cover instead of suggesting wording it already carries.
+
+### A closing line needs the air a heading gets
+
+A `text` layout element now takes the same leading `ITEM_GAP` a heading does. Without it
+"END OF PAPER" printed flush under the last option and the QAB's "END OF SECTION A" flush
+under the last answer line — reading as one more line of the question rather than the end
+of it. Measured on the reference's last page at 130dpi: options sit 9px apart and
+"END OF PAPER" sits **159px** below the last of them. Suppressed at the true top of a page
+and after anything that already spent a line, through the same `first` flag every other
+element uses.
+
+### A document offers only what its own paper can contain
+
+`model/documentShape.ts` derives which of the four documents this is — furniture means
+the booklet, a panel-less cover means Paper 1 — and answers what that shape permits.
+**Derived, never stored**: a document assembled by hand, pasted, or loaded from an older
+build gets the same answer as one the wizard built, and a stored `documentType` would be a
+second answer to a question the content already settles.
+
+| Shape | Withheld | Why |
+|---|---|---|
+| `paper1` | `answerLines`, `answerSpace`, `section`, `partHeader` | Its candidate answers on a separate machine-read sheet, and it runs as one unbroken sequence |
+| `lqMock` | `answerLines`, `questionCount` | Its answer space is the dotted primitive at the reference's pitch; the 24pt ruled lines are a second, disagreeing rhythm |
+| others | `questionCount` | The lead-in is the MCQ paper's |
+
+- **Withheld, not greyed out.** A dead control invites "why can't I"; an absent one with a
+  sentence reads as a tool that knows what it is making. The booklet's Page tab states its
+  paper size and margins as fixed *and says what would break* — the furniture is positioned
+  against that column and the lines-per-page were counted in it, so another size moves the
+  frame off the text it frames.
+- **The cut must not overreach**: heading, note, divider, page break and blank space stay
+  on every shape, because both papers print all of them. `documentShape.test.ts` pins that
+  in both directions.
 
 ---
 

@@ -1,12 +1,13 @@
 import { createCoverPage, defaultCoverCode, type CoverPaperStyle } from './cover';
-import { createSectionElement } from './flow';
+import { createQuestionCountElement, createSectionElement } from './flow';
 import { DEFAULT_FONTS, createWorksheet, newId } from './factories';
 import { DEFAULT_MARGINS } from './page';
 import { createQabFurniture, QAB_MARGINS } from './pageFurniture';
-import { bi } from './text';
+import { bi, emptyBiText } from './text';
 import type {
   FontPair,
   LayoutElement,
+  McqQuestion,
   PageMargins,
   PaperSize,
   StructuredQuestion,
@@ -84,12 +85,14 @@ export interface NewWorksheetOptions {
    */
   sections?: boolean;
   /**
-   * Seed a sample long question, so the LQ shapes open showing what they are.
+   * Seed one sample question, so a shaped document opens showing what it is.
    *
-   * On by default for the two LQ types and ignored elsewhere: an empty LQ document
-   * hides its whole point (per-part answer space lives inside a question's panel), so
-   * the first page would look like the classroom worksheet's until the teacher
-   * discovers the field. One deletable question is a cheaper first minute than that.
+   * On by default for the two LQ types and for `paper1`; ignored by the plain
+   * classroom worksheet, which has no shape to demonstrate. An empty LQ document hides
+   * its whole point (per-part answer space lives inside a question's panel), and an
+   * empty Paper 1 hides its own — the derived lead-in count, the closing line and the
+   * footer's paper code only read as a paper with a question between them. One
+   * deletable question is a cheaper first minute than that.
    */
   seedSample?: boolean;
 }
@@ -110,6 +113,31 @@ function defaultSections(): LayoutElement[] {
   return [
     createSectionElement(bi('Section A: Multiple Choice', '甲部：多項選擇題')),
     createSectionElement(bi('Section B: Structured Questions', '乙部：結構性問題')),
+  ];
+}
+
+/**
+ * The MCQ paper's own shape: the lead-in above question 1, "END OF PAPER" below the last.
+ *
+ * Both are what the reference (DSE 2021 P1) prints, and both are things a candidate is
+ * told to rely on — instruction 2 on its cover says to check that all the questions are
+ * there and to "Look for the words 'END OF PAPER' after the last question", which only
+ * works if the paper actually carries them.
+ *
+ * The count in the lead-in is derived (§ `questionCount`); the closing line is an
+ * ordinary centred text element, seeded exactly as the QAB's "END OF SECTION A" lines
+ * are — a landmark a teacher can drag questions in front of, reword or delete, not
+ * derived furniture. `paper1` takes no sections: an MCQ paper is one run of questions.
+ */
+function paper1Layout(): LayoutElement[] {
+  return [
+    createQuestionCountElement(),
+    {
+      kind: 'text',
+      id: newId(),
+      text: bi('END OF PAPER', '全卷完'),
+      format: { bold: true, align: 'center' },
+    },
   ];
 }
 
@@ -179,6 +207,31 @@ function qabSections(): LayoutElement[] {
  * (§ `isQabDocument`).
  */
 function qabFooter(code: string): Worksheet['footer'] {
+  return examFooter(code, 2);
+}
+
+/**
+ * The running footer both exam papers carry: paper code left, page number centred.
+ *
+ * One shape serves Paper 1 and Paper 2 because the reference papers use one shape — the
+ * paper number in the code is the only thing that differs ("…-ECON 1–17" against
+ * "…-ECON 2–14"). Splitting them into two seeded footers would be two places to fix a
+ * wording change, and they would drift the first time only one was touched.
+ *
+ * **The centre number's size is the papers' one real disagreement.** Paper 2's is 14pt,
+ * large because a Question-Answer Book is a booklet a candidate flips through to find
+ * where they are writing. Paper 1's is the size of the code beside it — measured off
+ * page 2 of the 2021 paper at 150dpi, both clusters ~13–14px tall against Paper 2's 16px,
+ * with the number centred on the page (x 623 against a page centre of 620.5) and the code
+ * ranged left at the margin (x 147 ≈ 1"). An MCQ paper is read straight through and
+ * answered on a separate sheet, so nothing about it needs flipping to.
+ *
+ * Both fields are the existing `pageNumber` band field: the code is authored `prefix`
+ * wording around the derived number, so it stays editable on the page and the numbers
+ * stay live `PAGE` fields (§ a field is authored wording around a derived value).
+ */
+function examFooter(code: string, paperNumber: 1 | 2): Worksheet['footer'] {
+  const centreSize = paperNumber === 2 ? 14 : 9;
   return {
     enabled: true,
     rule: false,
@@ -192,12 +245,20 @@ function qabFooter(code: string): Worksheet['footer'] {
               kind: 'pageNumber',
               id: newId(),
               pattern: 'plain',
-              prefix: bi(`${code}-ECON 2–`, `${code}-ECON 2–`),
+              prefix: bi(
+                `${code}-ECON ${paperNumber}–`,
+                `${code}-ECON ${paperNumber}–`,
+              ),
               format: { fontSize: 9 },
             },
           ],
           center: [
-            { kind: 'pageNumber', id: newId(), pattern: 'plain', format: { fontSize: 14 } },
+            {
+              kind: 'pageNumber',
+              id: newId(),
+              pattern: 'plain',
+              format: { fontSize: centreSize },
+            },
           ],
           right: [],
         },
@@ -277,6 +338,42 @@ function sampleLqQuestion(): StructuredQuestion {
   };
 }
 
+/**
+ * One sample MCQ, so a new Paper 1 opens showing its own shape.
+ *
+ * Seeded for the reason the LQ types seed theirs: the parts of this document that make
+ * it a *paper* rather than a page — the derived lead-in count, the closing line, the
+ * footer's paper code — are only legible with a question between them. It also fixes
+ * the flow by construction: `paper1Layout` puts "END OF PAPER" last, and an appended
+ * question with no anchor would otherwise land *after* it.
+ *
+ * Invented wording under the copyright window, like every other seeded question.
+ */
+function sampleMcqQuestion(): McqQuestion {
+  return {
+    id: newId(),
+    type: 'mcq',
+    blocks: [
+      {
+        kind: 'paragraph',
+        id: newId(),
+        text: bi(
+          'A bakery raises the price of its bread and finds its total revenue falls.',
+          '某麵包店提高麵包售價後，發現總收益下跌。',
+        ),
+      },
+    ],
+    options: [
+      { id: newId(), text: bi('Demand for its bread is elastic.', '其麵包的需求富有彈性。') },
+      { id: newId(), text: bi('Demand for its bread is inelastic.', '其麵包的需求缺乏彈性。') },
+      { id: newId(), text: bi('Demand for its bread is unitary elastic.', '其麵包的需求彈性等於一。') },
+      { id: newId(), text: bi('The supply of its bread has fallen.', '其麵包的供應下跌。') },
+    ],
+    answerIndex: 0,
+    marks: 1,
+  };
+}
+
 export function createWorksheetFrom(options: NewWorksheetOptions = {}): Worksheet {
   const base = createWorksheet();
   const documentType = resolveDocumentType(options);
@@ -292,7 +389,8 @@ export function createWorksheetFrom(options: NewWorksheetOptions = {}): Workshee
    *
    * The booklet's three sections are its shape, not an option, so `lqMock` ignores the
    * checkbox; a plain LQ practice set has no sections at all, so `lqWorksheet` does
-   * too. Only the two worksheet-shaped types keep the choice.
+   * too. `paper1` is one run of MCQs between its lead-in and "END OF PAPER", so it
+   * ignores it as well. Only the plain classroom worksheet keeps the choice.
    */
   const sections = options.sections ?? true;
   const layout =
@@ -300,9 +398,11 @@ export function createWorksheetFrom(options: NewWorksheetOptions = {}): Workshee
       ? qabSections()
       : documentType === 'lqWorksheet'
         ? []
-        : sections
-          ? defaultSections()
-          : [];
+        : documentType === 'paper1'
+          ? paper1Layout()
+          : sections
+            ? defaultSections()
+            : [];
 
   /*
    * The seeded sample, LQ types only. Placed after the section run for the mock —
@@ -311,7 +411,13 @@ export function createWorksheetFrom(options: NewWorksheetOptions = {}): Workshee
    */
   const seedSample = options.seedSample ?? true;
   const isLq = documentType === 'lqWorksheet' || documentType === 'lqMock';
-  const questions = isLq && seedSample ? [sampleLqQuestion()] : [];
+  const questions = seedSample
+    ? isLq
+      ? [sampleLqQuestion()]
+      : documentType === 'paper1'
+        ? [sampleMcqQuestion()]
+        : []
+    : [];
 
   const coverStyle: CoverPaperStyle | undefined =
     documentType === 'paper1' ? 'mcq' : documentType === 'lqMock' ? 'writeIn' : undefined;
@@ -326,6 +432,13 @@ export function createWorksheetFrom(options: NewWorksheetOptions = {}): Workshee
     const entry = flow.pop()!;
     flow.splice(1, 0, entry);
   }
+  if (documentType === 'paper1' && questions.length > 0) {
+    // Between the lead-in and "END OF PAPER", which is the only place a question can
+    // go on this paper: appended, it would print below the line that declares the
+    // paper finished.
+    const entry = flow.pop()!;
+    flow.splice(1, 0, entry);
+  }
 
   return {
     ...base,
@@ -335,6 +448,17 @@ export function createWorksheetFrom(options: NewWorksheetOptions = {}): Workshee
     // Only a typed title is stored. An empty box stays empty — a new document carries
     // no default heading (§ `createWorksheet`); it lists as "Untitled" until named.
     ...(title || titleZh ? { title: bi(title || '', titleZh || '') } : {}),
+    /*
+     * A paper with a cover states its rubric there, and only there.
+     *
+     * `createWorksheet` seeds "Answer ALL questions." as body instructions, which is
+     * right for a classroom worksheet handed out on its own. On an exam paper it prints
+     * a second time directly under a cover that already says it — Paper 1's instruction
+     * 3 is "All questions carry equal marks. Answer ALL questions.", and the booklet's
+     * is instruction 3 too. The cover is the authority; a duplicate on page 2 reads as
+     * a mistake in the paper.
+     */
+    ...(coverStyle ? { instructions: emptyBiText() } : {}),
     fonts: options.fonts ? { ...options.fonts } : { ...DEFAULT_FONTS },
     pageSetup: {
       paper: options.paper ?? 'A4',
@@ -364,6 +488,13 @@ export function createWorksheetFrom(options: NewWorksheetOptions = {}): Workshee
           // about which year's paper this is (§ `academicYear`).
           footer: qabFooter(options.coverDetails?.code?.trim() || defaultCoverCode()),
         }
+      : {}),
+    // The MCQ paper carries the same running footer, differing only in the paper
+    // number and in the centre page number's size (§ `examFooter`). It takes none of
+    // the booklet's other apparatus: no furniture (nothing is written in its margins)
+    // and no 10pt body — the 2021 paper sets its questions at the ordinary body size.
+    ...(documentType === 'paper1'
+      ? { footer: examFooter(options.coverDetails?.code?.trim() || defaultCoverCode(), 1) }
       : {}),
     ...(coverStyle
       ? {

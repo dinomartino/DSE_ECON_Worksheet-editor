@@ -26,6 +26,7 @@ import {
   twipsToCm,
 } from '@/model/page';
 import { isQabDocument } from '@/model/pageFurniture';
+import { documentShape } from '@/model/documentShape';
 import { bi, emptyBiText, plain } from '@/model/text';
 import { academicYear, type CoverPaperStyle } from '@/model/cover';
 import type { Band, HeaderFooter, PageMargins, PaperSize } from '@/model/types';
@@ -155,7 +156,19 @@ function DocumentTab() {
         />
       </Field>
 
-      <Field label="Instructions" hint="A line under the title — e.g. “Answer ALL questions.”">
+      {/* On a paper with a cover the rubric belongs *there* — the cover's numbered
+          instructions are what a candidate reads, and a line here prints a second time
+          directly under it. Kept editable (a teacher may still want a body note) but
+          the hint says where the real instructions live rather than suggesting wording
+          the cover already carries. */}
+      <Field
+        label="Instructions"
+        hint={
+          worksheet.cover
+            ? 'A line under the title. This paper’s rubric lives on the cover — edit it there.'
+            : 'A line under the title — e.g. “Answer ALL questions.”'
+        }
+      >
         <BiTextField
           ariaLabel="Instructions"
           value={worksheet.instructions ?? emptyBiText()}
@@ -194,6 +207,7 @@ function PageTab() {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const setPageSetup = useWorksheetStore((s) => s.setPageSetup);
   const setup = pageSetupOf(worksheet);
+  const shape = documentShape(worksheet);
 
   // Whether the custom-margin fields are open. Sticky rather than derived purely from
   // "the numbers match no preset", so choosing Custom keeps the fields up even while the
@@ -212,16 +226,28 @@ function PageTab() {
 
   return (
     <div className="space-y-5">
-      <Field label="Paper size" hint="Written straight into the .docx page setup.">
-        <SelectField<PaperSize>
-          value={setup.paper}
-          options={Object.entries(PAPER_SIZES).map(([value, info]) => ({
-            value: value as PaperSize,
-            label: info.label,
-          }))}
-          onChange={(paper) => setPageSetup({ paper })}
-        />
-      </Field>
+      {/* Paper size is fixed for the booklet, for the same reason its margins are: the
+          furniture geometry and the lines-per-page were measured against an A4 column,
+          so another size moves the frame off the text and re-cuts every answer page. */}
+      {shape === 'lqMock' ? (
+        <Field label="Paper size" hint="Fixed by the booklet's page frame.">
+          <span className="block text-xs text-ink-muted">
+            {PAPER_SIZES[setup.paper].label} — the size the reference booklet’s frame and
+            answer-line pitch were measured against.
+          </span>
+        </Field>
+      ) : (
+        <Field label="Paper size" hint="Written straight into the .docx page setup.">
+          <SelectField<PaperSize>
+            value={setup.paper}
+            options={Object.entries(PAPER_SIZES).map(([value, info]) => ({
+              value: value as PaperSize,
+              label: info.label,
+            }))}
+            onChange={(paper) => setPageSetup({ paper })}
+          />
+        </Field>
+      )}
 
       {/* Portrait only. Shown rather than hidden so the page setup still reads as
           complete — a missing row invites "where did orientation go?" — but stated as
@@ -233,6 +259,22 @@ function PageTab() {
         <span className="block text-xs text-ink-muted">Portrait</span>
       </Field>
 
+      {/* The booklet's margins are measured, not chosen.
+          Its page furniture — the frame and the two rotated margin notes — is positioned
+          against the reference's own column, and its lines-per-page were counted in it,
+          so a changed margin moves the frame away from the text it frames and re-cuts
+          every answer page. Stated rather than offered-and-ignored (§ `documentShape`:
+          withhold, and say why). */}
+      {shape === 'lqMock' ? (
+        <Field label="Margins" hint="Fixed by the booklet's page frame.">
+          <span className="block text-xs text-ink-muted">
+            The reference booklet’s own margins. The page frame and margin notes are
+            positioned against this column, so changing it would move them off the text
+            they frame.
+          </span>
+        </Field>
+      ) : (
+        <>
       {/* Margins: a preset, or Custom to type all four edges.
           "Custom" is a real, selectable option rather than a label that only appeared
           once the numbers happened not to match a preset — previously there was no way
@@ -276,6 +318,8 @@ function PageTab() {
             0–5 cm per edge. Stored in twips, exactly as Word writes them.
           </p>
         </div>
+      )}
+        </>
       )}
     </div>
   );

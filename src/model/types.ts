@@ -615,6 +615,32 @@ export type LayoutElement =
    */
   | { kind: 'partHeader'; id: string; text: BiText; showMarks?: boolean; format?: TextFormat }
   /**
+   * The MCQ paper's lead-in: "There are 45 questions in this paper. Choose the BEST
+   * answer for each question."
+   *
+   * The count is **derived from the document**, never stored — the same rule as
+   * `totalMarks` and `partHeader`'s marks suffix, and for the same reason: a paper is
+   * re-cut all the time, and a typed "45" is wrong the moment a question is added or
+   * deleted. Here it is worse than a stale marks total, because this sentence is a
+   * candidate's own check that no page is missing (DSE 2021 P1 instruction 2 tells them
+   * to count).
+   *
+   * Structured as authored wording **around** the number rather than one text field
+   * with a placeholder, exactly as a `BandField` is (§ a field is authored wording
+   * around a derived value): `prefix` + count + `suffix`. That is what keeps the
+   * sentence rewordable — a school writing "This paper contains 45 questions." only
+   * retypes the two sides — while the number itself stays underivable by hand.
+   */
+  | {
+      kind: 'questionCount';
+      id: string;
+      /** Wording before the number. Absent falls back to the reference's own phrasing. */
+      prefix?: BiText;
+      /** Wording after the number, carrying the rest of the sentence. */
+      suffix?: BiText;
+      format?: TextFormat;
+    }
+  /**
    * A section heading, and the point at which question numbering may restart (§4).
    *
    * A section is a **marker in the flow, not a container**. It names the run of questions

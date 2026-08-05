@@ -55,4 +55,37 @@ describe('editable field wording reaches the .docx', () => {
     // xml:space must be preserved or Word eats the space before the number.
     expect(doc).toMatch(/xml:space="preserve">Full marks: </);
   });
+
+  it('sizes the page number itself, not just the wording beside it', async () => {
+    /*
+     * A `PAGE` field is five runs — begin, instruction, separate, fallback, end — and
+     * Word takes the displayed number's size from *them*, not from the text run next to
+     * it. Built from fonts alone, the number silently reverted to the document default
+     * while the authored prefix printed at the size the teacher set.
+     *
+     * Invisible everywhere but the exported file: the model is right, the preview draws
+     * its own chip at the right size, and the .docx prints an 11pt number under a 9pt
+     * code. The QAB's footer shipped like that — its centre number is meant to be the
+     * big one a candidate flips to.
+     */
+    const w = buildAcceptanceWorksheet();
+    const field = { ...createPageNumberField('plain'), format: { fontSize: 14 } };
+    w.footer = {
+      enabled: true,
+      bands: [createBand({ center: [field] })],
+      rule: false,
+      showOnFirstPage: true,
+    };
+
+    const foot = await read(w, 'word/footer1.xml');
+
+    // Every run of the field, not just one of them: Word renders the number from the
+    // run pair around `separate`, so a size on the instruction alone would still print
+    // at the default. 14pt = 28 half-points.
+    const runs = foot.match(/<w:r>[\s\S]*?<\/w:r>/g) ?? [];
+    const fieldRuns = runs.filter((r) => /fldChar|instrText/.test(r));
+
+    expect(fieldRuns.length).toBe(4);
+    for (const r of fieldRuns) expect(r).toContain('<w:sz w:val="28"/>');
+  });
 });

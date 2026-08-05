@@ -30,7 +30,7 @@ export interface RunOptions {
   fontSize?: number;
 }
 
-function runProperties(fonts: FontPair, options: RunOptions): string {
+export function runProperties(fonts: FontPair, options: RunOptions): string {
   const parts = [rFonts(fonts)];
   if (options.styleId) parts.unshift(`<w:rStyle w:val="${options.styleId}"/>`);
   if (options.bold) parts.push('<w:b/>', '<w:bCs/>');

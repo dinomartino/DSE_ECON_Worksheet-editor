@@ -245,6 +245,16 @@ export function PartHeaderIcon(props: IconProps) {
   );
 }
 
+/** A line of prose with a counted number set into it — the MCQ paper's lead-in. */
+export function QuestionCountIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3" y="8" width="6" height="8" rx="1.5" />
+      <path d="M12 10h9M12 14h6" />
+    </Svg>
+  );
+}
+
 export function LabelListIcon(props: IconProps) {
   return (
     <Svg {...props}>
@@ -355,4 +365,5 @@ export const LAYOUT_ICON = {
   answerSpace: AnswerSpaceIcon,
   partHeader: PartHeaderIcon,
   labelList: LabelListIcon,
+  questionCount: QuestionCountIcon,
 } as const;

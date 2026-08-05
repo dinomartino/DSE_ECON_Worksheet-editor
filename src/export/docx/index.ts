@@ -41,7 +41,7 @@ import {
   type ImageAsset,
   type PackageParts,
 } from './package';
-import { biTextRuns, formatRunOptions, rFonts, run } from './runs';
+import { biTextRuns, formatRunOptions, rFonts, run, runProperties } from './runs';
 import { buildStylesXml, STYLE_IDS } from './styles';
 
 /**
@@ -176,7 +176,17 @@ function zoneRuns(
       // size was set on the page exports at that size instead of silently reverting.
       const base = formatRunOptions(field.format);
       const fieldFonts = field.format?.fonts ?? fonts;
-      const runProps = `<w:rPr>${rFonts(fieldFonts)}</w:rPr>`;
+      /*
+       * The field runs carry the field's **whole** formatting, not just its fonts.
+       *
+       * A `PAGE` field is five runs (begin · instruction · separate · fallback · end)
+       * and Word takes the displayed number's size from them — so building these from
+       * fonts alone made a sized page number silently revert to the document default
+       * while the authored wording beside it printed at the size the teacher set. The
+       * QAB's footer is exactly that shape: "…-ECON 2–" at 9pt with the number after
+       * it, and a 14pt number centred alone.
+       */
+      const runProps = runProperties(fieldFonts, base);
 
       /*
        * Walk the field's segments, which is the same decomposition the page edits.

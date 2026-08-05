@@ -1,6 +1,6 @@
 import { bandIsEmpty, ZONES, zonesOf } from '@/model/bands';
 import { bandFieldSegments } from '@/model/bandSegments';
-import { resolveFlow } from '@/model/flow';
+import { DEFAULT_QUESTION_COUNT_WORDING, resolveFlow } from '@/model/flow';
 import { sectionMarksById, worksheetMarks } from '@/model/marks';
 import { computeNumbering } from '@/model/numbering';
 import { bi, isBiTextEmpty, plain } from '@/model/text';
@@ -11,6 +11,7 @@ import type {
   LayoutElement,
   OutputMode,
   Question,
+  RichText,
   Worksheet,
 } from '@/model/types';
 import { requireQuestionType } from '@/registry';
@@ -424,6 +425,10 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
         // the previous item already spent a line — otherwise a note ending in a trailing
         // hard break would sit two lines above the next heading.
         (index === 0 && !somethingAboveFlow) || endsInBlankLine(previousNodes),
+        // Taken from the numbering plan, not `worksheet.questions.length`: the plan is
+        // what the printed numbers come from, so the lead-in's "There are 45 questions"
+        // counts exactly the questions a candidate can see and number through.
+        numbering.questions.length,
       );
       previousNodes = nodes;
       return {
@@ -529,6 +534,14 @@ function renderLayoutElement(
   element: LayoutElement,
   sectionTotal: number,
   first = false,
+  /**
+   * How many questions the whole document holds, for the MCQ lead-in's derived count.
+   *
+   * Passed in for the same reason `sectionTotal` is: the number belongs to the
+   * document, not to the element, and computing it here would mean walking the
+   * worksheet once per element.
+   */
+  questionTotal = 0,
 ): RenderNode[] {
   switch (element.kind) {
     /*
@@ -563,8 +576,23 @@ function renderLayoutElement(
         },
       ];
     }
+    /*
+     * A free line of prose, and the one layout element that stands *between* items.
+     *
+     * It takes the same leading gap a heading does. Without one, a closing landmark
+     * printed flush against whatever it follows: "END OF PAPER" sat directly under the
+     * last option, and the QAB's "END OF SECTION A" under the last answer line, which
+     * reads as another line of the question rather than the end of it. The reference
+     * puts clear air there — on DSE 2021 P1's last page the options sit 9px apart at
+     * 130dpi and "END OF PAPER" sits 159px below the last of them.
+     *
+     * Suppressed at the true top of the page and after anything that already spent a
+     * line, through the same `first` flag every other element uses (§ a gap counts what
+     * is already there), so a note leading a sheet is not pushed down by a stray blank.
+     */
     case 'text':
       return [
+        ...(first ? [] : [ITEM_GAP]),
         {
           kind: 'text',
           style: 'Body',
@@ -573,6 +601,35 @@ function renderLayoutElement(
           edit: { kind: 'layoutText', elementId: element.id },
         },
       ];
+    /*
+     * The MCQ paper's lead-in, with the count derived at render time.
+     *
+     * Composed as authored prefix · number · authored suffix, exactly as a band field
+     * is (§ a field is authored wording around a derived value) — so the wording stays
+     * editable while the number cannot go stale. The two sides fall back to the
+     * reference's phrasing when the teacher has never retyped them, which is what keeps
+     * an untouched document storing nothing.
+     *
+     * The number carries no `EditTarget` of its own: typing over derived text would
+     * have nowhere to go. Only the wording around it is addressable, and it is reached
+     * through `layoutText` like every other element's words.
+     */
+    case 'questionCount': {
+      const side = (which: 'en' | 'zh'): RichText => {
+        const prefix = element.prefix?.[which] ?? DEFAULT_QUESTION_COUNT_WORDING.prefix[which];
+        const suffix = element.suffix?.[which] ?? DEFAULT_QUESTION_COUNT_WORDING.suffix[which];
+        return [...prefix, { text: String(questionTotal) }, ...suffix];
+      };
+      return [
+        {
+          kind: 'text',
+          style: 'Body',
+          text: { en: side('en'), zh: side('zh') },
+          format: element.format,
+          edit: { kind: 'layoutText', elementId: element.id },
+        },
+      ];
+    }
     case 'spacer':
       return [{ kind: 'spacer', heightPt: element.heightPt, elementId: element.id }];
     case 'divider':

@@ -1,5 +1,5 @@
 import { newId } from './factories';
-import { emptyBiText, plain } from './text';
+import { emptyBiText, parseRuns, plain } from './text';
 import type { BiText, FlowItem, LayoutElement, Question } from './types';
 
 /**
@@ -225,6 +225,7 @@ export const LAYOUT_NAME: Record<LayoutElement['kind'], string> = {
   answerSpace: 'Answer space',
   partHeader: 'Part header',
   labelList: 'Label list',
+  questionCount: 'Question count',
 };
 
 /**
@@ -273,6 +274,31 @@ export function createHeadingElement(text: BiText = emptyBiText()): LayoutElemen
 
 export function createTextElement(text: BiText = emptyBiText()): LayoutElement {
   return { kind: 'text', id: newId(), text };
+}
+
+/**
+ * The MCQ lead-in's wording, either side of the derived count.
+ *
+ * The reference (DSE 2021 P1, page 2) reads "There are 45 questions in this paper.
+ * Choose the BEST answer for each question." — with **BEST** bold, which is why the
+ * suffix is parsed rather than built with `bi()`: the emphasis is a stretch of
+ * characters, not a property of the line (§ per-run formatting). The double space
+ * before "Choose" is the reference's own sentence spacing.
+ *
+ * Defaults, not fixtures: an element stores nothing until a teacher retypes a side, so
+ * a document that never touches the wording exports byte-identically and picks up any
+ * later correction here.
+ */
+export const DEFAULT_QUESTION_COUNT_WORDING: { prefix: BiText; suffix: BiText } = {
+  prefix: { en: parseRuns('There are '), zh: parseRuns('本卷共有') },
+  suffix: {
+    en: parseRuns(' questions in this paper.  Choose the **BEST** answer for each question.'),
+    zh: parseRuns('題。請為每題選出**最佳**答案。'),
+  },
+};
+
+export function createQuestionCountElement(): LayoutElement {
+  return { kind: 'questionCount', id: newId() };
 }
 
 /*

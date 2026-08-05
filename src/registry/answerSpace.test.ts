@@ -223,13 +223,26 @@ describe('the QAB starting shape', () => {
     for (const element of worksheet.layout) expect(flowIds.has(element.id)).toBe(true);
   });
 
-  it('keeps the ordinary worksheet sections for every other cover choice', () => {
-    for (const options of [{}, { cover: 'mcq' as const }]) {
-      const worksheet = createWorksheetFrom(options);
-      const sections = worksheet.layout.filter((element) => element.kind === 'section');
-      expect(sections).toHaveLength(2);
-      expect(sections.every((s) => s.showMarks === undefined)).toBe(true);
-    }
+  it('keeps the ordinary worksheet sections for the plain classroom document', () => {
+    const worksheet = createWorksheetFrom({});
+    const sections = worksheet.layout.filter((element) => element.kind === 'section');
+    expect(sections).toHaveLength(2);
+    expect(sections.every((s) => s.showMarks === undefined)).toBe(true);
+  });
+
+  it('gives the MCQ paper its own shape instead of the worksheet sections', () => {
+    // An MCQ paper is one run of questions between its lead-in and "END OF PAPER" —
+    // the reference (DSE 2021 P1) carries no section headings at all, so the two
+    // worksheet sections would be furniture the paper does not have.
+    const worksheet = createWorksheetFrom({ cover: 'mcq' });
+
+    expect(worksheet.layout.filter((element) => element.kind === 'section')).toHaveLength(0);
+    expect(worksheet.layout.some((element) => element.kind === 'questionCount')).toBe(true);
+    expect(
+      worksheet.layout.some(
+        (element) => element.kind === 'text' && plain(element.text.en) === 'END OF PAPER',
+      ),
+    ).toBe(true);
   });
 
   it('seeds the booklet with one sample question, placed under Section A', () => {
