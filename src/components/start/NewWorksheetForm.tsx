@@ -80,11 +80,18 @@ const HAS_COVER: Record<DocumentType, boolean> = {
   lqMock: true,
 };
 
-/** Which types offer the section-headings choice (the others decide it themselves). */
-const ASKS_SECTIONS: Record<DocumentType, boolean> = {
+/**
+ * Which types offer the section-headings choice (the others decide it themselves).
+ *
+ * Only the classroom worksheet genuinely has the choice. The three exam-shaped documents
+ * each *are* a shape: the booklet's Sections A–C are its structure, a plain LQ set has
+ * none, and an MCQ paper runs as one unbroken sequence of questions between its lead-in
+ * and "END OF PAPER" — the reference (DSE 2021 P1) carries no section heading anywhere.
+ */
+export const ASKS_SECTIONS: Record<DocumentType, boolean> = {
   classroom: true,
   lqWorksheet: false,
-  paper1: true,
+  paper1: false,
   lqMock: false,
 };
 
@@ -198,7 +205,9 @@ export function NewWorksheetForm({
         <p className="text-[11px] text-ink-subtle">
           {documentType === 'lqMock'
             ? 'Starts with Sections A–C (derived marks totals) and one sample long question.'
-            : 'Starts with one sample long question — no section headings.'}
+            : documentType === 'paper1'
+              ? 'Starts with the “There are N questions…” line, one sample question and “END OF PAPER” — no section headings.'
+              : 'Starts with one sample long question — no section headings.'}
         </p>
       )}
 
