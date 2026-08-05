@@ -295,6 +295,56 @@ describe('a gap counts what is already there', () => {
       expect(nodes.findIndex((n) => n.kind !== 'spacer')).toBe(1);
     });
 
+    it('honours the document’s own examGapLines over the type’s', () => {
+      // A teacher tightening or widening the paper stores one number on the document
+      // (§ `Worksheet.examGapLines`); the type's 3 is only the default beneath it.
+      expect(leadingGap({ ...twoQuestions(paper1()), examGapLines: 5 } as Worksheet)).toBe(5);
+      expect(leadingGap({ ...twoQuestions(paper1()), examGapLines: 2 } as Worksheet)).toBe(2);
+      expect(leadingGap({ ...twoQuestions(paper1()), examGapLines: 1 } as Worksheet)).toBe(1);
+    });
+
+    it('ignores the override off the exam paper, where the wide boundary does not exist', () => {
+      expect(
+        leadingGap({ ...twoQuestions(createWorksheet()), examGapLines: 5 } as Worksheet),
+      ).toBe(1);
+    });
+
+    it('lets one question state its own gap, over both the paper and the type', () => {
+      // The nearest statement wins (§ `Question.gapBefore`): this boundary's own
+      // number beats the document's, which beats the type's measured 3.
+      const perQuestion = (gapBefore: number, examGapLines?: number) =>
+        leadingGap({
+          ...twoQuestions(paper1(), [mcq('q1'), { ...mcq('q2'), gapBefore }]),
+          ...(examGapLines !== undefined ? { examGapLines } : {}),
+        } as Worksheet);
+      expect(perQuestion(5)).toBe(5);
+      expect(perQuestion(1)).toBe(1);
+      expect(perQuestion(2, 6)).toBe(2);
+    });
+
+    it('ignores a question’s own gap off the exam paper too', () => {
+      expect(
+        leadingGap(twoQuestions(createWorksheet(), [mcq('q1'), { ...mcq('q2'), gapBefore: 5 }])),
+      ).toBe(1);
+    });
+
+    it('reports the adjustable boundary to the preview, and only there', () => {
+      // `adjustableGap` is what the on-page drag handle mounts on: present exactly
+      // where `boundaryGapLines` would read a stored number.
+      const rendered = renderWorksheet(twoQuestions(paper1()), {
+        language: 'en',
+        version: 'student',
+      });
+      expect(rendered.questions[0].adjustableGap).toBeUndefined(); // nothing above it
+      expect(rendered.questions[1].adjustableGap).toBe(3);
+
+      const classroom = renderWorksheet(twoQuestions(createWorksheet()), {
+        language: 'en',
+        version: 'student',
+      });
+      expect(classroom.questions[1].adjustableGap).toBeUndefined();
+    });
+
     it('does not widen a boundary against an unlike question', () => {
       const structured: StructuredQuestion = {
         id: 'q2',
@@ -303,6 +353,57 @@ describe('a gap counts what is already there', () => {
         parts: [{ id: 'sp', blocks: [{ id: 'spb', kind: 'paragraph', text: bi('a', '') }], marks: 2 }],
       };
       expect(leadingGap(twoQuestions(paper1(), [mcq('q1'), structured]))).toBe(1);
+    });
+
+    /*
+     * The preview's paginator never splits an item, so a question that does not fit
+     * moves whole to the next sheet — and without Word being told the same, the .docx
+     * broke the page inside the question and every page from there on disagreed with
+     * the screen. `keepQuestionWhole` spells the rule in Word's own vocabulary.
+     */
+    describe('and the question is kept whole in Word', () => {
+      it('chains keepNext through every node but the last, with keepLines on text rows', () => {
+        const rendered = renderWorksheet(twoQuestions(paper1()), {
+          language: 'en',
+          version: 'student',
+        });
+        const nodes = rendered.questions[0].nodes;
+        nodes.forEach((node, index) => {
+          if (index < nodes.length - 1) {
+            expect(node, `node ${index} must keep with the next`).toMatchObject({
+              keepNext: true,
+            });
+          }
+          if (node.kind === 'text' || node.kind === 'columns') {
+            expect(node.keepLines, `node ${index} must keep its own lines`).toBe(true);
+          }
+        });
+        // The last node stays free, or the chain would glue this question to the next.
+        expect(nodes[nodes.length - 1]).not.toMatchObject({ keepNext: true });
+      });
+
+      it('leaves the boundary gap out of the chain', () => {
+        // Question 2's leading spacers are the boundary, which is exactly where Word
+        // is allowed to break the page.
+        const rendered = renderWorksheet(twoQuestions(paper1()), {
+          language: 'en',
+          version: 'student',
+        });
+        const leading = rendered.questions[1].nodes.filter((n) => n.kind === 'spacer').slice(0, 3);
+        for (const spacer of leading) expect(spacer).not.toMatchObject({ keepNext: true });
+      });
+
+      it('leaves a classroom worksheet free to split, byte-identically', () => {
+        const rendered = renderWorksheet(twoQuestions(createWorksheet()), {
+          language: 'en',
+          version: 'student',
+        });
+        for (const question of rendered.questions) {
+          for (const node of question.nodes) {
+            expect('keepLines' in node && node.keepLines).toBeFalsy();
+          }
+        }
+      });
     });
   });
 });

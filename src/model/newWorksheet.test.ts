@@ -152,14 +152,16 @@ describe('sections', () => {
     expect(stripIds(classroom.footer)).toEqual(stripIds(createWorksheet().footer));
   });
 
-  it('sets the booklet’s body at 10pt, and no other type’s', () => {
+  it('sets both exam papers’ bodies at 10pt, and no other type’s', () => {
     /*
      * The reference booklet's whole body — stems, parts, marks, table cells — is 10pt
      * on the unchanged 12pt line (§ `QAB_BASE_FONT_SIZE`). A document-level size, not
      * per-element formatting, so the first question the teacher types is 10pt too.
+     * Paper 1 takes the same size: the two papers of one mock read at one size.
      */
     expect(createWorksheetFrom({ documentType: 'lqMock' }).baseFontSize).toBe(10);
-    for (const documentType of ['classroom', 'paper1', 'lqWorksheet'] as const) {
+    expect(createWorksheetFrom({ documentType: 'paper1' }).baseFontSize).toBe(10);
+    for (const documentType of ['classroom', 'lqWorksheet'] as const) {
       expect(createWorksheetFrom({ documentType }).baseFontSize).toBeUndefined();
     }
   });

@@ -252,6 +252,13 @@ export interface QuestionBase {
   blocks: ContentBlock[];
   /** Flat marks for question types that carry their own (e.g. MCQ). */
   marks?: number;
+  /**
+   * Blank lines above this question, overriding the exam paper's between-question
+   * gap for this one boundary. Absent = the paper's number (§ `Worksheet.examGapLines`,
+   * then the type's own). Read only where the wide gap applies (§ `boundaryGapLines`):
+   * never on the first item of a page, an unlike neighbour, or a classroom worksheet.
+   */
+  gapBefore?: number;
 }
 
 export interface McqOption {
@@ -629,6 +636,13 @@ export interface Worksheet {
    * untouched.
    */
   baseFontSize?: number;
+  /**
+   * Blank lines between two same-type questions on an exam paper, overriding the
+   * question type's own `examGapLines` (the MCQ paper's measured 3). Absent means the
+   * type's default; floored at 1. Read only where the wide gap applies (§
+   * `boundaryGapLines`), so a classroom worksheet ignores it.
+   */
+  examGapLines?: number;
   /** The masthead: bands printed above the instructions. Absent renders `title`. */
   bands?: Band[];
   /**

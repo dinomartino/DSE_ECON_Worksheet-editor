@@ -41,6 +41,13 @@ export interface RenderedQuestion {
   questionId: string;
   number: number;
   nodes: RenderNode[];
+  /**
+   * The width this question's leading boundary is aiming at, in blank lines — present
+   * only where the boundary is the exam paper's adjustable one (§ `boundaryGapLines`:
+   * Paper 1, after a same-type question). The preview offers its drag handle on it;
+   * both exports ignore it (the nodes already carry the gap).
+   */
+  adjustableGap?: number;
 }
 
 /** A non-question design element in the document flow. */
@@ -166,6 +173,7 @@ const questionRenderCache = new WeakMap<
     number: number;
     stream: string;
     gap: number;
+    keepWhole: boolean;
     nodes: RenderNode[];
   }
 >();
@@ -391,8 +399,13 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
     // of the page, and reduced by a line the previous item already spent
     // (§ a gap counts what is already there).
     const atTrueTop = index === 0 && !somethingAboveFlow;
-    const wanted = boundaryGapLines(shape, previous, question);
+    const wanted = boundaryGapLines(shape, previous, question, worksheet.examGapLines);
     const gap = atTrueTop ? 0 : Math.max(0, wanted - (endsInBlankLine(previousNodes) ? 1 : 0));
+
+    // On the exam paper a question is kept whole in Word too — the preview's paginator
+    // never splits an item, so without the keep chain the .docx broke pages in
+    // different places than the screen (§ keepQuestionWhole).
+    const keepWhole = shape === 'paper1';
 
     // The leading gap is part of the cached array, so an unchanged question hands back
     // one stable identity for the preview to memoise on (see `questionRenderCache`).
@@ -403,12 +416,13 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
       cached.mode === mode &&
       cached.number === number &&
       cached.stream === questionStream &&
-      cached.gap === gap
+      cached.gap === gap &&
+      cached.keepWhole === keepWhole
     ) {
       separated = cached.nodes;
     } else {
       const definition = requireQuestionType(question);
-      const nodes = definition
+      const rendered = definition
         .render(question, {
           mode,
           questionNumber: number,
@@ -417,19 +431,29 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
         })
         // Student output must contain no teacher content anywhere (§11.8).
         .filter((node) => includeNode(node, mode));
+      const nodes = keepWhole ? keepQuestionWhole(rendered) : rendered;
       separated = gap > 0 ? [...Array.from({ length: gap }, blankLine), ...nodes] : nodes;
       questionRenderCache.set(question, {
         mode,
         number,
         stream: questionStream,
         gap,
+        keepWhole,
         nodes: separated,
       });
     }
+    // Whether this boundary is the adjustable exam-paper one: same test
+    // `boundaryGapLines` applies before it reads any stored number.
+    const adjustableGap =
+      shape === 'paper1' && previous?.question?.type === question.type ? wanted : undefined;
+
     previousNodes = separated;
     previous = { question };
 
-    return { type: 'question', question: { questionId: question.id, number, nodes: separated } };
+    return {
+      type: 'question',
+      question: { questionId: question.id, number, nodes: separated, adjustableGap },
+    };
   });
 
   const questions = items
@@ -466,6 +490,8 @@ function boundaryGapLines(
   shape: DocumentShape,
   previous: { question?: Question; layout?: LayoutElement } | undefined,
   next: Question,
+  /** The document's own choice (§ `Worksheet.examGapLines`); absent = the type's. */
+  override?: number,
 ): number {
   if (shape !== 'paper1' || !previous) return DEFAULT_GAP_LINES;
 
@@ -476,8 +502,36 @@ function boundaryGapLines(
   }
 
   if (previous.question?.type !== next.type) return DEFAULT_GAP_LINES;
-  const wide = requireQuestionType(next).examGapLines;
+  // Nearest statement wins: this question's own gap, then the document's, then the
+  // type's measured default.
+  const wide = next.gapBefore ?? override ?? requireQuestionType(next).examGapLines;
   return wide !== undefined && wide > DEFAULT_GAP_LINES ? wide : DEFAULT_GAP_LINES;
+}
+
+/**
+ * Word's keep-together, spelled over one question's nodes: every node but the last
+ * keeps with the next, and a text or columns row keeps its own lines. The preview's
+ * paginator never splits an item, so without this the .docx let Word break a question
+ * across pages the screen had pushed whole to the next sheet — the two disagreed
+ * about every page from there on. The last node stays free, or the chain would run
+ * through the boundary gap and glue every question to the next.
+ */
+function keepQuestionWhole(nodes: RenderNode[]): RenderNode[] {
+  return nodes.map((node, index) => {
+    const last = index === nodes.length - 1;
+    switch (node.kind) {
+      case 'text':
+      case 'columns':
+        return { ...node, keepNext: last ? node.keepNext : true, keepLines: true };
+      case 'table':
+      case 'image':
+      case 'diagram':
+      case 'spacer':
+        return last ? node : { ...node, keepNext: true };
+      default:
+        return node;
+    }
+  });
 }
 
 /**

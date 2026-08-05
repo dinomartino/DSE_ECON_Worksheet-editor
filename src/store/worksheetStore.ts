@@ -255,6 +255,11 @@ interface WorksheetState {
 
   // --- Page setup, masthead bands, header/footer ------------------------------
   setPageSetup: (patch: Partial<PageSetup>) => void;
+  /**
+   * The exam paper's between-question gap in blank lines; `undefined` returns to the
+   * question type's own default (§ `Worksheet.examGapLines`).
+   */
+  setExamGapLines: (lines: number | undefined) => void;
   /** Put a mock-exam cover at the front of the document. One commit, one undo press. */
   applyCover: (options: CoverOptions) => void;
   /** Drop the cover page entirely. */
@@ -958,6 +963,17 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
         ...patch,
       },
     })),
+
+  setExamGapLines: (lines) =>
+    get().commit((draft) => {
+      // "Default" is stored as absence, not as the default's current value — the model
+      // drops everything meaning "unchanged", and an untouched paper keeps tracking the
+      // type's own number.
+      const next = { ...draft };
+      if (lines === undefined) delete next.examGapLines;
+      else next.examGapLines = Math.max(1, Math.round(lines));
+      return next;
+    }),
 
   applyCover: (options) =>
     // One field, so one assignment — the payoff of modelling a cover as a page rather

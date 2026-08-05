@@ -30,6 +30,7 @@ import {
 import { BAND_ROW_TWIPS, MARGIN_PRESETS, bandsHeight, cmToTwips } from '@/model/page';
 import { FIXED_LINE_TWIPS, exactLineFor } from './styles';
 import { createWorksheet } from '@/model/factories';
+import { createWorksheetFrom } from '@/model/newWorksheet';
 import { applyRunFormat, bi, plain } from '@/model/text';
 import { renderWorksheet } from '@/render/worksheet';
 import type { TextNode } from '@/render/ir';
@@ -762,6 +763,20 @@ describe('page breaks (§7.6, §11.7)', () => {
 
     expect(styles).toContain('<w:keepLines/>');
     expect(document).toContain('<w:keepNext/>');
+  });
+
+  it('spells keep-together over a Paper 1 question, and not over a classroom one', () => {
+    // The preview's paginator never splits an item, so the exam paper tells Word the
+    // same thing (§ keepQuestionWhole): keepNext chained through the question, with
+    // keepLines on its rows, in CT_PPr's own order.
+    const paper = createWorksheetFrom({ documentType: 'paper1', seedSample: true });
+    expect(buildDocxParts(paper, STUDENT_BI).documentXml).toMatch(
+      /<w:keepNext\/><w:keepLines\/>/,
+    );
+
+    // A classroom worksheet stays free to split — and byte-identical to before.
+    const classroom = buildAcceptanceWorksheet();
+    expect(buildDocxParts(classroom, STUDENT_BI).documentXml).not.toContain('<w:keepLines/>');
   });
 });
 

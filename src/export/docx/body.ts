@@ -104,6 +104,7 @@ function paragraph(options: {
   numId?: number;
   level?: number;
   keepNext?: boolean;
+  keepLines?: boolean;
   indent?: number;
   tabRight?: boolean;
   tabRightAt?: number;
@@ -111,7 +112,9 @@ function paragraph(options: {
 }): string {
   const props: string[] = [`<w:pStyle w:val="${options.styleId}"/>`];
 
+  // CT_PPr is a sequence: keepNext then keepLines, both before numbering.
   if (options.keepNext) props.push('<w:keepNext/>');
+  if (options.keepLines) props.push('<w:keepLines/>');
 
   if (options.numId !== undefined) {
     props.push(
@@ -179,6 +182,7 @@ function columnsNodeXml(node: ColumnsNode, context: BodyContext): string {
   const props =
     `<w:pStyle w:val="${STYLE_IDS[node.style]}"/>` +
     (node.keepNext ? '<w:keepNext/>' : '') +
+    (node.keepLines ? '<w:keepLines/>' : '') +
     (stops ? `<w:tabs>${stops}</w:tabs>` : '') +
     // One `w:ind`, since Word merges the element as a whole — emitting `left` and
     // `hanging` separately would drop whichever came first.
@@ -240,6 +244,7 @@ function textNodeXml(node: TextNode, context: BodyContext): string {
     numId,
     level: node.listRef?.level,
     keepNext: node.keepNext,
+    keepLines: node.keepLines,
     indent: node.indent,
     tabRight: node.marks !== undefined,
     tabRightAt: context.contentWidth,

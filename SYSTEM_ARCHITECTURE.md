@@ -780,7 +780,8 @@ Everything here is opt-in data, so a document using none of it exports byte-iden
 
 ### The booklet is a 10pt document
 
-`Worksheet.baseFontSize` (points, absent = 11, in `KNOWN_KEYS`); `lqMock` seeds 10. A
+`Worksheet.baseFontSize` (points, absent = 11, in `KNOWN_KEYS`); `lqMock` and `paper1`
+both seed 10 — the two papers of one mock read at one size. A
 **document** property, not per-element formatting (seeding `TextFormat` per element
 would revert on the first typed question). Three consumers: `buildStylesXml` scales
 docDefaults/`Normal`/body-sized styles (display styles keep their sizes); the preview
@@ -945,6 +946,20 @@ Measured off DSE 2021 P1, spelled as blank lines on the same fixed 12pt grid:
   `QuestionTypeDefinition`); `boundaryGapLines` (`render/worksheet.ts`) only decides
   when to honour it — the walker may not name a concrete type (`registry.test.ts`
   greps).
+- **The number can be overridden, nearest statement first**: a question's own
+  `gapBefore` beats the document's `Worksheet.examGapLines` (optional, in `KNOWN_KEYS`;
+  Setup → Page) beats the type's default. All read only where the wide gap applies,
+  floored at 1; absent keeps tracking the layer beneath.
+- **The gap drags where it is**: `RenderedQuestion.adjustableGap` marks the adjustable
+  boundary (present exactly where `boundaryGapLines` reads a stored number); the
+  preview mounts `GapAdjuster` on it — a pill in the *right* margin (centre belongs to
+  the insert `+`, left margin to the reorder grips), one commit on release writing
+  `gapBefore`. The exact value lives in the question panel's "Space above".
+- **A Paper 1 question is kept whole in Word too** (`keepQuestionWhole`): every node
+  but the last takes `keepNext`, text/columns rows take `keepLines` — the preview's
+  paginator never splits an item, so without the chain the .docx broke pages inside a
+  question the screen had pushed whole. The last node stays free (the chain must not
+  run through the boundary gap), and `keepWhole` is part of the render cache key.
 - **Only on a Paper 1**, decided by `documentShape()` — a classroom worksheet keeps
   the one-line rhythm; widening would silently re-paginate existing documents. Derived,
   never stored.

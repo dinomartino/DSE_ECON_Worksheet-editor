@@ -7,7 +7,8 @@ import type { BiText, ContentBlock, McqOptionLayout, McqQuestion } from '@/model
 import { resolveOptionLayout, suggestOptionLayout } from '@/registry/mcq';
 import type { EditorPanelProps } from '@/registry/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { Button, GroupHeader, IconButton, NumberField, Segmented } from '@/components/ui';
+import { documentShape } from '@/model/documentShape';
+import { Button, GroupHeader, IconButton, NumberField, Segmented, SelectField } from '@/components/ui';
 import { BiTextField } from './BiTextField';
 import { BlockEditor } from './BlockEditor';
 
@@ -16,6 +17,10 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
   const statements = question.statements ?? [];
   const language = useWorksheetStore((s) => s.mode.language);
   const suggested = suggestOptionLayout(question, language);
+  // Which paper this question sits in, for the exam-only gap control below. Derived
+  // per render — cheap, and a stored copy would go stale when a cover is added.
+  const shape = useWorksheetStore((s) => documentShape(s.worksheet));
+  const paperGap = useWorksheetStore((s) => s.worksheet.examGapLines);
 
   const setStatements = (next: BiText[]) =>
     onChange({ statements: next.length > 0 ? next : undefined });
@@ -222,6 +227,24 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
           value={question.marks ?? 1}
           onChange={(marks) => onChange({ marks })}
         />
+        {/* The exam paper's between-question gap, for this one boundary
+            (§ `Question.gapBefore`). Only on a Paper 1 — the wide boundary exists
+            nowhere else, and offering it on a worksheet would promise air the renderer
+            never gives. Ignored on question 1, which has no boundary above it. */}
+        {shape === 'paper1' && (
+          <SelectField<number>
+            label="Space above"
+            value={question.gapBefore ?? 0}
+            options={[
+              { value: 0, label: `Paper default (${paperGap ?? 3} lines)` },
+              ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((lines) => ({
+                value: lines,
+                label: lines === 1 ? '1 line' : `${lines} lines`,
+              })),
+            ]}
+            onChange={(lines) => onChange({ gapBefore: lines === 0 ? undefined : lines })}
+          />
+        )}
         <BiTextField
           label="Explanation (teacher version)"
           value={question.explanation ?? emptyBiText()}

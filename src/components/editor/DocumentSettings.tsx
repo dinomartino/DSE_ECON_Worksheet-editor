@@ -27,6 +27,7 @@ import {
 } from '@/model/page';
 import { isQabDocument } from '@/model/pageFurniture';
 import { documentShape } from '@/model/documentShape';
+import { requireQuestionType } from '@/registry';
 import { bi, emptyBiText, plain } from '@/model/text';
 import { academicYear, type CoverPaperStyle } from '@/model/cover';
 import type { Band, HeaderFooter, PageMargins, PaperSize } from '@/model/types';
@@ -206,6 +207,7 @@ function DocumentTab() {
 function PageTab() {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const setPageSetup = useWorksheetStore((s) => s.setPageSetup);
+  const setExamGapLines = useWorksheetStore((s) => s.setExamGapLines);
   const setup = pageSetupOf(worksheet);
   const shape = documentShape(worksheet);
 
@@ -320,6 +322,39 @@ function PageTab() {
         </div>
       )}
         </>
+      )}
+
+      {/* The exam paper's between-question air, in blank lines on the fixed 12pt grid.
+          The default is the question type's own measured number (§ `examGapLines`), so
+          "Default" is stored as absence and keeps tracking it; a chosen number is the
+          document's own (§ `Worksheet.examGapLines`). Offered only on the MCQ paper —
+          the wide boundary exists nowhere else (§ `boundaryGapLines`). */}
+      {shape === 'paper1' && (
+        <Field
+          label="Between questions"
+          hint="Blank lines separating one question from the next. A single question can override this in its own panel, or by dragging its gap on the page."
+        >
+          <SelectField<number>
+            value={worksheet.examGapLines ?? 0}
+            options={[
+              {
+                value: 0,
+                label: `Default — ${
+                  // Read off the paper's own questions rather than naming a type:
+                  // whatever kind this paper holds states its own measured gap.
+                  (worksheet.questions[0]
+                    ? requireQuestionType(worksheet.questions[0]).examGapLines
+                    : undefined) ?? 3
+                } lines (the reference paper)`,
+              },
+              ...[1, 2, 3, 4, 5, 6].map((lines) => ({
+                value: lines,
+                label: lines === 1 ? '1 line' : `${lines} lines`,
+              })),
+            ]}
+            onChange={(lines) => setExamGapLines(lines === 0 ? undefined : lines)}
+          />
+        </Field>
       )}
     </div>
   );

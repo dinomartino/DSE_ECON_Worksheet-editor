@@ -198,6 +198,16 @@ body {
   line-height: 12pt;
 }
 
+/* An empty contenteditable is an empty inline box, which generates no line box — so a
+   field opened over empty text (a fresh MCQ option) collapsed to zero height and the
+   paragraph below drew over it until the first character arrived. A zero-width space in
+   a pseudo-element keeps one line box open while the field is empty: it is not DOM
+   content, so `readRuns` never sees it and nothing phantom reaches the model. `:empty`
+   stops matching the moment the browser inserts a text node. */
+.rich-text-editable:empty::after {
+  content: '\200b';
+}
+
 /* One sheet, three regions to edit — body, header, footer — following Word.
    The region not being edited recedes and goes inert until it is double-clicked, which
    is what keeps a click meant for the first question out of the header row above it and

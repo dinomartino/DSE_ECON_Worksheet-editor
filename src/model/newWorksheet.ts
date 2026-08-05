@@ -447,11 +447,15 @@ export function createWorksheetFrom(options: NewWorksheetOptions = {}): Workshee
         }
       : {}),
     // The MCQ paper carries the same running footer, differing only in the paper
-    // number and in the centre page number's size (§ `examFooter`). It takes none of
-    // the booklet's other apparatus: no furniture (nothing is written in its margins)
-    // and no 10pt body — the 2021 paper sets its questions at the ordinary body size.
+    // number and in the centre page number's size (§ `examFooter`), and the same 10pt
+    // body as the booklet — the two papers of one mock read at one size. It takes none
+    // of the booklet's other apparatus: no furniture (nothing is written in its
+    // margins).
     ...(documentType === 'paper1'
-      ? { footer: examFooter(options.coverDetails?.code?.trim() || defaultCoverCode(), 1) }
+      ? {
+          baseFontSize: QAB_BASE_FONT_SIZE,
+          footer: examFooter(options.coverDetails?.code?.trim() || defaultCoverCode(), 1),
+        }
       : {}),
     ...(coverStyle
       ? {

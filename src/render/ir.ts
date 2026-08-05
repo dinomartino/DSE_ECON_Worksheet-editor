@@ -103,6 +103,9 @@ export interface TextNode {
   marks?: number;
   /** Keep with the following paragraph so a question is not split (§7.6). */
   keepNext?: boolean;
+  /** Keep this paragraph's own lines on one page (`w:keepLines`) — the docx half of
+   *  keeping an exam question whole; the preview's paginator never splits an item. */
+  keepLines?: boolean;
   /** Teacher-version-only content; stripped entirely from student output (§11.8). */
   teacherOnly?: boolean;
   /** Extra left indent in twips beyond the style default (used for non-list nesting). */
@@ -273,6 +276,8 @@ export interface ColumnsNode {
   /** Hairline rule under the row, used by masthead bands. */
   rule?: boolean;
   keepNext?: boolean;
+  /** Keep the row's wrapped lines on one page (`w:keepLines`). See `TextNode`. */
+  keepLines?: boolean;
   teacherOnly?: boolean;
 }
 

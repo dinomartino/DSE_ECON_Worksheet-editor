@@ -796,6 +796,25 @@ function TextNodeView({
       LIST_INDENT_TWIPS['question:0'])
     : undefined;
 
+  /*
+   * HTML drops the line box after a block's final <br>, but Word prints the empty line
+   * a trailing hard break opens — and `pushGap` counts that break *as* the separating
+   * gap, so without a filler the text sits flush on what follows and the paginator
+   * measures one line short of the .docx. One extra <br> materializes exactly the
+   * collapsed line. A marks-bearing paragraph already holds it open (the hidden twin
+   * rides at the very end of the inline flow), so the filler would add a line there.
+   * The tail side mirrors what `richNodes` renders last: in bilingual mode an empty
+   * Chinese side with an edit target shows a placeholder, which ends the flow itself.
+   */
+  const tailRuns =
+    language === "bilingual"
+      ? node.text.zh.length || node.edit
+        ? node.text.zh
+        : node.text.en
+      : node.text[language];
+  const trailingBreakFiller =
+    node.marks === undefined && trailingBlankLines(tailRuns) > 0;
+
   return (
     <p
       className={`${STYLE_CLASS[node.style] ?? ""} relative`}
@@ -832,6 +851,7 @@ function TextNodeView({
         </span>
       )}
       {richNodes(node.text, language, node.edit, ctx)}
+      {trailingBreakFiller && <br aria-hidden />}
       {node.marks !== undefined && (
         <MarksTrail
           marks={node.marks}
@@ -2477,6 +2497,125 @@ function ReadOnlyBandRow({
  */
 const CHEVRON_MIN_HEIGHT_PX = 34;
 
+/** One blank body line in page pixels — what a gap drag steps by. */
+const GAP_LINE_PX = BLANK_LINE_PT * PT_TO_PX;
+
+/**
+ * Drag-to-adjust for the exam paper's between-question gap (§ `Question.gapBefore`).
+ *
+ * Mounted over the question's leading blank lines. The pill sits in the **right
+ * margin**: the centre of the boundary belongs to the insert caret's `+`, and the left
+ * margin to the reorder grips, so the right edge is the one clear lane. Revealed by
+ * hovering the question (`group/drag`), like the rest of its chrome.
+ *
+ * Standard gesture rules: delta ÷ scale, in-flight value local with a live readout,
+ * one commit on release, no commit without travel. The page does not reflow until the
+ * release — the readout is the feedback, exactly as a spacer drag reads.
+ */
+function GapAdjuster({
+  gapLines,
+  renderedLines,
+  scale,
+  onCommit,
+}: {
+  /** The boundary's current target width in blank lines (§ `adjustableGap`). */
+  gapLines: number;
+  /** Leading spacers actually rendered, for sizing the strip the pill centres in. */
+  renderedLines: number;
+  scale: number;
+  onCommit: (lines: number) => void;
+}) {
+  const [draft, setDraft] = useState<number | undefined>();
+  const gesture = useRef<{ startY: number; start: number; pointerId: number } | null>(null);
+  const latest = useRef<number | undefined>(undefined);
+
+  const finish = () => {
+    const active = gesture.current;
+    const next = latest.current;
+    gesture.current = null;
+    latest.current = undefined;
+    setDraft(undefined);
+    if (!active || next === undefined) return;
+    // A click that merely brushed the pill must not spend an undo entry.
+    if (next !== active.start) onCommit(next);
+  };
+
+  const live = draft ?? gapLines;
+  const stripHeight = Math.max(renderedLines, 1) * GAP_LINE_PX;
+
+  return (
+    <span
+      aria-hidden={draft === undefined}
+      data-print-hide
+      // The strip spans the gap but must not catch clicks meant for blank paper or the
+      // marquee — only the pill itself is interactive (§ hover chrome needs a hit path).
+      className="pointer-events-none absolute inset-x-0 top-0 z-10"
+      style={{ height: stripHeight }}
+    >
+      <button
+        type="button"
+        aria-label={`Drag to adjust the gap above this question (${live} ${
+          live === 1 ? "line" : "lines"
+        })`}
+        title="Drag to adjust the gap above this question"
+        data-print-hide
+        style={{
+          cursor: "ns-resize",
+          touchAction: "none",
+          // Constant on-screen size at any zoom, like every other grip.
+          height: 12 / (scale || 1),
+          width: 26 / (scale || 1),
+          right: -34 / (scale || 1),
+        }}
+        className={`pointer-events-auto absolute top-1/2 -translate-y-1/2 rounded-full border shadow-sm transition-opacity ${
+          draft !== undefined
+            ? "border-[#7c5cff] bg-[#7c5cff] text-white opacity-100"
+            : "border-[#c4b5fd] bg-white text-[#7c5cff] opacity-0 group-hover/drag:opacity-100"
+        }`}
+        onPointerDown={(event) => {
+          if (event.button !== 0) return;
+          event.preventDefault();
+          event.stopPropagation();
+          event.currentTarget.setPointerCapture(event.pointerId);
+          gesture.current = { startY: event.clientY, start: gapLines, pointerId: event.pointerId };
+          latest.current = gapLines;
+          setDraft(gapLines);
+        }}
+        onPointerMove={(event) => {
+          const active = gesture.current;
+          if (!active || event.pointerId !== active.pointerId) return;
+          const delta = (event.clientY - active.startY) / (scale || 1) / GAP_LINE_PX;
+          const next = Math.min(9, Math.max(1, Math.round(active.start + delta)));
+          latest.current = next;
+          setDraft(next);
+        }}
+        onPointerUp={finish}
+        onPointerCancel={finish}
+        onLostPointerCapture={finish}
+        onClick={(event) => event.stopPropagation()}
+      >
+        {/* Two hairlines: the glyph for "this edge drags vertically". */}
+        <span className="pointer-events-none absolute inset-x-1.5 top-[35%] h-px bg-current opacity-60" />
+        <span className="pointer-events-none absolute inset-x-1.5 bottom-[35%] h-px bg-current opacity-60" />
+      </button>
+      {/* The live readout, so the drag is a measurement rather than a guess. */}
+      {draft !== undefined && (
+        <span
+          className="pointer-events-none absolute top-1/2 -translate-y-1/2 rounded bg-[#2c2a28] font-sans text-white shadow-sm"
+          style={{
+            right: -34 / (scale || 1) - 60 / (scale || 1),
+            padding: `${1 / (scale || 1)}px ${4 / (scale || 1)}px`,
+            fontSize: 11 / (scale || 1),
+            lineHeight: 1.4,
+          }}
+        >
+          {live} {live === 1 ? "line" : "lines"}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function DraggableItem({
   id,
   dragId,
@@ -3559,6 +3698,7 @@ export function Preview({
   const insertAnchorId = useWorksheetStore((s) => s.insertAnchorId);
   const setInsertAnchor = useWorksheetStore((s) => s.setInsertAnchor);
   const requestInsertMenu = useWorksheetStore((s) => s.requestInsertMenu);
+  const updateQuestion = useWorksheetStore((s) => s.updateQuestion);
 
   /*
    * Which table cell the sidebar's structure panel acts on.
@@ -4822,6 +4962,24 @@ export function Preview({
               setDragId(undefined);
             }}
           >
+            {/*
+             * The exam paper's between-question gap drags where it is (§ GapAdjuster).
+             * Offered only in edit mode, like the insert affordance — print preview
+             * must show exactly what prints.
+             */}
+            {!printPreview &&
+              item.type === "question" &&
+              item.question.adjustableGap !== undefined && (
+                <GapAdjuster
+                  gapLines={item.question.adjustableGap}
+                  renderedLines={Math.max(
+                    0,
+                    item.question.nodes.findIndex((node) => node.kind !== "spacer"),
+                  )}
+                  scale={scale}
+                  onCommit={(lines) => updateQuestion(id, { gapBefore: lines })}
+                />
+              )}
             {body}
           </DraggableItem>
         ),

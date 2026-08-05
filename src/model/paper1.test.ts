@@ -204,9 +204,9 @@ describe('the running footer', () => {
     const worksheet = paper1();
 
     // No page furniture: nothing is written in an MCQ paper's margins, so there is no
-    // frame and no margin note. And no 10pt body — the reference sets Paper 1 at the
-    // ordinary size.
+    // frame and no margin note. The 10pt body it *does* share — the two papers of one
+    // mock read at one size.
     expect(worksheet.pageFurniture).toBeUndefined();
-    expect(worksheet.baseFontSize).toBeUndefined();
+    expect(worksheet.baseFontSize).toBe(10);
   });
 });

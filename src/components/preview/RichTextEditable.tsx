@@ -176,7 +176,10 @@ export function RichTextEditable({
       spellCheck={false}
       lang={lang}
       aria-label={ariaLabel}
-      className={className}
+      // `rich-text-editable` carries the `:empty::after` filler (globals.css): an empty
+      // inline contenteditable generates no line box, so an emptied option collapsed to
+      // zero height and the next option drew over it until the first character arrived.
+      className={`rich-text-editable ${className}`}
       // `pre-wrap` so a hard break and any run of spaces survive as typed; the model
       // stores both verbatim.
       style={{ whiteSpace: 'pre-wrap', ...style }}
