@@ -2,12 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import JSZip from 'jszip';
 import {
+  DEFAULT_LIST_INDENTS,
+  listIndentScheme,
   OPTION_LIST_INDENT,
+  PAPER1_LIST_INDENTS,
   PART_TEXT_INDENT,
   QUESTION_LIST_INDENTS,
   STATEMENT_LIST_INDENT,
   SUBPART_TEXT_INDENT,
 } from './numbering';
+import { buildDocxParts } from '@/export/docx';
+import { createWorksheetFrom } from './newWorksheet';
 import { exportDocxBuffer } from '@/export/docx';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
 import type { OutputMode } from './types';
@@ -85,11 +90,14 @@ describe('list indent geometry', () => {
      * drift this file exists to prevent, and it looks correct until a level moves.
      */
     const source = readFileSync('src/components/preview/Preview.tsx', 'utf8');
-    expect(source).toContain('QUESTION_LIST_INDENTS[0]');
-    expect(source).toContain('QUESTION_LIST_INDENTS[1]');
-    expect(source).toContain('QUESTION_LIST_INDENTS[2]');
-    expect(source).toContain('STATEMENT_LIST_INDENT');
-    expect(source).toContain('OPTION_LIST_INDENT');
+    // The preview reads the *scheme* (the exam paper carries its own geometry,
+    // § `listIndentScheme`) rather than restating any level as a literal.
+    expect(source).toContain('listIndentScheme(');
+    expect(source).toContain('scheme.question[0]');
+    expect(source).toContain('scheme.question[1]');
+    expect(source).toContain('scheme.question[2]');
+    expect(source).toContain('scheme.statement');
+    expect(source).toContain('scheme.option');
 
     // And the styles must not re-indent on top of it: `ml-6` / `ml-12` on the two
     // sub-question styles, and `ml-8` on Statement and MCQ Option, stacked a second
@@ -99,5 +107,56 @@ describe('list indent geometry', () => {
     expect(source).toMatch(/"Sub-sub-question":\s*""/);
     expect(source).toMatch(/\bStatement:\s*""/);
     expect(source).toMatch(/"MCQ Option":\s*""/);
+  });
+});
+
+/**
+ * The MCQ paper renders on its own scheme, copied value-for-value from the teacher's
+ * reference (`real_life_reference/hkdse_paper1_layout_1.docx`). These pin the copy —
+ * the numbers are measurements, not choices — and that a Paper 1 export actually
+ * carries them while a classroom export keeps the default staircase.
+ */
+describe('the exam paper’s own indent scheme', () => {
+  it('carries the reference’s rendered columns, not its stored XML', () => {
+    // Measured off the reference *as laid out*: its "(1)" overflows a 180 hang and the
+    // tab lands on the default stop at 960, and its stem continuation tabs to 480 —
+    // the stored `{660, 180}` never prints. See `PAPER1_LIST_INDENTS`.
+    expect(PAPER1_LIST_INDENTS.question[0]).toEqual({ left: 480, hanging: 480 });
+    expect(PAPER1_LIST_INDENTS.statement).toEqual({ left: 960, hanging: 480 });
+    expect(PAPER1_LIST_INDENTS.option).toEqual({ left: 1423, hanging: 459 });
+    expect(PAPER1_LIST_INDENTS.stemText).toBe(480);
+    // The statement marker still starts where the stem's text does.
+    expect(PAPER1_LIST_INDENTS.statement.left - PAPER1_LIST_INDENTS.statement.hanging).toBe(
+      PAPER1_LIST_INDENTS.question[0].left,
+    );
+    // Native numbering separates marker and text with a tab that lands at `left` only
+    // when the marker fits inside the hang — "(1)" at 10pt is ~233 twips.
+    expect(PAPER1_LIST_INDENTS.statement.hanging).toBeGreaterThan(300);
+  });
+
+  it('is chosen by shape: paper1 and nothing else', () => {
+    expect(listIndentScheme('paper1')).toBe(PAPER1_LIST_INDENTS);
+    for (const shape of ['classroom', 'lqWorksheet', 'lqMock'] as const) {
+      expect(listIndentScheme(shape)).toBe(DEFAULT_LIST_INDENTS);
+    }
+  });
+
+  it('reaches the .docx numbering, while a classroom export keeps the default', () => {
+    const paper = createWorksheetFrom({ documentType: 'paper1', seedSample: true });
+    const paperNumbering = buildDocxParts(paper, {
+      language: 'en',
+      version: 'student',
+    }).numberingXml;
+    expect(paperNumbering).toContain('<w:ind w:left="480" w:hanging="480"/>');
+    expect(paperNumbering).toContain('<w:ind w:left="960" w:hanging="480"/>');
+    expect(paperNumbering).toContain('<w:ind w:left="1423" w:hanging="459"/>');
+
+    const classroom = buildDocxParts(buildAcceptanceWorksheet(), {
+      language: 'en',
+      version: 'student',
+    }).numberingXml;
+    expect(classroom).toContain('<w:ind w:left="360" w:hanging="360"/>');
+    expect(classroom).not.toContain('w:left="480"');
+    expect(classroom).not.toContain('w:left="1423"');
   });
 });

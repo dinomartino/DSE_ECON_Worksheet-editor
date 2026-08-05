@@ -420,11 +420,12 @@ export function createWorksheetFrom(options: NewWorksheetOptions = {}): Workshee
     pageSetup: {
       paper: options.paper ?? 'A4',
       orientation: options.orientation ?? 'portrait',
-      // The booklet always prints on the reference's own margins — the furniture
-      // geometry and lines-per-page were measured against that column, so the answer
+      // Both exam papers always print on the reference's own margins — the booklet's
+      // furniture geometry and lines-per-page were measured against that column, and
+      // the MCQ paper's reference layout uses the identical numbers — so the answer
       // is fixed, not offered (§ `QAB_MARGINS`). Every other type takes the choice.
       margins:
-        documentType === 'lqMock'
+        documentType === 'lqMock' || documentType === 'paper1'
           ? { ...QAB_MARGINS }
           : { ...(options.margins ?? DEFAULT_MARGINS) },
     },

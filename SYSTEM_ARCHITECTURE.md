@@ -409,6 +409,15 @@ at `left - hanging`.
 - `QUESTION_LIST_INDENTS` in **`model/numbering.ts`** is the one definition; its three
   consumers (docx numbering, `Preview.tsx`, `registry/structured.ts`) may not import
   each other. One stale copy = page breaks in different places on screen vs paper.
+- **A document renders on one `ListIndentScheme`** (`listIndentScheme(shape)`, derived,
+  never stored). The default scheme is the constants above; **Paper 1 carries its own,
+  measured off `real_life_reference/hkdse_paper1_layout_1.docx` **as Word lays it out,
+  not as its XML spells it** (its "(1)"+tab overshoots the stored 660 stop to the
+  default-tab grid): question `1.` {480, 480}, statement `(1)` {960, 480}, option `A.`
+  {1423, 459}, stem continuations at 480. A marker must fit inside its hang or native
+  numbering's tab overshoots `left`. The scheme rides on `RenderContext.indents` (the
+  registry may not read the constants directly), on `EditContext.listIndents` for the
+  preview (shape joins `ctxStamp`), and as a parameter to `buildNumberingXml`.
 - **A stem's continuation blocks indent to `STEM_TEXT_INDENT`** (level 0's `left`), as
   a part's do to `PART_TEXT_INDENT`. A registry test walks every type.
 - **MCQ lists follow the same rule with the stem as parent**: statements
@@ -889,7 +898,9 @@ is asked **first**, as cards, deriving cover, sections, furniture and seeding. T
 older `cover` option maps onto the type.
 
 - **`paper1`**: Paper 1 cover, running footer, derived lead-in, "END OF PAPER", **no
-  sections** (the reference runs unbroken).
+  sections** (the reference runs unbroken). Prints on the booklet's fixed margins
+  (`QAB_MARGINS` — the P1 reference layout uses the identical numbers; withheld in
+  Setup → Page and the wizard) and its own indent scheme (§ `listIndentScheme`).
 - **`lqWorksheet`**: dotted answer space, no exam apparatus.
 - **`lqMock`**: Paper 2 cover, Sections A/B/C with derived totals and continuous
   numbering, the "Answer any ONE question." note, page furniture. Closing lines are

@@ -256,12 +256,13 @@ export function NewWorksheetForm({
           />
         </Field>
         <Field label="Margins">
-          {documentType === 'lqMock' ? (
-            // The booklet's margins are the reference's own — the page frame, the
-            // dotted pitch and the lines-per-page were all measured against that
-            // column, so the answer is fixed rather than offered (§ `QAB_MARGINS`).
+          {documentType === 'lqMock' || documentType === 'paper1' ? (
+            // Both exam papers print on the reference's own margins — the booklet's
+            // frame, dotted pitch and lines-per-page were measured against that
+            // column, and the MCQ paper's indent scheme was measured against the
+            // same one — so the answer is fixed rather than offered (§ `QAB_MARGINS`).
             <p className="flex h-9 items-center rounded-lg border border-line bg-surface-sunken px-2.5 text-[12px] text-ink-muted">
-              Booklet (fixed)
+              {documentType === 'lqMock' ? 'Booklet (fixed)' : 'Exam paper (fixed)'}
             </p>
           ) : (
             <SelectField

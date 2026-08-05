@@ -1,4 +1,5 @@
 import type { Diagram } from '@/model/diagram';
+import type { ListIndentScheme } from '@/model/numbering';
 import type {
   BandFieldSide,
   BiText,
@@ -385,6 +386,12 @@ export interface RenderContext {
    * relying on a number we typed in (§4, §7.2).
    */
   questionStream: string;
+  /**
+   * The document's list geometry (§ `listIndentScheme`) — the exam paper carries its
+   * own. Question types take continuation indents from here, never from the module
+   * constants directly, so one document renders on one scheme throughout.
+   */
+  indents: ListIndentScheme;
 }
 
 /** Convenience: does this node survive in the current version mode? */

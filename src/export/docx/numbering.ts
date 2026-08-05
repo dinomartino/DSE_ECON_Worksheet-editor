@@ -1,7 +1,6 @@
 import {
-  OPTION_LIST_INDENT,
-  QUESTION_LIST_INDENTS,
-  STATEMENT_LIST_INDENT,
+  DEFAULT_LIST_INDENTS,
+  type ListIndentScheme,
 } from '@/model/numbering';
 import type { FontPair } from '@/model/types';
 import { rFonts } from './runs';
@@ -95,18 +94,23 @@ export function assignNumIds(streams: NumStream[]): Map<string, number> {
   return map;
 }
 
-export function buildNumberingXml(streams: NumStream[], fonts: FontPair): string {
+export function buildNumberingXml(
+  streams: NumStream[],
+  fonts: FontPair,
+  indents: ListIndentScheme = DEFAULT_LIST_INDENTS,
+): string {
   /*
    * The geometry comes from `model/numbering.ts`, not from literals here.
    *
    * Word reads these values, the preview mirrors them to lay the paper out, and the
    * registry indents continuation paragraphs to match — three copies that must agree, so
-   * there is one definition and all three read it. Each level's marker starts where its
-   * parent's text starts (§ `QUESTION_LIST_INDENTS`).
+   * there is one definition and all three read it (the exam paper substitutes its own
+   * scheme, § `listIndentScheme`). Each level's marker starts where its parent's text
+   * starts (§ `QUESTION_LIST_INDENTS`).
    */
   const questionFormats = ['decimal', 'lowerLetter', 'lowerRoman'] as const;
   const questionText = ['%1.', '(%2)', '(%3)'];
-  const questionLevels: LevelSpec[] = QUESTION_LIST_INDENTS.map((indent, level) => ({
+  const questionLevels: LevelSpec[] = indents.question.map((indent, level) => ({
     level,
     format: questionFormats[level],
     text: questionText[level],
@@ -118,8 +122,8 @@ export function buildNumberingXml(streams: NumStream[], fonts: FontPair): string
       level: 0,
       format: 'upperLetter',
       text: '%1.',
-      indent: OPTION_LIST_INDENT.left,
-      hanging: OPTION_LIST_INDENT.hanging,
+      indent: indents.option.left,
+      hanging: indents.option.hanging,
     },
   ];
   const statementLevels: LevelSpec[] = [
@@ -127,8 +131,8 @@ export function buildNumberingXml(streams: NumStream[], fonts: FontPair): string
       level: 0,
       format: 'decimal',
       text: '(%1)',
-      indent: STATEMENT_LIST_INDENT.left,
-      hanging: STATEMENT_LIST_INDENT.hanging,
+      indent: indents.statement.left,
+      hanging: indents.statement.hanging,
     },
   ];
 

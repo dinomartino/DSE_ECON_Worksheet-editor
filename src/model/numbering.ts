@@ -1,4 +1,6 @@
 import { resolveFlow } from './flow';
+// Type-only, so no runtime cycle can form through the shape module's own imports.
+import type { DocumentShape } from './documentShape';
 import type { Question, Worksheet } from './types';
 
 /**
@@ -63,6 +65,55 @@ export const SUBPART_TEXT_INDENT = QUESTION_LIST_INDENTS[2].left;
  * out of line with every other line of the question it belongs to.
  */
 export const STEM_TEXT_INDENT = QUESTION_LIST_INDENTS[0].left;
+
+/**
+ * One document's whole list geometry, so a paper can carry its own. The default
+ * scheme is the constants above; the exam paper's is measured off the teacher's own
+ * reference (`real_life_reference/hkdse_paper1_layout_1.docx`). Chosen by
+ * `listIndentScheme(shape)` — derived from the document, never stored.
+ */
+export interface ListIndentScheme {
+  question: readonly ListLevelIndent[];
+  option: ListLevelIndent;
+  statement: ListLevelIndent;
+  /** Continuation columns: stem / part / sub-part paragraphs carrying no marker. */
+  stemText: number;
+  partText: number;
+  subPartText: number;
+}
+
+export const DEFAULT_LIST_INDENTS: ListIndentScheme = {
+  question: QUESTION_LIST_INDENTS,
+  option: OPTION_LIST_INDENT,
+  statement: STATEMENT_LIST_INDENT,
+  stemText: STEM_TEXT_INDENT,
+  partText: PART_TEXT_INDENT,
+  subPartText: SUBPART_TEXT_INDENT,
+};
+
+/**
+ * The MCQ paper's geometry, measured off the reference document **as Word lays it
+ * out**, not as its XML spells it. The reference writes statements as literal "(1)" +
+ * tab over `{left: 660, hanging: 180}` — but "(1)" is wider than the 180 hang, so the
+ * tab overshoots the 660 stop and lands on the next default stop at **960**; its stem
+ * continuation carries a leading tab to **480**. Copying the stored numbers reproduced
+ * the overshoot as a marker overprinting the text. So this scheme states the rendered
+ * columns: question `1.` at 0/480, statement `(1)` at 480/960 (a 480 hang "(1)" fits
+ * inside, so native numbering's tab lands exactly on `left`), option `A.` at 964/1423.
+ */
+export const PAPER1_LIST_INDENTS: ListIndentScheme = {
+  question: [{ left: 480, hanging: 480 }, QUESTION_LIST_INDENTS[1], QUESTION_LIST_INDENTS[2]],
+  option: { left: 1423, hanging: 459 },
+  statement: { left: 960, hanging: 480 },
+  stemText: 480,
+  partText: PART_TEXT_INDENT,
+  subPartText: SUBPART_TEXT_INDENT,
+};
+
+/** Which scheme a document renders with. Keyed on shape, so it is never stored. */
+export function listIndentScheme(shape: DocumentShape): ListIndentScheme {
+  return shape === 'paper1' ? PAPER1_LIST_INDENTS : DEFAULT_LIST_INDENTS;
+}
 
 export interface NumberedQuestion {
   question: Question;

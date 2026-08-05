@@ -12,6 +12,8 @@ import {
   pageSetupOf,
 } from '@/model/page';
 import { zonesOf } from '@/model/bands';
+import { documentShape } from '@/model/documentShape';
+import { listIndentScheme } from '@/model/numbering';
 import { bandFieldSegments } from '@/model/bandSegments';
 import { worksheetMarks } from '@/model/marks';
 import { furnitureHeaderXml } from './furniture';
@@ -507,7 +509,7 @@ function buildParts(
       // and a byte-identical styles.xml (§ `Worksheet.baseFontSize`).
       baseFontSize: worksheet.baseFontSize,
     }),
-    numberingXml: buildNumberingXml(streams, fonts),
+    numberingXml: buildNumberingXml(streams, fonts, listIndentScheme(documentShape(worksheet))),
     headerFooter,
     fontTableXml: buildFontTableXml(fonts),
     // Student exports must not leak answers into metadata either (§11.8), so the

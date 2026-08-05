@@ -1,9 +1,6 @@
 import { createStructuredQuestion } from '@/model/factories';
 import { partMarks, questionMarks } from '@/model/marks';
 import {
-  PART_TEXT_INDENT,
-  STEM_TEXT_INDENT,
-  SUBPART_TEXT_INDENT,
   partLabel,
   subPartLabel,
 } from '@/model/numbering';
@@ -58,7 +55,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
     // printed at the page margin, hanging in the question number's gutter.
     renderContentBlocks(nodes, restBlocks, 'Question Stem', {
       keepNext: true,
-      indent: STEM_TEXT_INDENT,
+      indent: context.indents.stemText,
     });
   } else {
     nodes.push({
@@ -71,7 +68,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
     });
     renderContentBlocks(nodes, question.blocks, 'Question Stem', {
       keepNext: true,
-      indent: STEM_TEXT_INDENT,
+      indent: context.indents.stemText,
     });
   }
 
@@ -132,7 +129,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
     if (interlude.length > 0) {
       renderContentBlocks(nodes, interlude, 'Question Stem', {
         keepNext: true,
-        indent: STEM_TEXT_INDENT,
+        indent: context.indents.stemText,
       });
       pushGap(nodes);
     }
@@ -156,7 +153,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
         edit: { kind: 'blockText', blockId: partFirst.id },
         listRef: partRef,
       });
-      renderContentBlocks(nodes, partRest, 'Sub-question', { keepNext: true, indent: PART_TEXT_INDENT });
+      renderContentBlocks(nodes, partRest, 'Sub-question', { keepNext: true, indent: context.indents.partText });
     } else {
       nodes.push({
         kind: 'text',
@@ -166,7 +163,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
         keepNext: true,
         listRef: partRef,
       });
-      renderContentBlocks(nodes, part.blocks, 'Sub-question', { keepNext: true, indent: PART_TEXT_INDENT });
+      renderContentBlocks(nodes, part.blocks, 'Sub-question', { keepNext: true, indent: context.indents.partText });
     }
 
     if (!hasSubParts && !isBiTextEmpty(part.answer)) {
@@ -175,7 +172,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
         style: 'Marking Scheme',
         teacherOnly: true,
         text: part.answer!,
-        indent: PART_TEXT_INDENT,
+        indent: context.indents.partText,
         edit: { kind: 'partAnswer', questionId: question.id, partId: part.id },
       });
     }
@@ -208,7 +205,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
           edit: { kind: 'blockText', blockId: subFirst.id },
           listRef: subRef,
         });
-        renderContentBlocks(nodes, subRest, 'Sub-sub-question', { keepNext: true, indent: SUBPART_TEXT_INDENT });
+        renderContentBlocks(nodes, subRest, 'Sub-sub-question', { keepNext: true, indent: context.indents.subPartText });
       } else {
         nodes.push({
           kind: 'text',
@@ -218,7 +215,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
           keepNext: true,
           listRef: subRef,
         });
-        renderContentBlocks(nodes, subPart.blocks, 'Sub-sub-question', { keepNext: true, indent: SUBPART_TEXT_INDENT });
+        renderContentBlocks(nodes, subPart.blocks, 'Sub-sub-question', { keepNext: true, indent: context.indents.subPartText });
       }
 
       if (!isBiTextEmpty(subPart.answer)) {
@@ -227,7 +224,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
           style: 'Marking Scheme',
           teacherOnly: true,
           text: subPart.answer!,
-          indent: SUBPART_TEXT_INDENT,
+          indent: context.indents.subPartText,
           edit: {
             kind: 'subPartAnswer',
             questionId: question.id,
@@ -251,7 +248,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
         style: 'Marking Scheme',
         teacherOnly: true,
         text: part.answer!,
-        indent: PART_TEXT_INDENT,
+        indent: context.indents.partText,
         edit: { kind: 'partAnswer', questionId: question.id, partId: part.id },
       });
     }

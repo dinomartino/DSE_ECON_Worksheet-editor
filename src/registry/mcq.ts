@@ -1,5 +1,5 @@
 import { createMcqQuestion } from '@/model/factories';
-import { OPTION_LIST_INDENT, STEM_TEXT_INDENT, optionLabel, statementLabel } from '@/model/numbering';
+import { optionLabel, statementLabel } from '@/model/numbering';
 import { bi, isBiTextEmpty, plain } from '@/model/text';
 import type { LanguageMode, McqOptionLayout, McqQuestion } from '@/model/types';
 import { pushGap, renderContentBlocks, type RenderContext, type RenderNode } from '@/render/ir';
@@ -126,11 +126,12 @@ function render(question: McqQuestion, context: RenderContext): RenderNode[] {
         marker: `${context.questionNumber}.`,
       },
     });
-    // Continuation blocks indent to the stem's text column (§ STEM_TEXT_INDENT) —
-    // unindented, a paragraph after the stem's table printed at the page margin.
+    // Continuation blocks indent to the stem's continuation column — the scheme's,
+    // because the exam paper runs its follow-up stem text from the page margin while
+    // a worksheet keeps it under the number (§ `listIndentScheme`).
     renderContentBlocks(nodes, restBlocks, 'Question Stem', {
       keepNext: true,
-      indent: STEM_TEXT_INDENT,
+      indent: context.indents.stemText,
     });
   } else {
     nodes.push({
@@ -147,7 +148,7 @@ function render(question: McqQuestion, context: RenderContext): RenderNode[] {
     });
     renderContentBlocks(nodes, question.blocks, 'Question Stem', {
       keepNext: true,
-      indent: STEM_TEXT_INDENT,
+      indent: context.indents.stemText,
     });
   }
 
@@ -219,10 +220,10 @@ function render(question: McqQuestion, context: RenderContext): RenderNode[] {
           keepNext: !last || context.mode.version === 'teacher',
           // Aligned with the option's own *text*, not the page margin: the blocks
           // continue the answer the letter introduces, so they start where its words
-          // do. Taken from `OPTION_LIST_INDENT` rather than restated, since that is the
+          // do. Taken from the scheme's option indent rather than restated, since that is the
           // one definition the exporter's `w:ind` and the preview's padding both read —
           // a second copy is how the page and the paper end up disagreeing.
-          indent: OPTION_LIST_INDENT.left,
+          indent: context.indents.option.left,
         });
       }
     });

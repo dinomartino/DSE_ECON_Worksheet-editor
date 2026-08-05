@@ -61,10 +61,11 @@ import { bandFieldText, renderWorksheet, type RenderedItem } from "@/render/work
 import { listQuestionTypes, requireQuestionType } from "@/registry";
 import {
   computeNumbering,
-  OPTION_LIST_INDENT,
-  QUESTION_LIST_INDENTS,
-  STATEMENT_LIST_INDENT,
+  DEFAULT_LIST_INDENTS,
+  listIndentScheme,
+  type ListIndentScheme,
 } from "@/model/numbering";
+import { documentShape } from "@/model/documentShape";
 
 /** Human name per layout kind, for the drag ghost. */
 const LAYOUT_DRAG_NAME: Record<string, string> = {
@@ -563,13 +564,18 @@ function runFormatToTextFormat(run: RunFormat): TextFormat {
  * definition in `model/numbering.ts` rather than restated — the paginator measures these
  * boxes, so a preview on different geometry breaks pages where Word will not.
  */
-const LIST_INDENT_TWIPS: Record<string, { left: number; hanging: number }> = {
-  'question:0': QUESTION_LIST_INDENTS[0],
-  'question:1': QUESTION_LIST_INDENTS[1],
-  'question:2': QUESTION_LIST_INDENTS[2],
-  'option:0': OPTION_LIST_INDENT,
-  'statement:0': STATEMENT_LIST_INDENT,
-};
+const listIndentTwips = (
+  scheme: ListIndentScheme,
+): Record<string, { left: number; hanging: number }> => ({
+  'question:0': scheme.question[0],
+  'question:1': scheme.question[1],
+  'question:2': scheme.question[2],
+  'option:0': scheme.option,
+  'statement:0': scheme.statement,
+});
+
+/** The fallback for a ctx-less render; the editor always supplies the document's own. */
+const DEFAULT_INDENT_TWIPS = listIndentTwips(DEFAULT_LIST_INDENTS);
 
 /** Twips to points, the unit the preview lays the paper out in. */
 const TWIPS_PER_PT = 20;
@@ -603,6 +609,11 @@ export interface EditContext {
   onTextSelectionChange?: (selection: TextSelection | undefined) => void;
   /** True while a toolbar click is in flight, so the field must not close on blur. */
   keepEditing?: boolean;
+  /**
+   * The document's list geometry as a `definition:level` map (§ `listIndentScheme`) —
+   * the exam paper renders on its own. Absent falls back to the default scheme.
+   */
+  listIndents?: Record<string, { left: number; hanging: number }>;
   /**
    * The table cell being worked in, and how to change it.
    *
@@ -791,9 +802,12 @@ function TextNodeView({
   language: LanguageMode;
   ctx?: EditContext;
 }) {
+  // The document's own geometry when a ctx supplies it (the exam paper differs);
+  // the default scheme otherwise (§ `listIndentScheme`).
+  const indentMap = ctx?.listIndents ?? DEFAULT_INDENT_TWIPS;
   const listIndent = node.listRef
-    ? (LIST_INDENT_TWIPS[`${node.listRef.definition}:${node.listRef.level}`] ??
-      LIST_INDENT_TWIPS['question:0'])
+    ? (indentMap[`${node.listRef.definition}:${node.listRef.level}`] ??
+      indentMap['question:0'])
     : undefined;
 
   /*
@@ -3672,6 +3686,10 @@ export function Preview({
    */
   const rendered = useMemo(() => renderWorksheet(worksheet, mode), [worksheet, mode]);
   const { language } = mode;
+  // Which of the four papers this is (derived, § documentShape) and the list geometry
+  // that follows from it — the exam paper renders on its own scheme.
+  const shape = documentShape(worksheet);
+  const listIndents = useMemo(() => listIndentTwips(listIndentScheme(shape)), [shape]);
   const containerRef = useRef<HTMLDivElement>(null);
   const bandsRef = useRef<HTMLDivElement>(null);
 
@@ -4396,6 +4414,7 @@ export function Preview({
         textSelection,
         onTextSelectionChange: setTextSelection,
         keepEditing: formatting,
+        listIndents,
         activeCell,
         onActivateCell: setActiveCell,
         cellSelection,
@@ -4478,6 +4497,8 @@ export function Preview({
     contentWidthPx,
     selectedBlockId ?? "",
     selectedLayoutId ?? "",
+    // The indent map is derived from the shape, so the shape stands in for it.
+    shape,
   ].join("·");
 
   // Delete / Backspace removes the selected element. Scoped to the page and skipped

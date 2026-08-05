@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { STEM_TEXT_INDENT } from '@/model/numbering';
+import { DEFAULT_LIST_INDENTS, STEM_TEXT_INDENT } from '@/model/numbering';
 import { readFileSync } from 'node:fs';
 import { questionMarks } from '@/model/marks';
 import { plain } from '@/model/text';
@@ -44,6 +44,7 @@ describe('question-type registry (§9)', () => {
         questionNumber: 1,
         questionId: 'q-test',
         questionStream: 'question:0',
+        indents: DEFAULT_LIST_INDENTS,
       });
       expect(nodes.length, definition.id).toBeGreaterThan(0);
       // The question number must arrive as a list reference, never literal text.
@@ -74,6 +75,7 @@ describe('question-type registry (§9)', () => {
         questionNumber: 1,
         questionId: 'q-test',
         questionStream: 'question:0',
+        indents: DEFAULT_LIST_INDENTS,
       });
 
       const numbered = nodes.find((node) => node.kind === 'text' && node.listRef?.level === 0);
@@ -107,6 +109,7 @@ describe('question-type registry (§9)', () => {
         questionNumber: 1,
         questionId: 'q-test',
         questionStream: 'question:0',
+        indents: DEFAULT_LIST_INDENTS,
       });
 
       const continuation = nodes.find(

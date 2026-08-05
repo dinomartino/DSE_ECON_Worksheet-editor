@@ -205,8 +205,15 @@ describe('the running footer', () => {
 
     // No page furniture: nothing is written in an MCQ paper's margins, so there is no
     // frame and no margin note. The 10pt body it *does* share — the two papers of one
-    // mock read at one size.
+    // mock read at one size — and the reference margins, which the P1 reference layout
+    // sets to the identical numbers (§ `QAB_MARGINS`).
     expect(worksheet.pageFurniture).toBeUndefined();
     expect(worksheet.baseFontSize).toBe(10);
+    expect(worksheet.pageSetup?.margins).toEqual({
+      top: 1296,
+      right: 1296,
+      bottom: 1440,
+      left: 1296,
+    });
   });
 });

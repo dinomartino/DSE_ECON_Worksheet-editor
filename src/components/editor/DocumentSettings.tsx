@@ -275,6 +275,14 @@ function PageTab() {
             they frame.
           </span>
         </Field>
+      ) : shape === 'paper1' ? (
+        <Field label="Margins" hint="Fixed by the reference paper.">
+          <span className="block text-xs text-ink-muted">
+            The reference MCQ paper’s own margins. Question, statement and option
+            indents were measured against this column, so the geometry is fixed
+            together.
+          </span>
+        </Field>
       ) : (
         <>
       {/* Margins: a preset, or Custom to type all four edges.

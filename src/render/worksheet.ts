@@ -3,7 +3,7 @@ import { bandFieldSegments } from '@/model/bandSegments';
 import { documentShape, type DocumentShape } from '@/model/documentShape';
 import { DEFAULT_QUESTION_COUNT_WORDING, resolveFlow } from '@/model/flow';
 import { sectionMarksById, worksheetMarks } from '@/model/marks';
-import { computeNumbering } from '@/model/numbering';
+import { computeNumbering, listIndentScheme } from '@/model/numbering';
 import { bi, isBiTextEmpty, plain } from '@/model/text';
 import type {
   Band,
@@ -428,6 +428,9 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
           questionNumber: number,
           questionId: question.id,
           questionStream,
+          // Follows the shape exactly as `keepWhole` does, so the existing cache key
+          // already tells a scheme change apart.
+          indents: listIndentScheme(shape),
         })
         // Student output must contain no teacher content anywhere (§11.8).
         .filter((node) => includeNode(node, mode));
