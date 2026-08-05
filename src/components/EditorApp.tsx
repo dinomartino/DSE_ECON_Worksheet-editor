@@ -46,6 +46,8 @@ export function EditorApp({ onOpenFiles }: { onOpenFiles: () => void }) {
   const removeTableRow = useWorksheetStore((s) => s.removeTableRow);
   const insertTableColumn = useWorksheetStore((s) => s.insertTableColumn);
   const removeTableColumn = useWorksheetStore((s) => s.removeTableColumn);
+  const addCoverLine = useWorksheetStore((s) => s.addCoverLine);
+  const removeCoverLine = useWorksheetStore((s) => s.removeCoverLine);
   const splitLayoutRows = useWorksheetStore((s) => s.splitLayoutRows);
   const trimQuestionAnswerSpace = useWorksheetStore((s) => s.trimQuestionAnswerSpace);
   const resolveAnswerSpaceFills = useWorksheetStore((s) => s.resolveAnswerSpaceFills);
@@ -152,6 +154,21 @@ export function EditorApp({ onOpenFiles }: { onOpenFiles: () => void }) {
   const formatOf = useCallback(
     (target: EditTarget) => formatOfTarget(worksheet, target),
     [worksheet],
+  );
+
+  /*
+   * Add an instruction to the cover.
+   *
+   * The region is bound here rather than passed through the preview: the instruction
+   * list is the only cover region whose length is the teacher's to decide
+   * (§ `EditContext.coverLines`), so a region parameter would have exactly one legal
+   * value. `useCallback` over a store action, like every other handler the preview
+   * takes — `ItemBody` memoises on handler identity, so a fresh closure per render
+   * would defeat the memo boundary for the whole sheet.
+   */
+  const addCoverInstruction = useCallback(
+    (afterId?: string) => addCoverLine('instructions', afterId),
+    [addCoverLine],
   );
 
   // The target's current text, so the toolbar can report what a selected *range*
@@ -472,6 +489,8 @@ export function EditorApp({ onOpenFiles }: { onOpenFiles: () => void }) {
             onRemoveTableRow={removeTableRow}
             onInsertTableColumn={insertTableColumn}
             onRemoveTableColumn={removeTableColumn}
+            onAddCoverInstruction={addCoverInstruction}
+            onRemoveCoverLine={removeCoverLine}
             onSplitRows={splitLayoutRows}
             onTrimQuestionAnswerSpace={trimQuestionAnswerSpace}
             onResolveFills={resolveAnswerSpaceFills}

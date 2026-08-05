@@ -726,6 +726,24 @@ export interface EditContext {
     onRemoveColumn: (blockId: string, index: number) => void;
   };
   /**
+   * Adding and removing a cover's instruction lines on the page.
+   *
+   * Structural, like `tableGrid` and for the same reason: typing in a line and deciding
+   * how many lines there are are different acts, and a read-only preview (print, the
+   * page thumbnails) takes neither. The model and the store have had `addCoverLine` and
+   * `removeCoverLine` since the cover shipped — what was missing was any way to reach
+   * them, so an instruction could be reworded but a paper could never gain or lose one.
+   *
+   * Instructions only. The head, corner and foot lines are the paper's identity, fixed
+   * in number by the shape the reference draws; the instruction list is the one region
+   * whose length is genuinely the teacher's (§ instruction numbers are derived from
+   * position, so adding or deleting renumbers the rest).
+   */
+  coverLines?: {
+    onAdd: (afterId?: string) => void;
+    onRemove: (lineId: string) => void;
+  };
+  /**
    * Resizing a picture on the page.
    *
    * Separate from the text selection above because a block has no language side: a
@@ -1890,6 +1908,86 @@ function CoverSheet({
       </div>
     );
 
+  /*
+   * The instructions region, with the one piece of chrome the cover needs.
+   *
+   * Every other region is drawn by `region()` above. This one is separate because its
+   * *length* is the teacher's decision — a school's paper has however many instructions
+   * it has — while the head, corner and foot lines are the shape the reference draws.
+   *
+   * Each numbered line gets a ✕ in the margin; the block gets a "+ Instruction" that
+   * appends. The chrome follows the rules the band editor's already does, each of which
+   * failed silently before it was written down: it is `data-print-hide` so the PDF path
+   * (which prints these very sheets) never sees it, absolutely positioned so it reserves
+   * no space the printed page would use, and wrapped in a `pointer-events-none` strip
+   * that spans back to the line — a control outside its group's box otherwise hides
+   * itself as the pointer travels toward it (§ hover chrome needs a hit path).
+   *
+   * A line's id comes from the node's own edit target rather than from a parallel list:
+   * the marker cell is derived and carries none, so the *authored* cell is the one that
+   * names the line, and reading it here is what keeps the ✕ pointed at the line the
+   * teacher is hovering rather than at an index that a re-render could shift.
+   */
+  const instructionsRegion = () => {
+    const lines = cover.instructions;
+    if (lines.length === 0 && !ctx?.coverLines) return null;
+
+    const lineIdOf = (node: RenderNode): string | undefined => {
+      if (node.kind !== "columns") return undefined;
+      for (const cell of node.cells) {
+        if (cell.edit?.kind === "coverLine") return cell.edit.lineId;
+      }
+      return undefined;
+    };
+
+    return (
+      <div data-cover-region="instructions" className="group/instructions relative">
+        {lines.map((node, index) => {
+          const lineId = lineIdOf(node);
+          return (
+            <div key={index} className={lineId ? "group/instruction relative" : undefined}>
+              {lineId && ctx?.coverLines && (
+                <span
+                  data-print-hide
+                  className="pointer-events-none absolute -left-6 top-0 bottom-0 flex w-6 items-center justify-start opacity-0 transition-opacity group-hover/instruction:opacity-100"
+                >
+                  <button
+                    type="button"
+                    aria-label="Remove this instruction"
+                    title="Remove this instruction"
+                    onClick={() => ctx.coverLines?.onRemove(lineId)}
+                    className="pointer-events-auto cursor-pointer px-1 py-0.5 text-[10px] leading-none text-[#a5a09b] transition-colors hover:text-[#dc2626]"
+                  >
+                    ✕
+                  </button>
+                </span>
+              )}
+              <NodeView node={node} language={language} ctx={ctx} />
+            </div>
+          );
+        })}
+
+        {ctx?.coverLines && (
+          // Appends to the end of the list, which is where a teacher adding a rule to a
+          // paper means to put it. Reaches back up over its own gap so the pointer does
+          // not leave the group on the way down to it.
+          <span
+            data-print-hide
+            className="pointer-events-none absolute left-0 right-0 flex items-start pt-1 opacity-0 transition-opacity group-hover/instructions:opacity-100"
+          >
+            <button
+              type="button"
+              onClick={() => ctx.coverLines?.onAdd()}
+              className="pointer-events-auto cursor-pointer rounded px-1.5 py-0.5 text-[9px] font-medium text-[#8f8a86] transition-colors hover:bg-[#ede8ff] hover:text-[#6a48f5]"
+            >
+              + Instruction
+            </button>
+          </span>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div data-cover className="flex" style={{ gap: pct(gap) }}>
       <div
@@ -1957,7 +2055,7 @@ function CoverSheet({
             the IR — a CSS margin here doubled it, and doubled it differently from the
             .docx's blank paragraph. */}
         {region(cover.head, "head")}
-        {region(cover.instructions, "instructions")}
+        {instructionsRegion()}
       </div>
 
       {/*
@@ -3399,6 +3497,14 @@ interface Props {
   onInsertTableColumn?: (blockId: string, index: number) => void;
   onRemoveTableColumn?: (blockId: string, index: number) => void;
   /**
+   * Add and remove a cover's numbered instructions, on the page.
+   *
+   * Optional together, like the table pair above: a preview given neither stays
+   * read-only, which is what the print path and the page thumbnails want.
+   */
+  onAddCoverInstruction?: (afterId?: string) => void;
+  onRemoveCoverLine?: (lineId: string) => void;
+  /**
    * Divide answer lines into two elements, when a drag asks for more rows than the
    * sheet can hold. Omit to cap the drag instead, with no way to exceed a page.
    *
@@ -3707,6 +3813,8 @@ export function Preview({
   onResizeTableEdge,
   onResizeTableRow,
   onInsertTableRow,
+  onAddCoverInstruction,
+  onRemoveCoverLine,
   onRemoveTableRow,
   onInsertTableColumn,
   onRemoveTableColumn,
@@ -4601,6 +4709,10 @@ export function Preview({
                 onInsertColumn: onInsertTableColumn,
                 onRemoveColumn: onRemoveTableColumn,
               }
+            : undefined,
+        coverLines:
+          onAddCoverInstruction && onRemoveCoverLine
+            ? { onAdd: onAddCoverInstruction, onRemove: onRemoveCoverLine }
             : undefined,
         resize: onResizeBlock
           ? {

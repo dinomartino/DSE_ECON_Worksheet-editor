@@ -18,7 +18,7 @@ and the code disagree, the code is right — fix the document in the same PR.
 | State | Zustand 5, undo/redo, 100-entry history |
 | Language | TypeScript strict |
 | Export | Raw OOXML via JSZip (hand-built, no `docx` library) |
-| Test | Vitest 4 — 781 tests across 41 files, ~1.3s |
+| Test | Vitest 4 — 803 tests across 43 files, ~1.3s |
 | Runtime | Browser-only: client-side `.docx`, no API routes |
 
 ## Project structure
@@ -275,6 +275,21 @@ to coordinates), but the slots are areas of a sheet rather than thirds of a row.
 - **Lines are addressed by id** (`coverLine` / `coverField` `EditTarget`s), so they are
   clicked, typed and formatted on the page like everything else, and an edit survives a
   line being added above it.
+- **The instruction list is the one cover region a teacher may lengthen or shorten**, and
+  it is done on the page: a ✕ in the margin of each numbered line, a "+ Instruction" under
+  the list. `addCoverLine`/`removeCoverLine` and their store actions shipped with the
+  cover, but nothing called them — an instruction could be reworded and never added or
+  deleted, so a school whose rules differ from the reference's six could not say so. The
+  head, corner and foot lines take no such controls: their number is the shape the
+  reference draws, while the instruction count is genuinely the paper's own.
+  - Deleting renumbers, because the numbers are derived (above) — verified through the
+    `.docx`, where removing instruction 2 prints 1–6 with no hole.
+  - The controls are `data-print-hide` and absolutely positioned, so they reserve no space
+    and never reach the PDF (`window.print()` runs over these very sheets). Each sits in a
+    `pointer-events-none` strip spanning back to its line, or reaching for a control
+    outside its own row hides it mid-approach (§ hover chrome needs a hit path).
+  - Reached through `EditContext.coverLines`, optional like `tableGrid`: a preview given
+    neither stays read-only, which is what the print path and the page thumbnails want.
 - **A framed note pins `w:tblW` to the column width.** A table inside a Word column still
   measures against the section's full text width unless told otherwise, so `auto` drew a
   frame that ran off the page edge.
