@@ -43,6 +43,7 @@ import {
   type FlowMove,
 } from '@/model/flow';
 import { applyBandFieldSide } from '@/model/bandSegments';
+import { documentShape } from '@/model/documentShape';
 import {
   addCoverLine,
   createCoverPage,
@@ -525,6 +526,9 @@ function livingAnchor(anchorId: string | undefined, next: Worksheet): string | u
  * `applyOrder` is the one rule for splitting an ordered flow back into the two stored
  * lists, shared with every move. Deriving `questions` here by hand would be a second
  * copy of it, and the two would eventually disagree about a case like this one.
+ *
+ * **An unanchored question lands after the last question, not at the very end** — see
+ * `appendIndexFor`.
  */
 function insertIntoFlow(
   worksheet: Worksheet,
@@ -537,11 +541,85 @@ function insertIntoFlow(
   const merged = { ...worksheet, ...patch } as Worksheet;
   const flow = flowOf(worksheet);
   const at = afterId ? flow.findIndex((item) => item.id === afterId) : -1;
-  if (at < 0) flow.push(entry);
+  if (at < 0) flow.splice(appendIndexFor(merged, flow, entry), 0, entry);
   else flow.splice(at + 1, 0, entry);
 
   const ordered = applyOrder(merged, flow);
   return { ...merged, questions: ordered.questions, flow: ordered.flow };
+}
+
+/**
+ * Where an *unanchored* item joins the flow.
+ *
+ * "At the end" is the wrong answer for a question on an exam paper, because both exam
+ * papers *end in a closing line*: a Paper 1 prints "END OF PAPER" after its last
+ * question, and the booklet prints "END OF SECTION A/B" and "END OF PAPER". Appending
+ * blindly put every added question after the line announcing the paper had finished —
+ * and the paper's own cover tells the candidate to check for exactly that line after the
+ * last question, so the seeded document actively contradicted itself. `paper1Layout`'s
+ * seeded sample hid it for question 1 only; the next question a teacher added went
+ * astray, which is where it was found.
+ *
+ * **Derived from the document's shape, never from a stored flag.** A closing line is
+ * deliberately an ordinary text element — a landmark a teacher may drag, reword or delete,
+ * not derived furniture (§ the booklet closes its sections the reference's way) — so
+ * marking one would be a second answer to a question the content already settles, and the
+ * two would part company the moment someone retyped the line.
+ *
+ * The rule is therefore scoped to the two shapes that are *known* to end in one
+ * (§ `model/documentShape.ts`), and asks only what is unambiguously true of them: a
+ * question belongs before the trailing run of layout elements that closes the paper. On a
+ * classroom or plain LQ worksheet nothing is known to close the document, so appending
+ * stays correct and untouched — a teacher's trailing note keeps whatever position they
+ * gave it.
+ *
+ * Only questions are placed this way. A layout element appended with no anchor genuinely
+ * means the end: adding a divider, a note or a page break after "END OF PAPER" is a thing
+ * a teacher may want, and there is no closing line for *it* to fall behind.
+ */
+function appendIndexFor(worksheet: Worksheet, flow: FlowItem[], entry: FlowItem): number {
+  if (entry.type !== 'question') return flow.length;
+
+  const shape = documentShape(worksheet);
+  if (shape !== 'paper1' && shape !== 'lqMock') return flow.length;
+
+  /*
+   * Back over the paper's trailing *closing lines* to the last position still inside the
+   * questions.
+   *
+   * On a seeded-but-empty exam paper there is no question to sit behind, and the first
+   * one added must *still* land ahead of the closing lines — which is exactly what a
+   * "put it after the last question" rule gets wrong, and why this walks the tail
+   * instead.
+   *
+   * **Only a centred text element is walked past**, and that is the whole rule. Centring
+   * is what makes a closing line a closing line: "END OF PAPER" and "END OF SECTION A/B"
+   * are bold and centred in both reference papers, while everything else at the tail of a
+   * paper introduces the questions rather than closing them and is ranged left. The two
+   * that matter, each found by walking too far —
+   *
+   * - **Paper 1's `questionCount` lead-in.** "There are 45 questions in this paper."
+   *   introduces the run; a question placed above it makes the sentence print *after* the
+   *   questions it counts.
+   * - **The booklet's "Answer any ONE question."** note, which tells the candidate how to
+   *   treat Section C's questions and must stay above them.
+   *
+   * Reading the format is reading the document, not guessing at prose: it holds for a
+   * reworded or translated line, and a teacher who centres their own closing line gets
+   * the same behaviour for the same visible reason. A section marker stops the walk for
+   * free, being no kind of text element — which is what keeps a new question under the
+   * last section rather than filed at the end of the one before it.
+   */
+  const layout = new Map((worksheet.layout ?? []).map((element) => [element.id, element]));
+  const closesThePaper = (item: FlowItem): boolean => {
+    if (item.type !== 'layout') return false;
+    const element = layout.get(item.id);
+    return element?.kind === 'text' && element.format?.align === 'center';
+  };
+
+  let at = flow.length;
+  while (at > 0 && closesThePaper(flow[at - 1])) at -= 1;
+  return at;
 }
 
 /**

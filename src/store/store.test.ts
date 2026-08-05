@@ -4,11 +4,13 @@ import {
   createAnswerLinesElement,
   createPageBreakElement,
   createSpacerElement,
+  createTextElement,
   resolveFlow,
   MIN_ANSWER_LINES,
   MIN_SPACER_PT,
 } from '@/model/flow';
 import { computeNumbering } from '@/model/numbering';
+import { createWorksheetFrom } from '@/model/newWorksheet';
 import { HEADER_FOOTER_PRESETS } from '@/model/bands';
 import { defaultHeader, firstPageHeaderFooter, headerFooterOf } from '@/model/page';
 import { bi, plain } from '@/model/text';
@@ -701,6 +703,121 @@ describe('insertion anchor (§where things land)', () => {
     store().setInsertAnchor(store().worksheet.questions[0].id);
     store().replaceWorksheet(buildAcceptanceWorksheet());
     expect(store().insertAnchorId).toBeUndefined();
+  });
+
+  /*
+   * An unanchored question joins the questions, rather than falling past the paper's
+   * closing lines.
+   *
+   * Both exam papers end in one: "END OF PAPER" on a Paper 1, "END OF SECTION A/B" and
+   * "END OF PAPER" in the booklet. Appending blindly put every added question after the
+   * line announcing the paper had finished — and the cover tells the candidate to check
+   * for exactly that line after the last question, so the document contradicted itself.
+   * Derived from position, never a stored flag: a closing line is an ordinary text
+   * element a teacher may drag, reword or delete.
+   */
+  describe('an unanchored question lands with the questions', () => {
+    const ids = () => resolveFlow(store().worksheet).map((item) => item.id);
+
+    const load = (documentType: 'paper1' | 'lqMock' | 'classroom') => {
+      store().replaceWorksheet(createWorksheetFrom({ documentType, seedSample: false }));
+    };
+
+    it('goes before "END OF PAPER" on a Paper 1, not after it', () => {
+      load('paper1');
+      const closing = store().worksheet.layout.at(-1)!;
+      store().addQuestion('mcq');
+
+      const order = ids();
+      const added = store().selectedQuestionId!;
+      expect(order.indexOf(added)).toBeLessThan(order.indexOf(closing.id));
+      // The old behaviour, and the tell a teacher actually saw on the page.
+      expect(order.at(-1)).toBe(closing.id);
+    });
+
+    it('keeps consecutive unanchored adds in order, all ahead of the closing line', () => {
+      load('paper1');
+      const closing = store().worksheet.layout.at(-1)!;
+
+      store().addQuestion('mcq');
+      const one = store().selectedQuestionId!;
+      // Clear the anchor, so each add takes the unanchored path rather than riding the
+      // advance — this is the case that used to scatter questions past the closing line.
+      store().setInsertAnchor(undefined);
+      store().addQuestion('mcq');
+      const two = store().selectedQuestionId!;
+
+      const order = ids();
+      expect(order.indexOf(two)).toBe(order.indexOf(one) + 1);
+      expect(order.indexOf(two)).toBeLessThan(order.indexOf(closing.id));
+    });
+
+    it('lands under the booklet’s last section, ahead of "END OF PAPER"', () => {
+      load('lqMock');
+      const elements = store().worksheet.layout;
+      const closing = elements.at(-1)!;
+      const lastSection = elements.filter((el) => el.kind === 'section').at(-1)!;
+
+      store().addQuestion('structured');
+      const order = ids();
+      const added = order.indexOf(store().selectedQuestionId!);
+
+      expect(added).toBeLessThan(order.indexOf(closing.id));
+      // A section is what a question belongs *to*: walking past Section C would file it
+      // at the end of Section B, a different part of the paper than where it appears.
+      expect(added).toBeGreaterThan(order.indexOf(lastSection.id));
+    });
+
+    /*
+     * The walk steps over closing lines only — everything else at the tail of a paper
+     * *introduces* the questions and must stay above them. Both of these were found by
+     * walking too far, and neither is visible in a unit test of the closing line alone.
+     */
+    it('stays below the lead-in, which counts the questions it introduces', () => {
+      load('paper1');
+      const leadIn = store().worksheet.layout.find((el) => el.kind === 'questionCount')!;
+      store().addQuestion('mcq');
+      const order = ids();
+      // Above it, "There are 2 questions in this paper." prints after the questions.
+      expect(order.indexOf(store().selectedQuestionId!)).toBeGreaterThan(order.indexOf(leadIn.id));
+    });
+
+    it('stays below "Answer any ONE question.", which tells the candidate how to treat them', () => {
+      load('lqMock');
+      const note = store().worksheet.layout.find((el) =>
+        el.kind === 'text' && el.format?.align !== 'center',
+      )!;
+      store().addQuestion('structured');
+      const order = ids();
+      expect(order.indexOf(store().selectedQuestionId!)).toBeGreaterThan(order.indexOf(note.id));
+    });
+
+    it('still appends a layout element, which has no closing line to fall behind', () => {
+      // Adding a divider or a note after "END OF PAPER" is a thing a teacher may mean,
+      // so only questions are placed by this rule.
+      load('paper1');
+      store().addLayoutElement(createSpacerElement());
+      expect(ids().at(-1)).toBe(store().worksheet.layout.at(-1)!.id);
+    });
+
+    it('appends when the document has no questions yet', () => {
+      load('classroom');
+      store().addQuestion('mcq');
+      expect(ids().at(-1)).toBe(store().selectedQuestionId);
+    });
+
+    it('leaves a classroom worksheet appending past its own trailing element', () => {
+      // Nothing is known to close a worksheet, so a teacher's trailing note keeps
+      // whatever position they gave it and the question goes after it, as always.
+      load('classroom');
+      const note = createTextElement(bi('A closing thought', ''));
+      store().addLayoutElement(
+        note.kind === 'text' ? { ...note, format: { align: 'center' } } : note,
+      );
+      store().setInsertAnchor(undefined);
+      store().addQuestion('mcq');
+      expect(ids().at(-1)).toBe(store().selectedQuestionId);
+    });
   });
 
   it('counts each menu request, so a second gap re-opens the menu', () => {
