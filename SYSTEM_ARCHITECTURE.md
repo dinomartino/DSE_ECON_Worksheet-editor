@@ -18,7 +18,7 @@ and the code disagree, the code is right — fix the document in the same PR.
 | State | Zustand 5, undo/redo, 100-entry history |
 | Language | TypeScript strict |
 | Export | Raw OOXML via JSZip (hand-built, no `docx` library) |
-| Test | Vitest 4 — 803 tests across 43 files, ~1.3s |
+| Test | Vitest 4 — 818 tests across 43 files, ~1.3s |
 | Runtime | Browser-only: client-side `.docx`, no API routes |
 
 ## Project structure
@@ -1615,6 +1615,51 @@ worksheet handed out alone, wrong under a cover that already says it (Paper 1's
 instruction 3, the booklet's too). Both cover-bearing types clear it; the settings hint
 points at the cover instead of suggesting wording it already carries.
 
+### The exam paper's boundaries are wider than a worksheet's
+
+An exam paper stands its parts further apart than a worksheet does, and the widths are
+measured off the reference (DSE 2021 P1), not chosen. Two boundaries on a Paper 1 are
+wider than the ordinary one line, both spelled as blank lines on the same fixed 12pt grid
+(§ separation costs a line) so the paginator, the preview and Word cannot disagree:
+
+| Boundary | Blank lines |
+|---|---|
+| question → question (two MCQs) | **3** |
+| the `questionCount` lead-in → question 1 | **2** |
+| everything else | 1 |
+
+- **Three between two questions**, against the one line separating a stem from its own
+  options. Each MCQ is self-contained — read it, mark a separate machine-read sheet, move
+  on — so the boundary *between* two questions has to read as a stronger break than the
+  boundary *inside* one. At one line the two read alike and the options of Q7 crowd the
+  stem of Q8.
+- **Two under the lead-in.** "There are 45 questions in this paper." is rubric addressed
+  to the candidate before they start, not a caption on question 1, so it stands off by
+  more than an ordinary neighbour — but by less than a whole question, since it still
+  introduces the run below it.
+- **The number lives on the question type, not in the walker.** `examGapLines` on
+  `QuestionTypeDefinition` is where a type states its own gap; `boundaryGapLines`
+  (`render/worksheet.ts`) only decides when to honour it. The walker is one of the eight
+  shared modules `registry.test.ts` greps for `'mcq'`/`'structured'` literals (§ the
+  registry allows no type branching), so naming the type there is exactly the branch that
+  guard exists to catch — and the rhythm between two MCQs is a fact about MCQs anyway.
+- **Only on a Paper 1**, decided by `documentShape()` (§ a document offers only what its
+  own paper can contain). A classroom worksheet holding the same MCQs keeps the one-line
+  rhythm: it is answered on the sheet itself, and widening it would silently re-paginate
+  documents teachers already have. Derived rather than stored, so a Paper 1 assembled by
+  hand or loaded from an older build spaces identically to one the wizard built.
+- **A wide gap still counts what is already there.** `endsInBlankLine` reports one spent
+  line, so a question whose last option ends in a trailing hard break owes two more, not
+  three on top of it — the same rule every other gap follows, so the boundary is the same
+  width however the text happened to be typed.
+- **The first item of the page is never widened**: at the true top a gap is only a shifted
+  top margin, and three lines of air under it reads as a missing question.
+- **The gap count is part of the render cache key** (`gap`, replacing the old `gapped`
+  boolean), or a question dragged across a boundary of a different width would hand back
+  its previously-spaced nodes.
+- Verified in the exported XML, which is the only place it can be: two and three empty
+  `<w:p>` respectively, each carrying `w:line="240" w:lineRule="exact"`.
+
 ### A closing line needs the air a heading gets
 
 A `text` layout element now takes the same leading `ITEM_GAP` a heading does. Without it
@@ -1966,6 +2011,41 @@ preview-local — selecting a heading sent new items silently to document end.
   "after section" is ambiguous on every real paper).
 - **Hovering previews the position; it does not take it** — moving the anchor on
   `mouseenter` made the destination depend on where the mouse came to rest.
+
+### Nothing lands after "END OF PAPER"
+
+With no anchor, a question used to append to the end of the flow — and both exam papers
+*end in a closing line*. So every question a teacher added to a Paper 1 landed after the
+line announcing the paper had finished, and the paper's own cover tells the candidate to
+check for exactly that line after the last question (§ the MCQ paper). The seeded sample
+hid it for question 1 only; the next question added went astray, which is where it was
+found — in a browser, not a test.
+
+`appendIndexFor` (`store/worksheetStore.ts`) walks back over the tail before splicing.
+
+- **Derived from shape and format, never a stored flag.** A closing line is deliberately
+  an ordinary text element — a landmark a teacher may drag, reword or delete (§ the
+  booklet closes its sections the reference's way) — so marking one would be a second
+  answer to a question the content already settles, and the two would part company the
+  moment someone retyped the line.
+- **Only a centred text element is walked past, and that is the whole rule.** Centring is
+  what makes a closing line a closing line: "END OF PAPER" and "END OF SECTION A/B" are
+  bold and centred in both reference papers, while everything else at a paper's tail
+  *introduces* the questions and is ranged left. It holds for a reworded or translated
+  line, and a teacher who centres their own gets the same behaviour for the same visible
+  reason.
+- **Two elements were found by walking too far**, neither visible in a test of the closing
+  line alone: Paper 1's `questionCount` lead-in (above it, "There are 45 questions in this
+  paper." prints *after* the questions it counts) and the booklet's "Answer any ONE
+  question." note, which must stay above the Section C questions it governs. A section
+  marker stops the walk for free, being no kind of text element — which keeps a new
+  question under the last section rather than filed at the end of the one before it.
+- **Scoped to `paper1` and `lqMock`** (§ `model/documentShape.ts`). Nothing is known to
+  close a classroom or plain LQ worksheet, so appending stays correct there and a
+  teacher's trailing note keeps whatever position they gave it.
+- **Questions only.** A layout element appended with no anchor genuinely means the end —
+  a divider or note after "END OF PAPER" is a thing a teacher may want, and there is no
+  closing line for *it* to fall behind.
 
 The gap affordance is chrome in the item's trailing edge, absolutely positioned so it
 **reserves no space** (the page must break where Word breaks). It draws the drop

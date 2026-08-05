@@ -43,8 +43,8 @@ broke.
 
 ## Verifying work
 
-- `npm test` — 753 tests, ~1.2s. `npm run typecheck`, `npm run lint` (43 pre-existing
-  problems: 2 errors, 41 warnings — both errors are in `Preview.tsx`).
+- `npm test` — 818 tests, ~1.2s. `npm run typecheck`, `npm run lint` (44 pre-existing
+  problems: 2 errors, 42 warnings — both errors are in `Preview.tsx`).
 - **UI work is verified in a browser**, not by reading source: screenshot with
   `scripts/shot.mjs`. Density and layout problems are invisible in the code.
 - **After UI work, prove the `.docx` still exports** and is leak-free — it is the
