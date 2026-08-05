@@ -1,0 +1,1344 @@
+{
+  "schemaVersion": 1,
+  "id": "v1-published-corpus",
+  "title": {
+    "en": [
+      {
+        "text": "S5 Economics Mock Examination"
+      }
+    ],
+    "zh": [
+      {
+        "text": "中五經濟科模擬試"
+      }
+    ]
+  },
+  "instructions": {
+    "en": [
+      {
+        "text": "Answer ALL questions in Section A."
+      }
+    ],
+    "zh": [
+      {
+        "text": "甲部所有題目均須作答。"
+      }
+    ]
+  },
+  "fonts": {
+    "latin": "Times New Roman",
+    "eastAsia": "PMingLiU"
+  },
+  "pageSetup": {
+    "paper": "A4",
+    "orientation": "portrait",
+    "margins": {
+      "top": 1296,
+      "right": 1296,
+      "bottom": 1440,
+      "left": 1296
+    }
+  },
+  "header": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": []
+  },
+  "footer": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": [
+      {
+        "id": "id002",
+        "zones": {
+          "left": [
+            {
+              "kind": "pageNumber",
+              "id": "id003",
+              "pattern": "plain",
+              "prefix": {
+                "en": [
+                  {
+                    "text": "2025-26-ECON 2–"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "2025-26-ECON 2–"
+                  }
+                ]
+              },
+              "format": {
+                "fontSize": 9
+              }
+            }
+          ],
+          "center": [
+            {
+              "kind": "pageNumber",
+              "id": "id004",
+              "pattern": "plain",
+              "format": {
+                "fontSize": 14
+              }
+            }
+          ],
+          "right": []
+        }
+      }
+    ]
+  },
+  "questions": [
+    {
+      "id": "id005",
+      "type": "structured",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "id006",
+          "text": {
+            "en": [
+              {
+                "text": "A city plans to turn a harbour-front car park into a public garden."
+              }
+            ],
+            "zh": [
+              {
+                "text": "某城市計劃將海旁停車場改建為公園。"
+              }
+            ]
+          }
+        }
+      ],
+      "parts": [
+        {
+          "id": "id007",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "id008",
+              "text": {
+                "en": [
+                  {
+                    "text": "State the opportunity cost of the plan."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "指出該計劃的機會成本。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 2,
+          "answerSpace": 5
+        },
+        {
+          "id": "id009",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "id010",
+              "text": {
+                "en": [
+                  {
+                    "text": "Explain ONE reason why the garden may be under-provided by the market."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "解釋市場可能供應不足的一個原因。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 4,
+          "answerSpace": 8
+        }
+      ]
+    },
+    {
+      "id": "id011",
+      "type": "structured",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "id012",
+          "text": {
+            "en": [
+              {
+                "text": "The government imposes a per-unit tax."
+              }
+            ],
+            "zh": [
+              {
+                "text": "政府徵收從量稅。"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "diagram",
+          "id": "id013",
+          "diagram": {
+            "x": {
+              "title": {
+                "en": [
+                  {
+                    "text": "Quantity"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "數量"
+                  }
+                ]
+              }
+            },
+            "y": {
+              "title": {
+                "en": [
+                  {
+                    "text": "Price"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "價格"
+                  }
+                ]
+              }
+            },
+            "curves": [
+              {
+                "id": "id014",
+                "points": [
+                  {
+                    "x": 0.08,
+                    "y": 0.88
+                  },
+                  {
+                    "x": 0.86,
+                    "y": 0.12
+                  }
+                ],
+                "shape": "straight",
+                "label": {
+                  "en": [
+                    {
+                      "text": "D"
+                    }
+                  ],
+                  "zh": [
+                    {
+                      "text": "D"
+                    }
+                  ]
+                },
+                "labelAt": "end"
+              },
+              {
+                "id": "id015",
+                "points": [
+                  {
+                    "x": 0.08,
+                    "y": 0.12
+                  },
+                  {
+                    "x": 0.86,
+                    "y": 0.88
+                  }
+                ],
+                "shape": "straight",
+                "label": {
+                  "en": [
+                    {
+                      "text": "S"
+                    }
+                  ],
+                  "zh": [
+                    {
+                      "text": "S"
+                    }
+                  ]
+                },
+                "labelAt": "end"
+              }
+            ],
+            "points": [
+              {
+                "id": "id016",
+                "at": {
+                  "x": 0.47,
+                  "y": 0.5
+                },
+                "label": {
+                  "en": [
+                    {
+                      "text": "E"
+                    },
+                    {
+                      "text": "0",
+                      "vertAlign": "subscript"
+                    }
+                  ],
+                  "zh": [
+                    {
+                      "text": "E"
+                    },
+                    {
+                      "text": "0",
+                      "vertAlign": "subscript"
+                    }
+                  ]
+                },
+                "labelSide": "right",
+                "dot": true,
+                "dropTo": [
+                  "x",
+                  "y"
+                ],
+                "xTickLabel": {
+                  "en": [
+                    {
+                      "text": "Q"
+                    },
+                    {
+                      "text": "0",
+                      "vertAlign": "subscript"
+                    }
+                  ],
+                  "zh": [
+                    {
+                      "text": "Q"
+                    },
+                    {
+                      "text": "0",
+                      "vertAlign": "subscript"
+                    }
+                  ]
+                },
+                "yTickLabel": {
+                  "en": [
+                    {
+                      "text": "P"
+                    },
+                    {
+                      "text": "0",
+                      "vertAlign": "subscript"
+                    }
+                  ],
+                  "zh": [
+                    {
+                      "text": "P"
+                    },
+                    {
+                      "text": "0",
+                      "vertAlign": "subscript"
+                    }
+                  ]
+                }
+              }
+            ],
+            "labels": [],
+            "arrows": [],
+            "showOrigin": true,
+            "templateId": "supply-demand"
+          },
+          "widthPx": 400,
+          "heightPx": 335,
+          "altText": {
+            "en": [
+              {
+                "text": "Supply and demand"
+              }
+            ],
+            "zh": [
+              {
+                "text": "供應與需求"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "image",
+          "id": "id017",
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+          "widthPx": 200,
+          "heightPx": 150,
+          "naturalWidthPx": 200,
+          "naturalHeightPx": 150,
+          "altText": {
+            "en": [
+              {
+                "text": "Market photograph"
+              }
+            ],
+            "zh": [
+              {
+                "text": "市場照片"
+              }
+            ]
+          },
+          "caption": {
+            "en": [
+              {
+                "text": "Figure 1"
+              }
+            ],
+            "zh": [
+              {
+                "text": "圖一"
+              }
+            ]
+          },
+          "captionPlacement": "below"
+        }
+      ],
+      "parts": [
+        {
+          "id": "id018",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "id019",
+              "text": {
+                "en": [
+                  {
+                    "text": "Define tax incidence."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "定義稅項歸宿。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 3,
+          "answer": {
+            "en": [
+              {
+                "text": "Who ultimately bears the tax."
+              }
+            ],
+            "zh": [
+              {
+                "text": "最終承擔稅項的一方。"
+              }
+            ]
+          },
+          "answerSpace": 4
+        },
+        {
+          "id": "id020",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "id021",
+              "text": {
+                "en": [
+                  {
+                    "text": "Explain the effect on the money supply."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "解釋對貨幣供應的影響。"
+                  }
+                ]
+              }
+            }
+          ],
+          "blocksBefore": [
+            {
+              "kind": "paragraph",
+              "id": "id022",
+              "text": {
+                "en": [
+                  {
+                    "text": "Suppose the central bank now sells $200 million of bonds."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "假設中央銀行現售出二億元債券。"
+                  }
+                ]
+              }
+            },
+            {
+              "kind": "table",
+              "id": "id023",
+              "rows": [
+                {
+                  "id": "id024",
+                  "cells": [
+                    {
+                      "id": "id025",
+                      "text": {
+                        "en": [
+                          {
+                            "text": "Assets"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "資產"
+                          }
+                        ]
+                      },
+                      "colSpan": 2
+                    },
+                    {
+                      "id": "id026",
+                      "text": {
+                        "en": [],
+                        "zh": []
+                      },
+                      "covered": true
+                    },
+                    {
+                      "id": "id027",
+                      "text": {
+                        "en": [
+                          {
+                            "text": "Liabilities"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "負債"
+                          }
+                        ]
+                      },
+                      "colSpan": 2
+                    },
+                    {
+                      "id": "id028",
+                      "text": {
+                        "en": [],
+                        "zh": []
+                      },
+                      "covered": true
+                    }
+                  ]
+                },
+                {
+                  "id": "id029",
+                  "cells": [
+                    {
+                      "id": "id030",
+                      "text": {
+                        "en": [
+                          {
+                            "text": "Reserves"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "儲備"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "id031",
+                      "text": {
+                        "en": [
+                          {
+                            "text": "200"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "200"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "id032",
+                      "text": {
+                        "en": [
+                          {
+                            "text": "Deposits"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "存款"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "id033",
+                      "text": {
+                        "en": [
+                          {
+                            "text": "1 000"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "1 000"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "id034",
+                  "cells": [
+                    {
+                      "id": "id035",
+                      "text": {
+                        "en": [
+                          {
+                            "text": "Loans"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "貸款"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "id036",
+                      "text": {
+                        "en": [
+                          {
+                            "text": "800"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "800"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "id037",
+                      "text": {
+                        "en": [],
+                        "zh": []
+                      }
+                    },
+                    {
+                      "id": "id038",
+                      "text": {
+                        "en": [],
+                        "zh": []
+                      }
+                    }
+                  ]
+                }
+              ],
+              "borders": "headerRule"
+            }
+          ],
+          "subParts": [
+            {
+              "id": "id039",
+              "blocks": [
+                {
+                  "kind": "paragraph",
+                  "id": "id040",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "State the direction of the change."
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "指出變動的方向。"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "answerSpace": 2
+            },
+            {
+              "id": "id041",
+              "blocks": [
+                {
+                  "kind": "paragraph",
+                  "id": "id042",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "Explain the mechanism."
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "解釋其機制。"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "marks": 5,
+              "answer": {
+                "en": [
+                  {
+                    "text": "Reserves fall, so lending contracts."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "儲備下降，貸款收縮。"
+                  }
+                ]
+              },
+              "answerSpace": 6
+            }
+          ]
+        }
+      ],
+      "showTotalMarks": true
+    }
+  ],
+  "layout": [
+    {
+      "kind": "section",
+      "id": "id043",
+      "text": {
+        "en": [
+          {
+            "text": "Section A"
+          }
+        ],
+        "zh": [
+          {
+            "text": "甲部"
+          }
+        ]
+      },
+      "restartNumbering": false,
+      "showMarks": true,
+      "format": {
+        "fontSize": 10,
+        "bold": true
+      }
+    },
+    {
+      "kind": "text",
+      "id": "id044",
+      "text": {
+        "en": [
+          {
+            "text": "END OF SECTION A"
+          }
+        ],
+        "zh": [
+          {
+            "text": "甲部完"
+          }
+        ]
+      },
+      "format": {
+        "bold": true,
+        "align": "center"
+      }
+    },
+    {
+      "kind": "section",
+      "id": "id045",
+      "text": {
+        "en": [
+          {
+            "text": "Section B"
+          }
+        ],
+        "zh": [
+          {
+            "text": "乙部"
+          }
+        ]
+      },
+      "restartNumbering": false,
+      "showMarks": true,
+      "format": {
+        "fontSize": 10,
+        "bold": true
+      }
+    },
+    {
+      "kind": "text",
+      "id": "id046",
+      "text": {
+        "en": [
+          {
+            "text": "END OF SECTION B"
+          }
+        ],
+        "zh": [
+          {
+            "text": "乙部完"
+          }
+        ]
+      },
+      "format": {
+        "bold": true,
+        "align": "center"
+      }
+    },
+    {
+      "kind": "section",
+      "id": "id047",
+      "text": {
+        "en": [
+          {
+            "text": "Section C"
+          }
+        ],
+        "zh": [
+          {
+            "text": "丙部"
+          }
+        ]
+      },
+      "restartNumbering": false,
+      "showMarks": true,
+      "format": {
+        "fontSize": 10,
+        "bold": true
+      }
+    },
+    {
+      "kind": "text",
+      "id": "id048",
+      "text": {
+        "en": [
+          {
+            "text": "Answer any ONE question."
+          }
+        ],
+        "zh": [
+          {
+            "text": "任答一題。"
+          }
+        ]
+      },
+      "format": {
+        "bold": true
+      }
+    },
+    {
+      "kind": "text",
+      "id": "id049",
+      "text": {
+        "en": [
+          {
+            "text": "END OF PAPER"
+          }
+        ],
+        "zh": [
+          {
+            "text": "全卷完"
+          }
+        ]
+      },
+      "format": {
+        "bold": true,
+        "align": "center"
+      }
+    }
+  ],
+  "flow": [
+    {
+      "type": "layout",
+      "id": "id043"
+    },
+    {
+      "type": "question",
+      "id": "id005"
+    },
+    {
+      "type": "layout",
+      "id": "id044"
+    },
+    {
+      "type": "layout",
+      "id": "id045"
+    },
+    {
+      "type": "layout",
+      "id": "id046"
+    },
+    {
+      "type": "layout",
+      "id": "id047"
+    },
+    {
+      "type": "layout",
+      "id": "id048"
+    },
+    {
+      "type": "layout",
+      "id": "id049"
+    },
+    {
+      "type": "question",
+      "id": "id011"
+    }
+  ],
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "baseFontSize": 10,
+  "pageFurniture": {
+    "frame": true,
+    "marginNote": {
+      "en": [
+        {
+          "text": "Answers written in the margins will not be marked."
+        }
+      ],
+      "zh": [
+        {
+          "text": "寫於邊界以外的答案，將不予評閱。"
+        }
+      ]
+    }
+  },
+  "cover": {
+    "cornerLines": [
+      {
+        "id": "id050",
+        "text": {
+          "en": [
+            {
+              "text": "2025-26"
+            }
+          ],
+          "zh": [
+            {
+              "text": "2025-26"
+            }
+          ]
+        },
+        "format": {
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          },
+          "bold": true,
+          "fontSize": 11
+        }
+      },
+      {
+        "id": "id051",
+        "text": {
+          "en": [
+            {
+              "text": "ECON"
+            }
+          ],
+          "zh": [
+            {
+              "text": "經濟"
+            }
+          ]
+        },
+        "format": {
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          },
+          "bold": true,
+          "fontSize": 11
+        }
+      },
+      {
+        "id": "id052",
+        "text": {
+          "en": [
+            {
+              "text": "PAPER 2"
+            }
+          ],
+          "zh": [
+            {
+              "text": "卷二"
+            }
+          ]
+        },
+        "format": {
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          },
+          "fontSize": 10.5,
+          "spaceBefore": 5.75
+        },
+        "gapAfter": 1
+      }
+    ],
+    "cornerRule": true,
+    "headLines": [
+      {
+        "id": "id053",
+        "text": {
+          "en": [
+            {
+              "text": "SCHOOL NAME"
+            }
+          ],
+          "zh": [
+            {
+              "text": "學校名稱"
+            }
+          ]
+        },
+        "format": {
+          "align": "center",
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          },
+          "fontSize": 11
+        },
+        "gapAfter": 1
+      },
+      {
+        "id": "id054",
+        "text": {
+          "en": [
+            {
+              "text": "S.6 MOCK EXAMINATION 2025 – 2026"
+            }
+          ],
+          "zh": [
+            {
+              "text": "2025 – 2026 年度中六模擬考試"
+            }
+          ]
+        },
+        "format": {
+          "align": "center",
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          },
+          "fontSize": 11
+        },
+        "gapAfter": 2
+      },
+      {
+        "id": "id055",
+        "text": {
+          "en": [
+            {
+              "text": "ECONOMICS   PAPER 2"
+            }
+          ],
+          "zh": [
+            {
+              "text": "經濟  試卷二"
+            }
+          ]
+        },
+        "format": {
+          "align": "center",
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          },
+          "fontSize": 14,
+          "bold": true
+        }
+      },
+      {
+        "id": "id056",
+        "text": {
+          "en": [
+            {
+              "text": "Question-Answer Book"
+            }
+          ],
+          "zh": [
+            {
+              "text": "試題答題簿"
+            }
+          ]
+        },
+        "format": {
+          "align": "center",
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          },
+          "fontSize": 14,
+          "bold": true
+        },
+        "gapAfter": 1
+      },
+      {
+        "id": "id057",
+        "text": {
+          "en": [
+            {
+              "text": "10:15 am – 12:45 pm (2 hours 30 minutes)"
+            }
+          ],
+          "zh": [
+            {
+              "text": "兩小時三十分完卷\n（上午十時十五分至下午十二時四十五分）"
+            }
+          ]
+        },
+        "format": {
+          "align": "center",
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          }
+        }
+      },
+      {
+        "id": "id058",
+        "text": {
+          "en": [
+            {
+              "text": "This paper must be answered in English"
+            }
+          ],
+          "zh": [
+            {
+              "text": "本試卷必須用中文作答"
+            }
+          ]
+        },
+        "format": {
+          "align": "center",
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          }
+        },
+        "gapAfter": 6
+      }
+    ],
+    "instructionsHeading": {
+      "en": [
+        {
+          "text": "INSTRUCTIONS"
+        }
+      ],
+      "zh": [
+        {
+          "text": "考生須知"
+        }
+      ]
+    },
+    "instructionMarker": "paren",
+    "instructions": [
+      {
+        "id": "id059",
+        "text": {
+          "en": [
+            {
+              "text": "Write your name, class and class number in the spaces provided on this cover."
+            }
+          ],
+          "zh": [
+            {
+              "text": "在封面指定位置填寫姓名、班別及班號。"
+            }
+          ]
+        }
+      },
+      {
+        "id": "id060",
+        "text": {
+          "en": [
+            {
+              "text": "Do not open this question paper until you are told to do so."
+            }
+          ],
+          "zh": [
+            {
+              "text": "未獲監考員指示前，不得翻閱試卷。"
+            }
+          ]
+        }
+      },
+      {
+        "id": "id061",
+        "text": {
+          "en": [
+            {
+              "text": "Answer "
+            },
+            {
+              "text": "ALL",
+              "bold": true
+            },
+            {
+              "text": " questions in Section A and Section B. Answer any "
+            },
+            {
+              "text": "ONE",
+              "bold": true
+            },
+            {
+              "text": " question in Section C."
+            }
+          ],
+          "zh": [
+            {
+              "text": "甲部及乙部所有題目均須作答。丙部只須選答一題。"
+            }
+          ]
+        }
+      },
+      {
+        "id": "id062",
+        "text": {
+          "en": [
+            {
+              "text": "Write your answers in the spaces provided in this booklet."
+            }
+          ],
+          "zh": [
+            {
+              "text": "請在本試題答題簿指定的空位內作答。"
+            }
+          ]
+        }
+      },
+      {
+        "id": "id063",
+        "text": {
+          "en": [
+            {
+              "text": "Answers written in the margins will not be marked."
+            }
+          ],
+          "zh": [
+            {
+              "text": "寫於邊界以外的答案，將不予評閱。"
+            }
+          ]
+        }
+      },
+      {
+        "id": "id064",
+        "text": {
+          "en": [
+            {
+              "text": "Write your answers legibly in ink. Working may be written in pencil."
+            }
+          ],
+          "zh": [
+            {
+              "text": "請用墨水筆清楚書寫答案，計算過程可用鉛筆。"
+            }
+          ]
+        }
+      },
+      {
+        "id": "id065",
+        "text": {
+          "en": [
+            {
+              "text": "The marks for each question are shown in brackets at the end of the question."
+            }
+          ],
+          "zh": [
+            {
+              "text": "每題的分數在題末括號內列出。"
+            }
+          ]
+        }
+      },
+      {
+        "id": "id066",
+        "text": {
+          "en": [
+            {
+              "text": "Supplementary answer sheets are available on request. Write your name and the question number on each sheet used."
+            }
+          ],
+          "zh": [
+            {
+              "text": "如需補充作答紙可向監考員索取，並在每張紙上填寫姓名及題號。"
+            }
+          ]
+        }
+      }
+    ],
+    "panelNote": {
+      "en": [
+        {
+          "text": "Write your name and class in the spaces below."
+        }
+      ],
+      "zh": [
+        {
+          "text": "請在下欄填寫姓名及班別。"
+        }
+      ]
+    },
+    "panelFieldLabel": {
+      "en": [
+        {
+          "text": "Class No."
+        }
+      ],
+      "zh": [
+        {
+          "text": "班號"
+        }
+      ]
+    },
+    "panelBoxes": 3,
+    "footLines": [
+      {
+        "id": "id067",
+        "text": {
+          "en": [
+            {
+              "text": "SCHOOL NAME"
+            }
+          ],
+          "zh": [
+            {
+              "text": "學校名稱"
+            }
+          ]
+        },
+        "format": {
+          "fonts": {
+            "latin": "Arial",
+            "eastAsia": "Microsoft JhengHei"
+          },
+          "bold": true,
+          "fontSize": 12
+        }
+      }
+    ],
+    "fonts": {
+      "latin": "Arial",
+      "eastAsia": "Microsoft JhengHei"
+    },
+    "columns": {
+      "left": 5328,
+      "gap": 144,
+      "right": 3845
+    }
+  }
+}

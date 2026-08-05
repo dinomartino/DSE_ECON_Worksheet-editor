@@ -131,17 +131,45 @@ export class LocalStorageWorksheetStore implements WorksheetStore {
     }
   }
 
+  /**
+   * Every document this build can name, newest first.
+   *
+   * **One damaged entry may not cost the whole list.** The index is the only route to a
+   * saved worksheet (§ the start screen), so an empty list reads as "all your work is
+   * gone" — and it used to be one keystroke away: entries were cast unvalidated and
+   * sorted on `updatedAt`, so a single row missing that field threw inside the sort,
+   * hit the catch, and returned `[]` while every document sat intact in storage.
+   *
+   * So each entry is judged on its own. A row is shown when it carries the two fields
+   * the list cannot work without — an `id` to open and a `title` to print; anything
+   * else it holds is passed through untouched (a newer build's fields survive an older
+   * build's read, as `__unknown` does for documents). An undated row sorts last rather
+   * than being dropped: a document with a missing timestamp is still a document.
+   */
   async list(): Promise<WorksheetSummary[]> {
     const storage = this.storage;
     if (!storage) return [];
     const raw = storage.getItem(INDEX_KEY);
     if (!raw) return [];
+
+    let parsed: unknown;
     try {
-      const entries = JSON.parse(raw) as WorksheetSummary[];
-      return entries.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+      parsed = JSON.parse(raw);
     } catch {
+      // The index itself is unreadable — nothing here can be salvaged per entry.
       return [];
     }
+    if (!Array.isArray(parsed)) return [];
+
+    const usable = parsed.filter(
+      (entry): entry is WorksheetSummary =>
+        !!entry &&
+        typeof entry === 'object' &&
+        typeof (entry as WorksheetSummary).id === 'string' &&
+        typeof (entry as WorksheetSummary).title === 'string',
+    );
+
+    return usable.sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''));
   }
 
   async load(id: string): Promise<Worksheet | undefined> {

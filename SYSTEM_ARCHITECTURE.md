@@ -18,7 +18,7 @@ and the code disagree, the code is right — fix the document in the same PR.
 | State | Zustand 5, undo/redo, 100-entry history |
 | Language | TypeScript strict |
 | Export | Raw OOXML via JSZip (hand-built, no `docx` library) |
-| Test | Vitest 4 — 750 tests across 41 files, ~1.2s |
+| Test | Vitest 4 — 759 tests across 39 files, ~1.2s |
 | Runtime | Browser-only: client-side `.docx`, no API routes |
 
 ## Project structure
@@ -2007,7 +2007,8 @@ local; the store is called on pointer-up, or one drag floods the undo stack.
   carries `questionCount`/`hasCover` so the start screen shows every saved worksheet
   without parsing and migrating each one on the app's first paint. Both are optional —
   an index written by an earlier build has neither, and a list that refused to show
-  those rows would look like the work had been lost.
+  those rows would look like the work had been lost. Entries are validated **per row**
+  (§ the published-document promise): one malformed summary must not empty the list.
 - **A rename writes `worksheet.title`**, the document's own name — which the masthead
   prints and the `.docx` downloads as — rather than a label kept beside it in the index.
   A separate display name is a second answer to "what is this called", and the two part
@@ -2017,19 +2018,78 @@ local; the store is called on pointer-up, or one drag floods the undo stack.
   worksheet addresses something in that one document, so they stay unique after the
   copy — the opposite of duplicating a question, where the clone lands in the same id
   space as its original and `withFreshIds` must walk it.
-- **Migration chain** `migrate()`: ordered pure functions, currently **empty**. The model
-  changed seven times before the app shipped, but a migration exists to carry *real* data
-  across a change and no document had ever been saved by a released build — so the seven
-  steps upgraded documents that do not exist, and the version was reset to 1 rather than
-  carrying them forever. The machinery around them is kept and still runs on every load:
-  validation, `__unknown` stashing, and `normalize`'s defaulting. Adding a real migration
-  means appending to `MIGRATIONS` and bumping the constant; the loop needs no edit.
+- **Migration chain** `migrate()`: ordered pure functions, currently **empty** — because
+  v1 is current, *not* because migrations are optional. The model changed seven times
+  before the app shipped and those steps were deleted (they upgraded documents that never
+  existed), but **that reasoning expired at release**: see § the published-document
+  promise below. The machinery is kept and runs on every load: validation, `__unknown`
+  stashing, and `normalize`'s defaulting. Adding a real migration means appending to
+  `MIGRATIONS` and bumping the constant; the loop needs no edit.
 - **Forward compatibility**: unknown top-level fields preserved in `__unknown`.
 - **`KNOWN_KEYS` must list every top-level field.** An unlisted key is treated as from
   a newer build: stripped into `__unknown`, persisted but never reaching the model —
   presenting as a control that "works" then vanishes on reload (`titleFormat`,
   `instructionsFormat`, `bands` were each missing once). A test fails when a populated
   worksheet carries a key the set lacks.
+
+### The published-document promise
+
+**The app is public and schema v1 has shipped**, so real worksheets exist on real
+machines. A document saved by any released build must keep opening, keep its content,
+and keep rendering — a file that will not open is a teacher's work destroyed, with no
+undo. This outranks tidiness in the model layer.
+
+A change to `Worksheet` or its nested types must take one of three routes:
+
+| Change | What it costs |
+|---|---|
+| **Add an optional field** | Free. Older documents lack it, `normalize` defaults it, no version bump. **Add it to `KNOWN_KEYS`** or it saves and vanishes on reload. |
+| **Change a field's meaning or shape** | A step in `MIGRATIONS` + a `CURRENT_SCHEMA_VERSION` bump, proved against the frozen corpus. |
+| **Remove a field** | Only by migrating its data elsewhere first. Deleting outright discards whatever teachers stored in it. |
+
+**The promise covers saved documents, not exported bytes.** A teacher's `.worksheet.json`
+must always reopen; an untouched document exporting byte-identically stays a strong
+convention (many tests pin it, and it is how a formatting delta proves it changed nothing
+else) but is deliberately *not* a guarantee — freezing it would mean a layout defect could
+never be fixed for documents that already exist. Changing how an old document *prints* is
+allowed; breaking its ability to *open* is not.
+
+- **A migration step is pure and total.** It receives whatever a real saved document
+  contained — including fields this build has never seen — and may not assume any
+  optional structure is present.
+- **The frozen corpus is the only witness.** `src/test/corpus/v1-published.json` is a
+  fully-populated v1 document (cover, page furniture, QAB footer, 10pt base, all four
+  block kinds, a shared-marks sub-part pair) written **once** and never regenerated.
+  Every other schema test round-trips a worksheet *this build just constructed*, which
+  proves only that the build agrees with itself and structurally cannot catch a
+  migration that drops a field. Only a fixture written by an older build can.
+  `scripts/emit-v1-corpus.test.ts` regenerates it, and is run only when cutting a **new**
+  version — never to "update" v1 after a model change, which would rewrite the evidence
+  instead of migrating it. Ids are stable slugs so the file diffs meaningfully.
+- **`backwardCompat.test.ts` asserts six things** about that corpus: it loads with
+  nothing stashed in `__unknown`, keeps every top-level structure, keeps all four block
+  kinds, keeps an unmarked sub-part *unmarked* (a migration defaulting it to `0` would
+  print a "(0 marks)" nobody wrote), loses no authored text (counted over every run), and
+  survives load → save → load unchanged. Verified to bite: a simulated v2 step dropping
+  `cover` fails the structural and text-count assertions independently.
+
+**The index fails independently of the documents, and more quietly.** A worksheet lives in
+storage as two halves — the document under `econ-worksheet:<id>` and its summary in the
+`econ-worksheet-index` array — and the start screen is the only route in, so a document
+whose entry is missing or unreadable is *intact but unreachable*.
+
+- **One damaged entry may not cost the whole list.** `list()` cast the parsed array
+  unvalidated and sorted on `updatedAt`; a single row lacking that field threw inside the
+  sort, hit the catch, and returned `[]` — every saved worksheet vanishing from the file
+  list while sitting untouched in storage, which reads to a teacher as total loss. Entries
+  are now judged one at a time: a row shows when it carries an `id` to open and a `title`
+  to print, an undated row sorts last rather than being dropped, and unknown fields pass
+  through (a newer build's entry survives an older build's read, as `__unknown` does for
+  documents). Only an unparseable index as a whole yields `[]`.
+- `legacyIndex.test.ts` writes the storage keys as **literals**, deliberately not imports:
+  they are not an implementation detail to keep in sync, they are the published contract
+  with every browser that already holds data under them. A change that makes those
+  literals wrong orphans real documents, and that is where it must fail.
 
 ### Bilingual text (`src/model/text.ts`)
 

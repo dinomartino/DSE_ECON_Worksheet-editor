@@ -8,22 +8,37 @@ import type { Worksheet } from './types';
  *    are stashed in `__unknown` and written back out on save, so a round-trip
  *    through an older build never destroys data.
  *
- * ## Why the chain is empty
+ * ## The app has shipped: documents exist in the wild
  *
- * This build is schema v1 with no migrations, and that is not a claim that the model
- * never changed — it changed seven times. It is a claim that **no document was ever
- * saved by a released build**, because the app had not shipped. A migration exists to
- * carry real data across a change; with no data in the wild, the seven steps that were
- * here (a font pair, page setup, banded headers, flattened sections, authored field
- * wording, dropped table header rows, per-block captions) upgraded documents that do
- * not exist. They were 450 lines of untestable-in-practice code whose own fixtures were
- * the only inputs they ever saw, so the version counter was reset to 1 and they were
- * deleted rather than carried forever.
+ * **Schema v1 is published.** Real teachers have real worksheets saved by it, so from
+ * here on every change to the stored shape has to carry those documents forward. This
+ * is the constraint that outranks tidiness in this file: a document that will not open
+ * is a teacher's work destroyed, and there is no undo for it.
  *
- * The machinery around them is deliberately kept: `migrate` still validates, still
- * normalizes, and still stashes unknown fields, all of which earn their place on every
- * single load. Adding a real migration later means appending to `MIGRATIONS` and
- * bumping `CURRENT_SCHEMA_VERSION` — the loop is already written and already tested.
+ * Concretely, a change to `Worksheet` and its nested types must do one of:
+ *
+ *  - **Add an optional field.** Free — an older document simply lacks it, `normalize`
+ *    defaults it, and no version bump is needed. Add the key to `KNOWN_KEYS` (see
+ *    below) or it will save and then vanish on reload.
+ *  - **Change the meaning or shape of an existing field.** Append a step to
+ *    `MIGRATIONS`, bump `CURRENT_SCHEMA_VERSION`, and prove it against the frozen
+ *    corpus (`src/model/backwardCompat.test.ts`). The loop below needs no edit.
+ *  - **Remove a field.** Only ever by migrating its data somewhere else first. Deleting
+ *    it outright silently discards whatever teachers had stored in it.
+ *
+ * ## Why the chain is still empty
+ *
+ * Because v1 *is* the current version — not because migrations are optional here. The
+ * model did change seven times (a font pair, page setup, banded headers, flattened
+ * sections, authored field wording, dropped table header rows, per-block captions), but
+ * every one of those predates the release, so their migration steps upgraded documents
+ * that never existed and were deleted rather than carried forever. That reasoning
+ * expired the day the app shipped: the *next* shape change is the first one with real
+ * data on the other side of it, and it needs a real step here.
+ *
+ * The machinery is fully built and exercised on every load: `migrate` validates,
+ * normalizes, runs the chain, and stashes unknown fields so a document from a newer
+ * build survives a round-trip through an older one.
  */
 
 export const CURRENT_SCHEMA_VERSION = 1;
@@ -33,8 +48,12 @@ type RawDoc = Record<string, unknown>;
 /**
  * Ordered chain. Index i migrates a document at version (i + 1) to version (i + 2).
  *
- * Empty until this build ships and a saved document can outlive a schema change. See
- * the note above: the loop in `migrate` reads this array and needs no edit to use it.
+ * Empty only because v1 is current. A step added here must be **pure and total**: it
+ * receives whatever a real saved document contained, including fields this build has
+ * never seen, and must not assume any optional structure is present. Prove each new
+ * step against the frozen corpus in `src/model/backwardCompat.test.ts` — that fixture
+ * is the only input written by an older build, and so the only one that can catch a
+ * step which drops data.
  */
 const MIGRATIONS: Array<(doc: RawDoc) => RawDoc> = [];
 
