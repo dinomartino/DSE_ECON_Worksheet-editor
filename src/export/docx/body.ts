@@ -183,6 +183,14 @@ function columnsNodeXml(node: ColumnsNode, context: BodyContext): string {
     `<w:pStyle w:val="${STYLE_IDS[node.style]}"/>` +
     (node.keepNext ? '<w:keepNext/>' : '') +
     (node.keepLines ? '<w:keepLines/>' : '') +
+    // The boundary gap, when this row leads its item (§ `withLeadingGap`). The fixed
+    // line is restated with it for the reason `formatParagraphProps` restates it:
+    // direct formatting replaces the style's `w:spacing` element wholesale, so a bare
+    // `w:before` would drop this one row off the page's 12pt rhythm.
+    (node.spaceBefore !== undefined
+      ? `<w:spacing w:before="${Math.round(node.spaceBefore * 20)}"` +
+        ` w:line="${exactLineFor(undefined)}" w:lineRule="exact"/>`
+      : '') +
     (stops ? `<w:tabs>${stops}</w:tabs>` : '') +
     // One `w:ind`, since Word merges the element as a whole — emitting `left` and
     // `hanging` separately would drop whichever came first.

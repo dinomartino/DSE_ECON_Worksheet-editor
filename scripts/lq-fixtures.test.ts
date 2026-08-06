@@ -38,8 +38,8 @@ it('emits the LQ fixture', async () => {
     documentType: 'lqMock',
     title: 'LQ harness booklet',
     coverDetails: { school: 'SAMPLE SCHOOL', examName: 'MOCK EXAMINATION' },
-    // The fixture authors its own questions and rebuilds the flow positionally, so the
-    // wizard's sample question must not be in it.
+    // The fixture authors its own questions and rebuilds the flow, so the wizard's
+    // sample question must not be in it.
     seedSample: false,
   });
   worksheet.title = bi('LQ harness booklet', '');
@@ -109,18 +109,23 @@ it('emits the LQ fixture', async () => {
    * room left on the last sheet, and `lq-verify` asserts the browser's resolution
    * equals the count stored here — which is what the .docx exported, so the two
    * agreeing is the whole §3.2 contract ("the resolved value must reach the exporter").
-   * The stored 1 is the calibrated answer for this fixture's geometry; a drift in
+   * The stored count is the calibrated answer for this fixture's geometry; a drift in
    * measurement, pitch or packing shows up as the harness printing a different number.
-   * It has moved three times: down to 1 when each dotted line grew by the 1.5pt gap
+   *
+   * It has moved several times: down to 1 when each dotted line grew by the 1.5pt gap
    * above it (§ `LQ_LINE_SPACE_BEFORE_TWIPS`), back to 2 once the measurement probe was
-   * given `.paper` and stopped reporting every text block taller than it renders, then
-   * down to 1 again when the paginator started reserving the band the page frame closes
-   * above the bottom margin (§ `frameBottomIntrusion`) — a framed sheet genuinely holds
-   * ~10px less than the margins alone suggest.
+   * given `.paper` and stopped reporting every text block taller than it renders, down
+   * to 1 again when the paginator started reserving the band the page frame closes
+   * above the bottom margin (§ `frameBottomIntrusion`), and up to 26 when Section C was
+   * given its own sheet — for most of that history the fill sat on a sheet with no room
+   * and was resolving to the floor, which tested the floor rather than the fill.
    */
-  const closingFill = createAnswerSpaceElement(1, true);
+  const closingFill = createAnswerSpaceElement(26, true);
+  /** Opens the last sheet, so Section C's fill has a whole page to resolve into. */
+  const sectionCBreak = createPageBreakElement();
   worksheet.layout = [
     ...worksheet.layout,
+    sectionCBreak,
     breakQ2,
     pureBreak,
     purePage,
@@ -129,11 +134,27 @@ it('emits the LQ fixture', async () => {
     closingFill,
   ];
 
-  // Rebuild the flow. The section elements were created by the wizard factory in
-  // order A, B, C, note.
-  const [secA, secB, secC, note] = worksheet.flow;
+  /*
+   * Rebuild the flow, naming the seeded elements by what they *are*.
+   *
+   * Deliberately not by position: this destructured the first four flow entries as
+   * `[secA, secB, secC, note]` back when the wizard seeded exactly those four. When
+   * `lqMock` gained its closing lines ("END OF SECTION A/B", "END OF PAPER") the
+   * positions silently shifted by one — `secB` became "END OF SECTION A", Section C and
+   * the two remaining landmarks fell out of the flow entirely and appended unpositioned
+   * as a seventh sheet, and the harness had been reporting that extra page ever since.
+   * A lookup by text cannot go quietly wrong the same way: it throws instead.
+   */
+  const seeded = (en: string) => {
+    const element = worksheet.layout.find(
+      (el) => el.kind !== 'spacer' && 'text' in el && el.text?.en?.[0]?.text === en,
+    );
+    if (!element) throw new Error(`the lqMock seed no longer carries "${en}"`);
+    return { type: 'layout' as const, id: element.id };
+  };
+
   const flow: FlowItem[] = [
-    secA,
+    seeded('Section A'),
     { type: 'question', id: 'q1' },
     { type: 'layout', id: breakQ2.id },
     { type: 'question', id: 'q2' },
@@ -141,11 +162,28 @@ it('emits the LQ fixture', async () => {
     { type: 'layout', id: purePage.id },
     { type: 'layout', id: closingBreak.id },
     { type: 'question', id: 'q3' },
+    seeded('END OF SECTION A'),
     { type: 'layout', id: breakSecB.id },
-    secB,
+    seeded('Section B'),
     { type: 'question', id: 'q4' },
-    secC,
-    note,
+    seeded('END OF SECTION B'),
+    // Section C opens the last sheet, so its fill has a page's worth of slack to
+    // resolve into — which is the whole point of having one here (§3.2: the count the
+    // paginator resolves must be the count the exporter wrote). Left on a sheet with no
+    // room it resolves to the floor and opens a further sheet for a single dotted line.
+    { type: 'layout', id: sectionCBreak.id },
+    seeded('Section C'),
+    seeded('Answer any ONE question.'),
+    seeded('END OF PAPER'),
+    /*
+     * The fill is last, and nothing may follow it.
+     *
+     * A fill absorbs its sheet's slack and therefore *ends* the sheet (§3.2), so an
+     * item placed after it opens a further one — in the preview. Word, which knows
+     * nothing of "fill" and sees only the resolved line count, fits that item onto the
+     * same sheet, and the two backends then disagree about the length of the booklet.
+     * Putting the closing line above the space is also the reference's own shape.
+     */
     { type: 'layout', id: closingFill.id },
   ];
   worksheet.flow = flow;

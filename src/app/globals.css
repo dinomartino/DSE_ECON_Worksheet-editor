@@ -179,6 +179,35 @@ body {
   margin-block: 0;
 }
 
+/* A boundary gap dies at the top of a sheet.
+
+   The air between two items belongs to the *boundary*, not to either one — so once
+   that boundary falls on a page break there is nothing left to separate, and the gap
+   is only a shifted top margin. On the exam paper's three-line boundary it reads as a
+   missing question.
+
+   Word applies exactly this rule to `w:before` by itself, which is why the gap is
+   spelled as paragraph spacing rather than as blank paragraphs (§ `withLeadingGap` in
+   `render/ir.ts`) — an empty paragraph occupies its line wherever it lands, and no
+   suppression on this side could keep the two backends agreeing. This is the preview's
+   half of the same rule.
+
+   It reaches through the block's wrappers because the spacing sits on a paragraph
+   nested inside an already-built node, and it must beat the inline `margin-top` that
+   put it there.
+
+   The descendant selector is deliberate. The gap-bearing paragraph is the first child
+   of the item's *content* box, but that box is wrapped in drag chrome whose own first
+   child is the insert affordance — so a `>` chain would have to spell out the current
+   wrapper depth and would break the moment chrome is added.
+
+   `[data-gap-carrier]` is what keeps it honest: only the node that actually received a
+   boundary gap is marked, so the rule cannot reach a first child that means something
+   else (the leading row of a table, the first line of a stem). */
+.leads-sheet [data-gap-carrier] {
+  margin-top: 0 !important;
+}
+
 /* Larger styles keep an exact box too, scaled from the 11pt/12pt base by the same
    ratio as `exactLineFor()` in the exporter, so a heading occupies the same height in
    both. Kept as named classes rather than inline styles: they are paper typography,

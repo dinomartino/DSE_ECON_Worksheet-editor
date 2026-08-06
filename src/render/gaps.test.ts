@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { blankLine, endsInBlankLine, pushGap, type RenderNode } from './ir';
+import { BLANK_LINE_PT, blankLine, endsInBlankLine, pushGap, type RenderNode } from './ir';
 import { renderWorksheet } from './worksheet';
 import { createWorksheet } from '@/model/factories';
 import { createWorksheetFrom } from '@/model/newWorksheet';
@@ -23,6 +23,28 @@ describe('a gap counts what is already there', () => {
     style: 'Body',
     text: { en: rt(s), zh: [] },
   });
+
+  /**
+   * The boundary gap above an item, in blank lines.
+   *
+   * A gap *between* two top-level items rides on the item's own first paragraph as
+   * `spaceBefore`, rather than as leading blank-line spacers, so that it vanishes when
+   * the boundary falls on a page break (§ `withLeadingGap` in `ir.ts`). Word drops
+   * `w:before` at the top of a page by itself; an empty paragraph would print there.
+   *
+   * Spacers still separate items *inside* a question, where a page break cannot fall.
+   */
+  const gapAbove = (nodes: RenderNode[]): number => {
+    const first = nodes[0];
+    if (!first) return 0;
+    const pt =
+      first.kind === 'text'
+        ? first.format?.spaceBefore
+        : first.kind === 'columns'
+          ? first.spaceBefore
+          : undefined;
+    return pt === undefined ? 0 : pt / BLANK_LINE_PT;
+  };
 
   describe('endsInBlankLine', () => {
     it('is false for an empty stream, which has no boundary yet', () => {
@@ -139,25 +161,29 @@ describe('a gap counts what is already there', () => {
         ...extra,
       }) as Worksheet;
 
-    const firstKinds = (w: Worksheet) => {
+    /** The heading's own nodes, and the boundary gap standing above them. */
+    const firstNodes = (w: Worksheet) => {
       const first = renderWorksheet(w, { language: 'en', version: 'student' }).items[0];
-      return first.type === 'layout' ? first.layout.nodes.map((n) => n.kind) : [];
+      return first.type === 'layout' ? first.layout.nodes : [];
     };
+    const firstGap = (w: Worksheet) => gapAbove(firstNodes(w));
 
     it('gets its blank line when a title prints above the flow', () => {
       // Flow index 0 is not the top of the page: the title renders above it.
-      expect(firstKinds(withSection({ title: bi('Paper', '') }))).toEqual(['spacer', 'text']);
+      const w = withSection({ title: bi('Paper', '') });
+      expect(firstGap(w)).toBe(1);
+      // The gap is spacing on the heading itself, not a spacer paragraph above it, so
+      // it dies at a page top (§ `withLeadingGap`).
+      expect(firstNodes(w).map((n) => n.kind)).toEqual(['text']);
     });
 
     it('gets it when instructions print above the flow', () => {
-      expect(firstKinds(withSection({ instructions: bi('Answer ALL', '') }))).toEqual([
-        'spacer',
-        'text',
-      ]);
+      expect(firstGap(withSection({ instructions: bi('Answer ALL', '') }))).toBe(1);
     });
 
     it('goes without at the true top of a bare page, where a gap is only top margin', () => {
-      expect(firstKinds(withSection({}))).toEqual(['text']);
+      expect(firstGap(withSection({}))).toBe(0);
+      expect(firstNodes(withSection({})).map((n) => n.kind)).toEqual(['text']);
     });
   });
 
@@ -200,11 +226,15 @@ describe('a gap counts what is already there', () => {
         flow: questions.map((q) => ({ type: 'question' as const, id: q.id })),
       }) as Worksheet;
 
-    /** The leading spacers on question 2 — the boundary's actual width. */
-    const leadingGap = (w: Worksheet): number => {
-      const nodes = renderWorksheet(w, { language: 'en', version: 'student' }).questions[1].nodes;
-      return nodes.findIndex((n) => n.kind !== 'spacer');
-    };
+    /**
+     * The boundary's actual width above question 2, in blank lines.
+     *
+     * A boundary gap rides on the item's own first paragraph as `spaceBefore`, not as
+     * leading spacers, so that it dies at the top of a sheet (§ `withLeadingGap`) —
+     * hence reading the spacing rather than counting nodes.
+     */
+    const leadingGap = (w: Worksheet): number =>
+      gapAbove(renderWorksheet(w, { language: 'en', version: 'student' }).questions[1].nodes);
 
     // A real Paper 1 from the wizard, so the shape is genuinely derived from the cover
     // rather than asserted — a hand-built document must space identically (§ derived,
@@ -239,10 +269,8 @@ describe('a gap counts what is already there', () => {
       // (the true top of the page, which owes no gap) versus a title above the flow
       // (one line, the ordinary boundary). Neither is ever the wide one — three lines
       // of air under the top margin would read as a missing question.
-      const leading = (w: Worksheet) => {
-        const nodes = renderWorksheet(w, { language: 'en', version: 'student' }).questions[0].nodes;
-        return nodes.findIndex((n) => n.kind !== 'spacer');
-      };
+      const leading = (w: Worksheet) =>
+        gapAbove(renderWorksheet(w, { language: 'en', version: 'student' }).questions[0].nodes);
       expect(leading(twoQuestions(paper1()))).toBe(0);
       expect(leading({ ...twoQuestions(paper1()), title: bi('Paper 1', '') } as Worksheet)).toBe(1);
     });
@@ -271,8 +299,7 @@ describe('a gap counts what is already there', () => {
       } as Worksheet;
 
       const rendered = renderWorksheet(w, { language: 'en', version: 'student' });
-      const lead = rendered.questions[0].nodes.findIndex((n) => n.kind !== 'spacer');
-      expect(lead).toBe(2);
+      expect(gapAbove(rendered.questions[0].nodes)).toBe(2);
       // …and the question boundary behind it is still the wide one, unaffected.
       expect(leadingGap(w)).toBe(3);
     });
@@ -292,7 +319,7 @@ describe('a gap counts what is already there', () => {
         ],
       } as Worksheet;
       const nodes = renderWorksheet(w, { language: 'en', version: 'student' }).questions[0].nodes;
-      expect(nodes.findIndex((n) => n.kind !== 'spacer')).toBe(1);
+      expect(gapAbove(nodes)).toBe(1);
     });
 
     it('honours the document’s own examGapLines over the type’s', () => {
@@ -382,15 +409,27 @@ describe('a gap counts what is already there', () => {
         expect(nodes[nodes.length - 1]).not.toMatchObject({ keepNext: true });
       });
 
-      it('leaves the boundary gap out of the chain', () => {
-        // Question 2's leading spacers are the boundary, which is exactly where Word
-        // is allowed to break the page.
+      it('puts the boundary gap where the page may break, with nothing to break inside', () => {
+        /*
+         * The boundary between two questions is where Word is allowed to break — and
+         * the gap belongs to that boundary, so it must not survive the break.
+         *
+         * Carrying it as `spaceBefore` on question 2's own first paragraph is what
+         * guarantees that: Word discards `w:before` at the top of a page, so a question
+         * opening a sheet starts flush against the top margin, exactly as the preview
+         * draws it. Loose spacer paragraphs could not — Word would break *between* them
+         * and strand one or two blank lines at the top of the new page, a different
+         * number on every boundary.
+         */
         const rendered = renderWorksheet(twoQuestions(paper1()), {
           language: 'en',
           version: 'student',
         });
-        const leading = rendered.questions[1].nodes.filter((n) => n.kind === 'spacer').slice(0, 3);
-        for (const spacer of leading) expect(spacer).not.toMatchObject({ keepNext: true });
+        const nodes = rendered.questions[1].nodes;
+        expect(gapAbove(nodes)).toBe(3);
+        // Nothing precedes the paragraph that carries the gap, so the break has no
+        // interior to land in.
+        expect(nodes[0].kind).toBe('text');
       });
 
       it('leaves a classroom worksheet free to split, byte-identically', () => {
@@ -404,6 +443,85 @@ describe('a gap counts what is already there', () => {
           }
         }
       });
+    });
+  });
+
+  /*
+   * A boundary gap dies at the top of a sheet.
+   *
+   * The air belongs to the *boundary* between two items, so once that boundary falls on
+   * a page break there is nothing left to separate and the gap is only a shifted top
+   * margin — on Paper 1's three-line boundary it reads as a missing question, which is
+   * the bug this exists to prevent.
+   *
+   * Neither backend can be told where the pages fall from here: the preview measures
+   * them in the browser, and Word decides its own. So the rule is carried by the *form*
+   * the gap takes rather than by a decision made at render time — `w:before`, which
+   * Word drops at a page top by itself, and which the preview drops with a rule keyed
+   * on the same flag. These tests pin the form; the preview's half is verified in the
+   * browser (§ *Verifying work*).
+   */
+  describe('a boundary gap is carried in the one form that dies at a page top', () => {
+    const paper1 = () => createWorksheetFrom({ documentType: 'paper1', seedSample: false });
+    const mcq = (id: string): McqQuestion => ({
+      id,
+      type: 'mcq',
+      blocks: [{ id: `${id}-b`, kind: 'paragraph', text: { en: rt(`stem ${id}`), zh: [] } }],
+      options: [
+        { id: `${id}-o1`, text: { en: rt('one'), zh: [] } },
+        { id: `${id}-o2`, text: { en: rt('two'), zh: [] } },
+      ],
+      answerIndex: 0,
+      marks: 1,
+    });
+
+    const render = (base: Worksheet) => {
+      const questions = [mcq('q1'), mcq('q2')];
+      return renderWorksheet(
+        {
+          ...base,
+          questions,
+          layout: [],
+          flow: questions.map((q) => ({ type: 'question' as const, id: q.id })),
+        } as Worksheet,
+        { language: 'en', version: 'student' },
+      );
+    };
+
+    it('spells the gap as spacing on the item, never as spacers above it', () => {
+      // A spacer paragraph occupies its line wherever it lands, so it would print at
+      // the top of the new sheet — and Word, free to break between loose spacers, would
+      // strand a different number of them on every boundary.
+      const nodes = render(paper1()).questions[1].nodes;
+      expect(nodes[0].kind).toBe('text');
+      expect(gapAbove(nodes)).toBe(3);
+    });
+
+    it('marks it as a boundary, so authored spacing is not dropped with it', () => {
+      // The preview keys its suppression on this flag rather than on the presence of
+      // `spaceBefore`. Spacing a teacher set is theirs and must survive a page top.
+      const first = render(paper1()).questions[1].nodes[0];
+      expect(first.kind === 'text' && first.boundaryGap).toBe(true);
+    });
+
+    it('carries no flag where there is no gap, so nothing is dropped at the true top', () => {
+      const bare = {
+        ...paper1(),
+        bands: [],
+        title: { en: [], zh: [] },
+        instructions: { en: [], zh: [] },
+      } as Worksheet;
+      const first = render(bare).questions[0].nodes[0];
+      expect(first.kind === 'text' && first.format?.spaceBefore).toBeUndefined();
+      expect(first.kind === 'text' && first.boundaryGap).toBeUndefined();
+    });
+
+    it('applies to every shape, since a gap at a page top is always only a margin', () => {
+      // Not scoped to Paper 1: a classroom worksheet's single leading line is the same
+      // thing one line wide.
+      const nodes = render(createWorksheet()).questions[1].nodes;
+      expect(gapAbove(nodes)).toBe(1);
+      expect(nodes[0].kind === 'text' && nodes[0].boundaryGap).toBe(true);
     });
   });
 });

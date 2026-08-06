@@ -114,6 +114,13 @@ export interface TextNode {
   /** Where this text lives in the model, so the preview can edit it in place. */
   edit?: EditTarget;
   /**
+   * This paragraph's `format.spaceBefore` is a *boundary* gap — air between two
+   * top-level items — rather than spacing anyone authored (§ `withLeadingGap`). The
+   * preview drops it when the item leads a sheet; Word does the same to `w:before` by
+   * itself. Marked explicitly so a teacher's own spacing is never mistaken for it.
+   */
+  boundaryGap?: boolean;
+  /**
    * Per-element overrides on top of `style`. All three backends apply these as
    * direct formatting, so the named style keeps supplying every value not set here.
    */
@@ -276,6 +283,15 @@ export interface ColumnsNode {
   hanging?: number;
   /** Hairline rule under the row, used by masthead bands. */
   rule?: boolean;
+  /**
+   * Air above the row in points (`w:before`), when this row leads an item and carries
+   * its boundary gap (§ `withLeadingGap`). A row-level property because a `ColumnsNode`
+   * has no `format` of its own — its formatting is per cell, and the gap belongs to the
+   * whole paragraph.
+   */
+  spaceBefore?: number;
+  /** `spaceBefore` here is a boundary gap, not authored spacing. See `TextNode`. */
+  boundaryGap?: boolean;
   keepNext?: boolean;
   /** Keep the row's wrapped lines on one page (`w:keepLines`). See `TextNode`. */
   keepLines?: boolean;
@@ -418,6 +434,46 @@ export function blankLine(): SpacerNode {
  */
 export function pushGap(nodes: RenderNode[]): void {
   if (!endsInBlankLine(nodes)) nodes.push(blankLine());
+}
+
+/**
+ * A boundary gap is air *between* two items, not part of either — so it must vanish
+ * when the boundary falls on a page break. A gap at the top of a sheet is only a
+ * shifted top margin, and on the exam paper's three-line boundary it reads as a
+ * missing question.
+ *
+ * The gap therefore rides on the item's first paragraph as `spaceBefore` rather than
+ * as leading `blankLine()` spacers. That is the one separation in this document not
+ * spelled as a spent line, and it is deliberate: **Word discards `w:before` at the top
+ * of a page and honours it everywhere else**, which is exactly the rule, applied by
+ * the one party that knows where the .docx's pages actually break. Spacer paragraphs
+ * cannot express it — an empty paragraph occupies its line wherever it lands.
+ *
+ * The preview owns the same rule on its own side: it knows which item leads each
+ * sheet, so `Preview.tsx` drops the gap there (§ *A boundary gap dies at a page top*).
+ *
+ * Returns the nodes unchanged when there is no gap to apply, so an untouched document
+ * keeps emitting byte-identical XML.
+ */
+export function withLeadingGap(nodes: RenderNode[], lines: number): RenderNode[] {
+  if (lines <= 0 || nodes.length === 0) return nodes;
+  const [first, ...rest] = nodes;
+  const spaceBefore = lines * BLANK_LINE_PT;
+
+  // Only a paragraph carries `w:spacing`. A leading table, picture or rule has no
+  // paragraph properties of its own, so those keep a real spacer — which is correct
+  // for them anyway: none of the three can lead a question on the exam paper, and a
+  // classroom worksheet's single line above a table is the ordinary spent line.
+  if (first.kind === 'text') {
+    return [
+      { ...first, boundaryGap: true, format: { ...first.format, spaceBefore } },
+      ...rest,
+    ];
+  }
+  if (first.kind === 'columns') {
+    return [{ ...first, boundaryGap: true, spaceBefore }, ...rest];
+  }
+  return [...Array.from({ length: lines }, blankLine), ...nodes];
 }
 
 /**

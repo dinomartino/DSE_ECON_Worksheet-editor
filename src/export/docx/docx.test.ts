@@ -33,7 +33,7 @@ import { createWorksheet } from '@/model/factories';
 import { createWorksheetFrom } from '@/model/newWorksheet';
 import { applyRunFormat, bi, plain } from '@/model/text';
 import { renderWorksheet } from '@/render/worksheet';
-import type { TextNode } from '@/render/ir';
+import { BLANK_LINE_PT, type RenderNode, type TextNode } from '@/render/ir';
 import type { LayoutElement, OutputMode, TableBlock, Worksheet } from '@/model/types';
 
 const STUDENT_BI: OutputMode = { language: 'bilingual', version: 'student' };
@@ -414,17 +414,34 @@ describe('fixed line spacing (§7.3)', () => {
      * one further down had air above it, and the gap reappeared as soon as anything was
      * dragged in front of it.
      */
+    /*
+     * The gap rides on the item's own first paragraph as `spaceBefore` rather than as a
+     * spacer above it, so that it dies when the boundary lands on a page break — Word
+     * discards `w:before` at the top of a page (§ `withLeadingGap`).
+     */
+    const gapAbove = (nodes: RenderNode[]): number => {
+      const first = nodes[0];
+      if (!first) return 0;
+      const pt =
+        first.kind === 'text'
+          ? first.format?.spaceBefore
+          : first.kind === 'columns'
+            ? first.spaceBefore
+            : undefined;
+      return pt === undefined ? 0 : pt / BLANK_LINE_PT;
+    };
+
     const firstNodes = rendered.items[0].type === 'question'
       ? rendered.items[0].question.nodes
       : rendered.items[0].layout.nodes;
     expect(rendered.title).toBeDefined();
-    expect(firstNodes[0].kind).toBe('spacer');
+    expect(gapAbove(firstNodes)).toBe(1);
 
     // Every later question leads with one.
     const questions = rendered.items.filter((item) => item.type === 'question');
     for (const item of questions.slice(1)) {
       const nodes = item.type === 'question' ? item.question.nodes : [];
-      expect(nodes[0].kind).toBe('spacer');
+      expect(gapAbove(nodes)).toBeGreaterThanOrEqual(1);
     }
   });
 
@@ -444,6 +461,57 @@ describe('fixed line spacing (§7.3)', () => {
       ? rendered.items[0].question.nodes
       : rendered.items[0].layout.nodes;
     expect(firstNodes[0].kind).not.toBe('spacer');
+  });
+
+  it('writes a boundary gap as spacing Word drops at a page top, not as empty paragraphs', async () => {
+    /*
+     * The one separation in this document not spelled as a spent line, and deliberately
+     * so: air *between* two items must vanish when the boundary falls on a page break,
+     * or an exam question opening a sheet prints three blank lines under the top margin
+     * and reads as a missing question.
+     *
+     * `w:before` is the only spelling that delivers it. Word discards it at the top of
+     * a page and honours it everywhere else — the rule applied by the one party that
+     * knows where the .docx's pages actually break. Empty paragraphs cannot: they
+     * occupy their line wherever they land, and Word would break *between* them and
+     * strand a different number on every boundary.
+     */
+    const base = createWorksheetFrom({ documentType: 'paper1', seedSample: false });
+    const mcqs = [0, 1].map((i) => ({
+      id: `gq${i}`,
+      type: 'mcq' as const,
+      blocks: [
+        { id: `gq${i}-b`, kind: 'paragraph' as const, text: bi(`Stem ${i}`, '') },
+      ],
+      options: ['a', 'b'].map((t, j) => ({ id: `gq${i}-o${j}`, text: bi(t, '') })),
+      answerIndex: 0,
+      marks: 1,
+    }));
+    const worksheet = {
+      ...base,
+      questions: mcqs,
+      layout: [],
+      flow: mcqs.map((q) => ({ type: 'question' as const, id: q.id })),
+    } as unknown as Worksheet;
+
+    const zip = await JSZip.loadAsync(
+      await exportDocxBuffer(worksheet, { language: 'en', version: 'student' }),
+    );
+    const document = await zip.file('word/document.xml')!.async('string');
+
+    // Question 2's stem carries the whole three-line boundary as spacing…
+    const paragraphs = document.split('<w:p>').slice(1);
+    const stem2 = paragraphs.find((p) => /<w:t[^>]*>Stem 1</.test(p));
+    expect(stem2, 'question 2 must reach the document').toBeDefined();
+    expect(stem2).toContain(`w:before="${3 * BLANK_LINE_PT * 20}"`);
+    // …restating the fixed line with it, or direct formatting drops this one paragraph
+    // off the page's rhythm (Word replaces the style's `w:spacing` element wholesale).
+    expect(stem2).toContain('w:line="240"');
+
+    // …and no empty paragraph sits directly above it doing the job instead.
+    const stemIndex = paragraphs.findIndex((p) => /<w:t[^>]*>Stem 1</.test(p));
+    const previous = paragraphs[stemIndex - 1] ?? '';
+    expect(previous, 'the gap must not also be spacer paragraphs').toMatch(/<w:t/);
   });
 
   it('exports each blank line as an empty styled paragraph on the shared rhythm', async () => {
@@ -1449,7 +1517,29 @@ describe('per-element formatting overrides', () => {
     // named style — exactly the output this file produced before formatting existed.
     expect(document).toContain('<w:pPr><w:pStyle w:val="WorksheetTitle"/></w:pPr>');
     expect(document).toContain('<w:pPr><w:pStyle w:val="Instructions"/></w:pPr>');
-    expect(document).toContain('<w:pPr><w:pStyle w:val="SectionHeading"/><w:keepNext/></w:pPr>');
+
+    /*
+     * The one paragraph property this rule does *not* cover is a boundary gap.
+     *
+     * Air between two top-level items rides on the following item's own first
+     * paragraph as `w:before`, because that is the only spelling Word drops at the top
+     * of a page (§ `withLeadingGap`) — and a gap that survives a page break prints as
+     * a shifted top margin. So a gap-bearing heading carries `w:spacing` even with
+     * nothing overridden. It is derived from position, never from stored formatting:
+     * the same heading at the true top of the page still emits the bare form.
+     */
+    expect(document).toContain(
+      '<w:pPr><w:pStyle w:val="SectionHeading"/><w:keepNext/>' +
+        `<w:spacing w:before="${BLANK_LINE_PT * 20}" w:line="240" w:lineRule="exact"/></w:pPr>`,
+    );
+
+    const atTop = await documentXml({
+      ...buildAcceptanceWorksheet(),
+      bands: [],
+      title: { en: [], zh: [] },
+      instructions: { en: [], zh: [] },
+    });
+    expect(atTop).toContain('<w:pPr><w:pStyle w:val="SectionHeading"/><w:keepNext/></w:pPr>');
   });
 });
 

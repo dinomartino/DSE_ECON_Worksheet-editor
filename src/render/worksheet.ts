@@ -20,6 +20,7 @@ import {
   blankLine,
   endsInBlankLine,
   includeNode,
+  withLeadingGap,
   type CoverRenderNode,
   type NodeStyle,
   type RenderNode,
@@ -45,7 +46,7 @@ export interface RenderedQuestion {
    * The width this question's leading boundary is aiming at, in blank lines — present
    * only where the boundary is the exam paper's adjustable one (§ `boundaryGapLines`:
    * Paper 1, after a same-type question). The preview offers its drag handle on it;
-   * both exports ignore it (the nodes already carry the gap).
+   * both exports ignore it (the first node already carries the gap as `spaceBefore`).
    */
   adjustableGap?: number;
 }
@@ -435,7 +436,9 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
         // Student output must contain no teacher content anywhere (§11.8).
         .filter((node) => includeNode(node, mode));
       const nodes = keepWhole ? keepQuestionWhole(rendered) : rendered;
-      separated = gap > 0 ? [...Array.from({ length: gap }, blankLine), ...nodes] : nodes;
+      // The boundary rides on the first paragraph, not on spacers above it, so it dies
+      // at a page top in both backends (§ `withLeadingGap`).
+      separated = withLeadingGap(nodes, gap);
       questionRenderCache.set(question, {
         mode,
         number,
@@ -467,13 +470,16 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
 }
 
 /**
- * The blank line separating one top-level item from the next. With no
- * `w:before`/`w:after` anywhere, air is bought by spending a line — the same
- * `blankLine()` the question types use, so every gap on the page is one number.
+ * The gap separating one top-level item from the next, in blank lines.
+ *
+ * Applied through `withLeadingGap`, which spells it on the item's own first paragraph
+ * so it dies at a page top. Inside a question the separation is still a spent line —
+ * a gap between a stem and its options can never fall on a page boundary, because the
+ * question is kept whole.
  */
-const ITEM_GAP: RenderNode = blankLine();
+const ITEM_GAP_LINES = 1;
 
-/** The ordinary boundary: one spent line, the same gap a question's own parts get. */
+/** The ordinary boundary: one line of air, the same gap a question's own parts get. */
 const DEFAULT_GAP_LINES = 1;
 
 /**
@@ -571,32 +577,36 @@ function renderLayoutElement(
         const suffix = side === 'en' ? ` (${sectionTotal} marks)` : `（${sectionTotal}分）`;
         return [...element.text[side], { text: suffix }];
       };
-      return [
-        ...(first ? [] : [ITEM_GAP]),
-        {
-          kind: 'text',
-          style: 'Section Heading',
-          text: showMarks ? { en: withMarks('en'), zh: withMarks('zh') } : element.text,
-          keepNext: true,
-          format: element.format,
-          edit: { kind: 'layoutText', elementId: element.id },
-        },
-      ];
+      return withLeadingGap(
+        [
+          {
+            kind: 'text',
+            style: 'Section Heading',
+            text: showMarks ? { en: withMarks('en'), zh: withMarks('zh') } : element.text,
+            keepNext: true,
+            format: element.format,
+            edit: { kind: 'layoutText', elementId: element.id },
+          },
+        ],
+        first ? 0 : ITEM_GAP_LINES,
+      );
     }
     // A free line of prose. Takes the same leading gap a heading does (a closing
     // landmark like "END OF PAPER" must not print flush under the last option),
     // suppressed at the true top and after an already-spent line via `first`.
     case 'text':
-      return [
-        ...(first ? [] : [ITEM_GAP]),
-        {
-          kind: 'text',
-          style: 'Body',
-          text: element.text,
-          format: element.format,
-          edit: { kind: 'layoutText', elementId: element.id },
-        },
-      ];
+      return withLeadingGap(
+        [
+          {
+            kind: 'text',
+            style: 'Body',
+            text: element.text,
+            format: element.format,
+            edit: { kind: 'layoutText', elementId: element.id },
+          },
+        ],
+        first ? 0 : ITEM_GAP_LINES,
+      );
     // The MCQ paper's lead-in: authored prefix · derived number · authored suffix
     // (the band-field decomposition). The number carries no EditTarget; the wording
     // is reached through `layoutText`.
@@ -643,19 +653,21 @@ function renderLayoutElement(
         const suffix = side === 'en' ? ` (${sectionTotal} marks)` : `（${sectionTotal}分）`;
         return [...authored, { text: suffix }];
       };
-      return [
-        ...(first ? [] : [ITEM_GAP]),
-        {
-          kind: 'text',
-          style: 'Section Heading',
-          text: element.showMarks === false
-            ? element.text
-            : { en: withMarks('en'), zh: withMarks('zh') },
-          keepNext: true,
-          format: element.format,
-          edit: { kind: 'layoutText', elementId: element.id },
-        },
-      ];
+      return withLeadingGap(
+        [
+          {
+            kind: 'text',
+            style: 'Section Heading',
+            text: element.showMarks === false
+              ? element.text
+              : { en: withMarks('en'), zh: withMarks('zh') },
+            keepNext: true,
+            format: element.format,
+            edit: { kind: 'layoutText', elementId: element.id },
+          },
+        ],
+        first ? 0 : ITEM_GAP_LINES,
+      );
     }
 
     case 'labelList': {

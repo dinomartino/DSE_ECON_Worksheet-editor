@@ -832,6 +832,11 @@ function TextNodeView({
   return (
     <p
       className={`${STYLE_CLASS[node.style] ?? ""} relative`}
+      // Marks this paragraph as the one carrying a *boundary* gap, so the sheet-leading
+      // rule can drop it (§ `.leads-sheet` in `globals.css`). Keyed on the IR's own flag
+      // rather than on the presence of `spaceBefore`: spacing a teacher authored is
+      // theirs to keep, and must survive at the top of a page.
+      data-gap-carrier={node.boundaryGap ? "" : undefined}
       style={{
         ...(node.indent ? { marginLeft: `${node.indent / 20}pt` } : undefined),
         /*
@@ -2086,6 +2091,8 @@ function NodeView({
         className={`${STYLE_CLASS[node.style] ?? ""} flex ${
           node.rule ? "border-b border-slate-400 pb-0.5" : ""
         }`}
+        // See `TextNodeView`: only a boundary gap is dropped at the top of a sheet.
+        data-gap-carrier={node.boundaryGap ? "" : undefined}
         style={{
           /*
            * `hanging` pulls the first line back in Word (§ ColumnsNode.hanging). Here the
@@ -2098,6 +2105,9 @@ function NodeView({
           marginLeft: node.indent
             ? `${(node.indent - (node.hanging ?? 0)) / 20}pt`
             : undefined,
+          // The boundary gap, when this row leads its item (§ `withLeadingGap`).
+          marginTop:
+            node.spaceBefore !== undefined ? `${node.spaceBefore}pt` : undefined,
         }}
       >
         {node.cells.map((cell, index) => (
@@ -3042,23 +3052,32 @@ function usePagination(
     if (!probe) return;
 
     /*
-     * Each block's height is the distance to the *next* block — summing box + margins
-     * double-counts collapsed margins and let a page accept a row too many. Top-to-top
-     * asks the browser what it actually did; the final block measures to the probe's
-     * end.
+     * Each block's height is the distance from the *previous* block's bottom to its
+     * own — summing box + margins double-counts collapsed margins and let a page
+     * accept a row too many, so the partition asks the browser what it actually did.
+     *
+     * Bottom-to-bottom, not top-to-top: the space between two wrapper boxes is the
+     * lower block's own leading gap (`spaceBefore` collapses through the wrapper; no
+     * style adds any other margin), and it must be charged to the block that owns it.
+     * Measured top-to-top, every block absorbed the *next* block's gap instead — so
+     * the last item of a page was charged a gap that dies at the page top anyway, and
+     * a question Word fits on page 1 broke onto page 2. The final block measures to
+     * the probe's end.
      */
     const measure = () => {
       const next = new Map<string, number>();
       const children = Array.from(probe.children) as HTMLElement[];
       const probeEnd = probe.getBoundingClientRect().bottom;
+      let prevBottom = probe.getBoundingClientRect().top;
       for (const [index, child] of children.entries()) {
         const key = child.dataset.blockKey;
         if (!key) continue;
-        const top = child.getBoundingClientRect().top;
-        const nextTop =
-          children[index + 1]?.getBoundingClientRect().top ??
-          Math.max(probeEnd, child.getBoundingClientRect().bottom);
-        next.set(key, Math.max(0, nextTop - top));
+        const bottom =
+          index === children.length - 1
+            ? Math.max(probeEnd, child.getBoundingClientRect().bottom)
+            : child.getBoundingClientRect().bottom;
+        next.set(key, Math.max(0, bottom - prevBottom));
+        prevBottom = bottom;
       }
       setHeights((prev) => {
         if (prev.size === next.size && [...next].every(([k, v]) => prev.get(k) === v)) {
@@ -5615,8 +5634,20 @@ export function Preview({
                     }
                   />
                 ) : (
-                  pageBlocks.map((block) => (
-                    <div key={block.key}>{block.node}</div>
+                  pageBlocks.map((block, blockIndex) => (
+                    // A boundary gap dies at the top of a sheet: the air belongs to the
+                    // *boundary* between two items, and once that boundary is a page
+                    // break the air is only a shifted top margin — on the exam paper's
+                    // three-line boundary it reads as a missing question. Word applies
+                    // the same rule to `w:before` natively; this is the preview's half
+                    // (§ `withLeadingGap`). A class, not a prop, because the gap sits on
+                    // a paragraph nested inside the block's already-built node.
+                    <div
+                      key={block.key}
+                      className={blockIndex === 0 ? "leads-sheet" : undefined}
+                    >
+                      {block.node}
+                    </div>
                   ))
                 )}
               </div>

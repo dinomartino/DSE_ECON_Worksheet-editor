@@ -317,6 +317,7 @@ RenderNode = TextNode | ColumnsNode | TableNode | ImageNode | DiagramNode
 
 TextNode: style (one of 14) · text: BiText · listRef? {stream, definition, level, marker}
           marks? · keepNext? · teacherOnly? · indent? · format? · edit?: EditTarget
+          boundaryGap?
 ```
 
 `EditTarget` is a discriminated union keyed by **id**: `worksheetTitle`,
@@ -371,20 +372,39 @@ Every paragraph: `w:line="240" w:lineRule="exact"`, `w:before`/`w:after` zero �
 reference paper's model. All vertical rhythm comes from the line box. Consequences
 (each fails silently):
 
-- **Separation costs a line.** `blankLine()` is that line; every gap goes through it
-  (`ITEM_GAP` in the walker for boundaries; question types use the same helper inside a
-  question). The gap is an IR node, not a style property, so all three backends space
-  identically. The between-item gap lives in the walker because it belongs to the
-  boundary.
+- **Separation costs a line.** `blankLine()` is that line; every gap *inside* a question
+  goes through it. The gap is an IR node, not a style property, so all three backends
+  space identically.
 - **A gap counts what is already there.** `pushGap()`/`endsInBlankLine()` push a blank
   *unless* the stream already ends in one. `endsInBlankLine` is language-neutral.
+- **A boundary gap is the one exception, and it dies at a page top.** Air *between* two
+  top-level items belongs to the boundary, so when that boundary falls on a page break
+  there is nothing left to separate and the gap is only a shifted top margin — on Paper
+  1's three-line boundary it reads as a missing question. `withLeadingGap()`
+  (`render/ir.ts`) therefore puts it on the item's own first paragraph as `spaceBefore`
+  (`ITEM_GAP_LINES` in the walker), **not** as leading spacers.
+  - **`w:before` is the only spelling that delivers it**: Word discards it at the top of
+    a page and honours it everywhere else, so the rule is applied by the one party that
+    knows where the `.docx`'s pages break. Spacer paragraphs cannot — an empty paragraph
+    occupies its line wherever it lands, and Word breaking *between* loose spacers
+    stranded a different number on every boundary.
+  - **The preview owns the same rule on its side**: it knows which item leads each
+    sheet, so the leading block takes `.leads-sheet` and the CSS zeroes the margin.
+  - **`TextNode.boundaryGap`/`ColumnsNode.boundaryGap` mark it as a boundary**, so
+    spacing a teacher authored is never dropped with it. The preview keys on that flag
+    (`data-gap-carrier`), never on the presence of `spaceBefore`.
+  - **The gap is still measured into the item's height** — the probe paginates with it,
+    which is what an item's fit depends on when it does *not* lead a sheet.
+  - A gap-bearing paragraph is the one place an untouched document emits `w:spacing`
+    with nothing overridden; `exactLineFor()` is restated with it, or direct formatting
+    drops that paragraph off the 12pt rhythm.
+- **The gap is suppressed only at the true top of the page**, not flow index 0 — the
+  masthead/title/instructions print above the flow (`somethingAboveFlow`).
 - **A table takes one blank line before it.** The gap lives in `renderContentBlocks`,
   which **appends into the caller's stream** (so the boundary rule can see what
   precedes). The gap spacer carries the caller's `keepNext`. The preview renders the
   trailing structural empty paragraph as a real `BLANK_LINE_PT` block — CSS margins are
   invisible to the paginator. `tableGeometry.test.ts` greps both directions.
-- **The gap is suppressed only at the true top of the page**, not flow index 0 — the
-  masthead/title/instructions print above the flow (`somethingAboveFlow`).
 - **`exact` does not grow** (it clips) — that keeps a bilingual page on one rhythm.
   Larger sizes need a larger box: `exactLineFor()` scales from the 11pt/12pt base.
 - **A picture's paragraph is the one exception** (`w:lineRule="auto"` in `pictureXml`) —
@@ -850,6 +870,10 @@ paginator last wrote.
   Double-gated by value comparison in the effect and the store, which stops the
   measure → write → measure loop. Written into the model so exporter/clipboard/
   thumbnails read the number the preview resolved.
+- **Nothing may follow a fill**, or the backends disagree about the booklet's length:
+  the preview ends the sheet at the fill and opens a new one for the next item, while
+  Word — which knows only the resolved line count — fits that item onto the same sheet.
+  A closing line belongs *above* the space, which is the reference's own shape.
 - The page withholds the resize handle on a fill element; the outline shows a "fills
   page" pill.
 
@@ -918,6 +942,14 @@ the reference's page 10, measures the dotted pitch (`lq-pitch.py`), and asserts 
 browser's resolved fill count equals the stored count (= the preview and the paper
 agreeing about the last sheet). Copyright guards mirror the cover's.
 
+- **The fixture names seeded elements by their text, never by position.** It once
+  destructured the first four flow entries as `[secA, secB, secC, note]`; when `lqMock`
+  gained its closing lines every position shifted by one, three landmarks fell out of
+  the flow and appended as a phantom trailing sheet, and the harness reported a stale
+  page count for weeks. A lookup throws instead of quietly building the wrong booklet.
+- **`EXPECTED_PAGES` is restated, not derived** — a booklet is a length claim, and a
+  count computed from the model under test would agree with any regression.
+
 ---
 
 ## The MCQ paper (Paper 1)
@@ -977,7 +1009,11 @@ Measured off DSE 2021 P1, spelled as blank lines on the same fixed 12pt grid:
   never stored.
 - **A wide gap still counts what is already there** (`endsInBlankLine` reports one
   spent line).
-- **The first item of the page is never widened.**
+- **The first item of the page is never widened** — neither the true top of page 1
+  (`somethingAboveFlow`) nor a question that a page break pushed onto a fresh sheet. The
+  second is not decided here: the gap is carried in a form that dies at a page top in
+  both backends (§ *A boundary gap … dies at a page top*), because neither the walker
+  nor Word can be told where the other's pages fall.
 - **The gap count is part of the render cache key** (`gap`), or a dragged question
   hands back its previously-spaced nodes.
 

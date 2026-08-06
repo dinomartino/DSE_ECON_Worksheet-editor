@@ -12,6 +12,7 @@ import { createWorksheetFrom } from '@/model/newWorksheet';
 import { createMcqQuestion } from '@/model/factories';
 import { resolveFlow } from '@/model/flow';
 import { renderWorksheet } from '@/render/worksheet';
+import { BLANK_LINE_PT } from '@/render/ir';
 import { plain } from '@/model/text';
 import type { OutputMode, Worksheet } from '@/model/types';
 
@@ -130,8 +131,12 @@ describe('the paper opens and closes the way the reference does', () => {
 
     expect(closing.type).toBe('layout');
     const nodes = closing.type === 'layout' ? closing.layout.nodes : [];
-    expect(nodes[0]?.kind).toBe('spacer');
-    expect(nodes[1]?.kind).toBe('text');
+    // The air rides on the closing line's own paragraph rather than a spacer above it,
+    // so that a page break falling here does not print it under the top margin
+    // (§ `withLeadingGap`).
+    expect(nodes[0]?.kind).toBe('text');
+    const first = nodes[0];
+    expect(first?.kind === 'text' && first.format?.spaceBefore).toBe(BLANK_LINE_PT);
   });
 
   it('carries no section headings', () => {

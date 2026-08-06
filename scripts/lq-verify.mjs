@@ -37,8 +37,15 @@ const OUT = opt('out', '/tmp/lq-verify');
 const URL_BASE = opt('url', 'http://localhost:3000');
 const SOFFICE = '/Applications/LibreOffice.app/Contents/MacOS/soffice';
 
-/** Fixture geometry: cover + 5 body sheets (see scripts/lq-fixtures.test.ts). */
-const EXPECTED_PAGES = 6;
+/**
+ * Fixture geometry: cover + 6 body sheets (see scripts/lq-fixtures.test.ts).
+ *
+ * Was 5 until `lqMock` gained its closing lines ("END OF SECTION A/B", "END OF PAPER").
+ * The count is deliberately restated here rather than derived: a booklet is a *length
+ * claim*, and a harness that computed the expected number from the same model it is
+ * checking would agree with any regression.
+ */
+const EXPECTED_PAGES = 7;
 /** The pure answer sheet: PDF page number, and preview body index (cover excluded). */
 const PURE_PAGE = 4;
 const PURE_BODY_INDEX = 2;
