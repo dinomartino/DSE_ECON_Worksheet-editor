@@ -791,6 +791,45 @@ re-measure, title mechanism — serves it unchanged. Modelled on
 - Inserted as the `pie` template; **picking a template now re-measures the block** (the
   shapes disagree about their box — a pie is square-ish, the axes plots 4:3).
 
+### A flow chart is a diagram variant, and its layout is measured
+
+`Diagram.flow` (optional, like `pie`) makes the diagram a production-chain flow chart
+(`real_life_reference/flow1–4.png`): boxed stages joined by labelled arrows, riding the
+whole block pipeline — one PNG, re-measure sizing, the title mechanism — unchanged.
+
+- **Placement is slot-based, never free**: a `FlowNode` names a column and a row; boxes
+  are measured from their own text, column gaps grow to fit the widest adjacent-column
+  label, and stored col/row values need not be contiguous (layout compacts them).
+- **A column's boxes share one width** (its widest boxed stage), and the column
+  **centres on its boxed stages** — a bare-text annotation ("increase in inventory
+  $50") hangs off the stack without fattening the boxes above it or pulling them off
+  the chart's midline. Both rules are the reference's own.
+- **Arrows name node ids**; an absent endpoint is an open end drawing an entering or
+  leaving stub, whose length grows to carry its own labels. **Two label slots**
+  (`label` above, `labelBelow`) because the reference stubs use both at once ("$200"
+  over "raw materials"); on a mostly-vertical shaft they read as right/left. A
+  diagonal shaft widens the clearance by its own rise across the label.
+- **Arrows aim at box centres and stop at the wall** (`flowEdgePoint`): each end sits
+  where the centre-to-centre line crosses that box's boundary, which is what staggers
+  two arrows entering one stage along its edge instead of stacking both arrowheads on
+  the midpoint.
+- **The natural layout scales uniformly to the stored width**, photo-style, fitted and
+  centred against both stored dimensions — a flow chart's natural width is set by boxed
+  prose, and the reference figures are wider than the text column often enough that
+  shrinking the whole picture is the only honest way to honour the teacher's width.
+  Every flow edit re-measures (a longer stage name changes the aspect).
+- **A flow chart opens its own editor, never the axes canvas** —
+  `components/editor/FlowCanvas.tsx`, reached like the axes one (thumbnail, panel
+  button, double-click on the page; `EditorApp` picks the surface). Direct
+  manipulation over the real SVG: a drag commits a **column + insertion index**
+  (`model/flowEdits.ts`, pure and tested), never a pixel position; past the outermost
+  column means a new one. Arrows are drawn box-to-box (release on empty paper = open
+  stub); text is retyped where it prints. Canvas house rules apply: commit on release,
+  a dragged box deselects itself, hit-testing reads `flowChartLayout()` — the exact
+  rectangles `flowSvg` drew. The sidebar keeps only the way in plus a summary.
+- The `flow` template ships invented wording — the reference charts are past-paper
+  questions and must not ship. An empty chart stays visible as one empty stage box.
+
 ### Drawing (`model/diagramDraw.ts`, `components/editor/DiagramCanvas.tsx`)
 
 **The canvas owns the geometry; the panel owns everything else** (Template, Width, Alt

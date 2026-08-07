@@ -5,6 +5,9 @@ import type {
   DiagramCurve,
   DiagramLabel,
   DiagramPointMark,
+  FlowArrow,
+  FlowChart,
+  FlowNode,
   PieChart,
 } from '@/model/diagram';
 import type { BiText, FontPair, LanguageMode, RichText } from '@/model/types';
@@ -789,6 +792,8 @@ export function diagramSize(
 ): { widthPx: number; heightPx: number } {
   // The pie variant has no plot aspect and no crop: a circle plus the title's room.
   if (diagram.pie) return pieSize(diagram, widthPx, language);
+  // The flow variant's shape comes entirely from its own measured layout.
+  if (diagram.flow) return flowSize(diagram, diagram.flow, widthPx, language);
   // A cropped diagram is sized by its frame, not by measuring: the teacher chose the
   // clearance on every side, so the plot takes what the width leaves after their pads
   // and the height follows from the plot's aspect plus their top and bottom. Language
@@ -1027,6 +1032,506 @@ function pieSvg(diagram: Diagram, pie: PieChart, options: DiagramSvgOptions): st
   );
 }
 
+/*
+ * ── The flow chart variant ────────────────────────────────────────────────────────
+ *
+ * A `Diagram` carrying `flow` draws the production-chain figure the papers use for
+ * value-added and national-income questions (`real_life_reference/flow1–4.png`):
+ * boxed stages in left-to-right columns, arrows between them carrying the payment
+ * labels, and open-ended stub arrows entering or leaving the chart.
+ *
+ * Nothing here is positioned in pixels by the teacher. A node names a column and a
+ * row; every box is measured from its own text; column gaps grow to fit the widest
+ * label crossing them — so the chart lays itself out the way the reference figures
+ * are drawn, and re-wording a stage reflows the picture instead of clipping it.
+ *
+ * The layout is computed at a **natural size** (all text at the usual 10pt) and then
+ * scaled uniformly to the block's stored width, photo-style. Flow charts are the one
+ * diagram whose natural width is set by prose in boxes rather than by a plot aspect,
+ * and the reference figures are wider than the text column often enough that "shrink
+ * the whole picture" is the only honest way to honour the teacher's width.
+ */
+
+/** Text clearance inside a box, px at natural size. */
+const FLOW_BOX_PAD_X = 10;
+const FLOW_BOX_PAD_Y = 7;
+/** No stage box narrower than this: a box around "$50" alone stops reading as a stage. */
+const FLOW_MIN_BOX_WIDTH = 64;
+/** The floor for the white gap between two columns; labels widen it. */
+const FLOW_COL_GAP = 64;
+/** Vertical gap between two boxes stacked in one column. */
+const FLOW_ROW_GAP = 30;
+/** Length of an open-ended stub arrow. */
+const FLOW_STUB = 48;
+/** White clearance around the whole chart. */
+const FLOW_PAD = 12;
+/** Clearance between an arrow shaft and the label riding on it. */
+const FLOW_LABEL_GAP = 7;
+const FLOW_LINE_HEIGHT = FONT_SIZE * 1.15;
+
+export interface FlowBoxLayout {
+  node: FlowNode;
+  lines: RichText[];
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface FlowLabelLayout {
+  lines: RichText[];
+  x: number;
+  /** Baseline of the FIRST line, matching `textAt`. */
+  y: number;
+  anchor: 'start' | 'middle' | 'end';
+}
+
+export interface FlowArrowLayout {
+  /** The stored arrow this segment draws, so an editor can hit-test back to it. */
+  arrow: FlowArrow;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  label?: FlowLabelLayout;
+  labelBelow?: FlowLabelLayout;
+}
+
+/**
+ * Where a centre-aimed arrow meets a box: the point where the segment from the box's
+ * centre towards `toward` crosses the box's own boundary. This is how the reference
+ * charts draw — every arrow aims at its stage's centre and stops at the wall — and it
+ * is what staggers two arrows entering one box along its edge instead of stacking
+ * both arrowheads on the edge's midpoint.
+ */
+function flowEdgePoint(
+  box: FlowBoxLayout,
+  toward: { x: number; y: number },
+): { x: number; y: number } {
+  const cx = box.x + box.w / 2;
+  const cy = box.y + box.h / 2;
+  const dx = toward.x - cx;
+  const dy = toward.y - cy;
+  const tx = dx === 0 ? Infinity : box.w / 2 / Math.abs(dx);
+  const ty = dy === 0 ? Infinity : box.h / 2 / Math.abs(dy);
+  const t = Math.min(tx, ty);
+  if (!Number.isFinite(t)) return { x: cx, y: cy };
+  return { x: cx + dx * t, y: cy + dy * t };
+}
+
+export interface FlowLayout {
+  boxes: FlowBoxLayout[];
+  arrows: FlowArrowLayout[];
+  /** Natural canvas size, title room included. */
+  width: number;
+  height: number;
+  /** Vertical room the title occupies, and which side it sits. */
+  titleRoom: number;
+  titleBelow: boolean;
+}
+
+/**
+ * Lay the chart out at natural size. Shared by `flowSize` (which needs only the box)
+ * and `flowSvg` (which draws it), so the measured size and the drawing cannot disagree.
+ */
+function flowLayout(diagram: Diagram, flow: FlowChart, language: LanguageMode): FlowLayout {
+  const room = titleRoom(diagram, language, 1);
+  const titleBelow = diagram.titlePlacement === 'below';
+
+  // Measure every box from its own text.
+  const measured = flow.nodes.map((node) => {
+    const lines = pickSides(node.label, language);
+    const textW = estimateWidth(lines, FONT_SIZE);
+    const textH = Math.max(1, lines.length) * FLOW_LINE_HEIGHT;
+    const boxed = node.boxed !== false;
+    return {
+      node,
+      lines,
+      w: boxed ? Math.max(FLOW_MIN_BOX_WIDTH, textW + 2 * FLOW_BOX_PAD_X) : textW + 4,
+      h: boxed ? textH + 2 * FLOW_BOX_PAD_Y : textH + 2,
+    };
+  });
+
+  // An empty chart still shows something clickable: one empty stage box, the flow
+  // equivalent of the empty pie's bare circle.
+  if (measured.length === 0) {
+    const w = 120;
+    const h = 40;
+    return {
+      boxes: [
+        {
+          node: { id: '__empty', label: { en: [], zh: [] }, col: 0, row: 0 },
+          lines: [],
+          x: FLOW_PAD + 28,
+          y: FLOW_PAD + (titleBelow ? 0 : room) + 12,
+          w,
+          h,
+        },
+      ],
+      arrows: [],
+      width: w + 2 * FLOW_PAD + 56,
+      height: h + 2 * FLOW_PAD + 24 + room,
+      titleRoom: room,
+      titleBelow,
+    };
+  }
+
+  // Columns compact to their sorted order, so stored col/row values never need
+  // renumbering when a stage is removed.
+  const colValues = [...new Set(measured.map((box) => box.node.col))].sort((a, b) => a - b);
+  const colIndex = new Map(colValues.map((value, index) => [value, index]));
+  const columns: (typeof measured)[] = colValues.map(() => []);
+  for (const box of measured) columns[colIndex.get(box.node.col)!].push(box);
+  for (const column of columns) column.sort((a, b) => a.node.row - b.node.row);
+
+  // Two widths per column: the slot the column occupies (its widest member, so a wide
+  // bare-text annotation still gets its room), and the width its *boxes* share — an
+  // annotation must not fatten the stages above it (the reference's "increase in
+  // inventory $50" is wider than the boxes it hangs under).
+  const colWidth = columns.map((column) => Math.max(...column.map((box) => box.w)));
+  const colBoxWidth = columns.map((column, index) => {
+    const boxed = column.filter((box) => box.node.boxed !== false);
+    return boxed.length > 0 ? Math.max(...boxed.map((box) => box.w)) : colWidth[index];
+  });
+
+  /** The widest of an arrow's two labels — both ride the same stretch of shaft. */
+  const arrowLabelWidth = (arrow: FlowArrow): number =>
+    Math.max(
+      estimateWidth(pickSides(arrow.label, language), FONT_SIZE),
+      estimateWidth(pickSides(arrow.labelBelow, language), FONT_SIZE),
+    );
+
+  // A gap must fit the widest label crossing it between adjacent columns; an arrow
+  // spanning further already has more than one gap's room.
+  const boxById = new Map<string, (typeof measured)[number]>();
+  for (const box of measured) boxById.set(box.node.id, box);
+  const gaps = colValues.slice(0, -1).map(() => FLOW_COL_GAP);
+  for (const arrow of flow.arrows) {
+    const from = arrow.from ? boxById.get(arrow.from) : undefined;
+    const to = arrow.to ? boxById.get(arrow.to) : undefined;
+    if (!from || !to) continue;
+    const a = colIndex.get(from.node.col)!;
+    const b = colIndex.get(to.node.col)!;
+    if (Math.abs(a - b) !== 1) continue;
+    const width = arrowLabelWidth(arrow);
+    if (width === 0) continue;
+    const gap = Math.min(a, b);
+    gaps[gap] = Math.max(gaps[gap], width + 16);
+  }
+
+  // Positions: columns left to right, each column's stack centred on y = 0.
+  const colX: number[] = [];
+  let x = 0;
+  colValues.forEach((_, index) => {
+    colX.push(x);
+    x += colWidth[index] + (index < gaps.length ? gaps[index] : 0);
+  });
+
+  const boxes: FlowBoxLayout[] = [];
+  columns.forEach((column, index) => {
+    // Stack in row order, then centre the column on its **boxed** stages: an
+    // annotation hangs off the stack without pulling the stages off the chart's
+    // midline — the reference centres "Local supermarkets" between the two source
+    // boxes while "increase in inventory $50" dangles below them.
+    let y = 0;
+    const placed = column.map((box) => {
+      const top = y;
+      y += box.h + FLOW_ROW_GAP;
+      return { box, top };
+    });
+    const boxed = placed.filter(({ box }) => box.node.boxed !== false);
+    const anchor = boxed.length > 0 ? boxed : placed;
+    const centre =
+      (anchor[0].top + anchor[anchor.length - 1].top + anchor[anchor.length - 1].box.h) / 2;
+    for (const { box, top } of placed) {
+      // Boxed stages take their column's shared box width — the reference charts draw
+      // a column's boxes at one width, and ragged boxes read as a mistake beside them.
+      const w = box.node.boxed !== false ? colBoxWidth[index] : box.w;
+      boxes.push({
+        ...box,
+        w,
+        x: colX[index] + (colWidth[index] - w) / 2,
+        y: top - centre,
+      });
+    }
+  });
+
+  const placedById = new Map<string, FlowBoxLayout>();
+  for (const box of boxes) placedById.set(box.node.id, box);
+
+  // Resolve every arrow to a segment between box edges (or a stub off one edge).
+  const arrows: FlowArrowLayout[] = [];
+  for (const arrow of flow.arrows) {
+    const from = arrow.from ? placedById.get(arrow.from) : undefined;
+    const to = arrow.to ? placedById.get(arrow.to) : undefined;
+    if (!from && !to) continue;
+
+    let x1: number;
+    let y1: number;
+    let x2: number;
+    let y2: number;
+    if (from && to) {
+      // Centre-aimed: each end sits where the line between the two centres crosses
+      // that box's own wall (§ `flowEdgePoint`) — two arrows into one stage enter its
+      // edge at different heights, as the reference charts draw them.
+      const fromCentre = { x: from.x + from.w / 2, y: from.y + from.h / 2 };
+      const toCentre = { x: to.x + to.w / 2, y: to.y + to.h / 2 };
+      const start = flowEdgePoint(from, toCentre);
+      const end = flowEdgePoint(to, fromCentre);
+      x1 = start.x;
+      y1 = start.y;
+      x2 = end.x;
+      y2 = end.y;
+    } else {
+      // A stub grows to fit its own labels — a fixed length put the wording on top
+      // of the box it enters.
+      const stub = Math.max(FLOW_STUB, arrowLabelWidth(arrow) + 12);
+      if (to) {
+        // Open start: a stub entering the target from its left.
+        x2 = to.x;
+        y2 = to.y + to.h / 2;
+        x1 = x2 - stub;
+        y1 = y2;
+      } else {
+        // Open end: a stub leaving the source to its right.
+        x1 = from!.x + from!.w;
+        y1 = from!.y + from!.h / 2;
+        x2 = x1 + stub;
+        y2 = y1;
+      }
+    }
+
+    // Both label slots ride the shaft's midpoint, one per side. On a mostly-vertical
+    // shaft, `above` reads as the right side and `below` as the left.
+    const midX = (x1 + x2) / 2;
+    const midY = (y1 + y2) / 2;
+    const vertical = Math.abs(x2 - x1) < Math.abs(y2 - y1);
+    const placeLabel = (
+      text: BiText | undefined,
+      below: boolean,
+    ): FlowLabelLayout | undefined => {
+      const lines = pickSides(text, language);
+      if (lines.length === 0) return undefined;
+      if (vertical) {
+        return {
+          lines,
+          x: midX + (below ? -FLOW_LABEL_GAP : FLOW_LABEL_GAP),
+          y: midY - ((lines.length - 1) * FLOW_LINE_HEIGHT) / 2 + FONT_SIZE * 0.35,
+          anchor: below ? 'end' : 'start',
+        };
+      }
+      // A diagonal shaft rises through the label's own span, so the clearance grows
+      // by how far the line climbs across half the label's width — without it the
+      // shaft ran through the end of every label on a branching arrow.
+      const labelW = estimateWidth(lines, FONT_SIZE);
+      const rise = Math.abs(y2 - y1) / Math.max(1, Math.abs(x2 - x1));
+      const gap = FLOW_LABEL_GAP + Math.min(rise * (labelW / 2), 18);
+      // The last baseline clears the shaft above; the first hangs below it.
+      return {
+        lines,
+        x: midX,
+        y: below
+          ? midY + gap + FONT_SIZE * 0.8
+          : midY - gap - (lines.length - 1) * FLOW_LINE_HEIGHT,
+        anchor: 'middle',
+      };
+    };
+    arrows.push({
+      arrow,
+      x1,
+      y1,
+      x2,
+      y2,
+      label: placeLabel(arrow.label, false),
+      labelBelow: placeLabel(arrow.labelBelow, true),
+    });
+  }
+
+  // Bounds over everything drawn — boxes, shafts and label blocks — so no label can
+  // leave the canvas (an SVG clips silently; § "Prico lovol").
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  const include = (left: number, top: number, right: number, bottom: number) => {
+    minX = Math.min(minX, left);
+    maxX = Math.max(maxX, right);
+    minY = Math.min(minY, top);
+    maxY = Math.max(maxY, bottom);
+  };
+  for (const box of boxes) include(box.x, box.y, box.x + box.w, box.y + box.h);
+  for (const arrow of arrows) {
+    include(
+      Math.min(arrow.x1, arrow.x2),
+      Math.min(arrow.y1, arrow.y2),
+      Math.max(arrow.x1, arrow.x2),
+      Math.max(arrow.y1, arrow.y2),
+    );
+    for (const label of [arrow.label, arrow.labelBelow]) {
+      if (!label) continue;
+      const width = estimateWidth(label.lines, FONT_SIZE);
+      const left =
+        label.anchor === 'middle'
+          ? label.x - width / 2
+          : label.anchor === 'end'
+            ? label.x - width
+            : label.x;
+      include(
+        left,
+        label.y - FONT_SIZE * 0.8,
+        left + width,
+        label.y + (label.lines.length - 1) * FLOW_LINE_HEIGHT + FONT_SIZE * 0.25,
+      );
+    }
+  }
+
+  // Shift into the canvas: padding all round, the title's room on its own side only.
+  const dx = FLOW_PAD - minX;
+  const dy = FLOW_PAD + (titleBelow ? 0 : room) - minY;
+  for (const box of boxes) {
+    box.x += dx;
+    box.y += dy;
+  }
+  for (const arrow of arrows) {
+    arrow.x1 += dx;
+    arrow.x2 += dx;
+    arrow.y1 += dy;
+    arrow.y2 += dy;
+    for (const label of [arrow.label, arrow.labelBelow]) {
+      if (!label) continue;
+      label.x += dx;
+      label.y += dy;
+    }
+  }
+
+  const contentW = maxX - minX + 2 * FLOW_PAD;
+  const titleW =
+    room > 0 ? estimateWidth(pickSides(diagram.title, language), TITLE_SIZE) + 20 : 0;
+  return {
+    boxes,
+    arrows,
+    width: Math.max(contentW, titleW),
+    height: maxY - minY + 2 * FLOW_PAD + room,
+    titleRoom: room,
+    titleBelow,
+  };
+}
+
+/**
+ * The flow chart's natural layout, for the flow editor: box rectangles and arrow
+ * segments in natural pixels (the coordinates `flowSvg` draws at scale 1), each
+ * carrying the stored node/arrow it renders. The editor's stage draws the SVG at
+ * natural size × zoom, so hit-testing is pointer ÷ zoom against exactly these boxes —
+ * the same shared-projection rule the axes canvas lives by.
+ */
+export function flowChartLayout(
+  diagram: Diagram,
+  flow: FlowChart,
+  language: LanguageMode,
+): FlowLayout {
+  return flowLayout(diagram, flow, language);
+}
+
+/**
+ * `diagramSize` for the flow variant: the teacher's width, with the height following
+ * the natural layout's own aspect. The whole picture scales uniformly — text included —
+ * because the natural width is set by the boxed prose, and a chart wider than the text
+ * column must be shrinkable without re-laying anything out.
+ */
+function flowSize(
+  diagram: Diagram,
+  flow: FlowChart,
+  widthPx: number,
+  language: LanguageMode,
+): { widthPx: number; heightPx: number } {
+  const layout = flowLayout(diagram, flow, language);
+  const width = Math.max(160, widthPx);
+  return { widthPx: width, heightPx: Math.max(1, Math.round((width * layout.height) / layout.width)) };
+}
+
+/** `diagramSvg` for the flow variant. */
+function flowSvg(diagram: Diagram, flow: FlowChart, options: DiagramSvgOptions): string {
+  const scale = options.scale ?? 1;
+  const width = options.widthPx * scale;
+  const height = options.heightPx * scale;
+  const language = options.language;
+  const layout = flowLayout(diagram, flow, language);
+  // One uniform factor from natural to stored size, fitted to both dimensions and
+  // centred — a stale stored height (measured in another language mode) letterboxes
+  // evenly rather than distorting or leaving a lopsided blank strip.
+  const eff = Math.min(width / layout.width, height / layout.height);
+  const tx = (width - layout.width * eff) / 2;
+  const ty = (height - layout.height * eff) / 2;
+
+  const fontFamily = options.fonts
+    ? `${options.fonts.latin}, ${options.fonts.eastAsia}, serif`
+    : 'Times New Roman, serif';
+
+  const head = 5;
+  const defs =
+    `<defs><marker id="flowHead" markerWidth="${n(head * 2)}" markerHeight="${n(head * 2)}" ` +
+    `refX="${n(head * 1.8)}" refY="${n(head)}" orient="auto" markerUnits="userSpaceOnUse">` +
+    `<path d="M 0 0 L ${n(head * 2)} ${n(head)} L 0 ${n(head * 2)} z" fill="#000"/></marker></defs>`;
+
+  const boxStroke = `stroke="#000" stroke-width="1.2" fill="#fff"`;
+  const parts: string[] = [];
+  for (const box of layout.boxes) {
+    if (box.node.boxed !== false) {
+      parts.push(
+        `<rect x="${n(box.x)}" y="${n(box.y)}" width="${n(box.w)}" height="${n(box.h)}" ${boxStroke}/>`,
+      );
+    }
+    parts.push(
+      textAt(
+        box.lines,
+        box.x + box.w / 2,
+        // First baseline centres the block of lines in the box.
+        box.y +
+          box.h / 2 -
+          ((box.lines.length - 1) * FLOW_LINE_HEIGHT) / 2 +
+          FONT_SIZE * 0.35,
+        { anchor: 'middle' },
+      ),
+    );
+  }
+
+  const shaftStroke = `stroke="#000" stroke-width="1.6" fill="none" marker-end="url(#flowHead)"`;
+  for (const arrow of layout.arrows) {
+    parts.push(
+      `<path d="M ${n(arrow.x1)} ${n(arrow.y1)} L ${n(arrow.x2)} ${n(arrow.y2)}" ${shaftStroke}/>`,
+    );
+    for (const label of [arrow.label, arrow.labelBelow]) {
+      if (!label) continue;
+      parts.push(textAt(label.lines, label.x, label.y, { anchor: label.anchor }));
+    }
+  }
+
+  // The caption, centred on the canvas and underlined like the axes diagrams' — a flow
+  // chart in the papers is introduced by a caption in exactly that style.
+  const titleLines = pickSides(diagram.title, language);
+  const title = textAt(
+    titleLines,
+    layout.width / 2,
+    layout.titleBelow
+      ? layout.height - layout.titleRoom + TITLE_GAP + TITLE_SIZE
+      : TITLE_TOP + TITLE_SIZE * 1.1,
+    { anchor: 'middle', fontSize: TITLE_SIZE, underline: true },
+  );
+
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${n(width)}" height="${n(height)}" ` +
+    `viewBox="0 0 ${n(width)} ${n(height)}" font-family="${escapeXml(fontFamily)}">` +
+    // White ground: a transparent PNG would print as whatever is behind it in Word.
+    `<rect width="${n(width)}" height="${n(height)}" fill="#fff"/>` +
+    `<g transform="translate(${n(tx)} ${n(ty)}) scale(${n(eff)})">` +
+    defs +
+    parts.join('') +
+    title +
+    '</g>' +
+    '</svg>'
+  );
+}
+
 /**
  * Where the diagram's title is drawn.
  *
@@ -1142,6 +1647,7 @@ export function diagramPlot(diagram: Diagram, options: DiagramSvgOptions): Proje
  */
 export function diagramSvg(diagram: Diagram, options: DiagramSvgOptions): string {
   if (diagram.pie) return pieSvg(diagram, diagram.pie, options);
+  if (diagram.flow) return flowSvg(diagram, diagram.flow, options);
   const scale = options.scale ?? 1;
   const width = options.widthPx * scale;
   const height = options.heightPx * scale;

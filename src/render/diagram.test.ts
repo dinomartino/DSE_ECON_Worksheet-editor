@@ -913,3 +913,198 @@ describe('the pie chart variant', () => {
     expect((svg.match(/Ele\.me/g) ?? []).length).toBe(1);
   });
 });
+
+describe('the flow chart variant', () => {
+  const flow = () => buildFromTemplate('flow');
+  const sized = (diagram = flow(), widthPx = 460) => ({
+    diagram,
+    options: { ...diagramSize(diagram, widthPx, 'en' as const), language: 'en' as const },
+  });
+
+  it('ships a template whose stages and labels carry both language sides', () => {
+    const diagram = flow();
+    expect(diagram.flow).toBeTruthy();
+    for (const node of diagram.flow!.nodes) {
+      expect(node.label.en.some((run) => run.text.trim() !== '')).toBe(true);
+      expect(node.label.zh.some((run) => run.text.trim() !== '')).toBe(true);
+    }
+    for (const arrow of diagram.flow!.arrows) {
+      if (!arrow.label) continue;
+      expect(arrow.label.en.some((run) => run.text.trim() !== '')).toBe(true);
+      expect(arrow.label.zh.some((run) => run.text.trim() !== '')).toBe(true);
+    }
+  });
+
+  it('draws one box per stage, every arrow, and the labels riding on them', () => {
+    const { diagram, options } = sized();
+    const svg = diagramSvg(diagram, options);
+    // Four boxed stages, plus the white ground rect.
+    expect((svg.match(/<rect /g) ?? []).length).toBe(1 + 4);
+    // Four arrows, each a marker-ended shaft — including the open-start stub.
+    expect((svg.match(/marker-end="url\(#flowHead\)"/g) ?? []).length).toBe(4);
+    expect(svg).toContain('Flour mill');
+    expect(svg).toContain('Bakery');
+    expect(svg).toContain('$10 000');
+    expect(svg).toContain('Bread ($40 000)');
+  });
+
+  it('draws an unboxed stage as bare text, with no rect of its own', () => {
+    const diagram = flow();
+    diagram.flow = {
+      nodes: [
+        { id: 'a', label: bi('Farm', '農場'), col: 0, row: 0 },
+        { id: 'b', label: bi('inventory $50', '存貨 $50'), col: 0, row: 1, boxed: false },
+      ],
+      arrows: [{ id: 'r', from: 'a', to: 'b' }],
+    };
+    const svg = diagramSvg(diagram, { ...diagramSize(diagram, 300, 'en'), language: 'en' });
+    // One stage box plus the ground; the annotation draws no rect.
+    expect((svg.match(/<rect /g) ?? []).length).toBe(1 + 1);
+    expect(svg).toContain('inventory $50');
+  });
+
+  it('keeps a same-column arrow vertical, between the facing edges', () => {
+    const diagram = flow();
+    diagram.flow = {
+      nodes: [
+        { id: 'a', label: bi('Farm', '農場'), col: 0, row: 0 },
+        { id: 'b', label: bi('Market', '市場'), col: 0, row: 1 },
+      ],
+      arrows: [{ id: 'r', from: 'a', to: 'b' }],
+    };
+    const svg = diagramSvg(diagram, { ...diagramSize(diagram, 300, 'en'), language: 'en' });
+    const shaft = svg.match(/<path d="M ([\d.]+) ([\d.]+) L ([\d.]+) ([\d.]+)" stroke="#000" stroke-width="1.6"/);
+    expect(shaft).toBeTruthy();
+    const [, x1, y1, x2, y2] = shaft!.map(Number);
+    expect(x1).toBeCloseTo(x2, 5);
+    expect(y2).toBeGreaterThan(y1);
+  });
+
+  it('scales to the stored width, keeping the natural layout aspect', () => {
+    const diagram = flow();
+    const wide = diagramSize(diagram, 600, 'en');
+    const narrow = diagramSize(diagram, 300, 'en');
+    expect(wide.widthPx).toBe(600);
+    expect(narrow.widthPx).toBe(300);
+    expect(wide.heightPx / wide.widthPx).toBeCloseTo(narrow.heightPx / narrow.widthPx, 2);
+  });
+
+  it('re-measures when a stage is renamed: a longer name widens the natural chart', () => {
+    const diagram = flow();
+    const before = diagramSize(diagram, 460, 'en');
+    const renamed = structuredClone(diagram);
+    renamed.flow!.nodes[0].label = bi('An unusually long intermediate producer name', '一個很長的名字');
+    const after = diagramSize(renamed, 460, 'en');
+    // Same stored width; the natural chart got wider, so the printed height shrinks.
+    expect(after.widthPx).toBe(before.widthPx);
+    expect(after.heightPx).toBeLessThan(before.heightPx);
+  });
+
+  it('prints both label slots at once, one per side of the shaft', () => {
+    const diagram = flow();
+    // The reference stubs carry "$200" above and "raw materials" below, together.
+    diagram.flow!.arrows[0].label = bi('$200', '$200');
+    diagram.flow!.arrows[0].labelBelow = bi('raw materials', '原料');
+    const svg = diagramSvg(diagram, { ...diagramSize(diagram, 460, 'en'), language: 'en' });
+    const labelY = (text: string) =>
+      Number(
+        svg.match(new RegExp(`<text x="[\\d.]+" y="([\\d.]+)"[^>]*><tspan[^>]*>${text}`))?.[1],
+      );
+    expect(labelY('raw materials')).toBeGreaterThan(labelY('\\$200'));
+  });
+
+  it('moves a label to the shaft\'s other side via labelBelow', () => {
+    const above = flow();
+    const svgAbove = diagramSvg(above, { ...diagramSize(above, 460, 'en'), language: 'en' });
+    const below = structuredClone(above);
+    below.flow!.arrows[1].labelBelow = below.flow!.arrows[1].label;
+    below.flow!.arrows[1].label = undefined;
+    const svgBelow = diagramSvg(below, { ...diagramSize(below, 460, 'en'), language: 'en' });
+    const labelY = (svg: string) =>
+      Number(svg.match(/<text x="[\d.]+" y="([\d.]+)"[^>]*><tspan[^>]*>Flour \(/)?.[1]);
+    expect(labelY(svgBelow)).toBeGreaterThan(labelY(svgAbove));
+  });
+
+  it('draws every boxed stage in a column at that column\'s one width', () => {
+    // "Local consumers" and "Hotels" share a column in the template; the reference
+    // charts draw a column's boxes at one width however long their names are.
+    const diagram = flow();
+    const svg = diagramSvg(diagram, { ...diagramSize(diagram, 460, 'en'), language: 'en' });
+    const widths = [...svg.matchAll(/<rect x="[\d.]+" y="[\d.]+" width="([\d.]+)"/g)].map((m) =>
+      Number(m[1]),
+    );
+    // Ground rect excluded by the x/y capture shape? It matches too — drop the widest
+    // (the ground spans the canvas). The template's third column holds two stages.
+    const boxWidths = widths.slice(1);
+    expect(new Set(boxWidths.map((w) => Math.round(w))).size).toBeLessThan(boxWidths.length);
+  });
+
+  it('lengthens a stub to carry its labels clear of the box', () => {
+    const bare = flow();
+    bare.flow!.arrows[0].label = undefined;
+    const short = diagramSvg(bare, { ...diagramSize(bare, 460, 'en'), language: 'en' });
+    const wordy = flow();
+    wordy.flow!.arrows[0].label = bi('$200 for raw materials', '$200 原料');
+    const long = diagramSvg(wordy, { ...diagramSize(wordy, 460, 'en'), language: 'en' });
+    const stubLength = (svg: string) => {
+      // The stub is the only shaft whose two y coordinates are equal at the chart's left.
+      const shafts = [...svg.matchAll(/<path d="M ([\d.]+) ([\d.]+) L ([\d.]+) ([\d.]+)" stroke="#000" stroke-width="1.6"/g)];
+      const stub = shafts
+        .map((m) => m.slice(1).map(Number))
+        .find(([, y1, , y2]) => Math.abs(y1 - y2) < 0.01);
+      return stub ? stub[2] - stub[0] : 0;
+    };
+    expect(stubLength(long)).toBeGreaterThan(stubLength(short));
+  });
+
+  it('staggers two arrows entering one stage along its edge, aimed at the centres', () => {
+    const diagram = flow();
+    diagram.flow = {
+      nodes: [
+        { id: 'up', label: bi('Importers', '進口商'), col: 0, row: 0 },
+        { id: 'down', label: bi('Farmers', '農民'), col: 0, row: 1 },
+        { id: 'mid', label: bi('Supermarkets', '超級市場'), col: 1, row: 0 },
+      ],
+      arrows: [
+        { id: 'a', from: 'up', to: 'mid' },
+        { id: 'b', from: 'down', to: 'mid' },
+      ],
+    };
+    const svg = diagramSvg(diagram, { ...diagramSize(diagram, 400, 'en'), language: 'en' });
+    const shafts = [...svg.matchAll(/<path d="M ([\d.]+) ([\d.]+) L ([\d.]+) ([\d.]+)" stroke="#000" stroke-width="1.6"/g)].map(
+      (m) => m.slice(1).map(Number),
+    );
+    expect(shafts).toHaveLength(2);
+    const [a, b] = shafts;
+    // Both enter the target's left edge (same x), at different heights.
+    expect(Math.abs(a[2] - b[2])).toBeLessThan(0.01);
+    expect(Math.abs(a[3] - b[3])).toBeGreaterThan(4);
+  });
+
+  it('keeps an empty chart visible as one empty stage box', () => {
+    const diagram = flow();
+    diagram.flow = { nodes: [], arrows: [] };
+    const svg = diagramSvg(diagram, { ...diagramSize(diagram, 300, 'en'), language: 'en' });
+    expect((svg.match(/<rect /g) ?? []).length).toBe(1 + 1);
+  });
+
+  it('never opens the axes vocabulary: the template carries no curves or points', () => {
+    const diagram = flow();
+    expect(diagram.curves).toHaveLength(0);
+    expect(diagram.points).toHaveLength(0);
+  });
+
+  it('rides the diagram pipeline: a flow block reaches the export pre-pass', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const block = createDiagramBlock('flow');
+    worksheet.questions[0].blocks.push(block);
+    const nodes = collectDiagramNodes(worksheet, STUDENT_BI);
+    expect(nodes.some((node) => node.blockId === block.id && node.diagram.flow)).toBe(true);
+  });
+
+  it('prints a purely numeric bilingual arrow label once', () => {
+    const diagram = flow();
+    const svg = diagramSvg(diagram, { ...diagramSize(diagram, 460, 'bilingual'), language: 'bilingual' });
+    expect((svg.match(/\$10 000/g) ?? []).length).toBe(1);
+  });
+});

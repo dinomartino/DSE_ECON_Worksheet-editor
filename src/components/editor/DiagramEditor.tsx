@@ -14,10 +14,11 @@ import {
   IconButton,
   NumberField,
   Segmented,
-  SelectField,
 } from '@/components/ui';
 import { BiTextField } from './BiTextField';
 import { DiagramCanvas } from './DiagramCanvas';
+import { DiagramTemplatePopover } from './DiagramTemplatePicker';
+import { FlowCanvas } from './FlowCanvas';
 
 /**
  * The diagram block's panel: **everything except the drawing** — the canvas owns the
@@ -74,7 +75,7 @@ export function DiagramEditor({ block, onChange }: Props) {
           direct-child form silently matched nothing. */}
       {diagram.pie ? (
         // A pie has no drawing surface — its slices are data, edited in the fields
-        // below — so the thumbnail is a plain preview, not a way into the canvas.
+        // below — so the thumbnail is a plain preview, not a way into a canvas.
         <div
           className="overflow-hidden rounded border border-line bg-surface [&_svg]:h-auto [&_svg]:w-full"
           style={{ lineHeight: 0 }}
@@ -84,7 +85,7 @@ export function DiagramEditor({ block, onChange }: Props) {
       ) : (
         <button
           type="button"
-          title="Draw on this diagram"
+          title={diagram.flow ? 'Edit this flow chart' : 'Draw on this diagram'}
           onClick={() => setDrawing(true)}
           className="group/preview relative block w-full overflow-hidden rounded border border-line bg-surface [&_svg]:h-auto [&_svg]:w-full "
           style={{ lineHeight: 0 }}
@@ -92,15 +93,19 @@ export function DiagramEditor({ block, onChange }: Props) {
           <span dangerouslySetInnerHTML={{ __html: preview }} />
           <span className="absolute inset-0 flex items-center justify-center bg-sky-500/0 opacity-0 transition-opacity group-hover/preview:bg-sky-500/10 group-hover/preview:opacity-100">
             <span className="rounded-md bg-slate-900/80 px-2 py-1 text-[11px] font-medium leading-none text-white">
-              Draw
+              {diagram.flow ? 'Edit' : 'Draw'}
             </span>
           </span>
         </button>
       )}
 
-      {drawing && !diagram.pie && (
-        <DiagramCanvas block={block} onChange={onChange} onClose={() => setDrawing(false)} />
-      )}
+      {drawing &&
+        !diagram.pie &&
+        (diagram.flow ? (
+          <FlowCanvas block={block} onChange={onChange} onClose={() => setDrawing(false)} />
+        ) : (
+          <DiagramCanvas block={block} onChange={onChange} onClose={() => setDrawing(false)} />
+        ))}
 
       {diagram.pie ? (
         <PieSliceFields
@@ -109,6 +114,20 @@ export function DiagramEditor({ block, onChange }: Props) {
             onChange({ ...block, diagram: { ...diagram, pie: { slices } } })
           }
         />
+      ) : diagram.flow ? (
+        /* The flow chart is edited on its own canvas — boxes drag between columns,
+           arrows draw box-to-box — so the panel offers the way in and a summary, the
+           same division the axes diagrams use. */
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" onClick={() => setDrawing(true)}>
+            ✎ Edit flow chart
+          </Button>
+          <span className="text-[11px] text-ink-subtle">
+            {diagram.flow.nodes.length === 0
+              ? 'Empty — add boxes and arrows on the canvas'
+              : `${diagram.flow.nodes.length} ${diagram.flow.nodes.length === 1 ? 'box' : 'boxes'} · ${diagram.flow.arrows.length} ${diagram.flow.arrows.length === 1 ? 'arrow' : 'arrows'}`}
+          </span>
+        </div>
       ) : (
         /* Draw is the weightiest control in this panel, because every edit to the picture
            itself now happens there — a teacher who does not find this button finds no way
@@ -129,32 +148,42 @@ export function DiagramEditor({ block, onChange }: Props) {
         </div>
       )}
 
-      {/* Wraps, because the two controls have genuinely different needs: Width is sized by
-          its content while the template select wants whatever is left. In a 400px column
+      {/* Wraps, because the controls have genuinely different needs: Width is sized by
+          its content while the template button wants whatever is left. In a 400px column
           that sum exceeds the row often enough that a second line is the honest answer —
           squeezing instead clipped "Width" off the edge. */}
       <div className="flex flex-wrap items-center gap-2">
-        <SelectField
-          label="Template"
-          value={diagram.templateId ?? 'blank'}
-          options={DIAGRAM_TEMPLATES.map((template) => ({
-            value: template.id,
-            label: plain(template.name.en),
-          }))}
-          onChange={(templateId) => {
-            // Replacing the geometry wholesale is the point of picking a template, and it
-            // routes through the store like any edit, so ⌘Z brings the old one back.
-            // Re-measured, because the shapes disagree about their box — a pie is a
-            // square-ish circle, the axes templates a 4:3 plot — and keeping the old
-            // block size would letterbox the new picture inside it.
-            const next = buildFromTemplate(String(templateId));
-            onChange({
-              ...block,
-              ...diagramSize(next, block.widthPx, language),
-              diagram: next,
-            });
-          }}
-        />
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-ink-subtle">Template</span>
+          {/* A visual picker, not a name list: a teacher chooses a *shape*, and the
+              cards render each template through the real renderer. */}
+          <DiagramTemplatePopover
+            currentId={diagram.templateId ?? 'blank'}
+            trigger={
+              <>
+                {plain(
+                  DIAGRAM_TEMPLATES.find(
+                    (template) => template.id === (diagram.templateId ?? 'blank'),
+                  )?.name.en ?? [],
+                ) || 'Blank axes'}{' '}
+                ▾
+              </>
+            }
+            onPick={(templateId) => {
+              // Replacing the geometry wholesale is the point of picking a template, and it
+              // routes through the store like any edit, so ⌘Z brings the old one back.
+              // Re-measured, because the shapes disagree about their box — a pie is a
+              // square-ish circle, the axes templates a 4:3 plot — and keeping the old
+              // block size would letterbox the new picture inside it.
+              const next = buildFromTemplate(templateId);
+              onChange({
+                ...block,
+                ...diagramSize(next, block.widthPx, language),
+                diagram: next,
+              });
+            }}
+          />
+        </div>
         <NumberField
           label="Width"
           min={160}

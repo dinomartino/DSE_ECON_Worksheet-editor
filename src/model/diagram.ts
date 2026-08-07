@@ -204,6 +204,65 @@ export interface PieChart {
 }
 
 /**
+ * One box in a flow chart: "Garment factory", "Local consumers".
+ *
+ * Placement is **slot-based, never free** (the same rule as bands): a node names its
+ * column and its row within that column, and the renderer measures every box from its
+ * own text and lays the grid out — so re-wording a stage reflows the chart instead of
+ * overlapping a neighbour, and no stored pixel position can go stale when a box is
+ * added. Column and row values need not be contiguous; the layout compacts them, which
+ * is what keeps delete/move edits from having to renumber everything else.
+ */
+export interface FlowNode {
+  id: string;
+  label: BiText;
+  /** 0-based column, left to right. */
+  col: number;
+  /** Order within the column, top to bottom. */
+  row: number;
+  /**
+   * Absent means boxed — the reference charts frame every stage. `false` is bare text
+   * for the annotations that end a side-branch ("increase in inventory $50").
+   */
+  boxed?: boolean;
+}
+
+/**
+ * One arrow of the flow, with the payment or goods labels riding on it.
+ *
+ * Endpoints are node **ids**, not positions — the layout owns where boxes sit, so an
+ * arrow can only ever point where its stage actually is. An absent endpoint is an open
+ * end: no `from` draws a stub entering the chart ("$20 000 →" into the first factory),
+ * no `to` a stub leaving it. Both absent draws nothing.
+ *
+ * Two label slots, not one label with a side: the reference charts genuinely use both
+ * at once — flow4's entering stub prints "$200" above the shaft and "raw materials"
+ * below it. On a mostly-vertical shaft, above reads as the right side and below as
+ * the left.
+ */
+export interface FlowArrow {
+  id: string;
+  from?: string;
+  to?: string;
+  /** "Wool jacket ($700)" — printed above the shaft's midpoint. */
+  label?: BiText;
+  /** Printed below the shaft's midpoint. */
+  labelBelow?: BiText;
+}
+
+/**
+ * A production-chain flow chart (`real_life_reference/flow1–4.png`) — the value-added
+ * and national-income stimulus the papers draw as boxed stages joined by labelled
+ * arrows. A variant inside `Diagram`, exactly as `pie` is, so the whole block pipeline
+ * — one SVG, one rasterized PNG, resize by re-measure, the title mechanism — serves it
+ * unchanged.
+ */
+export interface FlowChart {
+  nodes: FlowNode[];
+  arrows: FlowArrow[];
+}
+
+/**
  * A complete diagram.
  *
  * Everything is optional except the axes, because the default state — what a teacher
@@ -265,6 +324,12 @@ export interface Diagram {
    * its slices are edited in the sidebar panel.
    */
   pie?: PieChart;
+  /**
+   * When present, the diagram **is** a flow chart, under the same contract as `pie`:
+   * the renderer draws the boxed stages and arrows and ignores the axes fields, and the
+   * sidebar panel — never the axes canvas — edits the nodes and arrows.
+   */
+  flow?: FlowChart;
   x: DiagramAxis;
   y: DiagramAxis;
   curves: DiagramCurve[];

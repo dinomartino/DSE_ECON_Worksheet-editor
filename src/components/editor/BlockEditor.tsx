@@ -33,7 +33,6 @@ import {
   type PaddingScope,
 } from '@/model/table';
 import { contentWidth, pageSetupOf, ptToTwips, twipsToPt } from '@/model/page';
-import { DIAGRAM_TEMPLATES } from '@/model/diagramTemplates';
 import { TABLE_TEMPLATES, buildTableFromTemplate } from '@/model/tableTemplates';
 import { emptyBiText, plain } from '@/model/text';
 import { RichTextEditable } from '@/components/preview/RichTextEditable';
@@ -55,11 +54,11 @@ import {
   NumberField,
   Segmented,
 } from '@/components/ui';
-import { Menu } from '@/components/ui/Menu';
 import { TableSizePicker } from '@/components/ui/TableSizePicker';
 import { BiTextField } from './BiTextField';
 import { CaptionField } from './CaptionField';
 import { DiagramEditor } from './DiagramEditor';
+import { DiagramTemplatePopover } from './DiagramTemplatePicker';
 
 /**
  * Content-block editing (§5.3): insert paragraph / table / image in any order,
@@ -233,15 +232,12 @@ export function BlockEditor({ blocks, onChange, label, labelHint, figureWidth }:
           + Image
         </Button>
         {/* Templates are offered at insert time rather than after: a teacher who wants
-            an AD–AS diagram should not have to insert blank axes and then convert. */}
-        <Menu
-          label="Insert diagram"
-          align="left"
-          trigger={<span className="text-[11px] font-medium">+ Diagram ▾</span>}
-          items={DIAGRAM_TEMPLATES.map((template) => ({
-            label: plain(template.name.en),
-            onSelect: () => onChange([...blocks, createDiagramBlock(template.id, figureWidth)]),
-          }))}
+            an AD–AS diagram should not have to insert blank axes and then convert. The
+            picker is visual — the same card grid the diagram panel's Template button
+            opens, so the choice looks identical at both moments. */}
+        <DiagramTemplatePopover
+          trigger={<>+ Diagram ▾</>}
+          onPick={(templateId) => onChange([...blocks, createDiagramBlock(templateId, figureWidth)])}
         />
         <input
           ref={fileInput}

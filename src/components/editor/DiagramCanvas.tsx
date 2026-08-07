@@ -1090,7 +1090,9 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
         )}
 
         <span className="flex-1" />
-        <span className="text-xs text-slate-400">
+        {/* The hint is the toolbar's own teaching line; slate-300 because 400 sat below
+            comfortable contrast on the dark bar. */}
+        <span className="max-w-96 text-xs leading-snug text-slate-300">
           {cropping
             ? 'Drag the frame edges — a wider frame is how a long title gets its room.'
             : selected.length > 1
@@ -1714,7 +1716,9 @@ function ToolbarButton({
       className={
         'flex h-11 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors ' +
         'disabled:pointer-events-none disabled:opacity-35 ' +
-        (danger
+        // Danger styling only while the button can actually act: a permanently red
+        // Delete reads as a warning about nothing when no selection exists.
+        (danger && !disabled
           ? 'border-rose-500/60 bg-rose-600/20 text-rose-200 hover:bg-rose-600/40'
           : 'border-slate-600 bg-slate-700 text-slate-200 hover:bg-slate-600')
       }

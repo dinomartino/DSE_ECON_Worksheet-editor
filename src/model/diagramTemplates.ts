@@ -325,6 +325,51 @@ export const DIAGRAM_TEMPLATES: DiagramTemplate[] = [
     }),
   },
   {
+    id: 'flow',
+    name: bi('Flow chart', '流程圖'),
+    hint: bi(
+      'Boxed stages joined by labelled arrows — production chains.',
+      '方框加帶標籤箭嘴，適用於生產鏈流程圖。',
+    ),
+    // The `flow` field is what makes this a flow chart: the renderer ignores the axes
+    // fields entirely, and the sidebar panel (not the drawing canvas) edits the stages
+    // and arrows. Modelled on real_life_reference/flow1–4.png with invented wording and
+    // figures — the reference charts are past-paper questions and must not ship.
+    build: () => {
+      const mill = newId();
+      const bakery = newId();
+      const consumers = newId();
+      const hotels = newId();
+      return {
+        x: {},
+        y: {},
+        curves: [],
+        points: [],
+        labels: [],
+        arrows: [],
+        flow: {
+          nodes: [
+            { id: mill, label: bi('Flour mill', '麵粉廠'), col: 0, row: 0 },
+            { id: bakery, label: bi('Bakery', '麵包店'), col: 1, row: 0 },
+            { id: consumers, label: bi('Local consumers', '本地消費者'), col: 2, row: 0 },
+            { id: hotels, label: bi('Hotels', '酒店'), col: 2, row: 1 },
+          ],
+          arrows: [
+            { id: newId(), to: mill, label: bi('$10 000', '$10 000') },
+            { id: newId(), from: mill, to: bakery, label: bi('Flour ($25 000)', '麵粉（$25 000）') },
+            { id: newId(), from: bakery, to: consumers, label: bi('Bread ($40 000)', '麵包（$40 000）') },
+            {
+              id: newId(),
+              from: bakery,
+              to: hotels,
+              labelBelow: bi('Bread ($18 000)', '麵包（$18 000）'),
+            },
+          ],
+        },
+      };
+    },
+  },
+  {
     id: 'pie',
     name: bi('Pie chart', '圓形圖'),
     hint: bi(
