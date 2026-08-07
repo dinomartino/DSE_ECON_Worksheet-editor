@@ -2201,6 +2201,40 @@ function NodeView({
     return null;
   }
 
+  if (node.kind === "figureRow") {
+    // The figure and its companion table, vertically centred beside each other — the
+    // reference's own alignment (§ FigureRowNode). The children are ordinary nodes
+    // rendered through this same view, so the figure keeps its resize handles and the
+    // table its grid controls; only the flex frame is new. The table's fractional
+    // width resolves against its own flex column, exactly as the .docx resolves the
+    // nested table against its cell.
+    const figure = (
+      <div className="min-w-0 shrink-0" style={{ maxWidth: "70%" }}>
+        <NodeView node={node.figure} language={language} ctx={ctx} />
+      </div>
+    );
+    const table = (
+      <div className="min-w-0 flex-1">
+        <TableNodeView node={node.table} language={language} ctx={ctx} />
+      </div>
+    );
+    return (
+      <div className="flex items-center gap-4">
+        {node.tableSide === "left" ? (
+          <>
+            {table}
+            {figure}
+          </>
+        ) : (
+          <>
+            {figure}
+            {table}
+          </>
+        )}
+      </div>
+    );
+  }
+
   if (node.kind === "diagram") {
     return <DiagramNodeView node={node} language={language} ctx={ctx} />;
   }

@@ -15,7 +15,12 @@ import {
   targetQuestionId,
   textOfTarget,
 } from './edits';
-import { createDiagramBlock, createParagraphBlock, createTableBlock } from './factories';
+import {
+  createDiagramBlock,
+  createFigureRowBlock,
+  createParagraphBlock,
+  createTableBlock,
+} from './factories';
 import { bi, isBiTextEmpty, plain } from './text';
 import type {
   ContentBlock,
@@ -749,5 +754,51 @@ describe('blocks inside a shared stimulus edit like blocks in a stem', () => {
 
     const run = applyRunFormatTarget(worksheet, target, 'en', 0, 6, { underline: true });
     expect(textOfTarget(run, target)!.en[0]).toMatchObject({ text: 'Market', underline: true });
+  });
+});
+
+/**
+ * A figure row's children are whole blocks one level down (§ `FigureRowBlock`), and
+ * every block route must reach them: findable, writable, resizable — and deleting a
+ * child unwraps the row to the survivor rather than taking the other child with it.
+ */
+describe('blocks inside a figure row edit like standalone blocks', () => {
+  const buildRow = () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const table = createTableBlock(2, 2);
+    const row = createFigureRowBlock(createDiagramBlock('pie', 300), table);
+    worksheet.questions[0].blocks.push(row);
+    return { worksheet, row, table, figure: row.figure };
+  };
+
+  it('finds and writes the nested table\'s cells', () => {
+    const { worksheet, table } = buildRow();
+    expect(findTableBlock(worksheet, table.id)?.id).toBe(table.id);
+
+    const cellId = table.rows[0].cells[0].id;
+    const target: EditTarget = { kind: 'tableCell', blockId: table.id, cellId };
+    const next = applyEditTarget(worksheet, target, bi('Ele.me', '餓了麼'));
+    expect(plain(textOfTarget(next, target)!.en)).toBe('Ele.me');
+  });
+
+  it('resizes the nested figure by re-measuring, and finds its diagram', () => {
+    const { worksheet, figure } = buildRow();
+    expect(blockSize(worksheet, figure.id)).toBeTruthy();
+    const next = applyResizeBlock(worksheet, figure.id, 240);
+    expect(blockSize(next, figure.id)?.widthPx).toBe(240);
+  });
+
+  it('unwraps to the survivor when either child is deleted', () => {
+    const { worksheet, row, table, figure } = buildRow();
+
+    const noTable = applyDeleteTarget(worksheet, { kind: 'blockText', blockId: table.id });
+    const survivors = noTable.questions[0].blocks;
+    expect(survivors.some((block) => block.id === row.id)).toBe(false);
+    expect(survivors.some((block) => block.id === figure.id)).toBe(true);
+
+    const noFigure = applyDeleteTarget(worksheet, { kind: 'blockText', blockId: figure.id });
+    const blocks = noFigure.questions[0].blocks;
+    expect(blocks.some((block) => block.id === table.id)).toBe(true);
+    expect(blocks.some((block) => block.id === row.id)).toBe(false);
   });
 });

@@ -282,6 +282,39 @@ indent and needs `lineRule="auto"`).
 - Authored through the same `BlockEditor` the stem uses, with `figureWidth`; offered
   behind an affordance.
 
+### A figure can carry a table beside it (`FigureRowBlock`)
+
+The reference pie prints a bordered glossary vertically centred beside the chart
+(`real_life_reference/Pie_chart.png`). No existing primitive can make that shape — a
+`ColumnsNode` tab cell holds no table, a `TableCell.image` holds no nested table — so
+`figureRow` is a `ContentBlock` of **exactly one figure (image/diagram) and one
+table**, bounded so every backend's recursion stays one level deep.
+
+- **The children are whole blocks with their own ids.** `patchBlocks` descends into
+  the row; the read walks search `flattenBlocks` — a block `patchBlocks` can write
+  must be findable, or it is a field a teacher can click and silently lose. Cell
+  typing, table structure, resize and the drawing canvas all reach in unchanged.
+- **Deleting a child unwraps the row to the survivor** (`removeBlock`); "+ Table
+  beside" on a figure block and "Remove table" in the row editor are the same
+  inverse pair. The figure keeps its id through both.
+- **`FigureRowNode` nests ordinary nodes** (`ImageNode`/`DiagramNode` + `TableNode`
+  from the shared per-block builders in `renderContentBlocks`), so backends reuse
+  their emitters. The preview is a flex row (`items-center`) rendering children
+  through the same `NodeView` — handles and grid controls come free; the `.docx` is a
+  **borderless two-cell layout table** (all six borders spelled `none`, zero cell
+  margins, `w:vAlign` centre) with the real table **nested** in one cell. A nested
+  table's cell must still end in a paragraph — `tableNodeXml`'s trailing spacer is
+  that paragraph, not an accident.
+- **The nested table's width is respelled** as the fraction of full content width
+  equal to its cell (`tableNodeXml` resolves every table against one base); indent
+  and alignment are dropped as cell-relative. The figure column takes the figure's
+  printed width plus a gutter, capped at 72% of the column.
+- The row takes a table's separating blank line, joins `keepQuestionWhole`, and its
+  children are walked by `collectImages` and the diagram pre-pass (a dangling
+  `r:embed` is a repair error on the whole file).
+- An empty-celled nested table renders the row as the bare figure — the same
+  "nothing renders an unmeasurable box" rule a standalone empty table follows.
+
 ### Per-element formatting (`TextFormat`)
 
 Named styles supply defaults; `TextFormat` records **only deltas**. An untouched

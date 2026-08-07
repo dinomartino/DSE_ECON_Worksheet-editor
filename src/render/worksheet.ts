@@ -625,6 +625,7 @@ function keepQuestionWhole(nodes: RenderNode[]): RenderNode[] {
       case 'table':
       case 'image':
       case 'diagram':
+      case 'figureRow':
       case 'spacer':
         return last ? node : { ...node, keepNext: true };
       default:

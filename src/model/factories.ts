@@ -11,6 +11,7 @@ import { bi, emptyBiText } from './text';
 import { diagramSize } from '@/render/diagram';
 import type {
   BiText,
+  ContentBlock,
   DiagramBlock,
   ImageBlock,
   LayoutElement,
@@ -104,6 +105,21 @@ export function createDiagramBlock(
     ...diagramSize(diagram, widthPx, 'bilingual'),
     altText: defaultDiagramAltText(templateId),
   };
+}
+
+/**
+ * Wrap a figure with a fresh companion table beside it (§ `FigureRowBlock`).
+ *
+ * The table ships the reference glossary's shape — two columns for a name and its
+ * translation, one row per entry — with every cell empty: a seeded word is one a
+ * teacher can miss. The figure keeps its id, so an open panel or selection aimed at
+ * it survives the wrap.
+ */
+export function createFigureRowBlock(
+  figure: ImageBlock | DiagramBlock,
+  table: TableBlock = createTableBlock(3, 2),
+): Extract<ContentBlock, { kind: 'figureRow' }> {
+  return { kind: 'figureRow', id: newId(), figure, table };
 }
 
 /**

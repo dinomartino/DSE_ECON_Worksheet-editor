@@ -8,8 +8,11 @@ import type {
   CellImage,
   CellPadding,
   ContentBlock,
+  DiagramBlock,
+  ImageBlock,
   OutputMode,
   TableAlign,
+  TableBlock,
   TableBorders,
   TextFormat,
 } from '@/model/types';
@@ -237,6 +240,25 @@ export interface DiagramNode {
   blockId: string;
 }
 
+/**
+ * A figure with a companion table beside it (§ `FigureRowBlock`). The children are
+ * ordinary nodes, so every backend reuses its picture and table emitters; only the
+ * side-by-side frame is new. Word gets a borderless two-cell layout table with the
+ * real table nested in one cell; the preview a flex row; both centre vertically,
+ * which is the reference's own alignment.
+ */
+export interface FigureRowNode {
+  kind: 'figureRow';
+  figure: ImageNode | DiagramNode;
+  table: TableNode;
+  /** Which side the table sits. Always resolved; `right` is the reference's shape. */
+  tableSide: 'left' | 'right';
+  keepNext?: boolean;
+  teacherOnly?: boolean;
+  /** Which block this came from, so the preview can select and edit it. */
+  blockId: string;
+}
+
 export interface PageBreakNode {
   kind: 'pageBreak';
 }
@@ -383,6 +405,7 @@ export type RenderNode =
   | TableNode
   | ImageNode
   | DiagramNode
+  | FigureRowNode
   | PageBreakNode
   | SpacerNode
   | DividerNode
@@ -516,85 +539,133 @@ export function renderContentBlocks(
         format: block.format,
       });
     } else if (block.kind === 'table') {
-      const columnCount = Math.max(
-        1,
-        ...block.rows.map((row) =>
-          row.cells.reduce((sum, cell) => sum + (cell.covered ? 0 : cell.colSpan ?? 1), 0),
-        ),
-      );
+      const table = tableNodeFor(block, options);
       // A table with rows but no cells emits no node at all — an empty <table>
       // measures zero in the probe but occupies a line on the sheet, so pagination
       // oscillated forever. Skipped here so *nothing* renders it; the block stays in
       // the document and the sidebar offers a column back.
-      if (block.rows.every((row) => row.cells.length === 0)) continue;
+      if (!table) continue;
       // One blank line before every table, via the gap-counting rule; skipped at the
       // head of the stream. Carries the caller's keepNext (a plain blank is exactly
       // where Word would break the stem → gap → table chain).
       if (nodes.length > 0 && !endsInBlankLine(nodes)) {
         nodes.push({ ...blankLine(), keepNext: options.keepNext });
       }
-      nodes.push({
-        kind: 'table',
-        columnCount,
-        // Resolved once, here, so the preview's colgroup and the exporter's w:gridCol
-        // divide the identical numbers — the paginator measures boxes Word must reproduce.
-        columnWidths: resolveColumnWidths(block, columnCount),
-        ...resolveTableBox(block),
-        rowHeights: block.rows.map((row) => row.minHeight),
-        borders: block.borders ?? 'all',
-        blockId: block.id,
-        caption: block.caption,
-        captionPlacement: block.captionPlacement ?? 'below',
-        keepNext: options.keepNext,
-        teacherOnly: options.teacherOnly,
-        captionEdit: { kind: 'blockCaption', blockId: block.id },
-        rows: block.rows.map((row, rowIndex) =>
-          row.cells.map((cell, cellIndex) => ({
-            text: cell.text,
-            colSpan: cell.colSpan ?? 1,
-            rowSpan: cell.rowSpan ?? 1,
-            align: cell.align ?? 'left',
-            covered: Boolean(cell.covered),
-            padding: resolveCellPadding(block, rowIndex, cellIndex),
-            // Only the T-account rules by position; `all` and `box` are uniform and say
-            // so on the table itself (§`TableCellEdges`).
-            edges:
-              block.borders === 'headerRule'
-                ? resolveCellEdges(block, rowIndex, cellIndex, columnCount)
-                : undefined,
-            format: cell.format,
-            image: cell.image,
-            edit: { kind: 'tableCell', blockId: block.id, cellId: cell.id },
-          })),
-        ),
-      });
+      nodes.push(table);
     } else if (block.kind === 'diagram') {
+      nodes.push(diagramNodeFor(block, options));
+    } else if (block.kind === 'figureRow') {
+      // The figure and its companion table, side by side. The row takes the table's
+      // own separating blank line — it contains one, and flush under a paragraph the
+      // frame reads as part of the text above.
+      const table = tableNodeFor(block.table, options);
+      const figure =
+        block.figure.kind === 'diagram'
+          ? diagramNodeFor(block.figure, options)
+          : imageNodeFor(block.figure, options);
+      if (nodes.length > 0 && !endsInBlankLine(nodes)) {
+        nodes.push({ ...blankLine(), keepNext: options.keepNext });
+      }
+      // A row whose table has lost every cell renders as the bare figure — same rule
+      // as a standalone empty table: nothing may render an unmeasurable box.
+      if (!table) {
+        nodes.push(figure);
+        continue;
+      }
       nodes.push({
-        kind: 'diagram',
-        diagram: block.diagram,
-        widthPx: block.widthPx,
-        heightPx: block.heightPx,
-        altText: block.altText,
+        kind: 'figureRow',
+        figure,
+        table,
+        tableSide: block.tableSide ?? 'right',
         keepNext: options.keepNext,
         teacherOnly: options.teacherOnly,
-        align: block.align ?? 'center',
         blockId: block.id,
       });
     } else {
-      nodes.push({
-        kind: 'image',
-        src: block.src,
-        widthPx: block.widthPx,
-        heightPx: block.heightPx,
-        altText: block.altText,
-        caption: block.caption,
-        captionPlacement: block.captionPlacement ?? 'below',
-        align: block.align ?? 'center',
-        keepNext: options.keepNext,
-        teacherOnly: options.teacherOnly,
-        captionEdit: { kind: 'blockCaption', blockId: block.id },
-        blockId: block.id,
-      });
+      nodes.push(imageNodeFor(block, options));
     }
   }
+}
+
+type BlockNodeOptions = { keepNext?: boolean; teacherOnly?: boolean };
+
+/**
+ * A table block's IR node, or undefined for a table with no cells at all. Shared by
+ * the standalone case and the figure row, so the two cannot resolve widths or edges
+ * differently.
+ */
+function tableNodeFor(block: TableBlock, options: BlockNodeOptions): TableNode | undefined {
+  if (block.rows.every((row) => row.cells.length === 0)) return undefined;
+  const columnCount = Math.max(
+    1,
+    ...block.rows.map((row) =>
+      row.cells.reduce((sum, cell) => sum + (cell.covered ? 0 : cell.colSpan ?? 1), 0),
+    ),
+  );
+  return {
+    kind: 'table',
+    columnCount,
+    // Resolved once, here, so the preview's colgroup and the exporter's w:gridCol
+    // divide the identical numbers — the paginator measures boxes Word must reproduce.
+    columnWidths: resolveColumnWidths(block, columnCount),
+    ...resolveTableBox(block),
+    rowHeights: block.rows.map((row) => row.minHeight),
+    borders: block.borders ?? 'all',
+    blockId: block.id,
+    caption: block.caption,
+    captionPlacement: block.captionPlacement ?? 'below',
+    keepNext: options.keepNext,
+    teacherOnly: options.teacherOnly,
+    captionEdit: { kind: 'blockCaption', blockId: block.id },
+    rows: block.rows.map((row, rowIndex) =>
+      row.cells.map((cell, cellIndex) => ({
+        text: cell.text,
+        colSpan: cell.colSpan ?? 1,
+        rowSpan: cell.rowSpan ?? 1,
+        align: cell.align ?? 'left',
+        covered: Boolean(cell.covered),
+        padding: resolveCellPadding(block, rowIndex, cellIndex),
+        // Only the T-account rules by position; `all` and `box` are uniform and say
+        // so on the table itself (§`TableCellEdges`).
+        edges:
+          block.borders === 'headerRule'
+            ? resolveCellEdges(block, rowIndex, cellIndex, columnCount)
+            : undefined,
+        format: cell.format,
+        image: cell.image,
+        edit: { kind: 'tableCell', blockId: block.id, cellId: cell.id },
+      })),
+    ),
+  };
+}
+
+function diagramNodeFor(block: DiagramBlock, options: BlockNodeOptions): DiagramNode {
+  return {
+    kind: 'diagram',
+    diagram: block.diagram,
+    widthPx: block.widthPx,
+    heightPx: block.heightPx,
+    altText: block.altText,
+    keepNext: options.keepNext,
+    teacherOnly: options.teacherOnly,
+    align: block.align ?? 'center',
+    blockId: block.id,
+  };
+}
+
+function imageNodeFor(block: ImageBlock, options: BlockNodeOptions): ImageNode {
+  return {
+    kind: 'image',
+    src: block.src,
+    widthPx: block.widthPx,
+    heightPx: block.heightPx,
+    altText: block.altText,
+    caption: block.caption,
+    captionPlacement: block.captionPlacement ?? 'below',
+    align: block.align ?? 'center',
+    keepNext: options.keepNext,
+    teacherOnly: options.teacherOnly,
+    captionEdit: { kind: 'blockCaption', blockId: block.id },
+    blockId: block.id,
+  };
 }

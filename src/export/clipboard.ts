@@ -297,6 +297,21 @@ function nodeHtml(
     return node.captionPlacement === 'above' ? caption + picture : picture + caption;
   }
 
+  if (node.kind === 'figureRow') {
+    // A borderless two-cell layout table, vertically centred — the same shape the
+    // .docx builds, because it is the only HTML Word pastes side by side.
+    const figure = nodeHtml(node.figure, language, fontCss, diagramImages);
+    const table = nodeHtml(node.table, language, fontCss, diagramImages);
+    const cell = (content: string) =>
+      `<td style="border:none;vertical-align:middle;padding:0">${content}</td>`;
+    const cells =
+      node.tableSide === 'left' ? cell(table) + cell(figure) : cell(figure) + cell(table);
+    return (
+      '<table style="border-collapse:collapse;border:none;width:100%">' +
+      `<tr>${cells}</tr></table>`
+    );
+  }
+
   return '';
 }
 

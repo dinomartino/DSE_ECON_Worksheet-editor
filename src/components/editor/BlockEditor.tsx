@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   createDiagramBlock,
+  createFigureRowBlock,
   createImageBlock,
   createParagraphBlock,
   createTableBlock,
@@ -183,8 +184,20 @@ export function BlockEditor({ blocks, onChange, label, labelHint, figureWidth }:
             className="group/block rounded-lg border border-line bg-surface "
           >
             <header className="flex items-center gap-2 px-2 py-1">
-              <Eyebrow>{block.kind}</Eyebrow>
+              <Eyebrow>{block.kind === 'figureRow' ? 'figure + table' : block.kind}</Eyebrow>
               <span className="flex-1" />
+              {(block.kind === 'image' || block.kind === 'diagram') && (
+                // Wraps the figure with a companion table beside it — the reference
+                // pie's glossary (§ FigureRowBlock). The figure keeps its id, so
+                // nothing aimed at it goes stale.
+                <Button
+                  size="sm"
+                  variant="subtle"
+                  onClick={() => replace(index, createFigureRowBlock(block))}
+                >
+                  + Table beside
+                </Button>
+              )}
               {controls(index)}
             </header>
             <div className="px-2 pb-2">
@@ -192,6 +205,12 @@ export function BlockEditor({ blocks, onChange, label, labelHint, figureWidth }:
                 <TableBlockEditor block={block} onChange={(next) => replace(index, next)} />
               ) : block.kind === 'diagram' ? (
                 <DiagramEditor block={block} onChange={(next) => replace(index, next)} />
+              ) : block.kind === 'figureRow' ? (
+                <FigureRowEditor
+                  block={block}
+                  onChange={(next) => replace(index, next)}
+                  onUnwrap={(survivor) => replace(index, survivor)}
+                />
               ) : (
                 <ImageBlockEditor block={block} onChange={(next) => replace(index, next)} />
               )}
@@ -1032,3 +1051,63 @@ function ImageBlockEditor({
   );
 }
 
+
+/**
+ * The figure-row editor: the figure's own editor, the companion table's, and the
+ * row-level choices between them (§ `FigureRowBlock`). The children are edited by
+ * the same components a standalone block gets, so nothing about a figure changes
+ * when a table joins it. "Remove table" unwraps back to the standalone figure —
+ * the exact inverse of "+ Table beside".
+ */
+function FigureRowEditor({
+  block,
+  onChange,
+  onUnwrap,
+}: {
+  block: Extract<ContentBlock, { kind: 'figureRow' }>;
+  onChange: (block: ContentBlock) => void;
+  onUnwrap: (survivor: ContentBlock) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      {block.figure.kind === 'diagram' ? (
+        <DiagramEditor
+          block={block.figure}
+          onChange={(figure) =>
+            figure.kind === 'diagram' && onChange({ ...block, figure })
+          }
+        />
+      ) : (
+        <ImageBlockEditor
+          block={block.figure}
+          onChange={(figure) =>
+            figure.kind === 'image' && onChange({ ...block, figure })
+          }
+        />
+      )}
+
+      <div className="flex items-center gap-2 border-t border-line pt-2">
+        <Eyebrow>table beside</Eyebrow>
+        <Segmented<'left' | 'right'>
+          label="Table side"
+          value={block.tableSide ?? 'right'}
+          onChange={(tableSide) =>
+            onChange({ ...block, tableSide: tableSide === 'right' ? undefined : tableSide })
+          }
+          options={[
+            { value: 'left', label: 'Left' },
+            { value: 'right', label: 'Right' },
+          ]}
+        />
+        <span className="flex-1" />
+        <Button size="sm" variant="subtle" onClick={() => onUnwrap(block.figure)}>
+          Remove table
+        </Button>
+      </div>
+      <TableBlockEditor
+        block={block.table}
+        onChange={(table) => onChange({ ...block, table })}
+      />
+    </div>
+  );
+}

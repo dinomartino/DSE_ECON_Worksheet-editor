@@ -38,7 +38,15 @@ function* allNodes(worksheet: Worksheet, mode: OutputMode): Generator<RenderNode
   if (rendered.instructions) yield rendered.instructions;
   for (const item of rendered.items) {
     const nodes = item.type === 'question' ? item.question.nodes : item.layout.nodes;
-    for (const node of nodes) yield node;
+    for (const node of nodes) {
+      yield node;
+      // A figure row's children are ordinary nodes one level down — the diagram
+      // beside a glossary table must rasterize like any other.
+      if (node.kind === 'figureRow') {
+        yield node.figure;
+        yield node.table;
+      }
+    }
   }
 }
 

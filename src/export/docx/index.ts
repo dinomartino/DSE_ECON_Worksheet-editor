@@ -135,6 +135,11 @@ function collectImages(
       for (const row of node.rows) {
         for (const cell of row) if (cell.image) add(cell.image.src);
       }
+    } else if (node.kind === 'figureRow') {
+      // The children are ordinary nodes; the same rule about dangling `r:embed`
+      // applies to the figure and to any picture inside the nested table's cells.
+      visit(node.figure);
+      visit(node.table);
     }
   };
 

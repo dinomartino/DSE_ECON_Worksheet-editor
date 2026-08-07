@@ -35,13 +35,43 @@ import { applyRunFormat, insertBlank } from './text';
  * the Chinese side.
  */
 
-/** Rewrite one paragraph block's text, wherever it sits in a block list. */
+/**
+ * Rewrite one block by id, wherever it sits in a block list — including the two
+ * children of a figure row, which are whole blocks in their own right. A patched
+ * child is kept only when the patch preserved its kind: the row's shape is one
+ * figure and one table by construction, and a stale handle must not be able to put
+ * a paragraph where the figure goes.
+ */
 function patchBlocks(
   blocks: ContentBlock[],
   blockId: string,
   patch: (block: ContentBlock) => ContentBlock,
 ): ContentBlock[] {
-  return blocks.map((block) => (block.id === blockId ? patch(block) : block));
+  return blocks.map((block) => {
+    if (block.id === blockId) return patch(block);
+    if (block.kind !== 'figureRow') return block;
+    if (block.figure.id === blockId) {
+      const figure = patch(block.figure);
+      return figure.kind === block.figure.kind
+        ? { ...block, figure: figure as typeof block.figure }
+        : block;
+    }
+    if (block.table.id === blockId) {
+      const table = patch(block.table);
+      return table.kind === 'table' ? { ...block, table } : block;
+    }
+    return block;
+  });
+}
+
+/**
+ * A block list with figure-row children surfaced beside their rows — what every
+ * *read* walk searches, so a block that `patchBlocks` can write is also findable.
+ */
+function flattenBlocks(blocks: ContentBlock[]): ContentBlock[] {
+  return blocks.flatMap((block): ContentBlock[] =>
+    block.kind === 'figureRow' ? [block, block.figure, block.table] : [block],
+  );
 }
 
 /**
@@ -95,11 +125,12 @@ function layoutBlockLists(element: LayoutElement): ContentBlock[][] {
  * disagreeing about where blocks live.
  */
 function* documentBlockLists(worksheet: Worksheet): Generator<ContentBlock[]> {
+  // Flattened, so a figure row's children are as findable as the row itself.
   for (const question of worksheet.questions) {
-    for (const blocks of questionBlockLists(question)) yield blocks;
+    for (const blocks of questionBlockLists(question)) yield flattenBlocks(blocks);
   }
   for (const element of worksheet.layout) {
-    for (const blocks of layoutBlockLists(element)) yield blocks;
+    for (const blocks of layoutBlockLists(element)) yield flattenBlocks(blocks);
   }
 }
 
@@ -122,7 +153,7 @@ export function findTableBlock(
 /** Does this question contain the given block anywhere? */
 export function questionOwnsBlock(question: Question, blockId: string): boolean {
   return questionBlockLists(question).some((blocks) =>
-    blocks.some((block) => block.id === blockId),
+    flattenBlocks(blocks).some((block) => block.id === blockId),
   );
 }
 
@@ -961,9 +992,21 @@ export function describeDelete(target: EditTarget): DeletePlan | undefined {
 
 const EMPTY: BiText = { en: [], zh: [] };
 
-/** Remove a block by id from every list it could belong to. */
+/**
+ * Remove a block by id from every list it could belong to. Deleting a figure row's
+ * child **unwraps** the row to the survivor — removing the glossary must hand back
+ * the standalone figure it wrapped, not delete the chart with it.
+ */
 function removeBlock(worksheet: Worksheet, blockId: string): Worksheet {
-  const strip = (blocks: ContentBlock[]) => blocks.filter((block) => block.id !== blockId);
+  const strip = (blocks: ContentBlock[]) =>
+    blocks
+      .filter((block) => block.id !== blockId)
+      .map((block) => {
+        if (block.kind !== 'figureRow') return block;
+        if (block.figure.id === blockId) return block.table;
+        if (block.table.id === blockId) return block.figure;
+        return block;
+      });
 
   return {
     ...worksheet,

@@ -11,6 +11,7 @@ import type {
   CoverPanelRender,
   CoverRenderNode,
   DiagramNode,
+  FigureRowNode,
   ImageNode,
   RenderNode,
   TableNode,
@@ -644,6 +645,96 @@ function imageNodeXml(node: ImageNode, context: BodyContext): string {
   return pictureXml(node, context);
 }
 
+/** Twips per CSS pixel at 96dpi (1440 / 96). */
+const TWIPS_PER_PX = 15;
+
+/** Air between a figure-row's figure column and its table column, in twips. */
+const FIGURE_ROW_GUTTER_TWIPS = 240;
+
+/**
+ * A figure with its companion table beside it (§ `FigureRowNode`) — a borderless
+ * two-cell layout table, the picture in one cell and the *real* table nested in the
+ * other, both `w:vAlign` centred as the reference sits them. A layout table because
+ * nothing else in OOXML can put a bordered table beside a picture: a tab stop cannot
+ * hold a table, and an anchored float would put the pair outside the flow the
+ * paginator measures.
+ */
+function figureRowXml(node: FigureRowNode, context: BodyContext): string {
+  // The figure column takes the figure's own printed width plus breathing room,
+  // capped so a page-wide figure cannot squeeze the table to nothing.
+  const figureTwips = Math.min(
+    Math.round(node.figure.widthPx * TWIPS_PER_PX) + FIGURE_ROW_GUTTER_TWIPS,
+    Math.round(context.contentWidth * 0.72),
+  );
+  const tableTwips = Math.max(1, context.contentWidth - figureTwips);
+
+  // The nested table fills its cell: its width is respelled as the fraction of the
+  // full content width that equals the cell, because `tableNodeXml` resolves every
+  // table against that one base. Indent and alignment are cell-relative here and
+  // deliberately dropped.
+  const nested = tableNodeXml(
+    {
+      ...node.table,
+      width: tableTwips / CONTENT_WIDTH_TWIPS,
+      indent: 0,
+      align: 'left',
+      keepNext: undefined,
+    },
+    context,
+  );
+
+  const figure =
+    node.figure.kind === 'diagram'
+      ? diagramNodeXml({ ...node.figure, keepNext: undefined }, context)
+      : pictureXml({ ...node.figure, keepNext: undefined }, context);
+  // A cell must end in a paragraph; an empty figure (a diagram with no raster) still
+  // needs one or the whole file reports as damaged.
+  const figureCellContent =
+    figure || paragraph({ styleId: STYLE_IDS.Body, runs: '' });
+
+  const noBorder = (side: string) =>
+    `<w:${side} w:val="none" w:sz="0" w:space="0" w:color="auto"/>`;
+  const cell = (widthTwips: number, content: string) =>
+    `<w:tc><w:tcPr><w:tcW w:w="${widthTwips}" w:type="dxa"/>` +
+    '<w:vAlign w:val="center"/></w:tcPr>' +
+    content +
+    '</w:tc>';
+
+  const cells =
+    node.tableSide === 'left'
+      ? cell(tableTwips, nested) + cell(figureTwips, figureCellContent)
+      : cell(figureTwips, figureCellContent) + cell(tableTwips, nested);
+  const grid =
+    node.tableSide === 'left'
+      ? `<w:gridCol w:w="${tableTwips}"/><w:gridCol w:w="${figureTwips}"/>`
+      : `<w:gridCol w:w="${figureTwips}"/><w:gridCol w:w="${tableTwips}"/>`;
+
+  const table =
+    '<w:tbl><w:tblPr>' +
+    '<w:tblStyle w:val="TableNormal"/>' +
+    `<w:tblW w:w="${context.contentWidth}" w:type="dxa"/>` +
+    '<w:tblLayout w:type="fixed"/>' +
+    // Zero cell margins: the layout table is invisible geometry, and inherited
+    // margins would inset the nested table twice.
+    '<w:tblCellMar>' +
+    ['top', 'left', 'bottom', 'right']
+      .map((side) => `<w:${side} w:w="0" w:type="dxa"/>`)
+      .join('') +
+    '</w:tblCellMar>' +
+    // `none` on all six, never omitted — an unstated border inherits from the table
+    // style and would frame the invisible scaffolding (§ box mode's own rule).
+    '<w:tblBorders>' +
+    ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map(noBorder).join('') +
+    '</w:tblBorders>' +
+    '</w:tblPr>' +
+    `<w:tblGrid>${grid}</w:tblGrid>` +
+    `<w:tr><w:trPr><w:cantSplit/></w:trPr>${cells}</w:tr>` +
+    '</w:tbl>';
+
+  // A table must be followed by a paragraph (Word's rule; also where keep-next rides).
+  return table + paragraph({ styleId: STYLE_IDS.Body, runs: '', keepNext: node.keepNext });
+}
+
 /** A diagram: its pre-rendered PNG, emitted through the one picture path. */
 function diagramNodeXml(node: DiagramNode, context: BodyContext): string {
   const src = context.diagramSrc?.(node.blockId);
@@ -663,6 +754,8 @@ export function renderNodeXml(node: RenderNode, context: BodyContext): string {
       return imageNodeXml(node, context);
     case 'diagram':
       return diagramNodeXml(node, context);
+    case 'figureRow':
+      return figureRowXml(node, context);
     case 'pageBreak':
       return '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
     case 'spacer':

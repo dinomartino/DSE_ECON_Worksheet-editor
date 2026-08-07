@@ -243,7 +243,33 @@ export interface DiagramBlock {
   align?: TableAlign;
 }
 
-export type ContentBlock = ParagraphBlock | TableBlock | ImageBlock | DiagramBlock;
+/**
+ * A figure with a companion table beside it — the reference pie chart's glossary
+ * (`real_life_reference/Pie_chart.png`) sits bordered and vertically centred to the
+ * right of the chart. Word cannot put a bordered table beside a picture with tab
+ * stops (a tab cell holds no table), so this exports as a borderless two-cell layout
+ * table with the real table nested inside one cell.
+ *
+ * Exactly one figure and one table, deliberately not `ContentBlock[][]` columns: the
+ * bounded shape is what keeps every backend's recursion one level deep. The children
+ * are whole blocks with their own ids, so every existing block edit — cell typing,
+ * table structure, resize, the drawing canvas — reaches them by the same routes.
+ */
+export interface FigureRowBlock {
+  kind: 'figureRow';
+  id: string;
+  figure: ImageBlock | DiagramBlock;
+  table: TableBlock;
+  /** Which side the table sits. Undefined means `right`, the reference's shape. */
+  tableSide?: 'left' | 'right';
+}
+
+export type ContentBlock =
+  | ParagraphBlock
+  | TableBlock
+  | ImageBlock
+  | DiagramBlock
+  | FigureRowBlock;
 
 export interface QuestionBase {
   id: string;
