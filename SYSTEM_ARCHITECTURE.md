@@ -732,7 +732,7 @@ each side grows by exactly the room its text needs.
 - `titleRoom()` is shared by the projection and `diagramTitleAnchor()`, reserved on the
   title's own side only; a title below is measured back from the canvas edge.
 
-`DIAGRAM_TEMPLATES` ships nine starting shapes. A template is only an initial value.
+`DIAGRAM_TEMPLATES` ships ten starting shapes. A template is only an initial value.
 
 ### A teacher can crop the frame, and the frame is the printed size
 

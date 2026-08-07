@@ -367,11 +367,19 @@ function projection(
 }
 
 /**
- * A smooth path through the points (Catmull-Rom converted to cubic Béziers).
+ * A smooth path through the points (centripetal Catmull-Rom converted to cubic
+ * Béziers).
  *
  * Used only by `curved` curves. Straight ones emit a polyline so that a kinked supply
  * curve keeps its corners sharp instead of being rounded off into something that no
  * longer reads as a quota.
+ *
+ * Centripetal (α = ½) rather than uniform parameterization: a teacher's points are
+ * never evenly spaced, and the uniform spline weights every segment the same, so a
+ * short hop next to a long one bends the curve hard at the join — the business-cycle
+ * wave's ascent visibly kinked at its crest. The centripetal knots scale each tangent
+ * by the distances actually travelled, which is the standard cure (it also cannot
+ * cusp or self-intersect).
  */
 function smoothPath(pts: Array<{ x: number; y: number }>): string {
   if (pts.length < 3) return `M ${n(pts[0].x)} ${n(pts[0].y)} L ${n(pts[pts.length - 1].x)} ${n(pts[pts.length - 1].y)}`;
@@ -382,10 +390,26 @@ function smoothPath(pts: Array<{ x: number; y: number }>): string {
     const p1 = pts[i];
     const p2 = pts[i + 1];
     const p3 = pts[i + 2] ?? p2;
-    const c1x = p1.x + (p2.x - p0.x) / 6;
-    const c1y = p1.y + (p2.y - p0.y) / 6;
-    const c2x = p2.x - (p3.x - p1.x) / 6;
-    const c2y = p2.y - (p3.y - p1.y) / 6;
+
+    // Knot intervals: the square root of each hop's length (α = ½). A coincident
+    // pair would zero a denominator, so each interval is floored at a hair above it.
+    const d1 = Math.max(Math.hypot(p1.x - p0.x, p1.y - p0.y) ** 0.5, 1e-4);
+    const d2 = Math.max(Math.hypot(p2.x - p1.x, p2.y - p1.y) ** 0.5, 1e-4);
+    const d3 = Math.max(Math.hypot(p3.x - p2.x, p3.y - p2.y) ** 0.5, 1e-4);
+
+    // The closed-form Bézier control points of the centripetal segment p1→p2.
+    const c1x =
+      (d1 * d1 * p2.x - d2 * d2 * p0.x + (2 * d1 * d1 + 3 * d1 * d2 + d2 * d2) * p1.x) /
+      (3 * d1 * (d1 + d2));
+    const c1y =
+      (d1 * d1 * p2.y - d2 * d2 * p0.y + (2 * d1 * d1 + 3 * d1 * d2 + d2 * d2) * p1.y) /
+      (3 * d1 * (d1 + d2));
+    const c2x =
+      (d3 * d3 * p1.x - d2 * d2 * p3.x + (2 * d3 * d3 + 3 * d3 * d2 + d2 * d2) * p2.x) /
+      (3 * d3 * (d3 + d2));
+    const c2y =
+      (d3 * d3 * p1.y - d2 * d2 * p3.y + (2 * d3 * d3 + 3 * d3 * d2 + d2 * d2) * p2.y) /
+      (3 * d3 * (d3 + d2));
     d += ` C ${n(c1x)} ${n(c1y)}, ${n(c2x)} ${n(c2y)}, ${n(p2.x)} ${n(p2.y)}`;
   }
   return d;

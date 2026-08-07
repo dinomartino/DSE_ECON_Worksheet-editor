@@ -260,6 +260,49 @@ export const DIAGRAM_TEMPLATES: DiagramTemplate[] = [
     }),
   },
   {
+    id: 'business-cycle',
+    name: bi('Business cycle', '經濟週期'),
+    hint: bi(
+      'A wave around a dashed average growth line, with a marked point.',
+      '圍繞平均增長虛線的波浪，附標記點。',
+    ),
+    // Traced from real_life_reference/curve-graph.png: a smooth wave crossing a dashed
+    // horizontal "average growth rate" line, one lettered point on the upswing, no "0"
+    // at the origin. The wave is `curved` through five points — start, trough,
+    // crossing, crest, end — the fewest handles that keep the reference's shape.
+    build: () => ({
+      x: { title: bi('Year', '年份') },
+      y: { title: bi('Percentage change in real GDP', '實質本地生產總值變動百分率') },
+      curves: [
+        // Hand-tuned on the canvas (real_life_reference/2021.worksheet.json, Q6): two
+        // close points ground a flat-bottomed trough, then the ascent runs unbroken
+        // into the crest.
+        curve(
+          [[0.104, 0.43], [0.26, 0.15], [0.313, 0.165], [0.67, 0.82], [0.9, 0.35]],
+          undefined,
+          { shape: 'curved' },
+        ),
+        // The average line is dashed and stops short of the plot edge so its two-line
+        // label ("average" over "growth rate", a hard break) sits beside it, straddling
+        // the dashes as the reference prints it.
+        curve([[0.0, 0.5], [0.898, 0.5]], bi('average\ngrowth rate', '平均增長率'), {
+          stroke: 'dashed',
+          labelAt: 'end',
+          labelOffset: { x: -0.01, y: 0.035 },
+        }),
+      ],
+      points: [
+        point(0.588, 0.739, bi('A', 'A'), {
+          labelSide: 'right',
+          labelOffset: { x: -0.03, y: 0.009 },
+        }),
+      ],
+      labels: [],
+      arrows: [],
+      showOrigin: false,
+    }),
+  },
+  {
     id: 'ppc',
     name: bi('Production possibility curve', '生產可能性曲線'),
     hint: bi('A concave PPC with a point on, inside and outside it.', '凹向原點的 PPC，附曲線上、內、外的點。'),
