@@ -32,19 +32,27 @@ export function Sidebar({
 }) {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const selectedQuestionId = useWorksheetStore((s) => s.selectedQuestionId);
+  const selectedElementId = useWorksheetStore((s) => s.selectedElementId);
   const numbering = computeNumbering(worksheet);
 
   const [tab, setTab] = useState<Tab>('content');
 
+  // A layout element only pulls the tab over when it has a panel to show — selecting
+  // a divider must not open an Edit tab that says "pick something".
+  const panelElementId = worksheet.layout.find(
+    (element) => element.id === selectedElementId && element.kind === 'stimulus',
+  )?.id;
+
   // Follow the selection. Tracked against the previous id rather than firing on every
   // render, so a user who deliberately clicks back to Content while a question is still
   // selected is not yanked to Edit again on the next keystroke.
-  const lastSelection = useRef(selectedQuestionId);
+  const selectionKey = selectedQuestionId ?? panelElementId;
+  const lastSelection = useRef(selectionKey);
   useEffect(() => {
-    if (selectedQuestionId === lastSelection.current) return;
-    lastSelection.current = selectedQuestionId;
-    setTab(selectedQuestionId ? 'edit' : 'content');
-  }, [selectedQuestionId]);
+    if (selectionKey === lastSelection.current) return;
+    lastSelection.current = selectionKey;
+    setTab(selectionKey ? 'edit' : 'content');
+  }, [selectionKey]);
 
   const selected = worksheet.questions.find((question) => question.id === selectedQuestionId);
 
@@ -52,7 +60,9 @@ export function Sidebar({
 
   const editLabel = selected
     ? `Question ${numbering.byQuestionId.get(selected.id)?.number ?? ''}`.trim()
-    : 'Edit';
+    : panelElementId
+      ? 'Shared stimulus'
+      : 'Edit';
 
   const tabs: Array<{ id: Tab; label: string; icon: React.ReactNode; badge?: React.ReactNode }> = [
     {
@@ -76,7 +86,7 @@ export function Sidebar({
       <div role="tablist" aria-label="Sidebar" className="flex shrink-0 gap-1 border-b border-line px-2 pt-2">
         {tabs.map((entry) => {
           const active = tab === entry.id;
-          const dim = entry.id === 'edit' && !selected;
+          const dim = entry.id === 'edit' && !selected && !panelElementId;
           return (
             <button
               key={entry.id}

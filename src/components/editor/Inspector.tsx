@@ -6,7 +6,8 @@ import { plain } from '@/model/text';
 import { requireQuestionType } from '@/registry';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { IconButton, Pill } from '@/components/ui';
-import { CloseIcon, ListIcon, PencilIcon } from '@/components/ui/icons';
+import { CloseIcon, ListIcon, PencilIcon, StimulusIcon } from '@/components/ui/icons';
+import { StimulusEditorPanel } from './StimulusEditorPanel';
 
 /**
  * Inputs for whatever is currently selected.
@@ -24,10 +25,53 @@ export function Inspector({
 }) {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const selectedQuestionId = useWorksheetStore((s) => s.selectedQuestionId);
+  const selectedElementId = useWorksheetStore((s) => s.selectedElementId);
   const select = useWorksheetStore((s) => s.select);
+  const selectElement = useWorksheetStore((s) => s.selectElement);
   const updateQuestion = useWorksheetStore((s) => s.updateQuestion);
+  const updateLayoutElement = useWorksheetStore((s) => s.updateLayoutElement);
 
   const selected = worksheet.questions.find((question) => question.id === selectedQuestionId);
+
+  // The one layout element with a panel of its own. A question wins when both are
+  // somehow set — the page clears one selection as it makes the other, so this is a
+  // tie-break, not a state.
+  const selectedStimulus = !selected
+    ? worksheet.layout.find(
+        (element) => element.id === selectedElementId && element.kind === 'stimulus',
+      )
+    : undefined;
+
+  if (selectedStimulus && selectedStimulus.kind === 'stimulus') {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <header className="flex shrink-0 items-center gap-2 border-b border-line px-3.5 py-3">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent text-on-accent">
+            <StimulusIcon size={15} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[13px] font-semibold leading-tight text-ink">
+              Shared stimulus
+            </span>
+            <span className="block truncate text-[11px] text-ink-muted">
+              content the questions below refer to
+            </span>
+          </span>
+          <IconButton label="Close editor" onClick={() => selectElement(undefined)}>
+            <CloseIcon size={14} />
+          </IconButton>
+        </header>
+
+        <div className="scroll-slim min-h-0 flex-1 overflow-y-auto p-3.5">
+          <StimulusEditorPanel
+            key={selectedStimulus.id}
+            element={selectedStimulus}
+            onChange={(patch) => updateLayoutElement(selectedStimulus.id, patch)}
+          />
+        </div>
+      </div>
+    );
+  }
 
   if (!selected) {
     // Nothing selected is not an error state — it is the state the app opens in. So

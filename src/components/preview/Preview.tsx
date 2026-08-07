@@ -3345,6 +3345,12 @@ interface Props {
   onDeleteQuestion?: (questionId: string) => void;
   /** Delete a layout element selected on the page. Omit to disable that key. */
   onDeleteLayout?: (elementId: string) => void;
+  /**
+   * The page's layout-element selection, mirrored out as it changes (undefined on
+   * deselect). The selection itself stays local — it mostly exists to give Delete a
+   * target — but a stimulus has a sidebar panel, so the host needs to know.
+   */
+  onLayoutSelectionChange?: (elementId?: string) => void;
   /** Delete several flow items (questions and/or layout elements) at once. */
   onBulkDelete?: (ids: string[]) => void;
   /** Duplicate several flow items at once — what paste does. */
@@ -3669,6 +3675,7 @@ export function Preview({
   onClearCells,
   onDeleteQuestion,
   onDeleteLayout,
+  onLayoutSelectionChange,
   onBulkDelete,
   onBulkDuplicate,
   onFormat,
@@ -4062,6 +4069,26 @@ export function Preview({
   // the sidebar inspects them; a divider or a page break has nothing to inspect, so
   // its selection is local — it exists only to give Delete something to act on.
   const [selectedLayoutId, setSelectedLayoutId] = useState<string | undefined>();
+
+  // Mirrored out, not lifted: this component stays the owner (every set site keeps
+  // working), and the host only needs to *know* — a stimulus has a sidebar panel.
+  useEffect(() => {
+    onLayoutSelectionChange?.(selectedLayoutId);
+  }, [selectedLayoutId, onLayoutSelectionChange]);
+
+  // The one write the mirror accepts back: the panel's close button clears the store,
+  // and the ring here must not outlive it. **Subscribed, not rendered** (see AddRail):
+  // this is an event — "the sidebar closed the panel" — and it clears only on the
+  // transition to undefined, so the mirror's own echo can never fight a fresh click.
+  useEffect(
+    () =>
+      useWorksheetStore.subscribe((state, previous) => {
+        if (state.selectedElementId === undefined && previous.selectedElementId !== undefined) {
+          setSelectedLayoutId(undefined);
+        }
+      }),
+    [],
+  );
 
   /*
    * How much taller this element could get before running past its page. Measured off
@@ -5006,6 +5033,10 @@ export function Preview({
                   setSelectedLayoutId(id);
                   setSelectedElement(undefined);
                   setSelectedBlockId(undefined);
+                  // The mirror of the question branch clearing `selectedLayoutId`: the
+                  // sidebar prefers a question when both selections are somehow set, so
+                  // a stale question kept its panel over the stimulus just clicked.
+                  onSelectQuestion?.(undefined);
                   // Selecting a layout element points the rail at it, exactly as
                   // selecting a question does. Without this the rail could not see this
                   // selection at all — it is local to the preview — and silently

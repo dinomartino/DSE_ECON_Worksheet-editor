@@ -12,6 +12,7 @@ import {
   createQuestionCountElement,
   createSectionElement,
   createSpacerElement,
+  createStimulusElement,
   createTextElement,
   flowItemLabel,
 } from '@/model/flow';
@@ -34,6 +35,7 @@ import {
   QuestionCountIcon,
   SectionIcon,
   SpacerIcon,
+  StimulusIcon,
   StructuredIcon,
   TextIcon,
 } from '@/components/ui/icons';
@@ -133,6 +135,7 @@ export function AddRail() {
     heading: <HeadingIcon size={18} />,
     text: <TextIcon size={18} />,
     labelList: <LabelListIcon size={18} />,
+    stimulus: <StimulusIcon size={18} />,
     answerLines: <AnswerLinesIcon size={18} />,
     answerSpace: <AnswerSpaceIcon size={18} />,
     spacer: <SpacerIcon size={18} />,
@@ -176,6 +179,14 @@ export function AddRail() {
       hint: 'There are 45 questions…',
       icon: layoutIcons.questionCount,
       run: (afterId) => addLayoutElement(createQuestionCountElement(), afterId),
+    },
+    {
+      id: 'stimulus',
+      label: 'Shared stimulus',
+      // The derived range is the point: the sentence renumbers itself.
+      hint: '…answer Questions 8 and 9.',
+      icon: layoutIcons.stimulus,
+      run: (afterId) => addLayoutElement(createStimulusElement(), afterId),
     },
     {
       id: 'heading',

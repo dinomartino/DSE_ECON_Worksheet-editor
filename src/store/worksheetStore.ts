@@ -98,6 +98,12 @@ interface WorksheetState {
   lastSavedAt?: string;
   selectedQuestionId?: string;
   /**
+   * The layout element selected on the page, mirrored from the preview's own local
+   * selection (§ Preview `onLayoutSelectionChange`) so the sidebar can offer a panel
+   * for the kinds that have one (the stimulus). Editor state, never persisted.
+   */
+  selectedElementId?: string;
+  /**
    * The flow id a new item lands after, or undefined to append. A **position**, not a
    * selection (two of the page's selections are preview-local and the rail cannot see
    * them). Selecting anything sets it; the gap affordance sets it without selecting.
@@ -141,6 +147,8 @@ interface WorksheetState {
   setMode: (patch: Partial<OutputMode>) => void;
   setPrintPreview: (on: boolean) => void;
   select: (questionId?: string) => void;
+  /** Mirror the page's layout-element selection; see `selectedElementId`. */
+  selectElement: (elementId?: string) => void;
   /** Point the add rail at a position: new items land after `flowId`. */
   setInsertAnchor: (flowId?: string) => void;
   /** Anchor at `flowId` and ask the rail to open its insert menu. */
@@ -407,11 +415,19 @@ function insertIntoFlow(
  * Where an *unanchored* item joins the flow. Both exam papers end in a closing line
  * ("END OF PAPER"), so a question must land ahead of the trailing closing lines, not
  * at the very end. Derived from shape and format, never a stored flag; scoped to
- * `paper1`/`lqMock`; questions only (an unanchored layout element genuinely means the
- * end).
+ * `paper1`/`lqMock`; questions and the stimulus only (any other unanchored layout
+ * element genuinely means the end).
  */
 function appendIndexFor(worksheet: Worksheet, flow: FlowItem[], entry: FlowItem): number {
-  if (entry.type !== 'question') return flow.length;
+  // Questions, and the one layout element that *is* question content: a stimulus
+  // introduces the questions that follow it, so appending one after "END OF PAPER"
+  // (and the questions that then land behind it) put new content past the line that
+  // declares the paper finished. Every other layout element appended with no anchor
+  // genuinely means the end.
+  const isStimulus =
+    entry.type === 'layout' &&
+    (worksheet.layout ?? []).find((element) => element.id === entry.id)?.kind === 'stimulus';
+  if (entry.type !== 'question' && !isStimulus) return flow.length;
 
   const shape = documentShape(worksheet);
   if (shape !== 'paper1' && shape !== 'lqMock') return flow.length;
@@ -628,6 +644,10 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   // the anchor so a click on blank paper returns the rail to appending.
   select: (selectedQuestionId) =>
     set({ selectedQuestionId, insertAnchorId: selectedQuestionId }),
+
+  // A mirror of the preview's own selection, so no anchor writes here — the preview
+  // already points the rail when a layout element is clicked.
+  selectElement: (selectedElementId) => set({ selectedElementId }),
 
   setInsertAnchor: (insertAnchorId) => set({ insertAnchorId }),
 

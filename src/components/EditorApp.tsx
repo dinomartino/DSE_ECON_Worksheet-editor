@@ -29,6 +29,7 @@ export function EditorApp({ onOpenFiles }: { onOpenFiles: () => void }) {
   const dirty = useWorksheetStore((s) => s.dirty);
   const selectedQuestionId = useWorksheetStore((s) => s.selectedQuestionId);
   const select = useWorksheetStore((s) => s.select);
+  const selectElement = useWorksheetStore((s) => s.selectElement);
   const undo = useWorksheetStore((s) => s.undo);
   const redo = useWorksheetStore((s) => s.redo);
   const markSaved = useWorksheetStore((s) => s.markSaved);
@@ -462,6 +463,7 @@ export function EditorApp({ onOpenFiles }: { onOpenFiles: () => void }) {
             onClearCells={clearCells}
             onDeleteQuestion={removeQuestion}
             onDeleteLayout={handleDeleteLayout}
+            onLayoutSelectionChange={selectElement}
             onBulkDelete={removeMany}
             onBulkDuplicate={duplicateMany}
             onFormat={formatTarget}

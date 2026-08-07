@@ -4,6 +4,7 @@ import {
   createAnswerLinesElement,
   createPageBreakElement,
   createSpacerElement,
+  createStimulusElement,
   createTextElement,
   resolveFlow,
   MIN_ANSWER_LINES,
@@ -798,6 +799,19 @@ describe('insertion anchor (§where things land)', () => {
       load('paper1');
       store().addLayoutElement(createSpacerElement());
       expect(ids().at(-1)).toBe(store().worksheet.layout.at(-1)!.id);
+    });
+
+    it('places an unanchored stimulus ahead of the closing line, as question content', () => {
+      // A stimulus introduces the questions that follow it — and the anchor advances
+      // onto it, so questions added next land behind it. Appending it past
+      // "END OF PAPER" dragged that whole group after the line.
+      load('paper1');
+      const closing = store().worksheet.layout.at(-1)!;
+      const element = createStimulusElement();
+      store().addLayoutElement(element);
+      const order = ids();
+      expect(order.indexOf(element.id)).toBeLessThan(order.indexOf(closing.id));
+      expect(order.at(-1)).toBe(closing.id);
     });
 
     it('appends when the document has no questions yet', () => {

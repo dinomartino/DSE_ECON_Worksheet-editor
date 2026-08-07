@@ -423,6 +423,26 @@ export type LayoutElement =
       format?: TextFormat;
     }
   /**
+   * A shared stimulus: content two or more consecutive questions refer to ("Study the
+   * following diagram and answer Questions 8 and 9."). The lead-in is authored
+   * `prefix`/`suffix` around a **derived** question range — the numbers come from the
+   * questions that follow, so reordering or inserting questions renumbers the sentence.
+   * The stimulus itself is a full `ContentBlock[]`: real ones are regularly a figure
+   * plus a glossary table.
+   */
+  | {
+      kind: 'stimulus';
+      id: string;
+      /** Wording before the range. Absent falls back to the default phrasing. */
+      prefix?: BiText;
+      /** Wording after the range, carrying the rest of the sentence. */
+      suffix?: BiText;
+      /** How many following questions share the stimulus. Absent means 2. */
+      span?: number;
+      blocks: ContentBlock[];
+      format?: TextFormat;
+    }
+  /**
    * A borderless label/value list: "First preference:  Watching a movie".
    * Exports as tab stops, not a table.
    */

@@ -1,7 +1,12 @@
 import { bandIsEmpty, ZONES, zonesOf } from '@/model/bands';
 import { bandFieldSegments } from '@/model/bandSegments';
 import { documentShape, type DocumentShape } from '@/model/documentShape';
-import { DEFAULT_QUESTION_COUNT_WORDING, resolveFlow } from '@/model/flow';
+import {
+  DEFAULT_QUESTION_COUNT_WORDING,
+  DEFAULT_STIMULUS_SPAN,
+  DEFAULT_STIMULUS_WORDING,
+  resolveFlow,
+} from '@/model/flow';
 import { sectionMarksById, worksheetMarks } from '@/model/marks';
 import { computeNumbering, listIndentScheme } from '@/model/numbering';
 import { bi, isBiTextEmpty, plain } from '@/model/text';
@@ -20,6 +25,8 @@ import {
   blankLine,
   endsInBlankLine,
   includeNode,
+  pushGap,
+  renderContentBlocks,
   withLeadingGap,
   type CoverRenderNode,
   type NodeStyle,
@@ -355,14 +362,52 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
   // Paper 1 spaces exactly as a wizard-built one.
   const shape = documentShape(worksheet);
 
+  const resolved = resolveFlow(worksheet);
+
+  // Each stimulus's derived question range ("Questions 8 and 9"), from the numbering
+  // plan — never stored, so inserting or reordering questions renumbers the sentence.
+  // The look-ahead stops at the next stimulus: the questions past it are that one's.
+  const stimulusRanges = new Map<string, number[]>();
+  resolved.forEach((item, index) => {
+    if (item.type !== 'layout' || item.element.kind !== 'stimulus') return;
+    const span = Math.max(1, item.element.span ?? DEFAULT_STIMULUS_SPAN);
+    const numbers: number[] = [];
+    for (let i = index + 1; i < resolved.length && numbers.length < span; i++) {
+      const next = resolved[i];
+      if (next.type === 'layout' && next.element.kind === 'stimulus') break;
+      if (next.type !== 'question') continue;
+      const entry = numbering.byQuestionId.get(next.id);
+      if (entry) numbers.push(entry.number);
+    }
+    stimulusRanges.set(item.element.id, numbers);
+  });
+
   // One walk over the one resolved flow. Questions, layout elements and section
   // headings come out in the teacher's order, so nothing downstream has to interleave
   // them and the three backends cannot disagree about what follows what.
-  const items: RenderedItem[] = resolveFlow(worksheet).map((item, index) => {
+  const items: RenderedItem[] = resolved.map((item, index) => {
     if (item.type === 'layout') {
       if (item.element.kind === 'section') {
         currentSectionId = item.element.id;
         if (item.element.restartNumbering) questionStream = `question:${item.element.id}`;
+      }
+      // A stimulus opens a question group, so on the exam paper it stands off from the
+      // previous question by the same wide boundary a question would (§ boundaryGapLines)
+      // — one line short of that and it reads as part of the question above it.
+      let stimulus: StimulusRender | undefined;
+      if (item.element.kind === 'stimulus') {
+        const atTrueTop = index === 0 && !somethingAboveFlow;
+        const wanted = stimulusGapLines(shape, previous, worksheet.examGapLines);
+        stimulus = {
+          range: questionRangeText(stimulusRanges.get(item.element.id) ?? []),
+          gapLines: atTrueTop
+            ? 0
+            : Math.max(0, wanted - (endsInBlankLine(previousNodes) ? 1 : 0)),
+          // Kept whole in Word as an exam question is: the preview's paginator never
+          // splits an item, so without the chain the .docx stranded the lead-in at a
+          // page bottom the screen had pushed whole.
+          keepWhole: shape === 'paper1',
+        };
       }
       const nodes = renderLayoutElement(
         item.element,
@@ -377,6 +422,7 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
         // what the printed numbers come from, so the lead-in's "There are 45 questions"
         // counts exactly the questions a candidate can see and number through.
         numbering.questions.length,
+        stimulus,
       );
       previousNodes = nodes;
       previous = { layout: item.element };
@@ -505,7 +551,9 @@ function boundaryGapLines(
   if (shape !== 'paper1' || !previous) return DEFAULT_GAP_LINES;
 
   if (previous.layout) {
-    return previous.layout.kind === 'questionCount'
+    // A stimulus stands off from the questions it introduces the way the lead-in
+    // stands off from question 1: nearer than a stranger, further than a line of text.
+    return previous.layout.kind === 'questionCount' || previous.layout.kind === 'stimulus'
       ? QUESTION_COUNT_GAP_LINES
       : DEFAULT_GAP_LINES;
   }
@@ -515,6 +563,48 @@ function boundaryGapLines(
   // type's measured default.
   const wide = next.gapBefore ?? override ?? requireQuestionType(next).examGapLines;
   return wide !== undefined && wide > DEFAULT_GAP_LINES ? wide : DEFAULT_GAP_LINES;
+}
+
+/**
+ * The blank lines above a stimulus, mirroring `boundaryGapLines` for an element that
+ * is not a question: on the exam paper, after a question, it takes the same wide
+ * boundary the next question would — the stimulus opens a new question group, and on
+ * the one-line default it read as a caption of the question above it. The width comes
+ * from the previous question's own type (the walker may not name a concrete type),
+ * overridden by the document's `examGapLines` exactly as a question boundary is.
+ */
+function stimulusGapLines(
+  shape: DocumentShape,
+  previous: { question?: Question; layout?: LayoutElement } | undefined,
+  override?: number,
+): number {
+  if (shape !== 'paper1' || !previous?.question) return DEFAULT_GAP_LINES;
+  const wide = override ?? requireQuestionType(previous.question).examGapLines;
+  return wide !== undefined && wide > DEFAULT_GAP_LINES ? wide : DEFAULT_GAP_LINES;
+}
+
+/**
+ * The printed form of a stimulus's derived question range. With no questions after
+ * the element yet, the sentence stays honest ("the questions below") rather than
+ * printing a dash a teacher would have to notice.
+ */
+function questionRangeText(numbers: number[]): { en: string; zh: string } {
+  if (numbers.length === 0) return { en: 'the questions below', zh: '以下題目' };
+  const first = numbers[0];
+  const last = numbers[numbers.length - 1];
+  if (numbers.length === 1) return { en: `Question ${first}`, zh: `第${first}題` };
+  if (numbers.length === 2)
+    return { en: `Questions ${first} and ${last}`, zh: `第${first}及第${last}題` };
+  return { en: `Questions ${first} to ${last}`, zh: `第${first}至第${last}題` };
+}
+
+/** What the walker derived for one stimulus: its range and its exam-paper spacing. */
+interface StimulusRender {
+  range: { en: string; zh: string };
+  /** Blank lines above the lead-in, already reduced by a line the previous item spent. */
+  gapLines: number;
+  /** Chain the nodes with keep-next, as an exam question is (§ keepQuestionWhole). */
+  keepWhole: boolean;
 }
 
 /**
@@ -561,6 +651,8 @@ function renderLayoutElement(
    * worksheet once per element.
    */
   questionTotal = 0,
+  /** A stimulus's derived range and spacing, computed by the walker. */
+  stimulus?: StimulusRender,
 ): RenderNode[] {
   switch (element.kind) {
     // A section heading and a free heading render identically; they differ only in
@@ -626,6 +718,33 @@ function renderLayoutElement(
         },
       ];
     }
+    // A shared stimulus: the lead-in sentence (authored wording around the derived
+    // question range, the `questionCount` decomposition), a blank line, then the
+    // stimulus content through the same block renderer a question stem uses.
+    case 'stimulus': {
+      const range = stimulus?.range ?? { en: '', zh: '' };
+      const side = (which: 'en' | 'zh'): RichText => {
+        const prefix = element.prefix?.[which] ?? DEFAULT_STIMULUS_WORDING.prefix[which];
+        const suffix = element.suffix?.[which] ?? DEFAULT_STIMULUS_WORDING.suffix[which];
+        return [...prefix, { text: range[which] }, ...suffix];
+      };
+      const nodes: RenderNode[] = [
+        {
+          kind: 'text',
+          style: 'Body',
+          text: { en: side('en'), zh: side('zh') },
+          // The sentence introduces the content: it must not strand at a page bottom.
+          keepNext: true,
+          format: element.format,
+          edit: { kind: 'layoutText', elementId: element.id },
+        },
+      ];
+      pushGap(nodes);
+      renderContentBlocks(nodes, element.blocks, 'Body');
+      const kept = stimulus?.keepWhole ? keepQuestionWhole(nodes) : nodes;
+      return withLeadingGap(kept, stimulus?.gapLines ?? (first ? 0 : ITEM_GAP_LINES));
+    }
+
     case 'spacer':
       return [{ kind: 'spacer', heightPt: element.heightPt, elementId: element.id }];
     case 'divider':

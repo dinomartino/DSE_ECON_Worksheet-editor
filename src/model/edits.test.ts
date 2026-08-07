@@ -15,7 +15,7 @@ import {
   targetQuestionId,
   textOfTarget,
 } from './edits';
-import { createDiagramBlock } from './factories';
+import { createDiagramBlock, createParagraphBlock, createTableBlock } from './factories';
 import { bi, isBiTextEmpty, plain } from './text';
 import type {
   ContentBlock,
@@ -679,5 +679,75 @@ describe('resizing an image or diagram block', () => {
     expect(resized.heightPx).toBe(diagramSize(diagram.diagram, 600, 'bilingual').heightPx);
     // The geometry itself is untouched — only the box it renders into changed (§7.5).
     expect(resized.diagram).toEqual(diagram.diagram);
+  });
+});
+
+/**
+ * A stimulus's blocks live on a layout element, not a question — and every block
+ * route (write, read, resize, delete) must reach them anyway. The read walks and the
+ * write walks are separate code, so each direction is pinned: a block that is
+ * findable but unwritable is a field a teacher can click and silently lose.
+ */
+describe('blocks inside a shared stimulus edit like blocks in a stem', () => {
+  const buildStimulus = () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const paragraph = createParagraphBlock(bi('Market shares in 2017', '2017年市場佔有率'));
+    const table = createTableBlock(2, 2);
+    const diagram = createDiagramBlock('ad-as');
+    const element = {
+      kind: 'stimulus' as const,
+      id: 'stim-1',
+      blocks: [paragraph, table, diagram] as ContentBlock[],
+    };
+    worksheet.layout = [...worksheet.layout, element];
+    worksheet.flow = [...worksheet.flow, { type: 'layout', id: element.id }];
+    return { worksheet, paragraph, table, diagram, element };
+  };
+
+  it('writes a paragraph through blockText, preserving the other language', () => {
+    const { worksheet, paragraph } = buildStimulus();
+    const target: EditTarget = { kind: 'blockText', blockId: paragraph.id };
+    const next = applyEditTarget(worksheet, target, {
+      en: [{ text: 'EDITED' }],
+      zh: paragraph.text.zh,
+    });
+    expect(plain(textOfTarget(next, target)!.en)).toBe('EDITED');
+    expect(plain(textOfTarget(next, target)!.zh)).toBe('2017年市場佔有率');
+  });
+
+  it('finds a stimulus table for the page grid and writes its cells', () => {
+    const { worksheet, table } = buildStimulus();
+    expect(findTableBlock(worksheet, table.id)?.id).toBe(table.id);
+
+    const cellId = table.rows[0].cells[0].id;
+    const target: EditTarget = { kind: 'tableCell', blockId: table.id, cellId };
+    const next = applyEditTarget(worksheet, target, bi('Ele.me', '餓了麼'));
+    expect(plain(textOfTarget(next, target)!.en)).toBe('Ele.me');
+  });
+
+  it('resizes a stimulus diagram by re-measuring, as a stem diagram does', () => {
+    const { worksheet, diagram } = buildStimulus();
+    expect(blockSize(worksheet, diagram.id)).toBeTruthy();
+
+    const next = applyResizeBlock(worksheet, diagram.id, 500);
+    expect(blockSize(next, diagram.id)?.widthPx).toBe(500);
+  });
+
+  it('deletes one block from the stimulus without touching the element', () => {
+    const { worksheet, paragraph, element } = buildStimulus();
+    const next = applyDeleteTarget(worksheet, { kind: 'blockText', blockId: paragraph.id });
+    const survivor = next.layout.find((entry) => entry.id === element.id);
+    expect(survivor && 'blocks' in survivor ? survivor.blocks.length : 0).toBe(2);
+  });
+
+  it('formats a stimulus paragraph, whole-element and per-run alike', () => {
+    const { worksheet, paragraph } = buildStimulus();
+    const target: EditTarget = { kind: 'blockText', blockId: paragraph.id };
+
+    const bold = applyFormatTarget(worksheet, target, { bold: true });
+    expect(formatOfTarget(bold, target)?.bold).toBe(true);
+
+    const run = applyRunFormatTarget(worksheet, target, 'en', 0, 6, { underline: true });
+    expect(textOfTarget(run, target)!.en[0]).toMatchObject({ text: 'Market', underline: true });
   });
 });

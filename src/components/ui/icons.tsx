@@ -255,6 +255,17 @@ export function QuestionCountIcon(props: IconProps) {
   );
 }
 
+/** A framed figure above two text lines — content shared by the questions below it. */
+export function StimulusIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="6" y="3" width="12" height="9" rx="1.5" />
+      <path d="M9 8.5 12 6l3 2.5" />
+      <path d="M4 16h16M4 20h16" />
+    </Svg>
+  );
+}
+
 export function LabelListIcon(props: IconProps) {
   return (
     <Svg {...props}>
@@ -366,4 +377,5 @@ export const LAYOUT_ICON = {
   partHeader: PartHeaderIcon,
   labelList: LabelListIcon,
   questionCount: QuestionCountIcon,
+  stimulus: StimulusIcon,
 } as const;

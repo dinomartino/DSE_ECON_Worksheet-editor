@@ -1,4 +1,4 @@
-import { newId } from './factories';
+import { createParagraphBlock, newId } from './factories';
 import { emptyBiText, parseRuns, plain } from './text';
 import type { BiText, FlowItem, LayoutElement, Question } from './types';
 
@@ -210,6 +210,7 @@ export const LAYOUT_NAME: Record<LayoutElement['kind'], string> = {
   partHeader: 'Part header',
   labelList: 'Label list',
   questionCount: 'Question count',
+  stimulus: 'Shared stimulus',
 };
 
 /**
@@ -283,6 +284,34 @@ export const DEFAULT_QUESTION_COUNT_WORDING: { prefix: BiText; suffix: BiText } 
 
 export function createQuestionCountElement(): LayoutElement {
   return { kind: 'questionCount', id: newId() };
+}
+
+/**
+ * The shared stimulus's lead-in wording, either side of the derived question range
+ * ("Study the following information and answer *Questions 8 and 9*.").
+ *
+ * Defaults, not fixtures, exactly as `DEFAULT_QUESTION_COUNT_WORDING` is: an element
+ * stores nothing until a teacher retypes a side, so untouched documents pick up any
+ * later correction here. Deliberately generic phrasing — the reference papers say
+ * "diagram" or "table" per stimulus, and naming the content is the teacher's edit.
+ */
+export const DEFAULT_STIMULUS_WORDING: { prefix: BiText; suffix: BiText } = {
+  prefix: {
+    en: parseRuns('Study the following information and answer '),
+    zh: parseRuns('細閱以下資料，然後回答'),
+  },
+  suffix: { en: parseRuns('.'), zh: parseRuns('。') },
+};
+
+/** How many following questions a fresh stimulus covers — the reference's own pairs. */
+export const DEFAULT_STIMULUS_SPAN = 2;
+
+/**
+ * A shared stimulus. Seeded with one empty paragraph so the element has a visible,
+ * clickable body on the page; the panel adds tables, images and diagrams.
+ */
+export function createStimulusElement(): Extract<LayoutElement, { kind: 'stimulus' }> {
+  return { kind: 'stimulus', id: newId(), blocks: [createParagraphBlock()] };
 }
 
 /*

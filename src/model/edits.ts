@@ -80,6 +80,30 @@ function questionBlockLists(question: Question): ContentBlock[][] {
 }
 
 /**
+ * Every block list a layout element owns. Only a stimulus carries blocks today, but
+ * the walk reads the field structurally like `questionBlockLists` reads `parts`, so a
+ * future block-bearing element joins every block edit for free.
+ */
+function layoutBlockLists(element: LayoutElement): ContentBlock[][] {
+  return 'blocks' in element ? [element.blocks] : [];
+}
+
+/**
+ * Every block list in the document — questions at any depth, then layout elements.
+ * The one enumeration every read walk uses, so a block that is findable is findable
+ * everywhere: a stimulus diagram that resized but would not format was two walks
+ * disagreeing about where blocks live.
+ */
+function* documentBlockLists(worksheet: Worksheet): Generator<ContentBlock[]> {
+  for (const question of worksheet.questions) {
+    for (const blocks of questionBlockLists(question)) yield blocks;
+  }
+  for (const element of worksheet.layout) {
+    for (const blocks of layoutBlockLists(element)) yield blocks;
+  }
+}
+
+/**
  * The table block with this id, wherever in the document it sits. The page needs the
  * live rows to expand a swept cell range, and it holds ids rather than positions
  * (§ `cellSelection`), so the lookup has to run against the worksheet.
@@ -88,11 +112,9 @@ export function findTableBlock(
   worksheet: Worksheet,
   blockId: string,
 ): TableBlock | undefined {
-  for (const question of worksheet.questions) {
-    for (const blocks of questionBlockLists(question)) {
-      const match = blocks.find((block) => block.id === blockId);
-      if (match?.kind === 'table') return match;
-    }
+  for (const blocks of documentBlockLists(worksheet)) {
+    const match = blocks.find((block) => block.id === blockId);
+    if (match?.kind === 'table') return match;
   }
   return undefined;
 }
@@ -157,7 +179,19 @@ function mapAllBlocks(
     return next;
   };
 
-  return { ...worksheet, questions: worksheet.questions.map(mapQuestion) };
+  return {
+    ...worksheet,
+    questions: worksheet.questions.map(mapQuestion),
+    // A layout element's own blocks — the stimulus — take the identical patch, so a
+    // table or diagram inside one edits, resizes and deletes by the same route as one
+    // in a stem. Mirrors `layoutBlockLists`: the read and the write must reach the
+    // same lists or a block would be findable but unwritable.
+    layout: worksheet.layout.map((element) =>
+      'blocks' in element
+        ? { ...element, blocks: patchBlocks(element.blocks, blockId, patch) }
+        : element,
+    ),
+  };
 }
 
 /** Write `text` to one band field, leaving field kinds that have no text alone. */
@@ -553,25 +587,21 @@ export function formatOfTarget(
     case 'worksheetInstructions':
       return worksheet.instructionsFormat;
     case 'blockText': {
-      for (const question of worksheet.questions) {
-        for (const blocks of questionBlockLists(question)) {
-          const match = blocks.find((block) => block.id === target.blockId);
-          if (match && match.kind === 'paragraph') return match.format;
-        }
+      for (const blocks of documentBlockLists(worksheet)) {
+        const match = blocks.find((block) => block.id === target.blockId);
+        if (match && match.kind === 'paragraph') return match.format;
       }
       return undefined;
     }
     case 'tableCell': {
       // Searched the same way `applyFormatTarget` writes, so the toolbar reports the
       // state of the cell it is about to change.
-      for (const question of worksheet.questions) {
-        for (const blocks of questionBlockLists(question)) {
-          const match = blocks.find((block) => block.id === target.blockId);
-          if (match && match.kind === 'table') {
-            for (const row of match.rows) {
-              const cell = row.cells.find((entry) => entry.id === target.cellId);
-              if (cell) return cell.format;
-            }
+      for (const blocks of documentBlockLists(worksheet)) {
+        const match = blocks.find((block) => block.id === target.blockId);
+        if (match && match.kind === 'table') {
+          for (const row of match.rows) {
+            const cell = row.cells.find((entry) => entry.id === target.cellId);
+            if (cell) return cell.format;
           }
         }
       }
@@ -625,11 +655,9 @@ export function textOfTarget(worksheet: Worksheet, target: EditTarget): BiText |
     case 'worksheetInstructions':
       return worksheet.instructions;
     case 'blockText': {
-      for (const question of worksheet.questions) {
-        for (const blocks of questionBlockLists(question)) {
-          const match = blocks.find((block) => block.id === target.blockId);
-          if (match && match.kind === 'paragraph') return match.text;
-        }
+      for (const blocks of documentBlockLists(worksheet)) {
+        const match = blocks.find((block) => block.id === target.blockId);
+        if (match && match.kind === 'paragraph') return match.text;
       }
       return undefined;
     }
@@ -638,14 +666,12 @@ export function textOfTarget(worksheet: Worksheet, target: EditTarget): BiText |
       // `applyEditTarget` are the read and the write `applyRunFormatTarget` composes,
       // and `applyEditTarget` already knew the kind. Without this side, bolding a phrase
       // inside a cell resolved to no text and silently did nothing.
-      for (const question of worksheet.questions) {
-        for (const blocks of questionBlockLists(question)) {
-          const match = blocks.find((block) => block.id === target.blockId);
-          if (match && match.kind === 'table') {
-            for (const row of match.rows) {
-              const cell = row.cells.find((entry) => entry.id === target.cellId);
-              if (cell) return cell.text;
-            }
+      for (const blocks of documentBlockLists(worksheet)) {
+        const match = blocks.find((block) => block.id === target.blockId);
+        if (match && match.kind === 'table') {
+          for (const row of match.rows) {
+            const cell = row.cells.find((entry) => entry.id === target.cellId);
+            if (cell) return cell.text;
           }
         }
       }
@@ -763,16 +789,14 @@ export function blockSize(
   worksheet: Worksheet,
   blockId: string,
 ): { widthPx: number; heightPx: number; ratio: number } | undefined {
-  for (const question of worksheet.questions) {
-    for (const blocks of questionBlockLists(question)) {
-      const match = blocks.find((block) => block.id === blockId);
-      if (match && (match.kind === 'image' || match.kind === 'diagram')) {
-        return {
-          widthPx: match.widthPx,
-          heightPx: match.heightPx,
-          ratio: blockAspectRatio(match),
-        };
-      }
+  for (const blocks of documentBlockLists(worksheet)) {
+    const match = blocks.find((block) => block.id === blockId);
+    if (match && (match.kind === 'image' || match.kind === 'diagram')) {
+      return {
+        widthPx: match.widthPx,
+        heightPx: match.heightPx,
+        ratio: blockAspectRatio(match),
+      };
     }
   }
   return undefined;
@@ -790,11 +814,9 @@ export function findDiagramBlock(
   worksheet: Worksheet,
   blockId: string,
 ): DiagramBlock | undefined {
-  for (const question of worksheet.questions) {
-    for (const blocks of questionBlockLists(question)) {
-      const match = blocks.find((block) => block.id === blockId);
-      if (match?.kind === 'diagram') return match;
-    }
+  for (const blocks of documentBlockLists(worksheet)) {
+    const match = blocks.find((block) => block.id === blockId);
+    if (match?.kind === 'diagram') return match;
   }
   return undefined;
 }
@@ -968,6 +990,10 @@ function removeBlock(worksheet: Worksheet, blockId: string): Worksheet {
       }
       return next;
     }),
+    // A stimulus's blocks are deletable exactly like a stem's; mirrors `mapAllBlocks`.
+    layout: worksheet.layout.map((element) =>
+      'blocks' in element ? { ...element, blocks: strip(element.blocks) } : element,
+    ),
   };
 }
 

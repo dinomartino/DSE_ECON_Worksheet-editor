@@ -190,7 +190,9 @@ function LayoutRow({ element }: { element: LayoutElement }) {
         plain(element.text.zh)
       : element.kind === 'labelList'
         ? `${element.rows.length} row${element.rows.length === 1 ? '' : 's'}`
-        : '';
+        : element.kind === 'stimulus'
+          ? `${element.blocks.length} block${element.blocks.length === 1 ? '' : 's'}`
+          : '';
 
   // Answer lines and blank space describe themselves by their size, so the row spends
   // its width on a control for that size rather than on text repeating it.
