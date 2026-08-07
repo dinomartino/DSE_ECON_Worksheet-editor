@@ -98,8 +98,16 @@ export function FlowCanvas({
    * refs may not be read during render. Store written on release only.
    */
   const [drag, setDrag] = useState<{ nodeId: string; x: number; y: number } | null>(null);
+  /**
+   * "Clear chart" is armed by a first click and fired by a second — undo lives in the
+   * page's keyboard scope, unreachable while this modal owns it, so a single misclick
+   * must not cost the whole chart. Any other gesture (or a pause) disarms.
+   */
+  const [confirmClear, setConfirmClear] = useState(false);
   const [arrowDraft, setArrowDraft] = useState<{
     from?: string;
+    /** The gesture started on the empty-chart placeholder box. */
+    fromEmpty?: boolean;
     start: { x: number; y: number };
     current: { x: number; y: number };
   } | null>(null);
@@ -243,6 +251,20 @@ export function FlowCanvas({
     setSelection(null);
   }, [selection, flow, commit]);
 
+  /** Empty the whole chart in one commit — the template's seeded stages go together. */
+  const clearChart = useCallback(() => {
+    commit({ nodes: [], arrows: [] });
+    setSelection(null);
+    setEditing(null);
+    setConfirmClear(false);
+  }, [commit]);
+
+  useEffect(() => {
+    if (!confirmClear) return;
+    const timer = window.setTimeout(() => setConfirmClear(false), 3000);
+    return () => window.clearTimeout(timer);
+  }, [confirmClear]);
+
   /** Add an empty box (to the selected box's column, else the rightmost) and name it. */
   const addBox = useCallback(
     (col?: number) => {
@@ -274,9 +296,10 @@ export function FlowCanvas({
         return;
       if (event.key === 'Escape') {
         event.preventDefault();
-        // One step back per press: abandon the arrow, then the tool, then the
-        // selection, and only then the whole editor.
-        if (arrowDraft) setArrowDraft(null);
+        // One step back per press: disarm the clear, abandon the arrow, then the
+        // tool, then the selection, and only then the whole editor.
+        if (confirmClear) setConfirmClear(false);
+        else if (arrowDraft) setArrowDraft(null);
         else if (tool === 'arrow') setTool('select');
         else if (selection) setSelection(null);
         else onClose();
@@ -289,17 +312,18 @@ export function FlowCanvas({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [arrowDraft, tool, selection, doDelete, onClose]);
+  }, [confirmClear, arrowDraft, tool, selection, doDelete, onClose]);
 
   const onPointerDown = (event: React.PointerEvent) => {
     if (event.button !== 0) return;
+    setConfirmClear(false);
     const p = toNatural(event);
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 
     if (tool === 'arrow') {
       const box = boxAt(p);
       const from = box && box.node.id !== '__empty' ? box.node.id : undefined;
-      setArrowDraft({ from, start: p, current: p });
+      setArrowDraft({ from, fromEmpty: box?.node.id === '__empty', start: p, current: p });
       return;
     }
 
@@ -342,13 +366,30 @@ export function FlowCanvas({
     const p = toNatural(event);
     if (arrowDraft) {
       const box = boxAt(p);
-      const to = box && box.node.id !== '__empty' ? box.node.id : undefined;
-      const made = connectFlow(flow, arrowDraft.from, to);
+      const releasedOnEmpty = box?.node.id === '__empty';
+      let chart = flow;
+      let from = arrowDraft.from;
+      let to = box && !releasedOnEmpty ? box.node.id : undefined;
+      let newNodeId: string | undefined;
+      // An arrow gesture touching the empty-chart placeholder makes the first stage —
+      // the reference's entering stub ("$200 raw materials →") exists before its
+      // chain does, so refusing it here dead-ended a fresh chart. A gesture wholly
+      // inside the placeholder names no direction and still draws nothing.
+      if (flow.nodes.length === 0 && arrowDraft.fromEmpty !== releasedOnEmpty) {
+        const made = addFlowNode(chart, 0);
+        chart = made.flow;
+        newNodeId = made.node.id;
+        if (releasedOnEmpty) to = newNodeId;
+        else from = newNodeId;
+      }
+      const made = connectFlow(chart, from, to);
       setArrowDraft(null);
       setTool('select');
       if (made) {
         commit(made.flow);
         setSelection({ kind: 'arrow', id: made.arrowId });
+        // Straight into naming the stage the gesture just created.
+        if (newNodeId) setEditing({ kind: 'node', id: newNodeId });
       }
       return;
     }
@@ -483,6 +524,21 @@ export function FlowCanvas({
             }
           >
             Delete
+          </button>
+          <button
+            type="button"
+            title="Remove every box and arrow to start fresh"
+            onClick={() => (confirmClear ? clearChart() : setConfirmClear(true))}
+            disabled={flow.nodes.length === 0 && flow.arrows.length === 0}
+            className={
+              'flex h-11 items-center rounded-lg border px-3 text-xs font-medium transition-colors ' +
+              'disabled:pointer-events-none disabled:opacity-35 ' +
+              (confirmClear
+                ? 'border-rose-400 bg-rose-600 text-white hover:bg-rose-500'
+                : 'border-slate-600 bg-slate-700 text-slate-200 hover:bg-slate-600')
+            }
+          >
+            {confirmClear ? 'Click again to clear' : 'Clear chart'}
           </button>
         </div>
 

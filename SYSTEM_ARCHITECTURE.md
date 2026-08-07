@@ -827,6 +827,12 @@ whole block pipeline — one PNG, re-measure sizing, the title mechanism — unc
   stub); text is retyped where it prints. Canvas house rules apply: commit on release,
   a dragged box deselects itself, hit-testing reads `flowChartLayout()` — the exact
   rectangles `flowSvg` drew. The sidebar keeps only the way in plus a summary.
+- **An arrow gesture touching the empty-chart placeholder creates the first stage**
+  and connects the stub to it — the reference's entering "$200 raw materials →"
+  exists before its chain does. A gesture wholly inside the placeholder draws nothing.
+- **"Clear chart" empties boxes and arrows in one commit**, behind a two-click armed
+  confirm — undo lives in the page's keyboard scope, unreachable while the canvas
+  modal owns it.
 - The `flow` template ships invented wording — the reference charts are past-paper
   questions and must not ship. An empty chart stays visible as one empty stage box.
 
