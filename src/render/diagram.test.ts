@@ -912,6 +912,69 @@ describe('the pie chart variant', () => {
     const svg = diagramSvg(diagram, { widthPx: 320, heightPx: 348, language: 'bilingual' });
     expect((svg.match(/Ele\.me/g) ?? []).length).toBe(1);
   });
+
+  /*
+   * A long title wraps instead of flooring the chart's width.
+   *
+   * The reference headline ("Market Shares (%) of China's Online Food Delivery Sector
+   * in 2017") cost ~490px on one line, and that floor was the smallest pie a teacher
+   * could make — comically large against a 200px figure they asked for. The title
+   * keeps its size (the teacher said so explicitly); it takes more lines instead.
+   */
+  describe('a long pie title wraps at the chosen width, at full size', () => {
+    const HEADLINE = "Market Shares (%) of China's Online Food Delivery Sector in 2017";
+    const titled = () => ({ ...pie(), title: bi(HEADLINE, '') });
+
+    it('accepts a width far below the one-line title width', () => {
+      const size = diagramSize(titled(), 200, 'en');
+      expect(size.widthPx).toBe(200);
+      // The height carries the extra wrapped lines, not a 490px circle.
+      expect(size.heightPx).toBeLessThan(350);
+    });
+
+    it('draws the wrapped lines at the unchanged title size', () => {
+      const narrow = diagramSize(titled(), 200, 'en');
+      const svg = diagramSvg(titled(), { ...narrow, language: 'en' });
+      // Every word still prints; the sentence just spans several <text> lines.
+      for (const word of ['Market', 'Shares', 'Delivery', '2017']) {
+        expect(svg).toContain(word);
+      }
+      const titleTexts = (svg.match(/font-size="13.33"/g) ?? []).length;
+      expect(titleTexts).toBeGreaterThan(1);
+    });
+
+    it('reserves exactly the room the drawn lines take, in both passes', () => {
+      // The size and the SVG wrap through one function; if they disagreed, the last
+      // line would clip at the canvas edge or a blank strip would pad the bottom.
+      const one = diagramSize(titled(), 600, 'en');
+      const many = diagramSize(titled(), 200, 'en');
+      // One line at 600px; the wrapped title costs the narrow chart extra lines.
+      expect(many.heightPx - 200).toBeGreaterThan(one.heightPx - 600);
+    });
+
+    it('keeps a wide-enough chart byte-identical: fitting lines pass through', () => {
+      const wide = diagramSize(titled(), 600, 'en');
+      expect(wide.widthPx).toBe(600);
+      const svg = diagramSvg(titled(), { ...wide, language: 'en' });
+      expect(svg).toContain(HEADLINE);
+    });
+
+    it('floors only at an unbreakable word, which must not clip', () => {
+      const diagram = { ...pie(), title: bi('Unbreakablesinglewordtitle', '') };
+      const size = diagramSize(diagram, 60, 'en');
+      expect(size.widthPx).toBeGreaterThan(60);
+    });
+
+    it('wraps a Chinese title per glyph, with no spaces to break at', () => {
+      const diagram = { ...pie(), title: bi('', '二零一七年中國網上外賣市場佔有率統計圖表') };
+      const size = diagramSize(diagram, 160, 'zh');
+      expect(size.widthPx).toBe(160);
+      const svg = diagramSvg(diagram, { ...size, language: 'zh' });
+      // Wrapped per glyph: every character survives, each its own break unit.
+      for (const glyph of '二零一七年統計圖表') expect(svg).toContain(`>${glyph}<`);
+      expect((svg.match(/font-weight:bold/g) ?? []).length).toBeGreaterThan(1);
+    });
+  });
 });
 
 describe('the flow chart variant', () => {

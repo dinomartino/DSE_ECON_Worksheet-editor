@@ -308,6 +308,62 @@ function estimateWidth(lines: RichText[], fontSize: number): number {
   return widest;
 }
 
+/**
+ * Wrap rich lines to a width, measured by the same `estimateWidth` everything else
+ * reads — a second metric would wrap at one width and floor the canvas at another.
+ *
+ * Greedy: Latin breaks at spaces, CJK glyphs anywhere (their own typographic rule);
+ * an unbreakable word longer than the width keeps its line whole — the caller floors
+ * the canvas on the widest *wrapped* line, so a long word costs width, never
+ * clipping. The teacher's own hard breaks (`richLines`) arrive as separate input
+ * lines and are preserved. A line that already fits passes through untouched, run
+ * identity intact, so a document wide enough for its title renders byte-identically.
+ */
+function wrapRichLines(lines: RichText[], maxWidth: number, fontSize: number): RichText[] {
+  const wrapped: RichText[] = [];
+  for (const line of lines) {
+    if (estimateWidth([line], fontSize) <= maxWidth) {
+      wrapped.push(line);
+      continue;
+    }
+
+    // The line's break units: whitespace, one CJK glyph, or a whole Latin word. The
+    // full-width class matches `estimateWidth`'s, or a wrapped line would measure
+    // wider than the wrap allowed.
+    type Unit = { run: RichText[number]; text: string; width: number };
+    const units: Unit[] = [];
+    for (const run of line) {
+      const pieces = run.text.match(
+        /\s+|[　-鿿豈-﫿＀-｠]|[^\s　-鿿豈-﫿＀-｠]+/g,
+      );
+      for (const piece of pieces ?? []) {
+        units.push({
+          run,
+          text: piece,
+          width: estimateWidth([[{ ...run, text: piece }]], fontSize),
+        });
+      }
+    }
+
+    let current: RichText = [];
+    let currentWidth = 0;
+    const flush = () => {
+      if (current.length > 0) wrapped.push(current);
+      current = [];
+      currentWidth = 0;
+    };
+    for (const unit of units) {
+      const blank = unit.text.trim() === '';
+      if (!blank && current.length > 0 && currentWidth + unit.width > maxWidth) flush();
+      if (blank && current.length === 0) continue; // the break swallows the space at it
+      current.push({ ...unit.run, text: unit.text });
+      currentWidth += unit.width;
+    }
+    flush();
+  }
+  return wrapped;
+}
+
 function projection(
   width: number,
   height: number,
@@ -764,9 +820,17 @@ export function axisTitleAnchor(
  * untitled diagram would render with a blank strip on top.
  */
 function titleRoom(diagram: Diagram, language: LanguageMode, scale: number): number {
-  const lines = pickSides(diagram.title, language);
-  if (lines.length === 0) return 0;
-  return TITLE_TOP * scale + lines.length * TITLE_SIZE * scale * 1.15 + TITLE_GAP * scale;
+  return titleRoomFor(pickSides(diagram.title, language).length, scale);
+}
+
+/**
+ * The room `count` title lines need. The pie variant counts *wrapped* lines — which
+ * depend on the width, which `titleRoom`'s signature cannot know — so the line count
+ * and the room it costs are separate questions with one formula between them.
+ */
+function titleRoomFor(count: number, scale: number): number {
+  if (count === 0) return 0;
+  return TITLE_TOP * scale + count * TITLE_SIZE * scale * 1.15 + TITLE_GAP * scale;
 }
 
 /**
@@ -916,24 +980,46 @@ function wedgePath(cx: number, cy: number, r: number, a0: number, a1: number): s
   );
 }
 
+/** White either side of the pie's centred title, px at nominal size. */
+const PIE_TITLE_CUSHION = 10;
+
+/**
+ * The pie title's wrapped lines and the width the canvas must hold, resolved
+ * together. **The title wraps rather than flooring the chart**: a headline like the
+ * reference's ("Market Shares (%) of China's Online Food Delivery Sector in 2017")
+ * cost 490px on one line, and a teacher shrinking the figure wants a smaller chart
+ * at the same 12pt title, not a clipped or shrunken one. The only remaining floor is
+ * the widest *wrapped* line — an unbreakable word — so nothing ever clips. One
+ * function serves `pieSize` and `pieSvg`, or the two would wrap at different widths.
+ */
+function pieTitleLayout(
+  diagram: Diagram,
+  widthPx: number,
+  language: LanguageMode,
+): { width: number; lines: RichText[] } {
+  const lines = pickSides(diagram.title, language);
+  if (lines.length === 0) return { width: widthPx, lines };
+  const wrapped = wrapRichLines(lines, widthPx - 2 * PIE_TITLE_CUSHION, TITLE_SIZE);
+  // Widening to the widest wrapped line can only loosen the wrap, so the lines stay
+  // valid at the final width — no second pass needed.
+  const width = Math.max(
+    widthPx,
+    Math.ceil(estimateWidth(wrapped, TITLE_SIZE)) + 2 * PIE_TITLE_CUSHION,
+  );
+  return { width, lines: wrapped };
+}
+
 /** `diagramSize` for the pie variant: the circle fills the width, title room on top. */
 function pieSize(
   diagram: Diagram,
   widthPx: number,
   language: LanguageMode,
 ): { widthPx: number; heightPx: number } {
-  // The title centres on the canvas, so the floor is simply its own width plus a
-  // cushion — none of the axes' asymmetric-padding arithmetic applies.
-  const titleLines = pickSides(diagram.title, language);
-  const CUSHION = 10;
-  const width =
-    titleLines.length === 0
-      ? widthPx
-      : Math.max(widthPx, Math.ceil(estimateWidth(titleLines, TITLE_SIZE)) + 2 * CUSHION);
+  const { width, lines } = pieTitleLayout(diagram, widthPx, language);
   const diameter = Math.max(1, width - 2 * PIE_PAD);
   return {
     widthPx: width,
-    heightPx: Math.round(diameter + 2 * PIE_PAD + titleRoom(diagram, language, 1)),
+    heightPx: Math.round(diameter + 2 * PIE_PAD + titleRoomFor(lines.length, 1)),
   };
 }
 
@@ -948,7 +1034,10 @@ function pieSvg(diagram: Diagram, pie: PieChart, options: DiagramSvgOptions): st
     ? `${options.fonts.latin}, ${options.fonts.eastAsia}, serif`
     : 'Times New Roman, serif';
 
-  const room = titleRoom(diagram, language, scale);
+  // The same wrapped lines the measurement reserved room for (§ `pieTitleLayout`) —
+  // wrapped at the nominal width, so the raster's higher `scale` cannot re-wrap.
+  const titleLines = pieTitleLayout(diagram, options.widthPx, language).lines;
+  const room = titleRoomFor(titleLines.length, scale);
   const below = diagram.titlePlacement === 'below';
   const pad = PIE_PAD * scale;
   // The circle takes whatever the canvas leaves after the pads and the title's room —
@@ -1004,7 +1093,6 @@ function pieSvg(diagram: Diagram, pie: PieChart, options: DiagramSvgOptions): st
 
   // Bold and not underlined, as the reference pie prints its heading — unlike the axes
   // diagrams, whose underline is what marks their caption.
-  const titleLines = pickSides(diagram.title, language);
   const title = textAt(
     titleLines,
     cx,

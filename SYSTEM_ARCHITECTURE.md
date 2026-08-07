@@ -120,6 +120,33 @@ section element's **id**, not an index: `computeNumbering` resets the counter;
 A section heading and a free heading render identically (same style, `keepNext`); they
 differ only in meaning to numbering.
 
+### A stimulus is shared by the questions that follow it
+
+Two MCQs over one pie chart ("Study the following diagram and answer Questions 8 and
+9.") is the `stimulus` layout element: a lead-in of **authored `prefix`/`suffix`
+around a derived question range** (the `questionCount` decomposition) plus a full
+`ContentBlock[]`.
+
+- **The range is derived, never stored**: the walker reads the next `span` questions'
+  numbers (default 2) from the numbering plan, so inserting or reordering questions
+  renumbers the sentence. The look-ahead stops at the next stimulus, whose questions
+  are its own. No following questions prints "the questions below", not a dash.
+- **Block edits reach layout-owned blocks.** `documentBlockLists`/`mapAllBlocks`
+  (`model/edits.ts`) walk questions *and* block-bearing layout elements — read and
+  write must reach the same lists or a block is findable but unwritable. Page
+  editing, table grids, resize, diagram double-click and Delete all work unchanged.
+- **On Paper 1 it opens a question group**: the wide question boundary above
+  (`stimulusGapLines`, same override chain), the lead-in gap (2 lines) to the
+  question below, and the `keepQuestionWhole` chain through its nodes.
+- **An unanchored stimulus lands ahead of the closing lines** — `appendIndexFor`
+  treats it as question content (the anchor advances onto it, so the questions added
+  next would otherwise follow it past "END OF PAPER").
+- **Selection is mirrored, not lifted**: the preview's local layout selection is
+  reported to `store.selectedElementId` (`onLayoutSelectionChange`); the store's only
+  write back is clearing (the panel's ✕). The sidebar panels a stimulus
+  (`StimulusEditorPanel`: wording, span, the stem's own `BlockEditor`); other layout
+  kinds keep having nothing to inspect.
+
 ### Bands and zones (`src/model/bands.ts`)
 
 Placement is **slot-based, never free**: a `Band` is one printed row with three drop
@@ -788,6 +815,13 @@ re-measure, title mechanism — serves it unchanged. Modelled on
 - **The pie's title is bold and not underlined** (the reference pie's own setting);
   a lone slice draws as a `<circle>` (its wedge path would collapse), zero-value slices
   are skipped, and an empty pie stays visible as a bare circle.
+- **A long pie title wraps at the chosen width instead of flooring it**
+  (`pieTitleLayout` → `wrapRichLines`): the reference headline cost 490px on one line,
+  which was the smallest pie a teacher could make. The title keeps its size and takes
+  more lines; the only remaining floor is the widest unbreakable word (Latin breaks at
+  spaces, CJK per glyph — the same `estimateWidth` metric, or size and drawing would
+  wrap differently). Size and SVG wrap through the one function, at the **nominal**
+  width, so the 3× raster cannot re-wrap. Axes diagrams keep `titleWidthFloor`.
 - Inserted as the `pie` template; **picking a template now re-measures the block** (the
   shapes disagree about their box — a pie is square-ish, the axes plots 4:3).
 
