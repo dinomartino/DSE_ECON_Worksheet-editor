@@ -756,6 +756,28 @@ documents render byte-identically (pinned by a freeze test).
 - **Crop is a mode**: entering clears selection and caret; every shortcut but Escape is
   inert; "Auto frame" drops the crop.
 
+### A pie chart is a diagram variant, and its slices are data
+
+`Diagram.pie` (optional) makes the diagram a pie chart: `diagramSvg`/`diagramSize`
+branch, the axes fields are ignored, and the whole block pipeline — one PNG, resize by
+re-measure, title mechanism — serves it unchanged. Modelled on
+`real_life_reference/Pie_chart.png`.
+
+- **The printed percent is derived** from `slice.value / total`, never stored — values
+  may be raw figures or percentages and the labels come out right either way. One
+  decimal at most, trailing `.0` trimmed.
+- **Slices draw clockwise from 12 o'clock in array order**, filled with cycling
+  monochrome patterns (white → hatch → grey → dots); labels sit on the slice centroid
+  with a white halo (`paint-order: stroke`) so hatching cannot run through the letters.
+- **The axes canvas never opens for a pie** (guarded where `drawingBlockId` resolves in
+  `EditorApp`) — slices are edited in the sidebar panel (`PieSliceFields`), name + share
+  per row. Slice edits never re-measure: labels draw inside the circle.
+- **The pie's title is bold and not underlined** (the reference pie's own setting);
+  a lone slice draws as a `<circle>` (its wedge path would collapse), zero-value slices
+  are skipped, and an empty pie stays visible as a bare circle.
+- Inserted as the `pie` template; **picking a template now re-measures the block** (the
+  shapes disagree about their box — a pie is square-ish, the axes plots 4:3).
+
 ### Drawing (`model/diagramDraw.ts`, `components/editor/DiagramCanvas.tsx`)
 
 **The canvas owns the geometry; the panel owns everything else** (Template, Width, Alt

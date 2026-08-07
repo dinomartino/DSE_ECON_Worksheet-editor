@@ -178,6 +178,32 @@ export interface DiagramCrop {
 }
 
 /**
+ * One labelled share of a pie chart: "Ele.me — 36.5".
+ *
+ * `value` is a share, not a percentage: the printed percent is **derived** from the
+ * slice's value over the total, so a teacher can type raw figures (sales, counts) or
+ * percentages and the labels come out right either way. Storing the percent would go
+ * stale the moment a slice is added — the same reason marks totals are never stored.
+ */
+export interface PieSlice {
+  id: string;
+  /** Slice name, printed inside the slice above its derived percent. */
+  label: BiText;
+  /** Non-negative share of the whole. */
+  value: number;
+}
+
+/**
+ * A pie chart, the reference papers' data-response stimulus (market shares, spending
+ * breakdowns). Slices draw clockwise from 12 o'clock in array order, filled with
+ * cycling monochrome patterns — white, hatch, grey, dots — because the papers print in
+ * black and white and colour would flatten to indistinguishable greys.
+ */
+export interface PieChart {
+  slices: PieSlice[];
+}
+
+/**
  * A complete diagram.
  *
  * Everything is optional except the axes, because the default state — what a teacher
@@ -231,6 +257,14 @@ export interface Diagram {
    * canvas is sized from what the diagram draws. See `DiagramCrop`.
    */
   crop?: DiagramCrop;
+  /**
+   * When present, the diagram **is** a pie chart: the renderer draws the slices and
+   * ignores the axes fields entirely. A variant inside `Diagram` rather than a new
+   * block kind, so the whole diagram pipeline — one SVG, rasterized once, resized by
+   * re-measuring — serves the pie unchanged. The axes canvas never opens for a pie;
+   * its slices are edited in the sidebar panel.
+   */
+  pie?: PieChart;
   x: DiagramAxis;
   y: DiagramAxis;
   curves: DiagramCurve[];

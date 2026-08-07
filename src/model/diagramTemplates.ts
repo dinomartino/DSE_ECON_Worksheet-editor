@@ -281,6 +281,34 @@ export const DIAGRAM_TEMPLATES: DiagramTemplate[] = [
       showOrigin: true,
     }),
   },
+  {
+    id: 'pie',
+    name: bi('Pie chart', '圓形圖'),
+    hint: bi(
+      'Patterned slices with derived percentages — market shares.',
+      '以不同紋理表示份額，百分比自動計算。',
+    ),
+    // The `pie` field is what makes this a pie chart: the renderer ignores the axes
+    // fields entirely, and the sidebar panel (not the drawing canvas) edits the slices.
+    // Values seed at a round 40/30/20/10 so the derived percents visibly work; the
+    // title is left for the teacher — a pie names its own subject.
+    build: () => ({
+      x: {},
+      y: {},
+      curves: [],
+      points: [],
+      labels: [],
+      arrows: [],
+      pie: {
+        slices: [
+          { id: newId(), label: bi('Firm A', '公司甲'), value: 40 },
+          { id: newId(), label: bi('Firm B', '公司乙'), value: 30 },
+          { id: newId(), label: bi('Firm C', '公司丙'), value: 20 },
+          { id: newId(), label: bi('Others', '其他'), value: 10 },
+        ],
+      },
+    }),
+  },
 ];
 
 export function getDiagramTemplate(id: string): DiagramTemplate | undefined {

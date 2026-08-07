@@ -5,6 +5,7 @@ import type {
   DiagramCurve,
   DiagramLabel,
   DiagramPointMark,
+  PieChart,
 } from '@/model/diagram';
 import type { BiText, FontPair, LanguageMode, RichText } from '@/model/types';
 
@@ -198,6 +199,12 @@ interface TextOptions {
   italic?: boolean;
   bold?: boolean;
   underline?: boolean;
+  /**
+   * A white outline painted *under* the glyphs (`paint-order: stroke`), in px. Used by
+   * pie slice labels, which sit on hatched and dotted fills — without the halo the
+   * pattern's lines run through the letters.
+   */
+  halo?: number;
 }
 
 /** One or two stacked lines of text at a pixel position. */
@@ -217,6 +224,9 @@ function textAt(
   // whose runs differ — an underline that stopped at every bold word would read as a
   // mistake rather than as the single rule the reference papers draw.
   if (options.underline) style.push('text-decoration:underline');
+  if (options.halo) {
+    style.push('paint-order:stroke', 'stroke:#fff', `stroke-width:${n(options.halo)}px`);
+  }
 
   return lines
     .map((line, index) => {
@@ -753,6 +763,8 @@ export function diagramSize(
   widthPx: number,
   language: LanguageMode,
 ): { widthPx: number; heightPx: number } {
+  // The pie variant has no plot aspect and no crop: a circle plus the title's room.
+  if (diagram.pie) return pieSize(diagram, widthPx, language);
   // A cropped diagram is sized by its frame, not by measuring: the teacher chose the
   // clearance on every side, so the plot takes what the width leaves after their pads
   // and the height follows from the plot's aspect plus their top and bottom. Language
@@ -799,6 +811,196 @@ function titleWidthFloor(diagram: Diagram, widthPx: number, language: LanguageMo
     width = Math.max(widthPx, Math.ceil(title + Math.abs(PAD.left - padRight)) + CUSHION);
   }
   return width;
+}
+
+/*
+ * ── The pie chart variant ─────────────────────────────────────────────────────────
+ *
+ * A `Diagram` carrying `pie` draws slices instead of axes: same SVG contract, same
+ * rasterization, same measured-size rule. The slices start at 12 o'clock and run
+ * clockwise in array order, exactly as the reference chart
+ * (`real_life_reference/Pie_chart.png`) is drawn.
+ */
+
+/** White clearance between the circle and the canvas edge, px at nominal size. */
+const PIE_PAD = 14;
+
+/**
+ * Slice fills, cycling by index: white → hatch → grey → dots → cross-hatch → light
+ * grey. Patterns rather than colours because the papers print in black and white —
+ * the reference chart itself uses exactly white/hatch/grey/dots.
+ */
+const PIE_FILLS = [
+  '#fff',
+  'url(#pieHatch)',
+  '#c4c4c4',
+  'url(#pieDots)',
+  'url(#pieCross)',
+  '#ececec',
+];
+
+/** The pattern tiles behind `PIE_FILLS`. Sized in user units, so scaled explicitly. */
+function piePatternDefs(scale: number): string {
+  const cell = n(6 * scale);
+  const line = `stroke="#000" stroke-width="${n(scale)}"`;
+  const ground = `<rect width="${cell}" height="${cell}" fill="#fff"/>`;
+  const pattern = (id: string, rotate: boolean, content: string) =>
+    `<pattern id="${id}" patternUnits="userSpaceOnUse" width="${cell}" height="${cell}"` +
+    (rotate ? ' patternTransform="rotate(45)"' : '') +
+    `>${ground}${content}</pattern>`;
+  return (
+    '<defs>' +
+    pattern('pieHatch', true, `<line x1="0" y1="0" x2="0" y2="${cell}" ${line}/>`) +
+    pattern(
+      'pieDots',
+      false,
+      `<circle cx="${n(1.6 * scale)}" cy="${n(1.6 * scale)}" r="${n(0.9 * scale)}" fill="#000"/>`,
+    ) +
+    pattern(
+      'pieCross',
+      true,
+      `<line x1="0" y1="0" x2="0" y2="${cell}" ${line}/><line x1="0" y1="0" x2="${cell}" y2="0" ${line}/>`,
+    ) +
+    '</defs>'
+  );
+}
+
+/**
+ * The printed percent for one slice — derived from the values, never stored, so the
+ * labels stay right when a slice is added or a figure corrected. One decimal at most:
+ * "36.5%", but "33%" rather than "33.0%", matching the reference chart's own mix.
+ */
+export function pieSlicePercent(value: number, total: number): string {
+  const pct = Math.round((value / total) * 1000) / 10;
+  return `${pct}%`;
+}
+
+/** One wedge from `a0` to `a1`, radians clockwise from 12 o'clock. */
+function wedgePath(cx: number, cy: number, r: number, a0: number, a1: number): string {
+  const at = (a: number) => ({ x: cx + Math.sin(a) * r, y: cy - Math.cos(a) * r });
+  const from = at(a0);
+  const to = at(a1);
+  const largeArc = a1 - a0 > Math.PI ? 1 : 0;
+  return (
+    `M ${n(cx)} ${n(cy)} L ${n(from.x)} ${n(from.y)} ` +
+    `A ${n(r)} ${n(r)} 0 ${largeArc} 1 ${n(to.x)} ${n(to.y)} Z`
+  );
+}
+
+/** `diagramSize` for the pie variant: the circle fills the width, title room on top. */
+function pieSize(
+  diagram: Diagram,
+  widthPx: number,
+  language: LanguageMode,
+): { widthPx: number; heightPx: number } {
+  // The title centres on the canvas, so the floor is simply its own width plus a
+  // cushion — none of the axes' asymmetric-padding arithmetic applies.
+  const titleLines = pickSides(diagram.title, language);
+  const CUSHION = 10;
+  const width =
+    titleLines.length === 0
+      ? widthPx
+      : Math.max(widthPx, Math.ceil(estimateWidth(titleLines, TITLE_SIZE)) + 2 * CUSHION);
+  const diameter = Math.max(1, width - 2 * PIE_PAD);
+  return {
+    widthPx: width,
+    heightPx: Math.round(diameter + 2 * PIE_PAD + titleRoom(diagram, language, 1)),
+  };
+}
+
+/** `diagramSvg` for the pie variant. */
+function pieSvg(diagram: Diagram, pie: PieChart, options: DiagramSvgOptions): string {
+  const scale = options.scale ?? 1;
+  const width = options.widthPx * scale;
+  const height = options.heightPx * scale;
+  const language = options.language;
+
+  const fontFamily = options.fonts
+    ? `${options.fonts.latin}, ${options.fonts.eastAsia}, serif`
+    : 'Times New Roman, serif';
+
+  const room = titleRoom(diagram, language, scale);
+  const below = diagram.titlePlacement === 'below';
+  const pad = PIE_PAD * scale;
+  // The circle takes whatever the canvas leaves after the pads and the title's room —
+  // measured against both dimensions so a stale stored height can squash, not clip.
+  const radius = Math.max(1, Math.min(width - 2 * pad, height - 2 * pad - room)) / 2;
+  const cx = width / 2;
+  const cy = (below ? pad : pad + room) + radius;
+
+  const slices = pie.slices.filter((slice) => slice.value > 0);
+  const total = slices.reduce((sum, slice) => sum + slice.value, 0);
+  const stroke = `stroke="#000" stroke-width="${n(1.2 * scale)}"`;
+
+  const wedges: string[] = [];
+  const labels: string[] = [];
+  let angle = 0;
+  slices.forEach((slice, index) => {
+    const a0 = angle;
+    const a1 = angle + (slice.value / total) * Math.PI * 2;
+    angle = a1;
+    const fill = `fill="${PIE_FILLS[index % PIE_FILLS.length]}"`;
+    // A lone slice is the whole circle; its wedge path would collapse (the arc's two
+    // endpoints coincide), so it is drawn as the circle it is.
+    wedges.push(
+      a1 - a0 >= Math.PI * 2 - 1e-6
+        ? `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(radius)}" ${fill} ${stroke}/>`
+        : `<path d="${wedgePath(cx, cy, radius, a0, a1)}" ${fill} ${stroke}/>`,
+    );
+
+    // Name over derived percent, centred as a block on the slice's own centroid, with
+    // a white halo so the letters survive the hatched and dotted fills.
+    const mid = (a0 + a1) / 2;
+    const size = FONT_SIZE * scale;
+    const lines = [
+      ...pickSides(slice.label, language),
+      [{ text: pieSlicePercent(slice.value, total) }],
+    ];
+    labels.push(
+      textAt(
+        lines,
+        cx + Math.sin(mid) * radius * 0.6,
+        cy - Math.cos(mid) * radius * 0.6 - ((lines.length - 1) * size * 1.15) / 2,
+        { anchor: 'middle', baseline: 'middle', fontSize: size, halo: 3 * scale },
+      ),
+    );
+  });
+
+  // No shares yet: an empty circle, so the inserted block is visible and clickable
+  // rather than a blank strip.
+  const empty =
+    slices.length === 0
+      ? `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(radius)}" fill="#fff" ${stroke}/>`
+      : '';
+
+  // Bold and not underlined, as the reference pie prints its heading — unlike the axes
+  // diagrams, whose underline is what marks their caption.
+  const titleLines = pickSides(diagram.title, language);
+  const title = textAt(
+    titleLines,
+    cx,
+    below
+      ? height - room + TITLE_GAP * scale + TITLE_SIZE * scale
+      : (TITLE_TOP + TITLE_SIZE * 1.1) * scale,
+    { anchor: 'middle', fontSize: TITLE_SIZE * scale, bold: true },
+  );
+
+  const body = [
+    piePatternDefs(scale),
+    // White ground: a transparent PNG would print as whatever is behind it in Word.
+    `<rect width="${n(width)}" height="${n(height)}" fill="#fff"/>`,
+    empty,
+    ...wedges,
+    ...labels,
+    title,
+  ].join('');
+
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${n(width)}" height="${n(height)}" ` +
+    `viewBox="0 0 ${n(width)} ${n(height)}" font-family="${escapeXml(fontFamily)}">` +
+    body +
+    '</svg>'
+  );
 }
 
 /**
@@ -915,6 +1117,7 @@ export function diagramPlot(diagram: Diagram, options: DiagramSvgOptions): Proje
  * rasterization, where anything external would silently fail to load.
  */
 export function diagramSvg(diagram: Diagram, options: DiagramSvgOptions): string {
+  if (diagram.pie) return pieSvg(diagram, diagram.pie, options);
   const scale = options.scale ?? 1;
   const width = options.widthPx * scale;
   const height = options.heightPx * scale;

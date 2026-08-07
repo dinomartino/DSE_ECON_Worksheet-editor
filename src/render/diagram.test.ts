@@ -9,7 +9,14 @@ import { bi } from '@/model/text';
 import type { OutputMode, Worksheet } from '@/model/types';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
 import { renderWorksheet } from './worksheet';
-import { axisTitleAnchor, diagramPlot, diagramSize, diagramSvg, diagramTitleAnchor } from './diagram';
+import {
+  axisTitleAnchor,
+  diagramPlot,
+  diagramSize,
+  diagramSvg,
+  diagramTitleAnchor,
+  pieSlicePercent,
+} from './diagram';
 
 /**
  * Diagrams (§3.3, §7.5).
@@ -794,5 +801,115 @@ describe('the auto frame widens for a long title', () => {
       crop: { left: 64, top: 44, right: 30, bottom: 46 },
     };
     expect(diagramSize(diagram, 400, 'en').widthPx).toBe(400);
+  });
+});
+
+describe('the pie chart variant', () => {
+  const pie = () => buildFromTemplate('pie');
+
+  it('ships a template whose slices carry both language sides and positive values', () => {
+    const diagram = pie();
+    expect(diagram.pie).toBeTruthy();
+    for (const slice of diagram.pie!.slices) {
+      expect(slice.value).toBeGreaterThan(0);
+      expect(slice.label.en.some((run) => run.text.trim() !== '')).toBe(true);
+      expect(slice.label.zh.some((run) => run.text.trim() !== '')).toBe(true);
+    }
+  });
+
+  it('draws one patterned wedge and one derived percent per slice', () => {
+    const diagram = pie();
+    const svg = diagramSvg(diagram, { widthPx: 320, heightPx: 348, language: 'en' });
+    // Four slices: the first is plain white, the rest take the cycling patterns.
+    expect((svg.match(/<path d="M [^"]+ Z"/g) ?? []).length).toBe(4);
+    expect(svg).toContain('url(#pieHatch)');
+    expect(svg).toContain('url(#pieDots)');
+    // The percents are derived from the 40/30/20/10 shares, never stored.
+    for (const pct of ['40%', '30%', '20%', '10%']) expect(svg).toContain(pct);
+    expect(svg).toContain('Firm A');
+  });
+
+  it('derives percents with one decimal at most, trimming a trailing .0', () => {
+    expect(pieSlicePercent(36.5, 100)).toBe('36.5%');
+    expect(pieSlicePercent(33, 100)).toBe('33%');
+    expect(pieSlicePercent(1, 3)).toBe('33.3%');
+  });
+
+  it('treats values as shares of the total, not as percentages', () => {
+    const diagram = pie();
+    diagram.pie = {
+      slices: [
+        { id: 'a', label: bi('A', 'A'), value: 3 },
+        { id: 'b', label: bi('B', 'B'), value: 1 },
+      ],
+    };
+    const svg = diagramSvg(diagram, { widthPx: 320, heightPx: 348, language: 'en' });
+    expect(svg).toContain('75%');
+    expect(svg).toContain('25%');
+  });
+
+  it('draws a lone slice as the full circle its wedge path cannot express', () => {
+    const diagram = pie();
+    diagram.pie = { slices: [{ id: 'a', label: bi('All', '全部'), value: 5 }] };
+    const svg = diagramSvg(diagram, { widthPx: 320, heightPx: 348, language: 'en' });
+    expect(svg).toContain('<circle');
+    expect(svg).not.toContain('<path d="M');
+    expect(svg).toContain('100%');
+  });
+
+  it('skips zero-value slices and keeps an empty pie visible as a bare circle', () => {
+    const diagram = pie();
+    diagram.pie = {
+      slices: [
+        { id: 'a', label: bi('A', 'A'), value: 2 },
+        { id: 'b', label: bi('Ghost', '幽靈'), value: 0 },
+        { id: 'c', label: bi('C', 'C'), value: 2 },
+      ],
+    };
+    const svg = diagramSvg(diagram, { widthPx: 320, heightPx: 348, language: 'en' });
+    expect(svg).not.toContain('Ghost');
+    expect((svg.match(/<path d="M [^"]+ Z"/g) ?? []).length).toBe(2);
+
+    diagram.pie = { slices: [] };
+    const empty = diagramSvg(diagram, { widthPx: 320, heightPx: 348, language: 'en' });
+    expect(empty).toContain('<circle');
+  });
+
+  it('prints its title bold and not underlined, as the reference pie sets it', () => {
+    const diagram = { ...pie(), title: bi('Market Shares (%) in 2017', '2017 年市場佔有率') };
+    const svg = diagramSvg(diagram, { widthPx: 320, heightPx: 400, language: 'en' });
+    expect(svg).toContain('Market Shares (%) in 2017');
+    expect(svg).toContain('font-weight:bold');
+    expect(svg).not.toContain('text-decoration:underline');
+  });
+
+  it('measures a square-ish box, growing only for the title', () => {
+    const bare = diagramSize(pie(), 320, 'en');
+    expect(bare.widthPx).toBe(320);
+    // No title: the height is exactly the circle plus its pads — a square canvas.
+    expect(bare.heightPx).toBe(320);
+
+    const titled = diagramSize(
+      { ...pie(), title: bi('Market shares', '市場佔有率') },
+      320,
+      'en',
+    );
+    expect(titled.widthPx).toBe(320);
+    expect(titled.heightPx).toBeGreaterThan(bare.heightPx);
+  });
+
+  it('rides the diagram pipeline: a pie block reaches the export pre-pass', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const block = createDiagramBlock('pie');
+    worksheet.questions[0].blocks.push(block);
+    const nodes = collectDiagramNodes(worksheet, STUDENT_BI);
+    expect(nodes.some((node) => node.blockId === block.id && node.diagram.pie)).toBe(true);
+  });
+
+  it('prints an identical bilingual slice name once, like every diagram label', () => {
+    const diagram = pie();
+    diagram.pie = { slices: [{ id: 'a', label: bi('Ele.me', 'Ele.me'), value: 1 }] };
+    const svg = diagramSvg(diagram, { widthPx: 320, heightPx: 348, language: 'bilingual' });
+    expect((svg.match(/Ele\.me/g) ?? []).length).toBe(1);
   });
 });

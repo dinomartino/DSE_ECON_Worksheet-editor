@@ -89,9 +89,12 @@ export function EditorApp({ onOpenFiles }: { onOpenFiles: () => void }) {
    * edit would then be applied on top of a stale base.
    */
   const [drawingBlockId, setDrawingBlockId] = useState<string | undefined>();
-  const drawingBlock = drawingBlockId
+  const foundDrawingBlock = drawingBlockId
     ? findDiagramBlock(worksheet, drawingBlockId)
     : undefined;
+  // A pie chart never opens the axes canvas: its slices are data, edited in the
+  // sidebar panel, and the canvas's whole gesture vocabulary is about curves.
+  const drawingBlock = foundDrawingBlock?.diagram.pie ? undefined : foundDrawingBlock;
   const [activePage, setActivePage] = useState(0);
   /**
    * Whether the document-settings dialog is open.

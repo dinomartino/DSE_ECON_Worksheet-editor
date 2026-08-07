@@ -1,12 +1,21 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { nanoid } from 'nanoid';
 import { DIAGRAM_TEMPLATES, buildFromTemplate } from '@/model/diagramTemplates';
 import { emptyBiText, isBiTextEmpty, plain } from '@/model/text';
+import type { PieSlice } from '@/model/diagram';
 import type { CaptionPlacement, DiagramBlock } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { diagramSize, diagramSvg } from '@/render/diagram';
-import { Button, FigureAlignField, NumberField, Segmented, SelectField } from '@/components/ui';
+import {
+  Button,
+  FigureAlignField,
+  IconButton,
+  NumberField,
+  Segmented,
+  SelectField,
+} from '@/components/ui';
 import { BiTextField } from './BiTextField';
 import { DiagramCanvas } from './DiagramCanvas';
 
@@ -63,42 +72,62 @@ export function DiagramEditor({ block, onChange }: Props) {
           would be cut off by the panel. The selector is `[&_svg]`, not `[&>svg]` — the
           markup is injected into a wrapping <span>, so the svg is a *grandchild*, and the
           direct-child form silently matched nothing. */}
-      <button
-        type="button"
-        title="Draw on this diagram"
-        onClick={() => setDrawing(true)}
-        className="group/preview relative block w-full overflow-hidden rounded border border-line bg-surface [&_svg]:h-auto [&_svg]:w-full "
-        style={{ lineHeight: 0 }}
-      >
-        <span dangerouslySetInnerHTML={{ __html: preview }} />
-        <span className="absolute inset-0 flex items-center justify-center bg-sky-500/0 opacity-0 transition-opacity group-hover/preview:bg-sky-500/10 group-hover/preview:opacity-100">
-          <span className="rounded-md bg-slate-900/80 px-2 py-1 text-[11px] font-medium leading-none text-white">
-            Draw
+      {diagram.pie ? (
+        // A pie has no drawing surface — its slices are data, edited in the fields
+        // below — so the thumbnail is a plain preview, not a way into the canvas.
+        <div
+          className="overflow-hidden rounded border border-line bg-surface [&_svg]:h-auto [&_svg]:w-full"
+          style={{ lineHeight: 0 }}
+        >
+          <span dangerouslySetInnerHTML={{ __html: preview }} />
+        </div>
+      ) : (
+        <button
+          type="button"
+          title="Draw on this diagram"
+          onClick={() => setDrawing(true)}
+          className="group/preview relative block w-full overflow-hidden rounded border border-line bg-surface [&_svg]:h-auto [&_svg]:w-full "
+          style={{ lineHeight: 0 }}
+        >
+          <span dangerouslySetInnerHTML={{ __html: preview }} />
+          <span className="absolute inset-0 flex items-center justify-center bg-sky-500/0 opacity-0 transition-opacity group-hover/preview:bg-sky-500/10 group-hover/preview:opacity-100">
+            <span className="rounded-md bg-slate-900/80 px-2 py-1 text-[11px] font-medium leading-none text-white">
+              Draw
+            </span>
           </span>
-        </span>
-      </button>
+        </button>
+      )}
 
-      {drawing && (
+      {drawing && !diagram.pie && (
         <DiagramCanvas block={block} onChange={onChange} onClose={() => setDrawing(false)} />
       )}
 
-      {/* Draw is the weightiest control in this panel, because every edit to the picture
-          itself now happens there — a teacher who does not find this button finds no way
-          to change the diagram at all. `default` rather than `primary`: primary is
-          reserved for Export (§weight matches consequence), and against the subtle fields
-          below, default already reads as the action. The count beside it is the panel's
-          one report on the geometry — it says the drawing has contents without pretending
-          to list them. */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" onClick={() => setDrawing(true)}>
-          ✎ Draw
-        </Button>
-        <span className="text-[11px] text-ink-subtle">
-          {elementCount === 0
-            ? 'Empty — draw curves, points and labels'
-            : `${elementCount} ${elementCount === 1 ? 'element' : 'elements'} · edit them on the canvas`}
-        </span>
-      </div>
+      {diagram.pie ? (
+        <PieSliceFields
+          slices={diagram.pie.slices}
+          onChange={(slices) =>
+            onChange({ ...block, diagram: { ...diagram, pie: { slices } } })
+          }
+        />
+      ) : (
+        /* Draw is the weightiest control in this panel, because every edit to the picture
+           itself now happens there — a teacher who does not find this button finds no way
+           to change the diagram at all. `default` rather than `primary`: primary is
+           reserved for Export (§weight matches consequence), and against the subtle fields
+           below, default already reads as the action. The count beside it is the panel's
+           one report on the geometry — it says the drawing has contents without pretending
+           to list them. */
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" onClick={() => setDrawing(true)}>
+            ✎ Draw
+          </Button>
+          <span className="text-[11px] text-ink-subtle">
+            {elementCount === 0
+              ? 'Empty — draw curves, points and labels'
+              : `${elementCount} ${elementCount === 1 ? 'element' : 'elements'} · edit them on the canvas`}
+          </span>
+        </div>
+      )}
 
       {/* Wraps, because the two controls have genuinely different needs: Width is sized by
           its content while the template select wants whatever is left. In a 400px column
@@ -115,7 +144,15 @@ export function DiagramEditor({ block, onChange }: Props) {
           onChange={(templateId) => {
             // Replacing the geometry wholesale is the point of picking a template, and it
             // routes through the store like any edit, so ⌘Z brings the old one back.
-            onChange({ ...block, diagram: buildFromTemplate(String(templateId)) });
+            // Re-measured, because the shapes disagree about their box — a pie is a
+            // square-ish circle, the axes templates a 4:3 plot — and keeping the old
+            // block size would letterbox the new picture inside it.
+            const next = buildFromTemplate(String(templateId));
+            onChange({
+              ...block,
+              ...diagramSize(next, block.widthPx, language),
+              diagram: next,
+            });
           }}
         />
         <NumberField
@@ -209,6 +246,71 @@ export function DiagramEditor({ block, onChange }: Props) {
           />
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * The pie chart's slices: name + share per row, in draw order (clockwise from 12
+ * o'clock). The printed percent is derived from share ÷ total, so the fields never
+ * show it — a stored percent is exactly what would go stale when a slice is added.
+ *
+ * Slice edits never re-measure the block: the labels draw *inside* the circle, so no
+ * name or value can change the picture's box (only the title does that, above).
+ */
+function PieSliceFields({
+  slices,
+  onChange,
+}: {
+  slices: PieSlice[];
+  onChange: (slices: PieSlice[]) => void;
+}) {
+  const patch = (id: string, change: Partial<PieSlice>) =>
+    onChange(slices.map((slice) => (slice.id === id ? { ...slice, ...change } : slice)));
+
+  return (
+    <div className="space-y-1">
+      <span className="text-[11px] font-medium text-ink-subtle">
+        Slices — clockwise from the top
+      </span>
+      {slices.map((slice, index) => (
+        <div key={slice.id} className="flex items-center gap-1">
+          <div className="min-w-0 flex-1">
+            <BiTextField
+              ariaLabel={`Slice ${index + 1} name`}
+              value={slice.label}
+              onChange={(label) => patch(slice.id, { label })}
+              rows={1}
+            />
+          </div>
+          <NumberField
+            label="Share"
+            min={0}
+            value={slice.value}
+            onChange={(value) => patch(slice.id, { value })}
+          />
+          <IconButton
+            label={`Remove slice ${index + 1}`}
+            onClick={() => onChange(slices.filter((other) => other.id !== slice.id))}
+          >
+            ✕
+          </IconButton>
+        </div>
+      ))}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          size="sm"
+          variant="subtle"
+          onClick={() =>
+            onChange([...slices, { id: nanoid(10), label: emptyBiText(), value: 10 }])
+          }
+        >
+          + Slice
+        </Button>
+        <span className="text-[11px] text-ink-subtle">
+          Percentages are computed from the shares.
+        </span>
+      </div>
     </div>
   );
 }
