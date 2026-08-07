@@ -177,15 +177,18 @@ export function TableGridControls({
                 ...chipStyle(14),
                 left: `${((columnStart + columnEnd) / 2) * 100}%`,
                 /*
-                 * Inside the column's first row, not above the table.
+                 * A second lane *above* the table, outside every cell — mirroring the
+                 * row delete, which sits at `left: -33` beyond its inserts at `-16`.
                  *
-                 * There is no second lane above a table: row 1's top edge *is* the
-                 * table's, so anything stacked over the insert chips lands on whatever
-                 * text precedes the block — the question stem, in every real case. Word
-                 * puts the column's delete on the column, and inside is the only place
-                 * that is unambiguously "this column" and nobody else's.
+                 * This used to sit inside row 1 (`top: 9`), centred on the column, on
+                 * the argument that there was no second lane up here. There is, and the
+                 * old placement destroyed data: it landed dead centre of a first-row
+                 * cell, so the *second* click of the double-click that opens that cell
+                 * for editing hit "Delete this column" instead — the teacher lost a
+                 * column of their table by trying to type in it. Chrome may never
+                 * occupy a spot a content gesture has to reach.
                  */
-                top: px(9),
+                top: px(-25),
                 marginLeft: px(-7),
               }}
               onClick={(event) => {
