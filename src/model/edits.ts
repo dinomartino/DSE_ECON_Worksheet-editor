@@ -79,6 +79,24 @@ function questionBlockLists(question: Question): ContentBlock[][] {
   return lists;
 }
 
+/**
+ * The table block with this id, wherever in the document it sits. The page needs the
+ * live rows to expand a swept cell range, and it holds ids rather than positions
+ * (§ `cellSelection`), so the lookup has to run against the worksheet.
+ */
+export function findTableBlock(
+  worksheet: Worksheet,
+  blockId: string,
+): TableBlock | undefined {
+  for (const question of worksheet.questions) {
+    for (const blocks of questionBlockLists(question)) {
+      const match = blocks.find((block) => block.id === blockId);
+      if (match?.kind === 'table') return match;
+    }
+  }
+  return undefined;
+}
+
 /** Does this question contain the given block anywhere? */
 export function questionOwnsBlock(question: Question, blockId: string): boolean {
   return questionBlockLists(question).some((blocks) =>
@@ -1045,4 +1063,34 @@ export function applyDeleteTarget(worksheet: Worksheet, target: EditTarget): Wor
     default:
       return worksheet;
   }
+}
+
+/**
+ * Empty several cells of one table at once — Delete over a swept range.
+ *
+ * One pass, so the whole range is a single commit and a single undo, the way the
+ * panel's bulk align already is (§ drag gestures commit once). Clearing means
+ * emptying the text, exactly as `applyDeleteTarget` does for one `tableCell`: a cell
+ * cannot leave the grid without breaking the table's geometry.
+ */
+export function applyClearCells(
+  worksheet: Worksheet,
+  blockId: string,
+  cellIds: readonly string[],
+): Worksheet {
+  if (cellIds.length === 0) return worksheet;
+  const wanted = new Set(cellIds);
+  return mapAllBlocks(worksheet, blockId, (block) =>
+    block.kind !== 'table'
+      ? block
+      : {
+          ...block,
+          rows: block.rows.map((row) => ({
+            ...row,
+            cells: row.cells.map((cell) =>
+              wanted.has(cell.id) ? { ...cell, text: EMPTY } : cell,
+            ),
+          })),
+        },
+  );
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   MIN_BLOCK_WIDTH_PX,
+  applyClearCells,
   applyDeleteTarget,
   applyEditTarget,
   applyFormatTarget,
@@ -8,6 +9,7 @@ import {
   applyRunFormatTarget,
   blockSize,
   describeDelete,
+  findTableBlock,
   formatOfTarget,
   isFormattable,
   targetQuestionId,
@@ -215,6 +217,56 @@ describe('deleting the selected element (Delete/Backspace on the page)', () => {
     expect(afterTable.rows[0].cells).toHaveLength(widthBefore);
     expect(plain(afterTable.rows[0].cells[1].text.en)).toBe('');
     expect(plain(afterTable.rows[0].cells[0].text.en)).toBe('Price ($)');
+  });
+
+  it('finds a table block anywhere in the document, and nothing else', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const mcq = worksheet.questions[1] as McqQuestion;
+    const table = mcq.blocks.find((block) => block.kind === 'table') as TableBlock;
+    const paragraph = mcq.blocks.find((block) => block.kind === 'paragraph');
+
+    expect(findTableBlock(worksheet, table.id)?.id).toBe(table.id);
+    expect(findTableBlock(worksheet, 'gone')).toBeUndefined();
+    // A block that exists but is not a table resolves to nothing, so the page cannot
+    // expand a cell range against something with no rows.
+    if (paragraph) expect(findTableBlock(worksheet, paragraph.id)).toBeUndefined();
+  });
+
+  /*
+   * Delete over a swept range. The whole point of the bulk verb is that it is one
+   * commit — clearing cell by cell would cost the teacher one undo per cell — so the
+   * test proves the range empties and nothing outside it is touched.
+   */
+  it('clears a whole cell range in one pass, leaving the grid and its neighbours', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const mcq = worksheet.questions[1] as McqQuestion;
+    const table = mcq.blocks.find((block) => block.kind === 'table') as TableBlock;
+    const cleared = [table.rows[0].cells[0].id, table.rows[0].cells[1].id];
+    const untouched = table.rows[1].cells[0];
+    const before = plain(untouched.text.en);
+
+    const next = applyClearCells(worksheet, table.id, cleared);
+    const after = next.questions[1] as McqQuestion;
+    const afterTable = after.blocks.find((block) => block.kind === 'table') as TableBlock;
+
+    expect(afterTable.rows[0].cells).toHaveLength(table.rows[0].cells.length);
+    expect(plain(afterTable.rows[0].cells[0].text.en)).toBe('');
+    expect(plain(afterTable.rows[0].cells[1].text.en)).toBe('');
+    expect(plain(afterTable.rows[1].cells[0].text.en)).toBe(before);
+  });
+
+  it('leaves the document untouched when the range is empty or the block is gone', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const mcq = worksheet.questions[1] as McqQuestion;
+    const table = mcq.blocks.find((block) => block.kind === 'table') as TableBlock;
+
+    expect(applyClearCells(worksheet, table.id, [])).toBe(worksheet);
+    // A stale block id must not throw or clear something else by accident.
+    const stale = applyClearCells(worksheet, 'gone', [table.rows[0].cells[0].id]);
+    const staleTable = (stale.questions[1] as McqQuestion).blocks.find(
+      (block) => block.kind === 'table',
+    ) as TableBlock;
+    expect(plain(staleTable.rows[0].cells[0].text.en)).toBe('Price ($)');
   });
 
   it('removes answers, explanations and captions', () => {

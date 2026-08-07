@@ -33,6 +33,7 @@ export function EditorApp({ onOpenFiles }: { onOpenFiles: () => void }) {
   const markSaved = useWorksheetStore((s) => s.markSaved);
   const applyEdit = useWorksheetStore((s) => s.applyEdit);
   const deleteTarget = useWorksheetStore((s) => s.deleteTarget);
+  const clearCells = useWorksheetStore((s) => s.clearCells);
   const replaceBlock = useWorksheetStore((s) => s.replaceBlock);
   const formatTarget = useWorksheetStore((s) => s.formatTarget);
   const formatRuns = useWorksheetStore((s) => s.formatRuns);
@@ -456,6 +457,7 @@ export function EditorApp({ onOpenFiles }: { onOpenFiles: () => void }) {
             onSelectQuestion={select}
             onEdit={handleEdit}
             onDelete={deleteTarget}
+            onClearCells={clearCells}
             onDeleteQuestion={removeQuestion}
             onDeleteLayout={handleDeleteLayout}
             onBulkDelete={removeMany}

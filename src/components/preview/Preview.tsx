@@ -20,7 +20,7 @@ import { TableColumnResizer } from "./TableColumnResizer";
 import { TableGridControls } from "./TableGridControls";
 import { zonesOf, type ZoneName } from "@/model/bands";
 import { COVER_PANEL } from "@/model/cover";
-import { describeDelete, isFormattable } from "@/model/edits";
+import { describeDelete, findTableBlock, isFormattable } from "@/model/edits";
 import { worksheetMarks } from "@/model/marks";
 import {
   commonRunFormat,
@@ -3335,6 +3335,12 @@ interface Props {
   onEdit?: EditHandler;
   /** Delete the element named by a target (Delete/Backspace on the page). */
   onDelete?: (target: EditTarget) => void;
+  /**
+   * Empty a swept range of table cells in one commit. Separate from `onDelete`, which
+   * takes one target and one commit each — a range cleared cell by cell would cost as
+   * many undos as it held cells.
+   */
+  onClearCells?: (blockId: string, cellIds: readonly string[]) => void;
   /** Delete a whole question selected on the page. Omit to disable that key. */
   onDeleteQuestion?: (questionId: string) => void;
   /** Delete a layout element selected on the page. Omit to disable that key. */
@@ -3660,6 +3666,7 @@ export function Preview({
   onSelectQuestion,
   onEdit,
   onDelete,
+  onClearCells,
   onDeleteQuestion,
   onDeleteLayout,
   onBulkDelete,
@@ -4168,8 +4175,8 @@ export function Preview({
   /**
    * Drop every page-level selection at once, so none can be left silently armed.
    *
-   * A plain function, not a `useCallback`: it closes over nothing but `useState`
-   * setters, which React guarantees are stable. Declared above `beginSweep` so the
+   * A plain function, not a `useCallback`: it closes over nothing but `useState` and
+   * store setters, both of which are stable. Declared above `beginSweep` so the
    * sweep can call it without a ref or a dependency that would re-create the gesture
    * handler on every selection change.
    */
@@ -4179,6 +4186,10 @@ export function Preview({
     setSelectedBlockId(undefined);
     setMultiIds(new Set());
     setMultiFields(new Set());
+    // A table cell is a page selection like any other, and it lives in the store, so
+    // it survived every local reset: a cell stayed ringed and the sidebar stayed on
+    // the table panel however far away the teacher clicked next.
+    setActiveCell(undefined);
     // The question selection lives in the store rather than here, and the whole-item
     // Delete handler acts on it — so leaving it set meant a blank click deselected
     // everything visible while Delete still removed the entire question.
@@ -4596,11 +4607,20 @@ export function Preview({
 
   /*
    * Delete / Backspace on a whole selected item (question or layout element). Never
-   * fires while focus is in a field, and defers to the text-target handler when one
-   * is selected — the more specific selection wins.
+   * fires while focus is in a field, and defers to every finer-grained selection —
+   * the more specific selection wins.
+   *
+   * "Finer-grained" is all three of them, not just the text target. Clicking any
+   * component inside a question also selects the *question* on the way up, so a
+   * picture or a table cell left this handler armed alongside the specific one: Delete
+   * removed the picture **and** the question that held it, or wiped a whole MCQ while
+   * the only thing ringed on the page was one cell. Every window keydown listener
+   * fires (§ modalLayer), so standing down is the only way to yield the key.
    */
   useEffect(() => {
-    if (selectedElement) return; // The finer-grained handler above owns this key.
+    if (selectedElement) return; // The text-target handler above owns this key.
+    if (selectedBlockId) return; // The picture handler above owns it.
+    if (activeCell) return; // The cell handler below owns it.
     if (!selectedQuestionId && !selectedLayoutId) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
@@ -4628,11 +4648,68 @@ export function Preview({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [
     selectedElement,
+    selectedBlockId,
+    activeCell,
     selectedQuestionId,
     selectedLayoutId,
     onDeleteQuestion,
     onDeleteLayout,
   ]);
+
+  /*
+   * The cells Delete would clear: the swept rectangle, or the single active cell.
+   *
+   * Expanded through the same `cellsInRange` the page paints with, so the cells that
+   * clear are exactly the ones drawn as caught. A stale range yields nothing and the
+   * active cell stands alone — the fallback the panel already takes.
+   */
+  const cellIdsToClear = useMemo(() => {
+    if (!activeCell) return [];
+    const block = findTableBlock(worksheet, activeCell.blockId);
+    if (!block) return [];
+    if (cellSelection?.blockId !== activeCell.blockId) return [activeCell.cellId];
+    const range = cellsInRange(
+      block.rows.map((row) => row.cells),
+      cellSelection.anchorId,
+      cellSelection.focusId,
+      (_, rowIndex, cellIndex) => block.rows[rowIndex]?.cells[cellIndex]?.id,
+    );
+    const ids = range.map(
+      (position) => block.rows[position.rowIndex].cells[position.cellIndex].id,
+    );
+    return ids.length > 0 ? ids : [activeCell.cellId];
+  }, [worksheet, activeCell, cellSelection]);
+
+  /*
+   * Delete / Backspace on a table cell clears *that cell's contents* — the unit
+   * `describeDelete` already names for `tableCell` — rather than the question holding
+   * the table. Over a swept range every cell in it is cleared, matching what the page
+   * paints as caught, in one commit so one undo brings the range back. The cell
+   * selection survives, as Excel's does: clearing a cell does not deselect it.
+   */
+  useEffect(() => {
+    if (!activeCell || !onClearCells || cellIdsToClear.length === 0) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Delete" && event.key !== "Backspace") return;
+      // A modal surface on top owns the keyboard (§ modalLayer) — every window
+      // listener fires, so each one has to ask.
+      if (isModalLayerOpen()) return;
+      const active = document.activeElement;
+      if (
+        active instanceof HTMLTextAreaElement ||
+        active instanceof HTMLInputElement ||
+        (active instanceof HTMLElement && active.isContentEditable)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      onClearCells(activeCell.blockId, cellIdsToClear);
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [activeCell, cellIdsToClear, onClearCells]);
 
   /*
    * Bulk keyboard actions on the multi-selection.
@@ -5403,7 +5480,17 @@ export function Preview({
         // the very drag that is choosing cells.
         if (target.closest("[data-table-cell]")) return;
         // Ignore the floating chrome (zoom, selection badge) layered over the canvas.
+        // The table's own controls — the resize grips and the insert/delete chips — are
+        // buttons too, so this also keeps a press on them from dropping the very cell
+        // they act on.
         if (target.closest("button, a, input, textarea, select")) return;
+        // Anywhere else means the teacher has left the cell. The cell selection lives
+        // in the store, so no local reset reached it: it stayed ringed, and the sidebar
+        // stayed on the table panel, however far away the next click landed. Done here
+        // rather than in each selection handler because the cell is activated in
+        // *capture* on the way down — a clear inside a bubbling `onSelect` would wipe
+        // the cell the same click just chose.
+        setActiveCell(undefined);
         // Shift extends the selection rather than replacing it.
         // One definition of "blank", shared with the paper's own click handler, so the
         // two cannot disagree about whether a click deselects.

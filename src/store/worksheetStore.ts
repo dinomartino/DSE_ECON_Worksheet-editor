@@ -11,6 +11,7 @@ import {
   type ZoneName,
 } from '@/model/bands';
 import {
+  applyClearCells,
   applyDeleteTarget,
   applyEditTarget,
   applyFormatTarget,
@@ -181,6 +182,8 @@ interface WorksheetState {
   // --- In-place editing on the page ------------------------------------------
   applyEdit: (target: EditTarget, next: BiText) => void;
   deleteTarget: (target: EditTarget) => void;
+  /** Empty a whole swept cell range in one commit, so one undo restores it. */
+  clearCells: (blockId: string, cellIds: readonly string[]) => void;
   formatTarget: (target: EditTarget, patch: Partial<TextFormat>) => void;
   /**
    * Format one character range — the per-run path. Separate from `formatTarget`
@@ -823,6 +826,8 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   // --- In-place editing on the page ------------------------------------------
   applyEdit: (target, next) => get().commit((draft) => applyEditTarget(draft, target, next)),
   deleteTarget: (target) => get().commit((draft) => applyDeleteTarget(draft, target)),
+  clearCells: (blockId, cellIds) =>
+    get().commit((draft) => applyClearCells(draft, blockId, cellIds)),
   formatTarget: (target, patch) =>
     get().commit((draft) => applyFormatTarget(draft, target, patch)),
   formatRuns: (target, side, start, end, patch) =>

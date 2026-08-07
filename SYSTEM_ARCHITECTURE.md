@@ -602,6 +602,12 @@ and columns; the panel keeps exact values. Both routes end at the same pure verb
   width.
 - **The control layer sits flush (`inset-0`)**; reaching past the table is a
   transparent hover pad's job, at `-z-10` so clicks reach cells.
+- **No chip may sit inside the table box.** Deletes take a second lane beyond their
+  inserts — rows at `left: -33` past `-16`, columns at `top: -25` past `-9`. The column
+  delete once sat *inside* row 1 (`top: 9`), centred on its column: the second click of
+  the double-click that opens a first-row cell landed on "Delete this column", and the
+  stored table really lost a column. Chrome may never occupy a spot a content gesture
+  has to reach. `preview/tableChipPlacement.test.tsx` pins the offsets.
 
 ### A rectangle of cells can be swept
 
@@ -623,6 +629,13 @@ anchor; a click collapses the range.
 - **The page marquee exempts `[data-table-cell]`**; the "inside an open editor" guard
   tests **`isContentEditable`, not `role="textbox"`** (idle spans carry the role too).
 - **Merge and the cell image step aside over a range** rather than acting on the anchor.
+- **A press off any cell drops the selection**, in the same preview-wide `onMouseDown`,
+  *after* the `button` exemption — the resize grips and insert chips are buttons acting
+  on the active cell. The selection lives in the store, so no local reset reaches it:
+  without this the ring and the table panel stayed locked on wherever the teacher
+  clicked next. `clearPageSelection` clears it too.
+- **Delete clears the range's contents, in one commit** (`clearCells` → `applyClearCells`),
+  never one `deleteTarget` per cell — that would cost one undo per cell.
 
 ### A cell formats like any other text
 
@@ -1370,6 +1383,14 @@ hover                      → margin drag grip → reorder
 - **Delete picks the right unit per target** (`describeDelete`, `model/edits.ts`): a
   stem paragraph removes the block; a statement leaves the list; a table cell is
   emptied; an MCQ option cannot be deleted.
+- **The finest selection owns Delete.** Four handlers, one per selection — text target,
+  picture, table cell, whole item — and the whole-item one is destructive. Clicking any
+  component inside a question also selects that question on the way up, so the
+  whole-item handler must stand down for **all three** finer selections
+  (`if (selectedElement | selectedBlockId | activeCell) return;`), each also a
+  dependency. Every window listener fires, so standing down is the only way to yield
+  the key; without it Delete took the component *and* the question with it.
+  `preview/deletePrecedence.test.ts` holds the chain.
 - **Everything routes through `commit()`** — undo/redo and autosave with no special
   handling.
 
