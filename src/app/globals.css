@@ -44,6 +44,13 @@
   --color-accent-ink: var(--accent-ink);
   --color-on-accent: var(--on-accent);
 
+  /* The one filled action button. Neutral ink, not accent blue (studied from
+     arena.ai): the accent marks links, focus and selection; the CTA is simply the
+     darkest object in the chrome, and inverts to a light fill in the dark scheme. */
+  --color-cta: var(--cta);
+  --color-cta-hover: var(--cta-hover);
+  --color-on-cta: var(--on-cta);
+
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
   --color-danger-ink: var(--danger-ink);
@@ -55,6 +62,9 @@
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* The chrome's single display voice: a light editorial serif (Newsreader, mounted
+     in layout.tsx), used for at most one screen-level heading. Never on the paper. */
+  --font-display: var(--font-display-serif), ui-serif, Georgia, serif;
 
   /* Motion. 150-300ms per the UX guidance; anything slower feels laggy on a tool
      the teacher is clicking through dozens of times. */
@@ -63,12 +73,17 @@
 
 /*
  * Hallmark · genre: modern-minimal · macrostructure: Workbench · design-system: design.md · designed-as-app
- * theme: custom "Studio grey" — one cool-grey tonal family around white paper
- * axes: paper-band light / display grotesk-sans (Geist) / accent cool blue 255°
+ * theme: studied-DNA (source: url https://arena.ai/) · studied: yes
+ * paper oklch(98.8% 0.006 85) warm cream · accent oklch(55% 0.17 245) cyan-blue ≤5%
+ * display: light editorial serif (Newsreader, for Martina Plantijn's role) · body: system grotesque · mono: system
+ * axes: paper-band light / display roman-serif / accent cool blue 245°
+ * pre-emit critique: P4 H5 E4 S5 R5 V4
  *
  * One tone, two depths. The first cut framed light panels in dark graphite, and the
  * eye paid for every glance between them; the user asked for a single colour tone.
- * So both primitive sets live in the same light cool-grey ramp: `--panel-*` (the
+ * The tone itself is warm cream (studied from arena.ai) rather than the earlier cool
+ * grey — a warm chrome makes the white sheet read cooler and brighter by contrast.
+ * So both primitive sets live in the same light warm-cream ramp: `--panel-*` (the
  * working surfaces) and `--chrome-*` (the frame: toolbar, rails, desk — the same
  * tone, one step deeper). `.zone-dark` maps a subtree onto the frame set,
  * `.zone-light` back onto the panels; components keep saying `bg-surface` /
@@ -76,18 +91,19 @@
  * into one dark ramp together — never dark frame against light panel.
  */
 :root {
-  /* Panel set — the lit working surfaces. */
-  --panel-surface: #ffffff;
-  --panel-raised: #ffffff;
-  --panel-sunken: oklch(96% 0.004 265);
-  --panel-hover: oklch(93.5% 0.006 265);
-  --panel-ink: oklch(27% 0.015 265);
-  --panel-ink-muted: oklch(47% 0.018 265);
-  --panel-ink-subtle: oklch(60% 0.014 265);
-  --panel-line: oklch(90% 0.006 265);
-  --panel-line-strong: oklch(81% 0.01 265);
-  --panel-accent-soft: oklch(94% 0.035 255);
-  --panel-accent-ink: oklch(44% 0.16 255);
+  /* Panel set — the lit working surfaces. Cream, not white: the paper keeps pure
+     white to itself, so even the lightest panel sits visibly behind the sheet. */
+  --panel-surface: oklch(98.8% 0.006 85);
+  --panel-raised: oklch(99.3% 0.004 85);
+  --panel-sunken: oklch(96% 0.012 85);
+  --panel-hover: oklch(93.5% 0.014 85);
+  --panel-ink: oklch(27% 0.012 75);
+  --panel-ink-muted: oklch(47% 0.014 75);
+  --panel-ink-subtle: oklch(60% 0.012 75);
+  --panel-line: oklch(90% 0.012 85);
+  --panel-line-strong: oklch(81% 0.014 85);
+  --panel-accent-soft: oklch(94% 0.035 245);
+  --panel-accent-ink: oklch(44% 0.15 245);
   --panel-danger-soft: #fef2f2;
   --panel-danger-ink: #b91c1c;
   --panel-warn-soft: #fdf5e6;
@@ -99,17 +115,17 @@
   /* Chrome set — the frame around the paper: the same grey family one step deeper,
      so bars and rails read as structure without ever fighting the panels. Text on
      it is the same dark ink; `ink-muted` stays ≥ 4.5:1 on `--chrome-surface`. */
-  --chrome-surface: oklch(94.5% 0.005 265);
-  --chrome-raised: oklch(97.5% 0.003 265);
-  --chrome-sunken: oklch(91.5% 0.006 265);
-  --chrome-hover: oklch(91% 0.007 265);
-  --chrome-ink: oklch(27% 0.015 265);
-  --chrome-ink-muted: oklch(45% 0.018 265);
-  --chrome-ink-subtle: oklch(58% 0.014 265);
-  --chrome-line: oklch(87% 0.007 265);
-  --chrome-line-strong: oklch(78% 0.01 265);
-  --chrome-accent-soft: oklch(92% 0.045 255);
-  --chrome-accent-ink: oklch(44% 0.16 255);
+  --chrome-surface: oklch(94.5% 0.014 85);
+  --chrome-raised: oklch(97.5% 0.01 85);
+  --chrome-sunken: oklch(91.5% 0.014 85);
+  --chrome-hover: oklch(91% 0.015 85);
+  --chrome-ink: oklch(27% 0.012 75);
+  --chrome-ink-muted: oklch(45% 0.014 75);
+  --chrome-ink-subtle: oklch(58% 0.012 75);
+  --chrome-line: oklch(87% 0.013 85);
+  --chrome-line-strong: oklch(78% 0.014 85);
+  --chrome-accent-soft: oklch(92% 0.045 245);
+  --chrome-accent-ink: oklch(44% 0.15 245);
   --chrome-danger-soft: #fdeeee;
   --chrome-danger-ink: #b91c1c;
   --chrome-warn-soft: #fbf2e0;
@@ -123,7 +139,7 @@
 
   /* The desk is the deepest step of the same grey — clearly under the sheet, never
      a different world. The white paper stays the brightest object on screen. */
-  --desk: oklch(85% 0.008 265);
+  --desk: oklch(85% 0.016 85);
 
   --surface: var(--panel-surface);
   --surface-raised: var(--panel-raised);
@@ -137,13 +153,17 @@
   --line: var(--panel-line);
   --line-strong: var(--panel-line-strong);
 
-  /* One accent, electric blue: legible on white panels, luminous on graphite, and
-     unmistakably different from the paper's own black ink. */
-  --accent: oklch(55% 0.19 255);
-  --accent-hover: oklch(50% 0.19 255);
+  /* One accent, cyan-leaning blue (studied from arena.ai's link colour): legible on
+     cream panels and unmistakably different from the paper's own black ink. */
+  --accent: oklch(55% 0.17 245);
+  --accent-hover: oklch(50% 0.17 245);
   --accent-soft: var(--panel-accent-soft);
   --accent-ink: var(--panel-accent-ink);
   --on-accent: #ffffff;
+
+  --cta: oklch(27% 0.012 75);
+  --cta-hover: oklch(35% 0.014 75);
+  --on-cta: oklch(98.8% 0.006 85);
 
   --danger: #dc2626;
   --danger-soft: var(--panel-danger-soft);
@@ -209,18 +229,19 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    /* Panels go deep grey; the frame drops nearly to black beneath them. */
-    --panel-surface: oklch(23% 0.012 265);
-    --panel-raised: oklch(27% 0.014 265);
-    --panel-sunken: oklch(20% 0.01 265);
-    --panel-hover: oklch(30% 0.015 265);
-    --panel-ink: oklch(93% 0.004 265);
-    --panel-ink-muted: oklch(74% 0.01 265);
-    --panel-ink-subtle: oklch(60% 0.012 265);
-    --panel-line: oklch(31% 0.01 265);
-    --panel-line-strong: oklch(40% 0.01 265);
-    --panel-accent-soft: oklch(30% 0.07 255);
-    --panel-accent-ink: oklch(80% 0.09 255);
+    /* Panels go deep warm grey (the reference's olive-warm dark, not blue-black);
+       the frame drops nearly to black beneath them. */
+    --panel-surface: oklch(23% 0.008 100);
+    --panel-raised: oklch(27% 0.009 100);
+    --panel-sunken: oklch(20% 0.007 100);
+    --panel-hover: oklch(30% 0.01 100);
+    --panel-ink: oklch(93% 0.006 95);
+    --panel-ink-muted: oklch(74% 0.01 95);
+    --panel-ink-subtle: oklch(60% 0.01 95);
+    --panel-line: oklch(31% 0.008 100);
+    --panel-line-strong: oklch(40% 0.008 100);
+    --panel-accent-soft: oklch(30% 0.07 245);
+    --panel-accent-ink: oklch(80% 0.09 245);
     --panel-danger-soft: oklch(28% 0.06 20);
     --panel-danger-ink: oklch(80% 0.11 20);
     --panel-warn-soft: oklch(29% 0.05 85);
@@ -229,18 +250,37 @@
     --panel-ok-soft: oklch(27% 0.05 165);
     --panel-ok-line: oklch(38% 0.07 165);
 
-    --chrome-surface: oklch(19% 0.012 265);
-    --chrome-raised: oklch(24% 0.014 265);
-    --chrome-sunken: oklch(16% 0.01 265);
-    --chrome-hover: oklch(26% 0.015 265);
-    --chrome-line: oklch(28% 0.01 265);
-    --chrome-line-strong: oklch(37% 0.01 265);
+    --chrome-surface: oklch(19% 0.008 100);
+    --chrome-raised: oklch(24% 0.009 100);
+    --chrome-sunken: oklch(16% 0.006 100);
+    --chrome-hover: oklch(26% 0.009 100);
+    /* The chrome ink and status tints must drop with their surfaces — left at their
+       light-scheme values they are dark-on-dark, and every zone-dark label vanishes. */
+    --chrome-ink: oklch(93% 0.006 95);
+    --chrome-ink-muted: oklch(74% 0.01 95);
+    --chrome-ink-subtle: oklch(60% 0.01 95);
+    --chrome-line: oklch(28% 0.008 100);
+    --chrome-line-strong: oklch(37% 0.008 100);
+    --chrome-accent-soft: oklch(30% 0.07 245);
+    --chrome-accent-ink: oklch(80% 0.09 245);
+    --chrome-danger-soft: oklch(28% 0.06 20);
+    --chrome-danger-ink: oklch(80% 0.11 20);
+    --chrome-warn-soft: oklch(29% 0.05 85);
+    --chrome-warn-ink: oklch(84% 0.11 90);
+    --chrome-ok: oklch(76% 0.11 165);
+    --chrome-ok-soft: oklch(27% 0.05 165);
+    --chrome-ok-line: oklch(38% 0.07 165);
 
-    --desk: oklch(15% 0.01 265);
+    --desk: oklch(15% 0.006 100);
 
-    --accent: oklch(65% 0.17 255);
-    --accent-hover: oklch(70% 0.15 255);
-    --on-accent: oklch(15% 0.02 265);
+    --accent: oklch(65% 0.15 245);
+    --accent-hover: oklch(70% 0.13 245);
+    --on-accent: oklch(15% 0.01 100);
+
+    /* The CTA inverts with the scheme: light fill, dark label. */
+    --cta: oklch(92% 0.008 95);
+    --cta-hover: oklch(96% 0.008 95);
+    --on-cta: oklch(20% 0.008 100);
 
     --danger: #f87171;
   }

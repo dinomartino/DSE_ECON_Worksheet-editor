@@ -3,8 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { computeNumbering } from '@/model/numbering';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { Pill } from '@/components/ui';
-import { ListIcon, PencilIcon } from '@/components/ui/icons';
 import { Inspector } from './Inspector';
 import type { PageComposition } from '@/components/preview/pagination';
 import { Outline } from './Outline';
@@ -64,26 +62,16 @@ export function Sidebar({
       ? 'Shared stimulus'
       : 'Edit';
 
-  const tabs: Array<{ id: Tab; label: string; icon: React.ReactNode; badge?: React.ReactNode }> = [
-    {
-      id: 'content',
-      label: 'Content',
-      icon: <ListIcon size={15} />,
-      badge: <Pill>{totalQuestions}</Pill>,
-    },
-    {
-      id: 'edit',
-      label: editLabel,
-      icon: <PencilIcon size={15} />,
-    },
+  const tabs: Array<{ id: Tab; label: string; count?: number }> = [
+    { id: 'content', label: 'Content', count: totalQuestions },
+    { id: 'edit', label: editLabel },
   ];
 
   return (
     <aside className="flex h-full min-h-0 w-[400px] shrink-0 flex-col overflow-hidden border-l border-line bg-surface">
-      {/* Two tabs, sized like real targets. The old regions were separated by 10px
-          uppercase eyebrows, which read as decoration rather than as the switch between
-          two modes that they effectively were. */}
-      <div role="tablist" aria-label="Sidebar" className="flex shrink-0 gap-1 border-b border-line px-2 pt-2">
+      {/* Two tabs in the toolbar's own dialect: words with a short accent underline
+          naming the active one — no icons, no count chip, one control language. */}
+      <div role="tablist" aria-label="Sidebar" className="flex shrink-0 border-b border-line px-2">
         {tabs.map((entry) => {
           const active = tab === entry.id;
           const dim = entry.id === 'edit' && !selected && !panelElementId;
@@ -94,15 +82,20 @@ export function Sidebar({
               role="tab"
               aria-selected={active}
               onClick={() => setTab(entry.id)}
-              className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-t-lg border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-                active
-                  ? 'border-accent text-ink'
-                  : 'border-transparent text-ink-muted hover:bg-surface-hover hover:text-ink'
+              className={`relative flex flex-1 cursor-pointer items-center justify-center gap-1 px-3 py-2.5 text-[13px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
+                active ? 'text-ink' : 'text-ink-muted hover:text-ink'
               } ${dim && !active ? 'opacity-60' : ''}`}
             >
-              <span className={active ? 'text-accent' : 'text-ink-subtle'}>{entry.icon}</span>
               <span className="truncate">{entry.label}</span>
-              {entry.badge}
+              {entry.count !== undefined && (
+                <span className="text-[11px] tabular-nums text-ink-subtle">{entry.count}</span>
+              )}
+              <span
+                aria-hidden
+                className={`absolute inset-x-4 bottom-0 h-0.5 rounded-full ${
+                  active ? 'bg-accent' : 'bg-transparent'
+                }`}
+              />
             </button>
           );
         })}

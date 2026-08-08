@@ -174,7 +174,7 @@ export function InlineEditable({
          * themes, so a token that flips in dark mode would paint a dark box on a white
          * page. The blue matches the app accent by value.
          */
-        className={`m-0 rounded-sm bg-[#eff6ff] p-0 shadow-[0_0_0_2px_#2563eb] outline-none ${className}`}
+        className={`m-0 rounded-sm bg-[#eef6fc] p-0 shadow-[0_0_0_2px_#0d77c9] outline-none ${className}`}
         // Offsets arrive already in the model's coordinate space, so the toolbar formats
         // exactly the characters that look selected — no marker string to discount.
         onSelectionChange={(range) =>
@@ -260,11 +260,11 @@ export function InlineEditable({
       data-print-hide={printHidden && isEmpty ? 'true' : undefined}
       className={`cursor-text rounded-sm transition-colors duration-150 focus:outline-none ${
         selected
-          ? 'bg-[#dbeafe] shadow-[0_0_0_2px_#2563eb]'
-          : 'hover:bg-[#eff6ff] hover:shadow-[0_1px_0_0_#93c5fd]'
+          ? 'bg-[#d9ebf8] shadow-[0_0_0_2px_#0d77c9]'
+          : 'hover:bg-[#eef6fc] hover:shadow-[0_1px_0_0_#8fc2e9]'
       } ${
         isEmpty
-          ? 'italic text-[#93c5fd] underline decoration-[#93c5fd] decoration-dashed underline-offset-4'
+          ? 'text-[#8fc2e9] underline decoration-[#8fc2e9] decoration-dashed underline-offset-4'
           : ''
       } ${
         /*

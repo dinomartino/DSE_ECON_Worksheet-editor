@@ -1,4 +1,4 @@
-# Design — Econ Worksheet Generator ("Studio grey")
+# Design — Econ Worksheet Generator ("Warm studio")
 
 A locked design system for the app chrome. Every surface redesign reads this file
 before emitting code. Do not regenerate per page — extend or amend this file when the
@@ -14,11 +14,21 @@ modern-minimal — a pro drafting tool. The UI recedes; the lit white page is th
 
 ## Concept
 
-**One tonal family.** Every chrome surface lives on a single cool-grey ramp: panels
-white, bars and rails one step deeper, the desk the deepest step — and in the dark
-scheme the whole ramp drops together. Never a dark surface against a light one: the
-first cut framed light panels in graphite and the eye paid for every glance between
-them. One electric-blue accent.
+**One tonal family.** Every chrome surface lives on a single warm-cream ramp: panels
+near-white cream, bars and rails one step deeper, the desk the deepest step — and in
+the dark scheme the whole ramp drops together into a warm (olive, not blue) dark.
+Never a dark surface against a light one: the first cut framed light panels in
+graphite and the eye paid for every glance between them. One cyan-blue accent. Warmth
+is doing a job: the pure-white sheet reads cooler and brighter against cream than it
+ever did against grey.
+
+## Provenance
+
+The warm ramp, the hue-245 accent, and the serif display voice are studied DNA,
+extracted 2026-08-08 from `https://arena.ai/` (public reference; structure only, no
+pixels copied). Tokens are exact where the source's CSS gave them; the display serif
+carries the *role* of the source's Martina Plantijn via the free Newsreader. The
+one-tonal-family rule and the zone mechanism predate the study and were kept.
 
 ## Mechanism
 
@@ -37,21 +47,29 @@ Components keep using `bg-surface` / `text-ink` and never name a zone's colours.
 
 | Token | Panel set | Chrome (frame) set |
 |---|---|---|
-| surface | `#ffffff` | `oklch(94.5% 0.005 265)` |
-| ink | `oklch(27% 0.015 265)` | same ink — one tone, one text colour |
-| line | `oklch(90% 0.006 265)` | `oklch(87% 0.007 265)` |
+| surface | `oklch(98.8% 0.006 85)` | `oklch(94.5% 0.014 85)` |
+| ink | `oklch(27% 0.012 75)` | same ink — one tone, one text colour |
+| line | `oklch(90% 0.012 85)` | `oklch(87% 0.013 85)` |
 
-Desk `oklch(85% 0.008 265)` · accent `oklch(55% 0.19 255)` electric blue ·
-`--on-accent` white. **The tonal rule:** all chrome surfaces stay within one grey
-family and one lightness direction; the white paper is the brightest object. Do not
-reintroduce a dark frame around light panels — it was tried and rejected for eye
-comfort. Full values live in `globals.css`; amend this file when they change.
+Desk `oklch(85% 0.016 85)` · accent `oklch(55% 0.17 245)` cyan-blue ·
+`--on-accent` white. **The tonal rule:** all chrome surfaces stay within one warm
+family and one lightness direction; the white paper is the brightest object (panels
+are cream, never `#fff` — pure white belongs to the sheet alone). Do not reintroduce
+a dark frame around light panels — it was tried and rejected for eye comfort. Full
+values live in `globals.css`; amend this file when they change.
 
 ## Typography
 
-- Body + UI: Geist Sans (`next/font`), weights 400/500/600. Display type is not used;
-  hierarchy is carried by size (11–15px UI ramp), weight and the uppercase Eyebrow.
-- Mono: Geist Mono, data only.
+- Body + UI: the system grotesque stack (`--font-geist-sans` is declared but no Geist
+  is mounted; the fallback *is* the body face — mount Geist via `next/font` before
+  claiming it). Hierarchy is carried by size (11–15px UI ramp), weight and the
+  uppercase Eyebrow.
+- Display: Newsreader (`next/font`, `--font-display-serif`, `font-display` utility) —
+  a light editorial serif, roman only, for **at most one screen-level heading per
+  screen** (currently the StartScreen greeting) plus the "W." brand monogram in the
+  toolbar and start screen — ink, never a filled square. Never on the paper, never on
+  controls, never italic.
+- Mono: system mono stack, data only.
 
 ## Spacing & shape
 
@@ -75,8 +93,11 @@ is the ceiling).
 
 ## CTA voice
 
-Primary: filled accent, `rounded-lg`, verb-first label ("Export .docx", "Create
-worksheet"). Secondary: bordered surface. No gradients, no uppercase CTAs.
+Primary: filled **neutral ink**, not accent (`--cta` / `--on-cta`; the fill inverts to
+light-on-dark-label in the dark scheme), `rounded-lg`, verb-first label ("Export
+.docx", "Create worksheet"). The accent never fills a button — blue marks links,
+focus rings and selection only (studied from arena.ai's neutral-CTA restraint).
+Secondary: bordered surface. No gradients, no uppercase CTAs.
 
 ## What surfaces MUST share
 

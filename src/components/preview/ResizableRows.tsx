@@ -191,7 +191,7 @@ export function ResizableRows({
         }}
         style={selected ? { inset: 6 / (scale || 1) } : undefined}
         className={
-          'absolute cursor-pointer rounded-sm ring-inset ring-[#2563eb] transition-shadow ' +
+          'absolute cursor-pointer rounded-sm ring-inset ring-[#0d77c9] transition-shadow ' +
           (selected ? '' : 'inset-0 hover:ring-2')
         }
       />
@@ -203,7 +203,7 @@ export function ResizableRows({
           <div
             aria-hidden
             data-print-hide
-            className="pointer-events-none absolute inset-0 rounded-sm shadow-[0_0_0_2px_#2563eb]"
+            className="pointer-events-none absolute inset-0 rounded-sm shadow-[0_0_0_2px_#0d77c9]"
           />
 
           {/* The handle spans the bottom edge rather than sitting at one corner. The
@@ -222,7 +222,7 @@ export function ResizableRows({
               bottom: -5 / (scale || 1),
               touchAction: 'none',
             }}
-            className="absolute left-1/2 z-10 -translate-x-1/2 rounded-full border border-white bg-[#2563eb] shadow-sm"
+            className="absolute left-1/2 z-10 -translate-x-1/2 rounded-full border border-white bg-[#0d77c9] shadow-sm"
             onPointerDown={beginDrag}
             onPointerMove={onPointerMove}
             onPointerUp={finish}
@@ -241,7 +241,7 @@ export function ResizableRows({
                 // Violet at the ceiling: the element has stopped growing under the
                 // pointer, and without saying why that reads as the drag having jammed
                 // rather than as the page being full.
-                atMax ? 'bg-[#2563eb]' : 'bg-[#2c2a28]'
+                atMax ? 'bg-[#0d77c9]' : 'bg-[#2c2a28]'
               }`}
               style={{
                 bottom: 4 / (scale || 1),

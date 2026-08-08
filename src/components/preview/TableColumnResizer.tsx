@@ -295,7 +295,7 @@ export function TableColumnResizer({
       : dragging.kind !== 'edge' && dragging.index === grip.index);
 
   const tint = (grip: Grip) =>
-    held(grip) ? 'bg-[#2563eb]/35' : 'bg-transparent hover:bg-[#2563eb]/25';
+    held(grip) ? 'bg-[#0d77c9]/35' : 'bg-transparent hover:bg-[#0d77c9]/25';
 
   /*
    * Interior column boundaries, positioned by the cumulative width to their left.

@@ -176,13 +176,15 @@ export function Toolbar({
             teacher already knows, while the document's name — which the `.docx`
             downloads as, and which is all that distinguishes one mock paper from the
             next — appeared nowhere in the editor. */}
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-2">
+          {/* A monogram, not an app icon: the chrome's serif voice in ink (design.md §
+              Typography) — the accent is kept for links, focus and selection. */}
           <span
             aria-hidden
             title="Worksheet — HKDSE Economics"
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent text-[13px] font-bold text-on-accent"
+            className="font-display shrink-0 text-[19px] leading-none text-ink"
           >
-            W
+            W.
           </span>
           <DocumentName />
         </span>
@@ -199,6 +201,8 @@ export function Toolbar({
             { value: 'bilingual', label: 'EN+中', title: 'Bilingual' },
           ]}
         />
+
+        <span className="h-5 w-px bg-line" />
 
         <Segmented
           label="Version"
@@ -218,6 +222,8 @@ export function Toolbar({
           you are in — the same reason Language and Version use it, and why this sits
           with them among the view controls rather than beside the export actions.
         */}
+        <span className="h-5 w-px bg-line" />
+
         <Segmented
           label="Page mode"
           value={printPreview ? 'preview' : 'edit'}
@@ -255,7 +261,9 @@ export function Toolbar({
         <span className="ml-auto flex items-center gap-2 text-[11px] text-ink-muted">
           {notice && <span className="font-medium text-ok">{notice}</span>}
           {untranslated > 0 && <Pill tone="warn">{untranslated} untranslated</Pill>}
-          <Pill tone="accent">{worksheetMarks(worksheet)} marks</Pill>
+          {/* Status, not selection: the marks count is a fact about the document, so
+              it stays in the grey family — the accent is reserved for interaction. */}
+          <Pill>{worksheetMarks(worksheet)} marks</Pill>
           <span className="hidden sm:inline">
             {dirty
               ? 'Unsaved…'
@@ -268,7 +276,10 @@ export function Toolbar({
         {/* The two outputs a teacher actually hands in: .docx to keep editing in Word,
             PDF to print or send. Both are on the bar; .docx stays the filled button
             because it is the one that preserves editability. */}
-        <Button onClick={handlePdf} title="Print or save as PDF (⌘P)">
+        {/* Quiet next to Export: two boxed buttons side by side read as equals, and
+            the bar's one constructed object should be the output that keeps
+            editability. PDF is a step, .docx is the deliverable. */}
+        <Button variant="subtle" onClick={handlePdf} title="Print or save as PDF (⌘P)">
           <PdfIcon size={15} />
           PDF
         </Button>

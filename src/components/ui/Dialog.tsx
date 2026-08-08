@@ -94,7 +94,11 @@ export function Dialog({
       >
         <header className="flex items-start gap-3 border-b border-line px-5 py-4">
           <div className="min-w-0 flex-1">
-            <h2 className="text-[15px] font-semibold text-ink">{title}</h2>
+            {/* The dialog's one display moment: the chrome's serif voice, roman, like
+                the start screen greeting (design.md § Typography). */}
+            <h2 className="font-display text-[19px] font-normal leading-snug text-ink">
+              {title}
+            </h2>
             {description && (
               <p className="mt-0.5 text-xs text-ink-muted">{description}</p>
             )}
@@ -152,6 +156,10 @@ export function DialogTabs<T extends string>({
         aria-label="Settings sections"
         className="w-[184px] shrink-0 self-stretch space-y-0.5 overflow-y-auto border-r border-line bg-surface-sunken p-2"
       >
+        {/* An index, not a strip of icon chips: text rows with the accent bar naming
+            the open section — the same affordance as the start screen's rows. Icons
+            are accepted for compatibility but not drawn; four word-labels do not need
+            picture support. */}
         {tabs.map((tab) => {
           const active = tab.id === value;
           return (
@@ -161,15 +169,16 @@ export function DialogTabs<T extends string>({
               role="tab"
               aria-selected={active}
               onClick={() => onChange(tab.id)}
-              className={`flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-                active
-                  ? 'bg-surface text-ink shadow-sm ring-1 ring-inset ring-line'
-                  : 'text-ink-muted hover:bg-surface-hover hover:text-ink'
+              className={`relative flex w-full cursor-pointer items-center rounded-md py-2 pl-3.5 pr-2.5 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                active ? 'text-ink' : 'text-ink-muted hover:bg-surface-hover hover:text-ink'
               }`}
             >
-              {tab.icon && (
-                <span className={active ? 'text-accent' : 'text-ink-subtle'}>{tab.icon}</span>
-              )}
+              <span
+                aria-hidden
+                className={`absolute inset-y-1.5 left-0 w-0.5 rounded-full ${
+                  active ? 'bg-accent' : 'bg-transparent'
+                }`}
+              />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[13px] font-medium">{tab.label}</span>
                 {tab.hint && (

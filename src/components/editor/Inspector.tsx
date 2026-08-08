@@ -5,8 +5,8 @@ import type { NumberingPlan } from '@/model/numbering';
 import { plain } from '@/model/text';
 import { requireQuestionType } from '@/registry';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { IconButton, Pill } from '@/components/ui';
-import { CloseIcon, ListIcon, PencilIcon, StimulusIcon } from '@/components/ui/icons';
+import { IconButton } from '@/components/ui';
+import { CloseIcon, ListIcon } from '@/components/ui/icons';
 import { StimulusEditorPanel } from './StimulusEditorPanel';
 
 /**
@@ -46,9 +46,6 @@ export function Inspector({
     return (
       <div className="flex min-h-0 flex-1 flex-col">
         <header className="flex shrink-0 items-center gap-2 border-b border-line px-3.5 py-3">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent text-on-accent">
-            <StimulusIcon size={15} />
-          </span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[13px] font-semibold leading-tight text-ink">
               Shared stimulus
@@ -78,12 +75,9 @@ export function Inspector({
     // this says what to do next in one sentence, rather than reporting the absence.
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
-        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-sunken text-ink-subtle">
-          <PencilIcon size={22} />
-        </span>
         <div>
-          <p className="text-[13px] font-medium text-ink">Pick something to edit</p>
-          <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+          <p className="font-display text-[19px] text-ink">Pick something to edit.</p>
+          <p className="mt-2 text-xs leading-relaxed text-ink-muted">
             Click a question on the page, or choose one from Content.
           </p>
           <p className="text-xs text-ink-subtle">在頁面或內容清單選擇題目</p>
@@ -105,19 +99,17 @@ export function Inspector({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {/* No number chip, no marks pill: the title carries the number, the facts sit
+          as one muted line — the same de-chipped voice as the outline rows. */}
       <header className="flex shrink-0 items-center gap-2 border-b border-line px-3.5 py-3">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent text-[12px] font-bold tabular-nums text-on-accent">
-          {number ?? '–'}
-        </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[13px] font-semibold leading-tight text-ink">
             Question {number ?? '–'}
           </span>
           <span className="block truncate text-[11px] text-ink-muted">
-            {plain(definition.displayName.en)}
+            {plain(definition.displayName.en)} · {questionMarks(selected)} marks
           </span>
         </span>
-        <Pill tone="accent">{questionMarks(selected)}m</Pill>
         <IconButton label="Close editor" onClick={() => select(undefined)}>
           <CloseIcon size={14} />
         </IconButton>

@@ -3,10 +3,20 @@
     "date": "2026-08-08",
     "scope": "app",
     "macrostructure": "Workbench",
+    "theme": "studied-DNA (source: https://arena.ai/)",
+    "theme_axes": "light warm-cream / roman-serif display (Newsreader) + system grotesque / cool blue 245",
+    "vibe": "warm cream studio, white paper brightest, serif greeting",
+    "enrichment": "none",
+    "brief": "Econ worksheet editor · arena.ai studied DNA (Warm studio): cream ramp, serif voice, ink CTA, start screen recomposed as editorial split + ledger"
+  },
+  {
+    "date": "2026-08-08",
+    "scope": "app",
+    "macrostructure": "Workbench",
     "theme": "custom",
     "theme_axes": "light tonal grey / grotesk-sans (Geist) / cool blue 255",
     "vibe": "one cool-grey tone, white paper brightest",
     "enrichment": "none",
-    "brief": "Econ worksheet editor \u00b7 whole-UI redesign (Graphite studio)"
+    "brief": "Econ worksheet editor · whole-UI redesign (Graphite studio)"
   }
 ]

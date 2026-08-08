@@ -200,7 +200,7 @@ export function ResizableBlock({
         }
         style={selected ? { inset: 6 / (scale || 1) } : undefined}
         className={
-          'absolute cursor-pointer rounded-sm ring-inset ring-[#2563eb] transition-shadow ' +
+          'absolute cursor-pointer rounded-sm ring-inset ring-[#0d77c9] transition-shadow ' +
           (selected ? '' : 'inset-0 hover:ring-2')
         }
       />
@@ -212,7 +212,7 @@ export function ResizableBlock({
           <div
             aria-hidden
             data-print-hide
-            className="pointer-events-none absolute inset-0 rounded-sm shadow-[0_0_0_2px_#2563eb]"
+            className="pointer-events-none absolute inset-0 rounded-sm shadow-[0_0_0_2px_#0d77c9]"
           />
           {CORNERS.map(({ corner, className, cursor }) => (
             <button
@@ -229,7 +229,7 @@ export function ResizableBlock({
                 height: 10 / (scale || 1),
                 touchAction: 'none',
               }}
-              className={`absolute ${className} z-10 rounded-[2px] border border-white bg-[#2563eb] shadow-sm`}
+              className={`absolute ${className} z-10 rounded-[2px] border border-white bg-[#0d77c9] shadow-sm`}
               onPointerDown={beginDrag(corner)}
               onPointerMove={onPointerMove}
               onPointerUp={finish}

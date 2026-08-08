@@ -314,16 +314,16 @@ export function AddRail() {
               aria-expanded={isOpen}
               aria-haspopup="menu"
               onClick={() => setOpen(isOpen ? undefined : group.id)}
-              className={`flex w-[64px] cursor-pointer flex-col items-center gap-1 rounded-xl px-1 py-2.5 transition-[background-color,border-color,color,box-shadow,opacity] duration-150 ease-[var(--ease-out-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+              className={`flex w-[64px] cursor-pointer flex-col items-center gap-1 rounded-lg px-1 py-2.5 transition-[background-color,border-color,color,box-shadow,opacity] duration-150 ease-[var(--ease-out-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                 isOpen
-                  ? 'bg-accent text-on-accent shadow-sm'
+                  ? 'bg-accent-soft text-accent-ink'
                   : 'text-ink-muted hover:bg-surface-hover hover:text-ink'
               }`}
             >
               {group.icon}
               <span className="text-[11px] font-semibold leading-none">{group.label}</span>
               <span
-                className={`text-[9px] leading-none ${isOpen ? 'text-on-accent/70' : 'text-ink-subtle'}`}
+                className={`text-[9px] leading-none ${isOpen ? 'text-accent-ink/70' : 'text-ink-subtle'}`}
               >
                 {group.sub}
               </span>
@@ -366,11 +366,9 @@ export function AddRail() {
                 entry.run(afterId);
                 setOpen(undefined);
               }}
-              className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors duration-150 hover:bg-accent-soft"
+              className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors duration-150 hover:bg-surface-hover"
             >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-ink-muted">
-                {entry.icon}
-              </span>
+              <span className="shrink-0 text-ink-subtle">{entry.icon}</span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[13px] font-medium text-ink">
                   {entry.label}

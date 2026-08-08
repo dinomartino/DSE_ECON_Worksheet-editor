@@ -82,9 +82,9 @@ interface Props {
 
 const BTN =
   'flex h-7 min-w-7 items-center justify-center rounded px-1.5 text-xs font-medium transition-colors ' +
-  'hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#60a5fa]';
-const ACTIVE = 'bg-[#2563eb] text-white hover:bg-[#3b82f6]';
-const IDLE = 'text-slate-200';
+  'hover:bg-[#3d3a35] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5ba8dd]';
+const ACTIVE = 'bg-[#0d77c9] text-white hover:bg-[#2b8ad3]';
+const IDLE = 'text-[#e6e2db]';
 
 export function FormatToolbar({
   dock,
@@ -132,7 +132,7 @@ export function FormatToolbar({
       // Docked across the top of the page column. `flex-wrap` matters: the column is
       // narrow at small window widths, and a single non-wrapping row would push the
       // delete button out of reach rather than folding onto a second line.
-      className="fixed z-50 flex flex-wrap items-center gap-0.5 rounded-xl border border-slate-700 bg-slate-900/95 px-1.5 py-1 shadow-xl backdrop-blur"
+      className="fixed z-50 flex flex-wrap items-center gap-0.5 rounded-xl border border-[#454138] bg-[#211f1d]/95 px-1.5 py-1 shadow-xl backdrop-blur"
       style={{ left: dock.left, width: dock.width, top: dock.top }}
       /*
        * Keep focus on the page so the bar never steals the selection it is acting on —
@@ -157,7 +157,7 @@ export function FormatToolbar({
         // Names the target, since the bar no longer sits beside it. `mr-auto` pushes
         // every control to the right edge, keeping them in one place as the label's
         // width changes with the selection.
-        <span className="mr-1 max-w-[30%] truncate pl-1 text-[11px] font-medium text-slate-400">
+        <span className="mr-1 max-w-[30%] truncate pl-1 text-[11px] font-medium text-[#a39d94]">
           {subject}
         </span>
       )}
@@ -175,7 +175,7 @@ export function FormatToolbar({
       <select
         aria-label="Font size"
         title="Font size"
-        className="h-7 cursor-pointer rounded bg-slate-800 px-1 text-xs text-slate-100 outline-none hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-[#60a5fa]"
+        className="h-7 cursor-pointer rounded bg-[#33302c] px-1 text-xs text-[#f1eee9] outline-none hover:bg-[#3d3a35] focus-visible:ring-2 focus-visible:ring-[#5ba8dd]"
         value={format?.fontSize ?? inheritedPt ?? ''}
         onChange={(event) =>
           onChange({ fontSize: event.target.value ? Number(event.target.value) : undefined })
@@ -195,7 +195,7 @@ export function FormatToolbar({
         ))}
       </select>
 
-      <span className="mx-0.5 h-5 w-px bg-slate-700" aria-hidden />
+      <span className="mx-0.5 h-5 w-px bg-[#3d3a35]" aria-hidden />
 
       <button
         type="button"
@@ -277,7 +277,7 @@ export function FormatToolbar({
         </button>
       )}
 
-      <span className="mx-0.5 h-5 w-px bg-slate-700" aria-hidden />
+      <span className="mx-0.5 h-5 w-px bg-[#3d3a35]" aria-hidden />
 
       {ALIGNMENTS.map((option) => (
         <button
@@ -295,7 +295,7 @@ export function FormatToolbar({
         </button>
       ))}
 
-      <span className="mx-0.5 h-5 w-px bg-slate-700" aria-hidden />
+      <span className="mx-0.5 h-5 w-px bg-[#3d3a35]" aria-hidden />
 
       <div className="relative">
         <button
@@ -307,19 +307,19 @@ export function FormatToolbar({
           onClick={() => setColorOpen((open) => !open)}
         >
           <span
-            className="h-3.5 w-3.5 rounded-sm border border-slate-500"
+            className="h-3.5 w-3.5 rounded-sm border border-[#6b665c]"
             style={{ background: format?.color ? `#${format.color}` : '#e2e8f0' }}
           />
         </button>
         {colorOpen && (
-          <div className="absolute left-0 top-8 flex gap-1 rounded-md border border-slate-700 bg-slate-900 p-1.5 shadow-xl">
+          <div className="absolute left-0 top-8 flex gap-1 rounded-md border border-[#454138] bg-[#211f1d] p-1.5 shadow-xl">
             {COLORS.map((option) => (
               <button
                 key={option.label}
                 type="button"
                 aria-label={option.label}
                 title={option.label}
-                className="h-5 w-5 rounded-sm border border-slate-600 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#60a5fa]"
+                className="h-5 w-5 rounded-sm border border-[#57534a] transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5ba8dd]"
                 style={{ background: option.swatch }}
                 onClick={() => {
                   onChange({ color: option.value });
@@ -332,7 +332,7 @@ export function FormatToolbar({
       </div>
 
       {(onMove || onDuplicate || onDelete) && (
-        <span className="mx-0.5 h-5 w-px bg-slate-700" aria-hidden />
+        <span className="mx-0.5 h-5 w-px bg-[#3d3a35]" aria-hidden />
       )}
 
       {onMove && (
@@ -386,7 +386,7 @@ export function FormatToolbar({
           type="button"
           aria-label="Delete element"
           title="Delete element"
-          className={`${BTN} text-slate-300 hover:bg-red-600 hover:text-white`}
+          className={`${BTN} text-[#d6d1c9] hover:bg-[#b4241f] hover:text-white`}
           onClick={onDelete}
         >
           🗑

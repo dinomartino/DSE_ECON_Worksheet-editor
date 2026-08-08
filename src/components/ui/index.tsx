@@ -21,8 +21,10 @@ type Variant = 'primary' | 'default' | 'subtle' | 'danger' | 'ghostAccent';
 type Size = 'sm' | 'md' | 'lg';
 
 const VARIANT: Record<Variant, string> = {
+  // Filled with neutral ink, not the accent: the accent belongs to links, focus and
+  // selection (design.md § CTA voice), so the one loud button is dark, not blue.
   primary:
-    'border-transparent bg-accent text-on-accent shadow-sm hover:bg-accent-hover active:scale-[0.97]',
+    'border-transparent bg-cta text-on-cta shadow-sm hover:bg-cta-hover active:scale-[0.97]',
   default:
     'border-line bg-surface text-ink hover:bg-surface-hover hover:border-line-strong active:scale-[0.97]',
   subtle:
@@ -346,12 +348,11 @@ export function Segmented<T extends string>({
   onChange: (value: T) => void;
   label: string;
 }) {
+  // Typographic, not boxed: the words are the control, and the accent underline names
+  // the chosen one — the same language as the sidebar's tabs. A toolbar of outlined
+  // groups reads as a row of look-alike rectangles; ink and one thin line do not.
   return (
-    <div
-      role="radiogroup"
-      aria-label={label}
-      className="inline-flex items-center gap-0.5 rounded-xl bg-surface-sunken p-1 ring-1 ring-inset ring-line"
-    >
+    <div role="radiogroup" aria-label={label} className="inline-flex items-center">
       {options.map((option) => {
         const active = option.value === value;
         return (
@@ -362,13 +363,17 @@ export function Segmented<T extends string>({
             aria-checked={active}
             title={option.title ?? option.label}
             onClick={() => onChange(option.value)}
-            className={`cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-medium transition-[background-color,border-color,color,box-shadow,opacity] duration-150 ease-[var(--ease-out-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-              active
-                ? 'bg-surface text-ink shadow-sm'
-                : 'text-ink-muted hover:text-ink'
+            className={`relative cursor-pointer rounded-md px-2.5 py-2 text-xs font-medium transition-colors duration-150 ease-[var(--ease-out-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
+              active ? 'text-ink' : 'text-ink-muted hover:text-ink'
             }`}
           >
             {option.label}
+            <span
+              aria-hidden
+              className={`absolute inset-x-2 bottom-0.5 h-0.5 rounded-full transition-colors duration-150 ${
+                active ? 'bg-accent' : 'bg-transparent'
+              }`}
+            />
           </button>
         );
       })}

@@ -558,7 +558,7 @@ function HintPill() {
       data-print-hide
       className="pointer-events-none fixed bottom-4 left-[76px] right-[400px] z-20 flex justify-center"
     >
-      <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-line bg-surface-raised/95 py-1.5 pl-4 pr-1.5 text-[12px] text-ink-muted shadow-lg backdrop-blur">
+      <div className="pointer-events-auto flex items-center gap-2 rounded-lg border border-line bg-surface-raised py-1.5 pl-3.5 pr-1.5 text-[12px] text-ink-muted shadow-md">
         <span>
           Click text to select · double-click to edit
           <span className="ml-2 text-ink-subtle">按頁面文字即可編輯</span>

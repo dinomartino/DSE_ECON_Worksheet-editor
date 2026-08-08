@@ -3,7 +3,6 @@
 import { useMemo, useState } from 'react';
 import { Dialog, DialogTabs, Field } from '@/components/ui/Dialog';
 import { Button, CheckField, GroupHeader, SelectField } from '@/components/ui';
-import { DocumentIcon, PageIcon, TextIcon } from '@/components/ui/icons';
 import {
   assessmentTitleBlock,
   createFillInField,
@@ -415,7 +414,7 @@ function DuplicateFieldNotice() {
   if (duplicates.length === 0) return null;
 
   return (
-    <p className="rounded-lg border border-[#f0d9a8] bg-[#fdf6e6] px-3 py-2 text-[11px] leading-relaxed text-[#7a5c1e]">
+    <p className="rounded-lg bg-warn-soft px-3 py-2 text-[11px] leading-relaxed text-warn-ink">
       <span className="font-medium">Full marks appears more than once.</span> The total is
       worked out from the questions, so it will print the same number in each place. Remove
       the one you do not want by hovering it on the page and clicking ✕.
@@ -460,7 +459,7 @@ function BandOverflowNotice() {
   const cm = (twipsToCm(worst) + 0.05).toFixed(1);
 
   return (
-    <p className="rounded-lg border border-[#f0d9a8] bg-[#fdf6e6] px-3 py-2 text-[11px] leading-relaxed text-[#7a5c1e]">
+    <p className="rounded-lg bg-warn-soft px-3 py-2 text-[11px] leading-relaxed text-warn-ink">
       <span className="font-medium">
         The {edges.join(' and ')} {edges.length > 1 ? 'are' : 'is'} taller than the margin.
       </span>{' '}
@@ -832,13 +831,13 @@ function CoverTab({ onClose }: { onClose: () => void }) {
               onClick={() => setPaperStyle(value)}
               className={`flex cursor-pointer flex-col gap-1 rounded-lg border p-2.5 text-left transition-[background-color,border-color,color,box-shadow,opacity] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                 paperStyle === value
-                  ? 'border-accent bg-accent/5 ring-1 ring-accent'
-                  : 'border-line bg-surface hover:border-ink-subtle'
+                  ? 'border-accent bg-surface'
+                  : 'border-line bg-surface hover:border-line-strong'
               }`}
             >
               <span
                 className={`text-[12px] font-medium ${
-                  paperStyle === value ? 'text-accent' : 'text-ink'
+                  paperStyle === value ? 'text-ink' : 'text-ink-muted'
                 }`}
               >
                 {label}
@@ -944,8 +943,8 @@ function CoverOptions() {
               onClick={() => updateCover({ instructionMarker: value })}
               className={`h-8 flex-1 cursor-pointer rounded-lg border text-[13px] transition-[background-color,border-color,color,box-shadow,opacity] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                 marker === value
-                  ? 'border-accent bg-accent/5 font-medium text-accent ring-1 ring-accent'
-                  : 'border-line bg-surface text-ink hover:border-ink-subtle'
+                  ? 'border-accent bg-surface font-medium text-ink'
+                  : 'border-line bg-surface text-ink-muted hover:border-line-strong hover:text-ink'
               }`}
             >
               {label}
@@ -1003,8 +1002,8 @@ function TitleSection() {
           onClick={() => usingBlock && setBands([])}
           className={`flex cursor-pointer flex-col gap-1.5 rounded-lg border p-2 text-left transition-[background-color,border-color,color,box-shadow,opacity] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
             !usingBlock
-              ? 'border-accent bg-accent/5 ring-1 ring-accent'
-              : 'border-line bg-surface hover:border-ink-subtle'
+              ? 'border-accent bg-surface'
+              : 'border-line bg-surface hover:border-line-strong'
           }`}
         >
           {/* `flex-1` on both cards' miniatures, so the two labels sit on one line
@@ -1016,7 +1015,7 @@ function TitleSection() {
             </span>
           </div>
           <span
-            className={`text-[11px] font-medium ${!usingBlock ? 'text-accent' : 'text-ink-muted'}`}
+            className={`text-[11px] font-medium ${!usingBlock ? 'text-ink' : 'text-ink-muted'}`}
           >
             Just the title
           </span>
@@ -1032,8 +1031,8 @@ function TitleSection() {
           }
           className={`flex cursor-pointer flex-col gap-1.5 rounded-lg border p-2 text-left transition-[background-color,border-color,color,box-shadow,opacity] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
             usingBlock
-              ? 'border-accent bg-accent/5 ring-1 ring-accent'
-              : 'border-line bg-surface hover:border-ink-subtle'
+              ? 'border-accent bg-surface'
+              : 'border-line bg-surface hover:border-line-strong'
           }`}
         >
           <div className="flex min-h-[56px] flex-1 flex-col justify-center rounded border border-line/70 bg-[#fdfcfa] py-1 text-[#3f3b38]">
@@ -1046,7 +1045,7 @@ function TitleSection() {
             />
           </div>
           <span
-            className={`text-[11px] font-medium ${usingBlock ? 'text-accent' : 'text-ink-muted'}`}
+            className={`text-[11px] font-medium ${usingBlock ? 'text-ink' : 'text-ink-muted'}`}
           >
             Title block (name, marks, time)
           </span>
@@ -1150,25 +1149,10 @@ export function DocumentSettings({
         value={tab}
         onChange={setTab}
         tabs={[
-          {
-            id: 'document',
-            label: 'Worksheet',
-            hint: 'Title, fonts, sections',
-            icon: <DocumentIcon size={16} />,
-          },
-          { id: 'page', label: 'Page', hint: 'Paper, margins', icon: <PageIcon size={16} /> },
-          {
-            id: 'furniture',
-            label: 'Title & edges',
-            hint: 'Header, footer, page 1',
-            icon: <TextIcon size={16} />,
-          },
-          {
-            id: 'cover',
-            label: 'Cover',
-            hint: 'Mock exam front page',
-            icon: <DocumentIcon size={16} />,
-          },
+          { id: 'document', label: 'Worksheet', hint: 'Title, fonts, sections' },
+          { id: 'page', label: 'Page', hint: 'Paper, margins' },
+          { id: 'furniture', label: 'Title & edges', hint: 'Header, footer, page 1' },
+          { id: 'cover', label: 'Cover', hint: 'Mock exam front page' },
         ]}
       >
         {tab === 'document' && <DocumentTab />}

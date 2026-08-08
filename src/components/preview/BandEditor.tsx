@@ -191,7 +191,7 @@ export function BandEditor({
             <button
               type="button"
               onClick={onAddRow}
-              className="pointer-events-auto cursor-pointer rounded px-1.5 py-0.5 text-[9px] font-medium text-[#8f8a86] transition-colors hover:bg-[#dbeafe] hover:text-[#1d4ed8]"
+              className="pointer-events-auto cursor-pointer rounded px-1.5 py-0.5 text-[9px] font-medium text-[#8f8a86] transition-colors hover:bg-[#d9ebf8] hover:text-[#0a5c9e]"
             >
               + Row
             </button>
@@ -279,9 +279,9 @@ export function BandEditor({
                    */
                   className={`flex flex-1 flex-wrap items-baseline gap-x-1 rounded transition-colors ${ALIGN[zone]} ${
                     isOver
-                      ? 'bg-[#dbeafe] ring-2 ring-[#2563eb]'
+                      ? 'bg-[#d9ebf8] ring-2 ring-[#0d77c9]'
                       : droppable
-                        ? 'ring-1 ring-dashed ring-[#93c5fd]'
+                        ? 'ring-1 ring-dashed ring-[#8fc2e9]'
                         : 'group-hover/band:ring-1 group-hover/band:ring-dashed group-hover/band:ring-[#d6d1cb]'
                   }`}
                 >
@@ -425,7 +425,7 @@ export function BandEditor({
                       type="button"
                       onClick={() => onAddField(band.id, zone)}
                       aria-label={`Add a field to the ${zone} zone`}
-                      className="text-[10px] italic text-transparent transition-colors group-hover/band:text-[#a5a09b] hover:!text-[#1d4ed8]"
+                      className="text-[10px] text-transparent transition-colors group-hover/band:text-[#a5a09b] hover:!text-[#0a5c9e]"
                     >
                       +
                     </button>

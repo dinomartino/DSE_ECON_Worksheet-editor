@@ -4,13 +4,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui';
 import { Dialog } from '@/components/ui/Dialog';
 import { Menu } from '@/components/ui/Menu';
-import {
-  AnswerSpaceIcon,
-  DocumentIcon,
-  McqIcon,
-  PageIcon,
-  StructuredIcon,
-} from '@/components/ui/icons';
 import { NEW_WORKSHEET_FORM_ID, NewWorksheetForm } from './NewWorksheetForm';
 import { newId } from '@/model/factories';
 import type { DocumentType } from '@/model/newWorksheet';
@@ -122,7 +115,7 @@ export function StartScreen({
 
   return (
     <div
-      className="zone-dark flex h-screen flex-col overflow-y-auto bg-desk"
+      className="zone-dark flex h-screen flex-col overflow-hidden bg-desk lg:flex-row"
       onDragOver={(event) => {
         // A .json worksheet dropped anywhere on this screen opens it. The whole surface
         // is the target rather than a marked-out zone: this screen has nothing else a
@@ -146,138 +139,131 @@ export function StartScreen({
       }}
     >
       {/*
-        `my-auto` centres the column when it is shorter than the window and lets it flow
-        from the top once the list outgrows one screen — `justify-center` on the
-        scroller would clip the overflowing top instead. Without it a short list sits in
-        the top third under a screen-height field of empty desk, which reads as a page
-        that failed to finish loading rather than as a document picker.
+        An editorial split rather than a floating card column: the lit index panel on
+        the left holds everything that *starts* work, the desk on the right holds the
+        documents already on it. The panel runs the full height like the editor's own
+        rail, so the screen reads as the same room as the tool it opens.
       */}
-      <div className="mx-auto my-auto w-full max-w-5xl px-8 py-12">
-        <header className="flex items-center gap-3">
-          <span
-            aria-hidden
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-[17px] font-bold text-on-accent"
-          >
-            W
+      <aside className="zone-light flex shrink-0 flex-col overflow-y-auto border-b border-line bg-surface px-9 pb-8 pt-9 lg:h-full lg:w-[400px] lg:border-b-0 lg:border-r">
+        <header className="flex items-center gap-2.5">
+          <span aria-hidden className="font-display text-[19px] leading-none text-ink">
+            W.
           </span>
-          <span className="text-[17px] font-semibold leading-tight text-ink">
-            Worksheet
-            <span className="ml-2.5 text-[12px] font-normal text-ink-subtle">
-              HKDSE Economics
-            </span>
-          </span>
+          <span className="text-[13px] font-semibold text-ink">Worksheet</span>
+          <span className="text-[11px] text-ink-subtle">HKDSE Economics</span>
           {onClose && (
-            <Button variant="subtle" className="ml-auto" onClick={onClose}>
-              Back to the editor
+            <Button variant="subtle" size="sm" className="ml-auto" onClick={onClose}>
+              Back
             </Button>
           )}
         </header>
 
-        {/*
-          Two unequal columns: starting a document is a menu, resuming one is the job,
-          so the saved list takes the wide side. On a narrow window they stack, the
-          menu first — with nothing saved yet, starting is the only thing to do.
-        */}
-        <div className="mt-12 grid gap-x-14 gap-y-10 lg:grid-cols-[320px_minmax(0,1fr)]">
-          <section>
-            <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
-              Start a new worksheet
-            </h2>
-            <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
-              Each opens the same form — the card only preselects the document type.
-            </p>
-            <div className="mt-4 flex flex-col gap-2">
-              <StartCard
-                icon={<DocumentIcon size={18} />}
-                title="Classroom worksheet"
-                hint="MCQ + structured questions. No cover."
-                onClick={() => setCreating('classroom')}
-              />
-              <StartCard
-                icon={<AnswerSpaceIcon size={18} />}
-                title="LQ worksheet"
-                hint="Long questions with dotted answer space. No exam furniture."
-                onClick={() => setCreating('lqWorksheet')}
-              />
-              <StartCard
-                icon={<McqIcon size={18} />}
-                title="Paper 1 mock · MCQ"
-                hint="Exam cover; answers on a separate answer sheet."
-                onClick={() => setCreating('paper1')}
-              />
-              <StartCard
-                icon={<StructuredIcon size={18} />}
-                title="Paper 2 mock · booklet"
-                hint="Question-Answer Book: cover, Sections A–C, page frame."
-                onClick={() => setCreating('lqMock')}
-              />
-            </div>
-            <div className="mt-5">
-              <Button variant="subtle" onClick={() => fileInput.current?.click()}>
-                Open a .json worksheet…
-              </Button>
-              <p className="mt-1 pl-3 text-[11px] text-ink-subtle">
-                or drop one anywhere on this page
-              </p>
-            </div>
-          </section>
+        {/* The screen's one display moment: the chrome's serif voice (design.md §
+            Typography). Everything below it stays on the UI grotesque. */}
+        <h1 className="font-display mt-14 text-balance text-[32px] font-normal leading-[1.15] tracking-[-0.015em] text-ink">
+          Start a worksheet, or pick up where you left off.
+        </h1>
 
-          <section>
-            <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
-              Saved in this browser
-              {summaries.length > 0 && (
-                <span className="ml-1.5 font-normal normal-case tracking-normal">
-                  ({summaries.length})
-                </span>
-              )}
-            </h2>
+        <section className="mt-12">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
+            Start new
+          </h2>
+          {/* Typographic rows, not icon cards: the four kinds differ by *what they
+              print*, and a sentence says that better than four look-alike glyphs.
+              All four open the same form; the row only preselects the type. */}
+          <div className="mt-3 flex flex-col border-t border-line">
+            <StartRow
+              title="Classroom worksheet"
+              hint="MCQ + structured questions. No cover."
+              onClick={() => setCreating('classroom')}
+            />
+            <StartRow
+              title="LQ worksheet"
+              hint="Long questions with dotted answer space. No exam furniture."
+              onClick={() => setCreating('lqWorksheet')}
+            />
+            <StartRow
+              title="Paper 1 mock · MCQ"
+              hint="Exam cover; answers on a separate answer sheet."
+              onClick={() => setCreating('paper1')}
+            />
+            <StartRow
+              title="Paper 2 mock · booklet"
+              hint="Question-Answer Book: cover, Sections A–C, page frame."
+              onClick={() => setCreating('lqMock')}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => fileInput.current?.click()}
+            className="mt-5 cursor-pointer text-[12px] font-medium text-accent-ink underline decoration-line-strong underline-offset-4 transition-colors hover:decoration-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            Open a .json worksheet…
+          </button>
+          <p className="mt-1.5 text-[11px] text-ink-subtle">
+            or drop one anywhere on this page
+          </p>
+        </section>
 
-            {/* Three states, each said plainly. The distinction between "nothing saved
-                yet" and "still reading storage" matters on this screen: the second flashes
-                an empty list that reads as lost work. */}
-            {!loaded ? (
-              <p className="mt-4 text-[12px] text-ink-subtle">Reading saved documents…</p>
-            ) : summaries.length === 0 ? (
-              <p className="mt-4 flex min-h-44 items-center justify-center rounded-xl border border-dashed border-line-strong px-8 py-10 text-center text-[12px] leading-relaxed text-ink-muted">
-                Nothing saved yet. Worksheets you start are kept in this browser —
-                download a .json copy to move one to another machine.
-              </p>
-            ) : (
-              <ul className="mt-4 space-y-2">
-                {summaries.map((summary) => (
-                  <SavedRow
-                    key={summary.id}
-                    summary={summary}
-                    onOpen={() => void openSaved(summary.id)}
-                    onRename={() => setRenaming(summary)}
-                    onDuplicate={() => void duplicate(summary)}
-                    onDownload={async () => {
-                      const worksheet = await worksheetStore.load(summary.id);
-                      if (worksheet) downloadWorksheetFile(worksheet);
-                    }}
-                    onDelete={() => setConfirmingDelete(summary)}
-                  />
-                ))}
-              </ul>
-            )}
-
-            {error && (
-              <p
-                role="alert"
-                className="mt-4 rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink"
-              >
-                {error}
-              </p>
-            )}
-          </section>
-        </div>
-
-        <p className="mt-14 border-t border-line pt-5 text-[11px] leading-relaxed text-ink-subtle">
+        <p className="mt-auto pt-10 text-[11px] leading-relaxed text-ink-subtle">
           Everything here is stored in this browser only — there is no server and no
           account. Clearing site data deletes it, so keep a .json copy of anything you
           would be sorry to lose.
         </p>
-      </div>
+      </aside>
+
+      {/* The desk side: what is already on the desk, as a ledger rather than a stack
+          of shadowed tiles — hairline rows carry a list better than boxes do. */}
+      <main className="min-h-0 flex-1 overflow-y-auto px-9 py-9 lg:px-14 lg:py-12">
+        <div className="mx-auto max-w-3xl">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
+            Saved in this browser
+            {summaries.length > 0 && (
+              <span className="ml-1.5 font-normal normal-case tracking-normal">
+                ({summaries.length})
+              </span>
+            )}
+          </h2>
+
+          {/* Three states, each said plainly. The distinction between "nothing saved
+              yet" and "still reading storage" matters on this screen: the second flashes
+              an empty list that reads as lost work. */}
+          {!loaded ? (
+            <p className="mt-5 text-[12px] text-ink-subtle">Reading saved documents…</p>
+          ) : summaries.length === 0 ? (
+            <p className="mt-5 max-w-md text-[13px] leading-relaxed text-ink-muted">
+              Nothing saved yet. Worksheets you start are kept in this browser —
+              download a .json copy to move one to another machine.
+            </p>
+          ) : (
+            <ul className="mt-4 border-t border-line-strong/60">
+              {summaries.map((summary) => (
+                <SavedRow
+                  key={summary.id}
+                  summary={summary}
+                  onOpen={() => void openSaved(summary.id)}
+                  onRename={() => setRenaming(summary)}
+                  onDuplicate={() => void duplicate(summary)}
+                  onDownload={async () => {
+                    const worksheet = await worksheetStore.load(summary.id);
+                    if (worksheet) downloadWorksheetFile(worksheet);
+                  }}
+                  onDelete={() => setConfirmingDelete(summary)}
+                />
+              ))}
+            </ul>
+          )}
+
+          {error && (
+            <p
+              role="alert"
+              className="mt-4 rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink"
+            >
+              {error}
+            </p>
+          )}
+        </div>
+      </main>
 
       <input
         ref={fileInput}
@@ -387,13 +373,16 @@ export function StartScreen({
   );
 }
 
-function StartCard({
-  icon,
+/**
+ * One way to start, as a line in an index rather than an icon card. The accent bar
+ * that slides in on hover is the row's whole affordance — the text stays put, the
+ * colour arrives, nothing lifts or casts a shadow.
+ */
+function StartRow({
   title,
   hint,
   onClick,
 }: {
-  icon: React.ReactNode;
   title: string;
   hint: string;
   onClick: () => void;
@@ -402,15 +391,16 @@ function StartCard({
     <button
       type="button"
       onClick={onClick}
-      className="zone-light group flex w-full cursor-pointer items-center gap-3 rounded-xl border border-transparent bg-surface-raised px-3.5 py-3 text-left shadow-lg transition-[background-color,border-color,color,box-shadow,opacity] hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      className="group relative cursor-pointer border-b border-line py-3.5 pl-4 pr-2 text-left transition-colors duration-150 ease-[var(--ease-out-soft)] hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
     >
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-ink-subtle transition-colors group-hover:bg-accent-soft group-hover:text-accent">
-        {icon}
+      <span
+        aria-hidden
+        className="absolute inset-y-0 left-0 w-0.5 bg-accent opacity-0 transition-opacity duration-150 ease-[var(--ease-out-soft)] group-hover:opacity-100 group-focus-visible:opacity-100"
+      />
+      <span className="block text-[13.5px] font-medium text-ink transition-colors group-hover:text-accent-ink">
+        {title}
       </span>
-      <span className="min-w-0">
-        <span className="block text-[13px] font-medium text-ink">{title}</span>
-        <span className="mt-0.5 block text-[11px] leading-snug text-ink-muted">{hint}</span>
-      </span>
+      <span className="mt-0.5 block text-[11px] leading-snug text-ink-muted">{hint}</span>
     </button>
   );
 }
@@ -439,22 +429,17 @@ function SavedRow({
   onDelete: () => void;
 }) {
   return (
-    <li className="zone-light flex items-center gap-2 rounded-xl border border-transparent bg-surface-raised pr-2 shadow-md transition-colors hover:border-accent">
+    <li className="group flex items-center gap-2 border-b border-line pr-1 transition-colors duration-150 ease-[var(--ease-out-soft)] hover:bg-surface-hover">
       <button
         type="button"
         onClick={onOpen}
-        className="flex min-w-0 flex-1 cursor-pointer items-center gap-3.5 rounded-xl px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="flex min-w-0 flex-1 cursor-pointer items-baseline gap-4 py-3.5 pl-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
       >
-        <span className="shrink-0 text-ink-subtle">
-          {summary.hasCover ? <PageIcon size={18} /> : <DocumentIcon size={18} />}
+        <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-ink">
+          {summary.title}
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[14px] font-medium text-ink">
-            {summary.title}
-          </span>
-          <span className="block truncate text-[11px] text-ink-muted">
-            {describe(summary)}
-          </span>
+        <span className="shrink-0 text-[11px] tabular-nums text-ink-muted">
+          {describe(summary)}
         </span>
       </button>
       <Menu
