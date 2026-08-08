@@ -1,4 +1,4 @@
-# Design — Econ Worksheet Generator ("Graphite studio")
+# Design — Econ Worksheet Generator ("Studio grey")
 
 A locked design system for the app chrome. Every surface redesign reads this file
 before emitting code. Do not regenerate per page — extend or amend this file when the
@@ -14,16 +14,18 @@ modern-minimal — a pro drafting tool. The UI recedes; the lit white page is th
 
 ## Concept
 
-Lit paper on a dark desk. Toolbar, rails and desk are graphite (`.zone-dark`); working
-panels — sidebar, dialogs, cards — are crisp light surfaces (`.zone-light` restores
-them inside a dark zone). One electric-blue accent.
+**One tonal family.** Every chrome surface lives on a single cool-grey ramp: panels
+white, bars and rails one step deeper, the desk the deepest step — and in the dark
+scheme the whole ramp drops together. Never a dark surface against a light one: the
+first cut framed light panels in graphite and the eye paid for every glance between
+them. One electric-blue accent.
 
 ## Mechanism
 
 Semantic tokens (`--surface`, `--ink`, `--line`, …) resolve through two primitive sets
-in `globals.css`: `--panel-*` (light surfaces; goes dark under
-`prefers-color-scheme: dark`) and `--chrome-*` (graphite always). `.zone-dark` remaps
-the semantic names to the chrome set for a subtree; `.zone-light` maps them back.
+in `globals.css`: `--panel-*` (working surfaces) and `--chrome-*` (the frame — same tone, one step
+deeper). `.zone-dark` remaps a subtree onto the frame set; `.zone-light` maps it
+back. Both sets drop into one dark ramp under `prefers-color-scheme: dark`.
 Components keep using `bg-surface` / `text-ink` and never name a zone's colours.
 
 - Zone roots: Toolbar, the rail column and the desk scroller (EditorApp), StartScreen.
@@ -33,21 +35,17 @@ Components keep using `bg-surface` / `text-ink` and never name a zone's colours.
 
 ## Theme (light scheme)
 
-| Token | Panel set | Chrome set |
+| Token | Panel set | Chrome (frame) set |
 |---|---|---|
-| surface | `oklch(97.5% 0.003 265)` | `oklch(32% 0.012 265)` |
-| ink | `oklch(27% 0.015 265)` | `oklch(90% 0.005 265)` |
-| ink-muted | `oklch(47% 0.018 265)` | `oklch(77% 0.01 265)` |
-| line | `oklch(89% 0.006 265)` | `oklch(41% 0.01 265)` |
+| surface | `#ffffff` | `oklch(94.5% 0.005 265)` |
+| ink | `oklch(27% 0.015 265)` | same ink — one tone, one text colour |
+| line | `oklch(90% 0.006 265)` | `oklch(87% 0.007 265)` |
 
-Deliberately **mid-contrast**: the frame is mid-graphite and the panels a shade off
-pure white, so only the paper itself is `#fff` — comfortable over a long session,
-and the sheet stays the brightest object. Do not push the desk darker or the panels
-brighter without re-testing eye comfort.
-
-Desk `oklch(42% 0.012 265)` · accent `oklch(55% 0.19 255)` electric blue ·
-`--on-accent` white. Full values live in `globals.css`; it is the source of truth —
-amend this file when they change.
+Desk `oklch(85% 0.008 265)` · accent `oklch(55% 0.19 255)` electric blue ·
+`--on-accent` white. **The tonal rule:** all chrome surfaces stay within one grey
+family and one lightness direction; the white paper is the brightest object. Do not
+reintroduce a dark frame around light panels — it was tried and rejected for eye
+comfort. Full values live in `globals.css`; amend this file when they change.
 
 ## Typography
 
