@@ -35,12 +35,17 @@ Components keep using `bg-surface` / `text-ink` and never name a zone's colours.
 
 | Token | Panel set | Chrome set |
 |---|---|---|
-| surface | `#ffffff` | `oklch(25% 0.012 265)` |
-| ink | `oklch(24% 0.015 265)` | `oklch(94% 0.004 265)` |
-| ink-muted | `oklch(47% 0.018 265)` | `oklch(76% 0.01 265)` |
-| line | `oklch(90% 0.006 265)` | `oklch(34% 0.01 265)` |
+| surface | `oklch(97.5% 0.003 265)` | `oklch(32% 0.012 265)` |
+| ink | `oklch(27% 0.015 265)` | `oklch(90% 0.005 265)` |
+| ink-muted | `oklch(47% 0.018 265)` | `oklch(77% 0.01 265)` |
+| line | `oklch(89% 0.006 265)` | `oklch(41% 0.01 265)` |
 
-Desk `oklch(33% 0.014 265)` · accent `oklch(55% 0.19 255)` electric blue ·
+Deliberately **mid-contrast**: the frame is mid-graphite and the panels a shade off
+pure white, so only the paper itself is `#fff` — comfortable over a long session,
+and the sheet stays the brightest object. Do not push the desk darker or the panels
+brighter without re-testing eye comfort.
+
+Desk `oklch(42% 0.012 265)` · accent `oklch(55% 0.19 255)` electric blue ·
 `--on-accent` white. Full values live in `globals.css`; it is the source of truth —
 amend this file when they change.
 

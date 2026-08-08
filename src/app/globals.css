@@ -74,16 +74,18 @@
  * `bg-surface` / `text-ink` and never name a zone's colours.
  */
 :root {
-  /* Panel set — the lit working surfaces. */
-  --panel-surface: #ffffff;
-  --panel-raised: #ffffff;
-  --panel-sunken: oklch(96.5% 0.004 265);
-  --panel-hover: oklch(94.5% 0.006 265);
-  --panel-ink: oklch(24% 0.015 265);
+  /* Panel set — the lit working surfaces. A shade off pure white on purpose: the
+     paper keeps #fff for itself, so the sheet stays the brightest object on screen
+     and the chrome's lights stop sparkling against the dark desk. */
+  --panel-surface: oklch(97.5% 0.003 265);
+  --panel-raised: oklch(98.5% 0.002 265);
+  --panel-sunken: oklch(94.5% 0.005 265);
+  --panel-hover: oklch(92.5% 0.006 265);
+  --panel-ink: oklch(27% 0.015 265);
   --panel-ink-muted: oklch(47% 0.018 265);
   --panel-ink-subtle: oklch(60% 0.014 265);
-  --panel-line: oklch(90% 0.006 265);
-  --panel-line-strong: oklch(81% 0.01 265);
+  --panel-line: oklch(89% 0.006 265);
+  --panel-line-strong: oklch(80% 0.01 265);
   --panel-accent-soft: oklch(94% 0.035 255);
   --panel-accent-ink: oklch(44% 0.16 255);
   --panel-danger-soft: #fef2f2;
@@ -94,19 +96,21 @@
   --panel-ok-soft: #ecfdf5;
   --panel-ok-line: #a7f3d0;
 
-  /* Chrome set — the graphite frame around the paper. `ink-muted` here labels real
-     controls on the dark bar and stays ≥ 4.5:1 on `--chrome-surface`. */
-  --chrome-surface: oklch(25% 0.012 265);
-  --chrome-raised: oklch(30% 0.014 265);
-  --chrome-sunken: oklch(21% 0.01 265);
-  --chrome-hover: oklch(32% 0.016 265);
-  --chrome-ink: oklch(94% 0.004 265);
-  --chrome-ink-muted: oklch(76% 0.01 265);
-  --chrome-ink-subtle: oklch(64% 0.012 265);
-  --chrome-line: oklch(34% 0.01 265);
-  --chrome-line-strong: oklch(44% 0.01 265);
-  --chrome-accent-soft: oklch(33% 0.07 255);
-  --chrome-accent-ink: oklch(80% 0.09 255);
+  /* Chrome set — the graphite frame around the paper, lifted to a mid graphite:
+     the frame must read as a frame, not as a void, and softer text on it keeps a
+     long session from sparkling. `ink-muted` labels real controls on the bar and
+     stays ≥ 4.5:1 on `--chrome-surface`. */
+  --chrome-surface: oklch(32% 0.012 265);
+  --chrome-raised: oklch(37% 0.014 265);
+  --chrome-sunken: oklch(28% 0.01 265);
+  --chrome-hover: oklch(39% 0.016 265);
+  --chrome-ink: oklch(90% 0.005 265);
+  --chrome-ink-muted: oklch(77% 0.01 265);
+  --chrome-ink-subtle: oklch(66% 0.012 265);
+  --chrome-line: oklch(41% 0.01 265);
+  --chrome-line-strong: oklch(50% 0.01 265);
+  --chrome-accent-soft: oklch(38% 0.06 255);
+  --chrome-accent-ink: oklch(82% 0.08 255);
   --chrome-danger-soft: oklch(30% 0.06 20);
   --chrome-danger-ink: oklch(80% 0.11 20);
   --chrome-warn-soft: oklch(31% 0.05 85);
@@ -120,8 +124,10 @@
 
   /* The desk is graphite in both schemes. That contrast is doing real work: it is
      what makes the white sheet read as a lit object sitting on a surface rather
-     than as one more white panel among several. */
-  --desk: oklch(33% 0.014 265);
+     than as one more white panel among several. Mid-graphite, not near-black —
+     the sheet still pops, but the luminance jump stays comfortable over a long
+     marking session. */
+  --desk: oklch(42% 0.012 265);
 
   --surface: var(--panel-surface);
   --surface-raised: var(--panel-raised);
@@ -442,12 +448,12 @@ body {
 /* A soft, layered shadow reads as a sheet lifted off a desk. A single flat shadow
    reads as a card in a form, which is the impression we're trying to lose. */
 .paper-shadow {
-  /* The desk is graphite in both schemes now, so the sheet needs a deeper throw to
-     read as lifted rather than pasted. */
+  /* The graphite desk already separates the sheet; the shadow only has to settle
+     it. A heavier throw doubled the drama the palette was softened to lose. */
   box-shadow:
-    0 1px 2px rgb(0 0 0 / 0.35),
-    0 12px 32px -8px rgb(0 0 0 / 0.45),
-    0 32px 64px -16px rgb(0 0 0 / 0.4);
+    0 1px 2px rgb(0 0 0 / 0.25),
+    0 10px 28px -8px rgb(0 0 0 / 0.3),
+    0 28px 56px -16px rgb(0 0 0 / 0.25);
 }
 
 /* Custom scrollbars — the default macOS/Windows bars are the loudest thing in a

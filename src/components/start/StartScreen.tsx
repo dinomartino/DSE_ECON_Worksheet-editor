@@ -152,17 +152,17 @@ export function StartScreen({
         the top third under a screen-height field of empty desk, which reads as a page
         that failed to finish loading rather than as a document picker.
       */}
-      <div className="mx-auto my-auto w-full max-w-3xl px-6 py-12">
-        <header className="flex items-center gap-2.5">
+      <div className="mx-auto my-auto w-full max-w-5xl px-8 py-12">
+        <header className="flex items-center gap-3">
           <span
             aria-hidden
-            className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent text-[15px] font-bold text-on-accent"
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-[17px] font-bold text-on-accent"
           >
             W
           </span>
-          <span className="text-[15px] font-semibold leading-tight text-ink">
+          <span className="text-[17px] font-semibold leading-tight text-ink">
             Worksheet
-            <span className="ml-2 text-[12px] font-normal text-ink-subtle">
+            <span className="ml-2.5 text-[12px] font-normal text-ink-subtle">
               HKDSE Economics
             </span>
           </span>
@@ -173,93 +173,106 @@ export function StartScreen({
           )}
         </header>
 
-        <section className="mt-9">
-          <h2 className="text-[13px] font-semibold text-ink">Start a new worksheet</h2>
-          <p className="mt-0.5 text-[11px] text-ink-muted">
-            Each opens the same form — the card only preselects the document type.
-          </p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <StartCard
-              icon={<DocumentIcon size={18} />}
-              title="Classroom worksheet"
-              hint="MCQ + structured questions. No cover."
-              onClick={() => setCreating('classroom')}
-            />
-            <StartCard
-              icon={<AnswerSpaceIcon size={18} />}
-              title="LQ worksheet"
-              hint="Long questions with dotted answer space. No exam furniture."
-              onClick={() => setCreating('lqWorksheet')}
-            />
-            <StartCard
-              icon={<McqIcon size={18} />}
-              title="Paper 1 mock · MCQ"
-              hint="Exam cover; answers on a separate answer sheet."
-              onClick={() => setCreating('paper1')}
-            />
-            <StartCard
-              icon={<StructuredIcon size={18} />}
-              title="Paper 2 mock · booklet"
-              hint="Question-Answer Book: cover, Sections A–C, page frame."
-              onClick={() => setCreating('lqMock')}
-            />
-          </div>
-          <div className="mt-3">
-            <Button variant="subtle" onClick={() => fileInput.current?.click()}>
-              Open a .json worksheet…
-            </Button>
-            <span className="ml-1 text-[11px] text-ink-subtle">or drop one on this page</span>
-          </div>
-        </section>
-
-        <section className="mt-10">
-          <h2 className="text-[13px] font-semibold text-ink">
-            Saved in this browser
-            {summaries.length > 0 && (
-              <span className="ml-1.5 font-normal text-ink-subtle">({summaries.length})</span>
-            )}
-          </h2>
-
-          {/* Three states, each said plainly. The distinction between "nothing saved
-              yet" and "still reading storage" matters on this screen: the second flashes
-              an empty list that reads as lost work. */}
-          {!loaded ? (
-            <p className="mt-3 text-[12px] text-ink-subtle">Reading saved documents…</p>
-          ) : summaries.length === 0 ? (
-            <p className="mt-3 rounded-xl border border-dashed border-line px-4 py-6 text-center text-[12px] text-ink-muted">
-              Nothing saved yet. Worksheets you start are kept in this browser — download
-              a .json copy to move one to another machine.
+        {/*
+          Two unequal columns: starting a document is a menu, resuming one is the job,
+          so the saved list takes the wide side. On a narrow window they stack, the
+          menu first — with nothing saved yet, starting is the only thing to do.
+        */}
+        <div className="mt-12 grid gap-x-14 gap-y-10 lg:grid-cols-[320px_minmax(0,1fr)]">
+          <section>
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
+              Start a new worksheet
+            </h2>
+            <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+              Each opens the same form — the card only preselects the document type.
             </p>
-          ) : (
-            <ul className="mt-3 space-y-1.5">
-              {summaries.map((summary) => (
-                <SavedRow
-                  key={summary.id}
-                  summary={summary}
-                  onOpen={() => void openSaved(summary.id)}
-                  onRename={() => setRenaming(summary)}
-                  onDuplicate={() => void duplicate(summary)}
-                  onDownload={async () => {
-                    const worksheet = await worksheetStore.load(summary.id);
-                    if (worksheet) downloadWorksheetFile(worksheet);
-                  }}
-                  onDelete={() => setConfirmingDelete(summary)}
-                />
-              ))}
-            </ul>
-          )}
-        </section>
+            <div className="mt-4 flex flex-col gap-2">
+              <StartCard
+                icon={<DocumentIcon size={18} />}
+                title="Classroom worksheet"
+                hint="MCQ + structured questions. No cover."
+                onClick={() => setCreating('classroom')}
+              />
+              <StartCard
+                icon={<AnswerSpaceIcon size={18} />}
+                title="LQ worksheet"
+                hint="Long questions with dotted answer space. No exam furniture."
+                onClick={() => setCreating('lqWorksheet')}
+              />
+              <StartCard
+                icon={<McqIcon size={18} />}
+                title="Paper 1 mock · MCQ"
+                hint="Exam cover; answers on a separate answer sheet."
+                onClick={() => setCreating('paper1')}
+              />
+              <StartCard
+                icon={<StructuredIcon size={18} />}
+                title="Paper 2 mock · booklet"
+                hint="Question-Answer Book: cover, Sections A–C, page frame."
+                onClick={() => setCreating('lqMock')}
+              />
+            </div>
+            <div className="mt-5">
+              <Button variant="subtle" onClick={() => fileInput.current?.click()}>
+                Open a .json worksheet…
+              </Button>
+              <p className="mt-1 pl-3 text-[11px] text-ink-subtle">
+                or drop one anywhere on this page
+              </p>
+            </div>
+          </section>
 
-        {error && (
-          <p
-            role="alert"
-            className="mt-4 rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink"
-          >
-            {error}
-          </p>
-        )}
+          <section>
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
+              Saved in this browser
+              {summaries.length > 0 && (
+                <span className="ml-1.5 font-normal normal-case tracking-normal">
+                  ({summaries.length})
+                </span>
+              )}
+            </h2>
 
-        <p className="mt-10 text-[11px] leading-relaxed text-ink-subtle">
+            {/* Three states, each said plainly. The distinction between "nothing saved
+                yet" and "still reading storage" matters on this screen: the second flashes
+                an empty list that reads as lost work. */}
+            {!loaded ? (
+              <p className="mt-4 text-[12px] text-ink-subtle">Reading saved documents…</p>
+            ) : summaries.length === 0 ? (
+              <p className="mt-4 flex min-h-44 items-center justify-center rounded-xl border border-dashed border-line-strong px-8 py-10 text-center text-[12px] leading-relaxed text-ink-muted">
+                Nothing saved yet. Worksheets you start are kept in this browser —
+                download a .json copy to move one to another machine.
+              </p>
+            ) : (
+              <ul className="mt-4 space-y-2">
+                {summaries.map((summary) => (
+                  <SavedRow
+                    key={summary.id}
+                    summary={summary}
+                    onOpen={() => void openSaved(summary.id)}
+                    onRename={() => setRenaming(summary)}
+                    onDuplicate={() => void duplicate(summary)}
+                    onDownload={async () => {
+                      const worksheet = await worksheetStore.load(summary.id);
+                      if (worksheet) downloadWorksheetFile(worksheet);
+                    }}
+                    onDelete={() => setConfirmingDelete(summary)}
+                  />
+                ))}
+              </ul>
+            )}
+
+            {error && (
+              <p
+                role="alert"
+                className="mt-4 rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink"
+              >
+                {error}
+              </p>
+            )}
+          </section>
+        </div>
+
+        <p className="mt-14 border-t border-line pt-5 text-[11px] leading-relaxed text-ink-subtle">
           Everything here is stored in this browser only — there is no server and no
           account. Clearing site data deletes it, so keep a .json copy of anything you
           would be sorry to lose.
@@ -389,11 +402,15 @@ function StartCard({
     <button
       type="button"
       onClick={onClick}
-      className="zone-light group flex cursor-pointer flex-col items-start gap-1.5 rounded-xl border border-transparent bg-surface-raised p-3.5 text-left shadow-lg transition-[background-color,border-color,color,box-shadow,opacity] hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      className="zone-light group flex w-full cursor-pointer items-center gap-3 rounded-xl border border-transparent bg-surface-raised px-3.5 py-3 text-left shadow-lg transition-[background-color,border-color,color,box-shadow,opacity] hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
-      <span className="text-ink-subtle transition-colors group-hover:text-accent">{icon}</span>
-      <span className="text-[13px] font-medium text-ink">{title}</span>
-      <span className="text-[11px] leading-snug text-ink-muted">{hint}</span>
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-ink-subtle transition-colors group-hover:bg-accent-soft group-hover:text-accent">
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[13px] font-medium text-ink">{title}</span>
+        <span className="mt-0.5 block text-[11px] leading-snug text-ink-muted">{hint}</span>
+      </span>
     </button>
   );
 }
@@ -426,13 +443,13 @@ function SavedRow({
       <button
         type="button"
         onClick={onOpen}
-        className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="flex min-w-0 flex-1 cursor-pointer items-center gap-3.5 rounded-xl px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
         <span className="shrink-0 text-ink-subtle">
-          {summary.hasCover ? <PageIcon size={16} /> : <DocumentIcon size={16} />}
+          {summary.hasCover ? <PageIcon size={18} /> : <DocumentIcon size={18} />}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[13px] font-medium text-ink">
+          <span className="block truncate text-[14px] font-medium text-ink">
             {summary.title}
           </span>
           <span className="block truncate text-[11px] text-ink-muted">
