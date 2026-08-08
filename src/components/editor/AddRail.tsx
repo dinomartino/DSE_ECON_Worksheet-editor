@@ -303,7 +303,7 @@ export function AddRail() {
     <div ref={rootRef} className="relative z-30 flex shrink-0">
       <nav
         aria-label="Add to worksheet"
-        className="flex w-[76px] shrink-0 flex-col items-center gap-1 border-r border-line bg-surface py-3"
+        className="zone-dark flex w-[76px] shrink-0 flex-col items-center gap-1 border-r border-line bg-surface py-3"
       >
         {groups.map((group) => {
           const isOpen = open === group.id;
@@ -314,7 +314,7 @@ export function AddRail() {
               aria-expanded={isOpen}
               aria-haspopup="menu"
               onClick={() => setOpen(isOpen ? undefined : group.id)}
-              className={`flex w-[64px] cursor-pointer flex-col items-center gap-1 rounded-xl px-1 py-2.5 transition-all duration-150 ease-[var(--ease-out-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+              className={`flex w-[64px] cursor-pointer flex-col items-center gap-1 rounded-xl px-1 py-2.5 transition-[background-color,border-color,color,box-shadow,opacity] duration-150 ease-[var(--ease-out-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                 isOpen
                   ? 'bg-accent text-on-accent shadow-sm'
                   : 'text-ink-muted hover:bg-surface-hover hover:text-ink'

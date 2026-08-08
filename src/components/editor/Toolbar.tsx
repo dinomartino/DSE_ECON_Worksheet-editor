@@ -166,7 +166,7 @@ export function Toolbar({
   };
 
   return (
-    <div className="border-b border-line bg-surface px-4 py-2.5">
+    <div className="zone-dark border-b border-line bg-surface px-4 py-2.5">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         {/* Identity gets a mark, not just a word. A tool with a face on it reads as a
             product; a bare bold string reads as a page heading.

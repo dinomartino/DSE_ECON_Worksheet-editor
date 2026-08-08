@@ -104,7 +104,7 @@ export function TableGridControls({
   const chip = (danger = false) =>
     'pointer-events-auto absolute z-20 flex cursor-pointer items-center justify-center ' +
     'rounded-full border border-white text-white shadow-sm hover:brightness-110 ' +
-    (danger ? 'bg-[#b4241f]' : 'bg-[#7c5cff]');
+    (danger ? 'bg-[#b4241f]' : 'bg-[#2563eb]');
 
   const chipStyle = (size: number) => ({
     width: px(size),

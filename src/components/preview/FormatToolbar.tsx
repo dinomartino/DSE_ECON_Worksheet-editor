@@ -82,8 +82,8 @@ interface Props {
 
 const BTN =
   'flex h-7 min-w-7 items-center justify-center rounded px-1.5 text-xs font-medium transition-colors ' +
-  'hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a78bfa]';
-const ACTIVE = 'bg-[#7c5cff] text-white hover:bg-[#8f75ff]';
+  'hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#60a5fa]';
+const ACTIVE = 'bg-[#2563eb] text-white hover:bg-[#3b82f6]';
 const IDLE = 'text-slate-200';
 
 export function FormatToolbar({
@@ -175,7 +175,7 @@ export function FormatToolbar({
       <select
         aria-label="Font size"
         title="Font size"
-        className="h-7 cursor-pointer rounded bg-slate-800 px-1 text-xs text-slate-100 outline-none hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-[#a78bfa]"
+        className="h-7 cursor-pointer rounded bg-slate-800 px-1 text-xs text-slate-100 outline-none hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-[#60a5fa]"
         value={format?.fontSize ?? inheritedPt ?? ''}
         onChange={(event) =>
           onChange({ fontSize: event.target.value ? Number(event.target.value) : undefined })
@@ -319,7 +319,7 @@ export function FormatToolbar({
                 type="button"
                 aria-label={option.label}
                 title={option.label}
-                className="h-5 w-5 rounded-sm border border-slate-600 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a78bfa]"
+                className="h-5 w-5 rounded-sm border border-slate-600 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#60a5fa]"
                 style={{ background: option.swatch }}
                 onClick={() => {
                   onChange({ color: option.value });

@@ -179,7 +179,7 @@ export function PageRail({
             aria-label="Collapse page rail"
             title="Collapse"
             onClick={onToggle}
-            className="flex cursor-pointer items-center justify-center rounded-md p-0.5 text-ink-muted opacity-0 transition-all hover:bg-surface-hover hover:text-ink group-hover/page-rail:opacity-100"
+            className="flex cursor-pointer items-center justify-center rounded-md p-0.5 text-ink-muted opacity-0 transition-[background-color,border-color,color,box-shadow,opacity] hover:bg-surface-hover hover:text-ink group-hover/page-rail:opacity-100"
           >
             <ChevronRightIcon size={12} className="rotate-180" />
           </button>
@@ -202,7 +202,7 @@ export function PageRail({
                   type="button"
                   aria-label="Cover page"
                   onClick={() => goToPage(-1)}
-                  className="group/page relative block cursor-pointer overflow-hidden rounded-[3px] border border-line bg-white transition-all duration-150 hover:border-ink-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  className="group/page relative block cursor-pointer overflow-hidden rounded-[3px] border border-line bg-white transition-[background-color,border-color,color,box-shadow,opacity] duration-150 hover:border-ink-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   style={{ width: CARD_WIDTH_PX, height: cardHeight }}
                 >
                   <PageThumb
@@ -294,7 +294,7 @@ export function PageRail({
                       if (!source || !target) return;
                       movePage(source.flowIds, target.flowIds, position);
                     }}
-                    className={`group/page relative block cursor-pointer overflow-hidden rounded-[3px] border bg-white transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                    className={`group/page relative block cursor-pointer overflow-hidden rounded-[3px] border bg-white transition-[background-color,border-color,color,box-shadow,opacity] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                       itemOverIndex === index
                         ? // The card the question would land on, called out clearly:
                           // the drop is invisible otherwise, since the rail shows a
@@ -328,7 +328,7 @@ export function PageRail({
                           event.stopPropagation();
                           setConfirming(index);
                         }}
-                        className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-md bg-surface-raised/90 text-ink-subtle opacity-0 shadow-sm transition-all duration-150 hover:bg-danger-soft hover:text-danger group-hover/page:opacity-100"
+                        className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-md bg-surface-raised/90 text-ink-subtle opacity-0 shadow-sm transition-[background-color,border-color,color,box-shadow,opacity] duration-150 hover:bg-danger-soft hover:text-danger group-hover/page:opacity-100"
                       >
                         <TrashIcon size={11} />
                       </span>

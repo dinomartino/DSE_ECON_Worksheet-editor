@@ -1598,10 +1598,10 @@ function TableNodeView({
                   const rangeEdge = address ? rangeEdges?.get(address.cellId) : undefined;
                   const rangeOutline = rangeEdge
                     ? [
-                        rangeEdge.top ? "inset 0 2px 0 0 #7c5cff" : "",
-                        rangeEdge.bottom ? "inset 0 -2px 0 0 #7c5cff" : "",
-                        rangeEdge.left ? "inset 2px 0 0 0 #7c5cff" : "",
-                        rangeEdge.right ? "inset -2px 0 0 0 #7c5cff" : "",
+                        rangeEdge.top ? "inset 0 2px 0 0 #2563eb" : "",
+                        rangeEdge.bottom ? "inset 0 -2px 0 0 #2563eb" : "",
+                        rangeEdge.left ? "inset 2px 0 0 0 #2563eb" : "",
+                        rangeEdge.right ? "inset -2px 0 0 0 #2563eb" : "",
                       ]
                         .filter(Boolean)
                         .join(", ")
@@ -1618,7 +1618,7 @@ function TableNodeView({
                        * this is drawn on the paper and must not follow the app theme.
                        *
                        * An inset ring marks the active cell, not a tint: the selected
-                       * *question* already paints `#f6f3ff` across its whole box, so a
+                       * *question* already paints `#eff6ff` across its whole box, so a
                        * tinted cell was invisible inside it — which left the sidebar
                        * saying "cell R2C1" with nothing on the page to say which one that
                        * was. A ring paints inside the border box, so it also reserves no
@@ -1632,8 +1632,8 @@ function TableNodeView({
                         node.borders === "box" || cell.edges
                           ? ""
                           : "border border-slate-500"
-                      } align-middle ${isActive ? "ring-2 ring-inset ring-[#7c5cff]" : ""} ${
-                        rangeEdge ? "bg-[#7c5cff]/[0.12]" : ""
+                      } align-middle ${isActive ? "ring-2 ring-inset ring-[#2563eb]" : ""} ${
+                        rangeEdge ? "bg-[#2563eb]/[0.12]" : ""
                       }`}
                       style={{
                         textAlign: cell.align,
@@ -1893,7 +1893,7 @@ function CoverSheet({
             <button
               type="button"
               onClick={() => ctx.coverLines?.onAdd()}
-              className="pointer-events-auto cursor-pointer rounded px-1.5 py-0.5 text-[9px] font-medium text-[#8f8a86] transition-colors hover:bg-[#ede8ff] hover:text-[#6a48f5]"
+              className="pointer-events-auto cursor-pointer rounded px-1.5 py-0.5 text-[9px] font-medium text-[#8f8a86] transition-colors hover:bg-[#dbeafe] hover:text-[#1d4ed8]"
             >
               + Instruction
             </button>
@@ -2627,8 +2627,8 @@ function GapAdjuster({
         }}
         className={`pointer-events-auto absolute top-1/2 -translate-y-1/2 rounded-full border shadow-sm transition-opacity ${
           draft !== undefined
-            ? "border-[#7c5cff] bg-[#7c5cff] text-white opacity-100"
-            : "border-[#c4b5fd] bg-white text-[#7c5cff] opacity-0 group-hover/drag:opacity-100"
+            ? "border-[#2563eb] bg-[#2563eb] text-white opacity-100"
+            : "border-[#93c5fd] bg-white text-[#2563eb] opacity-0 group-hover/drag:opacity-100"
         }`}
         onPointerDown={(event) => {
           if (event.button !== 0) return;
@@ -2877,9 +2877,9 @@ function DraggableItem({
             edge === "before" ? "-top-0.5" : "-bottom-0.5"
           }`}
         >
-          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#7c5cff]" />
-          <span className="h-0.5 flex-1 bg-[#7c5cff]" />
-          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#7c5cff]" />
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#2563eb]" />
+          <span className="h-0.5 flex-1 bg-[#2563eb]" />
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#2563eb]" />
         </span>
       )}
 
@@ -2918,9 +2918,9 @@ function DraggableItem({
                 : "opacity-0 group-hover/gap:opacity-30"
             }`}
           >
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#7c5cff]" />
-            <span className="h-0.5 flex-1 bg-[#7c5cff]" />
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#7c5cff]" />
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#2563eb]" />
+            <span className="h-0.5 flex-1 bg-[#2563eb]" />
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#2563eb]" />
           </span>
           {/*
            * The + sits centred **on** the caret line, not in the margin (the margin
@@ -2937,7 +2937,7 @@ function DraggableItem({
               onAnchorHere?.();
               onInsertHere();
             }}
-            className={`absolute left-1/2 flex h-4 w-4 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-[#c4b5fd] bg-white text-[#7c5cff] shadow-sm transition-opacity hover:border-[#7c5cff] hover:bg-[#f6f3ff] ${
+            className={`absolute left-1/2 flex h-4 w-4 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-[#93c5fd] bg-white text-[#2563eb] shadow-sm transition-opacity hover:border-[#2563eb] hover:bg-[#eff6ff] ${
               isInsertAnchor
                 ? "opacity-55 group-hover/gap:opacity-100"
                 : "opacity-0 group-hover/gap:opacity-100"
@@ -3003,13 +3003,13 @@ function DraggableItem({
         }
         className={`absolute -left-[26px] top-0.5 flex w-[18px] cursor-grab flex-col items-center justify-center gap-0 overflow-hidden rounded border py-0.5 leading-none transition-colors duration-150 active:cursor-grabbing ${
           isDragging
-            ? "border-[#7c5cff] bg-[#7c5cff] text-white shadow-sm"
+            ? "border-[#2563eb] bg-[#2563eb] text-white shadow-sm"
             : isRunHead
               // A selected run's handle is already "on", so it takes the accent at rest
               // rather than the quiet paper grey — it is describing a live selection,
               // not offering an affordance that has yet to be engaged.
-              ? "border-[#a78bfa] bg-[#efeaff] text-[#7c5cff] shadow-[0_1px_1.5px_rgba(0,0,0,0.07)] hover:!border-[#7c5cff] hover:!bg-[#e4dcff]"
-              : "border-[#cfc9c2] bg-[#faf9f8] text-[#9a948e] shadow-[0_1px_1.5px_rgba(0,0,0,0.07)] group-hover/drag:border-[#a99cf0] group-hover/drag:bg-white group-hover/drag:text-[#6b6764] hover:!border-[#7c5cff] hover:!bg-[#efeaff] hover:!text-[#7c5cff]"
+              ? "border-[#60a5fa] bg-[#dbeafe] text-[#2563eb] shadow-[0_1px_1.5px_rgba(0,0,0,0.07)] hover:!border-[#2563eb] hover:!bg-[#bfdbfe]"
+              : "border-[#cfc9c2] bg-[#faf9f8] text-[#9a948e] shadow-[0_1px_1.5px_rgba(0,0,0,0.07)] group-hover/drag:border-[#93c5fd] group-hover/drag:bg-white group-hover/drag:text-[#6b6764] hover:!border-[#2563eb] hover:!bg-[#dbeafe] hover:!text-[#2563eb]"
         }`}
       >
         {/* Resting opacity is carried by the *colour*, not by `opacity`: fading the
@@ -3247,7 +3247,7 @@ interface ItemBodyProps {
  * takes literal hex, never the theme tokens — they flip in dark mode and would paint a
  * dark box on a white page.
  */
-const SELECTED_ITEM = "bg-[#7c5cff]/[0.04] shadow-[0_0_0_1px_#d6cbfb]";
+const SELECTED_ITEM = "bg-[#2563eb]/[0.04] shadow-[0_0_0_1px_#bfdbfe]";
 
 /**
  * A member of a marquee/⌘A selection. Deliberately the *other* half of the vocabulary:
@@ -3255,7 +3255,7 @@ const SELECTED_ITEM = "bg-[#7c5cff]/[0.04] shadow-[0_0_0_1px_#d6cbfb]";
  * selection the sidebar is inspecting — so the two stay distinguishable when a swept
  * run is on screen. Shared by `DraggableItem` and `DocumentField`, which must agree.
  */
-const MULTI_SELECTED_ITEM = "bg-[#7c5cff]/[0.10]";
+const MULTI_SELECTED_ITEM = "bg-[#2563eb]/[0.10]";
 
 const itemBodyNodes = (item: RenderedItem) =>
   item.type === "question" ? item.question.nodes : item.layout.nodes;
@@ -3612,7 +3612,7 @@ function EmptyState({ onAddQuestion }: { onAddQuestion: (typeId: string) => void
             key={definition.id}
             type="button"
             onClick={() => onAddQuestion(definition.id)}
-            className={`inline-flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-medium transition-all duration-150 ease-[var(--ease-out-soft)] active:scale-[0.97] ${
+            className={`inline-flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-medium transition-[background-color,border-color,color,box-shadow,opacity] duration-150 ease-[var(--ease-out-soft)] active:scale-[0.97] ${
               index === 0
                 ? 'bg-[var(--accent)] text-white shadow-sm hover:brightness-110'
                 : 'border border-[#ddd8d2] bg-white text-[#4a4643] hover:bg-[#f6f5f4]'
@@ -3674,9 +3674,9 @@ function BlankPage({
       aria-current={selected}
       className={`flex h-full min-h-0 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed transition-colors ${
         over
-          ? "border-[#7c5cff] bg-[#f3efff]"
+          ? "border-[#2563eb] bg-[#eff6ff]"
           : selected
-            ? "border-[#c4b5fd] bg-[#f9f7ff]"
+            ? "border-[#93c5fd] bg-[#f9f7ff]"
             : "border-[#e2ded8] hover:border-[#cfc9c2]"
       }`}
     >

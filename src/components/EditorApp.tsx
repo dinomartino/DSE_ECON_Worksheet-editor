@@ -399,7 +399,7 @@ export function EditorApp({ onOpenFiles }: { onOpenFiles: () => void }) {
             enough for neither a long insert menu nor a long document. */}
         {pages.length > 1 && (
           <div
-            className="relative flex shrink-0 overflow-hidden border-r border-line bg-surface transition-[width] duration-200 ease-in-out"
+            className="zone-dark relative flex shrink-0 overflow-hidden border-r border-line bg-surface transition-[width] duration-200 ease-in-out"
             style={{ width: pageRailOpen ? 152 : 28 }}
           >
             <div
@@ -451,7 +451,7 @@ export function EditorApp({ onOpenFiles }: { onOpenFiles: () => void }) {
             would scroll the page under the pointer mid-edit. */}
         <main
           ref={scrollerRef}
-          className="scroll-slim min-w-0 flex-1 overflow-auto bg-desk px-6 pb-16 pt-14"
+          className="zone-dark scroll-slim min-w-0 flex-1 overflow-auto bg-desk px-6 pb-16 pt-14"
         >
           <Preview
             worksheet={worksheet}

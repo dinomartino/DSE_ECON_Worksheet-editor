@@ -172,9 +172,9 @@ export function InlineEditable({
          *
          * Literal colours, not theme tokens: this sits *on the paper*, which never
          * themes, so a token that flips in dark mode would paint a dark box on a white
-         * page. The violet matches the app accent by value.
+         * page. The blue matches the app accent by value.
          */
-        className={`m-0 rounded-sm bg-[#f0ecff] p-0 shadow-[0_0_0_2px_#7c5cff] outline-none ${className}`}
+        className={`m-0 rounded-sm bg-[#eff6ff] p-0 shadow-[0_0_0_2px_#2563eb] outline-none ${className}`}
         // Offsets arrive already in the model's coordinate space, so the toolbar formats
         // exactly the characters that look selected — no marker string to discount.
         onSelectionChange={(range) =>
@@ -260,11 +260,11 @@ export function InlineEditable({
       data-print-hide={printHidden && isEmpty ? 'true' : undefined}
       className={`cursor-text rounded-sm transition-colors duration-150 focus:outline-none ${
         selected
-          ? 'bg-[#e7e0ff] shadow-[0_0_0_2px_#7c5cff]'
-          : 'hover:bg-[#f0ecff] hover:shadow-[0_1px_0_0_#b9a6ff]'
+          ? 'bg-[#dbeafe] shadow-[0_0_0_2px_#2563eb]'
+          : 'hover:bg-[#eff6ff] hover:shadow-[0_1px_0_0_#93c5fd]'
       } ${
         isEmpty
-          ? 'italic text-[#9a8ad6] underline decoration-[#c4b5fd] decoration-dashed underline-offset-4'
+          ? 'italic text-[#93c5fd] underline decoration-[#93c5fd] decoration-dashed underline-offset-4'
           : ''
       } ${
         /*
@@ -280,7 +280,7 @@ export function InlineEditable({
          * faint tint carries it the rest of the way — hover alone cannot advertise a
          * field you have not yet thought to point at.
          */
-        fillWidth && isEmpty ? 'inline-block w-full text-left bg-[#faf8ff]' : ''
+        fillWidth && isEmpty ? 'inline-block w-full text-left bg-[#f7faff]' : ''
       } ${className}`}
       onClick={(event) => {
         // Selecting the question is the parent's job; selection/editing is ours.

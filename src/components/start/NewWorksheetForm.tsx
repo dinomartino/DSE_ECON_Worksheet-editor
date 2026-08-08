@@ -151,7 +151,7 @@ export function NewWorksheetForm({
               role="radio"
               aria-checked={documentType === value}
               onClick={() => setDocumentType(value)}
-              className={`flex cursor-pointer flex-col gap-0.5 rounded-lg border px-3 py-2.5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+              className={`flex cursor-pointer flex-col gap-0.5 rounded-lg border px-3 py-2.5 text-left transition-[background-color,border-color,color,box-shadow,opacity] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                 documentType === value
                   ? 'border-accent bg-accent/5 ring-1 ring-accent'
                   : 'border-line bg-surface hover:border-ink-subtle'

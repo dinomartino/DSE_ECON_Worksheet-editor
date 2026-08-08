@@ -61,74 +61,190 @@
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/*
+ * Hallmark · genre: modern-minimal · macrostructure: Workbench · design-system: design.md · designed-as-app
+ * theme: custom "Graphite studio" — lit paper on a dark desk
+ * axes: paper-band dark chrome / display grotesk-sans (Geist) / accent cool blue 255°
+ *
+ * Two primitive sets feed the semantic names: `--panel-*` (working surfaces — white
+ * in the light scheme, deep grey in dark) and `--chrome-*` (the graphite frame:
+ * toolbar, rails, desk — dark in both schemes). `.zone-dark` remaps the semantic
+ * names to the chrome set for a subtree; `.zone-light` maps them back (a dialog
+ * opened from the dark toolbar stays a lit panel). Components keep saying
+ * `bg-surface` / `text-ink` and never name a zone's colours.
+ */
 :root {
-  --background: #f6f5f4;
-  --foreground: #1c1b1a;
+  /* Panel set — the lit working surfaces. */
+  --panel-surface: #ffffff;
+  --panel-raised: #ffffff;
+  --panel-sunken: oklch(96.5% 0.004 265);
+  --panel-hover: oklch(94.5% 0.006 265);
+  --panel-ink: oklch(24% 0.015 265);
+  --panel-ink-muted: oklch(47% 0.018 265);
+  --panel-ink-subtle: oklch(60% 0.014 265);
+  --panel-line: oklch(90% 0.006 265);
+  --panel-line-strong: oklch(81% 0.01 265);
+  --panel-accent-soft: oklch(94% 0.035 255);
+  --panel-accent-ink: oklch(44% 0.16 255);
+  --panel-danger-soft: #fef2f2;
+  --panel-danger-ink: #b91c1c;
+  --panel-warn-soft: #fdf5e6;
+  --panel-warn-ink: #91610b;
+  --panel-ok: #047857;
+  --panel-ok-soft: #ecfdf5;
+  --panel-ok-line: #a7f3d0;
 
-  /* The desk is markedly darker than both the panels and the page. That contrast is
-     doing real work: it is what makes the white sheet read as a lit object sitting on
-     a surface rather than as one more white panel among several. */
-  --desk: #dbd7d1;
-  --surface: #ffffff;
-  --surface-raised: #ffffff;
-  --surface-sunken: #f6f5f4;
-  --surface-hover: #f0eeec;
+  /* Chrome set — the graphite frame around the paper. `ink-muted` here labels real
+     controls on the dark bar and stays ≥ 4.5:1 on `--chrome-surface`. */
+  --chrome-surface: oklch(25% 0.012 265);
+  --chrome-raised: oklch(30% 0.014 265);
+  --chrome-sunken: oklch(21% 0.01 265);
+  --chrome-hover: oklch(32% 0.016 265);
+  --chrome-ink: oklch(94% 0.004 265);
+  --chrome-ink-muted: oklch(76% 0.01 265);
+  --chrome-ink-subtle: oklch(64% 0.012 265);
+  --chrome-line: oklch(34% 0.01 265);
+  --chrome-line-strong: oklch(44% 0.01 265);
+  --chrome-accent-soft: oklch(33% 0.07 255);
+  --chrome-accent-ink: oklch(80% 0.09 255);
+  --chrome-danger-soft: oklch(30% 0.06 20);
+  --chrome-danger-ink: oklch(80% 0.11 20);
+  --chrome-warn-soft: oklch(31% 0.05 85);
+  --chrome-warn-ink: oklch(84% 0.11 90);
+  --chrome-ok: oklch(76% 0.11 165);
+  --chrome-ok-soft: oklch(28% 0.05 165);
+  --chrome-ok-line: oklch(40% 0.07 165);
 
-  --ink: #1c1b1a;
-  --ink-muted: #6b6764;
-  --ink-subtle: #8f8a86;
+  --background: var(--panel-surface);
+  --foreground: var(--panel-ink);
 
-  --line: #e3e0dc;
-  --line-strong: #cfcac4;
+  /* The desk is graphite in both schemes. That contrast is doing real work: it is
+     what makes the white sheet read as a lit object sitting on a surface rather
+     than as one more white panel among several. */
+  --desk: oklch(33% 0.014 265);
 
-  --accent: #7c5cff;
-  --accent-hover: #6a48f5;
-  --accent-soft: #f0ecff;
-  --accent-ink: #4a30c2;
+  --surface: var(--panel-surface);
+  --surface-raised: var(--panel-raised);
+  --surface-sunken: var(--panel-sunken);
+  --surface-hover: var(--panel-hover);
+
+  --ink: var(--panel-ink);
+  --ink-muted: var(--panel-ink-muted);
+  --ink-subtle: var(--panel-ink-subtle);
+
+  --line: var(--panel-line);
+  --line-strong: var(--panel-line-strong);
+
+  /* One accent, electric blue: legible on white panels, luminous on graphite, and
+     unmistakably different from the paper's own black ink. */
+  --accent: oklch(55% 0.19 255);
+  --accent-hover: oklch(50% 0.19 255);
+  --accent-soft: var(--panel-accent-soft);
+  --accent-ink: var(--panel-accent-ink);
   --on-accent: #ffffff;
 
   --danger: #dc2626;
-  --danger-soft: #fef2f2;
-  --danger-ink: #b91c1c;
-  --warn-soft: #fef6e7;
-  --warn-ink: #92610a;
-  --ok: #047857;
-  --ok-soft: #ecfdf5;
-  --ok-line: #a7f3d0;
+  --danger-soft: var(--panel-danger-soft);
+  --danger-ink: var(--panel-danger-ink);
+  --warn-soft: var(--panel-warn-soft);
+  --warn-ink: var(--panel-warn-ink);
+  --ok: var(--panel-ok);
+  --ok-soft: var(--panel-ok-soft);
+  --ok-line: var(--panel-ok-line);
+}
+
+/* The graphite frame: toolbar, rails, desk, start screen. */
+.zone-dark {
+  color-scheme: dark;
+
+  --surface: var(--chrome-surface);
+  --surface-raised: var(--chrome-raised);
+  --surface-sunken: var(--chrome-sunken);
+  --surface-hover: var(--chrome-hover);
+
+  --ink: var(--chrome-ink);
+  --ink-muted: var(--chrome-ink-muted);
+  --ink-subtle: var(--chrome-ink-subtle);
+
+  --line: var(--chrome-line);
+  --line-strong: var(--chrome-line-strong);
+
+  --accent-soft: var(--chrome-accent-soft);
+  --accent-ink: var(--chrome-accent-ink);
+
+  --danger-soft: var(--chrome-danger-soft);
+  --danger-ink: var(--chrome-danger-ink);
+  --warn-soft: var(--chrome-warn-soft);
+  --warn-ink: var(--chrome-warn-ink);
+  --ok: var(--chrome-ok);
+  --ok-soft: var(--chrome-ok-soft);
+  --ok-line: var(--chrome-ok-line);
+}
+
+/* A lit panel inside a dark zone (dialogs, cards on the start screen's desk). */
+.zone-light {
+  color-scheme: light;
+
+  --surface: var(--panel-surface);
+  --surface-raised: var(--panel-raised);
+  --surface-sunken: var(--panel-sunken);
+  --surface-hover: var(--panel-hover);
+
+  --ink: var(--panel-ink);
+  --ink-muted: var(--panel-ink-muted);
+  --ink-subtle: var(--panel-ink-subtle);
+
+  --line: var(--panel-line);
+  --line-strong: var(--panel-line-strong);
+
+  --accent-soft: var(--panel-accent-soft);
+  --accent-ink: var(--panel-accent-ink);
+
+  --danger-soft: var(--panel-danger-soft);
+  --danger-ink: var(--panel-danger-ink);
+  --warn-soft: var(--panel-warn-soft);
+  --warn-ink: var(--panel-warn-ink);
+  --ok: var(--panel-ok);
+  --ok-soft: var(--panel-ok-soft);
+  --ok-line: var(--panel-ok-line);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #17161a;
-    --foreground: #f2f0ee;
+    /* Panels go deep grey; the frame drops nearly to black beneath them. */
+    --panel-surface: oklch(23% 0.012 265);
+    --panel-raised: oklch(27% 0.014 265);
+    --panel-sunken: oklch(20% 0.01 265);
+    --panel-hover: oklch(30% 0.015 265);
+    --panel-ink: oklch(93% 0.004 265);
+    --panel-ink-muted: oklch(74% 0.01 265);
+    --panel-ink-subtle: oklch(60% 0.012 265);
+    --panel-line: oklch(31% 0.01 265);
+    --panel-line-strong: oklch(40% 0.01 265);
+    --panel-accent-soft: oklch(30% 0.07 255);
+    --panel-accent-ink: oklch(80% 0.09 255);
+    --panel-danger-soft: oklch(28% 0.06 20);
+    --panel-danger-ink: oklch(80% 0.11 20);
+    --panel-warn-soft: oklch(29% 0.05 85);
+    --panel-warn-ink: oklch(84% 0.11 90);
+    --panel-ok: oklch(76% 0.11 165);
+    --panel-ok-soft: oklch(27% 0.05 165);
+    --panel-ok-line: oklch(38% 0.07 165);
 
-    --desk: #100f13;
-    --surface: #1e1d22;
-    --surface-raised: #26242b;
-    --surface-sunken: #17161a;
-    --surface-hover: #2d2b33;
+    --chrome-surface: oklch(19% 0.012 265);
+    --chrome-raised: oklch(24% 0.014 265);
+    --chrome-sunken: oklch(16% 0.01 265);
+    --chrome-hover: oklch(26% 0.015 265);
+    --chrome-line: oklch(28% 0.01 265);
+    --chrome-line-strong: oklch(37% 0.01 265);
 
-    --ink: #f2f0ee;
-    --ink-muted: #a5a09b;
-    --ink-subtle: #7d7873;
+    --desk: oklch(15% 0.01 265);
 
-    --line: #322f38;
-    --line-strong: #453f4d;
-
-    --accent: #8f75ff;
-    --accent-hover: #a08bff;
-    --accent-soft: #2a2140;
-    --accent-ink: #c9baff;
-    --on-accent: #14121c;
+    --accent: oklch(65% 0.17 255);
+    --accent-hover: oklch(70% 0.15 255);
+    --on-accent: oklch(15% 0.02 265);
 
     --danger: #f87171;
-    --danger-soft: #2c1618;
-    --danger-ink: #fca5a5;
-    --warn-soft: #2e2413;
-    --warn-ink: #fcd34d;
-    --ok: #34d399;
-    --ok-soft: #10281f;
-    --ok-line: #1f5c46;
   }
 }
 
@@ -326,18 +442,12 @@ body {
 /* A soft, layered shadow reads as a sheet lifted off a desk. A single flat shadow
    reads as a card in a form, which is the impression we're trying to lose. */
 .paper-shadow {
+  /* The desk is graphite in both schemes now, so the sheet needs a deeper throw to
+     read as lifted rather than pasted. */
   box-shadow:
-    0 1px 2px rgb(0 0 0 / 0.06),
-    0 8px 24px -6px rgb(0 0 0 / 0.12),
-    0 24px 48px -12px rgb(0 0 0 / 0.10);
-}
-
-@media (prefers-color-scheme: dark) {
-  .paper-shadow {
-    box-shadow:
-      0 1px 2px rgb(0 0 0 / 0.5),
-      0 8px 32px -6px rgb(0 0 0 / 0.6);
-  }
+    0 1px 2px rgb(0 0 0 / 0.35),
+    0 12px 32px -8px rgb(0 0 0 / 0.45),
+    0 32px 64px -16px rgb(0 0 0 / 0.4);
 }
 
 /* Custom scrollbars — the default macOS/Windows bars are the loudest thing in a

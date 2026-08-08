@@ -830,7 +830,7 @@ function CoverTab({ onClose }: { onClose: () => void }) {
               role="radio"
               aria-checked={paperStyle === value}
               onClick={() => setPaperStyle(value)}
-              className={`flex cursor-pointer flex-col gap-1 rounded-lg border p-2.5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+              className={`flex cursor-pointer flex-col gap-1 rounded-lg border p-2.5 text-left transition-[background-color,border-color,color,box-shadow,opacity] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                 paperStyle === value
                   ? 'border-accent bg-accent/5 ring-1 ring-accent'
                   : 'border-line bg-surface hover:border-ink-subtle'
@@ -942,7 +942,7 @@ function CoverOptions() {
               role="radio"
               aria-checked={marker === value}
               onClick={() => updateCover({ instructionMarker: value })}
-              className={`h-8 flex-1 cursor-pointer rounded-lg border text-[13px] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+              className={`h-8 flex-1 cursor-pointer rounded-lg border text-[13px] transition-[background-color,border-color,color,box-shadow,opacity] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                 marker === value
                   ? 'border-accent bg-accent/5 font-medium text-accent ring-1 ring-accent'
                   : 'border-line bg-surface text-ink hover:border-ink-subtle'
@@ -1001,7 +1001,7 @@ function TitleSection() {
           role="radio"
           aria-checked={!usingBlock}
           onClick={() => usingBlock && setBands([])}
-          className={`flex cursor-pointer flex-col gap-1.5 rounded-lg border p-2 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+          className={`flex cursor-pointer flex-col gap-1.5 rounded-lg border p-2 text-left transition-[background-color,border-color,color,box-shadow,opacity] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
             !usingBlock
               ? 'border-accent bg-accent/5 ring-1 ring-accent'
               : 'border-line bg-surface hover:border-ink-subtle'
@@ -1030,7 +1030,7 @@ function TitleSection() {
             !usingBlock &&
             setBands(assessmentTitleBlock(worksheet.title, bi('Assessment 1', '測驗一')))
           }
-          className={`flex cursor-pointer flex-col gap-1.5 rounded-lg border p-2 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+          className={`flex cursor-pointer flex-col gap-1.5 rounded-lg border p-2 text-left transition-[background-color,border-color,color,box-shadow,opacity] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
             usingBlock
               ? 'border-accent bg-accent/5 ring-1 ring-accent'
               : 'border-line bg-surface hover:border-ink-subtle'

@@ -131,7 +131,7 @@ export function BandPresetCard({
     <button
       type="button"
       onClick={onClick}
-      className="group flex w-full cursor-pointer flex-col gap-1.5 rounded-lg border border-line bg-surface p-2 text-left transition-all hover:border-accent hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      className="group flex w-full cursor-pointer flex-col gap-1.5 rounded-lg border border-line bg-surface p-2 text-left transition-[background-color,border-color,color,box-shadow,opacity] hover:border-accent hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
       <div className="rounded border border-line/70 bg-[#fdfcfa] py-1 text-[#3f3b38]">
         <BandPreview bands={bands} edge={edge} />

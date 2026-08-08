@@ -47,7 +47,9 @@ const SIZE: Record<Size, string> = {
 
 const BASE =
   'inline-flex shrink-0 cursor-pointer items-center justify-center rounded-lg border font-medium ' +
-  'transition-[background-color,border-color,color,transform,box-shadow] duration-150 ease-[var(--ease-out-soft)] ' +
+  // `box-shadow` is deliberately not transitioned: the focus ring is a box-shadow and
+  // must appear instantly for keyboard users, not fade in.
+  'transition-[background-color,border-color,color,transform] duration-150 ease-[var(--ease-out-soft)] ' +
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface ' +
   'disabled:pointer-events-none disabled:opacity-40';
 
@@ -360,7 +362,7 @@ export function Segmented<T extends string>({
             aria-checked={active}
             title={option.title ?? option.label}
             onClick={() => onChange(option.value)}
-            className={`cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-150 ease-[var(--ease-out-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+            className={`cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-medium transition-[background-color,border-color,color,box-shadow,opacity] duration-150 ease-[var(--ease-out-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
               active
                 ? 'bg-surface text-ink shadow-sm'
                 : 'text-ink-muted hover:text-ink'

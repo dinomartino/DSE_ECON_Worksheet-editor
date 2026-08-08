@@ -122,7 +122,7 @@ export function StartScreen({
 
   return (
     <div
-      className="flex h-screen flex-col overflow-y-auto bg-desk"
+      className="zone-dark flex h-screen flex-col overflow-y-auto bg-desk"
       onDragOver={(event) => {
         // A .json worksheet dropped anywhere on this screen opens it. The whole surface
         // is the target rather than a marked-out zone: this screen has nothing else a
@@ -389,7 +389,7 @@ function StartCard({
     <button
       type="button"
       onClick={onClick}
-      className="group flex cursor-pointer flex-col items-start gap-1.5 rounded-xl border border-line bg-surface-raised p-3.5 text-left transition-all hover:border-accent hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      className="zone-light group flex cursor-pointer flex-col items-start gap-1.5 rounded-xl border border-transparent bg-surface-raised p-3.5 text-left shadow-lg transition-[background-color,border-color,color,box-shadow,opacity] hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
       <span className="text-ink-subtle transition-colors group-hover:text-accent">{icon}</span>
       <span className="text-[13px] font-medium text-ink">{title}</span>
@@ -422,7 +422,7 @@ function SavedRow({
   onDelete: () => void;
 }) {
   return (
-    <li className="flex items-center gap-2 rounded-xl border border-line bg-surface-raised pr-2 transition-colors hover:border-line-strong">
+    <li className="zone-light flex items-center gap-2 rounded-xl border border-transparent bg-surface-raised pr-2 shadow-md transition-colors hover:border-accent">
       <button
         type="button"
         onClick={onOpen}

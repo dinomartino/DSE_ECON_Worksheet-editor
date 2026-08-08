@@ -90,7 +90,7 @@ export function Dialog({
           maxWidth: '100%',
           ...(height ? { height: `min(${height}px, 86vh)` } : { maxHeight: '86vh' }),
         }}
-        className="relative flex flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl outline-none"
+        className="zone-light relative flex flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl outline-none"
       >
         <header className="flex items-start gap-3 border-b border-line px-5 py-4">
           <div className="min-w-0 flex-1">
