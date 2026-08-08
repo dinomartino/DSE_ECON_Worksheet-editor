@@ -40,3 +40,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 real_life_reference/
+
+# local assistant tooling (skills, agents)
+.claude/
+.agents/
+skills-lock.json
