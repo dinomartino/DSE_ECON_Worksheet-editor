@@ -91,8 +91,8 @@ export function DiagramEditor({ block, onChange }: Props) {
           style={{ lineHeight: 0 }}
         >
           <span dangerouslySetInnerHTML={{ __html: preview }} />
-          <span className="absolute inset-0 flex items-center justify-center bg-sky-500/0 opacity-0 transition-opacity group-hover/preview:bg-sky-500/10 group-hover/preview:opacity-100">
-            <span className="rounded-md bg-slate-900/80 px-2 py-1 text-[11px] font-medium leading-none text-white">
+          <span className="absolute inset-0 flex items-center justify-center bg-accent/0 opacity-0 transition-opacity group-hover/preview:bg-accent/10 group-hover/preview:opacity-100">
+            <span className="rounded-md bg-ink/80 px-2 py-1 text-[11px] font-medium leading-none text-white">
               {diagram.flow ? 'Edit' : 'Draw'}
             </span>
           </span>

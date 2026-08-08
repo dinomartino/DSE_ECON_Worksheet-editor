@@ -457,9 +457,9 @@ export function FlowCanvas({
         : 'Drag a box to move it between columns. Click to select and edit. Double-click text to retype it.';
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/80 backdrop-blur-sm">
-      <header className="flex flex-wrap items-center gap-3 border-b border-slate-700 bg-slate-800 px-5 py-3 text-slate-100">
-        <span className="text-sm font-semibold tracking-wide text-slate-200">Edit flow chart</span>
+    <div className="zone-dark fixed inset-0 z-50 flex flex-col bg-desk/95 backdrop-blur-sm">
+      <header className="flex flex-wrap items-center gap-3 border-b border-line bg-surface px-5 py-3 text-ink">
+        <span className="text-sm font-semibold tracking-wide text-ink">Edit flow chart</span>
 
         <div className="flex gap-1.5">
           {(
@@ -477,8 +477,8 @@ export function FlowCanvas({
               className={
                 'flex h-11 min-w-11 items-center gap-1.5 rounded-lg border px-3 text-base transition-colors ' +
                 (tool === id
-                  ? 'border-sky-400 bg-sky-500 text-white'
-                  : 'border-slate-600 bg-slate-700 text-slate-200 hover:bg-slate-600')
+                  ? 'border-accent bg-accent text-on-accent'
+                  : 'border-line-strong bg-surface-raised text-ink hover:bg-surface-hover')
               }
             >
               <span aria-hidden className="text-lg leading-none">
@@ -489,14 +489,14 @@ export function FlowCanvas({
           ))}
         </div>
 
-        <span className="h-8 w-px bg-slate-600" />
+        <span className="h-8 w-px bg-line-strong" />
 
         <div className="flex gap-1.5">
           <button
             type="button"
             title="Add a box to the selected column"
             onClick={() => addBox()}
-            className="flex h-11 items-center rounded-lg border border-slate-600 bg-slate-700 px-3 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-600"
+            className="flex h-11 items-center rounded-lg border border-line-strong bg-surface-raised px-3 text-xs font-medium text-ink transition-colors hover:bg-surface-hover"
           >
             + Box
           </button>
@@ -506,7 +506,7 @@ export function FlowCanvas({
             onClick={() =>
               addBox(flow.nodes.length > 0 ? Math.max(...flow.nodes.map((n) => n.col)) + 1 : 0)
             }
-            className="flex h-11 items-center rounded-lg border border-slate-600 bg-slate-700 px-3 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-600"
+            className="flex h-11 items-center rounded-lg border border-line-strong bg-surface-raised px-3 text-xs font-medium text-ink transition-colors hover:bg-surface-hover"
           >
             + Column
           </button>
@@ -519,8 +519,8 @@ export function FlowCanvas({
               'flex h-11 items-center rounded-lg border px-3 text-xs font-medium transition-colors ' +
               'disabled:pointer-events-none disabled:opacity-35 ' +
               (selection
-                ? 'border-rose-500/60 bg-rose-600/20 text-rose-200 hover:bg-rose-600/40'
-                : 'border-slate-600 bg-slate-700 text-slate-200')
+                ? 'border-danger/60 bg-danger-soft text-danger-ink hover:border-danger'
+                : 'border-line-strong bg-surface-raised text-ink')
             }
           >
             Delete
@@ -534,22 +534,22 @@ export function FlowCanvas({
               'flex h-11 items-center rounded-lg border px-3 text-xs font-medium transition-colors ' +
               'disabled:pointer-events-none disabled:opacity-35 ' +
               (confirmClear
-                ? 'border-rose-400 bg-rose-600 text-white hover:bg-rose-500'
-                : 'border-slate-600 bg-slate-700 text-slate-200 hover:bg-slate-600')
+                ? 'border-danger bg-danger text-white hover:brightness-110'
+                : 'border-line-strong bg-surface-raised text-ink hover:bg-surface-hover')
             }
           >
             {confirmClear ? 'Click again to clear' : 'Clear chart'}
           </button>
         </div>
 
-        <span className="h-8 w-px bg-slate-600" />
+        <span className="h-8 w-px bg-line-strong" />
 
-        <label className="flex items-center gap-2 text-xs font-medium text-slate-200">
+        <label className="flex items-center gap-2 text-xs font-medium text-ink">
           Zoom
           <select
             value={zoom}
             onChange={(event) => setZoom(Number(event.target.value))}
-            className="h-9 rounded-md border border-slate-600 bg-slate-700 px-2 text-xs text-slate-100"
+            className="h-9 rounded-md border border-line-strong bg-surface-raised px-2 text-xs text-ink"
           >
             {ZOOMS.map((value) => (
               <option key={value} value={value}>
@@ -560,7 +560,7 @@ export function FlowCanvas({
         </label>
 
         <span className="flex-1" />
-        <span className="max-w-96 text-xs leading-snug text-slate-300">{hint}</span>
+        <span className="max-w-96 text-xs leading-snug text-ink-muted">{hint}</span>
         <Button onClick={onClose}>Done</Button>
       </header>
 
@@ -734,7 +734,7 @@ export function FlowCanvas({
           </div>
         </div>
 
-        <aside className="w-80 shrink-0 overflow-y-auto border-l border-slate-700 bg-white p-4 dark:bg-slate-900">
+        <aside className="zone-light w-80 shrink-0 overflow-y-auto border-l border-line bg-surface p-4">
           <FlowInspector
             flow={flow}
             selection={selection}
@@ -809,7 +809,7 @@ function FlowTextEditor({
           font: `${13 * zoom}px/1.2 inherit`,
           textAlign: 'center',
         }}
-        className="rounded border-2 border-sky-500 bg-white px-1.5 py-0.5 text-slate-900 shadow-lg outline-none"
+        className="rounded border-2 border-[#2563eb] bg-white px-1.5 py-0.5 text-slate-900 shadow-lg outline-none"
         aria-label="Edit flow chart text"
       />
     </div>
@@ -864,7 +864,7 @@ function FlowInspector({
             checked={node.boxed !== false}
             onChange={(boxed) => patch({ boxed: boxed ? undefined : false })}
           />
-          <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+          <p className="text-[11px] leading-relaxed text-ink-muted">
             Drag the box on the chart to move it — past the outermost column starts a
             new column.
           </p>
@@ -927,7 +927,7 @@ function FlowInspector({
     <div>
       <Eyebrow>On this chart</Eyebrow>
       {flow.nodes.length === 0 ? (
-        <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+        <p className="mt-2 text-xs leading-relaxed text-ink-muted">
           Nothing here yet. Press <strong>+ Box</strong> (or double-click the empty box)
           to add the first stage.
         </p>
@@ -935,7 +935,7 @@ function FlowInspector({
         <ul className="mt-2 space-y-1">
           {colValues.map((col, colIdx) => (
             <li key={col}>
-              <span className="block px-2 text-[10px] font-medium uppercase tracking-wide text-slate-400">
+              <span className="block px-2 text-[10px] font-medium uppercase tracking-wide text-ink-subtle">
                 Column {colIdx + 1}
               </span>
               <ul>
@@ -947,13 +947,13 @@ function FlowInspector({
                       <button
                         type="button"
                         onClick={() => onSelect({ kind: 'node', id: n.id })}
-                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-slate-700 transition-colors hover:bg-sky-50 dark:text-slate-200 dark:hover:bg-slate-800"
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-ink transition-colors hover:bg-accent-soft"
                       >
                         <span className="truncate font-medium">
                           {nodeName(n, flow.nodes.indexOf(n))}
                         </span>
                         <span className="flex-1" />
-                        <span className="shrink-0 text-[10px] uppercase tracking-wide text-slate-400">
+                        <span className="shrink-0 text-[10px] uppercase tracking-wide text-ink-subtle">
                           {n.boxed === false ? 'Text' : 'Box'}
                         </span>
                       </button>
@@ -964,7 +964,7 @@ function FlowInspector({
           ))}
           {flow.arrows.length > 0 && (
             <li className="pt-1">
-              <span className="block px-2 text-[10px] font-medium uppercase tracking-wide text-slate-400">
+              <span className="block px-2 text-[10px] font-medium uppercase tracking-wide text-ink-subtle">
                 Arrows
               </span>
               <ul>
@@ -973,7 +973,7 @@ function FlowInspector({
                     <button
                       type="button"
                       onClick={() => onSelect({ kind: 'arrow', id: a.id })}
-                      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-slate-700 transition-colors hover:bg-sky-50 dark:text-slate-200 dark:hover:bg-slate-800"
+                      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-ink transition-colors hover:bg-accent-soft"
                     >
                       <span className="truncate font-medium">
                         {plain(a.label?.en ?? []) ||
@@ -981,7 +981,7 @@ function FlowInspector({
                           `Arrow ${index + 1}`}
                       </span>
                       <span className="flex-1" />
-                      <span className="shrink-0 text-[10px] uppercase tracking-wide text-slate-400">
+                      <span className="shrink-0 text-[10px] uppercase tracking-wide text-ink-subtle">
                         Arrow
                       </span>
                     </button>
@@ -992,7 +992,7 @@ function FlowInspector({
           )}
         </ul>
       )}
-      <p className="mt-4 border-t border-slate-200 pt-3 text-[11px] leading-relaxed text-slate-500 dark:border-slate-700 dark:text-slate-400">
+      <p className="mt-4 border-t border-line pt-3 text-[11px] leading-relaxed text-ink-muted">
         Drag a box to move it between columns — past the outermost column starts a new
         one. Double-click any text to retype it. Pick <strong>Arrow</strong> and drag
         box-to-box to connect stages; release on empty paper for an open-ended stub.

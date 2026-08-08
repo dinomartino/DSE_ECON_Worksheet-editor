@@ -985,9 +985,9 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
   }, [editing, labelAnchors, projection, diagram, language, block.widthPx]);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/80 backdrop-blur-sm">
-      <header className="flex flex-wrap items-center gap-3 border-b border-slate-700 bg-slate-800 px-5 py-3 text-slate-100">
-        <span className="text-sm font-semibold tracking-wide text-slate-200">Draw diagram</span>
+    <div className="zone-dark fixed inset-0 z-50 flex flex-col bg-desk/95 backdrop-blur-sm">
+      <header className="flex flex-wrap items-center gap-3 border-b border-line bg-surface px-5 py-3 text-ink">
+        <span className="text-sm font-semibold tracking-wide text-ink">Draw diagram</span>
 
         <div className="flex gap-1.5">
           {TOOLS.map((item) => (
@@ -1000,8 +1000,8 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
               className={
                 'flex h-11 min-w-11 items-center gap-1.5 rounded-lg border px-3 text-base transition-colors ' +
                 (tool === item.id
-                  ? 'border-sky-400 bg-sky-500 text-white'
-                  : 'border-slate-600 bg-slate-700 text-slate-200 hover:bg-slate-600')
+                  ? 'border-accent bg-accent text-on-accent'
+                  : 'border-line-strong bg-surface-raised text-ink hover:bg-surface-hover')
               }
             >
               <span aria-hidden className="text-lg leading-none">{item.glyph}</span>
@@ -1010,7 +1010,7 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
           ))}
         </div>
 
-        <span className="h-8 w-px bg-slate-600" />
+        <span className="h-8 w-px bg-line-strong" />
 
         {/* Clipboard actions are buttons as well as shortcuts: a teacher who has never
             met ⌘D should still find "Duplicate", and the labels double as the place the
@@ -1038,9 +1038,9 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
           />
         </div>
 
-        <span className="h-8 w-px bg-slate-600" />
+        <span className="h-8 w-px bg-line-strong" />
 
-        <label className="flex items-center gap-2 text-xs font-medium text-slate-200">
+        <label className="flex items-center gap-2 text-xs font-medium text-ink">
           <input
             type="checkbox"
             className="h-4 w-4"
@@ -1050,12 +1050,12 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
           Snap
         </label>
 
-        <label className="flex items-center gap-2 text-xs font-medium text-slate-200">
+        <label className="flex items-center gap-2 text-xs font-medium text-ink">
           Zoom
           <select
             value={zoom}
             onChange={(event) => setZoom(Number(event.target.value))}
-            className="h-9 rounded-md border border-slate-600 bg-slate-700 px-2 text-xs text-slate-100"
+            className="h-9 rounded-md border border-line-strong bg-surface-raised px-2 text-xs text-ink"
           >
             {ZOOMS.map((value) => (
               <option key={value} value={value}>
@@ -1065,7 +1065,7 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
           </select>
         </label>
 
-        <span className="h-8 w-px bg-slate-600" />
+        <span className="h-8 w-px bg-line-strong" />
 
         {/* The frame is cropped here, on the picture, for the reason everything else is
             drawn here: white space is only judgeable by looking at it. The button is a
@@ -1078,8 +1078,8 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
           className={
             'flex h-11 items-center gap-1.5 rounded-lg border px-3 text-base transition-colors ' +
             (cropping
-              ? 'border-sky-400 bg-sky-500 text-white'
-              : 'border-slate-600 bg-slate-700 text-slate-200 hover:bg-slate-600')
+              ? 'border-accent bg-accent text-on-accent'
+              : 'border-line-strong bg-surface-raised text-ink hover:bg-surface-hover')
           }
         >
           <span aria-hidden className="text-lg leading-none">⛶</span>
@@ -1092,7 +1092,7 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
         <span className="flex-1" />
         {/* The hint is the toolbar's own teaching line; slate-300 because 400 sat below
             comfortable contrast on the dark bar. */}
-        <span className="max-w-96 text-xs leading-snug text-slate-300">
+        <span className="max-w-96 text-xs leading-snug text-ink-muted">
           {cropping
             ? 'Drag the frame edges — a wider frame is how a long title gets its room.'
             : selected.length > 1
@@ -1200,7 +1200,7 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
           )}
         </div>
 
-        <aside className="w-80 shrink-0 overflow-y-auto border-l border-slate-700 bg-white p-4 dark:bg-slate-900">
+        <aside className="zone-light w-80 shrink-0 overflow-y-auto border-l border-line bg-surface p-4">
           <SelectionInspector
             diagram={diagram}
             selected={selected}
@@ -1321,7 +1321,7 @@ function TextEditor({
         font: `${13 * zoom}px/1.2 inherit`,
         textAlign: 'center',
       }}
-      className="rounded border-2 border-sky-500 bg-white px-1.5 py-0.5 text-slate-900 shadow-lg outline-none"
+      className="rounded border-2 border-[#2563eb] bg-white px-1.5 py-0.5 text-slate-900 shadow-lg outline-none"
       aria-label="Edit diagram text"
     />
       {/* Subscript and superscript, beside the field rather than in a menu: "S₁" is the
@@ -1639,7 +1639,7 @@ function CropFrame({
 
   const shade = 'absolute bg-slate-900/25';
   const cornerClass =
-    'absolute rounded-sm border-2 border-sky-500 bg-white shadow';
+    'absolute rounded-sm border-2 border-[#2563eb] bg-white shadow';
 
   return (
     <div className="absolute inset-0">
@@ -1651,7 +1651,7 @@ function CropFrame({
 
       {/* The frame itself. */}
       <div
-        className="pointer-events-none absolute border-2 border-sky-500"
+        className="pointer-events-none absolute border-2 border-[#2563eb]"
         style={{ left: z(rect.left), top: z(rect.top), width: z(width), height: z(height) }}
       />
       {/* The committed size, which is what the page will be handed. */}
@@ -1719,12 +1719,12 @@ function ToolbarButton({
         // Danger styling only while the button can actually act: a permanently red
         // Delete reads as a warning about nothing when no selection exists.
         (danger && !disabled
-          ? 'border-rose-500/60 bg-rose-600/20 text-rose-200 hover:bg-rose-600/40'
-          : 'border-slate-600 bg-slate-700 text-slate-200 hover:bg-slate-600')
+          ? 'border-danger/60 bg-danger-soft text-danger-ink hover:border-danger'
+          : 'border-line-strong bg-surface-raised text-ink hover:bg-surface-hover')
       }
     >
       {label}
-      <span aria-hidden className="text-[10px] text-slate-400">
+      <span aria-hidden className="text-[10px] text-ink-subtle">
         {hint}
       </span>
     </button>
@@ -1779,13 +1779,13 @@ function SelectionInspector({
           {selected.map((handle) => (
             <li
               key={`${handle.kind}-${handleId(handle)}`}
-              className="truncate rounded bg-slate-100 px-2 py-1 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              className="truncate rounded bg-surface-sunken px-2 py-1 text-xs text-ink"
             >
               {describeHandle(diagram, handle)}
             </li>
           ))}
         </ul>
-        <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+        <p className="text-[11px] leading-relaxed text-ink-muted">
           Drag any one of them to move the whole group, or nudge it with the arrow keys.
           ⌘C copies, ⌘V pastes offset, ⌘D duplicates, ⌫ deletes. Shift-click a shape to
           add or remove it.
@@ -1894,7 +1894,7 @@ function SelectionInspector({
               })
             }
           />
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+          <p className="text-[11px] text-ink-muted">
             Double-click the line to add a kink. Drag a square handle to move one end.
             Drag the label ring to move its name.
           </p>
@@ -2184,7 +2184,7 @@ function AxisInspector({
             })
           }
         />
-        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+        <p className="text-[11px] text-ink-muted">
           Drag it to slide along the {axisName}. It stays on the axis by design.
         </p>
       </div>
@@ -2279,7 +2279,7 @@ function ElementIndex({
       {/* Whole-diagram settings, which no element in the list can be selected to reach.
           The diagram's *title* is deliberately not among them — it is edited in the
           sidebar, so the canvas neither lists it nor lets it be clicked. */}
-      <div className="mb-3 border-b border-slate-200 pb-3 dark:border-slate-700">
+      <div className="mb-3 border-b border-line pb-3">
         <Eyebrow>Axes</Eyebrow>
         <div className="mt-1.5 space-y-1.5">
           {/* An axis whose title has been deleted draws nothing, so there is no text to
@@ -2311,7 +2311,7 @@ function ElementIndex({
 
       <Eyebrow>On this diagram</Eyebrow>
       {rows.length === 0 ? (
-        <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+        <p className="mt-2 text-xs leading-relaxed text-ink-muted">
           Nothing here yet. Pick <strong>Curve</strong> and drag to draw a line, or{' '}
           <strong>Point</strong> and click to mark an equilibrium.
         </p>
@@ -2322,11 +2322,11 @@ function ElementIndex({
               <button
                 type="button"
                 onClick={() => onSelect([row.handle])}
-                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-slate-700 transition-colors hover:bg-sky-50 dark:text-slate-200 dark:hover:bg-slate-800"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-ink transition-colors hover:bg-accent-soft"
               >
                 <span className="truncate font-medium">{row.name}</span>
                 <span className="flex-1" />
-                <span className="shrink-0 text-[10px] uppercase tracking-wide text-slate-400">
+                <span className="shrink-0 text-[10px] uppercase tracking-wide text-ink-subtle">
                   {row.kind}
                 </span>
               </button>
@@ -2334,7 +2334,7 @@ function ElementIndex({
           ))}
         </ul>
       )}
-      <p className="mt-4 border-t border-slate-200 pt-3 text-[11px] leading-relaxed text-slate-500 dark:border-slate-700 dark:text-slate-400">
+      <p className="mt-4 border-t border-line pt-3 text-[11px] leading-relaxed text-ink-muted">
         Drag anything to move it. Click it instead to select it and edit its properties
         here. Drag empty space to box-select; shift-click adds. Arrow keys nudge a
         selection — hold Shift for bigger steps. ⌘C / ⌘V / ⌘D / ⌫ act on a selection,
