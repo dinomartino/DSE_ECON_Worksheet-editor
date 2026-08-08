@@ -2864,7 +2864,7 @@ function DraggableItem({
         setEdge(undefined);
       }}
       className={`group/drag relative rounded ${isDragging ? "opacity-40" : ""} ${
-        multiSelected ? "bg-[#efe9ff] ring-1 ring-[#a78bfa]" : ""
+        multiSelected ? MULTI_SELECTED_ITEM : ""
       } ${className}`}
     >
       {edge && (
@@ -3206,7 +3206,7 @@ function DocumentField({
   return (
     <div
       data-doc-field={target.kind}
-      className={`rounded ${multiSelected ? "bg-[#efe9ff] ring-1 ring-[#a78bfa]" : ""}`}
+      className={`rounded-[3px] ${multiSelected ? MULTI_SELECTED_ITEM : ""}`}
     >
       {children}
     </div>
@@ -3233,6 +3233,30 @@ interface ItemBodyProps {
   onSelect: (event: React.MouseEvent) => void;
 }
 
+/**
+ * How a selected flow item reads on the page.
+ *
+ * The selection is chrome drawn *on the paper*, so it must say "this one" without
+ * repainting the text it contains — an earlier treatment stacked three signals (a 4px
+ * accent bar in the gutter, a lavender wash, and a ring) and the question read as
+ * highlighted content rather than as a selected object.
+ *
+ * One signal does it: a soft accent outline, drawn as a `box-shadow` so it **reserves
+ * no space** (a `ring`/`border` on a measured box moves the paginator's numbers), over
+ * a tint faint enough that the black text on white keeps its own contrast. The paper
+ * takes literal hex, never the theme tokens — they flip in dark mode and would paint a
+ * dark box on a white page.
+ */
+const SELECTED_ITEM = "bg-[#7c5cff]/[0.04] shadow-[0_0_0_1px_#d6cbfb]";
+
+/**
+ * A member of a marquee/⌘A selection. Deliberately the *other* half of the vocabulary:
+ * a set of items reads as a continuous wash, and the outline is what marks the single
+ * selection the sidebar is inspecting — so the two stay distinguishable when a swept
+ * run is on screen. Shared by `DraggableItem` and `DocumentField`, which must agree.
+ */
+const MULTI_SELECTED_ITEM = "bg-[#7c5cff]/[0.10]";
+
 const itemBodyNodes = (item: RenderedItem) =>
   item.type === "question" ? item.question.nodes : item.layout.nodes;
 const itemBodyId = (item: RenderedItem) =>
@@ -3251,10 +3275,8 @@ const ItemBody = memo(
           data-layout-id={item.layout.elementId}
           onClick={onSelect}
           aria-current={selected}
-          className={`relative cursor-pointer rounded px-1 transition-colors ${
-            selected
-              ? "bg-[#f6f3ff] ring-1 ring-[#c4b5fd]"
-              : "hover:bg-black/[0.03]"
+          className={`relative cursor-pointer rounded-[3px] px-1 transition-[background-color,box-shadow] ${
+            selected ? SELECTED_ITEM : "hover:bg-black/[0.03]"
           }`}
         >
           {nodes.map((node, index) => (
@@ -3268,10 +3290,8 @@ const ItemBody = memo(
         data-question-id={item.question.questionId}
         onClick={onSelect}
         aria-current={selected}
-        className={`relative cursor-pointer rounded px-1 transition-colors ${
-          selected
-            ? "bg-[#f6f3ff] ring-1 ring-[#c4b5fd] before:absolute before:-left-1 before:top-0 before:h-full before:w-1 before:rounded-full before:bg-[#7c5cff]"
-            : "hover:bg-black/[0.03]"
+        className={`relative cursor-pointer rounded-[3px] px-1 transition-[background-color,box-shadow] ${
+          selected ? SELECTED_ITEM : "hover:bg-black/[0.03]"
         }`}
       >
         {nodes.map((node, index) => (
