@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { replaceRichTextRange, richTextLength } from '@/model/text';
 import type { RichText, RunFormat } from '@/model/types';
 import {
+  offsetAtPoint,
   readRuns,
   runToNode,
   sameRuns,
@@ -34,6 +35,19 @@ interface Props {
   ariaLabel?: string;
   /** Focus and place the caret at the end on mount. */
   autoFocus?: boolean;
+  /**
+   * Viewport point the click that opened this field landed on, so the caret starts
+   * where it was aimed rather than at the end of the text.
+   *
+   * The field advertises itself with an I-beam once selected, and an I-beam promises
+   * the click chooses a position between the characters. Defaulting to the end broke
+   * that promise on every field long enough to have a middle: clicking into the first
+   * line of a wrapped stem sent the caret to the last line.
+   *
+   * Absent keeps the old behaviour (caret at the end) — the keyboard route into
+   * editing has no point to honour.
+   */
+  caretPoint?: { x: number; y: number };
   onSelectionChange?: (range: { start: number; end: number } | undefined) => void;
   onKeyDown?: (event: React.KeyboardEvent<HTMLSpanElement>) => void;
   onBlur?: (event: React.FocusEvent<HTMLSpanElement>) => void;
@@ -68,12 +82,16 @@ export function RichTextEditable({
   lang,
   ariaLabel,
   autoFocus = false,
+  caretPoint,
   onSelectionChange,
   onKeyDown,
   onBlur,
 }: Props) {
   const hostRef = useRef<HTMLSpanElement>(null);
   const paintedRef = useRef<RichText | undefined>(undefined);
+  // Read once, on entry. In a ref so it cannot re-run the paint effect and move the
+  // caret out from under someone mid-edit.
+  const caretPointRef = useRef(caretPoint);
   /** The last selection handed upward, so an unchanged one is not republished. */
   const publishedRef = useRef<{ start: number; end: number } | undefined>(undefined);
 
@@ -96,7 +114,20 @@ export function RichTextEditable({
     if (entering) {
       if (autoFocus) {
         host.focus({ preventScroll: true });
-        setSelectionOffsets(host, richTextLength(runs));
+        /*
+         * The caret starts where the click landed, when the opening click gave us a
+         * point (§ `caretPoint`). The runs have just been repainted, so the browser's
+         * own hit-testing is asked *after* the paint — the offsets it returns index
+         * the nodes now on screen.
+         *
+         * It falls back to the end of the text whenever the point misses (a click in
+         * the padding, or a browser without the API), which is the behaviour every
+         * route had before.
+         */
+        const aimed = caretPointRef.current
+          ? offsetAtPoint(host, caretPointRef.current)
+          : undefined;
+        setSelectionOffsets(host, aimed ?? richTextLength(runs));
       }
     } else if (caret) {
       setSelectionOffsets(host, caret.start, caret.end);

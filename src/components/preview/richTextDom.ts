@@ -216,6 +216,55 @@ export function offsetOf(host: HTMLElement, container: Node, offset: number): nu
   return container === host ? within : total;
 }
 
+/**
+ * The plain-text offset nearest a viewport point, or undefined when the point is not
+ * over this field's text.
+ *
+ * How a click that opens an editor lands its caret where it was aimed instead of at the
+ * end of the text. The browser owns the hard part — which character a pixel is nearest,
+ * across wrapped lines, bidi and per-run fonts — and `offsetOf` converts its answer into
+ * the model's coordinate space.
+ *
+ * Two spellings of one API: `caretPositionFromPoint` is the standard, `caretRangeFromPoint`
+ * WebKit's older equivalent. A browser with neither returns undefined and the caller keeps
+ * its previous behaviour.
+ */
+export function offsetAtPoint(
+  host: HTMLElement,
+  point: { x: number; y: number },
+): number | undefined {
+  const doc = host.ownerDocument as Document & {
+    caretPositionFromPoint?: (
+      x: number,
+      y: number,
+    ) => { offsetNode: Node; offset: number } | null;
+    caretRangeFromPoint?: (x: number, y: number) => Range | null;
+  };
+
+  let container: Node | undefined;
+  let offset: number | undefined;
+
+  if (typeof doc.caretPositionFromPoint === 'function') {
+    const position = doc.caretPositionFromPoint(point.x, point.y);
+    if (position) {
+      container = position.offsetNode;
+      offset = position.offset;
+    }
+  } else if (typeof doc.caretRangeFromPoint === 'function') {
+    const range = doc.caretRangeFromPoint(point.x, point.y);
+    if (range) {
+      container = range.startContainer;
+      offset = range.startOffset;
+    }
+  }
+
+  if (!container || offset === undefined) return undefined;
+  // A point in the paragraph's margin resolves to a node outside this field; the caller
+  // falls back rather than reporting a position that belongs to other text.
+  if (!host.contains(container)) return undefined;
+  return offsetOf(host, container, offset);
+}
+
 /** Characters a node contributes, counting a `<br>` as one newline. */
 function textLengthOf(node: Node): number {
   if (node.nodeType === Node.TEXT_NODE) return (node.nodeValue ?? '').length;
