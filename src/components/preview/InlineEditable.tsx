@@ -282,9 +282,16 @@ export function InlineEditable({
          * Literal colours for the reason the box's are literal: this is *on the paper*,
          * which never themes.
          */
+        /*
+         * A cell's open editor takes the cell's width, matching the locked state it
+         * grew out of, so entering the field shifts nothing. The `inline-block` warning
+         * above is the *paragraph* path's: an own formatting context breaks a numbered
+         * stem's hanging indent, and a cell has none. Width only — reserving height
+         * would make the row measure taller than it prints.
+         */
         className={`m-0 cursor-text rounded-sm p-0 caret-[#0d77c9] outline-none selection:bg-[#9fcdee] selection:text-[#101010] ${
           fillWidth
-            ? 'bg-[#eef6fc] shadow-[0_0_0_2px_#0d77c9]'
+            ? 'inline-block w-full bg-[#eef6fc] shadow-[0_0_0_2px_#0d77c9]'
             : 'relative z-10'
         } ${className}`}
         // Offsets arrive already in the model's coordinate space, so the toolbar formats
@@ -431,8 +438,8 @@ export function InlineEditable({
         /*
          * Selected paints nothing here — the rectangle above owns that (an inline box
          * would slice it into one ragged box per wrapped line). A table cell keeps the
-         * inline paint: `fillWidth` makes it `inline-block`, one line tall, so its box
-         * is already the single rectangle the cell wants.
+         * inline paint: `fillWidth` makes it `inline-block`, so its box is already the
+         * single rectangle the cell wants.
          */
         selected
           ? fillWidth
@@ -445,19 +452,32 @@ export function InlineEditable({
           : ''
       } ${
         /*
-         * An empty cell claims its whole column, so the target is what the teacher is
+         * A cell's field claims its whole column, so the target is what the teacher is
          * already aiming at (§`fillWidth`). `inline-block` + `w-full` takes width only —
-         * the box stays one line tall, which is what keeps the row measuring as it
-         * prints. `text-left` because the cell's own `text-align` may be `right` for a
-         * figure column, and a prompt hugging the right edge reads as content.
+         * no height is reserved, which is what keeps the row measuring as it prints.
          *
-         * Full width is also what turns the empty style's dashed underline into the
-         * affordance: ruled across the cell it reads as a form field waiting to be
-         * filled, where under a one-character prompt it was a few invisible pixels. A
-         * faint tint carries it the rest of the way — hover alone cannot advertise a
-         * field you have not yet thought to point at.
+         * Empty, full width is what turns the dashed underline into the affordance:
+         * ruled across the cell it reads as a form field waiting to be filled, where
+         * under a one-character prompt it was a few invisible pixels.
+         *
+         * Selected, the same width makes the state read as *the cell* — the unit the
+         * sidebar names and that align and merge act on. Hugging the words drew a box
+         * floating inside a much larger cell (92px of highlight in a 190px cell),
+         * which reads as a selected phrase and leaves most of what was clicked
+         * unpainted.
+         *
+         * **`text-left` belongs to the empty prompt alone**: a `·` hugging a figure
+         * column's right edge reads as content, but a cell that has text keeps the
+         * alignment it prints with. Ranging the selected state left too made a centred
+         * cell jump left on the first click and back on the second, when the editing
+         * branch (which never carried the class) took over.
          */
-        fillWidth && isEmpty ? 'inline-block w-full text-left bg-[#f7faff]' : ''
+        fillWidth && (isEmpty || selected)
+          ? `inline-block w-full${isEmpty ? ' text-left' : ''}`
+          : ''
+      } ${
+        /* The empty field's own resting tint — a selected cell paints its own. */
+        fillWidth && isEmpty && !selected ? 'bg-[#f7faff]' : ''
       } ${className}`}
       onClick={(event) => {
         // Selecting the question is the parent's job; selection/editing is ours.

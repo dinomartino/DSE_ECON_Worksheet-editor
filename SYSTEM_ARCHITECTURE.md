@@ -587,17 +587,32 @@ popover.
 - The balance sheet is **four columns** (label + figure per side, no rule between);
   header cells span 2+2 with `covered` placeholders.
 
-### An empty cell's prompt must fit its column
+### A cell's field is the whole cell
 
 `richNodes` takes `compactPlaceholder`; table cells pass it — the long prompt wrapped
 to four lines and changed the measured row height (the paginator measures these boxes;
-`data-empty-placeholder` hides by `visibility`, keeping the box). The empty field takes
-the cell's width (`InlineEditable.fillWidth`) so the whole cell is the click target,
-with the dashed underline as the affordance and a faint resting tint.
+`data-empty-placeholder` hides by `visibility`, keeping the box). The field takes the
+cell's width (`InlineEditable.fillWidth`) so the whole cell is the click target, with
+the dashed underline as the affordance and a faint resting tint.
 
 - **Width only, never height** — `inline-block w-full`, no padding or `min-h`.
   `emptyCellField.test.ts` greps for both directions.
-- **`text-left` regardless of the cell's own alignment.**
+- **`text-left` on the empty prompt only, regardless of the cell's own alignment** — a
+  `·` hugging a figure column's right edge reads as content. A cell that *has* text
+  keeps the alignment it prints with: ranging the selected state left too made a
+  centred cell jump left on the first click and jump back on the second, when the
+  editing branch (which never carried the class) took over, so the alignment appeared
+  to come and go with the engagement.
+- **Empty, selected and open all take the cell's width.** Painting the locked box
+  around the *words* drew a ragged rectangle floating inside a much larger cell (92px
+  of highlight in a 190px cell): it read as a selected phrase, not a selected cell, and
+  left most of what was clicked unpainted. A cell is the unit the sidebar names and
+  that align and merge act on. The open editor takes the same width, so entering the
+  field shifts nothing.
+- **The `inline-block` warning is the paragraph path's, not the cell's** — an own
+  formatting context breaks a numbered stem's hanging indent, and a cell has none.
+  `inline-block` is also what lets a wrapped cell paint as **one** rectangle where the
+  paragraph path needs a positioned sibling.
 
 ### Padding resolves in one direction
 
