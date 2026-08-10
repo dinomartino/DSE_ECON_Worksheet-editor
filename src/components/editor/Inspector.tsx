@@ -1,5 +1,6 @@
 'use client';
 
+import { useLayoutEffect, useRef } from 'react';
 import { questionMarks } from '@/model/marks';
 import type { NumberingPlan } from '@/model/numbering';
 import { plain } from '@/model/text';
@@ -33,6 +34,35 @@ export function Inspector({
 
   const selected = worksheet.questions.find((question) => question.id === selectedQuestionId);
 
+  /*
+   * Bring the control for the page's selection into view.
+   *
+   * Clicking option C on the paper now selects the question too (§ Preview
+   * `selectOwnerOf`), which opens this panel — but on a long question the matching
+   * field can be well below the fold, so the panel appeared to respond by showing
+   * something else. The page publishes an `editTargetKey`; each control carries the
+   * same key as `data-edit-target`; this finds it and scrolls.
+   *
+   * `block: 'nearest'` and nothing else: a control already on screen must not be
+   * yanked to the middle, because the common case is a teacher clicking around one
+   * question whose fields are all visible — moving the panel under them each time
+   * would be motion sickness in exchange for nothing. The same reason `Outline` uses
+   * `nearest` for its own row.
+   *
+   * A layout effect, so the scroll happens in the same frame the panel mounts rather
+   * than after a visible paint at the top. Keyed on the panel's own subject as well as
+   * the target: selecting a *different* question remounts the panel (`key`), and an
+   * effect that only watched the key would run against the outgoing DOM.
+   */
+  const panelRef = useRef<HTMLDivElement>(null);
+  const selectedTargetKey = useWorksheetStore((s) => s.selectedTargetKey);
+  useLayoutEffect(() => {
+    if (!selectedTargetKey) return;
+    panelRef.current
+      ?.querySelector(`[data-edit-target="${CSS.escape(selectedTargetKey)}"]`)
+      ?.scrollIntoView({ block: 'nearest' });
+  }, [selectedTargetKey, selectedQuestionId, selectedElementId]);
+
   // The one layout element with a panel of its own. A question wins when both are
   // somehow set — the page clears one selection as it makes the other, so this is a
   // tie-break, not a state.
@@ -59,7 +89,7 @@ export function Inspector({
           </IconButton>
         </header>
 
-        <div className="scroll-slim min-h-0 flex-1 overflow-y-auto p-3.5">
+        <div ref={panelRef} className="scroll-slim min-h-0 flex-1 overflow-y-auto p-3.5">
           <StimulusEditorPanel
             key={selectedStimulus.id}
             element={selectedStimulus}
@@ -115,7 +145,7 @@ export function Inspector({
         </IconButton>
       </header>
 
-      <div className="scroll-slim min-h-0 flex-1 overflow-y-auto p-3.5">
+      <div ref={panelRef} className="scroll-slim min-h-0 flex-1 overflow-y-auto p-3.5">
         <definition.EditorPanel
           key={selected.id}
           question={selected}

@@ -9,9 +9,11 @@ import {
   applyRunFormatTarget,
   blockSize,
   describeDelete,
+  editTargetKey,
   findTableBlock,
   formatOfTarget,
   isFormattable,
+  targetLayoutElementId,
   targetQuestionId,
   textOfTarget,
 } from './edits';
@@ -20,8 +22,10 @@ import {
   createFigureRowBlock,
   createParagraphBlock,
   createTableBlock,
+  createWorksheet,
 } from './factories';
-import { bi, isBiTextEmpty, plain } from './text';
+import { getQuestionType } from '@/registry';
+import { bi, emptyBiText, isBiTextEmpty, plain } from './text';
 import type {
   ContentBlock,
   McqQuestion,
@@ -551,6 +555,96 @@ describe('every authored field on the page carries an edit target', () => {
     );
     expect(node).toBeTruthy();
     expect(targetQuestionId(worksheet, node!.edit as EditTarget)).toBe(question.id);
+  });
+});
+
+/**
+ * Selecting a component on the page selects the item that contains it, and the sidebar
+ * finds the matching control by a shared key (§ Preview `selectOwnerOf`).
+ *
+ * Both halves are the same contract seen from two ends: the owner lookups say *which
+ * item* the sidebar should panel, and the key says *which control within it* to bring
+ * into view. A key that is not stable under reordering, or an owner a stimulus's blocks
+ * cannot resolve, breaks the sidebar quietly — it shows the wrong question's fields
+ * beside a component the teacher just clicked.
+ */
+describe('selecting a component selects its container', () => {
+  it('resolves an MCQ option to the question that owns it', () => {
+    // A target that already names its question is answered from the target itself —
+    // the point of the assertion is that the sidebar gets an id back at all, since a
+    // component the lookup declines leaves the panel showing the previous question.
+    const mcq = getQuestionType('mcq')!.create() as McqQuestion;
+    const worksheet: Worksheet = { ...createWorksheet(), questions: [mcq] };
+
+    expect(
+      targetQuestionId(worksheet, {
+        kind: 'mcqOption',
+        questionId: mcq.id,
+        optionId: mcq.options[2].id,
+      }),
+    ).toBe(mcq.id);
+  });
+
+  it('resolves a block nested in an option to the question that owns it', () => {
+    // A figure inside an option is reached by block id alone (the page selects the
+    // picture, not the option), so the walk has to descend into `options`.
+    const mcq = getQuestionType('mcq')!.create() as McqQuestion;
+    const figure = createParagraphBlock(emptyBiText());
+    const withFigure: McqQuestion = {
+      ...mcq,
+      options: mcq.options.map((option, index) =>
+        index === 1 ? { ...option, blocks: [figure] } : option,
+      ),
+    };
+    const worksheet: Worksheet = { ...createWorksheet(), questions: [withFigure] };
+
+    expect(targetQuestionId(worksheet, { kind: 'blockText', blockId: figure.id })).toBe(
+      mcq.id,
+    );
+  });
+
+  it('resolves a block inside a layout element to that element, not to a question', () => {
+    const block = createParagraphBlock(emptyBiText());
+    const worksheet: Worksheet = {
+      ...createWorksheet(),
+      layout: [
+        {
+          id: 'stim-1',
+          kind: 'stimulus',
+          blocks: [block],
+        } as unknown as Worksheet['layout'][number],
+      ],
+    };
+
+    const target: EditTarget = { kind: 'blockText', blockId: block.id };
+    // No question owns it, so the question lookup must decline rather than guess.
+    expect(targetQuestionId(worksheet, target)).toBeUndefined();
+    expect(targetLayoutElementId(worksheet, target)).toBe('stim-1');
+  });
+
+  it('keys a control by id, so reordering cannot point it at a sibling', () => {
+    const a: EditTarget = { kind: 'mcqOption', questionId: 'q1', optionId: 'opt-a' };
+    const b: EditTarget = { kind: 'mcqOption', questionId: 'q1', optionId: 'opt-b' };
+
+    expect(editTargetKey(a)).not.toBe(editTargetKey(b));
+    // The same option keeps its key wherever it sits in the list.
+    expect(editTargetKey(a)).toBe(editTargetKey({ ...a }));
+  });
+
+  it('gives a picture and its text the same block address', () => {
+    // The page reaches a picture through `resize`, never through a text target — but
+    // the panel control for that block is one control, so both must find it.
+    expect(editTargetKey({ kind: 'blockText', blockId: 'b1' })).toBe('blockText:b1');
+  });
+
+  it('distinguishes the two authored halves of a band field', () => {
+    expect(editTargetKey({ kind: 'bandField', fieldId: 'f1', side: 'suffix' })).not.toBe(
+      editTargetKey({ kind: 'bandField', fieldId: 'f1' }),
+    );
+    // An omitted side means `prefix` — the same rule the renderer reads.
+    expect(editTargetKey({ kind: 'bandField', fieldId: 'f1' })).toBe(
+      editTargetKey({ kind: 'bandField', fieldId: 'f1', side: 'prefix' }),
+    );
   });
 });
 

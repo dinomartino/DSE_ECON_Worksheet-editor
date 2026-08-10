@@ -168,6 +168,74 @@ export function targetQuestionId(worksheet: Worksheet, target: EditTarget): stri
   return undefined;
 }
 
+/**
+ * A stable string address for an edit target, so the page and the sidebar can name the
+ * same component without sharing a component tree.
+ *
+ * The page selects by `EditTarget`; the sidebar renders inputs. Scrolling the matching
+ * input into view needs the two to agree on an identity, and an object cannot be a DOM
+ * attribute. So each panel control carries `data-edit-target={editTargetKey(target)}`
+ * and the Inspector looks the selection up by that key.
+ *
+ * Ids only, never positions — a control found by index would follow the wrong option
+ * the moment one was reordered. `mcqStatement` is the single exception the model
+ * itself keys by index.
+ */
+export function editTargetKey(target: EditTarget): string {
+  switch (target.kind) {
+    case 'blockText':
+    case 'blockCaption':
+      return `${target.kind}:${target.blockId}`;
+    case 'tableCell':
+      return `tableCell:${target.blockId}:${target.cellId}`;
+    case 'mcqOption':
+      return `mcqOption:${target.optionId}`;
+    case 'mcqStatement':
+      return `mcqStatement:${target.questionId}:${target.index}`;
+    case 'mcqExplanation':
+      return `mcqExplanation:${target.questionId}`;
+    case 'partAnswer':
+      return `partAnswer:${target.partId}`;
+    case 'subPartAnswer':
+      return `subPartAnswer:${target.subPartId}`;
+    case 'layoutText':
+      return `layoutText:${target.elementId}`;
+    case 'labelListCell':
+      return `labelListCell:${target.rowId}:${target.column}`;
+    case 'bandField':
+      return `bandField:${target.fieldId}:${target.side ?? 'prefix'}`;
+    case 'coverLine':
+      return `coverLine:${target.lineId}`;
+    case 'coverField':
+      return `coverField:${target.field}`;
+    default:
+      return target.kind;
+  }
+}
+
+/**
+ * The layout element a target belongs to, if it names one. The twin of
+ * `targetQuestionId`, for the same purpose: a component selected on the page selects
+ * the item that contains it, and a stimulus owns blocks exactly as a question does.
+ *
+ * `layoutText` names its element outright; a block target has to be searched for,
+ * flattened so a figure row's children resolve to the same owner as the row.
+ */
+export function targetLayoutElementId(
+  worksheet: Worksheet,
+  target: EditTarget,
+): string | undefined {
+  if (target.kind === 'layoutText') return target.elementId;
+  if (target.kind === 'blockText' || target.kind === 'blockCaption' || target.kind === 'tableCell') {
+    for (const element of worksheet.layout) {
+      for (const blocks of layoutBlockLists(element)) {
+        if (flattenBlocks(blocks).some((block) => block.id === target.blockId)) return element.id;
+      }
+    }
+  }
+  return undefined;
+}
+
 /** Apply an edit to a block anywhere in the document. */
 function mapAllBlocks(
   worksheet: Worksheet,

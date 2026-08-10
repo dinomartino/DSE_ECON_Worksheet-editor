@@ -1,5 +1,6 @@
 'use client';
 
+import { editTargetKey } from '@/model/edits';
 import { createParagraphBlock, createPart, createSubPart } from '@/model/factories';
 import { partMarks, questionMarks } from '@/model/marks';
 import { partLabel, subPartLabel } from '@/model/numbering';
@@ -100,6 +101,11 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
           return (
             <section
               key={part.id}
+              data-edit-target={editTargetKey({
+                kind: 'partAnswer',
+                questionId: question.id,
+                partId: part.id,
+              })}
               className="group/part rounded-lg border border-line bg-surface "
             >
               <header className="flex items-center gap-2 border-b border-line px-2.5 py-1.5">
@@ -238,7 +244,16 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                 {subParts.length > 0 && (
                   <div className="space-y-2 border-l-2 border-line pl-2.5 ">
                     {subParts.map((subPart, subIndex) => (
-                      <div key={subPart.id} className="group/sub space-y-1.5">
+                      <div
+                        key={subPart.id}
+                        data-edit-target={editTargetKey({
+                          kind: 'subPartAnswer',
+                          questionId: question.id,
+                          partId: part.id,
+                          subPartId: subPart.id,
+                        })}
+                        className="group/sub space-y-1.5"
+                      >
                         <header className="flex items-center gap-2">
                           <span className="text-[11px] font-semibold text-ink-subtle ">
                             {subPartLabel(subIndex)}

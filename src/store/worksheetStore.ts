@@ -104,6 +104,17 @@ interface WorksheetState {
    */
   selectedElementId?: string;
   /**
+   * The component selected on the page, as an `editTargetKey` — the finest of the
+   * page's selections, mirrored so the sidebar can scroll its matching control into
+   * view. A **key**, not the target: the sidebar only ever compares it with the keys
+   * its own controls carry, and storing the object would invite a second address for
+   * the same component.
+   *
+   * Mirrored one way, like `selectedElementId`: the page publishes, the sidebar reads.
+   * Editor state, never persisted.
+   */
+  selectedTargetKey?: string;
+  /**
    * The flow id a new item lands after, or undefined to append. A **position**, not a
    * selection (two of the page's selections are preview-local and the rail cannot see
    * them). Selecting anything sets it; the gap affordance sets it without selecting.
@@ -149,6 +160,8 @@ interface WorksheetState {
   select: (questionId?: string) => void;
   /** Mirror the page's layout-element selection; see `selectedElementId`. */
   selectElement: (elementId?: string) => void;
+  /** Mirror the page's component selection; see `selectedTargetKey`. */
+  setSelectedTargetKey: (key?: string) => void;
   /** Point the add rail at a position: new items land after `flowId`. */
   setInsertAnchor: (flowId?: string) => void;
   /** Anchor at `flowId` and ask the rail to open its insert menu. */
@@ -618,7 +631,8 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
       future: [],
       dirty: false,
       selectedQuestionId: undefined,
-      // An anchor names an id in the document being replaced, so it means nothing here.
+      // Both name ids in the document being replaced, so they mean nothing here.
+      selectedTargetKey: undefined,
       insertAnchorId: undefined,
     }),
 
@@ -648,6 +662,8 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   // A mirror of the preview's own selection, so no anchor writes here — the preview
   // already points the rail when a layout element is clicked.
   selectElement: (selectedElementId) => set({ selectedElementId }),
+
+  setSelectedTargetKey: (selectedTargetKey) => set({ selectedTargetKey }),
 
   setInsertAnchor: (insertAnchorId) => set({ insertAnchorId }),
 

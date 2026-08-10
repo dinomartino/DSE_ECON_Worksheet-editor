@@ -1,5 +1,6 @@
 'use client';
 
+import { editTargetKey } from '@/model/edits';
 import { statementLabel, optionLabel } from '@/model/numbering';
 import { emptyBiText } from '@/model/text';
 import { OPTION_DIAGRAM_WIDTH_PX, createParagraphBlock } from '@/model/factories';
@@ -74,7 +75,15 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
           }
         />
         {statements.map((statement, index) => (
-          <div key={index} className="group/row flex items-start gap-1.5">
+          <div
+            key={index}
+            data-edit-target={editTargetKey({
+              kind: 'mcqStatement',
+              questionId: question.id,
+              index,
+            })}
+            className="group/row flex items-start gap-1.5"
+          >
             <span className="mt-1.5 w-6 shrink-0 text-[11px] font-medium tabular-nums text-ink-subtle">
               {statementLabel(index)}
             </span>
@@ -152,6 +161,11 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
             return (
               <div
                 key={option.id}
+                data-edit-target={editTargetKey({
+                  kind: 'mcqOption',
+                  questionId: question.id,
+                  optionId: option.id,
+                })}
                 className={`flex items-start gap-2 rounded-lg border p-1.5 transition-colors ${
                   isAnswer
                     ? 'border-ok-line bg-ok-soft'
@@ -245,11 +259,18 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
             onChange={(lines) => onChange({ gapBefore: lines === 0 ? undefined : lines })}
           />
         )}
-        <BiTextField
-          label="Explanation (teacher version)"
-          value={question.explanation ?? emptyBiText()}
-          onChange={(explanation) => onChange({ explanation })}
-        />
+        <div
+          data-edit-target={editTargetKey({
+            kind: 'mcqExplanation',
+            questionId: question.id,
+          })}
+        >
+          <BiTextField
+            label="Explanation (teacher version)"
+            value={question.explanation ?? emptyBiText()}
+            onChange={(explanation) => onChange({ explanation })}
+          />
+        </div>
       </section>
     </div>
   );

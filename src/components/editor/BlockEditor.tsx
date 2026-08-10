@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { editTargetKey } from '@/model/edits';
 import {
   createDiagramBlock,
   createFigureRowBlock,
@@ -166,7 +167,11 @@ export function BlockEditor({ blocks, onChange, label, labelHint, figureWidth }:
       {blocks.map((block, index) => {
         if (block.kind === 'paragraph') {
           return (
-            <div key={block.id} className="group/block flex items-start gap-1">
+            <div
+              key={block.id}
+              data-edit-target={editTargetKey({ kind: 'blockText', blockId: block.id })}
+              className="group/block flex items-start gap-1"
+            >
               <div className="min-w-0 flex-1">
                 <BiTextField
                   value={block.text}
@@ -181,6 +186,7 @@ export function BlockEditor({ blocks, onChange, label, labelHint, figureWidth }:
         return (
           <div
             key={block.id}
+            data-edit-target={editTargetKey({ kind: 'blockText', blockId: block.id })}
             className="group/block rounded-lg border border-line bg-surface "
           >
             <header className="flex items-center gap-2 px-2 py-1">

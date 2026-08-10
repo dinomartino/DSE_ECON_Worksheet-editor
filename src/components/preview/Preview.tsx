@@ -20,7 +20,14 @@ import { TableColumnResizer } from "./TableColumnResizer";
 import { TableGridControls } from "./TableGridControls";
 import { zonesOf, type ZoneName } from "@/model/bands";
 import { COVER_PANEL } from "@/model/cover";
-import { describeDelete, findTableBlock, isFormattable } from "@/model/edits";
+import {
+  describeDelete,
+  editTargetKey,
+  findTableBlock,
+  isFormattable,
+  targetLayoutElementId,
+  targetQuestionId,
+} from "@/model/edits";
 import { worksheetMarks } from "@/model/marks";
 import {
   commonRunFormat,
@@ -4145,6 +4152,31 @@ export function Preview({
   );
 
   /*
+   * Mirror the page's component selection out as a key, so the sidebar can scroll the
+   * matching control into view (§ `editTargetKey`).
+   *
+   * The three fine selections in one effect because they are alternatives, not layers:
+   * selecting any one clears the others, so at most one is live and the key is
+   * whichever it is. Text wins the read order for the same reason it wins Delete — it
+   * is the finest of the three.
+   *
+   * A picture and a cell publish `blockText`/`tableCell` keys even though neither is
+   * *edited* through that target on the page; the key is an address, and the panel
+   * control for a block is the same control however the block was reached.
+   */
+  const selectedTargetKey = selectedElement
+    ? editTargetKey(selectedElement.target)
+    : selectedBlockId
+      ? editTargetKey({ kind: "blockText", blockId: selectedBlockId })
+      : activeCell
+        ? editTargetKey({ kind: "tableCell", ...activeCell })
+        : undefined;
+
+  useEffect(() => {
+    useWorksheetStore.getState().setSelectedTargetKey(selectedTargetKey);
+  }, [selectedTargetKey]);
+
+  /*
    * How much taller this element could get before running past its page. Measured off
    * the rendered sheet (the probe omits on-page wrapper chrome, so the packer's
    * numbers were wrong by it). A function, not a value: `ctx` is built before the
@@ -4506,6 +4538,48 @@ export function Preview({
   const withSelection = (handlers?: BandEditingHandlers) =>
     handlers ? { ...handlers, selection: bandSelection } : undefined;
 
+  /**
+   * Selecting a component also selects the item that contains it.
+   *
+   * A sub-component — an MCQ option, a sub-part's answer, a cell, a caption — is a
+   * *finer* selection, not a different one: it is still somewhere inside one question
+   * or one layout element, and that container is what the sidebar can actually offer
+   * a panel for. Without this the two disagreed. Clicking option C selected the
+   * option, armed Delete for it and docked the toolbar over it, while the sidebar sat
+   * on whatever had been selected before — or on nothing, showing an empty Edit tab
+   * beside a component the teacher had visibly just clicked. Only *typing* pulled the
+   * question over (`EditorApp.handleEdit`), so the panel appeared one interaction
+   * later than the selection it describes.
+   *
+   * The finer selection still wins where it matters: `deletePrecedence` has the
+   * whole-item handler stand down whenever a finer one is set, so selecting the
+   * parent here cannot make Delete take the question. It only tells the sidebar
+   * which question is being worked in.
+   *
+   * The owner is resolved from the *model*, never from the DOM — a click handler
+   * reading `closest('[data-question-id]')` would bind selection to how the page
+   * happens to be nested, and the block-bearing layout elements (a stimulus owns
+   * blocks that are not in any question) nest identically to questions.
+   */
+  const selectOwnerOf = (target: EditTarget) => {
+    const owner = targetQuestionId(worksheet, target);
+    if (owner) {
+      // The mirror of the layout branch: the sidebar prefers a question when both are
+      // somehow set, so a stale layout selection would keep its panel over the
+      // question just clicked into.
+      setSelectedLayoutId(undefined);
+      onSelectQuestion?.(owner);
+      return;
+    }
+    const layoutOwner = targetLayoutElementId(worksheet, target);
+    if (layoutOwner) {
+      onSelectQuestion?.(undefined);
+      setSelectedLayoutId(layoutOwner);
+    }
+    // Neither: a band field, a cover line, the title. These belong to the page rather
+    // than to a flow item, and selecting a container for them would be inventing one.
+  };
+
   const ctx: EditContext | undefined = onEdit
     ? {
         onEdit: (target, next) => {
@@ -4518,6 +4592,7 @@ export function Preview({
           // Selecting text drops the picture selection, so the handles never linger
           // beside a caption that is now the thing being edited.
           setSelectedBlockId(undefined);
+          selectOwnerOf(target);
         },
         onClearSelection: () => setSelectedElement(undefined),
         isSelected: (target, side) =>
@@ -4527,7 +4602,13 @@ export function Preview({
         keepEditing: formatting,
         listIndents,
         activeCell,
-        onActivateCell: setActiveCell,
+        // A cell selects the item holding its table, like every other component
+        // (§ `selectOwnerOf`). Clearing the cell selects nothing new — the press that
+        // cleared it has its own opinion about what to select.
+        onActivateCell: (cell) => {
+          setActiveCell(cell);
+          if (cell) selectOwnerOf({ kind: "blockText", blockId: cell.blockId });
+        },
         cellSelection,
         onSelectCells: setCellSelection,
         // No selection of its own: a column boundary is not a selectable object — there
@@ -4564,6 +4645,11 @@ export function Preview({
               onSelectBlock: (blockId) => {
                 setSelectedBlockId(blockId);
                 setSelectedElement(undefined);
+                // A picture is a component like any other: selecting it points the
+                // sidebar at the question or stimulus holding it (§ `selectOwnerOf`).
+                // `blockText` is the target kind that addresses a block by id — the
+                // owner lookups key on the id, not on which half of the block it names.
+                selectOwnerOf({ kind: "blockText", blockId });
               },
               onOpenBlock,
               onResizeBlock,

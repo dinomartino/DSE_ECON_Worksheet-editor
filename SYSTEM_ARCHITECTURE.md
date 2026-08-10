@@ -1495,6 +1495,23 @@ hover                      → margin drag grip → reorder
 - **Delete picks the right unit per target** (`describeDelete`, `model/edits.ts`): a
   stem paragraph removes the block; a statement leaves the list; a table cell is
   emptied; an MCQ option cannot be deleted.
+- **Selecting a component also selects the item that contains it.** A sub-component —
+  an MCQ option, a picture, a table cell — is a *finer* selection, not a different
+  one, so `selectOwnerOf` (`Preview.tsx`) points the sidebar at its owning question or
+  layout element as the selection is made. Before it, only *typing* pulled the owner
+  over (`EditorApp.handleEdit`), so the panel arrived one interaction after the
+  selection it describes, or showed the previous question beside the component just
+  clicked. The owner is resolved from the **model** (`targetQuestionId` /
+  `targetLayoutElementId`), never by walking the DOM for a `data-question-id` — a
+  stimulus's blocks nest exactly like a question's. This cannot cost a question its
+  Delete: the whole-item handler still stands down for every finer selection, below.
+- **The sidebar scrolls its matching control into view.** The page publishes the
+  selection as an `editTargetKey` (`store.selectedTargetKey`, mirrored one way like
+  `selectedElementId`); each panel control carries the same string as
+  `data-edit-target`; `Inspector` finds it and scrolls. **`block: 'nearest'`** — a
+  control already on screen must not be yanked, since the common case is a teacher
+  working within one question whose fields are all visible. Keys are built from
+  **ids, not positions**, or a reordered option would scroll to its neighbour.
 - **The finest selection owns Delete.** Four handlers, one per selection — text target,
   picture, table cell, whole item — and the whole-item one is destructive. Clicking any
   component inside a question also selects that question on the way up, so the
