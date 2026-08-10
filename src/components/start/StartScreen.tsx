@@ -5,6 +5,7 @@ import { Button } from '@/components/ui';
 import { Dialog } from '@/components/ui/Dialog';
 import { Menu } from '@/components/ui/Menu';
 import { AppMark } from '@/components/ui/AppMark';
+import { SheetIcon } from '@/components/ui/icons';
 import { NEW_WORKSHEET_FORM_ID, NewWorksheetForm } from './NewWorksheetForm';
 import { newId } from '@/model/factories';
 import type { DocumentType } from '@/model/newWorksheet';
@@ -213,18 +214,22 @@ export function StartScreen({
         </p>
       </aside>
 
-      {/* The desk side: what is already on the desk, as a ledger rather than a stack
-          of shadowed tiles — hairline rows carry a list better than boxes do. */}
+      {/* The desk side: what is already on the desk. Still a ledger rather than a stack
+          of shadowed tiles — but the rows sit on a panel of their own, because hairlines
+          alone on the bare desk gave the column no edges and every row the same weight.
+          The panel is the object; the hairlines divide it. */}
       <main className="min-h-0 flex-1 overflow-y-auto px-9 py-9 lg:px-14 lg:py-12">
         <div className="mx-auto max-w-3xl">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
-            Saved in this browser
+          <div className="flex items-baseline justify-between gap-4">
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
+              Saved in this browser
+            </h2>
             {summaries.length > 0 && (
-              <span className="ml-1.5 font-normal normal-case tracking-normal">
-                ({summaries.length})
+              <span className="text-[11px] tabular-nums text-ink-subtle">
+                {summaries.length === 1 ? '1 document' : `${summaries.length} documents`}
               </span>
             )}
-          </h2>
+          </div>
 
           {/* Three states, each said plainly. The distinction between "nothing saved
               yet" and "still reading storage" matters on this screen: the second flashes
@@ -232,12 +237,16 @@ export function StartScreen({
           {!loaded ? (
             <p className="mt-5 text-[12px] text-ink-subtle">Reading saved documents…</p>
           ) : summaries.length === 0 ? (
-            <p className="mt-5 max-w-md text-[13px] leading-relaxed text-ink-muted">
-              Nothing saved yet. Worksheets you start are kept in this browser —
-              download a .json copy to move one to another machine.
-            </p>
+            /* The empty state takes the panel too, so the column has the same shape
+               whether or not there is anything in it. */
+            <div className="zone-light mt-4 rounded-xl border border-line bg-surface px-6 py-10">
+              <p className="max-w-md text-[13px] leading-relaxed text-ink-muted">
+                Nothing saved yet. Worksheets you start are kept in this browser —
+                download a .json copy to move one to another machine.
+              </p>
+            </div>
           ) : (
-            <ul className="mt-4 border-t border-line-strong/60">
+            <ul className="zone-light mt-4 overflow-hidden rounded-xl border border-line bg-surface">
               {summaries.map((summary) => (
                 <SavedRow
                   key={summary.id}
@@ -261,6 +270,15 @@ export function StartScreen({
               className="mt-4 rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink"
             >
               {error}
+            </p>
+          )}
+
+          {/* Closes the list rather than the screen: pinned to the viewport floor by
+              `mt-auto` it read as an unrelated caption stranded under empty desk. */}
+          {loaded && summaries.length > 0 && (
+            <p className="mt-3 text-[11px] leading-relaxed text-ink-subtle">
+              Opening a document brings it into the editor; the one you had open last is
+              restored automatically next time.
             </p>
           )}
         </div>
@@ -429,18 +447,58 @@ function SavedRow({
   onDownload: () => void;
   onDelete: () => void;
 }) {
+  // A cover is the one structural fact the index actually stores, and it is what tells
+  // a mock paper from a classroom worksheet. Derived from `hasCover` rather than a
+  // stored document type — an index written by an earlier build has no type, and a list
+  // where half the rows were unlabelled would look broken.
+  //
+  // Two *shapes* were tried first and rejected in the browser: at 22px a folded corner
+  // and a stacked sheet are the same small ruled rectangle, so the glyph cost a column
+  // and reported nothing. The distinction is carried in words instead; the glyph stays
+  // as one constant mark that says "document" and anchors the row's left edge.
+  const isMock = summary.hasCover;
+
   return (
-    <li className="group flex items-center gap-2 border-b border-line pr-1 transition-colors duration-150 ease-[var(--ease-out-soft)] hover:bg-surface-hover">
+    <li className="group relative flex items-center gap-3 border-b border-line pr-1.5 last:border-b-0 transition-colors duration-150 ease-[var(--ease-out-soft)] hover:bg-surface-hover">
+      {/* The same accent bar the Start rows use, so both lists answer a hover the same
+          way. Opacity, never display — a reveal that changes layout moves the row out
+          from under the pointer reaching for it. */}
+      <span
+        aria-hidden
+        className="absolute inset-y-0 left-0 w-0.5 bg-accent opacity-0 transition-opacity duration-150 ease-[var(--ease-out-soft)] group-hover:opacity-100 group-focus-within:opacity-100"
+      />
       <button
         type="button"
         onClick={onOpen}
-        className="flex min-w-0 flex-1 cursor-pointer items-baseline gap-4 py-3.5 pl-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+        className="flex min-w-0 flex-1 cursor-pointer items-center gap-3.5 py-3 pl-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
       >
-        <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-ink">
-          {summary.title}
+        <span className="shrink-0 text-ink-subtle transition-colors duration-150 group-hover:text-accent-ink">
+          <SheetIcon size={22} />
         </span>
-        <span className="shrink-0 text-[11px] tabular-nums text-ink-muted">
-          {describe(summary)}
+        {/* Two lines, because one grey run of "12 questions · cover page · 3 hours ago"
+            is scanned as a single blur. The title carries identity; the line under it
+            carries the facts, as quiet tabular text — the chip language is retired. */}
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[14px] font-medium leading-tight text-ink">
+            {summary.title}
+          </span>
+          <span className="mt-1 block truncate text-[11px] leading-tight text-ink-subtle">
+            {/* The kind is the fact that distinguishes two rows with similar names, so
+                it leads the line. Carried by weight and ink, never the accent: blue in
+                this system means link/focus/selection, and a label that cannot be
+                clicked must not wear it. */}
+            <span className={isMock ? 'font-semibold text-ink-muted' : 'text-ink-subtle'}>
+              {isMock ? 'Mock exam paper' : 'Worksheet'}
+            </span>
+            {summary.questionCount !== undefined && (
+              <> · {summary.questionCount === 1 ? '1 question' : `${summary.questionCount} questions`}</>
+            )}
+          </span>
+        </span>
+        {/* Recency gets its own column: it is what the eye runs down when looking for
+            "the one I had open before lunch", and it cannot do that inside a sentence. */}
+        <span className="shrink-0 pl-3 text-[11px] tabular-nums text-ink-muted">
+          {relativeTime(summary.updatedAt)}
         </span>
       </button>
       <Menu
@@ -455,19 +513,6 @@ function SavedRow({
       />
     </li>
   );
-}
-
-/** "12 questions · with cover · 2 hours ago" — what tells two mock papers apart. */
-function describe(summary: WorksheetSummary): string {
-  const parts: string[] = [];
-  if (summary.questionCount !== undefined) {
-    parts.push(
-      summary.questionCount === 1 ? '1 question' : `${summary.questionCount} questions`,
-    );
-  }
-  if (summary.hasCover) parts.push('cover page');
-  parts.push(relativeTime(summary.updatedAt));
-  return parts.join(' · ');
 }
 
 /**

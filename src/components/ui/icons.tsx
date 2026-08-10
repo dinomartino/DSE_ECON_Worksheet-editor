@@ -364,6 +364,20 @@ export function DocumentIcon(props: IconProps) {
   );
 }
 
+/**
+ * A saved worksheet, as a sheet of ruled paper. The file list's own glyph: it is
+ * drawn larger and lighter than a control icon, so it reads as the *object* the row
+ * names rather than a button beside it.
+ */
+export function SheetIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="4.5" y="2.5" width="15" height="19" rx="1.5" />
+      <path d="M8 8h8M8 12h8M8 16h5" opacity="0.5" />
+    </Svg>
+  );
+}
+
 /** Maps a `LayoutElement['kind']` to its icon, so rows and menus agree. */
 export const LAYOUT_ICON = {
   section: SectionIcon,
