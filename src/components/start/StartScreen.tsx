@@ -158,7 +158,7 @@ export function StartScreen({
           )}
         </header>
 
-        {/* The screen's one display moment: the chrome's serif voice (design.md §
+        {/* The screen's one display moment: the chrome's serif voice (design/icons/design.md §
             Typography). Everything below it stays on the UI grotesque. */}
         <h1 className="font-display mt-14 text-balance text-[32px] font-normal leading-[1.15] tracking-[-0.015em] text-ink">
           Start a worksheet, or pick up where you left off.

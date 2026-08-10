@@ -177,7 +177,7 @@ export function Toolbar({
             downloads as, and which is all that distinguishes one mock paper from the
             next — appeared nowhere in the editor. */}
         <span className="flex items-center gap-2">
-          {/* A monogram, not an app icon: the chrome's serif voice in ink (design.md §
+          {/* A monogram, not an app icon: the chrome's serif voice in ink (design/icons/design.md §
               Typography) — the accent is kept for links, focus and selection. */}
           <span
             aria-hidden

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Newsreader } from 'next/font/google';
 import './globals.css';
 
-// The chrome's one display voice (see design.md § Typography): a light editorial
+// The chrome's one display voice (see design/icons/design.md § Typography): a light editorial
 // serif for the screen-level greeting, standing in for the studied reference's
 // Martina Plantijn. UI text stays on the system grotesque; the paper never uses it.
 const newsreader = Newsreader({

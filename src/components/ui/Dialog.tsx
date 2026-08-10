@@ -95,7 +95,7 @@ export function Dialog({
         <header className="flex items-start gap-3 border-b border-line px-5 py-4">
           <div className="min-w-0 flex-1">
             {/* The dialog's one display moment: the chrome's serif voice, roman, like
-                the start screen greeting (design.md § Typography). */}
+                the start screen greeting (design/icons/design.md § Typography). */}
             <h2 className="font-display text-[19px] font-normal leading-snug text-ink">
               {title}
             </h2>

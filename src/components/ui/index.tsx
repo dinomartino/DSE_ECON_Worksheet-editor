@@ -22,7 +22,7 @@ type Size = 'sm' | 'md' | 'lg';
 
 const VARIANT: Record<Variant, string> = {
   // Filled with neutral ink, not the accent: the accent belongs to links, focus and
-  // selection (design.md § CTA voice), so the one loud button is dark, not blue.
+  // selection (design/icons/design.md § CTA voice), so the one loud button is dark, not blue.
   primary:
     'border-transparent bg-cta text-on-cta shadow-sm hover:bg-cta-hover active:scale-[0.97]',
   default:
