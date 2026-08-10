@@ -13,6 +13,7 @@ import { Button, IconButton, Pill, Segmented } from '@/components/ui';
 import { DownloadIcon, PdfIcon, RedoIcon, SettingsIcon, UndoIcon } from '@/components/ui/icons';
 import { Menu } from '@/components/ui/Menu';
 import { Dialog } from '@/components/ui/Dialog';
+import { AppMark } from '@/components/ui/AppMark';
 import { DocumentName } from './DocumentName';
 
 /**
@@ -177,14 +178,11 @@ export function Toolbar({
             downloads as, and which is all that distinguishes one mock paper from the
             next — appeared nowhere in the editor. */}
         <span className="flex items-center gap-2">
-          {/* A monogram, not an app icon: the chrome's serif voice in ink (design/icons/design.md §
-              Typography) — the accent is kept for links, focus and selection. */}
-          <span
-            aria-hidden
-            title="Worksheet — HKDSE Economics"
-            className="font-display shrink-0 text-[19px] leading-none text-ink"
-          >
-            W.
+          {/* The app's own face, shared with the browser tab (`src/app/icon.svg`).
+              It was a serif `W.` monogram, which read as a *document's* initial in
+              the one slot that names the *tool*. */}
+          <span title="Worksheet — HKDSE Economics" className="flex shrink-0 text-ink">
+            <AppMark size={22} />
           </span>
           <DocumentName />
         </span>

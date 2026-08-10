@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui';
 import { Dialog } from '@/components/ui/Dialog';
 import { Menu } from '@/components/ui/Menu';
+import { AppMark } from '@/components/ui/AppMark';
 import { NEW_WORKSHEET_FORM_ID, NewWorksheetForm } from './NewWorksheetForm';
 import { newId } from '@/model/factories';
 import type { DocumentType } from '@/model/newWorksheet';
@@ -146,8 +147,8 @@ export function StartScreen({
       */}
       <aside className="zone-light flex shrink-0 flex-col overflow-y-auto border-b border-line bg-surface px-9 pb-8 pt-9 lg:h-full lg:w-[400px] lg:border-b-0 lg:border-r">
         <header className="flex items-center gap-2.5">
-          <span aria-hidden className="font-display text-[19px] leading-none text-ink">
-            W.
+          <span className="flex shrink-0 text-ink">
+            <AppMark size={22} />
           </span>
           <span className="text-[13px] font-semibold text-ink">Worksheet</span>
           <span className="text-[11px] text-ink-subtle">HKDSE Economics</span>
