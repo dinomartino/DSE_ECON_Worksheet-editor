@@ -5183,10 +5183,34 @@ export function Preview({
                   // appended instead.
                   setInsertAnchor(id);
                 }
-              : () => {
+              : (event) => {
                   selfSelected.current = true;
                   onSelectQuestion?.(id);
                   setSelectedLayoutId(undefined);
+                  /*
+                   * The question's own body is a coarser selection than anything inside
+                   * it, so landing here drops the finer ones — the mirror of the layout
+                   * branch above.
+                   *
+                   * This handler cannot be reached by a click on a child: every finer
+                   * selection path (`InlineEditable`, `ResizableBlock`, the cell's own
+                   * text) calls `stopPropagation` precisely because selecting the
+                   * question is this wrapper's job. So a click that arrives here landed
+                   * on the question and nothing else — the gap between two parts, the
+                   * padding beside a stem — and leaving the old selection set meant a
+                   * teacher could only deselect a component by clicking another one or
+                   * leaving the question entirely. The component stayed ringed, the
+                   * sidebar stayed on it, and Delete stayed armed for it.
+                   *
+                   * A table cell is the one exception: it activates in *capture*
+                   * (§`onClickCapture`), on the way down, so a click on the cell's
+                   * padding sets the cell and then arrives here. Clearing it would undo
+                   * the selection this very click just made.
+                   */
+                  if ((event.target as HTMLElement).closest("[data-table-cell]")) return;
+                  setSelectedElement(undefined);
+                  setSelectedBlockId(undefined);
+                  setActiveCell(undefined);
                 }
           }
         />

@@ -1535,6 +1535,20 @@ hover                      → margin drag grip → reorder
   dependency. Every window listener fires, so standing down is the only way to yield
   the key; without it Delete took the component *and* the question with it.
   `preview/deletePrecedence.test.ts` holds the chain.
+- **The question's own body deselects what is inside it.** The coarser selection
+  replaces the finer one, mirroring the layout branch. Before it, a component could only
+  be dropped by selecting a *different* one or leaving the question entirely: clicking
+  the question's own padding — the gap between two parts, beside a stem — left it
+  ringed, the sidebar on it and Delete armed for it. Safe to clear unconditionally
+  because **this handler is never reached by a click on a child**: every finer path
+  (`InlineEditable`, `ResizableBlock`, a cell's text) calls `stopPropagation` precisely
+  so the wrapper owns question selection, and the parent selection a component click
+  produces comes from `selectOwnerOf`, not from here. **A table cell is the one
+  exception** — it activates in *capture*, on the way down, so a click on its padding
+  sets the cell and then arrives here; clearing would undo the selection that same
+  click just made. (An *empty* cell has no padding to land on: its field takes the
+  whole cell.) `deletePrecedence.test.ts` pins both the clearing and the child
+  `stopPropagation` calls the exemption depends on.
 - **Everything routes through `commit()`** — undo/redo and autosave with no special
   handling.
 

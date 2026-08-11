@@ -80,6 +80,68 @@ describe('Delete precedence on the page', () => {
     ).toBeGreaterThan(chrome);
   });
 
+  /*
+   * The third face of the same problem: a component that could only be deselected by
+   * selecting a *different* one or by leaving the question. Clicking the question's own
+   * body — the gap between two parts, the padding beside a stem — left the component
+   * ringed, the sidebar on it, and Delete armed for it.
+   *
+   * The wrapper's handler is only ever reached by a click on the question itself: every
+   * finer path calls `stopPropagation`. So clearing here is unconditional, except for
+   * the cell, which activates in capture on the way down.
+   */
+  describe('the question body deselects what is inside it', () => {
+    /** The question branch of `ItemBody`'s `onSelect`. */
+    function questionSelect(): string {
+      const start = source.indexOf('selfSelected.current = true;');
+      expect(start, "the question's own select handler moved").toBeGreaterThan(-1);
+      return source.slice(start, source.indexOf('blocks.push({', start));
+    }
+
+    it.each([
+      ['setSelectedElement(undefined);', 'a selected text target'],
+      ['setSelectedBlockId(undefined);', 'a selected picture'],
+      ['setActiveCell(undefined);', 'a selected table cell'],
+    ])('drops %s when the click lands on the question body', (call, what) => {
+      expect(
+        questionSelect(),
+        `clicking the question's own body leaves ${what} selected — the ring, the ` +
+          `sidebar and Delete all stay pointed at a component the teacher has left`,
+      ).toContain(call);
+    });
+
+    it('exempts a click inside a table cell, which selected in capture', () => {
+      const body = questionSelect();
+      const exempt = body.indexOf('[data-table-cell]');
+      const clear = body.indexOf('setActiveCell(undefined);');
+
+      expect(
+        exempt,
+        'a cell activates in capture, so clearing here undoes the selection this very ' +
+          'click just made',
+      ).toBeGreaterThan(-1);
+      expect(clear).toBeGreaterThan(exempt);
+    });
+
+    /*
+     * The exemption is only sound while the finer paths stop the click themselves. If
+     * one stopped doing so, its selection would reach this handler and be cleared by the
+     * click that made it — the component would flicker and never stay selected.
+     */
+    it.each([
+      ['src/components/preview/InlineEditable.tsx', 'a text field'],
+      ['src/components/preview/ResizableBlock.tsx', 'a picture'],
+    ])('%s stops the click, so selecting it never reaches the wrapper', (path, what) => {
+      const child = readFileSync(path, 'utf8');
+      const click = child.indexOf('onClick={(event) => {');
+      expect(click, `${what} has no click handler to stop`).toBeGreaterThan(-1);
+      expect(
+        child.slice(click, click + 400),
+        `selecting ${what} would bubble to the question wrapper, which would clear it`,
+      ).toContain('event.stopPropagation();');
+    });
+  });
+
   it('clears a cell range through the bulk verb, not one target at a time', () => {
     // `onDelete` is one commit per call, so a range cleared cell by cell would cost as
     // many undos as it held cells (§ drag gestures commit once).
