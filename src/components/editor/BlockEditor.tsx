@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { editTargetKey } from '@/model/edits';
+import { prepareImageForStorage } from '@/export/imageImport';
 import {
   createDiagramBlock,
   createFigureRowBlock,
@@ -118,28 +119,28 @@ export function BlockEditor({ blocks, onChange, label, labelHint, figureWidth }:
 
   const remove = (index: number) => onChange(blocks.filter((_, i) => i !== index));
 
-  const handleImageFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const src = String(reader.result);
-      const img = new Image();
-      img.onload = () => {
-        // Fit to a sensible default width, aspect ratio preserved (§5.3). Narrower
-        // inside an MCQ option, where four figures share a question.
-        const maxWidth = figureWidth ?? 420;
-        const scale = img.width > maxWidth ? maxWidth / img.width : 1;
-        const block = createImageBlock(
-          src,
-          Math.round(img.width * scale),
-          Math.round(img.height * scale),
-        );
-        block.naturalWidthPx = img.width;
-        block.naturalHeightPx = img.height;
-        onChange([...blocks, block]);
-      };
-      img.src = src;
-    };
-    reader.readAsDataURL(file);
+  const handleImageFile = async (file: File) => {
+    // Reduced to what the paper can print before it is stored — the document carries
+    // its pictures inline, so the camera's pixels would otherwise ride in the JSON
+    // for the life of the worksheet (§ `prepareImageForStorage`).
+    const prepared = await prepareImageForStorage(file);
+    // The stored image's own size, which is what the aspect lock and the exporter's
+    // EMU maths must both read. Zero means it could not be decoded here; fall back to
+    // the display width so the block still has a ratio to resize by.
+    const naturalWidth = prepared.naturalWidthPx || (figureWidth ?? 420);
+    const naturalHeight = prepared.naturalHeightPx || Math.round(naturalWidth * 0.75);
+    // Fit to a sensible default width, aspect ratio preserved (§5.3). Narrower
+    // inside an MCQ option, where four figures share a question.
+    const maxWidth = figureWidth ?? 420;
+    const scale = naturalWidth > maxWidth ? maxWidth / naturalWidth : 1;
+    const block = createImageBlock(
+      prepared.src,
+      Math.round(naturalWidth * scale),
+      Math.round(naturalHeight * scale),
+    );
+    block.naturalWidthPx = naturalWidth;
+    block.naturalHeightPx = naturalHeight;
+    onChange([...blocks, block]);
   };
 
   const controls = (index: number) => (
@@ -267,11 +268,13 @@ export function BlockEditor({ blocks, onChange, label, labelHint, figureWidth }:
         <input
           ref={fileInput}
           type="file"
-          accept="image/png,image/jpeg"
+          accept="image/png,image/jpeg,image/gif,image/webp"
           className="hidden"
           onChange={(event) => {
             const file = event.target.files?.[0];
-            if (file) handleImageFile(file);
+            // Preparing the picture is asynchronous (it decodes and re-encodes); the
+            // input is cleared straight away so the same file can be picked again.
+            if (file) void handleImageFile(file);
             event.target.value = '';
           }}
         />
@@ -919,26 +922,22 @@ function CellImageField({
 }) {
   const fileInput = useRef<HTMLInputElement>(null);
 
-  const read = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const src = String(reader.result);
-      const probe = new Image();
-      probe.onload = () => {
-        // Fits inside a cell rather than the text column, so a full-size photograph does
-        // not arrive wider than the table it sits in.
-        const maxWidth = 240;
-        const scale = probe.width > maxWidth ? maxWidth / probe.width : 1;
-        onChange({
-          src,
-          widthPx: Math.round(probe.width * scale),
-          heightPx: Math.round(probe.height * scale),
-          altText: emptyBiText(),
-        });
-      };
-      probe.src = src;
-    };
-    reader.readAsDataURL(file);
+  const read = async (file: File) => {
+    // The same reduction the block path takes — one helper, or the two ingestion
+    // routes drift into different quality rules (§ `prepareImageForStorage`).
+    const prepared = await prepareImageForStorage(file);
+    const naturalWidth = prepared.naturalWidthPx || 240;
+    const naturalHeight = prepared.naturalHeightPx || Math.round(naturalWidth * 0.75);
+    // Fits inside a cell rather than the text column, so a full-size photograph does
+    // not arrive wider than the table it sits in.
+    const maxWidth = 240;
+    const scale = naturalWidth > maxWidth ? maxWidth / naturalWidth : 1;
+    onChange({
+      src: prepared.src,
+      widthPx: Math.round(naturalWidth * scale),
+      heightPx: Math.round(naturalHeight * scale),
+      altText: emptyBiText(),
+    });
   };
 
   return (
@@ -989,11 +988,11 @@ function CellImageField({
       <input
         ref={fileInput}
         type="file"
-        accept="image/png,image/jpeg"
+        accept="image/png,image/jpeg,image/gif,image/webp"
         className="hidden"
         onChange={(event) => {
           const file = event.target.files?.[0];
-          if (file) read(file);
+          if (file) void read(file);
           event.target.value = '';
         }}
       />

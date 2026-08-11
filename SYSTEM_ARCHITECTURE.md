@@ -32,7 +32,7 @@ src/
 │                 diagramTemplates · diagramDraw · cover · coverTypes
 ├── registry/     Question-type extension point: types · index · mcq · structured
 ├── render/       ir (RenderNode + EditTarget) · worksheet (the walker) · diagram (SVG)
-├── export/       docx/ · diagramImage (PNG pre-pass) · clipboard
+├── export/       docx/ · diagramImage (PNG pre-pass) · imageImport · clipboard
 ├── store/        worksheetStore — Zustand with undo/redo
 ├── storage/      WorksheetStore interface + localStorage implementation
 ├── components/   EditorApp · start/ · preview/ (the paper IS the editor) · editor/ · ui/
@@ -757,6 +757,53 @@ Same IR; writes `text/html` + `text/plain` via `ClipboardItem`. Numbering become
 literal text. Carries **no page setup, headers, or cover** — pasting must not impose
 this document's furniture; the cover cannot be expressed in clipboard HTML at all (the
 `.docx` is the fidelity path). A test pins the exclusion.
+
+### An inserted picture is reduced to what the paper can print (`src/export/imageImport.ts`)
+
+`ImageBlock.src`/`CellImage.src` are `data:` URLs, base64 in the document's own JSON —
+what makes a downloaded `.worksheet.json` self-contained, and the whole cost: base64
+adds a third again and localStorage is ~5MB **across every document**. So a file is
+reduced once, at import, by `prepareImageForStorage()` — browser-only and async (it
+decodes and re-encodes through a canvas), hence beside `diagramImage.ts`.
+
+- **The cap is the page, not the insert size.** A figure prints at `widthPx / 96`
+  inches, resize is width-only and the column is a hard wall, so the widest any picture
+  can print is the widest content column the app offers — A4 at the narrowest preset,
+  ~7.27in. `MAX_STORED_WIDTH_PX` = 2200 is that at 300 DPI; `MAX_STORED_HEIGHT_PX` =
+  3500 catches a rotated scan. **Never upscales.** Storing the *display* size (420px)
+  would print mush, because a teacher may drag a figure larger afterwards.
+- **Every judgement is in `planImageImport()`, which is pure** — the canvas work is
+  mechanical, and the policy is the part that can be wrong. Unit-testable with no DOM.
+- **Within the cap and exportable ⇒ the original bytes, untouched.** The common case
+  (screenshots, chart crops). Not re-encoding avoids a generation of loss and keeps the
+  ICC profile.
+- **Alpha forces PNG; a JPEG stays JPEG; everything else races** PNG against JPEG,
+  keeping JPEG only when it wins by a wide margin. The margin is what makes the race
+  safe without a content classifier: line art compresses so well as PNG that JPEG
+  cannot approach it. **Keeping the source's family unconditionally is the tempting
+  wrong answer** — it stored a downscaled 2600px photograph as a 6MB PNG, *larger than
+  the file that arrived* and alone past the whole budget, so one insert made the
+  document unsaveable. Measured in a browser, not reasoned about.
+- **A format the exporter cannot decode is repaired, not merely shrunk**: `DATA_URL` in
+  `export/docx/index.ts` matches PNG/JPEG/GIF only, so a WebP does not just take space —
+  it fails to export. A test pins the two lists together.
+- **An animated GIF never meets a canvas** (`drawImage` takes frame one, silently), and
+  GIF exports as-is, so there is nothing to repair at any size.
+- **`naturalWidthPx`/`naturalHeightPx` describe the *stored* bytes**, not the file that
+  arrived, or the aspect lock and the exporter's EMU maths disagree.
+- Browser traps, each silent: **EXIF orientation is applied at decode**
+  (`imageOrientation: 'from-image'`) because re-encoding strips the tag and a
+  mis-decoded photo is permanently sideways; a white ground goes **behind** the picture
+  (`destination-over`) before anything becomes JPEG, or alpha composites to *black*;
+  the canvas is drawn at target size, never full size (iOS ceilings fail by returning
+  blank pixels, not by throwing); and the output is **decoded again before it is
+  stored**, since a quiet failure yields a white rectangle or `"data:,"`.
+- **It never throws.** Anything unexpected stores the original bytes: quota is a
+  problem a teacher can see, a corrupted figure is not.
+- **No schema change and no migration** — this changes the *values* written to `src`,
+  not the field's meaning, so v1 documents are untouched. Existing documents carrying
+  full-resolution originals are **deliberately not rewritten on load**: that would
+  silently mutate a teacher's file and collide with autosave firing only on dirty.
 
 ---
 
