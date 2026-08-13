@@ -68,7 +68,7 @@ function patchBlocks(
  * A block list with figure-row children surfaced beside their rows — what every
  * *read* walk searches, so a block that `patchBlocks` can write is also findable.
  */
-function flattenBlocks(blocks: ContentBlock[]): ContentBlock[] {
+export function flattenBlocks(blocks: ContentBlock[]): ContentBlock[] {
   return blocks.flatMap((block): ContentBlock[] =>
     block.kind === 'figureRow' ? [block, block.figure, block.table] : [block],
   );
