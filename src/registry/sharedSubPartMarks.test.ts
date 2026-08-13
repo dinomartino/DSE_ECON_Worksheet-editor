@@ -107,6 +107,25 @@ describe('sub-parts sharing one marks label', () => {
     expect(text).not.toContain('(0 marks)');
   });
 
+
+  it('prints nothing anywhere when the group and its part are both unmarked', () => {
+    const part = sharedLabelPart();
+    delete part.marks;
+
+    // Before, the shared label read `partMarks()`, whose absent-means-0 spelling
+    // printed a phantom "(0 marks)" on the last sub-part of an unmarked group.
+    expect(marksByMarker(worksheetWith(part))).toEqual([]);
+  });
+
+  it('prints nothing on an unmarked leaf part', () => {
+    const part: QuestionPart = {
+      id: 'c',
+      blocks: [paragraph('pc', 'Describe the trend shown in the table.')],
+    };
+
+    expect(marksByMarker(worksheetWith(part))).toEqual([]);
+  });
+
   it('still prints a genuine zero when a sub-part is deliberately marked 0', () => {
     const part = sharedLabelPart();
     part.subParts![0].marks = 0;

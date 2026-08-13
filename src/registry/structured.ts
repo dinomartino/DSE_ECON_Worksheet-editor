@@ -1,5 +1,5 @@
 import { createStructuredQuestion } from '@/model/factories';
-import { partMarks, questionMarks } from '@/model/marks';
+import { questionMarks } from '@/model/marks';
 import {
   partLabel,
   subPartLabel,
@@ -17,6 +17,29 @@ import type { QuestionTypeDefinition } from './types';
  * Parts and sub-parts sit at levels 1 and 2 of the shared "question" multilevel
  * definition, so Word maintains 1. / (a) / (i) as one live list (§7.2).
  */
+/**
+ * Put a marks label on the *last* text line a leaf emitted (§"(4 marks)" sits on the
+ * last line with text). A leaf whose blocks run paragraph → table → paragraph must
+ * print its marks against the closing paragraph, not the lead-in — the reference (DSE
+ * 2025 P2 Q9(d)) asks the question after its boxed advertisement, and the label
+ * belongs on what is being asked. Walks back over tables, figures and spacers to the
+ * nearest paragraph; a leaf ending in a table keeps the label on its lead-in.
+ */
+function attachMarksToLastText(
+  nodes: RenderNode[],
+  fromIndex: number,
+  marks: number | undefined,
+): void {
+  if (marks === undefined) return;
+  for (let index = nodes.length - 1; index >= fromIndex; index--) {
+    const node = nodes[index];
+    if (node.kind === 'text') {
+      node.marks = marks;
+      return;
+    }
+  }
+}
+
 function render(question: StructuredQuestion, context: RenderContext): RenderNode[] {
   const nodes: RenderNode[] = [];
   const [firstBlock, ...restBlocks] = question.blocks;
@@ -76,12 +99,12 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
    * The marks label belongs on the stem's *last* line, so a multi-paragraph stem does
    * not print "(8 marks)" against its opening sentence with three more to follow. The
    * branches above claim it only when they emitted the whole stem themselves; otherwise
-   * it lands here, on the trailing block `renderContentBlocks` produced.
+   * it lands here, on the trailing text `renderContentBlocks` produced.
    */
-  if (isLeaf && stemMarks !== undefined) {
-    const last = nodes[nodes.length - 1];
-    if (last && last.kind === 'text' && last.marks === undefined) last.marks = stemMarks;
-  }
+  const stemClaimed =
+    (firstBlock && firstBlock.kind === 'paragraph' && restBlocks.length === 0) ||
+    question.blocks.length === 0;
+  if (isLeaf && !stemClaimed) attachMarksToLastText(nodes, 0, stemMarks);
 
   // The leaf question's own writing room, under the stem it answers (§ the LQ line).
   // Absent prints nothing, like marks.
@@ -141,29 +164,41 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
       marker: partLabel(partIndex),
     };
 
+    // A leaf part shows its own marks; a part with sub-parts does not (§3.5). Like the
+    // stem, the label lands on the part's *last* text line: a part running
+    // paragraph → table → paragraph asks its question after the table, and printing
+    // "(2 marks)" against the lead-in labels the wrong sentence.
+    //
+    // The label reads `part.marks` raw, not `partMarks()` — the totals helper spells
+    // absent as 0, and "absent prints nothing, 0 prints (0 marks)" needs the two
+    // kept apart. An unmarked leaf part prints no label at all.
+    const leafMarks = hasSubParts ? undefined : part.marks;
+    const partStart = nodes.length;
+
     if (partFirst && partFirst.kind === 'paragraph') {
       nodes.push({
         kind: 'text',
         style: 'Sub-question',
         text: partFirst.text,
-        // A leaf part shows its own marks; a part with sub-parts does not (§3.5).
-        marks: hasSubParts ? undefined : partMarks(part),
+        marks: partRest.length === 0 ? leafMarks : undefined,
         keepNext: true,
         format: partFirst.format,
         edit: { kind: 'blockText', blockId: partFirst.id },
         listRef: partRef,
       });
       renderContentBlocks(nodes, partRest, 'Sub-question', { keepNext: true, indent: context.indents.partText });
+      if (partRest.length > 0) attachMarksToLastText(nodes, partStart, leafMarks);
     } else {
       nodes.push({
         kind: 'text',
         style: 'Sub-question',
         text: { en: [], zh: [] },
-        marks: hasSubParts ? undefined : partMarks(part),
+        marks: part.blocks.length === 0 ? leafMarks : undefined,
         keepNext: true,
         listRef: partRef,
       });
       renderContentBlocks(nodes, part.blocks, 'Sub-question', { keepNext: true, indent: context.indents.partText });
+      if (part.blocks.length > 0) attachMarksToLastText(nodes, partStart, leafMarks);
     }
 
     if (!hasSubParts && !isBiTextEmpty(part.answer)) {
@@ -179,8 +214,10 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
 
     subParts.forEach((subPart, subIndex) => {
       const [subFirst, ...subRest] = subPart.blocks;
-      // Its own marks, or — for a group sharing one label — the part's total on the last.
-      const subMarks = subIndex === sharedMarksIndex ? partMarks(part) : subPart.marks;
+      // Its own marks, or — for a group sharing one label — the part's own marks on
+      // the last. Raw `part.marks`, not `partMarks()`: with the whole group unmarked
+      // the label is absent and nothing prints, rather than a phantom "(0 marks)".
+      const subMarks = subIndex === sharedMarksIndex ? part.marks : subPart.marks;
       const subRef = {
         stream: context.questionStream,
         definition: 'question' as const,
@@ -194,28 +231,33 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
       // double gap before its first sub-part.
       pushGap(nodes);
 
+      // The sub-part's label follows the same last-line rule as the part's.
+      const subStart = nodes.length;
+
       if (subFirst && subFirst.kind === 'paragraph') {
         nodes.push({
           kind: 'text',
           style: 'Sub-sub-question',
           text: subFirst.text,
-          marks: subMarks,
+          marks: subRest.length === 0 ? subMarks : undefined,
           keepNext: true,
           format: subFirst.format,
           edit: { kind: 'blockText', blockId: subFirst.id },
           listRef: subRef,
         });
         renderContentBlocks(nodes, subRest, 'Sub-sub-question', { keepNext: true, indent: context.indents.subPartText });
+        if (subRest.length > 0) attachMarksToLastText(nodes, subStart, subMarks);
       } else {
         nodes.push({
           kind: 'text',
           style: 'Sub-sub-question',
           text: { en: [], zh: [] },
-          marks: subMarks,
+          marks: subPart.blocks.length === 0 ? subMarks : undefined,
           keepNext: true,
           listRef: subRef,
         });
         renderContentBlocks(nodes, subPart.blocks, 'Sub-sub-question', { keepNext: true, indent: context.indents.subPartText });
+        if (subPart.blocks.length > 0) attachMarksToLastText(nodes, subStart, subMarks);
       }
 
       if (!isBiTextEmpty(subPart.answer)) {
