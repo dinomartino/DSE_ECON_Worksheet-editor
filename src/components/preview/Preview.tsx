@@ -4610,7 +4610,16 @@ export function Preview({
           if (cell) selectOwnerOf({ kind: "blockText", blockId: cell.blockId });
         },
         cellSelection,
-        onSelectCells: setCellSelection,
+        // A travelled cell sweep ends with a click on the common ancestor of its
+        // press and release — the row, the table, or the question body — never on a
+        // cell, so the question wrapper's clearing branch would wipe the range this
+        // very gesture just committed (`setActiveCell(undefined)` drops
+        // `cellSelection` with it). Marked as a sweep so that click stands down,
+        // exactly as the marquee's own tail click does (§ `sweptRef`).
+        onSelectCells: (selection) => {
+          sweptRef.current = true;
+          setCellSelection(selection);
+        },
         // No selection of its own: a column boundary is not a selectable object — there
         // is nothing to delete or format — so the handles are revealed on hover and need
         // no click-to-arm step, unlike a picture or a run of answer lines.
@@ -4668,6 +4677,11 @@ export function Preview({
                 setSelectedLayoutId(elementId);
                 setSelectedElement(undefined);
                 setSelectedBlockId(undefined);
+                // The same clearing the ItemBody layout branch does: the sidebar
+                // prefers a question when both selections are set, so without this a
+                // stale question kept its panel over the element just clicked.
+                onSelectQuestion?.(undefined);
+                setInsertAnchor(elementId);
               },
               onResizeRows,
               slackFor: (elementId) => measureSlack(elementId),
@@ -5169,6 +5183,11 @@ export function Preview({
           onSelect={
             item.type === "layout"
               ? (event) => {
+                  // The tail click of a cell sweep (its press and release straddle
+                  // two cells, so the click fires here, on their ancestor) — not a
+                  // selection of this element. Read, not consumed: the paper's own
+                  // click handler owns resetting the flag.
+                  if (sweptRef.current) return;
                   event.stopPropagation();
                   setSelectedLayoutId(id);
                   setSelectedElement(undefined);
@@ -5184,6 +5203,10 @@ export function Preview({
                   setInsertAnchor(id);
                 }
               : (event) => {
+                  // The tail click of a cell sweep, fired on the cells' common
+                  // ancestor — not a click on the question's body. Read, not
+                  // consumed: the paper's click handler owns resetting the flag.
+                  if (sweptRef.current) return;
                   selfSelected.current = true;
                   onSelectQuestion?.(id);
                   setSelectedLayoutId(undefined);

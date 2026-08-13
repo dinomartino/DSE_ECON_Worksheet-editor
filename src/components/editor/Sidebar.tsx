@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { LAYOUT_NAME } from '@/model/flow';
 import { computeNumbering } from '@/model/numbering';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { Inspector } from './Inspector';
@@ -37,9 +38,14 @@ export function Sidebar({
 
   // A layout element only pulls the tab over when it has a panel to show — selecting
   // a divider must not open an Edit tab that says "pick something".
-  const panelElementId = worksheet.layout.find(
-    (element) => element.id === selectedElementId && element.kind === 'stimulus',
-  )?.id;
+  const panelElement = worksheet.layout.find(
+    (element) =>
+      element.id === selectedElementId &&
+      (element.kind === 'stimulus' ||
+        element.kind === 'answerLines' ||
+        element.kind === 'answerSpace'),
+  );
+  const panelElementId = panelElement?.id;
 
   // Follow the selection. Tracked against the previous id rather than firing on every
   // render, so a user who deliberately clicks back to Content while a question is still
@@ -58,8 +64,8 @@ export function Sidebar({
 
   const editLabel = selected
     ? `Question ${numbering.byQuestionId.get(selected.id)?.number ?? ''}`.trim()
-    : panelElementId
-      ? 'Shared stimulus'
+    : panelElement
+      ? LAYOUT_NAME[panelElement.kind]
       : 'Edit';
 
   const tabs: Array<{ id: Tab; label: string; count?: number }> = [

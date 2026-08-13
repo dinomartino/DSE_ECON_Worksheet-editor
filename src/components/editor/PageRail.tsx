@@ -107,6 +107,17 @@ export function PageRail({
    * alone is what would leave a retyped title missing from the rail.
    */
   const [revision, setRevision] = useState(0);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // The highlight follows the preview's scroll (and a selection made down-page), so
+  // the rail must keep the current card on screen — on a long document it otherwise
+  // drifts off the rail while still claiming to mark where the reader is.
+  useEffect(() => {
+    listRef.current
+      ?.querySelector('[aria-current="true"]')
+      ?.scrollIntoView({ block: 'nearest' });
+  }, [activeIndex]);
+
   useEffect(() => {
     const root = document.getElementById('print-root');
     if (!root) return;
@@ -185,6 +196,7 @@ export function PageRail({
           </button>
         </div>
         <div
+          ref={listRef}
           className="scroll-slim min-h-0 flex-1 overflow-y-auto pb-3"
           style={{ paddingLeft: RAIL_PADDING_PX, paddingRight: RAIL_PADDING_PX }}
         >

@@ -1,13 +1,15 @@
 'use client';
 
 import { useLayoutEffect, useRef } from 'react';
+import { LAYOUT_NAME, MIN_ANSWER_LINES } from '@/model/flow';
 import { questionMarks } from '@/model/marks';
 import type { NumberingPlan } from '@/model/numbering';
 import { plain } from '@/model/text';
 import { requireQuestionType } from '@/registry';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { IconButton } from '@/components/ui';
+import { IconButton, Pill } from '@/components/ui';
 import { CloseIcon, ListIcon } from '@/components/ui/icons';
+import { SizeStepper } from '@/components/ui/SizeStepper';
 import { StimulusEditorPanel } from './StimulusEditorPanel';
 
 /**
@@ -31,6 +33,7 @@ export function Inspector({
   const selectElement = useWorksheetStore((s) => s.selectElement);
   const updateQuestion = useWorksheetStore((s) => s.updateQuestion);
   const updateLayoutElement = useWorksheetStore((s) => s.updateLayoutElement);
+  const resizeLayoutElement = useWorksheetStore((s) => s.resizeLayoutElement);
 
   const selected = worksheet.questions.find((question) => question.id === selectedQuestionId);
 
@@ -95,6 +98,77 @@ export function Inspector({
             element={selectedStimulus}
             onChange={(patch) => updateLayoutElement(selectedStimulus.id, patch)}
           />
+        </div>
+      </div>
+    );
+  }
+
+  // An answer element's one property is its size, and the outline was the only place
+  // to set it — a teacher who selected the lines on the page found an Edit tab still
+  // showing something else. The panel offers the same stepper the outline row does.
+  const selectedAnswer = !selected
+    ? worksheet.layout.find(
+        (element) =>
+          element.id === selectedElementId &&
+          (element.kind === 'answerLines' || element.kind === 'answerSpace'),
+      )
+    : undefined;
+
+  if (
+    selectedAnswer &&
+    (selectedAnswer.kind === 'answerLines' || selectedAnswer.kind === 'answerSpace')
+  ) {
+    const isFill = selectedAnswer.kind === 'answerSpace' && selectedAnswer.fill;
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <header className="flex shrink-0 items-center gap-2 border-b border-line px-3.5 py-3">
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[13px] font-semibold leading-tight text-ink">
+              {LAYOUT_NAME[selectedAnswer.kind]}
+            </span>
+            <span className="block truncate text-[11px] text-ink-muted">
+              {selectedAnswer.kind === 'answerSpace'
+                ? 'dotted lines for written answers'
+                : 'ruled lines for written answers'}
+            </span>
+          </span>
+          <IconButton label="Close editor" onClick={() => selectElement(undefined)}>
+            <CloseIcon size={14} />
+          </IconButton>
+        </header>
+
+        <div ref={panelRef} className="scroll-slim min-h-0 flex-1 overflow-y-auto p-3.5">
+          {isFill ? (
+            <div className="space-y-2">
+              <Pill>fills page</Pill>
+              <p className="text-xs leading-relaxed text-ink-muted">
+                This space stretches to the bottom of its page, so the line count is
+                set by the layout — currently {selectedAnswer.lines} lines.
+              </p>
+              <p className="text-xs text-ink-subtle">此答題空間自動填滿頁面。</p>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[13px] font-medium text-ink">Lines</p>
+                <p className="text-[11px] text-ink-subtle">行數</p>
+              </div>
+              <span className="flex shrink-0 items-center">
+                <SizeStepper
+                  value={selectedAnswer.lines}
+                  min={MIN_ANSWER_LINES}
+                  step={1}
+                  unit={selectedAnswer.lines === 1 ? 'line' : 'lines'}
+                  label={
+                    selectedAnswer.kind === 'answerSpace'
+                      ? 'Answer space lines'
+                      : 'Answer lines'
+                  }
+                  onCommit={(lines) => resizeLayoutElement(selectedAnswer.id, lines)}
+                />
+              </span>
+            </div>
+          )}
         </div>
       </div>
     );
