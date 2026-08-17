@@ -1352,6 +1352,37 @@ Measuring lives in the component; the deciding half is pure in
 
 `movePage` is one `moveRunInFlow` — a page is just a run of ids.
 
+### An item taller than a page breaks at a node boundary
+
+An item that merely overflows moves to the next sheet **whole** — Word does the same, and
+breaking a question that would have fitted costs a page turn for nothing. One taller than a
+whole page is **split**, because the alternative was worse: it used to get its own sheet and
+overflow off the paper, printing over the footer and then simply not being there. The
+reference booklet's Q11 (two framed sources, four parts, a table) lost its final table and
+essay instruction that way, and the preview reported one sheet fewer than the `.docx`.
+
+- **The break candidates come from `keepNext`**, not from the measured boxes:
+  `breakAfterNodes` (`Preview.tsx`) offers any node whose `keepNext` is falsy. That is the
+  chain Word reads, so both backends break in the same place — on Q11, before part (d).
+  A source panel's nodes keep to each other, so a break is never offered inside a frame.
+- **Moved first, split second.** An item is only ever broken while it has a sheet to
+  itself; filling the outgoing sheet's slack with the head is what Word does *not* do, and
+  a preview that did it ended the document a sheet short.
+- **The last boundary that fits wins** — filling the sheet is what keeps the preview's page
+  count equal to the export's.
+- **Heights are per node**: the probe records each block's cumulative node bottoms
+  (`nodeHeights`) beside the block height; `breakPoints` joins the two. Measured in the
+  probe only — a block already split has just a piece of itself on each sheet.
+- **A fragment is a rendering, never a model thing.** `ItemBody` takes a `range` and slices
+  its own node array; `composePages` gives a split item to the page it *starts* on and to
+  that one only, so the rail, drag/drop and `moveRunInFlow` keep seeing one item.
+- **An oversized atom is cut anyway** (a source frame taller than a page): a frame in two
+  halves is visible and fixable, content off the paper is not. An item with no declared
+  boundary keeps the old behaviour exactly.
+- **A fill answer space is never split** — its height is the paginator's own output.
+- Documents with nothing too tall pack byte-identically to before (`pagination.test.ts`
+  pins both directions).
+
 ### A drop target receives the run, not the grabbed id
 
 Dragging a multi-selection member carries the whole selection; that rule lives in the

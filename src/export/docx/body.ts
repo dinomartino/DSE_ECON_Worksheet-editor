@@ -749,9 +749,12 @@ function figureRowXml(node: FigureRowNode, context: BodyContext): string {
  * only to group the label, body and footnote (2025 Source B, whose table is its own
  * box).
  *
- * The row is `cantSplit`: a frame that broke across a page would print half a box.
- * That makes a tall source atomic, which is the deliberate trade — the preview warns
- * when one cannot fit a page rather than silently overflowing.
+ * The row is `cantSplit`: a frame that broke across a page would print half a box. That
+ * makes a source atomic, which is the deliberate trade — the preview's paginator honours
+ * it by never offering a break inside one (a source's own nodes `keepNext` to each other,
+ * and the break candidates are derived from that chain), so a question holding one breaks
+ * around it. A source taller than a whole page is the one case with no good answer: both
+ * backends cut it rather than lose what follows.
  */
 function sourceXml(node: SourceNode, context: BodyContext): string {
   const border = (side: string) =>

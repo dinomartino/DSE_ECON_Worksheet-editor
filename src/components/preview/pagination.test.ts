@@ -7,6 +7,7 @@ import {
   marqueeBounds,
   marqueeCatches,
   packPages,
+  placementKey,
   resolveFillCounts,
   type PackItem,
 } from './pagination';
@@ -86,6 +87,119 @@ describe('packing the flow onto sheets', () => {
   it('puts everything on one page before the first measurement', () => {
     const items = [item('q1'), item('q2'), item('q3')];
     expect(packPages(items, new Map(), PAGE).pages).toEqual([items]);
+  });
+});
+
+/**
+ * Breaking an item too tall for any sheet (§ *An item taller than a page breaks at a node
+ * boundary*).
+ *
+ * The reference booklet's question 11 is the case: two framed sources, four parts and a
+ * table, taller than a page. It used to get a sheet of its own and hang off the bottom of
+ * it — the final table and the essay instruction printed over the footer and then were
+ * simply not on the paper, and the preview reported one sheet fewer than the `.docx`,
+ * which had broken the question correctly all along.
+ */
+describe('breaking an item that no sheet can hold', () => {
+  /** An item declaring legal boundaries every quarter-page, at the given node indices. */
+  const tall = (key: string, at: number[]) =>
+    item(key, { breakPoints: at.map((index) => ({ index, height: (index + 1) * (PAGE / 4) })) });
+
+  const heightsWith = (items: PackItem[], tallKey: string, height: number) =>
+    new Map(items.map((i) => [i.key, i.key === tallKey ? height : PAGE / 2]));
+
+  it('breaks at the last legal boundary that fits, filling the sheet', () => {
+    // Boundaries at 25/50/75/100/125px; the sheet holds 100. The break takes the last
+    // one that fits, because filling the sheet is what keeps the preview's page count
+    // equal to the export's — stopping at the first would run the document long.
+    const q = tall('q1', [0, 1, 2, 3, 4]);
+    const items = [q];
+    const { pages, fragments } = packPages(items, heightsWith(items, 'q1', 125), PAGE);
+
+    expect(pages.map((page) => page.map((b) => b.key))).toEqual([['q1'], ['q1']]);
+    expect(fragments.get(placementKey(0, 0))).toEqual({ from: 0, to: 3, continued: false });
+    expect(fragments.get(placementKey(1, 0))).toEqual({
+      from: 4,
+      to: Number.MAX_SAFE_INTEGER,
+      continued: true,
+    });
+  });
+
+  it('moves the item to a fresh sheet first, and only then breaks it', () => {
+    /*
+     * Word moves the paragraph and *then* breaks it, so the head must not fill the
+     * outgoing sheet's slack. A preview that split on the way out ended the reference
+     * booklet a sheet shorter than the export — the very disagreement this exists to
+     * remove — and left the question's stem trailing under the previous item.
+     */
+    const q = tall('q2', [0, 1, 2, 3, 4]);
+    const items = [item('q1'), q];
+    const { pages } = packPages(items, heightsWith(items, 'q2', 125), PAGE);
+
+    // q1 keeps page one to itself; the tall item starts clean on page two.
+    expect(pages.map((page) => page.map((b) => b.key))).toEqual([['q1'], ['q2'], ['q2']]);
+  });
+
+  it('breaks again as often as it takes', () => {
+    // Three pages tall: the tail is packed like any other item, so it splits once more
+    // without the packer having to know in advance how many pieces there will be.
+    const at = Array.from({ length: 12 }, (_, index) => index);
+    const q = tall('q1', at);
+    const items = [q];
+    const { pages } = packPages(items, heightsWith(items, 'q1', 300), PAGE);
+    expect(pages).toHaveLength(3);
+    expect(pages.every((page) => page.length === 1)).toBe(true);
+  });
+
+  it('leaves an item that merely overflows whole', () => {
+    // The rule it must not swallow: a question that fits a sheet of its own is moved,
+    // never cut. A page turn mid-question is a real cost, and paying it to save slack
+    // the next sheet has anyway is not a trade worth making.
+    const q = tall('q2', [0, 1, 2]);
+    const items = [item('q1'), q];
+    const { pages, fragments } = packPages(items, heightsWith(items, 'q2', PAGE - 1), PAGE);
+
+    expect(pages.map((page) => page.map((b) => b.key))).toEqual([['q1'], ['q2']]);
+    expect(fragments.size).toBe(0);
+  });
+
+  it('breaks an oversized atom rather than let it fall off the paper', () => {
+    /*
+     * A source panel taller than a page has no boundary that fits the room. Cutting it at
+     * the first one anyway is the deliberate choice: a frame printed in two halves is a
+     * thing a teacher can see and shorten, and content past the sheet's edge is not.
+     */
+    const q = item('q1', { breakPoints: [{ index: 5, height: PAGE * 1.5 }] });
+    const items = [q];
+    const { pages, fragments } = packPages(items, heightsWith(items, 'q1', PAGE * 2), PAGE);
+
+    expect(pages).toHaveLength(2);
+    expect(fragments.get(placementKey(0, 0))).toEqual({ from: 0, to: 5, continued: false });
+  });
+
+  it('leaves an item with no declared boundaries exactly as it was', () => {
+    // Nothing to break at — the masthead, a picture, a document from before this rule.
+    // It keeps the old behaviour, overflow and all, rather than being cut blindly.
+    const items = [item('q1')];
+    const { pages, fragments } = packPages(items, heightsWith(items, 'q1', PAGE * 2), PAGE);
+    expect(pages.map((page) => page.map((b) => b.key))).toEqual([['q1']]);
+    expect(fragments.size).toBe(0);
+  });
+
+  it('gives a split item to the page it starts on, and to that one only', () => {
+    /*
+     * `flowIds` is read as "the things on this page". A split item's id appearing on both
+     * sheets would have the rail offer to delete the same question from two cards, and
+     * hand `moveRunInFlow` the same id twice — while the model holds one question either
+     * way, so the continuation is a rendering, not a thing to act on.
+     */
+    const q = tall('q1', [0, 1, 2, 3, 4]);
+    const items = [q];
+    const composed = composePages(packPages(items, heightsWith(items, 'q1', 125), PAGE));
+
+    expect(composed[0].flowIds).toEqual(['q1']);
+    expect(composed[1].flowIds).toEqual([]);
+    expect(composed[1].structuralOnly).toBe(true);
   });
 });
 

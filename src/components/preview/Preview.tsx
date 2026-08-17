@@ -146,7 +146,11 @@ import {
   marqueeBounds,
   marqueeCatches,
   packPages,
+  placementKey,
   resolveFillCounts,
+  // Aliased: `Fragment` is React's own name in a .tsx file, and the paginator's piece of
+  // an item is a different thing entirely.
+  type Fragment as ItemFragment,
   type PackItem,
   type PageComposition,
 } from "./pagination";
@@ -3140,14 +3144,55 @@ function DraggableItem({
  */
 interface FlowBlock extends PackItem {
   node: React.ReactNode;
+  /**
+   * The same content re-rendered for one slice of its nodes, for a block the paginator
+   * had to break across sheets. Absent on blocks that cannot be split (the masthead, the
+   * instructions, a page break), which is why `node` stays the thing sheets normally draw.
+   */
+  slice?: (range: { from: number; to: number }) => React.ReactNode;
+  /**
+   * Node indices this block may be broken *after*, from the IR's own `keepNext` chain.
+   *
+   * The measured heights land beside them as `breakPoints` once the probe has run
+   * (§`usePagination`). Kept separate from the heights because the two come from different
+   * places and only one of them changes when a teacher retypes a line.
+   */
+  breakAfter?: number[];
+}
+
+/**
+ * Where an item's nodes may be broken across sheets: after any node that does not keep
+ * with the next one.
+ *
+ * `keepNext` is the IR's existing statement of "these two belong together", authored by the
+ * block builders (a source's label keeps to its frame, a stem to its parts, part (d)'s
+ * lead-in to its table) and read natively by Word. Deriving the preview's break candidates
+ * from the *same* field is what makes the sheet the screen ends and the page the `.docx`
+ * ends the same one — on the reference booklet's question 11 both break before part (d).
+ *
+ * The last node is never a candidate: a break after it would leave an empty continuation.
+ */
+function breakAfterNodes(nodes: RenderNode[]): number[] {
+  const indices: number[] = [];
+  for (let index = 0; index < nodes.length - 1; index += 1) {
+    const node = nodes[index];
+    const keeps = 'keepNext' in node ? node.keepNext : undefined;
+    if (!keeps) indices.push(index);
+  }
+  return indices;
 }
 
 /**
  * Splits the flow across real sheets. Pagination is *measured*, not computed (only
  * the browser knows font metrics, bilingual stacking and wrapping): the flow renders
  * once in a hidden probe at true content width, heights are recorded, blocks pack
- * into page-height buckets. Blocks are kept whole; one taller than a page gets its
- * own page and overflows honestly.
+ * into page-height buckets.
+ *
+ * A block that fits is kept whole. One **taller than a whole page** is broken at a node
+ * boundary its IR declares legal, because the alternative — the rule this replaced — was
+ * to give it its own sheet and let the remainder hang off the paper, where it printed over
+ * the footer and was then simply missing (§ `packPages`). The probe therefore measures
+ * each block's *nodes* as well as the block, so the packer has boundaries to choose from.
  */
 function usePagination(
   blocks: FlowBlock[],
@@ -3159,10 +3204,14 @@ function usePagination(
   openedBy: (string | undefined)[];
   /** Each block's measured height, for callers that need to reason about a page's fill. */
   heights: Map<string, number>;
+  /** The slice each placement renders, for the blocks that had to be broken. */
+  fragments: Map<string, ItemFragment>;
   probeRef: React.RefObject<HTMLDivElement | null>;
 } {
   const probeRef = useRef<HTMLDivElement>(null);
   const [heights, setHeights] = useState<Map<string, number>>(new Map());
+  /** Per block: the cumulative bottom of each of its nodes, from the block's own top. */
+  const [nodeHeights, setNodeHeights] = useState<Map<string, number[]>>(new Map());
 
   // Measure after paint, and re-measure whenever the content or the page geometry
   // changes. A ResizeObserver on the probe catches reflows the dependency list cannot
@@ -3186,6 +3235,7 @@ function usePagination(
      */
     const measure = () => {
       const next = new Map<string, number>();
+      const nodeTops = new Map<string, number[]>();
       const children = Array.from(probe.children) as HTMLElement[];
       const probeEnd = probe.getBoundingClientRect().bottom;
       let prevBottom = probe.getBoundingClientRect().top;
@@ -3198,12 +3248,49 @@ function usePagination(
             : child.getBoundingClientRect().bottom;
         next.set(key, Math.max(0, bottom - prevBottom));
         prevBottom = bottom;
+
+        /*
+         * The cumulative bottom of each of the block's nodes, measured from the block's
+         * own top — the raw material for the split's candidate boundaries.
+         *
+         * Read off the item wrapper's DOM children, which are 1:1 with the IR nodes
+         * because `ItemBody` maps one `NodeView` per node. Measured only here, in the
+         * probe: the sheets render the *same* markup, but a block already split has only
+         * part of it on each one, and measuring a piece cannot tell us where the whole
+         * would have broken.
+         */
+        const item = child.firstElementChild?.matches?.('[data-question-id],[data-layout-id]')
+          ? child.firstElementChild
+          : child.querySelector('[data-question-id],[data-layout-id]');
+        if (item) {
+          const top = item.getBoundingClientRect().top;
+          nodeTops.set(
+            key,
+            Array.from(item.children).map((node) =>
+              Math.max(0, node.getBoundingClientRect().bottom - top),
+            ),
+          );
+        }
       }
       setHeights((prev) => {
         if (prev.size === next.size && [...next].every(([k, v]) => prev.get(k) === v)) {
           return prev; // Bail out rather than re-render on an identical measurement.
         }
         return next;
+      });
+      setNodeHeights((prev) => {
+        // Compared by value for the reason the block heights are: the effect re-runs per
+        // measurement pass, and a fresh Map every time would re-pack on every keystroke.
+        if (
+          prev.size === nodeTops.size &&
+          [...nodeTops].every(([key, tops]) => {
+            const was = prev.get(key);
+            return was?.length === tops.length && tops.every((top, i) => was[i] === top);
+          })
+        ) {
+          return prev;
+        }
+        return nodeTops;
       });
     };
 
@@ -3215,12 +3302,32 @@ function usePagination(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
-  const { pages, openedBy } = useMemo(
-    () => packPages(blocks, heights, contentHeightPx),
-    [blocks, heights, contentHeightPx],
+  /*
+   * Attach the measured boundaries to the blocks that declared legal ones.
+   *
+   * `breakAfter` (from the IR's `keepNext`) says *where* a break is allowed; the probe says
+   * *how tall* the item is up to there. Both halves are needed, and neither is useful
+   * alone — so they are joined here, once, rather than inside the packer, which stays pure.
+   */
+  const packable = useMemo(
+    () =>
+      blocks.map((block) => {
+        const tops = nodeHeights.get(block.key);
+        if (!tops || !block.breakAfter || block.breakAfter.length === 0) return block;
+        const breakPoints = block.breakAfter
+          .filter((index) => index < tops.length - 1)
+          .map((index) => ({ index, height: tops[index] }));
+        return breakPoints.length > 0 ? { ...block, breakPoints } : block;
+      }),
+    [blocks, nodeHeights],
   );
 
-  return { pages, openedBy, heights, probeRef };
+  const { pages, openedBy, fragments } = useMemo(
+    () => packPages(packable, heights, contentHeightPx),
+    [packable, heights, contentHeightPx],
+  );
+
+  return { pages, openedBy, heights, fragments, probeRef };
 }
 
 /**
@@ -3317,6 +3424,12 @@ interface ItemBodyProps {
   /** This item is the page's single selection (question or layout element). */
   selected: boolean;
   onSelect: (event: React.MouseEvent) => void;
+  /**
+   * The slice of the item's nodes this copy renders, when it was split across sheets
+   * (§ *An item taller than a page breaks at a node boundary*). Absent renders all of
+   * them, which is every item in a document with nothing too tall in it.
+   */
+  range?: { from: number; to: number };
 }
 
 /**
@@ -3349,8 +3462,15 @@ const itemBodyId = (item: RenderedItem) =>
   item.type === "question" ? item.question.questionId : item.layout.elementId;
 
 const ItemBody = memo(
-  function ItemBody({ item, language, ctx, selected, onSelect }: ItemBodyProps) {
-    const nodes = itemBodyNodes(item);
+  function ItemBody({ item, language, ctx, selected, onSelect, range }: ItemBodyProps) {
+    const all = itemBodyNodes(item);
+    // The slice keeps the node's own index as its React key, so a continuation's nodes
+    // keep the identity they had before the split and React reuses their DOM.
+    const nodes = range
+      ? all
+          .map((node, index) => ({ node, index }))
+          .filter(({ index }) => index >= range.from && index <= range.to)
+      : all.map((node, index) => ({ node, index }));
     if (item.type === "layout") {
       // Layout elements take no number and have nothing for the sidebar to inspect,
       // but they still need to be selectable — otherwise a divider or a page break
@@ -3365,7 +3485,7 @@ const ItemBody = memo(
             selected ? SELECTED_ITEM : "hover:bg-black/[0.03]"
           }`}
         >
-          {nodes.map((node, index) => (
+          {nodes.map(({ node, index }) => (
             <NodeView key={index} node={node} language={language} ctx={ctx} />
           ))}
         </div>
@@ -3380,7 +3500,7 @@ const ItemBody = memo(
           selected ? SELECTED_ITEM : "hover:bg-black/[0.03]"
         }`}
       >
-        {nodes.map((node, index) => (
+        {nodes.map(({ node, index }) => (
           <NodeView key={index} node={node} language={language} ctx={ctx} />
         ))}
       </div>
@@ -3395,6 +3515,11 @@ const ItemBody = memo(
     prev.language === next.language &&
     prev.selected === next.selected &&
     prev.ctxStamp === next.ctxStamp &&
+    // The rendered slice is content too: a repagination that moves the break inside a
+    // split item changes nothing else about it, so comparing by value here is what keeps
+    // the two halves showing the right nodes.
+    prev.range?.from === next.range?.from &&
+    prev.range?.to === next.range?.to &&
     // Editable and read-only renders differ structurally, so ctx presence matters even
     // though its identity does not.
     (prev.ctx === undefined) === (next.ctx === undefined),
@@ -5248,9 +5373,13 @@ export function Preview({
         item.type === "layout" &&
         item.layout.nodes.some((node) => node.kind === "answerSpace" && node.fill);
 
-      const body = (
+      // Built per rendered slice, so a block the paginator broke can draw its head on one
+      // sheet and its tail on the next through the identical path. `undefined` — the
+      // ordinary case — renders every node, exactly as before.
+      const bodyFor = (range?: { from: number; to: number }) => (
         <ItemBody
           item={item}
+          range={range}
           language={language}
           ctx={ctx}
           ctxStamp={ctxStamp}
@@ -5318,12 +5447,10 @@ export function Preview({
         />
       );
 
-      blocks.push({
-        key: id,
-        forceBreak: isManualBreak,
-        breakId: isManualBreak ? id : undefined,
-        fillsPage,
-        node: !onReorder ? (
+      // The chrome around the body is the same whichever slice is inside it, so it is
+      // built from the body rather than around one fixed copy of it.
+      const wrap = (body: React.ReactNode) =>
+        !onReorder ? (
           body
         ) : (
           <DraggableItem
@@ -5396,7 +5523,24 @@ export function Preview({
               )}
             {body}
           </DraggableItem>
-        ),
+        );
+
+      blocks.push({
+        key: id,
+        forceBreak: isManualBreak,
+        breakId: isManualBreak ? id : undefined,
+        fillsPage,
+        // A manual break and a fill answer space are positioning instructions, not prose:
+        // neither has interior boundaries worth breaking at, and a fill is never split
+        // (§`packPages`), so neither offers any.
+        breakAfter:
+          isManualBreak || fillsPage
+            ? undefined
+            : breakAfterNodes(
+                item.type === 'question' ? item.question.nodes : item.layout.nodes,
+              ),
+        node: wrap(bodyFor()),
+        slice: (range) => wrap(bodyFor(range)),
       });
     }
   }
@@ -5481,6 +5625,7 @@ export function Preview({
     pages,
     openedBy,
     heights: heightsOf,
+    fragments,
     probeRef,
   } = usePagination(blocks, contentHeightPx, [
     // Deliberately *not* keyed on the selection or the drag: selection chrome paints
@@ -5643,6 +5788,7 @@ export function Preview({
       contentHeightPx,
       (key) => fillPitch.get(key),
       MIN_ANSWER_LINES,
+      fragments,
     );
     if (counts.size === 0) return;
 
@@ -5659,7 +5805,16 @@ export function Preview({
       }
     }
     if (differs) onResolveFills(counts);
-  }, [pages, heightsOf, contentHeightPx, worksheet, onResolveFills, dragId, measurementsSettled]);
+  }, [
+    pages,
+    heightsOf,
+    fragments,
+    contentHeightPx,
+    worksheet,
+    onResolveFills,
+    dragId,
+    measurementsSettled,
+  ]);
 
   /*
    * Tell the page rail how the flow landed on sheets.
@@ -5671,10 +5826,10 @@ export function Preview({
    * parent stores what it is told — loop.
    */
   const composition = useMemo<PageComposition[]>(
-    () => composePages({ pages, openedBy }),
+    () => composePages({ pages, openedBy, fragments }),
     // `blocks` is rebuilt every render by construction; `pages` is the memoised result
     // that actually changes, and every item that matters is reachable through it.
-    [pages, openedBy],
+    [pages, openedBy, fragments],
   );
 
   const compositionKey = keyOfComposition(composition);
@@ -6018,21 +6173,30 @@ export function Preview({
                     }
                   />
                 ) : (
-                  pageBlocks.map((block, blockIndex) => (
-                    // A boundary gap dies at the top of a sheet: the air belongs to the
-                    // *boundary* between two items, and once that boundary is a page
-                    // break the air is only a shifted top margin — on the exam paper's
-                    // three-line boundary it reads as a missing question. Word applies
-                    // the same rule to `w:before` natively; this is the preview's half
-                    // (§ `withLeadingGap`). A class, not a prop, because the gap sits on
-                    // a paragraph nested inside the block's already-built node.
-                    <div
-                      key={block.key}
-                      className={blockIndex === 0 ? "leads-sheet" : undefined}
-                    >
-                      {block.node}
-                    </div>
-                  ))
+                  pageBlocks.map((block, blockIndex) => {
+                    // The piece of this block the sheet shows, for one the paginator broke
+                    // across sheets. Absent — every block of an ordinary document — draws
+                    // the whole thing through the same path it always did.
+                    const piece = fragments.get(placementKey(pageIndex, blockIndex));
+                    return (
+                      // A boundary gap dies at the top of a sheet: the air belongs to the
+                      // *boundary* between two items, and once that boundary is a page
+                      // break the air is only a shifted top margin — on the exam paper's
+                      // three-line boundary it reads as a missing question. Word applies
+                      // the same rule to `w:before` natively; this is the preview's half
+                      // (§ `withLeadingGap`). A class, not a prop, because the gap sits on
+                      // a paragraph nested inside the block's already-built node.
+                      <div
+                        // The piece is part of the key: a continuation and a head are
+                        // different renderings of one id, and reusing the element across a
+                        // repagination that moved the break would keep the old slice.
+                        key={piece ? `${block.key}#${piece.from}` : block.key}
+                        className={blockIndex === 0 ? "leads-sheet" : undefined}
+                      >
+                        {piece && block.slice ? block.slice(piece) : block.node}
+                      </div>
+                    );
+                  })
                 )}
               </div>
 
