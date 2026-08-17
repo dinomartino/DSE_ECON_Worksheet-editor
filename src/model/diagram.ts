@@ -263,6 +263,71 @@ export interface FlowChart {
 }
 
 /**
+ * Where one speech bubble sits around the forum's central picture.
+ *
+ * Slot-based, never free (the same rule as bands and flow nodes): the reference
+ * figures (2023 Source B, 2025 Source C) place their bubbles in exactly these four
+ * corners around the illustration, and a stored pixel position would go stale the
+ * moment a bubble's text rewrapped or the picture changed.
+ */
+export type ForumSlot = 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight';
+
+/**
+ * One speech bubble: an underlined speaker line ("A typical US citizen:") over a
+ * body, with a tail drawn toward the central picture. Speaker and body are separate
+ * fields, not one text with a convention, because the papers format them differently
+ * (the speaker line is underlined, the body is not) and a derived split would break
+ * on a speaker whose name contains a colon.
+ */
+export interface ForumBubble {
+  id: string;
+  slot: ForumSlot;
+  /** "The host:" — printed underlined on its own line inside the box. */
+  speaker: BiText;
+  /** The quoted view itself. */
+  text: BiText;
+  /**
+   * The box's width as a fraction of the figure's own width. Absent = the default
+   * share (two bubbles and a gutter fill the row, the reference proportion).
+   *
+   * A fraction rather than pixels so a bubble keeps its proportion when the whole
+   * figure is resized — the same reason a table's columns store fractions. Set by
+   * dragging the bubble's inner edge on the forum canvas; the text re-wraps to
+   * whatever width the box gives it, and the box's height follows the wrapped lines.
+   */
+  width?: number;
+}
+
+/**
+ * The central illustration the bubbles' tails point at — the round-table or
+ * whiteboard clipart of the reference figures.
+ *
+ * A `data:` URL like every stored picture (§ imageImport), so the document stays
+ * self-contained; it is embedded *inline* in the forum's SVG and rasterizes into the
+ * same single PNG, which is what keeps "one diagram = one image in Word" true. The
+ * natural size describes the stored bytes, exactly as `ImageBlock`'s does, so the
+ * drawn aspect cannot disagree with the pixels.
+ */
+export interface ForumImage {
+  src: string;
+  naturalWidthPx: number;
+  naturalHeightPx: number;
+}
+
+/**
+ * A forum figure — the "views expressed in a forum" stimulus both reference DRQs
+ * print (`real_life_reference/2023_essay.png` Source B, `2025_essay.png` Source C):
+ * speech bubbles with pointed tails around a central illustration. A variant inside
+ * `Diagram`, under the same contract as `pie` and `flow`: one SVG, one rasterized
+ * PNG, resize by re-measure, and the sidebar panel — never a canvas — edits it.
+ */
+export interface ForumChart {
+  bubbles: ForumBubble[];
+  /** Optional: a forum with no picture yet still draws its bubbles, tails inward. */
+  image?: ForumImage;
+}
+
+/**
  * A complete diagram.
  *
  * Everything is optional except the axes, because the default state — what a teacher
@@ -330,6 +395,12 @@ export interface Diagram {
    * sidebar panel — never the axes canvas — edits the nodes and arrows.
    */
   flow?: FlowChart;
+  /**
+   * When present, the diagram **is** a forum figure, under the same contract as `pie`
+   * and `flow`: the renderer draws speech bubbles around the central picture and
+   * ignores the axes fields, and the sidebar panel edits the bubbles and the image.
+   */
+  forum?: ForumChart;
   x: DiagramAxis;
   y: DiagramAxis;
   curves: DiagramCurve[];

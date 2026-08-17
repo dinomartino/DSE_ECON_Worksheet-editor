@@ -8,6 +8,8 @@ import type {
   FlowArrow,
   FlowChart,
   FlowNode,
+  ForumBubble,
+  ForumChart,
   PieChart,
 } from '@/model/diagram';
 import type { BiText, FontPair, LanguageMode, RichText } from '@/model/types';
@@ -319,10 +321,20 @@ function estimateWidth(lines: RichText[], fontSize: number): number {
  * lines and are preserved. A line that already fits passes through untouched, run
  * identity intact, so a document wide enough for its title renders byte-identically.
  */
-function wrapRichLines(lines: RichText[], maxWidth: number, fontSize: number): RichText[] {
+function wrapRichLines(
+  lines: RichText[],
+  maxWidth: number,
+  fontSize: number,
+  /**
+   * The metric to wrap by, defaulting to the shared `estimateWidth`. The forum
+   * passes its own per-character measure: its boxes hug the wrapped text, so a
+   * coarse estimate there is not merely whitespace — it is a visibly wrong box.
+   */
+  measure: (lines: RichText[], fontSize: number) => number = estimateWidth,
+): RichText[] {
   const wrapped: RichText[] = [];
   for (const line of lines) {
-    if (estimateWidth([line], fontSize) <= maxWidth) {
+    if (measure([line], fontSize) <= maxWidth) {
       wrapped.push(line);
       continue;
     }
@@ -340,7 +352,7 @@ function wrapRichLines(lines: RichText[], maxWidth: number, fontSize: number): R
         units.push({
           run,
           text: piece,
-          width: estimateWidth([[{ ...run, text: piece }]], fontSize),
+          width: measure([[{ ...run, text: piece }]], fontSize),
         });
       }
     }
@@ -858,6 +870,8 @@ export function diagramSize(
   if (diagram.pie) return pieSize(diagram, widthPx, language);
   // The flow variant's shape comes entirely from its own measured layout.
   if (diagram.flow) return flowSize(diagram, diagram.flow, widthPx, language);
+  // So does the forum's: bubbles measured from their own wrapped text.
+  if (diagram.forum) return forumSize(diagram, diagram.forum, widthPx, language);
   // A cropped diagram is sized by its frame, not by measuring: the teacher chose the
   // clearance on every side, so the plot takes what the width leaves after their pads
   // and the height follows from the plot's aspect plus their top and bottom. Language
@@ -1620,6 +1634,406 @@ function flowSvg(diagram: Diagram, flow: FlowChart, options: DiagramSvgOptions):
   );
 }
 
+/*
+ * ── The forum figure variant ──────────────────────────────────────────────────────
+ *
+ * A `Diagram` carrying `forum` draws the "views expressed in a forum" stimulus both
+ * reference DRQs print (`real_life_reference/2023_essay.png` Source B,
+ * `2025_essay.png` Source C): speech bubbles — an underlined speaker line over a
+ * body — with pointed tails aimed at a central illustration.
+ *
+ * Placement is slot-based, never free: a bubble names one of four corners, the boxes
+ * are measured from their own wrapped text, and the tails are derived from where the
+ * picture actually is — so re-wording a view reflows the figure instead of stranding
+ * a tail.
+ *
+ * Unlike the flow chart, the layout is computed **at the stored width**, not at a
+ * natural size scaled photo-style: bubble prose has no natural width of its own (it
+ * wraps at whatever the box gives it), and scaling shrank the text with the figure —
+ * a 400px forum printed ~6pt bubbles beside 10pt diagram text everywhere else. Laying
+ * out at the stored width keeps every glyph at the diagram's one 10pt size and makes
+ * the width honest: a narrower figure means more wrapped lines, never smaller type.
+ */
+
+/** White clearance around the whole figure. */
+const FORUM_PAD = 6;
+/**
+ * A bubble's default width as a fraction of the figure's — two bubbles and a gutter
+ * fill the row, the reference proportion. A bubble's own `width` overrides it.
+ */
+const FORUM_BUBBLE_SHARE = 292 / 640;
+/** The stored fraction is clamped here: a sliver box holds no words, a full-width one leaves no gutter. */
+const FORUM_BUBBLE_MIN_SHARE = 0.15;
+const FORUM_BUBBLE_MAX_SHARE = 0.92;
+/** No bubble narrower than this, whatever the fraction says of a small figure. */
+const FORUM_MIN_BUBBLE_PX = 90;
+const FORUM_BUBBLE_PAD_X = 9;
+const FORUM_BUBBLE_PAD_Y = 7;
+/** Vertical reach of a tail from its box edge toward the picture row. */
+const FORUM_TAIL_LEN = 46;
+/** Width of a tail where it leaves its box. */
+const FORUM_TAIL_BASE = 26;
+/** The central picture's width as a share of the natural canvas. */
+const FORUM_IMAGE_SHARE = 0.42;
+const FORUM_LINE_HEIGHT = FONT_SIZE * 1.15;
+
+export interface ForumBubbleLayout {
+  bubble: ForumBubble;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** The underlined speaker line(s); may be empty. */
+  speakerLines: RichText[];
+  /** The body, wrapped to the box. */
+  bodyLines: RichText[];
+  /** The tail's tip, in layout px. */
+  tip: { x: number; y: number };
+  /** Which edge the tail leaves: top bubbles point down, bottom bubbles up. */
+  tailFrom: 'top' | 'bottom';
+}
+
+export interface ForumLayout {
+  bubbles: ForumBubbleLayout[];
+  /** The picture's drawn box; undefined when the forum has none. */
+  image?: { x: number; y: number; w: number; h: number };
+  width: number;
+  height: number;
+  titleRoom: number;
+  titleBelow: boolean;
+}
+
+/**
+ * Per-character advance widths for the forum's prose, in ems of the font size.
+ *
+ * The shared `estimateWidth` charges a flat 0.55em per Latin glyph — fine where it
+ * only sizes padding, but a forum bubble's box **hugs** its wrapped text, so the
+ * error is not whitespace, it is a box visibly wider than its words (the flat rate
+ * overshoots Times prose by ~10–15%, and every line wrapped early to match). These
+ * are Times New Roman's real advances bucketed into classes; a few percent of error
+ * remains — the hug below keeps a small cushion for it.
+ */
+function forumCharEm(char: string): number {
+  if (/[　-鿿豈-﫿＀-｠]/.test(char)) return 1;
+  if (/[ .,'’]/.test(char)) return 0.25;
+  if (/[ijltfrI:;!()\-\/\[\]]/.test(char)) return 0.31;
+  if (/[acegksvxyzJ]/.test(char)) return 0.46;
+  if (/[mw%]/.test(char)) return 0.74;
+  if (/[MW]/.test(char)) return 0.9;
+  if (/[A-HK-VX-Z]/.test(char)) return 0.68;
+  // Remaining lowercase, digits, "$", "?", and anything unclassified.
+  return 0.5;
+}
+
+/** The forum's own text metric, run through the same shapes as `estimateWidth`. */
+function forumTextWidth(lines: RichText[], fontSize: number): number {
+  let widest = 0;
+  for (const line of lines) {
+    let total = 0;
+    for (const run of line) {
+      // Bold sits a touch wider; sub/superscripts render at a reduced size.
+      const factor = (run.bold ? 1.03 : 1) * (run.vertAlign ? 0.72 : 1);
+      for (const char of run.text) total += fontSize * forumCharEm(char) * factor;
+    }
+    widest = Math.max(widest, total);
+  }
+  return widest;
+}
+
+/** One bubble's drawn width: its own fraction (or the default share) of the figure. */
+function forumBubbleWidth(bubble: ForumBubble, figureWidth: number): number {
+  const share = Math.min(
+    FORUM_BUBBLE_MAX_SHARE,
+    Math.max(FORUM_BUBBLE_MIN_SHARE, bubble.width ?? FORUM_BUBBLE_SHARE),
+  );
+  return Math.min(
+    figureWidth - 2 * FORUM_PAD,
+    Math.max(FORUM_MIN_BUBBLE_PX, share * figureWidth),
+  );
+}
+
+/** Cushion the hug keeps beyond the widest measured line, px — the metric's residual error. */
+const FORUM_HUG_CUSHION = 3;
+
+/**
+ * Measure one bubble's text wrapped to its target width, and the box that hugs it.
+ *
+ * `w` is the *drawn* width: the widest wrapped line plus the padding, never more
+ * than the target — the teacher's width is the wrap limit, but the box closes onto
+ * the words it actually holds. Drawing the full target left the wrap's leftover as
+ * a blank right margin inside the frame, which no reference bubble shows.
+ */
+function forumBubbleText(
+  bubble: ForumBubble,
+  targetWidth: number,
+  language: LanguageMode,
+): { speakerLines: RichText[]; bodyLines: RichText[]; w: number; h: number } {
+  const inner = targetWidth - 2 * FORUM_BUBBLE_PAD_X;
+  const speakerLines = wrapRichLines(
+    pickSides(bubble.speaker, language), inner, FONT_SIZE, forumTextWidth,
+  );
+  const bodyLines = wrapRichLines(
+    pickSides(bubble.text, language), inner, FONT_SIZE, forumTextWidth,
+  );
+  const lines = [...speakerLines, ...bodyLines];
+  const count = Math.max(1, lines.length);
+  const content = forumTextWidth(lines, FONT_SIZE);
+  const w =
+    lines.length === 0
+      ? targetWidth
+      : Math.max(
+          FORUM_MIN_BUBBLE_PX,
+          Math.min(targetWidth, content + 2 * FORUM_BUBBLE_PAD_X + FORUM_HUG_CUSHION),
+        );
+  return {
+    speakerLines,
+    bodyLines,
+    w,
+    h: 2 * FORUM_BUBBLE_PAD_Y + count * FORUM_LINE_HEIGHT,
+  };
+}
+
+/**
+ * Lay the forum out at the figure's stored width. Shared by `forumSize` and
+ * `forumSvg`, so the measured box and the drawing cannot disagree — the flow chart's
+ * own rule — and exported to the forum canvas as `forumChartLayout` for hit-testing.
+ */
+function forumLayout(
+  diagram: Diagram,
+  forum: ForumChart,
+  widthPx: number,
+  language: LanguageMode,
+): ForumLayout {
+  const room = titleRoom(diagram, language, 1);
+  const titleBelow = diagram.titlePlacement === 'below';
+  const top = FORUM_PAD + (titleBelow ? 0 : room);
+  const width = Math.max(160, widthPx);
+
+  // An empty forum still shows something clickable: one empty bubble, the forum
+  // equivalent of the empty pie's bare circle.
+  const stored =
+    forum.bubbles.length > 0 || forum.image
+      ? forum.bubbles
+      : [{ id: 'placeholder', slot: 'topLeft' as const, speaker: { en: [], zh: [] }, text: { en: [], zh: [] } }];
+
+  const topRow = stored.filter((bubble) => bubble.slot.startsWith('top'));
+  const bottomRow = stored.filter((bubble) => bubble.slot.startsWith('bottom'));
+
+  const measure = (bubble: ForumBubble) =>
+    forumBubbleText(bubble, forumBubbleWidth(bubble, width), language);
+  const rowHeight = (row: ForumBubble[]) =>
+    row.length === 0 ? 0 : Math.max(...row.map((bubble) => measure(bubble).h));
+
+  const topRowY = top;
+  const topRowH = rowHeight(topRow);
+
+  // The picture row. The tails reach `FORUM_TAIL_LEN` from each bubble row, so the
+  // picture sits that far below the top row (and the bottom row that far below it).
+  // With no picture, the tails still get their reach and point at the row's middle.
+  const imageTop = topRowY + topRowH + (topRow.length > 0 ? FORUM_TAIL_LEN : 0);
+  const imageW = width * FORUM_IMAGE_SHARE;
+  const imageH = forum.image
+    ? (imageW * forum.image.naturalHeightPx) / Math.max(1, forum.image.naturalWidthPx)
+    : topRow.length > 0 && bottomRow.length > 0
+      ? 24
+      : 0;
+  const image = forum.image
+    ? { x: (width - imageW) / 2, y: imageTop, w: imageW, h: imageH }
+    : undefined;
+
+  const bottomRowY = imageTop + imageH + (bottomRow.length > 0 ? FORUM_TAIL_LEN : 0);
+  const bottomRowH = rowHeight(bottomRow);
+
+  const height =
+    (bottomRow.length > 0 ? bottomRowY + bottomRowH : imageTop + imageH) +
+    FORUM_PAD +
+    (titleBelow ? room : 0);
+
+  // Where every tail aims: the picture's centre, or the picture row's middle when
+  // there is nothing there yet.
+  const target = {
+    x: width / 2,
+    y: image ? image.y + image.h / 2 : imageTop + (imageH || FORUM_TAIL_LEN) / 2,
+  };
+
+  const place = (bubble: ForumBubble, rowY: number): ForumBubbleLayout => {
+    const text = measure(bubble);
+    const w = text.w;
+    const onLeft = bubble.slot === 'topLeft' || bubble.slot === 'bottomLeft';
+    // Anchored to its slot's own edge, so a resized bubble grows toward the middle
+    // and its outer margin never moves.
+    const x = onLeft ? FORUM_PAD : width - FORUM_PAD - w;
+    const fromTopRow = bubble.slot.startsWith('top');
+    const y = rowY;
+    const edgeY = fromTopRow ? y + text.h : y;
+    // The tail leaves the box near its inner side and slants toward the picture,
+    // stopping just inside its edge so the join reads as the reference draws it.
+    const baseX = Math.min(Math.max(target.x, x + 30), x + w - 30);
+    const tipY = image
+      ? fromTopRow
+        ? image.y + 10
+        : image.y + image.h - 10
+      : fromTopRow
+        ? edgeY + FORUM_TAIL_LEN
+        : edgeY - FORUM_TAIL_LEN;
+    const tipX = baseX + (target.x - baseX) * 0.55;
+    return {
+      bubble,
+      x,
+      y,
+      w,
+      h: text.h,
+      speakerLines: text.speakerLines,
+      bodyLines: text.bodyLines,
+      tip: { x: tipX, y: tipY },
+      tailFrom: fromTopRow ? 'bottom' : 'top',
+    };
+  };
+
+  return {
+    bubbles: [
+      ...topRow.map((bubble) => place(bubble, topRowY)),
+      ...bottomRow.map((bubble) => place(bubble, bottomRowY)),
+    ],
+    image,
+    width,
+    height,
+    titleRoom: room,
+    titleBelow,
+  };
+}
+
+/**
+ * One bubble's outline: its rectangle with a notch on the tail edge, closed through
+ * the tip — a single path, so the box border and the tail share one stroke and the
+ * join cannot show a seam.
+ */
+function forumBubblePath(box: ForumBubbleLayout): string {
+  const { x, y, w, h, tip } = box;
+  const half = FORUM_TAIL_BASE / 2;
+  const baseX = Math.min(Math.max(tip.x, x + 8 + half), x + w - 8 - half);
+  const b1 = baseX - half;
+  const b2 = baseX + half;
+  if (box.tailFrom === 'bottom') {
+    // Clockwise from the top-left; the bottom edge detours through the tip.
+    return (
+      `M ${n(x)} ${n(y)} H ${n(x + w)} V ${n(y + h)} H ${n(b2)} ` +
+      `L ${n(tip.x)} ${n(tip.y)} L ${n(b1)} ${n(y + h)} H ${n(x)} Z`
+    );
+  }
+  // Tail on the top edge, pointing up.
+  return (
+    `M ${n(x)} ${n(y)} H ${n(b1)} L ${n(tip.x)} ${n(tip.y)} L ${n(b2)} ${n(y)} ` +
+    `H ${n(x + w)} V ${n(y + h)} H ${n(x)} Z`
+  );
+}
+
+/** The layout `forumSvg` draws, exported for the forum canvas's hit-testing. */
+export function forumChartLayout(
+  diagram: Diagram,
+  forum: ForumChart,
+  widthPx: number,
+  language: LanguageMode,
+): ForumLayout {
+  return forumLayout(diagram, forum, widthPx, language);
+}
+
+/**
+ * `diagramSize` for the forum variant: the teacher's width, the height measured from
+ * the layout at that width. Deliberately **not** the flow chart's photo-scale —
+ * bubble prose wraps at whatever the box gives it, so the honest response to a
+ * narrower figure is more lines at the same 10pt, never smaller type.
+ */
+function forumSize(
+  diagram: Diagram,
+  forum: ForumChart,
+  widthPx: number,
+  language: LanguageMode,
+): { widthPx: number; heightPx: number } {
+  const layout = forumLayout(diagram, forum, widthPx, language);
+  return {
+    widthPx: layout.width,
+    heightPx: Math.max(1, Math.round(layout.height)),
+  };
+}
+
+/** `diagramSvg` for the forum variant. */
+function forumSvg(diagram: Diagram, forum: ForumChart, options: DiagramSvgOptions): string {
+  const scale = options.scale ?? 1;
+  const width = options.widthPx * scale;
+  const height = options.heightPx * scale;
+  const language = options.language;
+  const layout = forumLayout(diagram, forum, options.widthPx, language);
+  // The layout already is the stored width, so this factor is normally just `scale`;
+  // fitted against both dimensions and centred so a stale stored height (measured in
+  // another language mode) letterboxes rather than distorts — the flow chart's rule.
+  const eff = Math.min(width / layout.width, height / layout.height);
+  const tx = (width - layout.width * eff) / 2;
+  const ty = (height - layout.height * eff) / 2;
+
+  const fontFamily = options.fonts
+    ? `${options.fonts.latin}, ${options.fonts.eastAsia}, serif`
+    : 'Times New Roman, serif';
+
+  const parts: string[] = [];
+
+  // The picture first, so a tail tip that overlaps its edge draws *over* it — the
+  // reference tails visibly enter the illustration.
+  if (layout.image && forum.image) {
+    parts.push(
+      `<image x="${n(layout.image.x)}" y="${n(layout.image.y)}" ` +
+        `width="${n(layout.image.w)}" height="${n(layout.image.h)}" ` +
+        `preserveAspectRatio="xMidYMid meet" href="${escapeXml(forum.image.src)}"/>`,
+    );
+  }
+
+  const stroke = `stroke="#000" stroke-width="1.2" fill="#fff"`;
+  for (const box of layout.bubbles) {
+    parts.push(`<path d="${forumBubblePath(box)}" ${stroke}/>`);
+    // The speaker line is underlined, the body is not — the one formatting difference
+    // the reference figures draw — so the two blocks are separate `textAt` calls.
+    const textX = box.x + FORUM_BUBBLE_PAD_X;
+    const firstBaseline = box.y + FORUM_BUBBLE_PAD_Y + FONT_SIZE * 0.8;
+    if (box.speakerLines.length > 0) {
+      parts.push(textAt(box.speakerLines, textX, firstBaseline, { underline: true }));
+    }
+    if (box.bodyLines.length > 0) {
+      parts.push(
+        textAt(
+          box.bodyLines,
+          textX,
+          firstBaseline + box.speakerLines.length * FORUM_LINE_HEIGHT,
+          {},
+        ),
+      );
+    }
+  }
+
+  // The caption, centred and underlined like the flow chart's — a forum figure in
+  // the papers is introduced by its source label, so most carry no title at all.
+  const titleLines = pickSides(diagram.title, language);
+  const title = textAt(
+    titleLines,
+    layout.width / 2,
+    layout.titleBelow
+      ? layout.height - layout.titleRoom + TITLE_GAP + TITLE_SIZE
+      : TITLE_TOP + TITLE_SIZE * 1.1,
+    { anchor: 'middle', fontSize: TITLE_SIZE, underline: true },
+  );
+
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${n(width)}" height="${n(height)}" ` +
+    `viewBox="0 0 ${n(width)} ${n(height)}" font-family="${escapeXml(fontFamily)}">` +
+    // White ground: a transparent PNG would print as whatever is behind it in Word.
+    `<rect width="${n(width)}" height="${n(height)}" fill="#fff"/>` +
+    `<g transform="translate(${n(tx)} ${n(ty)}) scale(${n(eff)})">` +
+    parts.join('') +
+    title +
+    '</g>' +
+    '</svg>'
+  );
+}
+
 /**
  * Where the diagram's title is drawn.
  *
@@ -1729,13 +2143,16 @@ export function diagramPlot(diagram: Diagram, options: DiagramSvgOptions): Proje
 /**
  * Render a diagram to a standalone SVG document.
  *
- * The output embeds no external references of any kind — no fonts to fetch, no images —
- * because it has to survive being turned into a data URL and handed to an `<img>` for
- * rasterization, where anything external would silently fail to load.
+ * The output embeds no external references of any kind — no fonts to fetch, no linked
+ * images — because it has to survive being turned into a data URL and handed to an
+ * `<img>` for rasterization, where anything external would silently fail to load. The
+ * forum variant's central picture is not an exception: its `src` is a `data:` URL, so
+ * it rides *inline* in the SVG and loads with no fetch.
  */
 export function diagramSvg(diagram: Diagram, options: DiagramSvgOptions): string {
   if (diagram.pie) return pieSvg(diagram, diagram.pie, options);
   if (diagram.flow) return flowSvg(diagram, diagram.flow, options);
+  if (diagram.forum) return forumSvg(diagram, diagram.forum, options);
   const scale = options.scale ?? 1;
   const width = options.widthPx * scale;
   const height = options.heightPx * scale;

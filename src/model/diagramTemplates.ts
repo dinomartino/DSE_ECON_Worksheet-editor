@@ -397,6 +397,49 @@ export const DIAGRAM_TEMPLATES: DiagramTemplate[] = [
       },
     }),
   },
+  {
+    id: 'forum',
+    name: bi('Forum views', '論壇意見'),
+    hint: bi(
+      'Speech bubbles around a picture — views expressed in a forum.',
+      '圍繞圖片的對話氣泡，適用於論壇意見。',
+    ),
+    // The `forum` field is what makes this a forum figure: the renderer ignores the
+    // axes fields entirely, and the sidebar panel edits the bubbles and the picture.
+    // Modelled on the 2023/2025 DRQ source figures with invented wording — the
+    // reference figures are past-paper questions and must not ship. No picture is
+    // seeded: it is the teacher's own clipart, imported in the panel.
+    build: () => ({
+      x: {},
+      y: {},
+      curves: [],
+      points: [],
+      labels: [],
+      arrows: [],
+      forum: {
+        bubbles: [
+          {
+            id: newId(),
+            slot: 'topLeft',
+            speaker: bi('A shop owner:', '一位店主：'),
+            text: bi(
+              'Our rent and ingredient costs keep rising, so we have no choice but to raise our prices.',
+              '租金和材料成本不斷上升，我們只好提高售價。',
+            ),
+          },
+          {
+            id: newId(),
+            slot: 'topRight',
+            speaker: bi('A customer:', '一位顧客：'),
+            text: bi(
+              'Eating out is getting more and more expensive. I now cook at home more often.',
+              '外出用膳愈來愈貴，我現在多數在家煮食。',
+            ),
+          },
+        ],
+      },
+    }),
+  },
 ];
 
 export function getDiagramTemplate(id: string): DiagramTemplate | undefined {

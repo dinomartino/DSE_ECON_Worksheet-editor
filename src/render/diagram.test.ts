@@ -15,6 +15,7 @@ import {
   diagramSize,
   diagramSvg,
   diagramTitleAnchor,
+  forumChartLayout,
   pieSlicePercent,
 } from './diagram';
 
@@ -1169,5 +1170,163 @@ describe('the flow chart variant', () => {
     const diagram = flow();
     const svg = diagramSvg(diagram, { ...diagramSize(diagram, 460, 'bilingual'), language: 'bilingual' });
     expect((svg.match(/\$10 000/g) ?? []).length).toBe(1);
+  });
+});
+
+describe('the forum figure variant', () => {
+  const forum = () => buildFromTemplate('forum');
+  const sized = (diagram = forum(), widthPx = 640) => ({
+    diagram,
+    options: { ...diagramSize(diagram, widthPx, 'en' as const), language: 'en' as const },
+  });
+
+  it('ships a template whose speakers and views carry both language sides', () => {
+    const diagram = forum();
+    expect(diagram.forum).toBeTruthy();
+    for (const bubble of diagram.forum!.bubbles) {
+      expect(bubble.speaker.en.some((run) => run.text.trim() !== '')).toBe(true);
+      expect(bubble.speaker.zh.some((run) => run.text.trim() !== '')).toBe(true);
+      expect(bubble.text.en.some((run) => run.text.trim() !== '')).toBe(true);
+      expect(bubble.text.zh.some((run) => run.text.trim() !== '')).toBe(true);
+    }
+  });
+
+  it('draws one tailed outline per bubble, the speaker underlined over the body', () => {
+    const { diagram, options } = sized();
+    const svg = diagramSvg(diagram, options);
+    // Two bubbles, each one closed path — box border and tail share a stroke.
+    expect((svg.match(/<path d="M/g) ?? []).length).toBe(2);
+    expect(svg).toContain('A shop owner:');
+    // The wrap emits one <tspan> per word, so assert a word, not a phrase.
+    expect(svg).toContain('prices.');
+    // The speaker line's underline is on its own <text>, not the body's.
+    const speaker = svg.slice(svg.indexOf('A shop owner:') - 400, svg.indexOf('A shop owner:'));
+    expect(speaker).toContain('text-decoration:underline');
+  });
+
+  it('places a bubble by its corner slot, anchored at its outer edge', () => {
+    const { diagram } = sized();
+    const layout = forumChartLayout(diagram, diagram.forum!, 640, 'en');
+    const [left, right] = layout.bubbles;
+    // FORUM_PAD = 6: the left bubble's left edge and the right bubble's right edge
+    // sit on the figure's own margins whatever width the boxes hug to.
+    expect(left.x).toBe(6);
+    expect(right.x + right.w).toBe(634);
+  });
+
+  it('hugs the box to its widest wrapped line instead of the full target width', () => {
+    const { diagram } = sized();
+    const layout = forumChartLayout(diagram, diagram.forum!, 640, 'en');
+    for (const box of layout.bubbles) {
+      // Never wider than the drag's target share…
+      expect(box.w).toBeLessThanOrEqual((292 / 640) * 640);
+      // …and closed onto the words: the slack cannot fit another average word.
+      expect(box.w).toBeGreaterThan(150);
+    }
+  });
+
+  it('embeds the central picture inline, drawn under the tails', () => {
+    const diagram = forum();
+    diagram.forum = {
+      ...diagram.forum!,
+      image: { src: FAKE_PNG, naturalWidthPx: 400, naturalHeightPx: 300 },
+    };
+    const { options } = sized(diagram);
+    const svg = diagramSvg(diagram, options);
+    expect(svg).toContain(`href="${FAKE_PNG}"`);
+    // The picture is painted first so a tail tip overlapping its edge draws over it.
+    expect(svg.indexOf('<image ')).toBeLessThan(svg.indexOf('<path d="M'));
+  });
+
+  it('draws no <image> element when the forum has no picture', () => {
+    const { diagram, options } = sized();
+    expect(diagramSvg(diagram, options)).not.toContain('<image ');
+  });
+
+  it('is measured: longer bubble text makes a taller figure', () => {
+    const short = forum();
+    const tall = forum();
+    tall.forum!.bubbles[0].text = bi(
+      'A very long view that wraps across many more lines than the template ships with, '.repeat(4),
+      '換行'.repeat(80),
+    );
+    const a = diagramSize(short, 640, 'en');
+    const b = diagramSize(tall, 640, 'en');
+    expect(b.heightPx).toBeGreaterThan(a.heightPx);
+    expect(b.widthPx).toBe(640);
+  });
+
+  it('wraps at the nominal width, so the export raster cannot re-wrap', () => {
+    const { diagram, options } = sized();
+    const at1 = diagramSvg(diagram, options);
+    const at3 = diagramSvg(diagram, { ...options, scale: 3 });
+    expect((at3.match(/<text /g) ?? []).length).toBe((at1.match(/<text /g) ?? []).length);
+  });
+
+  it('lays out at the stored width: 10pt text however narrow the figure', () => {
+    const { diagram } = sized();
+    const narrow = diagramSvg(diagram, { ...diagramSize(diagram, 320, 'en'), language: 'en' });
+    // Same glyph size as every other diagram text (10pt = 13.33px), drawn at 1:1 —
+    // the figure gets more wrapped lines, never smaller type.
+    expect(narrow).toContain('font-size="13.33"');
+    expect(narrow).toContain('scale(1)');
+    const wide = diagramSvg(diagram, { ...diagramSize(diagram, 640, 'en'), language: 'en' });
+    expect((narrow.match(/<text /g) ?? []).length).toBeGreaterThan(
+      (wide.match(/<text /g) ?? []).length,
+    );
+  });
+
+  it("honours a bubble's own width fraction as the wrap target", () => {
+    const wide = forum();
+    wide.forum!.bubbles[0].width = 0.8; // topLeft
+    const wider = forumChartLayout(wide, wide.forum!, 640, 'en').bubbles[0];
+    const stock = forum();
+    const normal = forumChartLayout(stock, stock.forum!, 640, 'en').bubbles[0];
+    // A wider target lets lines run longer: fewer of them, in a wider hugged box,
+    // still anchored at the slot's outer edge and never past the target itself.
+    expect(wider.w).toBeGreaterThan(normal.w);
+    expect(wider.w).toBeLessThanOrEqual(0.8 * 640);
+    expect(wider.x).toBe(6);
+    expect(wider.h).toBeLessThan(normal.h);
+  });
+
+  it('adapts the wrap to the margin: a narrower bubble takes more lines and height', () => {
+    const wide = forum();
+    wide.forum!.bubbles = [wide.forum!.bubbles[0]];
+    const narrow = forum();
+    narrow.forum!.bubbles = [{ ...narrow.forum!.bubbles[0], width: 0.25 }];
+    const a = diagramSize(wide, 640, 'en');
+    const b = diagramSize(narrow, 640, 'en');
+    expect(b.heightPx).toBeGreaterThan(a.heightPx);
+  });
+
+  it('exposes the drawn rectangles for hit-testing, matching the SVG', () => {
+    const { diagram } = sized();
+    const layout = forumChartLayout(diagram, diagram.forum!, 640, 'en');
+    const svg = diagramSvg(diagram, { ...diagramSize(diagram, 640, 'en'), language: 'en' });
+    for (const box of layout.bubbles) {
+      expect(svg).toContain(`d="M ${Math.round(box.x * 100) / 100} `);
+    }
+  });
+
+  it('keeps an empty forum visible as one empty bubble', () => {
+    const diagram = forum();
+    diagram.forum = { bubbles: [] };
+    const svg = diagramSvg(diagram, { ...diagramSize(diagram, 300, 'en'), language: 'en' });
+    expect((svg.match(/<path d="M/g) ?? []).length).toBe(1);
+  });
+
+  it('never opens the axes vocabulary: the template carries no curves or points', () => {
+    const diagram = forum();
+    expect(diagram.curves).toHaveLength(0);
+    expect(diagram.points).toHaveLength(0);
+  });
+
+  it('rides the diagram pipeline: a forum block reaches the export pre-pass', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const block = createDiagramBlock('forum');
+    worksheet.questions[0].blocks.push(block);
+    const nodes = collectDiagramNodes(worksheet, STUDENT_BI);
+    expect(nodes.some((node) => node.blockId === block.id && node.diagram.forum)).toBe(true);
   });
 });

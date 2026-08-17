@@ -1050,6 +1050,57 @@ whole block pipeline — one PNG, re-measure sizing, the title mechanism — unc
 - The `flow` template ships invented wording — the reference charts are past-paper
   questions and must not ship. An empty chart stays visible as one empty stage box.
 
+### A forum figure is a diagram variant, and its bubbles are data
+
+`Diagram.forum` (optional, like `pie` and `flow`) draws the "views expressed in a
+forum" stimulus both reference DRQs print (`real_life_reference/2023_essay.png`
+Source B, `2025_essay.png` Source C): speech bubbles with pointed tails around a
+central illustration, riding the whole block pipeline — one PNG, re-measure sizing,
+the title mechanism — unchanged.
+
+- **Placement is slot-based, never free**: a bubble names one of four corners
+  (`ForumSlot`), boxes are measured from their own wrapped text, and the tails are
+  derived from where the picture actually is — so re-wording a view reflows the
+  figure instead of stranding a tail.
+- **The layout is computed at the stored width — deliberately not the flow chart's
+  photo-scale.** Bubble prose has no natural width of its own (it wraps at whatever
+  the box gives it), and scaling shrank the words with the figure: a 400px forum
+  printed ~6pt bubbles beside 10pt diagram text everywhere else. At the stored width
+  every glyph stays the diagram's one 10pt size, and a narrower figure honestly costs
+  more wrapped lines, never smaller type.
+- **A bubble's width is the teacher's, its height is measured**: `ForumBubble.width`
+  is an optional fraction of the figure's width (absent = the reference share),
+  dragged by the bubble's **inner** edge on `ForumCanvas` — the outer edge is the
+  slot's anchor and never moves, and the drag clamps against the row-mate so two
+  bubbles cannot cross. The text re-wraps live during the drag; the store is written
+  once on release, re-measured (canvas house rules).
+- **The stored width is the wrap target; the drawn box hugs the widest wrapped
+  line.** Drawing the full target framed the wrap's leftover as a blank right margin
+  — a shape no reference bubble prints. Because the box hugs, the forum wraps and
+  measures with its own per-character metric (`forumTextWidth`, Times advances
+  bucketed by class) rather than the shared flat-rate `estimateWidth`: there a
+  coarse estimate costs whitespace, here it is a visibly wrong box. The hug keeps a
+  small cushion for the metric's residual error.
+- **Speaker and body are separate fields**, because the papers format them
+  differently (the speaker line is underlined, the body is not) and a derived split
+  would break on a speaker whose name holds a colon. Each bubble's outline is **one
+  closed path** — box border and tail share a stroke, so the join cannot seam.
+- **The central picture is part of the diagram**, a `data:` URL with its natural
+  size (`ForumImage`, reduced by `prepareImageForStorage` like every stored
+  picture). It rides *inline* in the SVG — not an external reference, so the
+  rasterizing canvas stays untainted — and lands in Word inside the same single PNG,
+  painted first so a tail tip overlapping its edge draws over it. A forum with no
+  picture still draws its bubbles, tails pointing at the middle.
+- **The forum opens its own canvas, never the axes one** (`ForumCanvas`, reached
+  like `FlowCanvas`): the one geometric decision — bubble width — is dragged there,
+  hit-testing `forumChartLayout()`, the exact rectangles `forumSvg` drew. Everything
+  else is data in the sidebar panel (`ForumFields` — speaker, view, corner,
+  add/remove, picture import). Every forum edit **re-measures**, unlike a pie's
+  slices: bubble text sets the boxes' heights and the picture the middle row.
+- The `forum` template ships two bubbles with invented wording and no picture — the
+  reference figures are past-paper questions and the illustration is the teacher's
+  own clipart. An empty forum stays visible as one empty bubble.
+
 ### Drawing (`model/diagramDraw.ts`, `components/editor/DiagramCanvas.tsx`)
 
 **The canvas owns the geometry; the panel owns everything else** (Template, Width, Alt

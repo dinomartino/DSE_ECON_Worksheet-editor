@@ -13,6 +13,7 @@ import { ChevronRightIcon, CloseIcon } from '@/components/ui/icons';
 import { createTextField, type ZoneName } from '@/model/bands';
 import { DiagramCanvas } from '@/components/editor/DiagramCanvas';
 import { FlowCanvas } from '@/components/editor/FlowCanvas';
+import { ForumCanvas } from '@/components/editor/ForumCanvas';
 import { findDiagramBlock, formatOfTarget, targetQuestionId, textOfTarget } from '@/model/edits';
 import { toRunPatch } from '@/model/text';
 import type { BandFieldSide, BiText, TextFormat } from '@/model/types';
@@ -96,8 +97,9 @@ export function EditorApp({ onOpenFiles }: { onOpenFiles: () => void }) {
     ? findDiagramBlock(worksheet, drawingBlockId)
     : undefined;
   // A pie chart never opens a canvas: its slices are data, edited in the sidebar
-  // panel. A flow chart opens its own editor (`FlowCanvas`) rather than the axes one,
-  // whose whole gesture vocabulary is about curves.
+  // panel. A flow chart opens its own editor (`FlowCanvas`) rather than the axes
+  // one, whose whole gesture vocabulary is about curves — and a forum figure opens
+  // its own too (`ForumCanvas`), where bubble widths are dragged.
   const drawingBlock = foundDrawingBlock?.diagram.pie ? undefined : foundDrawingBlock;
   const [activePage, setActivePage] = useState(0);
   /**
@@ -519,6 +521,12 @@ export function EditorApp({ onOpenFiles }: { onOpenFiles: () => void }) {
       {drawingBlock &&
         (drawingBlock.diagram.flow ? (
           <FlowCanvas
+            block={drawingBlock}
+            onChange={(next) => replaceBlock(next.id, next)}
+            onClose={() => setDrawingBlockId(undefined)}
+          />
+        ) : drawingBlock.diagram.forum ? (
+          <ForumCanvas
             block={drawingBlock}
             onChange={(next) => replaceBlock(next.id, next)}
             onClose={() => setDrawingBlockId(undefined)}
