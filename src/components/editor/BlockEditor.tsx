@@ -1,14 +1,16 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { editTargetKey } from '@/model/edits';
+import { defaultFramed, editTargetKey } from '@/model/edits';
 import { prepareImageForStorage } from '@/export/imageImport';
 import {
   createDiagramBlock,
   createFigureRowBlock,
   createImageBlock,
   createParagraphBlock,
+  createSourceBlock,
   createTableBlock,
+  nextSourceLetter,
 } from '@/model/factories';
 import {
   cellsInRange,
@@ -88,9 +90,21 @@ interface Props {
    * otherwise arrive a third of a page tall.
    */
   figureWidth?: number;
+  /**
+   * True when this editor is already inside a source panel's body, which withholds
+   * the "+ Source" affordance — a source may not contain another (§`SourceBlock`).
+   */
+  nested?: boolean;
 }
 
-export function BlockEditor({ blocks, onChange, label, labelHint, figureWidth }: Props) {
+export function BlockEditor({
+  blocks,
+  onChange,
+  label,
+  labelHint,
+  figureWidth,
+  nested,
+}: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
   /*
    * The content width a new table's default indent is a fraction of.
@@ -218,6 +232,8 @@ export function BlockEditor({ blocks, onChange, label, labelHint, figureWidth }:
                   onChange={(next) => replace(index, next)}
                   onUnwrap={(survivor) => replace(index, survivor)}
                 />
+              ) : block.kind === 'source' ? (
+                <SourceBlockEditor block={block} onChange={(next) => replace(index, next)} />
               ) : (
                 <ImageBlockEditor block={block} onChange={(next) => replace(index, next)} />
               )}
@@ -265,6 +281,27 @@ export function BlockEditor({ blocks, onChange, label, labelHint, figureWidth }:
           trigger={<>+ Diagram ▾</>}
           onPick={(templateId) => onChange([...blocks, createDiagramBlock(templateId, figureWidth)])}
         />
+        {/* Withheld inside a source: a source may not contain another (§`SourceBlock`),
+            and nesting one framed panel in another would put a third level of `w:tbl`
+            in the file, past the one level the export is bounded to. */}
+        {!nested && (
+          <Button
+            size="sm"
+            variant="subtle"
+            onClick={() =>
+              onChange([
+                ...blocks,
+                // Seeded with the next free letter as a convenience only — nothing
+                // stores an index, and reordering relabels nothing (§`SourceBlock`).
+                createSourceBlock(
+                  nextSourceLetter(blocks.filter((block) => block.kind === 'source').length),
+                ),
+              ])
+            }
+          >
+            + Source
+          </Button>
+        )}
         <input
           ref={fileInput}
           type="file"
@@ -1064,6 +1101,87 @@ function ImageBlockEditor({
  * when a table joins it. "Remove table" unwraps back to the standalone figure —
  * the exact inverse of "+ Table beside".
  */
+/**
+ * A source panel (§`SourceBlock`): its label, its body, its footnote.
+ *
+ * The body recurses into `BlockEditor` itself, so everything a stem's blocks can do —
+ * add a table, insert a picture, reorder, delete — a source's body can do, with no
+ * second implementation to drift. The recursion terminates because a source may not
+ * contain another source, and the insert affordances below withhold the kinds that
+ * would nest a layout table inside this one.
+ */
+function SourceBlockEditor({
+  block,
+  onChange,
+}: {
+  block: Extract<ContentBlock, { kind: 'source' }>;
+  onChange: (block: ContentBlock) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <div data-edit-target={editTargetKey({ kind: 'sourceLabel', blockId: block.id })}>
+        <GroupHeader title="Label" hint="Printed above the panel, e.g. “Source A: …”." />
+        <BiTextField
+          value={block.label ?? emptyBiText()}
+          onChange={(label) => onChange({ ...block, label })}
+        />
+      </div>
+
+      <div className="flex items-center gap-2 border-t border-line pt-2">
+        <Eyebrow>frame</Eyebrow>
+        <Segmented<'auto' | 'framed' | 'bare'>
+          label="Frame"
+          // Unstored means "follow the body", which is the resting state — a source
+          // whose body is one table needs no frame of its own, because the table
+          // already draws one (§`defaultFramed`).
+          value={block.framed === undefined ? 'auto' : block.framed ? 'framed' : 'bare'}
+          onChange={(choice) =>
+            onChange({
+              ...block,
+              framed: choice === 'auto' ? undefined : choice === 'framed',
+            })
+          }
+          options={[
+            { value: 'auto', label: 'Auto' },
+            { value: 'framed', label: 'Framed' },
+            { value: 'bare', label: 'None' },
+          ]}
+        />
+      </div>
+      <p className="text-xs text-muted">
+        {block.framed === undefined
+          ? !defaultFramed(block.blocks)
+            ? 'No frame: the table draws its own box.'
+            : 'Framed, so the body reads as one source.'
+          : block.framed
+            ? 'Always framed.'
+            : 'Never framed.'}
+      </p>
+
+      <BlockEditor
+        blocks={block.blocks}
+        onChange={(blocks) => onChange({ ...block, blocks })}
+        label="Body"
+        nested
+      />
+
+      <div
+        className="border-t border-line pt-2"
+        data-edit-target={editTargetKey({ kind: 'sourceFootnote', blockId: block.id })}
+      >
+        <GroupHeader
+          title="Footnote"
+          hint="Printed below the panel, outside the frame, in italic."
+        />
+        <BiTextField
+          value={block.footnote ?? emptyBiText()}
+          onChange={(footnote) => onChange({ ...block, footnote })}
+        />
+      </div>
+    </div>
+  );
+}
+
 function FigureRowEditor({
   block,
   onChange,

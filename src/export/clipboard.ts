@@ -163,6 +163,13 @@ function nodeHtml(
                   : 'border:1px solid #000;') +
               `padding:${twipsToPt(pad.top)}pt ${twipsToPt(pad.right)}pt ` +
               `${twipsToPt(pad.bottom)}pt ${twipsToPt(pad.left)}pt;` +
+              // The "does not apply" slash, bottom-left to top-right as everywhere else
+              // (§`TableCell.diagonal`). Word keeps a pasted background gradient, so this
+              // survives the paste that matters.
+              (cell.diagonal
+                ? 'background-image:linear-gradient(to bottom right,transparent calc(50% - 0.5px),' +
+                  '#000 calc(50% - 0.5px),#000 calc(50% + 0.5px),transparent calc(50% + 0.5px));'
+                : '') +
               `text-align:${cell.align};${formatCss(cell.format)}`;
             const span =
               (cell.colSpan > 1 ? ` colspan="${cell.colSpan}"` : '') +
@@ -295,6 +302,22 @@ function nodeHtml(
       ? `<p style="${fontCss}${NODE_CSS['Image Caption']}">${richHtml(node.caption, language)}</p>`
       : '';
     return node.captionPlacement === 'above' ? caption + picture : picture + caption;
+  }
+
+  if (node.kind === 'source') {
+    // A labelled source panel: a one-cell table, framed or not — the same shape the
+    // .docx builds, and the only HTML that keeps a frame around mixed content when
+    // pasted into Word.
+    const body = node.nodes
+      .map((child) => nodeHtml(child, language, fontCss, diagramImages))
+      .join('');
+    const frame = node.framed ? '1px solid #000' : 'none';
+    // Lined up with its own label, not the page margin (§`SourceNode.indent`).
+    const indent = node.indent ? `margin-left:${twipsToPt(node.indent)}pt;` : '';
+    return (
+      `<table style="border-collapse:collapse;border:${frame};${indent}">` +
+      `<tr><td style="border:none;padding:6pt">${body}</td></tr></table>`
+    );
   }
 
   if (node.kind === 'figureRow') {

@@ -267,6 +267,19 @@ function richNodes(
    * click target while the box stays one line tall.
    */
   compactPlaceholder?: boolean,
+  /**
+   * Stretch the field to its container's width without shortening the prompt.
+   *
+   * A table cell wants both (its column is too narrow for a sentence); a source
+   * panel's own lines want only this. The label sits alone on a line inside a frame,
+   * so the selection rectangle — a sibling at `inset-0` of the paragraph — spans the
+   * whole column while the field itself hugs the words: a 589px box over a 53px
+   * target, which reads as a control that ignores most of its own clicks.
+   *
+   * Safe here for the reason a cell is safe and a numbered stem is not: neither
+   * carries a list marker, so `inline-block` has no hanging indent to break.
+   */
+  fillWidth?: boolean,
 ) {
   if (!text) return null;
 
@@ -285,7 +298,7 @@ function richNodes(
         onFlush={(next) => ctx.onEditKeepingSelection(edit, next)}
         onSelectionChange={ctx.onTextSelectionChange}
         keepEditing={ctx.keepEditing}
-        fillWidth={compactPlaceholder}
+        fillWidth={compactPlaceholder || fillWidth}
         onTab={onTab}
       >
         {rendered}
@@ -533,6 +546,8 @@ const TARGET_NAME: Record<EditTarget["kind"], string> = {
   partAnswer: "Answer",
   subPartAnswer: "Answer",
   layoutText: "Text element",
+  sourceLabel: "Source label",
+  sourceFootnote: "Source footnote",
   // One name for all five band lists — masthead, header, footer and their page-1
   // variants — because a `bandField` target does not say which one it came from.
   bandField: "Field",
@@ -876,7 +891,23 @@ function TextNodeView({
           {node.listRef.marker}
         </span>
       )}
-      {richNodes(node.text, language, node.edit, ctx)}
+      {richNodes(
+        node.text,
+        language,
+        node.edit,
+        ctx,
+        undefined,
+        undefined,
+        /*
+         * A source panel's own lines claim their whole line as the click target.
+         *
+         * They sit alone above and below a frame, so the selection rectangle — a
+         * sibling at the paragraph's `inset-0` — spanned the full column while the
+         * field hugged the words: a 589px box over a 53px target. Every other
+         * paragraph is exempt, because its box really is the text column.
+         */
+        node.edit?.kind === "sourceLabel" || node.edit?.kind === "sourceFootnote",
+      )}
       {trailingBreakFiller && <br aria-hidden />}
       {node.marks !== undefined && (
         <MarksTrail
@@ -1662,6 +1693,23 @@ function TableNodeView({
                               borderRight: cell.edges.right ? "1px solid #64748b" : "none",
                             }
                           : {}),
+                        /*
+                         * The "does not apply" slash (§`TableCell.diagonal`). A painted
+                         * gradient rather than a child element, so it reserves no space
+                         * and cannot shift the row height the paginator measures.
+                         *
+                         * `to bottom right` draws the bottom-left → top-right slash that
+                         * `w:tr2bl` draws in Word — both the opposite of the obvious
+                         * guess, as the cover's corner diagonal already records. The line
+                         * is pinned to 1px by two stops a hair apart, so it stays hairline
+                         * whatever the cell's aspect.
+                         */
+                        ...(cell.diagonal
+                          ? {
+                              backgroundImage:
+                                "linear-gradient(to bottom right, transparent calc(50% - 0.5px), #64748b calc(50% - 0.5px), #64748b calc(50% + 0.5px), transparent calc(50% + 0.5px))",
+                            }
+                          : {}),
                         // Points from the resolved twips, the same winner `w:tcMar` gets.
                         paddingTop: `${twipsToPt(cell.padding.top)}pt`,
                         paddingRight: `${twipsToPt(cell.padding.right)}pt`,
@@ -2206,6 +2254,37 @@ function NodeView({
     // edge rather than as a marker printed inside one long page. Rendering anything
     // would put a stray gap at the top of the following page.
     return null;
+  }
+
+  if (node.kind === "source") {
+    /*
+     * A labelled source panel (§ SourceNode).
+     *
+     * A bordered `div`, deliberately **not** a `<table>` — the cell-selection and
+     * marquee queries are scoped to `#print-root` and find every table in it, so a
+     * frame that was itself a table would join a sweep started in the real table
+     * inside it. The .docx needs the layout table; the screen does not, and the probe
+     * measures this box either way.
+     */
+    return (
+      <div
+        data-block-id={node.blockId}
+        style={{
+          border: node.framed ? "1px solid #000" : undefined,
+          // Literal hex and points: this is on the paper, not chrome.
+          padding: node.framed ? "5.65pt" : undefined,
+          // The frame lines up with its own label rather than the page margin — the
+          // reference puts the stem sentence, every "Source X:" and every frame edge on
+          // one column, with only the question number out in the gutter. Twips to
+          // points, the same conversion every other indented node makes.
+          ...(node.indent ? { marginLeft: `${node.indent / 20}pt` } : undefined),
+        }}
+      >
+        {node.nodes.map((child, index) => (
+          <NodeView key={index} node={child} language={language} ctx={ctx} />
+        ))}
+      </div>
+    );
   }
 
   if (node.kind === "figureRow") {

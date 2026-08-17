@@ -113,6 +113,18 @@ export interface TableCell {
   align?: CellAlign;
   /** True when this cell is covered by a merge from above/left and must not render. */
   covered?: boolean;
+  /**
+   * Rule a diagonal across the cell — the syllabus's mark for "this figure does not
+   * apply" (2025 Q11 Source A slashes the private-housing eligibility cell). The
+   * papers' other spelling of the same idea is to omit the cell entirely, which
+   * ragged rows already express; this is the bordered variant, and it is the one a
+   * uniform grid cannot reach.
+   *
+   * The slash runs **bottom-left to top-right**, which is `w:tr2bl` in OOXML and
+   * `to bottom right` in a CSS gradient — both the opposite of the obvious guess, the
+   * same trap the cover's corner diagonal documents.
+   */
+  diagonal?: boolean;
   /** Padding for this cell alone — the innermost level. */
   padding?: CellPadding;
   /**
@@ -264,12 +276,57 @@ export interface FigureRowBlock {
   tableSide?: 'left' | 'right';
 }
 
+/**
+ * A labelled source panel — the data-response question's unit ("Source A: Basic
+ * information about housing in Hong Kong", DSE 2025 Q11 / 2019 Q12).
+ *
+ * The papers build every source the same way: a label line, a body, and sometimes a
+ * footnote. What no existing block can make is the *body*, because a real source is
+ * regularly a **mix** — 2025 Source A frames a paragraph, a table and another
+ * paragraph together, and a `box` table cannot hold it (a cell is one `w:p`, which is
+ * why `TableCell.image` exists instead of nested blocks).
+ *
+ * A `ContentBlock` and not a layout element: a source belongs to *one* question and
+ * must move, duplicate and delete with it. `stimulus` is the opposite case — content
+ * two questions *share*, positioned by the flow, whose whole point is a derived
+ * question range.
+ *
+ * **The label is authored, not derived from position.** Every derived number in this
+ * app prints inside a slot the app controls, so re-deriving updates every occurrence.
+ * A source letter is referenced from *free prose* in the parts below ("Refer to
+ * Sources B and C."), which nothing can renumber — so deriving one end of a two-ended
+ * reference would silently relabel the panel while the question kept naming the old
+ * letter. The insert seeds the next free letter as a convenience and stores no index.
+ */
+export interface SourceBlock {
+  kind: 'source';
+  id: string;
+  /** "Source A: Basic information about housing in Hong Kong" — the whole line. */
+  label?: BiText;
+  /**
+   * Undefined means framed, which is the common case. `false` is the bare source
+   * (2025 Source B) whose table draws its own only box — the label and footnote still
+   * belong to it, which is why the wrapper is worth having with no frame at all.
+   */
+  framed?: boolean;
+  /**
+   * The body. May not contain another `source` — nor a `figureRow`, which is itself a
+   * layout table: nesting one inside a framed source would put three levels of `w:tbl`
+   * in the file, past the one level `FigureRowBlock` proved safe.
+   */
+  blocks: ContentBlock[];
+  /** The italic "* Waiting time refers to…" line, printed below and outside the frame. */
+  footnote?: BiText;
+  format?: TextFormat;
+}
+
 export type ContentBlock =
   | ParagraphBlock
   | TableBlock
   | ImageBlock
   | DiagramBlock
-  | FigureRowBlock;
+  | FigureRowBlock
+  | SourceBlock;
 
 export interface QuestionBase {
   id: string;

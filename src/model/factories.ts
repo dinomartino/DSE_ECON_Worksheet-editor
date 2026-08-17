@@ -115,6 +115,36 @@ export function createDiagramBlock(
  * teacher can miss. The figure keeps its id, so an open panel or selection aimed at
  * it survives the wrap.
  */
+/**
+ * The letter a new source should carry, given the sources already in the document.
+ *
+ * A convenience only — nothing stores an index, and reordering does not relabel
+ * anything (§`SourceBlock`). Counting existing panels is what makes the *typed*
+ * default right on the first go; a teacher retypes it freely afterwards.
+ *
+ * Pure and exported so the store can seed an insert without duplicating the rule.
+ */
+export function nextSourceLetter(existing: number): string {
+  // Past Z the papers have never gone; wrapping is nonsense, so keep counting.
+  return existing < 26
+    ? String.fromCharCode(65 + existing)
+    : `${existing + 1}`;
+}
+
+/**
+ * A labelled source panel (§`SourceBlock`), framed by default and holding one empty
+ * paragraph — a body with nothing in it renders nothing at all, so a fresh source
+ * needs somewhere to type.
+ */
+export function createSourceBlock(letter = 'A'): Extract<ContentBlock, { kind: 'source' }> {
+  return {
+    kind: 'source',
+    id: newId(),
+    label: bi(`Source ${letter}: `, `資料${letter}：`),
+    blocks: [createParagraphBlock()],
+  };
+}
+
 export function createFigureRowBlock(
   figure: ImageBlock | DiagramBlock,
   table: TableBlock = createTableBlock(3, 2),

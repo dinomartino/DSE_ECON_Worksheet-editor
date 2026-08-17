@@ -108,11 +108,23 @@ describe('the empty-cell field', () => {
     expect(INLINE_EDITABLE).toContain("data-empty-placeholder={isEmpty ? 'true' : undefined}");
   });
 
-  it('only table cells opt in', () => {
+  it('only table cells take the short prompt', () => {
     // A stem or a heading has the width of the text column, so the long prompt fits and
-    // is more useful. `compactPlaceholder` is passed at the cell call site and drives
-    // both the short prompt and the fill.
-    expect(PREVIEW).toContain('fillWidth={compactPlaceholder}');
+    // is more useful. `compactPlaceholder` is the cell's own opt-in and still drives
+    // the short prompt alone.
     expect(PREVIEW).toMatch(/compactPlaceholder \? "·"/);
+  });
+
+  it('separates filling the width from shortening the prompt', () => {
+    /*
+     * A cell needs both; a source panel's label and footnote need only the fill.
+     *
+     * They sit alone on a line inside a frame, so the selection rectangle — a sibling
+     * at the paragraph's `inset-0` — spanned the whole column while the field hugged
+     * its words: measured at 589px of box over 53px of click target. Filling makes the
+     * painted box and the target the same element, so they cannot disagree.
+     */
+    expect(PREVIEW).toContain('fillWidth={compactPlaceholder || fillWidth}');
+    expect(PREVIEW).toMatch(/sourceLabel"\s*\|\|\s*node\.edit\?\.kind === "sourceFootnote"/);
   });
 });

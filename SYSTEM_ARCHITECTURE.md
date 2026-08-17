@@ -86,6 +86,7 @@ Worksheet
 └── __unknown?                 fields from a newer build, preserved verbatim
 
 ContentBlock = ParagraphBlock | TableBlock | ImageBlock | DiagramBlock
+             | FigureRowBlock | SourceBlock
 BiText { en: RichText, zh: RichText }        RichText = InlineRun[]
 ```
 
@@ -315,6 +316,89 @@ table**, bounded so every backend's recursion stays one level deep.
 - An empty-celled nested table renders the row as the bare figure — the same
   "nothing renders an unmeasurable box" rule a standalone empty table follows.
 
+### A source is a labelled panel around a mix of blocks (`SourceBlock`)
+
+The data-response question's unit — "Source A: Basic information about housing in Hong
+Kong" (DSE 2025 Q11, 2019 Q12). Both papers build every source the same way: a **label
+line, a body, sometimes a footnote**. What no existing block could make is the body,
+because a real source is regularly a *mix* — 2025 Source A frames a paragraph, a table
+and another paragraph together, and a `box` table cannot hold it (a cell is one `w:p`,
+which is why `TableCell.image` exists instead of nested blocks).
+
+- **A `ContentBlock`, not a layout element.** A source belongs to *one* question and
+  moves, duplicates and deletes with it. `stimulus` is the opposite case: content two
+  questions *share*, positioned by the flow, whose point is a derived question range.
+- **The label is authored, never derived from position.** Every other derived number
+  prints inside a slot the app controls, so re-deriving updates every occurrence. A
+  source letter is referenced from *free prose* in the parts ("Refer to Sources B and
+  C."), which nothing can renumber — deriving one end of a two-ended reference would
+  silently relabel the panel while the question kept naming the old letter. The insert
+  seeds the next free letter (`nextSourceLetter`) and stores no index.
+- **One level deep.** A source may contain neither another source nor a `figureRow`
+  (itself a layout table): a third level of `w:tbl` is past what `figureRowXml` proved.
+  The sidebar withholds "+ Source" inside a body.
+- **The `.docx` is a one-cell layout table**, the same construction `figureRowXml` uses
+  — a cell is the one OOXML container that holds a nested table beside prose. Framed
+  draws four sides; bare draws `none` on all six, **never omitted** (an unstated border
+  inherits from the table style).
+- **The row is `cantSplit`, so a panel is atomic.** A frame that broke across a page
+  would print half a box. The accepted cost: a source taller than a page cannot be
+  placed, which is reported rather than silently overflowed.
+- **The frame lines up with its own label, never the page margin.** The reference puts
+  the stem sentence, every "Source X:" line, every frame edge and the footnote on **one
+  column**, with only the question number hanging out in the gutter. So `SourceNode`
+  carries the caller's `indent`: the `.docx` spells it `w:tblInd` and narrows `w:tblW`
+  by the same amount (width + indent = the content column, or the frame runs off the
+  page), and the preview uses `margin-left`. The **body does not inherit it** — the
+  frame has already moved right, and re-applying it would indent the content twice
+  inside a box that had moved by the same amount. A nested table's respelled width
+  divides by the frame's width, not the column's, or it overhangs its own right rule.
+- **The frame follows the body, and is derived** (`defaultFramed`, `model/edits.ts`):
+  **a body that is one table draws its own box already**, so framing it puts a box
+  around a box with the panel's cell margins showing as a gutter — a shape neither
+  reference prints (2025 Source B is label · ruled table · footnote, no outer rule).
+  Everything else frames: loose blocks have no edge of their own. Never stored, so
+  adding prose to a one-table body reframes it by itself; the panel offers
+  Auto/Framed/None and states which it is. The rule lives in `model/` because both the
+  renderer and the sidebar read it, and a component may not import `render/` for it.
+- **The label and footnote fill their line** (`fillWidth`). They sit alone above and
+  below the frame, so the selection rectangle — a sibling at the paragraph's `inset-0` —
+  spanned the whole column while the field hugged its words: **589px of painted box over
+  53px of click target**, a control that ignores most of its own clicks. Filling makes
+  the painted box and the target the same element, so they cannot disagree. Safe for the
+  reason a table cell is safe and a numbered stem is not: no list marker, so
+  `inline-block` has no hanging indent to break. `fillWidth` is now independent of
+  `compactPlaceholder` — a cell wants both, a source line only the fill.
+- **The preview is a bordered `div`, deliberately not a `<table>`** — the cell-selection
+  and marquee queries are scoped to `#print-root` and find every table in it, so a frame
+  that was itself a table would join a sweep started in the real table inside it.
+- **The body recurses through `renderContentBlocks`**, into a fresh stream: the
+  head-of-stream skip in the table gap rule applies again inside the frame, and there is
+  one gap rule rather than two spellings to drift.
+- **Air on both sides, spelled as blank lines.** The label `keepNext`s to the frame and
+  the frame to the footnote (else one strands and the other widows); the footnote clears
+  the rule — flush against it, it reads as a row of the panel — and a gap follows the
+  panel, because a source is followed by the question's parts every time.
+- **Nothing renders an unmeasurable box**: a source with no body, label or footnote emits
+  nothing at all, the same rule an empty table follows.
+- Its two lines carry `sourceLabel`/`sourceFootnote` edit targets, are formattable, and
+  clear-on-empty like every optional text field.
+
+### A cell can be ruled out diagonally
+
+`TableCell.diagonal` marks "this figure does not apply" — 2025 Source A slashes the
+private-housing eligibility cell. The papers' other spelling, omitting the cell, is
+already expressible as a ragged row; this is the bordered variant a uniform grid cannot
+reach.
+
+- **The slash runs bottom-left → top-right**: `w:tr2bl`, and `to bottom right` in the
+  preview's gradient — both the opposite of the obvious guess, as the cover's corner
+  diagonal already records.
+- **It composes with `headerRule`'s resolved edges rather than replacing them**, and
+  comes **last** inside `w:tcBorders` (`CT_TcBorders` is itself a sequence), which still
+  precedes `w:tcMar`/`w:vAlign`.
+- Unstored when absent, so an untouched table stays byte-identical.
+
 ### Per-element formatting (`TextFormat`)
 
 Named styles supply defaults; `TextFormat` records **only deltas**. An untouched
@@ -372,8 +456,8 @@ otherwise it is twelve invisible spaces. It stays underlined spaces, not a new r
 
 ```
 RenderNode = TextNode | ColumnsNode | TableNode | ImageNode | DiagramNode
-           | PageBreakNode | SpacerNode | DividerNode | AnswerLinesNode
-           | AnswerSpaceNode
+           | FigureRowNode | SourceNode | PageBreakNode | SpacerNode | DividerNode
+           | AnswerLinesNode | AnswerSpaceNode
 
 TextNode: style (one of 14) · text: BiText · listRef? {stream, definition, level, marker}
           marks? · keepNext? · teacherOnly? · indent? · format? · edit?: EditTarget
@@ -383,7 +467,8 @@ TextNode: style (one of 14) · text: BiText · listRef? {stream, definition, lev
 `EditTarget` is a discriminated union keyed by **id**: `worksheetTitle`,
 `worksheetInstructions`, `blockText`, `blockCaption`, `tableCell`, `mcqOption`,
 `mcqStatement`, `mcqExplanation`, `partAnswer`, `subPartAnswer`, `layoutText`,
-`bandField`, `labelListCell`, `coverLine`, `coverField`.
+`sourceLabel`, `sourceFootnote`, `bandField`, `labelListCell`, `coverLine`,
+`coverField`.
 
 - **`edit` is inert in export** — docx/clipboard never read it.
 - **Derived text carries no target** (marks totals, "Answer: C", numbers in band

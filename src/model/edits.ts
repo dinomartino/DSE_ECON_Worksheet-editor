@@ -26,7 +26,7 @@ import type { EditTarget } from '@/render/ir';
  */
 import { diagramSize } from '@/render/diagram';
 import { applyBandFieldSide, bandFieldSideText } from './bandSegments';
-import { applyRunFormat, insertBlank } from './text';
+import { applyRunFormat, insertBlank, isBiTextEmpty } from './text';
 
 /**
  * Turn an `EditTarget` back into a document mutation (unit-testable without React).
@@ -49,6 +49,12 @@ function patchBlocks(
 ): ContentBlock[] {
   return blocks.map((block) => {
     if (block.id === blockId) return patch(block);
+    // A source's body is an ordinary block list one level down (§`SourceBlock`), so it
+    // recurses through this same function — the children are whole blocks, and every
+    // edit that reaches a stem's table must reach one inside a source identically.
+    if (block.kind === 'source') {
+      return { ...block, blocks: patchBlocks(block.blocks, blockId, patch) };
+    }
     if (block.kind !== 'figureRow') return block;
     if (block.figure.id === blockId) {
       const figure = patch(block.figure);
@@ -65,13 +71,39 @@ function patchBlocks(
 }
 
 /**
+ * Whether a source panel frames itself when its author has not said (§`SourceBlock`).
+ *
+ * **A body that is one table draws its own box already** — 2025 Source B is exactly
+ * that shape: the label, the ruled table, the footnote, and no outer rule anywhere.
+ * Framing it puts a box around a box, with the panel's own cell margins as a visible
+ * gutter between the two, which is a shape neither reference paper prints.
+ *
+ * Everything else frames (2025 Source A's prose→table→prose mix, 2019 C's one-line
+ * extract): loose blocks have no edge of their own, so the frame is what makes them
+ * read as one source rather than as stray paragraphs.
+ *
+ * Derived from the content and never stored, so adding a paragraph to a one-table body
+ * reframes the panel by itself. An author who disagrees sets `framed` explicitly.
+ * Lives here rather than in `render/` because both the renderer and the sidebar need
+ * it, and a component may not import the render module for it.
+ */
+export function defaultFramed(blocks: ContentBlock[]): boolean {
+  return !(blocks.length === 1 && blocks[0].kind === 'table');
+}
+
+/**
  * A block list with figure-row children surfaced beside their rows — what every
  * *read* walk searches, so a block that `patchBlocks` can write is also findable.
  */
 export function flattenBlocks(blocks: ContentBlock[]): ContentBlock[] {
-  return blocks.flatMap((block): ContentBlock[] =>
-    block.kind === 'figureRow' ? [block, block.figure, block.table] : [block],
-  );
+  return blocks.flatMap((block): ContentBlock[] => {
+    if (block.kind === 'figureRow') return [block, block.figure, block.table];
+    // A source surfaces its body beside itself, recursively — `patchBlocks` descends
+    // into it, and the two walks must agree or an inner block is findable but
+    // unwritable: a field a teacher can click and silently lose.
+    if (block.kind === 'source') return [block, ...flattenBlocks(block.blocks)];
+    return [block];
+  });
 }
 
 /**
@@ -185,6 +217,8 @@ export function editTargetKey(target: EditTarget): string {
   switch (target.kind) {
     case 'blockText':
     case 'blockCaption':
+    case 'sourceLabel':
+    case 'sourceFootnote':
       return `${target.kind}:${target.blockId}`;
     case 'tableCell':
       return `tableCell:${target.blockId}:${target.cellId}`;
@@ -461,6 +495,23 @@ export function applyEditTarget(
         block.kind === 'table' || block.kind === 'image' ? { ...block, caption: text } : block,
       );
 
+    // A source panel's own two lines. Each drops the field when it is emptied, and
+    // its placement with it — the rule every optional-text write path follows, or a
+    // field cleared with ⌘A-Backspace keeps printing a phantom blank line.
+    case 'sourceLabel':
+      return mapAllBlocks(worksheet, target.blockId, (block) =>
+        block.kind === 'source'
+          ? { ...block, label: isBiTextEmpty(text) ? undefined : text }
+          : block,
+      );
+
+    case 'sourceFootnote':
+      return mapAllBlocks(worksheet, target.blockId, (block) =>
+        block.kind === 'source'
+          ? { ...block, footnote: isBiTextEmpty(text) ? undefined : text }
+          : block,
+      );
+
     case 'tableCell':
       return mapAllBlocks(worksheet, target.blockId, (block) =>
         block.kind !== 'table'
@@ -559,6 +610,10 @@ export function isFormattable(target: EditTarget): boolean {
     // A cover line is ordinary text on the page: its size and weight are the whole point
     // of a cover, so the toolbar has to reach it (§ `model/cover.ts`).
     target.kind === 'coverLine' ||
+    // A source's label and footnote are authored text on the paper — the reference
+    // bolds "Source A" and sets its footnote in italic, so the toolbar must reach both.
+    target.kind === 'sourceLabel' ||
+    target.kind === 'sourceFootnote' ||
     /*
      * A table cell formats like any other text element.
      *
@@ -757,6 +812,18 @@ export function textOfTarget(worksheet: Worksheet, target: EditTarget): BiText |
       for (const blocks of documentBlockLists(worksheet)) {
         const match = blocks.find((block) => block.id === target.blockId);
         if (match && match.kind === 'paragraph') return match.text;
+      }
+      return undefined;
+    }
+    // The read half of per-run formatting for a source's own lines; without it,
+    // bolding a phrase in a label resolves to no text and silently does nothing.
+    case 'sourceLabel':
+    case 'sourceFootnote': {
+      for (const blocks of documentBlockLists(worksheet)) {
+        const match = blocks.find((block) => block.id === target.blockId);
+        if (match && match.kind === 'source') {
+          return target.kind === 'sourceLabel' ? match.label : match.footnote;
+        }
       }
       return undefined;
     }
@@ -1051,6 +1118,13 @@ export function describeDelete(target: EditTarget): DeletePlan | undefined {
       return { kind: 'clear', label: 'title' };
     case 'worksheetInstructions':
       return { kind: 'clear', label: 'instructions' };
+    // A source's own lines are optional fields on the panel, like the title above:
+    // clearing the text is the delete, and the write path drops the field with it.
+    // Deleting the *panel* is the block delete, reached from its body or the sidebar.
+    case 'sourceLabel':
+      return { kind: 'clear', label: 'source label' };
+    case 'sourceFootnote':
+      return { kind: 'clear', label: 'source footnote' };
     // An MCQ always has exactly four options (§7.2), and a section heading is a layout
     // element reached through `layoutText`.
     default:
@@ -1066,10 +1140,14 @@ const EMPTY: BiText = { en: [], zh: [] };
  * the standalone figure it wrapped, not delete the chart with it.
  */
 function removeBlock(worksheet: Worksheet, blockId: string): Worksheet {
-  const strip = (blocks: ContentBlock[]) =>
+  const strip = (blocks: ContentBlock[]): ContentBlock[] =>
     blocks
       .filter((block) => block.id !== blockId)
       .map((block) => {
+        // A source's body is an ordinary list one level down, so a block inside one
+        // deletes by the same route. Without descending, Delete aimed at a table
+        // inside a panel silently did nothing.
+        if (block.kind === 'source') return { ...block, blocks: strip(block.blocks) };
         if (block.kind !== 'figureRow') return block;
         if (block.figure.id === blockId) return block.table;
         if (block.table.id === blockId) return block.figure;

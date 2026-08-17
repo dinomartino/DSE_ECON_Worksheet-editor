@@ -38,14 +38,25 @@ function* allNodes(worksheet: Worksheet, mode: OutputMode): Generator<RenderNode
   if (rendered.instructions) yield rendered.instructions;
   for (const item of rendered.items) {
     const nodes = item.type === 'question' ? item.question.nodes : item.layout.nodes;
-    for (const node of nodes) {
-      yield node;
-      // A figure row's children are ordinary nodes one level down — the diagram
-      // beside a glossary table must rasterize like any other.
-      if (node.kind === 'figureRow') {
-        yield node.figure;
-        yield node.table;
-      }
+    yield* withChildren(nodes);
+  }
+}
+
+/**
+ * Nodes and their nested children, depth first. A diagram that is never yielded here
+ * is never rasterized, and `exportDocx` then refuses the whole file naming it — so a
+ * container that forgets to descend turns a working figure into a blocked export.
+ */
+function* withChildren(nodes: RenderNode[]): Generator<RenderNode> {
+  for (const node of nodes) {
+    yield node;
+    // A figure row's children are ordinary nodes one level down — the diagram
+    // beside a glossary table must rasterize like any other.
+    if (node.kind === 'figureRow') {
+      yield node.figure;
+      yield node.table;
+    } else if (node.kind === 'source') {
+      yield* withChildren(node.nodes);
     }
   }
 }

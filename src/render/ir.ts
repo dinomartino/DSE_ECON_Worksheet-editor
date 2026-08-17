@@ -16,7 +16,8 @@ import type {
   TableBorders,
   TextFormat,
 } from '@/model/types';
-import { trailingBlankLines } from '@/model/text';
+import { isBiTextEmpty, trailingBlankLines } from '@/model/text';
+import { defaultFramed } from '@/model/edits';
 import {
   resolveCellEdges,
   resolveCellPadding,
@@ -67,6 +68,13 @@ export type EditTarget =
   | { kind: 'subPartAnswer'; questionId: string; partId: string; subPartId: string }
   /** A text-bearing layout element — heading, note, part header, section heading. */
   | { kind: 'layoutText'; elementId: string }
+  /**
+   * A source panel's own two lines (§`SourceBlock`) — the label above the frame and
+   * the footnote below it. Both are authored text on the page, so both are clicked
+   * and typed where they print, like every other visible string.
+   */
+  | { kind: 'sourceLabel'; blockId: string }
+  | { kind: 'sourceFootnote'; blockId: string }
   /**
    * The authored wording of a band field. `side` names which authored half is meant
    * (the derived value between them carries no target); omitted means `prefix`.
@@ -158,6 +166,8 @@ export interface TableNodeCell {
    * populates it; `all` and `box` are uniform and say so on the table.
    */
   edges?: TableCellEdges;
+  /** A diagonal ruled across the cell; see `TableCell.diagonal` for the direction. */
+  diagonal?: boolean;
   /** Direct formatting for the cell's text, over the Body style. */
   format?: TextFormat;
   /** A picture printed under the cell's text; see `TableCell.image`. */
@@ -253,6 +263,38 @@ export interface FigureRowNode {
   table: TableNode;
   /** Which side the table sits. Always resolved; `right` is the reference's shape. */
   tableSide: 'left' | 'right';
+  keepNext?: boolean;
+  teacherOnly?: boolean;
+  /** Which block this came from, so the preview can select and edit it. */
+  blockId: string;
+}
+
+/**
+ * A labelled source panel (§`SourceBlock`) — the data-response question's unit.
+ *
+ * The body is ordinary nodes one level down, so every backend reuses its own
+ * paragraph/table/picture emitters and only the frame is new: Word gets a one-cell
+ * layout table with borders on, the preview a bordered `div` (deliberately *not* a
+ * `<table>`, which would join the cell-selection and marquee queries and confuse a
+ * sweep between the frame and a real table inside it).
+ *
+ * The label and footnote are nodes of their own rather than fields on the frame, so
+ * they carry their own edit targets and keep-chains: the label must hold to the body
+ * below it, the footnote to the body above.
+ */
+export interface SourceNode {
+  kind: 'source';
+  /** The body, already expanded. Empty means the frame renders nothing at all. */
+  nodes: RenderNode[];
+  /** Whether the panel draws its frame; resolved, never left to a backend. */
+  framed: boolean;
+  /**
+   * The frame's left edge, in twips from the content column — the text column its own
+   * label sits in, never the page margin. The reference aligns "11.", the stem
+   * sentence, every "Source X:" line and every frame edge on one column, with only the
+   * question number hanging out in the gutter.
+   */
+  indent?: number;
   keepNext?: boolean;
   teacherOnly?: boolean;
   /** Which block this came from, so the preview can select and edit it. */
@@ -406,6 +448,7 @@ export type RenderNode =
   | ImageNode
   | DiagramNode
   | FigureRowNode
+  | SourceNode
   | PageBreakNode
   | SpacerNode
   | DividerNode
@@ -581,10 +624,105 @@ export function renderContentBlocks(
         teacherOnly: options.teacherOnly,
         blockId: block.id,
       });
+    } else if (block.kind === 'source') {
+      renderSource(nodes, block, style, options);
     } else {
       nodes.push(imageNodeFor(block, options));
     }
   }
+}
+
+/**
+ * A labelled source panel: its label line, the framed body, then its footnote.
+ *
+ * The body recurses through `renderContentBlocks`, into a **fresh stream** — so the
+ * head-of-stream skip in the table gap rule applies again inside the frame, and the
+ * frame's first table does not open with a stray blank line. Reusing the function is
+ * the point: a second spelling of the gap rule is a second thing to drift.
+ *
+ * Nothing renders an unmeasurable box, so a source whose body comes to nothing emits
+ * only what it still has to say — its label, if it has one. An empty frame would
+ * measure zero in the probe and occupy a line on the sheet, which is the oscillation
+ * `tableNodeFor` already guards against.
+ */
+function renderSource(
+  nodes: RenderNode[],
+  block: Extract<ContentBlock, { kind: 'source' }>,
+  style: NodeStyle,
+  options: { keepNext?: boolean; teacherOnly?: boolean; indent?: number },
+): void {
+  const body: RenderNode[] = [];
+  renderContentBlocks(body, block.blocks, style, {
+    ...options,
+    // The frame is the boundary: nothing inside it needs to keep with what follows,
+    // and the panel as a whole carries the caller's chain.
+    keepNext: undefined,
+    // The *frame* carries the indent, so the body starts from the frame's own edge —
+    // inheriting it here would indent the content a second time, inside a box that had
+    // already moved right by the same amount.
+    indent: undefined,
+  });
+
+  const hasLabel = !isBiTextEmpty(block.label);
+  const hasFootnote = !isBiTextEmpty(block.footnote);
+  if (body.length === 0 && !hasLabel && !hasFootnote) return;
+
+  // The panel stands off from the text above it, like a table.
+  if (nodes.length > 0 && !endsInBlankLine(nodes)) {
+    nodes.push({ ...blankLine(), keepNext: options.keepNext });
+  }
+
+  if (hasLabel) {
+    nodes.push({
+      kind: 'text',
+      style,
+      text: block.label!,
+      // The label introduces the panel: it must not strand at a page bottom.
+      keepNext: true,
+      teacherOnly: options.teacherOnly,
+      indent: options.indent,
+      format: block.format,
+      edit: { kind: 'sourceLabel', blockId: block.id },
+    });
+  }
+
+  if (body.length > 0) {
+    nodes.push({
+      kind: 'source',
+      nodes: body,
+      framed: block.framed ?? defaultFramed(block.blocks),
+      // The frame lines up with its own label, not with the page margin.
+      indent: options.indent,
+      // A footnote below must keep with the frame above it, or it widows at a page top.
+      keepNext: hasFootnote ? true : options.keepNext,
+      teacherOnly: options.teacherOnly,
+      blockId: block.id,
+    });
+  }
+
+  if (hasFootnote) {
+    // The footnote clears the frame, as the reference prints it — flush against the
+    // rule it reads as a row of the panel rather than a note about it. A blank line is
+    // how every gap is spelled here, so all three backends space it identically.
+    if (body.length > 0) nodes.push({ ...blankLine(), keepNext: true });
+    nodes.push({
+      kind: 'text',
+      style,
+      text: block.footnote!,
+      keepNext: options.keepNext,
+      teacherOnly: options.teacherOnly,
+      indent: options.indent,
+      // The reference sets its footnote in italic, and it is the panel's own voice
+      // rather than the document's, so it carries the format the block was given.
+      format: { italic: true, ...block.format },
+      edit: { kind: 'sourceFootnote', blockId: block.id },
+    });
+  }
+
+  // And air below the panel, so the part that follows does not sit on the frame. A
+  // table takes its gap only *before* itself because a paragraph after one is rare;
+  // a source is followed by the question's parts every time.
+  pushGap(nodes);
 }
 
 type BlockNodeOptions = { keepNext?: boolean; teacherOnly?: boolean };
@@ -631,6 +769,8 @@ function tableNodeFor(block: TableBlock, options: BlockNodeOptions): TableNode |
           block.borders === 'headerRule'
             ? resolveCellEdges(block, rowIndex, cellIndex, columnCount)
             : undefined,
+        // Unstored unless ruled, so a table without one stays byte-identical.
+        ...(cell.diagonal ? { diagonal: true } : {}),
         format: cell.format,
         image: cell.image,
         edit: { kind: 'tableCell', blockId: block.id, cellId: cell.id },

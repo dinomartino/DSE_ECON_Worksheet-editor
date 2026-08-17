@@ -12,6 +12,7 @@ import type {
   CoverRenderNode,
   DiagramNode,
   FigureRowNode,
+  SourceNode,
   ImageNode,
   RenderNode,
   TableNode,
@@ -452,14 +453,17 @@ function tableNodeXml(node: TableNode, context: BodyContext): string {
            * of malformed XML Word reports as a repair error on the whole file rather
            * than as one wrong table.
            */
-          if (cell.edges) {
-            props.push(
-              '<w:tcBorders>' +
-                (['top', 'left', 'bottom', 'right'] as const)
+          if (cell.edges || cell.diagonal) {
+            const edges = cell.edges
+              ? (['top', 'left', 'bottom', 'right'] as const)
                   .map((side) => (cell.edges![side] ? border(side) : noBorder(side)))
-                  .join('') +
-                '</w:tcBorders>',
-            );
+                  .join('')
+              : '';
+            // The diagonal comes *last*: `CT_TcBorders` is itself a sequence, and the
+            // two diagonals follow the four sides and insideH/insideV. Bottom-left to
+            // top-right is `tr2bl`, not `tl2br` (§`TableCell.diagonal`).
+            const diagonal = cell.diagonal ? border('tr2bl') : '';
+            props.push('<w:tcBorders>' + edges + diagonal + '</w:tcBorders>');
           }
           props.push(cellMargins(cell.padding));
           props.push('<w:vAlign w:val="center"/>');
@@ -735,6 +739,98 @@ function figureRowXml(node: FigureRowNode, context: BodyContext): string {
   return table + paragraph({ styleId: STYLE_IDS.Body, runs: '', keepNext: node.keepNext });
 }
 
+/**
+ * A labelled source panel (§`SourceNode`) — a one-cell table whose cell holds the
+ * body's ordinary nodes. The same construction `figureRowXml` proved: a cell is the
+ * one container in OOXML that holds a *nested table* beside prose, which is exactly
+ * what 2025 Source A needs (paragraph → table → paragraph in one frame).
+ *
+ * Framed draws the four sides and nothing inside; bare draws nothing at all and exists
+ * only to group the label, body and footnote (2025 Source B, whose table is its own
+ * box).
+ *
+ * The row is `cantSplit`: a frame that broke across a page would print half a box.
+ * That makes a tall source atomic, which is the deliberate trade — the preview warns
+ * when one cannot fit a page rather than silently overflowing.
+ */
+function sourceXml(node: SourceNode, context: BodyContext): string {
+  const border = (side: string) =>
+    `<w:${side} w:val="single" w:sz="6" w:space="0" w:color="000000"/>`;
+  const noBorder = (side: string) =>
+    `<w:${side} w:val="none" w:sz="0" w:space="0" w:color="auto"/>`;
+
+  // The frame lines up with its own label, not the page margin: the reference aligns
+  // the stem sentence, every "Source X:" line and every frame edge on one column, with
+  // only the question number hanging out in the gutter.
+  const indent = Math.max(0, Math.min(node.indent ?? 0, context.contentWidth - 1));
+  const frameWidth = Math.max(1, context.contentWidth - indent);
+
+  // The body's own nodes, one level down. A nested table resolves its width against
+  // the one content-width base every table uses, so it is respelled as the fraction
+  // this *cell* occupies — the identical rule `figureRowXml` applies. The cell is
+  // narrower than the column by the indent, so that has to divide out too, or an
+  // indented frame's table overhangs its own right rule.
+  const inner = node.nodes
+    .map((child) =>
+      child.kind === 'table'
+        ? tableNodeXml(
+            {
+              ...child,
+              width: (child.width * frameWidth * SOURCE_BODY_SHARE) / context.contentWidth,
+              // Cell-relative, and dropped for the same reason `figureRowXml` drops it.
+              indent: 0,
+            },
+            context,
+          )
+        : renderNodeXml(child, context),
+    )
+    .join('');
+
+  // A cell must end in a paragraph, and an empty cell still needs one, or Word reports
+  // the whole file as damaged rather than this one table as wrong.
+  const content = inner.endsWith('</w:tbl>') || inner === ''
+    ? inner + paragraph({ styleId: STYLE_IDS.Body, runs: '' })
+    : inner;
+
+  const sides = ['top', 'left', 'bottom', 'right'];
+  const table =
+    '<w:tbl><w:tblPr>' +
+    '<w:tblStyle w:val="TableNormal"/>' +
+    `<w:tblW w:w="${frameWidth}" w:type="dxa"/>` +
+    (indent > 0 ? `<w:tblInd w:w="${indent}" w:type="dxa"/>` : '') +
+    '<w:tblLayout w:type="fixed"/>' +
+    // Explicit on every side, `none` included: an unstated border inherits from the
+    // table style, which would frame a panel that asked not to be framed.
+    '<w:tblBorders>' +
+    sides.map((side) => (node.framed ? border(side) : noBorder(side))).join('') +
+    ['insideH', 'insideV'].map(noBorder).join('') +
+    '</w:tblBorders>' +
+    '</w:tblPr>' +
+    `<w:tblGrid><w:gridCol w:w="${frameWidth}"/></w:tblGrid>` +
+    '<w:tr><w:trPr><w:cantSplit/></w:trPr>' +
+    `<w:tc><w:tcPr><w:tcW w:w="${frameWidth}" w:type="dxa"/>` +
+    SOURCE_CELL_MARGINS +
+    '</w:tcPr>' +
+    content +
+    '</w:tc></w:tr>' +
+    '</w:tbl>';
+
+  return table + paragraph({ styleId: STYLE_IDS.Body, runs: '', keepNext: node.keepNext });
+}
+
+/**
+ * How much of the content width a table inside a source panel may take, after the
+ * frame's own cell margins. The reference indents its inner table clear of the frame.
+ */
+const SOURCE_BODY_SHARE = 0.94;
+
+/** Breathing room inside the frame, so the body does not touch the rule. */
+const SOURCE_CELL_MARGINS =
+  '<w:tcMar>' +
+  '<w:top w:w="113" w:type="dxa"/><w:left w:w="113" w:type="dxa"/>' +
+  '<w:bottom w:w="113" w:type="dxa"/><w:right w:w="113" w:type="dxa"/>' +
+  '</w:tcMar>';
+
 /** A diagram: its pre-rendered PNG, emitted through the one picture path. */
 function diagramNodeXml(node: DiagramNode, context: BodyContext): string {
   const src = context.diagramSrc?.(node.blockId);
@@ -756,6 +852,8 @@ export function renderNodeXml(node: RenderNode, context: BodyContext): string {
       return diagramNodeXml(node, context);
     case 'figureRow':
       return figureRowXml(node, context);
+    case 'source':
+      return sourceXml(node, context);
     case 'pageBreak':
       return '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
     case 'spacer':
