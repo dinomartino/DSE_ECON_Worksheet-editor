@@ -80,11 +80,16 @@ interface Props {
   onDuplicate?: () => void;
 }
 
-const BTN =
+// Shared with `ContextBar`, the structural second row — one button language for
+// everything docked over the page.
+export const TOOLBAR_BTN =
   'flex h-7 min-w-7 items-center justify-center rounded px-1.5 text-xs font-medium transition-colors ' +
   'hover:bg-[#3d3a35] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5ba8dd]';
-const ACTIVE = 'bg-[#0d77c9] text-white hover:bg-[#2b8ad3]';
-const IDLE = 'text-[#e6e2db]';
+export const TOOLBAR_ACTIVE = 'bg-[#0d77c9] text-white hover:bg-[#2b8ad3]';
+export const TOOLBAR_IDLE = 'text-[#e6e2db]';
+const BTN = TOOLBAR_BTN;
+const ACTIVE = TOOLBAR_ACTIVE;
+const IDLE = TOOLBAR_IDLE;
 
 export function FormatToolbar({
   dock,

@@ -5,6 +5,7 @@ import {
   bandsHeight,
   bandsOverflow,
   bandsShouldRender,
+  contentWidth,
   headerFooterOffsets,
   defaultFooter,
   defaultHeader,
@@ -23,14 +24,26 @@ import { COVER_PANEL } from "@/model/cover";
 import {
   describeDelete,
   editTargetKey,
+  findFigureBlock,
   findTableBlock,
+  insideSourceBody,
   isFormattable,
+  sourceCountAround,
   targetLayoutElementId,
   targetQuestionId,
 } from "@/model/edits";
+import {
+  createDiagramBlock,
+  createParagraphBlock,
+  createSourceBlock,
+  createTableBlock,
+  nextSourceLetter,
+} from "@/model/factories";
+import { imageBlockFromFile } from "@/export/imageImport";
 import { worksheetMarks } from "@/model/marks";
 import {
   commonRunFormat,
+  emptyBiText,
   marksAnchorRuns,
   plain,
   runLines,
@@ -52,7 +65,16 @@ import type {
   Worksheet,
 } from "@/model/types";
 import { frameBottomIntrusion, furnitureBoxes } from "@/model/pageFurniture";
-import { cellsInRange } from "@/model/table";
+import {
+  cellsInRange,
+  columnCountOf,
+  defaultTableIndent,
+  isMerged,
+  locateCell,
+  mergeDown,
+  mergeRight,
+  unmerge,
+} from "@/model/table";
 import { isModalLayerOpen } from "@/components/ui/modalLayer";
 import { useWorksheetStore, type BandScope } from "@/store/worksheetStore";
 import { diagramSvg } from "@/render/diagram";
@@ -73,6 +95,9 @@ import {
   type ListIndentScheme,
 } from "@/model/numbering";
 import { documentShape } from "@/model/documentShape";
+
+/** The context menu's hidden image input, reached by id from the menu item. */
+const PAGE_MENU_IMAGE_INPUT = 'page-menu-image-input';
 
 /** Human name per layout kind, for the drag ghost. */
 const LAYOUT_DRAG_NAME: Record<string, string> = {
@@ -130,7 +155,14 @@ export interface BandEditingHandlers {
     onClear: () => void;
   };
 }
+import { ContextDock } from "./ContextBar";
 import { FormatToolbar } from "./FormatToolbar";
+import {
+  PageContextMenu,
+  type PageMenuGroup,
+  type PageMenuItem,
+  type PageMenuPayload,
+} from "./PageContextMenu";
 import { InlineEditable, type TextSelection } from "./InlineEditable";
 import { ResizableBlock } from "./ResizableBlock";
 import { ResizableRows } from "./ResizableRows";
@@ -652,6 +684,12 @@ export interface EditContext {
   activeCell?: { blockId: string; cellId: string };
   onActivateCell?: (cell: { blockId: string; cellId: string }) => void;
   /**
+   * Open the page's right-click menu for a component (§ PageContextMenu). The render
+   * site resolves what was clicked and hands the payload over — never a DOM walk.
+   * Absent on read-only paths, which lets the browser's own menu through there.
+   */
+  contextMenu?: (payload: PageMenuPayload, at: { x: number; y: number }) => void;
+  /**
    * A rectangular run of cells swept by dragging across the table — Excel's selection,
    * for the panel's bulk verbs (align every caught cell at once). Corner ids, not
    * positions, so the live table re-derives the rectangle (§ `cellsInRange`).
@@ -863,6 +901,25 @@ function TextNodeView({
       // rather than on the presence of `spaceBefore`: spacing a teacher authored is
       // theirs to keep, and must survive at the top of a page.
       data-gap-carrier={node.boundaryGap ? "" : undefined}
+      // The page-side half of the panel-row link: a sidebar row naming this target
+      // scrolls here (§ `scrollPageTo`). The panel's own controls carry the same key
+      // as `data-edit-target`; a distinct attribute so neither query doubles.
+      data-page-target={node.edit ? editTargetKey(node.edit) : undefined}
+      // The Word reflex: right-click offers this paragraph's own verbs. Only where an
+      // edit target names it — derived text (marks totals, numbers) keeps the
+      // browser's menu.
+      onContextMenu={
+        ctx?.contextMenu && node.edit
+          ? (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              ctx.contextMenu!(
+                { kind: "text", target: node.edit! },
+                { x: event.clientX, y: event.clientY },
+              );
+            }
+          : undefined
+      }
       style={{
         ...(node.indent ? { marginLeft: `${node.indent / 20}pt` } : undefined),
         /*
@@ -1094,6 +1151,11 @@ function SizedBlock({
       onSelect={() => resize.onSelectBlock(blockId)}
       onOpen={
         openable && resize.onOpenBlock ? () => resize.onOpenBlock?.(blockId) : undefined
+      }
+      onContextMenu={
+        ctx?.contextMenu
+          ? (at) => ctx.contextMenu!({ kind: "block", blockId }, at)
+          : undefined
       }
       onResize={resize.onResizeBlock}
     >
@@ -1654,6 +1716,25 @@ function TableNodeView({
                       data-table-cell={address?.cellId}
                       colSpan={cell.colSpan > 1 ? cell.colSpan : undefined}
                       rowSpan={cell.rowSpan > 1 ? cell.rowSpan : undefined}
+                      onContextMenu={
+                        ctx?.contextMenu && address
+                          ? (event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              // The menu's verbs act on the clicked cell, so it becomes
+                              // the active one — what a right-click means in Word.
+                              ctx.onActivateCell?.(address);
+                              ctx.contextMenu!(
+                                {
+                                  kind: "cell",
+                                  blockId: address.blockId,
+                                  cellId: address.cellId,
+                                },
+                                { x: event.clientX, y: event.clientY },
+                              );
+                            }
+                          : undefined
+                      }
                       /*
                        * Uniform, plain-ruled cells — no header shading or bold, which no
                        * HKDSE table has (§tables). Literal hex is the token rule, since
@@ -4784,8 +4865,215 @@ export function Preview({
     // than to a flow item, and selecting a container for them would be inventing one.
   };
 
+  /*
+   * The page's right-click menu (§ PageContextMenu). The payload is resolved by the
+   * render site that owns the click — a paragraph knows its edit target, a cell its
+   * address, a picture its block id — so nothing here walks the DOM.
+   */
+  const [pageMenu, setPageMenu] = useState<
+    { groups: PageMenuGroup[]; at: { x: number; y: number } } | undefined
+  >();
+  /*
+   * The Image item needs a file first. The picker is reached by element id, not a
+   * ref: the menu's item closures are stored in state and rendered, and a captured
+   * ref there reads as a render-time ref access to the compiler. The pending
+   * destination rides in the input's own dataset for the same reason.
+   */
+
+  /**
+   * The right-click menu's contents for a payload (§ PageContextMenu). Built when the
+   * menu opens, against the live document; verbs reuse the page's existing routes —
+   * the `tableGrid` handlers, `describeDelete`/`onDelete`, and the store's
+   * `insertBlockAfter`/`replaceBlock` (the canvases' route, so nested tables work).
+   */
+  const buildPageMenu = (payload: PageMenuPayload): PageMenuGroup[] => {
+    const store = useWorksheetStore.getState();
+    const groups: PageMenuGroup[] = [];
+
+    if (payload.kind === "cell") {
+      const table = findTableBlock(worksheet, payload.blockId);
+      const at = table ? locateCell(table, payload.cellId) : undefined;
+      const cell = table && at ? table.rows[at.rowIndex]?.cells[at.cellIndex] : undefined;
+      if (table && at && cell) {
+        if (onInsertTableRow && onRemoveTableRow && onInsertTableColumn && onRemoveTableColumn) {
+          groups.push({
+            label: "Rows & columns",
+            items: [
+              {
+                label: "Insert row above",
+                onSelect: () => onInsertTableRow(table.id, at.rowIndex),
+              },
+              {
+                label: "Insert row below",
+                onSelect: () => onInsertTableRow(table.id, at.rowIndex + 1),
+              },
+              {
+                label: "Insert column left",
+                onSelect: () => onInsertTableColumn(table.id, at.cellIndex),
+              },
+              {
+                label: "Insert column right",
+                onSelect: () => onInsertTableColumn(table.id, at.cellIndex + 1),
+              },
+              {
+                label: "Delete row",
+                danger: true,
+                disabled: table.rows.length <= 1,
+                onSelect: () => onRemoveTableRow(table.id, at.rowIndex),
+              },
+              {
+                label: "Delete column",
+                danger: true,
+                disabled: columnCountOf(table) <= 1,
+                onSelect: () => onRemoveTableColumn(table.id, at.cellIndex),
+              },
+            ],
+          });
+        }
+        groups.push({
+          label: "Cell",
+          items: isMerged(cell)
+            ? [
+                {
+                  label: "Split merged cell",
+                  onSelect: () =>
+                    store.replaceBlock(table.id, unmerge(table, at.rowIndex, at.cellIndex)),
+                },
+              ]
+            : [
+                {
+                  label: "Merge with cell to the right",
+                  onSelect: () =>
+                    store.replaceBlock(table.id, mergeRight(table, at.rowIndex, at.cellIndex)),
+                },
+                {
+                  label: "Merge with cell below",
+                  onSelect: () =>
+                    store.replaceBlock(table.id, mergeDown(table, at.rowIndex, at.cellIndex)),
+                },
+              ],
+        });
+      }
+    }
+
+    // The figure's own verbs lead its menu.
+    if (payload.kind === "block") {
+      const figure = findFigureBlock(worksheet, payload.blockId);
+      const items: PageMenuItem[] = [];
+      if (figure?.kind === "diagram" && !figure.diagram.pie && onOpenBlock) {
+        items.push({
+          label: "Edit drawing",
+          onSelect: () => onOpenBlock(payload.blockId),
+        });
+      }
+      if (onDelete) {
+        items.push({
+          label: "Delete figure",
+          danger: true,
+          onSelect: () => onDelete({ kind: "blockText", blockId: payload.blockId }),
+        });
+      }
+      if (items.length > 0) groups.push({ items });
+    }
+
+    /*
+     * Where an insert can land: any payload that names a block. A text target inside
+     * a source or figure row still inserts — `insertBlockAfter` resolves a child to
+     * its row's own position — and a cell inserts below its whole table.
+     */
+    const insertAfterId =
+      payload.kind === "text"
+        ? "blockId" in payload.target
+          ? payload.target.blockId
+          : undefined
+        : payload.blockId;
+    if (insertAfterId) {
+      groups.push({
+        label: payload.kind === "cell" ? "Insert below the table" : "Insert below",
+        items: [
+          {
+            label: "Paragraph",
+            onSelect: () =>
+              store.insertBlockAfter(insertAfterId, createParagraphBlock(emptyBiText())),
+          },
+          {
+            // A quick 3 × 3 at the stem's own indent; the sidebar strip keeps the
+            // size grid and the named templates for everything this does not fit.
+            label: "Table (3 × 3)",
+            onSelect: () =>
+              store.insertBlockAfter(insertAfterId, {
+                ...createTableBlock(3, 3),
+                indent: defaultTableIndent(contentWidth(pageSetupOf(worksheet))),
+              }),
+          },
+          {
+            label: "Image…",
+            onSelect: () => {
+              const input = document.getElementById(
+                PAGE_MENU_IMAGE_INPUT,
+              ) as HTMLInputElement | null;
+              if (!input) return;
+              input.dataset.insertAfter = insertAfterId;
+              input.click();
+            },
+          },
+          {
+            label: "Diagram (blank axes)",
+            onSelect: () => store.insertBlockAfter(insertAfterId, createDiagramBlock()),
+          },
+          // Withheld inside a source's body — a source may not contain another.
+          ...(insideSourceBody(worksheet, insertAfterId)
+            ? []
+            : [
+                {
+                  label: "Source panel",
+                  onSelect: () =>
+                    store.insertBlockAfter(
+                      insertAfterId,
+                      createSourceBlock(
+                        nextSourceLetter(sourceCountAround(worksheet, insertAfterId)),
+                      ),
+                    ),
+                },
+              ]),
+        ],
+      });
+    }
+
+    if (payload.kind === "text" && onDelete) {
+      const plan = describeDelete(payload.target);
+      if (plan) {
+        groups.push({
+          items: [
+            {
+              label: `Delete ${plan.label}`,
+              danger: true,
+              onSelect: () => onDelete(payload.target),
+            },
+          ],
+        });
+      }
+    }
+
+    return groups;
+  };
+
+  /*
+   * Deliberately not memoized: it closes over the live worksheet and props, and the
+   * groups are built once per open — at event time, never during render. A menu with
+   * nothing to offer never opens, so the browser's own menu was suppressed for a
+   * reason the teacher can see.
+   */
+  const openPageMenu = (payload: PageMenuPayload, at: { x: number; y: number }) => {
+    if (isModalLayerOpen()) return;
+    const groups = buildPageMenu(payload);
+    if (groups.length === 0) return;
+    setPageMenu({ groups, at });
+  };
+
   const ctx: EditContext | undefined = onEdit
     ? {
+        contextMenu: openPageMenu,
         onEdit: (target, next) => {
           onEdit(target, next);
           setSelectedElement(undefined);
@@ -6431,6 +6719,50 @@ export function Preview({
             }
           />
         )}
+
+      {/* The page's right-click menu, and the hidden input its Image item opens.
+          Built per open, not per render — the payload is the fresh document's. */}
+      {onEdit && pageMenu && (
+        <PageContextMenu
+          at={pageMenu.at}
+          groups={pageMenu.groups}
+          onClose={() => setPageMenu(undefined)}
+        />
+      )}
+      {onEdit && (
+        <input
+          id={PAGE_MENU_IMAGE_INPUT}
+          type="file"
+          accept="image/png,image/jpeg,image/gif,image/webp"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            const afterId = event.target.dataset.insertAfter;
+            // Cleared straight away so the same file can be picked again.
+            event.target.value = "";
+            delete event.target.dataset.insertAfter;
+            if (!file || !afterId) return;
+            void imageBlockFromFile(file).then((block) =>
+              useWorksheetStore.getState().insertBlockAfter(afterId, block),
+            );
+          }}
+        />
+      )}
+
+      {/* The structural second row — table tools for the active cell, figure tools
+          for a selected picture (§ ContextBar). Gated on `onFormat` like the format
+          bar: both are editing chrome, and a read-only host passes neither. */}
+      {onFormat && (
+        <ContextDock
+          containerRef={containerRef}
+          worksheet={worksheet}
+          figureBlockId={selectedBlockId}
+          onOpenBlock={onOpenBlock}
+          belowFormatBar={Boolean(
+            selectedElement && isFormattable(selectedElement.target),
+          )}
+        />
+      )}
     </div>
   );
 }

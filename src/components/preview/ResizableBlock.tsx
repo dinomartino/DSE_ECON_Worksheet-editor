@@ -26,6 +26,8 @@ interface Props {
    * an uploaded picture has nothing to edit, whereas a diagram has a drawing canvas.
    */
   onOpen?: () => void;
+  /** Open the page's right-click menu for this block (§ PageContextMenu). */
+  onContextMenu?: (at: { x: number; y: number }) => void;
   /** Commit the final width. Called once per gesture, on release. */
   onResize: (blockId: string, widthPx: number) => void;
   /**
@@ -56,6 +58,7 @@ export function ResizableBlock({
   selected,
   onSelect,
   onOpen,
+  onContextMenu,
   onResize,
   maxWidthPx,
   children,
@@ -195,6 +198,18 @@ export function ResizableBlock({
                 event.stopPropagation();
                 event.preventDefault();
                 onOpen();
+              }
+            : undefined
+        }
+        // Right-click selects and opens the block's menu — Word's rule that the menu
+        // always describes what is now selected.
+        onContextMenu={
+          onContextMenu
+            ? (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onSelect();
+                onContextMenu({ x: event.clientX, y: event.clientY });
               }
             : undefined
         }
