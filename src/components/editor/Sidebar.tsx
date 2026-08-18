@@ -36,15 +36,10 @@ export function Sidebar({
 
   const [tab, setTab] = useState<Tab>('content');
 
-  // A layout element only pulls the tab over when it has a panel to show — selecting
-  // a divider must not open an Edit tab that says "pick something".
-  const panelElement = worksheet.layout.find(
-    (element) =>
-      element.id === selectedElementId &&
-      (element.kind === 'stimulus' ||
-        element.kind === 'answerLines' ||
-        element.kind === 'answerSpace'),
-  );
+  // Every layout kind has a panel now (§ the sidebar is an inspector), so any
+  // selected element pulls the tab over — the panel's contract is learnable only if
+  // it never dead-ends: whatever you select, Edit describes it.
+  const panelElement = worksheet.layout.find((element) => element.id === selectedElementId);
   const panelElementId = panelElement?.id;
 
   // Follow the selection. Tracked against the previous id rather than firing on every

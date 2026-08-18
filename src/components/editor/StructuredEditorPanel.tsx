@@ -1,24 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { editTargetKey, flattenBlocks } from '@/model/edits';
 import { createParagraphBlock, createPart, createSubPart } from '@/model/factories';
 import { partMarks, questionMarks } from '@/model/marks';
 import { partLabel, subPartLabel } from '@/model/numbering';
-import { emptyBiText, plain } from '@/model/text';
+import { emptyBiText } from '@/model/text';
 import type { ContentBlock, QuestionPart, StructuredQuestion } from '@/model/types';
 import type { EditorPanelProps } from '@/registry/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { Button, CheckField, GroupHeader, IconButton, NumberField, Pill } from '@/components/ui';
+import { Button, CheckField, GroupHeader, NumberField, Pill } from '@/components/ui';
+import { Menu, type MenuItem } from '@/components/ui/Menu';
 import { ChevronDownIcon, ChevronRightIcon } from '@/components/ui/icons';
 import { BiTextField } from './BiTextField';
 import { BlockEditor } from './BlockEditor';
+import { excerptOfBlocks, MiniNumber, scrollPageTo } from './panelRows';
 
 /**
  * Which part (and sub-part) of this question owns an edit-target key, if any.
  *
  * The preview publishes what was clicked as an `editTargetKey` string; the panel maps
- * it back to the model to know which collapsed card must open. Resolved from the
+ * it back to the model to know which collapsed row must open. Resolved from the
  * model, never the DOM — the key formats are `model/edits.ts`'s own.
  */
 function targetOwner(
@@ -45,27 +47,75 @@ function targetOwner(
   return undefined;
 }
 
-/** The first paragraph's text, for naming a collapsed card. */
-function excerptOf(blocks: ContentBlock[]): string {
-  const para = blocks.find((block) => block.kind === 'paragraph');
-  return para && para.kind === 'paragraph'
-    ? plain(para.text.en) || plain(para.text.zh)
-    : '';
+/**
+ * One row of the mark scheme grid: chevron + letter + excerpt as the toggle, then the
+ * marks and lines cells, then the row's own `Menu`. The text itself is typed on the
+ * page — the row is the paper-setter's ledger line for that part.
+ */
+function SchemeRow({
+  open,
+  onToggle,
+  label,
+  excerpt,
+  targetKey,
+  pageTargetKey,
+  marks,
+  lines,
+  menu,
+  menuLabel,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  label: string;
+  excerpt: string;
+  targetKey: string;
+  /** Where this part's text lives on the page — clicking the row shows it there. */
+  pageTargetKey?: string;
+  /** The marks cell: an editable field, or a derived total shown as a pill. */
+  marks: ReactNode;
+  lines: ReactNode;
+  menu: MenuItem[];
+  menuLabel: string;
+}) {
+  return (
+    <div data-edit-target={targetKey} className="flex items-center gap-1.5 px-1 py-0.5">
+      <button
+        type="button"
+        aria-expanded={open}
+        title="Show on the page"
+        onClick={() => {
+          onToggle();
+          if (pageTargetKey) scrollPageTo(pageTargetKey);
+        }}
+        className="flex h-7 min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-md text-left transition-colors hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      >
+        <span className="shrink-0 text-ink-subtle" aria-hidden>
+          {open ? <ChevronDownIcon size={11} /> : <ChevronRightIcon size={11} />}
+        </span>
+        <span className="w-8 shrink-0 text-[11px] font-semibold tabular-nums text-ink-muted">
+          {label}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-[11px] text-ink-subtle">
+          {excerpt || <span className="italic">type on the page</span>}
+        </span>
+      </button>
+      {marks}
+      {lines}
+      <Menu items={menu} label={menuLabel} />
+    </div>
+  );
 }
 
 /**
- * Structured-question editor (§5.3): parts and sub-parts with add/remove/reorder,
- * marks on each leaf, per-part answers, and live totals (§3.5).
+ * Structured-question editor, reframed as a **mark scheme grid** (§ the paper owns
+ * the words): one compact row per part and sub-part — letter, excerpt, marks, answer
+ * lines — which is the ledger a paper-setter actually drafts. The wording is typed on
+ * the page; a row expands for what has no page handle: the interlude, block inserts,
+ * and the teacher-only answer.
  *
- * Depth is carried by a left rule and label rather than by another nested box —
- * stacking four bordered rectangles inside a 380px column was the main reason this
- * panel read as an undifferentiated wall.
- *
- * Parts and sub-parts are **collapsible**: a real LQ has four parts of several fields
- * each, and all of them open at once was a wall nothing could be found in. A card
- * opens by click, when "+ Part" creates it, and — the path that must never fail —
- * when the preview's selection lands inside it, so clicking (c)'s text on the paper
- * opens (c) here with the matching field scrolled into view.
+ * Rows are **collapsible**, and — the path that must never fail — a row opens when
+ * the preview's selection lands inside it, so clicking (c)'s text on the paper opens
+ * (c) here with the matching control scrolled into view.
  */
 export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<StructuredQuestion>) {
   const setParts = (parts: QuestionPart[]) => onChange({ parts });
@@ -92,10 +142,10 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
   });
 
   /*
-   * Follow the preview's selection into a collapsed card — as a render-time
+   * Follow the preview's selection into a collapsed row — as a render-time
    * adjustment, not an effect, so the revealed control is in the DOM in the same
    * commit `Inspector`'s layout effect queries it to scroll. Only a *change* of
-   * target expands: the teacher can still collapse the card a selected field
+   * target expands: the teacher can still collapse the row a selected field
    * lives in, and it stays collapsed until the selection moves.
    */
   const [prevTargetKey, setPrevTargetKey] = useState(selectedTargetKey);
@@ -139,7 +189,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
     <div className="space-y-5">
       <BlockEditor
         label="Stem"
-        labelHint="what the student reads"
+        labelHint="typed on the page"
         blocks={question.blocks}
         onChange={(blocks) => onChange({ blocks })}
       />
@@ -155,14 +205,14 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
        * offer two places to say the same thing.
        */}
       {question.parts.length === 0 && (
-        <section className="space-y-2">
+        <section className="flex flex-wrap gap-3">
           <NumberField
             label="Marks"
             value={question.marks ?? 0}
             onChange={(marks) => onChange({ marks })}
           />
           <NumberField
-            label="Answer space (dotted lines)"
+            label="Answer lines"
             value={question.answerSpace}
             clearable
             placeholder="none"
@@ -171,10 +221,10 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
         </section>
       )}
 
-      <section className="space-y-3">
+      <section className="space-y-1">
         <GroupHeader
-          title="Parts"
-          hint={`${question.parts.length} · (a), (b), (c)…`}
+          title="Parts & marks"
+          hint="(a), (b), (c)… · text on the page"
           // Off by default: parts carry their own marks, so the trailing sum is opt-in.
           action={
             <CheckField
@@ -185,366 +235,291 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
           }
         />
 
-        {question.parts.map((part, partIndex) => {
-          const subParts = part.subParts ?? [];
-          const hasSubParts = subParts.length > 0;
-          const interlude = part.blocksBefore ?? [];
-          // No sub-part separately marked = one label for the group, carried by the part.
-          const sharesMarks = hasSubParts && subParts.every((s) => s.marks === undefined);
+        {/* Column headings for the grid's two number cells, present only when there is
+            a grid to head. Widths mirror the cells below, so the words sit over their
+            column. */}
+        {question.parts.length > 0 && (
+          <div className="flex items-center justify-end gap-1.5 px-1 pr-8 text-[9px] font-medium uppercase tracking-wide text-ink-subtle">
+            <span className="w-12 text-right">Marks</span>
+            <span className="w-12 text-right">Lines</span>
+          </div>
+        )}
 
-          const moveSubPart = (index: number, delta: number) => {
-            const target = index + delta;
-            if (target < 0 || target >= subParts.length) return;
-            const next = [...subParts];
-            [next[index], next[target]] = [next[target], next[index]];
-            patchPart(partIndex, { subParts: next });
-          };
+        <div className="space-y-0.5">
+          {question.parts.map((part, partIndex) => {
+            const subParts = part.subParts ?? [];
+            const hasSubParts = subParts.length > 0;
+            const interlude = part.blocksBefore ?? [];
+            // No sub-part separately marked = one label for the group, carried by the part.
+            const sharesMarks = hasSubParts && subParts.every((s) => s.marks === undefined);
 
-          const partOpen = expandedParts.has(part.id);
+            const moveSubPart = (index: number, delta: number) => {
+              const target = index + delta;
+              if (target < 0 || target >= subParts.length) return;
+              const next = [...subParts];
+              [next[index], next[target]] = [next[target], next[index]];
+              patchPart(partIndex, { subParts: next });
+            };
 
-          return (
-            <section
-              key={part.id}
-              data-edit-target={editTargetKey({
-                kind: 'partAnswer',
-                questionId: question.id,
-                partId: part.id,
-              })}
-              className="group/part rounded-lg border border-line bg-surface "
-            >
-              <header
-                className={`flex items-center gap-2 px-2.5 py-1.5 ${
-                  partOpen ? 'border-b border-line' : ''
-                }`}
-              >
-                <button
-                  type="button"
-                  aria-expanded={partOpen}
-                  onClick={() => togglePart(part.id)}
-                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                >
-                  <span className="shrink-0 text-ink-subtle" aria-hidden>
-                    {partOpen ? <ChevronDownIcon size={11} /> : <ChevronRightIcon size={11} />}
-                  </span>
-                  <span className="shrink-0 text-xs font-semibold text-ink-muted ">
-                    Part {partLabel(partIndex)}
-                  </span>
-                  <Pill>{partMarks(part)}m</Pill>
-                  {/* A closed card must still say which part it is — the letter alone
-                      cannot be told apart in a four-part question. */}
-                  {!partOpen && (
-                    <span className="min-w-0 truncate text-[11px] text-ink-subtle">
-                      {excerptOf(part.blocks)}
-                    </span>
-                  )}
-                </button>
-                <span className="ml-auto flex shrink-0 items-center opacity-0 transition-opacity focus-within:opacity-100 group-hover/part:opacity-100">
-                  <IconButton
-                    label="Move part up"
-                    disabled={partIndex === 0}
-                    onClick={() => movePart(partIndex, -1)}
-                  >
-                    <span aria-hidden>↑</span>
-                  </IconButton>
-                  <IconButton
-                    label="Move part down"
-                    disabled={partIndex === question.parts.length - 1}
-                    onClick={() => movePart(partIndex, 1)}
-                  >
-                    <span aria-hidden>↓</span>
-                  </IconButton>
-                  <IconButton
-                    label="Delete part"
-                    variant="danger"
-                    onClick={() => setParts(question.parts.filter((_, i) => i !== partIndex))}
-                  >
-                    <span aria-hidden>✕</span>
-                  </IconButton>
-                </span>
-              </header>
+            const partOpen = expandedParts.has(part.id);
 
-              {partOpen && (
-              <div className="space-y-2 p-2.5">
-                {/*
-                 * The mid-question interlude (§`QuestionPart.blocksBefore`): unnumbered
-                 * text — often a revised table — that resets the scenario before this
-                 * part is asked.
-                 *
-                 * Rendered *above* the part's own blocks, where it prints, so the panel
-                 * reads down the page in the order the paper does. Behind an affordance
-                 * rather than a permanent second block editor: the ordinary part has no
-                 * interlude, and two identical-looking editors on every part card would
-                 * bury the one that holds the question.
-                 */}
-                {interlude.length > 0 ? (
-                  <div className="space-y-1 rounded-md border border-dashed border-line p-2">
-                    <GroupHeader
-                      title="Text before this part"
-                      hint="Unnumbered, at the stem's indent"
-                      action={
-                        <IconButton
-                          label="Remove text before this part"
-                          variant="danger"
-                          onClick={() => patchPart(partIndex, { blocksBefore: undefined })}
-                        >
-                          <span aria-hidden>✕</span>
-                        </IconButton>
-                      }
-                    />
-                    <BlockEditor
-                      blocks={interlude}
-                      onChange={(blocksBefore) =>
-                        // Emptied back to nothing drops the field, rather than storing an
-                        // empty array that reads as "an interlude that prints nothing".
+            const partMenu: MenuItem[] = [
+              {
+                label: 'Move up',
+                onSelect: () => movePart(partIndex, -1),
+                disabled: partIndex === 0,
+              },
+              {
+                label: 'Move down',
+                onSelect: () => movePart(partIndex, 1),
+                disabled: partIndex === question.parts.length - 1,
+              },
+              {
+                label: '+ Sub-part',
+                onSelect: () => {
+                  const created = createSubPart();
+                  // Created open — it exists to be typed into. The part's own marks are
+                  // *kept*: a new sub-part is created marked, so `partMarks` sums the
+                  // sub-parts and the part's value is ignored — but once the boxes are
+                  // emptied to share one label, the part's marks become the group's,
+                  // and a wipe here would have destroyed exactly that figure.
+                  setExpandedSubs((prev) => new Set(prev).add(created.id));
+                  setExpandedParts((prev) => new Set(prev).add(part.id));
+                  patchPart(partIndex, { subParts: [...subParts, created] });
+                },
+              },
+              ...(interlude.length === 0
+                ? [
+                    {
+                      label: 'Text before this part',
+                      onSelect: () => {
+                        setExpandedParts((prev) => new Set(prev).add(part.id));
                         patchPart(partIndex, {
-                          blocksBefore: blocksBefore.length > 0 ? blocksBefore : undefined,
-                        })
-                      }
+                          blocksBefore: [createParagraphBlock(emptyBiText())],
+                        });
+                      },
+                    },
+                  ]
+                : []),
+              {
+                label: 'Delete part',
+                danger: true,
+                separated: true,
+                onSelect: () => setParts(question.parts.filter((_, i) => i !== partIndex)),
+              },
+            ];
+
+            return (
+              <section key={part.id} className="rounded-lg border border-line bg-surface">
+                <SchemeRow
+                  open={partOpen}
+                  onToggle={() => togglePart(part.id)}
+                  label={partLabel(partIndex)}
+                  excerpt={excerptOfBlocks(part.blocks)}
+                  targetKey={editTargetKey({
+                    kind: 'partAnswer',
+                    questionId: question.id,
+                    partId: part.id,
+                  })}
+                  pageTargetKey={
+                    part.blocks[0]
+                      ? editTargetKey({ kind: 'blockText', blockId: part.blocks[0].id })
+                      : undefined
+                  }
+                  marks={
+                    hasSubParts && !sharesMarks ? (
+                      // Individually marked sub-parts: the part's total is derived, and
+                      // a derived number is never an input (§ marks are derived).
+                      <span className="w-12 shrink-0 text-right">
+                        <Pill>{partMarks(part)}m</Pill>
+                      </span>
+                    ) : (
+                      <MiniNumber
+                        // Clearable at heart: absent prints no label at all — some
+                        // parts are marked as a group elsewhere — while 0 deliberately
+                        // prints "(0 marks)".
+                        label={
+                          sharesMarks
+                            ? subParts.length > 1
+                              ? `Marks for ${subPartLabel(0)}–${subPartLabel(subParts.length - 1)} together`
+                              : `Marks for ${subPartLabel(0)}`
+                            : `Part (${partLabel(partIndex)}) marks`
+                        }
+                        value={part.marks}
+                        placeholder="—"
+                        onChange={(marks) => patchPart(partIndex, { marks })}
+                      />
+                    )
+                  }
+                  lines={
+                    <MiniNumber
+                      label={`Part (${partLabel(partIndex)}) answer space (dotted lines)`}
+                      value={part.answerSpace}
+                      placeholder="—"
+                      onChange={(answerSpace) => patchPart(partIndex, { answerSpace })}
                     />
-                  </div>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="subtle"
-                    onClick={() =>
-                      patchPart(partIndex, { blocksBefore: [createParagraphBlock(emptyBiText())] })
-                    }
-                  >
-                    + Text before this part
-                  </Button>
-                )}
-
-                <BlockEditor
-                  blocks={part.blocks}
-                  onChange={(blocks) => patchPart(partIndex, { blocks })}
+                  }
+                  menu={partMenu}
+                  menuLabel={`Actions for part (${partLabel(partIndex)})`}
                 />
 
-                {!hasSubParts && (
-                  <NumberField
-                    label="Marks"
-                    value={part.marks}
-                    // Clearable because absent and zero differ: absent prints no label
-                    // at all — some parts are marked as a group elsewhere — while 0
-                    // deliberately prints "(0 marks)".
-                    clearable
-                    placeholder="—"
-                    onChange={(marks) => patchPart(partIndex, { marks })}
-                  />
-                )}
+                {partOpen && (
+                  <div className="space-y-2 border-t border-line p-2">
+                    {/*
+                     * The mid-question interlude (§`QuestionPart.blocksBefore`):
+                     * unnumbered text — often a revised table — that resets the scenario
+                     * before this part is asked. Rendered *above* the part's own blocks,
+                     * where it prints. Added from the row's menu; removing the last
+                     * block drops the field.
+                     */}
+                    {interlude.length > 0 && (
+                      <div className="space-y-1 rounded-md border border-dashed border-line p-2">
+                        <GroupHeader title="Text before this part" hint="unnumbered · typed on the page" />
+                        <BlockEditor
+                          blocks={interlude}
+                          onChange={(blocksBefore) =>
+                            // Emptied back to nothing drops the field, rather than
+                            // storing an empty array that reads as "an interlude that
+                            // prints nothing".
+                            patchPart(partIndex, {
+                              blocksBefore: blocksBefore.length > 0 ? blocksBefore : undefined,
+                            })
+                          }
+                        />
+                      </div>
+                    )}
 
-                {/*
-                 * Sub-parts normally carry the marks and the part derives its total from
-                 * them — so its own box stays hidden, or there would be two answers to
-                 * the same question. It comes back for the one shape that needs it: a
-                 * group sharing a single label, where no sub-part has a value to sum and
-                 * the part's own marks are the group's (§`QuestionSubPart.marks`).
-                 */}
-                {hasSubParts && sharesMarks && (
-                  <NumberField
-                    // Named for the span it actually covers — "(i)–(ii)" — so it is clear
-                    // the number is the group's, not the part's lead-in text's.
-                    label={
-                      subParts.length > 1
-                        ? `Marks for ${subPartLabel(0)}–${subPartLabel(subParts.length - 1)} together`
-                        : `Marks for ${subPartLabel(0)}`
-                    }
-                    value={part.marks}
-                    // Clearable so a group can carry no label at all — emptied, the
-                    // shared "(N marks)" simply does not print.
-                    clearable
-                    placeholder="—"
-                    onChange={(marks) => patchPart(partIndex, { marks })}
-                  />
-                )}
+                    <BlockEditor
+                      blocks={part.blocks}
+                      onChange={(blocks) => patchPart(partIndex, { blocks })}
+                    />
 
-                {/*
-                 * The QAB's writing room, printed after this part (after the whole
-                 * sub-part group when there is one). Clearable because absent and zero
-                 * differ — absent prints nothing, the ordinary worksheet state.
-                 */}
-                <NumberField
-                  label="Answer space (dotted lines)"
-                  value={part.answerSpace}
-                  clearable
-                  placeholder="none"
-                  onChange={(answerSpace) => patchPart(partIndex, { answerSpace })}
-                />
-
-                <BiTextField
-                  label="Answer / marking scheme"
-                  value={part.answer ?? emptyBiText()}
-                  onChange={(answer) => patchPart(partIndex, { answer })}
-                />
-
-                {subParts.length > 0 && (
-                  <div className="space-y-2 border-l-2 border-line pl-2.5 ">
-                    {subParts.map((subPart, subIndex) => (
-                      <div
-                        key={subPart.id}
-                        data-edit-target={editTargetKey({
-                          kind: 'subPartAnswer',
-                          questionId: question.id,
-                          partId: part.id,
-                          subPartId: subPart.id,
-                        })}
-                        className="group/sub space-y-1.5"
-                      >
-                        <header className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            aria-expanded={expandedSubs.has(subPart.id)}
-                            onClick={() => toggleSub(subPart.id)}
-                            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                          >
-                            <span className="shrink-0 text-ink-subtle" aria-hidden>
-                              {expandedSubs.has(subPart.id) ? (
-                                <ChevronDownIcon size={10} />
-                              ) : (
-                                <ChevronRightIcon size={10} />
-                              )}
-                            </span>
-                            <span className="shrink-0 text-[11px] font-semibold text-ink-subtle ">
-                              {subPartLabel(subIndex)}
-                            </span>
-                            {/*
-                              * An unmarked sub-part has no total of its own — the group's
-                              * label covers it — so the pill names that instead of the
-                              * marks it lacks. Interpolating the absent number rendered a
-                              * bare "m", which reads as a broken value rather than a
-                              * deliberate one (§`QuestionSubPart.marks`).
-                              */}
-                            <Pill>
-                              {subPart.marks === undefined ? 'shared' : `${subPart.marks}m`}
-                            </Pill>
-                            {!expandedSubs.has(subPart.id) && (
-                              <span className="min-w-0 truncate text-[11px] text-ink-subtle">
-                                {excerptOf(subPart.blocks)}
-                              </span>
-                            )}
-                          </button>
-                          <span className="ml-auto flex shrink-0 items-center opacity-0 transition-opacity focus-within:opacity-100 group-hover/sub:opacity-100">
-                            <IconButton
-                              label="Move sub-part up"
-                              disabled={subIndex === 0}
-                              onClick={() => moveSubPart(subIndex, -1)}
-                            >
-                              <span aria-hidden>↑</span>
-                            </IconButton>
-                            <IconButton
-                              label="Move sub-part down"
-                              disabled={subIndex === subParts.length - 1}
-                              onClick={() => moveSubPart(subIndex, 1)}
-                            >
-                              <span aria-hidden>↓</span>
-                            </IconButton>
-                            <IconButton
-                              label="Delete sub-part"
-                              variant="danger"
-                              onClick={() =>
+                    {subParts.length > 0 && (
+                      <div className="space-y-0.5 border-l-2 border-line pl-2">
+                        {subParts.map((subPart, subIndex) => {
+                          const subOpen = expandedSubs.has(subPart.id);
+                          const subMenu: MenuItem[] = [
+                            {
+                              label: 'Move up',
+                              onSelect: () => moveSubPart(subIndex, -1),
+                              disabled: subIndex === 0,
+                            },
+                            {
+                              label: 'Move down',
+                              onSelect: () => moveSubPart(subIndex, 1),
+                              disabled: subIndex === subParts.length - 1,
+                            },
+                            {
+                              label: 'Delete sub-part',
+                              danger: true,
+                              separated: true,
+                              onSelect: () =>
                                 patchPart(partIndex, {
                                   subParts: subParts.filter((_, i) => i !== subIndex),
-                                })
-                              }
-                            >
-                              <span aria-hidden>✕</span>
-                            </IconButton>
-                          </span>
-                        </header>
-
-                        {expandedSubs.has(subPart.id) && (
-                        <>
-                        <BlockEditor
-                          blocks={subPart.blocks}
-                          onChange={(blocks) =>
-                            patchPart(partIndex, {
-                              subParts: subParts.map((s, i) =>
-                                i === subIndex ? { ...s, blocks } : s,
-                              ),
-                            })
-                          }
-                        />
-
-                        <NumberField
-                          label="Marks"
-                          value={subPart.marks}
-                          clearable
-                          // Empty is a real state here, and the placeholder has to say
-                          // which one: the group's shared label, not "unmarked".
-                          placeholder="—"
-                          onChange={(marks) =>
-                            patchPart(partIndex, {
-                              subParts: subParts.map((s, i) =>
-                                i === subIndex ? { ...s, marks } : s,
-                              ),
-                            })
-                          }
-                        />
-
-                        <NumberField
-                          label="Answer space (dotted lines)"
-                          value={subPart.answerSpace}
-                          clearable
-                          placeholder="none"
-                          onChange={(answerSpace) =>
-                            patchPart(partIndex, {
-                              subParts: subParts.map((s, i) =>
-                                i === subIndex ? { ...s, answerSpace } : s,
-                              ),
-                            })
-                          }
-                        />
-
-                        <BiTextField
-                          label="Answer"
-                          value={subPart.answer ?? emptyBiText()}
-                          rows={1}
-                          onChange={(answer) =>
-                            patchPart(partIndex, {
-                              subParts: subParts.map((s, i) =>
-                                i === subIndex ? { ...s, answer } : s,
-                              ),
-                            })
-                          }
-                        />
-                        </>
-                        )}
+                                }),
+                            },
+                          ];
+                          return (
+                            <div key={subPart.id}>
+                              <SchemeRow
+                                open={subOpen}
+                                onToggle={() => toggleSub(subPart.id)}
+                                label={subPartLabel(subIndex)}
+                                excerpt={excerptOfBlocks(subPart.blocks)}
+                                targetKey={editTargetKey({
+                                  kind: 'subPartAnswer',
+                                  questionId: question.id,
+                                  partId: part.id,
+                                  subPartId: subPart.id,
+                                })}
+                                pageTargetKey={
+                                  subPart.blocks[0]
+                                    ? editTargetKey({
+                                        kind: 'blockText',
+                                        blockId: subPart.blocks[0].id,
+                                      })
+                                    : undefined
+                                }
+                                marks={
+                                  <MiniNumber
+                                    // Empty is a real state here, and the placeholder
+                                    // has to say which one: the group's shared label,
+                                    // not "unmarked".
+                                    label={`Sub-part ${subPartLabel(subIndex)} marks`}
+                                    value={subPart.marks}
+                                    placeholder="shared"
+                                    onChange={(marks) =>
+                                      patchPart(partIndex, {
+                                        subParts: subParts.map((s, i) =>
+                                          i === subIndex ? { ...s, marks } : s,
+                                        ),
+                                      })
+                                    }
+                                  />
+                                }
+                                lines={
+                                  <MiniNumber
+                                    label={`Sub-part ${subPartLabel(subIndex)} answer space (dotted lines)`}
+                                    value={subPart.answerSpace}
+                                    placeholder="—"
+                                    onChange={(answerSpace) =>
+                                      patchPart(partIndex, {
+                                        subParts: subParts.map((s, i) =>
+                                          i === subIndex ? { ...s, answerSpace } : s,
+                                        ),
+                                      })
+                                    }
+                                  />
+                                }
+                                menu={subMenu}
+                                menuLabel={`Actions for sub-part ${subPartLabel(subIndex)}`}
+                              />
+                              {subOpen && (
+                                <div className="space-y-2 py-1 pl-6">
+                                  <BlockEditor
+                                    blocks={subPart.blocks}
+                                    onChange={(blocks) =>
+                                      patchPart(partIndex, {
+                                        subParts: subParts.map((s, i) =>
+                                          i === subIndex ? { ...s, blocks } : s,
+                                        ),
+                                      })
+                                    }
+                                  />
+                                  <BiTextField
+                                    label="Answer (teacher version)"
+                                    value={subPart.answer ?? emptyBiText()}
+                                    rows={1}
+                                    onChange={(answer) =>
+                                      patchPart(partIndex, {
+                                        subParts: subParts.map((s, i) =>
+                                          i === subIndex ? { ...s, answer } : s,
+                                        ),
+                                      })
+                                    }
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))}
+                    )}
+
+                    <BiTextField
+                      label="Answer / marking scheme (teacher version)"
+                      value={part.answer ?? emptyBiText()}
+                      onChange={(answer) => patchPart(partIndex, { answer })}
+                    />
                   </div>
                 )}
-
-                <Button
-                  size="sm"
-                  variant="subtle"
-                  onClick={() => {
-                    const created = createSubPart();
-                    // Created open — it exists to be typed into.
-                    setExpandedSubs((prev) => new Set(prev).add(created.id));
-                    patchPart(partIndex, {
-                      subParts: [...subParts, created],
-                      /*
-                       * The part's own marks are *kept*, not cleared.
-                       *
-                       * A new sub-part is created marked, so `partMarks` sums the
-                       * sub-parts and the part's value is ignored — clearing it changes
-                       * no total while destroying the number an author typed. It matters
-                       * once they empty the sub-part boxes to share one label: the part's
-                       * marks become the group's total, and a wipe here would have thrown
-                       * away exactly the figure that case needs (§`QuestionSubPart.marks`).
-                       */
-                    });
-                  }}
-                >
-                  + Sub-part
-                </Button>
-              </div>
-              )}
-            </section>
-          );
-        })}
+              </section>
+            );
+          })}
+        </div>
       </section>
 
-      <div className="flex items-center justify-between border-t border-line pt-3 ">
+      <div className="flex items-center justify-between border-t border-line pt-3">
         <Button
           size="sm"
           onClick={() => {
@@ -556,7 +531,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
         >
           + Part
         </Button>
-        <span className="text-xs font-semibold text-ink-muted ">
+        <span className="text-xs font-semibold text-ink-muted">
           Total: {questionMarks(question)} marks
         </span>
       </div>

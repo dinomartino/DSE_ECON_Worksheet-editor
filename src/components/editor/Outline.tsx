@@ -14,8 +14,6 @@ import {
   createSpacerElement,
   createTextElement,
   LAYOUT_NAME,
-  MIN_ANSWER_LINES,
-  MIN_SPACER_PT,
 } from '@/model/flow';
 import { questionMarks } from '@/model/marks';
 import type { NumberingPlan } from '@/model/numbering';
@@ -49,7 +47,6 @@ import {
   TrashIcon,
 } from '@/components/ui/icons';
 import { Menu } from '@/components/ui/Menu';
-import { SizeStepper } from '@/components/ui/SizeStepper';
 
 /**
  * The question navigator.
@@ -76,9 +73,6 @@ function typeBadge(question: Question): string {
 /* `LAYOUT_NAME` comes from `model/flow` — the rail, this outline and the add rail's
    destination label all name the same nine kinds, and separate copies would drift. */
 
-/* `SizeStepper` lives in `ui/` — the outline row and the element's Edit panel share
-   it, so the two surfaces cannot disagree about how the number is entered. */
-
 /**
  * A non-question row in the outline.
  *
@@ -89,7 +83,6 @@ function LayoutRow({ element }: { element: LayoutElement }) {
   const mode = useWorksheetStore((s) => s.mode);
   const removeLayoutElement = useWorksheetStore((s) => s.removeLayoutElement);
   const updateLayoutElement = useWorksheetStore((s) => s.updateLayoutElement);
-  const resizeLayoutElement = useWorksheetStore((s) => s.resizeLayoutElement);
   const nudgeFlowItem = useWorksheetStore((s) => s.nudgeFlowItem);
   const reorderFlowItem = useWorksheetStore((s) => s.reorderFlowItem);
   const dragId = useWorksheetStore((s) => s.dragQuestionId);
@@ -125,31 +118,18 @@ function LayoutRow({ element }: { element: LayoutElement }) {
           ? `${element.blocks.length} block${element.blocks.length === 1 ? '' : 's'}`
           : '';
 
-  // Answer lines and blank space describe themselves by their size, so the row spends
-  // its width on a control for that size rather than on text repeating it.
+  // Answer lines and blank space describe themselves by their size. The outline is
+  // navigation, so the row *reports* the size; it is edited by dragging on the page
+  // or in the element's panel — one editing place per number, not three.
   const stepper =
     element.kind === 'answerSpace' && element.fill ? (
       // A fill element's count is derived by the paginator, so the row reports the
-      // state instead of offering a stepper that the next resolution would overwrite.
+      // state instead of a number the next resolution would overwrite.
       <Pill>fills page</Pill>
     ) : element.kind === 'answerLines' || element.kind === 'answerSpace' ? (
-      <SizeStepper
-        value={element.lines}
-        min={MIN_ANSWER_LINES}
-        step={1}
-        unit={element.lines === 1 ? 'line' : 'lines'}
-        label={element.kind === 'answerSpace' ? 'Answer space lines' : 'Answer lines'}
-        onCommit={(lines) => resizeLayoutElement(element.id, lines)}
-      />
+      <Pill>{`${element.lines} ${element.lines === 1 ? 'line' : 'lines'}`}</Pill>
     ) : element.kind === 'spacer' ? (
-      <SizeStepper
-        value={element.heightPt}
-        min={MIN_SPACER_PT}
-        step={6}
-        unit="pt"
-        label="Blank space height"
-        onCommit={(heightPt) => resizeLayoutElement(element.id, heightPt)}
-      />
+      <Pill>{`${element.heightPt} pt`}</Pill>
     ) : undefined;
 
   const sizeItems =

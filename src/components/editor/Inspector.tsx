@@ -1,24 +1,221 @@
 'use client';
 
 import { useLayoutEffect, useRef } from 'react';
-import { LAYOUT_NAME, MIN_ANSWER_LINES } from '@/model/flow';
+import { editTargetKey } from '@/model/edits';
+import { LAYOUT_NAME, MIN_ANSWER_LINES, MIN_SPACER_PT } from '@/model/flow';
+import { newId } from '@/model/factories';
 import { questionMarks } from '@/model/marks';
 import type { NumberingPlan } from '@/model/numbering';
-import { plain } from '@/model/text';
+import { emptyBiText, plain } from '@/model/text';
+import type { LayoutElement } from '@/model/types';
 import { requireQuestionType } from '@/registry';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { IconButton, Pill } from '@/components/ui';
+import { Button, CheckField, GroupHeader, IconButton, Pill } from '@/components/ui';
 import { CloseIcon, ListIcon } from '@/components/ui/icons';
 import { SizeStepper } from '@/components/ui/SizeStepper';
+import { biExcerpt, ExcerptRow } from './panelRows';
 import { StimulusEditorPanel } from './StimulusEditorPanel';
 
 /**
  * Inputs for whatever is currently selected.
  *
- * It now owns the full height of the sidebar rather than the bottom half of a split,
- * which is what makes a structured question with several parts scroll as one form
- * instead of through a ~200px porthole.
+ * Every selectable thing shows *something* here — a question its properties, a layout
+ * element at least its name and its verbs — so the panel's contract is learnable:
+ * whatever you select, this describes it. A selection that dead-ended on "pick
+ * something to edit" taught that the panel was broken, one kind at a time.
  */
+
+/** One line under the element's name, saying what the kind is. */
+const LAYOUT_HINT: Record<LayoutElement['kind'], string> = {
+  section: 'names the run of questions below it',
+  stimulus: 'content the questions below refer to',
+  heading: 'a display line — typed on the page',
+  text: 'a note or closing line — typed on the page',
+  partHeader: 'part heading with a derived marks total',
+  questionCount: 'authored wording around the derived count',
+  labelList: 'side-by-side label · value rows',
+  answerLines: 'ruled lines for written answers',
+  answerSpace: 'dotted lines for written answers',
+  spacer: 'blank vertical space',
+  divider: 'a horizontal rule',
+  pageBreak: 'starts a new sheet',
+};
+
+/** The kinds whose printed words live on the page, shown here as an address row. */
+function textRowFor(element: LayoutElement) {
+  if (
+    element.kind !== 'section' &&
+    element.kind !== 'heading' &&
+    element.kind !== 'text' &&
+    element.kind !== 'partHeader' &&
+    element.kind !== 'questionCount'
+  ) {
+    return null;
+  }
+  const text =
+    'text' in element ? biExcerpt(element.text) : '';
+  return (
+    <ExcerptRow
+      text={text}
+      targetKey={editTargetKey({ kind: 'layoutText', elementId: element.id })}
+    />
+  );
+}
+
+function LayoutElementPanel({ element }: { element: LayoutElement }) {
+  const updateLayoutElement = useWorksheetStore((s) => s.updateLayoutElement);
+  const resizeLayoutElement = useWorksheetStore((s) => s.resizeLayoutElement);
+  const removeLayoutElement = useWorksheetStore((s) => s.removeLayoutElement);
+  const selectElement = useWorksheetStore((s) => s.selectElement);
+
+  return (
+    <div className="space-y-4">
+      {textRowFor(element)}
+
+      {element.kind === 'section' && (
+        <div className="space-y-2">
+          <CheckField
+            label="Restart numbering at 1"
+            checked={Boolean(element.restartNumbering)}
+            onChange={(restartNumbering) =>
+              updateLayoutElement(element.id, { restartNumbering })
+            }
+          />
+          <CheckField
+            label="Show the section's marks total"
+            checked={Boolean(element.showMarks)}
+            onChange={(showMarks) => updateLayoutElement(element.id, { showMarks })}
+          />
+        </div>
+      )}
+
+      {(element.kind === 'answerLines' || element.kind === 'answerSpace') &&
+        (element.kind === 'answerSpace' && element.fill ? (
+          <div className="space-y-2">
+            <Pill>fills page</Pill>
+            <p className="text-xs leading-relaxed text-ink-muted">
+              This space stretches to the bottom of its page, so the line count is set
+              by the layout — currently {element.lines} lines.
+            </p>
+            <p className="text-xs text-ink-subtle">此答題空間自動填滿頁面。</p>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[13px] font-medium text-ink">Lines</p>
+              <p className="text-[11px] text-ink-subtle">行數</p>
+            </div>
+            <span className="flex shrink-0 items-center">
+              <SizeStepper
+                value={element.lines}
+                min={MIN_ANSWER_LINES}
+                step={1}
+                unit={element.lines === 1 ? 'line' : 'lines'}
+                label={
+                  element.kind === 'answerSpace' ? 'Answer space lines' : 'Answer lines'
+                }
+                onCommit={(lines) => resizeLayoutElement(element.id, lines)}
+              />
+            </span>
+          </div>
+        ))}
+
+      {element.kind === 'spacer' && (
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[13px] font-medium text-ink">Height</p>
+            <p className="text-[11px] text-ink-subtle">留白高度</p>
+          </div>
+          <span className="flex shrink-0 items-center">
+            <SizeStepper
+              value={element.heightPt}
+              min={MIN_SPACER_PT}
+              step={6}
+              unit="pt"
+              label="Blank space height"
+              onCommit={(heightPt) => resizeLayoutElement(element.id, heightPt)}
+            />
+          </span>
+        </div>
+      )}
+
+      {element.kind === 'labelList' && (
+        <div className="space-y-1">
+          <GroupHeader
+            title="Rows"
+            hint="typed on the page"
+            action={
+              <Button
+                size="sm"
+                variant="subtle"
+                onClick={() =>
+                  updateLayoutElement(element.id, {
+                    rows: [
+                      ...element.rows,
+                      { id: newId(), label: emptyBiText(), value: emptyBiText() },
+                    ],
+                  })
+                }
+              >
+                + Row
+              </Button>
+            }
+          />
+          {element.rows.map((row) => (
+            <ExcerptRow
+              key={row.id}
+              text={[biExcerpt(row.label), biExcerpt(row.value)]
+                .filter(Boolean)
+                .join(' — ')}
+              targetKey={editTargetKey({
+                kind: 'labelListCell',
+                elementId: element.id,
+                rowId: row.id,
+                column: 'label',
+              })}
+              actions={
+                <IconButton
+                  label="Remove row"
+                  variant="danger"
+                  disabled={element.rows.length <= 1}
+                  onClick={() =>
+                    updateLayoutElement(element.id, {
+                      rows: element.rows.filter((entry) => entry.id !== row.id),
+                    })
+                  }
+                >
+                  <span aria-hidden>✕</span>
+                </IconButton>
+              }
+            />
+          ))}
+        </div>
+      )}
+
+      {(element.kind === 'divider' || element.kind === 'pageBreak') && (
+        <p className="text-xs leading-relaxed text-ink-muted">
+          {element.kind === 'divider'
+            ? 'A rule across the text column. It has no settings — drag it on the page or in Content to move it.'
+            : 'Everything after this starts on a new sheet. Drag it to move the break.'}
+        </p>
+      )}
+
+      <div className="border-t border-line pt-3">
+        <Button
+          size="sm"
+          variant="danger"
+          onClick={() => {
+            removeLayoutElement(element.id);
+            selectElement(undefined);
+          }}
+        >
+          Delete {LAYOUT_NAME[element.kind].toLowerCase()}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function Inspector({
   numbering,
   onShowContent,
@@ -33,7 +230,6 @@ export function Inspector({
   const selectElement = useWorksheetStore((s) => s.selectElement);
   const updateQuestion = useWorksheetStore((s) => s.updateQuestion);
   const updateLayoutElement = useWorksheetStore((s) => s.updateLayoutElement);
-  const resizeLayoutElement = useWorksheetStore((s) => s.resizeLayoutElement);
 
   const selected = worksheet.questions.find((question) => question.id === selectedQuestionId);
 
@@ -66,25 +262,24 @@ export function Inspector({
       ?.scrollIntoView({ block: 'nearest' });
   }, [selectedTargetKey, selectedQuestionId, selectedElementId]);
 
-  // The one layout element with a panel of its own. A question wins when both are
-  // somehow set — the page clears one selection as it makes the other, so this is a
-  // tie-break, not a state.
-  const selectedStimulus = !selected
-    ? worksheet.layout.find(
-        (element) => element.id === selectedElementId && element.kind === 'stimulus',
-      )
+  // A question wins when both are somehow set — the page clears one selection as it
+  // makes the other, so this is a tie-break, not a state.
+  const selectedLayout = !selected
+    ? worksheet.layout.find((element) => element.id === selectedElementId)
     : undefined;
 
-  if (selectedStimulus && selectedStimulus.kind === 'stimulus') {
+  if (selectedLayout) {
     return (
       <div className="flex min-h-0 flex-1 flex-col">
         <header className="flex shrink-0 items-center gap-2 border-b border-line px-3.5 py-3">
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[13px] font-semibold leading-tight text-ink">
-              Shared stimulus
+              {selectedLayout.kind === 'stimulus'
+                ? 'Shared stimulus'
+                : LAYOUT_NAME[selectedLayout.kind]}
             </span>
             <span className="block truncate text-[11px] text-ink-muted">
-              content the questions below refer to
+              {LAYOUT_HINT[selectedLayout.kind]}
             </span>
           </span>
           <IconButton label="Close editor" onClick={() => selectElement(undefined)}>
@@ -93,81 +288,14 @@ export function Inspector({
         </header>
 
         <div ref={panelRef} className="scroll-slim min-h-0 flex-1 overflow-y-auto p-3.5">
-          <StimulusEditorPanel
-            key={selectedStimulus.id}
-            element={selectedStimulus}
-            onChange={(patch) => updateLayoutElement(selectedStimulus.id, patch)}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  // An answer element's one property is its size, and the outline was the only place
-  // to set it — a teacher who selected the lines on the page found an Edit tab still
-  // showing something else. The panel offers the same stepper the outline row does.
-  const selectedAnswer = !selected
-    ? worksheet.layout.find(
-        (element) =>
-          element.id === selectedElementId &&
-          (element.kind === 'answerLines' || element.kind === 'answerSpace'),
-      )
-    : undefined;
-
-  if (
-    selectedAnswer &&
-    (selectedAnswer.kind === 'answerLines' || selectedAnswer.kind === 'answerSpace')
-  ) {
-    const isFill = selectedAnswer.kind === 'answerSpace' && selectedAnswer.fill;
-    return (
-      <div className="flex min-h-0 flex-1 flex-col">
-        <header className="flex shrink-0 items-center gap-2 border-b border-line px-3.5 py-3">
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-[13px] font-semibold leading-tight text-ink">
-              {LAYOUT_NAME[selectedAnswer.kind]}
-            </span>
-            <span className="block truncate text-[11px] text-ink-muted">
-              {selectedAnswer.kind === 'answerSpace'
-                ? 'dotted lines for written answers'
-                : 'ruled lines for written answers'}
-            </span>
-          </span>
-          <IconButton label="Close editor" onClick={() => selectElement(undefined)}>
-            <CloseIcon size={14} />
-          </IconButton>
-        </header>
-
-        <div ref={panelRef} className="scroll-slim min-h-0 flex-1 overflow-y-auto p-3.5">
-          {isFill ? (
-            <div className="space-y-2">
-              <Pill>fills page</Pill>
-              <p className="text-xs leading-relaxed text-ink-muted">
-                This space stretches to the bottom of its page, so the line count is
-                set by the layout — currently {selectedAnswer.lines} lines.
-              </p>
-              <p className="text-xs text-ink-subtle">此答題空間自動填滿頁面。</p>
-            </div>
+          {selectedLayout.kind === 'stimulus' ? (
+            <StimulusEditorPanel
+              key={selectedLayout.id}
+              element={selectedLayout}
+              onChange={(patch) => updateLayoutElement(selectedLayout.id, patch)}
+            />
           ) : (
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[13px] font-medium text-ink">Lines</p>
-                <p className="text-[11px] text-ink-subtle">行數</p>
-              </div>
-              <span className="flex shrink-0 items-center">
-                <SizeStepper
-                  value={selectedAnswer.lines}
-                  min={MIN_ANSWER_LINES}
-                  step={1}
-                  unit={selectedAnswer.lines === 1 ? 'line' : 'lines'}
-                  label={
-                    selectedAnswer.kind === 'answerSpace'
-                      ? 'Answer space lines'
-                      : 'Answer lines'
-                  }
-                  onCommit={(lines) => resizeLayoutElement(selectedAnswer.id, lines)}
-                />
-              </span>
-            </div>
+            <LayoutElementPanel key={selectedLayout.id} element={selectedLayout} />
           )}
         </div>
       </div>

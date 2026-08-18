@@ -2,11 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { defaultFramed, editTargetKey } from '@/model/edits';
-import { prepareImageForStorage } from '@/export/imageImport';
+import { imageBlockFromFile, prepareImageForStorage } from '@/export/imageImport';
 import {
   createDiagramBlock,
   createFigureRowBlock,
-  createImageBlock,
   createParagraphBlock,
   createSourceBlock,
   createTableBlock,
@@ -16,39 +15,20 @@ import {
   cellsInRange,
   columnCountOf,
   defaultTableIndent,
-  insertColumn,
-  insertRow,
   isDegenerate,
-  isMerged,
   locateCell,
   MAX_CELL_PADDING_TWIPS,
-  mergeDown,
-  mergeRight,
   paddingAt,
   patchCell,
-  patchCells,
-  removeColumn,
-  removeRow,
   resolveCellPadding,
-  resolveTableAlign,
   restoreColumn,
   setPadding,
-  setTableAlign,
-  unmerge,
   type PaddingScope,
 } from '@/model/table';
 import { contentWidth, pageSetupOf, ptToTwips, twipsToPt } from '@/model/page';
 import { TABLE_TEMPLATES, buildTableFromTemplate } from '@/model/tableTemplates';
-import { emptyBiText, plain } from '@/model/text';
-import { RichTextEditable } from '@/components/preview/RichTextEditable';
-import type {
-  CellImage,
-  ContentBlock,
-  ImageBlock,
-  TableAlign,
-  TableBlock,
-  TableBorders,
-} from '@/model/types';
+import { bi, emptyBiText, isBiTextEmpty, plain } from '@/model/text';
+import type { CellImage, ContentBlock, ImageBlock, TableBlock } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import {
   Button,
@@ -62,6 +42,7 @@ import {
 import { TableSizePicker } from '@/components/ui/TableSizePicker';
 import { BiTextField } from './BiTextField';
 import { CaptionField } from './CaptionField';
+import { biExcerpt, ExcerptRow } from './panelRows';
 import { DiagramEditor } from './DiagramEditor';
 import { DiagramTemplatePopover } from './DiagramTemplatePicker';
 
@@ -134,31 +115,15 @@ export function BlockEditor({
   const remove = (index: number) => onChange(blocks.filter((_, i) => i !== index));
 
   const handleImageFile = async (file: File) => {
-    // Reduced to what the paper can print before it is stored — the document carries
-    // its pictures inline, so the camera's pixels would otherwise ride in the JSON
-    // for the life of the worksheet (§ `prepareImageForStorage`).
-    const prepared = await prepareImageForStorage(file);
-    // The stored image's own size, which is what the aspect lock and the exporter's
-    // EMU maths must both read. Zero means it could not be decoded here; fall back to
-    // the display width so the block still has a ratio to resize by.
-    const naturalWidth = prepared.naturalWidthPx || (figureWidth ?? 420);
-    const naturalHeight = prepared.naturalHeightPx || Math.round(naturalWidth * 0.75);
-    // Fit to a sensible default width, aspect ratio preserved (§5.3). Narrower
-    // inside an MCQ option, where four figures share a question.
-    const maxWidth = figureWidth ?? 420;
-    const scale = naturalWidth > maxWidth ? maxWidth / naturalWidth : 1;
-    const block = createImageBlock(
-      prepared.src,
-      Math.round(naturalWidth * scale),
-      Math.round(naturalHeight * scale),
-    );
-    block.naturalWidthPx = naturalWidth;
-    block.naturalHeightPx = naturalHeight;
-    onChange([...blocks, block]);
+    // Reduced, sized and re-measured by the one shared route (§ `imageBlockFromFile`);
+    // narrower inside an MCQ option, where four figures share a question.
+    onChange([...blocks, await imageBlockFromFile(file, figureWidth ?? 420)]);
   };
 
-  const controls = (index: number) => (
-    <span className="flex shrink-0 items-center opacity-0 transition-opacity focus-within:opacity-100 group-hover/block:opacity-100">
+  // The bare verbs, so a paragraph's `ExcerptRow` can dock them behind its own
+  // hover-reveal; the framed blocks below wrap them in their own reveal span.
+  const controlButtons = (index: number) => (
+    <>
       <IconButton label="Move block up" onClick={() => move(index, -1)} disabled={index === 0}>
         <span aria-hidden>↑</span>
       </IconButton>
@@ -172,6 +137,12 @@ export function BlockEditor({
       <IconButton label="Delete block" variant="danger" onClick={() => remove(index)}>
         <span aria-hidden>✕</span>
       </IconButton>
+    </>
+  );
+
+  const controls = (index: number) => (
+    <span className="flex shrink-0 items-center opacity-0 transition-opacity focus-within:opacity-100 group-hover/block:opacity-100">
+      {controlButtons(index)}
     </span>
   );
 
@@ -181,20 +152,15 @@ export function BlockEditor({
 
       {blocks.map((block, index) => {
         if (block.kind === 'paragraph') {
+          // An address, not a field: the paragraph is typed on the page (§ panelRows).
           return (
-            <div
+            <ExcerptRow
               key={block.id}
-              data-edit-target={editTargetKey({ kind: 'blockText', blockId: block.id })}
-              className="group/block flex items-start gap-1"
-            >
-              <div className="min-w-0 flex-1">
-                <BiTextField
-                  value={block.text}
-                  onChange={(text) => replace(index, { ...block, text })}
-                />
-              </div>
-              <div className="pt-1">{controls(index)}</div>
-            </div>
+              marker="¶"
+              text={biExcerpt(block.text)}
+              targetKey={editTargetKey({ kind: 'blockText', blockId: block.id })}
+              actions={controlButtons(index)}
+            />
           );
         }
 
@@ -472,7 +438,6 @@ function TableBlockEditor({
           (_, rowIndex, cellIndex) => block.rows[rowIndex]?.cells[cellIndex]?.id,
         )
       : [];
-  const rangeCells = range.map((position) => block.rows[position.rowIndex].cells[position.cellIndex]);
   const multi = range.length > 1;
 
   // Acting through one helper keeps the active cell pointing at a live position: a
@@ -526,237 +491,32 @@ function TableBlockEditor({
         </div>
       )}
 
-      {/* Rows and columns. Insert-above and insert-left need a position, so they are
-          offered only with a cell chosen; append never does, which is why the fallback
-          is a plain "Add" rather than a greyed-out pair of directional buttons. */}
-      <div className="space-y-1.5">
-        <div className="flex items-center gap-1">
-          <span className="w-14 shrink-0 text-[11px] text-ink-subtle">Rows</span>
-          {at ? (
-            <>
-              <Button size="sm" variant="subtle" onClick={() => apply(insertRow(block, at.rowIndex))}>
-                Above
-              </Button>
-              <Button
-                size="sm"
-                variant="subtle"
-                onClick={() => apply(insertRow(block, at.rowIndex + 1))}
-              >
-                Below
-              </Button>
-              <IconButton
-                label={`Delete row ${at.rowIndex + 1}`}
-                variant="danger"
-                disabled={rowCount <= 1}
-                onClick={() => apply(removeRow(block, at.rowIndex))}
-              >
-                <span aria-hidden>✕</span>
-              </IconButton>
-            </>
-          ) : (
-            <Button size="sm" variant="subtle" onClick={() => apply(insertRow(block, rowCount))}>
-              Add row
-            </Button>
-          )}
-        </div>
-
-        <div className="flex items-center gap-1">
-          <span className="w-14 shrink-0 text-[11px] text-ink-subtle">Columns</span>
-          {at ? (
-            <>
-              <Button
-                size="sm"
-                variant="subtle"
-                onClick={() => apply(insertColumn(block, at.cellIndex))}
-              >
-                Left
-              </Button>
-              <Button
-                size="sm"
-                variant="subtle"
-                onClick={() => apply(insertColumn(block, at.cellIndex + 1))}
-              >
-                Right
-              </Button>
-              <IconButton
-                label={`Delete column ${at.cellIndex + 1}`}
-                variant="danger"
-                disabled={columnCount <= 1}
-                onClick={() => apply(removeColumn(block, at.cellIndex))}
-              >
-                <span aria-hidden>✕</span>
-              </IconButton>
-            </>
-          ) : (
-            <Button
-              size="sm"
-              variant="subtle"
-              onClick={() => apply(insertColumn(block, columnCount))}
-            >
-              Add column
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/*
-        Where the whole table sits, which is not the same control as a cell's own align
-        below — that one places text inside one cell and needs a cell chosen first. This
-        needs no subject beyond the table, so it sits outside the `cell && at` branch and
-        is always available, like the padding section's whole-table fallback.
-
-        Q19 of the reference paper is the case it exists for: a narrow two-column table
-        centred in the column, which no amount of dragging the left edge reproduces —
-        an indent that looks centred stops being centred when the margins change.
-      */}
-      <div className="flex items-center gap-1 border-t border-line pt-2">
-        <span className="w-14 shrink-0 text-[11px] text-ink-subtle">Table</span>
-        {(['left', 'center', 'right'] as TableAlign[]).map((align) => (
-          <button
-            key={align}
-            type="button"
-            title={`Align table ${align}`}
-            aria-label={`Align table ${align}`}
-            aria-pressed={resolveTableAlign(block) === align}
-            onClick={() => apply(setTableAlign(block, align))}
-            className={`cursor-pointer rounded px-1.5 py-0.5 text-[11px] ${
-              resolveTableAlign(block) === align
-                ? 'bg-accent-soft text-accent-ink'
-                : 'text-ink-subtle hover:bg-surface-hover'
-            }`}
-          >
-            {align === 'left' ? 'L' : align === 'center' ? 'C' : 'R'}
-          </button>
-        ))}
-      </div>
-
-      {/*
-        Ruled grid, a frame with nothing ruled inside it, or a T-account.
-
-        A whole-table decision like alignment above, so it needs no cell chosen either.
-        The reference paper boxes a stimulus four times — a news extract, a pay
-        arrangement, three numbered proposals — and that last one is the shape a grid
-        cannot express at any padding: one frame, three rows, no rule between them. The
-        T-account is the third shape it draws (a bank's balance sheet, DSE 2019 P2 Q6):
-        a frame, one rule under the head, one down the middle (§`TableBorders`).
-      */}
-      <div className="flex items-center gap-2 border-t border-line pt-2">
-        <span className="w-14 shrink-0 text-[11px] text-ink-subtle">Rules</span>
-        <Segmented<TableBorders>
-          label="Table rules"
-          value={block.borders ?? 'all'}
-          options={[
-            { value: 'all', label: 'Grid', title: 'Rule every cell — an ordinary table' },
-            { value: 'box', label: 'Box', title: 'Rule the frame only — a boxed stimulus' },
-            {
-              value: 'headerRule',
-              label: 'T-account',
-              title:
-                'Frame, a rule under the top row and one down the middle — a balance sheet',
-            },
-          ]}
-          // `all` is written as nothing, so an untouched table exports byte-identically.
-          onChange={(borders) =>
-            apply({ ...block, borders: borders === 'all' ? undefined : borders })
-          }
-        />
-      </div>
-
       <TablePaddingSection block={block} at={at} onChange={apply} />
 
       {cell && at ? (
-        <div className="space-y-1.5 border-t border-line pt-2">
-          <div className="flex items-center gap-1">
-            <span className="w-14 shrink-0 text-[11px] text-ink-subtle">Align</span>
-            {(['left', 'center', 'right'] as const).map((align) => {
-              /*
-               * With a swept range the buttons act on every caught cell in one commit
-               * (one undo entry), and a button reads pressed only when the whole range
-               * already agrees — a mixed range shows none pressed, like Word's toolbar
-               * over a mixed selection.
-               */
-              const subject = multi ? rangeCells : [cell];
-              const pressed = subject.every((c) => (c.align ?? 'left') === align);
-              return (
-                <button
-                  key={align}
-                  type="button"
-                  title={`Align ${align}`}
-                  aria-label={`Align ${align}`}
-                  aria-pressed={pressed}
-                  onClick={() =>
-                    apply(
-                      multi
-                        ? patchCells(block, range, { align })
-                        : patchCell(block, at.rowIndex, at.cellIndex, { align }),
-                    )
-                  }
-                  className={`cursor-pointer rounded px-1.5 py-0.5 text-[11px] ${
-                    pressed
-                      ? 'bg-accent-soft text-accent-ink'
-                      : 'text-ink-subtle hover:bg-surface-hover'
-                  }`}
-                >
-                  {align === 'left' ? 'L' : align === 'center' ? 'C' : 'R'}
-                </button>
-              );
-            })}
+        /* Merge, align and rules moved to the contextual toolbar over the page
+           (§ ContextBar); rows and columns are the page's own grid chips. What stays
+           here is the one per-cell property with no toolbar shape: the picture. It
+           keeps a single subject — over a swept range it would silently act on the
+           anchor alone, so it steps aside. */
+        !multi && (
+          <div className="border-t border-line pt-2">
+            <CellImageField
+              image={cell.image}
+              onChange={(image) =>
+                apply(patchCell(block, at.rowIndex, at.cellIndex, { image }))
+              }
+            />
           </div>
-
-          {/* Merge and the cell picture keep a single subject; over a swept range they
-              would silently act on the anchor alone, which is not what the highlight
-              says — so they step aside rather than mislead. */}
-          {!multi && (
-            <>
-              <div className="flex items-center gap-1">
-                <span className="w-14 shrink-0 text-[11px] text-ink-subtle">Merge</span>
-                {isMerged(cell) ? (
-                  <Button
-                    size="sm"
-                    variant="subtle"
-                    onClick={() => apply(unmerge(block, at.rowIndex, at.cellIndex))}
-                  >
-                    Split
-                  </Button>
-                ) : (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="subtle"
-                      onClick={() => apply(mergeRight(block, at.rowIndex, at.cellIndex))}
-                    >
-                      → Right
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="subtle"
-                      onClick={() => apply(mergeDown(block, at.rowIndex, at.cellIndex))}
-                    >
-                      ↓ Down
-                    </Button>
-                  </>
-                )}
-              </div>
-
-              {/* A picture inside the cell, printed under its words — the boxed stimulus
-                  that frames an extract and a photograph together. Per cell rather than per
-                  table, because that is the thing it belongs to. */}
-              <CellImageField
-                image={cell.image}
-                onChange={(image) =>
-                  apply(patchCell(block, at.rowIndex, at.cellIndex, { image }))
-                }
-              />
-            </>
-          )}
-        </div>
+        )
       ) : (
-        /* Not a disabled control: the reason the per-cell verbs are missing is that
+        /* Not a disabled control: the reason the per-cell controls are missing is that
            nothing has been aimed at, and saying where to aim is more use than greying
-           out four buttons whose names do not explain what they need. */
+           them out. */
         <p className="border-t border-line pt-2 text-[11px] leading-snug text-ink-subtle">
-          Click a cell in the table on the page to align or merge it — and to type, which
-          happens there rather than here.
+          Click a cell in the table on the page to type in it. Align, merge and rules
+          appear in the toolbar above the page; rows and columns are added with the
+          + chips on the table itself.
         </p>
       )}
 
@@ -1117,14 +877,39 @@ function SourceBlockEditor({
   block: Extract<ContentBlock, { kind: 'source' }>;
   onChange: (block: ContentBlock) => void;
 }) {
+  // An emptied label or footnote emits no node at all on the page (§ renderSource:
+  // nothing renders an unmeasurable box) — so absent text needs a seed button here,
+  // or a cleared line would be unrecoverable. Present text is typed on the page.
+  const hasLabel = block.label !== undefined && !isBiTextEmpty(block.label);
+  const hasFootnote = block.footnote !== undefined && !isBiTextEmpty(block.footnote);
+
   return (
     <div className="space-y-3">
-      <div data-edit-target={editTargetKey({ kind: 'sourceLabel', blockId: block.id })}>
-        <GroupHeader title="Label" hint="Printed above the panel, e.g. “Source A: …”." />
-        <BiTextField
-          value={block.label ?? emptyBiText()}
-          onChange={(label) => onChange({ ...block, label })}
-        />
+      <div>
+        <GroupHeader title="Label" hint="Printed above the panel — typed on the page." />
+        {hasLabel ? (
+          <ExcerptRow
+            text={biExcerpt(block.label)}
+            targetKey={editTargetKey({ kind: 'sourceLabel', blockId: block.id })}
+            actions={
+              <IconButton
+                label="Remove label"
+                variant="danger"
+                onClick={() => onChange({ ...block, label: undefined })}
+              >
+                <span aria-hidden>✕</span>
+              </IconButton>
+            }
+          />
+        ) : (
+          <Button
+            size="sm"
+            variant="subtle"
+            onClick={() => onChange({ ...block, label: bi('Source A: ', '資料A：') })}
+          >
+            + Label
+          </Button>
+        )}
       </div>
 
       <div className="flex items-center gap-2 border-t border-line pt-2">
@@ -1165,18 +950,34 @@ function SourceBlockEditor({
         nested
       />
 
-      <div
-        className="border-t border-line pt-2"
-        data-edit-target={editTargetKey({ kind: 'sourceFootnote', blockId: block.id })}
-      >
+      <div className="border-t border-line pt-2">
         <GroupHeader
           title="Footnote"
-          hint="Printed below the panel, outside the frame, in italic."
+          hint="Printed below the panel, in italic — typed on the page."
         />
-        <BiTextField
-          value={block.footnote ?? emptyBiText()}
-          onChange={(footnote) => onChange({ ...block, footnote })}
-        />
+        {hasFootnote ? (
+          <ExcerptRow
+            text={biExcerpt(block.footnote)}
+            targetKey={editTargetKey({ kind: 'sourceFootnote', blockId: block.id })}
+            actions={
+              <IconButton
+                label="Remove footnote"
+                variant="danger"
+                onClick={() => onChange({ ...block, footnote: undefined })}
+              >
+                <span aria-hidden>✕</span>
+              </IconButton>
+            }
+          />
+        ) : (
+          <Button
+            size="sm"
+            variant="subtle"
+            onClick={() => onChange({ ...block, footnote: bi('Note: ', '註：') })}
+          >
+            + Footnote
+          </Button>
+        )}
       </div>
     </div>
   );

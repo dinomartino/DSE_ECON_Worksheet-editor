@@ -1608,6 +1608,71 @@ The preview is the centrepiece; the right sidebar shows **one thing at a time** 
 two tabs (Content = outline, Edit = selection); the tab follows the selection. Two left
 rails: AddRail (insert) and PageRail (navigation, multi-sheet only).
 
+### The sidebar is an inspector, not a second editor
+
+**Printed text is typed on the page, and only there.** The panels carry what does not
+print or has no page handle: marks, the MCQ answer key, option layout, structure verbs,
+teacher-only answers. Where a panel once mirrored a paragraph or an option as its own
+field, it now shows a compact excerpt row (`panelRows.tsx`) — an *address* for
+reordering, deleting and scroll-into-view, never for retyping. The rule Word teachers
+arrive knowing, and the one the table panel already followed.
+
+- **The structured panel is a mark scheme grid**: one row per part/sub-part — letter,
+  excerpt, marks, answer lines — with the row's verbs behind a `⋮` menu. A part whose
+  sub-parts are individually marked shows its derived total as a pill, never an input.
+- **A cleared source label/footnote emits nothing on the page** (§ renderSource), so
+  the source panel keeps seed buttons ("+ Label", "+ Footnote") — absence needs a
+  restore path that empty page-text cannot provide.
+- **The hidden language is reached by switching the language mode** (toolbar
+  EN／中文／EN+中) and typing on the page — the panels offer no second surface for it.
+- **`textOfTarget` covers every target `applyEditTarget` can write** (the question-owned
+  strings included), so per-run formatting works on options, statements and answers.
+- **The panel never dead-ends**: every layout kind gets a panel (`LayoutElementPanel`
+  in `Inspector.tsx` — section numbering/marks, spacer height, label-list rows, a
+  sentence for divider/page break) and any selected element pulls the Edit tab over.
+- **The link runs both ways**: the page marks its text with `data-page-target`
+  (§ TextNodeView) and a panel row click scrolls there (`scrollPageTo`), the reverse
+  of the page's scroll-into-panel.
+- **One editing place per number**: the Outline's rows report sizes as pills; answer
+  lines and spacers are edited by dragging on the page or in the element's panel.
+
+### The contextual toolbar row (`preview/ContextBar.tsx`)
+
+Word's "Table Layout appears when you're in a table": a second docked row under the
+format bar (in its place when no text is selected) carrying the selection's structural
+verbs — cell align, merge/split, table align and rules for the active cell; alignment
+and the way into the drawing canvas for a selected figure.
+
+- **One verb, one place**: rows/columns stay on the page's grid chips, padding, the
+  cell picture and captions in the sidebar, and the panel's own copies of the bar's
+  verbs were removed with it.
+- **Verbs act through `replaceBlock` by id** — the canvases' route — so the bar needs
+  no owner and works on nested tables (a figure row's, a source body's) unchanged.
+- Range rules carry over: align acts on the whole sweep and reads pressed only when it
+  agrees; merge steps aside over a range. A pie gets no Draw button (no canvas opens).
+
+### The page's right-click menu (`preview/PageContextMenu.tsx`)
+
+The Word reflex gesture. The render site that owns the click resolves the payload — a
+paragraph knows its edit target, a cell its address, a picture its block id — never a
+DOM walk. Groups are **built at open time in the event**, not during render (closures
+stored in state that capture refs read as render-time ref access to the compiler), and
+a menu with nothing to offer never opens.
+
+- **It is the page's block-insert surface**: any payload naming a block offers "Insert
+  below" — paragraph, a quick 3×3 table at the stem's indent, image (via a hidden
+  file input reached by id), blank-axes diagram, source panel. The sidebar strip keeps
+  the size grid and named templates. `insertBlockAfter` (`model/edits.ts`) does the
+  splice: it descends into source bodies, treats a figure row's children as the row's
+  own position, and **preserves the identity of untouched questions** (the render
+  cache is keyed on the question object). `insideSourceBody` withholds the Source item
+  one level down; `sourceCountAround` seeds the next letter.
+- A cell's menu carries the grid verbs (`tableGrid` handlers) and merge (store
+  `replaceBlock`); a figure's carries Edit drawing and Delete; a text target's Delete
+  comes from `describeDelete`. Right-click on a cell/picture selects it first — the
+  menu always describes what is now selected.
+- Claims the modal layer while open, so the page's window-level keys stand down.
+
 ### What a document is called is not what it prints
 
 `Worksheet.name` (optional, plain string, in `KNOWN_KEYS`) is what the document is
