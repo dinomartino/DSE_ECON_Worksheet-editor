@@ -12,6 +12,9 @@ import {
   editTargetKey,
   findTableBlock,
   formatOfTarget,
+  insertBlockAfter,
+  insideSourceBody,
+  sourceCountAround,
   isFormattable,
   targetLayoutElementId,
   targetQuestionId,
@@ -21,6 +24,7 @@ import {
   createDiagramBlock,
   createFigureRowBlock,
   createParagraphBlock,
+  createSourceBlock,
   createTableBlock,
   createWorksheet,
 } from './factories';
@@ -894,5 +898,84 @@ describe('blocks inside a figure row edit like standalone blocks', () => {
     const blocks = noFigure.questions[0].blocks;
     expect(blocks.some((block) => block.id === table.id)).toBe(true);
     expect(blocks.some((block) => block.id === row.id)).toBe(false);
+  });
+});
+
+describe('inserting a block after another (§ the context menu)', () => {
+  it('splices into a stem list, after the named block', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const question = worksheet.questions[0];
+    const afterId = question.blocks[0].id;
+    const created = createParagraphBlock(bi('NEW', '新'));
+
+    const next = insertBlockAfter(worksheet, afterId, created);
+    const blocks = next.questions[0].blocks;
+    expect(blocks[1].id).toBe(created.id);
+    expect(blocks.length).toBe(question.blocks.length + 1);
+  });
+
+  it('preserves the identity of untouched questions (the render cache key)', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const afterId = worksheet.questions[0].blocks[0].id;
+    const next = insertBlockAfter(worksheet, afterId, createParagraphBlock(emptyBiText()));
+    expect(next.questions[0]).not.toBe(worksheet.questions[0]);
+    for (let i = 1; i < worksheet.questions.length; i++) {
+      expect(next.questions[i]).toBe(worksheet.questions[i]);
+    }
+  });
+
+  it('reaches a structured part and a sub-part body', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const structured = worksheet.questions.find(
+      (question): question is StructuredQuestion => question.type === 'structured',
+    )!;
+    const part = structured.parts[0];
+    const created = createParagraphBlock(bi('AFTER PART', '部後'));
+    const next = insertBlockAfter(worksheet, part.blocks[0].id, created);
+    const nextPart = (
+      next.questions.find((q) => q.id === structured.id) as StructuredQuestion
+    ).parts[0];
+    expect(nextPart.blocks[1].id).toBe(created.id);
+  });
+
+  it('inserts into a source body, and treats a figure-row child as the row', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const question = worksheet.questions[0];
+    const source = createSourceBlock('A');
+    const row = createFigureRowBlock(createDiagramBlock());
+    question.blocks.push(source, row);
+
+    // Into the source's own body.
+    const inBody = createParagraphBlock(bi('IN BODY', '體內'));
+    const withBody = insertBlockAfter(worksheet, source.blocks[0].id, inBody);
+    const nextSource = withBody.questions[0].blocks.find(
+      (block) => block.id === source.id,
+    );
+    expect(nextSource?.kind === 'source' && nextSource.blocks[1].id).toBe(inBody.id);
+
+    // "After the figure" means after the whole row — the pair is fixed.
+    const afterRow = createParagraphBlock(bi('AFTER ROW', '行後'));
+    const withRow = insertBlockAfter(worksheet, row.figure.id, afterRow);
+    const list = withRow.questions[0].blocks;
+    expect(list[list.indexOf(list.find((b) => b.id === row.id)!) + 1].id).toBe(afterRow.id);
+  });
+
+  it('an unknown id changes nothing at all', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    expect(insertBlockAfter(worksheet, 'nope', createParagraphBlock(emptyBiText()))).toBe(
+      worksheet,
+    );
+  });
+
+  it('insideSourceBody and sourceCountAround gate the Source item', () => {
+    const worksheet = buildAcceptanceWorksheet();
+    const question = worksheet.questions[0];
+    const source = createSourceBlock('A');
+    question.blocks.push(source);
+
+    expect(insideSourceBody(worksheet, source.blocks[0].id)).toBe(true);
+    expect(insideSourceBody(worksheet, question.blocks[0].id)).toBe(false);
+    // One source already beside the stem block — the next letter is B.
+    expect(sourceCountAround(worksheet, question.blocks[0].id)).toBe(1);
   });
 });

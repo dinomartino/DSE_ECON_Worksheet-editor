@@ -16,6 +16,9 @@
  * is why it lives here beside `diagramImage.ts` rather than in `model/`.
  */
 
+import { createImageBlock } from '@/model/factories';
+import type { ImageBlock } from '@/model/types';
+
 /**
  * The widest a stored picture ever needs to be, in CSS pixels at 96dpi.
  *
@@ -343,4 +346,30 @@ export async function prepareImageForStorage(file: File): Promise<PreparedImage>
     close();
     return { src: original, naturalWidthPx: width, naturalHeightPx: height };
   }
+}
+
+/**
+ * A ready `ImageBlock` from a picked file — the one composition of
+ * `prepareImageForStorage` and the sizing defaults, shared by the sidebar's insert
+ * strip and the page's context menu so the two routes cannot drift.
+ *
+ * `maxWidth` is the display cap the figure starts at (a stem-width default; an MCQ
+ * option passes something narrower). Never upscales, and the stored natural size is
+ * the *stored* bytes' own (§ `prepareImageForStorage`).
+ */
+export async function imageBlockFromFile(file: File, maxWidth = 420): Promise<ImageBlock> {
+  const prepared = await prepareImageForStorage(file);
+  // Zero means it could not be decoded here; fall back to the display width so the
+  // block still has a ratio to resize by.
+  const naturalWidth = prepared.naturalWidthPx || maxWidth;
+  const naturalHeight = prepared.naturalHeightPx || Math.round(naturalWidth * 0.75);
+  const scale = naturalWidth > maxWidth ? maxWidth / naturalWidth : 1;
+  const block = createImageBlock(
+    prepared.src,
+    Math.round(naturalWidth * scale),
+    Math.round(naturalHeight * scale),
+  );
+  block.naturalWidthPx = naturalWidth;
+  block.naturalHeightPx = naturalHeight;
+  return block;
 }

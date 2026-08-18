@@ -7,6 +7,7 @@ import type {
   ContentBlock,
   DiagramBlock,
   HeaderFooter,
+  ImageBlock,
   LayoutElement,
   Question,
   RunFormatPatch,
@@ -268,6 +269,155 @@ export function targetLayoutElementId(
     }
   }
   return undefined;
+}
+
+/**
+ * Splice `created` in directly after the block `afterId` in this list, descending
+ * into source bodies. A figure row's children count as the row's own position — the
+ * pair is fixed by construction, so "after the figure" means after the row.
+ * Returns undefined when the list does not contain the target.
+ */
+function spliceAfterInList(
+  blocks: ContentBlock[],
+  afterId: string,
+  created: ContentBlock,
+): ContentBlock[] | undefined {
+  const index = blocks.findIndex(
+    (block) =>
+      block.id === afterId ||
+      (block.kind === 'figureRow' &&
+        (block.figure.id === afterId || block.table.id === afterId)),
+  );
+  if (index !== -1) {
+    const next = [...blocks];
+    next.splice(index + 1, 0, created);
+    return next;
+  }
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i];
+    if (block.kind !== 'source') continue;
+    const inner = spliceAfterInList(block.blocks, afterId, created);
+    if (inner) {
+      const next = [...blocks];
+      next[i] = { ...block, blocks: inner };
+      return next;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Insert a new block directly after an existing one, wherever it sits — the page's
+ * own insert route (§ the context menu). Walks the same lists `mapAllBlocks` writes,
+ * but **preserves the identity of every untouched question**: the per-question render
+ * cache is keyed on the question object, and a whole-document identity churn would
+ * cold-start it for one insert.
+ */
+export function insertBlockAfter(
+  worksheet: Worksheet,
+  afterId: string,
+  created: ContentBlock,
+): Worksheet {
+  let done = false;
+  const tryList = (blocks: ContentBlock[]): ContentBlock[] => {
+    if (done) return blocks;
+    const next = spliceAfterInList(blocks, afterId, created);
+    if (!next) return blocks;
+    done = true;
+    return next;
+  };
+
+  const questions = worksheet.questions.map((question) => {
+    if (done) return question;
+    const blocks = tryList(question.blocks);
+    if (blocks !== question.blocks) return { ...question, blocks } as Question;
+
+    const shaped = question as {
+      parts?: Array<{
+        blocks: ContentBlock[];
+        blocksBefore?: ContentBlock[];
+        subParts?: Array<{ blocks: ContentBlock[] }>;
+      }>;
+      options?: Array<{ blocks?: ContentBlock[] }>;
+    };
+    if (shaped.parts) {
+      const parts = shaped.parts.map((part) => {
+        if (done) return part;
+        if (part.blocksBefore) {
+          const blocksBefore = tryList(part.blocksBefore);
+          if (blocksBefore !== part.blocksBefore) return { ...part, blocksBefore };
+        }
+        const partBlocks = tryList(part.blocks);
+        if (partBlocks !== part.blocks) return { ...part, blocks: partBlocks };
+        if (part.subParts) {
+          const subParts = part.subParts.map((sub) => {
+            if (done) return sub;
+            const subBlocks = tryList(sub.blocks);
+            return subBlocks !== sub.blocks ? { ...sub, blocks: subBlocks } : sub;
+          });
+          if (subParts.some((sub, i) => sub !== part.subParts![i])) {
+            return { ...part, subParts };
+          }
+        }
+        return part;
+      });
+      if (parts.some((part, i) => part !== shaped.parts![i])) {
+        return { ...question, parts } as Question;
+      }
+    }
+    if (shaped.options) {
+      const options = shaped.options.map((option) => {
+        if (done || !option.blocks) return option;
+        const optionBlocks = tryList(option.blocks);
+        return optionBlocks !== option.blocks ? { ...option, blocks: optionBlocks } : option;
+      });
+      if (options.some((option, i) => option !== shaped.options![i])) {
+        return { ...question, options } as Question;
+      }
+    }
+    return question;
+  });
+
+  const layout = worksheet.layout.map((element) => {
+    if (done || !('blocks' in element)) return element;
+    const blocks = tryList(element.blocks);
+    return blocks !== element.blocks ? { ...element, blocks } : element;
+  });
+
+  return done ? { ...worksheet, questions, layout } : worksheet;
+}
+
+/**
+ * Whether this block sits inside a source panel's body — where "+ Source" is
+ * withheld, a source may not contain another (§`SourceBlock`).
+ */
+export function insideSourceBody(worksheet: Worksheet, blockId: string): boolean {
+  for (const blocks of documentBlockLists(worksheet)) {
+    for (const block of blocks) {
+      if (
+        block.kind === 'source' &&
+        flattenBlocks(block.blocks).some((inner) => inner.id === blockId)
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * How many source panels already share a list with this block — the seed for the
+ * next panel's letter, mirroring the sidebar strip's own count. A source cannot
+ * nest, so counting `kind === 'source'` in the flattened containing list counts
+ * exactly the top-level panels.
+ */
+export function sourceCountAround(worksheet: Worksheet, blockId: string): number {
+  for (const blocks of documentBlockLists(worksheet)) {
+    if (blocks.some((block) => block.id === blockId)) {
+      return blocks.filter((block) => block.kind === 'source').length;
+    }
+  }
+  return 0;
 }
 
 /** Apply an edit to a block anywhere in the document. */
@@ -815,6 +965,49 @@ export function textOfTarget(worksheet: Worksheet, target: EditTarget): BiText |
       }
       return undefined;
     }
+    case 'blockCaption': {
+      for (const blocks of documentBlockLists(worksheet)) {
+        const match = blocks.find((block) => block.id === target.blockId);
+        // A diagram deliberately has no caption — its words live inside the image.
+        if (match && (match.kind === 'table' || match.kind === 'image')) {
+          return match.caption;
+        }
+      }
+      return undefined;
+    }
+    // The question-owned strings, so every target `applyEditTarget` can write is also
+    // readable — the translation field and per-run formatting both compose the pair.
+    case 'mcqOption': {
+      const question = worksheet.questions.find((entry) => entry.id === target.questionId);
+      const options = (question as { options?: Array<{ id: string; text: BiText }> } | undefined)
+        ?.options;
+      return options?.find((option) => option.id === target.optionId)?.text;
+    }
+    case 'mcqStatement': {
+      const question = worksheet.questions.find((entry) => entry.id === target.questionId);
+      return (question as { statements?: BiText[] } | undefined)?.statements?.[target.index];
+    }
+    case 'mcqExplanation': {
+      const question = worksheet.questions.find((entry) => entry.id === target.questionId);
+      return (question as { explanation?: BiText } | undefined)?.explanation;
+    }
+    case 'partAnswer': {
+      const question = worksheet.questions.find((entry) => entry.id === target.questionId);
+      const parts = (question as { parts?: Array<{ id: string; answer?: BiText }> } | undefined)
+        ?.parts;
+      return parts?.find((part) => part.id === target.partId)?.answer;
+    }
+    case 'subPartAnswer': {
+      const question = worksheet.questions.find((entry) => entry.id === target.questionId);
+      const parts = (
+        question as
+          | { parts?: Array<{ id: string; subParts?: Array<{ id: string; answer?: BiText }> }> }
+          | undefined
+      )?.parts;
+      return parts
+        ?.find((part) => part.id === target.partId)
+        ?.subParts?.find((sub) => sub.id === target.subPartId)?.answer;
+    }
     // The read half of per-run formatting for a source's own lines; without it,
     // bolding a phrase in a label resolves to no text and silently does nothing.
     case 'sourceLabel':
@@ -983,6 +1176,21 @@ export function findDiagramBlock(
   for (const blocks of documentBlockLists(worksheet)) {
     const match = blocks.find((block) => block.id === blockId);
     if (match?.kind === 'diagram') return match;
+  }
+  return undefined;
+}
+
+/**
+ * The figure (image or diagram) with this id, wherever it sits — the contextual
+ * toolbar's subject when a picture is selected on the page.
+ */
+export function findFigureBlock(
+  worksheet: Worksheet,
+  blockId: string,
+): ImageBlock | DiagramBlock | undefined {
+  for (const blocks of documentBlockLists(worksheet)) {
+    const match = blocks.find((block) => block.id === blockId);
+    if (match && (match.kind === 'image' || match.kind === 'diagram')) return match;
   }
   return undefined;
 }

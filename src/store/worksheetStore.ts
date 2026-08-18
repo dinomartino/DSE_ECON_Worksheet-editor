@@ -18,6 +18,7 @@ import {
   applyInsertBlank,
   applyRunFormatTarget,
   applyResizeBlock,
+  insertBlockAfter,
   mapTableBlock,
   replaceBlockById,
 } from '@/model/edits';
@@ -254,6 +255,8 @@ interface WorksheetState {
   trimQuestionAnswerSpace: (questionId: string, lines: number) => void;
   /** Replace one block by id — the route a page-opened editor commits through. */
   replaceBlock: (blockId: string, next: ContentBlock) => void;
+  /** Insert a new block directly after an existing one — the page's insert route. */
+  insertBlockAfter: (afterId: string, block: ContentBlock) => void;
   /**
    * Move one table column boundary. Its own action so a drag handle need not resolve
    * the block and rebuild it at the call site.
@@ -971,6 +974,8 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     }),
   replaceBlock: (blockId, next) =>
     get().commit((draft) => replaceBlockById(draft, blockId, next)),
+  insertBlockAfter: (afterId, block) =>
+    get().commit((draft) => insertBlockAfter(draft, afterId, block)),
   resizeTableColumn: (blockId, index, delta, columnCount) =>
     get().commit((draft) =>
       mapTableBlock(draft, blockId, (block) => resizeColumn(block, index, delta, columnCount)),
