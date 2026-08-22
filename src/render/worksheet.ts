@@ -626,6 +626,8 @@ function keepQuestionWhole(nodes: RenderNode[]): RenderNode[] {
       case 'image':
       case 'diagram':
       case 'figureRow':
+      // A figure-option grid row is one atomic box (`cantSplit`), like a source.
+      case 'optionRow':
       // A source panel is one atomic box like any other figure — the chain runs
       // *through* it, never into it: its own body is held together by the frame.
       case 'source':

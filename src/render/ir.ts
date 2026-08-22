@@ -270,6 +270,24 @@ export interface FigureRowNode {
 }
 
 /**
+ * A row of MCQ options that carry figures (§ the reference's 2×2 diagram grid: each
+ * letter above its own graph, two per row). The side-by-side text layouts are one
+ * paragraph with tab stops, and a tab cell cannot hold a picture — so this is the
+ * block-bearing counterpart: Word gets a borderless equal-cell layout table (the
+ * construction `figureRowXml` proved), the preview a flex row. Each cell's content is
+ * ordinary nodes — the option's own lettered line, then its blocks — so every backend
+ * reuses its emitters and only the grid frame is new. Like every side-by-side layout,
+ * the letters are literal markers, not native `w:num`.
+ */
+export interface OptionRowNode {
+  kind: 'optionRow';
+  /** One entry per option in the row. An empty cell squares off an odd last row. */
+  cells: RenderNode[][];
+  keepNext?: boolean;
+  teacherOnly?: boolean;
+}
+
+/**
  * A labelled source panel (§`SourceBlock`) — the data-response question's unit.
  *
  * The body is ordinary nodes one level down, so every backend reuses its own
@@ -448,6 +466,7 @@ export type RenderNode =
   | ImageNode
   | DiagramNode
   | FigureRowNode
+  | OptionRowNode
   | SourceNode
   | PageBreakNode
   | SpacerNode

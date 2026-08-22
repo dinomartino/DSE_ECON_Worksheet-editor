@@ -55,6 +55,9 @@ function* withChildren(nodes: RenderNode[]): Generator<RenderNode> {
     if (node.kind === 'figureRow') {
       yield node.figure;
       yield node.table;
+    } else if (node.kind === 'optionRow') {
+      // Each cell of a figure-option grid holds the diagram that answers its letter.
+      for (const cell of node.cells) yield* withChildren(cell);
     } else if (node.kind === 'source') {
       yield* withChildren(node.nodes);
     }

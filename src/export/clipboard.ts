@@ -320,6 +320,25 @@ function nodeHtml(
     );
   }
 
+  if (node.kind === 'optionRow') {
+    // A row of figure-bearing MCQ options: a borderless equal-cell table, top aligned
+    // so the letters sit level — the same shape the .docx builds, and the only HTML
+    // Word pastes side by side.
+    const share = `${100 / Math.max(1, node.cells.length)}%`;
+    const cells = node.cells
+      .map(
+        (cell) =>
+          `<td style="border:none;vertical-align:top;padding:0;width:${share}">` +
+          cell.map((child) => nodeHtml(child, language, fontCss, diagramImages)).join('') +
+          '</td>',
+      )
+      .join('');
+    return (
+      '<table style="border-collapse:collapse;border:none;width:100%">' +
+      `<tr>${cells}</tr></table>`
+    );
+  }
+
   if (node.kind === 'figureRow') {
     // A borderless two-cell layout table, vertically centred — the same shape the
     // .docx builds, because it is the only HTML Word pastes side by side.

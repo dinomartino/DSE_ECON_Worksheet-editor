@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { editTargetKey } from '@/model/edits';
 import { statementLabel, optionLabel } from '@/model/numbering';
 import { emptyBiText, isBiTextEmpty } from '@/model/text';
-import { OPTION_DIAGRAM_WIDTH_PX, createParagraphBlock } from '@/model/factories';
+import { OPTION_DIAGRAM_WIDTH_PX, createDiagramBlock } from '@/model/factories';
 import type { BiText, ContentBlock, McqOptionLayout, McqQuestion } from '@/model/types';
 import { resolveOptionLayout, suggestOptionLayout } from '@/registry/mcq';
 import type { EditorPanelProps } from '@/registry/types';
@@ -139,11 +139,26 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
           <Segmented<McqOptionLayout>
             label="Option layout"
             value={resolveOptionLayout(question)}
-            options={[
-              { value: 'stacked', label: 'Stacked', title: 'One option per line' },
-              { value: 'inline', label: 'Inline', title: 'All four options on one line' },
-              { value: 'columns2', label: '2 columns', title: 'Two options per line' },
-            ]}
+            // Inline is withheld (not greyed out) once an option carries a figure: one
+            // line of tab stops cannot hold a picture per cell, so offering it would
+            // be a choice that silently renders as something else. 2 columns stays —
+            // with figures it renders as the reference's 2×2 grid.
+            options={
+              question.options.some((option) => (option.blocks?.length ?? 0) > 0)
+                ? [
+                    { value: 'stacked', label: 'Stacked', title: 'One option per line' },
+                    {
+                      value: 'columns2',
+                      label: '2 columns',
+                      title: 'Two options per line — figure options print as a grid',
+                    },
+                  ]
+                : [
+                    { value: 'stacked', label: 'Stacked', title: 'One option per line' },
+                    { value: 'inline', label: 'Inline', title: 'All four options on one line' },
+                    { value: 'columns2', label: '2 columns', title: 'Two options per line' },
+                  ]
+            }
             onChange={(optionLayout) => onChange({ optionLayout })}
           />
           {/* Only offered when it would actually change something, so it never reads as
@@ -187,7 +202,13 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
                       size="sm"
                       variant="subtle"
                       onClick={() =>
-                        setOptionBlocks(index, [createParagraphBlock(emptyBiText())])
+                        // The button says Figure, so it seeds one: blank axes at option
+                        // width, retyped or re-templated in the region it opens. It once
+                        // seeded an empty *paragraph* just to make that region appear,
+                        // which printed as a phantom placeholder line under the letter.
+                        setOptionBlocks(index, [
+                          createDiagramBlock('blank', OPTION_DIAGRAM_WIDTH_PX),
+                        ])
                       }
                     >
                       + Figure

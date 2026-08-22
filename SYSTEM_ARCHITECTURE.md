@@ -268,18 +268,35 @@ overprints the line above. The exporter (`formatParagraphProps` → `exactLineFo
 `bandsHeight()` already scale; the DOM must agree. One rule, two units: unitless
 multiple on the page, twips in the `.docx`.
 
-### An option can be a picture, and then it must stack
+### An option can be a picture, and then it stacks or grids
 
-`McqOption.blocks` exists for figure-option questions. The blocks render after the
-option's numbered paragraph (a `w:drawing` in a list item takes the marker's hanging
+`McqOption.blocks` exists for figure-option questions. Stacked, the blocks render after
+the option's numbered paragraph (a `w:drawing` in a list item takes the marker's hanging
 indent and needs `lineRule="auto"`).
 
-- **A blocks-bearing option forces `stacked`** in `resolveOptionLayout` (a tab-stop row
-  cannot hold a picture per cell — figures would drop silently).
+- **A blocks-bearing option can only `stacked` or `columns2`** (`resolveOptionLayout`
+  coerces `inline` to `stacked`): a tab-stop row cannot hold a picture per cell —
+  figures would drop silently. The panel withholds Inline rather than greying it.
+- **`columns2` with blocks is the reference's 2×2 grid** (each letter above its own
+  graph, two per row) via `OptionRowNode`: a row of cells each holding ordinary nodes —
+  the option's lettered line (a single-cell `ColumnsNode`, so the letter is a literal
+  marker like every side-by-side layout), then its blocks. Word gets a borderless
+  equal-cell layout table (the `figureRowXml` construction, `cantSplit`, top-aligned so
+  the letters sit level); the preview a flex row plus the table's trailing 12pt blank;
+  an odd last row squares off with an empty cell so a lone option keeps its
+  half-column. Rows chain with `keepNext`; `keepQuestionWhole`, `collectImages` and the
+  diagram pre-pass all walk the cells (an unwalked picture is a dangling `r:embed`).
+  A nested table respells its width as the cell's fraction, like `figureRow`.
 - **The option letter keeps with its own figure** (`keepNext`), including the last one.
-- `questionBlockLists` and `mapAllBlocks` read `options` structurally, like `parts`.
-- **The blocks indent to `OPTION_LIST_INDENT.left`** (they continue the answer the
-  letter introduces).
+- `questionBlockLists`, `mapAllBlocks` and `removeBlock` read `options` structurally,
+  like `parts` — a block Delete cannot reach is a phantom line a teacher cannot see
+  past. Emptied by a delete, `option.blocks` drops rather than storing `[]` (the
+  panel's own rule), so the layout stops being pinned by a figure no longer there.
+- **The panel's "+ Figure" seeds an actual figure** (blank axes at option width), never
+  an empty paragraph to prop the region open — that paragraph printed as a phantom
+  placeholder line under the letter.
+- **Stacked blocks indent to `OPTION_LIST_INDENT.left`** (they continue the answer the
+  letter introduces); grid cells are cell-relative from zero.
 - Authored through the same `BlockEditor` the stem uses, with `figureWidth`; offered
   behind an affordance.
 

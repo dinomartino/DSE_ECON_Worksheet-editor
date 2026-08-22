@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { renderWorksheet } from '@/render/worksheet';
 import { exportDocxBuffer } from '@/export/docx';
 import { createWorksheet, createMcqQuestion } from '@/model/factories';
-import { applyResizeBlock, replaceBlockById, questionOwnsBlock } from '@/model/edits';
+import { applyDeleteTarget, applyResizeBlock, replaceBlockById, questionOwnsBlock } from '@/model/edits';
 import { resolveOptionLayout } from './mcq';
 import { OPTION_LIST_INDENT } from '@/model/numbering';
 import { bi, plain } from '@/model/text';
@@ -97,12 +97,17 @@ describe('an MCQ option carrying blocks', () => {
     ]);
   });
 
-  it('forces the stacked layout, whatever is stored', () => {
+  it('coerces inline to stacked, but honours columns2 as the grid', () => {
     const { question } = q36();
-    // Four short (empty) options would otherwise be laid out side by side, and a row of
+    // Four short (empty) options would otherwise be laid out inline, and a row of
     // tab stops cannot carry a picture per cell — the figures would vanish silently.
     question.optionLayout = 'inline';
     expect(resolveOptionLayout(question)).toBe('stacked');
+
+    // Two per row escapes the tab-stop limit: with blocks it renders as a real
+    // layout-table grid (§ OptionRowNode), the reference's own 2×2 diagram shape.
+    question.optionLayout = 'columns2';
+    expect(resolveOptionLayout(question)).toBe('columns2');
 
     const plain = createMcqQuestion() as McqQuestion;
     plain.optionLayout = 'inline';
@@ -171,6 +176,109 @@ describe('an MCQ option carrying blocks', () => {
       const relId = id.replace(/r:embed="|"/g, '');
       expect(rels).toContain(`Id="${relId}"`);
     }
+  });
+
+  it('renders columns2 as a 2×2 grid of option rows', () => {
+    const { worksheet, question } = q36();
+    question.optionLayout = 'columns2';
+    const nodes = renderWorksheet(worksheet, MODE).questions[0].nodes;
+
+    const rows = nodes.filter((node) => node.kind === 'optionRow');
+    expect(rows).toHaveLength(2);
+
+    // Each cell is the option's own nodes: its lettered line, then its figure. The
+    // letters are literal markers (the side-by-side trade-off), reading A B / C D.
+    const letters = rows.flatMap((row) =>
+      row.cells.map((cell) => {
+        const line = cell[0];
+        return line?.kind === 'columns' ? line.cells[0].marker : undefined;
+      }),
+    );
+    expect(letters).toEqual(['A.', 'B.', 'C.', 'D.']);
+    for (const row of rows) {
+      for (const cell of row.cells) {
+        expect(cell.some((child) => child.kind === 'diagram')).toBe(true);
+      }
+    }
+
+    // The rows chain: the first keeps with the second, the last is free to break.
+    expect(rows[0].keepNext).toBe(true);
+    expect(rows[1].keepNext).toBe(false);
+  });
+
+  it('squares an odd last row off with an empty cell', () => {
+    const { worksheet, question } = q36();
+    question.optionLayout = 'columns2';
+    question.options = question.options.slice(0, 3);
+    question.answerIndex = 0;
+    const nodes = renderWorksheet(worksheet, MODE).questions[0].nodes;
+
+    const rows = nodes.filter((node) => node.kind === 'optionRow');
+    expect(rows).toHaveLength(2);
+    // C keeps the same half-column its siblings print in, not the whole page.
+    expect(rows[1].cells).toHaveLength(2);
+    expect(rows[1].cells[1]).toEqual([]);
+  });
+
+  it('exports the grid as a borderless layout table with all four diagrams', async () => {
+    const { worksheet, question } = q36();
+    question.optionLayout = 'columns2';
+    const png =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    const images = new Map(['d0', 'd1', 'd2', 'd3'].map((id) => [id, png]));
+
+    const buffer = await exportDocxBuffer(worksheet, MODE, images);
+    const zip = await JSZip.loadAsync(buffer);
+    const document = await zip.file('word/document.xml')!.async('string');
+
+    // Two grid rows, each a two-cell borderless table whose row cannot split; all four
+    // drawings embedded with resolving relationships (a dangling one is a repair error).
+    expect(document.match(/<w:cantSplit\/>/g)).toHaveLength(2);
+    expect(document.match(/<w:drawing>/g)).toHaveLength(4);
+    // The grid draws nothing: every border spelled `none`, never omitted.
+    expect(document).not.toContain('<w:top w:val="single"');
+
+    const rels = await zip.file('word/_rels/document.xml.rels')!.async('string');
+    for (const id of document.match(/r:embed="(rId\d+)"/g) ?? []) {
+      const relId = id.replace(/r:embed="|"/g, '');
+      expect(rels).toContain(`Id="${relId}"`);
+    }
+  });
+
+  it('deletes an option block from the page, dropping the key when emptied', () => {
+    const { worksheet, question } = q36();
+    // The shape the "+ Figure" seed used to leave behind: an empty paragraph the
+    // teacher cannot see past — it prints as a phantom placeholder line under the
+    // letter and Delete must be able to take it while the diagram stays.
+    question.options = question.options.map((option, index) =>
+      index === 0
+        ? {
+            ...option,
+            blocks: [
+              { kind: 'paragraph' as const, id: 'phantom', text: bi('', '') },
+              ...(option.blocks ?? []),
+            ],
+          }
+        : option,
+    );
+
+    const afterParagraph = applyDeleteTarget(worksheet, {
+      kind: 'blockText',
+      blockId: 'phantom',
+    });
+    const optionA = (afterParagraph.questions[0] as McqQuestion).options[0];
+    expect(optionA.blocks?.map((block) => block.id)).toEqual(['d0']);
+
+    // Deleting the last block drops the key rather than storing `[]` — the same rule
+    // the panel's write path follows, so the layout stops being pinned by a figure
+    // that is no longer there.
+    const afterDiagram = applyDeleteTarget(afterParagraph, {
+      kind: 'blockText',
+      blockId: 'd0',
+    });
+    expect((afterDiagram.questions[0] as McqQuestion).options[0].blocks).toBeUndefined();
+    // Untouched siblings keep theirs.
+    expect((afterDiagram.questions[0] as McqQuestion).options[1].blocks).toHaveLength(1);
   });
 
   it('reaches an option block with the ordinary editing verbs', () => {

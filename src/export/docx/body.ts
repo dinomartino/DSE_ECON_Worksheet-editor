@@ -12,6 +12,7 @@ import type {
   CoverRenderNode,
   DiagramNode,
   FigureRowNode,
+  OptionRowNode,
   SourceNode,
   ImageNode,
   RenderNode,
@@ -740,6 +741,78 @@ function figureRowXml(node: FigureRowNode, context: BodyContext): string {
 }
 
 /**
+ * A row of figure-bearing MCQ options (§ `OptionRowNode`) — a borderless equal-cell
+ * layout table, each cell holding the option's own nodes: its lettered line, then the
+ * figure that answers it. The same construction `figureRowXml` proved; top-aligned
+ * (Word's default, so no `w:vAlign`) because the letters must sit level across the row
+ * whatever their figures' heights, which is the reference grid's own shape.
+ */
+function optionRowXml(node: OptionRowNode, context: BodyContext): string {
+  const count = Math.max(1, node.cells.length);
+  const base = Math.floor(context.contentWidth / count);
+  // The last cell takes the rounding remainder — the same rule table columns follow.
+  const widths = node.cells.map((_, index) =>
+    index === count - 1 ? context.contentWidth - base * (count - 1) : base,
+  );
+
+  const noBorder = (side: string) =>
+    `<w:${side} w:val="none" w:sz="0" w:space="0" w:color="auto"/>`;
+
+  const cells = node.cells
+    .map((cellNodes, index) => {
+      const inner = cellNodes
+        .map((child) =>
+          child.kind === 'table'
+            ? // A table inside the cell resolves its fractional width against the one
+              // content-width base every table uses, so it is respelled as the fraction
+              // this cell occupies — the identical rule `figureRowXml` applies. Indent
+              // and alignment are cell-relative and deliberately dropped.
+              tableNodeXml(
+                { ...child, width: (child.width * widths[index]) / CONTENT_WIDTH_TWIPS, indent: 0, align: 'left' },
+                context,
+              )
+            : renderNodeXml(child, context),
+        )
+        .join('');
+      // A cell must end in a paragraph, and an empty cell still needs one, or Word
+      // reports the whole file as damaged.
+      const content =
+        inner.endsWith('</w:tbl>') || inner === ''
+          ? inner + paragraph({ styleId: STYLE_IDS.Body, runs: '' })
+          : inner;
+      return (
+        `<w:tc><w:tcPr><w:tcW w:w="${widths[index]}" w:type="dxa"/></w:tcPr>` +
+        content +
+        '</w:tc>'
+      );
+    })
+    .join('');
+
+  const table =
+    '<w:tbl><w:tblPr>' +
+    '<w:tblStyle w:val="TableNormal"/>' +
+    `<w:tblW w:w="${context.contentWidth}" w:type="dxa"/>` +
+    '<w:tblLayout w:type="fixed"/>' +
+    // Zero cell margins and `none` on all six borders: invisible geometry, exactly as
+    // `figureRowXml` spells it (an unstated border inherits from the table style).
+    '<w:tblCellMar>' +
+    ['top', 'left', 'bottom', 'right']
+      .map((side) => `<w:${side} w:w="0" w:type="dxa"/>`)
+      .join('') +
+    '</w:tblCellMar>' +
+    '<w:tblBorders>' +
+    ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map(noBorder).join('') +
+    '</w:tblBorders>' +
+    '</w:tblPr>' +
+    `<w:tblGrid>${widths.map((width) => `<w:gridCol w:w="${width}"/>`).join('')}</w:tblGrid>` +
+    `<w:tr><w:trPr><w:cantSplit/></w:trPr>${cells}</w:tr>` +
+    '</w:tbl>';
+
+  // A table must be followed by a paragraph (Word's rule; also where keep-next rides).
+  return table + paragraph({ styleId: STYLE_IDS.Body, runs: '', keepNext: node.keepNext });
+}
+
+/**
  * A labelled source panel (§`SourceNode`) — a one-cell table whose cell holds the
  * body's ordinary nodes. The same construction `figureRowXml` proved: a cell is the
  * one container in OOXML that holds a *nested table* beside prose, which is exactly
@@ -855,6 +928,8 @@ export function renderNodeXml(node: RenderNode, context: BodyContext): string {
       return diagramNodeXml(node, context);
     case 'figureRow':
       return figureRowXml(node, context);
+    case 'optionRow':
+      return optionRowXml(node, context);
     case 'source':
       return sourceXml(node, context);
     case 'pageBreak':

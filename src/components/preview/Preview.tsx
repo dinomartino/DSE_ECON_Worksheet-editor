@@ -2406,6 +2406,31 @@ function NodeView({
     );
   }
 
+  if (node.kind === "optionRow") {
+    // A row of figure-bearing MCQ options (§ OptionRowNode): equal columns, top
+    // aligned so the letters sit level whatever their figures' heights — the .docx's
+    // borderless layout table, drawn as a flex row. The children are ordinary nodes
+    // rendered through this same view, so the lettered line stays editable and a
+    // figure keeps its resize handles; only the grid frame is new.
+    return (
+      <div>
+        <div className="flex items-start">
+          {node.cells.map((cell, index) => (
+            <div key={index} className="min-w-0 flex-1">
+              {cell.map((child, childIndex) => (
+                <NodeView key={childIndex} node={child} language={language} ctx={ctx} />
+              ))}
+            </div>
+          ))}
+        </div>
+        {/* The structural blank line Word requires after every table — `optionRowXml`
+            emits an empty 12pt paragraph after the grid. A real block, not a margin,
+            because the paginator measures boxes (§ tables' own trailing spacer). */}
+        <div style={{ height: `${BLANK_LINE_PT}pt` }} aria-hidden />
+      </div>
+    );
+  }
+
   if (node.kind === "diagram") {
     return <DiagramNodeView node={node} language={language} ctx={ctx} />;
   }

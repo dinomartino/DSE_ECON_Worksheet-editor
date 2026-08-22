@@ -58,14 +58,18 @@ function displayWidth(text: string): number {
  * states rather than something re-derived (and re-derivable differently) at render time.
  */
 export function resolveOptionLayout(question: McqQuestion): McqOptionLayout {
-  // An option carrying blocks forces the stacked layout, whatever is stored.
+  // Options carrying blocks can stack or sit two per row — never inline.
   //
-  // The side-by-side layouts are one paragraph with tab stops, and a paragraph cannot
-  // hold a picture per cell — the figures would be dropped silently, which is the worst
-  // way for this to fail (the option letters still print, so the question looks complete
-  // and is simply unanswerable). Enforced here rather than validated on write, because
-  // that keeps it true for documents authored before options could carry blocks.
-  if (question.options.some((option) => (option.blocks?.length ?? 0) > 0)) return 'stacked';
+  // `inline` is one paragraph with tab stops, and a paragraph cannot hold a picture
+  // per cell — the figures would be dropped silently, which is the worst way for this
+  // to fail (the option letters still print, so the question looks complete and is
+  // simply unanswerable). `columns2` escapes that because a blocks-bearing question
+  // renders it as a real layout-table grid (§ `OptionRowNode`), the reference's own
+  // 2×2 diagram shape. Enforced here rather than validated on write, because that
+  // keeps it true for documents authored before options could carry blocks.
+  if (question.options.some((option) => (option.blocks?.length ?? 0) > 0)) {
+    return question.optionLayout === 'columns2' ? 'columns2' : 'stacked';
+  }
   return question.optionLayout ?? 'stacked';
 }
 
@@ -80,6 +84,10 @@ export function suggestOptionLayout(
   question: McqQuestion,
   language: LanguageMode,
 ): McqOptionLayout {
+  // Figure options suggest the reference's own shape: the 2×2 grid, two per row. The
+  // text-width heuristic below has nothing to say about a picture.
+  if (question.options.some((option) => (option.blocks?.length ?? 0) > 0)) return 'columns2';
+
   const widths = question.options.map((option) => {
     const en = displayWidth(plain(option.text.en));
     const zh = displayWidth(plain(option.text.zh));
@@ -187,8 +195,49 @@ function render(question: McqQuestion, context: RenderContext): RenderNode[] {
   if (statements.length > 0) pushGap(nodes);
 
   const layout = resolveOptionLayout(question);
+  const anyOptionBlocks = question.options.some((option) => (option.blocks?.length ?? 0) > 0);
 
-  if (layout === 'stacked') {
+  if (layout === 'columns2' && anyOptionBlocks) {
+    // Figure options two per row — the reference's 2×2 grid, each letter above its own
+    // graph. Tab stops cannot hold a picture per cell, so this is a real grid
+    // (§ `OptionRowNode`): each cell is the option's own nodes, the lettered line then
+    // its blocks. Like every side-by-side layout, the markers are literal text.
+    for (let start = 0; start < question.options.length; start += 2) {
+      const row = question.options.slice(start, start + 2);
+      const lastRow = start + 2 >= question.options.length;
+      const cells = row.map((option, offset) => {
+        const blocks = option.blocks ?? [];
+        const cell: RenderNode[] = [
+          {
+            kind: 'columns',
+            style: 'MCQ Option',
+            // Cell-relative: the letter sits at the cell's own left edge, as the
+            // reference prints it. Kept with its own figure — the grid row is atomic
+            // in both backends, but the flag also holds if the cell is ever reflowed.
+            keepNext: blocks.length > 0,
+            cells: [
+              {
+                text: option.text,
+                at: 0,
+                marker: optionLabel(start + offset),
+                edit: { kind: 'mcqOption', questionId: question.id, optionId: option.id },
+              },
+            ],
+          },
+        ];
+        renderContentBlocks(cell, blocks, 'MCQ Option', {});
+        return cell;
+      });
+      // An odd last row squares off with an empty cell, so a lone option keeps the
+      // same half-column its siblings print in rather than spreading page-wide.
+      if (cells.length === 1) cells.push([]);
+      nodes.push({
+        kind: 'optionRow',
+        cells,
+        keepNext: !lastRow || context.mode.version === 'teacher',
+      });
+    }
+  } else if (layout === 'stacked') {
     question.options.forEach((option, index) => {
       const blocks = option.blocks ?? [];
       const last = index === question.options.length - 1;

@@ -1366,6 +1366,19 @@ function removeBlock(worksheet: Worksheet, blockId: string): Worksheet {
     ...worksheet,
     questions: worksheet.questions.map((question) => {
       const next = { ...question, blocks: strip(question.blocks) } as Question;
+      // An option's blocks are deletable exactly like a stem's — read structurally,
+      // as `questionBlockLists` and `mapAllBlocks` read them. Emptied, the key drops
+      // rather than storing `[]`, the same rule the panel's write path follows, so an
+      // option whose last figure was deleted is indistinguishable from one that never
+      // had any.
+      const withOptions = next as { options?: Array<{ blocks?: ContentBlock[] }> };
+      if (withOptions.options) {
+        withOptions.options = withOptions.options.map((option) => {
+          if (!option.blocks) return option;
+          const blocks = strip(option.blocks);
+          return { ...option, blocks: blocks.length > 0 ? blocks : undefined };
+        });
+      }
       const parts = (
         next as {
           parts?: Array<{

@@ -140,6 +140,10 @@ function collectImages(
       // applies to the figure and to any picture inside the nested table's cells.
       visit(node.figure);
       visit(node.table);
+    } else if (node.kind === 'optionRow') {
+      // A figure-option grid's cells are ordinary nodes one level down — each holds
+      // the picture that answers its letter, and an uncollected one dangles.
+      for (const cell of node.cells) cell.forEach(visit);
     } else if (node.kind === 'source') {
       // A source panel's body is ordinary nodes one level down, and a picture inside
       // one is emitted by the body writer either way — so it must be collected here or
