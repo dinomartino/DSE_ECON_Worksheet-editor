@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
+import { UpdateBanner } from '@/components/editor/UpdateBanner';
 import { StartScreen } from '@/components/start/StartScreen';
 import type { LanguageMode, Worksheet } from '@/model/types';
 import { worksheetStore } from '@/storage';
@@ -108,14 +109,22 @@ export function EditorHost() {
 
   if (!chosen || showingFiles) {
     return (
-      <StartScreen
-        onOpen={open}
-        // No way back before a document exists — there is no editor behind the screen
-        // yet, so a Cancel would dismiss to nothing.
-        onClose={chosen ? () => setShowingFiles(false) : undefined}
-      />
+      <>
+        <UpdateBanner />
+        <StartScreen
+          onOpen={open}
+          // No way back before a document exists — there is no editor behind the screen
+          // yet, so a Cancel would dismiss to nothing.
+          onClose={chosen ? () => setShowingFiles(false) : undefined}
+        />
+      </>
     );
   }
 
-  return <EditorApp onOpenFiles={leaveForFiles} />;
+  return (
+    <>
+      <UpdateBanner />
+      <EditorApp onOpenFiles={leaveForFiles} />
+    </>
+  );
 }

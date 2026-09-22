@@ -33,6 +33,7 @@ That is the whole setup. If the page loads, you have a working environment.
   - [Adding a question type](#adding-a-question-type)
   - [Testing](#testing)
   - [Deployment](#deployment)
+  - [Desktop app](#desktop-app)
   - [Contributing](#contributing)
   - [Licence and third-party material](#licence-and-third-party-material)
 
@@ -263,6 +264,32 @@ prerendered static route:
 - nothing reads `process.env` or the filesystem at runtime.
 
 Keep it that way — client-side export is a design constraint, not an accident.
+
+## Desktop app
+
+The same static export also ships as a macOS and Windows app, wrapped by
+[Tauri 2](https://v2.tauri.app). It is the identical UI — no second build of the
+frontend — with native file dialogs and self-updates from GitHub Releases.
+
+**Install:** download from the
+[latest release](https://github.com/dinomartino/DSE_ECON_Worksheet-editor/releases/latest).
+Apple Silicon Macs take the `aarch64` `.dmg`, Intel Macs the `x64` one; Windows takes the
+`-setup.exe`. The Windows installer is unsigned, so SmartScreen shows "Windows protected
+your PC" — click **More info** → **Run anyway**. After the first install, updates are
+offered inside the app.
+
+**Develop and build** (needs the [Rust toolchain](https://rustup.rs) and Xcode Command
+Line Tools on macOS / Visual Studio Build Tools on Windows):
+
+```bash
+npm run desktop:dev      # Tauri window over the Next dev server
+npm run desktop:build    # installers into src-tauri/target/release/bundle/
+```
+
+Every Tauri API is loaded with a dynamic `import()` behind an `isDesktop()` check, so the
+web bundle never includes one — see [`SYSTEM_ARCHITECTURE.md`](./SYSTEM_ARCHITECTURE.md)
+§ *Desktop shell (Tauri)*. Cutting and signing a release is
+[`RELEASING.md`](./RELEASING.md).
 
 ## Contributing
 

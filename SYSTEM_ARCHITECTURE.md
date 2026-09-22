@@ -1981,8 +1981,46 @@ intact but unreachable.
 
 ```
 Vercel (or any static host): Next.js build → fully prerendered. No API routes, DB, or server runtime.
-Browser: .docx via JSZip client-side · localStorage autosave · file up/download · PDF via window.print()
+Desktop:  the same `out/` wrapped by Tauri 2 → signed .dmg (macOS arm64 + x64) and .exe (Windows x64).
+Browser:  .docx via JSZip client-side · localStorage autosave · file up/download · PDF via window.print()
 ```
 
 Nothing in `src/` reads `process.env` or the filesystem at runtime. New on-page chrome
 needs `data-print-hide`, or it appears in the PDF.
+
+CI (`.github/workflows/ci.yml`) runs typecheck, tests and build on every PR and push to
+`main`. A `v*` tag runs `release.yml`, which builds the three desktop targets into one
+draft GitHub Release; `desktop-preview.yml` builds unsigned installers on demand (or on a
+PR labelled `desktop-preview`) so a version can be tried before it is tagged. The release
+steps and the secrets are in [`RELEASING.md`](./RELEASING.md).
+
+---
+
+## Desktop shell (Tauri)
+
+One codebase, two targets: the desktop app is the *same* static export (`out/`) loaded by
+a Tauri 2 webview. There is no desktop-only build of the UI and no second renderer.
+
+**Tauri is never imported at the top level.** A static `@tauri-apps/*` import would land
+in the web bundle, where those modules throw on load. Every call goes through a dynamic
+`import()` inside a function, behind an `isDesktop()` check — `src/platform/` for file
+access, `src/desktop/updater.ts` for updates.
+
+**Documents are files on desktop.** `worksheetStore` is chosen once at load:
+`FileWorksheetStore` (`storage/fileStore.ts`) under `$APPDATA/worksheets/` — one
+`<id>.worksheet.json` per document plus `index.json` — when `isDesktop()`, else the
+`localStorage` store. Both share the per-row index validation (`storage/summaries.ts`);
+the file store can also rebuild a lost index by scanning the directory. Saving `.docx`
+and `.json` uses the native save dialog on desktop, the browser download on the web.
+
+**Updates** come from GitHub Releases: the app fetches `latest.json` from
+`releases/latest/download/`, verifies its signature against the public key in
+`tauri.conf.json`, and `UpdateBanner` offers to install and relaunch. GitHub's `latest`
+excludes prereleases, so a `-beta.N` tag never reaches a stable install.
+
+**`app.security.csp` stays `null`.** Next's static export inlines its bootstrap scripts;
+any CSP without `'unsafe-inline'` blanks the app. Tightening it means nonced scripts first.
+
+**Version** is `package.json`, synced into `tauri.conf.json` and `Cargo.toml` by
+`scripts/sync-version.mjs` on `npm version`. **Signing**: macOS is Developer ID + notarised
+in CI; Windows is unsigned for now (SmartScreen warns on first run).

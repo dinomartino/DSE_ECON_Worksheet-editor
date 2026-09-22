@@ -8,7 +8,8 @@ import { pageSetupOf } from '@/model/page';
 import type { LanguageMode, VersionMode } from '@/model/types';
 import { requireQuestionType } from '@/registry';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { downloadWorksheetFile, triggerDownload, worksheetStore } from '@/storage';
+import { downloadWorksheetFile, worksheetStore } from '@/storage';
+import { DOCX_FILTERS, isDesktop, printPage, saveFile } from '@/platform';
 import { Button, IconButton, Pill, Segmented } from '@/components/ui';
 import { DownloadIcon, PdfIcon, RedoIcon, SettingsIcon, UndoIcon } from '@/components/ui/icons';
 import { Menu } from '@/components/ui/Menu';
@@ -85,8 +86,10 @@ export function Toolbar({
     try {
       const { docxFileName, exportDocx } = await import('@/export/docx');
       const blob = await exportDocx(worksheet, mode);
-      triggerDownload(blob, docxFileName(worksheet, mode));
-      flash('Exported .docx');
+      // On desktop this is a native save sheet and can be cancelled; saying "Exported"
+      // after a cancelled dialog would claim a file that is not there.
+      const path = await saveFile(blob, docxFileName(worksheet, mode), DOCX_FILTERS);
+      if (path !== undefined || !isDesktop()) flash('Exported .docx');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Export failed.');
     } finally {
@@ -135,7 +138,7 @@ export function Toolbar({
     select(undefined);
     // After the deselect has painted.
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => window.print());
+      requestAnimationFrame(() => printPage());
     });
   };
 
@@ -300,7 +303,7 @@ export function Toolbar({
              */
             { label: 'Worksheets…', onSelect: onOpenFiles, separated: true },
             { label: 'Save now', onSelect: () => void save() },
-            { label: 'Download .json', onSelect: () => downloadWorksheetFile(worksheet) },
+            { label: 'Download .json', onSelect: () => void downloadWorksheetFile(worksheet) },
             {
               label: 'Clear saved documents…',
               onSelect: () => setConfirmingClear(true),
@@ -328,7 +331,7 @@ export function Toolbar({
       {confirmingClear && (
         <Dialog
           title="Clear saved documents?"
-          description="Every worksheet saved in this browser will be deleted. This cannot be undone — nothing is stored on a server."
+          description={`Every worksheet saved ${isDesktop() ? 'on this computer' : 'in this browser'} will be deleted. This cannot be undone — nothing is stored on a server.`}
           width={460}
           onClose={() => setConfirmingClear(false)}
           footer={
@@ -336,8 +339,9 @@ export function Toolbar({
               <Button
                 variant="subtle"
                 onClick={() => {
-                  downloadWorksheetFile(worksheet);
-                  flash('Downloaded a copy');
+                  void downloadWorksheetFile(worksheet).then(() =>
+                    flash('Downloaded a copy'),
+                  );
                 }}
               >
                 Download this one first
@@ -360,7 +364,7 @@ export function Toolbar({
           }
         >
           <p className="text-[13px] leading-relaxed text-ink-subtle">
-            Every worksheet on the start screen lives in this browser, not in the code,
+            Every worksheet on the start screen lives {isDesktop() ? 'on this computer' : 'in this browser'}, not in the code,
             which is why your work comes back after a restart. Clearing empties that list
             and returns you to it.
           </p>

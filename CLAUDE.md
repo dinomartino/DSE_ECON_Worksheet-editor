@@ -43,7 +43,7 @@ broke.
 
 ## Verifying work
 
-- `npm test` — 947 tests, ~1.4s. `npm run typecheck`, `npm run lint` (45 pre-existing
+- `npm test` — 1063 tests, ~1.7s. `npm run typecheck`, `npm run lint` (45 pre-existing
   problems: 3 errors, 42 warnings — in `Preview.tsx` and `InlineEditable.tsx`).
 - **UI work is verified in a browser**, not by reading source: screenshot with
   `scripts/shot.mjs`. Density and layout problems are invisible in the code.
@@ -51,6 +51,11 @@ broke.
   load-bearing output. `npm run samples` emits real files.
 - `scripts/cover-verify.mjs` and `scripts/lq-verify.mjs` check that the three backends
   (preview, `.docx`, print PDF) still agree.
+- **Desktop work is verified in the shell**: `npm run desktop:dev` runs it, `npm run
+  desktop:build` produces installers. The web build must stay green too — `npm run build`
+  fails if a `@tauri-apps/*` import reached the bundle.
+- Releases are tags, not pushes: `npm version <patch|minor|major>` then `git push
+  --follow-tags`. See `RELEASING.md`.
 
 ## The constraints that shape everything
 
@@ -58,5 +63,8 @@ broke.
   `.docx` and clipboard all read it. They must never disagree.
 - **Browser-only.** Static export, no server runtime, nothing reads `process.env` at
   runtime. `.docx` is built client-side.
+- **Never import `@tauri-apps/*` at the top level.** The same `out/` serves the web and
+  the desktop shell; a static import breaks the web build. Load them with a dynamic
+  `import()` inside a function, behind an `isDesktop()` check.
 - **Numbering and marks are derived, never stored.**
 - **New on-page chrome needs `data-print-hide`**, or it appears in the PDF.

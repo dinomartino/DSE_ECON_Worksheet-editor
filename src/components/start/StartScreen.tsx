@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui';
+import { isDesktop } from '@/platform';
 import { Dialog } from '@/components/ui/Dialog';
 import { Menu } from '@/components/ui/Menu';
 import { AppMark } from '@/components/ui/AppMark';
@@ -85,7 +86,7 @@ export function StartScreen({
         // The index and the documents are separate keys, so an entry can outlive what it
         // names — a half-finished `clear`, or storage evicted under quota pressure.
         // Saying so and dropping the row beats an open button that silently does nothing.
-        setError('That worksheet is no longer in this browser’s storage.');
+        setError(`That worksheet is no longer in this ${isDesktop() ? 'computer' : 'browser'}’s storage.`);
         await worksheetStore.remove(id);
         await refresh();
         return;
@@ -208,9 +209,9 @@ export function StartScreen({
         </section>
 
         <p className="mt-auto pt-10 text-[11px] leading-relaxed text-ink-subtle">
-          Everything here is stored in this browser only — there is no server and no
-          account. Clearing site data deletes it, so keep a .json copy of anything you
-          would be sorry to lose.
+          {isDesktop()
+            ? 'Everything here is stored on this computer only — there is no server and no account. Keep a .json copy of anything you would be sorry to lose.'
+            : 'Everything here is stored in this browser only — there is no server and no account. Clearing site data deletes it, so keep a .json copy of anything you would be sorry to lose.'}
         </p>
       </aside>
 
@@ -222,7 +223,7 @@ export function StartScreen({
         <div className="mx-auto max-w-3xl">
           <div className="flex items-baseline justify-between gap-4">
             <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
-              Saved in this browser
+              {isDesktop() ? 'Saved on this computer' : 'Saved in this browser'}
             </h2>
             {summaries.length > 0 && (
               <span className="text-[11px] tabular-nums text-ink-subtle">
@@ -241,8 +242,9 @@ export function StartScreen({
                whether or not there is anything in it. */
             <div className="zone-light mt-4 rounded-xl border border-line bg-surface px-6 py-10">
               <p className="max-w-md text-[13px] leading-relaxed text-ink-muted">
-                Nothing saved yet. Worksheets you start are kept in this browser —
-                download a .json copy to move one to another machine.
+                Nothing saved yet. Worksheets you start are kept{' '}
+                {isDesktop() ? 'on this computer' : 'in this browser'} — save a .json copy
+                to move one to another machine.
               </p>
             </div>
           ) : (
@@ -256,7 +258,7 @@ export function StartScreen({
                   onDuplicate={() => void duplicate(summary)}
                   onDownload={async () => {
                     const worksheet = await worksheetStore.load(summary.id);
-                    if (worksheet) downloadWorksheetFile(worksheet);
+                    if (worksheet) await downloadWorksheetFile(worksheet);
                   }}
                   onDelete={() => setConfirmingDelete(summary)}
                 />
@@ -356,7 +358,7 @@ export function StartScreen({
       {confirmingDelete && (
         <Dialog
           title={`Delete “${confirmingDelete.title}”?`}
-          description="It is stored in this browser only, so there is no copy to restore it from."
+          description={`It is stored ${isDesktop() ? 'on this computer' : 'in this browser'} only, so there is no copy to restore it from.`}
           width={420}
           onClose={() => setConfirmingDelete(undefined)}
           // `Dialog`'s footer is already a right-aligned flex row, so these sit in it
