@@ -28,12 +28,12 @@ accept another update; every teacher would have to reinstall by hand.
 
 ### GitHub secrets
 
-Settings → Secrets and variables → Actions → New repository secret. Exact names:
+Settings → Secrets and variables → Actions → New repository secret. Exact names (seven; the eighth below is deliberately absent):
 
 | Secret | Value |
 | --- | --- |
 | `TAURI_SIGNING_PRIVATE_KEY` | contents of `~/.tauri/econ-worksheet.key` — `cat ~/.tauri/econ-worksheet.key \| pbcopy` |
-| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | empty string (the key has no passphrase) |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | **do not create** — GitHub rejects empty secrets, and a missing one reads as empty, which is what an unencrypted key needs |
 | `APPLE_CERTIFICATE` | base64 of the `.p12` — `base64 -i cert.p12 \| pbcopy` |
 | `APPLE_CERTIFICATE_PASSWORD` | the password from the export above |
 | `APPLE_SIGNING_IDENTITY` | `Developer ID Application: Sze Yuen HO (437KYKG9R8)` |
