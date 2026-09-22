@@ -3,6 +3,9 @@
 Data flow, render pipeline, numbering, diagrams, pagination, header/footer geometry.
 Setup and first tour: [`README.md`](./README.md).
 
+**For the short map — areas, key files, invariants — read
+[`docs/CODEMAP.md`](./docs/CODEMAP.md) and open a section here only for the *why*.**
+
 **Read this before structural changes.** It records the rules a change must keep.
 Where this document and the code disagree, the code is right — fix the document in the
 same PR.

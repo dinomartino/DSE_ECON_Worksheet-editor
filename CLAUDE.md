@@ -1,5 +1,15 @@
 # Working in this repository
 
+## Fresh session? Start here
+
+1. [`docs/STATUS.md`](./docs/STATUS.md) — what we are doing now, and what is broken.
+2. [`docs/CODEMAP.md`](./docs/CODEMAP.md) — the map: areas, key files, invariants.
+3. [`docs/RECIPES.md`](./docs/RECIPES.md) — how to do the recurring tasks.
+4. [`docs/GLOSSARY.md`](./docs/GLOSSARY.md) — words this repo uses in its own way.
+
+Open `SYSTEM_ARCHITECTURE.md` only for the section you are about to touch. **Update
+`docs/STATUS.md` before ending the session.**
+
 Read [`SYSTEM_ARCHITECTURE.md`](./SYSTEM_ARCHITECTURE.md) before structural changes. It
 records the rules a change must keep, and why. Where it and the code disagree, the code
 is right — fix the document in the same change.
@@ -43,8 +53,10 @@ broke.
 
 ## Verifying work
 
-- `npm test` — 1063 tests, ~1.7s. `npm run typecheck`, `npm run lint` (45 pre-existing
+- `npm test` — 1066 tests, ~1.6s. `npm run typecheck`, `npm run lint` (45 pre-existing
   problems: 3 errors, 42 warnings — in `Preview.tsx` and `InlineEditable.tsx`).
+- `src/test/codemap.test.ts` guards the docs: every path and `path:symbol` cited in
+  `docs/` must still exist. If it fails, the map rotted — fix the map.
 - **UI work is verified in a browser**, not by reading source: screenshot with
   `scripts/shot.mjs`. Density and layout problems are invisible in the code.
 - **After UI work, prove the `.docx` still exports** and is leak-free — it is the
