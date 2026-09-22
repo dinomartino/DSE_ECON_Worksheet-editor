@@ -1,0 +1,75 @@
+<!--
+  Econ Worksheet download widget — paste into any web page.
+
+  Reads the latest published GitHub release at page load and renders one button per
+  installer, so the links follow every new version by themselves. Prereleases are
+  excluded by GitHub's own "latest" rule. Styles are scoped to .ew-download; change
+  them freely. No server, no build step, no API key (60 requests/hour per visitor IP).
+-->
+<div class="ew-download" id="ew-download">
+  <p class="ew-download__status">Looking up the latest version…</p>
+</div>
+
+<style>
+  .ew-download { font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; max-width: 520px; }
+  .ew-download__buttons { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0; }
+  .ew-download__btn {
+    display: inline-block; padding: 10px 16px; border-radius: 8px; text-decoration: none;
+    background: #1c1917; color: #fff; font-weight: 600;
+  }
+  .ew-download__btn--secondary { background: transparent; color: #1c1917; border: 1px solid #1c1917; }
+  .ew-download__status, .ew-download__note { color: #57534e; font-size: 13px; margin: 4px 0; }
+</style>
+
+<script>
+  (function () {
+    var REPO = 'dinomartino/DSE_ECON_Worksheet-editor';
+    var root = document.getElementById('ew-download');
+    var releasesPage = 'https://github.com/' + REPO + '/releases/latest';
+
+    // Which installer serves which machine, matched on the asset file name.
+    var TARGETS = [
+      { test: /_aarch64\.dmg$/, label: 'Download for Mac (Apple silicon)', os: 'mac' },
+      { test: /_x64\.dmg$/,     label: 'Download for Mac (Intel)',         os: 'mac' },
+      { test: /-setup\.exe$/,   label: 'Download for Windows',             os: 'win' },
+    ];
+
+    var ua = navigator.userAgent;
+    var visitorOs = /Windows/.test(ua) ? 'win' : /Macintosh/.test(ua) ? 'mac' : null;
+
+    function esc(s) { return s.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+    function fallback() {
+      root.innerHTML =
+        '<a class="ew-download__btn" href="' + releasesPage + '">Download Econ Worksheet</a>' +
+        '<p class="ew-download__note">Opens the latest release on GitHub.</p>';
+    }
+
+    fetch('https://api.github.com/repos/' + REPO + '/releases/latest', { headers: { Accept: 'application/vnd.github+json' } })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (release) {
+        var buttons = [];
+        TARGETS.forEach(function (t) {
+          var asset = (release.assets || []).find(function (a) { return t.test.test(a.name); });
+          if (!asset) return;
+          var primary = visitorOs === null || t.os === visitorOs;
+          buttons.push({ href: asset.browser_download_url, label: t.label, primary: primary, os: t.os });
+        });
+        if (buttons.length === 0) { fallback(); return; }
+        // The visitor's own platform first.
+        buttons.sort(function (a, b) { return (b.primary ? 1 : 0) - (a.primary ? 1 : 0); });
+
+        var version = String(release.tag_name || '').replace(/^v/, '');
+        root.innerHTML =
+          '<div class="ew-download__buttons">' +
+          buttons.map(function (b) {
+            return '<a class="ew-download__btn' + (b.primary ? '' : ' ew-download__btn--secondary') + '" href="' + esc(b.href) + '">' + esc(b.label) + '</a>';
+          }).join('') +
+          '</div>' +
+          '<p class="ew-download__note">Version ' + esc(version) + ' · macOS 12 or later · Windows 10 or later. ' +
+          'Not sure which Mac? Apple menu → About This Mac: “Apple M…” is Apple silicon, “Intel” is Intel. ' +
+          'On Windows, SmartScreen may ask once: choose More info → Run anyway.</p>';
+      })
+      .catch(fallback);
+  })();
+</script>

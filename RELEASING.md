@@ -113,3 +113,9 @@ npm version patch && git push --follow-tags
 
 Also unpublish (or delete) the bad release so `latest.json` stops pointing at it, and
 delete its tag. Deleting the release alone does not un-install it from anyone's machine.
+
+## Linking from another website
+
+`docs/download-widget.html` is a paste-anywhere block that reads the latest release from
+the GitHub API and renders one button per installer, so links never go stale. The
+no-script fallback is the release page: `https://github.com/dinomartino/DSE_ECON_Worksheet-editor/releases/latest`.
