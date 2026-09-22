@@ -36,10 +36,10 @@ Settings → Secrets and variables → Actions → New repository secret. Exact 
 | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | empty string (the key has no passphrase) |
 | `APPLE_CERTIFICATE` | base64 of the `.p12` — `base64 -i cert.p12 \| pbcopy` |
 | `APPLE_CERTIFICATE_PASSWORD` | the password from the export above |
-| `APPLE_SIGNING_IDENTITY` | `Developer ID Application: <name> (CFZ55P6TDW)` |
+| `APPLE_SIGNING_IDENTITY` | `Developer ID Application: Sze Yuen HO (437KYKG9R8)` |
 | `APPLE_ID` | the Apple ID email |
 | `APPLE_PASSWORD` | the app-specific password |
-| `APPLE_TEAM_ID` | `CFZ55P6TDW` |
+| `APPLE_TEAM_ID` | `437KYKG9R8` |
 
 `GITHUB_TOKEN` is provided by Actions; do not create it.
 
