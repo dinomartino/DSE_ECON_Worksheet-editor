@@ -1,6 +1,6 @@
 [package]
 name = "econ-worksheet"
-version = "0.1.0"
+version = "0.2.0"
 description = "Bilingual HKDSE Economics worksheet editor that exports native Microsoft Word .docx"
 authors = ["Tino Ho"]
 license = "MIT"
