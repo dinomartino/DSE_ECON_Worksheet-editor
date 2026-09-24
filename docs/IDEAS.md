@@ -36,11 +36,14 @@ Remove from this list once released.
   key CSV, Kahoot `.xlsx`, Blooket CSV. No real import tried in any of the four apps.
 - **Export toggles** — cover on/off, answer space on/off (`OutputMode.omitCover` /
   `omitAnswerSpace`, export-time only).
+- **In-app feedback** — `src/feedback/feedback.ts`, `src/components/feedback/FeedbackDialog.tsx`:
+  prefilled GitHub issue (URL capped at 3,500 chars — GitHub's sign-in redirect breaks
+  above ~4k), `mailto:` to dseconmentor@gmail.com, or clipboard. Labels only stick when
+  the reporter can triage the repo. Not tried: desktop opener, a signed-in GitHub form.
 
 ## Recommended order
 
-1. **Now** — in-app feedback (see Other), paper summary bar (A5), HKEAA marking-point
-   notation (B1).
+1. **Now** — paper summary bar (A5), HKEAA marking-point notation (B1).
 2. **Next** — topic tags (C1) → local question library (C2).
 3. **Later** — paste/Word import (D1, D2), BYOK AI (E), item analysis (G1), diagram
    shading (B3).
@@ -135,11 +138,6 @@ point. *All of MagicSchool, Brisk, Diffit, Eduaide, QuestionWell, MS Teach.*
 
 ## Other
 
-- **In-app feedback** (S): a Feedback dialog (editor ⋯ menu and start screen) that
-  builds a bug/idea report with app version, platform and OS, then opens a prefilled
-  GitHub issue (repo is public, issues on), a `mailto:`, or copies to the clipboard.
-  No server, no token in the bundle (anyone could read it), never the document itself —
-  offer a JSON download to attach by hand. Prefill URLs cap at ~8k chars.
 
 - **Presentation mode** (M): one question at a time, reveal the scheme. *Kuta.*
 - **Large-print / dyslexia output profile** (M) — conflicts with the fixed 12pt line, so

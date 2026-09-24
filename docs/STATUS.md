@@ -35,7 +35,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Last verified
 
-- `npm test` — 1234 tests in 74 files, ~2s. Green. `npm run build` green; `npm run samples` exports.
+- `npm test` — 1255 tests in 75 files, ~2s. Green. `npm run build` green; `npm run samples` exports.
 - `npm run typecheck` — clean.
 - `npm run lint` — 44 pre-existing problems (3 errors, 41 warnings) in `Preview.tsx` and
   `InlineEditable.tsx`. Not a regression; do not "fix" by rewriting those files.
@@ -73,8 +73,8 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **2026-09-24** — Three features in parallel worktrees, merged: seeded MCQ versions A–D
   (`src/model/versions.ts`, registry `variant` hook, per-version keys + version map),
   other-apps export (`src/export/csv/`), export toggles (`OutputMode.omitCover` /
-  `omitAnswerSpace`). Dropped the year-specific Paper 2 template idea. In-app feedback
-  planned (GitHub issue prefill), see IDEAS.
+  `omitAnswerSpace`). In-app feedback dialog (prefilled GitHub issue / mailto / clipboard;
+  `src/feedback/`). Dropped the year-specific Paper 2 template idea.
 - **2026-09-24** — Start-screen sidebar decluttered; updates download silently with the
   banner only when ready; update check once per launch; version + "Check for updates"
   on the start screen and in the editor ⋯ menu.
