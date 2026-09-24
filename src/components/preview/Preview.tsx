@@ -78,6 +78,7 @@ import {
 import { isModalLayerOpen } from "@/components/ui/modalLayer";
 import { useWorksheetStore, type BandScope } from "@/store/worksheetStore";
 import { diagramSvg } from "@/render/diagram";
+import { AnswerGraphView } from "./AnswerGraphView";
 import {
   BLANK_LINE_PT,
   type CoverRenderNode,
@@ -2331,6 +2332,10 @@ function NodeView({
         {(lines) => <AnswerSpaceView lines={lines} />}
       </SizedRows>
     );
+  }
+
+  if (node.kind === "answerGraph") {
+    return <AnswerGraphView node={node} language={language} />;
   }
 
   if (node.kind === "pageBreak") {

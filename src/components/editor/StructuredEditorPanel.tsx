@@ -6,7 +6,9 @@ import { createParagraphBlock, createPart, createSubPart } from '@/model/factori
 import { partMarks, questionMarks } from '@/model/marks';
 import { partLabel, subPartLabel } from '@/model/numbering';
 import { emptyBiText } from '@/model/text';
-import type { ContentBlock, QuestionPart, StructuredQuestion } from '@/model/types';
+import type { AnswerGraph, ContentBlock, QuestionPart, StructuredQuestion } from '@/model/types';
+import { createAnswerGraph } from '@/model/answerGraph';
+import { AnswerGraphFields } from './AnswerGraphFields';
 import type { EditorPanelProps } from '@/registry/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { Button, CheckField, GroupHeader, NumberField, Pill } from '@/components/ui';
@@ -45,6 +47,16 @@ function targetOwner(
     }
   }
   return undefined;
+}
+
+/** The row menu's graph-space toggle: adds a fresh box, or removes the one there. */
+function graphMenuItem(
+  current: AnswerGraph | undefined,
+  set: (graph: AnswerGraph | undefined) => void,
+): MenuItem {
+  return current
+    ? { label: 'Remove graph space', onSelect: () => set(undefined) }
+    : { label: 'Add graph space', onSelect: () => set(createAnswerGraph()) };
 }
 
 /**
@@ -218,7 +230,19 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
             placeholder="none"
             onChange={(answerSpace) => onChange({ answerSpace })}
           />
+          {!question.answerGraph && (
+            <Button size="sm" onClick={() => onChange({ answerGraph: createAnswerGraph() })}>
+              + Graph space
+            </Button>
+          )}
         </section>
+      )}
+      {question.parts.length === 0 && question.answerGraph && (
+        <AnswerGraphFields
+          graph={question.answerGraph}
+          onChange={(answerGraph) => onChange({ answerGraph })}
+          onRemove={() => onChange({ answerGraph: undefined })}
+        />
       )}
 
       <section className="space-y-1">
@@ -301,6 +325,10 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                     },
                   ]
                 : []),
+              graphMenuItem(part.answerGraph, (answerGraph) => {
+                setExpandedParts((prev) => new Set(prev).add(part.id));
+                patchPart(partIndex, { answerGraph });
+              }),
               {
                 label: 'Delete part',
                 danger: true,
@@ -409,6 +437,14 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                               onSelect: () => moveSubPart(subIndex, 1),
                               disabled: subIndex === subParts.length - 1,
                             },
+                            graphMenuItem(subPart.answerGraph, (answerGraph) => {
+                              setExpandedSubs((prev) => new Set(prev).add(subPart.id));
+                              patchPart(partIndex, {
+                                subParts: subParts.map((s, i) =>
+                                  i === subIndex ? { ...s, answerGraph } : s,
+                                ),
+                              });
+                            }),
                             {
                               label: 'Delete sub-part',
                               danger: true,
@@ -486,6 +522,25 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                                       })
                                     }
                                   />
+                                  {subPart.answerGraph && (
+                                    <AnswerGraphFields
+                                      graph={subPart.answerGraph}
+                                      onChange={(answerGraph) =>
+                                        patchPart(partIndex, {
+                                          subParts: subParts.map((s, i) =>
+                                            i === subIndex ? { ...s, answerGraph } : s,
+                                          ),
+                                        })
+                                      }
+                                      onRemove={() =>
+                                        patchPart(partIndex, {
+                                          subParts: subParts.map((s, i) =>
+                                            i === subIndex ? { ...s, answerGraph: undefined } : s,
+                                          ),
+                                        })
+                                      }
+                                    />
+                                  )}
                                   <BiTextField
                                     label="Answer (teacher version)"
                                     value={subPart.answer ?? emptyBiText()}
@@ -504,6 +559,15 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                           );
                         })}
                       </div>
+                    )}
+
+                    {/* After the sub-parts, where it prints: a part's room follows its group. */}
+                    {part.answerGraph && (
+                      <AnswerGraphFields
+                        graph={part.answerGraph}
+                        onChange={(answerGraph) => patchPart(partIndex, { answerGraph })}
+                        onRemove={() => patchPart(partIndex, { answerGraph: undefined })}
+                      />
                     )}
 
                     <BiTextField

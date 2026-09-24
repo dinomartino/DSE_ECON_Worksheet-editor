@@ -7,6 +7,7 @@ import type {
   TextFormat,
 } from '@/model/types';
 import type {
+  AnswerGraphNode,
   ColumnsNode,
   CoverPanelRender,
   CoverRenderNode,
@@ -27,6 +28,7 @@ import {
   exactLineFor,
 } from './styles';
 import { marksAnchorRuns, trailingBlankLines } from '@/model/text';
+import { answerGraphBox, answerGraphLineTwips } from '@/render/answerGraph';
 import { COVER_PANEL } from '@/model/cover';
 import { attrs, escapeXml } from './xml';
 
@@ -544,6 +546,79 @@ function isCoveredVertically(node: TableNode, rowIndex: number, cellIndex: numbe
   return false;
 }
 
+/** One `w:drawing` placed "inline with text" (§7.5), for an already-related image. */
+function inlineDrawingXml(
+  relId: string,
+  node: { widthPx: number; heightPx: number; altText: BiText },
+  context: BodyContext,
+): string {
+  const cx = Math.round(node.widthPx * EMU_PER_PX);
+  const cy = Math.round(node.heightPx * EMU_PER_PX);
+  const drawingId = context.nextDrawingId();
+  const altText = escapeXml(
+    node.altText.en.map((r) => r.text).join('') ||
+      node.altText.zh.map((r) => r.text).join('') ||
+      'Image',
+  );
+
+  return (
+    '<w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">' +
+    `<wp:extent cx="${cx}" cy="${cy}"/>` +
+    '<wp:effectExtent l="0" t="0" r="0" b="0"/>' +
+    `<wp:docPr${attrs({ id: drawingId, name: `Picture ${drawingId}`, descr: altText })}/>` +
+    '<wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr>' +
+    '<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">' +
+    '<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">' +
+    '<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">' +
+    '<pic:nvPicPr>' +
+    `<pic:cNvPr${attrs({ id: drawingId, name: `Picture ${drawingId}`, descr: altText })}/>` +
+    '<pic:cNvPicPr/></pic:nvPicPr>' +
+    `<pic:blipFill><a:blip r:embed="${relId}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>` +
+    '<pic:spPr>' +
+    `<a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm>` +
+    '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>' +
+    '</pic:spPr></pic:pic></a:graphicData></a:graphic>' +
+    '</wp:inline></w:drawing>'
+  );
+}
+
+/**
+ * Blank axes for a drawn answer (§ `AnswerGraphNode`): its PNG in one paragraph whose
+ * line box is exactly `lines` × 12pt, so the page's rhythm resumes below it.
+ *
+ * `atLeast` rather than `exact`: `exact` clips a picture that meets the box, and the
+ * picture is `ANSWER_GRAPH_INSET_PX` shorter than the box, so the line never has to
+ * grow. The 1pt run size keeps the font descent the picture sits on negligible.
+ */
+function answerGraphXml(node: AnswerGraphNode, context: BodyContext): string {
+  const src = context.diagramSrc?.(node.key);
+  const relId = src ? context.imageRelId(src) : undefined;
+  if (!relId) return '';
+  const box = answerGraphBox(node, context.contentWidth);
+  const drawing = inlineDrawingXml(
+    relId,
+    { widthPx: box.widthPx, heightPx: box.imageHeightPx, altText: ANSWER_GRAPH_ALT },
+    context,
+  );
+  const tiny = '<w:rPr><w:sz w:val="2"/><w:szCs w:val="2"/></w:rPr>';
+  return (
+    '<w:p><w:pPr>' +
+    `<w:pStyle w:val="${STYLE_IDS.Body}"/>` +
+    // Schema order: spacing, then jc, then the paragraph mark's rPr.
+    `<w:spacing w:line="${answerGraphLineTwips(node)}" w:lineRule="atLeast"/>` +
+    `<w:jc w:val="${node.widthShare < 1 ? 'center' : 'left'}"/>` +
+    tiny +
+    '</w:pPr>' +
+    `<w:r>${tiny}${drawing}</w:r>` +
+    '</w:p>'
+  );
+}
+
+const ANSWER_GRAPH_ALT: BiText = {
+  en: [{ text: 'Blank axes for your diagram' }],
+  zh: [{ text: '繪圖用的空白座標軸' }],
+};
+
 /**
  * One inline picture plus its optional caption.
  *
@@ -568,35 +643,7 @@ function pictureXml(
   const relId = context.imageRelId(node.src);
   if (!relId) return '';
 
-  const cx = Math.round(node.widthPx * EMU_PER_PX);
-  const cy = Math.round(node.heightPx * EMU_PER_PX);
-  const drawingId = context.nextDrawingId();
-  const altText = escapeXml(
-    node.altText.en.map((r) => r.text).join('') ||
-      node.altText.zh.map((r) => r.text).join('') ||
-      'Image',
-  );
-
-  // "Inline with text" wrapping per §7.5.
-  const drawing =
-    '<w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">' +
-    `<wp:extent cx="${cx}" cy="${cy}"/>` +
-    '<wp:effectExtent l="0" t="0" r="0" b="0"/>' +
-    `<wp:docPr${attrs({ id: drawingId, name: `Picture ${drawingId}`, descr: altText })}/>` +
-    '<wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr>' +
-    '<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">' +
-    '<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">' +
-    '<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">' +
-    '<pic:nvPicPr>' +
-    `<pic:cNvPr${attrs({ id: drawingId, name: `Picture ${drawingId}`, descr: altText })}/>` +
-    '<pic:cNvPicPr/></pic:nvPicPr>' +
-    `<pic:blipFill><a:blip r:embed="${relId}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>` +
-    '<pic:spPr>' +
-    `<a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm>` +
-    '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>' +
-    '</pic:spPr></pic:pic></a:graphicData></a:graphic>' +
-    '</wp:inline></w:drawing>';
-
+  const drawing = inlineDrawingXml(relId, node, context);
   const above = node.captionPlacement === 'above';
 
   const imageParagraph =
@@ -926,6 +973,8 @@ export function renderNodeXml(node: RenderNode, context: BodyContext): string {
       return imageNodeXml(node, context);
     case 'diagram':
       return diagramNodeXml(node, context);
+    case 'answerGraph':
+      return answerGraphXml(node, context);
     case 'figureRow':
       return figureRowXml(node, context);
     case 'optionRow':

@@ -24,7 +24,12 @@ import type { Band, BandField, FontPair, HeaderFooter, LanguageMode, OutputMode,
 import type { RenderNode } from '@/render/ir';
 import { bandFieldText, collectListStreams, renderWorksheet } from '@/render/worksheet';
 import { answerKeyTitle, renderAnswerKey } from '@/render/answerKey';
-import { collectDiagramNodes, renderDiagramImages, type DiagramImageMap } from '../diagramImage';
+import {
+  collectAnswerGraphNodes,
+  collectDiagramNodes,
+  renderDiagramImages,
+  type DiagramImageMap,
+} from '../diagramImage';
 import { coverFooterBodyXml, coverXml, renderNodeXml, type BodyContext } from './body';
 import { assignNumIds, buildNumberingXml } from './numbering';
 import {
@@ -129,6 +134,10 @@ function collectImages(
     if (node.kind === 'image') add(node.src);
     else if (node.kind === 'diagram') {
       const src = diagramImages.get(node.blockId);
+      if (src) add(src);
+    } else if (node.kind === 'answerGraph') {
+      // Blank answer axes rasterise into the same map, keyed by their content.
+      const src = diagramImages.get(node.key);
       if (src) add(src);
     } else if (node.kind === 'table') {
       // A picture inside a cell (§ a boxed stimulus with a photograph in it). Missed
@@ -563,6 +572,12 @@ function assertEveryDiagramRasterized(
   const missing = collectDiagramNodes(worksheet, mode).filter(
     (node) => !diagramImages.get(node.blockId),
   );
+  // Blank answer axes follow the same rule: a box that prints nothing is lost room.
+  if (collectAnswerGraphNodes(worksheet, mode).some((node) => !diagramImages.get(node.key))) {
+    throw new Error(
+      'A graph answer space could not be turned into an image, so the export was stopped rather than dropping it.',
+    );
+  }
   if (missing.length === 0) return;
 
   // Named by their alt text where there is one: "diagram 2 of 5" tells a teacher nothing

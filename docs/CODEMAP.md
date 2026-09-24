@@ -75,6 +75,7 @@ Invariants:
 - `src/render/worksheet.ts:renderWorksheet` — the one walker; `:collectListStreams`
 - `src/render/answerKey.ts:renderAnswerKey` — the separate answer key; entries come from the `answerKey` hook
 - `src/render/diagram.ts:diagramSvg` · `:diagramPlot` · `:diagramSize` · `:flowChartLayout` · `:forumChartLayout`
+- `src/render/answerGraph.ts:answerGraphNode` · `:answerGraphBox` · `:answerGraphSvg` — blank answer axes (`src/model/answerGraph.ts:createAnswerGraph`); PNG via the diagram pre-pass, whole 12pt lines
 
 Invariants:
 - One IR, three backends; they must never disagree — §The central principle.

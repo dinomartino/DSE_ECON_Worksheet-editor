@@ -1,5 +1,7 @@
 import { diagramSvg } from '@/render/diagram';
-import type { RenderNode } from '@/render/ir';
+import { answerGraphBox, answerGraphSvg } from '@/render/answerGraph';
+import type { AnswerGraphNode, RenderNode } from '@/render/ir';
+import { contentWidth, pageSetupOf } from '@/model/page';
 import type { LanguageMode, OutputMode, Worksheet } from '@/model/types';
 import { renderWorksheet } from '@/render/worksheet';
 
@@ -74,6 +76,18 @@ export function collectDiagramNodes(
   for (const node of allNodes(worksheet, mode)) {
     if (node.kind !== 'diagram' || seen.has(node.blockId)) continue;
     seen.add(node.blockId);
+    found.push(node);
+  }
+  return found;
+}
+
+/** Every distinct graph answer space (§ `AnswerGraphNode`), deduplicated by its key. */
+export function collectAnswerGraphNodes(worksheet: Worksheet, mode: OutputMode): AnswerGraphNode[] {
+  const found: AnswerGraphNode[] = [];
+  const seen = new Set<string>();
+  for (const node of allNodes(worksheet, mode)) {
+    if (node.kind !== 'answerGraph' || seen.has(node.key)) continue;
+    seen.add(node.key);
     found.push(node);
   }
   return found;
@@ -159,6 +173,25 @@ export async function renderDiagramImages(
   );
 
   nodes.forEach((node, index) => images.set(node.blockId, rasterized[index]));
+
+  // Graph answer spaces join the same map under their content key, sized from the live
+  // text column exactly as the `.docx` places them (§ `answerGraphBox`).
+  const textWidth = contentWidth(pageSetupOf(worksheet));
+  const graphs = collectAnswerGraphNodes(worksheet, mode);
+  const graphImages = await Promise.all(
+    graphs.map((node) => {
+      const box = answerGraphBox(node, textWidth);
+      const svg = answerGraphSvg(node, {
+        widthPx: box.widthPx,
+        heightPx: box.imageHeightPx,
+        language,
+        fonts: worksheet.fonts,
+        scale: EXPORT_SCALE,
+      });
+      return rasterize(svg, box.widthPx * EXPORT_SCALE, box.imageHeightPx * EXPORT_SCALE);
+    }),
+  );
+  graphs.forEach((node, index) => images.set(node.key, graphImages[index]));
 
   return images;
 }

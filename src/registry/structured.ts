@@ -7,6 +7,7 @@ import {
 import { areBlocksEmpty, bi, isBiTextEmpty } from '@/model/text';
 import type { StructuredQuestion } from '@/model/types';
 import { pushGap, renderContentBlocks, type RenderContext, type RenderNode } from '@/render/ir';
+import { answerGraphNode } from '@/render/answerGraph';
 import { StructuredEditorPanel } from '@/components/editor/StructuredEditorPanel';
 import type { AnswerKeyEntry, AnswerKeyRow } from '@/render/answerKey';
 import type { QuestionHealthFacts, QuestionTypeDefinition } from './types';
@@ -108,7 +109,8 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
   if (isLeaf && !stemClaimed) attachMarksToLastText(nodes, 0, stemMarks);
 
   // The leaf question's own writing room, under the stem it answers (§ the LQ line).
-  // Absent prints nothing, like marks.
+  // Absent prints nothing, like marks. Blank axes to draw on come first (§ AnswerGraph).
+  if (isLeaf && question.answerGraph) nodes.push(answerGraphNode(question.answerGraph));
   if (isLeaf && question.answerSpace !== undefined && question.answerSpace > 0) {
     nodes.push({ kind: 'answerSpace', lines: question.answerSpace });
   }
@@ -279,6 +281,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
 
       // The QAB's writing room, directly under the sub-part it answers (§ the LQ
       // line). Absent prints nothing, like marks.
+      if (subPart.answerGraph) nodes.push(answerGraphNode(subPart.answerGraph));
       if (subPart.answerSpace !== undefined && subPart.answerSpace > 0) {
         nodes.push({ kind: 'answerSpace', lines: subPart.answerSpace });
       }
@@ -298,6 +301,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
 
     // The part's own writing room, after the whole group. Each sub-part's space is its
     // own field, so this is the per-part room a QAB grants a leaf part.
+    if (part.answerGraph) nodes.push(answerGraphNode(part.answerGraph));
     if (part.answerSpace !== undefined && part.answerSpace > 0) {
       nodes.push({ kind: 'answerSpace', lines: part.answerSpace });
     }
