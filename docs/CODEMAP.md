@@ -138,8 +138,8 @@ Invariants:
 
 - `src/platform/index.ts:isDesktop` · `:saveFile` · `:pickTextFile` · `:pickFile` · `:printPage` · `:revealFile` · `:openFolder` · `:exportsFolder`
 - `src/storage/fileStore.ts:savedWorksheetPath` · `:savedWorksheetsFolder` · `src/storage/index.ts:pickWorksheetFile`
-- `src/desktop/updater.ts:checkForUpdate` · `:currentVersion`
-- `src/components/editor/UpdateBanner.tsx:UpdateBanner`
+- `src/desktop/updater.ts:checkForUpdate` · `:currentVersion` · `src/desktop/updateStore.ts:checkOnLaunch` — one check per launch
+- `src/components/editor/UpdateBanner.tsx:UpdateBanner` · `:VersionLine`
 
 Invariants:
 - Never import `@tauri-apps/*` at the top level — dynamic `import()` behind `isDesktop()` — §Desktop shell.

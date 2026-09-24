@@ -2068,6 +2068,12 @@ store folder and the exports folder, and each saved document can be revealed.
 `releases/latest/download/`, verifies its signature against the public key in
 `tauri.conf.json`, and `UpdateBanner` offers to install and relaunch. GitHub's `latest`
 excludes prereleases, so a `-beta.N` tag never reaches a stable install.
+One shared state (`desktop/updateStore.ts`) checks **once per launch**; the banner, the
+start screen's version line (bottom-left) and the editor's ⋯ "Check for updates" all read
+it. A failed check is `failed`, never "up to date".
+
+**The start screen renders only after hydration** (`EditorHost`): it reads the platform
+and `localStorage` while rendering, which the web-built prerender cannot match.
 
 **`app.security.csp` stays `null`.** Next's static export inlines its bootstrap scripts;
 any CSP without `'unsafe-inline'` blanks the app. Tightening it means nonced scripts first.

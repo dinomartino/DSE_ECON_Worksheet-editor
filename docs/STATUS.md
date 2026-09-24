@@ -64,6 +64,9 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
+- **2026-09-24** — Update check once per launch with one shared state; version + "Check for
+  updates" at the start screen's bottom-left and in the editor ⋯ menu. Banner no longer
+  overflows the window; start screen renders after hydration (fixed a desktop mismatch).
 - **2026-09-24** — Export dialog (paper / answer key / both), answer-key `.docx` via a
   new registry hook, pre-print paper check, backup-all zip + restore, Trash (30 days).
   Registry grep now covers ten modules. Work moved to the `develop` branch.
@@ -71,9 +74,5 @@ off the bottom.** It is the first thing a fresh session reads — then
   grid/list); desktop default export folder, native import, reveal in Finder/Explorer.
   Clipboard's `escapeHtml`/`richHtml`/`formatCss` now exported for the thumbnail.
   Competitor research (5 slices) → `docs/IDEAS.md`.
-- **2026-09-22** — Added the quick-reference system: `docs/CODEMAP.md`, `docs/RECIPES.md`,
-  `docs/GLOSSARY.md`, this file, and `src/test/codemap.test.ts` to stop them rotting.
-  CLAUDE.md gained a "Fresh session? Start here" block. No `src/` behaviour changed.
-- **2026-09-22** — Download widget; released v0.2.0; shipped the desktop app (Tauri 2,
-  file-backed store, self-updates).
-- **Earlier** — MCQ figure options two per row; inspector sidebar; docked tools.
+- **2026-09-22** — Docs orientation layer + rot test; download widget; released v0.2.0;
+  shipped the desktop app (Tauri 2, file-backed store, self-updates).

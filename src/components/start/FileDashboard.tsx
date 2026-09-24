@@ -54,8 +54,8 @@ export function FileDashboard({
   onShowTrash?: () => void;
 }) {
   const [query, setQuery] = useState<DashboardQuery>(DEFAULT_QUERY);
-  // Lazy initialiser: the start screen is client-only (`EditorHost` is `ssr: false`),
-  // so reading storage on the first render cannot mismatch a server tree.
+  // Lazy initialiser: `EditorHost` renders the start screen only after hydration, so
+  // reading storage on the first render cannot mismatch the prerendered tree.
   const [view, setView] = useState<DashboardView>(readDashboardView);
   const shown = useMemo(() => visibleSummaries(summaries, query), [summaries, query]);
   const place = isDesktop() ? 'on this computer' : 'in this browser';

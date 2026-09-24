@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { UpdateBanner } from '@/components/editor/UpdateBanner';
 import { StartScreen } from '@/components/start/StartScreen';
 import type { LanguageMode, Worksheet } from '@/model/types';
@@ -47,7 +47,10 @@ const EditorApp = dynamic(
  * every worksheet but the newest unreachable, and it meant the app decided what you
  * were working on before you did.
  */
+const noSubscribe = () => () => {};
+
 export function EditorHost() {
+  const hydrated = useSyncExternalStore(noSubscribe, () => true, () => false);
   const [chosen, setChosen] = useState(false);
   const [showingFiles, setShowingFiles] = useState(false);
   const replaceWorksheet = useWorksheetStore((s) => s.replaceWorksheet);
@@ -107,29 +110,33 @@ export function EditorHost() {
     setShowingFiles(false);
   };
 
-  if (!chosen || showingFiles) {
-    return (
-      <>
-        <UpdateBanner />
-        <StartScreen
-          onOpen={open}
-          // No way back before a document exists — there is no editor behind the screen
-          // yet, so a Cancel would dismiss to nothing.
-          onClose={chosen ? () => setShowingFiles(false) : undefined}
-          // Trashing the open document removes the way back to it: its next autosave
-          // would quietly make it live again.
-          onTrashed={(id) => {
-            if (id === useWorksheetStore.getState().worksheet.id) setChosen(false);
-          }}
-        />
-      </>
-    );
-  }
+  // The start screen reads the platform and localStorage while rendering, which the
+  // static prerender (a web build, no storage) cannot know — so it renders only on the
+  // client. Hydrating it against the prerender made the desktop app rebuild the tree.
+  if (!hydrated) return <div className="h-screen bg-desk" />;
 
+  // The banner takes its own row; the screen below gets what is left, so neither ever
+  // overflows the window (both used to be `h-screen` under the banner).
   return (
-    <>
+    <div className="flex h-screen flex-col">
       <UpdateBanner />
-      <EditorApp onOpenFiles={leaveForFiles} />
-    </>
+      <div className="min-h-0 flex-1">
+        {!chosen || showingFiles ? (
+          <StartScreen
+            onOpen={open}
+            // No way back before a document exists — there is no editor behind the screen
+            // yet, so a Cancel would dismiss to nothing.
+            onClose={chosen ? () => setShowingFiles(false) : undefined}
+            // Trashing the open document removes the way back to it: its next autosave
+            // would quietly make it live again.
+            onTrashed={(id) => {
+              if (id === useWorksheetStore.getState().worksheet.id) setChosen(false);
+            }}
+          />
+        ) : (
+          <EditorApp onOpenFiles={leaveForFiles} />
+        )}
+      </div>
+    </div>
   );
 }

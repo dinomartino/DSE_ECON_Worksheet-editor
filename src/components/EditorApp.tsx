@@ -387,7 +387,7 @@ export function EditorApp({ onOpenFiles }: { onOpenFiles: () => void }) {
   }, [undo, redo]);
 
   return (
-    <div className="flex h-screen flex-col bg-surface">
+    <div className="flex h-full flex-col bg-surface">
       <Toolbar onOpenSettings={() => setSettingsOpen(true)} onOpenFiles={onOpenFiles} />
       {/* Three columns: the add rail (how content gets on the page), the page itself
           (where it is edited), and the sidebar (structure and off-page fields). The

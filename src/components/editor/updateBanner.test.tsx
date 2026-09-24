@@ -2,9 +2,13 @@ import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 const checkForUpdate = vi.fn();
-vi.mock('@/desktop/updater', () => ({ checkForUpdate }));
+vi.mock('@/desktop/updater', () => ({
+  isDesktop: () => false,
+  currentVersion: async () => null,
+  checkForUpdate,
+}));
 
-const { UpdateBanner, UpdateBar } = await import('./UpdateBanner');
+const { UpdateBanner, UpdateBar, VersionLine } = await import('./UpdateBanner');
 
 /**
  * The banner must be invisible everywhere it is not wanted — on the web, and in print.
@@ -14,8 +18,12 @@ const { UpdateBanner, UpdateBar } = await import('./UpdateBanner');
 
 describe('UpdateBanner', () => {
   it('renders nothing before an update is known — the web never gets one', () => {
-    checkForUpdate.mockResolvedValue(null);
+    checkForUpdate.mockResolvedValue({ kind: 'none' });
     expect(renderToStaticMarkup(<UpdateBanner />)).toBe('');
+  });
+
+  it('shows no version line on the web', () => {
+    expect(renderToStaticMarkup(<VersionLine />)).toBe('');
   });
 
   it('offers the version, the two actions, and hides itself from print', () => {

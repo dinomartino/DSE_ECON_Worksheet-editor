@@ -17,6 +17,7 @@ import { Dialog } from '@/components/ui/Dialog';
 import { AppMark } from '@/components/ui/AppMark';
 import { DocumentName } from './DocumentName';
 import { ExportDialog } from './ExportDialog';
+import { useUpdateStore } from '@/desktop/updateStore';
 import { PaperHealthPanel } from './PaperHealthPanel';
 
 /** A transient status line, optionally with one follow-up action. */
@@ -77,6 +78,15 @@ export function Toolbar({
       () => setNotice((current) => (current === next ? undefined : current)),
       action ? 8000 : 2400,
     );
+  };
+
+  const appVersion = useUpdateStore((s) => s.current);
+
+  /** A found update surfaces in the banner; the other outcomes are said here. */
+  const handleCheckUpdates = async () => {
+    const status = await useUpdateStore.getState().check();
+    if (status === 'current') flash(`You have the latest version${appVersion ? ` (${appVersion})` : ''}`);
+    else if (status === 'failed') flash('Could not check for updates — are you online?');
   };
 
   /** Desktop only: a saved file's path becomes a one-click reveal. */
@@ -315,6 +325,15 @@ export function Toolbar({
             { label: 'Worksheets…', onSelect: onOpenFiles, separated: true },
             { label: 'Save now', onSelect: () => void save() },
             { label: 'Download .json', onSelect: () => void handleDownloadJson() },
+            ...(isDesktop()
+              ? [
+                  {
+                    label: 'Check for updates',
+                    hint: appVersion ? `v${appVersion}` : undefined,
+                    onSelect: () => void handleCheckUpdates(),
+                  },
+                ]
+              : []),
             {
               label: 'Clear saved documents…',
               onSelect: () => setConfirmingClear(true),

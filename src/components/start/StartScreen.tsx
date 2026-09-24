@@ -14,6 +14,7 @@ import {
 } from '@/platform';
 import { Dialog } from '@/components/ui/Dialog';
 import { AppMark } from '@/components/ui/AppMark';
+import { VersionLine } from '@/components/editor/UpdateBanner';
 import { FileDashboard, type DocumentActions } from './FileDashboard';
 import { NEW_WORKSHEET_FORM_ID, NewWorksheetForm } from './NewWorksheetForm';
 import { TrashList } from './TrashList';
@@ -295,7 +296,7 @@ export function StartScreen({
 
   return (
     <div
-      className="zone-dark flex h-screen flex-col overflow-hidden bg-desk lg:flex-row"
+      className="zone-dark flex h-full flex-col overflow-hidden bg-desk lg:flex-row"
       onDragOver={(event) => {
         // A .json worksheet dropped anywhere on this screen opens it. The whole surface
         // is the target rather than a marked-out zone: this screen has nothing else a
@@ -420,6 +421,11 @@ export function StartScreen({
               {busy === 'restore' ? 'Restoring…' : 'Restore from backup…'}
             </TextLink>
           </p>
+          {/* The panel's last line, bottom-left: which build this is, and a way to ask
+              for a newer one. Renders nothing on the web. */}
+          <div className="mt-5 border-t border-line pt-3 empty:hidden">
+            <VersionLine />
+          </div>
         </div>
       </aside>
 
