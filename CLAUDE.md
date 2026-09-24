@@ -65,7 +65,8 @@ broke.
 - `scripts/cover-verify.mjs` and `scripts/lq-verify.mjs` check that the three backends
   (preview, `.docx`, print PDF) still agree.
 - **Desktop work is verified in the shell**: `npm run desktop:dev` runs it, `npm run
-  desktop:build` produces installers. The web build must stay green too — `npm run build`
+  desktop:build` produces installers. To hand the user an unreleased `.dmg`, follow
+  `DESKTOP-PREVIEW.md` (copy-paste steps, no tag, no `main`). The web build must stay green too — `npm run build`
   fails if a `@tauri-apps/*` import reached the bundle.
 - Releases are tags, not pushes: `npm version <patch|minor|major>` then `git push
   --follow-tags`. See `RELEASING.md`.

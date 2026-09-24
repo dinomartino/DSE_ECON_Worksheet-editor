@@ -48,8 +48,6 @@ off the bottom.** It is the first thing a fresh session reads — then
   folder; there is no `NSDocumentsFolderUsageDescription`, so the prompt is generic.
 - **Thumbnails are approximate** — no header/footer/page furniture, one language, rough
   page end. See SYSTEM_ARCHITECTURE §The file dashboard.
-- **`src-tauri/Cargo.lock` still says 0.1.0** for the app's own package; `cargo check`
-  rewrites it to 0.2.0. Commit that separately.
 - **No newer-schema-version guard.** `src/model/migrations.ts:migrate` accepts a document
   whose `schemaVersion` is *above* `CURRENT_SCHEMA_VERSION`, keeping its extra fields in
   `__unknown` but rendering it with this build's rules. Deliberate for now (a newer file

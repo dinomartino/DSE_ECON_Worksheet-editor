@@ -150,6 +150,11 @@ After any UI work, open an exported `.docx` in Word: it is the load-bearing outp
 
 Guard: `npm test`, `npm run typecheck`, `npm run lint` (44 pre-existing problems).
 
+## Try an unreleased desktop build
+
+Follow `DESKTOP-PREVIEW.md`: dev window, a local `.dmg`, or the CI preview workflow.
+None of them needs a tag or touches `main`.
+
 ## Cut a release
 
 Only when the user asks. Work lives on `develop`; `main` is what teachers get.
