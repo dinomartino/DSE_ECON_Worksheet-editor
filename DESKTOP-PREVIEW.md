@@ -35,11 +35,15 @@ prints the command, e.g. `kill 12345`).
 ## B. Build a `.dmg` on this Mac
 
 **1. Build it.** The `--config` part skips the update-signing files, so no private key
-is needed:
+is needed; `CI=true` skips the Finder window-arranging step, which can hang and leave
+the build failing at `bundle_dmg.sh`:
 
 ```bash
-npx tauri build --bundles dmg --config '{"bundle":{"createUpdaterArtifacts":false}}'
+CI=true npx tauri build --bundles dmg --config '{"bundle":{"createUpdaterArtifacts":false}}'
 ```
+
+If it still fails at `bundle_dmg.sh`, a half-made image is probably mounted — eject it
+(`ls /Volumes`, then `diskutil eject force "/Volumes/dmg.XXXXXX"`) and build again.
 
 **2. Open it.** The installer window appears; drag **Econ Worksheet** into Applications:
 
@@ -52,6 +56,27 @@ open src-tauri/target/release/bundle/dmg/*.dmg
 ```bash
 open -a "Econ Worksheet"
 ```
+
+**Or install in one go** — quits the app, replaces it in Applications, launches it
+(saved worksheets live elsewhere and are not touched):
+
+```bash
+osascript -e 'quit app "Econ Worksheet"' 2>/dev/null
+M=$(hdiutil attach -nobrowse -readonly src-tauri/target/release/bundle/dmg/*.dmg | grep -o '/Volumes/.*' | tail -1)
+rm -rf "/Applications/Econ Worksheet.app" && ditto "$M/Econ Worksheet.app" "/Applications/Econ Worksheet.app"
+hdiutil detach "$M" && open -a "Econ Worksheet"
+```
+
+**Test the auto-update.** Build the same code labelled as an *older* version; installed,
+it finds the published release, downloads it silently and shows "ready — Restart now".
+No file changes — the version is set on the command line:
+
+```bash
+CI=true npx tauri build --bundles dmg --config '{"version":"0.1.9","bundle":{"createUpdaterArtifacts":false}}'
+```
+
+Afterwards you are on the *published* release, not `develop` — rebuild as above to get
+back to the newest code.
 
 Built on your own Mac, it opens without a Gatekeeper warning.
 
