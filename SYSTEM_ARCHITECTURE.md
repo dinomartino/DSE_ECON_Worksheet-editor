@@ -1622,6 +1622,20 @@ the way in; `NewWorksheetForm` asks the once-per-document decisions.
 - **A summary can outlive the document it names** — opening one says so and drops the
   row.
 
+### The file dashboard (`start/FileDashboard.tsx`)
+
+- **A grid of first pages, or a list.** Search, kind (by `hasCover`) and order narrow the
+  index in `start/dashboard.ts:visibleSummaries`; none of it is stored with a document.
+  The grid/list choice is a per-viewer `localStorage` key outside the `econ-worksheet:`
+  prefix, which `clear()` treats as documents.
+- **A thumbnail is derived, never stored** (`start/thumbnail.ts`). It reads the IR through
+  the clipboard backend plus a small cover emitter, in a shadow root, scaled from true
+  page size; loaded lazily (IntersectionObserver), two at a time, cached in memory by
+  `id:updatedAt`. Storing images would share the quota with teachers' documents.
+- **Approximate by design:** no header/footer or page furniture (the clipboard omits
+  them), first page ends at the first forced break or the first question that crosses
+  the bottom margin, one language (English unless the English side is nearly empty).
+
 ## Editor layout (`src/components/`)
 
 The preview is the centrepiece; the right sidebar shows **one thing at a time** behind
@@ -2015,6 +2029,13 @@ access, `src/desktop/updater.ts` for updates.
 `localStorage` store. Both share the per-row index validation (`storage/summaries.ts`);
 the file store can also rebuild a lost index by scanning the directory. Saving `.docx`
 and `.json` uses the native save dialog on desktop, the browser download on the web.
+
+**Where files go.** Save and open dialogs start in the last-used folder, else
+`~/Documents/Econ Worksheets` (created on demand; the one `$DOCUMENT` path `fs:allow-mkdir`
+grants). The last folder is a `localStorage` key outside the `econ-worksheet:` prefix.
+Picked paths need no fs grant — the dialog plugin scopes them at runtime. After a save the
+toolbar offers `revealLabel()` (Show in Finder/Explorer); the start screen links the
+store folder and the exports folder, and each saved document can be revealed.
 
 **Updates** come from GitHub Releases: the app fetches `latest.json` from
 `releases/latest/download/`, verifies its signature against the public key in

@@ -129,7 +129,8 @@ Invariants:
 
 ## platform / desktop
 
-- `src/platform/index.ts:isDesktop` · `:saveFile` · `:printPage` · `:revealFile`
+- `src/platform/index.ts:isDesktop` · `:saveFile` · `:pickTextFile` · `:printPage` · `:revealFile` · `:openFolder` · `:exportsFolder`
+- `src/storage/fileStore.ts:savedWorksheetPath` · `:savedWorksheetsFolder` · `src/storage/index.ts:pickWorksheetFile`
 - `src/desktop/updater.ts:checkForUpdate` · `:currentVersion`
 - `src/components/editor/UpdateBanner.tsx:UpdateBanner`
 
@@ -143,7 +144,13 @@ Invariants:
 `src/components/start/StartScreen.tsx:StartScreen` — the list and the only way in;
 `src/components/start/NewWorksheetForm.tsx:NewWorksheetForm` — once-per-document decisions.
 
-Invariant: the gate lives in `src/app/EditorHost.tsx:EditorHost`, outside the editor — §The start screen.
+- `src/components/start/FileDashboard.tsx:FileDashboard` — grid of first pages / list; search, kind, order
+- `src/components/start/dashboard.ts:visibleSummaries` — the filter and sort, pure
+- `src/components/start/PageThumbnail.tsx:PageThumbnail` · `src/components/start/thumbnail.ts:loadThumbnail` — derived first page
+
+Invariants:
+- The gate lives in `src/app/EditorHost.tsx:EditorHost`, outside the editor — §The start screen.
+- A thumbnail is derived from the IR, never stored — §The file dashboard.
 
 ## components/editor — the chrome around the page
 

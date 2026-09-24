@@ -2,11 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui';
-import { isDesktop } from '@/platform';
+import { exportsFolder, isDesktop, openFolder, revealFile, revealLabel } from '@/platform';
 import { Dialog } from '@/components/ui/Dialog';
-import { Menu } from '@/components/ui/Menu';
 import { AppMark } from '@/components/ui/AppMark';
-import { SheetIcon } from '@/components/ui/icons';
+import { FileDashboard, type DocumentActions } from './FileDashboard';
 import { NEW_WORKSHEET_FORM_ID, NewWorksheetForm } from './NewWorksheetForm';
 import { newId } from '@/model/factories';
 import type { DocumentType } from '@/model/newWorksheet';
@@ -14,7 +13,10 @@ import type { LanguageMode, Worksheet } from '@/model/types';
 import {
   downloadWorksheetFile,
   duplicateWorksheet,
+  pickWorksheetFile,
   readWorksheetFile,
+  savedWorksheetPath,
+  savedWorksheetsFolder,
   worksheetStore,
   type WorksheetSummary,
 } from '@/storage';
@@ -116,6 +118,47 @@ export function StartScreen({
     await refresh();
   };
 
+  /**
+   * "Open a .json worksheet…": the native open sheet on desktop, starting in the same
+   * folder exports go to; the hidden file input on the web.
+   */
+  const importFile = async () => {
+    if (!isDesktop()) {
+      fileInput.current?.click();
+      return;
+    }
+    setError(undefined);
+    try {
+      const worksheet = await pickWorksheetFile();
+      if (worksheet) onOpen(worksheet);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not open that file.');
+    }
+  };
+
+  const actions: DocumentActions = {
+    open: (summary) => void openSaved(summary.id),
+    rename: setRenaming,
+    duplicate: (summary) => void duplicate(summary),
+    download: (summary) =>
+      void (async () => {
+        const worksheet = await worksheetStore.load(summary.id);
+        if (worksheet) await downloadWorksheetFile(worksheet);
+      })(),
+    reveal: isDesktop()
+      ? (summary) =>
+          void (async () => {
+            try {
+              const path = await savedWorksheetPath(summary.id);
+              if (path) await revealFile(path);
+            } catch {
+              setError('Could not show that file.');
+            }
+          })()
+      : undefined,
+    remove: setConfirmingDelete,
+  };
+
   return (
     <div
       className="zone-dark flex h-screen flex-col overflow-hidden bg-desk lg:flex-row"
@@ -198,7 +241,7 @@ export function StartScreen({
           </div>
           <button
             type="button"
-            onClick={() => fileInput.current?.click()}
+            onClick={() => void importFile()}
             className="mt-5 cursor-pointer text-[12px] font-medium text-accent-ink underline decoration-line-strong underline-offset-4 transition-colors hover:decoration-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             Open a .json worksheet…
@@ -208,82 +251,45 @@ export function StartScreen({
           </p>
         </section>
 
-        <p className="mt-auto pt-10 text-[11px] leading-relaxed text-ink-subtle">
-          {isDesktop()
-            ? 'Everything here is stored on this computer only — there is no server and no account. Keep a .json copy of anything you would be sorry to lose.'
-            : 'Everything here is stored in this browser only — there is no server and no account. Clearing site data deletes it, so keep a .json copy of anything you would be sorry to lose.'}
-        </p>
-      </aside>
-
-      {/* The desk side: what is already on the desk. Still a ledger rather than a stack
-          of shadowed tiles — but the rows sit on a panel of their own, because hairlines
-          alone on the bare desk gave the column no edges and every row the same weight.
-          The panel is the object; the hairlines divide it. */}
-      <main className="min-h-0 flex-1 overflow-y-auto px-9 py-9 lg:px-14 lg:py-12">
-        <div className="mx-auto max-w-3xl">
-          <div className="flex items-baseline justify-between gap-4">
-            <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
-              {isDesktop() ? 'Saved on this computer' : 'Saved in this browser'}
-            </h2>
-            {summaries.length > 0 && (
-              <span className="text-[11px] tabular-nums text-ink-subtle">
-                {summaries.length === 1 ? '1 document' : `${summaries.length} documents`}
-              </span>
-            )}
-          </div>
-
-          {/* Three states, each said plainly. The distinction between "nothing saved
-              yet" and "still reading storage" matters on this screen: the second flashes
-              an empty list that reads as lost work. */}
-          {!loaded ? (
-            <p className="mt-5 text-[12px] text-ink-subtle">Reading saved documents…</p>
-          ) : summaries.length === 0 ? (
-            /* The empty state takes the panel too, so the column has the same shape
-               whether or not there is anything in it. */
-            <div className="zone-light mt-4 rounded-xl border border-line bg-surface px-6 py-10">
-              <p className="max-w-md text-[13px] leading-relaxed text-ink-muted">
-                Nothing saved yet. Worksheets you start are kept{' '}
-                {isDesktop() ? 'on this computer' : 'in this browser'} — save a .json copy
-                to move one to another machine.
+        <div className="mt-auto pt-10 text-[11px] leading-relaxed text-ink-subtle">
+          {isDesktop() ? (
+            <>
+              <p>
+                Everything here is stored on this computer only — there is no server and no
+                account. Keep a .json copy of anything you would be sorry to lose.
               </p>
-            </div>
-          ) : (
-            <ul className="zone-light mt-4 overflow-hidden rounded-xl border border-line bg-surface">
-              {summaries.map((summary) => (
-                <SavedRow
-                  key={summary.id}
-                  summary={summary}
-                  onOpen={() => void openSaved(summary.id)}
-                  onRename={() => setRenaming(summary)}
-                  onDuplicate={() => void duplicate(summary)}
-                  onDownload={async () => {
-                    const worksheet = await worksheetStore.load(summary.id);
-                    if (worksheet) await downloadWorksheetFile(worksheet);
-                  }}
-                  onDelete={() => setConfirmingDelete(summary)}
+              {/* The two places a teacher's files live, one click each: the app's own
+                  store (autosaved, named by id) and the folder exports start in. */}
+              <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+                <FolderLink
+                  label="Saved worksheets"
+                  locate={savedWorksheetsFolder}
+                  onError={setError}
                 />
-              ))}
-            </ul>
-          )}
-
-          {error && (
-            <p
-              role="alert"
-              className="mt-4 rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink"
-            >
-              {error}
-            </p>
-          )}
-
-          {/* Closes the list rather than the screen: pinned to the viewport floor by
-              `mt-auto` it read as an unrelated caption stranded under empty desk. */}
-          {loaded && summaries.length > 0 && (
-            <p className="mt-3 text-[11px] leading-relaxed text-ink-subtle">
-              Opening a document brings it into the editor; the one you had open last is
-              restored automatically next time.
+                <FolderLink label="Exports folder" locate={exportsFolder} onError={setError} />
+              </p>
+            </>
+          ) : (
+            <p>
+              Everything here is stored in this browser only — there is no server and no
+              account. Clearing site data deletes it, so keep a .json copy of anything you
+              would be sorry to lose.
             </p>
           )}
         </div>
+      </aside>
+
+      {/* The desk side: every document already on the desk, as its first page. */}
+      <main className="min-h-0 flex-1 overflow-y-auto px-9 py-9 lg:px-14 lg:py-12">
+        <FileDashboard summaries={summaries} loaded={loaded} actions={actions} />
+        {error && (
+          <p
+            role="alert"
+            className="mx-auto mt-4 max-w-5xl rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink"
+          >
+            {error}
+          </p>
+        )}
       </main>
 
       <input
@@ -426,119 +432,6 @@ function StartRow({
   );
 }
 
-/**
- * One saved document.
- *
- * The row itself opens it — that is what the list is for, and burying the common action
- * inside the overflow menu beside four rare ones would make resuming work the slowest
- * thing on the screen. The menu carries what a file list also has to offer: rename,
- * duplicate, download, delete.
- */
-function SavedRow({
-  summary,
-  onOpen,
-  onRename,
-  onDuplicate,
-  onDownload,
-  onDelete,
-}: {
-  summary: WorksheetSummary;
-  onOpen: () => void;
-  onRename: () => void;
-  onDuplicate: () => void;
-  onDownload: () => void;
-  onDelete: () => void;
-}) {
-  // A cover is the one structural fact the index actually stores, and it is what tells
-  // a mock paper from a classroom worksheet. Derived from `hasCover` rather than a
-  // stored document type — an index written by an earlier build has no type, and a list
-  // where half the rows were unlabelled would look broken.
-  //
-  // Two *shapes* were tried first and rejected in the browser: at 22px a folded corner
-  // and a stacked sheet are the same small ruled rectangle, so the glyph cost a column
-  // and reported nothing. The distinction is carried in words instead; the glyph stays
-  // as one constant mark that says "document" and anchors the row's left edge.
-  const isMock = summary.hasCover;
-
-  return (
-    <li className="group relative flex items-center gap-3 border-b border-line pr-1.5 last:border-b-0 transition-colors duration-150 ease-[var(--ease-out-soft)] hover:bg-surface-hover">
-      {/* The same accent bar the Start rows use, so both lists answer a hover the same
-          way. Opacity, never display — a reveal that changes layout moves the row out
-          from under the pointer reaching for it. */}
-      <span
-        aria-hidden
-        className="absolute inset-y-0 left-0 w-0.5 bg-accent opacity-0 transition-opacity duration-150 ease-[var(--ease-out-soft)] group-hover:opacity-100 group-focus-within:opacity-100"
-      />
-      <button
-        type="button"
-        onClick={onOpen}
-        className="flex min-w-0 flex-1 cursor-pointer items-center gap-3.5 py-3 pl-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
-      >
-        <span className="shrink-0 text-ink-subtle transition-colors duration-150 group-hover:text-accent-ink">
-          <SheetIcon size={22} />
-        </span>
-        {/* Two lines, because one grey run of "12 questions · cover page · 3 hours ago"
-            is scanned as a single blur. The title carries identity; the line under it
-            carries the facts, as quiet tabular text — the chip language is retired. */}
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[14px] font-medium leading-tight text-ink">
-            {summary.title}
-          </span>
-          <span className="mt-1 block truncate text-[11px] leading-tight text-ink-subtle">
-            {/* The kind is the fact that distinguishes two rows with similar names, so
-                it leads the line. Carried by weight and ink, never the accent: blue in
-                this system means link/focus/selection, and a label that cannot be
-                clicked must not wear it. */}
-            <span className={isMock ? 'font-semibold text-ink-muted' : 'text-ink-subtle'}>
-              {isMock ? 'Mock exam paper' : 'Worksheet'}
-            </span>
-            {summary.questionCount !== undefined && (
-              <> · {summary.questionCount === 1 ? '1 question' : `${summary.questionCount} questions`}</>
-            )}
-          </span>
-        </span>
-        {/* Recency gets its own column: it is what the eye runs down when looking for
-            "the one I had open before lunch", and it cannot do that inside a sentence. */}
-        <span className="shrink-0 pl-3 text-[11px] tabular-nums text-ink-muted">
-          {relativeTime(summary.updatedAt)}
-        </span>
-      </button>
-      <Menu
-        label={`Actions for ${summary.title}`}
-        items={[
-          { label: 'Open', onSelect: onOpen },
-          { label: 'Rename…', onSelect: onRename },
-          { label: 'Duplicate', onSelect: onDuplicate },
-          { label: 'Download .json', onSelect: onDownload },
-          { label: 'Delete…', onSelect: onDelete, danger: true, separated: true },
-        ]}
-      />
-    </li>
-  );
-}
-
-/**
- * How long ago, in words.
- *
- * A file list is scanned for "the one I had open before lunch", and an absolute
- * timestamp makes the reader do that subtraction themselves. Falls back to the date
- * past a week, where "8 days ago" stops being easier than the date it names.
- */
-function relativeTime(iso: string): string {
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return 'unknown';
-  const seconds = Math.round((Date.now() - then) / 1000);
-  if (seconds < 60) return 'just now';
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return minutes === 1 ? '1 minute ago' : `${minutes} minutes ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return hours === 1 ? '1 hour ago' : `${hours} hours ago`;
-  const days = Math.round(hours / 24);
-  if (days === 1) return 'yesterday';
-  if (days < 7) return `${days} days ago`;
-  return new Date(iso).toLocaleDateString();
-}
-
 function RenameDialog({
   summary,
   onClose,
@@ -590,5 +483,39 @@ function RenameDialog({
         />
       </form>
     </Dialog>
+  );
+}
+
+/**
+ * A desktop folder, one click away. Resolved on click rather than on render: the path
+ * comes from the shell asynchronously, and the exports folder is created on demand.
+ */
+function FolderLink({
+  label,
+  locate,
+  onError,
+}: {
+  label: string;
+  locate: () => Promise<string | undefined>;
+  onError: (message: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      title={`Open in ${revealLabel().replace(/^Show in /, '')}`}
+      onClick={() =>
+        void (async () => {
+          try {
+            const path = await locate();
+            if (path) await openFolder(path);
+          } catch {
+            onError(`Could not open the ${label.toLowerCase()} folder.`);
+          }
+        })()
+      }
+      className="cursor-pointer font-medium text-accent-ink underline decoration-line-strong underline-offset-4 transition-colors hover:decoration-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+    >
+      {label}
+    </button>
   );
 }

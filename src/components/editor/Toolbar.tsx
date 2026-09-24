@@ -9,13 +9,16 @@ import type { LanguageMode, VersionMode } from '@/model/types';
 import { requireQuestionType } from '@/registry';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { downloadWorksheetFile, worksheetStore } from '@/storage';
-import { DOCX_FILTERS, isDesktop, printPage, saveFile } from '@/platform';
+import { DOCX_FILTERS, isDesktop, printPage, revealFile, revealLabel, saveFile } from '@/platform';
 import { Button, IconButton, Pill, Segmented } from '@/components/ui';
 import { DownloadIcon, PdfIcon, RedoIcon, SettingsIcon, UndoIcon } from '@/components/ui/icons';
 import { Menu } from '@/components/ui/Menu';
 import { Dialog } from '@/components/ui/Dialog';
 import { AppMark } from '@/components/ui/AppMark';
 import { DocumentName } from './DocumentName';
+
+/** A transient status line, optionally with one follow-up action. */
+type Notice = { message: string; action?: { label: string; run: () => void } };
 
 /**
  * Output controls, export actions and persistence (§5.4, §6, §7).
@@ -49,7 +52,7 @@ export function Toolbar({
 
   const [busy, setBusy] = useState<string | undefined>();
   const [error, setError] = useState<string | undefined>();
-  const [notice, setNotice] = useState<string | undefined>();
+  const [notice, setNotice] = useState<Notice | undefined>();
   const [confirmingClear, setConfirmingClear] = useState(false);
 
   // Only meaningful in bilingual mode, where a missing side affects the output (§5.2).
@@ -61,9 +64,32 @@ export function Toolbar({
           return sum + (definition.countMissingTranslations?.(question) ?? 0);
         }, 0);
 
-  const flash = (message: string) => {
-    setNotice(message);
-    setTimeout(() => setNotice((current) => (current === message ? undefined : current)), 2400);
+  // An action (desktop "Show in Finder") stays long enough to be reached.
+  const flash = (message: string, action?: Notice['action']) => {
+    const next: Notice = { message, action };
+    setNotice(next);
+    setTimeout(
+      () => setNotice((current) => (current === next ? undefined : current)),
+      action ? 8000 : 2400,
+    );
+  };
+
+  /** Desktop only: a saved file's path becomes a one-click reveal. */
+  const revealAction = (path: string | undefined): Notice['action'] =>
+    path === undefined
+      ? undefined
+      : { label: revealLabel(), run: () => void revealFile(path).catch(() => undefined) };
+
+  const handleDownloadJson = async (message?: string) => {
+    try {
+      const path = await downloadWorksheetFile(worksheet);
+      // A cancelled desktop sheet wrote nothing, so there is nothing to report.
+      if (path === undefined && isDesktop()) return;
+      if (message) flash(message, revealAction(path));
+      else if (path !== undefined) flash('Saved a copy', revealAction(path));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Download failed.');
+    }
   };
 
   /**
@@ -89,7 +115,7 @@ export function Toolbar({
       // On desktop this is a native save sheet and can be cancelled; saying "Exported"
       // after a cancelled dialog would claim a file that is not there.
       const path = await saveFile(blob, docxFileName(worksheet, mode), DOCX_FILTERS);
-      if (path !== undefined || !isDesktop()) flash('Exported .docx');
+      if (path !== undefined || !isDesktop()) flash('Exported .docx', revealAction(path));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Export failed.');
     } finally {
@@ -260,7 +286,12 @@ export function Toolbar({
 
         {/* Status sits with the document, not with the actions. */}
         <span className="ml-auto flex items-center gap-2 text-[11px] text-ink-muted">
-          {notice && <span className="font-medium text-ok">{notice}</span>}
+          {notice && <span className="font-medium text-ok">{notice.message}</span>}
+          {notice?.action && (
+            <Button variant="ghostAccent" size="sm" onClick={notice.action.run}>
+              {notice.action.label}
+            </Button>
+          )}
           {untranslated > 0 && <Pill tone="warn">{untranslated} untranslated</Pill>}
           {/* Status, not selection: the marks count is a fact about the document, so
               it stays in the grey family — the accent is reserved for interaction. */}
@@ -303,7 +334,7 @@ export function Toolbar({
              */
             { label: 'Worksheets…', onSelect: onOpenFiles, separated: true },
             { label: 'Save now', onSelect: () => void save() },
-            { label: 'Download .json', onSelect: () => void downloadWorksheetFile(worksheet) },
+            { label: 'Download .json', onSelect: () => void handleDownloadJson() },
             {
               label: 'Clear saved documents…',
               onSelect: () => setConfirmingClear(true),
@@ -338,11 +369,7 @@ export function Toolbar({
             <div className="flex items-center justify-end gap-2">
               <Button
                 variant="subtle"
-                onClick={() => {
-                  void downloadWorksheetFile(worksheet).then(() =>
-                    flash('Downloaded a copy'),
-                  );
-                }}
+                onClick={() => void handleDownloadJson('Downloaded a copy')}
               >
                 Download this one first
               </Button>

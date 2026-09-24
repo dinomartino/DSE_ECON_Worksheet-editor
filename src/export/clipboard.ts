@@ -21,7 +21,7 @@ import type { DiagramImageMap } from './diagramImage';
  * accepts that, with the .docx remaining the fidelity gold standard.
  */
 
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -29,7 +29,7 @@ function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;');
 }
 
-function richHtml(text: BiText | undefined, language: LanguageMode): string {
+export function richHtml(text: BiText | undefined, language: LanguageMode): string {
   if (!text) return '';
   const side = (runs: BiText['en']) =>
     runs
@@ -92,7 +92,7 @@ function marksLabel(marks: number, language: LanguageMode): string {
 }
 
 /** Per-element overrides as inline CSS, mirroring the docx direct formatting. */
-function formatCss(format: TextFormat | undefined): string {
+export function formatCss(format: TextFormat | undefined): string {
   if (!format) return '';
   const parts: string[] = [];
   if (format.fontSize !== undefined) parts.push(`font-size:${format.fontSize}pt;`);

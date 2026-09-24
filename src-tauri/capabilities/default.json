@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Desktop permissions for the Econ Worksheet editor: native save/open dialogs, document storage under the app data directory, restart-after-update, and opening exported files in their default app.",
+  "description": "Desktop permissions for the Econ Worksheet editor: native save/open dialogs, document storage under the app data directory, restart-after-update, and opening exported files in their default app. Files picked in a save/open dialog are added to the fs scope by the dialog plugin at runtime, so fs grants stay on $APPDATA plus creating the one default export folder ($DOCUMENT/Econ Worksheets). Revealing a file (opener:default's reveal_item_in_dir) is unscoped in opener 2.5; open-path covers the folders a teacher normally saves to (app data, Documents, Downloads, Desktop) - anything else falls back to reveal. $HOME/** is deliberately not granted.",
   "windows": ["main"],
   "permissions": [
     "core:default",
@@ -15,7 +15,12 @@
     "opener:default",
     {
       "identifier": "opener:allow-open-path",
-      "allow": [{ "path": "$APPDATA/**" }, { "path": "$DOWNLOAD/**" }, { "path": "$DOCUMENT/**" }]
+      "allow": [
+        { "path": "$APPDATA/**" },
+        { "path": "$DOWNLOAD/**" },
+        { "path": "$DOCUMENT/**" },
+        { "path": "$DESKTOP/**" }
+      ]
     },
 
     "process:allow-restart",
@@ -36,7 +41,7 @@
     },
     {
       "identifier": "fs:allow-mkdir",
-      "allow": [{ "path": "$APPDATA/**" }]
+      "allow": [{ "path": "$APPDATA/**" }, { "path": "$DOCUMENT/Econ Worksheets" }]
     },
     {
       "identifier": "fs:allow-remove",

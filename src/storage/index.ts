@@ -1,5 +1,5 @@
 import type { Worksheet } from '@/model/types';
-import { isDesktop, JSON_FILTERS, saveFile } from '@/platform';
+import { isDesktop, JSON_FILTERS, pickTextFile, saveFile } from '@/platform';
 import {
   parseWorksheet,
   stringifyWorksheet,
@@ -19,7 +19,13 @@ export {
   summarize,
   worksheetTitle,
 } from './document';
-export { FileWorksheetStore } from './fileStore';
+export {
+  FileWorksheetStore,
+  savedWorksheetPath,
+  savedWorksheetsFolder,
+  WORKSHEET_SUFFIX,
+  WORKSHEETS_DIR,
+} from './fileStore';
 
 const PREFIX = 'econ-worksheet:';
 const INDEX_KEY = 'econ-worksheet-index';
@@ -133,6 +139,17 @@ export { triggerDownload };
 export async function readWorksheetFile(file: File): Promise<Worksheet> {
   const text = await file.text();
   return parseWorksheet(text);
+}
+
+/**
+ * Desktop: pick a worksheet `.json` through the native open sheet and parse it —
+ * throws on a bad file, like `readWorksheetFile`. `undefined` when cancelled, and
+ * always on the web, where the caller keeps its `<input type="file">`.
+ */
+export async function pickWorksheetFile(): Promise<Worksheet | undefined> {
+  const picked = await pickTextFile(JSON_FILTERS);
+  if (!picked) return undefined;
+  return parseWorksheet(picked.text);
 }
 
 /**

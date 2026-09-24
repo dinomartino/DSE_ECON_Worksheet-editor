@@ -1,4 +1,5 @@
 import type { Worksheet } from '@/model/types';
+import { isDesktop } from '@/platform';
 import { parseWorksheet, stringifyWorksheet, summarize } from './document';
 import type { WorksheetStore, WorksheetSummary } from './types';
 import { usableSummaries, withSummaryFirst } from './summaries';
@@ -16,10 +17,28 @@ import { usableSummaries, withSummaryFirst } from './summaries';
  * reached through a dynamic import so the web bundle never loads it.
  */
 
-const DIR = 'worksheets';
+/** The worksheets directory, relative to `$APPDATA`. */
+export const WORKSHEETS_DIR = 'worksheets';
+/** Every stored document is `<id>` plus this. */
+export const WORKSHEET_SUFFIX = '.worksheet.json';
+const DIR = WORKSHEETS_DIR;
+const SUFFIX = WORKSHEET_SUFFIX;
 const INDEX = `${DIR}/index.json`;
-const SUFFIX = '.worksheet.json';
 const docPath = (id: string) => `${DIR}/${id}${SUFFIX}`;
+
+/** Absolute path of `$APPDATA/worksheets` on desktop; `undefined` on the web. */
+export async function savedWorksheetsFolder(): Promise<string | undefined> {
+  if (!isDesktop()) return undefined;
+  const { appDataDir, join } = await import('@tauri-apps/api/path');
+  return join(await appDataDir(), DIR);
+}
+
+/** Absolute path of a stored document's file on desktop; `undefined` on the web. */
+export async function savedWorksheetPath(id: string): Promise<string | undefined> {
+  if (!isDesktop()) return undefined;
+  const { appDataDir, join } = await import('@tauri-apps/api/path');
+  return join(await appDataDir(), DIR, `${id}${SUFFIX}`);
+}
 
 type Fs = typeof import('@tauri-apps/plugin-fs');
 
