@@ -60,6 +60,7 @@ export const KNOWN_KEYS = new Set([
   'pageSetup',
   'header',
   'footer',
+  'versions',
   'createdAt',
   'updatedAt',
   '__unknown',

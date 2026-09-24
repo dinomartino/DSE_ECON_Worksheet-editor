@@ -1586,13 +1586,13 @@ paths). Verify by measuring the same text node in both states.
 
 `QuestionTypeDefinition`: `id` · `displayName` (bilingual) · `create()` ·
 `render(question, context) → RenderNode[]` · `EditorPanel` ·
-`countMissingTranslations?` · `examGapLines?` · `healthFacts?` · `answerKey?`. Registered:
+`countMissingTranslations?` · `examGapLines?` · `healthFacts?` · `answerKey?` · `variant?`. Registered:
 `mcq`, `structured`. A new type needs only a definition.
 
 - **The hand-built numbered paragraph must copy the block's `format` itself** — the
   four hand-assembled sites (MCQ stem; structured stem, part, sub-part) each omitted it
   once. `registry.test.ts` asserts it reaches the IR for every type.
-- **No shared module may branch on a concrete type.** `registry.test.ts` greps ten
+- **No shared module may branch on a concrete type.** `registry.test.ts` greps eleven
   modules for `'mcq'`/`'structured'` literals.
 - **The paper check asks, never inspects.** `model/paperHealth.ts:checkPaper` (the Export
   dialog's pre-print summary: letter balance and runs, missing keys, marks, time estimate,
@@ -1603,6 +1603,14 @@ paths). Verify by measuring the same text node in both states.
   marks placed as the paper places them); the walker numbers them with `computeNumbering`
   and groups by section. `exportAnswerKeyDocx` keeps the page setup and fonts, drops the
   cover, bands, header and furniture, and adds a centred page number.
+- **Paper versions are derived from a seed** (`model/versions.ts`). `Worksheet.versions`
+  stores only `{count, seed}`; `OutputMode.variant` names the letter. The walker asks each
+  type's `variant?` hook for the reordered question (inside the render cache, keyed on
+  `seed:version`), so all three backends print the same order. Version A is the authored
+  order. MCQ shuffles options only: combination questions, pinned options
+  (`McqOption.pinned`) and positional text ("All of the above", 以上皆是) never move, and
+  `answerIndex` follows its option. With versions on, the answer key prints a grid per
+  version and a version map (printed letter → version A letter).
 
 ---
 

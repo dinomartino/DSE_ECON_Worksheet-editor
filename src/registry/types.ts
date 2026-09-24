@@ -50,6 +50,11 @@ export interface QuestionTypeDefinition<Q extends Question = Question> {
   answerKey?: (question: Q, context: AnswerKeyContext) => AnswerKeyEntry;
   /** This question as a quiz tool takes it (`export/csv/answerKeyCsv.ts`); absent = not one. */
   quizItem?: (question: Q) => QuizItem;
+  /**
+   * This question as printed in paper version `context.version` (`model/versions.ts`);
+   * version 0 is the authored order. Absent = the type never varies.
+   */
+  variant?: (question: Q, context: VariantContext) => QuestionVariant<Q>;
 }
 
 /** A lettered-choice question, as Kahoot or Blooket import it. */
@@ -61,6 +66,19 @@ export interface QuizItem {
   options: Array<{ text: BiText; figure: boolean }>;
   /** Index into `options`; absent = no key set. */
   answerIndex?: number;
+}
+
+export interface VariantContext {
+  seed: number;
+  /** 0 = version A. */
+  version: number;
+}
+
+export interface QuestionVariant<Q extends Question = Question> {
+  /** Reordered, with its key remapped so the teacher version still marks the right choice. */
+  question: Q;
+  /** Per printed choice, the letter it has in version A; absent = order unchanged. */
+  sourceLetters?: string[];
 }
 
 /**

@@ -6,7 +6,13 @@ import { statementLabel, optionLabel } from '@/model/numbering';
 import { emptyBiText, isBiTextEmpty } from '@/model/text';
 import { OPTION_DIAGRAM_WIDTH_PX, createDiagramBlock } from '@/model/factories';
 import type { BiText, ContentBlock, McqOptionLayout, McqQuestion } from '@/model/types';
-import { resolveOptionLayout, suggestOptionLayout } from '@/registry/mcq';
+import {
+  keepsOptionOrder,
+  optionStaysPut,
+  resolveOptionLayout,
+  suggestOptionLayout,
+} from '@/registry/mcq';
+import { versionCount } from '@/model/versions';
 import type { EditorPanelProps } from '@/registry/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { documentShape } from '@/model/documentShape';
@@ -29,6 +35,9 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
   // per render — cheap, and a stored copy would go stale when a cover is added.
   const shape = useWorksheetStore((s) => documentShape(s.worksheet));
   const paperGap = useWorksheetStore((s) => s.worksheet.examGapLines);
+  // Pins matter only once the paper has shuffled versions (Setup → Versions).
+  const versioned = useWorksheetStore((s) => versionCount(s.worksheet) > 1);
+  const fixedOrder = versioned && keepsOptionOrder(question);
 
   const setStatements = (next: BiText[]) =>
     onChange({ statements: next.length > 0 ? next : undefined });
@@ -53,6 +62,15 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
           ? { ...option, blocks: blocks.length > 0 ? blocks : undefined }
           : option,
       ),
+    });
+
+  const togglePin = (index: number) =>
+    onChange({
+      options: question.options.map((option, i) => {
+        if (i !== index) return option;
+        const { pinned, ...rest } = option;
+        return pinned ? rest : { ...rest, pinned: true };
+      }),
     });
 
   const moveStatement = (index: number, delta: number) => {
@@ -175,9 +193,15 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
           )}
         </div>
 
+        {fixedOrder && (
+          <p className="pb-1 text-[11px] text-ink-muted">
+            A combination question keeps its option order in every version.
+          </p>
+        )}
         {question.options.map((option, index) => {
           const isAnswer = question.answerIndex === index;
           const hasBlocks = (option.blocks?.length ?? 0) > 0;
+          const autoFixed = !option.pinned && optionStaysPut(option);
           return (
             <div key={option.id} className={hasBlocks ? 'space-y-1' : undefined}>
               <ExcerptRow
@@ -192,12 +216,42 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
                   questionId: question.id,
                   optionId: option.id,
                 })}
+                badge={
+                  versioned && !fixedOrder && (option.pinned || autoFixed) ? (
+                    <span
+                      className="shrink-0 text-[10px] font-medium text-accent"
+                      title={
+                        autoFixed
+                          ? 'Its wording depends on its place, so it keeps its letter in every version'
+                          : 'Keeps its letter in every version'
+                      }
+                    >
+                      Pinned
+                    </span>
+                  ) : undefined
+                }
                 actions={
-                  /* An option can be a *figure* — "which of the following diagrams best
+                  <>
+                  {versioned && !fixedOrder && !autoFixed && (
+                    <Button
+                      size="sm"
+                      variant="subtle"
+                      aria-pressed={option.pinned === true}
+                      title={
+                        option.pinned
+                          ? 'Let this option move between versions'
+                          : 'Keep this option at its letter in every version'
+                      }
+                      onClick={() => togglePin(index)}
+                    >
+                      {option.pinned ? 'Unpin' : 'Pin'}
+                    </Button>
+                  )}
+                  {/* An option can be a *figure* — "which of the following diagrams best
                      describes…". Behind an affordance: the overwhelmingly common option
                      is a line of text, and a permanent insert row under all four would
-                     bury it. */
-                  !hasBlocks && (
+                     bury it. */}
+                  {!hasBlocks && (
                     <Button
                       size="sm"
                       variant="subtle"
@@ -213,7 +267,8 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
                     >
                       + Figure
                     </Button>
-                  )
+                  )}
+                  </>
                 }
               />
               {hasBlocks && (

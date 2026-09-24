@@ -1,10 +1,17 @@
 import { createMcqQuestion } from '@/model/factories';
 import { optionLabel, statementLabel, toUpperLetter } from '@/model/numbering';
 import { areBlocksEmpty, bi, isBiTextEmpty, plain } from '@/model/text';
-import type { LanguageMode, McqOptionLayout, McqQuestion } from '@/model/types';
+import type { BiText, LanguageMode, McqOption, McqOptionLayout, McqQuestion } from '@/model/types';
+import { shuffledOrder } from '@/model/versions';
 import { pushGap, renderContentBlocks, type RenderContext, type RenderNode } from '@/render/ir';
 import { McqEditorPanel } from '@/components/editor/McqEditorPanel';
-import type { QuestionHealthFacts, QuestionTypeDefinition, QuizItem } from './types';
+import type {
+  QuestionHealthFacts,
+  QuestionTypeDefinition,
+  QuestionVariant,
+  QuizItem,
+  VariantContext,
+} from './types';
 import type { AnswerKeyEntry } from '@/render/answerKey';
 
 /**
@@ -391,6 +398,54 @@ function quizItem(question: McqQuestion): QuizItem {
   };
 }
 
+/** "All of the above", "none of these", "Both A and C", 以上皆是… — text whose meaning is its place. */
+const POSITIONAL = [
+  /\b(all|none|both|neither|either)\s+of\s+(the\s+)?(above|these|them|those)\b/i,
+  /\b[A-D]\s*(,|&|and|or|及|和|或)\s*[A-D]\b/,
+  /(以上|上述)(皆|均|全|都|各|所有)/,
+];
+/** "(1) and (2) only", "1, 2 and 3", "(i) only": a combination answer, ordered by convention. */
+const COMBINATION = /^\s*([(（]\s*(\d+|[ivx]+)\s*[)）]|\d+\s*(,|、|&|and|及|和|only))/i;
+
+function isPositional(text: BiText): boolean {
+  const sides = [plain(text.en), plain(text.zh)];
+  return POSITIONAL.some((pattern) => sides.some((side) => pattern.test(side)));
+}
+
+/** Whether every version prints this question in the authored order. */
+export function keepsOptionOrder(question: McqQuestion): boolean {
+  if ((question.statements ?? []).length > 0) return true;
+  return question.options.some((option) =>
+    [option.text.en, option.text.zh].some((side) => COMBINATION.test(plain(side))),
+  );
+}
+
+/** Whether this option keeps its letter in every version: pinned, or its text says where it is. */
+export function optionStaysPut(option: McqOption): boolean {
+  return option.pinned === true || isPositional(option.text);
+}
+
+/**
+ * Options reordered for one paper version; `answerIndex` follows its option. Pinned and
+ * positional options keep their letter; combination questions never move.
+ */
+function variant(question: McqQuestion, context: VariantContext): QuestionVariant<McqQuestion> {
+  if (context.version === 0 || keepsOptionOrder(question)) return { question };
+  const order = shuffledOrder(
+    question.options.map((option) => !optionStaysPut(option)),
+    { seed: context.seed, version: context.version, id: question.id },
+  );
+  if (order.every((source, printed) => source === printed)) return { question };
+  return {
+    question: {
+      ...question,
+      options: order.map((source) => question.options[source]),
+      answerIndex: order.indexOf(question.answerIndex),
+    },
+    sourceLetters: order.map(toUpperLetter),
+  };
+}
+
 /**
  * Three blank lines between two MCQs on an exam paper, against the ordinary one.
  *
@@ -418,4 +473,5 @@ export const mcqType: QuestionTypeDefinition<McqQuestion> = {
   healthFacts,
   answerKey,
   quizItem,
+  variant,
 };

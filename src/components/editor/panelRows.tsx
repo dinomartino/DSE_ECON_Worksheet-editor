@@ -91,6 +91,7 @@ export function ExcerptRow({
   emptyHint = 'Empty — type on the page',
   targetKey,
   actions,
+  badge,
 }: {
   /** Short leading glyph or label: `¶`, `A.`, `(1)` … */
   marker?: ReactNode;
@@ -100,6 +101,8 @@ export function ExcerptRow({
   /** `data-edit-target` key, so the page's selection can scroll this row into view. */
   targetKey?: string;
   actions?: ReactNode;
+  /** A state that must show without hover, e.g. "Pinned"; beside the text. */
+  badge?: ReactNode;
 }) {
   const body = (
     <>
@@ -135,6 +138,7 @@ export function ExcerptRow({
       ) : (
         <span className="flex min-w-0 flex-1 items-center gap-1.5">{body}</span>
       )}
+      {badge}
       {actions && (
         <span className="flex shrink-0 items-center opacity-0 transition-opacity focus-within:opacity-100 group-hover/row:opacity-100">
           {actions}
