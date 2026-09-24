@@ -968,7 +968,8 @@ each side grows by exactly the room its text needs.
 - **Every writer re-measures**: factory, panel width field, panel title field,
   `applyResizeBlock` (a drag re-measures, never scales the old ratio).
 - `model/edits.ts` and `model/factories.ts` take a value import from `render/diagram`
-  (safe: `render/diagram` imports only types from `model/`).
+  (safe: `render/diagram`'s only value import from `model/` is `model/diagramAreas`,
+  which itself imports only types).
 - `titleRoom()` is shared by the projection and `diagramTitleAnchor()`, reserved on the
   title's own side only; a title below is measured back from the canvas edge.
 
@@ -1165,6 +1166,27 @@ slide along their own axis only; axis titles nudge inside their reserved room. A
 label: eight compass slots (`labelSide`) or a free-drag `labelOffset` that supersedes
 them; picking a side clears the offset. Deleting anchored text deletes the text, never
 its anchor.
+
+### A shaded area is references, not coordinates (`model/diagramAreas.ts`)
+
+`Diagram.areas` (optional — older diagrams have none and render byte-identically, pinned
+by `src/render/diagramAreas.test.ts` against SVG frozen before areas existed). A `band`
+is the region between two edges (a curve, or a level taken from a point or a crossing)
+across an x-range, so it re-derives when its curves are dragged; `vertices` is the free
+fallback. The four presets (CS, PS, DWL, tax revenue) are bands built by `presetArea`.
+
+- **Fills draw first, labels last**; hatch is explicit clipped lines, never a `<pattern>`
+  (ids collide between the inline SVGs on one page). Literal hex, as all paper paint.
+- **Label = centroid + `labelOffset`** (`areaLabelAnchor`, shared with the canvas).
+- **Deleting what an area leans on freezes it** into vertices at its last shape
+  (`detachAreas`, run by `deleteHandle`); copying an area without its curves does the same.
+- A `curved` curve is read as its polyline, so an area against it is approximate.
+
+**Shifting a curve** (`model/diagramShift.ts:shiftCurve`) adds a translated copy
+(trimmed to the plot, never clamped, so the slope survives), a shift arrow and, where
+the copy meets the original's counterpart, a plain `DiagramPointMark` with drops and
+P/Q ticks — the template convention. Numbered after the copy (D₁ → E₁), else the next
+free E. The new point is not attached to the curves: dragging one later leaves it behind.
 
 ---
 

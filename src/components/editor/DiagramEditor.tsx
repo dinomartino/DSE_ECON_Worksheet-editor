@@ -62,7 +62,11 @@ export function DiagramEditor({ block, onChange }: Props) {
   );
 
   const elementCount =
-    diagram.curves.length + diagram.points.length + diagram.labels.length + diagram.arrows.length;
+    diagram.curves.length +
+    diagram.points.length +
+    diagram.labels.length +
+    diagram.arrows.length +
+    (diagram.areas?.length ?? 0);
 
   return (
     <div className="space-y-2">

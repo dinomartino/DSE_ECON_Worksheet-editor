@@ -131,6 +131,45 @@ export interface DiagramArrow {
   labelOffset?: DiagramPoint;
 }
 
+/*
+ * ── Shaded areas ──────────────────────────────────────────────────────────────────
+ *
+ * A welfare area (consumer surplus, deadweight loss, tax revenue) is stored as
+ * **references** to the curves and points that bound it, so it stays attached when
+ * they are dragged. Explicit `vertices` are the fallback for a free shape.
+ * Resolution into a polygon lives in `model/diagramAreas.ts`.
+ */
+
+/** A position named by what is drawn, never by coordinates. */
+export type DiagramAnchorRef =
+  /** A marked point's position. */
+  | { point: string }
+  /** Where two curves cross (the first crossing, if several). */
+  | { cross: [string, string] }
+  /** On curve `on`, directly above or below `x`'s position — the producer price under a tax. */
+  | { on: string; x: DiagramAnchorRef };
+
+/** One bound of an area's x-range: a unit value (0 is the y-axis) or an anchor's x. */
+export type DiagramAreaX = number | DiagramAnchorRef;
+
+/** One edge of a band: a curve, or a horizontal level (a number, or an anchor's y). */
+export type DiagramAreaEdge = { curve: string } | { level: number | DiagramAnchorRef };
+
+export type DiagramAreaFill = 'shade' | 'hatch';
+
+export interface DiagramArea {
+  id: string;
+  /** The region between two edges across `from`..`to` — how every preset is stored. */
+  band?: { edges: [DiagramAreaEdge, DiagramAreaEdge]; from: DiagramAreaX; to: DiagramAreaX };
+  /** A free polygon in unit space, used when `band` is absent. */
+  vertices?: DiagramPoint[];
+  /** Absent = `shade`, a light grey tint. */
+  fill?: DiagramAreaFill;
+  label?: BiText;
+  /** Nudge for the label, in unit space, from the region's centroid. */
+  labelOffset?: DiagramPoint;
+}
+
 /** One axis: its title, whether it carries an arrowhead, and its tick marks. */
 export interface DiagramAxis {
   /** "Price level" / "價格水平". Printed at the far end of the axis. */
@@ -407,6 +446,8 @@ export interface Diagram {
   points: DiagramPointMark[];
   labels: DiagramLabel[];
   arrows: DiagramArrow[];
+  /** Shaded regions, drawn under everything else. Optional: older documents have none. */
+  areas?: DiagramArea[];
   /** Printed at the origin. Papers almost always show a "0" there. */
   showOrigin?: boolean;
   /**

@@ -1,5 +1,6 @@
 import type {
   Diagram,
+  DiagramArea,
   DiagramArrow,
   DiagramCrop,
   DiagramCurve,
@@ -13,6 +14,7 @@ import type {
   PieChart,
 } from '@/model/diagram';
 import type { BiText, FontPair, LanguageMode, RichText } from '@/model/types';
+import { areaPolygon, polygonCentroid } from '@/model/diagramAreas';
 
 /**
  * Diagram → SVG. One pure function, no DOM, no React.
@@ -748,6 +750,99 @@ export function arrowLabelAnchor(
     x: (from.x + to.x) / 2 + (offset ? offset.x * plotSpanX(proj) : 0),
     y: (from.y + to.y) / 2 - 9 * scale - (offset ? offset.y * plotSpanY(proj) : 0),
   };
+}
+
+/*
+ * ── Shaded areas ──────────────────────────────────────────────────────────────────
+ *
+ * Fills draw under the axes and curves; labels draw on top of everything. Hatching is
+ * emitted as explicit line segments clipped to the polygon rather than an SVG
+ * `<pattern>`: pattern ids collide between the inline SVGs on one page, and plain
+ * lines rasterize identically everywhere.
+ */
+
+/** The shade tint: light enough that curves and letters read through it in print. */
+const AREA_SHADE = '#d9d9d9';
+/** Perpendicular distance between hatch lines, px at nominal size. */
+const AREA_HATCH_GAP = 5;
+
+/** Where an area's label is drawn: its region's centroid plus any dragged nudge. */
+export function areaLabelAnchor(
+  diagram: Diagram,
+  area: DiagramArea,
+  proj: Projection,
+): { x: number; y: number } | null {
+  const polygon = areaPolygon(diagram, area);
+  if (!polygon) return null;
+  const centre = polygonCentroid(polygon);
+  const offset = area.labelOffset;
+  return {
+    x: proj.px(centre.x) + (offset ? offset.x * plotSpanX(proj) : 0),
+    y: proj.py(centre.y) - (offset ? offset.y * plotSpanY(proj) : 0),
+  };
+}
+
+/** "/" hatch lines clipped to a pixel polygon (even-odd), as one path's `d`. */
+function hatchPath(pts: Array<{ x: number; y: number }>, gap: number): string {
+  // Lines x + y = c, spaced `gap` apart perpendicular; c on a fixed grid so neighbouring
+  // areas hatch in step.
+  const step = gap * Math.SQRT2;
+  const sums = pts.map((p) => p.x + p.y);
+  const first = Math.ceil(Math.min(...sums) / step);
+  const last = Math.floor(Math.max(...sums) / step);
+  const parts: string[] = [];
+  for (let k = first; k <= last; k += 1) {
+    const c = k * step;
+    const hits: Array<{ x: number; y: number }> = [];
+    for (let i = 0; i < pts.length; i += 1) {
+      const a = pts[i];
+      const b = pts[(i + 1) % pts.length];
+      const fa = a.x + a.y - c;
+      const fb = b.x + b.y - c;
+      if (fa > 0 === fb > 0) continue;
+      const t = fa / (fa - fb);
+      hits.push({ x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) });
+    }
+    hits.sort((p, q) => p.x - q.x);
+    for (let i = 0; i + 1 < hits.length; i += 2) {
+      parts.push(`M ${n(hits[i].x)} ${n(hits[i].y)} L ${n(hits[i + 1].x)} ${n(hits[i + 1].y)}`);
+    }
+  }
+  return parts.join(' ');
+}
+
+function areaFillSvg(diagram: Diagram, area: DiagramArea, proj: Projection, scale: number): string {
+  const polygon = areaPolygon(diagram, area);
+  if (!polygon) return '';
+  const pts = polygon.map((p) => ({ x: proj.px(p.x), y: proj.py(p.y) }));
+  if ((area.fill ?? 'shade') === 'shade') {
+    const d = `M ${pts.map((p) => `${n(p.x)} ${n(p.y)}`).join(' L ')} Z`;
+    return `<path d="${d}" fill="${AREA_SHADE}" stroke="none"/>`;
+  }
+  const d = hatchPath(pts, AREA_HATCH_GAP * scale);
+  return d
+    ? `<path d="${d}" fill="none" stroke="#000" stroke-width="${n(0.8 * scale)}" stroke-linecap="butt"/>`
+    : '';
+}
+
+function areaLabelSvg(
+  diagram: Diagram,
+  area: DiagramArea,
+  proj: Projection,
+  language: LanguageMode,
+  scale: number,
+): string {
+  const lines = pickSides(area.label, language);
+  if (lines.length === 0) return '';
+  const at = areaLabelAnchor(diagram, area, proj);
+  if (!at) return '';
+  return textAt(lines, at.x, at.y - ((lines.length - 1) * FONT_SIZE * scale * 1.15) / 2, {
+    anchor: 'middle',
+    baseline: 'middle',
+    fontSize: FONT_SIZE * scale,
+    // Letters on hatching need the white halo the pie's patterned slices use.
+    halo: area.fill === 'hatch' ? 3 * scale : undefined,
+  });
 }
 
 /**
@@ -2246,10 +2341,14 @@ export function diagramSvg(diagram: Diagram, options: DiagramSvgOptions): string
     }),
   ].join('');
 
+  const areas = diagram.areas ?? [];
   const body = [
     defs,
     // White ground: a transparent PNG would print as whatever is behind it in Word.
     `<rect width="${n(width)}" height="${n(height)}" fill="#fff"/>`,
+    // Shading under everything, so axes and curves stay crisp over it. No areas, no
+    // bytes: an older diagram renders exactly as it always did.
+    ...areas.map((area) => areaFillSvg(diagram, area, proj, scale)),
     axes,
     origin,
     axisTicks,
@@ -2260,6 +2359,7 @@ export function diagramSvg(diagram: Diagram, options: DiagramSvgOptions): string
     ...diagram.arrows.map((arrow) => arrowSvg(arrow, proj, language, scale)),
     ...diagram.points.map((point) => pointSvg(point, proj, language, scale)),
     ...diagram.labels.map((label) => labelSvg(label, proj, language, scale)),
+    ...areas.map((area) => areaLabelSvg(diagram, area, proj, language, scale)),
   ].join('');
 
   return (
