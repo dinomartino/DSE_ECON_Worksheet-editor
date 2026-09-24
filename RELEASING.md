@@ -1,6 +1,6 @@
 # Releasing the desktop app
 
-Just want to try a build without releasing? See [`DESKTOP-PREVIEW.md`](./DESKTOP-PREVIEW.md).
+Just want to try a build without releasing? See [`docs/DESKTOP-PREVIEW.md`](./docs/DESKTOP-PREVIEW.md).
 
 The web app deploys from `main` on Vercel and needs nothing here — which is why work
 happens on `develop` and reaches `main` only at release time (see CLAUDE.md). This file is about the
