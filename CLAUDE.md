@@ -6,6 +6,7 @@
 2. [`docs/CODEMAP.md`](./docs/CODEMAP.md) — the map: areas, key files, invariants.
 3. [`docs/RECIPES.md`](./docs/RECIPES.md) — how to do the recurring tasks.
 4. [`docs/GLOSSARY.md`](./docs/GLOSSARY.md) — words this repo uses in its own way.
+5. [`docs/IDEAS.md`](./docs/IDEAS.md) — the ranked feature backlog, from competitor research.
 
 Open `SYSTEM_ARCHITECTURE.md` only for the section you are about to touch. **Update
 `docs/STATUS.md` before ending the session.**
@@ -53,8 +54,8 @@ broke.
 
 ## Verifying work
 
-- `npm test` — 1066 tests, ~1.6s. `npm run typecheck`, `npm run lint` (45 pre-existing
-  problems: 3 errors, 42 warnings — in `Preview.tsx` and `InlineEditable.tsx`).
+- `npm test` — 1107 tests, ~1.7s. `npm run typecheck`, `npm run lint` (44 pre-existing
+  problems: 3 errors, 41 warnings — in `Preview.tsx` and `InlineEditable.tsx`).
 - `src/test/codemap.test.ts` guards the docs: every path and `path:symbol` cited in
   `docs/` must still exist. If it fails, the map rotted — fix the map.
 - **UI work is verified in a browser**, not by reading source: screenshot with

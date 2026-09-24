@@ -17,6 +17,7 @@ const DOCS = [
   'docs/RECIPES.md',
   'docs/GLOSSARY.md',
   'docs/STATUS.md',
+  'docs/IDEAS.md',
 ];
 
 /** A backticked token that starts with one of the repo's top-level directories. */

@@ -1,0 +1,155 @@
+# Ideas
+
+The feature backlog: what we could build next, ranked, with where each idea came from.
+Evidence is in [`research/2026-09-competitive/`](./research/2026-09-competitive/README.md)
+(five slices, researched 2026-09-24). What is being built *now* lives in
+[`STATUS.md`](./STATUS.md) — move an idea there when work starts, and delete it here
+when it ships.
+
+Sizes: **S** ≈ a session, **M** ≈ a few, **L** ≈ an initiative. Every idea must respect
+the constraints in `CLAUDE.md`: static web + desktop, no server, `.docx` is the
+load-bearing output, saved documents always reopen.
+
+## Where we stand
+
+No HK tool does what this one does — bilingual on-page authoring of DSE-format papers
+with native `.docx`. Every international builder treats Word as its lossy "editable"
+export; ours is the faithful one. The gap competitors expose is everything **around**
+authoring: a question library, the export dialog (answer keys, versions), and what
+happens after the paper is sat. Nobody makes editable economics diagrams.
+
+## Recommended order
+
+1. **Now** — export dialog with a separate answer key (A1), paper health panel (A2),
+   backup-all-as-zip and trash (F1, F2), 2028 Paper 2 template (B5).
+2. **Next** — seeded MCQ versions and key CSV (A3, A4), HKEAA marking-point notation
+   (B1), topic tags (C1) → local question library (C2).
+3. **Later** — paste/Word import (D1, D2), BYOK AI (E), item analysis (G1), diagram
+   shading (B3).
+
+## A. Export and paper checks — every builder has these; we have none
+
+- **A1 Export dialog** (S–M). One place to choose: paper · mark scheme/answer key as its
+  own `.docx` (with an MCQ answer grid) · both; answer space on/off; cover on/off;
+  language edition. A new render of the same IR — extend `OutputMode` and
+  `src/render/ir.ts:includeNode`, wire it in `src/components/editor/Toolbar.tsx`.
+  *OCR ExamBuilder, Pearson examWizard, IB Questionbank, Respondus, OUP, Wayground.*
+- **A2 Paper health panel** (S). Derived, never stored: answer-letter balance and runs
+  (hand-set keys drift to B/C), total marks and time estimate, untranslated strings,
+  missing answers, command word vs marks. Marks come from `src/model/marks.ts:questionMarks`.
+  Chrome, so `data-print-hide`. *ExamView, examWizard's running totals, ExamSoft
+  blueprints.*
+- **A3 Seeded MCQ versions A/B/C** (M). Store only a seed, count and per-option pins;
+  shuffle at render in `src/render/worksheet.ts:renderWorksheet`; print a version letter,
+  per-version keys and a version map. Combination-statement MCQs and stimulus groups
+  never reshuffle. *ExamView, TestGen, Respondus, EdCity OQB.*
+- **A4 Answer-key CSV** (S) for ZipGrade/Gradescope bubble sheets, and MCQ export to
+  Kahoot `.xlsx` / Blooket CSV / Forms text (S each). Built client-side; warn on
+  over-long items. *ZipGrade, Brisk, Wordwall.*
+- **A5 Paper summary bar with a target** (S): "38/45 MCQ · 52 marks · ~61 min", with an
+  optional blueprint. *examWizard, Exampro, ExamSoft.*
+
+## B. Content model
+
+- **B1 Marking points in HKEAA notation** (M): `/` alternatives, `n@`, `max: N`, "first
+  two points only", OR routes, level descriptors and Effective Communication for essays.
+  Turns the teacher version into a scheme co-markers can use. Lives in
+  `src/registry/structured.ts:structuredType`; all three backends. *HKEAA 2025 sample
+  marking scheme.*
+- **B2 Per-option MCQ rationale and a provenance note** (S) — "modelled on DSE 2023 Q1",
+  why each distractor is wrong. Teacher version only. *UPEP, Anson Kong's bank.*
+- **B3 Diagram upgrades** (M each): shaded labelled areas (surplus, deadweight loss,
+  tax revenue); "shift curve" that finds the new equilibrium and draws guides;
+  line/bar charts from a table for data-response; more templates. Geometry in
+  `src/model/diagram.ts`, drawing in `src/render/diagram.ts:diagramSvg`. *Aristo e-Graph.*
+- **B4 Graph-grid / blank-axes answer space** (S–M) — a diagram-shaped answer box,
+  which no builder offers for economics. *LaTeX `exam` class.*
+- **B5 2028 Paper 2 template** (S): Section A short questions, Section B, Section C
+  elective (answer one of two). New arm in `src/model/newWorksheet.ts:createWorksheetFrom`.
+  *HKEAA 2028 framework.*
+- **B6 Fill-in-blank answer frames** (S–M): blanks for students, answers for teachers.
+  *Econ Excelsior "LQ答題框架", PickMyQuiz.*
+- **B7 "For examiner's use" marks grid on the cover** (S–M), from derived marks, as a
+  real table. *LaTeX `\gradetable`, OCR covers.*
+
+## C. Question library — the most-requested gap
+
+- **C1 Topic tags** (S): an optional field on questions — EDB topics A–J + electives,
+  or DSEconMentor's 71 MCQ / 50 LQ topics. `KNOWN_KEYS` guards only top-level
+  `Worksheet` fields, so a question-level field passes through — still check
+  `src/model/migrations.ts:migrate` normalises nothing away, and prove it on the corpus.
+- **C2 Local question library** (L): search every saved document's questions by topic,
+  type, marks, "not used with this class since…"; insert a copy. Web: IndexedDB;
+  desktop: a folder. Ship no HKEAA content (copyright). *EdCity OQB, OUP, IB
+  Questionbank, OCR ExamBuilder, Exampro.*
+- **C3 Merge documents / insert from another document** (M) — the cheap first step
+  toward C2. *Kuta, Wayground.*
+- **C4 Question history** (M): "used in Mock 2025 5A, P1 Q12, facility 0.34". Needs a
+  stable origin id carried through copies. *Moodle, ExamSoft.*
+
+## D. Getting existing material in
+
+- **D1 Paste-to-structure** (M): numbered MCQs with A–D and "(a)(i) … (3 marks)"
+  parts become real questions, with a review step before commit. Today paste is plain
+  text (`src/components/preview/RichTextEditable.tsx`). *Doc-to-Form, MS Forms Quick
+  Import, Akindi Importer.*
+- **D2 `.docx` import** (L), then PDF/photo (L). Publishers hand out banks as Word.
+
+## E. AI — bring your own key, review before insert
+
+Constraints: no server, so BYOK from the browser (accept any OpenAI-compatible base
+URL — major APIs may restrict Hong Kong, **unverified**) or desktop-only with the key in
+the keychain. Output is JSON validated against the question types, shown in a review
+tray, inserted through normal store actions — the `.docx` path is unchanged. Never embed
+a key. Never mark student scripts: "no student data leaves your machine" is a selling
+point. *All of MagicSchool, Brisk, Diffit, Eduaide, QuestionWell, MS Teach.*
+
+- **E1 Answers, mark schemes and MCQ explanations for existing questions** (S).
+- **E2 EN↔繁中 fill with a pinned HKDSE glossary** (S–M). A keyless half: bundle the
+  EDB's official term list and flag non-standard terms (M).
+- **E3 Source → HKDSE items** (M): paste a news extract, get Paper 1 MCQs (including
+  combination statements) and Paper 2 parts with marks.
+- **E4 Item quality check** (S): the non-AI checks are A2; the AI half flags ambiguous
+  stems and two defensible options.
+- **E5 Differentiated copy** (M), **E6 data-response builder** with diagrams from a preset
+  vocabulary, never raw model coordinates (L).
+
+## F. File management — continues the 2026-09-24 dashboard
+
+- **F1 Backup / restore everything as one zip** (S–M) — high priority: `localStorage` is
+  fragile and there is no server copy. `jszip` is already a dependency; restore goes
+  through `migrate`.
+- **F2 Trash with 30-day restore** (S): delete flags the index row, keeps the document.
+  Extends `src/storage/types.ts:WorksheetStore`.
+- **F3 Tags, stars and filter chips on the dashboard** (S–M); extend
+  `src/components/start/dashboard.ts:visibleSummaries`. **F4** total marks and page
+  count on each card, derived (S). **F5** full-text search of question text (M, shares
+  an index with C2).
+- **F6 Local version snapshots** (M) — on export and before import; watch the quota.
+- **F7 Collections** exported as one `.docx` (M).
+- **F8 Department sharing via a shared cloud folder** on desktop (M): read-only until
+  "Copy to edit", author initials, conflicted-copy detection. *OCR, Kognity.*
+
+## G. After the paper is sat
+
+- **G1 Item analysis from pasted results** (M): facility, discrimination, distractor
+  choice, topic breakdown, combined across versions (Gradescope cannot). Results live in
+  a separate file keyed by question id — documents and the corpus are untouched.
+- **G2 Follow-ups** (S each, after G1): corrections worksheet, retrieval sets.
+- **G3 Teacher-defined level boundaries** (S), labelled a school estimate — HKEAA
+  publishes no cut scores.
+- **G4 In-browser phone OMR** (L) — do A4 first; existing apps already scan.
+
+## Other
+
+- **Presentation mode** (M): one question at a time, reveal the scheme. *Kuta.*
+- **Large-print / dyslexia output profile** (M) — conflicts with the fixed 12pt line, so
+  it must be a separate profile. *Twinkl, Wayground.*
+- **Product page** (S): the aimakecoolstuff.com Econ-editor page has no screenshots, no
+  "open the app" link, no desktop download and no Chinese version.
+
+## Deliberately not doing
+
+AI marking of student scripts (student data + server); web share links / QR (need
+hosting); storage caps or expiry; a free-form canvas (layout is slot-based by decision);
+shipping HKEAA past-paper content; embedding any API key in the bundle.
