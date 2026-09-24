@@ -1,6 +1,6 @@
 {
   "name": "econgen",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Bilingual HKDSE Economics worksheet editor that exports native Microsoft Word .docx",
   "license": "MIT",
   "author": "Tino Ho",
