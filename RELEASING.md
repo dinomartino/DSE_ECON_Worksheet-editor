@@ -75,8 +75,15 @@ git push --follow-tags
 ```
 
 The tag triggers `.github/workflows/release.yml`: three builds (macOS arm64, macOS x64,
-Windows x64) into one **draft** release. Review it, then **Publish release** — that is
-what ships it. Nothing reaches a teacher until you press that.
+Windows x64) into one **draft** release. Check the assets below, then publish — that is
+what ships it to installed apps:
+
+```bash
+gh release edit vX.Y.Z --draft=false --latest
+```
+
+"Release" means the whole sequence including this step; a release instruction is
+already the sign-off on the version.
 
 ### Beta
 
