@@ -23,7 +23,9 @@ import { computeNumbering } from '@/model/numbering';
 import { worksheetMarks } from '@/model/marks';
 import { renderWorksheet } from '@/render/worksheet';
 import { resolveFlow } from '@/model/flow';
-import type { OutputMode } from '@/model/types';
+import { createMcqQuestion } from '@/model/factories';
+import { bi } from '@/model/text';
+import type { McqQuestion, OutputMode } from '@/model/types';
 
 const MODE: OutputMode = { language: 'bilingual', version: 'student' };
 
@@ -139,5 +141,24 @@ describe('a document saved by the published build still opens', () => {
     const reloaded = migrate(structuredClone(saved));
 
     expect(serializeWorksheet(reloaded)).toEqual(saved);
+  });
+
+  it('carries MCQ rationale and provenance through load → save → load', () => {
+    // Question-level fields are not gated by KNOWN_KEYS; this proves `migrate` keeps them
+    // on a published document, and adds none of its own to one that never had them.
+    const loaded = migrate(structuredClone(v1Corpus));
+    expect(JSON.stringify(loaded.questions)).not.toMatch(/"rationale"|"provenance"/);
+
+    const question = createMcqQuestion();
+    question.options[1] = { ...question.options[1], rationale: bi('Why B is right', 'B 為何正確') };
+    question.provenance = bi('Modelled on DSE 2023 Q1', '改編自 2023 DSE 第 1 題');
+    const edited = { ...loaded, questions: [...loaded.questions, question] };
+
+    const reloaded = migrate(JSON.parse(JSON.stringify(serializeWorksheet(edited))));
+    expect(reloaded.__unknown).toBeUndefined();
+    expect(reloaded.questions.slice(0, -1)).toEqual(loaded.questions);
+    const back = reloaded.questions[reloaded.questions.length - 1] as McqQuestion;
+    expect(back.options[1].rationale).toEqual(question.options[1].rationale);
+    expect(back.provenance).toEqual(question.provenance);
   });
 });

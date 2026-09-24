@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { editTargetKey } from '@/model/edits';
+import { editTargetKey, withNote } from '@/model/edits';
 import { statementLabel, optionLabel } from '@/model/numbering';
 import { emptyBiText, isBiTextEmpty } from '@/model/text';
 import { OPTION_DIAGRAM_WIDTH_PX, createDiagramBlock } from '@/model/factories';
@@ -17,6 +17,7 @@ import type { EditorPanelProps } from '@/registry/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { documentShape } from '@/model/documentShape';
 import { Button, GroupHeader, IconButton, NumberField, Segmented, SelectField } from '@/components/ui';
+import { ChevronDownIcon, ChevronRightIcon } from '@/components/ui/icons';
 import { BiTextField } from './BiTextField';
 import { BlockEditor } from './BlockEditor';
 import { biExcerpt, ExcerptRow } from './panelRows';
@@ -45,7 +46,44 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
   // Open at mount when it already holds something; after that the teacher's own
   // toggling wins — a controlled `open` would snap shut on the keystroke that
   // emptied the field.
-  const [marksOpen, setMarksOpen] = useState(() => !isBiTextEmpty(question.explanation));
+  const [marksOpen, setMarksOpen] = useState(
+    () =>
+      !isBiTextEmpty(question.explanation) ||
+      !isBiTextEmpty(question.provenance) ||
+      question.options.some((option) => !isBiTextEmpty(option.rationale)),
+  );
+  // Per-option rationale rows start collapsed: four open fields would bury the panel.
+  const [openRationale, setOpenRationale] = useState<Set<string>>(() => new Set());
+
+  /*
+   * Follow the page's selection into the teacher notes — a render-time adjustment, as in
+   * the structured panel, so the field is in the DOM when `Inspector` scrolls to it.
+   */
+  const selectedTargetKey = useWorksheetStore((s) => s.selectedTargetKey);
+  const [prevTargetKey, setPrevTargetKey] = useState(selectedTargetKey);
+  if (selectedTargetKey !== prevTargetKey) {
+    setPrevTargetKey(selectedTargetKey);
+    const [kind, id] = (selectedTargetKey ?? '').split(':');
+    const noteKinds = ['mcqExplanation', 'mcqRationale', 'mcqProvenance'];
+    if (noteKinds.includes(kind) && !marksOpen) setMarksOpen(true);
+    if (kind === 'mcqRationale' && !openRationale.has(id)) {
+      setOpenRationale(new Set(openRationale).add(id));
+    }
+  }
+  const toggleRationale = (id: string) =>
+    setOpenRationale((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const setRationale = (optionId: string, text: BiText) =>
+    onChange({
+      options: question.options.map((option) =>
+        option.id === optionId ? withNote(option, 'rationale', text) : option,
+      ),
+    });
 
   /**
    * Set (or clear) the blocks an option carries.
@@ -338,9 +376,9 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
         ))}
       </section>
 
-      {/* Teacher-only text: it prints only in the Teacher version, so in Student mode
-          this is its one editing surface. Collapsed until it holds something, so the
-          panel's resting height is the properties above. */}
+      {/* Teacher-only text: it prints only in the Teacher version and the answer key, so
+          in Student mode this is its one editing surface. Collapsed until it holds
+          something, so the panel's resting height is the properties above. */}
       <details
         className="border-t border-line pt-3"
         open={marksOpen}
@@ -349,18 +387,92 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
         <summary className="cursor-pointer select-none text-[11px] font-medium text-ink-muted transition-colors hover:text-ink">
           Answer &amp; marking
         </summary>
-        <div
-          className="pt-2"
-          data-edit-target={editTargetKey({
-            kind: 'mcqExplanation',
-            questionId: question.id,
-          })}
-        >
-          <BiTextField
-            label="Explanation (teacher version)"
-            value={question.explanation ?? emptyBiText()}
-            onChange={(explanation) => onChange({ explanation })}
-          />
+        <div className="space-y-3 pt-2">
+          <div
+            data-edit-target={editTargetKey({
+              kind: 'mcqExplanation',
+              questionId: question.id,
+            })}
+          >
+            <BiTextField
+              label="Explanation (teacher version)"
+              value={question.explanation ?? emptyBiText()}
+              onChange={(explanation) => onChange({ explanation })}
+            />
+          </div>
+
+          {/* Why each option is right or wrong. Stored on the option, so it follows
+              the option into every shuffled version. */}
+          <div className="space-y-0.5">
+            <span className="text-[11px] font-medium text-ink-muted">Rationale</span>
+            {question.options.map((option, index) => {
+              const open = openRationale.has(option.id);
+              const isAnswer = question.answerIndex === index;
+              const key = editTargetKey({
+                kind: 'mcqRationale',
+                questionId: question.id,
+                optionId: option.id,
+              });
+              const excerpt = biExcerpt(option.rationale);
+              return (
+                <div key={option.id} data-edit-target={key}>
+                  <button
+                    type="button"
+                    aria-expanded={open}
+                    onClick={() => toggleRationale(option.id)}
+                    className="flex h-7 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-md px-1 text-left transition-colors hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    <span className="shrink-0 text-ink-subtle" aria-hidden>
+                      {open ? <ChevronDownIcon size={11} /> : <ChevronRightIcon size={11} />}
+                    </span>
+                    <span
+                      className={`w-5 shrink-0 text-center text-[11px] font-semibold ${
+                        isAnswer ? 'text-ok' : 'text-ink-muted'
+                      }`}
+                    >
+                      {optionLabel(index)}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-[11px] text-ink-subtle">
+                      {/* Open, the field below shows the text; the row names its job. */}
+                      {(!open && excerpt) || (
+                        <span className="italic">
+                          {isAnswer ? 'Why it is correct' : 'Why it is wrong'}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                  {open && (
+                    <div className="pb-1.5 pl-7 pt-0.5">
+                      <BiTextField
+                        ariaLabel={`Rationale for option ${optionLabel(index)}`}
+                        value={option.rationale ?? emptyBiText()}
+                        onChange={(text) => setRationale(option.id, text)}
+                        placeholderEn={isAnswer ? 'Why it is correct…' : 'Why it is wrong…'}
+                        placeholderZh={isAnswer ? '為何正確…' : '為何錯誤…'}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div
+            data-edit-target={editTargetKey({
+              kind: 'mcqProvenance',
+              questionId: question.id,
+            })}
+          >
+            <BiTextField
+              label="Source"
+              rows={1}
+              value={question.provenance ?? emptyBiText()}
+              // A cleared note drops its key (§ A field cleared to nothing stores nothing).
+              onChange={(text) => onChange({ provenance: isBiTextEmpty(text) ? undefined : text })}
+              placeholderEn="e.g. Modelled on DSE 2023 Q1"
+              placeholderZh="例：改編自 2023 DSE 第 1 題"
+            />
+          </div>
         </div>
       </details>
     </div>

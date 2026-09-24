@@ -486,9 +486,9 @@ TextNode: style (one of 14) · text: BiText · listRef? {stream, definition, lev
 
 `EditTarget` is a discriminated union keyed by **id**: `worksheetTitle`,
 `worksheetInstructions`, `blockText`, `blockCaption`, `tableCell`, `mcqOption`,
-`mcqStatement`, `mcqExplanation`, `partAnswer`, `subPartAnswer`, `layoutText`,
-`sourceLabel`, `sourceFootnote`, `bandField`, `labelListCell`, `coverLine`,
-`coverField`.
+`mcqStatement`, `mcqExplanation`, `mcqRationale`, `mcqProvenance`, `partAnswer`,
+`subPartAnswer`, `layoutText`, `sourceLabel`, `sourceFootnote`, `bandField`,
+`labelListCell`, `coverLine`, `coverField`.
 
 - **`edit` is inert in export** — docx/clipboard never read it.
 - **Derived text carries no target** (marks totals, "Answer: C", numbers in band
@@ -1611,6 +1611,12 @@ paths). Verify by measuring the same text node in both states.
   (`McqOption.pinned`) and positional text ("All of the above", 以上皆是) never move, and
   `answerIndex` follows its option. With versions on, the answer key prints a grid per
   version and a version map (printed letter → version A letter).
+- **MCQ teacher notes are teacher-only and keyed by option.** `McqOption.rationale` lives on
+  the option, so a shuffled version letters it where its option prints; `McqQuestion.provenance`
+  is the source note ("Source: DSE 2023 Q1"). The teacher version prints them under the key,
+  explanation first; the answer key lists them beneath the grid in Version A letters (and says
+  so when versions are on). Absent or empty prints nothing, so an untouched document exports
+  byte-identically; the student paper never carries them (`mcqRationale.test.ts`).
 
 ---
 

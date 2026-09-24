@@ -1,7 +1,7 @@
 import { resolveFlow } from '@/model/flow';
 import { computeNumbering, DEFAULT_LIST_INDENTS, toUpperLetter } from '@/model/numbering';
 import { DEFAULT_CELL_PADDING } from '@/model/table';
-import { bi, documentName, isBiTextEmpty, plain } from '@/model/text';
+import { bi, documentName, isBiTextEmpty, plain, provenanceLabel } from '@/model/text';
 import type { BiText, LanguageMode, Worksheet } from '@/model/types';
 import { versionLetters, versionSeed } from '@/model/versions';
 import { requireQuestionType } from '@/registry';
@@ -15,10 +15,25 @@ import { pushGap, type RenderNode, type TableNode, type TableNodeCell } from './
 
 /** One question's key, as its type reports it. */
 export type AnswerKeyEntry =
-  /** A lettered choice, gathered into the grid. `letter` absent = no key set. */
-  | { kind: 'choice'; letter?: string; note?: BiText }
+  /**
+   * A lettered choice, gathered into the grid. `letter` absent = no key set. `rationale`
+   * is per option, lettered in the authored (Version A) order; `provenance` is a source note.
+   */
+  | {
+      kind: 'choice';
+      letter?: string;
+      note?: BiText;
+      rationale?: ChoiceRationale[];
+      provenance?: BiText;
+    }
   /** Marked rows under the question's number. `marks` is the whole question's, if a leaf. */
   | { kind: 'scheme'; marks?: number; rows: AnswerKeyRow[] };
+
+/** Why one option is right or wrong, under its Version A letter. */
+export interface ChoiceRationale {
+  letter: string;
+  text: BiText;
+}
 
 export interface AnswerKeyRow {
   /** Literal marker, e.g. "(a)". Absent = a continuation at this depth. */
@@ -44,6 +59,10 @@ export const UNANSWERED_MARK = '—';
 export const ANSWER_KEY_WORDING = {
   title: { en: 'Answer key', zh: '答案及評分參考' },
   explanations: { en: 'Explanations', zh: '解說' },
+  explanationsVersionA: {
+    en: 'Explanations (option letters as in Version A)',
+    zh: '解說（選項字母以版本 A 為準）',
+  },
   question: (n: number) => ({ en: `Question ${n}`, zh: `第${n}題` }),
   version: (letter: string) => ({ en: `Version ${letter}`, zh: `版本 ${letter}` }),
   versionMap: { en: 'Version map', zh: '版本對照' },
@@ -61,9 +80,18 @@ interface ChoiceVersion {
   sourceLetters?: string[];
 }
 
+interface Choice {
+  number: number;
+  letter?: string;
+  note?: BiText;
+  rationale?: ChoiceRationale[];
+  provenance?: BiText;
+  versions: ChoiceVersion[];
+}
+
 interface Group {
   heading?: BiText;
-  choices: Array<{ number: number; letter?: string; note?: BiText; versions: ChoiceVersion[] }>;
+  choices: Choice[];
   schemes: Array<{ number: number; marks?: number; rows: AnswerKeyRow[] }>;
 }
 
@@ -110,7 +138,14 @@ export function renderAnswerKey(worksheet: Worksheet, language: LanguageMode): R
           sourceLetters: shown.sourceLetters,
         };
       });
-      group.choices.push({ number, letter: entry.letter, note: entry.note, versions });
+      group.choices.push({
+        number,
+        letter: entry.letter,
+        note: entry.note,
+        rationale: entry.rationale,
+        provenance: entry.provenance,
+        versions,
+      });
     } else {
       group.schemes.push({ number, marks: entry.marks, rows: entry.rows });
     }
@@ -177,14 +212,14 @@ function renderVersionedKey(
   });
 
   for (const group of groups) {
-    const noted = group.choices.some((choice) => choice.note && !isBiTextEmpty(choice.note));
+    const noted = group.choices.some(hasNotes);
     if (!noted && group.schemes.length === 0) continue;
     pushGap(nodes);
     if (group.heading && !isBiTextEmpty(group.heading)) {
       nodes.push({ kind: 'text', style: 'Section Heading', text: group.heading, keepNext: true });
       pushGap(nodes);
     }
-    renderNotes(nodes, group.choices, language);
+    renderNotes(nodes, group.choices, language, true);
     for (const scheme of group.schemes) {
       pushGap(nodes);
       renderScheme(nodes, scheme, language);
@@ -306,28 +341,58 @@ function answerGrid(choices: Group['choices'], language: LanguageMode): TableNod
   };
 }
 
-/** The choices' explanations, if any, as a hung list under the grid. */
-function renderNotes(nodes: RenderNode[], choices: Group['choices'], language: LanguageMode): void {
-  const noted = choices.filter((choice) => choice.note && !isBiTextEmpty(choice.note));
+/** Whether a choice has anything to print under the grid. */
+function hasNotes(choice: Choice): boolean {
+  return (
+    (choice.note !== undefined && !isBiTextEmpty(choice.note)) ||
+    (choice.rationale?.length ?? 0) > 0 ||
+    (choice.provenance !== undefined && !isBiTextEmpty(choice.provenance))
+  );
+}
+
+/**
+ * The choices' notes, if any, as a hung list under the grid: the explanation beside the
+ * number, then one "A. …" line per option rationale and a "Source:" line, all at the
+ * explanation's text column. The number rides on the first line, whichever it is.
+ * `versioned`: the rationale letters are Version A's, so the heading says so.
+ */
+function renderNotes(
+  nodes: RenderNode[],
+  choices: Choice[],
+  language: LanguageMode,
+  versioned = false,
+): void {
+  const noted = choices.filter(hasNotes);
   if (noted.length === 0) return;
+  const lettered = versioned && noted.some((choice) => (choice.rationale?.length ?? 0) > 0);
+  const heading = lettered ? ANSWER_KEY_WORDING.explanationsVersionA : ANSWER_KEY_WORDING.explanations;
   nodes.push({
     kind: 'text',
     style: 'Body',
-    text: bi(ANSWER_KEY_WORDING.explanations.en, ANSWER_KEY_WORDING.explanations.zh),
+    text: bi(heading.en, heading.zh),
     keepNext: true,
     format: { bold: true },
   });
   for (const choice of noted) {
-    nodes.push({
-      kind: 'columns',
-      style: 'Body',
-      indent: DEFAULT_LIST_INDENTS.stemText,
-      hanging: DEFAULT_LIST_INDENTS.stemText,
-      keepLines: true,
-      cells: [
-        { text: neutral(`${choice.number}.`, language), at: 0 },
-        { text: choice.note!, at: 0.5 },
-      ],
+    const lines: Array<{ text: BiText; marker?: string }> = [];
+    if (choice.note && !isBiTextEmpty(choice.note)) lines.push({ text: choice.note });
+    for (const { letter, text } of choice.rationale ?? []) lines.push({ text, marker: `${letter}.` });
+    if (choice.provenance && !isBiTextEmpty(choice.provenance)) {
+      lines.push({ text: choice.provenance, marker: provenanceLabel(language) });
+    }
+    lines.forEach((line, index) => {
+      nodes.push({
+        kind: 'columns',
+        style: 'Body',
+        indent: DEFAULT_LIST_INDENTS.stemText,
+        hanging: DEFAULT_LIST_INDENTS.stemText,
+        keepLines: true,
+        ...(index < lines.length - 1 ? { keepNext: true } : {}),
+        cells: [
+          { text: neutral(index === 0 ? `${choice.number}.` : '', language), at: 0 },
+          { text: line.text, at: 0.5, ...(line.marker ? { marker: line.marker } : {}) },
+        ],
+      });
     });
   }
 }

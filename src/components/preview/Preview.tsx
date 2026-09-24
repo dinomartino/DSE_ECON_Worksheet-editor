@@ -579,6 +579,8 @@ const TARGET_NAME: Record<EditTarget["kind"], string> = {
   mcqOption: "Option",
   mcqStatement: "Statement",
   mcqExplanation: "Explanation",
+  mcqRationale: "Rationale",
+  mcqProvenance: "Source note",
   partAnswer: "Answer",
   subPartAnswer: "Answer",
   layoutText: "Text element",

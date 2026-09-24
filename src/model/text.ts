@@ -19,6 +19,16 @@ export function bi(en: string, zh: string): BiText {
   return { en: rt(en), zh: rt(zh) };
 }
 
+/**
+ * The derived label before a source / adaptation note ("Source: Modelled on DSE 2023
+ * Q1"), in the output's language. Shared by the teacher version and the answer key.
+ */
+export function provenanceLabel(language: LanguageMode): string {
+  if (language === 'en') return 'Source:';
+  if (language === 'zh') return '出處：';
+  return 'Source 出處：';
+}
+
 export function emptyBiText(): BiText {
   return { en: [], zh: [] };
 }
