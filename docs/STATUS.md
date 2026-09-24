@@ -6,6 +6,8 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Current initiatives
 
+- **Branching: work is on `develop`** (since 2026-09-24); `main` deploys to teachers.
+  Collecting features for the next release — merge to `main` only when the user says.
 - **Desktop app — shipped 2026-09-22.** Tauri 2 wraps the same static `out/`; documents
   become files under `$APPDATA/worksheets/` (`src/storage/fileStore.ts`), saving uses the
   native dialog, updates come from GitHub Releases. `src/platform/index.ts` ·

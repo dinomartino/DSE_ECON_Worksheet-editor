@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, develop]
 
 # One run per ref: a push that supersedes an in-flight run cancels it.
 concurrency:

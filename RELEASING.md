@@ -1,6 +1,7 @@
 # Releasing the desktop app
 
-The web app deploys from `main` on Vercel and needs nothing here. This file is about the
+The web app deploys from `main` on Vercel and needs nothing here — which is why work
+happens on `develop` and reaches `main` only at release time (see CLAUDE.md). This file is about the
 macOS and Windows builds, which ship from a git tag through GitHub Releases and update
 themselves from the same release.
 
@@ -48,6 +49,17 @@ option; Azure Trusted Signing is limited to US/CA/EU/UK, so it is not open to a 
 maintainer.
 
 ## Cutting a release
+
+Day-to-day work lives on `develop`; `main` is what teachers get, and every push to it
+deploys the web app. A release starts by bringing `develop` into `main`:
+
+```bash
+git switch main && git pull
+git merge --ff-only develop          # or merge a develop → main pull request
+```
+
+Then tag on `main` as below, and afterwards `git switch develop && git merge main` so
+the version bump reaches `develop`.
 
 `package.json` is the single source of truth for the version. `npm version` runs
 `scripts/sync-version.mjs`, which writes the same version into

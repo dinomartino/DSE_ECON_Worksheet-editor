@@ -70,6 +70,19 @@ broke.
 - Releases are tags, not pushes: `npm version <patch|minor|major>` then `git push
   --follow-tags`. See `RELEASING.md`.
 
+## Branches: work on `develop`, `main` ships
+
+**Every push to `main` deploys the web app to teachers** (Vercel production). So:
+
+- **All work — yours and any sub-agent's — happens on `develop`**, or on a short
+  feature branch cut from it and merged back. Start a session with
+  `git switch develop && git pull`. Never commit or push to `main` directly.
+- Pushing `develop` is safe: Vercel builds a preview, CI runs, nothing reaches teachers.
+- **Releasing is the user's call.** Only when they say so: merge `develop` into `main`,
+  then tag on `main` (`npm version …`, `git push --follow-tags`). See `RELEASING.md`.
+- An urgent fix for teachers: branch from `main`, merge to `main`, then merge `main`
+  back into `develop` so the two do not drift.
+
 ## The constraints that shape everything
 
 - **One IR, three backends.** `registry.render()` emits `RenderNode[]` once; preview,

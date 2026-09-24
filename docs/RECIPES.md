@@ -151,6 +151,10 @@ Guard: `npm test`, `npm run typecheck`, `npm run lint` (44 pre-existing problems
 
 ## Cut a release
 
+Only when the user asks. Work lives on `develop`; `main` is what teachers get.
+
+0. On `develop`, all green → `git switch main && git pull && git merge --ff-only develop`
+   (or merge a `develop` → `main` pull request). `git push` deploys the web app.
 1. `npm run typecheck && npm test` — green before tagging.
 2. `npm version patch|minor|major` — runs `scripts/sync-version.mjs`, which writes the
    version into `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml` and stages them.
@@ -162,4 +166,5 @@ Guard: `npm test`, `npm run typecheck`, `npm run lint` (44 pre-existing problems
 5. Press **Publish release**. A `-beta.N` tag publishes as a prerelease and never
    reaches a stable install.
 
-Rollback is a new, higher version containing the revert. Full detail: `RELEASING.md`.
+Rollback is a new, higher version containing the revert. Afterwards `git switch develop &&
+git merge main` so the version bump reaches `develop`. Full detail: `RELEASING.md`.
