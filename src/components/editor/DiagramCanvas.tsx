@@ -31,7 +31,9 @@ import {
 } from '@/model/diagramDraw';
 import { emptyBiText, isBiTextEmpty, parseRuns, plain, serializeRuns } from '@/model/text';
 import type { BiText, DiagramBlock, LanguageMode } from '@/model/types';
+import { areaPolygon } from '@/model/diagramAreas';
 import {
+  areaLabelAnchor,
   arrowLabelAnchor,
   axisTickAnchor,
   axisTitleAnchor,
@@ -46,6 +48,7 @@ import { useWorksheetStore } from '@/store/worksheetStore';
 import { Button, CheckField, Eyebrow, IconButton, SelectField } from '@/components/ui';
 import { useModalLayer } from '@/components/ui/modalLayer';
 import { BiTextField } from './BiTextField';
+import { AreaInspector, ShadeMenu, ShiftCurveControls, areaName } from './DiagramAreaControls';
 
 /**
  * The drawing surface: an overlay on the same live SVG the exporter uses (no second
@@ -267,6 +270,8 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
    * a worksheet's text.
    */
   const [clip, setClip] = useState<DiagramClip | null>(null);
+  /** The "Shade ▾" preset menu. Here so Escape closes it before anything else. */
+  const [shadeOpen, setShadeOpen] = useState(false);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const gestureRef = useRef<Gesture | null>(null);
   /**
@@ -505,6 +510,11 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
       if (!has(arrow.label)) continue;
       const at = arrowLabelAnchor(arrow, projection, 1);
       out.push({ handle: { kind: 'arrowLabel', arrowId: arrow.id }, at: toUnitPoint(at.x, at.y), box: boxOf(arrow.label) });
+    }
+    for (const area of diagram.areas ?? []) {
+      if (!has(area.label)) continue;
+      const at = areaLabelAnchor(diagram, area, projection);
+      if (at) out.push({ handle: { kind: 'areaLabel', areaId: area.id }, at: toUnitPoint(at.x, at.y), box: boxOf(area.label) });
     }
     // The diagram's title is deliberately NOT a hit target. It is edited in the sidebar
     // and auto-placed, so there is nothing on the canvas to select, drag or retype — it
@@ -881,6 +891,10 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
       if (event.key === 'Escape') {
         if (typing) return;
         event.preventDefault();
+        if (shadeOpen) {
+          setShadeOpen(false);
+          return;
+        }
         // Escape peels back one layer at a time: leave crop mode first, then clear the
         // selection, and close only when there is nothing left to peel. Closing out
         // from under a selection would lose the drawing context with no warning.
@@ -959,7 +973,7 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selected, diagram, labelAnchors, setDiagram, onClose, doCopy, doPaste, doDelete, cropping]);
+  }, [selected, diagram, labelAnchors, setDiagram, onClose, doCopy, doPaste, doDelete, cropping, shadeOpen]);
 
   const activeTool = TOOLS.find((t) => t.id === tool);
 
@@ -980,6 +994,10 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
     if (editing.kind === 'diagramTitle') return diagramTitleAnchor(diagram, projection, 1, language);
     if (editing.kind === 'axisTitle') {
       return axisTitleAnchor(diagram, editing.axis, projection, block.widthPx, 1, language);
+    }
+    if (editing.kind === 'areaLabel') {
+      const area = (diagram.areas ?? []).find((a) => a.id === editing.areaId);
+      return area ? areaLabelAnchor(diagram, area, projection) : null;
     }
     return null;
   }, [editing, labelAnchors, projection, diagram, language, block.widthPx]);
@@ -1008,6 +1026,17 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
               <span className="text-xs font-medium">{item.name}</span>
             </button>
           ))}
+          <ShadeMenu
+            diagram={diagram}
+            open={shadeOpen}
+            onOpenChange={setShadeOpen}
+            newId={newId}
+            onAdd={(area) => {
+              setDiagram({ ...diagram, areas: [...(diagram.areas ?? []), area] });
+              setSelected([{ kind: 'area', areaId: area.id }]);
+              setTool('select');
+            }}
+          />
         </div>
 
         <span className="h-8 w-px bg-line-strong" />
@@ -1204,6 +1233,7 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
           <SelectionInspector
             diagram={diagram}
             selected={selected}
+            newId={newId}
             onChange={setDiagram}
             onDelete={doDelete}
             onSelect={(handles) => setSelected(handles)}
@@ -1454,6 +1484,32 @@ function HandleOverlay({
             strokeLinecap="round"
           />
         ))}
+
+      {/* A selected area is outlined; a free one also shows its corners. */}
+      {(diagram.areas ?? [])
+        .filter((area) => isOn({ kind: 'area', areaId: area.id }))
+        .map((area) => {
+          const polygon = areaPolygon(diagram, area);
+          if (!polygon) return null;
+          return (
+            <polygon
+              key={`hl-${area.id}`}
+              points={polygon.map((p) => `${projection.px(p.x)},${projection.py(p.y)}`).join(' ')}
+              fill="#0ea5e9"
+              fillOpacity={0.12}
+              stroke="#0284c7"
+              strokeWidth={stroke}
+              strokeDasharray={`${4 / zoom},${3 / zoom}`}
+            />
+          );
+        })}
+      {(diagram.areas ?? [])
+        .filter((area) => !area.band)
+        .flatMap((area) =>
+          (area.vertices ?? []).map((point, index) =>
+            dot(`${area.id}-${index}`, point, { kind: 'areaVertex', areaId: area.id, index }, 'square'),
+          ),
+        )}
 
       {diagram.curves.flatMap((curve) =>
         curve.points.map((point, index) =>
@@ -1742,6 +1798,7 @@ function ToolbarButton({
 function SelectionInspector({
   diagram,
   selected,
+  newId,
   onChange,
   onDelete,
   onSelect,
@@ -1749,6 +1806,7 @@ function SelectionInspector({
 }: {
   diagram: Diagram;
   selected: DiagramHandle[];
+  newId: () => string;
   onChange: (diagram: Diagram) => void;
   onDelete: () => void;
   onSelect: (handles: DiagramHandle[]) => void;
@@ -1802,6 +1860,11 @@ function SelectionInspector({
   // canvas, so no selection can ever name it.
   if (handle.kind === 'axisTitle' || handle.kind === 'axisTick') {
     return <AxisInspector diagram={diagram} handle={handle} onChange={onChange} onDelete={onDelete} />;
+  }
+
+  const area = (diagram.areas ?? []).find((a) => a.id === id);
+  if (area) {
+    return <AreaInspector diagram={diagram} area={area} onChange={onChange} onDelete={onDelete} />;
   }
 
   const curve = diagram.curves.find((c) => c.id === id);
@@ -1898,6 +1961,13 @@ function SelectionInspector({
             Double-click the line to add a kink. Drag a square handle to move one end.
             Drag the label ring to move its name.
           </p>
+          <ShiftCurveControls
+            diagram={diagram}
+            curveId={id}
+            onChange={onChange}
+            onSelect={onSelect}
+            newId={newId}
+          />
         </div>
       </div>
     );
@@ -2220,6 +2290,8 @@ function describeHandle(diagram: Diagram, handle: DiagramHandle): string {
     const owner = diagram.arrows.find((a) => a.id === id);
     return `${plain(owner?.label?.en) || 'Arrow'} (label)`;
   }
+  const area = (diagram.areas ?? []).find((a) => a.id === id);
+  if (area) return handle.kind === 'areaLabel' ? `${areaName(area)} (label)` : areaName(area);
 
   const curve = diagram.curves.find((c) => c.id === id);
   if (curve) return plain(curve.label?.en) || plain(curve.label?.zh) || 'Curve';
@@ -2271,6 +2343,11 @@ function ElementIndex({
       handle: { kind: 'arrow', arrowId: a.id } as DiagramHandle,
       name: plain(a.label?.en) || 'Arrow',
       kind: 'Arrow',
+    })),
+    ...(diagram.areas ?? []).map((a) => ({
+      handle: { kind: 'area', areaId: a.id } as DiagramHandle,
+      name: areaName(a),
+      kind: 'Area',
     })),
   ];
 

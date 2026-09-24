@@ -1,6 +1,7 @@
 import {
   clampPoint,
   type Diagram,
+  type DiagramArea,
   type DiagramArrow,
   type DiagramCurve,
   type DiagramLabel,
@@ -8,6 +9,7 @@ import {
   type DiagramPointMark,
 } from './diagram';
 import type { BiText } from './types';
+import { areaPolygon, areaReferences, detachAreas, freezeArea, insidePolygon } from './diagramAreas';
 
 /**
  * Direct manipulation of diagram geometry (§7.5).
@@ -46,13 +48,19 @@ export type DiagramHandle =
   | { kind: 'pointTick'; pointId: string; axis: 'x' | 'y' }
   | { kind: 'axisTick'; axis: 'x' | 'y'; tickId: string }
   | { kind: 'axisTitle'; axis: 'x' | 'y' }
-  | { kind: 'diagramTitle' };
+  | { kind: 'diagramTitle' }
+  // --- Shaded areas. A band area follows its references, so only a free polygon has
+  // vertices to grab or a body that moves.
+  | { kind: 'area'; areaId: string }
+  | { kind: 'areaVertex'; areaId: string; index: number }
+  | { kind: 'areaLabel'; areaId: string };
 
 /** Do these two handles address the same thing? */
 export function sameHandle(a: DiagramHandle | null, b: DiagramHandle | null): boolean {
   if (!a || !b) return a === b;
   if (a.kind !== b.kind) return false;
   if (a.kind === 'vertex') return handleId(a) === handleId(b) && a.index === (b as typeof a).index;
+  if (a.kind === 'areaVertex') return handleId(a) === handleId(b) && a.index === (b as typeof a).index;
   // A point's two tick labels share the point's id, so the axis is part of the address.
   if (a.kind === 'pointTick') return handleId(a) === handleId(b) && a.axis === (b as typeof a).axis;
   return handleId(a) === handleId(b);
@@ -68,7 +76,7 @@ export function sameHandle(a: DiagramHandle | null, b: DiagramHandle | null): bo
  * to enforce.
  */
 export function isBody(handle: DiagramHandle): boolean {
-  return handle.kind === 'curve' || handle.kind === 'arrow';
+  return handle.kind === 'curve' || handle.kind === 'arrow' || handle.kind === 'area';
 }
 
 /**
@@ -83,6 +91,10 @@ export function cursorFor(
   group: boolean,
   active: boolean,
 ): string {
+  // A band area goes where its curves go; it is selected, never dragged.
+  if (!group && handle.kind === 'area' && diagram.areas?.find((a) => a.id === handle.areaId)?.band) {
+    return 'pointer';
+  }
   // A group has no single axis to reshape along, so it is always a move.
   if (group || isBody(handle)) return active ? 'grabbing' : 'grab';
 
@@ -157,6 +169,10 @@ export function handleId(handle: DiagramHandle): string {
       return `axis-${handle.axis}`;
     case 'diagramTitle':
       return 'diagram-title';
+    case 'area':
+    case 'areaVertex':
+    case 'areaLabel':
+      return handle.areaId;
     default:
       return handle.arrowId;
   }
@@ -265,6 +281,12 @@ export function hitTest(
   for (const label of diagram.labels) {
     consider({ kind: 'label', labelId: label.id }, dist(at, label.at));
   }
+  for (const area of diagram.areas ?? []) {
+    if (area.band) continue;
+    (area.vertices ?? []).forEach((vertex, index) => {
+      consider({ kind: 'areaVertex', areaId: area.id, index }, dist(at, vertex));
+    });
+  }
   if (best) return (best as { handle: DiagramHandle }).handle;
 
   // --- Pass 2: bodies. Topmost (last drawn) wins, so iterate in reverse. ---
@@ -281,6 +303,12 @@ export function hitTest(
         return { kind: 'curve', curveId: curve.id };
       }
     }
+  }
+  // Areas draw under everything, so they are the last body to claim a press.
+  const areas = diagram.areas ?? [];
+  for (let i = areas.length - 1; i >= 0; i -= 1) {
+    const polygon = areaPolygon(diagram, areas[i]);
+    if (polygon && insidePolygon(at, polygon)) return { kind: 'area', areaId: areas[i].id };
   }
   return null;
 }
@@ -421,6 +449,31 @@ export function applyDrag(
       };
     // `diagramTitle` is deliberately absent: the title is edited in the sidebar and
     // auto-placed, so there is no handle on the canvas to drag (§the title is sidebar-only).
+    case 'area':
+      // A band is where its references put it; only a free polygon moves as a body.
+      return {
+        ...diagram,
+        areas: mapById(diagram.areas ?? [], handle.areaId, (area) =>
+          area.band || !area.vertices ? area : { ...area, vertices: shift(area.vertices, dx, dy) },
+        ),
+      };
+    case 'areaVertex':
+      return {
+        ...diagram,
+        areas: mapById(diagram.areas ?? [], handle.areaId, (area) =>
+          area.band || !area.vertices
+            ? area
+            : { ...area, vertices: area.vertices.map((p, i) => (i === handle.index ? target : p)) },
+        ),
+      };
+    case 'areaLabel':
+      return {
+        ...diagram,
+        areas: mapById(diagram.areas ?? [], handle.areaId, (area) => ({
+          ...area,
+          labelOffset: nudge(area.labelOffset, dx, dy),
+        })),
+      };
   }
   return diagram;
 }
@@ -481,6 +534,8 @@ export function handleText(diagram: Diagram, handle: DiagramHandle): BiText | nu
       return diagram[handle.axis].title ?? emptyText();
     case 'diagramTitle':
       return diagram.title ?? emptyText();
+    case 'areaLabel':
+      return (diagram.areas ?? []).find((a) => a.id === handle.areaId)?.label ?? emptyText();
     default:
       return null;
   }
@@ -496,7 +551,8 @@ export function isTextHandle(handle: DiagramHandle): boolean {
     handle.kind === 'pointTick' ||
     handle.kind === 'axisTick' ||
     handle.kind === 'axisTitle' ||
-    handle.kind === 'diagramTitle'
+    handle.kind === 'diagramTitle' ||
+    handle.kind === 'areaLabel'
   );
 }
 
@@ -546,13 +602,25 @@ export function setHandleText(diagram: Diagram, handle: DiagramHandle, text: BiT
       return { ...diagram, [handle.axis]: { ...diagram[handle.axis], title: text } };
     case 'diagramTitle':
       return { ...diagram, title: text };
+    case 'areaLabel':
+      return {
+        ...diagram,
+        areas: mapById(diagram.areas ?? [], handle.areaId, (a) => ({ ...a, label: text })),
+      };
     default:
       return diagram;
   }
 }
 
-/** Remove whatever a handle addresses. A vertex removal falls back to the whole curve. */
+/**
+ * Remove whatever a handle addresses. A vertex removal falls back to the whole curve.
+ * An area that leaned on removed geometry is frozen where it was (`detachAreas`).
+ */
 export function deleteHandle(diagram: Diagram, handle: DiagramHandle): Diagram {
+  return detachAreas(diagram, removeHandle(diagram, handle));
+}
+
+function removeHandle(diagram: Diagram, handle: DiagramHandle): Diagram {
   switch (handle.kind) {
     case 'vertex': {
       const curve = diagram.curves.find((c) => c.id === handle.curveId);
@@ -625,6 +693,33 @@ export function deleteHandle(diagram: Diagram, handle: DiagramHandle): Diagram {
     // nothing here can be aimed at it, and it is removed by clearing that field.
     case 'diagramTitle':
       return diagram;
+
+    case 'area':
+      return { ...diagram, areas: (diagram.areas ?? []).filter((a) => a.id !== handle.areaId) };
+    case 'areaVertex': {
+      const area = (diagram.areas ?? []).find((a) => a.id === handle.areaId);
+      // A polygon needs three corners; removing one of the last three takes the area.
+      if (!area || area.band || (area.vertices?.length ?? 0) <= 3) {
+        return { ...diagram, areas: (diagram.areas ?? []).filter((a) => a.id !== handle.areaId) };
+      }
+      return {
+        ...diagram,
+        areas: mapById(diagram.areas ?? [], handle.areaId, (a) => ({
+          ...a,
+          vertices: (a.vertices ?? []).filter((_, i) => i !== handle.index),
+        })),
+      };
+    }
+    case 'areaLabel':
+      return {
+        ...diagram,
+        areas: mapById(diagram.areas ?? [], handle.areaId, (area) => {
+          const rest = { ...area };
+          delete rest.label;
+          delete rest.labelOffset;
+          return rest;
+        }),
+      };
 
     default:
       return { ...diagram, arrows: diagram.arrows.filter((a) => a.id !== handle.arrowId) };
@@ -837,6 +932,10 @@ export function selectWithin(
   for (const arrow of diagram.arrows) {
     if (inside(arrow.from, r) && inside(arrow.to, r)) handles.push({ kind: 'arrow', arrowId: arrow.id });
   }
+  for (const area of diagram.areas ?? []) {
+    const polygon = areaPolygon(diagram, area);
+    if (polygon && polygon.every((p) => inside(p, r))) handles.push({ kind: 'area', areaId: area.id });
+  }
   return handles;
 }
 
@@ -852,6 +951,8 @@ export interface DiagramClip {
   points: DiagramPointMark[];
   labels: DiagramLabel[];
   arrows: DiagramArrow[];
+  /** Areas copied with their references, or frozen when they reach outside the clip. */
+  areas?: DiagramArea[];
 }
 
 export function isClipEmpty(clip: DiagramClip | null): boolean {
@@ -860,7 +961,8 @@ export function isClipEmpty(clip: DiagramClip | null): boolean {
     clip.curves.length === 0 &&
     clip.points.length === 0 &&
     clip.labels.length === 0 &&
-    clip.arrows.length === 0
+    clip.arrows.length === 0 &&
+    (clip.areas?.length ?? 0) === 0
   );
 }
 
@@ -877,6 +979,7 @@ export function copyHandles(diagram: Diagram, handles: DiagramHandle[]): Diagram
   const pointIds = new Set<string>();
   const labelIds = new Set<string>();
   const arrowIds = new Set<string>();
+  const areaIds = new Set<string>();
 
   for (const handle of handles) {
     switch (handle.kind) {
@@ -903,17 +1006,33 @@ export function copyHandles(diagram: Diagram, handles: DiagramHandle[]): Diagram
       case 'axisTitle':
       case 'diagramTitle':
         break;
+      case 'area':
+      case 'areaVertex':
+      case 'areaLabel':
+        areaIds.add(handle.areaId);
+        break;
       default:
         arrowIds.add(handle.arrowId);
     }
   }
 
-  return {
+  const clip: DiagramClip = {
     curves: diagram.curves.filter((c) => curveIds.has(c.id)),
     points: diagram.points.filter((p) => pointIds.has(p.id)),
     labels: diagram.labels.filter((l) => labelIds.has(l.id)),
     arrows: diagram.arrows.filter((a) => arrowIds.has(a.id)),
   };
+  if (areaIds.size === 0) return clip;
+  // An area travels with its references only when they travel too; otherwise the copy
+  // is frozen at its current shape, since a paste cannot offset a reference.
+  const copied = new Set([...curveIds, ...pointIds]);
+  const areas = (diagram.areas ?? [])
+    .filter((area) => areaIds.has(area.id))
+    .map((area) =>
+      areaReferences(area).every((id) => copied.has(id)) ? area : freezeArea(diagram, area),
+    )
+    .filter((area): area is DiagramArea => area !== null);
+  return { ...clip, areas };
 }
 
 /**
@@ -935,13 +1054,16 @@ export function pasteInto(
   const shiftPoint = (p: DiagramPoint) => clampPoint({ x: p.x + offset.x, y: p.y + offset.y });
   const handles: DiagramHandle[] = [];
 
+  const renamed = new Map<string, string>();
   const curves = clip.curves.map((curve) => {
     const id = mint();
+    renamed.set(curve.id, id);
     handles.push({ kind: 'curve', curveId: id });
     return { ...curve, id, points: curve.points.map(shiftPoint) };
   });
   const points = clip.points.map((mark) => {
     const id = mint();
+    renamed.set(mark.id, id);
     handles.push({ kind: 'point', pointId: id });
     return { ...mark, id, at: shiftPoint(mark.at) };
   });
@@ -956,16 +1078,41 @@ export function pasteInto(
     return { ...arrow, id, from: shiftPoint(arrow.from), to: shiftPoint(arrow.to) };
   });
 
-  return {
-    diagram: {
-      ...diagram,
-      curves: [...diagram.curves, ...curves],
-      points: [...diagram.points, ...points],
-      labels: [...diagram.labels, ...labels],
-      arrows: [...diagram.arrows, ...arrows],
-    },
-    handles,
+  const areas = (clip.areas ?? []).map((area) => {
+    const id = mint();
+    handles.push({ kind: 'area', areaId: id });
+    return area.band
+      ? { ...area, id, band: renameAreaRefs(area.band, renamed) }
+      : { ...area, id, vertices: (area.vertices ?? []).map(shiftPoint) };
+  });
+
+  const next: Diagram = {
+    ...diagram,
+    curves: [...diagram.curves, ...curves],
+    points: [...diagram.points, ...points],
+    labels: [...diagram.labels, ...labels],
+    arrows: [...diagram.arrows, ...arrows],
   };
+  if (areas.length > 0) next.areas = [...(diagram.areas ?? []), ...areas];
+  return { diagram: next, handles };
+}
+
+type AreaBand = NonNullable<DiagramArea['band']>;
+type AnchorRef = Exclude<AreaBand['from'], number>;
+
+/** A band with every curve and point id passed through `renamed` (unmapped ids kept). */
+function renameAreaRefs(band: AreaBand, renamed: Map<string, string>): AreaBand {
+  const id = (value: string) => renamed.get(value) ?? value;
+  const ref = (r: AnchorRef): AnchorRef =>
+    'point' in r
+      ? { point: id(r.point) }
+      : 'cross' in r
+        ? { cross: [id(r.cross[0]), id(r.cross[1])] }
+        : { on: id(r.on), x: ref(r.x) };
+  const x = (value: number | AnchorRef) => (typeof value === 'number' ? value : ref(value));
+  const edge = (e: AreaBand['edges'][number]): AreaBand['edges'][number] =>
+    'curve' in e ? { curve: id(e.curve) } : { level: x(e.level) };
+  return { edges: [edge(band.edges[0]), edge(band.edges[1])], from: x(band.from), to: x(band.to) };
 }
 
 /**

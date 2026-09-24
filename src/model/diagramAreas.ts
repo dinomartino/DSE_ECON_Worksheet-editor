@@ -1,0 +1,364 @@
+import type {
+  Diagram,
+  DiagramAnchorRef,
+  DiagramArea,
+  DiagramAreaEdge,
+  DiagramAreaX,
+  DiagramCurve,
+  DiagramPoint,
+} from './diagram';
+import type { BiText } from './types';
+
+/**
+ * Shaded areas: from stored references to a unit-space polygon (§ Shaded areas).
+ *
+ * Pure and renderer-free: `render/diagram.ts` projects the polygon, the canvas
+ * hit-tests it. A reference that no longer resolves (its curve deleted) yields no
+ * polygon — `detachAreas` freezes such areas into vertices before that can happen.
+ * Curves are read as their polyline; a `curved` curve's spline is approximated.
+ */
+
+const EPS = 1e-9;
+
+/** The x-range a curve covers, ignoring vertical segments (they have no y at an x). */
+function curveSpan(curve: DiagramCurve): [number, number] | null {
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (let i = 0; i < curve.points.length - 1; i += 1) {
+    const a = curve.points[i];
+    const b = curve.points[i + 1];
+    if (Math.abs(b.x - a.x) < EPS) continue;
+    lo = Math.min(lo, a.x, b.x);
+    hi = Math.max(hi, a.x, b.x);
+  }
+  return lo <= hi ? [lo, hi] : null;
+}
+
+/** The curve's height at `x` — the first non-vertical segment spanning it — or null. */
+export function curveYAt(curve: DiagramCurve, x: number): number | null {
+  for (let i = 0; i < curve.points.length - 1; i += 1) {
+    const a = curve.points[i];
+    const b = curve.points[i + 1];
+    if (Math.abs(b.x - a.x) < EPS) continue;
+    const lo = Math.min(a.x, b.x);
+    const hi = Math.max(a.x, b.x);
+    if (x < lo - EPS || x > hi + EPS) continue;
+    const t = (x - a.x) / (b.x - a.x);
+    return a.y + t * (b.y - a.y);
+  }
+  return null;
+}
+
+function segmentCrossing(
+  p1: DiagramPoint,
+  p2: DiagramPoint,
+  p3: DiagramPoint,
+  p4: DiagramPoint,
+): DiagramPoint | null {
+  const d1x = p2.x - p1.x;
+  const d1y = p2.y - p1.y;
+  const d2x = p4.x - p3.x;
+  const d2y = p4.y - p3.y;
+  const denominator = d1x * d2y - d1y * d2x;
+  if (Math.abs(denominator) < EPS) return null;
+  const t = ((p3.x - p1.x) * d2y - (p3.y - p1.y) * d2x) / denominator;
+  const u = ((p3.x - p1.x) * d1y - (p3.y - p1.y) * d1x) / denominator;
+  if (t < -EPS || t > 1 + EPS || u < -EPS || u > 1 + EPS) return null;
+  return { x: p1.x + t * d1x, y: p1.y + t * d1y };
+}
+
+/** Where two curves first cross, walking `a` from its start; null if they never do. */
+export function curveCrossing(a: DiagramCurve, b: DiagramCurve): DiagramPoint | null {
+  for (let i = 0; i < a.points.length - 1; i += 1) {
+    for (let j = 0; j < b.points.length - 1; j += 1) {
+      const hit = segmentCrossing(a.points[i], a.points[i + 1], b.points[j], b.points[j + 1]);
+      if (hit) return hit;
+    }
+  }
+  return null;
+}
+
+const curveById = (diagram: Diagram, id: string) => diagram.curves.find((c) => c.id === id);
+
+/** Where an anchor reference sits now, or null if what it names is gone or never meets. */
+export function resolveAnchor(diagram: Diagram, ref: DiagramAnchorRef): DiagramPoint | null {
+  if ('point' in ref) return diagram.points.find((p) => p.id === ref.point)?.at ?? null;
+  if ('cross' in ref) {
+    const a = curveById(diagram, ref.cross[0]);
+    const b = curveById(diagram, ref.cross[1]);
+    return a && b ? curveCrossing(a, b) : null;
+  }
+  const curve = curveById(diagram, ref.on);
+  const base = resolveAnchor(diagram, ref.x);
+  if (!curve || !base) return null;
+  const y = curveYAt(curve, base.x);
+  return y === null ? null : { x: base.x, y };
+}
+
+export function resolveAreaX(diagram: Diagram, x: DiagramAreaX): number | null {
+  return typeof x === 'number' ? x : (resolveAnchor(diagram, x)?.x ?? null);
+}
+
+/** An edge's height at `x`: a curve's own, or a level's constant. */
+function edgeYAt(diagram: Diagram, edge: DiagramAreaEdge, x: number): number | null {
+  if ('curve' in edge) {
+    const curve = curveById(diagram, edge.curve);
+    return curve ? curveYAt(curve, x) : null;
+  }
+  return typeof edge.level === 'number'
+    ? edge.level
+    : (resolveAnchor(diagram, edge.level)?.y ?? null);
+}
+
+/**
+ * The polygon an area covers now, in unit space, or null when it cannot be drawn.
+ *
+ * A band walks edge 0 left to right and edge 1 back, sampled at `from`, `to` and every
+ * curve vertex between — exact for polylines. The range is clipped to where both edges
+ * exist, so a curve that stops short of the y-axis bounds the area where it stops.
+ */
+export function areaPolygon(diagram: Diagram, area: DiagramArea): DiagramPoint[] | null {
+  if (!area.band) return area.vertices && area.vertices.length >= 3 ? area.vertices : null;
+
+  const { edges, from, to } = area.band;
+  const x0 = resolveAreaX(diagram, from);
+  const x1 = resolveAreaX(diagram, to);
+  if (x0 === null || x1 === null) return null;
+  let lo = Math.max(0, Math.min(x0, x1));
+  let hi = Math.min(1, Math.max(x0, x1));
+
+  const breaks: number[] = [];
+  for (const edge of edges) {
+    if (!('curve' in edge)) continue;
+    const curve = curveById(diagram, edge.curve);
+    const span = curve ? curveSpan(curve) : null;
+    if (!curve || !span) return null;
+    lo = Math.max(lo, span[0]);
+    hi = Math.min(hi, span[1]);
+    breaks.push(...curve.points.map((p) => p.x));
+  }
+  if (hi - lo < 1e-6) return null;
+
+  const xs = [lo, ...breaks.filter((x) => x > lo + EPS && x < hi - EPS), hi].sort((a, b) => a - b);
+  const unique = xs.filter((x, i) => i === 0 || x - xs[i - 1] > EPS);
+
+  const walk = (edge: DiagramAreaEdge) => {
+    const out: DiagramPoint[] = [];
+    for (const x of unique) {
+      const y = edgeYAt(diagram, edge, x);
+      if (y === null) return null;
+      out.push({ x, y });
+    }
+    return out;
+  };
+  const first = walk(edges[0]);
+  const second = walk(edges[1]);
+  if (!first || !second) return null;
+
+  const polygon = [...first, ...second.reverse()];
+  // Where the two edges meet (a triangle's apex) the walk visits the point twice.
+  return polygon.filter((p, i) => {
+    const prev = polygon[(i + polygon.length - 1) % polygon.length];
+    return Math.hypot(p.x - prev.x, p.y - prev.y) > 1e-7;
+  });
+}
+
+/** The area-weighted centre of a polygon; the vertex mean when it is degenerate. */
+export function polygonCentroid(points: DiagramPoint[]): DiagramPoint {
+  let twiceArea = 0;
+  let cx = 0;
+  let cy = 0;
+  for (let i = 0; i < points.length; i += 1) {
+    const a = points[i];
+    const b = points[(i + 1) % points.length];
+    const cross = a.x * b.y - b.x * a.y;
+    twiceArea += cross;
+    cx += (a.x + b.x) * cross;
+    cy += (a.y + b.y) * cross;
+  }
+  if (Math.abs(twiceArea) < 1e-12) {
+    const n = points.length || 1;
+    return {
+      x: points.reduce((sum, p) => sum + p.x, 0) / n,
+      y: points.reduce((sum, p) => sum + p.y, 0) / n,
+    };
+  }
+  return { x: cx / (3 * twiceArea), y: cy / (3 * twiceArea) };
+}
+
+/** Even-odd point-in-polygon, for hit-testing an area's body. */
+export function insidePolygon(p: DiagramPoint, polygon: DiagramPoint[]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i, i += 1) {
+    const a = polygon[i];
+    const b = polygon[j];
+    if (a.y > p.y !== b.y > p.y && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+/** Every curve and point id an area's references name. */
+export function areaReferences(area: DiagramArea): string[] {
+  const ids: string[] = [];
+  const anchor = (ref: DiagramAnchorRef) => {
+    if ('point' in ref) ids.push(ref.point);
+    else if ('cross' in ref) ids.push(...ref.cross);
+    else {
+      ids.push(ref.on);
+      anchor(ref.x);
+    }
+  };
+  if (!area.band) return ids;
+  for (const edge of area.band.edges) {
+    if ('curve' in edge) ids.push(edge.curve);
+    else if (typeof edge.level !== 'number') anchor(edge.level);
+  }
+  for (const x of [area.band.from, area.band.to]) if (typeof x !== 'number') anchor(x);
+  return ids;
+}
+
+/** An area as a free polygon, frozen at the shape it has in `diagram`. Null if undrawable. */
+export function freezeArea(diagram: Diagram, area: DiagramArea): DiagramArea | null {
+  const polygon = areaPolygon(diagram, area);
+  if (!polygon) return null;
+  const frozen: DiagramArea = { ...area, vertices: polygon.map((p) => ({ x: p.x, y: p.y })) };
+  delete frozen.band;
+  return frozen;
+}
+
+/**
+ * After an edit that removed geometry, freeze every area whose references it broke.
+ *
+ * `before` is the diagram the areas were drawn against: the frozen polygon is the one
+ * the teacher last saw, so deleting a curve never deletes — or silently hides — the
+ * shading that leaned on it. An area that could not be drawn even then is dropped.
+ */
+export function detachAreas(before: Diagram, after: Diagram): Diagram {
+  if (!after.areas || after.areas.length === 0) return after;
+  const alive = new Set([...after.curves.map((c) => c.id), ...after.points.map((p) => p.id)]);
+  let changed = false;
+  const areas: DiagramArea[] = [];
+  for (const area of after.areas) {
+    if (areaReferences(area).every((id) => alive.has(id))) {
+      areas.push(area);
+      continue;
+    }
+    changed = true;
+    const frozen = freezeArea(before, area);
+    if (frozen) areas.push(frozen);
+  }
+  return changed ? { ...after, areas } : after;
+}
+
+/*
+ * ── Presets: the standard welfare areas ─────────────────────────────────────────
+ */
+
+export type AreaPreset = 'consumerSurplus' | 'producerSurplus' | 'deadweightLoss' | 'taxRevenue';
+
+/** Which curve plays which part. `taxed` is the supply curve after a per-unit tax. */
+export interface MarketCurves {
+  demand?: string;
+  supply?: string;
+  taxed?: string;
+}
+
+const same = (text: string): BiText => ({ en: [{ text }], zh: [{ text }] });
+
+export const AREA_PRESETS: Array<{ id: AreaPreset; name: string; needsTax: boolean; label: BiText }> = [
+  { id: 'consumerSurplus', name: 'Consumer surplus', needsTax: false, label: same('CS') },
+  { id: 'producerSurplus', name: 'Producer surplus', needsTax: false, label: same('PS') },
+  { id: 'deadweightLoss', name: 'Deadweight loss', needsTax: true, label: same('DWL') },
+  {
+    id: 'taxRevenue',
+    name: 'Tax revenue',
+    needsTax: true,
+    // Short: the wedge is often thin, and a teacher usually re-letters it anyway.
+    label: { en: [{ text: 'Tax' }], zh: [{ text: '稅收' }] },
+  },
+];
+
+/** Rising (+1), falling (−1) or neither (0: vertical, flat or a single point). */
+export function curveSlopeSign(curve: DiagramCurve): -1 | 0 | 1 {
+  if (curve.points.length < 2) return 0;
+  const sorted = [...curve.points].sort((a, b) => a.x - b.x);
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+  const dx = last.x - first.x;
+  const dy = last.y - first.y;
+  if (dx < 1e-6 || Math.abs(dy) < 1e-6) return 0;
+  return dy > 0 ? 1 : -1;
+}
+
+/**
+ * A best guess at demand, supply and a taxed supply, by slope: the first falling curve
+ * is demand; of the rising curves that cross it, the lowest crossing is supply and the
+ * next is the taxed one (a tax raises the price buyers pay). The panel lets the
+ * teacher re-pick every bound, so a wrong guess costs a click, not a redraw.
+ */
+export function guessMarketCurves(diagram: Diagram): MarketCurves {
+  const demand = diagram.curves.find((c) => curveSlopeSign(c) < 0);
+  const rising = diagram.curves.filter((c) => curveSlopeSign(c) > 0);
+  if (!demand) return { supply: rising[0]?.id };
+  const crossing = rising
+    .map((curve) => ({ curve, at: curveCrossing(demand, curve) }))
+    .filter((entry): entry is { curve: DiagramCurve; at: DiagramPoint } => entry.at !== null)
+    .sort((a, b) => a.at.y - b.at.y);
+  return {
+    demand: demand.id,
+    supply: crossing[0]?.curve.id ?? rising[0]?.id,
+    taxed: crossing[1]?.curve.id,
+  };
+}
+
+/**
+ * A preset area as references, or null when the curves it needs are missing.
+ *
+ * With a `taxed` curve, CS sits above the price buyers pay and PS below the price
+ * sellers keep (`{ on: supply }` under the taxed quantity); DWL is the triangle between
+ * demand and supply from the taxed quantity to the free-market one, and tax revenue the
+ * rectangle between the two prices. The same bands describe a subsidy.
+ */
+export function presetArea(preset: AreaPreset, curves: MarketCurves, id: string): DiagramArea | null {
+  const { demand, supply, taxed } = curves;
+  if (!demand || !supply) return null;
+  const label = AREA_PRESETS.find((entry) => entry.id === preset)!.label;
+  const market: DiagramAnchorRef = { cross: [demand, taxed ?? supply] };
+  const sellers: DiagramAnchorRef = taxed ? { on: supply, x: market } : market;
+
+  switch (preset) {
+    case 'consumerSurplus':
+      return {
+        id,
+        band: { edges: [{ curve: demand }, { level: market }], from: 0, to: market },
+        label,
+      };
+    case 'producerSurplus':
+      return {
+        id,
+        band: { edges: [{ level: sellers }, { curve: supply }], from: 0, to: market },
+        label,
+      };
+    case 'deadweightLoss':
+      if (!taxed) return null;
+      return {
+        id,
+        band: {
+          edges: [{ curve: demand }, { curve: supply }],
+          from: market,
+          to: { cross: [demand, supply] },
+        },
+        label,
+      };
+    case 'taxRevenue':
+      if (!taxed) return null;
+      return {
+        id,
+        band: { edges: [{ level: market }, { level: sellers }], from: 0, to: market },
+        label,
+        fill: 'hatch',
+      };
+  }
+}
