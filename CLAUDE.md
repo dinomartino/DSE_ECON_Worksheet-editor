@@ -69,7 +69,8 @@ broke.
   `DESKTOP-PREVIEW.md` (copy-paste steps, no tag, no `main`). The web build must stay green too — `npm run build`
   fails if a `@tauri-apps/*` import reached the bundle.
 - Releases are tags, not pushes: `npm version <patch|minor|major>` then `git push
-  --follow-tags`. See `RELEASING.md`.
+  --follow-tags`, then publish the draft once its assets are complete
+  (`gh release edit vX.Y.Z --draft=false --latest`). See `RELEASING.md`.
 
 ## Branches: work on `develop`, `main` ships
 
@@ -79,8 +80,10 @@ broke.
   feature branch cut from it and merged back. Start a session with
   `git switch develop && git pull`. Never commit or push to `main` directly.
 - Pushing `develop` is safe: Vercel builds a preview, CI runs, nothing reaches teachers.
-- **Releasing is the user's call.** Only when they say so: merge `develop` into `main`,
-  then tag on `main` (`npm version …`, `git push --follow-tags`). See `RELEASING.md`.
+- **Releasing is the user's call, and their word is the sign-off.** Only when they say
+  so, but then do the whole sequence without further confirmation: merge `develop` into
+  `main`, tag on `main` (`npm version …`, `git push --follow-tags`), wait for the Release
+  workflow, check the draft's assets, and publish it. See `RELEASING.md`.
 - An urgent fix for teachers: branch from `main`, merge to `main`, then merge `main`
   back into `develop` so the two do not drift.
 
