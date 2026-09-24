@@ -49,3 +49,6 @@ skills-lock.json
 # tauri (Cargo.lock is committed on purpose: reproducible desktop builds)
 /src-tauri/target
 /src-tauri/gen
+
+# website demo media (npm run demo)
+/demo-media/

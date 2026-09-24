@@ -151,6 +151,22 @@ After any UI work, open an exported `.docx` in Word: it is the load-bearing outp
 
 Guard: `npm test`, `npm run typecheck`, `npm run lint` (44 pre-existing problems).
 
+## Record the demo video and screenshots
+
+```bash
+npm run build && python3 -m http.server 3931 -d out &   # the built app: no dev badge
+npm run demo                                            # or: node scripts/demo.mjs --video | --shots
+```
+
+Output lands in `demo-media/` (gitignored): `demo.mp4`, `demo-poster.jpg`, `demo.gif`,
+`screenshots/*.webp` and a generated `README.md` with sizes and the timed storyboard.
+Needs system Chrome and `ffmpeg`; `cwebp` if present, else screenshots are JPEG.
+
+To show a new feature, add one step to `scripts/demo/record.mjs:STORYBOARD` (`name`,
+`caption`, `run(d)`, optional `speed` to fast-forward it) or one entry to
+`scripts/demo/screenshots.mjs:SHOTS`. What gets typed lives in `scripts/demo/content.mjs`,
+and must stay original text, never past-paper questions. Keep the video under 60 s.
+
 ## Try an unreleased desktop build
 
 Follow `DESKTOP-PREVIEW.md`: dev window, a local `.dmg`, or the CI preview workflow.

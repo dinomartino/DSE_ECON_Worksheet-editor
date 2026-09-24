@@ -202,6 +202,7 @@ Invariant: chrome uses semantic tokens (`src/app/globals.css`); anything on the 
 ## scripts — the harnesses
 
 - `scripts/shot.mjs` — screenshot the real app (`--seed`, `--dark`)
+- `scripts/demo.mjs` — website video + screenshots into `demo-media/` (`npm run demo`); steps in `scripts/demo/record.mjs:STORYBOARD`
 - `scripts/emit-samples.test.ts` — real `.docx` files (`npm run samples`)
 - `scripts/cover-verify.mjs` · `scripts/lq-verify.mjs` — the three backends agree
 - `scripts/cover-fixtures.test.ts` · `scripts/lq-fixtures.test.ts` · `scripts/q6-sample.test.ts`

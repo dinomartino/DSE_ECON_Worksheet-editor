@@ -21,6 +21,7 @@
     "test:watch": "vitest src",
     "typecheck": "tsc --noEmit",
     "samples": "vitest run scripts/emit-samples.test.ts",
+    "demo": "node scripts/demo.mjs",
     "tauri": "tauri",
     "desktop:dev": "tauri dev",
     "desktop:build": "tauri build",
