@@ -949,6 +949,11 @@ Renderer rules:
 - **A point's label defaults to `right`** (intersections).
 - **Every piece of diagram text is 10pt** (13⅓px — SVG lays out in CSS px, exports at
   96dpi). The title keeps its underline.
+- **No `url(#id)` for anything that must print.** One page holds several copies of each
+  SVG (sheet, probe, editor), ids collide, and a `<marker>`/`<pattern>` paints with the
+  visibility of *its own* ancestors — the first match sits outside `#print-root`, hidden
+  in print. Arrowheads are triangles (`arrowheadPath`); the pie's patterns survive only
+  via the `body svg pattern *` print rule in `globals.css`.
 
 ### A diagram's words live inside its own image
 
@@ -1254,7 +1259,7 @@ diagram) — after the owner's text and before its dotted lines.
   the live text column (`answerGraphBox`, shared by all three backends).
 - **One node, so it never splits**; the part text before it keeps with it.
 - **Arrowheads are triangles, not `<marker>`s** — a marker resolves by document-wide id,
-  and the probe's copy is gone in print.
+  and a copy outside `#print-root` is hidden in print (§Geometry in, one image out).
 - It is writing room: `omitAnswerSpace` drops it.
 
 ### A section can carry its derived total

@@ -606,6 +606,13 @@ body {
     visibility: visible !important;
   }
 
+  /* A pattern's tiles take visibility from the pattern's own ancestors, and the first
+     `#pieHatch` on the page is an editor copy outside #print-root — so the pie's hatch
+     and dots printed blank. Tiles never paint unless referenced, so this leaks nothing. */
+  body svg pattern * {
+    visibility: visible !important;
+  }
+
   #print-root {
     position: absolute !important;
     inset: 0 auto auto 0 !important;
