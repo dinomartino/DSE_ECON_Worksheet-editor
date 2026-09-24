@@ -1,5 +1,6 @@
 import { COVER_PANEL } from '@/model/cover';
-import { pageDimensions, pageSetupOf } from '@/model/page';
+import { contentWidth, pageDimensions, pageSetupOf } from '@/model/page';
+import { answerGraphBox, answerGraphSvgDataUrl } from '@/render/answerGraph';
 import type { FontPair, LanguageMode, OutputMode, Worksheet } from '@/model/types';
 import { diagramSvgDataUrl } from '@/render/diagram';
 import type { CoverRenderNode, RenderNode } from '@/render/ir';
@@ -12,7 +13,11 @@ import {
   worksheetClipboardHtml,
   worksheetPlainText,
 } from '@/export/clipboard';
-import { collectDiagramNodes, type DiagramImageMap } from '@/export/diagramImage';
+import {
+  collectAnswerGraphNodes,
+  collectDiagramNodes,
+  type DiagramImageMap,
+} from '@/export/diagramImage';
 
 /**
  * The start screen's first-page thumbnail, derived live from a saved document.
@@ -125,6 +130,20 @@ function diagramImages(worksheet: Worksheet, mode: OutputMode): DiagramImageMap 
     } catch {
       // One bad figure leaves a gap, not a blank card.
     }
+  }
+  // Graph answer spaces, by the same rule and the same key the export uses.
+  const textWidth = contentWidth(pageSetupOf(worksheet));
+  for (const node of collectAnswerGraphNodes(worksheet, mode)) {
+    const box = answerGraphBox(node, textWidth);
+    images.set(
+      node.key,
+      answerGraphSvgDataUrl(node, {
+        widthPx: box.widthPx,
+        heightPx: box.imageHeightPx,
+        language: mode.language,
+        fonts: worksheet.fonts,
+      }),
+    );
   }
   return images;
 }

@@ -40,6 +40,8 @@ Words this repository uses in its own way. One line each, with where the thing l
   is, derived not stored; it decides what the editor offers. `src/model/documentShape.ts`
 - **Answer lines** — ruled lines (paragraph bottom border, 24pt pitch). A different
   primitive from answer space. `src/render/ir.ts:AnswerLinesNode`
+- **Graph space** — blank axes (optional grid) a student draws a diagram on; a part's
+  `answerGraph`, whole 12pt lines tall, one PNG in the `.docx`. `src/render/ir.ts:AnswerGraphNode`
 - **Answer space** — the QAB's dotted lines (dotted underline over a tab, 22.1pt pitch).
   `src/render/ir.ts:AnswerSpaceNode`
 - **Fill answer space** — an `answerSpace` whose `lines` is the paginator's *output*, not

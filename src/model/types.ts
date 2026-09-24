@@ -401,6 +401,28 @@ export interface QuestionSubPart {
    * cannot sit inside a question. Absent prints nothing.
    */
   answerSpace?: number;
+  /** Blank axes printed before this sub-part's dotted lines (§ `AnswerGraph`). */
+  answerGraph?: AnswerGraph;
+}
+
+/**
+ * A blank pair of axes for the student to draw on — the answer room of a "draw a
+ * diagram to illustrate…" part. Printed after its owner's text and before its dotted
+ * lines. Blank axes, an optional grid and labels only: a pre-drawn curve is a diagram.
+ */
+export interface AnswerGraph {
+  /** Height in 12pt body lines, so the box keeps the page's fixed line rhythm. */
+  lines: number;
+  /** Absent = the full text column. */
+  width?: 'half';
+  /** Light grey squares over the plot. Absent = plain axes. */
+  grid?: boolean;
+  /** Printed above the y-axis ("Price" / "價格"). Absent or empty prints nothing. */
+  yTitle?: BiText;
+  /** Printed past the x-axis arrow ("Quantity" / "數量"). */
+  xTitle?: BiText;
+  /** The "0" at the origin. Absent prints nothing, as on `Diagram`. */
+  showOrigin?: boolean;
 }
 
 export interface QuestionPart {
@@ -427,6 +449,8 @@ export interface QuestionPart {
    * the whole group.
    */
   answerSpace?: number;
+  /** Blank axes printed before the part's dotted lines (§ `AnswerGraph`). */
+  answerGraph?: AnswerGraph;
 }
 
 export interface StructuredQuestion extends QuestionBase {
@@ -437,6 +461,8 @@ export interface StructuredQuestion extends QuestionBase {
    * Only rendered when the question has **no parts**.
    */
   answerSpace?: number;
+  /** Blank axes under the stem; like `answerSpace`, only when there are no parts. */
+  answerGraph?: AnswerGraph;
   /**
    * Print the trailing "(Total: N marks)" line. Off by default (per-part marking is
    * the norm); stored as opt-in so the absent field means the default. The total

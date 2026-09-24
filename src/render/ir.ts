@@ -434,6 +434,25 @@ export interface AnswerSpaceNode {
 }
 
 /**
+ * Blank axes for a drawn answer (§ `AnswerGraph`), resolved by
+ * `render/answerGraph.ts:answerGraphNode`. Exports as one rasterised PNG in one
+ * paragraph exactly `lines` × 12pt tall, keyed by `key` in the diagram image map.
+ */
+export interface AnswerGraphNode {
+  kind: 'answerGraph';
+  /** Content-derived: identical boxes share one image, different ones never collide. */
+  key: string;
+  /** Whole 12pt lines, clamped. */
+  lines: number;
+  /** Share of the text column: 1 or 0.5. A half box is centred. */
+  widthShare: number;
+  grid: boolean;
+  showOrigin: boolean;
+  xTitle?: BiText;
+  yTitle?: BiText;
+}
+
+/**
  * The cover page: a two-column sheet of regions. Deliberately **not** a `RenderNode`
  * (nothing in that union is a whole page); regions hold `RenderNode[]` so backends
  * reuse their emitters — only the frame is new.
@@ -482,7 +501,8 @@ export type RenderNode =
   | SpacerNode
   | DividerNode
   | AnswerLinesNode
-  | AnswerSpaceNode;
+  | AnswerSpaceNode
+  | AnswerGraphNode;
 
 /** Context handed to a question type's `render` function. */
 export interface RenderContext {
@@ -519,9 +539,9 @@ export function trailLabel(trail: BiText, language: LanguageMode): string {
   return `${en}\u00a0${zh}`;
 }
 
-/** Writing room: the two primitives `OutputMode.omitAnswerSpace` leaves out. */
+/** Writing room: the primitives `OutputMode.omitAnswerSpace` leaves out. */
 export function isWritingRoom(node: { kind: string }): boolean {
-  return node.kind === 'answerSpace' || node.kind === 'answerLines';
+  return node.kind === 'answerSpace' || node.kind === 'answerLines' || node.kind === 'answerGraph';
 }
 
 /** Convenience: does this node survive in the current output mode? */

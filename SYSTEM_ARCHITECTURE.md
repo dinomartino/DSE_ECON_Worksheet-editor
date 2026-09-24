@@ -477,7 +477,7 @@ otherwise it is twelve invisible spaces. It stays underlined spaces, not a new r
 ```
 RenderNode = TextNode | ColumnsNode | TableNode | ImageNode | DiagramNode
            | FigureRowNode | SourceNode | PageBreakNode | SpacerNode | DividerNode
-           | AnswerLinesNode | AnswerSpaceNode
+           | AnswerLinesNode | AnswerSpaceNode | AnswerGraphNode
 
 TextNode: style (one of 14) · text: BiText · listRef? {stream, definition, level, marker}
           marks? · trail? · keepNext? · teacherOnly? · indent? · format? · edit?: EditTarget
@@ -1238,6 +1238,24 @@ remains the shape for whole-sheet runs. Absent prints nothing.
 whole while Word splits a too-tall question, so the reference's own convention (every
 question opens a fresh page) is what keeps the backends agreeing
 (`scripts/lq-fixtures.test.ts`).
+
+### A graph answer space is blank axes, one image, whole lines
+
+`answerGraph` (`AnswerGraph`, on the question/part/sub-part beside `answerSpace`) prints
+blank axes — labels, optional "0", optional grid, never curves (a pre-drawn curve is a
+diagram) — after the owner's text and before its dotted lines.
+
+- **Its own IR node, not a diagram** (`AnswerGraphNode`): a diagram's box is measured
+  from its plot aspect; this box is set by lines and column share. It rides the diagram
+  pipeline anyway: `render/answerGraph.ts:answerGraphSvg` → the same PNG pre-pass, keyed
+  by a content key in the same map, one inline picture in Word, one `<img>` on paste.
+- **Height is whole 12pt lines**: one paragraph, `w:line` = lines × 240, `atLeast`; the
+  picture is `ANSWER_GRAPH_INSET_PX` shorter so the line never grows. Width is a share of
+  the live text column (`answerGraphBox`, shared by all three backends).
+- **One node, so it never splits**; the part text before it keeps with it.
+- **Arrowheads are triangles, not `<marker>`s** — a marker resolves by document-wide id,
+  and the probe's copy is gone in print.
+- It is writing room: `omitAnswerSpace` drops it.
 
 ### A section can carry its derived total
 

@@ -1,5 +1,6 @@
 import { plain, runLines } from '@/model/text';
-import { twipsToPt } from '@/model/page';
+import { contentWidth, DEFAULT_PAGE_SETUP, pageSetupOf, twipsToPt } from '@/model/page';
+import { answerGraphBox } from '@/render/answerGraph';
 import type {
   BiText,
   FontPair,
@@ -132,8 +133,23 @@ function nodeHtml(
   language: LanguageMode,
   fontCss: string,
   diagramImages: DiagramImageMap = new Map(),
+  /** The live text column; only a graph answer space reads it (§ `answerGraphBox`). */
+  textWidthTwips: number = contentWidth(DEFAULT_PAGE_SETUP),
 ): string {
   if (node.kind === 'text') return textNodeHtml(node, language, fontCss);
+
+  if (node.kind === 'answerGraph') {
+    // Its PNG from the same pre-pass map, at the size the `.docx` places it; the
+    // paragraph is the box's full height, so the paste keeps the room.
+    const src = diagramImages.get(node.key);
+    if (!src) return '';
+    const box = answerGraphBox(node, textWidthTwips);
+    return (
+      `<p style="text-align:${node.widthShare < 1 ? 'center' : 'left'};margin:0;` +
+      `line-height:${(box.boxHeightPx * 3) / 4}pt"><img src="${src}" width="${box.widthPx}" ` +
+      `height="${box.imageHeightPx}" alt="Blank axes"/></p>`
+    );
+  }
 
   if (node.kind === 'table') {
     const rows = node.rows
@@ -375,7 +391,8 @@ export function worksheetClipboardHtml(
   const rendered = renderWorksheet(worksheet, mode);
   const css = fontCss(worksheet.fonts);
   const parts: string[] = [];
-  const html = (node: RenderNode) => nodeHtml(node, mode.language, css, diagramImages);
+  const textWidth = contentWidth(pageSetupOf(worksheet));
+  const html = (node: RenderNode) => nodeHtml(node, mode.language, css, diagramImages, textWidth);
 
   /*
    * The cover is deliberately not copied, by the same rule that keeps page setup and
@@ -418,7 +435,11 @@ export function questionClipboardHtml(
   const match = rendered.questions.find((entry) => entry.questionId === questionId);
   if (match) {
     return wrapHtml(
-      match.nodes.map((node) => nodeHtml(node, mode.language, css, diagramImages)).join(''),
+      match.nodes
+        .map((node) =>
+          nodeHtml(node, mode.language, css, diagramImages, contentWidth(pageSetupOf(worksheet))),
+        )
+        .join(''),
       css,
     );
   }
@@ -471,6 +492,8 @@ export function worksheetPlainText(worksheet: Worksheet, mode: OutputMode): stri
     } else if (node.kind === 'image' || node.kind === 'diagram') {
       const fallback = node.kind === 'diagram' ? 'Diagram' : 'Image';
       lines.push(`[${plain(node.altText.en) || plain(node.altText.zh) || fallback}]`);
+    } else if (node.kind === 'answerGraph') {
+      lines.push('[Blank axes]');
     } else if (node.kind === 'divider') {
       lines.push('---');
     } else if (node.kind === 'answerLines' || node.kind === 'answerSpace') {
