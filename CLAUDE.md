@@ -54,7 +54,7 @@ broke.
 
 ## Verifying work
 
-- `npm test` — 1187 tests, ~2s. `npm run typecheck`, `npm run lint` (44 pre-existing
+- `npm test` — 1234 tests, ~2s. `npm run typecheck`, `npm run lint` (44 pre-existing
   problems: 3 errors, 41 warnings — in `Preview.tsx` and `InlineEditable.tsx`).
 - `src/test/codemap.test.ts` guards the docs: every path and `path:symbol` cited in
   `docs/` must still exist. If it fails, the map rotted — fix the map.

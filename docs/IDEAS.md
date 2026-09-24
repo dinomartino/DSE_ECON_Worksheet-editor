@@ -23,31 +23,30 @@ happens after the paper is sat. Nobody makes editable economics diagrams.
 Remove from this list once released.
 
 - **Export dialog + separate answer key** (was A1) — `src/components/editor/ExportDialog.tsx`,
-  `src/render/answerKey.ts:renderAnswerKey`. Not yet: answer space on/off, cover on/off.
+  `src/render/answerKey.ts:renderAnswerKey`.
 - **Paper health check** (was A2) — `src/model/paperHealth.ts:checkPaper`, shown in the
   export dialog. Not yet: "answer any ONE" sections are summed in full; the Paper 2
   1.5 min/mark rate assumes ~100 marks (unverified).
 - **Backup zip + restore** (was F1) — `src/storage/backup.ts`.
 - **Trash with 30-day restore** (was F2) — `src/storage/trash.ts`.
+- **Seeded MCQ versions A–D** (was A3) — `src/model/versions.ts`, registry `variant` hook,
+  per-version keys and a version map in the answer key. Not yet: version in the running
+  header; the side panel lists options in version A order while the page shows B.
+- **Other-apps export** (was A4) — `src/export/csv/answerKeyCsv.ts`: ZipGrade key, plain
+  key CSV, Kahoot `.xlsx`, Blooket CSV. No real import tried in any of the four apps.
+- **Export toggles** — cover on/off, answer space on/off (`OutputMode.omitCover` /
+  `omitAnswerSpace`, export-time only).
 
 ## Recommended order
 
-1. **Now** — the rest of A (versions, key CSV, answer space on/off and cover on/off in
-   the export dialog).
-2. **Next** — seeded MCQ versions and key CSV (A3, A4), HKEAA marking-point notation
-   (B1), topic tags (C1) → local question library (C2).
+1. **Now** — in-app feedback (see Other), paper summary bar (A5), HKEAA marking-point
+   notation (B1).
+2. **Next** — topic tags (C1) → local question library (C2).
 3. **Later** — paste/Word import (D1, D2), BYOK AI (E), item analysis (G1), diagram
    shading (B3).
 
-## A. Export and paper checks — every builder has these; we have none
+## A. Export and paper checks
 
-- **A3 Seeded MCQ versions A/B/C** (M). Store only a seed, count and per-option pins;
-  shuffle at render in `src/render/worksheet.ts:renderWorksheet`; print a version letter,
-  per-version keys and a version map. Combination-statement MCQs and stimulus groups
-  never reshuffle. *ExamView, TestGen, Respondus, EdCity OQB.*
-- **A4 Answer-key CSV** (S) for ZipGrade/Gradescope bubble sheets, and MCQ export to
-  Kahoot `.xlsx` / Blooket CSV / Forms text (S each). Built client-side; warn on
-  over-long items. *ZipGrade, Brisk, Wordwall.*
 - **A5 Paper summary bar with a target** (S): "38/45 MCQ · 52 marks · ~61 min", with an
   optional blueprint. *examWizard, Exampro, ExamSoft.*
 
@@ -135,6 +134,12 @@ point. *All of MagicSchool, Brisk, Diffit, Eduaide, QuestionWell, MS Teach.*
 - **G4 In-browser phone OMR** (L) — do A4 first; existing apps already scan.
 
 ## Other
+
+- **In-app feedback** (S): a Feedback dialog (editor ⋯ menu and start screen) that
+  builds a bug/idea report with app version, platform and OS, then opens a prefilled
+  GitHub issue (repo is public, issues on), a `mailto:`, or copies to the clipboard.
+  No server, no token in the bundle (anyone could read it), never the document itself —
+  offer a JSON download to attach by hand. Prefill URLs cap at ~8k chars.
 
 - **Presentation mode** (M): one question at a time, reveal the scheme. *Kuta.*
 - **Large-print / dyslexia output profile** (M) — conflicts with the fixed 12pt line, so

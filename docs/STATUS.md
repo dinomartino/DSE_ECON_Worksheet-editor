@@ -16,6 +16,10 @@ off the bottom.** It is the first thing a fresh session reads — then
   and notarised, Windows x64 unsigned. Steps in `RELEASING.md`.
 - **Web stays the primary target.** Static export on Vercel, no server runtime. The web
   build must stay green — `npm run build` fails if a `@tauri-apps/*` import reached the bundle.
+- **Seeded MCQ versions, other-apps export (ZipGrade / key CSV / Kahoot / Blooket), and
+  cover / answer-space export toggles — built 2026-09-24 on `develop`** by three parallel
+  agents, merged by hand in `ExportDialog.tsx`. Browser-verified together; desktop save
+  paths and real imports into the four apps not tried.
 - **Export dialog, answer key, paper check, backup zip, Trash — built 2026-09-24 on
   `develop`.** Browser-verified on the web; desktop paths (two save sheets, zip pick,
   trash folder moves) not yet run in `npm run desktop:dev`.
@@ -31,7 +35,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Last verified
 
-- `npm test` — 1187 tests in 69 files, ~2s. Green. `npm run build` green; `npm run samples` exports.
+- `npm test` — 1234 tests in 74 files, ~2s. Green. `npm run build` green; `npm run samples` exports.
 - `npm run typecheck` — clean.
 - `npm run lint` — 44 pre-existing problems (3 errors, 41 warnings) in `Preview.tsx` and
   `InlineEditable.tsx`. Not a regression; do not "fix" by rewriting those files.
@@ -56,23 +60,24 @@ off the bottom.** It is the first thing a fresh session reads — then
   installed app can ever accept another update.
 - **`app.security.csp` is `null`** in `src-tauri/tauri.conf.json` — Next's static export
   inlines its bootstrap scripts. Tightening it means nonced scripts first.
+- **A bare `npx vitest run` rewrites the frozen corpus**: `scripts/emit-v1-corpus.test.ts`
+  runs and regenerates `src/test/corpus/v1-published.json`. Always use `npm test`; if the
+  corpus shows as modified, `git checkout` it. Consider excluding that script from the
+  default vitest include.
 - **`scripts/*.test.ts` are not in `npm test`** (which is `vitest run src`), though
   `vitest.config.ts` includes them. They are hand-run harnesses; nothing in CI catches a
   break in them.
 
 ## Log
 
-- **2026-09-24** — Start-screen sidebar decluttered: "Open a file…" row (json or zip),
-  library tools moved to dashboard header (Trash icon + ⋯), version line with refresh icon.
-- **2026-09-24** — Updates download silently, banner only when ready (saves first). Update check once per launch with one shared state; version + "Check for
-  updates" at the start screen's bottom-left and in the editor ⋯ menu. Banner no longer
-  overflows the window; start screen renders after hydration (fixed a desktop mismatch).
+- **2026-09-24** — Three features in parallel worktrees, merged: seeded MCQ versions A–D
+  (`src/model/versions.ts`, registry `variant` hook, per-version keys + version map),
+  other-apps export (`src/export/csv/`), export toggles (`OutputMode.omitCover` /
+  `omitAnswerSpace`). Dropped the year-specific Paper 2 template idea. In-app feedback
+  planned (GitHub issue prefill), see IDEAS.
+- **2026-09-24** — Start-screen sidebar decluttered; updates download silently with the
+  banner only when ready; update check once per launch; version + "Check for updates"
+  on the start screen and in the editor ⋯ menu.
 - **2026-09-24** — Export dialog (paper / answer key / both), answer-key `.docx` via a
   new registry hook, pre-print paper check, backup-all zip + restore, Trash (30 days).
   Registry grep now covers ten modules. Work moved to the `develop` branch.
-- **2026-09-24** — File dashboard on the start screen (thumbnails, search, filter, sort,
-  grid/list); desktop default export folder, native import, reveal in Finder/Explorer.
-  Clipboard's `escapeHtml`/`richHtml`/`formatCss` now exported for the thumbnail.
-  Competitor research (5 slices) → `docs/IDEAS.md`.
-- **2026-09-22** — Docs orientation layer + rot test; download widget; released v0.2.0;
-  shipped the desktop app (Tauri 2, file-backed store, self-updates).
