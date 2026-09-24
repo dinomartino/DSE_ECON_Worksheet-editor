@@ -27,6 +27,7 @@ import {
   exactLineFor,
 } from './styles';
 import { marksAnchorRuns, trailingBlankLines } from '@/model/text';
+import { trailLabel } from '@/render/ir';
 import { COVER_PANEL } from '@/model/cover';
 import { attrs, escapeXml } from './xml';
 
@@ -215,9 +216,15 @@ function textNodeXml(node: TextNode, context: BodyContext): string {
   const fonts = node.format?.fonts ?? context.fonts;
   let runs = biTextRuns(node.text, fonts, context.language, formatRunOptions(node.format));
 
-  if (node.marks !== undefined) {
+  // A scheme's "(1)" / "max: 4" rides the same tab as a marks label (§ `TextNode.trail`).
+  const trail =
+    node.marks === undefined && node.trail ? trailLabel(node.trail, context.language) : '';
+  if (node.marks !== undefined || trail) {
     const marks =
-      '<w:r><w:tab/></w:r>' + marksRuns(node.marks, context.fonts, context.language);
+      '<w:r><w:tab/></w:r>' +
+      (node.marks !== undefined
+        ? marksRuns(node.marks, context.fonts, context.language)
+        : richTextRuns([{ text: trail }], context.fonts, {}));
     /*
      * The marks go on the last line that has text, not after a trailing hard break.
      *
@@ -257,7 +264,7 @@ function textNodeXml(node: TextNode, context: BodyContext): string {
     keepNext: node.keepNext,
     keepLines: node.keepLines,
     indent: node.indent,
-    tabRight: node.marks !== undefined,
+    tabRight: node.marks !== undefined || trail !== '',
     tabRightAt: context.contentWidth,
     format: node.format,
   });

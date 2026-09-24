@@ -25,8 +25,9 @@ describe('a trailing hard break', () => {
   it('renders the blank line the .docx prints, via a filler <br>', () => {
     expect(PREVIEW).toContain('{trailingBreakFiller && <br aria-hidden />}');
     // Counted from the model, and only where the marks twin does not already hold the
-    // final line open — a marks paragraph with a filler would gain a line Word lacks.
-    expect(PREVIEW).toMatch(/node\.marks === undefined && trailingBlankLines\(tailRuns\) > 0/);
+    // final line open — a marks (or scheme trail) paragraph with a filler would gain a
+    // line Word lacks.
+    expect(PREVIEW).toMatch(/!trailText && trailingBlankLines\(tailRuns\) > 0/);
   });
 });
 

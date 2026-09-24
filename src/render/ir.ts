@@ -10,13 +10,14 @@ import type {
   ContentBlock,
   DiagramBlock,
   ImageBlock,
+  LanguageMode,
   OutputMode,
   TableAlign,
   TableBlock,
   TableBorders,
   TextFormat,
 } from '@/model/types';
-import { isBiTextEmpty, trailingBlankLines } from '@/model/text';
+import { isBiTextEmpty, plain, trailingBlankLines } from '@/model/text';
 import { defaultFramed } from '@/model/edits';
 import {
   resolveCellEdges,
@@ -116,6 +117,12 @@ export interface TextNode {
   listRef?: ListRef;
   /** Trailing "(4 marks) / （4分）" appended on the same line, right-aligned via tab. */
   marks?: number;
+  /**
+   * A label in the marks position with other wording — a marking scheme's "(1)" or
+   * "max: 4". Derived, never edited; `marks` wins when both are set. Every backend
+   * prints `trailLabel()`.
+   */
+  trail?: BiText;
   /** Keep with the following paragraph so a question is not split (§7.6). */
   keepNext?: boolean;
   /** Keep this paragraph's own lines on one page (`w:keepLines`) — the docx half of
@@ -496,6 +503,20 @@ export interface RenderContext {
    * constants directly, so one document renders on one scheme throughout.
    */
   indents: ListIndentScheme;
+}
+
+/**
+ * A `trail` as one line of text, for all three backends. Bilingual mode joins the two
+ * sides with a no-break space (as the marks label does), but prints a side once when
+ * the other is empty or the same — "(1)" is not language text.
+ */
+export function trailLabel(trail: BiText, language: LanguageMode): string {
+  const en = plain(trail.en);
+  const zh = plain(trail.zh);
+  if (language === 'en') return en || zh;
+  if (language === 'zh') return zh || en;
+  if (!en || !zh || en === zh) return en || zh;
+  return `${en}\u00a0${zh}`;
 }
 
 /** Writing room: the two primitives `OutputMode.omitAnswerSpace` leaves out. */

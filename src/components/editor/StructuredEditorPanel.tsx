@@ -15,6 +15,19 @@ import { ChevronDownIcon, ChevronRightIcon } from '@/components/ui/icons';
 import { BiTextField } from './BiTextField';
 import { BlockEditor } from './BlockEditor';
 import { excerptOfBlocks, MiniNumber, scrollPageTo } from './panelRows';
+import { MarkSchemeEditor } from './MarkSchemeEditor';
+import type { MarkScheme } from '@/model/markSchemeTypes';
+
+/** Set or drop a leaf's scheme; removing it leaves no `scheme: undefined` key behind. */
+function withScheme<T extends { scheme?: MarkScheme }>(leaf: T, scheme: MarkScheme | undefined): T {
+  const next = { ...leaf };
+  if (scheme) next.scheme = scheme;
+  else delete next.scheme;
+  return next;
+}
+
+const replacePart = (parts: QuestionPart[], index: number, part: QuestionPart) =>
+  parts.map((entry, i) => (i === index ? part : entry));
 
 /**
  * Which part (and sub-part) of this question owns an edit-target key, if any.
@@ -498,6 +511,21 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                                       })
                                     }
                                   />
+                                  <MarkSchemeEditor
+                                    scheme={subPart.scheme}
+                                    printedMarks={
+                                      sharesMarks && subIndex === subParts.length - 1
+                                        ? part.marks
+                                        : subPart.marks
+                                    }
+                                    onChange={(scheme) =>
+                                      patchPart(partIndex, {
+                                        subParts: subParts.map((s, i) =>
+                                          i === subIndex ? withScheme(s, scheme) : s,
+                                        ),
+                                      })
+                                    }
+                                  />
                                 </div>
                               )}
                             </div>
@@ -510,6 +538,11 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                       label="Answer / marking scheme (teacher version)"
                       value={part.answer ?? emptyBiText()}
                       onChange={(answer) => patchPart(partIndex, { answer })}
+                    />
+                    <MarkSchemeEditor
+                      scheme={part.scheme}
+                      printedMarks={hasSubParts ? partMarks(part) : part.marks}
+                      onChange={(scheme) => setParts(replacePart(question.parts, partIndex, withScheme(part, scheme)))}
                     />
                   </div>
                 )}

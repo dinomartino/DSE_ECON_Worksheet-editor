@@ -1,12 +1,15 @@
 import { createStructuredQuestion } from '@/model/factories';
 import { questionMarks } from '@/model/marks';
+import { isSchemeEmpty, schemeTexts } from '@/model/markScheme';
+import type { MarkScheme } from '@/model/markSchemeTypes';
 import {
   partLabel,
   subPartLabel,
 } from '@/model/numbering';
 import { areBlocksEmpty, bi, isBiTextEmpty } from '@/model/text';
-import type { StructuredQuestion } from '@/model/types';
+import type { BiText, StructuredQuestion } from '@/model/types';
 import { pushGap, renderContentBlocks, type RenderContext, type RenderNode } from '@/render/ir';
+import { renderMarkScheme } from '@/render/markScheme';
 import { StructuredEditorPanel } from '@/components/editor/StructuredEditorPanel';
 import type { AnswerKeyEntry, AnswerKeyRow } from '@/render/answerKey';
 import type { QuestionHealthFacts, QuestionTypeDefinition } from './types';
@@ -212,6 +215,12 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
         edit: { kind: 'partAnswer', questionId: question.id, partId: part.id },
       });
     }
+    // The HKEAA scheme follows the plain answer, teacher version only.
+    if (!hasSubParts) {
+      nodes.push(
+        ...renderMarkScheme(part.scheme, { indent: context.indents.partText, teacherOnly: true }),
+      );
+    }
 
     subParts.forEach((subPart, subIndex) => {
       const [subFirst, ...subRest] = subPart.blocks;
@@ -276,6 +285,12 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
           },
         });
       }
+      nodes.push(
+        ...renderMarkScheme(subPart.scheme, {
+          indent: context.indents.subPartText,
+          teacherOnly: true,
+        }),
+      );
 
       // The QAB's writing room, directly under the sub-part it answers (§ the LQ
       // line). Absent prints nothing, like marks.
@@ -294,6 +309,11 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
         indent: context.indents.partText,
         edit: { kind: 'partAnswer', questionId: question.id, partId: part.id },
       });
+    }
+    if (hasSubParts) {
+      nodes.push(
+        ...renderMarkScheme(part.scheme, { indent: context.indents.partText, teacherOnly: true }),
+      );
     }
 
     // The part's own writing room, after the whole group. Each sub-part's space is its
@@ -331,9 +351,11 @@ function countMissingTranslations(question: StructuredQuestion): number {
     checkBlocks(part.blocksBefore ?? []);
     checkBlocks(part.blocks);
     check(part.answer);
+    schemeTexts(part.scheme).forEach(check);
     (part.subParts ?? []).forEach((sub) => {
       checkBlocks(sub.blocks);
       check(sub.answer);
+      schemeTexts(sub.scheme).forEach(check);
     });
   });
   return missing;
@@ -347,8 +369,11 @@ function healthFacts(question: StructuredQuestion): QuestionHealthFacts {
     const subParts = part.subParts ?? [];
     if (!areBlocksEmpty(part.blocksBefore) || !areBlocksEmpty(part.blocks)) bodyEmpty = false;
     if (subParts.some((sub) => !areBlocksEmpty(sub.blocks))) bodyEmpty = false;
-    if (!isBiTextEmpty(part.answer)) continue;
-    unansweredParts += subParts.length === 0 ? 1 : subParts.filter((sub) => isBiTextEmpty(sub.answer)).length;
+    // A marking scheme answers its leaf as fully as answer text does.
+    const answered = (leaf: { answer?: BiText; scheme?: MarkScheme }) =>
+      !isBiTextEmpty(leaf.answer) || !isSchemeEmpty(leaf.scheme);
+    if (answered(part)) continue;
+    unansweredParts += subParts.length === 0 ? 1 : subParts.filter((sub) => !answered(sub)).length;
   }
   return { empty: areBlocksEmpty(question.blocks) && bodyEmpty, unansweredParts };
 }
@@ -370,6 +395,7 @@ function answerKey(question: StructuredQuestion): AnswerKeyEntry {
       label: partLabel(partIndex),
       marks: hasSubParts ? undefined : part.marks,
       answer: hasSubParts ? undefined : part.answer,
+      ...(!hasSubParts && part.scheme ? { scheme: part.scheme } : {}),
     });
     subParts.forEach((subPart, subIndex) => {
       rows.push({
@@ -377,10 +403,18 @@ function answerKey(question: StructuredQuestion): AnswerKeyEntry {
         label: subPartLabel(subIndex),
         marks: subIndex === sharedMarksIndex ? part.marks : subPart.marks,
         answer: subPart.answer,
+        ...(subPart.scheme ? { scheme: subPart.scheme } : {}),
       });
     });
-    // A part with sub-parts may still carry an aggregate answer, printed after the group.
-    if (hasSubParts && !isBiTextEmpty(part.answer)) rows.push({ depth: 1, answer: part.answer });
+    // A part with sub-parts may still carry an aggregate answer (and scheme), printed
+    // after the group.
+    if (hasSubParts && (!isBiTextEmpty(part.answer) || !isSchemeEmpty(part.scheme))) {
+      rows.push({
+        depth: 1,
+        ...(!isBiTextEmpty(part.answer) ? { answer: part.answer } : {}),
+        ...(part.scheme ? { scheme: part.scheme } : {}),
+      });
+    }
   });
   // With no parts the question is the leaf, and its marks ride on its own line.
   const marks = question.parts.length === 0 ? questionMarks(question) || undefined : undefined;
