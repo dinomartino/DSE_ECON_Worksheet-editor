@@ -1,4 +1,6 @@
-import type { LanguageMode, VersionMode } from '@/model/types';
+import type { LanguageMode, OutputMode, VersionMode, Worksheet } from '@/model/types';
+import { isWritingRoom } from '@/render/ir';
+import { renderWorksheet } from '@/render/worksheet';
 
 /**
  * What the Export dialog writes, and how the files reach disk. Pure, so the delivery
@@ -12,6 +14,33 @@ export interface ExportChoice {
   language: LanguageMode;
   /** The question paper's version; the answer key has none. */
   version: VersionMode;
+  /** Question paper only; absent = included. */
+  includeCover?: boolean;
+  includeAnswerSpace?: boolean;
+}
+
+/** The question paper's output mode. An omit flag is set only when on, so the default is unchanged. */
+export function paperMode(choice: ExportChoice): OutputMode {
+  return {
+    language: choice.language,
+    version: choice.version,
+    ...(choice.includeCover === false ? { omitCover: true } : {}),
+    ...(choice.includeAnswerSpace === false ? { omitAnswerSpace: true } : {}),
+  };
+}
+
+/** What this document has for the "Include" toggles to leave out, read off its IR. */
+export function omittableParts(
+  worksheet: Worksheet,
+  mode: OutputMode,
+): { cover: boolean; answerSpace: boolean } {
+  const rendered = renderWorksheet(worksheet, mode);
+  return {
+    cover: rendered.cover !== undefined,
+    answerSpace: rendered.items.some((item) =>
+      (item.type === 'question' ? item.question.nodes : item.layout.nodes).some(isWritingRoom),
+    ),
+  };
 }
 
 export type ExportKind = 'paper' | 'answerKey';

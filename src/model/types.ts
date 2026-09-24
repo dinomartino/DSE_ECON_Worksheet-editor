@@ -794,4 +794,11 @@ export type VersionMode = 'student' | 'teacher';
 export interface OutputMode {
   language: LanguageMode;
   version: VersionMode;
+  /** Export-time only, never stored: leave the cover page out. Absent = print it. */
+  omitCover?: boolean;
+  /**
+   * Export-time only, never stored: leave out the writing room — dotted answer space
+   * (fill elements included) and ruled answer lines. Absent = print it.
+   */
+  omitAnswerSpace?: boolean;
 }

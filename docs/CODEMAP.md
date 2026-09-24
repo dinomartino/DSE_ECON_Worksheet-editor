@@ -164,6 +164,7 @@ Invariants:
 
 - `src/components/EditorApp.tsx:EditorApp` — the shell, autosave, export actions
 - `src/components/editor/ExportDialog.tsx:ExportDialog` — paper / answer key / both; `src/components/editor/exportSession.ts:deliverFiles` — one web download per click
+- `src/components/editor/exportSession.ts:paperMode` — "Include" toggles → `OutputMode.omitCover` / `omitAnswerSpace` (export-time, never stored; the preview ignores them)
 - `src/components/editor/Sidebar.tsx:Sidebar` · `src/components/editor/Inspector.tsx:Inspector`
 - `src/components/editor/Outline.tsx:Outline` · `:groupByPage` · `src/components/editor/AddRail.tsx:AddRail`
 - `src/components/editor/DiagramCanvas.tsx:DiagramCanvas` · `src/components/editor/DocumentSettings.tsx`

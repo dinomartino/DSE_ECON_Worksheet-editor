@@ -495,8 +495,14 @@ export interface RenderContext {
   indents: ListIndentScheme;
 }
 
-/** Convenience: does this node survive in the current version mode? */
+/** Writing room: the two primitives `OutputMode.omitAnswerSpace` leaves out. */
+export function isWritingRoom(node: { kind: string }): boolean {
+  return node.kind === 'answerSpace' || node.kind === 'answerLines';
+}
+
+/** Convenience: does this node survive in the current output mode? */
 export function includeNode(node: RenderNode, mode: OutputMode): boolean {
+  if (mode.omitAnswerSpace && isWritingRoom(node)) return false;
   if (mode.version === 'teacher') return true;
   return !('teacherOnly' in node && node.teacherOnly);
 }

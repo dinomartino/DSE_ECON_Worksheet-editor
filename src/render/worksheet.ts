@@ -25,6 +25,7 @@ import {
   blankLine,
   endsInBlankLine,
   includeNode,
+  isWritingRoom,
   pushGap,
   renderContentBlocks,
   withLeadingGap,
@@ -313,7 +314,7 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
     .map((band) => renderBand(band, total))
     .filter((node): node is RenderNode => node !== undefined);
 
-  const cover = worksheet.cover
+  const cover = worksheet.cover && !mode.omitCover
     ? renderCover(worksheet.cover, worksheet.baseFontSize)
     : undefined;
 
@@ -362,7 +363,11 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
   // Paper 1 spaces exactly as a wizard-built one.
   const shape = documentShape(worksheet);
 
-  const resolved = resolveFlow(worksheet);
+  // Omitted writing room leaves the flow as if never placed, so boundaries close up
+  // and a fill element no longer ends its sheet in any backend.
+  const resolved = resolveFlow(worksheet).filter(
+    (item) => !(mode.omitAnswerSpace && item.type === 'layout' && isWritingRoom(item.element)),
+  );
 
   // Each stimulus's derived question range ("Questions 8 and 9"), from the numbering
   // plan — never stored, so inserting or reordering questions renumbers the sentence.

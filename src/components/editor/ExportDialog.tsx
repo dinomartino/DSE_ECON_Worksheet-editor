@@ -1,14 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { LanguageMode, OutputMode, VersionMode, Worksheet } from '@/model/types';
 import { DOCX_FILTERS, isDesktop, saveFile } from '@/platform';
-import { Button, Segmented } from '@/components/ui';
+import { Button, CheckField, Segmented } from '@/components/ui';
 import { Dialog, Field } from '@/components/ui/Dialog';
 import { DownloadIcon } from '@/components/ui/icons';
 import {
   deliverFiles,
   exportKinds,
+  omittableParts,
+  paperMode,
   type ExportChoice,
   type ExportFile,
   type ExportRun,
@@ -36,7 +38,7 @@ async function buildFiles(worksheet: Worksheet, choice: ExportChoice): Promise<E
   const files: ExportFile[] = [];
   for (const kind of exportKinds(choice.what)) {
     if (kind === 'paper') {
-      const mode: OutputMode = { language: choice.language, version: choice.version };
+      const mode = paperMode(choice);
       files.push({
         kind,
         name: docx.docxFileName(worksheet, mode),
@@ -75,6 +77,9 @@ export function ExportDialog({ worksheet, mode, onClose, onExported, checks }: E
   const [what, setWhat] = useState<ExportWhat>('paper');
   const [language, setLanguage] = useState<LanguageMode>(mode.language);
   const [version, setVersion] = useState<VersionMode>(mode.version);
+  const [includeCover, setIncludeCover] = useState(true);
+  const [includeAnswerSpace, setIncludeAnswerSpace] = useState(true);
+  const omittable = useMemo(() => omittableParts(worksheet, mode), [worksheet, mode]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>();
   // Web only: files built but waiting for their own click, and what has already gone.
@@ -120,7 +125,13 @@ export function ExportDialog({ worksheet, mode, onClose, onExported, checks }: E
 
   const handleExport = () =>
     void run(async () => ({
-      files: await buildFiles(worksheet, { what, language, version }),
+      files: await buildFiles(worksheet, {
+        what,
+        language,
+        version,
+        includeCover,
+        includeAnswerSpace,
+      }),
       before: [],
     }));
 
@@ -228,6 +239,29 @@ export function ExportDialog({ worksheet, mode, onClose, onExported, checks }: E
                 />
               </Field>
             </div>
+
+            {/* Offered only for what this document has; greyed like the version above. */}
+            {(omittable.cover || omittable.answerSpace) && (
+              <div
+                inert={what === 'answerKey'}
+                className={what === 'answerKey' ? 'opacity-40' : undefined}
+              >
+                <Field label="Include" hint="Untick to leave it out of the question paper.">
+                  <div className="flex flex-wrap gap-x-5 gap-y-1.5">
+                    {omittable.cover && (
+                      <CheckField label="Cover page" checked={includeCover} onChange={setIncludeCover} />
+                    )}
+                    {omittable.answerSpace && (
+                      <CheckField
+                        label="Answer space"
+                        checked={includeAnswerSpace}
+                        onChange={setIncludeAnswerSpace}
+                      />
+                    )}
+                  </div>
+                </Field>
+              </div>
+            )}
           </>
         )}
 
