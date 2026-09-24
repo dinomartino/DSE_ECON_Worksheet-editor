@@ -39,7 +39,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Last verified
 
-- `npm test` — 1355 tests in 82 files, ~2.5s. Green. `npm run build` green; `npm run samples` exports.
+- `npm test` — 1356 tests in 82 files, ~2.5s. Green. `npm run build` green; `npm run samples` exports.
 - `npm run typecheck` — clean.
 - `npm run lint` — 44 pre-existing problems (3 errors, 41 warnings) in `Preview.tsx` and
   `InlineEditable.tsx`. Not a regression; do not "fix" by rewriting those files.
@@ -48,9 +48,13 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Open threads and known gaps
 
-- **SVG `<marker>` arrowheads may vanish in the print PDF** — B4's agent saw it in its own
-  SVG (fixed there with plain triangles); `src/render/diagram.ts:diagramSvg` uses the same
-  `id="arrowhead"` pattern. Being verified/fixed 2026-09-25.
+- **Print PDF doubles a part's "(N marks)"** — seen by two agents in `page.pdf()` output
+  (`(a) … (2 marks) … (2 marks)`); the preview shows one. Predates 2026-09-25. Unverified
+  in a real `window.print()` PDF.
+- **Pie hatch/dot patterns print greyish** — Chrome rasterises `<pattern>` tiles in the
+  PDF. Shaded axis areas avoid this by drawing hatch as clipped lines; the pie could too.
+- `src/render/answerGraph.ts` (~line 208) still blames the pagination probe for hidden
+  markers; the real cause is any copy outside `#print-root`. Comment only.
 - **Diagram thumbnails and print not re-run** after B3; `scripts/cover-verify.mjs` /
   `scripts/lq-verify.mjs` last run by the B4 agent (lq-verify passed, needs `LQ_DIR`).
 - **Windows builds are unsigned.** SmartScreen warns on first run. An OV certificate
@@ -81,7 +85,10 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 - **2026-09-25** — B1–B4 from the backlog built in parallel by Opus sub-agents on
   `feature/b1..b4` branches, merged into `develop`. Rule saved: all code edits go to
-  Opus sub-agents; the coordinator merges and writes the docs.
+  Opus sub-agents; the coordinator merges and writes the docs. Follow-up: SVG `<marker>`
+  and `<pattern>` refs resolved to hidden copies outside `#print-root`, so arrowheads and
+  pie hatching vanished in the print PDF — arrowheads are now plain triangles
+  (`diagram.ts:arrowheadPath`), patterns forced visible in print CSS.
 - **2026-09-24** — Three features in parallel worktrees, merged: seeded MCQ versions A–D
   (`src/model/versions.ts`, registry `variant` hook, per-version keys + version map),
   other-apps export (`src/export/csv/`), export toggles (`OutputMode.omitCover` /
