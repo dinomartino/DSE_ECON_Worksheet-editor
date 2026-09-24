@@ -64,6 +64,9 @@ export type EditTarget =
   | { kind: 'mcqOption'; questionId: string; optionId: string }
   | { kind: 'mcqStatement'; questionId: string; index: number }
   | { kind: 'mcqExplanation'; questionId: string }
+  /** Teacher-only MCQ notes: one option's rationale, and the question's source note. */
+  | { kind: 'mcqRationale'; questionId: string; optionId: string }
+  | { kind: 'mcqProvenance'; questionId: string }
   | { kind: 'partAnswer'; questionId: string; partId: string }
   | { kind: 'subPartAnswer'; questionId: string; partId: string; subPartId: string }
   /** A text-bearing layout element — heading, note, part header, section heading. */

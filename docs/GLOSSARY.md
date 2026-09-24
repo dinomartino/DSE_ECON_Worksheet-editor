@@ -23,6 +23,10 @@ Words this repository uses in its own way. One line each, with where the thing l
   questions, which number against it. `src/model/flow.ts:createStimulusElement`
 - **Source** — a *labelled panel* block ("Source A") framing a mix of blocks, with its own
   label line and footnote. Not the same thing as a stimulus. `src/model/types.ts:SourceBlock`
+- **Provenance** — an MCQ's teacher-only source note ("Modelled on DSE 2023 Q1"), printed
+  "Source:"; not a Source panel. `src/model/types.ts:McqQuestion`
+- **Rationale** — why one MCQ option is right or wrong; teacher-only, stored on the option.
+  `src/model/types.ts:McqOption`
 - **Stem** — a question's own text, above its parts. `STEM_TEXT_INDENT` in `src/model/numbering.ts`
 - **Part / sub-part** — `(a)` and `(i)`; marks may be absent, shared, or per sub-part.
   `src/model/marks.ts`

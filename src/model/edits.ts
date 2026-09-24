@@ -229,6 +229,10 @@ export function editTargetKey(target: EditTarget): string {
       return `mcqStatement:${target.questionId}:${target.index}`;
     case 'mcqExplanation':
       return `mcqExplanation:${target.questionId}`;
+    case 'mcqRationale':
+      return `mcqRationale:${target.optionId}`;
+    case 'mcqProvenance':
+      return `mcqProvenance:${target.questionId}`;
     case 'partAnswer':
       return `partAnswer:${target.partId}`;
     case 'subPartAnswer':
@@ -549,6 +553,13 @@ function mapQuestionById(
   };
 }
 
+/** Set an optional note field, dropping the key when the text is empty. */
+export function withNote<T extends object>(owner: T, key: string, text: BiText): T {
+  const { [key]: _previous, ...rest } = owner as Record<string, unknown>;
+  void _previous;
+  return (isBiTextEmpty(text) ? rest : { ...rest, [key]: text }) as T;
+}
+
 /**
  * Write `text` to the field named by `target`.
  *
@@ -706,6 +717,26 @@ export function applyEditTarget(
         worksheet,
         target.questionId,
         (question) => ({ ...question, explanation: text }) as Question,
+      );
+
+    // Optional notes: a cleared one drops its key (§ A field cleared to nothing).
+    case 'mcqRationale':
+      return mapQuestionById(worksheet, target.questionId, (question) => {
+        const options = (question as { options?: Array<{ id: string }> }).options;
+        if (!options) return question;
+        return {
+          ...question,
+          options: options.map((option) =>
+            option.id === target.optionId ? withNote(option, 'rationale', text) : option,
+          ),
+        } as Question;
+      });
+
+    case 'mcqProvenance':
+      return mapQuestionById(
+        worksheet,
+        target.questionId,
+        (question) => withNote(question, 'provenance', text) as Question,
       );
 
     case 'partAnswer':
@@ -990,6 +1021,17 @@ export function textOfTarget(worksheet: Worksheet, target: EditTarget): BiText |
     case 'mcqExplanation': {
       const question = worksheet.questions.find((entry) => entry.id === target.questionId);
       return (question as { explanation?: BiText } | undefined)?.explanation;
+    }
+    case 'mcqRationale': {
+      const question = worksheet.questions.find((entry) => entry.id === target.questionId);
+      const options = (
+        question as { options?: Array<{ id: string; rationale?: BiText }> } | undefined
+      )?.options;
+      return options?.find((option) => option.id === target.optionId)?.rationale;
+    }
+    case 'mcqProvenance': {
+      const question = worksheet.questions.find((entry) => entry.id === target.questionId);
+      return (question as { provenance?: BiText } | undefined)?.provenance;
     }
     case 'partAnswer': {
       const question = worksheet.questions.find((entry) => entry.id === target.questionId);
@@ -1315,6 +1357,10 @@ export function describeDelete(target: EditTarget): DeletePlan | undefined {
       return { kind: 'statement', label: 'statement' };
     case 'mcqExplanation':
       return { kind: 'answer', label: 'explanation' };
+    case 'mcqRationale':
+      return { kind: 'answer', label: 'rationale' };
+    case 'mcqProvenance':
+      return { kind: 'answer', label: 'source note' };
     case 'partAnswer':
     case 'subPartAnswer':
       return { kind: 'answer', label: 'answer' };
@@ -1463,6 +1509,10 @@ export function applyDeleteTarget(worksheet: Worksheet, target: EditTarget): Wor
         target.questionId,
         (question) => ({ ...question, explanation: undefined }) as Question,
       );
+
+    case 'mcqRationale':
+    case 'mcqProvenance':
+      return applyEditTarget(worksheet, target, EMPTY);
 
     case 'partAnswer':
       return mapQuestionById(worksheet, target.questionId, (question) => {

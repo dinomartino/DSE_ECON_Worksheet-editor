@@ -1,9 +1,16 @@
 import { createMcqQuestion } from '@/model/factories';
 import { optionLabel, statementLabel, toUpperLetter } from '@/model/numbering';
-import { areBlocksEmpty, bi, isBiTextEmpty, plain } from '@/model/text';
+import { areBlocksEmpty, bi, isBiTextEmpty, plain, provenanceLabel } from '@/model/text';
 import type { BiText, LanguageMode, McqOption, McqOptionLayout, McqQuestion } from '@/model/types';
 import { shuffledOrder } from '@/model/versions';
-import { pushGap, renderContentBlocks, type RenderContext, type RenderNode } from '@/render/ir';
+import {
+  pushGap,
+  renderContentBlocks,
+  type ColumnsNode,
+  type RenderContext,
+  type RenderNode,
+  type TextNode,
+} from '@/render/ir';
 import { McqEditorPanel } from '@/components/editor/McqEditorPanel';
 import type {
   QuestionHealthFacts,
@@ -309,17 +316,45 @@ function render(question: McqQuestion, context: RenderContext): RenderNode[] {
     }
   }
 
+  // Teacher-only notes after the key: explanation, per-option rationale, source note.
+  const notes = teacherNotes(question, context.mode.language);
   const answerLetter = optionLabel(question.answerIndex).replace('.', '');
   nodes.push({
     kind: 'text',
     style: 'Answer',
     teacherOnly: true,
-    keepNext: !isBiTextEmpty(question.explanation),
+    keepNext: notes.length > 0,
     text: bi(`Answer: ${answerLetter}`, `答案：${answerLetter}`),
   });
+  notes.forEach((node, index) => {
+    // Only set when another note follows: an explanation alone renders as it always has.
+    if (index < notes.length - 1) node.keepNext = true;
+    nodes.push(node);
+  });
 
+  return nodes;
+}
+
+/**
+ * Options carrying a rationale, lettered as printed. Letters are by position, so in a
+ * shuffled version each rationale is lettered where its own option now prints.
+ */
+export function optionRationales(question: McqQuestion): Array<{ letter: string; text: BiText; optionId: string }> {
+  return question.options.flatMap((option, index) =>
+    isBiTextEmpty(option.rationale)
+      ? []
+      : [{ letter: toUpperLetter(index), text: option.rationale!, optionId: option.id }],
+  );
+}
+
+/**
+ * Explanation, then one "A. …" row per option rationale, then the source note — all in
+ * the Marking Scheme style, each an edit target. Nothing when none is authored.
+ */
+function teacherNotes(question: McqQuestion, language: LanguageMode): Array<TextNode | ColumnsNode> {
+  const notes: Array<TextNode | ColumnsNode> = [];
   if (!isBiTextEmpty(question.explanation)) {
-    nodes.push({
+    notes.push({
       kind: 'text',
       style: 'Marking Scheme',
       teacherOnly: true,
@@ -327,8 +362,39 @@ function render(question: McqQuestion, context: RenderContext): RenderNode[] {
       edit: { kind: 'mcqExplanation', questionId: question.id },
     });
   }
-
-  return nodes;
+  for (const { letter, text, optionId } of optionRationales(question)) {
+    notes.push({
+      kind: 'columns',
+      style: 'Marking Scheme',
+      teacherOnly: true,
+      keepLines: true,
+      cells: [
+        {
+          text,
+          at: 0,
+          marker: `${letter}.`,
+          edit: { kind: 'mcqRationale', questionId: question.id, optionId },
+        },
+      ],
+    });
+  }
+  if (!isBiTextEmpty(question.provenance)) {
+    notes.push({
+      kind: 'columns',
+      style: 'Marking Scheme',
+      teacherOnly: true,
+      keepLines: true,
+      cells: [
+        {
+          text: question.provenance!,
+          at: 0,
+          marker: provenanceLabel(language),
+          edit: { kind: 'mcqProvenance', questionId: question.id },
+        },
+      ],
+    });
+  }
+  return notes;
 }
 
 function countMissingTranslations(question: McqQuestion): number {
@@ -345,6 +411,8 @@ function countMissingTranslations(question: McqQuestion): number {
   (question.statements ?? []).forEach(check);
   question.options.forEach((option) => check(option.text));
   check(question.explanation);
+  question.options.forEach((option) => check(option.rationale));
+  check(question.provenance);
   return missing;
 }
 
@@ -375,14 +443,20 @@ function healthFacts(question: McqQuestion): QuestionHealthFacts {
   };
 }
 
-/** The answer grid's letter — none when `answerIndex` points at no option — and the explanation. */
+/**
+ * The answer grid's letter — none when `answerIndex` points at no option — the
+ * explanation, each option's rationale (lettered as this question prints) and the source note.
+ */
 function answerKey(question: McqQuestion): AnswerKeyEntry {
   const { answerIndex, options } = question;
   const keyed = Number.isInteger(answerIndex) && answerIndex >= 0 && answerIndex < options.length;
+  const rationale = optionRationales(question).map(({ letter, text }) => ({ letter, text }));
   return {
     kind: 'choice',
     ...(keyed ? { letter: optionLabel(answerIndex).replace('.', '') } : {}),
     ...(isBiTextEmpty(question.explanation) ? {} : { note: question.explanation }),
+    ...(rationale.length > 0 ? { rationale } : {}),
+    ...(isBiTextEmpty(question.provenance) ? {} : { provenance: question.provenance }),
   };
 }
 

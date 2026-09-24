@@ -356,6 +356,11 @@ export interface McqOption {
   blocks?: ContentBlock[];
   /** Stays at its own letter in every paper version (§ `Worksheet.versions`). */
   pinned?: boolean;
+  /**
+   * Teacher-only: why this option is the key, or why it is wrong. On the option, not the
+   * question, so it follows its option through a version's shuffle. Absent = none.
+   */
+  rationale?: BiText;
 }
 
 /**
@@ -373,6 +378,8 @@ export interface McqQuestion extends QuestionBase {
   explanation?: BiText;
   /** Omitted means auto: chosen from how long the options are. */
   optionLayout?: McqOptionLayout;
+  /** Teacher-only source / adaptation note, e.g. "Modelled on DSE 2023 Q1". Absent = none. */
+  provenance?: BiText;
 }
 
 export interface QuestionSubPart {

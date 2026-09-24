@@ -60,7 +60,9 @@ Invariants:
 `examGapLines?` · `countMissingTranslations?` · `healthFacts?` · `answerKey?` · `variant?`.
 
 - `src/registry/index.ts:listQuestionTypes` · `:requireQuestionType`
-- `src/registry/mcq.ts:mcqType` · `:resolveOptionLayout`
+- `src/registry/mcq.ts:mcqType` · `:resolveOptionLayout` · `:optionRationales` — teacher-only notes:
+  `McqOption.rationale` (travels with its option through a shuffle) and `McqQuestion.provenance`
+  ("Source:", `src/model/text.ts:provenanceLabel`); teacher version + answer key only
 - `src/registry/structured.ts:structuredType`
 
 Invariants:
