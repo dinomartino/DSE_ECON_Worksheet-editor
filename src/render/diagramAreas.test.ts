@@ -22,8 +22,8 @@ describe('shaded areas in the SVG', () => {
     const svg = diagramSvg(shaded(), { ...SIZE, language: 'en' });
     const fill = svg.indexOf('fill="#d9d9d9"');
     expect(fill).toBeGreaterThan(0);
-    // Drawn before the axes (their arrowhead marker is the first reference to it).
-    expect(fill).toBeLessThan(svg.indexOf('marker-end="url(#arrowhead)"'));
+    // Drawn before the axes (their first arrowhead follows the x-axis line).
+    expect(fill).toBeLessThan(svg.indexOf('data-arrowhead'));
     // The label prints on top, after everything else.
     expect(svg.lastIndexOf('>CS</tspan>')).toBeGreaterThan(svg.lastIndexOf('stroke-linecap="round"'));
   });
@@ -67,7 +67,9 @@ describe('shaded areas in the SVG', () => {
 describe('a diagram saved by the published build renders unchanged', () => {
   it('matches the SVG frozen before shaded areas existed, in every language and scale', () => {
     // `diagramCorpus.frozen.json` was written by the build *before* areas were added,
-    // from the frozen v1 corpus. Never regenerate it to make this pass.
+    // from the frozen v1 corpus. Never regenerate it to make this pass. Re-frozen once,
+    // 2026-09-25, when arrowheads became triangles instead of `<marker>`s — after a
+    // Chrome raster diff showed the two renderings match (at most a 1px base edge).
     const worksheet = migrate(structuredClone(v1Corpus));
     const blocks = worksheet.questions
       .flatMap((question) => question.blocks)

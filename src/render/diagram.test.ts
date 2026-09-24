@@ -105,6 +105,19 @@ describe('diagram SVG rendering', () => {
     expect(svg).toContain('Output level');
   });
 
+  it('draws every arrowhead as a triangle, never an id-referenced <marker>', () => {
+    // A marker resolves by page-wide id; in print the first match sat outside
+    // `#print-root`, hidden, so every head vanished from the PDF.
+    for (const id of ['demand-shift', 'flow']) {
+      const svg = diagramSvg(buildFromTemplate(id), { widthPx: 400, heightPx: 300, language: 'en' });
+      expect(svg, id).not.toContain('<marker');
+      expect(svg, id).not.toContain('url(#');
+    }
+    // Two axes plus the template's shift arrow.
+    const shift = diagramSvg(buildFromTemplate('demand-shift'), { widthPx: 400, heightPx: 300, language: 'en' });
+    expect((shift.match(/data-arrowhead=""/g) ?? []).length).toBe(3);
+  });
+
   it('embeds no external references, so rasterizing cannot taint the canvas', () => {
     for (const template of DIAGRAM_TEMPLATES) {
       const svg = diagramSvg(template.build(), { widthPx: 400, heightPx: 300, language: 'bilingual' });
@@ -189,7 +202,7 @@ describe('axis titles sit beside their own axis', () => {
     const svg = diagramSvg(diagram, { widthPx: 400, heightPx: 300, language: 'en' });
 
     // The y-axis is the vertical path: same x at both ends. Matching the first
-    // `marker-end` path instead finds the *x*-axis, whose end sits at the plot bottom.
+    // `M … L …` path instead finds the *x*-axis, whose end sits at the plot bottom.
     const yAxis = Array.from(
       svg.matchAll(/M ([\d.]+) ([\d.]+) L ([\d.]+) ([\d.]+)/g),
     ).find((m) => m[1] === m[3])!;
@@ -1004,8 +1017,8 @@ describe('the flow chart variant', () => {
     const svg = diagramSvg(diagram, options);
     // Four boxed stages, plus the white ground rect.
     expect((svg.match(/<rect /g) ?? []).length).toBe(1 + 4);
-    // Four arrows, each a marker-ended shaft — including the open-start stub.
-    expect((svg.match(/marker-end="url\(#flowHead\)"/g) ?? []).length).toBe(4);
+    // Four arrows, each a shaft plus a triangle head — including the open-start stub.
+    expect((svg.match(/data-arrowhead=""/g) ?? []).length).toBe(4);
     expect(svg).toContain('Flour mill');
     expect(svg).toContain('Bakery');
     expect(svg).toContain('$10 000');

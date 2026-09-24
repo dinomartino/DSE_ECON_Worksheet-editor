@@ -77,6 +77,34 @@ const TITLE_TOP = 8;
 const AXIS_OVERSHOOT = 14;
 /** Gap between an axis arrowhead and the title that sits past it. */
 const AXIS_TITLE_GAP = 8;
+/** Half an arrowhead's base width, px at nominal size (axes, shift arrows, flow arrows). */
+const ARROWHEAD = 5;
+
+/**
+ * A solid arrowhead on the segment `from → end`: tip `0.2·head` past `end`, base
+ * `1.8·head` behind it, `2·head` wide — the triangle the old `<marker>` drew.
+ * Plain geometry because a marker resolves by page-wide id: in the print PDF the first
+ * `#arrowhead` on the page was an editor copy outside `#print-root`, hidden, so every
+ * head vanished.
+ */
+function arrowheadPath(
+  from: { x: number; y: number },
+  end: { x: number; y: number },
+  head: number,
+): string {
+  const length = Math.hypot(end.x - from.x, end.y - from.y);
+  // A zero-length shaft points along +x, as `orient="auto"` did.
+  const ux = length > 0 ? (end.x - from.x) / length : 1;
+  const uy = length > 0 ? (end.y - from.y) / length : 0;
+  const bx = end.x - 1.8 * head * ux;
+  const by = end.y - 1.8 * head * uy;
+  return (
+    `<path d="M ${n(bx + head * uy)} ${n(by - head * ux)} ` +
+    `L ${n(end.x + 0.2 * head * ux)} ${n(end.y + 0.2 * head * uy)} ` +
+    `L ${n(bx - head * uy)} ${n(by + head * ux)} z" fill="#000" data-arrowhead=""/>`
+  );
+}
+
 /**
  * How far left of the y-axis its title starts.
  *
@@ -709,23 +737,28 @@ function arrowSvg(
   const from = { x: proj.px(arrow.from.x), y: proj.py(arrow.from.y) };
   const to = { x: proj.px(arrow.to.x), y: proj.py(arrow.to.y) };
 
-  const d = arrow.curved
+  // Bow a curved shaft perpendicular to its own direction, so a shift arrow can arc
+  // around the curves it sits between. The head aims along the tangent at `to`, which
+  // for a quadratic is the line from the control point.
+  const control = arrow.curved
     ? (() => {
-        // Bow the shaft perpendicular to its own direction, so a shift arrow can
-        // arc around the curves it sits between.
-        const mx = (from.x + to.x) / 2;
-        const my = (from.y + to.y) / 2;
         const dx = to.x - from.x;
         const dy = to.y - from.y;
         const length = Math.hypot(dx, dy) || 1;
         const bow = length * 0.2;
-        return `M ${n(from.x)} ${n(from.y)} Q ${n(mx - (dy / length) * bow)} ${n(my + (dx / length) * bow)}, ${n(to.x)} ${n(to.y)}`;
+        return {
+          x: (from.x + to.x) / 2 - (dy / length) * bow,
+          y: (from.y + to.y) / 2 + (dx / length) * bow,
+        };
       })()
+    : undefined;
+  const d = control
+    ? `M ${n(from.x)} ${n(from.y)} Q ${n(control.x)} ${n(control.y)}, ${n(to.x)} ${n(to.y)}`
     : `M ${n(from.x)} ${n(from.y)} L ${n(to.x)} ${n(to.y)}`;
 
   const shaft =
-    `<path d="${d}" fill="none" stroke="#000" stroke-width="${n(1.8 * scale)}" ` +
-    `marker-end="url(#arrowhead)"/>`;
+    `<path d="${d}" fill="none" stroke="#000" stroke-width="${n(1.8 * scale)}"/>` +
+    arrowheadPath(control ?? from, to, ARROWHEAD * scale);
 
   const lines = pickSides(arrow.label, language);
   const placed = arrowLabelAnchor(arrow, proj, scale);
@@ -1664,12 +1697,6 @@ function flowSvg(diagram: Diagram, flow: FlowChart, options: DiagramSvgOptions):
     ? `${options.fonts.latin}, ${options.fonts.eastAsia}, serif`
     : 'Times New Roman, serif';
 
-  const head = 5;
-  const defs =
-    `<defs><marker id="flowHead" markerWidth="${n(head * 2)}" markerHeight="${n(head * 2)}" ` +
-    `refX="${n(head * 1.8)}" refY="${n(head)}" orient="auto" markerUnits="userSpaceOnUse">` +
-    `<path d="M 0 0 L ${n(head * 2)} ${n(head)} L 0 ${n(head * 2)} z" fill="#000"/></marker></defs>`;
-
   const boxStroke = `stroke="#000" stroke-width="1.2" fill="#fff"`;
   const parts: string[] = [];
   for (const box of layout.boxes) {
@@ -1692,10 +1719,11 @@ function flowSvg(diagram: Diagram, flow: FlowChart, options: DiagramSvgOptions):
     );
   }
 
-  const shaftStroke = `stroke="#000" stroke-width="1.6" fill="none" marker-end="url(#flowHead)"`;
+  const shaftStroke = `stroke="#000" stroke-width="1.6" fill="none"`;
   for (const arrow of layout.arrows) {
     parts.push(
-      `<path d="M ${n(arrow.x1)} ${n(arrow.y1)} L ${n(arrow.x2)} ${n(arrow.y2)}" ${shaftStroke}/>`,
+      `<path d="M ${n(arrow.x1)} ${n(arrow.y1)} L ${n(arrow.x2)} ${n(arrow.y2)}" ${shaftStroke}/>` +
+        arrowheadPath({ x: arrow.x1, y: arrow.y1 }, { x: arrow.x2, y: arrow.y2 }, ARROWHEAD),
     );
     for (const label of [arrow.label, arrow.labelBelow]) {
       if (!label) continue;
@@ -1721,7 +1749,6 @@ function flowSvg(diagram: Diagram, flow: FlowChart, options: DiagramSvgOptions):
     // White ground: a transparent PNG would print as whatever is behind it in Word.
     `<rect width="${n(width)}" height="${n(height)}" fill="#fff"/>` +
     `<g transform="translate(${n(tx)} ${n(ty)}) scale(${n(eff)})">` +
-    defs +
     parts.join('') +
     title +
     '</g>' +
@@ -2266,18 +2293,18 @@ export function diagramSvg(diagram: Diagram, options: DiagramSvgOptions): string
     ? `${options.fonts.latin}, ${options.fonts.eastAsia}, serif`
     : 'Times New Roman, serif';
 
-  const head = 5 * scale;
-  const defs =
-    `<defs><marker id="arrowhead" markerWidth="${n(head * 2)}" markerHeight="${n(head * 2)}" ` +
-    `refX="${n(head * 1.8)}" refY="${n(head)}" orient="auto" markerUnits="userSpaceOnUse">` +
-    `<path d="M 0 0 L ${n(head * 2)} ${n(head)} L 0 ${n(head * 2)} z" fill="#000"/></marker></defs>`;
-
   // Axes, each with an arrowhead at the far end, exactly as the papers draw them.
-  const axisStroke = `stroke="#000" stroke-width="${n(AXIS_WIDTH * scale)}" fill="none" marker-end="url(#arrowhead)"`;
+  const head = ARROWHEAD * scale;
+  const axisStroke = `stroke="#000" stroke-width="${n(AXIS_WIDTH * scale)}" fill="none"`;
   const overshoot = AXIS_OVERSHOOT * scale;
+  const corner = { x: plot.left, y: plot.bottom };
+  const xEnd = { x: plot.right + overshoot, y: plot.bottom };
+  const yEnd = { x: plot.left, y: plot.top - overshoot };
   const axes =
-    `<path d="M ${n(plot.left)} ${n(plot.bottom)} L ${n(plot.right + overshoot)} ${n(plot.bottom)}" ${axisStroke}/>` +
-    `<path d="M ${n(plot.left)} ${n(plot.bottom)} L ${n(plot.left)} ${n(plot.top - overshoot)}" ${axisStroke}/>`;
+    `<path d="M ${n(corner.x)} ${n(corner.y)} L ${n(xEnd.x)} ${n(xEnd.y)}" ${axisStroke}/>` +
+    arrowheadPath(corner, xEnd, head) +
+    `<path d="M ${n(corner.x)} ${n(corner.y)} L ${n(yEnd.x)} ${n(yEnd.y)}" ${axisStroke}/>` +
+    arrowheadPath(corner, yEnd, head);
 
   // Anchored by the shared `axisTitleAnchor`, which now also clamps a long title back
   // onto the canvas — the drag handle in `DiagramCanvas` is built from the same call,
@@ -2343,7 +2370,6 @@ export function diagramSvg(diagram: Diagram, options: DiagramSvgOptions): string
 
   const areas = diagram.areas ?? [];
   const body = [
-    defs,
     // White ground: a transparent PNG would print as whatever is behind it in Word.
     `<rect width="${n(width)}" height="${n(height)}" fill="#fff"/>`,
     // Shading under everything, so axes and curves stay crisp over it. No areas, no
