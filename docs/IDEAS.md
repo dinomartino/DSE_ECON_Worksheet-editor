@@ -32,8 +32,8 @@ Remove from this list once released.
 
 ## Recommended order
 
-1. **Now** — 2028 Paper 2 template (B5), then the rest of A (versions, key CSV,
-   answer space on/off and cover on/off in the export dialog).
+1. **Now** — the rest of A (versions, key CSV, answer space on/off and cover on/off in
+   the export dialog).
 2. **Next** — seeded MCQ versions and key CSV (A3, A4), HKEAA marking-point notation
    (B1), topic tags (C1) → local question library (C2).
 3. **Later** — paste/Word import (D1, D2), BYOK AI (E), item analysis (G1), diagram
@@ -66,9 +66,6 @@ Remove from this list once released.
   `src/model/diagram.ts`, drawing in `src/render/diagram.ts:diagramSvg`. *Aristo e-Graph.*
 - **B4 Graph-grid / blank-axes answer space** (S–M) — a diagram-shaped answer box,
   which no builder offers for economics. *LaTeX `exam` class.*
-- **B5 2028 Paper 2 template** (S): Section A short questions, Section B, Section C
-  elective (answer one of two). New arm in `src/model/newWorksheet.ts:createWorksheetFrom`.
-  *HKEAA 2028 framework.*
 - **B6 Fill-in-blank answer frames** (S–M): blanks for students, answers for teachers.
   *Econ Excelsior "LQ答題框架", PickMyQuiz.*
 - **B7 "For examiner's use" marks grid on the cover** (S–M), from derived marks, as a
@@ -149,4 +146,6 @@ point. *All of MagicSchool, Brisk, Diffit, Eduaide, QuestionWell, MS Teach.*
 
 AI marking of student scripts (student data + server); web share links / QR (need
 hosting); storage caps or expiry; a free-form canvas (layout is slot-based by decision);
-shipping HKEAA past-paper content; embedding any API key in the bundle.
+shipping HKEAA past-paper content; embedding any API key in the bundle; year-specific
+paper templates (e.g. "2028 Paper 2") — the generic mock template serves every year,
+and a dated template would need re-doing annually.
