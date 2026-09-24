@@ -36,6 +36,20 @@ Remove from this list once released.
   key CSV, Kahoot `.xlsx`, Blooket CSV. No real import tried in any of the four apps.
 - **Export toggles** — cover on/off, answer space on/off (`OutputMode.omitCover` /
   `omitAnswerSpace`, export-time only).
+- **Marking scheme in HKEAA notation** (was B1, 2026-09-25) — `src/model/markSchemeTypes.ts`,
+  `src/model/markScheme.ts`, `src/render/markScheme.ts`, `MarkSchemeEditor.tsx`. Not yet:
+  on-page editing of scheme text; the mismatch warning is panel-only, not in the paper
+  check; Chinese labels and default EC wording unverified against a real HKEAA scheme.
+- **MCQ rationale + provenance** (was B2, 2026-09-25) — `McqOption.rationale`,
+  `McqQuestion.provenance`; teacher version + answer key. Not yet: versioned key prints
+  notes once in Version A letters; bilingual "Source 出處：" spacing.
+- **Diagram shaded areas + shift curve** (was B3, 2026-09-25) — `src/model/diagramAreas.ts`,
+  `src/model/diagramShift.ts`, `DiagramAreaControls.tsx`; CS / PS / DWL / tax presets.
+  Not yet: shifted equilibrium point is not attached to its curves; template curves stop
+  short of the y-axis so CS/PS leave a small strip; print-PDF leg not re-run.
+- **Graph answer space** (was B4, 2026-09-25) — `src/model/answerGraph.ts`,
+  `src/render/answerGraph.ts`, `AnswerGraphFields.tsx`; blank axes, grid, 12/16/20/24 lines.
+  Not yet: on-page select/resize; custom height; Word itself untested (LibreOffice only).
 - **In-app feedback** — `src/feedback/feedback.ts`, `src/components/feedback/FeedbackDialog.tsx`:
   prefilled GitHub issue (URL capped at 3,500 chars — GitHub's sign-in redirect breaks
   above ~4k), `mailto:` to dseconmentor@gmail.com, or clipboard. Labels only stick when
@@ -43,10 +57,10 @@ Remove from this list once released.
 
 ## Recommended order
 
-1. **Now** — paper summary bar (A5), HKEAA marking-point notation (B1).
+1. **Now** — paper summary bar (A5).
 2. **Next** — topic tags (C1) → local question library (C2).
-3. **Later** — paste/Word import (D1, D2), BYOK AI (E), item analysis (G1), diagram
-   shading (B3).
+3. **Later** — paste/Word import (D1, D2), BYOK AI (E), item analysis (G1), remaining
+   diagram upgrades (B3b).
 
 ## A. Export and paper checks
 
@@ -55,19 +69,10 @@ Remove from this list once released.
 
 ## B. Content model
 
-- **B1 Marking points in HKEAA notation** (M): `/` alternatives, `n@`, `max: N`, "first
-  two points only", OR routes, level descriptors and Effective Communication for essays.
-  Turns the teacher version into a scheme co-markers can use. Lives in
-  `src/registry/structured.ts:structuredType`; all three backends. *HKEAA 2025 sample
-  marking scheme.*
-- **B2 Per-option MCQ rationale and a provenance note** (S) — "modelled on DSE 2023 Q1",
-  why each distractor is wrong. Teacher version only. *UPEP, Anson Kong's bank.*
-- **B3 Diagram upgrades** (M each): shaded labelled areas (surplus, deadweight loss,
-  tax revenue); "shift curve" that finds the new equilibrium and draws guides;
-  line/bar charts from a table for data-response; more templates. Geometry in
-  `src/model/diagram.ts`, drawing in `src/render/diagram.ts:diagramSvg`. *Aristo e-Graph.*
-- **B4 Graph-grid / blank-axes answer space** (S–M) — a diagram-shaped answer box,
-  which no builder offers for economics. *LaTeX `exam` class.*
+- **B3b Diagram upgrades, remaining** (M): line/bar charts from a table for
+  data-response; more templates. Shaded areas and shift-curve shipped 2026-09-25.
+  Geometry in `src/model/diagram.ts`, drawing in `src/render/diagram.ts:diagramSvg`.
+  *Aristo e-Graph.*
 - **B6 Fill-in-blank answer frames** (S–M): blanks for students, answers for teachers.
   *Econ Excelsior "LQ答題框架", PickMyQuiz.*
 - **B7 "For examiner's use" marks grid on the cover** (S–M), from derived marks, as a

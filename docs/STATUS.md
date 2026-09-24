@@ -12,10 +12,14 @@ off the bottom.** It is the first thing a fresh session reads — then
   become files under `$APPDATA/worksheets/` (`src/storage/fileStore.ts`), saving uses the
   native dialog, updates come from GitHub Releases. `src/platform/index.ts` ·
   `src/desktop/updater.ts`.
-- **v0.2.0 in flight.** Tagged and built; the release draft ships macOS arm64 + x64 signed
-  and notarised, Windows x64 unsigned. Steps in `RELEASING.md`.
 - **Web stays the primary target.** Static export on Vercel, no server runtime. The web
   build must stay green — `npm run build` fails if a `@tauri-apps/*` import reached the bundle.
+- **B1–B4 built 2026-09-25 on `develop`** by four parallel Opus agents in worktrees,
+  merged by hand (conflicts: import lines only). Marking scheme in HKEAA notation
+  (`src/model/markScheme.ts`), MCQ rationale + provenance, diagram shaded areas + shift
+  curve (`src/model/diagramAreas.ts`, `diagramShift.ts`), graph answer space
+  (`src/render/answerGraph.ts`). Each browser-verified and `.docx`-checked alone; the
+  merged result has tests/typecheck/build/samples green but no browser pass yet.
 - **Seeded MCQ versions, other-apps export (ZipGrade / key CSV / Kahoot / Blooket), and
   cover / answer-space export toggles — built 2026-09-24 on `develop`** by three parallel
   agents, merged by hand in `ExportDialog.tsx`. Browser-verified together; desktop save
@@ -35,7 +39,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Last verified
 
-- `npm test` — 1255 tests in 75 files, ~2s. Green. `npm run build` green; `npm run samples` exports.
+- `npm test` — 1355 tests in 82 files, ~2.5s. Green. `npm run build` green; `npm run samples` exports.
 - `npm run typecheck` — clean.
 - `npm run lint` — 44 pre-existing problems (3 errors, 41 warnings) in `Preview.tsx` and
   `InlineEditable.tsx`. Not a regression; do not "fix" by rewriting those files.
@@ -44,6 +48,11 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Open threads and known gaps
 
+- **SVG `<marker>` arrowheads may vanish in the print PDF** — B4's agent saw it in its own
+  SVG (fixed there with plain triangles); `src/render/diagram.ts:diagramSvg` uses the same
+  `id="arrowhead"` pattern. Being verified/fixed 2026-09-25.
+- **Diagram thumbnails and print not re-run** after B3; `scripts/cover-verify.mjs` /
+  `scripts/lq-verify.mjs` last run by the B4 agent (lq-verify passed, needs `LQ_DIR`).
 - **Windows builds are unsigned.** SmartScreen warns on first run. An OV certificate
   (~US$215/yr) is the option; Azure Trusted Signing is not open to a Hong Kong maintainer.
 - **Desktop file features are untested in the real app** (`npm run desktop:dev` not run):
@@ -70,14 +79,11 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
+- **2026-09-25** — B1–B4 from the backlog built in parallel by Opus sub-agents on
+  `feature/b1..b4` branches, merged into `develop`. Rule saved: all code edits go to
+  Opus sub-agents; the coordinator merges and writes the docs.
 - **2026-09-24** — Three features in parallel worktrees, merged: seeded MCQ versions A–D
   (`src/model/versions.ts`, registry `variant` hook, per-version keys + version map),
   other-apps export (`src/export/csv/`), export toggles (`OutputMode.omitCover` /
   `omitAnswerSpace`). In-app feedback dialog (prefilled GitHub issue / mailto / clipboard;
   `src/feedback/`). Dropped the year-specific Paper 2 template idea.
-- **2026-09-24** — Start-screen sidebar decluttered; updates download silently with the
-  banner only when ready; update check once per launch; version + "Check for updates"
-  on the start screen and in the editor ⋯ menu.
-- **2026-09-24** — Export dialog (paper / answer key / both), answer-key `.docx` via a
-  new registry hook, pre-print paper check, backup-all zip + restore, Trash (30 days).
-  Registry grep now covers ten modules. Work moved to the `develop` branch.

@@ -27,6 +27,9 @@ Words this repository uses in its own way. One line each, with where the thing l
   "Source:"; not a Source panel. `src/model/types.ts:McqQuestion`
 - **Rationale** — why one MCQ option is right or wrong; teacher-only, stored on the option.
   `src/model/types.ts:McqOption`
+- **Marking scheme** — HKEAA notation on a part or sub-part (`/` alternatives, `n@`,
+  `max: N`, OR routes, levels, EC) with derived totals; teacher-only.
+  `src/model/markSchemeTypes.ts:MarkScheme` · `src/model/markScheme.ts`
 - **Stem** — a question's own text, above its parts. `STEM_TEXT_INDENT` in `src/model/numbering.ts`
 - **Part / sub-part** — `(a)` and `(i)`; marks may be absent, shared, or per sub-part.
   `src/model/marks.ts`
