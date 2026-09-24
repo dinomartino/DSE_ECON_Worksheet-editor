@@ -19,6 +19,8 @@ import { DocumentName } from './DocumentName';
 import { ExportDialog } from './ExportDialog';
 import { useUpdateStore } from '@/desktop/updateStore';
 import { PaperHealthPanel } from './PaperHealthPanel';
+import { FeedbackDialog } from '@/components/feedback/FeedbackDialog';
+import { describeDocument } from '@/feedback/feedback';
 
 /** A transient status line, optionally with one follow-up action. */
 type Notice = { message: string; action?: { label: string; run: () => void } };
@@ -60,6 +62,8 @@ export function Toolbar({
   const [exporting, setExporting] = useState(false);
   // Stable, so the dialog does not re-focus its panel on every store update.
   const closeExport = useCallback(() => setExporting(false), []);
+  const [feedback, setFeedback] = useState(false);
+  const closeFeedback = useCallback(() => setFeedback(false), []);
 
   // Only meaningful in bilingual mode, where a missing side affects the output (§5.2).
   const untranslated =
@@ -336,6 +340,7 @@ export function Toolbar({
                   },
                 ]
               : []),
+            { label: 'Send feedback…', onSelect: () => setFeedback(true) },
             {
               label: 'Clear saved documents…',
               onSelect: () => setConfirmingClear(true),
@@ -363,6 +368,14 @@ export function Toolbar({
           onClose={closeExport}
           onExported={handleExported}
           checks={<PaperHealthPanel worksheet={worksheet} language={mode.language} />}
+        />
+      )}
+
+      {feedback && (
+        <FeedbackDialog
+          onClose={closeFeedback}
+          language={mode.language}
+          document={describeDocument(worksheet)}
         />
       )}
 

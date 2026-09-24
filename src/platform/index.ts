@@ -262,6 +262,24 @@ export async function openFolder(path: string): Promise<void> {
   }
 }
 
+/**
+ * Open an `https:` or `mailto:` link outside the app.
+ *
+ * Desktop: the default browser or mail client, via the opener (`opener:default` grants
+ * both schemes). Web: a new tab for https; a mailto goes through `location` so no blank
+ * tab is left behind.
+ */
+export async function openExternal(url: string): Promise<void> {
+  if (!/^(https:|mailto:)/.test(url)) throw new Error(`Refusing to open ${url}`);
+  if (isDesktop()) {
+    const { openUrl } = await import('@tauri-apps/plugin-opener');
+    await openUrl(url);
+    return;
+  }
+  if (url.startsWith('mailto:')) window.location.href = url;
+  else window.open(url, '_blank', 'noopener');
+}
+
 /** The platform's name for "reveal": Finder on macOS, Explorer on Windows. */
 export function revealLabel(): string {
   if (typeof navigator === 'undefined') return 'Show in folder';

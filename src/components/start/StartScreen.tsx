@@ -17,6 +17,8 @@ import { AppMark } from '@/components/ui/AppMark';
 import { ArchiveIcon, FolderIcon, FolderOpenIcon } from '@/components/ui/icons';
 import type { MenuItem } from '@/components/ui/Menu';
 import { VersionLine } from '@/components/editor/UpdateBanner';
+import { FeedbackDialog } from '@/components/feedback/FeedbackDialog';
+import { describeDocument } from '@/feedback/feedback';
 import { FileDashboard, type DocumentActions } from './FileDashboard';
 import { NEW_WORKSHEET_FORM_ID, NewWorksheetForm } from './NewWorksheetForm';
 import { TrashList } from './TrashList';
@@ -88,6 +90,8 @@ export function StartScreen({
   const [notice, setNotice] = useState<Notice | undefined>();
   const [busy, setBusy] = useState<'backup' | 'restore' | undefined>();
   const [dragging, setDragging] = useState(false);
+  const [feedback, setFeedback] = useState(false);
+  const closeFeedback = useCallback(() => setFeedback(false), []);
   const fileInput = useRef<HTMLInputElement>(null);
   const backupInput = useRef<HTMLInputElement>(null);
 
@@ -446,8 +450,9 @@ export function StartScreen({
               </TextLink>
             </p>
           )}
-          <div className="border-t border-line pt-3 empty:hidden">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-line pt-3">
             <VersionLine />
+            <TextLink onClick={() => setFeedback(true)}>Send feedback</TextLink>
           </div>
         </div>
       </aside>
@@ -652,6 +657,8 @@ export function StartScreen({
           </p>
         </Dialog>
       )}
+
+      {feedback && <FeedbackDialog onClose={closeFeedback} document={describeDocument(undefined)} />}
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
   JSON_FILTERS,
   LAST_FOLDER_KEY,
   ZIP_FILTERS,
+  openExternal,
   openFolder,
   pickFile,
   pickTextFile,
@@ -139,6 +140,9 @@ vi.mock('@tauri-apps/plugin-opener', () => ({
   revealItemInDir: async (path: string) => {
     tauri.revealed.push(path);
   },
+  openUrl: async (url: string) => {
+    tauri.opened.push(url);
+  },
 }));
 
 function memoryStorage(): Storage {
@@ -213,6 +217,30 @@ describe('web fallbacks', () => {
 
   it('pickWorksheetFile returns undefined', async () => {
     expect(await pickWorksheetFile()).toBeUndefined();
+  });
+});
+
+describe('openExternal', () => {
+  it('opens https in a new tab and mailto in place on the web', async () => {
+    const win = { open: vi.fn(), location: { href: '' } };
+    vi.stubGlobal('window', win);
+    await openExternal('https://github.com/x');
+    expect(win.open).toHaveBeenCalledWith('https://github.com/x', '_blank', 'noopener');
+    await openExternal('mailto:a@b.c?subject=x');
+    expect(win.location.href).toBe('mailto:a@b.c?subject=x');
+    expect(tauri.opened).toEqual([]);
+  });
+
+  it('goes through the opener on desktop', async () => {
+    desktop();
+    await openExternal('https://github.com/x');
+    expect(tauri.opened).toEqual(['https://github.com/x']);
+  });
+
+  it('refuses any other scheme', async () => {
+    desktop();
+    await expect(openExternal('file:///etc/passwd')).rejects.toThrow();
+    expect(tauri.opened).toEqual([]);
   });
 });
 
