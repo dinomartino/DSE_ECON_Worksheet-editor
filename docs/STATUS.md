@@ -16,7 +16,10 @@ off the bottom.** It is the first thing a fresh session reads — then
   and notarised, Windows x64 unsigned. Steps in `RELEASING.md`.
 - **Web stays the primary target.** Static export on Vercel, no server runtime. The web
   build must stay green — `npm run build` fails if a `@tauri-apps/*` import reached the bundle.
-- **File dashboard — built 2026-09-24, uncommitted.** Start screen shows saved documents
+- **Export dialog, answer key, paper check, backup zip, Trash — built 2026-09-24 on
+  `develop`.** Browser-verified on the web; desktop paths (two save sheets, zip pick,
+  trash folder moves) not yet run in `npm run desktop:dev`.
+- **File dashboard — built 2026-09-24 on `develop`.** Start screen shows saved documents
   as first-page thumbnails (grid) or a list, with search, kind filter and order.
   Desktop: dialogs start in `~/Documents/Econ Worksheets` (or the last folder), import uses
   the native open dialog, and exports/stored files can be revealed in Finder/Explorer.
@@ -28,7 +31,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Last verified
 
-- `npm test` — 1107 tests in 62 files, ~1.7s. Green. `npm run build` green; `npm run samples` exports.
+- `npm test` — 1187 tests in 69 files, ~2s. Green. `npm run build` green; `npm run samples` exports.
 - `npm run typecheck` — clean.
 - `npm run lint` — 44 pre-existing problems (3 errors, 41 warnings) in `Preview.tsx` and
   `InlineEditable.tsx`. Not a regression; do not "fix" by rewriting those files.
@@ -61,18 +64,16 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
+- **2026-09-24** — Export dialog (paper / answer key / both), answer-key `.docx` via a
+  new registry hook, pre-print paper check, backup-all zip + restore, Trash (30 days).
+  Registry grep now covers ten modules. Work moved to the `develop` branch.
 - **2026-09-24** — File dashboard on the start screen (thumbnails, search, filter, sort,
   grid/list); desktop default export folder, native import, reveal in Finder/Explorer.
   Clipboard's `escapeHtml`/`richHtml`/`formatCss` now exported for the thumbnail.
   Competitor research (5 slices) → `docs/IDEAS.md`.
-
 - **2026-09-22** — Added the quick-reference system: `docs/CODEMAP.md`, `docs/RECIPES.md`,
   `docs/GLOSSARY.md`, this file, and `src/test/codemap.test.ts` to stop them rotting.
   CLAUDE.md gained a "Fresh session? Start here" block. No `src/` behaviour changed.
-- **2026-09-22** — Added the paste-anywhere download widget (`docs/download-widget.html`).
-- **2026-09-22** — Released v0.2.0; fixed the Developer ID team and the empty-updater-password
-  note in `RELEASING.md`.
-- **2026-09-22** — Shipped the editor as a desktop app: Tauri 2 shell, file-backed store,
-  self-updates.
-- **Earlier** — MCQ options with figures lay out two per row; sidebar slimmed into an
-  inspector; contextual tools docked over the page; question-too-tall breaking.
+- **2026-09-22** — Download widget; released v0.2.0; shipped the desktop app (Tauri 2,
+  file-backed store, self-updates).
+- **Earlier** — MCQ figure options two per row; inspector sidebar; docked tools.

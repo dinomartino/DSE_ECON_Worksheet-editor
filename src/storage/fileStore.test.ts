@@ -43,10 +43,17 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
     files.set(to, value);
     files.delete(from);
   },
-  readDir: async (path: string) =>
-    [...files.keys()]
-      .filter((key) => key.startsWith(`${path}/`) && !key.slice(path.length + 1).includes('/'))
-      .map((key) => ({ name: key.slice(path.length + 1), isFile: true, isDirectory: false })),
+  // Subdirectories are listed too, as the real plugin does — `trash/` must be skipped.
+  readDir: async (path: string) => {
+    const names = new Map<string, boolean>();
+    for (const key of [...files.keys(), ...dirs]) {
+      if (!key.startsWith(`${path}/`)) continue;
+      const rest = key.slice(path.length + 1);
+      const [head] = rest.split('/');
+      names.set(head, rest.includes('/') || dirs.has(`${path}/${head}`));
+    }
+    return [...names].map(([name, isDirectory]) => ({ name, isFile: !isDirectory, isDirectory }));
+  },
 }));
 
 const { FileWorksheetStore } = await import('./fileStore');
@@ -54,6 +61,10 @@ const { FileWorksheetStore } = await import('./fileStore');
 const DIR = 'worksheets';
 const INDEX = `${DIR}/index.json`;
 const doc = (id: string) => `${DIR}/${id}.worksheet.json`;
+
+const TRASH_INDEX = `${DIR}/trash/index.json`;
+const trashed = (id: string) => `${DIR}/trash/${id}.worksheet.json`;
+const DAY = 86_400_000;
 
 function worksheet(id: string, updatedAt: string) {
   return { ...createWorksheet(), id, name: `Doc ${id}`, updatedAt };
@@ -164,5 +175,119 @@ describe('FileWorksheetStore', () => {
 
     const store = new FileWorksheetStore();
     expect((await store.list()).map((entry) => entry.id)).toEqual(['a']);
+  });
+});
+
+describe('FileWorksheetStore Trash', () => {
+  let clock = Date.parse('2026-09-01T00:00:00.000Z');
+  const store = () => new FileWorksheetStore(() => clock);
+  beforeEach(() => {
+    clock = Date.parse('2026-09-01T00:00:00.000Z');
+  });
+
+  it('moves the file into trash/ and round-trips a restore', async () => {
+    await store().save(worksheet('a', '2024-01-01T00:00:00.000Z'));
+    await store().save(worksheet('b', '2025-01-01T00:00:00.000Z'));
+    await store().trash('a');
+
+    expect(files.has(doc('a'))).toBe(false);
+    expect(files.has(trashed('a'))).toBe(true);
+    expect((await store().list()).map((e) => e.id)).toEqual(['b']);
+    expect(await store().listTrash()).toEqual([
+      expect.objectContaining({ id: 'a', title: 'Doc a', deletedAt: '2026-09-01T00:00:00.000Z' }),
+    ]);
+
+    expect(await store().restore('a')).toBe('a');
+    expect(files.has(doc('a'))).toBe(true);
+    expect(files.has(trashed('a'))).toBe(false);
+    expect((await store().list()).map((e) => e.id)).toEqual(['b', 'a']);
+    expect(await store().listTrash()).toEqual([]);
+  });
+
+  it('a lost index is never rebuilt with trashed documents in it', async () => {
+    await store().save(worksheet('a', '2024-01-01T00:00:00.000Z'));
+    await store().save(worksheet('b', '2025-01-01T00:00:00.000Z'));
+    await store().trash('a');
+    files.delete(INDEX);
+
+    expect((await store().list()).map((e) => e.id)).toEqual(['b']);
+  });
+
+  it('a lost Trash index is rebuilt from the files, with a fresh window', async () => {
+    await store().save(worksheet('a', '2024-01-01T00:00:00.000Z'));
+    await store().trash('a');
+    files.delete(TRASH_INDEX);
+    clock += 10 * DAY;
+
+    expect(await store().listTrash()).toEqual([
+      expect.objectContaining({ id: 'a', deletedAt: new Date(clock).toISOString() }),
+    ]);
+  });
+
+  it('purges after 30 days, lazily', async () => {
+    await store().save(worksheet('a', '2024-01-01T00:00:00.000Z'));
+    await store().trash('a');
+    clock += 29 * DAY;
+    expect(await store().listTrash()).toHaveLength(1);
+    clock += DAY;
+    expect(await store().listTrash()).toEqual([]);
+    expect(files.has(trashed('a'))).toBe(false);
+  });
+
+  it('keeps the good rows when one Trash row is malformed', async () => {
+    await store().save(worksheet('a', '2024-01-01T00:00:00.000Z'));
+    await store().trash('a');
+    const rows = JSON.parse(files.get(TRASH_INDEX)!);
+    files.set(TRASH_INDEX, JSON.stringify([{ title: 'no id' }, null, ...rows]));
+
+    expect((await store().listTrash()).map((r) => r.id)).toEqual(['a']);
+  });
+
+  it('restores beside a live document of the same id, never over it', async () => {
+    await store().save(worksheet('a', '2024-01-01T00:00:00.000Z'));
+    await store().trash('a');
+    // An older build re-imported the same file meanwhile.
+    await store().save({ ...worksheet('a', '2025-01-01T00:00:00.000Z'), name: 'Live one' });
+
+    const id = await store().restore('a');
+    expect(id).not.toBe('a');
+    expect((await store().load('a'))?.name).toBe('Live one');
+    expect((await store().load(id!))?.name).toBe('Doc a');
+    expect(await store().listTrash()).toEqual([]);
+  });
+
+  it('purge, Empty Trash and clear() remove trashed files; remove() leaves them', async () => {
+    await store().save(worksheet('a', '2024-01-01T00:00:00.000Z'));
+    await store().save(worksheet('b', '2024-01-01T00:00:00.000Z'));
+    await store().save(worksheet('c', '2024-01-01T00:00:00.000Z'));
+    await store().trash('a');
+    await store().trash('b');
+    await store().remove('a');
+    expect(files.has(trashed('a'))).toBe(true);
+
+    await store().purge('a');
+    expect(files.has(trashed('a'))).toBe(false);
+    expect((await store().listTrash()).map((r) => r.id)).toEqual(['b']);
+
+    await store().emptyTrash();
+    expect(files.has(trashed('b'))).toBe(false);
+    expect(await store().listTrash()).toEqual([]);
+
+    await store().trash('c');
+    await store().clear();
+    expect([...files.keys()].filter((key) => key.startsWith(`${DIR}/`))).toEqual([]);
+  });
+
+  it('an older build clearing worksheets/ leaves trash/ alone', async () => {
+    await store().save(worksheet('a', '2024-01-01T00:00:00.000Z'));
+    await store().trash('a');
+    // What v0.2 clear() removes: top-level *.worksheet.json and index.json only.
+    for (const key of [...files.keys()]) {
+      const rest = key.slice(DIR.length + 1);
+      if (!rest.includes('/') && (rest.endsWith('.worksheet.json') || rest === 'index.json')) {
+        files.delete(key);
+      }
+    }
+    expect((await store().listTrash()).map((r) => r.id)).toEqual(['a']);
   });
 });

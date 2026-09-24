@@ -10,7 +10,9 @@ import {
   isDesktop,
   JSON_FILTERS,
   LAST_FOLDER_KEY,
+  ZIP_FILTERS,
   openFolder,
+  pickFile,
   pickTextFile,
   revealFile,
   revealLabel,
@@ -121,6 +123,11 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
     const text = tauri.readable.get(path);
     if (text === undefined) throw new Error(`ENOENT ${path}`);
     return text;
+  },
+  readFile: async (path: string) => {
+    const text = tauri.readable.get(path);
+    if (text === undefined) throw new Error(`ENOENT ${path}`);
+    return new TextEncoder().encode(text);
   },
 }));
 
@@ -299,6 +306,26 @@ describe('pickTextFile on desktop', () => {
     tauri.openResult = '/x/bad.json';
     tauri.readable.set('/x/bad.json', 'not json');
     await expect(pickWorksheetFile()).rejects.toThrow();
+  });
+});
+
+describe('pickFile on desktop', () => {
+  it('reads the picked file as bytes and remembers its folder', async () => {
+    const storage = desktop();
+    tauri.openResult = '/Users/t/Desktop/backup.zip';
+    tauri.readable.set(tauri.openResult, 'PK');
+    const picked = await pickFile(ZIP_FILTERS);
+    expect(tauri.openCalls[0]).toMatchObject({ multiple: false, defaultPath: DEFAULT });
+    expect(picked?.name).toBe('backup.zip');
+    expect(new TextDecoder().decode(picked?.bytes)).toBe('PK');
+    expect(storage !== 'throws' && storage.getItem(LAST_FOLDER_KEY)).toBe('/Users/t/Desktop');
+  });
+
+  it('returns undefined when cancelled, and always on the web', async () => {
+    desktop();
+    expect(await pickFile(ZIP_FILTERS)).toBeUndefined();
+    vi.unstubAllGlobals();
+    expect(await pickFile(ZIP_FILTERS)).toBeUndefined();
   });
 });
 

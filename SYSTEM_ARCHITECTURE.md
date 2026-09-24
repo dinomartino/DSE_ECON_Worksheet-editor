@@ -1586,14 +1586,23 @@ paths). Verify by measuring the same text node in both states.
 
 `QuestionTypeDefinition`: `id` · `displayName` (bilingual) · `create()` ·
 `render(question, context) → RenderNode[]` · `EditorPanel` ·
-`countMissingTranslations?` · `examGapLines?`. Registered: `mcq`, `structured`. A new
-type needs only a definition.
+`countMissingTranslations?` · `examGapLines?` · `healthFacts?` · `answerKey?`. Registered:
+`mcq`, `structured`. A new type needs only a definition.
 
 - **The hand-built numbered paragraph must copy the block's `format` itself** — the
   four hand-assembled sites (MCQ stem; structured stem, part, sub-part) each omitted it
   once. `registry.test.ts` asserts it reaches the IR for every type.
-- **No shared module may branch on a concrete type.** `registry.test.ts` greps eight
+- **No shared module may branch on a concrete type.** `registry.test.ts` greps ten
   modules for `'mcq'`/`'structured'` literals.
+- **The paper check asks, never inspects.** `model/paperHealth.ts:checkPaper` (the Export
+  dialog's pre-print summary: letter balance and runs, missing keys, marks, time estimate,
+  untranslated strings) is derived, never stored; per-type facts come from `healthFacts?`.
+  A type without it contributes marks and translations only.
+- **The answer key is its own document, built as IR** (`render/answerKey.ts`). Each type
+  reports a `choice` (grid letter; unset prints "—") or a `scheme` (part/sub-part rows,
+  marks placed as the paper places them); the walker numbers them with `computeNumbering`
+  and groups by section. `exportAnswerKeyDocx` keeps the page setup and fonts, drops the
+  cover, bands, header and furniture, and adds a centred page number.
 
 ---
 
@@ -1621,6 +1630,9 @@ the way in; `NewWorksheetForm` asks the once-per-document decisions.
   without opening.
 - **A summary can outlive the document it names** — opening one says so and drops the
   row.
+- **Delete moves to Trash** (`TrashList`, reached by "Trash (N)" beside the count).
+  Trashing the open document drops the editor's "Back" (`onTrashed`), or its next
+  autosave would make it live again.
 
 ### The file dashboard (`start/FileDashboard.tsx`)
 
@@ -1937,6 +1949,21 @@ in-flight values stay local; the store is called on pointer-up.
   `normalize` defaulting). Adding a migration = append to `MIGRATIONS` + bump the
   constant.
 - **Forward compatibility**: unknown top-level fields preserved in `__unknown`.
+- **Trash is a separate list, not a flag** (`storage/trash.ts`): an older build reading
+  the index would show a flagged row as live. Web: the document stays at
+  `econ-worksheet:<id>`, its row moves from the index to `econ-worksheet-trash` (not under
+  the document prefix). Desktop: the file moves to `worksheets/trash/` with its own
+  `index.json`, which every build's rebuild-by-scan and `clear()` skip. To an older build
+  a trashed document is simply deleted. Purged 30 days on, lazily in `listTrash()`.
+  **Live wins**: on the web a trash row whose id is live again is dropped and its shared
+  key never purged; `save()` of a trashed id makes it live. `remove()` still means
+  delete for good; `clear()` takes the Trash too.
+- **Backup** (`storage/backup.ts`) is one zip of `.worksheet.json` entries plus
+  `manifest.json`; Trash is left out. Restore parses every entry through `migrate`, skips
+  and names bad ones, and **never overwrites**: an identical live id is skipped, any
+  other collision (live or trashed) becomes a copy named "… (restored)". Each save is
+  caught alone so a full `localStorage` reports what did not fit. JSZip is loaded on
+  click — the start screen must not pay for it.
 - **`KNOWN_KEYS` must list every top-level field** — an unlisted key is stripped into
   `__unknown`: it saves fine and vanishes on reload. A test fails when a populated
   worksheet carries a key the set lacks.

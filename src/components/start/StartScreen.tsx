@@ -1,12 +1,22 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui';
-import { exportsFolder, isDesktop, openFolder, revealFile, revealLabel } from '@/platform';
+import {
+  exportsFolder,
+  isDesktop,
+  openFolder,
+  pickFile,
+  revealFile,
+  revealLabel,
+  saveFile,
+  ZIP_FILTERS,
+} from '@/platform';
 import { Dialog } from '@/components/ui/Dialog';
 import { AppMark } from '@/components/ui/AppMark';
 import { FileDashboard, type DocumentActions } from './FileDashboard';
 import { NEW_WORKSHEET_FORM_ID, NewWorksheetForm } from './NewWorksheetForm';
+import { TrashList } from './TrashList';
 import { newId } from '@/model/factories';
 import type { DocumentType } from '@/model/newWorksheet';
 import type { LanguageMode, Worksheet } from '@/model/types';
@@ -17,9 +27,19 @@ import {
   readWorksheetFile,
   savedWorksheetPath,
   savedWorksheetsFolder,
+  TRASH_RETENTION_DAYS,
   worksheetStore,
+  type TrashedSummary,
   type WorksheetSummary,
 } from '@/storage';
+
+/** A result worth reading: backup written, backup restored, document restored. */
+type Notice = {
+  message: string;
+  /** Per-file lines — what was unreadable or did not fit. */
+  details?: string[];
+  action?: { label: string; run: () => void };
+};
 
 /**
  * The screen the app opens on: start something, or resume something.
@@ -38,8 +58,11 @@ import {
 export function StartScreen({
   onOpen,
   onClose,
+  onTrashed,
 }: {
   onOpen: (worksheet: Worksheet, language?: LanguageMode) => void;
+  /** A document went to Trash — the host drops "Back" if it was the one open. */
+  onTrashed?: (id: string) => void;
   /**
    * Leave without opening anything, or `undefined` when there is nothing to go back to.
    *
@@ -55,12 +78,23 @@ export function StartScreen({
   const [error, setError] = useState<string | undefined>();
   const [renaming, setRenaming] = useState<WorksheetSummary | undefined>();
   const [confirmingDelete, setConfirmingDelete] = useState<WorksheetSummary | undefined>();
+  const [trashRows, setTrashRows] = useState<TrashedSummary[]>([]);
+  const [showingTrash, setShowingTrash] = useState(false);
+  const [confirmingPurge, setConfirmingPurge] = useState<TrashedSummary | undefined>();
+  const [confirmingEmpty, setConfirmingEmpty] = useState(false);
+  const [notice, setNotice] = useState<Notice | undefined>();
+  const [busy, setBusy] = useState<'backup' | 'restore' | undefined>();
   const [dragging, setDragging] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  const backupInput = useRef<HTMLInputElement>(null);
 
+  // One after the other, not in parallel: `listTrash` purges expired documents and
+  // may write, and the two lists must describe the same moment.
   const refresh = useCallback(async () => {
     const next = await worksheetStore.list();
+    const trash = await worksheetStore.listTrash();
     setSummaries(next);
+    setTrashRows(trash);
     setLoaded(true);
   }, []);
 
@@ -71,8 +105,10 @@ export function StartScreen({
     let live = true;
     void (async () => {
       const next = await worksheetStore.list();
+      const trash = await worksheetStore.listTrash();
       if (!live) return;
       setSummaries(next);
+      setTrashRows(trash);
       setLoaded(true);
     })();
     return () => {
@@ -136,6 +172,104 @@ export function StartScreen({
     }
   };
 
+  const moveToTrash = async (summary: WorksheetSummary) => {
+    setError(undefined);
+    try {
+      await worksheetStore.trash(summary.id);
+      onTrashed?.(summary.id);
+    } catch {
+      setError('Could not move that worksheet to the Trash.');
+    }
+    await refresh();
+  };
+
+  const restoreFromTrash = async (row: TrashedSummary) => {
+    setError(undefined);
+    try {
+      const id = await worksheetStore.restore(row.id);
+      if (id) setNotice({ message: `Restored “${row.title}”.` });
+      else setError('That worksheet is no longer in the Trash.');
+    } catch {
+      setError('Could not restore that worksheet.');
+    }
+    await refresh();
+  };
+
+  /**
+   * Every saved document as one .zip. The backup module (and JSZip) is loaded on click:
+   * this is the screen the app opens on, and it must not pay for a deflater up front.
+   */
+  const backUpAll = async () => {
+    setError(undefined);
+    setNotice(undefined);
+    setBusy('backup');
+    try {
+      const { backupFileName, buildBackup } = await import('@/storage/backup');
+      const worksheets: Worksheet[] = [];
+      let unreadable = 0;
+      for (const summary of await worksheetStore.list()) {
+        const worksheet = await worksheetStore.load(summary.id).catch(() => undefined);
+        if (worksheet) worksheets.push(worksheet);
+        else unreadable += 1;
+      }
+      if (worksheets.length === 0) {
+        setError('There is nothing saved to back up yet.');
+        return;
+      }
+      const path = await saveFile(await buildBackup(worksheets), backupFileName(), ZIP_FILTERS);
+      // A cancelled desktop sheet wrote nothing, so there is nothing to report.
+      if (path === undefined && isDesktop()) return;
+      setNotice({
+        message:
+          `Backed up ${plural(worksheets.length, 'document')}.` +
+          (unreadable > 0
+            ? ` ${plural(unreadable, 'document')} could not be read and ${unreadable === 1 ? 'is' : 'are'} not in it.`
+            : ''),
+        action: path
+          ? { label: revealLabel(), run: () => void revealFile(path).catch(() => undefined) }
+          : undefined,
+      });
+    } catch {
+      setError('Could not write the backup.');
+    } finally {
+      setBusy(undefined);
+    }
+  };
+
+  /** Restore never overwrites; each unreadable or unsaved file is listed by name. */
+  const restoreFrom = async (data: Uint8Array | Blob) => {
+    setError(undefined);
+    setNotice(undefined);
+    setBusy('restore');
+    try {
+      const { readBackup, restoreBackup, restoreSummary } = await import('@/storage/backup');
+      const { worksheets, failures } = await readBackup(data);
+      const report = await restoreBackup(worksheetStore, worksheets);
+      setNotice({
+        message: restoreSummary(report, failures.length),
+        details: [...failures, ...report.failed].map((f) => `${f.name} — ${f.reason}`),
+      });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not read that backup.');
+    } finally {
+      setBusy(undefined);
+      await refresh();
+    }
+  };
+
+  const pickBackup = async () => {
+    if (!isDesktop()) {
+      backupInput.current?.click();
+      return;
+    }
+    try {
+      const picked = await pickFile(ZIP_FILTERS);
+      if (picked) await restoreFrom(picked.bytes);
+    } catch {
+      setError('Could not open that file.');
+    }
+  };
+
   const actions: DocumentActions = {
     open: (summary) => void openSaved(summary.id),
     rename: setRenaming,
@@ -181,7 +315,9 @@ export function StartScreen({
         event.preventDefault();
         setDragging(false);
         const file = event.dataTransfer.files[0];
-        if (file) void openFile(file);
+        if (!file) return;
+        if (isZip(file)) void restoreFrom(file);
+        else void openFile(file);
       }}
     >
       {/*
@@ -256,7 +392,7 @@ export function StartScreen({
             <>
               <p>
                 Everything here is stored on this computer only — there is no server and no
-                account. Keep a .json copy of anything you would be sorry to lose.
+                account. Back up now and then: one .zip holds every document.
               </p>
               {/* The two places a teacher's files live, one click each: the app's own
                   store (autosaved, named by id) and the folder exports start in. */}
@@ -272,25 +408,63 @@ export function StartScreen({
           ) : (
             <p>
               Everything here is stored in this browser only — there is no server and no
-              account. Clearing site data deletes it, so keep a .json copy of anything you
-              would be sorry to lose.
+              account. Clearing site data deletes it, so back up now and then: one .zip
+              holds every document.
             </p>
           )}
+          <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+            <TextLink onClick={() => void backUpAll()} disabled={busy !== undefined}>
+              {busy === 'backup' ? 'Backing up…' : 'Back up all…'}
+            </TextLink>
+            <TextLink onClick={() => void pickBackup()} disabled={busy !== undefined}>
+              {busy === 'restore' ? 'Restoring…' : 'Restore from backup…'}
+            </TextLink>
+          </p>
         </div>
       </aside>
 
       {/* The desk side: every document already on the desk, as its first page. */}
       <main className="min-h-0 flex-1 overflow-y-auto px-9 py-9 lg:px-14 lg:py-12">
-        <FileDashboard summaries={summaries} loaded={loaded} actions={actions} />
+        {/* Results sit above the list: below it, a long archive scrolls them out of view. */}
         {error && (
           <p
             role="alert"
-            className="mx-auto mt-4 max-w-5xl rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink"
+            className="mx-auto mb-5 max-w-5xl rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink"
           >
             {error}
           </p>
         )}
+        {notice && <NoticeBox notice={notice} onDismiss={() => setNotice(undefined)} />}
+        {showingTrash ? (
+          <TrashList
+            rows={trashRows}
+            onBack={() => setShowingTrash(false)}
+            onRestore={(row) => void restoreFromTrash(row)}
+            onPurge={setConfirmingPurge}
+            onEmpty={() => setConfirmingEmpty(true)}
+          />
+        ) : (
+          <FileDashboard
+            summaries={summaries}
+            loaded={loaded}
+            actions={actions}
+            trashCount={trashRows.length}
+            onShowTrash={() => setShowingTrash(true)}
+          />
+        )}
       </main>
+
+      <input
+        ref={backupInput}
+        type="file"
+        accept="application/zip,.zip"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) void restoreFrom(file);
+          event.target.value = '';
+        }}
+      />
 
       <input
         ref={fileInput}
@@ -307,7 +481,7 @@ export function StartScreen({
       {dragging && (
         <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center bg-accent/10 backdrop-blur-[1px]">
           <span className="rounded-xl border-2 border-dashed border-accent bg-surface px-5 py-3 text-[13px] font-medium text-accent-ink">
-            Drop to open this worksheet
+            Drop a .json to open it, or a backup .zip to restore it
           </span>
         </div>
       )}
@@ -363,36 +537,87 @@ export function StartScreen({
 
       {confirmingDelete && (
         <Dialog
-          title={`Delete “${confirmingDelete.title}”?`}
-          description={`It is stored ${isDesktop() ? 'on this computer' : 'in this browser'} only, so there is no copy to restore it from.`}
+          title={`Move “${confirmingDelete.title}” to Trash?`}
           width={420}
           onClose={() => setConfirmingDelete(undefined)}
-          // `Dialog`'s footer is already a right-aligned flex row, so these sit in it
-          // directly rather than inside a second one that re-states the same layout.
           footer={
             <>
               <Button variant="subtle" onClick={() => setConfirmingDelete(undefined)}>
                 Cancel
               </Button>
-              {/* Filled, for the reason the clear-everything dialog spells out: the
-                  quiet `danger` variant recedes until hovered, which reads as equal
-                  weight to Cancel at rest. */}
-              <button
-                type="button"
+              <Button
+                variant="primary"
                 onClick={() => {
-                  const id = confirmingDelete.id;
+                  const summary = confirmingDelete;
                   setConfirmingDelete(undefined);
-                  void worksheetStore.remove(id).then(refresh);
+                  void moveToTrash(summary);
                 }}
-                className="inline-flex h-[34px] items-center justify-center rounded-lg border border-transparent bg-danger px-3 text-[13px] font-medium text-white shadow-sm transition-colors hover:brightness-95 active:scale-[0.97]"
               >
-                Delete
-              </button>
+                Move to Trash
+              </Button>
             </>
           }
         >
           <p className="px-5 py-5 text-[13px] leading-relaxed text-ink-subtle">
-            Download a .json copy first if you might want it back.
+            You can restore it from the Trash for {TRASH_RETENTION_DAYS} days. After that it is
+            deleted for good.
+          </p>
+        </Dialog>
+      )}
+
+      {confirmingPurge && (
+        <Dialog
+          title={`Delete “${confirmingPurge.title}” forever?`}
+          width={420}
+          onClose={() => setConfirmingPurge(undefined)}
+          footer={
+            <>
+              <Button variant="subtle" onClick={() => setConfirmingPurge(undefined)}>
+                Cancel
+              </Button>
+              <DangerButton
+                onClick={() => {
+                  const id = confirmingPurge.id;
+                  setConfirmingPurge(undefined);
+                  void worksheetStore.purge(id).then(refresh);
+                }}
+              >
+                Delete forever
+              </DangerButton>
+            </>
+          }
+        >
+          <p className="px-5 py-5 text-[13px] leading-relaxed text-ink-subtle">
+            It is stored {isDesktop() ? 'on this computer' : 'in this browser'} only, so this
+            cannot be undone.
+          </p>
+        </Dialog>
+      )}
+
+      {confirmingEmpty && (
+        <Dialog
+          title="Empty the Trash?"
+          width={420}
+          onClose={() => setConfirmingEmpty(false)}
+          footer={
+            <>
+              <Button variant="subtle" onClick={() => setConfirmingEmpty(false)}>
+                Cancel
+              </Button>
+              <DangerButton
+                onClick={() => {
+                  setConfirmingEmpty(false);
+                  void worksheetStore.emptyTrash().then(refresh);
+                }}
+              >
+                Empty Trash
+              </DangerButton>
+            </>
+          }
+        >
+          <p className="px-5 py-5 text-[13px] leading-relaxed text-ink-subtle">
+            {plural(trashRows.length, 'document')} will be deleted for good. This cannot be
+            undone.
           </p>
         </Dialog>
       )}
@@ -517,5 +742,86 @@ function FolderLink({
     >
       {label}
     </button>
+  );
+}
+
+/**
+ * Filled, not the quiet `danger` variant: that one recedes until hovered, which reads as
+ * equal weight to Cancel at rest — wrong for the one step that cannot be undone.
+ */
+function DangerButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex h-[34px] items-center justify-center rounded-lg border border-transparent bg-danger px-3 text-[13px] font-medium text-white shadow-sm transition-colors hover:brightness-95 active:scale-[0.97]"
+    >
+      {children}
+    </button>
+  );
+}
+
+function TextLink({
+  onClick,
+  disabled,
+  children,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="cursor-pointer font-medium text-accent-ink underline decoration-line-strong underline-offset-4 transition-colors hover:decoration-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-50"
+    >
+      {children}
+    </button>
+  );
+}
+
+function NoticeBox({ notice, onDismiss }: { notice: Notice; onDismiss: () => void }) {
+  const details = notice.details ?? [];
+  return (
+    <div
+      role="status"
+      className="zone-light mx-auto mb-5 max-w-5xl rounded-xl border border-line bg-surface px-4 py-3"
+    >
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <p className="min-w-0 flex-1 text-[12.5px] font-medium text-ink">{notice.message}</p>
+        {notice.action && (
+          <Button variant="ghostAccent" size="sm" onClick={notice.action.run}>
+            {notice.action.label}
+          </Button>
+        )}
+        <Button variant="subtle" size="sm" onClick={onDismiss}>
+          Dismiss
+        </Button>
+      </div>
+      {details.length > 0 && (
+        <ul className="mt-2 space-y-0.5 text-[11px] leading-snug text-ink-muted">
+          {details.slice(0, 8).map((line) => (
+            <li key={line} className="truncate">
+              {line}
+            </li>
+          ))}
+          {details.length > 8 && <li>and {details.length - 8} more</li>}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function plural(count: number, noun: string): string {
+  return count === 1 ? `1 ${noun}` : `${count} ${noun}s`;
+}
+
+function isZip(file: File): boolean {
+  return (
+    file.name.toLowerCase().endsWith('.zip') ||
+    file.type === 'application/zip' ||
+    file.type === 'application/x-zip-compressed'
   );
 }

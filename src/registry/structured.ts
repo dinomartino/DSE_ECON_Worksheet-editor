@@ -4,11 +4,12 @@ import {
   partLabel,
   subPartLabel,
 } from '@/model/numbering';
-import { bi, isBiTextEmpty } from '@/model/text';
+import { areBlocksEmpty, bi, isBiTextEmpty } from '@/model/text';
 import type { StructuredQuestion } from '@/model/types';
 import { pushGap, renderContentBlocks, type RenderContext, type RenderNode } from '@/render/ir';
 import { StructuredEditorPanel } from '@/components/editor/StructuredEditorPanel';
-import type { QuestionTypeDefinition } from './types';
+import type { AnswerKeyEntry, AnswerKeyRow } from '@/render/answerKey';
+import type { QuestionHealthFacts, QuestionTypeDefinition } from './types';
 
 /**
  * Structured rendering (§8): stem -> parts (a).. -> sub-parts (i).. with marks on
@@ -338,6 +339,54 @@ function countMissingTranslations(question: StructuredQuestion): number {
   return missing;
 }
 
+/** A part's answer covers its sub-parts; otherwise each unanswered leaf counts once. */
+function healthFacts(question: StructuredQuestion): QuestionHealthFacts {
+  let unansweredParts = 0;
+  let bodyEmpty = true;
+  for (const part of question.parts) {
+    const subParts = part.subParts ?? [];
+    if (!areBlocksEmpty(part.blocksBefore) || !areBlocksEmpty(part.blocks)) bodyEmpty = false;
+    if (subParts.some((sub) => !areBlocksEmpty(sub.blocks))) bodyEmpty = false;
+    if (!isBiTextEmpty(part.answer)) continue;
+    unansweredParts += subParts.length === 0 ? 1 : subParts.filter((sub) => isBiTextEmpty(sub.answer)).length;
+  }
+  return { empty: areBlocksEmpty(question.blocks) && bodyEmpty, unansweredParts };
+}
+
+/**
+ * The answer key's rows: each part and sub-part with the marks the paper prints on it
+ * (same placement as `render` — a shared label on the last sub-part, absent prints
+ * nothing) and the author's answer text.
+ */
+function answerKey(question: StructuredQuestion): AnswerKeyEntry {
+  const rows: AnswerKeyRow[] = [];
+  question.parts.forEach((part, partIndex) => {
+    const subParts = part.subParts ?? [];
+    const hasSubParts = subParts.length > 0;
+    const sharedMarksIndex =
+      hasSubParts && subParts.every((sub) => sub.marks === undefined) ? subParts.length - 1 : -1;
+    rows.push({
+      depth: 1,
+      label: partLabel(partIndex),
+      marks: hasSubParts ? undefined : part.marks,
+      answer: hasSubParts ? undefined : part.answer,
+    });
+    subParts.forEach((subPart, subIndex) => {
+      rows.push({
+        depth: 2,
+        label: subPartLabel(subIndex),
+        marks: subIndex === sharedMarksIndex ? part.marks : subPart.marks,
+        answer: subPart.answer,
+      });
+    });
+    // A part with sub-parts may still carry an aggregate answer, printed after the group.
+    if (hasSubParts && !isBiTextEmpty(part.answer)) rows.push({ depth: 1, answer: part.answer });
+  });
+  // With no parts the question is the leaf, and its marks ride on its own line.
+  const marks = question.parts.length === 0 ? questionMarks(question) || undefined : undefined;
+  return { kind: 'scheme', marks, rows };
+}
+
 export const structuredType: QuestionTypeDefinition<StructuredQuestion> = {
   id: 'structured',
   displayName: bi('Structured Question', '結構性問題'),
@@ -345,4 +394,6 @@ export const structuredType: QuestionTypeDefinition<StructuredQuestion> = {
   render,
   EditorPanel: StructuredEditorPanel,
   countMissingTranslations,
+  healthFacts,
+  answerKey,
 };

@@ -9,14 +9,15 @@ guards the result. The map is [`CODEMAP.md`](./CODEMAP.md); the *why* is in
 1. `src/model/types.ts` — the interface, added to the `Question` union.
 2. `src/model/factories.ts` — a `create…Question()` factory.
 3. `src/registry/<type>.ts` — one `QuestionTypeDefinition`: `id` · `displayName` ·
-   `create` · `render` · `EditorPanel`, plus `examGapLines?` / `countMissingTranslations?`.
+   `create` · `render` · `EditorPanel`, plus `examGapLines?` / `countMissingTranslations?` / `healthFacts?` /
+   `answerKey?` (without it the type is left out of the answer key).
 4. `src/registry/index.ts` — add it to `DEFINITIONS`.
 5. `src/model/migrations.ts` — nothing, unless the type adds a `Worksheet` field.
 
 No other file may learn the id. `render()` must copy the block's `format` onto every
 hand-built numbered paragraph.
 
-Guard: `src/registry/registry.test.ts` (greps eight shared modules for type literals, and
+Guard: `src/registry/registry.test.ts` (greps ten shared modules for type literals, and
 asserts `format` reaches the IR for every registered type).
 
 ## Add a ContentBlock kind

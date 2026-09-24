@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { copyForWord, worksheetClipboardHtml, worksheetPlainText } from '@/export/clipboard';
 import { renderDiagramImages } from '@/export/diagramImage';
 import { worksheetMarks } from '@/model/marks';
@@ -9,13 +9,15 @@ import type { LanguageMode, VersionMode } from '@/model/types';
 import { requireQuestionType } from '@/registry';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { downloadWorksheetFile, worksheetStore } from '@/storage';
-import { DOCX_FILTERS, isDesktop, printPage, revealFile, revealLabel, saveFile } from '@/platform';
+import { isDesktop, printPage, revealFile, revealLabel } from '@/platform';
 import { Button, IconButton, Pill, Segmented } from '@/components/ui';
 import { DownloadIcon, PdfIcon, RedoIcon, SettingsIcon, UndoIcon } from '@/components/ui/icons';
 import { Menu } from '@/components/ui/Menu';
 import { Dialog } from '@/components/ui/Dialog';
 import { AppMark } from '@/components/ui/AppMark';
 import { DocumentName } from './DocumentName';
+import { ExportDialog } from './ExportDialog';
+import { PaperHealthPanel } from './PaperHealthPanel';
 
 /** A transient status line, optionally with one follow-up action. */
 type Notice = { message: string; action?: { label: string; run: () => void } };
@@ -54,6 +56,9 @@ export function Toolbar({
   const [error, setError] = useState<string | undefined>();
   const [notice, setNotice] = useState<Notice | undefined>();
   const [confirmingClear, setConfirmingClear] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  // Stable, so the dialog does not re-focus its panel on every store update.
+  const closeExport = useCallback(() => setExporting(false), []);
 
   // Only meaningful in bilingual mode, where a missing side affects the output (§5.2).
   const untranslated =
@@ -92,35 +97,10 @@ export function Toolbar({
     }
   };
 
-  /**
-   * Export as .docx, with the writer fetched on demand.
-   *
-   * `@/export/docx` is the heaviest thing this app can reach: the OOXML builders plus
-   * JSZip, which alone is ~100 KB of the main chunk. None of it runs until this button
-   * is pressed, and a teacher opening the editor to type a question never presses it —
-   * so a static import made every page load pay for the deflate implementation before
-   * the first paint. Importing it here moves the whole subtree into its own chunk that
-   * is fetched during the click, behind the `busy` spinner this handler already shows.
-   *
-   * The import sits inside the `try` deliberately: a chunk that fails to load (offline,
-   * a stale deployment) is an export failure like any other and belongs in the same
-   * error message rather than as an unhandled rejection.
-   */
-  const handleExport = async () => {
-    setBusy('export');
+  /** The Export dialog wrote its files; it reports here so the status line and reveal match. */
+  const handleExported = (message: string, path?: string) => {
     setError(undefined);
-    try {
-      const { docxFileName, exportDocx } = await import('@/export/docx');
-      const blob = await exportDocx(worksheet, mode);
-      // On desktop this is a native save sheet and can be cancelled; saying "Exported"
-      // after a cancelled dialog would claim a file that is not there.
-      const path = await saveFile(blob, docxFileName(worksheet, mode), DOCX_FILTERS);
-      if (path !== undefined || !isDesktop()) flash('Exported .docx', revealAction(path));
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Export failed.');
-    } finally {
-      setBusy(undefined);
-    }
+    flash(message, revealAction(path));
   };
 
   const handleCopy = async () => {
@@ -316,9 +296,9 @@ export function Toolbar({
           PDF
         </Button>
 
-        <Button variant="primary" onClick={handleExport} disabled={busy === 'export'}>
+        <Button variant="primary" onClick={() => setExporting(true)} title="Question paper, answer key, or both">
           <DownloadIcon size={15} />
-          {busy === 'export' ? 'Exporting…' : 'Export .docx'}
+          Export…
         </Button>
 
         <Menu
@@ -353,6 +333,16 @@ export function Toolbar({
         >
           {error}
         </p>
+      )}
+
+      {exporting && (
+        <ExportDialog
+          worksheet={worksheet}
+          mode={mode}
+          onClose={closeExport}
+          onExported={handleExported}
+          checks={<PaperHealthPanel worksheet={worksheet} language={mode.language} />}
+        />
       )}
 
       {/* Confirmed rather than immediate: this is the one action in the app that

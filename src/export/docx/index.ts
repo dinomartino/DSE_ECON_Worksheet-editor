@@ -1,4 +1,5 @@
 import {
+  BAND_ROW_TWIPS,
   bandsAreEmpty,
   bandsHeight,
   contentWidth,
@@ -21,6 +22,7 @@ import { documentName, plain } from '@/model/text';
 import type { Band, BandField, FontPair, HeaderFooter, LanguageMode, OutputMode, Worksheet } from '@/model/types';
 import type { RenderNode } from '@/render/ir';
 import { bandFieldText, collectListStreams, renderWorksheet } from '@/render/worksheet';
+import { answerKeyTitle, renderAnswerKey } from '@/render/answerKey';
 import { collectDiagramNodes, renderDiagramImages, type DiagramImageMap } from '../diagramImage';
 import { coverFooterBodyXml, coverXml, renderNodeXml, type BodyContext } from './body';
 import { assignNumIds, buildNumberingXml } from './numbering';
@@ -586,6 +588,77 @@ export async function exportDocxBuffer(
 /** Exposed for tests that assert on the raw XML parts. */
 export { buildParts as buildDocxParts };
 
+/**
+ * The answer key's package (`render/answerKey.ts`). The paper's page setup, fonts and
+ * body size; no cover, bands, header or page furniture — only a centred page number.
+ * Its IR holds no pictures and no list streams, so neither images nor `w:num` apply.
+ */
+function buildAnswerKeyParts(worksheet: Worksheet, language: LanguageMode): PackageParts {
+  const fonts = worksheet.fonts;
+  const setup = pageSetupOf(worksheet);
+  const { width: pageWidth, height: pageHeight } = pageDimensions(setup);
+  const textWidth = contentWidth(setup);
+
+  let drawingId = 1;
+  const context: BodyContext = {
+    fonts,
+    language,
+    contentWidth: textWidth,
+    numIds: new Map(),
+    imageRelId: () => undefined,
+    nextDrawingId: () => (drawingId += 1),
+  };
+  const body = renderAnswerKey(worksheet, language)
+    .map((node) => renderNodeXml(node, context))
+    .join('');
+
+  const pageNumber: HeaderFooterLayout = {
+    rows: [{ left: '', center: fieldRuns('PAGE', runProperties(fonts, {}), '1'), right: '' }],
+    contentWidth: textWidth,
+    ruleEdge: 'top',
+  };
+
+  const title = answerKeyTitle(worksheet);
+  const timestamp = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+
+  return {
+    documentXml: buildDocumentXml(body, {
+      pageWidth,
+      pageHeight,
+      margins: setup.margins,
+      landscape: setup.orientation === 'landscape',
+      hasHeader: false,
+      hasFooter: true,
+      differentFirstPage: false,
+      edgeOffsets: headerFooterOffsets(setup.margins, 0, BAND_ROW_TWIPS),
+    }),
+    stylesXml: buildStylesXml(fonts, { baseFontSize: worksheet.baseFontSize }),
+    numberingXml: buildNumberingXml([], fonts, listIndentScheme(documentShape(worksheet))),
+    headerFooter: { footer: buildFooterXml(pageNumber) },
+    fontTableXml: buildFontTableXml(fonts),
+    coreXml: buildCorePropsXml(plain(language === 'zh' ? title.zh : title.en), timestamp),
+    assets: [],
+  };
+}
+
+/** The answer key as a .docx. `language` alone: a key has no student version. */
+export async function exportAnswerKeyDocx(
+  worksheet: Worksheet,
+  language: LanguageMode,
+): Promise<Blob> {
+  return zipPackage(buildAnswerKeyParts(worksheet, language));
+}
+
+/** Node-friendly variant used by the export tests. */
+export async function exportAnswerKeyDocxBuffer(
+  worksheet: Worksheet,
+  language: LanguageMode,
+): Promise<Uint8Array> {
+  return zipPackageBuffer(buildAnswerKeyParts(worksheet, language));
+}
+
+export { buildAnswerKeyParts as buildAnswerKeyDocxParts };
+
 const LANGUAGE_TAG: Record<OutputMode['language'], string> = {
   en: 'EN',
   zh: 'ZH',
@@ -600,9 +673,17 @@ const LANGUAGE_TAG: Record<OutputMode['language'], string> = {
  * its old title — the list and the download disagreeing about what the file is called.
  */
 export function docxFileName(worksheet: Worksheet, mode: OutputMode): string {
+  const version = mode.version === 'teacher' ? 'Teacher' : 'Student';
+  return `${fileTitle(worksheet)} (${version}) (${LANGUAGE_TAG[mode.language]}).docx`;
+}
+
+/** `<name> (Answer key) (<EN|ZH|Bilingual>).docx` — never mistaken for either paper. */
+export function answerKeyFileName(worksheet: Worksheet, language: LanguageMode): string {
+  return `${fileTitle(worksheet)} (Answer key) (${LANGUAGE_TAG[language]}).docx`;
+}
+
+function fileTitle(worksheet: Worksheet): string {
   const rawTitle = documentName(worksheet) ?? 'Worksheet';
   // Strip characters that are illegal in Windows/macOS filenames.
-  const title = rawTitle.replace(/[\\/:*?"<>|]/g, '-').trim() || 'Worksheet';
-  const version = mode.version === 'teacher' ? 'Teacher' : 'Student';
-  return `${title} (${version}) (${LANGUAGE_TAG[mode.language]}).docx`;
+  return rawTitle.replace(/[\\/:*?"<>|]/g, '-').trim() || 'Worksheet';
 }

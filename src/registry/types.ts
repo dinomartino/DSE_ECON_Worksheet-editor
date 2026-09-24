@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react';
 import type { BiText, Question } from '@/model/types';
 import type { RenderContext, RenderNode } from '@/render/ir';
+import type { AnswerKeyContext, AnswerKeyEntry } from '@/render/answerKey';
 
 /**
  * The question-type registry (§9).
@@ -43,6 +44,29 @@ export interface QuestionTypeDefinition<Q extends Question = Question> {
   EditorPanel: ComponentType<EditorPanelProps<Q>>;
   /** Count of untranslated BiText fields, for the editor's warning badge (§5.2). */
   countMissingTranslations?: (question: Q) => number;
+  /** Per-type facts for the pre-print paper check (`model/paperHealth.ts`). */
+  healthFacts?: (question: Q) => QuestionHealthFacts;
+  /** This question's entry in the separate answer key (`render/answerKey.ts`); absent = none. */
+  answerKey?: (question: Q, context: AnswerKeyContext) => AnswerKeyEntry;
+}
+
+/**
+ * What a type tells the paper check about one question. `answerLetter` is present only
+ * on lettered-choice types — `null` means the key is unset — and makes the question count
+ * towards letter balance and the per-item time rate.
+ */
+export interface QuestionHealthFacts {
+  /** Nothing authored: no stem, no body. Prints a bare number. */
+  empty: boolean;
+  answerLetter?: string | null;
+  /** Letters the item offers, for its fair share of the balance. */
+  optionCount?: number;
+  /** Options with no text and no content. */
+  blankOptions?: number;
+  /** Two non-blank options read identically. */
+  duplicateOptions?: boolean;
+  /** Answerable leaves (part, or sub-part) with no teacher answer text. */
+  unansweredParts?: number;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

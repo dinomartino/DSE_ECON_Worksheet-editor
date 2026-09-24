@@ -88,7 +88,8 @@ The editor opens on an empty worksheet with the paper in the middle of the scree
 2. Double-click any text on the page to edit it in place — the preview *is* the editor.
 3. **Setup** in the toolbar opens per-document settings (fonts, paper, margins,
    header/footer, title block).
-4. **Export .docx** downloads the Word file. **PDF** prints via the browser.
+4. **Export…** saves the Word file — the question paper, a separate answer key, or both.
+   **PDF** prints via the browser.
 
 Your document autosaves to `localStorage` and reopens on refresh. Use the `⋯` menu to
 download it as portable `.json` (images included, base64-encoded) or load one back.

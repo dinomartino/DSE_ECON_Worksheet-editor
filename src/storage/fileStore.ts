@@ -1,8 +1,10 @@
+import { newId } from '@/model/factories';
 import type { Worksheet } from '@/model/types';
 import { isDesktop } from '@/platform';
 import { parseWorksheet, stringifyWorksheet, summarize } from './document';
-import type { WorksheetStore, WorksheetSummary } from './types';
+import type { TrashedSummary, WorksheetStore, WorksheetSummary } from './types';
 import { usableSummaries, withSummaryFirst } from './summaries';
+import { settleTrash, untrashed, usableTrash } from './trash';
 
 /**
  * The desktop store: real files under the app's data directory.
@@ -25,6 +27,14 @@ const DIR = WORKSHEETS_DIR;
 const SUFFIX = WORKSHEET_SUFFIX;
 const INDEX = `${DIR}/index.json`;
 const docPath = (id: string) => `${DIR}/${id}${SUFFIX}`;
+/**
+ * Trash is a subdirectory with its own index. Every build's index rebuild scans only
+ * `worksheets/` itself and its `clear()` only removes `*.worksheet.json` + `index.json`
+ * there, so no build — older ones included — can list or clear a trashed file.
+ */
+const TRASH_DIR = `${DIR}/trash`;
+const TRASH_INDEX = `${TRASH_DIR}/index.json`;
+const trashPath = (id: string) => `${TRASH_DIR}/${id}${SUFFIX}`;
 
 /** Absolute path of `$APPDATA/worksheets` on desktop; `undefined` on the web. */
 export async function savedWorksheetsFolder(): Promise<string | undefined> {
@@ -44,6 +54,11 @@ type Fs = typeof import('@tauri-apps/plugin-fs');
 
 export class FileWorksheetStore implements WorksheetStore {
   private fsModule: Promise<Fs> | undefined;
+  private readonly now: () => number;
+
+  constructor(now: () => number = Date.now) {
+    this.now = now;
+  }
 
   private fs(): Promise<Fs> {
     this.fsModule ??= import('@tauri-apps/plugin-fs');
@@ -159,6 +174,7 @@ export class FileWorksheetStore implements WorksheetStore {
     await this.save({ ...worksheet, name, updatedAt: new Date().toISOString() });
   }
 
+  /** Delete the live document for good. A trashed copy is a separate file, left alone. */
   async remove(id: string): Promise<void> {
     const fs = await this.fs();
     const opts = await this.base();
@@ -172,12 +188,184 @@ export class FileWorksheetStore implements WorksheetStore {
   }
 
   /**
+   * Copy then delete, not `rename`: the text calls are the ones already proven in the
+   * shell, and a failure between the two leaves a copy behind, never nothing.
+   */
+  private async moveFile(from: string, to: string): Promise<string> {
+    const fs = await this.fs();
+    const opts = await this.base();
+    const text = await fs.readTextFile(from, opts);
+    await fs.writeTextFile(to, text, opts);
+    await fs.remove(from, opts);
+    return text;
+  }
+
+  private async readTrashIndex(): Promise<TrashedSummary[] | undefined> {
+    const fs = await this.fs();
+    const opts = await this.base();
+    if (!(await fs.exists(TRASH_INDEX, opts))) return undefined;
+    try {
+      return usableTrash(JSON.parse(await fs.readTextFile(TRASH_INDEX, opts)));
+    } catch {
+      return undefined;
+    }
+  }
+
+  private async writeTrashIndex(rows: TrashedSummary[]): Promise<void> {
+    const fs = await this.fs();
+    const opts = await this.base();
+    if (!(await fs.exists(TRASH_DIR, opts))) await fs.mkdir(TRASH_DIR, { ...opts, recursive: true });
+    await fs.writeTextFile(TRASH_INDEX, JSON.stringify(rows, null, 2), opts);
+  }
+
+  /** A lost Trash index is rebuilt from the files, each given a fresh retention window. */
+  private async trashRows(): Promise<TrashedSummary[]> {
+    const index = await this.readTrashIndex();
+    if (index) return index;
+    const fs = await this.fs();
+    const opts = await this.base();
+    if (!(await fs.exists(TRASH_DIR, opts))) return [];
+    const deletedAt = new Date(this.now()).toISOString();
+    const rebuilt: TrashedSummary[] = [];
+    for (const entry of await fs.readDir(TRASH_DIR, opts)) {
+      if (!entry.name?.endsWith(SUFFIX)) continue;
+      try {
+        const raw = await fs.readTextFile(`${TRASH_DIR}/${entry.name}`, opts);
+        rebuilt.push({ ...summarize(parseWorksheet(raw)), deletedAt });
+      } catch {
+        // Unreadable — left on disk until the Trash is emptied.
+      }
+    }
+    if (rebuilt.length > 0) await this.writeTrashIndex(rebuilt);
+    return rebuilt;
+  }
+
+  /**
+   * Row, then file, then index: interrupted after the row, `listTrash` drops a row whose
+   * file never arrived; after the move, the dangling index row is dropped on open.
+   */
+  async trash(id: string): Promise<void> {
+    const fs = await this.fs();
+    const opts = await this.base();
+    if (!(await fs.exists(docPath(id), opts))) {
+      await this.remove(id);
+      return;
+    }
+    const live = await this.list();
+    const summary =
+      live.find((entry) => entry.id === id) ??
+      (await this.load(id).then((worksheet) => worksheet && summarize(worksheet))) ??
+      { id, title: 'Untitled', updatedAt: new Date(this.now()).toISOString() };
+    const row: TrashedSummary = { ...summary, deletedAt: new Date(this.now()).toISOString() };
+    await this.writeTrashIndex([row, ...(await this.trashRows()).filter((r) => r.id !== id)]);
+    await this.moveFile(docPath(id), trashPath(id));
+    await this.writeIndex(live.filter((entry) => entry.id !== id));
+  }
+
+  /** Rows whose file is gone are dropped; expired ones are deleted here — no timer. */
+  async listTrash(): Promise<TrashedSummary[]> {
+    try {
+      const fs = await this.fs();
+      const opts = await this.base();
+      const rows = await this.trashRows();
+      const present: TrashedSummary[] = [];
+      for (const row of rows) {
+        if (await fs.exists(trashPath(row.id), opts)) present.push(row);
+      }
+      const { kept, expired, changed } = settleTrash(present, this.now());
+      for (const row of expired) {
+        try {
+          await fs.remove(trashPath(row.id), opts);
+        } catch {
+          // Already gone.
+        }
+      }
+      if (changed || present.length !== rows.length) await this.writeTrashIndex(kept);
+      return kept;
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Unlike the web, the trashed copy is its own file, so the id can be live again (an
+   * older build re-imported it). Then it comes back beside that one under a new id —
+   * a restore never overwrites.
+   */
+  async restore(id: string): Promise<string | undefined> {
+    const fs = await this.fs();
+    const opts = await this.base();
+    const rows = await this.trashRows();
+    const row = rows.find((entry) => entry.id === id);
+    const rest = rows.filter((entry) => entry.id !== id);
+    if (!(await fs.exists(trashPath(id), opts))) {
+      if (row) await this.writeTrashIndex(rest);
+      return undefined;
+    }
+    const live = await this.list();
+    if (live.some((entry) => entry.id === id) || (await fs.exists(docPath(id), opts))) {
+      const worksheet = parseWorksheet(await fs.readTextFile(trashPath(id), opts));
+      const copyId = newId();
+      await this.save({ ...worksheet, id: copyId });
+      await fs.remove(trashPath(id), opts);
+      await this.writeTrashIndex(rest);
+      return copyId;
+    }
+    await this.ensureDir();
+    const text = await this.moveFile(trashPath(id), docPath(id));
+    let summary: WorksheetSummary;
+    try {
+      summary = summarize(parseWorksheet(text));
+    } catch {
+      summary = row ? untrashed(row) : { id, title: 'Untitled', updatedAt: '' };
+    }
+    await this.writeIndex(withSummaryFirst(live, summary));
+    await this.writeTrashIndex(rest);
+    return id;
+  }
+
+  async purge(id: string): Promise<void> {
+    const fs = await this.fs();
+    const opts = await this.base();
+    try {
+      if (await fs.exists(trashPath(id), opts)) await fs.remove(trashPath(id), opts);
+    } catch {
+      // Already gone; the row still has to go.
+    }
+    await this.writeTrashIndex((await this.trashRows()).filter((row) => row.id !== id));
+  }
+
+  async emptyTrash(): Promise<void> {
+    await this.clearTrashDir();
+    const fs = await this.fs();
+    if (await fs.exists(TRASH_DIR, await this.base())) await this.writeTrashIndex([]);
+  }
+
+  /** Every trashed file and the Trash index; anything else in there is not ours. */
+  private async clearTrashDir(): Promise<void> {
+    const fs = await this.fs();
+    const opts = await this.base();
+    if (!(await fs.exists(TRASH_DIR, opts))) return;
+    for (const entry of await fs.readDir(TRASH_DIR, opts)) {
+      if (!entry.name) continue;
+      if (!entry.name.endsWith(SUFFIX) && entry.name !== 'index.json') continue;
+      try {
+        await fs.remove(`${TRASH_DIR}/${entry.name}`, opts);
+      } catch {
+        // Keep going: one undeletable file must not keep the rest.
+      }
+    }
+  }
+
+  /**
    * Forget every saved document — only this app's own worksheets directory, never the
    * wider app data tree, which other things (window state, settings) also live in.
+   * Trash included.
    */
   async clear(): Promise<void> {
     const fs = await this.fs();
     const opts = await this.base();
+    await this.clearTrashDir();
     if (!(await fs.exists(DIR, opts))) return;
     for (const entry of await fs.readDir(DIR, opts)) {
       if (!entry.name) continue;

@@ -1,4 +1,4 @@
-import type { WorksheetSummary } from '@/storage';
+import { trashAge, type WorksheetSummary } from '@/storage';
 
 /**
  * The file dashboard's pure half: which saved documents show, in what order.
@@ -92,4 +92,12 @@ export function relativeTime(iso: string, now = Date.now()): string {
   if (days === 1) return 'yesterday';
   if (days < 7) return `${days} days ago`;
   return new Date(iso).toLocaleDateString();
+}
+
+/** "deleted 3 days ago · removed in 27 days" — a Trash row's facts line. */
+export function trashAgeLabel(deletedAt: string, now = Date.now()): string {
+  const { daysAgo, daysLeft } = trashAge(deletedAt, now);
+  const ago =
+    daysAgo === 0 ? 'Deleted today' : daysAgo === 1 ? 'Deleted yesterday' : `Deleted ${daysAgo} days ago`;
+  return `${ago} · removed in ${daysLeft === 1 ? '1 day' : `${daysLeft} days`}`;
 }

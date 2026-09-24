@@ -41,6 +41,7 @@ the whole schema, one file.
 - `src/model/text.ts:BiText` helpers — `:rt` · `:plain` · `:normalizeRuns` · `:applyRunFormat`
 - `src/model/page.ts:pageSetupOf` · `:headerFooterOffsets` · `src/model/pageFurniture.ts:furnitureBoxes`
 - `src/model/cover.ts:createCoverPage` · `src/model/documentShape.ts:documentShape`
+- `src/model/paperHealth.ts:checkPaper` — the pre-print check, derived; `src/components/editor/PaperHealthPanel.tsx:PaperHealthPanel` shows it
 - `src/model/diagram.ts:Diagram` · `src/model/diagramDraw.ts:applyDrag` · `src/model/diagramTemplates.ts:DIAGRAM_TEMPLATES`
 - `src/model/table.ts:insertRow` · `:resolveCellPadding` · `:resolveColumnWidths`
 - `src/model/factories.ts:createWorksheet` · `src/model/newWorksheet.ts:createWorksheetFrom`
@@ -55,14 +56,14 @@ Invariants:
 ## registry — the question-type extension point
 
 `src/registry/types.ts:QuestionTypeDefinition` — `id` · `create` · `render` · `EditorPanel` ·
-`examGapLines?` · `countMissingTranslations?`.
+`examGapLines?` · `countMissingTranslations?` · `healthFacts?` · `answerKey?`.
 
 - `src/registry/index.ts:listQuestionTypes` · `:requireQuestionType`
 - `src/registry/mcq.ts:mcqType` · `:resolveOptionLayout`
 - `src/registry/structured.ts:structuredType`
 
 Invariants:
-- No shared module branches on a concrete type id; `src/registry/registry.test.ts` greps eight modules — §Question-type registry.
+- No shared module branches on a concrete type id; `src/registry/registry.test.ts` greps ten modules — §Question-type registry.
 - A hand-built numbered paragraph must copy the block's `format` itself — same section.
 
 ## render — the IR, and the walker that fills it
@@ -71,6 +72,7 @@ Invariants:
 `:pushGap` · `:BLANK_LINE_PT`.
 
 - `src/render/worksheet.ts:renderWorksheet` — the one walker; `:collectListStreams`
+- `src/render/answerKey.ts:renderAnswerKey` — the separate answer key; entries come from the `answerKey` hook
 - `src/render/diagram.ts:diagramSvg` · `:diagramPlot` · `:diagramSize` · `:flowChartLayout` · `:forumChartLayout`
 
 Invariants:
@@ -81,7 +83,8 @@ Invariants:
 
 ## export/docx — raw OOXML, built client-side
 
-`src/export/docx/index.ts:exportDocx` · `:exportDocxBuffer` · `:docxFileName`.
+`src/export/docx/index.ts:exportDocx` · `:exportDocxBuffer` · `:docxFileName` ·
+`:exportAnswerKeyDocx` · `:answerKeyFileName`.
 
 - `src/export/docx/body.ts:renderNodeXml` · `:coverXml` · `:formatParagraphProps`
 - `src/export/docx/styles.ts:buildStylesXml` · `:FIXED_LINE_TWIPS` · `:exactLineFor` · `:LQ_LINE_PITCH_TWIPS`
@@ -121,15 +124,19 @@ Invariants:
 - `src/storage/types.ts:WorksheetStore` · `:WorksheetSummary`
 - `src/storage/fileStore.ts:FileWorksheetStore` — `$APPDATA/worksheets/<id>.worksheet.json` + `index.json`
 - `src/storage/summaries.ts:usableSummaries` — per-row validation, shared by both stores
+- `src/storage/trash.ts:usableTrash` · `:settleTrash` — Trash rows (a separate list, 30-day lazy purge)
+- `src/storage/backup.ts:buildBackup` · `:readBackup` · `:restoreBackup` — one-zip backup; restore never overwrites
 - `src/storage/document.ts:parseWorksheet` · `:summarize` · `src/storage/download.ts:triggerDownload`
 
 Invariants:
 - One malformed index row must never empty the list — §The published-document promise.
 - Guards: `src/model/backwardCompat.test.ts`, `src/storage/legacyIndex.test.ts`.
+- Trash lives outside what older builds read: key `econ-worksheet-trash` (never under
+  `econ-worksheet:`), `worksheets/trash/` on desktop — §Persistence.
 
 ## platform / desktop
 
-- `src/platform/index.ts:isDesktop` · `:saveFile` · `:pickTextFile` · `:printPage` · `:revealFile` · `:openFolder` · `:exportsFolder`
+- `src/platform/index.ts:isDesktop` · `:saveFile` · `:pickTextFile` · `:pickFile` · `:printPage` · `:revealFile` · `:openFolder` · `:exportsFolder`
 - `src/storage/fileStore.ts:savedWorksheetPath` · `:savedWorksheetsFolder` · `src/storage/index.ts:pickWorksheetFile`
 - `src/desktop/updater.ts:checkForUpdate` · `:currentVersion`
 - `src/components/editor/UpdateBanner.tsx:UpdateBanner`
@@ -146,6 +153,7 @@ Invariants:
 
 - `src/components/start/FileDashboard.tsx:FileDashboard` — grid of first pages / list; search, kind, order
 - `src/components/start/dashboard.ts:visibleSummaries` — the filter and sort, pure
+- `src/components/start/TrashList.tsx:TrashList` — Restore / Delete forever / Empty Trash
 - `src/components/start/PageThumbnail.tsx:PageThumbnail` · `src/components/start/thumbnail.ts:loadThumbnail` — derived first page
 
 Invariants:
@@ -155,6 +163,7 @@ Invariants:
 ## components/editor — the chrome around the page
 
 - `src/components/EditorApp.tsx:EditorApp` — the shell, autosave, export actions
+- `src/components/editor/ExportDialog.tsx:ExportDialog` — paper / answer key / both; `src/components/editor/exportSession.ts:deliverFiles` — one web download per click
 - `src/components/editor/Sidebar.tsx:Sidebar` · `src/components/editor/Inspector.tsx:Inspector`
 - `src/components/editor/Outline.tsx:Outline` · `:groupByPage` · `src/components/editor/AddRail.tsx:AddRail`
 - `src/components/editor/DiagramCanvas.tsx:DiagramCanvas` · `src/components/editor/DocumentSettings.tsx`

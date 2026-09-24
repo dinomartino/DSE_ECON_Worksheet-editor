@@ -43,10 +43,15 @@ export function FileDashboard({
   summaries,
   loaded,
   actions,
+  trashCount = 0,
+  onShowTrash,
 }: {
   summaries: WorksheetSummary[];
   loaded: boolean;
   actions: DocumentActions;
+  /** Shown as a quiet "Trash (N)" link beside the count, only when there is any. */
+  trashCount?: number;
+  onShowTrash?: () => void;
 }) {
   const [query, setQuery] = useState<DashboardQuery>(DEFAULT_QUERY);
   // Lazy initialiser: the start screen is client-only (`EditorHost` is `ssr: false`),
@@ -66,13 +71,24 @@ export function FileDashboard({
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
           {isDesktop() ? 'Saved on this computer' : 'Saved in this browser'}
         </h2>
-        {summaries.length > 0 && (
-          <span className="text-[11px] tabular-nums text-ink-subtle">
-            {shown.length === summaries.length
-              ? plural(summaries.length, 'document')
-              : `${shown.length} of ${plural(summaries.length, 'document')}`}
-          </span>
-        )}
+        <span className="flex items-baseline gap-3 text-[11px] tabular-nums text-ink-subtle">
+          {summaries.length > 0 && (
+            <span>
+              {shown.length === summaries.length
+                ? plural(summaries.length, 'document')
+                : `${shown.length} of ${plural(summaries.length, 'document')}`}
+            </span>
+          )}
+          {trashCount > 0 && onShowTrash && (
+            <button
+              type="button"
+              onClick={onShowTrash}
+              className="cursor-pointer font-medium text-ink-muted underline decoration-line-strong underline-offset-4 transition-colors hover:text-ink hover:decoration-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              Trash ({trashCount})
+            </button>
+          )}
+        </span>
       </div>
 
       {/* The controls only appear once there is something to control; on an empty
@@ -192,7 +208,7 @@ function menuItems(summary: WorksheetSummary, actions: DocumentActions): MenuIte
     items.push({ label: revealLabel(), onSelect: () => reveal(summary) });
   }
   items.push({
-    label: 'Delete…',
+    label: 'Move to Trash…',
     onSelect: () => actions.remove(summary),
     danger: true,
     separated: true,

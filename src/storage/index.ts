@@ -9,9 +9,11 @@ import {
 import { FileWorksheetStore } from './fileStore';
 import { triggerDownload } from './download';
 import { usableSummaries, withSummaryFirst } from './summaries';
-import type { WorksheetStore, WorksheetSummary } from './types';
+import { settleTrash, untrashed, usableTrash } from './trash';
+import type { TrashedSummary, WorksheetStore, WorksheetSummary } from './types';
 
-export type { WorksheetStore, WorksheetSummary } from './types';
+export type { TrashedSummary, WorksheetStore, WorksheetSummary } from './types';
+export { TRASH_RETENTION_DAYS, trashAge } from './trash';
 export {
   duplicateWorksheet,
   parseWorksheet,
@@ -29,8 +31,19 @@ export {
 
 const PREFIX = 'econ-worksheet:';
 const INDEX_KEY = 'econ-worksheet-index';
+/**
+ * Trash rows. Never under `PREFIX` — that means "a document". A trashed document stays
+ * at `PREFIX + id`; only its row moves here, so an older build sees it as deleted.
+ */
+const TRASH_KEY = 'econ-worksheet-trash';
 
 export class LocalStorageWorksheetStore implements WorksheetStore {
+  private readonly now: () => number;
+
+  constructor(now: () => number = Date.now) {
+    this.now = now;
+  }
+
   private get storage(): Storage | undefined {
     if (typeof window === 'undefined') return undefined;
     try {
@@ -77,6 +90,11 @@ export class LocalStorageWorksheetStore implements WorksheetStore {
 
     const next = withSummaryFirst(await this.list(), summarize(worksheet));
     storage.setItem(INDEX_KEY, JSON.stringify(next));
+    // Saved means live: the trashed copy shared this key and has just been overwritten.
+    const trash = this.readTrash(storage);
+    if (trash.some((row) => row.id === worksheet.id)) {
+      this.writeTrash(storage, trash.filter((row) => row.id !== worksheet.id));
+    }
   }
 
   /**
@@ -107,6 +125,108 @@ export class LocalStorageWorksheetStore implements WorksheetStore {
     storage.removeItem(PREFIX + id);
     const summaries = await this.list();
     storage.setItem(INDEX_KEY, JSON.stringify(summaries.filter((entry) => entry.id !== id)));
+    const trash = this.readTrash(storage);
+    if (trash.some((row) => row.id === id)) {
+      this.writeTrash(storage, trash.filter((row) => row.id !== id));
+    }
+  }
+
+  private readTrash(storage: Storage): TrashedSummary[] {
+    const raw = storage.getItem(TRASH_KEY);
+    if (!raw) return [];
+    try {
+      return usableTrash(JSON.parse(raw));
+    } catch {
+      return [];
+    }
+  }
+
+  private writeTrash(storage: Storage, rows: TrashedSummary[]): void {
+    if (rows.length === 0) storage.removeItem(TRASH_KEY);
+    else storage.setItem(TRASH_KEY, JSON.stringify(rows));
+  }
+
+  /**
+   * The Trash row is written before the index row goes: interrupted between the two, the
+   * document shows in both lists and the live one wins (`listTrash`) — never in neither.
+   */
+  async trash(id: string): Promise<void> {
+    const storage = this.storage;
+    if (!storage) return;
+    if (storage.getItem(PREFIX + id) === null) {
+      await this.remove(id);
+      return;
+    }
+    const live = await this.list();
+    let summary = live.find((entry) => entry.id === id);
+    if (!summary) {
+      const worksheet = await this.load(id).catch(() => undefined);
+      summary = worksheet
+        ? summarize(worksheet)
+        : { id, title: 'Untitled', updatedAt: new Date(this.now()).toISOString() };
+    }
+    const row: TrashedSummary = { ...summary, deletedAt: new Date(this.now()).toISOString() };
+    this.writeTrash(storage, [row, ...this.readTrash(storage).filter((r) => r.id !== id)]);
+    storage.setItem(INDEX_KEY, JSON.stringify(live.filter((entry) => entry.id !== id)));
+  }
+
+  /**
+   * A row is only Trash while its document is still stored and not live again — the key
+   * is shared, so a live row means it was saved or re-imported since, and live wins.
+   * Expired documents are deleted here; no timer is needed.
+   */
+  async listTrash(): Promise<TrashedSummary[]> {
+    const storage = this.storage;
+    if (!storage) return [];
+    const rows = this.readTrash(storage);
+    if (rows.length === 0) return [];
+    const live = new Set((await this.list()).map((entry) => entry.id));
+    const present = rows.filter(
+      (row) => !live.has(row.id) && storage.getItem(PREFIX + row.id) !== null,
+    );
+    const { kept, expired, changed } = settleTrash(present, this.now());
+    for (const row of expired) storage.removeItem(PREFIX + row.id);
+    if (changed || present.length !== rows.length) this.writeTrash(storage, kept);
+    return kept;
+  }
+
+  async restore(id: string): Promise<string | undefined> {
+    const storage = this.storage;
+    if (!storage) return undefined;
+    const trash = this.readTrash(storage);
+    const row = trash.find((entry) => entry.id === id);
+    if (!row) return undefined;
+    if (storage.getItem(PREFIX + id) !== null) {
+      // Same key live or trashed, so nothing moves: the index gets its row back.
+      const live = await this.list();
+      if (!live.some((entry) => entry.id === id)) {
+        const worksheet = await this.load(id).catch(() => undefined);
+        const summary = worksheet ? summarize(worksheet) : untrashed(row);
+        storage.setItem(INDEX_KEY, JSON.stringify(withSummaryFirst(live, summary)));
+      }
+      this.writeTrash(storage, trash.filter((entry) => entry.id !== id));
+      return id;
+    }
+    this.writeTrash(storage, trash.filter((entry) => entry.id !== id));
+    return undefined;
+  }
+
+  async purge(id: string): Promise<void> {
+    const storage = this.storage;
+    if (!storage) return;
+    const live = new Set((await this.list()).map((entry) => entry.id));
+    if (!live.has(id)) storage.removeItem(PREFIX + id);
+    this.writeTrash(storage, this.readTrash(storage).filter((row) => row.id !== id));
+  }
+
+  async emptyTrash(): Promise<void> {
+    const storage = this.storage;
+    if (!storage) return;
+    const live = new Set((await this.list()).map((entry) => entry.id));
+    for (const row of this.readTrash(storage)) {
+      if (!live.has(row.id)) storage.removeItem(PREFIX + row.id);
+    }
+    storage.removeItem(TRASH_KEY);
   }
 
   async clear(): Promise<void> {
@@ -116,7 +236,7 @@ export class LocalStorageWorksheetStore implements WorksheetStore {
     // from the same origin, so clearing it wholesale — or reaching for the browser's
     // "clear site data" — destroys more than this app has any business touching.
     const mine = Object.keys(storage).filter(
-      (key) => key === INDEX_KEY || key.startsWith(PREFIX),
+      (key) => key === INDEX_KEY || key === TRASH_KEY || key.startsWith(PREFIX),
     );
     for (const key of mine) storage.removeItem(key);
   }

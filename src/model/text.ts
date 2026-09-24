@@ -1,5 +1,6 @@
 import type {
   BiText,
+  ContentBlock,
   InlineRun,
   LanguageMode,
   RichText,
@@ -65,6 +66,11 @@ export function isRichTextEmpty(text: RichText | undefined): boolean {
 export function isBiTextEmpty(text: BiText | undefined): boolean {
   if (!text) return true;
   return isRichTextEmpty(text.en) && isRichTextEmpty(text.zh);
+}
+
+/** True when every block is a paragraph with no words; a table, picture or source is content. */
+export function areBlocksEmpty(blocks: ContentBlock[] | undefined): boolean {
+  return (blocks ?? []).every((block) => block.kind === 'paragraph' && isBiTextEmpty(block.text));
 }
 
 /**

@@ -18,10 +18,22 @@ export; ours is the faithful one. The gap competitors expose is everything **aro
 authoring: a question library, the export dialog (answer keys, versions), and what
 happens after the paper is sat. Nobody makes editable economics diagrams.
 
+## Built on `develop`, awaiting release
+
+Remove from this list once released.
+
+- **Export dialog + separate answer key** (was A1) — `src/components/editor/ExportDialog.tsx`,
+  `src/render/answerKey.ts:renderAnswerKey`. Not yet: answer space on/off, cover on/off.
+- **Paper health check** (was A2) — `src/model/paperHealth.ts:checkPaper`, shown in the
+  export dialog. Not yet: "answer any ONE" sections are summed in full; the Paper 2
+  1.5 min/mark rate assumes ~100 marks (unverified).
+- **Backup zip + restore** (was F1) — `src/storage/backup.ts`.
+- **Trash with 30-day restore** (was F2) — `src/storage/trash.ts`.
+
 ## Recommended order
 
-1. **Now** — export dialog with a separate answer key (A1), paper health panel (A2),
-   backup-all-as-zip and trash (F1, F2), 2028 Paper 2 template (B5).
+1. **Now** — 2028 Paper 2 template (B5), then the rest of A (versions, key CSV,
+   answer space on/off and cover on/off in the export dialog).
 2. **Next** — seeded MCQ versions and key CSV (A3, A4), HKEAA marking-point notation
    (B1), topic tags (C1) → local question library (C2).
 3. **Later** — paste/Word import (D1, D2), BYOK AI (E), item analysis (G1), diagram
@@ -29,16 +41,6 @@ happens after the paper is sat. Nobody makes editable economics diagrams.
 
 ## A. Export and paper checks — every builder has these; we have none
 
-- **A1 Export dialog** (S–M). One place to choose: paper · mark scheme/answer key as its
-  own `.docx` (with an MCQ answer grid) · both; answer space on/off; cover on/off;
-  language edition. A new render of the same IR — extend `OutputMode` and
-  `src/render/ir.ts:includeNode`, wire it in `src/components/editor/Toolbar.tsx`.
-  *OCR ExamBuilder, Pearson examWizard, IB Questionbank, Respondus, OUP, Wayground.*
-- **A2 Paper health panel** (S). Derived, never stored: answer-letter balance and runs
-  (hand-set keys drift to B/C), total marks and time estimate, untranslated strings,
-  missing answers, command word vs marks. Marks come from `src/model/marks.ts:questionMarks`.
-  Chrome, so `data-print-hide`. *ExamView, examWizard's running totals, ExamSoft
-  blueprints.*
 - **A3 Seeded MCQ versions A/B/C** (M). Store only a seed, count and per-option pins;
   shuffle at render in `src/render/worksheet.ts:renderWorksheet`; print a version letter,
   per-version keys and a version map. Combination-statement MCQs and stimulus groups
@@ -109,18 +111,13 @@ point. *All of MagicSchool, Brisk, Diffit, Eduaide, QuestionWell, MS Teach.*
   EDB's official term list and flag non-standard terms (M).
 - **E3 Source → HKDSE items** (M): paste a news extract, get Paper 1 MCQs (including
   combination statements) and Paper 2 parts with marks.
-- **E4 Item quality check** (S): the non-AI checks are A2; the AI half flags ambiguous
+- **E4 Item quality check** (S): the non-AI checks are the paper health check; the AI half flags ambiguous
   stems and two defensible options.
 - **E5 Differentiated copy** (M), **E6 data-response builder** with diagrams from a preset
   vocabulary, never raw model coordinates (L).
 
 ## F. File management — continues the 2026-09-24 dashboard
 
-- **F1 Backup / restore everything as one zip** (S–M) — high priority: `localStorage` is
-  fragile and there is no server copy. `jszip` is already a dependency; restore goes
-  through `migrate`.
-- **F2 Trash with 30-day restore** (S): delete flags the index row, keeps the document.
-  Extends `src/storage/types.ts:WorksheetStore`.
 - **F3 Tags, stars and filter chips on the dashboard** (S–M); extend
   `src/components/start/dashboard.ts:visibleSummaries`. **F4** total marks and page
   count on each card, derived (S). **F5** full-text search of question text (M, shares

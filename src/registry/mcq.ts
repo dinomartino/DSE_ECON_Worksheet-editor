@@ -1,10 +1,11 @@
 import { createMcqQuestion } from '@/model/factories';
-import { optionLabel, statementLabel } from '@/model/numbering';
-import { bi, isBiTextEmpty, plain } from '@/model/text';
+import { optionLabel, statementLabel, toUpperLetter } from '@/model/numbering';
+import { areBlocksEmpty, bi, isBiTextEmpty, plain } from '@/model/text';
 import type { LanguageMode, McqOptionLayout, McqQuestion } from '@/model/types';
 import { pushGap, renderContentBlocks, type RenderContext, type RenderNode } from '@/render/ir';
 import { McqEditorPanel } from '@/components/editor/McqEditorPanel';
-import type { QuestionTypeDefinition } from './types';
+import type { QuestionHealthFacts, QuestionTypeDefinition } from './types';
+import type { AnswerKeyEntry } from '@/render/answerKey';
 
 /**
  * MCQ rendering (§8): stem blocks -> statements (if any) -> options A-D,
@@ -340,6 +341,44 @@ function countMissingTranslations(question: McqQuestion): number {
   return missing;
 }
 
+/** The key as a letter (null when it points at no option), blank and duplicate options. */
+function healthFacts(question: McqQuestion): QuestionHealthFacts {
+  const { answerIndex, options } = question;
+  const keyed = Number.isInteger(answerIndex) && answerIndex >= 0 && answerIndex < options.length;
+  const blank = options.filter((option) => isBiTextEmpty(option.text) && areBlocksEmpty(option.blocks));
+  const seen = new Set<string>();
+  let duplicateOptions = false;
+  for (const option of options) {
+    for (const lang of ['en', 'zh'] as const) {
+      const words = plain(option.text[lang]).trim().replace(/\s+/g, ' ').toLowerCase();
+      if (!words) continue;
+      if (seen.has(`${lang}:${words}`)) duplicateOptions = true;
+      seen.add(`${lang}:${words}`);
+    }
+  }
+  return {
+    empty:
+      areBlocksEmpty(question.blocks) &&
+      (question.statements ?? []).every((statement) => isBiTextEmpty(statement)) &&
+      blank.length === options.length,
+    answerLetter: keyed ? toUpperLetter(answerIndex) : null,
+    optionCount: options.length,
+    blankOptions: blank.length,
+    duplicateOptions,
+  };
+}
+
+/** The answer grid's letter — none when `answerIndex` points at no option — and the explanation. */
+function answerKey(question: McqQuestion): AnswerKeyEntry {
+  const { answerIndex, options } = question;
+  const keyed = Number.isInteger(answerIndex) && answerIndex >= 0 && answerIndex < options.length;
+  return {
+    kind: 'choice',
+    ...(keyed ? { letter: optionLabel(answerIndex).replace('.', '') } : {}),
+    ...(isBiTextEmpty(question.explanation) ? {} : { note: question.explanation }),
+  };
+}
+
 /**
  * Three blank lines between two MCQs on an exam paper, against the ordinary one.
  *
@@ -364,4 +403,6 @@ export const mcqType: QuestionTypeDefinition<McqQuestion> = {
   examGapLines: MCQ_EXAM_GAP_LINES,
   EditorPanel: McqEditorPanel,
   countMissingTranslations,
+  healthFacts,
+  answerKey,
 };

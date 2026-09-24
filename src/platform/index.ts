@@ -19,6 +19,7 @@ export const DOCX_FILTERS: SaveFilter[] = [
   { name: 'Word document', extensions: ['docx'] },
 ];
 export const JSON_FILTERS: SaveFilter[] = [{ name: 'Worksheet', extensions: ['json'] }];
+export const ZIP_FILTERS: SaveFilter[] = [{ name: 'Worksheet backup', extensions: ['zip'] }];
 
 /**
  * Are we inside the Tauri webview?
@@ -171,6 +172,32 @@ export async function pickTextFile(
 }
 
 /**
+ * `pickTextFile` for binary files (a backup `.zip`): the same sheet, read as bytes.
+ * `undefined` when cancelled, and always on the web.
+ */
+export async function pickFile(
+  filters: SaveFilter[],
+): Promise<{ name: string; path: string; bytes: Uint8Array } | undefined> {
+  if (!isDesktop()) return undefined;
+
+  const { open } = await import('@tauri-apps/plugin-dialog');
+  const folder = await startFolder();
+  const path = await open({
+    multiple: false,
+    directory: false,
+    filters,
+    ...(folder ? { defaultPath: folder } : {}),
+  });
+  if (typeof path !== 'string') return undefined;
+
+  const { readFile } = await import('@tauri-apps/plugin-fs');
+  const bytes = await readFile(path);
+  await rememberFolderOf(path);
+  const { basename } = await import('@tauri-apps/api/path');
+  return { name: await basename(path), path, bytes };
+}
+
+/**
  * The folder exports go to by default — last used, else `~/Documents/Econ Worksheets`
  * (created if needed). `undefined` on the web, or if neither can be resolved.
  */
@@ -181,6 +208,7 @@ export async function exportsFolder(): Promise<string | undefined> {
 
 function mimeFor(fileName: string): string {
   if (fileName.endsWith('.json')) return 'application/json';
+  if (fileName.endsWith('.zip')) return 'application/zip';
   if (fileName.endsWith('.docx')) {
     return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
   }

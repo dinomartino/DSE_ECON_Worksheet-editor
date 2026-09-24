@@ -143,6 +143,8 @@ describe('question-type registry (§9)', () => {
       'src/export/clipboard.ts',
       'src/model/migrations.ts',
       'src/storage/index.ts',
+      'src/render/answerKey.ts',
+      'src/model/paperHealth.ts',
     ];
     for (const path of shared) {
       const source = readFileSync(path, 'utf8');

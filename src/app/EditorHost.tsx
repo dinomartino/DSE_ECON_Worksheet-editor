@@ -116,6 +116,11 @@ export function EditorHost() {
           // No way back before a document exists — there is no editor behind the screen
           // yet, so a Cancel would dismiss to nothing.
           onClose={chosen ? () => setShowingFiles(false) : undefined}
+          // Trashing the open document removes the way back to it: its next autosave
+          // would quietly make it live again.
+          onTrashed={(id) => {
+            if (id === useWorksheetStore.getState().worksheet.id) setChosen(false);
+          }}
         />
       </>
     );

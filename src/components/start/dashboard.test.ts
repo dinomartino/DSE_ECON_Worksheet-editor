@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { WorksheetSummary } from '@/storage';
-import { DEFAULT_QUERY, isFiltered, relativeTime, visibleSummaries } from './dashboard';
+import {
+  DEFAULT_QUERY,
+  isFiltered,
+  relativeTime,
+  trashAgeLabel,
+  visibleSummaries,
+} from './dashboard';
 
 const rows: WorksheetSummary[] = [
   { id: 'a', title: 'Unit 10 elasticity', updatedAt: '2026-09-20T00:00:00Z', hasCover: false },
@@ -55,5 +61,16 @@ describe('relativeTime', () => {
     expect(relativeTime('2026-09-24T11:00:00Z', now)).toBe('1 hour ago');
     expect(relativeTime('2026-09-23T12:00:00Z', now)).toBe('yesterday');
     expect(relativeTime('not a date', now)).toBe('unknown');
+  });
+});
+
+describe('trashAgeLabel', () => {
+  const deleted = '2026-09-01T00:00:00.000Z';
+  const at = (days: number) => Date.parse(deleted) + days * 86_400_000;
+
+  it('says how long ago and how long is left', () => {
+    expect(trashAgeLabel(deleted, at(0))).toBe('Deleted today · removed in 30 days');
+    expect(trashAgeLabel(deleted, at(1))).toBe('Deleted yesterday · removed in 29 days');
+    expect(trashAgeLabel(deleted, at(29.5))).toBe('Deleted 29 days ago · removed in 1 day');
   });
 });
