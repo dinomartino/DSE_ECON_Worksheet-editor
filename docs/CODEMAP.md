@@ -41,6 +41,7 @@ the whole schema, one file.
 - `src/model/text.ts:BiText` helpers — `:rt` · `:plain` · `:normalizeRuns` · `:applyRunFormat`
 - `src/model/page.ts:pageSetupOf` · `:headerFooterOffsets` · `src/model/pageFurniture.ts:furnitureBoxes`
 - `src/model/cover.ts:createCoverPage` · `src/model/documentShape.ts:documentShape`
+- `src/model/versions.ts:activeVersion` · `:shuffledOrder` — paper versions A/B/C; only `Worksheet.versions` (count + seed) is stored
 - `src/model/paperHealth.ts:checkPaper` — the pre-print check, derived; `src/components/editor/PaperHealthPanel.tsx:PaperHealthPanel` shows it
 - `src/model/diagram.ts:Diagram` · `src/model/diagramDraw.ts:applyDrag` · `src/model/diagramTemplates.ts:DIAGRAM_TEMPLATES`
 - `src/model/table.ts:insertRow` · `:resolveCellPadding` · `:resolveColumnWidths`
@@ -56,14 +57,14 @@ Invariants:
 ## registry — the question-type extension point
 
 `src/registry/types.ts:QuestionTypeDefinition` — `id` · `create` · `render` · `EditorPanel` ·
-`examGapLines?` · `countMissingTranslations?` · `healthFacts?` · `answerKey?`.
+`examGapLines?` · `countMissingTranslations?` · `healthFacts?` · `answerKey?` · `variant?`.
 
 - `src/registry/index.ts:listQuestionTypes` · `:requireQuestionType`
 - `src/registry/mcq.ts:mcqType` · `:resolveOptionLayout`
 - `src/registry/structured.ts:structuredType`
 
 Invariants:
-- No shared module branches on a concrete type id; `src/registry/registry.test.ts` greps ten modules — §Question-type registry.
+- No shared module branches on a concrete type id; `src/registry/registry.test.ts` greps eleven modules — §Question-type registry.
 - A hand-built numbered paragraph must copy the block's `format` itself — same section.
 
 ## render — the IR, and the walker that fills it

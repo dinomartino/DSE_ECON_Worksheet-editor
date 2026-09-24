@@ -12,6 +12,8 @@ export interface ExportChoice {
   language: LanguageMode;
   /** The question paper's version; the answer key has none. */
   version: VersionMode;
+  /** Paper version letters, one file each; absent = the one paper. */
+  variants?: string[];
 }
 
 export type ExportKind = 'paper' | 'answerKey';
@@ -20,12 +22,22 @@ export interface ExportFile {
   kind: ExportKind;
   name: string;
   blob: Blob;
+  /** The paper version letter, when the document has versions. */
+  variant?: string;
 }
 
 /** The documents a choice produces, in delivery order. */
 export function exportKinds(what: ExportWhat): ExportKind[] {
   if (what === 'both') return ['paper', 'answerKey'];
   return [what];
+}
+
+/** How many files a choice writes: one paper per version, one answer key. */
+export function exportFileCount(choice: Pick<ExportChoice, 'what' | 'variants'>): number {
+  return exportKinds(choice.what).reduce(
+    (sum, kind) => sum + (kind === 'paper' ? Math.max(1, choice.variants?.length ?? 1) : 1),
+    0,
+  );
 }
 
 export interface ExportRun {

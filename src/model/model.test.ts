@@ -513,6 +513,7 @@ describe('schema versioning and document round-trip (§6, §11.11)', () => {
       instructionsFormat: { italic: true },
       bands: [],
       examGapLines: 2,
+      versions: { count: 3, seed: 7 },
     };
     const missing = Object.keys(populated).filter((key) => !KNOWN_KEYS.has(key));
     expect(missing).toEqual([]);

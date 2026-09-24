@@ -6,8 +6,10 @@ import { DOCX_FILTERS, isDesktop, saveFile } from '@/platform';
 import { Button, Segmented } from '@/components/ui';
 import { Dialog, Field } from '@/components/ui/Dialog';
 import { DownloadIcon } from '@/components/ui/icons';
+import { versionLetters } from '@/model/versions';
 import {
   deliverFiles,
+  exportFileCount,
   exportKinds,
   type ExportChoice,
   type ExportFile,
@@ -36,12 +38,15 @@ async function buildFiles(worksheet: Worksheet, choice: ExportChoice): Promise<E
   const files: ExportFile[] = [];
   for (const kind of exportKinds(choice.what)) {
     if (kind === 'paper') {
-      const mode: OutputMode = { language: choice.language, version: choice.version };
-      files.push({
-        kind,
-        name: docx.docxFileName(worksheet, mode),
-        blob: await docx.exportDocx(worksheet, mode),
-      });
+      for (const variant of choice.variants ?? [undefined]) {
+        const mode: OutputMode = { language: choice.language, version: choice.version, variant };
+        files.push({
+          kind,
+          name: docx.docxFileName(worksheet, mode),
+          blob: await docx.exportDocx(worksheet, mode),
+          ...(variant ? { variant } : {}),
+        });
+      }
     } else {
       files.push({
         kind,
@@ -75,6 +80,12 @@ export function ExportDialog({ worksheet, mode, onClose, onExported, checks }: E
   const [what, setWhat] = useState<ExportWhat>('paper');
   const [language, setLanguage] = useState<LanguageMode>(mode.language);
   const [version, setVersion] = useState<VersionMode>(mode.version);
+  // Paper versions (`Worksheet.versions`): every one by default, one file each.
+  const letters = versionLetters(worksheet);
+  const [variantChoice, setVariantChoice] = useState<string>('all');
+  const variants =
+    letters.length === 0 ? undefined : letters.includes(variantChoice) ? [variantChoice] : letters;
+  const fileCount = exportFileCount({ what, variants });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>();
   // Web only: files built but waiting for their own click, and what has already gone.
@@ -120,7 +131,7 @@ export function ExportDialog({ worksheet, mode, onClose, onExported, checks }: E
 
   const handleExport = () =>
     void run(async () => ({
-      files: await buildFiles(worksheet, { what, language, version }),
+      files: await buildFiles(worksheet, { what, language, version, variants }),
       before: [],
     }));
 
@@ -148,12 +159,16 @@ export function ExportDialog({ worksheet, mode, onClose, onExported, checks }: E
           {next ? (
             <Button variant="primary" onClick={handleNext} disabled={busy}>
               <DownloadIcon size={15} />
-              {next.kind === 'answerKey' ? 'Download answer key' : 'Download question paper'}
+              {next.kind === 'answerKey'
+                ? 'Download answer key'
+                : next.variant
+                  ? `Download version ${next.variant}`
+                  : 'Download question paper'}
             </Button>
           ) : (
             <Button variant="primary" onClick={handleExport} disabled={busy}>
               <DownloadIcon size={15} />
-              {busy ? 'Exporting…' : what === 'both' ? 'Export 2 files' : 'Export .docx'}
+              {busy ? 'Exporting…' : fileCount > 1 ? `Export ${fileCount} files` : 'Export .docx'}
             </Button>
           )}
         </>
@@ -175,7 +190,7 @@ export function ExportDialog({ worksheet, mode, onClose, onExported, checks }: E
               label="What"
               hint={
                 what === 'both' && !isDesktop()
-                  ? 'Two files. The answer key downloads on a second click.'
+                  ? `${fileCount} files. Each downloads on its own click.`
                   : 'The answer key is a separate document: answer grid and marking scheme.'
               }
             >
@@ -227,6 +242,24 @@ export function ExportDialog({ worksheet, mode, onClose, onExported, checks }: E
                   ]}
                 />
               </Field>
+              {letters.length > 0 && (
+                <div className="mt-5">
+                  <Field
+                    label="Paper versions"
+                    hint="One file per version. The answer key covers them all."
+                  >
+                    <Segmented
+                      label="Paper versions"
+                      value={variants && variants.length === 1 ? variants[0] : 'all'}
+                      onChange={setVariantChoice}
+                      options={[
+                        { value: 'all', label: 'All', title: `Versions ${letters.join(', ')}` },
+                        ...letters.map((letter) => ({ value: letter, label: letter, title: `Version ${letter} only` })),
+                      ]}
+                    />
+                  </Field>
+                </div>
+              )}
             </div>
           </>
         )}

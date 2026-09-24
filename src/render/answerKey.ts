@@ -1,8 +1,9 @@
 import { resolveFlow } from '@/model/flow';
-import { computeNumbering, DEFAULT_LIST_INDENTS } from '@/model/numbering';
+import { computeNumbering, DEFAULT_LIST_INDENTS, toUpperLetter } from '@/model/numbering';
 import { DEFAULT_CELL_PADDING } from '@/model/table';
 import { bi, documentName, isBiTextEmpty, plain } from '@/model/text';
 import type { BiText, LanguageMode, Worksheet } from '@/model/types';
+import { versionLetters, versionSeed } from '@/model/versions';
 import { requireQuestionType } from '@/registry';
 import { pushGap, type RenderNode, type TableNode, type TableNodeCell } from './ir';
 
@@ -44,11 +45,25 @@ export const ANSWER_KEY_WORDING = {
   title: { en: 'Answer key', zh: '答案及評分參考' },
   explanations: { en: 'Explanations', zh: '解說' },
   question: (n: number) => ({ en: `Question ${n}`, zh: `第${n}題` }),
+  version: (letter: string) => ({ en: `Version ${letter}`, zh: `版本 ${letter}` }),
+  versionMap: { en: 'Version map', zh: '版本對照' },
+  versionMapHint: {
+    en: 'For each printed option, the letter it has in Version A.',
+    zh: '各版本每個選項在版本 A 的字母。',
+  },
+  sameAsA: { en: 'Same as A', zh: '同版本 A' },
 } as const;
+
+/** One choice question's key in each paper version. */
+interface ChoiceVersion {
+  letter?: string;
+  /** Per printed option, its Version A letter; absent = the authored order. */
+  sourceLetters?: string[];
+}
 
 interface Group {
   heading?: BiText;
-  choices: Array<{ number: number; letter?: string; note?: BiText }>;
+  choices: Array<{ number: number; letter?: string; note?: BiText; versions: ChoiceVersion[] }>;
   schemes: Array<{ number: number; marks?: number; rows: AnswerKeyRow[] }>;
 }
 
@@ -68,6 +83,8 @@ function neutral(text: string, language: LanguageMode): BiText {
 export function renderAnswerKey(worksheet: Worksheet, language: LanguageMode): RenderNode[] {
   const numbering = computeNumbering(worksheet);
   const groups: Group[] = [{ choices: [], schemes: [] }];
+  const letters = versionLetters(worksheet);
+  const seed = versionSeed(worksheet);
 
   for (const item of resolveFlow(worksheet)) {
     if (item.type === 'layout') {
@@ -77,18 +94,36 @@ export function renderAnswerKey(worksheet: Worksheet, language: LanguageMode): R
       continue;
     }
     const number = numbering.byQuestionId.get(item.question.id)?.number ?? 0;
-    const entry = requireQuestionType(item.question).answerKey?.(item.question, {
-      questionNumber: number,
-    });
+    const definition = requireQuestionType(item.question);
+    const context = { questionNumber: number };
+    const entry = definition.answerKey?.(item.question, context);
     if (!entry) continue;
     const group = groups[groups.length - 1];
-    if (entry.kind === 'choice') group.choices.push({ number, letter: entry.letter, note: entry.note });
-    else group.schemes.push({ number, marks: entry.marks, rows: entry.rows });
+    if (entry.kind === 'choice') {
+      // Each version's key comes from the same hook, asked of the reordered question.
+      const versions = letters.map((_, version): ChoiceVersion => {
+        const shown = definition.variant?.(item.question, { seed, version });
+        if (!shown?.sourceLetters) return { letter: entry.letter };
+        const keyed = definition.answerKey!(shown.question, context);
+        return {
+          letter: keyed.kind === 'choice' ? keyed.letter : undefined,
+          sourceLetters: shown.sourceLetters,
+        };
+      });
+      group.choices.push({ number, letter: entry.letter, note: entry.note, versions });
+    } else {
+      group.schemes.push({ number, marks: entry.marks, rows: entry.rows });
+    }
   }
 
   const nodes: RenderNode[] = [
     { kind: 'text', style: 'Worksheet Title', text: answerKeyTitle(worksheet), keepNext: true },
   ];
+
+  if (letters.length > 0) {
+    renderVersionedKey(nodes, groups, letters, language);
+    return nodes;
+  }
 
   for (const group of groups) {
     if (group.choices.length === 0 && group.schemes.length === 0) continue;
@@ -109,6 +144,114 @@ export function renderAnswerKey(worksheet: Worksheet, language: LanguageMode): R
   }
 
   return nodes;
+}
+
+/**
+ * With versions on: one grid set per version, then the explanations and schemes once
+ * (they do not change between versions), then the version map.
+ */
+function renderVersionedKey(
+  nodes: RenderNode[],
+  groups: Group[],
+  letters: string[],
+  language: LanguageMode,
+): void {
+  const withChoices = groups.filter((group) => group.choices.length > 0);
+  letters.forEach((letter, version) => {
+    if (withChoices.length === 0) return;
+    pushGap(nodes);
+    const heading = ANSWER_KEY_WORDING.version(letter);
+    nodes.push({ kind: 'text', style: 'Section Heading', text: bi(heading.en, heading.zh), keepNext: true });
+    for (const group of withChoices) {
+      if (nodes[nodes.length - 1]?.kind === 'table') pushGap(nodes);
+      if (group.heading && !isBiTextEmpty(group.heading)) {
+        nodes.push({ kind: 'text', style: 'Body', text: group.heading, keepNext: true, format: { bold: true } });
+      }
+      nodes.push(
+        answerGrid(
+          group.choices.map((choice) => ({ ...choice, letter: choice.versions[version]?.letter })),
+          language,
+        ),
+      );
+    }
+  });
+
+  for (const group of groups) {
+    const noted = group.choices.some((choice) => choice.note && !isBiTextEmpty(choice.note));
+    if (!noted && group.schemes.length === 0) continue;
+    pushGap(nodes);
+    if (group.heading && !isBiTextEmpty(group.heading)) {
+      nodes.push({ kind: 'text', style: 'Section Heading', text: group.heading, keepNext: true });
+      pushGap(nodes);
+    }
+    renderNotes(nodes, group.choices, language);
+    for (const scheme of group.schemes) {
+      pushGap(nodes);
+      renderScheme(nodes, scheme, language);
+    }
+  }
+
+  if (withChoices.length > 0) renderVersionMap(nodes, withChoices, letters, language);
+}
+
+/**
+ * Question × version: each cell reads "A→C B→A …", the Version A letter of every
+ * printed option, so any version's responses can be marked or pooled against A.
+ */
+function renderVersionMap(
+  nodes: RenderNode[],
+  groups: Group[],
+  letters: string[],
+  language: LanguageMode,
+): void {
+  const { versionMap, versionMapHint, sameAsA } = ANSWER_KEY_WORDING;
+  const others = letters.slice(1);
+  pushGap(nodes);
+  nodes.push({ kind: 'text', style: 'Section Heading', text: bi(versionMap.en, versionMap.zh), keepNext: true });
+  nodes.push({ kind: 'text', style: 'Body', text: bi(versionMapHint.en, versionMapHint.zh), keepNext: true });
+
+  const cell = (text: BiText, bold = false): TableNodeCell => ({
+    text,
+    colSpan: 1,
+    rowSpan: 1,
+    align: 'left',
+    covered: false,
+    padding: DEFAULT_CELL_PADDING,
+    ...(bold ? { format: { bold: true } } : {}),
+  });
+  const same =
+    language === 'bilingual' ? neutral(`${sameAsA.en} ${sameAsA.zh}`, language) : bi(sameAsA.en, sameAsA.zh);
+
+  const rows: TableNodeCell[][] = [
+    [cell(neutral('', language)), ...others.map((letter) => cell(neutral(letter, language), true))],
+  ];
+  for (const group of groups) {
+    group.choices.forEach((choice) => {
+      rows.push([
+        cell(neutral(String(choice.number), language), true),
+        ...others.map((_, offset) => {
+          const map = choice.versions[offset + 1]?.sourceLetters;
+          if (!map) return cell(same);
+          return cell(neutral(map.map((source, printed) => `${toUpperLetter(printed)}→${source}`).join('  '), language));
+        }),
+      ]);
+    });
+  }
+
+  const questionColumn = 0.1;
+  nodes.push({
+    kind: 'table',
+    rows,
+    columnCount: others.length + 1,
+    columnWidths: [questionColumn, ...others.map(() => (1 - questionColumn) / others.length)],
+    width: 1,
+    indent: 0,
+    align: 'left',
+    borders: 'all',
+    rowHeights: rows.map(() => undefined),
+    blockId: 'answer-key-version-map',
+    captionPlacement: 'below',
+  });
 }
 
 /** The printed title plus "Answer key", each side falling back to the document's name. */

@@ -10,6 +10,7 @@ import {
 import { sectionMarksById, worksheetMarks } from '@/model/marks';
 import { computeNumbering, listIndentScheme } from '@/model/numbering';
 import { bi, isBiTextEmpty, plain } from '@/model/text';
+import { activeVersion, versionLetter, versionSeed } from '@/model/versions';
 import type {
   Band,
   BandField,
@@ -97,6 +98,8 @@ export interface RenderedWorksheet {
    */
   title?: RenderNode;
   instructions?: RenderNode;
+  /** "Version B", under the masthead — present only when the paper has versions. */
+  versionLabel?: RenderNode;
   /**
    * Everything in the document body, in printed order.
    *
@@ -182,6 +185,8 @@ const questionRenderCache = new WeakMap<
     stream: string;
     gap: number;
     keepWhole: boolean;
+    /** `seed:version` of the paper version this was rendered as; '' when off. */
+    variant: string;
     nodes: RenderNode[];
   }
 >();
@@ -337,6 +342,13 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
         format: worksheet.instructionsFormat,
       };
 
+  // The paper version this output prints; each question type reorders itself for it.
+  const version = activeVersion(worksheet, mode);
+  const seed = versionSeed(worksheet);
+  const variantKey = version === undefined ? '' : `${seed}:${version}`;
+  const versionLabel =
+    version === undefined ? undefined : renderVersionLabel(versionLetter(version), mode);
+
   // A restarting section opens a new Word list stream (native `w:num`), keyed on the
   // section element's id — a dragged marker keeps its identity.
   let questionStream = 'question:0';
@@ -344,7 +356,10 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
   // A leading gap is suppressed only at the *true top* of the page. Flow index 0 is
   // not that place: the masthead, title and instructions render above the flow.
   const somethingAboveFlow =
-    bands.length > 0 || title !== undefined || instructions !== undefined;
+    bands.length > 0 ||
+    title !== undefined ||
+    instructions !== undefined ||
+    versionLabel !== undefined;
 
   // The section marker the walk has most recently passed; a part header's derived
   // total is scoped to it.
@@ -464,13 +479,18 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
       cached.number === number &&
       cached.stream === questionStream &&
       cached.gap === gap &&
-      cached.keepWhole === keepWhole
+      cached.keepWhole === keepWhole &&
+      cached.variant === variantKey
     ) {
       separated = cached.nodes;
     } else {
       const definition = requireQuestionType(question);
+      const printed =
+        version === undefined
+          ? question
+          : (definition.variant?.(question, { seed, version }).question ?? question);
       const rendered = definition
-        .render(question, {
+        .render(printed, {
           mode,
           questionNumber: number,
           questionId: question.id,
@@ -491,6 +511,7 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
         stream: questionStream,
         gap,
         keepWhole,
+        variant: variantKey,
         nodes: separated,
       });
     }
@@ -512,7 +533,19 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
     .filter((item): item is Extract<RenderedItem, { type: 'question' }> => item.type === 'question')
     .map((item) => item.question);
 
-  return { bands, cover, title, instructions, items, questions };
+  return { bands, cover, title, instructions, versionLabel, items, questions };
+}
+
+/** Derived, so it carries no edit target; one line in every language mode. */
+function renderVersionLabel(letter: string, mode: OutputMode): RenderNode {
+  const en = `Version ${letter}`;
+  const zh = `版本 ${letter}`;
+  return {
+    kind: 'text',
+    style: 'Body',
+    text: mode.language === 'bilingual' ? { en: [{ text: `${en} ${zh}` }], zh: [] } : bi(en, zh),
+    format: { bold: true, align: 'right' },
+  };
 }
 
 /**

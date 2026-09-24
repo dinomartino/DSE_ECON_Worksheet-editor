@@ -628,8 +628,10 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
 
   // --- Document --------------------------------------------------------------
   replaceWorksheet: (worksheet) =>
-    set({
+    set((state) => ({
       worksheet,
+      // A paper version belongs to the document being replaced; the next opens on A.
+      mode: state.mode.variant === undefined ? state.mode : { ...state.mode, variant: undefined },
       past: [],
       future: [],
       dirty: false,
@@ -637,7 +639,7 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
       // Both name ids in the document being replaced, so they mean nothing here.
       selectedTargetKey: undefined,
       insertAnchorId: undefined,
-    }),
+    })),
 
   updateWorksheet: (patch) => get().commit((draft) => ({ ...draft, ...patch })),
 

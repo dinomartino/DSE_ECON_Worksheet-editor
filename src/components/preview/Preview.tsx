@@ -5602,6 +5602,14 @@ export function Preview({
     });
   }
 
+  if (rendered.versionLabel) {
+    blocks.push({
+      key: "version-label",
+      structural: true,
+      node: <NodeView node={rendered.versionLabel} language={language} ctx={ctx} />,
+    });
+  }
+
   if (mode.version === "teacher") {
     blocks.push({
       key: "teacher-banner",

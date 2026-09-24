@@ -19,6 +19,7 @@ import { bandFieldSegments } from '@/model/bandSegments';
 import { worksheetMarks } from '@/model/marks';
 import { furnitureHeaderXml } from './furniture';
 import { documentName, plain } from '@/model/text';
+import { activeVersion, versionLetter } from '@/model/versions';
 import type { Band, BandField, FontPair, HeaderFooter, LanguageMode, OutputMode, Worksheet } from '@/model/types';
 import type { RenderNode } from '@/render/ir';
 import { bandFieldText, collectListStreams, renderWorksheet } from '@/render/worksheet';
@@ -334,6 +335,7 @@ function buildParts(
   } else if (rendered.title) {
     chunks.push(renderNodeXml(rendered.title, context));
   }
+  if (rendered.versionLabel) chunks.push(renderNodeXml(rendered.versionLabel, context));
 
   if (mode.version === 'teacher') {
     chunks.push(
@@ -674,7 +676,10 @@ const LANGUAGE_TAG: Record<OutputMode['language'], string> = {
  */
 export function docxFileName(worksheet: Worksheet, mode: OutputMode): string {
   const version = mode.version === 'teacher' ? 'Teacher' : 'Student';
-  return `${fileTitle(worksheet)} (${version}) (${LANGUAGE_TAG[mode.language]}).docx`;
+  // A paper version is part of the paper's name: `<name>-B (Student) (EN).docx`.
+  const variant = activeVersion(worksheet, mode);
+  const suffix = variant === undefined ? '' : `-${versionLetter(variant)}`;
+  return `${fileTitle(worksheet)}${suffix} (${version}) (${LANGUAGE_TAG[mode.language]}).docx`;
 }
 
 /** `<name> (Answer key) (<EN|ZH|Bilingual>).docx` — never mistaken for either paper. */

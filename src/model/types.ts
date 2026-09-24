@@ -354,6 +354,8 @@ export interface McqOption {
    * drop the figures silently.
    */
   blocks?: ContentBlock[];
+  /** Stays at its own letter in every paper version (§ `Worksheet.versions`). */
+  pinned?: boolean;
 }
 
 /**
@@ -779,6 +781,11 @@ export interface Worksheet {
   pageSetup?: PageSetup;
   header?: HeaderFooter;
   footer?: HeaderFooter;
+  /**
+   * Shuffled paper versions A, B, C… (`model/versions.ts`). Only the count and seed are
+   * stored; every option order is derived from them. Absent or `count` 1 = off.
+   */
+  versions?: PaperVersions;
   createdAt: string;
   updatedAt: string;
   /**
@@ -794,4 +801,12 @@ export type VersionMode = 'student' | 'teacher';
 export interface OutputMode {
   language: LanguageMode;
   version: VersionMode;
+  /** The paper version letter ("A", "B"…) when `Worksheet.versions` is on; absent = A. */
+  variant?: string;
+}
+
+/** `count` 1–4 (`MAX_VERSIONS`); `seed` picks every version's option order. */
+export interface PaperVersions {
+  count: number;
+  seed: number;
 }

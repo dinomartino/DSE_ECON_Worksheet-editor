@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Dialog, DialogTabs, Field } from '@/components/ui/Dialog';
-import { Button, CheckField, GroupHeader, SelectField } from '@/components/ui';
+import { Button, CheckField, GroupHeader, Segmented, SelectField } from '@/components/ui';
 import {
   assessmentTitleBlock,
   createFillInField,
@@ -29,6 +29,13 @@ import { documentShape } from '@/model/documentShape';
 import { requireQuestionType } from '@/registry';
 import { bi, emptyBiText, plain } from '@/model/text';
 import { academicYear, type CoverPaperStyle } from '@/model/cover';
+import {
+  MAX_VERSIONS,
+  newVersionSeed,
+  versionCount,
+  versionLetter,
+  versionLetters,
+} from '@/model/versions';
 import type { Band, HeaderFooter, PageMargins, PaperSize } from '@/model/types';
 import { useWorksheetStore, type BandScope } from '@/store/worksheetStore';
 import { BandPreview, BandPresetCard } from './BandPreview';
@@ -197,12 +204,83 @@ function DocumentTab() {
         />
       </Field>
 
+      <VersionsField />
+
       {/* Section headings are typed on the page, not here.
           A section is a heading in the flow now, so it has a visual representation to
           click — which is the rule for what belongs on the paper rather than in a panel
           (§"the preview is the editor"). This list edited headings by index while the
           page showed them in place, giving two ways to change one thing. */}
     </div>
+  );
+}
+
+/**
+ * Shuffled paper versions: how many, a new shuffle, and which one the page shows.
+ * Version A is the authored order; only the count and seed are stored.
+ */
+function VersionsField() {
+  const worksheet = useWorksheetStore((s) => s.worksheet);
+  const updateWorksheet = useWorksheetStore((s) => s.updateWorksheet);
+  const variant = useWorksheetStore((s) => s.mode.variant);
+  const setMode = useWorksheetStore((s) => s.setMode);
+  const count = versionCount(worksheet);
+  const letters = versionLetters(worksheet);
+  const shown = variant && letters.includes(variant) ? variant : 'A';
+
+  const setCount = (next: number) => {
+    if (next < 2) {
+      updateWorksheet({ versions: undefined });
+      setMode({ variant: undefined });
+      return;
+    }
+    updateWorksheet({ versions: { count: next, seed: worksheet.versions?.seed ?? newVersionSeed() } });
+    if (letters.indexOf(shown) >= next) setMode({ variant: undefined });
+  };
+
+  return (
+    <Field
+      label="Versions"
+      hint="Multiple-choice options shuffle per version; version A keeps your order. Pinned, “all of the above” and combination options never move."
+    >
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <Segmented<string>
+          label="Number of versions"
+          value={String(count)}
+          onChange={(value) => setCount(Number(value))}
+          options={Array.from({ length: MAX_VERSIONS }, (_, index) => ({
+            value: String(index + 1),
+            label: index === 0 ? 'Off' : String(index + 1),
+            title: index === 0 ? 'One paper' : `Versions A–${versionLetter(index)}`,
+          }))}
+        />
+        {letters.length > 0 && (
+          <>
+            <Button
+              size="sm"
+              variant="subtle"
+              title="Pick a new shuffle for versions B onwards"
+              onClick={() =>
+                updateWorksheet({
+                  versions: { count, seed: newVersionSeed(worksheet.versions?.seed) },
+                })
+              }
+            >
+              Reshuffle
+            </Button>
+            <span className="flex items-center gap-2 text-[11px] text-ink-muted">
+              Page shows
+              <Segmented<string>
+                label="Version shown on the page"
+                value={shown}
+                onChange={(letter) => setMode({ variant: letter === 'A' ? undefined : letter })}
+                options={letters.map((letter) => ({ value: letter, label: letter }))}
+              />
+            </span>
+          </>
+        )}
+      </div>
+    </Field>
   );
 }
 
