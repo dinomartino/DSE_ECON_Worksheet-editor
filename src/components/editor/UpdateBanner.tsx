@@ -2,7 +2,8 @@
 
 import { useEffect } from 'react';
 import { checkOnLaunch, useUpdateStore, type UpdateStatus } from '@/desktop/updateStore';
-import { Button } from '@/components/ui';
+import { Button, IconButton } from '@/components/ui';
+import { RefreshIcon } from '@/components/ui/icons';
 
 /**
  * "Version X is ready" — desktop only, shown once the update has downloaded silently.
@@ -99,7 +100,7 @@ export function VersionLine() {
   if (current === null && status === 'idle') return null;
 
   return (
-    <p data-print-hide className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[11px] text-ink-subtle">
+    <p data-print-hide className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-ink-subtle">
       <span className="tabular-nums">Version {current ?? '…'}</span>
       <span aria-hidden>·</span>
       <VersionAction status={status} available={available} onCheck={() => void check()} onInstall={() => void restart()} />
@@ -149,26 +150,27 @@ function VersionAction({
     case 'failed':
       return (
         <>
-          <span>Could not check for updates.</span>
-          <button type="button" className={link} onClick={onCheck}>
-            Try again
-          </button>
+          <span>Could not check for updates</span>
+          <CheckButton onCheck={onCheck} />
         </>
       );
     case 'current':
       return (
         <>
-          <span>Up to date.</span>
-          <button type="button" className={link} onClick={onCheck}>
-            Check again
-          </button>
+          <span>Up to date</span>
+          <CheckButton onCheck={onCheck} />
         </>
       );
     default:
-      return (
-        <button type="button" className={link} onClick={onCheck}>
-          Check for updates
-        </button>
-      );
+      return <CheckButton onCheck={onCheck} />;
   }
+}
+
+/** "Check for updates" as a small refresh glyph: the line stays one short row. */
+function CheckButton({ onCheck }: { onCheck: () => void }) {
+  return (
+    <IconButton label="Check for updates" onClick={onCheck} className="-my-1.5 h-6 w-6">
+      <RefreshIcon size={13} />
+    </IconButton>
+  );
 }

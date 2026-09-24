@@ -155,6 +155,46 @@ export function TrashIcon(props: IconProps) {
   );
 }
 
+/* ---- Files ------------------------------------------------------------- */
+
+/** Open a file from disk. */
+export function FolderOpenIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 20h14.5a2 2 0 0 0 1.94-1.5l1.5-6A1 1 0 0 0 21 11H7.3a2 2 0 0 0-1.94 1.5L4 18V6a2 2 0 0 1 2-2h3.5l2 2.5H17a2 2 0 0 1 2 2V11" />
+    </Svg>
+  );
+}
+
+/** A folder on disk, shown in Finder/Explorer. */
+export function FolderIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M3.5 7a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z" />
+    </Svg>
+  );
+}
+
+/** Every document into one archive. */
+export function ArchiveIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3" y="4" width="18" height="4.5" rx="1" />
+      <path d="M5 8.5V18a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5M10 12.5h4" />
+    </Svg>
+  );
+}
+
+/** Check again. */
+export function RefreshIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M20 11a8 8 0 0 0-14.6-4.5L4 8M4 4v4h4" />
+      <path d="M4 13a8 8 0 0 0 14.6 4.5L20 16m0 4v-4h-4" />
+    </Svg>
+  );
+}
+
 /* ---- Question types ---------------------------------------------------- */
 
 export function McqIcon(props: IconProps) {

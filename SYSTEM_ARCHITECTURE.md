@@ -1640,6 +1640,9 @@ the way in; `NewWorksheetForm` asks the once-per-document decisions.
   index in `start/dashboard.ts:visibleSummaries`; none of it is stored with a document.
   The grid/list choice is a per-viewer `localStorage` key outside the `econ-worksheet:`
   prefix, which `clear()` treats as documents.
+- **Each thing sits with what it acts on.** The sidebar starts work (four new-document
+  rows plus "Open a file…", which opens a .json or restores a .zip); the library's tools
+  — Trash, and backup/restore/folders behind ⋯ — sit in the dashboard header.
 - **A thumbnail is derived, never stored** (`start/thumbnail.ts`). It reads the IR through
   the clipboard backend plus a small cover emitter, in a shadow root, scaled from true
   page size; loaded lazily (IntersectionObserver), two at a time, cached in memory by

@@ -1,9 +1,9 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Segmented } from '@/components/ui';
+import { IconButton, Segmented } from '@/components/ui';
 import { Menu, type MenuItem } from '@/components/ui/Menu';
-import { SheetIcon } from '@/components/ui/icons';
+import { SheetIcon, TrashIcon } from '@/components/ui/icons';
 import { isDesktop, revealLabel } from '@/platform';
 import type { WorksheetSummary } from '@/storage';
 import { PageThumbnail } from './PageThumbnail';
@@ -45,13 +45,16 @@ export function FileDashboard({
   actions,
   trashCount = 0,
   onShowTrash,
+  libraryItems = [],
 }: {
   summaries: WorksheetSummary[];
   loaded: boolean;
   actions: DocumentActions;
-  /** Shown as a quiet "Trash (N)" link beside the count, only when there is any. */
+  /** The Trash icon beside the count; its badge shows how many are in it. */
   trashCount?: number;
   onShowTrash?: () => void;
+  /** Whole-library actions (backup, restore, folders) behind one ⋯ menu. */
+  libraryItems?: MenuItem[];
 }) {
   const [query, setQuery] = useState<DashboardQuery>(DEFAULT_QUERY);
   // Lazy initialiser: `EditorHost` renders the start screen only after hydration, so
@@ -67,26 +70,36 @@ export function FileDashboard({
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
           {isDesktop() ? 'Saved on this computer' : 'Saved in this browser'}
         </h2>
-        <span className="flex items-baseline gap-3 text-[11px] tabular-nums text-ink-subtle">
+        {/* The library's own tools sit with the library: the count, the Trash, and the
+            rare whole-library actions behind ⋯ — never as a column of links. */}
+        <span className="flex items-center gap-1 text-[11px] tabular-nums text-ink-subtle">
           {summaries.length > 0 && (
-            <span>
+            <span className="mr-2">
               {shown.length === summaries.length
                 ? plural(summaries.length, 'document')
                 : `${shown.length} of ${plural(summaries.length, 'document')}`}
             </span>
           )}
-          {trashCount > 0 && onShowTrash && (
-            <button
-              type="button"
+          {onShowTrash && (
+            <IconButton
+              label={trashCount > 0 ? `Trash (${trashCount})` : 'Trash'}
               onClick={onShowTrash}
-              className="cursor-pointer font-medium text-ink-muted underline decoration-line-strong underline-offset-4 transition-colors hover:text-ink hover:decoration-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="relative"
             >
-              Trash ({trashCount})
-            </button>
+              <TrashIcon />
+              {trashCount > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 min-w-[15px] rounded-full bg-ink-muted px-1 text-center text-[9.5px] font-semibold leading-[15px] text-surface">
+                  {trashCount}
+                </span>
+              )}
+            </IconButton>
+          )}
+          {libraryItems.length > 0 && (
+            <Menu label="Back up, restore and folders" items={libraryItems} />
           )}
         </span>
       </div>

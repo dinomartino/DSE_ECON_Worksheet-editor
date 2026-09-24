@@ -14,6 +14,8 @@ import {
 } from '@/platform';
 import { Dialog } from '@/components/ui/Dialog';
 import { AppMark } from '@/components/ui/AppMark';
+import { ArchiveIcon, FolderIcon, FolderOpenIcon } from '@/components/ui/icons';
+import type { MenuItem } from '@/components/ui/Menu';
 import { VersionLine } from '@/components/editor/UpdateBanner';
 import { FileDashboard, type DocumentActions } from './FileDashboard';
 import { NEW_WORKSHEET_FORM_ID, NewWorksheetForm } from './NewWorksheetForm';
@@ -24,7 +26,7 @@ import type { LanguageMode, Worksheet } from '@/model/types';
 import {
   downloadWorksheetFile,
   duplicateWorksheet,
-  pickWorksheetFile,
+  parseWorksheet,
   readWorksheetFile,
   savedWorksheetPath,
   savedWorksheetsFolder,
@@ -156,8 +158,8 @@ export function StartScreen({
   };
 
   /**
-   * "Open a .json worksheet…": the native open sheet on desktop, starting in the same
-   * folder exports go to; the hidden file input on the web.
+   * "Open a file…": a .json opens, a backup .zip restores — the same rule as a drop.
+   * The native open sheet on desktop, the hidden file input on the web.
    */
   const importFile = async () => {
     if (!isDesktop()) {
@@ -166,8 +168,10 @@ export function StartScreen({
     }
     setError(undefined);
     try {
-      const worksheet = await pickWorksheetFile();
-      if (worksheet) onOpen(worksheet);
+      const picked = await pickFile(OPEN_FILTERS);
+      if (!picked) return;
+      if (picked.name.toLowerCase().endsWith('.zip')) await restoreFrom(picked.bytes);
+      else onOpen(parseWorksheet(new TextDecoder().decode(picked.bytes)));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not open that file.');
     }
@@ -271,6 +275,47 @@ export function StartScreen({
     }
   };
 
+  const showFolder = (label: string, locate: () => Promise<string | undefined>) => () =>
+    void (async () => {
+      try {
+        const path = await locate();
+        if (path) await openFolder(path);
+      } catch {
+        setError(`Could not open the ${label} folder.`);
+      }
+    })();
+
+  const libraryItems: MenuItem[] = [
+    {
+      label: busy === 'backup' ? 'Backing up…' : 'Back up all…',
+      hint: '.zip',
+      icon: <ArchiveIcon />,
+      disabled: busy !== undefined,
+      onSelect: () => void backUpAll(),
+    },
+    {
+      label: busy === 'restore' ? 'Restoring…' : 'Restore from backup…',
+      icon: <FolderOpenIcon />,
+      disabled: busy !== undefined,
+      onSelect: () => void pickBackup(),
+    },
+    ...(isDesktop()
+      ? [
+          {
+            label: 'Show saved worksheets',
+            icon: <FolderIcon />,
+            separated: true,
+            onSelect: showFolder('saved worksheets', savedWorksheetsFolder),
+          },
+          {
+            label: 'Show exports folder',
+            icon: <FolderIcon />,
+            onSelect: showFolder('exports', exportsFolder),
+          },
+        ]
+      : []),
+  ];
+
   const actions: DocumentActions = {
     open: (summary) => void openSaved(summary.id),
     rename: setRenaming,
@@ -343,11 +388,11 @@ export function StartScreen({
 
         {/* The screen's one display moment: the chrome's serif voice (design/icons/design.md §
             Typography). Everything below it stays on the UI grotesque. */}
-        <h1 className="font-display mt-14 text-balance text-[32px] font-normal leading-[1.15] tracking-[-0.015em] text-ink">
+        <h1 className="font-display mt-10 text-balance text-[32px] font-normal leading-[1.15] tracking-[-0.015em] text-ink">
           Start a worksheet, or pick up where you left off.
         </h1>
 
-        <section className="mt-12">
+        <section className="mt-9">
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
             Start new
           </h2>
@@ -376,54 +421,32 @@ export function StartScreen({
               onClick={() => setCreating('lqMock')}
             />
           </div>
-          <button
-            type="button"
-            onClick={() => void importFile()}
-            className="mt-5 cursor-pointer text-[12px] font-medium text-accent-ink underline decoration-line-strong underline-offset-4 transition-colors hover:decoration-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-          >
-            Open a .json worksheet…
-          </button>
-          <p className="mt-1.5 text-[11px] text-ink-subtle">
-            or drop one anywhere on this page
-          </p>
+          {/* Opening a file is the fifth way in, so it wears the same row — set apart by
+              its icon and a gap, rather than being a stray link under the list. */}
+          <div className="mt-4 flex flex-col border-t border-line">
+            <StartRow
+              icon={<FolderOpenIcon size={16} />}
+              title="Open a file…"
+              hint="A .json worksheet or a backup .zip — or drop one anywhere here."
+              onClick={() => void importFile()}
+            />
+          </div>
         </section>
 
-        <div className="mt-auto pt-10 text-[11px] leading-relaxed text-ink-subtle">
+        {/* One quiet line about where work lives, then the build. Library actions
+            (backup, restore, folders, Trash) sit with the library, on the right. */}
+        <div className="mt-auto space-y-3 pt-8 text-[11px] leading-relaxed text-ink-subtle">
           {isDesktop() ? (
-            <>
-              <p>
-                Everything here is stored on this computer only — there is no server and no
-                account. Back up now and then: one .zip holds every document.
-              </p>
-              {/* The two places a teacher's files live, one click each: the app's own
-                  store (autosaved, named by id) and the folder exports start in. */}
-              <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
-                <FolderLink
-                  label="Saved worksheets"
-                  locate={savedWorksheetsFolder}
-                  onError={setError}
-                />
-                <FolderLink label="Exports folder" locate={exportsFolder} onError={setError} />
-              </p>
-            </>
+            <p>Stored on this computer only — no account, no server.</p>
           ) : (
             <p>
-              Everything here is stored in this browser only — there is no server and no
-              account. Clearing site data deletes it, so back up now and then: one .zip
-              holds every document.
+              Stored in this browser only — clearing site data deletes it.{' '}
+              <TextLink onClick={() => void backUpAll()} disabled={busy !== undefined}>
+                {busy === 'backup' ? 'Backing up…' : 'Back up now'}
+              </TextLink>
             </p>
           )}
-          <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
-            <TextLink onClick={() => void backUpAll()} disabled={busy !== undefined}>
-              {busy === 'backup' ? 'Backing up…' : 'Back up all…'}
-            </TextLink>
-            <TextLink onClick={() => void pickBackup()} disabled={busy !== undefined}>
-              {busy === 'restore' ? 'Restoring…' : 'Restore from backup…'}
-            </TextLink>
-          </p>
-          {/* The panel's last line, bottom-left: which build this is, and a way to ask
-              for a newer one. Renders nothing on the web. */}
-          <div className="mt-5 border-t border-line pt-3 empty:hidden">
+          <div className="border-t border-line pt-3 empty:hidden">
             <VersionLine />
           </div>
         </div>
@@ -456,6 +479,7 @@ export function StartScreen({
             actions={actions}
             trashCount={trashRows.length}
             onShowTrash={() => setShowingTrash(true)}
+            libraryItems={libraryItems}
           />
         )}
       </main>
@@ -475,11 +499,12 @@ export function StartScreen({
       <input
         ref={fileInput}
         type="file"
-        accept="application/json,.json"
+        accept="application/json,.json,application/zip,.zip"
         className="hidden"
         onChange={(event) => {
           const file = event.target.files?.[0];
-          if (file) void openFile(file);
+          if (file && isZip(file)) void restoreFrom(file);
+          else if (file) void openFile(file);
           event.target.value = '';
         }}
       />
@@ -639,10 +664,12 @@ export function StartScreen({
 function StartRow({
   title,
   hint,
+  icon,
   onClick,
 }: {
   title: string;
   hint: string;
+  icon?: ReactNode;
   onClick: () => void;
 }) {
   return (
@@ -655,7 +682,8 @@ function StartRow({
         aria-hidden
         className="absolute inset-y-0 left-0 w-0.5 bg-accent opacity-0 transition-opacity duration-150 ease-[var(--ease-out-soft)] group-hover:opacity-100 group-focus-visible:opacity-100"
       />
-      <span className="block text-[13.5px] font-medium text-ink transition-colors group-hover:text-accent-ink">
+      <span className="flex items-center gap-2 text-[13.5px] font-medium text-ink transition-colors group-hover:text-accent-ink">
+        {icon && <span className="text-ink-subtle group-hover:text-accent-ink">{icon}</span>}
         {title}
       </span>
       <span className="mt-0.5 block text-[11px] leading-snug text-ink-muted">{hint}</span>
@@ -717,39 +745,6 @@ function RenameDialog({
   );
 }
 
-/**
- * A desktop folder, one click away. Resolved on click rather than on render: the path
- * comes from the shell asynchronously, and the exports folder is created on demand.
- */
-function FolderLink({
-  label,
-  locate,
-  onError,
-}: {
-  label: string;
-  locate: () => Promise<string | undefined>;
-  onError: (message: string) => void;
-}) {
-  return (
-    <button
-      type="button"
-      title={`Open in ${revealLabel().replace(/^Show in /, '')}`}
-      onClick={() =>
-        void (async () => {
-          try {
-            const path = await locate();
-            if (path) await openFolder(path);
-          } catch {
-            onError(`Could not open the ${label.toLowerCase()} folder.`);
-          }
-        })()
-      }
-      className="cursor-pointer font-medium text-accent-ink underline decoration-line-strong underline-offset-4 transition-colors hover:decoration-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-    >
-      {label}
-    </button>
-  );
-}
 
 /**
  * Filled, not the quiet `danger` variant: that one recedes until hovered, which reads as
@@ -823,6 +818,8 @@ function NoticeBox({ notice, onDismiss }: { notice: Notice; onDismiss: () => voi
 function plural(count: number, noun: string): string {
   return count === 1 ? `1 ${noun}` : `${count} ${noun}s`;
 }
+
+const OPEN_FILTERS = [{ name: 'Worksheet or backup', extensions: ['json', 'zip'] }];
 
 function isZip(file: File): boolean {
   return (
