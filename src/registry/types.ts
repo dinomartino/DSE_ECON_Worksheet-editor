@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import type { BiText, Question } from '@/model/types';
+import type { BiText, ContentBlock, Question } from '@/model/types';
 import type { RenderContext, RenderNode } from '@/render/ir';
 import type { AnswerKeyContext, AnswerKeyEntry } from '@/render/answerKey';
 
@@ -48,6 +48,19 @@ export interface QuestionTypeDefinition<Q extends Question = Question> {
   healthFacts?: (question: Q) => QuestionHealthFacts;
   /** This question's entry in the separate answer key (`render/answerKey.ts`); absent = none. */
   answerKey?: (question: Q, context: AnswerKeyContext) => AnswerKeyEntry;
+  /** This question as a quiz tool takes it (`export/csv/answerKeyCsv.ts`); absent = not one. */
+  quizItem?: (question: Q) => QuizItem;
+}
+
+/** A lettered-choice question, as Kahoot or Blooket import it. */
+export interface QuizItem {
+  stem: ContentBlock[];
+  /** Combination statements, printed "(1) …" under the stem. */
+  statements: BiText[];
+  /** `figure`: the option carries content a quiz cell cannot hold. */
+  options: Array<{ text: BiText; figure: boolean }>;
+  /** Index into `options`; absent = no key set. */
+  answerIndex?: number;
 }
 
 /**

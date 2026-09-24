@@ -72,12 +72,12 @@ describe('renaming a document', () => {
       'src/export/docx/index.ts',
       'src/storage/index.ts',
     ];
-    // Either directly or through `worksheetTitle`, which is `documentName` plus the
-    // file list's own fallback word.
+    // Either directly, through `worksheetTitle` (plus the file list's fallback word) or
+    // through `fileTitle` (made safe as a file name).
     for (const file of sources) {
       const source = readFileSync(file, 'utf8');
       expect(source, `${file} does not use the shared chain`).toMatch(
-        /documentName\(|worksheetTitle\(/,
+        /documentName\(|worksheetTitle\(|fileTitle\(/,
       );
     }
   });

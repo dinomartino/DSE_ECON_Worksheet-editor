@@ -20,6 +20,8 @@ export const DOCX_FILTERS: SaveFilter[] = [
 ];
 export const JSON_FILTERS: SaveFilter[] = [{ name: 'Worksheet', extensions: ['json'] }];
 export const ZIP_FILTERS: SaveFilter[] = [{ name: 'Worksheet backup', extensions: ['zip'] }];
+export const CSV_FILTERS: SaveFilter[] = [{ name: 'CSV', extensions: ['csv'] }];
+export const XLSX_FILTERS: SaveFilter[] = [{ name: 'Excel workbook', extensions: ['xlsx'] }];
 
 /**
  * Are we inside the Tauri webview?
@@ -209,6 +211,10 @@ export async function exportsFolder(): Promise<string | undefined> {
 function mimeFor(fileName: string): string {
   if (fileName.endsWith('.json')) return 'application/json';
   if (fileName.endsWith('.zip')) return 'application/zip';
+  if (fileName.endsWith('.csv')) return 'text/csv;charset=utf-8';
+  if (fileName.endsWith('.xlsx')) {
+    return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  }
   if (fileName.endsWith('.docx')) {
     return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
   }

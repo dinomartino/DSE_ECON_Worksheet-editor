@@ -59,6 +59,12 @@ export function documentName(worksheet: {
   );
 }
 
+/** `documentName` safe as a file name: characters Windows/macOS forbid become "-". */
+export function fileTitle(worksheet: { name?: string; title: BiText }): string {
+  const rawTitle = documentName(worksheet) ?? 'Worksheet';
+  return rawTitle.replace(/[\\/:*?"<>|]/g, '-').trim() || 'Worksheet';
+}
+
 export function isRichTextEmpty(text: RichText | undefined): boolean {
   return plain(text).trim().length === 0;
 }

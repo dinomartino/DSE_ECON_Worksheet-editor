@@ -1,3 +1,4 @@
+import type { AppFormat } from '@/export/csv/answerKeyCsv';
 import type { LanguageMode, VersionMode } from '@/model/types';
 
 /**
@@ -5,16 +6,19 @@ import type { LanguageMode, VersionMode } from '@/model/types';
  * rule — one browser download per click — is tested without a DOM.
  */
 
-export type ExportWhat = 'paper' | 'answerKey' | 'both';
+/** `apps`: one file for another app — a bubble-sheet key or a quiz set (`AppFormat`). */
+export type ExportWhat = 'paper' | 'answerKey' | 'both' | 'apps';
 
 export interface ExportChoice {
   what: ExportWhat;
   language: LanguageMode;
   /** The question paper's version; the answer key has none. */
   version: VersionMode;
+  /** Which app's file, when `what` is `apps`. */
+  app?: AppFormat;
 }
 
-export type ExportKind = 'paper' | 'answerKey';
+export type ExportKind = 'paper' | 'answerKey' | 'apps';
 
 export interface ExportFile {
   kind: ExportKind;
