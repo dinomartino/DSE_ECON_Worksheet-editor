@@ -103,6 +103,9 @@ Invariants:
 - `src/export/clipboard.ts:worksheetClipboardHtml` · `:copyForWord` — the third backend
 - `src/export/diagramImage.ts:renderDiagramImages` — PNG pre-pass; one image per diagram
 - `src/export/imageImport.ts:prepareImageForStorage` · `:planImageImport` — downscale on paste
+- `src/export/csv/answerKeyCsv.ts:buildAppExport` — MCQ key for ZipGrade / plain CSV, MCQs
+  for Kahoot / Blooket; reads the registry's `answerKey` and `quizItem` hooks; warns, never
+  truncates. `src/export/csv/xlsx.ts:buildXlsx` — minimal one-sheet `.xlsx`
 
 Invariant: a diagram is geometry in, exactly one rasterised PNG out — §Geometry in, one image out.
 
@@ -163,7 +166,7 @@ Invariants:
 ## components/editor — the chrome around the page
 
 - `src/components/EditorApp.tsx:EditorApp` — the shell, autosave, export actions
-- `src/components/editor/ExportDialog.tsx:ExportDialog` — paper / answer key / both; `src/components/editor/exportSession.ts:deliverFiles` — one web download per click
+- `src/components/editor/ExportDialog.tsx:ExportDialog` — paper / answer key / both / other apps; `src/components/editor/exportSession.ts:deliverFiles` — one web download per click
 - `src/components/editor/exportSession.ts:paperMode` — "Include" toggles → `OutputMode.omitCover` / `omitAnswerSpace` (export-time, never stored; the preview ignores them)
 - `src/components/editor/Sidebar.tsx:Sidebar` · `src/components/editor/Inspector.tsx:Inspector`
 - `src/components/editor/Outline.tsx:Outline` · `:groupByPage` · `src/components/editor/AddRail.tsx:AddRail`

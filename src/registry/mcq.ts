@@ -4,7 +4,7 @@ import { areBlocksEmpty, bi, isBiTextEmpty, plain } from '@/model/text';
 import type { LanguageMode, McqOptionLayout, McqQuestion } from '@/model/types';
 import { pushGap, renderContentBlocks, type RenderContext, type RenderNode } from '@/render/ir';
 import { McqEditorPanel } from '@/components/editor/McqEditorPanel';
-import type { QuestionHealthFacts, QuestionTypeDefinition } from './types';
+import type { QuestionHealthFacts, QuestionTypeDefinition, QuizItem } from './types';
 import type { AnswerKeyEntry } from '@/render/answerKey';
 
 /**
@@ -379,6 +379,18 @@ function answerKey(question: McqQuestion): AnswerKeyEntry {
   };
 }
 
+/** The stem, statements and options for a quiz tool; the key only when it points at an option. */
+function quizItem(question: McqQuestion): QuizItem {
+  const { answerIndex, options } = question;
+  const keyed = Number.isInteger(answerIndex) && answerIndex >= 0 && answerIndex < options.length;
+  return {
+    stem: question.blocks,
+    statements: question.statements ?? [],
+    options: options.map((option) => ({ text: option.text, figure: !areBlocksEmpty(option.blocks) })),
+    ...(keyed ? { answerIndex } : {}),
+  };
+}
+
 /**
  * Three blank lines between two MCQs on an exam paper, against the ordinary one.
  *
@@ -405,4 +417,5 @@ export const mcqType: QuestionTypeDefinition<McqQuestion> = {
   countMissingTranslations,
   healthFacts,
   answerKey,
+  quizItem,
 };

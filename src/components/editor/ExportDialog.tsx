@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { LanguageMode, OutputMode, VersionMode, Worksheet } from '@/model/types';
-import { DOCX_FILTERS, isDesktop, saveFile } from '@/platform';
+import { CSV_FILTERS, DOCX_FILTERS, isDesktop, saveFile, XLSX_FILTERS } from '@/platform';
+import { buildAppExport, type AppExport, type AppFormat } from '@/export/csv/answerKeyCsv';
 import { Button, CheckField, Segmented } from '@/components/ui';
 import { Dialog, Field } from '@/components/ui/Dialog';
 import { DownloadIcon } from '@/components/ui/icons';
@@ -34,6 +35,10 @@ export interface ExportDialogProps {
  * failure like any other.
  */
 async function buildFiles(worksheet: Worksheet, choice: ExportChoice): Promise<ExportFile[]> {
+  if (choice.what === 'apps') {
+    const built = buildAppExport(worksheet, choice.app ?? 'zipgrade', choice.language);
+    return [{ kind: 'apps', name: built.fileName, blob: await appBlob(built) }];
+  }
   const docx = await import('@/export/docx');
   const files: ExportFile[] = [];
   for (const kind of exportKinds(choice.what)) {
@@ -55,7 +60,29 @@ async function buildFiles(worksheet: Worksheet, choice: ExportChoice): Promise<E
   return files;
 }
 
-const saveDocx = (file: ExportFile) => saveFile(file.blob, file.name, DOCX_FILTERS);
+/** CSV as UTF-8 text; the `.xlsx` writer (JSZip) loads on click, like the `.docx` one. */
+async function appBlob(built: AppExport): Promise<Blob> {
+  if (built.data.kind === 'csv') return new Blob([built.data.text], { type: 'text/csv;charset=utf-8' });
+  const { buildXlsx } = await import('@/export/csv/xlsx');
+  return buildXlsx(built.data.rows);
+}
+
+const saveExport = (file: ExportFile) =>
+  saveFile(
+    file.blob,
+    file.name,
+    file.name.endsWith('.csv') ? CSV_FILTERS : file.name.endsWith('.xlsx') ? XLSX_FILTERS : DOCX_FILTERS,
+  );
+
+const APP_OPTIONS: Array<{ value: AppFormat; label: string; title: string; hint: string }> = [
+  { value: 'zipgrade', label: 'ZipGrade', title: 'ZipGrade answer-key CSV', hint: 'MCQ key for ZipGrade: Import Key CSV.' },
+  { value: 'keyCsv', label: 'Key CSV', title: 'Question, Answer CSV', hint: 'MCQ number and letter, for Excel or any scanner.' },
+  { value: 'kahoot', label: 'Kahoot', title: 'Kahoot spreadsheet (.xlsx)', hint: 'MCQs as a Kahoot quiz: Import spreadsheet.' },
+  { value: 'blooket', label: 'Blooket', title: 'Blooket CSV import', hint: 'MCQs as a Blooket set: CSV Import.' },
+];
+
+/** Warnings shown before the cut: the rest is a count. */
+const WARNINGS_SHOWN = 4;
 
 /** Hand what was written to the toolbar's status line; nothing written, nothing said. */
 function report(saved: ExportRun['saved'], onExported: ExportDialogProps['onExported']): void {
@@ -65,7 +92,9 @@ function report(saved: ExportRun['saved'], onExported: ExportDialogProps['onExpo
       ? `Exported ${saved.length} files`
       : saved[0].file.kind === 'answerKey'
         ? 'Exported answer key'
-        : 'Exported .docx';
+        : saved[0].file.kind === 'apps'
+          ? `Exported .${saved[0].file.name.split('.').pop()}`
+          : 'Exported .docx';
   onExported(message, saved[saved.length - 1].path);
 }
 
@@ -80,6 +109,12 @@ export function ExportDialog({ worksheet, mode, onClose, onExported, checks }: E
   const [includeCover, setIncludeCover] = useState(true);
   const [includeAnswerSpace, setIncludeAnswerSpace] = useState(true);
   const omittable = useMemo(() => omittableParts(worksheet, mode), [worksheet, mode]);
+  const [app, setApp] = useState<AppFormat>('zipgrade');
+  // Built on every change, so its warnings show before the click; it is only text.
+  const appExport = useMemo(
+    () => (what === 'apps' ? buildAppExport(worksheet, app, language) : undefined),
+    [what, worksheet, app, language],
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>();
   // Web only: files built but waiting for their own click, and what has already gone.
@@ -115,7 +150,7 @@ export function ExportDialog({ worksheet, mode, onClose, onExported, checks }: E
     setError(undefined);
     try {
       const { files, before } = await produce();
-      finish(await deliverFiles(files, { desktop: isDesktop(), save: saveDocx }), before);
+      finish(await deliverFiles(files, { desktop: isDesktop(), save: saveExport }), before);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Export failed.');
     } finally {
@@ -131,6 +166,7 @@ export function ExportDialog({ worksheet, mode, onClose, onExported, checks }: E
         version,
         includeCover,
         includeAnswerSpace,
+        app,
       }),
       before: [],
     }));
@@ -148,7 +184,7 @@ export function ExportDialog({ worksheet, mode, onClose, onExported, checks }: E
   return (
     <Dialog
       title="Export"
-      description="Word documents, in the language you choose."
+      description="Word documents, or a file for another app, in the language you choose."
       width={480}
       onClose={close}
       footer={
@@ -162,9 +198,15 @@ export function ExportDialog({ worksheet, mode, onClose, onExported, checks }: E
               {next.kind === 'answerKey' ? 'Download answer key' : 'Download question paper'}
             </Button>
           ) : (
-            <Button variant="primary" onClick={handleExport} disabled={busy}>
+            <Button variant="primary" onClick={handleExport} disabled={busy || appExport?.empty}>
               <DownloadIcon size={15} />
-              {busy ? 'Exporting…' : what === 'both' ? 'Export 2 files' : 'Export .docx'}
+              {busy
+                ? 'Exporting…'
+                : what === 'both'
+                  ? 'Export 2 files'
+                  : appExport
+                    ? `Export .${appExport.fileName.split('.').pop()}`
+                    : 'Export .docx'}
             </Button>
           )}
         </>
@@ -187,7 +229,9 @@ export function ExportDialog({ worksheet, mode, onClose, onExported, checks }: E
               hint={
                 what === 'both' && !isDesktop()
                   ? 'Two files. The answer key downloads on a second click.'
-                  : 'The answer key is a separate document: answer grid and marking scheme.'
+                  : what === 'apps'
+                    ? 'The MCQs, for a bubble-sheet scanner or a quiz game.'
+                    : 'The answer key is a separate document: answer grid and marking scheme.'
               }
             >
               <Segmented
@@ -198,9 +242,32 @@ export function ExportDialog({ worksheet, mode, onClose, onExported, checks }: E
                   { value: 'paper', label: 'Question paper' },
                   { value: 'answerKey', label: 'Answer key' },
                   { value: 'both', label: 'Both' },
+                  { value: 'apps', label: 'Other apps', title: 'Answer-key CSV, Kahoot or Blooket' },
                 ]}
               />
             </Field>
+
+            {appExport && (
+              <Field label="Format" hint={APP_OPTIONS.find((option) => option.value === app)?.hint}>
+                <Segmented label="Format" value={app} onChange={setApp} options={APP_OPTIONS} />
+                {(appExport.empty || appExport.warnings.length > 0) && (
+                  <ul role="status" className="space-y-1 rounded-lg bg-warn-soft px-2.5 py-2 text-xs text-warn-ink">
+                    {appExport.empty ? (
+                      <li>No multiple-choice questions to export.</li>
+                    ) : (
+                      <>
+                        {appExport.warnings.slice(0, WARNINGS_SHOWN).map((warning) => (
+                          <li key={warning}>{warning}</li>
+                        ))}
+                        {appExport.warnings.length > WARNINGS_SHOWN && (
+                          <li>And {appExport.warnings.length - WARNINGS_SHOWN} more.</li>
+                        )}
+                      </>
+                    )}
+                  </ul>
+                )}
+              </Field>
+            )}
 
             <Field label="Language">
               <Segmented
@@ -217,13 +284,13 @@ export function ExportDialog({ worksheet, mode, onClose, onExported, checks }: E
 
             {/* Kept in place when unused, so switching "What" does not move the dialog. */}
             <div
-              inert={what === 'answerKey'}
-              className={what === 'answerKey' ? 'opacity-40' : undefined}
+              inert={what === 'answerKey' || what === 'apps'}
+              className={what === 'answerKey' || what === 'apps' ? 'opacity-40' : undefined}
             >
               <Field
                 label="Paper version"
                 hint={
-                  what === 'answerKey'
+                  what === 'answerKey' || what === 'apps'
                     ? 'Applies to the question paper only.'
                     : 'Teacher shows the answers inline.'
                 }
@@ -243,8 +310,8 @@ export function ExportDialog({ worksheet, mode, onClose, onExported, checks }: E
             {/* Offered only for what this document has; greyed like the version above. */}
             {(omittable.cover || omittable.answerSpace) && (
               <div
-                inert={what === 'answerKey'}
-                className={what === 'answerKey' ? 'opacity-40' : undefined}
+                inert={what === 'answerKey' || what === 'apps'}
+                className={what === 'answerKey' || what === 'apps' ? 'opacity-40' : undefined}
               >
                 <Field label="Include" hint="Untick to leave it out of the question paper.">
                   <div className="flex flex-wrap gap-x-5 gap-y-1.5">

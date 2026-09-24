@@ -18,7 +18,7 @@ import { listIndentScheme } from '@/model/numbering';
 import { bandFieldSegments } from '@/model/bandSegments';
 import { worksheetMarks } from '@/model/marks';
 import { furnitureHeaderXml } from './furniture';
-import { documentName, plain } from '@/model/text';
+import { fileTitle, plain } from '@/model/text';
 import type { Band, BandField, FontPair, HeaderFooter, LanguageMode, OutputMode, Worksheet } from '@/model/types';
 import type { RenderNode } from '@/render/ir';
 import { bandFieldText, collectListStreams, renderWorksheet } from '@/render/worksheet';
@@ -680,10 +680,4 @@ export function docxFileName(worksheet: Worksheet, mode: OutputMode): string {
 /** `<name> (Answer key) (<EN|ZH|Bilingual>).docx` — never mistaken for either paper. */
 export function answerKeyFileName(worksheet: Worksheet, language: LanguageMode): string {
   return `${fileTitle(worksheet)} (Answer key) (${LANGUAGE_TAG[language]}).docx`;
-}
-
-function fileTitle(worksheet: Worksheet): string {
-  const rawTitle = documentName(worksheet) ?? 'Worksheet';
-  // Strip characters that are illegal in Windows/macOS filenames.
-  return rawTitle.replace(/[\\/:*?"<>|]/g, '-').trim() || 'Worksheet';
 }

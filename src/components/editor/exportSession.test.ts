@@ -12,6 +12,7 @@ describe('export delivery', () => {
     expect(exportKinds('paper')).toEqual(['paper']);
     expect(exportKinds('answerKey')).toEqual(['answerKey']);
     expect(exportKinds('both')).toEqual(['paper', 'answerKey']);
+    expect(exportKinds('apps')).toEqual(['apps']);
   });
 
   it('web: one download per click, the rest wait already built', async () => {

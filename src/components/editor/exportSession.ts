@@ -1,3 +1,4 @@
+import type { AppFormat } from '@/export/csv/answerKeyCsv';
 import type { LanguageMode, OutputMode, VersionMode, Worksheet } from '@/model/types';
 import { isWritingRoom } from '@/render/ir';
 import { renderWorksheet } from '@/render/worksheet';
@@ -7,7 +8,8 @@ import { renderWorksheet } from '@/render/worksheet';
  * rule — one browser download per click — is tested without a DOM.
  */
 
-export type ExportWhat = 'paper' | 'answerKey' | 'both';
+/** `apps`: one file for another app — a bubble-sheet key or a quiz set (`AppFormat`). */
+export type ExportWhat = 'paper' | 'answerKey' | 'both' | 'apps';
 
 export interface ExportChoice {
   what: ExportWhat;
@@ -17,6 +19,8 @@ export interface ExportChoice {
   /** Question paper only; absent = included. */
   includeCover?: boolean;
   includeAnswerSpace?: boolean;
+  /** Which app's file, when `what` is `apps`. */
+  app?: AppFormat;
 }
 
 /** The question paper's output mode. An omit flag is set only when on, so the default is unchanged. */
@@ -43,7 +47,7 @@ export function omittableParts(
   };
 }
 
-export type ExportKind = 'paper' | 'answerKey';
+export type ExportKind = 'paper' | 'answerKey' | 'apps';
 
 export interface ExportFile {
   kind: ExportKind;
