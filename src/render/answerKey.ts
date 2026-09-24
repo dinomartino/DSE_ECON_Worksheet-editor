@@ -2,10 +2,12 @@ import { resolveFlow } from '@/model/flow';
 import { computeNumbering, DEFAULT_LIST_INDENTS, toUpperLetter } from '@/model/numbering';
 import { DEFAULT_CELL_PADDING } from '@/model/table';
 import { bi, documentName, isBiTextEmpty, plain } from '@/model/text';
+import type { MarkScheme } from '@/model/markSchemeTypes';
 import type { BiText, LanguageMode, Worksheet } from '@/model/types';
 import { versionLetters, versionSeed } from '@/model/versions';
 import { requireQuestionType } from '@/registry';
 import { pushGap, type RenderNode, type TableNode, type TableNodeCell } from './ir';
+import { renderMarkScheme } from './markScheme';
 
 /**
  * The answer key: a document of its own, built as IR so the .docx backend draws it with
@@ -28,6 +30,8 @@ export interface AnswerKeyRow {
   /** Absent prints nothing; 0 prints "(0 marks)" — the paper's own rule. */
   marks?: number;
   answer?: BiText;
+  /** HKEAA marking points, levels and EC, printed under the answer (`render/markScheme.ts`). */
+  scheme?: MarkScheme;
 }
 
 export interface AnswerKeyContext {
@@ -353,7 +357,8 @@ function renderScheme(
   scheme.rows.forEach((row, index) => {
     const labelIndent = row.depth === 1 ? question[0].left : partText;
     const answerIndent = row.depth === 1 ? partText : subPartText;
-    const hasAnswer = row.answer !== undefined && !isBiTextEmpty(row.answer);
+    const schemeNodes = renderMarkScheme(row.scheme, { indent: answerIndent });
+    const hasAnswer = (row.answer !== undefined && !isBiTextEmpty(row.answer)) || schemeNodes.length > 0;
     const last = index === scheme.rows.length - 1;
     if (row.label !== undefined) {
       nodes.push({
@@ -365,13 +370,14 @@ function renderScheme(
         keepNext: hasAnswer || !last,
       });
     }
-    if (hasAnswer) {
+    if (row.answer !== undefined && !isBiTextEmpty(row.answer)) {
       nodes.push({
         kind: 'text',
         style: 'Marking Scheme',
-        text: row.answer!,
+        text: row.answer,
         indent: answerIndent,
       });
     }
+    nodes.push(...schemeNodes);
   });
 }

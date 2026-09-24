@@ -85,6 +85,7 @@ import {
   type RenderNode,
   type TableNode,
   type TextNode,
+  trailLabel,
 } from "@/render/ir";
 import { bandFieldText, renderWorksheet, type RenderedItem } from "@/render/worksheet";
 import { listQuestionTypes, requireQuestionType } from "@/registry";
@@ -447,15 +448,13 @@ function marksLabel(marks: number, language: LanguageMode): string {
  * behaviour. `aria-hidden` on the twin; both copies `nowrap`.
  */
 function MarksTrail({
-  marks,
-  language,
+  label,
   blankLines,
 }: {
-  marks: number;
-  language: LanguageMode;
+  /** "(4 marks)", or a scheme's `trail` (§ `TextNode.trail`) — the same placement. */
+  label: string;
   blankLines: number;
 }) {
-  const label = marksLabel(marks, language);
   const labelRef = useRef<HTMLSpanElement>(null);
   /*
    * Whether the label needs a line of its own. Only the trailing-break case: the twin
@@ -890,8 +889,13 @@ function TextNodeView({
         ? node.text.zh
         : node.text.en
       : node.text[language];
-  const trailingBreakFiller =
-    node.marks === undefined && trailingBlankLines(tailRuns) > 0;
+  const trailText =
+    node.marks !== undefined
+      ? marksLabel(node.marks, language)
+      : node.trail
+        ? trailLabel(node.trail, language)
+        : "";
+  const trailingBreakFiller = !trailText && trailingBlankLines(tailRuns) > 0;
 
   return (
     <p
@@ -970,10 +974,9 @@ function TextNodeView({
         node.edit?.kind === "sourceLabel" || node.edit?.kind === "sourceFootnote",
       )}
       {trailingBreakFiller && <br aria-hidden />}
-      {node.marks !== undefined && (
+      {trailText && (
         <MarksTrail
-          marks={node.marks}
-          language={language}
+          label={trailText}
           // Trailing hard breaks print, but the marks must not hang on an empty final
           // line. Counted from the text actually being shown, so a language mode that
           // renders only one side counts that side's breaks.

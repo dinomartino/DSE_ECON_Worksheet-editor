@@ -10,6 +10,7 @@
 
 import type { CoverPage } from './coverTypes';
 import type { Diagram } from './diagram';
+import type { MarkScheme } from './markSchemeTypes';
 
 export type VertAlign = 'superscript' | 'subscript';
 
@@ -385,6 +386,8 @@ export interface QuestionSubPart {
    */
   marks?: number;
   answer?: BiText;
+  /** HKEAA marking points, levels and EC (`model/markSchemeTypes.ts`); teacher-only. */
+  scheme?: MarkScheme;
   /**
    * Dotted writing lines printed after this sub-part (the QAB's answer space) — on
    * the sub-part because that is where the booklet puts the room, and a flow element
@@ -410,6 +413,8 @@ export interface QuestionPart {
   marks?: number;
   subParts?: QuestionSubPart[];
   answer?: BiText;
+  /** HKEAA marking points, levels and EC; with sub-parts it prints after the group. */
+  scheme?: MarkScheme;
   /**
    * Dotted writing lines after this part. On a part with sub-parts it prints after
    * the whole group.

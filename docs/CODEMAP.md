@@ -42,6 +42,7 @@ the whole schema, one file.
 - `src/model/page.ts:pageSetupOf` · `:headerFooterOffsets` · `src/model/pageFurniture.ts:furnitureBoxes`
 - `src/model/cover.ts:createCoverPage` · `src/model/documentShape.ts:documentShape`
 - `src/model/versions.ts:activeVersion` · `:shuffledOrder` — paper versions A/B/C; only `Worksheet.versions` (count + seed) is stored
+- `src/model/markScheme.ts:schemeMax` · `:groupMax` · `:schemeMismatch` — HKEAA marking-scheme totals, derived; types in `src/model/markSchemeTypes.ts:MarkScheme`
 - `src/model/paperHealth.ts:checkPaper` — the pre-print check, derived; `src/components/editor/PaperHealthPanel.tsx:PaperHealthPanel` shows it
 - `src/model/diagram.ts:Diagram` · `src/model/diagramDraw.ts:applyDrag` · `src/model/diagramTemplates.ts:DIAGRAM_TEMPLATES`
 - `src/model/table.ts:insertRow` · `:resolveCellPadding` · `:resolveColumnWidths`
@@ -74,6 +75,7 @@ Invariants:
 
 - `src/render/worksheet.ts:renderWorksheet` — the one walker; `:collectListStreams`
 - `src/render/answerKey.ts:renderAnswerKey` — the separate answer key; entries come from the `answerKey` hook
+- `src/render/markScheme.ts:renderMarkScheme` — a part's HKEAA scheme as `Marking Scheme` paragraphs; marks ride `TextNode.trail` (`src/render/ir.ts:trailLabel`)
 - `src/render/diagram.ts:diagramSvg` · `:diagramPlot` · `:diagramSize` · `:flowChartLayout` · `:forumChartLayout`
 
 Invariants:
@@ -170,6 +172,7 @@ Invariants:
 - `src/components/editor/ExportDialog.tsx:ExportDialog` — paper / answer key / both / other apps; `src/components/editor/exportSession.ts:deliverFiles` — one web download per click
 - `src/components/editor/exportSession.ts:paperMode` — "Include" toggles → `OutputMode.omitCover` / `omitAnswerSpace` (export-time, never stored; the preview ignores them)
 - `src/components/editor/Sidebar.tsx:Sidebar` · `src/components/editor/Inspector.tsx:Inspector`
+- `src/components/editor/MarkSchemeEditor.tsx:MarkSchemeEditor` — points, `n@`/any/max, OR, levels, EC for one leaf
 - `src/components/editor/Outline.tsx:Outline` · `:groupByPage` · `src/components/editor/AddRail.tsx:AddRail`
 - `src/components/editor/DiagramCanvas.tsx:DiagramCanvas` · `src/components/editor/DocumentSettings.tsx`
 - `src/components/feedback/FeedbackDialog.tsx:FeedbackDialog` (⋯ menu, start screen) · `src/feedback/feedback.ts:buildReport` · `:githubIssueUrl` · `:mailtoUrl` — prefilled issue / mail / clipboard; no server, no token, never the document

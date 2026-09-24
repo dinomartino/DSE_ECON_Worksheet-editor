@@ -8,7 +8,7 @@ import type {
   TextFormat,
   Worksheet,
 } from '@/model/types';
-import type { RenderNode, TextNode } from '@/render/ir';
+import { trailLabel, type RenderNode, type TextNode } from '@/render/ir';
 import { renderWorksheet } from '@/render/worksheet';
 import type { DiagramImageMap } from './diagramImage';
 
@@ -91,6 +91,12 @@ function marksLabel(marks: number, language: LanguageMode): string {
   return `${en} ${zh}`;
 }
 
+/** The right-hand label: the marks, else a scheme's `trail` (§ `TextNode.trail`). */
+function textNodeLabel(node: TextNode, language: LanguageMode): string {
+  if (node.marks !== undefined) return marksLabel(node.marks, language);
+  return node.trail ? trailLabel(node.trail, language) : '';
+}
+
 /** Per-element overrides as inline CSS, mirroring the docx direct formatting. */
 export function formatCss(format: TextFormat | undefined): string {
   if (!format) return '';
@@ -116,9 +122,8 @@ function textNodeHtml(node: TextNode, language: LanguageMode, fontCss: string): 
   // Numbering becomes literal text, which is the accepted tradeoff for clipboard.
   const marker = node.listRef ? `${escapeHtml(node.listRef.marker)}&nbsp;` : '';
   const body = richHtml(node.text, language);
-  const marks = node.marks !== undefined
-    ? `<span style="float:right">${escapeHtml(marksLabel(node.marks, language))}</span>`
-    : '';
+  const label = textNodeLabel(node, language);
+  const marks = label ? `<span style="float:right">${escapeHtml(label)}</span>` : '';
   return `<p style="${css}">${marks}${marker}${body}</p>`;
 }
 
@@ -441,7 +446,8 @@ export function worksheetPlainText(worksheet: Worksheet, mode: OutputMode): stri
       const zh = plain(node.text.zh);
       const body =
         mode.language === 'en' ? en : mode.language === 'zh' ? zh : [en, zh].filter(Boolean).join(' / ');
-      const marks = node.marks !== undefined ? ` ${marksLabel(node.marks, mode.language)}` : '';
+      const label = textNodeLabel(node, mode.language);
+      const marks = label ? ` ${label}` : '';
       if (marker || body || marks) lines.push(`${marker}${body}${marks}`.trim());
     } else if (node.kind === 'table') {
       for (const row of node.rows) {

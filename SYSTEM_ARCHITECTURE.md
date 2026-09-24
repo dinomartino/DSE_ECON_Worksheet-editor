@@ -480,7 +480,7 @@ RenderNode = TextNode | ColumnsNode | TableNode | ImageNode | DiagramNode
            | AnswerLinesNode | AnswerSpaceNode
 
 TextNode: style (one of 14) · text: BiText · listRef? {stream, definition, level, marker}
-          marks? · keepNext? · teacherOnly? · indent? · format? · edit?: EditTarget
+          marks? · trail? · keepNext? · teacherOnly? · indent? · format? · edit?: EditTarget
           boundaryGap?
 ```
 
@@ -493,6 +493,9 @@ TextNode: style (one of 14) · text: BiText · listRef? {stream, definition, lev
 - **`edit` is inert in export** — docx/clipboard never read it.
 - **Derived text carries no target** (marks totals, "Answer: C", numbers in band
   fields); the authored wording around a number does.
+- **`trail` is a marks label with other wording** ("(1)", "max: 4", "2@"): same right
+  tab / `MarksTrail` / float as `marks`, text from `trailLabel()` so the three backends
+  agree; `marks` wins when both are set.
 
 `listRef.stream` connects IR to `.docx`: each distinct stream becomes one `w:num`.
 
@@ -1603,6 +1606,13 @@ paths). Verify by measuring the same text node in both states.
   marks placed as the paper places them); the walker numbers them with `computeNumbering`
   and groups by section. `exportAnswerKeyDocx` keeps the page setup and fonts, drops the
   cover, bands, header and furniture, and adds a centred page number.
+- **A marking scheme is notation, not prose** (`model/markSchemeTypes.ts`). A part or
+  sub-part may carry `scheme?: MarkScheme` beside `answer`: OR routes → groups (`each`
+  = `n@`, `take` = any N, `firstOnly`, `max`) → points (`marks`, `/` alternatives),
+  plus `levels` and `ec`. Optional and additive — no migration; `answer` still prints.
+  Totals are derived (`model/markScheme.ts`) and checked against the printed marks in
+  the panel, never stored. `render/markScheme.ts` emits it once, teacher-only on the
+  paper and plain in the answer key. Scheme text is typed in the panel (no edit target).
 - **Paper versions are derived from a seed** (`model/versions.ts`). `Worksheet.versions`
   stores only `{count, seed}`; `OutputMode.variant` names the letter. The walker asks each
   type's `variant?` hook for the reordered question (inside the render cache, keyed on
