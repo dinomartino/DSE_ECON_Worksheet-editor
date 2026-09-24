@@ -62,7 +62,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
-- **2026-09-24** — Update check once per launch with one shared state; version + "Check for
+- **2026-09-24** — Updates download silently, banner only when ready (saves first). Update check once per launch with one shared state; version + "Check for
   updates" at the start screen's bottom-left and in the editor ⋯ menu. Banner no longer
   overflows the window; start screen renders after hydration (fixed a desktop mismatch).
 - **2026-09-24** — Export dialog (paper / answer key / both), answer-key `.docx` via a

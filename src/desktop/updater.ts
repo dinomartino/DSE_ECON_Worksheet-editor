@@ -14,8 +14,10 @@ export function isDesktop(): boolean {
 export interface AvailableUpdate {
   version: string;
   notes?: string;
-  /** Download, install, and relaunch into the new version. */
-  install: () => Promise<void>;
+  /** Fetch the package in the background; nothing changes until `installAndRestart`. */
+  download: () => Promise<void>;
+  /** Install the downloaded package and relaunch into it. Call after `download`. */
+  installAndRestart: () => Promise<void>;
 }
 
 /**
@@ -41,8 +43,10 @@ export async function checkForUpdate(): Promise<UpdateCheck> {
       update: {
         version: update.version,
         notes: update.body,
-        install: async () => {
-          await update.downloadAndInstall();
+        download: () => update.download(),
+        installAndRestart: async () => {
+          // Windows exits here to run its installer; macOS needs the explicit relaunch.
+          await update.install();
           const { relaunch } = await import('@tauri-apps/plugin-process');
           await relaunch();
         },

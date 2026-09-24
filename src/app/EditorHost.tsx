@@ -1,8 +1,9 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useState, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { UpdateBanner } from '@/components/editor/UpdateBanner';
+import { setBeforeRestart } from '@/desktop/updateStore';
 import { StartScreen } from '@/components/start/StartScreen';
 import type { LanguageMode, Worksheet } from '@/model/types';
 import { worksheetStore } from '@/storage';
@@ -54,6 +55,18 @@ export function EditorHost() {
   const [chosen, setChosen] = useState(false);
   const [showingFiles, setShowingFiles] = useState(false);
   const replaceWorksheet = useWorksheetStore((s) => s.replaceWorksheet);
+
+  // Restarting into an update kills the autosave debounce; write pending edits first.
+  useEffect(
+    () =>
+      setBeforeRestart(async () => {
+        const { worksheet, dirty, markSaved } = useWorksheetStore.getState();
+        if (!dirty) return;
+        await worksheetStore.save(worksheet);
+        markSaved();
+      }),
+    [],
+  );
   const setMode = useWorksheetStore((s) => s.setMode);
 
   /**

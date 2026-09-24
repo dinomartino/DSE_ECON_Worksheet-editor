@@ -31,8 +31,8 @@ describe('UpdateBanner', () => {
       <UpdateBar version="1.4.0" state="offer" onInstall={() => {}} onDismiss={() => {}} />,
     );
 
-    expect(markup).toContain('Version 1.4.0 is available');
-    expect(markup).toContain('Update and restart');
+    expect(markup).toContain('Version 1.4.0 is ready');
+    expect(markup).toContain('Restart now');
     expect(markup).toContain('Later');
     expect(markup).toContain('data-print-hide');
   });
@@ -42,7 +42,7 @@ describe('UpdateBanner', () => {
       <UpdateBar version="1.4.0" state="installing" onInstall={() => {}} onDismiss={() => {}} />,
     );
 
-    expect(markup).toContain('Downloading version 1.4.0');
+    expect(markup).toContain('Installing version 1.4.0');
     expect(markup).toContain('disabled');
   });
 

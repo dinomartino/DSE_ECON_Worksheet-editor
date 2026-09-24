@@ -2066,7 +2066,9 @@ store folder and the exports folder, and each saved document can be revealed.
 
 **Updates** come from GitHub Releases: the app fetches `latest.json` from
 `releases/latest/download/`, verifies its signature against the public key in
-`tauri.conf.json`, and `UpdateBanner` offers to install and relaunch. GitHub's `latest`
+`tauri.conf.json`. A found update **downloads silently**; the banner appears only once
+it is ready, and "Restart now" flushes pending edits (`setBeforeRestart`) before
+installing and relaunching. It never restarts on its own. GitHub's `latest`
 excludes prereleases, so a `-beta.N` tag never reaches a stable install.
 One shared state (`desktop/updateStore.ts`) checks **once per launch**; the banner, the
 start screen's version line (bottom-left) and the editor's ⋯ "Check for updates" all read

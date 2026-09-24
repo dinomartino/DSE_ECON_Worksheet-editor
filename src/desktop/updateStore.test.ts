@@ -7,7 +7,9 @@ vi.mock('./updater', () => ({
   checkForUpdate,
 }));
 
-const { checkOnLaunch, resetUpdateStoreForTest, useUpdateStore } = await import('./updateStore');
+const { checkOnLaunch, resetUpdateStoreForTest, setBeforeRestart, useUpdateStore } = await import(
+  './updateStore'
+);
 
 describe('the update store', () => {
   beforeEach(() => {
@@ -29,17 +31,58 @@ describe('the update store', () => {
     expect(await useUpdateStore.getState().check()).toBe('failed');
   });
 
-  it('offers a found version, and a manual check brings back a dismissed banner', async () => {
-    const install = vi.fn().mockRejectedValue(new Error('offline'));
-    checkForUpdate.mockResolvedValue({ kind: 'available', update: { version: '0.3.0', install } });
-    await useUpdateStore.getState().check();
-    expect(useUpdateStore.getState()).toMatchObject({ status: 'available', available: '0.3.0' });
+  it('downloads a found version silently, then offers the restart', async () => {
+    let finish = () => {};
+    const download = vi.fn(() => new Promise<void>((resolve) => (finish = resolve)));
+    const installAndRestart = vi.fn().mockResolvedValue(undefined);
+    checkForUpdate.mockResolvedValue({
+      kind: 'available',
+      update: { version: '0.3.0', download, installAndRestart },
+    });
 
+    expect(await useUpdateStore.getState().check()).toBe('downloading');
+    expect(useUpdateStore.getState()).toMatchObject({ status: 'downloading', available: '0.3.0' });
+    finish();
+    await vi.waitFor(() => expect(useUpdateStore.getState().status).toBe('ready'));
+
+    // "Later", then asking again: no second check or download, just the banner back.
     useUpdateStore.getState().dismiss();
-    await useUpdateStore.getState().check();
+    expect(await useUpdateStore.getState().check()).toBe('ready');
     expect(useUpdateStore.getState().dismissed).toBe(false);
+    expect(checkForUpdate).toHaveBeenCalledTimes(1);
+    expect(download).toHaveBeenCalledTimes(1);
+  });
 
-    await useUpdateStore.getState().install();
+  it('saves pending work before restarting, and reports a failed install', async () => {
+    const order: string[] = [];
+    setBeforeRestart(async () => void order.push('flush'));
+    const installAndRestart = vi.fn(async () => {
+      order.push('install');
+      throw new Error('disk full');
+    });
+    checkForUpdate.mockResolvedValue({
+      kind: 'available',
+      update: { version: '0.3.0', download: async () => {}, installAndRestart },
+    });
+    await useUpdateStore.getState().check();
+    await vi.waitFor(() => expect(useUpdateStore.getState().status).toBe('ready'));
+
+    await useUpdateStore.getState().restart();
+    expect(order).toEqual(['flush', 'install']);
     expect(useUpdateStore.getState().status).toBe('installFailed');
+  });
+
+  it('retries a failed download without checking again', async () => {
+    const download = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValue(undefined);
+    checkForUpdate.mockResolvedValue({
+      kind: 'available',
+      update: { version: '0.3.0', download, installAndRestart: async () => {} },
+    });
+    await useUpdateStore.getState().check();
+    await vi.waitFor(() => expect(useUpdateStore.getState().status).toBe('downloadFailed'));
+
+    expect(await useUpdateStore.getState().check()).toBe('downloading');
+    await vi.waitFor(() => expect(useUpdateStore.getState().status).toBe('ready'));
+    expect(checkForUpdate).toHaveBeenCalledTimes(1);
   });
 });

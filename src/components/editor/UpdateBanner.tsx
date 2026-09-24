@@ -5,7 +5,7 @@ import { checkOnLaunch, useUpdateStore, type UpdateStatus } from '@/desktop/upda
 import { Button } from '@/components/ui';
 
 /**
- * "Version X is available" — desktop only, and silent otherwise.
+ * "Version X is ready" — desktop only, shown once the update has downloaded silently.
  *
  * The web never finds an update, so the bar simply never appears there.
  * `data-print-hide` because this is on-page chrome and would otherwise print.
@@ -33,10 +33,10 @@ export function UpdateBar({
     >
       <span className="min-w-0 flex-1 truncate">
         {state === 'installing'
-          ? `Downloading version ${version} — the app will restart when it is ready.`
+          ? `Installing version ${version} — the app will restart in a moment.`
           : state === 'failed'
             ? `Version ${version} could not be installed. Try again, or download it from the releases page.`
-            : `Version ${version} is available`}
+            : `Version ${version} is ready — restart to finish updating. Your work is saved first.`}
       </span>
       <Button
         size="sm"
@@ -44,7 +44,7 @@ export function UpdateBar({
         disabled={state === 'installing'}
         onClick={onInstall}
       >
-        {state === 'failed' ? 'Try again' : 'Update and restart'}
+        {state === 'failed' ? 'Try again' : 'Restart now'}
       </Button>
       <Button size="sm" variant="subtle" onClick={onDismiss}>
         Later
@@ -57,21 +57,28 @@ export function UpdateBanner() {
   const status = useUpdateStore((s) => s.status);
   const available = useUpdateStore((s) => s.available);
   const dismissed = useUpdateStore((s) => s.dismissed);
-  const install = useUpdateStore((s) => s.install);
+  const restart = useUpdateStore((s) => s.restart);
   const dismiss = useUpdateStore((s) => s.dismiss);
 
   // Mounted on every screen; `checkOnLaunch` makes that one check per launch.
   useEffect(checkOnLaunch, []);
 
+  // Silent until the download is done: checking and downloading never interrupt.
   const state: State | undefined =
-    status === 'available' ? 'offer' : status === 'installing' ? 'installing' : status === 'installFailed' ? 'failed' : undefined;
+    status === 'ready'
+      ? 'offer'
+      : status === 'installing'
+        ? 'installing'
+        : status === 'installFailed'
+          ? 'failed'
+          : undefined;
   if (!state || !available || dismissed) return null;
 
   return (
     <UpdateBar
       version={available}
       state={state}
-      onInstall={() => void install()}
+      onInstall={() => void restart()}
       onDismiss={dismiss}
     />
   );
@@ -86,7 +93,7 @@ export function VersionLine() {
   const current = useUpdateStore((s) => s.current);
   const available = useUpdateStore((s) => s.available);
   const check = useUpdateStore((s) => s.check);
-  const install = useUpdateStore((s) => s.install);
+  const restart = useUpdateStore((s) => s.restart);
 
   useEffect(checkOnLaunch, []);
   if (current === null && status === 'idle') return null;
@@ -95,7 +102,7 @@ export function VersionLine() {
     <p data-print-hide className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[11px] text-ink-subtle">
       <span className="tabular-nums">Version {current ?? '…'}</span>
       <span aria-hidden>·</span>
-      <VersionAction status={status} available={available} onCheck={() => void check()} onInstall={() => void install()} />
+      <VersionAction status={status} available={available} onCheck={() => void check()} onInstall={() => void restart()} />
     </p>
   );
 }
@@ -116,15 +123,26 @@ function VersionAction({
   switch (status) {
     case 'checking':
       return <span role="status">Checking for updates…</span>;
+    case 'downloading':
+      return <span role="status">Downloading {available} in the background…</span>;
     case 'installing':
-      return <span role="status">Downloading {available} — the app will restart…</span>;
-    case 'available':
+      return <span role="status">Installing {available} — the app will restart…</span>;
+    case 'ready':
     case 'installFailed':
       return (
         <>
-          <span>{status === 'installFailed' ? `${available} could not be installed.` : `${available} is available.`}</span>
+          <span>{status === 'installFailed' ? `${available} could not be installed.` : `${available} is ready.`}</span>
           <button type="button" className={link} onClick={onInstall}>
-            {status === 'installFailed' ? 'Try again' : 'Update and restart'}
+            {status === 'installFailed' ? 'Try again' : 'Restart to update'}
+          </button>
+        </>
+      );
+    case 'downloadFailed':
+      return (
+        <>
+          <span>{available} could not be downloaded.</span>
+          <button type="button" className={link} onClick={onCheck}>
+            Try again
           </button>
         </>
       );

@@ -82,11 +82,13 @@ export function Toolbar({
 
   const appVersion = useUpdateStore((s) => s.current);
 
-  /** A found update surfaces in the banner; the other outcomes are said here. */
+  /** A ready update surfaces in the banner; every other outcome is said here. */
   const handleCheckUpdates = async () => {
     const status = await useUpdateStore.getState().check();
+    const found = useUpdateStore.getState().available;
     if (status === 'current') flash(`You have the latest version${appVersion ? ` (${appVersion})` : ''}`);
     else if (status === 'failed') flash('Could not check for updates — are you online?');
+    else if (status === 'downloading') flash(`Downloading version ${found} — you will be told when it is ready`);
   };
 
   /** Desktop only: a saved file's path becomes a one-click reveal. */
