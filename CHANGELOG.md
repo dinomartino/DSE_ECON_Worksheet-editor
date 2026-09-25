@@ -43,6 +43,13 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
 - **Worksheets from a newer version open safely**: a file saved by a newer Econ Worksheet
   opens read-only with a note to update, and is never overwritten. "Duplicate as editable
   copy" makes a copy you can edit now.
+- **Diagrams that stay connected**: an equilibrium placed on a crossing follows its
+  curves, so shifting S₁ moves E₁ with it. Add MR (same intercept, twice as steep),
+  a line parallel or tangent to another (CPF, terms of trade), price-level and vertical
+  lines, and brackets or arrows between two points: shortage, the tax wedge "t",
+  P₁→P₂ on the axis. They follow what they measure.
+- **Axis scales for diagrams**: give an axis a maximum (30 wheat, 60 cloth) and type a
+  point's position as values; empty tick labels print their value.
 
 ### Changed
 - **Desktop: Export → PDF saves a file directly, no print sheet.** Choose where in the

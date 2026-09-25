@@ -84,6 +84,12 @@ Words this repository uses in its own way. One line each, with where the thing l
 - **Revenue area** — TR (a band under E's price to E's quantity) or a revenue gain/loss:
   one P×Q rectangle less another, derived from two points each render — a rectangle, an
   L, or nothing. `src/model/diagramAreas.ts:revenueArea`
+- **Anchor** — a position named by what is drawn ("where D meets S", "S at Pw + t"),
+  not by coordinates; an anchored point follows it. `src/model/diagramAnchors.ts:resolveAnchor`
+- **Derived curve** — a curve defined by a relation (MR of D, parallel, tangent, a level);
+  `points` keeps its last resolved shape. `src/model/diagramAnchors.ts:resolveDiagram`
+- **Span** — a bracket or change arrow between two places (shortage, tax wedge, P₁→P₂),
+  optionally on an axis. `src/model/diagramSpans.ts:spanGeometry`
 - **Unit space** — a diagram's 0–1 coordinate system; pixels come only from
   `src/render/diagram.ts:diagramPlot`.
 - **Run** — one formatted span of text; `RichText` is `InlineRun[]` and a `\n` inside
