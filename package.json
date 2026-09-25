@@ -25,6 +25,7 @@
     "typecheck": "tsc --noEmit",
     "samples": "vitest run scripts/emit-samples.test.ts",
     "demo": "node scripts/demo.mjs",
+    "demo:diagrams": "node scripts/demo.mjs --story=diagrams",
     "tauri": "tauri",
     "desktop:dev": "tauri dev",
     "desktop:build": "tauri build",

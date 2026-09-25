@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { takeScreenshots, SHOTS } from './demo/screenshots.mjs';
 import { recordStoryboard } from './demo/record.mjs';
+import { recordDiagrams } from './demo/diagrams.mjs';
 
 /**
  * Website demo media: a screen-recorded walkthrough and a screenshot set, written to
@@ -17,11 +18,22 @@ import { recordStoryboard } from './demo/record.mjs';
  * Neither flag = both. Needs system Chrome and ffmpeg; cwebp is used for WebP if present
  * (otherwise JPEG). What is typed: scripts/demo/content.mjs. The film:
  * scripts/demo/record.mjs:STORYBOARD. The stills: scripts/demo/screenshots.mjs:SHOTS.
+ *
+ *   node scripts/demo.mjs --story=diagrams                   # npm run demo:diagrams
+ *
+ * The diagram film instead: scripts/demo/diagrams.mjs:diagramStoryboard, one recording
+ * plus numbered stills and the exported .docx files, into `demo-media/diagrams/`.
  */
 
 const args = process.argv.slice(2);
 const urlArg = args.find((a) => a.startsWith('--url='));
 const URL = (urlArg ? urlArg.slice(6) : 'http://localhost:3931').replace(/\/?$/, '/');
+const storyAt = args.findIndex((a) => a === '--story' || a.startsWith('--story='));
+const STORY = storyAt < 0 ? 'site' : args[storyAt].startsWith('--story=') ? args[storyAt].slice(8) : args[storyAt + 1];
+if (!['site', 'diagrams'].includes(STORY)) {
+  console.error(`demo: unknown story "${STORY}" (site | diagrams)`);
+  process.exit(1);
+}
 const wantVideo = args.includes('--video') || !args.includes('--shots');
 const wantShots = args.includes('--shots') || !args.includes('--video');
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -57,48 +69,67 @@ function encodeImage(png, outBase) {
   return `${outBase}.jpg`;
 }
 
+/** The film's frames → `<base>.mp4`, a `<base>-poster.jpg`, and (optionally) a GIF. */
+function encodeFilm(rec, base, { gif: wantGif }) {
+  log('video: encoding…');
+  const mp4 = `${base}.mp4`;
+  ff('-framerate', String(rec.fps), '-i', rec.seqPattern,
+    '-vf', 'scale=in_range=pc:out_range=tv,format=yuv420p', '-pix_fmt', 'yuv420p', '-color_range', 'tv',
+    '-c:v', 'libx264', '-profile:v', 'high', '-crf', '28', '-preset', 'slow', '-tune', 'stillimage',
+    '-movflags', '+faststart', '-an', mp4);
+
+  const poster = `${base}-poster.jpg`;
+  for (const q of ['4', '7', '10']) {
+    ff('-ss', '0.1', '-i', mp4, '-frames:v', '1', '-q:v', q, poster);
+    if (fs.statSync(poster).size <= 150_000) break;
+  }
+  if (!wantGif) return;
+
+  const gif = `${base}.gif`;
+  const palette = path.join(tmpDir, 'palette.png');
+  ff('-i', mp4, '-vf', 'fps=12,scale=960:-1:flags=lanczos,palettegen=max_colors=128:stats_mode=diff', palette);
+  ff('-i', mp4, '-i', palette, '-lavfi',
+    'fps=12,scale=960:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=none:diff_mode=rectangle', gif);
+  if (fs.statSync(gif).size > 4_000_000) {
+    fs.rmSync(gif);
+    notes.push(`\`${path.basename(gif)}\` was skipped: at 960 px and 12 fps it came out over 4 MB.`);
+  }
+}
+
+const DIAGRAMS_OUT = path.join(OUT, 'diagrams');
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'econ-demo-'));
 fs.mkdirSync(OUT, { recursive: true });
 const browser = await chromium.launch({ channel: 'chrome' });
 let timeline = null;
+let diagrams = null;
 const notes = [];
 try {
-  if (wantShots) await takeScreenshots({ browser, url: URL, outDir: OUT, tmpDir, encode: encodeImage, log });
+  if (wantShots && STORY === 'site') await takeScreenshots({ browser, url: URL, outDir: OUT, tmpDir, encode: encodeImage, log });
 
-  if (wantVideo) {
+  if (STORY === 'diagrams') {
+    fs.rmSync(DIAGRAMS_OUT, { recursive: true, force: true });
+    fs.mkdirSync(path.join(DIAGRAMS_OUT, 'stills'), { recursive: true });
+    const film = await recordDiagrams({ browser, url: URL, root: ROOT, tmpDir, outDir: DIAGRAMS_OUT, log });
+    timeline = film.rec.timeline;
+    diagrams = film;
+    encodeFilm(film.rec, path.join(DIAGRAMS_OUT, 'diagrams'), { gif: false });
+    for (const still of film.stills) still.path = encodeImage(still.png, path.join(DIAGRAMS_OUT, 'stills', still.file));
+    notes.push(...film.notes);
+  } else if (wantVideo) {
     const rec = await recordStoryboard({ browser, url: URL, tmpDir, log });
     timeline = rec.timeline;
-    log('video: encoding…');
-    const mp4 = path.join(OUT, 'demo.mp4');
-    ff('-framerate', String(rec.fps), '-i', rec.seqPattern,
-      '-vf', 'scale=in_range=pc:out_range=tv,format=yuv420p', '-pix_fmt', 'yuv420p', '-color_range', 'tv',
-      '-c:v', 'libx264', '-profile:v', 'high', '-crf', '28', '-preset', 'slow', '-tune', 'stillimage',
-      '-movflags', '+faststart', '-an', mp4);
-
-    const poster = path.join(OUT, 'demo-poster.jpg');
-    for (const q of ['4', '7', '10']) {
-      ff('-ss', '0.1', '-i', mp4, '-frames:v', '1', '-q:v', q, poster);
-      if (fs.statSync(poster).size <= 150_000) break;
-    }
-
-    const gif = path.join(OUT, 'demo.gif');
-    const palette = path.join(tmpDir, 'palette.png');
-    ff('-i', mp4, '-vf', 'fps=12,scale=960:-1:flags=lanczos,palettegen=max_colors=128:stats_mode=diff', palette);
-    ff('-i', mp4, '-i', palette, '-lavfi',
-      'fps=12,scale=960:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=none:diff_mode=rectangle', gif);
-    if (fs.statSync(gif).size > 4_000_000) {
-      fs.rmSync(gif);
-      notes.push('`demo.gif` was skipped: at 960 px and 12 fps it came out over 4 MB.');
-    }
+    encodeFilm(rec, path.join(OUT, 'demo'), { gif: true });
   }
+  fs.rmSync(tmpDir, { recursive: true, force: true }); // kept on failure: it holds failed-step.png
 } finally {
   await browser.close();
-  fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
-writeReadme();
-log(`done → ${path.relative(ROOT, OUT)}/`);
-for (const f of listFiles()) log(`  ${f.rel}  ${f.dims}  ${kb(f.size)}`);
+const DIR = STORY === 'diagrams' ? DIAGRAMS_OUT : OUT;
+if (STORY === 'diagrams') writeDiagramsReadme();
+else writeReadme();
+log(`done → ${path.relative(ROOT, DIR)}/`);
+for (const f of listFiles(DIR)) log(`  ${f.rel}  ${f.dims}  ${kb(f.size)}`);
 for (const n of notes) log(`  note: ${n.replace(/`/g, '')}`);
 
 // ---- README -----------------------------------------------------------------
@@ -107,19 +138,22 @@ function kb(n) {
   return n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)} MB` : `${Math.round(n / 1000)} KB`;
 }
 
-function listFiles() {
+/** Every file under `root` but the README; the diagram film's folder is its own. */
+function listFiles(root = OUT) {
   const files = [];
   const walk = (dir) => {
     for (const name of fs.readdirSync(dir).sort()) {
       const p = path.join(dir, name);
-      if (fs.statSync(p).isDirectory()) walk(p);
-      else if (name !== 'README.md') {
-        const rel = path.relative(OUT, p);
-        files.push({ rel, size: fs.statSync(p).size, dims: probe(p, 'stream=width,height') });
+      if (fs.statSync(p).isDirectory()) {
+        if (p !== DIAGRAMS_OUT || root === DIAGRAMS_OUT) walk(p);
+      } else if (name !== 'README.md') {
+        const rel = path.relative(root, p);
+        const media = /\.(mp4|gif|jpe?g|png|webp)$/i.test(name);
+        files.push({ rel, size: fs.statSync(p).size, dims: media ? probe(p, 'stream=width,height') : '—' });
       }
     }
   };
-  walk(OUT);
+  walk(root);
   return files;
 }
 
@@ -134,6 +168,48 @@ function describe(f) {
   return [f.dims, shot ? shot.caption : ''];
 }
 
+function storyboardTable(fmt) {
+  return [
+    '| Time | Step | What happens |',
+    '|---|---|---|',
+    ...timeline.map(({ at, step }) =>
+      `| ${fmt(at)} | ${step.speed ? `⏩ ${step.speed}× ` : ''}${step.name} | ${step.caption} |`),
+  ].join('\n');
+}
+
+function writeDiagramsReadme() {
+  const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  const secs = Number(probe(path.join(DIAGRAMS_OUT, 'diagrams.mp4'), 'format=duration')).toFixed(1);
+  const rows = listFiles(DIAGRAMS_OUT).map((f) => {
+    const still = diagrams.stills.find((s) => f.rel.startsWith(`stills/${s.file}.`));
+    const what =
+      f.rel === 'diagrams.mp4' ? `H.264, 30 fps, ${secs} s, no audio: the whole walkthrough`
+        : f.rel === 'diagrams-poster.jpg' ? 'First frame, for `<video poster>`'
+          : still ? still.caption
+            : f.rel.endsWith('.docx') ? 'Exported by the film'
+              : f.rel.endsWith('.png') ? 'Page 1 of that .docx, rendered by LibreOffice' : '';
+    return `| \`${f.rel}\` | ${f.dims} | ${kb(f.size)} | ${what} |`;
+  });
+  const text = [
+    '# Demo media: diagrams',
+    '',
+    'Generated by `npm run demo:diagrams` (`scripts/demo/diagrams.mjs`) from the built web app',
+    'in Chrome, from a seeded worksheet. Stills are 2× page screenshots scaled to 1440 wide,',
+    'captured during the recording and cut out of it. The example question is original text.',
+    '',
+    '| File | Dimensions | Size | What it shows |',
+    '|---|---|---|---|',
+    ...rows,
+    ...(notes.length ? ['', '## Left out of this build', '', ...notes.map((n) => `- ${n}`)] : []),
+    '',
+    '## Video storyboard',
+    '',
+    storyboardTable(fmt),
+    '',
+  ].join('\n');
+  fs.writeFileSync(path.join(DIAGRAMS_OUT, 'README.md'), text);
+}
+
 function writeReadme() {
   const readme = path.join(OUT, 'README.md');
   const old = fs.existsSync(readme) ? fs.readFileSync(readme, 'utf8') : '';
@@ -145,10 +221,7 @@ function writeReadme() {
       '',
       'Some steps are sped up (marked ⏩) so text does not take long to appear.',
       '',
-      '| Time | Step | What happens |',
-      '|---|---|---|',
-      ...timeline.map(({ at, step }) =>
-        `| ${fmt(at)} | ${step.speed ? `⏩ ${step.speed}× ` : ''}${step.name} | ${step.caption} |`),
+      storyboardTable(fmt),
     ].join('\n');
   } else {
     const i = old.indexOf('## Video storyboard');
