@@ -403,6 +403,11 @@ export interface QuestionSubPart {
   answerSpace?: number;
   /** Blank axes printed before this sub-part's dotted lines (§ `AnswerGraph`). */
   answerGraph?: AnswerGraph;
+  /**
+   * The model answer to a "draw a diagram" leaf: a teacher-only figure, printed after
+   * the answer text and before the marking scheme, and in the answer key.
+   */
+  answerDiagram?: DiagramBlock;
 }
 
 /**
@@ -451,6 +456,11 @@ export interface QuestionPart {
   answerSpace?: number;
   /** Blank axes printed before the part's dotted lines (§ `AnswerGraph`). */
   answerGraph?: AnswerGraph;
+  /**
+   * The model answer to a "draw a diagram" part: a teacher-only figure, printed after
+   * the answer text and before the marking scheme (with sub-parts, after the group).
+   */
+  answerDiagram?: DiagramBlock;
 }
 
 export interface StructuredQuestion extends QuestionBase {
@@ -463,6 +473,8 @@ export interface StructuredQuestion extends QuestionBase {
   answerSpace?: number;
   /** Blank axes under the stem; like `answerSpace`, only when there are no parts. */
   answerGraph?: AnswerGraph;
+  /** The model answer diagram (§ `QuestionPart.answerDiagram`); only when there are no parts. */
+  answerDiagram?: DiagramBlock;
   /**
    * Print the trailing "(Total: N marks)" line. Off by default (per-part marking is
    * the norm); stored as opt-in so the absent field means the default. The total
