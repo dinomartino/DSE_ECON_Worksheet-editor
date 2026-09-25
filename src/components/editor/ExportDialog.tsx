@@ -3,25 +3,29 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { LanguageMode, OutputMode, VersionMode, Worksheet } from '@/model/types';
 import { CSV_FILTERS, DOCX_FILTERS, isDesktop, saveFile, XLSX_FILTERS } from '@/platform';
-import { downloadWorksheetFile } from '@/storage';
+import { downloadWorksheetFile, worksheetStore, worksheetTitle, type WorksheetSummary } from '@/storage';
 import { buildAppExport, type AppExport, type AppFormat } from '@/export/csv/answerKeyCsv';
 import { Button, CheckField, Segmented } from '@/components/ui';
 import { Dialog, Field } from '@/components/ui/Dialog';
 import { DownloadIcon, PdfIcon } from '@/components/ui/icons';
 import { versionLetters } from '@/model/versions';
+import { KeyDocumentsField } from './KeyDocumentsField';
 import {
   deliverFiles,
   deliverWorksheetJson,
   exportFileCount,
   exportKinds,
+  loadKeyDocuments,
   omittableParts,
   paperMode,
   pdfVariant,
+  skippedNote,
   type ExportChoice,
   type ExportFile,
   type ExportFormat,
   type ExportRun,
   type ExportWhat,
+  type KeyDocumentPick,
 } from './exportSession';
 
 export interface ExportDialogProps {
@@ -40,14 +44,29 @@ export interface ExportDialogProps {
   onPrint?: (mode: OutputMode) => void;
   /** The format the dialog opens on; `.docx` when absent. */
   initialFormat?: ExportFormat;
+  /** What the dialog opens on; the question paper when absent. */
+  initialWhat?: ExportWhat;
+  /**
+   * The saved documents "Also include" offers (this one is left out here). Absent: read
+   * from the store's index when the dialog opens.
+   */
+  documents?: WorksheetSummary[];
+  /** Read one saved document, read-only; the store's `load` when absent. */
+  loadDocument?: (id: string) => Promise<Worksheet | undefined>;
 }
+
+const loadSaved = (id: string) => worksheetStore.load(id);
 
 /**
  * Build the chosen files. `@/export/docx` (OOXML builders + JSZip) is imported here, on
  * click, so no page load pays for it; a chunk that fails to load reports as an export
  * failure like any other.
  */
-async function buildFiles(worksheet: Worksheet, choice: ExportChoice): Promise<ExportFile[]> {
+async function buildFiles(
+  worksheet: Worksheet,
+  choice: ExportChoice,
+  loadDocument: (id: string) => Promise<Worksheet | undefined>,
+): Promise<ExportFile[]> {
   if (choice.what === 'apps') {
     const built = buildAppExport(worksheet, choice.app ?? 'zipgrade', choice.language);
     return [{ kind: 'apps', name: built.fileName, blob: await appBlob(built) }];
@@ -66,10 +85,18 @@ async function buildFiles(worksheet: Worksheet, choice: ExportChoice): Promise<E
         });
       }
     } else {
+      // A combined key: the picked documents, read-only; any that fail are named, not fatal.
+      const { worksheets: others, skipped } = await loadKeyDocuments(
+        choice.alsoInclude ?? [],
+        loadDocument,
+        choice.language,
+      );
+      const note = skippedNote(skipped);
       files.push({
         kind,
-        name: docx.answerKeyFileName(worksheet, choice.language),
-        blob: await docx.exportAnswerKeyDocx(worksheet, choice.language),
+        name: docx.answerKeyFileName(worksheet, choice.language, others),
+        blob: await docx.exportAnswerKeyDocx(worksheet, choice.language, others),
+        ...(note ? { note, leftOut: skipped.length } : {}),
       });
     }
   }
@@ -121,9 +148,13 @@ const APP_OPTIONS: Array<{ value: AppFormat; label: string; title: string; hint:
 /** Warnings shown before the cut: the rest is a count. */
 const WARNINGS_SHOWN = 4;
 
+/** What the saved files had to leave out, for the status line and the dialog. */
+const savedNotes = (files: ExportFile[]) => files.flatMap((file) => (file.note ? [file.note] : []));
+
 /** Hand what was written to the toolbar's status line; nothing written, nothing said. */
 function report(saved: ExportRun['saved'], onExported: ExportDialogProps['onExported']): void {
   if (saved.length === 0) return;
+  const leftOut = saved.reduce((sum, { file }) => sum + (file.leftOut ?? 0), 0);
   const message =
     saved.length > 1
       ? `Exported ${saved.length} files`
@@ -132,7 +163,7 @@ function report(saved: ExportRun['saved'], onExported: ExportDialogProps['onExpo
         : saved[0].file.kind === 'apps'
           ? `Exported .${saved[0].file.name.split('.').pop()}`
           : 'Exported .docx';
-  onExported(message, saved[saved.length - 1].path);
+  onExported(leftOut > 0 ? `${message}, ${leftOut} left out` : message, saved[saved.length - 1].path);
 }
 
 /**
@@ -147,9 +178,12 @@ export function ExportDialog({
   checks,
   onPrint,
   initialFormat = 'docx',
+  initialWhat = 'paper',
+  documents: givenDocuments,
+  loadDocument = loadSaved,
 }: ExportDialogProps) {
   const [format, setFormat] = useState<ExportFormat>(initialFormat);
-  const [chosenWhat, setWhat] = useState<ExportWhat>('paper');
+  const [chosenWhat, setWhat] = useState<ExportWhat>(initialWhat);
   // PDF prints what is on the page, and only the question paper is; the choice is kept
   // for when the format goes back to .docx.
   const what: ExportWhat = format === 'pdf' ? 'paper' : chosenWhat;
@@ -177,8 +211,34 @@ export function ExportDialog({
   // A print is one version: "All" falls back to the one the editor shows.
   const printVariant = pdfVariant(letters, variantChoice, mode.variant);
   const fileCount = exportFileCount({ what, variants });
+  // "Also include": other saved documents' keys in the same file. The index, read on open.
+  const [storedDocuments, setStoredDocuments] = useState<WorksheetSummary[]>();
+  useEffect(() => {
+    if (givenDocuments) return;
+    let live = true;
+    worksheetStore
+      .list()
+      .then((list) => {
+        if (live) setStoredDocuments(list);
+      })
+      .catch(() => {
+        if (live) setStoredDocuments([]);
+      });
+    return () => {
+      live = false;
+    };
+  }, [givenDocuments]);
+  const otherDocuments = useMemo(
+    () => (givenDocuments ?? storedDocuments ?? []).filter((doc) => doc.id !== worksheet.id),
+    [givenDocuments, storedDocuments, worksheet.id],
+  );
+  const [alsoInclude, setAlsoInclude] = useState<KeyDocumentPick[]>([]);
+  const combinable =
+    format === 'docx' && (what === 'answerKey' || what === 'both') && otherDocuments.length > 0;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>();
+  // A combined key that had to leave a document out: said here before the dialog goes.
+  const [leftOut, setLeftOut] = useState<string>();
   // Web only: files built but waiting for their own click, and what has already gone.
   const [waiting, setWaiting] = useState<{ pending: ExportFile[]; saved: ExportRun['saved'] }>();
 
@@ -204,6 +264,11 @@ export function ExportDialog({
     // A cancelled first sheet wrote nothing; the dialog stays for another try.
     if (saved.length === 0) return;
     report(saved, onExported);
+    const notes = savedNotes(saved.map(({ file }) => file));
+    if (notes.length > 0) {
+      setLeftOut(notes.join('; '));
+      return;
+    }
     onClose();
   };
 
@@ -251,15 +316,20 @@ export function ExportDialog({
 
   const handleExport = () =>
     void run(async () => ({
-      files: await buildFiles(worksheet, {
-        what,
-        language,
-        version,
-        includeCover,
-        includeAnswerSpace,
-        app,
-        variants,
-      }),
+      files: await buildFiles(
+        worksheet,
+        {
+          what,
+          language,
+          version,
+          includeCover,
+          includeAnswerSpace,
+          app,
+          variants,
+          ...(combinable && alsoInclude.length > 0 ? { alsoInclude } : {}),
+        },
+        loadDocument,
+      ),
       before: [],
     }));
 
@@ -281,10 +351,10 @@ export function ExportDialog({
       onClose={close}
       footer={
         <>
-          <Button variant="subtle" onClick={close}>
-            {waiting ? 'Skip' : 'Cancel'}
+          <Button variant={leftOut ? 'primary' : 'subtle'} onClick={leftOut ? onClose : close}>
+            {leftOut ? 'Done' : waiting ? 'Skip' : 'Cancel'}
           </Button>
-          {next ? (
+          {leftOut ? null : next ? (
             <Button variant="primary" onClick={handleNext} disabled={busy}>
               <DownloadIcon size={15} />
               {next.kind === 'answerKey'
@@ -319,15 +389,26 @@ export function ExportDialog({
       }
     >
       <div className="space-y-5 px-5 py-5">
-        {checks}
+        {!leftOut && checks}
 
-        {waiting ? (
-          <p role="status" className="text-[13px] leading-relaxed text-ink-subtle">
-            {waiting.saved.length === 1 && waiting.saved[0].file.kind === 'paper'
-              ? 'The question paper has downloaded.'
-              : 'The first file has downloaded.'}{' '}
-            Browsers allow one download per click, so the next file waits for yours.
+        {leftOut ? (
+          <p role="status" className="rounded-lg bg-warn-soft px-2.5 py-2 text-[13px] leading-relaxed text-warn-ink">
+            The answer key was exported, but {leftOut}.
           </p>
+        ) : waiting ? (
+          <div className="space-y-3">
+            <p role="status" className="text-[13px] leading-relaxed text-ink-subtle">
+              {waiting.saved.length === 1 && waiting.saved[0].file.kind === 'paper'
+                ? 'The question paper has downloaded.'
+                : 'The first file has downloaded.'}{' '}
+              Browsers allow one download per click, so the next file waits for yours.
+            </p>
+            {savedNotes(waiting.pending).length > 0 && (
+              <p className="rounded-lg bg-warn-soft px-2.5 py-2 text-xs text-warn-ink">
+                In the answer key, {savedNotes(waiting.pending).join('; ')}.
+              </p>
+            )}
+          </div>
         ) : (
           <>
             <Field label="Format" hint={FORMAT_OPTIONS.find((option) => option.value === format)?.hint}>
@@ -369,6 +450,15 @@ export function ExportDialog({
                   ]}
                 />
               </Field>
+
+              {combinable && (
+                <KeyDocumentsField
+                  documents={otherDocuments}
+                  picked={alsoInclude}
+                  onChange={setAlsoInclude}
+                  currentTitle={worksheetTitle(worksheet)}
+                />
+              )}
 
               {appExport && (
                 <Field label="App" hint={APP_OPTIONS.find((option) => option.value === app)?.hint}>

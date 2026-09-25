@@ -1628,6 +1628,8 @@ chosen mode, waits for `#print-root` to settle, then prints (`editor/printPdf.ts
 Language, version and paper version stay as the editor's view; the "Include" flags are
 lifted on `afterprint`. PDF is the question paper, one version per print — the rest are
 disabled in the dialog with the reason, not hidden.
+The answer key (`.docx` only) may take other saved documents' keys into the same file
+("Also include", § the answer key); the question paper stays this document's alone.
 
 ### Both band paths must agree
 
@@ -1659,6 +1661,15 @@ paths). Verify by measuring the same text node in both states.
   marks placed as the paper places them); the walker numbers them with `computeNumbering`
   and groups by section. `exportAnswerKeyDocx` keeps the page setup and fonts, drops the
   cover, bands, header and furniture, and adds a centred page number.
+- **A key can span documents, chosen at export** (`renderCombinedAnswerKey`). A mock is
+  two documents (Paper 1, Paper 2) but one marking scheme: Export's "Also include" adds
+  other saved documents' keys after this one's, in the order ticked. Each part is that
+  document's own `renderAnswerKey` — its numbering, sections, versions and version map —
+  under `answerKeyPartTitle` (title or name, plus the paper its cover names), the second
+  onward from a page break; the page setup is the current document's. Nothing is stored
+  (no field, no migration). Others load read-only through the store (`parseWorksheet` →
+  `migrate`); one that will not open or render is skipped and named, never fatal, never
+  resaved. One document is the single key unchanged, byte for byte.
 - **A marking scheme is notation, not prose** (`model/markSchemeTypes.ts`). A part or
   sub-part may carry `scheme?: MarkScheme` beside `answer`: OR routes → groups (`each`
   = `n@`, `take` = any N, `firstOnly`, `max`) → points (`marks`, `/` alternatives),
