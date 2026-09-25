@@ -71,7 +71,10 @@ describe('a diagram saved by the published build renders unchanged', () => {
     // 2026-09-25, when arrowheads became triangles instead of `<marker>`s — after a
     // Chrome raster diff showed the two renderings match (at most a 1px base edge).
     // Re-frozen 2026-09-26 when tick labels moved against their axes (x 8→4px, y 8→6px);
-    // an element diff showed only those `<text>` coordinates changed.
+    // an element diff showed only those `<text>` coordinates changed. Re-frozen again the
+    // same day when `dominant-baseline` became explicit baselines (WebKit ignored it): an
+    // element diff showed every `<text>` y moved by exactly the drop it replaced — hanging
+    // 0.712em, middle 0.224em, x ticks 0.72em (their glyph tops) — and nothing else.
     const worksheet = migrate(structuredClone(v1Corpus));
     const blocks = worksheet.questions
       .flatMap((question) => question.blocks)

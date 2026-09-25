@@ -101,14 +101,54 @@ const AXIS_TITLE_GAP = 8;
 /** Half an arrowhead's base width, px at nominal size (axes, shift arrows, flow arrows). */
 const ARROWHEAD = 5;
 /**
- * Tick labels sit against their axis, as the reference schemes print them: an x label's
- * top this far under the axis line, a y label's right edge this far left of it (clear of
- * the y arrowhead's half-width).
+ * Tick labels sit against their axis, as the reference schemes print them, never on it:
+ * `X_TICK_CLEAR` of white between the axis stroke and an x label's glyph tops (subscripts
+ * hang lower), a y label's right edge `Y_TICK_GAP` left of the axis line.
  */
-const X_TICK_GAP = 4;
+const X_TICK_CLEAR = 3;
+const X_TICK_TOP = AXIS_WIDTH / 2 + X_TICK_CLEAR;
 const Y_TICK_GAP = 6;
-/** Air between the tick labels and an axis span resting past them, px at nominal size. */
+/** Air between the y tick labels (an estimated width) and a y span resting past them. */
 const SPAN_AXIS_AIR = 3;
+/** The same under x labels, measured from their ink, so the arrow hugs them as the schemes draw it. */
+const X_SPAN_AIR = 2;
+
+/**
+ * Text sits on its alphabetic baseline; `dominant-baseline` is never emitted. WebKit
+ * (Safari, the macOS shell) ignores it on a `<text>` whose glyphs are `<tspan>`s, so
+ * every label rose — an x tick by 0.7em, through the axis. Fractions of the font size in
+ * Times New Roman: Chrome's own `hanging` and `middle` shifts, then the glyph ink.
+ */
+const HANGING_DROP = 0.712;
+const MIDDLE_DROP = 0.224;
+/** Ink above the first baseline: Latin caps/digits/ascenders (Arial's 0.716 too), CJK, a superscript. */
+const INK_TOP = { latin: 0.72, cjk: 0.83, sup: 0.89 };
+/** Ink below the last baseline: a descender (Q's tail), a subscript's foot. */
+const INK_FOOT = { latin: 0.22, sub: 0.41 };
+const CJK_CHAR = /[　-鿿豈-﫿＀-｠]/;
+
+/** How far a block's ink reaches above its first baseline, px. */
+function inkTop(lines: RichText[], fontSize: number): number {
+  let top = INK_TOP.latin;
+  for (const run of lines[0] ?? []) {
+    if (run.vertAlign === 'superscript') top = Math.max(top, INK_TOP.sup);
+    else if (CJK_CHAR.test(run.text)) top = Math.max(top, INK_TOP.cjk);
+  }
+  return top * fontSize;
+}
+
+/** A block's ink from its top to its last line's foot, px. */
+function inkHeight(lines: RichText[], fontSize: number): number {
+  if (lines.length === 0) return 0;
+  const foot = lines[lines.length - 1].some((run) => run.vertAlign === 'subscript') ? INK_FOOT.sub : INK_FOOT.latin;
+  return inkTop(lines, fontSize) + ((lines.length - 1) * 1.15 + foot) * fontSize;
+}
+
+/** An x tick label hung by its glyph tops from `at` (from `axisTickAnchor`). */
+function xTickText(lines: RichText[], at: { x: number; y: number }, scale: number): string {
+  const size = FONT_SIZE * scale;
+  return textAt(lines, at.x, at.y + inkTop(lines, size), { anchor: 'middle', fontSize: size });
+}
 /** How far a span's strokes reach either side of its shaft: an arrowhead or end tick. */
 const SPAN_REACH = Math.max(ARROWHEAD, SPAN_TICK);
 /** White kept between the outermost span mark and the canvas edge. */
@@ -262,7 +302,7 @@ function richTspans(runs: RichText, fontSize: number): string {
 
 interface TextOptions {
   anchor?: 'start' | 'middle' | 'end';
-  /** Vertical placement of the FIRST line relative to y. */
+  /** Vertical placement of the FIRST line relative to y, drawn as an explicit baseline. */
   baseline?: 'auto' | 'middle' | 'hanging';
   fontSize?: number;
   italic?: boolean;
@@ -300,11 +340,9 @@ function textAt(
   return lines
     .map((line, index) => {
       const dy = index * size * 1.15;
+      const drop = options.baseline === 'hanging' ? HANGING_DROP : options.baseline === 'middle' ? MIDDLE_DROP : 0;
       const attrs =
-        `x="${n(x)}" y="${n(y + dy)}" font-size="${n(size)}" text-anchor="${anchor}"` +
-        (options.baseline && options.baseline !== 'auto'
-          ? ` dominant-baseline="${options.baseline}"`
-          : '') +
+        `x="${n(x)}" y="${n(y + dy + drop * size)}" font-size="${n(size)}" text-anchor="${anchor}"` +
         (style.length ? ` style="${style.join(';')}"` : '');
       return `<text ${attrs}>${richTspans(line, size)}</text>`;
     })
@@ -365,7 +403,7 @@ function estimateWidth(lines: RichText[], fontSize: number): number {
     for (const run of line) {
       for (const char of run.text) {
         // CJK, fullwidth forms and CJK punctuation occupy a full em.
-        const wide = /[　-鿿豈-﫿＀-｠]/.test(char);
+        const wide = CJK_CHAR.test(char);
         total += fontSize * (wide ? 1 : run.vertAlign ? 0.4 : 0.55);
       }
     }
@@ -462,7 +500,7 @@ function tickLabelsOn(diagram: Diagram, axis: 'x' | 'y', language: LanguageMode)
   return out;
 }
 
-/** Height of a hanging tick label of `count` lines. */
+/** Line-box height of a hanging label of `count` lines (an axis span's own label). */
 const tickRowHeight = (count: number) => (count > 0 ? (count - 1) * FONT_SIZE * 1.15 + FONT_SIZE : 0);
 
 /**
@@ -474,8 +512,9 @@ function axisSpanClearancePx(diagram: Diagram, span: DiagramSpan, language: Lang
   if (!geometry || !span.along) return 0;
   const labels = tickLabelsOn(diagram, span.along, language);
   if (span.along === 'x') {
-    const row = tickRowHeight(Math.max(0, ...labels.map((label) => label.lines.length)));
-    return X_TICK_GAP + row + SPAN_AXIS_AIR + SPAN_REACH;
+    // The deepest label's ink, subscript feet included: the heads' reach starts there.
+    const depth = Math.max(0, ...labels.map((label) => inkHeight(label.lines, FONT_SIZE)));
+    return X_TICK_TOP + depth + X_SPAN_AIR + SPAN_REACH;
   }
   const ys = geometry.base.map((p) => p.y);
   const lo = Math.min(...ys) - 0.03;
@@ -799,8 +838,7 @@ function pointSvg(
   // Tick labels sit on the axis where the drop-lines land, offset along it if dragged.
   const xTick = pickSides(mark.xTickLabel, language);
   if (xTick.length > 0) {
-    const at = pointTickAnchor(mark, 'x', proj, scale, language);
-    parts.push(textAt(xTick, at.x, at.y, { anchor: 'middle', baseline: 'hanging', fontSize: FONT_SIZE * scale }));
+    parts.push(xTickText(xTick, pointTickAnchor(mark, 'x', proj, scale, language), scale));
   }
   const yTick = pickSides(mark.yTickLabel, language);
   if (yTick.length > 0) {
@@ -2673,7 +2711,8 @@ export function axisTickAnchor(
   // the axis; a label under it hangs below the head instead of on it.
   const headBase = proj.plot.right + (AXIS_OVERSHOOT - 1.8 * ARROWHEAD) * scale;
   const underHead = x + width / 2 > headBase;
-  return { x, y: proj.plot.bottom + (underHead ? ARROWHEAD + 2 : X_TICK_GAP) * scale };
+  // `y` is the glyph tops, clear of the axis stroke (or of the head).
+  return { x, y: proj.plot.bottom + (underHead ? ARROWHEAD + X_TICK_CLEAR : X_TICK_TOP) * scale };
 }
 
 /** Where a point's x or y tick label is drawn: `axisTickAnchor` at its point, nudge included. */
@@ -2828,11 +2867,7 @@ export function diagramSvg(stored: Diagram, options: DiagramSvgOptions): string 
     ...(diagram.x.ticks ?? []).map((tick) => {
       const text = axisTickLabel(diagram.x, tick);
       const at = axisTickAnchor(tick, 'x', proj, scale, tickLabelWidth(text, language, scale));
-      return textAt(pickSides(text, language), at.x, at.y, {
-        anchor: 'middle',
-        baseline: 'hanging',
-        fontSize: FONT_SIZE * scale,
-      });
+      return xTickText(pickSides(text, language), at, scale);
     }),
     ...(diagram.y.ticks ?? []).map((tick) => {
       const at = axisTickAnchor(tick, 'y', proj, scale);

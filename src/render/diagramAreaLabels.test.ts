@@ -19,7 +19,9 @@ const SIZE = { widthPx: 400, heightPx: 320 };
 /**
  * The area diagrams `diagramAreas.frozen.json` was written from — by the build *before*
  * area colours and leader labels existed. Never regenerate it to make a test pass.
- * Re-frozen 2026-09-26 for the tick-label gap only (an element diff: tick `<text>` x/y).
+ * Re-frozen 2026-09-26 for the tick-label gap only (an element diff: tick `<text>` x/y),
+ * then for explicit baselines replacing `dominant-baseline` (an element diff: each `<text>`
+ * y moved by exactly its old baseline's drop, the attribute gone, nothing else).
  */
 function frozenCases(): Record<string, Diagram> {
   // The template as it shipped then: its equilibrium carried the name E₀.

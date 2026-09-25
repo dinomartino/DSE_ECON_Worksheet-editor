@@ -112,9 +112,11 @@ describe('axis spans rest outside the axes, past the tick labels', () => {
     const clear = axisSpanClearance(diagram, proj, 1, 'en');
     const q = spanLayout(diagram, qArrow, proj, 1, clear)!;
     const p = spanLayout(diagram, pArrow, proj, 1, clear)!;
-    // Q labels hang from `plot.bottom + 4` and are one line tall; the head reaches 5px.
-    const qLabelBottom = proj.plot.bottom + 4 + FONT;
-    expect(q.lines[0][0].y - 5).toBeGreaterThan(qLabelBottom);
+    // Q glyph tops at `plot.bottom + 4`, subscript feet 0.41em under the baseline; the head
+    // reaches 5px and sits just under them — clear, but no hole.
+    const qLabelBottom = proj.plot.bottom + 4 + FONT * (0.72 + 0.41);
+    expect(q.lines[0][0].y - 5 - qLabelBottom).toBeGreaterThanOrEqual(2 - 1e-9);
+    expect(q.lines[0][0].y - 5 - qLabelBottom).toBeLessThanOrEqual(3);
     // Q₀ Q₁ are ~12.6px wide, right-aligned 6px left of the axis.
     const pLabelLeft = proj.plot.left - 6 - FONT * (0.55 + 0.4);
     expect(p.lines[0][0].x + 5).toBeLessThan(pLabelLeft);
@@ -164,6 +166,17 @@ describe('axis spans rest outside the axes, past the tick labels', () => {
     const mid = { x: proj.ux((shaft[0].x + shaft[1].x) / 2), y: proj.uy(shaft[0].y) };
     expect(hitTest(diagram, mid, 0.01, [], clear)).toEqual({ kind: 'span', spanId: 'q' });
     expect(draggedSpanOffset(diagram, qArrow, 0, -0.04)).toBeCloseTo(0.04, 9);
+  });
+
+  it('x tick labels hang by their glyph tops, on explicit baselines WebKit cannot ignore', () => {
+    const diagram = shiftDiagram([]);
+    const proj = diagramPlot(diagram, OPTIONS);
+    const svg = diagramSvg(diagram, OPTIONS);
+    // WebKit drops `dominant-baseline` on a <text> of <tspan>s: the labels rose onto the axis.
+    expect(svg).not.toContain('dominant-baseline');
+    const q0 = svg.match(/<text [^>]*y="([\d.]+)"[^>]*><tspan>Q<\/tspan>/)!;
+    // Axis stroke edge + 3px of white to the cap tops (0.72em above the baseline).
+    expect(Number(q0[1])).toBeCloseTo(proj.plot.bottom + 1 + 3 + FONT * 0.72, 1);
   });
 
   it('an x tick label under the axis arrowhead drops clear of it', () => {
