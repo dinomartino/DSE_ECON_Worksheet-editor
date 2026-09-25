@@ -1,5 +1,6 @@
 import type { AppFormat } from '@/export/csv/answerKeyCsv';
 import type { LanguageMode, OutputMode, VersionMode, Worksheet } from '@/model/types';
+import { renderAnswerKey } from '@/render/answerKey';
 import { isWritingRoom } from '@/render/ir';
 import { renderWorksheet } from '@/render/worksheet';
 
@@ -41,6 +42,60 @@ export interface ExportChoice {
   app?: AppFormat;
   /** Paper version letters, one file each; absent = the one paper. */
   variants?: string[];
+  /**
+   * Other saved documents whose answer keys follow this one's in the same file, in
+   * this order. Export-time only, never stored on the document.
+   */
+  alsoInclude?: KeyDocumentPick[];
+}
+
+/** A saved document picked for a combined answer key, named as the file list names it. */
+export interface KeyDocumentPick {
+  id: string;
+  title: string;
+}
+
+/**
+ * Load the documents picked for a combined key, in order, read-only. One that is gone,
+ * will not parse or will not render is skipped and named — never fatal, never resaved.
+ * Loading goes through the store, so an old schema is migrated in memory first.
+ */
+export async function loadKeyDocuments(
+  picks: KeyDocumentPick[],
+  load: (id: string) => Promise<Worksheet | undefined>,
+  language: LanguageMode,
+): Promise<{ worksheets: Worksheet[]; skipped: KeyDocumentPick[] }> {
+  const worksheets: Worksheet[] = [];
+  const skipped: KeyDocumentPick[] = [];
+  for (const pick of picks) {
+    try {
+      const worksheet = await load(pick.id);
+      if (!worksheet) throw new Error('missing');
+      renderAnswerKey(worksheet, language);
+      worksheets.push(worksheet);
+    } catch {
+      skipped.push(pick);
+    }
+  }
+  return { worksheets, skipped };
+}
+
+/** The dialog's sentence for documents left out of a combined key; empty when none. */
+export function skippedNote(skipped: KeyDocumentPick[]): string {
+  if (skipped.length === 0) return '';
+  const names = skipped.map((pick) => `“${pick.title}”`).join(', ');
+  return skipped.length === 1
+    ? `${names} could not be opened and was left out`
+    : `${names} could not be opened and were left out`;
+}
+
+/** Move one entry of an ordered pick list up (-1) or down (+1); out of range is a no-op. */
+export function movePick<T>(list: T[], index: number, delta: -1 | 1): T[] {
+  const target = index + delta;
+  if (index < 0 || index >= list.length || target < 0 || target >= list.length) return list;
+  const next = [...list];
+  [next[index], next[target]] = [next[target], next[index]];
+  return next;
 }
 
 /** The question paper's output mode. An omit flag is set only when on, so the default is unchanged. */
@@ -75,6 +130,10 @@ export interface ExportFile {
   blob: Blob;
   /** The paper version letter, when the document has versions. */
   variant?: string;
+  /** What a combined key had to leave out (`skippedNote`), said in the dialog after the save. */
+  note?: string;
+  /** How many documents that was, for the status line, which has one short line. */
+  leftOut?: number;
 }
 
 /** The documents a choice produces, in delivery order. */

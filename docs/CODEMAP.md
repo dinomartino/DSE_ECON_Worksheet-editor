@@ -79,6 +79,7 @@ Invariants:
 
 - `src/render/worksheet.ts:renderWorksheet` — the one walker; `:collectListStreams`
 - `src/render/answerKey.ts:renderAnswerKey` — the separate answer key; entries come from the `answerKey` hook
+- `src/render/answerKey.ts:renderCombinedAnswerKey` · `:answerKeyPartTitle` — several saved documents' keys in one file, each under its paper's heading, from a new page
 - `src/render/markScheme.ts:renderMarkScheme` — a part's HKEAA scheme as `Marking Scheme` paragraphs; marks ride `TextNode.trail` (`src/render/ir.ts:trailLabel`)
 - `src/render/diagram.ts:diagramSvg` · `:diagramPlot` · `:diagramSize` · `:flowChartLayout` · `:forumChartLayout`
 - `src/render/answerGraph.ts:answerGraphNode` · `:answerGraphBox` · `:answerGraphSvg` — blank answer axes (`src/model/answerGraph.ts:createAnswerGraph`); PNG via the diagram pre-pass, whole 12pt lines
@@ -179,6 +180,7 @@ Invariants:
 
 - `src/components/EditorApp.tsx:EditorApp` — the shell, autosave, export actions
 - `src/components/editor/ExportDialog.tsx:ExportDialog` — the one Export action: format `.docx` / PDF / `.json`, then paper / answer key / both / other apps; `src/components/editor/exportSession.ts:deliverFiles` — one web download per click
+- `src/components/editor/KeyDocumentsField.tsx:KeyDocumentsField` — "Also include": other saved documents' keys in the same answer key; `src/components/editor/exportSession.ts:loadKeyDocuments` reads them read-only, skipping (and naming) any that will not open — export-time, never stored
 - `src/components/editor/printPdf.ts:printWorksheetPdf` — PDF: set the print mode, wait for the sheets, `printPage()`, lift the "Include" flags on `afterprint`
 - `src/components/editor/exportSession.ts:paperMode` — "Include" toggles → `OutputMode.omitCover` / `omitAnswerSpace` (export-time, never stored; the preview ignores them)
 - `src/components/editor/Sidebar.tsx:Sidebar` · `src/components/editor/Inspector.tsx:Inspector`

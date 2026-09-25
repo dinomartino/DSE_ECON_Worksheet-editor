@@ -112,7 +112,11 @@ function neutral(text: string, language: LanguageMode): BiText {
  * derivation the paper prints, so a section restart restarts here too; each section
  * marker opens a group under its own heading, so a repeated number is never ambiguous.
  */
-export function renderAnswerKey(worksheet: Worksheet, language: LanguageMode): RenderNode[] {
+export function renderAnswerKey(
+  worksheet: Worksheet,
+  language: LanguageMode,
+  options: { title?: BiText } = {},
+): RenderNode[] {
   const numbering = computeNumbering(worksheet);
   const groups: Group[] = [{ choices: [], schemes: [] }];
   const letters = versionLetters(worksheet);
@@ -156,7 +160,12 @@ export function renderAnswerKey(worksheet: Worksheet, language: LanguageMode): R
   }
 
   const nodes: RenderNode[] = [
-    { kind: 'text', style: 'Worksheet Title', text: answerKeyTitle(worksheet), keepNext: true },
+    {
+      kind: 'text',
+      style: 'Worksheet Title',
+      text: options.title ?? answerKeyTitle(worksheet),
+      keepNext: true,
+    },
   ];
 
   if (letters.length > 0) {
@@ -302,6 +311,61 @@ export function answerKeyTitle(worksheet: Worksheet): BiText {
     `${en} — ${ANSWER_KEY_WORDING.title.en}`,
     `${zh} — ${ANSWER_KEY_WORDING.title.zh}`,
   );
+}
+
+const COVER_PAPER_EN = /\bpaper\s*(\d+|[ivx]+)\b/i;
+const COVER_PAPER_ZH = /試?卷\s*([一二三四五六七八九十\d]+)/;
+
+/**
+ * Which paper a cover names — "PAPER 1" / "卷一" in its head or corner lines — as
+ * "Paper 1" / "試卷一". Undefined without a cover or with no such line.
+ */
+export function coverPaperLabel(worksheet: Worksheet): { en: string; zh: string } | undefined {
+  const lines = [...(worksheet.cover?.headLines ?? []), ...(worksheet.cover?.cornerLines ?? [])];
+  let en: string | undefined;
+  let zh: string | undefined;
+  for (const line of lines) {
+    en ??= COVER_PAPER_EN.exec(plain(line.text.en))?.[1];
+    zh ??= COVER_PAPER_ZH.exec(plain(line.text.zh))?.[1];
+  }
+  if (en === undefined && zh === undefined) return undefined;
+  const enLabel = en !== undefined ? `Paper ${en.toUpperCase()}` : `試卷${zh}`;
+  return { en: enLabel, zh: zh !== undefined ? `試卷${zh}` : enLabel };
+}
+
+/** Whether `label` already reads in `text`, ignoring case and spacing. */
+const mentions = (text: string, label: string) =>
+  text.replace(/\s+/g, '').toLowerCase().includes(label.replace(/\s+/g, '').toLowerCase());
+
+/**
+ * One paper's heading in a combined key: `answerKeyTitle` plus the paper its cover
+ * names, unless the title already says it ("Mock 2026, Paper 2 — Answer key").
+ */
+export function answerKeyPartTitle(worksheet: Worksheet): BiText {
+  const paper = coverPaperLabel(worksheet);
+  // An unnamed paper is called by its paper name alone, not "Worksheet, Paper 1".
+  const name = documentName(worksheet);
+  const baseEn = plain(worksheet.title.en).trim() || name || paper?.en || 'Worksheet';
+  const en = !paper || mentions(baseEn, paper.en) ? baseEn : `${baseEn}, ${paper.en}`;
+  const baseZh = plain(worksheet.title.zh).trim() || (name || !paper ? baseEn : paper.zh);
+  const zh =
+    !paper || mentions(baseZh, paper.zh) || mentions(baseZh, paper.en) ? baseZh : `${baseZh}，${paper.zh}`;
+  return bi(`${en} — ${ANSWER_KEY_WORDING.title.en}`, `${zh} — ${ANSWER_KEY_WORDING.title.zh}`);
+}
+
+/**
+ * Several documents' keys as one: each under its `answerKeyPartTitle`, numbered as that
+ * paper prints, the second onward from a new page. One document is `renderAnswerKey`
+ * unchanged, so a single key exports as it always has.
+ */
+export function renderCombinedAnswerKey(worksheets: Worksheet[], language: LanguageMode): RenderNode[] {
+  if (worksheets.length <= 1) {
+    return worksheets.length === 0 ? [] : renderAnswerKey(worksheets[0], language);
+  }
+  return worksheets.flatMap((worksheet, index): RenderNode[] => [
+    ...(index > 0 ? [{ kind: 'pageBreak' } as const] : []),
+    ...renderAnswerKey(worksheet, language, { title: answerKeyPartTitle(worksheet) }),
+  ]);
 }
 
 /** Number → letter pairs, `ANSWER_GRID_PAIRS_PER_ROW` to a row; a short last row pads empty. */

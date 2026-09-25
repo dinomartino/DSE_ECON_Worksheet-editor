@@ -23,7 +23,7 @@ import { activeVersion, versionLetter } from '@/model/versions';
 import type { Band, BandField, FontPair, HeaderFooter, LanguageMode, OutputMode, Worksheet } from '@/model/types';
 import type { RenderNode } from '@/render/ir';
 import { bandFieldText, collectListStreams, renderWorksheet } from '@/render/worksheet';
-import { answerKeyTitle, renderAnswerKey } from '@/render/answerKey';
+import { answerKeyPartTitle, answerKeyTitle, renderCombinedAnswerKey } from '@/render/answerKey';
 import {
   collectAnswerGraphNodes,
   collectDiagramNodes,
@@ -609,8 +609,14 @@ export { buildParts as buildDocxParts };
  * The answer key's package (`render/answerKey.ts`). The paper's page setup, fonts and
  * body size; no cover, bands, header or page furniture — only a centred page number.
  * Its IR holds no pictures and no list streams, so neither images nor `w:num` apply.
+ * `others`: further documents whose keys follow, each from a new page, in this one's
+ * page setup (`renderCombinedAnswerKey`); none leaves the single key unchanged.
  */
-function buildAnswerKeyParts(worksheet: Worksheet, language: LanguageMode): PackageParts {
+function buildAnswerKeyParts(
+  worksheet: Worksheet,
+  language: LanguageMode,
+  others: Worksheet[] = [],
+): PackageParts {
   const fonts = worksheet.fonts;
   const setup = pageSetupOf(worksheet);
   const { width: pageWidth, height: pageHeight } = pageDimensions(setup);
@@ -625,7 +631,7 @@ function buildAnswerKeyParts(worksheet: Worksheet, language: LanguageMode): Pack
     imageRelId: () => undefined,
     nextDrawingId: () => (drawingId += 1),
   };
-  const body = renderAnswerKey(worksheet, language)
+  const body = renderCombinedAnswerKey([worksheet, ...others], language)
     .map((node) => renderNodeXml(node, context))
     .join('');
 
@@ -635,7 +641,7 @@ function buildAnswerKeyParts(worksheet: Worksheet, language: LanguageMode): Pack
     ruleEdge: 'top',
   };
 
-  const title = answerKeyTitle(worksheet);
+  const title = others.length > 0 ? answerKeyPartTitle(worksheet) : answerKeyTitle(worksheet);
   const timestamp = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
 
   return {
@@ -658,20 +664,25 @@ function buildAnswerKeyParts(worksheet: Worksheet, language: LanguageMode): Pack
   };
 }
 
-/** The answer key as a .docx. `language` alone: a key has no student version. */
+/**
+ * The answer key as a .docx. `language` alone: a key has no student version. `others`
+ * append their keys after this one's, in one file.
+ */
 export async function exportAnswerKeyDocx(
   worksheet: Worksheet,
   language: LanguageMode,
+  others: Worksheet[] = [],
 ): Promise<Blob> {
-  return zipPackage(buildAnswerKeyParts(worksheet, language));
+  return zipPackage(buildAnswerKeyParts(worksheet, language, others));
 }
 
 /** Node-friendly variant used by the export tests. */
 export async function exportAnswerKeyDocxBuffer(
   worksheet: Worksheet,
   language: LanguageMode,
+  others: Worksheet[] = [],
 ): Promise<Uint8Array> {
-  return zipPackageBuffer(buildAnswerKeyParts(worksheet, language));
+  return zipPackageBuffer(buildAnswerKeyParts(worksheet, language, others));
 }
 
 export { buildAnswerKeyParts as buildAnswerKeyDocxParts };
@@ -697,7 +708,22 @@ export function docxFileName(worksheet: Worksheet, mode: OutputMode): string {
   return `${fileTitle(worksheet)}${suffix} (${version}) (${LANGUAGE_TAG[mode.language]}).docx`;
 }
 
-/** `<name> (Answer key) (<EN|ZH|Bilingual>).docx` — never mistaken for either paper. */
-export function answerKeyFileName(worksheet: Worksheet, language: LanguageMode): string {
-  return `${fileTitle(worksheet)} (Answer key) (${LANGUAGE_TAG[language]}).docx`;
+/** Names joined in a combined key's file name before the rest become "+ N more". */
+export const COMBINED_KEY_NAMES_SHOWN = 3;
+
+/**
+ * `<name> (Answer key) (<EN|ZH|Bilingual>).docx` — never mistaken for either paper. A
+ * combined key names its papers: `<name> + <name> (Answer key) (EN).docx`.
+ */
+export function answerKeyFileName(
+  worksheet: Worksheet,
+  language: LanguageMode,
+  others: Worksheet[] = [],
+): string {
+  const names = [worksheet, ...others].map((document) => fileTitle(document));
+  const joined =
+    names.length > COMBINED_KEY_NAMES_SHOWN
+      ? `${names.slice(0, COMBINED_KEY_NAMES_SHOWN - 1).join(' + ')} + ${names.length - COMBINED_KEY_NAMES_SHOWN + 1} more`
+      : names.join(' + ');
+  return `${joined} (Answer key) (${LANGUAGE_TAG[language]}).docx`;
 }
