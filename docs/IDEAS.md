@@ -91,6 +91,9 @@ Remove from this list once released.
 
 ## C. Question library — the most-requested gap
 
+Design: `docs/design/question-library.md` (a bank is a Worksheet; the library is a
+rebuildable index; copies keep a `lineage.rootId`; packs reuse the backup zip).
+
 - **C1 Topic tags** (S): an optional field on questions — EDB topics A–J + electives,
   or DSEconMentor's 71 MCQ / 50 LQ topics. `KNOWN_KEYS` guards only top-level
   `Worksheet` fields, so a question-level field passes through — still check
