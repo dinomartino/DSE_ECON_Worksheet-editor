@@ -5,8 +5,10 @@ import { Button } from '@/components/ui';
 import {
   exportsFolder,
   isDesktop,
+  listenForFileDrops,
   openFolder,
   pickFile,
+  readDroppedFile,
   revealFile,
   revealLabel,
   saveFile,
@@ -22,6 +24,18 @@ import { WhatsNewDialog, WhatsNewOnLaunch } from '@/components/whatsNew/WhatsNew
 import { describeDocument } from '@/feedback/feedback';
 import { FileDashboard, type DocumentActions, type FolderActions } from './FileDashboard';
 import { readDashboardFolder, writeDashboardFolder } from './dashboard';
+import {
+  DROP_HINT,
+  DROP_REJECTED,
+  DROP_REJECTED_MS,
+  droppedKind,
+  fileNameOf,
+  importSummary,
+  overlayFor,
+  planDrop,
+  type DropOverlay,
+  type ImportCounts,
+} from './fileDrop';
 import { NEW_WORKSHEET_FORM_ID, NewWorksheetForm } from './NewWorksheetForm';
 import { TrashList } from './TrashList';
 import { newId } from '@/model/factories';
@@ -55,6 +69,13 @@ import {
   moveToFolder,
   renameFolder,
 } from '@/storage/folders';
+
+/** A dropped file from either source: a browser `File`, or a desktop path. */
+type Dropped = { name: string; type?: string; read: () => Promise<Uint8Array | Blob> };
+
+async function textOf(data: Uint8Array | Blob): Promise<string> {
+  return data instanceof Blob ? data.text() : new TextDecoder().decode(data);
+}
 
 /** The folder-name dialog: a new folder (optionally filing one document into it), or a rename. */
 type Naming = { folder?: Folder; fileDoc?: WorksheetSummary };
@@ -110,7 +131,7 @@ export function StartScreen({
   const [confirmingEmpty, setConfirmingEmpty] = useState(false);
   const [notice, setNotice] = useState<Notice | undefined>();
   const [busy, setBusy] = useState<'backup' | 'restore' | undefined>();
-  const [dragging, setDragging] = useState(false);
+  const [dropOverlay, setDropOverlay] = useState<DropOverlay>();
   const [feedback, setFeedback] = useState(false);
   const [folders, setFolders] = useState<FolderState>(EMPTY_FOLDERS);
   // Lazy: the start screen renders only after hydration (`EditorHost`).
@@ -123,6 +144,36 @@ export function StartScreen({
   const closeWhatsNew = useCallback(() => setWhatsNew(false), []);
   const fileInput = useRef<HTMLInputElement>(null);
   const backupInput = useRef<HTMLInputElement>(null);
+  const rejectTimer = useRef<number | undefined>(undefined);
+  const handleDropRef = useRef<(files: Dropped[]) => Promise<void>>(async () => undefined);
+
+  // Desktop: files from Finder/Explorer arrive as the shell's native drag event, never as
+  // HTML5 `drop` (§Desktop shell, `dragDropEnabled`). Only while this screen is up — the
+  // editor ignores a dropped file, as it does on the web.
+  useEffect(() => {
+    if (!isDesktop()) return;
+    let live = true;
+    let unlisten: (() => void) | undefined;
+    void listenForFileDrops((event) => {
+      if (event.type === 'drop') {
+        void handleDropRef.current(
+          event.paths.map((path) => ({ name: fileNameOf(path), read: () => readDroppedFile(path) })),
+        );
+        return;
+      }
+      if (event.type === 'enter') window.clearTimeout(rejectTimer.current);
+      setDropOverlay((current) => overlayFor(event, current));
+    })
+      .then((stop) => {
+        if (live) unlisten = stop;
+        else stop();
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+      unlisten?.();
+    };
+  }, []);
 
   // One after the other, not in parallel: `listTrash` purges expired documents and
   // may write, and the two lists must describe the same moment.
@@ -369,6 +420,118 @@ export function StartScreen({
     }
   };
 
+  /** Shows the rejection over the screen for a moment, then clears it. */
+  const flashRejected = () => {
+    setDropOverlay('rejected');
+    window.clearTimeout(rejectTimer.current);
+    rejectTimer.current = window.setTimeout(() => setDropOverlay(undefined), DROP_REJECTED_MS);
+  };
+
+  /**
+   * One drop, from the page (web) or the shell (desktop): a single `.json` opens, a single
+   * `.zip` restores, several are imported into the library without opening any.
+   */
+  const handleDrop = async (files: Dropped[]) => {
+    const plan = planDrop(files, (file) => droppedKind(file.name, file.type));
+    if (plan.kind === 'reject') {
+      flashRejected();
+      return;
+    }
+    setDropOverlay(undefined);
+    if (plan.kind === 'import') {
+      await importDropped(plan.worksheets, plan.backups, plan.ignored);
+      return;
+    }
+    setError(undefined);
+    let data: Uint8Array | Blob;
+    try {
+      data = await plan.file.read();
+    } catch (cause) {
+      const reason = cause instanceof Error ? ` — ${cause.message}` : '';
+      setError(`Could not read “${plan.file.name}”${reason}.`);
+      return;
+    }
+    if (plan.kind === 'restore') {
+      await restoreFrom(data);
+      return;
+    }
+    try {
+      onOpen(parseWorksheet(await textOf(data)));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not open that file.');
+    }
+  };
+
+  /** Several files: each saved beside what is here — restore never overwrites. */
+  const importDropped = async (worksheets: Dropped[], backups: Dropped[], ignored: number) => {
+    setError(undefined);
+    setNotice(undefined);
+    setBusy('restore');
+    try {
+      const { entryFailure, readBackup, restoreBackup, worksheetEntry } = await import(
+        '@/storage/backup'
+      );
+      const counts: ImportCounts = {
+        imported: 0,
+        copied: 0,
+        skipped: 0,
+        unreadable: 0,
+        failed: 0,
+        ignored,
+      };
+      const details: string[] = [];
+      const tally = (report: Awaited<ReturnType<typeof restoreBackup>>) => {
+        counts.imported += report.restored.length;
+        counts.copied += report.copied.length;
+        counts.skipped += report.skipped.length;
+        counts.failed += report.failed.length;
+        details.push(...report.failed.map((f) => `${f.name} — ${f.reason}`));
+      };
+      const unreadable = (name: string, reason: string) => {
+        counts.unreadable += 1;
+        details.push(`${name} — ${reason}`);
+      };
+
+      const entries = [];
+      for (const file of worksheets) {
+        let text: string;
+        try {
+          text = await textOf(await file.read());
+        } catch (cause) {
+          unreadable(file.name, cause instanceof Error ? cause.message : 'could not be read');
+          continue;
+        }
+        try {
+          entries.push(worksheetEntry(file.name, text));
+        } catch (cause) {
+          unreadable(file.name, entryFailure(cause));
+        }
+      }
+      if (entries.length > 0) tally(await restoreBackup(worksheetStore, entries));
+
+      for (const file of backups) {
+        try {
+          const { worksheets: inside, failures, folders: filed } = await readBackup(await file.read());
+          tally(await restoreBackup(worksheetStore, inside, undefined, filed));
+          for (const failure of failures) unreadable(`${file.name}: ${failure.name}`, failure.reason);
+        } catch (cause) {
+          unreadable(file.name, cause instanceof Error ? cause.message : 'could not be read');
+        }
+      }
+      setNotice({ message: importSummary(counts), details });
+    } catch {
+      setError('Could not import those files.');
+    } finally {
+      setBusy(undefined);
+      await refresh();
+    }
+  };
+
+  // The effect below subscribes once; it reaches this render's handler through the ref.
+  useEffect(() => {
+    handleDropRef.current = handleDrop;
+  });
+
   const showFolder = (label: string, locate: () => Promise<string | undefined>) => () =>
     void (async () => {
       try {
@@ -441,24 +604,31 @@ export function StartScreen({
         // A .json worksheet dropped anywhere on this screen opens it. The whole surface
         // is the target rather than a marked-out zone: this screen has nothing else a
         // drop could mean, and a small rectangle is a thing to aim at for no reason.
+        // Web only: the desktop webview delivers no HTML5 file drags (the effect above).
         if (!event.dataTransfer.types.includes('Files')) return;
         event.preventDefault();
-        setDragging(true);
+        if (dropOverlay !== 'hint') {
+          window.clearTimeout(rejectTimer.current);
+          setDropOverlay('hint');
+        }
       }}
       onDragLeave={(event) => {
         // Only when the pointer leaves the screen itself — `dragleave` also fires when
         // it crosses onto a child, which would flicker the overlay on every row.
         if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
-        setDragging(false);
+        setDropOverlay(undefined);
       }}
       onDrop={(event) => {
         if (!event.dataTransfer.types.includes('Files')) return;
         event.preventDefault();
-        setDragging(false);
-        const file = event.dataTransfer.files[0];
-        if (!file) return;
-        if (isZip(file)) void restoreFrom(file);
-        else void openFile(file);
+        setDropOverlay(undefined);
+        void handleDrop(
+          Array.from(event.dataTransfer.files, (file) => ({
+            name: file.name,
+            type: file.type,
+            read: async () => file,
+          })),
+        );
       }}
     >
       {/*
@@ -612,10 +782,17 @@ export function StartScreen({
         }}
       />
 
-      {dragging && (
+      {dropOverlay && (
         <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center bg-accent/10 backdrop-blur-[1px]">
-          <span className="rounded-xl border-2 border-dashed border-accent bg-surface px-5 py-3 text-[13px] font-medium text-accent-ink">
-            Drop a .json to open it, or a backup .zip to restore it
+          <span
+            role="status"
+            className={
+              dropOverlay === 'rejected'
+                ? 'rounded-xl border-2 border-dashed border-danger bg-surface px-5 py-3 text-[13px] font-medium text-danger-ink'
+                : 'rounded-xl border-2 border-dashed border-accent bg-surface px-5 py-3 text-[13px] font-medium text-accent-ink'
+            }
+          >
+            {dropOverlay === 'rejected' ? DROP_REJECTED : DROP_HINT}
           </span>
         </div>
       )}
