@@ -13,33 +13,28 @@ off the bottom.** It is the first thing a fresh session reads — then
   native dialog, updates come from GitHub Releases. `src/platform/index.ts` ·
   `src/desktop/updater.ts`.
 - **Web stays the primary target.** Static export on Vercel, no server runtime. The web
-  build must stay green — `npm run build` fails if a `@tauri-apps/*` import reached the bundle.
-- **B1–B4 built 2026-09-25 on `develop`** by four parallel Opus agents in worktrees,
-  merged by hand (conflicts: import lines only). Marking scheme in HKEAA notation
-  (`src/model/markScheme.ts`), MCQ rationale + provenance, diagram shaded areas + shift
-  curve (`src/model/diagramAreas.ts`, `diagramShift.ts`), graph answer space
-  (`src/render/answerGraph.ts`). Each browser-verified and `.docx`-checked alone; the
-  merged result has tests/typecheck/build/samples green but no browser pass yet.
-- **Seeded MCQ versions, other-apps export (ZipGrade / key CSV / Kahoot / Blooket), and
-  cover / answer-space export toggles — built 2026-09-24 on `develop`** by three parallel
-  agents, merged by hand in `ExportDialog.tsx`. Browser-verified together; desktop save
-  paths and real imports into the four apps not tried.
-- **Export dialog, answer key, paper check, backup zip, Trash — built 2026-09-24 on
-  `develop`.** Browser-verified on the web; desktop paths (two save sheets, zip pick,
-  trash folder moves) not yet run in `npm run desktop:dev`.
-- **File dashboard — built 2026-09-24 on `develop`.** Start screen shows saved documents
-  as first-page thumbnails (grid) or a list, with search, kind filter and order.
-  Desktop: dialogs start in `~/Documents/Econ Worksheets` (or the last folder), import uses
-  the native open dialog, and exports/stored files can be revealed in Finder/Explorer.
-  `src/components/start/FileDashboard.tsx` · `src/platform/index.ts:exportsFolder`.
+  build must stay green — static `@tauri-apps/*` imports are caught by ESLint,
+  `src/test/tauriImports.test.ts` and the `postbuild` bundle check (`scripts/check-web-bundle.mjs`).
+- **2026-09-25 batch on `develop`, all merged, tests/typecheck/build/lint green:** B1–B4
+  (marking scheme `src/model/markScheme.ts`, MCQ rationale, shaded areas + shift curve +
+  colours + leader labels `src/model/diagramAreas.ts` · `src/render/diagramLeader.ts`,
+  graph answer space `src/render/answerGraph.ts`); one Export button (.docx / PDF / .json,
+  `src/components/editor/printPdf.ts`); combined answer key across documents
+  (`src/render/answerKey.ts:renderCombinedAnswerKey`); dashboard folders
+  (`src/storage/folders.ts`) with pointer-event drag (`dashboardDrag.ts`); desktop
+  file-drop import (`src/platform/index.ts:listenForFileDrops`); `CHANGELOG.md` + in-app
+  What's new (`src/whatsNew/`); newer-schema read-only guard
+  (`src/components/editor/NewerVersionNotice.tsx`). Each feature browser-verified alone;
+  **no browser pass of the merged whole, and nothing run in the desktop shell.**
+- **2026-09-24 batch (in v0.3.0):** export dialog + answer key, paper check, backup zip,
+  Trash, seeded MCQ versions, other-apps export, export toggles, file dashboard. Desktop
+  save paths and real imports into ZipGrade/Kahoot/Blooket not tried.
 - **Feature backlog** — `docs/IDEAS.md`, ranked from the 2026-09-24 competitor research in
   `docs/research/2026-09-competitive/`. Pick the next initiative from there.
-- **Download widget** — `docs/download-widget.html` is a paste-anywhere block that reads the
-  latest release from the GitHub API, so links to installers never go stale.
 
 ## Last verified
 
-- `npm test` — 1356 tests in 82 files, ~2.5s. Green. `npm run build` green; `npm run samples` exports.
+- `npm test` — 1518 tests in 97 files, ~3s. Green. `npm run build` green; `npm run samples` exports.
 - `npm run typecheck` — clean.
 - `npm run lint` — 44 pre-existing problems (3 errors, 41 warnings) in `Preview.tsx` and
   `InlineEditable.tsx`. Not a regression; do not "fix" by rewriting those files.
@@ -53,10 +48,16 @@ off the bottom.** It is the first thing a fresh session reads — then
   in a real `window.print()` PDF.
 - **Pie hatch/dot patterns print greyish** — Chrome rasterises `<pattern>` tiles in the
   PDF. Shaded axis areas avoid this by drawing hatch as clipped lines; the pie could too.
-- `src/render/answerGraph.ts` (~line 208) still blames the pagination probe for hidden
-  markers; the real cause is any copy outside `#print-root`. Comment only.
-- **Diagram thumbnails and print not re-run** after B3; `scripts/cover-verify.mjs` /
-  `scripts/lq-verify.mjs` last run by the B4 agent (lq-verify passed, needs `LQ_DIR`).
+- **Desktop checks owed to the user** (their `tauri dev` was running, agents did not start
+  a second): Export → PDF on a multi-page document (paper size, breaks); drag a card onto
+  a folder; drop a `.json` from `~/Downloads` onto the start screen; the newer-version
+  notice's "Check for updates".
+- **Combined answer key uses the current document's page setup and font size** for every
+  part; a 10pt Paper 2 key inside an 11pt Paper 1 prints at 11pt.
+- **What's new pops for anyone updating from ≤0.3.0** (no stored seen-version but saved
+  work) — intended, once.
+- **`scripts/cover-verify.mjs` / `lq-verify.mjs` not re-run** since B3/B4 (lq-verify passed
+  for the B4 agent; needs `LQ_DIR`).
 - **Windows builds are unsigned.** SmartScreen warns on first run. An OV certificate
   (~US$215/yr) is the option; Azure Trusted Signing is not open to a Hong Kong maintainer.
 - **Desktop file features are untested in the real app** (`npm run desktop:dev` not run):
@@ -65,10 +66,6 @@ off the bottom.** It is the first thing a fresh session reads — then
   folder; there is no `NSDocumentsFolderUsageDescription`, so the prompt is generic.
 - **Thumbnails are approximate** — no header/footer/page furniture, one language, rough
   page end. See SYSTEM_ARCHITECTURE §The file dashboard.
-- **No newer-schema-version guard.** `src/model/migrations.ts:migrate` accepts a document
-  whose `schemaVersion` is *above* `CURRENT_SCHEMA_VERSION`, keeping its extra fields in
-  `__unknown` but rendering it with this build's rules. Deliberate for now (a newer file
-  opens rather than refusing), but it means a future v2 document opens silently degraded.
 - **The updater signing key** lives only at `~/.tauri/econ-worksheet.key`. Lose it and no
   installed app can ever accept another update.
 - **`app.security.csp` is `null`** in `src-tauri/tauri.conf.json` — Next's static export
@@ -83,14 +80,13 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
+- **2026-09-25 (later)** — Export button unified + desktop print permission; combined
+  answer key; folders + pointer drag; desktop file drop; CHANGELOG.md, release-notes
+  script and What's new; schema-evolution policy, newer-file read-only guard, real Tauri
+  import guard (the documented build failure never fired). Area colours + leader labels.
 - **2026-09-25** — B1–B4 from the backlog built in parallel by Opus sub-agents on
   `feature/b1..b4` branches, merged into `develop`. Rule saved: all code edits go to
   Opus sub-agents; the coordinator merges and writes the docs. Follow-up: SVG `<marker>`
   and `<pattern>` refs resolved to hidden copies outside `#print-root`, so arrowheads and
   pie hatching vanished in the print PDF — arrowheads are now plain triangles
   (`diagram.ts:arrowheadPath`), patterns forced visible in print CSS.
-- **2026-09-24** — Three features in parallel worktrees, merged: seeded MCQ versions A–D
-  (`src/model/versions.ts`, registry `variant` hook, per-version keys + version map),
-  other-apps export (`src/export/csv/`), export toggles (`OutputMode.omitCover` /
-  `omitAnswerSpace`). In-app feedback dialog (prefilled GitHub issue / mailto / clipboard;
-  `src/feedback/`). Dropped the year-specific Paper 2 template idea.

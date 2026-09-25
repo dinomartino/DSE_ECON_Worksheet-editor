@@ -50,6 +50,14 @@ Remove from this list once released.
 - **Graph answer space** (was B4, 2026-09-25) — `src/model/answerGraph.ts`,
   `src/render/answerGraph.ts`, `AnswerGraphFields.tsx`; blank axes, grid, 12/16/20/24 lines.
   Not yet: on-page select/resize; custom height; Word itself untested (LibreOffice only).
+- **Combined answer key across documents** (2026-09-25) — export-time "Also include" list;
+  `src/render/answerKey.ts:renderCombinedAnswerKey`. Not yet: per-part page setup.
+- **Folders on the dashboard** (2026-09-25, was part of F3) — `src/storage/folders.ts`;
+  pointer-event drag. Not yet: nesting, multi-select move, touch drag.
+- **One Export button (.docx / PDF / .json)** (2026-09-25) — `printPdf.ts`. PDF prints the
+  question paper only.
+- **CHANGELOG + What's new** (2026-09-25) — `src/whatsNew/`, `scripts/release-notes.mjs`.
+- **Area colours + leader labels** (2026-09-25) — six-tint palette, Auto/Inside/Leader.
 - **In-app feedback** — `src/feedback/feedback.ts`, `src/components/feedback/FeedbackDialog.tsx`:
   prefilled GitHub issue (URL capped at 3,500 chars — GitHub's sign-in redirect breaks
   above ~4k), `mailto:` to dseconmentor@gmail.com, or clipboard. Labels only stick when
@@ -122,7 +130,7 @@ point. *All of MagicSchool, Brisk, Diffit, Eduaide, QuestionWell, MS Teach.*
 
 ## F. File management — continues the 2026-09-24 dashboard
 
-- **F3 Tags, stars and filter chips on the dashboard** (S–M); extend
+- **F3 Tags, stars and filter chips on the dashboard** (S–M; folders shipped); extend
   `src/components/start/dashboard.ts:visibleSummaries`. **F4** total marks and page
   count on each card, derived (S). **F5** full-text search of question text (M, shares
   an index with C2).
