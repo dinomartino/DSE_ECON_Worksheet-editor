@@ -199,6 +199,52 @@ export async function pickFile(
   return { name: await basename(path), path, bytes };
 }
 
+/** A native file drag over the window, as the start screen needs it (positions dropped). */
+export type FileDragEvent =
+  | { type: 'enter'; paths: string[] }
+  | { type: 'over' }
+  | { type: 'drop'; paths: string[] }
+  | { type: 'leave' };
+
+/**
+ * Listen for files dragged onto the window from Finder/Explorer. Returns the unlisten.
+ *
+ * Desktop only: with `dragDropEnabled` on, the webview never sees HTML5 file drops;
+ * they arrive as Tauri's `DragDrop` event instead. The fs plugin adds each dropped path
+ * to its runtime scope before the event reaches the page — the same route as a path
+ * picked in the open sheet — so `readDroppedFile` needs no wider fs grant. A no-op on
+ * the web, where the page's own `drop` handler sees the files.
+ */
+export async function listenForFileDrops(
+  handler: (event: FileDragEvent) => void,
+): Promise<() => void> {
+  if (!isDesktop()) return () => undefined;
+  const { getCurrentWebview } = await import('@tauri-apps/api/webview');
+  return getCurrentWebview().onDragDropEvent(({ payload }) => {
+    if (payload.type === 'enter' || payload.type === 'drop') {
+      handler({ type: payload.type, paths: payload.paths });
+    } else {
+      handler({ type: payload.type });
+    }
+  });
+}
+
+/** Larger than any worksheet or backup; a drop past it is refused unread. */
+export const DROPPED_FILE_MAX_BYTES = 20 * 1024 * 1024;
+
+/**
+ * Read a file the teacher dropped on the window (desktop). Throws when it is not a
+ * file, is over `DROPPED_FILE_MAX_BYTES`, or cannot be read.
+ */
+export async function readDroppedFile(path: string): Promise<Uint8Array> {
+  if (!isDesktop()) throw new Error('Dropped paths exist only in the desktop app.');
+  const { readFile, stat } = await import('@tauri-apps/plugin-fs');
+  const info = await stat(path);
+  if (!info.isFile) throw new Error('not a file');
+  if (info.size > DROPPED_FILE_MAX_BYTES) throw new Error('too large to be a worksheet');
+  return readFile(path);
+}
+
 /**
  * The folder exports go to by default — last used, else `~/Documents/Econ Worksheets`
  * (created if needed). `undefined` on the web, or if neither can be resolved.

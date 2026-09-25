@@ -1730,6 +1730,10 @@ the way in; `NewWorksheetForm` asks the once-per-document decisions.
   without opening.
 - **A summary can outlive the document it names** — opening one says so and drops the
   row.
+- **A file dropped anywhere on the screen**: one `.json` opens, one `.zip` restores, several
+  are imported through `restoreBackup` (never overwrites; one status line), anything else
+  flashes a refusal. Web `File`s and desktop paths share `start/fileDrop.ts:planDrop`
+  (§Desktop shell for how paths arrive).
 - **Delete moves to Trash** (`TrashList`, reached by "Trash (N)" beside the count).
   Trashing the open document drops the editor's "Back" (`onTrashed`), or its next
   autosave would make it live again.
@@ -2223,7 +2227,19 @@ and `localStorage` while rendering, which the web-built prerender cannot match.
 (`tauri-runtime-wry` returns `true` from its handler), so WebKit/WebView2 deliver no
 HTML5 drag events — neither in-page drags nor files from Finder/Explorer, which arrive
 only as Tauri's `DragDrop` event. In-page drags therefore use pointer events (§The file
-dashboard); the start screen's HTML5 file-drop overlay works on the web only.
+dashboard). Turning it off would lose the native event (real paths, the fs scope grant
+below) and put file drops back on HTML5, to be re-verified on WebKit and WebView2.
+
+**File drops on desktop** (`listenForFileDrops` in `platform/index.ts`) are subscribed
+only while the start screen is mounted — the editor handles no file drop on either
+platform, so the desktop editor ignores one. `enter`/`over`
+show the same overlay as the web (`enter` has the paths, so an unusable drag says so
+before it lands), `drop` builds the same `Dropped` list the web `drop` does and goes
+through one `handleDrop` → `start/fileDrop.ts:planDrop`. **No fs grant or Rust command
+was added:** `tauri-plugin-fs` adds every dropped path to its runtime scope on
+`WindowEvent::DragDrop` (as the dialog plugin does for a picked path), and the capability
+already allows `read_file`/`stat` commands, so `readDroppedFile` reads it; it refuses a
+non-file or anything over 20 MB unread.
 
 **Printing** needs `core:webview:allow-print`: on macOS the shell replaces
 `window.print` with an async `plugin:webview|print` call (WKWebView has no print of its

@@ -41,6 +41,8 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 - **Print PDF lost every arrowhead and pie hatching** (axis arrows, shift arrows,
   flow-chart arrows, hatched and dotted pie slices). All now print.
 - **Dragging a document onto a folder now works in the desktop app.**
+- **Desktop: dropping a worksheet file onto the start screen imports it.** Drop several
+  \`.json\` files at once to add them all to your list; nothing already there is replaced.
 
 ## 0.3.0 — 2026-09-24
 

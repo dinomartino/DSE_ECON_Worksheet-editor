@@ -129,20 +129,30 @@ export async function readBackup(data: Uint8Array | ArrayBuffer | Blob): Promise
 
   for (const entry of entries) {
     try {
-      const worksheet = parseWorksheet(await entry.async('string'));
-      summarize(worksheet); // a JSON object that is not a worksheet fails here
-      worksheets.push({
-        name: entry.name,
-        worksheet: typeof worksheet.id === 'string' && worksheet.id ? worksheet : { ...worksheet, id: newId() },
-      });
+      worksheets.push(worksheetEntry(entry.name, await entry.async('string')));
     } catch (cause) {
-      failures.push({
-        name: entry.name,
-        reason: cause instanceof SyntaxError ? 'not valid JSON' : 'not a worksheet',
-      });
+      failures.push({ name: entry.name, reason: entryFailure(cause) });
     }
   }
   return { worksheets, failures, folders };
+}
+
+/**
+ * One `.json` as a restorable entry, through `parseWorksheet` (the migration chain).
+ * Throws when it is not a worksheet — `entryFailure` names why. Shared by backups and
+ * loose files dropped on the start screen.
+ */
+export function worksheetEntry(name: string, text: string): BackupEntry {
+  const worksheet = parseWorksheet(text);
+  summarize(worksheet); // a JSON object that is not a worksheet fails here
+  return {
+    name,
+    worksheet: typeof worksheet.id === 'string' && worksheet.id ? worksheet : { ...worksheet, id: newId() },
+  };
+}
+
+export function entryFailure(cause: unknown): string {
+  return cause instanceof SyntaxError ? 'not valid JSON' : 'not a worksheet';
 }
 
 export interface RestoreReport {
