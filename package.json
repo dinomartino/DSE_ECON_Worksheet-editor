@@ -13,7 +13,9 @@
     "url": "https://github.com/dinomartino/DSE_ECON_Worksheet-editor/issues"
   },
   "scripts": {
+    "predev": "npm run changelog",
     "dev": "next dev",
+    "prebuild": "npm run changelog",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -27,6 +29,7 @@
     "desktop:build": "tauri build",
     "desktop:build:debug": "tauri build --debug",
     "sync-version": "node scripts/sync-version.mjs",
+    "changelog": "node scripts/sync-changelog.mjs",
     "version": "npm run sync-version && git add src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock"
   },
   "dependencies": {

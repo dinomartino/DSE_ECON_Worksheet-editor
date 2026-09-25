@@ -172,13 +172,36 @@ and must stay original text, never past-paper questions. Keep the video under 60
 Follow `DESKTOP-PREVIEW.md`: dev window, a local `.dmg`, or the CI preview workflow.
 None of them needs a tag or touches `main`.
 
+## Adding a changelog line
+
+1. `CHANGELOG.md` — one bullet under `## Unreleased` → `### Added`, `### Changed` or
+   `### Fixed` (only those three), in the same commit as the change. Written for teachers:
+   a **bold lead phrase** naming what they can now do, then a sentence. Inline `**`,
+   backticks and `[text](https://…)` render in the app; nothing else does.
+2. `npm run changelog` — refreshes `src/whatsNew/changelog.generated.ts` (also run by
+   `npm run dev` and `npm run build`). Commit both.
+
+Guard: `src/whatsNew/changelog.generated.test.ts` (the copy is current),
+`src/whatsNew/changelog.test.ts` (the real file parses with no problems).
+
+## Closing the changelog at release
+
+1. In `CHANGELOG.md`, rename `## Unreleased` to `## X.Y.Z — YYYY-MM-DD` and put a fresh,
+   empty `## Unreleased` above it. `npm run changelog`, commit — before `npm version`, so
+   the tag carries it: the app shows this section as "What's new" after the update.
+2. After the draft is built: `node scripts/release-notes.mjs vX.Y.Z > /tmp/notes.md`. It
+   exits 1 if the section is missing or `## Unreleased` still has entries
+   (`--allow-unreleased` reprints an older release's notes).
+
+Guard: `scripts/release-notes.test.ts` (run by hand).
+
 ## Cut a release
 
 Only when the user asks. Work lives on `develop`; `main` is what teachers get.
 
 0. On `develop`, all green → `git switch main && git pull && git merge --ff-only develop`
    (or merge a `develop` → `main` pull request). `git push` deploys the web app.
-1. `npm run typecheck && npm test` — green before tagging.
+1. Close the changelog (above). `npm run typecheck && npm test` — green before tagging.
 2. `npm version patch|minor|major` — runs `scripts/sync-version.mjs`, which writes the
    version into `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml` and stages them.
 3. `git push --follow-tags` — the `v*` tag runs `.github/workflows/release.yml`, three
@@ -186,8 +209,9 @@ Only when the user asks. Work lives on `develop`; `main` is what teachers get.
 4. Check the draft has both `.dmg`s, the `.app.tar.gz` + `.sig` pair per arch, the
    `-setup.exe` + `.sig`, and `latest.json`. A missing `.sig` means the signing secrets
    were absent and installed apps will not update — fix and re-run, do not publish.
-5. Press **Publish release**. A `-beta.N` tag publishes as a prerelease and never
-   reaches a stable install.
+5. Publish with the changelog section as the body: `node scripts/release-notes.mjs vX.Y.Z >
+   /tmp/notes.md && gh release edit vX.Y.Z --draft=false --latest --notes-file /tmp/notes.md`.
+   A `-beta.N` tag publishes as a prerelease and never reaches a stable install.
 
 Rollback is a new, higher version containing the revert. Afterwards `git switch develop &&
 git merge main` so the version bump reaches `develop`. Full detail: `RELEASING.md`.

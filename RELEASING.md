@@ -70,8 +70,10 @@ tag carry all three.
 
 Before tagging, close the changelog: in `CHANGELOG.md`, rename **Unreleased** to the
 version and today's date, and start a fresh empty **Unreleased** above it. Commit that
-first — the tag must contain it, because the app shows this section as "What's new"
-after an update, and the release body is copied from it.
+first (`npm run changelog` refreshes the app's bundled copy; commit that too) — the tag
+must contain it, because the app shows this section as "What's new" after an update, and
+the release body is copied from it. `scripts/release-notes.mjs` refuses (exit 1) while
+that version has no section or **Unreleased** still has entries.
 
 ```bash
 npm run typecheck && npm test        # green before tagging

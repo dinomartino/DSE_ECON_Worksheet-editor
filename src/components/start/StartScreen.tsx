@@ -18,6 +18,7 @@ import { ArchiveIcon, FolderIcon, FolderOpenIcon, SheetIcon } from '@/components
 import type { MenuItem } from '@/components/ui/Menu';
 import { VersionLine } from '@/components/editor/UpdateBanner';
 import { FeedbackDialog } from '@/components/feedback/FeedbackDialog';
+import { WhatsNewDialog, WhatsNewOnLaunch } from '@/components/whatsNew/WhatsNewDialog';
 import { describeDocument } from '@/feedback/feedback';
 import { FileDashboard, type DocumentActions, type FolderActions } from './FileDashboard';
 import { readDashboardFolder, writeDashboardFolder } from './dashboard';
@@ -118,6 +119,8 @@ export function StartScreen({
   const [moving, setMoving] = useState<WorksheetSummary | undefined>();
   const [deletingFolder, setDeletingFolder] = useState<Folder | undefined>();
   const closeFeedback = useCallback(() => setFeedback(false), []);
+  const [whatsNew, setWhatsNew] = useState(false);
+  const closeWhatsNew = useCallback(() => setWhatsNew(false), []);
   const fileInput = useRef<HTMLInputElement>(null);
   const backupInput = useRef<HTMLInputElement>(null);
 
@@ -540,7 +543,10 @@ export function StartScreen({
           )}
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-line pt-3">
             <VersionLine />
-            <TextLink onClick={() => setFeedback(true)}>Send feedback</TextLink>
+            <span className="flex items-center gap-3">
+              <TextLink onClick={() => setWhatsNew(true)}>What’s new</TextLink>
+              <TextLink onClick={() => setFeedback(true)}>Send feedback</TextLink>
+            </span>
           </div>
         </div>
       </aside>
@@ -825,6 +831,8 @@ export function StartScreen({
       )}
 
       {feedback && <FeedbackDialog onClose={closeFeedback} document={describeDocument(undefined)} />}
+      {whatsNew && <WhatsNewDialog onClose={closeWhatsNew} />}
+      <WhatsNewOnLaunch ready={loaded} returningUser={summaries.length + trashRows.length > 0} />
     </div>
   );
 }
