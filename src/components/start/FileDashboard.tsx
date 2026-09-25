@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type DragEvent } from 'react';
+import { useMemo, useState } from 'react';
 import { IconButton, Segmented } from '@/components/ui';
 import { Menu, type MenuItem } from '@/components/ui/Menu';
 import { FolderIcon, PlusIcon, SheetIcon, TrashIcon } from '@/components/ui/icons';
@@ -27,6 +27,8 @@ import {
   type KindFilter,
   type SortOrder,
 } from './dashboard';
+import { dropTargetValue, type DropTarget } from './dashboardDrag';
+import { useDocumentDrag, type SourceProps } from './useDocumentDrag';
 
 /** What a saved document offers besides opening it. The screen owns the doing. */
 export interface DocumentActions {
@@ -49,9 +51,6 @@ export interface FolderActions {
   /** A card dropped on a folder, or on All documents (`undefined`: out of any folder). */
   drop: (docId: string, folderId: string | undefined) => void;
 }
-
-/** What a dragged card carries: its id, under a type no file drop can have. */
-const DRAG_TYPE = 'application/x-econ-worksheet-id';
 
 /**
  * The desk side of the start screen: every saved document, findable.
@@ -107,6 +106,10 @@ export function FileDashboard({
   const folderLabel = (summary: WorksheetSummary) =>
     folders && !openFolder ? folderOf(folders, summary.id)?.name : undefined;
 
+  // Pointer events, not HTML5 drag-and-drop — the desktop webview never delivers `drop`.
+  const drag = useDocumentDrag(showFolders ? folderActions?.drop : undefined);
+  const dragProps = (summary: WorksheetSummary) => drag.sourceProps(summary.id, summary.title);
+
   const chooseView = (next: DashboardView) => {
     setView(next);
     writeDashboardView(next);
@@ -156,6 +159,7 @@ export function FileDashboard({
             openId={openFolder?.id}
             onOpen={(id) => onFolderChange?.(id)}
             actions={folderActions}
+            over={drag.over}
           />
         )}
         <div className="min-w-0 flex-1">
@@ -253,7 +257,8 @@ export function FileDashboard({
                   summary={summary}
                   actions={actions}
                   folder={folderLabel(summary)}
-                  draggable={showFolders}
+                  drag={dragProps(summary)}
+                  dragging={drag.draggingId === summary.id}
                 />
               ))}
             </ul>
@@ -265,27 +270,22 @@ export function FileDashboard({
                   summary={summary}
                   actions={actions}
                   folder={folderLabel(summary)}
-                  draggable={showFolders}
+                  drag={dragProps(summary)}
+                  dragging={drag.draggingId === summary.id}
                 />
               ))}
             </ul>
           )}
         </div>
       </div>
+      {drag.ghost}
     </div>
   );
 }
 
-function dragStart(summary: WorksheetSummary) {
-  return (event: DragEvent) => {
-    event.dataTransfer.setData(DRAG_TYPE, summary.id);
-    event.dataTransfer.effectAllowed = 'move';
-  };
-}
-
 /**
  * The folder list: All documents, then each folder by name, with counts. Each row is a
- * drop target for a dragged card. A folder's ⋯ stays in the layout and is revealed by
+ * drop target for a dragged card (`data-folder-drop`, found under the pointer). A folder's ⋯ stays in the layout and is revealed by
  * opacity, never display, so reaching for it cannot move the row.
  */
 function FolderNav({
@@ -294,12 +294,15 @@ function FolderNav({
   openId,
   onOpen,
   actions,
+  over,
 }: {
   folders: FolderState;
   summaries: WorksheetSummary[];
   openId: string | undefined;
   onOpen: (folderId: string | undefined) => void;
   actions: FolderActions;
+  /** The row a dragged document is over. */
+  over: DropTarget | null;
 }) {
   const counts = useMemo(
     () => folderCounts(folders, summaries.map((summary) => summary.id)),
@@ -322,7 +325,8 @@ function FolderNav({
           count={summaries.length}
           active={openId === undefined}
           onOpen={() => onOpen(undefined)}
-          onDropDoc={(docId) => actions.drop(docId, undefined)}
+          dropValue={dropTargetValue(undefined)}
+          over={over !== null && over.folderId === undefined}
         />
         {list.map((folder) => (
           <FolderRow
@@ -332,7 +336,8 @@ function FolderNav({
             active={openId === folder.id}
             folder
             onOpen={() => onOpen(folder.id)}
-            onDropDoc={(docId) => actions.drop(docId, folder.id)}
+            dropValue={dropTargetValue(folder.id)}
+            over={over?.folderId === folder.id}
             menu={[
               { label: 'Rename…', onSelect: () => actions.rename(folder) },
               {
@@ -360,7 +365,8 @@ function FolderRow({
   active,
   folder = false,
   onOpen,
-  onDropDoc,
+  dropValue,
+  over,
   menu,
 }: {
   name: string;
@@ -368,13 +374,13 @@ function FolderRow({
   active: boolean;
   folder?: boolean;
   onOpen: () => void;
-  onDropDoc: (docId: string) => void;
+  dropValue: string;
+  over: boolean;
   menu?: MenuItem[];
 }) {
-  const [over, setOver] = useState(false);
-  const accepts = (event: DragEvent) => event.dataTransfer.types.includes(DRAG_TYPE);
   return (
     <li
+      data-folder-drop={dropValue}
       className={`group relative flex min-w-0 items-center rounded-lg transition-colors duration-150 ease-[var(--ease-out-soft)] md:w-full ${
         over
           ? 'bg-accent-soft ring-2 ring-inset ring-accent'
@@ -382,23 +388,6 @@ function FolderRow({
             ? 'bg-surface-hover'
             : 'hover:bg-surface-hover'
       }`}
-      onDragOver={(event) => {
-        if (!accepts(event)) return;
-        event.preventDefault();
-        event.dataTransfer.dropEffect = 'move';
-        setOver(true);
-      }}
-      onDragLeave={(event) => {
-        if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
-        setOver(false);
-      }}
-      onDrop={(event) => {
-        if (!accepts(event)) return;
-        event.preventDefault();
-        setOver(false);
-        const docId = event.dataTransfer.getData(DRAG_TYPE);
-        if (docId) onDropDoc(docId);
-      }}
     >
       <button
         type="button"
@@ -492,19 +481,21 @@ function DocumentCard({
   summary,
   actions,
   folder,
-  draggable,
+  drag,
+  dragging,
 }: {
   summary: WorksheetSummary;
   actions: DocumentActions;
   /** The folder it is filed in, shown in All documents only. */
   folder?: string;
-  draggable?: boolean;
+  /** Pointer handlers that drag it onto a folder; absent when there are no folders. */
+  drag?: SourceProps;
+  dragging?: boolean;
 }) {
   return (
     <li
-      className="group relative min-w-0"
-      draggable={draggable}
-      onDragStart={draggable ? dragStart(summary) : undefined}
+      className={`group relative min-w-0 transition-opacity duration-150 ${dragging ? 'opacity-40' : ''}`}
+      {...drag}
     >
       <button
         type="button"
@@ -558,18 +549,19 @@ function SavedRow({
   summary,
   actions,
   folder,
-  draggable,
+  drag,
+  dragging,
 }: {
   summary: WorksheetSummary;
   actions: DocumentActions;
   folder?: string;
-  draggable?: boolean;
+  drag?: SourceProps;
+  dragging?: boolean;
 }) {
   return (
     <li
-      className="group relative flex items-center gap-3 border-b border-line pr-1.5 last:border-b-0 transition-colors duration-150 ease-[var(--ease-out-soft)] hover:bg-surface-hover"
-      draggable={draggable}
-      onDragStart={draggable ? dragStart(summary) : undefined}
+      className={`group relative flex items-center gap-3 border-b border-line pr-1.5 last:border-b-0 transition-[background-color,opacity] duration-150 ease-[var(--ease-out-soft)] hover:bg-surface-hover ${dragging ? 'opacity-40' : ''}`}
+      {...drag}
     >
       {/* The same accent bar the Start rows use. Opacity, never display — a reveal
           that changes layout moves the row out from under the pointer reaching for it. */}

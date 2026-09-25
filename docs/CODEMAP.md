@@ -167,12 +167,15 @@ Invariants:
 
 - `src/components/start/FileDashboard.tsx:FileDashboard` — grid of first pages / list; search, kind, order
 - `src/components/start/dashboard.ts:visibleSummaries` · `:scopedSummaries` — folder scope, then filter and sort, pure
+- `src/components/start/dashboardDrag.ts:stepDrag` · `:parseDropTarget` — document→folder drag state machine, pure
+- `src/components/start/useDocumentDrag.tsx:useDocumentDrag` — pointer-event drag: capture, ghost, one `drop` on release
 - `src/components/start/TrashList.tsx:TrashList` — Restore / Delete forever / Empty Trash
 - `src/components/start/PageThumbnail.tsx:PageThumbnail` · `src/components/start/thumbnail.ts:loadThumbnail` — derived first page
 
 Invariants:
 - The gate lives in `src/app/EditorHost.tsx:EditorHost`, outside the editor — §The start screen.
 - A thumbnail is derived from the IR, never stored — §The file dashboard.
+- In-page drags use pointer events, never HTML5 drag-and-drop — §The file dashboard.
 
 ## components/editor — the chrome around the page
 

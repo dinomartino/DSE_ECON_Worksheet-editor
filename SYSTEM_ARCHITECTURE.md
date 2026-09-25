@@ -1725,10 +1725,17 @@ the way in; `NewWorksheetForm` asks the once-per-document decisions.
   order then work inside it. All documents shows every row, filed or not, and says which
   folder each is in. One level, no nesting. A card's menu has "Move to folder…" (a picker
   dialog — `Menu` has no submenus); a card or row also drags onto a folder or onto All
-  documents (out of any folder), under its own MIME type so the screen's file-drop never
-  fires. Deleting a folder with documents asks, then returns them to root; an empty one
+  documents (out of any folder). Deleting a folder with documents asks, then returns them to root; an empty one
   goes at once. Duplicating keeps the folder; a document started while a folder is open
   is filed there. The open folder is a per-viewer `localStorage` key like the view.
+- **In-page drags use pointer events, never HTML5 drag-and-drop.** Tauri's
+  `dragDropEnabled` (on by default, and needed for file drops) makes the desktop webview
+  swallow `dragover`/`drop`, so a `draggable` source works in Chrome and does nothing in
+  the app. The document→folder drag (`start/dashboardDrag.ts`, `start/useDocumentDrag.tsx`)
+  starts after 5px of travel so a click still opens, captures the pointer only then (from
+  the press, the release would retarget the click), finds the target by
+  `elementFromPoint` → `[data-folder-drop]`, and calls `drop` once on release; Escape,
+  blur or a release elsewhere cancel. Presses on ⋯ and inputs never start one.
 - **A thumbnail is derived, never stored** (`start/thumbnail.ts`). It reads the IR through
   the clipboard backend plus a small cover emitter, in a shadow root, scaled from true
   page size; loaded lazily (IntersectionObserver), two at a time, cached in memory by
@@ -2179,6 +2186,12 @@ it. A failed check is `failed`, never "up to date".
 
 **The start screen renders only after hydration** (`EditorHost`): it reads the platform
 and `localStorage` while rendering, which the web-built prerender cannot match.
+
+**`dragDropEnabled` stays on (the default).** Wry then answers every native drag itself
+(`tauri-runtime-wry` returns `true` from its handler), so WebKit/WebView2 deliver no
+HTML5 drag events — neither in-page drags nor files from Finder/Explorer, which arrive
+only as Tauri's `DragDrop` event. In-page drags therefore use pointer events (§The file
+dashboard); the start screen's HTML5 file-drop overlay works on the web only.
 
 **Printing** needs `core:webview:allow-print`: on macOS the shell replaces
 `window.print` with an async `plugin:webview|print` call (WKWebView has no print of its
