@@ -230,6 +230,8 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
         teacherOnly: true,
         text: part.answer!,
         indent: context.indents.partText,
+        // An answer keeps with the model diagram under it.
+        ...(part.answerDiagram ? { keepNext: true } : {}),
         edit: { kind: 'partAnswer', questionId: question.id, partId: part.id },
       });
     }
@@ -296,6 +298,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
           teacherOnly: true,
           text: subPart.answer!,
           indent: context.indents.subPartText,
+          ...(subPart.answerDiagram ? { keepNext: true } : {}),
           edit: {
             kind: 'subPartAnswer',
             questionId: question.id,
@@ -328,6 +331,8 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
         teacherOnly: true,
         text: part.answer!,
         indent: context.indents.partText,
+        // An answer keeps with the model diagram under it.
+        ...(part.answerDiagram ? { keepNext: true } : {}),
         edit: { kind: 'partAnswer', questionId: question.id, partId: part.id },
       });
     }
