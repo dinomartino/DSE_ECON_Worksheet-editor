@@ -15,18 +15,26 @@ import type {
   DiagramAreaX,
 } from '@/model/diagram';
 import {
-  AREA_PRESETS,
   REVENUE_PRESETS,
   areaPolygon,
   curveCrossing,
   freezeArea,
-  guessMarketCurves,
   guessRevenuePoints,
-  newPresetArea,
   revenueArea,
-  type AreaPreset,
-  type RevenuePreset,
 } from '@/model/diagramAreas';
+import {
+  ROLE_NAMES,
+  SHADE_GROUPS,
+  SHADE_PRESETS,
+  planPreset,
+  presetStatus,
+  roleCandidates,
+  type PresetRoles,
+  type PriceLevel,
+  type ShadeGroup,
+  type ShadePreset,
+  type ShadePresetId,
+} from '@/model/diagramPresets';
 import type { DiagramHandle } from '@/model/diagramDraw';
 import { shiftCurve } from '@/model/diagramShift';
 import { emptyBiText, plain } from '@/model/text';
@@ -61,7 +69,14 @@ const pointName = (diagram: Diagram, id: string) => {
 function anchorName(diagram: Diagram, ref: DiagramAnchorRef): string {
   if ('point' in ref) return pointName(diagram, ref.point);
   if ('cross' in ref) return `${curveName(diagram, ref.cross[0])} × ${curveName(diagram, ref.cross[1])}`;
-  return `${curveName(diagram, ref.on)} below ${anchorName(diagram, ref.x)}`;
+  // Read loosely, so `{ on, y }` (a curve at a level) and `{ x, y }` name themselves too.
+  const loose = ref as { on?: string; x?: DiagramAnchorRef | number; y?: DiagramAnchorRef | number };
+  const part = (value: DiagramAnchorRef | number) =>
+    typeof value === 'number' ? `${Math.round(value * 100)}%` : anchorName(diagram, value);
+  if (loose.on !== undefined && loose.x !== undefined) return `${curveName(diagram, loose.on)} below ${part(loose.x)}`;
+  if (loose.on !== undefined && loose.y !== undefined) return `${curveName(diagram, loose.on)} at ${part(loose.y)}`;
+  if (loose.x !== undefined && loose.y !== undefined) return `${part(loose.x)} across, ${part(loose.y)} up`;
+  return 'a point';
 }
 
 /** A stable key for a reference, blind to the order of a crossing's two curves. */
@@ -113,6 +128,7 @@ function xOptions(diagram: Diagram, current: DiagramAreaX) {
     { value: 0, label: 'The y-axis' },
     ...diagram.points.map((p) => ({ value: { point: p.id }, label: `At ${pointName(diagram, p.id)}` })),
     ...crossings(diagram).map((ref) => ({ value: ref, label: `At ${anchorName(diagram, ref)}` })),
+    { value: 1, label: 'The right edge' },
   ];
   if (!options.some((o) => refKey(o.value) === refKey(current))) {
     options.push({
@@ -160,9 +176,172 @@ function RefSelect<T>({
   );
 }
 
+/** A curve, a point's level or a flat line's, named as the teacher sees it. */
+function levelName(diagram: Diagram, value: string | PriceLevel | null): string {
+  if (value === null) return 'None';
+  if (typeof value === 'string') return curveName(diagram, value);
+  if ('curve' in value) return curveName(diagram, value.curve);
+  return `Level of ${anchorName(diagram, value.level)}`;
+}
+
+/** The roles a preset needs, each a select over its candidates, then Add. */
+function RolePicker({
+  diagram,
+  preset,
+  roles,
+  onRoles,
+  onAdd,
+  onCancel,
+}: {
+  diagram: Diagram;
+  preset: ShadePreset;
+  roles: PresetRoles;
+  onRoles: (roles: PresetRoles) => void;
+  onAdd: () => void;
+  onCancel: () => void;
+}) {
+  const plan = planPreset(diagram, preset, roles, () => 'probe');
+  return (
+    <div className="mx-1 mb-1 space-y-1.5 rounded-lg border border-line bg-surface p-2">
+      {preset.roles.map(({ role, optional, name }) => {
+        const options: Array<{ value: string | PriceLevel | null; label: string }> = roleCandidates(
+          diagram,
+          role,
+        ).map((value) => ({ value, label: levelName(diagram, value) }));
+        if (optional) options.unshift({ value: null, label: 'None' });
+        const value = roles[role] ?? null;
+        if (!options.some((o) => refKey(o.value) === refKey(value))) {
+          options.unshift({ value, label: levelName(diagram, value) });
+        }
+        return (
+          <RefSelect
+            key={role}
+            label={name ?? ROLE_NAMES[role]}
+            value={value}
+            options={options}
+            onChange={(next) => onRoles({ ...roles, [role]: next ?? undefined })}
+          />
+        );
+      })}
+      {'why' in plan && <p className="text-[11px] text-ink-subtle">{plan.why}</p>}
+      <div className="flex justify-end gap-1">
+        <Button size="sm" variant="subtle" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button size="sm" disabled={'why' in plan} onClick={onAdd}>
+          Add
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+type Band = NonNullable<DiagramArea['band']>;
+
+/** A first custom band: the first curve down to the x-axis, out to its first crossing. */
+function defaultBand(diagram: Diagram): Band {
+  const first = diagram.curves[0];
+  const to = crossings(diagram)[0] ?? 1;
+  return { edges: [first ? { curve: first.id } : { level: 0.5 }, { level: 0 }], from: 0, to };
+}
+
+/** "Between two edges…": pick both edges and the x-range, see whether it draws, add. */
+function BetweenBuilder({
+  diagram,
+  onAdd,
+  onCancel,
+}: {
+  diagram: Diagram;
+  onAdd: (band: Band) => void;
+  onCancel: () => void;
+}) {
+  const [band, setBand] = useState<Band>(() => defaultBand(diagram));
+  const drawable = Boolean(areaPolygon(diagram, { id: 'probe', band }));
+  return (
+    <div className="mx-1 mb-1 space-y-1.5 rounded-lg border border-line bg-surface p-2">
+      <RefSelect
+        label="Edge A"
+        value={band.edges[0]}
+        options={edgeOptions(diagram, band.edges[0])}
+        onChange={(edge) => setBand({ ...band, edges: [edge, band.edges[1]] })}
+      />
+      <RefSelect
+        label="Edge B"
+        value={band.edges[1]}
+        options={edgeOptions(diagram, band.edges[1])}
+        onChange={(edge) => setBand({ ...band, edges: [band.edges[0], edge] })}
+      />
+      <RefSelect
+        label="From"
+        value={band.from}
+        options={xOptions(diagram, band.from)}
+        onChange={(from) => setBand({ ...band, from })}
+      />
+      <RefSelect
+        label="To"
+        value={band.to}
+        options={xOptions(diagram, band.to)}
+        onChange={(to) => setBand({ ...band, to })}
+      />
+      {!drawable && (
+        <p className="text-[11px] text-ink-subtle">Nothing to shade between those — widen the range.</p>
+      )}
+      <div className="flex justify-end gap-1">
+        <Button size="sm" variant="subtle" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button size="sm" disabled={!drawable} onClick={() => onAdd(band)}>
+          Add
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** The group a diagram most likely wants: the most specific one with something to add. */
+function suggestGroup(diagram: Diagram): ShadeGroup {
+  const order: ShadeGroup[] = ['monopoly', 'trade', 'tax', 'control'];
+  return (
+    order.find((g) => SHADE_PRESETS.some((p) => p.group === g && !presetStatus(diagram, p).blocked)) ??
+    'surplus'
+  );
+}
+
+const ITEM_CLASS =
+  'flex w-full flex-col items-start rounded-lg px-2.5 py-1.5 text-left transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent';
+
+function MenuItem({
+  name,
+  hint,
+  disabled,
+  expanded,
+  onClick,
+}: {
+  name: string;
+  hint?: string;
+  disabled?: boolean;
+  expanded?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      aria-expanded={expanded}
+      disabled={disabled}
+      onClick={onClick}
+      className={ITEM_CLASS}
+    >
+      <span className="text-[13px] text-ink">{name}</span>
+      {hint && <span className="text-[11px] leading-snug text-ink-subtle">{hint}</span>}
+    </button>
+  );
+}
+
 /**
- * "Shade ▾" in the canvas header: the four welfare presets, built from the curves the
- * diagram already has, plus a free shape. A preset that cannot be built says why.
+ * "Shade ▾" in the canvas header: every welfare and revenue area the marking schemes
+ * name, grouped, built from the curves the diagram already has. When a part could be
+ * played by more than one curve, the item opens a picker instead of guessing.
  */
 export function ShadeMenu({
   diagram,
@@ -174,10 +353,13 @@ export function ShadeMenu({
   diagram: Diagram;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAdd: (area: DiagramArea) => void;
+  /** One or more areas from one menu item (the tariff DWL adds two). */
+  onAdd: (areas: DiagramArea[]) => void;
   newId: () => string;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const [chosenGroup, setGroup] = useState<ShadeGroup | null>(null);
+  const [picking, setPicking] = useState<{ id: ShadePresetId | 'between'; roles: PresetRoles } | null>(null);
   useEffect(() => {
     if (!open) return;
     const onDown = (event: PointerEvent) => {
@@ -187,16 +369,19 @@ export function ShadeMenu({
     return () => document.removeEventListener('pointerdown', onDown);
   }, [open, onOpenChange]);
 
-  const curves = guessMarketCurves(diagram);
-  const items = AREA_PRESETS.map((preset) => {
-    const area = newPresetArea(preset.id, curves, 'probe');
-    const why = !curves.demand || !curves.supply
-      ? 'Needs a falling demand and a rising supply curve'
-      : preset.needsTax && !curves.taxed
-        ? 'Needs a taxed supply curve — shift S up first'
-        : undefined;
-    return { preset, available: Boolean(area), why };
-  });
+  const group = chosenGroup ?? (open ? suggestGroup(diagram) : 'surplus');
+  const close = () => {
+    setPicking(null);
+    onOpenChange(false);
+  };
+  const finish = (areas: DiagramArea[]) => {
+    if (areas.length > 0) onAdd(areas);
+    close();
+  };
+  const addPreset = (preset: ShadePreset, roles: PresetRoles) => {
+    const plan = planPreset(diagram, preset, roles, newId);
+    if ('areas' in plan) finish(plan.areas);
+  };
 
   const points = guessRevenuePoints(diagram);
   const revenueItems = REVENUE_PRESETS.map((preset) => {
@@ -214,18 +399,11 @@ export function ShadeMenu({
     return { preset, available: Boolean(area) && !empty, why };
   });
 
-  const add = (preset: AreaPreset) => {
-    const area = newPresetArea(preset, curves, newId());
-    if (area) onAdd(area);
-    onOpenChange(false);
-  };
-  const addRevenue = (preset: RevenuePreset) => {
-    const area = revenueArea(preset, points, newId());
-    if (area) onAdd(area);
-    onOpenChange(false);
-  };
-  const itemClass =
-    'flex w-full flex-col items-start rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent';
+  const groupEmpty = (id: ShadeGroup) =>
+    id === 'revenue'
+      ? revenueItems.every((item) => !item.available)
+      : id !== 'custom' &&
+        SHADE_PRESETS.filter((p) => p.group === id).every((p) => presetStatus(diagram, p).blocked);
 
   return (
     <div ref={rootRef} className="relative">
@@ -233,8 +411,8 @@ export function ShadeMenu({
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
-        title="Shade an area — welfare (CS, PS, DWL, tax revenue) or revenue (TR, gain, loss)"
-        onClick={() => onOpenChange(!open)}
+        title="Shade an area — surplus, tax and subsidy, price controls, trade, monopoly or revenue"
+        onClick={() => (open ? close() : onOpenChange(true))}
         className={
           'flex h-11 items-center gap-1.5 rounded-lg border px-3 text-base transition-colors ' +
           (open
@@ -248,57 +426,115 @@ export function ShadeMenu({
       {open && (
         <div
           role="menu"
-          className="absolute left-0 top-full z-20 mt-1.5 w-72 rounded-xl border border-line bg-surface-raised p-1 shadow-xl"
+          className="absolute left-0 top-full z-20 mt-1.5 flex w-[27rem] rounded-xl border border-line bg-surface-raised p-1 shadow-xl"
         >
-          {items.map(({ preset, available, why }) => (
-            <button
-              key={preset.id}
-              type="button"
-              role="menuitem"
-              disabled={!available}
-              onClick={() => add(preset.id)}
-              className={itemClass}
-            >
-              <span className="text-[13px] text-ink">{preset.name}</span>
-              {why && <span className="text-[11px] text-ink-subtle">{why}</span>}
-            </button>
-          ))}
-          <div className="my-1 h-px bg-line" />
-          {revenueItems.map(({ preset, available, why }) => (
-            <button
-              key={preset.id}
-              type="button"
-              role="menuitem"
-              disabled={!available}
-              onClick={() => addRevenue(preset.id)}
-              className={itemClass}
-            >
-              <span className="text-[13px] text-ink">{preset.name}</span>
-              {why && <span className="text-[11px] text-ink-subtle">{why}</span>}
-            </button>
-          ))}
-          <div className="my-1 h-px bg-line" />
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              onAdd({
-                id: newId(),
-                vertices: [
-                  { x: 0.3, y: 0.25 },
-                  { x: 0.5, y: 0.25 },
-                  { x: 0.5, y: 0.4 },
-                  { x: 0.3, y: 0.4 },
-                ],
-                label: emptyBiText(),
-              });
-              onOpenChange(false);
-            }}
-            className="flex w-full flex-col items-start rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-surface-hover"
+          <div
+            role="tablist"
+            aria-label="Kinds of area"
+            aria-orientation="vertical"
+            className="flex w-32 shrink-0 flex-col gap-0.5 border-r border-line pr-1"
           >
-            <span className="text-[13px] text-ink">Free shape</span>
-            <span className="text-[11px] text-ink-subtle">Drag its corners anywhere</span>
-          </button>
+            {SHADE_GROUPS.map(({ id, name }) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={id === group}
+                onClick={() => {
+                  setGroup(id);
+                  setPicking(null);
+                }}
+                className={
+                  'rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors ' +
+                  (id === group
+                    ? 'bg-accent-soft font-medium text-accent-ink'
+                    : groupEmpty(id)
+                      ? 'text-ink-subtle hover:bg-surface-hover'
+                      : 'text-ink hover:bg-surface-hover')
+                }
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+          <div role="tabpanel" className="max-h-[min(30rem,70vh)] min-w-0 flex-1 overflow-y-auto pl-1">
+            {group === 'revenue' &&
+              revenueItems.map(({ preset, available, why }) => (
+                <MenuItem
+                  key={preset.id}
+                  name={preset.name}
+                  hint={why}
+                  disabled={!available}
+                  onClick={() => {
+                    const area = revenueArea(preset.id, points, newId());
+                    finish(area ? [area] : []);
+                  }}
+                />
+              ))}
+            {group === 'custom' && (
+              <>
+                <MenuItem
+                  name="Between two edges…"
+                  hint="Any two curves or levels, across any range"
+                  expanded={picking?.id === 'between'}
+                  onClick={() => setPicking(picking?.id === 'between' ? null : { id: 'between', roles: {} })}
+                />
+                {picking?.id === 'between' && (
+                  <BetweenBuilder
+                    diagram={diagram}
+                    onCancel={() => setPicking(null)}
+                    onAdd={(band) => finish([{ id: newId(), band, label: emptyBiText(), fill: 'hatch' }])}
+                  />
+                )}
+                <MenuItem
+                  name="Free shape"
+                  hint="Drag its corners anywhere"
+                  onClick={() =>
+                    finish([
+                      {
+                        id: newId(),
+                        vertices: [
+                          { x: 0.3, y: 0.25 },
+                          { x: 0.5, y: 0.25 },
+                          { x: 0.5, y: 0.4 },
+                          { x: 0.3, y: 0.4 },
+                        ],
+                        label: emptyBiText(),
+                      },
+                    ])
+                  }
+                />
+              </>
+            )}
+            {SHADE_PRESETS.filter((p) => p.group === group).map((preset) => {
+              const status = presetStatus(diagram, preset);
+              const expanded = picking?.id === preset.id;
+              return (
+                <div key={preset.id}>
+                  <MenuItem
+                    name={preset.name}
+                    hint={status.pick ? (expanded ? undefined : (status.why ?? 'Choose the curves…')) : status.why}
+                    disabled={status.blocked}
+                    expanded={status.pick ? expanded : undefined}
+                    onClick={() => {
+                      if (!status.pick) addPreset(preset, status.roles);
+                      else setPicking(expanded ? null : { id: preset.id, roles: status.roles });
+                    }}
+                  />
+                  {expanded && picking && (
+                    <RolePicker
+                      diagram={diagram}
+                      preset={preset}
+                      roles={picking.roles}
+                      onRoles={(roles) => setPicking({ id: preset.id, roles })}
+                      onCancel={() => setPicking(null)}
+                      onAdd={() => addPreset(preset, picking.roles)}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
@@ -592,6 +828,14 @@ export function AreaInspector({
               options={xOptions(diagram, band.to)}
               onChange={(to) => patch({ ...area, band: { ...band, to } })}
             />
+            {band.cap && (
+              <RefSelect
+                label="Trimmed by"
+                value={band.cap}
+                options={edgeOptions(diagram, band.cap)}
+                onChange={(cap) => patch({ ...area, band: { ...band, cap } })}
+              />
+            )}
             <p className="text-[11px] text-ink-muted">
               The shading follows these curves and points when they move.
             </p>

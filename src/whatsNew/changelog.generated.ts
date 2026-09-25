@@ -13,6 +13,13 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 ## Unreleased
 
 ### Added
+- **Every welfare area the marking schemes name, one click from Shade ▾**: buyers' and
+  sellers' burden, CS loss under a tax, consumer and producer benefit of a subsidy, DWL of
+  a tax, subsidy, price control, tariff or monopoly, TSS loss, revenue or wage bill at a
+  fixed price, CS + / − under a ceiling, tariff revenue, PS gain, CS loss and quota rent.
+  Each is hatched apart from its neighbours, labelled in both languages, and follows the
+  curves when you drag them. The menu is grouped, asks which curve is which when it
+  cannot tell, and "Between two edges…" shades any region between two curves or levels.
 - **Marking scheme in HKEAA notation** on structured question parts: marking points with
   marks, \`/\` alternatives, "any N @ 1", \`max: N\`, "mark the FIRST N only", OR routes,
   level descriptors and Effective Communication marks. Prints in the teacher version
