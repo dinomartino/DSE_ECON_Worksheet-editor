@@ -47,6 +47,9 @@ Words this repository uses in its own way. One line each, with where the thing l
   primitive from answer space. `src/render/ir.ts:AnswerLinesNode`
 - **Graph space** — blank axes (optional grid) a student draws a diagram on; a part's
   `answerGraph`, whole 12pt lines tall, one PNG in the `.docx`. `src/render/ir.ts:AnswerGraphNode`
+- **Model answer diagram** — a teacher-only `DiagramBlock` on a leaf's `answerDiagram`: the
+  answer to "draw a diagram", printed after the answer text and in the answer key.
+  `src/components/editor/AnswerDiagramRow.tsx:AnswerDiagramRow`
 - **Answer space** — the QAB's dotted lines (dotted underline over a tab, 22.1pt pitch).
   `src/render/ir.ts:AnswerSpaceNode`
 - **Fill answer space** — an `answerSpace` whose `lines` is the paginator's *output*, not

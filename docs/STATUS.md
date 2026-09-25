@@ -35,7 +35,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Last verified
 
-- `npm test` — 1569 tests, ~3s. `cargo check` in `src-tauri` clean. Green. `npm run build` green; `npm run samples` exports.
+- `npm test` — 1581 tests, ~3s. `cargo check` in `src-tauri` clean. Green. `npm run build` green; `npm run samples` exports.
 - `npm run typecheck` — clean.
 - `npm run lint` — 44 pre-existing problems (3 errors, 41 warnings) in `Preview.tsx` and
   `InlineEditable.tsx`. Not a regression; do not "fix" by rewriting those files.
@@ -50,12 +50,14 @@ off the bottom.** It is the first thing a fresh session reads — then
   a second): Export → PDF → Save PDF… on a multi-page document (page count = sheets,
   size = paper; cancel keeps the dialog open); drag a card onto a folder; drop a `.json`
   from `~/Downloads` onto the start screen; the newer-version notice's "Check for updates".
-- **Print PDF doubled "(N marks)"** — fixed 2026-09-25 (a print rule forced the hidden
-  space-reserving copy visible). LQ cover diagonal is now an SVG line (WebKit printed
-  the gradient as a black box).
-- **Older builds do not draw revenue gain/loss areas** (they keep them in the file). The
+- **Older builds do not draw revenue gain/loss areas or model answer diagrams** (they keep
+  them in the file). The
   newer-version notice covers a file saved by this build and opened in ≤0.3.0 only once
   the schema version is bumped — it is not, so the areas silently do not show there.
+- **Model answer diagram** (`feature/answer-diagram`): no alt text / title field for it;
+  Duplicate question keeps block ids (pre-existing, stem diagrams too), so a copy's figure
+  shares the original's id. A question taller than the rest of sheet 1 starts on sheet 2
+  in the preview while Word starts it on page 1 (pre-existing; seen with stem diagrams).
 - **Combined answer key uses the current document's page setup and font size** for every
   part; a 10pt Paper 2 key inside an 11pt Paper 1 prints at 11pt.
 - **`scripts/cover-verify.mjs` / `lq-verify.mjs` not re-run** since B3/B4 (lq-verify passed
@@ -82,6 +84,8 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
+- **2026-09-25 (night)** — Model answer diagram on a long-question leaf: teacher version,
+  answer key (its `.docx` now embeds pictures), same diagram tools. Browser-verified.
 - **2026-09-25 (evening)** — Leader arrow geometry; hatch patterns + revenue areas; desktop
   PDF file export (native, per platform); print doubled-marks fix.
 - **2026-09-25 (later)** — Export button unified + desktop print permission; combined
