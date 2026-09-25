@@ -26,14 +26,16 @@ off the bottom.** It is the first thing a fresh session reads — then
   `diagramSpans.ts`, `render/diagramSpan.ts`); 19 welfare presets + grouped Shade menu
   (`src/model/diagramPresets.ts`); 47 templates grouped by topic
   (`diagramTemplatesMarket.ts` · `Macro` · `Trade`, `scripts/template-gallery.mjs`); model
-  answer diagram on LQ leaves. **Next:** retrofit templates onto anchors/derived/spans/
-  presets, coverage matrix vs §8 checklist, demo storyboard; browser pass of the merged whole.
+  answer diagram on LQ leaves. Templates retrofitted onto the relations (69 templates,
+  `derive.shift` for shifted copies); `docs/Diagram_Requirements/COVERAGE.md`: 145 covered,
+  11 partial, 0 uncovered. Demo: `npm run demo:diagrams` → `demo-media/diagrams/` (1:57,
+  17 stills). **Next:** teacher-run browser pass; Word check of a retrofitted `.docx`.
 - **Feature backlog** — `docs/IDEAS.md`, ranked from the 2026-09-24 competitor research in
   `docs/research/2026-09-competitive/`. Pick the next initiative from there.
 
 ## Last verified
 
-- `npm test` — 1671 tests, ~3s. `cargo check` in `src-tauri` clean. Green. `npm run build` green; `npm run samples` exports.
+- `npm test` — 1691 tests, ~3s. `cargo check` in `src-tauri` clean. Green. `npm run build` green; `npm run samples` exports.
 - `npm run typecheck` — clean.
 - `npm run lint` — 44 pre-existing problems (3 errors, 41 warnings) in `Preview.tsx` and
   `InlineEditable.tsx`. Not a regression; do not "fix" by rewriting those files.
@@ -42,6 +44,10 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Open threads and known gaps
 
+- **Diagram relations, loose ends:** the canvas "Shift" button still makes a plain copy
+  (templates use a following `shift` derive); a dragged PPF point is not held on the
+  frontier; `gap-narrows` is crowded in bilingual mode; presets cannot use a flat D; the
+  import-quota step does not follow Pw. Partial rows are listed in `COVERAGE.md`.
 - **Pie hatch/dot patterns print greyish** — Chrome rasterises `<pattern>` tiles in the
   PDF. Shaded axis areas avoid this by drawing hatch as clipped lines; the pie could too.
 - **Desktop checks owed to the user** (their `tauri dev` was running, agents did not start
