@@ -86,6 +86,8 @@ export function deriveName(diagram: Diagram, derive: DiagramCurveDerive): string
       return `MR of ${curveName(diagram, derive.of)}`;
     case 'parallel':
       return `Parallel to ${curveName(diagram, derive.to)} through ${placeName(diagram, derive.through)}`;
+    case 'shift':
+      return `${curveName(diagram, derive.of)}, shifted`;
     case 'tangent':
       return `Tangent to ${curveName(diagram, derive.to)} at ${placeName(diagram, derive.at)}`;
     case 'level':

@@ -562,10 +562,39 @@ function supplyPair(diagram: Diagram, demand: DiagramCurve | undefined): [string
 }
 
 /**
+ * The roles the relations themselves name: S₁ drawn as a shift of S (supply, shifted),
+ * MR derived from D (demand, mr). Only an unshared pair counts.
+ */
+export function relationRoles(diagram: Diagram): PresetRoles {
+  const rising = new Set(diagram.curves.filter((c) => curveSlopeSign(c) > 0).map((c) => c.id));
+  const shifts = diagram.curves.flatMap((c) => {
+    const from = c.derive?.kind === 'shift' ? c.derive.of : c.derive?.kind === 'parallel' ? c.derive.to : null;
+    return from && rising.has(c.id) && rising.has(from) ? [{ supply: from, shifted: c.id }] : [];
+  });
+  const mrs = diagram.curves.flatMap((c) => (c.derive?.kind === 'marginalRevenue' ? [{ demand: c.derive.of, mr: c.id }] : []));
+  return { ...(shifts.length === 1 ? shifts[0] : {}), ...(mrs.length === 1 ? mrs[0] : {}) };
+}
+
+/**
  * A best guess at every role a preset needs. The originals keep `guessMarketCurves`;
- * the rest read drawing order and labels. The picker re-picks any of it.
+ * the rest read drawing order and labels; a relation (S₁ shifted from S) wins over both.
+ * The picker re-picks any of it.
  */
 export function guessRoles(diagram: Diagram, preset: ShadePreset): PresetRoles {
+  const named = relationRoles(diagram);
+  const guess = guessRolesByShape(diagram, preset);
+  if (named.supply && preset.roles.some((r) => r.role === 'supply')) {
+    guess.supply = named.supply;
+    if (preset.roles.some((r) => r.role === 'shifted')) guess.shifted = named.shifted;
+  }
+  if (named.mr && preset.roles.some((r) => r.role === 'mr')) {
+    guess.demand = named.demand;
+    guess.mr = named.mr;
+  }
+  return guess;
+}
+
+function guessRolesByShape(diagram: Diagram, preset: ShadePreset): PresetRoles {
   if (AREA_PRESETS.some((p) => p.id === preset.id)) {
     const guess = guessMarketCurves(diagram);
     return { demand: guess.demand, supply: guess.supply, shifted: guess.taxed };
@@ -609,9 +638,22 @@ export function guessRoles(diagram: Diagram, preset: ShadePreset): PresetRoles {
   return roles;
 }
 
-/** Whether the teacher should pick: some required role has more than one candidate. */
+const LEVEL_ROLES: PresetRole[] = ['control', 'world', 'raised'];
+
+/**
+ * Whether the teacher should pick: some required role has more than one candidate. A
+ * role a relation names is settled; price roles are settled when the drawn lines are
+ * exactly as many as the preset needs (points only stand in for missing lines).
+ */
 export function presetIsAmbiguous(diagram: Diagram, preset: ShadePreset): boolean {
-  return preset.roles.some((r) => !r.optional && roleCandidates(diagram, r.role).length > 1);
+  const named = relationRoles(diagram);
+  const needed = preset.roles.filter((r) => !r.optional && LEVEL_ROLES.includes(r.role)).length;
+  const lines = diagram.curves.filter(isFlatCurve).length;
+  return preset.roles.some((r) => {
+    if (r.optional || named[r.role]) return false;
+    if (LEVEL_ROLES.includes(r.role) && lines > 0) return lines !== needed;
+    return roleCandidates(diagram, r.role).length > 1;
+  });
 }
 
 /** The areas a preset adds with these roles, ids from `newId`, or why it cannot. */

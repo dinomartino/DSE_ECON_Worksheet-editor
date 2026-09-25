@@ -1,5 +1,8 @@
 import type { Diagram, DiagramCurve, DiagramPoint, DiagramPointMark } from './diagram';
 import { curveCrossing, curveSlopeSign } from './diagramAreas';
+import { translateCurvePoints } from './diagramAnchors';
+
+export { translateCurvePoints };
 import type { BiText, InlineRun } from './types';
 
 /**
@@ -14,58 +17,6 @@ export interface ShiftResult {
   curveId: string;
   /** The new equilibrium, when the shifted curve meets a counterpart. */
   pointId?: string;
-}
-
-/** Liang–Barsky: the part of segment a→b inside the unit square, or null. */
-function clipSegment(a: DiagramPoint, b: DiagramPoint): [DiagramPoint, DiagramPoint] | null {
-  let t0 = 0;
-  let t1 = 1;
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const edges: Array<[number, number]> = [
-    [-dx, a.x],
-    [dx, 1 - a.x],
-    [-dy, a.y],
-    [dy, 1 - a.y],
-  ];
-  for (const [p, q] of edges) {
-    if (Math.abs(p) < 1e-12) {
-      if (q < 0) return null;
-      continue;
-    }
-    const r = q / p;
-    if (p < 0) t0 = Math.max(t0, r);
-    else t1 = Math.min(t1, r);
-    if (t0 > t1) return null;
-  }
-  const at = (t: number) => ({ x: a.x + t * dx, y: a.y + t * dy });
-  return [at(t0), at(t1)];
-}
-
-/**
- * The polyline translated by `delta` and trimmed to the plot — trimmed, not clamped, so
- * the slope survives a shift that pushes an end off the edge. Keeps the first stretch
- * that stays inside; null if nothing does.
- */
-export function translateCurvePoints(points: DiagramPoint[], delta: DiagramPoint): DiagramPoint[] | null {
-  const moved = points.map((p) => ({ x: p.x + delta.x, y: p.y + delta.y }));
-  const out: DiagramPoint[] = [];
-  for (let i = 0; i < moved.length - 1; i += 1) {
-    const clipped = clipSegment(moved[i], moved[i + 1]);
-    if (!clipped) {
-      if (out.length > 0) break;
-      continue;
-    }
-    const [start, end] = clipped;
-    if (out.length === 0) out.push(start);
-    else if (Math.hypot(start.x - out[out.length - 1].x, start.y - out[out.length - 1].y) > 1e-9) break;
-    out.push(end);
-    // Left the square mid-segment: the stretch is over.
-    if (end !== moved[i + 1] && Math.hypot(end.x - moved[i + 1].x, end.y - moved[i + 1].y) > 1e-9) break;
-  }
-  return out.length >= 2 && Math.hypot(out[0].x - out[out.length - 1].x, out[0].y - out[out.length - 1].y) > 1e-6
-    ? out
-    : null;
 }
 
 /** The trailing subscript number of a label side ("D₁" → 1), or null. */

@@ -160,6 +160,72 @@ function lineAcrossPlot(p: DiagramPoint, dir: DiagramPoint): DiagramPoint[] | nu
   return clipToPlot({ x: p.x - dir.x * k, y: p.y - dir.y * k }, { x: p.x + dir.x * k, y: p.y + dir.y * k });
 }
 
+/** Liang–Barsky without the clamp: segment a→b's stretch inside the unit square, or null. */
+function clipSegment(a: DiagramPoint, b: DiagramPoint): [DiagramPoint, DiagramPoint] | null {
+  let t0 = 0;
+  let t1 = 1;
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const edges: Array<[number, number]> = [
+    [-dx, a.x],
+    [dx, 1 - a.x],
+    [-dy, a.y],
+    [dy, 1 - a.y],
+  ];
+  for (const [p, q] of edges) {
+    if (Math.abs(p) < 1e-12) {
+      if (q < 0) return null;
+      continue;
+    }
+    const r = q / p;
+    if (p < 0) t0 = Math.max(t0, r);
+    else t1 = Math.min(t1, r);
+    if (t0 > t1) return null;
+  }
+  const at = (t: number) => ({ x: a.x + t * dx, y: a.y + t * dy });
+  return [at(t0), at(t1)];
+}
+
+/**
+ * The polyline translated by `delta` and trimmed to the plot — trimmed, not clamped, so
+ * the slope survives a shift that pushes an end off the edge. Keeps the first stretch
+ * that stays inside; null if nothing does.
+ */
+export function translateCurvePoints(points: DiagramPoint[], delta: DiagramPoint): DiagramPoint[] | null {
+  const moved = points.map((p) => ({ x: p.x + delta.x, y: p.y + delta.y }));
+  const out: DiagramPoint[] = [];
+  for (let i = 0; i < moved.length - 1; i += 1) {
+    const clipped = clipSegment(moved[i], moved[i + 1]);
+    if (!clipped) {
+      if (out.length > 0) break;
+      continue;
+    }
+    const [start, end] = clipped;
+    if (out.length === 0) out.push(start);
+    else if (Math.hypot(start.x - out[out.length - 1].x, start.y - out[out.length - 1].y) > 1e-9) break;
+    out.push(end);
+    // Left the square mid-segment: the stretch is over.
+    if (end !== moved[i + 1] && Math.hypot(end.x - moved[i + 1].x, end.y - moved[i + 1].y) > 1e-9) break;
+  }
+  return out.length >= 2 && Math.hypot(out[0].x - out[out.length - 1].x, out[0].y - out[out.length - 1].y) > 1e-6
+    ? out
+    : null;
+}
+
+/** The part of a straight segment between heights `lo` and `hi`, or null (a flat one is kept whole). */
+function withinHeights(line: DiagramPoint[], [lo, hi]: [number, number]): DiagramPoint[] | null {
+  const [a, b] = line;
+  const dy = b.y - a.y;
+  if (Math.abs(dy) < EPS) return line;
+  const low = Math.min(lo, hi);
+  const high = Math.max(lo, hi);
+  const t0 = Math.max(0, Math.min((low - a.y) / dy, (high - a.y) / dy));
+  const t1 = Math.min(1, Math.max((low - a.y) / dy, (high - a.y) / dy));
+  if (t1 - t0 < 1e-9) return null;
+  const at = (t: number) => ({ x: a.x + t * (b.x - a.x), y: a.y + t * dy });
+  return [at(t0), at(t1)];
+}
+
 /** A place that is a fixed unit point rather than a reference (a composite of numbers is one). */
 export function isFixedPlace(place: DiagramPlace): place is DiagramPoint {
   const loose = place as { x?: unknown; y?: unknown };
@@ -332,7 +398,12 @@ function createResolver(diagram: Diagram, aspect: number): Resolver {
         if (!source || !through || source.points.length < 2) return null;
         const a = source.points[0];
         const z = source.points[source.points.length - 1];
-        return lineAcrossPlot(through, { x: z.x - a.x, y: z.y - a.y });
+        const line = lineAcrossPlot(through, { x: z.x - a.x, y: z.y - a.y });
+        return line && derive.ys ? withinHeights(line, derive.ys) : line;
+      }
+      case 'shift': {
+        const source = curve(derive.of);
+        return source ? translateCurvePoints(source.points, derive.by) : null;
       }
       case 'tangent': {
         const source = curve(derive.to);
@@ -434,6 +505,8 @@ export function deriveReferences(derive: DiagramCurveDerive): string[] {
       return [derive.of];
     case 'parallel':
       return [derive.to, ...placeReferences(derive.through)];
+    case 'shift':
+      return [derive.of];
     case 'tangent':
       return [derive.to, ...placeReferences(derive.at)];
     case 'level':
@@ -469,6 +542,8 @@ export function renameDerive(derive: DiagramCurveDerive, renamed: Map<string, st
       return { ...derive, of: id(derive.of) };
     case 'parallel':
       return { ...derive, to: id(derive.to), through: renamePlace(derive.through, renamed) };
+    case 'shift':
+      return { ...derive, of: id(derive.of), by: { ...derive.by } };
     case 'tangent':
       return { ...derive, to: id(derive.to), at: renamePlace(derive.at, renamed) };
     case 'level':
