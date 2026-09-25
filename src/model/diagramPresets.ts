@@ -597,7 +597,9 @@ export function guessRoles(diagram: Diagram, preset: ShadePreset): PresetRoles {
     // Pw is the lowest line, the raised price the next above it.
     const e0 = demand && supply ? at(diagram, cross(demand.id, supply)) : null;
     const x = e0?.x ?? 0.5;
-    const sorted = levels
+    // Drawn price lines name the prices; points are the fallback when there are too few lines.
+    const lines = levels.filter((l) => 'curve' in l);
+    const sorted = (lines.length >= 2 ? lines : levels)
       .map((l) => ({ l, y: levelHeight(diagram, l, x) }))
       .filter((e): e is { l: PriceLevel; y: number } => e.y !== null)
       .sort((a, b) => a.y - b.y);
