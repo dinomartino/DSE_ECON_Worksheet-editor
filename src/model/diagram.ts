@@ -55,7 +55,28 @@ export interface DiagramCurve {
   labelOffset?: DiagramPoint;
   /** Line weight multiplier; 1 is the diagram's default weight. */
   weight?: number;
+  /**
+   * A curve defined by a relation (MR of D, a line parallel to another, a price level).
+   * `points` then holds the last resolved geometry, so older builds still draw it.
+   */
+  derive?: DiagramCurveDerive;
 }
+
+/** A position given as an anchor, or as a fixed unit-space point. */
+export type DiagramPlace = DiagramAnchorRef | DiagramPoint;
+
+/**
+ * How a derived curve is computed from others (`model/diagramAnchors.ts:resolveDiagram`).
+ * `level` is horizontal, `vertical` vertical; `from`/`to` bound the other coordinate.
+ */
+export type DiagramCurveDerive =
+  /** Same vertical intercept as `of` (read as the line through its ends), twice the slope. */
+  | { kind: 'marginalRevenue'; of: string }
+  | { kind: 'parallel'; to: string; through: DiagramPlace }
+  /** Tangent to `to` at the point on it nearest `at`. */
+  | { kind: 'tangent'; to: string; at: DiagramPlace }
+  | { kind: 'level'; y: DiagramAnchorRef | number; from?: number; to?: number }
+  | { kind: 'vertical'; x: DiagramAnchorRef | number; from?: number; to?: number };
 
 /**
  * A marked point, e.g. an equilibrium "E₀".
@@ -66,7 +87,10 @@ export interface DiagramCurve {
  */
 export interface DiagramPointMark {
   id: string;
+  /** Where it is drawn; with `anchor`, the last resolved position (older builds read it). */
   at: DiagramPoint;
+  /** Where the point is defined to be — E where D meets S. Dragging it away detaches it. */
+  anchor?: DiagramAnchorRef;
   label?: BiText;
   /** Where the label sits relative to the dot. */
   labelSide?: 'up' | 'down' | 'left' | 'right' | 'upRight' | 'upLeft' | 'downRight' | 'downLeft';
@@ -131,6 +155,28 @@ export interface DiagramArrow {
   labelOffset?: DiagramPoint;
 }
 
+export type DiagramSpanStyle = 'bracket' | 'doubleArrow' | 'arrow' | 'dimension';
+
+/**
+ * A measured distance between two places: the shortage bracket, the tax wedge "t", the
+ * P₁→P₂ arrow on the axis. Ends are anchors when they name something, so the span
+ * follows what it measures. Geometry: `model/diagramSpans.ts:spanGeometry`.
+ */
+export interface DiagramSpan {
+  id: string;
+  from: DiagramPlace;
+  to: DiagramPlace;
+  /** `dimension` is a thin line with end ticks; `arrow` has one head, at `to`. */
+  style: DiagramSpanStyle;
+  /** Project both ends onto that axis, so the span sits on it. */
+  along?: 'x' | 'y';
+  /** Unit-space distance off the line joining the ends (or off the axis, into the plot). */
+  offset?: number;
+  label?: BiText;
+  /** Nudge for the label, in unit space, from its default spot beside the midpoint. */
+  labelOffset?: DiagramPoint;
+}
+
 /*
  * ── Shaded areas ──────────────────────────────────────────────────────────────────
  *
@@ -147,7 +193,11 @@ export type DiagramAnchorRef =
   /** Where two curves cross (the first crossing, if several). */
   | { cross: [string, string] }
   /** On curve `on`, directly above or below `x`'s position — the producer price under a tax. */
-  | { on: string; x: DiagramAnchorRef };
+  | { on: string; x: DiagramAnchorRef }
+  /** On curve `on`, level with `y` — Qd and Qs at a ceiling, Q₁ at Pw + t. */
+  | { on: string; y: DiagramAnchorRef | number }
+  /** One anchor's x with another's y (new Q, old P); a number is a fixed unit value. */
+  | { x: DiagramAnchorRef | number; y: DiagramAnchorRef | number };
 
 /** One bound of an area's x-range: a unit value (0 is the y-axis) or an anchor's x. */
 export type DiagramAreaX = number | DiagramAnchorRef;
@@ -224,6 +274,11 @@ export interface DiagramAxis {
    * clip. This only moves it *within* that reserved space.
    */
   titleOffset?: DiagramPoint;
+  /**
+   * The value the plot's far edge stands for (unit 1 = `max`), so the inspector reads
+   * and types values (a PPF's 30 and 60). Storage stays unit space.
+   */
+  max?: number;
   /** Named values along the axis, positioned in unit space. */
   ticks?: Array<{
     id: string;
@@ -490,6 +545,8 @@ export interface Diagram {
   arrows: DiagramArrow[];
   /** Shaded regions, drawn under everything else. Optional: older documents have none. */
   areas?: DiagramArea[];
+  /** Brackets and change arrows between two places. Optional: older documents have none. */
+  spans?: DiagramSpan[];
   /** Printed at the origin. Papers almost always show a "0" there. */
   showOrigin?: boolean;
   /**
@@ -497,6 +554,38 @@ export interface Diagram {
    * reset. It never affects rendering — the geometry above is the single source of truth.
    */
   templateId?: string;
+}
+
+/**
+ * The plot's height ÷ width, which every template is drawn against. The shared
+ * projection holds it; the model needs it only where shape is judged as it looks.
+ */
+export const DIAGRAM_PLOT_ASPECT = 3 / 4;
+
+/** A unit coordinate as the axis's value (`max` × unit), or the unit itself unscaled. */
+export function axisValue(axis: DiagramAxis, unit: number): number {
+  return axis.max ? unit * axis.max : unit;
+}
+
+/** An axis value back to unit space. */
+export function axisUnit(axis: DiagramAxis, value: number): number {
+  return axis.max ? value / axis.max : value;
+}
+
+/** A value as a tick prints it: at most two decimals, no trailing zeros. */
+export function formatAxisValue(value: number): string {
+  return String(Math.round(value * 100) / 100);
+}
+
+/**
+ * The text a tick prints: its label, or — with a scaled axis and no label — its value.
+ * Derived text, never stored.
+ */
+export function axisTickLabel(axis: DiagramAxis, tick: { at: number; label: BiText }): BiText {
+  const empty = [...(tick.label.en ?? []), ...(tick.label.zh ?? [])].every((run) => run.text === '');
+  if (!empty || !axis.max) return tick.label;
+  const text = formatAxisValue(axisValue(axis, tick.at));
+  return { en: [{ text }], zh: [{ text }] };
 }
 
 /** Clamp a coordinate into the unit square; geometry outside it cannot be drawn. */

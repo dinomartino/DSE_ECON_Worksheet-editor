@@ -61,7 +61,9 @@ const pointName = (diagram: Diagram, id: string) => {
 function anchorName(diagram: Diagram, ref: DiagramAnchorRef): string {
   if ('point' in ref) return pointName(diagram, ref.point);
   if ('cross' in ref) return `${curveName(diagram, ref.cross[0])} × ${curveName(diagram, ref.cross[1])}`;
-  return `${curveName(diagram, ref.on)} below ${anchorName(diagram, ref.x)}`;
+  if ('on' in ref && 'x' in ref) return `${curveName(diagram, ref.on)} below ${anchorName(diagram, ref.x)}`;
+  if ('on' in ref) return `${curveName(diagram, ref.on)} at a level`;
+  return 'a composite point';
 }
 
 /** A stable key for a reference, blind to the order of a crossing's two curves. */

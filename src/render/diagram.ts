@@ -16,10 +16,14 @@ import type {
   FlowNode,
   ForumBubble,
   ForumChart,
+  DiagramSpan,
   PieChart,
 } from '@/model/diagram';
+import { axisTickLabel, DIAGRAM_PLOT_ASPECT } from '@/model/diagram';
 import type { BiText, FontPair, LanguageMode, RichText } from '@/model/types';
 import { areaPolygon, polygonCentroid } from '@/model/diagramAreas';
+import { resolveDiagram, splineSegments } from '@/model/diagramAnchors';
+import { spanLayout } from './diagramSpan';
 import {
   boxAround,
   boxInside,
@@ -502,32 +506,10 @@ function smoothPath(pts: Array<{ x: number; y: number }>): string {
   if (pts.length < 3) return `M ${n(pts[0].x)} ${n(pts[0].y)} L ${n(pts[pts.length - 1].x)} ${n(pts[pts.length - 1].y)}`;
 
   let d = `M ${n(pts[0].x)} ${n(pts[0].y)}`;
-  for (let i = 0; i < pts.length - 1; i += 1) {
-    const p0 = pts[i - 1] ?? pts[i];
-    const p1 = pts[i];
-    const p2 = pts[i + 1];
-    const p3 = pts[i + 2] ?? p2;
-
-    // Knot intervals: the square root of each hop's length (α = ½). A coincident
-    // pair would zero a denominator, so each interval is floored at a hair above it.
-    const d1 = Math.max(Math.hypot(p1.x - p0.x, p1.y - p0.y) ** 0.5, 1e-4);
-    const d2 = Math.max(Math.hypot(p2.x - p1.x, p2.y - p1.y) ** 0.5, 1e-4);
-    const d3 = Math.max(Math.hypot(p3.x - p2.x, p3.y - p2.y) ** 0.5, 1e-4);
-
-    // The closed-form Bézier control points of the centripetal segment p1→p2.
-    const c1x =
-      (d1 * d1 * p2.x - d2 * d2 * p0.x + (2 * d1 * d1 + 3 * d1 * d2 + d2 * d2) * p1.x) /
-      (3 * d1 * (d1 + d2));
-    const c1y =
-      (d1 * d1 * p2.y - d2 * d2 * p0.y + (2 * d1 * d1 + 3 * d1 * d2 + d2 * d2) * p1.y) /
-      (3 * d1 * (d1 + d2));
-    const c2x =
-      (d3 * d3 * p1.x - d2 * d2 * p3.x + (2 * d3 * d3 + 3 * d3 * d2 + d2 * d2) * p2.x) /
-      (3 * d3 * (d3 + d2));
-    const c2y =
-      (d3 * d3 * p1.y - d2 * d2 * p3.y + (2 * d3 * d3 + 3 * d3 * d2 + d2 * d2) * p2.y) /
-      (3 * d3 * (d3 + d2));
-    d += ` C ${n(c1x)} ${n(c1y)}, ${n(c2x)} ${n(c2y)}, ${n(p2.x)} ${n(p2.y)}`;
+  // The control points come from the model's spline, so a tangent computed there
+  // touches the curve drawn here.
+  for (const { c1, c2, p2 } of splineSegments(pts)) {
+    d += ` C ${n(c1.x)} ${n(c1.y)}, ${n(c2.x)} ${n(c2.y)}, ${n(p2.x)} ${n(p2.y)}`;
   }
   return d;
 }
@@ -784,6 +766,36 @@ function arrowSvg(
       : '';
 
   return shaft + label;
+}
+
+/** A span: its strokes and heads in the arrow's ink, and its label beside the midpoint. */
+function spanSvg(
+  diagram: Diagram,
+  span: DiagramSpan,
+  proj: Projection,
+  language: LanguageMode,
+  scale: number,
+): string {
+  const layout = spanLayout(diagram, span, proj, scale);
+  if (!layout) return '';
+  const strokes = layout.lines
+    .map(
+      ([a, b]) =>
+        `<path d="M ${n(a.x)} ${n(a.y)} L ${n(b.x)} ${n(b.y)}" fill="none" stroke="#000" ` +
+        `stroke-width="${n(layout.strokeWidth)}"/>`,
+    )
+    .join('');
+  const heads = layout.heads.map((head) => arrowheadPath(head.from, head.end, ARROWHEAD * scale)).join('');
+  const lines = pickSides(span.label, language);
+  const label =
+    lines.length > 0
+      ? textAt(lines, layout.label.x, layout.label.y, {
+          anchor: layout.label.anchor,
+          baseline: layout.label.baseline,
+          fontSize: FONT_SIZE * scale,
+        })
+      : '';
+  return strokes + heads + label;
 }
 
 /** Where an arrow's label is drawn: above the shaft's midpoint, plus any dragged nudge. */
@@ -1272,7 +1284,7 @@ function titleRoomFor(count: number, scale: number): number {
  * the canvas: a supply-demand cross looks wrong stretched, and it is the axes a teacher
  * is judging when they set a width.
  */
-const PLOT_ASPECT = 3 / 4;
+const PLOT_ASPECT = DIAGRAM_PLOT_ASPECT;
 
 /**
  * The size a diagram needs, measured from what it draws: the plot keeps its 4:3 and
@@ -2520,6 +2532,12 @@ export function axisTickAnchor(
       };
 }
 
+/** The plot's drawn height ÷ width: what a tangent to a spline is judged against. */
+export function plotAspectOf(proj: Projection): number {
+  const width = plotSpanX(proj);
+  return width > 0 ? plotSpanY(proj) / width : DIAGRAM_PLOT_ASPECT;
+}
+
 /**
  * The projection `diagramSvg` will use for these exact options.
  *
@@ -2563,10 +2581,12 @@ export function diagramPlot(diagram: Diagram, options: DiagramSvgOptions): Proje
  * forum variant's central picture is not an exception: its `src` is a `data:` URL, so
  * it rides *inline* in the SVG and loads with no fetch.
  */
-export function diagramSvg(diagram: Diagram, options: DiagramSvgOptions): string {
-  if (diagram.pie) return pieSvg(diagram, diagram.pie, options);
-  if (diagram.flow) return flowSvg(diagram, diagram.flow, options);
-  if (diagram.forum) return forumSvg(diagram, diagram.forum, options);
+export function diagramSvg(stored: Diagram, options: DiagramSvgOptions): string {
+  if (stored.pie) return pieSvg(stored, stored.pie, options);
+  if (stored.flow) return flowSvg(stored, stored.flow, options);
+  if (stored.forum) return forumSvg(stored, stored.forum, options);
+  // Anchored points and derived curves are drawn where their relations put them now.
+  const diagram = resolveDiagram(stored, plotAspectOf(diagramPlot(stored, options)));
   const scale = options.scale ?? 1;
   const width = options.widthPx * scale;
   const height = options.heightPx * scale;
@@ -2644,7 +2664,7 @@ export function diagramSvg(diagram: Diagram, options: DiagramSvgOptions): string
   const axisTicks = [
     ...(diagram.x.ticks ?? []).map((tick) => {
       const at = axisTickAnchor(tick, 'x', proj, scale);
-      return textAt(pickSides(tick.label, language), at.x, at.y, {
+      return textAt(pickSides(axisTickLabel(diagram.x, tick), language), at.x, at.y, {
         anchor: 'middle',
         baseline: 'hanging',
         fontSize: FONT_SIZE * scale,
@@ -2652,7 +2672,7 @@ export function diagramSvg(diagram: Diagram, options: DiagramSvgOptions): string
     }),
     ...(diagram.y.ticks ?? []).map((tick) => {
       const at = axisTickAnchor(tick, 'y', proj, scale);
-      return textAt(pickSides(tick.label, language), at.x, at.y, {
+      return textAt(pickSides(axisTickLabel(diagram.y, tick), language), at.x, at.y, {
         anchor: 'end',
         baseline: 'middle',
         fontSize: FONT_SIZE * scale,
@@ -2675,6 +2695,7 @@ export function diagramSvg(diagram: Diagram, options: DiagramSvgOptions): string
     yTitle,
     ...diagram.curves.map((curve) => curveSvg(curve, proj, language, scale)),
     ...diagram.arrows.map((arrow) => arrowSvg(arrow, proj, language, scale)),
+    ...(diagram.spans ?? []).map((span) => spanSvg(diagram, span, proj, language, scale)),
     ...diagram.points.map((point) => pointSvg(point, proj, language, scale)),
     ...diagram.labels.map((label) => labelSvg(label, proj, language, scale)),
     ...areas.map((area) => areaLabelSvg(diagram, area, proj, language, scale)),

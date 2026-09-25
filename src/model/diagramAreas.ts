@@ -10,6 +10,10 @@ import type {
   DiagramPoint,
 } from './diagram';
 import type { BiText } from './types';
+import { anchorReferences, curveCrossing, curveYAt, resolveAnchor } from './diagramAnchors';
+
+// Anchor resolution lives in `diagramAnchors`; re-exported for existing importers.
+export { curveCrossing, curveYAt, resolveAnchor };
 
 /**
  * Shaded areas: from stored references to a unit-space polygon (§ Shaded areas).
@@ -36,66 +40,7 @@ function curveSpan(curve: DiagramCurve): [number, number] | null {
   return lo <= hi ? [lo, hi] : null;
 }
 
-/** The curve's height at `x` — the first non-vertical segment spanning it — or null. */
-export function curveYAt(curve: DiagramCurve, x: number): number | null {
-  for (let i = 0; i < curve.points.length - 1; i += 1) {
-    const a = curve.points[i];
-    const b = curve.points[i + 1];
-    if (Math.abs(b.x - a.x) < EPS) continue;
-    const lo = Math.min(a.x, b.x);
-    const hi = Math.max(a.x, b.x);
-    if (x < lo - EPS || x > hi + EPS) continue;
-    const t = (x - a.x) / (b.x - a.x);
-    return a.y + t * (b.y - a.y);
-  }
-  return null;
-}
-
-function segmentCrossing(
-  p1: DiagramPoint,
-  p2: DiagramPoint,
-  p3: DiagramPoint,
-  p4: DiagramPoint,
-): DiagramPoint | null {
-  const d1x = p2.x - p1.x;
-  const d1y = p2.y - p1.y;
-  const d2x = p4.x - p3.x;
-  const d2y = p4.y - p3.y;
-  const denominator = d1x * d2y - d1y * d2x;
-  if (Math.abs(denominator) < EPS) return null;
-  const t = ((p3.x - p1.x) * d2y - (p3.y - p1.y) * d2x) / denominator;
-  const u = ((p3.x - p1.x) * d1y - (p3.y - p1.y) * d1x) / denominator;
-  if (t < -EPS || t > 1 + EPS || u < -EPS || u > 1 + EPS) return null;
-  return { x: p1.x + t * d1x, y: p1.y + t * d1y };
-}
-
-/** Where two curves first cross, walking `a` from its start; null if they never do. */
-export function curveCrossing(a: DiagramCurve, b: DiagramCurve): DiagramPoint | null {
-  for (let i = 0; i < a.points.length - 1; i += 1) {
-    for (let j = 0; j < b.points.length - 1; j += 1) {
-      const hit = segmentCrossing(a.points[i], a.points[i + 1], b.points[j], b.points[j + 1]);
-      if (hit) return hit;
-    }
-  }
-  return null;
-}
-
 const curveById = (diagram: Diagram, id: string) => diagram.curves.find((c) => c.id === id);
-
-/** Where an anchor reference sits now, or null if what it names is gone or never meets. */
-export function resolveAnchor(diagram: Diagram, ref: DiagramAnchorRef): DiagramPoint | null {
-  if ('point' in ref) return diagram.points.find((p) => p.id === ref.point)?.at ?? null;
-  if ('cross' in ref) {
-    const a = curveById(diagram, ref.cross[0]);
-    const b = curveById(diagram, ref.cross[1]);
-    return a && b ? curveCrossing(a, b) : null;
-  }
-  const curve = curveById(diagram, ref.on);
-  const base = resolveAnchor(diagram, ref.x);
-  if (!curve || !base) return null;
-  const y = curveYAt(curve, base.x);
-  return y === null ? null : { x: base.x, y };
-}
 
 export function resolveAreaX(diagram: Diagram, x: DiagramAreaX): number | null {
   return typeof x === 'number' ? x : (resolveAnchor(diagram, x)?.x ?? null);
@@ -254,14 +199,7 @@ export function insidePolygon(p: DiagramPoint, polygon: DiagramPoint[]): boolean
 /** Every curve and point id an area's references name. */
 export function areaReferences(area: DiagramArea): string[] {
   const ids: string[] = [];
-  const anchor = (ref: DiagramAnchorRef) => {
-    if ('point' in ref) ids.push(ref.point);
-    else if ('cross' in ref) ids.push(...ref.cross);
-    else {
-      ids.push(ref.on);
-      anchor(ref.x);
-    }
-  };
+  const anchor = (ref: DiagramAnchorRef) => ids.push(...anchorReferences(ref));
   if (area.revenue) {
     anchor(area.revenue.from);
     anchor(area.revenue.to);

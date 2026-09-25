@@ -145,6 +145,15 @@ export function shiftCurve(
     label: shiftedLabel(original.label, taken),
   };
   delete copy.labelOffset;
+  // A derived copy would resolve back onto the original: a numeric level moves its
+  // number, anything else becomes plain geometry.
+  if (original.derive?.kind === 'level' && typeof original.derive.y === 'number') {
+    copy.derive = { ...original.derive, y: points[0].y };
+  } else if (original.derive?.kind === 'vertical' && typeof original.derive.x === 'number') {
+    copy.derive = { ...original.derive, x: points[0].x };
+  } else {
+    delete copy.derive;
+  }
   let next: Diagram = { ...diagram, curves: [...diagram.curves, copy] };
 
   // The shift arrow, the templates' convention: between the two curves, a quarter of
@@ -162,7 +171,20 @@ export function shiftCurve(
 
   const counterpart = counterpartOf(diagram, original);
   const at = counterpart ? curveCrossing(copy, counterpart) : null;
-  if (!at) return { diagram: next, curveId: copy.id };
+  if (!counterpart || !at) return { diagram: next, curveId: copy.id };
+
+  // The equilibrium already on the original crossing follows its curves from now on.
+  const before = curveCrossing(original, counterpart);
+  if (before) {
+    next = {
+      ...next,
+      points: next.points.map((p) =>
+        !p.anchor && Math.hypot(p.at.x - before.x, p.at.y - before.y) < 0.02
+          ? { ...p, at: before, anchor: { cross: [original.id, counterpart.id] } }
+          : p,
+      ),
+    };
+  }
 
   // Numbered after the new curve (D₁ → E₁, P₁, Q₁) unless that E is taken — a second
   // shift in one diagram — then one past the highest E.
@@ -179,6 +201,7 @@ export function shiftCurve(
   const mark: DiagramPointMark = {
     id: mint(),
     at,
+    anchor: { cross: [copy.id, counterpart.id] },
     label: sub('E', index),
     labelSide: 'right',
     dot: true,
