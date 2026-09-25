@@ -1,0 +1,71 @@
+import type { Diagram, DiagramPlace, DiagramPoint, DiagramSpan, DiagramSpanStyle } from './diagram';
+import { resolvePlace } from './diagramAnchors';
+
+/**
+ * Spans: brackets and change arrows between two places, in unit space. The ends
+ * resolve through anchors, so a shortage bracket stays between Qs and Qd as the
+ * curves move. Pixels (ticks, heads, the label) are `render/diagramSpan.ts`.
+ */
+
+/** A new span's distance off its line: clear of what it measures, inside the plot. */
+export const DEFAULT_SPAN_OFFSET = 0.04;
+
+export interface SpanGeometry {
+  /** The two ends as measured — on the axis when `along` is set. */
+  base: [DiagramPoint, DiagramPoint];
+  /** The drawn ends: `base` moved `offset` along `normal`. */
+  ends: [DiagramPoint, DiagramPoint];
+  /** Unit normal the offset is measured along (into the plot for an axis span). */
+  normal: DiagramPoint;
+  /** The side the span sits on: `normal`, flipped for a negative offset. */
+  side: DiagramPoint;
+}
+
+/** The unit normal an offset is measured along: into the plot on an axis, else left of from→to. */
+function spanNormal(span: DiagramSpan, a: DiagramPoint, b: DiagramPoint): DiagramPoint {
+  if (span.along === 'x') return { x: 0, y: 1 };
+  if (span.along === 'y') return { x: 1, y: 0 };
+  const length = Math.hypot(b.x - a.x, b.y - a.y);
+  return length < 1e-9 ? { x: 0, y: 1 } : { x: -(b.y - a.y) / length, y: (b.x - a.x) / length };
+}
+
+/** Where a span is drawn now, or null when an end no longer resolves. */
+export function spanGeometry(diagram: Diagram, span: DiagramSpan): SpanGeometry | null {
+  const from = resolvePlace(diagram, span.from);
+  const to = resolvePlace(diagram, span.to);
+  if (!from || !to) return null;
+  const project = (p: DiagramPoint): DiagramPoint =>
+    span.along === 'x' ? { x: p.x, y: 0 } : span.along === 'y' ? { x: 0, y: p.y } : { x: p.x, y: p.y };
+  const a = project(from);
+  const b = project(to);
+  const normal = spanNormal(span, from, to);
+  const offset = span.offset ?? 0;
+  const move = (p: DiagramPoint) => ({ x: p.x + normal.x * offset, y: p.y + normal.y * offset });
+  const sign = offset < 0 ? -1 : 1;
+  return {
+    base: [a, b],
+    ends: [move(a), move(b)],
+    normal,
+    side: { x: normal.x * sign, y: normal.y * sign },
+  };
+}
+
+/** A span as the canvas creates it: axis spans sit just inside the plot. */
+export function newSpan(
+  id: string,
+  from: DiagramPlace,
+  to: DiagramPlace,
+  style: DiagramSpanStyle,
+  along?: 'x' | 'y',
+): DiagramSpan {
+  const span: DiagramSpan = { id, from, to, style, offset: DEFAULT_SPAN_OFFSET };
+  if (along) span.along = along;
+  return span;
+}
+
+/** The offset after a body drag by (dx, dy): the drag's component along the normal. */
+export function draggedSpanOffset(diagram: Diagram, span: DiagramSpan, dx: number, dy: number): number {
+  const geometry = spanGeometry(diagram, span);
+  const normal = geometry?.normal ?? { x: 0, y: 1 };
+  return (span.offset ?? 0) + dx * normal.x + dy * normal.y;
+}

@@ -1,15 +1,32 @@
 import {
   clampPoint,
+  clampUnit,
   type Diagram,
+  type DiagramAnchorRef,
   type DiagramArea,
   type DiagramArrow,
   type DiagramCurve,
   type DiagramLabel,
+  type DiagramPlace,
   type DiagramPoint,
   type DiagramPointMark,
+  type DiagramSpan,
 } from './diagram';
 import type { BiText } from './types';
 import { areaPolygon, areaReferences, detachAreas, freezeArea, insidePolygon, isAnchoredArea } from './diagramAreas';
+import {
+  anchorReferences,
+  curveCrossing,
+  deriveReferences,
+  detachRelations,
+  isFixedPlace,
+  placeReferences,
+  renameAnchor,
+  renameDerive,
+  renamePlace,
+  resolvePlace,
+} from './diagramAnchors';
+import { draggedSpanOffset, spanGeometry } from './diagramSpans';
 
 /**
  * Direct manipulation of diagram geometry (§7.5).
@@ -53,7 +70,12 @@ export type DiagramHandle =
   // vertices to grab or a body that moves.
   | { kind: 'area'; areaId: string }
   | { kind: 'areaVertex'; areaId: string; index: number }
-  | { kind: 'areaLabel'; areaId: string };
+  | { kind: 'areaLabel'; areaId: string }
+  // --- Spans. The body drags the offset; an end frees (or re-anchors on release).
+  | { kind: 'span'; spanId: string }
+  | { kind: 'spanFrom'; spanId: string }
+  | { kind: 'spanTo'; spanId: string }
+  | { kind: 'spanLabel'; spanId: string };
 
 /** Do these two handles address the same thing? */
 export function sameHandle(a: DiagramHandle | null, b: DiagramHandle | null): boolean {
@@ -76,7 +98,7 @@ export function sameHandle(a: DiagramHandle | null, b: DiagramHandle | null): bo
  * to enforce.
  */
 export function isBody(handle: DiagramHandle): boolean {
-  return handle.kind === 'curve' || handle.kind === 'arrow' || handle.kind === 'area';
+  return handle.kind === 'curve' || handle.kind === 'arrow' || handle.kind === 'area' || handle.kind === 'span';
 }
 
 /**
@@ -139,6 +161,11 @@ function segmentAt(
     if (!arrow) return null;
     return { a: arrow.from, b: arrow.to };
   }
+  if (handle.kind === 'spanFrom' || handle.kind === 'spanTo') {
+    const span = diagram.spans?.find((s) => s.id === handle.spanId);
+    const geometry = span ? spanGeometry(diagram, span) : null;
+    return geometry ? { a: geometry.ends[0], b: geometry.ends[1] } : null;
+  }
   return null;
 }
 
@@ -172,6 +199,11 @@ export function handleId(handle: DiagramHandle): string {
     case 'areaVertex':
     case 'areaLabel':
       return handle.areaId;
+    case 'span':
+    case 'spanFrom':
+    case 'spanTo':
+    case 'spanLabel':
+      return handle.spanId;
     default:
       return handle.arrowId;
   }
@@ -280,6 +312,12 @@ export function hitTest(
   for (const label of diagram.labels) {
     consider({ kind: 'label', labelId: label.id }, dist(at, label.at));
   }
+  for (const span of diagram.spans ?? []) {
+    const geometry = spanGeometry(diagram, span);
+    if (!geometry) continue;
+    consider({ kind: 'spanFrom', spanId: span.id }, dist(at, geometry.ends[0]));
+    consider({ kind: 'spanTo', spanId: span.id }, dist(at, geometry.ends[1]));
+  }
   for (const area of diagram.areas ?? []) {
     if (isAnchoredArea(area)) continue;
     (area.vertices ?? []).forEach((vertex, index) => {
@@ -289,6 +327,13 @@ export function hitTest(
   if (best) return (best as { handle: DiagramHandle }).handle;
 
   // --- Pass 2: bodies. Topmost (last drawn) wins, so iterate in reverse. ---
+  const spans = diagram.spans ?? [];
+  for (let i = spans.length - 1; i >= 0; i -= 1) {
+    const geometry = spanGeometry(diagram, spans[i]);
+    if (geometry && distanceToSegment(at, geometry.ends[0], geometry.ends[1]) <= tolerance) {
+      return { kind: 'span', spanId: spans[i].id };
+    }
+  }
   for (let i = diagram.arrows.length - 1; i >= 0; i -= 1) {
     const arrow = diagram.arrows[i];
     if (distanceToSegment(at, arrow.from, arrow.to) <= tolerance) {
@@ -339,26 +384,40 @@ export function applyDrag(
   const target = clampPoint(to);
 
   switch (handle.kind) {
+    // Reshaping a derived curve detaches it; so does dragging an anchored point.
     case 'vertex':
       return {
         ...diagram,
         curves: mapById(diagram.curves, handle.curveId, (curve) => ({
-          ...curve,
+          ...withoutDerive(curve),
           points: curve.points.map((p, i) => (i === handle.index ? target : p)),
         })),
       };
     case 'curve':
       return {
         ...diagram,
-        curves: mapById(diagram.curves, handle.curveId, (curve) => ({
-          ...curve,
-          points: shift(curve.points, dx, dy),
-        })),
+        curves: mapById(diagram.curves, handle.curveId, (curve) => {
+          // A level or vertical line set by a number keeps its relation: the drag moves the number.
+          const derive = curve.derive;
+          if (derive?.kind === 'level' && typeof derive.y === 'number') {
+            const y = clampUnit(derive.y + dy);
+            return { ...curve, derive: { ...derive, y }, points: curve.points.map((p) => ({ x: p.x, y })) };
+          }
+          if (derive?.kind === 'vertical' && typeof derive.x === 'number') {
+            const x = clampUnit(derive.x + dx);
+            return { ...curve, derive: { ...derive, x }, points: curve.points.map((p) => ({ x, y: p.y })) };
+          }
+          return { ...withoutDerive(curve), points: shift(curve.points, dx, dy) };
+        }),
       };
     case 'point':
       return {
         ...diagram,
-        points: mapById(diagram.points, handle.pointId, (mark) => ({ ...mark, at: target })),
+        points: mapById(diagram.points, handle.pointId, (mark) => {
+          const rest = { ...mark, at: target };
+          delete rest.anchor;
+          return rest;
+        }),
       };
     case 'label':
       return {
@@ -473,8 +532,47 @@ export function applyDrag(
           labelOffset: nudge(area.labelOffset, dx, dy),
         })),
       };
+    case 'span':
+      return {
+        ...diagram,
+        spans: mapById(diagram.spans ?? [], handle.spanId, (span) => ({
+          ...span,
+          offset: draggedSpanOffset(diagram, span, dx, dy),
+        })),
+      };
+    case 'spanFrom':
+    case 'spanTo': {
+      // The handle is the drawn (offset) end; the stored end sits the offset back, so
+      // the grabbed end stays under the pointer. An axis span projects either way.
+      const end = handle.kind === 'spanFrom' ? 'from' : 'to';
+      return {
+        ...diagram,
+        spans: mapById(diagram.spans ?? [], handle.spanId, (span) => {
+          const normal = span.along ? null : spanGeometry(diagram, span)?.normal;
+          const offset = span.offset ?? 0;
+          const at = normal ? clampPoint({ x: target.x - normal.x * offset, y: target.y - normal.y * offset }) : target;
+          return { ...span, [end]: at };
+        }),
+      };
+    }
+    case 'spanLabel':
+      return {
+        ...diagram,
+        spans: mapById(diagram.spans ?? [], handle.spanId, (span) => ({
+          ...span,
+          labelOffset: nudge(span.labelOffset, dx, dy),
+        })),
+      };
   }
   return diagram;
+}
+
+/** A curve as plain geometry: its relation dropped, its last resolved points kept. */
+function withoutDerive(curve: DiagramCurve): DiagramCurve {
+  if (!curve.derive) return curve;
+  const rest = { ...curve };
+  delete rest.derive;
+  return rest;
 }
 
 /** Accumulate a pointer delta onto an optional offset. */
@@ -535,6 +633,8 @@ export function handleText(diagram: Diagram, handle: DiagramHandle): BiText | nu
       return diagram.title ?? emptyText();
     case 'areaLabel':
       return (diagram.areas ?? []).find((a) => a.id === handle.areaId)?.label ?? emptyText();
+    case 'spanLabel':
+      return (diagram.spans ?? []).find((s) => s.id === handle.spanId)?.label ?? emptyText();
     default:
       return null;
   }
@@ -551,7 +651,8 @@ export function isTextHandle(handle: DiagramHandle): boolean {
     handle.kind === 'axisTick' ||
     handle.kind === 'axisTitle' ||
     handle.kind === 'diagramTitle' ||
-    handle.kind === 'areaLabel'
+    handle.kind === 'areaLabel' ||
+    handle.kind === 'spanLabel'
   );
 }
 
@@ -606,6 +707,11 @@ export function setHandleText(diagram: Diagram, handle: DiagramHandle, text: BiT
         ...diagram,
         areas: mapById(diagram.areas ?? [], handle.areaId, (a) => ({ ...a, label: text })),
       };
+    case 'spanLabel':
+      return {
+        ...diagram,
+        spans: mapById(diagram.spans ?? [], handle.spanId, (span) => ({ ...span, label: text })),
+      };
     default:
       return diagram;
   }
@@ -613,10 +719,10 @@ export function setHandleText(diagram: Diagram, handle: DiagramHandle, text: BiT
 
 /**
  * Remove whatever a handle addresses. A vertex removal falls back to the whole curve.
- * An area that leaned on removed geometry is frozen where it was (`detachAreas`).
+ * An area, point, curve or span that leaned on removed geometry is frozen where it was.
  */
 export function deleteHandle(diagram: Diagram, handle: DiagramHandle): Diagram {
-  return detachAreas(diagram, removeHandle(diagram, handle));
+  return detachAreas(diagram, detachRelations(diagram, removeHandle(diagram, handle)));
 }
 
 function removeHandle(diagram: Diagram, handle: DiagramHandle): Diagram {
@@ -714,6 +820,21 @@ function removeHandle(diagram: Diagram, handle: DiagramHandle): Diagram {
         ...diagram,
         areas: mapById(diagram.areas ?? [], handle.areaId, (area) => {
           const rest = { ...area };
+          delete rest.label;
+          delete rest.labelOffset;
+          return rest;
+        }),
+      };
+
+    case 'span':
+    case 'spanFrom':
+    case 'spanTo':
+      return { ...diagram, spans: (diagram.spans ?? []).filter((s) => s.id !== handle.spanId) };
+    case 'spanLabel':
+      return {
+        ...diagram,
+        spans: mapById(diagram.spans ?? [], handle.spanId, (span) => {
+          const rest = { ...span };
           delete rest.label;
           delete rest.labelOffset;
           return rest;
@@ -935,6 +1056,10 @@ export function selectWithin(
     const polygon = areaPolygon(diagram, area);
     if (polygon && polygon.every((p) => inside(p, r))) handles.push({ kind: 'area', areaId: area.id });
   }
+  for (const span of diagram.spans ?? []) {
+    const geometry = spanGeometry(diagram, span);
+    if (geometry && geometry.ends.every((p) => inside(p, r))) handles.push({ kind: 'span', spanId: span.id });
+  }
   return handles;
 }
 
@@ -952,6 +1077,8 @@ export interface DiagramClip {
   arrows: DiagramArrow[];
   /** Areas copied with their references, or frozen when they reach outside the clip. */
   areas?: DiagramArea[];
+  /** Spans, each end fixed where it reaches outside the clip. */
+  spans?: DiagramSpan[];
 }
 
 export function isClipEmpty(clip: DiagramClip | null): boolean {
@@ -961,7 +1088,8 @@ export function isClipEmpty(clip: DiagramClip | null): boolean {
     clip.points.length === 0 &&
     clip.labels.length === 0 &&
     clip.arrows.length === 0 &&
-    (clip.areas?.length ?? 0) === 0
+    (clip.areas?.length ?? 0) === 0 &&
+    (clip.spans?.length ?? 0) === 0
   );
 }
 
@@ -979,6 +1107,7 @@ export function copyHandles(diagram: Diagram, handles: DiagramHandle[]): Diagram
   const labelIds = new Set<string>();
   const arrowIds = new Set<string>();
   const areaIds = new Set<string>();
+  const spanIds = new Set<string>();
 
   for (const handle of handles) {
     switch (handle.kind) {
@@ -1010,6 +1139,12 @@ export function copyHandles(diagram: Diagram, handles: DiagramHandle[]): Diagram
       case 'areaLabel':
         areaIds.add(handle.areaId);
         break;
+      case 'span':
+      case 'spanFrom':
+      case 'spanTo':
+      case 'spanLabel':
+        spanIds.add(handle.spanId);
+        break;
       default:
         arrowIds.add(handle.arrowId);
     }
@@ -1021,10 +1156,20 @@ export function copyHandles(diagram: Diagram, handles: DiagramHandle[]): Diagram
     labels: diagram.labels.filter((l) => labelIds.has(l.id)),
     arrows: diagram.arrows.filter((a) => arrowIds.has(a.id)),
   };
-  if (areaIds.size === 0) return clip;
-  // An area travels with its references only when they travel too; otherwise the copy
+  // Anything travels with its references only when they travel too; otherwise the copy
   // is frozen at its current shape, since a paste cannot offset a reference.
   const copied = new Set([...curveIds, ...pointIds]);
+  if (spanIds.size > 0) {
+    const fix = (place: DiagramPlace): DiagramPlace | null =>
+      placeReferences(place).every((id) => copied.has(id)) ? place : resolvePlace(diagram, place);
+    clip.spans = (diagram.spans ?? []).flatMap((span) => {
+      if (!spanIds.has(span.id)) return [];
+      const from = fix(span.from);
+      const to = fix(span.to);
+      return from && to ? [{ ...span, from, to }] : [];
+    });
+  }
+  if (areaIds.size === 0) return clip;
   const areas = (diagram.areas ?? [])
     .filter((area) => areaIds.has(area.id))
     .map((area) =>
@@ -1066,6 +1211,25 @@ export function pasteInto(
     handles.push({ kind: 'point', pointId: id });
     return { ...mark, id, at: shiftPoint(mark.at) };
   });
+  // A relation follows the pasted copies when everything it names was pasted too;
+  // otherwise it is dropped and the copy is plain geometry.
+  const within = (ids: string[]) => ids.every((id) => renamed.has(id));
+  for (const curve of curves) {
+    if (!curve.derive) continue;
+    if (within(deriveReferences(curve.derive))) curve.derive = renameDerive(curve.derive, renamed);
+    else delete curve.derive;
+  }
+  for (const mark of points) {
+    if (!mark.anchor) continue;
+    if (within(anchorReferences(mark.anchor))) mark.anchor = renameAnchor(mark.anchor, renamed);
+    else delete mark.anchor;
+  }
+  const spans = (clip.spans ?? []).map((span) => {
+    const id = mint();
+    handles.push({ kind: 'span', spanId: id });
+    const place = (value: DiagramPlace) => (isFixedPlace(value) ? shiftPoint(value) : renamePlace(value, renamed));
+    return { ...span, id, from: place(span.from), to: place(span.to) };
+  });
   const labels = clip.labels.map((label) => {
     const id = mint();
     handles.push({ kind: 'label', labelId: id });
@@ -1097,21 +1261,14 @@ export function pasteInto(
     arrows: [...diagram.arrows, ...arrows],
   };
   if (areas.length > 0) next.areas = [...(diagram.areas ?? []), ...areas];
+  if (spans.length > 0) next.spans = [...(diagram.spans ?? []), ...spans];
   return { diagram: next, handles };
 }
 
 type AreaBand = NonNullable<DiagramArea['band']>;
 type AnchorRef = Exclude<AreaBand['from'], number>;
 
-/** An anchor with every curve and point id passed through `renamed` (unmapped ids kept). */
-function renameRef(r: AnchorRef, renamed: Map<string, string>): AnchorRef {
-  const id = (value: string) => renamed.get(value) ?? value;
-  return 'point' in r
-    ? { point: id(r.point) }
-    : 'cross' in r
-      ? { cross: [id(r.cross[0]), id(r.cross[1])] }
-      : { on: id(r.on), x: renameRef(r.x, renamed) };
-}
+const renameRef = (r: AnchorRef, renamed: Map<string, string>): AnchorRef => renameAnchor(r, renamed);
 
 /** A band with every curve and point id passed through `renamed` (unmapped ids kept). */
 function renameAreaRefs(band: AreaBand, renamed: Map<string, string>): AreaBand {
@@ -1153,7 +1310,108 @@ export function dragHandles(
   from: DiagramPoint,
   to: DiagramPoint,
 ): Diagram {
-  return handles.reduce((current, handle) => applyDrag(current, handle, from, to), diagram);
+  const moved = handles.reduce((current, handle) => applyDrag(current, handle, from, to), diagram);
+  // A point or curve moved together with everything its relation names keeps it.
+  const bodies = new Set(
+    handles.flatMap((h) => (h.kind === 'curve' ? [h.curveId] : h.kind === 'point' ? [h.pointId] : [])),
+  );
+  if (bodies.size < 2) return moved;
+  const kept = (ids: string[]) => ids.length > 0 && ids.every((id) => bodies.has(id));
+  return {
+    ...moved,
+    points: moved.points.map((mark) => {
+      const original = diagram.points.find((p) => p.id === mark.id);
+      return bodies.has(mark.id) && !mark.anchor && original?.anchor && kept(anchorReferences(original.anchor))
+        ? { ...mark, anchor: original.anchor }
+        : mark;
+    }),
+    curves: moved.curves.map((curve) => {
+      const original = diagram.curves.find((c) => c.id === curve.id);
+      return bodies.has(curve.id) && !curve.derive && original?.derive && kept(deriveReferences(original.derive))
+        ? { ...curve, derive: original.derive }
+        : curve;
+    }),
+  };
+}
+
+/*
+ * ── Anchoring on release ────────────────────────────────────────────────────────
+ */
+
+/**
+ * The crossing within `tolerance` of `at`, as the `{ cross }` anchor that resolves to
+ * it — the curve order is chosen so the anchor's first crossing is this one.
+ */
+export function nearestCrossing(
+  diagram: Diagram,
+  at: DiagramPoint,
+  tolerance: number,
+): { ref: DiagramAnchorRef; at: DiagramPoint } | null {
+  let best: { ref: DiagramAnchorRef; at: DiagramPoint; d: number } | null = null;
+  for (let i = 0; i < diagram.curves.length; i += 1) {
+    for (let j = i + 1; j < diagram.curves.length; j += 1) {
+      const a = diagram.curves[i];
+      const b = diagram.curves[j];
+      for (const [first, second] of [[a, b], [b, a]] as const) {
+        const hit = curveCrossing(first, second);
+        const d = hit ? dist(hit, at) : Infinity;
+        if (hit && d <= tolerance && (!best || d < best.d - 1e-12)) {
+          best = { ref: { cross: [first.id, second.id] }, at: hit, d };
+        }
+      }
+    }
+  }
+  return best && { ref: best.ref, at: best.at };
+}
+
+/**
+ * What a place dropped at `at` should be: a marked point or a crossing within
+ * `tolerance` (nearer wins, a point on a tie), else the fixed position itself.
+ */
+export function snapPlace(
+  diagram: Diagram,
+  at: DiagramPoint,
+  tolerance: number,
+): { place: DiagramPlace; at: DiagramPoint } {
+  let best: { place: DiagramPlace; at: DiagramPoint; d: number } | null = null;
+  for (const mark of diagram.points) {
+    const d = dist(mark.at, at);
+    if (d <= tolerance && (!best || d < best.d)) best = { place: { point: mark.id }, at: mark.at, d };
+  }
+  const crossing = nearestCrossing(diagram, at, tolerance);
+  if (crossing && (!best || dist(crossing.at, at) < best.d - 1e-9)) {
+    return { place: crossing.ref, at: crossing.at };
+  }
+  const free = clampPoint(at);
+  return best ? { place: best.place, at: best.at } : { place: free, at: free };
+}
+
+/** A point released on a crossing attaches to it (`anchor`), exactly at the crossing. */
+export function attachPointOnDrop(diagram: Diagram, pointId: string, tolerance: number): Diagram {
+  const mark = diagram.points.find((p) => p.id === pointId);
+  if (!mark) return diagram;
+  const hit = nearestCrossing(diagram, mark.at, tolerance);
+  if (!hit) return diagram;
+  return {
+    ...diagram,
+    points: mapById(diagram.points, pointId, (p) => ({ ...p, at: hit.at, anchor: hit.ref })),
+  };
+}
+
+/** A span end released near a point or crossing anchors to it; elsewhere it stays as dragged. */
+export function attachSpanEndOnDrop(
+  diagram: Diagram,
+  spanId: string,
+  end: 'from' | 'to',
+  at: DiagramPoint,
+  tolerance: number,
+): Diagram {
+  const { place } = snapPlace(diagram, at, tolerance);
+  if (isFixedPlace(place)) return diagram;
+  return {
+    ...diagram,
+    spans: mapById(diagram.spans ?? [], spanId, (span) => ({ ...span, [end]: place })),
+  };
 }
 
 /** Factories for elements the canvas creates by drawing, kept beside the geometry. */

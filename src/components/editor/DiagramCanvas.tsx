@@ -2,8 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { nanoid } from 'nanoid';
-import type { Diagram, DiagramPoint } from '@/model/diagram';
+import { axisTickLabel, type Diagram, type DiagramPlace, type DiagramPoint, type DiagramSpanStyle } from '@/model/diagram';
+import { resolveDiagram } from '@/model/diagramAnchors';
+import { newSpan, spanGeometry } from '@/model/diagramSpans';
 import {
+  attachPointOnDrop,
+  attachSpanEndOnDrop,
   copyHandles,
   cursorFor,
   deleteHandles,
@@ -22,6 +26,7 @@ import {
   pointAt,
   sameHandle,
   selectWithin,
+  snapPlace,
   snapPoint,
   snapToAxis,
   type DiagramClip,
@@ -43,14 +48,26 @@ import {
   diagramSize,
   diagramSvg,
   diagramTitleAnchor,
+  plotAspectOf,
   pointLabelAnchor,
   type Projection,
 } from '@/render/diagram';
+import { spanLayout } from '@/render/diagramSpan';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { Button, CheckField, Eyebrow, IconButton, SelectField } from '@/components/ui';
 import { useModalLayer } from '@/components/ui/modalLayer';
 import { BiTextField } from './BiTextField';
 import { AreaInspector, ShadeMenu, ShiftCurveControls, areaName } from './DiagramAreaControls';
+import {
+  CurveRelationControls,
+  DiagramScaleControls,
+  PointRelationControls,
+  SPAN_ALONG,
+  SPAN_STYLES,
+  SpanInspector,
+  TickValueField,
+  type SpanAlong,
+} from './DiagramRelationControls';
 
 /**
  * The drawing surface: an overlay on the same live SVG the exporter uses (no second
@@ -167,7 +184,7 @@ function lineAnchorFor(base: Diagram, handle: DiagramHandle): DiagramPoint | nul
   return null;
 }
 
-type Tool = 'select' | 'curve' | 'point' | 'label' | 'arrow';
+type Tool = 'select' | 'curve' | 'point' | 'label' | 'arrow' | 'span';
 
 /**
  * The white the crop workspace shows beyond the current frame, in workspace pixels
@@ -195,6 +212,7 @@ const TOOLS: Array<{ id: Tool; glyph: string; name: string; hint: string }> = [
   { id: 'point', glyph: '•', name: 'Point', hint: 'Click to mark a point. It snaps to curve intersections.' },
   { id: 'label', glyph: 'A', name: 'Label', hint: 'Click to place free text — the "a b c d" areas of a tariff diagram.' },
   { id: 'arrow', glyph: '→', name: 'Arrow', hint: 'Drag to draw a shift arrow between two curves. A near-flat one straightens itself — hold Shift to keep a shallow angle.' },
+  { id: 'span', glyph: '↔', name: 'Span', hint: 'Click two ends — points and crossings attach, so the bracket or arrow follows them. Pick a style, and whether it sits on an axis.' },
 ];
 
 interface Props {
@@ -217,6 +235,8 @@ type Gesture =
       base: Diagram;
       moved: boolean;
       transient: boolean;
+      /** The geometry and pointer of the last move, for what the release attaches. */
+      last?: { diagram: Diagram; at: DiagramPoint };
     }
   | { kind: 'create'; handles: DiagramHandle[]; from: DiagramPoint; base: Diagram; moved: boolean }
   | { kind: 'marquee'; from: DiagramPoint; base: Diagram; moved: boolean; additive: boolean };
@@ -297,6 +317,14 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
   const [clip, setClip] = useState<DiagramClip | null>(null);
   /** The "Shade ▾" preset menu. Here so Escape closes it before anything else. */
   const [shadeOpen, setShadeOpen] = useState(false);
+  /** The span tool's style and axis, and its first end once clicked. */
+  const [spanStyle, setSpanStyle] = useState<DiagramSpanStyle>('doubleArrow');
+  const [spanAlong, setSpanAlong] = useState<SpanAlong>('none');
+  const [spanDraft, setSpanDraft] = useState<{ from: DiagramPlace; at: DiagramPoint } | null>(null);
+  /** The pointer, while the span tool is waiting for its second end. */
+  const [pointerAt, setPointerAt] = useState<DiagramPoint | null>(null);
+  /** The crossing or point a drop here would attach to — drawn as a ring. */
+  const [snapCue, setSnapCue] = useState<DiagramPoint | null>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const gestureRef = useRef<Gesture | null>(null);
   /**
@@ -309,20 +337,24 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
    */
   const marqueeEnd = useRef<DiagramPoint>({ x: 0, y: 0 });
 
-  const diagram = block.diagram;
-  const setDiagram = useCallback(
-    (next: Diagram) => onChange({ ...block, diagram: next }),
-    [block, onChange],
-  );
-
   // The stage renders the diagram at its stored pixel size and then scales the whole
   // thing with CSS to fit the viewport. Drawing at the stored size is what keeps the
   // projection below identical to the exporter's — scaling the *rendered result* cannot
   // change where anything is in unit space, whereas re-rendering at a different pixel
   // size could shift the padding the axis titles claim.
   const projection = useMemo(
-    () => diagramPlot(diagram, { widthPx: block.widthPx, heightPx: block.heightPx, language, fonts }),
-    [diagram, block.widthPx, block.heightPx, language, fonts],
+    () => diagramPlot(block.diagram, { widthPx: block.widthPx, heightPx: block.heightPx, language, fonts }),
+    [block.diagram, block.widthPx, block.heightPx, language, fonts],
+  );
+
+  // Everything here works on the resolved diagram — anchored points and derived curves
+  // where their relations put them — and every commit stores that resolution, so the
+  // plain `at`/`points` an older build draws stay current.
+  const aspect = plotAspectOf(projection);
+  const diagram = useMemo(() => resolveDiagram(block.diagram, aspect), [block.diagram, aspect]);
+  const setDiagram = useCallback(
+    (next: Diagram) => onChange({ ...block, diagram: resolveDiagram(next, aspect) }),
+    [block, onChange, aspect],
   );
 
   const svg = useMemo(
@@ -541,6 +573,17 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
       const at = areaLabelAnchor(diagram, area, projection, language);
       if (at) out.push({ handle: { kind: 'areaLabel', areaId: area.id }, at: toUnitPoint(at.x, at.y), box: boxOf(area.label) });
     }
+    for (const span of diagram.spans ?? []) {
+      if (!has(span.label)) continue;
+      const layout = spanLayout(diagram, span, projection, 1);
+      if (layout) {
+        out.push({
+          handle: { kind: 'spanLabel', spanId: span.id },
+          at: toUnitPoint(layout.label.x, layout.label.y),
+          box: boxOf(span.label),
+        });
+      }
+    }
     // The diagram's title is deliberately NOT a hit target. It is edited in the sidebar
     // and auto-placed, so there is nothing on the canvas to select, drag or retype — it
     // is drawn (the canvas must still show the printed picture) but inert.
@@ -551,7 +594,8 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
       }
       for (const tick of diagram[axis].ticks ?? []) {
         const at = axisTickAnchor(tick, axis, projection, 1);
-        out.push({ handle: { kind: 'axisTick', axis, tickId: tick.id }, at: toUnitPoint(at.x, at.y), box: boxOf(tick.label) });
+        const text = axisTickLabel(diagram[axis], tick);
+        out.push({ handle: { kind: 'axisTick', axis, tickId: tick.id }, at: toUnitPoint(at.x, at.y), box: boxOf(text) });
       }
     }
     return out;
@@ -674,6 +718,23 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
       return;
     }
 
+    if (tool === 'span') {
+      // Two clicks, each end snapping to a point or crossing it can then follow.
+      const end = snapping ? snapPlace(diagram, at, radii.snap) : { place: at, at };
+      if (!spanDraft) {
+        setSpanDraft({ from: end.place, at: end.at });
+        return;
+      }
+      const id = newId();
+      const span = newSpan(id, spanDraft.from, end.place, spanStyle, spanAlong === 'none' ? undefined : spanAlong);
+      setDiagram({ ...diagram, spans: [...(diagram.spans ?? []), span] });
+      setSelected([{ kind: 'span', spanId: id }]);
+      setSpanDraft(null);
+      setSnapCue(null);
+      setTool('select');
+      return;
+    }
+
     if (tool === 'point' || tool === 'label') {
       // Click-to-place: no drag, so the element is committed immediately and selected
       // so the inspector on the right is already pointed at what was just created.
@@ -687,9 +748,12 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
         if (existing) {
           setSelected([{ kind: 'point', pointId: existing.id }]);
         } else {
-          setDiagram({ ...diagram, points: [...diagram.points, drawn.point(id, snapped)] });
+          // Placed on a crossing, it attaches there and follows the curves.
+          const placed = { ...diagram, points: [...diagram.points, drawn.point(id, snapped)] };
+          setDiagram(snapping ? attachPointOnDrop(placed, id, radii.snap) : placed);
           setSelected([{ kind: 'point', pointId: id }]);
         }
+        setSnapCue(null);
       } else {
         setDiagram({ ...diagram, labels: [...diagram.labels, drawn.label(id, at)] });
         setSelected([{ kind: 'label', labelId: id }]);
@@ -737,6 +801,12 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
     // cursor is the only thing that tells you a press here will move something.
     if (!gesture) {
       if (tool === 'select') setHovering(hitTest(diagram, at, radii.grab, labelAnchors));
+      // Placing a point or a span end: show what a click here would attach to.
+      if (tool === 'point' || tool === 'span') {
+        const target = snapping ? snapPlace(diagram, at, radii.snap) : null;
+        setSnapCue(target && target.at !== target.place ? target.at : null);
+        if (tool === 'span') setPointerAt(at);
+      }
       return;
     }
 
@@ -782,6 +852,9 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
       ? maybeSnap(at, single!.kind === 'vertex' ? single!.curveId : undefined)
       : at;
     const caughtAPoint = pointSnapped !== at;
+    // A dropped point or span end attaches to what it caught; the ring says so first.
+    const attaches = single && (single.kind === 'point' || single.kind === 'spanFrom' || single.kind === 'spanTo');
+    setSnapCue(attaches && caughtAPoint ? pointSnapped : null);
     at = pointSnapped;
 
     // Then straightening — but never over a caught intersection. The order is the
@@ -799,7 +872,9 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
     }
 
     gesture.moved = true;
-    setDiagram(dragHandles(gesture.base, gesture.handles, gesture.from, at));
+    const next = dragHandles(gesture.base, gesture.handles, gesture.from, at);
+    if (gesture.kind === 'move') gesture.last = { diagram: next, at };
+    setDiagram(next);
   };
 
   const onPointerUp = () => {
@@ -810,6 +885,7 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
     // The guide reports a live gesture, so it goes with the gesture. Leaving it drawn
     // would turn a transient hint into a line on the diagram that nothing can select.
     setAxisGuide(null);
+    setSnapCue(null);
     if (!gesture) return;
 
     if (gesture.kind === 'marquee') {
@@ -833,6 +909,15 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
       if (!gesture.moved) {
         setSelected(gesture.handles);
         return;
+      }
+      // Released on a crossing, a point attaches; a span end attaches to a point too.
+      const single = gesture.handles.length === 1 ? gesture.handles[0] : null;
+      if (single && gesture.last && snapping) {
+        const { diagram: last, at } = gesture.last;
+        if (single.kind === 'point') setDiagram(attachPointOnDrop(last, single.pointId, radii.snap));
+        if (single.kind === 'spanFrom' || single.kind === 'spanTo') {
+          setDiagram(attachSpanEndOnDrop(last, single.spanId, single.kind === 'spanFrom' ? 'from' : 'to', at, radii.snap));
+        }
       }
       // The drag is over. A transient grab releases its selection so the moved element is
       // no longer armed — clicking the next element then selects that element rather than
@@ -921,6 +1006,10 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
           setShadeOpen(false);
           return;
         }
+        if (spanDraft) {
+          setSpanDraft(null);
+          return;
+        }
         // Escape peels back one layer at a time: leave crop mode first, then clear the
         // selection, and close only when there is nothing left to peel. Closing out
         // from under a selection would lose the drawing context with no warning.
@@ -999,7 +1088,7 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selected, diagram, labelAnchors, setDiagram, onClose, doCopy, doPaste, doDelete, cropping, shadeOpen, projection, language]);
+  }, [selected, diagram, labelAnchors, setDiagram, onClose, doCopy, doPaste, doDelete, cropping, shadeOpen, spanDraft, projection, language]);
 
   const activeTool = TOOLS.find((t) => t.id === tool);
 
@@ -1025,6 +1114,10 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
       const area = (diagram.areas ?? []).find((a) => a.id === editing.areaId);
       return area ? areaLabelAnchor(diagram, area, projection, language) : null;
     }
+    if (editing.kind === 'spanLabel') {
+      const span = (diagram.spans ?? []).find((s) => s.id === editing.spanId);
+      return span ? (spanLayout(diagram, span, projection, 1)?.label ?? null) : null;
+    }
     return null;
   }, [editing, labelAnchors, projection, diagram, language, block.widthPx]);
 
@@ -1040,7 +1133,11 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
               type="button"
               title={`${item.name} — ${item.hint}`}
               aria-pressed={tool === item.id}
-              onClick={() => setTool(item.id)}
+              onClick={() => {
+                setTool(item.id);
+                setSpanDraft(null);
+                setSnapCue(null);
+              }}
               className={
                 'flex h-11 min-w-11 items-center gap-1.5 rounded-lg border px-3 text-base transition-colors ' +
                 (tool === item.id
@@ -1064,6 +1161,35 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
             }}
           />
         </div>
+
+        {tool === 'span' && (
+          <div className="flex items-center gap-1.5">
+            <select
+              aria-label="Span style"
+              value={spanStyle}
+              onChange={(event) => setSpanStyle(event.target.value as DiagramSpanStyle)}
+              className="h-9 rounded-md border border-line-strong bg-surface-raised px-2 text-xs text-ink"
+            >
+              {SPAN_STYLES.map((entry) => (
+                <option key={entry.value} value={entry.value}>
+                  {entry.label}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label="Span position"
+              value={spanAlong}
+              onChange={(event) => setSpanAlong(event.target.value as SpanAlong)}
+              className="h-9 rounded-md border border-line-strong bg-surface-raised px-2 text-xs text-ink"
+            >
+              {SPAN_ALONG.map((entry) => (
+                <option key={entry.value} value={entry.value}>
+                  {entry.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <span className="h-8 w-px bg-line-strong" />
 
@@ -1150,9 +1276,11 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
         <span className="max-w-96 text-xs leading-snug text-ink-muted">
           {cropping
             ? 'Drag the frame edges — a wider frame is how a long title gets its room.'
-            : selected.length > 1
-              ? `${selected.length} selected`
-              : activeTool?.hint}
+            : spanDraft
+              ? 'Now click the other end. Esc cancels.'
+              : selected.length > 1
+                ? `${selected.length} selected`
+                : activeTool?.hint}
         </span>
         <Button onClick={onClose}>Done</Button>
       </header>
@@ -1214,7 +1342,10 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
-            onPointerLeave={() => setHovering(null)}
+            onPointerLeave={() => {
+              setHovering(null);
+              setSnapCue(null);
+            }}
             onDoubleClick={onDoubleClick}
           >
             <div
@@ -1232,6 +1363,8 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
               labels={labelAnchors}
               axisGuide={axisGuide}
               editing={editing}
+              snapCue={snapCue}
+              spanDraft={spanDraft && pointerAt ? { from: spanDraft.at, to: pointerAt } : null}
             />
 
             {/* In-place text editing. Anchored from `labelAnchors` — the same list that
@@ -1428,6 +1561,8 @@ function HandleOverlay({
   labels,
   axisGuide,
   editing,
+  snapCue,
+  spanDraft,
 }: {
   diagram: Diagram;
   projection: ReturnType<typeof diagramPlot>;
@@ -1440,6 +1575,10 @@ function HandleOverlay({
   axisGuide: { from: DiagramPoint; to: DiagramPoint } | null;
   /** Text with an open editor over it: its ring is hidden so it does not show through. */
   editing: DiagramHandle | null;
+  /** Where a drop would attach. */
+  snapCue: DiagramPoint | null;
+  /** The span being placed: first end to the pointer. */
+  spanDraft: { from: DiagramPoint; to: DiagramPoint } | null;
 }) {
   // Handles are drawn in the SVG's own coordinate system, which the stage then scales
   // by `zoom`. Dividing the sizes back out keeps a handle the same size on screen at
@@ -1537,11 +1676,40 @@ function HandleOverlay({
           ),
         )}
 
+      {(diagram.spans ?? [])
+        .filter((span) => isOn({ kind: 'span', spanId: span.id }))
+        .map((span) => {
+          const layout = spanLayout(diagram, span, projection, 1);
+          const shaft = layout?.lines[0];
+          if (!shaft) return null;
+          return (
+            <line
+              key={`hl-${span.id}`}
+              x1={shaft[0].x}
+              y1={shaft[0].y}
+              x2={shaft[1].x}
+              y2={shaft[1].y}
+              stroke="#0ea5e9"
+              strokeOpacity={0.35}
+              strokeWidth={7 / zoom}
+              strokeLinecap="round"
+            />
+          );
+        })}
+
       {diagram.curves.flatMap((curve) =>
         curve.points.map((point, index) =>
           dot(`${curve.id}-${index}`, point, { kind: 'vertex', curveId: curve.id, index }, 'square'),
         ),
       )}
+      {(diagram.spans ?? []).flatMap((span) => {
+        const geometry = spanGeometry(diagram, span);
+        if (!geometry) return [];
+        return [
+          dot(`${span.id}-from`, geometry.ends[0], { kind: 'spanFrom', spanId: span.id }, 'round'),
+          dot(`${span.id}-to`, geometry.ends[1], { kind: 'spanTo', spanId: span.id }, 'round'),
+        ];
+      })}
       {diagram.points.map((mark) =>
         dot(mark.id, mark.at, { kind: 'point', pointId: mark.id }, 'round'),
       )}
@@ -1600,6 +1768,28 @@ function HandleOverlay({
           stroke="#f97316"
           strokeWidth={1.25 / zoom}
           strokeDasharray={`${5 / zoom},${3 / zoom}`}
+        />
+      )}
+
+      {spanDraft && (
+        <line
+          x1={projection.px(spanDraft.from.x)}
+          y1={projection.py(spanDraft.from.y)}
+          x2={projection.px(spanDraft.to.x)}
+          y2={projection.py(spanDraft.to.y)}
+          stroke="#0284c7"
+          strokeWidth={1.25 / zoom}
+          strokeDasharray={`${5 / zoom},${3 / zoom}`}
+        />
+      )}
+      {snapCue && (
+        <circle
+          cx={projection.px(snapCue.x)}
+          cy={projection.py(snapCue.y)}
+          r={10 / zoom}
+          fill="none"
+          stroke="#f97316"
+          strokeWidth={2 / zoom}
         />
       )}
 
@@ -1843,7 +2033,7 @@ function SelectionInspector({
   // rather than a sentence: an index of what is on the diagram, where each row selects
   // its element. Clicking a name is how you reach a curve whose line is under another.
   if (selected.length === 0) {
-    return <ElementIndex diagram={diagram} onSelect={onSelect} onChange={onChange} onEdit={onEdit} />;
+    return <ElementIndex diagram={diagram} onSelect={onSelect} onChange={onChange} onEdit={onEdit} newId={newId} />;
   }
 
   // A multi-selection has no single set of properties to show — a curve's stroke and a
@@ -1892,6 +2082,9 @@ function SelectionInspector({
   if (area) {
     return <AreaInspector diagram={diagram} area={area} onChange={onChange} onDelete={onDelete} />;
   }
+
+  const span = (diagram.spans ?? []).find((s) => s.id === id);
+  if (span) return <SpanInspector diagram={diagram} span={span} onChange={onChange} onDelete={onDelete} />;
 
   const curve = diagram.curves.find((c) => c.id === id);
   const mark = diagram.points.find((p) => p.id === id);
@@ -1994,6 +2187,13 @@ function SelectionInspector({
             onSelect={onSelect}
             newId={newId}
           />
+          <CurveRelationControls
+            diagram={diagram}
+            curve={curve}
+            onChange={onChange}
+            onSelect={onSelect}
+            newId={newId}
+          />
         </div>
       </div>
     );
@@ -2019,6 +2219,7 @@ function SelectionInspector({
             rows={1}
             onChange={(next) => patch({ label: next })}
           />
+          <PointRelationControls diagram={diagram} mark={mark} onChange={onChange} />
           <div className="flex flex-wrap gap-1">
             <CheckField label="Dot" checked={mark.dot !== false} onChange={(dot) => patch({ dot })} />
             <CheckField
@@ -2280,6 +2481,7 @@ function AxisInspector({
             })
           }
         />
+        <TickValueField diagram={diagram} axis={handle.axis} tickId={tick.id} onChange={onChange} />
         <p className="text-[11px] text-ink-muted">
           Drag it to slide along the {axisName}. It stays on the axis by design.
         </p>
@@ -2318,6 +2520,8 @@ function describeHandle(diagram: Diagram, handle: DiagramHandle): string {
   }
   const area = (diagram.areas ?? []).find((a) => a.id === id);
   if (area) return handle.kind === 'areaLabel' ? `${areaName(area)} (label)` : areaName(area);
+  const span = (diagram.spans ?? []).find((s) => s.id === id);
+  if (span) return `${plain(span.label?.en) || 'Span'}${handle.kind === 'spanLabel' ? ' (label)' : ''}`;
 
   const curve = diagram.curves.find((c) => c.id === id);
   if (curve) return plain(curve.label?.en) || plain(curve.label?.zh) || 'Curve';
@@ -2343,11 +2547,13 @@ function ElementIndex({
   onSelect,
   onChange,
   onEdit,
+  newId,
 }: {
   diagram: Diagram;
   onSelect: (handles: DiagramHandle[]) => void;
   onChange: (diagram: Diagram) => void;
   onEdit: (handle: DiagramHandle) => void;
+  newId: () => string;
 }) {
   const rows: Array<{ handle: DiagramHandle; name: string; kind: string }> = [
     ...diagram.curves.map((c) => ({
@@ -2374,6 +2580,11 @@ function ElementIndex({
       handle: { kind: 'area', areaId: a.id } as DiagramHandle,
       name: areaName(a),
       kind: 'Area',
+    })),
+    ...(diagram.spans ?? []).map((sp) => ({
+      handle: { kind: 'span', spanId: sp.id } as DiagramHandle,
+      name: plain(sp.label?.en) || plain(sp.label?.zh) || 'Span',
+      kind: 'Span',
     })),
   ];
 
@@ -2409,6 +2620,7 @@ function ElementIndex({
             checked={diagram.showOrigin !== false}
             onChange={(showOrigin) => onChange({ ...diagram, showOrigin })}
           />
+          <DiagramScaleControls diagram={diagram} onChange={onChange} onSelect={onSelect} newId={newId} />
         </div>
       </div>
 

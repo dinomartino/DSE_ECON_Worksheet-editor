@@ -1166,6 +1166,12 @@ geometry underneath stays byte-identical to what exports.
   paste selects what it created.
 - The stage renders at a zoom multiple (default 2×); zoom scales display only,
   asserted by comparing path data across zoom.
+- **Geometry tracks what it measures** (`model/diagramAnchors.ts`): a point's `anchor`,
+  a curve's `derive` and a span's ends are relations; `resolveDiagram` writes their
+  current value into `at`/`points` on render and on every canvas commit, so an older
+  build draws the last shape. Cycle-safe (a loop keeps the stored value). Dragging a
+  relation's object detaches it (a numeric level moves its number); releasing a point
+  or span end on a crossing attaches it; deleting what one names freezes it (`detachRelations`).
 
 ### Every label moves, and stays attached
 
@@ -1230,9 +1236,9 @@ fallback. The four welfare presets (CS, PS, DWL, tax revenue) are bands built by
 
 **Shifting a curve** (`model/diagramShift.ts:shiftCurve`) adds a translated copy
 (trimmed to the plot, never clamped, so the slope survives), a shift arrow and, where
-the copy meets the original's counterpart, a plain `DiagramPointMark` with drops and
+the copy meets the original's counterpart, a `DiagramPointMark` with drops and
 P/Q ticks — the template convention. Numbered after the copy (D₁ → E₁), else the next
-free E. The new point is not attached to the curves: dragging one later leaves it behind.
+free E. Both it and the original equilibrium are anchored to their crossings.
 
 ---
 
