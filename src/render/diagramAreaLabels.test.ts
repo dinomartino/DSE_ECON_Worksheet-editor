@@ -19,6 +19,7 @@ const SIZE = { widthPx: 400, heightPx: 320 };
 /**
  * The area diagrams `diagramAreas.frozen.json` was written from — by the build *before*
  * area colours and leader labels existed. Never regenerate it to make a test pass.
+ * Re-frozen 2026-09-26 for the tick-label gap only (an element diff: tick `<text>` x/y).
  */
 function frozenCases(): Record<string, Diagram> {
   const base = buildFromTemplate('supply-demand');

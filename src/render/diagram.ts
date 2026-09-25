@@ -23,7 +23,8 @@ import { axisTickLabel, DIAGRAM_PLOT_ASPECT } from '@/model/diagram';
 import type { BiText, FontPair, LanguageMode, RichText } from '@/model/types';
 import { areaPolygon, polygonCentroid } from '@/model/diagramAreas';
 import { resolveDiagram, splineSegments } from '@/model/diagramAnchors';
-import { spanLayout } from './diagramSpan';
+import { spanGeometry, type SpanClearance } from '@/model/diagramSpans';
+import { spanLayout, SPAN_LABEL_GAP, SPAN_TICK } from './diagramSpan';
 import {
   boxAround,
   boxInside,
@@ -99,6 +100,19 @@ const AXIS_OVERSHOOT = 14;
 const AXIS_TITLE_GAP = 8;
 /** Half an arrowhead's base width, px at nominal size (axes, shift arrows, flow arrows). */
 const ARROWHEAD = 5;
+/**
+ * Tick labels sit against their axis, as the reference schemes print them: an x label's
+ * top this far under the axis line, a y label's right edge this far left of it (clear of
+ * the y arrowhead's half-width).
+ */
+const X_TICK_GAP = 4;
+const Y_TICK_GAP = 6;
+/** Air between the tick labels and an axis span resting past them, px at nominal size. */
+const SPAN_AXIS_AIR = 3;
+/** How far a span's strokes reach either side of its shaft: an arrowhead or end tick. */
+const SPAN_REACH = Math.max(ARROWHEAD, SPAN_TICK);
+/** White kept between the outermost span mark and the canvas edge. */
+const SPAN_EDGE_AIR = 4;
 
 /**
  * A solid arrowhead on the segment `from → end`: tip `0.2·head` past `end`, base
@@ -426,6 +440,103 @@ function wrapRichLines(
   return wrapped;
 }
 
+/**
+ * ── Axis spans rest outside the axes ──────────────────────────────────────────────
+ *
+ * A change arrow on an axis sits past the tick labels (below Q₀ Q₁, left of P₀ P₁), as
+ * the schemes draw it. Its clearance is measured from the same text the ticks print.
+ */
+
+/** Every tick label printed on `axis` (points' and the axis's own), at its unit position. */
+function tickLabelsOn(diagram: Diagram, axis: 'x' | 'y', language: LanguageMode): Array<{ at: number; lines: RichText[] }> {
+  const out: Array<{ at: number; lines: RichText[] }> = [];
+  for (const mark of diagram.points) {
+    const lines = pickSides(axis === 'x' ? mark.xTickLabel : mark.yTickLabel, language);
+    const nudge = (axis === 'x' ? mark.xTickOffset : mark.yTickOffset) ?? 0;
+    if (lines.length > 0) out.push({ at: mark.at[axis] + nudge, lines });
+  }
+  for (const tick of diagram[axis].ticks ?? []) {
+    const lines = pickSides(axisTickLabel(diagram[axis], tick), language);
+    if (lines.length > 0) out.push({ at: tick.at + (tick.offset ?? 0), lines });
+  }
+  return out;
+}
+
+/** Height of a hanging tick label of `count` lines. */
+const tickRowHeight = (count: number) => (count > 0 ? (count - 1) * FONT_SIZE * 1.15 + FONT_SIZE : 0);
+
+/**
+ * px (nominal) from an axis span's axis to its shaft at rest: the tick-label row (x) or
+ * the widest y label the span passes, plus air and the heads' reach, so none overlaps.
+ */
+function axisSpanClearancePx(diagram: Diagram, span: DiagramSpan, language: LanguageMode): number {
+  const geometry = spanGeometry(diagram, span);
+  if (!geometry || !span.along) return 0;
+  const labels = tickLabelsOn(diagram, span.along, language);
+  if (span.along === 'x') {
+    const row = tickRowHeight(Math.max(0, ...labels.map((label) => label.lines.length)));
+    return X_TICK_GAP + row + SPAN_AXIS_AIR + SPAN_REACH;
+  }
+  const ys = geometry.base.map((p) => p.y);
+  const lo = Math.min(...ys) - 0.03;
+  const hi = Math.max(...ys) + 0.03;
+  const passed = labels.filter((label) => label.at >= lo && label.at <= hi);
+  const widest = Math.max(0, ...passed.map((label) => estimateWidth(label.lines, FONT_SIZE)));
+  return Y_TICK_GAP + widest + SPAN_AXIS_AIR + SPAN_REACH;
+}
+
+/** Each axis span's rest outside its axis, in unit space for this projection. */
+export function axisSpanClearance(
+  diagram: Diagram,
+  proj: Projection,
+  scale: number,
+  language: LanguageMode,
+): SpanClearance {
+  return (span) => {
+    const px = axisSpanClearancePx(diagram, span, language) * scale;
+    return span.along === 'x' ? px / plotSpanY(proj) : px / plotSpanX(proj);
+  };
+}
+
+/**
+ * What each axis span needs beyond its axis: `fixed` nominal px (clearance, reach, its
+ * label) plus `offset` of the plot's span. `x` spans claim the bottom pad, `y` the left.
+ */
+interface AxisSpanRoom {
+  x: Array<{ fixed: number; offset: number }>;
+  y: Array<{ fixed: number; offset: number }>;
+}
+
+function axisSpanRoom(diagram: Diagram, language: LanguageMode): AxisSpanRoom {
+  const room: AxisSpanRoom = { x: [], y: [] };
+  for (const span of diagram.spans ?? []) {
+    if (!span.along) continue;
+    const lines = pickSides(span.label, language);
+    const label =
+      lines.length === 0
+        ? 0
+        : SPAN_LABEL_GAP + (span.along === 'x' ? tickRowHeight(lines.length) : estimateWidth(lines, FONT_SIZE));
+    room[span.along].push({
+      fixed: axisSpanClearancePx(diagram, span, language) + Math.max(SPAN_REACH, label) + SPAN_EDGE_AIR,
+      offset: span.offset ?? 0,
+    });
+  }
+  return room;
+}
+
+/**
+ * The pad one side needs: the base pad, or more for a span there. `total` is the pad plus
+ * the plot's span on that axis, so `pad = fixed + offset·(total − pad)` solves directly.
+ */
+function padFor(base: number, spans: AxisSpanRoom['x'], scale: number, total: number): number {
+  let pad = base;
+  for (const { fixed, offset } of spans) {
+    if (offset <= -1) continue;
+    pad = Math.max(pad, (fixed * scale + offset * total) / (1 + offset));
+  }
+  return pad;
+}
+
 function projection(
   width: number,
   height: number,
@@ -445,19 +556,20 @@ function projection(
   extraBottom = 0,
   /** A teacher's cropped frame, at nominal size. Replaces every derived pad. */
   crop?: DiagramCrop,
+  /** What the axis spans need outside the axes (`axisSpanRoom`). */
+  room: AxisSpanRoom = { x: [], y: [] },
 ): Projection {
+  const padTop = PAD.top * scale + extraTop;
+  // Enough for the title, never more than `MAX_X_TITLE_SHARE` of the canvas. A title
+  // wider than the cap grows leftward from its anchor into the plot's own whitespace
+  // rather than pushing the axes further off-centre — overlapping a stretch of empty
+  // plot is a far smaller sin than drawing every diagram lopsided.
+  const padRight = Math.min(Math.max(PAD.right * scale, rightRoom), width * MAX_X_TITLE_SHARE);
   const autoPad = {
-    top: PAD.top * scale + extraTop,
-    // Enough for the title, never more than `MAX_X_TITLE_SHARE` of the canvas. A title
-    // wider than the cap grows leftward from its anchor into the plot's own whitespace
-    // rather than pushing the axes further off-centre — overlapping a stretch of empty
-    // plot is a far smaller sin than drawing every diagram lopsided.
-    right: Math.min(
-      Math.max(PAD.right * scale, rightRoom),
-      width * MAX_X_TITLE_SHARE,
-    ),
-    bottom: PAD.bottom * scale + extraBottom,
-    left: PAD.left * scale,
+    top: padTop,
+    right: padRight,
+    bottom: padFor(PAD.bottom * scale, room.x, scale, height - padTop - extraBottom) + extraBottom,
+    left: padFor(PAD.left * scale, room.y, scale, width - padRight),
   };
   const pad = crop
     ? {
@@ -687,23 +799,13 @@ function pointSvg(
   // Tick labels sit on the axis where the drop-lines land, offset along it if dragged.
   const xTick = pickSides(mark.xTickLabel, language);
   if (xTick.length > 0) {
-    parts.push(
-      textAt(xTick, x + (mark.xTickOffset ?? 0) * plotSpanX(proj), proj.plot.bottom + 8 * scale, {
-        anchor: 'middle',
-        baseline: 'hanging',
-        fontSize: FONT_SIZE * scale,
-      }),
-    );
+    const at = pointTickAnchor(mark, 'x', proj, scale, language);
+    parts.push(textAt(xTick, at.x, at.y, { anchor: 'middle', baseline: 'hanging', fontSize: FONT_SIZE * scale }));
   }
   const yTick = pickSides(mark.yTickLabel, language);
   if (yTick.length > 0) {
-    parts.push(
-      textAt(yTick, proj.plot.left - 8 * scale, y - (mark.yTickOffset ?? 0) * plotSpanY(proj), {
-        anchor: 'end',
-        baseline: 'middle',
-        fontSize: FONT_SIZE * scale,
-      }),
-    );
+    const at = pointTickAnchor(mark, 'y', proj, scale, language);
+    parts.push(textAt(yTick, at.x, at.y, { anchor: 'end', baseline: 'middle', fontSize: FONT_SIZE * scale }));
   }
 
   return parts.join('');
@@ -776,7 +878,7 @@ function spanSvg(
   language: LanguageMode,
   scale: number,
 ): string {
-  const layout = spanLayout(diagram, span, proj, scale);
+  const layout = spanLayout(diagram, span, proj, scale, axisSpanClearance(diagram, proj, scale, language));
   if (!layout) return '';
   const strokes = layout.lines
     .map(
@@ -1354,8 +1456,12 @@ export function diagramSize(
     };
   }
   const width = titleWidthFloor(diagram, widthPx, language);
-  const plotWidth = width - (PAD.left + PAD.right);
+  // Axis spans rest outside the axes, so they may widen the left and bottom pads.
+  const room = axisSpanRoom(diagram, language);
+  const left = padFor(PAD.left, room.y, 1, width - PAD.right);
+  const plotWidth = width - (left + PAD.right);
   const plotHeight = Math.max(1, plotWidth) * PLOT_ASPECT;
+  const bottom = Math.max(PAD.bottom, ...room.x.map((r) => r.fixed + r.offset * plotHeight));
 
   // Both axis titles print outside the plot, and a bilingual pair stacks two lines.
   const yTitleLines = pickSides(diagram.y.title, language).length;
@@ -1363,7 +1469,7 @@ export function diagramSize(
 
   return {
     widthPx: width,
-    heightPx: Math.round(plotHeight + topRoom + PAD.bottom + titleRoom(diagram, language, 1)),
+    heightPx: Math.round(plotHeight + topRoom + bottom + titleRoom(diagram, language, 1)),
   };
 }
 
@@ -2556,16 +2662,36 @@ export function axisTickAnchor(
   axis: 'x' | 'y',
   proj: Projection,
   scale: number,
+  /** The label's drawn width, px: an x label reaching the arrowhead drops clear of it. */
+  width = 0,
 ): { x: number; y: number } {
-  return axis === 'x'
-    ? {
-        x: proj.px(tick.at) + (tick.offset ?? 0) * plotSpanX(proj),
-        y: proj.plot.bottom + 8 * scale,
-      }
-    : {
-        x: proj.plot.left - 8 * scale,
-        y: proj.py(tick.at) - (tick.offset ?? 0) * plotSpanY(proj),
-      };
+  if (axis === 'y') {
+    return { x: proj.plot.left - Y_TICK_GAP * scale, y: proj.py(tick.at) - (tick.offset ?? 0) * plotSpanY(proj) };
+  }
+  const x = proj.px(tick.at) + (tick.offset ?? 0) * plotSpanX(proj);
+  // The x arrowhead's base starts `1.8·head` short of its tip and reaches `head` below
+  // the axis; a label under it hangs below the head instead of on it.
+  const headBase = proj.plot.right + (AXIS_OVERSHOOT - 1.8 * ARROWHEAD) * scale;
+  const underHead = x + width / 2 > headBase;
+  return { x, y: proj.plot.bottom + (underHead ? ARROWHEAD + 2 : X_TICK_GAP) * scale };
+}
+
+/** Where a point's x or y tick label is drawn: `axisTickAnchor` at its point, nudge included. */
+export function pointTickAnchor(
+  mark: DiagramPointMark,
+  axis: 'x' | 'y',
+  proj: Projection,
+  scale: number,
+  language: LanguageMode,
+): { x: number; y: number } {
+  const text = axis === 'x' ? mark.xTickLabel : mark.yTickLabel;
+  const offset = axis === 'x' ? mark.xTickOffset : mark.yTickOffset;
+  return axisTickAnchor({ at: mark.at[axis], offset }, axis, proj, scale, tickLabelWidth(text, language, scale));
+}
+
+/** A tick label's estimated drawn width, px at `scale`. */
+export function tickLabelWidth(text: BiText | undefined, language: LanguageMode, scale: number): number {
+  return estimateWidth(pickSides(text, language), FONT_SIZE * scale);
 }
 
 /** The plot's drawn height ÷ width: what a tangent to a spline is judged against. */
@@ -2605,6 +2731,7 @@ export function diagramPlot(diagram: Diagram, options: DiagramSvgOptions): Proje
     rightRoom,
     below ? room : 0,
     diagram.crop,
+    axisSpanRoom(diagram, options.language),
   );
 }
 
@@ -2699,8 +2826,9 @@ export function diagramSvg(stored: Diagram, options: DiagramSvgOptions): string 
 
   const axisTicks = [
     ...(diagram.x.ticks ?? []).map((tick) => {
-      const at = axisTickAnchor(tick, 'x', proj, scale);
-      return textAt(pickSides(axisTickLabel(diagram.x, tick), language), at.x, at.y, {
+      const text = axisTickLabel(diagram.x, tick);
+      const at = axisTickAnchor(tick, 'x', proj, scale, tickLabelWidth(text, language, scale));
+      return textAt(pickSides(text, language), at.x, at.y, {
         anchor: 'middle',
         baseline: 'hanging',
         fontSize: FONT_SIZE * scale,

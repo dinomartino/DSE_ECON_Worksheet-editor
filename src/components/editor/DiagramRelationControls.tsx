@@ -17,6 +17,7 @@ import {
   type DiagramSpanStyle,
 } from '@/model/diagram';
 import { isFixedPlace } from '@/model/diagramAnchors';
+import { DEFAULT_SPAN_OFFSET } from '@/model/diagramSpans';
 import type { DiagramHandle } from '@/model/diagramDraw';
 import { emptyBiText, plain } from '@/model/text';
 import type { BiText } from '@/model/types';
@@ -360,9 +361,15 @@ export function SpanInspector({
           options={SPAN_ALONG}
           onChange={(value) =>
             patch((s) => {
+              // The offset is measured from a different rest on an axis, so it restarts there.
               const rest = { ...s };
-              if (value === 'none') delete rest.along;
-              else rest.along = value;
+              if (value === 'none') {
+                delete rest.along;
+                rest.offset = DEFAULT_SPAN_OFFSET;
+              } else {
+                rest.along = value;
+                delete rest.offset;
+              }
               return rest;
             })
           }

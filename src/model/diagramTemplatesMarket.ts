@@ -181,7 +181,7 @@ function shortageChange(): Diagram {
       spans: [
         // shortage₀'s name sits left of S, clear of shortage₁ below it.
         span(at(qs), at(qd0), 'bracket', { offset: -0.05, label: subBi('shortage', '短缺', '0'), labelOffset: { x: -0.23, y: 0.02 } }),
-        span(at(qs), at(qd1), 'bracket', { along: 'x', offset: 0.05, label: subBi('shortage', '短缺', '1') }),
+        span(at(qs), at(qd1), 'bracket', { along: 'x', label: subBi('shortage', '短缺', '1') }),
       ],
     }),
   );

@@ -82,6 +82,10 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
   and PPF trade. Each ships the after-state — both curves, both equilibria, the arrows.
 
 ### Changed
+- **Diagrams draw P and Q change arrows the way marking schemes do**: outside the axes,
+  below the Q₀ Q₁ labels and left of P₀ P₁, and the tick labels now sit right against
+  their axis. Brackets and gaps on an axis sit there too; drag one to move it further out
+  or back in.
 - **Desktop: Export → PDF saves a file directly, no print sheet.** Choose where in the
   save dialog (it starts in your exports folder, like `.docx`); the status line then
   offers Show in Finder / Explorer. In a browser, PDF still goes through the print

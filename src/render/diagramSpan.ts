@@ -1,5 +1,5 @@
 import type { Diagram, DiagramSpan } from '@/model/diagram';
-import { spanGeometry } from '@/model/diagramSpans';
+import { spanGeometry, type SpanClearance } from '@/model/diagramSpans';
 import type { Projection } from './diagram';
 
 /**
@@ -10,8 +10,8 @@ import type { Projection } from './diagram';
 type Pt = { x: number; y: number };
 
 /** End-tick length, and the label's gap from the shaft, px at nominal size. */
-const SPAN_TICK = 5;
-const SPAN_LABEL_GAP = 8;
+export const SPAN_TICK = 5;
+export const SPAN_LABEL_GAP = 8;
 
 export interface SpanLayout {
   lines: Array<[Pt, Pt]>;
@@ -21,8 +21,15 @@ export interface SpanLayout {
   label: { x: number; y: number; anchor: 'start' | 'middle' | 'end'; baseline: 'auto' | 'middle' | 'hanging' };
 }
 
-export function spanLayout(diagram: Diagram, span: DiagramSpan, proj: Projection, scale: number): SpanLayout | null {
-  const geometry = spanGeometry(diagram, span);
+export function spanLayout(
+  diagram: Diagram,
+  span: DiagramSpan,
+  proj: Projection,
+  scale: number,
+  /** An axis span's rest outside its tick labels: `axisSpanClearance` for this projection. */
+  clearance?: SpanClearance,
+): SpanLayout | null {
+  const geometry = spanGeometry(diagram, span, clearance);
   if (!geometry) return null;
   const spanX = proj.plot.right - proj.plot.left;
   const spanY = proj.plot.bottom - proj.plot.top;

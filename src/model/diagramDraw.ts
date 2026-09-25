@@ -26,7 +26,7 @@ import {
   renamePlace,
   resolvePlace,
 } from './diagramAnchors';
-import { draggedSpanOffset, spanGeometry } from './diagramSpans';
+import { draggedSpanOffset, spanGeometry, type SpanClearance } from './diagramSpans';
 
 /**
  * Direct manipulation of diagram geometry (§7.5).
@@ -277,6 +277,8 @@ export function hitTest(
    * exactly where it is drawn (§7.5).
    */
   labels: LabelAnchor[] = [],
+  /** An axis span's measured rest outside its tick labels (renderer-owned, like `labels`). */
+  clearance?: SpanClearance,
 ): DiagramHandle | null {
   let best: { handle: DiagramHandle; d: number } | null = null;
   const consider = (handle: DiagramHandle, d: number) => {
@@ -313,7 +315,7 @@ export function hitTest(
     consider({ kind: 'label', labelId: label.id }, dist(at, label.at));
   }
   for (const span of diagram.spans ?? []) {
-    const geometry = spanGeometry(diagram, span);
+    const geometry = spanGeometry(diagram, span, clearance);
     if (!geometry) continue;
     consider({ kind: 'spanFrom', spanId: span.id }, dist(at, geometry.ends[0]));
     consider({ kind: 'spanTo', spanId: span.id }, dist(at, geometry.ends[1]));
@@ -329,7 +331,7 @@ export function hitTest(
   // --- Pass 2: bodies. Topmost (last drawn) wins, so iterate in reverse. ---
   const spans = diagram.spans ?? [];
   for (let i = spans.length - 1; i >= 0; i -= 1) {
-    const geometry = spanGeometry(diagram, spans[i]);
+    const geometry = spanGeometry(diagram, spans[i], clearance);
     if (geometry && distanceToSegment(at, geometry.ends[0], geometry.ends[1]) <= tolerance) {
       return { kind: 'span', spanId: spans[i].id };
     }
@@ -1039,6 +1041,7 @@ export function selectWithin(
   rect: DiagramRect,
   /** Anchored text, so a box drawn around a label catches the label. */
   labels: LabelAnchor[] = [],
+  clearance?: SpanClearance,
 ): DiagramHandle[] {
   const r = normalizeRect(rect);
   const handles: DiagramHandle[] = [];
@@ -1062,7 +1065,7 @@ export function selectWithin(
     if (polygon && polygon.every((p) => inside(p, r))) handles.push({ kind: 'area', areaId: area.id });
   }
   for (const span of diagram.spans ?? []) {
-    const geometry = spanGeometry(diagram, span);
+    const geometry = spanGeometry(diagram, span, clearance);
     if (geometry && geometry.ends.every((p) => inside(p, r))) handles.push({ kind: 'span', spanId: span.id });
   }
   return handles;

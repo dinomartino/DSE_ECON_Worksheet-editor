@@ -1177,6 +1177,11 @@ geometry underneath stays byte-identical to what exports.
   points moved by `by`, so it keeps its length and follows the source (a tax stays t
   when S is dragged). `parallel` is a line through a place, across the plot unless `ys`
   bounds its heights (a short TOT guide).
+- **An axis span rests outside its axis, past the tick labels** (the schemes' P₀→P₁ and
+  Q₀→Q₁ arrows). The clearance is measured from the tick text (`axisSpanClearance`) and
+  handed to `spanGeometry`, so canvas hits match the drawing; `offset` is measured outward
+  from that rest. The measured pads (`diagramSize`, `diagramPlot`) include the span and
+  its label; a crop still replaces them.
 - **Templates are written in relations** (`diagramTemplateKit.ts`): anchored equilibria,
   derived curves, spans and Shade presets, resolved once by `finish` so the stored
   `at`/`points` are right for builds that ignore relations. The Shade menu reads a

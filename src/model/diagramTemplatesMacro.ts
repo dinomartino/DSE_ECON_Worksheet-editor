@@ -123,7 +123,7 @@ function gap(kind: 'deflationary' | 'inflationary'): Diagram {
       x: { title: AXIS.realOutput, ticks: [yf(full)] },
       curves: [ad, sras, l],
       points: [e0],
-      spans: [span(at(e0), { on: l.id, y: 0 }, 'doubleArrow', { along: 'x', offset: 0.05, label: text })],
+      spans: [span(at(e0), { on: l.id, y: 0 }, 'doubleArrow', { along: 'x', label: text })],
     }),
   );
 }
@@ -147,8 +147,8 @@ function gapNarrows(): Diagram {
       points: [e0, e1],
       arrows: [arrow([0.16, 0.66], [0.32, 0.66])],
       spans: [
-        span(at(e0), yf0, 'doubleArrow', { along: 'x', offset: 0.2, label: subBi('gap', '缺口', '0'), labelOffset: { x: -0.08, y: 0 } }),
-        span(at(e1), yf0, 'doubleArrow', { along: 'x', offset: 0.05, label: subBi('gap', '缺口', '1') }),
+        span(at(e0), yf0, 'doubleArrow', { along: 'x', offset: 0.12, label: subBi('gap', '缺口', '0') }),
+        span(at(e1), yf0, 'doubleArrow', { along: 'x', label: subBi('gap', '缺口', '1') }),
       ],
     }),
   );

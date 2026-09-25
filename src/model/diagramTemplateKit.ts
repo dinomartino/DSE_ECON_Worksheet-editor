@@ -239,12 +239,10 @@ export function span(
   return { id: newId(), from, to, style, ...extra };
 }
 
-/** Clearance between a change arrow and the axis it runs beside. */
-const ALONG = 0.035;
-
 /**
  * The "P₀ → P₁" and "Q₀ → Q₁" arrows the schemes award, as spans on the axes between
- * the two points, so they follow both. Skips a direction that barely moves.
+ * the two points, so they follow both; they rest outside the axes, past the tick labels.
+ * Skips a direction that barely moves.
  */
 export function axisArrows(
   from: DiagramPointMark,
@@ -254,7 +252,7 @@ export function axisArrows(
   const out: DiagramSpan[] = [];
   for (const along of ['y', 'x'] as const) {
     if (axes.includes(along) && Math.abs(to.at[along] - from.at[along]) > 0.04) {
-      out.push(span(at(from), at(to), 'arrow', { along, offset: ALONG }));
+      out.push(span(at(from), at(to), 'arrow', { along }));
     }
   }
   return out;

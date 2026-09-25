@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { Diagram, DiagramCurve, DiagramSpan } from '@/model/diagram';
 import { resolveDiagram } from '@/model/diagramAnchors';
-import { spanGeometry } from '@/model/diagramSpans';
-import { diagramPlot, diagramSvg } from './diagram';
+import { hitTest } from '@/model/diagramDraw';
+import { draggedSpanOffset, spanGeometry } from '@/model/diagramSpans';
+import { axisSpanClearance, axisTickAnchor, diagramPlot, diagramSize, diagramSvg } from './diagram';
 import { spanLayout } from './diagramSpan';
 
 const line = (id: string, a: [number, number], b: [number, number], extra: Partial<DiagramCurve> = {}): DiagramCurve => ({
@@ -29,15 +30,21 @@ const taxDiagram = (spans: DiagramSpan[]): Diagram => ({
 const OPTIONS = { widthPx: 400, heightPx: 300, language: 'en' as const };
 
 describe('span geometry', () => {
-  it('projects onto an axis and offsets into the plot', () => {
+  it('projects onto an axis; the offset is measured outward from the rest past the labels', () => {
     const diagram = resolveDiagram(taxDiagram([]));
     const span: DiagramSpan = { id: 'p', from: { x: 0.5, y: 0.4 }, to: { point: 'e1' }, style: 'arrow', along: 'y', offset: 0.03 };
     const g = spanGeometry(diagram, span)!;
     expect(g.base[0]).toEqual({ x: 0, y: 0.4 });
     expect(g.base[1].x).toBe(0);
     expect(g.base[1].y).toBeCloseTo(0.6, 9);
-    expect(g.ends[0].x).toBeCloseTo(0.03, 9);
-    expect(g.side).toEqual({ x: 1, y: 0 });
+    expect(g.ends[0].x).toBeCloseTo(-0.03, 9);
+    expect(g.side).toEqual({ x: -1, y: 0 });
+    // The renderer's clearance adds on top; a negative total turns the span inward.
+    const moved = spanGeometry(diagram, span, () => 0.1)!;
+    expect(moved.ends[0].x).toBeCloseTo(-0.13, 9);
+    const inward = spanGeometry(diagram, { ...span, offset: -0.2 }, () => 0.1)!;
+    expect(inward.ends[0].x).toBeCloseTo(0.1, 9);
+    expect(inward.side.x).toBe(1);
   });
 
   it('the tax wedge sits between S₀ and S₁ at the taxed quantity and follows a drag of S₁', () => {
@@ -79,6 +86,90 @@ describe('span geometry', () => {
     expect(at('arrow').heads).toHaveLength(1);
     expect(at('doubleArrow').heads).toHaveLength(2);
     expect(at('dimension').lines).toHaveLength(3);
+  });
+});
+
+/** E₀ (D × S₀) → E₁ (D × S₁), each with P and Q ticks, and the two axis arrows between them. */
+const shiftDiagram = (spans: DiagramSpan[]): Diagram => {
+  const d = taxDiagram(spans);
+  const tick = (base: string, n: string) => ({ en: [{ text: base }, { text: n, vertAlign: 'subscript' as const }], zh: [] });
+  d.points = [
+    { id: 'e0', at: { x: 0, y: 0 }, anchor: { cross: ['d', 's0'] }, dot: true, xTickLabel: tick('Q', '0'), yTickLabel: tick('P', '0') },
+    { id: 'e1', at: { x: 0, y: 0 }, anchor: { cross: ['d', 's1'] }, dot: true, xTickLabel: tick('Q', '1'), yTickLabel: tick('P', '1') },
+  ];
+  return resolveDiagram(d);
+};
+const qArrow: DiagramSpan = { id: 'q', from: { point: 'e0' }, to: { point: 'e1' }, style: 'arrow', along: 'x' };
+const pArrow: DiagramSpan = { id: 'p', from: { point: 'e0' }, to: { point: 'e1' }, style: 'arrow', along: 'y' };
+
+describe('axis spans rest outside the axes, past the tick labels', () => {
+  const FONT = (10 * 96) / 72;
+
+  it('a Q arrow sits under the Q labels and a P arrow left of the P labels, heads clear of both', () => {
+    const diagram = shiftDiagram([qArrow, pArrow]);
+    const proj = diagramPlot(diagram, OPTIONS);
+    const clear = axisSpanClearance(diagram, proj, 1, 'en');
+    const q = spanLayout(diagram, qArrow, proj, 1, clear)!;
+    const p = spanLayout(diagram, pArrow, proj, 1, clear)!;
+    // Q labels hang from `plot.bottom + 4` and are one line tall; the head reaches 5px.
+    const qLabelBottom = proj.plot.bottom + 4 + FONT;
+    expect(q.lines[0][0].y - 5).toBeGreaterThan(qLabelBottom);
+    // Q₀ Q₁ are ~12.6px wide, right-aligned 6px left of the axis.
+    const pLabelLeft = proj.plot.left - 6 - FONT * (0.55 + 0.4);
+    expect(p.lines[0][0].x + 5).toBeLessThan(pLabelLeft);
+    // Still exactly from the old value to the new, head at the new.
+    expect(q.lines[0][0].x).toBeCloseTo(proj.px(diagram.points[0].at.x), 6);
+    expect(q.heads[0].end.x).toBeCloseTo(proj.px(diagram.points[1].at.x), 6);
+    expect(p.heads[0].end.y).toBeCloseTo(proj.py(diagram.points[1].at.y), 6);
+  });
+
+  it('a stored offset moves it further out (positive) or back in (negative)', () => {
+    const diagram = shiftDiagram([qArrow]);
+    const proj = diagramPlot(diagram, OPTIONS);
+    const clear = axisSpanClearance(diagram, proj, 1, 'en');
+    const y = (offset?: number) => spanLayout(diagram, { ...qArrow, offset }, proj, 1, clear)!.lines[0][0].y;
+    expect(y(0.05)).toBeGreaterThan(y());
+    expect(y(-0.05)).toBeLessThan(y());
+    expect(y(-0.2)).toBeLessThan(proj.plot.bottom);
+  });
+
+  it('the measured canvas makes room for a labelled span, so nothing clips at the edge', () => {
+    const label = { en: [{ text: 'shortage' }], zh: [] };
+    const bare = shiftDiagram([]);
+    const labelled = shiftDiagram([{ ...qArrow, style: 'bracket', label }, { ...pArrow, style: 'bracket', label }]);
+    const before = diagramSize(bare, 400, 'en');
+    const after = diagramSize(labelled, 400, 'en');
+    expect(after.heightPx - diagramPlot(labelled, { ...after, language: "en" }).plot.bottom).toBeGreaterThan(46);
+    const options = { ...after, language: 'en' as const };
+    const proj = diagramPlot(labelled, options);
+    expect(proj.plot.left).toBeGreaterThan(diagramPlot(bare, { ...before, language: 'en' }).plot.left);
+    const clear = axisSpanClearance(labelled, proj, 1, 'en');
+    const q = spanLayout(labelled, labelled.spans![0], proj, 1, clear)!;
+    const p = spanLayout(labelled, labelled.spans![1], proj, 1, clear)!;
+    expect(q.label.y + FONT).toBeLessThanOrEqual(after.heightPx);
+    expect(p.label.x - FONT * 0.55 * 8).toBeGreaterThanOrEqual(0);
+  });
+
+  it('an unlabelled pair of axis arrows fits the ordinary pads', () => {
+    const bare = shiftDiagram([]);
+    expect(diagramSize(shiftDiagram([qArrow, pArrow]), 400, 'en')).toEqual(diagramSize(bare, 400, 'en'));
+  });
+
+  it('the canvas hits the span where it is drawn, and a downward drag moves a Q arrow out', () => {
+    const diagram = shiftDiagram([qArrow]);
+    const proj = diagramPlot(diagram, OPTIONS);
+    const clear = axisSpanClearance(diagram, proj, 1, 'en');
+    const shaft = spanLayout(diagram, qArrow, proj, 1, clear)!.lines[0];
+    const mid = { x: proj.ux((shaft[0].x + shaft[1].x) / 2), y: proj.uy(shaft[0].y) };
+    expect(hitTest(diagram, mid, 0.01, [], clear)).toEqual({ kind: 'span', spanId: 'q' });
+    expect(draggedSpanOffset(diagram, qArrow, 0, -0.04)).toBeCloseTo(0.04, 9);
+  });
+
+  it('an x tick label under the axis arrowhead drops clear of it', () => {
+    const proj = diagramPlot(shiftDiagram([]), OPTIONS);
+    expect(axisTickAnchor({ at: 0.5 }, 'x', proj, 1, 20).y).toBe(proj.plot.bottom + 4);
+    expect(axisTickAnchor({ at: 1 }, 'x', proj, 1, 20).y).toBeGreaterThan(proj.plot.bottom + 5);
+    expect(axisTickAnchor({ at: 0.5 }, 'y', proj, 1).x).toBe(proj.plot.left - 6);
   });
 });
 

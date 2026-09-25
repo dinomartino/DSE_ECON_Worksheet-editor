@@ -97,7 +97,7 @@ function tariff(): Diagram {
       curves: [d, s, pw, pt],
       points: [q1, q2],
       // Imports on the quantity axis, between the drops from Q₁ and Q₂.
-      spans: [span(at(q1), at(q2), 'bracket', { along: 'x', offset: 0.1, label: sub('Q', 'M') })],
+      spans: [span(at(q1), at(q2), 'bracket', { along: 'x', label: sub('Q', 'M') })],
     }),
     (r) => shade(r, 'tariffRevenue', { demand: d.id, supply: s.id, world: { curve: pw.id }, raised: { curve: pt.id } }),
   );
@@ -355,8 +355,8 @@ function ppfLinearTrade(): Diagram {
       points: [pin({ on: ppf.id, x: { x: 0.36, y: 0 } }, [ppf], sym('A'), { labelSide: 'upRight' }), b, c],
       // Export and import volumes as brackets outside the axes, clear of the frontiers.
       spans: [
-        span(at(c), at(b), 'bracket', { along: 'x', offset: -0.035, label: bi('exports', '出口') }),
-        span(at(b), at(c), 'bracket', { along: 'y', offset: -0.035, label: bi('imports', '進口') }),
+        span(at(c), at(b), 'bracket', { along: 'x', label: bi('exports', '出口') }),
+        span(at(b), at(c), 'bracket', { along: 'y', label: bi('imports', '進口') }),
       ],
     }),
   );
@@ -394,8 +394,8 @@ function ppfConcaveTrade(): Diagram {
       curves: [ppf, cpf, tot],
       points: [point(home.x, home.y, sym('A'), { labelSide: 'downLeft' }), pb, pc],
       spans: [
-        span(at(pc), at(pb), 'bracket', { along: 'x', offset: 0.05, label: bi('exports', '出口') }),
-        span(at(pb), at(pc), 'bracket', { along: 'y', offset: -0.035, label: bi('imports', '進口') }),
+        span(at(pc), at(pb), 'bracket', { along: 'x', label: bi('exports', '出口') }),
+        span(at(pb), at(pc), 'bracket', { along: 'y', label: bi('imports', '進口') }),
       ],
     }),
   );
