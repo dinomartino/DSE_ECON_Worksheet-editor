@@ -1190,13 +1190,17 @@ fallback. The four presets (CS, PS, DWL, tax revenue) are bands built by `preset
   the shade's tint and the hatch's ink. Tints step down in lightness so a monochrome
   photocopy still tells them apart. Grey is the old `#d9d9d9`/`#000` — byte-identical.
 - **A label that does not fit goes out on a leader** (`areaLabelLayout`). Fits = the
-  estimated text box plus 3px each side, centred on the centroid, lies inside the region.
-  `labelPlacement` (absent = `auto`) can force `inside` or `leader`. The decision reads
-  only the region and the text, never the offset, so a drag cannot flip it. A leader
-  label sits at centroid + `labelOffset`, or undragged at `placeOutside`'s spot (clear
-  of the region, inside the plot, fewest curves/labels touched); the canvas seeds that
+  estimated text box (capitals at 0.65em) plus 3px each side, centred on the centroid,
+  lies inside the region. `labelPlacement` (absent = `auto`) can force `inside` or
+  `leader`. The decision reads only the region and the text, never the offset, so a
+  drag cannot flip it. A leader label sits at centroid + `labelOffset`, or undragged at
+  `placeOutside`'s spot (clear of the region, inside the plot; cost = curves/labels the
+  box touches, then those the leader crosses before entering); the canvas seeds that
   spot into `labelOffset` before a drag (`areaLabelSeedOffset`) so it does not jump.
-  The leader is a thin ink line and an `arrowheadPath` triangle, tip ≤6px inside.
+- **The leader**: a thin ink line and an `arrowheadPath` triangle. The tail is the
+  label's ink box point nearest the target, 2px off (it follows a dragged box's edge);
+  the tip is 10px (× scale) inside every edge, on the way to the centroid — or, in a
+  region too small, 1px short of its deepest point (`deepestPoint`), never on a curve.
   Pinned: `src/render/diagramAreas.frozen.json`, written before either feature existed.
 - **Deleting what an area leans on freezes it** into vertices at its last shape
   (`detachAreas`, run by `deleteHandle`); copying an area without its curves does the same.

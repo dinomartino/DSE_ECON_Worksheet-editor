@@ -21,6 +21,7 @@ import {
   boxAround,
   boxInside,
   boxPolygon,
+  deepestPoint,
   interiorPoint,
   leaderLine,
   placeOutside,
@@ -827,8 +828,14 @@ const AREA_HATCH_GAP = 5;
 const AREA_LABEL_MARGIN = 3;
 /** Minimum air between a leader label and its region, px at nominal size. */
 const LEADER_GAP = 18;
-/** How far a leader's tip reaches into the region, px at nominal size. */
-const LEADER_REACH = 6;
+/** How far a leader's tip sits inside the region, from every edge, px at nominal size. */
+const LEADER_DEPTH = 10;
+/** Air a leader label keeps from curves and other text — the text estimate runs tight. */
+const LEADER_AIR = 3;
+/** How much of an em above and below a line of text carries no ink. */
+const LEADER_INK_TRIM = 0.12;
+/** Air between a leader's tail and its label's box, px at nominal size. */
+const LEADER_TAIL_GAP = 2;
 /** Half the leader arrowhead's base width — smaller than an axis head. */
 const LEADER_HEAD = 3;
 
@@ -900,6 +907,17 @@ function leaderObstacles(
 }
 
 /**
+ * An area label's width: `estimateWidth`, but capitals at 0.65em. Area labels are mostly
+ * capitals (CS, DWL), which the shared 0.55em average undersizes by a fifth — enough
+ * for a leader label to land on a neighbouring point's name.
+ */
+function areaLabelWidth(lines: RichText[], fontSize: number): number {
+  const capitals = (line: RichText) =>
+    line.reduce((sum, run) => sum + (run.vertAlign ? 0 : (run.text.match(/[A-Z]/g)?.length ?? 0)), 0);
+  return Math.max(0, ...lines.map((line) => estimateWidth([line], fontSize) + capitals(line) * 0.1 * fontSize));
+}
+
+/**
  * Where an area's label goes (§ Shaded areas). The fit rule: the label's estimated box
  * plus `AREA_LABEL_MARGIN` each side, centred on the region's centroid, must lie wholly
  * inside the region. `auto` (absent) puts a fitting label there — exactly as before
@@ -926,7 +944,7 @@ export function areaLabelLayout(
 
   const lines = pickSides(area.label, language);
   const size = FONT_SIZE * scale;
-  const w = estimateWidth(lines, size);
+  const w = areaLabelWidth(lines, size);
   const h = (Math.max(1, lines.length) - 1) * size * 1.15 + size;
   const mode = area.labelPlacement ?? 'auto';
   const fits = () => boxInside(boxAround(centroid, w, h, AREA_LABEL_MARGIN * scale), pts);
@@ -942,17 +960,27 @@ export function areaLabelLayout(
     }
     return { lines, regions };
   };
-  const target = interiorPoint(pts, centroid);
+  const target = deepestPoint(pts, interiorPoint(pts, centroid), LEADER_DEPTH * scale);
   const at = offset
     ? nudged
     : placeOutside(pts, target, w, h, {
         gap: LEADER_GAP * scale,
+        air: LEADER_AIR * scale,
+        tailGap: LEADER_TAIL_GAP * scale,
         step: 2 * scale,
         reach: 240 * scale,
         plot: { x0: proj.plot.left, y0: proj.plot.top, x1: proj.plot.right, y1: proj.plot.bottom },
         ...obstacles(),
       });
-  const leader = leaderLine(boxAround(at, w, h), target, pts, 2 * scale, LEADER_REACH * scale);
+  // The tail leaves the letters' ink, not the line box: trim the em's empty top and foot.
+  const ink = boxAround(at, w, h - LEADER_INK_TRIM * 2 * size);
+  const leader = leaderLine(ink, target, pts, {
+    gap: LEADER_TAIL_GAP * scale,
+    depth: LEADER_DEPTH * scale,
+    slack: scale,
+    minShaft: 8 * scale,
+    step: 0.5 * scale,
+  });
   return { ...at, placement: 'leader', leader };
 }
 

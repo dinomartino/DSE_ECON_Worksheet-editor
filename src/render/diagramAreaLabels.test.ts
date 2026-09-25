@@ -12,7 +12,7 @@ import {
   diagramPlot,
   diagramSvg,
 } from './diagram';
-import { inside } from './diagramLeader';
+import { clearance, inside } from './diagramLeader';
 
 const SIZE = { widthPx: 400, heightPx: 320 };
 
@@ -137,6 +137,84 @@ describe('area colours', () => {
 });
 
 describe('leader labels for small areas', () => {
+  const pixels = (diagram: Diagram, area: DiagramArea, proj: ReturnType<typeof diagramPlot>) =>
+    areaPolygon(diagram, area)!.map((p) => ({ x: proj.px(p.x), y: proj.py(p.y) }));
+
+  it('keeps the default CS and PS inside under Auto — template curves, or curves drawn to the axes', () => {
+    const template = buildFromTemplate('supply-demand');
+    // The user's report: straight D and S from the y-axis, crossing near the middle.
+    const toAxes: Diagram = {
+      ...template,
+      curves: [
+        { ...template.curves[0], points: [{ x: 0, y: 0.97 }, { x: 0.937, y: 0 }] },
+        { ...template.curves[1], points: [{ x: 0, y: 0.0294 }, { x: 0.932, y: 0.9785 }] },
+      ],
+    };
+    for (const base of [template, toAxes]) {
+      const m = guessMarketCurves(base);
+      const diagram: Diagram = {
+        ...base,
+        areas: [presetArea('consumerSurplus', m, 'cs')!, { ...presetArea('producerSurplus', m, 'ps')!, color: 'red' }],
+      };
+      for (const language of ['en', 'zh', 'bilingual'] as const) {
+        for (const size of [SIZE, { widthPx: 400, heightPx: 335 }, { widthPx: 560, heightPx: 420 }]) {
+          for (const scale of [1, 3]) {
+            const proj = diagramPlot(diagram, { ...size, language, scale });
+            for (const area of diagram.areas!) {
+              const layout = areaLabelLayout(diagram, area, proj, language, scale)!;
+              expect(layout.placement, `${area.id} ${language} ${size.widthPx} ×${scale}`).toBe('inside');
+            }
+          }
+        }
+      }
+    }
+  });
+
+  it('ends a forced PS leader 10px inside every edge, aiming at the centroid', () => {
+    const base = buildFromTemplate('supply-demand');
+    const m = guessMarketCurves(base);
+    const ps: DiagramArea = { ...presetArea('producerSurplus', m, 'ps')!, labelPlacement: 'leader' };
+    const diagram: Diagram = { ...base, areas: [ps] };
+    for (const scale of [1, 3]) {
+      const { proj, layout } = layoutOf(diagram, 'ps', scale);
+      const pts = pixels(diagram, ps, proj);
+      const { from, tip } = layout.leader!;
+      expect(clearance(tip, pts)).toBeGreaterThanOrEqual(10 * scale - 1e-9);
+      expect(inside(from, pts)).toBe(false);
+    }
+  });
+
+  it('ends a thin wedge\'s leader at its middle, and starts it 2px off the label\'s letters', () => {
+    const diagram = taxedMarket(0.04, ['taxRevenue']);
+    const { proj, area, layout } = layoutOf(diagram, 'taxRevenue');
+    const pts = pixels(diagram, area, proj);
+    const ys = pts.map((p) => p.y);
+    const middle = (Math.min(...ys) + Math.max(...ys)) / 2;
+    const half = (Math.max(...ys) - Math.min(...ys)) / 2;
+    const { from, tip } = layout.leader!;
+    // As deep as the wedge allows, less the 1px stop-short.
+    expect(clearance(tip, pts)).toBeGreaterThanOrEqual(half - 1.01);
+    expect(Math.abs(tip.y - middle)).toBeLessThanOrEqual(1.01);
+    // The tail sits on the label's ink box grown by 2px: 13.33px em, less 12% top and foot.
+    const inkHalf = (13.333 * (1 - 0.24)) / 2;
+    expect(Math.abs(from.y - (layout.y + inkHalf + 2))).toBeLessThan(0.01);
+  });
+
+  it('moves the tail with the edge of a dragged label, not its centre', () => {
+    const diagram = taxedMarket(0.04, ['taxRevenue']);
+    const { proj, area } = layoutOf(diagram, 'taxRevenue');
+    const seed = areaLabelSeedOffset(diagram, area, proj, 'en')!;
+    // Dragged down and right of the wedge: the tail is the label's top-left corner.
+    const moved = { ...diagram, areas: [{ ...area, labelOffset: { x: seed.x + 0.3, y: seed.y - 0.3 } }] };
+    const { layout } = layoutOf(moved, 'taxRevenue');
+    const { from, tip } = layout.leader!;
+    expect(from.x).toBeLessThan(layout.x);
+    expect(from.y).toBeLessThan(layout.y);
+    expect(tip.x).toBeLessThan(from.x);
+    expect(tip.y).toBeLessThan(from.y);
+    expect(inside(tip, pixels(diagram, area, proj))).toBe(true);
+  });
+
   it('fits "Tax" inside a wide wedge, and leads it out of a thin one', () => {
     expect(layoutOf(taxedMarket(0.12, ['taxRevenue']), 'taxRevenue').layout.placement).toBe('inside');
     const thin = layoutOf(taxedMarket(0.04, ['taxRevenue']), 'taxRevenue');

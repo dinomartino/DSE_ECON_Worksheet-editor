@@ -113,6 +113,60 @@ export function interiorPoint(poly: Pt[], preferred: Pt): Pt {
   return best;
 }
 
+/** Distance from `p` to the segment a→b. */
+function segmentDistance(p: Pt, a: Pt, b: Pt): number {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len2 = dx * dx + dy * dy;
+  const t = len2 > 0 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2)) : 0;
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+}
+
+/** How far `p` is from the polygon's nearest edge; 0 when it lies outside. */
+export function clearance(p: Pt, poly: Pt[]): number {
+  if (!inside(p, poly)) return 0;
+  let best = Infinity;
+  for (const [a, b] of edgesOf(poly)) best = Math.min(best, segmentDistance(p, a, b));
+  return best;
+}
+
+/**
+ * The point to aim a leader at: `near` when it is at least `want` from every edge,
+ * else the point that gets deepest (capped at `want`), nearest `near` among equals —
+ * an approximate pole of inaccessibility, by a grid sample refined twice.
+ */
+export function deepestPoint(poly: Pt[], near: Pt, want: number): Pt {
+  if (clearance(near, poly) >= want) return near;
+  const xs = poly.map((p) => p.x);
+  const ys = poly.map((p) => p.y);
+  const score = (p: Pt) => Math.min(clearance(p, poly), want) - 0.01 * Math.hypot(p.x - near.x, p.y - near.y);
+  let best = near;
+  let bestScore = score(near);
+  let cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+  let cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+  let hw = (Math.max(...xs) - Math.min(...xs)) / 2;
+  let hh = (Math.max(...ys) - Math.min(...ys)) / 2;
+  const cells = 24;
+  for (let round = 0; round < 3; round += 1) {
+    for (let i = 0; i <= cells; i += 1) {
+      for (let j = 0; j <= cells; j += 1) {
+        const p = { x: cx - hw + (2 * hw * i) / cells, y: cy - hh + (2 * hh * j) / cells };
+        const s = score(p);
+        if (s > bestScore) {
+          best = p;
+          bestScore = s;
+        }
+      }
+    }
+    // Zoom in on the best cell's neighbourhood.
+    cx = best.x;
+    cy = best.y;
+    hw = (4 * hw) / cells;
+    hh = (4 * hh) / cells;
+  }
+  return best;
+}
+
 /** Screen directions tried for a leader label, in order of preference. */
 const DIRECTIONS: Pt[] = [
   { x: 1, y: 0 },
@@ -128,23 +182,56 @@ const DIRECTIONS: Pt[] = [
   return { x: d.x / length, y: d.y / length };
 });
 
+/** The point of `box`, grown by `gap`, nearest `target` — where a leader leaves the label. */
+export function leaderTail(box: Box, target: Pt, gap: number): Pt {
+  return {
+    x: Math.max(box.x0 - gap, Math.min(box.x1 + gap, target.x)),
+    y: Math.max(box.y0 - gap, Math.min(box.y1 + gap, target.y)),
+  };
+}
+
+/**
+ * How many `lines` and `regions` the leader tail→target runs across before it enters
+ * `poly`. The entry itself is not counted: the region's own edge is often a curve.
+ */
+export function leaderCrossings(tail: Pt, target: Pt, poly: Pt[], lines: Pt[][], regions: Pt[][]): number {
+  const span = Math.hypot(target.x - tail.x, target.y - tail.y);
+  if (span === 0) return 0;
+  let enter = 1;
+  for (const [a, b] of edgesOf(poly)) {
+    const t = crossT(tail, target, a, b);
+    if (t !== null && t < enter) enter = t;
+  }
+  const before = Math.max(0, enter - 0.5 / span);
+  const end = { x: tail.x + (target.x - tail.x) * before, y: tail.y + (target.y - tail.y) * before };
+  const meets = (line: Pt[], closed: boolean) => {
+    const n = closed ? line.length : line.length - 1;
+    for (let i = 0; i < n; i += 1) {
+      if (crossT(tail, end, line[i], line[(i + 1) % line.length]) !== null) return true;
+    }
+    return closed && (inside(tail, line) || inside(end, line));
+  };
+  return lines.filter((line) => meets(line, false)).length + regions.filter((region) => meets(region, true)).length;
+}
+
 /**
  * Where a label that does not fit goes by default: the centre of a `w`×`h` box.
  *
- * Walks out from `from` along eight directions. A spot counts once the box, grown by
- * `gap`, clears the region and the box stays inside `plot`; along each direction the
- * walk continues to the first spot touching none of `lines` (curves, drop-lines) or
- * `regions` (other areas, text, dots). Fewest touches wins, then the shortest walk,
- * then the order above. Deterministic, so preview, `.docx` PNG and canvas agree.
+ * Walks out from `from` (the leader's target) along eight directions. A spot counts once
+ * the box, grown by `gap`, clears the region and the box stays inside `plot`; along each
+ * direction the walk continues to the first spot whose box, grown by `air`, touches
+ * none of `lines` (curves, drop-lines) or `regions` (other areas, text, dots). Cost:
+ * each touch, then each line or region the leader itself crosses on its way in (tail
+ * `tailGap` off the box), then the walk's length, then the order above. Deterministic, so preview, `.docx` PNG and canvas agree.
  */
 export function placeOutside(
   poly: Pt[],
   from: Pt,
   w: number,
   h: number,
-  options: { gap: number; step: number; reach: number; plot: Box; lines: Pt[][]; regions: Pt[][] },
+  options: { gap: number; air: number; tailGap: number; step: number; reach: number; plot: Box; lines: Pt[][]; regions: Pt[][] },
 ): Pt {
-  const { gap, step, reach, plot, lines, regions } = options;
+  const { gap, air, tailGap, step, reach, plot, lines, regions } = options;
   let best: { at: Pt; score: number } | null = null;
   for (const dir of DIRECTIONS) {
     for (let r = step; r <= reach; r += step) {
@@ -152,10 +239,12 @@ export function placeOutside(
       if (boxMeets(boxAround(at, w, h, gap), poly)) continue;
       const box = boxAround(at, w, h);
       if (box.x0 < plot.x0 || box.x1 > plot.x1 || box.y0 < plot.y0 || box.y1 > plot.y1) break;
+      const clear = boxAround(at, w, h, air);
       const hits =
-        lines.filter((line) => boxMeetsLine(box, line)).length +
-        regions.filter((region) => boxMeets(box, region)).length;
-      const score = hits * 1e6 + r;
+        lines.filter((line) => boxMeetsLine(clear, line)).length +
+        regions.filter((region) => boxMeets(clear, region)).length;
+      const crossings = leaderCrossings(leaderTail(box, from, tailGap), from, poly, lines, regions);
+      const score = hits * 1e6 + crossings * 1e4 + r;
       if (!best || score < best.score) best = { at, score };
       if (hits === 0) break;
     }
@@ -168,32 +257,34 @@ export function placeOutside(
 export const boxPolygon = (b: Box): Pt[] => corners(b);
 
 /**
- * The leader from a label box to its region: `from` on the box's edge (plus `gap`),
- * `tip` just inside the region — `reach` past where the line enters it, never past
- * `target`. Null when the box already covers the target (nothing to point across).
+ * The leader from a label box to its region. `from` is the box's point nearest
+ * `target`, `gap` off its edge; `tip` is the first point on the way to `target` that
+ * is `depth` from every edge — or, in a region too small for that, `slack` short of
+ * `target`'s own depth. The tip sits at least `minShaft` from `from`, scanned in
+ * `step`s. Null when the box (plus gap) covers the target or sits closer than
+ * `minShaft` to it: nothing to point across.
  */
-export function leaderLine(box: Box, target: Pt, poly: Pt[], gap: number, reach: number): { from: Pt; tip: Pt } | null {
-  if (target.x >= box.x0 && target.x <= box.x1 && target.y >= box.y0 && target.y <= box.y1) return null;
-  const centre = { x: (box.x0 + box.x1) / 2, y: (box.y0 + box.y1) / 2 };
-  const dx = target.x - centre.x;
-  const dy = target.y - centre.y;
-  const length = Math.hypot(dx, dy);
-  const ux = dx / length;
-  const uy = dy / length;
-  // Distance from the centre to the box's edge along the ray (slab method).
-  const hw = (box.x1 - box.x0) / 2;
-  const hh = (box.y1 - box.y0) / 2;
-  const toEdge = Math.min(ux ? hw / Math.abs(ux) : Infinity, uy ? hh / Math.abs(uy) : Infinity) + gap;
-  if (toEdge >= length) return null;
-  const from = { x: centre.x + ux * toEdge, y: centre.y + uy * toEdge };
-
-  // Where the line first enters the region, walking from the label.
-  let enter = 1;
-  for (const [a, b] of edgesOf(poly)) {
-    const t = crossT(from, target, a, b);
-    if (t !== null && t < enter) enter = t;
-  }
+export function leaderLine(
+  box: Box,
+  target: Pt,
+  poly: Pt[],
+  options: { gap: number; depth: number; slack: number; minShaft: number; step: number },
+): { from: Pt; tip: Pt } | null {
+  const { gap, depth, slack, minShaft, step } = options;
+  const from = leaderTail(box, target, gap);
   const span = Math.hypot(target.x - from.x, target.y - from.y);
-  const along = Math.min(span, enter * span + reach);
+  if (span < minShaft) return null;
+  const ux = (target.x - from.x) / span;
+  const uy = (target.y - from.y) / span;
+  const deep = clearance(target, poly);
+  const want = deep >= depth ? depth : Math.max(0, deep - slack);
+  let along = span;
+  for (let s = minShaft; s < span; s += step) {
+    const depthHere = clearance({ x: from.x + ux * s, y: from.y + uy * s }, poly);
+    if (depthHere > 0 && depthHere >= want) {
+      along = s;
+      break;
+    }
+  }
   return { from, tip: { x: from.x + ux * along, y: from.y + uy * along } };
 }
