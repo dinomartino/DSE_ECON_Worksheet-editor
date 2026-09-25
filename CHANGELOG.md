@@ -60,6 +60,13 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
   P₁→P₂ on the axis. They follow what they measure.
 - **Axis scales for diagrams**: give an axis a maximum (30 wheat, 60 cloth) and type a
   point's position as values; empty tick labels print their value.
+- **Diagram templates for every diagram the marking schemes ask for**, grouped by topic
+  with a search box: supply and demand shifts (one curve or both), elastic and inelastic
+  revenue boxes, fixed supply, labour importation, surplus; price ceiling, minimum wage,
+  quotas and deadweight loss; per-unit tax and subsidy burdens, Lorenz curve; AD–AS shifts,
+  output gaps, self-adjustment, LRAS growth; money supply and demand shifts;
+  exchange-rate revenue, tariff, import quota; monopoly (MC constant, MC = 0, MC falls)
+  and PPF trade. Each ships the after-state — both curves, both equilibria, the arrows.
 
 ### Changed
 - **Desktop: Export → PDF saves a file directly, no print sheet.** Choose where in the
@@ -68,6 +75,9 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
   dialog's Save as PDF.
 
 ### Fixed
+- **The import-tariff template had no imports**: Pw + t sat above the market's own
+  equilibrium. It now sits between Pw and it, with Q₁, Q₂ and the imports QM marked. The
+  old four-quantity figure is still there as "Tariff: welfare areas".
 - **PDF printed every marks label twice** ("(4 marks)" after the text and again at the
   right margin). It now prints once, at the right.
 - **Desktop PDF: the cover's corner box printed solid black.** Its diagonal now prints

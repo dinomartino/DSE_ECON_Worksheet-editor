@@ -49,6 +49,8 @@ the whole schema, one file.
 - `src/model/diagramAnchors.ts:resolveAnchor` · `:resolveDiagram` · `:detachRelations` — anchored points (`DiagramPointMark.anchor`) and derived curves (`DiagramCurve.derive`: MR, parallel, tangent, level, vertical); resolved values written into `at`/`points`
 - `src/model/diagramSpans.ts:spanGeometry` · `src/render/diagramSpan.ts:spanLayout` — `Diagram.spans`: bracket, arrow, double arrow, dimension between two places; `src/model/diagramDraw.ts:snapPlace` · `:attachPointOnDrop` — attach on release
 - `src/model/diagram.ts:axisValue` · `:axisUnit` · `:axisTickLabel` — `DiagramAxis.max` value scale; `src/components/editor/DiagramRelationControls.tsx:SpanInspector` · `:CurveRelationControls`
+- `src/model/diagramTemplates.ts:DIAGRAM_TEMPLATE_GROUPS` · `:buildFromTemplate` — one template per scheme diagram type, by topic; bodies in `src/model/diagramTemplatesMarket.ts` · `src/model/diagramTemplatesMacro.ts` · `src/model/diagramTemplatesTrade.ts`, written with `src/model/diagramTemplateKit.ts:mark` · `:changeArrows` · `:reading` (equilibria computed from curves). A shipped id is never removed
+- `src/model/diagramAreas.ts:areaPolygon` · `:presetArea` · `:detachAreas` — shaded areas as references; `src/model/diagramShift.ts:shiftCurve` — D→D₁ plus the new equilibrium
 - `src/model/diagramAreas.ts:newPresetArea` · `:PRESET_PATTERNS` — a welfare preset as the menu adds it (hatched, its own pattern); `:revenueArea` · `:rectangleDifference` · `:guessRevenuePoints` — TR, revenue gain/loss (`DiagramArea.revenue`, derived rectangle or L)
 - `src/model/diagramPresets.ts:SHADE_PRESETS` · `:planPreset` · `:guessRoles` · `:presetStatus` — the grouped Shade catalogue: presets declare roles (D, S, S₁, price lines, MR, MC), the menu guesses or asks; `:onCurveAtLevelSupported` gates point-level prices on the `{ on, y }` anchor
 - `src/model/diagramAreas.ts:areaPolygon` reads `band.cap` (a third edge trimming edge 0 — the trapezium presets as one area) via `cappedBandPolygon`
@@ -215,6 +217,7 @@ Invariants:
 - `src/components/editor/AnswerDiagramRow.tsx:AnswerDiagramRow` — a leaf's model diagram: thumbnail, Draw…, template, width
 - `src/components/editor/Outline.tsx:Outline` · `:groupByPage` · `src/components/editor/AddRail.tsx:AddRail`
 - `src/components/editor/DiagramCanvas.tsx:DiagramCanvas` · `src/components/editor/DocumentSettings.tsx`
+- `src/components/editor/DiagramTemplatePicker.tsx:DiagramTemplateCards` · `:DiagramTemplatePopover` — the grouped, searchable template grid (insert and re-base)
 - `src/components/editor/DiagramAreaControls.tsx:ShadeMenu` · `:AreaInspector` · `:ShiftCurveControls` — the canvas's area and shift controls
 - `src/components/feedback/FeedbackDialog.tsx:FeedbackDialog` (⋯ menu, start screen) · `src/feedback/feedback.ts:buildReport` · `:githubIssueUrl` · `:mailtoUrl` — prefilled issue / mail / clipboard; no server, no token, never the document
 
@@ -248,6 +251,7 @@ Invariant: chrome uses semantic tokens (`src/app/globals.css`); anything on the 
 - `scripts/shot.mjs` — screenshot the real app (`--seed`, `--dark`)
 - `scripts/demo.mjs` — website video + screenshots into `demo-media/` (`npm run demo`); steps in `scripts/demo/record.mjs:STORYBOARD`
 - `scripts/emit-samples.test.ts` — real `.docx` files (`npm run samples`)
+- `scripts/template-gallery.mjs` — every diagram template screenshotted (en / zh / bilingual) into a folder; `--app` also seeds them into the running app and shoots the sheets and the picker
 - `scripts/cover-verify.mjs` · `scripts/lq-verify.mjs` — the three backends agree
 - `scripts/cover-fixtures.test.ts` · `scripts/lq-fixtures.test.ts` · `scripts/q6-sample.test.ts`
 - `scripts/sync-version.mjs` — `package.json` → `src-tauri/tauri.conf.json` + `Cargo.toml`
