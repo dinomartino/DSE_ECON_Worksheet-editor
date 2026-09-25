@@ -20,6 +20,7 @@ import { browserPrintDeps, printWorksheetPdf } from './printPdf';
 import { useUpdateStore } from '@/desktop/updateStore';
 import { PaperHealthPanel } from './PaperHealthPanel';
 import { FeedbackDialog } from '@/components/feedback/FeedbackDialog';
+import { WhatsNewDialog } from '@/components/whatsNew/WhatsNewDialog';
 import { describeDocument } from '@/feedback/feedback';
 
 /** A transient status line, optionally with one follow-up action. */
@@ -64,6 +65,8 @@ export function Toolbar({
   const closeExport = useCallback(() => setExporting(false), []);
   const [feedback, setFeedback] = useState(false);
   const closeFeedback = useCallback(() => setFeedback(false), []);
+  const [whatsNew, setWhatsNew] = useState(false);
+  const closeWhatsNew = useCallback(() => setWhatsNew(false), []);
 
   // Only meaningful in bilingual mode, where a missing side affects the output (§5.2).
   const untranslated =
@@ -321,6 +324,7 @@ export function Toolbar({
                   },
                 ]
               : []),
+            { label: 'What’s new…', onSelect: () => setWhatsNew(true) },
             { label: 'Send feedback…', onSelect: () => setFeedback(true) },
             {
               label: 'Clear saved documents…',
@@ -353,6 +357,7 @@ export function Toolbar({
         />
       )}
 
+      {whatsNew && <WhatsNewDialog onClose={closeWhatsNew} />}
       {feedback && (
         <FeedbackDialog
           onClose={closeFeedback}

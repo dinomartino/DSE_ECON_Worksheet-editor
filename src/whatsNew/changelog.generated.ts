@@ -1,18 +1,20 @@
-# Changelog
+// Generated from CHANGELOG.md by scripts/sync-changelog.mjs — do not edit.
+// Run `npm run changelog` after changing CHANGELOG.md.
+export const CHANGELOG_MD = `# Changelog
 
 What each release of Econ Worksheet contains, newest first. Written for teachers: name
 the thing they can now do, not the file that changed.
 
-Rules: every feature or fix that lands on `develop` adds a line under **Unreleased** in
+Rules: every feature or fix that lands on \`develop\` adds a line under **Unreleased** in
 the same commit. At release, that section is renamed to the version and date, and its
-text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped as
+text becomes the GitHub release body (see \`RELEASING.md\`). Sections are grouped as
 **Added**, **Changed**, **Fixed**. Nothing below a version heading is edited afterwards.
 
 ## Unreleased
 
 ### Added
 - **Marking scheme in HKEAA notation** on structured question parts: marking points with
-  marks, `/` alternatives, "any N @ 1", `max: N`, "mark the FIRST N only", OR routes,
+  marks, \`/\` alternatives, "any N @ 1", \`max: N\`, "mark the FIRST N only", OR routes,
   level descriptors and Effective Communication marks. Prints in the teacher version
   and the answer key; the student paper is unchanged.
 - **MCQ rationale and source note**: per option, why it is right or wrong, and a
@@ -28,7 +30,7 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
 - **Folders on the start screen**: create, rename and delete folders; move documents in
   from the menu or by dragging; search and filter inside a folder. Folders are kept in
   backups.
-- **One Export button** for `.docx`, PDF and `.json`, chosen inside the dialog; options
+- **One Export button** for \`.docx\`, PDF and \`.json\`, chosen inside the dialog; options
   that do not apply to a format are greyed with a reason.
 - **What's new**: the first time a new version opens, a short note lists what it adds,
   once. "What's new" beside Send feedback on the start screen, and in the editor's ⋯
@@ -42,16 +44,16 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
 ## 0.3.0 — 2026-09-24
 
 ### Added
-- **Export dialog**: question paper, a separate **answer key** `.docx`, or both, in any
+- **Export dialog**: question paper, a separate **answer key** \`.docx\`, or both, in any
   language, with **include/omit the cover page and the answer space** toggles.
 - **Paper versions A–D**: seeded MCQ option shuffles with a per-version key and a
   version map in the answer key.
-- **Export for other apps**: ZipGrade key, plain key CSV, Kahoot `.xlsx`, Blooket CSV.
+- **Export for other apps**: ZipGrade key, plain key CSV, Kahoot \`.xlsx\`, Blooket CSV.
 - **Pre-print paper check**: marks, timing, missing answers and translations, shown
   before export.
 - **Backup all as one zip** and restore (never overwrites); **Trash** with 30-day restore.
 - **File dashboard**: saved documents as first-page thumbnails or a list, with search,
-  kind filter and ordering. Desktop dialogs start in `~/Documents/Econ Worksheets` and
+  kind filter and ordering. Desktop dialogs start in \`~/Documents/Econ Worksheets\` and
   exported files can be revealed in Finder/Explorer.
 - **In-app feedback**: a prefilled GitHub issue, an email, or copy to clipboard.
 - **Paste-anywhere download widget** for other websites, always pointing at the latest
@@ -81,6 +83,7 @@ papers with click-to-edit on the paginated preview; MCQ and structured questions
 derived numbering and marks; sections, headings, stimuli, labelled sources and tables;
 supply–demand, business-cycle, pie and flow-chart diagrams with a drawing canvas; cover
 page and Paper 2 answer booklet (LQ mode) with dotted answer space; headers and
-footers with a separate first page; faithful `.docx` export, print-to-PDF and
+footers with a separate first page; faithful \`.docx\` export, print-to-PDF and
 copy-for-Word, all built in the browser; autosave with undo/redo; the warm studio
 theme.
+`;

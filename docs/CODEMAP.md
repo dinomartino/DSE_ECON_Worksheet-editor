@@ -156,11 +156,16 @@ Invariants:
 - `src/storage/fileStore.ts:savedWorksheetPath` · `:savedWorksheetsFolder` · `src/storage/index.ts:pickWorksheetFile`
 - `src/desktop/updater.ts:checkForUpdate` · `:currentVersion` · `src/desktop/updateStore.ts:checkOnLaunch` — one check per launch
 - `src/components/editor/UpdateBanner.tsx:UpdateBanner` · `:VersionLine`
+- `src/whatsNew/changelog.ts:parseChangelog` · `:sectionMarkdown` · `:compareVersions` — `CHANGELOG.md` as data, shared with `scripts/release-notes.mjs`
+- `src/whatsNew/changelog.generated.ts:CHANGELOG_MD` — the bundled copy, written by `scripts/sync-changelog.mjs` (`predev`/`prebuild`); `src/whatsNew/notes.ts:CHANGELOG` parses it once
+- `src/whatsNew/seen.ts:decideWhatsNew` · `:LAST_SEEN_VERSION_KEY` — pop "What's new" once per new version, never on a first run
+- `src/components/whatsNew/WhatsNewDialog.tsx:WhatsNewDialog` · `:WhatsNewOnLaunch` — one release after an update, or every release (start screen, ⋯ menu)
 
 Invariants:
 - Never import `@tauri-apps/*` at the top level — dynamic `import()` behind `isDesktop()` — §Desktop shell.
 - Nothing reads `process.env` or the filesystem at runtime on the web path — §Deployment.
 - `src-tauri/tauri.conf.json` `app.security.csp` stays `null` — §Desktop shell.
+- The changelog copy is committed and must match `CHANGELOG.md`: `src/whatsNew/changelog.generated.test.ts` fails CI when stale (`npm run changelog`).
 
 ## components/start
 
@@ -223,6 +228,8 @@ Invariant: chrome uses semantic tokens (`src/app/globals.css`); anything on the 
 - `scripts/cover-verify.mjs` · `scripts/lq-verify.mjs` — the three backends agree
 - `scripts/cover-fixtures.test.ts` · `scripts/lq-fixtures.test.ts` · `scripts/q6-sample.test.ts`
 - `scripts/sync-version.mjs` — `package.json` → `src-tauri/tauri.conf.json` + `Cargo.toml`
+- `scripts/sync-changelog.mjs` — `CHANGELOG.md` → `src/whatsNew/changelog.generated.ts`
+- `scripts/release-notes.mjs` — one version's section, the GitHub release body; `scripts/release-notes.test.ts`
 - `scripts/lq-pitch.py` · `scripts/cover-compare.py` — measure the rendered output
 
 ## tests and corpus

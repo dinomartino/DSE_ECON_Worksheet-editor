@@ -2200,6 +2200,15 @@ One shared state (`desktop/updateStore.ts`) checks **once per launch**; the bann
 start screen's version line (bottom-left) and the editor's ⋯ "Check for updates" all read
 it. A failed check is `failed`, never "up to date".
 
+**What's new** is `CHANGELOG.md`, bundled at build time (`scripts/sync-changelog.mjs` →
+`src/whatsNew/changelog.generated.ts`, committed, checked fresh by a test) — no server,
+no Markdown loader. The start screen pops the running version's section once when it is
+newer than `econ-worksheet-last-seen-version` (a key outside the document prefix); a
+first run only records the version, but saved work with no record counts as an update
+from a build before the key. "What's new" on the start screen and in the ⋯ menu lists
+every release. `Unreleased` shows only in dev builds (`NODE_ENV` is inlined at build
+time). The release body comes from the same parser (`scripts/release-notes.mjs`).
+
 **The start screen renders only after hydration** (`EditorHost`): it reads the platform
 and `localStorage` while rendering, which the web-built prerender cannot match.
 
