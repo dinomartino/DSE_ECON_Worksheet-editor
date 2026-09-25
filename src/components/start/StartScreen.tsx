@@ -37,6 +37,7 @@ import {
   type ImportCounts,
 } from './fileDrop';
 import { NEW_WORKSHEET_FORM_ID, NewWorksheetForm } from './NewWorksheetForm';
+import { RenameDialog, renameWorksheet } from './RenameDialog';
 import { TrashList } from './TrashList';
 import { newId } from '@/model/factories';
 import type { DocumentType } from '@/model/newWorksheet';
@@ -124,6 +125,7 @@ export function StartScreen({
   const [creating, setCreating] = useState<DocumentType | undefined>();
   const [error, setError] = useState<string | undefined>();
   const [renaming, setRenaming] = useState<WorksheetSummary | undefined>();
+  const [renameError, setRenameError] = useState<string | undefined>();
   const [confirmingDelete, setConfirmingDelete] = useState<WorksheetSummary | undefined>();
   const [trashRows, setTrashRows] = useState<TrashedSummary[]>([]);
   const [showingTrash, setShowingTrash] = useState(false);
@@ -846,9 +848,15 @@ export function StartScreen({
       {renaming && (
         <RenameDialog
           summary={renaming}
-          onClose={() => setRenaming(undefined)}
+          error={renameError}
+          onClose={() => {
+            setRenaming(undefined);
+            setRenameError(undefined);
+          }}
           onDone={async (title) => {
-            await worksheetStore.rename(renaming.id, title);
+            const problem = await renameWorksheet(worksheetStore, renaming.id, title);
+            setRenameError(problem);
+            if (problem) return;
             setRenaming(undefined);
             await refresh();
           }}
@@ -1046,60 +1054,6 @@ function StartRow({
       </span>
       <span className="mt-0.5 block text-[11px] leading-snug text-ink-muted">{hint}</span>
     </button>
-  );
-}
-
-function RenameDialog({
-  summary,
-  onClose,
-  onDone,
-}: {
-  summary: WorksheetSummary;
-  onClose: () => void;
-  onDone: (title: string) => void;
-}) {
-  const [title, setTitle] = useState(summary.title === 'Untitled' ? '' : summary.title);
-  const trimmed = title.trim();
-  const formId = 'rename-worksheet-form';
-
-  return (
-    <Dialog
-      title="Rename worksheet"
-      description="What this document is called here and what the exported file is named. The heading printed on the page is set in the document itself."
-      width={420}
-      onClose={onClose}
-      footer={
-        <>
-          <Button variant="subtle" onClick={onClose}>
-            Cancel
-          </Button>
-          {/* Disabled on empty rather than falling back to "Untitled": an empty box here
-              is a slip, and silently renaming a document to nothing is not what it asks
-              for. */}
-          <Button variant="primary" type="submit" form={formId} disabled={!trimmed}>
-            Rename
-          </Button>
-        </>
-      }
-    >
-      <form
-        id={formId}
-        className="px-5 py-5"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (trimmed) onDone(trimmed);
-        }}
-      >
-        <input
-          type="text"
-          value={title}
-          autoFocus
-          placeholder="Document name"
-          onChange={(event) => setTitle(event.target.value)}
-          className="h-9 w-full rounded-lg border border-line bg-surface px-2.5 text-[13px] text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
-        />
-      </form>
-    </Dialog>
   );
 }
 
