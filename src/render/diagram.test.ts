@@ -113,9 +113,9 @@ describe('diagram SVG rendering', () => {
       expect(svg, id).not.toContain('<marker');
       expect(svg, id).not.toContain('url(#');
     }
-    // Two axes plus the template's shift arrow.
+    // Two axes, the shift arrow, and the P₀ → P₁ and Q₀ → Q₁ change arrows.
     const shift = diagramSvg(buildFromTemplate('demand-shift'), { widthPx: 400, heightPx: 300, language: 'en' });
-    expect((shift.match(/data-arrowhead=""/g) ?? []).length).toBe(3);
+    expect((shift.match(/data-arrowhead=""/g) ?? []).length).toBe(5);
   });
 
   it('embeds no external references, so rasterizing cannot taint the canvas', () => {
