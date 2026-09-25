@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { Diagram, DiagramCurve } from './diagram';
 import { DIAGRAM_TEMPLATES, buildFromTemplate } from './diagramTemplates';
@@ -154,6 +156,16 @@ describe('dragging a template keeps the scheme', () => {
     const ends = (x: Diagram) => spanGeometry(x, x.spans![0])!.base.map((p) => p.x);
     expect(ends(after)[0]).toBeGreaterThan(ends(d)[0]);
     expect(ends(after)[1]).toBeCloseTo(ends(d)[1], 9);
+  });
+});
+
+describe('the coverage matrix', () => {
+  it('names only templates that exist (every hyphenated id it cites)', () => {
+    const doc = readFileSync(path.resolve(__dirname, '../../docs/Diagram_Requirements/COVERAGE.md'), 'utf8');
+    const ids = new Set(DIAGRAM_TEMPLATES.map((t) => t.id));
+    const cited = [...doc.matchAll(/`([a-z0-9]+(?:-[a-z0-9]+)+)`/g)].map((m) => m[1]);
+    expect(cited.length).toBeGreaterThan(40);
+    expect(cited.filter((id) => !ids.has(id))).toEqual([]);
   });
 });
 

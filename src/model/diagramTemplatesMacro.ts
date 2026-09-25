@@ -132,9 +132,10 @@ function gap(kind: 'deflationary' | 'inflationary'): Diagram {
 function gapNarrows(): Diagram {
   const full = 0.74;
   const l = lras(full);
-  const ad0 = curve([[0.04, 0.7], [0.66, 0.12]], sub('AD', '0'));
+  // AD₀ is named at its top, so its name stays clear of the gap arrows below.
+  const ad0 = curve([[0.04, 0.7], [0.6, 0.176]], sub('AD', '0'), { labelAt: 'start', labelOffset: { x: 0.07, y: 0.03 } });
   const ad1 = shiftOf(ad0, 0.18, 0, sub('AD', '1'));
-  const sras = curve([[0.08, 0.2], [0.57, 0.8]], sym('SRAS'));
+  const sras = curve([[0.08, 0.2], [0.52, 0.74]], sym('SRAS'));
   const e0 = eq(ad0, sras, '0', Y, { labelOffset: { x: -0.07, y: -0.03 } });
   // Each gap ends on LRAS at the axis, whichever AD is drawn.
   const yf0 = { on: l.id, y: 0 };
@@ -146,7 +147,7 @@ function gapNarrows(): Diagram {
       points: [e0, e1],
       arrows: [arrow([0.16, 0.66], [0.32, 0.66])],
       spans: [
-        span(at(e0), yf0, 'doubleArrow', { along: 'x', offset: 0.2, label: subBi('gap', '缺口', '0') }),
+        span(at(e0), yf0, 'doubleArrow', { along: 'x', offset: 0.2, label: subBi('gap', '缺口', '0'), labelOffset: { x: -0.08, y: 0 } }),
         span(at(e1), yf0, 'doubleArrow', { along: 'x', offset: 0.05, label: subBi('gap', '缺口', '1') }),
       ],
     }),
@@ -207,6 +208,25 @@ function shockRecovery(): Diagram {
         arrow([xAt(s0, hi) - 0.02, hi], [xAt(s1, hi) + 0.02, hi], { label: sym('1'), labelOffset: { x: 0.03, y: 0 } }),
         arrow([xAt(s1, lo) + 0.02, lo], [xAt(s0, lo) - 0.02, lo], { label: sym('2') }),
       ],
+    }),
+  );
+}
+
+/** Demand grows but capacity does not: on a vertical LRAS, AD shifts right and only P rises. */
+function adShiftAtCapacity(): Diagram {
+  const full = 0.5;
+  const l = lras(full);
+  const ad0 = curve([[0.06, 0.8], [0.72, 0.12]], sub('AD', '0'));
+  const ad1 = shiftOf(ad0, 0.2, 0, sub('AD', '1'));
+  const e0 = eq(ad0, l, '0', { p: 'P', q: '' }, { labelSide: 'downLeft' });
+  const e1 = eq(ad1, l, '1', { p: 'P', q: '' }, { labelSide: 'right' });
+  return finish(
+    macro({
+      x: { title: AXIS.realOutput, ticks: [yf(full)] },
+      curves: [ad0, ad1, l],
+      points: [e0, e1],
+      arrows: [arrow([0.17, 0.72], [0.32, 0.72])],
+      spans: axisArrows(e0, e1, ['y']),
     }),
   );
 }
@@ -331,6 +351,13 @@ export const MACRO_TEMPLATES: DiagramTemplate[] = [
     name: bi('Supply shock and recovery', '供應衝擊及復元'),
     hint: bi('SRAS shifts left (1), then back (2); P returns to P₀.', 'SRAS 先左移 (1) 再回復 (2)；價格回到 P₀。'),
     build: shockRecovery,
+  },
+  {
+    id: 'ad-shift-at-capacity',
+    group: 'macro',
+    name: bi('AD shift at full capacity', '全民就業下的總需求變動'),
+    hint: bi('AD₀ → AD₁ on a vertical LRAS: P rises, Y stays at Yf.', '垂直 LRAS 上 AD₀ → AD₁：價格上升，產出維持在 Yf。'),
+    build: adShiftAtCapacity,
   },
   {
     id: 'lras-growth',

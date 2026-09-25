@@ -179,7 +179,8 @@ function shortageChange(): Diagram {
       ],
       arrows: [arrow([0.2, 0.74], [0.34, 0.74])],
       spans: [
-        span(at(qs), at(qd0), 'bracket', { offset: -0.05, label: subBi('shortage', '短缺', '0') }),
+        // shortage₀'s name sits left of S, clear of shortage₁ below it.
+        span(at(qs), at(qd0), 'bracket', { offset: -0.05, label: subBi('shortage', '短缺', '0'), labelOffset: { x: -0.23, y: 0.02 } }),
         span(at(qs), at(qd1), 'bracket', { along: 'x', offset: 0.05, label: subBi('shortage', '短缺', '1') }),
       ],
     }),
@@ -519,14 +520,15 @@ function subsidyEfficiency(): Diagram {
   const d = MB_D();
   const s0 = curve([[0.06, 0.34], [0.58, 0.9]], lab('S', ['0'], ' = MC'));
   const s1 = shiftOf(s0, 0, -0.26, sub('S', 's'));
-  const e0 = eq(d, s0, '0', {}, { labelSide: 'up' });
+  const e0 = eq(d, s0, '0', {}, { labelOffset: { x: -0.015, y: 0.075 } });
   const e1 = eq(d, s1, '1', { p: '' }, { label: sym('MB'), labelSide: 'right' });
   const mc = pin({ on: s0.id, x: at(e1) }, [s0, e1], sym('MC'), { labelSide: 'right' });
   return finish(
     axes(AXIS.quantity, AXIS.price, {
       curves: [d, s0, s1],
       points: [e0, e1, mc],
-      labels: [label(0.5, 0.1, lab('at Q', ['1'], ': MC > MB'), { align: 'left' })],
+      arrows: [arrow([0.2, 0.46], [0.2, 0.27])],
+      labels: [label(0.1, 0.97, lab('at Q', ['1'], ': MC > MB'), { align: 'left' })],
     }),
     (r) => shade(r, 'subsidyDwl', { demand: d.id, supply: s0.id, shifted: s1.id }),
   );
