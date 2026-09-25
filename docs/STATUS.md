@@ -35,7 +35,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Last verified
 
-- `npm test` — 1720 tests, ~3s. `cargo check` in `src-tauri` clean. Green. `npm run build` green; `npm run samples` exports.
+- `npm test` — 1721 tests, ~3s. `cargo check` in `src-tauri` clean. Green. `npm run build` green; `npm run samples` exports.
 - `npm run typecheck` — clean.
 - `npm run lint` — 44 pre-existing problems (3 errors, 41 warnings) in `Preview.tsx` and
   `InlineEditable.tsx`. Not a regression; do not "fix" by rewriting those files.
@@ -44,6 +44,10 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Open threads and known gaps
 
+- **Verify diagrams in WebKit too.** Safari and the desktop webview ignore SVG
+  `dominant-baseline` on `<text>` with `<tspan>`s; labels rose through the axis while
+  Chrome shots looked right (fixed 2026-09-26: `textAt` writes explicit baselines).
+  Playwright WebKit is installed; screenshot both engines for text placement work.
 - **Diagram relations, loose ends:** the canvas "Shift" button still makes a plain copy
   (templates use a following `shift` derive); a dragged PPF point is not held on the
   frontier; `gap-narrows` is crowded in bilingual mode; presets cannot use a flat D; the
