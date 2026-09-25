@@ -146,6 +146,23 @@ A static Tauri import still compiles, so it is caught three times: `src/test/tau
 Guard: `src/platform/platform.test.ts`, `src/test/tauriImports.test.ts`; then `npm run build`
 and `npm run desktop:dev`.
 
+**A native command of our own** (as `print_to_pdf` in `src-tauri/src/pdf/mod.rs`): a
+`#[tauri::command]`, registered in `generate_handler!` in `src-tauri/src/lib.rs`, named in
+`src-tauri/build.rs` (`AppManifest::commands`, which generates `allow-<name>`), and that
+permission added to `src-tauri/capabilities/default.json` — a command left out of either is
+denied at runtime, not at build. JS calls it with `invoke` from `@tauri-apps/api/core`, in
+`src/platform/`. Platform code sits behind `#[cfg(target_os = …)]`; check Windows with a
+scratch crate that `#[path]`-includes the module (`cargo check --target
+x86_64-pc-windows-msvc` on the whole app fails in `ring`'s C build on macOS).
+
+## Check the desktop PDF
+
+Export → PDF on desktop writes through the webview's own print (`src-tauri/src/pdf/`), so
+only a desktop run proves it: `npm run desktop:dev`, export a multi-page bilingual paper with
+a diagram and a cover, then `pdfinfo` the file — page count equals the sheets on screen,
+page size is the paper's — and open it. WebKit's print can differ from Chrome's
+(a hard-stop CSS gradient printed as a solid box); draw rules on the paper as SVG.
+
 ## Verify UI
 
 ```bash

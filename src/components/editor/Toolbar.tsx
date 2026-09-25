@@ -149,13 +149,27 @@ export function Toolbar({
    * sheets. The PDF is produced from exactly what is on screen and cannot drift from
    * it, which a separate PDF renderer would. `printWorksheetPdf` sets the `@page` box
    * and the print mode first.
+   *
+   * Desktop hands over the `file` its save sheet chose: the page is printed straight
+   * to it and reported like a `.docx`, with the reveal. Should that fail, the print
+   * sheet opens instead and the status line says why.
    */
-  const handlePrint = (printMode: OutputMode) => {
+  const handlePrint = (printMode: OutputMode, file?: string) => {
     setError(undefined);
     const deps = browserPrintDeps(setMode, () => select(undefined));
-    printWorksheetPdf(worksheet, printMode, deps).catch((cause: unknown) =>
-      setError(`Could not open the print dialog: ${cause instanceof Error ? cause.message : String(cause)}`),
-    );
+    printWorksheetPdf(worksheet, printMode, deps, file)
+      .then((outcome) => {
+        if ('saved' in outcome) flash('Exported .pdf', revealAction(outcome.saved));
+        else if (outcome.fallback !== undefined) {
+          // Kept (not flashed): the sheet is modal and would outlast a transient line.
+          setError(
+            `Could not save the PDF directly (${outcome.fallback}), so the print dialog opened — choose Save as PDF there.`,
+          );
+        }
+      })
+      .catch((cause: unknown) =>
+        setError(`Could not open the print dialog: ${cause instanceof Error ? cause.message : String(cause)}`),
+      );
   };
 
   /**

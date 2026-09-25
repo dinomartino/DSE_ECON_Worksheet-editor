@@ -46,7 +46,17 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   opens read-only with a note to update, and is never overwritten. "Duplicate as editable
   copy" makes a copy you can edit now.
 
+### Changed
+- **Desktop: Export → PDF saves a file directly, no print sheet.** Choose where in the
+  save dialog (it starts in your exports folder, like \`.docx\`); the status line then
+  offers Show in Finder / Explorer. In a browser, PDF still goes through the print
+  dialog's Save as PDF.
+
 ### Fixed
+- **PDF printed every marks label twice** ("(4 marks)" after the text and again at the
+  right margin). It now prints once, at the right.
+- **Desktop PDF: the cover's corner box printed solid black.** Its diagonal now prints
+  as a line.
 - **Desktop: Export → PDF opens the print sheet** instead of failing silently.
 - **Print PDF lost every arrowhead and pie hatching** (axis arrows, shift arrows,
   flow-chart arrows, hatched and dotted pie slices). All now print.

@@ -2062,9 +2062,9 @@ function CoverSheet({
         {/*
           The corner block, with the reference's diagonal.
 
-          The rule is drawn with a CSS gradient rather than an SVG or a border: it is one
-          line across a box, it must not be selectable or printable chrome, and a gradient
-          needs no extra element in the flow to reserve space.
+          The rule is an absolutely placed SVG line: no flow space, not selectable. Not a
+          CSS gradient — WebKit's print (the desktop PDF) fills a hard-stop gradient's
+          whole box black.
         */}
         {/*
           The corner block **floats**, matching the anchored group the .docx emits
@@ -2089,24 +2089,15 @@ function CoverSheet({
               // reference's does — at the body size the code lines occupy only the
               // square's upper-left, so the line clears them (§ `cornerGroupXml`).
               <span aria-hidden className="pointer-events-none absolute inset-0">
-                <span
+                {/* The "/" diagonal (bottom-left to top-right), in points over the
+                    1.893 × 1.882in box, at the 3pt weight the shape exports. */}
+                <svg
                   className="block h-full w-full"
-                  style={{
-                    /*
-                      `to bottom right` draws the "/" diagonal, not the "\\" one.
-                       *
-                       * The keyword names the gradient's *axis of travel*, and the stops
-                       * lay a band **perpendicular** to it — so `to top right` produced
-                       * the mirror image, which shipped once and read as a backslash.
-                       * Verified by measuring the rendered pixels, as the .docx flip was
-                       * (§ `cornerGroupXml`), rather than by reasoning about the keyword.
-                       *
-                       * 1.5pt each side of centre = the 3pt weight the shape exports.
-                       */
-                    background:
-                      "linear-gradient(to bottom right, transparent calc(50% - 1.5pt), #000 calc(50% - 1.5pt), #000 calc(50% + 1.5pt), transparent calc(50% + 1.5pt))",
-                  }}
-                />
+                  viewBox="0 0 136.3 135.5"
+                  preserveAspectRatio="none"
+                >
+                  <line x1="0" y1="135.5" x2="136.3" y2="0" stroke="#000" strokeWidth="3" />
+                </svg>
               </span>
             )}
           </div>

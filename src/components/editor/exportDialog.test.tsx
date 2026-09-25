@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createWorksheet } from '@/model/factories';
 import { createWorksheetFrom } from '@/model/newWorksheet';
@@ -66,6 +66,22 @@ describe('ExportDialog', () => {
     expect(radio(markup, 'Teacher')).not.toContain('disabled');
     expect(markup).toContain('Print to PDF');
     expect(markup).not.toContain('Export .docx');
+  });
+
+  it('PDF says per platform what happens: the web prints, the desktop app saves a file', () => {
+    const web = render(undefined, 'pdf');
+    expect(web).toContain('pick Save as PDF in the print dialog');
+    expect(web).toContain('Print to PDF…');
+    vi.stubGlobal('window', { __TAURI_INTERNALS__: {} });
+    try {
+      const desktop = render(undefined, 'pdf');
+      expect(desktop).toContain('Saves the sheets as they look here to a PDF file.');
+      expect(desktop).toContain('Save PDF…');
+      expect(desktop).toContain('then saves.');
+      expect(desktop).not.toContain('print dialog');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('PDF keeps the cover and answer-space toggles, for this print only', () => {

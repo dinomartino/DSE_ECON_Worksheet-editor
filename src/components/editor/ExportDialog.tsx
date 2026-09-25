@@ -2,7 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { LanguageMode, OutputMode, VersionMode, Worksheet } from '@/model/types';
-import { CSV_FILTERS, DOCX_FILTERS, isDesktop, saveFile, XLSX_FILTERS } from '@/platform';
+import {
+  chooseSavePath,
+  CSV_FILTERS,
+  DOCX_FILTERS,
+  isDesktop,
+  PDF_FILTERS,
+  saveFile,
+  XLSX_FILTERS,
+} from '@/platform';
 import { downloadWorksheetFile, worksheetStore, worksheetTitle, type WorksheetSummary } from '@/storage';
 import { buildAppExport, type AppExport, type AppFormat } from '@/export/csv/answerKeyCsv';
 import { Button, CheckField, Segmented } from '@/components/ui';
@@ -18,6 +26,7 @@ import {
   loadKeyDocuments,
   omittableParts,
   paperMode,
+  pdfDestination,
   pdfVariant,
   skippedNote,
   type ExportChoice,
@@ -40,8 +49,9 @@ export interface ExportDialogProps {
   /**
    * PDF: print the sheets in this mode. Called after the dialog has closed, so it is
    * gone from the page before the print starts; the caller reports its own failure.
+   * Desktop passes the `file` its save sheet chose, to write without a print sheet.
    */
-  onPrint?: (mode: OutputMode) => void;
+  onPrint?: (mode: OutputMode, file?: string) => void;
   /** The format the dialog opens on; `.docx` when absent. */
   initialFormat?: ExportFormat;
   /** What the dialog opens on; the question paper when absent. */
@@ -117,26 +127,47 @@ const saveExport = (file: ExportFile) =>
     file.name.endsWith('.csv') ? CSV_FILTERS : file.name.endsWith('.xlsx') ? XLSX_FILTERS : DOCX_FILTERS,
   );
 
-const FORMAT_OPTIONS: Array<{ value: ExportFormat; label: string; title: string; hint: string }> = [
-  {
-    value: 'docx',
-    label: '.docx',
-    title: 'Word document',
-    hint: 'Word, to keep editing. Other apps writes a CSV or spreadsheet instead.',
-  },
-  {
-    value: 'pdf',
-    label: 'PDF',
-    title: 'Print, or Save as PDF',
-    hint: 'Prints the sheets as they look here; pick Save as PDF in the print dialog.',
-  },
-  {
-    value: 'json',
-    label: '.json',
-    title: 'The worksheet file, to open again in this app',
-    hint: 'The worksheet itself, to open again here. The options below do not apply.',
-  },
-];
+/**
+ * PDF differs by platform: the desktop app writes the file itself; a browser can only
+ * print, and the teacher picks Save as PDF in its dialog.
+ */
+function formatOptions(
+  desktop: boolean,
+): Array<{ value: ExportFormat; label: string; title: string; hint: string }> {
+  return [
+    {
+      value: 'docx',
+      label: '.docx',
+      title: 'Word document',
+      hint: 'Word, to keep editing. Other apps writes a CSV or spreadsheet instead.',
+    },
+    desktop
+      ? {
+          value: 'pdf',
+          label: 'PDF',
+          title: 'A PDF file of the sheets',
+          hint: 'Saves the sheets as they look here to a PDF file.',
+        }
+      : {
+          value: 'pdf',
+          label: 'PDF',
+          title: 'Print, or Save as PDF',
+          hint: 'Prints the sheets as they look here; pick Save as PDF in the print dialog.',
+        },
+    {
+      value: 'json',
+      label: '.json',
+      title: 'The worksheet file, to open again in this app',
+      hint: 'The worksheet itself, to open again here. The options below do not apply.',
+    },
+  ];
+}
+
+/** `<name> (Student) (EN).pdf`: the `.docx` name, so the two files sort together. */
+async function pdfFileName(worksheet: Worksheet, mode: OutputMode): Promise<string> {
+  const { docxFileName } = await import('@/export/docx');
+  return docxFileName(worksheet, mode).replace(/\.docx$/, '.pdf');
+}
 
 const APP_OPTIONS: Array<{ value: AppFormat; label: string; title: string; hint: string }> = [
   { value: 'zipgrade', label: 'ZipGrade', title: 'ZipGrade answer-key CSV', hint: 'MCQ key for ZipGrade: Import Key CSV.' },
@@ -183,6 +214,8 @@ export function ExportDialog({
   loadDocument = loadSaved,
 }: ExportDialogProps) {
   const [format, setFormat] = useState<ExportFormat>(initialFormat);
+  const desktop = isDesktop();
+  const formats = formatOptions(desktop);
   const [chosenWhat, setWhat] = useState<ExportWhat>(initialWhat);
   // PDF prints what is on the page, and only the question paper is; the choice is kept
   // for when the format goes back to .docx.
@@ -286,13 +319,29 @@ export function ExportDialog({
   };
 
   // Closed first, so the dialog is gone from the page before anything is printed.
-  const handlePrint = () => {
+  // Desktop asks where first; a cancelled sheet keeps the dialog, as `.json` does.
+  const handlePrint = async () => {
     const printMode: OutputMode = {
       ...paperMode({ what: 'paper', language, version, includeCover, includeAnswerSpace }),
       ...(printVariant && printVariant !== letters[0] ? { variant: printVariant } : {}),
     };
+    setBusy(true);
+    setError(undefined);
+    let destination: { file?: string } | undefined;
+    try {
+      destination = await pdfDestination({
+        desktop,
+        choose: async () => chooseSavePath(await pdfFileName(worksheet, printMode), PDF_FILTERS),
+      });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Export failed.');
+      return;
+    } finally {
+      setBusy(false);
+    }
+    if (!destination) return;
     callbacks.current.onClose();
-    onPrint?.(printMode);
+    onPrint?.(printMode, destination.file);
   };
 
   // The document file: nothing to choose, one save. A cancelled sheet keeps the dialog.
@@ -364,9 +413,9 @@ export function ExportDialog({
                   : 'Download question paper'}
             </Button>
           ) : pdf ? (
-            <Button variant="primary" onClick={handlePrint} disabled={!onPrint}>
+            <Button variant="primary" onClick={() => void handlePrint()} disabled={!onPrint || busy}>
               <PdfIcon size={15} />
-              Print to PDF…
+              {desktop ? 'Save PDF…' : 'Print to PDF…'}
             </Button>
           ) : json ? (
             <Button variant="primary" onClick={() => void handleJson()} disabled={busy}>
@@ -411,8 +460,8 @@ export function ExportDialog({
           </div>
         ) : (
           <>
-            <Field label="Format" hint={FORMAT_OPTIONS.find((option) => option.value === format)?.hint}>
-              <Segmented label="Format" value={format} onChange={setFormat} options={FORMAT_OPTIONS} />
+            <Field label="Format" hint={formats.find((option) => option.value === format)?.hint}>
+              <Segmented label="Format" value={format} onChange={setFormat} options={formats} />
             </Field>
 
             {/* Greyed in place rather than hidden, so switching format does not move the
@@ -484,7 +533,11 @@ export function ExportDialog({
 
               <Field
                 label="Language"
-                hint={pdf ? 'The page switches to this language and version, then prints.' : undefined}
+                hint={
+                  pdf
+                    ? `The page switches to this language and version, then ${desktop ? 'saves' : 'prints'}.`
+                    : undefined
+                }
               >
                 <Segmented
                   label="Language"

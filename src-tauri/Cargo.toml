@@ -27,6 +27,20 @@ tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-process = "2"
+# Awaits the native print-to-PDF completion (`src/pdf`); already in the tree via tauri.
+tokio = { version = "1", features = ["sync", "time"] }
+
+# Export → PDF writes the file natively (`src/pdf`). The versions wry already pulls in,
+# default features off (they default to every framework class).
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "objc2-core-foundation", "NSObject", "NSString", "NSURL", "NSValue", "NSDictionary", "NSGeometry", "NSThread"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "objc2-core-foundation", "NSPrintInfo", "NSPrintOperation", "NSResponder", "NSView", "NSWindow", "NSGraphics"] }
+objc2-web-kit = { version = "0.3", default-features = false, features = ["std", "objc2-core-foundation", "objc2-app-kit", "WKWebView"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+webview2-com = "0.38"
+windows = "0.61"
 
 # The updater has no mobile implementation; keep it off any non-desktop target.
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]

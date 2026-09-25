@@ -210,8 +210,9 @@ panel right, a rule between) — a shape no stack of full-width bands can make, 
   needs `CORNER_CLEARANCE_LINES` blank lines. Code lines are Arial bold **11pt stored
   per line** (must not follow a QAB's 10pt body); textbox `(0,312) 1520×1350`, diagonal
   full `2725×2710` corner-to-corner.
-- **The diagonal runs bottom-left → top-right**: `a:xfrm flipV="1"` in `.docx`,
-  `linear-gradient(to bottom right, …)` in CSS — both the opposite of the obvious guess.
+- **The diagonal runs bottom-left → top-right**: `a:xfrm flipV="1"` in `.docx` — the
+  opposite of the obvious guess. The preview draws it as an SVG line, not a CSS gradient:
+  WebKit's print (the desktop PDF) fills a hard-stop gradient's whole box black.
 - The "PAPER 2" line is regular weight 10.5pt with `spaceBefore` (the reference's
   `w:before="115"`); the title pair is 14pt bold; timing/language lines follow the body
   size.
@@ -413,7 +414,8 @@ reach.
 
 - **The slash runs bottom-left → top-right**: `w:tr2bl`, and `to bottom right` in the
   preview's gradient — both the opposite of the obvious guess, as the cover's corner
-  diagonal already records.
+  diagonal already records. This hairline gradient does print correctly in WebKit (the
+  cover's 3pt one did not, and is now an SVG line).
 - **It composes with `headerRule`'s resolved edges rather than replacing them**, and
   comes **last** inside `w:tcBorders` (`CT_TcBorders` is itself a sequence), which still
   precedes `w:tcMar`/`w:vAlign`.
@@ -1655,8 +1657,16 @@ what the exporter reads. Entering clears the question selection; `HintPill` hide
 One Export button; the dialog picks `.docx`, PDF or `.json`. PDF puts the page in the
 chosen mode, waits for `#print-root` to settle, then prints (`editor/printPdf.ts`).
 Language, version and paper version stay as the editor's view; the "Include" flags are
-lifted on `afterprint`. PDF is the question paper, one version per print — the rest are
+lifted after the print. PDF is the question paper, one version per print — the rest are
 disabled in the dialog with the reason, not hidden.
+
+The two platforms end differently. **Web:** `window.print()`, the teacher picks Save as
+PDF (a browser cannot write a file silently); flags lift on `afterprint`. **Desktop:** the
+save sheet first (a cancel keeps the dialog, as `.json` does; name = the `.docx` name with
+`.pdf`), then the same prepared page goes to the shell's `print_to_pdf` (§ Desktop shell,
+Printing) — no print sheet; flags lift when it resolves, and the status line offers the
+reveal. If the command fails, the print sheet opens instead and the error line says why.
+Both use print media CSS, so there is still one description of the printed page.
 The answer key (`.docx` only) may take other saved documents' keys into the same file
 ("Also include", § the answer key); the question paper stays this document's alone.
 
@@ -2234,8 +2244,9 @@ call goes through a dynamic `import()` inside a function, behind an `isDesktop()
 `FileWorksheetStore` (`storage/fileStore.ts`) under `$APPDATA/worksheets/` — one
 `<id>.worksheet.json` per document plus `index.json` — when `isDesktop()`, else the
 `localStorage` store. Both share the per-row index validation (`storage/summaries.ts`);
-the file store can also rebuild a lost index by scanning the directory. Saving `.docx`
-and `.json` uses the native save dialog on desktop, the browser download on the web.
+the file store can also rebuild a lost index by scanning the directory. Saving `.docx`,
+`.json` and PDF uses the native save dialog on desktop; the web downloads (`.docx`, `.json`)
+or prints (PDF).
 
 **Where files go.** Save and open dialogs start in the last-used folder, else
 `~/Documents/Econ Worksheets` (created on demand; the one `$DOCUMENT` path `fs:allow-mkdir`
@@ -2284,10 +2295,25 @@ was added:** `tauri-plugin-fs` adds every dropped path to its runtime scope on
 already allows `read_file`/`stat` commands, so `readDroppedFile` reads it; it refuses a
 non-file or anything over 20 MB unread.
 
-**Printing** needs `core:webview:allow-print`: on macOS the shell replaces
-`window.print` with an async `plugin:webview|print` call (WKWebView has no print of its
-own) that opens the system print sheet, whose PDF menu saves. It resolves as the sheet
-opens; `afterprint` still fires when it closes.
+**Printing.** Export → PDF writes the file through the app's one command,
+`print_to_pdf(path, widthPt, heightPt, landscape, pages)` (`src-tauri/src/pdf/`, declared
+in `build.rs`, granted as `allow-print-to-pdf`). It refuses a relative or non-`.pdf` path
+or a missing folder, and resolves only once the file exists. The engines paginate to the
+paper they are given, not to CSS `@page size`, so JS passes the worksheet's paper in
+points and zero margins apply (the sheets carry their margins as padding, matching
+`@page { margin: 0 }`). `pages` is the sheet count: WebKit adds a blank page when the last
+sheet overruns its page by a sub-pixel, so the range is capped.
+- macOS: `-[WKWebView printOperationWithPrintInfo:]` with `NSPrintSaveJob` +
+  `NSPrintJobSavingURL`, no panels, run modal for the window (a synchronous `runOperation`
+  gets blank pages). WebKit runs the job on its own thread and calls `didRun` there; the
+  delegate hands the result back to the main thread.
+- Windows: WebView2 `ICoreWebView2_7::PrintToPdf` with print settings (size, orientation,
+  zero margins, backgrounds, no header/footer, page range when the runtime has it). Not
+  yet run on a Windows machine.
+
+The print sheet stays as the fallback, and needs `core:webview:allow-print`: on macOS the
+shell replaces `window.print` with an async `plugin:webview|print` call that opens it.
+It resolves as the sheet opens; `afterprint` still fires when it closes.
 
 **`app.security.csp` stays `null`.** Next's static export inlines its bootstrap scripts;
 any CSP without `'unsafe-inline'` blanks the app. Tightening it means nonced scripts first.

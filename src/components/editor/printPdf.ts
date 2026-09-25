@@ -1,6 +1,6 @@
-import { pageSetupOf } from '@/model/page';
+import { PAPER_SIZES, pageSetupOf, twipsToPt } from '@/model/page';
 import type { OutputMode, Worksheet } from '@/model/types';
-import { printPage } from '@/platform';
+import { printPage, savePdf, type PdfPage } from '@/platform';
 
 /**
  * PDF export: the engine's print of the real sheets in `#print-root` (§ PDF export uses
@@ -10,6 +10,9 @@ import { printPage } from '@/platform';
  * Language, version and paper version become the editor's view and stay — the preview
  * shows what was printed, as the toolbar's own switches would. The "Include" flags are
  * for this print only and are lifted after it (the preview never keeps them).
+ *
+ * Desktop passes a `file`: the same prepared page is printed straight to it
+ * (`savePdf`), no print sheet. If the engine cannot, the sheet opens instead.
  */
 export interface PrintDeps {
   setMode: (patch: Partial<OutputMode>) => void;
@@ -19,6 +22,8 @@ export interface PrintDeps {
   root: { style: { setProperty: (name: string, value: string) => void } };
   /** Resolves once the sheets have repaginated for the new mode. */
   settled: () => Promise<void>;
+  /** How many sheets `#print-root` holds once settled: the PDF's page count. */
+  sheetCount: () => number;
   /** Subscribe to a window event; returns the unsubscribe. */
   listen: (type: string, handler: () => void) => () => void;
 }
@@ -34,11 +39,30 @@ export function pdfPrintMode(mode: OutputMode): OutputMode {
   };
 }
 
+/** The paper as the native print takes it: portrait points, the turn, the sheet count. */
+export function pdfPageBox(worksheet: Worksheet, pages: number): PdfPage {
+  const setup = pageSetupOf(worksheet);
+  const { width, height } = PAPER_SIZES[setup.paper] ?? PAPER_SIZES.A4;
+  return {
+    widthPt: twipsToPt(width),
+    heightPt: twipsToPt(height),
+    landscape: setup.orientation === 'landscape',
+    pages,
+  };
+}
+
+/**
+ * What happened: the file was written, or the print sheet opened — with, when a file
+ * was asked for, why it could not be written directly.
+ */
+export type PdfOutcome = { saved: string } | { printed: true; fallback?: string };
+
 export async function printWorksheetPdf(
   worksheet: Worksheet,
   mode: OutputMode,
   deps: PrintDeps,
-): Promise<void> {
+  file?: string,
+): Promise<PdfOutcome> {
   // Without the worksheet's own `@page` box the browser prints at whatever was last
   // chosen, and an A4 paper comes out scaled onto Letter. Our PaperSize values are the
   // CSS keywords already.
@@ -56,9 +80,23 @@ export async function printWorksheetPdf(
     offs.splice(0).forEach((off) => off());
     if (transient) deps.setMode({ omitCover: undefined, omitAnswerSpace: undefined });
   };
+
+  let fallback: string | undefined;
+  if (file !== undefined) {
+    // No `afterprint` here: the command resolves once the file is written, and that ends it.
+    try {
+      await savePdf(file, pdfPageBox(worksheet, deps.sheetCount()));
+      restore();
+      return { saved: file };
+    } catch (cause) {
+      fallback = cause instanceof Error ? cause.message : String(cause);
+    }
+  }
+  const printed: PdfOutcome = fallback === undefined ? { printed: true } : { printed: true, fallback };
+
   if (!transient) {
     await printPage();
-    return;
+    return printed;
   }
   // `afterprint` ends it: browsers send it as the dialog closes, and so does the macOS
   // shell's sheet (seen in `npm run desktop:dev`), though its print call resolves as
@@ -74,6 +112,7 @@ export async function printWorksheetPdf(
   if (offs.length > 0) {
     offs.push(deps.listen('pointerdown', restore), deps.listen('keydown', restore));
   }
+  return printed;
 }
 
 /**
@@ -111,6 +150,8 @@ export function browserPrintDeps(
     deselect,
     root: document.documentElement,
     settled: () => sheetsSettled(),
+    // One wrapper per sheet, the cover's included; the measuring probe is not one.
+    sheetCount: () => document.querySelectorAll('#print-root [data-page-index] > .paper').length,
     listen: (type, handler) => {
       window.addEventListener(type, handler, { capture: true });
       return () => window.removeEventListener(type, handler, { capture: true });

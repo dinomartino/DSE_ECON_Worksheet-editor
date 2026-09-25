@@ -194,3 +194,17 @@ export async function deliverWorksheetJson(options: {
   if (path === undefined && options.desktop) return undefined;
   return { message: 'Exported .json', path };
 }
+
+/**
+ * Where a PDF goes. Desktop: the file the save sheet chose — `undefined` when it was
+ * cancelled, so the dialog stays as it does for `.json`. Web: no file (`{}`); the print
+ * dialog decides.
+ */
+export async function pdfDestination(options: {
+  desktop: boolean;
+  choose: () => Promise<string | undefined>;
+}): Promise<{ file?: string } | undefined> {
+  if (!options.desktop) return {};
+  const file = await options.choose();
+  return file === undefined ? undefined : { file };
+}
