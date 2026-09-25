@@ -210,8 +210,8 @@ async function shade(d, group, preset) {
 
 /** ↔ Span → Bracket, On the x-axis, then click E₁ and E₀: a bracket from Q₁ to Q₀. */
 async function addBracket(d) {
-  const e1 = (await geometry(d, 'E1')).dots[0];
-  const e0 = (await geometry(d, 'E0')).dots[0];
+  const e1 = (await geometry(d, 'Point (Q1, P1)')).dots[0];
+  const e0 = (await geometry(d, 'Point (Q0, P0)')).dots[0];
   await d.click(d.page.getByRole('button', { name: /Span/ }).first());
   await d.wait(500);
   for (const [label, value] of [['Span style', 'bracket'], ['Span position', 'x']]) {

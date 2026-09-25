@@ -93,7 +93,8 @@ describe('dragging a template keeps the scheme', () => {
     const d = buildFromTemplate('per-unit-tax');
     const s1 = curveNamed(d, 'S1');
     const after = drag(d, s1.id, 0, 0.06);
-    const e1 = (x: Diagram) => pointNamed(x, 'E1').at;
+    // Equilibria ship unnamed: E₁ is the point whose Q tick reads Q₁.
+    const e1 = (x: Diagram) => x.points.find((p) => plain(p.xTickLabel?.en) === 'Q1')!.at;
     expect(e1(after).y).toBeGreaterThan(e1(d).y);
     expect(after.curves.find((c) => c.id === s1.id)!.derive?.kind).toBe('shift');
     const wedge = (x: Diagram) => {

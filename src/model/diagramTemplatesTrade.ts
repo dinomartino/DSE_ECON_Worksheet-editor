@@ -47,8 +47,8 @@ function fixedExportPrice(): Diagram {
   const p = priceLine(0.48, sym('P'));
   const d0 = curve([[0.06, 0.86], [0.6, 0.12]], sub('D', '0'));
   const d1 = shiftOf(d0, 0.22, 0, sub('D', '1'));
-  const e0 = eq(d0, p, '0', { p: '' }, { labelSide: 'downLeft' });
-  const e1 = eq(d1, p, '1', { p: '' }, { labelSide: 'upRight' });
+  const e0 = eq(d0, p, '0', { p: '' });
+  const e1 = eq(d1, p, '1', { p: '' });
   return finish(
     axes(bi('Quantity\nof exports', '出口量'), bi('Price (Yen)', '價格（日圓）'), {
       curves: [p, d0, d1],
@@ -65,8 +65,8 @@ function substituteRevenue(): Diagram {
   const d1 = curve([[0.08, 0.9], [0.8, 0.18]], sub('D', '1'));
   const d2 = shiftOf(d1, -0.2, 0, sub('D', '2'));
   const s = curve([[0.06, 0.1], [0.72, 0.84]], sym('S'));
-  const e1 = eq(d1, s, '1', {}, { labelSide: 'right' });
-  const e2 = eq(d2, s, '2', {}, { labelOffset: { x: -0.02, y: 0.13 } });
+  const e1 = eq(d1, s, '1');
+  const e2 = eq(d2, s, '2');
   return finish(
     axes(bi('Quantity\nof imports', '進口量'), bi('Price (HK$)', '價格（港元）'), {
       curves: [d1, d2, s],
@@ -147,7 +147,7 @@ function importQuota(): Diagram {
   const pw = priceLine(pwY, sub('P', 'w'));
   const { kink, curve: withQuota } = quotaSupply(sPts, pwY, quota);
   const d = curve([[0.06, 0.9], [0.9, 0.12]], sym('D'));
-  const ea = eq(d, withQuota, 'A', { p: 'P', q: '' }, { label: sub('E', 'A'), yTickLabel: sub('P', 'A') });
+  const ea = eq(d, withQuota, 'A', { p: 'P', q: '' }, { yTickLabel: sub('P', 'A') });
   return finish(
     axes(AXIS.quantity, AXIS.price, {
       curves: [s, pw, withQuota, d],
@@ -166,8 +166,8 @@ function importQuotaDemand(): Diagram {
   const { curve: withQuota } = quotaSupply(sPts, pwY, 0.18);
   const d0 = curve([[0.06, 0.8], [0.8, 0.12]], sub('D', '0'));
   const d1 = shiftOf(d0, 0.14, 0, sub('D', '1'));
-  const e0 = eq(d0, withQuota, '0', { p: '', q: '' }, { labelSide: 'right' });
-  const e1 = eq(d1, withQuota, '1', { p: '', q: '' }, { labelSide: 'right' });
+  const e0 = eq(d0, withQuota, '0', { p: '', q: '' });
+  const e1 = eq(d1, withQuota, '1', { p: '', q: '' });
   // The domestic price with the quota, level with E₁ wherever D₁ and the quota put it.
   const p1 = derived({ kind: 'level', y: at(e1), from: 0, to: 0.9 }, [d1, withQuota, e1], sub('P', '1'), {
     labelAt: 'start',
@@ -208,7 +208,7 @@ const flatMc = (y: number, name: ReturnType<typeof sym>) => derived({ kind: 'lev
 
 /** Q where MR = MC, and P read up to D: the point on D above MR ∩ MC. */
 const monopolyPoint = (d: DiagramCurve, mr: DiagramCurve, mc: DiagramCurve, n: string, extra = {}) =>
-  markAt({ on: d.id, x: cross(mr, mc) }, [d, mr, mc], n, { e: '' }, extra);
+  markAt({ on: d.id, x: cross(mr, mc) }, [d, mr, mc], n, {}, extra);
 
 function monopoly(lumpSum = false): Diagram {
   const { d, mr } = demandAndMr(0.9, 0.9, 0.1);
@@ -220,7 +220,7 @@ function monopoly(lumpSum = false): Diagram {
     'm',
     lumpSum ? { xTickLabel: lab('Q', ['t'], ' = Q', ['m']), yTickLabel: lab('P', ['t'], ' = P', ['m']) } : {},
   );
-  const qc = eq(d, mc, 'c', { e: '' }, { dot: true });
+  const qc = eq(d, mc, 'c', {}, { dot: true });
   return finish(
     axes(AXIS.quantity, AXIS.price, {
       curves: [d, mr, mc],
@@ -238,7 +238,7 @@ function monopolyRisingMc(): Diagram {
   const { d, mr } = demandAndMr(0.9, 0.9, 0.1);
   const mc = curve([[0.08, 0.1], [0.8, 0.82]], sym('MC'));
   const pm = monopolyPoint(d, mr, mc, 'm');
-  const pc = eq(d, mc, 'c', { e: '' }, { labelSide: 'right' });
+  const pc = eq(d, mc, 'c');
   return finish(
     axes(AXIS.quantity, AXIS.price, {
       curves: [d, mr, mc],
@@ -299,7 +299,7 @@ function monopolyMcZero(): Diagram {
   const d = placeLabel(curve([[0, 0.88], [0.84, 0]], bi('D = MB', 'D = MB')), 0.73, 0.2);
   const mr = placeLabel(derived({ kind: 'marginalRevenue', of: d.id }, [d], sym('MR')), 0.3, 0.3);
   // QM where MR reaches zero, PM on D above it; QE at D's own intercept.
-  const pm = markAt({ on: d.id, x: { on: mr.id, y: 0 } }, [d, mr], 'M', { e: '' });
+  const pm = markAt({ on: d.id, x: { on: mr.id, y: 0 } }, [d, mr], 'M');
   const qe = pin({ on: d.id, y: 0 }, [d], undefined, { dot: false, xTickLabel: sub('Q', 'E') });
   return finish(
     axes(AXIS.quantity, AXIS.price, {

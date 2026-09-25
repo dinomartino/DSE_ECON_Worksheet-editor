@@ -178,8 +178,6 @@ export function pin(ref: DiagramAnchorRef, parts: Part[], name?: BiText, extra: 
 }
 
 export interface MarkNames {
-  /** Point name base, "E". Empty for an unnamed anchor. */
-  e?: string;
   /** y tick base: "P", "W", "r". */
   p?: string;
   /** x tick base: "Q", "Y". */
@@ -187,8 +185,9 @@ export interface MarkNames {
 }
 
 /**
- * An equilibrium at `at`: named E<n>, dashed drops to both axes, P<n> and Q<n> ticks.
- * `names` swaps the bases (W/Y/r); an empty string leaves that part off.
+ * An equilibrium at `at`: dashed drops to both axes, P<n> and Q<n> ticks, and no name
+ * (E₀ is opt-in from the point inspector). `names` swaps the bases (W/Y/r); an empty
+ * string leaves that part off.
  */
 export function mark(
   at: DiagramPoint,
@@ -196,11 +195,11 @@ export function mark(
   names: MarkNames = {},
   extra: Partial<DiagramPointMark> = {},
 ): DiagramPointMark {
-  const { e = 'E', p = 'P', q = 'Q' } = names;
+  const { p = 'P', q = 'Q' } = names;
   const drops: Array<'x' | 'y'> = [];
   if (q) drops.push('x');
   if (p) drops.push('y');
-  return point(at.x, at.y, e ? sub(e, n) : undefined, {
+  return point(at.x, at.y, undefined, {
     dropTo: drops,
     xTickLabel: q ? sub(q, n) : undefined,
     yTickLabel: p ? sub(p, n) : undefined,
@@ -208,7 +207,7 @@ export function mark(
   });
 }
 
-/** An equilibrium E<n> where `a` meets `b`, anchored there. */
+/** An equilibrium (ticks numbered `n`) where `a` meets `b`, anchored there. */
 export function eq(
   a: DiagramCurve,
   b: DiagramCurve,
@@ -219,7 +218,7 @@ export function eq(
   return mark(meet(a, b), n, names, { ...extra, anchor: cross(a, b) });
 }
 
-/** An equilibrium E<n> at `ref`, resolved among `parts`. */
+/** An equilibrium (ticks numbered `n`) at `ref`, resolved among `parts`. */
 export function markAt(
   ref: DiagramAnchorRef,
   parts: Part[],
@@ -359,8 +358,8 @@ export function alongDemand(
 ): Diagram {
   const d = curve(line, sym('D'));
   // Each price is fixed; dragging D slides both points along it at those prices.
-  const e1 = markAt({ on: d.id, y: p1 }, [d], '1', {}, { labelSide: 'upRight' });
-  const e2 = markAt({ on: d.id, y: p2 }, [d], '2', {}, { labelSide: 'upRight' });
+  const e1 = markAt({ on: d.id, y: p1 }, [d], '1');
+  const e2 = markAt({ on: d.id, y: p2 }, [d], '2');
   const points = { before: at(e1), after: at(e2) };
   return finish(axes(axisTitles.x, axisTitles.y, {
     curves: [d],

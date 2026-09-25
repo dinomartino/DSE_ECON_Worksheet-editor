@@ -9,7 +9,9 @@ import { chromium } from 'playwright-core';
  * into the running app and shoots each sheet of the page.
  *
  *   node scripts/template-gallery.mjs [--out=/tmp/template-gallery] [--app]
- *                                     [--url=http://localhost:3000] [--only=id,id]
+ *                                     [--url=http://localhost:3000] [--only=id,id] [--named]
+ *
+ * --named draws every equilibrium with the name the inspector's "Label E₀" button gives it.
  */
 
 const args = process.argv.slice(2);
@@ -25,7 +27,7 @@ mkdirSync(OUT, { recursive: true });
 const emit = spawnSync('npx', ['vitest', 'run', 'scripts/template-gallery.test.ts'], {
   stdio: 'pipe',
   encoding: 'utf8',
-  env: { ...process.env, GALLERY_DIR: OUT },
+  env: { ...process.env, GALLERY_DIR: OUT, ...(args.includes('--named') ? { GALLERY_NAMED: '1' } : {}) },
 });
 if (emit.status !== 0) {
   console.error(emit.stdout, emit.stderr);

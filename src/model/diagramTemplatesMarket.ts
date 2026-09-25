@@ -51,11 +51,7 @@ export function oneShift(which: 'demand' | 'supply'): Diagram {
   const c0 = curve(moving, sub(base, '0'));
   const c1 = shiftOf(c0, 0.18, 0, sub(base, '1'));
   const k = curve(fixed, sym(other));
-  // E₀'s right is where the shifted curve runs. When P rises, P₁'s drop runs just
-  // above E₀, so its name takes the wedge left of S under P₀; else above D, left of S.
-  const e0 = eq(c0, k, '0', {}, {
-    labelOffset: which === 'demand' ? { x: -0.08, y: -0.028 } : { x: -0.03, y: 0.085 },
-  });
+  const e0 = eq(c0, k, '0');
   const e1 = eq(c1, k, '1');
   // Beside the curves' far ends, where the other curve is well away.
   const y = which === 'demand' ? 0.8 : 0.78;
@@ -75,8 +71,7 @@ function simultaneous(): Diagram {
   const d1 = shiftOf(d0, 0.28, 0, sub('D', '1'));
   const s0 = curve([[0.08, 0.1], [0.62, 0.8]], sub('S', '0'));
   const s1 = shiftOf(s0, 0.1, 0, sub('S', '1'));
-  // Above D₀, left of S₀: the one gap near E₀ with no line through it.
-  const e0 = eq(d0, s0, '0', {}, { labelOffset: { x: -0.03, y: 0.085 } });
+  const e0 = eq(d0, s0, '0');
   const e1 = eq(d1, s1, '1');
   return finish(
     axes(AXIS.quantity, AXIS.price, {
@@ -115,8 +110,8 @@ function fixedSupply(): Diagram {
   const s = upright(0.46, sym('S'), 0.9);
   const d0 = curve([[0.06, 0.66], [0.68, 0.1]], sub('D', '0'));
   const d1 = shiftOf(d0, 0.22, 0, sub('D', '1'));
-  const e0 = eq(d0, s, '0', {}, { labelSide: 'upRight' });
-  const e1 = eq(d1, s, '1', { q: '' }, { labelSide: 'right' });
+  const e0 = eq(d0, s, '0');
+  const e1 = eq(d1, s, '1', { q: '' });
   return finish(
     axes(AXIS.quantity, AXIS.price, {
       curves: [s, d0, d1],
@@ -136,7 +131,7 @@ function ceiling(withDwl: boolean): Diagram {
   const d = withDwl ? MB_D() : plainD();
   const s = withDwl ? MC_S() : plainS();
   const pc = priceLine(0.24, sub('P', 'c'));
-  const e = eq(d, s, 'e', { e: 'E', p: 'P', q: 'Q' }, { label: sym('E') });
+  const e = eq(d, s, 'e', { p: 'P', q: 'Q' });
   const qs = reading(s, pc, withDwl ? sub('Q', 't') : sub('Q', 's'));
   const qd = reading(d, pc, sub('Q', 'd'));
   const body = axes(AXIS.quantity, AXIS.price, {
@@ -171,8 +166,8 @@ function shortageChange(): Diagram {
     axes(AXIS.quantity, AXIS.price, {
       curves: [d0, d1, s, pc],
       points: [
-        eq(d0, s, '0', { p: '', q: '' }, { labelSide: 'left' }),
-        eq(d1, s, '1', { p: '', q: '' }, { labelSide: 'left' }),
+        eq(d0, s, '0', { p: '', q: '' }),
+        eq(d1, s, '1', { p: '', q: '' }),
         qs,
         qd0,
         qd1,
@@ -198,7 +193,7 @@ function ceilingLowered(): Diagram {
   return finish(
     axes(AXIS.quantity, AXIS.price, {
       curves: [d, s, pc0, pc1],
-      points: [eq(d, s, 'e', {}, { label: sym('E') }), q0, q1],
+      points: [eq(d, s, 'e'), q0, q1],
       arrows: [arrow([0.84, 0.38], [0.84, 0.26])],
       areas: [
         band([{ curve: d.id }, { curve: s.id }], at(q1), at(q0), {
@@ -227,7 +222,7 @@ function ineffectiveCeiling(): Diagram {
   return finish(
     axes(AXIS.quantity, AXIS.price, {
       curves: [d, s, pc],
-      points: [eq(d, s, 'e', {}, { label: sym('E') })],
+      points: [eq(d, s, 'e')],
       labels: [label(0.72, 0.82, lab('ineffective:\nP', ['c'], ' above P', ['e']), { align: 'left' })],
     }),
   );
@@ -242,7 +237,7 @@ function ceilingCsChange(): Diagram {
   return finish(
     axes(AXIS.quantity, AXIS.price, {
       curves: [d, s, pc],
-      points: [eq(d, s, 'e', {}, { label: sym('E') }), qs],
+      points: [eq(d, s, 'e'), qs],
     }),
     (r) => {
       const roles = { demand: d.id, supply: s.id, control: { curve: pc.id } };
@@ -261,7 +256,7 @@ function fixedPriceRevenue(): Diagram {
   return finish(
     axes(AXIS.quantity, AXIS.price, {
       curves: [d, s, pc],
-      points: [eq(d, s, 'e', {}, { label: sym('E') }), qs, qd],
+      points: [eq(d, s, 'e'), qs, qd],
       spans: [span(at(qs), at(qd), 'bracket', { offset: -0.05, label: bi('shortage', '短缺'), labelOffset: { x: 0.13, y: 0 } })],
     }),
     (r) => shade(r, 'controlRevenue', { demand: d.id, supply: s.id, control: { curve: pc.id } }, { labelOffset: { x: 0.04, y: -0.08 } }),
@@ -272,7 +267,7 @@ function minimumWage(): Diagram {
   const d = plainD();
   const s = plainS();
   const w = priceLine(0.7, sym('W'));
-  const e = eq(d, s, 'e', { e: 'E', p: 'W', q: 'Q' }, { label: sym('E') });
+  const e = eq(d, s, 'e', { p: 'W', q: 'Q' });
   const qd = reading(d, w, sub('Q', 'd'));
   const qs = reading(s, w, sub('Q', 's'));
   return finish(
@@ -290,7 +285,7 @@ function minimumWageBill(): Diagram {
   const d = plainD();
   const s = plainS();
   const w = priceLine(0.72, sym('W'));
-  const e = eq(d, s, 'e', { e: 'E', p: 'W', q: 'Q' }, { label: sym('E') });
+  const e = eq(d, s, 'e', { p: 'W', q: 'Q' });
   const qd = reading(d, w, sub('Q', 'd'));
   const points = { before: at(e), after: at(qd) };
   return finish(
@@ -331,7 +326,7 @@ function labourImport(): Diagram {
 function surplus(): Diagram {
   const d = plainD();
   const s = plainS();
-  const e = eq(d, s, 'e', {}, { label: sym('E') });
+  const e = eq(d, s, 'e');
   return finish(axes(AXIS.quantity, AXIS.price, { curves: [d, s], points: [e] }), (r) => [
     ...shade(r, 'consumerSurplus', { demand: d.id, supply: s.id }),
     ...shade(r, 'producerSurplus', { demand: d.id, supply: s.id }),
@@ -343,8 +338,8 @@ function mcRiseTss(): Diagram {
   const d = plainD();
   const s0 = curve([[0.06, 0.08], [0.6, 0.64]], lab('S', ['0'], ' = MC', ['0']));
   const s1 = shiftOf(s0, 0, 0.22, lab('S', ['1'], ' = MC', ['1']));
-  const e0 = eq(d, s0, '0', {}, { labelSide: 'right' });
-  const e1 = eq(d, s1, '1', {}, { labelSide: 'upRight' });
+  const e0 = eq(d, s0, '0');
+  const e1 = eq(d, s1, '1');
   return finish(
     axes(AXIS.quantity, AXIS.price, {
       curves: [d, s0, s1],
@@ -368,7 +363,7 @@ function domesticQuota(): Diagram {
   const s0 = curve(S, sub('S', '0'));
   const s1 = quotaCurve(S, 0.3, sub('S', '1'));
   const e0 = eq(d, s0, '0');
-  const e1 = eq(d, s1, '1', {}, { labelSide: 'right' });
+  const e1 = eq(d, s1, '1');
   return finish(
     axes(AXIS.quantity, AXIS.price, {
       curves: [d, s0, s1],
@@ -384,7 +379,7 @@ function quotaRevenue(): Diagram {
   const s0 = curve(S, sub('S', '0'));
   const s1 = quotaCurve(S, 0.3, sub('S', '1'));
   const e0 = eq(d, s0, '0');
-  const e1 = eq(d, s1, '1', {}, { labelSide: 'right' });
+  const e1 = eq(d, s1, '1');
   const points = { before: at(e0), after: at(e1) };
   return finish(
     axes(AXIS.quantity, AXIS.price, {
@@ -430,8 +425,8 @@ function quotaDemandIncrease(): Diagram {
   const d1 = shiftOf(d0, 0.16, 0, sub('D', '1'));
   const s = curve(S, bi('S = MC', 'S = MC'));
   const sq = quotaCurve(S, 0.24, bi('S (quota)', 'S（配額）'));
-  const e0 = eq(d0, sq, '0', { q: 'Q' }, { labelSide: 'downLeft' });
-  const e1 = eq(d1, sq, '1', { q: '' }, { labelSide: 'upRight' });
+  const e0 = eq(d0, sq, '0', { q: 'Q' });
+  const e1 = eq(d1, sq, '1', { q: '' });
   const f0 = pin(cross(d0, s), [d0, s], undefined, { dot: false, dropTo: ['x'], xTickLabel: sub('Q', 'e0') });
   const f1 = pin(cross(d1, s), [d1, s], undefined, { dot: false, dropTo: ['x'], xTickLabel: sub('Q', 'e1') });
   return finish(
@@ -473,16 +468,14 @@ function perUnit(kind: 'tax' | 'subsidy'): Diagram {
   const high: Pair[] = [[0.06, 0.34], [xOn(lower, 0.67), 0.93]];
   const s0 = curve(tax ? low : high, sub('S', '0'));
   const s1 = shiftOf(s0, 0, tax ? 0.26 : -0.26, sub('S', '1'));
-  const e0 = eq(d, s0, '0', { q: 'Q' }, { labelSide: tax ? 'right' : 'up' });
-  const e1 = eq(d, s1, '1', {}, { labelSide: tax ? 'upRight' : 'right' });
+  const e0 = eq(d, s0, '0', { q: 'Q' });
+  const e1 = eq(d, s1, '1');
   // The sellers' price under a tax (P₁ − t), or the price sellers receive under a subsidy (P₁ + s).
   const kept = pin({ on: s0.id, x: at(e1) }, [s0, e1], undefined, {
     dot: false,
     dropTo: ['y'],
     yTickLabel: subPlus('P', '1', tax ? ' − t' : ' + s'),
   });
-  // Under a subsidy E₀ sits inside the hatched strips: its name goes above them.
-  if (!tax) e0.labelOffset = { x: 0.02, y: kept.at.y - e0.at.y + 0.05 };
   // The wedge, S₀ → S₁ where they run clear, right of E₀: up for a tax, down for a subsidy.
   const x = { x: 0.56, y: 0 };
   const wedge = span({ on: s0.id, x }, { on: s1.id, x }, 'arrow', { label: sym(tax ? 't' : 's') });
@@ -516,7 +509,7 @@ function subsidyEfficiency(): Diagram {
   const d = MB_D();
   const s0 = curve([[0.06, 0.34], [0.58, 0.9]], lab('S', ['0'], ' = MC'));
   const s1 = shiftOf(s0, 0, -0.26, sub('S', 's'));
-  const e0 = eq(d, s0, '0', {}, { labelOffset: { x: -0.015, y: 0.075 } });
+  const e0 = eq(d, s0, '0');
   const e1 = eq(d, s1, '1', { p: '' }, { label: sym('MB'), labelSide: 'right' });
   const mc = pin({ on: s0.id, x: at(e1) }, [s0, e1], sym('MC'), { labelSide: 'right' });
   return finish(

@@ -89,6 +89,10 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   their axis. Brackets and gaps on an axis sit there too; drag one to move it further out
   or back in. The tax t and subsidy s between S₀ and S₁ are always an arrow onto S₁ —
   up for a tax, down for a subsidy — and turn round if you drag S₁ past S₀.
+  Equilibrium points now come without an E₀ / E₁ name, as schemes usually draw them;
+  select a point and click **Label E₀** (it offers the next free number) to add one, and
+  it lands right of the dot, clear of the curves. Diagrams you already made keep their
+  names.
 - **Desktop: Export → PDF saves a file directly, no print sheet.** Choose where in the
   save dialog (it starts in your exports folder, like \`.docx\`); the status line then
   offers Show in Finder / Explorer. In a browser, PDF still goes through the print

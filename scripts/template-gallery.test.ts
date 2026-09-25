@@ -11,14 +11,29 @@ import { DIAGRAM_TEMPLATES, DIAGRAM_TEMPLATE_GROUPS, buildFromTemplate } from '@
 import { bi, plain } from '@/model/text';
 import { diagramSize, diagramSvg } from '@/render/diagram';
 import type { LanguageMode } from '@/model/types';
+import type { Diagram } from '@/model/diagram';
+import { nextEquilibriumName, withPointLabel } from '@/model/diagramShift';
 
 const OUT = process.env.GALLERY_DIR ?? '/tmp/template-gallery';
 const LANGUAGES: LanguageMode[] = ['en', 'zh', 'bilingual'];
 
+/** GALLERY_NAMED=1: every equilibrium named as the inspector's "Label E₀" button would. */
+function named(diagram: Diagram): Diagram {
+  if (!process.env.GALLERY_NAMED) return diagram;
+  let next = diagram;
+  for (const mark of diagram.points) {
+    if (!mark.anchor || mark.label || mark.dot === false) continue;
+    const current = next.points.find((p) => p.id === mark.id)!;
+    const labelled = withPointLabel(next, current, nextEquilibriumName(next, current));
+    next = { ...next, points: next.points.map((p) => (p.id === mark.id ? labelled : p)) };
+  }
+  return next;
+}
+
 it('emits the template gallery page', () => {
   mkdirSync(OUT, { recursive: true });
   const cards = DIAGRAM_TEMPLATES.map((template) => {
-    const diagram = buildFromTemplate(template.id);
+    const diagram = named(buildFromTemplate(template.id));
     const svgs = LANGUAGES.map((language) => {
       const size = diagramSize(diagram, 400, language);
       return `<div class="svg" data-lang="${language}">${diagramSvg(diagram, { ...size, language })}</div>`;

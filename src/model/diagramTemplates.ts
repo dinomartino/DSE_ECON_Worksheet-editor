@@ -87,12 +87,11 @@ const ORIGINAL_TEMPLATES: DiagramTemplate[] = [
         axes(bi('Output level', '產出水平'), AXIS.priceLevel, {
           curves: [ad, sras, lras],
           points: [
-            point(0.46, 0.48, sub('E', '0'), {
+            point(0.46, 0.48, undefined, {
               dropTo: ['x'],
               xTickLabel: sub('Y', '1'),
               anchor: { cross: [ad.id, sras.id] },
             }),
-            point(0.58, 0.6, sub('E', '1')),
           ],
         }),
       );
@@ -109,7 +108,7 @@ const ORIGINAL_TEMPLATES: DiagramTemplate[] = [
       return finish(
         axes(AXIS.money, AXIS.interest, {
           curves: [ms, md],
-          points: [point(0.44, 0.51, sub('E', '0'), { labelSide: 'upRight', anchor: { cross: [md.id, ms.id] } })],
+          points: [point(0.44, 0.51, undefined, { anchor: { cross: [md.id, ms.id] } })],
         }),
       );
     },

@@ -1252,8 +1252,14 @@ fallback. The four welfare presets (CS, PS, DWL, tax revenue) are bands built by
 **Shifting a curve** (`model/diagramShift.ts:shiftCurve`) adds a translated copy
 (trimmed to the plot, never clamped, so the slope survives), a shift arrow and, where
 the copy meets the original's counterpart, a `DiagramPointMark` with drops and
-P/Q ticks — the template convention. Numbered after the copy (D₁ → E₁), else the next
-free E. Both it and the original equilibrium are anchored to their crossings.
+P/Q ticks — the template convention. Numbered after the copy (D₁ → P₁, Q₁), else the
+next free number. Both it and the original equilibrium are anchored to their crossings.
+
+**Equilibria ship unnamed.** Templates and `shiftCurve` give a crossing point its dot,
+drops and ticks but no `label`; the point inspector's "Label E₀" button names it
+(`nextEquilibriumName`), and a first name is placed by `equilibriumLabelSide` — right of
+the dot unless a curve runs through that spot. The side is stored, so a saved label
+never moves on its own.
 
 ---
 

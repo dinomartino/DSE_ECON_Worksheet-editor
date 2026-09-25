@@ -36,7 +36,7 @@ import {
   type ShadePresetId,
 } from '@/model/diagramPresets';
 import type { DiagramHandle } from '@/model/diagramDraw';
-import { shiftCurve } from '@/model/diagramShift';
+import { pointTitle, shiftCurve } from '@/model/diagramShift';
 import { emptyBiText, plain } from '@/model/text';
 import { AREA_PALETTE, areaFillMarkup } from '@/render/diagram';
 import { BiTextField } from './BiTextField';
@@ -63,7 +63,8 @@ const pointName = (diagram: Diagram, id: string) => {
   const index = diagram.points.findIndex((p) => p.id === id);
   const mark = diagram.points[index];
   if (!mark) return 'a deleted point';
-  return plain(mark.label?.en) || plain(mark.label?.zh) || `Point ${index + 1}`;
+  const title = pointTitle(mark);
+  return title === 'Point' ? `Point ${index + 1}` : title;
 };
 
 function anchorName(diagram: Diagram, ref: DiagramAnchorRef): string {

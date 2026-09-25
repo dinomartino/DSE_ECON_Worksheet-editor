@@ -34,6 +34,7 @@ import {
   type DiagramRect,
   type LabelAnchor,
 } from '@/model/diagramDraw';
+import { nextEquilibriumName, pointTitle, withPointLabel } from '@/model/diagramShift';
 import { emptyBiText, isBiTextEmpty, parseRuns, plain, serializeRuns } from '@/model/text';
 import type { BiText, DiagramBlock, LanguageMode } from '@/model/types';
 import { areaPolygon, isAnchoredArea } from '@/model/diagramAreas';
@@ -2213,20 +2214,32 @@ function SelectionInspector({
         ...diagram,
         points: diagram.points.map((p) => (p.id === id ? { ...p, ...next } : p)),
       });
+    // A first name lands right of the dot, or wherever clears the curves through it.
+    const setLabel = (label: BiText) =>
+      onChange({
+        ...diagram,
+        points: diagram.points.map((p) => (p.id === id ? withPointLabel(diagram, p, label) : p)),
+      });
     const toggleDrop = (axis: 'x' | 'y') => {
       const current = mark.dropTo ?? [];
       patch({ dropTo: current.includes(axis) ? current.filter((a) => a !== axis) : [...current, axis] });
     };
     return (
       <div>
-        {header(plain(mark.label?.en) || 'Point')}
+        {header(pointTitle(mark))}
         <div className="space-y-2">
           <BiTextField
             label="Label"
             value={mark.label ?? emptyBiText()}
             rows={1}
-            onChange={(next) => patch({ label: next })}
+            onChange={(next) => setLabel(next)}
           />
+          {/* Equilibria ship unnamed; one click names this one E₀, E₁, … */}
+          {!plain(mark.label?.en).trim() && !plain(mark.label?.zh).trim() && (
+            <Button size="sm" variant="subtle" onClick={() => setLabel(nextEquilibriumName(diagram, mark))}>
+              Label {plain(nextEquilibriumName(diagram, mark).en)}
+            </Button>
+          )}
           <PointRelationControls diagram={diagram} mark={mark} onChange={onChange} />
           <div className="flex flex-wrap gap-1">
             <CheckField label="Dot" checked={mark.dot !== false} onChange={(dot) => patch({ dot })} />
@@ -2520,7 +2533,7 @@ function describeHandle(diagram: Diagram, handle: DiagramHandle): string {
   }
   if (handle.kind === 'pointLabel') {
     const owner = diagram.points.find((p) => p.id === id);
-    return `${plain(owner?.label?.en) || 'Point'} (label)`;
+    return `${owner ? pointTitle(owner) : 'Point'} (label)`;
   }
   if (handle.kind === 'arrowLabel') {
     const owner = diagram.arrows.find((a) => a.id === id);
@@ -2534,7 +2547,7 @@ function describeHandle(diagram: Diagram, handle: DiagramHandle): string {
   const curve = diagram.curves.find((c) => c.id === id);
   if (curve) return plain(curve.label?.en) || plain(curve.label?.zh) || 'Curve';
   const mark = diagram.points.find((p) => p.id === id);
-  if (mark) return plain(mark.label?.en) || plain(mark.label?.zh) || 'Point';
+  if (mark) return pointTitle(mark);
   const label = diagram.labels.find((l) => l.id === id);
   if (label) return plain(label.text.en) || plain(label.text.zh) || 'Label';
   const arrow = diagram.arrows.find((a) => a.id === id);
@@ -2571,7 +2584,7 @@ function ElementIndex({
     })),
     ...diagram.points.map((p) => ({
       handle: { kind: 'point', pointId: p.id } as DiagramHandle,
-      name: plain(p.label?.en) || plain(p.label?.zh) || 'Point',
+      name: pointTitle(p),
       kind: 'Point',
     })),
     ...diagram.labels.map((l) => ({

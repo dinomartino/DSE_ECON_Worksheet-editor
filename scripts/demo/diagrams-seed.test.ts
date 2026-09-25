@@ -11,6 +11,7 @@
  */
 import { writeFileSync } from 'node:fs';
 import { it } from 'vitest';
+import { pointTitle } from '@/model/diagramShift';
 import { buildFromTemplate } from '@/model/diagramTemplates';
 import { createParagraphBlock, createStructuredQuestion, createWorksheet } from '@/model/factories';
 import { bi, plain } from '@/model/text';
@@ -50,7 +51,7 @@ function relations(templateId: string) {
   const name = (label: Parameters<typeof plain>[0]) => flat(plain(label));
   return {
     curves: diagram.curves.map((c) => name(c.label?.en)),
-    anchoredPoints: diagram.points.filter((p) => p.anchor).map((p) => name(p.label?.en)),
+    anchoredPoints: diagram.points.filter((p) => p.anchor).map((p) => flat(pointTitle(p))),
     derivedCurves: diagram.curves.filter((c) => c.derive).map((c) => name(c.label?.en)),
     spans: (diagram.spans ?? []).length,
     spanAxes: (diagram.spans ?? []).map((s) => s.along ?? 'none'),

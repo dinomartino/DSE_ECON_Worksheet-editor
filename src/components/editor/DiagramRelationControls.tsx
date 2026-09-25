@@ -18,6 +18,7 @@ import {
 } from '@/model/diagram';
 import { isFixedPlace } from '@/model/diagramAnchors';
 import { DEFAULT_SPAN_OFFSET, isShiftWedge } from '@/model/diagramSpans';
+import { pointTitle } from '@/model/diagramShift';
 import type { DiagramHandle } from '@/model/diagramDraw';
 import { emptyBiText, plain } from '@/model/text';
 import type { BiText } from '@/model/types';
@@ -58,7 +59,8 @@ const pointName = (diagram: Diagram, id: string) => {
   const index = diagram.points.findIndex((p) => p.id === id);
   const mark = diagram.points[index];
   if (!mark) return 'a deleted point';
-  return plain(mark.label?.en) || plain(mark.label?.zh) || `Point ${index + 1}`;
+  const title = pointTitle(mark);
+  return title === 'Point' ? `Point ${index + 1}` : title;
 };
 
 /** A reference in words: "D × S", "S at E₁'s level". */

@@ -1,4 +1,4 @@
-import type { Diagram, DiagramCurve, DiagramPoint, DiagramPointMark } from './diagram';
+import { DIAGRAM_PLOT_ASPECT, type Diagram, type DiagramCurve, type DiagramPoint, type DiagramPointMark } from './diagram';
 import { curveCrossing, curveSlopeSign } from './diagramAreas';
 import { translateCurvePoints } from './diagramAnchors';
 
@@ -137,11 +137,16 @@ export function shiftCurve(
     };
   }
 
-  // Numbered after the new curve (D₁ → E₁, P₁, Q₁) unless that E is taken — a second
-  // shift in one diagram — then one past the highest E.
+  // Numbered after the new curve (D₁ → P₁, Q₁) unless that number is taken — a second
+  // shift in one diagram — then one past the highest E, P or Q already there.
   const fromCurve = trailingSubscript(copy.label?.en ?? []);
   const used = diagram.points
-    .map((p) => (/^E/.test(flat(p.label?.en)) ? trailingSubscript(p.label?.en ?? []) : null))
+    .flatMap((p) => [
+      /^E/.test(flat(p.label?.en)) ? p.label : undefined,
+      /^[PQ]/.test(flat(p.xTickLabel?.en)) ? p.xTickLabel : undefined,
+      /^[PQ]/.test(flat(p.yTickLabel?.en)) ? p.yTickLabel : undefined,
+    ])
+    .map((text) => (text ? trailingSubscript(text.en ?? []) : null))
     .filter((value): value is number => value !== null);
   const index =
     fromCurve !== null && !used.includes(fromCurve)
@@ -153,8 +158,7 @@ export function shiftCurve(
     id: mint(),
     at,
     anchor: { cross: [copy.id, counterpart.id] },
-    label: sub('E', index),
-    labelSide: 'right',
+    // No name: E₁ is opt-in from the point inspector (`nextEquilibriumName`).
     dot: true,
     dropTo: ['x', 'y'],
     xTickLabel: sub('Q', index),
@@ -162,4 +166,126 @@ export function shiftCurve(
   };
   next = { ...next, points: [...next.points, mark] };
   return { diagram: next, curveId: copy.id, pointId: mark.id };
+}
+
+/*
+ * ── Naming an equilibrium ─────────────────────────────────────────────────────────
+ *
+ * Crossing points ship unnamed; the inspector adds "E₀" on request, placed on the side
+ * that keeps it off the curves through the dot.
+ */
+
+type LabelSide = NonNullable<DiagramPointMark['labelSide']>;
+type Seg = [DiagramPoint, DiagramPoint];
+
+/** Nominal plot size in px, to judge clearance on screen rather than in unit space. */
+const PLOT_PX = { x: 300, y: 300 * DIAGRAM_PLOT_ASPECT };
+/**
+ * The ink of a short name ("E₀", bold 10pt) on each side of the dot, px, y down: the
+ * renderer's 7px gap, a 9px cap height and the subscript below the baseline.
+ */
+const NAME_INK = { w: 14, gap: 7, cap: 9, sub: 2 };
+/** Clearance beyond this counts as enough; preference then decides. */
+const NAME_ENOUGH = 4;
+/** How much each side is preferred, px of clearance: right, then its diagonals. */
+const NAME_PREFERENCE: Partial<Record<LabelSide, number>> = { right: 3, upRight: 2, downRight: 2 };
+
+const NAME_SIDES: Array<[LabelSide, { x0: number; x1: number; y0: number; y1: number }]> = (() => {
+  const { w, gap, cap, sub: tail } = NAME_INK;
+  const right = { x0: gap, x1: gap + w };
+  const left = { x0: -gap - w, x1: -gap };
+  const mid = { x0: -w / 2, x1: w / 2 };
+  const level = { y0: -cap / 2, y1: cap / 2 + tail };
+  const above = { y0: -gap - cap, y1: -gap + tail };
+  const below = { y0: gap, y1: gap + cap + tail };
+  return [
+    ['right', { ...right, ...level }],
+    ['upRight', { ...right, ...above }],
+    ['downRight', { ...right, ...below }],
+    ['upLeft', { ...left, ...above }],
+    ['left', { ...left, ...level }],
+    ['downLeft', { ...left, ...below }],
+    ['up', { ...mid, ...above }],
+    ['down', { ...mid, ...below }],
+  ];
+})();
+
+/** Screen distance from a box to a segment (0 when they touch). */
+function boxToSegment(box: { x0: number; x1: number; y0: number; y1: number }, [a, b]: Seg): number {
+  const corners = [
+    { x: box.x0, y: box.y0 },
+    { x: box.x1, y: box.y0 },
+    { x: box.x1, y: box.y1 },
+    { x: box.x0, y: box.y1 },
+  ];
+  const toBox = (p: DiagramPoint) =>
+    Math.hypot(Math.max(box.x0 - p.x, 0, p.x - box.x1), Math.max(box.y0 - p.y, 0, p.y - box.y1));
+  const edges: Seg[] = corners.map((c, i) => [c, corners[(i + 1) % 4]]);
+  if (toBox(a) === 0 || toBox(b) === 0 || edges.some((edge) => segmentsCross(edge, [a, b]))) return 0;
+  const toSegment = (p: DiagramPoint) => {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const k = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1e-12)));
+    return Math.hypot(a.x + k * dx - p.x, a.y + k * dy - p.y);
+  };
+  return Math.min(...corners.map(toSegment), toBox(a), toBox(b));
+}
+
+function segmentsCross([p, q]: Seg, [r, s]: Seg): boolean {
+  const cross = (o: DiagramPoint, a: DiagramPoint, b: DiagramPoint) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  const d1 = cross(r, s, p);
+  const d2 = cross(r, s, q);
+  const d3 = cross(p, q, r);
+  const d4 = cross(p, q, s);
+  return d1 * d2 < 0 && d3 * d4 < 0;
+}
+
+/**
+ * Where a new name goes: the side scoring best on clearance from every curve (capped at
+ * "enough"), half-weighted clearance from the dashed drops, and a preference for right,
+ * then up- or down-right. So right unless a curve runs through it.
+ */
+export function equilibriumLabelSide(diagram: Diagram, mark: DiagramPointMark): LabelSide {
+  // Everything drawn near the dot, in screen px relative to it (y down).
+  const screen = (p: DiagramPoint) => ({ x: (p.x - mark.at.x) * PLOT_PX.x, y: (mark.at.y - p.y) * PLOT_PX.y });
+  const curves: Seg[] = diagram.curves.flatMap((c) =>
+    c.points.slice(1).map((p, i): Seg => [screen(c.points[i]), screen(p)]),
+  );
+  const drops: Seg[] = diagram.points.flatMap((p) =>
+    (p.dropTo ?? []).map((axis): Seg => [screen(p.at), screen(axis === 'x' ? { x: p.at.x, y: 0 } : { x: 0, y: p.at.y })]),
+  );
+  const clear = (box: (typeof NAME_SIDES)[number][1], segs: Seg[]) =>
+    Math.min(NAME_ENOUGH, ...segs.map((seg) => boxToSegment(box, seg)));
+  const score = ([side, box]: (typeof NAME_SIDES)[number]) =>
+    clear(box, curves) + clear(box, drops) / 2 + (NAME_PREFERENCE[side] ?? 0);
+  return NAME_SIDES.reduce((best, side) => (score(side) > score(best) ? side : best))[0];
+}
+
+/** "E₀" for this point: its ticks' number when free, else the lowest number no E has yet. */
+export function nextEquilibriumName(diagram: Diagram, mark: DiagramPointMark): BiText {
+  const taken = new Set(
+    diagram.points
+      .filter((p) => p.id !== mark.id && /^E/.test(flat(p.label?.en)))
+      .map((p) => trailingSubscript(p.label?.en ?? []))
+      .filter((value): value is number => value !== null),
+  );
+  const own = trailingSubscript(mark.xTickLabel?.en ?? []) ?? trailingSubscript(mark.yTickLabel?.en ?? []);
+  if (own !== null && !taken.has(own)) return sub('E', own);
+  let n = 0;
+  while (taken.has(n)) n += 1;
+  return sub('E', n);
+}
+
+/** A point's name in lists: its label, else its ticks ("Point (Q₁, P₁)"), else "Point". */
+export function pointTitle(mark: DiagramPointMark): string {
+  const text = (value?: BiText) => (flat(value?.en) || flat(value?.zh)).trim();
+  const ticks = [text(mark.xTickLabel), text(mark.yTickLabel)].filter(Boolean);
+  return text(mark.label) || (ticks.length > 0 ? `Point (${ticks.join(', ')})` : 'Point');
+}
+
+/** The point with `label`; a first name is placed by `equilibriumLabelSide` unless dragged by hand. */
+export function withPointLabel(diagram: Diagram, mark: DiagramPointMark, label: BiText): DiagramPointMark {
+  const named = (text?: BiText) => flat(text?.en).trim() !== '' || flat(text?.zh).trim() !== '';
+  if (named(mark.label) || !named(label) || mark.labelOffset) return { ...mark, label };
+  return { ...mark, label, labelSide: equilibriumLabelSide(diagram, mark) };
 }
