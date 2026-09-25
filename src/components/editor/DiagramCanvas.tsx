@@ -34,6 +34,7 @@ import type { BiText, DiagramBlock, LanguageMode } from '@/model/types';
 import { areaPolygon } from '@/model/diagramAreas';
 import {
   areaLabelAnchor,
+  areaLabelSeedOffset,
   arrowLabelAnchor,
   axisTickAnchor,
   axisTitleAnchor,
@@ -43,6 +44,7 @@ import {
   diagramSvg,
   diagramTitleAnchor,
   pointLabelAnchor,
+  type Projection,
 } from '@/render/diagram';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { Button, CheckField, Eyebrow, IconButton, SelectField } from '@/components/ui';
@@ -112,6 +114,29 @@ const NUDGE: Array<{ key: string; dx: number; dy: number }> = [
   { key: 'ArrowUp', dx: 0, dy: 1 },
   { key: 'ArrowDown', dx: 0, dy: -1 },
 ];
+
+/**
+ * Pins where an undragged leader label is drawn into its `labelOffset`, so a drag or
+ * nudge of it starts from there instead of jumping onto its region's centroid.
+ */
+function seedAreaLabels(
+  diagram: Diagram,
+  handles: DiagramHandle[],
+  projection: Projection,
+  language: LanguageMode,
+): Diagram {
+  const ids = new Set(handles.flatMap((h) => (h.kind === 'areaLabel' ? [h.areaId] : [])));
+  if (ids.size === 0 || !diagram.areas) return diagram;
+  let changed = false;
+  const areas = diagram.areas.map((area) => {
+    if (!ids.has(area.id) || area.labelOffset) return area;
+    const seed = areaLabelSeedOffset(diagram, area, projection, language);
+    if (!seed) return area;
+    changed = true;
+    return { ...area, labelOffset: seed };
+  });
+  return changed ? { ...diagram, areas } : diagram;
+}
 
 /**
  * The fixed end a line-shaping drag pivots about, or null if this is not one.
@@ -513,7 +538,7 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
     }
     for (const area of diagram.areas ?? []) {
       if (!has(area.label)) continue;
-      const at = areaLabelAnchor(diagram, area, projection);
+      const at = areaLabelAnchor(diagram, area, projection, language);
       if (at) out.push({ handle: { kind: 'areaLabel', areaId: area.id }, at: toUnitPoint(at.x, at.y), box: boxOf(area.label) });
     }
     // The diagram's title is deliberately NOT a hit target. It is edited in the sidebar
@@ -633,7 +658,7 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
         kind: 'move',
         handles,
         from: at,
-        base: diagram,
+        base: seedAreaLabels(diagram, handles, projection, language),
         moved: false,
         // A drag lets go of what it moved, whatever it grabbed. Keeping a single element
         // armed after its own drag is the whole reported bug: the teacher has visibly
@@ -963,7 +988,7 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
         const size = event.shiftKey ? NUDGE_COARSE : NUDGE_FINE;
         setDiagram(
           dragHandles(
-            diagram,
+            seedAreaLabels(diagram, selected, projection, language),
             selected,
             { x: 0, y: 0 },
             { x: step.dx * size, y: step.dy * size },
@@ -973,7 +998,7 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selected, diagram, labelAnchors, setDiagram, onClose, doCopy, doPaste, doDelete, cropping, shadeOpen]);
+  }, [selected, diagram, labelAnchors, setDiagram, onClose, doCopy, doPaste, doDelete, cropping, shadeOpen, projection, language]);
 
   const activeTool = TOOLS.find((t) => t.id === tool);
 
@@ -997,7 +1022,7 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
     }
     if (editing.kind === 'areaLabel') {
       const area = (diagram.areas ?? []).find((a) => a.id === editing.areaId);
-      return area ? areaLabelAnchor(diagram, area, projection) : null;
+      return area ? areaLabelAnchor(diagram, area, projection, language) : null;
     }
     return null;
   }, [editing, labelAnchors, projection, diagram, language, block.widthPx]);

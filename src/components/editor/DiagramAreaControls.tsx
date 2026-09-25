@@ -5,8 +5,10 @@ import type {
   Diagram,
   DiagramAnchorRef,
   DiagramArea,
+  DiagramAreaColor,
   DiagramAreaEdge,
   DiagramAreaFill,
+  DiagramAreaLabelPlacement,
   DiagramAreaX,
 } from '@/model/diagram';
 import {
@@ -20,6 +22,7 @@ import {
 import type { DiagramHandle } from '@/model/diagramDraw';
 import { shiftCurve } from '@/model/diagramShift';
 import { emptyBiText, plain } from '@/model/text';
+import { AREA_PALETTE } from '@/render/diagram';
 import { BiTextField } from './BiTextField';
 import { Button, IconButton, NumberField, Segmented, SelectField, Eyebrow } from '@/components/ui';
 
@@ -245,6 +248,57 @@ export function ShadeMenu({
   );
 }
 
+const PLACEMENTS: Array<{ value: DiagramAreaLabelPlacement; label: string; title: string }> = [
+  { value: 'auto', label: 'Auto', title: 'Inside when the label fits, else outside with an arrow' },
+  { value: 'inside', label: 'Inside', title: 'Always on the shading' },
+  { value: 'leader', label: 'Leader', title: 'Outside, with an arrow into the shading' },
+];
+
+/**
+ * The palette as a row of swatches. Each shows the paper colour it prints (literal hex:
+ * it is a sample of the paper, not chrome); a hatched area previews its ink as stripes.
+ */
+function AreaColorSwatches({
+  value,
+  fill,
+  onChange,
+}: {
+  value: DiagramAreaColor;
+  fill: DiagramAreaFill;
+  onChange: (color: DiagramAreaColor) => void;
+}) {
+  return (
+    <div role="radiogroup" aria-label="Colour" className="flex items-center gap-1.5">
+      <span className="mr-1 text-xs text-ink-muted">Colour</span>
+      {(Object.keys(AREA_PALETTE) as DiagramAreaColor[]).map((key) => {
+        const paint = AREA_PALETTE[key];
+        const active = key === value;
+        return (
+          <button
+            key={key}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            aria-label={paint.name}
+            title={paint.name}
+            onClick={() => onChange(key)}
+            className={
+              'h-6 w-6 rounded-full border transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ' +
+              (active ? 'border-ink ring-2 ring-accent ring-offset-1 ring-offset-surface' : 'border-line-strong hover:border-ink-muted')
+            }
+            style={{
+              background:
+                fill === 'hatch'
+                  ? `repeating-linear-gradient(-45deg, ${paint.hatch} 0 1px, #fff 1px 4px)`
+                  : paint.shade,
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 /** The selected area's properties: label, fill, and what bounds it. */
 export function AreaInspector({
   diagram,
@@ -281,11 +335,36 @@ export function AreaInspector({
           label="Fill"
           value={area.fill ?? 'shade'}
           options={[
-            { value: 'shade', label: 'Grey shade' },
+            { value: 'shade', label: 'Shade' },
             { value: 'hatch', label: 'Hatched' },
           ]}
           onChange={(fill) => patch({ ...area, fill })}
         />
+        <AreaColorSwatches
+          value={area.color ?? 'grey'}
+          fill={area.fill ?? 'shade'}
+          onChange={(color) => {
+            // Grey is the default: stored as absent, so the area stays as it always was.
+            const next: DiagramArea = { ...area, color };
+            if (color === 'grey') delete next.color;
+            patch(next);
+          }}
+        />
+        <div className="flex items-center gap-1">
+          <span className="mr-1 text-xs text-ink-muted">Placement</span>
+          <Segmented<DiagramAreaLabelPlacement>
+            label="Label placement"
+            value={area.labelPlacement ?? 'auto'}
+            options={PLACEMENTS}
+            onChange={(placement) => {
+              // A new side starts from its own default spot, like a point label's slot.
+              const next: DiagramArea = { ...area, labelPlacement: placement };
+              if (placement === 'auto') delete next.labelPlacement;
+              delete next.labelOffset;
+              patch(next);
+            }}
+          />
+        </div>
         {band ? (
           <>
             <Eyebrow className="block pt-1">Bounded by</Eyebrow>
