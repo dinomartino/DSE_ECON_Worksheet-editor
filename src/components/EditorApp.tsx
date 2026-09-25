@@ -397,7 +397,11 @@ export function EditorApp({
 
   return (
     <div className="flex h-full flex-col bg-surface">
-      <Toolbar onOpenSettings={() => setSettingsOpen(true)} onOpenFiles={onOpenFiles} />
+      <Toolbar
+        onOpenSettings={() => setSettingsOpen(true)}
+        onOpenFiles={onOpenFiles}
+        bodySheets={pages.length}
+      />
       {readOnly && <NewerVersionNotice onOpenDocument={onOpenDocument} />}
       {/* Three columns: the add rail (how content gets on the page), the page itself
           (where it is edited), and the sidebar (structure and off-page fields). The
