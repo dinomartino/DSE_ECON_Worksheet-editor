@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { WorksheetSummary } from '@/storage';
+import type { FolderState, WorksheetSummary } from '@/storage';
 import {
   DEFAULT_QUERY,
   isFiltered,
   relativeTime,
+  scopedSummaries,
   trashAgeLabel,
   visibleSummaries,
 } from './dashboard';
@@ -43,6 +44,52 @@ describe('visibleSummaries', () => {
     const sorted = visibleSummaries(rows, { ...DEFAULT_QUERY, sort: 'name' });
     expect(ids(sorted)).toEqual(['b', 'd', 'c', 'a']);
     expect(ids(rows)).toEqual(['a', 'b', 'c', 'd']);
+  });
+
+  describe('inside a folder', () => {
+    const folders: FolderState = {
+      folders: [
+        { id: 'f-units', name: 'Units' },
+        { id: 'f-mocks', name: 'Mocks' },
+      ],
+      // `d` names a folder that has since been deleted: it is at root.
+      assignments: { a: 'f-units', c: 'f-units', b: 'f-mocks', d: 'gone' },
+    };
+    const inFolder = (folderId: string | undefined) => ({ folderId, folders });
+
+    it('All documents shows every row, filed or not', () => {
+      expect(ids(visibleSummaries(rows, DEFAULT_QUERY, inFolder(undefined)))).toEqual([
+        'a',
+        'b',
+        'c',
+        'd',
+      ]);
+    });
+
+    it('a folder shows its own rows, in the same order', () => {
+      expect(ids(visibleSummaries(rows, DEFAULT_QUERY, inFolder('f-units')))).toEqual(['a', 'c']);
+      expect(ids(visibleSummaries(rows, DEFAULT_QUERY, inFolder('f-mocks')))).toEqual(['b']);
+      expect(ids(scopedSummaries(rows, inFolder('f-units')))).toEqual(['a', 'c']);
+    });
+
+    it('search, kind and order work within the folder', () => {
+      const units = inFolder('f-units');
+      expect(ids(visibleSummaries(rows, { ...DEFAULT_QUERY, search: '9' }, units))).toEqual(['c']);
+      expect(ids(visibleSummaries(rows, { ...DEFAULT_QUERY, kind: 'mock' }, units))).toEqual([]);
+      expect(ids(visibleSummaries(rows, { ...DEFAULT_QUERY, sort: 'name' }, units))).toEqual([
+        'c',
+        'a',
+      ]);
+      // A search never reaches outside the open folder.
+      expect(
+        ids(visibleSummaries(rows, { ...DEFAULT_QUERY, search: 'mock' }, units)),
+      ).toEqual([]);
+    });
+
+    it('a stale assignment is at root: in All documents, in no folder', () => {
+      expect(ids(visibleSummaries(rows, DEFAULT_QUERY, inFolder('gone')))).toEqual([]);
+      expect(ids(visibleSummaries(rows, DEFAULT_QUERY, inFolder(undefined)))).toContain('d');
+    });
   });
 
   it('knows when a filter is narrowing the list', () => {

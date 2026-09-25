@@ -66,6 +66,9 @@ Words this repository uses in its own way. One line each, with where the thing l
   shipped v1 build. Never regenerated.
 - **Index** — the `econ-worksheet-index` summary array (or `index.json` on desktop); the
   other half of storage, validated per row. `src/storage/summaries.ts`
+- **Folder** — a dashboard label a document is filed under; metadata in its own key/file,
+  never in the index or the document. A missing or stale one means "at root".
+  `src/storage/folders.ts:FolderState`
 - **Platform adapter** — `src/platform/index.ts`: the only place that may reach Tauri, always
   through a dynamic import behind `isDesktop()`.
 - **`data-print-hide`** — the attribute that keeps on-page chrome out of the print PDF.

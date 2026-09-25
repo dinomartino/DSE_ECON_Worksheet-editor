@@ -16,6 +16,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LocalStorageWorksheetStore } from '.';
+import { DEFAULT_QUERY, visibleSummaries } from '@/components/start/dashboard';
 
 const INDEX_KEY = 'econ-worksheet-index';
 const PREFIX = 'econ-worksheet:';
@@ -152,5 +153,77 @@ describe('a damaged index does not read as "all your work is gone"', () => {
 
     expect(ids).toContain('legacy-doc');
     expect(ids).toContain('second');
+  });
+});
+
+/**
+ * Folders are a third key beside the two halves, and it must never be able to hide
+ * either: a legacy index lists in full whatever the folders key holds — nothing, good
+ * data, junk, or assignments naming folders that are gone.
+ */
+describe('folders never cost a legacy document its place in the list', () => {
+  const FOLDERS_KEY = 'econ-worksheet-folders';
+  const SECOND = { id: 'second', title: 'Mock Paper 1', updatedAt: '2026-01-10T00:00:00.000Z' };
+
+  const everyone = async () => {
+    const listed = await store().list();
+    const folders = await store().readFolders();
+    return {
+      all: visibleSummaries(listed, DEFAULT_QUERY, { folderId: undefined, folders }).map((e) => e.id),
+      folders,
+    };
+  };
+
+  beforeEach(() => {
+    storage.setItem(INDEX_KEY, JSON.stringify([LEGACY_ENTRY, SECOND]));
+  });
+
+  it('with no folders key at all — every published build until now', async () => {
+    const { all, folders } = await everyone();
+    expect(all).toEqual(['legacy-doc', 'second']);
+    expect(folders).toEqual({ folders: [], assignments: {} });
+  });
+
+  it('with a folders key filing one of them', async () => {
+    storage.setItem(
+      FOLDERS_KEY,
+      JSON.stringify({
+        format: 1,
+        folders: [{ id: 'f1', name: 'Mocks' }],
+        assignments: { second: 'f1' },
+      }),
+    );
+    const { all, folders } = await everyone();
+    expect(all).toEqual(['legacy-doc', 'second']);
+    const inFolder = visibleSummaries(await store().list(), DEFAULT_QUERY, {
+      folderId: 'f1',
+      folders,
+    });
+    expect(inFolder.map((e) => e.id)).toEqual(['second']);
+  });
+
+  it('with a folders key that is junk, or names folders that are gone', async () => {
+    for (const raw of ['{', '[]', 'null', JSON.stringify({ folders: 'x', assignments: 'y' })]) {
+      storage.setItem(FOLDERS_KEY, raw);
+      expect((await everyone()).all).toEqual(['legacy-doc', 'second']);
+    }
+    storage.setItem(
+      FOLDERS_KEY,
+      JSON.stringify({ folders: [], assignments: { 'legacy-doc': 'deleted', second: 'deleted' } }),
+    );
+    expect((await everyone()).all).toEqual(['legacy-doc', 'second']);
+  });
+
+  it('filing never writes to the index or the documents', async () => {
+    storage.setItem(PREFIX + 'legacy-doc', JSON.stringify(LEGACY_DOC));
+    const index = storage.getItem(INDEX_KEY);
+    const docBefore = storage.getItem(PREFIX + 'legacy-doc');
+    await store().writeFolders({
+      folders: [{ id: 'f1', name: 'Mocks' }],
+      assignments: { 'legacy-doc': 'f1' },
+    });
+    expect(storage.getItem(INDEX_KEY)).toBe(index);
+    expect(storage.getItem(PREFIX + 'legacy-doc')).toBe(docBefore);
+    expect(FOLDERS_KEY.startsWith(PREFIX)).toBe(false);
   });
 });

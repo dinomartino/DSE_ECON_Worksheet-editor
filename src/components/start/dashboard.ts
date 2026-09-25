@@ -1,4 +1,4 @@
-import { trashAge, type WorksheetSummary } from '@/storage';
+import { folderOf, trashAge, type FolderState, type WorksheetSummary } from '@/storage';
 
 /**
  * The file dashboard's pure half: which saved documents show, in what order.
@@ -21,17 +21,26 @@ export interface DashboardQuery {
 
 export const DEFAULT_QUERY: DashboardQuery = { search: '', kind: 'all', sort: 'recent' };
 
+/** Which part of the library is open: a folder, or all documents (`undefined`). */
+export interface FolderScope {
+  folderId: string | undefined;
+  folders: FolderState;
+}
+
 /**
  * The rows to show. `recent` keeps the index's own order (newest first, undated last —
  * `usableSummaries` owns that rule); `name` is a natural, case-blind sort so "Unit 10"
- * follows "Unit 9".
+ * follows "Unit 9". A folder scope narrows first; search, kind and order then work
+ * within it. All documents (no folder) shows every row, filed or not.
  */
 export function visibleSummaries(
   summaries: WorksheetSummary[],
   query: DashboardQuery,
+  scope?: FolderScope,
 ): WorksheetSummary[] {
   const needle = query.search.trim().toLocaleLowerCase();
-  const shown = summaries.filter((summary) => {
+  const inScope = scopedSummaries(summaries, scope);
+  const shown = inScope.filter((summary) => {
     if (query.kind === 'mock' && !summary.hasCover) return false;
     if (query.kind === 'worksheet' && summary.hasCover) return false;
     return needle === '' || summary.title.toLocaleLowerCase().includes(needle);
@@ -42,6 +51,18 @@ export function visibleSummaries(
     );
   }
   return shown;
+}
+
+/**
+ * The rows in the open folder, before search and kind. A folder that no longer exists
+ * scopes to nothing; the caller falls back to all documents.
+ */
+export function scopedSummaries(
+  summaries: WorksheetSummary[],
+  scope: FolderScope | undefined,
+): WorksheetSummary[] {
+  if (!scope || scope.folderId === undefined) return summaries;
+  return summaries.filter((summary) => folderOf(scope.folders, summary.id)?.id === scope.folderId);
 }
 
 /** Whether any filter is narrowing the list — decides "no matches" vs "nothing saved". */
@@ -67,6 +88,29 @@ export function readDashboardView(): DashboardView {
 export function writeDashboardView(view: DashboardView): void {
   try {
     window.localStorage.setItem(VIEW_KEY, view);
+  } catch {
+    // Private mode or blocked storage: the choice just doesn't outlive the tab.
+  }
+}
+
+/**
+ * The open folder is remembered per viewer, like the view — a teacher who files by term
+ * comes back to the term they were in. A folder that has since gone reads as none.
+ */
+const FOLDER_KEY = 'econgen.startFolder';
+
+export function readDashboardFolder(): string | undefined {
+  try {
+    return window.localStorage.getItem(FOLDER_KEY) ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function writeDashboardFolder(folderId: string | undefined): void {
+  try {
+    if (folderId === undefined) window.localStorage.removeItem(FOLDER_KEY);
+    else window.localStorage.setItem(FOLDER_KEY, folderId);
   } catch {
     // Private mode or blocked storage: the choice just doesn't outlive the tab.
   }

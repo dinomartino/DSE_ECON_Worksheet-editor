@@ -10,9 +10,27 @@ import { FileWorksheetStore } from './fileStore';
 import { triggerDownload } from './download';
 import { usableSummaries, withSummaryFirst } from './summaries';
 import { settleTrash, untrashed, usableTrash } from './trash';
+import {
+  forgetDocuments,
+  isEmptyFolders,
+  parseFolders,
+  serializeFolders,
+  type FolderState,
+} from './folders';
 import type { TrashedSummary, WorksheetStore, WorksheetSummary } from './types';
 
 export type { TrashedSummary, WorksheetStore, WorksheetSummary } from './types';
+export {
+  EMPTY_FOLDERS,
+  FOLDER_NAME_MAX,
+  folderCounts,
+  folderNameProblem,
+  folderOf,
+  sortedFolders,
+  updateFolders,
+  type Folder,
+  type FolderState,
+} from './folders';
 export { TRASH_RETENTION_DAYS, trashAge } from './trash';
 export {
   duplicateWorksheet,
@@ -36,6 +54,11 @@ const INDEX_KEY = 'econ-worksheet-index';
  * at `PREFIX + id`; only its row moves here, so an older build sees it as deleted.
  */
 const TRASH_KEY = 'econ-worksheet-trash';
+/**
+ * Folders and the document→folder map (§ folders.ts). Outside `PREFIX` for the same
+ * reason as Trash, and never a field on an index row, which an older build would drop.
+ */
+const FOLDERS_KEY = 'econ-worksheet-folders';
 
 export class LocalStorageWorksheetStore implements WorksheetStore {
   private readonly now: () => number;
@@ -129,6 +152,36 @@ export class LocalStorageWorksheetStore implements WorksheetStore {
     if (trash.some((row) => row.id === id)) {
       this.writeTrash(storage, trash.filter((row) => row.id !== id));
     }
+    this.forgetFolders(storage, [id]);
+  }
+
+  async readFolders(): Promise<FolderState> {
+    const storage = this.storage;
+    if (!storage) return parseFolders(undefined);
+    try {
+      return parseFolders(storage.getItem(FOLDERS_KEY));
+    } catch {
+      return parseFolders(undefined);
+    }
+  }
+
+  async writeFolders(state: FolderState): Promise<void> {
+    const storage = this.storage;
+    if (!storage) return;
+    if (isEmptyFolders(state) && !state.__unknown) storage.removeItem(FOLDERS_KEY);
+    else storage.setItem(FOLDERS_KEY, JSON.stringify(serializeFolders(state)));
+  }
+
+  /** Deleted for good: their folder assignments go too. Best effort — it is only filing. */
+  private forgetFolders(storage: Storage, ids: string[]): void {
+    if (ids.length === 0) return;
+    try {
+      const state = parseFolders(storage.getItem(FOLDERS_KEY));
+      const next = forgetDocuments(state, ids);
+      if (next !== state) storage.setItem(FOLDERS_KEY, JSON.stringify(serializeFolders(next)));
+    } catch {
+      // A stale assignment is harmless: it names a document that no longer lists.
+    }
   }
 
   private readTrash(storage: Storage): TrashedSummary[] {
@@ -186,6 +239,7 @@ export class LocalStorageWorksheetStore implements WorksheetStore {
     );
     const { kept, expired, changed } = settleTrash(present, this.now());
     for (const row of expired) storage.removeItem(PREFIX + row.id);
+    this.forgetFolders(storage, expired.map((row) => row.id));
     if (changed || present.length !== rows.length) this.writeTrash(storage, kept);
     return kept;
   }
@@ -215,7 +269,10 @@ export class LocalStorageWorksheetStore implements WorksheetStore {
     const storage = this.storage;
     if (!storage) return;
     const live = new Set((await this.list()).map((entry) => entry.id));
-    if (!live.has(id)) storage.removeItem(PREFIX + id);
+    if (!live.has(id)) {
+      storage.removeItem(PREFIX + id);
+      this.forgetFolders(storage, [id]);
+    }
     this.writeTrash(storage, this.readTrash(storage).filter((row) => row.id !== id));
   }
 
@@ -223,9 +280,9 @@ export class LocalStorageWorksheetStore implements WorksheetStore {
     const storage = this.storage;
     if (!storage) return;
     const live = new Set((await this.list()).map((entry) => entry.id));
-    for (const row of this.readTrash(storage)) {
-      if (!live.has(row.id)) storage.removeItem(PREFIX + row.id);
-    }
+    const gone = this.readTrash(storage).filter((row) => !live.has(row.id));
+    for (const row of gone) storage.removeItem(PREFIX + row.id);
+    this.forgetFolders(storage, gone.map((row) => row.id));
     storage.removeItem(TRASH_KEY);
   }
 
@@ -236,7 +293,8 @@ export class LocalStorageWorksheetStore implements WorksheetStore {
     // from the same origin, so clearing it wholesale — or reaching for the browser's
     // "clear site data" — destroys more than this app has any business touching.
     const mine = Object.keys(storage).filter(
-      (key) => key === INDEX_KEY || key === TRASH_KEY || key.startsWith(PREFIX),
+      (key) =>
+        key === INDEX_KEY || key === TRASH_KEY || key === FOLDERS_KEY || key.startsWith(PREFIX),
     );
     for (const key of mine) storage.removeItem(key);
   }

@@ -1719,7 +1719,16 @@ the way in; `NewWorksheetForm` asks the once-per-document decisions.
   prefix, which `clear()` treats as documents.
 - **Each thing sits with what it acts on.** The sidebar starts work (four new-document
   rows plus "Open a file…", which opens a .json or restores a .zip); the library's tools
-  — Trash, and backup/restore/folders behind ⋯ — sit in the dashboard header.
+  — Trash, and backup/restore/"Show … folder" behind ⋯ — sit in the dashboard header.
+- **Folders narrow, never hide.** A folder column (All documents, then folders by name,
+  with counts) scopes the list first (`dashboard.ts:scopedSummaries`); search, kind and
+  order then work inside it. All documents shows every row, filed or not, and says which
+  folder each is in. One level, no nesting. A card's menu has "Move to folder…" (a picker
+  dialog — `Menu` has no submenus); a card or row also drags onto a folder or onto All
+  documents (out of any folder), under its own MIME type so the screen's file-drop never
+  fires. Deleting a folder with documents asks, then returns them to root; an empty one
+  goes at once. Duplicating keeps the folder; a document started while a folder is open
+  is filed there. The open folder is a per-viewer `localStorage` key like the view.
 - **A thumbnail is derived, never stored** (`start/thumbnail.ts`). It reads the IR through
   the clipboard backend plus a small cover emitter, in a shadow root, scaled from true
   page size; loaded lazily (IntersectionObserver), two at a time, cached in memory by
@@ -2038,12 +2047,26 @@ in-flight values stay local; the store is called on pointer-up.
   **Live wins**: on the web a trash row whose id is live again is dropped and its shared
   key never purged; `save()` of a trashed id makes it live. `remove()` still means
   delete for good; `clear()` takes the Trash too.
+- **Folders are a separate list, not a row field** (`storage/folders.ts`): key
+  `econ-worksheet-folders` (outside `econ-worksheet:`), `worksheets/folders.json` on
+  desktop — neither a `*.worksheet.json` nor `index.json`, so no build's rebuild or
+  `clear()` mistakes it. It holds folder rows and a document→folder map; a `folderId` on
+  an index row would be dropped the next time an older build rewrites the index. Read
+  per row; unparseable is no folders; an assignment to a missing folder is root — so no
+  state of it can hide a document. Trash keeps a document's assignment (Restore brings it
+  back to its folder; a desktop restore-as-copy copies it); purge, Empty Trash, expiry and
+  `remove()` forget it; `clear()` takes the file. Writes go read-modify-write through
+  `updateFolders`, from what is stored, never from a screen's copy.
 - **Backup** (`storage/backup.ts`) is one zip of `.worksheet.json` entries plus
   `manifest.json`; Trash is left out. Restore parses every entry through `migrate`, skips
   and names bad ones, and **never overwrites**: an identical live id is skipped, any
   other collision (live or trashed) becomes a copy named "… (restored)". Each save is
   caught alone so a full `localStorage` reports what did not fit. JSZip is loaded on
-  click — the start screen must not pay for it.
+  click — the start screen must not pay for it. **Folders ride in `manifest.json`**
+  (`folders`: every folder, the assignments of the documents in the zip), never as an
+  entry: v0.3.0's reader parses every other `.json` entry as a worksheet. Restore merges
+  without overwriting — a same-id or same-named folder is reused, and a restored document
+  (or its copy) is filed only if it has no folder here yet.
 - **`KNOWN_KEYS` must list every top-level field** — an unlisted key is stripped into
   `__unknown`: it saves fine and vanishes on reload. A test fails when a populated
   worksheet carries a key the set lacks.
