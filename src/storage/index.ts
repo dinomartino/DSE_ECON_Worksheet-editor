@@ -1,6 +1,8 @@
 import type { Worksheet } from '@/model/types';
 import { isDesktop, JSON_FILTERS, pickTextFile, saveFile } from '@/platform';
+import { isNewerThanBuild } from '@/model/migrations';
 import {
+  NewerDocumentError,
   parseWorksheet,
   stringifyWorksheet,
   summarize,
@@ -34,6 +36,8 @@ export {
 export { TRASH_RETENTION_DAYS, trashAge } from './trash';
 export {
   duplicateWorksheet,
+  editableCopy,
+  NewerDocumentError,
   parseWorksheet,
   stringifyWorksheet,
   summarize,
@@ -109,6 +113,10 @@ export class LocalStorageWorksheetStore implements WorksheetStore {
   async save(worksheet: Worksheet): Promise<void> {
     const storage = this.storage;
     if (!storage) return;
+    // A newer build's document is never overwritten by this one (§ NewerDocumentError).
+    if (isNewerThanBuild(worksheet) && storage.getItem(PREFIX + worksheet.id) !== null) {
+      throw new NewerDocumentError();
+    }
     storage.setItem(PREFIX + worksheet.id, stringifyWorksheet(worksheet));
 
     const next = withSummaryFirst(await this.list(), summarize(worksheet));

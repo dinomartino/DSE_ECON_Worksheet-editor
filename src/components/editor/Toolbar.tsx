@@ -55,6 +55,7 @@ export function Toolbar({
   const select = useWorksheetStore((s) => s.select);
   const printPreview = useWorksheetStore((s) => s.printPreview);
   const setPrintPreview = useWorksheetStore((s) => s.setPrintPreview);
+  const readOnly = useWorksheetStore((s) => s.readOnly);
 
   const [busy, setBusy] = useState<string | undefined>();
   const [error, setError] = useState<string | undefined>();
@@ -245,7 +246,14 @@ export function Toolbar({
           value={printPreview ? 'preview' : 'edit'}
           onChange={(next) => setPrintPreview(next === 'preview')}
           options={[
-            { value: 'edit', label: 'Edit', title: 'Edit the worksheet on the page' },
+            {
+              value: 'edit',
+              label: 'Edit',
+              title: readOnly
+                ? 'Read-only: saved by a newer version of Econ Worksheet'
+                : 'Edit the worksheet on the page',
+              disabled: readOnly,
+            },
             {
               value: 'preview',
               label: 'Preview',
@@ -268,7 +276,12 @@ export function Toolbar({
         {/* Page setup, title, header and footer. On the bar rather than in the sidebar
             because they are decisions about the document as a whole, made once — the
             sidebar is for the content being worked on now. */}
-        <Button variant="subtle" onClick={onOpenSettings} title="Title, paper, margins, header and footer">
+        <Button
+          variant="subtle"
+          onClick={onOpenSettings}
+          disabled={readOnly}
+          title="Title, paper, margins, header and footer"
+        >
           <SettingsIcon size={15} />
           <span className="hidden md:inline">Setup</span>
         </Button>
@@ -286,11 +299,13 @@ export function Toolbar({
               it stays in the grey family — the accent is reserved for interaction. */}
           <Pill>{worksheetMarks(worksheet)} marks</Pill>
           <span className="hidden sm:inline">
-            {dirty
-              ? 'Unsaved…'
-              : lastSavedAt
-                ? `Saved ${new Date(lastSavedAt).toLocaleTimeString()}`
-                : 'Saved'}
+            {readOnly
+              ? 'Read-only'
+              : dirty
+                ? 'Unsaved…'
+                : lastSavedAt
+                  ? `Saved ${new Date(lastSavedAt).toLocaleTimeString()}`
+                  : 'Saved'}
           </span>
         </span>
 
@@ -314,7 +329,7 @@ export function Toolbar({
              * only way to leave it (the old menu had no way *back* to what it replaced).
              */
             { label: 'Worksheets…', onSelect: onOpenFiles, separated: true },
-            { label: 'Save now', onSelect: () => void save() },
+            ...(readOnly ? [] : [{ label: 'Save now', onSelect: () => void save() }]),
             ...(isDesktop()
               ? [
                   {

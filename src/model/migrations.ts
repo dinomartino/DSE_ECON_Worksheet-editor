@@ -82,8 +82,9 @@ export function migrate(input: unknown): Worksheet {
 
   if (version < 1) throw new SchemaError(`Unsupported schema version ${version}.`);
 
-  // Apply the chain step by step; a document newer than this build is left alone
-  // (its extra fields survive via __unknown) rather than being rejected.
+  // Apply the chain step by step. A document newer than this build is left alone, not
+  // rejected: its extra fields survive via __unknown, it keeps its own schemaVersion,
+  // and `isNewerThanBuild` makes the editor show it read-only rather than rewrite it.
   for (let v = version; v < CURRENT_SCHEMA_VERSION; v += 1) {
     const step = MIGRATIONS[v - 1];
     if (!step) throw new SchemaError(`Missing migration from schema version ${v}.`);
@@ -107,6 +108,17 @@ export function migrate(input: unknown): Worksheet {
   worksheet.__unknown = Object.keys(unknown).length > 0 ? unknown : undefined;
 
   return normalize(worksheet);
+}
+
+/**
+ * Saved by a build newer than this one (§ The published-document promise).
+ *
+ * Such a document opens — a teacher is never refused their work — but read-only: this
+ * build renders it by rules older than the ones it was written for, and writing it back
+ * would rewrite fields the newer build depends on. `migrate` keeps the higher version.
+ */
+export function isNewerThanBuild(worksheet: Pick<Worksheet, 'schemaVersion'>): boolean {
+  return worksheet.schemaVersion > CURRENT_SCHEMA_VERSION;
 }
 
 /** Fill in defaults for optional structures so downstream code can assume shape. */

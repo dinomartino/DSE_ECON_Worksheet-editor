@@ -9,7 +9,8 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createWorksheet } from '@/model/factories';
-import { stringifyWorksheet } from './document';
+import { CURRENT_SCHEMA_VERSION } from '@/model/migrations';
+import { NewerDocumentError, stringifyWorksheet } from './document';
 import { createFolder, folderOf, moveToFolder, updateFolders } from './folders';
 
 const files = new Map<string, string>();
@@ -373,5 +374,24 @@ describe('FileWorksheetStore folders', () => {
 
     await store().clear();
     expect(files.has(FOLDERS)).toBe(false);
+  });
+});
+
+describe('FileWorksheetStore and a newer build’s document', () => {
+  it('never overwrites it, but lists it and still writes one under a new id', async () => {
+    const store = new FileWorksheetStore();
+    const newer = { ...worksheet('n', '2027-01-01T00:00:00.000Z'), schemaVersion: CURRENT_SCHEMA_VERSION + 1 };
+    const bytes = JSON.stringify({ ...newer, futureTopLevel: true });
+    files.set(doc('n'), bytes);
+    files.set(INDEX, JSON.stringify([{ id: 'n', title: 'Doc n', updatedAt: newer.updatedAt }]));
+
+    const loaded = (await store.load('n'))!;
+    await expect(store.save({ ...loaded, name: 'Edited' })).rejects.toBeInstanceOf(NewerDocumentError);
+    await expect(store.rename('n', 'Renamed')).rejects.toBeInstanceOf(NewerDocumentError);
+    expect(files.get(doc('n'))).toBe(bytes);
+    expect((await store.list()).map((row) => row.id)).toEqual(['n']);
+
+    await store.save({ ...loaded, id: 'imported' });
+    expect(files.get(doc('imported'))).toContain('futureTopLevel');
   });
 });

@@ -2071,7 +2071,8 @@ in-flight values stay local; the store is called on pointer-up.
   is current — the machinery runs on every load (validation, `__unknown` stashing,
   `normalize` defaulting). Adding a migration = append to `MIGRATIONS` + bump the
   constant.
-- **Forward compatibility**: unknown top-level fields preserved in `__unknown`.
+- **Forward compatibility**: unknown top-level fields preserved in `__unknown`; a document
+  from a newer build keeps its `schemaVersion` and opens read-only (§ Schema evolution).
 - **Trash is a separate list, not a flag** (`storage/trash.ts`): an older build reading
   the index would show a flagged row as live. Web: the document stays at
   `econ-worksheet:<id>`, its row moves from the index to `econ-worksheet-trash` (not under
@@ -2144,6 +2145,23 @@ intact but unreachable.
   imports — they are the published contract with every browser holding data under
   them.
 
+#### Schema evolution
+
+- **Rendering changes never migrate**: numbering, marks and layout are derived, formatting
+  is deltas. The promise is that a file *opens*, not that it prints identically.
+- **Additive first**: an optional field with a default needs no bump (top-level ones go in
+  `KNOWN_KEYS`; nested fields pass through).
+- **A shape change** appends one `MIGRATIONS` step, bumps `CURRENT_SCHEMA_VERSION`, and adds
+  a new frozen `src/test/corpus/v<N>-published.json` written by that version's last build;
+  old corpus files never change.
+- **Collapse at a major version** only if the single `v1→vN` step reproduces the old chain's
+  output over every frozen corpus (pinned in a test first). Opening v1 is never dropped.
+- **Past ~30 KB minified**, legacy steps move to a lazy chunk loaded only for an older
+  `schemaVersion`. Not before.
+- **A newer file opens read-only** (`isNewerThanBuild`): store `readOnly` makes `commit`,
+  undo and `save` inert; both stores refuse to overwrite it (`NewerDocumentError`);
+  "Duplicate as editable copy" (`editableCopy`) writes a downgraded copy under a new id.
+
 ### Bilingual text (`src/model/text.ts`)
 
 - Every user-visible string is `BiText { en, zh }` of `InlineRun[]`.
@@ -2182,10 +2200,18 @@ steps and the secrets are in [`RELEASING.md`](./RELEASING.md).
 One codebase, two targets: the desktop app is the *same* static export (`out/`) loaded by
 a Tauri 2 webview. There is no desktop-only build of the UI and no second renderer.
 
-**Tauri is never imported at the top level.** A static `@tauri-apps/*` import would land
-in the web bundle, where those modules throw on load. Every call goes through a dynamic
-`import()` inside a function, behind an `isDesktop()` check — `src/platform/` for file
-access, `src/desktop/updater.ts` for updates.
+**Tauri is never imported at the top level.** A static `@tauri-apps/*` import would put
+Tauri in the web bundle's static graph — it still builds, so three guards catch it. Every
+call goes through a dynamic `import()` inside a function, behind an `isDesktop()` check —
+`src/platform/` for file access, `src/desktop/updater.ts` for updates,
+`src/storage/fileStore.ts` for the file store.
+
+- `src/test/tauriImports.test.ts` (`npm test`, CI) and ESLint forbid a static
+  `import`/`export … from '@tauri-apps/…'` anywhere in `src/` (`import type` is erased),
+  and `import()` of it outside those three places.
+- `scripts/check-web-bundle.mjs` (`postbuild`) fails `npm run build` when a chunk carrying
+  a Tauri IPC string (`plugin:fs|…`) is loaded by a page up front or together with app
+  chunks; a sanctioned `import()` leaves each such chunk loaded alone, on demand.
 
 **Documents are files on desktop.** `worksheetStore` is chosen once at load:
 `FileWorksheetStore` (`storage/fileStore.ts`) under `$APPDATA/worksheets/` — one

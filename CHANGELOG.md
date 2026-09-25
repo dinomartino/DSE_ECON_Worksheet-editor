@@ -33,6 +33,9 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
 - **What's new**: the first time a new version opens, a short note lists what it adds,
   once. "What's new" beside Send feedback on the start screen, and in the editor's ⋯
   menu, lists every release.
+- **Worksheets from a newer version open safely**: a file saved by a newer Econ Worksheet
+  opens read-only with a note to update, and is never overwritten. "Duplicate as editable
+  copy" makes a copy you can edit now.
 
 ### Fixed
 - **Desktop: Export → PDF opens the print sheet** instead of failing silently.
