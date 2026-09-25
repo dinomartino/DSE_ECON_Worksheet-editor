@@ -250,6 +250,7 @@ Invariant: chrome uses semantic tokens (`src/app/globals.css`); anything on the 
 
 - `scripts/shot.mjs` — screenshot the real app (`--seed`, `--dark`)
 - `scripts/demo.mjs` — website video + screenshots into `demo-media/` (`npm run demo`); steps in `scripts/demo/record.mjs:STORYBOARD`
+- `scripts/demo/diagrams.mjs:diagramStoryboard` — the diagram film (`npm run demo:diagrams`): one recording, numbered stills and the exported `.docx` into `demo-media/diagrams/`; seed from `scripts/demo/diagrams-seed.test.ts`
 - `scripts/emit-samples.test.ts` — real `.docx` files (`npm run samples`)
 - `scripts/template-gallery.mjs` — every diagram template screenshotted (en / zh / bilingual) into a folder; `--app` also seeds them into the running app and shoots the sheets and the picker
 - `scripts/cover-verify.mjs` · `scripts/lq-verify.mjs` — the three backends agree
