@@ -160,7 +160,8 @@ describe('shiftCurve attaches the equilibria', () => {
     const e1 = result.diagram.points.find((p) => p.id === result.pointId)!;
     expect(e1.anchor).toEqual({ cross: [result.curveId, demand.id] });
     const e0 = result.diagram.points[0];
-    expect(e0.anchor).toEqual({ cross: [supply.id, demand.id] });
+    // The template anchors E₀ itself; the shift leaves that anchor alone.
+    expect(e0.anchor).toEqual({ cross: [demand.id, supply.id] });
 
     // Dragging S₁ carries E₁ with it; E₀ stays on the original crossing.
     const dragged = resolveDiagram(

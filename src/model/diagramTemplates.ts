@@ -5,9 +5,12 @@ import {
   AXIS,
   axes,
   curve,
+  eq,
+  finish,
   newId,
   point,
   sub,
+  upright,
   type DiagramTemplate,
   type DiagramTemplateGroup,
 } from './diagramTemplateKit';
@@ -57,20 +60,11 @@ const ORIGINAL_TEMPLATES: DiagramTemplate[] = [
     group: 'supplyDemand',
     name: bi('Supply and demand', '供應與需求'),
     hint: bi('Linear S and D crossing at one equilibrium.', '線性供求曲線相交於一均衡點。'),
-    build: () =>
-      axes(AXIS.quantity, AXIS.price, {
-        curves: [
-          curve([[0.08, 0.88], [0.86, 0.12]], bi('D', 'D')),
-          curve([[0.08, 0.12], [0.86, 0.88]], bi('S', 'S')),
-        ],
-        points: [
-          point(0.47, 0.5, sub('E', '0'), {
-            dropTo: ['x', 'y'],
-            xTickLabel: sub('Q', '0'),
-            yTickLabel: sub('P', '0'),
-          }),
-        ],
-      }),
+    build: () => {
+      const d = curve([[0.08, 0.88], [0.86, 0.12]], bi('D', 'D'));
+      const s = curve([[0.08, 0.12], [0.86, 0.88]], bi('S', 'S'));
+      return finish(axes(AXIS.quantity, AXIS.price, { curves: [d, s], points: [eq(d, s, '0')] }));
+    },
   },
   {
     id: 'demand-shift',
@@ -84,33 +78,41 @@ const ORIGINAL_TEMPLATES: DiagramTemplate[] = [
     group: 'macro',
     name: bi('AD–AS with LRAS', 'AD–AS 及 LRAS'),
     hint: bi('AD, SRAS and a vertical LRAS — the DSE macro diagram.', 'AD、SRAS 及垂直的 LRAS，DSE 常見宏觀圖。'),
-    build: () =>
-      axes(bi('Output level', '產出水平'), AXIS.priceLevel, {
-        curves: [
-          curve([[0.1, 0.78], [0.82, 0.18]], bi('AD', 'AD')),
-          curve([[0.1, 0.18], [0.82, 0.78]], bi('SRAS', 'SRAS')),
-          // The vertical LRAS: two points sharing an x, labelled at the top.
-          curve([[0.46, 0.0], [0.46, 0.94]], bi('LRAS', 'LRAS')),
-        ],
-        points: [
-          point(0.46, 0.48, sub('E', '0'), { dropTo: ['x'], xTickLabel: sub('Y', '1') }),
-          point(0.58, 0.6, sub('E', '1')),
-        ],
-      }),
+    build: () => {
+      const ad = curve([[0.1, 0.78], [0.82, 0.18]], bi('AD', 'AD'));
+      const sras = curve([[0.1, 0.18], [0.82, 0.78]], bi('SRAS', 'SRAS'));
+      // The vertical LRAS, labelled at the top; E₀ where all three meet.
+      const lras = upright(0.46, bi('LRAS', 'LRAS'), 0.94);
+      return finish(
+        axes(bi('Output level', '產出水平'), AXIS.priceLevel, {
+          curves: [ad, sras, lras],
+          points: [
+            point(0.46, 0.48, sub('E', '0'), {
+              dropTo: ['x'],
+              xTickLabel: sub('Y', '1'),
+              anchor: { cross: [ad.id, sras.id] },
+            }),
+            point(0.58, 0.6, sub('E', '1')),
+          ],
+        }),
+      );
+    },
   },
   {
     id: 'money-market',
     group: 'money',
     name: bi('Money market', '貨幣市場'),
     hint: bi('Vertical money supply against a downward money demand.', '垂直貨幣供應與向下傾斜的貨幣需求。'),
-    build: () =>
-      axes(AXIS.money, AXIS.interest, {
-        curves: [
-          curve([[0.44, 0.0], [0.44, 0.9]], sub('MS', '0')),
-          curve([[0.06, 0.74], [0.9, 0.24]], sub('MD', '0')),
-        ],
-        points: [point(0.44, 0.51, sub('E', '0'), { labelSide: 'upRight' })],
-      }),
+    build: () => {
+      const ms = upright(0.44, sub('MS', '0'), 0.9);
+      const md = curve([[0.06, 0.74], [0.9, 0.24]], sub('MD', '0'));
+      return finish(
+        axes(AXIS.money, AXIS.interest, {
+          curves: [ms, md],
+          points: [point(0.44, 0.51, sub('E', '0'), { labelSide: 'upRight', anchor: { cross: [md.id, ms.id] } })],
+        }),
+      );
+    },
   },
   {
     id: 'tariff',

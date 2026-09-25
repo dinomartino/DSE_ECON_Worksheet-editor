@@ -163,7 +163,7 @@ describe('revenue areas in the SVG', () => {
     const e0 = base.points[0];
     const diagram = {
       ...base,
-      points: [...base.points, { ...e0, id: 'E1', at: { x: 0.4, y: 0.62 } }],
+      points: [...base.points, { ...e0, id: 'E1', at: { x: 0.4, y: 0.62 }, anchor: undefined }],
     };
     const points = { before: { point: e0.id }, after: { point: 'E1' } };
     diagram.areas = [
