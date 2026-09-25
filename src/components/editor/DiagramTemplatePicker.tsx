@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { DIAGRAM_TEMPLATES } from '@/model/diagramTemplates';
+import { DIAGRAM_TEMPLATES, DIAGRAM_TEMPLATE_GROUPS } from '@/model/diagramTemplates';
 import { plain } from '@/model/text';
 import { diagramSize, diagramSvg } from '@/render/diagram';
 import { Button } from '@/components/ui';
@@ -17,22 +17,33 @@ import { Button } from '@/components/ui';
  * keeps the choice looking identical at both moments.
  */
 
-/** One rendered card per template, built once per mount — the geometry is static. */
-function useTemplateCards() {
-  return useMemo(
-    () =>
-      DIAGRAM_TEMPLATES.map((template) => {
-        const diagram = template.build();
-        const size = diagramSize(diagram, 220, 'en');
-        return {
-          id: template.id,
-          name: plain(template.name.en),
-          hint: plain(template.hint.en),
-          svg: diagramSvg(diagram, { ...size, language: 'en' }),
-        };
-      }),
-    [],
-  );
+interface TemplateCard {
+  id: string;
+  group: string;
+  name: string;
+  hint: string;
+  /** Lower-cased names and hint in both languages, for the search box. */
+  haystack: string;
+  svg: string;
+}
+
+/** One rendered card per template, built once per page — the geometry is static. */
+let cardCache: TemplateCard[] | null = null;
+function templateCards(): TemplateCard[] {
+  cardCache ??= DIAGRAM_TEMPLATES.map((template) => {
+    const diagram = template.build();
+    const size = diagramSize(diagram, 220, 'en');
+    const words = [template.name.en, template.name.zh, template.hint.en, template.hint.zh];
+    return {
+      id: template.id,
+      group: template.group,
+      name: plain(template.name.en),
+      hint: plain(template.hint.en),
+      haystack: words.map((text) => plain(text)).join(' ').toLowerCase(),
+      svg: diagramSvg(diagram, { ...size, language: 'en' }),
+    };
+  });
+  return cardCache;
 }
 
 export function DiagramTemplateCards({
@@ -43,7 +54,55 @@ export function DiagramTemplateCards({
   currentId?: string;
   onPick: (templateId: string) => void;
 }) {
-  const cards = useTemplateCards();
+  const cards = useMemo(() => templateCards(), []);
+  const [search, setSearch] = useState('');
+  const needle = search.trim().toLowerCase();
+  const groups = DIAGRAM_TEMPLATE_GROUPS.map((group) => ({
+    id: group.id,
+    name: plain(group.name.en),
+    cards: cards.filter((card) => card.group === group.id && (!needle || card.haystack.includes(needle))),
+  })).filter((group) => group.cards.length > 0);
+  return (
+    <div className="flex flex-col gap-2">
+      <label className="block">
+        <span className="sr-only">Search diagram templates</span>
+        <input
+          type="search"
+          autoFocus
+          value={search}
+          placeholder="Search templates"
+          onChange={(event) => setSearch(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape' && search) {
+              event.stopPropagation();
+              setSearch('');
+            }
+          }}
+          className="h-7 w-full rounded-md border border-line bg-surface px-2 text-[12px] text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
+        />
+      </label>
+      {groups.length === 0 && (
+        <p className="px-1 py-3 text-center text-[12px] text-ink-subtle">No template matches.</p>
+      )}
+      {groups.map((group) => (
+        <section key={group.id} aria-label={group.name} data-template-group={group.id}>
+          <h3 className="mb-1 px-0.5 text-[11px] font-semibold text-ink-muted">{group.name}</h3>
+          <TemplateGrid cards={group.cards} currentId={currentId} onPick={onPick} />
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function TemplateGrid({
+  cards,
+  currentId,
+  onPick,
+}: {
+  cards: TemplateCard[];
+  currentId?: string;
+  onPick: (templateId: string) => void;
+}) {
   return (
     <div className="grid grid-cols-2 gap-1.5">
       {cards.map((card) => (
