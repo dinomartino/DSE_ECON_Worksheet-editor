@@ -1120,7 +1120,9 @@ function renameAreaRefs(band: AreaBand, renamed: Map<string, string>): AreaBand 
   const x = (value: number | AnchorRef) => (typeof value === 'number' ? value : ref(value));
   const edge = (e: AreaBand['edges'][number]): AreaBand['edges'][number] =>
     'curve' in e ? { curve: id(e.curve) } : { level: x(e.level) };
-  return { edges: [edge(band.edges[0]), edge(band.edges[1])], from: x(band.from), to: x(band.to) };
+  const renamedBand: AreaBand = { edges: [edge(band.edges[0]), edge(band.edges[1])], from: x(band.from), to: x(band.to) };
+  if (band.cap) renamedBand.cap = edge(band.cap);
+  return renamedBand;
 }
 
 /**

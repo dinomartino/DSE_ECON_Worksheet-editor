@@ -170,6 +170,7 @@ export function isAnchoredArea(area: DiagramArea): boolean {
  */
 export function areaPolygon(diagram: Diagram, area: DiagramArea): DiagramPoint[] | null {
   if (area.revenue) return revenuePolygon(diagram, area.revenue);
+  if (area.band?.cap) return cappedBandPolygon(diagram, area.band, area.band.cap);
   if (!area.band) return area.vertices && area.vertices.length >= 3 ? area.vertices : null;
 
   const { edges, from, to } = area.band;
@@ -268,7 +269,7 @@ export function areaReferences(area: DiagramArea): string[] {
     return ids;
   }
   if (!area.band) return ids;
-  for (const edge of area.band.edges) {
+  for (const edge of area.band.cap ? [...area.band.edges, area.band.cap] : area.band.edges) {
     if ('curve' in edge) ids.push(edge.curve);
     else if (typeof edge.level !== 'number') anchor(edge.level);
   }
@@ -492,4 +493,86 @@ export function revenueArea(preset: RevenuePreset, points: RevenuePoints, id: st
     fill: 'hatch',
     pattern: gain ? 'dots' : 'cross',
   };
+}
+
+/*
+ * ── Capped bands: a trapezium as one area ───────────────────────────────────────
+ */
+
+type AreaBand = NonNullable<DiagramArea['band']>;
+
+/**
+ * A band whose edge 0 is clamped between edge 1 and `cap` at every x. Sampled at the
+ * band's and the cap's vertices plus every x where the cap crosses an edge, so it is
+ * exact for polylines. Where the cap curve does not reach, edge 0 is left as it is.
+ */
+function cappedBandPolygon(diagram: Diagram, band: AreaBand, cap: DiagramAreaEdge): DiagramPoint[] | null {
+  const x0 = resolveAreaX(diagram, band.from);
+  const x1 = resolveAreaX(diagram, band.to);
+  if (x0 === null || x1 === null) return null;
+  let lo = Math.max(0, Math.min(x0, x1));
+  let hi = Math.min(1, Math.max(x0, x1));
+
+  const breaks: number[] = [];
+  for (const edge of band.edges) {
+    if (!('curve' in edge)) continue;
+    const curve = curveById(diagram, edge.curve);
+    const span = curve ? curveSpan(curve) : null;
+    if (!curve || !span) return null;
+    lo = Math.max(lo, span[0]);
+    hi = Math.min(hi, span[1]);
+    breaks.push(...curve.points.map((p) => p.x));
+  }
+  if ('curve' in cap) {
+    const curve = curveById(diagram, cap.curve);
+    if (!curve) return null;
+    breaks.push(...curve.points.map((p) => p.x));
+  } else if (edgeYAt(diagram, cap, lo) === null) return null;
+  if (hi - lo < 1e-6) return null;
+
+  const sorted = (xs: number[]) =>
+    xs.sort((a, b) => a - b).filter((x, i, all) => i === 0 || x - all[i - 1] > EPS);
+  let xs = sorted([lo, ...breaks.filter((x) => x > lo + EPS && x < hi - EPS), hi]);
+  // Between two samples every edge is straight, so a sign change brackets one crossing.
+  const crossings: number[] = [];
+  for (let i = 0; i < xs.length - 1; i += 1) {
+    const [a, b] = [xs[i], xs[i + 1]];
+    for (const edge of band.edges) {
+      const gap = (x: number) => {
+        const c = edgeYAt(diagram, cap, x);
+        const e = edgeYAt(diagram, edge, x);
+        return c === null || e === null ? null : c - e;
+      };
+      const ga = gap(a);
+      const gb = gap(b);
+      if (ga !== null && gb !== null && ga * gb < 0) crossings.push(a + ((b - a) * ga) / (ga - gb));
+    }
+  }
+  xs = sorted([...xs, ...crossings]);
+
+  const first: DiagramPoint[] = [];
+  const second: DiagramPoint[] = [];
+  for (const x of xs) {
+    const y0 = edgeYAt(diagram, band.edges[0], x);
+    const y1 = edgeYAt(diagram, band.edges[1], x);
+    if (y0 === null || y1 === null) return null;
+    const c = edgeYAt(diagram, cap, x);
+    const y = c === null ? y0 : [y0, c, y1].sort((a, b) => a - b)[1];
+    first.push({ x, y });
+    second.push({ x, y: y1 });
+  }
+  // Columns the cap has closed to nothing at either end are not part of the region.
+  const open = (i: number) => Math.abs(first[i].y - second[i].y) > 1e-7;
+  let start = 0;
+  while (start < xs.length - 1 && !open(start) && !open(start + 1)) start += 1;
+  let end = xs.length - 1;
+  while (end > start && !open(end) && !open(end - 1)) end -= 1;
+  const top = first.slice(start, end + 1);
+  const bottom = second.slice(start, end + 1).reverse();
+  const polygon = [...top, ...bottom];
+  const clean = polygon.filter((p, i) => {
+    const prev = polygon[(i + polygon.length - 1) % polygon.length];
+    return Math.hypot(p.x - prev.x, p.y - prev.y) > 1e-7;
+  });
+  return clean.length >= 3 ? clean : null;
 }
