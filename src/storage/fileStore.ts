@@ -1,7 +1,8 @@
 import { newId } from '@/model/factories';
+import { isNewerThanBuild } from '@/model/migrations';
 import type { Worksheet } from '@/model/types';
 import { isDesktop } from '@/platform';
-import { parseWorksheet, stringifyWorksheet, summarize } from './document';
+import { NewerDocumentError, parseWorksheet, stringifyWorksheet, summarize } from './document';
 import type { TrashedSummary, WorksheetStore, WorksheetSummary } from './types';
 import { usableSummaries, withSummaryFirst } from './summaries';
 import { settleTrash, untrashed, usableTrash } from './trash';
@@ -167,6 +168,10 @@ export class FileWorksheetStore implements WorksheetStore {
 
   async save(worksheet: Worksheet): Promise<void> {
     const fs = await this.fs();
+    // A newer build's document is never overwritten by this one (§ NewerDocumentError).
+    if (isNewerThanBuild(worksheet) && (await fs.exists(docPath(worksheet.id), await this.base()))) {
+      throw new NewerDocumentError();
+    }
     await this.ensureDir();
     // The document first: an index row naming a file that is not there yet is the one
     // ordering that can show a row which cannot open.

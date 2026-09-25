@@ -52,9 +52,12 @@ Two guards: `src/model/backwardCompat.test.ts` (documents) and
 `src/storage/legacyIndex.test.ts` (the index). If either fails, a published document just
 broke.
 
+The full policy — collapsing migrations, their size budget, files from a newer build
+(opened read-only, never overwritten) — is `SYSTEM_ARCHITECTURE.md` § Schema evolution.
+
 ## Verifying work
 
-- `npm test` — 1255 tests, ~2s. `npm run typecheck`, `npm run lint` (44 pre-existing
+- `npm test` — ~1500 tests, ~3s. `npm run typecheck`, `npm run lint` (44 pre-existing
   problems: 3 errors, 41 warnings — in `Preview.tsx` and `InlineEditable.tsx`).
 - `src/test/codemap.test.ts` guards the docs: every path and `path:symbol` cited in
   `docs/` must still exist. If it fails, the map rotted — fix the map.
@@ -66,8 +69,9 @@ broke.
   (preview, `.docx`, print PDF) still agree.
 - **Desktop work is verified in the shell**: `npm run desktop:dev` runs it, `npm run
   desktop:build` produces installers. To hand the user an unreleased `.dmg`, follow
-  `DESKTOP-PREVIEW.md` (copy-paste steps, no tag, no `main`). The web build must stay green too — `npm run build`
-  fails if a `@tauri-apps/*` import reached the bundle.
+  `DESKTOP-PREVIEW.md` (copy-paste steps, no tag, no `main`). The web build must stay green
+  too. A static `@tauri-apps/*` import fails `npm test` (`src/test/tauriImports.test.ts`),
+  `npm run lint`, and `npm run build` (`postbuild`: `scripts/check-web-bundle.mjs`).
 - **Every feature or fix adds a line under Unreleased in `CHANGELOG.md`**, in the same
   commit, written for teachers. It is the release body and the in-app "What's new".
 - Releases are tags, not pushes: `npm version <patch|minor|major>` then `git push
@@ -96,7 +100,8 @@ broke.
 - **Browser-only.** Static export, no server runtime, nothing reads `process.env` at
   runtime. `.docx` is built client-side.
 - **Never import `@tauri-apps/*` at the top level.** The same `out/` serves the web and
-  the desktop shell; a static import breaks the web build. Load them with a dynamic
-  `import()` inside a function, behind an `isDesktop()` check.
+  the desktop shell; a static import puts Tauri in the web bundle (it still compiles — the
+  guards above catch it). Load them with a dynamic `import()` inside a function, behind
+  an `isDesktop()` check, in `src/platform/`, `src/desktop/` or `src/storage/fileStore.ts`.
 - **Numbering and marks are derived, never stored.**
 - **New on-page chrome needs `data-print-hide`**, or it appears in the PDF.

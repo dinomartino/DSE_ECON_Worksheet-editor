@@ -45,6 +45,7 @@ import {
   type FlowMove,
 } from '@/model/flow';
 import { applyBandFieldSide } from '@/model/bandSegments';
+import { isNewerThanBuild } from '@/model/migrations';
 import { documentShape } from '@/model/documentShape';
 import {
   addCoverLine,
@@ -96,6 +97,12 @@ interface WorksheetState {
   printPreview: boolean;
   /** Unsaved changes since the last `markSaved`. */
   dirty: boolean;
+  /**
+   * The document was saved by a newer build (`isNewerThanBuild`): shown, never changed
+   * or written. Set by `replaceWorksheet`, never stored — the document has no say in it.
+   * `commit`, undo/redo and `save` are inert, and the page stays in print preview.
+   */
+  readOnly: boolean;
   lastSavedAt?: string;
   selectedQuestionId?: string;
   /**
@@ -575,6 +582,7 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   mode: { language: 'en', version: 'student' },
   printPreview: false,
   dirty: false,
+  readOnly: false,
   insertMenuRequest: 0,
   past: [],
   future: [],
@@ -584,6 +592,7 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   // nothing, so a no-op drag costs no undo entry.
   commit: (recipe) =>
     set((state) => {
+      if (state.readOnly) return state;
       const next = recipe(state.worksheet);
       if (next === state.worksheet) return state;
       return {
@@ -599,7 +608,7 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   undo: () =>
     set((state) => {
       const previous = state.past.at(-1);
-      if (!previous) return state;
+      if (!previous || state.readOnly) return state;
       return {
         worksheet: previous,
         past: state.past.slice(0, -1),
@@ -613,7 +622,7 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   redo: () =>
     set((state) => {
       const next = state.future[0];
-      if (!next) return state;
+      if (!next || state.readOnly) return state;
       return {
         worksheet: next,
         past: [...state.past, state.worksheet],
@@ -630,6 +639,10 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   replaceWorksheet: (worksheet) =>
     set((state) => ({
       worksheet,
+      readOnly: isNewerThanBuild(worksheet),
+      // Read-only shows the sheets as they print: the page's editing gestures are off.
+      // Leaving it (the editable copy) returns to editing.
+      printPreview: isNewerThanBuild(worksheet) || (!state.readOnly && state.printPreview),
       // A paper version belongs to the document being replaced; the next opens on A.
       mode: state.mode.variant === undefined ? state.mode : { ...state.mode, variant: undefined },
       past: [],
@@ -647,6 +660,7 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
 
   // Explicit "Save now", not waiting for the autosave debounce.
   save: async () => {
+    if (get().readOnly) return;
     await worksheetStore.save(get().worksheet);
     get().markSaved();
   },
@@ -657,7 +671,11 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   // Entering print preview clears the question selection (a ring is editor chrome in
   // a view whose point is what prints). Bypasses `commit` like setMode.
   setPrintPreview: (printPreview) =>
-    set(printPreview ? { printPreview, selectedQuestionId: undefined } : { printPreview }),
+    set((state) =>
+      printPreview || state.readOnly
+        ? { printPreview: true, selectedQuestionId: undefined }
+        : { printPreview },
+    ),
 
   // Selecting a question also points the rail at it; clearing the selection clears
   // the anchor so a click on blank paper returns the rail to appending.
@@ -953,7 +971,8 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
       return {
         ...state,
         worksheet: { ...state.worksheet, layout },
-        dirty: true,
+        // Read-only still lays the page out; it just never becomes something to save.
+        dirty: !state.readOnly,
       };
     }),
   trimQuestionAnswerSpace: (questionId, lines) =>
@@ -971,7 +990,7 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
       return {
         ...state,
         worksheet: { ...state.worksheet, questions },
-        dirty: true,
+        dirty: !state.readOnly,
       };
     }),
   replaceBlock: (blockId, next) =>

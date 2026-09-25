@@ -6,7 +6,7 @@ import { UpdateBanner } from '@/components/editor/UpdateBanner';
 import { setBeforeRestart } from '@/desktop/updateStore';
 import { StartScreen } from '@/components/start/StartScreen';
 import type { LanguageMode, Worksheet } from '@/model/types';
-import { worksheetStore } from '@/storage';
+import { NewerDocumentError, worksheetStore } from '@/storage';
 import { useWorksheetStore } from '@/store/worksheetStore';
 
 /**
@@ -115,7 +115,10 @@ export function EditorHost() {
      * Writing it here also means the list is never missing a document the teacher has
      * seen on screen, which is the property the file manager has to have to be trusted.
      */
-    void worksheetStore.save(worksheet);
+    void worksheetStore.save(worksheet).catch((error: unknown) => {
+      // A newer build's document already stored is shown read-only, never rewritten.
+      if (!(error instanceof NewerDocumentError)) throw error;
+    });
     // Only the new-document form reports a language; opening a saved worksheet leaves
     // the current view mode alone, since the document does not store one.
     if (language) setMode({ language });
@@ -147,7 +150,7 @@ export function EditorHost() {
             }}
           />
         ) : (
-          <EditorApp onOpenFiles={leaveForFiles} />
+          <EditorApp onOpenFiles={leaveForFiles} onOpenDocument={open} />
         )}
       </div>
     </div>

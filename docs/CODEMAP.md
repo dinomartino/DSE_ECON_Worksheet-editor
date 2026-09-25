@@ -32,7 +32,7 @@ StartScreen ──open──► worksheetStore (Zustand, undo/redo) ──► Wo
 `src/model/types.ts:Worksheet` · `ContentBlock` · `LayoutElement` · `Question` —
 the whole schema, one file.
 
-- `src/model/migrations.ts:KNOWN_KEYS` · `:CURRENT_SCHEMA_VERSION` · `:migrate` · `:serializeWorksheet`
+- `src/model/migrations.ts:KNOWN_KEYS` · `:CURRENT_SCHEMA_VERSION` · `:migrate` · `:serializeWorksheet` · `:isNewerThanBuild`
 - `src/model/flow.ts:resolveFlow` · `:applyOrder` · `:moveRunInFlow` — display order
 - `src/model/numbering.ts:computeNumbering` · `:listIndentScheme` — derived numbers
 - `src/model/marks.ts:partMarks` · `:questionMarks` · `:sectionMarks` — derived totals
@@ -55,6 +55,7 @@ Invariants:
 - `questions` owns question order; `flow` only positions layout elements — §Document flow.
 - A `section` is a marker carrying `restartNumbering`, not a container — §A section is a marker.
 - A new optional field must be in `KNOWN_KEYS` or it vanishes on reload — §The published-document promise.
+- A document from a newer build opens read-only and is never overwritten — §Schema evolution.
 - A band field is authored wording around a derived value — §A field is authored wording.
 
 ## registry — the question-type extension point
@@ -127,6 +128,7 @@ Invariants:
 - Actions are thin; the work lives in `model/edits`, `model/flow`, `model/bands` — §Store.
 - A drag commits once, on pointer-up — memory `drag-gestures-commit-once`.
 - Autosave only fires on dirty; flush by value before swapping or unmounting — §The start screen.
+- `readOnly` (a newer build's document) makes `commit`, undo/redo and `save` inert and holds print preview — §Schema evolution.
 
 ## storage — two halves that fail independently
 
@@ -141,10 +143,11 @@ Invariants:
   (metadata, a separate key/file; every failure reads as "at root")
 - `src/storage/backup.ts:buildBackup` · `:readBackup` · `:restoreBackup` — one-zip backup; restore never overwrites
 - `src/storage/document.ts:parseWorksheet` · `:summarize` · `src/storage/download.ts:triggerDownload`
+- `src/storage/document.ts:NewerDocumentError` · `:editableCopy` — `save()` refuses to overwrite a newer build's document; the copy is downgraded, under a new id
 
 Invariants:
 - One malformed index row must never empty the list — §The published-document promise.
-- Guards: `src/model/backwardCompat.test.ts`, `src/storage/legacyIndex.test.ts`.
+- Guards: `src/model/backwardCompat.test.ts`, `src/storage/legacyIndex.test.ts`, `src/storage/newerDocument.test.tsx`.
 - Trash lives outside what older builds read: key `econ-worksheet-trash` (never under
   `econ-worksheet:`), `worksheets/trash/` on desktop — §Persistence.
 - Folders are never a field on an index row (an older build's rewrite drops it): key
@@ -156,13 +159,15 @@ Invariants:
 - `src/storage/fileStore.ts:savedWorksheetPath` · `:savedWorksheetsFolder` · `src/storage/index.ts:pickWorksheetFile`
 - `src/desktop/updater.ts:checkForUpdate` · `:currentVersion` · `src/desktop/updateStore.ts:checkOnLaunch` — one check per launch
 - `src/components/editor/UpdateBanner.tsx:UpdateBanner` · `:VersionLine`
+- `src/components/editor/NewerVersionNotice.tsx:NewerVersionNotice` — the read-only bar: check for updates (desktop) / download link (web), "Duplicate as editable copy"
 - `src/whatsNew/changelog.ts:parseChangelog` · `:sectionMarkdown` · `:compareVersions` — `CHANGELOG.md` as data, shared with `scripts/release-notes.mjs`
 - `src/whatsNew/changelog.generated.ts:CHANGELOG_MD` — the bundled copy, written by `scripts/sync-changelog.mjs` (`predev`/`prebuild`); `src/whatsNew/notes.ts:CHANGELOG` parses it once
 - `src/whatsNew/seen.ts:decideWhatsNew` · `:LAST_SEEN_VERSION_KEY` — pop "What's new" once per new version, never on a first run
 - `src/components/whatsNew/WhatsNewDialog.tsx:WhatsNewDialog` · `:WhatsNewOnLaunch` — one release after an update, or every release (start screen, ⋯ menu)
 
 Invariants:
-- Never import `@tauri-apps/*` at the top level — dynamic `import()` behind `isDesktop()` — §Desktop shell.
+- Never import `@tauri-apps/*` statically — dynamic `import()` behind `isDesktop()`, only in `src/platform/`, `src/desktop/`, `src/storage/fileStore.ts` — §Desktop shell.
+  Guards: `src/test/tauriImports.test.ts`, the ESLint rule in `eslint.config.mjs`, `scripts/check-web-bundle.mjs` (`postbuild`).
 - Nothing reads `process.env` or the filesystem at runtime on the web path — §Deployment.
 - `src-tauri/tauri.conf.json` `app.security.csp` stays `null` — §Desktop shell.
 - The changelog copy is committed and must match `CHANGELOG.md`: `src/whatsNew/changelog.generated.test.ts` fails CI when stale (`npm run changelog`).
@@ -232,6 +237,7 @@ Invariant: chrome uses semantic tokens (`src/app/globals.css`); anything on the 
 - `scripts/cover-fixtures.test.ts` · `scripts/lq-fixtures.test.ts` · `scripts/q6-sample.test.ts`
 - `scripts/sync-version.mjs` — `package.json` → `src-tauri/tauri.conf.json` + `Cargo.toml`
 - `scripts/sync-changelog.mjs` — `CHANGELOG.md` → `src/whatsNew/changelog.generated.ts`
+- `scripts/check-web-bundle.mjs` — `postbuild`: fails the build if a Tauri chunk is loaded up front or with app code
 - `scripts/release-notes.mjs` — one version's section, the GitHub release body; `scripts/release-notes.test.ts`
 - `scripts/lq-pitch.py` · `scripts/cover-compare.py` — measure the rendered output
 

@@ -8,6 +8,7 @@ import { PageRail } from '@/components/editor/PageRail';
 import { Sidebar } from '@/components/editor/Sidebar';
 import { DocumentSettings } from '@/components/editor/DocumentSettings';
 import { Toolbar } from '@/components/editor/Toolbar';
+import { NewerVersionNotice } from '@/components/editor/NewerVersionNotice';
 import { IconButton } from '@/components/ui';
 import { ChevronRightIcon, CloseIcon } from '@/components/ui/icons';
 import { createTextField, type ZoneName } from '@/model/bands';
@@ -16,14 +17,22 @@ import { FlowCanvas } from '@/components/editor/FlowCanvas';
 import { ForumCanvas } from '@/components/editor/ForumCanvas';
 import { findDiagramBlock, formatOfTarget, targetQuestionId, textOfTarget } from '@/model/edits';
 import { toRunPatch } from '@/model/text';
-import type { BandFieldSide, BiText, TextFormat } from '@/model/types';
+import type { BandFieldSide, BiText, TextFormat, Worksheet } from '@/model/types';
 import type { EditTarget } from '@/render/ir';
 import { useWorksheetStore, type BandScope } from '@/store/worksheetStore';
 import { worksheetStore } from '@/storage';
 
 /** Two-pane shell (§5.1): structural editor on the left, live preview on the right. */
-export function EditorApp({ onOpenFiles }: { onOpenFiles: () => void }) {
+export function EditorApp({
+  onOpenFiles,
+  onOpenDocument,
+}: {
+  onOpenFiles: () => void;
+  /** Open another document in the editor (the read-only notice's editable copy). */
+  onOpenDocument: (worksheet: Worksheet) => void;
+}) {
   const worksheet = useWorksheetStore((s) => s.worksheet);
+  const readOnly = useWorksheetStore((s) => s.readOnly);
   const mode = useWorksheetStore((s) => s.mode);
   const printPreview = useWorksheetStore((s) => s.printPreview);
   const setPrintPreview = useWorksheetStore((s) => s.setPrintPreview);
@@ -389,13 +398,15 @@ export function EditorApp({ onOpenFiles }: { onOpenFiles: () => void }) {
   return (
     <div className="flex h-full flex-col bg-surface">
       <Toolbar onOpenSettings={() => setSettingsOpen(true)} onOpenFiles={onOpenFiles} />
+      {readOnly && <NewerVersionNotice onOpenDocument={onOpenDocument} />}
       {/* Three columns: the add rail (how content gets on the page), the page itself
           (where it is edited), and the sidebar (structure and off-page fields). The
           rail sits on the left because that is where every creative tool puts its
           insert affordance, and because it must never be what gets pushed off-screen
           when the window narrows. */}
       <div className="flex min-h-0 flex-1">
-        <AddRail />
+        {/* Read-only has nothing to add; the page stays in print preview. */}
+        {!readOnly && <AddRail />}
         {/* The page rail sits beside the add rail rather than under it: both are
             full-height columns, and stacking them would give each half a screen —
             enough for neither a long insert menu nor a long document. */}
@@ -500,7 +511,8 @@ export function EditorApp({ onOpenFiles }: { onOpenFiles: () => void }) {
             onDragItemChange={setDraggingItemIds}
           />
         </main>
-        <Sidebar pages={pages} onOpenSettings={() => setSettingsOpen(true)} />
+        {/* The sidebar is an inspector for editing; read-only has nothing to inspect with. */}
+        {!readOnly && <Sidebar pages={pages} onOpenSettings={() => setSettingsOpen(true)} />}
       </div>
 
       {settingsOpen && <DocumentSettings onClose={() => setSettingsOpen(false)} />}

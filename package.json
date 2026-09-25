@@ -17,6 +17,7 @@
     "dev": "next dev",
     "prebuild": "npm run changelog",
     "build": "next build",
+    "postbuild": "node scripts/check-web-bundle.mjs",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run src",

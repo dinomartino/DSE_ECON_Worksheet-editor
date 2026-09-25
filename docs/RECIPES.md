@@ -58,18 +58,26 @@ No migration and no version bump: an absent optional field is valid v1.
 
 Guard: `src/model/backwardCompat.test.ts` (round-trips the frozen corpus).
 
-## Add a migration
+## Changing the shape of stored data
 
-1. `src/model/migrations.ts` — append a step to `MIGRATIONS` (index = *from* version − 1).
-2. Bump `CURRENT_SCHEMA_VERSION`; add any new keys to `KNOWN_KEYS`.
-3. Add a **new** corpus file beside `src/test/corpus/v1-published.json`. Never regenerate
-   the old one — it is the only fixture not built by the current build, and so the only
-   one that can catch a migration that drops data.
-4. Extend `src/model/backwardCompat.test.ts` to open both corpora and assert content survives.
+First ask whether it needs one: a rendering change never does, and an optional field with
+a default is "Add an optional Worksheet field" above. Only a changed meaning or shape does.
 
-Removing a field is only allowed after its data has moved somewhere else.
+1. `src/model/migrations.ts` — append one pure, total step to `MIGRATIONS` (index = *from*
+   version − 1).
+2. Bump `CURRENT_SCHEMA_VERSION`; add any new top-level keys to `KNOWN_KEYS`.
+3. Freeze a **new** `src/test/corpus/v<N>-published.json`, written by the last build of the
+   old version. Never regenerate an existing corpus — it is the only fixture not built by
+   the current build, and so the only one that can catch a step that drops data.
+4. Extend `src/model/backwardCompat.test.ts` to open every corpus and assert content survives.
+5. Older builds will now meet your files: they open them read-only and never write them
+   (`src/model/migrations.ts:isNewerThanBuild`) — nothing to do, but do not weaken it.
 
-Guard: `src/model/backwardCompat.test.ts`, `src/storage/legacyIndex.test.ts`.
+Removing a field is only allowed after its data has moved somewhere else. Collapsing steps
+and the size budget: `SYSTEM_ARCHITECTURE.md` § Schema evolution.
+
+Guard: `src/model/backwardCompat.test.ts`, `src/storage/legacyIndex.test.ts`,
+`src/storage/newerDocument.test.tsx`.
 
 ## Add an edit target
 
@@ -132,9 +140,11 @@ Guard: `src/components/preview/bandChrome.test.ts`; then screenshot (below).
 3. `src-tauri/capabilities/` — the permission, if the plugin needs one.
 4. Call it from the UI; the UI never imports `@tauri-apps/*` itself.
 
-A top-level Tauri import lands in the web bundle and throws on load — `npm run build` fails.
+A static Tauri import still compiles, so it is caught three times: `src/test/tauriImports.test.ts`
+(`npm test`), ESLint (`npm run lint`), and `scripts/check-web-bundle.mjs` (`postbuild`).
 
-Guard: `src/platform/platform.test.ts`; then `npm run build` and `npm run desktop:dev`.
+Guard: `src/platform/platform.test.ts`, `src/test/tauriImports.test.ts`; then `npm run build`
+and `npm run desktop:dev`.
 
 ## Verify UI
 

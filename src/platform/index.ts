@@ -2,11 +2,12 @@
  * The one place that knows whether this build is running in a browser tab or in the
  * Tauri desktop shell.
  *
- * **Nothing outside this directory may import `@tauri-apps/*`.** The same source tree
- * ships to Vercel as a static web app, where those modules do not exist; a top-level
- * import would break the web bundle and drag native stubs into vitest. So every Tauri
- * module is reached through a dynamic `import()` *inside* a function, which the bundler
- * splits into a chunk that the web path never requests and the tests never evaluate.
+ * **Nothing imports `@tauri-apps/*` statically.** The same source tree ships to Vercel
+ * as a static web app; a static import would put Tauri in the web bundle and drag native
+ * stubs into vitest. So every Tauri module is reached through a dynamic `import()`
+ * *inside* a function — here, in `src/desktop/`, or in `storage/fileStore.ts` — which
+ * the bundler splits into a chunk the web path never requests. Guarded by
+ * `src/test/tauriImports.test.ts`, lint, and `scripts/check-web-bundle.mjs`.
  *
  * The web behaviour is the unchanged one: an anchor download and `window.print()`.
  * Desktop adds a real save dialog and a real path on disk.

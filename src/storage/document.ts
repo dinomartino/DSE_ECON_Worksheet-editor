@@ -1,4 +1,4 @@
-import { migrate, serializeWorksheet } from '@/model/migrations';
+import { CURRENT_SCHEMA_VERSION, migrate, serializeWorksheet } from '@/model/migrations';
 import { documentName } from '@/model/text';
 import type { Worksheet } from '@/model/types';
 import type { WorksheetSummary } from './types';
@@ -12,6 +12,20 @@ export function parseWorksheet(json: string): Worksheet {
 
 export function stringifyWorksheet(worksheet: Worksheet): string {
   return JSON.stringify(serializeWorksheet(worksheet), null, 2);
+}
+
+/**
+ * Refused: overwriting a document a newer build saved (§ `isNewerThanBuild`).
+ *
+ * Both stores throw it from `save()` when the incoming worksheet is newer than this
+ * build and something is already stored under its id. A newer document may still be
+ * written where nothing is — an import, a duplicate — because that destroys nothing.
+ */
+export class NewerDocumentError extends Error {
+  constructor() {
+    super('This worksheet was saved by a newer version of Econ Worksheet. Update to change it.');
+    this.name = 'NewerDocumentError';
+  }
 }
 
 /**
@@ -60,6 +74,25 @@ export function duplicateWorksheet(worksheet: Worksheet, id: string): Worksheet 
     createdAt: now,
     updatedAt: now,
   };
+}
+
+/**
+ * An editable copy of a document a newer build saved: a duplicate under a new id,
+ * downgraded to this build's schema.
+ *
+ * The top-level fields this build does not know (`__unknown`) are left out of the copy:
+ * spliced back into a document labelled with the older version, a newer build would
+ * migrate them a second time. The original, and everything in it, is never touched.
+ */
+export function editableCopy(worksheet: Worksheet, id: string): Worksheet {
+  const copy: Worksheet = {
+    ...duplicateWorksheet(worksheet, id),
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    // Named apart in the file list, which shows `name` before the printed title.
+    ...(worksheet.name ? { name: `${worksheet.name} (copy)` } : {}),
+  };
+  delete copy.__unknown;
+  return copy;
 }
 
 /**
