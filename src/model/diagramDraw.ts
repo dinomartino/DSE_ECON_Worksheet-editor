@@ -542,10 +542,17 @@ export function applyDrag(
       };
     case 'spanFrom':
     case 'spanTo': {
+      // The handle is the drawn (offset) end; the stored end sits the offset back, so
+      // the grabbed end stays under the pointer. An axis span projects either way.
       const end = handle.kind === 'spanFrom' ? 'from' : 'to';
       return {
         ...diagram,
-        spans: mapById(diagram.spans ?? [], handle.spanId, (span) => ({ ...span, [end]: target })),
+        spans: mapById(diagram.spans ?? [], handle.spanId, (span) => {
+          const normal = span.along ? null : spanGeometry(diagram, span)?.normal;
+          const offset = span.offset ?? 0;
+          const at = normal ? clampPoint({ x: target.x - normal.x * offset, y: target.y - normal.y * offset }) : target;
+          return { ...span, [end]: at };
+        }),
       };
     }
     case 'spanLabel':
@@ -1389,7 +1396,7 @@ export function attachPointOnDrop(diagram: Diagram, pointId: string, tolerance: 
   };
 }
 
-/** A span end released near a point or crossing anchors to it; elsewhere it stays free. */
+/** A span end released near a point or crossing anchors to it; elsewhere it stays as dragged. */
 export function attachSpanEndOnDrop(
   diagram: Diagram,
   spanId: string,
@@ -1398,6 +1405,7 @@ export function attachSpanEndOnDrop(
   tolerance: number,
 ): Diagram {
   const { place } = snapPlace(diagram, at, tolerance);
+  if (isFixedPlace(place)) return diagram;
   return {
     ...diagram,
     spans: mapById(diagram.spans ?? [], spanId, (span) => ({ ...span, [end]: place })),
