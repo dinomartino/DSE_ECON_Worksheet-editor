@@ -45,6 +45,7 @@ the whole schema, one file.
 - `src/model/markScheme.ts:schemeMax` · `:groupMax` · `:schemeMismatch` — HKEAA marking-scheme totals, derived; types in `src/model/markSchemeTypes.ts:MarkScheme`
 - `src/model/paperHealth.ts:checkPaper` — the pre-print check, derived; `src/components/editor/PaperHealthPanel.tsx:PaperHealthPanel` shows it
 - `src/model/diagram.ts:Diagram` · `src/model/diagramDraw.ts:applyDrag` · `src/model/diagramTemplates.ts:DIAGRAM_TEMPLATES`
+- `src/model/diagramTemplates.ts:DIAGRAM_TEMPLATE_GROUPS` · `:buildFromTemplate` — one template per scheme diagram type, by topic; bodies in `src/model/diagramTemplatesMarket.ts` · `src/model/diagramTemplatesMacro.ts` · `src/model/diagramTemplatesTrade.ts`, written with `src/model/diagramTemplateKit.ts:mark` · `:changeArrows` · `:reading` (equilibria computed from curves). A shipped id is never removed
 - `src/model/diagramAreas.ts:areaPolygon` · `:presetArea` · `:detachAreas` — shaded areas as references; `src/model/diagramShift.ts:shiftCurve` — D→D₁ plus the new equilibrium
 - `src/model/diagramAreas.ts:newPresetArea` · `:PRESET_PATTERNS` — a welfare preset as the menu adds it (hatched, its own pattern); `:revenueArea` · `:rectangleDifference` · `:guessRevenuePoints` — TR, revenue gain/loss (`DiagramArea.revenue`, derived rectangle or L)
 - `src/render/diagram.ts:areaLabelLayout` · `:AREA_PALETTE` · `:areaLabelSeedOffset` — area colour and the inside/leader label rule; pixel geometry in `src/render/diagramLeader.ts:placeOutside` · `:leaderLine`
@@ -206,6 +207,7 @@ Invariants:
 - `src/components/editor/MarkSchemeEditor.tsx:MarkSchemeEditor` — points, `n@`/any/max, OR, levels, EC for one leaf
 - `src/components/editor/Outline.tsx:Outline` · `:groupByPage` · `src/components/editor/AddRail.tsx:AddRail`
 - `src/components/editor/DiagramCanvas.tsx:DiagramCanvas` · `src/components/editor/DocumentSettings.tsx`
+- `src/components/editor/DiagramTemplatePicker.tsx:DiagramTemplateCards` · `:DiagramTemplatePopover` — the grouped, searchable template grid (insert and re-base)
 - `src/components/editor/DiagramAreaControls.tsx:ShadeMenu` · `:AreaInspector` · `:ShiftCurveControls` — the canvas's area and shift controls
 - `src/components/feedback/FeedbackDialog.tsx:FeedbackDialog` (⋯ menu, start screen) · `src/feedback/feedback.ts:buildReport` · `:githubIssueUrl` · `:mailtoUrl` — prefilled issue / mail / clipboard; no server, no token, never the document
 
@@ -239,6 +241,7 @@ Invariant: chrome uses semantic tokens (`src/app/globals.css`); anything on the 
 - `scripts/shot.mjs` — screenshot the real app (`--seed`, `--dark`)
 - `scripts/demo.mjs` — website video + screenshots into `demo-media/` (`npm run demo`); steps in `scripts/demo/record.mjs:STORYBOARD`
 - `scripts/emit-samples.test.ts` — real `.docx` files (`npm run samples`)
+- `scripts/template-gallery.mjs` — every diagram template screenshotted (en / zh / bilingual) into a folder; `--app` also seeds them into the running app and shoots the sheets and the picker
 - `scripts/cover-verify.mjs` · `scripts/lq-verify.mjs` — the three backends agree
 - `scripts/cover-fixtures.test.ts` · `scripts/lq-fixtures.test.ts` · `scripts/q6-sample.test.ts`
 - `scripts/sync-version.mjs` — `package.json` → `src-tauri/tauri.conf.json` + `Cargo.toml`

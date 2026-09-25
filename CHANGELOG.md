@@ -43,6 +43,13 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
 - **Worksheets from a newer version open safely**: a file saved by a newer Econ Worksheet
   opens read-only with a note to update, and is never overwritten. "Duplicate as editable
   copy" makes a copy you can edit now.
+- **Diagram templates for every diagram the marking schemes ask for**, grouped by topic
+  with a search box: supply and demand shifts (one curve or both), elastic and inelastic
+  revenue boxes, fixed supply, labour importation, surplus; price ceiling, minimum wage,
+  quotas and deadweight loss; per-unit tax and subsidy burdens, Lorenz curve; AD–AS shifts,
+  output gaps, self-adjustment, LRAS growth; money supply and demand shifts;
+  exchange-rate revenue, tariff, import quota; monopoly (MC constant, MC = 0, MC falls)
+  and PPF trade. Each ships the after-state — both curves, both equilibria, the arrows.
 
 ### Changed
 - **Desktop: Export → PDF saves a file directly, no print sheet.** Choose where in the
@@ -51,6 +58,9 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
   dialog's Save as PDF.
 
 ### Fixed
+- **The import-tariff template had no imports**: Pw + t sat above the market's own
+  equilibrium. It now sits between Pw and it, with Q₁, Q₂ and the imports QM marked. The
+  old four-quantity figure is still there as "Tariff: welfare areas".
 - **PDF printed every marks label twice** ("(4 marks)" after the text and again at the
   right margin). It now prints once, at the right.
 - **Desktop PDF: the cover's corner box printed solid black.** Its diagonal now prints

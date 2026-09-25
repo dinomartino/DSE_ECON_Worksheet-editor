@@ -121,6 +121,16 @@ Export needs nothing: `src/export/diagramImage.ts` rasterises the same SVG.
 
 Guard: `src/render/diagram.test.ts`, `src/model/diagramDraw.test.ts`.
 
+## Add a diagram template
+
+1. Build it in the topic's file (`src/model/diagramTemplatesMarket.ts` · `…Macro.ts` ·
+   `…Trade.ts`) with the kit: compute equilibria with `meet`, drops and ticks with `mark`.
+2. Give it a `group` and a bilingual name and hint; never reuse or remove a shipped id.
+3. `node scripts/template-gallery.mjs --only=<id>` and read all three languages for
+   collisions.
+
+Guard: `src/model/diagramTemplates.test.ts`.
+
 ## Add on-page chrome
 
 1. Put `data-print-hide` on the element, or it appears in the print PDF.

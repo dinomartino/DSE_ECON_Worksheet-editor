@@ -84,6 +84,9 @@ Words this repository uses in its own way. One line each, with where the thing l
 - **Revenue area** — TR (a band under E's price to E's quantity) or a revenue gain/loss:
   one P×Q rectangle less another, derived from two points each render — a rectangle, an
   L, or nothing. `src/model/diagramAreas.ts:revenueArea`
+- **Diagram template** — a starting geometry picked by shape, grouped by syllabus topic; an
+  initial value only (`templateId` is a note, never a dependency), so a shipped id is never
+  removed. `src/model/diagramTemplates.ts:DIAGRAM_TEMPLATES`
 - **Unit space** — a diagram's 0–1 coordinate system; pixels come only from
   `src/render/diagram.ts:diagramPlot`.
 - **Run** — one formatted span of text; `RichText` is `InlineRun[]` and a `\n` inside

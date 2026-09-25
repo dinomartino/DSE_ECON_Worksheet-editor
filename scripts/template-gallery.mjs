@@ -59,6 +59,9 @@ try {
     const app = await context.newPage();
     app.on('pageerror', (e) => console.log('PAGE ERR:', e.message));
     await app.goto(URL_BASE, { waitUntil: 'networkidle' });
+    // A dialog on launch ("What's new") would swallow the click.
+    await app.keyboard.press('Escape');
+    await app.waitForTimeout(300);
     await app.getByRole('button', { name: new RegExp(title) }).first().click();
     await app.waitForSelector('#print-root .paper', { timeout: 15_000 });
     await app.waitForTimeout(2000);
@@ -68,6 +71,23 @@ try {
       await sheets.nth(i).screenshot({ path: `${OUT}/app-sheet-${String(i + 1).padStart(2, '0')}.png` });
     }
     console.log(`wrote ${count} app sheets to ${OUT}`);
+
+    // The picker itself: select the first diagram, open its Template popover.
+    await app.locator('#print-root .paper').getByText('Supply and demand').first().click();
+    await app.waitForTimeout(500);
+    const editTab = app.getByRole('tab', { name: /^Edit/ });
+    if ((await editTab.count()) > 0) await editTab.first().click();
+    await app.waitForTimeout(500);
+    const trigger = app.locator('button[aria-haspopup="listbox"]').first();
+    if ((await trigger.count()) > 0) {
+      await trigger.click();
+      await app.waitForTimeout(500);
+      await app.screenshot({ path: `${OUT}/app-picker.png` });
+      console.log(`wrote ${OUT}/app-picker.png`);
+    } else {
+      await app.screenshot({ path: `${OUT}/app-picker.png` });
+      console.log('no template trigger found — shot the editor as it stands');
+    }
   }
 } finally {
   await browser.close();
