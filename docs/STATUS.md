@@ -15,21 +15,11 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **Web stays the primary target.** Static export on Vercel, no server runtime. The web
   build must stay green — static `@tauri-apps/*` imports are caught by ESLint,
   `src/test/tauriImports.test.ts` and the `postbuild` bundle check (`scripts/check-web-bundle.mjs`).
-- **2026-09-25 batch on `develop`, all merged, tests/typecheck/build/lint green:** B1–B4
-  (marking scheme `src/model/markScheme.ts`, MCQ rationale, shaded areas + shift curve +
-  colours + leader labels `src/model/diagramAreas.ts` · `src/render/diagramLeader.ts`,
-  graph answer space `src/render/answerGraph.ts`); one Export button (.docx / PDF / .json,
-  `src/components/editor/printPdf.ts`); combined answer key across documents
-  (`src/render/answerKey.ts:renderCombinedAnswerKey`); dashboard folders
-  (`src/storage/folders.ts`) with pointer-event drag (`dashboardDrag.ts`); desktop
-  file-drop import (`src/platform/index.ts:listenForFileDrops`); `CHANGELOG.md` + in-app
-  What's new (`src/whatsNew/`); newer-schema read-only guard
-  (`src/components/editor/NewerVersionNotice.tsx`); leader labels fixed (tip ≥10px inside,
-  tail on the label edge); hatch patterns + TR / gain / loss areas
-  (`src/model/diagramAreas.ts`, `revenue` field); desktop Export → PDF writes a file via
-  `src-tauri/src/pdf/` (macOS WebKit save-job, Windows WebView2 PrintToPdf — never run
-  on Windows). Each feature browser-verified alone;
-  **no browser pass of the merged whole, and nothing run in the desktop shell.**
+- **2026-09-25 batch on `develop`, merged, green:** marking scheme, MCQ rationale, shaded
+  areas + shift curve, graph answer space, one Export button, combined answer key,
+  dashboard folders, desktop file drop, CHANGELOG + What's new, newer-schema guard,
+  desktop Export → PDF file (`src-tauri/src/pdf/`). Features browser-verified alone;
+  **no browser pass of the merged whole, nothing run in the desktop shell.**
 - **Syllabus-adaptive diagrams (2026-09-25, merged on `develop`)** from
   `docs/Diagram_Requirements/` (A-level group out of scope): anchored points, derived
   curves (MR, parallel, tangent, level, vertical) and spans (`src/model/diagramAnchors.ts`,
@@ -77,3 +67,18 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **macOS will ask for Documents access** the first time a dialog creates the default
   folder; there is no `NSDocumentsFolderUsageDescription`, so the prompt is generic.
 - **Thumbnails are approximate** — no header/footer/page furniture, one language, rough
+  page end. See SYSTEM_ARCHITECTURE §The file dashboard.
+- **The updater signing key** lives only at `~/.tauri/econ-worksheet.key`. Lose it and no
+  installed app can ever accept another update.
+- **`app.security.csp` is `null`** in `src-tauri/tauri.conf.json` — Next's static export
+  inlines its bootstrap scripts. Tightening it means nonced scripts first.
+- **A bare `npx vitest run` rewrites the frozen corpus**: `scripts/emit-v1-corpus.test.ts`
+  runs and regenerates `src/test/corpus/v1-published.json`. Always use `npm test`; if the
+  corpus shows as modified, `git checkout` it. Consider excluding that script from the
+  default vitest include.
+- **`scripts/*.test.ts` are not in `npm test`** (which is `vitest run src`), though
+  `vitest.config.ts` includes them. They are hand-run harnesses; nothing in CI catches a
+  break in them.
+
+## Log
+
