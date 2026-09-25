@@ -1700,6 +1700,11 @@ paths). Verify by measuring the same text node in both states.
   marks placed as the paper places them); the walker numbers them with `computeNumbering`
   and groups by section. `exportAnswerKeyDocx` keeps the page setup and fonts, drops the
   cover, bands, header and furniture, and adds a centred page number.
+- **A leaf's model answer diagram is a teacher-only figure** (`answerDiagram`, a whole
+  `DiagramBlock`): after the answer text, before the scheme; found by block id like a stem
+  diagram. So the answer key carries pictures: its IR runs the same PNG pre-pass
+  (`renderNodeDiagramImages`) and refuses to export if one fails; without one the key is
+  byte-identical.
 - **A key can span documents, chosen at export** (`renderCombinedAnswerKey`). A mock is
   two documents (Paper 1, Paper 2) but one marking scheme: Export's "Also include" adds
   other saved documents' keys after this one's, in the order ticked. Each part is that

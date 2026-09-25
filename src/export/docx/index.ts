@@ -21,13 +21,15 @@ import { furnitureHeaderXml } from './furniture';
 import { fileTitle, plain } from '@/model/text';
 import { activeVersion, versionLetter } from '@/model/versions';
 import type { Band, BandField, FontPair, HeaderFooter, LanguageMode, OutputMode, Worksheet } from '@/model/types';
-import type { RenderNode } from '@/render/ir';
+import type { DiagramNode, RenderNode } from '@/render/ir';
 import { bandFieldText, collectListStreams, renderWorksheet } from '@/render/worksheet';
 import { answerKeyPartTitle, answerKeyTitle, renderCombinedAnswerKey } from '@/render/answerKey';
 import {
   collectAnswerGraphNodes,
   collectDiagramNodes,
+  collectDiagramNodesIn,
   renderDiagramImages,
+  renderNodeDiagramImages,
   type DiagramImageMap,
 } from '../diagramImage';
 import { coverFooterBodyXml, coverXml, renderNodeXml, type BodyContext } from './body';
@@ -107,6 +109,35 @@ function collectImages(
   bySrc: Map<string, string>;
 } {
   const rendered = renderWorksheet(worksheet, mode);
+  /*
+   * Only the items, deliberately — unlike `allNodes` in `diagramImage.ts`, which also
+   * walks the bands, the title and the instructions.
+   *
+   * The difference is not a bug: those three cannot contain a picture. A band renders as
+   * a `columns` node and the title and instructions as `text` nodes, so there is nothing
+   * for `visit` to find in them. The pre-pass is broader because it is a generic node
+   * walk; widening this to match would add two dead loops and imply a case that the
+   * renderer cannot produce.
+   */
+  return collectNodeImages(
+    rendered.items.flatMap((item) =>
+      item.type === 'question' ? item.question.nodes : item.layout.nodes,
+    ),
+    diagramImages,
+  );
+}
+
+/**
+ * Every distinct picture in these nodes, decoded, with a relationship id each, in
+ * order. Shared by the paper and the answer key, so both package pictures identically.
+ */
+function collectNodeImages(
+  nodes: RenderNode[],
+  diagramImages: DiagramImageMap,
+): {
+  assets: ImageAsset[];
+  bySrc: Map<string, string>;
+} {
   const assets: ImageAsset[] = [];
   const bySrc = new Map<string, string>();
 
@@ -164,20 +195,7 @@ function collectImages(
     }
   };
 
-  /*
-   * Only the items, deliberately — unlike `allNodes` in `diagramImage.ts`, which also
-   * walks the bands, the title and the instructions.
-   *
-   * The difference is not a bug: those three cannot contain a picture. A band renders as
-   * a `columns` node and the title and instructions as `text` nodes, so there is nothing
-   * for `visit` to find in them. The pre-pass is broader because it is a generic node
-   * walk; widening this to match would add two dead loops and imply a case that the
-   * renderer cannot produce.
-   */
-  for (const item of rendered.items) {
-    const nodes = item.type === 'question' ? item.question.nodes : item.layout.nodes;
-    nodes.forEach(visit);
-  }
+  nodes.forEach(visit);
 
   return { assets, bySrc };
 }
@@ -569,15 +587,18 @@ function assertEveryDiagramRasterized(
   mode: OutputMode,
   diagramImages: DiagramImageMap,
 ): void {
-  const missing = collectDiagramNodes(worksheet, mode).filter(
-    (node) => !diagramImages.get(node.blockId),
-  );
   // Blank answer axes follow the same rule: a box that prints nothing is lost room.
   if (collectAnswerGraphNodes(worksheet, mode).some((node) => !diagramImages.get(node.key))) {
     throw new Error(
       'A graph answer space could not be turned into an image, so the export was stopped rather than dropping it.',
     );
   }
+  assertDiagramsRasterized(collectDiagramNodes(worksheet, mode), diagramImages);
+}
+
+/** Throw, naming them, if any of these diagrams has no image in the map. */
+function assertDiagramsRasterized(nodes: DiagramNode[], diagramImages: DiagramImageMap): void {
+  const missing = nodes.filter((node) => !diagramImages.get(node.blockId));
   if (missing.length === 0) return;
 
   // Named by their alt text where there is one: "diagram 2 of 5" tells a teacher nothing
@@ -608,7 +629,8 @@ export { buildParts as buildDocxParts };
 /**
  * The answer key's package (`render/answerKey.ts`). The paper's page setup, fonts and
  * body size; no cover, bands, header or page furniture — only a centred page number.
- * Its IR holds no pictures and no list streams, so neither images nor `w:num` apply.
+ * Its IR has no list streams (`w:num` does not apply); its only pictures are model
+ * answer diagrams, rasterised by `exportAnswerKeyDocx` into `diagramImages`.
  * `others`: further documents whose keys follow, each from a new page, in this one's
  * page setup (`renderCombinedAnswerKey`); none leaves the single key unchanged.
  */
@@ -616,11 +638,15 @@ function buildAnswerKeyParts(
   worksheet: Worksheet,
   language: LanguageMode,
   others: Worksheet[] = [],
+  diagramImages: DiagramImageMap = new Map(),
 ): PackageParts {
   const fonts = worksheet.fonts;
   const setup = pageSetupOf(worksheet);
   const { width: pageWidth, height: pageHeight } = pageDimensions(setup);
   const textWidth = contentWidth(setup);
+
+  const nodes = renderCombinedAnswerKey([worksheet, ...others], language);
+  const { assets, bySrc } = collectNodeImages(nodes, diagramImages);
 
   let drawingId = 1;
   const context: BodyContext = {
@@ -628,12 +654,11 @@ function buildAnswerKeyParts(
     language,
     contentWidth: textWidth,
     numIds: new Map(),
-    imageRelId: () => undefined,
+    imageRelId: (src) => bySrc.get(src),
+    diagramSrc: (blockId) => diagramImages.get(blockId),
     nextDrawingId: () => (drawingId += 1),
   };
-  const body = renderCombinedAnswerKey([worksheet, ...others], language)
-    .map((node) => renderNodeXml(node, context))
-    .join('');
+  const body = nodes.map((node) => renderNodeXml(node, context)).join('');
 
   const pageNumber: HeaderFooterLayout = {
     rows: [{ left: '', center: fieldRuns('PAGE', runProperties(fonts, {}), '1'), right: '' }],
@@ -660,7 +685,7 @@ function buildAnswerKeyParts(
     headerFooter: { footer: buildFooterXml(pageNumber) },
     fontTableXml: buildFontTableXml(fonts),
     coreXml: buildCorePropsXml(plain(language === 'zh' ? title.zh : title.en), timestamp),
-    assets: [],
+    assets,
   };
 }
 
@@ -673,16 +698,22 @@ export async function exportAnswerKeyDocx(
   language: LanguageMode,
   others: Worksheet[] = [],
 ): Promise<Blob> {
-  return zipPackage(buildAnswerKeyParts(worksheet, language, others));
+  // Model answer diagrams rasterise first, as the paper's diagrams do; a missing one
+  // stops the export rather than dropping the figure.
+  const nodes = renderCombinedAnswerKey([worksheet, ...others], language);
+  const diagramImages = await renderNodeDiagramImages(nodes, worksheet.fonts, language);
+  assertDiagramsRasterized(collectDiagramNodesIn(nodes), diagramImages);
+  return zipPackage(buildAnswerKeyParts(worksheet, language, others, diagramImages));
 }
 
-/** Node-friendly variant used by the export tests. */
+/** Node-friendly variant used by the export tests; takes its diagram map as an argument. */
 export async function exportAnswerKeyDocxBuffer(
   worksheet: Worksheet,
   language: LanguageMode,
   others: Worksheet[] = [],
+  diagramImages?: DiagramImageMap,
 ): Promise<Uint8Array> {
-  return zipPackageBuffer(buildAnswerKeyParts(worksheet, language, others));
+  return zipPackageBuffer(buildAnswerKeyParts(worksheet, language, others, diagramImages));
 }
 
 export { buildAnswerKeyParts as buildAnswerKeyDocxParts };

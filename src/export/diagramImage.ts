@@ -1,8 +1,8 @@
 import { diagramSvg } from '@/render/diagram';
 import { answerGraphBox, answerGraphSvg } from '@/render/answerGraph';
-import type { AnswerGraphNode, RenderNode } from '@/render/ir';
+import type { AnswerGraphNode, DiagramNode, RenderNode } from '@/render/ir';
 import { contentWidth, pageSetupOf } from '@/model/page';
-import type { LanguageMode, OutputMode, Worksheet } from '@/model/types';
+import type { FontPair, LanguageMode, OutputMode, Worksheet } from '@/model/types';
 import { renderWorksheet } from '@/render/worksheet';
 
 /**
@@ -66,19 +66,26 @@ function* withChildren(nodes: RenderNode[]): Generator<RenderNode> {
   }
 }
 
-/** Every distinct diagram in the worksheet, in document order. */
-export function collectDiagramNodes(
-  worksheet: Worksheet,
-  mode: OutputMode,
-): Array<Extract<RenderNode, { kind: 'diagram' }>> {
-  const found: Array<Extract<RenderNode, { kind: 'diagram' }>> = [];
+/** Every distinct diagram among these nodes (children included), in order. */
+function distinctDiagrams(nodes: Iterable<RenderNode>): DiagramNode[] {
+  const found: DiagramNode[] = [];
   const seen = new Set<string>();
-  for (const node of allNodes(worksheet, mode)) {
+  for (const node of nodes) {
     if (node.kind !== 'diagram' || seen.has(node.blockId)) continue;
     seen.add(node.blockId);
     found.push(node);
   }
   return found;
+}
+
+/** Every distinct diagram in the worksheet, in document order. */
+export function collectDiagramNodes(worksheet: Worksheet, mode: OutputMode): DiagramNode[] {
+  return distinctDiagrams(allNodes(worksheet, mode));
+}
+
+/** Every distinct diagram in a stand-alone IR, such as the answer key's. */
+export function collectDiagramNodesIn(nodes: RenderNode[]): DiagramNode[] {
+  return distinctDiagrams(withChildren(nodes));
 }
 
 /** Every distinct graph answer space (§ `AnswerGraphNode`), deduplicated by its key. */
@@ -127,6 +134,50 @@ async function rasterize(svg: string, width: number, height: number): Promise<st
 }
 
 /**
+ * Rasterize these diagram nodes, keyed by block id, in the order given.
+ *
+ * Rasterized together rather than one after another: nearly all of `rasterize`'s wall
+ * time is the browser decoding an SVG data URL off the main thread, so issuing them
+ * together lets the decodes overlap. The fan-out is bounded by the diagrams in one
+ * document, so no concurrency limit is needed.
+ */
+async function rasterizeDiagrams(
+  nodes: DiagramNode[],
+  fonts: FontPair,
+  language: LanguageMode,
+  images: DiagramImageMap,
+): Promise<void> {
+  const rasterized = await Promise.all(
+    nodes.map((node) => {
+      const svg = diagramSvg(node.diagram, {
+        widthPx: node.widthPx,
+        heightPx: node.heightPx,
+        language,
+        fonts,
+        scale: EXPORT_SCALE,
+      });
+      return rasterize(svg, node.widthPx * EXPORT_SCALE, node.heightPx * EXPORT_SCALE);
+    }),
+  );
+  nodes.forEach((node, index) => images.set(node.blockId, rasterized[index]));
+}
+
+/**
+ * The PNG pre-pass for a stand-alone IR — the answer key, whose model answer diagrams
+ * (§ `QuestionPart.answerDiagram`) are its only pictures.
+ */
+export async function renderNodeDiagramImages(
+  nodes: RenderNode[],
+  fonts: FontPair,
+  language: LanguageMode,
+): Promise<DiagramImageMap> {
+  const images: DiagramImageMap = new Map();
+  if (typeof document === 'undefined') return images;
+  await rasterizeDiagrams(collectDiagramNodesIn(nodes), fonts, language, images);
+  return images;
+}
+
+/**
  * Render every diagram in the worksheet to a PNG data URL, once each.
  *
  * Deduplicated by block id, so a diagram that appears in both the student and teacher
@@ -140,39 +191,8 @@ export async function renderDiagramImages(
   const images: DiagramImageMap = new Map();
   if (typeof document === 'undefined') return images;
 
-  /*
-   * Rasterized together rather than one after another.
-   *
-   * Almost all of `rasterize`'s wall time is spent *waiting*: an `<img>` decoding an SVG
-   * data URL is the browser's own asynchronous work, not ours, and it happens off the
-   * main thread. Awaiting inside the loop serialized those waits, so a worksheet with
-   * twelve diagrams paid twelve decodes end to end while the export button sat spinning.
-   * Issuing them together lets the browser overlap the decodes and only the `drawImage`
-   * / `toDataURL` calls queue on the main thread.
-   *
-   * The fan-out is bounded by the number of distinct diagrams in one worksheet — tens at
-   * the very most, since each is a hand-drawn figure — so this needs no concurrency
-   * limit. `collectDiagramNodes` has already deduplicated by block id, so nothing is
-   * rasterized twice.
-   *
-   * The results are written into the map after the fact, in `collectDiagramNodes` order,
-   * so the map's iteration order is document order exactly as it was before.
-   */
-  const nodes = collectDiagramNodes(worksheet, mode);
-  const rasterized = await Promise.all(
-    nodes.map((node) => {
-      const svg = diagramSvg(node.diagram, {
-        widthPx: node.widthPx,
-        heightPx: node.heightPx,
-        language,
-        fonts: worksheet.fonts,
-        scale: EXPORT_SCALE,
-      });
-      return rasterize(svg, node.widthPx * EXPORT_SCALE, node.heightPx * EXPORT_SCALE);
-    }),
-  );
-
-  nodes.forEach((node, index) => images.set(node.blockId, rasterized[index]));
+  // Deduplicated by block id, written in document order (the map's iteration order).
+  await rasterizeDiagrams(collectDiagramNodes(worksheet, mode), worksheet.fonts, language, images);
 
   // Graph answer spaces join the same map under their content key, sized from the live
   // text column exactly as the `.docx` places them (§ `answerGraphBox`).

@@ -160,6 +160,17 @@ export function createFigureRowBlock(
  */
 export const OPTION_DIAGRAM_WIDTH_PX = 240;
 
+/** Width for a model answer diagram: about half the text column, like a half-width graph space. */
+export const ANSWER_DIAGRAM_WIDTH_PX = 320;
+
+/** A fresh model answer diagram (§ `QuestionPart.answerDiagram`), demand and supply by default. */
+export function createAnswerDiagram(
+  templateId = 'supply-demand',
+  widthPx: number = ANSWER_DIAGRAM_WIDTH_PX,
+): DiagramBlock {
+  return createDiagramBlock(templateId, widthPx);
+}
+
 export function createMcqQuestion(): McqQuestion {
   return {
     id: newId(),

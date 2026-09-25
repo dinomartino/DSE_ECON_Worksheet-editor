@@ -10,9 +10,11 @@ import {
   exportAnswerKeyDocxBuffer,
   exportDocxBuffer,
 } from '@/export/docx';
-import { buildAcceptanceWorksheet } from '@/test/fixtures';
+import { createAnswerDiagram, createParagraphBlock, createWorksheet } from '@/model/factories';
+import { bi } from '@/model/text';
+import { buildAcceptanceWorksheet, TINY_PNG } from '@/test/fixtures';
 import { buildMarkSchemeWorksheet } from '@/test/markSchemeFixture';
-import type { OutputMode } from '@/model/types';
+import type { OutputMode, StructuredQuestion } from '@/model/types';
 
 const OUT = process.env.SAMPLE_DIR ?? '/tmp/econ-samples';
 
@@ -70,6 +72,43 @@ it('emits a structured paper with an HKEAA marking scheme, and its answer key', 
   }
   const bytes = await exportAnswerKeyDocxBuffer(worksheet, 'bilingual');
   const path = `${OUT}/mark-scheme-answer-key.docx`;
+  writeFileSync(path, bytes);
+  console.log(`${bytes.length} bytes -> ${path}`);
+});
+
+it('emits a long question with a model answer diagram, and its answer key', async () => {
+  mkdirSync(OUT, { recursive: true });
+  const worksheet = createWorksheet();
+  worksheet.title = bi('Price ceilings', '價格上限');
+  worksheet.layout = [];
+  const question: StructuredQuestion = {
+    id: 'q-answer-diagram',
+    type: 'structured',
+    blocks: [createParagraphBlock(bi('The government imposes a price ceiling on rice.', '政府對白米實施價格上限。'))],
+    parts: [
+      {
+        id: 'part-a',
+        blocks: [createParagraphBlock(bi('With the aid of a diagram, explain the shortage.', '試用圖解釋短缺。'))],
+        marks: 4,
+        answer: bi('Qd rises, Qs falls: a shortage Qd − Qs.', '需求量上升，供應量下降，出現短缺。'),
+        answerDiagram: { ...createAnswerDiagram(), id: 'sample-answer-diagram' },
+        answerGraph: { lines: 16, width: 'half' },
+      },
+    ],
+  };
+  worksheet.questions = [question];
+  worksheet.flow = [{ type: 'question', id: question.id }];
+  // Node has no canvas to rasterise with, so a stand-in PNG takes the diagram's slot;
+  // the browser's Export rasterises the real figure into the same place.
+  const images = new Map([['sample-answer-diagram', TINY_PNG]]);
+  for (const version of ['teacher', 'student'] as const) {
+    const bytes = await exportDocxBuffer(worksheet, { language: 'bilingual', version }, images);
+    const path = `${OUT}/answer-diagram-${version}.docx`;
+    writeFileSync(path, bytes);
+    console.log(`${bytes.length} bytes -> ${path}`);
+  }
+  const bytes = await exportAnswerKeyDocxBuffer(worksheet, 'bilingual', [], images);
+  const path = `${OUT}/answer-diagram-answer-key.docx`;
   writeFileSync(path, bytes);
   console.log(`${bytes.length} bytes -> ${path}`);
 });

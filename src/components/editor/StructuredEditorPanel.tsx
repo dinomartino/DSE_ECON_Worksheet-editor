@@ -2,13 +2,20 @@
 
 import { useState, type ReactNode } from 'react';
 import { editTargetKey, flattenBlocks } from '@/model/edits';
-import { createParagraphBlock, createPart, createSubPart } from '@/model/factories';
+import { createAnswerDiagram, createParagraphBlock, createPart, createSubPart } from '@/model/factories';
 import { partMarks, questionMarks } from '@/model/marks';
 import { partLabel, subPartLabel } from '@/model/numbering';
 import { emptyBiText } from '@/model/text';
-import type { AnswerGraph, ContentBlock, QuestionPart, StructuredQuestion } from '@/model/types';
+import type {
+  AnswerGraph,
+  ContentBlock,
+  DiagramBlock,
+  QuestionPart,
+  StructuredQuestion,
+} from '@/model/types';
 import { createAnswerGraph } from '@/model/answerGraph';
 import { AnswerGraphFields } from './AnswerGraphFields';
+import { AnswerDiagramRow } from './AnswerDiagramRow';
 import type { EditorPanelProps } from '@/registry/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { Button, CheckField, GroupHeader, NumberField, Pill } from '@/components/ui';
@@ -70,6 +77,16 @@ function graphMenuItem(
   return current
     ? { label: 'Remove graph space', onSelect: () => set(undefined) }
     : { label: 'Add graph space', onSelect: () => set(createAnswerGraph()) };
+}
+
+/** The row menu's model-diagram toggle (§ `QuestionPart.answerDiagram`). */
+function diagramMenuItem(
+  current: DiagramBlock | undefined,
+  set: (diagram: DiagramBlock | undefined) => void,
+): MenuItem {
+  return current
+    ? { label: 'Remove model diagram', onSelect: () => set(undefined) }
+    : { label: 'Add model diagram', onSelect: () => set(createAnswerDiagram()) };
 }
 
 /**
@@ -248,7 +265,19 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
               + Graph space
             </Button>
           )}
+          {!question.answerDiagram && (
+            <Button size="sm" onClick={() => onChange({ answerDiagram: createAnswerDiagram() })}>
+              + Model diagram
+            </Button>
+          )}
         </section>
+      )}
+      {question.parts.length === 0 && question.answerDiagram && (
+        <AnswerDiagramRow
+          block={question.answerDiagram}
+          onChange={(answerDiagram) => onChange({ answerDiagram })}
+          onRemove={() => onChange({ answerDiagram: undefined })}
+        />
       )}
       {question.parts.length === 0 && question.answerGraph && (
         <AnswerGraphFields
@@ -341,6 +370,10 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
               graphMenuItem(part.answerGraph, (answerGraph) => {
                 setExpandedParts((prev) => new Set(prev).add(part.id));
                 patchPart(partIndex, { answerGraph });
+              }),
+              diagramMenuItem(part.answerDiagram, (answerDiagram) => {
+                setExpandedParts((prev) => new Set(prev).add(part.id));
+                patchPart(partIndex, { answerDiagram });
               }),
               {
                 label: 'Delete part',
@@ -458,6 +491,14 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                                 ),
                               });
                             }),
+                            diagramMenuItem(subPart.answerDiagram, (answerDiagram) => {
+                              setExpandedSubs((prev) => new Set(prev).add(subPart.id));
+                              patchPart(partIndex, {
+                                subParts: subParts.map((s, i) =>
+                                  i === subIndex ? { ...s, answerDiagram } : s,
+                                ),
+                              });
+                            }),
                             {
                               label: 'Delete sub-part',
                               danger: true,
@@ -566,6 +607,25 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                                       })
                                     }
                                   />
+                                  {subPart.answerDiagram && (
+                                    <AnswerDiagramRow
+                                      block={subPart.answerDiagram}
+                                      onChange={(answerDiagram) =>
+                                        patchPart(partIndex, {
+                                          subParts: subParts.map((s, i) =>
+                                            i === subIndex ? { ...s, answerDiagram } : s,
+                                          ),
+                                        })
+                                      }
+                                      onRemove={() =>
+                                        patchPart(partIndex, {
+                                          subParts: subParts.map((s, i) =>
+                                            i === subIndex ? { ...s, answerDiagram: undefined } : s,
+                                          ),
+                                        })
+                                      }
+                                    />
+                                  )}
                                   <MarkSchemeEditor
                                     scheme={subPart.scheme}
                                     printedMarks={
@@ -603,6 +663,13 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                       value={part.answer ?? emptyBiText()}
                       onChange={(answer) => patchPart(partIndex, { answer })}
                     />
+                    {part.answerDiagram && (
+                      <AnswerDiagramRow
+                        block={part.answerDiagram}
+                        onChange={(answerDiagram) => patchPart(partIndex, { answerDiagram })}
+                        onRemove={() => patchPart(partIndex, { answerDiagram: undefined })}
+                      />
+                    )}
                     <MarkSchemeEditor
                       scheme={part.scheme}
                       printedMarks={hasSubParts ? partMarks(part) : part.marks}

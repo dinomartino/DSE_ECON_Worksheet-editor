@@ -50,6 +50,9 @@ Remove from this list once released.
 - **Graph answer space** (was B4, 2026-09-25) — `src/model/answerGraph.ts`,
   `src/render/answerGraph.ts`, `AnswerGraphFields.tsx`; blank axes, grid, 12/16/20/24 lines.
   Not yet: on-page select/resize; custom height; Word itself untested (LibreOffice only).
+- **Model answer diagram** (2026-09-25) — `answerDiagram` on a part / sub-part / partless
+  question; `src/components/editor/AnswerDiagramRow.tsx`, answer-key `.docx` now carries
+  pictures. Not yet: alt text and title are not editable for it; Word itself untested.
 - **Combined answer key across documents** (2026-09-25) — export-time "Also include" list;
   `src/render/answerKey.ts:renderCombinedAnswerKey`. Not yet: per-part page setup.
 - **Folders on the dashboard** (2026-09-25, was part of F3) — `src/storage/folders.ts`;

@@ -32,6 +32,9 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   L-shape. Pick which points they measure; they follow the points when you drag them.
 - **Shift a curve**: shift D or S left/right/up/down by a percentage to get D₁ (or S₁),
   the shift arrow and the new equilibrium E₁ with guide lines and P₁/Q₁ labels.
+- **Model answer diagrams on long questions**: attach a diagram to a part's answer
+  from its ⋯ menu ("Add model diagram") and draw it with the same diagram tools. It
+  prints in the teacher version and the answer key; the student paper is unchanged.
 - **Graph answer space**: a blank-axes box (optional grid, axis labels, 12/16/20/24
   lines, half or full width) that students draw on, in any part or sub-part.
 - **Folders on the start screen**: create, rename and delete folders; move documents in
