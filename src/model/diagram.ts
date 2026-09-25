@@ -158,6 +158,29 @@ export type DiagramAreaEdge = { curve: string } | { level: number | DiagramAncho
 export type DiagramAreaFill = 'shade' | 'hatch';
 
 /**
+ * How a hatched area is drawn, so areas differ on a black-and-white photocopy: `/`,
+ * `\`, both, `-`, `|`, or a grid of dots. Absent = `diagonal`, the original hatch.
+ */
+export type DiagramAreaPattern = 'diagonal' | 'reverse' | 'cross' | 'horizontal' | 'vertical' | 'dots';
+
+/** Spacing of a hatch pattern. Absent = `normal`, the original spacing. */
+export type DiagramAreaDensity = 'normal' | 'dense';
+
+/**
+ * A change in total revenue between two equilibria: the part of one P×Q rectangle
+ * (origin to the point) that lies outside the other. `gain` is the new rectangle less
+ * the old; `loss` the old less the new. Derived on every render, so it is a rectangle,
+ * an L (price and quantity move the same way) or empty as the points move.
+ */
+export interface DiagramAreaRevenue {
+  change: 'gain' | 'loss';
+  /** E₀, before the change. */
+  from: DiagramAnchorRef;
+  /** E₁, after it. */
+  to: DiagramAnchorRef;
+}
+
+/**
  * A named paper colour, not a hex: a curated set whose tints differ in lightness, so
  * areas stay distinguishable on a monochrome photocopy. Hex lives in `render/diagram.ts`.
  */
@@ -170,10 +193,16 @@ export interface DiagramArea {
   id: string;
   /** The region between two edges across `from`..`to` — how every preset is stored. */
   band?: { edges: [DiagramAreaEdge, DiagramAreaEdge]; from: DiagramAreaX; to: DiagramAreaX };
+  /** A revenue gain or loss between two points; wins over `band` and `vertices`. */
+  revenue?: DiagramAreaRevenue;
   /** A free polygon in unit space, used when `band` is absent. */
   vertices?: DiagramPoint[];
   /** Absent = `shade`, a light grey tint. */
   fill?: DiagramAreaFill;
+  /** A hatch's pattern; ignored by a shade. Absent = `diagonal`. */
+  pattern?: DiagramAreaPattern;
+  /** A hatch's spacing; ignored by a shade. Absent = `normal`. */
+  density?: DiagramAreaDensity;
   /** Absent = `grey`. The tint of a shade, the ink of a hatch. */
   color?: DiagramAreaColor;
   label?: BiText;

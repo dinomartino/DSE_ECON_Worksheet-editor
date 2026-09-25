@@ -78,6 +78,12 @@ Words this repository uses in its own way. One line each, with where the thing l
 - **Teacher-only** — a node included in the teacher version and filtered from the student
   one, by `OutputMode`. `src/render/ir.ts:includeNode`
 - **Twips** — 1/20 pt, Word's unit; every stored geometry is in twips. `src/model/page.ts`
+- **Hatch pattern** — how a hatched area is drawn (diagonal, reverse, cross, horizontal,
+  vertical, dots; normal or dense): plain clipped lines or dots, never an SVG `<pattern>`,
+  so areas differ on a monochrome copy. `src/render/diagram.ts:areaFillMarkup`
+- **Revenue area** — TR (a band under E's price to E's quantity) or a revenue gain/loss:
+  one P×Q rectangle less another, derived from two points each render — a rectangle, an
+  L, or nothing. `src/model/diagramAreas.ts:revenueArea`
 - **Unit space** — a diagram's 0–1 coordinate system; pixels come only from
   `src/render/diagram.ts:diagramPlot`.
 - **Run** — one formatted span of text; `RichText` is `InlineRun[]` and a `\n` inside

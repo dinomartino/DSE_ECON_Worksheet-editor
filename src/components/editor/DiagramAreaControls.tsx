@@ -6,23 +6,31 @@ import type {
   DiagramAnchorRef,
   DiagramArea,
   DiagramAreaColor,
+  DiagramAreaDensity,
   DiagramAreaEdge,
   DiagramAreaFill,
   DiagramAreaLabelPlacement,
+  DiagramAreaPattern,
+  DiagramAreaRevenue,
   DiagramAreaX,
 } from '@/model/diagram';
 import {
   AREA_PRESETS,
+  REVENUE_PRESETS,
+  areaPolygon,
   curveCrossing,
   freezeArea,
   guessMarketCurves,
-  presetArea,
+  guessRevenuePoints,
+  newPresetArea,
+  revenueArea,
   type AreaPreset,
+  type RevenuePreset,
 } from '@/model/diagramAreas';
 import type { DiagramHandle } from '@/model/diagramDraw';
 import { shiftCurve } from '@/model/diagramShift';
 import { emptyBiText, plain } from '@/model/text';
-import { AREA_PALETTE } from '@/render/diagram';
+import { AREA_PALETTE, areaFillMarkup } from '@/render/diagram';
 import { BiTextField } from './BiTextField';
 import { Button, IconButton, NumberField, Segmented, SelectField, Eyebrow } from '@/components/ui';
 
@@ -115,6 +123,18 @@ function xOptions(diagram: Diagram, current: DiagramAreaX) {
   return options;
 }
 
+/** Marked points and crossings, as the anchors a revenue area can be measured at. */
+function anchorOptions(diagram: Diagram, current: DiagramAnchorRef) {
+  const options: Array<{ value: DiagramAnchorRef; label: string }> = [
+    ...diagram.points.map((p) => ({ value: { point: p.id }, label: pointName(diagram, p.id) })),
+    ...crossings(diagram).map((ref) => ({ value: ref, label: anchorName(diagram, ref) })),
+  ];
+  if (!options.some((o) => refKey(o.value) === refKey(current))) {
+    options.push({ value: current, label: anchorName(diagram, current) });
+  }
+  return options;
+}
+
 /** A select over reference values, keyed by `refKey`. */
 function RefSelect<T>({
   label,
@@ -169,7 +189,7 @@ export function ShadeMenu({
 
   const curves = guessMarketCurves(diagram);
   const items = AREA_PRESETS.map((preset) => {
-    const area = presetArea(preset.id, curves, 'probe');
+    const area = newPresetArea(preset.id, curves, 'probe');
     const why = !curves.demand || !curves.supply
       ? 'Needs a falling demand and a rising supply curve'
       : preset.needsTax && !curves.taxed
@@ -178,11 +198,34 @@ export function ShadeMenu({
     return { preset, available: Boolean(area), why };
   });
 
+  const points = guessRevenuePoints(diagram);
+  const revenueItems = REVENUE_PRESETS.map((preset) => {
+    const area = revenueArea(preset.id, points, 'probe');
+    const empty = area && !areaPolygon(diagram, area);
+    const why = !points.before
+      ? 'Needs a marked point, such as an equilibrium E'
+      : preset.id !== 'totalRevenue' && !points.after
+        ? 'Needs two equilibrium points — shift a curve first'
+        : empty
+          ? preset.id === 'revenueGain'
+            ? 'No gain: the new price and quantity are both lower'
+            : 'No loss: the new price and quantity are both higher'
+          : undefined;
+    return { preset, available: Boolean(area) && !empty, why };
+  });
+
   const add = (preset: AreaPreset) => {
-    const area = presetArea(preset, curves, newId());
+    const area = newPresetArea(preset, curves, newId());
     if (area) onAdd(area);
     onOpenChange(false);
   };
+  const addRevenue = (preset: RevenuePreset) => {
+    const area = revenueArea(preset, points, newId());
+    if (area) onAdd(area);
+    onOpenChange(false);
+  };
+  const itemClass =
+    'flex w-full flex-col items-start rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent';
 
   return (
     <div ref={rootRef} className="relative">
@@ -190,7 +233,7 @@ export function ShadeMenu({
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
-        title="Shade an area — consumer surplus, producer surplus, deadweight loss, tax revenue"
+        title="Shade an area — welfare (CS, PS, DWL, tax revenue) or revenue (TR, gain, loss)"
         onClick={() => onOpenChange(!open)}
         className={
           'flex h-11 items-center gap-1.5 rounded-lg border px-3 text-base transition-colors ' +
@@ -214,7 +257,21 @@ export function ShadeMenu({
               role="menuitem"
               disabled={!available}
               onClick={() => add(preset.id)}
-              className="flex w-full flex-col items-start rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent"
+              className={itemClass}
+            >
+              <span className="text-[13px] text-ink">{preset.name}</span>
+              {why && <span className="text-[11px] text-ink-subtle">{why}</span>}
+            </button>
+          ))}
+          <div className="my-1 h-px bg-line" />
+          {revenueItems.map(({ preset, available, why }) => (
+            <button
+              key={preset.id}
+              type="button"
+              role="menuitem"
+              disabled={!available}
+              onClick={() => addRevenue(preset.id)}
+              className={itemClass}
             >
               <span className="text-[13px] text-ink">{preset.name}</span>
               {why && <span className="text-[11px] text-ink-subtle">{why}</span>}
@@ -299,6 +356,115 @@ function AreaColorSwatches({
   );
 }
 
+const PATTERNS: Array<{ value: DiagramAreaPattern; name: string }> = [
+  { value: 'diagonal', name: 'Diagonal' },
+  { value: 'reverse', name: 'Reverse diagonal' },
+  { value: 'cross', name: 'Cross-hatch' },
+  { value: 'horizontal', name: 'Horizontal' },
+  { value: 'vertical', name: 'Vertical' },
+  { value: 'dots', name: 'Dots' },
+];
+
+const DENSITIES: Array<{ value: DiagramAreaDensity; label: string; title: string }> = [
+  { value: 'normal', label: 'Normal', title: 'The usual spacing' },
+  { value: 'dense', label: 'Dense', title: 'Lines or dots closer together — a darker area' },
+];
+
+const SWATCH = 22;
+const SWATCH_BOX = [
+  { x: 0, y: 0 },
+  { x: SWATCH, y: 0 },
+  { x: SWATCH, y: SWATCH },
+  { x: 0, y: SWATCH },
+];
+
+/**
+ * The six hatch patterns as tiny previews, each drawn by the paper's own renderer in
+ * the area's ink — the swatch is a sample of what prints, so it takes paper hex.
+ */
+function AreaPatternSwatches({
+  area,
+  onChange,
+}: {
+  area: DiagramArea;
+  onChange: (pattern: DiagramAreaPattern) => void;
+}) {
+  const value = area.pattern ?? 'diagonal';
+  return (
+    <div role="radiogroup" aria-label="Pattern" className="flex items-center gap-1.5">
+      <span className="mr-1 text-xs text-ink-muted">Pattern</span>
+      {PATTERNS.map(({ value: pattern, name }) => {
+        const active = pattern === value;
+        const markup = areaFillMarkup(SWATCH_BOX, { ...area, fill: 'hatch', pattern }, 1);
+        return (
+          <button
+            key={pattern}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            aria-label={name}
+            title={name}
+            onClick={() => onChange(pattern)}
+            className={
+              'h-7 w-7 overflow-hidden rounded-md border bg-white p-0 transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ' +
+              (active ? 'border-ink ring-2 ring-accent ring-offset-1 ring-offset-surface' : 'border-line-strong hover:border-ink-muted')
+            }
+          >
+            <svg
+              aria-hidden
+              width="100%"
+              height="100%"
+              viewBox={`0 0 ${SWATCH} ${SWATCH}`}
+              dangerouslySetInnerHTML={{ __html: markup }}
+            />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** What a revenue area measures: its two points, re-pickable, and what the shape means. */
+function RevenueBounds({
+  diagram,
+  area,
+  revenue,
+  patch,
+}: {
+  diagram: Diagram;
+  area: DiagramArea;
+  revenue: DiagramAreaRevenue;
+  patch: (next: DiagramArea) => void;
+}) {
+  const set = (next: Partial<DiagramAreaRevenue>) => patch({ ...area, revenue: { ...revenue, ...next } });
+  return (
+    <>
+      <Eyebrow className="block pt-1">{revenue.change === 'gain' ? 'Revenue gain' : 'Revenue loss'} between</Eyebrow>
+      <RefSelect
+        label="Before (E₀)"
+        value={revenue.from}
+        options={anchorOptions(diagram, revenue.from)}
+        onChange={(from) => set({ from })}
+      />
+      <RefSelect
+        label="After (E₁)"
+        value={revenue.to}
+        options={anchorOptions(diagram, revenue.to)}
+        onChange={(to) => set({ to })}
+      />
+      <p className="text-[11px] text-ink-muted">
+        {areaPolygon(diagram, area)
+          ? revenue.change === 'gain'
+            ? 'The part of the new P × Q rectangle outside the old one. It follows both points.'
+            : 'The part of the old P × Q rectangle outside the new one. It follows both points.'
+          : revenue.change === 'gain'
+            ? 'Nothing to shade: the new rectangle lies inside the old one.'
+            : 'Nothing to shade: the old rectangle lies inside the new one.'}
+      </p>
+    </>
+  );
+}
+
 /** The selected area's properties: label, fill, and what bounds it. */
 export function AreaInspector({
   diagram,
@@ -331,15 +497,44 @@ export function AreaInspector({
           rows={1}
           onChange={(label) => patch({ ...area, label })}
         />
-        <SelectField<DiagramAreaFill>
-          label="Fill"
-          value={area.fill ?? 'shade'}
-          options={[
-            { value: 'shade', label: 'Shade' },
-            { value: 'hatch', label: 'Hatched' },
-          ]}
-          onChange={(fill) => patch({ ...area, fill })}
-        />
+        <div className="flex items-center gap-1">
+          <span className="mr-1 text-xs text-ink-muted">Fill</span>
+          <Segmented<DiagramAreaFill>
+            label="Fill"
+            value={area.fill ?? 'shade'}
+            options={[
+              { value: 'shade', label: 'Shade', title: 'A flat tint' },
+              { value: 'hatch', label: 'Hatch', title: 'A pattern of lines or dots — reads on a black-and-white copy' },
+            ]}
+            onChange={(fill) => patch({ ...area, fill })}
+          />
+        </div>
+        {area.fill === 'hatch' && (
+          <>
+            <AreaPatternSwatches
+              area={area}
+              onChange={(pattern) => {
+                // Diagonal is the default: stored as absent, like grey.
+                const next: DiagramArea = { ...area, pattern };
+                if (pattern === 'diagonal') delete next.pattern;
+                patch(next);
+              }}
+            />
+            <div className="flex items-center gap-1">
+              <span className="mr-1 text-xs text-ink-muted">Spacing</span>
+              <Segmented<DiagramAreaDensity>
+                label="Pattern spacing"
+                value={area.density ?? 'normal'}
+                options={DENSITIES}
+                onChange={(density) => {
+                  const next: DiagramArea = { ...area, density };
+                  if (density === 'normal') delete next.density;
+                  patch(next);
+                }}
+              />
+            </div>
+          </>
+        )}
         <AreaColorSwatches
           value={area.color ?? 'grey'}
           fill={area.fill ?? 'shade'}
@@ -365,7 +560,12 @@ export function AreaInspector({
             }}
           />
         </div>
-        {band ? (
+        {area.revenue ? (
+          <>
+            <RevenueBounds diagram={diagram} area={area} revenue={area.revenue} patch={patch} />
+            <FreezeButton diagram={diagram} area={area} patch={patch} />
+          </>
+        ) : band ? (
           <>
             <Eyebrow className="block pt-1">Bounded by</Eyebrow>
             <RefSelect
@@ -395,16 +595,7 @@ export function AreaInspector({
             <p className="text-[11px] text-ink-muted">
               The shading follows these curves and points when they move.
             </p>
-            <Button
-              size="sm"
-              variant="subtle"
-              onClick={() => {
-                const frozen = freezeArea(diagram, area);
-                if (frozen) patch(frozen);
-              }}
-            >
-              Make it a free shape
-            </Button>
+            <FreezeButton diagram={diagram} area={area} patch={patch} />
           </>
         ) : (
           <p className="text-[11px] text-ink-muted">
@@ -427,6 +618,29 @@ export function AreaInspector({
         )}
       </div>
     </div>
+  );
+}
+
+function FreezeButton({
+  diagram,
+  area,
+  patch,
+}: {
+  diagram: Diagram;
+  area: DiagramArea;
+  patch: (next: DiagramArea) => void;
+}) {
+  return (
+    <Button
+      size="sm"
+      variant="subtle"
+      onClick={() => {
+        const frozen = freezeArea(diagram, area);
+        if (frozen) patch(frozen);
+      }}
+    >
+      Make it a free shape
+    </Button>
   );
 }
 

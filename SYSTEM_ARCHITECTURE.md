@@ -1181,7 +1181,20 @@ its anchor.
 by `src/render/diagramAreas.test.ts` against SVG frozen before areas existed). A `band`
 is the region between two edges (a curve, or a level taken from a point or a crossing)
 across an x-range, so it re-derives when its curves are dragged; `vertices` is the free
-fallback. The four presets (CS, PS, DWL, tax revenue) are bands built by `presetArea`.
+fallback. The four welfare presets (CS, PS, DWL, tax revenue) are bands built by
+`presetArea`; total revenue is a band too (x-axis to E's price, y-axis to E's quantity).
+
+- **Revenue gain/loss is its own reference** (`revenue: { change, from, to }`, wins over
+  `band`/`vertices`): the new P×Q rectangle less the old (gain) or the reverse (loss),
+  derived every render by `rectangleDifference`. So it stays right when a drag flips the
+  direction — one rectangle when P and Q move oppositely, an L (one 6-vertex polygon,
+  one label) when they move together, nothing when covered. A band cannot say this: a
+  stored band would be wrong the moment E₁ crosses E₀'s price.
+- **Patterns** (`pattern`, `density`; absent = the original `/` hatch at 5px): a hatch
+  draws `/`, `\`, both, `-`, `|` or dots in the palette's ink, dense = 3px
+  (`areaFillMarkup`). Absent and explicit defaults render byte-identically (pinned).
+  New presets are hatched in distinct patterns (`newPresetArea`); `presetArea` — what
+  older documents were built from — is unchanged.
 
 - **Fills draw first, labels last**; hatch is explicit clipped lines, never a `<pattern>`
   (ids collide between the inline SVGs on one page). Literal hex, as all paper paint.

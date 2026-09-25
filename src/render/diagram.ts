@@ -2,6 +2,9 @@ import type {
   Diagram,
   DiagramArea,
   DiagramAreaColor,
+  DiagramAreaDensity,
+  DiagramAreaFill,
+  DiagramAreaPattern,
   DiagramArrow,
   DiagramCrop,
   DiagramCurve,
@@ -21,6 +24,7 @@ import {
   boxAround,
   boxInside,
   boxPolygon,
+  clearance,
   deepestPoint,
   interiorPoint,
   leaderLine,
@@ -822,8 +826,12 @@ export const AREA_PALETTE: Record<DiagramAreaColor, { name: string; shade: strin
   red: { name: 'Red', shade: '#f2b0b0', hatch: '#b3261e' },
   purple: { name: 'Purple', shade: '#c2a8de', hatch: '#6a3d9a' },
 };
-/** Perpendicular distance between hatch lines, px at nominal size. */
+/** Perpendicular distance between hatch lines, px at nominal size; `dense` closes it up. */
 const AREA_HATCH_GAP = 5;
+const AREA_HATCH_GAP_DENSE = 3;
+/** A dot pattern's pitch, as a multiple of the line gap, and each dot's radius (px). */
+const AREA_DOT_PITCH = 1.2;
+const AREA_DOT_RADIUS = 0.9;
 /** Clearance a label needs inside its region, each side, px at nominal size. */
 const AREA_LABEL_MARGIN = 3;
 /** Minimum air between a leader label and its region, px at nominal size. */
@@ -1020,48 +1028,107 @@ export function areaLabelSeedOffset(
   };
 }
 
-/** "/" hatch lines clipped to a pixel polygon (even-odd), as one path's `d`. */
-function hatchPath(pts: Array<{ x: number; y: number }>, gap: number): string {
-  // Lines x + y = c, spaced `gap` apart perpendicular; c on a fixed grid so neighbouring
-  // areas hatch in step.
-  const step = gap * Math.SQRT2;
-  const sums = pts.map((p) => p.x + p.y);
-  const first = Math.ceil(Math.min(...sums) / step);
-  const last = Math.floor(Math.max(...sums) / step);
+/**
+ * Lines `a·x + b·y = c` clipped to a pixel polygon (even-odd), `gap` apart
+ * perpendicular (`norm` = |(a, b)|), as path segments. `c` sits on a fixed grid so
+ * neighbouring areas hatch in step. `(1, 1, √2)` is the original "/" hatch, unchanged.
+ */
+export function hatchLines(pts: Pt[], a: number, b: number, norm: number, gap: number): string[] {
+  const step = gap * norm;
+  const values = pts.map((p) => a * p.x + b * p.y);
+  const first = Math.ceil(Math.min(...values) / step);
+  const last = Math.floor(Math.max(...values) / step);
   const parts: string[] = [];
   for (let k = first; k <= last; k += 1) {
     const c = k * step;
-    const hits: Array<{ x: number; y: number }> = [];
+    const hits: Pt[] = [];
     for (let i = 0; i < pts.length; i += 1) {
-      const a = pts[i];
-      const b = pts[(i + 1) % pts.length];
-      const fa = a.x + a.y - c;
-      const fb = b.x + b.y - c;
-      if (fa > 0 === fb > 0) continue;
-      const t = fa / (fa - fb);
-      hits.push({ x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) });
+      const p = pts[i];
+      const q = pts[(i + 1) % pts.length];
+      const fp = a * p.x + b * p.y - c;
+      const fq = a * q.x + b * q.y - c;
+      if (fp > 0 === fq > 0) continue;
+      const t = fp / (fp - fq);
+      hits.push({ x: p.x + t * (q.x - p.x), y: p.y + t * (q.y - p.y) });
     }
-    hits.sort((p, q) => p.x - q.x);
+    // Pair the crossings along the line: by x, or by y for a vertical line.
+    hits.sort(b === 0 ? (p, q) => p.y - q.y : (p, q) => p.x - q.x);
     for (let i = 0; i + 1 < hits.length; i += 2) {
       parts.push(`M ${n(hits[i].x)} ${n(hits[i].y)} L ${n(hits[i + 1].x)} ${n(hits[i + 1].y)}`);
     }
   }
-  return parts.join(' ');
+  return parts;
+}
+
+/**
+ * A staggered grid of dots, each wholly inside the polygon, as closed circles in one
+ * path. The grid is fixed in pixel space, like the lines.
+ */
+export function hatchDots(pts: Pt[], gap: number, radius: number): string[] {
+  const pitch = gap * AREA_DOT_PITCH;
+  const xs = pts.map((p) => p.x);
+  const ys = pts.map((p) => p.y);
+  const parts: string[] = [];
+  for (let j = Math.ceil(Math.min(...ys) / pitch); j <= Math.floor(Math.max(...ys) / pitch); j += 1) {
+    const shift = j % 2 === 0 ? 0 : pitch / 2;
+    const i1 = Math.floor((Math.max(...xs) - shift) / pitch);
+    for (let i = Math.ceil((Math.min(...xs) - shift) / pitch); i <= i1; i += 1) {
+      const at = { x: i * pitch + shift, y: j * pitch };
+      if (clearance(at, pts) < radius) continue;
+      parts.push(
+        `M ${n(at.x - radius)} ${n(at.y)} a ${n(radius)} ${n(radius)} 0 1 0 ${n(2 * radius)} 0 ` +
+          `a ${n(radius)} ${n(radius)} 0 1 0 ${n(-2 * radius)} 0 Z`,
+      );
+    }
+  }
+  return parts;
+}
+
+/** Each line pattern's families, `[a, b, |(a, b)|]` for lines `a·x + b·y = c`. */
+const PATTERN_LINES: Record<Exclude<DiagramAreaPattern, 'dots'>, Array<[number, number, number]>> = {
+  diagonal: [[1, 1, Math.SQRT2]],
+  reverse: [[1, -1, Math.SQRT2]],
+  cross: [
+    [1, 1, Math.SQRT2],
+    [1, -1, Math.SQRT2],
+  ],
+  horizontal: [[0, 1, 1]],
+  vertical: [[1, 0, 1]],
+};
+
+/** How an area is painted: the fields of `DiagramArea` that decide it. */
+export type AreaPaint = Pick<DiagramArea, 'fill' | 'color' | 'pattern' | 'density'>;
+
+/**
+ * An area's paint over a pixel polygon: a tint, or a pattern in the hatch ink as plain
+ * clipped lines or dots — never an SVG `<pattern>`. Shared with the inspector's
+ * swatches, so a preview is the paper's own drawing. Empty when nothing lands inside.
+ */
+export function areaFillMarkup(pts: Pt[], paint: AreaPaint, scale: number): string {
+  const ink = AREA_PALETTE[paint.color ?? 'grey'] ?? AREA_PALETTE.grey;
+  const fill: DiagramAreaFill = paint.fill ?? 'shade';
+  if (fill === 'shade') {
+    const d = `M ${pts.map((p) => `${n(p.x)} ${n(p.y)}`).join(' L ')} Z`;
+    return `<path d="${d}" fill="${ink.shade}" stroke="none"/>`;
+  }
+  const density: DiagramAreaDensity = paint.density ?? 'normal';
+  const gap = (density === 'dense' ? AREA_HATCH_GAP_DENSE : AREA_HATCH_GAP) * scale;
+  const pattern = paint.pattern ?? 'diagonal';
+  if (pattern === 'dots') {
+    const d = hatchDots(pts, gap, AREA_DOT_RADIUS * scale).join(' ');
+    return d ? `<path d="${d}" fill="${ink.hatch}" stroke="none"/>` : '';
+  }
+  const families = PATTERN_LINES[pattern] ?? PATTERN_LINES.diagonal;
+  const d = families.flatMap(([a, b, norm]) => hatchLines(pts, a, b, norm, gap)).join(' ');
+  return d
+    ? `<path d="${d}" fill="none" stroke="${ink.hatch}" stroke-width="${n(0.8 * scale)}" stroke-linecap="butt"/>`
+    : '';
 }
 
 function areaFillSvg(diagram: Diagram, area: DiagramArea, proj: Projection, scale: number): string {
   const polygon = areaPolygon(diagram, area);
   if (!polygon) return '';
-  const paint = AREA_PALETTE[area.color ?? 'grey'] ?? AREA_PALETTE.grey;
-  const pts = polygon.map((p) => ({ x: proj.px(p.x), y: proj.py(p.y) }));
-  if ((area.fill ?? 'shade') === 'shade') {
-    const d = `M ${pts.map((p) => `${n(p.x)} ${n(p.y)}`).join(' L ')} Z`;
-    return `<path d="${d}" fill="${paint.shade}" stroke="none"/>`;
-  }
-  const d = hatchPath(pts, AREA_HATCH_GAP * scale);
-  return d
-    ? `<path d="${d}" fill="none" stroke="${paint.hatch}" stroke-width="${n(0.8 * scale)}" stroke-linecap="butt"/>`
-    : '';
+  return areaFillMarkup(polygon.map(project(proj)), area, scale);
 }
 
 function areaLabelSvg(
