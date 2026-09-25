@@ -61,6 +61,7 @@ export const KNOWN_KEYS = new Set([
   'header',
   'footer',
   'versions',
+  'target',
   'createdAt',
   'updatedAt',
   '__unknown',

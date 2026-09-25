@@ -1,8 +1,9 @@
 import { requireQuestionType } from '@/registry';
 import type { QuestionHealthFacts } from '@/registry/types';
-import { documentShape, type DocumentShape } from './documentShape';
+import type { DocumentShape } from './documentShape';
 import { questionMarks, sectionMarksById } from './marks';
 import { computeNumbering, toUpperLetter } from './numbering';
+import { summarizePaper, targetMisses, type PaperSummary } from './paperSummary';
 import { plain } from './text';
 import type { BiText, LanguageMode, LayoutElement, Worksheet } from './types';
 
@@ -24,7 +25,9 @@ export type HealthFindingId =
   | 'untranslated'
   | 'unanswered'
   | 'unmarked'
-  | 'timeMismatch';
+  | 'timeMismatch'
+  | 'overTarget'
+  | 'underTarget';
 
 /** A question as the printed paper numbers it. */
 export interface QuestionRef {
@@ -67,8 +70,10 @@ export interface PaperHealthReport {
   totalMarks: number;
   sections: SectionTotal[];
   letters: LetterBalance;
-  /** Estimated working time in minutes (see `estimateMinutes`). */
+  /** Estimated working time in minutes (`model/paperSummary.ts:estimateMinutes`). */
   minutes: number;
+  /** Counts, marks and minutes against the document's target (`model/paperSummary.ts`). */
+  summary: PaperSummary;
   /** Time allowed as printed on the cover or masthead, when it can be read. */
   statedMinutes?: number;
   /** One-sided bilingual strings, by the registry's own count. */
@@ -86,18 +91,7 @@ export const BALANCE_UNDER = 0.4;
 /** This many consecutive questions keyed to one letter is a pattern a candidate can see. */
 export const LETTER_RUN_MIN = 4;
 
-/** HKDSE Paper 1: 45 MCQs in 60 minutes. */
-export const MINUTES_PER_CHOICE_ITEM = 60 / 45;
-/**
- * Written marks: a Paper 2 mock runs at the DSE Paper 2 pace (150 minutes for about
- * 100 marks); any other document at the classroom rule of thumb of 1.2 minutes a mark.
- */
-export const MINUTES_PER_MARK: Record<DocumentShape, number> = {
-  classroom: 1.2,
-  paper1: 1.2,
-  lqWorksheet: 1.2,
-  lqMock: 1.5,
-};
+export { MINUTES_PER_MARK } from './paperSummary';
 /** A stated time is worth mentioning only when the estimate is a quarter (and 10 min) off. */
 export const TIME_MISMATCH_RATIO = 0.25;
 export const TIME_MISMATCH_MIN = 10;
@@ -112,7 +106,8 @@ export function checkPaper(
   worksheet: Worksheet,
   mode: { language?: LanguageMode } = {},
 ): PaperHealthReport {
-  const shape = documentShape(worksheet);
+  const summary = summarizePaper(worksheet);
+  const shape = summary.shape;
   const plan = computeNumbering(worksheet);
   const sectionsById = new Map(
     worksheet.layout
@@ -182,7 +177,7 @@ export function checkPaper(
     `${plural(n, 'question carries', 'questions carry')} no marks.`,
   );
 
-  const minutes = estimateMinutes(entries, shape);
+  const minutes = summary.minutes.actual;
   const statedMinutes = statedTimeAllowed(worksheet);
   if (statedMinutes !== undefined && minutes > 0) {
     const gap = Math.abs(minutes - statedMinutes);
@@ -195,6 +190,15 @@ export function checkPaper(
     }
   }
 
+  // A target is the teacher's own blueprint: over it is a warning, short of it a note.
+  const misses = targetMisses(summary);
+  if (misses.over.length > 0) {
+    findings.push({ id: 'overTarget', severity: 'warn', message: `Over target: ${misses.over.join(', ')}.` });
+  }
+  if (misses.under.length > 0) {
+    findings.push({ id: 'underTarget', severity: 'note', message: `Under target: ${misses.under.join(', ')}.` });
+  }
+
   // Warnings first; `sort` is stable, so each group keeps the order above.
   findings.sort((a, b) => rank(b.severity) - rank(a.severity));
 
@@ -205,6 +209,7 @@ export function checkPaper(
     sections: sectionTotals(worksheet, plan.questions, sectionsById),
     letters,
     minutes,
+    summary,
     statedMinutes,
     untranslated,
     findings,
@@ -303,19 +308,6 @@ function runFindings(entries: Entry[]): HealthFinding[] {
   }
   close();
   return findings;
-}
-
-/**
- * Lettered-choice items at the Paper 1 rate; every other question's marks at the
- * shape's minutes-per-mark. Rounded to the minute under half an hour, else to 5.
- */
-function estimateMinutes(entries: Entry[], shape: DocumentShape): number {
-  let raw = 0;
-  for (const e of entries) {
-    if (e.facts.empty) continue;
-    raw += e.facts.answerLetter !== undefined ? MINUTES_PER_CHOICE_ITEM : e.marks * MINUTES_PER_MARK[shape];
-  }
-  return raw < 30 ? Math.round(raw) : Math.round(raw / 5) * 5;
 }
 
 const ZH_DIGITS: Record<string, number> = {

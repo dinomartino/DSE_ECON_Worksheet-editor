@@ -143,6 +143,18 @@ describe('a document saved by the published build still opens', () => {
     expect(serializeWorksheet(reloaded)).toEqual(saved);
   });
 
+  it('carries a paper target through load → save → load', () => {
+    // An optional top-level field: without its KNOWN_KEYS entry it would land in
+    // `__unknown` and vanish from the typed document on reload.
+    const loaded = migrate(structuredClone(v1Corpus));
+    expect(loaded.target).toBeUndefined();
+    const target = { marks: 50, minutes: 60, counts: { mcq: 45 } };
+    const reloaded = migrate(JSON.parse(JSON.stringify(serializeWorksheet({ ...loaded, target }))));
+    expect(reloaded.__unknown).toBeUndefined();
+    expect(reloaded.target).toEqual(target);
+    expect({ ...reloaded, target: undefined }).toEqual({ ...loaded, target: undefined });
+  });
+
   it('carries MCQ rationale and provenance through load → save → load', () => {
     // Question-level fields are not gated by KNOWN_KEYS; this proves `migrate` keeps them
     // on a published document, and adds none of its own to one that never had them.

@@ -468,4 +468,6 @@ export const structuredType: QuestionTypeDefinition<StructuredQuestion> = {
   countMissingTranslations,
   healthFacts,
   answerKey,
+  // Timed by marks, at the paper's rate (`MINUTES_PER_MARK`).
+  summary: { label: { en: 'structured', zh: '結構題' } },
 };
