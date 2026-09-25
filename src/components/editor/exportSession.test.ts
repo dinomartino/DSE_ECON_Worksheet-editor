@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { deliverFiles, exportKinds, type ExportFile } from './exportSession';
+import {
+  deliverFiles,
+  deliverWorksheetJson,
+  exportKinds,
+  pdfVariant,
+  type ExportFile,
+} from './exportSession';
 
 const file = (kind: ExportFile['kind']): ExportFile => ({
   kind,
@@ -56,5 +62,29 @@ describe('export delivery', () => {
     expect(save).toHaveBeenCalledTimes(1);
     expect(run.cancelled).toBe(true);
     expect(run.saved).toEqual([]);
+  });
+});
+
+describe('.json and PDF choices', () => {
+  it('.json: one save; a cancelled desktop sheet says nothing, the web always reports', async () => {
+    const save = vi.fn(async () => '/Users/t/Documents/Econ Worksheets/Unit 3.worksheet.json');
+    expect(await deliverWorksheetJson({ desktop: true, save })).toEqual({
+      message: 'Exported .json',
+      path: '/Users/t/Documents/Econ Worksheets/Unit 3.worksheet.json',
+    });
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(await deliverWorksheetJson({ desktop: true, save: async () => undefined })).toBeUndefined();
+    expect(await deliverWorksheetJson({ desktop: false, save: async () => undefined })).toEqual({
+      message: 'Exported .json',
+      path: undefined,
+    });
+  });
+
+  it('PDF prints one version: the chosen one, else the one on screen, else the first', () => {
+    expect(pdfVariant([], 'all', undefined)).toBeUndefined();
+    expect(pdfVariant(['A', 'B', 'C'], 'B', 'C')).toBe('B');
+    expect(pdfVariant(['A', 'B', 'C'], 'all', 'C')).toBe('C');
+    expect(pdfVariant(['A', 'B', 'C'], 'all', undefined)).toBe('A');
+    expect(pdfVariant(['A', 'B'], 'all', 'D')).toBe('A');
   });
 });

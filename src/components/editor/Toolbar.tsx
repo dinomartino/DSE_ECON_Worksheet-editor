@@ -4,19 +4,19 @@ import { useCallback, useState } from 'react';
 import { copyForWord, worksheetClipboardHtml, worksheetPlainText } from '@/export/clipboard';
 import { renderDiagramImages } from '@/export/diagramImage';
 import { worksheetMarks } from '@/model/marks';
-import { pageSetupOf } from '@/model/page';
-import type { LanguageMode, VersionMode } from '@/model/types';
+import type { LanguageMode, OutputMode, VersionMode } from '@/model/types';
 import { requireQuestionType } from '@/registry';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { downloadWorksheetFile, worksheetStore } from '@/storage';
-import { isDesktop, printPage, revealFile, revealLabel } from '@/platform';
+import { isDesktop, revealFile, revealLabel } from '@/platform';
 import { Button, IconButton, Pill, Segmented } from '@/components/ui';
-import { DownloadIcon, PdfIcon, RedoIcon, SettingsIcon, UndoIcon } from '@/components/ui/icons';
+import { DownloadIcon, RedoIcon, SettingsIcon, UndoIcon } from '@/components/ui/icons';
 import { Menu } from '@/components/ui/Menu';
 import { Dialog } from '@/components/ui/Dialog';
 import { AppMark } from '@/components/ui/AppMark';
 import { DocumentName } from './DocumentName';
 import { ExportDialog } from './ExportDialog';
+import { browserPrintDeps, printWorksheetPdf } from './printPdf';
 import { useUpdateStore } from '@/desktop/updateStore';
 import { PaperHealthPanel } from './PaperHealthPanel';
 import { FeedbackDialog } from '@/components/feedback/FeedbackDialog';
@@ -138,30 +138,20 @@ export function Toolbar({
   };
 
   /**
-   * Export as PDF.
+   * PDF, from the Export dialog once it has closed.
    *
-   * There is no server to render on, so this drives the browser's own print engine —
-   * whose "Save as PDF" destination every desktop platform provides — over the real
-   * paginated sheets in the preview. The PDF is therefore produced from exactly what
-   * is on screen and cannot drift from it, which a separate PDF renderer would.
-   *
-   * The `@page` box is written from the worksheet's own page setup first: without it
-   * the browser prints at whatever the user last chose, and an A4 worksheet would
-   * silently come out scaled onto Letter.
+   * There is no server to render on, so this drives the engine's own print — whose
+   * "Save as PDF" destination every desktop platform provides — over the real paginated
+   * sheets. The PDF is produced from exactly what is on screen and cannot drift from
+   * it, which a separate PDF renderer would. `printWorksheetPdf` sets the `@page` box
+   * and the print mode first.
    */
-  const handlePdf = () => {
-    const setup = pageSetupOf(worksheet);
-    const root = document.documentElement;
-    // CSS `size` takes the paper name directly; our PaperSize values are already the
-    // CSS keywords (A4/A3/Letter/Legal).
-    root.style.setProperty('--print-size', setup.paper);
-    root.style.setProperty('--print-orientation', setup.orientation);
-    // Deselect first, so an in-progress selection ring is not captured in the output.
-    select(undefined);
-    // After the deselect has painted.
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => printPage());
-    });
+  const handlePrint = (printMode: OutputMode) => {
+    setError(undefined);
+    const deps = browserPrintDeps(setMode, () => select(undefined));
+    printWorksheetPdf(worksheet, printMode, deps).catch((cause: unknown) =>
+      setError(`Could not open the print dialog: ${cause instanceof Error ? cause.message : String(cause)}`),
+    );
   };
 
   /**
@@ -301,18 +291,10 @@ export function Toolbar({
           </span>
         </span>
 
-        {/* The two outputs a teacher actually hands in: .docx to keep editing in Word,
-            PDF to print or send. Both are on the bar; .docx stays the filled button
-            because it is the one that preserves editability. */}
-        {/* Quiet next to Export: two boxed buttons side by side read as equals, and
-            the bar's one constructed object should be the output that keeps
-            editability. PDF is a step, .docx is the deliverable. */}
-        <Button variant="subtle" onClick={handlePdf} title="Print or save as PDF (⌘P)">
-          <PdfIcon size={15} />
-          PDF
-        </Button>
-
-        <Button variant="primary" onClick={() => setExporting(true)} title="Question paper, answer key, or both">
+        {/* One Export action, the bar's only filled button: .docx to keep editing, PDF to
+            print or send, .json to keep the worksheet itself. The format is chosen
+            inside, beside what it applies to, rather than as look-alike buttons here. */}
+        <Button variant="primary" onClick={() => setExporting(true)} title="Word, PDF or the worksheet file">
           <DownloadIcon size={15} />
           Export…
         </Button>
@@ -330,7 +312,6 @@ export function Toolbar({
              */
             { label: 'Worksheets…', onSelect: onOpenFiles, separated: true },
             { label: 'Save now', onSelect: () => void save() },
-            { label: 'Download .json', onSelect: () => void handleDownloadJson() },
             ...(isDesktop()
               ? [
                   {
@@ -367,6 +348,7 @@ export function Toolbar({
           mode={mode}
           onClose={closeExport}
           onExported={handleExported}
+          onPrint={handlePrint}
           checks={<PaperHealthPanel worksheet={worksheet} language={mode.language} />}
         />
       )}

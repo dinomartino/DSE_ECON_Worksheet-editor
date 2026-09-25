@@ -344,7 +344,8 @@ export function Segmented<T extends string>({
   label,
 }: {
   value: T;
-  options: { value: T; label: string; title?: string }[];
+  /** A `disabled` option stays in place, greyed; its `title` should say why. */
+  options: { value: T; label: string; title?: string; disabled?: boolean }[];
   onChange: (value: T) => void;
   label: string;
 }) {
@@ -362,9 +363,14 @@ export function Segmented<T extends string>({
             role="radio"
             aria-checked={active}
             title={option.title ?? option.label}
+            disabled={option.disabled}
             onClick={() => onChange(option.value)}
-            className={`relative cursor-pointer rounded-md px-2.5 py-2 text-xs font-medium transition-colors duration-150 ease-[var(--ease-out-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
-              active ? 'text-ink' : 'text-ink-muted hover:text-ink'
+            className={`relative rounded-md px-2.5 py-2 text-xs font-medium transition-colors duration-150 ease-[var(--ease-out-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
+              option.disabled
+                ? 'cursor-not-allowed text-ink-muted opacity-40'
+                : active
+                  ? 'cursor-pointer text-ink'
+                  : 'cursor-pointer text-ink-muted hover:text-ink'
             }`}
           >
             {option.label}

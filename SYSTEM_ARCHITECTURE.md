@@ -1621,6 +1621,14 @@ exactly once. CSS alone cannot deliver two things:
 `printPreview` lives beside `mode`, deliberately **not inside** it — `OutputMode` is
 what the exporter reads. Entering clears the question selection; `HintPill` hides.
 
+### PDF is a print of the sheets, chosen in Export
+
+One Export button; the dialog picks `.docx`, PDF or `.json`. PDF puts the page in the
+chosen mode, waits for `#print-root` to settle, then prints (`editor/printPdf.ts`).
+Language, version and paper version stay as the editor's view; the "Include" flags are
+lifted on `afterprint`. PDF is the question paper, one version per print — the rest are
+disabled in the dialog with the reason, not hidden.
+
 ### Both band paths must agree
 
 `BandEditor` (active) and `ReadOnlyBandRow` (idle + print/PDF) draw the same rows.
@@ -2148,6 +2156,11 @@ it. A failed check is `failed`, never "up to date".
 
 **The start screen renders only after hydration** (`EditorHost`): it reads the platform
 and `localStorage` while rendering, which the web-built prerender cannot match.
+
+**Printing** needs `core:webview:allow-print`: on macOS the shell replaces
+`window.print` with an async `plugin:webview|print` call (WKWebView has no print of its
+own) that opens the system print sheet, whose PDF menu saves. It resolves as the sheet
+opens; `afterprint` still fires when it closes.
 
 **`app.security.csp` stays `null`.** Next's static export inlines its bootstrap scripts;
 any CSP without `'unsafe-inline'` blanks the app. Tightening it means nonced scripts first.

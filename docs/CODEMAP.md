@@ -24,7 +24,7 @@ StartScreen ──open──► worksheetStore (Zustand, undo/redo) ──► Wo
       Preview.tsx        docx/index.ts     clipboard.ts
       (React DOM)        (raw OOXML)       (text/html)
              │
-        packPages() → sheets → window.print() → PDF
+        packPages() → sheets → printWorksheetPdf() → window.print() → PDF
 ```
 
 ## model — the document, and every pure edit on it
@@ -173,7 +173,8 @@ Invariants:
 ## components/editor — the chrome around the page
 
 - `src/components/EditorApp.tsx:EditorApp` — the shell, autosave, export actions
-- `src/components/editor/ExportDialog.tsx:ExportDialog` — paper / answer key / both / other apps; `src/components/editor/exportSession.ts:deliverFiles` — one web download per click
+- `src/components/editor/ExportDialog.tsx:ExportDialog` — the one Export action: format `.docx` / PDF / `.json`, then paper / answer key / both / other apps; `src/components/editor/exportSession.ts:deliverFiles` — one web download per click
+- `src/components/editor/printPdf.ts:printWorksheetPdf` — PDF: set the print mode, wait for the sheets, `printPage()`, lift the "Include" flags on `afterprint`
 - `src/components/editor/exportSession.ts:paperMode` — "Include" toggles → `OutputMode.omitCover` / `omitAnswerSpace` (export-time, never stored; the preview ignores them)
 - `src/components/editor/Sidebar.tsx:Sidebar` · `src/components/editor/Inspector.tsx:Inspector`
 - `src/components/editor/MarkSchemeEditor.tsx:MarkSchemeEditor` — points, `n@`/any/max, OR, levels, EC for one leaf

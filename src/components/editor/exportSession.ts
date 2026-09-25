@@ -8,6 +8,24 @@ import { renderWorksheet } from '@/render/worksheet';
  * rule — one browser download per click — is tested without a DOM.
  */
 
+/** The file the dialog writes: Word, a print of the sheets, or the worksheet document. */
+export type ExportFormat = 'docx' | 'pdf' | 'json';
+
+/**
+ * The one paper version a PDF prints: the version chosen, or — on "All", which a single
+ * print cannot be — the one the editor shows (`undefined` there is the first). No
+ * versions, no letter.
+ */
+export function pdfVariant(
+  letters: string[],
+  choice: string,
+  shown: string | undefined,
+): string | undefined {
+  if (letters.length === 0) return undefined;
+  if (letters.includes(choice)) return choice;
+  return shown && letters.includes(shown) ? shown : letters[0];
+}
+
 /** `apps`: one file for another app — a bubble-sheet key or a quiz set (`AppFormat`). */
 export type ExportWhat = 'paper' | 'answerKey' | 'both' | 'apps';
 
@@ -103,4 +121,17 @@ export async function deliverFiles(
   }
   run.pending = files.slice(now.length);
   return run;
+}
+
+/**
+ * Save the worksheet document itself (`.json`). What the status line should say, or
+ * `undefined` when a desktop save sheet was cancelled — nothing written, dialog stays.
+ */
+export async function deliverWorksheetJson(options: {
+  desktop: boolean;
+  save: () => Promise<string | undefined>;
+}): Promise<{ message: string; path?: string } | undefined> {
+  const path = await options.save();
+  if (path === undefined && options.desktop) return undefined;
+  return { message: 'Exported .json', path };
 }
