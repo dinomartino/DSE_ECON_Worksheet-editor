@@ -30,9 +30,6 @@ off the bottom.** It is the first thing a fresh session reads — then
   `src-tauri/src/pdf/` (macOS WebKit save-job, Windows WebView2 PrintToPdf — never run
   on Windows). Each feature browser-verified alone;
   **no browser pass of the merged whole, and nothing run in the desktop shell.**
-- **2026-09-24 batch (in v0.3.0):** export dialog + answer key, paper check, backup zip,
-  Trash, seeded MCQ versions, other-apps export, export toggles, file dashboard. Desktop
-  save paths and real imports into ZipGrade/Kahoot/Blooket not tried.
 - **Feature backlog** — `docs/IDEAS.md`, ranked from the 2026-09-24 competitor research in
   `docs/research/2026-09-competitive/`. Pick the next initiative from there.
 
@@ -61,8 +58,6 @@ off the bottom.** It is the first thing a fresh session reads — then
   the schema version is bumped — it is not, so the areas silently do not show there.
 - **Combined answer key uses the current document's page setup and font size** for every
   part; a 10pt Paper 2 key inside an 11pt Paper 1 prints at 11pt.
-- **What's new pops for anyone updating from ≤0.3.0** (no stored seen-version but saved
-  work) — intended, once.
 - **`scripts/cover-verify.mjs` / `lq-verify.mjs` not re-run** since B3/B4 (lq-verify passed
   for the B4 agent; needs `LQ_DIR`).
 - **Windows builds are unsigned.** SmartScreen warns on first run. An OV certificate
@@ -93,9 +88,3 @@ off the bottom.** It is the first thing a fresh session reads — then
   answer key; folders + pointer drag; desktop file drop; CHANGELOG.md, release-notes
   script and What's new; schema-evolution policy, newer-file read-only guard, real Tauri
   import guard (the documented build failure never fired). Area colours + leader labels.
-- **2026-09-25** — B1–B4 from the backlog built in parallel by Opus sub-agents on
-  `feature/b1..b4` branches, merged into `develop`. Rule saved: all code edits go to
-  Opus sub-agents; the coordinator merges and writes the docs. Follow-up: SVG `<marker>`
-  and `<pattern>` refs resolved to hidden copies outside `#print-root`, so arrowheads and
-  pie hatching vanished in the print PDF — arrowheads are now plain triangles
-  (`diagram.ts:arrowheadPath`), patterns forced visible in print CSS.
