@@ -96,6 +96,8 @@ Words this repository uses in its own way. One line each, with where the thing l
   not by coordinates; an anchored point follows it. `src/model/diagramAnchors.ts:resolveAnchor`
 - **Derived curve** — a curve defined by a relation (MR of D, parallel, tangent, a level);
   `points` keeps its last resolved shape. `src/model/diagramAnchors.ts:resolveDiagram`
+- **Shifted copy** — a derived curve that is its source moved by a stored vector (D₁, S₁ =
+  S + t): it follows the source; dragging it changes the shift. `src/model/diagramTemplateKit.ts:shiftOf`
 - **Span** — a bracket or change arrow between two places (shortage, tax wedge, P₁→P₂),
   optionally on an axis. `src/model/diagramSpans.ts:spanGeometry`
 - **Diagram template** — a starting geometry picked by shape, grouped by syllabus topic; an

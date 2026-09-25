@@ -1170,8 +1170,18 @@ geometry underneath stays byte-identical to what exports.
   a curve's `derive` and a span's ends are relations; `resolveDiagram` writes their
   current value into `at`/`points` on render and on every canvas commit, so an older
   build draws the last shape. Cycle-safe (a loop keeps the stored value). Dragging a
-  relation's object detaches it (a numeric level moves its number); releasing a point
-  or span end on a crossing attaches it; deleting what one names freezes it (`detachRelations`).
+  relation's object detaches it (a numeric level moves its number; a `shift` copy
+  changes its `by`); releasing a point or span end on a crossing attaches it; deleting
+  what one names freezes it (`detachRelations`).
+- **A shifted copy is `shift`, not `parallel`**: D₁ or S₁ = S + t is the source's own
+  points moved by `by`, so it keeps its length and follows the source (a tax stays t
+  when S is dragged). `parallel` is a line through a place, across the plot unless `ys`
+  bounds its heights (a short TOT guide).
+- **Templates are written in relations** (`diagramTemplateKit.ts`): anchored equilibria,
+  derived curves, spans and Shade presets, resolved once by `finish` so the stored
+  `at`/`points` are right for builds that ignore relations. The Shade menu reads a
+  shift/parallel pair (S₀, S₁) and an MR derive (D, MR) as settled roles
+  (`relationRoles`), so a template's presets add without the picker.
 
 ### Every label moves, and stays attached
 

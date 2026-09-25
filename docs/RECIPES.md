@@ -124,12 +124,19 @@ Guard: `src/render/diagram.test.ts`, `src/model/diagramDraw.test.ts`.
 ## Add a diagram template
 
 1. Build it in the topic's file (`src/model/diagramTemplatesMarket.ts` · `…Macro.ts` ·
-   `…Trade.ts`) with the kit: compute equilibria with `meet`, drops and ticks with `mark`.
+   `…Trade.ts`) in relations, never free coordinates, so a drag keeps the scheme's marks
+   (kit: `src/model/diagramTemplateKit.ts`):
+   - equilibria and readings as anchors — `eq(a, b)`, `reading(curve, line)`, `pin(ref)`;
+   - shifted copies `shiftOf`, prices `priceLine` (level), verticals `upright`, MR /
+     tangent / parallel via `derived`;
+   - change arrows, gaps, brackets and wedges as spans — `axisArrows`, `span`;
+   - welfare areas through the Shade presets — `shade(resolved, id, roles)` inside `finish`.
+   Return `finish(…)`: it resolves every relation into `at`/`points` for older builds.
 2. Give it a `group` and a bilingual name and hint; never reuse or remove a shipped id.
 3. `node scripts/template-gallery.mjs --only=<id>` and read all three languages for
-   collisions.
+   collisions; update `docs/Diagram_Requirements/COVERAGE.md` for the items it meets.
 
-Guard: `src/model/diagramTemplates.test.ts`.
+Guard: `src/model/diagramTemplates.test.ts`, `src/model/diagramTemplateRelations.test.ts`.
 
 ## Add on-page chrome
 

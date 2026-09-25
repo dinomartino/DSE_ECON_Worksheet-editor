@@ -13,6 +13,19 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 ## Unreleased
 
 ### Added
+- **Diagram templates follow your drags**: move a curve and the equilibria, dashed
+  drops, P and Q arrows, shortage and import brackets, the tax wedge, output gaps and
+  shaded areas move with it; D₁ or S + t keeps its shift, MR stays twice as steep as D,
+  and the CPF stays tangent to the PPF. Shade ▾ now adds areas on a template without
+  asking which curve is which.
+- **22 more diagram templates**, one for each scheme item that had none: the MCQ
+  double-shift grid, shortage before and after, a lowered ceiling, CS change under a
+  ceiling, an ineffective ceiling, revenue at a fixed price, the minimum-wage bill, quota
+  G / L and a demand rise under a quota, subsidy overproduction (MC > MB), TSS loss when
+  MC rises, AD and SRAS both shifting left, AD at full capacity, gap₀ and gap₁, the
+  inflationary self-adjustment, the substitute-good exchange-rate case, a demand rise
+  under an import quota with quota rent, monopoly with rising MC, MC rising, a lump-sum
+  tax, "same P and Q after MC falls", and two countries' PPFs on one figure.
 - **Every welfare area the marking schemes name, one click from Shade ▾**: buyers' and
   sellers' burden, CS loss under a tax, consumer and producer benefit of a subsidy, DWL of
   a tax, subsidy, price control, tariff or monopoly, TSS loss, revenue or wage bill at a
