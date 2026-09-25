@@ -68,6 +68,8 @@ broke.
   desktop:build` produces installers. To hand the user an unreleased `.dmg`, follow
   `DESKTOP-PREVIEW.md` (copy-paste steps, no tag, no `main`). The web build must stay green too — `npm run build`
   fails if a `@tauri-apps/*` import reached the bundle.
+- **Every feature or fix adds a line under Unreleased in `CHANGELOG.md`**, in the same
+  commit, written for teachers. It is the release body and the in-app "What's new".
 - Releases are tags, not pushes: `npm version <patch|minor|major>` then `git push
   --follow-tags`, then publish the draft once its assets are complete
   (`gh release edit vX.Y.Z --draft=false --latest`). See `RELEASING.md`.

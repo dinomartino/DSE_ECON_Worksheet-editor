@@ -68,6 +68,11 @@ the version bump reaches `develop`.
 `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml` and stages them, so the commit and
 tag carry all three.
 
+Before tagging, close the changelog: in `CHANGELOG.md`, rename **Unreleased** to the
+version and today's date, and start a fresh empty **Unreleased** above it. Commit that
+first â€” the tag must contain it, because the app shows this section as "What's new"
+after an update, and the release body is copied from it.
+
 ```bash
 npm run typecheck && npm test        # green before tagging
 npm version patch                    # or: minor | major
@@ -79,7 +84,8 @@ Windows x64) into one **draft** release. Check the assets below, then publish â€
 what ships it to installed apps:
 
 ```bash
-gh release edit vX.Y.Z --draft=false --latest
+node scripts/release-notes.mjs vX.Y.Z > /tmp/notes.md   # that version's CHANGELOG section
+gh release edit vX.Y.Z --draft=false --latest --notes-file /tmp/notes.md
 ```
 
 "Release" means the whole sequence including this step; a release instruction is
