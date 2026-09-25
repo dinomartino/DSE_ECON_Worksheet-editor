@@ -87,3 +87,19 @@ export const FEEDBACK = {
   message:
     'It would help if the answer key could also list the syllabus topic for each question, so I can see which topics the class found hardest.',
 };
+
+/** The diagram demo's worksheet (`npm run demo:diagrams`), seeded off camera. */
+export const DIAGRAMS = {
+  title: 'S5 Market Intervention: Diagrams',
+  stem: 'The government imposes a per-unit tax of $t on each packet of cigarettes sold.',
+  part: {
+    text: 'Explain, with a diagram, the effect of a per-unit tax on the price paid by buyers, the price received by sellers and the quantity traded.',
+    marks: 6,
+    graphLines: 12,
+    lines: 6,
+    answer:
+      'Supply shifts up by the tax, from S₀ to S₁. Buyers pay P₁, above P₀; sellers keep P₁ − t, below P₀. Quantity falls from Q₀ to Q₁, and the deadweight loss is the triangle between them.',
+  },
+  /** Every template the film opens (the seed reports what each one follows). */
+  templates: ['per-unit-tax', 'monopoly', 'deflationary-gap', 'tariff', 'ppf-concave-trade', 'supply-demand'],
+};

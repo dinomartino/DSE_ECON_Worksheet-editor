@@ -204,6 +204,21 @@ To show a new feature, add one step to `scripts/demo/record.mjs:STORYBOARD` (`na
 `scripts/demo/screenshots.mjs:SHOTS`. What gets typed lives in `scripts/demo/content.mjs`,
 and must stay original text, never past-paper questions. Keep the video under 60 s.
 
+### The diagram film
+
+```bash
+npm run demo:diagrams          # or: node scripts/demo.mjs --story=diagrams [--url=…]
+```
+
+One continuous recording of the diagram workflow (picker, canvas, Shade ▾, span, other
+templates, model answer, export) into `demo-media/diagrams/`: `diagrams.mp4`, numbered
+`stills/*.webp` (2× screenshots, cut out of the video), `export/*.docx` with page 1 of
+each rendered by LibreOffice (skipped without `soffice` + `pdftoppm`), and a `README.md`.
+The worksheet is seeded from `scripts/demo/diagrams-seed.test.ts`, which also reports what
+each template anchors, so a "drag it and watch it follow" beat is filmed only when
+something follows; the README lists any beat left out. Steps:
+`scripts/demo/diagrams.mjs:diagramStoryboard`. Keep it under 2.5 minutes.
+
 ## Try an unreleased desktop build
 
 Follow `DESKTOP-PREVIEW.md`: dev window, a local `.dmg`, or the CI preview workflow.

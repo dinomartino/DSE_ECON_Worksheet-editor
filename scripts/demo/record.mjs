@@ -200,11 +200,7 @@ export const STORYBOARD = [
   },
 ];
 
-/**
- * Record STORYBOARD as JPEG frames (Chrome's screencast, sharper than recordVideo's
- * 1 Mbit VP8), then lay them onto a constant 30 fps timeline with each step's speed.
- * Returns the frame sequence directory and the output start time of every step.
- */
+/** Record STORYBOARD through `filmSteps`, after seeding a library off camera. */
 export async function recordStoryboard({ browser, url, tmpDir, log }) {
   // Off camera: seed a library, so the start screen is not empty.
   log('video: seeding saved worksheets…');
@@ -225,6 +221,19 @@ export async function recordStoryboard({ browser, url, tmpDir, log }) {
   await d.wait(800);
   await page.mouse.move(820, 520);
 
+  const rec = await filmSteps({ ctx, page, d, steps: STORYBOARD, tmpDir, log });
+  await ctx.close();
+  return rec;
+}
+
+/**
+ * Film `steps` on `page` as JPEG frames (Chrome's screencast, sharper than recordVideo's
+ * 1 Mbit VP8), then lay them onto a constant 30 fps timeline with each step's speed.
+ * Adds `d.cut(fn)` to the driver: whatever `fn` does is left out of the film (a still
+ * being captured, geometry read off the page). Returns the frame sequence and the
+ * output start time of every step.
+ */
+export async function filmSteps({ ctx, page, d, steps, tmpDir, log }) {
   const framesDir = path.join(tmpDir, 'frames');
   fs.mkdirSync(framesDir, { recursive: true });
   const frames = [];
@@ -237,9 +246,19 @@ export async function recordStoryboard({ browser, url, tmpDir, log }) {
   });
   await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 95, maxWidth: 1440, maxHeight: 900 });
 
-  const marks = []; // { wall, step }
+  const marks = []; // { wall, step, cut?, resume? }
+  let current = null;
+  d.cut = async (fn) => {
+    marks.push({ wall: Date.now() / 1000, step: current, cut: true });
+    try {
+      return await fn();
+    } finally {
+      marks.push({ wall: Date.now() / 1000, step: current, resume: true });
+    }
+  };
   log('video: recording…');
-  for (const step of STORYBOARD) {
+  for (const step of steps) {
+    current = step;
     marks.push({ wall: Date.now() / 1000, step });
     log(`  ${step.name}${step.speed ? ` (×${step.speed})` : ''}`);
     try {
@@ -251,15 +270,21 @@ export async function recordStoryboard({ browser, url, tmpDir, log }) {
   }
   const endWall = Date.now() / 1000;
   await cdp.send('Page.stopScreencast');
-  await ctx.close();
   if (!frames.length) throw new Error('video: the screencast produced no frames');
 
-  // Frame clock ↔ wall clock, then each frame's duration divided by its step's speed.
+  // Frame clock ↔ wall clock. Output time is frame time divided by the speed of the
+  // mark it falls under, integrated piecewise; a cut has infinite speed.
   const offset = frames[0].wall - frames[0].t;
-  const stepAt = (t) => {
-    let current = marks[0];
-    for (const m of marks) if (m.wall - offset <= t) current = m;
-    return current;
+  const at = marks.map((m) => m.wall - offset);
+  const speed = (m) => (m.cut ? Infinity : (m.step.speed ?? 1));
+  const outBetween = (t0, t1) => {
+    let out = 0;
+    for (let i = 0; i < marks.length; i++) {
+      const lo = Math.max(t0, i === 0 ? -Infinity : at[i]);
+      const hi = Math.min(t1, i + 1 < marks.length ? at[i + 1] : Infinity);
+      if (hi > lo) out += (hi - lo) / speed(marks[i]);
+    }
+    return out;
   };
   const end = endWall - offset;
   const starts = [];
@@ -267,21 +292,16 @@ export async function recordStoryboard({ browser, url, tmpDir, log }) {
   for (let i = 0; i < frames.length; i++) {
     const t0 = frames[i].t;
     const t1 = i + 1 < frames.length ? frames[i + 1].t : end;
-    const dur = (t1 - t0) / (stepAt((t0 + t1) / 2).step.speed ?? 1);
+    const dur = outBetween(t0, t1);
     if (dur <= 0) continue;
     starts.push({ at: acc, file: frames[i].file });
     acc += dur;
   }
   // Output start time of each step, for the README storyboard.
-  const timeline = marks.map((m) => {
-    const t = m.wall - offset;
-    let out = 0;
-    for (let i = 0; i < frames.length && frames[i].t < t; i++) {
-      const t1 = Math.min(i + 1 < frames.length ? frames[i + 1].t : end, t);
-      out += (t1 - frames[i].t) / (stepAt((frames[i].t + t1) / 2).step.speed ?? 1);
-    }
-    return { at: Math.max(0, out), step: m.step };
-  });
+  const timeline = marks
+    .map((m, i) => ({ m, t: at[i] }))
+    .filter(({ m }) => !m.cut && !m.resume)
+    .map(({ m, t }) => ({ at: Math.max(0, outBetween(frames[0].t, t)), step: m.step }));
 
   // A constant 30 fps sequence of links into the captured frames.
   const FPS = 30;
