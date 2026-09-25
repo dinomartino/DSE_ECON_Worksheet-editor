@@ -222,14 +222,16 @@ function mimeFor(fileName: string): string {
 }
 
 /**
- * Print.
+ * Print: the engine's own print of the real paginated sheets (§ PDF export uses print
+ * CSS), whose system dialog offers "Save as PDF". The caller keeps its own rAF timing.
  *
- * Identical on both: the PDF is produced by the engine's own print of the real
- * paginated sheets (§ PDF export uses print CSS), and the Tauri webview drives the same
- * platform print dialog. The caller keeps its own rAF timing — this is only the call.
+ * Web: `window.print()` blocks until the dialog closes. macOS desktop: the shell swaps
+ * `window.print` for an async `plugin:webview|print` invoke (WKWebView has no print of
+ * its own), which needs `core:webview:allow-print` and resolves once the sheet is up —
+ * so a denial arrives as a rejection here, not as an unhandled one.
  */
-export function printPage(): void {
-  window.print();
+export async function printPage(): Promise<void> {
+  await (window.print() as unknown as Promise<void> | undefined);
 }
 
 /**
