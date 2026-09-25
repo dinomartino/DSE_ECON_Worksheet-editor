@@ -62,16 +62,8 @@ off the bottom.** It is the first thing a fresh session reads — then
   for the B4 agent; needs `LQ_DIR`).
 - **Windows builds are unsigned.** SmartScreen warns on first run. An OV certificate
   (~US$215/yr) is the option; Azure Trusted Signing is not open to a Hong Kong maintainer.
-- **Desktop file features are untested in the real app** (`npm run desktop:dev` not run):
-  default folder creation, dialogs opening there, reveal, open folder, native import.
-- **macOS will ask for Documents access** the first time a dialog creates the default
-  folder; there is no `NSDocumentsFolderUsageDescription`, so the prompt is generic.
-- **Thumbnails are approximate** — no header/footer/page furniture, one language, rough
-  page end. See SYSTEM_ARCHITECTURE §The file dashboard.
 - **The updater signing key** lives only at `~/.tauri/econ-worksheet.key`. Lose it and no
   installed app can ever accept another update.
-- **`app.security.csp` is `null`** in `src-tauri/tauri.conf.json` — Next's static export
-  inlines its bootstrap scripts. Tightening it means nonced scripts first.
 - **A bare `npx vitest run` rewrites the frozen corpus**: `scripts/emit-v1-corpus.test.ts`
   runs and regenerates `src/test/corpus/v1-published.json`. Always use `npm test`; if the
   corpus shows as modified, `git checkout` it. Consider excluding that script from the
@@ -82,3 +74,12 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
+- **2026-09-25 (night)** — Diagram initiative: core geometry, presets, templates merged
+  (one conflict; trade role guess now prefers drawn price lines). Model answer diagram
+  on LQ leaves (answer-key `.docx` now embeds pictures). Browser-verified alone.
+- **2026-09-25 (evening)** — Leader arrow geometry; hatch patterns + revenue areas; desktop
+  PDF file export (native, per platform); print doubled-marks fix.
+- **2026-09-25 (later)** — Export button unified + desktop print permission; combined
+  answer key; folders + pointer drag; desktop file drop; CHANGELOG.md, release-notes
+  script and What's new; schema-evolution policy, newer-file read-only guard, real Tauri
+  import guard (the documented build failure never fired). Area colours + leader labels.
