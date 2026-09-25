@@ -23,6 +23,13 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 - **Shaded areas on diagrams**: consumer surplus, producer surplus, deadweight loss and
   tax revenue presets, plus a free shape; grey shade or hatch, draggable label. Areas
   follow the curves they are built on.
+- **Hatch patterns for shaded areas**, so areas still tell apart on a black-and-white
+  photocopy: diagonal, reverse diagonal, cross-hatch, horizontal, vertical or dots, at
+  normal or dense spacing. New CS, PS, DWL and tax revenue areas each start in their own
+  pattern; areas you already drew keep their look.
+- **Revenue areas on diagrams**: total revenue (P × Q) at an equilibrium, and the revenue
+  gain and loss between E₀ and E₁ after a shift — even when the gain or loss is an
+  L-shape. Pick which points they measure; they follow the points when you drag them.
 - **Shift a curve**: shift D or S left/right/up/down by a percentage to get D₁ (or S₁),
   the shift arrow and the new equilibrium E₁ with guide lines and P₁/Q₁ labels.
 - **Graph answer space**: a blank-axes box (optional grid, axis labels, 12/16/20/24

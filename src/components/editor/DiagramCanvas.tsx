@@ -31,7 +31,7 @@ import {
 } from '@/model/diagramDraw';
 import { emptyBiText, isBiTextEmpty, parseRuns, plain, serializeRuns } from '@/model/text';
 import type { BiText, DiagramBlock, LanguageMode } from '@/model/types';
-import { areaPolygon } from '@/model/diagramAreas';
+import { areaPolygon, isAnchoredArea } from '@/model/diagramAreas';
 import {
   areaLabelAnchor,
   areaLabelSeedOffset,
@@ -1529,7 +1529,7 @@ function HandleOverlay({
           );
         })}
       {(diagram.areas ?? [])
-        .filter((area) => !area.band)
+        .filter((area) => !isAnchoredArea(area))
         .flatMap((area) =>
           (area.vertices ?? []).map((point, index) =>
             dot(`${area.id}-${index}`, point, { kind: 'areaVertex', areaId: area.id, index }, 'square'),

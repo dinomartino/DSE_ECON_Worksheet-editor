@@ -93,6 +93,25 @@ describe('areas saved before colours and leaders render byte-identically', () =>
     expect(renderAll(explicit)).toEqual(frozenAreas);
   });
 
+  it('treats an explicit diagonal pattern at normal density exactly as absent', () => {
+    const explicit = Object.fromEntries(
+      Object.entries(frozenCases()).map(([name, diagram]) => [
+        name,
+        {
+          ...diagram,
+          areas: diagram.areas!.map((a) => ({ ...a, pattern: 'diagonal' as const, density: 'normal' as const })),
+        },
+      ]),
+    );
+    expect(renderAll(explicit)).toEqual(frozenAreas);
+  });
+
+  it('ignores pattern and density on a shaded area', () => {
+    const diagram = frozenCases().csShade;
+    const dotted = { ...diagram, areas: [{ ...diagram.areas![0], pattern: 'dots' as const, density: 'dense' as const }] };
+    expect(diagramSvg(dotted, { ...SIZE, language: 'en' })).toBe(frozenAreas['csShade|en|1']);
+  });
+
   it('keeps a large CS triangle inside, drawing no leader', () => {
     const { layout } = layoutOf(frozenCases().csShade, 'cs');
     expect(layout.placement).toBe('inside');

@@ -9,7 +9,7 @@ import {
   type DiagramPointMark,
 } from './diagram';
 import type { BiText } from './types';
-import { areaPolygon, areaReferences, detachAreas, freezeArea, insidePolygon } from './diagramAreas';
+import { areaPolygon, areaReferences, detachAreas, freezeArea, insidePolygon, isAnchoredArea } from './diagramAreas';
 
 /**
  * Direct manipulation of diagram geometry (§7.5).
@@ -92,9 +92,8 @@ export function cursorFor(
   active: boolean,
 ): string {
   // A band area goes where its curves go; it is selected, never dragged.
-  if (!group && handle.kind === 'area' && diagram.areas?.find((a) => a.id === handle.areaId)?.band) {
-    return 'pointer';
-  }
+  const area = handle.kind === 'area' ? diagram.areas?.find((a) => a.id === handle.areaId) : undefined;
+  if (!group && area && isAnchoredArea(area)) return 'pointer';
   // A group has no single axis to reshape along, so it is always a move.
   if (group || isBody(handle)) return active ? 'grabbing' : 'grab';
 
@@ -282,7 +281,7 @@ export function hitTest(
     consider({ kind: 'label', labelId: label.id }, dist(at, label.at));
   }
   for (const area of diagram.areas ?? []) {
-    if (area.band) continue;
+    if (isAnchoredArea(area)) continue;
     (area.vertices ?? []).forEach((vertex, index) => {
       consider({ kind: 'areaVertex', areaId: area.id, index }, dist(at, vertex));
     });
@@ -454,14 +453,14 @@ export function applyDrag(
       return {
         ...diagram,
         areas: mapById(diagram.areas ?? [], handle.areaId, (area) =>
-          area.band || !area.vertices ? area : { ...area, vertices: shift(area.vertices, dx, dy) },
+          isAnchoredArea(area) || !area.vertices ? area : { ...area, vertices: shift(area.vertices, dx, dy) },
         ),
       };
     case 'areaVertex':
       return {
         ...diagram,
         areas: mapById(diagram.areas ?? [], handle.areaId, (area) =>
-          area.band || !area.vertices
+          isAnchoredArea(area) || !area.vertices
             ? area
             : { ...area, vertices: area.vertices.map((p, i) => (i === handle.index ? target : p)) },
         ),
@@ -699,7 +698,7 @@ function removeHandle(diagram: Diagram, handle: DiagramHandle): Diagram {
     case 'areaVertex': {
       const area = (diagram.areas ?? []).find((a) => a.id === handle.areaId);
       // A polygon needs three corners; removing one of the last three takes the area.
-      if (!area || area.band || (area.vertices?.length ?? 0) <= 3) {
+      if (!area || isAnchoredArea(area) || (area.vertices?.length ?? 0) <= 3) {
         return { ...diagram, areas: (diagram.areas ?? []).filter((a) => a.id !== handle.areaId) };
       }
       return {
@@ -1081,6 +1080,10 @@ export function pasteInto(
   const areas = (clip.areas ?? []).map((area) => {
     const id = mint();
     handles.push({ kind: 'area', areaId: id });
+    if (area.revenue) {
+      const { from, to } = area.revenue;
+      return { ...area, id, revenue: { ...area.revenue, from: renameRef(from, renamed), to: renameRef(to, renamed) } };
+    }
     return area.band
       ? { ...area, id, band: renameAreaRefs(area.band, renamed) }
       : { ...area, id, vertices: (area.vertices ?? []).map(shiftPoint) };
@@ -1100,15 +1103,20 @@ export function pasteInto(
 type AreaBand = NonNullable<DiagramArea['band']>;
 type AnchorRef = Exclude<AreaBand['from'], number>;
 
+/** An anchor with every curve and point id passed through `renamed` (unmapped ids kept). */
+function renameRef(r: AnchorRef, renamed: Map<string, string>): AnchorRef {
+  const id = (value: string) => renamed.get(value) ?? value;
+  return 'point' in r
+    ? { point: id(r.point) }
+    : 'cross' in r
+      ? { cross: [id(r.cross[0]), id(r.cross[1])] }
+      : { on: id(r.on), x: renameRef(r.x, renamed) };
+}
+
 /** A band with every curve and point id passed through `renamed` (unmapped ids kept). */
 function renameAreaRefs(band: AreaBand, renamed: Map<string, string>): AreaBand {
   const id = (value: string) => renamed.get(value) ?? value;
-  const ref = (r: AnchorRef): AnchorRef =>
-    'point' in r
-      ? { point: id(r.point) }
-      : 'cross' in r
-        ? { cross: [id(r.cross[0]), id(r.cross[1])] }
-        : { on: id(r.on), x: ref(r.x) };
+  const ref = (r: AnchorRef): AnchorRef => renameRef(r, renamed);
   const x = (value: number | AnchorRef) => (typeof value === 'number' ? value : ref(value));
   const edge = (e: AreaBand['edges'][number]): AreaBand['edges'][number] =>
     'curve' in e ? { curve: id(e.curve) } : { level: x(e.level) };

@@ -3,6 +3,8 @@ import type {
   DiagramAnchorRef,
   DiagramArea,
   DiagramAreaEdge,
+  DiagramAreaPattern,
+  DiagramAreaRevenue,
   DiagramAreaX,
   DiagramCurve,
   DiagramPoint,
@@ -111,6 +113,55 @@ function edgeYAt(diagram: Diagram, edge: DiagramAreaEdge, x: number): number | n
 }
 
 /**
+ * `outer` less `inner`, each the P×Q rectangle from the origin to its point: null when
+ * `inner` covers it, one rectangle when only price or only quantity is larger, else an L.
+ */
+export function rectangleDifference(outer: DiagramPoint, inner: DiagramPoint): DiagramPoint[] | null {
+  const wider = outer.x - inner.x > 1e-6;
+  const taller = outer.y - inner.y > 1e-6;
+  if (outer.x < 1e-6 || outer.y < 1e-6 || (!wider && !taller)) return null;
+  const { x: qo, y: po } = outer;
+  const { x: qi, y: pi } = inner;
+  if (wider && taller) {
+    return [
+      { x: 0, y: pi },
+      { x: qi, y: pi },
+      { x: qi, y: 0 },
+      { x: qo, y: 0 },
+      { x: qo, y: po },
+      { x: 0, y: po },
+    ];
+  }
+  if (wider) {
+    return [
+      { x: qi, y: 0 },
+      { x: qo, y: 0 },
+      { x: qo, y: po },
+      { x: qi, y: po },
+    ];
+  }
+  return [
+    { x: 0, y: pi },
+    { x: qo, y: pi },
+    { x: qo, y: po },
+    { x: 0, y: po },
+  ];
+}
+
+/** A revenue change's region now: gain = new rectangle less old, loss = old less new. */
+function revenuePolygon(diagram: Diagram, revenue: DiagramAreaRevenue): DiagramPoint[] | null {
+  const before = resolveAnchor(diagram, revenue.from);
+  const after = resolveAnchor(diagram, revenue.to);
+  if (!before || !after) return null;
+  return revenue.change === 'gain' ? rectangleDifference(after, before) : rectangleDifference(before, after);
+}
+
+/** Whether an area is derived from references (and so is never dragged by its corners). */
+export function isAnchoredArea(area: DiagramArea): boolean {
+  return Boolean(area.revenue || area.band);
+}
+
+/**
  * The polygon an area covers now, in unit space, or null when it cannot be drawn.
  *
  * A band walks edge 0 left to right and edge 1 back, sampled at `from`, `to` and every
@@ -118,6 +169,7 @@ function edgeYAt(diagram: Diagram, edge: DiagramAreaEdge, x: number): number | n
  * exist, so a curve that stops short of the y-axis bounds the area where it stops.
  */
 export function areaPolygon(diagram: Diagram, area: DiagramArea): DiagramPoint[] | null {
+  if (area.revenue) return revenuePolygon(diagram, area.revenue);
   if (!area.band) return area.vertices && area.vertices.length >= 3 ? area.vertices : null;
 
   const { edges, from, to } = area.band;
@@ -210,6 +262,11 @@ export function areaReferences(area: DiagramArea): string[] {
       anchor(ref.x);
     }
   };
+  if (area.revenue) {
+    anchor(area.revenue.from);
+    anchor(area.revenue.to);
+    return ids;
+  }
   if (!area.band) return ids;
   for (const edge of area.band.edges) {
     if ('curve' in edge) ids.push(edge.curve);
@@ -225,6 +282,7 @@ export function freezeArea(diagram: Diagram, area: DiagramArea): DiagramArea | n
   if (!polygon) return null;
   const frozen: DiagramArea = { ...area, vertices: polygon.map((p) => ({ x: p.x, y: p.y })) };
   delete frozen.band;
+  delete frozen.revenue;
   return frozen;
 }
 
@@ -279,6 +337,23 @@ export const AREA_PRESETS: Array<{ id: AreaPreset; name: string; needsTax: boole
     label: { en: [{ text: 'Tax' }], zh: [{ text: '稅收' }] },
   },
 ];
+
+/**
+ * The hatch each preset starts with, so the four read apart on a monochrome photocopy.
+ * Applied only when a preset is created (`newPresetArea`); stored areas keep their fill.
+ */
+export const PRESET_PATTERNS: Record<AreaPreset, DiagramAreaPattern> = {
+  consumerSurplus: 'diagonal',
+  producerSurplus: 'reverse',
+  deadweightLoss: 'cross',
+  taxRevenue: 'dots',
+};
+
+/** A preset as the Shade menu adds it: `presetArea` hatched in its own pattern. */
+export function newPresetArea(preset: AreaPreset, curves: MarketCurves, id: string): DiagramArea | null {
+  const area = presetArea(preset, curves, id);
+  return area && { ...area, fill: 'hatch', pattern: PRESET_PATTERNS[preset] };
+}
 
 /** Rising (+1), falling (−1) or neither (0: vertical, flat or a single point). */
 export function curveSlopeSign(curve: DiagramCurve): -1 | 0 | 1 {
@@ -361,4 +436,60 @@ export function presetArea(preset: AreaPreset, curves: MarketCurves, id: string)
         fill: 'hatch',
       };
   }
+}
+
+/*
+ * ── Revenue presets: P × Q rectangles ───────────────────────────────────────────
+ */
+
+export type RevenuePreset = 'totalRevenue' | 'revenueGain' | 'revenueLoss';
+
+/** Two equilibria, before and after — the points a revenue preset is measured at. */
+export interface RevenuePoints {
+  before?: DiagramAnchorRef;
+  after?: DiagramAnchorRef;
+}
+
+export const REVENUE_PRESETS: Array<{ id: RevenuePreset; name: string; label: BiText }> = [
+  { id: 'totalRevenue', name: 'Total revenue', label: { en: [{ text: 'TR' }], zh: [{ text: '總收益' }] } },
+  { id: 'revenueGain', name: 'Revenue gain', label: { en: [{ text: 'Gain' }], zh: [{ text: '收益增加' }] } },
+  { id: 'revenueLoss', name: 'Revenue loss', label: { en: [{ text: 'Loss' }], zh: [{ text: '收益減少' }] } },
+];
+
+const plainText = (label: BiText | undefined) => (label?.en ?? []).map((run) => run.text).join('');
+
+/**
+ * A best guess at E₀ and E₁: the first and last marked point, preferring points named
+ * "E…". The inspector re-picks either, so a wrong guess costs a click.
+ */
+export function guessRevenuePoints(diagram: Diagram): RevenuePoints {
+  const named = diagram.points.filter((p) => /^E/.test(plainText(p.label)));
+  const pool = named.length >= 2 ? named : diagram.points;
+  const first = pool[0];
+  const last = pool.length >= 2 ? pool[pool.length - 1] : undefined;
+  return { before: first && { point: first.id }, after: last && { point: last.id } };
+}
+
+/**
+ * A revenue preset as references, or null when it lacks its points. Total revenue is
+ * the band under E₀'s price out to E₀'s quantity, shaded; a gain or loss is the
+ * derived difference of two rectangles, hatched in dots or cross so it reads in
+ * monochrome over the TR shading.
+ */
+export function revenueArea(preset: RevenuePreset, points: RevenuePoints, id: string): DiagramArea | null {
+  const label = REVENUE_PRESETS.find((entry) => entry.id === preset)!.label;
+  const { before, after } = points;
+  if (preset === 'totalRevenue') {
+    if (!before) return null;
+    return { id, band: { edges: [{ level: 0 }, { level: before }], from: 0, to: before }, label };
+  }
+  if (!before || !after) return null;
+  const gain = preset === 'revenueGain';
+  return {
+    id,
+    revenue: { change: gain ? 'gain' : 'loss', from: before, to: after },
+    label,
+    fill: 'hatch',
+    pattern: gain ? 'dots' : 'cross',
+  };
 }
