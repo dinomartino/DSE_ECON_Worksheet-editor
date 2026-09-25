@@ -3,10 +3,10 @@ import { computeNumbering, DEFAULT_LIST_INDENTS, toUpperLetter } from '@/model/n
 import { DEFAULT_CELL_PADDING } from '@/model/table';
 import { bi, documentName, isBiTextEmpty, plain, provenanceLabel } from '@/model/text';
 import type { MarkScheme } from '@/model/markSchemeTypes';
-import type { BiText, LanguageMode, Worksheet } from '@/model/types';
+import type { BiText, DiagramBlock, LanguageMode, Worksheet } from '@/model/types';
 import { versionLetters, versionSeed } from '@/model/versions';
 import { requireQuestionType } from '@/registry';
-import { pushGap, type RenderNode, type TableNode, type TableNodeCell } from './ir';
+import { diagramNodeFor, pushGap, type RenderNode, type TableNode, type TableNodeCell } from './ir';
 import { renderMarkScheme } from './markScheme';
 
 /**
@@ -45,6 +45,8 @@ export interface AnswerKeyRow {
   /** Absent prints nothing; 0 prints "(0 marks)" — the paper's own rule. */
   marks?: number;
   answer?: BiText;
+  /** The model answer diagram, printed under the answer text (§ `QuestionPart.answerDiagram`). */
+  diagram?: DiagramBlock;
   /** HKEAA marking points, levels and EC, printed under the answer (`render/markScheme.ts`). */
   scheme?: MarkScheme;
 }
@@ -487,7 +489,10 @@ function renderScheme(
     const labelIndent = row.depth === 1 ? question[0].left : partText;
     const answerIndent = row.depth === 1 ? partText : subPartText;
     const schemeNodes = renderMarkScheme(row.scheme, { indent: answerIndent });
-    const hasAnswer = (row.answer !== undefined && !isBiTextEmpty(row.answer)) || schemeNodes.length > 0;
+    const hasAnswer =
+      (row.answer !== undefined && !isBiTextEmpty(row.answer)) ||
+      row.diagram !== undefined ||
+      schemeNodes.length > 0;
     const last = index === scheme.rows.length - 1;
     if (row.label !== undefined) {
       nodes.push({
@@ -507,6 +512,8 @@ function renderScheme(
         indent: answerIndent,
       });
     }
+    // Not teacher-only: the whole key is the teacher's.
+    if (row.diagram) nodes.push(diagramNodeFor(row.diagram, {}));
     nodes.push(...schemeNodes);
   });
 }

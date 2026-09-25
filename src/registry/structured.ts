@@ -7,8 +7,14 @@ import {
   subPartLabel,
 } from '@/model/numbering';
 import { areBlocksEmpty, bi, isBiTextEmpty } from '@/model/text';
-import type { BiText, StructuredQuestion } from '@/model/types';
-import { pushGap, renderContentBlocks, type RenderContext, type RenderNode } from '@/render/ir';
+import type { BiText, DiagramBlock, StructuredQuestion } from '@/model/types';
+import {
+  diagramNodeFor,
+  pushGap,
+  renderContentBlocks,
+  type RenderContext,
+  type RenderNode,
+} from '@/render/ir';
 import { renderMarkScheme } from '@/render/markScheme';
 import { answerGraphNode } from '@/render/answerGraph';
 import { StructuredEditorPanel } from '@/components/editor/StructuredEditorPanel';
@@ -43,6 +49,14 @@ function attachMarksToLastText(
       return;
     }
   }
+}
+
+/**
+ * A leaf's model answer diagram (§ `QuestionPart.answerDiagram`), teacher-only. A diagram
+ * node carries no indent, so it takes its block's own alignment (centred by default).
+ */
+function pushAnswerDiagram(nodes: RenderNode[], block: DiagramBlock | undefined): void {
+  if (block) nodes.push(diagramNodeFor(block, { teacherOnly: true }));
 }
 
 function render(question: StructuredQuestion, context: RenderContext): RenderNode[] {
@@ -112,7 +126,9 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
   if (isLeaf && !stemClaimed) attachMarksToLastText(nodes, 0, stemMarks);
 
   // The leaf question's own writing room, under the stem it answers (§ the LQ line).
-  // Absent prints nothing, like marks. Blank axes to draw on come first (§ AnswerGraph).
+  // Absent prints nothing, like marks. Blank axes to draw on come first (§ AnswerGraph),
+  // after the teacher's model diagram.
+  if (isLeaf) pushAnswerDiagram(nodes, question.answerDiagram);
   if (isLeaf && question.answerGraph) nodes.push(answerGraphNode(question.answerGraph));
   if (isLeaf && question.answerSpace !== undefined && question.answerSpace > 0) {
     nodes.push({ kind: 'answerSpace', lines: question.answerSpace });
@@ -217,8 +233,9 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
         edit: { kind: 'partAnswer', questionId: question.id, partId: part.id },
       });
     }
-    // The HKEAA scheme follows the plain answer, teacher version only.
+    // The model diagram, then the HKEAA scheme, follow the plain answer; teacher only.
     if (!hasSubParts) {
+      pushAnswerDiagram(nodes, part.answerDiagram);
       nodes.push(
         ...renderMarkScheme(part.scheme, { indent: context.indents.partText, teacherOnly: true }),
       );
@@ -287,6 +304,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
           },
         });
       }
+      pushAnswerDiagram(nodes, subPart.answerDiagram);
       nodes.push(
         ...renderMarkScheme(subPart.scheme, {
           indent: context.indents.subPartText,
@@ -314,6 +332,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
       });
     }
     if (hasSubParts) {
+      pushAnswerDiagram(nodes, part.answerDiagram);
       nodes.push(
         ...renderMarkScheme(part.scheme, { indent: context.indents.partText, teacherOnly: true }),
       );
@@ -373,9 +392,9 @@ function healthFacts(question: StructuredQuestion): QuestionHealthFacts {
     const subParts = part.subParts ?? [];
     if (!areBlocksEmpty(part.blocksBefore) || !areBlocksEmpty(part.blocks)) bodyEmpty = false;
     if (subParts.some((sub) => !areBlocksEmpty(sub.blocks))) bodyEmpty = false;
-    // A marking scheme answers its leaf as fully as answer text does.
-    const answered = (leaf: { answer?: BiText; scheme?: MarkScheme }) =>
-      !isBiTextEmpty(leaf.answer) || !isSchemeEmpty(leaf.scheme);
+    // A marking scheme or a model diagram answers its leaf as fully as answer text does.
+    const answered = (leaf: { answer?: BiText; scheme?: MarkScheme; answerDiagram?: DiagramBlock }) =>
+      !isBiTextEmpty(leaf.answer) || !isSchemeEmpty(leaf.scheme) || Boolean(leaf.answerDiagram);
     if (answered(part)) continue;
     unansweredParts += subParts.length === 0 ? 1 : subParts.filter((sub) => !answered(sub)).length;
   }
@@ -399,6 +418,7 @@ function answerKey(question: StructuredQuestion): AnswerKeyEntry {
       label: partLabel(partIndex),
       marks: hasSubParts ? undefined : part.marks,
       answer: hasSubParts ? undefined : part.answer,
+      ...(!hasSubParts && part.answerDiagram ? { diagram: part.answerDiagram } : {}),
       ...(!hasSubParts && part.scheme ? { scheme: part.scheme } : {}),
     });
     subParts.forEach((subPart, subIndex) => {
@@ -407,21 +427,30 @@ function answerKey(question: StructuredQuestion): AnswerKeyEntry {
         label: subPartLabel(subIndex),
         marks: subIndex === sharedMarksIndex ? part.marks : subPart.marks,
         answer: subPart.answer,
+        ...(subPart.answerDiagram ? { diagram: subPart.answerDiagram } : {}),
         ...(subPart.scheme ? { scheme: subPart.scheme } : {}),
       });
     });
     // A part with sub-parts may still carry an aggregate answer (and scheme), printed
     // after the group.
-    if (hasSubParts && (!isBiTextEmpty(part.answer) || !isSchemeEmpty(part.scheme))) {
+    if (
+      hasSubParts &&
+      (!isBiTextEmpty(part.answer) || !isSchemeEmpty(part.scheme) || part.answerDiagram)
+    ) {
       rows.push({
         depth: 1,
         ...(!isBiTextEmpty(part.answer) ? { answer: part.answer } : {}),
+        ...(part.answerDiagram ? { diagram: part.answerDiagram } : {}),
         ...(part.scheme ? { scheme: part.scheme } : {}),
       });
     }
   });
-  // With no parts the question is the leaf, and its marks ride on its own line.
+  // With no parts the question is the leaf, and its marks ride on its own line; its
+  // model diagram is an unlabelled row under the number.
   const marks = question.parts.length === 0 ? questionMarks(question) || undefined : undefined;
+  if (question.parts.length === 0 && question.answerDiagram) {
+    rows.push({ depth: 1, diagram: question.answerDiagram });
+  }
   return { kind: 'scheme', marks, rows };
 }
 

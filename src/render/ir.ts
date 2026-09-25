@@ -794,7 +794,7 @@ function renderSource(
   pushGap(nodes);
 }
 
-type BlockNodeOptions = { keepNext?: boolean; teacherOnly?: boolean };
+export type BlockNodeOptions = { keepNext?: boolean; teacherOnly?: boolean };
 
 /**
  * A table block's IR node, or undefined for a table with no cells at all. Shared by
@@ -848,7 +848,8 @@ function tableNodeFor(block: TableBlock, options: BlockNodeOptions): TableNode |
   };
 }
 
-function diagramNodeFor(block: DiagramBlock, options: BlockNodeOptions): DiagramNode {
+/** A diagram block's IR node — also a leaf's model answer diagram (§ `QuestionPart.answerDiagram`). */
+export function diagramNodeFor(block: DiagramBlock, options: BlockNodeOptions): DiagramNode {
   return {
     kind: 'diagram',
     diagram: block.diagram,
