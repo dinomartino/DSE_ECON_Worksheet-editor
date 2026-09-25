@@ -19,6 +19,14 @@ import {
   type BackupEntry,
 } from './backup';
 import type { WorksheetStore } from './types';
+import {
+  createFolder,
+  EMPTY_FOLDERS,
+  folderOf,
+  moveToFolder,
+  updateFolders,
+  type FolderState,
+} from './folders';
 
 function memoryStorage(): Storage {
   const map = new Map<string, string>();
@@ -181,5 +189,83 @@ describe('restoring', () => {
     expect(restoreSummary({ restored: [], copied: [], skipped: [], failed: [] }, 0)).toBe(
       'That backup has no worksheets in it.',
     );
+  });
+});
+
+describe('folders in a backup', () => {
+  const filed = (): FolderState => {
+    let state = createFolder(EMPTY_FOLDERS, 'Mocks', 'f-mocks');
+    state = createFolder(state, 'Term 1', 'f-term');
+    return moveToFolder(moveToFolder(state, ['a'], 'f-mocks'), ['b', 'not-backed-up'], 'f-term');
+  };
+
+  it('ride inside the manifest — no zip entry a shipped build would read as a document', async () => {
+    const bytes = await buildBackup([doc('a'), doc('b'), doc('c')], 'T', filed());
+    const zip = await JSZip.loadAsync(bytes);
+    // Exactly what v0.3.0's reader iterates: every .json but the manifest.
+    const read = Object.keys(zip.files).filter((n) => n.endsWith('.json') && n !== MANIFEST_NAME);
+    expect(read.every((name) => name.endsWith('.worksheet.json'))).toBe(true);
+    expect(read).toHaveLength(3);
+
+    const manifest = JSON.parse(await zip.file(MANIFEST_NAME)!.async('string'));
+    expect(manifest.count).toBe(3);
+    // Only the assignments of documents in this backup.
+    expect(manifest.folders.assignments).toEqual({ a: 'f-mocks', b: 'f-term' });
+
+    const { folders, failures } = await readBackup(bytes);
+    expect(failures).toEqual([]);
+    expect(folders.folders.map((f) => f.name)).toEqual(['Mocks', 'Term 1']);
+  });
+
+  it('an older backup, or no folders, has no folders key and reads as none', async () => {
+    const bytes = await buildBackup([doc('a')], 'T', EMPTY_FOLDERS);
+    const zip = await JSZip.loadAsync(bytes);
+    expect(JSON.parse(await zip.file(MANIFEST_NAME)!.async('string')).folders).toBeUndefined();
+    expect((await readBackup(bytes)).folders).toEqual({ folders: [], assignments: {} });
+  });
+
+  it('a mangled manifest costs the filing, never a document', async () => {
+    const zip = new JSZip();
+    zip.file(MANIFEST_NAME, '{ broken');
+    zip.file('a.worksheet.json', stringifyWorksheet(doc('a')));
+    const contents = await readBackup(await zip.generateAsync({ type: 'uint8array' }));
+    expect(contents.worksheets).toHaveLength(1);
+    expect(contents.folders).toEqual({ folders: [], assignments: {} });
+  });
+
+  it('restores filing into an empty library', async () => {
+    const { worksheets, folders } = await readBackup(
+      await buildBackup([doc('a'), doc('b')], 'T', filed()),
+    );
+    await restoreBackup(store(), worksheets, makeId, folders);
+    const state = await store().readFolders();
+    expect(folderOf(state, 'a')?.name).toBe('Mocks');
+    expect(folderOf(state, 'b')?.name).toBe('Term 1');
+  });
+
+  it('merges without overwriting: filed documents stay put, same-named folders are reused', async () => {
+    const s = store();
+    const a = doc('a');
+    await s.save(a);
+    await s.save(doc('b', 'Mine'));
+    // Here: a folder named "mocks" of our own, and `a` filed somewhere else.
+    await updateFolders(s, (state) =>
+      moveToFolder(createFolder(createFolder(state, 'mocks', 'mine'), 'Elsewhere', 'else'), ['a'], 'else'),
+    );
+    const { worksheets, folders } = await readBackup(
+      await buildBackup([a, doc('b', 'Theirs'), doc('c')], 'T', {
+        ...filed(),
+        assignments: { a: 'f-mocks', b: 'f-mocks', c: 'f-mocks' },
+      }),
+    );
+    const report = await restoreBackup(s, worksheets, () => 'b-copy', folders);
+
+    expect(report.skipped).toEqual(['Doc a']);
+    const state = await s.readFolders();
+    expect(folderOf(state, 'a')?.id).toBe('else'); // skipped, and already filed: untouched
+    expect(folderOf(state, 'b')).toBeUndefined(); // ours, not in the backup's folder
+    expect(folderOf(state, 'b-copy')?.id).toBe('mine'); // the copy, into the reused folder
+    expect(folderOf(state, 'c')?.id).toBe('mine');
+    expect(state.folders.map((f) => f.name)).toEqual(['mocks', 'Elsewhere', 'Term 1']);
   });
 });

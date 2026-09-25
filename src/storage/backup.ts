@@ -5,6 +5,15 @@ import { CURRENT_SCHEMA_VERSION } from '@/model/migrations';
 import type { Worksheet } from '@/model/types';
 import { parseWorksheet, stringifyWorksheet, summarize, worksheetTitle } from './document';
 import type { WorksheetStore } from './types';
+import {
+  foldersForBackup,
+  isEmptyFolders,
+  mergeBackupFolders,
+  serializeFolders,
+  updateFolders,
+  usableFolders,
+  type FolderState,
+} from './folders';
 
 /**
  * "Back up all" and "Restore from backup": every saved document in one `.zip`.
@@ -12,6 +21,10 @@ import type { WorksheetStore } from './types';
  * Each entry is exactly what "Download .json" writes, so a backup can also be unzipped
  * and opened a file at a time. Trash is left out: a backup is what the teacher keeps,
  * and restoring it would bring deleted work back as live documents.
+ *
+ * Folders ride **inside `manifest.json`**, never as an entry of their own: every shipped
+ * build's `readBackup` parses each `.json` entry except the manifest as a worksheet, so
+ * a `folders.json` entry would restore there as an unreadable (or blank) document.
  */
 
 export const MANIFEST_NAME = 'manifest.json';
@@ -23,6 +36,8 @@ export interface BackupManifest {
   createdAt: string;
   count: number;
   schemaVersion: number;
+  /** The folders and the assignments of the documents in this backup; absent if none. */
+  folders?: Record<string, unknown>;
 }
 
 export interface BackupEntry {
@@ -35,6 +50,8 @@ export interface BackupContents {
   worksheets: BackupEntry[];
   /** Entries that did not parse as a worksheet; the rest still restore. */
   failures: { name: string; reason: string }[];
+  /** From the manifest; empty for an older backup, or an unreadable manifest. */
+  folders: FolderState;
 }
 
 export class BackupError extends Error {}
@@ -59,6 +76,7 @@ export function backupFileName(now = new Date()): string {
 export async function buildBackup(
   worksheets: Worksheet[],
   createdAt = new Date().toISOString(),
+  folders?: FolderState,
 ): Promise<Uint8Array> {
   const zip = new JSZip();
   const manifest: BackupManifest = {
@@ -69,6 +87,8 @@ export async function buildBackup(
     count: worksheets.length,
     schemaVersion: CURRENT_SCHEMA_VERSION,
   };
+  const filed = folders && foldersForBackup(folders, worksheets.map((worksheet) => worksheet.id));
+  if (filed && !isEmptyFolders(filed)) manifest.folders = serializeFolders(filed);
   zip.file(MANIFEST_NAME, JSON.stringify(manifest, null, 2));
   for (const worksheet of worksheets) {
     zip.file(backupEntryName(worksheet), stringifyWorksheet(worksheet));
@@ -90,6 +110,13 @@ export async function readBackup(data: Uint8Array | ArrayBuffer | Blob): Promise
   }
   const worksheets: BackupEntry[] = [];
   const failures: BackupContents['failures'] = [];
+  let folders = usableFolders(undefined);
+  try {
+    const manifest = await zip.file(MANIFEST_NAME)?.async('string');
+    if (manifest) folders = usableFolders(JSON.parse(manifest).folders);
+  } catch {
+    // An unreadable manifest costs the filing, never a document.
+  }
   const entries = Object.values(zip.files)
     .filter((entry) => !entry.dir)
     .filter((entry) => {
@@ -115,7 +142,7 @@ export async function readBackup(data: Uint8Array | ArrayBuffer | Blob): Promise
       });
     }
   }
-  return { worksheets, failures };
+  return { worksheets, failures, folders };
 }
 
 export interface RestoreReport {
@@ -141,15 +168,21 @@ function isQuotaError(cause: unknown): boolean {
  * "… (restored)" (the filing name — the printed title is untouched). An id in the Trash
  * also becomes a copy; the Trash's own Restore is how that one comes back. Each save is
  * caught on its own, so a full `localStorage` reports which ones did not fit.
+ *
+ * `folders` (from the manifest) merge in the same spirit: a restored document is filed
+ * as the backup had it only if it has no folder here; existing folders are reused.
  */
 export async function restoreBackup(
   store: WorksheetStore,
   entries: BackupEntry[],
   makeId: () => string = newId,
+  folders?: FolderState,
 ): Promise<RestoreReport> {
   const report: RestoreReport = { restored: [], copied: [], skipped: [], failed: [] };
   const live = new Set((await store.list()).map((entry) => entry.id));
   const trashed = new Set((await store.listTrash()).map((entry) => entry.id));
+  /** Backup document id → the id it was saved under here. */
+  const placed = new Map<string, string>();
 
   for (const { worksheet } of entries) {
     const title = worksheetTitle(worksheet);
@@ -165,6 +198,7 @@ export async function restoreBackup(
     try {
       await store.save(toSave);
       live.add(toSave.id);
+      placed.set(worksheet.id, toSave.id);
       (asCopy ? report.copied : report.restored).push(title);
     } catch (cause) {
       report.failed.push({
@@ -175,6 +209,12 @@ export async function restoreBackup(
       // for an id that held nothing before.
       if (asCopy || !existing) await store.remove(toSave.id).catch(() => undefined);
     }
+  }
+  if (folders && !isEmptyFolders(folders)) {
+    // The documents are in; losing their filing is not worth failing the restore over.
+    await updateFolders(store, (state) => mergeBackupFolders(state, folders, placed)).catch(
+      () => undefined,
+    );
   }
   return report;
 }

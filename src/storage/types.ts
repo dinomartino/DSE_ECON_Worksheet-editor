@@ -1,4 +1,5 @@
 import type { Worksheet } from '@/model/types';
+import type { FolderState } from './folders';
 
 /**
  * Storage (§6). Deliberately an interface so a server-backed store can slot in
@@ -55,12 +56,18 @@ export interface WorksheetStore {
   purge(id: string): Promise<void>;
   emptyTrash(): Promise<void>;
   /**
+   * The dashboard's folders and which document is in which (§ folders.ts). Never
+   * throws: anything unreadable is "no folders", so every document shows at root.
+   */
+  readFolders(): Promise<FolderState>;
+  writeFolders(state: FolderState): Promise<void>;
+  /**
    * Forget every saved document.
    *
    * Distinct from `remove` per id because the editor reopens the most recently saved
    * worksheet on load, so "start completely fresh" is a statement about the *store*,
    * not about one document — deleting them one at a time would need the caller to
-   * enumerate what it is trying to forget. Takes Trash with it.
+   * enumerate what it is trying to forget. Takes Trash and folders with it.
    */
   clear(): Promise<void>;
 }

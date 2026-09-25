@@ -5,6 +5,14 @@ import { parseWorksheet, stringifyWorksheet, summarize } from './document';
 import type { TrashedSummary, WorksheetStore, WorksheetSummary } from './types';
 import { usableSummaries, withSummaryFirst } from './summaries';
 import { settleTrash, untrashed, usableTrash } from './trash';
+import {
+  copyAssignment,
+  forgetDocuments,
+  isEmptyFolders,
+  parseFolders,
+  serializeFolders,
+  type FolderState,
+} from './folders';
 
 /**
  * The desktop store: real files under the app's data directory.
@@ -35,6 +43,12 @@ const docPath = (id: string) => `${DIR}/${id}${SUFFIX}`;
 const TRASH_DIR = `${DIR}/trash`;
 const TRASH_INDEX = `${TRASH_DIR}/index.json`;
 const trashPath = (id: string) => `${TRASH_DIR}/${id}${SUFFIX}`;
+/**
+ * Folders and the document→folder map (§ folders.ts), beside `index.json`. Not a
+ * `*.worksheet.json`, so no build's rebuild-by-scan reads it as a document, and not
+ * `index.json`, so an older build's `clear()` leaves it (harmless: it names no file).
+ */
+const FOLDERS = `${DIR}/folders.json`;
 
 /** Absolute path of `$APPDATA/worksheets` on desktop; `undefined` on the web. */
 export async function savedWorksheetsFolder(): Promise<string | undefined> {
@@ -185,6 +199,46 @@ export class FileWorksheetStore implements WorksheetStore {
       // Already gone; the row still has to go.
     }
     await this.writeIndex(summaries.filter((entry) => entry.id !== id));
+    // A trashed copy of the same id keeps its folder, to come back to on Restore.
+    if (!(await fs.exists(trashPath(id), opts).catch(() => false))) await this.forgetFolders([id]);
+  }
+
+  async readFolders(): Promise<FolderState> {
+    try {
+      const fs = await this.fs();
+      const opts = await this.base();
+      if (!(await fs.exists(FOLDERS, opts))) return parseFolders(undefined);
+      return parseFolders(await fs.readTextFile(FOLDERS, opts));
+    } catch {
+      return parseFolders(undefined);
+    }
+  }
+
+  async writeFolders(state: FolderState): Promise<void> {
+    const fs = await this.fs();
+    const opts = await this.base();
+    if (isEmptyFolders(state) && !state.__unknown) {
+      if (await fs.exists(FOLDERS, opts)) await fs.remove(FOLDERS, opts);
+      return;
+    }
+    await this.ensureDir();
+    await fs.writeTextFile(FOLDERS, JSON.stringify(serializeFolders(state), null, 2), opts);
+  }
+
+  /** Change the folders file only if it holds something to change. Best effort. */
+  private async editFolders(recipe: (state: FolderState) => FolderState): Promise<void> {
+    try {
+      const state = await this.readFolders();
+      const next = recipe(state);
+      if (next !== state) await this.writeFolders(next);
+    } catch {
+      // Filing only: a stale assignment names a document that no longer lists.
+    }
+  }
+
+  private forgetFolders(ids: string[]): Promise<void> {
+    if (ids.length === 0) return Promise.resolve();
+    return this.editFolders((state) => forgetDocuments(state, ids));
   }
 
   /**
@@ -280,6 +334,7 @@ export class FileWorksheetStore implements WorksheetStore {
           // Already gone.
         }
       }
+      await this.forgetUnlessLive(expired.map((row) => row.id));
       if (changed || present.length !== rows.length) await this.writeTrashIndex(kept);
       return kept;
     } catch {
@@ -307,6 +362,7 @@ export class FileWorksheetStore implements WorksheetStore {
       const worksheet = parseWorksheet(await fs.readTextFile(trashPath(id), opts));
       const copyId = newId();
       await this.save({ ...worksheet, id: copyId });
+      await this.editFolders((state) => copyAssignment(state, id, copyId));
       await fs.remove(trashPath(id), opts);
       await this.writeTrashIndex(rest);
       return copyId;
@@ -333,10 +389,25 @@ export class FileWorksheetStore implements WorksheetStore {
       // Already gone; the row still has to go.
     }
     await this.writeTrashIndex((await this.trashRows()).filter((row) => row.id !== id));
+    await this.forgetUnlessLive([id]);
+  }
+
+  /** Purged from Trash: forget the folder, unless the same id is also live. */
+  private async forgetUnlessLive(ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    const fs = await this.fs();
+    const opts = await this.base();
+    const gone: string[] = [];
+    for (const id of ids) {
+      if (!(await fs.exists(docPath(id), opts).catch(() => true))) gone.push(id);
+    }
+    await this.forgetFolders(gone);
   }
 
   async emptyTrash(): Promise<void> {
+    const trashed = (await this.trashRows().catch(() => [] as TrashedSummary[])).map((r) => r.id);
     await this.clearTrashDir();
+    await this.forgetUnlessLive(trashed);
     const fs = await this.fs();
     if (await fs.exists(TRASH_DIR, await this.base())) await this.writeTrashIndex([]);
   }
@@ -360,12 +431,17 @@ export class FileWorksheetStore implements WorksheetStore {
   /**
    * Forget every saved document — only this app's own worksheets directory, never the
    * wider app data tree, which other things (window state, settings) also live in.
-   * Trash included.
+   * Trash and folders included.
    */
   async clear(): Promise<void> {
     const fs = await this.fs();
     const opts = await this.base();
     await this.clearTrashDir();
+    try {
+      if (await fs.exists(FOLDERS, opts)) await fs.remove(FOLDERS, opts);
+    } catch {
+      // Keep going: the documents matter more than their filing.
+    }
     if (!(await fs.exists(DIR, opts))) return;
     for (const entry of await fs.readDir(DIR, opts)) {
       if (!entry.name) continue;

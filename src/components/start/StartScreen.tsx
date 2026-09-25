@@ -14,12 +14,13 @@ import {
 } from '@/platform';
 import { Dialog } from '@/components/ui/Dialog';
 import { AppMark } from '@/components/ui/AppMark';
-import { ArchiveIcon, FolderIcon, FolderOpenIcon } from '@/components/ui/icons';
+import { ArchiveIcon, FolderIcon, FolderOpenIcon, SheetIcon } from '@/components/ui/icons';
 import type { MenuItem } from '@/components/ui/Menu';
 import { VersionLine } from '@/components/editor/UpdateBanner';
 import { FeedbackDialog } from '@/components/feedback/FeedbackDialog';
 import { describeDocument } from '@/feedback/feedback';
-import { FileDashboard, type DocumentActions } from './FileDashboard';
+import { FileDashboard, type DocumentActions, type FolderActions } from './FileDashboard';
+import { readDashboardFolder, writeDashboardFolder } from './dashboard';
 import { NEW_WORKSHEET_FORM_ID, NewWorksheetForm } from './NewWorksheetForm';
 import { TrashList } from './TrashList';
 import { newId } from '@/model/factories';
@@ -34,9 +35,28 @@ import {
   savedWorksheetsFolder,
   TRASH_RETENTION_DAYS,
   worksheetStore,
+  EMPTY_FOLDERS,
+  FOLDER_NAME_MAX,
+  folderCounts,
+  folderNameProblem,
+  folderOf,
+  sortedFolders,
+  updateFolders,
+  type Folder,
+  type FolderState,
   type TrashedSummary,
   type WorksheetSummary,
 } from '@/storage';
+import {
+  copyAssignment,
+  createFolder,
+  deleteFolder,
+  moveToFolder,
+  renameFolder,
+} from '@/storage/folders';
+
+/** The folder-name dialog: a new folder (optionally filing one document into it), or a rename. */
+type Naming = { folder?: Folder; fileDoc?: WorksheetSummary };
 
 /** A result worth reading: backup written, backup restored, document restored. */
 type Notice = {
@@ -91,6 +111,12 @@ export function StartScreen({
   const [busy, setBusy] = useState<'backup' | 'restore' | undefined>();
   const [dragging, setDragging] = useState(false);
   const [feedback, setFeedback] = useState(false);
+  const [folders, setFolders] = useState<FolderState>(EMPTY_FOLDERS);
+  // Lazy: the start screen renders only after hydration (`EditorHost`).
+  const [folderId, setFolderId] = useState<string | undefined>(readDashboardFolder);
+  const [naming, setNaming] = useState<Naming | undefined>();
+  const [moving, setMoving] = useState<WorksheetSummary | undefined>();
+  const [deletingFolder, setDeletingFolder] = useState<Folder | undefined>();
   const closeFeedback = useCallback(() => setFeedback(false), []);
   const fileInput = useRef<HTMLInputElement>(null);
   const backupInput = useRef<HTMLInputElement>(null);
@@ -100,8 +126,10 @@ export function StartScreen({
   const refresh = useCallback(async () => {
     const next = await worksheetStore.list();
     const trash = await worksheetStore.listTrash();
+    const filed = await worksheetStore.readFolders();
     setSummaries(next);
     setTrashRows(trash);
+    setFolders(filed);
     setLoaded(true);
   }, []);
 
@@ -113,9 +141,11 @@ export function StartScreen({
     void (async () => {
       const next = await worksheetStore.list();
       const trash = await worksheetStore.listTrash();
+      const filed = await worksheetStore.readFolders();
       if (!live) return;
       setSummaries(next);
       setTrashRows(trash);
+      setFolders(filed);
       setLoaded(true);
     })();
     return () => {
@@ -157,8 +187,60 @@ export function StartScreen({
     // Saved, not opened. Duplicating is a filing action — the teacher is looking at a
     // list and making a copy to work on *later*; opening it would take the screen away
     // from the list they are still using.
-    await worksheetStore.save(duplicateWorksheet(worksheet, newId()));
+    const copy = duplicateWorksheet(worksheet, newId());
+    await worksheetStore.save(copy);
+    // The copy sits beside its original, folder included.
+    await refile((state) => copyAssignment(state, summary.id, copy.id));
     await refresh();
+  };
+
+  /** Every folder change reads what is stored now, changes it, writes it back. */
+  const refile = async (recipe: (state: FolderState) => FolderState): Promise<boolean> => {
+    try {
+      setFolders(await updateFolders(worksheetStore, recipe));
+      return true;
+    } catch {
+      setError('Could not save that folder change.');
+      return false;
+    }
+  };
+
+  const enterFolder = (id: string | undefined) => {
+    setFolderId(id);
+    writeDashboardFolder(id);
+  };
+
+  const folderActions: FolderActions = {
+    create: () => setNaming({}),
+    rename: (folder) => setNaming({ folder }),
+    remove: (folder) => {
+      // An empty folder goes at once; one with documents asks first.
+      const count = folderCounts(folders, summaries.map((row) => row.id)).get(folder.id) ?? 0;
+      if (count > 0) setDeletingFolder(folder);
+      else void removeFolder(folder);
+    },
+    drop: (docId, target) => void refile((state) => moveToFolder(state, [docId], target)),
+  };
+
+  const removeFolder = async (folder: Folder) => {
+    if (await refile((state) => deleteFolder(state, folder.id))) {
+      if (folderId === folder.id) enterFolder(undefined);
+    }
+  };
+
+  const nameFolder = async ({ folder, fileDoc }: Naming, name: string) => {
+    if (folder) {
+      await refile((state) => renameFolder(state, folder.id, name));
+      return;
+    }
+    const id = newId();
+    const done = await refile((state) => {
+      const made = createFolder(state, name, id);
+      return fileDoc ? moveToFolder(made, [fileDoc.id], id) : made;
+    });
+    // A folder made from the list opens; one made while filing a document leaves the
+    // teacher where they were.
+    if (done && !fileDoc) enterFolder(id);
   };
 
   /**
@@ -225,7 +307,12 @@ export function StartScreen({
         setError('There is nothing saved to back up yet.');
         return;
       }
-      const path = await saveFile(await buildBackup(worksheets), backupFileName(), ZIP_FILTERS);
+      const filed = await worksheetStore.readFolders();
+      const path = await saveFile(
+        await buildBackup(worksheets, undefined, filed),
+        backupFileName(),
+        ZIP_FILTERS,
+      );
       // A cancelled desktop sheet wrote nothing, so there is nothing to report.
       if (path === undefined && isDesktop()) return;
       setNotice({
@@ -252,8 +339,8 @@ export function StartScreen({
     setBusy('restore');
     try {
       const { readBackup, restoreBackup, restoreSummary } = await import('@/storage/backup');
-      const { worksheets, failures } = await readBackup(data);
-      const report = await restoreBackup(worksheetStore, worksheets);
+      const { worksheets, failures, folders: filed } = await readBackup(data);
+      const report = await restoreBackup(worksheetStore, worksheets, undefined, filed);
       setNotice({
         message: restoreSummary(report, failures.length),
         details: [...failures, ...report.failed].map((f) => `${f.name} — ${f.reason}`),
@@ -340,6 +427,7 @@ export function StartScreen({
             }
           })()
       : undefined,
+    move: setMoving,
     remove: setConfirmingDelete,
   };
 
@@ -485,6 +573,10 @@ export function StartScreen({
             trashCount={trashRows.length}
             onShowTrash={() => setShowingTrash(true)}
             libraryItems={libraryItems}
+            folders={folders}
+            folderId={folderId}
+            onFolderChange={enterFolder}
+            folderActions={folderActions}
           />
         )}
       </main>
@@ -552,6 +644,15 @@ export function StartScreen({
               initialType={creating}
               onCreate={(worksheet, language) => {
                 setCreating(undefined);
+                // Started inside a folder, it is filed there. Written before the document
+                // itself: an assignment naming nothing yet is harmless, and it is in
+                // place by the time the host saves the document.
+                const target = folderId && folders.folders.some((f) => f.id === folderId);
+                if (target) {
+                  void updateFolders(worksheetStore, (state) =>
+                    moveToFolder(state, [worksheet.id], folderId),
+                  ).catch(() => undefined);
+                }
                 onOpen(worksheet, language);
               }}
             />
@@ -569,6 +670,71 @@ export function StartScreen({
             await refresh();
           }}
         />
+      )}
+
+      {naming && (
+        <FolderNameDialog
+          folders={folders}
+          folder={naming.folder}
+          filing={naming.fileDoc}
+          onClose={() => setNaming(undefined)}
+          onDone={(name) => {
+            const request = naming;
+            setNaming(undefined);
+            void nameFolder(request, name);
+          }}
+        />
+      )}
+
+      {moving && (
+        <MoveDialog
+          summary={moving}
+          folders={folders}
+          onClose={() => setMoving(undefined)}
+          onMove={(target) => {
+            const docId = moving.id;
+            setMoving(undefined);
+            void refile((state) => moveToFolder(state, [docId], target));
+          }}
+          onNewFolder={() => {
+            const fileDoc = moving;
+            setMoving(undefined);
+            setNaming({ fileDoc });
+          }}
+        />
+      )}
+
+      {deletingFolder && (
+        <Dialog
+          title={`Delete the folder “${deletingFolder.name || 'Untitled folder'}”?`}
+          width={420}
+          onClose={() => setDeletingFolder(undefined)}
+          footer={
+            <>
+              <Button variant="subtle" onClick={() => setDeletingFolder(undefined)}>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  const folder = deletingFolder;
+                  setDeletingFolder(undefined);
+                  void removeFolder(folder);
+                }}
+              >
+                Delete folder
+              </Button>
+            </>
+          }
+        >
+          <p className="px-5 py-5 text-[13px] leading-relaxed text-ink-subtle">
+            {(() => {
+              const count =
+                folderCounts(folders, summaries.map((row) => row.id)).get(deletingFolder.id) ?? 0;
+              return `${count === 1 ? 'Its document moves' : `Its ${count} documents move`} to All documents. No document is deleted.`;
+            })()}
+          </p>
+        </Dialog>
       )}
 
       {confirmingDelete && (
@@ -752,6 +918,134 @@ function RenameDialog({
   );
 }
 
+/** Name a new folder, or rename one. Names are unique, case-blind. */
+function FolderNameDialog({
+  folders,
+  folder,
+  filing,
+  onClose,
+  onDone,
+}: {
+  folders: FolderState;
+  folder?: Folder;
+  /** Filing this document into the new folder once it exists. */
+  filing?: WorksheetSummary;
+  onClose: () => void;
+  onDone: (name: string) => void;
+}) {
+  const [name, setName] = useState(folder?.name ?? '');
+  const problem = folderNameProblem(folders, name, folder?.id);
+  // "Give it a name" is not worth saying before anything is typed.
+  const shown = name.trim() ? problem : undefined;
+  const formId = 'folder-name-form';
+  return (
+    <Dialog
+      title={folder ? 'Rename folder' : 'New folder'}
+      description={
+        filing
+          ? `“${filing.title}” will be filed in it.`
+          : 'Folders group documents here; a document can be in one folder.'
+      }
+      width={420}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="subtle" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="primary" type="submit" form={formId} disabled={!!problem}>
+            {folder ? 'Rename' : filing ? 'Create and move' : 'Create folder'}
+          </Button>
+        </>
+      }
+    >
+      <form
+        id={formId}
+        className="px-5 py-5"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!problem) onDone(name);
+        }}
+      >
+        <input
+          type="text"
+          value={name}
+          autoFocus
+          maxLength={FOLDER_NAME_MAX}
+          placeholder="e.g. S5 2026-27, Mocks"
+          aria-invalid={!!shown}
+          onChange={(event) => setName(event.target.value)}
+          className="h-9 w-full rounded-lg border border-line bg-surface px-2.5 text-[13px] text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
+        />
+        {shown && <p className="mt-2 text-xs text-danger-ink">{shown}</p>}
+      </form>
+    </Dialog>
+  );
+}
+
+/**
+ * "Move to folder…": one click on a destination files the document and closes. Not a
+ * submenu — the overflow menu has none, and a long folder list would outgrow it.
+ */
+function MoveDialog({
+  summary,
+  folders,
+  onClose,
+  onMove,
+  onNewFolder,
+}: {
+  summary: WorksheetSummary;
+  folders: FolderState;
+  onClose: () => void;
+  onMove: (folderId: string | undefined) => void;
+  onNewFolder: () => void;
+}) {
+  const current = folderOf(folders, summary.id)?.id;
+  const destinations: { id: string | undefined; name: string }[] = [
+    { id: undefined, name: 'No folder' },
+    ...sortedFolders(folders).map((f) => ({ id: f.id, name: f.name || 'Untitled folder' })),
+  ];
+  return (
+    <Dialog
+      title={`Move “${summary.title}”`}
+      description="It stays in All documents wherever it is filed."
+      width={420}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="subtle" className="mr-auto" onClick={onNewFolder}>
+            New folder…
+          </Button>
+          <Button variant="subtle" onClick={onClose}>
+            Cancel
+          </Button>
+        </>
+      }
+    >
+      <ul className="px-3 py-3">
+        {destinations.map((destination) => {
+          const here = destination.id === current;
+          return (
+            <li key={destination.id ?? ''}>
+              <button
+                type="button"
+                disabled={here}
+                onClick={() => onMove(destination.id)}
+                className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] text-ink transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent disabled:cursor-default disabled:hover:bg-transparent"
+              >
+                <span className="text-ink-subtle">
+                  {destination.id === undefined ? <SheetIcon /> : <FolderIcon />}
+                </span>
+                <span className="min-w-0 flex-1 truncate">{destination.name}</span>
+                {here && <span className="shrink-0 text-[11px] text-ink-subtle">Here now</span>}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </Dialog>
+  );
+}
 
 /**
  * Filled, not the quiet `danger` variant: that one recedes until hovered, which reads as

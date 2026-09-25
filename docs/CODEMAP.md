@@ -135,6 +135,8 @@ Invariants:
 - `src/storage/fileStore.ts:FileWorksheetStore` — `$APPDATA/worksheets/<id>.worksheet.json` + `index.json`
 - `src/storage/summaries.ts:usableSummaries` — per-row validation, shared by both stores
 - `src/storage/trash.ts:usableTrash` · `:settleTrash` — Trash rows (a separate list, 30-day lazy purge)
+- `src/storage/folders.ts:usableFolders` · `:folderOf` · `:updateFolders` · `:mergeBackupFolders` — dashboard folders
+  (metadata, a separate key/file; every failure reads as "at root")
 - `src/storage/backup.ts:buildBackup` · `:readBackup` · `:restoreBackup` — one-zip backup; restore never overwrites
 - `src/storage/document.ts:parseWorksheet` · `:summarize` · `src/storage/download.ts:triggerDownload`
 
@@ -143,6 +145,8 @@ Invariants:
 - Guards: `src/model/backwardCompat.test.ts`, `src/storage/legacyIndex.test.ts`.
 - Trash lives outside what older builds read: key `econ-worksheet-trash` (never under
   `econ-worksheet:`), `worksheets/trash/` on desktop — §Persistence.
+- Folders are never a field on an index row (an older build's rewrite drops it): key
+  `econ-worksheet-folders`, `worksheets/folders.json`; in a backup, inside `manifest.json` — §Persistence.
 
 ## platform / desktop
 
@@ -162,7 +166,7 @@ Invariants:
 `src/components/start/NewWorksheetForm.tsx:NewWorksheetForm` — once-per-document decisions.
 
 - `src/components/start/FileDashboard.tsx:FileDashboard` — grid of first pages / list; search, kind, order
-- `src/components/start/dashboard.ts:visibleSummaries` — the filter and sort, pure
+- `src/components/start/dashboard.ts:visibleSummaries` · `:scopedSummaries` — folder scope, then filter and sort, pure
 - `src/components/start/TrashList.tsx:TrashList` — Restore / Delete forever / Empty Trash
 - `src/components/start/PageThumbnail.tsx:PageThumbnail` · `src/components/start/thumbnail.ts:loadThumbnail` — derived first page
 

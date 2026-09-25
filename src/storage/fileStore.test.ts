@@ -10,6 +10,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createWorksheet } from '@/model/factories';
 import { stringifyWorksheet } from './document';
+import { createFolder, folderOf, moveToFolder, updateFolders } from './folders';
 
 const files = new Map<string, string>();
 const dirs = new Set<string>();
@@ -289,5 +290,88 @@ describe('FileWorksheetStore Trash', () => {
       }
     }
     expect((await store().listTrash()).map((r) => r.id)).toEqual(['a']);
+  });
+});
+
+describe('FileWorksheetStore folders', () => {
+  let clock = Date.parse('2026-09-01T00:00:00.000Z');
+  const store = () => new FileWorksheetStore(() => clock);
+  const FOLDERS = `${DIR}/folders.json`;
+  const file = (s: InstanceType<typeof FileWorksheetStore>, ids: string[]) =>
+    updateFolders(s, (state) => moveToFolder(createFolder(state, 'Mocks', 'f1'), ids, 'f1'));
+  beforeEach(() => {
+    clock = Date.parse('2026-09-01T00:00:00.000Z');
+  });
+
+  it('lives in folders.json beside index.json, and is never read as a document', async () => {
+    await store().save(worksheet('a', '2024-01-01T00:00:00.000Z'));
+    await file(store(), ['a']);
+    expect(JSON.parse(files.get(FOLDERS)!)).toMatchObject({ assignments: { a: 'f1' } });
+
+    // A lost index is rebuilt by scanning: folders.json must not become a row.
+    files.delete(INDEX);
+    expect((await store().list()).map((e) => e.id)).toEqual(['a']);
+    expect(folderOf(await store().readFolders(), 'a')?.name).toBe('Mocks');
+  });
+
+  it('a malformed folders.json lists every document and reads as no folders', async () => {
+    await store().save(worksheet('a', '2024-01-01T00:00:00.000Z'));
+    await store().save(worksheet('b', '2025-01-01T00:00:00.000Z'));
+    files.set(FOLDERS, '[[[');
+    expect((await store().list()).map((e) => e.id)).toEqual(['b', 'a']);
+    expect(await store().readFolders()).toEqual({ folders: [], assignments: {} });
+  });
+
+  it('Trash keeps the folder; Restore, even as a copy, comes back into it', async () => {
+    await store().save(worksheet('a', '2024-01-01T00:00:00.000Z'));
+    await store().save(worksheet('b', '2024-01-01T00:00:00.000Z'));
+    await file(store(), ['a', 'b']);
+    await store().trash('a');
+    expect(await store().restore('a')).toBe('a');
+    expect(folderOf(await store().readFolders(), 'a')?.id).toBe('f1');
+
+    await store().trash('b');
+    await store().save({ ...worksheet('b', '2025-01-01T00:00:00.000Z'), name: 'Live one' });
+    const copy = await store().restore('b');
+    expect(copy).not.toBe('b');
+    expect(folderOf(await store().readFolders(), copy!)?.id).toBe('f1');
+  });
+
+  it('deleting for good forgets the folder; remove() keeps it while a trashed copy exists', async () => {
+    for (const id of ['p', 'e', 'x', 't', 'keep']) {
+      await store().save(worksheet(id, '2024-01-01T00:00:00.000Z'));
+    }
+    await file(store(), ['p', 'e', 'x', 't', 'keep']);
+    await store().trash('p');
+    await store().purge('p');
+    await store().trash('x');
+    clock += 31 * DAY;
+    await store().listTrash();
+    await store().trash('e');
+    await store().emptyTrash();
+    // Same id live and trashed (an older build re-imported it): deleting the live one
+    // leaves the trashed copy its folder.
+    await store().trash('t');
+    await store().save(worksheet('t', '2025-01-01T00:00:00.000Z'));
+    await store().remove('t');
+
+    expect((await store().readFolders()).assignments).toEqual({ t: 'f1', keep: 'f1' });
+  });
+
+  it('clear() removes folders.json; an older build’s clear() leaves it, harmlessly', async () => {
+    await store().save(worksheet('a', '2024-01-01T00:00:00.000Z'));
+    await file(store(), ['a']);
+    // What v0.2/v0.3 clear() removes: top-level *.worksheet.json and index.json only.
+    for (const key of [...files.keys()]) {
+      const rest = key.slice(DIR.length + 1);
+      if (!rest.includes('/') && (rest.endsWith('.worksheet.json') || rest === 'index.json')) {
+        files.delete(key);
+      }
+    }
+    expect(await store().list()).toEqual([]);
+    expect(files.has(FOLDERS)).toBe(true);
+
+    await store().clear();
+    expect(files.has(FOLDERS)).toBe(false);
   });
 });
