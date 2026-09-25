@@ -38,6 +38,7 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
 - **Desktop: Export → PDF opens the print sheet** instead of failing silently.
 - **Print PDF lost every arrowhead and pie hatching** (axis arrows, shift arrows,
   flow-chart arrows, hatched and dotted pie slices). All now print.
+- **Dragging a document onto a folder now works in the desktop app.**
 
 ## 0.3.0 — 2026-09-24
 
