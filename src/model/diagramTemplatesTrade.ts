@@ -378,8 +378,9 @@ function ppfConcaveTrade(): Diagram {
   const a = 0.72;
   const b = 0.78;
   const onFrontier = (deg: number) => ({ x: a * Math.cos((deg * Math.PI) / 180), y: b * Math.sin((deg * Math.PI) / 180) });
-  const home = onFrontier(60);
-  const prod = onFrontier(30);
+  const home = onFrontier(62);
+  // Between the frontier's vertices, so pressing B grabs the point, not the curve's handle.
+  const prod = onFrontier(37);
   const ppf = placeLabel(curve(frontier(a, b), sym('PPF'), { shape: 'curved' }), 0.1, 0.7);
   const pb = point(prod.x, prod.y, sym('B'), { labelSide: 'left' });
   const cpf = derived({ kind: 'tangent', to: ppf.id, at: at(pb) }, [ppf, pb], sym('CPF'), { labelAt: 'start' });
