@@ -1197,6 +1197,13 @@ fallback. The four welfare presets (CS, PS, DWL, tax revenue) are bands built by
   (`areaFillMarkup`). Absent and explicit defaults render byte-identically (pinned).
   New presets are hatched in distinct patterns (`newPresetArea`); `presetArea` — what
   older documents were built from — is unchanged.
+- **The catalogue** (`model/diagramPresets.ts`): each preset names the roles it needs;
+  the menu fills them by guess, or opens a picker when a role has several candidates,
+  and a preset that cannot be drawn says why. Presets are bands of references only.
+  A price given by a point (not a drawn line) needs the `{ on, y }` anchor.
+- **`band.cap`** (optional) trims edge 0 toward edge 1 — at each x, edge 0's height is
+  the median of edge 0, the cap and edge 1 — so a burden-plus-triangle is one area.
+- **Leader labels are placed in `areas` order**, each clear of the earlier ones.
 
 - **Fills draw first, labels last**; hatch is explicit clipped lines, never a `<pattern>`
   (ids collide between the inline SVGs on one page). Literal hex, as all paper paint.
