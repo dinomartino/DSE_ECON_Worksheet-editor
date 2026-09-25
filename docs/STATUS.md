@@ -35,7 +35,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Last verified
 
-- `npm test` — 1691 tests, ~3s. `cargo check` in `src-tauri` clean. Green. `npm run build` green; `npm run samples` exports.
+- `npm test` — 1720 tests, ~3s. `cargo check` in `src-tauri` clean. Green. `npm run build` green; `npm run samples` exports.
 - `npm run typecheck` — clean.
 - `npm run lint` — 44 pre-existing problems (3 errors, 41 warnings) in `Preview.tsx` and
   `InlineEditable.tsx`. Not a regression; do not "fix" by rewriting those files.
@@ -80,12 +80,13 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
+- **2026-09-26** — Diagram fine-tune per the user's reference figure: axis change arrows
+  outside the axes, tick labels on the axis, arrow-only tax/subsidy wedge (direction
+  derived), equilibria unlabelled by default ("Label E₀" opt-in). A5 paper summary bar +
+  target (`src/model/paperSummary.ts`; Paper 2 pace corrected to 1.25 min/mark). Question
+  library design: `docs/design/question-library.md`.
 - **2026-09-25 (night)** — Diagram initiative: core geometry, presets, templates merged
   (one conflict; trade role guess now prefers drawn price lines). Model answer diagram
   on LQ leaves (answer-key `.docx` now embeds pictures). Browser-verified alone.
 - **2026-09-25 (evening)** — Leader arrow geometry; hatch patterns + revenue areas; desktop
   PDF file export (native, per platform); print doubled-marks fix.
-- **2026-09-25 (later)** — Export button unified + desktop print permission; combined
-  answer key; folders + pointer drag; desktop file drop; CHANGELOG.md, release-notes
-  script and What's new; schema-evolution policy, newer-file read-only guard, real Tauri
-  import guard (the documented build failure never fired). Area colours + leader labels.
