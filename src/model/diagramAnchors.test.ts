@@ -222,3 +222,40 @@ describe('detaching relations', () => {
     expect(next.spans![0].to).toEqual({ cross: ['d', 's'] });
   });
 });
+
+describe('shifted copies and bounded parallels', () => {
+  it('a shift is its source moved by `by`, trimmed to the plot, and follows the source', () => {
+    const copy = line('s1', [0, 0], [0, 0], { derive: { kind: 'shift', of: 's', by: { x: 0, y: 0.2 } } });
+    const once = resolveDiagram(base([D, S, copy])).curves[2];
+    close(once.points[0], { x: 0, y: 0.3 });
+    // Trimmed where it leaves the top edge, so the slope survives.
+    close(once.points[1], { x: 0.7, y: 1 });
+    const moved = base([D, line('s', [0.1, 0.1], [1, 1]), copy]);
+    close(resolveDiagram(moved).curves[2].points[0], { x: 0.1, y: 0.3 });
+  });
+
+  it('a shift of a derived source reads the source as resolved', () => {
+    const mc = line('mc', [0, 0], [1, 0], { derive: { kind: 'level', y: 0.4 } });
+    const mc2 = line('mc2', [0, 0], [1, 0], { derive: { kind: 'shift', of: 'mc', by: { x: 0, y: -0.15 } } });
+    const out = resolveDiagram(base([mc, mc2])).curves[1];
+    expect(out.points.every((p) => Math.abs(p.y - 0.25) < 1e-9)).toBe(true);
+  });
+
+  it('a parallel with `ys` spans only those heights', () => {
+    const guide = line('g', [0, 0], [0, 0], {
+      derive: { kind: 'parallel', to: 'd', through: { x: 0.1, y: 0.5 }, ys: [0.3, 0.5] },
+    });
+    const out = resolveDiagram(base([D, guide])).curves[1];
+    close(out.points[0], { x: 0.1, y: 0.5 });
+    close(out.points[1], { x: 0.3, y: 0.3 });
+  });
+
+  it('deleting a shift’s source freezes the copy where it was', () => {
+    const copy = line('s1', [0, 0], [0, 0], { derive: { kind: 'shift', of: 's', by: { x: 0, y: 0.2 } } });
+    const diagram = resolveDiagram(base([D, S, copy]));
+    const next = detachRelations(diagram, { ...diagram, curves: diagram.curves.filter((c) => c.id !== 's') });
+    const frozen = next.curves.find((c) => c.id === 's1')!;
+    expect(frozen.derive).toBeUndefined();
+    close(frozen.points[0], { x: 0, y: 0.3 });
+  });
+});

@@ -46,10 +46,10 @@ the whole schema, one file.
 - `src/model/paperHealth.ts:checkPaper` — the pre-print check, derived; `src/components/editor/PaperHealthPanel.tsx:PaperHealthPanel` shows it
 - `src/model/diagram.ts:Diagram` · `src/model/diagramDraw.ts:applyDrag` · `src/model/diagramTemplates.ts:DIAGRAM_TEMPLATES`
 - `src/model/diagramAreas.ts:areaPolygon` · `:presetArea` · `:detachAreas` — shaded areas as references; `src/model/diagramShift.ts:shiftCurve` — D→D₁ plus the new equilibrium, both equilibria anchored
-- `src/model/diagramAnchors.ts:resolveAnchor` · `:resolveDiagram` · `:detachRelations` — anchored points (`DiagramPointMark.anchor`) and derived curves (`DiagramCurve.derive`: MR, parallel, tangent, level, vertical); resolved values written into `at`/`points`
+- `src/model/diagramAnchors.ts:resolveAnchor` · `:resolveDiagram` · `:detachRelations` — anchored points (`DiagramPointMark.anchor`) and derived curves (`DiagramCurve.derive`: MR, parallel (optional `ys` bounds), shift — a copy that follows its source, tangent, level, vertical); resolved values written into `at`/`points`
 - `src/model/diagramSpans.ts:spanGeometry` · `src/render/diagramSpan.ts:spanLayout` — `Diagram.spans`: bracket, arrow, double arrow, dimension between two places; `src/model/diagramDraw.ts:snapPlace` · `:attachPointOnDrop` — attach on release
 - `src/model/diagram.ts:axisValue` · `:axisUnit` · `:axisTickLabel` — `DiagramAxis.max` value scale; `src/components/editor/DiagramRelationControls.tsx:SpanInspector` · `:CurveRelationControls`
-- `src/model/diagramTemplates.ts:DIAGRAM_TEMPLATE_GROUPS` · `:buildFromTemplate` — one template per scheme diagram type, by topic; bodies in `src/model/diagramTemplatesMarket.ts` · `src/model/diagramTemplatesMacro.ts` · `src/model/diagramTemplatesTrade.ts`, written with `src/model/diagramTemplateKit.ts:mark` · `:changeArrows` · `:reading` (equilibria computed from curves). A shipped id is never removed
+- `src/model/diagramTemplates.ts:DIAGRAM_TEMPLATE_GROUPS` · `:buildFromTemplate` — one template per scheme diagram type, by topic; bodies in `src/model/diagramTemplatesMarket.ts` · `src/model/diagramTemplatesMacro.ts` · `src/model/diagramTemplatesTrade.ts`, written in relations with `src/model/diagramTemplateKit.ts:eq` · `:shiftOf` · `:priceLine` · `:reading` · `:axisArrows` · `:shade` · `:finish` (anchored equilibria, derived curves, spans, Shade presets; `finish` resolves them so older builds draw the shape). A shipped id is never removed
 - `src/model/diagramAreas.ts:areaPolygon` · `:presetArea` · `:detachAreas` — shaded areas as references; `src/model/diagramShift.ts:shiftCurve` — D→D₁ plus the new equilibrium
 - `src/model/diagramAreas.ts:newPresetArea` · `:PRESET_PATTERNS` — a welfare preset as the menu adds it (hatched, its own pattern); `:revenueArea` · `:rectangleDifference` · `:guessRevenuePoints` — TR, revenue gain/loss (`DiagramArea.revenue`, derived rectangle or L)
 - `src/model/diagramPresets.ts:SHADE_PRESETS` · `:planPreset` · `:guessRoles` · `:presetStatus` — the grouped Shade catalogue: presets declare roles (D, S, S₁, price lines, MR, MC), the menu guesses or asks; `:onCurveAtLevelSupported` gates point-level prices on the `{ on, y }` anchor
@@ -253,6 +253,7 @@ Invariant: chrome uses semantic tokens (`src/app/globals.css`); anything on the 
 - `scripts/demo/diagrams.mjs:diagramStoryboard` — the diagram film (`npm run demo:diagrams`): one recording, numbered stills and the exported `.docx` into `demo-media/diagrams/`; seed from `scripts/demo/diagrams-seed.test.ts`
 - `scripts/emit-samples.test.ts` — real `.docx` files (`npm run samples`)
 - `scripts/template-gallery.mjs` — every diagram template screenshotted (en / zh / bilingual) into a folder; `--app` also seeds them into the running app and shoots the sheets and the picker
+- `scripts/relation-drag.mjs` — drags one curve or point per retrofitted template on the real canvas, before/after shots, and the Shade menu on the tax diagram
 - `scripts/cover-verify.mjs` · `scripts/lq-verify.mjs` — the three backends agree
 - `scripts/cover-fixtures.test.ts` · `scripts/lq-fixtures.test.ts` · `scripts/q6-sample.test.ts`
 - `scripts/sync-version.mjs` — `package.json` → `src-tauri/tauri.conf.json` + `Cargo.toml`
@@ -271,3 +272,4 @@ harnesses run by hand (`vitest.config.ts` includes them, `npm test` does not).
 - `src/model/backwardCompat.test.ts` · `src/storage/legacyIndex.test.ts` — the two guards
 - `src/registry/registry.test.ts` — the no-type-branching grep
 - `src/test/codemap.test.ts` — keeps these docs honest
+- `docs/Diagram_Requirements/COVERAGE.md` — the §8 checklist, item by item: which template, preset or relation meets it; `src/model/diagramTemplateRelations.test.ts` checks the ids it cites and that the templates' relations hold under a drag

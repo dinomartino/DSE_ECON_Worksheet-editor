@@ -407,6 +407,11 @@ export function applyDrag(
             const x = clampUnit(derive.x + dx);
             return { ...curve, derive: { ...derive, x }, points: curve.points.map((p) => ({ x, y: p.y })) };
           }
+          // A shifted copy keeps following its source: the drag resizes the shift.
+          if (derive?.kind === 'shift') {
+            const by = { x: derive.by.x + dx, y: derive.by.y + dy };
+            return { ...curve, derive: { ...derive, by }, points: shift(curve.points, dx, dy) };
+          }
           return { ...withoutDerive(curve), points: shift(curve.points, dx, dy) };
         }),
       };

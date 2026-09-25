@@ -787,9 +787,12 @@ function spanSvg(
     .join('');
   const heads = layout.heads.map((head) => arrowheadPath(head.from, head.end, ARROWHEAD * scale)).join('');
   const lines = pickSides(span.label, language);
+  // Extra lines grow away from the shaft: up for a label above it, both ways beside it.
+  const extra = (lines.length - 1) * FONT_SIZE * scale * 1.15;
+  const lift = layout.label.baseline === 'auto' ? extra : layout.label.baseline === 'middle' ? extra / 2 : 0;
   const label =
     lines.length > 0
-      ? textAt(lines, layout.label.x, layout.label.y, {
+      ? textAt(lines, layout.label.x, layout.label.y - lift, {
           anchor: layout.label.anchor,
           baseline: layout.label.baseline,
           fontSize: FONT_SIZE * scale,

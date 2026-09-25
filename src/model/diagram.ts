@@ -72,7 +72,10 @@ export type DiagramPlace = DiagramAnchorRef | DiagramPoint;
 export type DiagramCurveDerive =
   /** Same vertical intercept as `of` (read as the line through its ends), twice the slope. */
   | { kind: 'marginalRevenue'; of: string }
-  | { kind: 'parallel'; to: string; through: DiagramPlace }
+  /** `ys` bounds the heights it spans (a short guide line); absent, it crosses the plot. */
+  | { kind: 'parallel'; to: string; through: DiagramPlace; ys?: [number, number] }
+  /** `of`'s own points moved by `by`, trimmed to the plot: D₁, or S₁ = S + t. Moves with `of`. */
+  | { kind: 'shift'; of: string; by: DiagramPoint }
   /** Tangent to `to` at the point on it nearest `at`. */
   | { kind: 'tangent'; to: string; at: DiagramPlace }
   | { kind: 'level'; y: DiagramAnchorRef | number; from?: number; to?: number }

@@ -18,6 +18,7 @@ const DOCS = [
   'docs/GLOSSARY.md',
   'docs/STATUS.md',
   'docs/IDEAS.md',
+  'docs/Diagram_Requirements/COVERAGE.md',
 ];
 
 /** A backticked token that starts with one of the repo's top-level directories. */
