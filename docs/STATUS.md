@@ -30,12 +30,20 @@ off the bottom.** It is the first thing a fresh session reads — then
   `src-tauri/src/pdf/` (macOS WebKit save-job, Windows WebView2 PrintToPdf — never run
   on Windows). Each feature browser-verified alone;
   **no browser pass of the merged whole, and nothing run in the desktop shell.**
+- **Syllabus-adaptive diagrams (2026-09-25, merged on `develop`)** from
+  `docs/Diagram_Requirements/` (A-level group out of scope): anchored points, derived
+  curves (MR, parallel, tangent, level, vertical) and spans (`src/model/diagramAnchors.ts`,
+  `diagramSpans.ts`, `render/diagramSpan.ts`); 19 welfare presets + grouped Shade menu
+  (`src/model/diagramPresets.ts`); 47 templates grouped by topic
+  (`diagramTemplatesMarket.ts` · `Macro` · `Trade`, `scripts/template-gallery.mjs`); model
+  answer diagram on LQ leaves. **Next:** retrofit templates onto anchors/derived/spans/
+  presets, coverage matrix vs §8 checklist, demo storyboard; browser pass of the merged whole.
 - **Feature backlog** — `docs/IDEAS.md`, ranked from the 2026-09-24 competitor research in
   `docs/research/2026-09-competitive/`. Pick the next initiative from there.
 
 ## Last verified
 
-- `npm test` — 1581 tests, ~3s. `cargo check` in `src-tauri` clean. Green. `npm run build` green; `npm run samples` exports.
+- `npm test` — 1671 tests, ~3s. `cargo check` in `src-tauri` clean. Green. `npm run build` green; `npm run samples` exports.
 - `npm run typecheck` — clean.
 - `npm run lint` — 44 pre-existing problems (3 errors, 41 warnings) in `Preview.tsx` and
   `InlineEditable.tsx`. Not a regression; do not "fix" by rewriting those files.
@@ -69,26 +77,3 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **macOS will ask for Documents access** the first time a dialog creates the default
   folder; there is no `NSDocumentsFolderUsageDescription`, so the prompt is generic.
 - **Thumbnails are approximate** — no header/footer/page furniture, one language, rough
-  page end. See SYSTEM_ARCHITECTURE §The file dashboard.
-- **The updater signing key** lives only at `~/.tauri/econ-worksheet.key`. Lose it and no
-  installed app can ever accept another update.
-- **`app.security.csp` is `null`** in `src-tauri/tauri.conf.json` — Next's static export
-  inlines its bootstrap scripts. Tightening it means nonced scripts first.
-- **A bare `npx vitest run` rewrites the frozen corpus**: `scripts/emit-v1-corpus.test.ts`
-  runs and regenerates `src/test/corpus/v1-published.json`. Always use `npm test`; if the
-  corpus shows as modified, `git checkout` it. Consider excluding that script from the
-  default vitest include.
-- **`scripts/*.test.ts` are not in `npm test`** (which is `vitest run src`), though
-  `vitest.config.ts` includes them. They are hand-run harnesses; nothing in CI catches a
-  break in them.
-
-## Log
-
-- **2026-09-25 (night)** — Model answer diagram on a long-question leaf: teacher version,
-  answer key (its `.docx` now embeds pictures), same diagram tools. Browser-verified.
-- **2026-09-25 (evening)** — Leader arrow geometry; hatch patterns + revenue areas; desktop
-  PDF file export (native, per platform); print doubled-marks fix.
-- **2026-09-25 (later)** — Export button unified + desktop print permission; combined
-  answer key; folders + pointer drag; desktop file drop; CHANGELOG.md, release-notes
-  script and What's new; schema-evolution policy, newer-file read-only guard, real Tauri
-  import guard (the documented build failure never fired). Area colours + leader labels.
