@@ -27,6 +27,7 @@ import {
   findFigureBlock,
   findTableBlock,
   insideSourceBody,
+  isAnswerDiagram,
   isFormattable,
   sourceCountAround,
   targetLayoutElementId,
@@ -5007,12 +5008,15 @@ export function Preview({
      * a source or figure row still inserts — `insertBlockAfter` resolves a child to
      * its row's own position — and a cell inserts below its whole table.
      */
+    // A model answer diagram is a field, not a list entry: nothing lands after it.
     const insertAfterId =
       payload.kind === "text"
         ? "blockId" in payload.target
           ? payload.target.blockId
           : undefined
-        : payload.blockId;
+        : isAnswerDiagram(worksheet, payload.blockId)
+          ? undefined
+          : payload.blockId;
     if (insertAfterId) {
       groups.push({
         label: payload.kind === "cell" ? "Insert below the table" : "Insert below",
