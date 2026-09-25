@@ -157,6 +157,15 @@ export type DiagramAreaEdge = { curve: string } | { level: number | DiagramAncho
 
 export type DiagramAreaFill = 'shade' | 'hatch';
 
+/**
+ * A named paper colour, not a hex: a curated set whose tints differ in lightness, so
+ * areas stay distinguishable on a monochrome photocopy. Hex lives in `render/diagram.ts`.
+ */
+export type DiagramAreaColor = 'grey' | 'yellow' | 'green' | 'blue' | 'red' | 'purple';
+
+/** Where an area's label goes: `auto` is inside when it fits, else on a leader. */
+export type DiagramAreaLabelPlacement = 'auto' | 'inside' | 'leader';
+
 export interface DiagramArea {
   id: string;
   /** The region between two edges across `from`..`to` — how every preset is stored. */
@@ -165,9 +174,13 @@ export interface DiagramArea {
   vertices?: DiagramPoint[];
   /** Absent = `shade`, a light grey tint. */
   fill?: DiagramAreaFill;
+  /** Absent = `grey`. The tint of a shade, the ink of a hatch. */
+  color?: DiagramAreaColor;
   label?: BiText;
   /** Nudge for the label, in unit space, from the region's centroid. */
   labelOffset?: DiagramPoint;
+  /** Absent = `auto`. */
+  labelPlacement?: DiagramAreaLabelPlacement;
 }
 
 /** One axis: its title, whether it carries an arrowhead, and its tick marks. */

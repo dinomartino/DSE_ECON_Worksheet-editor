@@ -1186,6 +1186,18 @@ fallback. The four presets (CS, PS, DWL, tax revenue) are bands built by `preset
 - **Fills draw first, labels last**; hatch is explicit clipped lines, never a `<pattern>`
   (ids collide between the inline SVGs on one page). Literal hex, as all paper paint.
 - **Label = centroid + `labelOffset`** (`areaLabelAnchor`, shared with the canvas).
+- **Colour is a named key** (`color`, absent = grey), mapped to hex by `AREA_PALETTE`:
+  the shade's tint and the hatch's ink. Tints step down in lightness so a monochrome
+  photocopy still tells them apart. Grey is the old `#d9d9d9`/`#000` — byte-identical.
+- **A label that does not fit goes out on a leader** (`areaLabelLayout`). Fits = the
+  estimated text box plus 3px each side, centred on the centroid, lies inside the region.
+  `labelPlacement` (absent = `auto`) can force `inside` or `leader`. The decision reads
+  only the region and the text, never the offset, so a drag cannot flip it. A leader
+  label sits at centroid + `labelOffset`, or undragged at `placeOutside`'s spot (clear
+  of the region, inside the plot, fewest curves/labels touched); the canvas seeds that
+  spot into `labelOffset` before a drag (`areaLabelSeedOffset`) so it does not jump.
+  The leader is a thin ink line and an `arrowheadPath` triangle, tip ≤6px inside.
+  Pinned: `src/render/diagramAreas.frozen.json`, written before either feature existed.
 - **Deleting what an area leans on freezes it** into vertices at its last shape
   (`detachAreas`, run by `deleteHandle`); copying an area without its curves does the same.
 - A `curved` curve is read as its polyline, so an area against it is approximate.

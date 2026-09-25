@@ -46,6 +46,7 @@ the whole schema, one file.
 - `src/model/paperHealth.ts:checkPaper` — the pre-print check, derived; `src/components/editor/PaperHealthPanel.tsx:PaperHealthPanel` shows it
 - `src/model/diagram.ts:Diagram` · `src/model/diagramDraw.ts:applyDrag` · `src/model/diagramTemplates.ts:DIAGRAM_TEMPLATES`
 - `src/model/diagramAreas.ts:areaPolygon` · `:presetArea` · `:detachAreas` — shaded areas as references; `src/model/diagramShift.ts:shiftCurve` — D→D₁ plus the new equilibrium
+- `src/render/diagram.ts:areaLabelLayout` · `:AREA_PALETTE` · `:areaLabelSeedOffset` — area colour and the inside/leader label rule; pixel geometry in `src/render/diagramLeader.ts:placeOutside` · `:leaderLine`
 - `src/model/table.ts:insertRow` · `:resolveCellPadding` · `:resolveColumnWidths`
 - `src/model/factories.ts:createWorksheet` · `src/model/newWorksheet.ts:createWorksheetFrom`
 

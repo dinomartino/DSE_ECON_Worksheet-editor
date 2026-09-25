@@ -1,10 +1,12 @@
 import type {
   Diagram,
   DiagramArea,
+  DiagramAreaColor,
   DiagramArrow,
   DiagramCrop,
   DiagramCurve,
   DiagramLabel,
+  DiagramPoint,
   DiagramPointMark,
   FlowArrow,
   FlowChart,
@@ -15,6 +17,15 @@ import type {
 } from '@/model/diagram';
 import type { BiText, FontPair, LanguageMode, RichText } from '@/model/types';
 import { areaPolygon, polygonCentroid } from '@/model/diagramAreas';
+import {
+  boxAround,
+  boxInside,
+  boxPolygon,
+  interiorPoint,
+  leaderLine,
+  placeOutside,
+  type Pt,
+} from './diagramLeader';
 
 /**
  * Diagram → SVG. One pure function, no DOM, no React.
@@ -794,24 +805,190 @@ export function arrowLabelAnchor(
  * lines rasterize identically everywhere.
  */
 
-/** The shade tint: light enough that curves and letters read through it in print. */
-const AREA_SHADE = '#d9d9d9';
+/**
+ * The area palette: a shade tint and a hatch ink per named colour.
+ *
+ * Tints step down in lightness (yellow → purple, relative luminance ≈ .87 .80 .69 .63
+ * .53 .45) so neighbouring areas still differ on a monochrome photocopy, and all stay
+ * light enough for black curves and letters to read through. Grey is the original
+ * `#d9d9d9` / `#000`, so an area with no colour renders byte-identically.
+ */
+export const AREA_PALETTE: Record<DiagramAreaColor, { name: string; shade: string; hatch: string }> = {
+  grey: { name: 'Grey', shade: '#d9d9d9', hatch: '#000' },
+  yellow: { name: 'Yellow', shade: '#fff1a6', hatch: '#8a6d00' },
+  green: { name: 'Green', shade: '#d8eecd', hatch: '#2e7d32' },
+  blue: { name: 'Blue', shade: '#b8d3ee', hatch: '#1f5aa6' },
+  red: { name: 'Red', shade: '#f2b0b0', hatch: '#b3261e' },
+  purple: { name: 'Purple', shade: '#c2a8de', hatch: '#6a3d9a' },
+};
 /** Perpendicular distance between hatch lines, px at nominal size. */
 const AREA_HATCH_GAP = 5;
+/** Clearance a label needs inside its region, each side, px at nominal size. */
+const AREA_LABEL_MARGIN = 3;
+/** Minimum air between a leader label and its region, px at nominal size. */
+const LEADER_GAP = 18;
+/** How far a leader's tip reaches into the region, px at nominal size. */
+const LEADER_REACH = 6;
+/** Half the leader arrowhead's base width — smaller than an axis head. */
+const LEADER_HEAD = 3;
 
-/** Where an area's label is drawn: its region's centroid plus any dragged nudge. */
+/** Where and how an area's label is drawn: inside at its centroid, or out on a leader. */
+export interface AreaLabelLayout {
+  /** The label's centre. */
+  x: number;
+  y: number;
+  placement: 'inside' | 'leader';
+  /** The leader's start (on the label's edge) and arrow tip (inside the region). */
+  leader: { from: { x: number; y: number }; tip: { x: number; y: number } } | null;
+}
+
+const project = (proj: Projection) => (p: { x: number; y: number }) => ({ x: proj.px(p.x), y: proj.py(p.y) });
+
+/**
+ * What a leader label should not sit on: curves, drop-lines and arrow shafts as lines;
+ * dots and every other label's estimated box as regions.
+ */
+function leaderObstacles(
+  diagram: Diagram,
+  proj: Projection,
+  language: LanguageMode,
+  scale: number,
+): { lines: Pt[][]; regions: Pt[][] } {
+  const to = project(proj);
+  const size = FONT_SIZE * scale;
+  const lines = diagram.curves.map((curve) => curve.points.map(to));
+  const regions: Pt[][] = [];
+  const text = (
+    label: BiText | undefined,
+    x: number,
+    y: number,
+    anchor: 'start' | 'middle' | 'end',
+    baseline: 'auto' | 'middle' | 'hanging',
+  ) => {
+    const drawn = pickSides(label, language);
+    if (drawn.length === 0) return;
+    const w = estimateWidth(drawn, size);
+    const h = (drawn.length - 1) * size * 1.15 + size;
+    const x0 = anchor === 'start' ? x : anchor === 'end' ? x - w : x - w / 2;
+    const y0 = baseline === 'hanging' ? y : baseline === 'middle' ? y - size / 2 : y - size;
+    regions.push(boxPolygon({ x0, y0, x1: x0 + w, y1: y0 + h }));
+  };
+
+  for (const curve of diagram.curves) {
+    const at = curveLabelAnchor(curve, proj, scale);
+    if (at) text(curve.label, at.x, at.y, at.anchor, 'middle');
+  }
+  for (const mark of diagram.points) {
+    const at = to(mark.at);
+    for (const axis of mark.dropTo ?? []) {
+      lines.push([at, axis === 'x' ? { x: at.x, y: proj.plot.bottom } : { x: proj.plot.left, y: at.y }]);
+    }
+    if (mark.dot !== false) regions.push(boxPolygon(boxAround(at, 8 * scale, 8 * scale)));
+    const label = pointLabelAnchor(mark, proj, scale);
+    text(mark.label, label.x, label.y, label.anchor, label.baseline);
+  }
+  for (const arrow of diagram.arrows) {
+    lines.push([to(arrow.from), to(arrow.to)]);
+    const at = arrowLabelAnchor(arrow, proj, scale);
+    text(arrow.label, at.x, at.y, 'middle', 'auto');
+  }
+  for (const label of diagram.labels) {
+    const anchor = label.align === 'right' ? 'end' : label.align === 'left' ? 'start' : 'middle';
+    text(label.text, proj.px(label.at.x), proj.py(label.at.y), anchor, 'middle');
+  }
+  return { lines, regions };
+}
+
+/**
+ * Where an area's label goes (§ Shaded areas). The fit rule: the label's estimated box
+ * plus `AREA_LABEL_MARGIN` each side, centred on the region's centroid, must lie wholly
+ * inside the region. `auto` (absent) puts a fitting label there — exactly as before
+ * leaders existed — and any other outside on a leader; `inside`/`leader` force a side.
+ * A leader label sits at centroid + `labelOffset`, or, undragged, at the nearest clear
+ * spot `placeOutside` finds. Shared with the canvas, so it drags where it is drawn.
+ */
+export function areaLabelLayout(
+  diagram: Diagram,
+  area: DiagramArea,
+  proj: Projection,
+  language: LanguageMode,
+  scale: number,
+): AreaLabelLayout | null {
+  const polygon = areaPolygon(diagram, area);
+  if (!polygon) return null;
+  const pts = polygon.map(project(proj));
+  const centroid = project(proj)(polygonCentroid(polygon));
+  const offset = area.labelOffset;
+  const nudged = {
+    x: centroid.x + (offset ? offset.x * plotSpanX(proj) : 0),
+    y: centroid.y - (offset ? offset.y * plotSpanY(proj) : 0),
+  };
+
+  const lines = pickSides(area.label, language);
+  const size = FONT_SIZE * scale;
+  const w = estimateWidth(lines, size);
+  const h = (Math.max(1, lines.length) - 1) * size * 1.15 + size;
+  const mode = area.labelPlacement ?? 'auto';
+  const fits = () => boxInside(boxAround(centroid, w, h, AREA_LABEL_MARGIN * scale), pts);
+  if (lines.length === 0 || mode === 'inside' || (mode === 'auto' && fits())) {
+    return { ...nudged, placement: 'inside', leader: null };
+  }
+
+  const obstacles = () => {
+    const { lines, regions } = leaderObstacles(diagram, proj, language, scale);
+    for (const other of diagram.areas ?? []) {
+      const polygon = other.id === area.id ? null : areaPolygon(diagram, other);
+      if (polygon) regions.push(polygon.map(project(proj)));
+    }
+    return { lines, regions };
+  };
+  const target = interiorPoint(pts, centroid);
+  const at = offset
+    ? nudged
+    : placeOutside(pts, target, w, h, {
+        gap: LEADER_GAP * scale,
+        step: 2 * scale,
+        reach: 240 * scale,
+        plot: { x0: proj.plot.left, y0: proj.plot.top, x1: proj.plot.right, y1: proj.plot.bottom },
+        ...obstacles(),
+      });
+  const leader = leaderLine(boxAround(at, w, h), target, pts, 2 * scale, LEADER_REACH * scale);
+  return { ...at, placement: 'leader', leader };
+}
+
+/**
+ * Where an area's label is drawn: its region's centroid plus any dragged nudge, or its
+ * leader position (`areaLabelLayout`). `language`/`scale` measure the label for the fit.
+ */
 export function areaLabelAnchor(
   diagram: Diagram,
   area: DiagramArea,
   proj: Projection,
+  language: LanguageMode = 'en',
+  scale = 1,
 ): { x: number; y: number } | null {
+  const layout = areaLabelLayout(diagram, area, proj, language, scale);
+  return layout ? { x: layout.x, y: layout.y } : null;
+}
+
+/**
+ * The unit-space `labelOffset` that reproduces where the label is drawn now — what a
+ * drag of an undragged leader label must start from, or it jumps onto the region.
+ */
+export function areaLabelSeedOffset(
+  diagram: Diagram,
+  area: DiagramArea,
+  proj: Projection,
+  language: LanguageMode,
+): DiagramPoint | null {
+  if (area.labelOffset) return area.labelOffset;
   const polygon = areaPolygon(diagram, area);
-  if (!polygon) return null;
+  const layout = areaLabelLayout(diagram, area, proj, language, 1);
+  if (!polygon || !layout || layout.placement === 'inside') return null;
   const centre = polygonCentroid(polygon);
-  const offset = area.labelOffset;
   return {
-    x: proj.px(centre.x) + (offset ? offset.x * plotSpanX(proj) : 0),
-    y: proj.py(centre.y) - (offset ? offset.y * plotSpanY(proj) : 0),
+    x: (layout.x - proj.px(centre.x)) / plotSpanX(proj),
+    y: (proj.py(centre.y) - layout.y) / plotSpanY(proj),
   };
 }
 
@@ -847,14 +1024,15 @@ function hatchPath(pts: Array<{ x: number; y: number }>, gap: number): string {
 function areaFillSvg(diagram: Diagram, area: DiagramArea, proj: Projection, scale: number): string {
   const polygon = areaPolygon(diagram, area);
   if (!polygon) return '';
+  const paint = AREA_PALETTE[area.color ?? 'grey'] ?? AREA_PALETTE.grey;
   const pts = polygon.map((p) => ({ x: proj.px(p.x), y: proj.py(p.y) }));
   if ((area.fill ?? 'shade') === 'shade') {
     const d = `M ${pts.map((p) => `${n(p.x)} ${n(p.y)}`).join(' L ')} Z`;
-    return `<path d="${d}" fill="${AREA_SHADE}" stroke="none"/>`;
+    return `<path d="${d}" fill="${paint.shade}" stroke="none"/>`;
   }
   const d = hatchPath(pts, AREA_HATCH_GAP * scale);
   return d
-    ? `<path d="${d}" fill="none" stroke="#000" stroke-width="${n(0.8 * scale)}" stroke-linecap="butt"/>`
+    ? `<path d="${d}" fill="none" stroke="${paint.hatch}" stroke-width="${n(0.8 * scale)}" stroke-linecap="butt"/>`
     : '';
 }
 
@@ -867,15 +1045,34 @@ function areaLabelSvg(
 ): string {
   const lines = pickSides(area.label, language);
   if (lines.length === 0) return '';
-  const at = areaLabelAnchor(diagram, area, proj);
+  const at = areaLabelLayout(diagram, area, proj, language, scale);
   if (!at) return '';
-  return textAt(lines, at.x, at.y - ((lines.length - 1) * FONT_SIZE * scale * 1.15) / 2, {
-    anchor: 'middle',
-    baseline: 'middle',
-    fontSize: FONT_SIZE * scale,
-    // Letters on hatching need the white halo the pie's patterned slices use.
-    halo: area.fill === 'hatch' ? 3 * scale : undefined,
-  });
+  let leader = '';
+  if (at.leader) {
+    // A thin line in diagram ink ending in a plain triangle whose point is `tip`.
+    const { from, tip } = at.leader;
+    const length = Math.hypot(tip.x - from.x, tip.y - from.y) || 1;
+    const head = LEADER_HEAD * scale;
+    const end = {
+      x: tip.x - ((tip.x - from.x) / length) * 0.2 * head,
+      y: tip.y - ((tip.y - from.y) / length) * 0.2 * head,
+    };
+    leader =
+      `<path d="M ${n(from.x)} ${n(from.y)} L ${n(end.x)} ${n(end.y)}" fill="none" stroke="#000" ` +
+      `stroke-width="${n(0.8 * scale)}" stroke-linecap="round" data-leader=""/>` +
+      arrowheadPath(from, end, head);
+  }
+  return (
+    leader +
+    textAt(lines, at.x, at.y - ((lines.length - 1) * FONT_SIZE * scale * 1.15) / 2, {
+      anchor: 'middle',
+      baseline: 'middle',
+      fontSize: FONT_SIZE * scale,
+      // Letters on hatching, or out among the curves on a leader, need the white halo
+      // the pie's patterned slices use.
+      halo: area.fill === 'hatch' || at.placement === 'leader' ? 3 * scale : undefined,
+    })
+  );
 }
 
 /**
