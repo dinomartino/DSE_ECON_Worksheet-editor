@@ -55,6 +55,15 @@ export interface QuestionTypeDefinition<Q extends Question = Question> {
    * version 0 is the authored order. Absent = the type never varies.
    */
   variant?: (question: Q, context: VariantContext) => QuestionVariant<Q>;
+  /** How the paper summary counts and times this type (`model/paperSummary.ts`). */
+  summary?: QuestionSummaryInfo;
+}
+
+export interface QuestionSummaryInfo {
+  /** Short count label, unpluralised so "1 MCQ" and "38 MCQ" both read: "MCQ" / "選擇題". */
+  label: { en: string; zh: string };
+  /** Minutes per item whatever its marks; absent = its marks at the paper's minutes-per-mark. */
+  minutesPerItem?: number;
 }
 
 /** A lettered-choice question, as Kahoot or Blooket import it. */

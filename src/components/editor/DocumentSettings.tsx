@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Dialog, DialogTabs, Field } from '@/components/ui/Dialog';
-import { Button, CheckField, GroupHeader, Segmented, SelectField } from '@/components/ui';
+import { Button, CheckField, GroupHeader, NumberField, Segmented, SelectField } from '@/components/ui';
 import {
   assessmentTitleBlock,
   createFillInField,
@@ -26,7 +26,7 @@ import {
 } from '@/model/page';
 import { isQabDocument } from '@/model/pageFurniture';
 import { documentShape } from '@/model/documentShape';
-import { requireQuestionType } from '@/registry';
+import { listQuestionTypes, requireQuestionType } from '@/registry';
 import { bi, emptyBiText, plain } from '@/model/text';
 import { academicYear, type CoverPaperStyle } from '@/model/cover';
 import {
@@ -36,7 +36,9 @@ import {
   versionLetter,
   versionLetters,
 } from '@/model/versions';
-import type { Band, HeaderFooter, PageMargins, PaperSize } from '@/model/types';
+import { targetOf } from '@/model/paperSummary';
+import type { Band, HeaderFooter, LanguageMode, PageMargins, PaperSize, PaperTarget } from '@/model/types';
+import type { AnyQuestionTypeDefinition } from '@/registry/types';
 import { useWorksheetStore, type BandScope } from '@/store/worksheetStore';
 import { BandPreview, BandPresetCard } from './BandPreview';
 import { BiTextField } from './BiTextField';
@@ -206,6 +208,8 @@ function DocumentTab() {
 
       <VersionsField />
 
+      <TargetField />
+
       {/* Section headings are typed on the page, not here.
           A section is a heading in the flow now, so it has a visual representation to
           click — which is the rule for what belongs on the paper rather than in a panel
@@ -279,6 +283,69 @@ function VersionsField() {
             </span>
           </>
         )}
+      </div>
+    </Field>
+  );
+}
+
+/** The registry's short count label, in the chrome's language. */
+function typeLabel(definition: AnyQuestionTypeDefinition, language: LanguageMode): string {
+  const zh = language === 'zh';
+  const label =
+    definition.summary?.label[zh ? 'zh' : 'en'] ??
+    plain(zh ? definition.displayName.zh : definition.displayName.en);
+  // Beside "Marks" and "Time", so capitalised: "Structured".
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+/**
+ * The paper's blueprint: marks, minutes and items per type, each optional. The toolbar
+ * summary shows progress against it and the paper check lists a miss. Emptying every
+ * box removes the target, so an untouched document never carries one.
+ */
+function TargetField() {
+  const worksheet = useWorksheetStore((s) => s.worksheet);
+  const updateWorksheet = useWorksheetStore((s) => s.updateWorksheet);
+  const language = useWorksheetStore((s) => s.mode.language);
+  const target = worksheet.target ?? {};
+  const set = (patch: PaperTarget) => {
+    const next = { ...target, ...patch };
+    updateWorksheet({ target: targetOf({ target: next }) });
+  };
+  const setCount = (typeId: string, value: number | undefined) =>
+    set({ counts: { ...(target.counts ?? {}), [typeId]: value as number } });
+
+  return (
+    <Field
+      label="Target"
+      hint="Optional. The summary in the toolbar counts toward it, and the export check flags a paper over or under it."
+    >
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        {listQuestionTypes().map((definition) => (
+          <NumberField
+            key={definition.id}
+            clearable
+            label={typeLabel(definition, language)}
+            value={target.counts?.[definition.id]}
+            placeholder="—"
+            onChange={(value) => setCount(definition.id, value)}
+          />
+        ))}
+        <NumberField
+          clearable
+          label="Marks"
+          value={target.marks}
+          placeholder="—"
+          onChange={(marks) => set({ marks })}
+        />
+        <NumberField
+          clearable
+          label="Time"
+          suffix="min"
+          value={target.minutes}
+          placeholder="—"
+          onChange={(minutes) => set({ minutes })}
+        />
       </div>
     </Field>
   );

@@ -44,6 +44,7 @@ the whole schema, one file.
 - `src/model/versions.ts:activeVersion` · `:shuffledOrder` — paper versions A/B/C; only `Worksheet.versions` (count + seed) is stored
 - `src/model/markScheme.ts:schemeMax` · `:groupMax` · `:schemeMismatch` — HKEAA marking-scheme totals, derived; types in `src/model/markSchemeTypes.ts:MarkScheme`
 - `src/model/paperHealth.ts:checkPaper` — the pre-print check, derived; `src/components/editor/PaperHealthPanel.tsx:PaperHealthPanel` shows it
+- `src/model/paperSummary.ts:summarizePaper` · `:estimateMinutes` · `:MINUTES_PER_MARK` · `:targetOf` — per-type counts, marks, minutes against the optional `Worksheet.target`; the one time model (`checkPaper` reads it); `src/components/editor/PaperSummaryBar.tsx:PaperSummaryBar` is the toolbar line, the Target row is in `DocumentSettings`
 - `src/model/diagram.ts:Diagram` · `src/model/diagramDraw.ts:applyDrag` · `src/model/diagramTemplates.ts:DIAGRAM_TEMPLATES`
 - `src/model/diagramAreas.ts:areaPolygon` · `:presetArea` · `:detachAreas` — shaded areas as references; `src/model/diagramShift.ts:shiftCurve` — D→D₁ plus the new equilibrium, both equilibria anchored
 - `src/model/diagramAnchors.ts:resolveAnchor` · `:resolveDiagram` · `:detachRelations` — anchored points (`DiagramPointMark.anchor`) and derived curves (`DiagramCurve.derive`: MR, parallel (optional `ys` bounds), shift — a copy that follows its source, tangent, level, vertical); resolved values written into `at`/`points`
@@ -71,7 +72,8 @@ Invariants:
 ## registry — the question-type extension point
 
 `src/registry/types.ts:QuestionTypeDefinition` — `id` · `create` · `render` · `EditorPanel` ·
-`examGapLines?` · `countMissingTranslations?` · `healthFacts?` · `answerKey?` · `variant?`.
+`examGapLines?` · `countMissingTranslations?` · `healthFacts?` · `answerKey?` · `variant?` ·
+`summary?` (short count label + `minutesPerItem`, for the paper summary).
 
 - `src/registry/index.ts:listQuestionTypes` · `:requireQuestionType`
 - `src/registry/mcq.ts:mcqType` · `:resolveOptionLayout` · `:optionRationales` — teacher-only notes:
@@ -80,7 +82,7 @@ Invariants:
 - `src/registry/structured.ts:structuredType`
 
 Invariants:
-- No shared module branches on a concrete type id; `src/registry/registry.test.ts` greps eleven modules — §Question-type registry.
+- No shared module branches on a concrete type id; `src/registry/registry.test.ts` greps twelve modules — §Question-type registry.
 - A hand-built numbered paragraph must copy the block's `format` itself — same section.
 
 ## render — the IR, and the walker that fills it

@@ -3,7 +3,6 @@
 import { useCallback, useState } from 'react';
 import { copyForWord, worksheetClipboardHtml, worksheetPlainText } from '@/export/clipboard';
 import { renderDiagramImages } from '@/export/diagramImage';
-import { worksheetMarks } from '@/model/marks';
 import type { LanguageMode, OutputMode, VersionMode } from '@/model/types';
 import { requireQuestionType } from '@/registry';
 import { useWorksheetStore } from '@/store/worksheetStore';
@@ -19,6 +18,7 @@ import { ExportDialog } from './ExportDialog';
 import { browserPrintDeps, printWorksheetPdf } from './printPdf';
 import { useUpdateStore } from '@/desktop/updateStore';
 import { PaperHealthPanel } from './PaperHealthPanel';
+import { PaperSummaryBar } from './PaperSummaryBar';
 import { FeedbackDialog } from '@/components/feedback/FeedbackDialog';
 import { WhatsNewDialog } from '@/components/whatsNew/WhatsNewDialog';
 import { describeDocument } from '@/feedback/feedback';
@@ -37,8 +37,11 @@ type Notice = { message: string; action?: { label: string; run: () => void } };
 export function Toolbar({
   onOpenSettings,
   onOpenFiles,
+  bodySheets,
 }: {
   onOpenSettings: () => void;
+  /** Sheets the preview paginated the body into, cover excluded; 0 = not yet measured. */
+  bodySheets?: number;
   /** Show the start screen: the saved-worksheet list, and the new-document form. */
   onOpenFiles: () => void;
 }) {
@@ -309,9 +312,14 @@ export function Toolbar({
             </Button>
           )}
           {untranslated > 0 && <Pill tone="warn">{untranslated} untranslated</Pill>}
-          {/* Status, not selection: the marks count is a fact about the document, so
-              it stays in the grey family — the accent is reserved for interaction. */}
-          <Pill>{worksheetMarks(worksheet)} marks</Pill>
+          {/* Status, not selection: the summary is facts about the document, so it
+              stays in the grey family — the accent is reserved for interaction. */}
+          <PaperSummaryBar
+            worksheet={worksheet}
+            language={mode.language}
+            pages={bodySheets ? bodySheets + (worksheet.cover && !mode.omitCover ? 1 : 0) : undefined}
+            onOpen={readOnly ? undefined : onOpenSettings}
+          />
           <span className="hidden sm:inline">
             {readOnly
               ? 'Read-only'

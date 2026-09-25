@@ -836,6 +836,11 @@ export interface Worksheet {
    * stored; every option order is derived from them. Absent or `count` 1 = off.
    */
   versions?: PaperVersions;
+  /**
+   * The teacher's blueprint for the paper (`model/paperSummary.ts`): what the summary bar
+   * and the paper check measure the derived totals against. Absent = no target.
+   */
+  target?: PaperTarget;
   createdAt: string;
   updatedAt: string;
   /**
@@ -866,4 +871,12 @@ export interface OutputMode {
 export interface PaperVersions {
   count: number;
   seed: number;
+}
+
+/** Every field optional; a missing or non-positive one is no target for that measure. */
+export interface PaperTarget {
+  marks?: number;
+  minutes?: number;
+  /** Items wanted per question type id (`mcq`: 45). */
+  counts?: Record<string, number>;
 }

@@ -1712,12 +1712,14 @@ paths). Verify by measuring the same text node in both states.
 - **The hand-built numbered paragraph must copy the block's `format` itself** — the
   four hand-assembled sites (MCQ stem; structured stem, part, sub-part) each omitted it
   once. `registry.test.ts` asserts it reaches the IR for every type.
-- **No shared module may branch on a concrete type.** `registry.test.ts` greps eleven
+- **No shared module may branch on a concrete type.** `registry.test.ts` greps twelve
   modules for `'mcq'`/`'structured'` literals.
 - **The paper check asks, never inspects.** `model/paperHealth.ts:checkPaper` (the Export
   dialog's pre-print summary: letter balance and runs, missing keys, marks, time estimate,
   untranslated strings) is derived, never stored; per-type facts come from `healthFacts?`.
-  A type without it contributes marks and translations only.
+  A type without it contributes marks and translations only. Counts and the time estimate
+  come from `model/paperSummary.ts` (registry `summary?`: label, `minutesPerItem`), which
+  also measures them against the optional stored `Worksheet.target` — the only stored input.
 - **The answer key is its own document, built as IR** (`render/answerKey.ts`). Each type
   reports a `choice` (grid letter; unset prints "—") or a `scheme` (part/sub-part rows,
   marks placed as the paper places them); the walker numbers them with `computeNumbering`

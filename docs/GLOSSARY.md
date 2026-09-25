@@ -40,6 +40,10 @@ Words this repository uses in its own way. One line each, with where the thing l
   + Paper 2), chosen in Export; export-time only. `src/render/answerKey.ts:renderCombinedAnswerKey`
 - **Paper 1** — the HKDSE multiple-choice paper shape: wider boundaries, derived question
   count, its own indents. `src/model/documentShape.ts`
+- **Paper summary** — the toolbar's derived line "38/45 MCQ · 52/50 marks · ~65/60 min · 5
+  pages"; chrome only. `src/model/paperSummary.ts:summarizePaper`
+- **Target** — the teacher's optional blueprint (`Worksheet.target`: marks, minutes, items
+  per type); the only stored part of the summary. `src/model/paperSummary.ts:targetOf`
 - **Paper 2** — the long-question paper; in this app, the QAB with 58% dotted answer lines.
 - **Document shape** — which of `classroom` · `paper1` · `lqWorksheet` · `lqMock` a document
   is, derived not stored; it decides what the editor offers. `src/model/documentShape.ts`

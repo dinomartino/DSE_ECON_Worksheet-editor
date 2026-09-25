@@ -25,8 +25,8 @@ Remove from this list once released.
 - **Export dialog + separate answer key** (was A1) — `src/components/editor/ExportDialog.tsx`,
   `src/render/answerKey.ts:renderAnswerKey`.
 - **Paper health check** (was A2) — `src/model/paperHealth.ts:checkPaper`, shown in the
-  export dialog. Not yet: "answer any ONE" sections are summed in full; the Paper 2
-  1.5 min/mark rate assumes ~100 marks (unverified).
+  export dialog. Not yet: "answer any ONE" sections are summed in full. Paper 2 pace is
+  150 min / 120 marks (HKEAA 2024 framework).
 - **Backup zip + restore** (was F1) — `src/storage/backup.ts`.
 - **Trash with 30-day restore** (was F2) — `src/storage/trash.ts`.
 - **Seeded MCQ versions A–D** (was A3) — `src/model/versions.ts`, registry `variant` hook,
@@ -61,6 +61,10 @@ Remove from this list once released.
   question paper only.
 - **CHANGELOG + What's new** (2026-09-25) — `src/whatsNew/`, `scripts/release-notes.mjs`.
 - **Area colours + leader labels** (2026-09-25) — six-tint palette, Auto/Inside/Leader.
+- **Paper summary bar with a target** (was A5) — `src/model/paperSummary.ts:summarizePaper`,
+  `src/components/editor/PaperSummaryBar.tsx`, `Worksheet.target` edited in Setup; target
+  misses in the paper check. Not yet: pages count the preview's language, not the export's;
+  a target cannot be set per section.
 - **In-app feedback** — `src/feedback/feedback.ts`, `src/components/feedback/FeedbackDialog.tsx`:
   prefilled GitHub issue (URL capped at 3,500 chars — GitHub's sign-in redirect breaks
   above ~4k), `mailto:` to dseconmentor@gmail.com, or clipboard. Labels only stick when
@@ -68,15 +72,13 @@ Remove from this list once released.
 
 ## Recommended order
 
-1. **Now** — paper summary bar (A5).
-2. **Next** — topic tags (C1) → local question library (C2).
-3. **Later** — paste/Word import (D1, D2), BYOK AI (E), item analysis (G1), remaining
+1. **Now** — topic tags (C1) → local question library (C2).
+2. **Later** — paste/Word import (D1, D2), BYOK AI (E), item analysis (G1), remaining
    diagram upgrades (B3b).
 
 ## A. Export and paper checks
 
-- **A5 Paper summary bar with a target** (S): "38/45 MCQ · 52 marks · ~61 min", with an
-  optional blueprint. *examWizard, Exampro, ExamSoft.*
+Nothing open: A1–A5 are built (above).
 
 ## B. Content model
 

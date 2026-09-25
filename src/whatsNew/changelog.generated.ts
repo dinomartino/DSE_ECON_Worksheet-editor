@@ -13,6 +13,11 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 ## Unreleased
 
 ### Added
+- **Paper summary with a target**: the toolbar shows what the paper holds — "38 MCQ ·
+  2 structured · 52 marks · ~65 min · 5 pages". Set a target in Setup (questions per
+  type, marks, minutes) and it reads "38/45 MCQ · 52/50 marks", tinted when you are over;
+  the export check lists anything over or under. The time estimate now uses the DSE
+  Paper 2 pace of 150 minutes for 120 marks.
 - **Diagram templates follow your drags**: move a curve and the equilibria, dashed
   drops, P and Q arrows, shortage and import brackets, the tax wedge, output gaps and
   shaded areas move with it; D₁ or S + t keeps its shift, MR stays twice as steep as D,

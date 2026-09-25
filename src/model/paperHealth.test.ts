@@ -217,12 +217,13 @@ describe('checkPaper', () => {
       );
     });
 
-    it('charges written marks at 1.2 min on a classroom sheet and 1.5 on a Paper 2 mock', () => {
-      const worksheet = sheet(structured(20), structured(20));
-      expect(checkPaper(worksheet).minutes).toBe(50);
+    it('charges written marks at 1.2 min on a classroom sheet and Paper 2 pace on a mock', () => {
+      // DSE Paper 2: 120 marks in 150 minutes.
+      const worksheet = sheet(structured(60), structured(60));
+      expect(checkPaper(worksheet).minutes).toBe(145);
       worksheet.pageFurniture = { frame: true };
       expect(checkPaper(worksheet).shape).toBe('lqMock');
-      expect(checkPaper(worksheet).minutes).toBe(60);
+      expect(checkPaper(worksheet).minutes).toBe(150);
     });
 
     it('reads durations in English and Chinese, never a clock time', () => {
@@ -233,6 +234,28 @@ describe('checkPaper', () => {
       expect(parseDuration('一小時完卷')).toBe(60);
       expect(parseDuration('（上午十時十五分至下午十二時四十五分）')).toBeUndefined();
       expect(parseDuration('時限：四十五分鐘')).toBe(45);
+    });
+  });
+
+  describe('target', () => {
+    it('warns over a target and notes under one, in the summary bar\'s own phrases', () => {
+      const worksheet = sheet(...cycle(12));
+      worksheet.target = { marks: 10, minutes: 20, counts: { mcq: 45 } };
+      const report = checkPaper(worksheet);
+      const over = report.findings.find((f) => f.id === 'overTarget');
+      const under = report.findings.find((f) => f.id === 'underTarget');
+      expect(over).toMatchObject({ severity: 'warn', message: 'Over target: 12/10 marks.' });
+      expect(under).toMatchObject({ severity: 'note', message: 'Under target: 12/45 MCQ, ~16/20 min.' });
+      expect(report.summary.marks).toEqual({ actual: 12, target: 10, status: 'over' });
+    });
+
+    it('says nothing when the target is met or absent', () => {
+      const worksheet = sheet(...cycle(12));
+      expect(ids(checkPaper(worksheet))).not.toContain('overTarget');
+      worksheet.target = { marks: 12, counts: { mcq: 12 } };
+      const report = checkPaper(worksheet);
+      expect(report.findings).toEqual([]);
+      expect(report.severity).toBe('ok');
     });
   });
 
