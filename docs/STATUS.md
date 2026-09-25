@@ -24,7 +24,11 @@ off the bottom.** It is the first thing a fresh session reads — then
   (`src/storage/folders.ts`) with pointer-event drag (`dashboardDrag.ts`); desktop
   file-drop import (`src/platform/index.ts:listenForFileDrops`); `CHANGELOG.md` + in-app
   What's new (`src/whatsNew/`); newer-schema read-only guard
-  (`src/components/editor/NewerVersionNotice.tsx`). Each feature browser-verified alone;
+  (`src/components/editor/NewerVersionNotice.tsx`); leader labels fixed (tip ≥10px inside,
+  tail on the label edge); hatch patterns + TR / gain / loss areas
+  (`src/model/diagramAreas.ts`, `revenue` field); desktop Export → PDF writes a file via
+  `src-tauri/src/pdf/` (macOS WebKit save-job, Windows WebView2 PrintToPdf — never run
+  on Windows). Each feature browser-verified alone;
   **no browser pass of the merged whole, and nothing run in the desktop shell.**
 - **2026-09-24 batch (in v0.3.0):** export dialog + answer key, paper check, backup zip,
   Trash, seeded MCQ versions, other-apps export, export toggles, file dashboard. Desktop
@@ -34,7 +38,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Last verified
 
-- `npm test` — 1522 tests in 99 files, ~3s. Green. `npm run build` green; `npm run samples` exports.
+- `npm test` — 1569 tests, ~3s. `cargo check` in `src-tauri` clean. Green. `npm run build` green; `npm run samples` exports.
 - `npm run typecheck` — clean.
 - `npm run lint` — 44 pre-existing problems (3 errors, 41 warnings) in `Preview.tsx` and
   `InlineEditable.tsx`. Not a regression; do not "fix" by rewriting those files.
@@ -43,15 +47,18 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Open threads and known gaps
 
-- **Print PDF doubles a part's "(N marks)"** — seen by two agents in `page.pdf()` output
-  (`(a) … (2 marks) … (2 marks)`); the preview shows one. Predates 2026-09-25. Unverified
-  in a real `window.print()` PDF.
 - **Pie hatch/dot patterns print greyish** — Chrome rasterises `<pattern>` tiles in the
   PDF. Shaded axis areas avoid this by drawing hatch as clipped lines; the pie could too.
 - **Desktop checks owed to the user** (their `tauri dev` was running, agents did not start
-  a second): Export → PDF on a multi-page document (paper size, breaks); drag a card onto
-  a folder; drop a `.json` from `~/Downloads` onto the start screen; the newer-version
-  notice's "Check for updates".
+  a second): Export → PDF → Save PDF… on a multi-page document (page count = sheets,
+  size = paper; cancel keeps the dialog open); drag a card onto a folder; drop a `.json`
+  from `~/Downloads` onto the start screen; the newer-version notice's "Check for updates".
+- **Print PDF doubled "(N marks)"** — fixed 2026-09-25 (a print rule forced the hidden
+  space-reserving copy visible). LQ cover diagonal is now an SVG line (WebKit printed
+  the gradient as a black box).
+- **Older builds do not draw revenue gain/loss areas** (they keep them in the file). The
+  newer-version notice covers a file saved by this build and opened in ≤0.3.0 only once
+  the schema version is bumped — it is not, so the areas silently do not show there.
 - **Combined answer key uses the current document's page setup and font size** for every
   part; a 10pt Paper 2 key inside an 11pt Paper 1 prints at 11pt.
 - **What's new pops for anyone updating from ≤0.3.0** (no stored seen-version but saved
@@ -80,6 +87,8 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
+- **2026-09-25 (evening)** — Leader arrow geometry; hatch patterns + revenue areas; desktop
+  PDF file export (native, per platform); print doubled-marks fix.
 - **2026-09-25 (later)** — Export button unified + desktop print permission; combined
   answer key; folders + pointer drag; desktop file drop; CHANGELOG.md, release-notes
   script and What's new; schema-evolution policy, newer-file read-only guard, real Tauri
