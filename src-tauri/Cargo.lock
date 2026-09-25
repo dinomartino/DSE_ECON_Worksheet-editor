@@ -923,6 +923,10 @@ name = "econ-worksheet"
 version = "0.3.0"
 dependencies = [
  "log",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
+ "objc2-web-kit",
  "serde",
  "serde_json",
  "tauri",
@@ -933,6 +937,9 @@ dependencies = [
  "tauri-plugin-opener",
  "tauri-plugin-process",
  "tauri-plugin-updater",
+ "tokio",
+ "webview2-com",
+ "windows",
 ]
 
 [[package]]

@@ -606,6 +606,12 @@ body {
     visibility: visible !important;
   }
 
+  /* …except a space-reserving twin, which the rule above would print (the marks
+     label came out twice). */
+  #print-root [data-marks-trail] > [aria-hidden] {
+    visibility: hidden !important;
+  }
+
   /* A pattern's tiles take visibility from the pattern's own ancestors, and the first
      `#pieHatch` on the page is an editor copy outside #print-root — so the pie's hatch
      and dots printed blank. Tiles never paint unless referenced, so this leaks nothing. */

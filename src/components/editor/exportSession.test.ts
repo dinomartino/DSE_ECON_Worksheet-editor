@@ -3,6 +3,7 @@ import {
   deliverFiles,
   deliverWorksheetJson,
   exportKinds,
+  pdfDestination,
   pdfVariant,
   type ExportFile,
 } from './exportSession';
@@ -78,6 +79,17 @@ describe('.json and PDF choices', () => {
       message: 'Exported .json',
       path: undefined,
     });
+  });
+
+  it('PDF: desktop asks where (a cancel keeps the dialog); the web asks nothing', async () => {
+    const choose = vi.fn(async () => '/Users/t/Documents/Econ Worksheets/Unit 3 (Student) (EN).pdf');
+    expect(await pdfDestination({ desktop: true, choose })).toEqual({
+      file: '/Users/t/Documents/Econ Worksheets/Unit 3 (Student) (EN).pdf',
+    });
+    expect(await pdfDestination({ desktop: true, choose: async () => undefined })).toBeUndefined();
+    const unused = vi.fn(async () => 'never');
+    expect(await pdfDestination({ desktop: false, choose: unused })).toEqual({});
+    expect(unused).not.toHaveBeenCalled();
   });
 
   it('PDF prints one version: the chosen one, else the one on screen, else the first', () => {

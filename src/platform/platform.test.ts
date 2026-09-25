@@ -5,6 +5,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  chooseSavePath,
   DOCX_FILTERS,
   exportsFolder,
   isDesktop,
@@ -15,9 +16,11 @@ import {
   openFolder,
   pickFile,
   pickTextFile,
+  PDF_FILTERS,
   revealFile,
   revealLabel,
   saveFile,
+  savePdf,
 } from '.';
 import { pickWorksheetFile, savedWorksheetPath, savedWorksheetsFolder } from '@/storage';
 
@@ -88,6 +91,8 @@ const tauri = {
   opened: [] as string[],
   revealed: [] as string[],
   openPathFails: false,
+  invoked: [] as Array<{ command: string; args: Record<string, unknown> }>,
+  invokeFails: undefined as string | undefined,
 };
 
 vi.mock('@tauri-apps/api/path', () => ({
@@ -129,6 +134,13 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
     const text = tauri.readable.get(path);
     if (text === undefined) throw new Error(`ENOENT ${path}`);
     return new TextEncoder().encode(text);
+  },
+}));
+
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: async (command: string, args: Record<string, unknown>) => {
+    tauri.invoked.push({ command, args });
+    if (tauri.invokeFails) throw tauri.invokeFails;
   },
 }));
 
@@ -186,6 +198,8 @@ beforeEach(() => {
   tauri.opened.length = 0;
   tauri.revealed.length = 0;
   tauri.openPathFails = false;
+  tauri.invoked.length = 0;
+  tauri.invokeFails = undefined;
 });
 
 const DEFAULT = '/Users/t/Documents/Econ Worksheets';
@@ -301,6 +315,47 @@ describe('saveFile on desktop', () => {
     const storage = desktop();
     expect(await saveFile('x', 'e.docx')).toBeUndefined();
     expect(storage !== 'throws' && storage.getItem(LAST_FOLDER_KEY)).toBe(null);
+  });
+});
+
+describe('PDF to a file', () => {
+  const A4 = { widthPt: 595.3, heightPt: 841.9, landscape: false, pages: 4 };
+
+  it('chooseSavePath asks in the start folder with the PDF filter, writes nothing', async () => {
+    const storage = desktop();
+    tauri.saveResult = '/Users/t/Desktop/p.pdf';
+    expect(await chooseSavePath('p.pdf', PDF_FILTERS)).toBe('/Users/t/Desktop/p.pdf');
+    expect(tauri.saveCalls[0]).toMatchObject({ defaultPath: `${DEFAULT}/p.pdf`, filters: PDF_FILTERS });
+    expect(tauri.written.size).toBe(0);
+    expect(storage !== 'throws' && storage.getItem(LAST_FOLDER_KEY)).toBe('/Users/t/Desktop');
+  });
+
+  it('chooseSavePath is undefined when cancelled, and always on the web', async () => {
+    desktop();
+    expect(await chooseSavePath('p.pdf', PDF_FILTERS)).toBeUndefined();
+    vi.unstubAllGlobals();
+    expect(await chooseSavePath('p.pdf', PDF_FILTERS)).toBeUndefined();
+    expect(tauri.saveCalls).toHaveLength(1);
+  });
+
+  it('savePdf invokes the shell command with the path and page box', async () => {
+    desktop();
+    await savePdf('/Users/t/Desktop/p.pdf', A4);
+    expect(tauri.invoked).toEqual([
+      {
+        command: 'print_to_pdf',
+        args: { path: '/Users/t/Desktop/p.pdf', widthPt: 595.3, heightPt: 841.9, landscape: false, pages: 4 },
+      },
+    ]);
+  });
+
+  it('savePdf rejects when the command does, and on the web without calling it', async () => {
+    desktop();
+    tauri.invokeFails = 'Command print_to_pdf not allowed';
+    await expect(savePdf('/x/p.pdf', A4)).rejects.toBe('Command print_to_pdf not allowed');
+    vi.unstubAllGlobals();
+    await expect(savePdf('/x/p.pdf', A4)).rejects.toThrow('desktop app');
+    expect(tauri.invoked).toHaveLength(1);
   });
 });
 

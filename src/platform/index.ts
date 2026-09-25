@@ -23,6 +23,7 @@ export const JSON_FILTERS: SaveFilter[] = [{ name: 'Worksheet', extensions: ['js
 export const ZIP_FILTERS: SaveFilter[] = [{ name: 'Worksheet backup', extensions: ['zip'] }];
 export const CSV_FILTERS: SaveFilter[] = [{ name: 'CSV', extensions: ['csv'] }];
 export const XLSX_FILTERS: SaveFilter[] = [{ name: 'Excel workbook', extensions: ['xlsx'] }];
+export const PDF_FILTERS: SaveFilter[] = [{ name: 'PDF document', extensions: ['pdf'] }];
 
 /**
  * Are we inside the Tauri webview?
@@ -142,6 +143,53 @@ export async function saveFile(
   else await fs.writeFile(path, bytes);
   await rememberFolderOf(path);
   return path;
+}
+
+/**
+ * Ask where a file should go, without writing it: the same save sheet and start folder
+ * as `saveFile`, for a file something else writes (the PDF). Desktop only; `undefined`
+ * when cancelled, and always on the web.
+ */
+export async function chooseSavePath(
+  suggestedName: string,
+  filters: SaveFilter[] = [],
+): Promise<string | undefined> {
+  if (!isDesktop()) return undefined;
+  const { save } = await import('@tauri-apps/plugin-dialog');
+  const path = await save({ defaultPath: await defaultPathFor(suggestedName), filters });
+  if (!path) return undefined;
+  await rememberFolderOf(path);
+  return path;
+}
+
+/**
+ * The page box a PDF is written at: portrait width × height in points, the turn, and the
+ * sheet count (0 = all) — WebKit can add a blank page for a last sheet a sub-pixel over.
+ */
+export interface PdfPage {
+  widthPt: number;
+  heightPt: number;
+  landscape: boolean;
+  pages: number;
+}
+
+/**
+ * Print the page straight to a PDF file at `path` — no print sheet. Desktop only: the
+ * shell's `print_to_pdf` command (WKWebView save job on macOS, WebView2 `PrintToPdf` on
+ * Windows), which uses print media CSS like the sheet does. Resolves once the file is
+ * written; rejects on the web or when the engine cannot, and the caller falls back to
+ * `printPage()`.
+ */
+export async function savePdf(path: string, page: PdfPage): Promise<void> {
+  if (!isDesktop()) throw new Error('Saving a PDF file directly needs the desktop app.');
+  const { invoke } = await import('@tauri-apps/api/core');
+  await invoke('print_to_pdf', {
+    path,
+    widthPt: page.widthPt,
+    heightPt: page.heightPt,
+    landscape: page.landscape,
+    pages: page.pages,
+  });
 }
 
 /**
@@ -270,7 +318,8 @@ function mimeFor(fileName: string): string {
 
 /**
  * Print: the engine's own print of the real paginated sheets (§ PDF export uses print
- * CSS), whose system dialog offers "Save as PDF". The caller keeps its own rAF timing.
+ * CSS), whose system dialog offers "Save as PDF" — the web's PDF route, and the
+ * desktop's fallback when `savePdf` fails. The caller keeps its own rAF timing.
  *
  * Web: `window.print()` blocks until the dialog closes. macOS desktop: the shell swaps
  * `window.print` for an async `plugin:webview|print` invoke (WKWebView has no print of
