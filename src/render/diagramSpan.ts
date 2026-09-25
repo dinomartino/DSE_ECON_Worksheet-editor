@@ -1,5 +1,5 @@
 import type { Diagram, DiagramSpan } from '@/model/diagram';
-import { spanGeometry, type SpanClearance } from '@/model/diagramSpans';
+import { shiftWedge, spanGeometry, type SpanClearance } from '@/model/diagramSpans';
 import type { Projection } from './diagram';
 
 /**
@@ -50,7 +50,10 @@ export function spanLayout(
   const lines: Array<[Pt, Pt]> = [[a, b]];
   const heads: SpanLayout['heads'] = [];
   let strokeWidth = 1.8 * scale;
-  switch (span.style) {
+  // A tax or subsidy wedge is always an arrow, its head on the shifted copy (S₁).
+  const wedge = shiftWedge(diagram, span);
+  if (wedge) heads.push(wedge === 'reversed' ? { from: b, end: a } : { from: a, end: b });
+  switch (wedge ? null : span.style) {
     case 'bracket':
       // Ticks face away from the offset side, back toward what is measured.
       lines.push([a, along(a, -tick)], [b, along(b, -tick)]);

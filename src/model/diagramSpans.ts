@@ -69,6 +69,27 @@ export function newSpan(
   return { id, from, to, style, offset: DEFAULT_SPAN_OFFSET };
 }
 
+/**
+ * A tax or subsidy wedge: a span from a curve to its `shift` copy, both ends on those
+ * curves (`{ on, x }`). Always an arrow from S₀ to S₁, so it points the way S moved.
+ */
+export function isShiftWedge(diagram: Diagram, span: DiagramSpan): boolean {
+  return shiftWedge(diagram, span) !== null;
+}
+
+/** `forward` when `to` is the shifted copy of `from`'s curve, `reversed` the other way round. */
+export function shiftWedge(diagram: Diagram, span: DiagramSpan): 'forward' | 'reversed' | null {
+  const on = (place: DiagramPlace) => ('on' in place && 'x' in place ? place.on : null);
+  const a = on(span.from);
+  const b = on(span.to);
+  if (!a || !b || a === b) return null;
+  const shiftOf = (id: string) => {
+    const derive = diagram.curves.find((c) => c.id === id)?.derive;
+    return derive?.kind === 'shift' ? derive.of : null;
+  };
+  return shiftOf(b) === a ? 'forward' : shiftOf(a) === b ? 'reversed' : null;
+}
+
 /** The offset after a body drag by (dx, dy): the drag's component along the normal. */
 export function draggedSpanOffset(diagram: Diagram, span: DiagramSpan, dx: number, dy: number): number {
   const geometry = spanGeometry(diagram, span);

@@ -483,13 +483,9 @@ function perUnit(kind: 'tax' | 'subsidy'): Diagram {
   });
   // Under a subsidy E₀ sits inside the hatched strips: its name goes above them.
   if (!tax) e0.labelOffset = { x: 0.02, y: kept.at.y - e0.at.y + 0.05 };
-  // The wedge, measured between the two supply curves where they run clear, right of E₀.
+  // The wedge, S₀ → S₁ where they run clear, right of E₀: up for a tax, down for a subsidy.
   const x = { x: 0.56, y: 0 };
-  const [upper, under] = tax ? [s1, s0] : [s0, s1];
-  const wedge = span({ on: upper.id, x }, { on: under.id, x }, 'dimension', {
-    label: sym(tax ? 't' : 's'),
-    labelOffset: { x: 0, y: -0.02 },
-  });
+  const wedge = span({ on: s0.id, x }, { on: s1.id, x }, 'arrow', { label: sym(tax ? 't' : 's') });
   // Letters inside the thin strips, left of the new supply curve crossing them.
   const strip = { labelOffset: { x: -0.09, y: 0 } };
   const roles = { demand: d.id, supply: s0.id, shifted: s1.id };
@@ -527,7 +523,8 @@ function subsidyEfficiency(): Diagram {
     axes(AXIS.quantity, AXIS.price, {
       curves: [d, s0, s1],
       points: [e0, e1, mc],
-      arrows: [arrow([0.2, 0.46], [0.2, 0.27])],
+      // The subsidy wedge S₀ → Sₛ, so it follows a drag of either.
+      spans: [span({ on: s0.id, x: { x: 0.2, y: 0 } }, { on: s1.id, x: { x: 0.2, y: 0 } }, 'arrow')],
       labels: [label(0.1, 0.97, lab('at Q', ['1'], ': MC > MB'), { align: 'left' })],
     }),
     (r) => shade(r, 'subsidyDwl', { demand: d.id, supply: s0.id, shifted: s1.id }),

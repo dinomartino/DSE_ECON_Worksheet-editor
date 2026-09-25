@@ -17,7 +17,7 @@ import {
   type DiagramSpanStyle,
 } from '@/model/diagram';
 import { isFixedPlace } from '@/model/diagramAnchors';
-import { DEFAULT_SPAN_OFFSET } from '@/model/diagramSpans';
+import { DEFAULT_SPAN_OFFSET, isShiftWedge } from '@/model/diagramSpans';
 import type { DiagramHandle } from '@/model/diagramDraw';
 import { emptyBiText, plain } from '@/model/text';
 import type { BiText } from '@/model/types';
@@ -332,7 +332,8 @@ export function SpanInspector({
 }) {
   const patch = (next: (s: DiagramSpan) => DiagramSpan) =>
     onChange({ ...diagram, spans: (diagram.spans ?? []).map((s) => (s.id === span.id ? next(s) : s)) });
-  const style = SPAN_STYLES.find((entry) => entry.value === span.style)?.label ?? 'Span';
+  const wedge = isShiftWedge(diagram, span);
+  const style = wedge ? 'Wedge' : (SPAN_STYLES.find((entry) => entry.value === span.style)?.label ?? 'Span');
   return (
     <div>
       <header className="mb-2 flex items-center gap-1">
@@ -349,31 +350,36 @@ export function SpanInspector({
           rows={1}
           onChange={(label) => patch((s) => ({ ...s, label }))}
         />
-        <SelectField
-          label="Style"
-          value={span.style}
-          options={SPAN_STYLES}
-          onChange={(value) => patch((s) => ({ ...s, style: value }))}
-        />
-        <SelectField
-          label="Sits"
-          value={span.along ?? 'none'}
-          options={SPAN_ALONG}
-          onChange={(value) =>
-            patch((s) => {
-              // The offset is measured from a different rest on an axis, so it restarts there.
-              const rest = { ...s };
-              if (value === 'none') {
-                delete rest.along;
-                rest.offset = DEFAULT_SPAN_OFFSET;
-              } else {
-                rest.along = value;
-                delete rest.offset;
+        {/* A tax or subsidy wedge is always an arrow from S₀ to S₁: nothing to choose. */}
+        {!wedge && (
+          <>
+            <SelectField
+              label="Style"
+              value={span.style}
+              options={SPAN_STYLES}
+              onChange={(value) => patch((s) => ({ ...s, style: value }))}
+            />
+            <SelectField
+              label="Sits"
+              value={span.along ?? 'none'}
+              options={SPAN_ALONG}
+              onChange={(value) =>
+                patch((s) => {
+                  // The offset is measured from a different rest on an axis, so it restarts there.
+                  const rest = { ...s };
+                  if (value === 'none') {
+                    delete rest.along;
+                    rest.offset = DEFAULT_SPAN_OFFSET;
+                  } else {
+                    rest.along = value;
+                    delete rest.offset;
+                  }
+                  return rest;
+                })
               }
-              return rest;
-            })
-          }
-        />
+            />
+          </>
+        )}
         <p className="text-[11px] leading-snug text-ink">
           <span className="text-ink-muted">From</span> {placeName(diagram, span.from)}{' '}
           <span className="text-ink-muted">to</span> {placeName(diagram, span.to)}

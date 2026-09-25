@@ -5,7 +5,7 @@ import type { Diagram, DiagramCurve } from './diagram';
 import { DIAGRAM_TEMPLATES, buildFromTemplate } from './diagramTemplates';
 import { resolveAnchor, resolveDiagram } from './diagramAnchors';
 import { areaPolygon } from './diagramAreas';
-import { spanGeometry } from './diagramSpans';
+import { isShiftWedge, spanGeometry } from './diagramSpans';
 import { applyDrag } from './diagramDraw';
 import { presetStatus, shadePreset } from './diagramPresets';
 import { plain } from './text';
@@ -71,7 +71,7 @@ describe('template relations', () => {
   it('marks changes, gaps, imports and the tax wedge as spans', () => {
     const styles = (id: string) => (buildFromTemplate(id).spans ?? []).map((s) => `${s.style}:${s.along ?? '-'}`);
     expect(styles('demand-shift')).toEqual(['arrow:y', 'arrow:x']);
-    expect(styles('per-unit-tax')).toContain('dimension:-');
+    expect(styles('per-unit-tax')).toEqual(['arrow:-', 'arrow:y', 'arrow:x']);
     expect(styles('tariff')).toEqual(['bracket:x']);
     expect(styles('deflationary-gap')).toEqual(['doubleArrow:x']);
     expect(styles('gap-narrows')).toEqual(['doubleArrow:x', 'doubleArrow:x']);
@@ -97,7 +97,7 @@ describe('dragging a template keeps the scheme', () => {
     expect(e1(after).y).toBeGreaterThan(e1(d).y);
     expect(after.curves.find((c) => c.id === s1.id)!.derive?.kind).toBe('shift');
     const wedge = (x: Diagram) => {
-      const g = spanGeometry(x, x.spans!.find((s) => s.style === 'dimension')!)!;
+      const g = spanGeometry(x, x.spans!.find((s) => isShiftWedge(x, s))!)!;
       return Math.abs(g.base[0].y - g.base[1].y);
     };
     expect(wedge(after)).toBeCloseTo(wedge(d) + 0.06, 6);

@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { Diagram, DiagramCurve, DiagramSpan } from '@/model/diagram';
 import { resolveDiagram } from '@/model/diagramAnchors';
-import { hitTest } from '@/model/diagramDraw';
-import { draggedSpanOffset, spanGeometry } from '@/model/diagramSpans';
+import { applyDrag, hitTest } from '@/model/diagramDraw';
+import { draggedSpanOffset, isShiftWedge, spanGeometry } from '@/model/diagramSpans';
+import { buildFromTemplate } from '@/model/diagramTemplates';
 import { axisSpanClearance, axisTickAnchor, diagramPlot, diagramSize, diagramSvg } from './diagram';
 import { spanLayout } from './diagramSpan';
 
@@ -170,6 +171,45 @@ describe('axis spans rest outside the axes, past the tick labels', () => {
     expect(axisTickAnchor({ at: 0.5 }, 'x', proj, 1, 20).y).toBe(proj.plot.bottom + 4);
     expect(axisTickAnchor({ at: 1 }, 'x', proj, 1, 20).y).toBeGreaterThan(proj.plot.bottom + 5);
     expect(axisTickAnchor({ at: 0.5 }, 'y', proj, 1).x).toBe(proj.plot.left - 6);
+  });
+});
+
+describe('a tax or subsidy wedge is an arrow from S₀ to S₁', () => {
+  const wedgeOf = (d: Diagram) => {
+    const span = d.spans!.find((s) => isShiftWedge(d, s))!;
+    const proj = diagramPlot(d, OPTIONS);
+    return spanLayout(d, span, proj, 1)!;
+  };
+  /** Screen y grows downward: an upward arrow's head has the smaller y. */
+  const pointsUp = (layout: ReturnType<typeof wedgeOf>) => layout.heads[0].end.y < layout.heads[0].from.y;
+
+  it('points up under a tax and down under a subsidy, head on S₁', () => {
+    const tax = buildFromTemplate('per-unit-tax');
+    const subsidy = buildFromTemplate('per-unit-subsidy');
+    expect(wedgeOf(tax).heads).toHaveLength(1);
+    expect(pointsUp(wedgeOf(tax))).toBe(true);
+    expect(pointsUp(wedgeOf(subsidy))).toBe(false);
+    const s1 = tax.curves.find((c) => c.derive?.kind === 'shift')!;
+    const span = tax.spans!.find((s) => isShiftWedge(tax, s))!;
+    expect(span.to).toMatchObject({ on: s1.id });
+  });
+
+  it('flips when S₁ is dragged from above S₀ to below it', () => {
+    const tax = buildFromTemplate('per-unit-tax');
+    const s1 = tax.curves.find((c) => c.derive?.kind === 'shift')!;
+    const below = resolveDiagram(applyDrag(tax, { kind: 'curve', curveId: s1.id }, { x: 0, y: 0 }, { x: 0, y: -0.45 }));
+    expect(below.curves.find((c) => c.id === s1.id)!.derive).toMatchObject({ kind: 'shift' });
+    expect(pointsUp(wedgeOf(below))).toBe(false);
+  });
+
+  it('is drawn as an arrow whatever style it was saved with; other spans keep theirs', () => {
+    const tax = buildFromTemplate('per-unit-tax');
+    const asDimension = { ...tax, spans: tax.spans!.map((s) => (isShiftWedge(tax, s) ? { ...s, style: 'dimension' as const } : s)) };
+    expect(wedgeOf(asDimension).heads).toHaveLength(1);
+    expect(wedgeOf(asDimension).lines).toHaveLength(1);
+    const reversed = { ...tax, spans: tax.spans!.map((s) => (isShiftWedge(tax, s) ? { ...s, from: s.to, to: s.from } : s)) };
+    expect(pointsUp(wedgeOf(reversed))).toBe(true);
+    expect(isShiftWedge(tax, { id: 'b', from: { x: 0.2, y: 0.2 }, to: { x: 0.5, y: 0.2 }, style: 'bracket' })).toBe(false);
   });
 });
 
