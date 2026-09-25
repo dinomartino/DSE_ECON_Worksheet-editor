@@ -9,14 +9,47 @@ import { createDiagramBlock, createParagraphBlock, createStructuredQuestion, cre
 import { getDiagramTemplate } from '@/model/diagramTemplates';
 import { curveYAt } from '@/model/diagramAnchors';
 import { bi, plain } from '@/model/text';
-import { diagramPlot } from '@/render/diagram';
+import { axisSpanClearance, diagramPlot, type Projection } from '@/render/diagram';
+import { spanLayout } from '@/render/diagramSpan';
 import type { Diagram, DiagramPoint } from '@/model/diagram';
 
 const OUT = process.env.DRAG_DIR ?? '/tmp/relation-drag';
 
-/** What to grab, and by how much to move it, in unit space. */
-const CASES: Array<{ id: string; grab: (d: Diagram) => DiagramPoint; by: DiagramPoint; what: string }> = [
+/**
+ * What to grab, and by how much to move it, in unit space — or, for something drawn
+ * outside the plot (an axis span), `grabPx`/`byPx` in the SVG's own pixels.
+ */
+interface Case {
+  id: string;
+  /** The template, when `id` is a variant of one. */
+  template?: string;
+  what: string;
+  grab?: (d: Diagram) => DiagramPoint;
+  by?: DiagramPoint;
+  grabPx?: (d: Diagram, proj: Projection) => DiagramPoint;
+  byPx?: DiagramPoint;
+}
+
+const CASES: Case[] = [
   { id: 'per-unit-tax', what: 'drag S1 up', by: { x: 0, y: 0.08 }, grab: (d) => on(d, 'S1', 0.3) },
+  {
+    id: 'per-unit-tax-flip',
+    template: 'per-unit-tax',
+    what: 'drag S1 below S0: the wedge arrow turns to point down',
+    by: { x: 0, y: -0.42 },
+    grab: (d) => on(d, 'S1', 0.3),
+  },
+  {
+    id: 'demand-shift-span',
+    template: 'demand-shift',
+    what: 'drag the Q arrow (outside the x-axis) further out',
+    byPx: { x: 0, y: 14 },
+    grabPx: (d, proj) => {
+      const span = d.spans!.find((s) => s.along === 'x')!;
+      const [a, b] = spanLayout(d, span, proj, 1, axisSpanClearance(d, proj, 1, 'en'))!.lines[0];
+      return { x: (a.x + b.x) / 2 - 4, y: a.y };
+    },
+  },
   { id: 'tariff', what: 'drag D right', by: { x: 0.08, y: 0 }, grab: (d) => on(d, 'D', 0.72) },
   { id: 'tariff-welfare', what: 'drag D right', by: { x: 0.07, y: 0 }, grab: (d) => on(d, 'D', 0.72) },
   { id: 'monopoly', what: 'drag D up', by: { x: 0, y: 0.07 }, grab: (d) => on(d, 'D', 0.8) },
@@ -39,9 +72,12 @@ it('emits the drag worksheet and its targets', () => {
   const worksheet = createWorksheet();
   worksheet.title = bi('Relation drags', '關係拖曳');
   const targets = CASES.map((c) => {
+    const template = getDiagramTemplate(c.template ?? c.id)!;
+    // A variant gets its own heading, so the harness opens the right copy.
+    const name = c.template ? `${plain(template.name.en)} (${c.id})` : plain(template.name.en);
     const question = createStructuredQuestion();
-    const block = createDiagramBlock(c.id);
-    question.blocks = [createParagraphBlock(getDiagramTemplate(c.id)!.name), block];
+    const block = createDiagramBlock(c.template ?? c.id);
+    question.blocks = [createParagraphBlock(bi(name, name)), block];
     worksheet.questions.push(question);
     const proj = diagramPlot(block.diagram, {
       widthPx: block.widthPx,
@@ -49,10 +85,12 @@ it('emits the drag worksheet and its targets', () => {
       language: 'en',
       fonts: worksheet.fonts,
     });
-    const from = c.grab(block.diagram);
-    const to = { x: from.x + c.by.x, y: from.y + c.by.y };
     const px = (p: DiagramPoint) => ({ x: proj.px(p.x), y: proj.py(p.y) });
-    return { id: c.id, what: c.what, name: plain(getDiagramTemplate(c.id)!.name.en), widthPx: block.widthPx, from: px(from), to: px(to) };
+    const from = c.grabPx ? c.grabPx(block.diagram, proj) : px(c.grab!(block.diagram));
+    const to = c.byPx
+      ? { x: from.x + c.byPx.x, y: from.y + c.byPx.y }
+      : px({ x: proj.ux(from.x) + c.by!.x, y: proj.uy(from.y) + c.by!.y });
+    return { id: c.id, what: c.what, name, widthPx: block.widthPx, from, to };
   });
   writeFileSync(`${OUT}/drag.worksheet.json`, JSON.stringify(worksheet));
   writeFileSync(`${OUT}/drag.targets.json`, JSON.stringify(targets, null, 2));

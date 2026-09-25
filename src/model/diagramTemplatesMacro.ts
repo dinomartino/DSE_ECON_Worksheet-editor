@@ -32,8 +32,6 @@ import {
  */
 
 const Y = { p: 'P', q: 'Y' };
-/** Above the falling curve, left of the rising one: clear when a shifted twin runs just right. */
-const UP_LEFT = { labelOffset: { x: -0.03, y: 0.085 } };
 const AD: Pair[] = [[0.06, 0.82], [0.8, 0.14]];
 const SRAS: Pair[] = [[0.06, 0.14], [0.8, 0.82]];
 
@@ -56,7 +54,7 @@ function adShift(): Diagram {
   const ad1 = shiftOf(ad0, 0.2, 0, sub('AD', '1'));
   const sras = curve(SRAS, sym('SRAS'));
   // P₁'s drop runs just above E₀: its name takes the wedge left of SRAS, under P₀.
-  const e0 = eq(ad0, sras, '0', Y, { labelOffset: { x: -0.08, y: -0.028 } });
+  const e0 = eq(ad0, sras, '0', Y);
   const e1 = eq(ad1, sras, '1', Y);
   return finish(
     macro({
@@ -75,7 +73,7 @@ function srasShift(): Diagram {
   // SRAS₁'s name sits left of its end, so the two names never meet at the top.
   const s1 = shiftOf(s0, -0.2, 0, sub('SRAS', '1'), { labelOffset: { x: -0.19, y: -0.01 } });
   const e0 = eq(ad, s0, '0', Y);
-  const e1 = eq(ad, s1, '1', Y, UP_LEFT);
+  const e1 = eq(ad, s1, '1', Y);
   const y = 0.6;
   return finish(
     macro({
@@ -93,8 +91,8 @@ function adSrasLeft(): Diagram {
   const ad1 = shiftOf(ad0, -0.16, 0, sub('AD', '1'));
   const s0 = curve([[0.3, 0.14], [0.9, 0.78]], sub('SRAS', '0'));
   const s1 = shiftOf(s0, -0.16, 0, sub('SRAS', '1'), { labelOffset: { x: -0.19, y: -0.01 } });
-  const e0 = eq(ad0, s0, '0', Y, { labelSide: 'right' });
-  const e1 = eq(ad1, s1, '1', { p: '', q: 'Y' }, { labelSide: 'up' });
+  const e0 = eq(ad0, s0, '0', Y);
+  const e1 = eq(ad1, s1, '1', { p: '', q: 'Y' });
   return finish(
     macro({
       curves: [ad0, ad1, s0, s1],
@@ -123,7 +121,7 @@ function gap(kind: 'deflationary' | 'inflationary'): Diagram {
       x: { title: AXIS.realOutput, ticks: [yf(full)] },
       curves: [ad, sras, l],
       points: [e0],
-      spans: [span(at(e0), { on: l.id, y: 0 }, 'doubleArrow', { along: 'x', offset: 0.05, label: text })],
+      spans: [span(at(e0), { on: l.id, y: 0 }, 'doubleArrow', { along: 'x', label: text })],
     }),
   );
 }
@@ -136,7 +134,7 @@ function gapNarrows(): Diagram {
   const ad0 = curve([[0.04, 0.7], [0.6, 0.176]], sub('AD', '0'), { labelAt: 'start', labelOffset: { x: 0.07, y: 0.03 } });
   const ad1 = shiftOf(ad0, 0.18, 0, sub('AD', '1'));
   const sras = curve([[0.08, 0.2], [0.52, 0.74]], sym('SRAS'));
-  const e0 = eq(ad0, sras, '0', Y, { labelOffset: { x: -0.07, y: -0.03 } });
+  const e0 = eq(ad0, sras, '0', Y);
   // Each gap ends on LRAS at the axis, whichever AD is drawn.
   const yf0 = { on: l.id, y: 0 };
   const e1 = eq(ad1, sras, '1', Y);
@@ -147,8 +145,8 @@ function gapNarrows(): Diagram {
       points: [e0, e1],
       arrows: [arrow([0.16, 0.66], [0.32, 0.66])],
       spans: [
-        span(at(e0), yf0, 'doubleArrow', { along: 'x', offset: 0.2, label: subBi('gap', '缺口', '0'), labelOffset: { x: -0.08, y: 0 } }),
-        span(at(e1), yf0, 'doubleArrow', { along: 'x', offset: 0.05, label: subBi('gap', '缺口', '1') }),
+        span(at(e0), yf0, 'doubleArrow', { along: 'x', offset: 0.12, label: subBi('gap', '缺口', '0') }),
+        span(at(e1), yf0, 'doubleArrow', { along: 'x', label: subBi('gap', '缺口', '1') }),
       ],
     }),
   );
@@ -168,8 +166,8 @@ function selfAdjust(kind: 'deflationary' | 'inflationary'): Diagram {
   const s0 = curve(base, sub('SRAS', '0'));
   const ys: [number, number] = deflation ? [0.2, 0.62] : [0.3, 0.9];
   const s1 = derived({ kind: 'parallel', to: s0.id, through: cross(ad, l), ys }, [s0, ad, l], sub('SRAS', '1'));
-  const e0 = eq(ad, s0, '0', Y, deflation ? UP_LEFT : { labelSide: 'right' });
-  const e1 = eq(ad, s1, '1', { p: 'P', q: '' }, deflation ? {} : { labelSide: 'downRight' });
+  const e0 = eq(ad, s0, '0', Y);
+  const e1 = eq(ad, s1, '1', { p: 'P', q: '' });
   const y = deflation ? 0.25 : 0.7;
   const [from, to] = deflation ? [xAt(s0, y) + 0.03, xAt(s1, y) - 0.03] : [xAt(s0, y) - 0.03, xAt(s1, y) + 0.03];
   return finish(
@@ -195,7 +193,7 @@ function shockRecovery(): Diagram {
   const s0 = curve(through(target, k, 0.12, 0.8), sub('SRAS', '0'));
   const s1 = shiftOf(s0, -0.2, 0, sub('SRAS', '1'), { labelOffset: { x: -0.19, y: -0.01 } });
   const e0 = eq(ad, s0, '0', { p: 'P', q: '' });
-  const e1 = eq(ad, s1, '1', Y, UP_LEFT);
+  const e1 = eq(ad, s1, '1', Y);
   // Both arrows below the equilibria, where the two SRAS lines run clear of labels.
   const hi = 0.36;
   const lo = 0.24;
@@ -218,8 +216,8 @@ function adShiftAtCapacity(): Diagram {
   const l = lras(full);
   const ad0 = curve([[0.06, 0.8], [0.72, 0.12]], sub('AD', '0'));
   const ad1 = shiftOf(ad0, 0.2, 0, sub('AD', '1'));
-  const e0 = eq(ad0, l, '0', { p: 'P', q: '' }, { labelSide: 'downLeft' });
-  const e1 = eq(ad1, l, '1', { p: 'P', q: '' }, { labelSide: 'right' });
+  const e0 = eq(ad0, l, '0', { p: 'P', q: '' });
+  const e1 = eq(ad1, l, '1', { p: 'P', q: '' });
   return finish(
     macro({
       x: { title: AXIS.realOutput, ticks: [yf(full)] },
@@ -237,7 +235,7 @@ function lrasGrowth(): Diagram {
   const ad1 = shiftOf(ad0, 0.22, 0, sub('AD', '1'));
   const l0 = lras(0.32, sub('LRAS', '0'));
   const l1 = shiftOf(l0, 0.3, 0, sub('LRAS', '1'));
-  const e0 = eq(ad0, l0, '0', Y, { labelSide: 'upRight' });
+  const e0 = eq(ad0, l0, '0', Y);
   const e1 = eq(ad1, l1, '1', Y);
   // The AD arrow fits between the two LRAS lines: the LRAS shift is the larger.
   const y = 0.74 - (0.35 - 0.06) * (0.64 / 0.6);
@@ -275,7 +273,7 @@ function moneyDemandShift(): Diagram {
   const ms = upright(0.5, sym('Ms'), 0.9);
   const md0 = curve(base, sub('Md', '0'));
   const md1 = shiftOf(md0, 0.2, 0, sub('Md', '1'));
-  const e0 = eq(md0, ms, '0', R, { labelSide: 'downLeft' });
+  const e0 = eq(md0, ms, '0', R);
   const e1 = eq(md1, ms, '1', R);
   const y = 0.6;
   return finish(

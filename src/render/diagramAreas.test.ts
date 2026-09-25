@@ -70,6 +70,8 @@ describe('a diagram saved by the published build renders unchanged', () => {
     // from the frozen v1 corpus. Never regenerate it to make this pass. Re-frozen once,
     // 2026-09-25, when arrowheads became triangles instead of `<marker>`s — after a
     // Chrome raster diff showed the two renderings match (at most a 1px base edge).
+    // Re-frozen 2026-09-26 when tick labels moved against their axes (x 8→4px, y 8→6px);
+    // an element diff showed only those `<text>` coordinates changed.
     const worksheet = migrate(structuredClone(v1Corpus));
     const blocks = worksheet.questions
       .flatMap((question) => question.blocks)

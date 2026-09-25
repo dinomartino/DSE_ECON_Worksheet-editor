@@ -1177,6 +1177,12 @@ geometry underneath stays byte-identical to what exports.
   points moved by `by`, so it keeps its length and follows the source (a tax stays t
   when S is dragged). `parallel` is a line through a place, across the plot unless `ys`
   bounds its heights (a short TOT guide).
+- **An axis span rests outside its axis, past the tick labels** (the schemes' P₀→P₁ and
+  Q₀→Q₁ arrows). The clearance is measured from the tick text (`axisSpanClearance`) and
+  handed to `spanGeometry`, so canvas hits match the drawing; `offset` is measured outward
+  from that rest. The measured pads (`diagramSize`, `diagramPlot`) include the span and
+  its label; a crop still replaces them. A canvas commit that changes the measured size
+  (a span dragged further out) re-measures the block; other commits keep the stored size.
 - **Templates are written in relations** (`diagramTemplateKit.ts`): anchored equilibria,
   derived curves, spans and Shade presets, resolved once by `finish` so the stored
   `at`/`points` are right for builds that ignore relations. The Shade menu reads a
@@ -1247,8 +1253,14 @@ fallback. The four welfare presets (CS, PS, DWL, tax revenue) are bands built by
 **Shifting a curve** (`model/diagramShift.ts:shiftCurve`) adds a translated copy
 (trimmed to the plot, never clamped, so the slope survives), a shift arrow and, where
 the copy meets the original's counterpart, a `DiagramPointMark` with drops and
-P/Q ticks — the template convention. Numbered after the copy (D₁ → E₁), else the next
-free E. Both it and the original equilibrium are anchored to their crossings.
+P/Q ticks — the template convention. Numbered after the copy (D₁ → P₁, Q₁), else the
+next free number. Both it and the original equilibrium are anchored to their crossings.
+
+**Equilibria ship unnamed.** Templates and `shiftCurve` give a crossing point its dot,
+drops and ticks but no `label`; the point inspector's "Label E₀" button names it
+(`nextEquilibriumName`), and a first name is placed by `equilibriumLabelSide` — right of
+the dot unless a curve runs through that spot. The side is stored, so a saved label
+never moves on its own.
 
 ---
 

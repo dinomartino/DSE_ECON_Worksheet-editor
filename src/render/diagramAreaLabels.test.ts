@@ -19,9 +19,13 @@ const SIZE = { widthPx: 400, heightPx: 320 };
 /**
  * The area diagrams `diagramAreas.frozen.json` was written from — by the build *before*
  * area colours and leader labels existed. Never regenerate it to make a test pass.
+ * Re-frozen 2026-09-26 for the tick-label gap only (an element diff: tick `<text>` x/y).
  */
 function frozenCases(): Record<string, Diagram> {
-  const base = buildFromTemplate('supply-demand');
+  // The template as it shipped then: its equilibrium carried the name E₀.
+  const template = buildFromTemplate('supply-demand');
+  const e0 = { en: [{ text: 'E' }, { text: '0', vertAlign: 'subscript' as const }], zh: [{ text: 'E' }, { text: '0', vertAlign: 'subscript' as const }] };
+  const base = { ...template, points: template.points.map((p) => ({ ...p, label: e0 })) };
   const [demand, supply] = base.curves;
   const m = { demand: demand.id, supply: supply.id };
   const cs = presetArea('consumerSurplus', m, 'cs')!;

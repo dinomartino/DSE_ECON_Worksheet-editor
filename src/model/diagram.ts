@@ -173,7 +173,10 @@ export interface DiagramSpan {
   style: DiagramSpanStyle;
   /** Project both ends onto that axis, so the span sits on it. */
   along?: 'x' | 'y';
-  /** Unit-space distance off the line joining the ends (or off the axis, into the plot). */
+  /**
+   * Unit-space distance off the line joining the ends. On an axis (`along`), 0 rests the
+   * span outside the axis past its tick labels; positive moves it further out, negative in.
+   */
   offset?: number;
   label?: BiText;
   /** Nudge for the label, in unit space, from its default spot beside the midpoint. */
