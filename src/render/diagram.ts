@@ -932,6 +932,7 @@ function areaLabelWidth(lines: RichText[], fontSize: number): number {
  * leaders existed — and any other outside on a leader; `inside`/`leader` force a side.
  * A leader label sits at centroid + `labelOffset`, or, undragged, at the nearest clear
  * spot `placeOutside` finds. Shared with the canvas, so it drags where it is drawn.
+ * Leader labels are placed in `areas` order, each clear of the ones before it.
  */
 export function areaLabelLayout(
   diagram: Diagram,
@@ -940,8 +941,40 @@ export function areaLabelLayout(
   language: LanguageMode,
   scale: number,
 ): AreaLabelLayout | null {
+  const index = (diagram.areas ?? []).indexOf(area);
+  if (index < 0) return layoutAreaLabel(diagram, area, proj, language, scale, []).layout;
+  const c = labelCache;
+  if (!c || c.diagram !== diagram || c.proj !== proj || c.language !== language || c.scale !== scale) {
+    const placed: Pt[][] = [];
+    const layouts = (diagram.areas ?? []).map((each) => {
+      const { layout, box } = layoutAreaLabel(diagram, each, proj, language, scale, placed);
+      if (box) placed.push(box);
+      return layout;
+    });
+    labelCache = { diagram, proj, language, scale, layouts };
+  }
+  return labelCache!.layouts[index];
+}
+
+/** The last diagram's label layouts: a render asks once per area, and each needs all. */
+let labelCache: {
+  diagram: Diagram;
+  proj: Projection;
+  language: LanguageMode;
+  scale: number;
+  layouts: Array<AreaLabelLayout | null>;
+} | null = null;
+
+function layoutAreaLabel(
+  diagram: Diagram,
+  area: DiagramArea,
+  proj: Projection,
+  language: LanguageMode,
+  scale: number,
+  placed: Pt[][],
+): { layout: AreaLabelLayout | null; box?: Pt[] } {
   const polygon = areaPolygon(diagram, area);
-  if (!polygon) return null;
+  if (!polygon) return { layout: null };
   const pts = polygon.map(project(proj));
   const centroid = project(proj)(polygonCentroid(polygon));
   const offset = area.labelOffset;
@@ -957,7 +990,7 @@ export function areaLabelLayout(
   const mode = area.labelPlacement ?? 'auto';
   const fits = () => boxInside(boxAround(centroid, w, h, AREA_LABEL_MARGIN * scale), pts);
   if (lines.length === 0 || mode === 'inside' || (mode === 'auto' && fits())) {
-    return { ...nudged, placement: 'inside', leader: null };
+    return { layout: { ...nudged, placement: 'inside', leader: null } };
   }
 
   const obstacles = () => {
@@ -966,7 +999,7 @@ export function areaLabelLayout(
       const polygon = other.id === area.id ? null : areaPolygon(diagram, other);
       if (polygon) regions.push(polygon.map(project(proj)));
     }
-    return { lines, regions };
+    return { lines, regions: [...regions, ...placed] };
   };
   const target = deepestPoint(pts, interiorPoint(pts, centroid), LEADER_DEPTH * scale);
   const at = offset
@@ -989,7 +1022,7 @@ export function areaLabelLayout(
     minShaft: 8 * scale,
     step: 0.5 * scale,
   });
-  return { ...at, placement: 'leader', leader };
+  return { layout: { ...at, placement: 'leader', leader }, box: boxPolygon(boxAround(at, w, h)) };
 }
 
 /**

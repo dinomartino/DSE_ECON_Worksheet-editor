@@ -84,6 +84,11 @@ Words this repository uses in its own way. One line each, with where the thing l
 - **Hatch pattern** — how a hatched area is drawn (diagonal, reverse, cross, horizontal,
   vertical, dots; normal or dense): plain clipped lines or dots, never an SVG `<pattern>`,
   so areas differ on a monochrome copy. `src/render/diagram.ts:areaFillMarkup`
+- **Preset role** — the part a curve or line plays for a Shade preset (demand, supply,
+  shifted supply, price line, Pw, Pw + t, MR, MC); guessed, or picked when ambiguous.
+  `src/model/diagramPresets.ts:PresetRoles`
+- **Band cap** — an optional third edge that trims a band's edge 0 toward edge 1, so a
+  rectangle-plus-triangle (CS loss, PS gain) is one area. `src/model/diagramAreas.ts:areaPolygon`
 - **Revenue area** — TR (a band under E's price to E's quantity) or a revenue gain/loss:
   one P×Q rectangle less another, derived from two points each render — a rectangle, an
   L, or nothing. `src/model/diagramAreas.ts:revenueArea`

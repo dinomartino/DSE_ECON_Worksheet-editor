@@ -191,8 +191,17 @@ export type DiagramAreaLabelPlacement = 'auto' | 'inside' | 'leader';
 
 export interface DiagramArea {
   id: string;
-  /** The region between two edges across `from`..`to` — how every preset is stored. */
-  band?: { edges: [DiagramAreaEdge, DiagramAreaEdge]; from: DiagramAreaX; to: DiagramAreaX };
+  /**
+   * The region between two edges across `from`..`to` — how every preset is stored.
+   * `cap` (optional) bounds edge 0 toward edge 1: at each x, edge 0's height is clamped
+   * between edge 1's and the cap's — the buyers' burden plus its triangle, as one area.
+   */
+  band?: {
+    edges: [DiagramAreaEdge, DiagramAreaEdge];
+    from: DiagramAreaX;
+    to: DiagramAreaX;
+    cap?: DiagramAreaEdge;
+  };
   /** A revenue gain or loss between two points; wins over `band` and `vertices`. */
   revenue?: DiagramAreaRevenue;
   /** A free polygon in unit space, used when `band` is absent. */

@@ -911,6 +911,7 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
         target &&
         (target.tagName === 'INPUT' ||
           target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
           target.isContentEditable);
 
       if (event.key === 'Escape') {
@@ -1056,9 +1057,9 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
             open={shadeOpen}
             onOpenChange={setShadeOpen}
             newId={newId}
-            onAdd={(area) => {
-              setDiagram({ ...diagram, areas: [...(diagram.areas ?? []), area] });
-              setSelected([{ kind: 'area', areaId: area.id }]);
+            onAdd={(added) => {
+              setDiagram({ ...diagram, areas: [...(diagram.areas ?? []), ...added] });
+              setSelected(added.map((area) => ({ kind: 'area', areaId: area.id })));
               setTool('select');
             }}
           />
