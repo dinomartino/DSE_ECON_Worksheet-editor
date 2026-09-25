@@ -359,8 +359,16 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
   /** Axis spans rest past the tick labels, measured by the renderer: hit them where drawn. */
   const spanClear = useMemo(() => axisSpanClearance(diagram, projection, 1, language), [diagram, projection, language]);
   const setDiagram = useCallback(
-    (next: Diagram) => onChange({ ...block, diagram: resolveDiagram(next, aspect) }),
-    [block, onChange, aspect],
+    (next: Diagram) => {
+      const diagram = resolveDiagram(next, aspect);
+      // An edit that changes the room the picture needs (an axis span moved out, or its
+      // label) re-measures; any other edit keeps the stored size, so nothing reflows.
+      const before = diagramSize(block.diagram, block.widthPx, language);
+      const after = diagramSize(diagram, block.widthPx, language);
+      const remeasure = !diagram.crop && (before.widthPx !== after.widthPx || before.heightPx !== after.heightPx);
+      onChange({ ...block, diagram, ...(remeasure ? after : {}) });
+    },
+    [block, onChange, aspect, language],
   );
 
   const svg = useMemo(
@@ -2237,7 +2245,8 @@ function SelectionInspector({
           {/* Equilibria ship unnamed; one click names this one E₀, E₁, … */}
           {!plain(mark.label?.en).trim() && !plain(mark.label?.zh).trim() && (
             <Button size="sm" variant="subtle" onClick={() => setLabel(nextEquilibriumName(diagram, mark))}>
-              Label {plain(nextEquilibriumName(diagram, mark).en)}
+              {/* Its subscript as a subscript digit: "Label E₀", as it will print. */}
+              Label E{plain(nextEquilibriumName(diagram, mark).en).slice(1).replace(/\d/g, (d) => '₀₁₂₃₄₅₆₇₈₉'[Number(d)])}
             </Button>
           )}
           <PointRelationControls diagram={diagram} mark={mark} onChange={onChange} />

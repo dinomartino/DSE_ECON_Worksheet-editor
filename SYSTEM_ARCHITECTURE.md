@@ -1181,7 +1181,8 @@ geometry underneath stays byte-identical to what exports.
   Q₀→Q₁ arrows). The clearance is measured from the tick text (`axisSpanClearance`) and
   handed to `spanGeometry`, so canvas hits match the drawing; `offset` is measured outward
   from that rest. The measured pads (`diagramSize`, `diagramPlot`) include the span and
-  its label; a crop still replaces them.
+  its label; a crop still replaces them. A canvas commit that changes the measured size
+  (a span dragged further out) re-measures the block; other commits keep the stored size.
 - **Templates are written in relations** (`diagramTemplateKit.ts`): anchored equilibria,
   derived curves, spans and Shade presets, resolved once by `finish` so the stored
   `at`/`points` are right for builds that ignore relations. The Shade menu reads a
