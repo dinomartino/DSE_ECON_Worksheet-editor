@@ -454,6 +454,9 @@ export function diagramStoryboard(seed) {
         await d.wait(500);
         await d.click(panel.getByRole('button', { name: 'Shift a copy' }), { hover: 350 });
         await d.wait(1600);
+        // The copy stays selected, its inspector over the "On this diagram" list.
+        await deselect(d, map, seed);
+        await d.wait(900);
         // The new equilibrium: click its dot, then one click names it.
         const e1 = (await geometry(d, 'Point (Q1, P1)')).dots[0];
         if (!e1) throw new Error('the shift made no new equilibrium');

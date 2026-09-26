@@ -35,6 +35,10 @@ function withSubscript(runs: InlineRun[], value: number): InlineRun[] {
 
 const flat = (runs: InlineRun[] | undefined) => (runs ?? []).map((run) => run.text).join('');
 
+/** A label's names, one per non-blank side: a blank side names nothing, so it never collides. */
+const namesOf = (label: BiText | undefined): string[] =>
+  [flat(label?.en), flat(label?.zh)].filter((name) => name.trim() !== '');
+
 /** The subscript a shifted copy of `label` takes: one past the original's, or 1. */
 export function shiftedLabel(label: BiText | undefined, taken: Set<string>): BiText | undefined {
   if (!label) return undefined;
@@ -42,7 +46,7 @@ export function shiftedLabel(label: BiText | undefined, taken: Set<string>): BiT
   let candidate: BiText = label;
   for (let guard = 0; guard < 50; guard += 1, next += 1) {
     candidate = { en: withSubscript(label.en ?? [], next), zh: withSubscript(label.zh ?? [], next) };
-    if (!taken.has(flat(candidate.en)) && !taken.has(flat(candidate.zh))) break;
+    if (!namesOf(candidate).some((name) => taken.has(name))) break;
   }
   return candidate;
 }
@@ -87,7 +91,7 @@ export function shiftCurve(
   const points = translateCurvePoints(original.points, delta);
   if (!points) return null;
 
-  const taken = new Set(diagram.curves.flatMap((c) => [flat(c.label?.en), flat(c.label?.zh)]));
+  const taken = new Set(diagram.curves.flatMap((c) => namesOf(c.label)));
   // The copy keeps the original's style; its label starts at the default spot.
   const copy: DiagramCurve = {
     ...original,
@@ -139,7 +143,7 @@ export function shiftCurve(
 
   // Numbered after the new curve (D₁ → P₁, Q₁) unless that number is taken — a second
   // shift in one diagram — then one past the highest E, P or Q already there.
-  const fromCurve = trailingSubscript(copy.label?.en ?? []);
+  const fromCurve = trailingSubscript(copy.label?.en ?? []) ?? trailingSubscript(copy.label?.zh ?? []);
   const used = diagram.points
     .flatMap((p) => [
       /^E/.test(flat(p.label?.en)) ? p.label : undefined,
