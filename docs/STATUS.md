@@ -30,6 +30,14 @@ off the bottom.** It is the first thing a fresh session reads — then
   `derive.shift` for shifted copies); `docs/Diagram_Requirements/COVERAGE.md`: 145 covered,
   11 partial, 0 uncovered. Demo: `npm run demo:diagrams` → `demo-media/diagrams/` (1:57,
   17 stills). **Next:** teacher-run browser pass; Word check of a retrofitted `.docx`.
+- **Motion polish (2026-09-26, merged on `develop`)** — shared tokens in `globals.css`
+  (`ease-spring`, `ease-in-out-soft`, `animate-fade-in|pop-in|dialog-in|slide-up-in|
+  slide-down-in|scrim-in`, fill-mode `backwards`); eased press/hover across editor, page
+  chrome, start screen, diagram editor. Rules: Tailwind 4 `scale-*`/`rotate-*`/`translate-*`
+  are their own CSS properties — list them in `transition-[…]`; never transition a
+  focus-ring box-shadow or anything pointer-following. Browser-verified per area and merged.
+- **Diagram demo film is being rewritten** (`feature/demo-diagrams-from-scratch`): draw a
+  diagram from a blank canvas, not a template tour — Word drawing is the teacher's pain.
 - **Feature backlog** — `docs/IDEAS.md`, ranked from the 2026-09-24 competitor research in
   `docs/research/2026-09-competitive/`. Pick the next initiative from there.
 
@@ -48,6 +56,10 @@ off the bottom.** It is the first thing a fresh session reads — then
   `dominant-baseline` on `<text>` with `<tspan>`s; labels rose through the axis while
   Chrome shots looked right (fixed 2026-09-26: `textAt` writes explicit baselines).
   Playwright WebKit is installed; screenshot both engines for text placement work.
+- **Empty table cell shows no caret until you type** (seen 2026-09-26, Chrome; editing
+  path untouched by the motion work — confirm on an older build before fixing).
+- **`scripts/shot.mjs --seed` no longer reaches the editor** — `/` opens the start screen
+  now; drive "Classroom worksheet" → Create first.
 - **Diagram relations, loose ends:** the canvas "Shift" button still makes a plain copy
   (templates use a following `shift` derive); a dragged PPF point is not held on the
   frontier; `gap-narrows` is crowded in bilingual mode; presets cannot use a flat D; the
@@ -84,6 +96,8 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
+- **2026-09-26 (evening)** — Motion polish: four parallel branches (foundation, editor
+  chrome, page chrome, start + diagrams) merged clean; 1721 tests, lint baseline, build green.
 - **2026-09-26** — Diagram fine-tune per the user's reference figure: axis change arrows
   outside the axes, tick labels on the axis, arrow-only tax/subsidy wedge (direction
   derived), equilibria unlabelled by default ("Label E₀" opt-in). A5 paper summary bar +
@@ -92,5 +106,3 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **2026-09-25 (night)** — Diagram initiative: core geometry, presets, templates merged
   (one conflict; trade role guess now prefers drawn price lines). Model answer diagram
   on LQ leaves (answer-key `.docx` now embeds pictures). Browser-verified alone.
-- **2026-09-25 (evening)** — Leader arrow geometry; hatch patterns + revenue areas; desktop
-  PDF file export (native, per platform); print doubled-marks fix.
