@@ -1,13 +1,17 @@
 // The demo video. STORYBOARD is the whole film: one named step per beat, played in
 // order on camera. `speed` > 1 fast-forwards that step in the final cut (for typing
-// that would otherwise drag). To show a new feature, add a step.
+// that would otherwise drag). `caption` describes the step for the README; `d.say`
+// puts subtitles on screen, timed to the action (§ subtitles.mjs). To show a new
+// feature, add a step.
 import fs from 'node:fs';
 import path from 'node:path';
 import { MCQS, STRUCTURED } from './content.mjs';
 import {
-  CONTEXT, CURSOR_SCRIPT, makeDriver, field, flowRow, answerButton, partInput,
+  CONTEXT, CURSOR_SCRIPT, makeDriver, field, flowRow, answerButton, partInput, question,
   buildQuiz, buildLibrary,
 } from './flow.mjs';
+import { auditCues, withSubtitles } from './subtitles.mjs';
+import { renderFrames, withCamera } from './camera.mjs';
 
 const Q1 = MCQS[0];
 const Q2 = MCQS[1];
@@ -29,6 +33,7 @@ export const STORYBOARD = [
     caption: 'The start screen, with saved worksheets.',
     async run(d) {
       await d.wait(600);
+      await d.say('The start screen lists your worksheets.');
       await d.moveTo(700, 400);
       await d.wait(1200);
     },
@@ -37,10 +42,17 @@ export const STORYBOARD = [
     name: 'New bilingual worksheet',
     caption: 'Clicks **Classroom worksheet**, picks **EN+中**, then **Create worksheet**.',
     async run(d) {
+      await d.say('Start a new Classroom worksheet.');
       await d.click(d.page.getByText('Classroom worksheet', { exact: true }));
-      await d.wait(1000);
-      await d.click(d.page.getByRole('dialog').getByTitle('Bilingual'));
+      await d.wait(500);
+      const dialog = d.page.getByRole('dialog');
+      await d.focus([dialog.getByText('Document type', { exact: true }), dialog.getByTitle('Bilingual')], {
+        name: 'the new-worksheet dialog', pad: 50,
+      });
+      await d.say('EN+中 makes it bilingual.');
+      await d.click(dialog.getByTitle('Bilingual'));
       await d.wait(700);
+      await d.focus(null);
       await d.click(d.page.getByRole('button', { name: /Create worksheet/ }));
       await d.wait(1400);
     },
@@ -48,13 +60,20 @@ export const STORYBOARD = [
   {
     name: 'Insert an MCQ',
     caption: 'Hovers under "Section A", clicks the insert **+**, and chooses **Multiple Choice**.',
-    run: (d) => insertBelowOnCamera(d, 'Section A', /Multiple Choice/),
+    async run(d) {
+      await d.say('Hover under Section A, click +,\nand choose Multiple Choice.');
+      await insertBelowOnCamera(d, 'Section A', /Multiple Choice/);
+    },
   },
   {
     name: 'Type the stem',
     caption: `Double-clicks the page and types "${Q1.stem[0]}" and ${Q1.stem[1]}`,
     async run(d) {
+      await d.say('Double-click the page and type.');
+      await d.show(field(d.page, 0, 0));
+      await d.focus(question(d.page, 0), { name: 'the question', pad: 70, maxZoom: 1.8 });
       await d.typeInto(field(d.page, 0, 0), Q1.stem[0], { delay: 32, after: 250 });
+      await d.say('The Chinese version goes right below.');
       await d.typeInto(field(d.page, 0, 1), Q1.stem[1], { delay: 75, after: 250 });
     },
   },
@@ -63,6 +82,7 @@ export const STORYBOARD = [
     speed: 2.5,
     caption: 'Types the four English options.',
     async run(d) {
+      await d.say('Type the four options in English.');
       for (let k = 0; k < 4; k++)
         await d.typeInto(field(d.page, 0, 2 + 2 * k), Q1.options[k][0], { delay: 30, after: 120 });
     },
@@ -72,6 +92,7 @@ export const STORYBOARD = [
     speed: 3,
     caption: 'Adds their Chinese versions.',
     async run(d) {
+      await d.say('Then their Chinese versions.');
       for (let k = 0; k < 4; k++)
         await d.typeInto(field(d.page, 0, 3 + 2 * k), Q1.options[k][1], { delay: 0, after: 150 });
     },
@@ -80,7 +101,8 @@ export const STORYBOARD = [
     name: 'Mark the answer',
     caption: `Marks **${Q1.answer}** as the correct answer in the sidebar.`,
     async run(d) {
-      await d.wait(300);
+      await d.say(`Mark ${Q1.answer} as the answer in the sidebar.`);
+      await d.focus(null);
       await d.click(answerButton(d.page, Q1.answer), { hover: 350 });
       await d.wait(700);
     },
@@ -89,6 +111,7 @@ export const STORYBOARD = [
     name: 'Second MCQ from the rail',
     caption: 'Adds another MCQ from the **Question** rail.',
     async run(d) {
+      await d.say('Or add a question from the rail.');
       await d.click(d.page.getByRole('button', { name: /^Question/ }));
       await d.wait(550);
       await d.click(d.page.getByRole('menuitem', { name: /Multiple Choice/ }));
@@ -100,6 +123,7 @@ export const STORYBOARD = [
     speed: 4,
     caption: `Fills it in both languages and marks **${Q2.answer}**.`,
     async run(d) {
+      await d.say(`Fill it in both languages and mark ${Q2.answer}.`);
       await d.typeInto(field(d.page, 1, 0), Q2.stem[0], { delay: 0, after: 120 });
       await d.typeInto(field(d.page, 1, 1), Q2.stem[1], { delay: 0, after: 120 });
       for (let k = 0; k < 4; k++) {
@@ -114,6 +138,7 @@ export const STORYBOARD = [
     name: 'Insert a structured question',
     caption: 'Hovers under "Section B" and inserts a **Structured Question**.',
     async run(d) {
+      await d.say('Under Section B,\ninsert a Structured Question.');
       await d.wait(600);
       await insertBelowOnCamera(d, 'Section B', /Structured/);
     },
@@ -122,15 +147,22 @@ export const STORYBOARD = [
     name: 'Type the scenario',
     speed: 2,
     caption: 'Types the scenario.',
-    run: (d) => d.typeInto(field(d.page, SQ, 0), STRUCTURED.stem[0], { delay: 26, after: 200 }),
+    async run(d) {
+      await d.say('Type the scenario.');
+      await d.show(field(d.page, SQ, 0));
+      await d.focus(question(d.page, SQ), { name: 'the structured question', pad: 110, maxZoom: 1.8 });
+      await d.typeInto(field(d.page, SQ, 0), STRUCTURED.stem[0], { delay: 26, after: 200 });
+    },
   },
   {
     name: 'Chinese line and part (a)',
     speed: 3,
     caption: 'Adds its Chinese line and part (a). The marks label appears.',
     async run(d) {
+      await d.say('Add the Chinese line and part (a).');
       await d.typeInto(field(d.page, SQ, 1), STRUCTURED.stem[1], { delay: 0, after: 150 });
       await d.typeInto(field(d.page, SQ, 2), STRUCTURED.parts[0].text[0], { delay: 0, after: 150 });
+      await d.say('The marks label appears on its own.');
       await d.typeInto(field(d.page, SQ, 3), STRUCTURED.parts[0].text[1], { delay: 0, after: 150 });
     },
   },
@@ -138,9 +170,12 @@ export const STORYBOARD = [
     name: 'Answer lines',
     caption: `Sets **Lines** to ${STRUCTURED.parts[0].lines} in the sidebar. Dotted answer lines appear.`,
     async run(d) {
+      await d.say(`Set Lines to ${STRUCTURED.parts[0].lines} in the sidebar.`);
+      await d.focus(null);
       await d.click(partInput(d.page, 'a', 'lines'), { hover: 300 });
       await d.page.keyboard.type(String(STRUCTURED.parts[0].lines), { delay: 60 });
       await d.page.keyboard.press('Tab');
+      await d.say('Dotted answer lines appear.');
       await d.wait(1300);
     },
   },
@@ -148,11 +183,17 @@ export const STORYBOARD = [
     name: 'Teacher version',
     caption: 'Scrolls up and switches **Student → Teacher**. The answers appear in red. Switches back.',
     async run(d) {
+      await d.say('Switch to the Teacher version.');
       await d.moveTo(650, 450);
       await d.wheel(-60, 24, 30);
       await d.wait(500);
       await d.click(d.page.getByTitle(/Teacher version/));
-      await d.wait(2200);
+      await d.say('The answers appear in red.');
+      await d.wait(300);
+      await d.focus([question(d.page, 0), question(d.page, 1)], { name: 'the answers', pad: 40, maxZoom: 1.8 });
+      await d.wait(1400);
+      await d.say('Switch back for the student copy.');
+      await d.focus(null);
       await d.click(d.page.getByTitle(/Student version/));
       await d.wait(900);
     },
@@ -161,12 +202,19 @@ export const STORYBOARD = [
     name: 'Paper versions',
     caption: 'Opens **Setup**, sets **Versions** to 3 ("Version A" appears on the page), and closes it.',
     async run(d) {
+      await d.say('Open Setup and set Versions to 3.');
       await d.click(d.page.getByRole('button', { name: 'Setup' }));
-      await d.wait(1000);
+      await d.wait(600);
       const dialog = d.page.getByRole('dialog');
+      await d.focus([dialog.getByText('Versions', { exact: true }), dialog.getByText('4', { exact: true })], {
+        name: 'Versions in Setup', pad: 60, maxZoom: 1.8,
+      });
       await d.moveTo(900, 600);
       await d.click(dialog.getByText('3', { exact: true }), { hover: 350 });
-      await d.wait(1500);
+      await d.say('The paper now has versions A, B and C.');
+      await d.wait(700);
+      await d.focus(null);
+      await d.wait(500);
       await d.click(dialog.getByRole('button', { name: /close/i }));
       await d.wait(800);
     },
@@ -175,10 +223,12 @@ export const STORYBOARD = [
     name: 'Export',
     caption: 'Opens **Export…** and clicks through Question paper → Answer key → Both → Other apps → Kahoot, then **Cancel**. Nothing is downloaded.',
     async run(d) {
+      await d.say('Export the question paper,\nthe answer key, or both.');
       await d.click(d.page.getByRole('button', { name: /Export/ }));
       await d.wait(1300);
       const dialog = d.page.getByRole('dialog');
       for (const [tab, dwell] of [['Answer key', 750], ['Both', 750], ['Other apps', 1100], ['Kahoot', 1200]]) {
+        if (tab === 'Other apps') await d.say('Or export for Kahoot, Blooket or ZipGrade.');
         await d.click(dialog.getByText(tab, { exact: true }));
         await d.wait(dwell);
       }
@@ -190,6 +240,7 @@ export const STORYBOARD = [
     name: 'Finished page',
     caption: 'Closes the inspector and scrolls to the finished page.',
     async run(d) {
+      await d.say('The finished worksheet, ready to print.');
       await d.click(d.page.getByRole('button', { name: 'Close editor' }));
       await d.wait(500);
       await d.moveTo(650, 520);
@@ -212,11 +263,12 @@ export async function recordStoryboard({ browser, url, tmpDir, log }) {
   const storageState = await seedCtx.storageState();
   await seedCtx.close();
 
-  const ctx = await browser.newContext({ ...CONTEXT, deviceScaleFactor: 1, storageState });
+  // Filmed at 2×, so the camera's push-ins stay sharp (§ camera.mjs).
+  const ctx = await browser.newContext({ ...CONTEXT, deviceScaleFactor: 2, storageState });
   await ctx.addInitScript(CURSOR_SCRIPT);
   const page = await ctx.newPage();
   page.on('pageerror', (e) => log(`  page error: ${e.message}`));
-  const d = makeDriver(page, { smooth: true, url });
+  const d = withCamera(withSubtitles(makeDriver(page, { smooth: true, url })));
   await page.goto(url, { waitUntil: 'networkidle' });
   await d.wait(800);
   await page.mouse.move(820, 520);
@@ -227,11 +279,12 @@ export async function recordStoryboard({ browser, url, tmpDir, log }) {
 }
 
 /**
- * Film `steps` on `page` as JPEG frames (Chrome's screencast, sharper than recordVideo's
- * 1 Mbit VP8), then lay them onto a constant 30 fps timeline with each step's speed.
+ * Film `steps` on `page` as 2× JPEG frames (Chrome's screencast, sharper than
+ * recordVideo's 1 Mbit VP8), then lay them onto a constant 30 fps timeline with each
+ * step's speed, through the camera and with the subtitles on top (§ camera.mjs).
  * Adds `d.cut(fn)` to the driver: whatever `fn` does is left out of the film (a still
  * being captured, geometry read off the page). Returns the frame sequence and the
- * output start time of every step.
+ * output start time of every step, subtitle (`d.say`) and camera move (`d.focus`).
  */
 export async function filmSteps({ ctx, page, d, steps, tmpDir, log }) {
   const framesDir = path.join(tmpDir, 'frames');
@@ -244,22 +297,35 @@ export async function filmSteps({ ctx, page, d, steps, tmpDir, log }) {
     frames.push({ t: metadata.timestamp, wall: Date.now() / 1000, file });
     cdp.send('Page.screencastFrameAck', { sessionId }).catch(() => {});
   });
-  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 95, maxWidth: 1440, maxHeight: 900 });
+  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 90, maxWidth: 2880, maxHeight: 1800 });
 
   const marks = []; // { wall, step, cut?, resume? }
   let current = null;
+  // The film clock: output seconds so far, while recording (a cut stops it).
+  let clockAt = Date.now() / 1000;
+  let clockOut = 0;
+  let rate = 1;
+  const mark = (m) => {
+    clockOut += (m.wall - clockAt) * rate;
+    clockAt = m.wall;
+    rate = m.cut ? 0 : 1 / (m.step?.speed ?? 1);
+    marks.push(m);
+  };
+  d.clock = () => clockOut + (Date.now() / 1000 - clockAt) * rate;
+  d.speedNow = () => current?.speed ?? 1;
+  d.step = () => current;
   d.cut = async (fn) => {
-    marks.push({ wall: Date.now() / 1000, step: current, cut: true });
+    mark({ wall: Date.now() / 1000, step: current, cut: true });
     try {
       return await fn();
     } finally {
-      marks.push({ wall: Date.now() / 1000, step: current, resume: true });
+      mark({ wall: Date.now() / 1000, step: current, resume: true });
     }
   };
   log('video: recording…');
   for (const step of steps) {
     current = step;
-    marks.push({ wall: Date.now() / 1000, step });
+    mark({ wall: Date.now() / 1000, step });
     log(`  ${step.name}${step.speed ? ` (×${step.speed})` : ''}`);
     try {
       await step.run(d);
@@ -267,6 +333,11 @@ export async function filmSteps({ ctx, page, d, steps, tmpDir, log }) {
       await page.screenshot({ path: path.join(tmpDir, 'failed-step.png') });
       throw new Error(`storyboard step "${step.name}" failed: ${e.message}\n(screenshot: ${tmpDir}/failed-step.png)`);
     }
+  }
+  if (d.focus) await d.focus(null);
+  if (d.say) {
+    await d.say(''); // the last subtitle gets its reading time, then fades
+    await d.wait(400);
   }
   const endWall = Date.now() / 1000;
   await cdp.send('Page.stopScreencast');
@@ -303,15 +374,25 @@ export async function filmSteps({ ctx, page, d, steps, tmpDir, log }) {
     .filter(({ m }) => !m.cut && !m.resume)
     .map(({ m, t }) => ({ at: Math.max(0, outBetween(frames[0].t, t)), step: m.step }));
 
-  // A constant 30 fps sequence of links into the captured frames.
+  // Output start time of each subtitle and camera move; warnings where a subtitle breaks the rules.
+  const outAt = (wall) => Math.max(0, outBetween(frames[0].t, wall - offset));
+  const cues = (d.cues ?? []).map((c) => ({ ...c, at: outAt(c.wall) }));
+  const shots = (d.shots ?? []).map((s) => ({ ...s, at: outAt(s.wall) }));
+  if (cues.length) {
+    const shown = cues.filter((c) => c.text);
+    const warnings = auditCues(cues, acc);
+    const fastest = Math.max(...shown.map((c) => [...c.text].length / c.duration));
+    log(`video: ${shown.length} subtitles, ${Math.min(...shown.map((c) => c.duration)).toFixed(1)}–` +
+      `${Math.max(...shown.map((c) => c.duration)).toFixed(1)} s each, at most ${fastest.toFixed(1)} characters/s`);
+    for (const w of warnings) log(`  subtitle: ${w}`);
+  }
+  for (const s of shots) log(`  camera ${s.at.toFixed(1)} s: ${s.rect ? `${(1440 / s.rect.w).toFixed(2)}× on ${s.name}` : 'full frame'}`);
+
+  // A constant 30 fps sequence, through the camera, with the subtitles.
   const FPS = 30;
   const seqDir = path.join(tmpDir, 'seq');
   fs.mkdirSync(seqDir, { recursive: true });
   const count = Math.floor(acc * FPS);
-  let j = 0;
-  for (let k = 0; k < count; k++) {
-    while (j + 1 < starts.length && starts[j + 1].at <= k / FPS) j++;
-    fs.symlinkSync(starts[j].file, path.join(seqDir, `${String(k).padStart(6, '0')}.jpg`));
-  }
-  return { seqPattern: path.join(seqDir, '%06d.jpg'), fps: FPS, duration: count / FPS, timeline };
+  const seqPattern = await renderFrames({ browser: ctx.browser(), starts, count, fps: FPS, shots, cues, end: acc, seqDir, log });
+  return { seqPattern, fps: FPS, duration: count / FPS, timeline, cues, shots };
 }

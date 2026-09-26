@@ -10,8 +10,10 @@ import JSZip from 'jszip';
 import { DIAGRAMS } from './content.mjs';
 import { CONTEXT, CURSOR_SCRIPT, makeDriver } from './flow.mjs';
 import { filmSteps } from './record.mjs';
+import { withSubtitles } from './subtitles.mjs';
+import { withCamera } from './camera.mjs';
 
-/** Captions, stills, canvas geometry, and the rendered-export overlay, in the page. */
+/** Stills, canvas geometry, and the rendered-export overlay, in the page. */
 const PAGE_SCRIPT = `
 (() => {
   const flat = (s) => (s || '').replace(/[\\u2080-\\u2089]/g, (c) => String(c.charCodeAt(0) - 0x2080)).replace(/\\s+/g, ' ').trim();
@@ -27,17 +29,10 @@ const PAGE_SCRIPT = `
     return node;
   };
   window.__demo = {
-    caption(text) {
-      const c = el('__demo_caption', 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);max-width:880px;padding:11px 20px;border-radius:12px;background:rgba(20,20,20,.88);color:#fff;font:500 17px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;text-align:center;z-index:2147483645;pointer-events:none;opacity:0;transition:opacity .25s ease;box-shadow:0 8px 28px rgba(0,0,0,.28)');
-      if (text) c.textContent = text;
-      c.style.opacity = text ? '1' : '0';
-    },
-    /** Hide or show the drawn pointer and the caption, for a clean still. */
+    /** Hide or show the drawn pointer, for a clean still. */
     chrome(show) {
-      for (const id of ['__demo_cursor', '__demo_caption']) {
-        const node = document.getElementById(id);
-        if (node) node.style.visibility = show ? '' : 'hidden';
-      }
+      const node = document.getElementById('__demo_cursor');
+      if (node) node.style.visibility = show ? '' : 'hidden';
     },
     /** Number the diagrams on the page, in page order. */
     tagDiagrams() {
@@ -138,8 +133,6 @@ const PAGE_SCRIPT = `
 
 // ---- driving helpers ---------------------------------------------------------------
 
-const say = (d, text) => d.page.evaluate((t) => window.__demo.caption(t), text);
-
 /** Scroll a sidebar control into the middle of its scroller, on camera. */
 async function reveal(d, loc) {
   await loc.first().waitFor({ state: 'attached' });
@@ -239,13 +232,25 @@ function along(line, k) {
   return line[line.length - 1];
 }
 
-/** Curve tool, drag from → to, then name it in the inspector. */
-async function drawCurve(d, map, line, label) {
+/** Curve tool, drag from → to, then name it in the inspector (`naming` subtitles that). */
+async function drawCurve(d, map, line, label, naming) {
   await d.click(tool(d, 'Curve'), { hover: 300 });
   await d.wait(500);
   await drag(d, map(line.from), map(line.to));
   await d.wait(700);
+  if (naming) await d.say(naming);
   await typeField(d, 'Label', label);
+}
+
+/** Small boxes around canvas texts ("Q0" matches "Q₀"), to frame the camera on them. */
+async function textBoxes(d, texts) {
+  const boxes = [];
+  for (const t of texts) {
+    const at = await d.page.evaluate((x) => window.__demo.textAt(x), t);
+    if (!at) throw new Error(`no "${t}" drawn on the canvas`);
+    boxes.push({ x: at.x - 12, y: at.y - 12, width: 24, height: 24 });
+  }
+  return boxes;
 }
 
 /** Double-click the canvas text reading `raw` (a tick, a curve's name) and lower its last character. */
@@ -317,8 +322,10 @@ export function diagramStoryboard(seed) {
     name: 'The question',
     caption: 'Opens a worksheet with a per-unit tax question and no diagram yet. In Word, this diagram means a pile of loose lines and text boxes.',
     async run(d) {
-      await say(d, 'In Word, a supply-and-demand diagram is a pile of loose lines and text boxes. Here it takes about a minute.');
+      await d.wait(400); // the poster frame stays clean
+      await d.say('In Word, a supply-and-demand diagram\nis a pile of loose lines and text boxes.');
       await d.wait(1200);
+      await d.say('Here it takes about a minute.');
       await d.click(d.page.getByRole('button', { name: /S5 Market Intervention/ }));
       await d.page.waitForSelector('#print-root .paper');
       await d.wait(700);
@@ -327,7 +334,8 @@ export function diagramStoryboard(seed) {
         if (await hint.count()) await hint.click();
       });
       await d.hover(d.page.locator('#print-root').getByText('The government imposes'));
-      await d.wait(2400);
+      await d.focus(d.page.locator('#print-root [data-question-id]'), { name: 'the question', pad: 60 });
+      await d.wait(1600);
       await d.still('question', 'The question, before the diagram');
     },
   });
@@ -336,7 +344,8 @@ export function diagramStoryboard(seed) {
     name: 'Blank axes',
     caption: 'Selects the question stem and chooses **+ Diagram ▾ → Blank axes**.',
     async run(d) {
-      await say(d, 'Select the question, then + Diagram ▾ → Blank axes.');
+      await d.say('Select the question,\nthen + Diagram ▾ → Blank axes.');
+      await d.focus(null);
       await d.click(d.page.locator('#print-root').getByText('The government imposes'));
       await d.wait(800);
       await d.click(d.page.getByRole('button', { name: /\+ Diagram/ }).first());
@@ -353,9 +362,11 @@ export function diagramStoryboard(seed) {
     name: 'Open the canvas',
     caption: 'Double-clicks the new diagram. The drawing canvas opens on axes already titled Price and Quantity.',
     async run(d) {
-      await say(d, 'Double-click it to draw. The axes are already titled Price and Quantity.');
+      await d.say('Double-click the diagram to draw.');
       await dblclick(d, await pageDiagram(d, 0));
-      await d.wait(1500);
+      await d.wait(600);
+      await d.say('The axes already read Price and Quantity.');
+      await d.wait(900);
       map = await stageMap(d, seed);
       await d.still('blank-canvas', 'The drawing canvas on blank axes');
     },
@@ -365,8 +376,8 @@ export function diagramStoryboard(seed) {
     name: 'Demand',
     caption: `Picks **Curve**, drags one stroke down to the right, and types "${draw.demand.label}" as its label.`,
     async run(d) {
-      await say(d, `Curve tool: one drag draws demand. Name it ${draw.demand.label}.`);
-      await drawCurve(d, map, seed.canvas.demand, draw.demand.label);
+      await d.say('Curve tool: one drag draws demand.');
+      await drawCurve(d, map, seed.canvas.demand, draw.demand.label, `Name it ${draw.demand.label}.`);
       await d.wait(600);
     },
   });
@@ -375,8 +386,8 @@ export function diagramStoryboard(seed) {
     name: 'Supply',
     caption: `Draws supply the same way, upward, and labels it "${draw.supply.label}".`,
     async run(d) {
-      await say(d, `Again for supply: ${draw.supply.label}.`);
-      await drawCurve(d, map, seed.canvas.supply, draw.supply.label);
+      await d.say('Again for supply, drawn upward.');
+      await drawCurve(d, map, seed.canvas.supply, draw.supply.label, `Name it ${draw.supply.label}.`);
       await d.wait(500);
       await deselect(d, map, seed);
       await d.wait(800);
@@ -384,7 +395,7 @@ export function diagramStoryboard(seed) {
     },
   });
   /** Point tool, click a little off `at` so the snap is visible, name it, drop the guides. */
-  const markPoint = async (d, at, { dwell = 900 } = {}) => {
+  const markPoint = async (d, at, { dwell = 900, naming } = {}) => {
     await d.click(tool(d, 'Point'), { hover: 300 });
     await d.wait(500);
     const aim = map(at);
@@ -392,6 +403,7 @@ export function diagramStoryboard(seed) {
     await d.wait(dwell);
     await d.page.mouse.click(aim.x + 7, aim.y - 6);
     await d.wait(800);
+    if (naming) await d.say(naming);
     await d.click(canvasPanel(d).getByRole('button', { name: /^Label E/ }), { hover: 300 });
     await d.wait(600);
     await d.click(canvasPanel(d).getByLabel('Drop to x'), { hover: 250 });
@@ -400,9 +412,10 @@ export function diagramStoryboard(seed) {
     await d.wait(700);
   };
   /** The selected point's Q and P ticks, numbered n, with the n lowered on the canvas. */
-  const tickPoint = async (d, n) => {
+  const tickPoint = async (d, n, lowering) => {
     await typeField(d, 'x-axis tick', `Q${n}`);
     await typeField(d, 'y-axis tick', `P${n}`);
+    if (lowering) await d.say(lowering);
     await subscriptLast(d, `Q${n}`);
     await subscriptLast(d, `P${n}`);
     await deselect(d, map, seed);
@@ -413,8 +426,8 @@ export function diagramStoryboard(seed) {
     name: 'Equilibrium',
     caption: 'Picks **Point** and clicks near the crossing: the point snaps onto it. **Label E₀**, then **Drop to x** and **Drop to y** draw the dashed guides.',
     async run(d) {
-      await say(d, 'Point tool: click near the crossing and it snaps on. Name it E₀, with dashed lines to both axes.');
-      await markPoint(d, seed.canvas.e0);
+      await d.say('Point tool: click near the crossing\nand the point snaps onto it.');
+      await markPoint(d, seed.canvas.e0, { naming: 'Name it E₀,\nand drop dashed lines to both axes.' });
       await d.wait(300);
     },
   });
@@ -424,9 +437,10 @@ export function diagramStoryboard(seed) {
     speed: 2,
     caption: 'Types "Q0" and "P0" as the point\'s axis ticks, then double-clicks each on the canvas and presses **X₂** to lower the 0: Q₀ and P₀.',
     async run(d) {
-      await say(d, 'Mark Q₀ and P₀ on the axes. X₂ turns the 0 into a subscript.');
-      await tickPoint(d, 0);
-      await d.wait(300);
+      await d.say('Mark Q₀ and P₀ on the axes.');
+      await tickPoint(d, 0, 'X₂ turns the 0 into a subscript.');
+      await d.focus(await textBoxes(d, ['P0', 'Q0', 'E0']), { name: 'E₀, P₀ and Q₀', pad: 90, maxZoom: 1.8 });
+      await d.hold(1.6);
       await d.still('equilibrium', 'E₀, snapped to the crossing, with P₀ and Q₀');
     },
   });
@@ -436,7 +450,8 @@ export function diagramStoryboard(seed) {
       name: 'The tax',
       caption: `Clicks S, chooses **Shift curve ↑** by ${draw.taxPercent}% and **Shift a copy**: S₁, the shift arrow and the new equilibrium with P₁ and Q₁ appear. **Label E₁** names it.`,
       async run(d) {
-        await say(d, 'The tax: select S and shift a copy up. S₁, the arrow and the new equilibrium appear, already marked P₁ and Q₁.');
+        await d.say('The tax: select the supply curve, S.');
+        await d.focus(null);
         const grab = map(within(seed.canvas.supply, 0.82));
         await d.moveTo(grab.x, grab.y);
         await d.wait(400);
@@ -444,6 +459,10 @@ export function diagramStoryboard(seed) {
         await d.wait(800);
         const panel = canvasPanel(d);
         await reveal(d, panel.getByRole('button', { name: 'Shift a copy' }));
+        await d.focus([panel.getByTitle(/^Shift up/), panel.getByRole('button', { name: 'Shift a copy' })], {
+          name: 'the Shift curve controls', maxZoom: 1.8,
+        });
+        await d.say(`Shift a copy up by ${draw.taxPercent}%.`);
         await d.click(panel.getByTitle(/^Shift up/), { hover: 300 });
         await d.wait(500);
         const by = panel.locator('label').filter({ hasText: /^by/ }).locator('input');
@@ -453,13 +472,16 @@ export function diagramStoryboard(seed) {
         await d.page.keyboard.press('Tab');
         await d.wait(500);
         await d.click(panel.getByRole('button', { name: 'Shift a copy' }), { hover: 350 });
-        await d.wait(1600);
+        await d.say('S₁, the arrow and the new crossing appear,\nalready marked P₁ and Q₁.');
+        await d.focus(null);
+        await d.wait(800);
         // The copy stays selected, its inspector over the "On this diagram" list.
         await deselect(d, map, seed);
         await d.wait(900);
         // The new equilibrium: click its dot, then one click names it.
         const e1 = (await geometry(d, 'Point (Q1, P1)')).dots[0];
         if (!e1) throw new Error('the shift made no new equilibrium');
+        await d.say('One click names it E₁.');
         await d.moveTo(e1.x, e1.y);
         await d.wait(300);
         await d.page.mouse.click(e1.x, e1.y);
@@ -482,7 +504,9 @@ export function diagramStoryboard(seed) {
       speed: 1.5,
       caption: `Clicks S, **Duplicate**, and drags the copy up by the tax (${draw.taxPercent}% of the price axis). Renames it S1 and lowers the 1 with **X₂**: S₁. Draws the shift **Arrow** from S to S₁.`,
       async run(d) {
-        await say(d, 'The tax shifts supply up. Select S, duplicate it, and drag the copy up.');
+        await d.say('The tax shifts supply up.');
+        await d.wait(600);
+        await d.say('Select S, duplicate it,\nand drag the copy up.');
         const grab = map(within(seed.canvas.supply, 0.82));
         await d.moveTo(grab.x, grab.y);
         await d.wait(400);
@@ -497,7 +521,7 @@ export function diagramStoryboard(seed) {
         const from = along(copy, 0.55);
         await drag(d, from, { x: from.x + target.x - copy[0].x, y: from.y + target.y - copy[0].y }, 40);
         await d.wait(700);
-        await say(d, 'Name the copy S₁, and draw the shift arrow.');
+        await d.say('Name the copy S₁,\nand draw the shift arrow.');
         const taxed = map(within(seed.canvas.taxed, 0.82));
         await d.moveTo(taxed.x, taxed.y);
         await d.wait(300);
@@ -521,7 +545,7 @@ export function diagramStoryboard(seed) {
       speed: 2,
       caption: 'Marks the new crossing the same way: **Point**, **Label E₁**, both dashed guides, and Q₁ and P₁.',
       async run(d) {
-        await say(d, 'Mark the new equilibrium the same way: E₁, with Q₁ and P₁.');
+        await d.say('Mark the new equilibrium the same way:\nE₁, with Q₁ and P₁.');
         await markPoint(d, seed.canvas.e1, { dwell: 500 });
         await tickPoint(d, 1);
         await d.wait(600);
@@ -534,11 +558,18 @@ export function diagramStoryboard(seed) {
     name: 'Shade',
     caption: 'Opens **Shade ▾ → Tax & subsidy** and adds **Tax revenue**, then **DWL of a tax**: both found from the curves already drawn.',
     async run(d) {
-      await say(d, 'Shade ▾ finds the areas from the curves: the tax revenue, then the deadweight loss.');
+      await d.say('Shade ▾ finds each area from the curves.');
+      await d.wait(600);
+      await d.say('First the tax revenue.');
       await shade(d, 'Tax & subsidy', 'Tax revenue');
+      await d.say('Then the deadweight loss.');
       await shade(d, 'Tax & subsidy', 'DWL of a tax');
       await deselect(d, map, seed);
-      await d.wait(1600);
+      await d.wait(300);
+      const s = await d.page.evaluate(() => window.__demo.stage());
+      await d.focus({ x: s.left, y: s.top, width: s.width, height: s.height }, { name: 'the diagram', pad: 8, room: 0 });
+      await d.say('Both areas shaded, in a few clicks.');
+      await d.hold(1.4);
       await d.still('shaded', 'Tax revenue and the deadweight loss, shaded');
     },
   });
@@ -547,10 +578,15 @@ export function diagramStoryboard(seed) {
     name: 'On the page',
     caption: 'Clicks **Done**. The diagram sits in the question on the printed page.',
     async run(d) {
-      await say(d, 'Done. The diagram is in the question, exactly as it will print.');
+      await d.say('Done. The diagram is in the question,\nexactly as it will print.');
+      await d.focus(null);
       await canvasDone(d);
-      await d.hover(await pageDiagram(d, 0));
-      await d.wait(2600);
+      const diagram = await pageDiagram(d, 0);
+      await d.hover(diagram);
+      await d.focus([diagram, d.page.locator('#print-root').getByText('The government imposes')], {
+        name: 'the diagram on the page', pad: 50, maxZoom: 1.8,
+      });
+      await d.wait(1800);
       await d.still('on-page', 'The finished diagram in the question, on the page');
     },
   });
@@ -559,7 +595,8 @@ export function diagramStoryboard(seed) {
     name: 'Export',
     caption: 'Opens **Export…** and exports the question paper as .docx.',
     async run(d) {
-      await say(d, 'Export to Word.');
+      await d.say('Export to Word.');
+      await d.focus(null);
       await d.click(d.page.getByRole('button', { name: /Export/ }).first());
       await d.wait(1200);
       const dialog = d.page.getByRole('dialog');
@@ -572,15 +609,18 @@ export function diagramStoryboard(seed) {
     name: 'The .docx',
     caption: 'The downloaded file, opened in LibreOffice: the diagram is one picture in the Word file.',
     async run(d) {
+      await d.focus(null);
       const shown = await d.cut(() => d.renderExports());
       if (!shown) {
-        await say(d, 'Done: the question paper is in Downloads.');
+        await d.say('Done: the question paper is in Downloads.');
         await d.wait(2000);
         return;
       }
-      await say(d, shown.caption);
       await d.page.evaluate((items) => window.__demo.showImages(items), shown.items);
-      await d.wait(3800);
+      await d.say('The .docx, opened in LibreOffice.');
+      await d.wait(1800);
+      await d.say('The diagram is one picture in the file,\nso nothing can slide out of place.');
+      await d.wait(2000);
       await d.still('docx', shown.still);
       await d.page.evaluate(() => window.__demo.hideImages());
       await d.wait(500);
@@ -591,17 +631,16 @@ export function diagramStoryboard(seed) {
     name: 'Templates',
     caption: `Opens **+ Diagram ▾** for a moment: ${seed.templateCount} ready-made templates, edited on the same canvas.`,
     async run(d) {
-      await say(d, `Want a head start? + Diagram ▾ also has ${seed.templateCount} ready-made templates, edited the same way.`);
+      await d.say('Want a head start?');
       // Centred first: the popover opens below its trigger and is only as tall as the room left.
       const trigger = d.page.getByRole('button', { name: /\+ Diagram/ }).first();
       await reveal(d, trigger);
       await d.click(trigger);
+      await d.say(`+ Diagram ▾ also has ${seed.templateCount} templates,\nall edited on the same canvas.`);
       await d.wait(2600);
       await d.still('templates', `+ Diagram ▾: blank axes and ${seed.templateCount} ready-made templates`);
       await d.page.keyboard.press('Escape');
       await d.wait(700);
-      await say(d, '');
-      await d.wait(600);
     },
   });
 
@@ -648,7 +687,7 @@ export async function recordDiagrams({ browser, url, root, tmpDir, outDir, log }
   const page = await ctx.newPage();
   page.on('pageerror', (e) => log(`  page error: ${e.message}`));
   page.setDefaultTimeout(10_000); // a renamed control fails the film fast
-  const d = makeDriver(page, { smooth: true, url });
+  const d = withCamera(withSubtitles(makeDriver(page, { smooth: true, url })));
 
   const stills = [];
   const exportDir = path.join(outDir, 'export');
@@ -659,7 +698,8 @@ export async function recordDiagrams({ browser, url, root, tmpDir, outDir, log }
       await page.evaluate(() => window.__demo.chrome(false));
       const file = `${String(stills.length + 1).padStart(2, '0')}-${slug}`;
       const png = path.join(tmpDir, `${file}.png`);
-      await page.screenshot({ path: png });
+      const r = d.framing(); // framed as the camera is
+      await page.screenshot({ path: png, ...(r && { clip: { x: r.x, y: r.y, width: r.w, height: r.h } }) });
       stills.push({ file, caption, png });
       await page.evaluate(() => window.__demo.chrome(true));
     });
@@ -713,7 +753,6 @@ async function renderExports({ downloads, exportDir, tmpDir, notes, log }) {
   }
   return {
     items,
-    caption: 'Opened in LibreOffice: the diagram is one picture in the Word file, so nothing can slide out of place.',
     still: `The exported .docx, page 1, rendered by LibreOffice (${counts.join(' and ')} PNG ${counts.length === 1 && counts[0] === 1 ? 'diagram' : 'diagrams'})`,
   };
 }

@@ -118,7 +118,13 @@ export function makeDriver(page, { smooth = false, url } = {}) {
     }
   }
 
-  return { page, url, moveTo, hover, click, typeInto, wheel, wait };
+  /** Scroll `loc` into the visible band, as a click would, without clicking. */
+  async function show(loc) {
+    await loc.first().waitFor({ state: 'visible' });
+    await point(loc.first());
+  }
+
+  return { page, url, moveTo, hover, click, typeInto, wheel, wait, show };
 }
 
 // ---- locators --------------------------------------------------------------
