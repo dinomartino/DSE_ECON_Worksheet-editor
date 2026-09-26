@@ -5,6 +5,7 @@ import { Preview, type PageComposition } from '@/components/preview/Preview';
 import { dropRunAnchor } from '@/components/preview/pagination';
 import { AddRail } from '@/components/editor/AddRail';
 import { PageRail } from '@/components/editor/PageRail';
+import { hasCoverSheet, showsPageRail } from '@/components/editor/sheets';
 import { Sidebar } from '@/components/editor/Sidebar';
 import { DocumentSettings } from '@/components/editor/DocumentSettings';
 import { Toolbar } from '@/components/editor/Toolbar';
@@ -92,6 +93,8 @@ export function EditorApp({
   // How the flow landed on sheets, as reported by the paginator. Pages exist nowhere
   // in the model — they are measured — so the rail can only be told, never derive it.
   const [pages, setPages] = useState<PageComposition[]>([]);
+  // The cover is a sheet of its own, outside `pages` — the rail counts it all the same.
+  const coverSheet = hasCoverSheet(worksheet, mode);
   /** Whether the page rail (left-side page thumbnails) is expanded. */
   const [pageRailOpen, setPageRailOpen] = useState(true);
   /**
@@ -165,7 +168,7 @@ export function EditorApp({
     measure();
     scroller.addEventListener('scroll', onScroll, { passive: true });
     return () => scroller.removeEventListener('scroll', onScroll);
-  }, [pages.length]);
+  }, [pages.length, coverSheet]);
 
   // Derived from the reactive worksheet, so pressing Bold re-renders the toolbar with
   // the button now active rather than leaving it showing the previous state.
@@ -414,7 +417,7 @@ export function EditorApp({
         {/* The page rail sits beside the add rail rather than under it: both are
             full-height columns, and stacking them would give each half a screen —
             enough for neither a long insert menu nor a long document. */}
-        {pages.length > 1 && (
+        {showsPageRail(pages.length, coverSheet) && (
           <div
             // The width snaps; only the contents fade. Animating `width` resized the
             // page's scroller every frame, and the preview's ResizeObservers on it
@@ -433,6 +436,7 @@ export function EditorApp({
             >
               <PageRail
                 pages={pages}
+                cover={coverSheet}
                 activeIndex={activePage}
                 draggingItemIds={draggingItemIds}
                 onDropItemsOnPage={handleDropItemsOnPage}

@@ -47,13 +47,16 @@ const CARD_WIDTH_PX = RAIL_WIDTH_PX - RAIL_PADDING_PX * 2 - 8; // Leaves room fo
 
 export function PageRail({
   pages,
+  cover,
   activeIndex,
   draggingItemIds,
   onDropItemsOnPage,
   onToggle,
 }: {
   pages: PageComposition[];
-  /** The page currently scrolled into view, highlighted in the rail. */
+  /** Whether the preview draws a cover sheet (`hasCoverSheet`) — it gets a card too. */
+  cover: boolean;
+  /** The page currently scrolled into view, highlighted in the rail; -1 is the cover. */
   activeIndex: number;
   /**
    * The flow items currently being dragged on the page, if any. While this is set the
@@ -208,13 +211,18 @@ export function PageRail({
               it is a document-settings decision, not a rail gesture. The preview
               publishes it as sheet -1, which is also its clone selector.
             */}
-            {Boolean(worksheet.cover) && (
+            {cover && (
               <li className="relative">
                 <button
                   type="button"
-                  aria-label="Cover page"
+                  aria-current={activeIndex === -1}
+                  aria-label={`Cover page${activeIndex === -1 ? ', current' : ''}`}
                   onClick={() => goToPage(-1)}
-                  className="group/page relative block cursor-pointer overflow-hidden rounded-[3px] border border-line bg-white transition-[border-color,opacity,transform,scale] duration-150 ease-out-soft hover:border-ink-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.98]"
+                  className={`group/page relative block cursor-pointer overflow-hidden rounded-[3px] border bg-white outline-2 transition-[border-color,outline-color,opacity,transform,scale] duration-150 ease-out-soft focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.98] ${
+                    activeIndex === -1
+                      ? 'border-accent outline-accent-soft'
+                      : 'border-line outline-transparent hover:border-ink-subtle'
+                  }`}
                   style={{ width: CARD_WIDTH_PX, height: cardHeight }}
                 >
                   <PageThumb
@@ -224,7 +232,11 @@ export function PageRail({
                     revision={revision}
                   />
                 </button>
-                <span className="mt-1 block text-center text-[10px] leading-none text-ink-subtle">
+                <span
+                  className={`mt-1 block text-center text-[10px] leading-none transition-colors duration-150 ease-out-soft ${
+                    activeIndex === -1 ? 'font-semibold text-ink' : 'text-ink-subtle'
+                  }`}
+                >
                   Cover
                 </span>
               </li>
@@ -332,8 +344,9 @@ export function PageRail({
 
                     {/* Deleting is destructive and permanent-feeling, so it stays
                         hidden until the page is hovered — the rail's resting state is
-                        for navigating, not for editing. */}
-                    {isActionable(page) && (
+                        for navigating, not for editing. The only body page (beside a
+                        cover) has no delete: it would empty the paper, not remove a page. */}
+                    {pages.length > 1 && isActionable(page) && (
                       <span
                         role="button"
                         tabIndex={-1}
