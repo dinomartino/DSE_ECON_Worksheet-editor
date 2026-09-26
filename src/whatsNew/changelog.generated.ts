@@ -106,6 +106,9 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   menus grow out of the button that opened them, and dialogs fade in instead of
   appearing all at once. Quick enough never to slow you down.
 
+- **The inflationary and deflationary gap templates mark the gap just above the output
+  axis**, between Y₀ and Yf, with its name above the arrow. It still follows AD, SRAS
+  and LRAS when you drag them.
 ### Fixed
 - **Shift a copy in an English-only worksheet named the copy S₅₀** (and its ticks P₅₀
   and Q₅₀). It is now S₁, with P₁ and Q₁.

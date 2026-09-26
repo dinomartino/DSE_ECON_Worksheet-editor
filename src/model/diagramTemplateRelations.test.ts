@@ -73,7 +73,8 @@ describe('template relations', () => {
     expect(styles('demand-shift')).toEqual(['arrow:y', 'arrow:x']);
     expect(styles('per-unit-tax')).toEqual(['arrow:-', 'arrow:y', 'arrow:x']);
     expect(styles('tariff')).toEqual(['bracket:x']);
-    expect(styles('deflationary-gap')).toEqual(['doubleArrow:x']);
+    expect(styles('deflationary-gap')).toEqual(['doubleArrow:-']);
+    expect(styles('inflationary-gap')).toEqual(['doubleArrow:-']);
     expect(styles('gap-narrows')).toEqual(['doubleArrow:x', 'doubleArrow:x']);
     expect(styles('price-ceiling')).toEqual(['bracket:-']);
     expect(styles('shortage-change')).toHaveLength(2);
@@ -151,12 +152,36 @@ describe('dragging a template keeps the scheme', () => {
     expect(c.y).toBeCloseTo(onLine, 6);
   });
 
-  it('deflationary gap: dragging AD moves the gap’s Y₀ end, its Yf end stays on LRAS', () => {
-    const d = buildFromTemplate('deflationary-gap');
-    const after = drag(d, curveNamed(d, 'AD').id, 0.05, 0);
-    const ends = (x: Diagram) => spanGeometry(x, x.spans![0])!.base.map((p) => p.x);
-    expect(ends(after)[0]).toBeGreaterThan(ends(d)[0]);
-    expect(ends(after)[1]).toBeCloseTo(ends(d)[1], 9);
+  describe.each([
+    ['deflationary-gap', 0, 1],
+    ['inflationary-gap', 1, 0],
+  ] as const)('%s', (id, y0End, yfEnd) => {
+    const d = buildFromTemplate(id);
+    const geometry = (x: Diagram) => spanGeometry(x, x.spans![0])!;
+    const ends = (x: Diagram) => geometry(x).ends.map((p) => p.x);
+    const lrasX = (x: Diagram) => curveNamed(x, 'LRAS').points[0].x;
+
+    it('runs from Y₀ to Yf just above the output axis, inside the plot, label above', () => {
+      const g = geometry(d);
+      for (const p of g.ends) {
+        expect(p.y).toBeGreaterThan(0);
+        expect(p.y).toBeLessThan(0.1);
+      }
+      expect(ends(d)[y0End]).toBeCloseTo(d.points[0].at.x, 9);
+      expect(ends(d)[yfEnd]).toBeCloseTo(lrasX(d), 9);
+      expect(ends(d)[0]).toBeLessThan(ends(d)[1]);
+      expect(g.side.y).toBeGreaterThan(0);
+    });
+
+    it('follows the curves: dragging AD moves the Y₀ end, dragging LRAS the Yf end', () => {
+      const moved = drag(d, curveNamed(d, 'AD').id, 0.05, 0);
+      expect(ends(moved)[y0End]).toBeCloseTo(moved.points[0].at.x, 9);
+      expect(ends(moved)[y0End]).toBeGreaterThan(ends(d)[y0End]);
+      expect(ends(moved)[yfEnd]).toBeCloseTo(ends(d)[yfEnd], 9);
+      const shifted = drag(d, curveNamed(d, 'LRAS').id, -0.04, 0);
+      expect(ends(shifted)[yfEnd]).toBeCloseTo(ends(d)[yfEnd] - 0.04, 9);
+      expect(ends(shifted)[y0End]).toBeCloseTo(ends(d)[y0End], 9);
+    });
   });
 });
 

@@ -8,6 +8,7 @@ import { it } from 'vitest';
 import { createDiagramBlock, createParagraphBlock, createStructuredQuestion, createWorksheet } from '@/model/factories';
 import { getDiagramTemplate } from '@/model/diagramTemplates';
 import { curveYAt } from '@/model/diagramAnchors';
+import { spanGeometry } from '@/model/diagramSpans';
 import { bi, plain } from '@/model/text';
 import { axisSpanClearance, diagramPlot, type Projection } from '@/render/diagram';
 import { spanLayout } from '@/render/diagramSpan';
@@ -60,6 +61,17 @@ const CASES: Case[] = [
     grab: (d) => d.points.find((p) => plain(p.label?.en) === 'B')!.at,
   },
   { id: 'deflationary-gap', what: 'drag AD right', by: { x: 0.08, y: 0 }, grab: (d) => on(d, 'AD', 0.75) },
+  { id: 'inflationary-gap', what: 'drag AD left', by: { x: -0.08, y: 0 }, grab: (d) => on(d, 'AD', 0.8) },
+  {
+    id: 'inflationary-gap-span',
+    template: 'inflationary-gap',
+    what: 'drag the gap arrow (above the output axis) up',
+    by: { x: 0, y: 0.06 },
+    grab: (d) => {
+      const [a, b] = spanGeometry(d, d.spans![0])!.ends;
+      return { x: a.x + (b.x - a.x) * 0.3, y: a.y };
+    },
+  },
 ];
 
 function on(d: Diagram, name: string, x: number): DiagramPoint {
