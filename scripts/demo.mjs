@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { takeScreenshots, SHOTS } from './demo/screenshots.mjs';
 import { recordStoryboard } from './demo/record.mjs';
 import { recordDiagrams } from './demo/diagrams.mjs';
+import { sidecars } from './demo/subtitles.mjs';
 
 /**
  * Website demo media: a screen-recorded walkthrough and a screenshot set, written to
@@ -70,7 +71,7 @@ function encodeImage(png, outBase) {
   return `${outBase}.jpg`;
 }
 
-/** The film's frames → `<base>.mp4`, a `<base>-poster.jpg`, and (optionally) a GIF. */
+/** The film's frames → `<base>.mp4`, its subtitles as `.vtt` and `.srt`, a `<base>-poster.jpg`, and (optionally) a GIF. */
 function encodeFilm(rec, base, { gif: wantGif }) {
   log('video: encoding…');
   const mp4 = `${base}.mp4`;
@@ -78,6 +79,9 @@ function encodeFilm(rec, base, { gif: wantGif }) {
     '-vf', 'scale=in_range=pc:out_range=tv,format=yuv420p', '-pix_fmt', 'yuv420p', '-color_range', 'tv',
     '-c:v', 'libx264', '-profile:v', 'high', '-crf', '28', '-preset', 'slow', '-tune', 'stillimage',
     '-movflags', '+faststart', '-an', mp4);
+  const subs = sidecars(rec.cues, rec.duration);
+  fs.writeFileSync(`${base}.vtt`, subs.vtt);
+  fs.writeFileSync(`${base}.srt`, subs.srt);
 
   const poster = `${base}-poster.jpg`;
   for (const q of ['4', '7', '10']) {
@@ -100,8 +104,12 @@ function encodeFilm(rec, base, { gif: wantGif }) {
 const DIAGRAMS_OUT = path.join(OUT, 'diagrams');
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'econ-demo-'));
 fs.mkdirSync(OUT, { recursive: true });
-const browser = await chromium.launch({ channel: 'chrome' });
+// Without the flag, Chrome's screencast delivers CSS-pixel frames even at 2×, and the
+// camera's push-ins would upscale them (§ demo/camera.mjs).
+const browser = await chromium.launch({ channel: 'chrome', args: ['--force-device-scale-factor=2'] });
 let timeline = null;
+let cues = [];
+let shots = [];
 let diagrams = null;
 const notes = [];
 try {
@@ -112,6 +120,8 @@ try {
     fs.mkdirSync(path.join(DIAGRAMS_OUT, 'stills'), { recursive: true });
     const film = await recordDiagrams({ browser, url: URL, root: ROOT, tmpDir, outDir: DIAGRAMS_OUT, log });
     timeline = film.rec.timeline;
+    cues = film.rec.cues;
+    shots = film.rec.shots;
     diagrams = film;
     encodeFilm(film.rec, path.join(DIAGRAMS_OUT, 'diagrams'), { gif: false });
     for (const still of film.stills) still.path = encodeImage(still.png, path.join(DIAGRAMS_OUT, 'stills', still.file));
@@ -119,6 +129,8 @@ try {
   } else if (wantVideo) {
     const rec = await recordStoryboard({ browser, url: URL, tmpDir, log });
     timeline = rec.timeline;
+    cues = rec.cues;
+    shots = rec.shots;
     encodeFilm(rec, path.join(OUT, 'demo'), { gif: true });
   }
   fs.rmSync(tmpDir, { recursive: true, force: true }); // kept on failure: it holds failed-step.png
@@ -164,17 +176,28 @@ function describe(f) {
     return [`${f.dims}, H.264, 30 fps, ${secs} s, no audio`, 'The walkthrough (storyboard below)'];
   }
   if (f.rel === 'demo-poster.jpg') return [f.dims, 'First frame, for `<video poster>`'];
+  if (f.rel === 'demo.vtt' || f.rel === 'demo.srt') return ['—', 'The subtitles burned into the film, as a sidecar'];
   if (f.rel === 'demo.gif') return [`${f.dims}, 12 fps`, 'The same walkthrough as an animated GIF'];
   const shot = SHOTS.find((s) => f.rel.startsWith(`screenshots/${s.file}.`));
   return [f.dims, shot ? shot.caption : ''];
 }
 
+/**
+ * One row per step: what it does, the subtitles shown during it (§ demo/subtitles.mjs),
+ * and where the camera goes (§ demo/camera.mjs).
+ */
 function storyboardTable(fmt) {
+  const subtitles = (step) =>
+    cues.filter((c) => c.step === step && c.text).map((c) => c.text.replace(/\n/g, ' ')).join('<br>');
+  const camera = (step) =>
+    shots.filter((s) => s.step === step)
+      .map((s) => (s.rect ? `${fmt(s.at)} in ${(1440 / s.rect.w).toFixed(1)}× on ${s.name}` : `${fmt(s.at)} out to full frame`))
+      .join('<br>');
   return [
-    '| Time | Step | What happens |',
-    '|---|---|---|',
+    '| Time | Step | What happens | Subtitles | Camera |',
+    '|---|---|---|---|---|',
     ...timeline.map(({ at, step }) =>
-      `| ${fmt(at)} | ${step.speed ? `⏩ ${step.speed}× ` : ''}${step.name} | ${step.caption} |`),
+      `| ${fmt(at)} | ${step.speed ? `⏩ ${step.speed}× ` : ''}${step.name} | ${step.caption} | ${subtitles(step)} | ${camera(step)} |`),
   ].join('\n');
 }
 
@@ -187,6 +210,7 @@ function writeDiagramsReadme() {
       f.rel === 'diagrams.mp4' ? `H.264, 30 fps, ${secs} s, no audio: the whole walkthrough`
         : f.rel === 'diagrams-poster.jpg' ? 'First frame, for `<video poster>`'
           : still ? still.caption
+            : /^diagrams\.(vtt|srt)$/.test(f.rel) ? 'The subtitles burned into the film, as a sidecar'
             : f.rel.endsWith('.docx') ? 'Exported by the film'
               : f.rel.endsWith('.png') ? 'Page 1 of that .docx, rendered by LibreOffice' : '';
     return `| \`${f.rel}\` | ${f.dims} | ${kb(f.size)} | ${what} |`;
@@ -199,8 +223,11 @@ function writeDiagramsReadme() {
     'Word: the job teachers otherwise do with loose lines and text boxes in Word.',
     '',
     'Generated by `npm run demo:diagrams` (`scripts/demo/diagrams.mjs`) from the built web app',
-    'in Chrome, from a seeded worksheet. Stills are 2× page screenshots scaled to 1440 wide,',
-    'captured during the recording and cut out of it. The example question is original text.',
+    'in Chrome, from a seeded worksheet. The film is recorded at 2× and framed afterwards by a',
+    'virtual camera (the Camera column below); the subtitles are drawn over it, unzoomed, and',
+    'are also in `diagrams.vtt` / `.srt`. Stills are 2× page screenshots, framed as the camera',
+    'was, scaled to 1440 wide, captured during the recording and cut out of it. The example',
+    'question is original text.',
     '',
     '| File | Dimensions | Size | What it shows |',
     '|---|---|---|---|',
@@ -240,8 +267,10 @@ function writeReadme() {
     '# Demo media: Econ worksheet generator',
     '',
     'Generated by `npm run demo` (`scripts/demo.mjs`) from the built web app in Chrome.',
-    'Screenshots are captured at 2× and scaled to 1440 wide. All example questions are',
-    'original text written for the demo, not HKEAA past-paper items.',
+    'Screenshots are captured at 2× and scaled to 1440 wide. The film is recorded at 2× and',
+    'framed afterwards by a virtual camera; its subtitles are drawn over that, unzoomed, and',
+    'are also in `demo.vtt` / `.srt`. All example questions are original text written for',
+    'the demo, not HKEAA past-paper items.',
     '',
     '| File | Dimensions | Size | What it shows |',
     '|---|---|---|---|',
