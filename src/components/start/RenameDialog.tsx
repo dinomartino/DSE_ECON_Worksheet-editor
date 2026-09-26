@@ -76,10 +76,10 @@ export function RenameDialog({
           placeholder="Document name"
           aria-invalid={!!error}
           onChange={(event) => setTitle(event.target.value)}
-          className="h-9 w-full rounded-lg border border-line bg-surface px-2.5 text-[13px] text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
+          className="h-9 w-full rounded-lg border border-line bg-surface px-2.5 text-[13px] text-ink outline-none transition-colors duration-150 ease-out-soft placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
         />
         {error && (
-          <p role="alert" className="mt-2 text-xs text-danger-ink">
+          <p role="alert" className="mt-2 animate-fade-in text-xs text-danger-ink">
             {error}
           </p>
         )}

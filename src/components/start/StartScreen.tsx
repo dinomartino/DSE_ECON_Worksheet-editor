@@ -729,7 +729,7 @@ export function StartScreen({
         {error && (
           <p
             role="alert"
-            className="mx-auto mb-5 max-w-5xl rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink"
+            className="mx-auto mb-5 max-w-5xl animate-slide-down-in rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink"
           >
             {error}
           </p>
@@ -785,13 +785,15 @@ export function StartScreen({
       />
 
       {dropOverlay && (
-        <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center bg-accent/10 backdrop-blur-[1px]">
+        <div className="pointer-events-none fixed inset-0 z-40 flex animate-scrim-in items-center justify-center bg-accent/10 backdrop-blur-[1px]">
           <span
             role="status"
+            // Keyed by state, so a rejection pops in afresh rather than recolouring.
+            key={dropOverlay}
             className={
               dropOverlay === 'rejected'
-                ? 'rounded-xl border-2 border-dashed border-danger bg-surface px-5 py-3 text-[13px] font-medium text-danger-ink'
-                : 'rounded-xl border-2 border-dashed border-accent bg-surface px-5 py-3 text-[13px] font-medium text-accent-ink'
+                ? 'animate-pop-in rounded-xl border-2 border-dashed border-danger bg-surface px-5 py-3 text-[13px] font-medium text-danger-ink'
+                : 'animate-pop-in rounded-xl border-2 border-dashed border-accent bg-surface px-5 py-3 text-[13px] font-medium text-accent-ink'
             }
           >
             {dropOverlay === 'rejected' ? DROP_REJECTED : DROP_HINT}
@@ -1042,14 +1044,20 @@ function StartRow({
     <button
       type="button"
       onClick={onClick}
-      className="group relative cursor-pointer border-b border-line py-3.5 pl-4 pr-2 text-left transition-colors duration-150 ease-[var(--ease-out-soft)] hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+      className="group relative cursor-pointer border-b border-line py-3.5 pl-4 pr-2 text-left transition-colors duration-150 ease-out-soft hover:bg-surface-sunken active:bg-surface-hover active:duration-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
     >
       <span
         aria-hidden
-        className="absolute inset-y-0 left-0 w-0.5 bg-accent opacity-0 transition-opacity duration-150 ease-[var(--ease-out-soft)] group-hover:opacity-100 group-focus-visible:opacity-100"
+        className="absolute inset-y-0 left-0 w-0.5 bg-accent opacity-0 transition-opacity duration-150 ease-out-soft group-hover:opacity-100 group-focus-visible:opacity-100"
       />
-      <span className="flex items-center gap-2 text-[13.5px] font-medium text-ink transition-colors group-hover:text-accent-ink">
-        {icon && <span className="text-ink-subtle group-hover:text-accent-ink">{icon}</span>}
+      {/* The title steps right a hair toward the bar as it appears — the row answers
+          the pointer without the row itself moving. */}
+      <span className="flex items-center gap-2 text-[13.5px] font-medium text-ink transition-[color,translate] duration-150 ease-out-soft group-hover:translate-x-0.5 group-hover:text-accent-ink">
+        {icon && (
+          <span className="text-ink-subtle transition-colors duration-150 ease-out-soft group-hover:text-accent-ink">
+            {icon}
+          </span>
+        )}
         {title}
       </span>
       <span className="mt-0.5 block text-[11px] leading-snug text-ink-muted">{hint}</span>
@@ -1170,7 +1178,7 @@ function MoveDialog({
                 type="button"
                 disabled={here}
                 onClick={() => onMove(destination.id)}
-                className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] text-ink transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent disabled:cursor-default disabled:hover:bg-transparent"
+                className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] text-ink transition-colors duration-150 ease-out-soft hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent disabled:cursor-default disabled:hover:bg-transparent"
               >
                 <span className="text-ink-subtle">
                   {destination.id === undefined ? <SheetIcon /> : <FolderIcon />}
@@ -1195,7 +1203,7 @@ function DangerButton({ onClick, children }: { onClick: () => void; children: Re
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex h-[34px] items-center justify-center rounded-lg border border-transparent bg-danger px-3 text-[13px] font-medium text-white shadow-sm transition-colors hover:brightness-95 active:scale-[0.97]"
+      className="inline-flex h-[34px] cursor-pointer items-center justify-center rounded-lg border border-transparent bg-danger px-3 text-[13px] font-medium text-white shadow-sm transition-[background-color,border-color,color,opacity,transform,scale,filter] duration-150 ease-out-soft hover:brightness-95 active:scale-[0.97]"
     >
       {children}
     </button>
@@ -1216,7 +1224,7 @@ function TextLink({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="cursor-pointer font-medium text-accent-ink underline decoration-line-strong underline-offset-4 transition-colors hover:decoration-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-50"
+      className="cursor-pointer font-medium text-accent-ink underline decoration-line-strong underline-offset-4 transition-[text-decoration-color,opacity] duration-150 ease-out-soft hover:decoration-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-50"
     >
       {children}
     </button>
@@ -1228,7 +1236,7 @@ function NoticeBox({ notice, onDismiss }: { notice: Notice; onDismiss: () => voi
   return (
     <div
       role="status"
-      className="zone-light mx-auto mb-5 max-w-5xl rounded-xl border border-line bg-surface px-4 py-3"
+      className="zone-light mx-auto mb-5 max-w-5xl animate-slide-down-in rounded-xl border border-line bg-surface px-4 py-3"
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <p className="min-w-0 flex-1 text-[12.5px] font-medium text-ink">{notice.message}</p>

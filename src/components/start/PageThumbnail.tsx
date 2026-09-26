@@ -141,6 +141,10 @@ export function PageThumbnail({
           transform: `scale(${scale})`,
           transformOrigin: '0 0',
           visibility: ready ? 'visible' : 'hidden',
+          // The page fades up over the skeleton's white rather than popping in. Opacity
+          // only: the scale follows the card's width and must never animate.
+          opacity: ready ? 1 : 0,
+          transition: 'opacity 180ms var(--ease-out-soft)',
         }}
       />
       {!current && <Skeleton />}

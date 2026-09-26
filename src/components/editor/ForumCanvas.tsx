@@ -207,7 +207,7 @@ export function ForumCanvas({
   };
 
   return (
-    <div className="zone-dark fixed inset-0 z-50 flex flex-col bg-desk/95 backdrop-blur-sm">
+    <div className="zone-dark fixed inset-0 z-50 flex animate-fade-in flex-col bg-desk/95 backdrop-blur-sm">
       <header className="flex flex-wrap items-center gap-3 border-b border-line bg-surface px-5 py-3 text-ink">
         <span className="text-sm font-semibold tracking-wide text-ink">Adjust forum bubbles</span>
 

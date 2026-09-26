@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { IconButton, Segmented } from '@/components/ui';
 import { Menu, type MenuItem } from '@/components/ui/Menu';
 import { FolderIcon, PlusIcon, SheetIcon, TrashIcon } from '@/components/ui/icons';
@@ -109,6 +109,16 @@ export function FileDashboard({
   // Pointer events, not HTML5 drag-and-drop — the desktop webview never delivers `drop`.
   const drag = useDocumentDrag(showFolders ? folderActions?.drop : undefined);
   const dragProps = (summary: WorksheetSummary) => drag.sourceProps(summary.id, summary.title);
+
+  // The grid rises in once, when the desk first shows its documents — not on every
+  // filter, sort or folder change, where cards arriving would read as cards moving.
+  const listShown = loaded && summaries.length > 0;
+  const [intro, setIntro] = useState(true);
+  useEffect(() => {
+    if (!listShown || !intro) return;
+    const timer = window.setTimeout(() => setIntro(false), INTRO_MS);
+    return () => window.clearTimeout(timer);
+  }, [listShown, intro]);
 
   const chooseView = (next: DashboardView) => {
     setView(next);
@@ -243,7 +253,7 @@ export function FileDashboard({
                 <button
                   type="button"
                   onClick={() => setQuery((q) => ({ ...DEFAULT_QUERY, sort: q.sort }))}
-                  className="cursor-pointer text-[12px] font-medium text-accent-ink underline decoration-line-strong underline-offset-4 hover:decoration-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  className="cursor-pointer text-[12px] font-medium text-accent-ink underline decoration-line-strong underline-offset-4 transition-[text-decoration-color] duration-150 ease-out-soft hover:decoration-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   Clear filters
                 </button>
@@ -251,7 +261,7 @@ export function FileDashboard({
             </div>
           ) : view === 'grid' ? (
             <ul className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(168px,1fr))] gap-x-6 gap-y-8">
-              {shown.map((summary) => (
+              {shown.map((summary, index) => (
                 <DocumentCard
                   key={summary.id}
                   summary={summary}
@@ -259,12 +269,13 @@ export function FileDashboard({
                   folder={folderLabel(summary)}
                   drag={dragProps(summary)}
                   dragging={drag.draggingId === summary.id}
+                  enter={intro ? index : undefined}
                 />
               ))}
             </ul>
           ) : (
             <ul className="zone-light mt-5 overflow-hidden rounded-xl border border-line bg-surface">
-              {shown.map((summary) => (
+              {shown.map((summary, index) => (
                 <SavedRow
                   key={summary.id}
                   summary={summary}
@@ -272,6 +283,7 @@ export function FileDashboard({
                   folder={folderLabel(summary)}
                   drag={dragProps(summary)}
                   dragging={drag.draggingId === summary.id}
+                  enter={intro ? index : undefined}
                 />
               ))}
             </ul>
@@ -381,7 +393,9 @@ function FolderRow({
   return (
     <li
       data-folder-drop={dropValue}
-      className={`group relative flex min-w-0 items-center rounded-lg transition-colors duration-150 ease-[var(--ease-out-soft)] md:w-full ${
+      // The drop ring eases in with the fill; it is not the focus ring (that is the
+      // button's own, and appears instantly).
+      className={`group relative flex min-w-0 items-center rounded-lg transition-[background-color,box-shadow] duration-150 ease-out-soft md:w-full ${
         over
           ? 'bg-accent-soft ring-2 ring-inset ring-accent'
           : active
@@ -393,11 +407,13 @@ function FolderRow({
         type="button"
         onClick={onOpen}
         aria-current={active ? 'true' : undefined}
-        className={`flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-lg py-1.5 pl-2 pr-1 text-left text-[12.5px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
+        className={`flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-lg py-1.5 pl-2 pr-1 text-left text-[12.5px] transition-colors duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
           active ? 'font-medium text-ink' : 'text-ink-muted hover:text-ink'
         }`}
       >
-        <span className={active ? 'text-ink' : 'text-ink-subtle'}>
+        <span
+          className={`transition-colors duration-150 ease-out-soft ${active ? 'text-ink' : 'text-ink-subtle'}`}
+        >
           {folder ? <FolderIcon size={15} /> : <SheetIcon size={15} />}
         </span>
         <span className="min-w-0 flex-1 truncate">{name}</span>
@@ -405,7 +421,7 @@ function FolderRow({
       </button>
       {menu && (
         <span
-          className={`transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 ${
+          className={`transition-opacity duration-150 ease-out-soft group-hover:opacity-100 group-focus-within:opacity-100 ${
             active ? 'opacity-100' : 'opacity-0'
           }`}
         >
@@ -416,6 +432,21 @@ function FolderRow({
       {!menu && <span aria-hidden className="w-7 shrink-0" />}
     </li>
   );
+}
+
+/** Entrance stagger: 16ms a card, capped at the seventh, so the last starts by ~100ms. */
+const STAGGER_MS = 16;
+const STAGGER_CAP = 6;
+/** Longer than the last card's delay plus its rise; then the entrance class is dropped. */
+const INTRO_MS = 450;
+
+/** The first-mount rise for the card or row at `index`; nothing once the intro is over. */
+function entrance(index: number | undefined): { className: string; style?: CSSProperties } {
+  if (index === undefined) return { className: '' };
+  return {
+    className: 'animate-slide-up-in',
+    style: { animationDelay: `${Math.min(index, STAGGER_CAP) * STAGGER_MS}ms` },
+  };
 }
 
 function plural(count: number, noun: string): string {
@@ -483,6 +514,7 @@ function DocumentCard({
   folder,
   drag,
   dragging,
+  enter,
 }: {
   summary: WorksheetSummary;
   actions: DocumentActions;
@@ -491,27 +523,43 @@ function DocumentCard({
   /** Pointer handlers that drag it onto a folder; absent when there are no folders. */
   drag?: SourceProps;
   dragging?: boolean;
+  /** Its place in the first-mount entrance; absent once that has played. */
+  enter?: number;
 }) {
+  const rise = entrance(enter);
   return (
     <li
-      className={`group relative min-w-0 transition-opacity duration-150 ${dragging ? 'opacity-40' : ''}`}
+      className={`group relative min-w-0 transition-opacity duration-150 ease-out-soft ${dragging ? 'opacity-40' : ''} ${rise.className}`}
+      style={rise.style}
       {...drag}
     >
       <button
         type="button"
         onClick={() => actions.open(summary)}
         aria-label={`Open ${summary.title}`}
-        className="block w-full cursor-pointer rounded-lg text-left focus-visible:outline-none"
+        className="group/open block w-full cursor-pointer rounded-lg text-left focus-visible:outline-none"
       >
-        {/* The paper answers hover and focus with the accent ring — the same signal
-            the Start rows' accent bar gives. Nothing lifts. */}
-        <span className="block overflow-hidden rounded-[3px] shadow-[0_1px_2px_rgba(0,0,0,0.18),0_4px_14px_rgba(0,0,0,0.14)] ring-1 ring-black/5 transition-shadow duration-150 ease-[var(--ease-out-soft)] group-hover:ring-2 group-hover:ring-accent group-focus-within:ring-2 group-focus-within:ring-accent">
-          <PageThumbnail id={summary.id} updatedAt={summary.updatedAt} />
+        {/* The paper answers hover with a small lift and the accent ring — the same
+            signal the Start rows' accent bar gives — and sinks back when pressed. Only
+            transform and opacity move: the deeper shadow and the hover ring are layers
+            that fade, and the focus ring (a box-shadow) appears at once. */}
+        <span className="relative block transition-transform duration-[180ms] ease-out-soft group-hover:-translate-y-[3px] group-active/open:translate-y-0 group-active/open:scale-[0.985] group-active/open:duration-100">
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-0 rounded-[3px] opacity-0 shadow-[0_4px_8px_rgba(0,0,0,0.12),0_14px_30px_rgba(0,0,0,0.16)] transition-opacity duration-[180ms] ease-out-soft group-hover:opacity-100"
+          />
+          <span className="relative block overflow-hidden rounded-[3px] shadow-[0_1px_2px_rgba(0,0,0,0.18),0_4px_14px_rgba(0,0,0,0.14)] ring-1 ring-black/5 group-focus-within:ring-2 group-focus-within:ring-accent">
+            <PageThumbnail id={summary.id} updatedAt={summary.updatedAt} />
+          </span>
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-0 rounded-[3px] opacity-0 ring-2 ring-accent transition-opacity duration-[180ms] ease-out-soft group-hover:opacity-100"
+          />
         </span>
         <span className="mt-2.5 block pr-9">
           {/* Two lines for the name before it clips: at card width one line cut most
               real titles ("Unit 3 — Demand and…") to the words they all share. */}
-          <span className="line-clamp-2 text-[13px] font-medium leading-snug text-ink transition-colors group-hover:text-accent-ink">
+          <span className="line-clamp-2 text-[13px] font-medium leading-snug text-ink transition-colors duration-150 ease-out-soft group-hover:text-accent-ink">
             {summary.title}
           </span>
           <span className="mt-1 block truncate text-[11px] leading-tight text-ink-subtle">
@@ -551,30 +599,34 @@ function SavedRow({
   folder,
   drag,
   dragging,
+  enter,
 }: {
   summary: WorksheetSummary;
   actions: DocumentActions;
   folder?: string;
   drag?: SourceProps;
   dragging?: boolean;
+  enter?: number;
 }) {
+  const rise = entrance(enter);
   return (
     <li
-      className={`group relative flex items-center gap-3 border-b border-line pr-1.5 last:border-b-0 transition-[background-color,opacity] duration-150 ease-[var(--ease-out-soft)] hover:bg-surface-hover ${dragging ? 'opacity-40' : ''}`}
+      className={`group relative flex items-center gap-3 border-b border-line pr-1.5 last:border-b-0 transition-[background-color,opacity] duration-150 ease-out-soft hover:bg-surface-hover ${dragging ? 'opacity-40' : ''} ${rise.className}`}
+      style={rise.style}
       {...drag}
     >
       {/* The same accent bar the Start rows use. Opacity, never display — a reveal
           that changes layout moves the row out from under the pointer reaching for it. */}
       <span
         aria-hidden
-        className="absolute inset-y-0 left-0 w-0.5 bg-accent opacity-0 transition-opacity duration-150 ease-[var(--ease-out-soft)] group-hover:opacity-100 group-focus-within:opacity-100"
+        className="absolute inset-y-0 left-0 w-0.5 bg-accent opacity-0 transition-opacity duration-150 ease-out-soft group-hover:opacity-100 group-focus-within:opacity-100"
       />
       <button
         type="button"
         onClick={() => actions.open(summary)}
         className="flex min-w-0 flex-1 cursor-pointer items-center gap-3.5 py-3 pl-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
       >
-        <span className="shrink-0 text-ink-subtle transition-colors duration-150 group-hover:text-accent-ink">
+        <span className="shrink-0 text-ink-subtle transition-colors duration-150 ease-out-soft group-hover:text-accent-ink">
           <SheetIcon size={22} />
         </span>
         <span className="min-w-0 flex-1">

@@ -151,14 +151,23 @@ export function NewWorksheetForm({
               role="radio"
               aria-checked={documentType === value}
               onClick={() => setDocumentType(value)}
-              className={`flex cursor-pointer flex-col gap-0.5 rounded-lg border px-3 py-2.5 text-left transition-[background-color,border-color,color,box-shadow,opacity] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+              // The selected state crossfades: border and fill ease, and the outer
+              // ring is a layer that fades in — `box-shadow` itself is not transitioned,
+              // because the focus ring shares it and must appear at once.
+              className={`relative flex cursor-pointer flex-col gap-0.5 rounded-lg border px-3 py-2.5 text-left transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                 documentType === value
-                  ? 'border-accent bg-accent/5 ring-1 ring-accent'
+                  ? 'border-accent bg-accent/5'
                   : 'border-line bg-surface hover:border-ink-subtle'
               }`}
             >
               <span
-                className={`text-[12px] font-medium ${
+                aria-hidden
+                className={`pointer-events-none absolute -inset-px rounded-lg ring-1 ring-accent transition-opacity duration-150 ease-out-soft ${
+                  documentType === value ? 'opacity-100' : 'opacity-0'
+                }`}
+              />
+              <span
+                className={`text-[12px] font-medium transition-colors duration-150 ease-out-soft ${
                   documentType === value ? 'text-accent' : 'text-ink'
                 }`}
               >
@@ -174,7 +183,7 @@ export function NewWorksheetForm({
           boxes: they appear and disappear with it, and at the same level they read as
           document fields that happen to vanish. */}
       {HAS_COVER[documentType] && (
-        <div className="ml-0.5 grid gap-3 border-l-2 border-accent/25 pl-3 sm:grid-cols-2">
+        <div className="ml-0.5 grid animate-fade-in gap-3 border-l-2 border-accent/25 pl-3 sm:grid-cols-2">
           <TextField
             label="School"
             value={school}
@@ -202,7 +211,8 @@ export function NewWorksheetForm({
       ) : (
         // The types that decide sections for themselves say what they decided, so the
         // vanished checkbox does not read as an option quietly taken away.
-        <p className="text-[11px] text-ink-subtle">
+        // Keyed by type, so the sentence fades to its new wording instead of snapping.
+        <p key={documentType} className="animate-fade-in text-[11px] text-ink-subtle">
           {documentType === 'lqMock'
             ? 'Starts with Sections A–C (derived marks totals) and one sample long question.'
             : documentType === 'paper1'
@@ -311,7 +321,7 @@ function TextField({
         value={value}
         placeholder={placeholder}
         autoFocus={autoFocus}
-        className="h-9 rounded-lg border border-line bg-surface px-2.5 text-[13px] text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
+        className="h-9 rounded-lg border border-line bg-surface px-2.5 text-[13px] text-ink outline-none transition-colors duration-150 ease-out-soft placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
         onChange={(event) => onChange(event.target.value)}
       />
     </label>

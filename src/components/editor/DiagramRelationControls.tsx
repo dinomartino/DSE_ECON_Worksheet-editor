@@ -136,7 +136,7 @@ export function ValueField({
         inputMode="decimal"
         value={shown}
         placeholder={clearable ? '—' : undefined}
-        className="h-8 w-16 rounded-lg border border-line bg-surface px-2 text-xs tabular-nums text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
+        className="h-8 w-16 rounded-lg border border-line bg-surface px-2 text-xs tabular-nums text-ink outline-none transition-colors duration-150 ease-out-soft placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
         onChange={(event) => setDraft(event.target.value)}
         onBlur={commit}
         onKeyDown={(event) => {
@@ -448,7 +448,7 @@ export function DiagramScaleControls({
         <ValueField label="y max" clearable value={diagram.y.max} onCommit={(v) => setMax('y', v)} />
       </div>
       {(diagram.x.max || diagram.y.max) && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex animate-fade-in flex-wrap gap-1.5">
           {diagram.x.max ? (
             <Button size="sm" variant="subtle" onClick={() => addTick('x')}>
               + x tick

@@ -24,11 +24,12 @@ export function TrashList({
   onEmpty: () => void;
 }) {
   return (
-    <div className="mx-auto max-w-5xl">
+    // Fades in over the dashboard it replaces, so the swap reads as one view turning.
+    <div className="mx-auto max-w-5xl animate-fade-in">
       <button
         type="button"
         onClick={onBack}
-        className="cursor-pointer text-[12px] font-medium text-accent-ink underline decoration-line-strong underline-offset-4 transition-colors hover:decoration-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="cursor-pointer text-[12px] font-medium text-accent-ink underline decoration-line-strong underline-offset-4 transition-colors duration-150 ease-out-soft hover:decoration-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
         ← All documents
       </button>
@@ -53,7 +54,7 @@ export function TrashList({
           {rows.map((row) => (
             <li
               key={row.id}
-              className="flex items-center gap-3.5 border-b border-line py-3 pl-4 pr-2 last:border-b-0"
+              className="flex items-center gap-3.5 border-b border-line py-3 pl-4 pr-2 transition-colors duration-150 ease-out-soft last:border-b-0 hover:bg-surface-hover"
             >
               <span className="shrink-0 text-ink-subtle">
                 <SheetIcon size={22} />
