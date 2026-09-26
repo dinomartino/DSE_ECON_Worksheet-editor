@@ -157,6 +157,9 @@ export function softRectTexture({ w = 1, h = 1, radius = 0.04, blur = 0.08, res 
   canvas.width = cw;
   canvas.height = ch;
   const g = canvas.getContext('2d');
+  // Opaque black first: alphaMap reads green, so the falloff must live in the colour.
+  g.fillStyle = '#000';
+  g.fillRect(0, 0, cw, ch);
   g.filter = `blur(${blur * res}px)`;
   g.fillStyle = '#fff';
   g.beginPath();
