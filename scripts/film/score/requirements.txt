@@ -1,0 +1,20 @@
+# The score's own environment; score.py builds .venv from this on first run. Fully pinned.
+numpy==2.5.3
+scipy==1.18.1
+numba==0.67.0
+llvmlite==0.49.0
+pedalboard==0.9.25
+soundfile==0.14.0
+cffi==2.1.1
+pycparser==3.0
+matplotlib==3.11.2
+contourpy==1.4.0
+cycler==0.12.1
+fonttools==4.66.0
+kiwisolver==1.5.1
+packaging==26.3
+pillow==12.3.0
+pyparsing==3.3.3
+python-dateutil==2.9.0.post0
+six==1.17.0
+typing_extensions==4.16.0
