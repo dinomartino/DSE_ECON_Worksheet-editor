@@ -45,7 +45,7 @@ const scene = {
     ctx.onPrepass((...a) => s.floor.prepass(...a));
     s.dust = lib.particles.dust({
       count: 110, seed: 11, H: ctx.renderH,
-      box: [[-9, -1.4, -14], [9, 5, 3.5]], size: 0.011, aperture: 0.13, bright: 0.55, drift: 0.22, rise: 0.012,
+      box: [[-9, -1.4, -14], [9, 5, 3.5]], size: 0.012, aperture: 0.2, bright: 0.75, drift: 0.22, rise: 0.012, minPx: 5,
     });
     scene.add(s.dust.mesh);
     ctx.rig.key.position.set(-3, 5, 7);
@@ -139,8 +139,9 @@ const scene = {
     s.dust.set({ time: t, focus: camDist, bright: (0.42 + 0.25 * riser) * appear, fov, H: ctx.renderH });
     const pushGlow = E.expoIn(E.seg(t, T.push, T.cut));
     // The breath: the studio dims on beat 4 of bar 7 and only the dot keeps its light.
-    const dim = 1 - 0.8 * E.sineInOut(E.seg(t, T.push - 0.35, T.push + 0.2));
-    ctx.rig.set({ key: dim, front: dim, env: dim, rim: dim });
+    const dimK = E.sineInOut(E.seg(t, T.push - 0.35, T.push + 0.2));
+    const dim = 1 - 0.8 * dimK;
+    ctx.rig.set({ key: 1 - 0.97 * dimK, front: dim, env: dim, rim: dim });
     logo.materials.dot.uniforms.uGlow.value *= 1 + 0.5 * (1 - dim);
     post.bloom = { strength: 1.2 + 0.5 * (1 - E.sineInOut(E.seg(t, T.tile, T.tile + 1.2))) + 1.4 * pushGlow, radius: 0.62, threshold: 1, knee: 0.45 };
     post.vignette = 0.24;

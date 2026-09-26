@@ -9,6 +9,7 @@
 //   … --stills=<seconds step> [--at=12.5,15.9]             PNG frames for review
 //   … --workers=N --shutter=K --out=<file> --events-only --headed --allow-software
 //   … --assets=fake|<dir>   serve another asset store (fake: synthetic stand-ins only)
+//   … --transition=<scene>:<type>:<beats> --dof=<focus>,<aperture>,<maxBlur>   dev overrides
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -98,7 +99,8 @@ export async function render(args) {
   const server = await serve(
     args.assets === 'fake' ? { assets: FAKE_ASSETS, fallbacks: [] } : args.assets ? { assets: resolve(args.assets) } : {},
   );
-  const size = { w: P.w, h: P.h, fps: P.fps, shutter: P.shutter };
+  const extra = ['transition', 'dof'].filter((k) => args[k]).map((k) => `&${k}=${encodeURIComponent(args[k])}`).join('');
+  const size = { w: P.w, h: P.h, fps: P.fps, shutter: P.shutter, extra };
   const { browser, gpu, headed } = await launchOnGpu(server.url, size, {
     allowSoftware: !!args['allow-software'],
     forceHeaded: !!args.headed,

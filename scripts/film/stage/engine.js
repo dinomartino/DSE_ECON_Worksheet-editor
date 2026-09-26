@@ -21,6 +21,10 @@ const SHUTTER = Math.max(1, Math.round(num('shutter', 1)));
 const ANGLE = num('angle', 180);
 const GRAIN = num('grain', 1.5);
 const ASSETS = q.get('assets') ?? '/assets/';
+// Dev-only overrides for testing the compositor: ?transition=<scene>:<type>:<beats> and
+// ?dof=<focus>,<aperture>,<maxBlur> (forces DOF on every scene).
+const TR_OVERRIDE = q.get('transition')?.split(':');
+const DOF_OVERRIDE = q.get('dof')?.split(',').map(Number);
 const DW = 1920, DH = 1080; // overlay design space
 
 const stage = document.getElementById('stage');
@@ -66,7 +70,23 @@ async function sceneDef(id) {
   return defs.get(id);
 }
 
-const infoOf = (id) => TL.SCENES.find((s) => s.id === id);
+const infoOf = (id) => {
+  const info = TL.SCENES.find((s) => s.id === id);
+  if (TR_OVERRIDE?.[0] !== id) return info;
+  return { ...info, in: { type: TR_OVERRIDE[1], beats: Number(TR_OVERRIDE[2] ?? 1) } };
+};
+const sceneAt = (t) => {
+  if (!TR_OVERRIDE) return TL.sceneAt(t);
+  const ids = [];
+  TL.SCENES.forEach((s, i) => {
+    const half = (x) => (x && !['cut', 'fadeFromBlack', 'fadeToBlack'].includes(x.type) ? (x.beats * TL.BEAT) / 2 : 0);
+    const start = TL.bar(s.from) - half(infoOf(s.id).in);
+    const next = TL.SCENES[i + 1];
+    const end = TL.bar(s.to) + (next ? half(infoOf(next.id).in) : 0);
+    if (t >= Math.max(0, start) && t < Math.min(TL.DURATION, end)) ids.push(s.id);
+  });
+  return ids;
+};
 
 async function createSlot(id, { dry = false } = {}) {
   const info = infoOf(id);
@@ -216,7 +236,8 @@ function renderSlot(slot, t, times) {
     update(slot, t); // DOM and post settings at exactly t
     src = slot.accum.texture;
   }
-  if (ctx.post.dof) src = fx.dof(src, sceneRT.depthTexture, ctx.camera, ctx.post.dof, fx.tmpA);
+  const dof = DOF_OVERRIDE ? { focus: DOF_OVERRIDE[0], aperture: DOF_OVERRIDE[1], maxBlur: DOF_OVERRIDE[2] } : ctx.post.dof;
+  if (dof) src = fx.dof(src, sceneRT.depthTexture, ctx.camera, dof, fx.tmpA);
   fx.finish(src, ctx.post, slot.out);
 }
 
@@ -323,7 +344,7 @@ function applyDom(active, poses) {
 const raf2 = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
 async function doSeek(t) {
-  const ids = TL.sceneAt(t);
+  const ids = sceneAt(t);
   for (const [id, pending] of slots) {
     if (ids.includes(id)) continue;
     slots.delete(id);
@@ -406,6 +427,6 @@ window.film = {
   events,
   gpu,
   errors: () => errors.slice(),
-  scenesAt: (t) => TL.sceneAt(t),
+  scenesAt: (t) => sceneAt(t),
   memory: () => ({ ...renderer.info.memory, programs: renderer.info.programs?.length ?? 0 }),
 };

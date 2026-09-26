@@ -35,7 +35,7 @@ const scene = {
     ctx.onPrepass((...a) => s.floor.prepass(...a));
     s.dust = lib.particles.dust({
       count: 120, seed: 42, H: ctx.renderH,
-      box: [[-12, -1.3, -18], [12, 7, 4]], size: 0.011, aperture: 0.14, bright: 0.5, drift: 0.2, rise: 0.01,
+      box: [[-12, -1.3, -18], [12, 7, 4]], size: 0.012, aperture: 0.2, bright: 0.7, drift: 0.2, rise: 0.01, minPx: 5,
     });
     scene.add(s.dust.mesh);
     const T_ = lib.type;

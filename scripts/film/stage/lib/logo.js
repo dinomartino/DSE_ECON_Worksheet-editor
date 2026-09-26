@@ -158,7 +158,7 @@ varying vec3 vLogoP;`)
   float band = exp(-pow((sp - uSweepP) / uSweepW, 2.0)) + 0.35 * exp(-pow((sp - uSweepP + 0.34) / (uSweepW * 0.45), 2.0));
   float facing = clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0);
   outgoingLight += uSweepColor * band * uSweepAmt * mix(1.0, 2.2, pow(1.0 - facing, 2.0));
-  outgoingLight += uSweepColor * uSheen * smoothstep(1.5, -1.5, sp) * facing;
+  outgoingLight += uSweepColor * uSheen * smoothstep(-1.2, 1.1, vLogoP.y - 0.25 * vLogoP.x) * facing * facing;
 }
 #include <opaque_fragment>`);
   });
@@ -177,7 +177,7 @@ export function createLogo(opts = {}) {
     uSweepDir: { value: new THREE.Vector2(0.62, -0.78).normalize() },
     uSweepW: { value: 0.2 },
     uSweepAmt: { value: 0 },
-    uSheen: { value: 0.035 },
+    uSheen: { value: 0.07 },
     uSweepColor: { value: new THREE.Color('#FFF3E6') },
   };
   const tileMat = filmic(sweepable(new THREE.MeshPhysicalMaterial({

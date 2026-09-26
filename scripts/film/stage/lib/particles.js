@@ -7,7 +7,7 @@ import { rng } from './noise.js';
 const VERT = /* glsl */ `
 attribute vec3 aBase; attribute vec4 aSeed;
 uniform float uTime; uniform float uSize; uniform float uFocus; uniform float uAperture;
-uniform float uProj; uniform float uBright; uniform float uDrift; uniform float uRise;
+uniform float uProj; uniform float uBright; uniform float uDrift; uniform float uRise; uniform float uMinPx;
 varying vec2 vQ; varying float vA; varying float vSharp; varying float vTint;
 void main() {
   float t = uTime;
@@ -21,13 +21,14 @@ void main() {
   float r = sharp + uAperture * abs(z - uFocus) / uFocus;
   float px = r * uProj / z;
   float a = uBright * (0.35 + 0.65 * aSeed.y) * (sharp * sharp) / (r * r);
-  if (px < 1.3) { a *= (px * px) / (1.69); r *= 1.3 / px; }
+  if (px < uMinPx) { a *= (px * px) / (uMinPx * uMinPx); r *= uMinPx / px; }
+  float sharpPx = sharp * uProj / z;
   a *= 0.75 + 0.25 * sin(t * (0.6 + aSeed.z) + aSeed.w * 20.0);
   mv.xy += position.xy * r;
   gl_Position = projectionMatrix * mv;
   vQ = position.xy;
   vA = a;
-  vSharp = clamp(sharp / r, 0.0, 1.0);
+  vSharp = clamp(sharpPx / (r * uProj / z), 0.0, 1.0);
   vTint = aSeed.z;
 }`;
 
@@ -46,9 +47,10 @@ void main() {
 
 /**
  * `box` = [[x0,y0,z0],[x1,y1,z1]] world volume. `focus` is the camera distance in focus;
- * `aperture` scales the blur disc. Call set({time, focus, bright}) per frame.
+ * `aperture` scales the blur disc; `minPx` (at 1080p) keeps every mote a soft disc, never
+ * a sharp speck. Call set({time, focus, bright}) per frame.
  */
-export function dust({ count = 90, seed = 7, box = [[-8, -1, -10], [8, 6, 2]], size = 0.012, focus = 10, aperture = 0.08, bright = 0.5, color = '#FFE6C4', color2 = '#BFD8FF', drift = 0.25, rise = 0.02, H = 1080, fov = 30 } = {}) {
+export function dust({ count = 90, seed = 7, box = [[-8, -1, -10], [8, 6, 2]], size = 0.012, focus = 10, aperture = 0.08, bright = 0.5, color = '#FFE6C4', color2 = '#BFD8FF', drift = 0.25, rise = 0.02, H = 1080, fov = 30, minPx = 1.3 } = {}) {
   const r = rng(seed);
   const base = new Float32Array(count * 3);
   const seeds = new Float32Array(count * 4);
@@ -75,6 +77,7 @@ export function dust({ count = 90, seed = 7, box = [[-8, -1, -10], [8, 6, 2]], s
       uBright: { value: bright },
       uDrift: { value: drift },
       uRise: { value: rise },
+      uMinPx: { value: minPx * (H / 1080) },
       uColor: { value: new THREE.Color(color) },
       uColor2: { value: new THREE.Color(color2) },
     },
