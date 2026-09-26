@@ -17,11 +17,11 @@ const SHOTS = [
   { id: 'typing', clip: 'type-mcq', from: 1.72, rate: 1, crop: [250, 566, 1100, 640], world: 'day' },
   { id: 'zh', clip: 'language-toggle', from: 2.56, rate: 1, crop: [446, 458, 880, 532], world: 'day' },
   { id: 'curve', clip: 'draw-diagram', from: 2.93, rate: 1.24, crop: [324, 348, 1592, 1332], world: 'night' },
-  { id: 'dwl', clip: 'draw-diagram', from: 14.34, rate: 0.6, crop: [480, 440, 1120, 700], world: 'night' },
-  { id: 'teacher', clip: 'teacher-toggle', from: 1.12, rate: 1, crop: [640, 610, 1060, 612], world: 'day' },
+  { id: 'dwl', clip: 'draw-diagram', from: 14.34, rate: 0.6, crop: [340, 580, 1120, 700], world: 'night' },
+  { id: 'teacher', clip: 'teacher-toggle', from: 1.12, rate: 1, crop: [705, 606, 880, 456], world: 'day' },
   { id: 'cover', still: 'sheets/p2-cover.png', size: [2379, 3366], crop: [0, 120, 2379, 1340], world: 'day' },
-  // The window's top: title bar, heading and the diagram that survived into the .docx.
-  { id: 'docx', doc: true, world: 'night', aim: [0, 0.2], zoom: 0.72 },
+  // The window rises from the bottom edge: title bar, heading and the diagram in the .docx.
+  { id: 'docx', doc: true, world: 'night', aim: [0, 0.075] },
   { id: 'start', still: 'stills/start-screen.png', size: [2880, 1800], crop: [0, 0, 2880, 1800], world: 'day' },
 ];
 
@@ -44,7 +44,7 @@ const scene = {
       let card;
       if (sh.doc) {
         const map = await ctx.load.texture(DOC.texture);
-        const doc = docWindow(lib, map, { width: FIT.w * 0.92 });
+        const doc = docWindow(lib, map, { width: FIT.w * 0.95 });
         const { sheet, L } = doc;
         sheet.set({ lit: 1, base: 1, clip: [L.bottom - L.slot[1], 0.004, 1] });
         card = { group: doc.group, width: L.width, height: L.h, set: () => {} };

@@ -1,10 +1,9 @@
 // everywhere — bars 36–40, day (FILM.md §3). The 72.0 hit cuts to the warm world on the
-// real Export dialog. On each tick (72.5–74.5) one of its options lifts out of the dialog
-// as a glass chip and springs into a cluster beside it: PDF, Answer key, Kahoot, Blooket,
-// ZipGrade. The camera trucks right, everything whooshing off-frame, and lands on the
-// browser window on 76.0; the Mac and Windows windows slide in from depth on 77.0 and 78.0,
-// each earlier one stepping back, while "In your browser. On Mac. On Windows." lands a
-// phrase per window.
+// real Export dialog. On each tick (72.5–74.5) a glass chip springs into the space beside
+// it: PDF, Answer key, Kahoot, Blooket, ZipGrade. The camera trucks right, everything
+// whooshing off-frame, and lands on the browser window on 76.0; the Mac and Windows
+// windows slide in from the front on 77.0 and 78.0, each earlier one stepping back, while
+// "In your browser. On Mac. On Windows." lands a phrase per window.
 import { COPY } from '../../timeline.mjs';
 import { cubicBezier } from '../lib/ease.js';
 import { glassChip } from './everywhere/glassChip.js';
@@ -26,14 +25,13 @@ const STILL = { path: 'stills/export-other-apps.png', W: 2880, H: 1800 };
 const DIALOG = { x: 963, y: 177, w: 954, h: 1446, radius: 27 };
 const CARD_H = 4.45;
 const CARD = { pos: [-1.8, 0.0, 0], yaw: 0.16 };
-// Each chip lifts from its label in the dialog (px centre in the still).
-const LABELS = [[1150, 559], [1305, 748], [1349, 935], [1473, 935], [1075, 937]];
-// Chip cluster: two rows centred on ROW_X (world), chips at depth CHIP_Z.
-const ROWS = [{ y: 0.37, items: [0, 1] }, { y: -0.27, items: [2, 3, 4] }];
-const ROW_X = 2.3;
+// Chip cluster: two rows centred on ROW_X (world), chips at depth CHIP_Z, inside title-safe.
+const ROWS = [{ y: 0.36, items: [0, 1] }, { y: -0.26, items: [2, 3, 4] }];
+const ROW_X = 2.12;
 const CHIP_Z = 0.35;
-const CHIP_GAP = 0.12;
+const CHIP_GAP = 0.11;
 const UNIT = 0.0047; // world units per design px at the chips' depth
+const POP = { lead: 0.07, freq: 3.0, damping: 0.66 }; // crosses full size ~0.09 s after its tick
 
 // The windows live one truck to the right. Slot 0 = front.
 const OFF = 10.6;
@@ -42,7 +40,8 @@ const SLOTS = [
   { pos: [2.3, 0.5, -1.5], rot: [0, -0.2, 0] },
   { pos: [2.95, 1.55, -3.55], rot: [0, -0.2, 0] },
 ];
-const FROM = { pos: [4.6, -1.6, -11], rot: [0, -0.45, 0] }; // where Mac and Windows arrive from
+// Mac and Windows arrive from the front right, so each stays in front of the ones it passes.
+const FROM = { pos: [5.4, -2.9, 2.4], rot: [0, -0.5, 0] };
 const WINDOWS = [
   { variant: 'browser', still: 'stills/start-screen.png' },
   { variant: 'mac', still: 'stills/editor-clean.png' },
@@ -84,15 +83,8 @@ const scene = {
     s.card.group.position.set(...CARD.pos);
     s.card.group.rotation.y = CARD.yaw;
     scene.add(s.card.group);
-    s.card.group.updateMatrixWorld(true);
-    s.from = LABELS.map(([x, y]) => s.card.group.localToWorld(new THREE.Vector3(
-      ((x - DIALOG.x) / DIALOG.w - 0.5) * cardW,
-      (0.5 - (y - DIALOG.y) / DIALOG.h) * s.card.height,
-      0.02,
-    )).toArray());
-
     // Chips and their slots.
-    s.chips = C.chips.map((text) => glassChip(text, { unit: UNIT }));
+    s.chips = C.chips.map((text) => glassChip(text, { unit: UNIT, hPx: 96, fontPx: 44, padPx: 42 }));
     s.to = [];
     for (const row of ROWS) {
       const total = row.items.reduce((a, i) => a + s.chips[i].w, 0) + CHIP_GAP * (row.items.length - 1);
@@ -102,8 +94,6 @@ const scene = {
         x += s.chips[i].w + CHIP_GAP;
       }
     }
-    // The label's height in the dialog relative to the chip's: where the lift starts.
-    s.labelScale = ((21 / DIALOG.h) * s.card.height) / (0.46 * s.chips[0].h);
     for (const c of s.chips) scene.add(c.group);
 
     // Windows.
@@ -145,19 +135,16 @@ const scene = {
       fov: 30,
     });
 
-    // --- chips: each lifts out of its label and springs into the cluster ------------------
+    // --- chips: each springs into its slot on its tick (one soft overshoot) -----------------
     s.chips.forEach((chip, i) => {
-      const t0 = T.chips[i];
-      const p = E.spring(t - t0, { freq: 1.55, damping: 0.74 });
-      const grow = E.spring(t - t0, { freq: 1.9, damping: 0.72 });
-      const a = s.from[i], b = s.to[i];
-      const lift = 0.55 * Math.sin(Math.PI * E.clamp(p)); // arcs toward the camera, then settles
-      chip.group.position.set(E.lerp(a[0], b[0], p), E.lerp(a[1], b[1], p) + 0.1 * lift, E.lerp(a[2], b[2], p) + lift);
-      chip.group.scale.setScalar(E.lerp(s.labelScale, 1, grow));
-      chip.group.rotation.set(0, E.lerp(CARD.yaw, 0, E.clamp(p)), -0.05 * Math.sin(Math.PI * E.clamp(p)));
+      const t0 = T.chips[i] - POP.lead;
+      const g = E.spring(t - t0, POP);
+      const [x, y, z] = s.to[i];
       const bob = 0.012 * lib.noise.noise1(t * 0.6, 50 + i);
-      chip.group.position.y += bob;
-      chip.set({ opacity: E.smoothstep(t0 - 0.01, t0 + 0.12, t), shadow: E.clamp(grow) });
+      chip.group.position.set(x, y - 0.16 * (1 - g) + bob, z - 0.5 * (1 - g));
+      chip.group.scale.setScalar(E.lerp(0.5, 1, g));
+      chip.group.rotation.set(0.35 * (1 - g), 0, 0);
+      chip.set({ opacity: E.smoothstep(t0, t0 + 0.09, t), shadow: E.clamp(g) });
     });
 
     // --- windows: the browser is revealed by the truck; Mac and Windows slide in from depth -
@@ -190,7 +177,7 @@ const scene = {
       win.shadow(a);
     });
 
-    const fast = (t > T.truck[0] && t < T.truck[1] + 0.05) ? 24 : T.windows.slice(1).some((w) => t > w - 0.65 && t < w + 0.2) ? 12 : T.chips.some((c) => t > c && t < c + 0.5) ? 32 : 0;
+    const fast = (t > T.truck[0] && t < T.truck[1] + 0.05) ? 24 : T.windows.slice(1).some((w) => t > w - 0.65 && t < w + 0.2) ? 12 : T.chips.some((c) => t > c - POP.lead && t < c + 0.35) ? 24 : 0;
     post.samples = fast;
     post.vignette = 0.06;
 

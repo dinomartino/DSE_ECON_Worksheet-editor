@@ -17,7 +17,7 @@ const T = {
   turn: [1.9, 3.3],
   lit: [2.3, 3.55],
   move: [3.08, 3.97],
-  snap: 3.9,
+  snap: 3.95, // the window forms around the page on the 68.0 drop
   facts: [5.0, 6.0, 7.0],
 };
 
@@ -90,7 +90,7 @@ const scene = {
     const scale = E.lerp(1.34, 1, snap);
     win.group.scale.setScalar(scale);
     win.group.visible = t > T.snap;
-    win.set({ opacity: E.sineOut(E.seg(t, T.snap, T.snap + 0.14)) });
+    win.set({ opacity: E.sineOut(E.seg(t, T.snap, T.snap + 0.08)) });
     const bottom = L.bottom * scale - sheet.mesh.position.y; // window bottom in sheet-local y
     sheet.set({ clip: [bottom, 0.004, t > T.snap ? 1 : 0] });
 
