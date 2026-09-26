@@ -106,6 +106,9 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   menus grow out of the button that opened them, and dialogs fade in instead of
   appearing all at once. Quick enough never to slow you down.
 
+- **The inflationary and deflationary gap templates mark the gap just above the output
+  axis**, between Y₀ and Yf, with its name above the arrow. It still follows AD, SRAS
+  and LRAS when you drag them.
 ### Fixed
 - **The import-tariff template had no imports**: Pw + t sat above the market's own
   equilibrium. It now sits between Pw and it, with Q₁, Q₂ and the imports QM marked. The

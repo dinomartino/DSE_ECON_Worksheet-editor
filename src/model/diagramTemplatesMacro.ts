@@ -1,4 +1,5 @@
-import type { Diagram, DiagramCurve } from './diagram';
+import type { Diagram, DiagramAnchorRef, DiagramCurve } from './diagram';
+import type { BiText } from './types';
 import {
   AXIS,
   arrow,
@@ -104,9 +105,19 @@ function adSrasLeft(): Diagram {
   );
 }
 
+/** Height of an output-gap arrow: inside the plot, just above the output axis. */
+const GAP_Y = 0.05;
+
+/**
+ * A gap arrow at GAP_Y between two anchors' x-positions, left end first so its label
+ * sits above it. Both ends stay anchored, so it follows what it measures.
+ */
+const gapArrow = (left: DiagramAnchorRef, right: DiagramAnchorRef, text: BiText) =>
+  span({ x: left, y: GAP_Y }, { x: right, y: GAP_Y }, 'doubleArrow', { label: text });
+
 /**
  * An output gap: AD–SRAS equilibrium off a vertical LRAS at Yf. The gap is a double
- * arrow on the output axis from Y₀ to LRAS, so it follows AD, SRAS and LRAS.
+ * arrow just above the output axis from Y₀ to LRAS, so it follows AD, SRAS and LRAS.
  */
 function gap(kind: 'deflationary' | 'inflationary'): Diagram {
   const deflation = kind === 'deflationary';
@@ -116,17 +127,21 @@ function gap(kind: 'deflationary' | 'inflationary'): Diagram {
   const l = lras(full);
   const e0 = eq(ad, sras, '0', Y);
   const text = deflation ? bi('deflationary\ngap', '通縮缺口') : bi('inflationary\ngap', '通脹缺口');
+  const onLras: DiagramAnchorRef = { on: l.id, y: 0 };
   return finish(
     macro({
       x: { title: AXIS.realOutput, ticks: [yf(full)] },
       curves: [ad, sras, l],
       points: [e0],
-      spans: [span(at(e0), { on: l.id, y: 0 }, 'doubleArrow', { along: 'x', label: text })],
+      spans: [deflation ? gapArrow(at(e0), onLras, text) : gapArrow(onLras, at(e0), text)],
     }),
   );
 }
 
-/** AD rises toward Yf: gap₀ and the narrower gap₁, both on the output axis. */
+/**
+ * AD rises toward Yf: gap₀ and the narrower gap₁, both on the output axis. They stay
+ * below it: stacked inside the plot, gap₁'s label would meet AD₀'s lower end.
+ */
 function gapNarrows(): Diagram {
   const full = 0.74;
   const l = lras(full);
