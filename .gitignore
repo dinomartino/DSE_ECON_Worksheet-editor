@@ -52,3 +52,8 @@ skills-lock.json
 
 # website demo media (npm run demo)
 /demo-media/
+
+# product film (scripts/film has its own deps; the score's Python venv)
+/scripts/film/node_modules/
+/scripts/film/score/.venv/
+__pycache__/
