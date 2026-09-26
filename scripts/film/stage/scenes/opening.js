@@ -143,7 +143,14 @@ const scene = {
     const dim = 1 - 0.8 * dimK;
     ctx.rig.set({ key: 1 - 0.97 * dimK, front: dim, env: dim, rim: dim });
     logo.materials.dot.uniforms.uGlow.value *= 1 + 0.5 * (1 - dim);
-    post.bloom = { strength: 1.2 + 0.5 * (1 - E.sineInOut(E.seg(t, T.tile, T.tile + 1.2))) + 1.4 * pushGlow, radius: 0.62, threshold: 1, knee: 0.45 };
+    // The lone point gets a wide soft halo that eases back as the lines arrive.
+    const halo = 1 - E.sineInOut(E.seg(t, 1.2, 3.0));
+    post.bloom = {
+      strength: 1.2 + 0.9 * halo + 0.5 * (1 - E.sineInOut(E.seg(t, T.tile, T.tile + 1.2))) + 1.4 * pushGlow,
+      radius: 0.62 + 0.2 * halo,
+      threshold: 1,
+      knee: 0.45,
+    };
     post.vignette = 0.24;
     post.exposure = 1 + 0.3 * pushGlow;
     // Fast moves get more motion-blur sub-frames in final renders.
