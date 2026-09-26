@@ -1,15 +1,17 @@
-// The diagram film (`npm run demo:diagrams`): one continuous recording of the diagram
-// workflow, with numbered stills captured along the way (cut out of the video). The
-// steps are `diagramStoryboard(seed)`; a step that drags a curve to show something
-// following it is only filmed when the template in this build really follows.
+// The diagram film (`npm run demo:diagrams`): a supply-and-demand diagram drawn from
+// blank axes through the real canvas, the job teachers otherwise fight Word for. One
+// continuous recording, with numbered stills captured along the way (cut out of the
+// video). The steps are `diagramStoryboard(seed)`; every gesture lands where the seed's
+// `diagramPlot` projection says the unit-space drawing in content.mjs sits.
 import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import JSZip from 'jszip';
+import { DIAGRAMS } from './content.mjs';
 import { CONTEXT, CURSOR_SCRIPT, makeDriver } from './flow.mjs';
 import { filmSteps } from './record.mjs';
 
-/** Captions, stills, a curve's geometry, and the rendered-export overlay, in the page. */
+/** Captions, stills, canvas geometry, and the rendered-export overlay, in the page. */
 const PAGE_SCRIPT = `
 (() => {
   const flat = (s) => (s || '').replace(/[\\u2080-\\u2089]/g, (c) => String(c.charCodeAt(0) - 0x2080)).replace(/\\s+/g, ' ').trim();
@@ -37,7 +39,7 @@ const PAGE_SCRIPT = `
         if (node) node.style.visibility = show ? '' : 'hidden';
       }
     },
-    /** Number the diagrams on the page (not the graph answer spaces), in page order. */
+    /** Number the diagrams on the page, in page order. */
     tagDiagrams() {
       const found = [...document.querySelectorAll('#print-root svg')].filter(
         (svg) => svg.getBoundingClientRect().width >= 150 && !svg.closest('[data-answer-graph]'),
@@ -46,6 +48,29 @@ const PAGE_SCRIPT = `
       // On the svg's parent: the svg itself is injected markup, replaced on every redraw.
       found.forEach((svg, i) => svg.parentElement.setAttribute('data-demo-diagram', String(i)));
       return found.length;
+    },
+    /**
+     * The drawing surface on screen, and the size of the SVG it scales: the canvas draws
+     * the diagram at its stored pixel size and zooms the box, so SVG pixel p is at
+     * left + p * (width / svgWidth).
+     */
+    stage() {
+      const surface = canvas()?.querySelector('div.relative.select-none.bg-white');
+      const svg = surface?.querySelector('svg');
+      if (!svg) return null;
+      const r = surface.getBoundingClientRect();
+      return {
+        left: r.left, top: r.top, width: r.width, height: r.height,
+        svgWidth: Number(svg.getAttribute('width')), svgHeight: Number(svg.getAttribute('height')),
+      };
+    },
+    /** The centre of the canvas text reading \`text\` ("Q0" matches "Q₀"), on screen. */
+    textAt(text) {
+      const node = [...(canvas()?.querySelectorAll('div.relative.select-none.bg-white svg text') ?? [])]
+        .find((t) => flat(t.textContent) === flat(text));
+      if (!node) return null;
+      const r = node.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
     },
     /** Select an element on the open canvas by its row in "On this diagram". */
     selectRow(name) {
@@ -136,16 +161,18 @@ async function dblclick(d, loc) {
 }
 
 /** Glide to `from`, press, travel to `to` in visible steps, release. */
-async function drag(d, from, to, steps = 28) {
+async function drag(d, from, to, steps = 36) {
   await d.moveTo(from.x, from.y);
-  await d.wait(250);
+  await d.wait(300);
   await d.page.mouse.down();
   for (let i = 1; i <= steps; i++) {
-    const k = i / steps;
+    // Eased, so the stroke starts and lands gently rather than jumping.
+    const k = 0.5 - Math.cos((Math.PI * i) / steps) / 2;
     await d.page.mouse.move(from.x + (to.x - from.x) * k, from.y + (to.y - from.y) * k);
-    await d.wait(22);
+    await d.wait(24);
   }
   await d.moveTo(to.x, to.y);
+  await d.wait(120);
   await d.page.mouse.up();
 }
 
@@ -164,6 +191,40 @@ async function geometry(d, name) {
   });
 }
 
+/**
+ * SVG pixel → screen, for the open canvas. Fails if the block is not the size the seed
+ * projected: then the seed's `diagramPlot` numbers describe some other picture.
+ */
+async function stageMap(d, seed) {
+  const s = await d.page.evaluate(() => window.__demo.stage());
+  if (!s) throw new Error('the drawing canvas is not open');
+  const { widthPx, heightPx } = seed.canvas;
+  if (Math.abs(s.svgWidth - widthPx) > 0.5 || Math.abs(s.svgHeight - heightPx) > 0.5) {
+    throw new Error(`the blank diagram is ${s.svgWidth}×${s.svgHeight}, the seed projected ${widthPx}×${heightPx}`);
+  }
+  return (p) => ({ x: s.left + (p.x * s.width) / s.svgWidth, y: s.top + (p.y * s.height) / s.svgHeight });
+}
+
+const canvasPanel = (d) => d.page.locator('.zone-dark aside');
+const tool = (d, name) => d.page.locator('.zone-dark header').getByRole('button', { name, exact: true });
+
+/** Type into one of the canvas inspector's text fields (its English box). */
+async function typeField(d, label, text) {
+  await d.click(canvasPanel(d).getByLabel(`${label} (English)`), { hover: 250 });
+  await d.wait(200);
+  await d.page.keyboard.type(text, { delay: 170 });
+  await d.wait(450);
+}
+
+/** The same, replacing what the field holds. */
+async function retypeField(d, label, text) {
+  await d.click(canvasPanel(d).getByLabel(`${label} (English)`), { hover: 250 });
+  await d.wait(200);
+  await d.page.keyboard.press('Meta+A');
+  await d.page.keyboard.type(text, { delay: 170 });
+  await d.wait(450);
+}
+
 /** A point `k` of the way along a polyline (by length). */
 function along(line, k) {
   const lengths = line.slice(1).map((p, i) => Math.hypot(p.x - line[i].x, p.y - line[i].y));
@@ -178,18 +239,29 @@ function along(line, k) {
   return line[line.length - 1];
 }
 
-/** Grab curve `name` on the canvas and drag it by (dx, dy) screen pixels. */
-async function dragCurve(d, name, dx, dy, k = 0.72) {
-  const { lines } = await geometry(d, name);
-  if (!lines[0]) throw new Error(`curve "${name}" has no highlight on the canvas`);
-  const grab = along(lines[0], k);
-  await drag(d, grab, { x: grab.x + dx, y: grab.y + dy });
+/** Curve tool, drag from → to, then name it in the inspector. */
+async function drawCurve(d, map, line, label) {
+  await d.click(tool(d, 'Curve'), { hover: 300 });
+  await d.wait(500);
+  await drag(d, map(line.from), map(line.to));
+  await d.wait(700);
+  await typeField(d, 'Label', label);
 }
 
-const canvasDone = async (d) => {
-  await d.click(d.page.getByRole('button', { name: 'Done', exact: true }));
-  await d.wait(700);
-};
+/** Double-click the canvas text reading `raw` (a tick, a curve's name) and lower its last character. */
+async function subscriptLast(d, raw) {
+  const at = await d.page.evaluate((t) => window.__demo.textAt(t), raw);
+  if (!at) throw new Error(`no "${raw}" drawn on the canvas`);
+  await d.moveTo(at.x, at.y);
+  await d.wait(250);
+  await d.page.mouse.dblclick(at.x, at.y);
+  await d.wait(500);
+  await d.page.keyboard.press('End');
+  await d.click(d.page.getByRole('button', { name: 'Subscript', exact: true }), { hover: 300 });
+  await d.wait(400);
+  await d.page.keyboard.press('Enter');
+  await d.wait(500);
+}
 
 /** Shade ▾ → group → preset, confirming the curves when the menu asks which. */
 async function shade(d, group, preset) {
@@ -202,378 +274,331 @@ async function shade(d, group, preset) {
   await d.wait(600);
   const add = menu.getByRole('button', { name: 'Add', exact: true });
   if (await add.count()) {
-    await d.wait(500);
+    await d.wait(400);
     await d.click(add);
   }
   await d.wait(900);
 }
 
-/** ↔ Span → Bracket, On the x-axis, then click E₁ and E₀: a bracket from Q₁ to Q₀. */
-async function addBracket(d) {
-  const e1 = (await geometry(d, 'Point (Q1, P1)')).dots[0];
-  const e0 = (await geometry(d, 'Point (Q0, P0)')).dots[0];
-  await d.click(d.page.getByRole('button', { name: /Span/ }).first());
-  await d.wait(500);
-  for (const [label, value] of [['Span style', 'bracket'], ['Span position', 'x']]) {
-    const select = d.page.getByLabel(label);
-    await d.hover(select);
-    await d.wait(300);
-    await select.selectOption(value);
-    await d.wait(500);
-  }
-  for (const end of [e1, e0]) {
-    await d.moveTo(end.x, end.y);
-    await d.wait(300);
-    await d.page.mouse.click(end.x, end.y);
-    await d.wait(600);
-  }
-  await d.page.keyboard.press('Escape');
-  await d.wait(900);
+/**
+ * Click empty paper in the canvas's top-right corner: a click on nothing clears the
+ * selection. Not Escape, which closes the canvas when nothing is selected.
+ */
+async function deselect(d, map, seed) {
+  const at = map({ x: seed.canvas.widthPx * 0.93, y: seed.canvas.heightPx * 0.08 });
+  await d.moveTo(at.x, at.y);
+  await d.wait(150);
+  await d.page.mouse.click(at.x, at.y);
 }
 
-/** Open the template popover from `trigger`, search, and pick the card named `name`. */
-async function pickTemplate(d, trigger, search, name) {
-  // Centred first: the popover opens below its trigger and is only as tall as the room left.
-  await reveal(d, trigger);
-  await d.click(trigger);
+const canvasDone = async (d) => {
+  await d.click(d.page.getByRole('button', { name: 'Done', exact: true }));
   await d.wait(700);
-  await d.page.keyboard.type(search, { delay: 90 });
-  await d.wait(700);
-  const card = d.page
-    .locator('[data-template-group] button')
-    .filter({ has: d.page.locator('span.truncate', { hasText: new RegExp(`^${name}$`) }) });
-  await card.first().evaluate((node) => node.scrollIntoView({ block: 'nearest' }));
-  await d.click(card);
-  await d.wait(1100);
-}
-
-/** The canvas curve whose name starts with one of `prefixes`, from the seed's report. */
-const curveNamed = (info, prefixes) =>
-  info.curves.find((c) => prefixes.some((p) => c.startsWith(p)));
+};
 
 // ---- the film ------------------------------------------------------------------------
 
 /**
- * The storyboard for this build. `seed.templates` says what each template holds, so a
- * "drag it and watch it follow" beat is filmed only when something does follow; each
- * beat left out is returned in `notes` for the README.
+ * The storyboard: blank axes → D and S → E₀ → a tax shifts S up (S₁, E₁) → shaded
+ * revenue and deadweight loss → on the page → exported to Word → templates, in passing.
  */
 export function diagramStoryboard(seed) {
-  const t = seed.templates;
   const notes = [];
   const steps = [];
-  const tax = t['per-unit-tax'];
-  const taxFollows = tax.anchoredPoints.length > 0;
-  const s1 = curveNamed(tax, ['S1']);
-  // The bracket goes on the stem's figure unless its template already marks Q₀–Q₁ on
-  // the x-axis; then it goes on the model answer, which starts with no spans.
-  const spanOnStem = !tax.spanAxes.includes('x');
+  const { draw } = DIAGRAMS;
+  /** SVG pixel → screen, set when the canvas opens. */
+  let map = null;
+  const within = (line, k) => ({
+    x: line.from.x + (line.to.x - line.from.x) * k,
+    y: line.from.y + (line.to.y - line.from.y) * k,
+  });
 
   steps.push({
-    name: 'Student page',
-    caption: 'Opens a worksheet whose part (a) has a graph answer space: blank axes for students.',
+    name: 'The question',
+    caption: 'Opens a worksheet with a per-unit tax question and no diagram yet. In Word, this diagram means a pile of loose lines and text boxes.',
     async run(d) {
-      await say(d, 'A long question with a graph answer space: blank axes for students to draw on.');
-      await d.wait(900);
+      await say(d, 'In Word, a supply-and-demand diagram is a pile of loose lines and text boxes. Here it takes about a minute.');
+      await d.wait(1200);
       await d.click(d.page.getByRole('button', { name: /S5 Market Intervention/ }));
       await d.page.waitForSelector('#print-root .paper');
-      await d.wait(900);
+      await d.wait(700);
       await d.cut(async () => {
         const hint = d.page.getByRole('button', { name: 'Dismiss hint' });
         if (await hint.count()) await hint.click();
       });
-      await d.hover(d.page.locator('#print-root [data-answer-graph]'));
-      await d.wait(1600);
-      await d.still('student-page', 'Student page: part (a) with blank axes to draw on');
+      await d.hover(d.page.locator('#print-root').getByText('The government imposes'));
+      await d.wait(2400);
+      await d.still('question', 'The question, before the diagram');
     },
   });
 
   steps.push({
-    name: 'Template picker',
-    caption: 'Selects the stem, opens **+ Diagram ▾**: 47 templates grouped by syllabus topic. Searches "tax".',
+    name: 'Blank axes',
+    caption: 'Selects the question stem and chooses **+ Diagram ▾ → Blank axes**.',
     async run(d) {
-      await say(d, 'Insert a diagram: templates are grouped by syllabus topic.');
+      await say(d, 'Select the question, then + Diagram ▾ → Blank axes.');
       await d.click(d.page.locator('#print-root').getByText('The government imposes'));
-      await d.wait(900);
+      await d.wait(800);
       await d.click(d.page.getByRole('button', { name: /\+ Diagram/ }).first());
       await d.wait(900);
-      const popover = d.page.locator('[data-template-group]').first();
-      await d.hover(popover);
-      await d.wheel(70, 12, 60);
-      await d.wait(700);
-      await d.still('template-picker', 'Template picker, grouped by syllabus topic');
-      await say(d, 'Search for a template: "tax".');
-      await d.page.keyboard.type('tax', { delay: 140 });
-      await d.wait(1200);
-      await d.still('template-search', 'Template search: "tax"');
-    },
-  });
-
-  steps.push({
-    name: 'Per-unit tax',
-    caption: 'Picks **Per-unit tax**. The figure lands in the stem.',
-    async run(d) {
-      await say(d, 'Pick Per-unit tax.');
       const card = d.page
         .locator('[data-template-group] button')
-        .filter({ has: d.page.locator('span.truncate', { hasText: /^Per-unit tax$/ }) });
+        .filter({ has: d.page.locator('span.truncate', { hasText: /^Blank axes$/ }) });
       await d.click(card);
-      await d.wait(1500);
+      await d.wait(1400);
     },
   });
 
   steps.push({
     name: 'Open the canvas',
-    caption: 'Double-clicks the diagram to open the drawing canvas.',
+    caption: 'Double-clicks the new diagram. The drawing canvas opens on axes already titled Price and Quantity.',
     async run(d) {
-      await say(d, 'Double-click the diagram to draw on it.');
+      await say(d, 'Double-click it to draw. The axes are already titled Price and Quantity.');
       await dblclick(d, await pageDiagram(d, 0));
-      await d.wait(1400);
-      await d.still('canvas', 'The drawing canvas: Per-unit tax');
+      await d.wait(1500);
+      map = await stageMap(d, seed);
+      await d.still('blank-canvas', 'The drawing canvas on blank axes');
     },
   });
 
-  if (taxFollows && s1) {
+  steps.push({
+    name: 'Demand',
+    caption: `Picks **Curve**, drags one stroke down to the right, and types "${draw.demand.label}" as its label.`,
+    async run(d) {
+      await say(d, `Curve tool: one drag draws demand. Name it ${draw.demand.label}.`);
+      await drawCurve(d, map, seed.canvas.demand, draw.demand.label);
+      await d.wait(600);
+    },
+  });
+
+  steps.push({
+    name: 'Supply',
+    caption: `Draws supply the same way, upward, and labels it "${draw.supply.label}".`,
+    async run(d) {
+      await say(d, `Again for supply: ${draw.supply.label}.`);
+      await drawCurve(d, map, seed.canvas.supply, draw.supply.label);
+      await d.wait(500);
+      await deselect(d, map, seed);
+      await d.wait(800);
+      await d.still('demand-supply', 'Demand and supply, each drawn with one drag');
+    },
+  });
+  /** Point tool, click a little off `at` so the snap is visible, name it, drop the guides. */
+  const markPoint = async (d, at, { dwell = 900 } = {}) => {
+    await d.click(tool(d, 'Point'), { hover: 300 });
+    await d.wait(500);
+    const aim = map(at);
+    await d.moveTo(aim.x + 7, aim.y - 6);
+    await d.wait(dwell);
+    await d.page.mouse.click(aim.x + 7, aim.y - 6);
+    await d.wait(800);
+    await d.click(canvasPanel(d).getByRole('button', { name: /^Label E/ }), { hover: 300 });
+    await d.wait(600);
+    await d.click(canvasPanel(d).getByLabel('Drop to x'), { hover: 250 });
+    await d.wait(500);
+    await d.click(canvasPanel(d).getByLabel('Drop to y'), { hover: 250 });
+    await d.wait(700);
+  };
+  /** The selected point's Q and P ticks, numbered n, with the n lowered on the canvas. */
+  const tickPoint = async (d, n) => {
+    await typeField(d, 'x-axis tick', `Q${n}`);
+    await typeField(d, 'y-axis tick', `P${n}`);
+    await subscriptLast(d, `Q${n}`);
+    await subscriptLast(d, `P${n}`);
+    await deselect(d, map, seed);
+    await d.wait(700);
+  };
+
+  steps.push({
+    name: 'Equilibrium',
+    caption: 'Picks **Point** and clicks near the crossing: the point snaps onto it. **Label E₀**, then **Drop to x** and **Drop to y** draw the dashed guides.',
+    async run(d) {
+      await say(d, 'Point tool: click near the crossing and it snaps on. Name it E₀, with dashed lines to both axes.');
+      await markPoint(d, seed.canvas.e0);
+      await d.wait(300);
+    },
+  });
+
+  steps.push({
+    name: 'Axis marks',
+    speed: 2,
+    caption: 'Types "Q0" and "P0" as the point\'s axis ticks, then double-clicks each on the canvas and presses **X₂** to lower the 0: Q₀ and P₀.',
+    async run(d) {
+      await say(d, 'Mark Q₀ and P₀ on the axes. X₂ turns the 0 into a subscript.');
+      await tickPoint(d, 0);
+      await d.wait(300);
+      await d.still('equilibrium', 'E₀, snapped to the crossing, with P₀ and Q₀');
+    },
+  });
+
+  if (seed.shiftNamesCopy) {
     steps.push({
-      name: 'Drag S₁',
-      caption: 'Drags S₁ up. E₁, the tax wedge and the burden areas follow it.',
+      name: 'The tax',
+      caption: `Clicks S, chooses **Shift curve ↑** by ${draw.taxPercent}% and **Shift a copy**: S₁, the shift arrow and the new equilibrium with P₁ and Q₁ appear. **Label E₁** names it.`,
       async run(d) {
-        await say(d, 'Drag S₁ up: E₁, the tax wedge and the burden areas follow.');
-        await dragCurve(d, s1, 0, -42);
-        await d.wait(1300);
-        await d.still('canvas-after-drag', 'After dragging S₁ up: everything anchored to it followed');
+        await say(d, 'The tax: select S and shift a copy up. S₁, the arrow and the new equilibrium appear, already marked P₁ and Q₁.');
+        const grab = map(within(seed.canvas.supply, 0.82));
+        await d.moveTo(grab.x, grab.y);
+        await d.wait(400);
+        await d.page.mouse.click(grab.x, grab.y);
+        await d.wait(800);
+        const panel = canvasPanel(d);
+        await reveal(d, panel.getByRole('button', { name: 'Shift a copy' }));
+        await d.click(panel.getByTitle(/^Shift up/), { hover: 300 });
+        await d.wait(500);
+        const by = panel.locator('label').filter({ hasText: /^by/ }).locator('input');
+        await d.click(by);
+        await d.page.keyboard.press('Meta+A');
+        await d.page.keyboard.type(String(draw.taxPercent), { delay: 150 });
+        await d.page.keyboard.press('Tab');
+        await d.wait(500);
+        await d.click(panel.getByRole('button', { name: 'Shift a copy' }), { hover: 350 });
+        await d.wait(1600);
+        // The new equilibrium: click its dot, then one click names it.
+        const e1 = (await geometry(d, 'Point (Q1, P1)')).dots[0];
+        if (!e1) throw new Error('the shift made no new equilibrium');
+        await d.moveTo(e1.x, e1.y);
+        await d.wait(300);
+        await d.page.mouse.click(e1.x, e1.y);
+        await d.wait(700);
+        await d.click(panel.getByRole('button', { name: /^Label E/ }), { hover: 300 });
+        await d.wait(700);
+        await deselect(d, map, seed);
+        await d.wait(1000);
+        await d.still('tax', 'The tax: S shifted up to S₁, with the new equilibrium E₁');
       },
     });
   } else {
-    notes.push('"Drag S₁" was left out: in this build the Per-unit tax template has no anchored points, so nothing would follow the curve.');
+    notes.push(
+      'The tax is drawn by duplicating S and dragging the copy up, not with **Shift a copy**: in this build ' +
+        'that names a copy of an English-only label S₅₀ (and its ticks P₅₀, Q₅₀), because the empty Chinese ' +
+        'label counts as taken (`src/model/diagramShift.ts:shiftedLabel`).',
+    );
+    steps.push({
+      name: 'The tax',
+      speed: 1.5,
+      caption: `Clicks S, **Duplicate**, and drags the copy up by the tax (${draw.taxPercent}% of the price axis). Renames it S1 and lowers the 1 with **X₂**: S₁. Draws the shift **Arrow** from S to S₁.`,
+      async run(d) {
+        await say(d, 'The tax shifts supply up. Select S, duplicate it, and drag the copy up.');
+        const grab = map(within(seed.canvas.supply, 0.82));
+        await d.moveTo(grab.x, grab.y);
+        await d.wait(400);
+        await d.page.mouse.click(grab.x, grab.y);
+        await d.wait(700);
+        await d.click(tool(d, 'Duplicate'), { hover: 350 });
+        await d.wait(800);
+        // The copy lands a step down and right, selected; its highlight says exactly where.
+        const copy = (await d.page.evaluate(() => window.__demo.selection())).lines[0];
+        if (!copy) throw new Error('Duplicate left no selected copy');
+        const target = map(seed.canvas.taxed.from);
+        const from = along(copy, 0.55);
+        await drag(d, from, { x: from.x + target.x - copy[0].x, y: from.y + target.y - copy[0].y }, 40);
+        await d.wait(700);
+        await say(d, 'Name the copy S₁, and draw the shift arrow.');
+        const taxed = map(within(seed.canvas.taxed, 0.82));
+        await d.moveTo(taxed.x, taxed.y);
+        await d.wait(300);
+        await d.page.mouse.click(taxed.x, taxed.y);
+        await d.wait(600);
+        await retypeField(d, 'Label', `${draw.supply.label}1`);
+        await subscriptLast(d, `${draw.supply.label}1`);
+        // The arrow: from just above S to just below S₁, straight up.
+        const k = 0.72;
+        const base = within(seed.canvas.supply, k);
+        const rise = seed.canvas.unitY * (draw.taxPercent / 100);
+        await d.click(tool(d, 'Arrow'), { hover: 300 });
+        await d.wait(400);
+        await drag(d, map({ x: base.x, y: base.y - rise * 0.15 }), map({ x: base.x, y: base.y - rise * 0.85 }), 24);
+        await deselect(d, map, seed);
+        await d.wait(1000);
+      },
+    });
+    steps.push({
+      name: 'New equilibrium',
+      speed: 2,
+      caption: 'Marks the new crossing the same way: **Point**, **Label E₁**, both dashed guides, and Q₁ and P₁.',
+      async run(d) {
+        await say(d, 'Mark the new equilibrium the same way: E₁, with Q₁ and P₁.');
+        await markPoint(d, seed.canvas.e1, { dwell: 500 });
+        await tickPoint(d, 1);
+        await d.wait(600);
+        await d.still('tax', 'The tax: S shifted up to S₁, with the new equilibrium E₁');
+      },
+    });
   }
 
   steps.push({
     name: 'Shade',
-    caption: 'Opens **Shade ▾** (Surplus · Tax & subsidy · Price control · Trade · Monopoly · Revenue · Custom) and adds **DWL of a tax**.',
+    caption: 'Opens **Shade ▾ → Tax & subsidy** and adds **Tax revenue**, then **DWL of a tax**: both found from the curves already drawn.',
     async run(d) {
-      await say(d, 'Shade ▾ groups the welfare areas by topic. Add the deadweight loss.');
-      const menu = d.page.getByRole('menu');
-      await d.click(d.page.getByRole('button', { name: /Shade/ }));
-      await d.wait(700);
-      await d.click(menu.getByRole('tab', { name: 'Surplus' }));
-      await d.wait(700);
-      await d.click(menu.getByRole('tab', { name: 'Tax & subsidy' }));
-      await d.wait(900);
-      await d.still('shade-menu', 'Shade ▾ → Tax & subsidy');
-      await d.click(menu.getByText('DWL of a tax', { exact: true }));
-      await d.wait(700);
-      const add = menu.getByRole('button', { name: 'Add', exact: true });
-      if (await add.count()) await d.click(add);
-      await d.wait(900);
-      if (tax.areas.length < 2) {
-        await shade(d, 'Tax & subsidy', "Buyers' burden");
-        await shade(d, 'Tax & subsidy', "Sellers' burden");
-      }
-      await d.page.keyboard.press('Escape');
-      await d.wait(900);
-      await d.still('shaded', 'Hatched areas: the burdens and the deadweight loss');
-      if (!spanOnStem) await canvasDone(d);
-    },
-  });
-
-  const spanStep = {
-    name: 'Span',
-    caption: `Chooses **↔ Span**, Bracket, On the x-axis, and clicks E₁ then E₀: a bracket from Q₁ to Q₀${spanOnStem ? '' : ' (on the model answer)'}.`,
-    async run(d) {
-      await say(d, '↔ Span: a bracket from Q₁ to Q₀ on the quantity axis.');
-      await addBracket(d);
-      await d.still('span', 'A bracket span from Q₁ to Q₀, anchored to E₁ and E₀');
-    },
-  };
-  if (spanOnStem) {
-    steps.push({
-      ...spanStep,
-      async run(d) {
-        await spanStep.run(d);
-        await canvasDone(d);
-      },
-    });
-  }
-
-  // Breadth: a second diagram in the stem, re-based through four templates, then removed.
-  const breadth = [
-    {
-      id: 'monopoly', search: 'monopoly', card: 'Monopoly', trigger: 'Per-unit tax',
-      caption: 'Monopoly', still: 'monopoly',
-      curve: curveNamed(t.monopoly, ['D', 'AR']),
-      follows: t.monopoly.derivedCurves.length > 0,
-      move: [26, -26], text: 'Monopoly: drag D, and MR follows.',
-    },
-    {
-      id: 'deflationary-gap', search: 'gap', card: 'Deflationary gap', trigger: 'Monopoly',
-      caption: 'Deflationary gap', still: 'deflationary-gap',
-      curve: curveNamed(t['deflationary-gap'], ['AD']),
-      follows: t['deflationary-gap'].spans > 0,
-      move: [-30, 0], text: 'Deflationary gap: drag AD, and the gap bracket follows.',
-    },
-    {
-      id: 'tariff', search: 'tariff', card: 'Import tariff', trigger: 'Deflationary gap',
-      caption: 'Import tariff', still: 'tariff',
-      text: 'Import tariff: the imports bracket and the tariff revenue.',
-    },
-    {
-      id: 'ppf-concave-trade', search: 'ppf', card: 'Concave PPF with trade', trigger: 'Import tariff',
-      caption: 'Concave PPF with trade', still: 'ppf-trade',
-      text: 'Concave PPF with trade: the tangent price line and the consumption line.',
-    },
-  ];
-  breadth.forEach((b, i) => {
-    const drags = Boolean(b.move && b.follows && b.curve);
-    if (b.move && !drags) {
-      notes.push(`The ${b.caption} beat shows the template without dragging it: in this build it has no ${b.id === 'monopoly' ? 'derived MR' : 'anchored span'} to follow the curve.`);
-    }
-    steps.push({
-      name: b.caption,
-      caption: i === 0
-        ? `Adds a second diagram (**+ Diagram ▾** → ${b.card})${drags ? ', opens it and drags the curve: what depends on it follows' : ''}.`
-        : `Re-bases it on **${b.card}** from its **Template ▾**${drags ? ', opens it and drags the curve' : ''}.`,
-      async run(d) {
-        await say(d, drags || !b.move ? b.text : `${b.caption}.`);
-        const trigger = i === 0
-          ? d.page.getByRole('button', { name: /\+ Diagram/ }).first()
-          : d.page.getByRole('button', { name: `${b.trigger} ▾`, exact: true });
-        await pickTemplate(d, trigger, b.search, b.card);
-        const figure = await pageDiagram(d, 1);
-        await d.hover(figure);
-        await d.wait(700);
-        if (drags) {
-          await dblclick(d, figure);
-          await d.wait(1200);
-          await dragCurve(d, b.curve, b.move[0], b.move[1]);
-          await d.wait(1200);
-          await d.still(b.still, `${b.caption}, after dragging ${b.curve}`);
-          await canvasDone(d);
-        } else {
-          await d.wait(900);
-          await d.still(b.still, b.caption);
-        }
-        if (i === breadth.length - 1) {
-          const panel = d.page
-            .locator('div')
-            .filter({ has: d.page.getByRole('button', { name: `${b.card} ▾`, exact: true }) })
-            .filter({ has: d.page.getByRole('button', { name: 'Delete block' }) })
-            .last();
-          const remove = panel.getByRole('button', { name: 'Delete block' }).last();
-          await reveal(d, remove);
-          await d.click(remove);
-          await d.wait(900);
-        }
-      },
-    });
-  });
-
-  steps.push({
-    name: 'Model diagram',
-    caption: 'Part (a) **⋯** → **Add model diagram**, **✎ Draw…**, selects S and **Shift a copy** ↑ by 30%: S₁ and E₁ appear. Shades the DWL.',
-    async run(d) {
-      await say(d, 'Add a model answer diagram to part (a).');
-      const actions = d.page.getByRole('button', { name: 'Actions for part ((a))' });
-      await reveal(d, actions);
-      await d.click(actions);
-      await d.wait(700);
-      await d.click(d.page.getByRole('menuitem', { name: 'Add model diagram' }));
-      await d.wait(1000);
-      const row = d.page.locator('[data-answer-diagram-fields]');
-      await reveal(d, row);
-      await d.click(row.getByRole('button', { name: /Draw/ }).first());
-      await d.wait(1300);
-      await say(d, 'Shift S up by the tax: S₁ and the new equilibrium E₁ appear.');
-      const { lines } = await geometry(d, 'S');
-      const grab = along(lines[0], 0.72);
-      await d.moveTo(grab.x, grab.y);
-      await d.wait(250);
-      await d.page.mouse.click(grab.x, grab.y);
-      await d.wait(700);
-      await d.click(d.page.getByTitle(/^Shift up/));
-      await d.wait(500);
-      // A bigger tax than the 15% default, so Q₁ and Q₀ print apart at answer size.
-      const by = d.page.locator('.zone-dark aside label').filter({ hasText: /^by/ }).locator('input');
-      await d.click(by);
-      await d.page.keyboard.press('Meta+A');
-      await d.page.keyboard.type('30', { delay: 120 });
-      await d.page.keyboard.press('Tab');
-      await d.wait(500);
-      await d.click(d.page.getByRole('button', { name: 'Shift a copy' }));
-      await d.wait(1300);
+      await say(d, 'Shade ▾ finds the areas from the curves: the tax revenue, then the deadweight loss.');
+      await shade(d, 'Tax & subsidy', 'Tax revenue');
       await shade(d, 'Tax & subsidy', 'DWL of a tax');
-      await d.page.keyboard.press('Escape');
-      await d.wait(800);
-      await d.still('model-diagram-canvas', 'The model answer, drawn: S shifted up by the tax, with the DWL');
-      if (spanOnStem) await canvasDone(d);
+      await deselect(d, map, seed);
+      await d.wait(1600);
+      await d.still('shaded', 'Tax revenue and the deadweight loss, shaded');
     },
   });
-  if (!spanOnStem) {
-    steps.push({
-      ...spanStep,
-      async run(d) {
-        await spanStep.run(d);
-        await canvasDone(d);
-      },
-    });
-  }
 
   steps.push({
-    name: 'Teacher and student',
-    caption: 'Switches to **Teacher**: the model diagram prints under the answer. Back to **Student**: it is hidden, the blank axes stay.',
+    name: 'On the page',
+    caption: 'Clicks **Done**. The diagram sits in the question on the printed page.',
     async run(d) {
-      await say(d, 'Teacher copy: the model diagram prints under the answer.');
-      await d.click(d.page.getByTitle(/Teacher version/));
-      await d.wait(1000);
-      await d.hover(await pageDiagram(d, 1));
-      await d.wait(1600);
-      await d.still('teacher-copy', 'Teacher copy: the model diagram under the answer text');
-      await say(d, 'Student copy: the model diagram is hidden; the blank axes stay.');
-      await d.click(d.page.getByTitle(/Student version/));
-      await d.wait(900);
-      await d.hover(d.page.locator('#print-root [data-answer-graph]'));
-      await d.wait(1600);
-      await d.still('student-copy', 'Student copy: no model diagram, only the blank axes');
+      await say(d, 'Done. The diagram is in the question, exactly as it will print.');
+      await canvasDone(d);
+      await d.hover(await pageDiagram(d, 0));
+      await d.wait(2600);
+      await d.still('on-page', 'The finished diagram in the question, on the page');
     },
   });
 
   steps.push({
     name: 'Export',
-    caption: 'Opens **Export…**, picks .docx, **Both** and **Teacher**, and downloads the teacher copy and the answer key.',
+    caption: 'Opens **Export…** and exports the question paper as .docx.',
     async run(d) {
-      await say(d, 'Export to Word: the teacher copy and the answer key.');
+      await say(d, 'Export to Word.');
       await d.click(d.page.getByRole('button', { name: /Export/ }).first());
-      await d.wait(1100);
+      await d.wait(1200);
       const dialog = d.page.getByRole('dialog');
-      await d.click(dialog.getByText('Both', { exact: true }));
-      await d.wait(600);
-      await d.click(dialog.getByText('Teacher', { exact: true }));
-      await d.wait(900);
-      await d.still('export-dialog', 'Export: .docx, Both, Teacher');
-      await d.download(() => d.click(dialog.getByRole('button', { name: /^Export/ })));
+      await d.download(() => d.click(dialog.getByRole('button', { name: /^Export/ }), { hover: 400 }));
       await d.wait(1000);
-      await d.download(() => d.click(d.page.getByRole('button', { name: /Download answer key/ })));
-      await d.wait(900);
     },
   });
 
   steps.push({
     name: 'The .docx',
-    caption: 'The two downloaded files, opened in LibreOffice: every diagram is one PNG in the Word file.',
+    caption: 'The downloaded file, opened in LibreOffice: the diagram is one picture in the Word file.',
     async run(d) {
       const shown = await d.cut(() => d.renderExports());
       if (!shown) {
-        await say(d, 'Done: the teacher copy and the answer key are in Downloads.');
+        await say(d, 'Done: the question paper is in Downloads.');
         await d.wait(2000);
         return;
       }
       await say(d, shown.caption);
       await d.page.evaluate((items) => window.__demo.showImages(items), shown.items);
-      await d.wait(3600);
-      await d.still('docx-rendered', shown.still);
+      await d.wait(3800);
+      await d.still('docx', shown.still);
       await d.page.evaluate(() => window.__demo.hideImages());
+      await d.wait(500);
+    },
+  });
+
+  steps.push({
+    name: 'Templates',
+    caption: `Opens **+ Diagram ▾** for a moment: ${seed.templateCount} ready-made templates, edited on the same canvas.`,
+    async run(d) {
+      await say(d, `Want a head start? + Diagram ▾ also has ${seed.templateCount} ready-made templates, edited the same way.`);
+      // Centred first: the popover opens below its trigger and is only as tall as the room left.
+      const trigger = d.page.getByRole('button', { name: /\+ Diagram/ }).first();
+      await reveal(d, trigger);
+      await d.click(trigger);
+      await d.wait(2600);
+      await d.still('templates', `+ Diagram ▾: blank axes and ${seed.templateCount} ready-made templates`);
+      await d.page.keyboard.press('Escape');
+      await d.wait(700);
       await say(d, '');
-      await d.wait(900);
+      await d.wait(600);
     },
   });
 
@@ -584,7 +609,7 @@ export function diagramStoryboard(seed) {
 
 /**
  * Seed the worksheet, film the storyboard at 2× (the stills are 2× page screenshots),
- * and keep the exported files. Returns the film, the stills (PNG paths), the exports,
+ * and keep the exported file. Returns the film, the stills (PNG paths), the exports,
  * and notes on anything left out.
  */
 export async function recordDiagrams({ browser, url, root, tmpDir, outDir, log }) {
@@ -664,7 +689,7 @@ async function renderExports({ downloads, exportDir, tmpDir, notes, log }) {
   }
   const has = (bin) => spawnSync('which', [bin]).status === 0;
   if (!has('soffice') || !has('pdftoppm')) {
-    notes.push('The rendered .docx pages were skipped: `soffice` (LibreOffice) and `pdftoppm` must both be on PATH.');
+    notes.push('The rendered .docx page was skipped: `soffice` (LibreOffice) and `pdftoppm` must both be on PATH.');
     return null;
   }
   const items = [];
@@ -676,7 +701,7 @@ async function renderExports({ downloads, exportDir, tmpDir, notes, log }) {
     const base = path.join(exportDir, `${path.basename(file, '.docx')} page 1`);
     execFileSync('pdftoppm', ['-r', '110', '-png', '-f', '1', '-l', '1', '-singlefile', path.join(tmpDir, `render-${i}.pdf`), base]);
     const png = `${base}.png`;
-    const kind = /Answer key/.test(file) ? 'Answer key' : 'Teacher copy';
+    const kind = /Answer key/.test(file) ? 'Answer key' : /Teacher/.test(file) ? 'Teacher copy' : 'Question paper';
     items.push({
       src: `data:image/png;base64,${fs.readFileSync(png).toString('base64')}`,
       label: `${kind} · ${counts[i]} ${counts[i] === 1 ? 'diagram' : 'diagrams'} as PNG`,
@@ -685,7 +710,7 @@ async function renderExports({ downloads, exportDir, tmpDir, notes, log }) {
   }
   return {
     items,
-    caption: 'Opened in LibreOffice: each diagram is one picture in the Word file.',
-    still: `The exported .docx files, page 1, rendered by LibreOffice (${counts.join(' and ')} PNG diagrams)`,
+    caption: 'Opened in LibreOffice: the diagram is one picture in the Word file, so nothing can slide out of place.',
+    still: `The exported .docx, page 1, rendered by LibreOffice (${counts.join(' and ')} PNG ${counts.length === 1 && counts[0] === 1 ? 'diagram' : 'diagrams'})`,
   };
 }
