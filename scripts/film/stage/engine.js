@@ -116,8 +116,12 @@ async function createSlot(id, { dry = false } = {}) {
     copy: TL.COPY[id] ?? {},
     time: start,
     prepasses: [],
-    /** fn(renderer, scene, camera, fx) runs before every sub-frame render (reflections). */
-    onPrepass(fn) { ctx.prepasses.push(fn); },
+    framePasses: [],
+    /**
+     * fn(renderer, scene, camera, fx) runs before rendering. With { once: true } it runs
+     * once per frame at the centre time (reflections), else before every sub-frame.
+     */
+    onPrepass(fn, { once = false } = {}) { (once ? ctx.framePasses : ctx.prepasses).push(fn); },
     onDispose(fn) { res.disposers.push(fn); },
     load: {
       texture: async (path, opts) => {
@@ -222,6 +226,10 @@ function renderOnce(slot) {
 function renderSlot(slot, t, times) {
   const { ctx } = slot;
   let src;
+  if (ctx.framePasses.length) {
+    update(slot, t);
+    for (const fn of ctx.framePasses) fn(renderer, ctx.scene, ctx.camera, fx);
+  }
   if (times.length === 1) {
     update(slot, times[0]);
     renderOnce(slot);

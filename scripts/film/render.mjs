@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 import * as TL from './timeline.mjs';
 import { OUT, BUILD, AUDIO, ensureDirs } from './paths.mjs';
 import { serve, FAKE_ASSETS } from './tools/serve.mjs';
-import { launchOnGpu, openStage } from './tools/chrome.mjs';
+import { launch, launchOnGpu, openStage as open, isSoftware } from './tools/chrome.mjs';
 
 export function parseArgs(argv) {
   const o = {};
@@ -93,6 +93,13 @@ async function capture(cdp) {
   return Buffer.from(data, 'base64');
 }
 
+/** Opens a stage page and refuses a software renderer (every worker, not just the first). */
+async function openStage(browser, base, size, allowSoftware) {
+  const st = await open(browser, base, size);
+  if (isSoftware(st.gpu) && !allowSoftware) throw new Error(`worker on a software renderer: ${st.gpu.renderer}`);
+  return st;
+}
+
 export async function render(args) {
   ensureDirs();
   const P = plan(args);
@@ -106,14 +113,23 @@ export async function render(args) {
     forceHeaded: !!args.headed,
   });
   console.log(`GPU: ${gpu.renderer} (${gpu.vendor})${headed ? ' [headed, off-screen]' : ' [headless]'}`);
+  // One browser per worker: Chrome encodes screenshots in its browser process, so workers
+  // sharing one browser queue behind each other.
+  const extraBrowsers = [];
+  const browserFor = async (i) => {
+    if (i === 0) return browser;
+    const b = await launch({ headed });
+    extraBrowsers.push(b);
+    return b;
+  };
   const report = { ...P, gpu, headed, started: new Date().toISOString() };
-  const stats = { frames: 0 };
+  const stats = { frames: 0, seekMs: 0, shotMs: 0 };
   const workerLogs = [];
 
   try {
     // Events (timeline cues + scene events + placed clip events) for the score's SFX pass.
     {
-      const { context, page, logs } = await openStage(browser, server.url, { ...size, w: 320, h: 180 });
+      const { context, page, logs } = await openStage(browser, server.url, { ...size, w: 320, h: 180 }, args['allow-software']);
       const events = await page.evaluate(() => window.film.events());
       // Only the real asset store's events feed the score.
       const evFile = resolve(BUILD, args.assets ? 'events-alt-assets.json' : 'events.json');
@@ -134,8 +150,8 @@ export async function render(args) {
       if (!args.keep) rmSync(dir, { recursive: true, force: true });
       mkdirSync(dir, { recursive: true });
       const chunks = split(0, times.length, Math.min(P.workers, times.length));
-      await Promise.all(chunks.map(async ([a, b]) => {
-        const { context, page, logs } = await openStage(browser, server.url, size);
+      await Promise.all(chunks.map(async ([a, b], wi) => {
+        const { context, page, logs } = await openStage(await browserFor(wi), server.url, size, args['allow-software']);
         const cdp = await context.newCDPSession(page);
         for (let i = a; i < b; i++) {
           // Snap to the frame grid so a still is exactly a frame of the video.
@@ -160,14 +176,18 @@ export async function render(args) {
       let lastLog = 0;
       const segs = await Promise.all(ranges.map(async ([a, b], wi) => {
         const seg = resolve(segDir, `seg-${String(wi).padStart(2, '0')}.mkv`);
-        const { context, page, logs } = await openStage(browser, server.url, size);
+        const { context, page, logs } = await openStage(await browserFor(wi), server.url, size, args['allow-software']);
         const cdp = await context.newCDPSession(page);
         const ff = ffmpeg(['-f', 'image2pipe', '-c:v', 'png', '-framerate', String(P.fps), '-i', '-',
           '-c:v', 'libx264rgb', '-qp', '0', '-preset', 'ultrafast', '-r', String(P.fps), seg], { stdin: true });
         try {
           for (let f = a; f < b; f++) {
+            const s0 = performance.now();
             await page.evaluate((x) => window.film.seek(x), f / P.fps);
+            const s1 = performance.now();
             const png = await capture(cdp);
+            stats.seekMs += s1 - s0;
+            stats.shotMs += performance.now() - s1;
             if (!ff.p.stdin.write(png)) await once(ff.p.stdin, 'drain');
             stats.frames++;
             const now = performance.now();
@@ -194,6 +214,7 @@ export async function render(args) {
         : ['-f', 'lavfi', '-t', dur.toFixed(6), '-i', 'anullsrc=r=48000:cl=stereo'];
       report.audio = existsSync(score) ? score : 'silent';
       mkdirSync(resolve(P.out, '..'), { recursive: true });
+      const e0 = performance.now();
       await ffmpeg([
         '-f', 'concat', '-safe', '0', '-i', list, ...audio,
         '-map', '0:v:0', '-map', '1:a:0',
@@ -204,6 +225,7 @@ export async function render(args) {
         '-c:a', 'aac', '-b:a', '256k', '-ar', '48000', '-ac', '2',
         '-t', dur.toFixed(6), '-movflags', '+faststart', P.out,
       ]).done;
+      report.encodeSeconds = +((performance.now() - e0) / 1000).toFixed(1);
       if (!args.keep) rmSync(segDir, { recursive: true, force: true });
       report.output = P.out;
       console.log(`video: ${P.out}`);
@@ -212,12 +234,17 @@ export async function render(args) {
     report.seconds = +secs.toFixed(2);
     report.frames = stats.frames;
     report.fps = +(stats.frames / secs).toFixed(2);
-    console.log(`rendered ${stats.frames} frames in ${secs.toFixed(1)} s (${report.fps} frames/s, ${P.workers} workers)`);
+    if (stats.seekMs) {
+      report.perFrameMs = { seek: +(stats.seekMs / stats.frames).toFixed(1), screenshot: +(stats.shotMs / stats.frames).toFixed(1) };
+      if (report.encodeSeconds != null) report.renderFps = +(stats.frames / (secs - report.encodeSeconds)).toFixed(2);
+    }
+    console.log(`rendered ${stats.frames} frames in ${secs.toFixed(1)} s (${report.fps} frames/s end to end, ${P.workers} workers)` +
+      (report.perFrameMs ? `; per worker frame: seek ${report.perFrameMs.seek} ms, screenshot ${report.perFrameMs.screenshot} ms; frames alone ${report.renderFps} frames/s, final encode ${report.encodeSeconds} s` : ''));
   } finally {
     report.fallbackAssets = [...server.fallbackHits];
     report.missingAssets = [...server.missing];
     report.pageLogs = [...new Set(workerLogs)].slice(0, 50);
-    await browser.close();
+    await Promise.all([browser, ...extraBrowsers].map((b) => b.close()));
     await server.close();
     mkdirSync(resolve(BUILD, 'renders'), { recursive: true });
     writeFileSync(resolve(BUILD, 'renders', `${P.mode}-${P.label}${args.stills || args.at ? '-stills' : ''}.json`), `${JSON.stringify(report, null, 2)}\n`);

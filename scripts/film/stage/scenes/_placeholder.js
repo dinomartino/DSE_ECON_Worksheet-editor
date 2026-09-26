@@ -20,7 +20,7 @@ export function placeholder({ id, world, cards = [], subject, events }) {
       if (world === 'night') {
         state.floor = lib.floor.nightFloor({ W: ctx.renderW, H: ctx.renderH, y: -1.2, reflect: 0.35 });
         ctx.scene.add(state.floor.mesh);
-        ctx.onPrepass((...a) => state.floor.prepass(...a));
+        ctx.onPrepass((...a) => state.floor.prepass(...a), { once: true });
         state.dust = lib.particles.dust({ count: 70, seed: id.length * 31, H: ctx.renderH, bright: 0.35 });
         ctx.scene.add(state.dust.mesh);
       }

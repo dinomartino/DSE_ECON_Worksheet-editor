@@ -20,5 +20,6 @@
 <body>
 <div id="stage"><canvas id="gl"></canvas><div id="type"></div></div>
 <script type="module" src="./engine.js"></script>
+<script type="module">if (new URLSearchParams(location.search).has('ui')) import('./dev.js');</script>
 </body>
 </html>

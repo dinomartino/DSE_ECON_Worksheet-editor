@@ -54,7 +54,7 @@ export async function madSeries(video) {
 /** Film times where a hard change is expected: cuts between scenes and montage cuts. */
 export function cutTimes() {
   const cuts = SCENES.filter((s, i) => i > 0 && (s.in?.type ?? 'cut') === 'cut').map((s) => bar(s.from));
-  return [...cuts, ...MONTAGE_CUTS];
+  return [...new Set([...cuts, ...MONTAGE_CUTS])].sort((a, b) => a - b);
 }
 
 const median = (a) => {

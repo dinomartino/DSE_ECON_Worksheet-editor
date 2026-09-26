@@ -32,7 +32,7 @@ const scene = {
     scene.add(s.logo.group);
     s.floor = lib.floor.nightFloor({ W: ctx.renderW, H: ctx.renderH, y: -1.32, reflect: 0.2, blur: 10 * (ctx.renderH / 1080), near: 0.4, far: 3.6, sheenR: 2.4 });
     scene.add(s.floor.mesh);
-    ctx.onPrepass((...a) => s.floor.prepass(...a));
+    ctx.onPrepass((...a) => s.floor.prepass(...a), { once: true });
     s.dust = lib.particles.dust({
       count: 120, seed: 42, H: ctx.renderH,
       box: [[-12, -1.3, -18], [12, 7, 4]], size: 0.012, aperture: 0.2, bright: 0.7, drift: 0.2, rise: 0.01, minPx: 5,
