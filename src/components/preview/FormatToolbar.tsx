@@ -81,10 +81,15 @@ interface Props {
 }
 
 // Shared with `ContextBar`, the structural second row — one button language for
-// everything docked over the page.
+// everything docked over the page. Toggles crossfade (colours ease) and press with a
+// slight scale; `scale` is listed because Tailwind v4 presses with the `scale` property,
+// not `transform`. The focus ring is never transitioned.
 export const TOOLBAR_BTN =
-  'flex h-7 min-w-7 items-center justify-center rounded px-1.5 text-xs font-medium transition-colors ' +
+  'flex h-7 min-w-7 items-center justify-center rounded px-1.5 text-xs font-medium ' +
+  'transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft active:scale-[0.97] ' +
   'hover:bg-[#3d3a35] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5ba8dd]';
+/** The docked bars' entrance: dropping in from the top edge they dock to. */
+export const TOOLBAR_ENTER = 'animate-pop-in origin-top';
 export const TOOLBAR_ACTIVE = 'bg-[#0d77c9] text-white hover:bg-[#2b8ad3]';
 export const TOOLBAR_IDLE = 'text-[#e6e2db]';
 const BTN = TOOLBAR_BTN;
@@ -137,7 +142,7 @@ export function FormatToolbar({
       // Docked across the top of the page column. `flex-wrap` matters: the column is
       // narrow at small window widths, and a single non-wrapping row would push the
       // delete button out of reach rather than folding onto a second line.
-      className="fixed z-50 flex flex-wrap items-center gap-0.5 rounded-xl border border-[#454138] bg-[#211f1d]/95 px-1.5 py-1 shadow-xl backdrop-blur"
+      className={`fixed z-50 flex flex-wrap items-center gap-0.5 rounded-xl border border-[#454138] bg-[#211f1d]/95 px-1.5 py-1 shadow-xl backdrop-blur ${TOOLBAR_ENTER}`}
       style={{ left: dock.left, width: dock.width, top: dock.top }}
       /*
        * Keep focus on the page so the bar never steals the selection it is acting on —
@@ -180,7 +185,7 @@ export function FormatToolbar({
       <select
         aria-label="Font size"
         title="Font size"
-        className="h-7 cursor-pointer rounded bg-[#33302c] px-1 text-xs text-[#f1eee9] outline-none hover:bg-[#3d3a35] focus-visible:ring-2 focus-visible:ring-[#5ba8dd]"
+        className="h-7 cursor-pointer rounded bg-[#33302c] px-1 text-xs text-[#f1eee9] outline-none transition-[background-color] duration-150 ease-out-soft hover:bg-[#3d3a35] focus-visible:ring-2 focus-visible:ring-[#5ba8dd]"
         value={format?.fontSize ?? inheritedPt ?? ''}
         onChange={(event) =>
           onChange({ fontSize: event.target.value ? Number(event.target.value) : undefined })
@@ -317,14 +322,14 @@ export function FormatToolbar({
           />
         </button>
         {colorOpen && (
-          <div className="absolute left-0 top-8 flex gap-1 rounded-md border border-[#454138] bg-[#211f1d] p-1.5 shadow-xl">
+          <div className="absolute left-0 top-8 flex origin-top-left animate-pop-in gap-1 rounded-md border border-[#454138] bg-[#211f1d] p-1.5 shadow-xl">
             {COLORS.map((option) => (
               <button
                 key={option.label}
                 type="button"
                 aria-label={option.label}
                 title={option.label}
-                className="h-5 w-5 rounded-sm border border-[#57534a] transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5ba8dd]"
+                className="h-5 w-5 rounded-sm border border-[#57534a] transition-[transform,scale] duration-150 ease-out-soft hover:scale-110 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5ba8dd]"
                 style={{ background: option.swatch }}
                 onClick={() => {
                   onChange({ color: option.value });

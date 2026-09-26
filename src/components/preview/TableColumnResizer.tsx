@@ -294,6 +294,8 @@ export function TableColumnResizer({
       ? dragging.kind === 'edge' && dragging.side === grip.side
       : dragging.kind !== 'edge' && dragging.index === grip.index);
 
+  // Only the tint eases (the grips' classes); `left`/`top` never transition, so a held
+  // grip stays under the pointer.
   const tint = (grip: Grip) =>
     held(grip) ? 'bg-[#0d77c9]/35' : 'bg-transparent hover:bg-[#0d77c9]/25';
 
@@ -337,7 +339,7 @@ export function TableColumnResizer({
             cursor: 'col-resize',
             touchAction: 'none',
           }}
-          className={`absolute top-0 bottom-0 z-10 cursor-col-resize transition-colors ${live} ${tint(
+          className={`absolute top-0 bottom-0 z-10 cursor-col-resize transition-[background-color] duration-150 ease-out-soft ${live} ${tint(
             { kind: 'column', index },
           )}`}
         />
@@ -355,7 +357,7 @@ export function TableColumnResizer({
             cursor: 'col-resize',
             touchAction: 'none',
           }}
-          className={`absolute top-0 bottom-0 z-10 cursor-col-resize transition-colors ${live} ${tint(
+          className={`absolute top-0 bottom-0 z-10 cursor-col-resize transition-[background-color] duration-150 ease-out-soft ${live} ${tint(
             { kind: 'edge', side },
           )}`}
         />
@@ -386,7 +388,7 @@ export function TableColumnResizer({
               cursor: 'row-resize',
               touchAction: 'none',
             }}
-            className={`absolute z-10 cursor-row-resize transition-colors ${live} ${tint(
+            className={`absolute z-10 cursor-row-resize transition-[background-color] duration-150 ease-out-soft ${live} ${tint(
               { kind: 'row', index },
             )}`}
           />

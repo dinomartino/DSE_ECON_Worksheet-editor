@@ -180,7 +180,7 @@ export function BandEditor({
           // `-top-[18px]` with a matching `pb` rather than a bare offset: the strip has to
           // reach back down to the first row, or the gap between them belongs to neither
           // and the pointer loses the hover on the way up (see the per-row ✕ below).
-          className="pointer-events-none absolute -top-[18px] left-0 right-0 flex items-end gap-1.5 pb-[18px] opacity-0 transition-opacity group-hover/bands:opacity-100"
+          className="pointer-events-none absolute -top-[18px] left-0 right-0 flex items-end gap-1.5 pb-[18px] opacity-0 transition-opacity duration-150 ease-out-soft group-hover/bands:opacity-100"
         >
           {label && (
             <span className="pointer-events-auto rounded bg-[#efece7] px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-[#8f8a86]">
@@ -191,7 +191,7 @@ export function BandEditor({
             <button
               type="button"
               onClick={onAddRow}
-              className="pointer-events-auto cursor-pointer rounded px-1.5 py-0.5 text-[9px] font-medium text-[#8f8a86] transition-colors hover:bg-[#d9ebf8] hover:text-[#0a5c9e]"
+              className="pointer-events-auto cursor-pointer rounded px-1.5 py-0.5 text-[9px] font-medium text-[#8f8a86] transition-[background-color,color,scale] duration-150 ease-out-soft hover:bg-[#d9ebf8] hover:text-[#0a5c9e] active:scale-[0.97]"
             >
               + Row
             </button>
@@ -225,14 +225,14 @@ export function BandEditor({
             {onRemoveRow && (
               <span
                 data-print-hide
-                className="pointer-events-none absolute -left-6 top-0 bottom-0 flex w-6 items-center justify-start opacity-0 transition-opacity group-hover/band:opacity-100"
+                className="pointer-events-none absolute -left-6 top-0 bottom-0 flex w-6 items-center justify-start opacity-0 transition-opacity duration-150 ease-out-soft group-hover/band:opacity-100"
               >
                 <button
                   type="button"
                   aria-label="Remove this row"
                   title="Remove this row"
                   onClick={() => onRemoveRow(band.id)}
-                  className="pointer-events-auto cursor-pointer px-1 py-0.5 text-[10px] leading-none text-[#a5a09b] transition-colors hover:text-[#dc2626]"
+                  className="pointer-events-auto cursor-pointer px-1 py-0.5 text-[10px] leading-none text-[#a5a09b] transition-[color,scale] duration-150 ease-out-soft hover:text-[#dc2626] active:scale-[0.97]"
                 >
                   ✕
                 </button>
@@ -277,7 +277,7 @@ export function BandEditor({
                    * horizontal breathing room comes back as a negative-inset ring rather
                    * than as padding that would shift the text.
                    */
-                  className={`flex flex-1 flex-wrap items-baseline gap-x-1 rounded transition-colors ${ALIGN[zone]} ${
+                  className={`flex flex-1 flex-wrap items-baseline gap-x-1 rounded transition-[background-color,box-shadow] duration-150 ease-out-soft ${ALIGN[zone]} ${
                     isOver
                       ? 'bg-[#d9ebf8] ring-2 ring-[#0d77c9]'
                       : droppable
@@ -410,7 +410,7 @@ export function BandEditor({
                         aria-label="Remove field"
                         title="Remove field"
                         onClick={() => onRemoveField(field.id)}
-                        className="ml-0.5 hidden text-[10px] leading-none text-[#8f8a86] hover:text-[#dc2626] group-hover/field:inline"
+                        className="ml-0.5 hidden text-[10px] leading-none text-[#8f8a86] transition-[color] duration-150 ease-out-soft hover:text-[#dc2626] group-hover/field:inline"
                       >
                         ✕
                       </button>
@@ -425,7 +425,7 @@ export function BandEditor({
                       type="button"
                       onClick={() => onAddField(band.id, zone)}
                       aria-label={`Add a field to the ${zone} zone`}
-                      className="text-[10px] text-transparent transition-colors group-hover/band:text-[#a5a09b] hover:!text-[#0a5c9e]"
+                      className="text-[10px] text-transparent transition-[color] duration-150 ease-out-soft group-hover/band:text-[#a5a09b] hover:!text-[#0a5c9e]"
                     >
                       +
                     </button>

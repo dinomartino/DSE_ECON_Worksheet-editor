@@ -104,6 +104,8 @@ export function TableGridControls({
   const chip = (danger = false) =>
     'pointer-events-auto absolute z-20 flex cursor-pointer items-center justify-center ' +
     'rounded-full border border-white text-white shadow-sm hover:brightness-110 ' +
+    // Hover and press ease; position never does — the chips follow the pointed-at row.
+    'transition-[filter,scale] duration-150 ease-out-soft active:scale-[0.97] ' +
     (danger ? 'bg-[#b4241f]' : 'bg-[#0d77c9]');
 
   const chipStyle = (size: number) => ({
