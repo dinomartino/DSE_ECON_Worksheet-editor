@@ -203,7 +203,7 @@ function RolePicker({
 }) {
   const plan = planPreset(diagram, preset, roles, () => 'probe');
   return (
-    <div className="mx-1 mb-1 space-y-1.5 rounded-lg border border-line bg-surface p-2">
+    <div className="mx-1 mb-1 animate-fade-in space-y-1.5 rounded-lg border border-line bg-surface p-2">
       {preset.roles.map(({ role, optional, name }) => {
         const options: Array<{ value: string | PriceLevel | null; label: string }> = roleCandidates(
           diagram,
@@ -259,7 +259,7 @@ function BetweenBuilder({
   const [band, setBand] = useState<Band>(() => defaultBand(diagram));
   const drawable = Boolean(areaPolygon(diagram, { id: 'probe', band }));
   return (
-    <div className="mx-1 mb-1 space-y-1.5 rounded-lg border border-line bg-surface p-2">
+    <div className="mx-1 mb-1 animate-fade-in space-y-1.5 rounded-lg border border-line bg-surface p-2">
       <RefSelect
         label="Edge A"
         value={band.edges[0]}
@@ -309,7 +309,7 @@ function suggestGroup(diagram: Diagram): ShadeGroup {
 }
 
 const ITEM_CLASS =
-  'flex w-full flex-col items-start rounded-lg px-2.5 py-1.5 text-left transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent';
+  'flex w-full flex-col items-start rounded-lg px-2.5 py-1.5 text-left transition-colors duration-150 ease-out-soft hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent';
 
 function MenuItem({
   name,
@@ -415,7 +415,8 @@ export function ShadeMenu({
         title="Shade an area — surplus, tax and subsidy, price controls, trade, monopoly or revenue"
         onClick={() => (open ? close() : onOpenChange(true))}
         className={
-          'flex h-11 items-center gap-1.5 rounded-lg border px-3 text-base transition-colors ' +
+          'flex h-11 items-center gap-1.5 rounded-lg border px-3 text-base ' +
+          'transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft active:scale-[0.97] ' +
           (open
             ? 'border-accent bg-accent text-on-accent'
             : 'border-line-strong bg-surface-raised text-ink hover:bg-surface-hover')
@@ -427,7 +428,7 @@ export function ShadeMenu({
       {open && (
         <div
           role="menu"
-          className="absolute left-0 top-full z-20 mt-1.5 flex w-[27rem] rounded-xl border border-line bg-surface-raised p-1 shadow-xl"
+          className="absolute left-0 top-full z-20 mt-1.5 flex w-[27rem] origin-top-left animate-pop-in rounded-xl border border-line bg-surface-raised p-1 shadow-xl"
         >
           <div
             role="tablist"
@@ -446,7 +447,7 @@ export function ShadeMenu({
                   setPicking(null);
                 }}
                 className={
-                  'rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors ' +
+                  'rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors duration-150 ease-out-soft ' +
                   (id === group
                     ? 'bg-accent-soft font-medium text-accent-ink'
                     : groupEmpty(id)
@@ -577,7 +578,9 @@ function AreaColorSwatches({
             title={paint.name}
             onClick={() => onChange(key)}
             className={
-              'h-6 w-6 rounded-full border transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ' +
+              // Border and a press ease; the rings (selection and focus) are box-shadows
+              // and switch at once.
+              'h-6 w-6 rounded-full border transition-[border-color,scale] duration-150 ease-out-soft hover:scale-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ' +
               (active ? 'border-ink ring-2 ring-accent ring-offset-1 ring-offset-surface' : 'border-line-strong hover:border-ink-muted')
             }
             style={{
@@ -643,7 +646,7 @@ function AreaPatternSwatches({
             title={name}
             onClick={() => onChange(pattern)}
             className={
-              'h-7 w-7 overflow-hidden rounded-md border bg-white p-0 transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ' +
+              'h-7 w-7 overflow-hidden rounded-md border bg-white p-0 transition-[border-color,scale] duration-150 ease-out-soft hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ' +
               (active ? 'border-ink ring-2 ring-accent ring-offset-1 ring-offset-surface' : 'border-line-strong hover:border-ink-muted')
             }
           >

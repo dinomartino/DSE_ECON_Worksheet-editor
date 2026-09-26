@@ -457,7 +457,7 @@ export function FlowCanvas({
         : 'Drag a box to move it between columns. Click to select and edit. Double-click text to retype it.';
 
   return (
-    <div className="zone-dark fixed inset-0 z-50 flex flex-col bg-desk/95 backdrop-blur-sm">
+    <div className="zone-dark fixed inset-0 z-50 flex animate-fade-in flex-col bg-desk/95 backdrop-blur-sm">
       <header className="flex flex-wrap items-center gap-3 border-b border-line bg-surface px-5 py-3 text-ink">
         <span className="text-sm font-semibold tracking-wide text-ink">Edit flow chart</span>
 
@@ -475,7 +475,8 @@ export function FlowCanvas({
               aria-pressed={tool === id}
               onClick={() => setTool(id)}
               className={
-                'flex h-11 min-w-11 items-center gap-1.5 rounded-lg border px-3 text-base transition-colors ' +
+                'flex h-11 min-w-11 items-center gap-1.5 rounded-lg border px-3 text-base ' +
+                'transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft active:scale-[0.97] ' +
                 (tool === id
                   ? 'border-accent bg-accent text-on-accent'
                   : 'border-line-strong bg-surface-raised text-ink hover:bg-surface-hover')
@@ -496,7 +497,7 @@ export function FlowCanvas({
             type="button"
             title="Add a box to the selected column"
             onClick={() => addBox()}
-            className="flex h-11 items-center rounded-lg border border-line-strong bg-surface-raised px-3 text-xs font-medium text-ink transition-colors hover:bg-surface-hover"
+            className="flex h-11 items-center rounded-lg border border-line-strong bg-surface-raised px-3 text-xs font-medium text-ink transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft active:scale-[0.97] hover:bg-surface-hover"
           >
             + Box
           </button>
@@ -506,7 +507,7 @@ export function FlowCanvas({
             onClick={() =>
               addBox(flow.nodes.length > 0 ? Math.max(...flow.nodes.map((n) => n.col)) + 1 : 0)
             }
-            className="flex h-11 items-center rounded-lg border border-line-strong bg-surface-raised px-3 text-xs font-medium text-ink transition-colors hover:bg-surface-hover"
+            className="flex h-11 items-center rounded-lg border border-line-strong bg-surface-raised px-3 text-xs font-medium text-ink transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft active:scale-[0.97] hover:bg-surface-hover"
           >
             + Column
           </button>
@@ -516,7 +517,8 @@ export function FlowCanvas({
             onClick={doDelete}
             disabled={!selection}
             className={
-              'flex h-11 items-center rounded-lg border px-3 text-xs font-medium transition-colors ' +
+              'flex h-11 items-center rounded-lg border px-3 text-xs font-medium ' +
+              'transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft active:scale-[0.97] ' +
               'disabled:pointer-events-none disabled:opacity-35 ' +
               (selection
                 ? 'border-danger/60 bg-danger-soft text-danger-ink hover:border-danger'
@@ -531,7 +533,8 @@ export function FlowCanvas({
             onClick={() => (confirmClear ? clearChart() : setConfirmClear(true))}
             disabled={flow.nodes.length === 0 && flow.arrows.length === 0}
             className={
-              'flex h-11 items-center rounded-lg border px-3 text-xs font-medium transition-colors ' +
+              'flex h-11 items-center rounded-lg border px-3 text-xs font-medium ' +
+              'transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft active:scale-[0.97] ' +
               'disabled:pointer-events-none disabled:opacity-35 ' +
               (confirmClear
                 ? 'border-danger bg-danger text-white hover:brightness-110'
@@ -947,7 +950,7 @@ function FlowInspector({
                       <button
                         type="button"
                         onClick={() => onSelect({ kind: 'node', id: n.id })}
-                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-ink transition-colors hover:bg-accent-soft"
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-ink transition-colors duration-150 ease-out-soft hover:bg-accent-soft"
                       >
                         <span className="truncate font-medium">
                           {nodeName(n, flow.nodes.indexOf(n))}
@@ -973,7 +976,7 @@ function FlowInspector({
                     <button
                       type="button"
                       onClick={() => onSelect({ kind: 'arrow', id: a.id })}
-                      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-ink transition-colors hover:bg-accent-soft"
+                      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-ink transition-colors duration-150 ease-out-soft hover:bg-accent-soft"
                     >
                       <span className="truncate font-medium">
                         {plain(a.label?.en ?? []) ||

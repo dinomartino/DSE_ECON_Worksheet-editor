@@ -1136,7 +1136,7 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
   }, [editing, labelAnchors, projection, diagram, language, block.widthPx, spanClear]);
 
   return (
-    <div className="zone-dark fixed inset-0 z-50 flex flex-col bg-desk/95 backdrop-blur-sm">
+    <div className="zone-dark fixed inset-0 z-50 flex animate-fade-in flex-col bg-desk/95 backdrop-blur-sm">
       <header className="flex flex-wrap items-center gap-3 border-b border-line bg-surface px-5 py-3 text-ink">
         <span className="text-sm font-semibold tracking-wide text-ink">Draw diagram</span>
 
@@ -1153,7 +1153,8 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
                 setSnapCue(null);
               }}
               className={
-                'flex h-11 min-w-11 items-center gap-1.5 rounded-lg border px-3 text-base transition-colors ' +
+                'flex h-11 min-w-11 items-center gap-1.5 rounded-lg border px-3 text-base ' +
+                'transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft active:scale-[0.97] ' +
                 (tool === item.id
                   ? 'border-accent bg-accent text-on-accent'
                   : 'border-line-strong bg-surface-raised text-ink hover:bg-surface-hover')
@@ -1271,7 +1272,8 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
           title="Crop — drag the frame to choose the white space around the plot. The frame becomes the printed size; the plot keeps its own."
           onClick={toggleCrop}
           className={
-            'flex h-11 items-center gap-1.5 rounded-lg border px-3 text-base transition-colors ' +
+            'flex h-11 items-center gap-1.5 rounded-lg border px-3 text-base ' +
+            'transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft active:scale-[0.97] ' +
             (cropping
               ? 'border-accent bg-accent text-on-accent'
               : 'border-line-strong bg-surface-raised text-ink hover:bg-surface-hover')
@@ -1549,7 +1551,7 @@ function TextEditor({
             event.preventDefault();
             wrap(marker);
           }}
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-slate-300 bg-white text-[11px] font-medium text-slate-700 shadow hover:bg-slate-100"
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-slate-300 bg-white text-[11px] font-medium text-slate-700 shadow transition-[background-color,scale] duration-150 ease-out-soft hover:bg-slate-100 active:scale-[0.92]"
         >
           <span aria-hidden>{glyph}</span>
         </button>
@@ -1565,6 +1567,14 @@ function TextEditor({
  * stays byte-identical to what gets exported — handles are editing chrome and must
  * never reach the geometry, the same rule `EditTarget` follows in the preview IR.
  */
+/**
+ * Selection eases in on the overlay by colour and opacity only. Never geometry: `x`,
+ * `cx`, `points` are CSS properties in Chrome, and anything the pointer is dragging has
+ * to sit exactly under it every frame. The overlay is never exported.
+ */
+const HANDLE_EASE = 'transition-[fill,fill-opacity] duration-150 ease-out-soft';
+const HIGHLIGHT_IN = 'animate-fade-in';
+
 function HandleOverlay({
   diagram,
   projection,
@@ -1614,6 +1624,7 @@ function HandleOverlay({
     return shape === 'square' ? (
       <rect
         key={key}
+        className={HANDLE_EASE}
         x={cx - r}
         y={cy - r}
         width={r * 2}
@@ -1623,7 +1634,16 @@ function HandleOverlay({
         strokeWidth={stroke}
       />
     ) : (
-      <circle key={key} cx={cx} cy={cy} r={r} fill={fill} stroke="#0284c7" strokeWidth={stroke} />
+      <circle
+        key={key}
+        className={HANDLE_EASE}
+        cx={cx}
+        cy={cy}
+        r={r}
+        fill={fill}
+        stroke="#0284c7"
+        strokeWidth={stroke}
+      />
     );
   };
 
@@ -1642,6 +1662,7 @@ function HandleOverlay({
         .map((curve) => (
           <polyline
             key={`hl-${curve.id}`}
+            className={HIGHLIGHT_IN}
             points={curve.points.map((p) => `${projection.px(p.x)},${projection.py(p.y)}`).join(' ')}
             fill="none"
             stroke="#0ea5e9"
@@ -1656,6 +1677,7 @@ function HandleOverlay({
         .map((arrow) => (
           <line
             key={`hl-${arrow.id}`}
+            className={HIGHLIGHT_IN}
             x1={projection.px(arrow.from.x)}
             y1={projection.py(arrow.from.y)}
             x2={projection.px(arrow.to.x)}
@@ -1676,6 +1698,7 @@ function HandleOverlay({
           return (
             <polygon
               key={`hl-${area.id}`}
+              className={HIGHLIGHT_IN}
               points={polygon.map((p) => `${projection.px(p.x)},${projection.py(p.y)}`).join(' ')}
               fill="#0ea5e9"
               fillOpacity={0.12}
@@ -1702,6 +1725,7 @@ function HandleOverlay({
           return (
             <line
               key={`hl-${span.id}`}
+              className={HIGHLIGHT_IN}
               x1={shaft[0].x}
               y1={shaft[0].y}
               x2={shaft[1].x}
@@ -1751,6 +1775,7 @@ function HandleOverlay({
             key={`text-${label.handle.kind}-${handleId(label.handle)}-${
               label.handle.kind === 'pointTick' ? label.handle.axis : ''
             }`}
+            className={HANDLE_EASE}
             cx={projection.px(label.at.x)}
             cy={projection.py(label.at.y)}
             r={(on ? 8 : 6) / zoom}
@@ -2003,7 +2028,8 @@ function ToolbarButton({
       disabled={disabled}
       title={`${label} (${hint})`}
       className={
-        'flex h-11 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors ' +
+        'flex h-11 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium ' +
+        'transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft active:scale-[0.97] ' +
         'disabled:pointer-events-none disabled:opacity-35 ' +
         // Danger styling only while the button can actually act: a permanently red
         // Delete reads as a warning about nothing when no selection exists.
@@ -2667,7 +2693,7 @@ function ElementIndex({
               <button
                 type="button"
                 onClick={() => onSelect([row.handle])}
-                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-ink transition-colors hover:bg-accent-soft"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-ink transition-colors duration-150 ease-out-soft hover:bg-accent-soft"
               >
                 <span className="truncate font-medium">{row.name}</span>
                 <span className="flex-1" />

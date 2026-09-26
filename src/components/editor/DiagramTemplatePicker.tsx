@@ -78,7 +78,7 @@ export function DiagramTemplateCards({
               setSearch('');
             }
           }}
-          className="h-7 w-full rounded-md border border-line bg-surface px-2 text-[12px] text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
+          className="h-7 w-full rounded-md border border-line bg-surface px-2 text-[12px] text-ink outline-none transition-colors duration-150 ease-out-soft placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
         />
       </label>
       {groups.length === 0 && (
@@ -113,7 +113,10 @@ function TemplateGrid({
           aria-pressed={card.id === currentId}
           onClick={() => onPick(card.id)}
           className={
-            'rounded-lg border p-1.5 text-left transition-colors hover:bg-surface-sunken ' +
+            // A small lift on hover, back down when pressed. The ring is selection, not
+            // focus (focus keeps the browser outline), so it may ease with the shadow.
+            'rounded-lg border p-1.5 text-left transition-[background-color,border-color,box-shadow,translate,scale] duration-150 ease-out-soft ' +
+            'hover:-translate-y-0.5 hover:bg-surface-sunken hover:shadow-md active:translate-y-0 active:scale-[0.98] ' +
             (card.id === currentId
               ? 'border-accent ring-1 ring-accent'
               : 'border-line')
@@ -204,7 +207,7 @@ export function DiagramTemplatePopover({
       </Button>
       {open && at && (
         <div
-          className="fixed z-40 overflow-y-auto rounded-xl border border-line bg-surface-raised p-1.5 shadow-2xl"
+          className="fixed z-40 origin-top-left animate-pop-in overflow-y-auto rounded-xl border border-line bg-surface-raised p-1.5 shadow-2xl"
           style={{ left: at.left, top: at.top, width: POPOVER_WIDTH, maxHeight: at.maxHeight }}
           onKeyDown={(event) => {
             if (event.key === 'Escape') {
