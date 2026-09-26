@@ -55,7 +55,7 @@ const scene = {
     s.tmp = new THREE.Vector3();
 
     const T_ = lib.type;
-    s.headline = T_.headline(ctx.el, { en: C.headline, zh: C.headlineZh, y: 876, size: 104, world: 'night' });
+    s.headline = T_.headline(ctx.el, { en: C.headline, zh: C.headlineZh, y: 900, size: 104, world: 'night' });
     s.facts = C.facts.map((en, i) => T_.headline(ctx.el, { en, x: FACT_X, y: FACT_Y[i], size: 74, align: 'left', world: 'night' }));
   },
 
@@ -97,17 +97,17 @@ const scene = {
     // --- camera: close and dark with a slow push, then the rush into the window framing ---
     const d = cam.drift(t, 34, { amp: 0.7, rate: 0.06, roll: 0.08, dolly: 0.005 });
     const approach = E.sineInOut(E.seg(t, 0, T.move[0] + 0.3)); // the riser's slow push
-    const creep = 1 - 0.028 * E.seg(t, T.move[1], 8.2);
-    const dist = E.lerp(E.lerp(9.25, 8.3, approach), 5.76, m) * creep;
+    const creep = 1 - 0.04 * E.seg(t, T.move[1], 8.2);
+    const dist = E.lerp(E.lerp(9.8, 8.8, approach), 5.76, m) * creep;
     const target = s.target0.map((a, i) => E.lerp(a, [0, -0.02, 0][i], m));
     cam.orbit(camera, {
       target,
       dist: dist * d.dist,
-      az: E.lerp(-9 + 4 * approach, 0, m) + 1.6 * E.seg(t, T.move[1], 8.2) + d.az,
+      az: E.lerp(-9 + 4 * approach, 0, m) + 2.4 * E.seg(t, T.move[1], 8.2) + d.az,
       el: E.lerp(4.2 - 0.6 * approach, 1.6, m) + d.el,
       roll: d.roll,
       fov: 30,
-      shift: [E.lerp(0, -0.128, m), E.lerp(0.105, 0.0, m)],
+      shift: [E.lerp(0, -0.128, m), E.lerp(0.12, 0.0, m)],
     });
 
     // --- light, floor, dust, post --------------------------------------------------------
