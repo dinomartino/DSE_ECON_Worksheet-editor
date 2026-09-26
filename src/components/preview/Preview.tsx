@@ -1917,7 +1917,7 @@ function TableNodeView({
              * which put the chips a wrapper's-worth above the table and over the heading
              * before it. Reaching *past* the table is the hover pad's job, not this one's.
              */
-            className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-150 group-hover/table:opacity-100 focus-within:opacity-100"
+            className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-150 ease-out-soft group-hover/table:opacity-100 focus-within:opacity-100"
             data-print-hide
           >
             <TableGridControls
@@ -2011,14 +2011,14 @@ function CoverSheet({
               {lineId && ctx?.coverLines && (
                 <span
                   data-print-hide
-                  className="pointer-events-none absolute -left-6 top-0 bottom-0 flex w-6 items-center justify-start opacity-0 transition-opacity group-hover/instruction:opacity-100"
+                  className="pointer-events-none absolute -left-6 top-0 bottom-0 flex w-6 items-center justify-start opacity-0 transition-opacity duration-150 ease-out-soft group-hover/instruction:opacity-100"
                 >
                   <button
                     type="button"
                     aria-label="Remove this instruction"
                     title="Remove this instruction"
                     onClick={() => ctx.coverLines?.onRemove(lineId)}
-                    className="pointer-events-auto cursor-pointer px-1 py-0.5 text-[10px] leading-none text-[#a5a09b] transition-colors hover:text-[#dc2626]"
+                    className="pointer-events-auto cursor-pointer px-1 py-0.5 text-[10px] leading-none text-[#a5a09b] transition-[color,scale] duration-150 ease-out-soft hover:text-[#dc2626] active:scale-[0.97]"
                   >
                     ✕
                   </button>
@@ -2035,12 +2035,12 @@ function CoverSheet({
           // not leave the group on the way down to it.
           <span
             data-print-hide
-            className="pointer-events-none absolute left-0 right-0 flex items-start pt-1 opacity-0 transition-opacity group-hover/instructions:opacity-100"
+            className="pointer-events-none absolute left-0 right-0 flex items-start pt-1 opacity-0 transition-opacity duration-150 ease-out-soft group-hover/instructions:opacity-100"
           >
             <button
               type="button"
               onClick={() => ctx.coverLines?.onAdd()}
-              className="pointer-events-auto cursor-pointer rounded px-1.5 py-0.5 text-[9px] font-medium text-[#8f8a86] transition-colors hover:bg-[#d9ebf8] hover:text-[#0a5c9e]"
+              className="pointer-events-auto cursor-pointer rounded px-1.5 py-0.5 text-[9px] font-medium text-[#8f8a86] transition-[background-color,color,scale] duration-150 ease-out-soft hover:bg-[#d9ebf8] hover:text-[#0a5c9e] active:scale-[0.97]"
             >
               + Instruction
             </button>
@@ -2823,7 +2823,7 @@ function GapAdjuster({
           width: 26 / (scale || 1),
           right: -34 / (scale || 1),
         }}
-        className={`pointer-events-auto absolute top-1/2 -translate-y-1/2 rounded-full border shadow-sm transition-opacity ${
+        className={`pointer-events-auto absolute top-1/2 -translate-y-1/2 rounded-full border shadow-sm transition-[opacity,background-color,border-color,color] duration-150 ease-out-soft ${
           draft !== undefined
             ? "border-[#0d77c9] bg-[#0d77c9] text-white opacity-100"
             : "border-[#8fc2e9] bg-white text-[#0d77c9] opacity-0 group-hover/drag:opacity-100"
@@ -3110,7 +3110,7 @@ function DraggableItem({
            */}
           <span
             aria-hidden
-            className={`pointer-events-none flex flex-1 items-center transition-opacity ${
+            className={`pointer-events-none flex flex-1 items-center transition-opacity duration-150 ease-out-soft ${
               isInsertAnchor
                 ? "opacity-55 group-hover/gap:opacity-100"
                 : "opacity-0 group-hover/gap:opacity-30"
@@ -3135,7 +3135,7 @@ function DraggableItem({
               onAnchorHere?.();
               onInsertHere();
             }}
-            className={`absolute left-1/2 flex h-4 w-4 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-[#8fc2e9] bg-white text-[#0d77c9] shadow-sm transition-opacity hover:border-[#0d77c9] hover:bg-[#eef6fc] ${
+            className={`absolute left-1/2 flex h-4 w-4 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-[#8fc2e9] bg-white text-[#0d77c9] shadow-sm transition-[opacity,background-color,border-color,scale] duration-150 ease-out-soft hover:border-[#0d77c9] hover:bg-[#eef6fc] active:scale-[0.97] ${
               isInsertAnchor
                 ? "opacity-55 group-hover/gap:opacity-100"
                 : "opacity-0 group-hover/gap:opacity-100"
@@ -3199,7 +3199,7 @@ function DraggableItem({
               ? { maxHeight: `${Math.max(itemHeight - 2, 12)}px` }
               : undefined
         }
-        className={`absolute -left-[26px] top-0.5 flex w-[18px] cursor-grab flex-col items-center justify-center gap-0 overflow-hidden rounded border py-0.5 leading-none transition-colors duration-150 active:cursor-grabbing ${
+        className={`absolute -left-[26px] top-0.5 flex w-[18px] cursor-grab flex-col items-center justify-center gap-0 overflow-hidden rounded border py-0.5 leading-none transition-colors duration-150 ease-out-soft active:cursor-grabbing ${
           isDragging
             ? "border-[#0d77c9] bg-[#0d77c9] text-white shadow-sm"
             : isRunHead
@@ -3589,7 +3589,7 @@ const ItemBody = memo(
           data-layout-id={item.layout.elementId}
           onClick={onSelect}
           aria-current={selected}
-          className={`relative cursor-pointer rounded-[3px] px-1 transition-[background-color,box-shadow] ${
+          className={`relative cursor-pointer rounded-[3px] px-1 transition-[background-color,box-shadow] duration-150 ease-out-soft ${
             selected ? SELECTED_ITEM : "hover:bg-black/[0.03]"
           }`}
         >
@@ -3604,7 +3604,7 @@ const ItemBody = memo(
         data-question-id={item.question.questionId}
         onClick={onSelect}
         aria-current={selected}
-        className={`relative cursor-pointer rounded-[3px] px-1 transition-[background-color,box-shadow] ${
+        className={`relative cursor-pointer rounded-[3px] px-1 transition-[background-color,box-shadow] duration-150 ease-out-soft ${
           selected ? SELECTED_ITEM : "hover:bg-black/[0.03]"
         }`}
       >
@@ -3931,7 +3931,7 @@ function EmptyState({ onAddQuestion }: { onAddQuestion: (typeId: string) => void
             key={definition.id}
             type="button"
             onClick={() => onAddQuestion(definition.id)}
-            className={`inline-flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-medium transition-[background-color,border-color,color,box-shadow,opacity] duration-150 ease-[var(--ease-out-soft)] active:scale-[0.97] ${
+            className={`inline-flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-medium transition-[background-color,border-color,color,opacity,filter,transform,scale] duration-150 ease-out-soft active:scale-[0.97] ${
               index === 0
                 ? 'bg-[var(--accent)] text-white shadow-sm hover:brightness-110'
                 : 'border border-[#ddd8d2] bg-white text-[#4a4643] hover:bg-[#f6f5f4]'
@@ -3991,7 +3991,7 @@ function BlankPage({
         onDropItem?.("after");
       }}
       aria-current={selected}
-      className={`flex h-full min-h-0 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed transition-colors ${
+      className={`flex h-full min-h-0 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed transition-colors duration-150 ease-out-soft ${
         over
           ? "border-[#0d77c9] bg-[#eef6fc]"
           : selected
@@ -4018,7 +4018,7 @@ function BlankPage({
                 event.stopPropagation();
                 onAddQuestion(definition.id);
               }}
-              className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-[#ddd8d2] bg-white px-3 py-1.5 text-[12px] font-medium text-[#4a4643] transition-colors hover:bg-[#f6f5f4]"
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-[#ddd8d2] bg-white px-3 py-1.5 text-[12px] font-medium text-[#4a4643] transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft hover:bg-[#f6f5f4] active:scale-[0.97]"
             >
               {definition.id === "mcq" ? (
                 <McqIcon size={14} />
@@ -6298,7 +6298,7 @@ export function Preview({
             type="button"
             onClick={() => setZoom(1)}
             title="Reset zoom to fit"
-            className="min-w-[3.25rem] cursor-pointer rounded-md px-1 text-center text-[11px] font-semibold tabular-nums text-ink-muted transition-colors hover:text-ink"
+            className="min-w-[3.25rem] cursor-pointer rounded-md px-1 text-center text-[11px] font-semibold tabular-nums text-ink-muted transition-[color,scale] duration-150 ease-out-soft hover:text-ink active:scale-[0.97]"
           >
             {Math.round(scale * 100)}%
           </button>
@@ -6615,7 +6615,7 @@ export function Preview({
           nothing on screen would mention the shortcuts. */}
       {multiIds.size + multiFields.size > 0 && (
         <div className="pointer-events-none fixed bottom-16 left-[76px] right-[400px] z-40 flex justify-center">
-          <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-line bg-surface-raised/95 py-2 pl-4 pr-2 text-[12px] shadow-xl backdrop-blur">
+          <div className="pointer-events-auto flex animate-slide-up-in items-center gap-3 rounded-full border border-line bg-surface-raised/95 py-2 pl-4 pr-2 text-[12px] shadow-xl backdrop-blur">
             <span className="font-medium text-ink">
               {multiIds.size + multiFields.size} selected
             </span>

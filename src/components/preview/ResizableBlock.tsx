@@ -215,7 +215,7 @@ export function ResizableBlock({
         }
         style={selected ? { inset: 6 / (scale || 1) } : undefined}
         className={
-          'absolute cursor-pointer rounded-sm ring-inset ring-[#0d77c9] transition-shadow ' +
+          'absolute cursor-pointer rounded-sm ring-inset ring-[#0d77c9] transition-shadow duration-150 ease-out-soft ' +
           (selected ? '' : 'inset-0 hover:ring-2')
         }
       />
@@ -227,7 +227,7 @@ export function ResizableBlock({
           <div
             aria-hidden
             data-print-hide
-            className="pointer-events-none absolute inset-0 rounded-sm shadow-[0_0_0_2px_#0d77c9]"
+            className="pointer-events-none absolute inset-0 animate-fade-in rounded-sm shadow-[0_0_0_2px_#0d77c9]"
           />
           {CORNERS.map(({ corner, className, cursor }) => (
             <button
@@ -244,7 +244,9 @@ export function ResizableBlock({
                 height: 10 / (scale || 1),
                 touchAction: 'none',
               }}
-              className={`absolute ${className} z-10 rounded-[2px] border border-white bg-[#0d77c9] shadow-sm`}
+              // Fades in and eases its hover tint; size and position never transition,
+              // so the handle stays under the pointer through a drag.
+              className={`absolute ${className} z-10 animate-fade-in rounded-[2px] border border-white bg-[#0d77c9] shadow-sm transition-[background-color] duration-150 ease-out-soft hover:bg-[#2b8ad3]`}
               onPointerDown={beginDrag(corner)}
               onPointerMove={onPointerMove}
               onPointerUp={finish}
@@ -259,7 +261,7 @@ export function ResizableBlock({
           {dragging && (
             <div
               data-print-hide
-              className="pointer-events-none absolute rounded bg-[#2c2a28] font-sans text-white shadow-sm"
+              className="pointer-events-none absolute animate-fade-in rounded bg-[#2c2a28] font-sans text-white shadow-sm"
               style={{
                 // Inside the bottom-left corner rather than below the block. Hanging it
                 // underneath overlapped whatever the picture sits above — on a real

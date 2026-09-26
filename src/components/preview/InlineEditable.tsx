@@ -392,7 +392,7 @@ export function InlineEditable({
           ref={boxRef}
           aria-hidden
           data-print-hide="true"
-          className="pointer-events-none absolute inset-0 rounded-[3px] bg-[#d9ebf8] shadow-[0_0_0_2px_#0d77c9]"
+          className="pointer-events-none absolute inset-0 animate-fade-in rounded-[3px] bg-[#d9ebf8] shadow-[0_0_0_2px_#0d77c9]"
           style={{
             /* Aligned to where the text starts, not the padding edge (§ `boxLeft`). */
             left: boxLeft,
@@ -432,7 +432,7 @@ export function InlineEditable({
        * positioned sibling and would otherwise paint over them. Positioning only — the
        * box stays `inline`, so the paragraph's hanging indent still applies.
        */
-      className={`relative z-10 rounded-sm transition-colors duration-150 focus:outline-none ${
+      className={`relative z-10 rounded-sm transition-[color,background-color,box-shadow] duration-150 ease-out-soft focus:outline-none ${
         selected ? 'cursor-text' : 'cursor-pointer'
       } ${
         /*

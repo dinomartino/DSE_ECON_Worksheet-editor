@@ -23,7 +23,7 @@ import type {
   Worksheet,
 } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { TOOLBAR_ACTIVE, TOOLBAR_BTN, TOOLBAR_IDLE } from './FormatToolbar';
+import { TOOLBAR_ACTIVE, TOOLBAR_BTN, TOOLBAR_ENTER, TOOLBAR_IDLE } from './FormatToolbar';
 
 /**
  * The contextual second toolbar row — Word's "Table Layout appears when you're in a
@@ -315,7 +315,7 @@ export function ContextDock({
     <div
       role="toolbar"
       aria-label={table ? 'Table tools' : 'Figure tools'}
-      className="fixed z-50 flex flex-wrap items-center gap-0.5 rounded-xl border border-[#454138] bg-[#211f1d]/95 px-1.5 py-1 shadow-xl backdrop-blur"
+      className={`fixed z-50 flex flex-wrap items-center gap-0.5 rounded-xl border border-[#454138] bg-[#211f1d]/95 px-1.5 py-1 shadow-xl backdrop-blur ${TOOLBAR_ENTER}`}
       style={{
         left: dock.left,
         width: dock.width,

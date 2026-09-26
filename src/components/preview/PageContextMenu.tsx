@@ -87,8 +87,15 @@ export function PageContextMenu({
       ref={ref}
       role="menu"
       aria-label="Page actions"
-      className="fixed z-[70] min-w-[13rem] overflow-hidden rounded-xl border border-line bg-surface-raised p-1 shadow-2xl"
-      style={{ left: pos.x, top: pos.y }}
+      className="fixed z-[70] min-w-[13rem] animate-pop-in overflow-hidden rounded-xl border border-line bg-surface-raised p-1 shadow-2xl"
+      style={{
+        left: pos.x,
+        top: pos.y,
+        // Grows out of the pointer: from whichever corner the clamp left under it.
+        transformOrigin: `${pos.x < at.x ? 'right' : 'left'} ${pos.y < at.y ? 'bottom' : 'top'}`,
+        // A menu clamped to open upward rises into place rather than dropping.
+        ...(pos.y < at.y ? ({ '--pop-from-y': '2px' } as React.CSSProperties) : {}),
+      }}
       // A second right-click on the menu itself must not open the browser's own.
       onContextMenu={(event) => event.preventDefault()}
     >
@@ -106,7 +113,7 @@ export function PageContextMenu({
               type="button"
               role="menuitem"
               disabled={item.disabled}
-              className={`flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors duration-150 disabled:opacity-40 ${
+              className={`flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-[background-color,color,opacity] duration-150 ease-out-soft disabled:opacity-40 ${
                 item.danger
                   ? 'text-danger hover:bg-danger-soft'
                   : 'text-ink hover:bg-surface-hover'
