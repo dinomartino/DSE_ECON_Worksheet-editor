@@ -103,6 +103,77 @@ describe('shifting a curve', () => {
     expect(plain(shiftedLabel(d, new Set())!.en)).toBe('D1');
     expect(plain(shiftedLabel(d, new Set(['D1']))!.en)).toBe('D2');
   });
+
+  // A blank side names nothing: English-only labels once all "collided" on "" and ran to S₅₀.
+  const enOnly = (text: string) => ({ en: [{ text }], zh: [] });
+  const zhOnly = (text: string) => ({ en: [], zh: [{ text }] });
+
+  it('names an English-only copy S₁, not S₅₀, and ticks its equilibrium P₁/Q₁', () => {
+    const base = buildFromTemplate('supply-demand');
+    const [demand, supply] = base.curves;
+    const diagram: Diagram = {
+      ...base,
+      curves: [{ ...demand, label: enOnly('D') }, { ...supply, label: enOnly('S') }],
+    };
+    const result = shiftCurve(diagram, supply.id, { x: -0.1, y: 0 }, counter())!;
+    const copy = result.diagram.curves.find((c) => c.id === result.curveId)!;
+    expect(flat(copy.label?.en)).toBe('S_1');
+    expect(copy.label?.zh).toEqual([]);
+    const mark = result.diagram.points.find((p) => p.id === result.pointId)!;
+    expect(flat(mark.xTickLabel?.en)).toBe('Q_1');
+    expect(flat(mark.yTickLabel?.en)).toBe('P_1');
+  });
+
+  it('still skips a name that is genuinely taken, on either side', () => {
+    expect(plain(shiftedLabel(enOnly('S'), new Set(['', 'D']))!.en)).toBe('S1');
+    expect(plain(shiftedLabel(enOnly('S'), new Set(['', 'S1']))!.en)).toBe('S2');
+    expect(plain(shiftedLabel(zhOnly('供给'), new Set(['']))!.zh)).toBe('供给1');
+    expect(plain(shiftedLabel(zhOnly('供给'), new Set(['供给1']))!.zh)).toBe('供给2');
+    const both = { en: [{ text: 'S' }], zh: [{ text: '供给' }] };
+    expect(plain(shiftedLabel(both, new Set(['供给1']))!.en)).toBe('S2');
+  });
+
+  it('shifts an English-only S to S₂ when S₁ is already drawn', () => {
+    const base = buildFromTemplate('supply-demand');
+    const [demand, supply] = base.curves;
+    const s1 = {
+      ...supply,
+      id: 's1',
+      label: { en: [{ text: 'S' }, { text: '1', vertAlign: 'subscript' as const }], zh: [] },
+      points: supply.points.map((p) => ({ ...p, x: p.x + 0.05 })),
+    };
+    const diagram: Diagram = {
+      ...base,
+      curves: [{ ...demand, label: enOnly('D') }, { ...supply, label: enOnly('S') }, s1],
+    };
+    const result = shiftCurve(diagram, supply.id, { x: -0.1, y: 0 }, counter())!;
+    expect(flat(result.diagram.curves.find((c) => c.id === result.curveId)?.label?.en)).toBe('S_2');
+  });
+
+  it('shifts a Chinese-only label and numbers its ticks after it', () => {
+    const base = buildFromTemplate('supply-demand');
+    const [demand, supply] = base.curves;
+    const diagram: Diagram = {
+      ...base,
+      curves: [{ ...demand, label: zhOnly('需求') }, { ...supply, label: zhOnly('供给') }],
+    };
+    const result = shiftCurve(diagram, supply.id, { x: -0.1, y: 0 }, counter())!;
+    const copy = result.diagram.curves.find((c) => c.id === result.curveId)!;
+    expect(flat(copy.label?.zh)).toBe('供给_1');
+    expect(copy.label?.en).toEqual([]);
+    expect(flat(result.diagram.points.find((p) => p.id === result.pointId)?.xTickLabel?.en)).toBe('Q_1');
+  });
+
+  it('leaves a copy of an unlabelled curve unlabelled', () => {
+    const blank = { en: [], zh: [] };
+    expect(shiftedLabel(blank, new Set(['']))).toEqual(blank);
+    const base = buildFromTemplate('supply-demand');
+    const [demand, supply] = base.curves;
+    const diagram: Diagram = { ...base, curves: [{ ...demand, label: blank }, { ...supply, label: blank }] };
+    const result = shiftCurve(diagram, supply.id, { x: -0.1, y: 0 }, counter())!;
+    expect(result.diagram.curves.find((c) => c.id === result.curveId)?.label).toEqual(blank);
+    expect(flat(result.diagram.points.find((p) => p.id === result.pointId)?.yTickLabel?.en)).toBe('P_1');
+  });
 });
 
 describe('naming an equilibrium on request', () => {

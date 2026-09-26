@@ -105,6 +105,8 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
   appearing all at once. Quick enough never to slow you down.
 
 ### Fixed
+- **Shift a copy in an English-only worksheet named the copy S₅₀** (and its ticks P₅₀
+  and Q₅₀). It is now S₁, with P₁ and Q₁.
 - **The import-tariff template had no imports**: Pw + t sat above the market's own
   equilibrium. It now sits between Pw and it, with Q₁, Q₂ and the imports QM marked. The
   old four-quantity figure is still there as "Tariff: welfare areas".
