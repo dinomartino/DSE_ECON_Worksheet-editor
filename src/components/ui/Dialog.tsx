@@ -74,8 +74,11 @@ export function Dialog({
       {/* The scrim is a real click target: clicking outside a settings dialog to
           dismiss it is the behaviour every OS has taught, and there is nothing
           destructive to guard against since each control commits as it is changed. */}
+      {/* Entrance only. Consumers unmount the dialog to close it, so an exit would have
+          to outlive its owner — and a closing overlay must not keep the modal layer or
+          swallow the next click. */}
       <div
-        className="absolute inset-0 bg-[#0f1115]/45 backdrop-blur-[2px]"
+        className="absolute inset-0 animate-scrim-in bg-[#0f1115]/45 backdrop-blur-[2px]"
         onClick={onClose}
         aria-hidden
       />
@@ -90,7 +93,7 @@ export function Dialog({
           maxWidth: '100%',
           ...(height ? { height: `min(${height}px, 86vh)` } : { maxHeight: '86vh' }),
         }}
-        className="zone-light relative flex flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl outline-none"
+        className="zone-light relative flex animate-dialog-in flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl outline-none"
       >
         <header className="flex items-start gap-3 border-b border-line px-5 py-4">
           <div className="min-w-0 flex-1">
@@ -169,14 +172,14 @@ export function DialogTabs<T extends string>({
               role="tab"
               aria-selected={active}
               onClick={() => onChange(tab.id)}
-              className={`relative flex w-full cursor-pointer items-center rounded-md py-2 pl-3.5 pr-2.5 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+              className={`relative flex w-full cursor-pointer items-center rounded-md py-2 pl-3.5 pr-2.5 text-left transition-colors duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                 active ? 'text-ink' : 'text-ink-muted hover:bg-surface-hover hover:text-ink'
               }`}
             >
               <span
                 aria-hidden
-                className={`absolute inset-y-1.5 left-0 w-0.5 rounded-full ${
-                  active ? 'bg-accent' : 'bg-transparent'
+                className={`absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-accent transition-[opacity,scale] duration-200 ease-out-soft ${
+                  active ? 'scale-y-100 opacity-100' : 'scale-y-50 opacity-0'
                 }`}
               />
               <span className="min-w-0 flex-1">
@@ -189,7 +192,12 @@ export function DialogTabs<T extends string>({
           );
         })}
       </nav>
-      <div className="scroll-slim min-w-0 flex-1 overflow-y-auto p-5">{children}</div>
+      <div className="scroll-slim min-w-0 flex-1 overflow-y-auto p-5">
+        {/* Keyed by tab so the new pane fades in rather than snapping. */}
+        <div key={value} className="animate-fade-in">
+          {children}
+        </div>
+      </div>
     </div>
   );
 }

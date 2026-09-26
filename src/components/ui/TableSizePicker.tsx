@@ -114,7 +114,9 @@ export function TableSizePicker({
                   onMouseEnter={() => hover(rowIndex + 1, columnIndex + 1)}
                   onFocus={() => hover(rowIndex + 1, columnIndex + 1)}
                   onClick={() => onPick(rowIndex + 1, columnIndex + 1)}
-                  className={`h-[15px] w-[15px] cursor-pointer rounded-[2px] border transition-colors ${
+                  // A short fade only: the highlight tracks the pointer, and a longer
+                  // one would trail behind the sweep.
+                  className={`h-[15px] w-[15px] cursor-pointer rounded-[2px] border transition-colors duration-75 ease-out-soft ${
                     active
                       ? 'border-accent bg-accent-soft'
                       : 'border-line bg-surface hover:border-ink-subtle'

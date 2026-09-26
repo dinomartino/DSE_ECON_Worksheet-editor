@@ -24,6 +24,9 @@ export function Collapsible({
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  // Children mount on first open and then stay, so closing can animate; a closed body
+  // is `inert`, out of the tab order and the accessibility tree.
+  const [mounted, setMounted] = useState(defaultOpen);
 
   return (
     <div className="border-b border-line">
@@ -31,12 +34,15 @@ export function Collapsible({
         <button
           type="button"
           aria-expanded={open}
-          onClick={() => setOpen((value) => !value)}
-          className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          onClick={() => {
+            setMounted(true);
+            setOpen((value) => !value);
+          }}
+          className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 py-2.5 text-left transition-colors duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
           <span
             aria-hidden
-            className={`text-ink-subtle transition-transform duration-150 ease-[var(--ease-out-soft)] ${open ? 'rotate-90' : ''}`}
+            className={`text-ink-subtle transition-[rotate] duration-200 ease-out-soft ${open ? 'rotate-90' : ''}`}
           >
             <ChevronRightIcon size={13} />
           </span>
@@ -44,7 +50,18 @@ export function Collapsible({
         </button>
         {actions}
       </div>
-      {open && <div className="px-3 pb-3">{children}</div>}
+      {/* Height animates as a grid row from 0fr to 1fr — no measuring, and the content
+          keeps its natural height for anything inside that measures itself. */}
+      <div
+        inert={!open}
+        className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out-soft ${
+          open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+        }`}
+      >
+        <div className="min-h-0 overflow-hidden">
+          {mounted && <div className="px-3 pb-3">{children}</div>}
+        </div>
+      </div>
     </div>
   );
 }

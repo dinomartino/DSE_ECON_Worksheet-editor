@@ -108,7 +108,8 @@ export function DragGhost({
         transform: 'translate(12px, 10px)',
       }}
     >
-      <div className="flex max-w-[260px] items-center gap-2 rounded-xl border border-accent/40 bg-surface-raised/95 py-1.5 pl-2 pr-3 shadow-2xl backdrop-blur">
+      {/* Only the chip animates, on pick-up; the wrapper follows the pointer untransitioned. */}
+      <div className="flex max-w-[260px] origin-top-left animate-pop-in items-center gap-2 rounded-xl border border-accent/40 bg-surface-raised/95 py-1.5 pl-2 pr-3 shadow-2xl backdrop-blur">
         <span className="text-accent">{icon ?? <GripIcon size={14} />}</span>
         <span className="min-w-0">
           <span className="block truncate text-[12px] font-medium leading-tight text-ink">

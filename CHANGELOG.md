@@ -100,6 +100,9 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
   save dialog (it starts in your exports folder, like `.docx`); the status line then
   offers Show in Finder / Explorer. In a browser, PDF still goes through the print
   dialog's Save as PDF.
+- **Smoother buttons, menus and dialogs**: buttons press in and ease their colours,
+  menus grow out of the button that opened them, and dialogs fade in instead of
+  appearing all at once. Quick enough never to slow you down.
 
 ### Fixed
 - **The import-tariff template had no imports**: Pw + t sat above the market's own
