@@ -170,14 +170,14 @@ export function FeedbackDialog({
         </label>
 
         <details className="group rounded-lg bg-surface-sunken px-3 py-2 text-[12px] text-ink-muted">
-          <summary className="cursor-pointer select-none font-medium text-ink-muted hover:text-ink">
+          <summary className="cursor-pointer select-none font-medium text-ink-muted transition-colors duration-150 ease-out-soft hover:text-ink">
             Details we attach
             <span className="font-normal text-ink-subtle">
               {' '}
               — version {details.appVersion}, {details.platform}, {details.system}
             </span>
           </summary>
-          <ul className="mt-1.5 space-y-0.5 pl-1">
+          <ul className="mt-1.5 animate-slide-down-in space-y-0.5 pl-1">
             {detailLines(details).map((line) => (
               <li key={line}>{line}</li>
             ))}
@@ -190,7 +190,7 @@ export function FeedbackDialog({
         </p>
 
         {sent && (
-          <p role="status" className="rounded-lg bg-accent-soft px-3 py-2 text-[13px] text-accent-ink">
+          <p role="status" className="animate-slide-up-in rounded-lg bg-accent-soft px-3 py-2 text-[13px] text-accent-ink">
             {sent.via === 'github'
               ? 'Press Submit on the GitHub page to send it.'
               : 'Press Send in your mail app to send it.'}
@@ -200,7 +200,7 @@ export function FeedbackDialog({
         )}
 
         {error && (
-          <p role="alert" className="rounded-lg bg-danger-soft px-3 py-2 text-[13px] text-danger-ink">
+          <p role="alert" className="animate-slide-up-in rounded-lg bg-danger-soft px-3 py-2 text-[13px] text-danger-ink">
             {error}
           </p>
         )}

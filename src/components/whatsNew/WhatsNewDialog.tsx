@@ -170,11 +170,12 @@ function Fold({
       <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden">
         <ChevronRightIcon
           size={14}
-          className="shrink-0 text-ink-subtle transition-transform duration-150 group-open:rotate-90"
+          className="shrink-0 text-ink-subtle transition-[rotate] duration-200 ease-out-soft group-open:rotate-90"
         />
         {summary}
       </summary>
-      <div className="mt-3 pl-[22px]">{children}</div>
+      {/* Replays on every open: a closed <details> does not render its body. */}
+      <div className="mt-3 animate-slide-down-in pl-[22px]">{children}</div>
     </details>
   );
 }

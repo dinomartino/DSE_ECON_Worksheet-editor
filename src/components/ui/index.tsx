@@ -48,10 +48,11 @@ const SIZE: Record<Size, string> = {
 };
 
 const BASE =
-  'inline-flex shrink-0 cursor-pointer items-center justify-center rounded-lg border font-medium ' +
+  'inline-flex shrink-0 cursor-pointer select-none touch-manipulation items-center justify-center rounded-lg border font-medium ' +
   // `box-shadow` is deliberately not transitioned: the focus ring is a box-shadow and
-  // must appear instantly for keyboard users, not fade in.
-  'transition-[background-color,border-color,color,transform] duration-150 ease-[var(--ease-out-soft)] ' +
+  // must appear instantly for keyboard users, not fade in. `scale` is listed because
+  // that is the property `active:scale-*` sets; `filter` eases `ghostAccent`'s hover.
+  'transition-[background-color,border-color,color,opacity,transform,scale,filter] duration-150 ease-out-soft ' +
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface ' +
   'disabled:pointer-events-none disabled:opacity-40';
 
@@ -258,7 +259,7 @@ export function NumberField({
         max={max}
         value={value ?? ''}
         placeholder={placeholder}
-        className="h-8 w-16 rounded-lg border border-line bg-surface px-2 text-xs tabular-nums text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
+        className="h-8 w-16 rounded-lg border border-line bg-surface px-2 text-xs tabular-nums text-ink outline-none transition-colors duration-150 ease-out-soft placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
         onChange={(event) => {
           // An emptied box is only "no value" where the caller says so; everywhere else
           // it stays the 0 this field has always reported.
@@ -296,7 +297,7 @@ export function SelectField<T extends string | number>({
     <label className="flex items-center gap-2 text-xs text-ink-muted">
       {label && <span className="shrink-0">{label}</span>}
       <select
-        className="h-8 min-w-0 flex-1 cursor-pointer rounded-lg border border-line bg-surface px-2 text-xs text-ink outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/25"
+        className="h-8 min-w-0 flex-1 cursor-pointer rounded-lg border border-line bg-surface px-2 text-xs text-ink outline-none transition-colors duration-150 ease-out-soft focus:border-accent focus:ring-2 focus:ring-accent/25"
         value={value}
         onChange={(event) => {
           const match = options.find((option) => String(option.value) === event.target.value);
@@ -324,7 +325,7 @@ export function CheckField({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2 text-xs text-ink-muted transition-colors hover:text-ink">
+    <label className="flex cursor-pointer items-center gap-2 text-xs text-ink-muted transition-colors duration-150 ease-out-soft hover:text-ink">
       <input
         type="checkbox"
         checked={checked}
@@ -365,7 +366,7 @@ export function Segmented<T extends string>({
             title={option.title ?? option.label}
             disabled={option.disabled}
             onClick={() => onChange(option.value)}
-            className={`relative rounded-md px-2.5 py-2 text-xs font-medium transition-colors duration-150 ease-[var(--ease-out-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
+            className={`relative rounded-md px-2.5 py-2 text-xs font-medium transition-colors duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
               option.disabled
                 ? 'cursor-not-allowed text-ink-muted opacity-40'
                 : active
@@ -374,10 +375,11 @@ export function Segmented<T extends string>({
             }`}
           >
             {option.label}
+            {/* The underline grows out from its centre as the choice moves to it. */}
             <span
               aria-hidden
-              className={`absolute inset-x-2 bottom-0.5 h-0.5 rounded-full transition-colors duration-150 ${
-                active ? 'bg-accent' : 'bg-transparent'
+              className={`absolute inset-x-2 bottom-0.5 h-0.5 rounded-full bg-accent transition-[opacity,scale] duration-200 ease-out-soft ${
+                active ? 'scale-x-100 opacity-100' : 'scale-x-50 opacity-0'
               }`}
             />
           </button>

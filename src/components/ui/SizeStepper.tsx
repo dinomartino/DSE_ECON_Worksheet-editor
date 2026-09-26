@@ -75,7 +75,7 @@ export function SizeStepper({
           event.stopPropagation();
         }}
         onPointerDown={(event) => event.stopPropagation()}
-        className="w-9 rounded border border-line bg-surface px-1 py-0.5 text-center text-xs tabular-nums text-ink focus:border-accent focus:outline-none"
+        className="w-9 rounded border border-line bg-surface px-1 py-0.5 text-center text-xs tabular-nums text-ink transition-colors duration-150 ease-out-soft hover:border-line-strong focus:border-accent focus:outline-none"
       />
       <IconButton label={`More (${label})`} onClick={() => onCommit(value + step)}>
         <PlusIcon size={13} />

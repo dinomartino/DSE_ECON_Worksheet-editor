@@ -97,15 +97,19 @@ export function Menu({
     const popup = menuRef.current;
     if (!trigger || !popup) return;
 
-    const menu = popup.getBoundingClientRect();
+    // Layout size, not `getBoundingClientRect`: the pop-in's first frame is scaled, and
+    // a scaled measurement would park a right-aligned menu off its trigger's edge.
+    const menu = { width: popup.offsetWidth, height: popup.offsetHeight };
     let left = align === 'right' ? trigger.right - menu.width : trigger.left;
     left = Math.max(8, Math.min(left, window.innerWidth - menu.width - 8));
     let top = trigger.bottom + 6;
-    if (top + menu.height > window.innerHeight - 8) {
-      top = Math.max(8, trigger.top - 6 - menu.height);
-    }
+    const above = top + menu.height > window.innerHeight - 8;
+    if (above) top = Math.max(8, trigger.top - 6 - menu.height);
     popup.style.top = `${top}px`;
     popup.style.left = `${left}px`;
+    // Grow out of the trigger: from its side, and upward when flipped above it.
+    popup.style.transformOrigin = `${align === 'right' ? 'right' : 'left'} ${above ? 'bottom' : 'top'}`;
+    popup.style.setProperty('--pop-from-y', above ? '2px' : '-2px');
     popup.style.visibility = 'visible';
   }, [open, align, items]);
 
@@ -134,7 +138,7 @@ export function Menu({
             ref={menuRef}
             id={id}
             role="menu"
-            className="fixed z-30 min-w-[13rem] overflow-hidden rounded-xl border border-line bg-surface-raised p-1 shadow-xl"
+            className="fixed z-30 min-w-[13rem] animate-pop-in overflow-hidden rounded-xl border border-line bg-surface-raised p-1 shadow-xl"
             style={{ top: 0, left: 0, visibility: 'hidden' }}
           >
             {items.map((item, index) => (
@@ -144,7 +148,7 @@ export function Menu({
                   type="button"
                   role="menuitem"
                   disabled={item.disabled}
-                  className={`flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors duration-150 disabled:opacity-40 ${
+                  className={`flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors duration-100 ease-out-soft disabled:opacity-40 ${
                     item.danger
                       ? 'text-danger hover:bg-danger-soft'
                       : 'text-ink hover:bg-surface-hover'

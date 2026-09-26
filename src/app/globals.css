@@ -66,9 +66,57 @@
      in layout.tsx), used for at most one screen-level heading. Never on the paper. */
   --font-display: var(--font-display-serif), ui-serif, Georgia, serif;
 
-  /* Motion. 150-300ms per the UX guidance; anything slower feels laggy on a tool
-     the teacher is clicking through dozens of times. */
+  /* Motion, 120-220ms. Keyframes state only a `from` frame, so the element's own style
+     is the end state. Fill is `backwards`, not `both`: a held transform computes to a
+     matrix, which would make every animated panel the containing block of any fixed
+     child. Press: `active:scale-[0.97]` with `scale` in the transition list (it is not
+     `transform`). Never transition `box-shadow` on a control — the focus ring is one. */
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.36, 0.64, 1);
+  --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
+
+  --animate-fade-in: fade-in 140ms var(--ease-out-soft) backwards;
+  /* Menus and popovers. The consumer sets `transform-origin` (the trigger's side);
+     `--pop-from-y` flips the drift for a popup that opens upward. */
+  --animate-pop-in: pop-in 160ms var(--ease-out-soft) backwards;
+  --animate-dialog-in: dialog-in 200ms var(--ease-out-soft) backwards;
+  --animate-slide-up-in: slide-up-in 180ms var(--ease-out-soft) backwards;
+  --animate-slide-down-in: slide-down-in 180ms var(--ease-out-soft) backwards;
+  --animate-scrim-in: fade-in 180ms var(--ease-out-soft) backwards;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(var(--pop-from-y, -2px)) scale(0.96);
+    }
+  }
+
+  @keyframes dialog-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px) scale(0.97);
+    }
+  }
+
+  @keyframes slide-up-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+
+  @keyframes slide-down-in {
+    from {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+  }
 }
 
 /*
@@ -685,6 +733,18 @@ body {
   #print-root {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+}
+
+/* Chrome is hidden in print anyway, but anything caught mid-entrance or mid-fade must
+   print at its end state, never half-transparent. The keyframes above only state their
+   `from` frame, so removing the animation *is* the end state. */
+@media print {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
   }
 }
 
