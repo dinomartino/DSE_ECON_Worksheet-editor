@@ -55,14 +55,19 @@ function installVirtualTime(cfg) {
   }
 
   // ---- clocks ----
+  // The wall clock only moves in captured (non-auto) frames once started: whatever
+  // preparation saves carries the same timestamp on every run.
   performance.now = () => now;
+  let wallStarted = false;
+  let wallMs = 0;
+  const wall = () => cfg.epoch + Math.floor(wallMs);
   const RealDate = R.Date;
   function VDate(...args) {
-    if (!new.target) return new RealDate(cfg.epoch + now).toString();
-    return args.length ? new RealDate(...args) : new RealDate(cfg.epoch + now);
+    if (!new.target) return new RealDate(wall()).toString();
+    return args.length ? new RealDate(...args) : new RealDate(wall());
   }
   VDate.prototype = RealDate.prototype;
-  VDate.now = () => cfg.epoch + Math.floor(now);
+  VDate.now = () => wall();
   VDate.parse = RealDate.parse;
   VDate.UTC = RealDate.UTC;
   window.Date = VDate;
@@ -128,10 +133,20 @@ function installVirtualTime(cfg) {
     });
   const realFrame = () => new Promise((resolve) => R.raf(() => resolve()));
   const realTick = () => new Promise((resolve) => R.setTimeout(resolve, 0));
-  async function drain(rounds = 3) {
-    for (let i = 0; i < rounds; i++) {
+  // The page is quiet when a whole round of tasks passes without touching the DOM.
+  let mutated = false;
+  const watch = () =>
+    new MutationObserver(() => { mutated = true; }).observe(document, {
+      subtree: true, childList: true, attributes: true, characterData: true,
+    });
+  if (document.documentElement) watch();
+  else document.addEventListener('DOMContentLoaded', watch);
+  async function drain(min = 3, max = 40) {
+    for (let i = 0; i < max; i++) {
+      mutated = false;
       await mc();
       await realTick();
+      if (i + 1 >= min && !mutated) return;
     }
   }
   const ease = (u) => (u < 0.5 ? 4 * u * u * u : 1 - (-2 * u + 2) ** 3 / 2);
@@ -298,6 +313,7 @@ function installVirtualTime(cfg) {
   async function frame(ms) {
     if (busy) throw new Error('vt: frame re-entered');
     busy = true;
+    if (wallStarted && !auto) wallMs += ms;
     try {
       await realFrame(); // flush rAF-aligned input
       await drain();
@@ -305,6 +321,8 @@ function installVirtualTime(cfg) {
       await drain();
       await realFrame(); // resize/intersection observers see the new layout
       await drain();
+      syncAnimations();
+      await drain(1); // what a synced animation's events set off
       syncAnimations();
       const r = drawCaret();
       return {
@@ -352,6 +370,9 @@ function installVirtualTime(cfg) {
       scrolls.push({ el, x0: el.scrollLeft, y0: el.scrollTop, x1: x, y1: y, start: now, dur });
     },
     pending: () => ({ timers: timers.size, rafs: rafs.size, scrolls: scrolls.length }),
+    startWall() {
+      wallStarted = true;
+    },
   };
   // Every page load starts following real time; a recording freezes it.
   window.__vt.auto(true);

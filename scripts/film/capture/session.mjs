@@ -63,9 +63,12 @@ export async function openPage(browser, { url, state, dpr = 2, log = () => {} })
   return { ctx, page, net, cdp };
 }
 
-/** Stop following real time and step `seconds` of virtual time without capturing. */
+/** Stop following real time, start the wall clock, and step `seconds` of virtual time uncaptured. */
 export async function freeze(page, seconds = 0.6) {
-  await page.evaluate(() => window.__vt.auto(false));
+  await page.evaluate(() => {
+    window.__vt.auto(false);
+    window.__vt.startWall();
+  });
   const steps = Math.round(seconds * 60);
   for (let i = 0; i < steps; i++) await page.evaluate(() => window.__vt.frame(1000 / 60));
 }

@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { serveStatic } from './server.mjs';
 import { ensureOut, launch, PORT, OUT, REVIEW } from './session.mjs';
 import { seedState } from './seed.mjs';
-import { CLIPS, recordClip } from './clips.mjs';
+import { CLIPS, DIAGRAM_DONE_STATE, recordClip } from './clips.mjs';
 import { ASSET_JOBS } from './assets.mjs';
 import { review } from './review.mjs';
 import { writeManifest } from './manifest.mjs';
@@ -75,6 +75,7 @@ const server = await serveStatic(outDir, PORT);
 const browser = await launch(2);
 const results = [];
 try {
+  if (flag('reseed')) fs.rmSync(DIAGRAM_DONE_STATE, { force: true });
   const state = await seedState({ browser, url: server.url, root: ROOT, force: flag('reseed'), log });
   const env = { browser, url: server.url, state, root: ROOT, log };
   for (const clip of CLIPS.filter((c) => wanted.has(c.name))) {

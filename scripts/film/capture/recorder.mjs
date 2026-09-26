@@ -154,7 +154,7 @@ export class Recorder {
         const bow = arc * dist * 4 * k * (1 - k);
         const x = from.x + (to.x - from.x) * k + nx * bow;
         const y = from.y + (to.y - from.y) * k + ny * bow;
-        this.expectIf(Math.hypot(x - this.mouse.x, y - this.mouse.y));
+        this.expectIf(Math.max(Math.abs(x - this.mouse.x), Math.abs(y - this.mouse.y)));
         await this.frame(async () => {
           await this.pointerVisible(true);
           await this.page.mouse.move(x, y);
@@ -209,7 +209,7 @@ export class Recorder {
         const k = ease(i / n);
         const x = a.x + (b.x - a.x) * k;
         const y = a.y + (b.y - a.y) * k;
-        this.expectIf(Math.hypot(x - this.mouse.x, y - this.mouse.y));
+        this.expectIf(Math.max(Math.abs(x - this.mouse.x), Math.abs(y - this.mouse.y)));
         await this.frame(() => this.page.mouse.move(x, y));
         this.mouse = { x, y };
       }

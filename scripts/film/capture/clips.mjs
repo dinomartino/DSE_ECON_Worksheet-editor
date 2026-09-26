@@ -248,9 +248,9 @@ export const CLIPS = [
 ];
 
 /** Prepare, record and describe one clip; writes clips/<name>/ and clips/<name>.json. */
-export async function recordClip(clip, env, { dryRun = false } = {}) {
+export async function recordClip(clip, env, { dryRun = false, dir: into } = {}) {
   const { browser, url, log } = env;
-  const dir = dryRun ? path.join(CAPTURE_BUILD, 'dry-run') : path.join(OUT.clips, clip.name);
+  const dir = into ?? (dryRun ? path.join(CAPTURE_BUILD, 'dry-run') : path.join(OUT.clips, clip.name));
   fs.rmSync(dir, { recursive: true, force: true });
   const state = clip.state ? await clip.state(env) : env.state;
   const s = await openPage(browser, { url, state, log });
@@ -280,3 +280,5 @@ export async function ensureDiagramDone(env) {
   }
   return JSON.parse(fs.readFileSync(DIAGRAM_DONE_STATE, 'utf8'));
 }
+
+export { DIAGRAM_DONE_STATE };
