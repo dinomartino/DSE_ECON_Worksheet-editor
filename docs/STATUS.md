@@ -38,6 +38,10 @@ off the bottom.** It is the first thing a fresh session reads — then
   focus-ring box-shadow or anything pointer-following. Browser-verified per area and merged.
 - **Diagram demo film rewritten (merged):** draws a tax diagram from blank axes (~83 s),
   templates get one line — Word drawing is the teacher's pain. `npm run demo:diagrams`.
+  Both films now have broadcast-style subtitles (`scripts/demo/subtitles.mjs`, 42 chars ×
+  2 lines, 15 cps, .vtt/.srt sidecars) and a post-rendered camera (`scripts/demo/camera.mjs`,
+  2× capture, eased 1.3–2× push-ins). Needs `sharp` (transitive via next, undeclared) and
+  Chrome `--force-device-scale-factor=2`. `demo.gif` no longer fits 4 MB, so it is skipped.
 - **Feature backlog** — `docs/IDEAS.md`, ranked from the 2026-09-24 competitor research in
   `docs/research/2026-09-competitive/`. Pick the next initiative from there.
 
