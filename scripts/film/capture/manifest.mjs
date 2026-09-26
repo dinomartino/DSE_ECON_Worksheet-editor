@@ -36,11 +36,13 @@ export const DESCRIPTIONS = {
   'diagram/points.png': 'Layer: E₀ and E₁ dots and labels.',
   'diagram/areas.png': 'Layer: shaded tax revenue and DWL, with their labels.',
   'diagram/layers.json': 'Layer order, canvas size and the composite check against full.png.',
-  'export/quiz.docx': 'The quiz exported through Export… → .docx (EN+中, question paper).',
-  'export/diagram.docx': 'The tax diagram question exported through Export… → .docx.',
-  'export/docx-page-1.png': 'quiz.docx page 1, rendered by LibreOffice headless.',
-  'export/docx-page-2.png': 'quiz.docx page 2, rendered by LibreOffice headless.',
-  'export/docx-diagram-page-1.png': 'diagram.docx page 1, rendered by LibreOffice headless.',
+  'export/quiz-en.docx': 'The quiz exported through Export… → .docx, question paper, EN.',
+  'export/quiz.docx': 'The quiz exported through Export… → .docx, question paper, EN+中.',
+  'export/diagram.docx': 'The tax diagram question exported through Export… → .docx, EN.',
+  'export/docx-page-1.png': 'quiz-en.docx page 1 (its only page), rendered by LibreOffice headless at 220 dpi.',
+  'export/docx-bi-page-1.png': 'quiz.docx (EN+中) page 1 in LibreOffice at 220 dpi; this Mac has no PMingLiU, so CJK falls back to PingFang and the bilingual headings crowd.',
+  'export/docx-bi-page-2.png': 'quiz.docx (EN+中) page 2 in LibreOffice at 220 dpi (same font fallback).',
+  'export/docx-diagram-page-1.png': 'diagram.docx page 1, rendered by LibreOffice headless at 220 dpi.',
 };
 
 function walk(dir, base = dir) {

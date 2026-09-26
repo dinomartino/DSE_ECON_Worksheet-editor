@@ -89,7 +89,9 @@ export class Recorder {
     if (input) await input();
     const ms = this.frames === 0 ? 0 : 1000 / FPS;
     let info = await this.page.evaluate((m) => window.__vt.frame(m), ms);
-    if (this.net && this.net.inflight > 0) {
+    // A lazily loaded chunk (and any it imports) lands within this frame: no virtual
+    // time passes while the network works.
+    for (let i = 0; this.net && this.net.inflight > 0 && i < 30; i++) {
       await this.net.idle();
       info = await this.page.evaluate(() => window.__vt.frame(0));
     }
@@ -164,16 +166,16 @@ export class Recorder {
   }
 
   /** Move to `target` and click; the click lands on the frame after arrival. */
-  async click(target, { label = 'click', count = 1, dwell = 0.12, gap = 5, ...opts } = {}) {
+  async click(target, { label = 'click', kind = 'click', count = 1, dwell = 0.12, gap = 5, ...opts } = {}) {
     const to = await this.moveTo(target, opts);
     if (dwell) await this.hold(dwell);
     const press = (clickCount) => async () => {
       await this.page.mouse.move(to.x, to.y);
       this.mouse = to;
+      this.event(kind, label, to);
       await this.page.mouse.down({ clickCount });
       await this.page.mouse.up({ clickCount });
     };
-    this.event('click', label, to);
     await this.frame(press(1));
     // A double-click's second press comes `gap` frames later, as a hand's would.
     if (count === 2) {

@@ -15,7 +15,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { serveStatic } from './server.mjs';
-import { ensureOut, launch, PORT, OUT } from './session.mjs';
+import { ensureOut, launch, PORT, OUT, REVIEW } from './session.mjs';
 import { seedState } from './seed.mjs';
 import { CLIPS, recordClip } from './clips.mjs';
 import { ASSET_JOBS } from './assets.mjs';
@@ -79,12 +79,18 @@ try {
   const env = { browser, url: server.url, state, root: ROOT, log };
   for (const clip of CLIPS.filter((c) => wanted.has(c.name))) {
     const meta = await recordClip(clip, env);
-    results.push({ kind: 'clip', name: clip.name, meta });
-    if (!flag('no-review')) await review(clip.name, meta, log);
+    const stats = flag('no-review') ? null : await review(clip.name, meta, log);
+    results.push({ name: clip.name, frames: meta.frames, duration: meta.duration, events: meta.events.length, stats });
   }
   for (const job of ASSET_JOBS.filter((j) => wanted.has(j.name))) {
     log(`asset: ${job.name}…`);
     await job.run(env);
+  }
+  if (results.length && !flag('no-review')) {
+    const file = path.join(REVIEW, 'summary.json');
+    const old = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
+    for (const r of results) old[r.name] = r;
+    fs.writeFileSync(file, JSON.stringify(old, null, 1));
   }
   writeManifest(log);
 } finally {

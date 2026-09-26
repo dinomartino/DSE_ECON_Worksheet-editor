@@ -18,6 +18,14 @@ export async function openDoc(page, name) {
 }
 
 export const openQuiz = (page) => openDoc(page, QUIZ_NAME);
+
+/** ⋯ → Worksheets…: back to the start screen without a reload (the editor stays loaded). */
+export async function backToStart(page) {
+  await page.getByRole('button', { name: 'File and export options' }).click();
+  await settle(page, 300);
+  await page.getByRole('menuitem', { name: /Worksheets…/ }).click();
+  await settle(page, 900);
+}
 export const openDiagramDoc = (page) => openDoc(page, DIAGRAMS.title);
 
 /** EN | 中文 | EN+中 in the toolbar. */

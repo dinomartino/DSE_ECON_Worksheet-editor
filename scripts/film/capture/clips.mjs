@@ -4,9 +4,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { MCQS, STRUCTURED } from '../../demo/content.mjs';
-import { answerButton, field, makeDriver, partInput, question } from '../../demo/flow.mjs';
+import { field, makeDriver, partInput, question } from '../../demo/flow.mjs';
 import {
-  deselect, openDoc, openQuiz, scrollPage, scrollToShow, selectQuestion, setLanguage, LANGUAGE_TITLE, SCROLLER, zoomBy,
+  backToStart, deselect, openDoc, openQuiz, scrollPage, scrollToShow, selectQuestion, setLanguage, LANGUAGE_TITLE, SCROLLER, zoomBy,
 } from './app.mjs';
 import { drawDiagramClip, DIAGRAM_DONE_STATE } from './draw-diagram.mjs';
 import { Recorder } from './recorder.mjs';
@@ -77,9 +77,9 @@ export const CLIPS = [
     },
     async record(r, { page }) {
       await r.hold(0.2);
-      await r.clickAt(1.0, lang(page, 'en'), { dur: 0.6, label: 'EN' });
-      await r.clickAt(2.5, lang(page, 'zh'), { dur: 0.35, label: '中文' });
-      await r.clickAt(4.0, lang(page, 'bilingual'), { dur: 0.35, label: 'EN+中' });
+      await r.clickAt(1.0, lang(page, 'en'), { dur: 0.6, label: 'EN', kind: 'toggle' });
+      await r.clickAt(2.5, lang(page, 'zh'), { dur: 0.35, label: '中文', kind: 'toggle' });
+      await r.clickAt(4.0, lang(page, 'bilingual'), { dur: 0.35, label: 'EN+中', kind: 'toggle' });
       await r.hold(0.5);
       await r.moveTo({ x: 1000, y: 360 }, { dur: 0.9 });
       await r.until(6.0);
@@ -138,7 +138,7 @@ export const CLIPS = [
     },
     async record(r, { page }) {
       await r.hold(0.2);
-      await r.clickAt(1.0, page.getByTitle(/^Teacher version/), { dur: 0.6, label: 'Teacher' });
+      await r.clickAt(1.0, page.getByTitle(/^Teacher version/), { dur: 0.6, label: 'Teacher', kind: 'toggle' });
       await r.hold(0.5);
       await r.moveTo({ x: 1000, y: 400 }, { dur: 0.9 });
       await r.until(4.0);
@@ -161,10 +161,10 @@ export const CLIPS = [
       await r.hold(0.2);
       await r.clickAt(0.8, page.getByRole('button', { name: /Export…/ }).first(), { dur: 0.5, label: 'Export…' });
       await r.hold(0.3);
-      await r.clickAt(1.6, dialog.getByText('Question paper', { exact: true }), { dur: 0.45, label: 'Question paper' });
-      await r.clickAt(2.3, dialog.getByText('Answer key', { exact: true }), { dur: 0.35, label: 'Answer key' });
-      await r.clickAt(3.0, dialog.getByText('Both', { exact: true }), { dur: 0.35, label: 'Both' });
-      await r.clickAt(3.7, dialog.getByText('Other apps', { exact: true }), { dur: 0.35, label: 'Other apps' });
+      await r.clickAt(1.6, dialog.getByText('Question paper', { exact: true }), { dur: 0.45, label: 'Question paper', kind: 'toggle' });
+      await r.clickAt(2.3, dialog.getByText('Answer key', { exact: true }), { dur: 0.35, label: 'Answer key', kind: 'toggle' });
+      await r.clickAt(3.0, dialog.getByText('Both', { exact: true }), { dur: 0.35, label: 'Both', kind: 'toggle' });
+      await r.clickAt(3.7, dialog.getByText('Other apps', { exact: true }), { dur: 0.35, label: 'Other apps', kind: 'toggle' });
       await r.until(5.0);
     },
   },
@@ -174,15 +174,19 @@ export const CLIPS = [
     dur: 5,
     about: 'Start screen → Classroom worksheet → EN+中 → Create worksheet → the editor.',
     pointer: { x: 900, y: 520 },
+    state: (env) => ensureDiagramDone(env),
     async prepare({ page }) {
-      await settle(page, 600);
+      // Open a document once: the editor's code is then loaded, so Create does not
+      // wait on it (a first open shows a blank beat while React reveals the lazy editor).
+      await openQuiz(page);
+      await backToStart(page);
     },
     async record(r, { page }) {
       const dialog = page.getByRole('dialog');
       await r.hold(0.2);
       await r.clickAt(0.9, page.getByText('Classroom worksheet', { exact: true }).first(), { dur: 0.6, label: 'Classroom worksheet' });
       await r.hold(0.4);
-      await r.clickAt(2.1, dialog.getByTitle('Bilingual'), { dur: 0.5, label: 'EN+中' });
+      await r.clickAt(2.1, dialog.getByTitle('Bilingual'), { dur: 0.5, label: 'EN+中', kind: 'toggle' });
       await r.clickAt(3.0, page.getByRole('button', { name: /Create worksheet/ }), { dur: 0.5, label: 'Create worksheet' });
       await r.hold(0.4);
       const hint = page.getByRole('button', { name: 'Dismiss hint' });
@@ -231,36 +235,48 @@ export const CLIPS = [
     async record(r, { page }) {
       const dialog = page.getByRole('dialog');
       await r.hold(0.2);
-      await r.clickAt(0.7, page.getByRole('button', { name: 'Setup' }), { dur: 0.45, label: 'Setup' });
-      await r.hold(0.35);
-      await r.clickAt(1.9, dialog.getByRole('radio', { name: '3', exact: true }).or(dialog.getByText('3', { exact: true })), { dur: 0.6, label: 'Versions 3' });
+      await r.clickAt(0.6, page.getByRole('button', { name: 'Setup' }), { dur: 0.45, label: 'Setup' });
+      await r.hold(0.3);
+      const three = dialog.getByRole('radiogroup', { name: 'Number of versions' }).getByRole('radio', { name: '3', exact: true });
+      await r.clickAt(1.6, three, { dur: 0.5, label: 'Versions 3', kind: 'toggle' });
+      await r.clickAt(2.5, dialog.getByRole('button', { name: /close/i }).first(), { dur: 0.45, label: 'Close' });
+      await r.hold(0.3);
+      await r.moveTo({ x: 1000, y: 420 }, { dur: 0.7 });
       await r.until(4.0);
     },
   },
 ];
 
 /** Prepare, record and describe one clip; writes clips/<name>/ and clips/<name>.json. */
-export async function recordClip(clip, env) {
+export async function recordClip(clip, env, { dryRun = false } = {}) {
   const { browser, url, log } = env;
-  const dir = path.join(OUT.clips, clip.name);
+  const dir = dryRun ? path.join(CAPTURE_BUILD, 'dry-run') : path.join(OUT.clips, clip.name);
   fs.rmSync(dir, { recursive: true, force: true });
   const state = clip.state ? await clip.state(env) : env.state;
   const s = await openPage(browser, { url, state, log });
   const d = makeDriver(s.page, { url });
-  log(`clip ${clip.name}: preparing…`);
+  log(`clip ${clip.name}${dryRun ? ' (dry run, no frames)' : ''}: preparing…`);
   await clip.prepare({ ...s, d, url, log, env });
   if (clip.pointer) await s.page.mouse.move(clip.pointer.x, clip.pointer.y);
   await freeze(s.page, 0.6);
-  const r = new Recorder({ ...s, dir, name: clip.name, log });
+  const r = new Recorder({ ...s, dir, name: clip.name, log, dryRun });
   if (clip.pointer) r.mouse = { ...clip.pointer };
   const t0 = Date.now();
   await clip.record(r, { ...s, d, env });
   const meta = await r.finish({ about: clip.about, target: clip.dur });
-  fs.writeFileSync(`${dir}.json`, JSON.stringify(meta, null, 1));
-  log(`clip ${clip.name}: ${meta.frames} frames (${meta.duration}s) in ${((Date.now() - t0) / 1000).toFixed(0)}s`);
+  if (!dryRun) {
+    fs.writeFileSync(`${dir}.json`, JSON.stringify(meta, null, 1));
+    log(`clip ${clip.name}: ${meta.frames} frames (${meta.duration}s) in ${((Date.now() - t0) / 1000).toFixed(0)}s`);
+  }
   if (clip.after) await clip.after({ ...s, r, env });
   await s.ctx.close();
   return meta;
 }
 
-export { DIAGRAM_DONE_STATE, CAPTURE_BUILD, answerButton };
+/** The storage state after draw-diagram (the finished tax diagram); drawn off camera if missing. */
+export async function ensureDiagramDone(env) {
+  if (!fs.existsSync(DIAGRAM_DONE_STATE)) {
+    await recordClip(CLIPS.find((c) => c.name === 'draw-diagram'), env, { dryRun: true });
+  }
+  return JSON.parse(fs.readFileSync(DIAGRAM_DONE_STATE, 'utf8'));
+}
