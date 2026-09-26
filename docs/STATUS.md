@@ -36,8 +36,8 @@ off the bottom.** It is the first thing a fresh session reads — then
   chrome, start screen, diagram editor. Rules: Tailwind 4 `scale-*`/`rotate-*`/`translate-*`
   are their own CSS properties — list them in `transition-[…]`; never transition a
   focus-ring box-shadow or anything pointer-following. Browser-verified per area and merged.
-- **Diagram demo film is being rewritten** (`feature/demo-diagrams-from-scratch`): draw a
-  diagram from a blank canvas, not a template tour — Word drawing is the teacher's pain.
+- **Diagram demo film rewritten (merged):** draws a tax diagram from blank axes (~83 s),
+  templates get one line — Word drawing is the teacher's pain. `npm run demo:diagrams`.
 - **Feature backlog** — `docs/IDEAS.md`, ranked from the 2026-09-24 competitor research in
   `docs/research/2026-09-competitive/`. Pick the next initiative from there.
 
@@ -96,6 +96,9 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
+- **2026-09-26 (late)** — Page rail shows for cover + 1 page (`editor/sheets.ts`); EN-only
+  "Shift a copy" named S₅₀ (empty zh side counted as taken) → S₁; inflationary/deflationary
+  gap drawn just above the axis (`gap-narrows` kept below — no room). 1727+ tests green.
 - **2026-09-26 (evening)** — Motion polish: four parallel branches (foundation, editor
   chrome, page chrome, start + diagrams) merged clean; 1721 tests, lint baseline, build green.
 - **2026-09-26** — Diagram fine-tune per the user's reference figure: axis change arrows
