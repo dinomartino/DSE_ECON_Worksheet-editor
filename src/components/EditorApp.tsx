@@ -416,20 +416,18 @@ export function EditorApp({
             enough for neither a long insert menu nor a long document. */}
         {pages.length > 1 && (
           <div
-            className="zone-dark relative flex shrink-0 overflow-hidden border-r border-line bg-surface transition-[width] duration-200 ease-in-out"
+            // The width snaps; only the contents fade. Animating `width` resized the
+            // page's scroller every frame, and the preview's ResizeObservers on it
+            // re-measured each time — the rail stuttered and the sheet crawled sideways.
+            className="zone-dark relative flex shrink-0 overflow-hidden border-r border-line bg-surface"
             style={{ width: pageRailOpen ? 152 : 28 }}
           >
             <div
-              className="flex shrink-0 transition-opacity duration-150 ease-in-out"
+              className="flex shrink-0 transition-opacity duration-200 ease-out-soft"
               style={{
                 width: 152,
                 minWidth: 152,
                 opacity: pageRailOpen ? 1 : 0,
-                // The content fades out before the rail finishes narrowing (opacity
-                // duration < width duration) so nothing is left snapping into the clip
-                // edge — by the time the width animation reaches 28px the content has
-                // already disappeared rather than being cut off mid-fade.
-                transitionDelay: pageRailOpen ? '50ms' : '0ms',
                 pointerEvents: pageRailOpen ? 'auto' : 'none',
               }}
             >
@@ -442,10 +440,9 @@ export function EditorApp({
               />
             </div>
             <div
-              className="absolute inset-0 flex items-start justify-center pt-3 transition-opacity duration-150 ease-in-out"
+              className="absolute inset-0 flex items-start justify-center pt-3 transition-opacity duration-200 ease-out-soft"
               style={{
                 opacity: pageRailOpen ? 0 : 1,
-                transitionDelay: pageRailOpen ? '0ms' : '100ms',
                 pointerEvents: pageRailOpen ? 'none' : 'auto',
               }}
             >
@@ -454,7 +451,7 @@ export function EditorApp({
                 aria-label="Show page rail"
                 title="Show page rail"
                 onClick={() => setPageRailOpen(true)}
-                className="flex cursor-pointer items-center justify-center rounded-lg p-1 text-ink-muted hover:bg-surface-hover hover:text-ink transition-colors"
+                className="flex cursor-pointer items-center justify-center rounded-lg p-1 text-ink-muted transition-[background-color,color,transform,scale] duration-150 ease-out-soft hover:bg-surface-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97]"
               >
                 <ChevronRightIcon size={14} />
               </button>
@@ -582,7 +579,7 @@ function HintPill() {
       data-print-hide
       className="pointer-events-none fixed bottom-4 left-[76px] right-[400px] z-20 flex justify-center"
     >
-      <div className="pointer-events-auto flex items-center gap-2 rounded-lg border border-line bg-surface-raised py-1.5 pl-3.5 pr-1.5 text-[12px] text-ink-muted shadow-md">
+      <div className="pointer-events-auto flex animate-slide-up-in items-center gap-2 rounded-lg border border-line bg-surface-raised py-1.5 pl-3.5 pr-1.5 text-[12px] text-ink-muted shadow-md">
         <span>
           Click text to select · double-click to edit
           <span className="ml-2 text-ink-subtle">按頁面文字即可編輯</span>

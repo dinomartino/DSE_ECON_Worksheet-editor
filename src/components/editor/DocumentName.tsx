@@ -108,7 +108,7 @@ export function DocumentName() {
       title={`${name} — click to rename`}
       /* `max-w` with a truncate so a long title cannot push the export buttons off the
          bar; the full name stays available as the tooltip. */
-      className="max-w-[22ch] truncate rounded-md px-1.5 py-1 text-[13px] font-semibold leading-tight text-ink transition-colors hover:bg-surface-hover"
+      className="max-w-[22ch] truncate rounded-md px-1.5 py-1 text-[13px] font-semibold leading-tight text-ink transition-colors duration-150 ease-out-soft hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
       {name}
     </button>

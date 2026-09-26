@@ -83,7 +83,7 @@ export function KeyDocumentsField({
           const at = position(doc.id);
           return (
             <li key={doc.id}>
-              <label className="flex cursor-pointer items-center gap-2.5 px-2.5 py-1.5 text-xs text-ink transition-colors hover:bg-surface-hover">
+              <label className="flex cursor-pointer items-center gap-2.5 px-2.5 py-1.5 text-xs text-ink transition-colors duration-150 ease-out-soft hover:bg-surface-hover">
                 <input
                   type="checkbox"
                   checked={at >= 0}

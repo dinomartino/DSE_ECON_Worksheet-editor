@@ -131,12 +131,12 @@ export function BandPresetCard({
     <button
       type="button"
       onClick={onClick}
-      className="group flex w-full cursor-pointer flex-col gap-1.5 rounded-lg border border-line bg-surface p-2 text-left transition-[background-color,border-color,color,box-shadow,opacity] hover:border-accent hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      className="group flex w-full cursor-pointer flex-col gap-1.5 rounded-lg border border-line bg-surface p-2 text-left transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft hover:border-accent hover:shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
       <div className="rounded border border-line/70 bg-[#fdfcfa] py-1 text-[#3f3b38]">
         <BandPreview bands={bands} edge={edge} />
       </div>
-      <span className="text-[11px] font-medium text-ink-muted transition-colors group-hover:text-ink">
+      <span className="text-[11px] font-medium text-ink-muted transition-colors duration-150 ease-out-soft group-hover:text-ink">
         {name}
       </span>
     </button>

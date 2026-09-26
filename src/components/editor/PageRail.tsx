@@ -190,7 +190,7 @@ export function PageRail({
             aria-label="Collapse page rail"
             title="Collapse"
             onClick={onToggle}
-            className="flex cursor-pointer items-center justify-center rounded-md p-0.5 text-ink-muted opacity-0 transition-[background-color,border-color,color,box-shadow,opacity] hover:bg-surface-hover hover:text-ink group-hover/page-rail:opacity-100"
+            className="flex cursor-pointer items-center justify-center rounded-md p-0.5 text-ink-muted opacity-0 transition-[background-color,color,opacity,transform,scale] duration-150 ease-out-soft hover:bg-surface-hover hover:text-ink focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97] group-hover/page-rail:opacity-100"
           >
             <ChevronRightIcon size={12} className="rotate-180" />
           </button>
@@ -214,7 +214,7 @@ export function PageRail({
                   type="button"
                   aria-label="Cover page"
                   onClick={() => goToPage(-1)}
-                  className="group/page relative block cursor-pointer overflow-hidden rounded-[3px] border border-line bg-white transition-[background-color,border-color,color,box-shadow,opacity] duration-150 hover:border-ink-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  className="group/page relative block cursor-pointer overflow-hidden rounded-[3px] border border-line bg-white transition-[border-color,opacity,transform,scale] duration-150 ease-out-soft hover:border-ink-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.98]"
                   style={{ width: CARD_WIDTH_PX, height: cardHeight }}
                 >
                   <PageThumb
@@ -306,15 +306,18 @@ export function PageRail({
                       if (!source || !target) return;
                       movePage(source.flowIds, target.flowIds, position);
                     }}
-                    className={`group/page relative block cursor-pointer overflow-hidden rounded-[3px] border bg-white transition-[background-color,border-color,color,box-shadow,opacity] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                    // The current-page halo is an `outline`, not a box-shadow, so it can
+                    // ease in with the border while the focus ring (a box-shadow) stays
+                    // instant. The outline is always present and only its colour moves.
+                    className={`group/page relative block cursor-pointer overflow-hidden rounded-[3px] border bg-white outline-2 transition-[border-color,outline-color,opacity,transform,scale] duration-150 ease-out-soft focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.98] ${
                       itemOverIndex === index
                         ? // The card the question would land on, called out clearly:
                           // the drop is invisible otherwise, since the rail shows a
                           // sketch rather than the item itself.
-                          'border-accent ring-2 ring-accent'
+                          'border-accent outline-transparent ring-2 ring-accent'
                         : isActive
-                          ? 'border-accent shadow-[0_0_0_2px_var(--color-accent-soft)]'
-                          : 'border-line hover:border-ink-subtle'
+                          ? 'border-accent outline-accent-soft'
+                          : 'border-line outline-transparent hover:border-ink-subtle'
                     } ${isDragging ? 'opacity-40' : ''} ${
                       receivingItem && canReceive(page) ? 'cursor-copy' : ''
                     }`}
@@ -340,7 +343,7 @@ export function PageRail({
                           event.stopPropagation();
                           setConfirming(index);
                         }}
-                        className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-md bg-surface-raised/90 text-ink-subtle opacity-0 shadow-sm transition-[background-color,border-color,color,box-shadow,opacity] duration-150 hover:bg-danger-soft hover:text-danger group-hover/page:opacity-100"
+                        className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-md bg-surface-raised/90 text-ink-subtle opacity-0 shadow-sm transition-[background-color,color,opacity] duration-150 ease-out-soft hover:bg-danger-soft hover:text-danger group-hover/page:opacity-100"
                       >
                         <TrashIcon size={11} />
                       </span>
@@ -350,7 +353,7 @@ export function PageRail({
                       sketch it would read as page content, which is the one thing the
                       sketch is trying to represent. */}
                   <span
-                    className={`mt-1 block text-center text-[10px] leading-none tabular-nums ${
+                    className={`mt-1 block text-center text-[10px] leading-none tabular-nums transition-colors duration-150 ease-out-soft ${
                       isActive ? 'font-semibold text-ink' : 'text-ink-subtle'
                     }`}
                   >
@@ -424,7 +427,7 @@ function ConfirmDelete({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-6"
+      className="fixed inset-0 z-50 flex animate-scrim-in items-center justify-center bg-black/30 p-6"
       onClick={onCancel}
     >
       <div
@@ -432,7 +435,7 @@ function ConfirmDelete({
         aria-modal
         aria-labelledby="delete-page-title"
         onClick={(event) => event.stopPropagation()}
-        className="w-full max-w-[340px] rounded-2xl border border-line bg-surface-raised p-5 shadow-2xl"
+        className="w-full max-w-[340px] animate-dialog-in rounded-2xl border border-line bg-surface-raised p-5 shadow-2xl"
       >
         <h2 id="delete-page-title" className="text-[15px] font-semibold text-ink">
           Delete page {pageNumber}?
@@ -448,7 +451,7 @@ function ConfirmDelete({
           <button
             type="button"
             onClick={onCancel}
-            className="cursor-pointer rounded-lg border border-line px-3 py-1.5 text-[13px] font-medium text-ink transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="cursor-pointer rounded-lg border border-line px-3 py-1.5 text-[13px] font-medium text-ink transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97]"
           >
             Cancel
           </button>
@@ -456,7 +459,7 @@ function ConfirmDelete({
             ref={confirmRef}
             type="button"
             onClick={onConfirm}
-            className="cursor-pointer rounded-lg bg-danger px-3 py-1.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
+            className="cursor-pointer rounded-lg bg-danger px-3 py-1.5 text-[13px] font-semibold text-white transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger active:scale-[0.97]"
           >
             Delete page
           </button>

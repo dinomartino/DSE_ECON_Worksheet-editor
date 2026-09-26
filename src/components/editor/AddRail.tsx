@@ -314,7 +314,7 @@ export function AddRail() {
               aria-expanded={isOpen}
               aria-haspopup="menu"
               onClick={() => setOpen(isOpen ? undefined : group.id)}
-              className={`flex w-[64px] cursor-pointer flex-col items-center gap-1 rounded-lg px-1 py-2.5 transition-[background-color,border-color,color,box-shadow,opacity] duration-150 ease-[var(--ease-out-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+              className={`flex w-[64px] cursor-pointer flex-col items-center gap-1 rounded-lg px-1 py-2.5 transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97] ${
                 isOpen
                   ? 'bg-accent-soft text-accent-ink'
                   : 'text-ink-muted hover:bg-surface-hover hover:text-ink'
@@ -323,7 +323,7 @@ export function AddRail() {
               {group.icon}
               <span className="text-[11px] font-semibold leading-none">{group.label}</span>
               <span
-                className={`text-[9px] leading-none ${isOpen ? 'text-accent-ink/70' : 'text-ink-subtle'}`}
+                className={`text-[9px] leading-none transition-colors duration-150 ease-out-soft ${isOpen ? 'text-accent-ink/70' : 'text-ink-subtle'}`}
               >
                 {group.sub}
               </span>
@@ -336,10 +336,12 @@ export function AddRail() {
       {/* The flyout. Rendered beside the rail rather than over the page, so adding
           something never hides the thing it is being added to. */}
       {active && (
+        // Keyed by group so switching Question ↔ Element pops the new menu in too.
         <div
+          key={active.id}
           role="menu"
           aria-label={`Add ${active.label}`}
-          className="absolute left-[76px] top-2 w-[260px] rounded-2xl border border-line bg-surface-raised p-2 shadow-2xl"
+          className="absolute left-[76px] top-2 w-[260px] origin-top-left animate-pop-in rounded-2xl border border-line bg-surface-raised p-2 shadow-2xl"
         >
           {/* The destination, stated before the click rather than discovered after it.
               Two lines: what is being added, then where it goes — the second is the one
@@ -366,7 +368,7 @@ export function AddRail() {
                 entry.run(afterId);
                 setOpen(undefined);
               }}
-              className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors duration-150 hover:bg-surface-hover"
+              className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors duration-150 ease-out-soft hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
             >
               <span className="shrink-0 text-ink-subtle">{entry.icon}</span>
               <span className="min-w-0 flex-1">

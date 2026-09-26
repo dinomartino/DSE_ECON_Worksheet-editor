@@ -317,7 +317,7 @@ export function Inspector({
         <button
           type="button"
           onClick={onShowContent}
-          className="flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-accent-ink transition-colors hover:bg-accent-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-accent-ink transition-[background-color,color,transform,scale] duration-150 ease-out-soft hover:bg-accent-soft active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
           <ListIcon size={15} />
           Browse content

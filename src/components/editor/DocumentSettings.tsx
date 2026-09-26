@@ -703,11 +703,17 @@ function BandSurface({
           {/* Presets as pictures. A name told a teacher nothing about the layout, so the
               only way to compare them was to apply each in turn — destroying whatever was
               there each time. */}
-          <details className="pt-0.5">
-            <summary className="cursor-pointer list-none text-[11px] font-medium text-ink-muted hover:text-ink">
-              Replace with a different layout ▾
+          <details className="group/presets pt-0.5">
+            <summary className="cursor-pointer list-none text-[11px] font-medium text-ink-muted transition-colors duration-150 ease-out-soft hover:text-ink">
+              Replace with a different layout{' '}
+              <span
+                aria-hidden
+                className="inline-block transition-transform duration-150 ease-out-soft group-open/presets:rotate-180"
+              >
+                ▾
+              </span>
             </summary>
-            <div className="mt-2 grid grid-cols-2 gap-2">
+            <div className="mt-2 grid animate-fade-in grid-cols-2 gap-2">
               {presets.map((preset) => (
                 <BandPresetCard
                   key={preset.id}
@@ -974,7 +980,7 @@ function CoverTab({ onClose }: { onClose: () => void }) {
               role="radio"
               aria-checked={paperStyle === value}
               onClick={() => setPaperStyle(value)}
-              className={`flex cursor-pointer flex-col gap-1 rounded-lg border p-2.5 text-left transition-[background-color,border-color,color,box-shadow,opacity] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+              className={`flex cursor-pointer flex-col gap-1 rounded-lg border p-2.5 text-left transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                 paperStyle === value
                   ? 'border-accent bg-surface'
                   : 'border-line bg-surface hover:border-line-strong'
@@ -1086,7 +1092,7 @@ function CoverOptions() {
               role="radio"
               aria-checked={marker === value}
               onClick={() => updateCover({ instructionMarker: value })}
-              className={`h-8 flex-1 cursor-pointer rounded-lg border text-[13px] transition-[background-color,border-color,color,box-shadow,opacity] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+              className={`h-8 flex-1 cursor-pointer rounded-lg border text-[13px] transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                 marker === value
                   ? 'border-accent bg-surface font-medium text-ink'
                   : 'border-line bg-surface text-ink-muted hover:border-line-strong hover:text-ink'
@@ -1145,7 +1151,7 @@ function TitleSection() {
           role="radio"
           aria-checked={!usingBlock}
           onClick={() => usingBlock && setBands([])}
-          className={`flex cursor-pointer flex-col gap-1.5 rounded-lg border p-2 text-left transition-[background-color,border-color,color,box-shadow,opacity] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+          className={`flex cursor-pointer flex-col gap-1.5 rounded-lg border p-2 text-left transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
             !usingBlock
               ? 'border-accent bg-surface'
               : 'border-line bg-surface hover:border-line-strong'
@@ -1174,7 +1180,7 @@ function TitleSection() {
             !usingBlock &&
             setBands(assessmentTitleBlock(worksheet.title, bi('Assessment 1', '測驗一')))
           }
-          className={`flex cursor-pointer flex-col gap-1.5 rounded-lg border p-2 text-left transition-[background-color,border-color,color,box-shadow,opacity] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+          className={`flex cursor-pointer flex-col gap-1.5 rounded-lg border p-2 text-left transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
             usingBlock
               ? 'border-accent bg-surface'
               : 'border-line bg-surface hover:border-line-strong'
@@ -1300,19 +1306,22 @@ export function DocumentSettings({
           { id: 'cover', label: 'Cover', hint: 'Mock exam front page' },
         ]}
       >
-        {tab === 'document' && <DocumentTab />}
-        {tab === 'cover' && <CoverTab onClose={onClose} />}
-        {tab === 'page' && <PageTab />}
-        {/* Ordered down the page — title, then the top of every page, then the bottom —
-            so the panel reads in the order the printed sheet does. */}
-        {tab === 'furniture' && (
-          <div className="space-y-6">
-            <BandOverflowNotice />
-            <DuplicateFieldNotice />
-            <TitleSection />
-            <EdgeSections />
-          </div>
-        )}
+        {/* Keyed by tab so the incoming panel fades in rather than cutting. */}
+        <div key={tab} className="animate-fade-in">
+          {tab === 'document' && <DocumentTab />}
+          {tab === 'cover' && <CoverTab onClose={onClose} />}
+          {tab === 'page' && <PageTab />}
+          {/* Ordered down the page — title, then the top of every page, then the bottom —
+              so the panel reads in the order the printed sheet does. */}
+          {tab === 'furniture' && (
+            <div className="space-y-6">
+              <BandOverflowNotice />
+              <DuplicateFieldNotice />
+              <TitleSection />
+              <EdgeSections />
+            </div>
+          )}
+        </div>
       </DialogTabs>
     </Dialog>
   );

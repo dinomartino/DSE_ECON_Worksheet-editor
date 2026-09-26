@@ -441,11 +441,11 @@ export function ExportDialog({
         {!leftOut && checks}
 
         {leftOut ? (
-          <p role="status" className="rounded-lg bg-warn-soft px-2.5 py-2 text-[13px] leading-relaxed text-warn-ink">
+          <p role="status" className="animate-fade-in rounded-lg bg-warn-soft px-2.5 py-2 text-[13px] leading-relaxed text-warn-ink">
             The answer key was exported, but {leftOut}.
           </p>
         ) : waiting ? (
-          <div className="space-y-3">
+          <div className="animate-fade-in space-y-3">
             <p role="status" className="text-[13px] leading-relaxed text-ink-subtle">
               {waiting.saved.length === 1 && waiting.saved[0].file.kind === 'paper'
                 ? 'The question paper has downloaded.'
@@ -466,7 +466,10 @@ export function ExportDialog({
 
             {/* Greyed in place rather than hidden, so switching format does not move the
                 dialog; each field's hint says why. */}
-            <div inert={json} className={json ? 'space-y-5 opacity-40' : 'space-y-5'}>
+            <div
+              inert={json}
+              className={`space-y-5 transition-opacity duration-200 ease-out-soft ${json ? 'opacity-40' : ''}`}
+            >
               <Field
                 label="What"
                 hint={
@@ -554,7 +557,7 @@ export function ExportDialog({
               {/* Kept in place when unused, so switching "What" does not move the dialog. */}
               <div
                 inert={keyOnly}
-                className={keyOnly ? 'opacity-40' : undefined}
+                className={`transition-opacity duration-200 ease-out-soft ${keyOnly ? 'opacity-40' : ''}`}
               >
                 <Field
                   label="Paper version"
@@ -607,7 +610,7 @@ export function ExportDialog({
               {(omittable.cover || omittable.answerSpace) && (
                 <div
                   inert={keyOnly}
-                  className={keyOnly ? 'opacity-40' : undefined}
+                  className={`transition-opacity duration-200 ease-out-soft ${keyOnly ? 'opacity-40' : ''}`}
                 >
                   <Field
                     label="Include"

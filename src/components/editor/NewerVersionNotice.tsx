@@ -44,13 +44,17 @@ export function NewerVersionBar({
     <div
       data-print-hide
       role="status"
-      className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line bg-warn-soft px-4 py-2 text-[13px] text-warn-ink"
+      className="flex animate-slide-down-in flex-wrap items-center gap-x-3 gap-y-2 border-b border-line bg-warn-soft px-4 py-2 text-[13px] text-warn-ink"
     >
       <p className="min-w-0 flex-1">
         <span className="font-semibold">{NEWER_VERSION_MESSAGE}</span>{' '}
         <span className="opacity-80">Open read-only — nothing you do here changes the file.</span>
       </p>
-      {status && <span className="text-[12px]">{status}</span>}
+      {status && (
+        <span key={status} className="animate-fade-in text-[12px]">
+          {status}
+        </span>
+      )}
       {desktop ? (
         <Button size="sm" variant="primary" disabled={busy} onClick={onCheck}>
           Check for updates

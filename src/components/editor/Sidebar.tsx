@@ -71,8 +71,10 @@ export function Sidebar({
   return (
     <aside className="flex h-full min-h-0 w-[400px] shrink-0 flex-col overflow-hidden border-l border-line bg-surface">
       {/* Two tabs in the toolbar's own dialect: words with a short accent underline
-          naming the active one — no icons, no count chip, one control language. */}
-      <div role="tablist" aria-label="Sidebar" className="flex shrink-0 border-b border-line px-2">
+          naming the active one — no icons, no count chip, one control language. The
+          underline is one bar that slides between the halves, so the selection travels
+          rather than blinking from tab to tab. */}
+      <div role="tablist" aria-label="Sidebar" className="relative flex shrink-0 border-b border-line px-2">
         {tabs.map((entry) => {
           const active = tab === entry.id;
           const dim = entry.id === 'edit' && !selected && !panelElementId;
@@ -83,7 +85,7 @@ export function Sidebar({
               role="tab"
               aria-selected={active}
               onClick={() => setTab(entry.id)}
-              className={`relative flex flex-1 cursor-pointer items-center justify-center gap-1 px-3 py-2.5 text-[13px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
+              className={`relative flex flex-1 cursor-pointer items-center justify-center gap-1 px-3 py-2.5 text-[13px] font-medium transition-[color,opacity] duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
                 active ? 'text-ink' : 'text-ink-muted hover:text-ink'
               } ${dim && !active ? 'opacity-60' : ''}`}
             >
@@ -91,21 +93,27 @@ export function Sidebar({
               {entry.count !== undefined && (
                 <span className="text-[11px] tabular-nums text-ink-subtle">{entry.count}</span>
               )}
-              <span
-                aria-hidden
-                className={`absolute inset-x-4 bottom-0 h-0.5 rounded-full ${
-                  active ? 'bg-accent' : 'bg-transparent'
-                }`}
-              />
             </button>
           );
         })}
+        {/* One tab's width (the tablist's `px-2` taken off, halved), inset like the
+            old per-tab bar; `translate-x-full` moves it exactly one tab over. */}
+        <span
+          aria-hidden
+          className={`pointer-events-none absolute bottom-0 left-2 w-[calc((100%-1rem)/2)] px-4 transition-transform duration-200 ease-out-soft ${
+            tab === 'edit' ? 'translate-x-full' : 'translate-x-0'
+          }`}
+        >
+          <span className="block h-0.5 rounded-full bg-accent" />
+        </span>
       </div>
 
       {/* One region, full height. Both panels are mounted-on-demand rather than hidden,
           so the outline's scroll position is not silently preserved against a document
-          that changed underneath it while the editor was showing. */}
-      <div className="flex min-h-0 flex-1 flex-col">
+          that changed underneath it while the editor was showing. Keyed by tab so the
+          incoming panel fades in. Opacity only: a lingering transform here would become
+          the containing block for the fixed popovers and canvases the panels open. */}
+      <div key={tab} className="flex min-h-0 flex-1 animate-fade-in flex-col">
         {tab === 'content' ? (
           <Outline numbering={numbering} pages={pages} onOpenSettings={onOpenSettings} />
         ) : (

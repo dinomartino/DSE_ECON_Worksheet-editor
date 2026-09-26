@@ -141,7 +141,7 @@ export function BlockEditor({
   );
 
   const controls = (index: number) => (
-    <span className="flex shrink-0 items-center opacity-0 transition-opacity focus-within:opacity-100 group-hover/block:opacity-100">
+    <span className="flex shrink-0 items-center opacity-0 transition-opacity duration-150 ease-out-soft focus-within:opacity-100 group-hover/block:opacity-100">
       {controlButtons(index)}
     </span>
   );
@@ -335,7 +335,7 @@ function TableInsertButton({
          * panel below, and `right-0` keeps the wider sizes from running off the 380px
          * column into the page.
          */
-        <div className="absolute right-0 top-full z-40 mt-1 rounded-xl border border-line bg-surface-raised p-1.5 shadow-2xl">
+        <div className="absolute right-0 top-full z-40 mt-1 origin-top-right animate-pop-in rounded-xl border border-line bg-surface-raised p-1.5 shadow-2xl">
           {/*
             The named shapes come **first**, above the size grid.
 
@@ -350,7 +350,7 @@ function TableInsertButton({
               <button
                 key={template.id}
                 type="button"
-                className="block w-full rounded-md px-2 py-1 text-left hover:bg-surface-sunken"
+                className="block w-full cursor-pointer rounded-md px-2 py-1 text-left transition-colors duration-150 ease-out-soft hover:bg-surface-sunken focus-visible:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
                 onClick={() => {
                   onPickTemplate(template.id);
                   setOpen(false);
