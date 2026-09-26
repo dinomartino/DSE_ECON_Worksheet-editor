@@ -1,22 +1,21 @@
 // Subtitles for both demo films: one style, one timing rule, burned in after the camera
 // (§ camera.mjs:renderFrames) and written beside the film as .vtt and .srt.
 //
-// Style (BBC Subtitle Guidelines, Netflix Timed Text Style Guide, DCMP Captioning Key):
-// white, medium-weight system sans, on a translucent black box drawn per line with
-// half an em either side; two lines at most; bottom-centred inside the BBC's active area
-// (5% from the bottom, 76% of the width). 32px on a 900px frame is a 40px line, 4.4% of
-// the height: the BBC's presentation size (0.6-0.8 of a 7-8% authoring line).
-// No bold: subtitles keep one weight. `**x**` in a string is dropped, not rendered.
+// Style (Apple's product films and apple.com): SF Pro Display (the system font, whose
+// optical size switches to Display at this size) in medium weight, apple.com's tracking
+// for 28px, #f5f5f7 on one dark glass capsule, bottom-centred, never a box per line. The
+// glass is apple.com's material: the frame behind is blurred and saturated
+// (`saturate(180%) blur(20px)`) under an 80% #161617 tint. Two lines at most.
+// `**x**` in a string is dropped, not rendered.
 //
 // Timing: a subtitle stays up for its reading time at READING.cps (below Netflix's 17
 // for children, because viewers are also following the pointer), never under
 // READING.minSeconds; `d.say` holds the film until the previous one has had that long.
 // Lines are at most 42 characters (Netflix English); a longer subtitle must carry its
-// own '\n' at a natural break (BBC § 3.4), or `d.say` throws. Fades are 4 frames; one
-// subtitle replacing another leaves a 2-frame blank between them.
+// own '\n' at a natural break (BBC § 3.4), or `d.say` throws. Motion: § MOTION.
 
 export const READING = { cps: 15, minSeconds: 1.5, maxSeconds: 7, maxLines: 2, maxLineChars: 42 };
-const FADE = 4 / 30;
+const FADE = 4 / 30; // `d.say`'s margin over the reading time
 
 /** The text as shown: the `**` markers dropped. */
 export const plain = (text) => text.replace(/\*\*/g, '');
@@ -38,38 +37,54 @@ export function checkSubtitle(text) {
   }
 }
 
+/** The capsule and its text, in output px (1440×900). */
+export const LOOK = {
+  weight: 500, size: 28, line: 36, tracking: '0.007em', ink: '#f5f5f7',
+  padX: 28, padY: 11, bottom: 36, maxWidth: 0.76, radius: 26, // 1 line: a full capsule
+  blur: 20, saturate: 1.8, tint: 'rgb(22, 22, 23)', tintAlpha: 0.8,
+  edge: 'rgba(255, 255, 255, .14)', // a 1px inner hairline
+  shadows: [{ y: 8, blur: 15, alpha: 0.16 }, { y: 1, blur: 2, alpha: 0.08 }], // CSS 0 8px 30px, 0 1px 4px
+};
+
 /**
- * The page the subtitles are drawn in, one at a time, at output size (1440×900, 1×):
- * `__subtitle.layout(text)` sets the text and returns the box to screenshot.
+ * The page the subtitle text is set in, one at a time, at output size and 1×:
+ * `__subtitle.layout(text)` returns the capsule the text sits in, and the clip holding
+ * the text with room for its blur and rise. The capsule itself is drawn by the post pass.
  */
-export const SUBTITLE_PAGE = `<!doctype html>
+export function subtitlePage(look = LOOK) {
+  return `<!doctype html>
 <html><head><style>
   html, body { margin: 0; background: transparent; }
-  #box { position: fixed; left: 12%; right: 12%; bottom: 5%; text-align: center; text-wrap: balance; white-space: pre-line; }
-  #line {
-    font: 500 32px/40px -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    color: #fff; letter-spacing: .005em; background: rgba(8, 8, 8, .78); padding: 0 .5em; border-radius: 3px;
-    -webkit-box-decoration-break: clone; box-decoration-break: clone; -webkit-font-smoothing: antialiased;
+  #pill {
+    position: fixed; left: 50%; bottom: ${look.bottom}px; transform: translateX(-50%);
+    box-sizing: border-box; width: max-content; max-width: ${look.maxWidth * 100}vw;
+    padding: ${look.padY}px ${look.padX}px;
   }
-</style></head><body><div id="box"><span id="line"></span></div>
+  #text {
+    display: block; text-align: center; white-space: pre-line; text-wrap: balance;
+    font: ${look.weight} ${look.size}px/${look.line}px system-ui, BlinkMacSystemFont, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    letter-spacing: ${look.tracking}; color: ${look.ink};
+    -webkit-font-smoothing: antialiased; font-optical-sizing: auto;
+  }
+</style></head><body><div id="pill"><span id="text"></span></div>
 <script>
-  const line = document.getElementById('line');
+  const pill = document.getElementById('pill');
+  const text = document.getElementById('text');
   window.__subtitle = {
-    layout(text) {
-      line.textContent = text;
-      // Pad each line's box to exactly the 40px line, so stacked lines meet without a gap or overlap.
-      line.style.paddingTop = line.style.paddingBottom = '0px';
-      const pad = Math.max(0, (40 - line.getClientRects()[0].height) / 2);
-      line.style.paddingTop = line.style.paddingBottom = pad + 'px';
-      const rects = [...line.getClientRects()];
-      const x = Math.floor(Math.min(...rects.map((r) => r.left))) - 1;
-      const y = Math.floor(Math.min(...rects.map((r) => r.top))) - 1;
-      const right = Math.ceil(Math.max(...rects.map((r) => r.right))) + 1;
-      const bottom = Math.ceil(Math.max(...rects.map((r) => r.bottom))) + 1;
-      return { x, y, width: right - x, height: bottom - y };
+    layout(s) {
+      text.textContent = s;
+      const r = pill.getBoundingClientRect();
+      const m = 20; // the text's blur
+      const x = Math.floor(r.left) - m;
+      const y = Math.floor(r.top) - m;
+      return {
+        clip: { x, y, width: Math.ceil(r.right) + m - x, height: Math.min(innerHeight, Math.ceil(r.bottom) + m) - y },
+        pill: { x: r.left, y: r.top, w: r.width, h: r.height, r: text.offsetHeight <= ${look.line} ? r.height / 2 : ${look.radius} },
+      };
     },
   };
 </script></body></html>`;
+}
 
 /**
  * Give driver `d` a `say(text)`: holds until the subtitle up now has had its reading
@@ -91,20 +106,68 @@ export function withSubtitles(d) {
   return d;
 }
 
-/** The subtitle at output time `t` and its opacity (quarter steps), or null. */
-export function captionAlpha(cues, t, end, fps) {
+/** CSS `cubic-bezier(x1, y1, x2, y2)` as a function of progress 0-1. */
+export function cubicBezier(x1, y1, x2, y2) {
+  const at = (a, b, s) => 3 * a * s * (1 - s) ** 2 + 3 * b * s * s * (1 - s) + s ** 3;
+  return (p) => {
+    if (p <= 0) return 0;
+    if (p >= 1) return 1;
+    let lo = 0;
+    let hi = 1;
+    for (let i = 0; i < 30; i++) {
+      const mid = (lo + hi) / 2;
+      if (at(x1, x2, mid) < p) lo = mid;
+      else hi = mid;
+    }
+    return at(y1, y2, (lo + hi) / 2);
+  };
+}
+
+// Motion (seconds, px). In: the capsule fades up `capsuleRise`; a frame later the text
+// rises `textRise` and sharpens from a `textBlur` blur. Out: the text fades in place,
+// quicker than it came. One subtitle replacing another keeps the capsule, which reshapes
+// to the new text over `morph` while the text comes in; after the last, it fades with it.
+export const MOTION = {
+  capsuleIn: 0.35, textIn: 0.5, textDelay: 1 / 30, out: 0.25, morph: 0.4, morphDelay: 0.1,
+  capsuleRise: 8, textRise: 12, textBlur: 6,
+  fade: cubicBezier(0.25, 0.1, 0.25, 1), // CSS `ease`
+  settle: cubicBezier(0.16, 1, 0.3, 1), // a strong ease-out: quick, then a long soft landing
+  leave: cubicBezier(0.42, 0, 1, 1), // CSS `ease-in`
+};
+
+/**
+ * The subtitle at output time `t`, or null: `capsule` (reshaping `from` one subtitle's
+ * shape `to` another's by `morph` 0-1, its opacity and rise) and `words` (the text, its
+ * opacity, rise and blur).
+ */
+export function captionState(cues, t, end, fps) {
   let i = -1;
   while (i + 1 < cues.length && cues[i + 1].at <= t) i++;
   const cue = cues[i];
   if (!cue?.text) return null;
   const next = cues[i + 1];
   const until = next ? next.at : end;
-  let a = (t - cue.at + 1 / fps) / FADE;
-  if (next?.text) {
-    if (t >= until - 2 / fps) return null;
-  } else a = Math.min(a, (until - t) / FADE);
-  a = Math.min(1, Math.ceil(a * 4) / 4);
-  return a > 0 ? { text: cue.text, alpha: a } : null;
+  const clamp = (x) => Math.min(1, Math.max(0, x));
+  const r = (x, n = 100) => Math.round(x * n) / n;
+  const since = t - cue.at + 1 / fps;
+  const joined = !!cues[i - 1]?.text;
+  const out = 1 - MOTION.leave(clamp(1 - (until - t) / MOTION.out));
+  const p = clamp(since / MOTION.capsuleIn);
+  const q = clamp((since - (joined ? MOTION.morphDelay : MOTION.textDelay)) / MOTION.textIn);
+  const capsule = joined
+    ? { from: cues[i - 1].text, to: cue.text, morph: r(MOTION.settle(clamp(since / MOTION.morph)), 1000), alpha: 1, rise: 0 }
+    : { from: cue.text, to: cue.text, morph: 1, alpha: r(MOTION.fade(p)), rise: Math.round(MOTION.capsuleRise * (1 - MOTION.settle(p))) };
+  if (!next?.text) capsule.alpha = r(capsule.alpha * out);
+  if (capsule.alpha <= 0) return null;
+  return {
+    capsule,
+    words: {
+      text: cue.text,
+      alpha: r(MOTION.fade(q) * out),
+      rise: Math.round(MOTION.textRise * (1 - MOTION.settle(q))),
+      blur: r(MOTION.textBlur * (1 - MOTION.settle(q)), 10),
+    },
+  };
 }
 
 /** Warnings for cues outside the reading rules, given their output start times. */

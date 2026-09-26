@@ -11,7 +11,7 @@
 // full frame (`d.focus(null)`) before the pointer leaves the framed area.
 import fs from 'node:fs';
 import path from 'node:path';
-import { SUBTITLE_PAGE, captionAlpha } from './subtitles.mjs';
+import { LOOK, captionState, subtitlePage } from './subtitles.mjs';
 import { VIEWPORT } from './flow.mjs';
 
 // `room`: CSS px kept free below a target, so the subtitle band never covers what is framed.
@@ -111,31 +111,106 @@ export function cameraAt(shots, t) {
   return blend(from, to, progress(t));
 }
 
-/** Each subtitle's text as an RGBA bitmap at output size, and where it sits. */
+/**
+ * Each subtitle set once at output size: its capsule's shape (`pill`, output px) and
+ * the text's coverage (`words`, one channel, drawn in LOOK.ink) with where it sits.
+ */
 async function renderCaptions(browser, texts) {
   const ctx = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: 1 });
   const page = await ctx.newPage();
-  await page.setContent(SUBTITLE_PAGE);
+  await page.setContent(subtitlePage());
   const { default: sharp } = await import('sharp');
   const out = new Map();
   for (const text of texts) {
-    const clip = await page.evaluate((t) => window.__subtitle.layout(t), text);
+    const { clip, pill } = await page.evaluate((t) => window.__subtitle.layout(t), text);
     const png = await page.screenshot({ clip, omitBackground: true });
-    const { data, info } = await sharp(png).resize(clip.width, clip.height).ensureAlpha().raw()
-      .toBuffer({ resolveWithObject: true });
-    out.set(text, { data, width: info.width, height: info.height, left: Math.round(clip.x), top: Math.round(clip.y) });
+    const cover = await sharp(png).resize(clip.width, clip.height).ensureAlpha().extractChannel(3).raw().toBuffer();
+    out.set(text, { pill, words: { cover, left: clip.x, top: clip.y, width: clip.width, height: clip.height } });
   }
   await ctx.close();
   return out;
 }
 
-/** The same bitmap with its alpha scaled by `k`. */
-function faded(cap, k) {
-  if (k >= 1) return cap.data;
-  const data = Buffer.from(cap.data);
-  for (let i = 3; i < data.length; i += 4) data[i] = Math.round(data[i] * k);
-  return data;
+/** A composite layer of raw pixels at (left, top), its rows below the frame cut off. */
+function layer(data, width, height, channels, left, top) {
+  const rows = Math.min(height, H - top);
+  return { input: data.subarray(0, rows * width * channels), raw: { width, height: rows, channels }, left, top };
 }
+
+const lerp = (a, b, p) => a + (b - a) * p;
+
+/**
+ * The subtitle's layers for sharp's composite over output frame `base` (raw RGB, W×H):
+ * the frame behind the capsule blurred and saturated, the capsule's tint, edge and
+ * shadow, then the words.
+ */
+async function captionLayers(sharp, base, captions, { capsule, words }) {
+  const layers = [];
+  const a = captions.get(capsule.from).pill;
+  const b = captions.get(capsule.to).pill;
+  const k = capsule.morph;
+  // Centred and sitting on the same baseline, so only the width, height and corners move.
+  const w = lerp(a.w, b.w, k);
+  const h = lerp(a.h, b.h, k);
+  const pill = { x: (W - w) / 2, y: b.y + b.h - h + capsule.rise, w, h, r: Math.min(lerp(a.r, b.r, k), h / 2) };
+
+  // The glass: the frame behind the capsule, blurred and saturated, cut to its shape.
+  const gx = Math.floor(pill.x);
+  const gy = Math.floor(pill.y);
+  const gw = Math.ceil(pill.x + pill.w) - gx;
+  const gh = Math.ceil(pill.y + pill.h) - gy;
+  const pad = Math.ceil(LOOK.blur * 3);
+  const x0 = Math.max(0, gx - pad);
+  const y0 = Math.max(0, gy - pad);
+  const around = { left: x0, top: y0, width: Math.min(W, gx + gw + pad) - x0, height: Math.min(H, gy + gh + pad) - y0 };
+  const blurred = await sharp(base, { raw: { width: W, height: H, channels: 3 } }).extract(around)
+    .blur(LOOK.blur).modulate({ saturation: LOOK.saturate }).raw().toBuffer();
+  const rect = (dx, dy, extra = '') =>
+    `<rect x="${pill.x - dx}" y="${pill.y - dy}" width="${pill.w}" height="${pill.h}" rx="${pill.r}" ${extra}/>`;
+  const svg = (width, height, body) => Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">${body}</svg>`);
+  const mask = await sharp(svg(gw, gh, rect(gx, gy, `fill="#fff" fill-opacity="${capsule.alpha}"`))).extractChannel(3).raw().toBuffer();
+  const glass = await sharp(blurred, { raw: { width: around.width, height: around.height, channels: 3 } })
+    .extract({ left: gx - x0, top: gy - y0, width: gw, height: gh })
+    .joinChannel(mask, { raw: { width: gw, height: gh, channels: 1 } }).raw().toBuffer();
+
+  // Tint, hairline and shadow, drawn around the capsule with room for the shadow.
+  const m = 48;
+  const cx = gx - m;
+  const cy = gy - m;
+  const cw = gw + 2 * m;
+  const ch = gh + 2 * m;
+  const e = 0.5;
+  const shadows = LOOK.shadows.map((s, i) =>
+    `<filter id="s${i}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="${s.blur}"/></filter>` +
+    rect(cx, cy - s.y, `fill="#000" fill-opacity="${s.alpha}" filter="url(#s${i})"`)).join('');
+  const shadow = await sharp(svg(cw, ch, `<g opacity="${capsule.alpha}">${shadows}</g>`)).ensureAlpha().raw().toBuffer();
+  const chrome = await sharp(svg(cw, ch,
+    `<g opacity="${capsule.alpha}">${rect(cx, cy, `fill="${LOOK.tint}" fill-opacity="${LOOK.tintAlpha}"`)}` +
+    `<rect x="${pill.x - cx + e}" y="${pill.y - cy + e}" width="${pill.w - 2 * e}" height="${pill.h - 2 * e}" rx="${pill.r - e}" ` +
+    `fill="none" stroke="${LOOK.edge}" stroke-width="1"/></g>`)).ensureAlpha().raw().toBuffer();
+  // Shadow, glass, then tint: under the glass the shadow is hidden, as CSS draws it only outside the box.
+  layers.push(layer(shadow, cw, ch, 4, cx, cy), layer(glass, gw, gh, 4, gx, gy), layer(chrome, cw, ch, 4, cx, cy));
+
+  if (words.alpha > 0) {
+    const t = captions.get(words.text).words;
+    let cover = t.cover;
+    if (words.blur >= 0.3) {
+      cover = await sharp(cover, { raw: { width: t.width, height: t.height, channels: 1 } }).blur(words.blur)
+        .extractChannel(0).raw().toBuffer(); // blur hands back sRGB
+    }
+    const rgba = Buffer.alloc(t.width * t.height * 4);
+    for (let i = 0, o = 0; i < cover.length; i++, o += 4) {
+      rgba[o] = INK_RGB[0];
+      rgba[o + 1] = INK_RGB[1];
+      rgba[o + 2] = INK_RGB[2];
+      rgba[o + 3] = Math.round(cover[i] * words.alpha);
+    }
+    layers.push(layer(rgba, t.width, t.height, 4, t.left, t.top + words.rise + capsule.rise));
+  }
+  return layers;
+}
+
+const INK_RGB = [1, 3, 5].map((i) => parseInt(LOOK.ink.slice(i, i + 2), 16));
 
 /**
  * Write the output frame sequence: for frame k, the source frame showing at k/fps,
@@ -156,8 +231,8 @@ export async function renderFrames({ browser, starts, count, fps, shots, cues, e
     const t = k / fps;
     while (j + 1 < starts.length && starts[j + 1].at <= t) j++;
     const cam = cameraAt(shots, t);
-    const sub = captionAlpha(cues, t, end, fps);
-    const key = `${starts[j].file}|${[cam.x, cam.y, cam.w].map((v) => v.toFixed(2))}|${sub ? `${sub.text}@${sub.alpha}` : ''}`;
+    const sub = captionState(cues, t, end, fps);
+    const key = `${starts[j].file}|${[cam.x, cam.y, cam.w].map((v) => v.toFixed(2))}|${sub ? JSON.stringify(sub) : ''}`;
     jobs.push({ k, src: starts[j].file, cam, sub, key });
   }
 
@@ -179,8 +254,9 @@ export async function renderFrames({ browser, starts, count, fps, shots, cues, e
     };
     let img = sharp(src).extract(box).resize(W, H, { kernel: 'lanczos3' });
     if (sub) {
-      const cap = captions.get(sub.text);
-      img = img.composite([{ input: faded(cap, sub.alpha), raw: { width: cap.width, height: cap.height, channels: 4 }, left: cap.left, top: cap.top }]);
+      const base = await img.removeAlpha().raw().toBuffer();
+      img = sharp(base, { raw: { width: W, height: H, channels: 3 } })
+        .composite(await captionLayers(sharp, base, captions, sub));
     }
     await img.jpeg({ quality: 92, chromaSubsampling: '4:4:4' }).toFile(name(k));
   };
