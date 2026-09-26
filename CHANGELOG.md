@@ -10,6 +10,8 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
 
 ## Unreleased
 
+## 0.4.0 — 2026-09-27
+
 ### Added
 - **Paper summary with a target**: the toolbar shows what the paper holds — "38 MCQ ·
   2 structured · 52 marks · ~65 min · 5 pages". Set a target in Setup (questions per
