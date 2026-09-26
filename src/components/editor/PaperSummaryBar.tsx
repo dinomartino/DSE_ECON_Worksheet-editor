@@ -81,7 +81,7 @@ export function PaperSummaryBar({
       aria-label={`Paper summary: ${parts.map((part) => part.text).join(', ')}`}
       title={title}
       onClick={onOpen}
-      className={`${className} transition-colors hover:bg-line hover:text-ink`}
+      className={`${className} cursor-pointer transition-[background-color,color,transform,scale] duration-150 ease-out-soft hover:bg-line hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97]`}
     >
       {body}
     </button>

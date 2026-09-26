@@ -30,7 +30,7 @@ export function UpdateBar({
     <div
       data-print-hide
       role="status"
-      className="flex items-center gap-3 border-b border-line bg-accent-soft px-4 py-1.5 text-[13px] text-accent-ink"
+      className="flex animate-slide-down-in items-center gap-3 border-b border-line bg-accent-soft px-4 py-1.5 text-[13px] text-accent-ink"
     >
       <span className="min-w-0 flex-1 truncate">
         {state === 'installing'
@@ -120,7 +120,7 @@ function VersionAction({
   onInstall: () => void;
 }) {
   const link =
-    'cursor-pointer font-medium text-accent-ink underline decoration-line-strong underline-offset-4 transition-colors hover:decoration-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent';
+    'cursor-pointer font-medium text-accent-ink underline decoration-line-strong underline-offset-4 transition-colors duration-150 ease-out-soft hover:decoration-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent';
   switch (status) {
     case 'checking':
       return <span role="status">Checking for updates…</span>;

@@ -20,7 +20,7 @@ import type { EditorPanelProps } from '@/registry/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { Button, CheckField, GroupHeader, NumberField, Pill } from '@/components/ui';
 import { Menu, type MenuItem } from '@/components/ui/Menu';
-import { ChevronDownIcon, ChevronRightIcon } from '@/components/ui/icons';
+import { ChevronRightIcon } from '@/components/ui/icons';
 import { BiTextField } from './BiTextField';
 import { BlockEditor } from './BlockEditor';
 import { excerptOfBlocks, MiniNumber, scrollPageTo } from './panelRows';
@@ -129,10 +129,13 @@ function SchemeRow({
           onToggle();
           if (pageTargetKey) scrollPageTo(pageTargetKey);
         }}
-        className="flex h-7 min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-md text-left transition-colors hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="flex h-7 min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-md text-left transition-colors duration-150 ease-out-soft hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
         <span className="shrink-0 text-ink-subtle" aria-hidden>
-          {open ? <ChevronDownIcon size={11} /> : <ChevronRightIcon size={11} />}
+          <ChevronRightIcon
+            size={11}
+            className={`transition-transform duration-150 ease-out-soft ${open ? 'rotate-90' : ''}`}
+          />
         </span>
         <span className="w-8 shrink-0 text-[11px] font-semibold tabular-nums text-ink-muted">
           {label}
@@ -438,7 +441,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                 />
 
                 {partOpen && (
-                  <div className="space-y-2 border-t border-line p-2">
+                  <div className="animate-fade-in space-y-2 border-t border-line p-2">
                     {/*
                      * The mid-question interlude (§`QuestionPart.blocksBefore`):
                      * unnumbered text — often a revised table — that resets the scenario
@@ -565,7 +568,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                                 menuLabel={`Actions for sub-part ${subPartLabel(subIndex)}`}
                               />
                               {subOpen && (
-                                <div className="space-y-2 py-1 pl-6">
+                                <div className="animate-fade-in space-y-2 py-1 pl-6">
                                   <BlockEditor
                                     blocks={subPart.blocks}
                                     onChange={(blocks) =>

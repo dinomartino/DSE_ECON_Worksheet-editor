@@ -124,7 +124,7 @@ export function ExcerptRow({
   return (
     <div
       data-edit-target={targetKey}
-      className="group/row flex min-h-7 items-center gap-1.5 rounded-md border border-transparent px-1 py-0.5 transition-colors hover:border-line hover:bg-surface-sunken"
+      className="group/row flex min-h-7 items-center gap-1.5 rounded-md border border-transparent px-1 py-0.5 transition-colors duration-150 ease-out-soft hover:border-line hover:bg-surface-sunken"
     >
       {targetKey ? (
         <button
@@ -140,7 +140,7 @@ export function ExcerptRow({
       )}
       {badge}
       {actions && (
-        <span className="flex shrink-0 items-center opacity-0 transition-opacity focus-within:opacity-100 group-hover/row:opacity-100">
+        <span className="flex shrink-0 items-center opacity-0 transition-opacity duration-150 ease-out-soft focus-within:opacity-100 group-hover/row:opacity-100">
           {actions}
         </span>
       )}

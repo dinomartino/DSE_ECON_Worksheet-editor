@@ -17,7 +17,7 @@ import type { EditorPanelProps } from '@/registry/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { documentShape } from '@/model/documentShape';
 import { Button, GroupHeader, IconButton, NumberField, Segmented, SelectField } from '@/components/ui';
-import { ChevronDownIcon, ChevronRightIcon } from '@/components/ui/icons';
+import { ChevronRightIcon } from '@/components/ui/icons';
 import { BiTextField } from './BiTextField';
 import { BlockEditor } from './BlockEditor';
 import { biExcerpt, ExcerptRow } from './panelRows';
@@ -152,7 +152,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
                     isAnswer ? 'This is the correct answer' : 'Mark as the correct answer'
                   }
                   onClick={() => onChange({ answerIndex: index })}
-                  className={`h-7 w-7 cursor-pointer rounded-md text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                  className={`h-7 w-7 cursor-pointer rounded-md text-[12px] font-semibold transition-[background-color,color,transform,scale] duration-150 ease-out-soft active:scale-[0.94] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                     isAnswer
                       ? 'bg-ok-soft text-ok ring-1 ring-inset ring-ok-line'
                       : 'text-ink-subtle hover:bg-surface-hover hover:text-ink'
@@ -384,10 +384,10 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
         open={marksOpen}
         onToggle={(event) => setMarksOpen((event.target as HTMLDetailsElement).open)}
       >
-        <summary className="cursor-pointer select-none text-[11px] font-medium text-ink-muted transition-colors hover:text-ink">
+        <summary className="cursor-pointer select-none text-[11px] font-medium text-ink-muted transition-colors duration-150 ease-out-soft hover:text-ink">
           Answer &amp; marking
         </summary>
-        <div className="space-y-3 pt-2">
+        <div className="animate-fade-in space-y-3 pt-2">
           <div
             data-edit-target={editTargetKey({
               kind: 'mcqExplanation',
@@ -420,10 +420,13 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
                     type="button"
                     aria-expanded={open}
                     onClick={() => toggleRationale(option.id)}
-                    className="flex h-7 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-md px-1 text-left transition-colors hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    className="flex h-7 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-md px-1 text-left transition-colors duration-150 ease-out-soft hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   >
                     <span className="shrink-0 text-ink-subtle" aria-hidden>
-                      {open ? <ChevronDownIcon size={11} /> : <ChevronRightIcon size={11} />}
+                      <ChevronRightIcon
+                        size={11}
+                        className={`transition-transform duration-150 ease-out-soft ${open ? 'rotate-90' : ''}`}
+                      />
                     </span>
                     <span
                       className={`w-5 shrink-0 text-center text-[11px] font-semibold ${
@@ -442,7 +445,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
                     </span>
                   </button>
                   {open && (
-                    <div className="pb-1.5 pl-7 pt-0.5">
+                    <div className="animate-fade-in pb-1.5 pl-7 pt-0.5">
                       <BiTextField
                         ariaLabel={`Rationale for option ${optionLabel(index)}`}
                         value={option.rationale ?? emptyBiText()}

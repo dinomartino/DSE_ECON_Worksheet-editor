@@ -64,7 +64,7 @@ export function AnswerDiagramRow({
           title={drawable ? 'Draw on this diagram' : 'A pie chart is edited as data'}
           disabled={!drawable}
           onClick={() => setDrawing(true)}
-          className="w-20 shrink-0 overflow-hidden rounded border border-line bg-surface enabled:cursor-pointer enabled:hover:border-accent [&_svg]:h-auto [&_svg]:w-full"
+          className="w-20 shrink-0 overflow-hidden rounded border border-line bg-surface transition-[border-color,transform,scale] duration-150 ease-out-soft enabled:cursor-pointer enabled:hover:border-accent enabled:active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent [&_svg]:h-auto [&_svg]:w-full"
           style={{ lineHeight: 0 }}
         >
           <span dangerouslySetInnerHTML={{ __html: thumbnail }} />

@@ -305,9 +305,13 @@ export function Toolbar({
 
         {/* Status sits with the document, not with the actions. */}
         <span className="ml-auto flex items-center gap-2 text-[11px] text-ink-muted">
-          {notice && <span className="font-medium text-ok">{notice.message}</span>}
+          {notice && (
+            <span key={notice.message} className="animate-fade-in font-medium text-ok">
+              {notice.message}
+            </span>
+          )}
           {notice?.action && (
-            <Button variant="ghostAccent" size="sm" onClick={notice.action.run}>
+            <Button variant="ghostAccent" size="sm" className="animate-fade-in" onClick={notice.action.run}>
               {notice.action.label}
             </Button>
           )}
@@ -377,7 +381,7 @@ export function Toolbar({
       {error && (
         <p
           role="alert"
-          className="mt-2 rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink"
+          className="mt-2 animate-slide-down-in rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink"
         >
           {error}
         </p>
@@ -431,7 +435,7 @@ export function Toolbar({
               <button
                 type="button"
                 onClick={() => void handleClearAll()}
-                className="inline-flex h-[34px] items-center justify-center rounded-lg border border-transparent bg-danger px-3 text-[13px] font-medium text-white shadow-sm transition-colors hover:brightness-95 active:scale-[0.97]"
+                className="inline-flex h-[34px] cursor-pointer items-center justify-center rounded-lg border border-transparent bg-danger px-3 text-[13px] font-medium text-white shadow-sm transition-[background-color,border-color,color,opacity,transform,scale,filter] duration-150 ease-out-soft hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-2 focus-visible:ring-offset-surface active:scale-[0.97]"
               >
                 Clear everything
               </button>

@@ -73,6 +73,18 @@ function typeBadge(question: Question): string {
 /* `LAYOUT_NAME` comes from `model/flow` — the rail, this outline and the add rail's
    destination label all name the same nine kinds, and separate copies would drift. */
 
+/** The row's selection bar. Always mounted so it grows in rather than popping. */
+function SelectionBar({ on }: { on: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={`absolute inset-y-1 left-0 w-0.5 rounded-full bg-accent transition-[opacity,transform,scale] duration-150 ease-out-soft ${
+        on ? 'scale-y-100 opacity-100' : 'scale-y-50 opacity-0'
+      }`}
+    />
+  );
+}
+
 /**
  * A non-question row in the outline.
  *
@@ -171,7 +183,7 @@ function LayoutRow({ element }: { element: LayoutElement }) {
         setDragId(undefined);
         setIsOver(false);
       }}
-      className={`group relative flex items-center gap-1.5 rounded-lg py-1.5 pl-1 pr-1.5 transition-colors duration-150 ${
+      className={`group relative flex items-center gap-1.5 rounded-lg py-1.5 pl-1 pr-1.5 transition-colors duration-150 ease-out-soft ${
         isSelected ? 'bg-surface-hover' : 'hover:bg-surface-hover'
       } ${
         isOver
@@ -185,15 +197,10 @@ function LayoutRow({ element }: { element: LayoutElement }) {
     >
       {/* The same accent bar the question rows use, so both kinds answer a page
           selection identically. */}
-      {isSelected && (
-        <span
-          aria-hidden
-          className="absolute inset-y-1 left-0 w-0.5 rounded-full bg-accent"
-        />
-      )}
+      <SelectionBar on={isSelected} />
       <span
         aria-hidden
-        className="cursor-grab text-ink-subtle/50 transition-colors group-hover:text-ink-subtle active:cursor-grabbing"
+        className="cursor-grab text-ink-subtle/50 transition-colors duration-150 ease-out-soft group-hover:text-ink-subtle active:cursor-grabbing"
         title="Drag to reorder"
       >
         <GripIcon size={14} />
@@ -219,7 +226,7 @@ function LayoutRow({ element }: { element: LayoutElement }) {
         </span>
       )}
 
-      <span className="flex shrink-0 items-center opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+      <span className="flex shrink-0 items-center opacity-0 transition-opacity duration-150 ease-out-soft focus-within:opacity-100 group-hover:opacity-100">
         <IconButton label="Move up" onClick={() => nudgeFlowItem(element.id, -1)}>
           <ChevronUpIcon size={14} />
         </IconButton>
@@ -345,7 +352,7 @@ function QuestionRow({
         setDragId(undefined);
         setIsOver(false);
       }}
-      className={`group relative flex items-center gap-1.5 rounded-md py-2 pl-1.5 pr-1.5 transition-colors duration-150 ${
+      className={`group relative flex items-center gap-1.5 rounded-md py-2 pl-1.5 pr-1.5 transition-colors duration-150 ease-out-soft ${
         isSelected ? 'bg-surface-hover' : 'hover:bg-surface-hover'
       } ${isOver ? 'before:absolute before:inset-x-1 before:-top-px before:h-0.5 before:rounded before:bg-accent' : ''} ${
         dragId === question.id ? 'opacity-40' : ''
@@ -353,15 +360,10 @@ function QuestionRow({
     >
       {/* Selection is the accent bar, the same gesture as everywhere else in the
           chrome — not a tinted, ringed, chip-filled row. */}
-      {isSelected && (
-        <span
-          aria-hidden
-          className="absolute inset-y-1 left-0 w-0.5 rounded-full bg-accent"
-        />
-      )}
+      <SelectionBar on={isSelected} />
       <span
         aria-hidden
-        className="cursor-grab text-ink-subtle/50 transition-colors group-hover:text-ink-subtle active:cursor-grabbing"
+        className="cursor-grab text-ink-subtle/50 transition-colors duration-150 ease-out-soft group-hover:text-ink-subtle active:cursor-grabbing"
         title="Drag to reorder"
       >
         <GripIcon size={14} />
@@ -374,7 +376,7 @@ function QuestionRow({
         className="flex min-w-0 flex-1 cursor-pointer items-baseline gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1"
       >
         <span
-          className={`w-4 shrink-0 text-right text-[11px] font-semibold tabular-nums ${
+          className={`w-4 shrink-0 text-right text-[11px] font-semibold tabular-nums transition-colors duration-150 ease-out-soft ${
             isSelected ? 'text-accent-ink' : 'text-ink-muted'
           }`}
         >
@@ -398,7 +400,7 @@ function QuestionRow({
       </span>
 
       {/* Row actions stay hidden until the row is hovered or focused within. */}
-      <span className="flex shrink-0 items-center opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+      <span className="flex shrink-0 items-center opacity-0 transition-opacity duration-150 ease-out-soft focus-within:opacity-100 group-hover:opacity-100">
         <IconButton label="Move up" onClick={() => moveQuestion(question.id, -1)}>
           <ChevronUpIcon size={14} />
         </IconButton>
@@ -474,15 +476,19 @@ function PageGroupHeader({
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="flex min-w-0 flex-1 cursor-pointer items-center gap-1 text-left"
+        className="flex min-w-0 flex-1 cursor-pointer items-center gap-1 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
-        <span className="shrink-0 text-ink-subtle transition-transform" aria-hidden>
-          {open ? <ChevronDownIcon size={11} /> : <ChevronRightIcon size={11} />}
+        {/* One chevron that turns, rather than two glyphs swapped. */}
+        <span className="shrink-0 text-ink-subtle" aria-hidden>
+          <ChevronRightIcon
+            size={11}
+            className={`transition-transform duration-150 ease-out-soft ${open ? 'rotate-90' : ''}`}
+          />
         </span>
         <span className="shrink-0 text-ink-subtle" aria-hidden>
           <PageBreakIcon size={12} />
         </span>
-        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-ink-muted">
+        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-ink-muted transition-colors duration-150 ease-out-soft group-hover/page:text-ink">
           {label}
         </span>
         {/* The count is what a collapsed tab is for — it has to say what is inside
@@ -495,7 +501,7 @@ function PageGroupHeader({
       {/* Only a page a break actually opened can be deleted: the first page of the
           document is not something the teacher added, so there is nothing to remove. */}
       {group.breakId && (
-        <span className="shrink-0 opacity-0 transition-opacity focus-within:opacity-100 group-hover/page:opacity-100">
+        <span className="shrink-0 opacity-0 transition-opacity duration-150 ease-out-soft focus-within:opacity-100 group-hover/page:opacity-100">
           <Menu
             label={`Actions for ${label}`}
             items={[
