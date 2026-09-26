@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Econ Worksheet — film stage</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #000; overflow: hidden; }
+  #stage { position: relative; overflow: hidden; background: #000; }
+  #gl { position: absolute; left: 0; top: 0; display: block; width: 100%; height: 100%; }
+  #type { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; pointer-events: none; }
+  #type .scene { position: absolute; inset: 0; transform-origin: 50% 50%; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "/film/node_modules/three/build/three.module.js",
+  "three/addons/": "/film/node_modules/three/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="stage"><canvas id="gl"></canvas><div id="type"></div></div>
+<script type="module" src="./engine.js"></script>
+</body>
+</html>
