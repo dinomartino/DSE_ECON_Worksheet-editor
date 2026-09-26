@@ -78,10 +78,19 @@ export class Recorder {
     }, on);
   }
 
+  /**
+   * Move the mouse, and put the drawn pointer exactly there: mouse events carry whole
+   * CSS pixels, which would step a slow glide; the overlay takes the sub-pixel path.
+   */
+  async pointerTo(x, y) {
+    await this.page.mouse.move(x, y);
+    await this.page.evaluate(([px, py]) => { window.__vt.pointer = { x: px, y: py }; }, [x, y]);
+    this.mouse = { x, y };
+  }
+
   /** Place the pointer (off camera: before frame 0). */
   async place(x, y) {
-    await this.page.mouse.move(x, y);
-    this.mouse = { x, y };
+    await this.pointerTo(x, y);
   }
 
   /** Record one frame; `input` runs first (the frame's scripted events). */
@@ -157,7 +166,7 @@ export class Recorder {
         this.expectIf(Math.max(Math.abs(x - this.mouse.x), Math.abs(y - this.mouse.y)));
         await this.frame(async () => {
           await this.pointerVisible(true);
-          await this.page.mouse.move(x, y);
+          await this.pointerTo(x, y);
         });
         this.mouse = { x, y };
       }
@@ -170,8 +179,7 @@ export class Recorder {
     const to = await this.moveTo(target, opts);
     if (dwell) await this.hold(dwell);
     const press = (clickCount) => async () => {
-      await this.page.mouse.move(to.x, to.y);
-      this.mouse = to;
+      await this.pointerTo(to.x, to.y);
       this.event(kind, label, to);
       await this.page.mouse.down({ clickCount });
       await this.page.mouse.up({ clickCount });
@@ -210,7 +218,7 @@ export class Recorder {
         const x = a.x + (b.x - a.x) * k;
         const y = a.y + (b.y - a.y) * k;
         this.expectIf(Math.max(Math.abs(x - this.mouse.x), Math.abs(y - this.mouse.y)));
-        await this.frame(() => this.page.mouse.move(x, y));
+        await this.frame(() => this.pointerTo(x, y));
         this.mouse = { x, y };
       }
     });
@@ -263,7 +271,8 @@ export class Recorder {
     let last = y0;
     await this.moving('scroll', async () => {
       for (let i = 1; i <= n; i++) {
-        const v = y0 + (y - y0) * ease(i / n);
+        // Whole device pixels: a fractional offset rasterises differently run to run.
+        const v = Math.round((y0 + (y - y0) * ease(i / n)) * this.dpr) / this.dpr;
         this.expectIf(Math.abs(v - last));
         last = v;
         await this.frame(() => this.page.evaluate(([s, top]) => { document.querySelector(s).scrollTop = top; }, [selector, v]));

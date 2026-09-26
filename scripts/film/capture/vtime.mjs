@@ -177,8 +177,9 @@ function installVirtualTime(cfg) {
       const s = scrolls[i];
       const u = Math.min(1, (now - s.start) / s.dur);
       const k = ease(u);
-      s.el.scrollLeft = s.x0 + (s.x1 - s.x0) * k;
-      s.el.scrollTop = s.y0 + (s.y1 - s.y0) * k;
+      const dpr = window.devicePixelRatio || 1;
+      s.el.scrollLeft = Math.round((s.x0 + (s.x1 - s.x0) * k) * dpr) / dpr;
+      s.el.scrollTop = Math.round((s.y0 + (s.y1 - s.y0) * k) * dpr) / dpr;
       if (u >= 1) scrolls.splice(i, 1);
     }
   }
@@ -304,6 +305,13 @@ function installVirtualTime(cfg) {
     return r;
   }
 
+  // The drawn pointer (scripts/demo/flow.mjs) at the recorder's sub-pixel position.
+  function placePointer() {
+    const node = document.getElementById('__demo_cursor');
+    const at = window.__vt.pointer;
+    if (node && at) node.style.transform = `translate(${at.x - 2}px,${at.y - 2}px)`;
+  }
+
   async function advance(ms) {
     await runTimersUntil(now + ms);
     stepScrolls();
@@ -324,6 +332,7 @@ function installVirtualTime(cfg) {
       syncAnimations();
       await drain(1); // what a synced animation's events set off
       syncAnimations();
+      placePointer();
       const r = drawCaret();
       return {
         now, timers: timers.size, rafs: rafs.size, scrolls: scrolls.length,
@@ -356,6 +365,7 @@ function installVirtualTime(cfg) {
 
   window.__vt = {
     frame,
+    pointer: null,
     now: () => now,
     auto(on) {
       if (on === auto) return;
