@@ -60,7 +60,8 @@ const scene = {
     });
     const breath = 0.5 + 0.5 * Math.sin((2 * Math.PI * t) / 4);
     const swell = Math.exp(-(((t - T.swell - 0.8) / 1.1) ** 2));
-    logo.materials.dot.uniforms.uGlow.value = 2.0 + 0.25 * breath + 0.5 * swell;
+    const hit = Math.exp(-Math.max(0, t) / 0.45); // the 84.0 s impact
+    logo.materials.dot.uniforms.uGlow.value = 2.0 + 0.25 * breath + 0.5 * swell + 1.4 * hit;
     const sw = E.seg(t, T.sweep[0], T.sweep[1]);
     logo.set({ sweep: sw > 0 && sw < 1 ? { p: E.sineInOut(sw), amount: 0.3 * Math.sin(Math.PI * sw) } : null });
 
@@ -89,7 +90,7 @@ const scene = {
 
     s.floor.set({ opacity: 1 });
     s.dust.set({ time: 84 + t, focus: camera.position.length(), bright: 0.34 + 0.16 * up, fov, H: ctx.renderH });
-    post.bloom = { strength: 1.35 + 0.5 * swell, radius: 0.62, threshold: 1, knee: 0.45 };
+    post.bloom = { strength: 1.35 + 0.5 * swell + 0.6 * hit, radius: 0.62, threshold: 1, knee: 0.45 };
     post.vignette = 0.24;
     post.samples = t < 1.2 ? 8 : 0;
 

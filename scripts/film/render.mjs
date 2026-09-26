@@ -195,9 +195,9 @@ export async function render(args) {
       await ffmpeg([
         '-f', 'concat', '-safe', '0', '-i', list, ...audio,
         '-map', '0:v:0', '-map', '1:a:0',
-        '-vf', 'scale=out_color_matrix=bt709:out_range=tv:flags=accurate_rnd+full_chroma_int+full_chroma_inp,format=yuv420p',
+        '-vf', 'scale=out_color_matrix=bt709:out_range=tv:flags=accurate_rnd+full_chroma_int+full_chroma_inp,format=yuv420p,setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709',
         '-c:v', 'libx264', '-profile:v', 'high', '-preset', P.preview ? 'medium' : 'slow', '-crf', P.preview ? '19' : '16',
-        '-r', String(P.fps), '-g', String(2 * P.fps), '-x264-params', 'aq-mode=3',
+        '-r', String(P.fps), '-g', String(2 * P.fps), '-x264-params', 'aq-mode=3:colorprim=bt709:transfer=bt709:colormatrix=bt709',
         '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'tv',
         '-c:a', 'aac', '-b:a', '256k', '-ar', '48000', '-ac', '2',
         '-t', dur.toFixed(6), '-movflags', '+faststart', P.out,

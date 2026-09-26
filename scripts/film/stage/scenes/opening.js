@@ -4,6 +4,7 @@
 // behind it on the 8.0 s whoosh as the camera pulls back; title at 10.0 s; on beat 4 of
 // bar 7 (15.5 s) the camera pushes into the dot until blue fills the frame at the cut.
 import { COPY } from '../../timeline.mjs';
+import { cubicBezier } from '../lib/ease.js';
 
 const C = COPY.opening;
 
@@ -27,6 +28,8 @@ const T = {
 };
 
 const WORD_Y = 812;
+// Fast but from rest: the 8.0 s whoosh must not start at full speed (a visible jolt).
+const whoosh = cubicBezier(0.3, 0, 0.06, 1);
 const DOT_HOVER = [0, 0.66, 0.16];
 
 const scene = {
@@ -71,29 +74,31 @@ const scene = {
     const breath = Math.sin((2 * Math.PI * t) / 2 - Math.PI / 2) * 0.5 + 0.5; // one breath per bar
     const lift = E.quintInOut(E.seg(t, 0.85, 1.95));
     const fall = E.cubicIn(E.seg(t, T.drop, T.land));
-    const landed = t >= T.land;
-    const settle = landed ? E.spring(t - T.land, { freq: 2.4, damping: 0.62 }) : 0;
+    const since = Math.max(0, t - T.land);
+    const settle = E.spring(since, { freq: 2.4, damping: 0.62 });
+    // After landing: a small dip and rebound that starts from zero (no one-frame step).
+    const dip = 0.016 * Math.sin(2 * Math.PI * 2.2 * since) * Math.exp(-since / 0.14);
     const bob = lift * (1 - fall) * 0.03 * Math.sin(t * 1.3);
     const rest = logo.dotRest;
     const up = lift * (1 - fall);
     const pos = [
       0,
-      E.lerp(0, DOT_HOVER[1], up) + bob - (landed ? 0.012 * (1 - settle) : 0),
+      E.lerp(0, DOT_HOVER[1], up) + bob - dip,
       E.lerp(rest.z + 0.05, DOT_HOVER[2], up),
     ];
     const hoverScale = 0.5 + 0.06 * breath;
     const dotScale = E.lerp(hoverScale, 1, E.quadIn(fall)) * appear;
-    const flash = landed ? Math.exp(-(t - T.land) / 0.4) : 0;
-    const dotGlow = (2.1 + 1.0 * breath * (1 - fall)) * appear + 1.3 * flash + (landed ? 0.2 : 0);
+    const flash = (1 - Math.exp(-since / 0.035)) * Math.exp(-since / 0.4); // fast attack, soft decay
+    const dotGlow = (2.1 + 1.0 * breath * (1 - fall)) * appear + 1.3 * flash + 0.2 * E.smoothstep(0, 0.6, since);
 
     // --- tile, camera ------------------------------------------------------------
-    const grow = E.expoOut(E.seg(t, T.tile, T.tile + 1.5));
+    const grow = whoosh(E.seg(t, T.tile, T.tile + 1.5));
     const extrude = E.quintOut(E.seg(t, T.tile + 0.05, T.tile + 1.7));
-    const lightUp = E.sineOut(E.seg(t, T.tile, T.tile + 1.1));
+    const lightUp = E.sineOut(E.seg(t, T.tile, T.tile + 0.8));
     logo.materials.tile.userData.exposure.value = lightUp;
     logo.set({
       supply, demand, axis,
-      tile: { visible: t > T.tile - 0.02, scale: E.lerp(0.46, 1, grow), extrude, face: lightUp },
+      tile: { visible: t >= T.tile, scale: E.lerp(0.14, 1, grow), extrude, face: lightUp },
       puck: settle,
       dot: { position: pos, scale: dotScale, glow: dotGlow },
     });
@@ -106,7 +111,7 @@ const scene = {
 
     // Camera: close on the strokes (0–8), pull back and orbit as the tile extrudes, a slow
     // push through the riser, then the push into the dot on the last beat.
-    const pull = E.expoOut(E.seg(t, T.tile, T.pullEnd + 0.6));
+    const pull = whoosh(E.seg(t, T.tile - 0.05, T.pullEnd + 0.5));
     const riser = E.sineInOut(E.seg(t, T.riser, T.push));
     const d = cam.drift(t, 3, { amp: 0.9, rate: 0.06, roll: 0.1, dolly: 0.006 });
     const calm = 1 - E.sineInOut(E.seg(t, 14.2, T.push)); // drift fades before the push
@@ -137,7 +142,7 @@ const scene = {
     const dim = 1 - 0.8 * E.sineInOut(E.seg(t, T.push - 0.35, T.push + 0.2));
     ctx.rig.set({ key: dim, front: dim, env: dim, rim: dim });
     logo.materials.dot.uniforms.uGlow.value *= 1 + 0.5 * (1 - dim);
-    post.bloom = { strength: 1.2 + (t < T.tile ? 0.5 : 0) + 1.4 * pushGlow, radius: 0.62, threshold: 1, knee: 0.45 };
+    post.bloom = { strength: 1.2 + 0.5 * (1 - E.sineInOut(E.seg(t, T.tile, T.tile + 1.2))) + 1.4 * pushGlow, radius: 0.62, threshold: 1, knee: 0.45 };
     post.vignette = 0.24;
     post.exposure = 1 + 0.3 * pushGlow;
     // Fast moves get more motion-blur sub-frames in final renders.
