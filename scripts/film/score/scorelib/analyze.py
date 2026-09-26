@@ -10,7 +10,7 @@ from scipy import signal
 from scipy.stats import spearmanr
 
 from .common import AUDIO, SR, STEMS, S, read_wav, timeline
-from .dsp import hp, integrated_lufs, loudness_curve, lp, lufs_window, todb, true_peak
+from .dsp import hp, integrated_lufs, lp, lufs_window, todb, true_peak
 
 TRANSIENT = ('hit', 'tick', 'drop')
 LUFS_TARGET, LUFS_TOL, TP_MAX = -16.0, 0.5, -1.0
@@ -123,65 +123,8 @@ def mono_check(x, tl):
 
 
 def spectrogram(x, tl, path, title):
-    import matplotlib
-    matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
-
-    mid = 0.5 * (x[:, 0] + x[:, 1])
-    f, t, Z = signal.stft(mid, SR, nperseg=4096, noverlap=4096 - 480, boundary=None)
-    P = 20 * np.log10(np.abs(Z) + 1e-10)
-    fl = np.geomspace(25, 20000, 420)
-    Pl = np.stack([np.interp(fl, f, P[:, i]) for i in range(P.shape[1])], axis=1)
-    ref = np.percentile(Pl, 99.9)
-    dur = float(tl['DURATION'])
-
-    fig = plt.figure(figsize=(24, 12), dpi=100, facecolor='#0b0b0c')
-    gs = fig.add_gridspec(2, 1, height_ratios=[3.2, 1.3], hspace=0.08)
-    ax = fig.add_subplot(gs[0])
-    ax.imshow(Pl, origin='lower', aspect='auto', cmap='magma', vmin=ref - 90, vmax=ref,
-              extent=[t[0], t[-1], 0, len(fl)], interpolation='nearest')
-    ticks = [30, 60, 120, 250, 500, 1000, 2000, 4000, 8000, 16000]
-    ax.set_yticks([np.interp(np.log(v), np.log(fl), np.arange(len(fl))) for v in ticks])
-    ax.set_yticklabels([f'{v // 1000}k' if v >= 1000 else str(v) for v in ticks])
-    ax.set_xlim(0, dur)
-    ax.set_title(title, color='w', fontsize=16, loc='left')
-    colors = {'hit': '#ff5a5a', 'tick': '#7fd0ff', 'whoosh': '#b8f28a', 'riser': '#ffd166',
-              'swell': '#c9a7ff', 'breath': '#ffffff', 'drop': '#ff9f43', 'end': '#888'}
-    for s in tl['SECTIONS']:
-        x0 = s['from'] * 2.0
-        ax.axvline(x0, color='w', lw=0.8, ls='--', alpha=0.6)
-        y = len(fl) * (0.965 if tl['SECTIONS'].index(s) % 2 == 0 else 0.925)
-        ax.text(x0 + 0.3, y, f"{s['id']} ({s['energy']})", color='w', fontsize=11, va='top')
-    for c in tl['CUES']:
-        ax.plot([c['t']], [4], marker='^', ms=9, color=colors.get(c['kind'], 'w'), clip_on=False)
-    for kind, col in colors.items():
-        ax.plot([], [], marker='^', ls='', ms=9, color=col, label=kind)
-    ax.legend(loc='upper right', facecolor='#222', labelcolor='w', fontsize=10, ncol=8, title='cues',
-              title_fontsize=10)
-    for a, b in full_breaths(tl):
-        ax.axvspan(a, b, color='w', alpha=0.08)
-    ax2 = fig.add_subplot(gs[1], sharex=ax)
-    tm, m = loudness_curve(x, 0.4, 0.05)
-    ts, st = loudness_curve(x, 3.0, 0.1)
-    ax2.plot(tm, m, color='#7fd0ff', lw=0.7, label='momentary (400 ms)')
-    ax2.plot(ts, st, color='#ffd166', lw=1.6, label='short-term (3 s)')
-    ax2.set_ylim(-60, -5)
-    ax2.set_xlim(0, dur)
-    ax2.set_ylabel('LUFS', color='w')
-    for s in tl['SECTIONS']:
-        ax2.axvline(s['from'] * 2.0, color='w', lw=0.8, ls='--', alpha=0.5)
-        ax2.hlines(-16 + 20 * np.log10(s['energy']) * 0.75, s['from'] * 2.0, s['to'] * 2.0,
-                   color='#ff5a5a', lw=2.0, alpha=0.8)
-    ax2.plot([], [], color='#ff5a5a', lw=2, label='energy map (scaled)')
-    ax2.legend(loc='lower center', facecolor='#222', labelcolor='w', fontsize=10, ncol=3)
-    ax2.set_xlabel('film seconds', color='w')
-    for a in (ax, ax2):
-        a.set_facecolor('#0b0b0c')
-        a.tick_params(colors='w')
-        for sp in a.spines.values():
-            sp.set_color('#444')
-    fig.savefig(path, facecolor=fig.get_facecolor(), bbox_inches='tight')
-    plt.close(fig)
+    from .plot import render
+    render(x, tl, path, title, full_breaths(tl))
 
 
 def run():

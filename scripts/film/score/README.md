@@ -12,7 +12,7 @@ node scripts/film/score/score.mjs report   # verify the existing score.wav again
 ```
 
 The first run builds `.venv` from `requirements.txt` (pinned; numpy, scipy, numba, pedalboard,
-soundfile, matplotlib). It needs Python >= 3.10, node and ffmpeg. `score.mjs` looks for a
+soundfile, pillow; no matplotlib, whose .js files ESLint would lint). It needs Python >= 3.10, node and ffmpeg. `score.mjs` looks for a
 Python >= 3.10 (`FILM_PYTHON` overrides). `all` takes about 20 s.
 
 Output goes to `demo-media/film/audio/` in the main checkout:

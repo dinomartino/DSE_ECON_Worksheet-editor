@@ -34,8 +34,7 @@ def ensure_venv():
         if sys.version_info < (3, 10):
             sys.exit(f'score: needs Python >= 3.10 to build .venv (this is {sys.version.split()[0]})')
         print('score: building .venv from requirements.txt ...', file=sys.stderr)
-        if not PY.exists():
-            subprocess.check_call([sys.executable, '-m', 'venv', str(VENV)])
+        subprocess.check_call([sys.executable, '-m', 'venv', '--clear', str(VENV)])  # exactly the pins
         subprocess.check_call([str(PY), '-m', 'pip', 'install', '--quiet',
                                '--disable-pip-version-check', '-r', str(REQ)])
         stamp.write_text(want)
