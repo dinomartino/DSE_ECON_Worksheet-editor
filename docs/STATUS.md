@@ -7,7 +7,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 ## Current initiatives
 
 - **Branching: work is on `develop`** (since 2026-09-24); `main` deploys to teachers.
-  Collecting features for the next release — merge to `main` only when the user says.
+  Collecting features for the release after v0.4.0 — merge to `main` only when the user says.
 - **Desktop app — shipped 2026-09-22.** Tauri 2 wraps the same static `out/`; documents
   become files under `$APPDATA/worksheets/` (`src/storage/fileStore.ts`), saving uses the
   native dialog, updates come from GitHub Releases. `src/platform/index.ts` ·
@@ -100,6 +100,8 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
+- **2026-09-27** — **Released v0.4.0** (published, `latest` updater live; macOS arm64/x64 +
+  Windows assets and signatures checked). `develop` = `main` after the release.
 - **2026-09-26 (late)** — Page rail shows for cover + 1 page (`editor/sheets.ts`); EN-only
   "Shift a copy" named S₅₀ (empty zh side counted as taken) → S₁; inflationary/deflationary
   gap drawn just above the axis (`gap-narrows` kept below — no room). 1727+ tests green.
