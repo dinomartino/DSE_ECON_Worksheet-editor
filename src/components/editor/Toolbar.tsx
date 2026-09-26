@@ -19,6 +19,7 @@ import { browserPrintDeps, printWorksheetPdf } from './printPdf';
 import { useUpdateStore } from '@/desktop/updateStore';
 import { PaperHealthPanel } from './PaperHealthPanel';
 import { PaperSummaryBar } from './PaperSummaryBar';
+import { hasCoverSheet } from './sheets';
 import { FeedbackDialog } from '@/components/feedback/FeedbackDialog';
 import { WhatsNewDialog } from '@/components/whatsNew/WhatsNewDialog';
 import { describeDocument } from '@/feedback/feedback';
@@ -321,7 +322,7 @@ export function Toolbar({
           <PaperSummaryBar
             worksheet={worksheet}
             language={mode.language}
-            pages={bodySheets ? bodySheets + (worksheet.cover && !mode.omitCover ? 1 : 0) : undefined}
+            pages={bodySheets ? bodySheets + (hasCoverSheet(worksheet, mode) ? 1 : 0) : undefined}
             onOpen={readOnly ? undefined : onOpenSettings}
           />
           <span className="hidden sm:inline">

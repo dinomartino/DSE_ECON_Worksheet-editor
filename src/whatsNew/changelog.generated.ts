@@ -120,6 +120,8 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 - **Dragging a document onto a folder now works in the desktop app.**
 - **Desktop: dropping a worksheet file onto the start screen imports it.** Drop several
   \`.json\` files at once to add them all to your list; nothing already there is replaced.
+- **The page rail now appears for a mock paper with a cover and one page** — the cover
+  counts as a page, and its card lights up while you are on it.
 
 ## 0.3.0 — 2026-09-24
 
