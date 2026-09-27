@@ -94,8 +94,11 @@ on one GPU died six times each. So every agent prompt carries:
   was not rebuilt, so every UI sound was off by up to 0.5 s and the sync reviewer lost a
   round to it. `render.mjs` now rebuilds or refuses a stale score; still, run
   `npm run film:score` after cue/placement changes before any review render.
-- **Unknown flags started a full final render** (`render.mjs --help`, a bare `stills`).
-  Fixed (exit 2), but keep commands copy-pasted from `--help`.
+- **Unknown flags started a full final render** (`render.mjs --help`, a bare `stills`),
+  and later a full marks re-capture over the shared store (`extra-marks.mjs --help`).
+  Fixed (exit 2), but keep commands copy-pasted from `--help` or the script's header.
+- **A fix that never ran**: a duplicate `const` made `extra-marks.mjs` a SyntaxError for a
+  whole branch. After editing any script, run it once with `--help` (`node --check` at least).
 - **Critics given only prose** produce taste; critics given grids, a short render and
   measurement tools produce fixes.
 - **Scene agents editing the timeline in parallel** create merge conflicts in the one file

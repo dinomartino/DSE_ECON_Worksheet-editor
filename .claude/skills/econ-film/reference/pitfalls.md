@@ -14,6 +14,12 @@ Each of these cost real time once.
   (`three`) install with `npm --prefix scripts/film ci`.
 - `FILM_OUT` unset = your render and `film:score` write into the main checkout's
   `demo-media/film/` (build, audio, the film). Set it for anything exploratory.
+- A worktree-isolated agent's shell refuses commands whose arguments hold a runtime value
+  (`$S/base`, `$FILM_OUT/...`, a `for` loop variable) as "cannot be shown not to be git".
+  Spell paths out literally (`export FILM_OUT=/abs/path && node …` is fine), and put loops
+  over files in a small Python script in the scratchpad.
+- Doctor's score check may already warn before you touch anything (the shipped score is
+  older than the branch's cues). Run doctor first (R0) so you can tell your warning apart.
 - `render.mjs` clears `build/stills/<mode>-<label>/` each run unless `--keep`: copy stills
   out before the next render with the same label (`--at` always writes `final-film`).
 
@@ -28,6 +34,9 @@ Each of these cost real time once.
   and draws its own. A new kind of UI animation that looks jerky or missing in a capture
   probably escapes the shim; fix the shim, not the clip. Scroll with `scrollTop`, never
   wheel smooth-scroll.
+- **Never run a capture script to "see its help"** unless it lists `--help` in its usage:
+  `extra-marks.mjs` once ignored the flag and re-captured the marks clip, sheets and .docx
+  over the shared store (fixed: it now parses flags). Read the header comment instead.
 - `appCommit` is stamped only on assets a run rewrites; older assets fall back to file
   times in doctor's capture-age check.
 - LibreOffice lacks PMingLiU on this Mac, so bilingual `.docx` renders overlap; film the
