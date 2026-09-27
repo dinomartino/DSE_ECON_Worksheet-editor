@@ -86,7 +86,7 @@ const scene = {
   id: 'everywhere',
   world: 'day',
   async setup(ctx) {
-    const { lib, scene, THREE } = ctx;
+    const { lib, scene } = ctx;
     const s = (ctx.state = {});
 
     // The Export dialog.
