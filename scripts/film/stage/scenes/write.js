@@ -10,6 +10,7 @@ import { COPY } from '../../timeline.mjs';
 import { cubicBezier } from '../lib/ease.js';
 import { FONT_ZH } from '../lib/type.js';
 import { layeredPage } from './write/page.js';
+import { framePatch } from './write/patch.js';
 
 const C = COPY.write;
 const WW = 3.2; // window width (world units) for the 1440×900 css px capture
@@ -20,6 +21,10 @@ const TOGGLE = { x0: 512, x1: 800, y0: 16, y1: 96 };
 const TOGGLE_RATE = 1.5; // its clicks (clip 1.0, 2.5, 4.0) one second apart
 // type-mcq's options paste ~50 ms after the half-beat; start the clip early so they land on it.
 const CLIP_LEAD = 0.05;
+// The formatting toolbar (css px rect, shadow included) vanishes in one frame on Enter at
+// clip frames 199 and 272; a patch of the frame before eases it out over `fade` frames,
+// the way it eased in.
+const TOOLBAR = { x0: 16, x1: 1092, y0: 56, y1: 140, pops: [199, 272], fade: 8 };
 
 const out = cubicBezier(0.1, 0.72, 0.2, 1); // the drop: already fast at the cut, long settle
 const rush = cubicBezier(0.6, 0, 0.2, 1); // the push: from rest, fastest on the 24.0 whoosh
@@ -63,7 +68,7 @@ const scene = {
   async setup(ctx) {
     const { lib, scene, THREE } = ctx;
     const s = (ctx.state = {});
-    s.clip = await ctx.load.clip('type-mcq', { cache: 6, prefetch: 3 });
+    s.clip = await ctx.load.clip('type-mcq', { cache: 10, prefetch: 3 });
     ctx.placeClip('type-mcq', { at: -CLIP_LEAD, from: 0, rate: 1, dur: T.push[1] + CLIP_LEAD });
     s.win = lib.win.appWindow({ variant: 'mac', width: WW, shadow: false });
     scene.add(s.win.group);
@@ -71,6 +76,14 @@ const scene = {
     s.shadow.position.set(0.04, -0.13, -0.38);
     s.win.group.add(s.shadow);
     s.css = (cx, cy) => [(cx / 1440 - 0.5) * WW, s.win.contentCenter.y + (0.5 - cy / 900) * s.win.screenHeight];
+    const R = TOOLBAR;
+    s.patch = framePatch({
+      w: ((R.x1 - R.x0) / 1440) * WW,
+      h: ((R.y1 - R.y0) / 900) * s.win.screenHeight,
+      uv: [R.x0 / 1440, 1 - R.y1 / 900, R.x1 / 1440, 1 - R.y0 / 900],
+    });
+    s.patch.mesh.position.set(...s.css((R.x0 + R.x1) / 2, (R.y0 + R.y1) / 2), 0.001);
+    s.win.group.add(s.patch.mesh);
     s.dust = lib.particles.dust({
       count: 60, seed: 8, H: ctx.renderH, box: [[-7, -3, -9], [7, 4, 3.2]],
       size: 0.02, aperture: 0.26, bright: 0.4, drift: 0.2, rise: 0.02, minPx: 6, color: '#FFF3E0', color2: '#FFFFFF',
@@ -139,7 +152,14 @@ const scene = {
     const sm = (a0, a1) => E.sineInOut(E.seg(t, a0, a1));
 
     // ---- the window and its clip ------------------------------------------------------
-    s.win.set({ screen: s.clip.frameAt(Math.min(t + CLIP_LEAD, 7.999)) });
+    const ct = Math.min(t + CLIP_LEAD, 7.999);
+    s.win.set({ screen: s.clip.frameAt(ct) });
+    let po = 0, pf = 0;
+    for (const F of TOOLBAR.pops) {
+      const k = ct * 60 - (F - 0.5); // the screen shows frame F from k = 0
+      if (k >= -1 && k < TOOLBAR.fade) [po, pf] = [k < 0 ? 1 : 1 - E.sineInOut(k / TOOLBAR.fade), F - 1];
+    }
+    s.patch.set({ map: po > 0 ? s.clip.frameAt(pf / 60) : null, opacity: po });
     const b = bob(t);
     s.win.group.position.set(0, b, 0);
 
@@ -152,7 +172,8 @@ const scene = {
       P = mix(P, s.C3, sm(T.orbit[0], T.orbit[1]));
     }
     const d = cam.drift(t, 5, { amp: 0.6, rate: 0.07 });
-    cam.orbit(camera, { target: [P.x, P.y, 0], dist: P.d * d.dist, az: P.az + d.az, el: P.el + d.el, roll: P.roll + d.roll, fov: 30 });
+    const creep = 1 - 0.03 * E.sineIn(E.seg(t, 12.4, 16.2)); // settled, never still: a slow push to the cut
+    cam.orbit(camera, { target: [P.x, P.y, 0], dist: P.d * d.dist * creep, az: P.az + d.az, el: P.el + d.el, roll: P.roll + d.roll, fov: 30 });
 
     // ---- the handoff (capture → layered page), the language layers, the toggle ---------
     if (s.page) {
