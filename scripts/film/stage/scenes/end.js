@@ -17,7 +17,7 @@ const T = {
   sweep2: [4.6, 7.4], // a faint second pass after the swell: the hold breathes
   lights: [0.05, 1.6],
   title: 0.3,
-  lockup: [1.45, 2.55],
+  lockup: pick({ landscape: [1.45, 2.55], portrait: [1.25, 2.3] }),
   tagline: at('end.tagline'),
   small: at('end.swell'),
   swell: at('end.swell'),
@@ -37,8 +37,8 @@ const { HERO, LOCK, TYPE } = pick({
   },
   portrait: {
     HERO: { tileY: 790, tileH: 620, titleY: 1250 },
-    // The tall stack reveals the tagline while the title is still riding up: it sits low
-    // enough (and the title locks high enough) to keep ≥40 px of air through the reveal.
+    // The tall stack puts the tagline right under the title's path: the pull-back lands
+    // 0.2 s sooner (T.lockup) and the stack sits lower, so the reveal never touches it.
     LOCK: { tileY: 540, tileH: 360, titleY: 785, titleScale: 0.5 },
     TYPE: {
       title: { size: 104 },
