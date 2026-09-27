@@ -5,28 +5,30 @@
 // on the beats, focus following, as the camera drifts over to the covers. On the 62.0 whoosh
 // the fan folds back under the diagram page, the room goes down around a lamp on the stack,
 // and the paper and its pool fall together to word's first frame (hard cut at 64.0).
-import { COPY } from '../../timeline.mjs';
+import { COPY, FPS, cueAt, sceneStart, sceneEnd } from '../../timeline.mjs';
 import { cubicBezier } from '../lib/ease.js';
 import { stop, mixPose, withDrift, applyPose, haze } from './marks/kit.js';
 import { S_POS, S_ROT, tPose, holdCam, hazeAt, HAZE_BAND, dofAt, SHEET } from './papers/deck.js';
 import { PACK, S_K, T_K, TH_S, SP_OPEN, SP_SHUT, SP_STACK, PHI_OPEN, PHI_STACK, at, lin, sheetTexture } from './papers/fan.js';
 
 const C = COPY.papers;
-const F0T = 56; // film time of t = 0
-const LAST = 7 + 59 / 60; // the last frame before word's cut (63.983)
+const F0T = sceneStart('papers'); // film time of t = 0
+const LAST = sceneEnd('papers') - F0T - 1 / FPS; // the last frame before word's cut (63.983)
+const PULL = cueAt('papers.pull') - F0T; // the pull back and the fan hang off this whoosh…
+const GATHER = cueAt('papers.gather') - F0T; // …the fold back and the lights down off this one
 
 // Beat map (scene seconds).
 const T = {
-  pull: [0.0, 1.5], // camera: pull back and tip over the desk (57.5)
-  open: [0.04, 1.5], // the fan opens, the last sheet settling on 57.5
-  turn: [0.0, 1.5], // the turntable centres the fan
+  pull: [PULL, PULL + 1.5], // camera: pull back and tip over the desk (57.5)
+  open: [PULL + 0.04, PULL + 1.5], // the fan opens, the last sheet settling on 57.5
+  turn: [PULL, PULL + 1.5], // the turntable centres the fan
   head: [1.0, 5.62],
   track: [1.6, 5.95], // while the fan holds: over to the covers
-  close: [6.0, 7.0], // 62.0 whoosh: the fan folds back under the diagram page (63.0)
-  frame: [6.0, 7.1], // camera onto the stack…
-  settle: [6.85, LAST], // …then into word's first framing, arriving at rest as word starts from rest
-  room: [6.2, 7.4], // the room goes down to warm charcoal
-  dim: [7.0, LAST], // then the lamp: paper and pool together, to word's first frame
+  close: [GATHER, GATHER + 1], // 62.0 whoosh: the fan folds back under the diagram page (63.0)
+  frame: [GATHER, GATHER + 1.1], // camera onto the stack…
+  settle: [GATHER + 0.85, LAST], // …then into word's first framing, arriving at rest as word starts from rest
+  room: [GATHER + 0.2, GATHER + 1.4], // the room goes down to warm charcoal
+  dim: [GATHER + 1, LAST], // then the lamp: paper and pool together, to word's first frame
 };
 
 // Camera: the open fan over the type band; the two covers; the stack; word's first frame.
@@ -154,7 +156,7 @@ const scene = {
     });
 
     // ---- camera ----------------------------------------------------------------------------
-    const orbitAz = -10 * E.seg(t, 1.2, 6.0);
+    const orbitAz = -10 * E.seg(t, 1.2, GATHER);
     const wide = { ...WIDE, az: WIDE.az + orbitAz };
     let p = mixPose(holdCam(lib, f), wide, pullEase(E.seg(t, ...T.pull)));
     p = mixPose(p, COVERS, E.sineInOut(E.seg(t, ...T.track)));
@@ -183,7 +185,7 @@ const scene = {
       sh.material.color.setRGB(bl, bl, bl);
       sh.edge.material.color.set('#D9D4CB').multiplyScalar(bl);
     }
-    const hz = Math.max(hazeAt(f), E.sineInOut(E.seg(t, 0.55, 1.2)) * (1 - E.sineInOut(E.seg(t, 5.6, 6.3))));
+    const hz = Math.max(hazeAt(f), E.sineInOut(E.seg(t, 0.55, 1.2)) * (1 - E.sineInOut(E.seg(t, GATHER - 0.4, GATHER + 0.3))));
     s.haze.set({ amount: hz, ...HAZE_BAND });
 
     // ---- post, type ------------------------------------------------------------------------
@@ -193,8 +195,8 @@ const scene = {
     const dofWide = E.sineInOut(E.seg(t, 0.4, 1.6));
     let onFan = depth(S_K);
     for (const k of [2, 5, 6, 7]) onFan = lerp(onFan, depth(k), E.sineInOut(E.seg(t, PACK[k].beat - 0.3, PACK[k].beat + 0.15)));
-    const focus = lerp(p.dist, lerp(onFan, p.dist, E.sineInOut(E.seg(t, 6.0, 6.9))), dofWide);
-    const aperture = lerp(130, 200, dofWide) * (1 - E.sineInOut(E.seg(t, 6.0, 7.2)));
+    const focus = lerp(p.dist, lerp(onFan, p.dist, E.sineInOut(E.seg(t, GATHER, GATHER + 0.9))), dofWide);
+    const aperture = lerp(130, 200, dofWide) * (1 - E.sineInOut(E.seg(t, GATHER, GATHER + 1.2)));
     post.dof = t < 0.4 ? dofAt(p.dist, 1) : aperture < 1 ? null : { focus, aperture, maxBlur: 12 * Math.min(1, aperture / 60) };
     post.vignette = lerp(0.06, 0.26, roomK);
     post.bloom = null;

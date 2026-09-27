@@ -3,14 +3,14 @@
 // as in the scene it recalls), each a small push-in with alternating tilt. The last shot,
 // the finished tax diagram on white in the night, holds from 83.0 and accelerates into the
 // deadweight-loss triangle under the riser, ready for the hard cut to black on the 84.0 hit.
-import { MONTAGE_CUTS } from '../../timeline.mjs';
+import { MONTAGE_CUTS, sceneStart, sceneEnd } from '../../timeline.mjs';
 import { WORLDS } from '../lib/backdrop.js';
 import { softShadow } from './everywhere/shadow.js';
 import { docWindow, DOC } from './word/docWindow.js';
 
-const START = 80; // film seconds at the scene's t = 0
+const START = sceneStart('montage'); // film seconds at the scene's t = 0
 const CUTS = MONTAGE_CUTS.map((c) => c - START);
-const END = 4;
+const END = sceneEnd('montage') - START;
 
 // crop = [x, y, w, h] in source px. Clip shots play `from` at `rate` clip s per film s.
 const SHOTS = [
@@ -147,7 +147,7 @@ const scene = {
       target = [lx * aim, ly * aim, 0];
       g.rotation.y = side * 0.09 * (1 - 0.6 * aim);
     }
-    const d = cam.drift(80 + t, 40, { amp: 0.25, rate: 0.1, roll: 0.05, dolly: 0.002 });
+    const d = cam.drift(START + t, 40, { amp: 0.25, rate: 0.1, roll: 0.05, dolly: 0.002 });
     cam.orbit(camera, { target, dist: dist * d.dist, az: d.az, el: d.el, roll: d.roll, fov: FOV, shift });
 
     // The world behind each card.
@@ -155,7 +155,7 @@ const scene = {
     ctx.backdrop.userData.set({ top: W.top, bottom: W.bottom, glow: W.glow, glowAmount: W.glowAmount, radius: W.radius, center: W.center });
     const night = sh.world === 'night';
     s.dust.mesh.visible = night;
-    s.dust.set({ time: 80 + t, focus: dist, bright: 0.4, fov: FOV, H: ctx.renderH });
+    s.dust.set({ time: START + t, focus: dist, bright: 0.4, fov: FOV, H: ctx.renderH });
     post.vignette = night ? 0.22 : 0.06;
     post.bloom = null;
     post.samples = last ? Math.round(6 + 18 * E.cubicIn(E.clamp(u))) : 8;

@@ -7,7 +7,7 @@
 // toward the lens and re-seats on 25.0; one pull out wide. The real toolbar toggle clicks
 // once a bar, 26.0 / 28.0 / 30.0, each with its headline word; the page answers on the
 // click frame, as the app does (never two layouts at once), with a small push-in each time.
-import { COPY } from '../../timeline.mjs';
+import { COPY, cueAt, sceneStart } from '../../timeline.mjs';
 import { cubicBezier } from '../lib/ease.js';
 import { FONT_ZH } from '../lib/type.js';
 import { layeredPage } from './write/page.js';
@@ -39,15 +39,18 @@ const OUT0 = 0.72 / 0.1;
 const rush = cubicBezier(0.6, 0, 0.2, 1); // the push: from rest, fastest on the 24.0 whoosh
 const nudge = cubicBezier(0.3, 0, 0.15, 1); // the push-in on each reflow: from rest
 
-// Scene seconds (film − 16).
-const T = {
-  drop: 2.3, head: 2.0, sub: 3.0, exit: 7.3,
-  push: [7.3, 8.35], swap: [8.15, 8.35], close: [8.35, 9.0], pull: [8.95, 9.8], orbit: [9.4, 15.85],
-  lift: [8.32, 8.68], seat: [8.68, 9.0], // the Chinese lifts toward the lens, re-seats on 25.0
-  chip: [9.35, 9.75],
-  en: 9.96, zh: 11.96, both: 13.96,
-};
+// Scene seconds (film − 16). The push into the page hangs off its whoosh cue (PUSH_AT); the
+// language toggle's clicks, one per bar, come from its clip placement.
+const PUSH_AT = cueAt('write.push') - sceneStart('write');
 const CLICKS = [10.0, 12.0, 14.0]; // EN, 中文, EN+中: one per bar
+const T = {
+  drop: 2.3, head: 2.0, sub: 3.0, exit: PUSH_AT - 0.7,
+  push: [PUSH_AT - 0.7, PUSH_AT + 0.35], swap: [PUSH_AT + 0.15, PUSH_AT + 0.35], close: [PUSH_AT + 0.35, PUSH_AT + 1.0],
+  pull: [PUSH_AT + 0.95, PUSH_AT + 1.8], orbit: [9.4, 15.85],
+  lift: [PUSH_AT + 0.32, PUSH_AT + 0.68], seat: [PUSH_AT + 0.68, PUSH_AT + 1.0], // the Chinese lifts toward the lens, re-seats on 25.0
+  chip: [CLICKS[0] - 0.65, CLICKS[0] - 0.25],
+  en: CLICKS[0] - 0.04, zh: CLICKS[1] - 0.04, both: CLICKS[2] - 0.04,
+};
 // The page answers half a frame before the click frame, so no frame (nor any motion-blur
 // sub-frame of it) holds two layouts. The new layout settles from just above the paper.
 const SWAP = 1 / 120;
@@ -257,7 +260,7 @@ const scene = {
       s.v.set(s.stem[0], s.stem[1] + b, 0);
       post.dof = { focus: camera.position.distanceTo(s.v), aperture: 110 * dofK * (ctx.renderH / 1080), maxBlur: 6 * (ctx.renderH / 1080) };
     } else post.dof = null;
-    s.dust.set({ time: 16 + t, focus: P.d, bright: 0.4, fov: 30, H: ctx.renderH });
+    s.dust.set({ time: ctx.start + t, focus: P.d, bright: 0.4, fov: 30, H: ctx.renderH });
 
     // ---- type ------------------------------------------------------------------------
     s.head.set(t, T.head, T.exit);

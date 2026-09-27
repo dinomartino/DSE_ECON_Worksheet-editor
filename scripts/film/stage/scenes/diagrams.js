@@ -10,7 +10,7 @@
 // per beat ("Every line stays editable."). 46.0 whoosh: the layers collapse and the
 // diagram flies down onto the printed page lying in the dark; it lands on 47.0, the light
 // spreads from it across the page and the room turns to day for the 48.0 handoff.
-import { COPY } from '../../timeline.mjs';
+import { COPY, cueAt, sceneStart } from '../../timeline.mjs';
 import { cubicBezier } from '../lib/ease.js';
 import { remap, edit, placeEdit } from './diagrams/remap.js';
 import { diagramStack, ASPECT, LAYERS } from './diagrams/stack.js';
@@ -62,6 +62,11 @@ const CARD_H = CARD_W / ASPECT;
 const DWL = [...css(502, 500), 0]; // the DWL triangle's centre on the canvas
 
 // ---- time (scene seconds; film = 32 + t) --------------------------------------------
+// The explode, the fly to the page and the touch hang off their cues (EX, FLY, TOUCH).
+const START = sceneStart('diagrams');
+const EX = cueAt('diagrams.explode') - START;
+const FLY = cueAt('diagrams.fly') - START;
+const TOUCH = cueAt('diagrams.touch') - START;
 const T = {
   word: [0.1, 1.42],
   dot: 1.0,
@@ -77,24 +82,28 @@ const T = {
   subs: [4.8, 6.0, 7.15], // each line on its action: the curves, S₁ appearing, the Shade menu
   subOut: 9.4,
   push: [8.6, 10.6], // slowly toward the DWL triangle; the orbit takes over from 10.0
-  spot: [10.0, 10.4],
-  takeInk: [9.8, 9.9], // the stack's ink over the clip's (they coincide: black stays black)
-  takeCard: [9.9, 10.0], // then its card slides in between, covering the clip's selection
-  lift: [10.0, 11.3],
-  orbit: [10.0, 11.9],
-  wipe: [10.0, 10.9], // the band crosses the card ~42.1–42.8
-  lit: 11.0, // one layer lit per beat, back to front
-  layers: [11.2, 13.75],
-  collapse: [13.9, 14.45],
-  unwipe: [13.95, 14.65],
-  face: [13.9, 14.4], // the closing diagram turns to face the camera, and keeps facing it
-  crane: [13.85, 15.05], // up and over: overhead before the diagram comes down
-  fly: [14.3, 15.2], // drops onto its slot, touching on ~47.1 (it never cuts the page)
-  flat: [14.85, 15.15], // lies exactly flat for the touch
-  floorOut: [14.2, 14.9],
-  pageIn: [14.05, 14.6], // the page lies lit in its pool before the diagram comes near it
-  light: [15.05, 15.75], // day by the 47.75 dissolve
-  room: [14.9, 15.75], // ends with `light`: the backdrop swaps to day on that frame
+  spot: [EX, EX + 0.4],
+  takeInk: [EX - 0.2, EX - 0.1], // the stack's ink over the clip's (they coincide: black stays black)
+  takeCard: [EX - 0.1, EX], // then its card slides in between, covering the clip's selection
+  lift: [EX, EX + 1.3],
+  winOut: [EX + 0.05, EX + 0.6], // the window recedes under the lift (to EX + 0.65) and the sweep
+  orbit: [EX, EX + 1.9],
+  wipe: [EX, EX + 0.9], // the band crosses the card ~42.1–42.8
+  apart: EX + 0.25, // the layers spring apart
+  panes: [EX + 0.45, EX + 1.0],
+  lit: EX + 1, // one layer lit per beat, back to front
+  layers: [EX + 1.2, EX + 3.75],
+  collapse: [FLY - 0.1, FLY + 0.45],
+  unwipe: [FLY - 0.05, FLY + 0.65],
+  face: [FLY - 0.1, FLY + 0.4], // the closing diagram turns to face the camera, and keeps facing it
+  crane: [FLY - 0.15, FLY + 1.05], // up and over: overhead before the diagram comes down
+  fly: [FLY + 0.3, FLY + 1.2], // drops onto its slot, touching on ~47.1 (it never cuts the page)
+  cardGone: [FLY + 0.5, FLY + 0.9], // its white goes on the way down: only the ink registers
+  flat: [TOUCH - 0.15, TOUCH + 0.15], // lies exactly flat for the touch
+  floorOut: [FLY + 0.2, FLY + 0.9],
+  pageIn: [FLY + 0.05, FLY + 0.6], // the page lies lit in its pool before the diagram comes near it
+  light: [TOUCH + 0.05, TOUCH + 0.75], // day by the 47.75 dissolve
+  room: [TOUCH - 0.1, TOUCH + 0.75], // ends with `light`: the backdrop swaps to day on that frame
 };
 
 // Clip retiming: [scene t, clip t, pinned rate] keys on the clip's events
@@ -247,8 +256,8 @@ const scene = {
     const revealR = 5.6 * (1 - Math.pow(1 - rv, 1.8)); // a soft edge (1.0): no circle shows
     const around = 0.08 * E.sineInOut(seg(t, ...T.dimApp)) + 0.92 * E.sineInOut(seg(t, ...T.appUp));
     const spot = E.sineInOut(seg(t, ...T.spot));
-    const out = E.sineInOut(seg(t, 10.05, 10.6)); // under the lift and the sweep: one gesture
-    const recede = E.quintIn(seg(t, 10.05, 10.65));
+    const out = E.sineInOut(seg(t, ...T.winOut)); // under the lift and the sweep: one gesture
+    const recede = E.quintIn(seg(t, T.winOut[0], T.winOut[1] + 0.05));
     s.win.group.position.set(0, -0.3 * recede, -1.6 * recede);
     s.win.group.visible = rv > 0 && out < 1;
     if (s.win.group.visible) {
@@ -268,9 +277,9 @@ const scene = {
     const take = E.sineInOut(seg(t, ...T.takeCard));
     const lift = fast(seg(t, ...T.lift));
     const collapse = cubicBezier(0.55, 0, 0.35, 1)(seg(t, ...T.collapse));
-    const breathe = 0.05 * E.smoothstep(11.2, 13.9, t);
+    const breathe = 0.05 * E.smoothstep(T.layers[0], T.collapse[0], t);
     const spread = LAYERS.map((_, i) => {
-      const x = E.spring(t - 10.25 - 0.05 * i, { freq: 0.75, damping: 0.8 }) + breathe;
+      const x = E.spring(t - T.apart - 0.05 * i, { freq: 0.75, damping: 0.8 }) + breathe;
       return 0.44 * i * x * (1 - collapse);
     });
     const fly = soft(seg(t, ...T.fly));
@@ -278,12 +287,12 @@ const scene = {
     pos[2] += 0.003;
     s.stack.group.position.set(...pos);
     // Paper → glass behind a narrow band of light; back to paper under a broad, dim one.
-    const back = t > 12;
+    const back = t > EX + 2;
     const wipe = E.sineInOut(seg(t, ...T.wipe)) * (1 - E.sineInOut(seg(t, ...T.unwipe)));
     // It stays to the end: it is the page's diagram exactly (fading it would ghost the lines).
     const stackOp = takeInk;
     s.stack.group.visible = stackOp > 0.001;
-    const panes = E.sineInOut(seg(t, 10.45, 11.0)) * (1 - E.sineInOut(seg(t, 13.9, 14.3)));
+    const panes = E.sineInOut(seg(t, ...T.panes)) * (1 - E.sineInOut(seg(t, T.collapse[0], T.collapse[0] + 0.4)));
     // One layer lit per beat from 43.0, back to front, the rest dimmed: separate objects.
     const lit = LAYERS.map((_, i) => {
       const b = T.lit + 0.5 * i;
@@ -293,7 +302,7 @@ const scene = {
     const names = lit.map((l) => panes * l); // the lit pane's name only
     s.col.glass.forEach((c, i) => c.copy(s.col.apart[i]).lerp(s.col.neutral[i], litAll));
     // On its way down the card's white goes, so only the ink registers onto the page.
-    const cardGone = E.sineInOut(seg(t, 14.5, 14.9));
+    const cardGone = E.sineInOut(seg(t, ...T.cardGone));
     const cardOp = take * (1 - cardGone);
 
     // ---- the page, the day ----------------------------------------------------------------
@@ -339,11 +348,11 @@ const scene = {
     // DWL stays where pSide put it (x 1199) while the window grows about it.
     const pDwl = { target: DWL, dist: distForPx(WIN_W, 1645), az: -11, el: 2, shift: [0.1245, -0.026] };
     const stackC = [pos[0], pos[1], pos[2] + 0.5 * spread[5]];
-    const drift3 = seg(t, 11.0, 14.0);
+    const drift3 = seg(t, T.lit, FLY);
     const pApart = { target: stackC, dist: distForPx(CARD_W, 640) * (1 - 0.03 * drift3), az: -34 + 9 * drift3, el: 13 - 2.5 * drift3, shift: [0, 0.165] };
     // Overhead, first on the falling diagram, then settling on its slot.
     // It lands already creeping in; the dolly runs on through the cut into marks (registered there).
-    const pEnd = { target: lerp3(pos, LAND, E.sineInOut(seg(t, 14.5, 15.3))), dist: END_DIST * 0.992 * handoff(lib, 32 + t), az: 0, el: END_EL, shift: [0, 0] };
+    const pEnd = { target: lerp3(pos, LAND, E.sineInOut(seg(t, T.cardGone[0], T.cardGone[0] + 0.8))), dist: END_DIST * 0.992 * handoff(lib, START + t), az: 0, el: END_EL, shift: [0, 0] };
 
     const p = chain(pMark, [
       [pCard, cubicBezier(0.45, 0, 0.2, 1)(seg(t, ...T.closeIn))],
@@ -353,7 +362,7 @@ const scene = {
       [pEnd, E.cubicInOut(seg(t, ...T.crane))],
     ]);
     const d = cam.drift(t, 16, { amp: 0.6, rate: 0.06, roll: 0.07, dolly: 0.004 });
-    const calm = 1 - E.smoothstep(14.0, 15.2, t);
+    const calm = 1 - E.smoothstep(FLY, FLY + 1.2, t);
     cam.orbit(camera, {
       target: p.target,
       dist: p.dist * (1 + (d.dist - 1) * calm),
@@ -385,17 +394,17 @@ const scene = {
     ctx.backdrop.userData.set({ top: w.top, bottom: w.bottom, glow: w.glow, center: w.center, radius: w.radius, glowAmount: w.glowAmount });
 
     // Per-pane depth of field while the layers are apart.
-    const dofK = E.smoothstep(10.35, 11.1, t) * (1 - E.smoothstep(13.85, 14.3, t));
+    const dofK = E.smoothstep(EX + 0.35, EX + 1.1, t) * (1 - E.smoothstep(T.crane[0], FLY + 0.3, t));
     s.stack.set({
       // A narrow band: the ink flips where the paper crosses mid-grey, so no line fades out.
-      spread, opacity: stackOp, card: cardOp, wipe, soft: back ? 0.14 : 0.1, sheen: back ? 0.45 : 0.85, glassInk: s.col.glass, panes, glint: -0.8 + 1.6 * seg(t, 10.4, 14.0),
+      spread, opacity: stackOp, card: cardOp, wipe, soft: back ? 0.14 : 0.1, sheen: back ? 0.45 : 0.85, glassInk: s.col.glass, panes, glint: -0.8 + 1.6 * seg(t, T.spot[1], FLY),
       lit, dim: 0.5 * litAll, labels: names,
       dof: { focus: camera.position.distanceTo(s.v.set(...stackC)), aperture: 150 * dofK * (ctx.renderH / 1080), maxBlur: 7 * (ctx.renderH / 1080) },
     });
 
     // ---- world, post --------------------------------------------------------------------------
-    s.floor.set({ opacity: 1 - E.sineInOut(seg(t, ...T.floorOut)), center: [pos[0], Math.min(pos[2], 1.0)], reflect: E.lerp(0.14, 0.3, E.sineInOut(seg(t, 9.8, 10.8))) });
-    s.dust.set({ time: 32 + t, focus: camera.position.distanceTo(s.v.set(...p.target)), bright: 0.42 * (1 - day), fov: FOV, H: ctx.renderH });
+    s.floor.set({ opacity: 1 - E.sineInOut(seg(t, ...T.floorOut)), center: [pos[0], Math.min(pos[2], 1.0)], reflect: E.lerp(0.14, 0.3, E.sineInOut(seg(t, T.takeInk[0], EX + 0.8))) });
+    s.dust.set({ time: START + t, focus: camera.position.distanceTo(s.v.set(...p.target)), bright: 0.42 * (1 - day), fov: FOV, H: ctx.renderH });
     post.dof = null;
     const dotBloom = 1 - E.sineInOut(seg(t, ...T.dotOut));
     // A hard threshold before the card lights, so only the dot (> 1.0) blooms, never paper.
@@ -403,7 +412,7 @@ const scene = {
     post.vignette = E.lerp(0.22, 0.06, day);
     const moving = (a, b) => t > a && t < b;
     // 12 also while the pointer crosses the dim app at ~4× between the two drags.
-    post.samples = moving(0, 1.3) || moving(3.0, 3.4) || moving(10.0, 11.6) || moving(13.9, 15.5) ? 12 : moving(...T.closeIn) || moving(...T.pull) || moving(...T.push) ? 8 : 0;
+    post.samples = moving(0, 1.3) || moving(3.0, 3.4) || moving(EX, EX + 1.6) || moving(FLY - 0.1, FLY + 1.5) ? 12 : moving(...T.closeIn) || moving(...T.pull) || moving(...T.push) ? 8 : 0;
 
     // ---- type -----------------------------------------------------------------------------------
     s.word.set(t, T.word[0], T.word[1]);
@@ -419,10 +428,10 @@ const scene = {
     s.subs.forEach((sub, i) => sub.set(t, T.subs[i], T.subOut));
     s.layers.set(t, T.layers[0], T.layers[1]);
   },
-  // The touch on 47.0 and the day coming up after it (the timeline's own soft hit is on 48.0).
+  // Under the touch cue's own hit, and the day coming up after it.
   events: [
-    { t: 15.0, kind: 'hit', strength: 0.35, note: 'diagram touches the page' },
-    { t: 15.05, kind: 'swell', strength: 0.4, note: 'the day comes up' },
+    { t: TOUCH, kind: 'hit', strength: 0.35, note: 'diagram touches the page' },
+    { t: TOUCH + 0.05, kind: 'swell', strength: 0.4, note: 'the day comes up' },
   ],
 };
 

@@ -123,6 +123,8 @@ async function createSlot(id, { dry = false } = {}) {
     beat: TL.BEAT, bar: TL.BAR, W: DW, H: DH, renderW: W, renderH: H, fps: FPS,
     timeline: TL,
     copy: TL.COPY[id] ?? {},
+    /** Scene seconds of cue `id` (timeline CUES). */
+    cue: (cueId) => TL.cueAt(cueId) - start,
     time: start,
     prepasses: [],
     framePasses: [],

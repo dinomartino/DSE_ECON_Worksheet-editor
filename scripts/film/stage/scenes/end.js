@@ -3,10 +3,13 @@
 // while the studio comes up; "Econ Worksheet". The camera pulls back into a lockup as the
 // tagline lands on the 86.0 s tick; "Free. No account needed." blooms in on the 88.0 s
 // swell; the hold keeps arcing in; the engine fades to black over the last bar (92–94 s).
-import { COPY } from '../../timeline.mjs';
+import { COPY, cueAt, sceneStart } from '../../timeline.mjs';
 
 const C = COPY.end;
+const START = sceneStart('end');
+const at = (id) => cueAt(id) - START;
 
+// Scene seconds (film − 84); the tagline and the small line land on their cues.
 const T = {
   turn: 2.2,
   sweep: [0.35, 2.1],
@@ -14,9 +17,9 @@ const T = {
   lights: [0.05, 1.6],
   title: 0.3,
   lockup: [1.45, 2.55],
-  tagline: 2.0,
-  small: 4.0,
-  swell: 4.0,
+  tagline: at('end.tagline'),
+  small: at('end.swell'),
+  swell: at('end.swell'),
 };
 
 // Lockup geometry in design px: tile centre y / size, then title y and scale.
@@ -96,7 +99,7 @@ const scene = {
     });
 
     s.floor.set({ opacity: 1 });
-    s.dust.set({ time: 84 + t, focus: camera.position.length(), bright: 0.34 + 0.16 * up, fov, H: ctx.renderH });
+    s.dust.set({ time: START + t, focus: camera.position.length(), bright: 0.34 + 0.16 * up, fov, H: ctx.renderH });
     post.bloom = { strength: 1.35 + 0.5 * swell + 0.6 * hit, radius: 0.62, threshold: 1, knee: 0.45 };
     post.vignette = 0.24;
     post.samples = t < 1.2 ? 8 : 0;

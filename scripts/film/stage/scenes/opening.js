@@ -4,28 +4,30 @@
 // behind it on the 8.0 s whoosh as the camera pulls back; title at 10.0 s. From the 12.0 s
 // riser the camera pushes toward the dot, accelerating through the breath (15.5 s) until
 // blue fills the frame at the cut.
-import { COPY } from '../../timeline.mjs';
+import { COPY, cue, cueAt, sceneStart, sceneEnd } from '../../timeline.mjs';
 import { cubicBezier } from '../lib/ease.js';
 
 const C = COPY.opening;
+const START = sceneStart('opening');
+const at = (id) => cueAt(id) - START;
 
-// Beat map (scene seconds = film seconds here).
+// Beat map (scene seconds = film seconds here); the cued moments come from CUES.
 const T = {
   dotIn: 0.15,
-  supply: 1.5,
-  demand: 3.5,
-  drop: 4.95,
-  land: 5.5,
+  supply: at('opening.supply'),
+  demand: at('opening.demand'),
+  drop: at('opening.land') - 0.55,
+  land: at('opening.land'),
   axis: [6.2, 7.5],
-  tile: 8.0,
+  tile: at('opening.tile'),
   pullEnd: 9.9,
   sweep: [9.0, 10.8],
-  title: 10.0,
-  sub: 10.7,
+  title: at('opening.title'),
+  sub: at('opening.title') + 0.7,
   exit: 14.0, // bar 7: the type clears before the push takes the frame
-  riser: 12.0,
-  push: 15.5,
-  cut: 16.0,
+  riser: at('opening.riser'),
+  push: cue('opening.riser').to - START, // the breath
+  cut: sceneEnd('opening') - START,
 };
 
 const WORD_Y = 812;

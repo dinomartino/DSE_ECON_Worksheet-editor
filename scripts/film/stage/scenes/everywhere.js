@@ -6,7 +6,7 @@
 // 77.0 and 78.0, each earlier one stepping back, while "In your browser. On Mac. On
 // Windows." lands a phrase per window, the Chinese with it. Then the camera pushes in and
 // turns, accelerating into the 80.0 montage cut, the stack opening up in depth.
-import { COPY } from '../../timeline.mjs';
+import { COPY, cueAt, sceneStart, sceneEnd } from '../../timeline.mjs';
 import { cubicBezier } from '../lib/ease.js';
 import { REVEAL } from '../lib/type.js';
 import { glassChip } from './everywhere/glassChip.js';
@@ -17,15 +17,19 @@ const PHRASES = C.headline.split(/(?<=\.)\s+/); // In your browser. / On Mac. / 
 // Over the chips (not in COPY yet: move it there with the next timeline edit).
 const EXPORT = { en: 'Export your way.', zh: '隨心匯出。' };
 
-// Scene seconds (film − 72).
+// Scene seconds (film − 72). Chips and windows land on their cues (everywhere.chip1…5,
+// .browser/.mac/.windows); the truck, the Chinese and the push hang off the windows.
+const START = sceneStart('everywhere');
+const at = (id) => cueAt(id) - START;
+const WIN = ['browser', 'mac', 'windows'].map((w) => at(`everywhere.${w}`));
 const T = {
   export: [0.3, 3.12], // the chips' headline, gone before the truck moves
-  chips: [0.5, 1.0, 1.5, 2.0, 2.5],
-  truck: [3.4, 4.0],
-  windows: [4.0, 5.0, 6.0],
-  zh: [4.3, 5.3, 6.3, 6.42], // 網頁、/ Mac、/ Windows，/ 隨處可用。 — each with its window
-  solo: [4.25, 5.15], // the camera eases back from the browser as the Mac arrives
-  push: [5.6, 8.0], // into the cut
+  chips: C.chips.map((_, i) => at(`everywhere.chip${i + 1}`)),
+  truck: [WIN[0] - 0.6, WIN[0]],
+  windows: WIN,
+  zh: [WIN[0] + 0.3, WIN[1] + 0.3, WIN[2] + 0.3, WIN[2] + 0.42], // 瀏覽器、/ Mac、/ Windows，/ 隨處可用。 — each with its window
+  solo: [WIN[0] + 0.25, WIN[1] + 0.15], // the camera eases back from the browser as the Mac arrives
+  push: [WIN[2] - 0.4, sceneEnd('everywhere') - START], // into the cut
 };
 
 // The Export dialog, cropped to its own rounded rectangle in the still (px).
