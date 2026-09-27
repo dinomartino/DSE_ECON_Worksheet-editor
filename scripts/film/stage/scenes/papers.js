@@ -7,9 +7,10 @@
 // and the paper and its pool fall together to word's first frame (hard cut at 64.0).
 import { COPY, FPS, cueAt, sceneStart, sceneEnd } from '../../timeline.mjs';
 import { cubicBezier } from '../lib/ease.js';
+import { pick, PORTRAIT } from '../lib/format.js';
 import { stop, mixPose, withDrift, applyPose, haze } from './marks/kit.js';
-import { S_POS, S_ROT, tPose, holdCam, hazeAt, HAZE_BAND, dofAt, SHEET } from './papers/deck.js';
-import { PACK, S_K, T_K, TH_S, SP_OPEN, SP_SHUT, SP_STACK, PHI_OPEN, PHI_STACK, at, lin, sheetTexture } from './papers/fan.js';
+import { S_POS, S_ROT, tPose, holdCam, hazeAt, HAZE_BAND, dofAt, SHEET, add, APERTURE } from './papers/deck.js';
+import { PACK, S_K, T_K, TH_S, SP_OPEN, SP_SHUT, SP_STACK, PHI_OPEN, PHI_STACK, at, lin, sheetTexture, CASCADE } from './papers/fan.js';
 
 const C = COPY.papers;
 const F0T = sceneStart('papers'); // film time of t = 0
@@ -23,7 +24,8 @@ const T = {
   open: [PULL + 0.04, PULL + 1.5], // the fan opens, the last sheet settling on 57.5
   turn: [PULL, PULL + 1.5], // the turntable centres the fan
   head: [1.0, 5.62],
-  track: [1.6, 5.95], // while the fan holds: over to the covers
+  track: pick({ landscape: [1.6, 5.95], portrait: [1.6, 4.5] }), // while the fan holds: over to the covers
+  covers: [3.9, 5.95], // portrait: then in on the two cover titles until the gather
   close: [GATHER, GATHER + 1], // 62.0 whoosh: the fan folds back under the diagram page (63.0)
   frame: [GATHER, GATHER + 1.1], // camera onto the stack…
   settle: [GATHER + 0.85, LAST], // …then into word's first framing, arriving at rest as word starts from rest
@@ -32,12 +34,32 @@ const T = {
 };
 
 // Camera: the open fan over the type band; the two covers; the stack; word's first frame.
-const WIDE = stop([...at(0), S_POS[2]], 330, 945, 310, { az: 6, el: -24 });
-const COVERS = stop([...at(-24.5 * Math.PI / 180, 0.15), S_POS[2]], 470, 960, 330, { az: -9, el: -18 }); // the two cover titles
-const STACK_MID = stop([...at(0), S_POS[2]], 420, 960, 480, { az: 1, el: -12 });
-// word.js opens on its sheet (2.176 wide: docLayout pageW) pitched back 14° and seen from
-// el 2.2°, az = its yaw, DIST0 9.775, SHIFT0: the same view of our 1-wide top sheet.
-const END = { target: [...at(0), S_POS[2]], dist: 9.775 / 2.176, az: 0, el: 2.2 - 14, roll: 0, shift: [0.0031, 0.1234] };
+const { WIDE, COVERS, COVERS_IN, STACK_MID, END, ORBIT, HEAD, HOME } = pick({
+  landscape: {
+    WIDE: stop([...at(0), S_POS[2]], 330, 945, 310, { az: 6, el: -24 }),
+    COVERS: stop([...at(-24.5 * Math.PI / 180, 0.15), S_POS[2]], 470, 960, 330, { az: -9, el: -18 }), // the two cover titles
+    STACK_MID: stop([...at(0), S_POS[2]], 420, 960, 480, { az: 1, el: -12 }),
+    // word.js opens on its sheet (2.176 wide: docLayout pageW) pitched back 14° and seen from
+    // el 2.2°, az = its yaw, DIST0 9.775, SHIFT0: the same view of our 1-wide top sheet.
+    END: { target: [...at(0), S_POS[2]], dist: 9.775 / 2.176, az: 0, el: 2.2 - 14, roll: 0, shift: [0.0031, 0.1234] },
+    ORBIT: -10,
+    HEAD: { y: 904, size: 104 },
+    HOME: [...at(0), S_POS[2]], // where the stack gathers
+  },
+  // Portrait: the cascade seen up the desk, the camera climbing it to the covers; word's
+  // first frame is its sheet 600 px wide at (540, 880) (FILM-9x16.md; word.js DIST0 12.995).
+  portrait: {
+    WIDE: stop(add(S_POS, [0, 1.8, 0]), 520, 540, 1100, { az: 0, el: -34 }),
+    COVERS: stop(add(S_POS, [0, 4.8, 0]), 620, 540, 1120, { az: -3, el: -28 }),
+    // Close on the covers: the Paper 1 title above, the Paper 2 cover filling the width.
+    COVERS_IN: stop(add(S_POS, [-0.1, 4.82, 0]), 960, 540, 1080, { az: -3, el: -26 }),
+    STACK_MID: stop(S_POS, 480, 540, 960, { az: 1, el: -12 }),
+    END: { target: [...S_POS], dist: 12.995 / 2.176, az: 0, el: 2.2 - 14, roll: 0, shift: [0, 80 / 1920] },
+    ORBIT: -4,
+    HEAD: { y: 390, size: 96, maxWidth: 820, maxLines: 3, en: C.headline.replace(' to a ', '\nto a ') }, // no dangling "to"
+    HOME: [...S_POS],
+  },
+});
 
 // Lights (display sRGB). Low-chroma: the room goes from cream to the brand tile's warm
 // charcoal, then to word's first room; a lamp pool on the stack, always darker than the
@@ -92,7 +114,7 @@ const scene = {
     });
     s.haze = haze(ctx);
     s.v = new ctx.THREE.Vector3();
-    s.head = lib.type.headline(ctx.el, { en: C.headline, zh: C.headlineZh, y: 904, size: 104, zhSize: 44, world: 'day' });
+    s.head = lib.type.headline(ctx.el, { en: C.headline, zh: C.headlineZh, ...HEAD, zhSize: 44, world: 'day' });
   },
 
   update(t, ctx) {
@@ -119,7 +141,28 @@ const scene = {
       const up = 0.018 * tap; // under the 0.02 layer gap: never through the sheet above
       const lift = bumpLift + up;
       let pos, rot;
-      if (k === S_K) {
+      if (PORTRAIT) {
+        // Dealt up the desk from under the student copy, then gathered back under it.
+        const { d, rz, layer } = CASCADE[k];
+        const zAt = (sp) => S_POS[2] - layer * sp + lift;
+        if (k === S_K) {
+          pos = [S_POS[0], S_POS[1], zAt(0)];
+          rot = [S_ROT[0] * (1 - u0), S_ROT[1] * (1 - u0), S_ROT[2] * (1 - uc)];
+        } else {
+          const uo = k === T_K ? 1 : openEase(E.seg(t, T.open[0] + 0.03 * (layer - 2), T.open[1]));
+          const sp = lerp(lerp(SP_SHUT, SP_OPEN, uo), SP_STACK, uc);
+          const k1 = uo * (1 - uc);
+          const slot = [S_POS[0] + d[0] * k1, S_POS[1] + d[1] * spread * k1, zAt(sp)];
+          rot = [S_ROT[0] * (1 - u0), S_ROT[1] * (1 - u0), rz * k1];
+          pos = slot;
+          if (k === T_K) {
+            const uT = openEase(E.seg(t, 0.0, 1.35));
+            const m = tPose(f);
+            pos = m.pos.map((v, i) => lerp(v, slot[i], uT));
+            rot = rot.map((v, i) => lerp(m.rot[i], v, uT));
+          } else sh.shadowK = E.smoothstep(0, 0.25, uo);
+        }
+      } else if (k === S_K) {
         const g = TH_S + phi;
         pos = [...at(g), S_POS[2] + lift];
         rot = [S_ROT[0] * (1 - u0), S_ROT[1] * (1 - u0), g];
@@ -156,10 +199,11 @@ const scene = {
     });
 
     // ---- camera ----------------------------------------------------------------------------
-    const orbitAz = -10 * E.seg(t, 1.2, GATHER);
+    const orbitAz = ORBIT * E.seg(t, 1.2, GATHER);
     const wide = { ...WIDE, az: WIDE.az + orbitAz };
     let p = mixPose(holdCam(lib, f), wide, pullEase(E.seg(t, ...T.pull)));
     p = mixPose(p, COVERS, E.sineInOut(E.seg(t, ...T.track)));
+    if (COVERS_IN) p = mixPose(p, COVERS_IN, E.sineInOut(E.seg(t, ...T.covers)));
     p = mixPose(p, STACK_MID, frameEase(E.seg(t, ...T.frame)));
     const settle = sine((t - T.settle[0]) / (T.settle[1] - T.settle[0]));
     p = mixPose(p, END, settle);
@@ -177,7 +221,7 @@ const scene = {
     const bl = lin(b);
     const pool = keysLin([POOL.day, POOL.lamp], roomK).map((v) => lin(disp(v) * b));
     bu.uGlow.value.setRGB(...pool);
-    s.v.set(...at(0), S_POS[2]).project(camera);
+    s.v.set(...HOME).project(camera);
     bu.uCenter.value.set(lerp(0.5, s.v.x * 0.5 + 0.5, roomK), lerp(0.62, s.v.y * 0.5 + 0.5, roomK));
     bu.uGlowAmount.value = lerp(0.55, 0.45, roomK) * (1 - E.smoothstep(0.55, 1, dimK));
     bu.uRadius.value = lerp(0.6, 0.45, roomK);
@@ -196,7 +240,7 @@ const scene = {
     let onFan = depth(S_K);
     for (const k of [2, 5, 6, 7]) onFan = lerp(onFan, depth(k), E.sineInOut(E.seg(t, PACK[k].beat - 0.3, PACK[k].beat + 0.15)));
     const focus = lerp(p.dist, lerp(onFan, p.dist, E.sineInOut(E.seg(t, GATHER, GATHER + 0.9))), dofWide);
-    const aperture = lerp(130, 200, dofWide) * (1 - E.sineInOut(E.seg(t, GATHER, GATHER + 1.2)));
+    const aperture = lerp(130, 200, dofWide) * APERTURE * (1 - E.sineInOut(E.seg(t, GATHER, GATHER + 1.2)));
     post.dof = t < 0.4 ? dofAt(p.dist, 1) : aperture < 1 ? null : { focus, aperture, maxBlur: 12 * Math.min(1, aperture / 60) };
     post.vignette = lerp(0.06, 0.26, roomK);
     post.bloom = null;

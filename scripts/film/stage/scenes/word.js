@@ -9,6 +9,7 @@
 // the list numbers light up, the paragraphs show their style names, a caret starts blinking.
 import { COPY, cueAt, sceneStart } from '../../timeline.mjs';
 import { cubicBezier } from '../lib/ease.js';
+import { pick } from '../lib/format.js';
 import { docWindow, DOC } from './word/docWindow.js';
 import { styleTag } from './word/styleTag.js';
 
@@ -36,19 +37,45 @@ const T = {
   facts: FACTS_T,
 };
 
-const YAW = 0.2; // the window turns toward the facts
+// Portrait (FILM-9x16.md): papers leaves the sheet 600 px wide at (540, 880); a tall
+// document window cropped to its page and style tags, the facts stacked above it.
+const LAYOUT = pick({
+  landscape: {
+    YAW: 0.2, // the window turns toward the facts
+    // Breakdown: papers' last frame (sheet 459 px wide, centred at 965, 420) from camera az AZ0.
+    AZ0: 2, DIST0: 9.775, SHIFT0: [0.0031, 0.1234],
+    SWING: 13, // the camera's turn around the page on the riser (deg)
+    NEAR: { dist: 8.7, shift: null }, // the riser's slow push (shift: stay on SHIFT0)
+    END: { target: [0, -0.02, 0], dist: 5.84, shift: [-0.128, 0.0] },
+    window: {}, // docLayout defaults
+    tag: { h: 0.09, gap: 0.045 }, // style pills: height, gap to the page (world); styleTag's type
+    sheetX: 0.1,
+    glow: [0.37, 0.52],
+    HEAD: { y: 900, size: 104 },
+    FACT: { x: 1330, y: 540, size: 74, step: 88, align: 'left' }, // centred on y, one-line facts step px apart
+  },
+  portrait: {
+    YAW: 0.06,
+    AZ0: 2, DIST0: 12.995, SHIFT0: [0, 80 / 1920],
+    SWING: 8,
+    NEAR: { dist: 10.3, shift: [0, -110 / 1920], shiftT: [0.1, 1.4] }, // lowered before the headline lands
+    // The pills' left edge at x ≈ 95 and the page's right edge by x ≈ 945 once the facts' pushes land.
+    END: { target: [-0.24, -0.05, 0], dist: 12.6, shift: [0, -152 / 1920] },
+    window: { width: 3.5, aspect: 1.0, pageFrac: 2.16 / 3.5 }, // the page as before (2.16 wide), room left for the pills
+    tag: { h: 0.117, gap: 0.025, fontPx: 18, padPx: 10 }, // 1.3× pills, fuller type: names ≥ 20 px on the phone
+    sheetX: 0,
+    glow: [0.5, 0.42],
+    HEAD: { y: 385, size: 96, maxWidth: 840, maxLines: 2, en: C.headline.replace('real ', 'real\n') }, // "A real / Word document."
+    FACT: { x: 540, y: 420, size: 72, step: 86, align: 'center' },
+  },
+});
+const { YAW, AZ0, DIST0, SHIFT0, FACT } = LAYOUT;
 const DEG = Math.PI / 180;
-// Breakdown: papers' last frame (sheet 459 px wide, centred at 965, 420) from camera az AZ0.
-const AZ0 = 2;
-const DIST0 = 9.775;
-const SHIFT0 = [0.0031, 0.1234];
 // Window-group local; papers leaves the sheet tipped back (its bottom edge ~6% wider).
-const SHEET0 = { pos: [0.1, 0.35, 0.3], rot: [-14 * DEG, AZ0 * DEG - YAW, 0] };
+const SHEET0 = { pos: [LAYOUT.sheetX, 0.35, 0.3], rot: [-14 * DEG, AZ0 * DEG - YAW, 0] };
 // Papers' last frame (display sRGB /255): the room's warm gradient; the sheet, neutral.
 const ROOM0 = { top: [11, 9, 7], bottom: [3, 2, 2] };
 const DIM = 0.0022; // linear: the sheet at display 7/255, as papers leaves it
-const FACT_X = 1330;
-const FACT = { y: 540, size: 74, step: 88 }; // the list centred on y, one-line facts step px apart
 const PUSH = 0.02; // camera push-in per fact
 const rush = cubicBezier(0.5, 0, 0.18, 1); // from rest, fast through the middle, long landing
 const punch = cubicBezier(0.3, 0, 0.1, 1); // a push that peaks just after its tick and lands long
@@ -61,7 +88,7 @@ const scene = {
     const { lib, scene, THREE } = ctx;
     const s = (ctx.state = {});
     const [map, printed] = await Promise.all([ctx.load.texture(DOC.texture), ctx.load.texture(PRINTED)]);
-    s.doc = docWindow(lib, map, { alt: printed });
+    s.doc = docWindow(lib, map, { alt: printed, ...LAYOUT.window });
     s.doc.group.rotation.y = YAW;
     s.doc.sheet.mesh.rotation.order = 'YXZ'; // pitch about the sheet's own x, then yaw
     scene.add(s.doc.group);
@@ -69,9 +96,9 @@ const scene = {
     // Style names in the window's margin, each level with its paragraph.
     const { L } = s.doc;
     s.tags = DOC.styles.map(([key, name]) => {
-      const tag = styleTag(name);
+      const tag = styleTag(name, LAYOUT.tag);
       const r = DOC.regions[key];
-      tag.x = L.slot[0] - L.pageW / 2 - 0.045 - tag.w / 2;
+      tag.x = L.slot[0] - L.pageW / 2 - LAYOUT.tag.gap - tag.w / 2;
       tag.mesh.position.set(tag.x, L.slot[1] + L.pageH * (0.5 - (r[1] + r[3]) / 2), L.slot[2] + 0.002);
       s.doc.group.add(tag.mesh);
       return tag;
@@ -96,8 +123,8 @@ const scene = {
     s.tmp = new THREE.Vector3();
 
     const T_ = lib.type;
-    s.headline = T_.headline(ctx.el, { en: C.headline, zh: C.headlineZh, y: 900, size: 104, world: 'night' });
-    s.facts = C.facts.map((en) => T_.headline(ctx.el, { en, x: FACT_X, size: FACT.size, align: 'left', world: 'night', maxLines: 2 }));
+    s.headline = T_.headline(ctx.el, { en: C.headline, zh: C.headlineZh, ...LAYOUT.HEAD, world: 'night' });
+    s.facts = C.facts.map((en) => T_.headline(ctx.el, { en, x: FACT.x, size: FACT.size, align: FACT.align, world: 'night', maxLines: 2 }));
     // Stack them: a fact that wraps pushes the rest down, the list stays centred.
     const lineH = FACT.size * 1.04, gap = FACT.step - lineH;
     const hs = s.facts.map((f) => f.lines * lineH * f.scale);
@@ -173,16 +200,18 @@ const scene = {
     const approach = E.sineInOut(E.seg(t, 0, T.move[0] + 0.3)); // the riser's slow push
     const creep = 1 - 0.008 * E.seg(t, T.move[1], 8.2);
     const push = 1 - PUSH * T.facts.reduce((a, f) => a + punch(E.seg(t, f - 0.12, f + 0.65)), 0);
-    const dist = E.lerp(E.lerp(DIST0, 8.7, approach), 5.84, m) * creep * push;
-    const target = s.target0.map((a, i) => E.lerp(a, [0, -0.02, 0][i], m));
+    const { NEAR, END } = LAYOUT;
+    const dist = E.lerp(E.lerp(DIST0, NEAR.dist, approach), END.dist, m) * creep * push;
+    const target = s.target0.map((a, i) => E.lerp(a, END.target[i], m));
+    const sh0 = NEAR.shift ? SHIFT0.map((v, i) => E.lerp(v, NEAR.shift[i], E.sineInOut(E.seg(t, ...NEAR.shiftT)))) : SHIFT0;
     cam.orbit(camera, {
       target,
       dist: dist * (1 + (d.dist - 1) * calm),
-      az: E.lerp(AZ0 - 13 * approach, 0, m) + 2.4 * E.seg(t, T.move[1], 8.2) + d.az * calm,
+      az: E.lerp(AZ0 - LAYOUT.SWING * approach, 0, m) + 2.4 * E.seg(t, T.move[1], 8.2) + d.az * calm,
       el: E.lerp(2.2 + 0.8 * approach, 1.6, m) + d.el * calm,
       roll: d.roll * calm,
       fov: 30,
-      shift: [E.lerp(SHIFT0[0], -0.128, m), E.lerp(SHIFT0[1], 0.0, m)],
+      shift: [E.lerp(sh0[0], END.shift[0], m), E.lerp(sh0[1], END.shift[1], m)],
     });
 
     // --- light, floor, dust, post --------------------------------------------------------
@@ -192,7 +221,7 @@ const scene = {
     ctx.backdrop.userData.set({
       top: s.room.a.copy(s.room.top).multiplyScalar(1 - dark),
       bottom: s.room.b.copy(s.room.bottom).multiplyScalar(1 - dark),
-      center: [E.lerp(0.5, 0.37, m), E.lerp(0.58, 0.52, m)],
+      center: [E.lerp(0.5, LAYOUT.glow[0], m), E.lerp(0.58, LAYOUT.glow[1], m)],
       radius: E.lerp(0.5, 0.62, m),
       glowAmount: (0.85 + 0.35 * m + 0.9 * hit) * dark,
     });
