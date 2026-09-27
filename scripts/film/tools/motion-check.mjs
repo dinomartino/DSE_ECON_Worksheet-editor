@@ -29,8 +29,10 @@ function probe(video) {
 
 /** Per-frame MAD series of a video. */
 export async function madSeries(video) {
+  // passthrough: an mp4 whose video starts after 0 (AAC priming) must not gain a duplicate
+  // first frame, which would shift every reported time one frame late.
   const p = spawn('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', video,
-    '-vf', `scale=${SW}:${SH}:flags=area,format=gray`, '-f', 'rawvideo', '-']);
+    '-vf', `scale=${SW}:${SH}:flags=area,format=gray`, '-fps_mode', 'passthrough', '-f', 'rawvideo', '-']);
   const size = SW * SH;
   const mads = [];
   let prev = null, buf = Buffer.alloc(0);
