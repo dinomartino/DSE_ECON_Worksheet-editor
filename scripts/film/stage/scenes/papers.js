@@ -24,7 +24,8 @@ const T = {
   open: [PULL + 0.04, PULL + 1.5], // the fan opens, the last sheet settling on 57.5
   turn: [PULL, PULL + 1.5], // the turntable centres the fan
   head: [1.0, 5.62],
-  track: [1.6, 5.95], // while the fan holds: over to the covers
+  track: pick({ landscape: [1.6, 5.95], portrait: [1.6, 4.5] }), // while the fan holds: over to the covers
+  covers: [3.9, 5.95], // portrait: then in on the two cover titles until the gather
   close: [GATHER, GATHER + 1], // 62.0 whoosh: the fan folds back under the diagram page (63.0)
   frame: [GATHER, GATHER + 1.1], // camera onto the stack…
   settle: [GATHER + 0.85, LAST], // …then into word's first framing, arriving at rest as word starts from rest
@@ -33,7 +34,7 @@ const T = {
 };
 
 // Camera: the open fan over the type band; the two covers; the stack; word's first frame.
-const { WIDE, COVERS, STACK_MID, END, ORBIT, HEAD, HOME } = pick({
+const { WIDE, COVERS, COVERS_IN, STACK_MID, END, ORBIT, HEAD, HOME } = pick({
   landscape: {
     WIDE: stop([...at(0), S_POS[2]], 330, 945, 310, { az: 6, el: -24 }),
     COVERS: stop([...at(-24.5 * Math.PI / 180, 0.15), S_POS[2]], 470, 960, 330, { az: -9, el: -18 }), // the two cover titles
@@ -49,11 +50,13 @@ const { WIDE, COVERS, STACK_MID, END, ORBIT, HEAD, HOME } = pick({
   // first frame is its sheet 600 px wide at (540, 880) (FILM-9x16.md; word.js DIST0 12.995).
   portrait: {
     WIDE: stop(add(S_POS, [0, 1.8, 0]), 520, 540, 1100, { az: 0, el: -34 }),
-    COVERS: stop(add(S_POS, [0, 4.95, 0]), 620, 540, 1120, { az: -3, el: -28 }),
+    COVERS: stop(add(S_POS, [0, 4.8, 0]), 620, 540, 1120, { az: -3, el: -28 }),
+    // Close on the covers: the Paper 1 title above, the Paper 2 cover filling the width.
+    COVERS_IN: stop(add(S_POS, [-0.1, 4.82, 0]), 960, 540, 1080, { az: -3, el: -26 }),
     STACK_MID: stop(S_POS, 480, 540, 960, { az: 1, el: -12 }),
     END: { target: [...S_POS], dist: 12.995 / 2.176, az: 0, el: 2.2 - 14, roll: 0, shift: [0, 80 / 1920] },
     ORBIT: -4,
-    HEAD: { y: 390, size: 96, maxWidth: 820, maxLines: 3 },
+    HEAD: { y: 390, size: 96, maxWidth: 820, maxLines: 3, en: C.headline.replace(' to a ', '\nto a ') }, // no dangling "to"
     HOME: [...S_POS],
   },
 });
@@ -200,6 +203,7 @@ const scene = {
     const wide = { ...WIDE, az: WIDE.az + orbitAz };
     let p = mixPose(holdCam(lib, f), wide, pullEase(E.seg(t, ...T.pull)));
     p = mixPose(p, COVERS, E.sineInOut(E.seg(t, ...T.track)));
+    if (COVERS_IN) p = mixPose(p, COVERS_IN, E.sineInOut(E.seg(t, ...T.covers)));
     p = mixPose(p, STACK_MID, frameEase(E.seg(t, ...T.frame)));
     const settle = sine((t - T.settle[0]) / (T.settle[1] - T.settle[0]));
     p = mixPose(p, END, settle);

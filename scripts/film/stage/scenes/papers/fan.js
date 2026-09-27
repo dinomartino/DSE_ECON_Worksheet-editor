@@ -56,8 +56,8 @@ export const CASCADE = [
   { d: [0.2, 2.25], rz: -0.045, layer: 3 }, // Version B
   { d: [-0.18, 1.6], rz: 0.04, layer: 2 }, // Version C
   { d: [0.22, 3.6], rz: -0.05, layer: 5 }, // LQ
-  { d: [-0.2, 4.35], rz: 0.045, layer: 6 }, // Paper 2 cover
-  { d: [0.18, 5.1], rz: -0.035, layer: 7 }, // Paper 1 cover
+  { d: [-0.12, 4.35], rz: 0.04, layer: 6 }, // Paper 2 cover
+  { d: [0.12, 4.97], rz: -0.03, layer: 7 }, // Paper 1 cover: its title clear above Paper 2
 ];
 
 /** Display-space brightness (0..1) → the linear multiplier that shows it. */
