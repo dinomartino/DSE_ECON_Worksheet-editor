@@ -31,12 +31,11 @@ if (args.help) {
 }
 
 const found = { error: 0, warn: 0 };
-let section = '';
 const say = (level, msg) => {
   if (level !== 'ok') found[level]++;
   console.log(`  ${{ ok: 'ok   ', warn: 'WARN ', error: 'ERROR' }[level]} ${msg}`);
 };
-const head = (name) => console.log(`\n${(section = name)}`);
+const head = (name) => console.log(`\n${name}`);
 const eps = 1e-6;
 
 // ---- 1. timeline -----------------------------------------------------------------------
