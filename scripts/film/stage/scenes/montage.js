@@ -7,6 +7,7 @@ import { MONTAGE_CUTS, sceneStart, sceneEnd } from '../../timeline.mjs';
 import { WORLDS } from '../lib/backdrop.js';
 import { softShadow } from './everywhere/shadow.js';
 import { docWindow, DOC } from './word/docWindow.js';
+import { docCard } from './montage/docCard.js';
 import { pick, PORTRAIT } from '../lib/format.js';
 
 const START = sceneStart('montage'); // film seconds at the scene's t = 0
@@ -29,14 +30,14 @@ const LAND = [
 ];
 // 9:16 (FILM-9x16.md): the same shots re-framed to a tall crop of one clear subject.
 const TALL = {
-  typing: { crop: [180, 400, 1100, 1300] }, // the MCQ block being typed, down to Section B
+  typing: { crop: [300, 360, 1640, 1040] }, // the MCQ block being typed, its right border and page margin in
   start: { crop: [0, 0, 860, 1180] }, // "Start a worksheet, or pick up where you left off." and its list
   zh: { crop: [380, 300, 940, 1120] }, // the Chinese page: 甲部 and three questions
   curve: { crop: [360, 330, 1000, 1120] }, // the canvas's axes and the curve being drawn
   teacher: { crop: [600, 440, 1060, 1260] }, // the teacher's copy: answers in red
-  cover: { crop: [100, 100, 2180, 2550], aim: [0, 0.08], zoom: 0.95 }, // the Paper 2 cover, title block first
-  docx: { aim: [0, 0.17], zoom: 0.82 }, // closer on the title and the diagram in the .docx
-  dwl: { crop: [200, 40, 1540, 1800] }, // the whole tax diagram, axes and labels included
+  cover: { crop: [240, 605, 2020, 2250] }, // the Paper 2 cover from SCHOOL NAME down, under the corner tab
+  docx: { aim: [0, 0] }, // zoomed on the page: title, Q1 and its diagram (M.docCrop)
+  dwl: { crop: [200, 40, 1600, 1800] }, // the whole tax diagram, axes and labels (D) included
 };
 const SHOTS = LAND.map((sh) => (PORTRAIT && TALL[sh.id] ? { ...sh, ...TALL[sh.id] } : sh));
 
@@ -49,11 +50,12 @@ const VIEW_H = 2 * DIST * Math.tan((FOV * Math.PI) / 360);
 const M = pick({
   landscape: {
     fit: { w: 0.8 * VIEW_H * (16 / 9), h: 0.82 * VIEW_H }, focus: [0.456, 0.485],
-    doc: (w) => ({ width: w * 0.95 }), shift: [0, 0], yaw: 1, pitch: 0,
+    doc: (w) => ({ width: w * 0.95 }), shift: [0, 0], yaw: 1, pitch: 0, sway: 0.06, dive: 0.58,
   },
   portrait: {
-    fit: { w: 0.9 * VIEW_H * (9 / 16), h: 0.66 * VIEW_H }, focus: [0.531, 0.469],
-    doc: (w) => ({ width: w, aspect: 0.8, pageFrac: 0.86, top: 0.07 }), shift: [0, 0.035], yaw: 0.7, pitch: 0.05,
+    fit: { w: 0.85 * VIEW_H * (9 / 16), h: 0.66 * VIEW_H }, focus: [0.591, 0.469], // DWL stays in frame to the cut
+    docCrop: [0.105, 0.07, 0.75, 0.458], // the .docx zoomed: title, the whole Q1 stem, the diagram (≈460 px)
+    shift: [0, 0.035], yaw: 0.7, pitch: 0.05, sway: 0, dive: 0.615, // centred cards; the dive keeps DWL in
   },
 });
 const FIT = M.fit;
@@ -88,7 +90,9 @@ const scene = {
     for (const [i, sh] of SHOTS.entries()) {
       const dur = (CUTS[i + 1] ?? END) - CUTS[i];
       let card;
-      if (sh.doc) {
+      if (sh.doc && M.docCrop) {
+        card = docCard(ctx, lib, await ctx.load.texture(DOC.texture), { fit: FIT, crop: M.docCrop });
+      } else if (sh.doc) {
         const map = await ctx.load.texture(DOC.texture);
         const doc = docWindow(lib, map, M.doc(FIT.w));
         const { sheet, L } = doc;
@@ -162,11 +166,11 @@ const scene = {
       const push = 0.5 * u + 0.5 * E.cubicOut(E.clamp(u));
       const aim = sh.aim ?? [0, 0];
       dist = DIST * (sh.zoom ?? 1) * (1 - 0.06 * push);
-      target = [aim[0] * card.width + side * 0.06 * (1 - relax), aim[1] * card.height, 0];
+      target = [aim[0] * card.width + side * M.sway * (1 - relax), aim[1] * card.height, 0];
     } else {
       // Under the riser: a slow start that accelerates into the triangle (log-space dolly).
       const k = E.cubicIn(E.clamp(u));
-      dist = DIST * Math.pow(0.58, k) * (1 - 0.03 * u);
+      dist = DIST * Math.pow(M.dive, k) * (1 - 0.03 * u);
       const lx = (FOCUS[0] - 0.5) * card.width;
       const ly = (FOCUS[1] - 0.5) * card.height;
       const aim = E.sineInOut(E.clamp(u));
