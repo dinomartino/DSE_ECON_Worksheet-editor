@@ -122,8 +122,9 @@ const scene = {
     s.floor.mesh.position.y = E.lerp(-1.2, -1.75, m);
     const focus = camera.position.distanceTo(sheet.mesh.getWorldPosition(s.tmp));
     s.dust.set({ time: 64 + t, focus, bright: 0.3 + 0.12 * m + 0.35 * hit, fov: 30, H: ctx.renderH });
-    const aperture = 520 * (1 - E.smoothstep(T.move[0], T.move[1] - 0.2, t));
-    post.dof = aperture > 1 ? { focus, aperture, maxBlur: 9 } : null;
+    // No DOF: the dust carries its own bokeh, and the depth-aware blur steps the sheet's
+    // anti-aliased edge against the black.
+    post.dof = null;
     post.bloom = null; // paper and screens never glow; nothing here exceeds 1.0
     post.vignette = 0.26;
     post.samples = t > T.move[0] && t < T.snap + 0.6 ? 16 : 0;
