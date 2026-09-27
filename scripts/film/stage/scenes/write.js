@@ -59,14 +59,64 @@ const T = {
 const SWAP = 1 / 120;
 const SETTLE_Z = 0.02, SETTLE = 0.35, SETTLE_BLUR = 2, SHARPEN = 0.18;
 // The lifted Chinese shrinks about the camera target by most of its perspective growth
-// (close-up distance D), so it floats over its own place: depth shows as parallax and shadow.
-const LIFT = 0.13, D = 1.45, COMP = 0.8;
+// (close-up distance D, per format), so it floats over its own place: depth shows as
+// parallax and shadow.
+const COMP = 0.8;
 const PUSH = 0.02; // camera distance per reflow
 
 const bob = (t) => 0.012 * Math.sin(t * 0.9);
 
+// Per-format layout (FILM-9x16.md). Poses are functions of the window's css() and the page's
+// pageAt() (sheet px); landscape is the film as shipped. Portrait: the window's page fills
+// the width under the headline, the push lands on question 1, the wide shot puts the page
+// under the stacked language words.
+const LAYOUT = {
+  landscape: {
+    LIFT: 0.13, D: 1.45,
+    win: () => {
+      const C1 = pose(-1.26, 0.14, 3.8, -17, 5); // landed on bar 9: window right, type left
+      return {
+        C1,
+        P0: pose(C1.x, C1.y, C1.d * 1.4, -30, 7, -1.5), // the cut: farther, still rushing in
+        C1b: pose(-1.33, 0.19, 3.45, -8, 3), // the slow arc toward front as the options land
+      };
+    },
+    page: (at) => ({
+      anchor: [900, 771],
+      Q: pose(...at(900, 771), 1.4, -1, 1.5),
+      Qb: pose(...at(900, 771), 1.5, -10, 1.5), // level: the lift parallax runs along the lines
+      C2: pose(...at(530, 690), 2.65, -26, 3),
+      C3: ((p) => pose(p[0], p[1] + 0.02, 2.8, -13, 2))(at(530, 690)),
+    }),
+    head: { x: 128, y: 468, size: 104, zhSize: 44, zhGap: 20, maxWidth: BOX_W, maxLines: 2 },
+    sub: { x: 128, y: 736, size: 34, maxWidth: BOX_W },
+    langs: { x: 128, ys: [388, 524, 660], size: 108, maxWidth: LANG_W },
+  },
+  portrait: {
+    LIFT: 0.2, D: 3.9,
+    win: (css) => {
+      const C1 = pose(...css(460, 250), 6.4, -9, 4);
+      return {
+        C1,
+        P0: pose(C1.x, C1.y - 0.25, C1.d * 1.45, -16, 13, -1.2),
+        C1b: pose(...css(440, 300), 5.9, -3, 2),
+      };
+    },
+    page: (at) => ({
+      anchor: [905, 900],
+      Q: pose(...at(905, 900), 3.9, -1, 1.5),
+      Qb: pose(...at(905, 900), 4.15, -9, 1.5),
+      C2: pose(...at(800, 470), 5.4, -13, 4),
+      C3: pose(...at(800, 490), 5.65, -6, 2.5),
+    }),
+    head: { x: 90, y: 400, size: 100, zhSize: 42, zhGap: 18, maxWidth: 860, maxLines: 2 },
+    sub: { x: 90, y: 600, size: 34, maxWidth: 860 },
+    langs: { x: 90, ys: [320, 440, 560], size: 100, maxWidth: 520 },
+  },
+};
+
 /** The four page layers at t (see write/page.js): each { z, alpha, blur, k }. */
-function layers(t, E) {
+function layers(t, E, { LIFT, D }) {
   const [c1, c2, c3] = CLICKS.map((c) => c - SWAP);
   const settle = (c, alpha) => ({
     z: SETTLE_Z * (1 - E.quintOut(E.seg(t, c, c + SETTLE))),
@@ -133,9 +183,8 @@ const scene = {
     // Camera poses for bars 8–12 (window-group space).
     const [sx, sy] = s.css(430, 395);
     s.stem = [sx, sy];
-    s.C1 = pose(-1.26, 0.14, 3.8, -17, 5); // landed on bar 9: window right, type left
-    s.P0 = pose(s.C1.x, s.C1.y, s.C1.d * 1.4, -30, 7, -1.5); // the cut: farther, still rushing in
-    s.C1b = pose(-1.33, 0.19, 3.45, -8, 3); // the slow arc toward front as the options land
+    const L = (s.L = ctx.pick(LAYOUT));
+    Object.assign(s, L.win(s.css));
 
     // The toggle: a crop of the real toolbar, clicked at 0.75× so its clicks land a bar apart.
     s.toggleClip = await ctx.load.clip('language-toggle', { cache: 4, prefetch: 2 });
@@ -165,26 +214,23 @@ const scene = {
       s.chipHome = s.page.local(1010, 150);
       // Bars 12–16: into the question (Section A and all of question 1, sheet px 443–1128),
       // a slow orbit while its Chinese lifts (parallax shows the depth), out wide, arc
-      // toward front and settle.
-      const q = s.pageAt(900, 771);
-      s.anchor = s.page.local(900, 771);
-      s.Q = pose(q[0], q[1], 1.4, -1, 1.5);
-      s.Qb = pose(q[0], q[1], 1.5, -10, 1.5); // level: the lift parallax runs along the lines
-      // Wide: the typed page, chip to Section B (sheet px 100–1300), right of the headline.
-      const pc = s.pageAt(530, 690);
-      s.C2 = pose(pc[0], pc[1], 2.65, -26, 3);
-      s.C3 = pose(pc[0], pc[1] + 0.02, 2.8, -13, 2);
+      // toward front and settle. Wide: the typed page, chip to Section B (sheet px 100–1300),
+      // beside (landscape) or under (portrait) the language words.
+      const P = L.page(s.pageAt);
+      s.anchor = s.page.local(...P.anchor);
+      Object.assign(s, { Q: P.Q, Qb: P.Qb, C2: P.C2, C3: P.C3 });
     }
 
     const T_ = lib.type;
     // Half-width CJK punctuation (PingFang 'halt') on the head and 中文.
-    s.head = T_.headline(ctx.el, { en: C.headline, zh: C.headlineZh, x: 128, y: 468, align: 'left', size: 104, world: 'day', zhSize: 44, zhGap: 20, halt: true, maxWidth: BOX_W, maxLines: 2 });
-    s.sub = T_.sub(ctx.el, { en: C.sub, x: 128, y: 736, align: 'left', size: 34, world: 'day', maxWidth: BOX_W });
-    const L = { x: 128, align: 'left', size: 108, world: 'day', maxWidth: LANG_W };
+    s.head = T_.headline(ctx.el, { en: C.headline, zh: C.headlineZh, ...L.head, align: 'left', world: 'day', halt: true });
+    s.sub = T_.sub(ctx.el, { en: C.sub, ...L.sub, align: 'left', world: 'day' });
+    const { ys, ...G } = L.langs;
+    const LG = { ...G, align: 'left', world: 'day' };
     s.langs = [
-      T_.headline(ctx.el, { ...L, en: C.langs[0], y: 388 }),
-      T_.headline(ctx.el, { ...L, en: C.langs[1], y: 524, font: FONT_ZH, tracking: 0.02, halt: true, kernStop: true }),
-      T_.headline(ctx.el, { ...L, en: C.langs[2], y: 660 }),
+      T_.headline(ctx.el, { ...LG, en: C.langs[0], y: ys[0] }),
+      T_.headline(ctx.el, { ...LG, en: C.langs[1], y: ys[1], font: FONT_ZH, tracking: 0.02, halt: true, kernStop: true }),
+      T_.headline(ctx.el, { ...LG, en: C.langs[2], y: ys[2] }),
     ];
   },
 
@@ -234,7 +280,7 @@ const scene = {
       s.shadow.visible = wa > 0.001;
       s.shadow.material.opacity = WIN_SHADOW * wa;
 
-      s.page.set({ alpha: pa, ...layers(t, E), light: [0.1, -0.16], shadow: 0.2, anchor: s.anchor });
+      s.page.set({ alpha: pa, ...layers(t, E, s.L), light: [0.1, -0.16], shadow: 0.2, anchor: s.anchor });
 
       // The toggle floats in over the page's top margin just before its first click.
       const ca = E.quintOut(E.seg(t, T.chip[0], T.chip[1] + 0.35));
