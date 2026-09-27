@@ -7,6 +7,8 @@
 //
 //   node scripts/film/render.mjs --preview                 960×540 30 fps, shutter 1
 //   node scripts/film/render.mjs --final                   1920×1080 60 fps, shutter 5
+//   … --format=portrait     the 9:16 Reels cut (FILM-9x16.md): 1080×1920 (preview 540×960),
+//                           outputs named *-9x16; muxes the landscape score, never rebuilds it
 //   … --from=<bar> --to=<bar> | --scene=<id>              a range (writes build/renders/)
 //   … --stills=<seconds step> [--at=12.5,15.9]             PNG frames for review
 //   … --workers=N --shutter=K --out=<file> --events-only --headed --allow-software
@@ -21,14 +23,16 @@ import { cpus } from 'node:os';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as TL from './timeline.mjs';
+import { formatOf } from './format.mjs';
 import { OUT, BUILD, AUDIO, FILM_DIR, ensureDirs } from './paths.mjs';
 import { serve, FAKE_ASSETS } from './tools/serve.mjs';
 import { launch, launchOnGpu, openStage as open, isSoftware } from './tools/chrome.mjs';
 
 /** render.mjs's flags and what they do (--help prints them). */
 export const RENDER_FLAGS = {
-  preview: '960×540 30 fps, shutter 1',
-  final: '1920×1080 60 fps, shutter 5 (the default)',
+  preview: '960×540 30 fps, shutter 1 (portrait: 540×960)',
+  final: '1920×1080 60 fps, shutter 5 (the default; portrait: 1080×1920)',
+  format: 'landscape|portrait the frame (portrait = the 9:16 Reels cut, outputs *-9x16; same timeline and score)',
   from: '<bar> start of a range (writes build/renders/)',
   to: '<bar> end of a range',
   scene: '<id> one scene\'s window',
@@ -123,30 +127,31 @@ const tc = (t) => {
 /** The render settings for a set of flags. */
 export function plan(args) {
   const preview = !!args.preview && !args.final;
-  const w = Number(args.w ?? (preview ? 960 : TL.W));
-  const h = Number(args.h ?? (preview ? 540 : TL.H));
+  const format = formatOf(args.format === true ? '' : args.format);
+  const w = Number(args.w ?? (preview ? format.preview[0] : format.W));
+  const h = Number(args.h ?? (preview ? format.preview[1] : format.H));
   const fps = Number(args.fps ?? (preview ? 30 : TL.FPS));
   const shutter = Number(args.shutter ?? (preview ? 1 : 5));
-  let from = 0, to = TL.DURATION, label = 'film';
+  let from = 0, to = TL.DURATION, label = `film${format.suffix}`;
   if (args.scene) {
     const win = TL.sceneWindow(args.scene);
     ({ start: from, end: to } = win);
-    label = `scene-${args.scene}`;
+    label = `scene-${args.scene}${format.suffix}`;
   }
   if (args.from != null || args.to != null) {
     from = TL.bar(Number(args.from ?? 0));
     to = TL.bar(Number(args.to ?? 47));
-    label = `bars${args.from ?? 0}-${args.to ?? 47}`;
+    label = `bars${args.from ?? 0}-${args.to ?? 47}${format.suffix}`;
   }
   const full = from === 0 && to === TL.DURATION;
   const mode = preview ? 'preview' : 'final';
   const out = args.out
     ? resolve(args.out)
     : full
-      ? resolve(OUT, preview ? 'econ-worksheet-film-preview.mp4' : 'econ-worksheet-film.mp4')
+      ? resolve(OUT, `econ-worksheet-film${format.suffix}${preview ? '-preview' : ''}.mp4`)
       : resolve(BUILD, 'renders', `${mode}-${label}.mp4`);
   const workers = Number(args.workers ?? Math.max(1, Math.min(6, cpus().length - 2)));
-  return { preview, mode, w, h, fps, shutter, from, to, label, full, out, workers };
+  return { preview, mode, format: format.id, suffix: format.suffix, w, h, fps, shutter, from, to, label, full, out, workers };
 }
 
 function ffmpeg(args, { stdin = false } = {}) {
@@ -191,7 +196,9 @@ export async function render(args) {
     args.assets === 'fake' ? { assets: FAKE_ASSETS, fallbacks: [] } : args.assets ? { assets: resolve(args.assets) } : {},
   );
   const extra = ['transition', 'dof'].filter((k) => args[k]).map((k) => `&${k}=${encodeURIComponent(args[k])}`).join('');
-  const size = { w: P.w, h: P.h, fps: P.fps, shutter: P.shutter, extra };
+  // The events page stays landscape (the score's source); the frames get the format.
+  const eventsSize = { w: 320, h: 180, fps: P.fps, shutter: P.shutter, extra };
+  const size = { w: P.w, h: P.h, fps: P.fps, shutter: P.shutter, extra: P.suffix ? `${extra}&format=${P.format}` : extra };
   const { browser, gpu, headed } = await launchOnGpu(server.url, size, {
     allowSoftware: !!args['allow-software'],
     forceHeaded: !!args.headed,
@@ -214,7 +221,7 @@ export async function render(args) {
     // Events (timeline cues + scene events + placed clip events) for the score's SFX pass.
     let eventsText;
     {
-      const { context, page, logs } = await openStage(browser, server.url, { ...size, w: 320, h: 180 }, args['allow-software']);
+      const { context, page, logs } = await openStage(browser, server.url, eventsSize, args['allow-software']);
       const events = await page.evaluate(() => window.film.events());
       // Only the real asset store's events feed the score.
       const evFile = resolve(BUILD, args.assets ? 'events-alt-assets.json' : 'events.json');
@@ -225,14 +232,16 @@ export async function render(args) {
       await context.close();
       if (args['events-only']) return report;
     }
-    // The score must be built from this timeline and these events before it is muxed.
+    // The score must be built from this timeline and these events before it is muxed. A
+    // portrait render shares the landscape score: it muxes it, never rebuilds it.
     const video = !args.stills && !args.at;
     if (video && !args.assets && !args['stale-audio']) {
-      const s = syncScore(eventsText);
+      const s = P.suffix ? scoreState(eventsText) : syncScore(eventsText);
       if (s.exists && !s.current) {
-        throw new Error('audio/score.wav does not match this timeline and events.json and could not be rebuilt ' +
+        throw new Error(`audio/score.wav does not match this timeline and events.json${P.suffix ? '' : ' and could not be rebuilt'} ` +
           '(node scripts/film/score/score.mjs all); --stale-audio muxes it anyway');
       }
+      if (P.suffix && P.full && !s.exists) throw new Error(`${P.format}: no audio/score.wav to mux (npm run film:score, or the landscape film first)`);
       report.scoreCurrent = s.current;
     }
 

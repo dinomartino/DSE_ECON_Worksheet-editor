@@ -33,6 +33,8 @@
     "film:score": "node scripts/film/score/score.mjs all",
     "film:render": "node scripts/film/render.mjs",
     "film:stills": "node scripts/film/render.mjs --preview --stills=1",
+    "film:9x16": "node scripts/film/film.mjs --format=portrait",
+    "film:9x16:stills": "node scripts/film/render.mjs --format=portrait --preview --stills=1",
     "tauri": "tauri",
     "desktop:dev": "tauri dev",
     "desktop:build": "tauri build",

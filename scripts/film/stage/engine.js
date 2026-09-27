@@ -10,13 +10,14 @@ import * as lib from './lib/index.js';
 import { Post, makeTarget } from './post.js';
 import { loadImageTexture, loadClip, placedEvents } from './lib/clip.js';
 import { backdrop } from './lib/backdrop.js';
+import { FORMAT, pick } from './lib/format.js';
 import * as rigs from './lib/rigs.js';
 import { clamp, sineInOut, sineOut, quintInOut, smoothstep } from './lib/ease.js';
 
 const q = new URLSearchParams(location.search);
 const num = (k, d) => (q.has(k) ? Number(q.get(k)) : d);
-const W = num('w', TL.W);
-const H = num('h', TL.H);
+const W = num('w', FORMAT.W);
+const H = num('h', FORMAT.H);
 const FPS = num('fps', TL.FPS);
 const SHUTTER = Math.max(1, Math.round(num('shutter', 1)));
 const ANGLE = num('angle', 180);
@@ -27,13 +28,15 @@ const ASSETS = q.get('assets') ?? '/assets/';
 // ?dof=<focus>,<aperture>,<maxBlur> (forces DOF on every scene).
 const TR_OVERRIDE = q.get('transition')?.split(':');
 const DOF_OVERRIDE = q.get('dof')?.split(',').map(Number);
-const DW = 1920, DH = 1080; // overlay design space
+const DW = FORMAT.W, DH = FORMAT.H; // overlay design space (?format=landscape|portrait)
 
 const stage = document.getElementById('stage');
 const canvas = document.getElementById('gl');
 const typeRoot = document.getElementById('type');
 stage.style.width = `${W}px`;
 stage.style.height = `${H}px`;
+typeRoot.style.width = `${DW}px`;
+typeRoot.style.height = `${DH}px`;
 typeRoot.style.transform = `scale(${W / DW})`;
 
 const renderer = new THREE.WebGLRenderer({
@@ -121,6 +124,8 @@ async function createSlot(id, { dry = false } = {}) {
   const ctx = {
     id, THREE, scene, camera, el, dur, start, world, lib, post, renderer, fx, dry,
     beat: TL.BEAT, bar: TL.BAR, W: DW, H: DH, renderW: W, renderH: H, fps: FPS,
+    // The frame: 'landscape' | 'portrait'; pick({ landscape, portrait }) chooses per format.
+    format: FORMAT.id, portrait: FORMAT.id === 'portrait', safe: FORMAT.safe, pick,
     timeline: TL,
     copy: TL.COPY[id] ?? {},
     /** Scene seconds of cue `id` (timeline CUES). */
@@ -486,6 +491,7 @@ window.film = {
   duration: TL.DURATION,
   frames: Math.round(TL.DURATION * FPS),
   size: { w: W, h: H, shutter: SHUTTER },
+  format: FORMAT.id,
   seek,
   events,
   placements,

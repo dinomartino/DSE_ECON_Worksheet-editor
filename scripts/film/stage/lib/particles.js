@@ -3,6 +3,7 @@
 // of uTime and per-particle seeds.
 import * as THREE from 'three';
 import { rng } from './noise.js';
+import { FORMAT } from './format.js';
 
 const VERT = /* glsl */ `
 attribute vec3 aBase; attribute vec4 aSeed;
@@ -47,10 +48,10 @@ void main() {
 
 /**
  * `box` = [[x0,y0,z0],[x1,y1,z1]] world volume. `focus` is the camera distance in focus;
- * `aperture` scales the blur disc; `minPx` (at 1080p) keeps every mote a soft disc, never
+ * `aperture` scales the blur disc; `minPx` (at design size, 1080 px short side) keeps every mote a soft disc, never
  * a sharp speck. Call set({time, focus, bright}) per frame.
  */
-export function dust({ count = 90, seed = 7, box = [[-8, -1, -10], [8, 6, 2]], size = 0.012, focus = 10, aperture = 0.08, bright = 0.5, color = '#FFE6C4', color2 = '#BFD8FF', drift = 0.25, rise = 0.02, H = 1080, fov = 30, minPx = 1.3 } = {}) {
+export function dust({ count = 90, seed = 7, box = [[-8, -1, -10], [8, 6, 2]], size = 0.012, focus = 10, aperture = 0.08, bright = 0.5, color = '#FFE6C4', color2 = '#BFD8FF', drift = 0.25, rise = 0.02, H = FORMAT.H, fov = 30, minPx = 1.3 } = {}) {
   const r = rng(seed);
   const base = new Float32Array(count * 3);
   const seeds = new Float32Array(count * 4);
@@ -77,7 +78,7 @@ export function dust({ count = 90, seed = 7, box = [[-8, -1, -10], [8, 6, 2]], s
       uBright: { value: bright },
       uDrift: { value: drift },
       uRise: { value: rise },
-      uMinPx: { value: minPx * (H / 1080) },
+      uMinPx: { value: minPx * (H / FORMAT.H) },
       uColor: { value: new THREE.Color(color) },
       uColor2: { value: new THREE.Color(color2) },
     },

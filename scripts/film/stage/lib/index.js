@@ -12,3 +12,4 @@ export * as camera from './camera.js';
 export * as clip from './clip.js';
 export * as tonemap from './tonemap.js';
 export * as backdrop from './backdrop.js';
+export * as format from './format.js';
