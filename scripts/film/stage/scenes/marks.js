@@ -4,7 +4,7 @@
 // screen turns to the quiz; Teacher on the 52.0 tick, and it follows the red answers down
 // the page. The camera pulls
 // back as the printed student copy rises in front, and the teacher's copy slides out from
-// behind it, landing on 54.5; a slow push into its red answers hands over to papers.
+// behind it as they rise, landing on 54.5; a slow push into its red answers hands over.
 import { COPY } from '../../timeline.mjs';
 import { cubicBezier } from '../lib/ease.js';
 import { haze, mixable, stop, mixPose, withDrift, applyPose, K } from './marks/kit.js';
@@ -20,14 +20,14 @@ const T = {
   reveal: [0.95, 1.4],
   fall: [0.98, 1.95],
   lines: 2.0, // Lines → 6: the dotted lines appear (50.0)
-  creep: [1.95, 3.25],
+  creep: [1.8, 3.25],
   toTeacher: [3.12, 3.92],
   swap: [3.28, 3.8], // screen crossfade: answer-lines → teacher-toggle
   click: 4.0, // Teacher (52.0 tick)
-  answers: [4.05, 5.0], // follow the red answers down the page
-  back: [4.95, 6.1],
-  rise: [4.9, 5.9],
-  winOut: [5.05, 5.85],
+  answers: [4.05, 4.95], // follow the red answers down the page
+  back: [4.85, 6.0], // pull back first, so the rising sheets never pass close to the lens
+  rise: [5.2, 6.05],
+  winOut: [5.1, 5.9],
   h1: [0.95, 3.7],
   h2: [4.2, 7.45],
 };
@@ -135,7 +135,7 @@ const scene = {
     s.win.set({ opacity: winIn * (1 - winOut), shadowOpacity: 0.2 * winIn * (1 - winOut) });
 
     const r = rise(E.seg(t, ...T.rise));
-    const lift = [0, -1.55 * (1 - r), -0.1 * (1 - r)];
+    const lift = [0, -1.25 * (1 - r), -0.1 * (1 - r)];
     const tilt = -0.32 * (1 - r);
     const pairOn = t > T.rise[0];
     s.S.group.visible = pairOn;
@@ -167,10 +167,10 @@ const scene = {
 
     // ---- haze, post, type -----------------------------------------------------------------------
     s.haze.set({ amount: E.sineInOut(E.seg(t, 0.35, 1.05)) * hazeAt(f), ...HAZE_BAND });
-    const dofK = E.sineInOut(E.seg(t, 4.9, 5.85));
+    const dofK = E.sineInOut(E.seg(t, 5.1, 5.9));
     post.dof = dofAt(pose.dist, dofK);
     const moving = (a, b) => t > a && t < b;
-    post.samples = moving(0.35, 1.9) || moving(T.toTeacher[0], T.toTeacher[1]) || moving(4.9, 6.05) ? 14 : 0;
+    post.samples = moving(0.35, 1.9) || moving(T.toTeacher[0], T.toTeacher[1]) || moving(4.85, 6.1) ? 14 : 0;
     post.vignette = 0.06;
     post.bloom = null;
 

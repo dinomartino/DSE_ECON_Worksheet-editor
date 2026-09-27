@@ -73,7 +73,7 @@ const scene = {
     const lift = 0.1 * bump(E.seg(t, T.open[0], T.open[1] + 0.3)) + 0.06 * bump(E.seg(t, T.close[0], T.close[1] + 0.1));
     const roomK = E.sineInOut(E.seg(t, ...T.room));
     const poolK = E.sineInOut(E.seg(t, ...T.pool));
-    const paperB = lerp(1, 0.085, 0.25 * roomK + 0.75 * poolK); // display brightness
+    const paperB = lerp(1, 0.066, 0.25 * roomK + 0.75 * poolK); // display brightness
     const flat = E.smoothstep(0.15, 1.3, t); // lying on the desk: flat, shadows between layers
 
     s.sheets.forEach((sh, k) => {
@@ -128,7 +128,7 @@ const scene = {
     // ---- world, post, type ----------------------------------------------------------------
     // Lights down: the room goes dark around a pool of light on the stack, then the pool.
     const bu = ctx.backdrop.material.uniforms;
-    const room = lerp(1, 0.012, roomK), pool = lerp(1, 0.1, poolK);
+    const room = lerp(1, 0.012, roomK), pool = lerp(1, 0.075, poolK);
     const rgb = (u, c, k) => u.value.setRGB((c[0] / 255) * k, (c[1] / 255) * k, (c[2] / 255) * k, ctx.THREE.SRGBColorSpace);
     rgb(bu.uTop, DAY.top, room);
     rgb(bu.uBottom, DAY.bottom, room);

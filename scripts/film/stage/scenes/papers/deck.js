@@ -16,7 +16,7 @@ export const bez3 = (a, c, b, u) => lerp3(lerp3(a, c, u), lerp3(c, b, u), u);
 export const S_POS = [-0.377, 0.308, 1.05];
 export const S_ROT = [0, 0.02, 0.008];
 /** The teacher's copy slides out from behind it along a 3D arc, landing on 54.5. */
-export const SLIDE = [53.6, 54.5];
+export const SLIDE = [53.5, 54.5];
 const T_START = add(S_POS, [0.012, 0.004, -0.02]);
 const T_MID = add(S_POS, [0.5, 0.06, -0.14]);
 export const T_END = add(S_POS, [0.64, 0.03, 0.26]);
@@ -37,7 +37,7 @@ export function tPose(f) {
 // comes to rest before papers pulls back on 56.0.
 export const PAIR_VIEW = stop(add(S_POS, [0.35, 0.02, 0.16]), 530, 960, 425, { az: -5, el: 2 });
 const ANSWERS = stop(add(T_END, [-0.05, 0.25, 0]), 830, 985, 372, { az: -8, el: 3 });
-export const PUSH = [54.45, 55.8];
+export const PUSH = [54.35, 55.75];
 const pushEase = cubicBezier(0.45, 0, 0.22, 1);
 
 /** The pair camera at film time f (drift included). */
