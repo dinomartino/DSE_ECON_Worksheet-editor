@@ -65,9 +65,9 @@ const T = {
   word: [0.1, 1.42],
   dot: 1.0,
   shrink: [1.38, 1.74], // the strokes run into the point
-  reveal: [1.72, 3.5], // the card lights from the point (covered on 34.0), then the app
+  reveal: [1.7, 3.5], // the card lights from the point (covered on ~34.2), then the app
   axisOut: [1.6, 1.84],
-  dotOut: [1.74, 1.95], // gone before the card is fully lit: no dot on the blank canvas
+  dotOut: [1.72, 1.97], // gone before the card is fully lit: no dot on the blank canvas
   dimApp: [2.05, 2.6], // the app around the card, faint while D and S are drawn
   closeIn: [1.42, 2.6], // within 2% before D's drag starts (34.38)
   pull: [4.0, 5.0], // after S lands on 36.0: the camera holds still while a curve draws
@@ -243,7 +243,7 @@ const scene = {
     // lights go down around the card again; on 42.0 it all goes dark as the diagram (and
     // its light) lifts out.
     const rv = seg(t, ...T.reveal);
-    const revealR = 5.6 * (1 - Math.pow(1 - rv, 2.6)); // a soft edge (1.0): no circle shows
+    const revealR = 5.6 * (1 - Math.pow(1 - rv, 1.8)); // a soft edge (1.0): no circle shows
     const around = 0.08 * E.sineInOut(seg(t, ...T.dimApp)) + 0.92 * E.sineInOut(seg(t, ...T.appUp));
     const spot = E.sineInOut(seg(t, ...T.spot));
     const out = E.sineInOut(seg(t, 10.05, 10.6)); // under the lift and the sweep: one gesture
