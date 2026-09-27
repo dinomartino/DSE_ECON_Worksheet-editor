@@ -20,6 +20,7 @@ const FPS = num('fps', TL.FPS);
 const SHUTTER = Math.max(1, Math.round(num('shutter', 1)));
 const ANGLE = num('angle', 180);
 const GRAIN = num('grain', 1.5);
+const GRAIN_SHADOW = num('grainShadow', 2.5); // shadows: H.264 flattens the lighter dither into rings
 const ASSETS = q.get('assets') ?? '/assets/';
 // Dev-only overrides for testing the compositor: ?transition=<scene>:<type>:<beats> and
 // ?dof=<focus>,<aperture>,<maxBlur> (forces DOF on every scene).
@@ -367,7 +368,8 @@ async function doSeek(t) {
   for (const s of active) await Promise.all(s.res.clips.map((c) => c.flush()));
   active.forEach((s, i) => renderSlot(s, t, times[i]));
   const { poses, level } = composite(active, t);
-  fx.output(fx.comp.texture, Math.round(t * FPS), (GRAIN / 255) * Math.min(1, level * 4));
+  const g = Math.min(1, level * 4) / 255;
+  fx.output(fx.comp.texture, Math.round(t * FPS), GRAIN * g, GRAIN_SHADOW * g);
   applyDom(active, poses);
   await document.fonts.ready;
   await raf2();
