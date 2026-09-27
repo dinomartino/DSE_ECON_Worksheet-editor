@@ -20,17 +20,18 @@ export const LAYOUT = {
   lagAxis: 1,
   lag: -3.0, // subtracted: the browser starts 3 u above its slot, so it rises into frame early
   slots: [
-    { pos: [-0.07, -0.4, 0.5], rot: [0.02, -0.06, 0] }, // top edge at y≈950 px
-    { pos: [-0.04, 0, -1.1], rot: [0.02, -0.06, 0] }, // ≈820: its chrome and a band of page show
-    { pos: [0, 0.6, -2.8], rot: [0.02, -0.06, 0] }, // ≈670, under the Chinese line
+    { pos: [0, -0.4, 0.5], rot: [0.02, -0.06, 0] }, // front, centred: top edge at y≈1120 px
+    { pos: [0.02, -0.13, -1.1], rot: [0.02, -0.06, 0] }, // ≈880: chrome and a band of canvas show
+    { pos: [0.04, 0.65, -2.8], rot: [0.02, -0.06, 0] }, // ≈620, under the Chinese line
   ],
   from: { pos: [0.5, -3.6, 2.2], rot: [0.35, -0.25, 0] },
-  winW: 2.4,
-  // Each window's screen cropped to the part that matters (source px of the 2880×1800 still).
+  winW: 2.26, // ≈930 px at the front: clear of the Reels action column
+  // Each window's screen cropped to the part that matters (source px of the 2880×1800 still),
+  // so each back window's exposed band carries content, not only chrome.
   crops: [
-    [0, 0, 1300, 900], // start screen: "Start a worksheet…" and the first thumbnails
-    [250, 0, 1300, 900], // the diagram canvas with its toolbar
-    [400, 0, 1300, 900], // the teacher's copy
+    [20, 50, 1300, 900], // start screen: "Start a worksheet, or pick up where you left off." first
+    [260, 300, 1300, 900], // the diagram canvas: the Price axis and S/S1/DWL at the top
+    [600, 375, 1260, 455], // the teacher's copy, page only: Teacher Version, Section A, Q1
   ],
   still: [2880, 1800],
   text: { x: 90, w: 860, y: [292, 396, 500], size: 92 },
