@@ -133,3 +133,43 @@ Outputs (under `$FILM_OUT` or `demo-media/film/`): `build/stills/<mode>-<label>/
 `README.md`. Gate a range with `node scripts/film/tools/motion-check.mjs <video>`; check
 determinism with `node scripts/film/tools/determinism.mjs`. Before delivery: doctor exit
 0, score report passes, the full final watched once with sound.
+
+## R6. Make a new film from the engine (spotlight, social cut)
+
+What carries over unchanged: capture (virtual time, the asset store, the registry), the
+engine's contract (`seek(t)` pure, transitions, motion blur, post), `lib/`, the renderer,
+the doctor, the score's instruments and master. What is specific to the 94 s film:
+`timeline.mjs` (one module, imported by the engine, every scene, render, doctor, score and
+tools), the scene modules (layout in 1920×1080 design px, times from their own cues, and
+handoffs that name their neighbours — `diagrams` imports `marks/kit.js`, which reads
+`sceneStart('marks')`, so dropping `marks` from `SCENES` throws), and the arrangement
+(`score/scorelib/arrangement.py` keys its parts off the section ids `intro-a`, `intro-b`,
+`groove-a`, `hero`, `groove-b`, `breakdown`, `final`, `outro`).
+
+**Step 0 — make the timeline selectable (not built yet; do it once, as its own change):**
+1. Move the film's data to `scripts/film/films/<name>/timeline.mjs` (the 94 s one becomes
+   `films/launch/`), keeping `timeline.mjs` as a re-export of the default so nothing breaks.
+2. The engine loads the timeline named by `?film=<name>` (dynamic `import()`), and scenes
+   read it only through `ctx.timeline`, `ctx.cue(id)`, `ctx.copy`, `ctx.start` (they exist
+   today) instead of importing `timeline.mjs` — scene helpers take `ctx` as a parameter.
+3. `render.mjs`, `film.mjs`, `tools/doctor.mjs`, `timeline-json.mjs` (and so the score)
+   take `--film=<name>` / `FILM_NAME`, and write outputs under `demo-media/film/<name>/`.
+4. Prove it: the 94 s film renders pixel-identical (R0 baseline, `bin/regdiff.py`).
+
+**A 30 s feature spotlight (16:9):** a new `films/<name>/timeline.mjs` (e.g. 15 bars at
+120 BPM: a 2-bar cold open, 10 bars of the feature, a 3-bar end card), new scene modules
+for anything whose handoffs or pacing differ (copy an existing scene as a start; keep
+`opening`/`end` only if their bars and cues exist in the new timeline), `COPY` for the new
+film, sections that reuse the arrangement's ids (or a new arrangement), then R3–R5.
+
+**A 9:16 social cut:** the overlay design space is fixed at 1920×1080 today (`DW, DH` in
+`stage/engine.js`, `W`/`SAFE` in `stage/lib/type.js`, `orbit`'s `W, H` defaults in
+`stage/lib/camera.js`, `minPx` scaling in `stage/lib/particles.js`, title-safe in
+`tools/doctor.mjs`). Make those come from the timeline's `W`/`H` first (a pixel-identical
+change for 16:9), then compose portrait scenes: text stacks above/below a centred product,
+windows crop to the page, the camera frames vertically. Rendering with `--w=1080 --h=1920`
+alone gives a portrait camera on landscape poses and shrinks the type overlay (scaled by
+`W / 1920`) into a band at the top — not a usable cut. Cells in grids stay ≤ 480 px on the long side.
+
+Either way: a bible for the new film first (its own `FILM.md`-style storyboard, 1–2 pages),
+then the orchestration in orchestration.md scaled down.
