@@ -6,7 +6,8 @@
 //   node scripts/film/capture/capture.mjs --list          # what can be captured
 //   node scripts/film/capture/capture.mjs --only=type-mcq,stills
 //   flags: --reseed (rebuild the seed documents), --no-build (use out/ as is),
-//          --no-review (skip contact sheets and review mp4s)
+//          --no-review (skip contact sheets and review mp4s), --help
+//   (npm run film:capture -- <flags>). manifest.json records each asset's app commit.
 //
 // Needs `npm run build` output in out/ (built here if missing), system Chrome, ffmpeg,
 // LibreOffice and pdftoppm (for the .docx pages).
@@ -20,10 +21,30 @@ import { seedState } from './seed.mjs';
 import { CLIPS, DIAGRAM_DONE_STATE, recordClip } from './clips.mjs';
 import { ASSET_JOBS } from './assets.mjs';
 import { review } from './review.mjs';
-import { writeManifest } from './manifest.mjs';
+import { appCommit, writeManifest } from './manifest.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
+const START = Date.now();
 const args = process.argv.slice(2);
+const USAGE = `npm run film:capture -- [flags]   (node scripts/film/capture/capture.mjs)
+  --list              what can be captured (clips, assets, groups)
+  --only=a,b          these clips, asset jobs or groups (default: clips,assets)
+  --reseed            rebuild the seed documents
+  --no-build          use out/ as is (default: npm run build when out/ is missing)
+  --no-review         skip contact sheets and review mp4s
+  --help              this text`;
+const KNOWN = ['list', 'only', 'reseed', 'no-build', 'no-review', 'help'];
+for (const a of args) {
+  const name = /^--([^=]+)/.exec(a)?.[1];
+  if (!KNOWN.includes(name)) {
+    console.error(`capture: unknown argument ${a}\n${USAGE}`);
+    process.exit(2);
+  }
+}
+if (args.includes('--help')) {
+  console.log(USAGE);
+  process.exit(0);
+}
 const flag = (name) => args.includes(`--${name}`);
 const opt = (name) => args.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
 const log = (m) => console.log(m);
@@ -93,7 +114,7 @@ try {
     for (const r of results) old[r.name] = r;
     fs.writeFileSync(file, JSON.stringify(old, null, 1));
   }
-  writeManifest(log);
+  writeManifest(log, { since: START, commit: appCommit(ROOT) });
 } finally {
   await browser.close();
   await server.close();

@@ -18,10 +18,12 @@ import { deselect, openDoc, scrollPage, selectQuestion, setPrintPreview, setVers
 import { DIAGRAM_DONE_STATE } from './clips.mjs';
 import { checkClip } from './check-clip.mjs';
 import { Recorder } from './recorder.mjs';
+import { appCommit, writeManifest } from './manifest.mjs';
 import { contactSheet } from './review.mjs';
 import { serveStatic } from './server.mjs';
 import { ASSETS, freeze, launch, MAIN_ROOT, openPage, REVIEW, settle } from './session.mjs';
 
+const START = Date.now();
 const args = process.argv.slice(2);
 const opt = (name, d) => args.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? d;
 const only = opt('only', 'clip,sheet,docx').split(',');
@@ -288,6 +290,7 @@ try {
   if (only.includes('clip')) await clip(browser, server.url);
   if (only.includes('sheet')) await sheets(server.url);
   if (only.includes('docx')) await docx(browser, server.url);
+  writeManifest(log, { since: START, commit: appCommit(MAIN_ROOT) });
 } finally {
   await browser.close();
   await server.close();
