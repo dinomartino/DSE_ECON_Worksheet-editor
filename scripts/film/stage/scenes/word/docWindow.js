@@ -11,6 +11,17 @@ export const DOC = {
   // As the app names it: fileTitle() turns ':' into '-', docxFileName() adds (Student) (EN).
   title: 'S5 Market Intervention- Diagrams (Student) (EN).docx',
   aspect: 2573 / 1819, // page h / w
+  // Ink boxes on the render, [u0, top0, u1, top1] in page fractions from the top-left.
+  regions: {
+    num1: [0.1237, 0.1364, 0.133, 0.1485], // "1." (Word list numbering, level 1)
+    numA: [0.1523, 0.464, 0.1704, 0.4757], // "(a)" (level 2)
+    title: [0.3058, 0.089, 0.6942, 0.1061], // ink 0.3018–0.6982, inset to clear the line below
+    stem: [0.1237, 0.1364, 0.7279, 0.1485],
+    part: [0.1523, 0.464, 0.878, 0.4897],
+  },
+  caret: [0.1216, 0.4958, 0.5118], // [u, top0, top1]: the start of the first answer line
+  // Paragraph styles of those regions, as named in the export's word/styles.xml.
+  styles: [['title', 'Worksheet Title'], ['stem', 'Question Stem'], ['part', 'Sub-question']],
 };
 
 /** Geometry in the window group's units (window centred at its origin). */
