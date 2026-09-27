@@ -102,9 +102,11 @@ const LAYOUT = {
     // the wide bilingual framing: English pedestals down, the narrower 中文 pushes in,
     // Both (the tallest) eases back so it clears the Reels caption and button column.
     reflow: [[1.02, -8, 90], [1.16, 60, 60], [1, 0, 0]],
-    pullExt: 0.15, // the pull lands as the English click's move begins: no hold between
+    // The camera never rests between the push and the English click: the orbit runs on
+    // under the pull, which lands (a softer ease) as the click's move begins.
+    closeExt: 0.3, pullExt: 0.15, pullEase: 'cubicInOut',
     // The capture's page only (css px): the real page top, sidebar and inspector cut away.
-    crop: { x0: 78, y0: 102, x1: 1040, y1: 840 },
+    crop: { x0: 78, y0: 102, x1: 1040, y1: 900 },
     // Lands high (the page's content centred in the tall frame), pedestals down under the
     // headline as it rises (C1d, over lowAt), then the slow arc toward front.
     lowAt: [1.55, 2.45],
@@ -287,8 +289,8 @@ const scene = {
     P = mix(P, s.C1b, E.sineInOut(E.seg(t, 1.9, 7.9)));
     if (s.page) {
       P = mix(P, s.Q, rush(E.seg(t, T.push[0], T.push[1])));
-      P = mix(P, s.Qb, sm(T.close[0], T.close[1]));
-      P = mix(P, s.C2, E.quintInOut(E.seg(t, T.pull[0], T.pull[1] + (s.L.pullExt ?? 0))));
+      P = mix(P, s.Qb, sm(T.close[0], T.close[1] + (s.L.closeExt ?? 0)));
+      P = mix(P, s.C2, E[s.L.pullEase ?? 'quintInOut'](E.seg(t, T.pull[0], T.pull[1] + (s.L.pullExt ?? 0))));
       P = mix(P, s.C3, sm(T.orbit[0], T.orbit[1]));
     }
     const d = cam.drift(t, 5, { amp: 0.6, rate: 0.07 });
