@@ -54,9 +54,9 @@ clearly generic frame we draw (window chrome, a generic laptop).
 
 | Bars | Time | Scene id | World | What the viewer sees | Music |
 |---|---|---|---|---|---|
-| 0–8 | 0:00–0:16 | `opening` | night | Black. A blue point breathes. A cream line sweeps up-right: **"Supply."** A second sweeps down-right, crossing it: **"Demand."** The point drops into the crossing with a soft glow: **"Equilibrium."** An L-axis draws; the warm tile extrudes behind the mark in 3D, a light sweep crosses it; **"Econ Worksheet"**; sub-line **"Worksheets for HKDSE Economics."** / **為香港文憑試經濟科而設**. Last beat of bar 7: a breath — near-silence, camera pushes into the blue dot until it fills frame. | Intro: pad swell, 3-note felt-piano motif on the three words (the sonic logo), sub pulse from bar 4, filtered pluck arp opening bars 4–8, riser bars 6–8, **silence on beat 4 of bar 7** |
+| 0–8 | 0:00–0:16 | `opening` | night | Black. A blue point breathes. A cream line sweeps up-right: **"Supply."** A second sweeps down-right, crossing it: **"Demand."** The point drops into the crossing with a soft glow: **"Equilibrium."** An L-axis draws; the warm tile extrudes behind the mark in 3D, a light sweep crosses it; **"Econ Worksheet"**; sub-line **"Worksheets for HKDSE Economics."** / **為文憑試經濟科而設。** Last beat of bar 7: a breath — near-silence, camera pushes into the blue dot until it fills frame. | Intro: pad swell, 3-note felt-piano motif on the three words (the sonic logo), sub pulse from bar 4, filtered pluck arp opening bars 4–8, riser bars 6–8, **silence on beat 4 of bar 7** |
 | 8–16 | 0:16–0:32 | `write` | day | **DROP** on bar 8: hard cut to the bright warm world. The app floats in 3D (tilted window, soft shadow on cream), camera arcing to front while the real clip plays: double-click on the page, type a question and its options. **"Type right on the page."** / 直接在頁面上輸入。 Bar 12: push into the page text → the page's English layer and Chinese layer separate in depth and merge back as the toolbar toggles EN → 中文 → EN+中: **"English. 中文. Both."** | Groove A: kick, clap on 2 & 4, 16th hats, bass, open pluck arp |
-| 16–24 | 0:32–0:48 | `diagrams` | night | Hard cut to black: two cream strokes sweep in (callback to the mark) and settle as D and S on axes: **"Diagrams."** Then the real canvas clip in a floating window over a glossy black floor: draw demand, supply, equilibrium, shift a copy for a tax, shade tax revenue and DWL — sped to the beat. **"Drawn in seconds."** / 圖表，數秒完成。 Bar 21–23: the finished diagram explodes into depth layers (axes, curves, shift, guides, areas, labels) and slowly orbits: **"Every line stays editable."** Bar 23–24: layers collapse and the diagram flies down onto a white page. | Hero section: groove continues + a bell lead melody; half-time drums on bar 16–17 ("Diagrams."), full from 17; fill into 24 |
+| 16–24 | 0:32–0:48 | `diagrams` | night | Hard cut to black: two cream strokes sweep in (callback to the mark) and settle as D and S on axes: **"Diagrams."** Then the real canvas clip in a floating window over a glossy black floor: draw demand, supply, equilibrium, shift a copy for a tax, shade tax revenue and DWL — sped to the beat. **"Drawn in seconds."** / 圖表，數秒完成。 Bar 21–23: the finished diagram explodes into depth layers (axes, curves, shift, guides, areas, labels) and slowly orbits: **"Every line stays editable."** Bar 23–24: layers collapse and the diagram flies down onto a white page. | Hero section: groove continues + a bell lead melody; half-time drums on bar 16–17 ("Diagrams."), full from 17; bars 21–22 open up for the orbit (half-time kick + rim, no hats, bass down, bell and a wide pad carry it); a fill in bar 23 brings the band back |
 | 24–28 | 0:48–0:56 | `marks` | day | Continuity: we are on the white page the diagram landed on. Real clips: set Lines → dotted answer lines appear, "(4 marks)" appears; toolbar summary counts up. **"Marks that add themselves up."** / 分數自動合計。 Bar 26: Student → Teacher: answers turn red; a teacher sheet slides out from behind the student sheet in 3D. **"The teacher's copy. One click."** | Groove B (variation, new fill every 4 bars) |
 | 28–32 | 0:56–1:04 | `papers` | day | Camera pulls back: the page is one of many. Real sheets fan out like a deck in 3D arcs with soft shadows and depth of field — Paper 1 cover, Paper 2 booklet cover, LQ pages with dotted answer space, versions A/B/C. **"From a quick quiz to a full mock paper."** / 由小測到模擬試卷。 Bar 31–32: the sheets gather into one stack; the lights go down. | Groove B peak, then drums thin out on bar 31 |
 | 32–36 | 1:04–1:12 | `word` | night | Breakdown bars 32–34: one sheet alone in darkness, a slow light sweep over it: **"A real Word document."** / 真正的 Word 文件。 Bar 34 **drop**: the sheet snaps into a document window showing the actual exported `.docx` page; three facts appear on beats: **"Live numbering."** **"Real styles."** **"Fully editable."** | Breakdown: drums out, piano + pad + riser; drop on bar 34 |
@@ -73,8 +73,8 @@ Total 47 bars = 94.0 s = 5640 frames.
 | opening | 0 | 8 | fade up from black over 1 beat |
 | write | 8 | 16 | `cut` (on the drop) |
 | diagrams | 16 | 24 | `cut` |
-| marks | 24 | 28 | `blurDissolve`, 1 beat, centred on bar 24 (the diagram-lands-on-page move is the scene's own; the dissolve hides the handoff) |
-| papers | 28 | 32 | `blurDissolve`, 1 beat |
+| marks | 24 | 28 | `cut` — diagrams ends on the page marks opens on, registered pose for pose (a blur over two identical frames only defocuses the downbeat) |
+| papers | 28 | 32 | `cut` — marks ends on the pair papers opens on |
 | word | 32 | 36 | `dipToBlack`-style: papers' lights go down, then `cut` on bar 32 |
 | everywhere | 36 | 40 | `cut` |
 | montage | 40 | 42 | `cut` |
@@ -94,13 +94,13 @@ music drops out; `drop` = full band returns.
 - 8.0 `whoosh` (tile extrudes) · 10.0 `tick` (title) · 12.0 `riser` to 15.5
 - 15.5 `breath` (beat 4 of bar 7) · 16.0 `drop` + `hit`
 - 24.0 `whoosh` (push into the page)
-- 32.0 `hit` + `whoosh` (Diagrams.) · 42.0 `whoosh` (explode) · 46.0 `whoosh` (fly to page)
-- 48.0 `hit` soft · 52.0 `tick` (teacher toggle)
-- 56.0 `whoosh` (pull back / fan) · 62.0 `whoosh` (gather)
+- 32.0 `hit` + `whoosh` (Diagrams.) · 42.0 `whoosh` (explode) + `breath` 0.5 (the band opens up for the orbit) · 46.0 `whoosh` peaking 46.3 (fly to page)
+- 47.0 `hit` soft (the diagram touches the page) · 52.0 `tick` (teacher toggle)
+- 56.0 `whoosh` peaking 56.45 (pull back / fan) · 62.0 `whoosh` peaking 62.55 (gather)
 - 64.0 `breath` → breakdown · 64.0 `swell` · 66.0 `riser` to 68.0 · 68.0 `drop` + `hit`
-- 69.0, 70.0, 71.0 `tick` (three facts)
+- 69.0, 69.5, 70.0 `tick` (three facts; `word` reads their times from these cues)
 - 72.0 `hit` · 72.5, 73.0, 73.5, 74.0, 74.5 `tick` (chips) · 76.0, 77.0, 78.0 `whoosh` (windows)
-- 80.0–84.0 `tick` on each montage cut · 83.0 `riser` to 84.0
+- 80.0–83.0 `tick` on each montage cut · 83.0 `riser` to 83.9 (stops short, so the hit lands in air)
 - 84.0 `hit` (big) · 86.0 `tick` (tagline) · 88.0 `swell` · 94.0 end
 
 UI sounds from the captured clips (clicks, a soft key-tap bed while typing) are added by
@@ -324,7 +324,7 @@ Modern Apple-keynote style: warm, optimistic, minimal, precise. 120 BPM, **D maj
   pitch rise), whooshes (band-passed noise swell with a pan move), impacts (sub boom +
   noise burst + long tail), glassy ticks (short FM bell).
 - Harmony (one chord per bar unless noted): intro `Dmaj9 | Bm11 | Gmaj9 | A6sus4`;
-  grooves `Gmaj7 | A6 | F♯m7 | Bm9` alternating with `Dmaj9 | A/C♯ | Bm9 | Gmaj9`;
+  grooves `Gmaj7 | A6 | F♯m11 | Bm9` alternating with `Dmaj9 | A/C♯ | Bm9 | Gmaj9`;
   breakdown `Gmaj9 | A6sus4`; final chorus lifts with the pad an octave up; end on
   `Dmaj9(add6)` sustained, the motif resolving to D.
 - Arrangement follows §3 exactly: intro without drums; **silence on beat 4 of bar 7**
