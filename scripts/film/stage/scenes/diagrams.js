@@ -53,7 +53,7 @@ const VIEW_H = 2 * Math.tan((FOV / 2) * DEG);
 /** Camera distance at which `worldW` spans `px` pixels at 1080p. */
 const distForPx = (worldW, px) => (worldW * 1080) / (px * VIEW_H);
 const END_DIST = distForPx(PAGE_W, 1100); // the handoff: the sheet 1100 px wide
-const LIGHT_SOFT = 2.4; // the page light's soft edge (world units)
+const LIGHT_SOFT = 3.6; // the page light's soft edge (world units)
 // A pool that covers the landing slot, then out past the frame's far corners at the handoff.
 const LIGHT_R = [1.5 + LIGHT_SOFT, 4.8 + LIGHT_SOFT];
 const CARD_H = CARD_W / ASPECT;
@@ -84,8 +84,8 @@ const T = {
   unwipe: [13.95, 14.65],
   face: [13.9, 14.4], // the closing diagram turns to face the camera, and keeps facing it
   crane: [13.85, 15.05], // up and over: overhead before the diagram comes down
-  fly: [14.3, 15.45], // drops onto its slot, touching ~47.3 (it never cuts the page)
-  flat: [15.0, 15.35], // lies exactly flat for the touch
+  fly: [14.3, 15.2], // drops onto its slot, touching on ~47.1 (it never cuts the page)
+  flat: [14.85, 15.15], // lies exactly flat for the touch
   floorOut: [14.2, 14.9],
   pageIn: [14.3, 14.9], // the page shows in its pool of light as the diagram comes down
   light: [15.05, 15.75], // day by the 47.75 dissolve
