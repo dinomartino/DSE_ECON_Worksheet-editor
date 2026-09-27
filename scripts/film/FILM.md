@@ -3,6 +3,7 @@
 The single source of truth for the Apple-style product film. Every agent building part
 of the film reads this whole file first. Where it is silent, use taste and keep to its
 principles; where your code must disagree with it, say so in your final report.
+To change the finished film, follow the `econ-film` skill (`.claude/skills/econ-film/`).
 
 ## 1. What we are making
 
