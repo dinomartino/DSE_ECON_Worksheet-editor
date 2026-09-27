@@ -150,21 +150,22 @@ export async function diagramStack(ctx, { width = 2 } = {}) {
   const api = {
     group, card, layers, panes, width, height,
     /**
+     * `opacity`: the ink (and panes); `card`: the white card beneath it (default `opacity`).
      * `spread`: each layer's height above the card (world units, index as LAYERS).
      * `wipe` 0..1 carries the band across the card (0 paper, 1 glass); `soft` its width
      * (uv), `sheen` its light; `glassInk`: per-layer THREE.Color (linear) for the glass
      * state; `panes` 0..1 glass sheets; `glint` -1..1 where the panes' sheen sits;
      * `dof` { focus, aperture (px), maxBlur (px) }.
      */
-    set({ spread = null, opacity = 1, wipe = 0, soft = 0.06, sheen = 1, glassInk = null, panes: glass = 0, glint = 0, dof: d = null } = {}) {
+    set({ spread = null, opacity = 1, card: cardOp = opacity, wipe = 0, soft = 0.06, sheen = 1, glassInk = null, panes: glass = 0, glint = 0, dof: d = null } = {}) {
       // The band travels from wholly off one corner (band light included) to wholly off
       // the other, so both ends are continuous; beyond them it is parked.
       const reach = 0.72 + 2.5 * soft;
       shared.uSoft.value = soft;
       shared.uWipe.value.z = wipe <= 0 ? -reach - 1 : wipe >= 1 ? reach + 1 : reach * (2 * wipe - 1);
       cardMat.uniforms.uSheen.value = sheen;
-      cardMat.uniforms.uOpacity.value = opacity;
-      card.visible = opacity > 0.001 && wipe < 1;
+      cardMat.uniforms.uOpacity.value = cardOp;
+      card.visible = cardOp > 0.001 && wipe < 1;
       shared.uFocus.value = d?.focus ?? 5;
       shared.uAperture.value = d?.aperture ?? 0;
       shared.uMaxBlur.value = d?.maxBlur ?? 8;
