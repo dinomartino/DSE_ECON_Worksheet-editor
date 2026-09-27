@@ -39,11 +39,16 @@ const L = pick({
     word: { y: 812, size: 120 }, title: { y: 760, size: 124 },
     sub: { y: 884, size: 38, zhSize: 30, zhGap: 14 },
     shift: [0.09, 0.125], k: [1, 1],
+    lit: 0, dotBoost: 0, drift: 0, floor: { reflect: 0.2, sheenR: 2.4 },
   },
   portrait: {
-    word: { y: 1300, size: 104 }, title: { y: 1240, size: 104 },
-    sub: { y: 1372, size: 36, zhSize: 32, zhGap: 14 },
+    word: { y: 1330, size: 104 }, title: { y: 1240, size: 104 },
+    sub: { y: 1372, size: 36, zhSize: 34, zhGap: 14 },
     shift: [0.073, 0.104], k: [1.08, 0.92],
+    // The feed hook: the point is already lit under the fade-in and reads 1.5× while it is
+    // alone; the title drifts down with the push so the growing tile never crowds it; the
+    // floor's glow reaches up into the band between the type and the caption.
+    lit: 0.65, dotBoost: 0.5, drift: 24, floor: { reflect: 0.3, sheenR: 3.4 },
   },
 });
 // Fast but from rest: the 8.0 s whoosh must not start at full speed (a visible jolt).
@@ -84,7 +89,7 @@ const scene = {
     const s = (ctx.state = {});
     s.logo = lib.logo.createLogo();
     scene.add(s.logo.group);
-    s.floor = lib.floor.nightFloor({ W: ctx.renderW, H: ctx.renderH, y: -1.32, reflect: 0.2, blur: 10 * (ctx.renderH / 1080), near: 0.4, far: 3.6, sheenR: 2.4 });
+    s.floor = lib.floor.nightFloor({ W: ctx.renderW, H: ctx.renderH, y: -1.32, blur: 10 * (ctx.renderH / 1080), near: 0.4, far: 3.6, ...L.floor });
     scene.add(s.floor.mesh);
     ctx.onPrepass((...a) => s.floor.prepass(...a), { once: true });
     s.dust = lib.particles.dust({
@@ -118,7 +123,8 @@ const scene = {
 
     // The point: breathes at the centre, floats up as the lines arrive, then falls
     // (accelerating) back into the crossing — the price settling at equilibrium.
-    const appear = E.sineOut(E.seg(t, T.dotIn, T.dotIn + 1.4));
+    const appear = E.lerp(L.lit, 1, E.sineOut(E.seg(t, L.lit ? 0 : T.dotIn, T.dotIn + 1.4)));
+    const halo = 1 - E.sineInOut(E.seg(t, 1.2, 3.0)); // the lone point's wide soft halo
     const breath = Math.sin((2 * Math.PI * t) / 2 - Math.PI / 2) * 0.5 + 0.5; // one breath per bar
     const lift = E.quintInOut(E.seg(t, 0.85, 1.95));
     const fall = E.cubicIn(E.seg(t, T.drop, T.land));
@@ -135,7 +141,7 @@ const scene = {
       E.lerp(rest.z + 0.05, DOT_HOVER[2], up),
     ];
     const hoverScale = 0.5 + 0.06 * breath;
-    const dotScale = E.lerp(hoverScale, 1, E.quadIn(fall)) * appear;
+    const dotScale = E.lerp(hoverScale, 1, E.quadIn(fall)) * appear * (1 + L.dotBoost * halo);
     const flash = (1 - Math.exp(-since / 0.035)) * Math.exp(-since / 0.4); // fast attack, soft decay
     const dotGlow = (2.1 + 1.0 * breath * (1 - fall)) * appear + 1.3 * flash + 0.2 * E.smoothstep(0, 0.6, since);
 
@@ -197,7 +203,6 @@ const scene = {
     logo.materials.cream.clearcoat = Math.max(1e-3, 0.35 * gloss);
     logo.materials.dot.uniforms.uGlow.value *= 1 + 0.5 * (1 - dim);
     // The lone point gets a wide soft halo that eases back as the lines arrive.
-    const halo = 1 - E.sineInOut(E.seg(t, 1.2, 3.0));
     post.bloom = {
       strength: 1.2 + 0.9 * halo + 0.5 * (1 - E.sineInOut(E.seg(t, T.tile, T.tile + 1.2))) + 1.4 * pushGlow,
       radius: 0.62 + 0.2 * halo,
@@ -215,6 +220,11 @@ const scene = {
     s.words[2].set(t, T.land, T.axis[1] + 0.05);
     s.title.set(t, T.title, T.exit);
     s.sub.set(t, T.sub, T.exit + 0.05);
+    if (L.drift) {
+      const dy = L.drift * E.sineInOut(E.seg(t, 12, 14.3));
+      s.title.place({ y: L.title.y + dy });
+      s.sub.place({ y: L.sub.y + dy });
+    }
   },
 };
 

@@ -37,11 +37,13 @@ const { HERO, LOCK, TYPE } = pick({
   },
   portrait: {
     HERO: { tileY: 790, tileH: 620, titleY: 1250 },
-    LOCK: { tileY: 540, tileH: 360, titleY: 800, titleScale: 0.5 },
+    // The tall stack reveals the tagline while the title is still riding up: it sits low
+    // enough (and the title locks high enough) to keep ≥40 px of air through the reveal.
+    LOCK: { tileY: 540, tileH: 360, titleY: 785, titleScale: 0.5 },
     TYPE: {
       title: { size: 104 },
-      tagline: { y: 1015, size: 104, maxLines: 2 },
-      small: { y: 1195, size: 36 },
+      tagline: { y: 1045, size: 104, maxLines: 2 },
+      small: { y: 1225, size: 36 },
     },
   },
 });
