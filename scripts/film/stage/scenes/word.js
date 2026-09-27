@@ -56,7 +56,7 @@ const LAYOUT = pick({
     YAW: 0.06,
     AZ0: 2, DIST0: 12.995, SHIFT0: [0, 80 / 1920],
     NEAR: { dist: 11.2, shift: [0, 10 / 1920] },
-    END: { target: [-0.25, -0.05, 0], dist: 9.3, shift: [0, -290 / 1920] },
+    END: { target: [-0.2, -0.05, 0], dist: 9.9, shift: [0, -280 / 1920] },
     window: { width: 3.0, aspect: 1.0, pageFrac: 0.72 },
     sheetX: 0,
     glow: [0.5, 0.42],

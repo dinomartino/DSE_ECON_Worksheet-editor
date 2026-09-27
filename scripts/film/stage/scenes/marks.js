@@ -32,6 +32,7 @@ const T = {
   rise: [5.12, 6.0], // …which rises in front as the window clears the frame (54.0)
   card: [1.3, 1.8], // portrait: the inspector card floats up off the page before the Marks click (49.58)
   pan: [CLIP_AT + 3.2, CLIP_AT + 3.95], // portrait: the card follows the pointer to Teacher (clip 3.3–3.9)
+  cardOut: [4.3, 4.75], // portrait: the card drops away once the scheme has printed
   h1: [1.0, 3.75],
   h2: [4.5, 7.45],
 };
@@ -151,8 +152,11 @@ const scene = {
       const py = E.sineInOut(E.seg(t, p0, pm)), px = E.sineInOut(E.seg(t, p0 + 0.25 * (p1 - p0), p1));
       const [x, y, w, h] = CARD.rows.map((v, i) => E.lerp(v, CARD.bar[i], i === 1 ? py : px));
       if (c.group.visible) c.set({ screen: frame, opacity: k, crop: [x / 2880, 1 - (y + h) / 1800, w / 2880, h / 1800], shadowOpacity: 0.16 * k });
-      c.group.position.set(CARD.at[0], CARD.at[1] - 0.04 * (1 - k) - 1.7 * out, W_POS[2] + CARD.lift * (0.4 + 0.6 * k) - 0.9 * out);
-      c.group.rotation.set(-0.3 * out, 0, 0);
+      // It leaves ahead of the window, clearing the headline's band before the teacher line.
+      const cOut = quintIn(E.seg(t, ...T.cardOut));
+      c.group.visible = c.group.visible && cOut < 1;
+      c.group.position.set(CARD.at[0], CARD.at[1] - 0.04 * (1 - k) - 1.2 * cOut, W_POS[2] + CARD.lift * (0.4 + 0.6 * k) - 0.6 * cOut);
+      c.group.rotation.set(-0.3 * cOut, 0, 0);
       c.group.scale.setScalar(0.96 + 0.04 * k);
     }
 
@@ -174,7 +178,7 @@ const scene = {
     s.haze.set({ amount: E.sineInOut(E.seg(t, 0.35, 1.05)) * hazeAt(f), ...HAZE_BAND });
     post.dof = dofAt(pose.dist, E.sineInOut(E.seg(t, 5.4, 6.1)));
     const moving = (a, b) => t > a && t < b;
-    post.samples = moving(0.25, 1.8) || moving(2.95, 4.05) ? 10 : moving(4.75, 6.15) ? 14 : 0;
+    post.samples = moving(0.25, 1.8) || moving(2.95, 4.05) || (PORTRAIT && moving(4.25, 4.8)) ? 10 : moving(4.75, 6.15) ? 14 : 0;
     post.vignette = 0.06;
     post.bloom = null;
 
