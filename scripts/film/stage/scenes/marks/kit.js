@@ -1,6 +1,5 @@
 // Helpers shared by marks and papers: camera stops placed by what they frame, blended as
-// orbit poses; a haze that dissolves the lower frame into the backdrop (type sits there);
-// a window whose screen can crossfade between two textures.
+// orbit poses; a haze that dissolves the lower frame into the backdrop (type sits there).
 import * as THREE from 'three';
 
 export const FOV = 30;
@@ -89,23 +88,5 @@ export function haze(ctx) {
       if (to != null) u.uTo.value = to;
       mesh.visible = u.uAmount.value > 0.001;
     },
-  };
-}
-
-/** Lets a lib window mix two screen textures: returns show(a, b, mix). */
-export function mixable(win) {
-  const m = win.material;
-  m.uniforms.tScreen2 = { value: m.uniforms.tScreen.value };
-  m.uniforms.uMix = { value: 0 };
-  const src = m.fragmentShader;
-  m.fragmentShader = src
-    .replace('uniform vec4 uCrop;', 'uniform vec4 uCrop; uniform sampler2D tScreen2; uniform float uMix;')
-    .replace('c = texture2D(tScreen, st).rgb;', 'c = mix(texture2D(tScreen, st).rgb, texture2D(tScreen2, st).rgb, uMix);');
-  if (!m.fragmentShader.includes('tScreen2, st')) throw new Error('mixable: window shader changed');
-  m.needsUpdate = true;
-  return (a, b = null, mix = 0) => {
-    m.uniforms.tScreen.value = a;
-    m.uniforms.tScreen2.value = b ?? a;
-    m.uniforms.uMix.value = b ? mix : 0;
   };
 }
