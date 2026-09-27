@@ -1,46 +1,54 @@
-// The dark that lifts off the page: a black veil over a sheet whose clear disc grows from
-// a point (the landed diagram), so the light blooms outward instead of the page fading
-// up through flat grey.
+// The light on the page: the sheet's colour is scaled by a disc of light growing from its
+// diagram slot, so the page first lies in a pool of light and then the light spreads
+// outward, instead of the page fading up through flat grey. `amb` lights all of it.
+// Patched into the lib paper material, so a fading (transparent) sheet stays monotonic.
 import * as THREE from 'three';
+import { patch } from '../../lib/tonemap.js';
 
-const VERT = /* glsl */ `
-varying vec2 vP;
-void main() { vP = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
+// The diagram's frame on sheets/diagram-question.png (sheet px): diagram/full.png at half size.
+const SLOT = { x: 591, y: 526, w: 1200, h: 1005 };
 
-const FRAG = /* glsl */ `
-uniform vec2 uCenter; uniform float uR; uniform float uSoft; uniform float uAlpha; varying vec2 vP;
-void main() {
-  float lit = 1.0 - smoothstep(uR - uSoft, uR, length(vP - uCenter));
-  float a = (1.0 - lit) * uAlpha;
-  if (a < 0.002) discard;
-  gl_FragColor = vec4(0.0, 0.0, 0.0, a);
-}`;
+/** The sheet texture with its diagram painted out (paper white). */
+export function blankSlot(sheetTex, ctx) {
+  const img = sheetTex.image;
+  if (!img?.width) return sheetTex;
+  const canvas = document.createElement('canvas');
+  canvas.width = img.width;
+  canvas.height = img.height;
+  const g = canvas.getContext('2d');
+  g.drawImage(img, 0, 0);
+  g.fillStyle = '#FFFFFF';
+  // The bitmap is stored flipped (lib/clip.js loads with imageOrientation: flipY).
+  g.fillRect(SLOT.x, img.height - SLOT.y - SLOT.h, SLOT.w, SLOT.h);
+  const tex = new THREE.CanvasTexture(canvas);
+  for (const k of ['flipY', 'colorSpace', 'generateMipmaps', 'minFilter', 'magFilter', 'anisotropy']) tex[k] = sheetTex[k];
+  ctx.onDispose(() => tex.dispose());
+  return tex;
+}
 
-/** A veil of w × h world units; `center` in its local coordinates. set({ r, alpha }). */
-export function veil({ w, h, center = [0, 0], soft = 1.5 }) {
-  const material = new THREE.ShaderMaterial({
-    vertexShader: VERT,
-    fragmentShader: FRAG,
-    uniforms: { uCenter: { value: new THREE.Vector2(...center) }, uR: { value: 0 }, uSoft: { value: soft }, uAlpha: { value: 1 } },
-    transparent: true,
-    premultipliedAlpha: true,
-    blending: THREE.CustomBlending,
-    blendSrc: THREE.OneFactor,
-    blendDst: THREE.OneMinusSrcAlphaFactor,
-    depthWrite: false,
-    toneMapped: false,
-  });
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), material);
-  mesh.name = 'veil';
-  mesh.userData.dispose = () => {
-    material.dispose();
-    mesh.geometry.dispose();
+/** Lights a lib/paper sheet; `center` in its local coordinates. set({ r, soft, amb }). */
+export function pageLight(sheet, { center = [0, 0], soft = 1.5 } = {}) {
+  const u = {
+    uLC: { value: new THREE.Vector2(...center) },
+    uLR: { value: 0 },
+    uLSoft: { value: soft },
+    uLAmb: { value: 0 },
   };
+  patch(sheet.material, 'pageLight', (shader) => {
+    Object.assign(shader.uniforms, u);
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec2 vPL;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvPL = position.xy;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform vec2 uLC; uniform float uLR; uniform float uLSoft; uniform float uLAmb; varying vec2 vPL;')
+      .replace('#include <opaque_fragment>', `#include <opaque_fragment>
+gl_FragColor.rgb *= mix(uLAmb, 1.0, 1.0 - smoothstep(uLR - uLSoft, uLR, length(vPL - uLC)));`);
+  });
   return {
-    mesh,
-    set({ r, alpha }) {
-      if (r != null) material.uniforms.uR.value = r;
-      if (alpha != null) material.uniforms.uAlpha.value = alpha;
+    set({ r, soft: sf, amb }) {
+      if (r != null) u.uLR.value = r;
+      if (sf != null) u.uLSoft.value = sf;
+      if (amb != null) u.uLAmb.value = amb;
     },
   };
 }
@@ -55,9 +63,9 @@ void main() { vUv = uv; gl_Position = vec4(position.xy, 1.0, 1.0); }`;
 const ROOM_FRAG = /* glsl */ `
 uniform vec3 uTop; uniform vec3 uBottom; uniform vec3 uGlow; uniform vec2 uGlowCenter;
 uniform float uGlowRadius; uniform float uGlowAmount; uniform float uAspect;
-uniform vec2 uCenter; uniform float uR; uniform float uSoft; varying vec2 vUv;
+uniform vec2 uCenter; uniform float uR; uniform float uSoft; uniform float uAlpha; varying vec2 vUv;
 void main() {
-  float lit = 1.0 - smoothstep(uR - uSoft, uR, length((vUv - uCenter) * vec2(uAspect, 1.0)));
+  float lit = uAlpha * (1.0 - smoothstep(uR - uSoft, uR, length((vUv - uCenter) * vec2(uAspect, 1.0))));
   if (lit < 0.002) discard;
   vec3 base = mix(uBottom, uTop, smoothstep(0.0, 1.0, vUv.y));
   vec2 d = (vUv - uGlowCenter) * vec2(uAspect, 1.0);
@@ -66,7 +74,7 @@ void main() {
   gl_FragColor = vec4(c * lit, lit);
 }`;
 
-/** `day` = lib.backdrop WORLDS.day. set({ center: [u, v], r, soft }), r and soft in frame heights. */
+/** `day` = lib.backdrop WORLDS.day. set({ center: [u, v], r, soft, alpha }), r and soft in frame heights. */
 export function roomLight(day, aspect) {
   const material = new THREE.ShaderMaterial({
     vertexShader: ROOM_VERT,
@@ -82,6 +90,7 @@ export function roomLight(day, aspect) {
       uCenter: { value: new THREE.Vector2(0.5, 0.5) },
       uR: { value: 0 },
       uSoft: { value: 0.3 },
+      uAlpha: { value: 1 },
     },
     transparent: false, // the opaque pass, so it sorts right after the backdrop (blending still applies)
     premultipliedAlpha: true,
@@ -104,10 +113,11 @@ export function roomLight(day, aspect) {
   const u = material.uniforms;
   return {
     mesh,
-    set({ center, r, soft }) {
+    set({ center, r, soft, alpha }) {
       if (center) u.uCenter.value.set(...center);
       if (r != null) u.uR.value = r;
       if (soft != null) u.uSoft.value = soft;
+      if (alpha != null) u.uAlpha.value = alpha;
       mesh.visible = r > 0;
     },
   };

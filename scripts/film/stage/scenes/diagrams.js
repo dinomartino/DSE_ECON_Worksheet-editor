@@ -13,7 +13,7 @@ import { COPY } from '../../timeline.mjs';
 import { cubicBezier } from '../lib/ease.js';
 import { remap, placeRemapped } from './diagrams/remap.js';
 import { diagramStack, ASPECT, LAYERS } from './diagrams/stack.js';
-import { veil, roomLight } from './diagrams/light.js';
+import { blankSlot, pageLight, roomLight } from './diagrams/light.js';
 import { WORLDS } from '../lib/backdrop.js';
 import { extendScreen } from './diagrams/screen.js';
 import { player } from './diagrams/player.js';
@@ -52,8 +52,10 @@ const VIEW_H = 2 * Math.tan((FOV / 2) * DEG);
 /** Camera distance at which `worldW` spans `px` pixels at 1080p. */
 const distForPx = (worldW, px) => (worldW * 1080) / (px * VIEW_H);
 const END_DIST = distForPx(PAGE_W, 1100); // the handoff: the sheet 1100 px wide
-const LIGHT_SOFT = 1.6; // the page light's soft edge (world units)
-const LIGHT_R = [0, 7.4]; // from under the card to past the page's and the frame's far corners
+const LIGHT_SOFT = 2.4; // the page light's soft edge (world units)
+// A pool that covers the landing slot, then out past the frame's far corners at the handoff.
+const LIGHT_R = [1.5 + LIGHT_SOFT, 4.8 + LIGHT_SOFT];
+const CARD_H = CARD_W / ASPECT;
 
 // ---- time (scene seconds; film = 32 + t) --------------------------------------------
 const T = {
@@ -79,11 +81,10 @@ const T = {
   layers: [11.0, 13.75],
   collapse: [13.9, 14.5],
   unwipe: [14.2, 14.8],
-  fly: [14.0, 15.0],
+  fly: [14.0, 15.45], // touches the page ~47.2, settled by 47.45
   crane: [13.95, 15.4],
-  pageIn: [14.55, 14.95],
-  light: [15.0, 15.55],
-  gone: [15.55, 15.75],
+  pageIn: [14.3, 14.9], // the page shows in its pool of light as the diagram comes down
+  light: [15.05, 15.75], // day by the 47.75 dissolve
 };
 
 // Clip retiming: [scene t, clip t] keys on the clip's events (clips/draw-diagram.json).
@@ -109,7 +110,7 @@ const POPS = [775, 856]; // clip frames where "Add" closes the menu and the shad
 const INK_APART = ['#AEAEB2', '#4AA3FF', '#8E8E93', '#F5F5F7', '#6CB6FF', '#F5F5F7'];
 
 const fast = cubicBezier(0.3, 0, 0.06, 1); // fast, from rest
-const soft = cubicBezier(0.45, 0, 0.2, 1); // a landing
+const soft = cubicBezier(0.4, 0, 0.12, 1); // a landing
 const lerp3 = (a, b, u) => a.map((v, i) => v + (b[i] - v) * u);
 
 const scene = {
@@ -150,18 +151,21 @@ const scene = {
     // The diagram's layers, and the page it lands on (lying on the floor, top edge away).
     s.stack = await diagramStack(ctx, { width: CARD_W });
     scene.add(s.stack.group);
+    // The page with its diagram slot blank: the landed stack is its diagram (registered
+    // exactly), so the printed one never shows twice.
     const sheetTex = await ctx.load.texture('sheets/diagram-question.png');
-    s.page = lib.paper.sheet({ map: sheetTex, width: PAGE_W, shadowOpacity: 0, shadowBlur: 0.12, shadowOffset: [0.03, -0.06] });
+    s.page = lib.paper.sheet({ map: blankSlot(sheetTex, ctx), width: PAGE_W, shadowOpacity: 0, shadowBlur: 0.12, shadowOffset: [0.03, -0.06] });
     s.page.group.position.set(...PAGE_C);
     s.page.group.rotation.x = -Math.PI / 2;
     s.page.group.traverse((o) => (o.userData.noReflect = true));
     scene.add(s.page.group);
-    s.veil = veil({ w: PAGE_W + 0.02, h: PAGE_H + 0.02, center: PAGE_OFF, soft: LIGHT_SOFT });
-    s.veil.mesh.position.z = 0.0008;
+    s.pageLight = pageLight(s.page, { center: PAGE_OFF, soft: LIGHT_SOFT });
     s.room = roomLight(WORLDS.day, ctx.renderW / ctx.renderH);
     scene.add(s.room.mesh);
-    s.veil.mesh.renderOrder = 0; // under the landing card (3), which writes no depth
-    s.page.group.add(s.veil.mesh);
+    s.landShadow = lib.floor.contactShadow({ w: CARD_W, h: CARD_H, radius: 0.01, blur: 0.09, color: '#2A241E', opacity: 0 });
+    s.landShadow.position.set(...PAGE_OFF, 0.0005);
+    s.landShadow.renderOrder = 1; // over the face, under the landing card (3), which writes no depth
+    s.page.group.add(s.landShadow);
 
     s.v = new THREE.Vector3();
     const col = (h) => new THREE.Color(h);
@@ -254,26 +258,30 @@ const scene = {
     // It tips back to lie flat as it comes down.
     s.stack.group.rotation.set(-90 * DEG * E.sineInOut(seg(t, T.fly[0] + 0.05, T.fly[1] - 0.05)), 0, 0);
     const wipe = E.sineInOut(seg(t, ...T.wipe)) * (1 - E.sineInOut(seg(t, ...T.unwipe)));
-    const gone = E.sineInOut(seg(t, ...T.gone));
-    const stackOp = take * (1 - gone);
+    // It stays to the end: it is the page's diagram exactly (fading it would ghost the lines).
+    const stackOp = take;
     s.stack.group.visible = stackOp > 0.001;
     const panes = E.sineInOut(seg(t, 10.45, 11.0)) * (1 - E.sineInOut(seg(t, 13.9, 14.3)));
 
     // ---- the page, the day ----------------------------------------------------------------
     const pageIn = E.sineInOut(seg(t, ...T.pageIn));
-    // One wave of light: its radius is shared by the page's veil (world units on the page)
-    // and the room (frame heights), so the light runs off the page and on across the room.
-    const light = E.cubicOut(seg(t, ...T.light));
+    // Before it spreads, the page lies in a pool of light around its blank diagram slot. The
+    // room's light (frame heights) grows from under the page to the same end radius, so it
+    // spills off the page's edges just behind the page's own light.
+    const lu = seg(t, ...T.light);
+    const light = E.sineInOut(lu);
     const lightR = E.lerp(LIGHT_R[0], LIGHT_R[1], light);
-    const day = E.sineInOut(light);
-    // The page waits in the dark under its veil (the paper itself shows only once the veil
-    // is opaque); the light opens from the landed diagram.
+    const day = light;
     s.page.group.visible = pageIn > 0.001;
-    s.page.face.visible = pageIn >= 1;
-    s.page.edge.visible = pageIn >= 1;
-    s.page.set({ shadowOpacity: 0.16 * day });
-    s.veil.set({ r: lightR, alpha: pageIn });
-    s.veil.mesh.visible = light < 1;
+    s.page.edge.visible = lu >= 1; // unlit: only once the light has reached the page's edges
+    s.page.set({ opacity: pageIn, shadowOpacity: 0.16 * day });
+    s.pageLight.set({ r: lightR, amb: 0.07 + 0.93 * E.smoothstep(0.5, 1, lu) });
+    // The diagram's shadow gathers under it as it comes down, and goes as it becomes print.
+    const h = Math.max(0, pos[1] - LAND[1]);
+    const near = 1 - E.smoothstep(0.03, 1.3, h);
+    s.landShadow.material.opacity = 0.34 * near * pageIn * (1 - E.sineInOut(seg(t, 15.25, 15.6)));
+    s.landShadow.scale.setScalar(1 + 0.3 * Math.min(1, h / 1.3));
+    s.landShadow.position.set(PAGE_OFF[0] + 0.07 * h, PAGE_OFF[1] - 0.1 * h, 0.0005);
 
     // ---- camera ---------------------------------------------------------------------------
     const markSweep = E.quintOut(seg(t, 0, 1.9));
@@ -300,7 +308,7 @@ const scene = {
     const pClose = { target: [0.02, 0.0, 0], dist: distForPx(WIN_W, 1590) * (1 - 0.015 * seg(t, 9.0, 10)), az: -2.5 + 1.5 * seg(t, 9, 10), el: 1.5, shift: [0, 0] };
     const stackC = [pos[0], pos[1], pos[2] + 0.5 * spread[5]];
     const drift3 = seg(t, 11.0, 14.0);
-    const pApart = { target: stackC, dist: distForPx(CARD_W, 700) * (1 - 0.03 * drift3), az: -34 + 9 * drift3, el: 13 - 2.5 * drift3, shift: [0, 0.14] };
+    const pApart = { target: stackC, dist: distForPx(CARD_W, 640) * (1 - 0.03 * drift3), az: -34 + 9 * drift3, el: 13 - 2.5 * drift3, shift: [0, 0.165] };
     const pEnd = { target: LAND, dist: END_DIST * (1 - 0.012 * seg(t, 15.2, 16.4)), az: 0, el: 89.5, shift: [0, 0] };
 
     const p = chain(pMark, [
@@ -327,8 +335,8 @@ const scene = {
     const cu = (s.v.x + 1) / 2, cv = (s.v.y + 1) / 2;
     s.v.set(LAND[0] + 1, LAND[1], LAND[2]).project(camera);
     const k = Math.hypot(((s.v.x + 1) / 2 - cu) * (ctx.renderW / ctx.renderH), (s.v.y + 1) / 2 - cv); // frame heights per unit
-    s.room.set({ center: [cu, cv], r: light > 0 && light < 1 ? lightR * k : 0, soft: LIGHT_SOFT * k });
-    const w = light >= 1 ? WORLDS.day : WORLDS.night;
+    s.room.set({ center: [cu, cv], r: lu > 0 && lu < 1 ? LIGHT_R[1] * light * k : 0, soft: LIGHT_SOFT * k });
+    const w = lu >= 1 ? WORLDS.day : WORLDS.night;
     ctx.backdrop.userData.set({ top: w.top, bottom: w.bottom, glow: w.glow, center: w.center, radius: w.radius, glowAmount: w.glowAmount });
 
     // Per-pane depth of field while the layers are apart.
