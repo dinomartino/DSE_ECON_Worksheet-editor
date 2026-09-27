@@ -20,6 +20,7 @@ import { extendScreen } from './diagrams/screen.js';
 import { player } from './diagrams/player.js';
 import { chain } from './diagrams/poses.js';
 import { handoff } from './marks/kit.js';
+import { W as FW, H as FH, pick } from '../lib/format.js';
 
 const C = COPY.diagrams;
 const TEXT_W = 560; // design px from x = 100 to the window's left edge
@@ -53,14 +54,51 @@ const PAGE_C = [LAND[0] - PAGE_OFF[0], FLOOR_Y + 0.001, LAND[2] + PAGE_OFF[1]];
 const END_EL = 89.5; // overhead (90 would leave lookAt without an up)
 const FOV = 30;
 const VIEW_H = 2 * Math.tan((FOV / 2) * DEG);
-/** Camera distance at which `worldW` spans `px` pixels at 1080p. */
-const distForPx = (worldW, px) => (worldW * 1080) / (px * VIEW_H);
-const END_DIST = distForPx(PAGE_W, 1100); // the handoff: the sheet 1100 px wide
+/** Camera distance at which `worldW` spans `px` design px (frame height 1080 or 1920). */
+const distForPx = (worldW, px) => (worldW * FH) / (px * VIEW_H);
+// The handoff: the sheet 1100 px wide (×1/0.992 on the cut); portrait: 960 px, FILM-9x16.md.
+const END_DIST = pick({ landscape: distForPx(PAGE_W, 1100) * 0.992, portrait: distForPx(PAGE_W, 960) });
 const LIGHT_SOFT = 3.6; // the page light's soft edge (world units)
 // A pool that covers the landing slot, then out past the frame's far corners at the handoff.
 const LIGHT_R = [1.5 + LIGHT_SOFT, 4.8 + LIGHT_SOFT];
 const CARD_H = CARD_W / ASPECT;
 const DWL = [...css(502, 500), 0]; // the DWL triangle's centre on the canvas
+
+// ---- layout per frame format (FILM-9x16.md) ---------------------------------------------
+// Portrait: the mark centred high, the card big and centred, the headline block above it
+// (y 260–720), the layers fanning down the frame, the page landing centred at y 900.
+const L = pick({
+  landscape: {
+    markPx: 440, markShift: [0, 0.066],
+    cardPx: 1000, cardAz: -3, cardShift: [0, 0.01],
+    side: (c) => ({ target: [0.1, -0.06, 0], dist: distForPx(WIN_W, 1330) * (1 - 0.03 * c), az: -17 + 3 * c, el: 3.5 - 1 * c, shift: [0.25, 0.02] }),
+    dwl: { target: DWL, dist: distForPx(WIN_W, 1645), az: -11, el: 2, shift: [0.1245, -0.026] },
+    apart: (c, d) => ({ target: c, dist: distForPx(CARD_W, 640) * (1 - 0.03 * d), az: -34 + 9 * d, el: 13 - 2.5 * d, shift: [0, 0.165] }),
+    endShift: [0, 0],
+    appUp: 0.92,
+    word: { y: 812, size: 120 },
+    head: { x: 100, y: 548, size: 104, maxWidth: TEXT_W },
+    subs: { x: 102, y: 596, size: 34, maxWidth: TEXT_W },
+    layers: { y: 906 },
+  },
+  portrait: {
+    markPx: 600, markShift: [0, 0.075],
+    cardPx: 980, cardAz: -2, cardShift: [0, 0.03],
+    // A pedestal: the card rises to the upper middle, the app around it, and the headline
+    // comes in on the dark below the window (its top runs under the Reels header).
+    side: (c) => ({ target: CARD, dist: distForPx(CARD_W, 880) * (1 - 0.03 * c), az: -6 + 3 * c, el: 3 - 1 * c, shift: [-0.028, (960 - 640) / 1920] }),
+    // The card grows about the DWL triangle and sinks a little, clear of the exiting type.
+    dwl: { target: DWL, dist: distForPx(CARD_W, 1040), az: -4, el: 1.5, shift: [(460 - 540) / 1080, (960 - 720) / 1920] },
+    // From above: the layers step down the frame, back to front, under the headline.
+    apart: (c, d) => ({ target: c, dist: distForPx(CARD_W, 780) * (1 - 0.03 * d), az: -16 + 8 * d, el: 30 - 4 * d, shift: [-0.03, -0.045] }),
+    endShift: [0, (960 - 900) / 1920],
+    appUp: 0.62,
+    word: { y: 1250, size: 120 },
+    head: { x: 90, y: 1120, size: 100, maxWidth: 860, valign: 'top' },
+    subs: { x: 92, size: 36, maxWidth: 860, row: 30 }, // one row under the head, in order
+    layers: { y: 420 },
+  },
+});
 
 // ---- time (scene seconds; film = 32 + t) --------------------------------------------
 // The explode, the fly to the page and the touch hang off their cues (EX, FLY, TOUCH).
@@ -200,18 +238,29 @@ const scene = {
 
     // Type.
     const T_ = lib.type;
-    s.word = T_.headline(ctx.el, { en: C.word, y: 812, size: 120, world: 'night' }); // as opening's Supply./Demand.
+    s.word = T_.headline(ctx.el, { en: C.word, y: L.word.y, size: L.word.size, world: 'night' }); // as opening's Supply./Demand.
     s.labels = C.curves.map((en) => T_.text(ctx.el, { kind: 'headline', en, size: 64, world: 'night', color: '#FCFAF6' }));
     // Left of the window: the head grows upwards from its baseline, the subs stack down.
-    s.head = T_.headline(ctx.el, { en: C.headline, zh: C.headlineZh, x: 100, y: 548, align: 'left', valign: 'bottom', size: 104, zhSize: 44, world: 'night', maxWidth: TEXT_W, maxLines: 3, zhMaxLines: 2 });
+    s.head = T_.headline(ctx.el, { en: C.headline, zh: C.headlineZh, x: L.head.x, y: L.head.y, align: 'left', valign: L.head.valign ?? 'bottom', size: L.head.size, zhSize: 44, world: 'night', maxWidth: L.head.maxWidth, maxLines: 3, zhMaxLines: 2 });
     // The sub-line, one sentence per action, each revealed as a unit.
-    let y = 596;
+    let y = L.subs.y;
     s.subs = C.subs.map((en) => {
-      const b = T_.sub(ctx.el, { en, x: 102, y, align: 'left', valign: 'top', size: 34, world: 'night', maxWidth: TEXT_W, maxLines: 2 });
-      y += b.lines * 34 * 1.2 * b.scale;
+      const b = T_.sub(ctx.el, { en, x: L.subs.x, y, align: 'left', valign: 'top', size: L.subs.size, world: 'night', maxWidth: L.subs.maxWidth, maxLines: 2 });
+      y += b.lines * L.subs.size * 1.2 * b.scale;
       return b;
     });
-    s.layers = T_.headline(ctx.el, { en: C.layers, zh: C.layersZh, y: 906, size: 104, zhSize: 44, world: 'night' });
+    if (L.subs.row != null) {
+      // Portrait: the three sentences in one row under the head (wrapping if they must).
+      let x = L.subs.x;
+      y = L.head.y + s.head.el.offsetHeight + 22;
+      for (const b of s.subs) {
+        const w = b.el.offsetWidth;
+        if (x > L.subs.x && x + w > L.subs.x + L.subs.maxWidth) [x, y] = [L.subs.x, y + L.subs.size * 1.25];
+        b.place({ x, y });
+        x += w + L.subs.row;
+      }
+    }
+    s.layers = T_.headline(ctx.el, { en: C.layers, zh: C.layersZh, y: L.layers.y, size: 104, zhSize: 44, world: 'night', ...(ctx.portrait ? { maxWidth: 860, maxLines: 3 } : {}) });
   },
 
   update(t, ctx) {
@@ -261,7 +310,7 @@ const scene = {
     // its light) lifts out.
     const rv = seg(t, ...T.reveal);
     const revealR = 5.6 * (1 - Math.pow(1 - rv, 1.8)); // a soft edge (1.0): no circle shows
-    const around = 0.08 * E.sineInOut(seg(t, ...T.dimApp)) + 0.92 * E.sineInOut(seg(t, ...T.appUp));
+    const around = 0.08 * E.sineInOut(seg(t, ...T.dimApp)) + L.appUp * E.sineInOut(seg(t, ...T.appUp));
     const spot = E.sineInOut(seg(t, ...T.spot));
     const out = E.sineInOut(seg(t, ...T.winOut)); // under the lift and the sweep: one gesture
     const recede = E.quintIn(seg(t, T.winOut[0], T.winOut[1] + 0.05));
@@ -334,32 +383,26 @@ const scene = {
     const markSweep = E.quintOut(seg(t, 0, 1.9));
     const pMark = {
       target: MARK_P,
-      dist: distForPx(1.5148, 440) * (1.07 - 0.07 * markSweep),
+      dist: distForPx(1.5148, L.markPx) * (1.07 - 0.07 * markSweep),
       az: -22 + 20 * markSweep,
       el: 8 - 6.5 * markSweep,
-      shift: [0, 0.066],
+      shift: L.markShift,
     };
     // Close on the card while D and S are drawn: only a 2% creep while a curve draws.
     const hold = seg(t, 2.3, 4.0);
-    const pCard = { target: CARD, dist: distForPx(CARD_W, 1000) * (1 - 0.02 * hold), az: -3 + 1.5 * hold, el: 2, shift: [0, 0.01] };
+    const pCard = { target: CARD, dist: distForPx(CARD_W, L.cardPx) * (1 - 0.02 * hold), az: L.cardAz + 1.5 * hold, el: 2, shift: L.cardShift };
     // Pulled back: the whole app floating on the right, the headline on the left.
     const creep = seg(t, 5.0, 8.6);
-    const pSide = {
-      target: [0.1, -0.06, 0],
-      dist: distForPx(WIN_W, 1330) * (1 - 0.03 * creep), // the inspector runs off the right edge
-      az: -17 + 3 * creep,
-      el: 3.5 - 1 * creep,
-      shift: [0.25, 0.02],
-    };
+    const pSide = L.side(creep);
     // The finished diagram: a slow push toward the DWL triangle, clear of the type.
     // DWL stays where pSide put it (x 1199) while the window grows about it.
-    const pDwl = { target: DWL, dist: distForPx(WIN_W, 1645), az: -11, el: 2, shift: [0.1245, -0.026] };
+    const pDwl = L.dwl;
     const stackC = [pos[0], pos[1], pos[2] + 0.5 * spread[5]];
     const drift3 = seg(t, T.lit, FLY);
-    const pApart = { target: stackC, dist: distForPx(CARD_W, 640) * (1 - 0.03 * drift3), az: -34 + 9 * drift3, el: 13 - 2.5 * drift3, shift: [0, 0.165] };
+    const pApart = L.apart(stackC, drift3);
     // Overhead, first on the falling diagram, then settling on its slot.
     // It lands already creeping in; the dolly runs on through the cut into marks (registered there).
-    const pEnd = { target: lerp3(pos, LAND, E.sineInOut(seg(t, T.cardGone[0], T.cardGone[0] + 0.8))), dist: END_DIST * 0.992 * handoff(lib, START + t), az: 0, el: END_EL, shift: [0, 0] };
+    const pEnd = { target: lerp3(pos, LAND, E.sineInOut(seg(t, T.cardGone[0], T.cardGone[0] + 0.8))), dist: END_DIST * handoff(lib, START + t), az: 0, el: END_EL, shift: L.endShift };
 
     const p = chain(pMark, [
       [pCard, cubicBezier(0.45, 0, 0.2, 1)(seg(t, ...T.closeIn))],
@@ -428,7 +471,7 @@ const scene = {
       const [lx, ly, sw] = anchors[i];
       const a = sw * DEG;
       s.v.set(lx * Math.cos(a) - ly * Math.sin(a), lx * Math.sin(a) + ly * Math.cos(a), 0.05).applyMatrix4(s.logo.group.matrixWorld).project(camera);
-      lab.place({ x: (s.v.x + 1) * 960, y: (1 - s.v.y) * 540 });
+      lab.place({ x: (s.v.x + 1) * (FW / 2), y: (1 - s.v.y) * (FH / 2) });
       lab.set(t, i === 1 ? 0.62 : 0.74, T.word[1] - 0.05);
     });
     s.head.set(t, T.head[0], T.head[1]);
