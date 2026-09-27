@@ -31,7 +31,7 @@ export const SLIDE = [CUT - 2.5, CUT - 1.5];
 // Portrait: it slides out upward instead, its scheme landing just above the student copy.
 const T_ARC = pick({
   landscape: { start: [0.012, 0.004, -0.02], mid: [0.48, 0.07, -0.13], end: [0.9, 0.02, -0.02], rot: [0.01, -0.07, -0.014], lift: [0, -0.05, 0.025] },
-  portrait: { start: [0.004, 0.012, -0.02], mid: [0.05, 0.5, -0.13], end: [0.07, 0.95, -0.02], rot: [-0.05, 0.01, -0.03], lift: [-0.05, 0, 0.02] },
+  portrait: { start: [0.004, 0.012, -0.02], mid: [0.05, 0.5, -0.13], end: [0.07, 0.95, -0.02], rot: [0.02, 0.01, -0.03], lift: [0.05, 0, 0.02] },
 });
 const T_START = add(S_POS, T_ARC.start);
 const T_MID = add(S_POS, T_ARC.mid);
@@ -78,7 +78,9 @@ export const HAZE_BAND = pick({
 });
 
 /** Depth of field focused at `focus` (camera distance), strength k. */
-export const dofAt = (focus, k = 1) => (k < 0.01 ? null : { focus, aperture: 130 * k, maxBlur: 12 * k });
+export const dofAt = (focus, k = 1) => (k < 0.01 ? null : { focus, aperture: 130 * k * APERTURE, maxBlur: 12 * k });
+/** Portrait frames the paper closer and steeper: a shallower blur keeps the headers readable. */
+export const APERTURE = pick({ landscape: 1, portrait: 0.4 });
 
 export const SHEET = { shadowOpacity: 0.15, shadowBlur: 0.05, shadowOffset: [0.018, -0.03] };
 

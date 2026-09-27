@@ -43,6 +43,23 @@ export const PHI_STACK = -TH_S;
 /** Centre (x, y) of a sheet at fan angle g, `rad` out along its radius (turntable included). */
 export const at = (g, rad = 0) => [PIVOT[0] - (R + rad) * Math.sin(g), PIVOT[1] + (R + rad) * Math.cos(g)];
 
+/**
+ * Portrait (9:16): the pack deals upward along the desk instead, each sheet under the one
+ * before it, so every header shows above the sheet in front: student copy, teacher's copy,
+ * Versions C, B, A, the LQ worksheet, the Paper 2 and Paper 1 covers, farthest. Per PACK
+ * index: [dx, dy] from the student copy, its turn (rad) and its layer under the top.
+ */
+export const CASCADE = [
+  { d: [0, 0], rz: 0, layer: 0 },
+  { d: [0.07, 0.95], rz: -0.03, layer: 1 },
+  { d: [-0.16, 2.45], rz: 0.05, layer: 4 }, // Version A
+  { d: [0.16, 1.95], rz: -0.045, layer: 3 }, // Version B
+  { d: [-0.14, 1.45], rz: 0.04, layer: 2 }, // Version C
+  { d: [0.17, 2.95], rz: -0.05, layer: 5 }, // LQ
+  { d: [-0.15, 3.65], rz: 0.045, layer: 6 }, // Paper 2 cover
+  { d: [0.14, 4.4], rz: -0.035, layer: 7 }, // Paper 1 cover
+];
+
 /** Display-space brightness (0..1) → the linear multiplier that shows it. */
 export const lin = (b) => (b <= 0.04045 ? b / 12.92 : ((b + 0.055) / 1.055) ** 2.4);
 
