@@ -178,11 +178,11 @@ const scene = {
       T_.headline(ctx.el, { ...L, en: C.langs[1], y: 524, font: FONT_ZH, tracking: 0.02 }),
       T_.headline(ctx.el, { ...L, en: C.langs[2], y: 660 }),
     ];
-    // Half-width CJK punctuation (PingFang 'halt'), and the centred HK 。 kerned in: no hole
-    // after 中文 beside "English." and "Both.".
-    for (const b of [s.langs[1], s.head]) b.el.style.fontFeatureSettings = '"halt"';
+    // Half-width CJK punctuation (PingFang 'halt'; on the lines, as their `font` shorthand
+    // resets it), and the centred HK 。 kerned in: no hole after 中文 beside "English.".
+    for (const b of [s.langs[1], s.head]) for (const ln of b.el.children) ln.style.fontFeatureSettings = '"halt"';
     const zh = s.langs[1].words.at(-1).el;
-    zh.innerHTML = zh.textContent.replace(/。$/, '<span style="margin-left:-0.14em">。</span>');
+    zh.innerHTML = zh.textContent.replace(/。$/, '<span style="margin-left:-0.08em">。</span>');
   },
 
   update(t, ctx) {
