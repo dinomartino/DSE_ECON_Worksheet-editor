@@ -112,8 +112,8 @@ const LAYOUT = {
       return {
         C1,
         P0: pose(C1.x, C1.y - 0.25, C1.d * 1.45, -16, 13, -1.2),
-        C1d: pose(...css(462, 318), 5.5, -7, 3.5),
-        C1b: pose(...css(462, 318), 5.3, -3, 2),
+        C1d: pose(...css(462, 326), 5.55, -7, 3.5),
+        C1b: pose(...css(462, 326), 5.4, -3, 2),
       };
     },
     page: (at) => ({
@@ -123,8 +123,8 @@ const LAYOUT = {
       C2: pose(...at(912, 507), 5.33, -13, 4),
       C3: pose(...at(912, 519), 5.5, -6, 2.5),
     }),
-    head: { x: 90, y: 380, size: 100, zhSize: 42, zhGap: 18, maxWidth: 860, maxLines: 2 },
-    sub: { x: 90, y: 590, size: 34, maxWidth: 860 },
+    head: { x: 90, y: 372, size: 100, zhSize: 42, zhGap: 18, maxWidth: 860, maxLines: 2 },
+    sub: { x: 90, y: 566, size: 34, maxWidth: 860 },
     langs: { x: 90, ys: [320, 440, 560], size: 100, maxWidth: 520 },
   },
 };
