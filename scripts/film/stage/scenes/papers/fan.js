@@ -9,19 +9,23 @@ const DEG = Math.PI / 180;
 
 /**
  * The pack: each sheet's asset, its angle in the open fan from the hinge (negative turns it
- * right) and its depth under the hinge in layers. The left half lies top-left over the next
- * sheet (the teacher copy and Version A show their right edge, where their labels are); the
- * right half lies the other way, so the Paper 1 cover is whole and the Paper 2 cover shows
- * its left side; the LQ worksheet at the bottom of the V shows its dotted lines.
+ * right), its depth under the hinge in layers, and `rad`, how far it sits out along its
+ * radius. The left half lies top-left over the next sheet; Versions C, B and A stand in a
+ * stair like a hand of cards, each header out above the one in front. The right half lies
+ * the other way, so the Paper 1 cover is whole and the Paper 2 cover shows its left side;
+ * the LQ worksheet at the bottom of the V shows its dotted lines. `beat`: its tap in the
+ * held fan (scene s).
  */
 export const PACK = [
-  { path: PAIR.student, off: 0, depth: 0 },
-  { path: PAIR.teacher, off: -14, depth: 1 },
-  { path: 'sheets/version-a.png', off: -28, depth: 2 },
-  { path: 'sheets/lq-1.png', off: -42, depth: 5 },
-  { path: 'sheets/p2-cover.png', off: -57, depth: 4 },
-  { path: 'sheets/p1-cover.png', off: -72, depth: 3 },
-].map((s) => ({ ...s, off: s.off * DEG }));
+  { path: PAIR.student, off: 0, depth: 0, beat: 2.0 },
+  { path: PAIR.teacher, off: -12, depth: 1, beat: 2.0 },
+  { path: 'sheets/version-a.png', off: -26, depth: 4, rad: 0.34, beat: 2.5 },
+  { path: 'sheets/version-b.png', off: -25, depth: 3, rad: 0.17, beat: 2.58 },
+  { path: 'sheets/version-c.png', off: -24, depth: 2, beat: 2.66 },
+  { path: 'sheets/lq-1.png', off: -37, depth: 7, beat: 3.0 },
+  { path: 'sheets/p2-cover.png', off: -49, depth: 6, beat: 3.5 },
+  { path: 'sheets/p1-cover.png', off: -61, depth: 5, beat: 4.0 },
+].map((s) => ({ rad: 0, ...s, off: s.off * DEG }));
 export const S_K = 0; // the student copy
 export const T_K = 1; // the teacher's copy
 const OFF_END = PACK[PACK.length - 1].off;
@@ -36,8 +40,8 @@ export const SP_STACK = 0.0045; // the neat stack
 export const PHI_OPEN = -(TH_S + OFF_END / 2);
 export const PHI_STACK = -TH_S;
 
-/** Centre (x, y) of a sheet at fan angle g (pivot frame, turntable included). */
-export const at = (g) => [PIVOT[0] - R * Math.sin(g), PIVOT[1] + R * Math.cos(g)];
+/** Centre (x, y) of a sheet at fan angle g, `rad` out along its radius (turntable included). */
+export const at = (g, rad = 0) => [PIVOT[0] - (R + rad) * Math.sin(g), PIVOT[1] + (R + rad) * Math.cos(g)];
 
 /** Display-space brightness (0..1) → the linear multiplier that shows it. */
 export const lin = (b) => (b <= 0.04045 ? b / 12.92 : ((b + 0.055) / 1.055) ** 2.4);
