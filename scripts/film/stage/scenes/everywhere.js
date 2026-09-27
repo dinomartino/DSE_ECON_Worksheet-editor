@@ -1,23 +1,31 @@
 // everywhere — bars 36–40, day (FILM.md §3). The 72.0 hit cuts to the warm world on the
-// real Export dialog. On each tick (72.5–74.5) a glass chip springs into the space beside
-// it: PDF, Answer key, Kahoot, Blooket, ZipGrade. The camera trucks right, everything
-// whooshing off-frame, and lands on the browser window on 76.0; the Mac and Windows
-// windows slide in from the front on 77.0 and 78.0, each earlier one stepping back, while
-// "In your browser. On Mac. On Windows." lands a phrase per window.
+// real Export dialog, "Export your way." over the space beside it; on each tick (72.5–74.5)
+// a glass chip springs into that space: PDF, Answer key, Kahoot, Blooket, ZipGrade. The
+// camera trucks right, everything whooshing off-frame, and lands close on the browser
+// window on 76.0; it eases back as the Mac and Windows windows slide in from the front on
+// 77.0 and 78.0, each earlier one stepping back, while "In your browser. On Mac. On
+// Windows." lands a phrase per window, the Chinese with it. Then the camera pushes in and
+// turns, accelerating into the 80.0 montage cut, the stack opening up in depth.
 import { COPY } from '../../timeline.mjs';
 import { cubicBezier } from '../lib/ease.js';
+import { REVEAL } from '../lib/type.js';
 import { glassChip } from './everywhere/glassChip.js';
 import { softShadow } from './everywhere/shadow.js';
 
 const C = COPY.everywhere;
 const PHRASES = C.headline.split(/(?<=\.)\s+/); // In your browser. / On Mac. / On Windows.
+// Over the chips (not in COPY yet: move it there with the next timeline edit).
+const EXPORT = { en: 'Export your way.', zh: '隨心匯出。' };
 
 // Scene seconds (film − 72).
 const T = {
+  export: [0.3, 3.12], // the chips' headline, gone before the truck moves
   chips: [0.5, 1.0, 1.5, 2.0, 2.5],
-  truck: [3.2, 4.0],
+  truck: [3.4, 4.0],
   windows: [4.0, 5.0, 6.0],
-  zh: 6.35,
+  zh: [4.3, 5.3, 6.3, 6.42], // 網頁、/ Mac、/ Windows，/ 隨處可用。 — each with its window
+  solo: [4.25, 5.15], // the camera eases back from the browser as the Mac arrives
+  push: [5.6, 8.0], // into the cut
 };
 
 // The Export dialog, cropped to its own rounded rectangle in the still (px).
@@ -45,16 +53,20 @@ const SLOTS = [
 ];
 // Mac and Windows arrive from the front right, so each stays in front of the ones it passes.
 const FROM = { pos: [5.4, -2.9, 2.4], rot: [0, -0.5, 0] };
+// The canvas shows ⌘ shortcut hints, so it goes on the Mac; Windows gets the teacher copy.
 const WINDOWS = [
   { variant: 'browser', still: 'stills/start-screen.png' },
-  { variant: 'mac', still: 'stills/editor-clean.png' },
-  { variant: 'windows', still: 'stills/diagram-canvas.png' },
+  { variant: 'mac', still: 'stills/diagram-canvas.png' },
+  { variant: 'windows', still: 'stills/editor-teacher.png' },
 ];
+const SPREAD = 0.1; // z the front and back windows drift apart by at the end
 const WIN_W = 3.9;
 const land = cubicBezier(0.45, 0, 0.12, 1); // from rest, lands soft on the beat
 const truckEase = cubicBezier(0.6, 0, 0.18, 1); // from rest, fast through the middle, soft landing
-const TEXT_X = 118;
+const TEXT_X = 128;
 const TEXT_Y = [392, 510, 628];
+const EXPORT_X = 1355; // centred on the chip cluster
+const ZH_DY = 96; // the Chinese line under the last English line
 
 /** A soft macOS-like drop shadow behind a lib.win window: ambient + key, offset down. */
 function dropShadow(win) {
@@ -74,7 +86,7 @@ const scene = {
   id: 'everywhere',
   world: 'day',
   async setup(ctx) {
-    const { lib, scene, THREE } = ctx;
+    const { lib, scene } = ctx;
     const s = (ctx.state = {});
 
     // The Export dialog.
@@ -113,7 +125,8 @@ const scene = {
     // Type.
     const T_ = lib.type;
     s.lines = PHRASES.map((en, i) => T_.headline(ctx.el, { en, x: TEXT_X, y: TEXT_Y[i], size: 96, align: 'left', world: 'day' }));
-    s.zh = T_.text(ctx.el, { kind: 'headline', en: '', zh: C.headlineZh, zhSize: 40, zhGap: 0, x: TEXT_X + 4, y: 724, align: 'left', world: 'day' });
+    s.zh = T_.text(ctx.el, { kind: 'headline', en: '', zh: C.headlineZh, zhSize: 40, zhGap: 0, x: TEXT_X + 4, y: TEXT_Y[2] + ZH_DY, align: 'left', world: 'day' });
+    s.export = T_.headline(ctx.el, { ...EXPORT, x: EXPORT_X, y: 372, valign: 'bottom', size: 96, zhSize: 40, world: 'day' });
   },
 
   update(t, ctx) {
@@ -121,18 +134,22 @@ const scene = {
     const { ease: E, camera: cam } = lib;
     const s = ctx.state;
 
-    // --- camera: a settle after the hit, a slow push, the truck, then the windows' drift ----
+    // --- camera: a settle after the hit, a slow push, the truck (landing close on the
+    // browser), a pull back as the stack builds, then a push and turn into the cut ---------
     const truck = truckEase(E.seg(t, T.truck[0], T.truck[1]));
     const d = cam.drift(t, 36, { amp: 0.7, rate: 0.07, roll: 0.08, dolly: 0.004 });
     const settle = 1 - E.expoOut(E.seg(t, 0, 1.4));
-    const dist = 10 * (1 + 0.045 * settle) * (1 - 0.022 * E.seg(t, 0, 3.4)) * (1 - 0.03 * E.seg(t, T.truck[1], 8.2));
+    const solo = truck * (1 - E.sineInOut(E.seg(t, T.solo[0], T.solo[1])));
+    const end = E.sineIn(E.seg(t, T.push[0], T.push[1]));
+    const dist = 10 * (1 + 0.045 * settle) * (1 - 0.022 * E.seg(t, 0, 3.4)) * (1 - 0.02 * E.seg(t, T.truck[1], T.push[0])) *
+      (1 - 0.2 * solo) * (1 - 0.08 * end);
     // After the truck the aim rises with the stack as each window arrives.
     const stack = land(E.seg(t, T.windows[1] - 0.7, T.windows[1] + 0.3)) + land(E.seg(t, T.windows[2] - 0.7, T.windows[2] + 0.3));
     const aimY = E.lerp(-0.42, 0.15, stack / 2);
     cam.orbit(camera, {
-      target: [E.lerp(0.1, OFF + 0.25 - 0.12 * (1 - stack / 2), truck), E.lerp(0.02, aimY, truck), 0],
+      target: [E.lerp(0.1, OFF + 0.25 - 0.12 * (1 - stack / 2), truck) + 0.25 * solo, E.lerp(0.02, aimY, truck), 0],
       dist: dist * d.dist,
-      az: E.lerp(2.2 - 1.6 * E.sineInOut(E.seg(t, 0, 3.4)), 2.5 - 3 * E.sineInOut(E.seg(t, T.truck[1] - 0.6, 8.2)), truck) + d.az,
+      az: E.lerp(2.2 - 1.6 * E.sineInOut(E.seg(t, 0, 3.4)), 2.5 - 2 * E.sineInOut(E.seg(t, T.truck[1] - 0.6, T.push[0] + 0.5)), truck) + 3.5 * end + d.az,
       el: 1.6 + 0.4 * truck + d.el,
       roll: d.roll,
       fov: 30,
@@ -175,20 +192,39 @@ const scene = {
         p[2] -= 1.4 * u;
         r[1] -= 0.18 * u;
       }
-      win.group.position.set(p[0] + OFF, p[1], p[2]);
+      win.group.position.set(p[0] + OFF, p[1], p[2] + SPREAD * end * (i - 1)); // front (i = 2) forward, back away
       win.group.rotation.set(...r);
       win.set({ opacity: E.smoothstep(0, 0.25, a) });
       win.shadow(a);
     });
 
-    const fast = (t > T.truck[0] && t < T.truck[1] + 0.05) ? 24 : T.windows.slice(1).some((w) => t > w - 0.65 && t < w + 0.2) ? 12 : T.chips.some((c) => t > c - POP.lead && t < c + 0.35) ? 24 : 0;
+    const fast = (t > T.truck[0] && t < T.truck[1] + 0.05) ? 24 : T.windows.slice(1).some((w) => t > w - 0.65 && t < w + 0.2) ? 12 : T.chips.some((c) => t > c - POP.lead && t < c + 0.35) ? 24 : t > T.push[1] - 0.8 ? 8 : 0;
     post.samples = fast;
     post.vignette = 0.06;
 
     // --- type ------------------------------------------------------------------------------
+    s.export.set(t, T.export[0], T.export[1]);
     s.lines.forEach((l, i) => l.set(t, T.windows[i] - 0.08));
-    s.zh.set(t, T.zh);
+    // The Chinese line starts under the second line's slot and steps down to make room for
+    // the third just before it lands.
+    s.zh.place({ y: E.lerp(TEXT_Y[1], TEXT_Y[2], E.quintInOut(E.seg(t, T.windows[2] - 0.6, T.windows[2] - 0.12))) + ZH_DY });
+    reveal(s.zh, t, T.zh, E);
   },
 };
+
+/** Reveals each word of a text block from its own start time (the lib's reveal, per word). */
+function reveal(block, t, starts, E) {
+  let any = 0;
+  block.words.forEach((w, i) => {
+    const r = E.expoOut(E.clamp((t - starts[Math.min(i, starts.length - 1)]) / REVEAL.dur));
+    const st = w.el.style;
+    const y = REVEAL.rise * (1 - r), b = REVEAL.blur * (1 - r);
+    st.opacity = r < 0.001 ? '0' : r > 0.999 ? '1' : r.toFixed(4);
+    st.transform = y < 1e-4 ? 'none' : `translate3d(0, ${y.toFixed(4)}em, 0)`;
+    st.filter = b < 0.05 ? 'none' : `blur(${b.toFixed(3)}px)`;
+    any = Math.max(any, r);
+  });
+  block.el.style.visibility = any > 0.001 ? 'visible' : 'hidden';
+}
 
 export default scene;

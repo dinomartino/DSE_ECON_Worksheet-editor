@@ -1,8 +1,8 @@
 // montage — bars 40–42, mixed (FILM.md §3). A beat-cut recap on MONTAGE_CUTS: eight real
 // product moments, each one big centred card on its own world's backdrop (day or night,
 // as in the scene it recalls), each a small push-in with alternating tilt. The last shot,
-// the start screen, holds from 83.0 and accelerates into the library under the riser,
-// ready for the hard cut to black on the 84.0 hit.
+// the finished tax diagram on white in the night, holds from 83.0 and accelerates into the
+// deadweight-loss triangle under the riser, ready for the hard cut to black on the 84.0 hit.
 import { MONTAGE_CUTS } from '../../timeline.mjs';
 import { WORLDS } from '../lib/backdrop.js';
 import { softShadow } from './everywhere/shadow.js';
@@ -15,23 +15,24 @@ const END = 4;
 // crop = [x, y, w, h] in source px. Clip shots play `from` at `rate` clip s per film s.
 const SHOTS = [
   { id: 'typing', clip: 'type-mcq', from: 1.72, rate: 1, crop: [250, 560, 1100, 380], world: 'day' }, // ends above option B
+  { id: 'start', still: 'stills/start-screen.png', size: [2880, 1800], crop: [0, 0, 2880, 1800], world: 'day' },
   { id: 'zh', clip: 'language-toggle', from: 2.56, rate: 1, crop: [446, 458, 880, 532], world: 'day' },
   { id: 'curve', clip: 'draw-diagram', from: 2.93, rate: 1.24, crop: [324, 348, 1592, 1332], world: 'night' },
-  // The finished diagram as it prints (no editor handles), on white: DWL, tax, E₀/E₁.
-  { id: 'dwl', still: 'diagram/full.png', flatten: true, size: [2400, 2010], crop: [60, 300, 2100, 1350], world: 'night' },
   { id: 'teacher', clip: 'teacher-toggle', from: 1.12, rate: 1, crop: [705, 606, 880, 456], world: 'day' },
-  { id: 'cover', still: 'sheets/p2-cover.png', size: [2379, 3366], crop: [0, 120, 2379, 1340], world: 'day' },
+  // The Paper 2 cover's title block, below its placeholder school name.
+  { id: 'cover', still: 'sheets/p2-cover.png', size: [2379, 3366], crop: [263, 740, 1060, 597], world: 'day' },
   // The window rises from the bottom edge: title bar, heading and the diagram in the .docx.
   { id: 'docx', doc: true, world: 'night', aim: [0, 0.075] },
-  { id: 'start', still: 'stills/start-screen.png', size: [2880, 1800], crop: [0, 0, 2880, 1800], world: 'day' },
+  // The finished diagram as it prints (no editor handles), on white: DWL, tax, E₀/E₁.
+  { id: 'dwl', still: 'diagram/full.png', flatten: true, size: [2400, 2010], crop: [60, 300, 2100, 1350], world: 'night' },
 ];
 
 const FOV = 30;
 const DIST = 6; // camera distance at a shot's start
 const VIEW_H = 2 * DIST * Math.tan((FOV * Math.PI) / 360);
 const FIT = { w: 0.8 * VIEW_H * (16 / 9), h: 0.82 * VIEW_H }; // card box, world units
-// The last shot pushes toward the library of pages (uv of the still, v up).
-const LIBRARY = [0.72, 0.5];
+// The last shot pushes into the deadweight-loss triangle (card uv, v up).
+const FOCUS = [0.456, 0.485];
 
 /** A transparent still composited onto white (the window shader reads rgb only). */
 function onWhite(THREE, tex, ctx) {
@@ -137,11 +138,11 @@ const scene = {
       dist = DIST * (sh.zoom ?? 1) * (1 - 0.06 * push);
       target = [aim[0] * card.width + side * 0.06 * (1 - relax), aim[1] * card.height, 0];
     } else {
-      // Under the riser: a slow start that accelerates into the library (log-space dolly).
+      // Under the riser: a slow start that accelerates into the triangle (log-space dolly).
       const k = E.cubicIn(E.clamp(u));
       dist = DIST * Math.pow(0.58, k) * (1 - 0.03 * u);
-      const lx = (LIBRARY[0] - 0.5) * card.width;
-      const ly = (LIBRARY[1] - 0.5) * card.height;
+      const lx = (FOCUS[0] - 0.5) * card.width;
+      const ly = (FOCUS[1] - 0.5) * card.height;
       const aim = E.sineInOut(E.clamp(u));
       target = [lx * aim, ly * aim, 0];
       g.rotation.y = side * 0.09 * (1 - 0.6 * aim);
