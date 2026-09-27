@@ -84,16 +84,18 @@ const L = pick({
   portrait: {
     markPx: 600, markShift: [0, 0.075],
     cardPx: 980, cardAz: -2, cardShift: [0, 0.03],
-    // A pedestal: the card sinks to the lower middle as the headline comes in above it.
-    side: (c) => ({ target: CARD, dist: distForPx(CARD_W, 880) * (1 - 0.03 * c), az: -6 + 3 * c, el: 3 - 1 * c, shift: [0, -0.085] }),
-    dwl: { target: DWL, dist: distForPx(CARD_W, 1000), az: -4, el: 1.5, shift: [-0.055, -0.08] },
-    // From above: the layers step down the frame, back to front.
-    apart: (c, d) => ({ target: c, dist: distForPx(CARD_W, 760) * (1 - 0.03 * d), az: -16 + 8 * d, el: 30 - 4 * d, shift: [0, -0.1] }),
+    // A pedestal: the card rises to the upper middle, the app around it, and the headline
+    // comes in on the dark below the window (its top runs under the Reels header).
+    side: (c) => ({ target: CARD, dist: distForPx(CARD_W, 880) * (1 - 0.03 * c), az: -6 + 3 * c, el: 3 - 1 * c, shift: [-0.028, (960 - 640) / 1920] }),
+    // DWL stays where the side pose put it (x ≈ 446, y ≈ 632) while the card grows about it.
+    dwl: { target: DWL, dist: distForPx(CARD_W, 1000), az: -4, el: 1.5, shift: [(446 - 540) / 1080, (960 - 632) / 1920] },
+    // From above: the layers step down the frame, back to front, under the headline.
+    apart: (c, d) => ({ target: c, dist: distForPx(CARD_W, 700) * (1 - 0.03 * d), az: -16 + 8 * d, el: 30 - 4 * d, shift: [0, -0.07] }),
     endShift: [0, (960 - 900) / 1920],
-    appUp: 0.5,
+    appUp: 0.62,
     word: { y: 1250, size: 120 },
-    head: { x: 90, y: 560, size: 100, maxWidth: 860 },
-    subs: { x: 92, y: 600, maxWidth: 860 },
+    head: { x: 90, y: 1120, size: 100, maxWidth: 860, valign: 'top' },
+    subs: { x: 92, maxWidth: 860, row: 30 }, // one row under the head, in order
     layers: { y: 420 },
   },
 });
@@ -239,7 +241,7 @@ const scene = {
     s.word = T_.headline(ctx.el, { en: C.word, y: L.word.y, size: L.word.size, world: 'night' }); // as opening's Supply./Demand.
     s.labels = C.curves.map((en) => T_.text(ctx.el, { kind: 'headline', en, size: 64, world: 'night', color: '#FCFAF6' }));
     // Left of the window: the head grows upwards from its baseline, the subs stack down.
-    s.head = T_.headline(ctx.el, { en: C.headline, zh: C.headlineZh, x: L.head.x, y: L.head.y, align: 'left', valign: 'bottom', size: L.head.size, zhSize: 44, world: 'night', maxWidth: L.head.maxWidth, maxLines: 3, zhMaxLines: 2 });
+    s.head = T_.headline(ctx.el, { en: C.headline, zh: C.headlineZh, x: L.head.x, y: L.head.y, align: 'left', valign: L.head.valign ?? 'bottom', size: L.head.size, zhSize: 44, world: 'night', maxWidth: L.head.maxWidth, maxLines: 3, zhMaxLines: 2 });
     // The sub-line, one sentence per action, each revealed as a unit.
     let y = L.subs.y;
     s.subs = C.subs.map((en) => {
@@ -247,6 +249,17 @@ const scene = {
       y += b.lines * 34 * 1.2 * b.scale;
       return b;
     });
+    if (L.subs.row != null) {
+      // Portrait: the three sentences in one row under the head (wrapping if they must).
+      let x = L.subs.x;
+      y = L.head.y + s.head.el.offsetHeight + 22;
+      for (const b of s.subs) {
+        const w = b.el.offsetWidth;
+        if (x > L.subs.x && x + w > L.subs.x + L.subs.maxWidth) [x, y] = [L.subs.x, y + 34 * 1.25];
+        b.place({ x, y });
+        x += w + L.subs.row;
+      }
+    }
     s.layers = T_.headline(ctx.el, { en: C.layers, zh: C.layersZh, y: L.layers.y, size: 104, zhSize: 44, world: 'night', ...(ctx.portrait ? { maxWidth: 860, maxLines: 3 } : {}) });
   },
 
