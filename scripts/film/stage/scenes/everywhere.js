@@ -13,9 +13,6 @@ import { glassChip } from './everywhere/glassChip.js';
 import { softShadow } from './everywhere/shadow.js';
 
 const C = COPY.everywhere;
-const PHRASES = C.headline.split(/(?<=\.)\s+/); // In your browser. / On Mac. / On Windows.
-// Over the chips (not in COPY yet: move it there with the next timeline edit).
-const EXPORT = { en: 'Export your way.', zh: '隨心匯出。' };
 
 // Scene seconds (film − 72). Chips and windows land on their cues (everywhere.chip1…5,
 // .browser/.mac/.windows); the truck, the Chinese and the push hang off the windows.
@@ -68,6 +65,7 @@ const WIN_W = 3.9;
 const land = cubicBezier(0.45, 0, 0.12, 1); // from rest, lands soft on the beat
 const truckEase = cubicBezier(0.6, 0, 0.18, 1); // from rest, fast through the middle, soft landing
 const TEXT_X = 128;
+const TEXT_W = 680; // to the windows' left edge
 const TEXT_Y = [392, 510, 628];
 const EXPORT_X = 1355; // centred on the chip cluster
 const ZH_DY = 96; // the Chinese line under the last English line
@@ -128,9 +126,9 @@ const scene = {
 
     // Type.
     const T_ = lib.type;
-    s.lines = PHRASES.map((en, i) => T_.headline(ctx.el, { en, x: TEXT_X, y: TEXT_Y[i], size: 96, align: 'left', world: 'day' }));
-    s.zh = T_.text(ctx.el, { kind: 'headline', en: '', zh: C.headlineZh, zhSize: 40, zhGap: 0, x: TEXT_X + 4, y: TEXT_Y[2] + ZH_DY, align: 'left', world: 'day' });
-    s.export = T_.headline(ctx.el, { ...EXPORT, x: EXPORT_X, y: 372, valign: 'bottom', size: 96, zhSize: 40, world: 'day' });
+    s.lines = C.lines.map((en, i) => T_.headline(ctx.el, { en, x: TEXT_X, y: TEXT_Y[i], size: 96, align: 'left', world: 'day', maxWidth: TEXT_W }));
+    s.zh = T_.text(ctx.el, { kind: 'headline', en: '', zh: C.linesZh, zhSize: 40, zhGap: 0, x: TEXT_X + 4, y: TEXT_Y[2] + ZH_DY, align: 'left', world: 'day', maxWidth: TEXT_W });
+    s.export = T_.headline(ctx.el, { en: C.export, zh: C.exportZh, x: EXPORT_X, y: 372, valign: 'bottom', size: 96, zhSize: 40, world: 'day' });
   },
 
   update(t, ctx) {

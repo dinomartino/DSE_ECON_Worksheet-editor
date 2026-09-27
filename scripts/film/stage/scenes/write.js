@@ -15,6 +15,9 @@ import { framePatch } from './write/patch.js';
 
 const C = COPY.write;
 const WW = 3.2; // window width (world units) for the 1440×900 css px capture
+// Type boxes (design px from x = 128) that clear the window: beside the page, then the toggles.
+const BOX_W = 600;
+const LANG_W = 440;
 const WIN_SHADOW = 0.5;
 // The page inside the capture: sheet px → clip frame px (130% zoom, DPR 2 vs sheet DPR 3).
 const PAGE_IN_CLIP = { x: 84, y: 205, k: (2 * 1.3) / 3 };
@@ -173,19 +176,15 @@ const scene = {
     }
 
     const T_ = lib.type;
-    s.head = T_.headline(ctx.el, { en: 'Type right\non the page.', zh: C.headlineZh, x: 128, y: 468, align: 'left', size: 104, world: 'day', zhSize: 44, zhGap: 20 });
-    s.sub = T_.sub(ctx.el, { en: 'The preview is the editor.\nWhat you see is what prints.', x: 128, y: 736, align: 'left', size: 34, world: 'day' });
-    const L = { x: 128, align: 'left', size: 108, world: 'day' };
+    // Half-width CJK punctuation (PingFang 'halt') on the head and 中文.
+    s.head = T_.headline(ctx.el, { en: C.headline, zh: C.headlineZh, x: 128, y: 468, align: 'left', size: 104, world: 'day', zhSize: 44, zhGap: 20, halt: true, maxWidth: BOX_W });
+    s.sub = T_.sub(ctx.el, { en: C.sub, x: 128, y: 736, align: 'left', size: 34, world: 'day', maxWidth: BOX_W });
+    const L = { x: 128, align: 'left', size: 108, world: 'day', maxWidth: LANG_W };
     s.langs = [
       T_.headline(ctx.el, { ...L, en: C.langs[0], y: 388 }),
-      T_.headline(ctx.el, { ...L, en: C.langs[1], y: 524, font: FONT_ZH, tracking: 0.02 }),
+      T_.headline(ctx.el, { ...L, en: C.langs[1], y: 524, font: FONT_ZH, tracking: 0.02, halt: true, kernStop: true }),
       T_.headline(ctx.el, { ...L, en: C.langs[2], y: 660 }),
     ];
-    // Half-width CJK punctuation (PingFang 'halt'; on the lines, as their `font` shorthand
-    // resets it), and the centred HK 。 kerned in: no hole after 中文 beside "English.".
-    for (const b of [s.langs[1], s.head]) for (const ln of b.el.children) ln.style.fontFeatureSettings = '"halt"';
-    const zh = s.langs[1].words.at(-1).el;
-    zh.innerHTML = zh.textContent.replace(/。$/, '<span style="margin-left:-0.08em">。</span>');
   },
 
   update(t, ctx) {

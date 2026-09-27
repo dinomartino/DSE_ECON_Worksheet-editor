@@ -22,6 +22,7 @@ import { chain } from './diagrams/poses.js';
 import { handoff } from './marks/kit.js';
 
 const C = COPY.diagrams;
+const TEXT_W = 560; // design px from x = 100 to the window's left edge
 const DEG = Math.PI / 180;
 
 // ---- geometry (world units) ---------------------------------------------------------
@@ -200,10 +201,16 @@ const scene = {
     // Type.
     const T_ = lib.type;
     s.word = T_.headline(ctx.el, { en: C.word, y: 812, size: 120, world: 'night' }); // as opening's Supply./Demand.
-    s.labels = ['D', 'S'].map((en) => T_.text(ctx.el, { kind: 'headline', en, size: 64, world: 'night', color: '#FCFAF6' }));
-    s.head = T_.headline(ctx.el, { en: 'Drawn\nin seconds.', zh: C.headlineZh, x: 100, y: 548, align: 'left', valign: 'bottom', size: 104, zhSize: 44, world: 'night' });
+    s.labels = C.curves.map((en) => T_.text(ctx.el, { kind: 'headline', en, size: 64, world: 'night', color: '#FCFAF6' }));
+    // Left of the window: the head grows upwards from its baseline, the subs stack down.
+    s.head = T_.headline(ctx.el, { en: C.headline, zh: C.headlineZh, x: 100, y: 548, align: 'left', valign: 'bottom', size: 104, zhSize: 44, world: 'night', maxWidth: TEXT_W, maxLines: 3 });
     // The sub-line, one sentence per action, each revealed as a unit.
-    s.subs = C.sub.split(/(?<=\.) /).map((en, i) => T_.sub(ctx.el, { en, x: 102, y: 596 + i * 34 * 1.2, align: 'left', valign: 'top', size: 34, world: 'night' }));
+    let y = 596;
+    s.subs = C.subs.map((en) => {
+      const b = T_.sub(ctx.el, { en, x: 102, y, align: 'left', valign: 'top', size: 34, world: 'night', maxWidth: TEXT_W, maxLines: 2 });
+      y += b.lines * 34 * 1.2 * b.scale;
+      return b;
+    });
     s.layers = T_.headline(ctx.el, { en: C.layers, zh: C.layersZh, y: 906, size: 104, zhSize: 44, world: 'night' });
   },
 
