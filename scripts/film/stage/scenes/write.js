@@ -1,12 +1,12 @@
-// write — bars 8–16, day (FILM.md §3). The drop cuts in on the page of the real app (16.0),
-// already flying out of it, and lands by the bar-9 downbeat in a close three-quarter view —
-// window bleeding off right, "Type right on the page." in the cream on the left — then arcs
-// toward front while the question and its options are typed. The 24.0 whoosh pushes into
-// the question; the capture hands over to a layered page built from the real sheets. The
-// bilingual question holds, framed whole, while its English lifts off the paper; then one
-// pull out wide. The real toolbar toggle clicks on the beats 26.0 / 27.0 / 28.0 and the
-// page answers at once, as the app does: English floats over a ghost of the Chinese, then
-// the Chinese rises, then both land back on the paper. Settled from 28.5 to the cut.
+// write — bars 8–16, day (FILM.md §3). The drop cuts in still moving forward, as the
+// opening's push did: the window rushes toward the lens and settles by the bar-9 downbeat
+// in a close three-quarter view — window bleeding off right, "Type right on the page." in
+// the cream on the left — then arcs toward front while the question and its options are
+// typed. The 24.0 whoosh pushes into the question; the capture hands over to a layered page
+// built from the real sheets (the same document). The page's Chinese lifts off the paper
+// toward the lens and re-seats on 25.0; one pull out wide. The real toolbar toggle clicks
+// once a bar, 26.0 / 28.0 / 30.0, each with its headline word; the page answers on the
+// click frame, as the app does (never two layouts at once), with a small push-in each time.
 import { COPY } from '../../timeline.mjs';
 import { cubicBezier } from '../lib/ease.js';
 import { FONT_ZH } from '../lib/type.js';
@@ -21,64 +21,60 @@ const PAGE_IN_CLIP = { x: 84, y: 205, k: (2 * 1.3) / 3 };
 // The toolbar's EN / 中文 / EN+中 toggle in the language-toggle capture (frame px): the whole
 // toolbar strip (it ends at 107), so the resting pointer (tail at 100) is never sliced.
 const TOGGLE = { x0: 512, x1: 800, y0: 6, y1: 106 };
-const TOGGLE_RATE = 1.5; // its clicks (clip 1.0, 2.5, 4.0) one second apart
+const TOGGLE_RATE = 0.75; // its clicks (clip 1.0, 2.5, 4.0) one bar apart
 // Clip time held inside [from, to]: the pointer is already in the chip when it fades in
 // (it enters from below until 0.75) and never leaves it (it exits from 4.6).
 const TOGGLE_HOLD = [0.8, 4.4];
 // type-mcq's options paste ~50 ms after the half-beat; start the clip early so they land on it.
 const CLIP_LEAD = 0.05;
-// The formatting toolbar (css px rect, shadow included) snaps in over ~4 clip frames on focus
-// (44) and vanishes in one on Enter (272). A patch of the frame before each change eases it
-// over [frame, frames]. Between Enter at 199 and focus at 217 (back to identical by 225) the
-// patch holds frame 198's toolbar, so it never blinks.
-const TOOLBAR = { x0: 16, x1: 1092, y0: 56, y1: 140, pops: [[44, 12], [272, 10]], bridge: [199, 226] };
+// The formatting toolbar (css px rect, shadow included). It animates in on focus (clip
+// frames 44–50, shown as captured) and vanishes in one frame on Enter (272): a patch of the
+// frame before fades it over 4 frames. Between Enter at 199 and focus at 217 (back to
+// identical by 225) the patch holds frame 198's toolbar, so it never blinks.
+const TOOLBAR = { x0: 16, x1: 1092, y0: 56, y1: 140, pops: [[272, 4]], bridge: [199, 226] };
 
-const out = cubicBezier(0.1, 0.72, 0.2, 1); // the drop: already fast at the cut, long settle
+// The drop: already fast at the cut (initial slope OUT0), long settle.
+const out = cubicBezier(0.1, 0.72, 0.2, 1);
+const OUT0 = 0.72 / 0.1;
 const rush = cubicBezier(0.6, 0, 0.2, 1); // the push: from rest, fastest on the 24.0 whoosh
+const nudge = cubicBezier(0.3, 0, 0.15, 1); // the push-in on each reflow: from rest
 
 // Scene seconds (film − 16).
 const T = {
-  head: 2.0, sub: 3.0, exit: 7.3,
-  push: [7.3, 8.35], swap: [8.15, 8.35], hold: [8.55, 9.3], pull: [9.2, 9.95], orbit: [9.5, 15.85],
-  chip: [9.45, 9.85],
-  en: 9.96, zh: 10.96, both: 11.96, langsSub: 12.7,
+  drop: 2.3, head: 2.0, sub: 3.0, exit: 7.3,
+  push: [7.3, 8.35], swap: [8.15, 8.35], close: [8.35, 9.0], pull: [8.95, 9.8], orbit: [9.4, 15.85],
+  lift: [8.32, 8.68], seat: [8.68, 9.0], // the Chinese lifts toward the lens, re-seats on 25.0
+  chip: [9.35, 9.75],
+  en: 9.96, zh: 11.96, both: 13.96,
 };
-const CLICKS = [10.0, 11.0, 12.0]; // EN, 中文, EN+中: each on a beat, the page answers at once
-// The layers. While the camera holds on the question its English lifts off the paper and
-// the Chinese falls out of focus. On each click the old layout lifts a little and fades
-// fast while the new one comes up into focus (never two sharp layouts at once).
-const SPLIT = [8.55, 9.3]; // = T.hold
-const SPLIT_UP = 0.05, UP = 0.22, ZUP = 0.26, LOW = 0.05, MERGE = 0.1, RISE = 0.05, GHOST = 0.1, GBLUR = 8;
-const OUT = 0.15, IN = [0.08, 0.42];
+const CLICKS = [10.0, 12.0, 14.0]; // EN, 中文, EN+中: one per bar
+// The page answers half a frame before the click frame, so no frame (nor any motion-blur
+// sub-frame of it) holds two layouts. The new layout settles from just above the paper.
+const SWAP = 1 / 120;
+const SETTLE_Z = 0.02, SETTLE = 0.35, SETTLE_BLUR = 2, SHARPEN = 0.18;
+// The lifted Chinese shrinks about the camera target by most of its perspective growth
+// (close-up distance D), so it floats over its own place: depth shows as parallax and shadow.
+const LIFT = 0.13, D = 1.45, COMP = 0.8;
+const PUSH = 0.02; // camera distance per reflow
 
 const bob = (t) => 0.012 * Math.sin(t * 0.9);
 
-/** The four page layers at t (see write/page.js): each { z, alpha, blur }. */
+/** The four page layers at t (see write/page.js): each { z, alpha, blur, k }. */
 function layers(t, E) {
-  const lerp = (a, b, u) => a + (b - a) * u;
-  const go = (w) => E.quintIn(E.seg(t, w, w + OUT)); // the outgoing layout fades late …
-  const soft = (w) => 6 * E.sineOut(E.seg(t, w, w + OUT)); // … but softens at once
-  const come = (w) => E.seg(t, w + IN[0], w + IN[1]); // the incoming one, linear 0→1
-  const alphaIn = (u) => E.quintOut(u); // visible at once …
-  const focus = (u) => 1 - E.sineInOut(u); // … and sharp only as the old one has gone
-  const [c1, c2, c3] = CLICKS;
-  const sp = E.sineInOut(E.seg(t, SPLIT[0], SPLIT[1]));
-  const o1 = go(c1), o2 = go(c2), o3 = go(c3);
-  const i1 = come(c1), i2 = come(c2), i3 = come(c3);
-  const L = (z, alpha, blur) => ({ z, alpha, blur });
-  let biEn, biZh, en;
-  if (t < c3) {
-    biEn = L(SPLIT_UP * sp + RISE * o1, 1 - o1, soft(c1));
-    biZh = L(RISE * o1, (1 - 0.5 * sp) * (1 - o1), 3.5 * sp + soft(c1));
-  } else {
-    // Both: the bilingual page settles back onto the paper, into focus.
-    biEn = biZh = L(MERGE * (1 - E.quintOut(i3)), alphaIn(i3), GBLUR * focus(i3));
+  const [c1, c2, c3] = CLICKS.map((c) => c - SWAP);
+  const settle = (c, alpha) => ({
+    z: SETTLE_Z * (1 - E.quintOut(E.seg(t, c, c + SETTLE))),
+    alpha,
+    blur: SETTLE_BLUR * (1 - E.sineOut(E.seg(t, c, c + SHARPEN))),
+  });
+  const hidden = { z: 0, alpha: 0, blur: 0 };
+  if (t < c1) {
+    const lift = LIFT * (E.quintOut(E.seg(t, T.lift[0], T.lift[1])) - E.sineInOut(E.seg(t, T.seat[0], T.seat[1])));
+    return { biEn: { z: 0, alpha: 1, blur: 0 }, biZh: { z: lift, alpha: 1, blur: 0, k: 1 - (COMP * lift) / D }, en: hidden, zh: hidden };
   }
-  if (t < c2 + OUT) en = L(UP * E.quintOut(i1) + RISE * o2, alphaIn(i1) * (1 - o2), GBLUR * focus(i1) + soft(c2));
-  else en = L(LOW, GHOST * E.sineInOut(E.seg(t, c2 + OUT, c2 + 0.5)) * (1 - E.sineInOut(E.seg(t, c3, c3 + 0.2))), GBLUR);
-  const ghost = GHOST * E.sineInOut(E.seg(t, c1 + 0.1, c1 + 0.5));
-  const zh = L(ZUP * E.quintOut(i2) + RISE * o3, lerp(ghost, 1, alphaIn(i2)) * (1 - o3), GBLUR * focus(i2) + soft(c3));
-  return { biEn, biZh, en, zh };
+  if (t < c2) return { biEn: hidden, biZh: hidden, en: settle(c1, 1), zh: hidden };
+  if (t < c3) return { biEn: hidden, biZh: hidden, en: hidden, zh: settle(c2, 1) };
+  return { biEn: settle(c3, 1), biZh: settle(c3, 1), en: hidden, zh: hidden };
 }
 
 /** Camera pose: target x/y (window-group space, z = 0), distance, azimuth, elevation, roll. */
@@ -87,6 +83,10 @@ const pose = (x, y, d, az, el, roll = 0) => ({ x, y, d, az, el, roll });
 function mix(A, B, u) {
   if (u <= 0) return A;
   if (u >= 1) return B;
+  return blend(A, B, u);
+}
+/** The same blend, unclamped (u < 0 extrapolates). */
+function blend(A, B, u) {
   const l = (a, b) => a + (b - a) * u;
   return pose(l(A.x, B.x), l(A.y, B.y), A.d * (B.d / A.d) ** u, l(A.az, B.az), l(A.el, B.el), l(A.roll, B.roll));
 }
@@ -126,11 +126,11 @@ const scene = {
     // Camera poses for bars 8–12 (window-group space).
     const [sx, sy] = s.css(430, 395);
     s.stem = [sx, sy];
-    s.P0 = pose(sx, sy, 1.3, -50, 16, -3); // just before the cut, close on the stem
     s.C1 = pose(-1.26, 0.14, 3.8, -17, 5); // landed on bar 9: window right, type left
+    s.P0 = pose(s.C1.x, s.C1.y, s.C1.d * 1.4, -30, 7, -1.5); // the cut: farther, still rushing in
     s.C1b = pose(-1.33, 0.19, 3.45, -8, 3); // the slow arc toward front as the options land
 
-    // The toggle: a crop of the real toolbar, clicked at 1.5× so its clicks land on beats.
+    // The toggle: a crop of the real toolbar, clicked at 0.75× so its clicks land a bar apart.
     s.toggleClip = await ctx.load.clip('language-toggle', { cache: 4, prefetch: 2 });
     s.toggleAt = CLICKS[0] - 1.0 / TOGGLE_RATE;
     const [h0, h1] = TOGGLE_HOLD;
@@ -156,18 +156,17 @@ const scene = {
       };
       s.page.group.add(s.chip.group);
       s.chipHome = s.page.local(1010, 150);
-      // Bars 12–16: into the question, hold, out wide to the layers, arc toward front and
-      // settle. The hold frames "Section A" and all of question 1 (sheet px 443–1128, x
-      // 303–1498) with nothing of question 2 (from 1185): below question 1 the capture and
-      // the sheets differ, so the swap never shows it.
+      // Bars 12–16: into the question (Section A and all of question 1, sheet px 443–1128),
+      // a slow orbit while its Chinese lifts (parallax shows the depth), out wide, arc
+      // toward front and settle.
       const q = s.pageAt(900, 771);
+      s.anchor = s.page.local(900, 771);
       s.Q = pose(q[0], q[1], 1.4, -1, 1.5);
-      // As the English lifts toward the lens the camera eases back by as much: the English
-      // holds its size and place while the paper and the Chinese fall away behind it.
-      s.Qb = pose(q[0], q[1], 1.4 + SPLIT_UP, -5, 1.8);
-      const pc = s.pageAt(1189, 1000);
-      s.C2 = pose(pc[0] - 0.5, pc[1] + 0.18, 3.2, -30, 3);
-      s.C3 = pose(pc[0] - 0.5, pc[1] + 0.26, 3.45, -13, 2);
+      s.Qb = pose(q[0], q[1], 1.5, -10, 1.5); // level: the lift parallax runs along the lines
+      // Wide: the typed page, chip to Section B (sheet px 100–1300), right of the headline.
+      const pc = s.pageAt(530, 690);
+      s.C2 = pose(pc[0], pc[1], 2.65, -26, 3);
+      s.C3 = pose(pc[0], pc[1] + 0.02, 2.8, -13, 2);
     }
 
     const T_ = lib.type;
@@ -179,7 +178,11 @@ const scene = {
       T_.headline(ctx.el, { ...L, en: C.langs[1], y: 524, font: FONT_ZH, tracking: 0.02 }),
       T_.headline(ctx.el, { ...L, en: C.langs[2], y: 660 }),
     ];
-    s.langsSub = T_.sub(ctx.el, { en: 'One language, the other,\nor side by side.', x: 128, y: 790, align: 'left', size: 34, world: 'day' });
+    // Half-width CJK punctuation (PingFang 'halt'), and the centred HK 。 kerned in: no hole
+    // after 中文 beside "English." and "Both.".
+    for (const b of [s.langs[1], s.head]) b.el.style.fontFeatureSettings = '"halt"';
+    const zh = s.langs[1].words.at(-1).el;
+    zh.innerHTML = zh.textContent.replace(/。$/, '<span style="margin-left:-0.14em">。</span>');
   },
 
   update(t, ctx) {
@@ -203,18 +206,21 @@ const scene = {
     s.win.group.position.set(0, b, 0);
 
     // ---- camera -----------------------------------------------------------------------
-    // The first frame is exactly P0 (the page, close): the flight out starts on the cut.
-    let P = mix(s.P0, s.C1, out(E.seg(t, 0, 2.3)));
+    // The cut continues the opening's push: in toward C1, fastest at the cut. Sub-frames
+    // before the cut extrapolate the move, so the first frame blurs like the next.
+    let P = t < 0 ? blend(s.P0, s.C1, (OUT0 * t) / T.drop) : mix(s.P0, s.C1, out(E.seg(t, 0, T.drop)));
     P = mix(P, s.C1b, E.sineInOut(E.seg(t, 1.9, 7.9)));
     if (s.page) {
       P = mix(P, s.Q, rush(E.seg(t, T.push[0], T.push[1])));
-      P = mix(P, s.Qb, sm(T.hold[0], T.hold[1]));
+      P = mix(P, s.Qb, sm(T.close[0], T.close[1]));
       P = mix(P, s.C2, E.quintInOut(E.seg(t, T.pull[0], T.pull[1])));
       P = mix(P, s.C3, sm(T.orbit[0], T.orbit[1]));
     }
     const d = cam.drift(t, 5, { amp: 0.6, rate: 0.07 });
-    const creep = 1 - 0.03 * E.sineIn(E.seg(t, 12.4, 16.2)); // settled, never still: a slow push to the cut
-    cam.orbit(camera, { target: [P.x, P.y, 0], dist: P.d * d.dist * creep, az: P.az + d.az, el: P.el + d.el, roll: P.roll + d.roll, fov: 30 });
+    let push = 1;
+    for (const c of CLICKS) push -= PUSH * nudge(E.seg(t, c - 0.06, c + 0.9));
+    const creep = 1 - 0.02 * E.sineIn(E.seg(t, 14.6, 16.2)); // settled, never still: a slow push to the cut
+    cam.orbit(camera, { target: [P.x, P.y, 0], dist: P.d * d.dist * push * creep, az: P.az + d.az, el: P.el + d.el, roll: P.roll + d.roll, fov: 30 });
 
     // ---- the handoff (capture → layered page), the language layers, the toggle ---------
     if (s.page) {
@@ -225,7 +231,7 @@ const scene = {
       s.shadow.visible = wa > 0.001;
       s.shadow.material.opacity = WIN_SHADOW * wa;
 
-      s.page.set({ alpha: pa, ...layers(t, E), light: [0.1, -0.16], shadow: 0.2 });
+      s.page.set({ alpha: pa, ...layers(t, E), light: [0.1, -0.16], shadow: 0.2, anchor: s.anchor });
 
       // The toggle floats in over the page's top margin just before its first click.
       const ca = E.quintOut(E.seg(t, T.chip[0], T.chip[1] + 0.35));
@@ -242,10 +248,9 @@ const scene = {
     // and the window's edge separates from the cream.
     ctx.backdrop.userData.set({ glow: s.glow[2], glowAmount: 0.55 + 0.45 * burst, radius: 0.5 + 0.6 * burst });
     post.exposure = 1 + 0.25 * Math.exp(-Math.max(0, t) / 0.26);
-    // Blur samples for the fast moves only: the drop (fewer on the cut, so its first frame
-    // stays crisp), the push and the pull. The hold, with the split, has none.
+    // Blur samples for the fast moves: the drop (from its first frame), the push and the pull.
     const fast = (t > T.push[0] && t < T.push[1]) || (t > T.pull[0] && t < T.pull[1]);
-    post.samples = t < 0.25 ? 8 : t < 1.0 ? 20 : fast ? 16 : 0;
+    post.samples = t < 1.0 ? 20 : fast ? 16 : 0;
     // A shallow focus on the typing while the camera glides (never with fast-move blur).
     const dofK = sm(1.1, 1.8) * (1 - sm(T.push[0] - 0.3, T.push[0]));
     if (dofK > 0.001) {
@@ -263,7 +268,6 @@ const scene = {
     // The word for the language on the page reads in full ink; "English." steps back for 中文.
     const dimEn = 1 - 0.68 * sm(T.zh - 0.1, T.zh + 0.3) + 0.68 * sm(T.both - 0.1, T.both + 0.3);
     s.langs[0].el.style.opacity = dimEn.toFixed(4);
-    s.langsSub.set(t, T.langsSub);
   },
 };
 
