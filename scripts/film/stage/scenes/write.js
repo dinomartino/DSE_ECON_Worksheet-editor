@@ -179,9 +179,14 @@ const scene = {
     const K = L.crop ?? { x0: 0, y0: 0, x1: 1440, y1: 900 };
     const kw = K.x1 - K.x0, kh = K.y1 - K.y0;
     if (L.crop) {
-      s.win = lib.win.appWindow({ variant: 'none', width: (WW * kw) / 1440, aspect: kw / kh, shadow: false, border: '#CFC8BD' });
+      s.win = lib.win.appWindow({ variant: 'none', width: (WW * kw) / 1440, aspect: kw / kh, shadow: false, border: '#FFFFFF' });
       s.win.set({ crop: [K.x0 / 1440, 1 - K.y1 / 900, kw / 1440, kh / 900] });
-      s.win.material.uniforms.uRadius.value = 0.008;
+      s.win.material.uniforms.uRadius.value = 0;
+      // The page goes on below the capture (blank, as in the app, to its A4 foot): the same
+      // white, so the crop reads as one sheet and the layered page replaces it edge for edge.
+      const foot = PAGE_IN_CLIP.y / 2 + (3366 * PAGE_IN_CLIP.k) / 2;
+      s.ext = lib.win.appWindow({ variant: 'none', width: s.win.width, aspect: kw / (foot - K.y1), shadow: false, border: '#FFFFFF' });
+      s.ext.material.uniforms.uRadius.value = 0;
     } else s.win = lib.win.appWindow({ variant: 'mac', width: WW, shadow: false });
     scene.add(s.win.group);
     // A soft warm shadow on an imagined wall behind: it breathes out past the window's left
@@ -190,6 +195,10 @@ const scene = {
     s.shadow.position.set(-0.1, -0.2, -0.35);
     s.win.group.add(s.shadow);
     s.css = (cx, cy) => [((cx - K.x0) / kw - 0.5) * s.win.width, s.win.contentCenter.y + (0.5 - (cy - K.y0) / kh) * s.win.screenHeight];
+    if (s.ext) {
+      s.ext.group.position.set(...s.css((K.x0 + K.x1) / 2, K.y1 + (s.ext.height / s.win.height) * kh * 0.5), 0);
+      s.win.group.add(s.ext.group);
+    }
     const R = TOOLBAR;
     if (!L.crop) { // the page crop starts below the formatting toolbar
       s.patch = framePatch({
@@ -318,6 +327,10 @@ const scene = {
       const wa = cut != null ? 1 - pa : 1 - sm(T.swap[1], T.swap[1] + 0.12);
       s.win.set({ opacity: wa });
       s.win.mesh.visible = wa > 0.001;
+      if (s.ext) {
+        s.ext.set({ opacity: wa });
+        s.ext.mesh.visible = wa > 0.001;
+      }
       s.shadow.visible = wa > 0.001;
       s.shadow.material.opacity = WIN_SHADOW * wa;
 
