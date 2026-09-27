@@ -18,13 +18,13 @@ const START_SHEET = 'extra/marks/sheets/diagram-question-start.png'; // the clip
 const T = {
   slide: [0.05, 0.95], // the window rises under the printed page, registered by 48.95
   toEdit: [0.25, 1.75], // camera onto the page's marks and the Marks fields
-  fade: [1.2, 1.45], // print → live, once the frame shows only page the window covers
+  fade: [1.3, 1.55], // print → live, once the frame shows only page the window covers
   creep: [1.2, 3.4], // a slow push while the total changes
-  toTeacher: [3.05, 3.95], // out to the Teacher toggle and the page, with the pointer
+  toTeacher: [3.0, 4.0], // out to the Teacher toggle and the page, with the pointer
   push: [3.7, 5.2], // a slow push toward the red scheme
   winOut: [4.8, 5.3], // the window drops away, down and back…
   back: [4.85, 6.1], // …as the camera pulls back to the pair…
-  rise: [5.3, 6.0], // …which rises in front once the window has gone (54.0)
+  rise: [5.12, 6.0], // …which rises in front as the window clears the frame (54.0)
   h1: [1.0, 3.75],
   h2: [4.5, 7.45],
 };
@@ -46,12 +46,11 @@ const wpt = (fx, fy) => [W_POS[0] + (fx - 1440) / FPX, W_POS[1] + SCREEN_TOP - f
 // Camera stops (frame px of the clip): diagrams' last frame; the page's marks column and
 // total beside the inspector's Marks fields; the Teacher toggle over the page's part (a).
 const F0 = { ...stop([0.0006, 0.275, 0], 1108), az: 0.3 };
-const F2 = stop(wpt(2040, 600), 2000, 960, 330, { az: 2, el: 1 });
+const F2 = stop(wpt(2080, 600), 1900, 960, 330, { az: 2, el: 1 });
 const F3 = stop(wpt(1115, 425), 1150, 960, 322, { az: -1, el: 1 });
 const F3b = stop(wpt(1080, 560), 1185, 960, 420, { az: -2, el: 1 });
 
 const land = cubicBezier(0.2, 0.62, 0.22, 1); // arrives already moving (off frame), long landing
-const follow = cubicBezier(0.45, 0, 0.3, 1);
 const back = cubicBezier(0.4, 0, 0.2, 1);
 const rise = cubicBezier(0.12, 0.62, 0.22, 1); // enters moving (below frame), long landing
 const quintIn = (u) => u ** 5;
@@ -93,7 +92,7 @@ const scene = {
     const f2 = scaleDist(F2, 1 - 0.03 * E.sineInOut(E.seg(t, ...T.creep)));
     const f3 = mixPose(F3, F3b, E.sineInOut(E.seg(t, ...T.push)));
     let p = mixPose(F0, f2, E.sineInOut(E.seg(t, ...T.toEdit)));
-    p = mixPose(p, f3, follow(E.seg(t, ...T.toTeacher)));
+    p = mixPose(p, f3, E.sineInOut(E.seg(t, ...T.toTeacher)));
     // Drift: calm at the handoff (diagrams' own drift is nearly spent), fuller after.
     const early = withDrift(p, lib.camera.drift(f, 24, { amp: 0.4, rate: 0.07, roll: 0.06 }), E.smoothstep(0, 1.2, t));
     const pose = mixPose(early, holdCam(lib, f), back(E.seg(t, ...T.back)));
@@ -129,7 +128,7 @@ const scene = {
     s.haze.set({ amount: E.sineInOut(E.seg(t, 0.35, 1.05)) * hazeAt(f), ...HAZE_BAND });
     post.dof = dofAt(pose.dist, E.sineInOut(E.seg(t, 5.4, 6.1)));
     const moving = (a, b) => t > a && t < b;
-    post.samples = moving(0.4, 1.65) || moving(3.0, 4.0) ? 10 : moving(4.85, 6.15) ? 14 : 0;
+    post.samples = moving(0.25, 1.8) || moving(2.95, 4.05) ? 10 : moving(4.75, 6.15) ? 14 : 0;
     post.vignette = 0.06;
     post.bloom = null;
 
@@ -141,7 +140,7 @@ const scene = {
   events: [
     { t: 2.0, kind: 'tick', strength: 0.4 },
     { t: 3.0, kind: 'tick', strength: 0.4 },
-    { t: 5.25, kind: 'whoosh', strength: 0.4 },
+    { t: 5.15, kind: 'whoosh', strength: 0.4 },
   ],
 };
 

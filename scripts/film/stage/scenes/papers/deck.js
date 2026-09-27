@@ -43,11 +43,11 @@ export function tPose(f) {
 }
 
 // Camera on the pair: both sheets, then a slow push into the teacher's marking scheme (its
-// six "(1)" points, a third of the way down the page) that lands on 55.5. The push starts
+// six "(1)" points, a third of the way down the page), easing out into papers' pull. It starts
 // as marks' pull-back lands, so the camera never stops between them.
 export const PAIR_VIEW = stop(add(S_POS, [0.45, 0.02, 0]), 520, 960, 425, { az: -5, el: 2 });
 const ANSWERS = stop(add(T_END, [0.02, -0.1, 0]), 1300, 960, 380, { az: -8, el: 3 });
-export const PUSH = [54.0, 55.5];
+export const PUSH = [54.0, 55.9];
 const pushEase = cubicBezier(0.45, 0, 0.22, 1);
 
 /** The pair camera at film time f (drift included). */

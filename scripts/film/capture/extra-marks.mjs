@@ -24,7 +24,7 @@ import { ASSETS, freeze, launch, MAIN_ROOT, openPage, REVIEW, settle } from './s
 
 const args = process.argv.slice(2);
 const opt = (name, d) => args.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? d;
-const only = opt('only', 'clip,sheet').split(',');
+const only = opt('only', 'clip,sheet,docx').split(',');
 const PORT = Number(opt('port', 3957));
 const log = (m) => console.log(m);
 

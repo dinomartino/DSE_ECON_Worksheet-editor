@@ -49,8 +49,8 @@ const ROOM_END = { top: [11, 9, 7], bottom: [3, 2, 2] }; // word.js ROOM0
 const PAPER_END = 0.0022 * 12.92; // display value of word.js DIM
 const POOL = { day: [0xf8, 0xf5, 0xef], lamp: [0x8a, 0x80, 0x74] };
 
-const pullEase = cubicBezier(0.42, 0, 0.1, 1); // from rest, long landing
-const openEase = cubicBezier(0.36, 0, 0.14, 1);
+const pullEase = cubicBezier(0.25, 0, 0.1, 1); // from rest, fastest near the 56.0 whoosh (56.26), long landing
+const openEase = cubicBezier(0.28, 0, 0.14, 1);
 const closeEase = cubicBezier(0.55, 0, 0.18, 1);
 const frameEase = cubicBezier(0.45, 0, 0.35, 1);
 const clamp = (u) => Math.min(1, Math.max(0, u));
@@ -69,7 +69,7 @@ function keysLin(keys, u) {
   const v = u * n - i;
   return a.map((x, j) => lerp(x, b[j], v));
 }
-/** A sheet's lift on its beat: up in 0.25 s, settled 0.4 s later. */
+/** A sheet's tap on its beat: up and nudged round in 0.25 s, settled 0.4 s later. */
 const lifted = (t, beat) => quintOut((t - beat) / 0.25) * (1 - sine((t - beat - 0.25) / 0.4));
 
 const scene = {
@@ -113,7 +113,8 @@ const scene = {
 
     s.sheets.forEach((sh, k) => {
       const { off, rad, depth, beat } = PACK[k];
-      const up = 0.018 * lifted(t, beat) * (1 - uc);
+      const tap = lifted(t, beat) * (1 - uc);
+      const up = 0.018 * tap; // under the 0.02 layer gap: never through the sheet above
       const lift = bumpLift + up;
       let pos, rot;
       if (k === S_K) {
@@ -138,7 +139,7 @@ const scene = {
         sh.shadowK = E.smoothstep(0, 0.25, uo);
       }
       sh.group.position.set(...pos);
-      sh.group.rotation.set(rot[0], rot[1], rot[2]);
+      sh.group.rotation.set(rot[0], rot[1], rot[2] - 0.026 * tap); // a 1.5° nudge toward the covers
       const bend = 0.012 * (1 - flat);
       sh.set({ bend });
       // Shadow: nearly under the sheet, so its soft rim shades the sheets under both its edges

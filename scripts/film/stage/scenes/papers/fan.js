@@ -11,9 +11,10 @@ const DEG = Math.PI / 180;
  * The pack: each sheet's asset, its angle in the open fan from the hinge (negative turns it
  * right), its depth under the hinge in layers, and `rad`, how far it sits out along its
  * radius. The left half lies top-left over the next sheet; Versions C, B and A stand in a
- * stair like a hand of cards, each header out above the one in front. The right half lies the other way,
- * so the Paper 1 cover is whole and the Paper 2 cover shows its left side; the LQ worksheet
- * at the bottom of the V shows its dotted lines. `beat`: its lift in the held fan (scene s).
+ * stair like a hand of cards, each header out above the one in front. The right half lies
+ * the other way, so the Paper 1 cover is whole and the Paper 2 cover shows its left side;
+ * the LQ worksheet at the bottom of the V shows its dotted lines. `beat`: its tap in the
+ * held fan (scene s).
  */
 export const PACK = [
   { path: PAIR.student, off: 0, depth: 0, beat: 2.0 },
