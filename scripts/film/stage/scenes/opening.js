@@ -1,8 +1,9 @@
 // opening — bars 0–8, night (FILM.md §3). The mark assembles in darkness on the piano
 // motif: a breathing blue point; "Supply." (1.5 s) and "Demand." (3.5 s) strokes; the
 // point drops into the crossing at 5.5 s; the axis lands on 7.5 s; the tile extrudes
-// behind it on the 8.0 s whoosh as the camera pulls back; title at 10.0 s; on beat 4 of
-// bar 7 (15.5 s) the camera pushes into the dot until blue fills the frame at the cut.
+// behind it on the 8.0 s whoosh as the camera pulls back; title at 10.0 s. From the 12.0 s
+// riser the camera pushes toward the dot, accelerating through the breath (15.5 s) until
+// blue fills the frame at the cut.
 import { COPY } from '../../timeline.mjs';
 import { cubicBezier } from '../lib/ease.js';
 
@@ -21,7 +22,7 @@ const T = {
   sweep: [9.0, 10.8],
   title: 10.0,
   sub: 10.7,
-  exit: 14.85,
+  exit: 14.0, // bar 7: the type clears before the push takes the frame
   riser: 12.0,
   push: 15.5,
   cut: 16.0,
@@ -31,6 +32,32 @@ const WORD_Y = 812;
 // Fast but from rest: the 8.0 s whoosh must not start at full speed (a visible jolt).
 const whoosh = cubicBezier(0.3, 0, 0.06, 1);
 const DOT_HOVER = [0, 0.66, 0.16];
+const PUSH = Math.log(3); // image scale gained by the breath
+const END = 0.19; // camera distance to the dot at the cut
+
+// Camera poses: A frames the mark as it builds, B the tile and title. Each carries its own
+// slow dolly and arc, so no hold is ever a freeze.
+const poseA = (t) => ({ dist: 5.4 * Math.exp(-0.022 * t), az: -7 + 1.4 * t, el: 1.5 + 0.25 * t });
+const poseB = (t) => ({ dist: 10.4 * Math.exp(-0.012 * (t - 10)), az: -17 + 0.9 * (t - 10), el: 6.5 - 0.2 * (t - 10) });
+
+/** Log-scale push: cubic from rest on the riser to 3× at the breath, then a C2 run into the dot. */
+function pushLog(t, total) {
+  const L = T.push - T.riser;
+  if (t <= T.riser) return 0;
+  if (t <= T.push) return PUSH * ((t - T.riser) / L) ** 3;
+  const v0 = (3 * PUSH) / L, a0 = (6 * PUSH) / (L * L), D = T.cut - T.push;
+  const c = (total - PUSH - v0 * D - 0.5 * a0 * D * D) / D ** 3;
+  const x = t - T.push;
+  return PUSH + v0 * x + 0.5 * a0 * x * x + c * x ** 3;
+}
+
+/** A stroke's cross-section (0..1): it grows from a point instead of popping in whole. */
+function taper(bar, k) {
+  const [body, c0, c1] = bar.children;
+  body.scale.y = body.scale.z = k;
+  c0.scale.setScalar(k);
+  c1.scale.setScalar(k);
+}
 
 const scene = {
   id: 'opening',
@@ -50,6 +77,9 @@ const scene = {
     scene.add(s.dust.mesh);
     ctx.rig.key.position.set(-3, 5, 7);
     ctx.rig.key.lookAt(0, 0, 0);
+    // Front fill from higher up: its clear-coat glint sits ~0.42·(camera distance) above the
+    // camera's foot point, so it stays off the tile until the push has dimmed it.
+    ctx.rig.front.position.set(0.8, 3.4, 8);
 
     const T_ = lib.type;
     s.words = [C.supply, C.demand, C.equilibrium].map((en) => T_.headline(ctx.el, { en, y: WORD_Y, size: 120, world: 'night' }));
@@ -60,6 +90,7 @@ const scene = {
   update(t, ctx) {
     const { lib, camera, post } = ctx;
     const { ease: E, camera: cam } = lib;
+    const { ICON } = lib.logo;
     const s = ctx.state;
     const logo = s.logo;
 
@@ -102,6 +133,13 @@ const scene = {
       puck: settle,
       dot: { position: pos, scale: dotScale, glow: dotGlow },
     });
+    // Each stroke starts as a point: its radius is capped by half its drawn length and
+    // eases up over the first frames; the faint axis fades in over its first stretch.
+    const r = ICON.strokeR, len = Math.hypot(ICON.supply[1][0] - ICON.supply[0][0], ICON.supply[1][1] - ICON.supply[0][1]);
+    const grain = (p, t0) => Math.min(1, (p * len) / (2 * r), E.smoothstep(t0, t0 + 0.1, t));
+    taper(logo.supply, grain(supply, T.supply - 0.04));
+    taper(logo.demand, grain(demand, T.demand - 0.04));
+    logo.materials.axis.uniforms.uOpacity.value = ICON.axisOpacity * E.smoothstep(0, 0.12, axis);
     // The sweep crosses once the tile has settled; a second, fainter pass rides the riser.
     const sw = E.seg(t, T.sweep[0], T.sweep[1]);
     const sw2 = E.seg(t, 12.6, 14.6);
@@ -109,39 +147,37 @@ const scene = {
     else if (sw2 > 0 && sw2 < 1) logo.set({ sweep: { p: E.sineInOut(sw2), amount: 0.12 * Math.sin(Math.PI * sw2) } });
     else logo.set({ sweep: null });
 
-    // Camera: close on the strokes (0–8), pull back and orbit as the tile extrudes, a slow
-    // push through the riser, then the push into the dot on the last beat.
+    // Camera: A (close on the strokes, a slow push and arc) whooshes back to B as the tile
+    // extrudes; B arcs on through the title. From the riser a log-space push closes on the
+    // dot, gathering pace with the music and rushing in through the breath.
     const pull = whoosh(E.seg(t, T.tile - 0.05, T.pullEnd + 0.5));
     const riser = E.sineInOut(E.seg(t, T.riser, T.push));
     const d = cam.drift(t, 3, { amp: 0.9, rate: 0.06, roll: 0.1, dolly: 0.006 });
-    const calm = 1 - E.sineInOut(E.seg(t, 14.2, T.push)); // drift fades before the push
-    let dist = E.lerp(5.4 - 0.05 * t, 10.4, pull) - 0.9 * riser;
-    let az = E.lerp(-3 + 0.7 * t, -17, pull) + 11 * riser + d.az * calm;
-    let el = E.lerp(1.5, 6.5, pull) - 2.5 * riser + d.el * calm;
-    let shift = E.lerp(0.09, 0.125, pull);
-    let fov = 30;
-    let target = [0, 0, 0.04];
-    if (t > T.push) {
-      // Log-space dolly: the image scale grows smoothly, then rushes into the dot.
-      const u = E.cubicIn(E.seg(t, T.push, T.cut));
-      const end = 0.19;
-      dist = dist * Math.pow(end / dist, u);
-      shift *= 1 - E.sineIn(E.seg(t, T.push, T.cut));
-      target = [0, 0, E.lerp(0.04, rest.z, E.sineInOut(E.seg(t, T.push, T.push + 0.3)))];
-      az *= 1 - u;
-      el *= 1 - u;
-    }
-    cam.orbit(camera, { target, dist: dist * (1 + (d.dist - 1) * calm), az, el, roll: d.roll * calm, fov, shift: [0, shift] });
+    const calm = 1 - E.sineInOut(E.seg(t, 14.2, T.push)); // drift fades before the rush
+    const A = poseA(t), B = poseB(t);
+    const into = E.cubicIn(E.seg(t, T.push, T.cut)); // the last beat: orbit unwinds to face the dot
+    const push = pushLog(t, Math.log(poseB(T.cut).dist / END));
+    const dist = E.lerp(A.dist, B.dist, pull) * Math.exp(-push) * (1 + (d.dist - 1) * calm);
+    const az = (E.lerp(A.az, B.az, pull) + 11 * riser + d.az * calm) * (1 - into);
+    const el = (E.lerp(A.el, B.el, pull) - 2.5 * riser + d.el * calm) * (1 - into);
+    const shift = E.lerp(0.09, 0.125, pull) * (1 - E.sineInOut(E.seg(t, 14.3, 15.9)));
+    const fov = 30;
+    const target = [0, 0, E.lerp(0.04, rest.z, E.sineInOut(E.seg(t, 14.5, 15.8)))];
+    cam.orbit(camera, { target, dist, az, el, roll: d.roll * calm, fov, shift: [0, shift] });
 
     // Floor, dust, glow.
     s.floor.set({ opacity: E.sineInOut(E.seg(t, T.tile + 0.2, T.tile + 1.8)) });
     const camDist = camera.position.distanceTo(logo.group.position);
-    s.dust.set({ time: t, focus: camDist, bright: (0.42 + 0.25 * riser) * appear, fov, H: ctx.renderH });
+    s.dust.set({ time: t, focus: camDist, bright: (0.48 + 0.2 * riser) * appear, fov, H: ctx.renderH });
     const pushGlow = E.expoIn(E.seg(t, T.push, T.cut));
-    // The breath: the studio dims on beat 4 of bar 7 and only the dot keeps its light.
+    // The breath: the studio dims on beat 4 of bar 7 and only the dot keeps its light. The
+    // glossy highlights go with it, so no specular point races the dot during the rush.
     const dimK = E.sineInOut(E.seg(t, T.push - 0.35, T.push + 0.2));
     const dim = 1 - 0.8 * dimK;
-    ctx.rig.set({ key: 1 - 0.97 * dimK, front: dim, env: dim, rim: dim });
+    const gloss = 1 - E.sineInOut(E.seg(t, T.push - 0.2, T.push + 0.15));
+    ctx.rig.set({ key: 1 - 0.97 * dimK, front: dim * gloss, env: dim, rim: dim });
+    logo.materials.tile.clearcoat = Math.max(1e-3, gloss); // > 0: no shader switch
+    logo.materials.cream.clearcoat = Math.max(1e-3, 0.35 * gloss);
     logo.materials.dot.uniforms.uGlow.value *= 1 + 0.5 * (1 - dim);
     // The lone point gets a wide soft halo that eases back as the lines arrive.
     const halo = 1 - E.sineInOut(E.seg(t, 1.2, 3.0));
@@ -154,7 +190,7 @@ const scene = {
     post.vignette = 0.24;
     post.exposure = 1 + 0.3 * pushGlow;
     // Fast moves get more motion-blur sub-frames in final renders.
-    post.samples = t > T.push ? 24 : t > T.tile && t < T.tile + 1.2 ? 10 : 0;
+    post.samples = t > T.push - 0.3 ? 24 : t > 14.6 ? 12 : t > T.tile && t < T.tile + 1.2 ? 10 : 0;
 
     // --- type ------------------------------------------------------------------------
     s.words[0].set(t, T.supply, T.demand - 0.36);
