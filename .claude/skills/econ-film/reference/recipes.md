@@ -56,10 +56,29 @@ commit than an asset's `appCommit` stamp (or file time) — the footage may be o
 1. Decide which assets show the change: `node scripts/film/capture/capture.mjs --list`
    and `scripts/film/assets.mjs` (the `capture` field says which job makes each id; the
    `scenes` field says who uses it). The marks scene's assets come from
-   `capture/extra-marks.mjs`.
+   `capture/extra-marks.mjs`. Doctor's capture-age warning cannot decide this — after any
+   `src/` commit it flags every asset. What the film actually shows of each (Sept 2026):
+
+   | Asset (job) | On screen |
+   |---|---|
+   | `type-mcq` (clip) | write: the whole window, toolbar and Export… included, 16–~18 s; then the page close up. montage: a page crop |
+   | `language-toggle` (clip) | write: only the EN/中文/EN+中 toggle chip (frame x 512–800); montage: a page crop |
+   | `teacher-toggle` (clip) | montage: a page crop only |
+   | `draw-diagram` (clip) | diagrams, montage: the diagram editor's canvas and its own toolbar |
+   | `marks-total` (extra-marks `clip`) | marks: editor close-up — page, inspector, the toolbar's right end (Export…) |
+   | `start-screen`, `diagram-canvas`, `editor-teacher` (`stills`) | everywhere: whole windows (browser, Mac, Windows) ~76–80 s; start-screen also in montage |
+   | `export-other-apps` (`stills`) | everywhere: cropped to the Export dialog only |
+   | sheets, `question-*`, `teacher-done`, `docx-page`, diagram layers | printed pages / .docx / diagram only — no app chrome |
+
+   To check a claim, render `--at=` the scene's moments and look for the element; the grid
+   of one frame per asset (`clips/<name>/00200.jpg`, `stills/*.png`) shows what was captured.
+   The `stills` job re-captures every still at once (and unregistered ones); `sheets` too.
 2. Build the app you want filmed. `capture.mjs` serves **this checkout's** `out/` and only
    builds when `out/` is missing — delete `out/` (or `npm run build`, in the background)
-   when `src/` changed. `extra-marks.mjs` serves the **main checkout's** `out/`.
+   when `src/` changed. `extra-marks.mjs` serves the **main checkout's** `out/`, whatever
+   branch that checkout is on: when the change lives only in a worktree, the marks assets
+   need the change built in the main checkout (ask the user; it is their working copy), or
+   the capture silently films the old UI.
 3. Capture only those jobs, in the background (a full capture is ~9 min):
    `npm run film:capture -- --only=type-mcq,sheets` · `node scripts/film/capture/extra-marks.mjs --only=clip,sheet`.
    Add `--reseed` when the seed documents themselves must change (`capture/seed.mjs`,
