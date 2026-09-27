@@ -17,7 +17,8 @@ const SHOTS = [
   { id: 'typing', clip: 'type-mcq', from: 1.72, rate: 1, crop: [250, 560, 1100, 380], world: 'day' }, // ends above option B
   { id: 'zh', clip: 'language-toggle', from: 2.56, rate: 1, crop: [446, 458, 880, 532], world: 'day' },
   { id: 'curve', clip: 'draw-diagram', from: 2.93, rate: 1.24, crop: [324, 348, 1592, 1332], world: 'night' },
-  { id: 'dwl', clip: 'draw-diagram', from: 14.34, rate: 0.6, crop: [420, 560, 1400, 860], world: 'night' },
+  // The finished diagram as it prints (no editor handles), on white: DWL, tax, E₀/E₁.
+  { id: 'dwl', still: 'diagram/full.png', flatten: true, size: [2400, 2010], crop: [60, 300, 2100, 1350], world: 'night' },
   { id: 'teacher', clip: 'teacher-toggle', from: 1.12, rate: 1, crop: [705, 606, 880, 456], world: 'day' },
   { id: 'cover', still: 'sheets/p2-cover.png', size: [2379, 3366], crop: [0, 120, 2379, 1340], world: 'day' },
   // The window rises from the bottom edge: title bar, heading and the diagram in the .docx.
@@ -31,6 +32,25 @@ const VIEW_H = 2 * DIST * Math.tan((FOV * Math.PI) / 360);
 const FIT = { w: 0.8 * VIEW_H * (16 / 9), h: 0.82 * VIEW_H }; // card box, world units
 // The last shot pushes toward the library of pages (uv of the still, v up).
 const LIBRARY = [0.72, 0.5];
+
+/** A transparent still composited onto white (the window shader reads rgb only). */
+function onWhite(THREE, tex, ctx) {
+  if (!tex.image) return tex; // the engine's dry (events-only) pass loads no pixels
+  const { width: w, height: h } = tex.image;
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  const g = c.getContext('2d');
+  g.fillStyle = '#FFFFFF';
+  g.fillRect(0, 0, w, h);
+  g.drawImage(tex.image, 0, 0);
+  const out = new THREE.CanvasTexture(c);
+  out.flipY = false; // ctx.load bitmaps arrive already flipped
+  out.colorSpace = THREE.SRGBColorSpace;
+  out.anisotropy = 8;
+  ctx.onDispose(() => out.dispose());
+  return out;
+}
 
 const scene = {
   id: 'montage',
@@ -55,7 +75,10 @@ const scene = {
         const win = lib.win.appWindow({ variant: 'none', width, aspect, shadow: false });
         const size = sh.clip ? [2880, 1800] : sh.size;
         win.set({ crop: [sh.crop[0] / size[0], 1 - (sh.crop[1] + ch) / size[1], cw / size[0], ch / size[1]] });
-        if (sh.still) win.set({ screen: await ctx.load.texture(sh.still) });
+        if (sh.still) {
+          const tex = await ctx.load.texture(sh.still);
+          win.set({ screen: sh.flatten ? onWhite(ctx.THREE, tex, ctx) : tex });
+        }
         if (sh.clip) {
           clips[sh.clip] ??= await ctx.load.clip(sh.clip);
           ctx.placeClip(sh.clip, { at: CUTS[i], from: sh.from, rate: sh.rate, dur });

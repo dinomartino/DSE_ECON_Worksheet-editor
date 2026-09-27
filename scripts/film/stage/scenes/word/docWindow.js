@@ -8,7 +8,8 @@ import { litSheet } from './sheet.js';
 
 export const DOC = {
   texture: 'export/docx-diagram-page-1.png',
-  title: 'S5 Market Intervention: Diagrams.docx',
+  // As the app names it: fileTitle() turns ':' into '-', docxFileName() adds (Student) (EN).
+  title: 'S5 Market Intervention- Diagrams (Student) (EN).docx',
   aspect: 2573 / 1819, // page h / w
 };
 

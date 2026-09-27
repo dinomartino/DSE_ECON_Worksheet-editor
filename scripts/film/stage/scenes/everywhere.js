@@ -35,6 +35,9 @@ const POP = { lead: 0.07, freq: 3.0, damping: 0.66 }; // crosses full size ~0.09
 
 // The windows live one truck to the right. Slot 0 = front.
 const OFF = 10.6;
+// The browser rides in behind the truck, LAG units short of its slot, so it enters frame
+// while the chips are still leaving it: there is always product on screen.
+const LAG = 3.2;
 const SLOTS = [
   { pos: [1.62, -0.62, 0.5], rot: [0, -0.2, 0] },
   { pos: [2.3, 0.5, -1.5], rot: [0, -0.2, 0] },
@@ -168,6 +171,7 @@ const scene = {
       if (i === 0) {
         // Rides in with the truck: a touch of depth and turn that settles as it lands.
         const u = 1 - truck;
+        p[0] -= LAG * u;
         p[2] -= 1.4 * u;
         r[1] -= 0.18 * u;
       }
