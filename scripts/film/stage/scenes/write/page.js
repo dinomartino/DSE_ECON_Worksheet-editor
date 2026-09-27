@@ -1,8 +1,8 @@
-// The bilingual page as layers (write scene, bars 12–16). Built from the real sheets:
-// every text line of sheets/bi.png becomes a strip (English text, Chinese text, and the
-// shared "1." / "A." labels), so each language can lift off the paper in depth and
-// reflow into the line positions of sheets/en.png or sheets/zh.png. Lines are found
-// from the pixels at setup and matched by order; a sheet that no longer matches throws.
+// The bilingual page as layers (write scene, bars 12–16), built from the real sheets. Four
+// layers, each always at a real layout of the app (it switches instantly, so no layer ever
+// shows an in-between): biEn / biZh — the English and Chinese lines of sheets/bi.png, which
+// can separate in depth — and en / zh, the whole of sheets/en.png and sheets/zh.png. Lines
+// are found from the pixels at setup; sheets that are no longer one document throw.
 import * as THREE from 'three';
 
 const INK = 200; // green-channel threshold for ink
@@ -87,32 +87,18 @@ function lines(px) {
   return out.filter((l) => l.y1 - l.y0 >= 12);
 }
 
-/** Tight ink box inside a region, or null. */
-function box(px, x0, x1, y0, y1) {
-  let b = null;
-  for (let y = y0; y < y1; y++) {
-    const r = px.row(y);
-    for (let x = x0; x < x1; x++) {
-      if (px.data[r + x * 4] < INK) {
-        if (!b) b = { x0: x, x1: x + 1, y0: y, y1: y + 1 };
-        b.x0 = Math.min(b.x0, x);
-        b.x1 = Math.max(b.x1, x + 1);
-        b.y1 = y + 1;
-      }
-    }
-  }
-  return b;
-}
+/** The box around every line of a sheet. */
+const around = (L) => ({ x0: Math.min(...L.map((l) => l.x0)), x1: Math.max(...L.map((l) => l.x1)), y0: L[0].y0, y1: L.at(-1).y1 });
 
 function fail(msg) {
   throw new Error(`write/page: ${msg} — the sheets changed; re-check scenes/write/page.js`);
 }
 
-/** The sheet structure: matched strips for the three layouts. */
+/** The sheet structure: bi.png's EN / 中 line pairs, its footer, the text of en / zh. */
 function analyse(bi, en, zh) {
-  const B = lines(bi).filter((l) => l.y0 < bi.h * 0.88);
+  const all = lines(bi);
+  const B = all.filter((l) => l.y0 < bi.h * 0.88);
   const E = lines(en), Z = lines(zh);
-  const footer = (L, h) => L.filter((l) => l.y0 >= h * 0.9);
   if (B.length < 4 || B.length % 2) fail(`bi.png has ${B.length} body lines, expected EN/中 pairs`);
   const P = B.length / 2;
   if (E.length < P || Z.length < P) fail('en.png / zh.png have fewer lines than bi.png pairs');
@@ -121,27 +107,17 @@ function analyse(bi, en, zh) {
     const be = B[2 * i], bz = B[2 * i + 1], e = E[i], z = Z[i];
     if (Math.abs(e.x0 - be.x0) > 4 || Math.abs(e.x1 - be.x1) > 4) fail(`English line ${i} does not match en.png`);
     if (Math.abs(z.x1 - bz.x1) > 6) fail(`Chinese line ${i} does not match zh.png`);
-    const row = { en: { ...be, to: e.y0 }, zh: { ...bz, to: z.y0 }, label: null };
-    if (bz.x0 - be.x0 > 30) {
-      const end = bz.x0 - 6;
-      const lb = box(bi, be.x0, end, be.y0, be.y1);
-      const lz = box(zh, z.x0, end, z.y0, z.y1);
-      if (!lb || !lz) fail(`label of line ${i} not found`);
-      row.label = { ...lb, en: e.y0 + (lb.y0 - be.y0), zhOff: lz.y0 - z.y0 };
-      row.en.x0 = end;
-    }
-    rows.push(row);
+    rows.push({ en: be, zh: bz });
   }
-  const rest = (L, h) => {
-    const f = footer(L, h);
-    return { y0: L[P].y0 - 30, y1: h - 30, footer: f };
-  };
-  return { rows, rem: { en: E.length > P ? rest(E, en.h) : null, zh: Z.length > P ? rest(Z, zh.h) : null }, biFooter: footer(lines(bi), bi.h) };
+  const foot = all.filter((l) => l.y0 >= bi.h * 0.88);
+  return { rows, foot: foot.length ? around(foot) : null, en: around(E), zh: around(Z) };
 }
 
+const LAYERS = ['biEn', 'biZh', 'en', 'zh'];
+
 /**
- * A layered page `width` world units wide, centred on its group. set(state) poses it
- * (see the scene for the fields); everything is a pure function of the state.
+ * A layered page `width` world units wide, centred on its group. set(state) poses it;
+ * everything is a pure function of the state.
  */
 export async function layeredPage(ctx, { width = 2, shadowColor = '#3A342E', paperShadow = 0.16 } = {}) {
   const { lib } = ctx;
@@ -161,8 +137,7 @@ export async function layeredPage(ctx, { width = 2, shadowColor = '#3A342E', pap
   group.add(paper.group);
 
   const shadowCol = new THREE.Color(shadowColor);
-  const strips = [];
-  /** A strip of `tex` showing the px box r; place(y) moves its box top to image row y. */
+  /** A strip of `tex` showing the px box r at its own place on the page, z above the paper. */
   function strip(tex, r, { shadow = false } = {}) {
     const x0 = r.x0 - PAD, x1 = r.x1 + PAD, y0 = r.y0 - PAD, y1 = r.y1 + PAD;
     const gx0 = x0 - MARGIN, gx1 = x1 + MARGIN, gy0 = y0 - MARGIN, gy1 = y1 + MARGIN;
@@ -195,93 +170,61 @@ export async function layeredPage(ctx, { width = 2, shadowColor = '#3A342E', pap
     mesh.frustumCulled = false;
     group.add(mesh);
     const cx = ((gx0 + gx1) / 2) * s - width / 2;
-    const off = (gy0 + gy1) / 2 - r.y0; // box top → quad centre, px
-    const api = {
-      mesh,
+    const cy = height / 2 - ((gy0 + gy1) / 2) * s;
+    return {
       u: material.uniforms,
-      /** Box top at image row y, height z above the paper; dx, dy extra page-local shift. */
-      place(y, z = 0, dx = 0, dy = 0) {
-        mesh.position.set(cx + dx, height / 2 - (y + off) * s + dy, z);
+      /** z above the paper; dx, dy extra page-local shift. */
+      place(z = 0, dx = 0, dy = 0) {
+        mesh.visible = material.uniforms.uAlpha.value > 0.001;
+        mesh.position.set(cx + dx, cy + dy, z);
       },
     };
-    strips.push(api);
-    return api;
   }
 
-  // Each text piece has a sharp strip and a shadow strip on the paper.
+  // Each text piece has a sharp strip and a soft shadow strip on the paper.
   const pair = (tex, r) => ({ ink: strip(tex, r), shadow: strip(tex, r, { shadow: true }) });
-  // A label ("1.", "A.") belongs to each layer: the English copy rides the English line
-  // (bilingual and English layouts), the Chinese copy the Chinese line (Chinese layout).
-  const rows = S.rows.map((row) => ({
-    row,
-    en: pair(tBi, row.en),
-    zh: pair(tBi, row.zh),
-    label: row.label ? { en: pair(tBi, row.label), zh: pair(tBi, row.label) } : null,
-  }));
-  const rem = {
-    en: S.rem.en ? pair(tEn, { x0: 0, x1: W, y0: S.rem.en.y0, y1: S.rem.en.y1 }) : null,
-    zh: S.rem.zh ? pair(tZh, { x0: 0, x1: W, y0: S.rem.zh.y0, y1: S.rem.zh.y1 }) : null,
+  const layers = {
+    biEn: S.rows.map((r) => pair(tBi, r.en)),
+    biZh: S.rows.map((r) => pair(tBi, r.zh)),
+    en: [pair(tEn, S.en)],
+    zh: [pair(tZh, S.zh)],
   };
-  const foot = S.biFooter.length
-    ? strip(tBi, { x0: Math.min(...S.biFooter.map((f) => f.x0)), x1: Math.max(...S.biFooter.map((f) => f.x1)), y0: S.biFooter[0].y0, y1: S.biFooter.at(-1).y1 })
-    : null;
-  const N = rows.length;
+  const foot = S.foot ? strip(tBi, S.foot) : null;
 
-  const smooth = (u) => u * u * u * (u * (u * 6 - 15) + 10);
-  /** Line i's own progress through a layer move (a gentle top-to-bottom ripple). */
-  const lineP = (p, i, spread = 0.3) => smooth(Math.min(1, Math.max(0, p * (1 + spread) - (spread * i) / Math.max(1, N - 1))));
-
-  function pose(p, layer, zLayer, light, strength, a) {
-    const { ink, shadow } = p;
-    const z = zLayer;
-    ink.place(layer.y, z);
-    ink.u.uAlpha.value = a * layer.alpha;
-    ink.u.uBlur.value = layer.blur;
-    const lift = Math.min(1, z / 0.05);
-    shadow.place(layer.y, 0.0005, light[0] * z, light[1] * z);
-    shadow.u.uAlpha.value = a * layer.alpha * strength * lift;
-    shadow.u.uBlur.value = 4 + (0.2 * z) / s;
+  const smooth = (u) => u * u * (3 - 2 * u);
+  function pose({ ink, shadow }, L, light, strength, a) {
+    ink.u.uAlpha.value = a * L.alpha;
+    ink.u.uBlur.value = L.blur;
+    ink.place(L.z);
+    // The shadow grows in softly: faint and already blurred while the layer is near the
+    // paper, so a small lift never reads as a printed double.
+    const lift = smooth(Math.min(1, L.z / 0.12));
+    shadow.u.uAlpha.value = a * L.alpha * strength * lift;
+    shadow.u.uBlur.value = 10 + (0.22 * L.z) / s;
+    shadow.place(0.0005, light[0] * L.z, light[1] * L.z);
   }
 
   return {
-    group, paper, width, height, rows: N,
+    group, paper, width, height,
     /** Page-local point (world units) of an image pixel of the sheets. */
     local: (x, y) => [x * s - width / 2, height / 2 - y * s],
     /**
-     * alpha: whole page. en / zh: { z (height above the paper), reflow (0 bilingual → 1
-     * own layout), alpha, blur (px) }. Each layer's labels and the rest of its own page
-     * follow its reflow. light: shadow offset per unit height; shadow: its strength.
+     * alpha: the whole page. biEn / biZh / en / zh: { z (height above the paper), alpha,
+     * blur (px) }; an omitted layer is hidden. light: shadow offset per unit height;
+     * shadow: its strength.
      */
-    set({ alpha = 1, en = {}, zh = {}, light = [0.18, -0.3], shadow = 0.34 } = {}) {
-      const E = { z: 0, reflow: 0, alpha: 1, blur: 0, ...en };
-      const Z = { z: 0, reflow: 0, alpha: 1, blur: 0, ...zh };
+    set({ alpha = 1, light = [0.18, -0.3], shadow = 0.34, ...st } = {}) {
       group.visible = alpha > 0.001;
       paper.set({ opacity: alpha, shadowOpacity: paperShadow * alpha });
       paper.material.transparent = alpha < 1;
       paper.edge.material.opacity = alpha;
-      rows.forEach((r, i) => {
-        const pe = lineP(E.reflow, i), pz = lineP(Z.reflow, i);
-        const ye = r.row.en.y0 + (r.row.en.to - r.row.en.y0) * pe;
-        const yz = r.row.zh.y0 + (r.row.zh.to - r.row.zh.y0) * pz;
-        pose(r.en, { y: ye, alpha: E.alpha, blur: E.blur }, E.z, light, shadow, alpha);
-        pose(r.zh, { y: yz, alpha: Z.alpha, blur: Z.blur }, Z.z, light, shadow, alpha);
-        if (r.label) {
-          const L = r.row.label;
-          pose(r.label.en, { y: ye + (L.y0 - r.row.en.y0), alpha: E.alpha, blur: E.blur }, E.z, light, shadow, alpha);
-          const za = smooth(Math.min(1, Math.max(0, (pz - 0.55) / 0.45)));
-          pose(r.label.zh, { y: yz + L.zhOff, alpha: Z.alpha * za, blur: Z.blur }, Z.z, light, shadow, alpha);
-        }
-      });
-      const remA = {};
-      for (const k of ['en', 'zh']) {
-        const L = k === 'en' ? E : Z;
-        remA[k] = smooth(Math.min(1, Math.max(0, (L.reflow - 0.7) / 0.3)));
-        if (!rem[k]) continue;
-        pose(rem[k], { y: S.rem[k].y0, alpha: remA[k] * L.alpha, blur: L.blur }, L.z, light, shadow, alpha);
+      for (const k of LAYERS) {
+        const L = { z: 0, alpha: 0, blur: 0, ...st[k] };
+        for (const p of layers[k]) pose(p, L, light, shadow, alpha);
       }
       if (foot) {
-        foot.place(S.biFooter[0].y0, 0);
-        foot.u.uAlpha.value = alpha * (1 - Math.max(remA.en, remA.zh));
+        foot.u.uAlpha.value = alpha * Math.max(st.biEn?.alpha ?? 0, st.biZh?.alpha ?? 0);
+        foot.place(0);
       }
     },
   };
