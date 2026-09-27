@@ -264,6 +264,27 @@ Invariant: chrome uses semantic tokens (`src/app/globals.css`); anything on the 
 - `scripts/release-notes.mjs` — one version's section, the GitHub release body; `scripts/release-notes.test.ts`
 - `scripts/lq-pitch.py` · `scripts/cover-compare.py` — measure the rendered output
 
+## scripts/film — the product film
+
+The 94 s launch film, all code: `scripts/film/capture/capture.mjs` films the built app in
+virtual time → the asset store; the Three.js stage (`scripts/film/stage/engine.js`,
+`scripts/film/stage/lib/`, one module per scene in `scripts/film/stage/scenes/`) composes
+it; `scripts/film/score/score.mjs` synthesises the music; `scripts/film/render.mjs` renders
+with parallel Chrome workers; `scripts/film/film.mjs` runs it all. Spec:
+`scripts/film/FILM.md`. How to change it: the `econ-film` skill (`.claude/skills/econ-film/`).
+
+- `scripts/film/timeline.mjs:SCENES` · `:CUES` · `:COPY` — bars, shared cues by stable id
+  (scenes read them with `scripts/film/timeline.mjs:cueAt`), every on-screen string
+- `scripts/film/assets.mjs:ASSETS` — the registry: asset id → file, capture command, scenes allowed
+- `scripts/film/stage/lib/type.js:text` — text blocks that wrap and shrink to their box
+- `scripts/film/tools/doctor.mjs` — `npm run film:doctor`: timeline, assets, clip windows, score, text fit, capture age, GPU
+- `scripts/film/paths.mjs` — outputs to `$FILM_OUT` or `demo-media/film/`; the asset store is always the main checkout's
+
+Invariants: a scene's `update(t)` is a pure function of `t`; scenes load assets by registry
+id, text from `COPY`, times from cue ids; no fake UI (every product pixel is captured from
+the real app or its export); the film never changes `src/`; a cue or clip-event change
+makes the score stale (rebuilt by `npm run film:score`).
+
 ## tests and corpus
 
 `npm test` = `vitest run src`. Tests sit beside what they test; `scripts/*.test.ts` are
