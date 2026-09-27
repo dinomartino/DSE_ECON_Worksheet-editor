@@ -90,7 +90,7 @@ const L = pick({
     // The card grows about the DWL triangle and sinks a little, clear of the exiting type.
     dwl: { target: DWL, dist: distForPx(CARD_W, 1040), az: -4, el: 1.5, shift: [(460 - 540) / 1080, (960 - 720) / 1920] },
     // From above: the layers step down the frame, back to front, under the headline.
-    apart: (c, d) => ({ target: c, dist: distForPx(CARD_W, 780) * (1 - 0.03 * d), az: -16 + 8 * d, el: 30 - 4 * d, shift: [0, -0.045] }),
+    apart: (c, d) => ({ target: c, dist: distForPx(CARD_W, 780) * (1 - 0.03 * d), az: -16 + 8 * d, el: 30 - 4 * d, shift: [-0.03, -0.045] }),
     endShift: [0, (960 - 900) / 1920],
     appUp: 0.62,
     word: { y: 1250, size: 120 },
