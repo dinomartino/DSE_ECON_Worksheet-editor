@@ -113,4 +113,4 @@ Deeper: [contracts](reference/contracts.md) (every interface) · [craft](referen
 | `seam.py DIR [grid.png]` | Frame-to-frame diff and luma: pops and dead stops at a seam |
 
 Take a baseline **before** you change anything: `bin/regress.sh <scratch>/base 0 47`
-(≈24 chunks, ~3 s each at 1 fps).
+(24 two-bar chunks, each well under 100 s; run it in the background).
