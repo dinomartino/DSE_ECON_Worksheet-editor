@@ -33,7 +33,7 @@ const T = {
 // Camera: the open fan over the type band; the stack, centred; word's first frame.
 const WIDE = stop([...at(0), S_POS[2]], 335, 935, 235, { az: 6, el: -24 }); // orbits to az −6
 const STACK_MID = stop([...at(0), S_POS[2]], 420, 960, 520, { az: 3, el: -14 });
-const STACK = stop([...at(0), S_POS[2]], 452, 965, 405, { az: 2, el: -10 }); // ≈ word at 64.0
+const STACK = stop([...at(0), S_POS[2]], 459, 965, 420, { az: 2, el: -10 }); // word opens here: 459 px wide at (965, 420)
 
 // Lights (display sRGB). The room dims through a warm tungsten brown to near black; the
 // pool on the stack turns a warm white (the paper, pure white, is always the brightest
@@ -155,7 +155,7 @@ const scene = {
     bu.uTop.value.setRGB(...room.top);
     bu.uBottom.value.setRGB(...room.bottom);
     // The paper keeps full white until the lamp dims; the pool follows the paper down.
-    const bl = lin(lerp(1, 0.02, poolK));
+    const bl = lin(lerp(1, 0.066, poolK)); // word opens on the page at display 0.066
     const ember = E.smoothstep(0, 0.4, poolK) * (1 - E.smoothstep(0.55, 0.8, poolK)); // neutral below ~40/255
     const glow = keysLin([POOL.day, POOL.lamp], roomK);
     bu.uGlow.value.setRGB(...glow.map((v, i) => v * bl * lerp(1, EMBER.pool[i], ember)));
