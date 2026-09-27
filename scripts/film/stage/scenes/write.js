@@ -69,7 +69,7 @@ function layers(t, E) {
   });
   const hidden = { z: 0, alpha: 0, blur: 0 };
   if (t < c1) {
-    const lift = LIFT * (E.quintOut(E.seg(t, T.lift[0], T.lift[1])) - E.sineInOut(E.seg(t, T.seat[0], T.seat[1])));
+    const lift = LIFT * (nudge(E.seg(t, T.lift[0], T.lift[1])) - E.sineInOut(E.seg(t, T.seat[0], T.seat[1])));
     return { biEn: { z: 0, alpha: 1, blur: 0 }, biZh: { z: lift, alpha: 1, blur: 0, k: 1 - (COMP * lift) / D }, en: hidden, zh: hidden };
   }
   if (t < c2) return { biEn: hidden, biZh: hidden, en: settle(c1, 1), zh: hidden };
