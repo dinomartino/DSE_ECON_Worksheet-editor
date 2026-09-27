@@ -4,6 +4,7 @@
 import { cubicBezier } from '../../lib/ease.js';
 import { stop, mixPose, withDrift } from '../marks/kit.js';
 import { sceneStart } from '../../../timeline.mjs';
+import { pick } from '../../lib/format.js';
 
 const clamp = (x) => Math.min(1, Math.max(0, x));
 const seg = (t, a, b) => clamp((t - a) / (b - a));
@@ -27,10 +28,15 @@ export const S_ROT = [0, 0.02, 0.008];
  * just beneath its edge: the pack's second sheet, so the student copy stays on top.
  */
 export const SLIDE = [CUT - 2.5, CUT - 1.5];
-const T_START = add(S_POS, [0.012, 0.004, -0.02]);
-const T_MID = add(S_POS, [0.48, 0.07, -0.13]);
-export const T_END = add(S_POS, [0.9, 0.02, -0.02]);
-export const T_ROT = [0.01, -0.07, -0.014];
+// Portrait: it slides out upward instead, its scheme landing just above the student copy.
+const T_ARC = pick({
+  landscape: { start: [0.012, 0.004, -0.02], mid: [0.48, 0.07, -0.13], end: [0.9, 0.02, -0.02], rot: [0.01, -0.07, -0.014], lift: [0, -0.05, 0.025] },
+  portrait: { start: [0.004, 0.012, -0.02], mid: [0.05, 0.5, -0.13], end: [0.07, 0.95, -0.02], rot: [-0.05, 0.01, -0.03], lift: [-0.05, 0, 0.02] },
+});
+const T_START = add(S_POS, T_ARC.start);
+const T_MID = add(S_POS, T_ARC.mid);
+export const T_END = add(S_POS, T_ARC.end);
+export const T_ROT = T_ARC.rot;
 const slideEase = cubicBezier(0.36, 0, 0.12, 1); // off the mark from rest, long landing
 
 /** Teacher's copy pose at film time f: { pos, rot } (Euler x, y, z). */
@@ -39,15 +45,22 @@ export function tPose(f) {
   const lift = Math.sin(Math.PI * u);
   return {
     pos: bez3(T_START, T_MID, T_END, u),
-    rot: S_ROT.map((v, i) => v + (T_ROT[i] - v) * u + [0, -0.05, 0.025][i] * lift),
+    rot: S_ROT.map((v, i) => v + (T_ROT[i] - v) * u + T_ARC.lift[i] * lift),
   };
 }
 
 // Camera on the pair: both sheets, then a slow push into the teacher's marking scheme (its
 // six "(1)" points, a third of the way down the page), easing out into papers' pull. It starts
 // as marks' pull-back lands, so the camera never stops between them.
-export const PAIR_VIEW = stop(add(S_POS, [0.45, 0.02, 0]), 520, 960, 425, { az: -5, el: 2 });
-const ANSWERS = stop(add(T_END, [0.02, -0.1, 0]), 1300, 960, 380, { az: -8, el: 3 });
+// Portrait: the pair stacked, the teacher's copy above; then into its scheme.
+export const PAIR_VIEW = pick({
+  landscape: stop(add(S_POS, [0.45, 0.02, 0]), 520, 960, 425, { az: -5, el: 2 }),
+  portrait: stop(add(S_POS, [0.035, 0.475, 0]), 546, 540, 1205, { az: -2, el: -4 }),
+});
+const ANSWERS = pick({
+  landscape: stop(add(T_END, [0.02, -0.1, 0]), 1300, 960, 380, { az: -8, el: 3 }),
+  portrait: stop(add(T_END, [0.0, -0.09, 0]), 1150, 540, 1000, { az: -5, el: -6 }),
+});
 export const PUSH = [CUT - 2, CUT - 0.1];
 const pushEase = cubicBezier(0.45, 0, 0.22, 1);
 
@@ -59,7 +72,10 @@ export function holdCam(lib, f) {
 
 /** Haze over the lower frame (the type band): it clears as the marks headline leaves. */
 export const hazeAt = (f) => 1 - sineInOut(seg(f, CUT - 0.65, CUT + 0.05));
-export const HAZE_BAND = { from: 640, to: 800 };
+export const HAZE_BAND = pick({
+  landscape: { from: 640, to: 800 },
+  portrait: { from: 1320, to: 1450, flip: true }, // from the top: clear below y 600, full above 470
+});
 
 /** Depth of field focused at `focus` (camera distance), strength k. */
 export const dofAt = (focus, k = 1) => (k < 0.01 ? null : { focus, aperture: 130 * k, maxBlur: 12 * k });

@@ -6,6 +6,7 @@
 // copy slides out from behind it (54.5), and a slow push into its scheme hands over to papers.
 import { COPY, cueAt, sceneStart } from '../../timeline.mjs';
 import { cubicBezier } from '../lib/ease.js';
+import { pick, PORTRAIT } from '../lib/format.js';
 import { haze, stop, mixPose, withDrift, applyPose, handoff } from './marks/kit.js';
 import { S_POS, S_ROT, tPose, holdCam, hazeAt, HAZE_BAND, dofAt, loadSheets, SHEET, PAIR } from './papers/deck.js';
 
@@ -29,6 +30,8 @@ const T = {
   winOut: [4.8, 5.3], // the window drops away, down and back…
   back: [4.85, 6.1], // …as the camera pulls back to the pair…
   rise: [5.12, 6.0], // …which rises in front as the window clears the frame (54.0)
+  card: [1.3, 1.8], // portrait: the inspector card floats up off the page before the Marks click (49.58)
+  pan: [CLIP_AT + 3.2, CLIP_AT + 3.95], // portrait: the card follows the pointer to Teacher (clip 3.3–3.9)
   h1: [1.0, 3.75],
   h2: [4.5, 7.45],
 };
@@ -49,10 +52,28 @@ const wpt = (fx, fy) => [W_POS[0] + (fx - 1440) / FPX, W_POS[1] + SCREEN_TOP - f
 
 // Camera stops (frame px of the clip): diagrams' last frame; the page's marks column and
 // total beside the inspector's Marks fields; the Teacher toggle over the page's part (a).
-const F0 = { ...stop([0.0006, 0.275, 0], 1109, 960, 540.55), az: 0.3 }; // measured to 0.1 px on the cut
-const F2 = stop(wpt(2080, 600), 1900, 960, 330, { az: 2, el: 1 });
-const F3 = stop(wpt(1115, 425), 1150, 960, 322, { az: -1, el: 1 });
-const F3b = stop(wpt(1080, 560), 1185, 960, 420, { az: -2, el: 1 });
+// Portrait (FILM-9x16.md): the page alone, 960 px wide, diagram centre at y 900 on the cut;
+// then the page's marks column under a card of the inspector's Marks rows (a crop of the
+// same live frame), which pans with the pointer up to the Teacher toggle.
+const { F0, F2, F3, F3b, HEAD, CARD } = pick({
+  landscape: {
+    F0: { ...stop([0.0006, 0.275, 0], 1109, 960, 540.55), az: 0.3 }, // measured to 0.1 px on the cut
+    F2: stop(wpt(2080, 600), 1900, 960, 330, { az: 2, el: 1 }),
+    F3: stop(wpt(1115, 425), 1150, 960, 322, { az: -1, el: 1 }),
+    F3b: stop(wpt(1080, 560), 1185, 960, 420, { az: -2, el: 1 }),
+    HEAD: { y: 904, size: 104 },
+  },
+  portrait: {
+    F0: { ...stop([0.0006, 0.275, 0], 960, 540, 900), az: 0.3 },
+    F2: stop(wpt(1412, 543), 1500, 540, 950, { az: 1.5, el: -1 }),
+    F3: stop(wpt(1412, 560), 1530, 540, 960, { az: -1, el: -1 }),
+    F3b: stop(wpt(1412, 640), 1560, 540, 980, { az: -2, el: -1.5 }),
+    HEAD: { y: 330, size: 96, maxWidth: 860, maxLines: 3 },
+    // The card: clip px [x, y, w, h] it shows (rows, then the toolbar's Student/Teacher),
+    // its centre (clip px, on the page plane) and width in world units, lifted off the page.
+    CARD: { rows: [2075, 400, 800, 255], bar: [640, 0, 800, 255], at: wpt(1412, 278), width: 0.6, lift: 0.06 },
+  },
+});
 
 const land = cubicBezier(0.2, 0.62, 0.22, 1); // arrives already moving (off frame), long landing
 const back = cubicBezier(0.4, 0, 0.2, 1);
@@ -82,8 +103,14 @@ const scene = {
     ctx.placeClip(CLIP, { at: CLIP_AT, from: 0, dur: T.winOut[1] - CLIP_AT });
 
     const T_ = lib.type;
-    s.h1 = T_.headline(ctx.el, { en: C.headline, zh: C.headlineZh, y: 904, size: 104, zhSize: 44, world: 'day' });
-    s.h2 = T_.headline(ctx.el, { en: C.teacher, zh: C.teacherZh, y: 904, size: 104, zhSize: 44, world: 'day' });
+    s.h1 = T_.headline(ctx.el, { en: C.headline, zh: C.headlineZh, ...HEAD, zhSize: 44, world: 'day' });
+    s.h2 = T_.headline(ctx.el, { en: C.teacher, zh: C.teacherZh, ...HEAD, zhSize: 44, world: 'day' });
+    if (PORTRAIT) {
+      const [, , cw, ch] = CARD.rows;
+      s.card = lib.win.appWindow({ variant: 'none', width: CARD.width, aspect: cw / ch, shadowOpacity: 0.16, shadowColor: '#3A342E', shadowBlur: 0.1 });
+      s.card.group.traverse((o) => { o.renderOrder = 3; });
+      scene.add(s.card.group);
+    }
   },
 
   update(t, ctx) {
@@ -113,7 +140,21 @@ const scene = {
     s.win.group.visible = t > T.slide[0] && out < 1;
     s.win.group.position.set(W_POS[0], W_POS[1] - 0.9 * up - 1.7 * out, W_POS[2] - 0.9 * out);
     s.win.group.rotation.set(-0.3 * out, 0, 0);
-    if (s.win.group.visible) s.win.set({ screen: s.clip.frameAt(Math.max(0, t - CLIP_AT)) });
+    const frame = s.win.group.visible ? s.clip.frameAt(Math.max(0, t - CLIP_AT)) : null;
+    if (frame) s.win.set({ screen: frame });
+    if (s.card) {
+      // The same live frame as the page, cropped; it rides the window's drop.
+      const c = s.card, k = E.sineInOut(E.seg(t, ...T.card));
+      c.group.visible = frame != null && k > 0;
+      // Up to the toolbar, then along it (the pan never crosses the page's canvas).
+      const [p0, p1] = T.pan, pm = p0 + 0.45 * (p1 - p0);
+      const py = E.sineInOut(E.seg(t, p0, pm)), px = E.sineInOut(E.seg(t, p0 + 0.25 * (p1 - p0), p1));
+      const [x, y, w, h] = CARD.rows.map((v, i) => E.lerp(v, CARD.bar[i], i === 1 ? py : px));
+      if (c.group.visible) c.set({ screen: frame, opacity: k, crop: [x / 2880, 1 - (y + h) / 1800, w / 2880, h / 1800], shadowOpacity: 0.16 * k });
+      c.group.position.set(CARD.at[0], CARD.at[1] - 0.04 * (1 - k) - 1.7 * out, W_POS[2] + CARD.lift * (0.4 + 0.6 * k) - 0.9 * out);
+      c.group.rotation.set(-0.3 * out, 0, 0);
+      c.group.scale.setScalar(0.96 + 0.04 * k);
+    }
 
     // ---- the printed pair rises in front -------------------------------------------------------
     const r = rise(E.seg(t, ...T.rise));

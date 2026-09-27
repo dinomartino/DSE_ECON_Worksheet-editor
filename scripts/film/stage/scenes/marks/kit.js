@@ -56,26 +56,27 @@ export const handoff = (lib, f) => lib.camera.creep(f, HANDOFF) / lib.camera.cre
 const HAZE_FRAG = /* glsl */ `
 uniform vec3 uTop; uniform vec3 uBottom; uniform vec3 uGlow; uniform vec2 uCenter;
 uniform float uRadius; uniform float uGlowAmount; uniform float uAspect; uniform float uMix;
-uniform vec3 uTint; uniform float uH; uniform float uFrom; uniform float uTo; uniform float uAmount; varying vec2 vUv;
+uniform vec3 uTint; uniform float uH; uniform float uFlip; uniform float uFrom; uniform float uTo; uniform float uAmount; varying vec2 vUv;
 void main() {
   vec3 base = mix(uBottom, uTop, smoothstep(0.0, 1.0, vUv.y));
   vec2 d = (vUv - uCenter) * vec2(uAspect, 1.0);
   float r = length(d) / uRadius;
   vec3 c = mix(mix(base, uGlow, exp(-r * r * 1.2) * uGlowAmount), uTint, uMix);
-  float y = (1.0 - vUv.y) * uH;
+  float y = mix(1.0 - vUv.y, vUv.y, uFlip) * uH;
   gl_FragColor = vec4(c, uAmount * smoothstep(uFrom, uTo, y));
 }`;
 
 /**
  * A screen-space haze in the backdrop's own colour (it shares the backdrop's uniforms, so
- * it always matches), rising from the bottom: 0 at design y `from`, full at `to`.
+ * it always matches), rising from the bottom: 0 at design y `from`, full at `to`. With
+ * `flip` it falls from the top instead (y measured up from the bottom edge).
  */
 export function haze(ctx) {
   const bu = ctx.backdrop.material.uniforms;
   const material = new THREE.ShaderMaterial({
     vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
     fragmentShader: HAZE_FRAG,
-    uniforms: { ...bu, uH: { value: H }, uFrom: { value: 640 }, uTo: { value: 800 }, uAmount: { value: 0 } },
+    uniforms: { ...bu, uH: { value: H }, uFlip: { value: 0 }, uFrom: { value: 640 }, uTo: { value: 800 }, uAmount: { value: 0 } },
     transparent: true,
     depthTest: false,
     depthWrite: false,
@@ -89,8 +90,9 @@ export function haze(ctx) {
   const u = material.uniforms;
   return {
     mesh,
-    set({ amount, from, to }) {
+    set({ amount, from, to, flip }) {
       if (amount != null) u.uAmount.value = amount;
+      if (flip != null) u.uFlip.value = flip ? 1 : 0;
       if (from != null) u.uFrom.value = from;
       if (to != null) u.uTo.value = to;
       mesh.visible = u.uAmount.value > 0.001;
