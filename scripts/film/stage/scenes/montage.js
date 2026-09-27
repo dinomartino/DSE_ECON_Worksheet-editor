@@ -30,7 +30,7 @@ const LAND = [
 ];
 // 9:16 (FILM-9x16.md): the same shots re-framed to a tall crop of one clear subject.
 const TALL = {
-  typing: { crop: [300, 360, 1640, 1040] }, // the MCQ block being typed, its right border and page margin in
+  typing: { crop: [250, 360, 1750, 1040] }, // the MCQ block being typed, its right border and page margin in
   start: { crop: [0, 0, 860, 1180] }, // "Start a worksheet, or pick up where you left off." and its list
   zh: { crop: [380, 300, 940, 1120] }, // the Chinese page: 甲部 and three questions
   curve: { crop: [360, 330, 1000, 1120] }, // the canvas's axes and the curve being drawn
