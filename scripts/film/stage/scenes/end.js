@@ -25,8 +25,9 @@ const T = {
 
 // Lockup geometry in design px: tile centre y / size, then title y and scale; the type
 // blocks per frame. Portrait (FILM-9x16.md) stacks the whole lockup inside y 240–1480.
-const { HERO, LOCK, TYPE } = pick({
+const { HERO, LOCK, TYPE, FLOOR } = pick({
   landscape: {
+    FLOOR: { reflect: 0.2, sheenR: 2.4 },
     HERO: { tileY: 392, tileH: 410, titleY: 772 },
     LOCK: { tileY: 262, tileH: 212, titleY: 432, titleScale: 0.44 },
     TYPE: {
@@ -36,6 +37,7 @@ const { HERO, LOCK, TYPE } = pick({
     },
   },
   portrait: {
+    FLOOR: { reflect: 0.3, sheenR: 3.4 }, // a quiet glow in the band above the caption
     HERO: { tileY: 790, tileH: 620, titleY: 1250 },
     // The tall stack puts the tagline right under the title's path: the pull-back lands
     // 0.2 s sooner (T.lockup) and the stack sits lower, so the reveal never touches it.
@@ -56,7 +58,7 @@ const scene = {
     const s = (ctx.state = {});
     s.logo = lib.logo.createLogo();
     scene.add(s.logo.group);
-    s.floor = lib.floor.nightFloor({ W: ctx.renderW, H: ctx.renderH, y: -1.32, reflect: 0.2, blur: 10 * (ctx.renderH / 1080), near: 0.4, far: 3.6, sheenR: 2.4 });
+    s.floor = lib.floor.nightFloor({ W: ctx.renderW, H: ctx.renderH, y: -1.32, blur: 10 * (ctx.renderH / 1080), near: 0.4, far: 3.6, ...FLOOR });
     scene.add(s.floor.mesh);
     ctx.onPrepass((...a) => s.floor.prepass(...a), { once: true });
     s.dust = lib.particles.dust({
