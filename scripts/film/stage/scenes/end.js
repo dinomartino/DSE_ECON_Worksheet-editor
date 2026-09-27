@@ -4,6 +4,7 @@
 // tagline lands on the 86.0 s tick; "Free. No account needed." blooms in on the 88.0 s
 // swell; the hold keeps arcing in; the engine fades to black over the last bar (92–94 s).
 import { COPY, cueAt, sceneStart } from '../../timeline.mjs';
+import { pick, H } from '../lib/format.js';
 
 const C = COPY.end;
 const START = sceneStart('end');
@@ -22,9 +23,28 @@ const T = {
   swell: at('end.swell'),
 };
 
-// Lockup geometry in design px: tile centre y / size, then title y and scale.
-const HERO = { tileY: 392, tileH: 410, titleY: 772 };
-const LOCK = { tileY: 262, tileH: 212, titleY: 432, titleScale: 0.44 };
+// Lockup geometry in design px: tile centre y / size, then title y and scale; the type
+// blocks per frame. Portrait (FILM-9x16.md) stacks the whole lockup inside y 240–1480.
+const { HERO, LOCK, TYPE } = pick({
+  landscape: {
+    HERO: { tileY: 392, tileH: 410, titleY: 772 },
+    LOCK: { tileY: 262, tileH: 212, titleY: 432, titleScale: 0.44 },
+    TYPE: {
+      title: { size: 128 },
+      tagline: { y: 672, size: 104 },
+      small: { y: 800, size: 36 },
+    },
+  },
+  portrait: {
+    HERO: { tileY: 780, tileH: 560, titleY: 1200 },
+    LOCK: { tileY: 500, tileH: 330, titleY: 740, titleScale: 0.5 },
+    TYPE: {
+      title: { size: 104 },
+      tagline: { y: 960, size: 100, maxLines: 2 },
+      small: { y: 1140, size: 36 },
+    },
+  },
+});
 
 const scene = {
   id: 'end',
@@ -43,10 +63,10 @@ const scene = {
     });
     scene.add(s.dust.mesh);
     const T_ = lib.type;
-    s.title = T_.headline(ctx.el, { en: C.title, y: HERO.titleY, size: 128, world: 'night' });
-    s.tagline = T_.headline(ctx.el, { en: C.tagline, zh: C.taglineZh, y: 672, size: 104, world: 'night', gradient: 3 });
+    s.title = T_.headline(ctx.el, { en: C.title, y: HERO.titleY, ...TYPE.title, world: 'night' });
+    s.tagline = T_.headline(ctx.el, { en: C.tagline, zh: C.taglineZh, ...TYPE.tagline, world: 'night', gradient: 3 });
     // Top-aligned ~50 px under the tagline's Chinese line, so it reads as part of the lockup.
-    s.small = T_.small(ctx.el, { en: C.small, zh: C.smallZh, y: 800, valign: 'top', size: 36, world: 'night' });
+    s.small = T_.small(ctx.el, { en: C.small, zh: C.smallZh, ...TYPE.small, valign: 'top', world: 'night' });
   },
 
   update(t, ctx) {
@@ -87,7 +107,7 @@ const scene = {
     const fov = 30;
     const d = cam.drift(t, 9, { amp: 0.8, rate: 0.05, roll: 0.08 });
     const creep = 1 - 0.065 * E.seg(t, 0, 10);
-    const dist = (cam.distFor(fov, (2 * 1080) / tileH) * creep) * d.dist;
+    const dist = (cam.distFor(fov, (2 * H) / tileH) * creep) * d.dist;
     cam.orbit(camera, {
       target: [0, 0, 0.04],
       dist,
@@ -95,7 +115,7 @@ const scene = {
       el: 3.5 + d.el,
       roll: d.roll,
       fov,
-      shift: [0, (540 - tileY) / 1080],
+      shift: [0, (H / 2 - tileY) / H],
     });
 
     s.floor.set({ opacity: 1 });

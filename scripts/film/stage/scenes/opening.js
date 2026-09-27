@@ -6,6 +6,7 @@
 // blue fills the frame at the cut.
 import { COPY, cue, cueAt, sceneStart, sceneEnd } from '../../timeline.mjs';
 import { cubicBezier } from '../lib/ease.js';
+import { pick } from '../lib/format.js';
 
 const C = COPY.opening;
 const START = sceneStart('opening');
@@ -30,7 +31,21 @@ const T = {
   cut: sceneEnd('opening') - START,
 };
 
-const WORD_Y = 812;
+// Layout per frame (design px). Portrait (FILM-9x16.md): the mark builds at y≈820 with its
+// words under it; the tile at y≈760 with the title and sub stacked below. `shift` is the
+// lens shift of pose A / B (frame fractions), `k` scales pose A / B's distance.
+const L = pick({
+  landscape: {
+    word: { y: 812, size: 120 }, title: { y: 760, size: 124 },
+    sub: { y: 884, size: 38, zhSize: 30, zhGap: 14 },
+    shift: [0.09, 0.125], k: [1, 1],
+  },
+  portrait: {
+    word: { y: 1270, size: 104 }, title: { y: 1190, size: 104 },
+    sub: { y: 1330, size: 36, zhSize: 30, zhGap: 14 },
+    shift: [0.073, 0.104], k: [1.15, 1.12],
+  },
+});
 // Fast but from rest: the 8.0 s whoosh must not start at full speed (a visible jolt).
 const whoosh = cubicBezier(0.3, 0, 0.06, 1);
 const DOT_HOVER = [0, 0.66, 0.16];
@@ -39,8 +54,8 @@ const END = 0.19; // camera distance to the dot at the cut
 
 // Camera poses: A frames the mark as it builds, B the tile and title. Each carries its own
 // slow dolly and arc, so no hold is ever a freeze.
-const poseA = (t) => ({ dist: 5.4 * Math.exp(-0.022 * t), az: -7 + 1.4 * t, el: 1.5 + 0.25 * t });
-const poseB = (t) => ({ dist: 10.4 * Math.exp(-0.012 * (t - 10)), az: -17 + 0.9 * (t - 10), el: 6.5 - 0.2 * (t - 10) });
+const poseA = (t) => ({ dist: 5.4 * L.k[0] * Math.exp(-0.022 * t), az: -7 + 1.4 * t, el: 1.5 + 0.25 * t });
+const poseB = (t) => ({ dist: 10.4 * L.k[1] * Math.exp(-0.012 * (t - 10)), az: -17 + 0.9 * (t - 10), el: 6.5 - 0.2 * (t - 10) });
 
 /** Log-scale push: cubic from rest on the riser to 3× at the breath, then a C2 run into the dot. */
 function pushLog(t, total) {
@@ -84,9 +99,9 @@ const scene = {
     ctx.rig.front.position.set(0.8, 3.4, 8);
 
     const T_ = lib.type;
-    s.words = [C.supply, C.demand, C.equilibrium].map((en) => T_.headline(ctx.el, { en, y: WORD_Y, size: 120, world: 'night' }));
-    s.title = T_.headline(ctx.el, { en: C.title, y: 760, size: 124, world: 'night' });
-    s.sub = T_.sub(ctx.el, { en: C.sub, zh: C.subZh, y: 884, size: 38, zhSize: 30, zhGap: 14, world: 'night' });
+    s.words = [C.supply, C.demand, C.equilibrium].map((en) => T_.headline(ctx.el, { en, ...L.word, world: 'night' }));
+    s.title = T_.headline(ctx.el, { en: C.title, ...L.title, world: 'night' });
+    s.sub = T_.sub(ctx.el, { en: C.sub, zh: C.subZh, ...L.sub, world: 'night' });
   },
 
   update(t, ctx) {
@@ -162,7 +177,7 @@ const scene = {
     const dist = E.lerp(A.dist, B.dist, pull) * Math.exp(-push) * (1 + (d.dist - 1) * calm);
     const az = (E.lerp(A.az, B.az, pull) + 11 * riser + d.az * calm) * (1 - into);
     const el = (E.lerp(A.el, B.el, pull) - 2.5 * riser + d.el * calm) * (1 - into);
-    const shift = E.lerp(0.09, 0.125, pull) * (1 - E.sineInOut(E.seg(t, 14.3, 15.9)));
+    const shift = E.lerp(L.shift[0], L.shift[1], pull) * (1 - E.sineInOut(E.seg(t, 14.3, 15.9)));
     const fov = 30;
     const target = [0, 0, E.lerp(0.04, rest.z, E.sineInOut(E.seg(t, 14.5, 15.8)))];
     cam.orbit(camera, { target, dist, az, el, roll: d.roll * calm, fov, shift: [0, shift] });
