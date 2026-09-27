@@ -10,14 +10,29 @@ import { spawnSync, execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { FILM_DIR, OUT, ASSETS, BUILD, ensureDirs } from './paths.mjs';
-import { render, parseArgs } from './render.mjs';
+import { render, parseArgs, RENDER_FLAGS, usage } from './render.mjs';
 import { contactSheet } from './tools/contact-sheet.mjs';
 import { readme } from './tools/readme.mjs';
 
+const OWN = {
+  recapture: 'capture everything again',
+  'skip-capture': 'never capture',
+  'skip-score': 'keep the score as is (render.mjs still refuses a stale one)',
+  'no-master': 'no poster, contact sheet or README',
+};
 const argv = process.argv.slice(2);
-const args = parseArgs(argv);
-const own = new Set(['recapture', 'skip-capture', 'skip-score', 'no-master']);
-const passthrough = argv.filter((a) => !own.has(a.replace(/^--/, '').split('=')[0]));
+let args;
+try {
+  args = parseArgs(argv, { ...OWN, ...RENDER_FLAGS });
+} catch (e) {
+  console.error(`film: ${e.message}`);
+  process.exit(2);
+}
+if (args.help) {
+  console.log(`${usage('npm run film --', OWN)}\nand every render flag:\n${usage('', RENDER_FLAGS).split('\n').slice(1).join('\n')}`);
+  process.exit(0);
+}
+const passthrough = argv.filter((a) => !(a.replace(/^--/, '').split('=')[0] in OWN));
 
 function run(label, cmd, cmdArgs) {
   console.log(`\n== ${label}: ${cmd} ${cmdArgs.join(' ')}`);

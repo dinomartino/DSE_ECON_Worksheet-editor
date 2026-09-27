@@ -4,9 +4,9 @@
 //   node scripts/film/tools/determinism.mjs [--final] [--times=0.5,15.9,…] [--assets=fake]
 import { serve, FAKE_ASSETS } from './serve.mjs';
 import { launchOnGpu, openStage } from './chrome.mjs';
-import { parseArgs, plan } from '../render.mjs';
+import { parseArgs, plan, RENDER_FLAGS } from '../render.mjs';
 
-const args = parseArgs(process.argv.slice(2));
+const args = parseArgs(process.argv.slice(2), { ...RENDER_FLAGS, times: '<s,s,...>' });
 const P = plan(args);
 const times = String(args.times ?? '0.5,5.5,9.7,15.9,16.2,47.9,48.1,63.7,64.3,81.1,84.2,86.4,92.9')
   .split(',')
