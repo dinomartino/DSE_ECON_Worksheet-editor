@@ -48,6 +48,9 @@ off the bottom.** It is the first thing a fresh session reads — then
   `demo-media/film/`; `npm run film:doctor` checks it. **To change it, use the skill
   `.claude/skills/econ-film/`** (versioned; recipes, contracts, craft, orchestration,
   pitfalls). On-screen text is `COPY` in `scripts/film/timeline.mjs`. Final QA: ship, 9/10.
+  **9:16 Reels cut** (2026-09-28): same timeline and score, recomposed per scene;
+  `npm run film:9x16` → `econ-worksheet-film-9x16.mp4`; spec `scripts/film/FILM-9x16.md`.
+  QA: ship, 8.7/10; the 16:9 film stayed pixel-identical.
 - **Feature backlog** — `docs/IDEAS.md`, ranked from the 2026-09-24 competitor research in
   `docs/research/2026-09-competitive/`. Pick the next initiative from there.
 
