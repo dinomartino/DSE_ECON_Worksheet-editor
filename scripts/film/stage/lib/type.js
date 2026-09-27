@@ -44,6 +44,53 @@ export function zhWords(text) {
   return text.match(/[^，。、：；！？,.]+[，。、：；！？,.]*/g) ?? [text];
 }
 
+export const W = 1920;
+export const SAFE = 96; // title-safe side margin (FILM.md §4)
+export const FIT_FLOOR = 0.8; // never shrink below 80% of the design size
+const CJK = '\\u2e80-\\u9fff\\uf900-\\ufaff\\uff00-\\uffef';
+// Break units: one CJK character, a run of other non-space characters, or spaces.
+const TOKEN = new RegExp(`[${CJK}]|[^\\s${CJK}]+|\\s+`, 'gu');
+const NO_START = /^[。，、？！）」』：；.,?!)]/u; // never begins a line: rides with the unit before it
+
+/** Break units of `str`, line-start punctuation glued to the unit before it. */
+function tokens(str) {
+  const out = [];
+  for (const t of str.match(TOKEN) ?? []) {
+    if (out.length && NO_START.test(t) && !/\s$/.test(out.at(-1))) out[out.length - 1] += t;
+    else out.push(t);
+  }
+  return out;
+}
+
+let probeEl = null;
+/** Width in px of `str` set in `style` (the line's font, tracking and features). */
+function measure(str, style) {
+  if (!probeEl) {
+    probeEl = document.createElement('span');
+    Object.assign(probeEl.style, { position: 'absolute', left: '-99999px', top: '0', whiteSpace: 'pre', visibility: 'hidden' });
+    document.body.appendChild(probeEl);
+  }
+  Object.assign(probeEl.style, { font: style.font, letterSpacing: style.letterSpacing, fontFeatureSettings: style.fontFeatureSettings ?? 'normal' });
+  probeEl.textContent = str;
+  return probeEl.getBoundingClientRect().width;
+}
+
+/** Greedy word wrap of one paragraph (CJK per character) to `maxWidth`. */
+function wrap(str, style, maxWidth) {
+  if (measure(str, style) <= maxWidth) return [str];
+  const lines = [];
+  let cur = '';
+  for (const t of tokens(str)) {
+    const next = cur + t;
+    if (cur.trim() && !/^\s+$/.test(t) && measure(next.trimEnd(), style) > maxWidth) {
+      lines.push(cur.trimEnd());
+      cur = t;
+    } else cur = cur || !/^\s+$/.test(t) ? next : '';
+  }
+  if (cur.trim()) lines.push(cur.trimEnd());
+  return lines;
+}
+
 /**
  * One block of text: an English line (or lines, `\n`) and an optional Chinese line under
  * it. `x, y` place the block in design px; `align` is left|center|right and `valign`

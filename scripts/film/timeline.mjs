@@ -134,8 +134,13 @@ const HARMONY = [
 ];
 export const CHORDS = HARMONY.map((chord, i) => ({ bar: i, chord }));
 
-/** All on-screen text, English + Traditional Chinese (HK). */
+/**
+ * All on-screen text, English + Traditional Chinese (HK). Scenes place it and never split
+ * or rewrite it: "\n" is a forced line break, an array is separate blocks. lib/type.js
+ * wraps and shrinks a string that outgrows its block (FILM.md §4 Typography).
+ */
 export const COPY = {
+  window: 'Econ Worksheet', // app window title bars
   opening: {
     supply: 'Supply.',
     demand: 'Demand.',
@@ -145,18 +150,20 @@ export const COPY = {
     subZh: '為文憑試經濟科而設。',
   },
   write: {
-    headline: 'Type right on the page.',
+    headline: 'Type right\non the page.',
     headlineZh: '直接在頁面上輸入。',
-    sub: 'The preview is the editor. What you see is what prints.',
+    sub: 'The preview is the editor.\nWhat you see is what prints.',
     langs: ['English.', '中文。', 'Both.'],
   },
   diagrams: {
     word: 'Diagrams.',
-    headline: 'Drawn in seconds.',
+    curves: ['D', 'S'],
+    headline: 'Drawn\nin seconds.',
     headlineZh: '圖表，數秒完成。',
-    sub: 'Draw the curves. Shift for a tax. Shade the areas.',
+    subs: ['Draw the curves.', 'Shift for a tax.', 'Shade the areas.'],
     layers: 'Every line stays editable.',
     layersZh: '每一條線都可以再編輯。',
+    layerNames: ['Axes', 'Shading', 'Guides', 'Curves', 'Tax shift', 'Points'],
   },
   marks: {
     headline: 'Marks that add themselves up.',
@@ -172,11 +179,16 @@ export const COPY = {
     headline: 'A real Word document.',
     headlineZh: '真正的 Word 文件。',
     facts: ['Live numbering.', 'Real styles.', 'Fully editable.'],
+    // As the app names it: fileTitle() turns ':' into '-', docxFileName() adds (Student) (EN).
+    window: 'S5 Market Intervention- Diagrams (Student) (EN).docx',
+    styles: { title: 'Worksheet Title', stem: 'Question Stem', part: 'Sub-question' }, // as in word/styles.xml
   },
   everywhere: {
     chips: ['PDF', 'Answer key', 'Kahoot', 'Blooket', 'ZipGrade'],
-    headline: 'In your browser. On Mac. On Windows.',
-    headlineZh: '瀏覽器、Mac、Windows，隨處可用。',
+    lines: ['In your browser.', 'On Mac.', 'On Windows.'],
+    linesZh: '瀏覽器、Mac、Windows，隨處可用。',
+    export: 'Export your way.',
+    exportZh: '隨心匯出。',
   },
   end: {
     title: 'Econ Worksheet',
