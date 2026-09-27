@@ -133,6 +133,12 @@ the stage at render time from each clip's `events`, mapped through its placement
   0.12em, `quintIn`. Reading time on screen ≥ 1.0 s + 0.3 s per word.
 - Title-safe: 96 px side margins, 72 px top/bottom. Never set type over busy UI; use
   negative space or a blurred backdrop.
+- Copy: every on-screen string lives in `COPY` (timeline.mjs); `"\n"` forces a line
+  break, an array is separate blocks. Scenes never split or rewrite it.
+- Fit (`lib/type.js`): each block has a box, `maxWidth` (default: title-safe room at its
+  x) and `maxLines` (default: its lines as written; `zhMaxLines` 1). Longer copy wraps
+  (CJK per character, no line-start 。，、？！）」), then the block shrinks as one, Chinese
+  included, to 80%; past that it warns. Stacked blocks read `lines`/`scale` to reflow.
 
 ### Motion principles
 1. **Nothing is ever still.** Every shot carries a slow continuous drift (1–3% dolly or
