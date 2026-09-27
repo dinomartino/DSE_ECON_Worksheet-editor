@@ -231,7 +231,7 @@ const scene = {
     // its light) lifts out.
     const rv = seg(t, ...T.reveal);
     const revealR = 4.6 * (1 - Math.pow(1 - rv, 2.6));
-    const around = 0.3 * E.sineInOut(seg(t, ...T.dimApp)) + 0.7 * E.sineInOut(seg(t, ...T.appUp));
+    const around = 0.08 * E.sineInOut(seg(t, ...T.dimApp)) + 0.92 * E.sineInOut(seg(t, ...T.appUp));
     const spot = E.sineInOut(seg(t, ...T.spot));
     const out = E.sineInOut(seg(t, 10.0, 10.2));
     const recede = E.quintIn(seg(t, 10.0, 10.6));
