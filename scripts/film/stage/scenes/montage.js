@@ -7,13 +7,14 @@ import { MONTAGE_CUTS, sceneStart, sceneEnd } from '../../timeline.mjs';
 import { WORLDS } from '../lib/backdrop.js';
 import { softShadow } from './everywhere/shadow.js';
 import { docWindow, DOC } from './word/docWindow.js';
+import { pick, PORTRAIT } from '../lib/format.js';
 
 const START = sceneStart('montage'); // film seconds at the scene's t = 0
 const CUTS = MONTAGE_CUTS.map((c) => c - START);
 const END = sceneEnd('montage') - START;
 
 // crop = [x, y, w, h] in source px. Clip shots play `from` at `rate` clip s per film s.
-const SHOTS = [
+const LAND = [
   { id: 'typing', clip: 'type-mcq', from: 1.72, rate: 1, crop: [250, 560, 1100, 380], world: 'day' }, // ends above option B
   { id: 'start', still: 'start-screen', size: [2880, 1800], crop: [0, 0, 2880, 1800], world: 'day' },
   { id: 'zh', clip: 'language-toggle', from: 2.56, rate: 1, crop: [446, 458, 880, 532], world: 'day' },
@@ -26,13 +27,37 @@ const SHOTS = [
   // The finished diagram as it prints (no editor handles), on white: DWL, tax, E₀/E₁.
   { id: 'dwl', still: 'diagram-full', flatten: true, size: [2400, 2010], crop: [60, 300, 2100, 1350], world: 'night' },
 ];
+// 9:16 (FILM-9x16.md): the same shots re-framed to a tall crop of one clear subject.
+const TALL = {
+  typing: { crop: [180, 400, 1100, 1300] }, // the MCQ block being typed, down to Section B
+  start: { crop: [0, 0, 860, 1180] }, // "Start a worksheet, or pick up where you left off." and its list
+  zh: { crop: [380, 300, 940, 1120] }, // the Chinese page: 甲部 and three questions
+  curve: { crop: [360, 330, 1000, 1120] }, // the canvas's axes and the curve being drawn
+  teacher: { crop: [600, 440, 1060, 1260] }, // the teacher's copy: answers in red
+  cover: { crop: [100, 100, 2180, 2550], aim: [0, 0.08], zoom: 0.95 }, // the Paper 2 cover, title block first
+  docx: { aim: [0, 0.17], zoom: 0.82 }, // closer on the title and the diagram in the .docx
+  dwl: { crop: [200, 40, 1540, 1800] }, // the whole tax diagram, axes and labels included
+};
+const SHOTS = LAND.map((sh) => (PORTRAIT && TALL[sh.id] ? { ...sh, ...TALL[sh.id] } : sh));
 
 const FOV = 30;
 const DIST = 6; // camera distance at a shot's start
 const VIEW_H = 2 * DIST * Math.tan((FOV * Math.PI) / 360);
-const FIT = { w: 0.8 * VIEW_H * (16 / 9), h: 0.82 * VIEW_H }; // card box, world units
-// The last shot pushes into the deadweight-loss triangle (card uv, v up).
-const FOCUS = [0.456, 0.485];
+// Per format: the card box (world units), the last shot's focus on the deadweight-loss
+// triangle (card uv, v up), the .docx window's shape, a frame shift (portrait lifts each card
+// clear of the Reels caption) and the tilt: landscape yaws, portrait pitches as well.
+const M = pick({
+  landscape: {
+    fit: { w: 0.8 * VIEW_H * (16 / 9), h: 0.82 * VIEW_H }, focus: [0.456, 0.485],
+    doc: (w) => ({ width: w * 0.95 }), shift: [0, 0], yaw: 1, pitch: 0,
+  },
+  portrait: {
+    fit: { w: 0.9 * VIEW_H * (9 / 16), h: 0.66 * VIEW_H }, focus: [0.531, 0.469],
+    doc: (w) => ({ width: w, aspect: 0.8, pageFrac: 0.86, top: 0.07 }), shift: [0, 0.035], yaw: 0.7, pitch: 0.05,
+  },
+});
+const FIT = M.fit;
+const FOCUS = M.focus;
 
 /** A transparent still composited onto white (the window shader reads rgb only). */
 function onWhite(THREE, tex, ctx) {
@@ -65,7 +90,7 @@ const scene = {
       let card;
       if (sh.doc) {
         const map = await ctx.load.texture(DOC.texture);
-        const doc = docWindow(lib, map, { width: FIT.w * 0.95 });
+        const doc = docWindow(lib, map, M.doc(FIT.w));
         const { sheet, L } = doc;
         sheet.set({ lit: 1, base: 1, clip: [L.bottom - L.slot[1], 0.004, 1] });
         card = { group: doc.group, width: L.width, height: L.h, set: () => {} };
@@ -129,9 +154,10 @@ const scene = {
     const relax = E.sineOut(E.clamp(u));
     const g = card.group;
     g.position.set(0, 0, 0);
-    g.rotation.set(0.012 * side, side * (0.105 - 0.035 * relax), 0.006 * side);
+    g.rotation.set(0.012 * side + M.pitch * side * (1 - relax), M.yaw * side * (0.105 - 0.035 * relax), 0.006 * side);
 
-    let dist, target = [0, 0, 0], shift = [0, 0];
+    let dist, target = [0, 0, 0];
+    const shift = M.shift;
     if (!last) {
       const push = 0.5 * u + 0.5 * E.cubicOut(E.clamp(u));
       const aim = sh.aim ?? [0, 0];
@@ -145,7 +171,7 @@ const scene = {
       const ly = (FOCUS[1] - 0.5) * card.height;
       const aim = E.sineInOut(E.clamp(u));
       target = [lx * aim, ly * aim, 0];
-      g.rotation.y = side * 0.09 * (1 - 0.6 * aim);
+      g.rotation.y = M.yaw * side * 0.09 * (1 - 0.6 * aim);
     }
     const d = cam.drift(START + t, 40, { amp: 0.25, rate: 0.1, roll: 0.05, dolly: 0.002 });
     cam.orbit(camera, { target, dist: dist * d.dist, az: d.az, el: d.el, roll: d.roll, fov: FOV, shift });
