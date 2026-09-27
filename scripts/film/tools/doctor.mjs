@@ -222,9 +222,10 @@ async function textFit(page) {
       say('error', `${q(b)} at ${s.t} s: ${out.join('; ')}`);
     }
   }
-  const shrunk = [...blocks.values()].filter((b) => b.fits && b.scale < 1 - 1e-6).length;
+  const shrunk = [...blocks.values()].filter((b) => b.fits && b.scale < 1 - 1e-6);
   const hidden = [...blocks.values()].filter((b) => !b.shown.length).map(q);
-  if (!bad) say('ok', `${blocks.size - hidden.length} text blocks inside their boxes and title-safe${shrunk ? `; ${shrunk} shrunk to fit` : ''}`);
+  if (!bad) say('ok', `${blocks.size - hidden.length} text blocks inside their boxes and title-safe${shrunk.length ? `; ${shrunk.length} shrunk to fit` : ''}`);
+  if (shrunk.length) console.log(`        shrunk: ${shrunk.map((b) => `${q(b)} ${Math.round(b.scale * 100)}%`).join(', ')}`);
   if (hidden.length) console.log(`        never fully revealed, fit only: ${hidden.join(', ')}`);
 }
 

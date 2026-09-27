@@ -139,6 +139,8 @@ the stage at render time from each clip's `events`, mapped through its placement
   x) and `maxLines` (default: its lines as written; `zhMaxLines` 1). Longer copy wraps
   (CJK per character, no line-start 。，、？！）」), then the block shrinks as one, Chinese
   included, to 80%; past that it warns. Stacked blocks read `lines`/`scale` to reflow.
+  A scene whose layout has room for more lines than the copy uses says so (`maxLines`),
+  so a one-line rewrite can still wrap there.
 
 ### Motion principles
 1. **Nothing is ever still.** Every shot carries a slow continuous drift (1–3% dolly or

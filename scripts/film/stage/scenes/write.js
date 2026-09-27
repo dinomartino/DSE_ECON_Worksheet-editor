@@ -178,7 +178,7 @@ const scene = {
 
     const T_ = lib.type;
     // Half-width CJK punctuation (PingFang 'halt') on the head and 中文.
-    s.head = T_.headline(ctx.el, { en: C.headline, zh: C.headlineZh, x: 128, y: 468, align: 'left', size: 104, world: 'day', zhSize: 44, zhGap: 20, halt: true, maxWidth: BOX_W });
+    s.head = T_.headline(ctx.el, { en: C.headline, zh: C.headlineZh, x: 128, y: 468, align: 'left', size: 104, world: 'day', zhSize: 44, zhGap: 20, halt: true, maxWidth: BOX_W, maxLines: 2 });
     s.sub = T_.sub(ctx.el, { en: C.sub, x: 128, y: 736, align: 'left', size: 34, world: 'day', maxWidth: BOX_W });
     const L = { x: 128, align: 'left', size: 108, world: 'day', maxWidth: LANG_W };
     s.langs = [
