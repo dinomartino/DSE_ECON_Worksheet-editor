@@ -21,10 +21,10 @@ const TOGGLE = { x0: 512, x1: 800, y0: 16, y1: 96 };
 const TOGGLE_RATE = 1.5; // its clicks (clip 1.0, 2.5, 4.0) one second apart
 // type-mcq's options paste ~50 ms after the half-beat; start the clip early so they land on it.
 const CLIP_LEAD = 0.05;
-// The formatting toolbar (css px rect, shadow included) vanishes in one frame on Enter at
-// clip frames 199 and 272; a patch of the frame before eases it out over `fade` frames,
-// the way it eased in.
-const TOOLBAR = { x0: 16, x1: 1092, y0: 56, y1: 140, pops: [199, 272], fade: 8 };
+// The formatting toolbar (css px rect, shadow included) snaps in over ~4 clip frames on focus
+// (44, 217) and vanishes in one on Enter (199, 272). A patch of the frame before each change
+// eases it over [frame, frames]: the same ease in and out.
+const TOOLBAR = { x0: 16, x1: 1092, y0: 56, y1: 140, pops: [[44, 12], [199, 10], [217, 12], [272, 10]] };
 
 const out = cubicBezier(0.1, 0.72, 0.2, 1); // the drop: already fast at the cut, long settle
 const rush = cubicBezier(0.6, 0, 0.2, 1); // the push: from rest, fastest on the 24.0 whoosh
@@ -155,9 +155,9 @@ const scene = {
     const ct = Math.min(t + CLIP_LEAD, 7.999);
     s.win.set({ screen: s.clip.frameAt(ct) });
     let po = 0, pf = 0;
-    for (const F of TOOLBAR.pops) {
+    for (const [F, n] of TOOLBAR.pops) {
       const k = ct * 60 - (F - 0.5); // the screen shows frame F from k = 0
-      if (k >= -1 && k < TOOLBAR.fade) [po, pf] = [k < 0 ? 1 : 1 - E.sineInOut(k / TOOLBAR.fade), F - 1];
+      if (k >= -1 && k < n) [po, pf] = [k < 0 ? 1 : 1 - E.sineInOut(k / n), F - 1];
     }
     s.patch.set({ map: po > 0 ? s.clip.frameAt(pf / 60) : null, opacity: po });
     const b = bob(t);
