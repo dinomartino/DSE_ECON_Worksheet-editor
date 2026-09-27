@@ -184,6 +184,8 @@ export function text(parent, spec) {
   const enCount = words.length;
   fit.zhLines.forEach((line, i) => addLine(line, i ? { ...fit.zh, marginTop: '0px' } : fit.zh, true));
   parent.appendChild(root);
+  // Read by `npm run film:doctor` (film.text()).
+  root.fit = { en: p.en ?? '', zh: p.zh ?? '', maxWidth, maxLines, zhMaxLines, scale: fit.k, fits: fit.fits };
 
   const zhDelay = p.zhDelay ?? 0.12 + enCount * REVEAL.stagger;
   const stagger = p.stagger ?? REVEAL.stagger;

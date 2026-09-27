@@ -425,6 +425,47 @@ async function events() {
   return out.sort((a, b) => a.t - b.t);
 }
 
+// ---- doctor probes (tools/doctor.mjs) ----------------------------------------------------
+
+/** Every clip placement: scene, clip id, and its scene-time window. */
+async function placements() {
+  const out = [];
+  for (const info of TL.SCENES) {
+    const slot = await createSlot(info.id, { dry: true });
+    const win = TL.sceneWindow(info.id);
+    const start = TL.bar(info.from);
+    for (const p of slot.ctx.placements) {
+      const dur = Math.min(p.dur ?? Infinity, win.end - (start + p.at));
+      out.push({ scene: info.id, clip: p.name, at: p.at, from: p.from, rate: p.rate, dur });
+    }
+    disposeSlot(slot);
+  }
+  return out;
+}
+
+/** The text blocks on screen now, in design px: fit data, reveal, line widths and bounds. */
+function text() {
+  const k = W / DW;
+  const out = [];
+  for (const root of typeRoot.querySelectorAll('.tx')) {
+    if (!root.fit) continue;
+    // .i, not .w: a word's .w is padded to keep the rise and blur unclipped.
+    const words = [...root.querySelectorAll('.i')];
+    const shown = root.checkVisibility({ opacityProperty: true, visibilityProperty: true });
+    const revealed = shown && words.every((w) => w.style.opacity === '1');
+    const widths = [...root.querySelectorAll('.ln')].map((ln) => {
+      const ws = ln.querySelectorAll('.i');
+      const a = ws[0], b = ws[ws.length - 1];
+      return a ? b.offsetLeft + b.offsetWidth - a.offsetLeft : 0;
+    });
+    const r = words.map((w) => w.getBoundingClientRect()).reduce((u, b) => ({
+      l: Math.min(u.l, b.left), t: Math.min(u.t, b.top), r: Math.max(u.r, b.right), b: Math.max(u.b, b.bottom),
+    }), { l: Infinity, t: Infinity, r: -Infinity, b: -Infinity });
+    out.push({ ...root.fit, revealed, widths, box: { l: r.l / k, t: r.t / k, r: r.r / k, b: r.b / k } });
+  }
+  return out;
+}
+
 function gpu() {
   const gl = renderer.getContext();
   const ext = gl.getExtension('WEBGL_debug_renderer_info');
@@ -447,6 +488,8 @@ window.film = {
   size: { w: W, h: H, shutter: SHUTTER },
   seek,
   events,
+  placements,
+  text,
   gpu,
   errors: () => errors.slice(),
   scenesAt: (t) => sceneAt(t),

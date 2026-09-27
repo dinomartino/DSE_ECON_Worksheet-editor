@@ -104,7 +104,8 @@ const scene = {
     const { lib, scene, THREE } = ctx;
     const s = (ctx.state = {});
     s.clip = await ctx.load.clip('type-mcq', { cache: 10, prefetch: 3 });
-    ctx.placeClip('type-mcq', { at: -CLIP_LEAD, from: 0, rate: 1, dur: T.push[1] + CLIP_LEAD });
+    // The whole clip; its last frame holds through the push (update() clamps).
+    ctx.placeClip('type-mcq', { at: -CLIP_LEAD, from: 0, rate: 1, dur: s.clip.duration });
     s.win = lib.win.appWindow({ variant: 'mac', width: WW, shadow: false });
     scene.add(s.win.group);
     // A soft warm shadow on an imagined wall behind: it breathes out past the window's left
