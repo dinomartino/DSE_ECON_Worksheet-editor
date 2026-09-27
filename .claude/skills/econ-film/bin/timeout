@@ -1,0 +1,9 @@
+#!/usr/bin/perl
+# timeout SECS cmd... — kill the process group after SECS.
+my $secs = shift @ARGV;
+my $pid = fork();
+if ($pid == 0) { setpgrp(0,0); exec @ARGV or die "exec: $!"; }
+local $SIG{ALRM} = sub { kill 'TERM', -$pid; sleep 2; kill 'KILL', -$pid; print STDERR "timeout: killed after ${secs}s\n"; exit 124; };
+alarm $secs;
+waitpid($pid, 0);
+exit($? >> 8);
