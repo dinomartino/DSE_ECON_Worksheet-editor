@@ -39,7 +39,7 @@ const rush = cubicBezier(0.6, 0, 0.2, 1); // the push: from rest, fastest on the
 // Scene seconds (film − 16).
 const T = {
   head: 2.0, sub: 3.0, exit: 7.3,
-  push: [7.35, 8.4], swap: [8.15, 8.35], hold: [8.55, 9.3], pull: [9.2, 9.95], orbit: [9.5, 15.85],
+  push: [7.3, 8.35], swap: [8.15, 8.35], hold: [8.55, 9.3], pull: [9.2, 9.95], orbit: [9.5, 15.85],
   chip: [9.45, 9.85],
   en: 9.96, zh: 10.96, both: 11.96, langsSub: 12.7,
 };
