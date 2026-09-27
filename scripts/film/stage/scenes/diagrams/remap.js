@@ -1,12 +1,15 @@
 // Clip time remapping: a monotone cubic (Fritsch–Carlson) through [sceneT, clipT] keys, so
 // the playback rate changes smoothly and never runs backwards. Keys sit on the clip's own
-// events, which is how each gesture lands on a beat.
+// events, which is how each gesture lands on a beat. A key's optional third value pins the
+// rate there: two neighbouring keys pinned to 1 on a 1:1 secant play that stretch at
+// exactly 1× (one captured frame per film frame: no blending on a drag).
 
 /** Returns c(t): clip seconds at scene time t (holds the end rates linearly outside). */
 export function remap(keys) {
   const n = keys.length;
   const x = keys.map((k) => k[0]);
   const y = keys.map((k) => k[1]);
+  const pin = keys.map((k) => k[2]);
   const d = []; // secant slopes
   for (let i = 0; i < n - 1; i++) d.push((y[i + 1] - y[i]) / (x[i + 1] - x[i]));
   const m = new Array(n);
@@ -26,6 +29,7 @@ export function remap(keys) {
       m[i + 1] = k * b * d[i];
     }
   }
+  for (let i = 0; i < n; i++) if (pin[i] != null) m[i] = pin[i];
   const f = (t) => {
     if (t <= x[0]) return y[0] + m[0] * (t - x[0]);
     if (t >= x[n - 1]) return y[n - 1] + m[n - 1] * (t - x[n - 1]);
@@ -46,19 +50,38 @@ export function remap(keys) {
     }
     return (lo + hi) / 2;
   };
+  /** Playback rate at t (clip seconds per scene second). */
+  f.rate = (t, h = 1 / 480) => (f(t + h) - f(t - h)) / (2 * h);
   return f;
 }
 
 /**
- * Declares every clip event a remapped segment plays, at its exact scene time, so the
- * score's UI sounds follow the rate changes. `range` = [t0, t1] scene seconds shown.
+ * An edit of a clip: `map` (a remap, scene t → edit seconds) plays the clip with one stretch
+ * cut out, from frame `cut.a` to frame `cut.b`, dissolving over `cut.dur` scene seconds from
+ * `cut.at` (the scene time the edit reaches frame a). `clipAt(edit)` → clip seconds.
  */
-export function placeRemapped(ctx, clip, name, f, [t0, t1]) {
-  const c0 = f(t0), c1 = f(t1);
+export function edit(map, fps, cut = null) {
+  const skip = cut ? (cut.b - cut.a) / fps : 0;
+  const ca = cut ? cut.a / fps : Infinity;
+  return {
+    map, fps, cut, skip,
+    clipAt: (e) => (e < ca ? e : e + skip),
+    editAt: (c) => (c < ca ? c : c >= ca + skip ? c - skip : null), // null: cut out
+  };
+}
+
+/**
+ * Declares every clip event the edit plays, at its exact scene time, so the score's UI
+ * sounds follow the rate changes and skip the cut. `range` = [t0, t1] scene seconds shown.
+ */
+export function placeEdit(ctx, clip, name, ed, [t0, t1]) {
   const seen = new Set();
   for (const e of clip.events ?? []) {
-    if (e.t < c0 || e.t > c1 || seen.has(e.t)) continue;
+    const et = ed.editAt(e.t);
+    if (et == null || seen.has(e.t)) continue;
+    const at = ed.map.inverse(et);
+    if (at < t0 || at > t1) continue;
     seen.add(e.t);
-    ctx.placeClip(name, { at: f.inverse(e.t), from: e.t, rate: 1, dur: 0 });
+    ctx.placeClip(name, { at, from: e.t, rate: 1, dur: 0 });
   }
 }
