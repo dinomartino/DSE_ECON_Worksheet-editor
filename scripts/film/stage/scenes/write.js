@@ -14,6 +14,7 @@ import { framePatch } from './write/patch.js';
 
 const C = COPY.write;
 const WW = 3.2; // window width (world units) for the 1440×900 css px capture
+const WIN_SHADOW = 0.26;
 // The page inside the capture: sheet px → clip frame px (130% zoom, DPR 2 vs sheet DPR 3).
 const PAGE_IN_CLIP = { x: 84, y: 205, k: (2 * 1.3) / 3 };
 // The toolbar's EN / 中文 / EN+中 toggle in the language-toggle capture (frame px).
@@ -72,8 +73,10 @@ const scene = {
     ctx.placeClip('type-mcq', { at: -CLIP_LEAD, from: 0, rate: 1, dur: T.push[1] + CLIP_LEAD });
     s.win = lib.win.appWindow({ variant: 'mac', width: WW, shadow: false });
     scene.add(s.win.group);
-    s.shadow = lib.floor.contactShadow({ w: WW * 0.9, h: s.win.height * 0.86, radius: 0.1, blur: 0.3, color: '#3A342E', opacity: 0.2 });
-    s.shadow.position.set(0.04, -0.13, -0.38);
+    // A soft warm shadow on an imagined wall behind: it breathes out past the window's left
+    // edge as the camera looks from the left, so the window reads as floating.
+    s.shadow = lib.floor.contactShadow({ w: WW * 0.96, h: s.win.height * 0.92, radius: 0.12, blur: 0.22, color: '#3A342E', opacity: WIN_SHADOW });
+    s.shadow.position.set(0, -0.12, -0.25);
     s.win.group.add(s.shadow);
     s.css = (cx, cy) => [(cx / 1440 - 0.5) * WW, s.win.contentCenter.y + (0.5 - cy / 900) * s.win.screenHeight];
     const R = TOOLBAR;
@@ -182,7 +185,7 @@ const scene = {
       s.win.set({ opacity: wa });
       s.win.mesh.visible = wa > 0.001;
       s.shadow.visible = wa > 0.001;
-      s.shadow.material.opacity = 0.2 * wa;
+      s.shadow.material.opacity = WIN_SHADOW * wa;
 
       // Each step eases every layer property from one state to the next.
       let st = STATES[0];
