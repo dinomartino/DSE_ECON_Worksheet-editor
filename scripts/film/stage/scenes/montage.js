@@ -3,28 +3,28 @@
 // as in the scene it recalls), each a small push-in with alternating tilt. The last shot,
 // the finished tax diagram on white in the night, holds from 83.0 and accelerates into the
 // deadweight-loss triangle under the riser, ready for the hard cut to black on the 84.0 hit.
-import { MONTAGE_CUTS } from '../../timeline.mjs';
+import { MONTAGE_CUTS, sceneStart, sceneEnd } from '../../timeline.mjs';
 import { WORLDS } from '../lib/backdrop.js';
 import { softShadow } from './everywhere/shadow.js';
 import { docWindow, DOC } from './word/docWindow.js';
 
-const START = 80; // film seconds at the scene's t = 0
+const START = sceneStart('montage'); // film seconds at the scene's t = 0
 const CUTS = MONTAGE_CUTS.map((c) => c - START);
-const END = 4;
+const END = sceneEnd('montage') - START;
 
 // crop = [x, y, w, h] in source px. Clip shots play `from` at `rate` clip s per film s.
 const SHOTS = [
   { id: 'typing', clip: 'type-mcq', from: 1.72, rate: 1, crop: [250, 560, 1100, 380], world: 'day' }, // ends above option B
-  { id: 'start', still: 'stills/start-screen.png', size: [2880, 1800], crop: [0, 0, 2880, 1800], world: 'day' },
+  { id: 'start', still: 'start-screen', size: [2880, 1800], crop: [0, 0, 2880, 1800], world: 'day' },
   { id: 'zh', clip: 'language-toggle', from: 2.56, rate: 1, crop: [446, 458, 880, 532], world: 'day' },
   { id: 'curve', clip: 'draw-diagram', from: 2.93, rate: 1.24, crop: [324, 348, 1592, 1332], world: 'night' },
   { id: 'teacher', clip: 'teacher-toggle', from: 1.12, rate: 1, crop: [705, 606, 880, 456], world: 'day' },
   // The Paper 2 cover's title block, below its placeholder school name.
-  { id: 'cover', still: 'sheets/p2-cover.png', size: [2379, 3366], crop: [263, 740, 1060, 597], world: 'day' },
+  { id: 'cover', still: 'p2-cover', size: [2379, 3366], crop: [263, 740, 1060, 597], world: 'day' },
   // The window rises from the bottom edge: title bar, heading and the diagram in the .docx.
   { id: 'docx', doc: true, world: 'night', aim: [0, 0.075] },
   // The finished diagram as it prints (no editor handles), on white: DWL, tax, E₀/E₁.
-  { id: 'dwl', still: 'diagram/full.png', flatten: true, size: [2400, 2010], crop: [60, 300, 2100, 1350], world: 'night' },
+  { id: 'dwl', still: 'diagram-full', flatten: true, size: [2400, 2010], crop: [60, 300, 2100, 1350], world: 'night' },
 ];
 
 const FOV = 30;
@@ -147,7 +147,7 @@ const scene = {
       target = [lx * aim, ly * aim, 0];
       g.rotation.y = side * 0.09 * (1 - 0.6 * aim);
     }
-    const d = cam.drift(80 + t, 40, { amp: 0.25, rate: 0.1, roll: 0.05, dolly: 0.002 });
+    const d = cam.drift(START + t, 40, { amp: 0.25, rate: 0.1, roll: 0.05, dolly: 0.002 });
     cam.orbit(camera, { target, dist: dist * d.dist, az: d.az, el: d.el, roll: d.roll, fov: FOV, shift });
 
     // The world behind each card.
@@ -155,7 +155,7 @@ const scene = {
     ctx.backdrop.userData.set({ top: W.top, bottom: W.bottom, glow: W.glow, glowAmount: W.glowAmount, radius: W.radius, center: W.center });
     const night = sh.world === 'night';
     s.dust.mesh.visible = night;
-    s.dust.set({ time: 80 + t, focus: dist, bright: 0.4, fov: FOV, H: ctx.renderH });
+    s.dust.set({ time: START + t, focus: dist, bright: 0.4, fov: FOV, H: ctx.renderH });
     post.vignette = night ? 0.22 : 0.06;
     post.bloom = null;
     post.samples = last ? Math.round(6 + 18 * E.cubicIn(E.clamp(u))) : 8;

@@ -5,11 +5,12 @@
 // card clears and the ink turns light. Depth of field is per pane (each pane knows its own
 // depth), since the panes are transparent and one depth buffer cannot describe them.
 import * as THREE from 'three';
+import { COPY } from '../../../timeline.mjs';
 
 // Back to front.
 export const LAYERS = ['axes', 'areas', 'guides', 'curves', 'shift', 'points'];
 // Each pane's name, set small in its own plane (in a band that is clear on every layer).
-const NAMES = ['Axes', 'Shading', 'Guides', 'Curves', 'Tax shift', 'Points'];
+const NAMES = COPY.diagrams.layerNames;
 const LIT_INK = '#4AA3FF';
 export const ASPECT = 2400 / 2010;
 
@@ -126,8 +127,11 @@ function labelTexture(text) {
   c.width = 512;
   c.height = 128;
   const g = c.getContext('2d');
-  g.font = '600 56px -apple-system, "SF Pro Text", system-ui, sans-serif';
+  const font = (px) => `600 ${px}px -apple-system, "SF Pro Text", system-ui, sans-serif`;
+  g.font = font(56);
   g.letterSpacing = '0.5px';
+  const w = g.measureText(text).width;
+  if (w > 500) g.font = font(Math.max(0.8 * 56, (56 * 500) / w)); // fit the canvas, floor 80%
   g.fillStyle = '#000';
   g.textBaseline = 'middle';
   g.fillText(text, 6, 66);
@@ -141,7 +145,7 @@ export async function diagramStack(ctx, { width = 2 } = {}) {
   const height = width / ASPECT;
   const group = new THREE.Group();
   group.name = 'diagram-stack';
-  const maps = await Promise.all(LAYERS.map((n) => ctx.load.texture(`diagram/${n}.png`)));
+  const maps = await Promise.all(LAYERS.map((n) => ctx.load.texture(`layer-${n}`)));
 
   const shared = {
     uFocus: { value: 5 }, uAperture: { value: 0 }, uMaxBlur: { value: 8 },

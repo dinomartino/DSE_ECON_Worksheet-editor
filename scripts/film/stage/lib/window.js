@@ -3,6 +3,7 @@
 // frame, and a soft shadow. The screen is unlit so the app's white stays white.
 import * as THREE from 'three';
 import { contactShadow } from './floor.js';
+import { COPY } from '../../timeline.mjs';
 
 // Title bar heights in window px at a 1440 px wide window.
 const BAR = { mac: 40, windows: 34, browser: 84, none: 0 };
@@ -133,7 +134,7 @@ void main() {
  * 1440×900 captures). `screen` is a texture (still or clip frame) set per frame with
  * set({ screen }). `crop` = [u0, v0, du, dv] of the screen texture to show.
  */
-export function appWindow({ variant = 'mac', width = 3, aspect = 1440 / 900, screen = null, title = 'Econ Worksheet', shadow = true, shadowOpacity = 0.28, shadowBlur = 0.16, shadowColor = '#2A241E', border = '#000000' } = {}) {
+export function appWindow({ variant = 'mac', width = 3, aspect = 1440 / 900, screen = null, title = COPY.window, shadow = true, shadowOpacity = 0.28, shadowBlur = 0.16, shadowColor = '#2A241E', border = '#000000' } = {}) {
   const pxW = 1440;
   const barPx = BAR[variant] ?? 0;
   const screenH = width / aspect;

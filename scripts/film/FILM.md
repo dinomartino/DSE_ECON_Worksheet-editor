@@ -3,6 +3,7 @@
 The single source of truth for the Apple-style product film. Every agent building part
 of the film reads this whole file first. Where it is silent, use taste and keep to its
 principles; where your code must disagree with it, say so in your final report.
+To change the finished film, follow the `econ-film` skill (`.claude/skills/econ-film/`).
 
 ## 1. What we are making
 
@@ -57,12 +58,12 @@ clearly generic frame we draw (window chrome, a generic laptop).
 | 0–8 | 0:00–0:16 | `opening` | night | Black. A blue point breathes. A cream line sweeps up-right: **"Supply."** A second sweeps down-right, crossing it: **"Demand."** The point drops into the crossing with a soft glow: **"Equilibrium."** An L-axis draws; the warm tile extrudes behind the mark in 3D, a light sweep crosses it; **"Econ Worksheet"**; sub-line **"Worksheets for HKDSE Economics."** / **為文憑試經濟科而設。** Last beat of bar 7: a breath — near-silence, camera pushes into the blue dot until it fills frame. | Intro: pad swell, 3-note felt-piano motif on the three words (the sonic logo), sub pulse from bar 4, filtered pluck arp opening bars 4–8, riser bars 6–8, **silence on beat 4 of bar 7** |
 | 8–16 | 0:16–0:32 | `write` | day | **DROP** on bar 8: hard cut to the bright warm world. The app floats in 3D (tilted window, soft shadow on cream), camera arcing to front while the real clip plays: double-click on the page, type a question and its options. **"Type right on the page."** / 直接在頁面上輸入。 Bar 12: push into the page text → the page's English layer and Chinese layer separate in depth and merge back as the toolbar toggles EN → 中文 → EN+中: **"English. 中文. Both."** | Groove A: kick, clap on 2 & 4, 16th hats, bass, open pluck arp; from bar 12 an EP answers with the motif cell |
 | 16–24 | 0:32–0:48 | `diagrams` | night | Hard cut to black: two cream strokes sweep in (callback to the mark) and settle as D and S on axes: **"Diagrams."** Then the real canvas clip in a floating window over a glossy black floor: draw demand, supply, equilibrium, shift a copy for a tax, shade tax revenue and DWL — sped to the beat. **"Drawn in seconds."** / 圖表，數秒完成。 Bar 21–23: the finished diagram explodes into depth layers (axes, curves, shift, guides, areas, labels) and slowly orbits: **"Every line stays editable."** Bar 23–24: layers collapse and the diagram flies down onto a white page. | Hero section: groove continues + a bell lead melody; half-time drums on bar 16–17 ("Diagrams."), full from 17; bars 21–22 open up for the orbit (half-time kick + rim, no hats, bass down, bell and a wide pad carry it); a fill in bar 23 brings the band back |
-| 24–28 | 0:48–0:56 | `marks` | day | Continuity: we are on the white page the diagram landed on. Real clips: set Lines → dotted answer lines appear, "(4 marks)" appears; toolbar summary counts up. **"Marks that add themselves up."** / 分數自動合計。 Bar 26: Student → Teacher: answers turn red; a teacher sheet slides out from behind the student sheet in 3D. **"The teacher's copy. One click."** | Groove B (tresillo bass, EP stabs); the band stops after beat 2 of bar 27, into the peak |
+| 24–28 | 0:48–0:56 | `marks` | day | Continuity: we are on the white page the diagram landed on — two parts, (a) 4 marks and (b) 2, "(Total: 6 marks)" — the camera still creeping in across the cut. The editor rises under it, registered, and the print becomes the live page (real clip): (a) Marks → 6 and the page total counts up to 8 by itself; Lines → 6, dotted answer lines appear. **"Marks that add themselves up."** / 分數自動合計。 Bar 26: Student → Teacher: the marking schemes print in red; the printed pair rises and the teacher's copy slides out from behind the student's in 3D. **"The teacher's copy. One click."** | Groove B (tresillo bass, EP stabs); the band stops after beat 2 of bar 27, into the peak |
 | 28–32 | 0:56–1:04 | `papers` | day | Camera pulls back: the page is one of many. Real sheets fan out like a deck in 3D arcs with soft shadows and depth of field — Paper 1 cover, Paper 2 booklet cover, LQ pages with dotted answer space, versions A/B/C. **"From a quick quiz to a full mock paper."** / 由小測到模擬試卷。 Bar 31–32: the sheets gather into one stack; the lights go down. | Groove B peak (the EP plays the hero melody's second half), then drums thin out on bar 31 |
 | 32–36 | 1:04–1:12 | `word` | night | Breakdown bars 32–34: one sheet alone in darkness, a slow light sweep over it: **"A real Word document."** / 真正的 Word 文件。 Bar 34 **drop**: the sheet snaps into a document window showing the actual exported `.docx` page; three facts appear on beats: **"Live numbering."** **"Real styles."** **"Fully editable."** | Breakdown: drums out, piano + pad + riser; drop on bar 34 |
 | 36–40 | 1:12–1:20 | `everywhere` | day | Export targets pop in as glass chips on beats — **PDF · Answer key · Kahoot · Blooket · ZipGrade** — then three windows slide in depth, on beats: a browser window, a macOS window, a Windows window, all showing the app: **"In your browser. On Mac. On Windows."** | Final chorus: full energy, octave arp, open hats |
 | 40–42 | 1:20–1:24 | `montage` | mixed | Beat-cut recap, accelerating: 8 cuts on beats 1–6 then half-beats — typing, 中文, a curve dragged, shaded DWL, red answers, a cover page, the .docx, the start screen — each with a small push-in and alternating tilt. | Full, with a build into bar 42 |
-| 42–47 | 1:24–1:34 | `end` | night | **Hit** on bar 42: black, the 3D tile turns to face camera under a light sweep. **"Econ Worksheet"**. Then **"Less formatting. More teaching."** / 少排版，多教學。 Then a small line: **"Free. In your browser, on Mac and Windows."** Hold, fade to black by 1:34. | Final impact, sustained tonic chord, the 3-note motif resolves, long tail to silence at 1:34 |
+| 42–47 | 1:24–1:34 | `end` | night | **Hit** on bar 42: black, the 3D tile turns to face camera under a light sweep. **"Econ Worksheet"**. Then **"Less formatting. More teaching."** / 少排版，多教學。 Then a small line on the swell: **"Free. No account needed."** / 免費使用，無需註冊。 (no web address). Hold, fade to black by 1:34. | Final impact, sustained tonic chord, the 3-note motif resolves, long tail to silence at 1:34 |
 
 Total 47 bars = 94.0 s = 5640 frames.
 
@@ -133,6 +134,14 @@ the stage at render time from each clip's `events`, mapped through its placement
   0.12em, `quintIn`. Reading time on screen ≥ 1.0 s + 0.3 s per word.
 - Title-safe: 96 px side margins, 72 px top/bottom. Never set type over busy UI; use
   negative space or a blurred backdrop.
+- Copy: every on-screen string lives in `COPY` (timeline.mjs); `"\n"` forces a line
+  break, an array is separate blocks. Scenes never split or rewrite it.
+- Fit (`lib/type.js`): each block has a box, `maxWidth` (default: title-safe room at its
+  x) and `maxLines` (default: its lines as written; `zhMaxLines` 1). Longer copy wraps
+  (CJK per character, no line-start 。，、？！）」), then the block shrinks as one, Chinese
+  included, to 80%; past that it warns. Stacked blocks read `lines`/`scale` to reflow.
+  A scene whose layout has room for more lines than the copy uses says so (`maxLines`),
+  so a one-line rewrite can still wrap there.
 
 ### Motion principles
 1. **Nothing is ever still.** Every shot carries a slow continuous drift (1–3% dolly or
@@ -376,6 +385,12 @@ timeline and `events.json` it was built from; the report fails on a stale one. D
   forces), events, score (`score.mjs all`, verified), render, then poster, contact sheet
   and `demo-media/film/README.md`. `npm run film -- --preview` for a quick cut.
   `FILM_OUT=<dir>` moves every output (not the asset store) elsewhere, for parallel work.
+- `npm run film:doctor` (`tools/doctor.mjs`, ~40 s) exits 1 on errors: scenes tiling
+  0..DURATION, cues sorted/in range/unique; every registry asset present; every
+  `placeClip` window inside its clip; each text block, at the middle of its fully revealed
+  span, inside its box and title-safe (and not overflowing at the 80% floor); the GPU. It
+  warns on a stale score and on assets captured before a later `src/` commit
+  (`manifest.json` stamps each asset's `appCommit`). Every script rejects unknown flags.
 
 ## 9. Outputs (`demo-media/film/`, gitignored)
 `econ-worksheet-film.mp4`, `econ-worksheet-film-preview.mp4`, `poster.jpg` (frame at

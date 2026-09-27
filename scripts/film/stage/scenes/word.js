@@ -7,16 +7,18 @@
 // flashes white just before the 68.0 drop and a document window snaps shut around it on
 // the drop. Each fact lands on its tick with its proof on the page and a small push-in:
 // the list numbers light up, the paragraphs show their style names, a caret starts blinking.
-import { COPY, CUES } from '../../timeline.mjs';
+import { COPY, cueAt, sceneStart } from '../../timeline.mjs';
 import { cubicBezier } from '../lib/ease.js';
 import { docWindow, DOC } from './word/docWindow.js';
 import { styleTag } from './word/styleTag.js';
 
 const C = COPY.word;
-const PRINTED = 'sheets/diagram-question.png'; // papers' top sheet: the cut frame matches it
-const START = 64; // film seconds at t = 0
-// Each fact lands on its own tick in CUES, so a retimed tick moves its fact and proof with it.
-const FACTS_T = C.facts.map((en, i) => (CUES.find((c) => c.kind === 'tick' && c.note === en)?.t ?? 69 + i) - START);
+const PRINTED = 'question-done'; // papers' top sheet: the cut frame matches it
+const START = sceneStart('word'); // film seconds at t = 0
+const at = (id) => cueAt(id) - START;
+const DROP = at('word.drop'); // the window snaps round the page on the drop
+// Each fact lands on its own tick (word.fact1…3), so a retimed tick moves its fact and proof with it.
+const FACTS_T = C.facts.map((_, i) => at(`word.fact${i + 1}`));
 
 // Scene seconds (film − 64).
 const T = {
@@ -27,10 +29,10 @@ const T = {
   sweep: [0.3, 3.2],
   headline: 0.6,
   headlineOut: 2.9,
-  lit: [2.6, 3.85],
-  wash: [3.78, 3.9, 3.91, 4.05], // a white flash peaking just before the drop
-  move: [3.58, 4.35],
-  snap: 3.9875, // after the 67.983 frame's shutter: the window first shows on 68.0
+  lit: [DROP - 1.4, DROP - 0.15],
+  wash: [DROP - 0.22, DROP - 0.1, DROP - 0.09, DROP + 0.05], // a white flash peaking just before the drop
+  move: [DROP - 0.42, DROP + 0.35],
+  snap: DROP - 0.0125, // after the 67.983 frame's shutter: the window first shows on 68.0
   facts: FACTS_T,
 };
 
@@ -46,7 +48,7 @@ const SHEET0 = { pos: [0.1, 0.35, 0.3], rot: [-14 * DEG, AZ0 * DEG - YAW, 0] };
 const ROOM0 = { top: [11, 9, 7], bottom: [3, 2, 2] };
 const DIM = 0.0022; // linear: the sheet at display 7/255, as papers leaves it
 const FACT_X = 1330;
-const FACT_Y = [452, 540, 628];
+const FACT = { y: 540, size: 74, step: 88 }; // the list centred on y, one-line facts step px apart
 const PUSH = 0.02; // camera push-in per fact
 const rush = cubicBezier(0.5, 0, 0.18, 1); // from rest, fast through the middle, long landing
 const punch = cubicBezier(0.3, 0, 0.1, 1); // a push that peaks just after its tick and lands long
@@ -95,7 +97,15 @@ const scene = {
 
     const T_ = lib.type;
     s.headline = T_.headline(ctx.el, { en: C.headline, zh: C.headlineZh, y: 900, size: 104, world: 'night' });
-    s.facts = C.facts.map((en, i) => T_.headline(ctx.el, { en, x: FACT_X, y: FACT_Y[i], size: 74, align: 'left', world: 'night' }));
+    s.facts = C.facts.map((en) => T_.headline(ctx.el, { en, x: FACT_X, size: FACT.size, align: 'left', world: 'night', maxLines: 2 }));
+    // Stack them: a fact that wraps pushes the rest down, the list stays centred.
+    const lineH = FACT.size * 1.04, gap = FACT.step - lineH;
+    const hs = s.facts.map((f) => f.lines * lineH * f.scale);
+    let y = FACT.y - (hs.reduce((a, b) => a + b, 0) + gap * (hs.length - 1)) / 2;
+    s.facts.forEach((f, i) => {
+      f.place({ y: y + hs[i] / 2 });
+      y += hs[i] + gap;
+    });
   },
 
   update(t, ctx) {
@@ -176,7 +186,7 @@ const scene = {
     });
 
     // --- light, floor, dust, post --------------------------------------------------------
-    const since = Math.max(0, t - 4.0);
+    const since = Math.max(0, t - DROP);
     const hit = (1 - Math.exp(-since / 0.04)) * Math.exp(-since / 0.55);
     // The room papers leaves (a warm gradient) fades out as the night glow comes up.
     ctx.backdrop.userData.set({

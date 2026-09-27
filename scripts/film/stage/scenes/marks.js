@@ -4,23 +4,27 @@
 // becomes 8 by itself; Lines → 6 on 51.0; Teacher on the 52.0 tick prints the marking
 // schemes in red. The window drops away, then the printed pair rises in front, the teacher's
 // copy slides out from behind it (54.5), and a slow push into its scheme hands over to papers.
-import { COPY } from '../../timeline.mjs';
+import { COPY, cueAt, sceneStart } from '../../timeline.mjs';
 import { cubicBezier } from '../lib/ease.js';
-import { haze, stop, mixPose, withDrift, applyPose } from './marks/kit.js';
+import { haze, stop, mixPose, withDrift, applyPose, handoff } from './marks/kit.js';
 import { S_POS, S_ROT, tPose, holdCam, hazeAt, HAZE_BAND, dofAt, loadSheets, SHEET, PAIR } from './papers/deck.js';
 
 const C = COPY.marks;
-const F0T = 48; // film time of t = 0
-const CLIP = '../extra/marks/clips/marks-total'; // capture/extra-marks.mjs; clip time = scene time
-const START_SHEET = 'extra/marks/sheets/diagram-question-start.png'; // the clip's frame 0, printed
+const F0T = sceneStart('marks'); // film time of t = 0
+const CLIP = 'marks-total'; // capture/extra-marks.mjs
+const START_SHEET = 'question-start'; // the clip's frame 0, printed
+// The clip's own edits (clip s): Marks shows 6 on 2.0, the lines on 3.0, Teacher on 4.0. It is
+// placed so its Teacher click lands on the marks.teacher cue (clip time = scene time today).
+const EDITS = { marks: 2.0, lines: 3.0, teacher: 4.0 };
+const CLIP_AT = cueAt('marks.teacher') - F0T - EDITS.teacher;
 
-// Beat map (scene seconds). The clip: Marks shows 6 on 2.0, the lines on 3.0, Teacher 4.0.
+// Beat map (scene seconds).
 const T = {
   slide: [0.05, 0.95], // the window rises under the printed page, registered by 48.95
   toEdit: [0.25, 1.75], // camera onto the page's marks and the Marks fields
   fade: [1.3, 1.55], // print → live, once the frame shows only page the window covers
   creep: [1.2, 3.4], // a slow push while the total changes
-  toTeacher: [3.0, 4.0], // out to the Teacher toggle and the page, with the pointer
+  toTeacher: [CLIP_AT + EDITS.teacher - 1, CLIP_AT + EDITS.teacher], // out to the Teacher toggle and the page, with the pointer
   push: [3.7, 5.2], // a slow push toward the red scheme
   winOut: [4.8, 5.3], // the window drops away, down and back…
   back: [4.85, 6.1], // …as the camera pulls back to the pair…
@@ -45,7 +49,7 @@ const wpt = (fx, fy) => [W_POS[0] + (fx - 1440) / FPX, W_POS[1] + SCREEN_TOP - f
 
 // Camera stops (frame px of the clip): diagrams' last frame; the page's marks column and
 // total beside the inspector's Marks fields; the Teacher toggle over the page's part (a).
-const F0 = { ...stop([0.0006, 0.275, 0], 1108), az: 0.3 };
+const F0 = { ...stop([0.0006, 0.275, 0], 1109, 960, 540.55), az: 0.3 }; // measured to 0.1 px on the cut
 const F2 = stop(wpt(2080, 600), 1900, 960, 330, { az: 2, el: 1 });
 const F3 = stop(wpt(1115, 425), 1150, 960, 322, { az: -1, el: 1 });
 const F3b = stop(wpt(1080, 560), 1185, 960, 420, { az: -2, el: 1 });
@@ -75,7 +79,7 @@ const scene = {
     [s.S, s.T] = await loadSheets(ctx, [PAIR.student, PAIR.teacher]);
     s.haze = haze(ctx);
 
-    ctx.placeClip(CLIP, { at: 0, from: 0, dur: T.winOut[1] });
+    ctx.placeClip(CLIP, { at: CLIP_AT, from: 0, dur: T.winOut[1] - CLIP_AT });
 
     const T_ = lib.type;
     s.h1 = T_.headline(ctx.el, { en: C.headline, zh: C.headlineZh, y: 904, size: 104, zhSize: 44, world: 'day' });
@@ -91,7 +95,8 @@ const scene = {
     // ---- camera: each move starts before the last one lands --------------------------------
     const f2 = scaleDist(F2, 1 - 0.03 * E.sineInOut(E.seg(t, ...T.creep)));
     const f3 = mixPose(F3, F3b, E.sineInOut(E.seg(t, ...T.push)));
-    let p = mixPose(F0, f2, E.sineInOut(E.seg(t, ...T.toEdit)));
+    // F0 keeps diagrams' landing dolly going, so the camera never rests across the cut.
+    let p = mixPose(scaleDist(F0, handoff(lib, f)), f2, E.sineInOut(E.seg(t, ...T.toEdit)));
     p = mixPose(p, f3, E.sineInOut(E.seg(t, ...T.toTeacher)));
     // Drift: calm at the handoff (diagrams' own drift is nearly spent), fuller after.
     const early = withDrift(p, lib.camera.drift(f, 24, { amp: 0.4, rate: 0.07, roll: 0.06 }), E.smoothstep(0, 1.2, t));
@@ -108,7 +113,7 @@ const scene = {
     s.win.group.visible = t > T.slide[0] && out < 1;
     s.win.group.position.set(W_POS[0], W_POS[1] - 0.9 * up - 1.7 * out, W_POS[2] - 0.9 * out);
     s.win.group.rotation.set(-0.3 * out, 0, 0);
-    if (s.win.group.visible) s.win.set({ screen: s.clip.frameAt(Math.max(0, t)) });
+    if (s.win.group.visible) s.win.set({ screen: s.clip.frameAt(Math.max(0, t - CLIP_AT)) });
 
     // ---- the printed pair rises in front -------------------------------------------------------
     const r = rise(E.seg(t, ...T.rise));
@@ -138,8 +143,8 @@ const scene = {
 
   // The total changing and the lines landing; the window dropping away as the pair comes up.
   events: [
-    { t: 2.0, kind: 'tick', strength: 0.4 },
-    { t: 3.0, kind: 'tick', strength: 0.4 },
+    { t: CLIP_AT + EDITS.marks, kind: 'tick', strength: 0.4 },
+    { t: CLIP_AT + EDITS.lines, kind: 'tick', strength: 0.4 },
     { t: 5.15, kind: 'whoosh', strength: 0.4 },
   ],
 };

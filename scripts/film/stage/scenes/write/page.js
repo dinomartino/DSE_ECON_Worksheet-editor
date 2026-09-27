@@ -142,7 +142,7 @@ const LAYERS = ['biEn', 'biZh', 'en', 'zh'];
  */
 export async function layeredPage(ctx, { width = 2, shadowColor = '#3A342E', paperShadow = 0.16 } = {}) {
   const { lib } = ctx;
-  const [tBi, tEn, tZh] = await Promise.all(['bi', 'en', 'zh'].map((n) => ctx.load.texture(`sheets/${n}.png`)));
+  const [tBi, tEn, tZh] = await Promise.all(['sheet-bi', 'sheet-en', 'sheet-zh'].map((id) => ctx.load.texture(id)));
   const bi = pixels(tBi), en = pixels(tEn), zh = pixels(tZh);
   const S = analyse(bi, en, zh);
   const W = bi.w, H = bi.h;

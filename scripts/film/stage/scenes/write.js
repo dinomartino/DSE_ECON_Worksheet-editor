@@ -7,7 +7,7 @@
 // toward the lens and re-seats on 25.0; one pull out wide. The real toolbar toggle clicks
 // once a bar, 26.0 / 28.0 / 30.0, each with its headline word; the page answers on the
 // click frame, as the app does (never two layouts at once), with a small push-in each time.
-import { COPY } from '../../timeline.mjs';
+import { COPY, cueAt, sceneStart } from '../../timeline.mjs';
 import { cubicBezier } from '../lib/ease.js';
 import { FONT_ZH } from '../lib/type.js';
 import { layeredPage } from './write/page.js';
@@ -15,6 +15,9 @@ import { framePatch } from './write/patch.js';
 
 const C = COPY.write;
 const WW = 3.2; // window width (world units) for the 1440×900 css px capture
+// Type boxes (design px from x = 128) that clear the window: beside the page, then the toggles.
+const BOX_W = 600;
+const LANG_W = 440;
 const WIN_SHADOW = 0.5;
 // The page inside the capture: sheet px → clip frame px (130% zoom, DPR 2 vs sheet DPR 3).
 const PAGE_IN_CLIP = { x: 84, y: 205, k: (2 * 1.3) / 3 };
@@ -39,15 +42,18 @@ const OUT0 = 0.72 / 0.1;
 const rush = cubicBezier(0.6, 0, 0.2, 1); // the push: from rest, fastest on the 24.0 whoosh
 const nudge = cubicBezier(0.3, 0, 0.15, 1); // the push-in on each reflow: from rest
 
-// Scene seconds (film − 16).
-const T = {
-  drop: 2.3, head: 2.0, sub: 3.0, exit: 7.3,
-  push: [7.3, 8.35], swap: [8.15, 8.35], close: [8.35, 9.0], pull: [8.95, 9.8], orbit: [9.4, 15.85],
-  lift: [8.32, 8.68], seat: [8.68, 9.0], // the Chinese lifts toward the lens, re-seats on 25.0
-  chip: [9.35, 9.75],
-  en: 9.96, zh: 11.96, both: 13.96,
-};
+// Scene seconds (film − 16). The push into the page hangs off its whoosh cue (PUSH_AT); the
+// language toggle's clicks, one per bar, come from its clip placement.
+const PUSH_AT = cueAt('write.push') - sceneStart('write');
 const CLICKS = [10.0, 12.0, 14.0]; // EN, 中文, EN+中: one per bar
+const T = {
+  drop: 2.3, head: 2.0, sub: 3.0, exit: PUSH_AT - 0.7,
+  push: [PUSH_AT - 0.7, PUSH_AT + 0.35], swap: [PUSH_AT + 0.15, PUSH_AT + 0.35], close: [PUSH_AT + 0.35, PUSH_AT + 1.0],
+  pull: [PUSH_AT + 0.95, PUSH_AT + 1.8], orbit: [9.4, 15.85],
+  lift: [PUSH_AT + 0.32, PUSH_AT + 0.68], seat: [PUSH_AT + 0.68, PUSH_AT + 1.0], // the Chinese lifts toward the lens, re-seats on 25.0
+  chip: [CLICKS[0] - 0.65, CLICKS[0] - 0.25],
+  en: CLICKS[0] - 0.04, zh: CLICKS[1] - 0.04, both: CLICKS[2] - 0.04,
+};
 // The page answers half a frame before the click frame, so no frame (nor any motion-blur
 // sub-frame of it) holds two layouts. The new layout settles from just above the paper.
 const SWAP = 1 / 120;
@@ -98,7 +104,8 @@ const scene = {
     const { lib, scene, THREE } = ctx;
     const s = (ctx.state = {});
     s.clip = await ctx.load.clip('type-mcq', { cache: 10, prefetch: 3 });
-    ctx.placeClip('type-mcq', { at: -CLIP_LEAD, from: 0, rate: 1, dur: T.push[1] + CLIP_LEAD });
+    // The whole clip; its last frame holds through the push (update() clamps).
+    ctx.placeClip('type-mcq', { at: -CLIP_LEAD, from: 0, rate: 1, dur: s.clip.duration });
     s.win = lib.win.appWindow({ variant: 'mac', width: WW, shadow: false });
     scene.add(s.win.group);
     // A soft warm shadow on an imagined wall behind: it breathes out past the window's left
@@ -170,19 +177,15 @@ const scene = {
     }
 
     const T_ = lib.type;
-    s.head = T_.headline(ctx.el, { en: 'Type right\non the page.', zh: C.headlineZh, x: 128, y: 468, align: 'left', size: 104, world: 'day', zhSize: 44, zhGap: 20 });
-    s.sub = T_.sub(ctx.el, { en: 'The preview is the editor.\nWhat you see is what prints.', x: 128, y: 736, align: 'left', size: 34, world: 'day' });
-    const L = { x: 128, align: 'left', size: 108, world: 'day' };
+    // Half-width CJK punctuation (PingFang 'halt') on the head and 中文.
+    s.head = T_.headline(ctx.el, { en: C.headline, zh: C.headlineZh, x: 128, y: 468, align: 'left', size: 104, world: 'day', zhSize: 44, zhGap: 20, halt: true, maxWidth: BOX_W, maxLines: 2 });
+    s.sub = T_.sub(ctx.el, { en: C.sub, x: 128, y: 736, align: 'left', size: 34, world: 'day', maxWidth: BOX_W });
+    const L = { x: 128, align: 'left', size: 108, world: 'day', maxWidth: LANG_W };
     s.langs = [
       T_.headline(ctx.el, { ...L, en: C.langs[0], y: 388 }),
-      T_.headline(ctx.el, { ...L, en: C.langs[1], y: 524, font: FONT_ZH, tracking: 0.02 }),
+      T_.headline(ctx.el, { ...L, en: C.langs[1], y: 524, font: FONT_ZH, tracking: 0.02, halt: true, kernStop: true }),
       T_.headline(ctx.el, { ...L, en: C.langs[2], y: 660 }),
     ];
-    // Half-width CJK punctuation (PingFang 'halt'; on the lines, as their `font` shorthand
-    // resets it), and the centred HK 。 kerned in: no hole after 中文 beside "English.".
-    for (const b of [s.langs[1], s.head]) for (const ln of b.el.children) ln.style.fontFeatureSettings = '"halt"';
-    const zh = s.langs[1].words.at(-1).el;
-    zh.innerHTML = zh.textContent.replace(/。$/, '<span style="margin-left:-0.08em">。</span>');
   },
 
   update(t, ctx) {
@@ -257,7 +260,7 @@ const scene = {
       s.v.set(s.stem[0], s.stem[1] + b, 0);
       post.dof = { focus: camera.position.distanceTo(s.v), aperture: 110 * dofK * (ctx.renderH / 1080), maxBlur: 6 * (ctx.renderH / 1080) };
     } else post.dof = null;
-    s.dust.set({ time: 16 + t, focus: P.d, bright: 0.4, fov: 30, H: ctx.renderH });
+    s.dust.set({ time: ctx.start + t, focus: P.d, bright: 0.4, fov: 30, H: ctx.renderH });
 
     // ---- type ------------------------------------------------------------------------
     s.head.set(t, T.head, T.exit);

@@ -44,11 +44,64 @@ export function zhWords(text) {
   return text.match(/[^，。、：；！？,.]+[，。、：；！？,.]*/g) ?? [text];
 }
 
+export const W = 1920;
+export const SAFE = 96; // title-safe side margin (FILM.md §4)
+export const FIT_FLOOR = 0.8; // never shrink below 80% of the design size
+const CJK = '\\u2e80-\\u9fff\\uf900-\\ufaff\\uff00-\\uffef';
+// Break units: one CJK character, a run of other non-space characters, or spaces.
+const TOKEN = new RegExp(`[${CJK}]|[^\\s${CJK}]+|\\s+`, 'gu');
+const NO_START = /^[。，、？！）」』：；.,?!)]/u; // never begins a line: rides with the unit before it
+
+/** Break units of `str`, line-start punctuation glued to the unit before it. */
+function tokens(str) {
+  const out = [];
+  for (const t of str.match(TOKEN) ?? []) {
+    if (out.length && NO_START.test(t) && !/\s$/.test(out.at(-1))) out[out.length - 1] += t;
+    else out.push(t);
+  }
+  return out;
+}
+
+let probeEl = null;
+/** Width in px of `str` set in `style` (the line's font, tracking and features). */
+function measure(str, style) {
+  if (!probeEl) {
+    probeEl = document.createElement('span');
+    Object.assign(probeEl.style, { position: 'absolute', left: '-99999px', top: '0', whiteSpace: 'pre', visibility: 'hidden' });
+    document.body.appendChild(probeEl);
+  }
+  Object.assign(probeEl.style, { font: style.font, letterSpacing: style.letterSpacing, fontFeatureSettings: style.fontFeatureSettings ?? 'normal' });
+  probeEl.textContent = str;
+  return probeEl.getBoundingClientRect().width;
+}
+
+/** Greedy word wrap of one paragraph (CJK per character) to `maxWidth`. */
+function wrap(str, style, maxWidth) {
+  if (measure(str, style) <= maxWidth) return [str];
+  const lines = [];
+  let cur = '';
+  for (const t of tokens(str)) {
+    const next = cur + t;
+    if (cur.trim() && !/^\s+$/.test(t) && measure(next.trimEnd(), style) > maxWidth) {
+      lines.push(cur.trimEnd());
+      cur = t;
+    } else cur = cur || !/^\s+$/.test(t) ? next : '';
+  }
+  if (cur.trim()) lines.push(cur.trimEnd());
+  return lines;
+}
+
 /**
  * One block of text: an English line (or lines, `\n`) and an optional Chinese line under
  * it. `x, y` place the block in design px; `align` is left|center|right and `valign`
  * top|middle|bottom of the whole block. `gradient` is the index of an EN word to fill with
  * the accent gradient (FILM.md allows it twice in the film).
+ *
+ * The layout box: `maxWidth` (default: the frame's title-safe room at x for that align)
+ * and `maxLines` (default: the "\n" lines as written), `zhMaxLines` (default 1). Longer
+ * copy wraps at spaces (CJK between characters, never before 。，、？！）」), then the whole
+ * block, Chinese included, shrinks to FIT_FLOOR. `halt` sets PingFang's half-width
+ * punctuation; `kernStop` pulls a trailing 。 in. The block reports `lines` and `scale`.
  */
 export function text(parent, spec) {
   injectStyle();
@@ -79,6 +132,14 @@ export function text(parent, spec) {
       inner.className = 'i';
       if (!isZh && p.gradient === words.length) inner.classList.add('g');
       inner.textContent = w;
+      if (p.kernStop && w.endsWith('。')) {
+        // The centred HK 。 kerned in, so it leaves no hole beside a Latin line.
+        const stop = document.createElement('span');
+        stop.style.marginLeft = '-0.08em';
+        stop.textContent = '。';
+        inner.textContent = w.slice(0, -1);
+        inner.appendChild(stop);
+      }
       outer.appendChild(inner);
       line.appendChild(outer);
       if (!isZh && i < parts.length - 1) line.appendChild(document.createTextNode(' '));
@@ -88,24 +149,43 @@ export function text(parent, spec) {
     return line;
   };
 
-  const enStyle = {
-    font: `${p.weight} ${p.size}px/${p.lh} ${p.font}`,
-    letterSpacing: `${p.tracking}em`,
-    color,
-  };
-  for (const line of String(p.en ?? '').split('\n')) if (line) addLine(line, enStyle, false);
-  const enCount = words.length;
-  if (p.zh) {
-    const zhSize = p.zhSize ?? Math.round(p.size * (p.kind === 'headline' || !p.kind ? 0.42 : 0.9));
-    addLine(p.zh, {
+  // Fit (FILM.md §4): the largest scale in [FIT_FLOOR, 1] at which every paragraph, wrapped
+  // to maxWidth, fits in maxLines (EN) and zhMaxLines; a block that fits is set as written.
+  const x = p.x ?? 960;
+  const room = { left: W - SAFE - x, right: x - SAFE, center: 2 * Math.min(x, W - x) - 2 * SAFE }[p.align ?? 'center'];
+  const maxWidth = p.maxWidth ?? room;
+  const paras = String(p.en ?? '').split('\n').filter(Boolean);
+  const maxLines = p.maxLines ?? paras.length;
+  const zhMaxLines = p.zhMaxLines ?? 1;
+  const zhBase = p.zhSize ?? Math.round(p.size * (p.kind === 'headline' || !p.kind ? 0.42 : 0.9));
+  const feature = p.halt ? { fontFeatureSettings: '"halt"' } : {};
+  const layout = (k) => {
+    const zhSize = zhBase * k;
+    const en = { font: `${p.weight} ${p.size * k}px/${p.lh} ${p.font}`, letterSpacing: `${p.tracking}em`, ...feature, color };
+    const zh = {
       font: `${p.zhWeight ?? 500} ${zhSize}px/1.3 ${FONT_ZH}`,
       letterSpacing: '0.02em',
+      ...feature,
       color: p.zhColor ?? color,
       opacity: p.zhOpacity ?? (p.kind === 'headline' || !p.kind ? 0.7 : 1),
-      marginTop: `${p.zhGap ?? Math.round(zhSize * 0.55)}px`,
-    }, true);
-  }
+      marginTop: `${p.zhGap != null ? p.zhGap * k : Math.round(zhSize * 0.55)}px`,
+    };
+    const enLines = paras.flatMap((para) => wrap(para, en, maxWidth));
+    const zhLines = p.zh ? wrap(p.zh, zh, maxWidth) : [];
+    const fits = enLines.length <= maxLines && zhLines.length <= zhMaxLines &&
+      [...enLines.map((l) => measure(l, en)), ...zhLines.map((l) => measure(l, zh))].every((w) => w <= maxWidth + 0.5);
+    return { k, en, zh, enLines, zhLines, fits };
+  };
+  let fit = layout(1);
+  for (let k = 0.98; !fit.fits && k >= FIT_FLOOR - 1e-9; k -= 0.02) fit = layout(Math.max(k, FIT_FLOOR));
+  if (!fit.fits) console.warn(`type: "${p.en || p.zh}" overflows ${Math.round(maxWidth)} px × ${maxLines} lines at ${FIT_FLOOR * 100}%`);
+
+  for (const line of fit.enLines) addLine(line, fit.en, false);
+  const enCount = words.length;
+  fit.zhLines.forEach((line, i) => addLine(line, i ? { ...fit.zh, marginTop: '0px' } : fit.zh, true));
   parent.appendChild(root);
+  // Read by `npm run film:doctor` (film.text()).
+  root.fit = { en: p.en ?? '', zh: p.zh ?? '', maxWidth, maxLines, zhMaxLines, scale: fit.k, fits: fit.fits };
 
   const zhDelay = p.zhDelay ?? 0.12 + enCount * REVEAL.stagger;
   const stagger = p.stagger ?? REVEAL.stagger;
@@ -116,6 +196,8 @@ export function text(parent, spec) {
   return {
     el: root,
     words,
+    lines: fit.enLines.length,
+    scale: fit.k,
     /** Moves the block (design px) and scales it about its centre. */
     place({ x, y, scale = 1 } = {}) {
       if (x != null) root.style.left = `${x}px`;

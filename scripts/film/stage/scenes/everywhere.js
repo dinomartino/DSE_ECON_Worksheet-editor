@@ -6,30 +6,31 @@
 // 77.0 and 78.0, each earlier one stepping back, while "In your browser. On Mac. On
 // Windows." lands a phrase per window, the Chinese with it. Then the camera pushes in and
 // turns, accelerating into the 80.0 montage cut, the stack opening up in depth.
-import { COPY } from '../../timeline.mjs';
+import { COPY, cueAt, sceneStart, sceneEnd } from '../../timeline.mjs';
 import { cubicBezier } from '../lib/ease.js';
 import { REVEAL } from '../lib/type.js';
 import { glassChip } from './everywhere/glassChip.js';
 import { softShadow } from './everywhere/shadow.js';
 
 const C = COPY.everywhere;
-const PHRASES = C.headline.split(/(?<=\.)\s+/); // In your browser. / On Mac. / On Windows.
-// Over the chips (not in COPY yet: move it there with the next timeline edit).
-const EXPORT = { en: 'Export your way.', zh: '隨心匯出。' };
 
-// Scene seconds (film − 72).
+// Scene seconds (film − 72). Chips and windows land on their cues (everywhere.chip1…5,
+// .browser/.mac/.windows); the truck, the Chinese and the push hang off the windows.
+const START = sceneStart('everywhere');
+const at = (id) => cueAt(id) - START;
+const WIN = ['browser', 'mac', 'windows'].map((w) => at(`everywhere.${w}`));
 const T = {
   export: [0.3, 3.12], // the chips' headline, gone before the truck moves
-  chips: [0.5, 1.0, 1.5, 2.0, 2.5],
-  truck: [3.4, 4.0],
-  windows: [4.0, 5.0, 6.0],
-  zh: [4.3, 5.3, 6.3, 6.42], // 網頁、/ Mac、/ Windows，/ 隨處可用。 — each with its window
-  solo: [4.25, 5.15], // the camera eases back from the browser as the Mac arrives
-  push: [5.6, 8.0], // into the cut
+  chips: C.chips.map((_, i) => at(`everywhere.chip${i + 1}`)),
+  truck: [WIN[0] - 0.6, WIN[0]],
+  windows: WIN,
+  zh: [WIN[0] + 0.3, WIN[1] + 0.3, WIN[2] + 0.3, WIN[2] + 0.42], // 瀏覽器、/ Mac、/ Windows，/ 隨處可用。 — each with its window
+  solo: [WIN[0] + 0.25, WIN[1] + 0.15], // the camera eases back from the browser as the Mac arrives
+  push: [WIN[2] - 0.4, sceneEnd('everywhere') - START], // into the cut
 };
 
 // The Export dialog, cropped to its own rounded rectangle in the still (px).
-const STILL = { path: 'stills/export-other-apps.png', W: 2880, H: 1800 };
+const STILL = { asset: 'export-other-apps', W: 2880, H: 1800 };
 const DIALOG = { x: 963, y: 177, w: 954, h: 1446, radius: 27 };
 const CARD_H = 4.45;
 const CARD = { pos: [-1.95, 0.0, 0], yaw: 0.16 };
@@ -55,15 +56,16 @@ const SLOTS = [
 const FROM = { pos: [5.4, -2.9, 2.4], rot: [0, -0.5, 0] };
 // The canvas shows ⌘ shortcut hints, so it goes on the Mac; Windows gets the teacher copy.
 const WINDOWS = [
-  { variant: 'browser', still: 'stills/start-screen.png' },
-  { variant: 'mac', still: 'stills/diagram-canvas.png' },
-  { variant: 'windows', still: 'stills/editor-teacher.png' },
+  { variant: 'browser', still: 'start-screen' },
+  { variant: 'mac', still: 'diagram-canvas' },
+  { variant: 'windows', still: 'editor-teacher' },
 ];
 const SPREAD = 0.1; // z the front and back windows drift apart by at the end
 const WIN_W = 3.9;
 const land = cubicBezier(0.45, 0, 0.12, 1); // from rest, lands soft on the beat
 const truckEase = cubicBezier(0.6, 0, 0.18, 1); // from rest, fast through the middle, soft landing
 const TEXT_X = 128;
+const TEXT_W = 720; // to the windows' left edge
 const TEXT_Y = [392, 510, 628];
 const EXPORT_X = 1355; // centred on the chip cluster
 const ZH_DY = 96; // the Chinese line under the last English line
@@ -91,7 +93,7 @@ const scene = {
 
     // The Export dialog.
     const cardW = CARD_H * (DIALOG.w / DIALOG.h);
-    s.card = lib.win.appWindow({ variant: 'none', width: cardW, aspect: DIALOG.w / DIALOG.h, shadow: false, screen: await ctx.load.texture(STILL.path) });
+    s.card = lib.win.appWindow({ variant: 'none', width: cardW, aspect: DIALOG.w / DIALOG.h, shadow: false, screen: await ctx.load.texture(STILL.asset) });
     s.card.material.uniforms.uRadius.value = (DIALOG.radius / DIALOG.w) * cardW;
     s.card.set({ crop: [DIALOG.x / STILL.W, 1 - (DIALOG.y + DIALOG.h) / STILL.H, DIALOG.w / STILL.W, DIALOG.h / STILL.H] });
     dropShadow(s.card);
@@ -124,9 +126,9 @@ const scene = {
 
     // Type.
     const T_ = lib.type;
-    s.lines = PHRASES.map((en, i) => T_.headline(ctx.el, { en, x: TEXT_X, y: TEXT_Y[i], size: 96, align: 'left', world: 'day' }));
-    s.zh = T_.text(ctx.el, { kind: 'headline', en: '', zh: C.headlineZh, zhSize: 40, zhGap: 0, x: TEXT_X + 4, y: TEXT_Y[2] + ZH_DY, align: 'left', world: 'day' });
-    s.export = T_.headline(ctx.el, { ...EXPORT, x: EXPORT_X, y: 372, valign: 'bottom', size: 96, zhSize: 40, world: 'day' });
+    s.lines = C.lines.map((en, i) => T_.headline(ctx.el, { en, x: TEXT_X, y: TEXT_Y[i], size: 96, align: 'left', world: 'day', maxWidth: TEXT_W }));
+    s.zh = T_.text(ctx.el, { kind: 'headline', en: '', zh: C.linesZh, zhSize: 40, zhGap: 0, x: TEXT_X + 4, y: TEXT_Y[2] + ZH_DY, align: 'left', world: 'day', maxWidth: TEXT_W });
+    s.export = T_.headline(ctx.el, { en: C.export, zh: C.exportZh, x: EXPORT_X, y: 372, valign: 'bottom', size: 96, zhSize: 40, world: 'day' });
   },
 
   update(t, ctx) {

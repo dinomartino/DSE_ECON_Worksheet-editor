@@ -18,13 +18,37 @@ import { deselect, openDoc, scrollPage, selectQuestion, setPrintPreview, setVers
 import { DIAGRAM_DONE_STATE } from './clips.mjs';
 import { checkClip } from './check-clip.mjs';
 import { Recorder } from './recorder.mjs';
+import { appCommit, writeManifest } from './manifest.mjs';
 import { contactSheet } from './review.mjs';
 import { serveStatic } from './server.mjs';
 import { ASSETS, freeze, launch, MAIN_ROOT, openPage, REVIEW, settle } from './session.mjs';
 
+const RUN_START = Date.now();
 const args = process.argv.slice(2);
+const USAGE = `node scripts/film/capture/extra-marks.mjs [flags]   (writes the shared asset store)
+  --only=a,b     clip, sheet, docx, probe (default: clip,sheet,docx)
+  --port=<n>     static server port (default 3957)
+  --b-lines=<n>, --h=<px>, --align=<px>   capture tuning (see the source)
+  --help         this text`;
+const KNOWN = ['only', 'port', 'b-lines', 'h', 'align', 'help'];
+for (const a of args) {
+  if (!KNOWN.includes(/^--([^=]+)/.exec(a)?.[1])) {
+    console.error(`extra-marks: unknown argument ${a}\n${USAGE}`);
+    process.exit(2);
+  }
+}
+if (args.includes('--help')) {
+  console.log(USAGE);
+  process.exit(0);
+}
 const opt = (name, d) => args.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? d;
 const only = opt('only', 'clip,sheet,docx').split(',');
+for (const o of only) {
+  if (!['clip', 'sheet', 'docx', 'probe'].includes(o)) {
+    console.error(`extra-marks: unknown --only job "${o}"\n${USAGE}`);
+    process.exit(2);
+  }
+}
 const PORT = Number(opt('port', 3957));
 const log = (m) => console.log(m);
 
@@ -288,6 +312,7 @@ try {
   if (only.includes('clip')) await clip(browser, server.url);
   if (only.includes('sheet')) await sheets(server.url);
   if (only.includes('docx')) await docx(browser, server.url);
+  writeManifest(log, { since: RUN_START, commit: appCommit(MAIN_ROOT) });
 } finally {
   await browser.close();
   await server.close();

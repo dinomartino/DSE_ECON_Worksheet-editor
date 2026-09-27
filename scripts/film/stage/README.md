@@ -42,6 +42,7 @@ export default scene;
 - Bloom takes only what exceeds 1.0: paper and screens (unlit, ≤ 1.0) never glow; the dot
   (`logo`) does. Lit 3D materials opt into tone mapping with `lib.tonemap.filmic`.
 - Fast camera moves: set `ctx.post.samples` (e.g. 12–24) for more motion-blur sub-frames.
+- Text comes from `COPY` only; give each block the box it may fill (`maxWidth`, `maxLines`).
 - Every clip use gets a `placeClip`, so its clicks and keys reach the score.
 - Objects, textures from `ctx.load`, and anything with `userData.dispose` are freed when
   the scene leaves; register other resources with `ctx.onDispose`.
@@ -52,7 +53,7 @@ export default scene;
 |---|---|
 | `ease` | eases, `spring`, `seg`, `kf` keyframes, `cubicBezier` |
 | `noise` | seeded `hash`, `noise1/2`, `wander` drifts, `rng` for setup layout |
-| `type` | `headline/sub/small/eyebrow(el, {en, zh, x, y, …})` → `.set(t, t0, t1)`, `.place()` |
+| `type` | `headline/sub/small/eyebrow(el, {en, zh, x, y, maxWidth, maxLines, …})` → `.set(t, t0, t1)`, `.place()`, `.lines`, `.scale` |
 | `logo` | the mark in 3D: draw-on strokes and axis, tile extrude, dot glow, light sweep |
 | `paper` | an A4 sheet with bend, curl, edge and contact shadow |
 | `win` | a generic window (`mac`, `windows`, `browser`, `none`) showing a still or clip frame |

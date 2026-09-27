@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { patch } from '../../lib/tonemap.js';
 
-// The diagram's frame on sheets/diagram-question.png (sheet px): diagram/full.png at half size.
+// The diagram's frame on the question sheet (sheet px): diagram/full.png at half size.
 const SLOT = { x: 591, y: 526, w: 1200, h: 1005 };
 
 /** The sheet texture with its diagram painted out (paper white). */

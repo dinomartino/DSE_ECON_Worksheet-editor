@@ -25,11 +25,40 @@ import { OUT, BUILD, AUDIO, FILM_DIR, ensureDirs } from './paths.mjs';
 import { serve, FAKE_ASSETS } from './tools/serve.mjs';
 import { launch, launchOnGpu, openStage as open, isSoftware } from './tools/chrome.mjs';
 
-export function parseArgs(argv) {
+/** render.mjs's flags and what they do (--help prints them). */
+export const RENDER_FLAGS = {
+  preview: '960×540 30 fps, shutter 1',
+  final: '1920×1080 60 fps, shutter 5 (the default)',
+  from: '<bar> start of a range (writes build/renders/)',
+  to: '<bar> end of a range',
+  scene: '<id> one scene\'s window',
+  stills: '<step s> PNG frames every step instead of a video',
+  at: '<s,s,...> PNG frames at these times',
+  keep: 'keep stills and segments from earlier runs',
+  workers: '<n> Chrome workers',
+  shutter: '<k> motion-blur subframes',
+  w: '<px> width', h: '<px> height', fps: '<n> frame rate',
+  out: '<file> the video path',
+  'events-only': 'write build/events.json and stop',
+  headed: 'render in a headed (off-screen) Chrome',
+  'allow-software': 'allow a software WebGL renderer',
+  assets: 'fake|<dir> another asset store',
+  transition: '<scene>:<type>:<beats> dev override',
+  dof: '<focus>,<aperture>,<maxBlur> dev override',
+  'stale-audio': 'mux the existing score even when stale (not for delivery)',
+  help: 'this text',
+};
+
+export const usage = (cmd, flags) =>
+  `${cmd} [flags]\n${Object.entries(flags).map(([k, v]) => `  --${k.padEnd(15)} ${v}`).join('\n')}`;
+
+/** --name[=value] flags; anything not in `known` throws (a typo must not start a full render). */
+export function parseArgs(argv, known = RENDER_FLAGS) {
   const o = {};
   for (const a of argv) {
     const m = /^--([^=]+)(?:=(.*))?$/.exec(a);
-    if (m) o[m[1]] = m[2] ?? true;
+    if (!m || !(m[1] in known)) throw new Error(`unknown argument ${a} (--help lists the flags)`);
+    o[m[1]] = m[2] ?? true;
   }
   return o;
 }
@@ -323,7 +352,18 @@ export async function render(args) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  render(parseArgs(process.argv.slice(2))).catch((e) => {
+  let args;
+  try {
+    args = parseArgs(process.argv.slice(2));
+  } catch (e) {
+    console.error(`render: ${e.message}`);
+    process.exit(2);
+  }
+  if (args.help) {
+    console.log(usage('npm run film:render --', RENDER_FLAGS));
+    process.exit(0);
+  }
+  render(args).catch((e) => {
     console.error(e.stack ?? e);
     process.exit(1);
   });

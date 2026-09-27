@@ -4,12 +4,12 @@
 // The page itself is a lit sheet at the slot, so it can arrive on its own and be clipped
 // at the window's bottom edge. Used by `word` and by the montage's .docx shot.
 import * as THREE from 'three';
+import { COPY } from '../../../timeline.mjs';
 import { litSheet } from './sheet.js';
 
 export const DOC = {
-  texture: 'export/docx-diagram-page-1.png',
-  // As the app names it: fileTitle() turns ':' into '-', docxFileName() adds (Student) (EN).
-  title: 'S5 Market Intervention- Diagrams (Student) (EN).docx',
+  texture: 'docx-page', // asset id: the two-part document marks edits
+  title: COPY.word.window,
   aspect: 2573 / 1819, // page h / w
   // Ink boxes on the render, [u0, top0, u1, top1] in page fractions from the top-left.
   regions: {
@@ -20,8 +20,8 @@ export const DOC = {
     part: [0.1523, 0.464, 0.878, 0.4897],
   },
   caret: [0.1216, 0.4958, 0.5118], // [u, top0, top1]: the start of the first answer line
-  // Paragraph styles of those regions, as named in the export's word/styles.xml.
-  styles: [['title', 'Worksheet Title'], ['stem', 'Question Stem'], ['part', 'Sub-question']],
+  // Paragraph style names of those regions.
+  styles: Object.entries(COPY.word.styles),
 };
 
 /** Geometry in the window group's units (window centred at its origin). */

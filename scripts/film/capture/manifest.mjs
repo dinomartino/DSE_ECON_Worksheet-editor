@@ -1,4 +1,6 @@
-// manifest.json: every asset in the store with its size and a one-line description.
+// manifest.json: every asset in the store with its size, a one-line description and
+// `appCommit`, the last src/ commit of the app it was captured from (film:doctor reads it).
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ASSETS } from './session.mjs';
@@ -53,7 +55,28 @@ function walk(dir, base = dir) {
   });
 }
 
-export function writeManifest(log = () => {}) {
+/** The last commit that touched src/ in the checkout at `root`, or null. */
+export function appCommit(root) {
+  try {
+    return execFileSync('git', ['log', '-1', '--format=%H', '--', 'src'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Rewrites the manifest; files written since `since` (ms) are stamped with `commit`, others keep theirs. */
+export function writeManifest(log = () => {}, { since = Infinity, commit = null } = {}) {
+  const file = path.join(ASSETS, 'manifest.json');
+  const prev = {};
+  try {
+    for (const a of JSON.parse(fs.readFileSync(file, 'utf8')).assets) if (a.appCommit) prev[a.path] = a.appCommit;
+  } catch {
+    /* first manifest */
+  }
+  const stamp = (entry, src) => {
+    const c = commit && fs.statSync(src).mtimeMs >= since ? commit : prev[entry.path];
+    if (c) entry.appCommit = c;
+  };
   const assets = [];
   const clipsDir = path.join(ASSETS, 'clips');
   for (const file of fs.existsSync(clipsDir) ? fs.readdirSync(clipsDir).filter((f) => f.endsWith('.json')).sort() : []) {
@@ -65,6 +88,7 @@ export function writeManifest(log = () => {}) {
       width: meta.width, height: meta.height, duration: meta.duration, events: meta.events.length,
       description: meta.about,
     });
+    stamp(assets.at(-1), path.join(clipsDir, file));
   }
   for (const rel of walk(ASSETS).sort()) {
     if (rel.startsWith('clips/') && !rel.endsWith('.json')) continue;
@@ -74,9 +98,9 @@ export function writeManifest(log = () => {}) {
     const png = /\.png$/.test(key) ? pngSize(path.join(ASSETS, rel)) : null;
     if (png) Object.assign(entry, png);
     entry.description = DESCRIPTIONS[key] ?? (key.startsWith('clips/') ? 'Clip metadata: fps, frames, size, events.' : '');
+    stamp(entry, path.join(ASSETS, rel));
     assets.push(entry);
   }
-  const file = path.join(ASSETS, 'manifest.json');
   fs.writeFileSync(file, JSON.stringify({ generated: new Date().toISOString(), assets }, null, 1));
   log(`manifest: ${assets.length} entries → ${file}`);
 }

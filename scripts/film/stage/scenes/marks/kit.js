@@ -1,6 +1,7 @@
 // Helpers shared by marks and papers: camera stops placed by what they frame, blended as
 // orbit poses; a haze that dissolves the lower frame into the backdrop (type sits there).
 import * as THREE from 'three';
+import { cueAt, sceneStart } from '../../../timeline.mjs';
 
 export const FOV = 30;
 /** Screen px per world unit at distance 1 (1080p, fov 30). */
@@ -45,6 +46,11 @@ export const withDrift = (p, d, k = 1) => ({
 });
 
 export const applyPose = (lib, camera, p) => lib.camera.orbit(camera, { ...p, fov: FOV });
+
+/** diagrams → marks (film s): one dolly runs from just before the touch through the cut into marks. */
+export const HANDOFF = { t0: cueAt('diagrams.touch') - 0.1, ramp: 0.6, rate: 0.012, cut: sceneStart('marks') };
+/** Distance multiplier of the handoff dolly at film time f, 1 on the cut. */
+export const handoff = (lib, f) => lib.camera.creep(f, HANDOFF) / lib.camera.creep(HANDOFF.cut, HANDOFF);
 
 const HAZE_FRAG = /* glsl */ `
 uniform vec3 uTop; uniform vec3 uBottom; uniform vec3 uGlow; uniform vec2 uCenter;
