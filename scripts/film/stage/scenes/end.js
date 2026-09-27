@@ -6,9 +6,6 @@
 import { COPY } from '../../timeline.mjs';
 
 const C = COPY.end;
-// The closing facts (FILM.md §2, §3). Supersedes COPY.end.small, which repeated the
-// everywhere headline; timeline.mjs is not this scene's file.
-const SMALL = { en: 'Free. No account needed.', zh: '免費使用，無需註冊。' };
 
 const T = {
   turn: 2.2,
@@ -46,7 +43,7 @@ const scene = {
     s.title = T_.headline(ctx.el, { en: C.title, y: HERO.titleY, size: 128, world: 'night' });
     s.tagline = T_.headline(ctx.el, { en: C.tagline, zh: C.taglineZh, y: 672, size: 104, world: 'night', gradient: 3 });
     // Top-aligned ~50 px under the tagline's Chinese line, so it reads as part of the lockup.
-    s.small = T_.small(ctx.el, { en: SMALL.en, zh: SMALL.zh, y: 800, valign: 'top', size: 36, world: 'night' });
+    s.small = T_.small(ctx.el, { en: C.small, zh: C.smallZh, y: 800, valign: 'top', size: 36, world: 'night' });
   },
 
   update(t, ctx) {

@@ -137,7 +137,6 @@ export const COPY = {
     headlineZh: '直接在頁面上輸入。',
     sub: 'The preview is the editor. What you see is what prints.',
     langs: ['English.', '中文。', 'Both.'],
-    langsSub: 'One language, the other, or side by side.',
   },
   diagrams: {
     word: 'Diagrams.',
@@ -156,7 +155,6 @@ export const COPY = {
   papers: {
     headline: 'From a quick quiz to a full mock paper.',
     headlineZh: '由課堂小測到模擬試卷。',
-    sub: 'Exam covers. Question-answer books. Versions A, B and C.',
   },
   word: {
     headline: 'A real Word document.',
@@ -172,7 +170,8 @@ export const COPY = {
     title: 'Econ Worksheet',
     tagline: 'Less formatting. More teaching.',
     taglineZh: '少排版，多教學。',
-    small: 'In your browser, on Mac and on Windows.',
+    small: 'Free. No account needed.',
+    smallZh: '免費使用，無需註冊。',
   },
 };
 

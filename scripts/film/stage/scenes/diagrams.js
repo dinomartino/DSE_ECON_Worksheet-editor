@@ -19,6 +19,7 @@ import { WORLDS } from '../lib/backdrop.js';
 import { extendScreen } from './diagrams/screen.js';
 import { player } from './diagrams/player.js';
 import { chain } from './diagrams/poses.js';
+import { handoff } from './marks/kit.js';
 
 const C = COPY.diagrams;
 const DEG = Math.PI / 180;
@@ -167,9 +168,9 @@ const scene = {
     // The diagram's layers, and the page it lands on (lying on the floor, top edge away).
     s.stack = await diagramStack(ctx, { width: CARD_W });
     scene.add(s.stack.group);
-    // The page with its diagram slot blank: the landed stack is its diagram (registered
-    // exactly), so the printed one never shows twice.
-    const sheetTex = await ctx.load.texture('sheets/diagram-question.png');
+    // The page marks opens on (the two-part document), its diagram slot blank: the landed
+    // stack is its diagram (registered exactly), so the printed one never shows twice.
+    const sheetTex = await ctx.load.texture('extra/marks/sheets/diagram-question-start.png');
     s.page = lib.paper.sheet({ map: blankSlot(sheetTex, ctx), width: PAGE_W, shadowOpacity: 0, shadowBlur: 0.12, shadowOffset: [0.03, -0.06] });
     s.page.group.position.set(...PAGE_C);
     s.page.group.rotation.x = -Math.PI / 2;
@@ -341,7 +342,8 @@ const scene = {
     const drift3 = seg(t, 11.0, 14.0);
     const pApart = { target: stackC, dist: distForPx(CARD_W, 640) * (1 - 0.03 * drift3), az: -34 + 9 * drift3, el: 13 - 2.5 * drift3, shift: [0, 0.165] };
     // Overhead, first on the falling diagram, then settling on its slot.
-    const pEnd = { target: lerp3(pos, LAND, E.sineInOut(seg(t, 14.5, 15.3))), dist: END_DIST * (1 - 0.012 * seg(t, 15.2, 16.4)), az: 0, el: END_EL, shift: [0, 0] };
+    // It lands already creeping in; the dolly runs on through the cut into marks (registered there).
+    const pEnd = { target: lerp3(pos, LAND, E.sineInOut(seg(t, 14.5, 15.3))), dist: END_DIST * 0.992 * handoff(lib, 32 + t), az: 0, el: END_EL, shift: [0, 0] };
 
     const p = chain(pMark, [
       [pCard, cubicBezier(0.45, 0, 0.2, 1)(seg(t, ...T.closeIn))],

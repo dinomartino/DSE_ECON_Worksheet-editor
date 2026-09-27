@@ -13,7 +13,7 @@ import { docWindow, DOC } from './word/docWindow.js';
 import { styleTag } from './word/styleTag.js';
 
 const C = COPY.word;
-const PRINTED = 'sheets/diagram-question.png'; // papers' top sheet: the cut frame matches it
+const PRINTED = 'extra/marks/sheets/diagram-question-done.png'; // papers' top sheet: the cut frame matches it
 const START = 64; // film seconds at t = 0
 // Each fact lands on its own tick in CUES, so a retimed tick moves its fact and proof with it.
 const FACTS_T = C.facts.map((en, i) => (CUES.find((c) => c.kind === 'tick' && c.note === en)?.t ?? 69 + i) - START);

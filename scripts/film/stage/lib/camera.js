@@ -45,3 +45,13 @@ export function drift(t, seed = 1, { amp = 0.6, rate = 0.07, roll = 0.12, dolly 
 
 /** Linear dolly from d0 to d1 over the shot: the "1–3% dolly" drift. */
 export const dolly = (t, dur, d0, d1) => d0 + (d1 - d0) * Math.min(1, Math.max(0, t / dur));
+
+/**
+ * A dolly that eases from rest at `t0` to `rate` (log distance per second) over `ramp` s and
+ * keeps going: the distance multiplier at t. Two scenes that share one keep moving across a cut.
+ */
+export function creep(t, { t0, ramp, rate }) {
+  const u = Math.min(1, Math.max(0, (t - t0) / ramp));
+  const x = ramp * (u ** 3 - u ** 4 / 2) + Math.max(0, t - t0 - ramp);
+  return Math.exp(-rate * x);
+}

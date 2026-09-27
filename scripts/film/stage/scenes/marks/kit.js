@@ -46,6 +46,11 @@ export const withDrift = (p, d, k = 1) => ({
 
 export const applyPose = (lib, camera, p) => lib.camera.orbit(camera, { ...p, fov: FOV });
 
+/** diagrams → marks (film s): one dolly runs through the landing and the 48.0 cut into marks. */
+export const HANDOFF = { t0: 46.9, ramp: 0.6, rate: 0.012, cut: 48 };
+/** Distance multiplier of the handoff dolly at film time f, 1 on the cut. */
+export const handoff = (lib, f) => lib.camera.creep(f, HANDOFF) / lib.camera.creep(HANDOFF.cut, HANDOFF);
+
 const HAZE_FRAG = /* glsl */ `
 uniform vec3 uTop; uniform vec3 uBottom; uniform vec3 uGlow; uniform vec2 uCenter;
 uniform float uRadius; uniform float uGlowAmount; uniform float uAspect; uniform float uMix;

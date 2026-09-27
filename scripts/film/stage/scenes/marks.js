@@ -6,7 +6,7 @@
 // copy slides out from behind it (54.5), and a slow push into its scheme hands over to papers.
 import { COPY } from '../../timeline.mjs';
 import { cubicBezier } from '../lib/ease.js';
-import { haze, stop, mixPose, withDrift, applyPose } from './marks/kit.js';
+import { haze, stop, mixPose, withDrift, applyPose, handoff } from './marks/kit.js';
 import { S_POS, S_ROT, tPose, holdCam, hazeAt, HAZE_BAND, dofAt, loadSheets, SHEET, PAIR } from './papers/deck.js';
 
 const C = COPY.marks;
@@ -45,7 +45,7 @@ const wpt = (fx, fy) => [W_POS[0] + (fx - 1440) / FPX, W_POS[1] + SCREEN_TOP - f
 
 // Camera stops (frame px of the clip): diagrams' last frame; the page's marks column and
 // total beside the inspector's Marks fields; the Teacher toggle over the page's part (a).
-const F0 = { ...stop([0.0006, 0.275, 0], 1108), az: 0.3 };
+const F0 = { ...stop([0.0006, 0.275, 0], 1109, 960, 540.55), az: 0.3 }; // measured to 0.1 px on the cut
 const F2 = stop(wpt(2080, 600), 1900, 960, 330, { az: 2, el: 1 });
 const F3 = stop(wpt(1115, 425), 1150, 960, 322, { az: -1, el: 1 });
 const F3b = stop(wpt(1080, 560), 1185, 960, 420, { az: -2, el: 1 });
@@ -91,7 +91,8 @@ const scene = {
     // ---- camera: each move starts before the last one lands --------------------------------
     const f2 = scaleDist(F2, 1 - 0.03 * E.sineInOut(E.seg(t, ...T.creep)));
     const f3 = mixPose(F3, F3b, E.sineInOut(E.seg(t, ...T.push)));
-    let p = mixPose(F0, f2, E.sineInOut(E.seg(t, ...T.toEdit)));
+    // F0 keeps diagrams' landing dolly going, so the camera never rests across the cut.
+    let p = mixPose(scaleDist(F0, handoff(lib, f)), f2, E.sineInOut(E.seg(t, ...T.toEdit)));
     p = mixPose(p, f3, E.sineInOut(E.seg(t, ...T.toTeacher)));
     // Drift: calm at the handoff (diagrams' own drift is nearly spent), fuller after.
     const early = withDrift(p, lib.camera.drift(f, 24, { amp: 0.4, rate: 0.07, roll: 0.06 }), E.smoothstep(0, 1.2, t));
