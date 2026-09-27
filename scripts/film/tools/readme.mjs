@@ -79,7 +79,7 @@ export function readme(video, { report = json(resolve(BUILD, 'renders', `${basen
       (p.a ? `AAC ${p.a.sample_rate / 1000} kHz ${p.a.channels === 2 ? 'stereo' : `${p.a.channels} ch`}` : 'no audio') +
       (L ? ` · ${L.I.toFixed(1)} LUFS, ${L.TP.toFixed(1)} dBTP` : ''),
     '',
-    `Rendered ${new Date().toISOString().slice(0, 16).replace('T', ' ')} from \`${git('rev-parse', '--short', 'HEAD')}\` ` +
+    `Rendered ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC from \`${git('rev-parse', '--short', 'HEAD')}\` ` +
       `(${git('rev-parse', '--abbrev-ref', 'HEAD')}).`,
     '',
     '| File | What |',
@@ -103,9 +103,11 @@ export function readme(video, { report = json(resolve(BUILD, 'renders', `${basen
     '',
     '| Time | Kind | What |',
     '|---|---|---|',
-    ...TL.CUES.filter((c) => !/^montage/.test(c.note ?? ''))
-      .map((c) => `| ${tc(c.t)} | ${c.kind}${c.to ? ` → ${tc(c.to)}` : ''}${c.peak ? ` (peak ${tc(c.peak)})` : ''} | ${c.note ?? ''} |`),
-    `| ${tc(TL.MONTAGE_CUTS[0])}–${tc(TL.MONTAGE_CUTS.at(-1))} | tick × ${TL.MONTAGE_CUTS.length} | the montage cuts |`,
+    ...[
+      ...TL.CUES.filter((c) => !/^montage/.test(c.note ?? ''))
+        .map((c) => [c.t, `| ${tc(c.t)} | ${c.kind}${c.to ? ` → ${tc(c.to)}` : ''}${c.peak ? ` (peak ${tc(c.peak)})` : ''} | ${c.note ?? ''} |`]),
+      [TL.MONTAGE_CUTS[0], `| ${tc(TL.MONTAGE_CUTS[0])}–${tc(TL.MONTAGE_CUTS.at(-1))} | tick × ${TL.MONTAGE_CUTS.length} | the montage cuts |`],
+    ].sort((a, b) => a[0] - b[0]).map(([, row]) => row),
     '',
     '## How it was made',
     '',
