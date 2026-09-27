@@ -57,7 +57,7 @@ const LAYOUT = pick({
     YAW: 0.06,
     AZ0: 2, DIST0: 12.995, SHIFT0: [0, 80 / 1920],
     SWING: 8,
-    NEAR: { dist: 10.3, shift: [0, -110 / 1920] },
+    NEAR: { dist: 10.3, shift: [0, -110 / 1920], shiftT: [0.1, 1.4] }, // lowered before the headline lands
     END: { target: [-0.2, -0.05, 0], dist: 9.9, shift: [0, -280 / 1920] },
     window: { width: 3.0, aspect: 1.0, pageFrac: 0.72 },
     sheetX: 0,
@@ -200,7 +200,7 @@ const scene = {
     const { NEAR, END } = LAYOUT;
     const dist = E.lerp(E.lerp(DIST0, NEAR.dist, approach), END.dist, m) * creep * push;
     const target = s.target0.map((a, i) => E.lerp(a, END.target[i], m));
-    const sh0 = NEAR.shift ? SHIFT0.map((v, i) => E.lerp(v, NEAR.shift[i], approach)) : SHIFT0;
+    const sh0 = NEAR.shift ? SHIFT0.map((v, i) => E.lerp(v, NEAR.shift[i], E.sineInOut(E.seg(t, ...NEAR.shiftT)))) : SHIFT0;
     cam.orbit(camera, {
       target,
       dist: dist * (1 + (d.dist - 1) * calm),
