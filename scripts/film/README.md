@@ -16,6 +16,7 @@ score. The design doc is [`FILM.md`](./FILM.md); read it before changing anythin
 | `score/` | Python score and sound design (`.venv` created on demand). |
 | `render.mjs` | Renders frames with parallel Chrome workers → ffmpeg segments. |
 | `film.mjs` | The whole pipeline: capture → score → render → master. |
+| `tools/doctor.mjs` | `film:doctor`: timeline, assets, clip windows, score, text fit, capture age, GPU. |
 
 Some of these are added by later work; `FILM.md` is the spec for each.
 
@@ -23,10 +24,17 @@ Some of these are added by later work; `FILM.md` is the spec for each.
 
 ```sh
 npm --prefix scripts/film ci        # the film's own deps (three)
+npm run film:doctor                 # health check (~40 s); run it after any change
 npm run film                        # full 1920×1080 60 fps film
-npm run film -- --preview           # quick 960×540 30 fps cut
+npm run film:preview                # quick 960×540 30 fps cut
+npm run film:stills -- --scene=word # preview PNGs, one per second, of one scene
+npm run film:render -- --scene=word # one scene as video (--final for 1080p60)
+npm run film:score                  # rebuild the score after timeline or event changes
+npm run film:capture -- --only=type-mcq  # recapture from the app (--list)
 node scripts/film/timeline-json.mjs # inspect the timeline
 ```
+
+Every command takes `--help`; an unknown flag is an error.
 
 Everything is written to `demo-media/film/` in the main checkout (gitignored):
 `assets/`, `audio/`, `build/`, and `econ-worksheet-film.mp4`.

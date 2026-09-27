@@ -382,6 +382,12 @@ timeline and `events.json` it was built from; the report fails on a stale one. D
   forces), events, score (`score.mjs all`, verified), render, then poster, contact sheet
   and `demo-media/film/README.md`. `npm run film -- --preview` for a quick cut.
   `FILM_OUT=<dir>` moves every output (not the asset store) elsewhere, for parallel work.
+- `npm run film:doctor` (`tools/doctor.mjs`, ~40 s) exits 1 on errors: scenes tiling
+  0..DURATION, cues sorted/in range/unique; every registry asset present; every
+  `placeClip` window inside its clip; each text block, at the middle of its fully revealed
+  span, inside its box and title-safe (and not overflowing at the 80% floor); the GPU. It
+  warns on a stale score and on assets captured before a later `src/` commit
+  (`manifest.json` stamps each asset's `appCommit`). Every script rejects unknown flags.
 
 ## 9. Outputs (`demo-media/film/`, gitignored)
 `econ-worksheet-film.mp4`, `econ-worksheet-film-preview.mp4`, `poster.jpg` (frame at
