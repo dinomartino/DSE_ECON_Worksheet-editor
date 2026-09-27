@@ -39,7 +39,11 @@ npm run film:score                            # music + sfx + master (~40 s); ne
 npm run film                                  # everything, final; long (capture ~9 min if missing, render ~4 min + encode)
 ```
 
-Every script takes `--help` and rejects unknown flags (exit 2). Set `FILM_OUT=<scratch dir>`
+The entry scripts (`render.mjs`, `film.mjs`, `capture/capture.mjs`, `capture/extra-marks.mjs`,
+`tools/doctor.mjs`, `score/score.mjs`) take `--help` and reject unknown flags (exit 2); a
+helper without a parser ignores them and just runs, so read the usage comment at the top of
+any other script before running it — a capture script writes the shared store at once.
+Set `FILM_OUT=<scratch dir>`
 for any exploratory render so the shipped outputs are never overwritten. In an agent,
 cap foreground commands: `.claude/skills/econ-film/bin/timeout 100 <cmd>` (macOS has no
 `timeout`), and run anything longer (full renders, `npm run film`, capture) in the background.
@@ -51,8 +55,10 @@ Recipes for each: [reference/recipes.md](reference/recipes.md).
 - **Words on screen** (a headline, a fact, Chinese, the window title) → edit `COPY` in
   `timeline.mjs` only. `"\n"` forces a break, arrays are separate blocks. Doctor's text
   check tells you if it overflows its box; if it wraps where the layout has room, raise the
-  scene's `maxLines`, never rewrite the copy in the scene. Then fix `note:` strings and the
-  FILM.md storyboard that quote it. Stills at the moment it is fully revealed. → R1
+  scene's `maxLines`, never rewrite the copy in the scene. Then fix everything that quotes
+  it (`grep -rn` the old string in `scripts/film/`: cue `note:`s, FILM.md, scene header
+  comments). Stills at the moment it is fully revealed. `COPY` is not in the score's hash:
+  a text-only change never needs `film:score`. → R1
 - **The app's UI changed** (doctor warns "assets predate the last src/ change") → find the
   assets that show it (`assets.mjs`, `capture --list`), re-capture those jobs, then check
   every scene that registers them — clip event times and page geometry may have moved. → R2
@@ -61,7 +67,9 @@ Recipes for each: [reference/recipes.md](reference/recipes.md).
 - **Timing of a cut, beat or accent** → move the cue in `CUES` (by id; scenes follow via
   `cueAt`), or bars in `SCENES`; then `npm run film:score`. → R4
 - **A new feature to show / a scene replaced** → bible first (storyboard row, handoffs to
-  both neighbours), then capture job → registry entry → scene module → cues → score. → R3
+  both neighbours), then capture job → registry entry → scene module → cues → score.
+  Inserting bars shifts every later cue, chord and hard-coded second: R3's insertion
+  checklist. → R3
 - **A new film** (spotlight, 9:16, another language) → the engine is single-timeline and
   1920×1080-design today; read R6 before starting. → R6
 - **Several agents** → [reference/orchestration.md](reference/orchestration.md) first.
