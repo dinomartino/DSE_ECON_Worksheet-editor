@@ -11,6 +11,8 @@ import { cubicBezier } from '../lib/ease.js';
 import { REVEAL } from '../lib/type.js';
 import { glassChip } from './everywhere/glassChip.js';
 import { softShadow } from './everywhere/shadow.js';
+import { LAYOUT as TALL, portraitCamera } from './everywhere/portrait.js';
+import { pick, PORTRAIT } from '../lib/format.js';
 
 const C = COPY.everywhere;
 
@@ -70,6 +72,17 @@ const TEXT_Y = [392, 510, 628];
 const EXPORT_X = 1355; // centred on the chip cluster
 const ZH_DY = 96; // the Chinese line under the last English line
 
+// Per format (the 9:16 layout is everywhere/portrait.js): landscape is the constants above.
+const LAY = pick({
+  landscape: {
+    card: { h: CARD_H, pos: CARD.pos, yaw: CARD.yaw, pitch: 0 }, rows: ROWS, rowX: ROW_X, chipZ: CHIP_Z, chipGap: CHIP_GAP,
+    unit: UNIT, chip: { hPx: 108, fontPx: 50, padPx: 46 }, off: [OFF, 0], lagAxis: 0, lag: LAG, slots: SLOTS, from: FROM,
+    winW: WIN_W, crops: null, still: null, text: { x: TEXT_X, w: TEXT_W, y: TEXT_Y, size: 96 }, zhDy: ZH_DY, zhSize: 40,
+    export: { x: EXPORT_X, y: 372, size: 96 },
+  },
+  portrait: TALL,
+});
+
 /** A soft macOS-like drop shadow behind a lib.win window: ambient + key, offset down. */
 function dropShadow(win) {
   const { width: w, height: h } = win;
@@ -92,32 +105,35 @@ const scene = {
     const s = (ctx.state = {});
 
     // The Export dialog.
-    const cardW = CARD_H * (DIALOG.w / DIALOG.h);
+    const cardW = LAY.card.h * (DIALOG.w / DIALOG.h);
     s.card = lib.win.appWindow({ variant: 'none', width: cardW, aspect: DIALOG.w / DIALOG.h, shadow: false, screen: await ctx.load.texture(STILL.asset) });
     s.card.material.uniforms.uRadius.value = (DIALOG.radius / DIALOG.w) * cardW;
     s.card.set({ crop: [DIALOG.x / STILL.W, 1 - (DIALOG.y + DIALOG.h) / STILL.H, DIALOG.w / STILL.W, DIALOG.h / STILL.H] });
     dropShadow(s.card);
-    s.card.group.position.set(...CARD.pos);
-    s.card.group.rotation.y = CARD.yaw;
+    s.card.group.position.set(...LAY.card.pos);
+    s.card.group.rotation.set(LAY.card.pitch, LAY.card.yaw, 0);
     scene.add(s.card.group);
     // Chips and their slots.
-    s.chips = C.chips.map((text) => glassChip(text, { unit: UNIT, hPx: 108, fontPx: 50, padPx: 46 }));
+    s.chips = C.chips.map((text) => glassChip(text, { unit: LAY.unit, ...LAY.chip }));
     s.to = [];
-    for (const row of ROWS) {
-      const total = row.items.reduce((a, i) => a + s.chips[i].w, 0) + CHIP_GAP * (row.items.length - 1);
-      let x = ROW_X - total / 2;
+    for (const row of LAY.rows) {
+      const total = row.items.reduce((a, i) => a + s.chips[i].w, 0) + LAY.chipGap * (row.items.length - 1);
+      let x = LAY.rowX - total / 2;
       for (const i of row.items) {
-        s.to[i] = [x + s.chips[i].w / 2, row.y, CHIP_Z];
-        x += s.chips[i].w + CHIP_GAP;
+        s.to[i] = [x + s.chips[i].w / 2, row.y, LAY.chipZ];
+        x += s.chips[i].w + LAY.chipGap;
       }
     }
     for (const c of s.chips) scene.add(c.group);
 
     // Windows.
     s.wins = [];
-    for (const w of WINDOWS) {
+    for (const [i, w] of WINDOWS.entries()) {
       const tex = await ctx.load.texture(w.still);
-      const win = lib.win.appWindow({ variant: w.variant, width: WIN_W, screen: tex, shadow: false });
+      const c = LAY.crops?.[i];
+      const shape = c ? { aspect: c[2] / c[3] } : {};
+      const win = lib.win.appWindow({ variant: w.variant, width: LAY.winW, screen: tex, shadow: false, ...shape });
+      if (c) win.set({ crop: [c[0] / LAY.still[0], 1 - (c[1] + c[3]) / LAY.still[1], c[2] / LAY.still[0], c[3] / LAY.still[1]] });
       win.shadow = dropShadow(win);
       win.group.visible = false;
       scene.add(win.group);
@@ -126,9 +142,10 @@ const scene = {
 
     // Type.
     const T_ = lib.type;
-    s.lines = C.lines.map((en, i) => T_.headline(ctx.el, { en, x: TEXT_X, y: TEXT_Y[i], size: 96, align: 'left', world: 'day', maxWidth: TEXT_W }));
-    s.zh = T_.text(ctx.el, { kind: 'headline', en: '', zh: C.linesZh, zhSize: 40, zhGap: 0, x: TEXT_X + 4, y: TEXT_Y[2] + ZH_DY, align: 'left', world: 'day', maxWidth: TEXT_W });
-    s.export = T_.headline(ctx.el, { en: C.export, zh: C.exportZh, x: EXPORT_X, y: 372, valign: 'bottom', size: 96, zhSize: 40, world: 'day' });
+    const X = LAY.text;
+    s.lines = C.lines.map((en, i) => T_.headline(ctx.el, { en, x: X.x, y: X.y[i], size: X.size, align: 'left', world: 'day', maxWidth: X.w }));
+    s.zh = T_.text(ctx.el, { kind: 'headline', en: '', zh: C.linesZh, zhSize: LAY.zhSize, zhGap: 0, x: X.x + 4, y: X.y[2] + LAY.zhDy, align: 'left', world: 'day', maxWidth: X.w });
+    s.export = T_.headline(ctx.el, { en: C.export, zh: C.exportZh, x: LAY.export.x, y: LAY.export.y, valign: 'bottom', size: LAY.export.size, zhSize: 40, world: 'day' });
   },
 
   update(t, ctx) {
@@ -148,7 +165,8 @@ const scene = {
     // After the truck the aim rises with the stack as each window arrives.
     const stack = land(E.seg(t, T.windows[1] - 0.7, T.windows[1] + 0.3)) + land(E.seg(t, T.windows[2] - 0.7, T.windows[2] + 0.3));
     const aimY = E.lerp(-0.42, 0.15, stack / 2);
-    cam.orbit(camera, {
+    if (PORTRAIT) portraitCamera(t, { camera, lib, T, truck, solo, end, stack, d });
+    else cam.orbit(camera, {
       target: [E.lerp(0.1, OFF + 0.25 - 0.12 * (1 - stack / 2), truck) + 0.25 * solo, E.lerp(0.02, aimY, truck), 0],
       dist: dist * d.dist,
       az: E.lerp(2.2 - 1.6 * E.sineInOut(E.seg(t, 0, 3.4)), 2.5 - 2 * E.sineInOut(E.seg(t, T.truck[1] - 0.6, T.push[0] + 0.5)), truck) + 3.5 * end + d.az,
@@ -182,19 +200,19 @@ const scene = {
       for (let j = i + 1; j < 3; j++) slot += land(E.seg(t, T.windows[j] - 0.62, T.windows[j] + 0.12));
       const k = Math.min(1, Math.floor(slot));
       const f = slot - k;
-      const A = SLOTS[k], B = SLOTS[Math.min(2, k + 1)];
+      const A = LAY.slots[k], B = LAY.slots[Math.min(2, k + 1)];
       const pos = A.pos.map((p, q) => E.lerp(p, B.pos[q], f));
       const rot = A.rot.map((r, q) => E.lerp(r, B.rot[q], f));
-      const p = pos.map((v, q) => E.lerp(FROM.pos[q], v, a));
-      const r = rot.map((v, q) => E.lerp(FROM.rot[q], v, a));
+      const p = pos.map((v, q) => E.lerp(LAY.from.pos[q], v, a));
+      const r = rot.map((v, q) => E.lerp(LAY.from.rot[q], v, a));
       if (i === 0) {
         // Rides in with the truck: a touch of depth and turn that settles as it lands.
         const u = 1 - truck;
-        p[0] -= LAG * u;
+        p[LAY.lagAxis] -= LAY.lag * u;
         p[2] -= 1.4 * u;
         r[1] -= 0.18 * u;
       }
-      win.group.position.set(p[0] + OFF, p[1], p[2] + SPREAD * end * (i - 1)); // front (i = 2) forward, back away
+      win.group.position.set(p[0] + LAY.off[0], p[1] + LAY.off[1], p[2] + SPREAD * end * (i - 1)); // front (i = 2) forward, back away
       win.group.rotation.set(...r);
       win.set({ opacity: E.smoothstep(0, 0.25, a) });
       win.shadow(a);
@@ -209,7 +227,8 @@ const scene = {
     s.lines.forEach((l, i) => l.set(t, T.windows[i] - 0.08));
     // The Chinese line starts under the second line's slot and steps down to make room for
     // the third just before it lands.
-    s.zh.place({ y: E.lerp(TEXT_Y[1], TEXT_Y[2], E.quintInOut(E.seg(t, T.windows[2] - 0.6, T.windows[2] - 0.12))) + ZH_DY });
+    const Y = LAY.text.y;
+    s.zh.place({ y: E.lerp(Y[1], Y[2], E.quintInOut(E.seg(t, T.windows[2] - 0.6, T.windows[2] - 0.12))) + LAY.zhDy });
     reveal(s.zh, t, T.zh, E);
   },
 };
