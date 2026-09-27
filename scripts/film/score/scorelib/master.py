@@ -16,6 +16,26 @@ TOL = 0.1           # iterate until within this (the spec allows 0.5)
 CEILING = -1.3      # limiter ceiling, dBTP; leaves margin for the -1.0 dBTP rule
 FADE = 2.5          # seconds of final fade, ending exactly at the film's end
 EXCERPT = (12.0, 30.0)  # riser, breath, drop, groove A, the hero melody
+# The run-up to a big hit ducks for its last 8th note, so the hit lands in air (a hit coming
+# out of a full breath already does).
+BIG_HIT, DIP_DB, DIP = 0.85, -10.0, (0.25, 0.004, 0.06)  # strength; depth; start, end, fade-in (s)
+
+
+def pre_hit_dips(x, cues, breaths):
+    g = np.ones(len(x))
+    depth = float(db(DIP_DB))
+    lead, tail, fade = DIP
+    for c in cues:
+        t = c['t']
+        if c['kind'] != 'hit' or c['strength'] < BIG_HIT or any(a < t <= b for a, b in breaths):
+            continue
+        i0, i1, i2 = S(t - lead), S(t - tail), S(t)
+        env = np.full(i2 - i0, depth)
+        k = S(fade)
+        env[:k] = 1 - (1 - depth) * cosramp(k)
+        env[i1 - i0:] = depth + (1 - depth) * cosramp(i2 - i1)
+        g[i0:i2] = np.minimum(g[i0:i2], env)
+    return x * g[:, None]
 
 
 def glue(x):
@@ -46,12 +66,13 @@ def mp3(src, dst, start=None, length=None):
 
 
 def run():
-    breaths = Score().breaths
+    sc = Score()
+    breaths = sc.breaths
     music = read_wav(AUDIO / 'music.wav')
     sfx = read_wav(AUDIO / 'sfx.wav')
     x = mono_low(hp(music + sfx, 25.0, order=2))
     x *= db(-18.0 - integrated_lufs(x))  # stage the glue compressor
-    x = end_fade(glue(x))
+    x = end_fade(pre_hit_dips(glue(x), sc.cues, breaths))
     g = TARGET_I - integrated_lufs(x)
     for it in range(6):
         y, gain = tp_limit(x * db(g), CEILING)

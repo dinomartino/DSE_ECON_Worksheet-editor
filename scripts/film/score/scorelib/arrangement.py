@@ -54,14 +54,21 @@ def parse_chord(sym):
         'bass': _pc(m[3]) if m[3] else root,
         'tones': {(root + i) % 12 for i in ivs},
         'req': {(root + i) % 12 for i in req},
+        'third': (root + req[0]) % 12,  # the quality-defining tone (the 4th of a sus chord)
     }
 
 
-def _candidates(ch, n, lo, hi):
+MISSING = 2.0  # cost of leaving one colour tone (never the third) out of a voicing to clear the lead
+
+
+def _candidates(ch, n, lo, hi, relax=False):
+    """Voicings of n notes in [lo, hi]. With `relax`, one required tone other than the third
+    may be left out (costed by _unary)."""
     pool = [p for p in range(lo, hi + 1) if p % 12 in ch['tones']]
     out = []
     for c in combinations(pool, n):
-        if not ch['req'] <= {p % 12 for p in c}:
+        pcs = {p % 12 for p in c}
+        if len(ch['req'] - pcs) > (1 if relax else 0) or ch['third'] not in pcs:
             continue
         if any(b - a in (1, 13, 25) for a, b in combinations(c, 2)):
             continue  # no minor 2nds / 9ths: lush, never harsh
@@ -74,28 +81,37 @@ def _candidates(ch, n, lo, hi):
     return out
 
 
-def _unary(c, ch):
+def _unary(c, ch, bells=()):
     top = c[-1]
-    return 0.12 * abs(top - 65) + 0.05 * abs(np.mean(c) - 59) + 0.3 * sum(p % 12 == ch['root'] for p in c)
+    # A held bell note a minor 2nd/9th above a pad voice rubs (D5 over C#4).
+    rub = sum((m - p) in (1, 13, 25) for p in c for m in bells)
+    missing = len(ch['req'] - {p % 12 for p in c})
+    return (0.12 * abs(top - 65) + 0.05 * abs(np.mean(c) - 59) + 0.3 * sum(p % 12 == ch['root'] for p in c)
+            + 3.0 * rub + MISSING * missing)
 
 
-def _move(a, b):
+def _move(a, b, change=False):
     d = sum(abs(x - y) for x, y in zip(a, b))
     top = abs(a[-1] - b[-1])
-    return d + 0.5 * top + (2.0 if top > 4 else 0.0)
+    # A new chord in the old chord's exact voicing only moves the bass: the pad stands still.
+    same = 3.0 if change and tuple(a) == tuple(b) else 0.0
+    return d + 0.5 * top + (2.0 if top > 4 else 0.0) + same
 
 
-def voice_lead(chords, n=4, lo=50, hi=72):
-    """Viterbi over all bars: the voicing sequence with the least total voice movement."""
-    cands = [_candidates(ch, n, lo, hi) for ch in chords]
-    cost = [np.array([_unary(c, chords[0]) for c in cands[0]])]
+def voice_lead(chords, n=4, lo=50, hi=72, bells=None):
+    """Viterbi over all bars: the voicing sequence with the least total voice movement.
+    `bells[i]`: MIDI notes the lead holds (>= half a beat) in bar i, which the pad avoids rubbing."""
+    bells = bells or [()] * len(chords)
+    cands = [_candidates(ch, n, lo, hi, relax=bool(bells[i])) for i, ch in enumerate(chords)]
+    cost = [np.array([_unary(c, chords[0], bells[0]) for c in cands[0]])]
     back = []
     for i in range(1, len(chords)):
         prev = cands[i - 1]
         cur = cands[i]
-        m = np.array([[cost[-1][j] + _move(p, c) for j, p in enumerate(prev)] for c in cur])
+        change = chords[i]['sym'] != chords[i - 1]['sym']
+        m = np.array([[cost[-1][j] + _move(p, c, change) for j, p in enumerate(prev)] for c in cur])
         back.append(m.argmin(axis=1))
-        cost.append(m.min(axis=1) + np.array([_unary(c, chords[i]) for c in cur]))
+        cost.append(m.min(axis=1) + np.array([_unary(c, chords[i], bells[i]) for c in cur]))
     k = int(np.argmin(cost[-1]))
     path = [k]
     for b in reversed(back):
@@ -129,15 +145,19 @@ MOTIF = ('F#4', 'A4', 'D5')
 BREAKDOWN_RH = (('B3', 'D4', 'F#4', 'A4', 'D5', 'A4', 'F#4', 'D4'),
                 ('D4', 'E4', 'F#4', 'A4', 'D5', 'E5', 'F#5', 'A5'))
 ARP = (0, 1, 2, 3, 4, 3, 2, 1, 0, 1, 2, 3, 5, 4, 3, 2)
+ARP_B = (4, 3, 2, 1, 0, 1, 2, 3, 5, 4, 2, 1, 0, 2, 4, 6)  # the answering phrase: falls, then climbs past it
+# Groove A's top line from its second phrase: the motif cell answering on beats 3-4 (EP).
+ANSWER = ((2.0, 'F#5'), (2.5, 'A5'), (3.0, 'D6'))
 
 
-def melody(start_bar, transpose=0, vel=0.8, bars=8):
+def melody(start_bar, transpose=0, vel=0.8, bars=8, first=0):
+    """HERO bars [first, first + bars) placed from `start_bar`."""
     out = []
     for b, beat, beats, name in HERO:
-        if b >= bars:
+        if not first <= b < first + bars:
             continue
         v = vel * (1.0 if beats >= 1.0 else 0.88) * (1.04 if beat == 0 else 1.0)
-        out.append((at(start_bar + b) + beat * 0.5, beats * 0.5, nm(name) + transpose, v))
+        out.append((at(start_bar + b - first) + beat * 0.5, beats * 0.5, nm(name) + transpose, v))
     return out
 
 
@@ -166,12 +186,24 @@ class Score:
         self.nbars = int(round(self.dur / 2.0))
         chords = {c['bar']: c['chord'] for c in tl['CHORDS']}
         self.chords = [parse_chord(chords[b]) for b in range(self.nbars)]
-        self.voicing = voice_lead(self.chords)
         cues = sorted(tl['CUES'], key=lambda c: c['t'])
         drops = [c['t'] for c in cues if c['kind'] == 'drop']
         self.breaths = [(c['t'], min(d for d in drops if d > c['t']))
                         for c in cues if c['kind'] == 'breath' and c['strength'] >= 0.99]
+        # A partial breath inside a section opens the band up for two bars (the orbit, 42 s):
+        # half-time kick and rim, no hats, the bass down, a wider pad under the lead.
+        starts = {at(a) for a, _ in self.sec.values()}
+        self.open_bars = sorted({int(c['t'] // 2) + k for c in cues for k in (0, 1)
+                                 if c['kind'] == 'breath' and c['strength'] < 0.99 and c['t'] not in starts})
         self.cues = cues
+        self.stop_bar = self.sec['groove-b'][0] + 3  # the band stops after beat 2, into the peak
+        self.leads = self._lead_plan()
+        held = [[] for _ in range(self.nbars)]
+        for t, dur, m, _ in self.leads['bell'] + self.leads['ep_lead']:
+            if dur >= 0.25:
+                for b in range(int(t // 2), min(int((t + dur - 0.01) // 2), self.nbars - 1) + 1):
+                    held[b].append(m)
+        self.voicing = voice_lead(self.chords, bells=held)
         self.rand = rng('humanise')
         self.parts = defaultdict(list)
         self.drums = defaultdict(list)
@@ -188,6 +220,15 @@ class Score:
             if a <= bar < b:
                 return k
         return None
+
+    def answer_phrase(self, bar):
+        """True in the second 4-bar phrase of each 8-bar section (the arp's answering figure)."""
+        sid = self.section_of(bar)
+        return sid is not None and ((bar - self.sec[sid][0]) // 4) % 2 == 1
+
+    def rubs(self, t, m):
+        """A semitone (any octave) from a lead note sounding at t."""
+        return any(s <= t < s + d and (m - p) % 12 in (1, 11) for s, d, p, _ in self.leads['all'])
 
     def root(self, bar):
         return BASS_NOTE[self.chords[bar]['bass']]
@@ -217,7 +258,7 @@ class Score:
     # -- composition
     def _compose(self):
         self._pad()
-        self._arp()
+        self._arp()  # keeps clear of self.leads
         self._bass()
         self._keys()
         self._lead()
@@ -230,8 +271,10 @@ class Score:
                   'breakdown': 0.85, 'final': 0.9, 'outro': 1.3}
         reattack = {at(sec['groove-a'][0]), at(sec['breakdown'][0]), at(sec['outro'][0])}
         pad_end = self.dur - 3.0
-        for layer, shift, bars, lv in (('pad', 0, range(self.nbars), 1.0),
-                                       ('pad_hi', 12, self.bars('final'), 0.5)):
+        layers = [('pad', 0, range(self.nbars), 1.0), ('pad_hi', 12, self.bars('final'), 0.5)]
+        if self.open_bars:  # the orbit: the pad widens an octave up
+            layers.append(('pad_hi', 12, range(self.open_bars[0], self.open_bars[-1] + 1), 0.45))
+        for layer, shift, bars, lv in layers:
             for v in range(4):
                 cur = None
                 for b in bars:
@@ -261,6 +304,8 @@ class Score:
             atk = 0.02
         if t0 == at(sec['outro'][0]):
             atk, rel = 0.01, 2.6
+        if layer == 'pad_hi' and self.open_bars and at(self.open_bars[0]) <= t0 < at(self.open_bars[-1] + 1):
+            atk, rel = 0.9, 0.9  # blooms under the orbit and lets go into the fill
         for a, _ in self.breaths:
             if t0 < a <= t1:
                 t1, rel = a - 0.012, 0.012
@@ -275,16 +320,21 @@ class Score:
         for sid in plays:
             for b in self.bars(sid):
                 notes = sorted({p + o for p in self.voicing[b] for o in (12, 24)})
+                fig = ARP_B if sid != 'intro-b' and self.answer_phrase(b) else ARP
                 for s in range(16):
                     acc = (1.0, 0.72, 0.86, 0.72)[s % 4] * self.hum(0.05)
                     if sid == 'intro-b':
                         v = 0.4 + 0.5 * ((b - a0) * 16 + s) / ((a1 - a0) * 16)
                     else:
-                        v = base[sid]
-                    m = notes[ARP[s]]
-                    self.note('arp', at(b, s), 0.75, m, v * acc)
-                    if sid == 'final':
-                        self.note('arp', at(b, s), 0.75, m + 12, 0.42 * acc)
+                        v = base[sid] * (0.7 if b in self.open_bars else 1.0)
+                    t = at(b, s)
+                    k = min(fig[s], len(notes) - 1)
+                    for m, vel in ((notes[k], v * acc), *(((notes[k] + 12, 0.42 * acc),) if sid == 'final' else ())):
+                        # a semitone under the lead rubs: take the next chord tone that does not
+                        alt = [n + (m - notes[k]) for n in notes[k:] + notes[:k][::-1]]
+                        m = next((a for a in alt if not self.rubs(t, a)), None)
+                        if m is not None:
+                            self.note('arp', t, 0.75, m, vel)
 
     def _bass(self):
         # (16th step, length in steps, semitones above the root); the fifth on step 14 is a pickup
@@ -303,10 +353,14 @@ class Score:
                 pat, vel = groove, 0.9
             elif sid == 'hero':
                 pat, vel = (half if b == self.sec['hero'][0] else groove), 0.9
+                if b in self.open_bars:
+                    pat, vel = [(0, 16, 0)], 0.45  # the orbit: one held root, 6 dB down
             elif sid == 'groove-b':
                 pat, vel = tresillo, 0.9
                 if b == self.sec['groove-b'][1] - 1:
                     pat = [(0, 6, 0), (8, 4, 0)]  # thins out into the breakdown
+                if b == self.stop_bar:
+                    pat = [(0, 3, 0), (3, 3, 0), (6, 2, 12), (14, 2, 7)]  # stops with the drums
             elif sid == 'final':
                 pat, vel = final, 0.95
             else:
@@ -322,7 +376,8 @@ class Score:
         # EP stabs lock to the tresillo bass in groove B (and, softer, the final chorus).
         for sid, vel in (('groove-b', 0.62), ('final', 0.4)):
             for b in self.bars(sid):
-                steps = (3, 6) if (sid == 'groove-b' and b == sec['groove-b'][1] - 1) else (3, 6, 11, 14)
+                thin = sid == 'groove-b' and b in (sec['groove-b'][1] - 1, self.stop_bar)
+                steps = (3, 6) if thin else (3, 6, 11, 14)
                 for s in steps:
                     for p in self.voicing[b]:
                         self.note('ep', at(b, s), 0.16, p + 12, vel * self.hum(0.04))
@@ -358,10 +413,22 @@ class Score:
         for k, (name, v) in enumerate(zip(MOTIF, (0.58, 0.63, 0.74))):
             self.parts['motif'].append((tag + k, self.dur - tag - k - 0.3, nm(name), v))
         self.parts['flourish'].append((tag + 2, 3.0, nm(MOTIF[-1]) + 12, 0.4))
-        # Bell lead: the hero, a quiet callback at the groove-B peak, an octave up in the final.
-        self.parts['bell'] += melody(sec['hero'][0], 0, 0.8)
-        self.parts['bell'] += melody(sec['groove-b'][0] + 4, 0, 0.5, bars=2)
-        self.parts['bell'] += melody(sec['final'][0], 12, 0.72)
+        self.parts['bell'] += self.leads['bell']
+        self.parts['ep_lead'] += self.leads['ep_lead']
+
+    def _lead_plan(self):
+        """The melodic lines, planned before voicing so the pad can keep clear of them. Bell: the
+        hero, an octave up in the final. EP: groove A's answering motif cell, then the hero's
+        second half (written over this progression) as a 4-bar callback at the groove-B peak."""
+        sec = self.sec
+        bell = melody(sec['hero'][0], 0, 0.8) + melody(sec['final'][0], 12, 0.72)
+        ep = []
+        ga = sec['groove-a']
+        for b in range(ga[0] + 4, ga[1], 2):
+            for k, (beat, name) in enumerate(ANSWER):
+                ep.append((at(b) + beat * 0.5, 0.45, nm(name), 0.55 * (1.0, 0.9, 1.05)[k]))
+        ep += melody(sec['groove-b'][0] + 4, 0, 0.75, bars=4, first=4)
+        return {'bell': bell, 'ep_lead': ep, 'all': bell + ep}
 
     def _drums(self):
         sec = self.sec
@@ -423,6 +490,16 @@ class Score:
                 for s in range(0, 16, 2):
                     H('hat', b, s, 0.7 * (1.0 if s % 4 else 0.75) * self.hum(0.08), jitter=0.0012)
                 continue
+            if b in self.open_bars:  # the orbit: half-time kick and rim, no hats
+                H('kick', b, 0, 0.9)
+                H('kick', b, 10, 0.5)
+                H('rim', b, 8, 0.55)
+                if b == self.open_bars[-1]:
+                    H('rim', b, 14, 0.35)
+                    H('snare', b, 15, 0.4)
+                continue
+            if self.open_bars and b == self.open_bars[-1] + 1:
+                H('crash', b, 0, 0.7)  # the band comes back
             last, mid = b == he[1] - 1, b == he[0] + 3
             four(b, upto=12 if last else 16)
             backbeat(b, 0.9, snare_layer=0.45)
@@ -453,6 +530,15 @@ class Score:
                 for s in range(12):
                     H('hat', b, s, (0.75 - 0.05 * s) * (0.72, 0.5, 1.0, 0.58)[s % 4], jitter=0.0012)
                 shaker16(b, 0.5, upto=8)
+                continue
+            if b == self.stop_bar:  # the band stops on beat 3, a two-beat hole, then the peak
+                four(b, upto=8)
+                H('clap', b, 4, 0.88)
+                hats16(b, 0.8, upto=8)
+                shaker16(b, 0.6, upto=8)
+                H('rim', b, 3, 0.4)
+                H('snare', b, 14, 0.4)
+                H('snare', b, 15, 0.7)
                 continue
             four(b)
             if peak:
@@ -496,7 +582,7 @@ class Score:
                 H('clap', b, 4, 0.9)
                 for s in (0, 2, 4, 6):
                     H('snare', b, s, 0.45 + 0.03 * s)
-                snare_roll(b, 8, 16, 0.65, 1.0)
+                snare_roll(b, 8, 16, 0.65, 0.8)  # leaves the end hit room to land
                 hats16(b, 0.8, upto=8)
                 shaker16(b, 0.7, upto=12)
                 continue
@@ -532,21 +618,38 @@ class Score:
     # -- automation (Hz, per sample)
     def pad_cutoff(self):
         s = self.sec
-        return curve([
+        peak = s['groove-b'][0] + 4
+        pts = [
             (0, 600), (at(s['intro-b'][0]), 900), (at(s['intro-b'][1]) - 0.5, 2600),
             (at(s['groove-a'][0]), 3200), (at(s['hero'][0]), 3000), (at(s['groove-b'][0]), 3300),
+            (at(peak), 3300), (at(peak) + 0.6, 3900), (at(s['groove-b'][1] - 1), 3700),  # the peak opens up
             (at(s['breakdown'][0]), 1100), (at(s['breakdown'][1]) - 0.05, 3800),
             (at(s['final'][0]), 4000), (at(s['outro'][0]), 3400), (self.dur, 650),
-        ], self.dur)
+        ]
+        if self.open_bars:  # the orbit: the pad opens while the drums step back
+            a, b = at(self.open_bars[0]), at(self.open_bars[-1] + 1)
+            pts = [p for p in pts if not a - 1 <= p[0] <= b + 1]
+            pts += [(a - 0.3, 3050), (a + 1.2, 4300), (b - 0.4, 4300), (b + 0.6, 3100)]
+        return curve(sorted(pts), self.dur)
 
     def arp_cutoff(self):
+        """Section levels, times a sweep across each answering phrase (0.8x -> 1.3x)."""
         s = self.sec
-        return curve([
+        base = curve([
             (0, 260), (at(s['intro-b'][0]), 260), (at(s['intro-b'][1]) - 0.5, 3200),
             (at(s['groove-a'][0]), 3000), (at(s['hero'][0]) - 0.2, 3000), (at(s['hero'][0]), 2300),
             (at(s['groove-b'][0]) - 0.2, 2300), (at(s['groove-b'][0]), 3000),
             (at(s['final'][0]) - 0.2, 2800), (at(s['final'][0]), 4200), (self.dur, 4200),
         ], self.dur)
+        pts = [(0.0, 1.0)]
+        for sid in ('groove-a', 'hero', 'groove-b', 'final'):
+            a, b = s[sid]
+            for p in range(a, b, 4):
+                if self.answer_phrase(p):
+                    end = at(min(p + 4, b))
+                    pts += [(at(p) - 0.01, 1.0), (at(p), 0.8), (end - 0.02, 1.3), (end, 1.0)]
+        pts.append((self.dur, 1.0))
+        return base * curve(pts, self.dur)
 
     def pad_gain(self):
         """Pad level automation: the outro decays towards the end fade."""
