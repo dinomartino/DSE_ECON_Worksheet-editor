@@ -1,6 +1,7 @@
 // A sheet lit in the dark: a soft pool of light, a travelling light band, and `lit` that
 // brings the whole face up to exactly white (unlit maths, so white never exceeds 1.0).
-// `clip` fades the sheet out below a local y (the bottom edge of a window it sits in).
+// `clip` fades the sheet out below a local y (the bottom edge of a window it sits in);
+// `alt` crossfades to a second page image of the same aspect (the printed page → the .docx).
 import * as THREE from 'three';
 
 const VERT = /* glsl */ `
@@ -8,12 +9,13 @@ varying vec2 vUv; varying vec2 vLocal;
 void main() { vUv = uv; vLocal = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
 
 const FRAG = /* glsl */ `
-uniform sampler2D tMap; uniform vec2 uSize; uniform float uLit; uniform float uBase;
+uniform sampler2D tMap; uniform sampler2D tAlt; uniform float uAlt; uniform vec2 uSize; uniform float uLit; uniform float uBase;
 uniform vec4 uPool; uniform vec3 uBand; uniform vec2 uDir; uniform vec3 uClip; uniform float uOpacity;
 uniform vec3 uWarm;
 varying vec2 vUv; varying vec2 vLocal;
 void main() {
   vec3 c = texture2D(tMap, vUv, -0.5).rgb;
+  if (uAlt > 0.0) c = mix(c, texture2D(tAlt, vUv, -0.5).rgb, uAlt);
   vec2 q = vUv * vec2(uSize.x / uSize.y, 1.0);
   vec2 p = q - uPool.xy * vec2(uSize.x / uSize.y, 1.0);
   float pool = exp(-dot(p, p) / (uPool.z * uPool.z));
@@ -27,10 +29,12 @@ void main() {
   gl_FragColor = vec4(c * a, a);
 }`;
 
-export function litSheet({ map, width, aspect }) {
+export function litSheet({ map, alt = null, width, aspect }) {
   const height = width * aspect;
   const u = {
     tMap: { value: map },
+    tAlt: { value: alt ?? map },
+    uAlt: { value: 0 },
     uSize: { value: new THREE.Vector2(width, height) },
     uLit: { value: 0 },
     uBase: { value: 0.01 },
@@ -57,7 +61,7 @@ export function litSheet({ map, width, aspect }) {
   const api = {
     mesh, width, height,
     /** pool = [u, v, radius, amount] (uv, radius in sheet heights); band = [pos, width, amount]. */
-    set({ lit, base, pool, band, dir, clip, opacity } = {}) {
+    set({ lit, base, pool, band, dir, clip, opacity, alt } = {}) {
       if (lit != null) u.uLit.value = lit;
       if (base != null) u.uBase.value = base;
       if (pool) u.uPool.value.set(...pool);
@@ -65,6 +69,7 @@ export function litSheet({ map, width, aspect }) {
       if (dir) u.uDir.value.set(...dir).normalize();
       if (clip) u.uClip.value.set(...clip);
       if (opacity != null) u.uOpacity.value = opacity;
+      if (alt != null) u.uAlt.value = alt;
     },
   };
   mesh.userData.dispose = () => {

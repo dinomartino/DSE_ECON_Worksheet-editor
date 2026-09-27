@@ -76,15 +76,15 @@ function canvasScreen(L) {
   return tex;
 }
 
-/** Builds the window + page. `map` is the loaded .docx page texture. */
-export function docWindow(lib, map, opts = {}) {
+/** Builds the window + page. `map` is the .docx page texture; `alt` an optional second page image. */
+export function docWindow(lib, map, { alt = null, ...opts } = {}) {
   const L = docLayout(opts);
   const group = new THREE.Group();
   group.name = 'docWindow';
   const screen = canvasScreen(L);
   const win = lib.win.appWindow({ variant: 'none', width: L.width, aspect: L.aspect, screen, shadow: false, border: '#8A847D' });
   group.add(win.group);
-  const sheet = litSheet({ map, width: L.pageW, aspect: DOC.aspect });
+  const sheet = litSheet({ map, alt, width: L.pageW, aspect: DOC.aspect });
   sheet.mesh.position.set(...L.slot);
   group.add(sheet.mesh);
   win.group.userData.dispose = () => {
