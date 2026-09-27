@@ -41,7 +41,7 @@ const L = pick({
     shift: [0.09, 0.125], k: [1, 1],
   },
   portrait: {
-    word: { y: 1235, size: 104 }, title: { y: 1240, size: 104 },
+    word: { y: 1300, size: 104 }, title: { y: 1240, size: 104 },
     sub: { y: 1372, size: 36, zhSize: 32, zhGap: 14 },
     shift: [0.073, 0.104], k: [1.08, 0.92],
   },
