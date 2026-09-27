@@ -93,24 +93,24 @@ const LAYOUT = {
     langs: { x: 128, ys: [388, 524, 660], size: 108, maxWidth: LANG_W },
   },
   portrait: {
-    LIFT: 0.2, D: 3.9,
+    LIFT: 0.2, D: 3.5,
     win: (css) => {
-      const C1 = pose(...css(460, 250), 6.4, -9, 4);
+      const C1 = pose(...css(400, 225), 5.9, -9, 4);
       return {
         C1,
         P0: pose(C1.x, C1.y - 0.25, C1.d * 1.45, -16, 13, -1.2),
-        C1b: pose(...css(440, 300), 5.9, -3, 2),
+        C1b: pose(...css(400, 205), 5.8, -3, 2),
       };
     },
     page: (at) => ({
-      anchor: [905, 900],
-      Q: pose(...at(905, 900), 3.9, -1, 1.5),
-      Qb: pose(...at(905, 900), 4.15, -9, 1.5),
-      C2: pose(...at(800, 470), 5.4, -13, 4),
-      C3: pose(...at(800, 490), 5.65, -6, 2.5),
+      anchor: [875, 900],
+      Q: pose(...at(875, 900), 3.65, -1, 1.5),
+      Qb: pose(...at(875, 900), 3.85, -9, 1.5),
+      C2: pose(...at(900, 403), 4.8, -13, 4),
+      C3: pose(...at(900, 415), 4.95, -6, 2.5),
     }),
-    head: { x: 90, y: 400, size: 100, zhSize: 42, zhGap: 18, maxWidth: 860, maxLines: 2 },
-    sub: { x: 90, y: 600, size: 34, maxWidth: 860 },
+    head: { x: 90, y: 380, size: 100, zhSize: 42, zhGap: 18, maxWidth: 860, maxLines: 2 },
+    sub: { x: 90, y: 590, size: 34, maxWidth: 860 },
     langs: { x: 90, ys: [320, 440, 560], size: 100, maxWidth: 520 },
   },
 };
