@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // Renders the stage to video (FILM.md §8). N Chrome workers on the GPU each render a
 // contiguous frame range: film.seek(t) → CDP screenshot (PNG) → their own lossless ffmpeg
-// segment. Segments are concatenated and encoded once, with the score if it exists.
+// segment. Segments are concatenated and encoded once, with the score if it exists. A video
+// is never muxed with a score built from another timeline or other events: a stale score is
+// rebuilt first (score.mjs sfx+mix, or all), and one that cannot be is refused.
 //
 //   node scripts/film/render.mjs --preview                 960×540 30 fps, shutter 1
 //   node scripts/film/render.mjs --final                   1920×1080 60 fps, shutter 5
@@ -10,14 +12,16 @@
 //   … --workers=N --shutter=K --out=<file> --events-only --headed --allow-software
 //   … --assets=fake|<dir>   serve another asset store (fake: synthetic stand-ins only)
 //   … --transition=<scene>:<type>:<beats> --dof=<focus>,<aperture>,<maxBlur>   dev overrides
-import { spawn } from 'node:child_process';
+//   … --stale-audio   mux the existing score even when it does not match (not for delivery)
+import { spawn, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { once } from 'node:events';
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { cpus } from 'node:os';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as TL from './timeline.mjs';
-import { OUT, BUILD, AUDIO, ensureDirs } from './paths.mjs';
+import { OUT, BUILD, AUDIO, FILM_DIR, ensureDirs } from './paths.mjs';
 import { serve, FAKE_ASSETS } from './tools/serve.mjs';
 import { launch, launchOnGpu, openStage as open, isSoftware } from './tools/chrome.mjs';
 
@@ -28,6 +32,57 @@ export function parseArgs(argv) {
     if (m) o[m[1]] = m[2] ?? true;
   }
   return o;
+}
+
+// The final encode keeps the dither grain in dark gradients (the default settings smooth it
+// into 1-code-value rings): stronger AQ, lighter deblocking, psy-trellis, a low deadzone.
+// About 2× the bitrate in dark scenes; flat dark 8×8 blocks at 88 s: 33% → 2%.
+const GRAIN_SAFE = 'aq-strength=1.1:deblock=-2,-2:psy-rd=1.0,0.15:no-dct-decimate=1:deadzone-inter=8:deadzone-intra=6:';
+
+const sha256 = (text) => createHash('sha256').update(text).digest('hex');
+// Python's json.dumps(sort_keys=True, separators=(',', ':'), ensure_ascii=False).
+const canon = (v) =>
+  Array.isArray(v)
+    ? `[${v.map(canon).join(',')}]`
+    : v && typeof v === 'object'
+      ? `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canon(v[k])}`).join(',')}}`
+      : JSON.stringify(v);
+
+/** The timeline data the music depends on, hashed as scorelib/common.py timeline_sha256() does. */
+export const musicKey = () =>
+  sha256(canon({ BPM: TL.BPM, DURATION: TL.DURATION, SECTIONS: TL.SECTIONS, CUES: TL.CUES, CHORDS: TL.CHORDS }));
+
+/** Whether audio/score.wav was mixed from this timeline and exactly these events. */
+export function scoreState(eventsText) {
+  const read = (f) => {
+    try {
+      return JSON.parse(readFileSync(resolve(AUDIO, f), 'utf8'));
+    } catch {
+      return {};
+    }
+  };
+  const mtime = (f) => (existsSync(resolve(AUDIO, f)) ? statSync(resolve(AUDIO, f)).mtimeMs : 0);
+  const key = musicKey();
+  const sfx = read('sfx-events.json');
+  const s = {
+    exists: mtime('score.wav') > 0,
+    music: read('music-levels.json').timeline_sha256 === key,
+    sfx: sfx.timeline_sha256 === key && sfx.source_sha256 === sha256(eventsText),
+    mixed: mtime('score.wav') >= Math.max(mtime('music.wav'), mtime('sfx.wav')),
+  };
+  s.current = s.exists && s.music && s.sfx && s.mixed;
+  return s;
+}
+
+/** Rebuilds what is stale in the score (the music only when the timeline moved). */
+export function syncScore(eventsText) {
+  let s = scoreState(eventsText);
+  if (s.current) return s;
+  const steps = !s.music ? ['all'] : !s.sfx ? ['sfx', 'mix'] : ['mix'];
+  console.log(`score: stale (music ${s.music ? 'ok' : 'old'}, sfx ${s.sfx ? 'ok' : 'old'}, mix ${s.mixed ? 'ok' : 'old'}); running ${steps.join(' + ')}`);
+  for (const step of steps) spawnSync('node', [resolve(FILM_DIR, 'score/score.mjs'), step], { stdio: 'inherit' });
+  s = scoreState(eventsText);
+  return s;
 }
 
 const tc = (t) => {
@@ -128,16 +183,28 @@ export async function render(args) {
 
   try {
     // Events (timeline cues + scene events + placed clip events) for the score's SFX pass.
+    let eventsText;
     {
       const { context, page, logs } = await openStage(browser, server.url, { ...size, w: 320, h: 180 }, args['allow-software']);
       const events = await page.evaluate(() => window.film.events());
       // Only the real asset store's events feed the score.
       const evFile = resolve(BUILD, args.assets ? 'events-alt-assets.json' : 'events.json');
-      writeFileSync(evFile, `${JSON.stringify(events, null, 1)}\n`);
+      eventsText = `${JSON.stringify(events, null, 1)}\n`;
+      writeFileSync(evFile, eventsText);
       console.log(`events: ${events.length} → ${evFile}`);
       workerLogs.push(...logs);
       await context.close();
       if (args['events-only']) return report;
+    }
+    // The score must be built from this timeline and these events before it is muxed.
+    const video = !args.stills && !args.at;
+    if (video && !args.assets && !args['stale-audio']) {
+      const s = syncScore(eventsText);
+      if (s.exists && !s.current) {
+        throw new Error('audio/score.wav does not match this timeline and events.json and could not be rebuilt ' +
+          '(node scripts/film/score/score.mjs all); --stale-audio muxes it anyway');
+      }
+      report.scoreCurrent = s.current;
     }
 
     const t0 = performance.now();
@@ -220,7 +287,7 @@ export async function render(args) {
         '-map', '0:v:0', '-map', '1:a:0',
         '-vf', 'scale=out_color_matrix=bt709:out_range=tv:flags=accurate_rnd+full_chroma_int+full_chroma_inp,format=yuv420p,setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709',
         '-c:v', 'libx264', '-profile:v', 'high', '-preset', P.preview ? 'medium' : 'slow', '-crf', P.preview ? '19' : '16',
-        '-r', String(P.fps), '-g', String(2 * P.fps), '-x264-params', 'aq-mode=3:colorprim=bt709:transfer=bt709:colormatrix=bt709',
+        '-r', String(P.fps), '-g', String(2 * P.fps), '-x264-params', `aq-mode=3:${P.preview ? '' : GRAIN_SAFE}colorprim=bt709:transfer=bt709:colormatrix=bt709`,
         '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'tv',
         '-c:a', 'aac', '-b:a', '256k', '-ar', '48000', '-ac', '2',
         '-t', dur.toFixed(6), '-movflags', '+faststart', P.out,

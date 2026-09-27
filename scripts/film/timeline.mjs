@@ -21,8 +21,9 @@ export const SCENES = [
   { id: 'opening', from: 0, to: 8, world: 'night', in: { type: 'fadeFromBlack', beats: 1 } },
   { id: 'write', from: 8, to: 16, world: 'day', in: { type: 'cut' } },
   { id: 'diagrams', from: 16, to: 24, world: 'night', in: { type: 'cut' } },
-  { id: 'marks', from: 24, to: 28, world: 'day', in: { type: 'blurDissolve', beats: 1 } },
-  { id: 'papers', from: 28, to: 32, world: 'day', in: { type: 'blurDissolve', beats: 1 } },
+  // marks and papers open on the frame the previous scene ends on (registered), so a cut.
+  { id: 'marks', from: 24, to: 28, world: 'day', in: { type: 'cut' } },
+  { id: 'papers', from: 28, to: 32, world: 'day', in: { type: 'cut' } },
   { id: 'word', from: 32, to: 36, world: 'night', in: { type: 'cut' } },
   { id: 'everywhere', from: 36, to: 40, world: 'day', in: { type: 'cut' } },
   { id: 'montage', from: 40, to: 42, world: 'mixed', in: { type: 'cut' } },
@@ -53,7 +54,9 @@ export const SECTIONS = [
 export const MONTAGE_CUTS = [80.0, 80.5, 81.0, 81.5, 82.0, 82.5, 82.75, 83.0];
 
 // Shared picture/score cues in film seconds, sorted by t. Kinds: hit, whoosh, riser
-// (peaks at `to`), swell, tick, breath (music drops out), drop (band returns), end.
+// (peaks at `to`), swell, tick, breath (music drops out; strength < 1 opens the band up
+// for two bars), drop (band returns), end. A whoosh's optional `peak` is where its sound
+// is loudest (default t + 0.06): put it on the picture's fastest frame.
 export const CUES = [
   { t: 1.0, kind: 'swell', strength: 0.5, note: 'pad bloom from black' },
   { t: 1.5, kind: 'tick', strength: 0.45, note: 'Supply.' },
@@ -69,19 +72,20 @@ export const CUES = [
   { t: 32.0, kind: 'hit', strength: 0.85, note: 'Diagrams.' },
   { t: 32.0, kind: 'whoosh', strength: 0.6, note: 'Diagrams.' },
   { t: 42.0, kind: 'whoosh', strength: 0.6, note: 'layers explode' },
-  { t: 46.0, kind: 'whoosh', strength: 0.65, note: 'diagram flies to the page' },
-  { t: 48.0, kind: 'hit', strength: 0.45, note: 'soft: diagram lands' },
+  { t: 42.0, kind: 'breath', strength: 0.5, note: 'the orbit: the band opens up' },
+  { t: 46.0, kind: 'whoosh', strength: 0.65, peak: 46.3, note: 'diagram flies to the page' },
+  { t: 47.0, kind: 'hit', strength: 0.45, note: 'soft: diagram touches the page' },
   { t: 52.0, kind: 'tick', strength: 0.5, note: 'teacher toggle' },
-  { t: 56.0, kind: 'whoosh', strength: 0.6, note: 'pull back / fan' },
-  { t: 62.0, kind: 'whoosh', strength: 0.6, note: 'sheets gather' },
+  { t: 56.0, kind: 'whoosh', strength: 0.6, peak: 56.45, note: 'pull back / fan' },
+  { t: 62.0, kind: 'whoosh', strength: 0.6, peak: 62.55, note: 'sheets gather' },
   { t: 64.0, kind: 'breath', strength: 0.7, note: 'breakdown: drums out' },
   { t: 64.0, kind: 'swell', strength: 0.6, note: 'breakdown pad' },
   { t: 66.0, kind: 'riser', strength: 0.75, to: 68.0, note: 'into the bar 34 drop' },
   { t: 68.0, kind: 'drop', strength: 1.0, note: 'bar 34: the .docx' },
   { t: 68.0, kind: 'hit', strength: 0.9, note: 'bar 34: the .docx' },
   { t: 69.0, kind: 'tick', strength: 0.45, note: 'Live numbering.' },
-  { t: 70.0, kind: 'tick', strength: 0.45, note: 'Real styles.' },
-  { t: 71.0, kind: 'tick', strength: 0.45, note: 'Fully editable.' },
+  { t: 69.5, kind: 'tick', strength: 0.45, note: 'Real styles.' },
+  { t: 70.0, kind: 'tick', strength: 0.45, note: 'Fully editable.' },
   { t: 72.0, kind: 'hit', strength: 0.85, note: 'final chorus' },
   { t: 72.5, kind: 'tick', strength: 0.4, note: 'chip: PDF' },
   { t: 73.0, kind: 'tick', strength: 0.4, note: 'chip: Answer key' },
@@ -97,7 +101,7 @@ export const CUES = [
     strength: Math.round((0.35 + (0.2 * i) / (MONTAGE_CUTS.length - 1)) * 100) / 100,
     note: `montage cut ${i + 1}`,
   })),
-  { t: 83.0, kind: 'riser', strength: 0.9, to: 84.0, note: 'into the end hit' },
+  { t: 83.0, kind: 'riser', strength: 0.9, to: 83.9, note: 'into the end hit (stops short: the hit lands in air)' },
   { t: 84.0, kind: 'hit', strength: 1.0, note: 'big: bar 42, end' },
   { t: 86.0, kind: 'tick', strength: 0.5, note: 'tagline' },
   { t: 88.0, kind: 'swell', strength: 0.5, note: 'tonic bloom' },
@@ -106,7 +110,7 @@ export const CUES = [
 
 // One chord per bar (ASCII sharps). Grooves alternate progressions A and B from bar 8.
 const INTRO = ['Dmaj9', 'Bm11', 'Gmaj9', 'A6sus4'];
-const GROOVE_A = ['Gmaj7', 'A6', 'F#m7', 'Bm9'];
+const GROOVE_A = ['Gmaj7', 'A6', 'F#m11', 'Bm9']; // F#m11, not F#m7: A6 and F#m7 share all four notes
 const GROOVE_B = ['Dmaj9', 'A/C#', 'Bm9', 'Gmaj9'];
 const BREAKDOWN = ['Gmaj9', 'A6sus4'];
 const HARMONY = [
@@ -126,7 +130,7 @@ export const COPY = {
     equilibrium: 'Equilibrium.',
     title: 'Econ Worksheet',
     sub: 'Worksheets for HKDSE Economics.',
-    subZh: '為香港文憑試經濟科而設',
+    subZh: '為文憑試經濟科而設。',
   },
   write: {
     headline: 'Type right on the page.',
@@ -162,7 +166,7 @@ export const COPY = {
   everywhere: {
     chips: ['PDF', 'Answer key', 'Kahoot', 'Blooket', 'ZipGrade'],
     headline: 'In your browser. On Mac. On Windows.',
-    headlineZh: '網頁、Mac、Windows，隨處可用。',
+    headlineZh: '瀏覽器、Mac、Windows，隨處可用。',
   },
   end: {
     title: 'Econ Worksheet',

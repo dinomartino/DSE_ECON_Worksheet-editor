@@ -1,5 +1,7 @@
 """Paths, the timeline, sample-rate helpers and WAV I/O shared by every stage."""
+import hashlib
 import json
+import os
 import subprocess
 from functools import lru_cache
 from pathlib import Path
@@ -25,7 +27,7 @@ def _main_root():
 
 
 MAIN_ROOT = _main_root()
-OUT = MAIN_ROOT / 'demo-media' / 'film'
+OUT = Path(os.environ['FILM_OUT']).resolve() if os.environ.get('FILM_OUT') else MAIN_ROOT / 'demo-media' / 'film'
 AUDIO = OUT / 'audio'
 STEMS = AUDIO / 'stems'
 BUILD = OUT / 'build'
@@ -41,6 +43,18 @@ def ensure_dirs():
 def timeline():
     out = subprocess.check_output(['node', str(FILM_DIR / 'timeline-json.mjs')], text=True)
     return json.loads(out)
+
+
+def timeline_sha256():
+    """Hash of the timeline data the music depends on; render.mjs computes the same key."""
+    tl = timeline()
+    sub = {k: tl[k] for k in ('BPM', 'DURATION', 'SECTIONS', 'CUES', 'CHORDS')}
+    text = json.dumps(sub, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
+    return hashlib.sha256(text.encode()).hexdigest()
+
+
+def file_sha256(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest() if Path(path).exists() else None
 
 
 def nsamples():

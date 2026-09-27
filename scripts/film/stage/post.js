@@ -177,9 +177,10 @@ void main() {
 }`;
 
 // Output: hue-preserving clip (white stays white, the glowing dot stays blue), sRGB
-// encode, then triangular dither grain (±amp, seeded by frame) against H.264 banding.
+// encode, then triangular dither grain (±amp, seeded by frame) against H.264 banding;
+// stronger in the shadows (luma < ~40/255), where the encoder smooths a light one away.
 const OUTPUT = /* glsl */ `
-uniform sampler2D tSrc; uniform float uFrame; uniform float uGrain; varying vec2 vUv;
+uniform sampler2D tSrc; uniform float uFrame; uniform float uGrain; uniform float uGrainShadow; varying vec2 vUv;
 float h(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
   p3 += dot(p3, p3.yzx + 33.33);
@@ -200,7 +201,8 @@ void main() {
   c = srgb(clamp(c, 0.0, 1.0));
   vec2 px = gl_FragCoord.xy + vec2(mod(uFrame, 97.0) * 17.0, mod(uFrame, 89.0) * 31.0);
   float n = h(px) + h(px + 71.3) - 1.0;
-  c += n * uGrain;
+  float luma = dot(c, vec3(0.2126, 0.7152, 0.0722));
+  c += n * mix(uGrainShadow, uGrain, smoothstep(0.12, 0.22, luma));
   gl_FragColor = vec4(c, 1.0);
 }`;
 
@@ -245,7 +247,7 @@ export class Post {
         tA: { value: null }, tB: { value: null }, uMode: { value: 0 }, uP: { value: 0 },
         uFadeA: { value: 1 }, uFadeB: { value: 1 }, uTexel: { value: new THREE.Vector2(1 / w, 1 / h) },
       }),
-      output: shader(OUTPUT, { tSrc: { value: null }, uFrame: { value: 0 }, uGrain: { value: 1.5 / 255 } }),
+      output: shader(OUTPUT, { tSrc: { value: null }, uFrame: { value: 0 }, uGrain: { value: 1.5 / 255 }, uGrainShadow: { value: 2.5 / 255 } }),
     };
 
     this.tmpA = makeTarget(w, h);
@@ -380,11 +382,12 @@ export class Post {
     this.run(this.m.transition, out);
   }
 
-  output(tex, frame, grain) {
+  output(tex, frame, grain, grainShadow = grain) {
     const u = this.m.output.uniforms;
     u.tSrc.value = tex;
     u.uFrame.value = frame;
     u.uGrain.value = grain;
+    u.uGrainShadow.value = grainShadow;
     this.run(this.m.output, null);
   }
 

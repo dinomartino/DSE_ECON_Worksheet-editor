@@ -4,7 +4,7 @@ import numpy as np
 
 from .common import S
 from .dsp import (add_at, env_ar, mtof, noise, pan, phase, rng, saw, seconds, sine,
-                  smooth_drift, softclip, svf, bp)
+                  smooth_drift, softclip, svf, bp, hp)
 
 TWO_PI = 2 * np.pi
 
@@ -137,15 +137,17 @@ def pluck(notes, n, cutoff, key='pluck'):
 
 
 def bass(notes, n, key='bass'):
-    """Sine sub with gentle tanh saturation plus a low-passed saw for small speakers. Mono.
+    """Sine sub with gentle tanh saturation plus a saw low-passed at 1 kHz, which carries the line on
+    laptop and phone speakers. Mono.
     A note may carry a fifth field: an exponential decay time (s)."""
     out = np.zeros(n)
     for i, (t, dur, m, vel, *tau) in enumerate(notes):
         f0 = float(mtof(m))
         ln = S(dur + 0.03)
         sub = softclip(sine(f0, ln), 2.1)
-        mid = svf(saw(f0, ln, phase0=0.5), 520.0, 0.8)
-        y = (sub + 0.38 * mid) * env_ar(ln, 0.005, dur, 0.03) * vel * 0.5
+        mid = svf(saw(f0, ln, phase0=0.5), 1000.0, 0.8)
+        up = hp(softclip(sine(2 * f0, ln), 3.0), 150.0)  # an octave-up edge: the line on a laptop
+        y = (sub + 0.5 * mid + 0.4 * up) * env_ar(ln, 0.005, dur, 0.03) * vel * 0.5
         if tau:
             y *= np.exp(-seconds(ln) / tau[0])
         add_at(out, y, S(t))

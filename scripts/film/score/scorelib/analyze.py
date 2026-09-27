@@ -9,13 +9,35 @@ import numpy as np
 from scipy import signal
 from scipy.stats import spearmanr
 
-from .common import AUDIO, SR, STEMS, S, read_wav, timeline
+from .common import AUDIO, EVENTS, SR, STEMS, S, file_sha256, read_wav, timeline, timeline_sha256
 from .dsp import hp, integrated_lufs, lp, lufs_window, todb, true_peak
 
 TRANSIENT = ('hit', 'tick', 'drop')
 LUFS_TARGET, LUFS_TOL, TP_MAX = -16.0, 0.5, -1.0
 ONSET_TOL_MS = 5.0
 BREATH_MAX_DBFS = -60.0
+BIG_HIT, HIT_CONTRAST_DB = 0.85, 8.0  # a big hit is this much louder than its run-up
+
+
+def freshness():
+    """Whether music.wav was built from this timeline, and sfx.wav from the current events.json
+    (a stale sfx pass once put every key tap 0.55 s late)."""
+    def read(name):
+        try:
+            return json.loads((AUDIO / name).read_text())
+        except (OSError, ValueError):
+            return {}
+    tl, ev = timeline_sha256(), file_sha256(EVENTS)
+    m, s = read('music-levels.json'), read('sfx-events.json')
+    return {'timeline_sha256': tl, 'events_sha256': ev, 'music': m.get('timeline_sha256') == tl,
+            'sfx': s.get('timeline_sha256') == tl and s.get('source_sha256') == ev}
+
+
+def hit_contrast(x, t):
+    """dB of the 80 ms after t over the 50-250 ms before it (the run-up)."""
+    a = np.sqrt(np.mean(x[S(t):S(t + 0.08)] ** 2))
+    b = np.sqrt(np.mean(x[S(t - 0.25):S(t - 0.05)] ** 2))
+    return float(todb(a) - todb(b))
 
 
 def ebur128(path):
@@ -134,6 +156,9 @@ def run():
     dur = float(tl['DURATION'])
     rep = {'file': str(AUDIO / 'score.wav'), 'duration_s': len(score) / SR, 'expected_s': dur}
     checks = {}
+    rep['freshness'] = freshness()
+    checks['music_matches_timeline'] = rep['freshness']['music']
+    checks['sfx_matches_events'] = rep['freshness']['sfx']
 
     ff = ebur128(AUDIO / 'score.wav')
     rep['loudness'] = {**ff, 'I_python': round(float(integrated_lufs(score)), 2),
@@ -181,6 +206,9 @@ def run():
         if 'information' not in name:
             key = 'onsets_' + name.split()[0]
             checks[key] = all(r['err_ms'] is not None and abs(r['err_ms']) <= ONSET_TOL_MS for r in rows)
+    big = [c for c in tl['CUES'] if c['kind'] == 'hit' and c['strength'] >= BIG_HIT]
+    rep['hit_contrast_db'] = {f"{c['t']:.2f}": round(hit_contrast(score, c['t']), 1) for c in big}
+    checks['hit_contrast'] = all(v >= HIT_CONTRAST_DB for v in rep['hit_contrast_db'].values())
     rep['master_lag_samples'] = master_lag(score, read_wav(AUDIO / 'music.wav') + sfx)
     checks['master_timing'] = rep['master_lag_samples'] == 0
 
@@ -228,6 +256,11 @@ def render_text(rep):
         for r in rows:
             out.append(f"    {r['kind']:<6} {r['note'][:22]:<22} {r['t']:>7.3f}  "
                        f"{r['onset'] if r['onset'] is not None else '-':>9}  {r['err_ms']:>8} ms")
+    out.append(f"big hits over their run-up (>= {HIT_CONTRAST_DB} dB): "
+               + ', '.join(f'{t} s {v:+.1f}' for t, v in rep['hit_contrast_db'].items()))
+    f = rep['freshness']
+    out.append(f"freshness  music from this timeline: {'yes' if f['music'] else 'NO'}; sfx from the current "
+               f"events.json: {'yes' if f['sfx'] else 'NO'} (events {str(f['events_sha256'])[:12]})")
     m = rep['mono']
     out += ['', f"mono       L/R correlation {m['lr_correlation']}, fold-down {m['mono_folddown_lu']} LU, "
                 f"side below 120 Hz {m['side_below_120hz_db']} dB rel. mid",

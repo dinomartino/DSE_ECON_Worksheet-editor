@@ -1,14 +1,20 @@
 #!/usr/bin/env node
 // Motion check: per-frame mean absolute difference (MAD, 0–255 luma, on a downscaled copy
-// that averages the dither grain away) between consecutive frames of a rendered video.
-// Flags (1) stalls: a near-duplicate frame while its neighbours move, and (2) jumps: a
-// spike well above the local motion that is not at a cut. Writes a JSON report and a plot.
+// that averages the dither grain away) between consecutive frames of a rendered video, and
+// per-frame sharpness (Laplacian variance of the same copy). Flags
+//   stalls      a near-duplicate frame while its neighbours move
+//   jumps       a spike well above the local motion that is not at a cut
+//   deadStops   motion that stops dead (MAD < 0.1 for 3+ frames, > 1.5 within 0.3 s either side)
+//   freezes     no motion at all (MAD at the grain floor) for more than 0.8 s
+//   softDips    the picture going soft and coming back (sharpness < 40% of both sides for
+//               5+ frames): a blur dissolve over two sharp frames
+// outside planned cuts and edge fades. Writes a JSON report and a plot.
 //   node scripts/film/tools/motion-check.mjs <video> [--from=<film s>] [--out=<dir>]
 import { spawn } from 'node:child_process';
 import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SCENES, MONTAGE_CUTS, bar } from '../timeline.mjs';
+import { SCENES, MONTAGE_CUTS, BEAT, bar } from '../timeline.mjs';
 import { videoStart } from './contact-sheet.mjs';
 
 const SW = 240, SH = 136; // analysis size (each pixel averages a 8×8 block at 1080p)
@@ -27,8 +33,33 @@ function probe(video) {
   });
 }
 
-/** Per-frame MAD series of a video. */
-export async function madSeries(video) {
+/** Laplacian variance of a SW×SH luma frame: high when the picture is sharp. */
+function sharpness(f) {
+  let s = 0, s2 = 0, n = 0;
+  for (let y = 1; y < SH - 1; y++) {
+    for (let x = 1; x < SW - 1; x++) {
+      const i = y * SW + x;
+      const l = 4 * f[i] - f[i - 1] - f[i + 1] - f[i - SW] - f[i + SW];
+      s += l;
+      s2 += l * l;
+      n++;
+    }
+  }
+  return s2 / n - (s / n) ** 2;
+}
+
+/** Standard deviation of a luma frame: how much picture there is, sharp or not. */
+function spread(f) {
+  let s = 0, s2 = 0;
+  for (let i = 0; i < f.length; i++) {
+    s += f[i];
+    s2 += f[i] * f[i];
+  }
+  return Math.sqrt(Math.max(0, s2 / f.length - (s / f.length) ** 2));
+}
+
+/** Per-frame MAD series of a video (with `sharp` / `contrast` arrays, per-frame detail too). */
+export async function madSeries(video, { sharp = null, contrast = null, lagged = null, lag = 30 } = {}) {
   // passthrough: an mp4 whose video starts after 0 (AAC priming) must not gain a duplicate
   // first frame, which would shift every reported time one frame late.
   const p = spawn('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', video,
@@ -36,6 +67,7 @@ export async function madSeries(video) {
   const size = SW * SH;
   const mads = [];
   let prev = null, buf = Buffer.alloc(0);
+  const ring = [];
   p.stdout.on('data', (chunk) => {
     buf = Buffer.concat([buf, chunk]);
     while (buf.length >= size) {
@@ -45,12 +77,32 @@ export async function madSeries(video) {
         for (let i = 0; i < size; i++) sum += Math.abs(frame[i] - prev[i]);
         mads.push(sum / size);
       }
+      sharp?.push(sharpness(frame));
+      contrast?.push(spread(frame));
+      if (lagged) {
+        const old = ring.length === lag ? ring.shift() : null;
+        let d = 0;
+        if (old) for (let i = 0; i < size; i++) d += Math.abs(frame[i] - old[i]);
+        lagged.push(old ? d / size : null);
+        ring.push(Buffer.from(frame));
+      }
       prev = Buffer.from(frame);
       buf = buf.subarray(size);
     }
   });
   await new Promise((ok, fail) => p.on('exit', (c) => (c ? fail(new Error('ffmpeg decode failed')) : ok())));
   return mads;
+}
+
+/** Film-time windows where a scene fades from or to black (no motion or detail expected). */
+export function fadeWindows() {
+  const out = [];
+  for (const s of SCENES) {
+    if (s.in?.type === 'fadeFromBlack') out.push([bar(s.from), bar(s.from) + s.in.beats * BEAT]);
+    if (s.in?.type === 'dipToBlack') out.push([bar(s.from) - s.in.beats * BEAT, bar(s.from) + s.in.beats * BEAT]);
+    if (s.out?.type === 'fadeToBlack') out.push([bar(s.to) - s.out.beats * BEAT, bar(s.to)]);
+  }
+  return out;
 }
 
 /** Film times where a hard change is expected: cuts between scenes and montage cuts. */
@@ -64,11 +116,39 @@ const median = (a) => {
   return s.length ? s[Math.floor(s.length / 2)] : 0;
 };
 
-export function analyse(mads, { fps, from = 0 }) {
-  const cuts = cutTimes();
+// Thresholds (MAD and sharpness on the 240×136 copy).
+const DEAD = { still: 0.1, frames: 3, moving: 1.5, within: 0.3 };
+// A freeze compares each frame with the one `lag` s earlier: grain alone differs as much over
+// the lag as frame to frame, a drift (however slow) accumulates, so frozen = the lagged
+// difference under `accum` × the frame-to-frame one (or under `floor`).
+const FREEZE = { floor: 0.06, accum: 1.6, seconds: 0.8, lag: 0.5 };
+// A soft dip bottoms out under `ratio` of the sharpness on both sides (a type swap's blur
+// reaches ~0.2, a blur dissolve over a registered page ~0.003), holding still (MAD < `still`)
+// and keeping its picture (contrast > `kept`).
+const SOFT = { ratio: 0.15, frames: 5, window: 0.6, kept: 0.6, still: 1.0 };
+
+/** Runs [i, j) of consecutive indices where test(i) holds. */
+function runs(n, test) {
+  const out = [];
+  for (let i = 0; i < n; ) {
+    if (!test(i)) {
+      i++;
+      continue;
+    }
+    let j = i;
+    while (j < n && test(j)) j++;
+    out.push([i, j]);
+    i = j;
+  }
+  return out;
+}
+
+export function analyse(mads, { fps, from = 0, sharp = [], contrast = [], lagged = [], cuts = cutTimes() }) {
+  const fades = fadeWindows();
   // Diff i is between frames i and i+1; it sits at the time of frame i+1.
   const at = (i) => from + (i + 1) / fps;
   const nearCut = (i) => cuts.some((c) => Math.abs(at(i) - c) <= 1.01 / fps);
+  const inFade = (t) => fades.some(([a, b]) => t >= a - 0.05 && t <= b + 0.05);
   const stalls = [], jumps = [];
   for (let i = 0; i < mads.length; i++) {
     const before = mads.slice(Math.max(0, i - 4), i);
@@ -84,6 +164,33 @@ export function analyse(mads, { fps, from = 0 }) {
       jumps.push({ frame: i + 1, t: +at(i).toFixed(3), mad: +mads[i].toFixed(3), local: +local.toFixed(3), around: +around.toFixed(3) });
     }
   }
+  // Dead stops: motion that halts outright and resumes, instead of easing through a hold.
+  const w = Math.round(DEAD.within * fps);
+  const moving = (a, b) => mads.slice(Math.max(0, a), Math.max(0, b)).some((m, k) => m > DEAD.moving && !nearCut(Math.max(0, a) + k));
+  const deadStops = runs(mads.length, (i) => mads[i] < DEAD.still)
+    .filter(([i, j]) => j - i >= DEAD.frames && moving(i - w, i) && moving(j, j + w) && !inFade(at(i)))
+    .map(([i, j]) => ({ frame: i + 1, t: +at(i).toFixed(3), frames: j - i }));
+  // Freezes: nothing moves at all (grain only) for too long (frame k at from + k / fps).
+  const lag = Math.round(FREEZE.lag * fps);
+  const step = (k) => (mads.slice(Math.max(0, k - lag), k).reduce((a, b) => a + b, 0) / lag) || 0;
+  const frozen = (k) => lagged[k] != null && lagged[k] < Math.max(FREEZE.floor, FREEZE.accum * step(k)) && !inFade(from + k / fps);
+  const freezes = runs(lagged.length, frozen)
+    .filter(([i, j]) => (j - i + lag) / fps > FREEZE.seconds)
+    .map(([i, j]) => ({ frame: i - lag, t: +(from + (i - lag) / fps).toFixed(3), seconds: +((j - i + lag) / fps).toFixed(2) }));
+  // Soft dips: sharpness sinks well below both sides and comes back (frame k at from + k / fps).
+  const sw = Math.round(SOFT.window * fps);
+  const ref = (a, b) => Math.max(0, ...sharp.slice(Math.max(0, a), Math.max(0, b)));
+  const cutFrame = (k) => cuts.some((c) => Math.abs(from + k / fps - c) <= SOFT.window);
+  const soft = (k) => k >= sw && k < sharp.length - sw && sharp[k] < SOFT.ratio * Math.min(ref(k - sw, k), ref(k + 1, k + 1 + sw));
+  const mean = (a) => a.reduce((x, y) => x + y, 0) / Math.max(1, a.length);
+  // A defocus, not motion blur (the picture holds still) and not a type swap (the picture is
+  // still there, only soft: its contrast holds).
+  const defocus = ([i, j]) =>
+    mean(mads.slice(Math.max(0, i - 1), j - 1)) < SOFT.still &&
+    Math.min(...contrast.slice(i, j)) > SOFT.kept * Math.min(mean(contrast.slice(i - sw, i)), mean(contrast.slice(j, j + sw)));
+  const softDips = runs(sharp.length, soft)
+    .filter(([i, j]) => j - i >= SOFT.frames && !cutFrame(i) && !cutFrame(j) && !inFade(from + i / fps) && defocus([i, j]))
+    .map(([i, j]) => ({ frame: i, t: +(from + i / fps).toFixed(3), frames: j - i, sharpness: +sharp[Math.floor((i + j) / 2)].toFixed(1) }));
   const sorted = [...mads].sort((a, b) => a - b);
   const q = (p) => +(sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))] ?? 0).toFixed(3);
   return {
@@ -94,6 +201,9 @@ export function analyse(mads, { fps, from = 0 }) {
     cutsInRange: cuts.filter((c) => c > from && c < from + mads.length / fps),
     stalls,
     jumps,
+    deadStops,
+    freezes,
+    softDips,
   };
 }
 
@@ -119,7 +229,10 @@ export async function plot(mads, report, out) {
     const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
     for (let k = 0; k <= n; k++) px(Math.round(x0 + ((x1 - x0) * k) / n), Math.round(y0 + ((y1 - y0) * k) / n), 235, 235, 235);
   }
-  for (const f of [...report.stalls, ...report.jumps]) {
+  const sharp = report.sharp ?? [];
+  const smax = Math.max(1, ...sharp);
+  for (let k = 1; k < sharp.length; k++) px(X(k - 1), Math.round(H - pad - ((H - 2 * pad) * sharp[k]) / smax), 90, 200, 120);
+  for (const f of [...report.stalls, ...report.jumps, ...report.deadStops, ...report.freezes, ...report.softDips]) {
     for (let d = -3; d <= 3; d++) for (let y = pad; y < pad + 12; y++) px(X(f.frame - 1) + d, y, 240, 60, 60);
   }
   await new Promise((ok, fail) => {
@@ -132,13 +245,15 @@ export async function plot(mads, report, out) {
 export async function motionCheck(video, { from, out } = {}) {
   const { fps } = await probe(video);
   const start = from ?? videoStart(video);
-  const mads = await madSeries(video);
-  const report = { video, ...analyse(mads, { fps, from: start }) };
+  const sharp = [], contrast = [], lagged = [];
+  const mads = await madSeries(video, { sharp, contrast, lagged, lag: Math.round(FREEZE.lag * fps) });
+  const report = { video, ...analyse(mads, { fps, from: start, sharp, contrast, lagged }) };
   const dir = out ?? dirname(video);
   mkdirSync(dir, { recursive: true });
   const base = resolve(dir, `${basename(video, '.mp4')}-motion`);
-  writeFileSync(`${base}.json`, `${JSON.stringify({ ...report, mads: mads.map((m) => +m.toFixed(3)) }, null, 1)}\n`);
-  await plot(mads, report, `${base}.png`);
+  const r3 = (a, d) => a.map((m) => (m == null ? null : +m.toFixed(d)));
+  writeFileSync(`${base}.json`, `${JSON.stringify({ ...report, mads: r3(mads, 3), sharp: r3(sharp, 1), contrast: r3(contrast, 2), lagged: r3(lagged, 3) }, null, 1)}\n`);
+  await plot(mads, { ...report, sharp }, `${base}.png`);
   return { ...report, json: `${base}.json`, png: `${base}.png` };
 }
 
@@ -152,6 +267,10 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   console.log(`  cuts in range: ${r.cutsInRange.join(', ') || 'none'}`);
   console.log(`  stalls (duplicate frames during motion): ${r.stalls.length}${r.stalls.length ? ` — ${r.stalls.slice(0, 12).map((s) => s.t).join(', ')}` : ''}`);
   console.log(`  jumps (spikes not at a cut): ${r.jumps.length}${r.jumps.length ? ` — ${r.jumps.slice(0, 12).map((s) => `${s.t}(${s.mad})`).join(', ')}` : ''}`);
-  console.log(`  report: ${r.json}\n  plot:   ${r.png}`);
-  process.exitCode = r.stalls.length || r.jumps.length ? 2 : 0;
+  console.log(`  dead stops (motion halts and restarts): ${r.deadStops.length}${r.deadStops.length ? ` — ${r.deadStops.slice(0, 12).map((s) => `${s.t}(${s.frames}f)`).join(', ')}` : ''}`);
+  console.log(`  freezes (> ${FREEZE.seconds} s without motion): ${r.freezes.length}${r.freezes.length ? ` — ${r.freezes.slice(0, 12).map((s) => `${s.t}(${s.seconds}s)`).join(', ')}` : ''}`);
+  console.log(`  soft dips (the picture defocuses and returns): ${r.softDips.length}${r.softDips.length ? ` — ${r.softDips.slice(0, 12).map((s) => `${s.t}(${s.frames}f)`).join(', ')}` : ''}`);
+  console.log(`  report: ${r.json}\n  plot:   ${r.png} (white: MAD; green: sharpness; red: flags)`);
+  const flags = r.stalls.length + r.jumps.length + r.deadStops.length + r.freezes.length + r.softDips.length;
+  process.exitCode = flags ? 2 : 0;
 }

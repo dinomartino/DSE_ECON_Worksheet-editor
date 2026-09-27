@@ -20,6 +20,7 @@ const FPS = num('fps', TL.FPS);
 const SHUTTER = Math.max(1, Math.round(num('shutter', 1)));
 const ANGLE = num('angle', 180);
 const GRAIN = num('grain', 1.5);
+const GRAIN_SHADOW = num('grainShadow', 2.5); // shadows: H.264 flattens the lighter dither into rings
 const ASSETS = q.get('assets') ?? '/assets/';
 // Dev-only overrides for testing the compositor: ?transition=<scene>:<type>:<beats> and
 // ?dof=<focus>,<aperture>,<maxBlur> (forces DOF on every scene).
@@ -262,7 +263,8 @@ function edgeFade(info, t) {
   return f;
 }
 
-const BLUR_PEAK = 26; // px at 1080p, blurDissolve midpoint
+const BLUR_PEAK = 8; // px at 1080p, blurDissolve midpoint: paper stays legible through it
+const PUSH_BLUR = 16; // px at 1080p, pushThrough midpoint
 
 /** Composites the active scenes and returns the DOM pose of each. */
 function composite(active, t) {
@@ -305,7 +307,7 @@ function composite(active, t) {
       };
     case 'pushThrough': {
       const e = quintInOut(p);
-      const r = BLUR_PEAK * k * 0.6 * Math.sin(Math.PI * e);
+      const r = PUSH_BLUR * k * Math.sin(Math.PI * e);
       const ta = fx.blur(a, r, fx.blurA, fx.tmpA);
       const tb = fx.blur(bt, r, fx.blurB, fx.tmpB);
       fx.transition(3, ta, tb, e, fA, fB, fx.comp);
@@ -366,7 +368,8 @@ async function doSeek(t) {
   for (const s of active) await Promise.all(s.res.clips.map((c) => c.flush()));
   active.forEach((s, i) => renderSlot(s, t, times[i]));
   const { poses, level } = composite(active, t);
-  fx.output(fx.comp.texture, Math.round(t * FPS), (GRAIN / 255) * Math.min(1, level * 4));
+  const g = Math.min(1, level * 4) / 255;
+  fx.output(fx.comp.texture, Math.round(t * FPS), GRAIN * g, GRAIN_SHADOW * g);
   applyDom(active, poses);
   await document.fonts.ready;
   await raf2();
