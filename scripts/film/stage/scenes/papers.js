@@ -36,16 +36,16 @@ const STACK_MID = stop([...at(0), S_POS[2]], 420, 960, 520, { az: 3, el: -14 });
 const STACK = stop([...at(0), S_POS[2]], 452, 965, 405, { az: 2, el: -10 }); // ≈ word at 64.0
 
 // Lights (display sRGB). The room dims through a warm tungsten brown to near black; the
-// pool on the stack stays a warm white (the paper, pure white, is always the brightest
-// thing), then dims to nothing, neutral once it is too dark to carry a hue.
+// pool on the stack turns a warm white (the paper, pure white, is always the brightest
+// thing); then pool and paper dim together like one lamp, warming, neutral at the end.
 const ROOM = [
   { top: [0xf5, 0xf1, 0xea], bottom: [0xe8, 0xe1, 0xd5] },
   { top: [0xdc, 0xc6, 0xa6], bottom: [0xcf, 0xb6, 0x94] },
   { top: [0x94, 0x70, 0x4c], bottom: [0x78, 0x59, 0x3b] },
-  { top: [0x0b, 0x09, 0x07], bottom: [0x03, 0x02, 0x02] },
+  { top: [0x05, 0x05, 0x05], bottom: [0x02, 0x02, 0x02] }, // neutral: a hue this dark bands green in 4:2:0
 ];
-const POOL = [[0xf8, 0xf5, 0xef], [0xf6, 0xea, 0xda], [0x6a, 0x4a, 0x2e], [0, 0, 0]];
-const PAPER_TINT = [1, 0.93, 0.84]; // the paper under a dimming tungsten lamp
+const POOL = { day: [0xf8, 0xf5, 0xef], lamp: [0xf6, 0xea, 0xda] };
+const EMBER = { pool: [1, 0.8, 0.58], paper: [1, 0.93, 0.84] }; // a dimming tungsten lamp
 
 const pullEase = cubicBezier(0.42, 0, 0.1, 1); // from rest, long landing
 const openEase = cubicBezier(0.36, 0, 0.14, 1);
@@ -154,18 +154,19 @@ const scene = {
     const room = { top: keysLin(ROOM.map((r) => r.top), roomK), bottom: keysLin(ROOM.map((r) => r.bottom), roomK) };
     bu.uTop.value.setRGB(...room.top);
     bu.uBottom.value.setRGB(...room.bottom);
-    bu.uGlow.value.setRGB(...keysLin(POOL, (roomK + 2 * poolK) / 3));
+    // The paper keeps full white until the lamp dims; the pool follows the paper down.
+    const bl = lin(lerp(1, 0.02, poolK));
+    const ember = E.smoothstep(0, 0.4, poolK) * (1 - E.smoothstep(0.55, 0.8, poolK)); // neutral below ~40/255
+    const glow = keysLin([POOL.day, POOL.lamp], roomK);
+    bu.uGlow.value.setRGB(...glow.map((v, i) => v * bl * lerp(1, EMBER.pool[i], ember)));
     s.v.set(...at(0), S_POS[2]).project(camera);
     bu.uCenter.value.set(lerp(0.5, s.v.x * 0.5 + 0.5, roomK), lerp(0.62, s.v.y * 0.5 + 0.5, roomK));
-    bu.uGlowAmount.value = lerp(0.55, 1, roomK) * (1 - E.smoothstep(0.75, 1, poolK));
+    bu.uGlowAmount.value = lerp(0.55, 1, roomK) * (1 - E.smoothstep(0.9, 1, poolK));
     bu.uRadius.value = lerp(0.6, 0.36, roomK);
-    // The paper keeps full white until the pool goes, then dims with it, warming.
-    const paperB = lerp(1, 0.03, poolK);
-    const tint = PAPER_TINT.map((v) => lerp(1, v, E.smoothstep(0, 0.5, poolK) * (1 - E.smoothstep(0.85, 1, poolK))));
+    const tint = EMBER.paper.map((v) => bl * lerp(1, v, ember));
     for (const sh of s.sheets) {
-      const b = lin(paperB);
-      sh.material.color.setRGB(b * tint[0], b * tint[1], b * tint[2]);
-      sh.edge.material.color.set('#D9D4CB').multiplyScalar(b);
+      sh.material.color.setRGB(...tint);
+      sh.edge.material.color.set('#D9D4CB').multiplyScalar(bl);
     }
     const hz = Math.max(hazeAt(f), E.sineInOut(E.seg(t, 0.55, 1.2)) * (1 - E.sineInOut(E.seg(t, 5.6, 6.3))));
     s.haze.set({ amount: hz, ...HAZE_BAND });
