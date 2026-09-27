@@ -41,8 +41,11 @@ yarn-error.log*
 next-env.d.ts
 real_life_reference/
 
-# local assistant tooling (skills, agents)
-.claude/
+# local assistant tooling (skills, agents); the film skill is versioned
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/econ-film/
 .agents/
 skills-lock.json
 
@@ -52,3 +55,8 @@ skills-lock.json
 
 # website demo media (npm run demo)
 /demo-media/
+
+# product film (scripts/film has its own deps; the score's Python venv)
+/scripts/film/node_modules/
+/scripts/film/score/.venv/
+__pycache__/

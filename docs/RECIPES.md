@@ -226,6 +226,17 @@ each template anchors, so a "drag it and watch it follow" beat is filmed only wh
 something follows; the README lists any beat left out. Steps:
 `scripts/demo/diagrams.mjs:diagramStoryboard`. Keep it under 2.5 minutes.
 
+## Change the product film
+
+Load the `econ-film` skill (`.claude/skills/econ-film/SKILL.md`) first; its recipes cover
+text, re-capture, scenes, timing, the score, a new cut, and multi-agent work. In short:
+
+- On-screen words live only in `scripts/film/timeline.mjs:COPY`; cue times in
+  `scripts/film/timeline.mjs:CUES` (by id); assets in `scripts/film/assets.mjs:ASSETS`.
+- After a UI change, re-capture the assets that show it: `npm run film:capture -- --only=<job>`.
+- `npm run film:doctor` after every change; `npm run film:score` after cue or clip changes;
+  look at `--final --at=<s>` stills; render with `FILM_OUT=<scratch>` while exploring.
+
 ## Try an unreleased desktop build
 
 Follow `DESKTOP-PREVIEW.md`: dev window, a local `.dmg`, or the CI preview workflow.
