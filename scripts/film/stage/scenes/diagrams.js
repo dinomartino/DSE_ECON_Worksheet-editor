@@ -203,7 +203,7 @@ const scene = {
     s.word = T_.headline(ctx.el, { en: C.word, y: 812, size: 120, world: 'night' }); // as opening's Supply./Demand.
     s.labels = C.curves.map((en) => T_.text(ctx.el, { kind: 'headline', en, size: 64, world: 'night', color: '#FCFAF6' }));
     // Left of the window: the head grows upwards from its baseline, the subs stack down.
-    s.head = T_.headline(ctx.el, { en: C.headline, zh: C.headlineZh, x: 100, y: 548, align: 'left', valign: 'bottom', size: 104, zhSize: 44, world: 'night', maxWidth: TEXT_W, maxLines: 3 });
+    s.head = T_.headline(ctx.el, { en: C.headline, zh: C.headlineZh, x: 100, y: 548, align: 'left', valign: 'bottom', size: 104, zhSize: 44, world: 'night', maxWidth: TEXT_W, maxLines: 3, zhMaxLines: 2 });
     // The sub-line, one sentence per action, each revealed as a unit.
     let y = 596;
     s.subs = C.subs.map((en) => {

@@ -48,7 +48,7 @@ const SHEET0 = { pos: [0.1, 0.35, 0.3], rot: [-14 * DEG, AZ0 * DEG - YAW, 0] };
 const ROOM0 = { top: [11, 9, 7], bottom: [3, 2, 2] };
 const DIM = 0.0022; // linear: the sheet at display 7/255, as papers leaves it
 const FACT_X = 1330;
-const FACT_Y = [452, 540, 628];
+const FACT = { y: 540, size: 74, step: 88 }; // the list centred on y, one-line facts step px apart
 const PUSH = 0.02; // camera push-in per fact
 const rush = cubicBezier(0.5, 0, 0.18, 1); // from rest, fast through the middle, long landing
 const punch = cubicBezier(0.3, 0, 0.1, 1); // a push that peaks just after its tick and lands long
@@ -97,7 +97,15 @@ const scene = {
 
     const T_ = lib.type;
     s.headline = T_.headline(ctx.el, { en: C.headline, zh: C.headlineZh, y: 900, size: 104, world: 'night' });
-    s.facts = C.facts.map((en, i) => T_.headline(ctx.el, { en, x: FACT_X, y: FACT_Y[i], size: 74, align: 'left', world: 'night' }));
+    s.facts = C.facts.map((en) => T_.headline(ctx.el, { en, x: FACT_X, size: FACT.size, align: 'left', world: 'night', maxLines: 2 }));
+    // Stack them: a fact that wraps pushes the rest down, the list stays centred.
+    const lineH = FACT.size * 1.04, gap = FACT.step - lineH;
+    const hs = s.facts.map((f) => f.lines * lineH * f.scale);
+    let y = FACT.y - (hs.reduce((a, b) => a + b, 0) + gap * (hs.length - 1)) / 2;
+    s.facts.forEach((f, i) => {
+      f.place({ y: y + hs[i] / 2 });
+      y += hs[i] + gap;
+    });
   },
 
   update(t, ctx) {
