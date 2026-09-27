@@ -13,7 +13,7 @@ export const lerp3 = (a, b, u) => a.map((v, i) => v + (b[i] - v) * u);
 export const bez3 = (a, c, b, u) => lerp3(lerp3(a, c, u), lerp3(c, b, u), u);
 
 /** The student copy's resting place (world units; a page is 1 wide). */
-export const S_POS = [-0.5, -0.83, 1.05];
+export const S_POS = [-0.377, 0.308, 1.05];
 export const S_ROT = [0, 0.02, 0.008];
 /** The teacher's copy slides out from behind it along a 3D arc, landing on 54.5. */
 export const SLIDE = [53.6, 54.5];

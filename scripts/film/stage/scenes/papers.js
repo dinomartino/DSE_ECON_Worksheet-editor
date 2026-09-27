@@ -22,14 +22,16 @@ const T = {
   sub: [1.75, 5.66],
   close: [6.0, 7.05], // 62.0 whoosh: the fan closes into the stack
   frame: [6.0, 7.35], // camera onto the stack
-  room: [6.45, 7.85], // lights down: the room first, to a pool on the stack…
-  pool: [6.8, 7.95], // …then the pool
+  rack: [1.9, 5.3], // focus travels from the quiz end to the covers
+  room: [6.3, 7.45], // lights down: the room first, to a warm pool on the stack…
+  pool: [6.85, 7.95], // …then the pool
 };
 
 // Camera: the open fan over the type band; then the stack.
-const WIDE = stop([...at(0), S_POS[2]], 368, 960, 336, { az: -4, el: -24 });
+const WIDE = stop([...at(0), S_POS[2]], 368, 960, 336, { az: 6, el: -24 }); // orbits to az −6
 const STACK = stop([...at(0), S_POS[2]], 445, 960, 410, { az: 2, el: -13 }); // ≈ word's first frame
 const DAY = { top: [0xf5, 0xf1, 0xea], bottom: [0xe8, 0xe1, 0xd5], glow: [0xf8, 0xf5, 0xef] };
+const EMBER = [0xff, 0xe2, 0xbc]; // the pool warms as it dims, like a tungsten lamp
 
 const pullEase = cubicBezier(0.42, 0, 0.1, 1); // from rest, long landing
 const openEase = cubicBezier(0.36, 0, 0.14, 1);
@@ -114,7 +116,7 @@ const scene = {
     });
 
     // ---- camera ----------------------------------------------------------------------------
-    const orbitAz = 7 * E.seg(t, 1.2, 6.6);
+    const orbitAz = -12 * E.seg(t, 1.2, 6.6);
     const wide = { ...WIDE, az: WIDE.az + orbitAz };
     let p = mixPose(holdCam(lib, f), wide, pullEase(E.seg(t, ...T.pull)));
     const stack = { ...STACK, dist: STACK.dist * (1 - 0.025 * E.seg(t, 7.0, 8.2)) };
@@ -130,15 +132,20 @@ const scene = {
     const rgb = (u, c, k) => u.value.setRGB((c[0] / 255) * k, (c[1] / 255) * k, (c[2] / 255) * k, ctx.THREE.SRGBColorSpace);
     rgb(bu.uTop, DAY.top, room);
     rgb(bu.uBottom, DAY.bottom, room);
-    rgb(bu.uGlow, DAY.glow, pool);
+    const warm = DAY.glow.map((c, i) => lerp(c, EMBER[i], poolK));
+    rgb(bu.uGlow, warm, pool);
     s.v.set(...at(0), S_POS[2]).project(camera);
     bu.uCenter.value.set(lerp(0.5, s.v.x * 0.5 + 0.5, roomK), lerp(0.62, s.v.y * 0.5 + 0.5, roomK));
     bu.uGlowAmount.value = lerp(0.55, 1, roomK);
     bu.uRadius.value = lerp(0.6, 0.34, roomK);
     const hz = Math.max(hazeAt(f), E.sineInOut(E.seg(t, 0.55, 1.2)) * (1 - E.sineInOut(E.seg(t, 5.6, 6.3))));
     s.haze.set({ amount: hz, ...HAZE_BAND });
+    // Depth of field: onto the quiz end as the fan lands, then a slow rack to the covers.
+    const depth = (k) => -s.v.copy(s.sheets[k].group.position).applyMatrix4(camera.matrixWorldInverse).z;
     const dofWide = E.sineInOut(E.seg(t, 0.4, 1.6));
-    post.dof = t < 0.4 ? dofAt(p.dist, 1) : { focus: p.dist, aperture: lerp(130, 230, dofWide), maxBlur: 12 };
+    const onFan = lerp(depth(T_K), depth(0), E.sineInOut(E.seg(t, ...T.rack)));
+    const focus = lerp(p.dist, lerp(onFan, p.dist, E.sineInOut(E.seg(t, 6.0, 6.9))), dofWide);
+    post.dof = t < 0.4 ? dofAt(p.dist, 1) : { focus, aperture: lerp(130, 230, dofWide) * lerp(1, 0.5, E.seg(t, 6.0, 6.9)), maxBlur: 12 };
     post.vignette = lerp(0.06, 0.4, roomK);
     post.bloom = null;
     const moving = (a, b) => t > a && t < b;

@@ -16,6 +16,8 @@ const F0T = 48; // film time of t = 0
 // Beat map (scene seconds).
 const T = {
   glide: [0.1, 1.2],
+  peel: [0.9, 1.5], // the printed page lifts away: the live editor is underneath
+  reveal: [0.95, 1.4],
   fall: [0.98, 1.95],
   lines: 2.0, // Lines → 6: the dotted lines appear (50.0)
   creep: [1.95, 3.25],
@@ -34,18 +36,20 @@ const T = {
 // The app window shows its page at page size: the clip's page is 1526 frame px wide.
 const FPX = 1526;
 const WIN_W = 2880 / FPX;
-const W_POS = [-0.25, -1.443, 0];
 const W_ROT = [0.018, -0.035, 0];
 const SCREEN_TOP = (WIN_W / 1.6 + (40 / 1440) * WIN_W) / 2 - (40 / 1440) * WIN_W;
 
-/** World point of clip frame pixel (fx, fy) on the window. */
-function wpt(fx, fy) {
+/** Window-local point of clip frame pixel (fx, fy), rotated by R = Ry(b) · Rx(a). */
+function rot(fx, fy) {
   const x = (fx - 1440) / FPX, y = SCREEN_TOP - fy / FPX;
   const [a, b] = [W_ROT[0], W_ROT[1]];
-  // R = Ry(b) · Rx(a) applied to (x, y, 0).
   const y1 = y * Math.cos(a), z1 = y * Math.sin(a);
-  return [W_POS[0] + x * Math.cos(b) + z1 * Math.sin(b), W_POS[1] + y1, W_POS[2] - x * Math.sin(b) + z1 * Math.cos(b)];
+  return [x * Math.cos(b) + z1 * Math.sin(b), y1, -x * Math.sin(b) + z1 * Math.cos(b)];
 }
+// The window lies just under the printed page: its part (a) sits beneath the page's lines.
+const W_POS = rot(1786, 700).map((v, i) => [0.1, -0.2, -0.06][i] - v);
+/** World point of clip frame pixel (fx, fy) on the window. */
+const wpt = (fx, fy) => rot(fx, fy).map((v, i) => v + W_POS[i]);
 
 // Camera stops.
 const F0 = { ...stop([0.0006, 0.275, 0], 1108), az: 0.3 }; // diagrams' last frame
@@ -120,10 +124,15 @@ const scene = {
     applyPose(lib, camera, pose);
 
     // ---- objects -----------------------------------------------------------------------------
-    s.d.group.visible = t < 2.3;
+    const pe = E.cubicIn(E.seg(t, ...T.peel));
+    s.d.group.visible = pe < 1;
+    s.d.group.position.set(0.05 * pe, 1.7 * pe * pe, 0.3 * pe);
+    s.d.group.rotation.set(0.35 * pe, 0, -0.06 * pe);
+    s.d.set({ shadowOpacity: 0.16 * (1 - E.smoothstep(0, 0.4, pe)) });
     const winOut = E.sineInOut(E.seg(t, ...T.winOut));
-    s.win.group.visible = t > 0.6 && winOut < 1;
-    s.win.set({ opacity: 1 - winOut });
+    const winIn = E.sineInOut(E.seg(t, ...T.reveal));
+    s.win.group.visible = winIn > 0 && winOut < 1;
+    s.win.set({ opacity: winIn * (1 - winOut), shadowOpacity: 0.2 * winIn * (1 - winOut) });
 
     const r = rise(E.seg(t, ...T.rise));
     const lift = [0, -1.55 * (1 - r), -0.1 * (1 - r)];
