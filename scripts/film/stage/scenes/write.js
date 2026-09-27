@@ -7,6 +7,8 @@
 // toward the lens and re-seats on 25.0; one pull out wide. The real toolbar toggle clicks
 // once a bar, 26.0 / 28.0 / 30.0, each with its headline word; the page answers on the
 // click frame, as the app does (never two layouts at once), with a small push-in each time.
+// Portrait (FILM-9x16.md): the same beats; headline and language words above, the window's
+// page (then the layered page) filling the width below them. See LAYOUT.
 import { COPY, cueAt, sceneStart } from '../../timeline.mjs';
 import { cubicBezier } from '../lib/ease.js';
 import { FONT_ZH } from '../lib/type.js';
