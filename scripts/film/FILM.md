@@ -4,6 +4,7 @@ The single source of truth for the Apple-style product film. Every agent buildin
 of the film reads this whole file first. Where it is silent, use taste and keep to its
 principles; where your code must disagree with it, say so in your final report.
 To change the finished film, follow the `econ-film` skill (`.claude/skills/econ-film/`).
+The 9:16 Reels cut (same timeline, portrait format) is specified in [`FILM-9x16.md`](./FILM-9x16.md).
 
 ## 1. What we are making
 
