@@ -66,7 +66,7 @@ uniform float uGlowRadius; uniform float uGlowAmount; uniform float uAspect;
 uniform vec2 uCenter; uniform float uR; uniform float uSoft; uniform float uAlpha; varying vec2 vUv;
 void main() {
   float lit = uAlpha * (1.0 - smoothstep(uR - uSoft, uR, length((vUv - uCenter) * vec2(uAspect, 1.0))));
-  if (lit < 0.002) discard;
+  if (lit < 1e-5) discard;
   vec3 base = mix(uBottom, uTop, smoothstep(0.0, 1.0, vUv.y));
   vec2 d = (vUv - uGlowCenter) * vec2(uAspect, 1.0);
   float r = length(d) / uGlowRadius;

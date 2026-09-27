@@ -37,7 +37,7 @@ void main() {
   float paper = pow(1.0 - g, 2.2);
   float b = band(vUv) * uSheen;
   float a = clamp(paper + 0.35 * b, 0.0, 1.0) * uOpacity;
-  if (a < 0.002) discard;
+  if (a < 1e-5) discard;
   vec3 c = vec3(paper) + vec3(1.0, 0.97, 0.93) * 0.35 * b;
   gl_FragColor = vec4(c * uOpacity, a);
 }`;
@@ -48,25 +48,26 @@ const INK = /* glsl */ `
 ${COMMON}
 uniform sampler2D tMap; uniform float uOpacity; uniform vec3 uInk; uniform vec3 uInkGlass; varying vec2 vUv;
 void main() {
+  // Sharp and blurred are blended over a band of radii, never switched: a switch pops the
+  // whole layer on the frame its circle of confusion crosses the threshold.
   float r = coc();
-  vec4 c;
-  if (r < 0.6) {
-    c = texture2D(tMap, vUv);
-  } else {
-    vec2 px = fwidth(vUv);
+  vec2 px = fwidth(vUv);
+  vec4 c = texture2D(tMap, vUv);
+  float w = smoothstep(0.35, 1.2, r);
+  if (w > 0.0) {
     float bias = log2(max(1.0, r * 0.5));
-    c = vec4(0.0);
+    vec4 b = vec4(0.0);
     for (int i = 0; i < 12; i++) {
       float k = (float(i) + 0.5) / 12.0;
       float ang = float(i) * 2.39996323;
-      c += texture2D(tMap, vUv + vec2(cos(ang), sin(ang)) * sqrt(k) * r * px, bias);
+      b += texture2D(tMap, vUv + vec2(cos(ang), sin(ang)) * sqrt(k) * r * px, bias);
     }
-    c /= 12.0;
+    c = mix(c, b / 12.0, w);
   }
   float g = glass(vUv);
   float lum = c.a > 0.0 ? clamp(dot(c.rgb, vec3(0.3333)) / c.a, 0.0, 1.0) : 0.0;
   float a = c.a * uOpacity * mix(1.0, 1.0 - lum, g);
-  if (a < 0.003) discard;
+  if (a < 1e-5) discard;
   vec3 ink = mix(uInk, uInkGlass, g);
   gl_FragColor = vec4(mix(ink, vec3(1.0 - g), lum) * a, a);
 }`;
@@ -89,7 +90,7 @@ void main() {
   float glint = exp(-pow((s - uGlint) / 0.16, 2.0));
   float light = 0.16 * top * edge + inside * (0.006 + 0.022 * glint);
   float a = light * uOpacity;
-  if (a < 0.002) discard;
+  if (a < 1e-5) discard; // near black even 0.002 is a visible step
   gl_FragColor = vec4(vec3(a), 0.0);
 }`;
 
@@ -150,13 +151,18 @@ export async function diagramStack(ctx, { width = 2 } = {}) {
     group, card, layers, panes, width, height,
     /**
      * `spread`: each layer's height above the card (world units, index as LAYERS).
-     * `wipe` 0..1 carries the band across the card (0 paper, 1 glass); `glassInk`:
-     * per-layer THREE.Color (linear) for the glass state; `panes` 0..1 glass sheets;
-     * `glint` -1..1 where the panes' sheen sits; `dof` { focus, aperture (px), maxBlur (px) }.
+     * `wipe` 0..1 carries the band across the card (0 paper, 1 glass); `soft` its width
+     * (uv), `sheen` its light; `glassInk`: per-layer THREE.Color (linear) for the glass
+     * state; `panes` 0..1 glass sheets; `glint` -1..1 where the panes' sheen sits;
+     * `dof` { focus, aperture (px), maxBlur (px) }.
      */
-    set({ spread = null, opacity = 1, wipe = 0, glassInk = null, panes: glass = 0, glint = 0, dof: d = null } = {}) {
-      // The band travels from beyond one corner to beyond the other; ±2 parks it off the card.
-      shared.uWipe.value.z = wipe <= 0 ? -2 : wipe >= 1 ? 2 : -0.95 + 1.9 * wipe;
+    set({ spread = null, opacity = 1, wipe = 0, soft = 0.06, sheen = 1, glassInk = null, panes: glass = 0, glint = 0, dof: d = null } = {}) {
+      // The band travels from wholly off one corner (band light included) to wholly off
+      // the other, so both ends are continuous; beyond them it is parked.
+      const reach = 0.72 + 2.5 * soft;
+      shared.uSoft.value = soft;
+      shared.uWipe.value.z = wipe <= 0 ? -reach - 1 : wipe >= 1 ? reach + 1 : reach * (2 * wipe - 1);
+      cardMat.uniforms.uSheen.value = sheen;
       cardMat.uniforms.uOpacity.value = opacity;
       card.visible = opacity > 0.001 && wipe < 1;
       shared.uFocus.value = d?.focus ?? 5;

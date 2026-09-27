@@ -47,6 +47,7 @@ const HOVER = [CARD[0], CARD[1] + 0.22, 1.25];
 const LAND = [CARD[0], FLOOR_Y + 0.004, 2.2];
 const PAGE_OFF = [(1191 / 2379 - 0.5) * PAGE_W, (0.5 - 1028.5 / 3366) * PAGE_H]; // diagram centre, page-local
 const PAGE_C = [LAND[0] - PAGE_OFF[0], FLOOR_Y + 0.001, LAND[2] + PAGE_OFF[1]];
+const END_EL = 89.5; // overhead (90 would leave lookAt without an up)
 const FOV = 30;
 const VIEW_H = 2 * Math.tan((FOV / 2) * DEG);
 /** Camera distance at which `worldW` spans `px` pixels at 1080p. */
@@ -79,10 +80,13 @@ const T = {
   orbit: [10.0, 11.9],
   wipe: [10.08, 10.5],
   layers: [11.0, 13.75],
-  collapse: [13.9, 14.5],
-  unwipe: [14.2, 14.8],
-  fly: [14.0, 15.45], // touches the page ~47.2, settled by 47.45
-  crane: [13.95, 15.4],
+  collapse: [13.9, 14.45],
+  unwipe: [13.95, 14.65],
+  face: [13.9, 14.4], // the closing diagram turns to face the camera, and keeps facing it
+  crane: [13.85, 15.05], // up and over: overhead before the diagram comes down
+  fly: [14.3, 15.45], // drops onto its slot, touching ~47.3 (it never cuts the page)
+  flat: [15.0, 15.35], // lies exactly flat for the touch
+  floorOut: [14.2, 14.9],
   pageIn: [14.3, 14.9], // the page shows in its pool of light as the diagram comes down
   light: [15.05, 15.75], // day by the 47.75 dissolve
 };
@@ -110,7 +114,7 @@ const POPS = [775, 856]; // clip frames where "Add" closes the menu and the shad
 const INK_APART = ['#AEAEB2', '#4AA3FF', '#8E8E93', '#F5F5F7', '#6CB6FF', '#F5F5F7'];
 
 const fast = cubicBezier(0.3, 0, 0.06, 1); // fast, from rest
-const soft = cubicBezier(0.4, 0, 0.12, 1); // a landing
+const soft = cubicBezier(0.5, 0, 0.2, 1); // a drop that lands softly
 const lerp3 = (a, b, u) => a.map((v, i) => v + (b[i] - v) * u);
 
 const scene = {
@@ -252,11 +256,10 @@ const scene = {
     });
     const fly = soft(seg(t, ...T.fly));
     const pos = lerp3(lerp3(CARD, HOVER, lift), LAND, fly);
-    pos[1] += 0.25 * Math.sin(Math.PI * Math.min(1, fly * 1.4)) * (1 - fly); // a float before it drops
-    pos[2] += 0.002;
+    pos[2] += 0.003;
     s.stack.group.position.set(...pos);
-    // It tips back to lie flat as it comes down.
-    s.stack.group.rotation.set(-90 * DEG * E.sineInOut(seg(t, T.fly[0] + 0.05, T.fly[1] - 0.05)), 0, 0);
+    // Paper → glass behind a narrow band of light; back to paper under a broad, dim one.
+    const back = t > 12;
     const wipe = E.sineInOut(seg(t, ...T.wipe)) * (1 - E.sineInOut(seg(t, ...T.unwipe)));
     // It stays to the end: it is the page's diagram exactly (fading it would ghost the lines).
     const stackOp = take;
@@ -279,7 +282,7 @@ const scene = {
     // The diagram's shadow gathers under it as it comes down, and goes as it becomes print.
     const h = Math.max(0, pos[1] - LAND[1]);
     const near = 1 - E.smoothstep(0.03, 1.3, h);
-    s.landShadow.material.opacity = 0.34 * near * pageIn * (1 - E.sineInOut(seg(t, 15.25, 15.6)));
+    s.landShadow.material.opacity = 0.34 * near * pageIn * (1 - E.sineInOut(seg(t, 15.0, 15.4)));
     s.landShadow.scale.setScalar(1 + 0.3 * Math.min(1, h / 1.3));
     s.landShadow.position.set(PAGE_OFF[0] + 0.07 * h, PAGE_OFF[1] - 0.1 * h, 0.0005);
 
@@ -309,14 +312,15 @@ const scene = {
     const stackC = [pos[0], pos[1], pos[2] + 0.5 * spread[5]];
     const drift3 = seg(t, 11.0, 14.0);
     const pApart = { target: stackC, dist: distForPx(CARD_W, 640) * (1 - 0.03 * drift3), az: -34 + 9 * drift3, el: 13 - 2.5 * drift3, shift: [0, 0.165] };
-    const pEnd = { target: LAND, dist: END_DIST * (1 - 0.012 * seg(t, 15.2, 16.4)), az: 0, el: 89.5, shift: [0, 0] };
+    // Overhead, first on the falling diagram, then settling on its slot.
+    const pEnd = { target: lerp3(pos, LAND, E.sineInOut(seg(t, 14.5, 15.3))), dist: END_DIST * (1 - 0.012 * seg(t, 15.2, 16.4)), az: 0, el: END_EL, shift: [0, 0] };
 
     const p = chain(pMark, [
       [pCard, cubicBezier(0.45, 0, 0.2, 1)(seg(t, ...T.closeIn))],
       [pSide, E.quintInOut(seg(t, ...T.pull))],
       [pClose, E.quintInOut(seg(t, ...T.push))],
       [pApart, cubicBezier(0.35, 0, 0.12, 1)(seg(t, ...T.orbit))],
-      [pEnd, E.quintInOut(seg(t, ...T.crane))],
+      [pEnd, E.cubicInOut(seg(t, ...T.crane))],
     ]);
     const d = cam.drift(t, 16, { amp: 0.6, rate: 0.06, roll: 0.07, dolly: 0.004 });
     const calm = 1 - E.smoothstep(14.0, 15.2, t);
@@ -329,6 +333,14 @@ const scene = {
       fov: FOV,
       shift: p.shift,
     });
+    // The diagram faces the camera from the collapse to the touch, so it stays a flat card on
+    // screen while the page swings in beneath it; the drop waits for the crane (clearance).
+    const face = E.sineInOut(seg(t, ...T.face));
+    const flat = E.sineInOut(seg(t, ...T.flat));
+    s.v.copy(camera.position).sub(s.stack.group.position);
+    const yaw = Math.atan2(s.v.x, s.v.z);
+    const pitch = Math.atan2(s.v.y, Math.hypot(s.v.x, s.v.z));
+    s.stack.group.rotation.set(-E.lerp(face * pitch, Math.PI / 2, flat), face * yaw * (1 - flat), 0, 'YXZ');
 
     // The room follows the page's light; once it covers the frame the day backdrop takes over.
     s.v.set(...LAND).project(camera);
@@ -342,12 +354,12 @@ const scene = {
     // Per-pane depth of field while the layers are apart.
     const dofK = E.smoothstep(10.35, 11.1, t) * (1 - E.smoothstep(13.85, 14.3, t));
     s.stack.set({
-      spread, opacity: stackOp, wipe, glassInk: s.col.apart, panes, glint: -0.8 + 1.6 * seg(t, 10.4, 14.0),
+      spread, opacity: stackOp, wipe, soft: back ? 0.42 : 0.1, sheen: back ? 0.45 : 1, glassInk: s.col.apart, panes, glint: -0.8 + 1.6 * seg(t, 10.4, 14.0),
       dof: { focus: camera.position.distanceTo(s.v.set(...stackC)), aperture: 150 * dofK * (ctx.renderH / 1080), maxBlur: 7 * (ctx.renderH / 1080) },
     });
 
     // ---- world, post --------------------------------------------------------------------------
-    s.floor.set({ opacity: 1 - E.sineInOut(seg(t, 14.25, 14.95)), center: [pos[0], Math.min(pos[2], 1.0)], reflect: E.lerp(0.14, 0.3, E.sineInOut(seg(t, 9.8, 10.8))) });
+    s.floor.set({ opacity: 1 - E.sineInOut(seg(t, ...T.floorOut)), center: [pos[0], Math.min(pos[2], 1.0)], reflect: E.lerp(0.14, 0.3, E.sineInOut(seg(t, 9.8, 10.8))) });
     s.dust.set({ time: 32 + t, focus: camera.position.distanceTo(s.v.set(...p.target)), bright: 0.42 * (1 - day), fov: FOV, H: ctx.renderH });
     post.dof = null;
     const dotBloom = 1 - E.sineInOut(seg(t, ...T.dotOut));
