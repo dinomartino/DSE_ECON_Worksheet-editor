@@ -125,6 +125,27 @@ A scene is bars in `SCENES`, a module `stage/scenes/<id>.js` (+ helpers in
    short final render, structured findings, then fix. Budget two rounds.
 8. `npm run film:score`, doctor, seams both sides, motion-check on the range.
 
+**Inserting N bars** (a new scene between two others) — first decide: grow the film, or
+take the bars from a neighbour (keeps `DURATION`, the score's shape and everything after).
+Growing it ripples, and only the first two are checked by doctor:
+- `SCENES`: shift every later row by N; `DURATION = bar(47 + N)`.
+- `HARMONY`: one chord per new bar, inserted at the right index (doctor: chord count).
+- `SECTIONS`: shift later rows; give the new bars to a neighbouring section (extend it)
+  rather than a new id — `score/scorelib/arrangement.py` only plays the eight known ids and
+  places fills, stops and melodies relative to their starts (e.g. `groove-b` + 3, + 4).
+- `CUES` and `MONTAGE_CUTS` are literal seconds: add `2·N` to every later one (the montage
+  and end cues included). Scenes that read cues follow; numbers typed into `T` maps don't.
+- Comments and docs that name film seconds: scene headers ("Scene seconds (film − 64)"),
+  `papers.js` `LAST` (63.983), FILM.md §3 rows and cue table, `tools/determinism.mjs`'s
+  default times.
+- The pair you split was registered: the new scene inherits both sides of that cut. For
+  papers → word: papers ends on its dark stack (`papers.js` `ROOM_END`, top sheet
+  `question-done`), and `word.js` opens on it (`AZ0, DIST0, SHIFT0, SHEET0, ROOM0` — copied
+  numbers, not an import). Either the new scene opens on papers' last frame and ends on
+  word's first (word untouched), or word's opening constants move with it.
+- Then `npm run film:score`, doctor, and a regress diff of the untouched scenes *before*
+  the insert (they must be identical); scenes after it are compared at shifted times.
+
 Replacing a scene keeps its bars and handoffs unless you also rework the neighbours.
 Removing one: delete its row, re-tile the bars, drop its cues and `COPY`, and remove its id
 from each asset's `scenes` (doctor flags missing assets, not unused ones — prune by hand).
