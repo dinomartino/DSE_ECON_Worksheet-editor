@@ -24,7 +24,7 @@ const T = {
   slide: [0.05, 0.95], // the window rises under the printed page, registered by 48.95
   toEdit: pick({ landscape: [0.25, 1.75], portrait: [0.0, 1.6] }), // camera onto the page's marks and the Marks fields
   fade: [1.3, 1.55], // print → live, once the frame shows only page the window covers
-  creep: [1.2, 3.4], // a slow push while the total changes
+  creep: pick({ landscape: [1.2, 3.4], portrait: [1.2, 4.2] }), // a slow push while the total changes (portrait: on through the card swap)
   toTeacher: [CLIP_AT + EDITS.teacher - 1, CLIP_AT + EDITS.teacher], // out to the Teacher toggle and the page, with the pointer
   push: pick({ landscape: [3.7, 5.2], portrait: [3.85, 4.75] }), // a slow push toward the red scheme (portrait: up with it before the window drops)
   winOut: [4.8, 5.3], // the window drops away, down and back…
