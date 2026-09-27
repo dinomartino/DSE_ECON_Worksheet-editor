@@ -36,12 +36,12 @@ const { HERO, LOCK, TYPE } = pick({
     },
   },
   portrait: {
-    HERO: { tileY: 780, tileH: 560, titleY: 1200 },
-    LOCK: { tileY: 500, tileH: 330, titleY: 740, titleScale: 0.5 },
+    HERO: { tileY: 790, tileH: 620, titleY: 1250 },
+    LOCK: { tileY: 540, tileH: 360, titleY: 800, titleScale: 0.5 },
     TYPE: {
       title: { size: 104 },
-      tagline: { y: 960, size: 100, maxLines: 2 },
-      small: { y: 1140, size: 36 },
+      tagline: { y: 1015, size: 104, maxLines: 2 },
+      small: { y: 1195, size: 36 },
     },
   },
 });

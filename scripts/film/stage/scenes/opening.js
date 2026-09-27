@@ -41,9 +41,9 @@ const L = pick({
     shift: [0.09, 0.125], k: [1, 1],
   },
   portrait: {
-    word: { y: 1270, size: 104 }, title: { y: 1190, size: 104 },
-    sub: { y: 1330, size: 36, zhSize: 30, zhGap: 14 },
-    shift: [0.073, 0.104], k: [1.15, 1.12],
+    word: { y: 1270, size: 104 }, title: { y: 1215, size: 104 },
+    sub: { y: 1350, size: 36, zhSize: 30, zhGap: 14 },
+    shift: [0.073, 0.104], k: [1.08, 0.92],
   },
 });
 // Fast but from rest: the 8.0 s whoosh must not start at full speed (a visible jolt).
