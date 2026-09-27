@@ -24,12 +24,12 @@ const T = {
 const STILL = { path: 'stills/export-other-apps.png', W: 2880, H: 1800 };
 const DIALOG = { x: 963, y: 177, w: 954, h: 1446, radius: 27 };
 const CARD_H = 4.45;
-const CARD = { pos: [-1.8, 0.0, 0], yaw: 0.16 };
+const CARD = { pos: [-1.95, 0.0, 0], yaw: 0.16 };
 // Chip cluster: two rows centred on ROW_X (world), chips at depth CHIP_Z, inside title-safe.
-const ROWS = [{ y: 0.36, items: [0, 1] }, { y: -0.26, items: [2, 3, 4] }];
-const ROW_X = 2.12;
+const ROWS = [{ y: 0.38, items: [0, 1] }, { y: -0.3, items: [2, 3, 4] }];
+const ROW_X = 2.06;
 const CHIP_Z = 0.35;
-const CHIP_GAP = 0.11;
+const CHIP_GAP = 0.12;
 const UNIT = 0.0047; // world units per design px at the chips' depth
 const POP = { lead: 0.07, freq: 3.0, damping: 0.66 }; // crosses full size ~0.09 s after its tick
 
@@ -84,7 +84,7 @@ const scene = {
     s.card.group.rotation.y = CARD.yaw;
     scene.add(s.card.group);
     // Chips and their slots.
-    s.chips = C.chips.map((text) => glassChip(text, { unit: UNIT, hPx: 96, fontPx: 44, padPx: 42 }));
+    s.chips = C.chips.map((text) => glassChip(text, { unit: UNIT, hPx: 108, fontPx: 50, padPx: 46 }));
     s.to = [];
     for (const row of ROWS) {
       const total = row.items.reduce((a, i) => a + s.chips[i].w, 0) + CHIP_GAP * (row.items.length - 1);
