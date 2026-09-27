@@ -31,10 +31,18 @@ bin/regress.sh <scratch>/base 0 47                # 1 fps baseline, if you will 
    block's hold is now short, move its `T` times in the scene or its cue (R4).
 5. Look at it: `node scripts/film/render.mjs --final --workers=4 --at=<t1>,<t2>` at the
    moments it is fully revealed, then `bin/sgrid.sh $FILM_OUT/build/stills/final-film g.jpg 3x2`.
-   Check wrap, collisions with neighbours and UI, Chinese on one line.
-6. Update the commentary that quotes it: the cue `note:` in `CUES` and the storyboard row
-   in `FILM.md` §3 (they feed the generated README).
-7. Everything else must be unchanged: diff the untouched seconds against the baseline.
+   Check wrap, collisions with neighbours and UI, Chinese on one line. Finding the moment:
+   the block's `set(t, t0, t1)` call and the scene's `T` map give `t0` (scene seconds; add
+   `sceneStart`); it is fully in by `t0 + 0.72 s + 0.06 s × words`, the Chinese a little
+   later — e.g. write's headline: `T.head` 2.0 → film 18.0, fully in by 19.4, out at 23.3.
+   Render one frame either side too. `--at` always writes `final-film/`: copy the "before"
+   frames out before rendering "after".
+6. Update everything that quotes it: `grep -rn "<old string>" scripts/film` — the cue
+   `note:` in `CUES`, the storyboard row in `FILM.md` §3 (both feed the generated README),
+   and scene header comments.
+7. Everything else must be unchanged: `bin/regress.sh` the scene's bars before and after
+   into two folders, `bin/regdiff.py` them — only the seconds where the block is on screen
+   may differ. No `film:score`: `COPY` is not in the score's hash.
 
 Where each string sits: `COPY.window` → every app window's title bar (`lib/window.js`);
 `word.window`/`word.styles` → the .docx window (`scenes/word/docWindow.js`), which must
