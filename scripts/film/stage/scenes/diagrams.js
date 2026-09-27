@@ -354,7 +354,7 @@ const scene = {
     // Per-pane depth of field while the layers are apart.
     const dofK = E.smoothstep(10.35, 11.1, t) * (1 - E.smoothstep(13.85, 14.3, t));
     s.stack.set({
-      spread, opacity: stackOp, wipe, soft: back ? 0.42 : 0.1, sheen: back ? 0.45 : 1, glassInk: s.col.apart, panes, glint: -0.8 + 1.6 * seg(t, 10.4, 14.0),
+      spread, opacity: stackOp, wipe, soft: back ? 0.42 : 0.2, sheen: back ? 0.45 : 0.85, glassInk: s.col.apart, panes, glint: -0.8 + 1.6 * seg(t, 10.4, 14.0),
       dof: { focus: camera.position.distanceTo(s.v.set(...stackC)), aperture: 150 * dofK * (ctx.renderH / 1080), maxBlur: 7 * (ctx.renderH / 1080) },
     });
 
