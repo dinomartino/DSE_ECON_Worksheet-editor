@@ -55,10 +55,10 @@ clearly generic frame we draw (window chrome, a generic laptop).
 | Bars | Time | Scene id | World | What the viewer sees | Music |
 |---|---|---|---|---|---|
 | 0–8 | 0:00–0:16 | `opening` | night | Black. A blue point breathes. A cream line sweeps up-right: **"Supply."** A second sweeps down-right, crossing it: **"Demand."** The point drops into the crossing with a soft glow: **"Equilibrium."** An L-axis draws; the warm tile extrudes behind the mark in 3D, a light sweep crosses it; **"Econ Worksheet"**; sub-line **"Worksheets for HKDSE Economics."** / **為文憑試經濟科而設。** Last beat of bar 7: a breath — near-silence, camera pushes into the blue dot until it fills frame. | Intro: pad swell, 3-note felt-piano motif on the three words (the sonic logo), sub pulse from bar 4, filtered pluck arp opening bars 4–8, riser bars 6–8, **silence on beat 4 of bar 7** |
-| 8–16 | 0:16–0:32 | `write` | day | **DROP** on bar 8: hard cut to the bright warm world. The app floats in 3D (tilted window, soft shadow on cream), camera arcing to front while the real clip plays: double-click on the page, type a question and its options. **"Type right on the page."** / 直接在頁面上輸入。 Bar 12: push into the page text → the page's English layer and Chinese layer separate in depth and merge back as the toolbar toggles EN → 中文 → EN+中: **"English. 中文. Both."** | Groove A: kick, clap on 2 & 4, 16th hats, bass, open pluck arp |
+| 8–16 | 0:16–0:32 | `write` | day | **DROP** on bar 8: hard cut to the bright warm world. The app floats in 3D (tilted window, soft shadow on cream), camera arcing to front while the real clip plays: double-click on the page, type a question and its options. **"Type right on the page."** / 直接在頁面上輸入。 Bar 12: push into the page text → the page's English layer and Chinese layer separate in depth and merge back as the toolbar toggles EN → 中文 → EN+中: **"English. 中文. Both."** | Groove A: kick, clap on 2 & 4, 16th hats, bass, open pluck arp; from bar 12 an EP answers with the motif cell |
 | 16–24 | 0:32–0:48 | `diagrams` | night | Hard cut to black: two cream strokes sweep in (callback to the mark) and settle as D and S on axes: **"Diagrams."** Then the real canvas clip in a floating window over a glossy black floor: draw demand, supply, equilibrium, shift a copy for a tax, shade tax revenue and DWL — sped to the beat. **"Drawn in seconds."** / 圖表，數秒完成。 Bar 21–23: the finished diagram explodes into depth layers (axes, curves, shift, guides, areas, labels) and slowly orbits: **"Every line stays editable."** Bar 23–24: layers collapse and the diagram flies down onto a white page. | Hero section: groove continues + a bell lead melody; half-time drums on bar 16–17 ("Diagrams."), full from 17; bars 21–22 open up for the orbit (half-time kick + rim, no hats, bass down, bell and a wide pad carry it); a fill in bar 23 brings the band back |
-| 24–28 | 0:48–0:56 | `marks` | day | Continuity: we are on the white page the diagram landed on. Real clips: set Lines → dotted answer lines appear, "(4 marks)" appears; toolbar summary counts up. **"Marks that add themselves up."** / 分數自動合計。 Bar 26: Student → Teacher: answers turn red; a teacher sheet slides out from behind the student sheet in 3D. **"The teacher's copy. One click."** | Groove B (variation, new fill every 4 bars) |
-| 28–32 | 0:56–1:04 | `papers` | day | Camera pulls back: the page is one of many. Real sheets fan out like a deck in 3D arcs with soft shadows and depth of field — Paper 1 cover, Paper 2 booklet cover, LQ pages with dotted answer space, versions A/B/C. **"From a quick quiz to a full mock paper."** / 由小測到模擬試卷。 Bar 31–32: the sheets gather into one stack; the lights go down. | Groove B peak, then drums thin out on bar 31 |
+| 24–28 | 0:48–0:56 | `marks` | day | Continuity: we are on the white page the diagram landed on. Real clips: set Lines → dotted answer lines appear, "(4 marks)" appears; toolbar summary counts up. **"Marks that add themselves up."** / 分數自動合計。 Bar 26: Student → Teacher: answers turn red; a teacher sheet slides out from behind the student sheet in 3D. **"The teacher's copy. One click."** | Groove B (tresillo bass, EP stabs); the band stops after beat 2 of bar 27, into the peak |
+| 28–32 | 0:56–1:04 | `papers` | day | Camera pulls back: the page is one of many. Real sheets fan out like a deck in 3D arcs with soft shadows and depth of field — Paper 1 cover, Paper 2 booklet cover, LQ pages with dotted answer space, versions A/B/C. **"From a quick quiz to a full mock paper."** / 由小測到模擬試卷。 Bar 31–32: the sheets gather into one stack; the lights go down. | Groove B peak (the EP plays the hero melody's second half), then drums thin out on bar 31 |
 | 32–36 | 1:04–1:12 | `word` | night | Breakdown bars 32–34: one sheet alone in darkness, a slow light sweep over it: **"A real Word document."** / 真正的 Word 文件。 Bar 34 **drop**: the sheet snaps into a document window showing the actual exported `.docx` page; three facts appear on beats: **"Live numbering."** **"Real styles."** **"Fully editable."** | Breakdown: drums out, piano + pad + riser; drop on bar 34 |
 | 36–40 | 1:12–1:20 | `everywhere` | day | Export targets pop in as glass chips on beats — **PDF · Answer key · Kahoot · Blooket · ZipGrade** — then three windows slide in depth, on beats: a browser window, a macOS window, a Windows window, all showing the app: **"In your browser. On Mac. On Windows."** | Final chorus: full energy, octave arp, open hats |
 | 40–42 | 1:20–1:24 | `montage` | mixed | Beat-cut recap, accelerating: 8 cuts on beats 1–6 then half-beats — typing, 中文, a curve dragged, shaded DWL, red answers, a cover page, the .docx, the start screen — each with a small push-in and alternating tilt. | Full, with a build into bar 42 |
@@ -199,8 +199,10 @@ declare clip placements (drives UI sound events).
   (t − ½·shutter … t + ½·shutter), averaged in a float target, for the WebGL layer.
   `shutter=5` for the final, `1` for previews.
 - Post: optional DOF (bokeh) per scene, selective bloom, a very subtle vignette, and a
-  **dither grain** (animated, ±1.5/255, seeded by frame) on the final output so dark
-  gradients do not band in H.264.
+  **dither grain** (animated, ±1.5/255, ±2.5/255 in the shadows, seeded by frame) on the
+  final output so dark gradients do not band in H.264 (the final encode keeps it, §8).
+- `blurDissolve` peaks at 8 px (paper stays legible). Never dissolve between two frames
+  that already match: that only defocuses the downbeat; cut.
 - Lazy asset loading per active scene and disposal after, so any worker can render any
   frame without holding the whole film in memory.
 
@@ -338,10 +340,15 @@ Modern Apple-keynote style: warm, optimistic, minimal, precise. 120 BPM, **D maj
 ### 7.2 Mix and master
 Stems: `music.wav` (with stems `drums`, `bass`, `harmony`, `lead`, `fx`) and `sfx.wav`
 (timeline cues + UI events). Mix SFX under the music (UI clicks −24 dB relative, ticks
-−18, whooshes/hits sit with the drums). Master: gentle glue compression, high-pass
+−18, whooshes/hits sit with the drums); the UI layer is thinned (one click per
+double-click, at most 8 keys/s, no sound under a cue), and picture accents are lifted
+until they clear the music in their own band. Big hits get an 8th-note pre-hit dip (≥ 8 dB
+over their run-up). Master: gentle glue compression, high-pass
 25 Hz, limiter; **−16 LUFS integrated, true peak ≤ −1.0 dBTP** (measure with ffmpeg
 `ebur128`). Output `demo-media/film/audio/score.wav` (music+sfx), stems alongside, and
-`demo-media/film/audio/spectrogram.png` plus a loudness report.
+`demo-media/film/audio/spectrogram.png` plus a loudness report. The score records the
+timeline and `events.json` it was built from; the report fails on a stale one. Details:
+`scripts/film/score/README.md`.
 
 ## 8. Render and master (`scripts/film/render.mjs`, `scripts/film/film.mjs`)
 
@@ -353,14 +360,22 @@ Stems: `music.wav` (with stems `drums`, `bass`, `harmony`, `lead`, `fx`) and `sf
   intermediate, e.g. x264 `-qp 0` or `-crf 8`). Segments are concatenated, then encoded
   once with the audio: `libx264 -profile:v high -preset slow -crf 16 -pix_fmt yuv420p`,
   `-colorspace bt709 -color_primaries bt709 -color_trc bt709`, `-r 60`, `-g 120`,
-  `aq-mode=3`, AAC 256k, `+faststart`.
+  `aq-mode=3`, AAC 256k, `+faststart`; the final adds `aq-strength=1.1:deblock=-2,-2:
+  psy-rd=1.0,0.15`, a low deadzone and no DCT decimation, so the shadow grain survives
+  (about 2× the bitrate in dark scenes).
+- The render never muxes a score built from another timeline or other events: it rebuilds
+  a stale one (`score.mjs sfx`+`mix`, or `all`) and refuses one it cannot rebuild.
+- `tools/motion-check.mjs` gates a range: stalls, jumps, dead stops, freezes and soft dips
+  (a defocus over a still picture) outside planned cuts must all be 0.
 - Must use the GPU (check `WEBGL_debug_renderer_info` is not SwiftShader); if headless
   cannot, run headed with the window off-screen.
 - Modes: `--preview` (960×540, 30 fps, shutter 1, fast), `--from=<bar> --to=<bar>`,
   `--scene=<id>`, `--stills=<seconds step>` (PNG frames for review, with timecode in the
   file name), `--final` (1920×1080, 60 fps, shutter 5).
 - `npm run film` runs: capture (skipped if the asset store is complete, `--recapture`
-  forces), score, render, master. `npm run film -- --preview` for a quick cut.
+  forces), events, score (`score.mjs all`, verified), render, then poster, contact sheet
+  and `demo-media/film/README.md`. `npm run film -- --preview` for a quick cut.
+  `FILM_OUT=<dir>` moves every output (not the asset store) elsewhere, for parallel work.
 
 ## 9. Outputs (`demo-media/film/`, gitignored)
 `econ-worksheet-film.mp4`, `econ-worksheet-film-preview.mp4`, `poster.jpg` (frame at
