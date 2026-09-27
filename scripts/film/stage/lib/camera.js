@@ -2,6 +2,7 @@
 // so scenes stay pure functions of t. Angles in degrees.
 import * as THREE from 'three';
 import { wander } from './noise.js';
+import { FORMAT } from './format.js';
 
 const DEG = Math.PI / 180;
 const tmp = new THREE.Vector3();
@@ -16,7 +17,7 @@ export const distFor = (fov, height) => height / (2 * Math.tan((fov * DEG) / 2))
  * right), elevation `el`, `roll`, `fov`. `shift` = [x, y] frame fractions moves the
  * subject on screen (lens shift, no rotation): +x right, +y up.
  */
-export function orbit(camera, { target = [0, 0, 0], dist = 10, az = 0, el = 0, roll = 0, fov, shift = [0, 0], W = 1920, H = 1080 } = {}) {
+export function orbit(camera, { target = [0, 0, 0], dist = 10, az = 0, el = 0, roll = 0, fov, shift = [0, 0], W = FORMAT.W, H = FORMAT.H } = {}) {
   if (fov != null) camera.fov = fov;
   const a = az * DEG, e = el * DEG;
   camera.position.set(

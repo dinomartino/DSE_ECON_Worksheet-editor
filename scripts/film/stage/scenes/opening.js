@@ -6,6 +6,7 @@
 // blue fills the frame at the cut.
 import { COPY, cue, cueAt, sceneStart, sceneEnd } from '../../timeline.mjs';
 import { cubicBezier } from '../lib/ease.js';
+import { pick } from '../lib/format.js';
 
 const C = COPY.opening;
 const START = sceneStart('opening');
@@ -30,7 +31,26 @@ const T = {
   cut: sceneEnd('opening') - START,
 };
 
-const WORD_Y = 812;
+// Layout per frame (design px). Portrait (FILM-9x16.md): the mark builds at y≈820 with its
+// words under it; the tile at y≈760 with the title and sub stacked below. `shift` is the
+// lens shift of pose A / B (frame fractions), `k` scales pose A / B's distance.
+const L = pick({
+  landscape: {
+    word: { y: 812, size: 120 }, title: { y: 760, size: 124 },
+    sub: { y: 884, size: 38, zhSize: 30, zhGap: 14 },
+    shift: [0.09, 0.125], k: [1, 1],
+    lit: 0, dotBoost: 0, drift: 0, floor: { reflect: 0.2, sheenR: 2.4 },
+  },
+  portrait: {
+    word: { y: 1330, size: 104 }, title: { y: 1240, size: 104 },
+    sub: { y: 1372, size: 36, zhSize: 34, zhGap: 14 },
+    shift: [0.073, 0.104], k: [1.08, 0.92],
+    // The feed hook: the point is already lit under the fade-in and reads 1.5× while it is
+    // alone; the title drifts down with the push so the growing tile never crowds it; the
+    // floor's glow reaches up into the band between the type and the caption.
+    lit: 0.65, dotBoost: 0.5, drift: 24, floor: { reflect: 0.3, sheenR: 3.4 },
+  },
+});
 // Fast but from rest: the 8.0 s whoosh must not start at full speed (a visible jolt).
 const whoosh = cubicBezier(0.3, 0, 0.06, 1);
 const DOT_HOVER = [0, 0.66, 0.16];
@@ -39,8 +59,8 @@ const END = 0.19; // camera distance to the dot at the cut
 
 // Camera poses: A frames the mark as it builds, B the tile and title. Each carries its own
 // slow dolly and arc, so no hold is ever a freeze.
-const poseA = (t) => ({ dist: 5.4 * Math.exp(-0.022 * t), az: -7 + 1.4 * t, el: 1.5 + 0.25 * t });
-const poseB = (t) => ({ dist: 10.4 * Math.exp(-0.012 * (t - 10)), az: -17 + 0.9 * (t - 10), el: 6.5 - 0.2 * (t - 10) });
+const poseA = (t) => ({ dist: 5.4 * L.k[0] * Math.exp(-0.022 * t), az: -7 + 1.4 * t, el: 1.5 + 0.25 * t });
+const poseB = (t) => ({ dist: 10.4 * L.k[1] * Math.exp(-0.012 * (t - 10)), az: -17 + 0.9 * (t - 10), el: 6.5 - 0.2 * (t - 10) });
 
 /** Log-scale push: cubic from rest on the riser to 3× at the breath, then a C2 run into the dot. */
 function pushLog(t, total) {
@@ -69,7 +89,7 @@ const scene = {
     const s = (ctx.state = {});
     s.logo = lib.logo.createLogo();
     scene.add(s.logo.group);
-    s.floor = lib.floor.nightFloor({ W: ctx.renderW, H: ctx.renderH, y: -1.32, reflect: 0.2, blur: 10 * (ctx.renderH / 1080), near: 0.4, far: 3.6, sheenR: 2.4 });
+    s.floor = lib.floor.nightFloor({ W: ctx.renderW, H: ctx.renderH, y: -1.32, blur: 10 * (ctx.renderH / 1080), near: 0.4, far: 3.6, ...L.floor });
     scene.add(s.floor.mesh);
     ctx.onPrepass((...a) => s.floor.prepass(...a), { once: true });
     s.dust = lib.particles.dust({
@@ -84,9 +104,9 @@ const scene = {
     ctx.rig.front.position.set(0.8, 3.4, 8);
 
     const T_ = lib.type;
-    s.words = [C.supply, C.demand, C.equilibrium].map((en) => T_.headline(ctx.el, { en, y: WORD_Y, size: 120, world: 'night' }));
-    s.title = T_.headline(ctx.el, { en: C.title, y: 760, size: 124, world: 'night' });
-    s.sub = T_.sub(ctx.el, { en: C.sub, zh: C.subZh, y: 884, size: 38, zhSize: 30, zhGap: 14, world: 'night' });
+    s.words = [C.supply, C.demand, C.equilibrium].map((en) => T_.headline(ctx.el, { en, ...L.word, world: 'night' }));
+    s.title = T_.headline(ctx.el, { en: C.title, ...L.title, world: 'night' });
+    s.sub = T_.sub(ctx.el, { en: C.sub, zh: C.subZh, ...L.sub, world: 'night' });
   },
 
   update(t, ctx) {
@@ -103,7 +123,8 @@ const scene = {
 
     // The point: breathes at the centre, floats up as the lines arrive, then falls
     // (accelerating) back into the crossing — the price settling at equilibrium.
-    const appear = E.sineOut(E.seg(t, T.dotIn, T.dotIn + 1.4));
+    const appear = E.lerp(L.lit, 1, E.sineOut(E.seg(t, L.lit ? 0 : T.dotIn, T.dotIn + 1.4)));
+    const halo = 1 - E.sineInOut(E.seg(t, 1.2, 3.0)); // the lone point's wide soft halo
     const breath = Math.sin((2 * Math.PI * t) / 2 - Math.PI / 2) * 0.5 + 0.5; // one breath per bar
     const lift = E.quintInOut(E.seg(t, 0.85, 1.95));
     const fall = E.cubicIn(E.seg(t, T.drop, T.land));
@@ -120,7 +141,7 @@ const scene = {
       E.lerp(rest.z + 0.05, DOT_HOVER[2], up),
     ];
     const hoverScale = 0.5 + 0.06 * breath;
-    const dotScale = E.lerp(hoverScale, 1, E.quadIn(fall)) * appear;
+    const dotScale = E.lerp(hoverScale, 1, E.quadIn(fall)) * appear * (1 + L.dotBoost * halo);
     const flash = (1 - Math.exp(-since / 0.035)) * Math.exp(-since / 0.4); // fast attack, soft decay
     const dotGlow = (2.1 + 1.0 * breath * (1 - fall)) * appear + 1.3 * flash + 0.2 * E.smoothstep(0, 0.6, since);
 
@@ -162,7 +183,7 @@ const scene = {
     const dist = E.lerp(A.dist, B.dist, pull) * Math.exp(-push) * (1 + (d.dist - 1) * calm);
     const az = (E.lerp(A.az, B.az, pull) + 11 * riser + d.az * calm) * (1 - into);
     const el = (E.lerp(A.el, B.el, pull) - 2.5 * riser + d.el * calm) * (1 - into);
-    const shift = E.lerp(0.09, 0.125, pull) * (1 - E.sineInOut(E.seg(t, 14.3, 15.9)));
+    const shift = E.lerp(L.shift[0], L.shift[1], pull) * (1 - E.sineInOut(E.seg(t, 14.3, 15.9)));
     const fov = 30;
     const target = [0, 0, E.lerp(0.04, rest.z, E.sineInOut(E.seg(t, 14.5, 15.8)))];
     cam.orbit(camera, { target, dist, az, el, roll: d.roll * calm, fov, shift: [0, shift] });
@@ -182,7 +203,6 @@ const scene = {
     logo.materials.cream.clearcoat = Math.max(1e-3, 0.35 * gloss);
     logo.materials.dot.uniforms.uGlow.value *= 1 + 0.5 * (1 - dim);
     // The lone point gets a wide soft halo that eases back as the lines arrive.
-    const halo = 1 - E.sineInOut(E.seg(t, 1.2, 3.0));
     post.bloom = {
       strength: 1.2 + 0.9 * halo + 0.5 * (1 - E.sineInOut(E.seg(t, T.tile, T.tile + 1.2))) + 1.4 * pushGlow,
       radius: 0.62 + 0.2 * halo,
@@ -200,6 +220,11 @@ const scene = {
     s.words[2].set(t, T.land, T.axis[1] + 0.05);
     s.title.set(t, T.title, T.exit);
     s.sub.set(t, T.sub, T.exit + 0.05);
+    if (L.drift) {
+      const dy = L.drift * E.sineInOut(E.seg(t, 12, 14.3));
+      s.title.place({ y: L.title.y + dy });
+      s.sub.place({ y: L.sub.y + dy });
+    }
   },
 };
 

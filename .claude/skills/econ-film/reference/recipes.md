@@ -210,14 +210,17 @@ for anything whose handoffs or pacing differ (copy an existing scene as a start;
 `opening`/`end` only if their bars and cues exist in the new timeline), `COPY` for the new
 film, sections that reuse the arrangement's ids (or a new arrangement), then R3–R5.
 
-**A 9:16 social cut:** the overlay design space is fixed at 1920×1080 today (`DW, DH` in
-`stage/engine.js`, `W`/`SAFE` in `stage/lib/type.js`, `orbit`'s `W, H` defaults in
-`stage/lib/camera.js`, `minPx` scaling in `stage/lib/particles.js`, title-safe in
-`tools/doctor.mjs`). Make those come from the timeline's `W`/`H` first (a pixel-identical
-change for 16:9), then compose portrait scenes: text stacks above/below a centred product,
-windows crop to the page, the camera frames vertically. Rendering with `--w=1080 --h=1920`
-alone gives a portrait camera on landscape poses and shrinks the type overlay (scaled by
-`W / 1920`) into a band at the top — not a usable cut. Cells in grids stay ≤ 480 px on the long side.
+**A 9:16 social cut:** built as a *format* of the same timeline, not a new film
+(`scripts/film/FILM-9x16.md`). `format.mjs` names the frames; the stage reads
+`?format=portrait` and the design size (overlay, `type.js` title-safe room, `orbit`, `dust`)
+comes from it; scenes get `ctx.format`, `ctx.W/H` (1080×1920), `ctx.safe`, `ctx.pick({
+landscape, portrait })`. `render.mjs --format=portrait` / `npm run film:9x16` / `film:9x16:stills`;
+`film:doctor -- --format=portrait` checks portrait text against its safe area and that the
+portrait events equal the landscape ones (the cut muxes the landscape score). Scenes still
+need recomposing per format: keep the landscape path untouched behind `ctx.pick`, stack text
+above/below a centred product, crop windows to the page, frame the camera vertically, and
+never change clip placements or events in portrait. Prove landscape pixel-identical.
+Cells in grids stay ≤ 480 px on the long side.
 
 Either way: a bible for the new film first (its own `FILM.md`-style storyboard, 1–2 pages),
 then the orchestration in orchestration.md scaled down.

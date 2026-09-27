@@ -5,10 +5,8 @@ import * as THREE from 'three';
 const FONT = (px) => `600 ${px}px -apple-system, "SF Pro Text", system-ui, sans-serif`;
 const PX = 4; // canvas px per design px
 const H_PX = 30;
-const FONT_PX = 16;
-const PAD_PX = 12;
 
-export function styleTag(text, { h = 0.09 } = {}) {
+export function styleTag(text, { h = 0.09, fontPx: FONT_PX = 16, padPx: PAD_PX = 12 } = {}) {
   const probe = document.createElement('canvas').getContext('2d');
   probe.font = FONT(FONT_PX);
   const wPx = Math.ceil(probe.measureText(text).width + 2 * PAD_PX);

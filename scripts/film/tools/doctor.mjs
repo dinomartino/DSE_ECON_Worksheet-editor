@@ -7,15 +7,23 @@
 //   5 score      audio/ built from this timeline and these events
 //   6 text       every text block, fully revealed, inside its box and title-safe
 //   7 capture    assets captured before a later src/ change
-// Checks 3-6 open the stage in Chrome (--skip-stage skips them).
+// Checks 3-6 open the stage in Chrome (--skip-stage skips them). --format=portrait checks the
+// 9:16 cut (FILM-9x16.md): its clip windows, its text against its own safe area, and that its
+// events equal the landscape ones (it muxes the landscape score).
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as TL from '../timeline.mjs';
 import { ASSETS as REGISTRY } from '../assets.mjs';
 import { ASSETS, FILM_DIR } from '../paths.mjs';
+import { formatOf } from '../format.mjs';
 
-const FLAGS = { 'skip-stage': 'checks 1, 2 and 7 only (no browser)', step: 'text sampling step in s (0.2)', help: 'this text' };
+const FLAGS = {
+  'skip-stage': 'checks 1, 2 and 7 only (no browser)',
+  step: 'text sampling step in s (0.2)',
+  format: 'landscape|portrait the frame whose stage checks 3-6 run (default landscape)',
+  help: 'this text',
+};
 const args = {};
 for (const a of process.argv.slice(2)) {
   const m = /^--([^=]+)(?:=(.*))?$/.exec(a);
@@ -24,6 +32,13 @@ for (const a of process.argv.slice(2)) {
     process.exit(2);
   }
   args[m[1]] = m[2] ?? true;
+}
+let FORMAT;
+try {
+  FORMAT = formatOf(args.format === true ? '' : args.format);
+} catch (e) {
+  console.error(`doctor: ${e.message}`);
+  process.exit(2);
 }
 if (args.help) {
   console.log('npm run film:doctor [-- flags]\n' + Object.entries(FLAGS).map(([k, v]) => `  --${k.padEnd(11)} ${v}`).join('\n'));
@@ -139,7 +154,7 @@ async function stage() {
   const { launchOnGpu, openStage, isSoftware } = await import('./chrome.mjs');
   const { scoreState } = await import('../render.mjs');
   const server = await serve({ fallbacks: [] });
-  const size = { w: 640, h: 360, fps: 30, shutter: 1 };
+  const size = { w: FORMAT.W / 3, h: FORMAT.H / 3, fps: 30, shutter: 1, extra: FORMAT.suffix ? `&format=${FORMAT.id}` : '' };
   const { browser, gpu, headed } = await launchOnGpu(server.url, size, { allowSoftware: true });
   try {
     head('3. gpu');
@@ -150,7 +165,19 @@ async function stage() {
     clipWindows(await page.evaluate(() => window.film.placements()));
 
     head('5. score');
-    const events = await page.evaluate(() => window.film.events());
+    let events = await page.evaluate(() => window.film.events());
+    if (FORMAT.suffix) {
+      // The cut muxes the landscape score: its sounds must land where the landscape ones do.
+      const l = await openStage(browser, server.url, { ...size, w: 320, h: 180, extra: '' });
+      const landscape = await l.page.evaluate(() => window.film.events());
+      await l.context.close();
+      const i = Array.from({ length: Math.max(events.length, landscape.length) }, (_, k) => k)
+        .find((k) => JSON.stringify(events[k]) !== JSON.stringify(landscape[k]));
+      if (i != null) {
+        say('error', `${FORMAT.id} events differ from landscape at #${i} (${JSON.stringify(events[i])} vs ${JSON.stringify(landscape[i])}): the shared score would not match the picture`);
+      } else say('ok', `${FORMAT.id} events equal the landscape ones (${events.length})`);
+      events = landscape;
+    }
     const s = scoreState(`${JSON.stringify(events, null, 1)}\n`);
     if (!s.exists) say('warn', 'no audio/score.wav: run npm run film:score');
     else if (!s.current) say('warn', `stale (music ${s.music ? 'ok' : 'old'}, sfx ${s.sfx ? 'ok' : 'old'}, mix ${s.mixed ? 'ok' : 'old'}): run npm run film:score`);
@@ -186,9 +213,9 @@ function clipWindows(placements) {
 
 // ---- 6. text fit -----------------------------------------------------------------------
 // Samples the film; each block is judged at the middle of the span where it is fully revealed.
-const SAFE = { x: 96, y: 72 };
 async function textFit(page) {
-  head('6. text fit');
+  const SAFE = FORMAT.safe;
+  head(`6. text fit${FORMAT.suffix ? ` (${FORMAT.id}, safe x ${SAFE.x0}..${SAFE.x1}, y ${SAFE.y0}..${SAFE.y1})` : ''}`);
   const step = Number(args.step ?? 0.2);
   const blocks = new Map();
   for (let t = 0; t < TL.DURATION; t += step) {
@@ -215,8 +242,8 @@ async function textFit(page) {
     const { l, t, r, b: bottom } = s.box;
     const out = [];
     if (wide > b.maxWidth + 1) out.push(`${Math.round(wide)} px wide in a ${Math.round(b.maxWidth)} px box`);
-    if (l < SAFE.x - 1 || r > TL.W - SAFE.x + 1) out.push(`x ${Math.round(l)}..${Math.round(r)} outside title-safe ${SAFE.x}..${TL.W - SAFE.x}`);
-    if (t < SAFE.y - 1 || bottom > TL.H - SAFE.y + 1) out.push(`y ${Math.round(t)}..${Math.round(bottom)} outside title-safe ${SAFE.y}..${TL.H - SAFE.y}`);
+    if (l < SAFE.x0 - 1 || r > SAFE.x1 + 1) out.push(`x ${Math.round(l)}..${Math.round(r)} outside title-safe ${SAFE.x0}..${SAFE.x1}`);
+    if (t < SAFE.y0 - 1 || bottom > SAFE.y1 + 1) out.push(`y ${Math.round(t)}..${Math.round(bottom)} outside title-safe ${SAFE.y0}..${SAFE.y1}`);
     if (out.length) {
       bad++;
       say('error', `${q(b)} at ${s.t} s: ${out.join('; ')}`);

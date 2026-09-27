@@ -24,7 +24,7 @@ export function videoStart(video) {
 
 const tc = (t) => `${String(Math.floor(t / 60)).padStart(2, '0')}:${(t % 60).toFixed(1).padStart(4, '0')}`;
 
-export async function contactSheet(video, { out = resolve(OUT, 'contact-sheet.jpg'), step = 1, cols = 8, width = 320, from } = {}) {
+export async function contactSheet(video, { out = resolve(OUT, 'contact-sheet.jpg'), step = 1, cols = 8, width = 320, aspect = 16 / 9, from } = {}) {
   const start = from ?? videoStart(video);
   const dir = mkdtempSync(join(tmpdir(), 'film-sheet-'));
   try {
@@ -33,7 +33,7 @@ export async function contactSheet(video, { out = resolve(OUT, 'contact-sheet.jp
     execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', video,
       '-vf', `select=not(mod(n\\,${every})),scale=${width}:-2`, '-fps_mode', 'vfr', '-q:v', '3', join(dir, '%05d.jpg')]);
     const frames = readdirSync(dir).filter((f) => f.endsWith('.jpg')).sort();
-    const h = Math.round((width * 9) / 16);
+    const h = Math.round(width / aspect);
     const cells = frames.map((f, i) => {
       const t = start + i * step;
       const data = readFileSync(join(dir, f)).toString('base64');

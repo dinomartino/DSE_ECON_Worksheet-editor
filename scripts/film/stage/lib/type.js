@@ -1,6 +1,8 @@
-// Typography on the DOM overlay (1920×1080 design px). Styles are pure functions of t:
-// build once in setup, then call set(t, t0, t1) every frame. Spec: FILM.md §4 Typography.
+// Typography on the DOM overlay (design px: 1920×1080, or 1080×1920 in portrait). Styles are
+// pure functions of t: build once in setup, then call set(t, t0, t1) every frame. Spec:
+// FILM.md §4 Typography, FILM-9x16.md for portrait.
 import { clamp, expoOut, quintIn } from './ease.js';
+import { FORMAT } from './format.js';
 
 export const FONT_EN = '-apple-system, "SF Pro Display", system-ui, sans-serif';
 export const FONT_TEXT = '-apple-system, "SF Pro Text", system-ui, sans-serif';
@@ -44,8 +46,12 @@ export function zhWords(text) {
   return text.match(/[^，。、：；！？,.]+[，。、：；！？,.]*/g) ?? [text];
 }
 
-export const W = 1920;
-export const SAFE = 96; // title-safe side margin (FILM.md §4)
+export const W = FORMAT.W;
+export const H = FORMAT.H;
+// Title-safe margins (FILM.md §4; portrait: FILM-9x16.md's text safe area, x 90–950).
+export const SAFE_L = FORMAT.safe.x0;
+export const SAFE_R = W - FORMAT.safe.x1;
+export const SAFE = SAFE_L;
 export const FIT_FLOOR = 0.8; // never shrink below 80% of the design size
 const CJK = '\\u2e80-\\u9fff\\uf900-\\ufaff\\uff00-\\uffef';
 // Break units: one CJK character, a run of other non-space characters, or spaces.
@@ -113,8 +119,8 @@ export function text(parent, spec) {
   const ax = { left: '0%', center: '-50%', right: '-100%' }[p.align ?? 'center'];
   const ay = { top: '0%', middle: '-50%', bottom: '-100%' }[p.valign ?? 'middle'];
   Object.assign(root.style, {
-    left: `${p.x ?? 960}px`,
-    top: `${p.y ?? 540}px`,
+    left: `${p.x ?? W / 2}px`,
+    top: `${p.y ?? H / 2}px`,
     transform: `translate(${ax}, ${ay})`,
     textAlign: p.align ?? 'center',
   });
@@ -151,8 +157,8 @@ export function text(parent, spec) {
 
   // Fit (FILM.md §4): the largest scale in [FIT_FLOOR, 1] at which every paragraph, wrapped
   // to maxWidth, fits in maxLines (EN) and zhMaxLines; a block that fits is set as written.
-  const x = p.x ?? 960;
-  const room = { left: W - SAFE - x, right: x - SAFE, center: 2 * Math.min(x, W - x) - 2 * SAFE }[p.align ?? 'center'];
+  const x = p.x ?? W / 2;
+  const room = { left: W - SAFE_R - x, right: x - SAFE_L, center: 2 * Math.min(x - SAFE_L, W - SAFE_R - x) }[p.align ?? 'center'];
   const maxWidth = p.maxWidth ?? room;
   const paras = String(p.en ?? '').split('\n').filter(Boolean);
   const maxLines = p.maxLines ?? paras.length;
