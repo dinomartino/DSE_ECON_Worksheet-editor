@@ -11,7 +11,7 @@ import { cubicBezier } from '../lib/ease.js';
 import { REVEAL } from '../lib/type.js';
 import { glassChip } from './everywhere/glassChip.js';
 import { softShadow } from './everywhere/shadow.js';
-import { LAYOUT as TALL, portraitCamera } from './everywhere/portrait.js';
+import { LAYOUT as TALL, portraitCamera, portraitCard } from './everywhere/portrait.js';
 import { pick, PORTRAIT } from '../lib/format.js';
 
 const C = COPY.everywhere;
@@ -118,7 +118,7 @@ const scene = {
     s.to = [];
     for (const row of LAY.rows) {
       const total = row.items.reduce((a, i) => a + s.chips[i].w, 0) + LAY.chipGap * (row.items.length - 1);
-      let x = LAY.rowX - total / 2;
+      let x = LAY.rowLeft ?? LAY.rowX - total / 2; // portrait: rows start at the text column
       for (const i of row.items) {
         s.to[i] = [x + s.chips[i].w / 2, row.y, LAY.chipZ];
         x += s.chips[i].w + LAY.chipGap;
@@ -145,7 +145,8 @@ const scene = {
     const X = LAY.text;
     s.lines = C.lines.map((en, i) => T_.headline(ctx.el, { en, x: X.x, y: X.y[i], size: X.size, align: 'left', world: 'day', maxWidth: X.w }));
     s.zh = T_.text(ctx.el, { kind: 'headline', en: '', zh: C.linesZh, zhSize: LAY.zhSize, zhGap: 0, x: X.x + 4, y: X.y[2] + LAY.zhDy, align: 'left', world: 'day', maxWidth: X.w });
-    s.export = T_.headline(ctx.el, { en: C.export, zh: C.exportZh, x: LAY.export.x, y: LAY.export.y, valign: 'bottom', size: LAY.export.size, zhSize: 40, world: 'day' });
+    const exAlign = LAY.export.align ? { align: LAY.export.align } : {};
+    s.export = T_.headline(ctx.el, { en: C.export, zh: C.exportZh, x: LAY.export.x, y: LAY.export.y, valign: 'bottom', size: LAY.export.size, zhSize: 40, world: 'day', ...exAlign });
   },
 
   update(t, ctx) {
@@ -165,7 +166,10 @@ const scene = {
     // After the truck the aim rises with the stack as each window arrives.
     const stack = land(E.seg(t, T.windows[1] - 0.7, T.windows[1] + 0.3)) + land(E.seg(t, T.windows[2] - 0.7, T.windows[2] + 0.3));
     const aimY = E.lerp(-0.42, 0.15, stack / 2);
-    if (PORTRAIT) portraitCamera(t, { camera, lib, T, truck, solo, end, stack, d });
+    if (PORTRAIT) {
+      portraitCamera(t, { camera, lib, T, truck, solo, end, stack, d });
+      portraitCard(t, s.card, { lib, T });
+    }
     else cam.orbit(camera, {
       target: [E.lerp(0.1, OFF + 0.25 - 0.12 * (1 - stack / 2), truck) + 0.25 * solo, E.lerp(0.02, aimY, truck), 0],
       dist: dist * d.dist,

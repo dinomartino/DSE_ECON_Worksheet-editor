@@ -9,12 +9,14 @@
 export const LAYOUT = {
   card: { h: 3.6, pos: [0, -1.4, 0], yaw: 0.05, pitch: -0.06 },
   // Two rows under the headline: PDF + Answer key, then the three quiz apps.
-  rows: [{ y: 1.02, items: [0, 1] }, { y: 0.68, items: [2, 3, 4] }],
+  // Left-aligned on the headline's column (x 90); the second row spans the text-safe width.
+  rows: [{ y: 1.0, items: [0, 1] }, { y: 0.6, items: [2, 3, 4] }],
   rowX: 0,
+  rowLeft: -1.16,
   chipZ: 0.35,
-  chipGap: 0.1,
+  chipGap: 0.08,
   unit: 0.0027, // ≈ one design px at the chips' depth
-  chip: { hPx: 100, fontPx: 46, padPx: 40 },
+  chip: { hPx: 112, fontPx: 55, padPx: 36 }, // labels ≈55 px: 1.2× the first pass, tighter pills
   // The windows live one pedestal below; they ride up from beneath it.
   off: [0, -7.2],
   lagAxis: 1,
@@ -37,8 +39,21 @@ export const LAYOUT = {
   text: { x: 90, w: 860, y: [292, 396, 500], size: 92 },
   zhDy: 84,
   zhSize: 40,
-  export: { x: 540, y: 452, size: 96 },
+  export: { x: 90, y: 452, size: 96, align: 'left' }, // one text column for the whole scene
 };
+
+/**
+ * The Export dialog steps back as the chips arrive (a pure function of scene time), so the
+ * chips lead and the dialog reads as the place they come from. (Depth of field cannot do
+ * this: the glass chips write no depth, so they would blur with the dialog behind them.)
+ */
+export function portraitCard(t, card, { lib, T }) {
+  const E = lib.ease;
+  const k = E.sineInOut(E.seg(t, T.chips[0] - 0.2, T.chips[2] + 0.2));
+  const [x, y, z] = LAYOUT.card.pos;
+  card.group.position.set(x, y - 0.12 * k, z - 0.75 * k);
+  card.set({ dim: 1 - 0.035 * k });
+}
 
 /**
  * The camera, as a pure function of scene time: a tilt up off the dialog after the hit, a slow drift down
