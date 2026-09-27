@@ -102,6 +102,7 @@ const LAYOUT = {
     // the wide bilingual framing: English pedestals down, the narrower 中文 pushes in,
     // Both (the tallest) eases back so it clears the Reels caption and button column.
     reflow: [[1.02, -8, 90], [1.16, 60, 60], [1, 0, 0]],
+    pullExt: 0.15, // the pull lands as the English click's move begins: no hold between
     // The capture's page only (css px): the real page top, sidebar and inspector cut away.
     crop: { x0: 78, y0: 102, x1: 1040, y1: 840 },
     // Lands high (the page's content centred in the tall frame), pedestals down under the
@@ -123,8 +124,8 @@ const LAYOUT = {
       C2: pose(...at(912, 507), 5.33, -13, 4),
       C3: pose(...at(912, 519), 5.5, -6, 2.5),
     }),
-    head: { x: 90, y: 372, size: 100, zhSize: 42, zhGap: 18, maxWidth: 860, maxLines: 2 },
-    sub: { x: 90, y: 566, size: 34, maxWidth: 860 },
+    head: { x: 90, y: 380, size: 100, zhSize: 42, zhGap: 18, maxWidth: 860, maxLines: 2 },
+    sub: { x: 90, y: 574, size: 34, maxWidth: 860 },
     langs: { x: 90, ys: [320, 440, 560], size: 100, maxWidth: 520 },
   },
 };
@@ -287,7 +288,7 @@ const scene = {
     if (s.page) {
       P = mix(P, s.Q, rush(E.seg(t, T.push[0], T.push[1])));
       P = mix(P, s.Qb, sm(T.close[0], T.close[1]));
-      P = mix(P, s.C2, E.quintInOut(E.seg(t, T.pull[0], T.pull[1])));
+      P = mix(P, s.C2, E.quintInOut(E.seg(t, T.pull[0], T.pull[1] + (s.L.pullExt ?? 0))));
       P = mix(P, s.C3, sm(T.orbit[0], T.orbit[1]));
     }
     const d = cam.drift(t, 5, { amp: 0.6, rate: 0.07 });
