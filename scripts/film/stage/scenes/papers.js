@@ -21,7 +21,7 @@ const T = {
   turn: [0.0, 1.5], // the turntable centres the fan
   head: [1.0, 5.62],
   sub: [2.0, 5.66],
-  dolly: [1.7, 5.6], // a slow push while the fan holds
+  dolly: [1.7, 5.6], // while the fan holds: a slow push, tilt and spread
   rack: [1.9, 4.3], // focus travels from the diagram page to the covers (60.3)
   close: [6.0, 7.0], // 62.0 whoosh: the fan folds back under the diagram page (63.0)
   frame: [6.0, 7.1], // camera onto the stack, centred…
@@ -31,7 +31,7 @@ const T = {
 };
 
 // Camera: the open fan over the type band; the stack, centred; word's first frame.
-const WIDE = stop([...at(0), S_POS[2]], 355, 960, 250, { az: 6, el: -24 }); // orbits to az −6
+const WIDE = stop([...at(0), S_POS[2]], 335, 935, 235, { az: 6, el: -24 }); // orbits to az −6
 const STACK_MID = stop([...at(0), S_POS[2]], 420, 960, 520, { az: 3, el: -14 });
 const STACK = stop([...at(0), S_POS[2]], 452, 965, 405, { az: 2, el: -10 }); // ≈ word at 64.0
 
@@ -100,6 +100,8 @@ const scene = {
     const flat = E.smoothstep(0.15, 1.3, t); // lying on the desk: flat, shadows between layers
     const u0 = E.quintInOut(E.seg(t, 0, 1.2)); // the hinge settles flat
     const spT = lerp(SP_OPEN, SP_STACK, uc); // the teacher copy's gap under the hinge
+    const hold = E.sineInOut(E.seg(t, ...T.dolly)); // the held fan: a slow push, tilt and spread
+    const spread = 1 + 0.03 * hold;
 
     s.sheets.forEach((sh, k) => {
       let pos, rot;
@@ -108,7 +110,7 @@ const scene = {
         pos = [...at(g), S_POS[2] + lift];
         rot = [S_ROT[0] * (1 - u0), S_ROT[1] * (1 - u0), g];
       } else if (k === T_K) {
-        const g = TH_S + lerp(PACK[k].off, 0, uc) + phi;
+        const g = TH_S + lerp(PACK[k].off * spread, 0, uc) + phi;
         const fan = [...at(g), S_POS[2] - spT + lift];
         const uT = openEase(E.seg(t, 0.0, 1.35));
         const m = tPose(f);
@@ -118,7 +120,7 @@ const scene = {
         // Farther sheets leave the hinge a touch later; all land together on 57.5.
         const uo = openEase(E.seg(t, T.open[0] + 0.035 * (k - T_K - 1), T.open[1]));
         const sp = lerp(lerp(SP_SHUT, SP_OPEN, uo), SP_STACK, uc);
-        const g = TH_S + lerp(PACK[k].off * uo, 0, uc) + phi;
+        const g = TH_S + lerp(PACK[k].off * uo * spread, 0, uc) + phi;
         pos = [...at(g), S_POS[2] - spT - (PACK[k].depth - 1) * sp + lift];
         rot = [S_ROT[0] * (1 - u0), S_ROT[1] * (1 - u0), g];
         // Hidden sheets cast nothing until they leave the hinge.
@@ -139,7 +141,7 @@ const scene = {
 
     // ---- camera ----------------------------------------------------------------------------
     const orbitAz = -12 * E.seg(t, 1.2, 6.6);
-    const wide = { ...WIDE, az: WIDE.az + orbitAz, dist: WIDE.dist * (1 - 0.025 * E.sineInOut(E.seg(t, ...T.dolly))) };
+    const wide = { ...WIDE, az: WIDE.az + orbitAz, el: WIDE.el + 3 * hold, dist: WIDE.dist * (1 - 0.04 * hold) };
     let p = mixPose(holdCam(lib, f), wide, pullEase(E.seg(t, ...T.pull)));
     p = mixPose(p, STACK_MID, E.quintInOut(E.seg(t, ...T.frame)));
     p = mixPose(p, STACK, E.sineInOut(E.seg(t, ...T.settle)));

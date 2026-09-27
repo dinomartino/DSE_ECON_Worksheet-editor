@@ -25,7 +25,7 @@ export const S_ROT = [0, 0.02, 0.008];
 export const SLIDE = [53.5, 54.5];
 const T_START = add(S_POS, [0.012, 0.004, -0.02]);
 const T_MID = add(S_POS, [0.48, 0.07, -0.13]);
-export const T_END = add(S_POS, [0.8, 0.02, -0.02]);
+export const T_END = add(S_POS, [0.9, 0.02, -0.02]);
 export const T_ROT = [0.01, -0.07, -0.014];
 const slideEase = cubicBezier(0.36, 0, 0.12, 1); // off the mark from rest, long landing
 
@@ -41,8 +41,8 @@ export function tPose(f) {
 
 // Camera on the pair: both sheets, then a slow push into the teacher's marking scheme (its
 // six "(1)" points, a third of the way down the page) that lands on 55.5.
-export const PAIR_VIEW = stop(add(S_POS, [0.4, 0.02, 0]), 540, 960, 425, { az: -5, el: 2 });
-const ANSWERS = stop(add(T_END, [0.02, -0.1, 0]), 900, 960, 390, { az: -8, el: 3 });
+export const PAIR_VIEW = stop(add(S_POS, [0.45, 0.02, 0]), 520, 960, 425, { az: -5, el: 2 });
+const ANSWERS = stop(add(T_END, [0.02, -0.1, 0]), 1300, 960, 380, { az: -8, el: 3 });
 export const PUSH = [54.3, 55.5];
 const pushEase = cubicBezier(0.45, 0, 0.22, 1);
 
