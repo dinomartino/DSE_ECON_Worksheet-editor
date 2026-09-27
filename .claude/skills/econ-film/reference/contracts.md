@@ -84,7 +84,9 @@ one `T` map of scene seconds at the top, derived from cues where picture and mus
 the moment; constants in design px with a comment on what they register to.
 
 `ctx`: `id, THREE, scene, camera` (PerspectiveCamera, fov 30, the scene drives it), `el`
-(this scene's overlay root), `dur, start, beat, bar, fps, W, H` (1920×1080 design px),
+(this scene's overlay root), `dur, start, beat, bar, fps, W, H` (design px: 1920×1080, or 1080×1920 in portrait),
+`format` ('landscape' | 'portrait'), `portrait`, `safe` ({x0, x1, y0, y1}, the text safe area),
+`pick({ landscape, portrait })` (the value for this format; `format.mjs`, FILM-9x16.md),
 `renderW, renderH` (actual), `world, timeline, copy, cue(id)` (scene seconds), `lib`,
 `rig`, `backdrop`, `post` (`{ bloom, samples, dof, vignette, exposure }` — raise `samples`
 for fast moves, `dof: {focus, aperture, maxBlur}`), `load.texture(id) | clip(id) | url(id)`

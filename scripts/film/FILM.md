@@ -381,7 +381,10 @@ timeline and `events.json` it was built from; the report fails on a stale one. D
   cannot, run headed with the window off-screen.
 - Modes: `--preview` (960×540, 30 fps, shutter 1, fast), `--from=<bar> --to=<bar>`,
   `--scene=<id>`, `--stills=<seconds step>` (PNG frames for review, with timecode in the
-  file name), `--final` (1920×1080, 60 fps, shutter 5).
+  file name), `--final` (1920×1080, 60 fps, shutter 5). `--format=portrait` renders the
+  9:16 Reels cut ([`FILM-9x16.md`](./FILM-9x16.md)): 1080×1920 (preview 540×960), outputs
+  suffixed `-9x16`, the landscape score muxed and never rebuilt (a stale one is refused).
+  `npm run film:9x16` (no capture, no score), `npm run film:9x16:stills`.
 - `npm run film` runs: capture (skipped if the asset store is complete, `--recapture`
   forces), events, score (`score.mjs all`, verified), render, then poster, contact sheet
   and `demo-media/film/README.md`. `npm run film -- --preview` for a quick cut.

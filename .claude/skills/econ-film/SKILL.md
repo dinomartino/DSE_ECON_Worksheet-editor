@@ -37,6 +37,8 @@ node scripts/film/render.mjs --final --from=34 --to=36 --workers=4  # ≤2 bars 
 npm run film:capture -- --only=type-mcq       # re-capture one clip/asset job (--list shows them)
 npm run film:score                            # music + sfx + master (~40 s); needed after cue/timeline changes
 npm run film                                  # everything, final; long (capture ~9 min if missing, render ~4 min + encode)
+npm run film:9x16                             # the 9:16 cut: render + mux the existing score (outputs *-9x16)
+node scripts/film/render.mjs --format=portrait --final --at=19.4 --workers=3   # portrait 1080×1920 stills
 ```
 
 The entry scripts (`render.mjs`, `film.mjs`, `capture/capture.mjs`, `capture/extra-marks.mjs`,
@@ -70,8 +72,10 @@ Recipes for each: [reference/recipes.md](reference/recipes.md).
   both neighbours), then capture job → registry entry → scene module → cues → score.
   Inserting bars shifts every later cue, chord and hard-coded second: R3's insertion
   checklist. → R3
-- **A new film** (spotlight, 9:16, another language) → the engine is single-timeline and
-  1920×1080-design today; read R6 before starting. → R6
+- **The 9:16 Reels cut** → a format of the same timeline (`--format=portrait`,
+  `FILM-9x16.md`); scenes branch with `ctx.pick`. → R6
+- **A new film** (spotlight, another language) → the engine is single-timeline; read R6
+  before starting. → R6
 - **Several agents** → [reference/orchestration.md](reference/orchestration.md) first.
 
 ## Rules that are never negotiable
