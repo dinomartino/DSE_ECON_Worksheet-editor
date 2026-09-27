@@ -1,13 +1,13 @@
 // marks — bars 24–28, day (FILM.md §3). From the printed diagram page diagrams hands over
-// (48.0), the camera cranes down past its "(6 marks)" and dotted lines into the live app
-// below: Lines → 6 and the dotted lines appear on 50.0. It rises to the toolbar as the
-// screen turns to the quiz; Teacher on the 52.0 tick, and it follows the red answers down
-// the page. The camera pulls
-// back as the printed student copy rises in front, and the teacher's copy slides out from
-// behind it as they rise, landing on 54.5; a slow push into its red answers hands over.
+// (48.0), the camera glides down to its "(6 marks)" and dotted lines; the page lifts away
+// and the live editor is underneath: Lines → 6, the dotted lines appear on 50.0. It rises
+// to the toolbar as the screen turns to the quiz; Teacher on the 52.0 tick, and it follows
+// the red answers down the page. The camera pulls back, the printed student copy rises in
+// front and the teacher's copy slides out from behind it, landing on 54.5; a slow push
+// into its red answers hands over to papers.
 import { COPY } from '../../timeline.mjs';
 import { cubicBezier } from '../lib/ease.js';
-import { haze, mixable, stop, mixPose, withDrift, applyPose, K } from './marks/kit.js';
+import { haze, mixable, stop, mixPose, withDrift, applyPose } from './marks/kit.js';
 import { S_POS, S_ROT, tPose, holdCam, hazeAt, HAZE_BAND, dofAt, loadSheets, SHEET } from './papers/deck.js';
 
 const C = COPY.marks;
