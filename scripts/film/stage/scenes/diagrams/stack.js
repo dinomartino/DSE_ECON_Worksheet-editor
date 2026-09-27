@@ -141,7 +141,7 @@ export async function diagramStack(ctx, { width = 2 } = {}) {
   const height = width / ASPECT;
   const group = new THREE.Group();
   group.name = 'diagram-stack';
-  const maps = await Promise.all(LAYERS.map((n) => ctx.load.texture(`diagram/${n}.png`)));
+  const maps = await Promise.all(LAYERS.map((n) => ctx.load.texture(`layer-${n}`)));
 
   const shared = {
     uFocus: { value: 5 }, uAperture: { value: 0 }, uMaxBlur: { value: 8 },

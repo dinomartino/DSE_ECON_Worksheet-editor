@@ -29,7 +29,7 @@ const T = {
 };
 
 // The Export dialog, cropped to its own rounded rectangle in the still (px).
-const STILL = { path: 'stills/export-other-apps.png', W: 2880, H: 1800 };
+const STILL = { asset: 'export-other-apps', W: 2880, H: 1800 };
 const DIALOG = { x: 963, y: 177, w: 954, h: 1446, radius: 27 };
 const CARD_H = 4.45;
 const CARD = { pos: [-1.95, 0.0, 0], yaw: 0.16 };
@@ -55,9 +55,9 @@ const SLOTS = [
 const FROM = { pos: [5.4, -2.9, 2.4], rot: [0, -0.5, 0] };
 // The canvas shows ⌘ shortcut hints, so it goes on the Mac; Windows gets the teacher copy.
 const WINDOWS = [
-  { variant: 'browser', still: 'stills/start-screen.png' },
-  { variant: 'mac', still: 'stills/diagram-canvas.png' },
-  { variant: 'windows', still: 'stills/editor-teacher.png' },
+  { variant: 'browser', still: 'start-screen' },
+  { variant: 'mac', still: 'diagram-canvas' },
+  { variant: 'windows', still: 'editor-teacher' },
 ];
 const SPREAD = 0.1; // z the front and back windows drift apart by at the end
 const WIN_W = 3.9;
@@ -91,7 +91,7 @@ const scene = {
 
     // The Export dialog.
     const cardW = CARD_H * (DIALOG.w / DIALOG.h);
-    s.card = lib.win.appWindow({ variant: 'none', width: cardW, aspect: DIALOG.w / DIALOG.h, shadow: false, screen: await ctx.load.texture(STILL.path) });
+    s.card = lib.win.appWindow({ variant: 'none', width: cardW, aspect: DIALOG.w / DIALOG.h, shadow: false, screen: await ctx.load.texture(STILL.asset) });
     s.card.material.uniforms.uRadius.value = (DIALOG.radius / DIALOG.w) * cardW;
     s.card.set({ crop: [DIALOG.x / STILL.W, 1 - (DIALOG.y + DIALOG.h) / STILL.H, DIALOG.w / STILL.W, DIALOG.h / STILL.H] });
     dropShadow(s.card);

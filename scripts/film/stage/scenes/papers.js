@@ -79,11 +79,11 @@ const scene = {
     const { lib, scene } = ctx;
     const s = (ctx.state = {});
     // The pair is seen close in marks: full-size maps; the rest are seen smaller.
-    const maps = await Promise.all(PACK.map(({ path }, k) =>
-      (k <= T_K ? ctx.load.texture(path) : sheetTexture(ctx, path, 1400))));
+    const maps = await Promise.all(PACK.map(({ asset }, k) =>
+      (k <= T_K ? ctx.load.texture(asset) : sheetTexture(ctx, asset, 1400))));
     s.sheets = maps.map((map, k) => {
       const sh = lib.paper.sheet({ map, width: 1, ...SHEET, shadowBlur: 0.04 });
-      sh.group.name = PACK[k].path;
+      sh.group.name = PACK[k].asset;
       sh.group.rotation.order = 'ZXY';
       scene.add(sh.group);
       return sh;

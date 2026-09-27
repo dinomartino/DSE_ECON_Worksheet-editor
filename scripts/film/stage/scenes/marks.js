@@ -11,8 +11,8 @@ import { S_POS, S_ROT, tPose, holdCam, hazeAt, HAZE_BAND, dofAt, loadSheets, SHE
 
 const C = COPY.marks;
 const F0T = 48; // film time of t = 0
-const CLIP = '../extra/marks/clips/marks-total'; // capture/extra-marks.mjs; clip time = scene time
-const START_SHEET = 'extra/marks/sheets/diagram-question-start.png'; // the clip's frame 0, printed
+const CLIP = 'marks-total'; // capture/extra-marks.mjs; clip time = scene time
+const START_SHEET = 'question-start'; // the clip's frame 0, printed
 
 // Beat map (scene seconds). The clip: Marks shows 6 on 2.0, the lines on 3.0, Teacher 4.0.
 const T = {

@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import * as TL from '../timeline.mjs';
+import { asset } from '../assets.mjs';
 import * as lib from './lib/index.js';
 import { Post, makeTarget } from './post.js';
 import { loadImageTexture, loadClip, placedEvents } from './lib/clip.js';
@@ -62,6 +63,13 @@ addEventListener('error', (e) => errors.push(String(e.error?.stack ?? e.message)
 addEventListener('unhandledrejection', (e) => errors.push(String(e.reason?.stack ?? e.reason)));
 
 const assetUrl = (p) => (/^(\/|https?:|blob:|data:)/.test(p) ? p : ASSETS + p);
+/** Registry entry of asset `id` for scene `scene` (assets.mjs lists the scenes allowed to load it). */
+function assetFor(id, scene, kind) {
+  const a = asset(id);
+  if (!a.scenes.includes(scene)) throw new Error(`asset "${id}" is not registered for scene ${scene} (assets.mjs)`);
+  if (kind === 'clip' ? a.kind !== 'clip' : a.kind === 'clip') throw new Error(`asset "${id}" is a ${a.kind}, not a ${kind}`);
+  return a;
+}
 
 // ---- scenes ---------------------------------------------------------------------------
 
@@ -124,27 +132,28 @@ async function createSlot(id, { dry = false } = {}) {
      */
     onPrepass(fn, { once = false } = {}) { (once ? ctx.framePasses : ctx.prepasses).push(fn); },
     onDispose(fn) { res.disposers.push(fn); },
+    // Assets load by registry id (assets.mjs), never by path.
     load: {
-      texture: async (path, opts) => {
+      texture: async (id, opts) => {
+        const a = assetFor(id, ctx.id, 'image');
         if (dry) return new THREE.Texture();
-        const tex = await loadImageTexture(assetUrl(path), renderer, opts);
+        const tex = await loadImageTexture(assetUrl(a.path), renderer, opts);
         res.textures.push(tex);
         return tex;
       },
-      clip: async (name, opts) => {
-        const c = await loadClip(name, ASSETS, renderer, opts);
+      clip: async (id, opts) => {
+        const c = await loadClip(id, assetUrl(assetFor(id, ctx.id, 'clip').path), renderer, opts);
         res.clips.push(c);
         return c;
       },
-      json: async (path) => {
-        const r = await fetch(assetUrl(path));
-        if (!r.ok) throw new Error(`${r.status} ${path}`);
-        return r.json();
-      },
-      exists: async (path) => (await fetch(assetUrl(path), { method: 'HEAD' })).ok,
+      /** The served URL of an image asset, for scenes that decode it themselves. */
+      url: (id) => assetUrl(assetFor(id, ctx.id, 'image').path),
     },
     /** Declare a clip use: clip time `from` plays at scene time `at`, at `rate`. */
-    placeClip(name, p = {}) { placements.push({ name, at: 0, from: 0, rate: 1, ...p }); },
+    placeClip(id, p = {}) {
+      assetFor(id, ctx.id, 'clip');
+      placements.push({ name: id, at: 0, from: 0, rate: 1, ...p });
+    },
     placements,
   };
   ctx.backdrop = backdrop(world, W / H);
@@ -398,7 +407,7 @@ async function events() {
       let clip = slot.res.clips.find((c) => c.name === p.name);
       if (!clip) {
         try {
-          clip = await loadClip(p.name, ASSETS, renderer);
+          clip = await loadClip(p.name, assetUrl(asset(p.name).path), renderer);
           slot.res.clips.push(clip);
         } catch {
           out.push({ t: start + p.at, kind: 'missing-clip', clip: p.name, source: 'clip', scene: info.id });

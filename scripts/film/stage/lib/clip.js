@@ -1,6 +1,7 @@
-// Image-sequence clips from the asset store (FILM.md §5.6):
-//   clips/<name>.json  { name, fps, frames, width, height, duration, events }
-//   clips/<name>/00000.jpg …
+// Image-sequence clips from the asset store (FILM.md §5.6), at a registry path
+// (assets.mjs), e.g. clips/type-mcq:
+//   <path>.json  { name, fps, frames, width, height, duration, events }
+//   <path>/00000.jpg …
 // frameAt(t) is synchronous: a frame not yet uploaded is recorded as a request and the
 // nearest cached frame stands in. The engine calls flush() before rendering, so the
 // final render of every frame only ever sees real, uploaded frames.
@@ -37,13 +38,13 @@ export function disposeImageTexture(tex) {
 const pad = (i) => String(i).padStart(5, '0');
 
 export class Clip {
-  constructor(meta, base, renderer, { cache = 8, prefetch = 2 } = {}) {
+  constructor(meta, dir, renderer, { cache = 8, prefetch = 2 } = {}) {
     Object.assign(this, meta);
     this.fps = meta.fps ?? 60;
     this.frames = meta.frames ?? Math.round((meta.duration ?? 0) * this.fps);
     this.duration = meta.duration ?? this.frames / this.fps;
     this.events = meta.events ?? [];
-    this.base = base;
+    this.dir = dir; // frames folder URL, ending in /
     this.renderer = renderer;
     this.cacheSize = cache;
     this.prefetchCount = prefetch;
@@ -63,7 +64,7 @@ export class Clip {
   }
 
   url(i) {
-    return `${this.base}clips/${this.name}/${pad(i)}.jpg`;
+    return `${this.dir}${pad(i)}.jpg`;
   }
 
   /** Texture of the frame at clip time t (see the file comment for the request rule). */
@@ -134,12 +135,12 @@ export class Clip {
   }
 }
 
-/** Loads a clip's metadata; frames load on demand. */
-export async function loadClip(name, base, renderer, opts) {
-  const res = await fetch(`${base}clips/${name}.json`);
+/** Loads clip `name`'s metadata from `url` + '.json'; frames load on demand from `url` + '/'. */
+export async function loadClip(name, url, renderer, opts) {
+  const res = await fetch(`${url}.json`);
   if (!res.ok) throw new Error(`clip ${name}: ${res.status}`);
   const meta = await res.json();
-  return new Clip({ ...meta, name }, base, renderer, opts);
+  return new Clip({ ...meta, name }, `${url}/`, renderer, opts);
 }
 
 /**

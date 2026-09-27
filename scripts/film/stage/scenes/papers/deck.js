@@ -12,11 +12,8 @@ export const lerp3 = (a, b, u) => a.map((v, i) => v + (b[i] - v) * u);
 /** Quadratic Bezier through control point c. */
 export const bez3 = (a, c, b, u) => lerp3(lerp3(a, c, u), lerp3(c, b, u), u);
 
-/** Asset paths of the pair: the page marks edits, printed after the edit, and its teacher copy. */
-export const PAIR = {
-  student: 'extra/marks/sheets/diagram-question-done.png',
-  teacher: 'extra/marks/sheets/diagram-teacher-done.png',
-};
+/** Asset ids of the pair: the page marks edits, printed after the edit, and its teacher copy. */
+export const PAIR = { student: 'question-done', teacher: 'teacher-done' };
 
 /** The student copy's resting place (world units; a page is 1 wide). */
 export const S_POS = [-0.377, 0.308, 1.05];
@@ -65,12 +62,12 @@ export const dofAt = (focus, k = 1) => (k < 0.01 ? null : { focus, aperture: 130
 
 export const SHEET = { shadowOpacity: 0.15, shadowBlur: 0.05, shadowOffset: [0.018, -0.03] };
 
-/** Loads sheets by asset path into lib paper meshes (added to the scene). */
-export async function loadSheets(ctx, paths) {
-  const maps = await Promise.all(paths.map((p) => ctx.load.texture(p)));
+/** Loads sheets by asset id into lib paper meshes (added to the scene). */
+export async function loadSheets(ctx, ids) {
+  const maps = await Promise.all(ids.map((id) => ctx.load.texture(id)));
   return maps.map((map, i) => {
     const s = ctx.lib.paper.sheet({ map, width: 1, ...SHEET });
-    s.group.name = paths[i];
+    s.group.name = ids[i];
     ctx.scene.add(s.group);
     return s;
   });

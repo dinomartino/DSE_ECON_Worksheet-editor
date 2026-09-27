@@ -15,16 +15,16 @@ const END = 4;
 // crop = [x, y, w, h] in source px. Clip shots play `from` at `rate` clip s per film s.
 const SHOTS = [
   { id: 'typing', clip: 'type-mcq', from: 1.72, rate: 1, crop: [250, 560, 1100, 380], world: 'day' }, // ends above option B
-  { id: 'start', still: 'stills/start-screen.png', size: [2880, 1800], crop: [0, 0, 2880, 1800], world: 'day' },
+  { id: 'start', still: 'start-screen', size: [2880, 1800], crop: [0, 0, 2880, 1800], world: 'day' },
   { id: 'zh', clip: 'language-toggle', from: 2.56, rate: 1, crop: [446, 458, 880, 532], world: 'day' },
   { id: 'curve', clip: 'draw-diagram', from: 2.93, rate: 1.24, crop: [324, 348, 1592, 1332], world: 'night' },
   { id: 'teacher', clip: 'teacher-toggle', from: 1.12, rate: 1, crop: [705, 606, 880, 456], world: 'day' },
   // The Paper 2 cover's title block, below its placeholder school name.
-  { id: 'cover', still: 'sheets/p2-cover.png', size: [2379, 3366], crop: [263, 740, 1060, 597], world: 'day' },
+  { id: 'cover', still: 'p2-cover', size: [2379, 3366], crop: [263, 740, 1060, 597], world: 'day' },
   // The window rises from the bottom edge: title bar, heading and the diagram in the .docx.
   { id: 'docx', doc: true, world: 'night', aim: [0, 0.075] },
   // The finished diagram as it prints (no editor handles), on white: DWL, tax, E₀/E₁.
-  { id: 'dwl', still: 'diagram/full.png', flatten: true, size: [2400, 2010], crop: [60, 300, 2100, 1350], world: 'night' },
+  { id: 'dwl', still: 'diagram-full', flatten: true, size: [2400, 2010], crop: [60, 300, 2100, 1350], world: 'night' },
 ];
 
 const FOV = 30;

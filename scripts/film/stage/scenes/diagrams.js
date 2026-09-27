@@ -170,7 +170,7 @@ const scene = {
     scene.add(s.stack.group);
     // The page marks opens on (the two-part document), its diagram slot blank: the landed
     // stack is its diagram (registered exactly), so the printed one never shows twice.
-    const sheetTex = await ctx.load.texture('extra/marks/sheets/diagram-question-start.png');
+    const sheetTex = await ctx.load.texture('question-start');
     s.page = lib.paper.sheet({ map: blankSlot(sheetTex, ctx), width: PAGE_W, shadowOpacity: 0, shadowBlur: 0.12, shadowOffset: [0.03, -0.06] });
     s.page.group.position.set(...PAGE_C);
     s.page.group.rotation.x = -Math.PI / 2;
