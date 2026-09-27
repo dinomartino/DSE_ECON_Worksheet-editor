@@ -12,8 +12,11 @@ export const lerp3 = (a, b, u) => a.map((v, i) => v + (b[i] - v) * u);
 /** Quadratic Bezier through control point c. */
 export const bez3 = (a, c, b, u) => lerp3(lerp3(a, c, u), lerp3(c, b, u), u);
 
-/** Asset paths of the pair: the printed page diagrams lands on, and its teacher copy. */
-export const PAIR = { student: 'sheets/diagram-question.png', teacher: 'extra/marks/sheets/diagram-teacher.png' };
+/** Asset paths of the pair: the page marks edits, printed after the edit, and its teacher copy. */
+export const PAIR = {
+  student: 'extra/marks/sheets/diagram-question-done.png',
+  teacher: 'extra/marks/sheets/diagram-teacher-done.png',
+};
 
 /** The student copy's resting place (world units; a page is 1 wide). */
 export const S_POS = [-0.377, 0.308, 1.05];
@@ -40,10 +43,11 @@ export function tPose(f) {
 }
 
 // Camera on the pair: both sheets, then a slow push into the teacher's marking scheme (its
-// six "(1)" points, a third of the way down the page) that lands on 55.5.
+// six "(1)" points, a third of the way down the page) that lands on 55.5. The push starts
+// as marks' pull-back lands, so the camera never stops between them.
 export const PAIR_VIEW = stop(add(S_POS, [0.45, 0.02, 0]), 520, 960, 425, { az: -5, el: 2 });
 const ANSWERS = stop(add(T_END, [0.02, -0.1, 0]), 1300, 960, 380, { az: -8, el: 3 });
-export const PUSH = [54.3, 55.5];
+export const PUSH = [54.0, 55.5];
 const pushEase = cubicBezier(0.45, 0, 0.22, 1);
 
 /** The pair camera at film time f (drift included). */
