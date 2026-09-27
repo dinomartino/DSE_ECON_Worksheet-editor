@@ -48,6 +48,7 @@ const LAYOUT = pick({
     NEAR: { dist: 8.7, shift: null }, // the riser's slow push (shift: stay on SHIFT0)
     END: { target: [0, -0.02, 0], dist: 5.84, shift: [-0.128, 0.0] },
     window: {}, // docLayout defaults
+    tag: { h: 0.09, gap: 0.045 }, // style pills: height, gap to the page (world); styleTag's type
     sheetX: 0.1,
     glow: [0.37, 0.52],
     HEAD: { y: 900, size: 104 },
@@ -58,11 +59,13 @@ const LAYOUT = pick({
     AZ0: 2, DIST0: 12.995, SHIFT0: [0, 80 / 1920],
     SWING: 8,
     NEAR: { dist: 10.3, shift: [0, -110 / 1920], shiftT: [0.1, 1.4] }, // lowered before the headline lands
-    END: { target: [-0.2, -0.05, 0], dist: 9.9, shift: [0, -280 / 1920] },
-    window: { width: 3.0, aspect: 1.0, pageFrac: 0.72 },
+    // The pills' left edge at x ≈ 95 and the page's right edge by x ≈ 945 once the facts' pushes land.
+    END: { target: [-0.24, -0.05, 0], dist: 12.6, shift: [0, -152 / 1920] },
+    window: { width: 3.5, aspect: 1.0, pageFrac: 2.16 / 3.5 }, // the page as before (2.16 wide), room left for the pills
+    tag: { h: 0.117, gap: 0.025, fontPx: 18, padPx: 10 }, // 1.3× pills, fuller type: names ≥ 20 px on the phone
     sheetX: 0,
     glow: [0.5, 0.42],
-    HEAD: { y: 385, size: 96, maxWidth: 840, maxLines: 2 },
+    HEAD: { y: 385, size: 96, maxWidth: 840, maxLines: 2, en: C.headline.replace('real ', 'real\n') }, // "A real / Word document."
     FACT: { x: 540, y: 420, size: 72, step: 86, align: 'center' },
   },
 });
@@ -93,9 +96,9 @@ const scene = {
     // Style names in the window's margin, each level with its paragraph.
     const { L } = s.doc;
     s.tags = DOC.styles.map(([key, name]) => {
-      const tag = styleTag(name);
+      const tag = styleTag(name, LAYOUT.tag);
       const r = DOC.regions[key];
-      tag.x = L.slot[0] - L.pageW / 2 - 0.045 - tag.w / 2;
+      tag.x = L.slot[0] - L.pageW / 2 - LAYOUT.tag.gap - tag.w / 2;
       tag.mesh.position.set(tag.x, L.slot[1] + L.pageH * (0.5 - (r[1] + r[3]) / 2), L.slot[2] + 0.002);
       s.doc.group.add(tag.mesh);
       return tag;
