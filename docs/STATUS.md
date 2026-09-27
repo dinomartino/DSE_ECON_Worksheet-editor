@@ -42,12 +42,18 @@ off the bottom.** It is the first thing a fresh session reads — then
   2 lines, 15 cps, .vtt/.srt sidecars) and a post-rendered camera (`scripts/demo/camera.mjs`,
   2× capture, eased 1.3–2× push-ins). Needs `sharp` (transitive via next, undeclared) and
   Chrome `--force-device-scale-factor=2`. `demo.gif` no longer fits 4 MB, so it is skipped.
+- **Product film (2026-09-27, merged on `develop`)** — a 94 s Apple-style 1080p60 film
+  made by code in `scripts/film/`: the real app captured frame-perfect in virtual time,
+  a Three.js stage, an original synthesised score. `npm run film` builds it into
+  `demo-media/film/`; `npm run film:doctor` checks it. **To change it, use the skill
+  `.claude/skills/econ-film/`** (versioned; recipes, contracts, craft, orchestration,
+  pitfalls). On-screen text is `COPY` in `scripts/film/timeline.mjs`. Final QA: ship, 9/10.
 - **Feature backlog** — `docs/IDEAS.md`, ranked from the 2026-09-24 competitor research in
   `docs/research/2026-09-competitive/`. Pick the next initiative from there.
 
 ## Last verified
 
-- `npm test` — 1721 tests, ~3s. `cargo check` in `src-tauri` clean. Green. `npm run build` green; `npm run samples` exports.
+- `npm test` — 1732 tests, ~3s (2026-09-27). `cargo check` in `src-tauri` clean. `npm run build` green; `npm run samples` exports.
 - `npm run typecheck` — clean.
 - `npm run lint` — 44 pre-existing problems (3 errors, 41 warnings) in `Preview.tsx` and
   `InlineEditable.tsx`. Not a regression; do not "fix" by rewriting those files.
@@ -100,6 +106,9 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
+- **2026-09-27 (later)** — Product film merged (`scripts/film/`, skill `econ-film`), built
+  by parallel agents: capture ∥ stage ∥ score → scene groups → critic → fixer → whole-film
+  lens panel. Workflow agents die after 180 s silent: chunk renders, small edits.
 - **2026-09-27** — **Released v0.4.0** (published, `latest` updater live; macOS arm64/x64 +
   Windows assets and signatures checked). `develop` = `main` after the release.
 - **2026-09-26 (late)** — Page rail shows for cover + 1 page (`editor/sheets.ts`); EN-only
@@ -112,6 +121,3 @@ off the bottom.** It is the first thing a fresh session reads — then
   derived), equilibria unlabelled by default ("Label E₀" opt-in). A5 paper summary bar +
   target (`src/model/paperSummary.ts`; Paper 2 pace corrected to 1.25 min/mark). Question
   library design: `docs/design/question-library.md`.
-- **2026-09-25 (night)** — Diagram initiative: core geometry, presets, templates merged
-  (one conflict; trade role guess now prefers drawn price lines). Model answer diagram
-  on LQ leaves (answer-key `.docx` now embeds pictures). Browser-verified alone.
