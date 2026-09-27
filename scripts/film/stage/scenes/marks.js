@@ -79,8 +79,8 @@ const { F0, F2, F3, F3b, HEAD, CARD } = pick({
     // Cards: crops of the same live frame. `rect` clip px [x, y, w, h]; `at` the slot (clip px
     // on the page plane) it rests at, `width` world units, lifted off the page by `lift`.
     CARD: {
-      rows: { rect: [2075, 400, 800, 255], at: [1412, 372], width: 0.6 }, // Parts & marks
-      bar: { rect: [520, 0, 880, 108], at: [1412, 340], width: 0.62 }, // EN+中 · Student · Teacher · Edit · Preview
+      rows: { rect: [2075, 400, 800, 255], at: [1412, 372], width: 0.56 }, // Parts & marks
+      bar: { rect: [520, 0, 880, 108], at: [1412, 340], width: 0.58 }, // EN+中 · Student · Teacher · Edit · Preview
       lift: 0.06,
     },
   },
