@@ -19,7 +19,7 @@ const EXPORT = { en: 'Export your way.', zh: '隨心匯出。' };
 
 // Scene seconds (film − 72).
 const T = {
-  export: [0.3, 3.3], // the chips' headline, out before the truck
+  export: [0.3, 3.12], // the chips' headline, gone before the truck moves
   chips: [0.5, 1.0, 1.5, 2.0, 2.5],
   truck: [3.4, 4.0],
   windows: [4.0, 5.0, 6.0],
