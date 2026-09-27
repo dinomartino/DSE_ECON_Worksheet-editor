@@ -55,11 +55,11 @@ export function tPose(f) {
 // Portrait: the pair stacked, the teacher's copy above; then into its scheme.
 export const PAIR_VIEW = pick({
   landscape: stop(add(S_POS, [0.45, 0.02, 0]), 520, 960, 425, { az: -5, el: 2 }),
-  portrait: stop(add(S_POS, [0.035, 0.475, 0]), 546, 540, 1205, { az: -2, el: -4 }),
+  portrait: stop(add(S_POS, [0.035, 0.475, 0]), 730, 540, 1205, { az: -2, el: -4 }),
 });
 const ANSWERS = pick({
   landscape: stop(add(T_END, [0.02, -0.1, 0]), 1300, 960, 380, { az: -8, el: 3 }),
-  portrait: stop(add(T_END, [0.0, -0.09, 0]), 1150, 540, 1000, { az: -5, el: -6 }),
+  portrait: stop(add(T_END, [0.01, -0.09, 0]), 1180, 540, 1000, { az: -5, el: -6 }),
 });
 export const PUSH = [CUT - 2, CUT - 0.1];
 const pushEase = cubicBezier(0.45, 0, 0.22, 1);
