@@ -44,6 +44,7 @@ const LAYOUT = pick({
     YAW: 0.2, // the window turns toward the facts
     // Breakdown: papers' last frame (sheet 459 px wide, centred at 965, 420) from camera az AZ0.
     AZ0: 2, DIST0: 9.775, SHIFT0: [0.0031, 0.1234],
+    SWING: 13, // the camera's turn around the page on the riser (deg)
     NEAR: { dist: 8.7, shift: null }, // the riser's slow push (shift: stay on SHIFT0)
     END: { target: [0, -0.02, 0], dist: 5.84, shift: [-0.128, 0.0] },
     window: {}, // docLayout defaults
@@ -55,12 +56,13 @@ const LAYOUT = pick({
   portrait: {
     YAW: 0.06,
     AZ0: 2, DIST0: 12.995, SHIFT0: [0, 80 / 1920],
-    NEAR: { dist: 11.2, shift: [0, 10 / 1920] },
+    SWING: 8,
+    NEAR: { dist: 10.3, shift: [0, -110 / 1920] },
     END: { target: [-0.2, -0.05, 0], dist: 9.9, shift: [0, -280 / 1920] },
     window: { width: 3.0, aspect: 1.0, pageFrac: 0.72 },
     sheetX: 0,
     glow: [0.5, 0.42],
-    HEAD: { y: 300, size: 96, maxWidth: 860, maxLines: 2 },
+    HEAD: { y: 385, size: 96, maxWidth: 840, maxLines: 2 },
     FACT: { x: 540, y: 420, size: 72, step: 86, align: 'center' },
   },
 });
@@ -202,7 +204,7 @@ const scene = {
     cam.orbit(camera, {
       target,
       dist: dist * (1 + (d.dist - 1) * calm),
-      az: E.lerp(AZ0 - 13 * approach, 0, m) + 2.4 * E.seg(t, T.move[1], 8.2) + d.az * calm,
+      az: E.lerp(AZ0 - LAYOUT.SWING * approach, 0, m) + 2.4 * E.seg(t, T.move[1], 8.2) + d.az * calm,
       el: E.lerp(2.2 + 0.8 * approach, 1.6, m) + d.el * calm,
       roll: d.roll * calm,
       fov: 30,

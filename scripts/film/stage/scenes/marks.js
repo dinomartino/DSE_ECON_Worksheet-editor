@@ -69,10 +69,10 @@ const { F0, F2, F3, F3b, HEAD, CARD } = pick({
     F2: stop(wpt(1412, 543), 1500, 540, 950, { az: 1.5, el: -1 }),
     F3: stop(wpt(1412, 560), 1530, 540, 960, { az: -1, el: -1 }),
     F3b: stop(wpt(1412, 640), 1560, 540, 980, { az: -2, el: -1.5 }),
-    HEAD: { y: 330, size: 96, maxWidth: 860, maxLines: 3 },
+    HEAD: { y: 390, size: 96, maxWidth: 840, maxLines: 3 },
     // The card: clip px [x, y, w, h] it shows (rows, then the toolbar's Student/Teacher),
     // its centre (clip px, on the page plane) and width in world units, lifted off the page.
-    CARD: { rows: [2075, 400, 800, 255], bar: [640, 0, 800, 255], at: wpt(1412, 278), width: 0.6, lift: 0.06 },
+    CARD: { rows: [2075, 400, 800, 255], bar: [640, 0, 800, 255], at: wpt(1412, 321), width: 0.6, lift: 0.06 },
   },
 });
 

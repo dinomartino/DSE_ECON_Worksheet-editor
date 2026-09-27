@@ -74,7 +74,7 @@ export function holdCam(lib, f) {
 export const hazeAt = (f) => 1 - sineInOut(seg(f, CUT - 0.65, CUT + 0.05));
 export const HAZE_BAND = pick({
   landscape: { from: 640, to: 800 },
-  portrait: { from: 1320, to: 1450, flip: true }, // from the top: clear below y 600, full above 470
+  portrait: { from: 1280, to: 1390, flip: true }, // from the top: clear below y 640, full above 530
 });
 
 /** Depth of field focused at `focus` (camera distance), strength k. */

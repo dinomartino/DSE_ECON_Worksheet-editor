@@ -49,11 +49,11 @@ const { WIDE, COVERS, STACK_MID, END, ORBIT, HEAD, HOME } = pick({
   // first frame is its sheet 600 px wide at (540, 880) (FILM-9x16.md; word.js DIST0 12.995).
   portrait: {
     WIDE: stop(add(S_POS, [0, 1.8, 0]), 520, 540, 1100, { az: 0, el: -34 }),
-    COVERS: stop(add(S_POS, [0, 4.95, 0]), 620, 540, 1060, { az: -3, el: -28 }),
+    COVERS: stop(add(S_POS, [0, 4.95, 0]), 620, 540, 1120, { az: -3, el: -28 }),
     STACK_MID: stop(S_POS, 480, 540, 960, { az: 1, el: -12 }),
     END: { target: [...S_POS], dist: 12.995 / 2.176, az: 0, el: 2.2 - 14, roll: 0, shift: [0, 80 / 1920] },
     ORBIT: -4,
-    HEAD: { y: 330, size: 96, maxWidth: 860, maxLines: 3 },
+    HEAD: { y: 390, size: 96, maxWidth: 820, maxLines: 3 },
     HOME: [...S_POS],
   },
 });
