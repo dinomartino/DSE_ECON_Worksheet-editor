@@ -96,12 +96,18 @@ const LAYOUT = {
   },
   portrait: {
     LIFT: 0.2, D: 3.9,
+    // The capture's page only (css px): the real page top, sidebar and inspector cut away.
+    crop: { x0: 78, y0: 102, x1: 1040, y1: 840 },
+    // Lands high (the page's content centred in the tall frame), pedestals down under the
+    // headline as it rises (C1d, over lowAt), then the slow arc toward front.
+    lowAt: [1.55, 2.45],
     win: (css) => {
-      const C1 = pose(...css(330, 185), 5.9, -9, 4);
+      const C1 = pose(...css(462, 488), 5.5, -9, 4);
       return {
         C1,
         P0: pose(C1.x, C1.y - 0.25, C1.d * 1.45, -16, 13, -1.2),
-        C1b: pose(...css(340, 178), 5.45, -3, 2),
+        C1d: pose(...css(462, 318), 5.5, -7, 3.5),
+        C1b: pose(...css(462, 318), 5.3, -3, 2),
       };
     },
     page: (at) => ({
@@ -158,22 +164,33 @@ const scene = {
     s.clip = await ctx.load.clip('type-mcq', { cache: 10, prefetch: 3 });
     // The whole clip; its last frame holds through the push (update() clamps).
     ctx.placeClip('type-mcq', { at: -CLIP_LEAD, from: 0, rate: 1, dur: s.clip.duration });
-    s.win = lib.win.appWindow({ variant: 'mac', width: WW, shadow: false });
+    const L = (s.L = ctx.pick(LAYOUT));
+    // The capture's css px shown: the whole window, or (portrait) its page only, at the same
+    // world scale per css px, so the page layers and poses keep their sizes.
+    const K = L.crop ?? { x0: 0, y0: 0, x1: 1440, y1: 900 };
+    const kw = K.x1 - K.x0, kh = K.y1 - K.y0;
+    if (L.crop) {
+      s.win = lib.win.appWindow({ variant: 'none', width: (WW * kw) / 1440, aspect: kw / kh, shadow: false, border: '#CFC8BD' });
+      s.win.set({ crop: [K.x0 / 1440, 1 - K.y1 / 900, kw / 1440, kh / 900] });
+      s.win.material.uniforms.uRadius.value = 0.008;
+    } else s.win = lib.win.appWindow({ variant: 'mac', width: WW, shadow: false });
     scene.add(s.win.group);
     // A soft warm shadow on an imagined wall behind: it breathes out past the window's left
     // and lower edges as the camera looks from the left, so the window reads as floating.
-    s.shadow = lib.floor.contactShadow({ w: WW * 0.96, h: s.win.height * 0.92, radius: 0.12, blur: 0.35, color: '#3A342E', opacity: WIN_SHADOW });
+    s.shadow = lib.floor.contactShadow({ w: s.win.width * 0.96, h: s.win.height * 0.92, radius: 0.12, blur: 0.35, color: '#3A342E', opacity: WIN_SHADOW });
     s.shadow.position.set(-0.1, -0.2, -0.35);
     s.win.group.add(s.shadow);
-    s.css = (cx, cy) => [(cx / 1440 - 0.5) * WW, s.win.contentCenter.y + (0.5 - cy / 900) * s.win.screenHeight];
+    s.css = (cx, cy) => [((cx - K.x0) / kw - 0.5) * s.win.width, s.win.contentCenter.y + (0.5 - (cy - K.y0) / kh) * s.win.screenHeight];
     const R = TOOLBAR;
-    s.patch = framePatch({
-      w: ((R.x1 - R.x0) / 1440) * WW,
-      h: ((R.y1 - R.y0) / 900) * s.win.screenHeight,
-      uv: [R.x0 / 1440, 1 - R.y1 / 900, R.x1 / 1440, 1 - R.y0 / 900],
-    });
-    s.patch.mesh.position.set(...s.css((R.x0 + R.x1) / 2, (R.y0 + R.y1) / 2), 0.001);
-    s.win.group.add(s.patch.mesh);
+    if (!L.crop) { // the page crop starts below the formatting toolbar
+      s.patch = framePatch({
+        w: ((R.x1 - R.x0) / 1440) * WW,
+        h: ((R.y1 - R.y0) / 900) * s.win.screenHeight,
+        uv: [R.x0 / 1440, 1 - R.y1 / 900, R.x1 / 1440, 1 - R.y0 / 900],
+      });
+      s.patch.mesh.position.set(...s.css((R.x0 + R.x1) / 2, (R.y0 + R.y1) / 2), 0.001);
+      s.win.group.add(s.patch.mesh);
+    }
     s.dust = lib.particles.dust({
       count: 60, seed: 8, H: ctx.renderH, box: [[-7, -3, -9], [7, 4, 3.2]],
       size: 0.02, aperture: 0.26, bright: 0.4, drift: 0.2, rise: 0.02, minPx: 6, color: '#FFF3E0', color2: '#FFFFFF',
@@ -185,7 +202,6 @@ const scene = {
     // Camera poses for bars 8–12 (window-group space).
     const [sx, sy] = s.css(430, 395);
     s.stem = [sx, sy];
-    const L = (s.L = ctx.pick(LAYOUT));
     Object.assign(s, L.win(s.css));
 
     // The toggle: a crop of the real toolbar, clicked at 0.75× so its clicks land a bar apart.
@@ -252,7 +268,7 @@ const scene = {
     }
     const [b0, b1] = TOOLBAR.bridge;
     if (ct * 60 >= b0 - 1.5 && ct * 60 < b1 - 0.5) [po, pf] = [1, b0 - 1];
-    s.patch.set({ map: po > 0 ? s.clip.frameAt(pf / 60) : null, opacity: po });
+    s.patch?.set({ map: po > 0 ? s.clip.frameAt(pf / 60) : null, opacity: po });
     const b = bob(t);
     s.win.group.position.set(0, b, 0);
 
@@ -260,6 +276,7 @@ const scene = {
     // The cut continues the opening's push: in toward C1, fastest at the cut. Sub-frames
     // before the cut extrapolate the move, so the first frame blurs like the next.
     let P = t < 0 ? blend(s.P0, s.C1, (OUT0 * t) / T.drop) : mix(s.P0, s.C1, out(E.seg(t, 0, T.drop)));
+    if (s.C1d) P = mix(P, s.C1d, sm(...s.L.lowAt));
     P = mix(P, s.C1b, E.sineInOut(E.seg(t, 1.9, 7.9)));
     if (s.page) {
       P = mix(P, s.Q, rush(E.seg(t, T.push[0], T.push[1])));
