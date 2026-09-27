@@ -20,9 +20,9 @@ export const LAYOUT = {
   lagAxis: 1,
   lag: -3.0, // subtracted: the browser starts 3 u above its slot, so it rises into frame early
   slots: [
-    { pos: [-0.07, -0.5, 0.5], rot: [0.02, -0.06, 0] }, // top edge at y≈990 px
+    { pos: [-0.07, -0.4, 0.5], rot: [0.02, -0.06, 0] }, // top edge at y≈950 px
     { pos: [-0.04, 0, -1.1], rot: [0.02, -0.06, 0] }, // ≈820: its chrome and a band of page show
-    { pos: [0, 0.66, -2.8], rot: [0.02, -0.06, 0] }, // ≈650, under the Chinese line
+    { pos: [0, 0.6, -2.8], rot: [0.02, -0.06, 0] }, // ≈670, under the Chinese line
   ],
   from: { pos: [0.5, -3.6, 2.2], rot: [0.35, -0.25, 0] },
   winW: 2.4,
@@ -33,7 +33,7 @@ export const LAYOUT = {
     [400, 0, 1300, 900], // the teacher's copy
   ],
   still: [2880, 1800],
-  text: { x: 90, w: 860, y: [272, 376, 480], size: 92 },
+  text: { x: 90, w: 860, y: [292, 396, 500], size: 92 },
   zhDy: 84,
   zhSize: 40,
   export: { x: 540, y: 452, size: 96 },
