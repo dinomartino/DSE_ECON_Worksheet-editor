@@ -219,7 +219,7 @@ const scene = {
     });
 
     const fast = (t > T.truck[0] && t < T.truck[1] + 0.05) ? 24 : T.windows.slice(1).some((w) => t > w - 0.65 && t < w + 0.2) ? 12 : T.chips.some((c) => t > c - POP.lead && t < c + 0.35) ? 24 : t > T.push[1] - 0.8 ? 8 : 0;
-    post.samples = fast;
+    post.samples = PORTRAIT && t < 0.7 ? Math.max(fast, 12) : fast; // portrait's tilt up off the hit is quick
     post.vignette = 0.06;
 
     // --- type ------------------------------------------------------------------------------

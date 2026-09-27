@@ -40,7 +40,7 @@ export const LAYOUT = {
 };
 
 /**
- * The camera, as a pure function of scene time: a settle after the hit and a slow tilt down
+ * The camera, as a pure function of scene time: a tilt up off the dialog after the hit, a slow drift down
  * the dialog, the pedestal down to the browser (close), a pull back as the stack builds,
  * then a push and a turn into the cut.
  * `truck`, `solo`, `end`, `stack`, `d` are the landscape rig's curves, shared.
@@ -48,11 +48,12 @@ export const LAYOUT = {
 export function portraitCamera(t, { camera, lib, T, truck, solo, end, stack, d }) {
   const { ease: E, camera: cam } = lib;
   const settle = 1 - E.expoOut(E.seg(t, 0, 1.4));
-  const dist = 10 * (1 + 0.05 * settle) * (1 - 0.03 * E.seg(t, 0, 3.4)) * (1 - 0.02 * E.seg(t, T.truck[1], T.push[0])) *
+  const dist = 10 * (1 - 0.15 * settle) * (1 - 0.03 * E.seg(t, 0, 3.4)) * (1 - 0.02 * E.seg(t, T.truck[1], T.push[0])) *
     (1 - 0.07 * solo) * (1 - 0.1 * end);
   const off = LAYOUT.off[1];
-  // Phase one drifts down the dialog a touch; after the pedestal the aim rises with the stack.
-  const y0 = 0.05 - 0.12 * E.sineInOut(E.seg(t, 0, 3.4));
+  // The hit lands close on the dialog and tilts up to make room for the headline, then drifts
+  // down the dialog a touch; after the pedestal the aim rises with the stack.
+  const y0 = 0.05 - 0.12 * E.sineInOut(E.seg(t, 0, 3.4)) - 0.95 * settle;
   const y1 = off + E.lerp(-0.2, 0.48, stack / 2) - 0.16 * solo;
   cam.orbit(camera, {
     target: [0.02 * (1 - truck), E.lerp(y0, y1, truck), 0],
