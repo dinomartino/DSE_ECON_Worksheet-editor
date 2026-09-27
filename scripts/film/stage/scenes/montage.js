@@ -14,7 +14,7 @@ const END = 4;
 
 // crop = [x, y, w, h] in source px. Clip shots play `from` at `rate` clip s per film s.
 const SHOTS = [
-  { id: 'typing', clip: 'type-mcq', from: 1.72, rate: 1, crop: [250, 560, 1100, 400], world: 'day' },
+  { id: 'typing', clip: 'type-mcq', from: 1.72, rate: 1, crop: [250, 560, 1100, 380], world: 'day' }, // ends above option B
   { id: 'zh', clip: 'language-toggle', from: 2.56, rate: 1, crop: [446, 458, 880, 532], world: 'day' },
   { id: 'curve', clip: 'draw-diagram', from: 2.93, rate: 1.24, crop: [324, 348, 1592, 1332], world: 'night' },
   { id: 'dwl', clip: 'draw-diagram', from: 14.34, rate: 0.6, crop: [420, 560, 1400, 860], world: 'night' },
