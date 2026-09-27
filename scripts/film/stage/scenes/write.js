@@ -63,7 +63,6 @@ const SETTLE_Z = 0.02, SETTLE = 0.35, SETTLE_BLUR = 2, SHARPEN = 0.18;
 // The lifted Chinese shrinks about the camera target by most of its perspective growth
 // (close-up distance D, per format), so it floats over its own place: depth shows as
 // parallax and shadow.
-const COMP = 0.8;
 const PUSH = 0.02; // camera distance per reflow
 
 const bob = (t) => 0.012 * Math.sin(t * 0.9);
@@ -74,7 +73,7 @@ const bob = (t) => 0.012 * Math.sin(t * 0.9);
 // under the stacked language words.
 const LAYOUT = {
   landscape: {
-    LIFT: 0.13, D: 1.45,
+    LIFT: 0.13, D: 1.45, COMP: 0.8, SHADOW: 0.2,
     win: () => {
       const C1 = pose(-1.26, 0.14, 3.8, -17, 5); // landed on bar 9: window right, type left
       return {
@@ -95,7 +94,14 @@ const LAYOUT = {
     langs: { x: 128, ys: [388, 524, 660], size: 108, maxWidth: LANG_W },
   },
   portrait: {
-    LIFT: 0.2, D: 3.9,
+    LIFT: 0.3, D: 3.9, COMP: 0.55, SHADOW: 0.36,
+    // The capture hands over to the layers on one frame, at the push's fastest point (its
+    // blur hides the selection going): never a dissolve of the two states.
+    cut: PUSH_AT - 5 / 60 - SWAP,
+    // Each click's framing of its layout (magnification, content shift in design px), from
+    // the wide bilingual framing: English pedestals down, the narrower 中文 pushes in,
+    // Both (the tallest) eases back so it clears the Reels caption and button column.
+    reflow: [[1.02, -8, 90], [1.16, 60, 60], [1, 0, 0]],
     // The capture's page only (css px): the real page top, sidebar and inspector cut away.
     crop: { x0: 78, y0: 102, x1: 1040, y1: 840 },
     // Lands high (the page's content centred in the tall frame), pedestals down under the
@@ -112,10 +118,10 @@ const LAYOUT = {
     },
     page: (at) => ({
       anchor: [885, 900],
-      Q: pose(...at(885, 900), 3.9, -1, 1.5),
-      Qb: pose(...at(885, 900), 4.1, -9, 1.5),
-      C2: pose(...at(900, 403), 4.8, -13, 4),
-      C3: pose(...at(900, 415), 4.95, -6, 2.5),
+      Q: pose(...at(885, 900), 3.9, 4, 1.5),
+      Qb: pose(...at(885, 900), 4.1, -8, 1.5), // a yaw: lines interleave, so a pitch would slide 中 into EN
+      C2: pose(...at(912, 507), 5.33, -13, 4),
+      C3: pose(...at(912, 519), 5.5, -6, 2.5),
     }),
     head: { x: 90, y: 380, size: 100, zhSize: 42, zhGap: 18, maxWidth: 860, maxLines: 2 },
     sub: { x: 90, y: 590, size: 34, maxWidth: 860 },
@@ -124,7 +130,7 @@ const LAYOUT = {
 };
 
 /** The four page layers at t (see write/page.js): each { z, alpha, blur, k }. */
-function layers(t, E, { LIFT, D }) {
+function layers(t, E, { LIFT, D, COMP }) {
   const [c1, c2, c3] = CLICKS.map((c) => c - SWAP);
   const settle = (c, alpha) => ({
     z: SETTLE_Z * (1 - E.quintOut(E.seg(t, c, c + SETTLE))),
@@ -285,21 +291,34 @@ const scene = {
       P = mix(P, s.C3, sm(T.orbit[0], T.orbit[1]));
     }
     const d = cam.drift(t, 5, { amp: 0.6, rate: 0.07 });
-    let push = 1;
-    for (const c of CLICKS) push -= PUSH * nudge(E.seg(t, c - 0.06, c + 0.9));
+    let push = 1, rx = 0, ry = 0;
+    if (s.L.reflow) {
+      let [m0, x0, y0] = [1, 0, 0];
+      CLICKS.forEach((c, i) => {
+        const u = nudge(E.seg(t, c - 0.06, c + 0.9));
+        const [m, x, y] = s.L.reflow[i];
+        push *= (m0 / m) ** u;
+        rx += (x - x0) * u;
+        ry += (y - y0) * u;
+        [m0, x0, y0] = [m, x, y];
+      });
+    } else for (const c of CLICKS) push -= PUSH * nudge(E.seg(t, c - 0.06, c + 0.9));
     const creep = 1 - 0.02 * E.sineIn(E.seg(t, 14.6, 16.2)); // settled, never still: a slow push to the cut
-    cam.orbit(camera, { target: [P.x, P.y, 0], dist: P.d * d.dist * push * creep, az: P.az + d.az, el: P.el + d.el, roll: P.roll + d.roll, fov: 30 });
+    const dist = P.d * d.dist * push * creep;
+    const wpx = (2 * dist * Math.tan(Math.PI / 12)) / ctx.H; // world units per design px
+    cam.orbit(camera, { target: [P.x - rx * wpx, P.y + ry * wpx, 0], dist, az: P.az + d.az, el: P.el + d.el, roll: P.roll + d.roll, fov: 30 });
 
     // ---- the handoff (capture → layered page), the language layers, the toggle ---------
     if (s.page) {
-      const pa = sm(T.swap[0], T.swap[1]);
-      const wa = 1 - sm(T.swap[1], T.swap[1] + 0.12);
+      const cut = s.L.cut;
+      const pa = cut != null ? +(t >= cut) : sm(T.swap[0], T.swap[1]);
+      const wa = cut != null ? 1 - pa : 1 - sm(T.swap[1], T.swap[1] + 0.12);
       s.win.set({ opacity: wa });
       s.win.mesh.visible = wa > 0.001;
       s.shadow.visible = wa > 0.001;
       s.shadow.material.opacity = WIN_SHADOW * wa;
 
-      s.page.set({ alpha: pa, ...layers(t, E, s.L), light: [0.1, -0.16], shadow: 0.2, anchor: s.anchor });
+      s.page.set({ alpha: pa, ...layers(t, E, s.L), light: [0.1, -0.16], shadow: s.L.SHADOW, anchor: s.anchor });
 
       // The toggle floats in over the page's top margin just before its first click.
       const ca = E.quintOut(E.seg(t, T.chip[0], T.chip[1] + 0.35));
