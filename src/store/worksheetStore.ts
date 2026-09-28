@@ -124,6 +124,9 @@ interface WorksheetState {
    * Editor state, never persisted.
    */
   selectedTargetKey?: string;
+  /** The page's multi-selection (marquee / modifier-click) as flow ids, mirrored one way
+   *  for the AI door's scope. Undefined when empty. Editor state, never persisted. */
+  selectedFlowIds?: readonly string[];
   /**
    * The flow id a new item lands after, or undefined to append. A **position**, not a
    * selection (two of the page's selections are preview-local and the rail cannot see
@@ -177,6 +180,8 @@ interface WorksheetState {
   selectElement: (elementId?: string) => void;
   /** Mirror the page's component selection; see `selectedTargetKey`. */
   setSelectedTargetKey: (key?: string) => void;
+  /** Mirror the page's multi-selection; see `selectedFlowIds`. */
+  setSelectedFlowIds: (ids?: readonly string[]) => void;
   /** Point the add rail at a position: new items land after `flowId`. */
   setInsertAnchor: (flowId?: string) => void;
   /** Anchor at `flowId` and ask the rail to open its insert menu. */
@@ -672,6 +677,7 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
       selectedQuestionId: undefined,
       // Both name ids in the document being replaced, so they mean nothing here.
       selectedTargetKey: undefined,
+      selectedFlowIds: undefined,
       insertAnchorId: undefined,
     })),
 
@@ -708,6 +714,7 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   selectElement: (selectedElementId) => set({ selectedElementId }),
 
   setSelectedTargetKey: (selectedTargetKey) => set({ selectedTargetKey }),
+  setSelectedFlowIds: (ids) => set({ selectedFlowIds: ids && ids.length > 0 ? ids : undefined }),
 
   setInsertAnchor: (insertAnchorId) => set({ insertAnchorId }),
 
