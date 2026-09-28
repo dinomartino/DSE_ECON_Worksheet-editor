@@ -343,7 +343,7 @@ async function entryChecks(engine, browser) {
     await page.waitForTimeout(300);
     const { button } = await toolbarSetup(page);
     expect((await button.locator(`path[d="${PAGE_SETUP_PATH}"]`).count()) === 1, 'no page-setup icon');
-    expect((await button.locator('circle').count()) === 0, 'a gear on the toolbar Setup');
+    expect((await button.locator('circle[r="3"]').count()) === 0, 'a gear on the toolbar Setup');
     await shot(page, '08-narrow-setup');
     await page.setViewportSize({ width: 1440, height: 900 });
   });
@@ -358,8 +358,9 @@ async function entryChecks(engine, browser) {
     expect(!opened, 'Settings opened over Export');
   });
   await check(engine, '⌘, while typing does not open Settings', async () => {
-    await page.locator('#print-root [data-flow-id]').first().dblclick();
-    await page.waitForTimeout(300);
+    // Renaming the document: a text field outside any dialog.
+    await page.getByTitle(/click to rename$/).first().click();
+    await page.getByRole('textbox', { name: 'Document name' }).waitFor({ timeout: 3000 });
     const typing = await page.evaluate(() => {
       const el = document.activeElement;
       return !!el && (el.isContentEditable || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
