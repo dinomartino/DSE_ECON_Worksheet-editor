@@ -6,7 +6,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import ts from 'typescript';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { loadGlossary } from './load';
 
 const SRC = join(__dirname, '..');
@@ -65,5 +65,29 @@ describe('the glossary loads lazily', () => {
       entries: 1350,
     });
     expect(await loadGlossary()).toBe(glossary);
+  });
+
+  it('does not cache a failed load: the next caller tries again', async () => {
+    vi.resetModules();
+    let calls = 0;
+    vi.doMock('./glossary', async (importOriginal) => {
+      const real = await importOriginal<typeof import('./glossary')>();
+      return {
+        createGlossary: (...args: Parameters<typeof real.createGlossary>) => {
+          if (++calls === 1) throw new Error('chunk failed');
+          return real.createGlossary(...args);
+        },
+      };
+    });
+    try {
+      const fresh = await import('./load');
+      await expect(fresh.loadGlossary()).rejects.toThrow('chunk failed');
+      const glossary = await fresh.loadGlossary();
+      expect(glossary.entries).toHaveLength(1350);
+      expect(calls).toBe(2);
+    } finally {
+      vi.doUnmock('./glossary');
+      vi.resetModules();
+    }
   });
 });
