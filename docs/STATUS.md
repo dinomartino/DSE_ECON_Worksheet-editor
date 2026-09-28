@@ -46,6 +46,11 @@ off the bottom.** It is the first thing a fresh session reads — then
   toolbar one row from 1024px (name truncates; Setup icon-only and Saved a dot below xl);
   desktop file-drop unlisten never rejects (`src/platform/index.ts:unlistenSafely`) — not
   yet run in the real desktop shell.
+- **標楷體 font preset (2026-09-28, merged on `develop`)** — teacher request: "Times New
+  Roman / 標楷體" in `FONT_PRESETS` (`.docx` writes `w:eastAsia="DFKai-SB"`); default stays
+  新細明體. Browser backends take `src/model/fonts.ts:cssFontFamilies`, which appends Mac Kai
+  stand-ins (renders as BiauKaiTC here); other presets produce unchanged CSS.
+  **Unchecked:** Word on Windows opening the export (LibreOffice/Mac substitutes a non-Kai face).
 - **Desktop app — shipped 2026-09-22.** Tauri 2 wraps the same static `out/`; documents
   become files under `$APPDATA/worksheets/` (`src/storage/fileStore.ts`), saving uses the
   native dialog, updates come from GitHub Releases. `src/platform/index.ts` ·
