@@ -4,7 +4,7 @@ import { presetFor } from '@/ai/providers';
 import { exportDocxBuffer } from '@/export/docx';
 import { createParagraphBlock, createStructuredQuestion, createWorksheet } from '@/model/factories';
 import { createWorksheetFrom } from '@/model/newWorksheet';
-import { isRichTextEmpty } from '@/model/text';
+import { isRichTextEmpty, normalizeRuns, plain } from '@/model/text';
 import { collectTexts, mapWorksheetTexts } from '@/model/textWalk';
 import { applyTranslationBatch } from '@/model/translationApply';
 import type { SlotGroup, TextSlot } from '@/model/textSlots';
@@ -12,16 +12,19 @@ import type { OutputMode, ParagraphBlock, RichText, StructuredQuestion, Workshee
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
 import { buildMarkSchemeWorksheet } from '@/test/markSchemeFixture';
 import { fakeGlossary } from './fakeGlossary';
+import { normalizeZh, traditionalize } from './normalize';
 import { defaultTranslateOptions, planFromSlots, planTranslation } from './plan';
 import { runTranslation, writesFor } from './run';
 import { oneSided, referenceClient, reply, scriptedClient } from './testKit';
 import type { TranslateOptions } from './types';
+import { decodeWire, encodeRuns } from './wire';
 
 /**
  * The engine's output is safe to export: decoded runs carry no wire tag, a blank prints as
  * underlined spaces, a subscript as w:vertAlign, and derived text (numbers, marks) prints
  * once. Part one writes the results by hand into a question it built; part two runs the
- * real walker and apply over a whole fixture once P-TEXT is in the tree.
+ * real walker and apply over whole fixtures once P-TEXT is in the tree, and compares the
+ * export with the original's (its Chinese cleaned up as the pipeline does).
  */
 
 const WIRE_TAG = /<\/?(?:b|i|u|sub|sup|s\d)>|<(?:blank|br)\s*\/?>|&lt;\/?(?:b|i|u|sub|sup|s\d|blank|br)/;
@@ -113,6 +116,18 @@ const DOCUMENTS: Array<[string, () => Worksheet]> = [
 ];
 const walkerReady = collectTexts(buildAcceptanceWorksheet()).length > 0;
 
+/**
+ * The original's own Chinese as a reference reply comes back: through the decoder and the
+ * Hong Kong clean-up (甚麼 → 什麼, no typed space beside CJK). Computed per original slot,
+ * so text applied to the wrong slot still shows.
+ */
+function asPipelineReturns(zh: RichText, kind: TextSlot['kind']): RichText {
+  const { codec, wire } = encodeRuns(zh);
+  const decoded = decodeWire(wire, codec, 'zh', kind);
+  if (!decoded.ok) throw new Error(wire);
+  return normalizeRuns(traditionalize(normalizeZh(decoded.runs).runs).runs);
+}
+
 describe.skipIf(!walkerReady)('an English-only paper translated end to end', () => {
   for (const [name, build] of DOCUMENTS) {
     it(`${name}: plan → run → apply → .docx matches the bilingual original`, async () => {
@@ -122,14 +137,22 @@ describe.skipIf(!walkerReady)('an English-only paper translated end to end', () 
       const plan = planTranslation(english, { kind: 'paper' }, defaultTranslateOptions(mode, true));
       const deps = { client: referenceClient(original), preset: { ...presetFor('gemini'), concurrency: 1 }, model: 'm', glossary: null };
       const outcome = await runTranslation(plan, deps, new AbortController().signal, () => {});
+      // Every row comes back and none fails: an all-failed run cannot pass as "unchanged".
+      expect(outcome.results.size).toBe(plan.jobs.size);
+      const failed = [...outcome.results.values()].filter((r) => r.status === 'failed');
+      expect(failed.map((r) => `${plain(plan.jobs.get(r.key)!.source)}: ${r.issues.map((i) => i.code)}`)).toEqual([]);
       const writes = writesFor(plan, outcome, new Set(plan.jobs.keys()), true);
       const { worksheet: translated, report } = applyTranslationBatch(english, writes);
       expect(report.skipped).toEqual([]);
 
-      // The original, less whatever the run left empty (failed rows, one-sided originals).
+      const planned = new Set(writes.map((w) => w.path));
       const filled = new Map(collectTexts(translated).map((slot) => [slot.path, slot.text]));
+      for (const slot of collectTexts(original)) {
+        if (planned.has(slot.path)) expect(isRichTextEmpty(filled.get(slot.path)!.zh), slot.path).toBe(false);
+      }
+      // The original, its Chinese as the pipeline returns it; unplanned slots left empty.
       const expected = mapWorksheetTexts(original, (slot) =>
-        filled.get(slot.path) && isRichTextEmpty(filled.get(slot.path)!.zh) ? { ...slot.text, zh: [] } : slot.text);
+        planned.has(slot.path) ? { ...slot.text, zh: asPipelineReturns(slot.text.zh, slot.kind) } : { ...slot.text, zh: filled.get(slot.path)?.zh ?? [] });
 
       for (const language of ['zh', 'bilingual'] as const) {
         const got = await documentXml(translated, { language, version: 'teacher' });
