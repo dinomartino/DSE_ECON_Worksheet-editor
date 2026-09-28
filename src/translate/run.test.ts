@@ -5,7 +5,7 @@ import { plain } from '@/model/text';
 import type { SlotKind } from '@/model/textSlots';
 import type { RichText } from '@/model/types';
 import { fakeGlossary } from './fakeGlossary';
-import { runTranslation, translateOne, writesFor } from './run';
+import { announcedSleep, runTranslation, translateOne, writesFor } from './run';
 import { payloadOf, reply, scriptedClient } from './testKit';
 import type { Chunk, Direction, RunDeps, RunProgress, TranslationJob, TranslationPlan } from './types';
 
@@ -195,6 +195,25 @@ describe('whole-response failures', () => {
     expect(progress.map((p) => `${p.phase} ${p.requestsDone}/${p.requestsTotal}`)).toEqual([
       'translating 0/2', 'checking 1/2', 'translating 1/2', 'checking 2/2', 'fixing 2/3', 'checking 3/3',
     ]);
+  });
+
+  it('shows the client’s rate-limit wait, then carries on', async () => {
+    const sleep = announcedSleep(async () => {});
+    const base = scriptedClient([echo]);
+    const client = { ...base, complete: async (req: CompletionRequest) => (await sleep(12_000, req.signal), base.complete(req)) };
+    const progress: RunProgress[] = [];
+    await run(planOf([{ jobs: many(1) }]), { ...depsFor(client), sleep }, undefined, progress);
+    expect(progress.map((p) => `${p.phase}${p.waitMs ? ` ${p.waitMs}` : ''}`)).toEqual(['translating', 'waiting 12000', 'translating', 'checking']);
+    // Outside a run the same sleep announces nothing.
+    await sleep(1, new AbortController().signal);
+    expect(progress).toHaveLength(4);
+  });
+
+  it('ends a rate-limit wait at once on Stop', async () => {
+    const controller = new AbortController();
+    const waiting = announcedSleep()(60_000, controller.signal);
+    controller.abort();
+    await expect(waiting).resolves.toBeUndefined();
   });
 });
 

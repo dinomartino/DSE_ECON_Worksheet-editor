@@ -7,7 +7,12 @@ import { createRunDeps } from './deps';
 const hoisted = vi.hoisted(() => ({
   resolve: vi.fn<() => Promise<unknown>>(),
   load: vi.fn<() => Promise<unknown>>(),
+  create: vi.fn(),
 }));
+vi.mock('@/ai/client', async (original) => {
+  const real = await original<typeof import('@/ai/client')>();
+  return { ...real, createClient: hoisted.create.mockImplementation(real.createClient) };
+});
 vi.mock('@/settings/aiSettings', () => ({ resolveAiConfig: hoisted.resolve }));
 vi.mock('@/glossary/load', async (original) => ({
   ...(await original<typeof import('@/glossary/load')>()),
@@ -44,6 +49,14 @@ describe('createRunDeps', () => {
     expect(result.deps.glossary?.meta).toBeDefined();
     expect(typeof result.deps.client.complete).toBe('function');
     expect(hoisted.load).toHaveBeenCalledTimes(1);
+  });
+
+  it('gives the client the sleep the run announces as waiting', async () => {
+    resolves({ ok: true, config, preset });
+    const result = await createRunDeps();
+    if (!result.ok) throw new Error('expected deps');
+    expect(result.deps.sleep).toBeTypeOf('function');
+    expect(hoisted.create).toHaveBeenLastCalledWith(config, { sleep: result.deps.sleep });
   });
 
   it('runs without a glossary when asked, or when it fails to load', async () => {

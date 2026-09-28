@@ -1,6 +1,7 @@
 import { createClient } from '@/ai/client';
 import { loadGlossary } from '@/glossary/load';
 import { resolveAiConfig } from '@/settings/aiSettings';
+import { announcedSleep } from './run';
 import type { RunDepsResult } from './types';
 
 /**
@@ -13,5 +14,7 @@ export async function createRunDeps(opts?: { glossary?: boolean }): Promise<RunD
   if (!resolved.ok) return resolved;
   const glossary = opts?.glossary === false ? null : await loadGlossary().catch(() => null);
   const { config, preset } = resolved;
-  return { ok: true, deps: { client: createClient(config), preset, model: config.model, glossary }, config };
+  // The client's rate-limit wait shows in the run as "Waiting for {Provider}'s rate limit".
+  const sleep = announcedSleep();
+  return { ok: true, deps: { client: createClient(config, { sleep }), preset, model: config.model, glossary, sleep }, config };
 }

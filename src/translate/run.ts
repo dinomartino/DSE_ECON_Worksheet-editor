@@ -1,5 +1,5 @@
 import { parseItemsPayload } from '@/ai/schema';
-import { AiError, isAiError, type AiErrorInfo, type AiErrorKind, type CompletionRequest } from '@/ai/types';
+import { AiError, isAiError, type AiErrorInfo, type AiErrorKind, type CompletionRequest, type HttpDeps } from '@/ai/types';
 import type { Glossary, TermCheck } from '@/glossary/types';
 import { isRichTextEmpty, normalizeRuns, plain } from '@/model/text';
 import type { Side, SlotMeta, TranslationWrite } from '@/model/textSlots';
@@ -13,6 +13,7 @@ import type {
   JobResult,
   RunDeps,
   RunOutcome,
+  RunPhase,
   RunProgress,
   TranslationJob,
   TranslationPlan,
@@ -278,6 +279,39 @@ async function runChunk(run: Run, chunk: Chunk, results: Map<string, JobResult>)
   run.emit('checking');
 }
 
+type Sleep = HttpDeps['sleep'];
+const waitHooks = new WeakMap<Sleep, { start: (ms: number) => void; end: () => void }>();
+
+function abortableSleep(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal.aborted) return resolve();
+    const done = () => {
+      clearTimeout(timer);
+      signal.removeEventListener('abort', done);
+      resolve();
+    };
+    const timer = setTimeout(done, ms);
+    signal.addEventListener('abort', done, { once: true });
+  });
+}
+
+/**
+ * The client's sleep (its one rate-limit retry), shown as 'waiting' by the run whose
+ * `deps.sleep` it is. Ends early on abort; the client's next request then reports it.
+ */
+export function announcedSleep(sleep: Sleep = abortableSleep): Sleep {
+  const announced: Sleep = async (ms, signal) => {
+    const hook = waitHooks.get(announced);
+    hook?.start(ms);
+    try {
+      await sleep(ms, signal);
+    } finally {
+      hook?.end();
+    }
+  };
+  return announced;
+}
+
 /** Never rejects. */
 export async function runTranslation(
   plan: TranslationPlan,
@@ -296,6 +330,17 @@ export async function runTranslation(
       onProgress({ ...progress });
     },
   };
+  let resume: RunPhase = 'translating';
+  if (deps.sleep) {
+    waitHooks.set(deps.sleep, {
+      start: (ms) => {
+        if (progress.phase !== 'waiting') resume = progress.phase;
+        progress.phase = 'waiting';
+        onProgress({ ...progress, waitMs: ms });
+      },
+      end: () => run.emit(progress.phase === 'waiting' ? resume : progress.phase),
+    });
+  }
   const queue = [...plan.chunks];
   let fatal: AiErrorInfo | undefined;
   let stopped = false;
@@ -313,6 +358,7 @@ export async function runTranslation(
   };
   const workers = Math.max(1, Math.min(deps.preset.concurrency, plan.chunks.length));
   await Promise.all(Array.from({ length: workers }, worker));
+  if (deps.sleep) waitHooks.delete(deps.sleep);
   return {
     results,
     ...(fatal ? { fatal } : {}),
