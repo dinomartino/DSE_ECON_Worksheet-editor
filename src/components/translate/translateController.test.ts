@@ -1,13 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 import { presetFor } from '@/ai/providers';
 import { createWorksheet } from '@/model/factories';
+import { rt } from '@/model/text';
 import type { ApplyReport, TranslationWrite } from '@/model/textSlots';
 import type { OutputMode } from '@/model/types';
 import type { AiStatus } from '@/settings/aiSettings';
 import type { TranslateRequest } from '@/store/appDialogs';
-import type { JobResult, RunDeps, RunOutcome, RunProgress, TermRow, TranslationPlan } from '@/translate/types';
+import type { JobResult, RunDeps, RunOutcome, RunProgress, TermRow, TranslateOptions, TranslationPlan } from '@/translate/types';
 import { createTranslateController, type ControllerDeps } from './translateController';
-import { PAPER_REQUEST, WS_ID, fakePlan, job, result } from './sessionFixtures';
+import { PAPER_REQUEST, WS_ID, counts, fakePlan, job, result } from './sessionFixtures';
 import { createSessionStore, pendingKeys } from './translateSession';
 
 const JOBS = [job('t1', 'Supply falls.'), job('t2', 'Price rises.'), job('t3', 'Demand is elastic.')];
@@ -221,6 +222,24 @@ describe('translateController', () => {
     const fill = setup();
     fill.controller.open(PAPER_REQUEST);
     expect(fill.session().mode).toBe('translate');
+  });
+
+  it('symbol gaps: EN+中 copies none and opens on Check terms; 中文 copies only into 中文', () => {
+    const copy = (side: 'zh' | 'en'): TranslationWrite => ({ path: `c-${side}`, side, sourceSnapshot: rt('E₀'), targetSnapshot: [], next: rt('E₀') });
+    // Only symbol gaps, one per side; the plan copies what the options ask for.
+    const plan = vi.fn((_ws: unknown, _scope: unknown, options: TranslateOptions) => {
+      const copies = [...(options.copySymbols.toZh ? [copy('zh')] : []), ...(options.copySymbols.toEn ? [copy('en')] : [])];
+      return { ...fakePlan([], copies), counts: counts({ symbols: { toZh: 1, toEn: 1 }, copied: copies.length }) };
+    });
+    const bilingual = setup({ plan });
+    bilingual.controller.open(PAPER_REQUEST);
+    expect(bilingual.session().mode).toBe('check');
+    const zh = setup({ plan }, { language: 'zh', version: 'student' });
+    zh.controller.open(PAPER_REQUEST);
+    expect(zh.session().mode).toBe('translate');
+    zh.controller.copySymbols();
+    expect(zh.applied[0].map((w) => w.path)).toEqual(['c-zh']);
+    expect(zh.deps.notify).toHaveBeenCalledWith('Filled 1 text', expect.anything());
   });
 
   it('a run that cannot start shows the setup error, not a crash', async () => {

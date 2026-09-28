@@ -125,8 +125,13 @@ describe('Translate dialog · Setup', () => {
   it('nothing to fill; only symbols to fill (no AI needed)', () => {
     const none = { ...setupPlan(), counts: counts() };
     expect(render(seeded(), view({ plan: none, probe: none }))).toContain('Every text has both English and 中文.');
-    const symbols = { ...setupPlan(), counts: counts({ symbols: { toZh: 6, toEn: 0 } }) };
-    const markup = render(seeded(), view({ plan: symbols, probe: symbols, status: status(false) }));
+    // Symbol gaps the edition would not copy (EN+中: they would print twice) are nothing to fill.
+    const found = { ...setupPlan(), counts: counts({ symbols: { toZh: 6, toEn: 0 } }) };
+    const bilingual = render(seeded(), view({ plan: found, probe: found }));
+    expect(bilingual).toContain('Every text has both English and 中文.');
+    expect(bilingual).not.toContain('Copy ');
+    const copied = { ...found, counts: { ...found.counts, copied: 6 } };
+    const markup = render(seeded(), view({ plan: copied, probe: found, status: status(false) }));
     expect(markup).toContain('6 numbers and symbols can be copied as they are — no AI needed.');
     expect(markup).toContain('Copy 6');
   });

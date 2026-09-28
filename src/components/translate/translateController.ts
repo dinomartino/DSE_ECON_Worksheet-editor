@@ -176,11 +176,12 @@ export function createTranslateController(deps: ControllerDeps) {
       const options = defaultOptions(request);
       const worksheet = deps.getWorksheet();
       const probe = deps.plan(worksheet, request.scope, probeOptions(options)).counts;
-      const nothing = probe.toZh + probe.toEn + probe.symbols.toZh + probe.symbols.toEn === 0;
+      const planned = deps.plan(worksheet, request.scope, options).counts;
+      // A symbol gap is something to fill only where this edition copies it (never in EN+中).
+      const nothing = probe.toZh + probe.toEn === 0 && planned.copied === 0;
       const mode: SessionMode = request.mode === 'check' || nothing ? 'check' : 'translate';
       dispatch({ type: 'open', request, options, mode });
       if (!request.autoStart || mode !== 'translate' || !deps.readStatus().configured) return;
-      const planned = deps.plan(worksheet, request.scope, options).counts;
       const texts = planned.toZh + planned.toEn;
       if (texts > 0 && texts <= AUTO_START_MAX) translate();
     },
@@ -228,12 +229,11 @@ export function createTranslateController(deps: ControllerDeps) {
       const result = apply(writes);
       if (result) report(result, filledFlash(result.applied, result.skipped.length), flashAction(writes));
     },
-    /** "Only symbols to fill": the copies, one commit, no model. */
+    /** "Only symbols to fill": the copies the options write (per edition), one commit, no model. */
     copySymbols() {
       const { scope, options } = session();
       if (!options) return;
-      const all = { ...options, copySymbols: { toZh: true, toEn: true } };
-      const writes = deps.plan(deps.getWorksheet(), scope, all).copies;
+      const writes = deps.plan(deps.getWorksheet(), scope, options).copies;
       const result = apply(writes);
       if (result) report(result, filledFlash(result.applied, result.skipped.length), flashAction(writes));
     },

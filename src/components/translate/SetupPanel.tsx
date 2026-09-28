@@ -25,15 +25,15 @@ export interface TranslateView {
 
 export type SetupState = 'nothing' | 'onlySymbols' | 'noProvider' | 'ready';
 
+/** Symbol gaps count only as the copies the session's options write: in EN+中 none are
+ *  on by default, since a copied symbol would print twice. */
 export function setupState(view: TranslateView): SetupState {
-  const counts = view.probe?.counts;
-  const texts = counts ? counts.toZh + counts.toEn : 0;
-  const symbols = counts ? counts.symbols.toZh + counts.symbols.toEn : 0;
-  if (texts === 0) return symbols > 0 ? 'onlySymbols' : 'nothing';
+  if (planTexts(view.probe) === 0) return copiesCount(view.plan) > 0 ? 'onlySymbols' : 'nothing';
   return view.status.configured ? 'ready' : 'noProvider';
 }
 
 export const planTexts = (plan: TranslationPlan | null): number => (plan ? plan.counts.toZh + plan.counts.toEn : 0);
+const copiesCount = (plan: TranslationPlan | null): number => plan?.counts.copied ?? 0;
 
 /** The request's own scope beside the whole paper, labelled from the walker's groups. */
 export function scopeChoices(
@@ -131,9 +131,7 @@ export function SetupPanel({
       <ModeSwitch mode={session.mode} onChange={actions.setMode} />
       {state === 'nothing' && <p className="text-[13px] text-ink">{copy.NOTHING_TO_FILL}</p>}
       {state === 'onlySymbols' && (
-        <p className="text-[13px] text-ink">
-          {copy.onlySymbols((view.probe?.counts.symbols.toZh ?? 0) + (view.probe?.counts.symbols.toEn ?? 0))}
-        </p>
+        <p className="text-[13px] text-ink">{copy.onlySymbols(copiesCount(view.plan))}</p>
       )}
       {state === 'noProvider' && <NoProvider actions={actions} />}
       {state === 'ready' && <SetupOptions session={session} view={view} actions={actions} />}
@@ -299,12 +297,11 @@ export function SetupFooter({
 }) {
   const state = setupState(view);
   if (state === 'onlySymbols') {
-    const n = (view.probe?.counts.symbols.toZh ?? 0) + (view.probe?.counts.symbols.toEn ?? 0);
     return (
       <>
         <Button onClick={actions.close}>{copy.CLOSE}</Button>
         <Button variant="primary" onClick={actions.copySymbols}>
-          {copy.copyButton(n)}
+          {copy.copyButton(copiesCount(view.plan))}
         </Button>
       </>
     );
