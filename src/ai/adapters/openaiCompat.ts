@@ -43,7 +43,7 @@ export const openaiCompatAdapter: Adapter = {
     const body: Record<string, unknown> = {
       model: config.model,
       messages: [
-        { role: 'system', content: systemFor(req.system, dialect === 'openai-jsonSchema') },
+        { role: 'system', content: systemFor(req.system, dialect === 'openai-jsonSchema', req.shapeHint) },
         ...req.turns.map((t) => ({ role: t.role, content: t.content })),
       ],
       [preset.maxTokensParam ?? 'max_tokens']: req.maxOutputTokens,

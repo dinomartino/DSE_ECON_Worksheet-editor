@@ -46,7 +46,7 @@ export const geminiAdapter: Adapter = {
       url: `${trimBase(config.baseUrl)}/models/${modelPath(config.model)}:generateContent`,
       headers: { 'content-type': 'application/json', 'x-goog-api-key': config.apiKey ?? '', ...preset.extraHeaders },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemFor(req.system, enforced) }] },
+        systemInstruction: { parts: [{ text: systemFor(req.system, enforced, req.shapeHint) }] },
         contents: req.turns.map((t) => ({ role: t.role === 'assistant' ? 'model' : 'user', parts: [{ text: t.content }] })),
         generationConfig,
       }),
