@@ -8,7 +8,8 @@ const LATIN = /^\p{Script=Latin}+$/u;
 
 /**
  * English words short enough to pass for symbols, in capitals: prompt rule 5's emphasis
- * words and the cover and band wording (`PAPER 2`, `ECON`). Never `AS`, `IS`: curves.
+ * words, the cover and band wording (`PAPER 2`, `ECON`), and MCQ wording (`TRUE`,
+ * `INCORRECT`). Never `AS`, `IS`: curves.
  */
 export const CAPITAL_WORDS: ReadonlySet<string> = new Set([
   'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'TEN',
@@ -16,6 +17,7 @@ export const CAPITAL_WORDS: ReadonlySet<string> = new Set([
   'AND', 'OR', 'NO', 'YES', 'OF', 'TO', 'IN', 'ON', 'AT', 'BY', 'IF', 'THE', 'FOR',
   'PAPER', 'ECON', 'TOTAL', 'NAME', 'CLASS', 'DATE', 'TIME', 'FORM', 'MARK', 'MARKS',
   'SCORE', 'PART', 'NOTE', 'END', 'TEST', 'EXAM', 'ANSWER',
+  'MUST', 'TRUE', 'FALSE', 'CORRECT', 'INCORRECT',
 ]);
 /** Two-letter English words, in lower or title case (`No`, `or`); `Qd`, `Pw` stay symbols. */
 const SHORT_WORDS = new Set([

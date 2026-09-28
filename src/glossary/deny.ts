@@ -37,7 +37,7 @@ export const DENY: readonly DenyRow[] = [
   { en: 'inelastic demand', forms: ['缺乏彈性需求'], kind: 'wrong', evidence: 'app seed; src/test/markSchemeFixture.ts' },
   { en: 'unitary elastic demand', forms: ['需求彈性等於一'], kind: 'wrong', evidence: 'app seed' },
   { en: 'production-possibility curve', forms: ['生產可能性曲線'], kind: 'wrong', evidence: 'app seed; HKEAA 2025' },
-  // Same rendering as the curve; PPF and "production possibility frontier" match this key.
+  // Same rendering as the curve; "production possibility frontier" matches this key.
   { en: 'production-possibility frontier', forms: ['生產可能性曲線'], kind: 'wrong', evidence: 'app seed; HKEAA 2025' },
   { en: 'Lorenz curve', forms: ['洛倫茲曲線'], kind: 'wrong', evidence: 'app seed' },
   { en: 'line of perfect equality', forms: ['絕對平均線'], kind: 'wrong', evidence: 'app seed' },

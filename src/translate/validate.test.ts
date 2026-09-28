@@ -179,6 +179,9 @@ describe('validateItem through the pipeline (normalise first)', async () => {
   it('keeps an abbreviation rendered through its glossary term', () => {
     expect(through('GDP rises.', '本地生產總值上升。')).toEqual([]);
     expect(through('Real GDP falls.', '實質本地生產總值下降。')).toEqual([]);
-    expect(through('Real GDP falls.', '實質產出下降。')).toContain('symbols:warn');
+    // GDP is an acronym, not a diagram symbol: the term check owns 產出 for real GDP.
+    expect(through('Real GDP falls.', '實質產出下降。')).not.toContain('symbols:warn');
+    expect(through('The US imposes a tariff on steel.', '美國向鋼鐵徵收關稅。')).not.toContain('symbols:warn');
+    expect(through('Draw a PPF.', '畫出生產可能曲線。')).toEqual([]);
   });
 });
