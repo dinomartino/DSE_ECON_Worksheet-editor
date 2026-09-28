@@ -2158,8 +2158,9 @@ check `src/ai/keyShape.ts`. `src/ai/` imports nothing from React, the store, `sr
   value `{"v":…, …fields}` under `econgen.settings.<section>`. `src/settings/store.ts` reads
   per field (a bad value falls back alone), and a write keeps unknown keys, record entries
   it can't read and a higher `v` — an older build never erases a newer one's settings.
-  Blocked storage keeps writes in memory for the tab (`persistent()` false, one line in
-  the dialog). A `storage` event re-reads that section only.
+  Blocked storage keeps writes in memory for the tab (`persistent()` probes one write, so
+  private mode shows one line in the dialog up front). A `storage` event re-reads that
+  section only.
 - **Sections register themselves** (`src/settings/sections.ts`): metadata eager, pane lazy.
   `src/components/settings/AppSettingsHost.tsx` is mounted once in `src/app/EditorHost.tsx`,
   imports `src/components/settings/sections/index.ts` (the one eager importer), mounts each
@@ -2168,12 +2169,16 @@ check `src/ai/keyShape.ts`. `src/ai/` imports nothing from React, the store, `sr
   request. With no section registered it renders nothing and the shortcut is inert.
 - **Close guard.** A section with uncommitted input (a pasted key) sets a `CloseGuard`;
   Done, Continue, Escape, ✕ and the scrim then ask "Discard / Save & test" in the footer.
+  Every route is the pure `closeStep` in the dialog file.
 - **The AI section**: `src/components/settings/sections/ai.ts` registers it (imported by
   the index only when Translate ships); the pane is
   `src/components/settings/sections/aiSection/AiSection.tsx` over the pure
-  `src/components/settings/sections/aiSection/aiSetup.ts`. A deep link opens a card; only
-  a card click or a saved key commits `ai.provider`. Only a rejected key (`badKey`,
-  `keyBlocked`) is not saved after a test.
+  `src/components/settings/sections/aiSection/aiSetup.ts`, its effects in the injected
+  `src/components/settings/sections/aiSection/aiSetupRunner.ts`. A deep link opens a card;
+  only a card click or a saved key commits `ai.provider`. Only a rejected key (`badKey`,
+  `keyBlocked`) is not saved after a test. A flow takes its provider before its first
+  await: a card switched meanwhile drops the result, so a key is never saved or sent under
+  another provider. List my models passes the same key-shape check as Save & test.
 - **Status without the keychain.** `src/settings/aiSettings.ts:readAiStatus` reads settings
   and `peekSecret` only; on desktop `keychainSaved` is a presence flag, never key material.
   `resolveAiConfig` reads the key once per session and clears a stale flag.
@@ -2182,8 +2187,8 @@ check `src/ai/keyShape.ts`. `src/ai/` imports nothing from React, the store, `sr
   storage throws. Desktop: the OS keychain through `secret_get` / `secret_set` /
   `secret_delete` (`src-tauri/src/secrets.rs`, keyring with `apple-native` +
   `windows-native`; Linux would fall back to keyring's mock store and is not shipped). A
-  keychain refusal is `denied` and the pane offers session-only use — never a silent
-  plaintext fallback. Unsigned builds prompt for Keychain access; signed releases don't.
+  refused prompt is `denied`, a missing keychain or command `unavailable`, anything else
+  `failed`; each offers session-only use — never a silent plaintext fallback. Unsigned builds prompt for Keychain access; signed releases don't.
 - **Storage namespace**: `econgen.settings.*` and `econgen.secret.*` sit outside
   `econ-worksheet:`, so documents, the index, backups and "Clear saved documents" never
   touch them (`src/test/secretsNeverLeave.test.ts`). The older per-viewer keys
