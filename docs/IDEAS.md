@@ -121,7 +121,7 @@ rebuildable index; copies keep a `lineage.rootId`; packs reuse the backup zip).
   Import, Akindi Importer.*
 - **D2 `.docx` import** (L), then PDF/photo (L). Publishers hand out banks as Word.
 
-## E. AI — bring your own key, review before insert
+## E. AI — bring your own key, one ✦ AI door, results insert directly
 
 E2 built the base every later item reuses: the provider layer (`src/ai/`), the text
 walker (`mapTexts`), the EDB glossary engine, app Settings and a read-only review dialog.
