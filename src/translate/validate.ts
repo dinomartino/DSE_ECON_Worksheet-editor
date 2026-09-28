@@ -32,7 +32,9 @@ const COUNT_KINDS: ReadonlySet<SlotKind> = new Set<SlotKind>([
  *  seeded timing line breaks where English does not. Any count passes. */
 const LAYOUT_BREAKS: ReadonlySet<SlotKind> = new Set<SlotKind>(['coverLine', 'bandText']);
 const ZH_COUNT = ['', '一', '兩', '三', '四', '五', '六', '七', '八', '九', '十'];
-const ZH_EMPHASIS = ['兩個', '一項', '一個', '兩項', '不', '均須', '無須', '最佳'];
+/** Bold Chinese that the English writes in CAPITALS: negations, and any counting word (兩種, 一題). */
+const ZH_EMPHASIS = ['不', '未必', '均須', '無須', '最佳'];
+const ZH_COUNTING = /[一兩二三四五六七八九十][個項種題點類]/;
 
 const blankTokens = (wire: string) => (wire.match(/<\s*blank\s*\/?\s*>/gi) ?? []).length;
 const squash = (text: string) => foldWidth(text).replace(/\s+/g, '');
@@ -259,8 +261,13 @@ function checkEmphasis(job: TranslationJob, codec: WireCodec, output: string, ru
         fix: capital ? `Bold the Chinese for “${capital}”.` : 'Keep the same bold, italic and underline as the source.' });
     }
   } else {
-    const emphasised = job.source.some((run) => run.bold && ZH_EMPHASIS.some((word) => run.text.includes(word)));
-    const capitals = (plain(runs).match(/\b[A-Z]{2,}\b/g) ?? []).some((w) => EMPHASIS_WORDS.has(w));
+    const emphasised = job.source.some(
+      (run) => run.bold && (ZH_COUNTING.test(run.text) || ZH_EMPHASIS.some((word) => run.text.includes(word))),
+    );
+    // Any bold capitals keep it (<b>INCORRECT</b>), as do the listed emphasis words anywhere.
+    const capitals =
+      runs.some((run) => run.bold && /\b[A-Z]{2,}\b/.test(run.text)) ||
+      (plain(runs).match(/\b[A-Z]{2,}\b/g) ?? []).some((w) => EMPHASIS_WORDS.has(w));
     if (emphasised && !capitals) {
       add({ code: 'emphasis', severity: 'warn', message: 'Bold not kept', fix: 'Write the bold counting word in CAPITALS: <b>TWO</b>.' });
     }

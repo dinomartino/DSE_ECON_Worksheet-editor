@@ -199,6 +199,15 @@ describe('validateItem through the pipeline (normalise first)', async () => {
     expect(through('需求上升。', 'Demand rises.', 'toEn')).toEqual([]);
   });
 
+  it('toEn emphasis: any bold counting word or negation, kept by bold capitals', () => {
+    const bold = (before: string, word: string, after: string): RichText => [{ text: before }, { text: word, bold: true }, { text: after }];
+    expect(codes(bold('舉出', '兩種', '方法。'), 'Give two ways.', 'part', 'toEn')).toContain('emphasis:warn');
+    expect(codes(bold('選答', '一題', '。'), 'Answer one question.', 'instructions', 'toEn')).toContain('emphasis:warn');
+    expect(codes(bold('價格', '未必', '上升。'), 'The price will not necessarily rise.', 'part', 'toEn')).toContain('emphasis:warn');
+    expect(codes(bold('列出', '三個', '因素。'), 'List <b>THREE</b> factors.', 'part', 'toEn')).not.toContain('emphasis:warn');
+    expect(codes(bold('下列哪項', '不正確', '？'), 'Which of the following is <b>INCORRECT</b>?', 'stem', 'toEn')).not.toContain('emphasis:warn');
+  });
+
   it('flags a reversed elasticity predicate, which the glossary cannot see', () => {
     expect(through('Demand for rice is price inelastic.', '米的需求富價格彈性。')).toContain('polarity:warn');
     expect(through('Demand for rice is elastic.', '米的需求缺乏彈性。')).toContain('polarity:warn');
