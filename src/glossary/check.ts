@@ -311,7 +311,8 @@ function separateFixes(checks: readonly TermCheck[]): TermCheck[] {
     .filter((c) => !drop.has(c))
     .map((c) => {
       if (!strip.has(c)) return c;
-      const { fix: _fix, ...rest } = c;
+      const rest = { ...c };
+      delete rest.fix;
       return rest;
     });
 }
