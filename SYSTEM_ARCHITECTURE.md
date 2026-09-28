@@ -36,8 +36,12 @@ src/
 ├── registry/     Question-type extension point: types · index · mcq · structured
 ├── render/       ir (RenderNode + EditTarget) · worksheet (the walker) · diagram (SVG)
 ├── export/       docx/ · diagramImage (PNG pre-pass) · imageImport · clipboard
-├── store/        worksheetStore — Zustand with undo/redo
+├── store/        worksheetStore — Zustand with undo/redo · appDialogs (Translate/Settings)
 ├── storage/      WorksheetStore interface + localStorage implementation
+├── translate/    AI translation: plan · run · Check terms (§ AI translation…)
+├── glossary/     the EDB Economics glossary: types · lazy load · attribution
+├── ai/           provider layer: types · presets · response schema · client
+├── settings/     app-wide Settings: typed schemas · section registry · AI settings
 ├── components/   EditorApp · start/ · preview/ (the paper IS the editor) · editor/ · ui/
 └── test/         shared fixtures
 ```
@@ -1846,6 +1850,9 @@ The preview is the centrepiece; the right sidebar shows **one thing at a time** 
 two tabs (Content = outline, Edit = selection); the tab follows the selection. Two left
 rails: AddRail (insert) and PageRail (navigation, multi-sheet only).
 
+AI translation, Check terms and the app-wide **Settings** dialog (not the per-document
+**Setup**): § AI translation, glossary and app Settings.
+
 ### The sidebar is an inspector, not a second editor
 
 **Printed text is typed on the page, and only there.** The panels carry what does not
@@ -2083,6 +2090,101 @@ hover                      → margin drag grip → reorder
   Glyph-only buttons take a required `label`.
 - **Selection is bidirectional**: either pane selects, the other scrolls into view.
 - **Depth is carried by rule and label, not more boxes.**
+
+---
+
+## AI translation, glossary and app Settings
+
+Fill the missing language of a worksheet (EN ↔ 繁中, Hong Kong) with the teacher's own
+AI key; check Chinese terms against the EDB Economics glossary (2020) without a key; and
+an app-wide Settings dialog that holds the provider and key.
+
+**Status:** contracts and neutral stubs; nothing is mounted yet, so teachers see no change.
+Each subsection below is filled by the package that implements it.
+
+Rules every part keeps:
+
+- **Nothing new is persisted in documents.** No schema bump, no `KNOWN_KEYS` change.
+  Settings live under `econgen.settings.<section>`, keys in the secrets store — never in a
+  worksheet, a backup or settings.
+- **One walker, every consumer.** Collection, the untranslated count, scoping, Check terms
+  and apply all read and write BiTexts through one identity-preserving walk
+  (`src/model/textSlots.ts`); a visit that changes nothing returns the same `Worksheet`.
+- **Collected from the model, never the IR or DOM**, so derived numbers, marks and default
+  wording never reach a request, and an absent prefix or suffix stays absent.
+- **One commit per batch**, every write stale-guarded; `readOnly` is inert.
+- **Network only on an explicit click** (Translate, Fill, Save & test).
+- **One app dialog at a time** (`src/store/appDialogs.ts`): Translate and Settings hand off
+  and never stack.
+- **Contracts first.** Each module below was created with its final signature; a stub
+  says which package fills its body (`// P-<X> replaces this body`) and never throws.
+
+<!-- e2:glossary start -->
+### The glossary (`src/glossary/`)
+
+Types in `src/glossary/types.ts`; the citation in `src/glossary/attribution.ts`
+(`GLOSSARY_ATTRIBUTION`, shown wherever terms are used; the data is © HKSAR Government and
+outside the MIT grant). `loadGlossary` (`src/glossary/load.ts`) is the only way to the data,
+so it stays a lazy chunk; `useGlossary` is null until it resolves. Rank 1 is preferred,
+with one exception table (`PreferredOverrides`: the import family prefers 進口).
+<!-- e2:glossary end -->
+
+<!-- e2:text start -->
+### Text slots, the walk and apply
+
+`src/model/textSlots.ts` is the contract: `TextSlot`, `TextWalker`, `TranslationWrite`,
+`ApplyReport`, and the identity helpers `patch`, `mapSame`, `sameRuns`, `missingSide`. The
+walk is `src/model/textWalk.ts` (diagram text: `src/model/diagramText.ts`), the batch apply
+`src/model/translationApply.ts`, symbol-only text `src/model/symbols.ts`. The store action is
+`applyTranslations`; the paper check takes a precomputed `TermSummary`
+(`src/model/paperHealth.ts`) and imports nothing from the glossary or translation.
+<!-- e2:text end -->
+
+<!-- e2:ai start -->
+### The provider layer (`src/ai/`)
+
+Contracts in `src/ai/types.ts`; presets are data (`src/ai/providers.ts`); one flat response
+schema and its guard (`src/ai/schema.ts`); the client is `src/ai/client.ts`, the key-shape
+check `src/ai/keyShape.ts`. `src/ai/` imports nothing from React, the store, `src/model`,
+`src/settings`, `@/platform` or Tauri.
+<!-- e2:ai end -->
+
+<!-- e2:settings start -->
+### App Settings and secrets
+
+"Settings" is the app (this browser or computer, every worksheet); "Setup" is the document.
+A typed, versioned schema per section (`src/settings/types.ts`, `src/settings/validators.ts`),
+validated per field so one bad value never resets the rest; the store is
+`src/settings/store.ts`. A new tab is one section file plus one import line
+(`src/settings/sections.ts`); with no section registered every entry point is absent. The
+AI section's schema and status: `src/settings/aiSettings.ts`. Keys: `src/platform/secrets.ts`
+only.
+<!-- e2:settings end -->
+
+<!-- e2:engine start -->
+### The translation engine (`src/translate/`)
+
+Types in `src/translate/types.ts`: a plan (`src/translate/plan.ts`) dedupes slots into jobs
+and packs single-direction chunks; a run (`src/translate/run.ts`) never rejects and keeps
+finished chunks on Stop; Check terms is `src/translate/termCheck.ts`; run dependencies come
+from `src/translate/deps.ts`.
+<!-- e2:engine end -->
+
+<!-- e2:dialog start -->
+### The Translate dialog
+
+One dialog, two modes (Translate, Check terms), opened through `useAppDialogs`. Review is
+read-only: checkboxes and chips, no text inputs — the rejected translation dock is never
+rebuilt. Copy: `src/components/translate/copy.ts`.
+<!-- e2:dialog end -->
+
+<!-- e2:entry start -->
+### Entry points
+
+Not mounted yet. Planned: the untranslated pill, the ⋯ menu, the page menu, the paper check and a per-field fill
+button open Translate; Settings opens from the ⋯ menu, the start screen and ⌘, / Ctrl+,.
+Every Translate entry point is hidden when the document is read-only.
+<!-- e2:entry end -->
 
 ---
 

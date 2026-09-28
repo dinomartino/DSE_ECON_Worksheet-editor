@@ -5,7 +5,7 @@ import { questionMarks, sectionMarksById } from './marks';
 import { computeNumbering, toUpperLetter } from './numbering';
 import { summarizePaper, targetMisses, type PaperSummary } from './paperSummary';
 import { plain } from './text';
-import type { BiText, LanguageMode, LayoutElement, Worksheet } from './types';
+import type { BiText, LanguageMode, LayoutElement, VersionMode, Worksheet } from './types';
 
 /**
  * The pre-print paper check (IDEAS A2): facts and findings about a document, derived on
@@ -27,7 +27,22 @@ export type HealthFindingId =
   | 'unmarked'
   | 'timeMismatch'
   | 'overTarget'
-  | 'underTarget';
+  | 'underTarget'
+  | 'terminology';
+
+/**
+ * Glossary findings, computed by the caller (`termSummary`, which needs the lazily loaded
+ * glossary) and passed in, so this module stays synchronous and imports nothing from the
+ * glossary or the translation pipeline.
+ */
+export interface TermSummary {
+  /** Terms at warn severity. */
+  warn: number;
+  /** Questions holding at least one. */
+  questionIds: readonly string[];
+  /** Findings outside any question (title, cover, bands, layout). */
+  outsideQuestions: number;
+}
 
 /** A question as the printed paper numbers it. */
 export interface QuestionRef {
@@ -104,7 +119,8 @@ interface Entry {
 
 export function checkPaper(
   worksheet: Worksheet,
-  mode: { language?: LanguageMode } = {},
+  // `version` and `terms` are not read yet: P-TEXT implements them.
+  mode: { language?: LanguageMode; version?: VersionMode; terms?: TermSummary } = {},
 ): PaperHealthReport {
   const summary = summarizePaper(worksheet);
   const shape = summary.shape;

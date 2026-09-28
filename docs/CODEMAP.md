@@ -248,6 +248,31 @@ Invariants:
 
 Invariant: chrome uses semantic tokens (`src/app/globals.css`); anything on the paper takes literal hex.
 
+## Translation, glossary, settings
+
+AI translation (EN ↔ 繁中), Check terms and app-wide Settings — § AI translation, glossary
+and app Settings. Contracts first: a stub keeps its signature and says which package fills
+it (`// P-<X> replaces this body`).
+
+- `src/model/textSlots.ts:TextSlot` · `src/model/textSlots.ts:TextWalker` · `src/model/textSlots.ts:TranslationWrite` · `src/model/textSlots.ts:ApplyReport` — the slot contract; helpers `src/model/textSlots.ts:patch` · `src/model/textSlots.ts:mapSame` · `src/model/textSlots.ts:sameRuns` · `src/model/textSlots.ts:missingSide`
+- `src/model/textWalk.ts:mapWorksheetTexts` · `src/model/textWalk.ts:collectTexts` · `src/model/textWalk.ts:slotsForTarget` · `src/model/textWalk.ts:countUntranslated` · `src/model/textWalk.ts:fieldNeedsFill` — the one walk (stub)
+- `src/model/diagramText.ts:mapDiagramTexts` · `src/model/translationApply.ts:applyTranslationBatch` · `src/model/symbols.ts:isSymbolOnly` (stubs)
+- `src/store/worksheetStore.ts:applyTranslations` — one commit per batch (stub); `src/model/paperHealth.ts:TermSummary` — Check terms' input to `checkPaper`
+- `src/store/appDialogs.ts:useAppDialogs` — one app dialog at a time (Translate, Settings)
+- `src/translate/types.ts:TranslationPlan` · `src/translate/types.ts:JobResult` · `src/translate/types.ts:TermRow` · `src/translate/types.ts:RunDepsResult`
+- `src/translate/plan.ts:planTranslation` · `src/translate/plan.ts:defaultTranslateOptions` · `src/translate/run.ts:runTranslation` · `src/translate/run.ts:translateOne` · `src/translate/termCheck.ts:buildTermCheck` · `src/translate/termCheck.ts:termSummary` · `src/translate/deps.ts:createRunDeps` (stubs; `src/translate/types.test.ts` pins the Check terms signatures)
+- `src/glossary/types.ts:Glossary` · `src/glossary/types.ts:PreferredOverrides` · `src/glossary/attribution.ts:GLOSSARY_ATTRIBUTION` · `src/glossary/load.ts:loadGlossary` (stub) · `src/glossary/useGlossary.ts:useGlossary` · `src/glossary/index.ts`
+- `src/ai/types.ts:ProviderPreset` · `src/ai/types.ts:AiError` · `src/ai/providers.ts:PRESETS` · `src/ai/schema.ts:ITEMS_SCHEMA` · `src/ai/schema.ts:parseItemsPayload` · `src/ai/client.ts:createClient` (stub) · `src/ai/keyShape.ts:keyShapeProblem` (stub)
+- `src/settings/types.ts:SettingsSchema` · `src/settings/validators.ts:recordOf` · `src/settings/sections.ts:registerSettingsSection` · `src/settings/sections.ts:useSettingsSections` · `src/settings/store.ts:appSettings` (stub) · `src/settings/aiSettings.ts:AI_SETTINGS` · `src/settings/aiSettings.ts:useAiStatus` (stub)
+- `src/platform/secrets.ts:readSecret` · `src/platform/secrets.ts:peekSecret` — the only holder of AI keys (stubs)
+- `src/components/translate/copy.ts` — the copy deck
+
+Invariants:
+- Nothing new is stored in a document; settings under `econgen.settings.<section>`, keys only in the secrets store.
+- `src/ai/` imports nothing from React, the store, `src/model`, `src/settings`, `@/platform` or Tauri.
+- The glossary data is reached only through `src/glossary/load.ts` (a lazy chunk).
+- Nothing mounted imports a stub until its package lands.
+
 ## scripts — the harnesses
 
 - `scripts/shot.mjs` — screenshot the real app (`--seed`, `--dark`)

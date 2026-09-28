@@ -46,6 +46,7 @@ import {
 } from '@/model/flow';
 import { applyBandFieldSide } from '@/model/bandSegments';
 import { isNewerThanBuild } from '@/model/migrations';
+import type { ApplyReport, TranslationWrite } from '@/model/textSlots';
 import { documentShape } from '@/model/documentShape';
 import {
   addCoverLine,
@@ -155,6 +156,11 @@ interface WorksheetState {
   redo: () => void;
   canUndo: () => boolean;
   canRedo: () => boolean;
+  /**
+   * A batch of translation writes as one commit (one undo), each stale-guarded. Refused
+   * when read-only or when `worksheetId` is no longer the open document.
+   */
+  applyTranslations: (writes: readonly TranslationWrite[], opts: { worksheetId: string }) => ApplyReport;
 
   // --- Document --------------------------------------------------------------
   /** Load a document. Resets history: a load is not an undoable edit. */
@@ -634,6 +640,12 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
 
   canUndo: () => get().past.length > 0,
   canRedo: () => get().future.length > 0,
+
+  applyTranslations: (writes, opts) => {
+    // P-TEXT replaces this body
+    void opts;
+    return { applied: 0, skipped: writes.map((w) => ({ path: w.path, reason: 'gone' as const })), resized: 0 };
+  },
 
   // --- Document --------------------------------------------------------------
   replaceWorksheet: (worksheet) =>
