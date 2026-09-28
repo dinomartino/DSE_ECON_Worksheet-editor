@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { looksLikeKey } from '@/ai/keyShape';
 import { presetFor } from '@/ai/providers';
 import { PROVIDER_IDS, type ProviderConfig, type ProviderId, type ProviderPreset } from '@/ai/types';
 import { isDesktop } from '@/platform';
@@ -27,6 +28,8 @@ export interface AiSettings {
   includeTeacherText: boolean;
 }
 
+const modelId = text(128, /^[A-Za-z0-9._:/@-]+$/);
+
 export const AI_SETTINGS: SettingsSchema<AiSettings> = {
   section: 'ai',
   version: 1,
@@ -41,7 +44,11 @@ export const AI_SETTINGS: SettingsSchema<AiSettings> = {
   }),
   fields: {
     provider: oneOf(PROVIDER_IDS),
-    models: recordOf(PROVIDER_IDS, text(128, /^[A-Za-z0-9._:/@-]+$/)),
+    // A key pasted into the model field is refused, and dropped on read if one was stored.
+    models: recordOf(PROVIDER_IDS, (raw) => {
+      const id = modelId(raw);
+      return id === undefined || looksLikeKey(id) ? undefined : id;
+    }),
     baseUrls: recordOf(PROVIDER_IDS, baseUrl),
     rememberKey: bool,
     keychainSaved: recordOf(PROVIDER_IDS, trueFlag),

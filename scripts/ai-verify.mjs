@@ -21,7 +21,7 @@ import { MOCK_MODEL, startMockServer } from './ai-mock-server.mjs';
  * and no-provider states.
  *
  * The request counter is the privacy check: nothing may reach a provider before an
- * explicit Translate, Fill or Save & test click.
+ * explicit Translate, Fill, Save & test or List my models click.
  */
 
 const args = process.argv.slice(2);

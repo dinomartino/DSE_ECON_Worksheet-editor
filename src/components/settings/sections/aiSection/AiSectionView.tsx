@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { looksLikeKey } from '@/ai/keyShape';
 import { PRESETS, presetFor } from '@/ai/providers';
 import { PROVIDER_IDS, type ModelInfo, type ProviderId, type ProviderPreset } from '@/ai/types';
 import { Button, CheckField, Pill } from '@/components/ui';
@@ -328,13 +329,19 @@ function ModelField({ state, listed, actions, modelRef }: AiSectionViewProps & {
   const known = [...preset.models.map((m) => m.id), ...listedIds];
   const [otherOpen, setOtherOpen] = useState(false);
   const [other, setOther] = useState(known.includes(state.model) ? '' : state.model);
-  const [otherBad, setOtherBad] = useState(false);
+  const [otherBad, setOtherBad] = useState<string | null>(null);
   const [listing, setListing] = useState(false);
   const showOther = otherOpen || !known.includes(state.model);
   const commitOther = () => {
     const value = other.trim();
     if (!value) return;
-    setOtherBad(!/^[A-Za-z0-9._:/@-]{1,128}$/.test(value));
+    if (looksLikeKey(value)) {
+      // Never stored, never left on screen.
+      setOther('');
+      setOtherBad(KEY_IN_MODEL);
+      return;
+    }
+    setOtherBad(/^[A-Za-z0-9._:/@-]{1,128}$/.test(value) ? null : 'Letters, digits and . _ : / @ - only.');
     actions.model(value);
   };
 
@@ -401,11 +408,13 @@ function ModelField({ state, listed, actions, modelRef }: AiSectionViewProps & {
           className={`${INPUT} w-full font-mono`}
         />
       )}
-      {otherBad && <p className="text-[11px] text-danger-ink">Letters, digits and . _ : / @ - only.</p>}
+      {otherBad && <p className="text-[11px] text-danger-ink">{otherBad}</p>}
       {listed && listed.length === 0 && <p className="text-[11px] text-ink-muted">No models were listed for this key.</p>}
     </div>
   );
 }
+
+export const KEY_IN_MODEL = 'That looks like an API key — paste it into the key field.';
 
 const WORKSPACE_HINT = 'Model Studio → Workspace Management → copy the API Host';
 
