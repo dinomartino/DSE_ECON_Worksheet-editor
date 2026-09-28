@@ -8,9 +8,9 @@ import { slotInScope } from './plan';
 import type { TermRow, TranslateScope } from './types';
 
 /**
- * Check terms (keyless): every printed slot with both sides present, checked EN→ZH
- * against the glossary. `TermSummary` is declared in `paperHealth.ts`, so the paper check
- * imports nothing from here.
+ * Check terms (keyless): every printed slot with both sides present (teacher text included,
+ * alt text never), checked EN→ZH against the glossary. `TermSummary` is declared in
+ * `paperHealth.ts`, so the paper check imports nothing from here.
  */
 
 /** What a teacher can act on: a fix, a conflict, or a warn to find on the page. */
@@ -19,7 +19,7 @@ const actionable = (check: TermCheck) =>
 
 function checked(slots: readonly TextSlot[], glossary: Glossary, scope: TranslateScope) {
   return slots
-    .filter((slot) => slotInScope(slot, scope) && !slot.unprinted)
+    .filter((slot) => slotInScope(slot, scope) && !slot.unprinted && slot.role !== 'meta')
     .filter((slot) => !isRichTextEmpty(slot.text.en) && !isRichTextEmpty(slot.text.zh))
     .map((slot) => ({ slot, checks: glossary.checkEnToZh(plain(slot.text.en), plain(slot.text.zh)) }));
 }

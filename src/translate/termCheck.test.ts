@@ -28,6 +28,7 @@ describe('termRowsFromSlots', () => {
       slot('Explain the deadweight loss.', '解釋效率損失。'),
       slot('Supply falls.', ''),
       slot('Supply falls.', '供給下降。', Q('q1'), { unprinted: true }),
+      slot('Supply falls.', '供給下降。', Q('q1'), { role: 'meta', kind: 'altText' }),
       slot('Explain elastic demand.', '解釋低彈性需求。', Q('q2')),
     ], glossary, paper);
     expect(rows.map((r) => r.checks.map((c) => [c.en, c.fix?.to ?? c.conflict?.meansEn]))).toEqual([
