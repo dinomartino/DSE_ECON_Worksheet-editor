@@ -263,8 +263,17 @@ it (`// P-<X> replaces this body`).
 - `src/translate/plan.ts:planTranslation` · `src/translate/plan.ts:defaultTranslateOptions` · `src/translate/run.ts:runTranslation` · `src/translate/run.ts:translateOne` · `src/translate/termCheck.ts:buildTermCheck` · `src/translate/termCheck.ts:termSummary` · `src/translate/deps.ts:createRunDeps` (stubs; `src/translate/types.test.ts` pins the Check terms signatures)
 - `src/glossary/types.ts:Glossary` · `src/glossary/types.ts:PreferredOverrides` · `src/glossary/attribution.ts:GLOSSARY_ATTRIBUTION` · `src/glossary/load.ts:loadGlossary` (stub) · `src/glossary/useGlossary.ts:useGlossary` · `src/glossary/index.ts`
 - `src/ai/types.ts:ProviderPreset` · `src/ai/types.ts:AiError` · `src/ai/providers.ts:PRESETS` · `src/ai/schema.ts:ITEMS_SCHEMA` · `src/ai/schema.ts:parseItemsPayload` · `src/ai/client.ts:createClient` (stub) · `src/ai/keyShape.ts:keyShapeProblem` (stub)
-- `src/settings/types.ts:SettingsSchema` · `src/settings/validators.ts:recordOf` · `src/settings/sections.ts:registerSettingsSection` · `src/settings/sections.ts:useSettingsSections` · `src/settings/store.ts:appSettings` (stub) · `src/settings/aiSettings.ts:AI_SETTINGS` · `src/settings/aiSettings.ts:useAiStatus` (stub)
-- `src/platform/secrets.ts:readSecret` · `src/platform/secrets.ts:peekSecret` — the only holder of AI keys (stubs)
+- `src/settings/types.ts:SettingsSchema` · `src/settings/validators.ts:recordOf` · `src/settings/sections.ts:registerSettingsSection` · `src/settings/sections.ts:useSettingsSections` — schema and section registry
+- `src/settings/store.ts:createSettingsStore` · `src/settings/store.ts:appSettings` · `src/settings/store.ts:useSettings` — per-field validation, unknown keys kept, never lowers `v`
+- `src/settings/aiSettings.ts:AI_SETTINGS` · `src/settings/aiSettings.ts:readAiStatus` · `src/settings/aiSettings.ts:useAiStatus` · `src/settings/aiSettings.ts:resolveAiConfig` — status never reads the keychain
+- `src/platform/secrets.ts:readSecret` · `src/platform/secrets.ts:writeSecret` · `src/platform/secrets.ts:peekSecret` — the only holder of AI keys; `src-tauri/src/secrets.rs` the keychain commands
+- `src/components/settings/AppSettingsHost.tsx:AppSettingsHost` — mounted in `src/app/EditorHost.tsx`; Effects, ⌘, listener, the dialog
+- `src/components/settings/AppSettingsDialog.tsx:AppSettingsDialog` · `src/components/settings/AppSettingsDialog.tsx:AppSettingsFooter` — rail, lazy pane, close guard
+- `src/components/settings/shortcut.ts:shouldOpenSettings` — ⌘, / Ctrl+, rules
+- `src/components/settings/sections/index.ts` — one import per section
+- `src/components/settings/sections/ai.ts` — registers AI & translation (not imported yet)
+- `src/components/settings/sections/aiSection/aiSetup.ts:aiSetupReducer` · `src/components/settings/sections/aiSection/AiSection.tsx` · `src/components/settings/sections/aiSection/AiSectionView.tsx:AiSectionView` — the AI pane
+- `src/test/secretsNeverLeave.test.ts` — a key is in no document, backup, export or setting
 - `src/components/translate/copy.ts` — the copy deck
 
 Invariants:

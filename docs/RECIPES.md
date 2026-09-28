@@ -172,6 +172,26 @@ denied at runtime, not at build. JS calls it with `invoke` from `@tauri-apps/api
 scratch crate that `#[path]`-includes the module (`cargo check --target
 x86_64-pc-windows-msvc` on the whole app fails in `ring`'s C build on macOS).
 
+## Add a Settings section
+
+App Settings (this browser or computer) — never the document, which is **Setup**.
+
+1. A schema of its own, `src/settings/<id>.ts` (the AI one: `src/settings/aiSettings.ts`): a `SettingsSchema` with
+   `storageKey: 'econgen.settings.<id>'`, per-platform `defaults(env)` and one validator per
+   field from `src/settings/validators.ts`. No field named like key material — secrets go
+   through `src/platform/secrets.ts` only.
+2. `src/components/settings/sections/<id>.ts` calls `registerSettingsSection` at module
+   scope with metadata and `load: () => import('./<id>Section/…')` (the pane, a default
+   export taking `SettingsSectionProps`). An app-wide effect (a theme) is its `Effect`.
+3. One line in `src/components/settings/sections/index.ts`: `import './<id>';`.
+4. The pane reads and writes with `useSettings(SCHEMA)`; changes apply live.
+
+Changing a field's meaning: bump `version` and add `migrate`. A write keeps keys this build
+does not know, so an older build never erases a newer one's settings.
+
+Guard: `src/settings/store.test.ts`, `src/components/settings/AppSettingsDialog.test.tsx`;
+then screenshot the dialog at an 800 px tall viewport (footer unclipped).
+
 ## Check the desktop PDF
 
 Export → PDF on desktop writes through the webview's own print (`src-tauri/src/pdf/`), so
