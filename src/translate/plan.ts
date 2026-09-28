@@ -112,6 +112,8 @@ export function planFromSlots(
     const planned = { path: slot.path, side: target, sourceSnapshot: slot.text[sourceSide], targetSnapshot: slot.text[target] };
 
     if (isSymbolOnly(source)) {
+      // Re-translating never copies a symbol over text the teacher already has ('2024年').
+      if (replacing) continue;
       counts.symbols[direction] += 1;
       // Diagram text falls back and de-duplicates in the renderer: never copied.
       if (!slot.fallsBack && options.copySymbols[direction]) {

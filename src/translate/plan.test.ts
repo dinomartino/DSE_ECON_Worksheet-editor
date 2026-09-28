@@ -56,6 +56,15 @@ describe('planFromSlots', () => {
     expect(plan.counts.replaceable).toBe(1);
   });
 
+  it('never copies a symbol over an existing target when re-translating', () => {
+    const s = slot('2024', '2024年', { kind: 'tableCell' });
+    const copySymbols = { toZh: true, toEn: true };
+    const plan = planFromSlots('ws', [s], { kind: 'paths', paths: [s.path] }, options({ retranslate: 'zh', copySymbols }));
+    expect(plan.copies).toEqual([]);
+    expect(plan.jobs.size).toBe(0);
+    expect(plan.counts.copied).toBe(0);
+  });
+
   it('filters by scope, role, unprinted and diagram labels', () => {
     const other = slot('Other.', '', { group: Q('q2', 2) });
     const teacher = slot('Model answer.', '', { role: 'teacher' });
