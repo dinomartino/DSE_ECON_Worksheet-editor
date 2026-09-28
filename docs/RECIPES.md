@@ -150,11 +150,14 @@ should flag and the auto-fix should replace.
 2. `fix` only when it is not the entry's preferred rendering (terms of trade → 貿易比率).
 3. A form that means another term (缺乏彈性 for "elastic demand") is `reversal: true` with
    `means`: reported as a conflict, never fixed.
-4. Never edit the JSON. A parsing or preference correction goes in
+4. Another key with the same rendering (production-possibility curve / frontier) gets the
+   same row, unless the slip is no slip for it — then exempt it in the test.
+5. Never edit the JSON. A parsing or preference correction goes in
    `src/glossary/overrides.ts`, with a comment citing its source.
 
-Guard: `src/glossary/deny.test.ts` — every fix is a variant of its entry, no form is one, and
-a form that renders another entry must be a reversal.
+Guard: `src/glossary/deny.test.ts` — every fix is a variant of its entry, no form is one, a
+form that renders another entry must be a reversal, keys sharing a rendering share the row,
+and no form is rewritten inside a longer glossary term.
 
 ## Add on-page chrome
 

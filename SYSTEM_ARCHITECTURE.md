@@ -2143,14 +2143,19 @@ data is evidence: corrections and policy live in `src/glossary/overrides.ts`, ne
   possessive folds. Chinese: a character trie on folded text whose index map returns the
   teacher's own offsets. Both leftmost-longest; `matchEnAll` keeps nested terms.
 - **Check** (`src/glossary/check.ts`). One result per outermost source term, first rule
-  wins: ok-abbr, ok, not-preferred, deny form, coverage conflict, near, missing. The
+  wins: ok-abbr, ok, not-preferred, deny form, coverage conflict, near, missing. A lower
+  rank or a deny form gives one result per output occurrence, each with its own fix. The
   **coverage rule** — the longest glossary span over a rendering must belong to a source
-  term, or reword one ("unitary elastic" → 需求彈性) — stops 低彈性需求 passing for
-  "elastic demand". A rendering inside or touching a deny form never counts.
-  Generic-tier words are info only.
+  term — stops 低彈性需求 passing for "elastic demand". Only a single-word term may also be
+  covered by a term the source rewords ("unitary elastic" → 需求彈性; `reshapedInSource`).
+  A rendering inside or touching a deny form never counts. Generic-tier words are info only.
+- **Fixes are safe to apply together.** They never overlap: a fix inside a longer one drops
+  its result (總供給 → 總供應 mends supply's 供給). None spans folded-away text (a line
+  break, a blank), and none rewrites a deny form inside a longer glossary term (公共財產).
 - **Deny list** (`src/glossary/deny.ts`): rows are entry-scoped, cite evidence, and obey the
   invariants in `src/glossary/deny.test.ts`. `autoFix` replaces non-reversal forms, longest
-  first, keeping the replaced span's formatting, never inside sub/superscripts.
+  first, under the same guards, never inside sub/superscripts; the new text takes the
+  format of the span's first character.
 - **Pins** (`src/glossary/pin.ts`): the preferred rendering only, first occurrence first,
   capped at 200; ZH→EN never pins a generic word or a one-character term.
 - **Seeds stay on the glossary**: `src/glossary/seededTerms.test.ts` checks every template,
