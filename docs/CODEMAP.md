@@ -265,7 +265,16 @@ it (`// P-<X> replaces this body`).
 - `src/store/worksheetStore.ts:applyTranslations` — one commit (one undo) per batch; `src/model/paperHealth.ts:TermSummary` — Check terms' input to `checkPaper`
 - `src/store/appDialogs.ts:useAppDialogs` — one app dialog at a time (Translate, Settings)
 - `src/translate/types.ts:TranslationPlan` · `src/translate/types.ts:JobResult` · `src/translate/types.ts:TermRow` · `src/translate/types.ts:RunDepsResult`
-- `src/translate/plan.ts:planTranslation` · `src/translate/plan.ts:defaultTranslateOptions` · `src/translate/run.ts:runTranslation` · `src/translate/run.ts:translateOne` · `src/translate/termCheck.ts:buildTermCheck` · `src/translate/termCheck.ts:termSummary` · `src/translate/deps.ts:createRunDeps` (stubs; `src/translate/types.test.ts` pins the Check terms signatures)
+- `src/translate/plan.ts:planFromSlots` · `src/translate/plan.ts:planTranslation` · `src/translate/plan.ts:defaultTranslateOptions` · `src/translate/plan.ts:slotInScope` — scope, direction, symbol copies, dedupe, context, chunks
+- `src/translate/wire.ts:encodeRuns` · `src/translate/wire.ts:decodeWire` — the closed tag set; edges and blank widths live in the codec
+- `src/translate/validate.ts:validateItem` · `src/translate/conventions.ts:CONVENTIONS` — deterministic item checks; HKEAA letter, currency and paper-furniture forms (also prompt rule 12)
+- `src/translate/normalize.ts:normalizeZh` · `src/translate/normalize.ts:normalizeEn` · `src/translate/simplified.ts:SIMPLIFIED_PAIRS` — Hong Kong punctuation and forms; Simplified detection
+- `src/translate/promptText.ts` · `src/translate/prompt.ts:buildRequest` · `src/translate/prompt.ts:PROMPT_VERSION` — the prompt's words and assembly (sha-pinned in `src/translate/prompt.test.ts`)
+- `src/translate/run.ts:runTranslation` · `src/translate/run.ts:writesFor` · `src/translate/run.ts:translateOne` · `src/translate/run.ts:announcedSleep` — per-chunk pipeline, one repair pass, better of two; rate-limit waits shown as `waiting`
+- `src/translate/termCheck.ts:buildTermCheck` · `src/translate/termCheck.ts:termFixWrites` · `src/translate/termCheck.ts:termSummary` — Check terms (`src/translate/types.test.ts` pins the signatures)
+- `src/translate/deps.ts:createRunDeps` — Settings to client, preset, model and glossary
+- `src/translate/testKit.ts` · `src/translate/fakeGlossary.ts` — test-only: scripted client, reference client, a 20-entry glossary
+- `evals/translate.eval.ts` · `vitest.eval.config.ts` — the live quality eval (`npm run eval:translate`), never under `npm test`
 - `src/glossary/types.ts:Glossary` · `src/glossary/types.ts:PreferredOverrides` · `src/glossary/attribution.ts:GLOSSARY_ATTRIBUTION` · `src/glossary/load.ts:loadGlossary` · `src/glossary/useGlossary.ts:useGlossary` · `src/glossary/index.ts`
 - `src/glossary/data/edb-economics-2020.json` — the EDB data, verbatim (`src/glossary/NOTICE.md`); `src/glossary/glossary.ts:createGlossary` builds the `Glossary` from it
 - `src/glossary/overrides.ts:PREFERRED_OVERRIDES` (import → 進口) · `src/glossary/overrides.ts:GENERIC_TIER` · `src/glossary/overrides.ts:ZH_OVERRIDES` · `src/glossary/overrides.ts:EN_OVERRIDES` — corrections and policy over the data
