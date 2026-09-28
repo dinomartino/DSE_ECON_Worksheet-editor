@@ -162,6 +162,7 @@ function DocumentTab() {
         }
       >
         <BiTextField
+          translate={{ kind: 'title' }}
           ariaLabel="Worksheet title"
           value={worksheet.title}
           rows={1}
@@ -183,6 +184,7 @@ function DocumentTab() {
         }
       >
         <BiTextField
+          translate={{ kind: 'instructions' }}
           ariaLabel="Instructions"
           value={worksheet.instructions ?? emptyBiText()}
           rows={2}

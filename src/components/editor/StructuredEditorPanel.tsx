@@ -599,6 +599,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                                     />
                                   )}
                                   <BiTextField
+                                    translate={{ kind: 'answer' }}
                                     label="Answer (teacher version)"
                                     value={subPart.answer ?? emptyBiText()}
                                     rows={1}
@@ -662,6 +663,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                     )}
 
                     <BiTextField
+                      translate={{ kind: 'answer' }}
                       label="Answer / marking scheme (teacher version)"
                       value={part.answer ?? emptyBiText()}
                       onChange={(answer) => patchPart(partIndex, { answer })}

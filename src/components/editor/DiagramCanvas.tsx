@@ -2150,6 +2150,7 @@ function SelectionInspector({
         {header(plain(curve.label?.en) || 'Curve')}
         <div className="space-y-2">
           <BiTextField
+            translate={{ kind: 'diagramLabel', fallsBack: true }}
             label="Label"
             value={curve.label ?? emptyBiText()}
             rows={1}
@@ -2263,6 +2264,7 @@ function SelectionInspector({
         {header(pointTitle(mark))}
         <div className="space-y-2">
           <BiTextField
+            translate={{ kind: 'diagramLabel', fallsBack: true }}
             label="Label"
             value={mark.label ?? emptyBiText()}
             rows={1}
@@ -2331,12 +2333,14 @@ function SelectionInspector({
             }
           />
           <BiTextField
+            translate={{ kind: 'tickLabel', fallsBack: true }}
             label="x-axis tick"
             value={mark.xTickLabel ?? emptyBiText()}
             rows={1}
             onChange={(xTickLabel) => patch({ xTickLabel })}
           />
           <BiTextField
+            translate={{ kind: 'tickLabel', fallsBack: true }}
             label="y-axis tick"
             value={mark.yTickLabel ?? emptyBiText()}
             rows={1}
@@ -2358,6 +2362,7 @@ function SelectionInspector({
         {header(plain(label.text.en) || 'Label')}
         <div className="space-y-2">
           <BiTextField
+            translate={{ kind: 'diagramLabel', fallsBack: true }}
             label="Text"
             value={label.text}
             rows={1}
@@ -2392,6 +2397,7 @@ function SelectionInspector({
         {header(plain(arrow.label?.en) || 'Arrow')}
         <div className="space-y-2">
           <BiTextField
+            translate={{ kind: 'diagramLabel', fallsBack: true }}
             label="Label"
             value={arrow.label ?? emptyBiText()}
             rows={1}
@@ -2484,6 +2490,7 @@ function AxisInspector({
         {header(`${axisName} title`)}
         <div className="space-y-2">
           <BiTextField
+            translate={{ kind: 'axisTitle', fallsBack: true }}
             label="Title"
             value={axis.title ?? emptyBiText()}
             rows={1}
@@ -2510,6 +2517,7 @@ function AxisInspector({
       {header(`${axisName} tick`)}
       <div className="space-y-2">
         <BiTextField
+          translate={{ kind: 'tickLabel', fallsBack: true }}
           label="Label"
           value={tick.label}
           rows={1}

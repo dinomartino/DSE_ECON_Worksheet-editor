@@ -79,12 +79,14 @@ export function AnswerGraphFields({
         />
       </div>
       <BiTextField
+        translate={{ kind: 'axisTitle', fallsBack: true }}
         label="Vertical axis"
         rows={1}
         value={graph.yTitle ?? emptyBiText()}
         onChange={(text) => patch({ yTitle: title(text) })}
       />
       <BiTextField
+        translate={{ kind: 'axisTitle', fallsBack: true }}
         label="Horizontal axis"
         rows={1}
         value={graph.xTitle ?? emptyBiText()}

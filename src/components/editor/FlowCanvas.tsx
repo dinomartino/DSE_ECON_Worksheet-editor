@@ -861,7 +861,13 @@ function FlowInspector({
       <div>
         {header(nodeName(node, flow.nodes.indexOf(node)))}
         <div className="space-y-2">
-          <BiTextField label="Text" value={node.label} rows={2} onChange={(label) => patch({ label })} />
+          <BiTextField
+            label="Text"
+            translate={{ kind: 'flowNode', fallsBack: true }}
+            value={node.label}
+            rows={2}
+            onChange={(label) => patch({ label })}
+          />
           <CheckField
             label="Draw the box"
             checked={node.boxed !== false}
@@ -905,12 +911,14 @@ function FlowInspector({
           {/* Two slots, as the reference charts use them: flow4's stub carries "$200"
               above the shaft and "raw materials" below it, at once. */}
           <BiTextField
+            translate={{ kind: 'flowNode', fallsBack: true }}
             label="Label above"
             value={arrow.label ?? emptyBiText()}
             rows={2}
             onChange={(label) => patch({ label: isBiTextEmpty(label) ? undefined : label })}
           />
           <BiTextField
+            translate={{ kind: 'flowNode', fallsBack: true }}
             label="Label below"
             value={arrow.labelBelow ?? emptyBiText()}
             rows={2}

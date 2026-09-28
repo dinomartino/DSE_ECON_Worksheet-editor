@@ -347,6 +347,7 @@ export function SpanInspector({
       </header>
       <div className="space-y-2">
         <BiTextField
+          translate={{ kind: 'diagramLabel', fallsBack: true }}
           label="Label"
           value={span.label ?? emptyBiText()}
           rows={1}
