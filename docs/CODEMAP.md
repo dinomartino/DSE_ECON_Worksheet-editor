@@ -172,7 +172,7 @@ Invariants:
 - `src/platform/index.ts:isDesktop` · `:saveFile` · `:pickTextFile` · `:pickFile` · `:printPage` · `:revealFile` · `:openFolder` · `:exportsFolder` · `:openExternal`
 - `src/platform/index.ts:chooseSavePath` · `:savePdf` — desktop PDF: the save sheet, then the shell's `print_to_pdf` command
 - `src-tauri/src/pdf/mod.rs` — the one app command, `print_to_pdf` (path, page box, sheet count); `src-tauri/src/pdf/macos.rs` (WKWebView save job) · `src-tauri/src/pdf/windows.rs` (WebView2 `PrintToPdf`). Declared in `src-tauri/build.rs`, granted as `allow-print-to-pdf` in `src-tauri/capabilities/default.json`
-- `src/platform/index.ts:listenForFileDrops` · `:readDroppedFile` — Finder/Explorer file drops arrive as Tauri's native event, never HTML5 `drop`
+- `src/platform/index.ts:listenForFileDrops` · `:readDroppedFile` — Finder/Explorer file drops arrive as Tauri's native event, never HTML5 `drop`; effects use `:subscribeToFileDrops`, and every Tauri unlisten goes through `:unlistenSafely` (it can reject before the listener registers)
 - `src/storage/fileStore.ts:savedWorksheetPath` · `:savedWorksheetsFolder` · `src/storage/index.ts:pickWorksheetFile`
 - `src/desktop/updater.ts:checkForUpdate` · `:currentVersion` · `src/desktop/updateStore.ts:checkOnLaunch` — one check per launch
 - `src/components/editor/UpdateBanner.tsx:UpdateBanner` · `:VersionLine`

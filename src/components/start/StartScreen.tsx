@@ -5,13 +5,13 @@ import { Button, IconButton } from '@/components/ui';
 import {
   exportsFolder,
   isDesktop,
-  listenForFileDrops,
   openFolder,
   pickFile,
   readDroppedFile,
   revealFile,
   revealLabel,
   saveFile,
+  subscribeToFileDrops,
   ZIP_FILTERS,
 } from '@/platform';
 import { Dialog } from '@/components/ui/Dialog';
@@ -146,9 +146,7 @@ export function StartScreen({
   // editor ignores a dropped file, as it does on the web.
   useEffect(() => {
     if (!isDesktop()) return;
-    let live = true;
-    let unlisten: (() => void) | undefined;
-    void listenForFileDrops((event) => {
+    return subscribeToFileDrops((event) => {
       if (event.type === 'drop') {
         void handleDropRef.current(
           event.paths.map((path) => ({ name: fileNameOf(path), read: () => readDroppedFile(path) })),
@@ -157,16 +155,7 @@ export function StartScreen({
       }
       if (event.type === 'enter') window.clearTimeout(rejectTimer.current);
       setDropOverlay((current) => overlayFor(event, current));
-    })
-      .then((stop) => {
-        if (live) unlisten = stop;
-        else stop();
-      })
-      .catch(() => undefined);
-    return () => {
-      live = false;
-      unlisten?.();
-    };
+    });
   }, []);
 
   // One after the other, not in parallel: `listTrash` purges expired documents and

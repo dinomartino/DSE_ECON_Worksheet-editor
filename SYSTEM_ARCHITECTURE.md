@@ -2656,6 +2656,10 @@ was added:** `tauri-plugin-fs` adds every dropped path to its runtime scope on
 `WindowEvent::DragDrop` (as the dialog plugin does for a picked path), and the capability
 already allows `read_file`/`stat` commands, so `readDroppedFile` reads it; it refuses a
 non-file or anything over 20 MB unread.
+The screen subscribes through `subscribeToFileDrops`, whose cleanup also stops a listen
+still in flight. Every unlisten goes through `unlistenSafely`: Tauri registers a listener's
+page half by an eval that can land after `listen` resolves, and an unlisten before then
+rejects and leaves it live, so it retries briefly and never rejects.
 
 **Printing.** Export → PDF writes the file through the app's one command,
 `print_to_pdf(path, widthPt, heightPt, landscape, pages)` (`src-tauri/src/pdf/`, declared

@@ -256,26 +256,83 @@ export type FileDragEvent =
   | { type: 'leave' };
 
 /**
- * Listen for files dragged onto the window from Finder/Explorer. Returns the unlisten.
+ * Listen for files dragged onto the window from Finder/Explorer. Returns the unlisten,
+ * which never rejects (`unlistenSafely`).
  *
  * Desktop only: with `dragDropEnabled` on, the webview never sees HTML5 file drops;
- * they arrive as Tauri's `DragDrop` event instead. The fs plugin adds each dropped path
+ * they arrive as Tauri's `DragDrop` events instead. The fs plugin adds each dropped path
  * to its runtime scope before the event reaches the page — the same route as a path
  * picked in the open sheet — so `readDroppedFile` needs no wider fs grant. A no-op on
- * the web, where the page's own `drop` handler sees the files.
+ * the web, where the page's own `drop` handler sees the files. These are
+ * `onDragDropEvent`'s four events, heard one by one: its unlisten drops their promises.
  */
 export async function listenForFileDrops(
   handler: (event: FileDragEvent) => void,
 ): Promise<() => void> {
   if (!isDesktop()) return () => undefined;
   const { getCurrentWebview } = await import('@tauri-apps/api/webview');
-  return getCurrentWebview().onDragDropEvent(({ payload }) => {
-    if (payload.type === 'enter' || payload.type === 'drop') {
-      handler({ type: payload.type, paths: payload.paths });
-    } else {
-      handler({ type: payload.type });
-    }
-  });
+  const webview = getCurrentWebview();
+  const on = (event: string, toDrag: (paths: string[]) => FileDragEvent) =>
+    webview.listen<{ paths?: string[] } | null>(event, ({ payload }) =>
+      handler(toDrag(payload?.paths ?? [])),
+    );
+  const listening = await Promise.allSettled([
+    on('tauri://drag-enter', (paths) => ({ type: 'enter', paths })),
+    on('tauri://drag-over', () => ({ type: 'over' })),
+    on('tauri://drag-drop', (paths) => ({ type: 'drop', paths })),
+    on('tauri://drag-leave', () => ({ type: 'leave' })),
+  ]);
+  const unlistens = listening.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []));
+  const stop = () => unlistens.forEach((unlisten) => unlistenSafely(unlisten));
+  const failed = listening.find((r) => r.status === 'rejected');
+  if (failed) {
+    stop();
+    throw failed.reason;
+  }
+  return stop;
+}
+
+/**
+ * `listenForFileDrops` for a React effect: a synchronous cleanup that also stops a listen
+ * still in flight (StrictMode unmounts before it resolves) — once, and the handler goes
+ * quiet the moment it runs.
+ */
+export function subscribeToFileDrops(handler: (event: FileDragEvent) => void): () => void {
+  let stopped = false;
+  let stop: (() => void) | undefined;
+  void listenForFileDrops((event) => {
+    if (!stopped) handler(event);
+  }).then(
+    (unlisten) => {
+      if (stopped) unlisten();
+      else stop = unlisten;
+    },
+    () => undefined,
+  );
+  return () => {
+    if (stopped) return;
+    stopped = true;
+    stop?.();
+  };
+}
+
+const UNLISTEN_RETRY_MS = [10, 20, 40, 80, 160];
+
+/**
+ * Tauri registers a listener's page half by an eval that can land after `listen`
+ * resolves; an unlisten before then throws (`listeners[eventId].handlerId`) and leaves
+ * the listener live. So retry briefly, and never reject.
+ */
+export function unlistenSafely(unlisten: () => unknown, attempt = 0): void {
+  const retry = () => {
+    const wait = UNLISTEN_RETRY_MS[attempt];
+    if (wait !== undefined) setTimeout(() => unlistenSafely(unlisten, attempt + 1), wait);
+  };
+  try {
+    Promise.resolve(unlisten()).catch(retry);
+  } catch {
+    retry();
+  }
 }
 
 /** Larger than any worksheet or backup; a drop past it is refused unread. */
