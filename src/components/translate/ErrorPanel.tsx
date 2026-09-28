@@ -35,7 +35,9 @@ export function ErrorPanel({ error, actions }: { error: AiErrorInfo; actions: Tr
           <Button onClick={actions.openKeyPage}>{copy.openProvider(preset.label)}</Button>
         )}
         {has('useFallbackModel') && preset.quotaFallbackModel && (
-          <Button onClick={actions.useFallbackModel}>{copy.switchModel(preset.quotaFallbackModel)}</Button>
+          <Button onClick={actions.useFallbackModel}>
+            {copy.switchModel(preset.models.find((m) => m.id === preset.quotaFallbackModel)?.label ?? preset.quotaFallbackModel)}
+          </Button>
         )}
         {has('chooseModel') && <Button onClick={() => actions.openSettings('model')}>{copy.CHOOSE_MODEL}</Button>}
         {!region && has('switchProvider') && (

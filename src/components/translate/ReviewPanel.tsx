@@ -1,6 +1,6 @@
 import type { Glossary } from '@/glossary/types';
 import { plain } from '@/model/text';
-import type { TranslationWrite } from '@/model/textSlots';
+import type { TextPath, TranslationWrite } from '@/model/textSlots';
 import { Button, Eyebrow, Segmented } from '@/components/ui';
 import { Collapsible } from '@/components/ui/Collapsible';
 import * as copy from './copy';
@@ -28,10 +28,12 @@ export function ReviewPanel({
   session,
   actions,
   glossary,
+  slotWhere,
 }: {
   session: TranslateSession;
   actions: TranslateController;
   glossary: Glossary | null;
+  slotWhere: ReadonlyMap<TextPath, string>;
 }) {
   const run = session.run;
   if (!run) return null;
@@ -83,6 +85,7 @@ export function ReviewPanel({
                   ticked={isTicked(session, item.key)}
                   onTick={(value) => actions.tick([item.key], value)}
                   glossary={glossary}
+                  slotWhere={slotWhere}
                 />
               ))}
             </ul>

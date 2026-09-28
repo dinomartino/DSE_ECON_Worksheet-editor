@@ -35,6 +35,7 @@ const view = (over: Partial<TranslateView> = {}): TranslateView => ({
   scopeChoices: [{ scope: { kind: 'paper' }, label: 'Whole paper' }],
   glossary: null,
   glossaryFailed: false,
+  slotWhere: new Map(),
   ...over,
 });
 
@@ -247,6 +248,9 @@ describe('Translate dialog · Review', () => {
     const plan = fakePlan([dup, redo, ...[...r.plan.jobs.values()].slice(2)], copies);
     const markup = render(review({ run: { ...r, plan, stopped: true } }));
     expect(markup).toContain('title="Appears 2 times in this scope"');
+    const slotWhere = new Map([['q:Q3/t1', 'Question 3 · Stem'], ['q:Q3/x', 'Question 5 · (a)']]);
+    const placed = render(review({ run: { ...r, plan, stopped: true } }), view({ slotWhere }));
+    expect(placed).toContain('title="Appears 2 times: Question 3 · Stem; Question 5 · (a)"');
     expect(markup).toContain('×2');
     expect(row(markup, 't2')).toMatch(/line-through[^>]*>[\s\S]*供給減少/);
     expect(markup).toContain('Stopped · 3 of 4 translated');
@@ -308,7 +312,7 @@ describe('Translate dialog · Error', () => {
   it('shows only the actions the error names', () => {
     const quota: AiErrorInfo = { ...REGION, kind: 'quota', message: 'Google Gemini’s limit was reached.', detail: undefined, actions: ['useFallbackModel', 'switchProvider'] };
     const markup = render(errored({ error: quota, run: { ...reviewRun(), results: new Map() } }));
-    expect(markup).toContain('Switch to gemini-3.5-flash-lite');
+    expect(markup).toContain('Switch to Gemini 3.5 Flash-Lite');
     expect(markup).toContain('Switch provider…');
     expect(markup).not.toContain('Use DeepSeek');
     expect(markup).not.toContain('Try again');

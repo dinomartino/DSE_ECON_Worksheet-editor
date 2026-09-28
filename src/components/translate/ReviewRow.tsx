@@ -1,4 +1,5 @@
 import type { Glossary } from '@/glossary/types';
+import type { TextPath } from '@/model/textSlots';
 import type { JobResult } from '@/translate/types';
 import * as copy from './copy';
 import { RichRuns } from './RichRuns';
@@ -49,12 +50,14 @@ export function ReviewRow({
   ticked,
   onTick,
   glossary,
+  slotWhere,
 }: {
   item: ReviewItem;
   groupLabel: string;
   ticked: boolean;
   onTick: (value: boolean) => void;
   glossary: Glossary | null;
+  slotWhere: ReadonlyMap<TextPath, string>;
 }) {
   const { job, result } = item;
   const failed = result.status === 'failed';
@@ -62,6 +65,8 @@ export function ReviewRow({
   const where = locationLabel(job, groupLabel);
   const notes = rowNotes(result, glossary);
   const copies = job.slots.length;
+  const places = job.slots.map((slot) => slotWhere.get(slot.path));
+  const appears = places.every(Boolean) ? copy.appearsAt(places as string[]) : copy.appearsTimes(copies);
   const body = (
     <>
       <span className="flex w-5 shrink-0 justify-center pt-0.5">
@@ -77,7 +82,7 @@ export function ReviewRow({
       <span className="w-32 shrink-0 pt-px text-xs text-ink-muted">
         {where}
         {copies > 1 && (
-          <span title={copy.appearsTimes(copies)} className="ml-1 tabular-nums text-ink-subtle">
+          <span title={appears} className="ml-1 tabular-nums text-ink-subtle">
             ×{copies}
           </span>
         )}

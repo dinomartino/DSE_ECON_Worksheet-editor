@@ -120,6 +120,11 @@ function TranslateRoot({ session }: { session: TranslateSession }) {
     () => (setup && options ? planTranslation(worksheet, scope, probeOptions(options)) : null),
     [setup, worksheet, scope, options],
   );
+  const slots = useMemo(() => collectTexts(worksheet), [worksheet]);
+  const slotWhere = useMemo(
+    () => new Map(slots.map((slot) => [slot.path, [slot.group.label, slot.label].filter(Boolean).join(' · ')])),
+    [slots],
+  );
   // The pill and the ⋯ menu send the whole paper; the editor's selection adds the narrower scopes.
   const choices = useMemo(() => {
     if (!request) return [];
@@ -127,8 +132,8 @@ function TranslateRoot({ session }: { session: TranslateSession }) {
       questionId: worksheet.questions.some((q) => q.id === selectedQuestionId) ? selectedQuestionId : undefined,
       elementId: worksheet.layout.some((l) => l.id === selectedElementId) ? selectedElementId : undefined,
     };
-    return scopeChoices(request.scope, collectTexts(worksheet), selection);
-  }, [request, worksheet, selectedQuestionId, selectedElementId]);
+    return scopeChoices(request.scope, slots, selection);
+  }, [request, worksheet, slots, selectedQuestionId, selectedElementId]);
   const termRows = useMemo(
     () => (mode === 'check' && glossary ? buildTermCheck(worksheet, glossary, scope) : null),
     [mode, glossary, worksheet, scope],
@@ -137,7 +142,7 @@ function TranslateRoot({ session }: { session: TranslateSession }) {
   return (
     <TranslateDialog
       session={session}
-      view={{ status, desktop: isDesktop(), plan, probe, scopeChoices: choices, glossary, glossaryFailed: failed }}
+      view={{ status, desktop: isDesktop(), plan, probe, scopeChoices: choices, glossary, glossaryFailed: failed, slotWhere }}
       actions={controller}
       termRows={termRows}
     />

@@ -135,6 +135,8 @@ export const SELECT_NONE = 'None';
 export const stoppedNote = (done: number, total: number): string => `Stopped · ${done} of ${total} translated`;
 export const copiesGroup = (n: number): string => `Numbers and symbols · copied as they are (${n})`;
 export const appearsTimes = (n: number): string => `Appears ${n} times in this scope`;
+/** The ×n tooltip: where a deduped text prints. */
+export const appearsAt = (places: readonly string[]): string => `Appears ${places.length} times: ${places.join('; ')}`;
 export const termFixed = (from: string, to: string): string => `Term fixed: ${from} → ${to} (EDB)`;
 export const SIMPLIFIED_FIXED = 'Simplified characters changed to Traditional';
 export const conflictChip = (form: string, meansEn: string): string => `Meaning reversed? ${form} is “${meansEn}”`;

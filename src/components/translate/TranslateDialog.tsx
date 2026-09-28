@@ -66,7 +66,7 @@ export function TranslateDialog({
     );
     footer = <RunningFooter session={session} actions={actions} />;
   } else if (session.phase === 'review') {
-    body = <ReviewPanel session={session} actions={actions} glossary={view.glossary} />;
+    body = <ReviewPanel session={session} actions={actions} glossary={view.glossary} slotWhere={view.slotWhere} />;
     footer = <ReviewFooter session={session} actions={actions} configured={view.status.configured} />;
   } else if (session.phase === 'error' && session.error) {
     body = (

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { GLOSSARY_ATTRIBUTION } from '@/glossary/attribution';
 import type { Glossary } from '@/glossary/types';
 import { plain } from '@/model/text';
-import type { TextSlot } from '@/model/textSlots';
+import type { TextPath, TextSlot } from '@/model/textSlots';
 import type { AiStatus } from '@/settings/aiSettings';
 import type { TranslateScope, TranslationPlan } from '@/translate/types';
 import { Button, Segmented } from '@/components/ui';
@@ -21,6 +21,8 @@ export interface TranslateView {
   scopeChoices: ReadonlyArray<{ scope: TranslateScope; label: string }>;
   glossary: Glossary | null;
   glossaryFailed: boolean;
+  /** "Question 3 · (b)" for a slot path: where a deduped row's copies print. */
+  slotWhere: ReadonlyMap<TextPath, string>;
 }
 
 export type SetupState = 'nothing' | 'onlySymbols' | 'noProvider' | 'ready';
