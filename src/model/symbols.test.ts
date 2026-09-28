@@ -18,6 +18,9 @@ describe('isSymbolOnly', () => {
     ['SRAS', rt('SRAS')],
     ['ΔQ', rt('ΔQ')],
     ['HK$500', rt('HK$500')],
+    ['AS', rt('AS')],
+    ['A', rt('A')],
+    ['Pw', rt('Pw')],
   ];
   it.each(symbols)('%s is symbol-only', (_, runs) => {
     expect(isSymbolOnly(runs)).toBe(true);
@@ -31,6 +34,14 @@ describe('isSymbolOnly', () => {
     ['價格', rt('價格')],
     ['S₁ 供應', rt('S₁ 供應')],
     ['END OF PAPER', rt('END OF PAPER')],
+    ['PAPER 2', rt('PAPER 2')],
+    ['ECON', rt('ECON')],
+    ['TOTAL', rt('TOTAL')],
+    ['ONE', rt('ONE')],
+    ['No', rt('No')],
+    ['OR', rt('OR')],
+    ['or', rt('or')],
+    ['e.g.', rt('e.g.')],
     ['blank', []],
     ['whitespace', rt('  \n')],
   ];

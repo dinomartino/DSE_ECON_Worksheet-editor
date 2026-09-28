@@ -10,8 +10,9 @@ import { createDiagramBlock, createStructuredQuestion, createWorksheet } from '.
 import { migrate } from './migrations';
 import { createWorksheetFrom, type DocumentType } from './newWorksheet';
 import { bi } from './text';
+import { isSymbolOnly } from './symbols';
 import { collectTexts } from './textWalk';
-import type { BiText, DiagramBlock, Worksheet } from './types';
+import type { BiText, DiagramBlock, RichText, Worksheet } from './types';
 
 /**
  * The walker's coverage, proved structurally: every `{en: [], zh: []}` object anywhere in
@@ -90,6 +91,15 @@ describe('text walk census', () => {
     expect(missed, 'BiTexts the walker never visits').toEqual([]);
     expect(extra, 'slots that are not stored BiTexts').toEqual([]);
     expect(new Set(slots.map((slot) => slot.path)).size, 'paths are unique').toBe(slots.length);
+  });
+
+  it.each(censusDocuments())('no page text in the %s pairs a symbol-only English side with other Chinese', (_, ws) => {
+    const plain = (runs: RichText) => runs.map((run) => run.text).join('');
+    const misread = collectTexts(ws)
+      .filter((slot) => !slot.fallsBack && plain(slot.text.zh).trim() && plain(slot.text.en) !== plain(slot.text.zh))
+      .filter((slot) => isSymbolOnly(slot.text.en))
+      .map((slot) => `${plain(slot.text.en)} | ${plain(slot.text.zh)}`);
+    expect(misread).toEqual([]);
   });
 
   it('the gallery carries every template and some preset areas', () => {
