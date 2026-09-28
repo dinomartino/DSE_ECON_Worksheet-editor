@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import {
   useCallback,
@@ -6,17 +6,17 @@ import {
   useMemo,
   useState,
   type ComponentType,
-} from "react";
-import { Button } from "@/components/ui";
-import { Dialog, DialogTabs } from "@/components/ui/Dialog";
+} from 'react';
+import { Button } from '@/components/ui';
+import { Dialog, DialogTabs } from '@/components/ui/Dialog';
 import type {
   CloseGuard,
   SettingsSectionDef,
   SettingsSectionProps,
-} from "@/settings/sections";
-import { appSettings } from "@/settings/store";
-import type { SettingsEnv } from "@/settings/types";
-import type { SettingsRequest } from "@/store/appDialogs";
+} from '@/settings/sections';
+import { appSettings } from '@/settings/store';
+import type { SettingsEnv } from '@/settings/types';
+import type { SettingsRequest } from '@/store/appDialogs';
 
 /**
  * App Settings: this browser or computer, every worksheet — never the document (that is
@@ -25,7 +25,7 @@ import type { SettingsRequest } from "@/store/appDialogs";
  */
 
 export const settingsDescription = (env: SettingsEnv): string =>
-  `Saved ${env.desktop ? "on this computer" : "in this browser"}. Applies to every worksheet; never saved in a worksheet.`;
+  `Saved ${env.desktop ? 'on this computer' : 'in this browser'}. Applies to every worksheet; never saved in a worksheet.`;
 export const STORAGE_BLOCKED =
   "Settings can't be saved in this browser (private mode?). They last until you close the tab.";
 
@@ -34,17 +34,17 @@ export function initialSection(
   sections: readonly SettingsSectionDef[],
   requested?: string,
 ): string {
-  return sections.find((s) => s.id === requested)?.id ?? sections[0]?.id ?? "";
+  return sections.find((s) => s.id === requested)?.id ?? sections[0]?.id ?? '';
 }
 
-export type CloseIntent = "done" | "resume";
+export type CloseIntent = 'done' | 'resume';
 
 /** Runs the guard's answer: Discard proceeds; Save proceeds only when the save succeeded. */
 export async function answerGuard(
   guard: CloseGuard,
-  answer: "discard" | "save",
+  answer: 'discard' | 'save',
 ): Promise<boolean> {
-  if (answer === "discard") return true;
+  if (answer === 'discard') return true;
   try {
     return await guard.save.run();
   } catch {
@@ -123,19 +123,19 @@ export function AppSettingsDialog({
 
   const attemptClose = (intent: CloseIntent) => {
     if (saving) return;
-    if (intent === "resume" && !ready.ready) return;
+    if (intent === 'resume' && !ready.ready) return;
     if (guard) setAsking(intent);
-    else onClose({ resume: intent === "resume" });
+    else onClose({ resume: intent === 'resume' });
   };
   // Escape, ✕ and the scrim: a second Escape while asking dismisses the question.
-  const onDismiss = () => (asking ? setAsking(null) : attemptClose("done"));
+  const onDismiss = () => (asking ? setAsking(null) : attemptClose('done'));
 
-  const answer = async (choice: "discard" | "save") => {
+  const answer = async (choice: 'discard' | 'save') => {
     if (!guard || !asking) return;
     setSaving(true);
     const proceed = await answerGuard(guard, choice);
     setSaving(false);
-    if (proceed) onClose({ resume: asking === "resume" });
+    if (proceed) onClose({ resume: asking === 'resume' });
     else setAsking(null);
   };
 
@@ -161,7 +161,7 @@ export function AppSettingsDialog({
       }
     >
       <DialogTabs<string>
-        value={def?.id ?? ""}
+        value={def?.id ?? ''}
         onChange={(id) => {
           if (id === active || guard) return;
           setActive(id);
@@ -219,7 +219,7 @@ export function AppSettingsFooter({
   guard: CloseGuard | null;
   saving: boolean;
   onClose: (intent: CloseIntent) => void;
-  onAnswer: (answer: "discard" | "save") => void;
+  onAnswer: (answer: 'discard' | 'save') => void;
 }) {
   if (asking && guard) {
     return (
@@ -227,15 +227,15 @@ export function AppSettingsFooter({
         <span role="status" className="mr-auto text-[13px] text-ink">
           {guard.message}
         </span>
-        <Button disabled={saving} onClick={() => onAnswer("discard")}>
+        <Button disabled={saving} onClick={() => onAnswer('discard')}>
           Discard
         </Button>
         <Button
           variant="primary"
           disabled={saving}
-          onClick={() => onAnswer("save")}
+          onClick={() => onAnswer('save')}
         >
-          {saving ? "Testing…" : guard.save.label}
+          {saving ? 'Testing…' : guard.save.label}
         </Button>
       </>
     );
@@ -247,8 +247,8 @@ export function AppSettingsFooter({
         <span className="mr-auto text-xs text-ink-muted">{blockedHint}</span>
       )}
       <Button
-        variant={resume ? "default" : "primary"}
-        onClick={() => onClose("done")}
+        variant={resume ? 'default' : 'primary'}
+        onClick={() => onClose('done')}
       >
         Done
       </Button>
@@ -257,7 +257,7 @@ export function AppSettingsFooter({
           variant="primary"
           disabled={!ready}
           title={blockedHint}
-          onClick={() => onClose("resume")}
+          onClick={() => onClose('resume')}
         >
           {resume.label}
         </Button>
