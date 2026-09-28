@@ -12,7 +12,7 @@ import { buildTranslateFixture } from '@/test/translateFixture';
 import { createParagraphBlock, createStructuredQuestion } from '@/model/factories';
 import { bi } from '@/model/text';
 import { patch, type TextSlot, type TextWalker } from '@/model/textSlots';
-import { mapWorksheetTexts, questionTexts } from '@/model/textWalk';
+import { collectTexts, mapWorksheetTexts } from '@/model/textWalk';
 import type { ContentBlock, StructuredQuestion } from '@/model/types';
 import { getQuestionType, listQuestionTypes, requireQuestionType, type QuestionTypeDefinition } from '.';
 
@@ -209,7 +209,9 @@ describe('question-type registry (§9)', () => {
       const alone = { ...ws, questions: [question] };
       expect(mapWorksheetTexts(alone, (slot) => slot.text).questions[0]).toBe(question);
     }
-    const paths = (index: number) => questionTexts(ws.questions[index]).map((slot) => slot.path.replace(/:[^/#]+/g, ':*'));
+    const paths = (index: number) => collectTexts(ws)
+      .filter((slot) => slot.questionId === ws.questions[index].id)
+      .map((slot) => slot.path.replace(/:[^/#]+/g, ':*'));
     // Everything countMissingTranslations saw, plus tables, figures, statements and answer graphs.
     expect(paths(0)).toEqual(expect.arrayContaining([
       'q:*/blocks/b:*', 'q:*/blocks/b:*/row:*/cell:*', 'q:*/blocks/b:*/caption', 'q:*/statements/0',

@@ -542,11 +542,18 @@ export function collectTexts(ws: Worksheet): TextSlot[] {
   return slots;
 }
 
-/** One question's slots, walked on its own (paths as in the document, barring a repeated id). */
-export function questionTexts(question: Question): TextSlot[] {
-  const slots: TextSlot[] = [];
-  mapQuestion({ visit: recordInto(slots), opts: {}, claimed: new Map() }, question, undefined);
-  return slots;
+/**
+ * One question's untranslated count, walked on its own for the pill's per-question cache.
+ * Count only: alone, its paths and group miss the document's numbering and `#2` suffixes.
+ */
+export function questionUntranslated(question: Question, mode: Pick<OutputMode, 'language' | 'version'>): number {
+  let count = 0;
+  const visit: TextVisitor = (slot) => {
+    if (needsTranslation(slot, mode)) count += 1;
+    return slot.text;
+  };
+  mapQuestion({ visit, opts: {}, claimed: new Map() }, question, undefined);
+  return count;
 }
 
 /** Deep equality of plain data; an `undefined` key reads as absent. */

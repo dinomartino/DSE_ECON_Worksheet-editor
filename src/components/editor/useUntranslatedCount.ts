@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { mapWorksheetTexts, needsTranslation, questionTexts } from '@/model/textWalk';
+import { mapWorksheetTexts, needsTranslation, questionUntranslated } from '@/model/textWalk';
 import type { OutputMode, Question, Worksheet } from '@/model/types';
 
 type CountMode = Pick<OutputMode, 'language' | 'version'>;
@@ -13,7 +13,7 @@ function questionCount(question: Question, mode: CountMode): number {
   if (!byMode) perQuestion.set(question, (byMode = new Map()));
   let count = byMode.get(key);
   if (count === undefined) {
-    count = questionTexts(question).filter((slot) => needsTranslation(slot, mode)).length;
+    count = questionUntranslated(question, mode);
     byMode.set(key, count);
   }
   return count;

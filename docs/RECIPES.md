@@ -49,6 +49,8 @@ Guard: `src/model/textWalk.census.test.ts` (every stored `{en, zh}` is a slot),
 4. `src/export/docx/body.ts:renderNodeXml` — the OOXML arm.
 5. `src/components/preview/Preview.tsx` — the DOM arm, with an `EditTarget` if it is authored.
 6. `src/export/clipboard.ts` — the HTML/text arm.
+7. `src/model/textWalk.ts` `Walk.block` — its BiTexts (the switch will not compile
+   without the arm), and one in `src/test/translateFixture.ts`.
 
 All three backends or none: a node the exporter cannot draw is a silent data loss.
 
@@ -62,6 +64,8 @@ Guard: `src/export/docx/docx.test.ts`, `src/render/gaps.test.ts`.
 4. `src/render/worksheet.ts:renderWorksheet` — the IR it emits.
 5. `src/components/editor/AddRail.tsx` — the insert menu entry.
 6. Backends, as for a block, if it needs a node kind of its own.
+7. `src/model/textWalk.ts` `mapLayout` — its BiTexts, or a text-free case (the switch
+   will not compile without one), and one in `src/test/translateFixture.ts`.
 
 An insert writes both `layout` and `flow`, always through `applyOrder`.
 
@@ -122,6 +126,8 @@ Guard: `src/model/edits.test.ts` (every target reads back what it wrote).
 4. `src/components/preview/BandEditor.tsx` — the on-page arm, plus `bandFieldStyle`.
 5. `src/export/docx/body.ts` — the segments walk; only a genuine placeholder becomes a
    native `PAGE`/`NUMPAGES` field.
+6. `src/model/textWalk.ts` reads `prefix`/`suffix` of any kind; other BiTexts need an arm
+   there, and one of the field in `src/test/translateFixture.ts`.
 
 A computed value is never stored. Both band paths must agree.
 
@@ -136,6 +142,8 @@ Guard: `src/export/docx/bandWording.test.ts`, `src/components/preview/bandFieldS
    arms so its parts can be dragged; labels store offsets, not positions.
 4. `src/model/diagramTemplates.ts:DIAGRAM_TEMPLATES` — a starting shape.
 5. `src/components/editor/DiagramEditor.tsx` (+ a canvas, as `FlowCanvas`/`ForumCanvas` do).
+6. `src/model/diagramText.ts` — its text handles, kept in step with `handleText`, and one
+   in `src/test/translateFixture.ts`.
 
 Export needs nothing: `src/export/diagramImage.ts` rasterises the same SVG.
 
