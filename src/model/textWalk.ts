@@ -452,11 +452,12 @@ function mapQuestion(run: Run, question: Question, number: number | undefined): 
 
 /** Questions and layout elements interleaved in flow order, each list rebuilt only if touched. */
 function mapFlow(run: Run, ws: Worksheet): Pick<Worksheet, 'questions' | 'layout'> {
-  const numbers = new Map(computeNumbering(ws).questions.map((entry) => [entry.question, entry.number]));
+  const skip = run.opts.skipQuestions;
+  const numbers = new Map(skip ? [] : computeNumbering(ws).questions.map((entry) => [entry.question, entry.number]));
   const next = new Map<Question | LayoutElement, Question | LayoutElement>();
   const question = (q: Question) => {
     if (next.has(q)) return;
-    next.set(q, run.opts.skipQuestions ? q : mapQuestion(run, q, numbers.get(q)));
+    next.set(q, skip ? q : mapQuestion(run, q, numbers.get(q)));
   };
   const layout = (element: LayoutElement) => {
     if (next.has(element)) return;
