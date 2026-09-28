@@ -6,12 +6,6 @@ import { createSettingsStore } from '@/settings/store';
 import { initialAiSetup } from './aiSetup';
 import { createAiSetupRunner, type AiSetupDeps } from './aiSetupRunner';
 
-// P-AI's key-shape check, faked: a Gemini field holding an `sk-` key.
-vi.mock('@/ai/keyShape', () => ({
-  keyShapeProblem: (provider: string, key: string) =>
-    provider === 'gemini' && key.startsWith('sk-') ? { likely: 'deepseek', message: 'This looks like a DeepSeek key.' } : null,
-}));
-
 const web = { desktop: false };
 const GEMINI_KEY = 'AIzaSyTESTKEY000000000000007Qx4';
 const passed: ConnectionTest = { ok: true, ms: 900, model: 'm', sample: '物價水平', followedGlossary: true };
@@ -113,7 +107,7 @@ describe('List my models', () => {
     runner.draft('sk-1234567890abcdef');
     await expect(runner.listModels()).resolves.toBeNull();
     expect(listed).toEqual([]);
-    expect(runner.current().key).toMatchObject({ kind: 'editing', shape: { likely: 'deepseek' } });
+    expect(runner.current().key).toMatchObject({ kind: 'editing', shape: { message: "This isn't a Google key. Which provider is it from?" } });
   });
 
   it('lists with the typed key, or the saved one, for the shown provider', async () => {

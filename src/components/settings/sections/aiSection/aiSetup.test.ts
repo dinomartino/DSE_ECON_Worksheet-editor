@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { AiErrorInfo, AiErrorKind, ConnectionTest } from '@/ai/types';
 import { AI_SETTINGS, type AiSettings } from '@/settings/aiSettings';
 import {
@@ -13,12 +13,6 @@ import {
   type AiSetupEvent,
   type AiSetupState,
 } from './aiSetup';
-
-// P-AI's key-shape check, faked: a Gemini field holding an `sk-` key.
-vi.mock('@/ai/keyShape', () => ({
-  keyShapeProblem: (provider: string, key: string) =>
-    provider === 'gemini' && key.startsWith('sk-') ? { likely: 'deepseek', message: 'This looks like a DeepSeek key.' } : null,
-}));
 
 const web = { desktop: false };
 const settings = (patch: Partial<AiSettings> = {}): AiSettings => ({ ...AI_SETTINGS.defaults(web), ...patch });
@@ -44,7 +38,7 @@ describe('the AI section state', () => {
   it('sends nothing past a shape warning until "test anyway"', () => {
     const warned = run(start(), { type: 'draft', value: 'sk-1234567890abcdef' }, { type: 'saveAndTest' });
     expect(warned.test.kind).toBe('idle');
-    expect(warned.key).toMatchObject({ kind: 'editing', shape: { likely: 'deepseek' } });
+    expect(warned.key).toMatchObject({ kind: 'editing', shape: { message: "This isn't a Google key. Which provider is it from?" } });
     expect(run(warned, { type: 'testAnyway' }).test.kind).toBe('testing');
   });
 
@@ -92,7 +86,7 @@ describe('the AI section state', () => {
 
   it('lists models only past the same shape check as Save & test', () => {
     const typed = run(start(), { type: 'draft', value: 'sk-1234567890abcdef' });
-    expect(run(typed, { type: 'listAsked' }).key).toMatchObject({ kind: 'editing', shape: { likely: 'deepseek' } });
+    expect(run(typed, { type: 'listAsked' }).key).toMatchObject({ kind: 'editing', shape: { message: "This isn't a Google key. Which provider is it from?" } });
     const plausible = run(start(), { type: 'draft', value: 'AIzaSyTESTKEY0000' });
     expect(run(plausible, { type: 'listAsked' })).toBe(plausible);
   });
