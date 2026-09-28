@@ -259,8 +259,8 @@ Two conventions worth knowing:
 
 ## Privacy and AI translation
 
-Translation is optional and off until a teacher adds a key in **Settings → AI &
-translation** (⋯ → Settings…).
+Translation is optional and off until a teacher sets up a provider (usually their own
+key) in **Settings → AI & translation** (⋯ → Settings…).
 
 - **What is sent:** only the texts the teacher chose to translate (a whole paper, a
   question, a figure or one field), plus already-translated lines from the same question

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { copyForWord, worksheetClipboardHtml, worksheetPlainText } from '@/export/clipboard';
 import { renderDiagramImages } from '@/export/diagramImage';
 import type { LanguageMode, OutputMode, VersionMode } from '@/model/types';
@@ -23,7 +23,6 @@ import { hasCoverSheet } from './sheets';
 import { FeedbackDialog } from '@/components/feedback/FeedbackDialog';
 import { WhatsNewDialog } from '@/components/whatsNew/WhatsNewDialog';
 import { describeDocument } from '@/feedback/feedback';
-import { useEffect } from 'react';
 import { useAppDialogs, type TranslateRequest } from '@/store/appDialogs';
 import { useSettingsSections } from '@/settings/sections';
 import { paperRequest, toolbarMenuEntries, type ToolbarEntry } from '@/components/translate/translateMenu';
