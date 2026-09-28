@@ -27,9 +27,10 @@ off the bottom.** It is the first thing a fresh session reads — then
   Editor: `[logo] Worksheets › <title>` crumb goes home (word hides <1280px; ⋯ →
   Worksheets… kept for the film). The start screen is always home — no Back to the last
   document; leaving flushes then unmounts the editor (`EditorHost.tsx:flushBeforeLeaving`).
-  Open bugs found: toolbar wraps at 1024px with a long title; desktop dev "1 Issue" =
-  file-drop effect's `stop()` promise uncaught (`StartScreen.tsx` ~177, from c08f5cb);
-  "Clear saved documents" re-saves a dirty open document on the way home.
+  Fixed after: Clear saved documents discards the open document (`EditorHost.tsx:clearSavedDocuments`);
+  toolbar one row from 1024px (name truncates; Setup icon-only and Saved a dot below xl);
+  desktop file-drop unlisten never rejects (`src/platform/index.ts:unlistenSafely`) — not
+  yet run in the real desktop shell.
 - **Desktop app — shipped 2026-09-22.** Tauri 2 wraps the same static `out/`; documents
   become files under `$APPDATA/worksheets/` (`src/storage/fileStore.ts`), saving uses the
   native dialog, updates come from GitHub Releases. `src/platform/index.ts` ·
@@ -78,7 +79,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Last verified
 
-- `npm test` — 2479 tests, ~7s (2026-09-28). `cargo check --locked` clean. `npm run build`
+- `npm test` — 2487 tests, ~7s (2026-09-28). `cargo check --locked` clean. `npm run build`
   green (postbuild: glossary only in a lazy chunk); `npm run samples` exports.
 - `npm run typecheck` — clean.
 - `npm run lint` — 43 pre-existing problems (3 errors, 40 warnings) in `Preview.tsx` and
