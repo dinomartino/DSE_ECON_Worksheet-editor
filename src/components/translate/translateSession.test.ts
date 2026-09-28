@@ -10,12 +10,14 @@ import {
   filterCounts,
   hostAction,
   insertCount,
+  isTicked,
   locationLabel,
   pendingKeys,
   reduceSession,
   restrictPlan,
   reviewGroups,
   sameRequest,
+  selectableKeys,
   type SessionAction,
   type TranslateSession,
 } from './translateSession';
@@ -86,6 +88,28 @@ describe('translateSession reducer', () => {
     expect(s2.run?.results.get('t1')).toBe(s0.run?.results.get('t1'));
     expect(s2.run?.ms).toBe(13000);
     expect(s2.run?.model).toBe('Gemini 3.5 Flash-Lite');
+  });
+
+  it('Select All skips failed rows, and a retried row starts from its own default tick', () => {
+    const s0 = seeded({ phase: 'review', run: reviewRun() });
+    expect(selectableKeys(s0.run!, 'all')).toEqual(['t1', 't2', 't3']);
+    expect(selectableKeys(s0.run!, 'look')).toEqual(['t2', 't3']);
+    expect(selectableKeys(s0.run!, 'failed')).toEqual([]);
+    // Even an explicit tick on the failed row is dropped once the retry answers it.
+    const ticked = reduceSession(s0, { type: 'tick', keys: ['t1', 't2', 't3', 't4'], value: true });
+    const retrying = reduceSession(ticked, { type: 'runStarted' });
+    const risky = new Map([['t4', result('t4', 'P₁', { status: 'flagged', defaultAccepted: false })]]);
+    const s1 = reduceSession(retrying, { type: 'runFinished', outcome: { results: risky, stopped: false, model: '', ms: 1 } });
+    expect(isTicked(s1, 't4')).toBe(false);
+    expect(isTicked(s1, 't3')).toBe(true);
+  });
+
+  it('Stop with only symbol copies and no finished row goes back to setup', () => {
+    const copies = [{ path: 'c', side: 'zh' as const, sourceSnapshot: [], targetSnapshot: [], next: [] }];
+    const r = reviewRun();
+    const base = seeded({ phase: 'running', run: { ...r, plan: fakePlan([...r.plan.jobs.values()], copies), results: new Map() } });
+    const s = reduceSession(base, { type: 'runFinished', outcome: { results: new Map(), stopped: true, model: '', ms: 0 } });
+    expect(s.phase).toBe('setup');
   });
 
   it('closing asks first: Stop while running, Discard with rows pending', () => {

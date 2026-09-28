@@ -13,6 +13,7 @@ import {
   isTicked,
   pendingKeys,
   reviewGroups,
+  selectableKeys,
   unattemptedCount,
   type ReviewFilter,
   type TranslateSession,
@@ -42,7 +43,7 @@ export function ReviewPanel({
   }
   const counts = filterCounts(run);
   const groups = reviewGroups(run, session.filter);
-  const selectable = [...run.results.keys()];
+  const selectable = selectableKeys(run, session.filter);
   const filters: Array<{ value: ReviewFilter; label: string }> = [{ value: 'all', label: copy.filterAll(counts.all) }];
   if (counts.look > 0) filters.push({ value: 'look', label: copy.filterLook(counts.look) });
   if (counts.failed > 0) filters.push({ value: 'failed', label: copy.filterFailed(counts.failed) });

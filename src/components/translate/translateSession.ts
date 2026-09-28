@@ -171,7 +171,12 @@ export function reduceSession(state: TranslateSession, action: SessionAction): T
 function finishRun(state: TranslateSession, outcome: RunOutcome): TranslateSession {
   if (!state.run || state.phase !== 'running') return state;
   const results = new Map(state.run.results);
-  for (const [key, result] of outcome.results) results.set(key, result);
+  // A retried row starts from its own defaultAccepted, never from a tick made before it had a result.
+  const ticks = new Map(state.ticks);
+  for (const [key, result] of outcome.results) {
+    results.set(key, result);
+    ticks.delete(key);
+  }
   const run: RunRecord = {
     plan: state.run.plan,
     results,
@@ -179,10 +184,12 @@ function finishRun(state: TranslateSession, outcome: RunOutcome): TranslateSessi
     ms: state.run.ms + outcome.ms,
     stopped: outcome.stopped,
   };
-  const base = { ...state, run, progress: null, confirm: null };
+  const base = { ...state, run, ticks, progress: null, confirm: null };
   if (outcome.fatal) return { ...base, phase: 'error', error: outcome.fatal };
-  // Stop before anything finished: back to Setup, nothing to review.
-  if (results.size === 0 && run.plan.copies.length === 0) return { ...base, phase: 'setup', run: null };
+  // Stop before any row finished: back to Setup, nothing to review.
+  if (finishedCount(run) === 0 && (outcome.stopped || results.size === 0)) {
+    return { ...base, phase: 'setup', run: null, ticks: new Map() };
+  }
   return { ...base, phase: 'review', filter: 'all' };
 }
 
@@ -216,6 +223,13 @@ export function pendingKeys(run: RunRecord): string[] {
 
 export function unattemptedCount(run: RunRecord): number {
   return [...run.plan.jobs.keys()].filter((key) => !run.results.has(key)).length;
+}
+
+/** What Select All / None touches: rows shown under `filter` that can be ticked at all. */
+export function selectableKeys(run: RunRecord, filter: ReviewFilter): string[] {
+  return reviewGroups(run, filter).flatMap((group) =>
+    group.items.filter((item) => usable(item.result)).map((item) => item.key),
+  );
 }
 
 export function isTicked(session: TranslateSession, key: string): boolean {
