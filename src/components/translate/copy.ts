@@ -13,7 +13,6 @@ export const pillLabel = (n: number): string => `${n} untranslated`;
 export const MENU_TRANSLATE = 'Translate…';
 export const MENU_CHECK_TERMS = 'Check terms…';
 export const MENU_SETTINGS = 'Settings…';
-export const START_SETTINGS_LINK = 'Settings';
 
 // ---- Setup privacy line ----
 

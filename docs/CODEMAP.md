@@ -304,7 +304,7 @@ through `AppSettingsHost` alone.
 - `src/components/translate/copy.ts` — the copy deck
 - `src/components/translate/translateMenu.ts:pageTranslateItems` · `src/components/translate/translateMenu.ts:toolbarMenuEntries` · `src/components/translate/translateMenu.ts:outlineTranslateItem` — every Translate entry point's request, pure
 - `src/components/translate/fieldFill.ts:fillButton` · `src/components/translate/fieldFill.ts:runFieldFill` — `BiTextField`'s inline fill (the `translate` prop)
-- `src/components/editor/Toolbar.tsx:UntranslatedPill` — the front door; `src/components/start/StartScreen.tsx:SettingsLink`; `src/components/ui/icons.tsx:PageSetupIcon` (Setup; the gear is app Settings)
+- `src/components/editor/Toolbar.tsx:UntranslatedPill` — the front door; `src/components/start/StartScreen.tsx:SettingsButton`; `src/components/ui/icons.tsx:PageSetupIcon` (Setup; the gear is app Settings)
 - `scripts/ai-verify.mjs` · `scripts/ai-mock-server.mjs` — the Translate browser run against a canned provider; nothing sent before a click
 - `src/components/translate/TranslateHost.tsx:TranslateHost` — mounted once in `EditorApp`; opens, resumes or drops the session as the app dialog changes
 - `src/components/translate/translateSession.ts:reduceSession` — the phases as a pure reducer (setup → running → review, or error); `src/components/translate/translateSession.ts:closeIntent` asks before paid work is lost

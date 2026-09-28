@@ -7,7 +7,7 @@ import { AppSettingsHost } from '@/components/settings/AppSettingsHost';
 import { setBeforeRestart } from '@/desktop/updateStore';
 import { StartScreen } from '@/components/start/StartScreen';
 import type { LanguageMode, Worksheet } from '@/model/types';
-import { NewerDocumentError, worksheetStore } from '@/storage';
+import { NewerDocumentError, worksheetStore, worksheetTitle } from '@/storage';
 import { useWorksheetStore } from '@/store/worksheetStore';
 
 /**
@@ -56,6 +56,7 @@ export function EditorHost() {
   const [chosen, setChosen] = useState(false);
   const [showingFiles, setShowingFiles] = useState(false);
   const replaceWorksheet = useWorksheetStore((s) => s.replaceWorksheet);
+  const openName = useWorksheetStore((s) => worksheetTitle(s.worksheet));
 
   // Restarting into an update kills the autosave debounce; write pending edits first.
   useEffect(
@@ -146,6 +147,7 @@ export function EditorHost() {
             // No way back before a document exists — there is no editor behind the screen
             // yet, so a Cancel would dismiss to nothing.
             onClose={chosen ? () => setShowingFiles(false) : undefined}
+            returnTo={chosen ? openName : undefined}
             // Trashing the open document removes the way back to it: its next autosave
             // would quietly make it live again.
             onTrashed={(id) => {
