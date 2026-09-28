@@ -2171,11 +2171,26 @@ from `src/translate/deps.ts`.
 <!-- e2:engine end -->
 
 <!-- e2:dialog start -->
-### The Translate dialog
+### The Translate dialog (`src/components/translate/`)
 
-One dialog, two modes (Translate, Check terms), opened through `useAppDialogs`. Review is
-read-only: checkboxes and chips, no text inputs — the rejected translation dock is never
-rebuilt. Copy: `src/components/translate/copy.ts`.
+One dialog, two modes (Translate, Check terms), opened through `useAppDialogs` and mounted
+once as `TranslateHost` in `EditorApp`. Copy: `src/components/translate/copy.ts`.
+
+- **Phases are a pure reducer** (`src/components/translate/translateSession.ts`: setup →
+  running → review, or error). Every screen is a function of the session and a view, so
+  each is a static-markup test. Effects — plan, run, abort, Insert, hand-offs — are
+  injected into `src/components/translate/translateController.ts`.
+- **Review is read-only**: ticks and notes, no text input. A wrong row is unticked or fixed
+  on the page after inserting; the rejected translation dock is never rebuilt (the markup
+  test fails on any text field, textarea or contentEditable).
+- **Paid work is never lost to one stray press.** The first Escape, ✕ or scrim click asks
+  (Stop while running, Discard with rows pending). Stop keeps finished rows; a retry sends
+  only the jobs without a usable result.
+- **Insert is one `applyTranslations` call**: one commit, one ⌘Z. If every write is stale,
+  the dialog stays open on "Nothing inserted".
+- **Never stacked.** Settings is offered only in Setup and Error, by replacing the app
+  dialog with `returnTo`; the session store keeps scope, options and finished rows across
+  the round trip. The host closes a request for another document or a read-only one.
 <!-- e2:dialog end -->
 
 <!-- e2:entry start -->

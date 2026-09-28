@@ -266,6 +266,11 @@ it (`// P-<X> replaces this body`).
 - `src/settings/types.ts:SettingsSchema` · `src/settings/validators.ts:recordOf` · `src/settings/sections.ts:registerSettingsSection` · `src/settings/sections.ts:useSettingsSections` · `src/settings/store.ts:appSettings` (stub) · `src/settings/aiSettings.ts:AI_SETTINGS` · `src/settings/aiSettings.ts:useAiStatus` (stub)
 - `src/platform/secrets.ts:readSecret` · `src/platform/secrets.ts:peekSecret` — the only holder of AI keys (stubs)
 - `src/components/translate/copy.ts` — the copy deck
+- `src/components/translate/TranslateHost.tsx:TranslateHost` — mounted once in `EditorApp`; opens, resumes or drops the session as the app dialog changes
+- `src/components/translate/translateSession.ts:reduceSession` — the phases as a pure reducer (setup → running → review, or error); `src/components/translate/translateSession.ts:closeIntent` asks before paid work is lost
+- `src/components/translate/translateController.ts:createTranslateController` — plan, run, Stop, Insert and the Settings hand-offs, all injected
+- `src/components/translate/TranslateDialog.tsx:TranslateDialog` — one screen per phase; `src/components/translate/SetupPanel.tsx` · `src/components/translate/RunningPanel.tsx` · `src/components/translate/ReviewPanel.tsx` · `src/components/translate/ErrorPanel.tsx` · `src/components/translate/CheckTermsPanel.tsx`
+- `src/components/translate/ReviewRow.tsx:rowNotes` · `src/components/translate/RichRuns.tsx:RichRuns` — a read-only row (no text field: the dock guard in `src/components/translate/translateDialog.test.tsx`)
 
 Invariants:
 - Nothing new is stored in a document; settings under `econgen.settings.<section>`, keys only in the secrets store.
