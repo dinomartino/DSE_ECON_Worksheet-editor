@@ -70,6 +70,8 @@ type Fs = typeof import('@tauri-apps/plugin-fs');
 export class FileWorksheetStore implements WorksheetStore {
   private fsModule: Promise<Fs> | undefined;
   private readonly now: () => number;
+  /** Saves still writing: `clear` waits them out, or one lands after it and relists. */
+  private readonly saving = new Set<Promise<void>>();
 
   constructor(now: () => number = Date.now) {
     this.now = now;
@@ -167,6 +169,16 @@ export class FileWorksheetStore implements WorksheetStore {
   }
 
   async save(worksheet: Worksheet): Promise<void> {
+    const write = this.write(worksheet);
+    this.saving.add(write);
+    try {
+      await write;
+    } finally {
+      this.saving.delete(write);
+    }
+  }
+
+  private async write(worksheet: Worksheet): Promise<void> {
     const fs = await this.fs();
     // A newer build's document is never overwritten by this one (§ NewerDocumentError).
     if (isNewerThanBuild(worksheet) && (await fs.exists(docPath(worksheet.id), await this.base()))) {
@@ -439,6 +451,8 @@ export class FileWorksheetStore implements WorksheetStore {
    * Trash and folders included.
    */
   async clear(): Promise<void> {
+    // Unlike `localStorage`, a file save spans many awaits and can straddle a clear.
+    await Promise.allSettled(this.saving);
     const fs = await this.fs();
     const opts = await this.base();
     await this.clearTrashDir();

@@ -36,6 +36,13 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   to your home page of worksheets — your work is saved first — and click any worksheet
   there to open it. On the home page, Settings is the gear in the bottom-left corner.
 
+### Fixed
+- **Clear saved documents** now clears the worksheet you have open too, even with
+  unsaved changes — it no longer reappears on the home page afterwards.
+- The toolbar stays on one line on smaller laptop screens: a long worksheet name is
+  shortened with "…" (point at it for the full name), Setup shows as its icon, and
+  "Saved" becomes a small dot until the window is wider.
+
 ## 0.4.0 — 2026-09-27
 
 ### Added

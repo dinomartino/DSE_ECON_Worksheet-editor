@@ -139,6 +139,17 @@ describe('FileWorksheetStore', () => {
     expect(files.has('window-state.json')).toBe(true);
   });
 
+  it('a save still writing when clear() starts cannot land after it', async () => {
+    const store = new FileWorksheetStore();
+    await store.save(worksheet('a', '2024-01-01T00:00:00.000Z'));
+    const autosave = store.save(worksheet('b', '2024-01-02T00:00:00.000Z'));
+    await store.clear();
+    await autosave;
+
+    expect([...files.keys()].filter((path) => path.startsWith(`${DIR}/`))).toEqual([]);
+    expect(await store.list()).toEqual([]);
+  });
+
   it('keeps the good rows when one index entry is malformed', async () => {
     files.set(
       INDEX,

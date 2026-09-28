@@ -6,7 +6,7 @@ import { renderDiagramImages } from '@/export/diagramImage';
 import type { LanguageMode, OutputMode, VersionMode } from '@/model/types';
 import { useUntranslatedCount } from './useUntranslatedCount';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { downloadWorksheetFile, worksheetStore } from '@/storage';
+import { downloadWorksheetFile } from '@/storage';
 import { isDesktop, revealFile, revealLabel } from '@/platform';
 import { Button, IconButton, Pill, Segmented } from '@/components/ui';
 import { ChevronRightIcon, DownloadIcon, PageSetupIcon, RedoIcon, SettingsIcon, UndoIcon } from '@/components/ui/icons';
@@ -61,8 +61,8 @@ export function UntranslatedPill({ count, onOpen }: { count: number; onOpen?: ()
 
 /**
  * `[mark] Worksheets › name`: the mark and word are one button home to the start screen.
- * Below `xl` the word and chevron fold away, so the crumb adds no width at laptop sizes;
- * the mark keeps the name. The ⋯ menu's "Worksheets…" stays as the second route.
+ * Below 1440px the word and chevron fold away, so the crumb adds no width at laptop
+ * sizes; the mark keeps the name. The ⋯ menu's "Worksheets…" stays as the second route.
  */
 export function HomeCrumb({ onOpenFiles }: { onOpenFiles: () => void }) {
   return (
@@ -72,15 +72,15 @@ export function HomeCrumb({ onOpenFiles }: { onOpenFiles: () => void }) {
         aria-label="All worksheets"
         title="All worksheets"
         onClick={onOpenFiles}
-        className="flex shrink-0 cursor-pointer items-center gap-2 rounded-md p-1 text-[13px] font-medium text-ink-muted transition-[background-color,color,scale] duration-150 ease-out-soft hover:bg-surface-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97] xl:pr-2"
+        className="flex shrink-0 cursor-pointer items-center gap-2 rounded-md p-1 text-[13px] font-medium text-ink-muted transition-[background-color,color,scale] duration-150 ease-out-soft hover:bg-surface-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97] min-[1440px]:pr-2"
       >
         {/* The app's own face, shared with the browser tab (`src/app/icon.svg`). */}
         <span className="flex text-ink">
           <AppMark size={22} />
         </span>
-        <span className="hidden xl:inline">Worksheets</span>
+        <span className="hidden min-[1440px]:inline">Worksheets</span>
       </button>
-      <ChevronRightIcon size={13} className="hidden text-ink-subtle xl:block" />
+      <ChevronRightIcon size={13} className="hidden shrink-0 text-ink-subtle min-[1440px]:block" />
       <DocumentName />
     </nav>
   );
@@ -97,6 +97,7 @@ export function HomeCrumb({ onOpenFiles }: { onOpenFiles: () => void }) {
 export function Toolbar({
   onOpenSettings,
   onOpenFiles,
+  onClearAll,
   bodySheets,
 }: {
   onOpenSettings: () => void;
@@ -104,6 +105,8 @@ export function Toolbar({
   bodySheets?: number;
   /** Show the start screen: the saved-worksheet list, and the new-document form. */
   onOpenFiles: () => void;
+  /** Delete every saved document, this one included, and show the (empty) start screen. */
+  onClearAll: () => Promise<void>;
 }) {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const mode = useWorksheetStore((s) => s.mode);
@@ -133,6 +136,7 @@ export function Toolbar({
   const closeWhatsNew = useCallback(() => setWhatsNew(false), []);
 
   const untranslated = useUntranslatedCount(worksheet, mode);
+  const saveStatus = readOnly ? 'Read-only' : dirty ? 'Unsaved…' : 'Saved';
 
   const flash = (message: string, action?: Notice['action']) => showNotice(setNotice, message, action);
 
@@ -282,14 +286,14 @@ export function Toolbar({
    * It ends on the **start screen**, not on a fresh blank document: having just emptied
    * the list, dropping the teacher into an untitled worksheet would put them straight
    * back into a document they did not ask to start, with no sign the clear had done
-   * anything. The empty list is the honest result.
+   * anything. The empty list is the honest result. Not through `onOpenFiles`: that
+   * leave saves unsaved edits, which would put the open document straight back.
    */
   const handleClearAll = async () => {
     setConfirmingClear(false);
     setError(undefined);
     try {
-      await worksheetStore.clear();
-      onOpenFiles();
+      await onClearAll();
     } catch {
       setError('Could not clear saved documents.');
     }
@@ -297,12 +301,14 @@ export function Toolbar({
 
   return (
     <div className="zone-dark relative border-b border-line bg-surface px-4 py-2.5">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      {/* One row from `lg` up: nothing wraps, so the document name is the one thing that
+          gives — it truncates (full name in its tooltip). Below `lg` the row may wrap. */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-2 whitespace-nowrap lg:flex-nowrap xl:gap-x-3">
         {/* The mark carries the app and the way home; the name beside it is the
             *document's* — what the `.docx` downloads as. */}
         <HomeCrumb onOpenFiles={onOpenFiles} />
 
-        <span className="h-6 w-px bg-line" />
+        <span className="h-6 w-px shrink-0 bg-line" />
 
         <Segmented
           label="Language"
@@ -315,7 +321,7 @@ export function Toolbar({
           ]}
         />
 
-        <span className="h-5 w-px bg-line" />
+        <span className="h-5 w-px shrink-0 bg-line" />
 
         <Segmented
           label="Version"
@@ -335,7 +341,7 @@ export function Toolbar({
           you are in — the same reason Language and Version use it, and why this sits
           with them among the view controls rather than beside the export actions.
         */}
-        <span className="h-5 w-px bg-line" />
+        <span className="h-5 w-px shrink-0 bg-line" />
 
         <Segmented
           label="Page mode"
@@ -358,9 +364,9 @@ export function Toolbar({
           ]}
         />
 
-        <span className="h-6 w-px bg-line" />
+        <span className="h-6 w-px shrink-0 bg-line" />
 
-        <span className="flex items-center gap-0.5">
+        <span className="flex shrink-0 items-center gap-0.5">
           <IconButton label="Undo (⌘Z)" size="md" onClick={undo} disabled={past.length === 0}>
             <UndoIcon />
           </IconButton>
@@ -371,19 +377,20 @@ export function Toolbar({
 
         {/* Page setup, title, header and footer. On the bar rather than in the sidebar
             because they are decisions about the document as a whole, made once — the
-            sidebar is for the content being worked on now. */}
+            sidebar is for the content being worked on now. Icon-only below `xl`. */}
         <Button
           variant="subtle"
           onClick={onOpenSettings}
           disabled={readOnly}
-          title="Title, paper, margins, header and footer"
+          aria-label="Setup"
+          title="Setup: title, paper, margins, header and footer"
         >
           <PageSetupIcon size={15} />
-          <span className="hidden md:inline">Setup</span>
+          <span className="hidden xl:inline">Setup</span>
         </Button>
 
         {/* Status sits with the document, not with the actions. */}
-        <span className="ml-auto flex items-center gap-2 text-[11px] text-ink-muted">
+        <span className="ml-auto flex shrink-0 items-center gap-2 text-[11px] text-ink-muted">
           <UntranslatedPill
             count={untranslated}
             onOpen={readOnly ? undefined : () => openTranslate(paperRequest(worksheet.id))}
@@ -396,12 +403,20 @@ export function Toolbar({
             pages={bodySheets ? bodySheets + (hasCoverSheet(worksheet, mode) ? 1 : 0) : undefined}
             onOpen={readOnly ? undefined : onOpenSettings}
           />
-          {/* The time lives in the tooltip: a clock string beside the pill wrapped the row. */}
+          {/* The time lives in the tooltip: a clock string beside the pill wrapped the row.
+              Below `xl` the word becomes a dot, the word moving to the tooltip. */}
           <span
-            className="hidden sm:inline"
-            title={!readOnly && !dirty && lastSavedAt ? `Saved at ${new Date(lastSavedAt).toLocaleTimeString()}` : undefined}
+            className="flex items-center"
+            title={
+              !readOnly && !dirty && lastSavedAt
+                ? `Saved at ${new Date(lastSavedAt).toLocaleTimeString()}`
+                : saveStatus
+            }
           >
-            {readOnly ? 'Read-only' : dirty ? 'Unsaved…' : 'Saved'}
+            <span aria-hidden className="flex h-5 w-3 items-center justify-center xl:hidden">
+              <span className={`size-1.5 rounded-full ${dirty || readOnly ? 'bg-ink-subtle' : 'bg-ok'}`} />
+            </span>
+            <span className="sr-only xl:not-sr-only">{saveStatus}</span>
           </span>
         </span>
 

@@ -49,6 +49,22 @@ export async function flushBeforeLeaving(save = (w: Worksheet) => worksheetStore
 }
 
 /**
+ * "Clear saved documents": the open document goes with the rest. Marked clean *before*
+ * the clear, so neither a due autosave nor a flush writes it back; the caller then
+ * leaves without `flushBeforeLeaving`. A failed clear restores `dirty`.
+ */
+export async function clearSavedDocuments(clear = () => worksheetStore.clear()): Promise<void> {
+  const { dirty } = useWorksheetStore.getState();
+  useWorksheetStore.setState({ dirty: false });
+  try {
+    await clear();
+  } catch (error) {
+    if (dirty) useWorksheetStore.setState({ dirty: true });
+    throw error;
+  }
+}
+
+/**
  * Start screen or editor — the one place that decides which.
  *
  * The gate lives *outside* the editor rather than as an overlay inside it, because the
@@ -89,6 +105,11 @@ export function EditorHost() {
 
   const leave = async () => {
     await flushBeforeLeaving();
+    setChosen(false);
+  };
+  // The one leave that must not flush: the document on screen was just deleted.
+  const clearAndLeave = async () => {
+    await clearSavedDocuments();
     setChosen(false);
   };
 
@@ -145,7 +166,7 @@ export function EditorHost() {
         {!chosen ? (
           <StartScreen onOpen={open} />
         ) : (
-          <EditorApp onOpenFiles={() => void leave()} onOpenDocument={open} />
+          <EditorApp onOpenFiles={() => void leave()} onClearAll={clearAndLeave} onOpenDocument={open} />
         )}
       </div>
     </div>
