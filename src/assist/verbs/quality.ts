@@ -1,4 +1,4 @@
-import { depsError } from '@/components/translate/translateController';
+import { depsError } from './translateShared';
 import { editTargetKey } from '@/model/edits';
 import { isDesktop } from '@/platform';
 import { qualityQuestions, questionEmpty } from '@/quality/collect';

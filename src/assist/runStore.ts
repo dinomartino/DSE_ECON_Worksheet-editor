@@ -23,6 +23,8 @@ export interface AiRunState {
   stop(): void;
   next(): void;
   prev(): void;
+  /** Review: jump to item `index` (a click on its highlight, a tone chip). */
+  goTo(index: number): void;
   /** Leaves review or error; the inserted text stays. */
   dismiss(): void;
   /** Reverts the run's one commit (when still live) and goes idle. */
@@ -126,6 +128,11 @@ export const useAiRun: UseBoundStore<StoreApi<AiRunState>> = create<AiRunState>(
     const phase = get().phase;
     const count = itemCount(phase);
     if (phase.kind === 'review' && count > 0) set({ phase: { ...phase, index: (phase.index - 1 + count) % count } });
+  },
+
+  goTo: (index) => {
+    const phase = get().phase;
+    if (phase.kind === 'review' && index >= 0 && index < itemCount(phase)) set({ phase: { ...phase, index } });
   },
 
   dismiss: () => {

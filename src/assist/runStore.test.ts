@@ -132,6 +132,30 @@ describe('useAiRun', () => {
     useWorksheetStore.setState({ readOnly: false });
   });
 
+  it('retry reruns the last verb over its own scope, whatever is selected now', async () => {
+    const scopes: VerbContext['scope'][] = [];
+    registerVerb(fakeVerb('t.retry', async (ctx) => {
+      scopes.push(ctx.scope);
+      return { kind: 'error', error: errorInfo };
+    }));
+    const q = useWorksheetStore.getState().worksheet.questions[0].id;
+    openAi({ scope: { kind: 'questions', ids: [q] }, scopeLabel: 'Question 1' });
+    await useAiRun.getState().startVerb('t.retry');
+    useWorksheetStore.getState().select(undefined);
+    useAiRun.getState().retry();
+    await vi.waitFor(() => expect(scopes).toHaveLength(2));
+    expect(scopes[1]).toEqual({ kind: 'questions', ids: [q] });
+  });
+
+  it('goTo jumps to an item in review, and ignores one out of range', async () => {
+    registerVerb(fakeVerb('t.go', async () => ({ kind: 'findings', summary: '', items: [item('a'), item('b'), item('c')] })));
+    await useAiRun.getState().startVerb('t.go');
+    useAiRun.getState().goTo(2);
+    expect(useAiRun.getState().phase).toMatchObject({ index: 2 });
+    useAiRun.getState().goTo(3);
+    expect(useAiRun.getState().phase).toMatchObject({ index: 2 });
+  });
+
   it('undoAll skips a stale undo', async () => {
     const undo = { run: vi.fn(), live: () => false };
     registerVerb(fakeVerb('t.stale', async () => ({ kind: 'inserted', summary: '', items: [], undo })));
