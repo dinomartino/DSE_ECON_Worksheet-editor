@@ -1,0 +1,23 @@
+{
+  "source": "recorded 2026-09-28 with a dummy key",
+  "status": 400,
+  "headers": {},
+  "body": {
+    "error": {
+      "code": 400,
+      "message": "Invalid JSON payload received. Unknown name \"responseJsonSchemaX\" at 'generation_config': Cannot find field.",
+      "status": "INVALID_ARGUMENT",
+      "details": [
+        {
+          "@type": "type.googleapis.com/google.rpc.BadRequest",
+          "fieldViolations": [
+            {
+              "field": "generation_config",
+              "description": "Invalid JSON payload received. Unknown name \"responseJsonSchemaX\" at 'generation_config': Cannot find field."
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

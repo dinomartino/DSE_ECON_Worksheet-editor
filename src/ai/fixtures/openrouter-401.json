@@ -1,0 +1,11 @@
+{
+  "source": "recorded 2026-09-28 with a dummy key",
+  "status": 401,
+  "headers": {},
+  "body": {
+    "error": {
+      "message": "User not found.",
+      "code": 401
+    }
+  }
+}

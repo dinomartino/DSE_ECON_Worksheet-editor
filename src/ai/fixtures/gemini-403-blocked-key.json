@@ -1,0 +1,12 @@
+{
+  "source": "documented shape (not recorded: needs a real key or network)",
+  "status": 403,
+  "headers": {},
+  "body": {
+    "error": {
+      "code": 403,
+      "message": "Your API key was reported as leaked. Please use another API key.",
+      "status": "PERMISSION_DENIED"
+    }
+  }
+}

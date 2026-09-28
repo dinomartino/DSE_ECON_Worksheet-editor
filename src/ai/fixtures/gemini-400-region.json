@@ -1,0 +1,12 @@
+{
+  "source": "documented shape (not recorded: needs a real key or network)",
+  "status": 400,
+  "headers": {},
+  "body": {
+    "error": {
+      "code": 400,
+      "message": "User location is not supported for the API use.",
+      "status": "FAILED_PRECONDITION"
+    }
+  }
+}

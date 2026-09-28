@@ -1,0 +1,11 @@
+{
+  "source": "documented shape (not recorded: needs a real key or network)",
+  "status": 404,
+  "headers": {},
+  "body": {
+    "error": {
+      "code": 404,
+      "message": "No endpoints found matching your data policy (Free model publication). Configure: https://openrouter.ai/settings/privacy"
+    }
+  }
+}

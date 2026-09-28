@@ -1,0 +1,13 @@
+{
+  "source": "documented shape (not recorded: needs a real key or network)",
+  "status": 403,
+  "headers": {},
+  "body": {
+    "error": {
+      "code": "unsupported_country_region_territory",
+      "message": "Country, region, or territory not supported",
+      "param": null,
+      "type": "request_forbidden"
+    }
+  }
+}

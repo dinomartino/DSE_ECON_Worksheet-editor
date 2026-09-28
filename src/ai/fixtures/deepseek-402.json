@@ -1,0 +1,13 @@
+{
+  "source": "documented shape (not recorded: needs a real key or network)",
+  "status": 402,
+  "headers": {},
+  "body": {
+    "error": {
+      "message": "Insufficient Balance",
+      "type": "unknown_error",
+      "param": null,
+      "code": "invalid_request_error"
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "source": "recorded 2026-09-28 with a dummy key",
+  "status": 401,
+  "headers": {},
+  "body": {
+    "type": "error",
+    "error": {
+      "type": "authentication_error",
+      "message": "API key is invalid."
+    },
+    "request_id": null
+  }
+}

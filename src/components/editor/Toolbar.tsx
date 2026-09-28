@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react';
 import { copyForWord, worksheetClipboardHtml, worksheetPlainText } from '@/export/clipboard';
 import { renderDiagramImages } from '@/export/diagramImage';
 import type { LanguageMode, OutputMode, VersionMode } from '@/model/types';
-import { requireQuestionType } from '@/registry';
+import { useUntranslatedCount } from './useUntranslatedCount';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { downloadWorksheetFile, worksheetStore } from '@/storage';
 import { isDesktop, revealFile, revealLabel } from '@/platform';
@@ -73,14 +73,7 @@ export function Toolbar({
   const [whatsNew, setWhatsNew] = useState(false);
   const closeWhatsNew = useCallback(() => setWhatsNew(false), []);
 
-  // Only meaningful in bilingual mode, where a missing side affects the output (§5.2).
-  const untranslated =
-    mode.language !== 'bilingual'
-      ? 0
-      : worksheet.questions.reduce((sum, question) => {
-          const definition = requireQuestionType(question);
-          return sum + (definition.countMissingTranslations?.(question) ?? 0);
-        }, 0);
+  const untranslated = useUntranslatedCount(worksheet, mode);
 
   // An action (desktop "Show in Finder") stays long enough to be reached.
   const flash = (message: string, action?: Notice['action']) => {

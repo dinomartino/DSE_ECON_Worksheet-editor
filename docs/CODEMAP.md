@@ -72,7 +72,7 @@ Invariants:
 ## registry — the question-type extension point
 
 `src/registry/types.ts:QuestionTypeDefinition` — `id` · `create` · `render` · `EditorPanel` ·
-`examGapLines?` · `countMissingTranslations?` · `healthFacts?` · `answerKey?` · `variant?` ·
+`mapTexts` · `examGapLines?` · `healthFacts?` · `answerKey?` · `variant?` ·
 `summary?` (short count label + `minutesPerItem`, for the paper summary).
 
 - `src/registry/index.ts:listQuestionTypes` · `:requireQuestionType`
@@ -82,7 +82,7 @@ Invariants:
 - `src/registry/structured.ts:structuredType`
 
 Invariants:
-- No shared module branches on a concrete type id; `src/registry/registry.test.ts` greps twelve modules — §Question-type registry.
+- No shared module branches on a concrete type id; `src/registry/registry.test.ts` greps sixteen modules — §Question-type registry.
 - A hand-built numbered paragraph must copy the block's `format` itself — same section.
 
 ## render — the IR, and the walker that fills it
@@ -255,14 +255,31 @@ and app Settings. Contracts first: a stub keeps its signature and says which pac
 it (`// P-<X> replaces this body`).
 
 - `src/model/textSlots.ts:TextSlot` · `src/model/textSlots.ts:TextWalker` · `src/model/textSlots.ts:TranslationWrite` · `src/model/textSlots.ts:ApplyReport` — the slot contract; helpers `src/model/textSlots.ts:patch` · `src/model/textSlots.ts:mapSame` · `src/model/textSlots.ts:sameRuns` · `src/model/textSlots.ts:missingSide`
-- `src/model/textWalk.ts:mapWorksheetTexts` · `src/model/textWalk.ts:collectTexts` · `src/model/textWalk.ts:slotsForTarget` · `src/model/textWalk.ts:countUntranslated` · `src/model/textWalk.ts:fieldNeedsFill` — the one walk (stub)
-- `src/model/diagramText.ts:mapDiagramTexts` · `src/model/translationApply.ts:applyTranslationBatch` · `src/model/symbols.ts:isSymbolOnly` (stubs)
-- `src/store/worksheetStore.ts:applyTranslations` — one commit per batch (stub); `src/model/paperHealth.ts:TermSummary` — Check terms' input to `checkPaper`
+- `src/model/textWalk.ts:mapWorksheetTexts` · `src/model/textWalk.ts:collectTexts` · `src/model/textWalk.ts:slotsForTarget` — the one identity-preserving walk over every BiText, in print order; questions through `src/registry/types.ts:QuestionTypeDefinition` `mapTexts`
+- `src/model/textWalk.ts:needsTranslation` · `src/model/textWalk.ts:countUntranslated` · `src/model/textWalk.ts:fieldNeedsFill` — one definition of "missing", per edition
+- `src/model/diagramText.ts:mapDiagramTexts` — every BiText in a diagram (parity with `src/model/diagramDraw.ts:handleText`)
+- `src/model/symbols.ts:isSymbolOnly` · `src/model/symbols.ts:CAPITAL_WORDS` — E₀, `MC = MR`, `$14 000`: never sent, counted only where it prints as a gap; `PAPER 2`, `ONE`, `No` are words
+- `src/model/translationApply.ts:applyTranslationBatch` — stale-guarded batch apply; re-measures a changed diagram bilingually
+- `src/components/editor/useUntranslatedCount.ts:useUntranslatedCount` — the toolbar pill, cached per question
+- `src/test/translateFixture.ts:buildTranslateFixture` — the kitchen sink: every slot kind; `src/model/textWalk.census.test.ts` proves the walk misses no `{en, zh}`
+- `src/store/worksheetStore.ts:applyTranslations` — one commit (one undo) per batch; `src/model/paperHealth.ts:TermSummary` — Check terms' input to `checkPaper`
 - `src/store/appDialogs.ts:useAppDialogs` — one app dialog at a time (Translate, Settings)
 - `src/translate/types.ts:TranslationPlan` · `src/translate/types.ts:JobResult` · `src/translate/types.ts:TermRow` · `src/translate/types.ts:RunDepsResult`
 - `src/translate/plan.ts:planTranslation` · `src/translate/plan.ts:defaultTranslateOptions` · `src/translate/run.ts:runTranslation` · `src/translate/run.ts:translateOne` · `src/translate/termCheck.ts:buildTermCheck` · `src/translate/termCheck.ts:termSummary` · `src/translate/deps.ts:createRunDeps` (stubs; `src/translate/types.test.ts` pins the Check terms signatures)
-- `src/glossary/types.ts:Glossary` · `src/glossary/types.ts:PreferredOverrides` · `src/glossary/attribution.ts:GLOSSARY_ATTRIBUTION` · `src/glossary/load.ts:loadGlossary` (stub) · `src/glossary/useGlossary.ts:useGlossary` · `src/glossary/index.ts`
-- `src/ai/types.ts:ProviderPreset` · `src/ai/types.ts:AiError` · `src/ai/providers.ts:PRESETS` · `src/ai/schema.ts:ITEMS_SCHEMA` · `src/ai/schema.ts:parseItemsPayload` · `src/ai/client.ts:createClient` (stub) · `src/ai/keyShape.ts:keyShapeProblem` (stub)
+- `src/glossary/types.ts:Glossary` · `src/glossary/types.ts:PreferredOverrides` · `src/glossary/attribution.ts:GLOSSARY_ATTRIBUTION` · `src/glossary/load.ts:loadGlossary` · `src/glossary/useGlossary.ts:useGlossary` · `src/glossary/index.ts`
+- `src/glossary/data/edb-economics-2020.json` — the EDB data, verbatim (`src/glossary/NOTICE.md`); `src/glossary/glossary.ts:createGlossary` builds the `Glossary` from it
+- `src/glossary/overrides.ts:PREFERRED_OVERRIDES` (import → 進口) · `src/glossary/overrides.ts:GENERIC_TIER` · `src/glossary/overrides.ts:ZH_OVERRIDES` · `src/glossary/overrides.ts:EN_OVERRIDES` — corrections and policy over the data
+- `src/glossary/deny.ts:DENY` — known wrong forms and their fixes
+- `src/glossary/parse.ts:parseGlossary` · `src/glossary/fold.ts:foldZh` · `src/glossary/matchEn.ts:buildEnMatcher` · `src/glossary/matchZh.ts:buildZhMatcher`
+- `src/glossary/check.ts:checkEnToZh` · `src/glossary/check.ts:checkZhToEn` · `src/glossary/check.ts:autoFix` · `src/glossary/pin.ts:pin`
+- `src/glossary/seededTerms.test.ts` — every seeded template, preset and sample passes the check
+- `src/ai/types.ts:ProviderPreset` · `src/ai/types.ts:AiError` · `src/ai/providers.ts:PRESETS` · `src/ai/schema.ts:ITEMS_SCHEMA` · `src/ai/schema.ts:parseItemsPayload`
+- `src/ai/client.ts:createClient` · `src/ai/client.ts:testConnection` — config check, the structured-output ladder, the rung cache
+- `src/ai/http.ts:send` — the only `fetch` in `src/`; fetch hygiene, 2 MB cap, timeouts, transport retries
+- `src/ai/errors.ts:mapHttpError` · `src/ai/errors.ts:mapThrown` · `src/ai/errors.ts:isSchemaRejection` · `src/ai/errors.ts:redact` — table-driven error mapping, teacher-facing messages
+- `src/ai/adapters/gemini.ts:geminiAdapter` · `src/ai/adapters/openaiCompat.ts:openaiCompatAdapter` · `src/ai/adapters/anthropic.ts:anthropicAdapter` — wire shapes (`src/ai/adapters/adapter.ts:Adapter`)
+- `src/ai/keyShape.ts:keyShapeProblem` — a key from another provider is never sent without "test anyway"
+- `src/ai/fixtures/` — provider error bodies (recorded with dummy keys, or documented shapes); `src/ai/fakeFetch.ts` — the scripted fetch tests use
 - `src/settings/types.ts:SettingsSchema` · `src/settings/validators.ts:recordOf` · `src/settings/sections.ts:registerSettingsSection` · `src/settings/sections.ts:useSettingsSections` — schema and section registry
 - `src/settings/store.ts:createSettingsStore` · `src/settings/store.ts:appSettings` · `src/settings/store.ts:useSettings` — per-field validation, unknown keys kept, never lowers `v`
 - `src/settings/aiSettings.ts:AI_SETTINGS` · `src/settings/aiSettings.ts:readAiStatus` · `src/settings/aiSettings.ts:useAiStatus` · `src/settings/aiSettings.ts:resolveAiConfig` — status never reads the keychain
@@ -279,7 +296,8 @@ it (`// P-<X> replaces this body`).
 
 Invariants:
 - Nothing new is stored in a document; settings under `econgen.settings.<section>`, keys only in the secrets store.
-- `src/ai/` imports nothing from React, the store, `src/model`, `src/settings`, `@/platform` or Tauri.
+- `src/ai/` imports nothing from React, the store, `src/model`, `src/settings`, `@/platform` or Tauri (`src/ai/imports.test.ts`).
+- Network calls appear only in `src/ai/http.ts` (`src/test/networkCalls.test.ts`).
 - The glossary data is reached only through `src/glossary/load.ts` (a lazy chunk).
 - Nothing mounted imports a stub until its package lands.
 
