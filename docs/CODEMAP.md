@@ -251,8 +251,8 @@ Invariant: chrome uses semantic tokens (`src/app/globals.css`); anything on the 
 ## Translation, glossary, settings
 
 AI translation (EN ↔ 繁中), Check terms and app-wide Settings — § AI translation, glossary
-and app Settings. Contracts first: a stub keeps its signature and says which package fills
-it (`// P-<X> replaces this body`).
+and app Settings. `src/components/settings/settingsVisible.test.tsx` proves Settings registers
+through `AppSettingsHost` alone.
 
 - `src/model/textSlots.ts:TextSlot` · `src/model/textSlots.ts:TextWalker` · `src/model/textSlots.ts:TranslationWrite` · `src/model/textSlots.ts:ApplyReport` — the slot contract; helpers `src/model/textSlots.ts:patch` · `src/model/textSlots.ts:mapSame` · `src/model/textSlots.ts:sameRuns` · `src/model/textSlots.ts:missingSide`
 - `src/model/textWalk.ts:mapWorksheetTexts` · `src/model/textWalk.ts:collectTexts` · `src/model/textWalk.ts:slotsForTarget` — the one identity-preserving walk over every BiText, in print order; questions through `src/registry/types.ts:QuestionTypeDefinition` `mapTexts`

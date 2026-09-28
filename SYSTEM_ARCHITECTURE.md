@@ -2101,8 +2101,9 @@ Fill the missing language of a worksheet (EN ↔ 繁中, Hong Kong) with the tea
 AI key; check Chinese terms against the EDB Economics glossary (2020) without a key; and
 an app-wide Settings dialog that holds the provider and key.
 
-**Status:** contracts and neutral stubs; nothing is mounted yet, so teachers see no change.
-Each subsection below is filled by the package that implements it.
+**Status:** live on `develop` (unreleased). The pill, the page menu, the Outline, field
+fills, Export's paper check and Settings are the entry points; each subsection below is
+owned by the package that built it.
 
 Rules every part keeps:
 
@@ -2118,8 +2119,8 @@ Rules every part keeps:
 - **Network only on an explicit click** (Translate, Fill, Save & test).
 - **One app dialog at a time** (`src/store/appDialogs.ts`): Translate and Settings hand off
   and never stack.
-- **Contracts first.** Each module below was created with its final signature; a stub
-  says which package fills its body (`// P-<X> replaces this body`) and never throws.
+- **Contracts first.** Each module below was created with its final signature before its
+  body; a signature change is a contract change across packages.
 
 <!-- e2:glossary start -->
 ### The glossary (`src/glossary/`)
