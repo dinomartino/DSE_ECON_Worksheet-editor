@@ -203,7 +203,7 @@ export const STORYBOARD = [
     caption: 'Opens **Setup**, sets **Versions** to 3 ("Version A" appears on the page), and closes it.',
     async run(d) {
       await d.say('Open Setup and set Versions to 3.');
-      await d.click(d.page.getByRole('button', { name: 'Setup' }));
+      await d.click(d.page.getByRole('button', { name: 'Setup', exact: true }).first());
       await d.wait(600);
       const dialog = d.page.getByRole('dialog');
       await d.focus([dialog.getByText('Versions', { exact: true }), dialog.getByText('4', { exact: true })], {

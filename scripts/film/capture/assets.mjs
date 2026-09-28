@@ -135,7 +135,7 @@ async function sheets(env) {
 
     // Versions A, B, C of page 1.
     await setPrintPreview(page, false);
-    await page.getByRole('button', { name: 'Setup' }).click();
+    await page.getByRole('button', { name: 'Setup', exact: true }).first().click();
     await settle(page, 600);
     const dialog = page.getByRole('dialog');
     await dialog.getByRole('radiogroup', { name: 'Number of versions' }).getByRole('radio', { name: '3', exact: true }).click();
@@ -149,7 +149,7 @@ async function sheets(env) {
       await sheet(page, cdp, 0, out(`version-${letter.toLowerCase()}`));
       await setPrintPreview(page, false);
       if (letter !== 'C') {
-        await page.getByRole('button', { name: 'Setup' }).click();
+        await page.getByRole('button', { name: 'Setup', exact: true }).first().click();
         await settle(page, 600);
       }
     }

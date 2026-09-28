@@ -1285,7 +1285,7 @@ export function DocumentSettings({
 
   return (
     <Dialog
-      title="Document settings"
+      title="Document setup"
       description="Applies to the whole worksheet. Changes show on the page immediately."
       onClose={onClose}
       width={760}

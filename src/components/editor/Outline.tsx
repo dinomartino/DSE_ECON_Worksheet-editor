@@ -40,13 +40,15 @@ import {
   PartHeaderIcon,
   PlusIcon,
   SectionIcon,
-  SettingsIcon,
+  PageSetupIcon,
   SpacerIcon,
   StructuredIcon,
   TextIcon,
   TrashIcon,
 } from '@/components/ui/icons';
-import { Menu } from '@/components/ui/Menu';
+import { Menu, type MenuItem } from '@/components/ui/Menu';
+import { outlineTranslateItem } from '@/components/translate/translateMenu';
+import { useAppDialogs } from '@/store/appDialogs';
 
 /**
  * The question navigator.
@@ -72,6 +74,17 @@ function typeBadge(question: Question): string {
 
 /* `LAYOUT_NAME` comes from `model/flow` — the rail, this outline and the add rail's
    destination label all name the same nine kinds, and separate copies would drift. */
+
+/** Layout kinds that hold no text, so their row offers no Translate. */
+const TEXTLESS: ReadonlySet<LayoutElement['kind']> = new Set(['spacer', 'divider', 'pageBreak', 'answerLines', 'answerSpace']);
+
+/** The row's "Translate…" item, or none (read-only, or nothing to translate). */
+function translateMenuItems(worksheetId: string, row: { kind: 'question' | 'layout'; id: string }, readOnly: boolean): MenuItem[] {
+  const item = outlineTranslateItem(worksheetId, row, readOnly);
+  const request = item?.request;
+  if (!item || !request) return [];
+  return [{ label: item.label, onSelect: () => useAppDialogs.getState().openTranslate(request) }];
+}
 
 /** The row's selection bar. Always mounted so it grows in rather than popping. */
 function SelectionBar({ on }: { on: boolean }) {
@@ -102,6 +115,8 @@ function LayoutRow({ element }: { element: LayoutElement }) {
   // Mirrored from the preview's own layout selection — the outline reflects it, like
   // the question rows do, so clicking an element on the page lights its row here too.
   const isSelected = useWorksheetStore((s) => s.selectedElementId === element.id);
+  const worksheetId = useWorksheetStore((s) => s.worksheet.id);
+  const readOnly = useWorksheetStore((s) => s.readOnly);
 
   const [isOver, setIsOver] = useState(false);
   const rowRef = useRef<HTMLLIElement>(null);
@@ -158,6 +173,10 @@ function LayoutRow({ element }: { element: LayoutElement }) {
           },
         ]
       : [];
+  const leadingItems = [
+    ...(TEXTLESS.has(element.kind) ? [] : translateMenuItems(worksheetId, { kind: 'layout', id: element.id }, readOnly)),
+    ...sizeItems,
+  ];
 
   return (
     <li
@@ -236,12 +255,12 @@ function LayoutRow({ element }: { element: LayoutElement }) {
         <Menu
           label={`Actions for ${name}`}
           items={[
-            ...sizeItems,
+            ...leadingItems,
             {
               label: `Delete ${name.toLowerCase()}`,
               onSelect: () => removeLayoutElement(element.id),
               danger: true,
-              separated: sizeItems.length > 0,
+              separated: leadingItems.length > 0,
               icon: <TrashIcon size={15} />,
             },
           ]}
@@ -270,6 +289,7 @@ function QuestionRow({
   const reorderFlowItem = useWorksheetStore((s) => s.reorderFlowItem);
   const dragId = useWorksheetStore((s) => s.dragQuestionId);
   const setDragId = useWorksheetStore((s) => s.setDragQuestionId);
+  const readOnly = useWorksheetStore((s) => s.readOnly);
 
   const [isOver, setIsOver] = useState(false);
   const rowRef = useRef<HTMLLIElement>(null);
@@ -297,7 +317,8 @@ function QuestionRow({
       element.kind === 'section' && element.id !== currentSectionId,
   );
 
-  const menuItems = [
+  const menuItems: MenuItem[] = [
+    ...translateMenuItems(worksheet.id, { kind: 'question', id: question.id }, readOnly),
     { label: 'Duplicate', onSelect: () => duplicateQuestion(question.id) },
     {
       label: 'Copy for Word',
@@ -673,8 +694,8 @@ export function Outline({
           {title}
         </span>
         <Button size="sm" variant="subtle" onClick={onOpenSettings} title="Title, paper, margins, header and footer">
-          <SettingsIcon size={14} />
-          Settings
+          <PageSetupIcon size={14} />
+          Setup
         </Button>
       </div>
 

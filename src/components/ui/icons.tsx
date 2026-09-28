@@ -361,6 +361,19 @@ export function SettingsIcon(props: IconProps) {
   );
 }
 
+/** Document Setup: a page with two slider bars. The gear means app Settings only. */
+export function PageSetupIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M6 2.5h8.5L19 7v14.5H6z" />
+      <path d="M14.5 2.5V7H19" />
+      <path d="M9 12h7M9 17h7" />
+      <circle cx="11.5" cy="12" r="1.3" fill="currentColor" />
+      <circle cx="14" cy="17" r="1.3" fill="currentColor" />
+    </Svg>
+  );
+}
+
 /** The question/outline list — the sidebar's "Content" tab. */
 export function ListIcon(props: IconProps) {
   return (
