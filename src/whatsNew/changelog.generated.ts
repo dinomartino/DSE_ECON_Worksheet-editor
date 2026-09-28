@@ -24,6 +24,10 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   everywhere.
 - **AI menu**: press ⌘J (Ctrl+J on Windows) to open one menu of AI actions for the
   whole paper or whatever you have selected.
+- **Check question quality** (AI menu): a second pair of eyes before you print — flags
+  two defensible MCQ options, a key that looks wrong, an unbolded NOT, "Explain" for
+  1 mark, a marking scheme that doesn't add up to the marks, and English and 中文 that
+  ask different things. It only points; nothing in your paper is changed.
 
 ### Changed
 - New diagrams and the sample paper now use the Education Bureau glossary's Chinese
