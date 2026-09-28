@@ -14,7 +14,7 @@ import { pathToFileURL } from 'node:url';
  *     "length" (the run bisects);
  *   - anything else → the source with a 譯： / EN: prefix, tags kept.
  * Base-URL prefixes: `/region/v1` answers Gemini's FAILED_PRECONDITION location error,
- * `/401/v1` rejects the key. `GET /__count` and `POST /__reset` expose the request count.
+ * `/401/v1` rejects the key, `/slow/v1` answers after 4 s (Stop and the scrim question). `GET /__count` and `POST /__reset` expose the request count.
  *
  *   node scripts/ai-mock-server.mjs [--port=8787]
  */
@@ -120,6 +120,7 @@ export function startMockServer(port = 8787) {
     req.on('end', () => {
       if (req.url.startsWith('/region/')) return send(400, REGION);
       if (req.url.startsWith('/401/')) return send(401, UNAUTHORIZED);
+      const slow = req.url.startsWith('/slow/');
       if (req.method === 'GET' && req.url.endsWith('/models')) {
         return send(200, { object: 'list', data: [{ id: MOCK_MODEL, object: 'model' }] });
       }
@@ -129,7 +130,8 @@ export function startMockServer(port = 8787) {
       } catch {
         return send(400, { error: { message: 'Body is not JSON.' } });
       }
-      send(200, reply(body));
+      // A Stop aborts the request: nothing is sent to a closed socket.
+      setTimeout(() => res.destroyed || send(200, reply(body)), slow ? 4000 : 0);
     });
   });
   return new Promise((resolve) => server.listen(port, () => resolve(server)));

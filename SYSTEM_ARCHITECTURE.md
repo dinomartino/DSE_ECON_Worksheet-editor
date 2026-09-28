@@ -2199,14 +2199,17 @@ Outline row and the paper check's links. Each is absent when the document is rea
   holds; without it there is no button, since a guessed kind would drop the wording
   rules). `src/components/translate/fieldFill.ts` decides the button and runs one fill,
   written through the field's own `onChange` (one commit) only over an unchanged source and
-  a still-empty side. Without a provider it deep-links to Settings — never over a modal
-  layer (Setup, a canvas), where the button is disabled instead.
+  a still-empty side. A result the Translate review would leave unticked (a reversed term,
+  a content risk) is shown with *Insert anyway*, never written silently. Without a provider
+  it deep-links to Settings — never over a modal layer (Setup, a canvas), where the button
+  is disabled instead. The pipeline loads on the first fill.
 - **Settings** opens from the ⋯ menu (hint only on desktop), the start screen and ⌘, /
   Ctrl+,, each hidden while no section is registered. Export's paper check closes Export
   before Translate opens, so dialogs never stack.
 - **Browser run:** `scripts/ai-verify.mjs` serves `out/`, points Custom at
   `scripts/ai-mock-server.mjs` (canned replies, no key) and asserts nothing is sent before an
   explicit Translate, Fill or Save & test click. Production code has no test hooks.
+  `--phase=entry` tolerates controls other packages provide; `full` requires them.
 <!-- e2:entry end -->
 
 ---
