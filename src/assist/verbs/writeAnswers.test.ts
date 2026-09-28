@@ -49,7 +49,7 @@ describe('write.answers through useAiRun', () => {
     const phase = useAiRun.getState().phase;
     expect(phase.kind).toBe('review');
     if (phase.kind !== 'review' || phase.outcome.kind !== 'inserted') throw new Error('not inserted');
-    expect(phase.outcome.summary).toBe('Wrote 4 answers');
+    expect(phase.outcome.summary).toBe('Filled 4 parts');
     expect(phase.outcome.items.map((i) => [i.tone, i.where, i.targetKey !== undefined])).toEqual([
       ['inserted', 'Question 1 (a)', true],
       ['inserted', 'Question 1 (b)(i)', true],

@@ -96,7 +96,7 @@ export function makeWriteAnswersVerb(deps: () => Promise<AnswerDepsResult> = ans
       const live = () => useWorksheetStore.getState().worksheet === committed;
       return {
         kind: 'inserted',
-        summary: `Wrote ${plural(report.applied.length, 'answer')}${tail}`,
+        summary: `Filled ${plural(report.applied.length, 'part')}${tail}`,
         items,
         undo: { live, run: () => live() && useWorksheetStore.getState().undo() },
         showTeacher: true,
