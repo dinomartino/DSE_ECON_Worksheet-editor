@@ -8,7 +8,7 @@ import { AI_SETTINGS } from '@/settings/aiSettings';
 import { appSettings } from '@/settings/store';
 import { useAppDialogs } from '@/store/appDialogs';
 
-/** Where Hong Kong teachers go when Google refuses the region. */
+/** The alternatives offered when a provider refuses the location (after Try again). */
 const HK_PROVIDERS: ProviderId[] = ['deepseek', 'qwen'];
 const SHORT_NAME: Partial<Record<ProviderId, string>> = { deepseek: 'DeepSeek', qwen: 'Qwen', gemini: 'Gemini' };
 
@@ -22,6 +22,8 @@ export function errorActions(error: AiErrorInfo): ErrorAction[] {
   const region = error.kind === 'region';
   const has = (action: AiErrorInfo['actions'][number]) => error.actions.includes(action);
   const out: ErrorAction[] = [];
+  // Region: Try again comes first (a VPN turned on fixes Gemini), the alternatives after.
+  if (region && has('retry')) out.push({ kind: 'retry', label: copy.TRY_AGAIN });
   if (region) {
     for (const provider of HK_PROVIDERS.filter((id) => id !== error.provider)) {
       out.push({ kind: 'useProvider', provider, label: copy.useProvider(SHORT_NAME[provider] ?? presetFor(provider).label) });
@@ -36,11 +38,11 @@ export function errorActions(error: AiErrorInfo): ErrorAction[] {
   if (has('chooseModel')) out.push({ kind: 'chooseModel', label: copy.CHOOSE_MODEL });
   if (!region && has('switchProvider')) out.push({ kind: 'settings', label: copy.SWITCH_PROVIDER });
   if (region || has('openSettings')) out.push({ kind: 'settings', label: copy.OPEN_SETTINGS });
-  if (has('retry')) out.push({ kind: 'retry', label: copy.TRY_AGAIN });
+  if (!region && has('retry')) out.push({ kind: 'retry', label: copy.TRY_AGAIN });
   return out;
 }
 
-/** Only the region error carries a note: whose rule it is. */
+/** Only Gemini's region error carries a note: keep the VPN on, or use DeepSeek or Qwen. */
 export const errorNote = (error: AiErrorInfo): string | undefined =>
   error.kind === 'region' && error.provider === 'gemini' ? `${copy.REGION_GEMINI_NOTE} ${copy.HK_PROVIDERS_NOTE}` : undefined;
 

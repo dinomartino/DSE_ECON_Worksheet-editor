@@ -33,6 +33,8 @@ export interface ProviderPreset {
   keyRequired: boolean;
   /** https only; opened with platform openExternal. */
   keyUrl?: string;
+  /** A few words beside the key-page link (Gemini: turn on a VPN first). */
+  keyHint?: string;
   /** Key-shape check. */
   keyPrefix?: RegExp;
   /** [0] = default. */

@@ -751,7 +751,7 @@ async function setupChecks(engine, browser) {
     expect(served.length === 0, 'typing the key sent it');
     await save.click();
     const line = card.getByRole('alert');
-    await line.getByText(/Hong Kong/).waitFor({ timeout: 10_000 });
+    await line.getByText(/Turn on a VPN/).waitFor({ timeout: 10_000 });
     await shot(page, 'setup-02-region');
     await line.getByRole('button', { name: 'Use DeepSeek', exact: true }).click();
     await page.waitForTimeout(300);

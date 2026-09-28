@@ -2153,10 +2153,12 @@ Rules every verb keeps:
   other runs at once.
 - **First-run setup is the SetupCard** (`src/components/ai/SetupCard.tsx`), over the
   Settings section's reducer and runner (`src/components/settings/sections/aiSection/setupCardFlow.ts`,
-  live deps in `aiSetupLive.ts`). Gemini is Recommended and first. The radios only show a
-  provider; the key is saved and `ai.provider` committed only after a passing test
-  (`requireOk`), then `onReady` runs the clicked verb. A region refusal offers DeepSeek and
-  Qwen in one line. Settings stays the place to manage providers, models and Remember.
+  live deps in `aiSetupLive.ts`). Gemini is Recommended and first; in Hong Kong it works
+  through a VPN, so its note (`hk.note`, `keyHint`) says to turn one on before the key page
+  and keep it on. The radios only show a provider; the key is saved and `ai.provider`
+  committed only after a passing test (`requireOk`), then `onReady` runs the clicked verb.
+  A region refusal is one line: turn on a VPN, then Try again · Use DeepSeek · Use Qwen.
+  Settings stays the place to manage providers, models and Remember.
 - **`BiTextField` fills one field inline** when a call site passes `translate` (what it
   holds; without it there is no button, since a guessed kind would drop the wording
   rules). `src/components/translate/fieldFill.ts` decides the button and runs one fill,
@@ -2193,7 +2195,8 @@ There is no pre-insert review. A verb click runs, writes, then shows what it wro
 - **The bar** (`AiBar`) floats over the page column and never reflows it: progress and
   Stop, then the summary, tone chips, ‹ ›, Undo all / Replace N and Done, or an error with
   exactly the actions it names (Retry reruns the same verb over the same scope; a region
-  error offers DeepSeek and Qwen). It claims no modal layer; Escape inside it ends review.
+  error leads with Try again — a VPN fixes Gemini — then DeepSeek and Qwen). It claims no
+  modal layer; Escape inside it ends review.
   `ItemCard` sits by the item's text.
 - **Highlights are imperative** (`src/components/ai/pageMarks.ts`): a `data-ai-mark`
   attribute on `#print-root [data-page-target]`, re-applied by a MutationObserver, styled

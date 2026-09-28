@@ -1,3 +1,4 @@
+import { GEMINI_REGION_MESSAGE } from '@/ai/errors';
 import { presetFor } from '@/ai/providers';
 import type { ProviderId } from '@/ai/types';
 import type { AiSettings } from '@/settings/aiSettings';
@@ -5,6 +6,7 @@ import type { SettingsEnv } from '@/settings/types';
 import { initialAiSetup, TOP_PROVIDERS, type AiSetupState } from './aiSetup';
 import type { AiSetupRunner } from './aiSetupRunner';
 import type { SecretStore } from '@/platform/secrets';
+import { HK_PROVIDERS_NOTE } from '@/components/translate/copy';
 
 /**
  * The menu's SetupCard over the Settings runner. A radio only shows a provider; a key is
@@ -55,6 +57,13 @@ export function initialSetupCard(
 /** The region refusal, as one line naming the refusing provider. */
 export function regionLine(provider: ProviderId): string {
   return provider === 'gemini'
-    ? 'Gemini isn’t offered in Hong Kong without a VPN — try DeepSeek or Qwen.'
+    ? GEMINI_REGION_MESSAGE
     : `${presetFor(provider).label} refused a request from your location — try DeepSeek or Qwen.`;
+}
+
+/** Settings' banner after a refusal: the same line, then the Hong Kong alternatives. */
+export function regionBanner(provider: ProviderId): string {
+  return provider === 'gemini'
+    ? `${GEMINI_REGION_MESSAGE} ${HK_PROVIDERS_NOTE}`
+    : `${presetFor(provider).label} refused a request from your location. DeepSeek and Qwen work from Hong Kong.`;
 }

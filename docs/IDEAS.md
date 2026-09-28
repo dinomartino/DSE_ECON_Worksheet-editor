@@ -127,7 +127,8 @@ E2 built the base every later item reuses: the provider layer (`src/ai/`), the t
 walker (`mapTexts`), the EDB glossary engine, app Settings and a read-only review dialog.
 Hong Kong (verified 2026-09-28): Google does not offer the Gemini API or AI Studio there,
 OpenAI and Anthropic are unavailable, DeepSeek and Qwen (Alibaba Model Studio) work
-(`src/ai/providers.ts`). Never embed a key. Never mark student scripts: student scripts
+(`src/ai/providers.ts`). Gemini stays Recommended: the app tells teachers to use a VPN for
+the key page and while using it; DeepSeek and Qwen are the no-VPN alternatives. Never embed a key. Never mark student scripts: student scripts
 are never sent anywhere; translation sends only the text a teacher chooses. *All of
 MagicSchool, Brisk, Diffit, Eduaide, QuestionWell, MS Teach.*
 

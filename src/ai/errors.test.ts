@@ -61,8 +61,8 @@ describe('mapHttpError, from recorded and documented bodies', () => {
   it('marks the run-stopping kinds fatal and gives each its actions', () => {
     const region = mapFixture('gemini', 'gemini-400-region');
     expect(region.fatal).toBe(true);
-    expect(region.actions).toEqual(['switchProvider', 'openSettings']);
-    expect(region.message).toMatch(/Google's rule for Hong Kong, not a problem with your key/);
+    expect(region.actions).toEqual(['retry', 'switchProvider', 'openSettings']);
+    expect(region.message).toBe("Gemini can't be reached from your location. Turn on a VPN and try again.");
     expect(mapFixture('gemini', 'gemini-400-bad-key').actions).toEqual(['openSettings', 'openKeyPage']);
     expect(mapFixture('anthropic', 'anthropic-529-overloaded').fatal).toBe(false);
     expect(mapFixture('openai', 'openai-400-json-schema')).toMatchObject({ fatal: false, actions: ['retry'] });

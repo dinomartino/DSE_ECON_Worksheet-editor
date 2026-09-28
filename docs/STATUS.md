@@ -20,7 +20,7 @@ off the bottom.** It is the first thing a fresh session reads — then
   + WebKit). Seeded Chinese now follows the glossary (new documents only).
   **Before release (user):** a live Save & test + translation with a real key and
   `npm run eval:translate` (prompt e2.2 never run live; model ids in `src/ai/providers.ts`
-  unverified); one try from an HK network without VPN (Gemini region error → Use DeepSeek);
+  unverified); one try from an HK network without VPN (Gemini region error → Try again / Use DeepSeek);
   desktop Keychain prompt in a built app (`npm run desktop:build:debug`), incl. Windows.
 - **AI door (2026-09-28, merged on `develop`, not released)** — one **✦ AI** button (replaces
   the untranslated pill; count is its badge) and ⌘J open one menu of verbs scoped by the

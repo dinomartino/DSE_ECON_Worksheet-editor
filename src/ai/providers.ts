@@ -7,7 +7,7 @@ import type { ProviderId, ProviderPreset } from './types';
  */
 
 const GEMINI_HK_NOTE =
-  "Google doesn't offer AI Studio or the Gemini API in Hong Kong. If the key page says it isn't available, choose DeepSeek or Qwen below.";
+  'In Hong Kong, turn on a VPN before you open the Gemini key page, and keep it on while you use Gemini.';
 
 const gemini: ProviderPreset = {
   id: 'gemini',
@@ -17,12 +17,13 @@ const gemini: ProviderPreset = {
   hk: { status: 'notOfficial', note: GEMINI_HK_NOTE },
   blurb: 'Free key from Google AI Studio. Fast, good Chinese.',
   privacy:
-    "Free keys: Google may use them to improve its products, and people may read them. With billing on, it doesn't. Using Gemini from Hong Kong, for example through a VPN, is against Google's terms.",
+    "Free keys: Google may use them to improve its products, and people may read them. With billing on, it doesn't. Google's terms only cover use from places where it offers Gemini.",
   family: 'gemini',
   baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
   baseUrlEditable: false,
   keyRequired: true,
   keyUrl: 'https://aistudio.google.com/apikey',
+  keyHint: 'Turn on your VPN first.',
   models: [
     {
       id: 'gemini-3.5-flash-lite',

@@ -38,9 +38,9 @@ export const SAFETY_ROW = 'The provider declined to translate this text.';
 // ---- Error ----
 
 export const TECHNICAL_DETAIL = 'Technical detail';
-export const REGION_GEMINI_NOTE = "This is Google's rule for Hong Kong, not a problem with your key.";
+export const REGION_GEMINI_NOTE = 'Keep the VPN on while you use Gemini.';
 export const useProvider = (name: string): string => `Use ${name}`;
-export const HK_PROVIDERS_NOTE = 'Both work from Hong Kong.';
+export const HK_PROVIDERS_NOTE = 'DeepSeek and Qwen work in Hong Kong without a VPN.';
 export const TRY_AGAIN = 'Try again';
 export const OPEN_SETTINGS = 'Open Settings';
 export const CHOOSE_MODEL = 'Choose a model…';
