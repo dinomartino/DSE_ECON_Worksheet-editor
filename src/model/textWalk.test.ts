@@ -79,6 +79,8 @@ describe('mapWorksheetTexts: absent stays absent', () => {
     delete (ws.questions[1] as StructuredQuestion).parts[0].answer;
     const count = ws.layout.find((e) => e.kind === 'questionCount')!;
     if (count.kind === 'questionCount') delete count.prefix;
+    const stimulus = ws.layout.find((e) => e.kind === 'stimulus')!;
+    if (stimulus.kind === 'stimulus') delete stimulus.prefix;
     const table = mcq.blocks[1];
     if (table.kind === 'table') delete table.caption;
     const total = ws.bands![0].zones.center[0];
@@ -90,6 +92,7 @@ describe('mapWorksheetTexts: absent stays absent', () => {
     expect('rationale' in nextMcq.options[0]).toBe(false);
     expect('answer' in (next.questions[1] as StructuredQuestion).parts[0]).toBe(false);
     expect('prefix' in next.layout.find((e) => e.kind === 'questionCount')!).toBe(false);
+    expect('prefix' in next.layout.find((e) => e.kind === 'stimulus')!).toBe(false);
     expect('caption' in nextMcq.blocks[1]).toBe(false);
     expect('prefix' in next.bands![0].zones.center[0]).toBe(false);
     expect('marginNote' in next.pageFurniture!).toBe(false);
@@ -97,6 +100,7 @@ describe('mapWorksheetTexts: absent stays absent', () => {
     const paths = collectTexts(ws).map((slot) => slot.path);
     expect(paths).not.toContain('q:mcq1/option:o1/rationale');
     expect(paths).not.toContain('l:L-count/prefix');
+    expect(paths).not.toContain('l:L-stim/prefix');
     expect(paths).not.toContain('furniture/marginNote');
   });
 
