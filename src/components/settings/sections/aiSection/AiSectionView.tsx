@@ -517,10 +517,9 @@ function About({ state, env, actions }: AiSectionViewProps) {
     <div className="space-y-3 border-t border-line pt-4 text-xs text-ink-muted">
       <section className="space-y-1">
         <h4 className="text-[13px] font-medium text-ink">What is sent</h4>
+        {/* One string: SWC drops the space in `{label} with` when the text wraps after it. */}
         <p>
-          When you translate, the texts you choose (and nearby translated lines from the same question, for context) go
-          straight from this {env.desktop ? 'computer' : 'browser'} to {preset.label} with your key. Nothing is sent
-          until you press Translate, Fill or Save &amp; test. {preset.privacy}
+          {`When you translate, the texts you choose (and nearby translated lines from the same question, for context) go straight from this ${env.desktop ? 'computer' : 'browser'} to ${preset.label} with your key. Nothing is sent until you press Translate, Fill, Save & test or List my models. ${preset.privacy}`}
         </p>
       </section>
       <section className="space-y-1">

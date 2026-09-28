@@ -98,7 +98,7 @@ describe('the AI section', () => {
     expect(render({ provider: 'qwen' })).toContain('See Alibaba Cloud');
     expect(render({ provider: 'openrouter' })).toContain('Sent with data collection denied.');
     expect(render({ provider: 'ollama' })).toContain('Nothing leaves this computer.');
-    expect(render()).toContain('go straight from this browser to Google Gemini with your key');
+    expect(render()).toContain('go straight from this browser to Google Gemini with your key. Nothing is sent until');
     expect(render(undefined, { desktop: true })).toContain('from this computer to Google Gemini');
   });
 
