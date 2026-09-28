@@ -99,6 +99,17 @@ describe('validateItem', () => {
     expect(codes('Answer any 2 questions.', '任答兩題。', 'instructions')).toEqual([]);
   });
 
+  it('keeps clock times written the Hong Kong way, and the cover’s own timing lines', () => {
+    expect(codes('The exam starts at 9:00 am.', '考試於上午9時開始。')).toEqual([]);
+    expect(codes('The exam starts at 9:00 am.', '考試於上午九時開始。')).toEqual([]);
+    expect(codes('The exam starts at 9:30 am.', '考試於上午9時開始。')).toContain('numbers:warn');
+    expect(codes('考試於上午九時三十分開始。', 'The exam starts at 9:30 am.', 'part', 'toEn')).toEqual([]);
+    expect(codes('8:30 am – 9:30 am (1 hour)', '一小時完卷<br/>（上午八時三十分至九時三十分）', 'coverLine')).toEqual([]);
+    expect(codes('10:15 am – 12:45 pm (2 hours 30 minutes)', '兩小時三十分完卷<br/>（上午十時十五分至下午十二時四十五分）', 'coverLine')).toEqual([]);
+    expect(codes('兩小時三十分完卷\n（上午十時十五分至下午十二時四十五分）', '10:15 am – 12:45 pm (2 hours 30 minutes)', 'coverLine', 'toEn'))
+      .not.toEqual(expect.arrayContaining([expect.stringMatching(/^(numbers|breaks|duration)/)]));
+  });
+
   it('keeps symbols, satisfied by the HKEAA conventions', () => {
     expect(codes('AD shifts to the right.', '總需求向右移。')).toContain('symbols:warn');
     expect(codes('AD shifts to the right.', 'AD向右移。')).toEqual([]);

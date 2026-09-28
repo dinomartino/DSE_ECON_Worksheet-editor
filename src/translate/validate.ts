@@ -28,6 +28,9 @@ const COMBINATION = /^\s*([(（]\s*(\d+|[ivx]+)\s*[)）]|\d+\s*(,|、|&|and|及|
 const COUNT_KINDS: ReadonlySet<SlotKind> = new Set<SlotKind>([
   'instructions', 'heading', 'sectionHeading', 'partHeader', 'coverLine', 'coverField', 'bandText',
 ]);
+/** Cover and band lines break only to fit the column: Chinese spells clock times out, so the
+ *  seeded timing line breaks where English does not. Any count passes. */
+const LAYOUT_BREAKS: ReadonlySet<SlotKind> = new Set<SlotKind>(['coverLine', 'bandText']);
 const ZH_COUNT = ['', '一', '兩', '三', '四', '五', '六', '七', '八', '九', '十'];
 const ZH_EMPHASIS = ['兩個', '一項', '一個', '兩項', '不', '均須', '無須', '最佳'];
 
@@ -49,8 +52,32 @@ function spans(runs: RichText, attr: 'bold' | 'italic' | 'underline'): number {
   return count;
 }
 
-/** Digit groups the output may leave out: a kept duration, or a small count written as a
- *  Chinese numeral in instructions and furniture ("Answer any 2" → 任答兩題). */
+/** "9:00 am" ↔ 上午9時 / 上午九時: the hour on a 12-hour dial and the minutes; :00 ≡ none. */
+const EN_CLOCK = /(?<![\d:])(\d{1,2})(?::(\d{2}))?\s*(?:[ap]\.?m\b\.?)/gi;
+const ZH_NUM = '[零〇一二兩三四五六七八九十\\d]+';
+const ZH_CLOCK = new RegExp(`(${ZH_NUM})\\s*[時點]\\s*(?:(${ZH_NUM})\\s*分)?`, 'g');
+const ZH_DIGIT: Record<string, number> = { 零: 0, 〇: 0, 一: 1, 二: 2, 兩: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
+
+function zhNum(text: string): number | undefined {
+  if (/^\d+$/.test(text)) return Number(text);
+  if (!text.includes('十')) return text.length === 1 ? ZH_DIGIT[text] : undefined;
+  const [tens, units] = text.split('十');
+  const t = tens ? ZH_DIGIT[tens] : 1;
+  const u = units ? ZH_DIGIT[units] : 0;
+  return t === undefined || u === undefined ? undefined : t * 10 + u;
+}
+
+function clockKey(hours: string, minutes: string | undefined): string {
+  return `${(zhNum(hours) ?? -1) % 12}:${minutes ? zhNum(minutes) ?? -1 : 0}`;
+}
+
+function clockMatches(text: string): RegExpMatchArray[] {
+  const folded = foldWidth(text);
+  return [...folded.matchAll(EN_CLOCK), ...folded.matchAll(ZH_CLOCK)];
+}
+
+/** Digit groups the output may leave out: a kept duration or clock time, or a small count
+ *  written as a Chinese numeral in instructions and furniture ("Answer any 2" → 任答兩題). */
 function satisfiedNumbers(kind: SlotKind, source: string, output: string): Set<string> {
   const out = new Set<string>();
   const minutes = parseDuration(source);
@@ -59,6 +86,10 @@ function satisfiedNumbers(kind: SlotKind, source: string, output: string): Set<s
   }
   if (COUNT_KINDS.has(kind)) {
     for (let n = 1; n <= 10; n += 1) if (output.includes(ZH_COUNT[n])) out.add(String(n));
+  }
+  const times = new Set(clockMatches(output).map((m) => clockKey(m[1], m[2])));
+  for (const m of clockMatches(source)) {
+    if (times.has(clockKey(m[1], m[2]))) digitGroups(m[0]).forEach((g) => out.add(g));
   }
   return out;
 }
@@ -142,8 +173,9 @@ export function validateItem(
       fix: `Keep exactly ${codec.blanks.length} <blank/> marker${codec.blanks.length === 1 ? '' : 's'}; you returned ${blanks}.` });
   }
   const breaks = (out.match(/\n/g) ?? []).length - codec.lead - codec.trail;
-  if (SHORT_KINDS.has(job.kind) ? breaks > codec.breaks : breaks !== codec.breaks) {
-    add({ code: 'breaks', severity: SHORT_KINDS.has(job.kind) ? 'warn' : 'fail', message: 'Line breaks differ',
+  const loose = SHORT_KINDS.has(job.kind);
+  if (!LAYOUT_BREAKS.has(job.kind) && (loose ? breaks > codec.breaks : breaks !== codec.breaks)) {
+    add({ code: 'breaks', severity: loose ? 'warn' : 'fail', message: 'Line breaks differ',
       fix: `Keep exactly ${codec.breaks} <br/> marker${codec.breaks === 1 ? '' : 's'}; you returned ${breaks}.` });
   }
   if (!sameMultiset(scriptsOf(runs), codec.scripts)) {
