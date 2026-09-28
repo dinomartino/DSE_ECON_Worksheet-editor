@@ -18,8 +18,9 @@ import { buildTermCheck, termFixWrites } from '@/translate/termCheck';
 import { oneSided, readCorpus, referenceClient } from '@/translate/testKit';
 import type { TermRow } from '@/translate/types';
 import { filledFlash, replacedTermsFlash } from './copy';
+import { glossaryTermCount, scopeChoices, setupState, type TranslateView } from './SetupPanel';
 import { createTranslateController } from './translateController';
-import { acceptedKeys, createSessionStore, insertCount, termKey } from './translateSession';
+import { acceptedKeys, createSessionStore, insertCount, probeOptions, termKey } from './translateSession';
 
 /**
  * The dialog's controller over the real producers: planTranslation, runTranslation,
@@ -277,5 +278,72 @@ describe('Check terms over the real glossary and store', () => {
     expect(t.session().nothingInserted).toBe(true);
     expect(t.closeDialog).not.toHaveBeenCalled();
     expect(t.notify).not.toHaveBeenCalled();
+  });
+});
+
+/** Setup's view as TranslateRoot computes it, from the open session. */
+function setupView(t: ReturnType<typeof harness>): TranslateView {
+  const { scope, options } = t.session();
+  const ws = store().worksheet;
+  return {
+    status: readAiStatus(), desktop: false, glossary: null, glossaryFailed: false, scopeChoices: [], slotWhere: new Map(),
+    plan: planTranslation(ws, scope, options!), probe: planTranslation(ws, scope, probeOptions(options!)),
+  };
+}
+
+describe('Setup over the real plan, glossary and settings', () => {
+  // A price with no 中文 is a symbol gap; the other line is complete.
+  const symbolsOnly = () => paperOf([['Explain market failure.', '解釋市場失效。'], ['$14 000', '']]);
+
+  it('EN+中: a symbol-only gap is nothing to fill, so the dialog opens on Check terms', () => {
+    load(symbolsOnly());
+    const t = harness();
+    t.controller.open(t.request('translate'));
+    expect(t.session().mode).toBe('check');
+    expect(setupState(setupView(t))).toBe('nothing');
+  });
+
+  it('中文 edition: the same gap is one copy, written to 中文 only, one commit', () => {
+    load(symbolsOnly());
+    const t = harness(undefined, { language: 'zh', version: 'student' });
+    t.controller.open(t.request('translate'));
+    expect(t.session().mode).toBe('translate');
+    expect(setupState(setupView(t))).toBe('onlySymbols');
+    t.controller.copySymbols();
+    expect(t.writes[0].map((w) => w.side)).toEqual(['zh']);
+    expect(store().past).toHaveLength(1);
+    expect(t.notify).toHaveBeenCalledWith(filledFlash(1, 0), expect.objectContaining({ label: 'Undo' }));
+    const priced = collectTexts(store().worksheet).find((slot) => slot.path === t.writes[0][0].path)!;
+    expect(priced.text.zh).toEqual([{ text: '$14 000' }]);
+  });
+
+  it('counts glossary terms both ways, and labels the selected question from the walker', async () => {
+    const glossary = await loadGlossary();
+    const options = { directions: { toZh: true, toEn: true }, includeTeacher: true, includeDiagramLabels: true, copySymbols: { toZh: false, toEn: false } };
+    for (const keep of ['en', 'zh'] as const) {
+      const plan = planTranslation(oneSided(buildAcceptanceWorksheet(), keep), { kind: 'paper' }, options);
+      expect(glossaryTermCount(plan, glossary)).toBeGreaterThan(3);
+    }
+    const ws = buildAcceptanceWorksheet();
+    const slots = collectTexts(ws);
+    const third = ws.questions[2].id;
+    const choices = scopeChoices({ kind: 'paper' }, slots, { questionId: third });
+    expect(choices[1]).toEqual({ scope: { kind: 'questions', ids: [third] }, label: slots.find((s) => s.questionId === third)!.group.label });
+    expect(choices[1].label).toMatch(/3/);
+  });
+
+  it('reads the saved key and remembers the teacher-text box', () => {
+    load(symbolsOnly());
+    expect(readAiStatus()).toMatchObject({ provider: 'deepseek', configured: true, keyLast4: '5678' });
+    const t = harness();
+    t.controller.open(t.request('check'));
+    t.controller.setMode('translate');
+    expect(t.session().options?.includeTeacher).toBe(true);
+    t.controller.setOptions({ includeTeacher: false });
+    expect(aiSettings().includeTeacherText).toBe(false);
+    const next = harness();
+    next.controller.open({ ...next.request('translate'), scope: { kind: 'questions', ids: [store().worksheet.questions[0].id] } });
+    expect(next.session().options?.includeTeacher).toBe(false);
+    appSettings.write(AI_SETTINGS, { includeTeacherText: true });
   });
 });
