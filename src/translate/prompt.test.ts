@@ -11,7 +11,7 @@ import { evaluateItem, finalize } from './run';
 import type { Chunk, Direction, TranslationJob } from './types';
 import { decodeWire, encodeRuns } from './wire';
 
-const RENDERED_SHA = 'a810b22a857782e04b164fefeea38306da2d4efdf18747c50780f6ca87f8c835';
+const RENDERED_SHA = '524879dfc2d23d29b6e026a7d1afe9c9a1819c43d7aaed691b51407a36bc4872';
 
 function rendered(): string {
   return [

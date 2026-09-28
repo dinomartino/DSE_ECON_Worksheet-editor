@@ -128,9 +128,38 @@ describe('validateItem', () => {
   });
 });
 
+/** One correct pair per CONVENTIONS row: HKEAA output must pass with no warn. */
+const ROW_SAMPLES: Record<string, [string, string, SlotKind]> = {
+  country: ['Country A exports rice to Country B.', '甲國向乙國出口米。', 'part'],
+  student: ['Student B disagrees.', '學生乙不同意。', 'part'],
+  section: ['Answer all questions in Section A.', '甲部所有題目均須作答。', 'instructions'],
+  hkd: ['A ticket costs HK$500.', '一張門票500港元。', 'part'],
+  usd: ['A meal costs US$20.', '一頓飯20美元。', 'part'],
+  adas: ['Illustrate it with an AD-AS diagram.', '以一幅總供需圖說明。', 'part'],
+  supplyDemand: ['Draw a supply-demand diagram.', '繪畫一幅供需圖。', 'part'],
+  form: ['S5 Economics Test', '中五經濟科測驗', 'heading'],
+  paper: ['PAPER 1', '試卷一', 'bandText'],
+  subject: ['ECON', '經濟', 'coverLine'],
+};
+
 describe('CONVENTIONS', () => {
-  it('every row has a prompt line with its Chinese form', () => {
-    for (const row of CONVENTIONS) expect(row.promptLine).toMatch(/→/);
+  it('every row has a prompt line and a correct sample that passes with no warn', () => {
+    for (const row of CONVENTIONS) {
+      expect(row.promptLine).toMatch(/→/);
+      const sample = ROW_SAMPLES[row.id];
+      expect(sample, row.id).toBeDefined();
+      expect(row.zh([...sample[0].matchAll(row.en)][0]).some((form) => sample[1].includes(form)), row.id).toBe(true);
+      expect(codes(sample[0], sample[1], sample[2]), row.id).toEqual([]);
+    }
+  });
+
+  it('passes the app’s own cover and band furniture in its seeded Chinese', () => {
+    expect(codes('S.6 MOCK EXAMINATION 2026 – 2027', '2026 – 2027 年度中六模擬考試', 'coverLine')).toEqual([]);
+    expect(codes('2025 – 2026 S.6 MOCK EXAMINATION', '2025 – 2026 年度中六模擬考試', 'bandText')).toEqual([]);
+    expect(codes('ECONOMICS   PAPER 1', '經濟  試卷一', 'coverLine')).toEqual([]);
+    expect(codes('PAPER 2', '卷二', 'coverLine')).toEqual([]);
+    expect(codes('S1 shifts to S2.', 'S1移至S2。')).toEqual([]);
+    expect(codes('S1 shifts to S2.', '中一移至S2。')).toContain('symbols:warn');
   });
 });
 

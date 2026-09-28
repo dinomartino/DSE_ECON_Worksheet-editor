@@ -11,11 +11,14 @@ export interface Convention {
   zh: (m: RegExpMatchArray) => string[];
   /** latinSymbols tokens it satisfies. */
   consumes: (m: RegExpMatchArray) => string[];
+  /** Digit groups it spells out in Chinese (S5 → 中五). */
+  digits?: (m: RegExpMatchArray) => string[];
   promptLine: string;
 }
 
 const STEMS = ['甲', '乙', '丙', '丁'];
 const stem = (letter: string) => STEMS['ABCD'.indexOf(letter)];
+const NUMERALS = ['', '一', '二', '三', '四', '五', '六'];
 
 export const CONVENTIONS: readonly Convention[] = [
   {
@@ -67,15 +70,45 @@ export const CONVENTIONS: readonly Convention[] = [
     consumes: () => [],
     promptLine: 'a supply-demand diagram → 供需圖',
   },
+  // Paper furniture, as the app's own seeds write it (cover.ts, bands.ts).
+  {
+    id: 'form',
+    // S.6 always; S5 only before a title word ("S5 Economics"), so a curve S1 never matches.
+    en: /\bS(?:\.\s?([1-6])\b|([1-6])\b(?=\s+[A-Z][a-z]))/g,
+    zh: (m) => [`中${NUMERALS[Number(m[1] ?? m[2])]}`],
+    consumes: (m) => [m[1] ? 'S' : `S${m[2]}`],
+    digits: (m) => [m[1] ?? m[2]],
+    promptLine: 'a school form S5 / S.6 → 中五 / 中六 (a curve S1 stays S1)',
+  },
+  {
+    id: 'paper',
+    en: /\bpaper ([12])\b/gi,
+    zh: (m) => [`卷${NUMERALS[Number(m[1])]}`],
+    consumes: (m) => (m[0].startsWith('PAPER') ? ['PAPER'] : []),
+    digits: (m) => [m[1]],
+    promptLine: 'PAPER 1 → 試卷一',
+  },
+  {
+    id: 'subject',
+    en: /\bECON\b/g,
+    zh: () => ['經濟'],
+    consumes: () => ['ECON'],
+    promptLine: 'ECON → 經濟',
+  },
 ];
 
-/** Tokens a convention satisfies in this pair: its Chinese form is in the output. */
-export function consumedSymbols(sourceEn: string, outputZh: string): Set<string> {
+function applied(sourceEn: string, outputZh: string, pick: (row: Convention, m: RegExpMatchArray) => string[]): Set<string> {
   const out = new Set<string>();
   for (const row of CONVENTIONS) {
     for (const match of sourceEn.matchAll(row.en)) {
-      if (row.zh(match).some((form) => outputZh.includes(form))) row.consumes(match).forEach((t) => out.add(t));
+      if (row.zh(match).some((form) => outputZh.includes(form))) pick(row, match).forEach((t) => out.add(t));
     }
   }
   return out;
 }
+
+/** Tokens a convention satisfies in this pair: its Chinese form is in the output. */
+export const consumedSymbols = (sourceEn: string, outputZh: string) => applied(sourceEn, outputZh, (row, m) => row.consumes(m));
+
+/** Digit groups a convention spells out in this pair. */
+export const consumedDigits = (sourceEn: string, outputZh: string) => applied(sourceEn, outputZh, (row, m) => row.digits?.(m) ?? []);

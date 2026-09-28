@@ -3,7 +3,7 @@ import { parseDuration } from '@/model/paperHealth';
 import { plain } from '@/model/text';
 import type { SlotKind } from '@/model/textSlots';
 import type { RichText } from '@/model/types';
-import { consumedSymbols } from './conventions';
+import { consumedDigits, consumedSymbols } from './conventions';
 import { SIMPLIFIED_PAIRS, simplifiedChars } from './simplified';
 import type { Issue, TranslationJob } from './types';
 import { type DecodeError, digitGroups, EMPHASIS_WORDS, foldWidth, scriptsOf, SHORT_KINDS, type WireCodec } from './wire';
@@ -241,6 +241,7 @@ function checkFacts(
   const toZh = job.direction === 'toZh';
   const have = digitGroups(out);
   const satisfied = satisfiedNumbers(job.kind, source, out);
+  if (toZh) consumedDigits(source, out).forEach((g) => satisfied.add(g));
   const missing = codec.numbers.filter((g) => !satisfied.has(g) && !have.includes(g));
   if (missing.length) add({ code: 'numbers', severity: 'warn', message: 'Numbers differ', fix: `Keep the number ${missing[0]}.` });
 

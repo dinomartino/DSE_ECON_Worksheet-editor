@@ -50,11 +50,12 @@ function pairSlots(pairs: readonly Pair[], label: string, source: 'en' | 'zh'): 
 }
 
 function pairCase(name: string, pairs: readonly Pair[], source: 'en' | 'zh'): Case {
-  const slots = pairSlots(pairs.filter((p) => source === 'en' || p.zh), name, source);
+  const kept = pairs.filter((p) => source === 'en' || p.zh);
+  const slots = pairSlots(kept, name, source);
   return {
     name,
     plan: (options) => planFromSlots(name, slots, { kind: 'paper' }, options),
-    references: new Map(slots.map((slot, i) => [slot.path, (source === 'en' ? pairs[i].zh : pairs[i].en) ?? ''])),
+    references: new Map(slots.map((slot, i) => [slot.path, (source === 'en' ? kept[i].zh : kept[i].en) ?? ''])),
   };
 }
 
@@ -90,6 +91,9 @@ const CONVENTION_SET: Pair[] = [
   { kind: 'part', en: 'With the aid of an AD-AS diagram, explain the effect on real GDP.', zh: '以一幅總供需圖輔助，解釋對實質本地生產總值的影響。' },
   { kind: 'coverLine', en: 'Time allowed: 1 hour 30 minutes', zh: '時限：1小時30分鐘' },
   { kind: 'instructions', en: 'Answer any 2 questions.', zh: '任答兩題。' },
+  { kind: 'coverLine', en: 'S.6 MOCK EXAMINATION 2026 – 2027', zh: '2026 – 2027 年度中六模擬考試' },
+  { kind: 'coverLine', en: 'PAPER 1', zh: '卷一' },
+  { kind: 'coverLine', en: 'ECON', zh: '經濟' },
 ];
 
 const DOCUMENT_TYPES: DocumentType[] = ['classroom', 'paper1', 'lqWorksheet', 'lqMock'];
