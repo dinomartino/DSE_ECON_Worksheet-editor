@@ -18,6 +18,7 @@ export interface SettingsStore {
 }
 
 type Raw = Record<string, unknown>;
+const PROBE = 'econgen.settings.probe';
 interface Entry { schema: SettingsSchema<object>; raw: Raw; value: object; json: string }
 
 const isPlainObject = (x: unknown): x is Raw => typeof x === 'object' && x !== null && !Array.isArray(x);
@@ -55,6 +56,7 @@ export function createSettingsStore(storage: () => StorageLike | null, env: Sett
   const entries = new Map<string, Entry>();
   const listeners = new Map<string, Set<() => void>>();
   let blocked = false;
+  let probed = false;
   let watching = false;
 
   const load = (key: string): Raw => {
@@ -162,9 +164,14 @@ export function createSettingsStore(storage: () => StorageLike | null, env: Sett
     reset,
     subscribe,
     persistent: () => {
-      if (!blocked) {
+      if (!blocked && !probed) {
+        probed = true;
+        // Private modes and full quotas refuse writes while reads still work: try one.
         try {
-          if (!storage()) blocked = true;
+          const store = storage();
+          if (!store) throw new Error('no storage');
+          store.setItem(PROBE, '1');
+          (store as Partial<Storage>).removeItem?.(PROBE);
         } catch {
           blocked = true;
         }

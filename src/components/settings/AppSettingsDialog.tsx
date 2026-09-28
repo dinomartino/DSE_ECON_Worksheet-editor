@@ -3,7 +3,6 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useState,
   type ComponentType,
 } from 'react';
@@ -38,6 +37,32 @@ export function initialSection(
 }
 
 export type CloseIntent = 'done' | 'resume';
+export type CloseInput = CloseIntent | 'dismiss' | { answered: boolean };
+export type CloseStep =
+  | { close: true; resume: boolean }
+  | { close: false; asking: CloseIntent | null };
+
+/**
+ * Every route out of the dialog. Done, Continue, and 'dismiss' (Escape, ✕, the scrim) ask
+ * first over an unsaved key; a second dismiss drops the question; an answer closes only
+ * when Discard or the save succeeded. Nothing moves while a save runs.
+ */
+export function closeStep(
+  at: { asking: CloseIntent | null; saving: boolean; guarded: boolean; ready: boolean },
+  input: CloseInput,
+): CloseStep {
+  const stay = (asking: CloseIntent | null): CloseStep => ({ close: false, asking });
+  if (at.saving) return stay(at.asking);
+  if (typeof input === 'object') {
+    if (!at.asking) return stay(null);
+    return input.answered ? { close: true, resume: at.asking === 'resume' } : stay(null);
+  }
+  if (input === 'dismiss' && at.asking) return stay(null);
+  const intent = input === 'dismiss' ? 'done' : input;
+  if (intent === 'resume' && !at.ready) return stay(at.asking);
+  if (at.guarded) return stay(intent);
+  return { close: true, resume: intent === 'resume' };
+}
 
 /** Runs the guard's answer: Discard proceeds; Save proceeds only when the save succeeded. */
 export async function answerGuard(
@@ -107,7 +132,8 @@ export function AppSettingsDialog({
   const [guard, setGuard] = useState<CloseGuard | null>(null);
   const [asking, setAsking] = useState<CloseIntent | null>(null);
   const [saving, setSaving] = useState(false);
-  const persistent = useMemo(() => appSettings.persistent(), []);
+  // Read each render: a write refused while the dialog is open shows the line on the next.
+  const persistent = appSettings.persistent();
 
   const def = sections.find((s) => s.id === active) ?? sections[0];
   const deepLinked = def?.id === request.section;
@@ -121,29 +147,25 @@ export function AppSettingsDialog({
     if (!next) setAsking(null);
   }, []);
 
-  const attemptClose = (intent: CloseIntent) => {
-    if (saving) return;
-    if (intent === 'resume' && !ready.ready) return;
-    if (guard) setAsking(intent);
-    else onClose({ resume: intent === 'resume' });
+  const step = (input: CloseInput, at = { asking, saving, guarded: guard !== null, ready: ready.ready }) => {
+    const next = closeStep(at, input);
+    if (next.close) onClose({ resume: next.resume });
+    else setAsking(next.asking);
   };
-  // Escape, ✕ and the scrim: a second Escape while asking dismisses the question.
-  const onDismiss = () => (asking ? setAsking(null) : attemptClose('done'));
 
   const answer = async (choice: 'discard' | 'save') => {
-    if (!guard || !asking) return;
+    if (!guard || !asking || saving) return;
     setSaving(true);
     const proceed = await answerGuard(guard, choice);
     setSaving(false);
-    if (proceed) onClose({ resume: asking === 'resume' });
-    else setAsking(null);
+    step({ answered: proceed }, { asking, saving: false, guarded: true, ready: ready.ready });
   };
 
   return (
     <Dialog
       title="Settings"
       description={settingsDescription(env)}
-      onClose={onDismiss}
+      onClose={() => step('dismiss')}
       width={760}
       height={640}
       scrollBody={false}
@@ -155,7 +177,7 @@ export function AppSettingsDialog({
           asking={asking}
           guard={guard}
           saving={saving}
-          onClose={attemptClose}
+          onClose={step}
           onAnswer={(choice) => void answer(choice)}
         />
       }

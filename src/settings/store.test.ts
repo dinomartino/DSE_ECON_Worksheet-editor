@@ -12,6 +12,9 @@ class MemoryStorage implements StorageLike {
   setItem(key: string, value: string) {
     this.data.set(key, value);
   }
+  removeItem(key: string) {
+    this.data.delete(key);
+  }
 }
 
 const throwing: StorageLike = {
@@ -128,6 +131,14 @@ describe('the settings store', () => {
     expect(store.persistent()).toBe(false);
     expect(createSettingsStore(() => null, web).persistent()).toBe(false);
     expect(createSettingsStore(() => new MemoryStorage(), web).persistent()).toBe(true);
+  });
+
+  it('knows storage refuses writes before the first write fails', () => {
+    const readOnly = { getItem: () => null, setItem: () => { throw new Error('QuotaExceededError'); } };
+    expect(createSettingsStore(() => readOnly, web).persistent()).toBe(false);
+    const s = new MemoryStorage();
+    expect(createSettingsStore(() => s, web).persistent()).toBe(true);
+    expect(s.data.size).toBe(0);
   });
 
   it('re-reads a section when another tab writes it, and only that section', () => {

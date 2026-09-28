@@ -3,24 +3,20 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { registerSettingsSection, type CloseGuard, type SettingsSectionDef } from '@/settings/sections';
 import { useAppDialogs } from '@/store/appDialogs';
-import { AppSettingsDialog, AppSettingsFooter, answerGuard, initialSection } from './AppSettingsDialog';
+import { AppSettingsDialog, AppSettingsFooter, answerGuard, closeStep, initialSection } from './AppSettingsDialog';
 import { AppSettingsHost } from './AppSettingsHost';
 
 // The section registry is module state; vitest isolates it per file. The zero-section
 // cases therefore run first.
 
 const web = { desktop: false };
-const loads: string[] = [];
 const section = (id: string, order: number, extra: Partial<SettingsSectionDef> = {}): SettingsSectionDef => ({
   id,
   label: `${id} label`,
   hint: `${id} hint`,
   description: `${id} description`,
   order,
-  load: () => {
-    loads.push(id);
-    return Promise.resolve({ default: () => createElement('p', null, `${id} pane`) });
-  },
+  load: () => Promise.resolve({ default: () => createElement('p', null, `${id} pane`) }),
   ...extra,
 });
 const guard = (run: () => Promise<boolean>): CloseGuard => ({
@@ -60,7 +56,10 @@ describe('the Settings dialog', () => {
     expect(html).toContain('appearance label');
     expect(html).toContain('Saved in this browser. Applies to every worksheet; never saved in a worksheet.');
     expect(html).not.toMatch(/coming soon/i);
-    expect(loads).toEqual([]);
+    // One pane, the shown section's: the other is a tab label only.
+    expect(html.match(/Loading…/g)).toHaveLength(1);
+    expect(html).toContain('ai description');
+    expect(html).not.toContain('appearance description');
   });
 
   it('says "this computer" on desktop', () => {
@@ -121,6 +120,46 @@ describe('answering the close guard', () => {
   });
 });
 
+describe('every route out of the dialog', () => {
+  const at = (patch: Partial<Parameters<typeof closeStep>[0]> = {}) => ({
+    asking: null,
+    saving: false,
+    guarded: false,
+    ready: true,
+    ...patch,
+  });
+
+  it('closes at once without an unsaved key', () => {
+    expect(closeStep(at(), 'done')).toEqual({ close: true, resume: false });
+    expect(closeStep(at(), 'dismiss')).toEqual({ close: true, resume: false });
+    expect(closeStep(at(), 'resume')).toEqual({ close: true, resume: true });
+    expect(closeStep(at({ ready: false }), 'resume')).toEqual({ close: false, asking: null });
+  });
+
+  it('asks first over an unsaved key: Done, Continue, Escape, ✕ and the scrim', () => {
+    const guarded = at({ guarded: true });
+    expect(closeStep(guarded, 'done')).toEqual({ close: false, asking: 'done' });
+    expect(closeStep(guarded, 'resume')).toEqual({ close: false, asking: 'resume' });
+    expect(closeStep(guarded, 'dismiss')).toEqual({ close: false, asking: 'done' });
+  });
+
+  it('drops the question on a second Escape, and ignores everything while saving', () => {
+    expect(closeStep(at({ guarded: true, asking: 'resume' }), 'dismiss')).toEqual({ close: false, asking: null });
+    const saving = at({ guarded: true, asking: 'done', saving: true });
+    for (const input of ['done', 'resume', 'dismiss', { answered: true }] as const) {
+      expect(closeStep(saving, input)).toEqual({ close: false, asking: 'done' });
+    }
+  });
+
+  it('closes after Discard or a successful save, and stays after a failed save', () => {
+    const asking = at({ guarded: true, asking: 'resume' });
+    expect(closeStep(asking, { answered: true })).toEqual({ close: true, resume: true });
+    expect(closeStep(at({ guarded: true, asking: 'done' }), { answered: true })).toEqual({ close: true, resume: false });
+    expect(closeStep(asking, { answered: false })).toEqual({ close: false, asking: null });
+    expect(closeStep(at({ guarded: true }), { answered: true })).toEqual({ close: false, asking: null });
+  });
+});
+
 describe('AppSettingsHost with sections', () => {
   it('mounts each section Effect with the dialog closed, and loads no pane', () => {
     registerSettingsSection(
@@ -129,6 +168,5 @@ describe('AppSettingsHost with sections', () => {
     registerSettingsSection(section('desk', 6, { available: (env) => env.desktop, Effect: () => createElement('b') }));
     const html = renderToStaticMarkup(createElement(AppSettingsHost));
     expect(html).toBe('<i data-effect="false"></i>');
-    expect(loads).toEqual([]);
   });
 });
