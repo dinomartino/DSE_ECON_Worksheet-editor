@@ -9,7 +9,7 @@ guards the result. The map is [`CODEMAP.md`](./CODEMAP.md); the *why* is in
 1. `src/model/types.ts` — the interface, added to the `Question` union.
 2. `src/model/factories.ts` — a `create…Question()` factory.
 3. `src/registry/<type>.ts` — one `QuestionTypeDefinition`: `id` · `displayName` ·
-   `create` · `render` · `EditorPanel`, plus `examGapLines?` / `countMissingTranslations?` / `healthFacts?` /
+   `create` · `render` · `EditorPanel` · `mapTexts` (see below), plus `examGapLines?` / `healthFacts?` /
    `answerKey?` (without it the type is left out of the answer key) / `variant?` (without
    it the type prints identically in every paper version).
 4. `src/registry/index.ts` — add it to `DEFINITIONS`.
@@ -18,8 +18,28 @@ guards the result. The map is [`CODEMAP.md`](./CODEMAP.md); the *why* is in
 No other file may learn the id. `render()` must copy the block's `format` onto every
 hand-built numbered paragraph.
 
-Guard: `src/registry/registry.test.ts` (greps eleven shared modules for type literals, and
+Guard: `src/registry/registry.test.ts` (greps sixteen shared modules for type literals, and
 asserts `format` reaches the IR for every registered type).
+
+## Give a new question type `mapTexts`
+
+Every BiText the type stores goes through the walker it is handed, or translation and the
+untranslated count never see it.
+
+1. `src/registry/<type>.ts` — `mapTexts(question, walk)`: `patch(question, { … })` with
+   `walk.text` / `walk.optional` (never creates an absent field) / `walk.list`,
+   `walk.blocks` for content blocks, `walk.scheme`, `walk.answerGraph`, `walk.diagramBlock`,
+   and `walk.scope('part:<id>', '(a)')` per nested item (`mapSame` over lists). Give each
+   slot a `kind`, a `role` (`teacher` for key-only text) and its page `target`.
+2. Text that does not print as the question stands goes through `walk.unprinted()`.
+3. `src/test/translateFixture.ts` — add a question of the type holding every field.
+4. A new BiText field on a block, layout element, band or diagram belongs in
+   `src/model/textWalk.ts` (diagrams: `src/model/diagramText.ts`), not in a type.
+
+Return the question itself when nothing changed: `patch` and `mapSame` do that.
+
+Guard: `src/model/textWalk.census.test.ts` (every stored `{en, zh}` is a slot),
+`src/model/textWalk.test.ts` (an identity visit returns the same object).
 
 ## Add a ContentBlock kind
 
