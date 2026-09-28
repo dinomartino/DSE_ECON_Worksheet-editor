@@ -131,11 +131,11 @@ OpenAI and Anthropic are unavailable, DeepSeek and Qwen (Alibaba Model Studio) w
 are never sent anywhere; translation sends only the text a teacher chooses. *All of
 MagicSchool, Brisk, Diffit, Eduaide, QuestionWell, MS Teach.*
 
-- **E1 Answers, mark schemes and MCQ explanations for existing questions** (S).
+- **E1 Answers, mark schemes and MCQ explanations for existing questions** — built 2026-09-28 (`src/answers/`, verb `write.answers`).
 - **E2 EN↔繁中 fill with the EDB glossary** — built (above).
-- **E3 Source → HKDSE items** (M): paste a news extract, get Paper 1 MCQs (including
+- **E3 Source → HKDSE items** — built 2026-09-28 (`src/generate/`, verb `create.fromSource`): paste a news extract, get Paper 1 MCQs (including
   combination statements) and Paper 2 parts with marks.
-- **E4 Item quality check** (S): the non-AI checks are the paper health check; the AI half flags ambiguous
+- **E4 Item quality check** — built 2026-09-28 (`src/quality/`, verb `check.quality`): the non-AI checks are the paper health check; the AI half flags ambiguous
   stems and two defensible options.
 - **E5 Differentiated copy** (M), **E6 data-response builder** with diagrams from a preset
   vocabulary, never raw model coordinates (L).
