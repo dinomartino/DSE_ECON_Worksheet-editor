@@ -4538,6 +4538,10 @@ export function Preview({
    * containment, because there a curve spans the whole plot).
    */
   const [multiIds, setMultiIds] = useState<Set<string>>(new Set());
+  // Mirrored one way for the AI door's scope (§ `selectedFlowIds`).
+  useEffect(() => {
+    useWorksheetStore.getState().setSelectedFlowIds(multiIds.size > 0 ? [...multiIds] : undefined);
+  }, [multiIds]);
   /*
    * The sweep rectangle, positioned imperatively rather than through state.
    *

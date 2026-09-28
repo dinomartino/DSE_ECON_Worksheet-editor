@@ -22,6 +22,8 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 - **Settings** (⋯ → Settings…): app-wide preferences for this browser or computer,
   starting with AI & translation. The per-document dialog is now called **Setup**
   everywhere.
+- **AI menu**: press ⌘J (Ctrl+J on Windows) to open one menu of AI actions for the
+  whole paper or whatever you have selected.
 
 ### Changed
 - New diagrams and the sample paper now use the Education Bureau glossary's Chinese
