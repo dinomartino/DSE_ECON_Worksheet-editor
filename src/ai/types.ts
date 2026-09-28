@@ -56,6 +56,8 @@ export interface CompletionRequest {
   turns: ChatTurn[];
   /** ITEMS_SCHEMA. */
   schema: JsonSchema;
+  /** Appended to `system` on a rung that doesn't enforce `schema`; absent = the items shape. */
+  shapeHint?: string;
   maxOutputTokens: number;
   signal: AbortSignal;
   /** Default 120 000. */
