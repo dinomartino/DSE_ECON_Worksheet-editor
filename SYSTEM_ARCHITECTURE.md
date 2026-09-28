@@ -2383,18 +2383,20 @@ once as `TranslateHost` in `EditorApp`. Copy: `src/components/translate/copy.ts`
 
 ### Entry points
 
-Every Translate entry point builds its request in `src/components/translate/translateMenu.ts`
-(pure, slot sources injected) and hands it to `useAppDialogs().openTranslate`: the
-untranslated pill (`src/components/editor/Toolbar.tsx:UntranslatedPill`), the ⋯ menu's
-Translate… / Check terms…, the page menu's "Translation" group, the multi-select pill, the
-Outline row and the paper check's links. Each is absent when the document is read-only.
+**One door.** Every AI action opens the one menu through `openAi`
+(`src/assist/menuStore.ts`): the toolbar's "✦ AI" (`src/components/ai/AiButton.tsx`, the
+untranslated count as its badge), ⌘J / Ctrl+J, the page menu's one "✦ AI…" item, the
+multi-select bar's "✦ AI", and Export's paper check ("Open ✦ AI", closing Export first and
+preselecting the fill or Check terms verb). None exists in a read-only document; the ⋯ menu
+keeps only Settings…. The one exception is `BiTextField`'s field-level "✦ Fill …".
 
-- **The page menu is keyed by the emitting question.** `ItemBody` adds `questionId` to every
-  `PageMenuPayload`, so a Duplicate's copy (same block ids) is the one filled; a still
-  ambiguous target disables the item. Built at event time from the store's live document;
+- **The page item carries the right-clicked scope** (`src/components/translate/translateMenu.ts:pageAiScope`):
+  the one printed text, a cell's table, the block, else the emitting question. `ItemBody`
+  adds `questionId` to every `PageMenuPayload`, so a Duplicate's copy is the one acted on; a
+  still ambiguous target falls back to its question (or the paper). Built at event time;
   nothing new is read at render time, so `ctxStamp` is unchanged.
-- **A page `Fill …` auto-starts** (the click is the send); Re-translate opens Setup with
-  Replace locked. A block with at most three texts to fill also skips Setup.
+- **The menu's scope chip** offers the scope it opened with, its owning question when
+  narrower, and the whole paper (`scopeChoices`); a change re-evaluates every verb.
 - **`BiTextField` fills one field inline** when a call site passes `translate` (what it
   holds; without it there is no button, since a guessed kind would drop the wording
   rules). `src/components/translate/fieldFill.ts` decides the button and runs one fill,
@@ -2404,8 +2406,7 @@ Outline row and the paper check's links. Each is absent when the document is rea
   it deep-links to Settings — never over a modal layer (Setup, a canvas), where the button
   is disabled instead. The pipeline loads on the first fill.
 - **Settings** opens from the ⋯ menu (hint only on desktop), the start screen and ⌘, /
-  Ctrl+,, each hidden while no section is registered. Export's paper check closes Export
-  before Translate opens, so dialogs never stack.
+  Ctrl+,, each hidden while no section is registered.
 - **Browser run:** `scripts/ai-verify.mjs` serves `out/`, points Custom at
   `scripts/ai-mock-server.mjs` (canned replies, no key) and asserts nothing is sent before an
   explicit Translate, Fill, Save & test or List my models click. Production code has no

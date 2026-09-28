@@ -24,6 +24,8 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   everywhere.
 - **AI menu**: press ⌘J (Ctrl+J on Windows) to open one menu of AI actions for the
   whole paper or whatever you have selected.
+- **One ✦ AI button** (⌘J) holds every AI tool, with the untranslated count on it;
+  right-click any text, table or question for AI on just that part.
 - Set up your AI key right where you use it — no trip to Settings. Pick Gemini, DeepSeek
   or Qwen in the AI menu, paste your key, and the action you chose runs once it works.
 - **Questions from a source** (AI menu): paste a news extract or data description and

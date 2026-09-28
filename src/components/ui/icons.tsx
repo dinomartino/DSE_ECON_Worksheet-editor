@@ -361,6 +361,20 @@ export function SettingsIcon(props: IconProps) {
   );
 }
 
+/** The AI door's mark (✦): a four-point star with a small companion. Filled. */
+export function SparkleIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path
+        d="M10 3.5c.5 3.6 2.4 5.5 6 6-3.6.5-5.5 2.4-6 6-.5-3.6-2.4-5.5-6-6 3.6-.5 5.5-2.4 6-6z"
+        fill="currentColor"
+        strokeWidth={1.25}
+      />
+      <path d="M18 14.5c.25 1.6 1 2.35 2.5 2.5-1.5.25-2.25 1-2.5 2.5-.25-1.5-1-2.25-2.5-2.5 1.5-.15 2.25-.9 2.5-2.5z" fill="currentColor" strokeWidth={1} />
+    </Svg>
+  );
+}
+
 /** Document Setup: a page with two slider bars. The gear means app Settings only. */
 export function PageSetupIcon(props: IconProps) {
   return (

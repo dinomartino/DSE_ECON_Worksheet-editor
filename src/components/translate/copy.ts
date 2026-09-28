@@ -7,11 +7,6 @@ import type { Side } from '@/model/textSlots';
 
 // ---- entry points ----
 
-export const PILL_TITLE = 'Fill the missing language with AI translation…';
-export const pillLabel = (n: number): string => `${n} untranslated`;
-
-export const MENU_TRANSLATE = 'Translate…';
-export const MENU_CHECK_TERMS = 'Check terms…';
 export const MENU_SETTINGS = 'Settings…';
 
 // ---- Setup privacy line ----
@@ -41,8 +36,7 @@ export const replacedTermsFlash = (n: number): string => `Replaced ${n} ${plural
 // ---- paper check ----
 
 // The findings' own wording lives in `checkPaper` (src/model/paperHealth.ts).
-export const PAPER_CHECK_TRANSLATE = 'Translate…';
-export const PAPER_CHECK_REVIEW_TERMS = 'Review terms…';
+export const PAPER_CHECK_OPEN_AI = 'Open ✦ AI';
 
 // ---- footer ----
 

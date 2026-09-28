@@ -101,3 +101,25 @@ export function scopeLabel(worksheet: Worksheet, scope: AiScope): string {
       return findTableBlock(worksheet, scope.blockId) ? 'This table' : 'This figure';
   }
 }
+
+export interface ScopeChoice {
+  scope: AiScope;
+  label: string;
+}
+
+/** The menu's scope chip: the scope it opened with, its owning question when narrower,
+ *  then the whole paper. Pure. */
+export function scopeChoices(worksheet: Worksheet, scope: AiScope): ScopeChoice[] {
+  const chain: AiScope[] = [scope];
+  const owner =
+    scope.kind === 'block'
+      ? scope.questionId
+      : scope.kind === 'paths' && scope.paths.length === 1
+        ? collectTexts(worksheet).find((slot) => slot.path === scope.paths[0])?.questionId
+        : undefined;
+  if (owner !== undefined && worksheet.questions.some((q) => q.id === owner)) {
+    chain.push({ kind: 'questions', ids: [owner] });
+  }
+  if (scope.kind !== 'paper') chain.push({ kind: 'paper' });
+  return chain.map((s) => ({ scope: s, label: scopeLabel(worksheet, s) }));
+}

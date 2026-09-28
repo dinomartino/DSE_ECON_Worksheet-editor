@@ -35,7 +35,7 @@ describe('BiTextField fill', () => {
   });
 
   it('offers Fill under the missing side when the field says what it holds', () => {
-    expect(render(t('Supply falls', ''), { kind: 'answer' })).toContain('>Fill 中文</button>');
+    expect(render(t('Supply falls', ''), { kind: 'answer' })).toMatch(/<svg aria-hidden="true"[^>]*>.*?<\/svg>Fill 中文<\/button>/);
     expect(render(t('', '供應減少'), { kind: 'answer' })).toContain('>Fill English</button>');
   });
 
@@ -64,7 +64,7 @@ describe('BiTextField fill', () => {
     const release = claimModalLayer();
     const markup = render(t('Supply falls', ''), { kind: 'answer' });
     release();
-    expect(markup).toMatch(/<button[^>]*disabled=""[^>]*title="Set up translation in Settings \(⋯ → Settings…\)"[^>]*>Fill 中文<\/button>/);
+    expect(markup).toMatch(/<button[^>]*disabled=""[^>]*title="Set up translation in Settings \(⋯ → Settings…\)"[^>]*><svg[^>]*>.*?<\/svg>Fill 中文<\/button>/);
     expect(markup).not.toContain('Set up translation…');
     expect(openSettings).not.toHaveBeenCalled();
   });

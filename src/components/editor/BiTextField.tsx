@@ -7,6 +7,7 @@ import { sameRuns, type Side } from '@/model/textSlots';
 import type { BiText, RichText } from '@/model/types';
 import { RichTextEditable } from '@/components/preview/RichTextEditable';
 import { isModalLayerOpen } from '@/components/ui/modalLayer';
+import { SparkleIcon } from '@/components/ui/icons';
 import {
   afterNoProvider,
   canApplyFill,
@@ -176,7 +177,7 @@ export function BiTextField({
 }
 
 const FILL_BUTTON_CLASS =
-  'h-5 shrink-0 cursor-pointer rounded px-1 text-[11px] font-medium text-accent-ink transition-colors duration-150 ease-out-soft hover:bg-accent-soft focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent';
+  'inline-flex h-5 shrink-0 cursor-pointer items-center gap-1 rounded px-1 text-[11px] font-medium text-accent-ink transition-colors duration-150 ease-out-soft hover:bg-accent-soft focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent';
 
 /** The pipeline loads on the first fill, so it stays out of the editor's first load. */
 async function loadFillDeps(): Promise<FieldFillDeps> {
@@ -321,6 +322,8 @@ function useFieldFill(
             title={button.title}
             onClick={() => (button.action === 'fill' ? void run(button.side) : openSettings())}
           >
+            {/* The AI door's mark, so a field's fill reads as the same AI. */}
+            <SparkleIcon size={11} className="text-accent" />
             {busy ? 'Filling…' : button.label}
           </button>
         )}
