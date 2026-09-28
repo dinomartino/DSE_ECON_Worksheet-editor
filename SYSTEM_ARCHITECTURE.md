@@ -2459,6 +2459,29 @@ The engine is `src/generate/`, pure over injected deps like `src/translate/run.t
 
 ---
 
+## AI answers and mark schemes (E1)
+
+The AI door's `write.answers` verb (`src/assist/verbs/writeAnswers.ts`) fills what the
+scope leaves empty: a structured leaf's model answer, its HKEAA scheme, an MCQ option's
+rationale. Engine in `src/answers/`, pure with injected deps like `src/translate/`.
+
+- **Leaves come from the registry hook `mapAnswers`** (`src/model/answerLeaves.ts`): shapes
+  (`written`, `choice`), never type ids — `src/answers/answers.test.ts` greps the engine.
+  A leaf is a part without sub-parts or a sub-part; a partless question has no answer field.
+- **Never overwrites.** Only an empty answer, an empty scheme or an empty rationale is a
+  target, and the hook writes only into empty fields. `answerIndex` is never touched.
+- **A scheme is written only for a leaf that prints marks**, and only when its derived total
+  (`schemeMax`) equals them; otherwise the answer goes in alone with a `look` note.
+- **Languages**: the mode's side plus any side the questions in scope carry; English is
+  always asked for, so the glossary check (auto-fix, then `checkEnToZh` warns as `look`
+  notes) can read the Chinese against it. Pins as translation does.
+- **Apply** is `applyAnswerFills` in the store: one commit, stale-guarded per leaf by the
+  hook's `stamp` (the part, or the MCQ). Unreadable or empty replies are `failed`, never
+  inserted; Stop keeps finished chunks. `CompletionRequest.shapeHint` carries the schema's
+  own JSON hint on rungs that don't enforce it.
+
+---
+
 ## The per-keystroke render path
 
 Typing commits per input, so the pipeline — `renderWorksheet`, the sheets *and* the

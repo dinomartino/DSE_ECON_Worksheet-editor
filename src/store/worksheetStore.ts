@@ -79,6 +79,8 @@ import type {
 import type { EditTarget } from '@/render/ir';
 import { listQuestionTypes } from '@/registry';
 import { worksheetStore } from '@/storage';
+import { applyAnswerWrites } from '@/answers/apply';
+import type { AnswerApplyReport, AnswerWrite } from '@/answers/types';
 
 /**
  * The document store. **Every mutation goes through `commit`** — a pure recipe plus an
@@ -377,6 +379,12 @@ interface WorksheetState {
    * Refused when read-only or when `worksheetId` is no longer the open document.
    */
   insertQuestionBatch: (items: readonly QuestionBuild[], opts: { worksheetId: string; lead?: LayoutElement }) => QuestionBatchReport;
+  /**
+   * The AI answer writer's fills (`src/answers/`): one commit, one undo; a leaf edited
+   * since the plan is skipped, and only empty fields are written. Refused when read-only
+   * or when another document is open.
+   */
+  applyAnswerFills: (writes: readonly AnswerWrite[], opts: { worksheetId: string }) => AnswerApplyReport;
 }
 
 /** One question to build: the type id, and what to fill into its fresh `create()`. */
@@ -1351,6 +1359,19 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     });
     set({ insertAnchorId: built[built.length - 1].id });
     return { ok: true, questionIds: built.map((q) => q.id), ...(lead ? { leadId: lead.id } : {}), committed: get().worksheet };
+  },
+
+  applyAnswerFills: (writes, { worksheetId }) => {
+    const state = get();
+    if (state.readOnly) return { applied: [], skipped: [], refused: 'readOnly' };
+    if (state.worksheet.id !== worksheetId) return { applied: [], skipped: [], refused: 'otherDocument' };
+    let report: AnswerApplyReport = { applied: [], skipped: [] };
+    state.commit((draft) => {
+      const result = applyAnswerWrites(draft, writes);
+      report = result.report;
+      return result.worksheet;
+    });
+    return report;
   },
 }));
 
