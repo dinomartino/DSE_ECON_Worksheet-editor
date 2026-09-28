@@ -54,7 +54,8 @@ export function AiBar() {
   const phase = useAiRun((s) => s.phase);
   // Re-render on every edit: Undo all hides once its commit is no longer the latest.
   const worksheet = useWorksheetStore((s) => s.worksheet);
-  const [cardOpen, setCardOpen] = useState(false);
+  // The card belongs to one outcome: a new run, Done or Undo all closes it by itself.
+  const [cardFor, setCardFor] = useState<ReviewOutcome | null>(null);
 
   // Another document: highlights and Undo all belong to the one that ran.
   const docId = useRef(worksheet.id);
@@ -69,12 +70,13 @@ export function AiBar() {
   const review = phase.kind === 'review' ? phase : null;
   const items = review && review.outcome.kind !== 'nothing' ? review.outcome.items : NO_ITEMS;
   const current = review ? items[review.index] : undefined;
+  const cardOpen = review !== null && cardFor === review.outcome;
+  const setCardOpen = useCallback((on: boolean) => {
+    const now = useAiRun.getState().phase;
+    setCardFor(on && now.kind === 'review' ? now.outcome : null);
+  }, []);
   const marks = useMemo(() => (items.length ? markTones(items) : null), [items]);
   usePageMarks(marks, cardOpen ? current?.targetKey : undefined);
-
-  useEffect(() => {
-    if (phase.kind !== 'review') setCardOpen(false);
-  }, [phase.kind]);
 
   useEffect(() => {
     if (phase.kind !== 'review' || phase.outcome.kind !== 'nothing') return;
@@ -84,13 +86,16 @@ export function AiBar() {
     return () => clearTimeout(timer);
   }, [phase]);
 
-  const open = useCallback((index: number) => {
-    const run = useAiRun.getState();
-    run.goTo(index);
-    const now = run.phase.kind === 'review' && run.phase.outcome.kind !== 'nothing' ? run.phase.outcome.items : [];
-    setCardOpen(true);
-    reveal(now[index]);
-  }, []);
+  const open = useCallback(
+    (index: number) => {
+      const run = useAiRun.getState();
+      run.goTo(index);
+      const now = run.phase.kind === 'review' && run.phase.outcome.kind !== 'nothing' ? run.phase.outcome.items : [];
+      setCardOpen(true);
+      reveal(now[index]);
+    },
+    [setCardOpen],
+  );
 
   const walk = useCallback(
     (step: 1 | -1) => {
@@ -109,7 +114,7 @@ export function AiBar() {
       useAiRun.getState().goTo(index);
       setCardOpen(true);
     },
-    [items],
+    [items, setCardOpen],
   );
   useMarkClicks(items.length > 0, onMarkClick);
 

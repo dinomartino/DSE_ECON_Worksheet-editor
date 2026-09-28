@@ -14,9 +14,8 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 
 ### Added
 - **Translate**: fill the missing 中文 or English of a worksheet with AI, using your own
-  key (Gemini, DeepSeek, Qwen and others). A paper or question is shown line by line for
-  review before it goes in; a single field fills in place. Economics terms follow the
-  Education Bureau glossary, and one Undo takes it all back.
+  key (Gemini, DeepSeek, Qwen and others). Economics terms follow the Education Bureau
+  glossary; a single field fills in place.
 - **Check terms**: compare a worksheet's Chinese with the EDB glossary and fix
   non-standard terms in one click — no key needed.
 - **Settings** (⋯ → Settings…): app-wide preferences for this browser or computer,
@@ -24,6 +23,9 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   everywhere.
 - **AI menu**: press ⌘J (Ctrl+J on Windows) to open one menu of AI actions for the
   whole paper or whatever you have selected.
+- **AI results go straight onto the page**, highlighted, with **Undo all**: walk through
+  what changed with ‹ ›, and anything worth a second look is marked in amber. Check terms
+  underlines its findings on the page and replaces them one by one or all at once.
 - **Check question quality** (AI menu): a second pair of eyes before you print — flags
   two defensible MCQ options, a key that looks wrong, an unbolded NOT, "Explain" for
   1 mark, a marking scheme that doesn't add up to the marks, and English and 中文 that

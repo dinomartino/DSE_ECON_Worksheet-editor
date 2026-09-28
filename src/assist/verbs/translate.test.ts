@@ -68,9 +68,9 @@ const ctx = (mode: OutputMode = BILINGUAL, scope: VerbContext['scope'] = { kind:
   scope,
   scopeLabel: 'Whole paper',
 });
-const io = (controller = new AbortController()): VerbIO & { progress: ReturnType<typeof vi.fn> } => ({
+const io = (controller = new AbortController()) => ({
   signal: controller.signal,
-  progress: vi.fn(),
+  progress: vi.fn<VerbIO['progress']>(),
 });
 
 /** One question, a paragraph per `[en, zh]` pair. */
