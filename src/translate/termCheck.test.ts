@@ -3,9 +3,11 @@ import { migrate } from '@/model/migrations';
 import { collectTexts } from '@/model/textWalk';
 import type { SlotGroup, TextSlot } from '@/model/textSlots';
 import type { RichText } from '@/model/types';
+import { loadGlossary } from '@/glossary/load';
 import { fakeGlossary } from './fakeGlossary';
 import { buildTermCheck, termFixWrites, termRowsFromSlots, termSummaryFromSlots } from './termCheck';
 import { allBiTexts, readCorpus } from './testKit';
+import type { TermRow } from './types';
 
 const glossary = fakeGlossary();
 const Q = (id: string): SlotGroup => ({ kind: 'question', id, label: `Question ${id}` });
@@ -20,6 +22,7 @@ function slot(en: RichText | string, zh: RichText | string, group: SlotGroup = Q
   };
 }
 const paper = { kind: 'paper' } as const;
+const corpus = migrate(structuredClone(readCorpus()));
 
 describe('termRowsFromSlots', () => {
   it('keeps actionable findings on printed two-sided slots only', () => {
@@ -75,6 +78,45 @@ describe('termFixWrites', () => {
   });
 });
 
+describe('termFixWrites with the real glossary', () => {
+  const tickAll = (rows: TermRow[]) => new Map(rows.map((r) => [r.path, new Set(r.checks.map((_, i) => i))]));
+
+  it('applies one fix per offending occurrence, right to left', async () => {
+    const real = await loadGlossary();
+    const rows = termRowsFromSlots([
+      slot('The price level rises and the price level falls.', [{ text: '價格水平', bold: true }, { text: '上升，價格水平下降。' }]),
+      slot('Total revenue and the price level.', '總收益與價格水平。'),
+    ], real, paper);
+    expect(rows.map((r) => r.checks.length)).toEqual([2, 2]);
+    expect(termFixWrites(rows, tickAll(rows)).map((w) => w.next)).toEqual([
+      [{ text: '物價水平', bold: true }, { text: '上升，物價水平下降。' }],
+      [{ text: '總收入與物價水平。' }],
+    ]);
+  });
+
+  it('tolerates a deny check with no fix (a break or space inside the wrong form)', async () => {
+    const real = await loadGlossary();
+    const rows = termRowsFromSlots([
+      slot('The price level rises.', '價格\n水平上升。'),
+      slot('The price level rises; total revenue falls.', '價格 水平上升；總收益下降。'),
+    ], real, paper);
+    expect(rows[0].checks.map((c) => [c.severity, c.fix])).toEqual([['warn', undefined]]);
+    const writes = termFixWrites(rows, tickAll(rows));
+    expect(writes.map((w) => [w.path, w.next])).toEqual([[rows[1].path, [{ text: '價格 水平上升；總收入下降。' }]]]);
+  });
+
+  it('gives every corpus fix a snapshot of the text it was checked against', async () => {
+    const rows = buildTermCheck(corpus, await loadGlossary(), paper);
+    const writes = termFixWrites(rows, tickAll(rows));
+    expect(writes.length).toBeGreaterThan(0);
+    for (const write of writes) {
+      const row = rows.find((r) => r.path === write.path)!;
+      expect(write).toMatchObject({ side: 'zh', sourceSnapshot: row.en, targetSnapshot: row.zh });
+      expect(write.next).not.toEqual(row.zh);
+    }
+  });
+});
+
 describe('termSummaryFromSlots', () => {
   it('counts warns by question, and those outside questions', () => {
     const summary = termSummaryFromSlots([
@@ -87,7 +129,6 @@ describe('termSummaryFromSlots', () => {
   });
 });
 
-const corpus = migrate(structuredClone(readCorpus()));
 describe('buildTermCheck on the corpus copy', () => {
   it('walks the corpus', () => expect(collectTexts(corpus).length).toBeGreaterThan(0));
   it('finds 稅收承擔 as a variant fix', () => {

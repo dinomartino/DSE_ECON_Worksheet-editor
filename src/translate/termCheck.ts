@@ -46,7 +46,8 @@ function replaceSpan(runs: RichText, start: number, end: number, to: string): Ri
   ]);
 }
 
-/** One write per row with any accepted index into `row.checks`: side 'zh',
+/** One write per row with any accepted index into `row.checks` (an entry may give several
+ *  checks, one per occurrence, with non-overlapping fixes): side `zh`,
  *  sourceSnapshot = row.en, targetSnapshot = row.zh, next = row.zh with the accepted
  *  `fix` spans (plain-text offsets, mapped to runs) replaced right to left. Checks without
  *  a `fix`, and a fix overlapping one already taken, are ignored. */
