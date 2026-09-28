@@ -2335,11 +2335,33 @@ Pure modules with injected dependencies; types in `src/translate/types.ts`.
 <!-- e2:engine end -->
 
 <!-- e2:dialog start -->
-### The Translate dialog
+### The Translate dialog (`src/components/translate/`)
 
-One dialog, two modes (Translate, Check terms), opened through `useAppDialogs`. Review is
-read-only: checkboxes and chips, no text inputs — the rejected translation dock is never
-rebuilt. Copy: `src/components/translate/copy.ts`.
+One dialog, two modes (Translate, Check terms), opened through `useAppDialogs` and mounted
+once as `TranslateHost` in `EditorApp`. Copy: `src/components/translate/copy.ts`.
+
+- **Phases are a pure reducer** (`src/components/translate/translateSession.ts`: setup →
+  running → review, or error). Every screen is a function of the session and a view, so
+  each is a static-markup test. Effects — plan, run, abort, Insert, hand-offs — are
+  injected into `src/components/translate/translateController.ts`.
+- **Review is read-only**: ticks and notes, no text input. A wrong row is unticked or fixed
+  on the page after inserting; the rejected translation dock is never rebuilt (the markup
+  test fails on any text field, textarea or contentEditable).
+- **Paid work is never lost to one stray press.** The first Escape, ✕ or scrim click asks
+  (Stop while running, Discard with rows pending). Stop keeps finished rows; a retry sends
+  only the jobs without a usable result.
+- **Insert is one `applyTranslations` call**: one commit, one ⌘Z. If every write is stale,
+  the dialog stays open on "Nothing inserted". The flash counts rows, matching a skip to
+  its row by path (`ApplyReport.skipped[].path` is the `TranslationWrite.path` from
+  `writesFor`; `src/components/translate/translateIntegration.test.ts` pins it).
+- **Never stacked.** Settings is offered only in Setup and Error, by replacing the app
+  dialog with `returnTo`; the session store keeps scope, options and finished rows across
+  the round trip. The host closes a request for another document or a read-only one.
+- **A symbol gap counts only as a copy the options write** (by default only for the side
+  the edition prints alone). In EN+中 a paper whose only gaps are symbols has nothing to
+  fill and opens on Check terms.
+- **Setup's scopes** add the editor's selected question and page element to whatever the
+  entry sent, so the paper-wide entries (pill, ⋯ menu) can still narrow.
 <!-- e2:dialog end -->
 
 <!-- e2:entry start -->
