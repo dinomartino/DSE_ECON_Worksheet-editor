@@ -59,7 +59,9 @@ function log(info: AiErrorInfo): void {
 export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): AiClient {
   const preset = presetFor(config.provider);
   const adapter = ADAPTERS[preset.family];
-  const http: HttpDeps = { ...defaultHttpDeps(), ...deps };
+  // Field by field: a caller passing `{ sleep: undefined }` still gets the real sleep.
+  const d = defaultHttpDeps();
+  const http: HttpDeps = { fetch: deps?.fetch ?? d.fetch, now: deps?.now ?? d.now, sleep: deps?.sleep ?? d.sleep };
   // An empty base URL or model means the preset's default.
   const cfg: ProviderConfig = {
     ...config,

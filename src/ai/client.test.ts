@@ -183,6 +183,22 @@ describe('createClient().complete', () => {
     expect((await pending).kind).toBe('cancelled');
     expect(calls).toHaveLength(1);
   });
+
+  it('keeps the real clock and sleep when deps name them as undefined', async () => {
+    vi.useFakeTimers();
+    try {
+      const limited: Reply = { status: 429, body: {}, headers: { 'retry-after': '2' } };
+      const { fetch, calls } = fakeFetch([limited, geminiOk(ITEMS)]);
+      const pending = createClient(gemini, { fetch, sleep: undefined, now: undefined }).complete(request());
+      await vi.advanceTimersByTimeAsync(1_999);
+      expect(calls).toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect((await pending).text).toBe(ITEMS);
+      expect(calls).toHaveLength(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe('createClient().listModels', () => {
