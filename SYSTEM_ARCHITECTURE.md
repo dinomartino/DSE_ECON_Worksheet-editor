@@ -2360,7 +2360,7 @@ once as `TranslateHost` in `EditorApp`. Copy: `src/components/translate/copy.ts`
   `src/components/translate/translateIntegration.test.ts` pins it).
 - **The flash's Undo belongs to its commit** (`src/store/appDialogs.ts:NoticeAction`
   `live`): a later edit or ⌘Z retires it, never undoing something unrelated. Notices float
-  under the toolbar's right edge, so they never reflow the bar.
+  under the toolbar's middle, so they never reflow the bar.
 - **Never stacked.** Settings is offered only in Setup and Error, by replacing the app
   dialog with `returnTo`; the session store keeps scope, options and finished rows across
   the round trip. The host closes a request for another document or a read-only one.

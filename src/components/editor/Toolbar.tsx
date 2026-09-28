@@ -437,13 +437,14 @@ export function Toolbar({
 
       </div>
 
-      {/* Floats under the bar's right edge: an inline notice wrapped the row and moved the page. */}
+      {/* Floats under the bar, over the canvas's top margin: inline, it wrapped the row and
+          moved the page; at the right edge it covered the sidebar's tabs. */}
       {notice && (
         <div
           key={notice.message}
           role="status"
           data-print-hide
-          className="absolute right-4 top-full z-30 mt-1.5 flex animate-fade-in items-center gap-2 rounded-lg border border-line bg-surface px-3 py-1 text-[11px] shadow-sm"
+          className="absolute left-1/2 top-full z-30 mt-1.5 flex -translate-x-1/2 animate-fade-in items-center gap-2 rounded-lg border border-line bg-surface px-3 py-1 text-[11px] shadow-sm"
         >
           <span className="font-medium text-ok">{notice.message}</span>
           {notice.action && (
