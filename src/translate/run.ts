@@ -1,5 +1,5 @@
 import { parseItemsPayload } from '@/ai/schema';
-import { isAiError, type AiErrorInfo, type AiErrorKind, type CompletionRequest } from '@/ai/types';
+import { AiError, isAiError, type AiErrorInfo, type AiErrorKind, type CompletionRequest } from '@/ai/types';
 import type { Glossary, TermCheck } from '@/glossary/types';
 import { isRichTextEmpty, normalizeRuns, plain } from '@/model/text';
 import type { Side, SlotMeta, TranslationWrite } from '@/model/textSlots';
@@ -174,6 +174,8 @@ function subChunk(chunk: Chunk, keys: readonly string[], jobs: TranslationPlan['
 }
 
 async function complete(run: Run, request: CompletionRequest) {
+  // Stop means no further request, whatever the client does with an aborted signal.
+  if (run.signal.aborted) throw new AiError(rowError(run, 'cancelled', 'Stopped.'));
   run.emit(run.progress.phase);
   const result = await run.deps.client.complete(request);
   run.progress.requestsDone += 1;
