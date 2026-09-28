@@ -237,6 +237,18 @@ text, re-capture, scenes, timing, the score, a new cut, and multi-agent work. In
 - `npm run film:doctor` after every change; `npm run film:score` after cue or clip changes;
   look at `--final --at=<s>` stills; render with `FILM_OUT=<scratch>` while exploring.
 
+## Change the translation prompt or checks
+
+1. Words live in `src/translate/promptText.ts`; HKEAA letter and currency forms in
+   `src/translate/conventions.ts` (one row feeds both prompt rule 12 and the `symbols`
+   check). Never add a prompt rule a deterministic check contradicts.
+2. `npm test` fails the sha pin in `src/translate/prompt.test.ts`: bump `PROMPT_VERSION`
+   (`src/translate/prompt.ts`) and paste the new sha. The few-shot answers must still pass
+   the pipeline with no issue — fix the answer, not the check.
+3. `EVAL_GEMINI_KEY=… EVAL_DEEPSEEK_KEY=… npm run eval:translate` (`EVAL_AB=1` adds the
+   A/B toggles, `EVAL_GATE=1` enforces the ship gate). The report path is printed; it is
+   never committed.
+
 ## Try an unreleased desktop build
 
 Follow `DESKTOP-PREVIEW.md`: dev window, a local `.dmg`, or the CI preview workflow.

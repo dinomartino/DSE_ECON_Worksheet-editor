@@ -260,7 +260,16 @@ it (`// P-<X> replaces this body`).
 - `src/store/worksheetStore.ts:applyTranslations` — one commit per batch (stub); `src/model/paperHealth.ts:TermSummary` — Check terms' input to `checkPaper`
 - `src/store/appDialogs.ts:useAppDialogs` — one app dialog at a time (Translate, Settings)
 - `src/translate/types.ts:TranslationPlan` · `src/translate/types.ts:JobResult` · `src/translate/types.ts:TermRow` · `src/translate/types.ts:RunDepsResult`
-- `src/translate/plan.ts:planTranslation` · `src/translate/plan.ts:defaultTranslateOptions` · `src/translate/run.ts:runTranslation` · `src/translate/run.ts:translateOne` · `src/translate/termCheck.ts:buildTermCheck` · `src/translate/termCheck.ts:termSummary` · `src/translate/deps.ts:createRunDeps` (stubs; `src/translate/types.test.ts` pins the Check terms signatures)
+- `src/translate/plan.ts:planFromSlots` · `src/translate/plan.ts:planTranslation` · `src/translate/plan.ts:defaultTranslateOptions` · `src/translate/plan.ts:slotInScope` — scope, direction, symbol copies, dedupe, context, chunks
+- `src/translate/wire.ts:encodeRuns` · `src/translate/wire.ts:decodeWire` — the closed tag set; edges and blank widths live in the codec
+- `src/translate/validate.ts:validateItem` · `src/translate/conventions.ts:CONVENTIONS` — deterministic item checks; HKEAA letter and currency forms (also prompt rule 12)
+- `src/translate/normalize.ts:normalizeZh` · `src/translate/normalize.ts:normalizeEn` · `src/translate/simplified.ts:SIMPLIFIED_PAIRS` — Hong Kong punctuation and forms; Simplified detection
+- `src/translate/promptText.ts` · `src/translate/prompt.ts:buildRequest` · `src/translate/prompt.ts:PROMPT_VERSION` — the prompt's words and assembly (sha-pinned in `src/translate/prompt.test.ts`)
+- `src/translate/run.ts:runTranslation` · `src/translate/run.ts:writesFor` · `src/translate/run.ts:translateOne` — per-chunk pipeline, one repair pass, better of two
+- `src/translate/termCheck.ts:buildTermCheck` · `src/translate/termCheck.ts:termFixWrites` · `src/translate/termCheck.ts:termSummary` — Check terms (`src/translate/types.test.ts` pins the signatures)
+- `src/translate/deps.ts:createRunDeps` — Settings to client, preset, model and glossary
+- `src/translate/testKit.ts` · `src/translate/fakeGlossary.ts` — test-only: scripted client, reference client, a 20-entry glossary
+- `evals/translate.eval.ts` · `vitest.eval.config.ts` — the live quality eval (`npm run eval:translate`), never under `npm test`
 - `src/glossary/types.ts:Glossary` · `src/glossary/types.ts:PreferredOverrides` · `src/glossary/attribution.ts:GLOSSARY_ATTRIBUTION` · `src/glossary/load.ts:loadGlossary` (stub) · `src/glossary/useGlossary.ts:useGlossary` · `src/glossary/index.ts`
 - `src/ai/types.ts:ProviderPreset` · `src/ai/types.ts:AiError` · `src/ai/providers.ts:PRESETS` · `src/ai/schema.ts:ITEMS_SCHEMA` · `src/ai/schema.ts:parseItemsPayload` · `src/ai/client.ts:createClient` (stub) · `src/ai/keyShape.ts:keyShapeProblem` (stub)
 - `src/settings/types.ts:SettingsSchema` · `src/settings/validators.ts:recordOf` · `src/settings/sections.ts:registerSettingsSection` · `src/settings/sections.ts:useSettingsSections` · `src/settings/store.ts:appSettings` (stub) · `src/settings/aiSettings.ts:AI_SETTINGS` · `src/settings/aiSettings.ts:useAiStatus` (stub)

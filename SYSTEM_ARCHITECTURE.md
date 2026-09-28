@@ -2164,10 +2164,38 @@ only.
 <!-- e2:engine start -->
 ### The translation engine (`src/translate/`)
 
-Types in `src/translate/types.ts`: a plan (`src/translate/plan.ts`) dedupes slots into jobs
-and packs single-direction chunks; a run (`src/translate/run.ts`) never rejects and keeps
-finished chunks on Stop; Check terms is `src/translate/termCheck.ts`; run dependencies come
-from `src/translate/deps.ts`.
+Pure modules with injected dependencies; types in `src/translate/types.ts`.
+
+- **Plan** (`src/translate/plan.ts`): slots from the walker are filtered by scope, role,
+  `unprinted` and diagram labels; the missing side sets the direction (never the editor
+  mode). Symbol-only text is never sent — copied only when the edition prints that side
+  alone, never for diagram text. Jobs dedupe by direction, kind class and source; chunks are
+  single-direction, ≤ 4 000 characters and 60 jobs, and carry same-group bilingual context.
+- **Wire** (`src/translate/wire.ts`): rich text travels as a closed tag set (`<b> <i> <u>
+  <sub> <sup> <sN> <blank/> <br/>`). Edge newlines, boundary spaces and blank widths stay
+  in the codec and are restored on decode; anything else that looks like a tag is literal.
+- **Checks** (`src/translate/validate.ts`): deterministic. A lost blank, break (prose) or
+  sub/superscript, or an added number, label or marks, is a fail and is **never applied**.
+  HKEAA forms that rewrite Latin letters or currency (甲國, 500港元, 總供需圖) are one table,
+  `src/translate/conventions.ts`, which also renders prompt rule 12. Hong Kong punctuation,
+  forms and CJK–Latin spacing: `src/translate/normalize.ts`; Simplified detection by S→T
+  pairs that are never valid Traditional: `src/translate/simplified.ts`.
+- **Prompt** (`src/translate/promptText.ts` words, `src/translate/prompt.ts` assembly): a
+  static system prompt and few-shot pair, then one JSON payload per chunk with its glossary
+  pins. A test pins a sha of the rendered prompt: any change bumps `PROMPT_VERSION` and
+  re-runs the eval. The few-shot answers must pass the pipeline with no issue.
+- **Run** (`src/translate/run.ts`): decode → normalise → validate → glossary check → deny
+  auto-fix, then at most **one** repair request per chunk; each item keeps the better pass.
+  Truncation and safety blocks bisect; a fatal provider error stops the remaining chunks;
+  Stop keeps finished ones. It never rejects. `writesFor` fans an accepted job out to every
+  slot it stands for, each with its own stale-guard snapshots.
+- **Check terms** (`src/translate/termCheck.ts`): keyless, EN→ZH over printed slots with
+  both sides; fixes replace right to left and keep the replaced span's format.
+  `termSummary` is what the paper check receives.
+- **Deps** (`src/translate/deps.ts`): Settings → client, preset, model; a glossary that
+  fails to load means no pins or chips, not a failed run.
+- **Eval** (`evals/translate.eval.ts`, `npm run eval:translate`): live providers from
+  `EVAL_*_KEY` environment variables, outside `npm test`; the report stays out of the repo.
 <!-- e2:engine end -->
 
 <!-- e2:dialog start -->
