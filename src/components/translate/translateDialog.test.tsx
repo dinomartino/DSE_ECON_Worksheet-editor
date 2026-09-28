@@ -40,7 +40,8 @@ const render = (session: TranslateSession, v: TranslateView = view(), termRows: 
   renderToStaticMarkup(<TranslateDialog session={session} view={v} actions={actions} termRows={termRows} />);
 
 /** `<li data-row="key">…</li>` for one review row. */
-const row = (markup: string, key: string) => markup.match(new RegExp(`<li[^>]*data-row="${key}"[^>]*>.*?</li>`, 's'))?.[0] ?? '';
+const row = (markup: string, key: string) =>
+  markup.match(new RegExp(`<li[^>]*data-row="${key}"[^>]*>[\\s\\S]*?</li>`))?.[0] ?? '';
 
 /** The rejected dock: no text field of any kind in a review or check screen. */
 function expectNoEditable(markup: string) {
@@ -91,7 +92,7 @@ describe('Translate dialog · Setup', () => {
     );
     expect(markup).toContain('Whole paper');
     expect(markup).toMatch(/<input type="radio"[^>]*checked=""[^>]*>Question 3/);
-    const replace = markup.match(/<label[^>]*>(?:(?!<\/label>).)*Also replace existing 中文.*?<\/label>/s)?.[0] ?? '';
+    const replace = markup.match(/<label[^>]*>(?:(?!<\/label>)[\s\S])*Also replace existing 中文[\s\S]*?<\/label>/)?.[0] ?? '';
     expect(replace).toMatch(/<input type="checkbox"[^>]*disabled=""[^>]*checked=""/);
     expect(replace).toContain('38');
   });
@@ -223,7 +224,7 @@ describe('Translate dialog · Review', () => {
     const markup = render(review({ run: { ...r, plan, stopped: true } }));
     expect(markup).toContain('title="Appears 2 times in this scope"');
     expect(markup).toContain('×2');
-    expect(row(markup, 't2')).toMatch(/line-through[^>]*>.*供給減少/s);
+    expect(row(markup, 't2')).toMatch(/line-through[^>]*>[\s\S]*供給減少/);
     expect(markup).toContain('Stopped · 3 of 4 translated');
     expect(markup.toUpperCase()).toContain('NUMBERS AND SYMBOLS · COPIED AS THEY ARE (1)');
     expect(markup).toContain('Insert 3');
