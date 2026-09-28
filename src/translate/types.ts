@@ -65,7 +65,7 @@ export interface PlanCounts {
   toEn: number;
   teacher: number;
   diagramLabels: number;
-  /** Symbol-only slots found. */
+  /** Symbol-only slots a copy could fill (never diagram text): Setup's copy row. */
   symbols: { toZh: number; toEn: number };
   /** Copies that will be written. */
   copied: number;
