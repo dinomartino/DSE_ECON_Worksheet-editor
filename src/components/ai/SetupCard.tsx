@@ -109,10 +109,16 @@ export function SetupCardView(props: SetupCardViewProps) {
           />
         ))}
       </div>
-      {/* Settings' note, but the Hong Kong rows sit above it here. */}
-      <HkNote preset={preset} text={preset.hk.note.replace(/ below\.$/, '.')} />
+      <HkNote preset={preset} />
       <div className="flex items-center justify-between gap-2 text-[11px]">
-        {preset.keyUrl ? <LinkButton onClick={() => props.onGetKey(preset.keyUrl!)}>Get a {shortName(preset.id)} key ↗</LinkButton> : <span />}
+        {preset.keyUrl ? (
+          <span className="min-w-0">
+            <LinkButton onClick={() => props.onGetKey(preset.keyUrl!)}>Get a {shortName(preset.id)} key ↗</LinkButton>
+            {preset.keyHint && <span className="text-ink-muted"> · {preset.keyHint}</span>}
+          </span>
+        ) : (
+          <span />
+        )}
         <button type="button" onClick={props.onMore} className="cursor-pointer text-ink-muted hover:text-ink hover:underline">
           More providers…
         </button>
@@ -212,6 +218,7 @@ function StatusLine({ state, flow, platform }: SetupCardViewProps) {
     return (
       <p role="alert" className="text-[11px] text-danger-ink">
         {regionLine(state.provider)}{' '}
+        <LinkButton onClick={() => void flow.submit()}>Try again</LinkButton> ·{' '}
         <LinkButton onClick={() => flow.pick('deepseek')}>Use DeepSeek</LinkButton> ·{' '}
         <LinkButton onClick={() => flow.pick('qwen')}>Use Qwen</LinkButton>
       </p>

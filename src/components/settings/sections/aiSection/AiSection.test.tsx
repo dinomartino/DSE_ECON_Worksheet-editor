@@ -1,6 +1,7 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { aiErrorInfo } from '@/ai/errors';
 import { AI_SETTINGS, type AiSettings } from '@/settings/aiSettings';
 import type { SettingsSectionProps } from '@/settings/sections';
 import AiSection, { type AiSectionActions } from './AiSection';
@@ -36,12 +37,13 @@ const cardOf = (html: string, id: string) => html.split(`data-provider="${id}"`)
 afterEach(() => vi.unstubAllGlobals());
 
 describe('the AI section', () => {
-  it('preselects Gemini, recommended, with its Hong Kong limit in warn ink', () => {
+  it('preselects Gemini, recommended, with its Hong Kong VPN note in warn ink', () => {
     const html = render();
     const gemini = cardOf(html, 'gemini');
     expect(gemini).toMatch(/role="radio" aria-checked="true"/);
     expect(gemini).toContain('Recommended');
-    expect(gemini).toMatch(/class="[^"]*text-warn-ink[^"]*">⚠ Google doesn(’|&#x27;)t offer AI Studio or the Gemini API in Hong Kong/);
+    expect(gemini).toMatch(/class="[^"]*text-warn-ink[^"]*">⚠ In Hong Kong, turn on a VPN before you open the Gemini key page, and keep it on while you use Gemini\./);
+    expect(gemini).toMatch(/Get a key ↗<\/button><span[^>]*>Turn on your VPN first\.</);
   });
 
   it('marks DeepSeek and Qwen as available in Hong Kong, as one-line cards', () => {
@@ -114,7 +116,7 @@ describe('the AI section', () => {
 
   it('opens a region deep link on the named card with the Hong Kong banner', () => {
     const html = render({ provider: 'deepseek', reason: 'region' });
-    expect(html).toContain('Google Gemini refused a request from your location. DeepSeek and Qwen work from Hong Kong.');
+    expect(html).toContain('Gemini can&#x27;t be reached from your location. Turn on a VPN and try again. DeepSeek and Qwen work in Hong Kong without a VPN.');
     expect(cardOf(html, 'deepseek')).toMatch(/aria-checked="true"/);
     expect(cardOf(html, 'qwen')).toContain('bg-ok-soft');
   });
@@ -141,7 +143,7 @@ describe('the AI section states', () => {
 
   it('keeps naming the provider that refused after switching cards', () => {
     const html = view({ provider: 'deepseek', model: 'deepseek-flash', regionRefusedBy: 'gemini' }, { provider: 'deepseek' });
-    expect(html).toContain('Google Gemini refused a request from your location.');
+    expect(html).toContain('Gemini can&#x27;t be reached from your location.');
     expect(html).not.toContain('DeepSeek refused');
   });
 
@@ -158,13 +160,9 @@ describe('the AI section states', () => {
     expect(html).toContain('Test anyway');
   });
 
-  it('shows a region error with one-click Hong Kong providers', () => {
-    const html = view({
-      test: { kind: 'error', error: { kind: 'region', provider: 'gemini', message: "Google Gemini's API doesn't serve your location.", fatal: true, actions: [] } },
-    });
-    expect(html).toContain('serve your location.');
-    expect(html).toContain('Use DeepSeek');
-    expect(html).toContain('Use Qwen');
+  it('shows a region error with Try again, then one-click Hong Kong providers', () => {
+    const html = view({ test: { kind: 'error', error: aiErrorInfo('region', 'gemini') } });
+    expect(html).toMatch(/Gemini can&#x27;t be reached from your location\. Turn on a VPN and try again\.[\s\S]*Try again[\s\S]*Use DeepSeek[\s\S]*Use Qwen/);
   });
 
   it('shows a Qwen workspace field for a workspace region', () => {

@@ -101,10 +101,10 @@ describe('createClient().complete', () => {
     expect(calls).toHaveLength(1);
   });
 
-  it('throws the mapped error: region is fatal with the Hong Kong switch', async () => {
+  it('throws the mapped error: region is fatal, with Try again before the Hong Kong switch', async () => {
     const { fetch } = fakeFetch([replyOf('gemini-400-region')]);
     const info = await failure(createClient(gemini, instantDeps(fetch).deps).complete(request()));
-    expect(info).toMatchObject({ kind: 'region', fatal: true, actions: ['switchProvider', 'openSettings'] });
+    expect(info).toMatchObject({ kind: 'region', fatal: true, actions: ['retry', 'switchProvider', 'openSettings'] });
   });
 
   it('names the model it could not find', async () => {

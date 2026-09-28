@@ -41,8 +41,9 @@ describe('the setup card', () => {
     expect(html).toMatch(/aria-checked="true" data-provider="gemini"/);
     expect(rowOf(html, 'gemini')).toContain('Recommended');
     for (const id of ['deepseek', 'qwen']) expect(rowOf(html, id)).toContain('Available in Hong Kong');
-    expect(html).toMatch(/text-warn-ink">⚠ Google doesn(’|&#x27;)t offer[^<]*choose DeepSeek or Qwen\.</);
-    expect(html).toContain('Get a Gemini key ↗');
+    expect(html).toMatch(/text-warn-ink">⚠ In Hong Kong, turn on a VPN before you open the Gemini key page, and keep it on while you use Gemini\.</);
+    expect(html).toMatch(/Get a Gemini key ↗<\/button><span[^>]*> · Turn on your VPN first\.</);
+    expect(view({ provider: 'deepseek' })).not.toContain('VPN');
     expect(html).toContain('More providers…');
   });
 
@@ -72,7 +73,7 @@ describe('the setup card', () => {
     const bad = aiErrorInfo('badKey', 'gemini');
     expect(view({ key: editing(GEMINI_KEY), test: { kind: 'error', error: bad } })).toContain(`role="alert"`);
     const region = view({ test: { kind: 'error', error: aiErrorInfo('region', 'gemini') }, regionRefusedBy: 'gemini' });
-    expect(region).toMatch(/Gemini isn’t offered in Hong Kong without a VPN — try DeepSeek or Qwen\.[\s\S]*Use DeepSeek[\s\S]*Use Qwen/);
+    expect(region).toMatch(/Gemini can&#x27;t be reached from your location\. Turn on a VPN and try again\.[\s\S]*Try again[\s\S]*Use DeepSeek[\s\S]*Use Qwen/);
     expect(view({ key: editing('sk-x', { message: 'That looks like a DeepSeek key.' }) })).toMatch(/That looks like a DeepSeek key\.[\s\S]*Test anyway/);
     expect(view({ keychainError: 'denied' }, desk, 'mac')).toMatch(/macOS didn’t allow access to your Keychain\.[\s\S]*Use for this session/);
   });

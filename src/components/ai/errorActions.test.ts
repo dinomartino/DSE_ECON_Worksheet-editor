@@ -15,10 +15,11 @@ const error = (over: Partial<AiErrorInfo>): AiErrorInfo => ({
 const labels = (e: AiErrorInfo) => errorActions(e).map((a) => a.label);
 
 describe('errorActions', () => {
-  it('region: the Hong Kong providers, then Settings, with whose rule it is', () => {
-    const region = error({ kind: 'region', actions: ['switchProvider'] });
-    expect(labels(region)).toEqual(['Use DeepSeek', 'Use Qwen', 'Open Settings']);
-    expect(errorNote(region)).toMatch(/Google's rule for Hong Kong/);
+  it('region: Try again first (primary), then the Hong Kong providers and Settings, with the VPN note', () => {
+    const region = error({ kind: 'region', actions: ['retry', 'switchProvider', 'openSettings'] });
+    expect(labels(region)).toEqual(['Try again', 'Use DeepSeek', 'Use Qwen', 'Open Settings']);
+    expect(errorActions(region)[0]).toMatchObject({ kind: 'retry' });
+    expect(errorNote(region)).toBe('Keep the VPN on while you use Gemini. DeepSeek and Qwen work in Hong Kong without a VPN.');
     expect(labels(error({ kind: 'region', provider: 'deepseek', actions: [] }))).toEqual(['Use Qwen', 'Open Settings']);
   });
 

@@ -13,6 +13,7 @@ import type { SettingsEnv } from '@/settings/types';
 import type { AiSectionActions } from './AiSection';
 import { canTest, qwenWorkspaceUrl, TOP_PROVIDERS, type AiSetupState } from './aiSetup';
 import { HkNote, ProviderBadges } from './providerBadges';
+import { regionBanner } from './setupCardFlow';
 
 /**
  * The AI section's markup, driven entirely by props so each state renders in a test.
@@ -75,8 +76,7 @@ export function AiSectionView(props: AiSectionViewProps) {
     <div className="space-y-4">
       {refusedBy && (
         <p role="status" className="rounded-lg bg-warn-soft px-3 py-2 text-xs text-warn-ink">
-          ⚠ {presetFor(refusedBy).label} refused a request from your location. DeepSeek and Qwen work from Hong
-          Kong.
+          ⚠ {regionBanner(refusedBy)}
         </p>
       )}
       <div role="radiogroup" aria-label="AI provider" className="divide-y divide-line overflow-hidden rounded-xl border border-line">
@@ -201,6 +201,7 @@ function CardDetails({
                 Get a key ↗
               </button>
             )}
+            {preset.keyUrl && preset.keyHint && <span className="text-[11px] text-ink-muted">{preset.keyHint}</span>}
           </div>
           <KeyStatus {...props} />
         </div>
@@ -284,6 +285,7 @@ function TestLine({ state, actions }: Pick<AiSectionViewProps, 'state' | 'action
       {test.error.kind === 'region' && (
         <>
           {' '}
+          <InlineAction onClick={actions.saveAndTest}>Try again</InlineAction> ·{' '}
           <InlineAction onClick={() => actions.selectProvider('deepseek')}>Use DeepSeek</InlineAction> ·{' '}
           <InlineAction onClick={() => actions.selectProvider('qwen')}>Use Qwen</InlineAction>
         </>

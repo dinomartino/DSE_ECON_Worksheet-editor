@@ -13,7 +13,7 @@ const FATAL: ReadonlySet<AiErrorKind> = new Set([
 
 const ACTIONS: Record<AiErrorKind, AiAction[]> = {
   notConfigured: ['openSettings'],
-  region: ['switchProvider', 'openSettings'],
+  region: ['retry', 'switchProvider', 'openSettings'],
   badKey: ['openSettings', 'openKeyPage'],
   keyBlocked: ['openKeyPage'],
   networkOrKey: ['retry', 'openSettings'],
@@ -42,15 +42,16 @@ export interface ErrorContext {
   host?: string;
 }
 
+/** Gemini refuses Hong Kong per request, so the fix is a VPN kept on, not a new key. */
+export const GEMINI_REGION_MESSAGE = "Gemini can't be reached from your location. Turn on a VPN and try again.";
+
 function messageFor(kind: AiErrorKind, provider: ProviderId, ctx: ErrorContext): string {
   const p = presetFor(provider).label;
   switch (kind) {
     case 'notConfigured':
       return 'Set up a provider in Settings first.';
     case 'region':
-      return provider === 'gemini'
-        ? `${p}'s API doesn't serve your location. This is Google's rule for Hong Kong, not a problem with your key.`
-        : `${p}'s API doesn't serve your location.`;
+      return provider === 'gemini' ? GEMINI_REGION_MESSAGE : `${p}'s API doesn't serve your location.`;
     case 'badKey':
       return `${p} didn't accept this key. It may be mistyped or deleted.`;
     case 'keyBlocked':
