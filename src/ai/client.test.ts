@@ -141,11 +141,18 @@ describe('createClient().complete', () => {
       [{ provider: 'custom', apiKey: 'k', model: 'm', baseUrl: 'http://example.com/v1' }, 'notConfigured'],
       [{ provider: 'custom', apiKey: 'k', model: 'm', baseUrl: 'https://user:pw@example.com/v1' }, 'notConfigured'],
       [{ provider: 'custom', apiKey: 'k', model: 'm', baseUrl: 'not a url' }, 'notConfigured'],
+      [{ provider: 'qwen', apiKey: 'sk-fake', model: 'qwen-plus', baseUrl: 'https://{WorkspaceId}.cn-hongkong.maas.aliyuncs.com/compatible-mode/v1' }, 'notConfigured'],
       [{ ...gemini, model: '../../evil?key=' }, 'model'],
+      [{ ...gemini, model: KEY }, 'model'],
+      [{ ...gemini, model: `models/${KEY}` }, 'model'],
+      [{ provider: 'deepseek', apiKey: 'sk-other', model: 'sk-0123456789abcdef0123', baseUrl: '' }, 'model'],
     ];
     for (const [config, kind] of cases) {
       const { fetch, calls } = fakeFetch([]);
-      expect((await failure(createClient(config, instantDeps(fetch).deps).complete(request()))).kind).toBe(kind);
+      const info = await failure(createClient(config, instantDeps(fetch).deps).complete(request()));
+      expect(info.kind).toBe(kind);
+      expect(info.message).not.toContain(KEY);
+      expect(info.message).not.toContain('sk-0123');
       expect(calls).toHaveLength(0);
     }
   });

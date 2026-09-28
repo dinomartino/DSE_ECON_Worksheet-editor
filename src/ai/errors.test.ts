@@ -135,6 +135,10 @@ describe('redact', () => {
     expect(out).toContain('[key]');
   });
 
+  it('leaves model names that merely contain "sk-" alone', () => {
+    expect(redact('deepseek-reasoner is busy', null)).toBe('deepseek-reasoner is busy');
+  });
+
   it('caps at 300 characters', () => {
     expect(redact('a'.repeat(500), null)).toHaveLength(300);
   });

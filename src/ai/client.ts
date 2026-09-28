@@ -2,7 +2,7 @@ import type { Adapter } from './adapters/adapter';
 import { anthropicAdapter } from './adapters/anthropic';
 import { geminiAdapter } from './adapters/gemini';
 import { openaiCompatAdapter } from './adapters/openaiCompat';
-import { aiErrorInfo, describeHttpError, isSchemaRejection, mapThrown } from './errors';
+import { aiErrorInfo, describeHttpError, isSchemaRejection, keyLikeModel, mapThrown } from './errors';
 import { COMPLETION_TIMEOUT_MS, PROBE_TIMEOUT_MS, defaultHttpDeps, send, type HttpResponse } from './http';
 import { presetFor } from './providers';
 import { ITEMS_SCHEMA, parseItemsPayload } from './schema';
@@ -44,7 +44,8 @@ export function clearDialectCache(): void {
 function safeBaseUrl(url: string): URL | null {
   try {
     const u = new URL(url);
-    if (u.username || u.password) return null;
+    // An unfilled `{WorkspaceId}` template parses as a host; it is not one.
+    if (u.username || u.password || /[{}]/.test(url)) return null;
     if (u.protocol === 'https:') return u;
     return u.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(u.hostname) ? u : null;
   } catch {
@@ -75,7 +76,7 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
   /** Why nothing can be sent, or null. */
   const blocked = (needsModel: boolean): AiErrorInfo | null => {
     if ((preset.keyRequired && !key) || !base) return aiErrorInfo('notConfigured', provider);
-    if (needsModel && !MODEL_ID.test(model)) return aiErrorInfo('model', provider, { model });
+    if (needsModel && (!MODEL_ID.test(model) || keyLikeModel(model, key))) return aiErrorInfo('model', provider, { model, key });
     return null;
   };
 

@@ -71,7 +71,9 @@ function messageFor(kind: AiErrorKind, provider: ProviderId, ctx: ErrorContext):
     case 'billing':
       return `Your ${p} balance is empty.`;
     case 'model':
-      return ctx.model ? `${p} has no model “${ctx.model}” for this key.` : `${p} has no such model for this key.`;
+      return ctx.model && !keyLikeModel(ctx.model, ctx.key ?? null)
+        ? `${p} has no model “${ctx.model}” for this key.`
+        : `${p} has no such model for this key.`;
     case 'policy':
       return 'No model matches the privacy setting (no data collection).';
     case 'badRequest':
@@ -104,7 +106,13 @@ export function aiErrorInfo(kind: AiErrorKind, provider: ProviderId, ctx: ErrorC
   return info;
 }
 
-const KEY_SHAPES = [/sk-ant-[\w-]+/g, /sk-[\w-]{8,}/g, /AIza[\w-]{20,}/g, /Bearer\s+[\w.~+/=-]+/gi];
+// `\b` keeps model names like `deepseek-reasoner` intact.
+const KEY_SHAPES = [/\bsk-ant-[\w-]+/g, /\bsk-[\w-]{8,}/g, /\bAIza[\w-]{20,}/g, /Bearer\s+[\w.~+/=-]+/gi];
+
+/** A model id that is, or contains, the key (pasted into the wrong field): never sent, never shown. */
+export function keyLikeModel(model: string, key: string | null): boolean {
+  return (!!key && key.length >= 4 && model.includes(key)) || /^(?:sk-|AIza)[\w-]{16,}$/.test(model);
+}
 
 /** The key itself and anything shaped like a key removed; at most 300 characters. */
 export function redact(text: string, key: string | null): string {
