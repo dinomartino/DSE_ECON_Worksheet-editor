@@ -2144,9 +2144,37 @@ walk is `src/model/textWalk.ts` (diagram text: `src/model/diagramText.ts`), the 
 ### The provider layer (`src/ai/`)
 
 Contracts in `src/ai/types.ts`; presets are data (`src/ai/providers.ts`); one flat response
-schema and its guard (`src/ai/schema.ts`); the client is `src/ai/client.ts`, the key-shape
-check `src/ai/keyShape.ts`. `src/ai/` imports nothing from React, the store, `src/model`,
-`src/settings`, `@/platform` or Tauri.
+schema and its guard (`src/ai/schema.ts`). `createClient` (`src/ai/client.ts`) is the only
+way to a provider: it checks the config, runs the structured-output ladder and throws
+`AiError` only. Rules:
+
+- **Three adapters, quirks as data.** Gemini native `generateContent`, one OpenAI-compatible
+  adapter, Anthropic Messages (`src/ai/adapters/`). A provider's odd parameters live in its
+  preset (`extraBody`, `extraHeaders`, `maxTokensParam`, a model's `extra`), never in a branch.
+  No `temperature` for anyone; Gemini never gets `thinkingBudget`.
+- **One file sends.** `src/ai/http.ts:send` is the only `fetch` in `src/`
+  (`src/test/networkCalls.test.ts`): `credentials:'omit'`, `redirect:'error'`, no referrer,
+  body capped at 2 MB, the key only in a header (`x-goog-api-key`, `x-api-key`, Bearer).
+  Transport retries live here: a 429 once if it asks ≤ 20 s, a 5xx or overload twice, a
+  network `TypeError` once. The caller's signal and the timer are combined by hand; the
+  abort reason decides `cancelled` vs `timeout`.
+- **The ladder** steps one rung down on a 400 naming a schema feature (`isSchemaRejection`,
+  checked after region and key errors), caches the rung per `provider|model|baseUrl` for
+  the session, and steps down once, uncached, on an unreadable reply.
+- **Errors are table-driven, body first** (`src/ai/errors.ts:mapHttpError`): Gemini
+  reports a bad key as 400. `detail` is `redact`ed (the key and key shapes), ≤ 300
+  characters; `console` sees `{kind, status}` only. OpenAI hides a bad key from browsers,
+  so its `TypeError` is `networkOrKey`.
+- **Nothing unsafe is sent.** No key, an `http:` base URL off this computer, credentials in
+  the URL or a malformed model id fail before any request; `keyShapeProblem`
+  (`src/ai/keyShape.ts`) stops a key visibly from another provider (`sk-ant-`, `sk-or-`
+  checked before the generic `sk-`).
+- **`testConnection`** sends one real item with the pin `price level → 物價水平`: it proves
+  key, region, CORS, model and dialect in one call and caches the working rung.
+
+`src/ai/` imports nothing else in `src/` and no React, zustand or Tauri
+(`src/ai/imports.test.ts`). Error bodies in `src/ai/fixtures/` say whether each was recorded
+with a dummy key or follows a documented shape.
 <!-- e2:ai end -->
 
 <!-- e2:settings start -->
@@ -2352,7 +2380,7 @@ intact but unreachable.
 ```
 Vercel (or any static host): Next.js build → fully prerendered. No API routes, DB, or server runtime.
 Desktop:  the same `out/` wrapped by Tauri 2 → signed .dmg (macOS arm64 + x64) and .exe (Windows x64).
-Browser:  .docx via JSZip client-side · localStorage autosave · file up/download · PDF via window.print()
+Browser:  .docx via JSZip client-side · localStorage autosave · file up/download · PDF via window.print() · optional AI translation: `fetch` from `src/ai/http.ts` straight to the teacher's chosen provider
 ```
 
 Nothing in `src/` reads `process.env` or the filesystem at runtime. New on-page chrome

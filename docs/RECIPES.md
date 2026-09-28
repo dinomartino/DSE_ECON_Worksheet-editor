@@ -172,6 +172,25 @@ denied at runtime, not at build. JS calls it with `invoke` from `@tauri-apps/api
 scratch crate that `#[path]`-includes the module (`cargo check --target
 x86_64-pc-windows-msvc` on the whole app fails in `ring`'s C build on macOS).
 
+## Add a provider preset
+
+1. `src/ai/types.ts:PROVIDER_IDS` — the new id (a contract change: every `Record<ProviderId, …>`
+   must then name it).
+2. `src/ai/providers.ts:PRESETS` — the preset as data: `family` picks the adapter
+   (`gemini`, `openai` for anything OpenAI-compatible, `anthropic`); quirks go in
+   `extraBody`, `extraHeaders`, `maxTokensParam` or a model's `extra`, never in an adapter
+   branch. `hk.note` and `privacy` state verified facts only.
+3. Check CORS from a browser origin before shipping: preflight **and** an error response
+   with a dummy key must carry `Access-Control-Allow-Origin`, or a wrong key reads as a
+   network failure (OpenAI's does not: hence `networkOrKey`).
+4. A distinctive key prefix goes in `src/ai/keyShape.ts` (specific prefixes before `sk-`).
+5. Record its 401 body with a dummy key into `src/ai/fixtures/` and add the row to
+   `src/ai/errors.test.ts`; a new error wording is one `RULES` row in `src/ai/errors.ts`.
+
+Guard: `src/ai/providers.test.ts` (https, Hong Kong status), `src/ai/adapters/adapters.test.ts`
+(exact request body), `src/ai/errors.test.ts`. Model ids are hypotheses until a live check
+with a real key.
+
 ## Check the desktop PDF
 
 Export → PDF on desktop writes through the webview's own print (`src-tauri/src/pdf/`), so
