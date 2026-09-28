@@ -8,7 +8,13 @@ import { collectListStreams, renderWorksheet } from '@/render/worksheet';
 import { buildDocxParts } from '@/export/docx';
 import { worksheetClipboardHtml } from '@/export/clipboard';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
-import { getQuestionType, listQuestionTypes, requireQuestionType } from '.';
+import { buildTranslateFixture } from '@/test/translateFixture';
+import { createParagraphBlock, createStructuredQuestion } from '@/model/factories';
+import { bi } from '@/model/text';
+import { patch, type TextSlot, type TextWalker } from '@/model/textSlots';
+import { mapWorksheetTexts, questionTexts } from '@/model/textWalk';
+import type { ContentBlock, StructuredQuestion } from '@/model/types';
+import { getQuestionType, listQuestionTypes, requireQuestionType, type QuestionTypeDefinition } from '.';
 
 /**
  * §9 is an architectural acceptance criterion, so it gets asserted like one: a new
@@ -147,6 +153,10 @@ describe('question-type registry (§9)', () => {
       'src/model/paperHealth.ts',
       'src/model/versions.ts',
       'src/model/paperSummary.ts',
+      'src/model/textWalk.ts',
+      'src/model/translationApply.ts',
+      'src/model/diagramText.ts',
+      'src/model/symbols.ts',
     ];
     for (const path of shared) {
       const source = readFileSync(path, 'utf8');
@@ -174,6 +184,47 @@ describe('question-type registry (§9)', () => {
     // And the clipboard backend renders it too.
     const html = worksheetClipboardHtml(worksheet, { language: 'en', version: 'student' });
     expect(html).toContain('<p');
+
+    // A new type states its own texts (`mapTexts` is required), and the one walk finds them.
+    const essay: QuestionTypeDefinition<StructuredQuestion> = {
+      ...(definition as unknown as QuestionTypeDefinition<StructuredQuestion>),
+      mapTexts: (question, walk) => patch(question, { blocks: walk.blocks('blocks', question.blocks, { paragraphKind: 'stem' }) }),
+    };
+    const question = { ...createStructuredQuestion(), blocks: [createParagraphBlock(bi('Discuss.', ''))] };
+    const slots: TextSlot[] = [];
+    essay.mapTexts(question, {
+      blocks: (_segment: string, blocks: ContentBlock[]) => {
+        for (const block of blocks) if (block.kind === 'paragraph') slots.push({ text: block.text } as TextSlot);
+        return blocks;
+      },
+    } as unknown as TextWalker);
+    expect(slots.map((slot) => slot.text)).toEqual([question.blocks[0].kind === 'paragraph' && question.blocks[0].text]);
+  });
+
+  it('walks every text a registered type owns, and an identity visit keeps the question', () => {
+    const ws = buildTranslateFixture();
+    for (const question of ws.questions) {
+      const definition = requireQuestionType(question);
+      expect(typeof definition.mapTexts, definition.id).toBe('function');
+      const alone = { ...ws, questions: [question] };
+      expect(mapWorksheetTexts(alone, (slot) => slot.text).questions[0]).toBe(question);
+    }
+    const paths = (index: number) => questionTexts(ws.questions[index]).map((slot) => slot.path.replace(/:[^/#]+/g, ':*'));
+    // Everything countMissingTranslations saw, plus tables, figures, statements and answer graphs.
+    expect(paths(0)).toEqual(expect.arrayContaining([
+      'q:*/blocks/b:*', 'q:*/blocks/b:*/row:*/cell:*', 'q:*/blocks/b:*/caption', 'q:*/statements/0',
+      'q:*/option:*/text', 'q:*/option:*/blocks/b:*/d/x/title', 'q:*/option:*/rationale',
+      'q:*/explanation', 'q:*/provenance',
+    ]));
+    expect(paths(1)).toEqual(expect.arrayContaining([
+      'q:*/blocks/b:*/label', 'q:*/blocks/b:*/blocks/b:*', 'q:*/blocks/b:*/footnote', 'q:*/blocks/b:*/figure/d/title',
+      'q:*/answerGraph/x/title', 'q:*/answerDiagram/d/title',
+      'q:*/part:*/blocksBefore/b:*', 'q:*/part:*/blocks/b:*', 'q:*/part:*/answer', 'q:*/part:*/answerGraph/y/title',
+      'q:*/part:*/answerDiagram/d/x/title', 'q:*/part:*/scheme/route:*/group:*/point:*',
+      'q:*/part:*/scheme/route:*/group:*/point:*/alt/0', 'q:*/part:*/scheme/level:*', 'q:*/part:*/scheme/ec/descriptor:*',
+      'q:*/part:*/sub:*/blocks/b:*', 'q:*/part:*/sub:*/answer', 'q:*/part:*/sub:*/scheme/level:*',
+      'q:*/part:*/sub:*/answerGraph/x/title', 'q:*/part:*/sub:*/answerDiagram/d/x/title',
+    ]));
   });
 });
 
