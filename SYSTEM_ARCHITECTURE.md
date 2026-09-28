@@ -2122,8 +2122,8 @@ Rules every part keeps:
   wording never reach a request, and an absent prefix or suffix stays absent.
 - **One commit per batch**, every write stale-guarded; `readOnly` is inert.
 - **Network only on an explicit click** (an AI verb, a field Fill, Save & test, List my models).
-- **One app dialog at a time** (`src/store/appDialogs.ts`): Translate and Settings hand off
-  and never stack.
+- **One app dialog at a time** (`src/store/appDialogs.ts`): Settings never stacks on another
+  dialog. AI results are reviewed on the page, not in a dialog.
 
 ### The glossary (`src/glossary/`)
 
@@ -2397,7 +2397,7 @@ keeps only Settings…. The one exception is `BiTextField`'s field-level "✦ Fi
   holds; without it there is no button, since a guessed kind would drop the wording
   rules). `src/components/translate/fieldFill.ts` decides the button and runs one fill,
   written through the field's own `onChange` (one commit) only over an unchanged source and
-  a still-empty side. A result the Translate review would leave unticked (a reversed term,
+  a still-empty side. A result a page fill would mark `look` (a reversed term,
   a content risk) is shown with *Insert anyway*, never written silently. Without a provider
   it deep-links to Settings — never over a modal layer (Setup, a canvas), where the button
   is disabled instead. The pipeline loads on the first fill.
