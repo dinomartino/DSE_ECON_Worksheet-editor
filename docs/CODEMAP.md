@@ -328,6 +328,9 @@ Invariants:
 - `src/assist/menuStore.ts:openAi` — what every entry point calls; `src/assist/runStore.ts:useAiRun` — one run at a time: running → review (after a direct insert) or error
 - `src/components/ai/AiHost.tsx:AiHost` — mounted once in `EditorApp`; renders `src/components/ai/AiMenu.tsx` and `src/components/ai/AiBar.tsx`, owns ⌘J / Ctrl+J (`src/components/ai/shortcut.ts:shouldOpenAi`)
 
+- `src/assist/verbs/writeAnswers.ts:makeWriteAnswersVerb` — E1 `write.answers` (§ AI answers and mark schemes); engine `src/answers/plan.ts:planAnswers` · `src/answers/run.ts:runAnswers` · `src/answers/validate.ts:evaluateAnswer` · `src/answers/apply.ts:applyAnswerWrites` · `src/answers/prompt.ts:PROMPT_VERSION`
+- `src/model/answerLeaves.ts:AnswerLeaf` — what the registry hook `mapAnswers` offers; test-only `src/answers/testKit.ts`
+
 Invariants:
 - Results insert directly as one commit; review is after, and `undoAll` reverts that one commit.
 - A verb's network call happens only on its menu click; nothing AI-related is stored in a document.

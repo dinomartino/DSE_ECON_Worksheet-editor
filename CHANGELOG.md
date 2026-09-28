@@ -22,6 +22,10 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
   everywhere.
 - **AI menu**: press ⌘J (Ctrl+J on Windows) to open one menu of AI actions for the
   whole paper or whatever you have selected.
+- **Write answers & mark scheme** (AI menu): model answers, HKEAA marking points that add up
+  to each part's marks, and a why-right / why-wrong line for each MCQ option — in English
+  and 中文 when your paper has both. Only empty answers are filled; nothing you wrote is
+  replaced, and one Undo takes it all back.
 
 ### Changed
 - New diagrams and the sample paper now use the Education Bureau glossary's Chinese
