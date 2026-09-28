@@ -24,6 +24,7 @@ import {
   acceptedTermFixes,
   closeIntent,
   pendingKeys,
+  probeOptions,
   restrictPlan,
   sameRequest,
   type RunRecord,
@@ -173,14 +174,15 @@ export function createTranslateController(deps: ControllerDeps) {
         return;
       }
       const options = defaultOptions(request);
-      const probe = deps.plan(deps.getWorksheet(), request.scope, options);
-      const texts = probe.counts.toZh + probe.counts.toEn;
-      const symbols = probe.counts.symbols.toZh + probe.counts.symbols.toEn + probe.copies.length;
-      const mode: SessionMode = request.mode === 'check' || (texts === 0 && symbols === 0) ? 'check' : 'translate';
+      const worksheet = deps.getWorksheet();
+      const probe = deps.plan(worksheet, request.scope, probeOptions(options)).counts;
+      const nothing = probe.toZh + probe.toEn + probe.symbols.toZh + probe.symbols.toEn === 0;
+      const mode: SessionMode = request.mode === 'check' || nothing ? 'check' : 'translate';
       dispatch({ type: 'open', request, options, mode });
-      if (request.autoStart && mode === 'translate' && texts > 0 && texts <= AUTO_START_MAX && deps.readStatus().configured) {
-        translate();
-      }
+      if (!request.autoStart || mode !== 'translate' || !deps.readStatus().configured) return;
+      const planned = deps.plan(worksheet, request.scope, options).counts;
+      const texts = planned.toZh + planned.toEn;
+      if (texts > 0 && texts <= AUTO_START_MAX) translate();
     },
     /** Drops the session (and any run) without touching the app dialog. */
     reset() {

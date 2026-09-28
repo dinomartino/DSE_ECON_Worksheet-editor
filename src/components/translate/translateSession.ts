@@ -186,6 +186,17 @@ function finishRun(state: TranslateSession, outcome: RunOutcome): TranslateSessi
   return { ...base, phase: 'review', filter: 'all' };
 }
 
+/** Every option on: what the scope holds at all (Setup's row counts, "nothing to fill"). */
+export function probeOptions(options: TranslateOptions): TranslateOptions {
+  return {
+    ...options,
+    directions: { toZh: true, toEn: true },
+    includeTeacher: true,
+    includeDiagramLabels: true,
+    copySymbols: { toZh: true, toEn: true },
+  };
+}
+
 // ---- selectors ----
 
 const usable = (result: JobResult | undefined): result is JobResult =>

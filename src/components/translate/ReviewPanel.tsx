@@ -113,6 +113,19 @@ export function ReviewPanel({
   );
 }
 
+/** The footer's question when closing would throw away finished translations. */
+export function DiscardQuestion({ n, actions }: { n: number; actions: TranslateController }) {
+  return (
+    <>
+      <span className="mr-auto text-[13px] text-ink">{copy.discardQuestion(n)}</span>
+      <Button onClick={actions.keepGoing}>{copy.KEEP_REVIEWING}</Button>
+      <Button variant="danger" onClick={actions.discard}>
+        {copy.DISCARD}
+      </Button>
+    </>
+  );
+}
+
 export function ReviewFooter({
   session,
   actions,
@@ -125,17 +138,7 @@ export function ReviewFooter({
 }) {
   const run = session.run;
   if (!run || session.nothingInserted) return <Button onClick={actions.close}>{copy.CLOSE}</Button>;
-  if (session.confirm?.kind === 'discard') {
-    return (
-      <>
-        <span className="mr-auto text-[13px] text-ink">{copy.discardQuestion(finishedCount(run))}</span>
-        <Button onClick={actions.keepGoing}>{copy.KEEP_REVIEWING}</Button>
-        <Button variant="danger" onClick={actions.discard}>
-          {copy.DISCARD}
-        </Button>
-      </>
-    );
-  }
+  if (session.confirm?.kind === 'discard') return <DiscardQuestion n={finishedCount(run)} actions={actions} />;
   const pending = pendingKeys(run).length;
   const unattempted = unattemptedCount(run);
   const n = insertCount(session);

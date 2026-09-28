@@ -10,6 +10,7 @@ import { Sidebar } from '@/components/editor/Sidebar';
 import { DocumentSettings } from '@/components/editor/DocumentSettings';
 import { Toolbar } from '@/components/editor/Toolbar';
 import { NewerVersionNotice } from '@/components/editor/NewerVersionNotice';
+import { TranslateHost } from '@/components/translate/TranslateHost';
 import { IconButton } from '@/components/ui';
 import { ChevronRightIcon, CloseIcon } from '@/components/ui/icons';
 import { createTextField, type ZoneName } from '@/model/bands';
@@ -521,6 +522,9 @@ export function EditorApp({
       </div>
 
       {settingsOpen && <DocumentSettings onClose={() => setSettingsOpen(false)} />}
+
+      {/* Translate and Check terms: opened through `useAppDialogs`, never stacked. */}
+      <TranslateHost />
 
       {/* The how-to-edit hint. It was a grey line of text pinned above the page, which
           pushed the document down and read as a disclaimer. As a floating pill it sits
