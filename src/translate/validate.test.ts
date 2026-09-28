@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { loadGlossary } from '@/glossary/load';
+import type { Glossary } from '@/glossary/types';
 import type { SlotKind } from '@/model/textSlots';
 import type { RichText } from '@/model/types';
 import { CONVENTIONS } from './conventions';
+import { fakeGlossary } from './fakeGlossary';
+import { evaluateItem } from './run';
 import type { Direction, TranslationJob } from './types';
 import { validateItem } from './validate';
 import { decodeWire, encodeRuns } from './wire';
@@ -11,11 +15,11 @@ function job(source: RichText | string, kind: SlotKind = 'part', direction: Dire
   return { key: 't1', direction, kind, aroundValue, groupKey: 'q:1', where: 'Question 1', source: runs, slots: [], replacing: false };
 }
 
-function check(source: RichText | string, output: string, kind: SlotKind = 'part', direction: Direction = 'toZh') {
+function check(source: RichText | string, output: string, kind: SlotKind = 'part', direction: Direction = 'toZh', glossary?: Glossary) {
   const j = job(source, kind, direction);
   const { codec } = encodeRuns(j.source);
   const decoded = decodeWire(output, codec, direction === 'toZh' ? 'zh' : 'en', kind);
-  return validateItem(j, codec, output, decoded);
+  return validateItem(j, codec, output, decoded, glossary);
 }
 const codes = (...args: Parameters<typeof check>) => check(...args).map((i) => `${i.code}:${i.severity}`);
 
@@ -116,5 +120,25 @@ describe('validateItem', () => {
 describe('CONVENTIONS', () => {
   it('every row has a prompt line with its Chinese form', () => {
     for (const row of CONVENTIONS) expect(row.promptLine).toMatch(/→/);
+  });
+});
+
+describe('validateItem through the pipeline (normalise first)', async () => {
+  // The real glossary once P-GLOSS is in the tree; the fake stands in until then.
+  const real = await loadGlossary();
+  const glossary = real.entries.length > 0 ? real : fakeGlossary();
+  const through = (source: string, output: string, direction: Direction = 'toZh', kind: SlotKind = 'part') =>
+    evaluateItem(job(source, kind, direction), output, glossary).issues.map((i) => `${i.code}:${i.severity}`);
+
+  it('fails a Chinese echo in toEn although normalizeEn made its punctuation ASCII', () => {
+    expect(through('需求上升。', '需求上升。', 'toEn')).toContain('untranslated:fail');
+    expect(through('需求上升，價格下降。', '需求上升, 價格下降.', 'toEn')).toContain('untranslated:fail');
+    expect(through('需求上升。', 'Demand rises.', 'toEn')).toEqual([]);
+  });
+
+  it('keeps an abbreviation rendered through its glossary term', () => {
+    expect(through('GDP rises.', '本地生產總值上升。')).toEqual([]);
+    expect(through('Real GDP falls.', '實質本地生產總值下降。')).toEqual([]);
+    expect(through('Real GDP falls.', '實質產出下降。')).toContain('symbols:warn');
   });
 });

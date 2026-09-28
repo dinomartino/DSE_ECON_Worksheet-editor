@@ -16,6 +16,7 @@ export type CheckedIssue = Issue & { fix?: string };
 export type Decoded = { ok: true; runs: RichText } | { ok: false; error: DecodeError };
 
 const HAN = /[㐀-鿿豈-﫿]/;
+const HAN_ALL = /[㐀-鿿豈-﫿]/g;
 const LABEL = /^\s*(?:\(\s*(?:[a-hA-H]|[ivx]{1,4}|\d{1,2})\s*\)|[A-H]\s*[.、)]|\d{1,3}\s*[.、)](?!\d)|第\s*\d+\s*題)/;
 const MARKS = /[(（]\s*(?:共\s*)?\d+\s*(?:分|marks?)\s*[)）]/i;
 const ANSWER = /^\s*(?:答案|Answer)\s*[:：]/i;
@@ -62,18 +63,23 @@ function satisfiedNumbers(kind: SlotKind, source: string, output: string): Set<s
   return out;
 }
 
+/** Kept in Latin, or inside a glossary hit (form or abbreviation) whose rendering is in the
+ *  output: GDP → 本地生產總值, real GDP → 實質本地生產總值. */
 function symbolKept(token: string, source: string, output: string, glossary: Glossary | null | undefined): boolean {
-  if (new RegExp(`(?<![A-Za-z])${escapeRe(token)}(?![A-Za-z])`).test(output)) return true;
+  const bounded = (flags: string) => new RegExp(`(?<![A-Za-z])${escapeRe(token)}(?![A-Za-z])`, flags);
+  if (bounded('').test(output)) return true;
   if (!glossary) return false;
   const folded = squash(output);
-  return glossary
-    .matchEn(source)
-    .filter((hit) => hit.viaAbbreviation && source.slice(hit.start, hit.end).startsWith(token))
-    .some((hit) =>
-      glossary.entries
-        .find((entry) => entry.id === hit.entryId)
-        ?.senses.some((sense) => sense.ranks.flat().some((variant) => folded.includes(squash(variant)))),
-    );
+  const hits = glossary.matchEnAll(source);
+  const rendered = (entryId: number) =>
+    glossary.entries
+      .find((entry) => entry.id === entryId)
+      ?.senses.some((sense) => sense.ranks.flat().some((variant) => folded.includes(squash(variant))));
+  return [...source.matchAll(bounded('g'))].some((m) => {
+    const start = m.index ?? 0;
+    const end = start + token.length;
+    return hits.some((hit) => hit.start <= start && hit.end >= end && rendered(hit.entryId));
+  });
 }
 
 function sameMultiset(a: readonly string[], b: readonly string[]): boolean {
@@ -123,7 +129,11 @@ export function validateItem(
     return [{ code: 'empty', severity: 'fail', message: 'Came back empty', fix: 'Translate this item; it came back empty.' }];
   }
   const latinWord = /[a-z]{3,}/.test(source);
-  if ((toZh && latinWord && !HAN.test(out)) || ((latinWord || HAN.test(source)) && squash(out) === squash(source))) {
+  // toEn compares after normalizeEn has made 。，？ ASCII, so an echo is Chinese with no Latin.
+  const echoed = toZh
+    ? latinWord && !HAN.test(out)
+    : (source.match(HAN_ALL) ?? []).length >= 2 && HAN.test(out) && !/[A-Za-z]/.test(out);
+  if (echoed || ((latinWord || HAN.test(source)) && squash(out) === squash(source))) {
     add({ code: 'untranslated', severity: 'fail', message: 'Not translated', fix: 'Translate this item; it came back untranslated.' });
   }
   const blanks = blankTokens(output);
