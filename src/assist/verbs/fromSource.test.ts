@@ -5,6 +5,7 @@ import { createWorksheetFrom } from '@/model/newWorksheet';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { scriptedClient } from '@/translate/testKit';
 import { openAi, useAiMenu } from '../menuStore';
+import { setPausedForTest } from '../paused';
 import { registerVerb, resetVerbsForTest, verbById } from '../registry';
 import { resetAiRunForTest, useAiRun } from '../runStore';
 import type { VerbContext } from '../types';
@@ -21,13 +22,18 @@ function register(replies: Parameters<typeof scriptedClient>[0]) {
 
 describe('create.fromSource', () => {
   beforeEach(() => {
+    // Paused for teachers (`PAUSED_VERBS`); its own tests still run it.
+    setPausedForTest();
     resetVerbsForTest();
     resetAiRunForTest();
     useAiMenu.getState().close();
     store().replaceWorksheet(createWorksheetFrom({ documentType: 'paper1' }));
     store().setMode({ language: 'en', version: 'student' });
   });
-  afterEach(() => resetAiRunForTest());
+  afterEach(() => {
+    resetAiRunForTest();
+    setPausedForTest(null);
+  });
 
   it('declares its menu entry: create group, a pasted-source input, needs a key', () => {
     register([]);

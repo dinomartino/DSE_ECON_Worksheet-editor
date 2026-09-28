@@ -26,17 +26,6 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   in amber; a text that couldn't be translated safely is left as it was and listed.
 - **Check terms**: compare the Chinese with the EDB glossary — no key needed. Findings are
   underlined on the page; replace them one by one or all at once.
-- **Write answers & mark scheme**: model answers, HKEAA marking points that add up to each
-  part's marks, and a why-right / why-wrong line for each MCQ option — in English and 中文
-  when your paper has both. Only empty answers are filled; nothing you wrote is replaced.
-- **Questions from a source**: paste a news extract or data description and get HKDSE
-  questions built only on it — four MCQs (one with combination statements) for a Paper 1,
-  a structured question with marks for a Paper 2, a mix for a worksheet — with answers,
-  explanations and marking points. The source goes in as printed.
-- **Check question quality**: a second pair of eyes before you print — flags two
-  defensible MCQ options, a key that looks wrong, an unbolded NOT, "Explain" for 1 mark, a
-  marking scheme that doesn't add up to the marks, and English and 中文 that ask different
-  things. It only points; nothing in your paper is changed.
 - **Settings** (⋯ → Settings…): app-wide preferences for this browser or computer,
   starting with AI & translation. The per-document dialog is now called **Setup**
   everywhere.

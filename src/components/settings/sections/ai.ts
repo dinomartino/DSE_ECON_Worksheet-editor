@@ -5,7 +5,7 @@ registerSettingsSection({
   id: 'ai',
   label: 'AI & translation',
   hint: 'Provider, key, model',
-  description: 'Translate, write answers and mark schemes, make questions from a source and check quality — with your own key.',
+  description: 'Translate with your own key, and check terms against the EDB glossary.',
   order: 10,
   load: () => import('./aiSection/AiSection'),
 });

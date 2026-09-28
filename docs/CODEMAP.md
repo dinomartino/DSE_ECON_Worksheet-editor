@@ -306,7 +306,7 @@ through `AppSettingsHost` alone.
 - `src/components/translate/translateMenu.ts:pageAiScope` · `src/components/translate/translateMenu.ts:fillVerbFor` · `src/components/translate/translateMenu.ts:toolbarSettingsEntries` — the AI door's entry points, pure (right-click scope, Export's preselect, ⋯ Settings…)
 - `src/components/translate/fieldFill.ts:fillButton` · `src/components/translate/fieldFill.ts:runFieldFill` — `BiTextField`'s inline fill (the `translate` prop)
 - `src/components/start/StartScreen.tsx:SettingsButton`; `src/components/ui/icons.tsx:PageSetupIcon` (Setup; the gear is app Settings)
-- `scripts/ai-verify.mjs` · `scripts/ai-mock-server.mjs` — the AI door's browser run (nine groups, Chromium and WebKit) against a canned provider; nothing sent before a click
+- `scripts/ai-verify.mjs` · `scripts/ai-mock-server.mjs` — the AI door's browser run (six groups, Chromium and WebKit; answers / source / quality paused) against a canned provider; nothing sent before a click
 
 Invariants:
 - Nothing new is stored in a document; settings under `econgen.settings.<section>`, keys only in the secrets store.
@@ -318,6 +318,7 @@ Invariants:
 
 - `src/assist/types.ts:AiVerb` · `src/assist/types.ts:VerbOutcome` · `src/assist/types.ts:ReviewItem` — the contract every verb implements
 - `src/assist/registry.ts:registerVerb` · `src/assist/registry.ts:verbs` — verbs self-register; `src/assist/verbs/index.ts` has one import per verb file
+- `src/assist/paused.ts:PAUSED_VERBS` — E1, E3, E4 built but hidden from teachers: the menu skips them, `startVerb` refuses them; remove an id to bring one back (`setPausedForTest` for their own tests)
 - `src/assist/scope.ts:scopeFromSelection` · `src/assist/scope.ts:scopeLabel` — the selection as an `AiScope`, pure (multi-selection via the store's `selectedFlowIds`)
 - `src/assist/menuStore.ts:openAi` — what every entry point calls; `src/assist/runStore.ts:useAiRun` — one run at a time: running → review (after a direct insert) or error
 - `src/components/ai/SetupCard.tsx:SetupCard` — the no-key card inside the menu (provider, key, Save & continue → `onReady`); flow in `src/components/settings/sections/aiSection/setupCardFlow.ts:createSetupCardFlow` over the Settings runner

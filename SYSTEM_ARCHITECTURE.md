@@ -2135,6 +2135,10 @@ Rules every verb keeps:
   in `src/assist/verbs/index.ts`) against the contract in `src/assist/types.ts`: a group,
   a label, `available(ctx)` (null hides it, else a count or a disabled reason), `needsKey`,
   an optional `input`, and `run` returning `inserted`, `findings`, `nothing` or `error`.
+- **Paused verbs** (`src/assist/paused.ts:PAUSED_VERBS`): E1, E3 and E4 are built and
+  registered but hidden from teachers until the AI is good enough — `menuGroups` skips them
+  before `available()`, and `startVerb` refuses them, so no entry point, preselect or Retry
+  reaches them and E3's lazy engine is never fetched. Remove an id to bring one back.
 - **One door.** Every entry point calls `openAi` (`src/assist/menuStore.ts`): the toolbar's
   "✦ AI" (`src/components/ai/AiButton.tsx`, the untranslated count as its badge), ⌘J /
   Ctrl+J, the page menu's "✦ AI…", the multi-select bar's "✦ AI", and Export's paper check
@@ -2204,10 +2208,12 @@ There is no pre-insert review. A verb click runs, writes, then shows what it wro
   the `.docx` never sees them. They clear on Done, Undo all, a new run or another document.
 - **Browser run:** `scripts/ai-verify.mjs` serves `out/`, points Custom at
   `scripts/ai-mock-server.mjs` (canned replies, no key) and drives Chromium and WebKit
-  through 37 checks per engine in nine groups (entry, translate, terms, answers, source,
-  quality, setup, error, field; `--only=` picks some). It asserts nothing is sent before a
-  verb click, Save & continue or Fill, and that no real provider host is reached. Production
-  code has no test hooks.
+  through 29 checks per engine in six groups (entry, translate, terms, setup, error, field;
+  `--only=` picks some). The answers, source and quality groups are kept but skipped while
+  their verbs are paused; entry asserts the menu never lists them and a last check that
+  E3's engine chunk is never fetched. It asserts nothing is sent before a verb click, Save
+  & continue or Fill, and that no real provider host is reached. Production code has no
+  test hooks.
 
 ### The glossary (`src/glossary/`)
 
@@ -2431,6 +2437,8 @@ Pure modules with injected dependencies; types in `src/translate/types.ts`.
 
 ## AI answers and mark schemes (E1)
 
+**Paused** — built and tested, hidden from teachers by `PAUSED_VERBS` (§ The AI door).
+
 The AI door's `write.answers` verb (`src/assist/verbs/writeAnswers.ts`) fills what the
 scope leaves empty: a structured leaf's model answer, its HKEAA scheme, an MCQ option's
 rationale. Engine in `src/answers/`, pure with injected deps like `src/translate/`.
@@ -2453,6 +2461,8 @@ rationale. Engine in `src/answers/`, pure with injected deps like `src/translate
 ---
 
 ## AI questions from a source (E3)
+
+**Paused** — built and tested, hidden from teachers by `PAUSED_VERBS` (§ The AI door).
 
 The AI door's `create.fromSource` verb (`src/assist/verbs/fromSource.ts`): the teacher pastes a
 source (≥ 80 characters) and gets HKDSE items grounded only in it, inserted directly.
@@ -2482,6 +2492,8 @@ The engine is `src/generate/`, pure over injected deps like `src/translate/run.t
 ---
 
 ## AI question quality check (E4)
+
+**Paused** — built and tested, hidden from teachers by `PAUSED_VERBS` (§ The AI door).
 
 The AI door's `check.quality` verb (`src/assist/verbs/quality.ts`) over the engine in `src/quality/`
 (pure, injected client; deps from `src/translate/deps.ts:createRunDeps`, no glossary).

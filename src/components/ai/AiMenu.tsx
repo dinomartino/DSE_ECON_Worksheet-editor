@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useAiMenu, type AiMenuOpen } from '@/assist/menuStore';
+import { isPaused } from '@/assist/paused';
 import { verbById } from '@/assist/registry';
 import { useAiRun } from '@/assist/runStore';
 import { scopeChoices, type ScopeChoice } from '@/assist/scope';
@@ -96,7 +97,7 @@ export function AiMenuPopover({ open }: { open: AiMenuOpen }) {
 
   const choose = (verbId: string) => {
     const verb = verbById(verbId);
-    if (!verb) return;
+    if (!verb || isPaused(verbId)) return;
     const next = stepFor(verb, status.configured);
     if (next === 'run') run(verbId);
     else setStep(next);
@@ -104,7 +105,7 @@ export function AiMenuPopover({ open }: { open: AiMenuOpen }) {
   const chooseScope = (choice: ScopeChoice) =>
     useAiMenu.setState((s) => (s.open ? { open: { ...s.open, scope: choice.scope, scopeLabel: choice.label } } : s));
 
-  const stepVerb = step.kind === 'list' ? undefined : verbById(step.verbId);
+  const stepVerb = step.kind === 'list' || isPaused(step.verbId) ? undefined : verbById(step.verbId);
   let body: React.ReactNode;
   if (step.kind === 'setup' && stepVerb) {
     body = (

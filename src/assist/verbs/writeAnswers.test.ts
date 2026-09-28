@@ -8,6 +8,7 @@ import type { StructuredQuestion } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { scriptedClient } from '@/translate/testKit';
 import { openAi, useAiMenu } from '../menuStore';
+import { setPausedForTest } from '../paused';
 import { registerVerb, verbById } from '../registry';
 import { resetAiRunForTest, useAiRun } from '../runStore';
 import { makeWriteAnswersVerb } from './writeAnswers';
@@ -23,12 +24,17 @@ function install(reply: (req: CompletionRequest) => string) {
 
 describe('write.answers through useAiRun', () => {
   beforeEach(() => {
+    // Paused for teachers (`PAUSED_VERBS`); its own tests still run it.
+    setPausedForTest();
     resetAiRunForTest();
     useAiMenu.getState().close();
     store().replaceWorksheet(answersPaper().ws);
     store().setMode({ language: 'en', version: 'student' });
   });
-  afterEach(() => resetAiRunForTest());
+  afterEach(() => {
+    resetAiRunForTest();
+    setPausedForTest(null);
+  });
 
   it('is offered with a count of parts, and hidden when nothing is fillable', () => {
     install(cannedReply);
