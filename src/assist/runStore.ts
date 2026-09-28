@@ -27,6 +27,8 @@ export interface AiRunState {
   dismiss(): void;
   /** Reverts the run's one commit (when still live) and goes idle. */
   undoAll(): void;
+  /** Runs the last verb again over the same scope (the error bar's Retry). */
+  retry(): void;
 }
 
 /** A throw that is not an AiError: shown as a generic, non-fatal failure. */
@@ -42,6 +44,8 @@ export function genericError(err: unknown, provider: ProviderId = 'gemini'): AiE
 }
 
 let controller: AbortController | null = null;
+/** The last run's verb, scope and input, for Retry. */
+let last: { verbId: string; input?: string; scope: VerbContext['scope']; scopeLabel: string } | null = null;
 
 /** The context a verb runs in. The menu's scope wins; else the editor's selection. */
 export function buildVerbContext(): VerbContext {
@@ -65,6 +69,9 @@ function applyView(outcome: Extract<VerbOutcome, { kind: 'inserted' }>): void {
   if (outcome.showTeacher && version !== 'teacher') store.setMode({ version: 'teacher' });
 }
 
+/** Set by `retry` for the one `startVerb` it calls. */
+let retrying: VerbContext | null = null;
+
 const itemCount = (phase: AiRunPhase): number =>
   phase.kind === 'review' && phase.outcome.kind !== 'nothing' ? phase.outcome.items.length : 0;
 
@@ -72,10 +79,13 @@ export const useAiRun: UseBoundStore<StoreApi<AiRunState>> = create<AiRunState>(
   phase: { kind: 'idle' },
 
   startVerb: async (verbId, input) => {
+    const again = retrying;
+    retrying = null;
     const verb = verbById(verbId);
     if (!verb || controller || get().phase.kind === 'running') return;
     if (useWorksheetStore.getState().readOnly) return;
-    const ctx = buildVerbContext();
+    const ctx = again ?? buildVerbContext();
+    last = { verbId, ...(input !== undefined ? { input } : {}), scope: ctx.scope, scopeLabel: ctx.scopeLabel };
     useAiMenu.getState().close();
     const own = new AbortController();
     controller = own;
@@ -123,6 +133,13 @@ export const useAiRun: UseBoundStore<StoreApi<AiRunState>> = create<AiRunState>(
     set({ phase: { kind: 'idle' } });
   },
 
+  retry: () => {
+    if (!last || get().phase.kind === 'running') return;
+    const ws = useWorksheetStore.getState();
+    retrying = { worksheet: ws.worksheet, mode: ws.mode, scope: last.scope, scopeLabel: last.scopeLabel };
+    void get().startVerb(last.verbId, last.input);
+  },
+
   undoAll: () => {
     const phase = get().phase;
     if (phase.kind !== 'review') return;
@@ -135,5 +152,7 @@ export const useAiRun: UseBoundStore<StoreApi<AiRunState>> = create<AiRunState>(
 export function resetAiRunForTest(): void {
   controller?.abort();
   controller = null;
+  last = null;
+  retrying = null;
   useAiRun.setState({ phase: { kind: 'idle' } });
 }
