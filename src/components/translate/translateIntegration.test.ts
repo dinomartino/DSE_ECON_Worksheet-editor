@@ -4,8 +4,10 @@ import { createParagraphBlock, createStructuredQuestion, createWorksheet } from 
 import { migrate } from '@/model/migrations';
 import { collectTexts, mapWorksheetTexts } from '@/model/textWalk';
 import type { ApplyReport, TextPath, TranslationWrite } from '@/model/textSlots';
-import type { RichText, Worksheet } from '@/model/types';
-import { writeSecret } from '@/platform/secrets';
+import type { OutputMode, RichText, Worksheet } from '@/model/types';
+import { peekSecret, writeSecret } from '@/platform/secrets';
+import { AI_SETTINGS, readAiStatus } from '@/settings/aiSettings';
+import { appSettings } from '@/settings/store';
 import type { TranslateRequest } from '@/store/appDialogs';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
@@ -15,7 +17,7 @@ import { runTranslation, writesFor } from '@/translate/run';
 import { buildTermCheck, termFixWrites } from '@/translate/termCheck';
 import { oneSided, readCorpus, referenceClient } from '@/translate/testKit';
 import type { TermRow } from '@/translate/types';
-import { NOTHING_REPLACED, filledFlash, replacedTermsFlash } from './copy';
+import { filledFlash, replacedTermsFlash } from './copy';
 import { createTranslateController } from './translateController';
 import { acceptedKeys, createSessionStore, insertCount, termKey } from './translateSession';
 
@@ -58,7 +60,10 @@ function editZh(paths: ReadonlySet<TextPath>, zh: RichText = [{ text: '老師自
   useWorksheetStore.setState({ worksheet });
 }
 
-function harness(client = referenceClient(buildAcceptanceWorksheet())) {
+const aiSettings = () => appSettings.read(AI_SETTINGS);
+
+/** The controller bound as TranslateHost binds it; only the AiClient and the flash are fakes. */
+function harness(client = referenceClient(buildAcceptanceWorksheet()), mode: OutputMode = { language: 'bilingual', version: 'student' }) {
   const session = createSessionStore();
   const writes: TranslationWrite[][] = [];
   const reports: ApplyReport[] = [];
@@ -68,10 +73,10 @@ function harness(client = referenceClient(buildAcceptanceWorksheet())) {
   const controller = createTranslateController({
     store: session,
     getWorksheet: () => store().worksheet,
-    getMode: () => ({ language: 'bilingual', version: 'student' }),
-    readStatus: () => { throw new Error('not read outside auto-start and the error panel'); },
-    includeTeacherText: () => true,
-    rememberIncludeTeacher: () => {},
+    getMode: () => mode,
+    readStatus: readAiStatus,
+    includeTeacherText: () => aiSettings().includeTeacherText,
+    rememberIncludeTeacher: (on) => appSettings.write(AI_SETTINGS, { includeTeacherText: on }),
     desktop: () => false,
     plan: planTranslation,
     createRunDeps: async (opts) => {
@@ -94,7 +99,7 @@ function harness(client = referenceClient(buildAcceptanceWorksheet())) {
     notify,
     undo: () => store().undo(),
     showSide: vi.fn(),
-    keySaved: () => true,
+    keySaved: (provider) => peekSecret(`ai:${provider}`) !== null || aiSettings().keychainSaved[provider] === true,
     setProvider: vi.fn(),
     setModel: vi.fn(),
     openExternal: vi.fn(),
@@ -180,6 +185,95 @@ describe('Translate over the real engine and store', () => {
     expect(store().worksheet).toBe(worksheet);
     expect(store().past).toHaveLength(0);
     expect(store().dirty).toBe(false);
+    expect(t.session().nothingInserted).toBe(true);
+    expect(t.closeDialog).not.toHaveBeenCalled();
+    expect(t.notify).not.toHaveBeenCalled();
+  });
+});
+
+/** One question, a paragraph per `[en, zh]` pair. */
+function paperOf(pairs: Array<[string, string]>): Worksheet {
+  const para = ([en, zh]: [string, string]) => ({ ...createParagraphBlock(), text: { en: [{ text: en }], zh: [{ text: zh }] } });
+  return { ...createWorksheet(), questions: [{ ...createStructuredQuestion(), blocks: pairs.map(para) }] };
+}
+
+/** One entry's old form twice, and one it cannot fix (a space inside it) beside a fixable one. */
+const priceLevelPaper = () => paperOf([
+  ['The price level rises and the price level falls.', '價格水平上升，價格水平下降。'],
+  ['The price level rises; total revenue falls.', '價格 水平上升；總收益下降。'],
+]);
+
+/** Opens Check terms and returns the rows the host computes (buildTermCheck, real glossary). */
+async function checking(worksheet: Worksheet) {
+  load(worksheet);
+  const t = harness();
+  t.controller.open(t.request('check'));
+  expect(t.session().mode).toBe('check');
+  const rows = buildTermCheck(store().worksheet, await loadGlossary(), t.session().scope);
+  const tickFixes = (only?: (row: TermRow) => boolean) => {
+    for (const row of rows.filter(only ?? (() => true))) {
+      row.checks.forEach((check, i) => check.fix && t.controller.toggleTerm(termKey(row.path, i), true));
+    }
+  };
+  return { t, rows, tickFixes };
+}
+
+describe('Check terms over the real glossary and store', () => {
+  it('replaces several fixes in one entry, leaves a fixless check alone, one commit and one ⌘Z', async () => {
+    const { t, rows, tickFixes } = await checking(priceLevelPaper());
+    const before = JSON.stringify(store().worksheet);
+    expect(rows.map((r) => r.checks.length)).toEqual([2, 2]);
+    expect(rows[1].checks.filter((c) => !c.fix)).toHaveLength(1);
+    tickFixes();
+
+    t.controller.replaceTerms(rows);
+    expect(t.writes).toHaveLength(1);
+    expect(store().past).toHaveLength(1);
+    expect(t.notify).toHaveBeenCalledWith(replacedTermsFlash(3), expect.objectContaining({ label: 'Undo' }));
+    const zh = new Map(collectTexts(store().worksheet).map((slot) => [slot.path, slot.text.zh]));
+    expect(zh.get(rows[0].path)).toEqual([{ text: '物價水平上升，物價水平下降。' }]);
+    expect(zh.get(rows[1].path)).toEqual([{ text: '價格 水平上升；總收入下降。' }]);
+
+    t.notify.mock.calls[0][1].run();
+    expect(JSON.stringify(store().worksheet)).toBe(before);
+  });
+
+  it('on the v1 corpus, every ticked fix lands at the path the check read', async () => {
+    const { t, rows, tickFixes } = await checking({ ...migrate(structuredClone(readCorpus())), id: 'corpus' });
+    expect(rows.some((r) => r.checks.some((c) => c.fix?.to === '稅收承擔'))).toBe(true);
+    tickFixes();
+
+    t.controller.replaceTerms(rows);
+    const report = t.reports[0];
+    expect(report.skipped).toEqual([]);
+    expect(report.applied).toBe(t.writes[0].length);
+    expect(store().past).toHaveLength(1);
+    const zh = new Map(collectTexts(store().worksheet).map((slot) => [slot.path, JSON.stringify(slot.text.zh)]));
+    for (const write of t.writes[0]) expect(zh.get(write.path)).toBe(JSON.stringify(write.next));
+  });
+
+  it('default ticks replace an old form only: a textbook variant and a lower rank stay offered', async () => {
+    const { t, rows } = await checking(paperOf([
+      ['Explain market failure.', '解釋市場失靈。'],
+      ['The tax incidence falls on buyers.', '稅項歸宿落在買方。'],
+      ['Explain the deadweight loss.', '解釋無謂損失。'],
+    ]));
+    expect(rows.map((r) => r.checks.map((c) => c.fix?.denyKind ?? c.fix?.kind))).toEqual([['wrong'], ['variant'], ['lowerRank']]);
+    t.controller.replaceTerms(rows);
+    expect(t.writes[0].map((w) => w.path)).toEqual([rows[0].path]);
+    expect(t.notify).toHaveBeenCalledWith(replacedTermsFlash(1), expect.anything());
+    const zh = new Map(collectTexts(store().worksheet).map((slot) => [slot.path, slot.text.zh]));
+    expect(rows.map((r) => zh.get(r.path))).toEqual([[{ text: '解釋市場失效。' }], rows[1].zh, rows[2].zh]);
+  });
+
+  it('a text edited since the check is not replaced: no undo entry, the check says so', async () => {
+    const { t, rows, tickFixes } = await checking(priceLevelPaper());
+    tickFixes();
+    editZh(new Set(rows.map((r) => r.path)));
+
+    t.controller.replaceTerms(rows);
+    expect(t.reports[0].skipped.map((s) => [s.path, s.reason])).toEqual(rows.map((r) => [r.path, 'targetChanged']));
+    expect(store().past).toHaveLength(0);
     expect(t.session().nothingInserted).toBe(true);
     expect(t.closeDialog).not.toHaveBeenCalled();
     expect(t.notify).not.toHaveBeenCalled();
