@@ -18,16 +18,16 @@ vi.mock('@/model/paperHealth', async (importOriginal) => {
 const { PaperHealthPanel } = await import('./PaperHealthPanel');
 
 describe('PaperHealthPanel terminology finding', () => {
-  it('links to Review terms… only when a handler is given (never read-only)', () => {
+  it('links to Open ✦ AI, for the terms check, only when a handler is given (never read-only)', () => {
     const worksheet = buildAcceptanceWorksheet();
-    const noop = () => {};
+    const onOpenAi = vi.fn();
     const editable = renderToStaticMarkup(
-      <PaperHealthPanel worksheet={worksheet} language="bilingual" onTranslate={noop} onReviewTerms={noop} />,
+      <PaperHealthPanel worksheet={worksheet} language="bilingual" onOpenAi={onOpenAi} />,
     );
     expect(editable).toContain('2 terms differ from the EDB glossary.');
-    expect(editable).toMatch(/<button[^>]*>Review terms…<\/button>/);
+    expect(editable).toMatch(/<button[^>]*>Open ✦ AI<\/button>/);
     const readOnly = renderToStaticMarkup(<PaperHealthPanel worksheet={worksheet} language="bilingual" />);
     expect(readOnly).toContain('2 terms differ from the EDB glossary.');
-    expect(readOnly).not.toContain('Review terms…');
+    expect(readOnly).not.toContain('Open ✦ AI');
   });
 });

@@ -189,13 +189,10 @@ import {
   type PackItem,
   type PageComposition,
 } from "./pagination";
-import {
-  flowItemsRequest,
-  pageTranslateItems,
-  TRANSLATION_GROUP,
-} from "@/components/translate/translateMenu";
+import { PAGE_AI_ITEM, pageAiScope } from "@/components/translate/translateMenu";
 import { collectTexts, slotsForTarget } from "@/model/textWalk";
-import { useAppDialogs } from "@/store/appDialogs";
+import { openAi } from "@/assist/menuStore";
+import { scopeFromSelection } from "@/assist/scope";
 
 // Re-exported so the page rail keeps importing the type from the component that
 // publishes it, rather than having to know pagination is factored out.
@@ -4938,7 +4935,7 @@ export function Preview({
    * the `tableGrid` handlers, `describeDelete`/`onDelete`, and the store's
    * `insertBlockAfter`/`replaceBlock` (the canvases' route, so nested tables work).
    */
-  const buildPageMenu = (payload: PageMenuPayload): PageMenuGroup[] => {
+  const buildPageMenu = (payload: PageMenuPayload, at: { x: number; y: number }): PageMenuGroup[] => {
     const store = useWorksheetStore.getState();
     const groups: PageMenuGroup[] = [];
 
@@ -5096,33 +5093,17 @@ export function Preview({
     }
 
     /*
-     * Translation: read from the store's live document (a memoised item may hold an
-     * older closure), and keyed by the emitting question so a duplicate's copy is the
-     * one filled. Read-only documents get nothing (the menu is absent there anyway).
+     * AI on what was right-clicked: the store's live document (a memoised item may hold
+     * an older closure), keyed by the emitting question so a duplicate's copy is the one
+     * acted on. Read-only documents get nothing (the menu is absent there anyway).
      */
-    const live = store.worksheet;
-    const translateItems = pageTranslateItems(
-      live.id,
-      payload,
-      {
+    if (!store.readOnly) {
+      const live = store.worksheet;
+      const scope = pageAiScope(payload, {
         slotsForTarget: (target) => slotsForTarget(live, target),
         slots: () => collectTexts(live),
-        blockKind: (id) => (findTableBlock(live, id) ? "table" : findFigureBlock(live, id)?.kind),
-      },
-      store.readOnly,
-    );
-    if (translateItems.length > 0) {
-      groups.push({
-        label: TRANSLATION_GROUP,
-        items: translateItems.map(({ label, disabled, title, request }) => ({
-          label,
-          disabled,
-          title,
-          onSelect: () => {
-            if (request) useAppDialogs.getState().openTranslate(request);
-          },
-        })),
       });
+      groups.push({ items: [{ label: PAGE_AI_ITEM, onSelect: () => openAi({ scope, anchor: at }) }] });
     }
 
     if (payload.kind === "text" && onDelete) {
@@ -5151,7 +5132,7 @@ export function Preview({
    */
   const openPageMenu = (payload: PageMenuPayload, at: { x: number; y: number }) => {
     if (isModalLayerOpen()) return;
-    const groups = buildPageMenu(payload);
+    const groups = buildPageMenu(payload, at);
     if (groups.length === 0) return;
     setPageMenu({ groups, at });
   };
@@ -6680,15 +6661,19 @@ export function Preview({
             {multiIds.size > 0 && !readOnly && (
               <button
                 type="button"
-                title="Fill the missing language of the selected items with AI translation"
-                onClick={() =>
-                  useAppDialogs
-                    .getState()
-                    .openTranslate(flowItemsRequest(useWorksheetStore.getState().worksheet.id, [...multiIds]))
-                }
+                title="AI tools for the selected items"
+                onClick={(event) => {
+                  const box = event.currentTarget.getBoundingClientRect();
+                  const worksheet = useWorksheetStore.getState().worksheet;
+                  openAi({
+                    scope: scopeFromSelection({ worksheet, selectedFlowIds: [...multiIds] }),
+                    // Too low to open below: the menu flips above this point.
+                    anchor: { x: box.left, y: box.top - 6 },
+                  });
+                }}
                 className="cursor-pointer rounded-full px-2.5 py-1 text-[12px] font-medium text-accent-ink transition-colors duration-150 ease-out-soft hover:bg-accent-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
-                Translate
+                ✦ AI
               </button>
             )}
             <IconButton

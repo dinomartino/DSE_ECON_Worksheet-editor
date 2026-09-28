@@ -5,8 +5,15 @@ import { useAiMenu } from '@/assist/menuStore';
 import { Button } from '@/components/ui';
 import { useAppDialogs } from '@/store/appDialogs';
 
+export interface SetupCardProps {
+  verb?: { id: string; label: string };
+  onReady(): void;
+  onCancel(): void;
+}
+
 /** Shown in the AI menu when a verb needs a provider and none is configured. */
-export function SetupCard() {
+export function SetupCard(props: SetupCardProps) {
+  void props;
   return (
     <div className="flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-ink-muted">
       <span className="flex-1">Set up AI in Settings</span>

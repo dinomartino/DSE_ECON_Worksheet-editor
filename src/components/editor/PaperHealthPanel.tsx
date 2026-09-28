@@ -10,7 +10,7 @@ import {
 import type { LanguageMode, VersionMode, Worksheet } from '@/model/types';
 import { useGlossary } from '@/glossary/useGlossary';
 import { termSummary } from '@/translate/termCheck';
-import { PAPER_CHECK_REVIEW_TERMS, PAPER_CHECK_TRANSLATE } from '@/components/translate/copy';
+import { PAPER_CHECK_OPEN_AI } from '@/components/translate/copy';
 
 export { countWarnings } from '@/model/paperHealth';
 
@@ -54,17 +54,14 @@ export function PaperHealthPanel({
   worksheet,
   language,
   version,
-  onTranslate,
-  onReviewTerms,
+  onOpenAi,
 }: {
   worksheet: Worksheet;
   /** The edition being exported; untranslated strings are judged only for zh / bilingual. */
   language?: LanguageMode;
   version?: VersionMode;
-  /** The `untranslated` finding's link; absent (read-only) → no link. */
-  onTranslate?: () => void;
-  /** The `terminology` finding's link; absent (read-only) → no link. */
-  onReviewTerms?: () => void;
+  /** The `untranslated` and `terminology` findings' "Open ✦ AI" link; absent (read-only) → no link. */
+  onOpenAi?: (finding: 'untranslated' | 'terminology') => void;
 }) {
   // No terminology finding until the glossary has loaded.
   const glossary = useGlossary();
@@ -73,12 +70,10 @@ export function PaperHealthPanel({
     () => checkPaper(worksheet, { language, version, terms }),
     [worksheet, language, version, terms],
   );
-  const actionFor = (finding: HealthFinding): FindingAction | undefined =>
-    finding.id === 'untranslated' && onTranslate
-      ? { label: PAPER_CHECK_TRANSLATE, run: onTranslate }
-      : finding.id === 'terminology' && onReviewTerms
-        ? { label: PAPER_CHECK_REVIEW_TERMS, run: onReviewTerms }
-        : undefined;
+  const actionFor = ({ id }: HealthFinding): FindingAction | undefined =>
+    onOpenAi && (id === 'untranslated' || id === 'terminology')
+      ? { label: PAPER_CHECK_OPEN_AI, run: () => onOpenAi(id) }
+      : undefined;
 
   if (report.questionCount === 0) {
     return (
