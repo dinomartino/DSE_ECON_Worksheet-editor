@@ -320,6 +320,18 @@ Invariants:
 - The glossary data is reached only through `src/glossary/load.ts` (a lazy chunk).
 - `TranslateHost` renders nothing and calls nothing until an entry point opens a translate request.
 
+## AI door — one menu for every AI action
+
+- `src/assist/types.ts:AiVerb` · `src/assist/types.ts:VerbOutcome` · `src/assist/types.ts:ReviewItem` — the contract every verb implements
+- `src/assist/registry.ts:registerVerb` · `src/assist/registry.ts:verbs` — verbs self-register; `src/assist/verbs/index.ts` has one import per verb file
+- `src/assist/scope.ts:scopeFromSelection` · `src/assist/scope.ts:scopeLabel` — the selection as an `AiScope`, pure (multi-selection via the store's `selectedFlowIds`)
+- `src/assist/menuStore.ts:openAi` — what every entry point calls; `src/assist/runStore.ts:useAiRun` — one run at a time: running → review (after a direct insert) or error
+- `src/components/ai/AiHost.tsx:AiHost` — mounted once in `EditorApp`; renders `src/components/ai/AiMenu.tsx` and `src/components/ai/AiBar.tsx`, owns ⌘J / Ctrl+J (`src/components/ai/shortcut.ts:shouldOpenAi`)
+
+Invariants:
+- Results insert directly as one commit; review is after, and `undoAll` reverts that one commit.
+- A verb's network call happens only on its menu click; nothing AI-related is stored in a document.
+
 ## scripts — the harnesses
 
 - `scripts/shot.mjs` — screenshot the real app (`--seed`, `--dark`)
