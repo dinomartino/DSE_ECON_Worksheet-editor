@@ -5,6 +5,7 @@ import type { EditTarget } from '@/render/ir';
 import {
   AMBIGUOUS_TITLE,
   flowItemsRequest,
+  layoutIdsWithText,
   outlineTranslateItem,
   pageTranslateItems,
   paperRequest,
@@ -168,10 +169,21 @@ describe('other entry points', () => {
       label: 'Translate question…',
       request: { worksheetId: 'w1', mode: 'translate', scope: { kind: 'questions', ids: ['Q1'] } },
     });
-    expect(outlineTranslateItem('w1', { kind: 'layout', id: 'L1' }, false)?.request?.scope).toEqual({
+    expect(outlineTranslateItem('w1', { kind: 'layout', id: 'L1', holdsText: true }, false)?.request?.scope).toEqual({
       kind: 'flowItems',
       ids: ['L1'],
     });
+    expect(outlineTranslateItem('w1', { kind: 'layout', id: 'L2', holdsText: false }, false)).toBeNull();
     expect(outlineTranslateItem('w1', { kind: 'question', id: 'Q1' }, true)).toBeNull();
+  });
+
+  it('offers a layout row Translate only when the walker finds printed text in it', () => {
+    const layout = { kind: 'layout' as const, label: 'Page · Section A heading' };
+    const ids = layoutIdsWithText([
+      slot('flow.L1.text', t('Section A', ''), { group: { ...layout, id: 'L1' }, flowId: 'L1' }),
+      slot('flow.L2.prefix', t('', '本卷共有'), { group: { ...layout, id: 'L2' }, flowId: 'L2', unprinted: true }),
+      slot('title', t('Title', '')),
+    ]);
+    expect([...ids]).toEqual(['L1']);
   });
 });

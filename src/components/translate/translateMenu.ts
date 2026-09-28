@@ -159,14 +159,20 @@ export function toolbarMenuEntries(opts: {
 export const flowItemsRequest = (worksheetId: string, ids: readonly string[]): TranslateRequest =>
   translate(worksheetId, { kind: 'flowItems', ids: [...ids] });
 
-/** The Outline row's ⋯: a question, or a text-bearing layout row. */
+/** Flow entries the walker finds printed text in, so an empty stimulus or a bare
+ *  question count offers nothing (absent stays absent) and a new kind needs no list. */
+export const layoutIdsWithText = (slots: readonly TextSlot[]): ReadonlySet<string> =>
+  new Set(slots.flatMap((slot) => (slot.flowId && !slot.unprinted ? [slot.flowId] : [])));
+
+/** The Outline row's ⋯: a question, or a layout row holding text (`layoutIdsWithText`). */
 export function outlineTranslateItem(
   worksheetId: string,
-  row: { kind: 'question' | 'layout'; id: string },
+  row: { kind: 'question'; id: string } | { kind: 'layout'; id: string; holdsText: boolean },
   readOnly: boolean,
 ): TranslateMenuItem | null {
   if (readOnly) return null;
-  return row.kind === 'question'
-    ? { label: 'Translate question…', request: translate(worksheetId, { kind: 'questions', ids: [row.id] }) }
-    : { label: 'Translate…', request: translate(worksheetId, { kind: 'flowItems', ids: [row.id] }) };
+  if (row.kind === 'question') {
+    return { label: 'Translate question…', request: translate(worksheetId, { kind: 'questions', ids: [row.id] }) };
+  }
+  return row.holdsText ? { label: 'Translate…', request: translate(worksheetId, { kind: 'flowItems', ids: [row.id] }) } : null;
 }

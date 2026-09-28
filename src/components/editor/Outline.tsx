@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { copyForWord, questionClipboardHtml } from '@/export/clipboard';
 import { renderDiagramImages } from '@/export/diagramImage';
 import {
@@ -18,6 +18,7 @@ import {
 import { questionMarks } from '@/model/marks';
 import type { NumberingPlan } from '@/model/numbering';
 import { resolveFlow } from '@/model/flow';
+import { collectTexts } from '@/model/textWalk';
 import { bi, documentName, plain } from '@/model/text';
 import type { LayoutElement, Question, Worksheet } from '@/model/types';
 import { listQuestionTypes, requireQuestionType } from '@/registry';
@@ -47,7 +48,7 @@ import {
   TrashIcon,
 } from '@/components/ui/icons';
 import { Menu, type MenuItem } from '@/components/ui/Menu';
-import { outlineTranslateItem } from '@/components/translate/translateMenu';
+import { layoutIdsWithText, outlineTranslateItem } from '@/components/translate/translateMenu';
 import { useAppDialogs } from '@/store/appDialogs';
 
 /**
@@ -75,11 +76,8 @@ function typeBadge(question: Question): string {
 /* `LAYOUT_NAME` comes from `model/flow` — the rail, this outline and the add rail's
    destination label all name the same nine kinds, and separate copies would drift. */
 
-/** Layout kinds that hold no text, so their row offers no Translate. */
-const TEXTLESS: ReadonlySet<LayoutElement['kind']> = new Set(['spacer', 'divider', 'pageBreak', 'answerLines', 'answerSpace']);
-
 /** The row's "Translate…" item, or none (read-only, or nothing to translate). */
-function translateMenuItems(worksheetId: string, row: { kind: 'question' | 'layout'; id: string }, readOnly: boolean): MenuItem[] {
+function translateMenuItems(worksheetId: string, row: Parameters<typeof outlineTranslateItem>[1], readOnly: boolean): MenuItem[] {
   const item = outlineTranslateItem(worksheetId, row, readOnly);
   const request = item?.request;
   if (!item || !request) return [];
@@ -104,7 +102,7 @@ function SelectionBar({ on }: { on: boolean }) {
  * It shares the question row's drag affordance so the two reorder as one list — the
  * whole point of the flow is that a divider can be dragged between two questions.
  */
-function LayoutRow({ element }: { element: LayoutElement }) {
+function LayoutRow({ element, holdsText }: { element: LayoutElement; holdsText: boolean }) {
   const mode = useWorksheetStore((s) => s.mode);
   const removeLayoutElement = useWorksheetStore((s) => s.removeLayoutElement);
   const updateLayoutElement = useWorksheetStore((s) => s.updateLayoutElement);
@@ -174,7 +172,7 @@ function LayoutRow({ element }: { element: LayoutElement }) {
         ]
       : [];
   const leadingItems = [
-    ...(TEXTLESS.has(element.kind) ? [] : translateMenuItems(worksheetId, { kind: 'layout', id: element.id }, readOnly)),
+    ...translateMenuItems(worksheetId, { kind: 'layout', id: element.id, holdsText }, readOnly),
     ...sizeItems,
   ];
 
@@ -663,6 +661,8 @@ export function Outline({
   const addQuestion = useWorksheetStore((s) => s.addQuestion);
   const addLayoutElement = useWorksheetStore((s) => s.addLayoutElement);
   const dragQuestionId = useWorksheetStore((s) => s.dragQuestionId);
+  // One walk per edit, so a layout row offers Translate only when it prints text.
+  const textFlowIds = useMemo(() => layoutIdsWithText(collectTexts(worksheet)), [worksheet]);
 
   /*
    * Which page groups are folded away, by group key.
@@ -732,7 +732,7 @@ export function Outline({
                   onSelect={() => select(item.question.id)}
                 />
               ) : (
-                <LayoutRow key={item.id} element={item.element} />
+                <LayoutRow key={item.id} element={item.element} holdsText={textFlowIds.has(item.id)} />
               ),
             );
 
