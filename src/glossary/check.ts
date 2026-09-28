@@ -8,7 +8,7 @@ import { plain, replaceRichTextRange } from '@/model/text';
 import type { GlossaryEntry, TermCheck, TermSeverity, TermState } from './types';
 import type { DenyRow } from './deny';
 import { PREFERRED_OVERRIDES } from './overrides';
-import { foldZh, unfoldSpan, type FoldedZh } from './fold';
+import { foldEnToken, foldZh, singular, unfoldSpan, type FoldedZh } from './fold';
 import type { EnHit, EnMatcher } from './matchEn';
 import { variantForms, type FoldedHit, type ZhMatcher } from './matchZh';
 
@@ -106,6 +106,28 @@ export function reshapedInSource(entry: GlossaryEntry, sourceWords: readonly str
     words.every((w) =>
       sourceWords.some((s) => s === w || (s.length >= 6 && w.length >= 6 && s.slice(0, 6) === w.slice(0, 6))),
     )
+  );
+}
+
+const keyTokens = new WeakMap<GlossaryEntry, string[][]>();
+/** Each English form of `entry` as folded, singular words; a hyphenated word (non-price) stays one. */
+function tokensOf(entry: GlossaryEntry): string[][] {
+  let t = keyTokens.get(entry);
+  if (!t) {
+    const word = (w: string) => w.split(/[-‐]/).map((p) => singular(foldEnToken(p))).join('-');
+    t = [entry.en, ...entry.enForms].map((f) => (f.match(/[A-Za-z]+(?:[-‐][A-Za-z]+)*/g) ?? []).map(word));
+    keyTokens.set(entry, t);
+  }
+  return t;
+}
+
+/**
+ * Does `cover`'s key extend `host`'s? Every host token equals, or is a prefix of, some cover
+ * token: demand → demand curve, tax → taxation. A different start (in-elastic, non-price) never does.
+ */
+export function extendsKey(cover: GlossaryEntry, host: GlossaryEntry): boolean {
+  return tokensOf(host).some(
+    (h) => h.length > 0 && tokensOf(cover).some((c) => h.every((w) => c.some((cw) => cw.startsWith(w)))),
   );
 }
 
@@ -237,7 +259,8 @@ function checkTerm(
   if (hit.viaAbbreviation && entry.abbreviation && T.includes(entry.abbreviation)) return [result('ok-abbr')];
 
   const denied = denyOccurrences(T, index.deny.get(entry.id) ?? [], hosts);
-  const allowed = (id: number) => id === entry.id || inSource(id);
+  // 需求 inside 需求曲線 still renders demand: a covering term that extends the key is allowed.
+  const allowed = (id: number) => id === entry.id || inSource(id) || extendsKey(index.entries[id], entry);
   const variants = index.variants.get(entry.id) ?? [];
   const standing: Array<Occurrence & { v: Variant }> = [];
   let conflict: { occ: Occurrence; seg: FoldedHit } | undefined;

@@ -2148,6 +2148,8 @@ data is evidence: corrections and policy live in `src/glossary/overrides.ts`, ne
   **coverage rule** — the longest glossary span over a rendering must belong to a source
   term — stops 低彈性需求 passing for "elastic demand". Only a single-word term may also be
   covered by a term the source rewords ("unitary elastic" → 需求彈性; `reshapedInSource`).
+  A covering term whose key extends the source key also stands (`extendsKey`: demand →
+  需求曲線, tax → 徵稅); one that only contains it (inelastic, non-price) does not.
   A rendering inside or touching a deny form never counts. Generic-tier words are info only.
 - **Fixes are safe to apply together.** They never overlap: a fix inside a longer one drops
   its result (總供給 → 總供應 mends supply's 供給). None spans folded-away text (a line

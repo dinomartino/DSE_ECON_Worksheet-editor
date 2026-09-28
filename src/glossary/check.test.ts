@@ -5,7 +5,8 @@ import type { RichText } from '@/model/types';
 import raw from './data/edb-economics-2020.json';
 import { createGlossary } from './glossary';
 import type { RawGlossary } from './parse';
-import type { TermCheck } from './types';
+import type { GlossaryEntry, TermCheck } from './types';
+import { extendsKey } from './check';
 
 const g = createGlossary(raw as RawGlossary);
 const only = (en: string, zh: string): TermCheck => {
@@ -108,6 +109,35 @@ describe('checkEnToZh states (§D.7)', () => {
     expect(elastic).toMatchObject({ en: 'elastic demand', state: 'missing', severity: 'warn' });
     expect(elastic.conflict).toBeDefined();
     expect(elastic.fix).toBeUndefined();
+  });
+
+  it('passes a term inside a longer term that extends its key', () => {
+    const cases: Array<[string, string, string]> = [
+      ['Demand shifts left.', '需求曲線向左移。', '需求'],
+      ['Supply shifts left.', '供應曲線向左移。', '供應'],
+      ['The government imposes a tax.', '政府徵稅。', '稅'],
+    ];
+    for (const [en, zh, found] of cases) {
+      expect(only(en, zh), en).toMatchObject({ state: 'ok', severity: 'none', found: { text: found } });
+    }
+  });
+
+  it('a longer term that only contains the key (in-elastic, non-price) stays a conflict', () => {
+    expect(only('elastic demand', '低彈性需求')).toMatchObject({ state: 'missing', severity: 'warn', conflict: { meansEn: 'inelastic demand' } });
+    expect(only('elastic demand', '缺乏彈性需求')).toMatchObject({ state: 'missing', severity: 'warn', conflict: { meansEn: 'inelastic demand' } });
+    expect(only('The price rose.', '非價格競爭')).toMatchObject({ state: 'missing', conflict: { meansEn: 'non-price competition' } });
+  });
+
+  it('extendsKey: every key word equals or starts a word of the longer key', () => {
+    const e = (en: string) => ({ en, enForms: [en] }) as unknown as GlossaryEntry;
+    expect(extendsKey(e('demand curve'), e('demand'))).toBe(true);
+    expect(extendsKey(e('taxation'), e('tax'))).toBe(true);
+    expect(extendsKey(e('quantity demanded'), e('demand'))).toBe(true);
+    expect(extendsKey(e('supply curves'), e('supply curve'))).toBe(true);
+    expect(extendsKey(e('inelastic demand'), e('elastic demand'))).toBe(false);
+    expect(extendsKey(e('non-price competition'), e('price'))).toBe(false);
+    expect(extendsKey(e('unemployment'), e('employment'))).toBe(false);
+    expect(extendsKey(e('public finance'), e('public good'))).toBe(false);
   });
 
   it('gives each repeated wrong form its own check and fix', () => {
