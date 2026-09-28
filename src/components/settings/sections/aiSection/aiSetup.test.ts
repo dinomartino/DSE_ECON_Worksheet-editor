@@ -8,7 +8,6 @@ import {
   initialAiSetup,
   needsCloseGuard,
   qwenWorkspaceUrl,
-  resumeReady,
   shouldSaveAfterTest,
   type AiSetupEvent,
   type AiSetupState,
@@ -132,12 +131,9 @@ describe('the AI section state', () => {
     expect(run(state, { type: 'model', id: 'x' }, { type: 'baseUrl', url: 'https://y' })).toMatchObject({ model: 'x', baseUrl: 'https://y' });
   });
 
-  it('opens a deep-linked card without committing it; Continue waits for the committed one', () => {
+  it('opens a deep-linked card without committing it', () => {
     const state = start({ provider: 'gemini' }, { provider: 'deepseek' });
     expect(state.provider).toBe('deepseek');
-    expect(resumeReady(state, 'gemini', true)).toBe(false);
-    expect(resumeReady(state, 'deepseek', false)).toBe(false);
-    expect(resumeReady(state, 'deepseek', true)).toBe(true);
   });
 
   it('asks before closing over a typed key, and stops asking once it is saved or cleared', () => {

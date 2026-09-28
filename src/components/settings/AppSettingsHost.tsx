@@ -15,8 +15,6 @@ const AppSettingsDialog = dynamic(() => import('./AppSettingsDialog').then((m) =
   ssr: false,
 });
 
-export const RESUME_TRANSLATE = { label: 'Continue to Translate' } as const;
-
 /**
  * Mounted once in `EditorHost`, so Settings works from the start screen and the editor.
  * Mounts every section's `Effect`, owns the one ⌘, / Ctrl+, listener, and shows the dialog
@@ -52,7 +50,6 @@ export function AppSettingsHost() {
           sections={sections}
           env={env}
           request={open.request}
-          resume={open.returnTo ? RESUME_TRANSLATE : undefined}
           onClose={close}
         />
       )}
