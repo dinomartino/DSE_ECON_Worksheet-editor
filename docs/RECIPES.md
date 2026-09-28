@@ -183,7 +183,9 @@ x86_64-pc-windows-msvc` on the whole app fails in `ring`'s C build on macOS).
 3. Check CORS from a browser origin before shipping: preflight **and** an error response
    with a dummy key must carry `Access-Control-Allow-Origin`, or a wrong key reads as a
    network failure (OpenAI's does not: hence `networkOrKey`).
-4. A distinctive key prefix goes in `src/ai/keyShape.ts` (specific prefixes before `sk-`).
+4. Set the preset's `keyPrefix` (the shape check). If that prefix belongs to this provider
+   alone, also add it to `OWNED_PREFIXES` in `src/ai/keyShape.ts` (specific before `sk-`),
+   so a key pasted under another provider is caught.
 5. Record its 401 body with a dummy key into `src/ai/fixtures/` and add the row to
    `src/ai/errors.test.ts`; a new error wording is one `RULES` row in `src/ai/errors.ts`.
 

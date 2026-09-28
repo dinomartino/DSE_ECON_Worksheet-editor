@@ -2164,9 +2164,11 @@ way to a provider: it checks the config, runs the structured-output ladder and t
 - **Errors are table-driven, body first** (`src/ai/errors.ts:mapHttpError`): Gemini
   reports a bad key as 400. `detail` is `redact`ed (the key and key shapes), ≤ 300
   characters; `console` sees `{kind, status}` only. OpenAI hides a bad key from browsers,
-  so its `TypeError` is `networkOrKey`.
-- **Nothing unsafe is sent.** No key, an `http:` base URL off this computer, credentials in
-  the URL or a malformed model id fail before any request; `keyShapeProblem`
+  so its `TypeError` is `networkOrKey`. A 403 is `badKey` only when it names the key or
+  its project's API (Settings discards a bad key); one naming a model is `model`.
+- **Nothing unsafe is sent.** No key, an `http:` base URL off this computer, credentials or
+  an unfilled `{WorkspaceId}` in the URL, or a malformed or key-shaped model id fail before
+  any request; `keyShapeProblem`
   (`src/ai/keyShape.ts`) stops a key visibly from another provider (`sk-ant-`, `sk-or-`
   checked before the generic `sk-`).
 - **`testConnection`** sends one real item with the pin `price level → 物價水平`: it proves
