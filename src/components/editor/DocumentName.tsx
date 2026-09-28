@@ -96,7 +96,7 @@ export function DocumentName() {
           // keystroke meant for this field must not also reach them.
           event.stopPropagation();
         }}
-        className="h-7 w-[22ch] rounded-md border border-accent bg-surface px-1.5 text-[13px] font-semibold text-ink outline-none ring-2 ring-accent/25 placeholder:font-normal placeholder:text-ink-subtle"
+        className="h-7 w-[22ch] min-w-0 rounded-md border border-accent bg-surface px-1.5 text-[13px] font-semibold text-ink outline-none ring-2 ring-accent/25 placeholder:font-normal placeholder:text-ink-subtle"
       />
     );
   }
@@ -107,8 +107,9 @@ export function DocumentName() {
       onClick={open}
       title={`${name} — click to rename`}
       /* `max-w` with a truncate so a long title cannot push the export buttons off the
-         bar; the full name stays available as the tooltip. */
-      className="max-w-[22ch] truncate rounded-md px-1.5 py-1 text-[13px] font-semibold leading-tight text-ink transition-colors duration-150 ease-out-soft hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+         bar; `min-w-0` lets it give way further when the bar is short. The full name
+         stays available as the tooltip. */
+      className="min-w-0 max-w-[22ch] truncate rounded-md px-1.5 py-1 text-[13px] font-semibold leading-tight text-ink transition-colors duration-150 ease-out-soft hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
       {name}
     </button>

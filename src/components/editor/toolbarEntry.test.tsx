@@ -64,7 +64,17 @@ describe('Toolbar entry points', () => {
     useWorksheetStore.setState({ readOnly: true });
     const markup = renderToStaticMarkup(<Toolbar onOpenSettings={() => {}} onOpenFiles={() => {}} onClearAll={async () => {}} />);
     expect(markup).toMatch(/<nav aria-label="Breadcrumb"[^>]*><button type="button" aria-label="All worksheets"/);
-    // Word and chevron fold away below `xl`, where the bar has no width to spare.
-    expect(markup).toContain('<span class="hidden xl:inline">Worksheets</span>');
+    // Word and chevron fold away below 1440px, where the bar has no width to spare.
+    expect(markup).toContain('<span class="hidden min-[1440px]:inline">Worksheets</span>');
+  });
+
+  it('stays one row from lg up: nothing wraps, the name is what gives way', () => {
+    useWorksheetStore.setState({ worksheet: { ...createWorksheet(), name: 'Unit 3 · Demand and supply practice' } });
+    const markup = renderToStaticMarkup(<Toolbar onOpenSettings={() => {}} onOpenFiles={() => {}} onClearAll={async () => {}} />);
+    expect(markup).toMatch(/<div class="[^"]*\bwhitespace-nowrap lg:flex-nowrap\b/);
+    expect(markup).toMatch(/<button type="button" title="Unit 3 · Demand and supply practice — click to rename" class="min-w-0 [^"]*\btruncate\b/);
+    // Icon-only controls keep their names.
+    expect(markup).toMatch(/<button[^>]*aria-label="Setup"[^>]*title="Setup: [^"]*"/);
+    expect(markup).toContain('<span class="sr-only xl:not-sr-only">Saved</span>');
   });
 });
