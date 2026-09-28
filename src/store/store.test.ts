@@ -14,9 +14,12 @@ import { computeNumbering } from '@/model/numbering';
 import { createWorksheetFrom } from '@/model/newWorksheet';
 import { HEADER_FOOTER_PRESETS } from '@/model/bands';
 import { defaultHeader, firstPageHeaderFooter, headerFooterOf } from '@/model/page';
-import { bi, plain } from '@/model/text';
+import { bi, plain, rt } from '@/model/text';
+import type { TranslationWrite } from '@/model/textSlots';
+import { mapWorksheetTexts } from '@/model/textWalk';
 import type { McqQuestion, StructuredQuestion } from '@/model/types';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
+import { buildTranslateFixture } from '@/test/translateFixture';
 import { useWorksheetStore } from './worksheetStore';
 
 const store = () => useWorksheetStore.getState();
@@ -843,5 +846,47 @@ describe('insertion anchor (§where things land)', () => {
     store().requestInsertMenu(store().worksheet.layout[0].id);
     expect(store().insertMenuRequest).toBeGreaterThan(first);
     expect(store().insertAnchorId).toBe(store().worksheet.layout[0].id);
+  });
+});
+
+describe('applyTranslations', () => {
+  const STEM = 'q:mcq1/blocks/b:mcq1-stem';
+  const fillStem = (source = 'Which is correct?'): TranslationWrite => ({
+    path: STEM, side: 'zh', sourceSnapshot: rt(source), targetSnapshot: [], next: rt('哪項正確？'),
+  });
+  beforeEach(() => {
+    const ws = mapWorksheetTexts(buildTranslateFixture(), (slot) =>
+      slot.path === STEM ? { ...slot.text, zh: [] } : slot.text,
+    );
+    useWorksheetStore.setState({ worksheet: ws, past: [], future: [], dirty: false, readOnly: false });
+  });
+
+  it('commits the batch as one undo step, and undo restores it exactly', () => {
+    const before = JSON.stringify(store().worksheet);
+    const report = store().applyTranslations([fillStem()], { worksheetId: 'kitchen-sink' });
+    expect(report).toEqual({ applied: 1, skipped: [], resized: 0 });
+    expect(store().past).toHaveLength(1);
+    expect(store().dirty).toBe(true);
+    store().undo();
+    expect(JSON.stringify(store().worksheet)).toBe(before);
+  });
+
+  it('an all-stale batch makes no history entry and leaves the document clean', () => {
+    const worksheet = store().worksheet;
+    const report = store().applyTranslations([fillStem('Something else')], { worksheetId: 'kitchen-sink' });
+    expect(report.skipped).toEqual([{ path: STEM, reason: 'sourceChanged' }]);
+    expect(store().worksheet).toBe(worksheet);
+    expect(store().past).toHaveLength(0);
+    expect(store().dirty).toBe(false);
+  });
+
+  it('refuses a read-only document and another document', () => {
+    useWorksheetStore.setState({ readOnly: true });
+    expect(store().applyTranslations([fillStem()], { worksheetId: 'kitchen-sink' }).refused).toBe('readOnly');
+    expect(store().past).toHaveLength(0);
+    useWorksheetStore.setState({ readOnly: false });
+    expect(store().applyTranslations([fillStem()], { worksheetId: 'other' }).refused).toBe('otherDocument');
+    expect(store().past).toHaveLength(0);
+    expect(store().dirty).toBe(false);
   });
 });

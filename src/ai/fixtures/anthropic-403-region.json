@@ -1,0 +1,13 @@
+{
+  "source": "documented shape (not recorded: needs an unsupported-region egress; wording per the design's permission_error + region row)",
+  "status": 403,
+  "headers": {},
+  "body": {
+    "type": "error",
+    "error": {
+      "type": "permission_error",
+      "message": "Your API key cannot be used from this country, region, or territory."
+    },
+    "request_id": null
+  }
+}

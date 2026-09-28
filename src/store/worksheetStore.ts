@@ -47,6 +47,7 @@ import {
 import { applyBandFieldSide } from '@/model/bandSegments';
 import { isNewerThanBuild } from '@/model/migrations';
 import type { ApplyReport, TranslationWrite } from '@/model/textSlots';
+import { applyTranslationBatch } from '@/model/translationApply';
 import { documentShape } from '@/model/documentShape';
 import {
   addCoverLine,
@@ -641,10 +642,18 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
   canUndo: () => get().past.length > 0,
   canRedo: () => get().future.length > 0,
 
-  applyTranslations: (writes, opts) => {
-    // P-TEXT replaces this body
-    void opts;
-    return { applied: 0, skipped: writes.map((w) => ({ path: w.path, reason: 'gone' as const })), resized: 0 };
+  // One commit (one undo) for the whole batch; an all-stale batch commits nothing.
+  applyTranslations: (writes, { worksheetId }) => {
+    const state = get();
+    if (state.readOnly) return { applied: 0, skipped: [], resized: 0, refused: 'readOnly' };
+    if (state.worksheet.id !== worksheetId) return { applied: 0, skipped: [], resized: 0, refused: 'otherDocument' };
+    let report: ApplyReport = { applied: 0, skipped: [], resized: 0 };
+    state.commit((draft) => {
+      const result = applyTranslationBatch(draft, writes);
+      report = result.report;
+      return result.worksheet;
+    });
+    return report;
   },
 
   // --- Document --------------------------------------------------------------

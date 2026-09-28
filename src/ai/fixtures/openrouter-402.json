@@ -1,0 +1,11 @@
+{
+  "source": "documented shape (not recorded: needs a real key or network)",
+  "status": 402,
+  "headers": {},
+  "body": {
+    "error": {
+      "code": 402,
+      "message": "Insufficient credits. Add more using https://openrouter.ai/settings/credits"
+    }
+  }
+}

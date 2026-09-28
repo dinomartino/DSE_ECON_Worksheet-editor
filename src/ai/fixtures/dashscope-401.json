@@ -1,0 +1,14 @@
+{
+  "source": "recorded 2026-09-28 with a dummy key",
+  "status": 401,
+  "headers": {},
+  "body": {
+    "error": {
+      "message": "Incorrect API key provided. For details, see: https://www.alibabacloud.com/help/en/model-studio/error-code#apikey-error",
+      "type": "invalid_request_error",
+      "param": null,
+      "code": "invalid_api_key"
+    },
+    "request_id": "46e45383-f8cc-9d6b-9ea7-20893ed12b9f"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "source": "recorded 2026-09-28 with a dummy key (curl; a browser sees a TypeError: no ACAO)",
+  "status": 401,
+  "headers": {},
+  "body": {
+    "error": {
+      "message": "Incorrect API key provided: sk-proj-********************0000. You can find your API key at https://platform.openai.com/account/api-keys.",
+      "type": "invalid_request_error",
+      "code": "invalid_api_key",
+      "param": null
+    },
+    "status": 401
+  }
+}
