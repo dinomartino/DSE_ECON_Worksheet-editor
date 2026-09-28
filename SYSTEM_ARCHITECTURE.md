@@ -2191,6 +2191,11 @@ once as `TranslateHost` in `EditorApp`. Copy: `src/components/translate/copy.ts`
 - **Never stacked.** Settings is offered only in Setup and Error, by replacing the app
   dialog with `returnTo`; the session store keeps scope, options and finished rows across
   the round trip. The host closes a request for another document or a read-only one.
+- **A symbol gap counts only as a copy the options write** (by default only for the side
+  the edition prints alone). In EN+中 a paper whose only gaps are symbols has nothing to
+  fill and opens on Check terms.
+- **Setup's scopes** add the editor's selected question and page element to whatever the
+  entry sent, so the paper-wide entries (pill, ⋯ menu) can still narrow.
 <!-- e2:dialog end -->
 
 <!-- e2:entry start -->
