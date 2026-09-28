@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { UpdateBanner } from '@/components/editor/UpdateBanner';
+import { AppSettingsHost } from '@/components/settings/AppSettingsHost';
 import { setBeforeRestart } from '@/desktop/updateStore';
 import { StartScreen } from '@/components/start/StartScreen';
 import type { LanguageMode, Worksheet } from '@/model/types';
@@ -136,6 +137,8 @@ export function EditorHost() {
   return (
     <div className="flex h-screen flex-col">
       <UpdateBanner />
+      {/* App Settings: the start screen and the editor both reach it. */}
+      <AppSettingsHost />
       <div className="min-h-0 flex-1">
         {!chosen || showingFiles ? (
           <StartScreen

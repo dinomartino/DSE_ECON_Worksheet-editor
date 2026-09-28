@@ -75,9 +75,10 @@ const glossary = scripts
   })
   .map(chunkPath);
 const glossaryProblems = [];
-// Once UI code imports the glossary it must be in the bundle, or this check has gone blind.
+// Once UI code loads the glossary data it must be in the bundle, or this check has gone blind.
+// Importing only `@/glossary/attribution` or types pulls in no data.
 const uiFiles = ['src/components', 'src/app'].flatMap((dir) => walk(dir)).filter((f) => /\.tsx?$/.test(f));
-const uiUsesGlossary = uiFiles.some((file) => readFileSync(file, 'utf8').includes('@/glossary'));
+const uiUsesGlossary = uiFiles.some((file) => /\b(loadGlossary|useGlossary)\b/.test(readFileSync(file, 'utf8')));
 if (glossary.length === 0 && uiUsesGlossary) {
   glossaryProblems.push('found no chunk holding the glossary — the sentinel or the bundle changed; update this check');
 }

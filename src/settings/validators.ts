@@ -19,9 +19,12 @@ export function text(max: number, pattern?: RegExp): FieldValidator<string> {
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 
-/** https: any host; http: only localhost / 127.0.0.1 / [::1]; no credentials in the URL. */
+/**
+ * https: any host; http: only localhost / 127.0.0.1 / [::1]; no credentials in the URL.
+ * An unfilled preset template (`https://{WorkspaceId}.…`) is never a saved address.
+ */
 export const baseUrl: FieldValidator<string> = (raw) => {
-  if (typeof raw !== 'string' || raw.length > 2048) return undefined;
+  if (typeof raw !== 'string' || raw.length > 2048 || /[{}]/.test(raw)) return undefined;
   let url: URL;
   try {
     url = new URL(raw);

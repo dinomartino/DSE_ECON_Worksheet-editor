@@ -37,6 +37,11 @@ describe('settings validators', () => {
     expect(baseUrl(42)).toBeUndefined();
   });
 
+  it('baseUrl refuses an unfilled workspace template', () => {
+    expect(baseUrl('https://{WorkspaceId}.cn-hongkong.maas.aliyuncs.com/compatible-mode/v1')).toBeUndefined();
+    expect(baseUrl('https://llm-abc.cn-hongkong.maas.aliyuncs.com/compatible-mode/v1')).toBeDefined();
+  });
+
   it('baseUrl refuses credentials in the URL', () => {
     expect(baseUrl('https://user:pass@api.example.com')).toBeUndefined();
     expect(baseUrl('https://user@api.example.com')).toBeUndefined();
