@@ -1,24 +1,30 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
-import { isRichTextEmpty, plain } from '@/model/text';
+import { isRichTextEmpty } from '@/model/text';
 import { fieldNeedsFill } from '@/model/textWalk';
 import { sameRuns, type Side } from '@/model/textSlots';
 import type { BiText, RichText } from '@/model/types';
 import { RichTextEditable } from '@/components/preview/RichTextEditable';
 import { isModalLayerOpen } from '@/components/ui/modalLayer';
 import {
+  afterNoProvider,
   canApplyFill,
   FILL_STALE,
   fillButton,
+  INSERT_ANYWAY,
   runFieldFill,
+  switchButton,
+  type FieldFillDeps,
+  type FieldFillOutcome,
   type FieldTranslate,
 } from '@/components/translate/fieldFill';
-import { useAiStatus } from '@/settings/aiSettings';
+import type { ProviderId } from '@/ai/types';
+import { peekSecret } from '@/platform/secrets';
+import { AI_SETTINGS, useAiStatus } from '@/settings/aiSettings';
+import { appSettings } from '@/settings/store';
 import { useAppDialogs } from '@/store/appDialogs';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { createRunDeps } from '@/translate/deps';
-import { translateOne } from '@/translate/run';
 
 /**
  * Bilingual input (§5.2).
@@ -62,8 +68,10 @@ interface Props {
  *  (until the field changes). */
 type FillStatus =
   | { kind: 'busy'; side: Side }
-  | { kind: 'done'; side: Side; runs: RichText; text: string }
-  | { kind: 'error'; side: Side; sent: BiText; text: string };
+  | { kind: 'done'; side: Side; runs: RichText; text: string; tone: 'ok' | 'warn' }
+  /** A proposal the review would leave unticked: shown, not written. */
+  | { kind: 'look'; side: Side; sent: BiText; runs: RichText; text: string }
+  | { kind: 'error'; side: Side; sent: BiText; text: string; switchTo: ProviderId[] };
 
 /*
  * The box grows with its content on its own: a contenteditable is sized by what is in
@@ -168,7 +176,23 @@ export function BiTextField({
 }
 
 const FILL_BUTTON_CLASS =
-  'h-5 cursor-pointer rounded px-1 text-[11px] font-medium text-accent-ink transition-colors duration-150 ease-out-soft hover:bg-accent-soft focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent';
+  'h-5 shrink-0 cursor-pointer rounded px-1 text-[11px] font-medium text-accent-ink transition-colors duration-150 ease-out-soft hover:bg-accent-soft focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent';
+
+/** The pipeline loads on the first fill, so it stays out of the editor's first load. */
+async function loadFillDeps(): Promise<FieldFillDeps> {
+  const [{ createRunDeps }, { translateOne }] = await Promise.all([
+    import('@/translate/deps'),
+    import('@/translate/run'),
+  ]);
+  return { createRunDeps, translateOne };
+}
+
+const LOAD_FAILED = 'Couldn’t load translation. Check your connection and try again.';
+
+/** A key is saved for this provider (memory, web storage, or a desktop Keychain flag). */
+function keySaved(provider: ProviderId): boolean {
+  return peekSecret(`ai:${provider}`) !== null || appSettings.read(AI_SETTINGS).keychainSaved[provider] === true;
+}
 
 /**
  * The inline fill under the field's missing side (§A.4): one field, the same pipeline as
@@ -192,8 +216,8 @@ function useFieldFill(
   });
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
-  // A panel inside Setup or a canvas: its modal layer is claimed after this mounts.
-  const [modalOpen, setModalOpen] = useState(false);
+  // A panel inside Setup or a canvas: its modal layer may be claimed after this mounts.
+  const [modalOpen, setModalOpen] = useState(isModalLayerOpen);
   useEffect(() => {
     const frame = requestAnimationFrame(() => setModalOpen(isModalLayerOpen()));
     return () => cancelAnimationFrame(frame);
@@ -201,9 +225,17 @@ function useFieldFill(
 
   const button = fillButton({ translate, language, readOnly, needs, configured, modalOpen });
 
-  const openSetup = () => {
-    // Checked again at the click: never stack an app dialog over a modal one.
-    if (!isModalLayerOpen()) useAppDialogs.getState().openSettings({ section: 'ai', focus: 'key' });
+  // Checked again at the click: never stack an app dialog over a modal one.
+  const openSettings = (params?: Record<string, string>) => {
+    if (isModalLayerOpen()) return false;
+    useAppDialogs.getState().openSettings(params ? { section: 'ai', focus: 'key', params } : { section: 'ai', focus: 'key' });
+    return true;
+  };
+
+  const showDone = (side: Side, runs: RichText, text: string, tone: 'ok' | 'warn') => {
+    const done: FillStatus = { kind: 'done', side, runs, text, tone };
+    setStatus(done);
+    setTimeout(() => setStatus((current) => (current === done ? undefined : current)), 6000);
   };
 
   const run = async (side: Side) => {
@@ -213,36 +245,64 @@ function useFieldFill(
     controller.current = abort;
     const sent = latest.current.value;
     setStatus({ kind: 'busy', side });
-    const outcome = await runFieldFill(sent, side, translate, () => latest.current.value, abort.signal, {
-      createRunDeps,
-      translateOne,
-    });
+    const outcome = await loadFillDeps().then(
+      (deps) => runFieldFill(sent, side, translate, () => latest.current.value, abort.signal, deps),
+      (): FieldFillOutcome => ({ kind: 'failed', message: LOAD_FAILED, switchTo: [] }),
+    );
     if (abort.signal.aborted) return;
     if (outcome.kind === 'filled') {
       latest.current.onChange(outcome.value);
-      const done: FillStatus = { kind: 'done', side, runs: outcome.value[side], text: outcome.note };
-      setStatus(done);
-      setTimeout(() => setStatus((current) => (current === done ? undefined : current)), 6000);
+      showDone(side, outcome.value[side], outcome.note, outcome.tone);
+    } else if (outcome.kind === 'needsLook') {
+      setStatus({ kind: 'look', side, sent, runs: outcome.runs, text: outcome.note });
     } else if (outcome.kind === 'noProvider') {
-      setStatus(undefined);
-      openSetup();
-    } else if (outcome.kind !== 'cancelled') {
-      const text = outcome.kind === 'stale' ? FILL_STALE : outcome.message;
-      setStatus({ kind: 'error', side, sent, text });
+      const next = afterNoProvider(outcome, isModalLayerOpen());
+      if ('open' in next) {
+        openSettings(next.open);
+        setStatus(undefined);
+      } else setStatus({ kind: 'error', side, sent, text: next.line, switchTo: [] });
+    } else if (outcome.kind === 'stale') {
+      setStatus({ kind: 'error', side, sent, text: FILL_STALE, switchTo: [] });
+    } else if (outcome.kind === 'failed') {
+      setStatus({ kind: 'error', side, sent, text: outcome.message, switchTo: outcome.switchTo });
     }
   };
 
-  // A result shows while the filled side is unchanged; an error until the field changes.
-  const line =
-    status?.kind === 'done' && sameRuns(value[status.side], status.runs)
-      ? { side: status.side, text: `✓ ${status.text}`, tone: 'text-ok' }
-      : status?.kind === 'error' && canApplyFill(value, status.sent, status.side)
-        ? { side: status.side, text: status.text, tone: 'text-danger-ink' }
-        : undefined;
-  if (!button.show && !line) return null;
+  const insertAnyway = (look: Extract<FillStatus, { kind: 'look' }>) => {
+    const now = latest.current.value;
+    if (!canApplyFill(now, look.sent, look.side)) {
+      setStatus({ kind: 'error', side: look.side, sent: look.sent, text: FILL_STALE, switchTo: [] });
+      return;
+    }
+    latest.current.onChange({ ...now, [look.side]: look.runs });
+    showDone(look.side, look.runs, 'Inserted — check it on the page.', 'warn');
+  };
 
-  const side = button.show ? button.side : line!.side;
+  const switchProvider = (provider: ProviderId, side: Side) => {
+    if (keySaved(provider)) {
+      appSettings.write(AI_SETTINGS, { provider });
+      void run(side);
+    } else openSettings({ provider, reason: 'region' });
+  };
+
+  // A result shows while the filled side is unchanged; a proposal or an error until the
+  // field changes.
+  const current =
+    status?.kind === 'done'
+      ? sameRuns(value[status.side], status.runs) && status
+      : (status?.kind === 'look' || status?.kind === 'error') && canApplyFill(value, status.sent, status.side) && status;
+  if (!button.show && !current) return null;
+
+  const side = button.show ? button.side : (current as Exclude<FillStatus, { kind: 'busy' }>).side;
   const busy = status?.kind === 'busy';
+  const tone = !current
+    ? ''
+    : current.kind === 'error'
+      ? 'text-danger-ink'
+      : current.kind === 'look' || (current.kind === 'done' && current.tone === 'warn')
+        ? 'text-warn-ink'
+        : 'text-ok';
+  const text = !current ? '' : current.kind === 'done' && current.tone === 'ok' ? `✓ ${current.text}` : current.text;
   return (
     <div className="grid grid-cols-2 gap-1.5">
       <div className={`flex min-w-0 items-center gap-1.5 ${side === 'zh' ? 'col-start-2' : 'col-start-1'}`}>
@@ -252,12 +312,37 @@ function useFieldFill(
             className={FILL_BUTTON_CLASS}
             disabled={busy || button.action === 'blocked'}
             title={button.title}
-            onClick={() => (button.action === 'fill' ? void run(button.side) : openSetup())}
+            onClick={() => (button.action === 'fill' ? void run(button.side) : openSettings())}
           >
             {busy ? 'Filling…' : button.label}
           </button>
         )}
-        {line && !busy && <span className={`min-w-0 truncate text-[11px] ${line.tone}`}>{line.text}</span>}
+        {current && !busy && (
+          <span className={`min-w-0 truncate text-[11px] ${tone}`} title={text}>
+            {text}
+          </span>
+        )}
+        {current && !busy && current.kind === 'look' && (
+          <button type="button" className={FILL_BUTTON_CLASS} onClick={() => insertAnyway(current)}>
+            {INSERT_ANYWAY}
+          </button>
+        )}
+        {current && !busy && current.kind === 'error' &&
+          current.switchTo.map((provider) => {
+            const b = switchButton(provider, keySaved(provider), modalOpen);
+            return (
+              <button
+                key={provider}
+                type="button"
+                className={FILL_BUTTON_CLASS}
+                disabled={b.action === 'blocked'}
+                title={b.title}
+                onClick={() => switchProvider(provider, current.side)}
+              >
+                {b.label}
+              </button>
+            );
+          })}
       </div>
     </div>
   );

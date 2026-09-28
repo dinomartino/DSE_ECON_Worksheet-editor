@@ -17,9 +17,14 @@ vi.mock('@/store/worksheetStore', () => ({
   useWorksheetStore: (select: (s: typeof store) => unknown) => select(store),
 }));
 const ai = { configured: true };
-vi.mock('@/settings/aiSettings', () => ({ useAiStatus: () => ai }));
+vi.mock('@/settings/aiSettings', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/settings/aiSettings')>()),
+  useAiStatus: () => ai,
+}));
 
 const { BiTextField } = await import('./BiTextField');
+const { claimModalLayer, resetModalLayerForTest } = await import('@/components/ui/modalLayer');
+const { useAppDialogs } = await import('@/store/appDialogs');
 
 const t = (en: string, zh: string): BiText => ({ en: en ? [{ text: en }] : [], zh: zh ? [{ text: zh }] : [] });
 const render = (value: BiText, translate?: { kind: 'answer' }) =>
@@ -29,6 +34,7 @@ beforeEach(() => {
   store.mode.language = 'bilingual';
   store.readOnly = false;
   ai.configured = true;
+  resetModalLayerForTest();
 });
 
 describe('BiTextField fill', () => {
@@ -60,5 +66,16 @@ describe('BiTextField fill', () => {
   it('without a provider, offers setup in a panel', () => {
     ai.configured = false;
     expect(render(t('Supply falls', ''), { kind: 'answer' })).toContain('>Set up translation…</button>');
+  });
+
+  it('inside Setup or a canvas, disables the fill with the Settings hint and never opens a dialog', () => {
+    ai.configured = false;
+    const openSettings = vi.spyOn(useAppDialogs.getState(), 'openSettings');
+    const release = claimModalLayer();
+    const markup = render(t('Supply falls', ''), { kind: 'answer' });
+    release();
+    expect(markup).toMatch(/<button[^>]*disabled=""[^>]*title="Set up translation in Settings \(⋯ → Settings…\)"[^>]*>Fill 中文<\/button>/);
+    expect(markup).not.toContain('Set up translation…');
+    expect(openSettings).not.toHaveBeenCalled();
   });
 });

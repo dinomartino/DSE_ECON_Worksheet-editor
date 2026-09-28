@@ -2,8 +2,17 @@ import { describe, expect, it, vi } from 'vitest';
 import { AiError } from '@/ai/types';
 import { presetFor } from '@/ai/providers';
 import type { BiText } from '@/model/types';
+import type { TermCheck } from '@/glossary/types';
 import type { JobResult, RunDeps, RunDepsResult } from '@/translate/types';
-import { canApplyFill, fillButton, runFieldFill, SETUP_IN_SETTINGS_TITLE, type FieldFillDeps } from './fieldFill';
+import {
+  afterNoProvider,
+  canApplyFill,
+  fillButton,
+  runFieldFill,
+  SETUP_IN_SETTINGS_TITLE,
+  switchButton,
+  type FieldFillDeps,
+} from './fieldFill';
 
 const t = (en: string, zh: string): BiText => ({ en: en ? [{ text: en }] : [], zh: zh ? [{ text: zh }] : [] });
 const base = { translate: { kind: 'answer' as const }, language: 'bilingual' as const, readOnly: false, needs: 'zh' as const };
@@ -71,7 +80,7 @@ describe('runFieldFill', () => {
     const { deps, translateOne } = fakeDeps(job({ runs: [{ text: 'There are ' }], fixes: [] }));
     const out = await runFieldFill(sent, 'en', { kind: 'wording', aroundValue: 'before' }, () => sent, signal(), deps);
     expect(translateOne).toHaveBeenCalledWith(sent, 'toEn', { kind: 'wording', aroundValue: 'before' }, runDeps, expect.anything());
-    expect(out).toEqual({ kind: 'filled', value: { en: [{ text: 'There are ' }], zh: sent.zh }, note: 'Filled' });
+    expect(out).toEqual({ kind: 'filled', value: { en: [{ text: 'There are ' }], zh: sent.zh }, note: 'Filled', tone: 'ok' });
   });
 
   it('names an auto-fixed term in the result line', async () => {
@@ -79,6 +88,65 @@ describe('runFieldFill', () => {
     const { deps } = fakeDeps(job({ runs: [{ text: '供應減少' }], fixes: [{ from: '供給', to: '供應', how: 'autoFix' }] }));
     const out = await runFieldFill(sent, 'zh', { kind: 'schemePoint' }, () => sent, signal(), deps);
     expect(out).toMatchObject({ kind: 'filled', note: 'Filled · 供給 → 供應 (EDB)' });
+  });
+
+  const term = (over: Partial<TermCheck>): TermCheck => ({
+    entryId: 1, en: 'supply', source: { text: 'Supply', start: 0, end: 6 }, state: 'ok', severity: 'none', expected: '供應', ...over,
+  });
+
+  it('credits only a glossary auto-fix to the EDB, by its source term', async () => {
+    const sent = t('Supply falls', '');
+    const autoFixed = fakeDeps(job({
+      runs: [{ text: '供應減少' }],
+      terms: [term({})],
+      fixes: [{ from: '繁體', to: '繁體', how: 'simplified' }, { from: '供給', to: '供應', how: 'autoFix' }],
+    }));
+    expect(await runFieldFill(sent, 'zh', { kind: 'schemePoint' }, () => sent, signal(), autoFixed.deps)).toMatchObject({
+      kind: 'filled', note: 'Filled · supply → 供應 (EDB)', tone: 'ok',
+    });
+    const simplified = fakeDeps(job({ runs: [{ text: '供應減少' }], fixes: [{ from: '供应', to: '供應', how: 'simplified' }] }));
+    expect(await runFieldFill(sent, 'zh', { kind: 'answer' }, () => sent, signal(), simplified.deps)).toMatchObject({
+      kind: 'filled', note: 'Filled', tone: 'ok',
+    });
+  });
+
+  it('never writes a result the review would leave unticked (a reversed term)', async () => {
+    const sent = t('elastic demand', '');
+    const conflict = term({
+      en: 'elastic demand', expected: '高彈性需求', state: 'missing', severity: 'warn',
+      conflict: { form: '低彈性需求', meansEn: 'inelastic demand' },
+    });
+    const latest = vi.fn(() => sent);
+    const { deps } = fakeDeps(job({ status: 'flagged', runs: [{ text: '低彈性需求' }], terms: [conflict], defaultAccepted: false }));
+    const out = await runFieldFill(sent, 'zh', { kind: 'answer' }, latest, signal(), deps);
+    expect(out).toEqual({
+      kind: 'needsLook',
+      runs: [{ text: '低彈性需求' }],
+      note: 'Not filled — 低彈性需求 means “inelastic demand” (elastic demand — EDB: 高彈性需求)',
+    });
+  });
+
+  it('writes a flagged result the review would tick, with a warning instead of a tick', async () => {
+    const sent = t('Supply **falls**', '');
+    const issue = { code: 'emphasis' as const, severity: 'warn' as const, message: 'Bold text was lost.' };
+    const { deps } = fakeDeps(job({ status: 'flagged', runs: [{ text: '供應減少' }], issues: [issue] }));
+    expect(await runFieldFill(sent, 'zh', { kind: 'answer' }, () => sent, signal(), deps)).toMatchObject({
+      kind: 'filled', note: 'Filled · check: Bold text was lost.', tone: 'warn',
+    });
+  });
+
+  it('carries the missing-provider reason and offers DeepSeek and Qwen on a region error', async () => {
+    const sent = t('Supply falls', '');
+    const error = { kind: 'denied' as const, message: 'Keychain access was denied.' };
+    const denied = fakeDeps(job({}), { ok: false, provider: 'deepseek', reason: 'secretError', error });
+    expect(await runFieldFill(sent, 'zh', { kind: 'answer' }, () => sent, signal(), denied.deps)).toEqual({
+      kind: 'noProvider', provider: 'deepseek', reason: 'secretError', error,
+    });
+    const region = { kind: 'region' as const, provider: 'gemini' as const, message: 'No.', fatal: true, actions: ['switchProvider' as const] };
+    const thrown = fakeDeps(new AiError(region));
+    expect(await runFieldFill(sent, 'zh', { kind: 'answer' }, () => sent, signal(), thrown.deps)).toEqual({
+      kind: 'failed', message: 'No.', switchTo: ['deepseek', 'qwen'],
+    });
   });
 
   it('writes nothing when the field changed while translating', async () => {
@@ -93,7 +161,11 @@ describe('runFieldFill', () => {
   it('reports no provider, a failed row and a thrown AiError without rejecting', async () => {
     const sent = t('Supply falls', '');
     const none = fakeDeps(job({}), { ok: false, provider: 'gemini', reason: 'noKey' });
-    expect(await runFieldFill(sent, 'zh', { kind: 'answer' }, () => sent, signal(), none.deps)).toEqual({ kind: 'noProvider' });
+    expect(await runFieldFill(sent, 'zh', { kind: 'answer' }, () => sent, signal(), none.deps)).toEqual({
+      kind: 'noProvider',
+      provider: 'gemini',
+      reason: 'noKey',
+    });
     expect(none.translateOne).not.toHaveBeenCalled();
 
     const failed = fakeDeps(job({ status: 'failed' }));
@@ -104,6 +176,7 @@ describe('runFieldFill', () => {
     expect(await runFieldFill(sent, 'zh', { kind: 'answer' }, () => sent, signal(), thrown.deps)).toEqual({
       kind: 'failed',
       message: 'Bad key.',
+      switchTo: [],
     });
   });
 
@@ -113,5 +186,23 @@ describe('runFieldFill', () => {
     const { deps } = fakeDeps(job({ runs: [{ text: '供應減少' }] }));
     controller.abort();
     expect(await runFieldFill(sent, 'zh', { kind: 'answer' }, () => sent, controller.signal, deps)).toEqual({ kind: 'cancelled' });
+  });
+});
+
+describe('switchButton', () => {
+  it('switches with a saved key, else deep-links — never over a modal', () => {
+    expect(switchButton('deepseek', true, true)).toMatchObject({ label: 'Use DeepSeek', action: 'switch' });
+    expect(switchButton('qwen', false, false)).toMatchObject({ label: 'Use Qwen', action: 'setup' });
+    expect(switchButton('qwen', false, true)).toMatchObject({ action: 'blocked', title: SETUP_IN_SETTINGS_TITLE });
+  });
+});
+
+describe('afterNoProvider', () => {
+  it('deep-links with the reason from a panel, and only explains over a modal', () => {
+    const noKey = { kind: 'noProvider' as const, provider: 'qwen' as const, reason: 'noModel' as const };
+    expect(afterNoProvider(noKey, false)).toEqual({ open: { provider: 'qwen', reason: 'noModel' } });
+    expect(afterNoProvider(noKey, true)).toEqual({ line: SETUP_IN_SETTINGS_TITLE });
+    const error = { kind: 'denied' as const, message: 'Keychain access was denied.' };
+    expect(afterNoProvider({ ...noKey, reason: 'secretError', error }, true)).toEqual({ line: 'Keychain access was denied.' });
   });
 });
