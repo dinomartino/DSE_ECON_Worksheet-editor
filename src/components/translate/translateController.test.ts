@@ -49,6 +49,7 @@ function setup(over: Partial<ControllerDeps> = {}, mode: OutputMode = { language
     getMode: () => mode,
     readStatus: () => status(true),
     includeTeacherText: () => true,
+    rememberIncludeTeacher: vi.fn(),
     desktop: () => false,
     plan: vi.fn(() => fakePlan(JOBS)),
     createRunDeps: vi.fn(async () => ({
@@ -240,6 +241,16 @@ describe('translateController', () => {
     zh.controller.copySymbols();
     expect(zh.applied[0].map((w) => w.path)).toEqual(['c-zh']);
     expect(zh.deps.notify).toHaveBeenCalledWith('Filled 1 text', expect.anything());
+  });
+
+  it('the teacher-text box is remembered; other options are not', () => {
+    const t = setup();
+    t.controller.open(PAPER_REQUEST);
+    t.controller.setOptions({ includeTeacher: false });
+    expect(t.deps.rememberIncludeTeacher).toHaveBeenCalledWith(false);
+    expect(t.session().options?.includeTeacher).toBe(false);
+    t.controller.setOptions({ includeDiagramLabels: false });
+    expect(t.deps.rememberIncludeTeacher).toHaveBeenCalledTimes(1);
   });
 
   it('a run that cannot start shows the setup error, not a crash', async () => {

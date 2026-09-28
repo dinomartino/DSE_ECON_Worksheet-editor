@@ -46,6 +46,8 @@ export interface ControllerDeps {
   getMode: () => OutputMode;
   readStatus: () => AiStatus;
   includeTeacherText: () => boolean;
+  /** Writes `ai.includeTeacherText`: the teacher-text box is a remembered setting. */
+  rememberIncludeTeacher: (on: boolean) => void;
   desktop: () => boolean;
   plan: typeof planTranslation;
   createRunDeps: typeof createRunDeps;
@@ -285,7 +287,12 @@ export function createTranslateController(deps: ControllerDeps) {
     // ---- plain state ----
     setMode: (mode: SessionMode) => dispatch({ type: 'setMode', mode }),
     setScope: (scope: TranslateScope) => dispatch({ type: 'setScope', scope }),
-    setOptions: (patch: Partial<TranslateOptions>) => dispatch({ type: 'setOptions', patch }),
+    setOptions(patch: Partial<TranslateOptions>) {
+      if (patch.includeTeacher !== undefined && session().phase === 'setup') {
+        deps.rememberIncludeTeacher(patch.includeTeacher);
+      }
+      dispatch({ type: 'setOptions', patch });
+    },
     tick: (keys: readonly string[], value: boolean) => dispatch({ type: 'tick', keys, value }),
     toggleCopies: () => dispatch({ type: 'toggleCopies' }),
     setFilter: (filter: ReviewFilter) => dispatch({ type: 'setFilter', filter }),

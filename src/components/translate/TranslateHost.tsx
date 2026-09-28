@@ -31,6 +31,7 @@ const controller = createTranslateController({
   getMode: () => worksheetState().mode,
   readStatus: readAiStatus,
   includeTeacherText: () => aiSettings().includeTeacherText,
+  rememberIncludeTeacher: (on) => appSettings.write(AI_SETTINGS, { includeTeacherText: on }),
   desktop: isDesktop,
   plan: planTranslation,
   createRunDeps,
