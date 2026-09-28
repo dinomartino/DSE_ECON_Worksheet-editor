@@ -15,6 +15,11 @@ import { bi } from '@/model/text';
 import { buildAcceptanceWorksheet, TINY_PNG } from '@/test/fixtures';
 import { buildMarkSchemeWorksheet } from '@/test/markSchemeFixture';
 import type { OutputMode, StructuredQuestion } from '@/model/types';
+import { presetFor } from '@/ai/providers';
+import { applyTranslationBatch } from '@/model/translationApply';
+import { defaultTranslateOptions, planTranslation } from '@/translate/plan';
+import { runTranslation, writesFor } from '@/translate/run';
+import { oneSided, referenceClient } from '@/translate/testKit';
 
 const OUT = process.env.SAMPLE_DIR ?? '/tmp/econ-samples';
 
@@ -111,4 +116,25 @@ it('emits a long question with a model answer diagram, and its answer key', asyn
   const path = `${OUT}/answer-diagram-answer-key.docx`;
   writeFileSync(path, bytes);
   console.log(`${bytes.length} bytes -> ${path}`);
+});
+
+it('emits an English-only paper filled by the translation pipeline', async () => {
+  mkdirSync(OUT, { recursive: true });
+  // The fixture's own Chinese is the canned model, so the whole pipeline runs offline:
+  // plan → run (decode, validate, normalise) → writes → one apply → export.
+  const original = buildAcceptanceWorksheet();
+  const english = oneSided(original, 'en');
+  const mode: OutputMode = { language: 'zh', version: 'teacher' };
+  const plan = planTranslation(english, { kind: 'paper' }, defaultTranslateOptions(mode, true));
+  const deps = { client: referenceClient(original), preset: presetFor('gemini'), model: 'canned', glossary: null };
+  const outcome = await runTranslation(plan, deps, new AbortController().signal, () => {});
+  const writes = writesFor(plan, outcome, new Set(plan.jobs.keys()), true);
+  const { worksheet, report } = applyTranslationBatch(english, writes);
+  console.log(`translated: ${report.applied} applied, ${report.skipped.length} skipped, ${plan.jobs.size} jobs`);
+  for (const language of ['zh', 'bilingual'] as const) {
+    const bytes = await exportDocxBuffer(worksheet, { language, version: 'teacher' });
+    const path = `${OUT}/translated-${language}.docx`;
+    writeFileSync(path, bytes);
+    console.log(`${bytes.length} bytes -> ${path}`);
+  }
 });
