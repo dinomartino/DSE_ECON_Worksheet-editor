@@ -1,5 +1,6 @@
 import type { Side, SlotKind } from '@/model/textSlots';
 import { normalizeRuns, plain, sliceRichText } from '@/model/text';
+import { CAPITAL_WORDS } from '@/model/symbols';
 import type { InlineRun, RichText, RunFormat } from '@/model/types';
 
 /**
@@ -44,7 +45,7 @@ export const SHORT_KINDS: ReadonlySet<SlotKind> = new Set<SlotKind>([
   'flowNode', 'labelListCell', 'speaker',
 ]);
 
-/** CAPITALS that are emphasis, not symbols (prompt rule 5). */
+/** CAPITALS that are emphasis (prompt rule 5); all are also `CAPITAL_WORDS`, never symbols. */
 export const EMPHASIS_WORDS: ReadonlySet<string> = new Set([
   'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'NOT', 'NO', 'NONE', 'NEVER', 'ALL', 'BEST', 'BOTH',
   'ONLY', 'EACH', 'EXCEPT', 'MOST', 'LEAST',
@@ -121,7 +122,7 @@ export function digitGroups(text: string): string[] {
 /**
  * Symbol tokens in prose (what the `symbols` check compares): a Latin token carrying a
  * sub/superscript (P₁), or 1–5 capitals with optional digits (D, AD, SRAS, E1) — except
- * emphasis words, the pronoun I, a sentence-initial A before a lower-case word, and any
+ * English words in capitals (`CAPITAL_WORDS`, the list `isSymbolOnly` uses), the pronoun I, a sentence-initial A before a lower-case word, and any
  * token inside a run of two or more all-capital words (END OF PAPER, SECTION A).
  */
 export function latinSymbolsOf(runs: RichText): string[] {
@@ -144,7 +145,7 @@ export function latinSymbolsOf(runs: RichText): string[] {
     const letters = lettersOf(match[0]);
     const scripted = word !== match[0] || /[₀-₉]/.test(word);
     if (!scripted) {
-      if (!/^[A-Z]{1,5}$/.test(letters) || EMPHASIS_WORDS.has(letters) || letters === 'I') return;
+      if (!/^[A-Z]{1,5}$/.test(letters) || CAPITAL_WORDS.has(letters) || letters === 'I') return;
       const next = words[index + 1];
       const prev = words[index - 1];
       if (letters === 'A' && next && /^[a-z]/.test(next[0]) && /^\s+$/.test(gap(match, next))) {

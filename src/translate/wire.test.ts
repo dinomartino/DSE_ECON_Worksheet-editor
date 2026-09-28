@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { normalizeRuns, plain } from '@/model/text';
 import type { InlineRun, RichText } from '@/model/types';
 import { shippedBiTexts } from './testKit';
-import { decodeWire, digitGroups, encodeRuns, latinSymbolsOf } from './wire';
+import { CAPITAL_WORDS, isSymbolOnly } from '@/model/symbols';
+import { decodeWire, digitGroups, EMPHASIS_WORDS, encodeRuns, latinSymbolsOf } from './wire';
 
 /** Falsy attributes render like absent ones. */
 const clean = (runs: RichText): RichText =>
@@ -159,5 +160,14 @@ describe('source facts', () => {
     expect(symbols('State ONE reason why AD shifts from E1')).toEqual(['AD', 'E1']);
     expect(symbols('MC = MR at Q₀')).toEqual(['MC', 'MR', 'Q0']);
     expect(symbols('SECTION A')).toEqual([]);
+    expect(symbols('Name the ECON test. NONE of these, write TOTAL.')).toEqual([]);
+  });
+
+  it('shares one word list with isSymbolOnly', () => {
+    for (const word of [...EMPHASIS_WORDS, ...CAPITAL_WORDS]) {
+      expect(CAPITAL_WORDS.has(word), word).toBe(true);
+      expect(latinSymbolsOf([{ text: `Write ${word} here.` }]), word).toEqual([]);
+      expect(isSymbolOnly([{ text: word }]), word).toBe(false);
+    }
   });
 });

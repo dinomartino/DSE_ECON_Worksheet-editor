@@ -12,7 +12,7 @@ const LATIN = /^\p{Script=Latin}+$/u;
  */
 export const CAPITAL_WORDS: ReadonlySet<string> = new Set([
   'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'TEN',
-  'NOT', 'ALL', 'ANY', 'BEST', 'BOTH', 'ONLY', 'EACH', 'EXCEPT',
+  'NOT', 'NONE', 'NEVER', 'ALL', 'ANY', 'BEST', 'BOTH', 'ONLY', 'EACH', 'EXCEPT', 'MOST', 'LEAST',
   'AND', 'OR', 'NO', 'YES', 'OF', 'TO', 'IN', 'ON', 'AT', 'BY', 'IF', 'THE', 'FOR',
   'PAPER', 'ECON', 'TOTAL', 'NAME', 'CLASS', 'DATE', 'TIME', 'FORM', 'MARK', 'MARKS',
   'SCORE', 'PART', 'NOTE', 'END', 'TEST', 'EXAM', 'ANSWER',
