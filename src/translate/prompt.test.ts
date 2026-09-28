@@ -89,9 +89,8 @@ describe('buildRequest', () => {
 });
 
 describe('the import family pins its 進口 form, the one rank exception', async () => {
-  // The real glossary once P-GLOSS is in the tree; the fake stands in until then.
-  const real = await loadGlossary();
-  const glossary = real.entries.length > 0 ? real : fakeGlossary();
+  const glossary = await loadGlossary();
+  it('runs on the real EDB glossary', () => expect(glossary.entries.length).toBeGreaterThan(1000));
 
   it('never pins 入口', () => {
     const imports = new Map([['t1', job('t1', 'Explain the effect of an import quota on imports.')]]);
@@ -106,9 +105,8 @@ describe('the import family pins its 進口 form, the one rank exception', async
 });
 
 describe('few-shot answers pass the app’s own pipeline', async () => {
-  // The real glossary once P-GLOSS is in the tree; the fake stands in until then.
-  const real = await loadGlossary();
-  const glossary = real.entries.length > 0 ? real : fakeGlossary();
+  const glossary = await loadGlossary();
+  it('runs on the real EDB glossary', () => expect(glossary.entries.length).toBeGreaterThan(1000));
 
   for (const [direction, shot] of [['toZh', FEWSHOT_TO_ZH], ['toEn', FEWSHOT_TO_EN]] as const) {
     it(`${direction}: zero fails, zero warns, zero warn-severity terms`, () => {
