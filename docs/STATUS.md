@@ -22,6 +22,11 @@ off the bottom.** It is the first thing a fresh session reads — then
   `npm run eval:translate` (prompt e2.2 never run live; model ids in `src/ai/providers.ts`
   unverified); one try from an HK network without VPN (Gemini region error → Use DeepSeek);
   desktop Keychain prompt in a built app (`npm run desktop:build:debug`), incl. Windows.
+- **Home navigation (2026-09-28, merged on `develop`)** — start screen: Settings is a gear
+  icon bottom-left (`StartScreen.tsx:SettingsButton`); editor toolbar: `[logo] Worksheets ›
+  <title>` crumb goes home (word hides <1280px; ⋯ → Worksheets… kept for the film);
+  dashboard shows "‹ Back to <title>". Known, pre-existing: toolbar wraps at 1024px with a
+  long title (needs ~150px back).
 - **Desktop app — shipped 2026-09-22.** Tauri 2 wraps the same static `out/`; documents
   become files under `$APPDATA/worksheets/` (`src/storage/fileStore.ts`), saving uses the
   native dialog, updates come from GitHub Releases. `src/platform/index.ts` ·
@@ -70,7 +75,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Last verified
 
-- `npm test` — 2472 tests, ~7s (2026-09-28). `cargo check --locked` clean. `npm run build`
+- `npm test` — 2474 tests, ~7s (2026-09-28). `cargo check --locked` clean. `npm run build`
   green (postbuild: glossary only in a lazy chunk); `npm run samples` exports.
 - `npm run typecheck` — clean.
 - `npm run lint` — 43 pre-existing problems (3 errors, 40 warnings) in `Preview.tsx` and
