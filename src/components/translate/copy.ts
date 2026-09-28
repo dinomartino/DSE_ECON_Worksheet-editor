@@ -176,9 +176,11 @@ export const noBaseUrlError = (provider: string): string => `Add the server addr
 
 // ---- Check terms ----
 
-export const checkSummary = (fix: number, lower: number, manual: number): string =>
+/** A textbook variant is offered, not counted as wrong: it arrives unticked. */
+export const checkSummary = (fix: number, variants: number, lower: number, manual: number): string =>
   [
-    `${fix} to fix`,
+    fix > 0 || variants + lower + manual === 0 ? `${fix} to fix` : '',
+    variants > 0 ? `${variants} textbook ${plural(variants, 'variant')}` : '',
     lower > 0 ? `${lower} acceptable but not the first choice` : '',
     manual > 0 ? `${manual} to check by hand` : '',
   ]
@@ -191,6 +193,7 @@ export const MANUAL_GROUP = "Can't fix automatically";
 export const SHOW_ON_PAGE = 'Show on page';
 export const NOTHING_REPLACED = 'Nothing replaced — these texts changed since the check.';
 export const usePreferred = (form: string): string => `Use ${form}`;
+export const variantNote = (expected: string): string => `A textbook form; EDB lists ${expected} first. Tick to replace.`;
 export const lowerRankLine = (en: string, found: string, expected: string): string =>
   `${en}: ${found} — EDB lists ${expected} first`;
 export const replaceButton = (n: number): string => `Replace ${n} ${plural(n, 'term')}`;

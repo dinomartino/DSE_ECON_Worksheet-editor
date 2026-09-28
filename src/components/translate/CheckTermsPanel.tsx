@@ -31,6 +31,8 @@ export function fixedPreview(row: TermRow, check: TermCheck): string {
   return text.slice(0, check.fix.start) + check.fix.to + text.slice(check.fix.end);
 }
 
+const isVariant = (check: TermItem['check']): boolean => check.fix?.kind === 'deny' && check.fix.denyKind === 'variant';
+
 function FixList({
   session,
   items,
@@ -71,6 +73,9 @@ function FixList({
                       {check.en} — EDB: {check.expected}
                       <span className="text-ok"> → {fixedPreview(row, check)}</span>
                     </span>
+                    {isVariant(check) && (
+                      <span className="block text-[11px] text-ink-muted">{copy.variantNote(check.fix?.to ?? check.expected)}</span>
+                    )}
                   </span>
                 </label>
               </li>
@@ -200,7 +205,12 @@ export function CheckTermsPanel({
       ) : (
         <>
           <p className="text-xs text-ink-muted">
-            {copy.checkSummary(items.fix.length, items.lower.length, items.manual.length)}
+            {copy.checkSummary(
+              items.fix.filter((item) => !isVariant(item.check)).length,
+              items.fix.filter((item) => isVariant(item.check)).length,
+              items.lower.length,
+              items.manual.length,
+            )}
           </p>
           <FixList session={session} items={items.fix} actions={actions} />
           {items.lower.length > 0 && (
