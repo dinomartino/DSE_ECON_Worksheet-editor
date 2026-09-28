@@ -98,7 +98,7 @@ export function createAiSetupRunner(deps: AiSetupDeps, initial: AiSetupState) {
     testing = null;
     send({ type: 'testFinished', result });
     if (!shouldSaveAfterTest(result)) return false;
-    if (key) return persistKey(p, key, next.remember);
+    if (key) return persistKey(p, key, state.remember);
     patch(() => ({ provider: p }));
     return result.ok;
   };
