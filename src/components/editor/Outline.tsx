@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { copyForWord, questionClipboardHtml } from '@/export/clipboard';
 import { renderDiagramImages } from '@/export/diagramImage';
 import {
