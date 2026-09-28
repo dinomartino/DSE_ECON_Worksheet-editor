@@ -179,7 +179,7 @@ const RULES: Rule[] = [
   },
   {
     kind: 'billing',
-    when: (s, t, p) => s === 402 || /Insufficient Balance/i.test(t) || (p === 'openrouter' && /\bcredits\b/i.test(t)),
+    when: (s, t, p) => s === 402 || /Insufficient Balance/i.test(t) || (p === 'openrouter' && s !== 429 && /\bcredits\b/i.test(t)),
   },
   { kind: 'policy', when: (s, t, p) => p === 'openrouter' && s === 404 && /data policy/i.test(t) },
   {
@@ -189,8 +189,11 @@ const RULES: Rule[] = [
   { kind: 'quota', when: (s, t) => s === 429 || /RESOURCE_EXHAUSTED|rate_limit_error/.test(t) },
   { kind: 'server', when: (s, t) => s >= 500 || /overloaded_error/.test(t) },
   { kind: 'safety', when: (s, t, p) => p === 'openrouter' && s === 403 && /moderation|flagged/i.test(t) },
-  // Any other 403 is the key lacking permission (Gemini: the API not enabled for its project).
-  { kind: 'badKey', when: (s) => s === 403 },
+  // Another 403 is fatal to the key only when it is about the key or its project's API;
+  // one about a model or resource is model access. Anything else stays a retryable badRequest.
+  { kind: 'badKey', when: (s, t) => s === 403 && /SERVICE_DISABLED|has not been used|API_KEY_/.test(t) },
+  { kind: 'model', when: (s, t) => s === 403 && /\bmodels?\b|\bresource\b/i.test(t) },
+  { kind: 'badKey', when: (s, t) => s === 403 && /\bapi[ _-]?key\b/i.test(t) },
 ];
 
 /** An HTTP failure the transport could not retry away. */

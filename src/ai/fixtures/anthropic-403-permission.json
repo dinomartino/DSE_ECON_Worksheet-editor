@@ -1,0 +1,13 @@
+{
+  "source": "documented shape (not recorded: needs a real key without access to the model)",
+  "status": 403,
+  "headers": {},
+  "body": {
+    "type": "error",
+    "error": {
+      "type": "permission_error",
+      "message": "Your API key does not have permission to use the specified resource."
+    },
+    "request_id": null
+  }
+}

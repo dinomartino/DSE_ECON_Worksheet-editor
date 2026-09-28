@@ -28,6 +28,8 @@ describe('mapHttpError, from recorded and documented bodies', () => {
     ['openai', 'openai-400-json-schema', 'badRequest'],
     ['anthropic', 'anthropic-401', 'badKey'],
     ['anthropic', 'anthropic-529-overloaded', 'server'],
+    ['anthropic', 'anthropic-403-region', 'region'],
+    ['anthropic', 'anthropic-403-permission', 'model'],
   ];
   it.each(table)('%s %s → %s', (provider, name, kind) => {
     const info = mapFixture(provider, name);
@@ -39,6 +41,21 @@ describe('mapHttpError, from recorded and documented bodies', () => {
   it('reads the bad Gemini key from the body, not the 400', () => {
     expect(mapHttpError('gemini', 400, { error: { message: 'API key not valid.' } }, new Headers()).kind).toBe('badKey');
     expect(mapHttpError('gemini', 400, { error: { message: 'Bad field' } }, new Headers()).kind).toBe('badRequest');
+  });
+
+  it('discards a key on a 403 only when the 403 is about the key or its project', () => {
+    const map = (provider: ProviderId, message: string, extra: object = {}) =>
+      mapHttpError(provider, 403, { error: { message, ...extra } }, new Headers()).kind;
+    expect(map('anthropic', 'Your API key does not have permission to use the specified resource.')).toBe('model');
+    expect(map('qwen', 'Access to model denied.', { code: 'Model.AccessDenied' })).toBe('model');
+    expect(map('gemini', 'Generative Language API has not been used in project 1 before or it is disabled.', { status: 'PERMISSION_DENIED', details: [{ reason: 'SERVICE_DISABLED' }] })).toBe('badKey');
+    expect(map('custom', 'Invalid API key.')).toBe('badKey');
+    expect(map('custom', 'Forbidden')).toBe('badRequest');
+  });
+
+  it("reads OpenRouter's free-tier 429 as a limit, not an empty balance", () => {
+    const body = { error: { code: 429, message: 'Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day' } };
+    expect(mapHttpError('openrouter', 429, body, new Headers()).kind).toBe('quota');
   });
 
   it('marks the run-stopping kinds fatal and gives each its actions', () => {
