@@ -258,7 +258,7 @@ it (`// P-<X> replaces this body`).
 - `src/model/textWalk.ts:mapWorksheetTexts` · `src/model/textWalk.ts:collectTexts` · `src/model/textWalk.ts:slotsForTarget` — the one identity-preserving walk over every BiText, in print order; questions through `src/registry/types.ts:QuestionTypeDefinition` `mapTexts`
 - `src/model/textWalk.ts:needsTranslation` · `src/model/textWalk.ts:countUntranslated` · `src/model/textWalk.ts:fieldNeedsFill` — one definition of "missing", per edition
 - `src/model/diagramText.ts:mapDiagramTexts` — every BiText in a diagram (parity with `src/model/diagramDraw.ts:handleText`)
-- `src/model/symbols.ts:isSymbolOnly` — E₀, `MC = MR`, `$14 000`: never sent, counted only where it prints as a gap
+- `src/model/symbols.ts:isSymbolOnly` · `src/model/symbols.ts:CAPITAL_WORDS` — E₀, `MC = MR`, `$14 000`: never sent, counted only where it prints as a gap; `PAPER 2`, `ONE`, `No` are words
 - `src/model/translationApply.ts:applyTranslationBatch` — stale-guarded batch apply; re-measures a changed diagram bilingually
 - `src/components/editor/useUntranslatedCount.ts:useUntranslatedCount` — the toolbar pill, cached per question
 - `src/test/translateFixture.ts:buildTranslateFixture` — the kitchen sink: every slot kind; `src/model/textWalk.census.test.ts` proves the walk misses no `{en, zh}`

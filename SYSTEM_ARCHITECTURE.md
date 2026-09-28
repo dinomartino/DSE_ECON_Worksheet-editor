@@ -2145,7 +2145,8 @@ with one exception table (`PreferredOverrides`: the import family prefers 進口
   returns the same `Worksheet`, and a write rebuilds only the objects on its path — so the
   per-question IR cache stays warm and an all-stale batch commits nothing.
 - **Absent stays absent.** An absent prefix, suffix, caption or note is not a slot. A band
-  field's legacy `label` is visited as its prefix and written through `applyBandFieldSide`.
+  field's legacy `label` is visited as its prefix and written through `applyBandFieldSide`;
+  a suffix write moves it to `prefix` too, since any write drops `label`.
 - **Paths** (`q:<id>/part:<id>/blocks/b:<id>`) are request-local; a repeated segment gets
   `#2` (Duplicate keeps block ids). `slotsForTarget` matches a page `EditTarget` by deep
   equality and may return both copies.
@@ -2153,9 +2154,10 @@ with one exception table (`PreferredOverrides`: the import family prefers 進口
   parts, merged-away table cells) is a slot but never a gap.
 - **Counting.** `needsTranslation` asks whether this edition prints the missing side;
   teacher text counts only in the teacher version, alt text never, and symbol-only text
-  (`isSymbolOnly`, `src/model/symbols.ts`) only where it would print as a gap. The toolbar
+  (`isSymbolOnly`, `src/model/symbols.ts`: short tokens and capitals, minus English words
+  such as `PAPER`, `ONE`, `No` — `CAPITAL_WORDS`) only where it would print as a gap. The toolbar
   pill is `useUntranslatedCount` (`src/components/editor/useUntranslatedCount.ts`), cached
-  per question object and mode. `checkPaper` counts inclusively (EN+中, teacher) by default
+  per question object and mode (`questionUntranslated`: a count, never paths). `checkPaper` counts inclusively (EN+中, teacher) by default
   and takes Check terms' result as a precomputed `TermSummary`; it imports nothing from
   the glossary or translation.
 - **Apply.** `applyTranslationBatch` (`src/model/translationApply.ts`) writes one side per
