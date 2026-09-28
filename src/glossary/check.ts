@@ -123,11 +123,13 @@ function tokensOf(entry: GlossaryEntry): string[][] {
 
 /**
  * Does `cover`'s key extend `host`'s? Every host token equals, or is a prefix of, some cover
- * token: demand → demand curve, tax → taxation. A different start (in-elastic, non-price) never does.
+ * token: demand → demand curve, tax → taxation. A different start (in-elastic, non-price) never
+ * does, nor a past participle: quantity demanded (需求量) is not a rendering of demand.
  */
 export function extendsKey(cover: GlossaryEntry, host: GlossaryEntry): boolean {
+  const extendsWord = (cw: string, w: string) => cw === w || (cw.startsWith(w) && !/^e?d$/.test(cw.slice(w.length)));
   return tokensOf(host).some(
-    (h) => h.length > 0 && tokensOf(cover).some((c) => h.every((w) => c.some((cw) => cw.startsWith(w)))),
+    (h) => h.length > 0 && tokensOf(cover).some((c) => h.every((w) => c.some((cw) => extendsWord(cw, w)))),
   );
 }
 

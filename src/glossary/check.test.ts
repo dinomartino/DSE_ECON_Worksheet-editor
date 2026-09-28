@@ -128,11 +128,16 @@ describe('checkEnToZh states (§D.7)', () => {
     expect(only('The price rose.', '非價格競爭')).toMatchObject({ state: 'missing', conflict: { meansEn: 'non-price competition' } });
   });
 
+  it('需求量 is quantity demanded, never demand; the supply case already warned', () => {
+    expect(only('Demand for rice increases.', '米的需求量增加。')).toMatchObject({ state: 'missing', severity: 'warn', conflict: { meansEn: 'quantity demanded' } });
+    expect(only('Supply of rice increases.', '米的供應量增加。')).toMatchObject({ state: 'missing', conflict: { meansEn: 'quantity supplied' } });
+  });
+
   it('extendsKey: every key word equals or starts a word of the longer key', () => {
     const e = (en: string) => ({ en, enForms: [en] }) as unknown as GlossaryEntry;
     expect(extendsKey(e('demand curve'), e('demand'))).toBe(true);
     expect(extendsKey(e('taxation'), e('tax'))).toBe(true);
-    expect(extendsKey(e('quantity demanded'), e('demand'))).toBe(true);
+    expect(extendsKey(e('quantity demanded'), e('demand'))).toBe(false);
     expect(extendsKey(e('supply curves'), e('supply curve'))).toBe(true);
     expect(extendsKey(e('inelastic demand'), e('elastic demand'))).toBe(false);
     expect(extendsKey(e('non-price competition'), e('price'))).toBe(false);
