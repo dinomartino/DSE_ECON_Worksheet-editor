@@ -83,15 +83,25 @@ describe('buildRequest', () => {
     expect(payload.groups[0].items).toEqual([{ key: 't2', kind: 'part', text: 'Explain why market failure occurs.', ...repair.get('t2') }]);
   });
 
-  it('pins the import family in its 進口 form, the one rank exception', () => {
-    const imports = new Map([['t1', job('t1', 'Explain the effect of an import quota on imports.')]]);
-    const one: Chunk = { ...chunk, groups: [{ ...chunk.groups[0], jobKeys: ['t1'] }] };
-    const payload = JSON.parse(buildRequest(one, imports, fakeGlossary(), preset, new AbortController().signal).turns[2].content);
-    expect(payload.glossary).toEqual(['import quota → 進口配額', 'import → 進口']);
-  });
-
   it('caps the output budget at the preset', () => {
     expect(maxOutputTokens(1_000_000, 'toEn', preset)).toBe(preset.outputCap);
+  });
+});
+
+describe('the import family pins its 進口 form, the one rank exception', async () => {
+  // The real glossary once P-GLOSS is in the tree; the fake stands in until then.
+  const real = await loadGlossary();
+  const glossary = real.entries.length > 0 ? real : fakeGlossary();
+
+  it('never pins 入口', () => {
+    const imports = new Map([['t1', job('t1', 'Explain the effect of an import quota on imports.')]]);
+    const one: Chunk = { id: 'c1', direction: 'toZh', sourceChars: 50, groups: [{ groupKey: 'q:1', where: 'Question 1', context: [], jobKeys: ['t1'] }] };
+    const req = buildRequest(one, imports, glossary, presetFor('gemini'), new AbortController().signal);
+    const payload = JSON.parse(req.turns[2].content);
+    const lines: string[] = payload.glossary;
+    expect(lines.find((line) => line.startsWith('import quota →'))).toContain('進口配額');
+    expect(lines.find((line) => line.startsWith('import →'))).toContain('進口');
+    expect(lines.filter((line) => line.includes('入口'))).toEqual([]);
   });
 });
 
