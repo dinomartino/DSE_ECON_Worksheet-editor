@@ -38,6 +38,8 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
 - **Settings** (⋯ → Settings…): app-wide preferences for this browser or computer,
   starting with AI & translation. The per-document dialog is now called **Setup**
   everywhere.
+- New font choice **Times New Roman / 標楷體** (Setup → Fonts, or when creating a
+  worksheet): Chinese text prints and exports in 標楷體. The default stays 新細明體.
 
 ### Changed
 - New diagrams and the sample paper now use the Education Bureau glossary's Chinese

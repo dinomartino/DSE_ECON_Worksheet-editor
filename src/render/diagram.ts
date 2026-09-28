@@ -20,6 +20,7 @@ import type {
   PieChart,
 } from '@/model/diagram';
 import { axisTickLabel, DIAGRAM_PLOT_ASPECT } from '@/model/diagram';
+import { cssFontFamilies } from '@/model/fonts';
 import type { BiText, FontPair, LanguageMode, RichText } from '@/model/types';
 import { areaPolygon, polygonCentroid } from '@/model/diagramAreas';
 import { resolveDiagram, splineSegments } from '@/model/diagramAnchors';
@@ -1657,7 +1658,7 @@ function pieSvg(diagram: Diagram, pie: PieChart, options: DiagramSvgOptions): st
   const language = options.language;
 
   const fontFamily = options.fonts
-    ? `${options.fonts.latin}, ${options.fonts.eastAsia}, serif`
+    ? `${cssFontFamilies(options.fonts, '')}, serif`
     : 'Times New Roman, serif';
 
   // The same wrapped lines the measurement reserved room for (§ `pieTitleLayout`) —
@@ -2178,7 +2179,7 @@ function flowSvg(diagram: Diagram, flow: FlowChart, options: DiagramSvgOptions):
   const ty = (height - layout.height * eff) / 2;
 
   const fontFamily = options.fonts
-    ? `${options.fonts.latin}, ${options.fonts.eastAsia}, serif`
+    ? `${cssFontFamilies(options.fonts, '')}, serif`
     : 'Times New Roman, serif';
 
   const boxStroke = `stroke="#000" stroke-width="1.2" fill="#fff"`;
@@ -2578,7 +2579,7 @@ function forumSvg(diagram: Diagram, forum: ForumChart, options: DiagramSvgOption
   const ty = (height - layout.height * eff) / 2;
 
   const fontFamily = options.fonts
-    ? `${options.fonts.latin}, ${options.fonts.eastAsia}, serif`
+    ? `${cssFontFamilies(options.fonts, '')}, serif`
     : 'Times New Roman, serif';
 
   const parts: string[] = [];
@@ -2804,7 +2805,7 @@ export function diagramSvg(stored: Diagram, options: DiagramSvgOptions): string 
   const { plot } = proj;
 
   const fontFamily = options.fonts
-    ? `${options.fonts.latin}, ${options.fonts.eastAsia}, serif`
+    ? `${cssFontFamilies(options.fonts, '')}, serif`
     : 'Times New Roman, serif';
 
   // Axes, each with an arrowhead at the far end, exactly as the papers draw them.

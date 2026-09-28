@@ -2657,6 +2657,8 @@ intact but unreachable.
   in `<w:t>` and HTML alike.
 - Per-script fonts: every run carries `w:rFonts` with `w:ascii`/`w:hAnsi` +
   `w:eastAsia`.
+  CSS backends spell the pair through `cssFontFamilies` (`src/model/fonts.ts`), which may
+  append browser stand-ins after the East-Asian face; they never reach the `.docx`.
 
 ---
 

@@ -4,6 +4,7 @@ import {
   clampAnswerGraphLines,
 } from '@/model/answerGraph';
 import { isBiTextEmpty, plain, runLines } from '@/model/text';
+import { cssFontFamilies } from '@/model/fonts';
 import type { AnswerGraph, BiText, FontPair, LanguageMode } from '@/model/types';
 import type { AnswerGraphNode } from './ir';
 
@@ -174,7 +175,7 @@ export function answerGraphSvg(node: AnswerGraphNode, options: AnswerGraphSvgOpt
   const bottom = s(plot.bottom);
 
   const fontFamily = options.fonts
-    ? `${options.fonts.latin}, ${options.fonts.eastAsia}, serif`
+    ? `${cssFontFamilies(options.fonts, '')}, serif`
     : 'Times New Roman, serif';
   const fontSize = s(FONT_SIZE);
 

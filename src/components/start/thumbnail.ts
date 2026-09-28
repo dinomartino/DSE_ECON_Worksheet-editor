@@ -1,4 +1,5 @@
 import { COVER_PANEL } from '@/model/cover';
+import { cssFontFamilies } from '@/model/fonts';
 import { contentWidth, pageDimensions, pageSetupOf } from '@/model/page';
 import { answerGraphBox, answerGraphSvgDataUrl } from '@/render/answerGraph';
 import type { FontPair, LanguageMode, OutputMode, Worksheet } from '@/model/types';
@@ -106,7 +107,7 @@ const THUMBNAIL_CSS =
 const PAGE_BREAK = '<p style="page-break-before:always"></p>';
 
 function fontFamily(fonts: FontPair): string {
-  return `font-family:'${fonts.latin}','${fonts.eastAsia}',serif;`;
+  return `font-family:${cssFontFamilies(fonts, "'", ',')},serif;`;
 }
 
 /**

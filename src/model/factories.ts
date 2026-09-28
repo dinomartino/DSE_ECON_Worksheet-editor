@@ -32,6 +32,8 @@ export const DEFAULT_FONTS = { latin: 'Times New Roman', eastAsia: 'PMingLiU' };
 
 export const FONT_PRESETS = [
   { label: 'Times New Roman / 新細明體', latin: 'Times New Roman', eastAsia: 'PMingLiU' },
+  // DFKai-SB is Word's name for 標楷體; the browser stack is in `./fonts`.
+  { label: 'Times New Roman / 標楷體', latin: 'Times New Roman', eastAsia: 'DFKai-SB' },
   { label: 'Times New Roman / 微軟正黑體', latin: 'Times New Roman', eastAsia: 'Microsoft JhengHei' },
   { label: 'Arial / 微軟正黑體', latin: 'Arial', eastAsia: 'Microsoft JhengHei' },
   { label: 'Calibri / 新細明體', latin: 'Calibri', eastAsia: 'PMingLiU' },

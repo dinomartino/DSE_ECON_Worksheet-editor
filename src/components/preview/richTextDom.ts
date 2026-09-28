@@ -1,4 +1,5 @@
 import { normalizeRuns, runLines } from '@/model/text';
+import { cssFontFamilies } from '@/model/fonts';
 import type { InlineRun, RichText, RunFormat } from '@/model/types';
 
 /**
@@ -23,7 +24,7 @@ export function runStyle(run: RunFormat): React.CSSProperties {
   const style: React.CSSProperties = {};
   if (run.fontSize !== undefined) style.fontSize = `${run.fontSize}pt`;
   if (run.color) style.color = `#${run.color}`;
-  if (run.fonts) style.fontFamily = `'${run.fonts.latin}', '${run.fonts.eastAsia}', serif`;
+  if (run.fonts) style.fontFamily = `${cssFontFamilies(run.fonts)}, serif`;
   return style;
 }
 
