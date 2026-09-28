@@ -1,3 +1,4 @@
+import { fillWritten, type AnswerVisitor } from '@/model/answerLeaves';
 import { createStructuredQuestion } from '@/model/factories';
 import { partMarks, questionMarks } from '@/model/marks';
 import { isSchemeEmpty } from '@/model/markScheme';
@@ -409,6 +410,36 @@ function mapTexts(question: StructuredQuestion, walk: TextWalker): StructuredQue
   });
 }
 
+/**
+ * Each answerable leaf — a part without sub-parts, or a sub-part — for the AI answer
+ * writer. The part is every leaf's stamp: editing its body or any sub-part is stale.
+ */
+function mapAnswers(question: StructuredQuestion, visit: AnswerVisitor): StructuredQuestion {
+  const questionId = question.id;
+  return patch(question, {
+    parts: mapSame(question.parts, (part, index) => {
+      const partId = part.id;
+      const subParts = part.subParts ?? [];
+      if (subParts.length === 0) {
+        return fillWritten(part, visit({
+          shape: 'written', key: `part:${partId}`, label: partLabel(index), stamp: part,
+          ...(part.marks !== undefined ? { marks: part.marks } : {}),
+          blank: areBlocksEmpty(part.blocks), answer: part.answer, scheme: part.scheme,
+          answerTarget: { kind: 'partAnswer', questionId, partId },
+        }));
+      }
+      return patch(part, {
+        subParts: mapSame(subParts, (sub, subIndex) => fillWritten(sub, visit({
+          shape: 'written', key: `part:${partId}/sub:${sub.id}`, label: `${partLabel(index)}${subPartLabel(subIndex)}`, stamp: part,
+          ...(sub.marks !== undefined ? { marks: sub.marks } : {}),
+          blank: areBlocksEmpty(sub.blocks), answer: sub.answer, scheme: sub.scheme,
+          answerTarget: { kind: 'subPartAnswer', questionId, partId, subPartId: sub.id },
+        }))),
+      });
+    }),
+  });
+}
+
 /** A part's answer covers its sub-parts; otherwise each unanswered leaf counts once. */
 function healthFacts(question: StructuredQuestion): QuestionHealthFacts {
   let unansweredParts = 0;
@@ -524,6 +555,7 @@ export const structuredType: QuestionTypeDefinition<StructuredQuestion> = {
   render,
   EditorPanel: StructuredEditorPanel,
   mapTexts,
+  mapAnswers,
   healthFacts,
   answerKey,
   qualityView,

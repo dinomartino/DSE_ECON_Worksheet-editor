@@ -24,11 +24,17 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
   whole paper or whatever you have selected.
 - **One ✦ AI button** (⌘J) holds every AI tool, with the untranslated count on it;
   right-click any text, table or question for AI on just that part.
+- Set up your AI key right where you use it — no trip to Settings. Pick Gemini, DeepSeek
+  or Qwen in the AI menu, paste your key, and the action you chose runs once it works.
 - **Questions from a source** (AI menu): paste a news extract or data description and
   get HKDSE questions built only on it — four MCQs (one with combination statements) for
   a Paper 1, a structured question with marks for a Paper 2, a mix for a worksheet —
   with answers, explanations and marking points. The source goes in as printed, and
   one Undo takes the whole set back.
+- **Write answers & mark scheme** (AI menu): model answers, HKEAA marking points that add up
+  to each part's marks, and a why-right / why-wrong line for each MCQ option — in English
+  and 中文 when your paper has both. Only empty answers are filled; nothing you wrote is
+  replaced, and one Undo takes it all back.
 - **Check question quality** (AI menu): a second pair of eyes before you print — flags
   two defensible MCQ options, a key that looks wrong, an unbolded NOT, "Explain" for
   1 mark, a marking scheme that doesn't add up to the marks, and English and 中文 that

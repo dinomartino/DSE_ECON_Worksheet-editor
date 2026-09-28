@@ -54,7 +54,7 @@ export interface CompletionRequest {
   system: string;
   /** Few-shot pair(s), then the real payload last. */
   turns: ChatTurn[];
-  /** ITEMS_SCHEMA. */
+  /** ITEMS_SCHEMA, or a caller's own flat schema with its `shapeHint`. */
   schema: JsonSchema;
   /** Appended to `system` on a rung that doesn't enforce `schema`; absent = the items shape. */
   shapeHint?: string;
