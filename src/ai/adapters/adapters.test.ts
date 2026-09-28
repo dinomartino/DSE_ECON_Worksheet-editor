@@ -212,3 +212,18 @@ describe('anthropic', () => {
     expect(anthropicAdapter.extract({ content: [], stop_reason: 'refusal' })?.finish).toBe('safety');
   });
 });
+
+describe('a caller-owned schema', () => {
+  it("carries the caller's shape hint on every unenforced rung, never the items hint", () => {
+    const own = { ...req, shapeHint: 'OWN HINT' };
+    const bodies = [
+      openaiCompatAdapter.build(PRESETS.deepseek, config('deepseek'), own, 'openai-jsonObject').body ?? '',
+      anthropicAdapter.build(PRESETS.anthropic, config('anthropic'), own, 'prompt').body ?? '',
+      geminiAdapter.build(PRESETS.gemini, config('gemini'), own, 'prompt').body ?? '',
+    ];
+    for (const body of bodies) {
+      expect(body).toContain('SYSTEM\\n\\nOWN HINT');
+      expect(body).not.toContain(JSON.stringify(JSON_SHAPE_HINT).slice(1, -1));
+    }
+  });
+});

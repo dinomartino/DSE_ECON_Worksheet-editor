@@ -13,6 +13,8 @@ import { pathToFileURL } from 'node:url';
  *   - a source holding "(long)" in a request of more than one item → finish_reason
  *     "length" (the run bisects);
  *   - anything else → the source with a 譯： / EN: prefix, tags kept.
+ * A request whose system prompt is the answer writer's (E1) gets a valid canned answer,
+ * a scheme of 1-mark points totalling the marks, and a rationale per asked option.
  * Base-URL prefixes: `/region/v1` answers Gemini's FAILED_PRECONDITION location error,
  * `/401/v1` rejects the key, `/slow/v1` answers after 4 s (Stop and the scrim question). `GET /__count` and `POST /__reset` expose the request count.
  *
@@ -76,7 +78,46 @@ function itemsOf(payload) {
   return out;
 }
 
+/** The answer writer's system prompt (`src/answers/promptText.ts`) opens with this. */
+const ANSWERS_MARKER = 'You write HKDSE Economics model answers';
+
+/** E1: a model answer, 1-mark points totalling the marks, a rationale per asked letter. */
+function answersReply(payload) {
+  const zh = (payload.languages ?? []).includes('zh');
+  const items = (payload.questions ?? []).flatMap((q) =>
+    (q.items ?? []).map((item) => {
+      const write = item.write ?? [];
+      if (item.type === 'choice') {
+        const rationales = write.map((letter) => ({
+          option: letter,
+          en: letter === item.correct ? 'Correct: street lighting is non-rival and non-excludable.' : `Incorrect: option ${letter} is rival and excludable.`,
+          zh: zh ? (letter === item.correct ? '正確：街燈具非競爭性及非排他性。' : `錯誤：選項${letter}具競爭性及排他性。`) : '',
+        }));
+        return { key: item.key, answerEn: '', answerZh: '', points: [], rationales };
+      }
+      const answer = write.includes('answer');
+      const points = write.includes('scheme')
+        ? Array.from({ length: item.marks ?? 0 }, (_, n) => ({
+            en: n === 0 ? 'The tax raises the cost of production.' : `Supply decreases, so the price rises (${n + 1}).`,
+            zh: zh ? (n === 0 ? '稅項令生產成本上升。' : `供應減少，因此價格上升（${n + 1}）。`) : '',
+            marks: 1,
+          }))
+        : [];
+      return {
+        key: item.key,
+        answerEn: answer ? 'The tax raises the cost of production.\nSupply decreases, so the equilibrium price rises.' : '',
+        answerZh: answer && zh ? '稅項令生產成本上升。\n供應減少，因此均衡價格上升。' : '',
+        points,
+        rationales: [],
+      };
+    }),
+  );
+  return completion(JSON.stringify({ items }));
+}
+
 export function reply(body) {
+  const system = (Array.isArray(body?.messages) ? body.messages : []).find((m) => m.role === 'system');
+  if (typeof system?.content === 'string' && system.content.includes(ANSWERS_MARKER)) return answersReply(payloadOf(body));
   const items = itemsOf(payloadOf(body));
   if (items.length > 1 && items.some((i) => i.text.includes('(long)'))) {
     return completion('{"items":[{"key":"' + items[0].key + '","text":"', 'length');
