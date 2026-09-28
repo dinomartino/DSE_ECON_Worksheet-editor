@@ -97,6 +97,10 @@ export function pageTranslateItems(
       }
     }
   }
+  // A cell also offers its whole table.
+  if (payload.kind === 'cell') {
+    items.push(...blockItems(worksheetId, { kind: 'block', blockId: payload.blockId, questionId: payload.questionId }, sources));
+  }
   const questionId = matches.length === 1 ? matches[0].questionId : payload.questionId;
   if (questionId !== undefined) {
     items.push({

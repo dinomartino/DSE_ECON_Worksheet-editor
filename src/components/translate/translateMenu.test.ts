@@ -84,8 +84,14 @@ describe('pageTranslateItems — text and cell', () => {
       questionId: 'Q1',
       target: { kind: 'tableCell', blockId: 't1', cellId: 'c1' },
     });
-    const items = pageTranslateItems('w1', { kind: 'cell', blockId: 't1', cellId: 'c1', questionId: 'Q1' }, sources([cell]), false);
+    const items = pageTranslateItems(
+      'w1',
+      { kind: 'cell', blockId: 't1', cellId: 'c1', questionId: 'Q1' },
+      sources([{ ...cell, blockIds: ['t1'] }], { t1: 'table' }),
+      false,
+    );
     expect(items[0]).toMatchObject({ label: 'Fill 中文', request: { scope: { kind: 'paths', paths: ['q:Q1/b:t1/cell:c1'] } } });
+    expect(items.map((i) => i.label)).toEqual(['Fill 中文', 'Translate this table', 'Translate this question…']);
   });
 
   it('is empty for a read-only document', () => {
