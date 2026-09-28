@@ -24,6 +24,11 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   everywhere.
 - **AI menu**: press ⌘J (Ctrl+J on Windows) to open one menu of AI actions for the
   whole paper or whatever you have selected.
+- **Questions from a source** (AI menu): paste a news extract or data description and
+  get HKDSE questions built only on it — four MCQs (one with combination statements) for
+  a Paper 1, a structured question with marks for a Paper 2, a mix for a worksheet —
+  with answers, explanations and marking points. The source goes in as printed, and
+  one Undo takes the whole set back.
 
 ### Changed
 - New diagrams and the sample paper now use the Education Bureau glossary's Chinese

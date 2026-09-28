@@ -2409,6 +2409,35 @@ Outline row and the paper check's links. Each is absent when the document is rea
 
 ---
 
+## AI questions from a source (E3)
+
+The `create.fromSource` verb (`src/assist/verbs/fromSource.ts`): the teacher pastes a
+source (≥ 80 characters) and gets HKDSE items grounded only in it, inserted directly.
+The engine is `src/generate/`, pure over injected deps like `src/translate/run.ts`.
+
+- **What it makes follows the paper** (`recipeFor`, from `documentShape`): Paper 1 → 4
+  MCQs, at least one an HKEAA combination-statement item; a Question-Answer Book or an
+  LQ worksheet (dotted answer space in its questions) → one structured question of 8–12
+  marks with per-part answer space; a classroom worksheet → 3 MCQs + a 3–6 mark
+  structured question. Languages are the sides the edition prints.
+- **The source prints once, verbatim**, on the side it is written in: a shared
+  `stimulus` spanning the batch, or an unlabelled `SourceBlock` under the structured
+  question's lead-in.
+- **One request, its own schema** (`SOURCE_QUESTIONS_SCHEMA`); `CompletionRequest.shapeHint`
+  replaces the items hint on rungs that don't enforce a schema. No repair pass.
+- **Checks are deterministic** (`src/generate/validate.ts`). Never inserted (`failed`):
+  not exactly 4 options, a key outside A–D, duplicate options, an empty stem or side,
+  marks that are not positive integers, a combination item whose options don't combine
+  its statements. Inserted and highlighted (`look`): a number the source never states, a
+  marks total off the range, a 中文 term off the EDB glossary (deny forms are fixed in
+  place, as in translation). A mark scheme whose points don't total the part is dropped.
+- **The store builds every question** with its type's `create()`;
+  `insertQuestionBatch` fills and inserts the batch at the anchor (else ahead of "END OF
+  PAPER") as one commit. Type-specific filling lives in `src/generate/build.ts`, never
+  in a shared module.
+
+---
+
 ## The per-keystroke render path
 
 Typing commits per input, so the pipeline — `renderWorksheet`, the sheets *and* the

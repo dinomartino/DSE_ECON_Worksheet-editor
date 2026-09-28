@@ -327,6 +327,7 @@ Invariants:
 - `src/assist/scope.ts:scopeFromSelection` · `src/assist/scope.ts:scopeLabel` — the selection as an `AiScope`, pure (multi-selection via the store's `selectedFlowIds`)
 - `src/assist/menuStore.ts:openAi` — what every entry point calls; `src/assist/runStore.ts:useAiRun` — one run at a time: running → review (after a direct insert) or error
 - `src/components/ai/AiHost.tsx:AiHost` — mounted once in `EditorApp`; renders `src/components/ai/AiMenu.tsx` and `src/components/ai/AiBar.tsx`, owns ⌘J / Ctrl+J (`src/components/ai/shortcut.ts:shouldOpenAi`)
+- `src/assist/verbs/fromSource.ts:makeFromSourceVerb` — E3 "Questions from a source…": `src/generate/recipe.ts:recipeFor` (what this paper can contain) → `src/generate/run.ts:generateFromSource` (one request, `src/generate/prompt.ts:SOURCE_QUESTIONS_SCHEMA`) → `src/generate/validate.ts:checkDraft` → `src/generate/build.ts:buildBatch` → the store's `insertQuestionBatch`
 
 Invariants:
 - Results insert directly as one commit; review is after, and `undoAll` reverts that one commit.
