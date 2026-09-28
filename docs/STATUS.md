@@ -22,6 +22,21 @@ off the bottom.** It is the first thing a fresh session reads — then
   `npm run eval:translate` (prompt e2.2 never run live; model ids in `src/ai/providers.ts`
   unverified); one try from an HK network without VPN (Gemini region error → Use DeepSeek);
   desktop Keychain prompt in a built app (`npm run desktop:build:debug`), incl. Windows.
+- **AI door (2026-09-28, merged on `develop`, not released)** — one **✦ AI** button (replaces
+  the untranslated pill; count is its badge) and ⌘J open one menu of verbs scoped by the
+  selection; right-click "✦ AI…" and the multi-select bar open the same menu. A click runs:
+  **results insert directly** (one commit, one ⌘Z — the user's call), then highlight on the
+  page with a review bar (‹ ›, item card, Undo all). The Translate dialog is gone. Verbs:
+  Fill missing 中文/English, Re-translate, Check terms (keyless), **E1** Write answers & mark
+  scheme (`src/answers/`), **E3** Questions from a source (`src/generate/`), **E4** Check
+  question quality (`src/quality/`). No key → SetupCard in the menu (Gemini stays
+  Recommended). Code: `src/assist/`, `src/components/ai/`. `node scripts/ai-verify.mjs`:
+  37/37 Chromium + WebKit (mock). Design: artifact RNXkAnKMXcvJM6PWECe74S.
+  **Before release (user):** every verb against a real key (E1/E3/E4 prompts never run live);
+  the badge (edition's untranslated) and "Fill missing" count (adds teacher text + symbol
+  copies) differ on the same paper — decide if that confuses; E3 keeps a pasted source on
+  its own side in a bilingual paper; a partless structured question gets no E1 answer
+  (no field for it).
 - **Home navigation (2026-09-28, merged on `develop`)** — start screen: Settings is a gear
   icon bottom-left (`StartScreen.tsx:SettingsButton`), version line above it (desktop).
   Editor: `[logo] Worksheets › <title>` crumb goes home (word hides <1280px; ⋯ →
@@ -79,7 +94,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Last verified
 
-- `npm test` — 2487 tests, ~7s (2026-09-28). `cargo check --locked` clean. `npm run build`
+- `npm test` — 2550 tests, ~7s (2026-09-28, after the AI door). `cargo check --locked` clean. `npm run build`
   green (postbuild: glossary only in a lazy chunk); `npm run samples` exports.
 - `npm run typecheck` — clean.
 - `npm run lint` — 43 pre-existing problems (3 errors, 40 warnings) in `Preview.tsx` and
@@ -89,9 +104,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Open threads and known gaps
 
-- **E2 loose ends:** the toolbar pill and the Translate dialog count different sets (pill
-  counts symbol gaps, dialog counts teacher text), so pill − Insert need not equal the new
-  pill; Check terms has no "N match" count; the billing error opens the key page (no
+- **E2 loose ends:** Check terms has no "N match" count; the billing error opens the key page (no
   `billingUrl` in presets); DWL/TR stay symbols, so their 中文 falls back to English;
   Qwen's DashScope domain gets no new features after 2026-09-30 (workspace URL ships);
   `npm version` rewrites `Cargo.toml` but not `Cargo.lock` (`sync-version`) — check the lock
