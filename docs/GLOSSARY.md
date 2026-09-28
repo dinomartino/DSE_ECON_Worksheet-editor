@@ -114,8 +114,8 @@ Words this repository uses in its own way. One line each, with where the thing l
 - **BiText** — `{ en, zh }`, the bilingual pair every authored string is. `src/model/text.ts`
 - **Settings** vs **Setup** — *Settings* is the app's: this browser or computer, every
   worksheet, never saved in one (`src/settings/sections.ts`). *Setup* is the document's own
-  dialog (`src/components/editor/DocumentSettings.tsx`); its Outline button still reads
-  "Settings" until the Translate entry points rename it "Setup" ("Document setup").
+  dialog (`src/components/editor/DocumentSettings.tsx`, titled "Document setup"), opened by
+  Setup in the toolbar and the Outline.
 - **Slot** — one BiText in a worksheet as the translation walk sees it: its path, kind,
   role and page target. `src/model/textSlots.ts:TextSlot`
 - **Fill** — write the missing side of a one-sided BiText; never overwrites a side that
@@ -124,7 +124,7 @@ Words this repository uses in its own way. One line each, with where the thing l
   物價水平"). `src/glossary/types.ts:PinnedTerm`
 - **Rank-1 form** — the first rendering the EDB glossary lists for a term, the one pinned
   and preferred; lower ranks still pass as "not preferred". The one exception table is
-  `src/glossary/types.ts:PreferredOverrides` (import → 進口).
+  `src/glossary/overrides.ts:PREFERRED_OVERRIDES` (import → 進口).
 - **Deny form** — a known wrong or non-HK rendering of a glossary term (市場失靈 for market
   failure), fixed deterministically; never itself a glossary variant.
 - **Symbol-only** — text with no words to translate (E₀, $14 000, MC = MR, AD); never sent

@@ -14,8 +14,9 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 
 ### Added
 - **Translate**: fill the missing 中文 or English of a worksheet with AI, using your own
-  key (Gemini, DeepSeek, Qwen and others). Every line is shown for review before it goes
-  in, Economics terms follow the Education Bureau glossary, and one Undo takes it all back.
+  key (Gemini, DeepSeek, Qwen and others). A paper or question is shown line by line for
+  review before it goes in; a single field fills in place. Economics terms follow the
+  Education Bureau glossary, and one Undo takes it all back.
 - **Check terms**: compare a worksheet's Chinese with the EDB glossary and fix
   non-standard terms in one click — no key needed.
 - **Settings** (⋯ → Settings…): app-wide preferences for this browser or computer,
