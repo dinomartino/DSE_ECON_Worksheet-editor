@@ -2,7 +2,7 @@
  * Builds the `Glossary` from the raw JSON: parse, index, and bind the check, pins and
  * auto-fix to that index. Reached only through `load.ts`'s dynamic import, with the data.
  */
-import type { Glossary } from './types';
+import type { Glossary, GlossaryMatchEn } from './types';
 import { DENY, type DenyRow } from './deny';
 import { parseGlossary, type RawGlossary } from './parse';
 import { buildEnMatcher } from './matchEn';
@@ -29,7 +29,7 @@ export function createGlossary(raw: RawGlossary, denyRows: readonly DenyRow[] = 
     variants: new Map(entries.map((e) => [e.id, indexVariants(e)])),
     deny,
   };
-  const strip = <T extends { form: string }>({ form: _form, ...hit }: T) => hit;
+  const strip = ({ entryId, start, end, viaAbbreviation }: GlossaryMatchEn) => ({ entryId, start, end, viaAbbreviation });
   return {
     meta: {
       source: raw.meta.source,

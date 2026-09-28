@@ -2122,11 +2122,39 @@ Rules every part keeps:
 <!-- e2:glossary start -->
 ### The glossary (`src/glossary/`)
 
-Types in `src/glossary/types.ts`; the citation in `src/glossary/attribution.ts`
-(`GLOSSARY_ATTRIBUTION`, shown wherever terms are used; the data is © HKSAR Government and
-outside the MIT grant). `loadGlossary` (`src/glossary/load.ts`) is the only way to the data,
-so it stays a lazy chunk; `useGlossary` is null until it resolves. Rank 1 is preferred,
-with one exception table (`PreferredOverrides`: the import family prefers 進口).
+The EDB Economics glossary (2020), bundled verbatim as `src/glossary/data/edb-economics-2020.json`
+(sha256 pinned by `src/glossary/parse.test.ts`; © HKSAR Government, outside the MIT grant —
+`src/glossary/NOTICE.md`, `GLOSSARY_ATTRIBUTION` in `src/glossary/attribution.ts`). The
+data is evidence: corrections and policy live in `src/glossary/overrides.ts`, never in the JSON.
+
+- **Loading.** `loadGlossary` (`src/glossary/load.ts`) dynamic-imports the data and the
+  engine (`src/glossary/glossary.ts:createGlossary`), memoised; a failed load is retried by
+  the next caller. Nothing else names the data (`src/glossary/load.test.ts`), and
+  `scripts/check-web-bundle.mjs` proves it is a lazy chunk once UI imports it.
+  `useGlossary` is null until it resolves.
+- **Parse** (`src/glossary/parse.ts`). `；` ranks (first preferred), ` / ` equal variants,
+  `(1)…，(2)…` senses; qualifiers become `note`; 住户 displays as 住戶. English forms add
+  the abbreviation only where it spells the words ("real GDP").
+- **Preferred = rank 1**, with one exception: `PREFERRED_OVERRIDES` (the import family →
+  進口). It drives `preferred`, pins, the check's `ok` and every suggested fix; 入口 passes as
+  not preferred. The GDP family pins sense (1), Hong Kong usage.
+- **Match** (`src/glossary/matchEn.ts`, `src/glossary/matchZh.ts`, folds in
+  `src/glossary/fold.ts`). English: a token trie with spelling, plural, hyphen and
+  possessive folds. Chinese: a character trie on folded text whose index map returns the
+  teacher's own offsets. Both leftmost-longest; `matchEnAll` keeps nested terms.
+- **Check** (`src/glossary/check.ts`). One result per outermost source term, first rule
+  wins: ok-abbr, ok, not-preferred, deny form, coverage conflict, near, missing. The
+  **coverage rule** — the longest glossary span over a rendering must belong to a source
+  term, or reword one ("unitary elastic" → 需求彈性) — stops 低彈性需求 passing for
+  "elastic demand". A rendering inside or touching a deny form never counts.
+  Generic-tier words are info only.
+- **Deny list** (`src/glossary/deny.ts`): rows are entry-scoped, cite evidence, and obey the
+  invariants in `src/glossary/deny.test.ts`. `autoFix` replaces non-reversal forms, longest
+  first, keeping the replaced span's formatting, never inside sub/superscripts.
+- **Pins** (`src/glossary/pin.ts`): the preferred rendering only, first occurrence first,
+  capped at 200; ZH→EN never pins a generic word or a one-character term.
+- **Seeds stay on the glossary**: `src/glossary/seededTerms.test.ts` checks every template,
+  preset and sample — no warning, and rank 1 except the rank-2 gap short forms.
 <!-- e2:glossary end -->
 
 <!-- e2:text start -->
