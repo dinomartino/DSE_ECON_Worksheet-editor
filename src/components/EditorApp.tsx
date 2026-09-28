@@ -11,6 +11,7 @@ import { DocumentSettings } from '@/components/editor/DocumentSettings';
 import { Toolbar } from '@/components/editor/Toolbar';
 import { NewerVersionNotice } from '@/components/editor/NewerVersionNotice';
 import { TranslateHost } from '@/components/translate/TranslateHost';
+import { AiHost } from '@/components/ai/AiHost';
 import { IconButton } from '@/components/ui';
 import { ChevronRightIcon, CloseIcon } from '@/components/ui/icons';
 import { createTextField, type ZoneName } from '@/model/bands';
@@ -531,6 +532,9 @@ export function EditorApp({
 
       {/* Translate and Check terms: opened through `useAppDialogs`, never stacked. */}
       <TranslateHost />
+
+      {/* The AI door: menu, run bar and ⌘J / Ctrl+J. */}
+      <AiHost />
 
       {/* The how-to-edit hint. It was a grey line of text pinned above the page, which
           pushed the document down and read as a disclaimer. As a floating pill it sits
