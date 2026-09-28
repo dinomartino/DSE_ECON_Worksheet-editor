@@ -23,6 +23,7 @@ import {
   acceptedKeys,
   acceptedTermFixes,
   closeIntent,
+  insertTally,
   pendingKeys,
   probeOptions,
   restrictPlan,
@@ -229,7 +230,9 @@ export function createTranslateController(deps: ControllerDeps) {
       if (!s.run) return;
       const writes = deps.writesFor(s.run.plan, outcomeOf(s.run), acceptedKeys(s), s.acceptCopies);
       const result = apply(writes);
-      if (result) report(result, filledFlash(result.applied, result.skipped.length), flashAction(writes));
+      if (!result) return;
+      const tally = insertTally(s, new Set(result.skipped.map((skip) => skip.path)));
+      report(result, filledFlash(tally.filled, tally.skipped), flashAction(writes));
     },
     /** "Only symbols to fill": the copies the options write (per edition), one commit, no model. */
     copySymbols() {

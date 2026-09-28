@@ -251,6 +251,21 @@ export function insertCount(session: TranslateSession): number {
   return acceptedKeys(session).size + (session.acceptCopies ? copies : 0);
 }
 
+/** Insert's outcome in the button's unit, rows: a deduped row (×n) is one, and counts as
+ *  filled when any of its slots was written. `filled + skipped` = `insertCount`. */
+export function insertTally(session: TranslateSession, skippedPaths: ReadonlySet<TextPath>): { filled: number; skipped: number } {
+  const rows: TextPath[][] = [];
+  for (const key of acceptedKeys(session)) rows.push(session.run?.plan.jobs.get(key)?.slots.map((s) => s.path) ?? []);
+  if (session.acceptCopies) for (const write of session.run?.plan.copies ?? []) rows.push([write.path]);
+  let filled = 0;
+  let skipped = 0;
+  for (const paths of rows) {
+    if (paths.some((path) => !skippedPaths.has(path))) filled += 1;
+    else skipped += 1;
+  }
+  return { filled, skipped };
+}
+
 /** What Escape, ✕ or the scrim does now. Paid work is never lost to one stray press. */
 export type CloseIntent = 'close' | 'askStop' | 'stop' | 'askDiscard' | 'discard';
 export function closeIntent(session: TranslateSession): CloseIntent {

@@ -107,6 +107,23 @@ describe('translateController', () => {
     expect(t.session().request).toBeNull();
   });
 
+  it('the flash counts rows like the Insert button: a ×2 row is one text', async () => {
+    const twice = job('t1', 'Price ($)', { slots: [JOBS[0].slots[0], { ...JOBS[0].slots[0], path: 'q:Q3/dup' }] });
+    const stale = (w: readonly TranslationWrite[]): ApplyReport => ({
+      applied: w.length - 1,
+      skipped: [{ path: 'q:Q3/t2', reason: 'targetChanged' }],
+      resized: 0,
+    });
+    const t = setup({ plan: vi.fn(() => fakePlan([twice, JOBS[1], JOBS[2]])), apply: vi.fn(stale) });
+    t.controller.open(PAPER_REQUEST);
+    t.controller.translate();
+    await flush();
+    t.scripted.release();
+    await flush();
+    t.controller.insert();
+    expect(t.deps.notify).toHaveBeenCalledWith('Filled 2 texts · 1 skipped (changed while translating)', expect.anything());
+  });
+
   it('offers View 中文 when the filled side is hidden in the editor', async () => {
     const t = setup({}, { language: 'en', version: 'student' });
     t.controller.open(PAPER_REQUEST);
