@@ -83,6 +83,13 @@ describe('buildRequest', () => {
     expect(payload.groups[0].items).toEqual([{ key: 't2', kind: 'part', text: 'Explain why market failure occurs.', ...repair.get('t2') }]);
   });
 
+  it('pins the import family in its 進口 form, the one rank exception', () => {
+    const imports = new Map([['t1', job('t1', 'Explain the effect of an import quota on imports.')]]);
+    const one: Chunk = { ...chunk, groups: [{ ...chunk.groups[0], jobKeys: ['t1'] }] };
+    const payload = JSON.parse(buildRequest(one, imports, fakeGlossary(), preset, new AbortController().signal).turns[2].content);
+    expect(payload.glossary).toEqual(['import quota → 進口配額', 'import → 進口']);
+  });
+
   it('caps the output budget at the preset', () => {
     expect(maxOutputTokens(1_000_000, 'toEn', preset)).toBe(preset.outputCap);
   });
