@@ -4,3 +4,4 @@
  */
 import './translate';
 import './checkTerms';
+import './quality';

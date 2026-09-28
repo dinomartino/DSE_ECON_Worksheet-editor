@@ -1722,7 +1722,7 @@ paths). Verify by measuring the same text node in both states.
 
 `QuestionTypeDefinition`: `id` · `displayName` (bilingual) · `create()` ·
 `render(question, context) → RenderNode[]` · `EditorPanel` · `mapTexts` ·
-`examGapLines?` · `healthFacts?` · `answerKey?` · `variant?`. Registered:
+`examGapLines?` · `healthFacts?` · `answerKey?` · `variant?` · `qualityView?`. Registered:
 `mcq`, `structured`. A new type needs only a definition.
 
 - **The hand-built numbered paragraph must copy the block's `format` itself** — the
@@ -2406,6 +2406,27 @@ Outline row and the paper check's links. Each is absent when the document is rea
   explicit Translate, Fill, Save & test or List my models click. Production code has no
   test hooks.
   It runs Chromium and WebKit; `--only=entry,journey,edge,error,settings` picks groups.
+
+## AI question quality check (E4)
+
+The `check.quality` verb (`src/assist/verbs/quality.ts`) over the engine in `src/quality/`
+(pure, injected client; deps from `src/translate/deps.ts:createRunDeps`, no glossary).
+
+- **Findings only.** It writes nothing to the document; each finding is a review item
+  (`tone: 'finding'`) pointing at the page text it concerns, or at the whole question.
+- **Read from the model, through the registry.** A type's `qualityView?` lists its anchors
+  (stem, lead-in, statements, options with the key, parts with printed marks and scheme) in
+  print order; `src/quality/` never names a type (`noTypeBranching.test.ts`).
+- **Deterministic first, never a call**: a scheme totalling other than the printed marks
+  (`schemeMismatch`), an option naming a statement that isn't there. Blank questions are
+  not sent. The prompt tells the model to skip what the paper check already covers.
+- **Whole questions per request** (≤ 6 questions, ≤ 6 000 characters), with request-local
+  keys (`q2.A`, `q1.(b)(ii)`), never app ids. A cut-off, blocked or twice-unreadable reply
+  splits the chunk; a finding whose key anchors to nothing sent is dropped, as are
+  duplicates and a question's fifth. Stop keeps finished findings; a fatal error keeps them too.
+- **Items-shaped schema** (`{items:[{key, issue, severity, text, suggestion}]}`), so a
+  provider on an unenforced rung, told the plain `{key, text}` shape, still parses.
+  Words in `src/quality/promptText.ts`; bump `PROMPT_VERSION` with any change.
 
 ---
 
