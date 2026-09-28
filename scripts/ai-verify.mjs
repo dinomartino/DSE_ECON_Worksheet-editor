@@ -223,6 +223,15 @@ const SETUP_TITLE = 'Title, paper, margins, header and footer';
 /** PageSetupIcon's outline path (a gear would mean the §G.1 rename regressed). */
 const PAGE_SETUP_PATH = 'M6 2.5h8.5L19 7v14.5H6z';
 
+/** Right-click a question's own text (a paragraph with an edit target): the page menu's
+ *  Translation group lives there, not on a section rule or a derived number. */
+async function rightClickText(page) {
+  const text = page.locator('#print-root [data-question-id] [data-page-target]').first();
+  await text.scrollIntoViewIfNeeded();
+  await text.click({ button: 'right' });
+  await page.waitForTimeout(300);
+}
+
 /** Whether ⌘, opened Settings (closed again after). Headless, the browser never claims it. */
 async function pressSettingsShortcut(page) {
   await page.keyboard.press(`${META}+Comma`);
@@ -297,7 +306,7 @@ async function entryChecks(engine, browser) {
   });
 
   await check(engine, 'page menu Translation group', async () => {
-    await page.locator('#print-root [data-flow-id]').first().click({ button: 'right' });
+    await rightClickText(page);
     await page.waitForTimeout(300);
     await shot(page, '04-page-menu');
     // The English-only paper: every printed text offers Fill 中文.
@@ -410,6 +419,7 @@ async function journeyChecks(engine, browser) {
   await check(engine, 'pill opens Translate setup; nothing sent yet', async () => {
     await page.getByRole('button', { name: /\d+ untranslated/ }).click();
     await dialog.getByRole('button', { name: /^Translate \d+$/ }).waitFor({ timeout: 5000 });
+    await page.waitForTimeout(400);
     await shot(page, '10-translate-setup');
     expect((await mockCount()) === 0, 'a request left before the Translate click');
   });
@@ -446,7 +456,7 @@ async function journeyChecks(engine, browser) {
 
   await check(engine, 'page menu Fill 中文 lands on review', async () => {
     await mockReset();
-    await page.locator('#print-root [data-flow-id]').first().click({ button: 'right' });
+    await rightClickText(page);
     await page.getByRole('menuitem', { name: /^Fill 中文$/ }).first().click();
     await dialog.getByRole('button', { name: /^Insert \d+$/ }).waitFor({ timeout: 30_000 });
     expect((await mockCount()) > 0, 'Fill sent nothing');
@@ -465,12 +475,15 @@ async function journeyChecks(engine, browser) {
     const row = dialog.locator('li, [role="row"], label').filter({ hasText: '定義稅項歸宿' }).last();
     const box = row.getByRole('checkbox');
     expect((await box.count()) === 1 && !(await box.isChecked()), 'the variant fix is ticked or has no checkbox');
+    await page.waitForTimeout(400);
     await shot(page, '17-check-terms');
     await page.keyboard.press('Escape');
     expect((await mockCount()) === 0, 'Check terms sent a request');
   });
 
   await check(engine, 'Export paper check on the corpus copy links Review terms…', async () => {
+    // The terms finding is about printed Chinese: none in an English-only edition.
+    await setLanguage(page, 'EN+中');
     await page.getByRole('button', { name: 'Export…' }).click();
     await page.getByRole('button', { name: 'Review terms…', exact: true }).waitFor({ timeout: 5000 });
     await shot(page, '18-export-review-terms');
@@ -600,6 +613,77 @@ async function errorChecks(engine, browser) {
   await context.close();
 }
 
+/** §I.4 items 1 and 5: Settings at an 800-px viewport (footer unclipped), the region
+ *  banner after Use DeepSeek, and a BiTextField fill whose region error switches provider. */
+async function settingsChecks(engine, browser) {
+  const shot = (page, name) => page.screenshot({ path: `${OUT}/${engine}-${name}.png` });
+  const unclipped = async (page, name) => {
+    const box = await page.getByRole('dialog').getByRole('button', { name, exact: true }).last().boundingBox();
+    expect(box && box.y + box.height <= 800, `${name} is clipped (${box ? Math.round(box.y + box.height) : 'none'})`);
+  };
+  const { context } = await newContext(browser, { width: 1280, height: 800 });
+  const page = await context.newPage();
+  await mockReset();
+  await check(engine, 'Settings at 800 px: AI pane, footer unclipped', async () => {
+    await openDocument(page, 'english');
+    await page.getByRole('button', { name: 'File and export options' }).click();
+    await page.getByRole('menuitem', { name: 'Settings…', exact: true }).click();
+    await page.getByRole('dialog', { name: /Settings/ }).waitFor({ timeout: 5000 });
+    await page.waitForTimeout(800);
+    await shot(page, '30-settings-800');
+    await unclipped(page, 'Done');
+    await page.keyboard.press('Escape');
+  });
+  await context.close();
+
+  const region = await newContext(browser, { width: 1280, height: 800 }, { route: '/region' });
+  const rp = await region.context.newPage();
+  const dialog = rp.getByRole('dialog');
+  await mockReset();
+  await check(engine, 'Use DeepSeek opens Settings with the region banner', async () => {
+    await openDocument(rp, 'english');
+    await setLanguage(rp, '中文');
+    await rp.getByRole('button', { name: /\d+ untranslated/ }).click();
+    await dialog.getByRole('button', { name: /^Translate \d+$/ }).click();
+    await dialog.getByRole('button', { name: 'Use DeepSeek' }).click({ timeout: 10_000 });
+    await dialog.getByText(/refused a request from your location/).waitFor({ timeout: 5000 });
+    await rp.waitForTimeout(600);
+    await shot(rp, '31-settings-region-banner');
+    await unclipped(rp, 'Done');
+    await rp.keyboard.press('Escape');
+    await rp.waitForTimeout(300);
+    if (await dialog.count()) await rp.keyboard.press('Escape');
+  });
+  await region.context.close();
+
+  // The field fill: the region error's Use DeepSeek switches at once when its key is saved.
+  const field = await newContext(browser, { width: 1280, height: 800 }, { route: '/region' });
+  await field.context.addInitScript(() => sessionStorage.setItem('econgen.secret.ai:deepseek', 'sk-mock-deepseek-0000'));
+  const fp = await field.context.newPage();
+  await mockReset();
+  await check(engine, 'BiTextField fill: region error, Use DeepSeek switches provider', async () => {
+    await openDocument(fp, 'english');
+    await setLanguage(fp, 'EN+中');
+    await fp.locator('#print-root [data-question-id]').first().click();
+    await fp.getByRole('tab', { name: /Edit/ }).click();
+    const fill = fp.getByRole('button', { name: 'Fill 中文', exact: true }).first();
+    await fill.waitFor({ timeout: 5000 });
+    expect((await mockCount()) === 0, 'a request before the Fill click');
+    await fill.click();
+    const use = fp.getByRole('button', { name: 'Use DeepSeek', exact: true }).first();
+    await use.waitFor({ timeout: 10_000 });
+    await shot(fp, '32-field-fill-region');
+    await use.click();
+    await fp.waitForTimeout(1500);
+    const provider = await fp.evaluate(() => JSON.parse(localStorage.getItem('econgen.settings.ai') ?? '{}').provider);
+    await shot(fp, '33-field-fill-switched');
+    expect(provider === 'deepseek', `provider is ${provider}`);
+    expect(field.leaks.some((u) => u.includes('api.deepseek.com')), 'the retry did not go to DeepSeek');
+    return `${field.leaks.length} stubbed DeepSeek request(s)`;
+  });
+  await field.context.close();
+}
+
 const mock = await startMockServer(MOCK_PORT);
 const app = await startStaticServer(APP_PORT);
 try {
@@ -612,6 +696,7 @@ try {
         await journeyChecks(engine, browser);
         await edgeChecks(engine, browser);
         await errorChecks(engine, browser);
+        await settingsChecks(engine, browser);
       }
     } finally {
       await browser.close();
