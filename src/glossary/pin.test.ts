@@ -64,4 +64,8 @@ describe('pin, ZH → EN', () => {
   it('never pins a generic word, or 稅 alone', () => {
     expect(lines(['價格和稅'], 'toEn')).toEqual([]);
   });
+
+  it('never pins the pieces of 缺乏(價格)彈性: it is "(price) inelastic"', () => {
+    expect(lines(['若需求缺乏價格彈性'], 'toEn')).toEqual(['需求 → demand']);
+  });
 });

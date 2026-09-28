@@ -362,20 +362,35 @@ export function checkEnToZh(index: GlossaryIndex, sourceEn: string, outputZh: st
   return separateFixes(checks);
 }
 
+/** 需求缺乏(價格)彈性 is "demand is (price) inelastic": its 缺乏 is not scarcity, nor its 彈性 a noun. */
+const ELASTICITY_PREDICATE = /(?:缺乏|富)(?:價格|收入|供應|需求)?彈性/g;
+
+/** Is `hit` a piece of an elasticity predicate of `folded` (缺乏, or the 彈性需求 in 缺乏彈性需求)?
+ *  A term that starts with the whole predicate (富彈性需求) is not. */
+function inElasticityPredicate(folded: string, hit: FoldedHit): boolean {
+  for (const m of folded.matchAll(ELASTICITY_PREDICATE)) {
+    const end = m.index + m[0].length;
+    if (hit.from >= m.index && hit.from < end && (hit.to <= end || hit.from > m.index)) return true;
+  }
+  return false;
+}
+
 /**
  * Chinese hits worth pinning or checking: 3+ characters, or 2 with a core entry. Generic
- * entries never count, and 稅 alone never does. Returns the core candidates, or null.
+ * entries never count, 稅 alone never does, nor a hit inside an elasticity predicate of
+ * `folded` (the source the hit came from). Returns the core candidates, or null.
  */
-export function pinnableZh(index: GlossaryIndex, hit: FoldedHit): GlossaryEntry[] | null {
+export function pinnableZh(index: GlossaryIndex, hit: FoldedHit, folded = ''): GlossaryEntry[] | null {
   const core = hit.entryIds.map((id) => index.entries[id]).filter((e) => e.tier === 'core');
-  if (!core.length || hit.to - hit.from < 2) return null;
+  if (!core.length || hit.to - hit.from < 2 || inElasticityPredicate(folded, hit)) return null;
   return core;
 }
 
 /**
  * The reverse check (secondary): every pinnable Chinese term in the source must reach one of
  * its English keys in the output. A term with several keys (總收入: aggregate income or
- * total revenue) is info once met; the only warning is a term none of whose keys appear.
+ * total revenue) is info once met. A missing term warns only when it is 3+ characters with
+ * a multi-word key (物價水平); a word the English may inflect or rephrase (徵稅, 企業) is a note.
  */
 export function checkZhToEn(index: GlossaryIndex, sourceZh: string, outputEn: string): TermCheck[] {
   const src = foldZh(sourceZh);
@@ -383,7 +398,7 @@ export function checkZhToEn(index: GlossaryIndex, sourceZh: string, outputEn: st
   const seen = new Set<string>();
   const checks: TermCheck[] = [];
   for (const seg of index.zh.matchFolded(src.folded)) {
-    const candidates = pinnableZh(index, seg);
+    const candidates = pinnableZh(index, seg, src.folded);
     const key = src.folded.slice(seg.from, seg.to);
     if (!candidates || seen.has(key)) continue;
     seen.add(key);
@@ -391,12 +406,13 @@ export function checkZhToEn(index: GlossaryIndex, sourceZh: string, outputEn: st
     const met = candidates.find((e) => inOutput.has(e.id));
     const entry = met ?? candidates[0];
     const state: TermState = !met ? 'missing' : candidates.length > 1 ? 'info' : 'ok';
+    const strict = seg.to - seg.from >= 3 && candidates.some(isMultiWord);
     checks.push({
       entryId: entry.id,
       en: entry.en,
       source: { text: sourceZh.slice(start, end), start, end },
       state,
-      severity: state === 'missing' ? 'warn' : state === 'info' ? 'info' : 'none',
+      severity: state === 'missing' ? (strict ? 'warn' : 'note') : state === 'info' ? 'info' : 'none',
       expected: candidates.map((e) => e.en).join(' / '),
     });
   }

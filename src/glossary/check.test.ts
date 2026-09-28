@@ -212,6 +212,19 @@ describe('checkZhToEn', () => {
     expect(c).toMatchObject({ en: 'total revenue', state: 'info', severity: 'info', expected: 'aggregate income / total revenue' });
   });
 
+  it('a word the English may inflect or rephrase is a note, not a warn', () => {
+    expect(g.checkZhToEn('政府向香煙徵稅', 'The government imposes a tax on cigarettes')).toEqual([
+      expect.objectContaining({ source: expect.objectContaining({ text: '徵稅' }), state: 'missing', severity: 'note' }),
+    ]);
+  });
+
+  it('never reads an elasticity predicate as terms: 缺乏 there is not scarcity', () => {
+    const checks = g.checkZhToEn('若需求缺乏價格彈性，價格上升。', 'If demand is price inelastic, price rises.');
+    expect(checks.map((c) => c.source.text)).toEqual(['需求']);
+    expect(checks.every((c) => c.severity === 'none')).toBe(true);
+    expect(g.checkZhToEn('其麵包的需求缺乏彈性。', 'Demand for its bread is inelastic.').filter((c) => c.severity === 'warn')).toEqual([]);
+  });
+
   it('skips generic words and one-character terms', () => {
     expect(g.checkZhToEn('稅', 'duty')).toEqual([]);
     expect(g.checkZhToEn('價格', 'cost')).toEqual([]);

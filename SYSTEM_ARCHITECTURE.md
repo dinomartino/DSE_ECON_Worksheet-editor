@@ -2162,7 +2162,10 @@ data is evidence: corrections and policy live in `src/glossary/overrides.ts`, ne
   first, under the same guards, never inside sub/superscripts; the new text takes the
   format of the span's first character.
 - **Pins** (`src/glossary/pin.ts`): the preferred rendering only, first occurrence first,
-  capped at 200; ZH→EN never pins a generic word or a one-character term.
+  capped at 200; ZH→EN never pins a generic word, a one-character term, or a piece of an
+  elasticity predicate (缺乏(價格)彈性 is "(price) inelastic", not scarcity). The reverse
+  check (`checkZhToEn`) skips the same hits, and warns only on a missing 3+ character term
+  with a multi-word key; a word the English may rephrase (徵稅, 企業) is a note.
 - **Seeds stay on the glossary**: `src/glossary/seededTerms.test.ts` checks every template,
   preset and sample — no warning, and rank 1 except the rank-2 gap short forms.
 <!-- e2:glossary end -->
