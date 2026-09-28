@@ -8,6 +8,7 @@ import {
   outlineTranslateItem,
   pageTranslateItems,
   paperRequest,
+  toolbarMenuEntries,
   type PageMenuSources,
 } from './translateMenu';
 
@@ -132,6 +133,23 @@ describe('pageTranslateItems — blocks', () => {
   it('offers nothing when every text in the block is already bilingual', () => {
     const done = [label('q:Q1/a', 'Q1', t('Demand', '需求'))];
     expect(pageTranslateItems('w1', { kind: 'block', blockId: 'd1', questionId: 'Q1' }, sources(done), false)).toEqual([]);
+  });
+});
+
+describe('toolbarMenuEntries', () => {
+  it('adds Translate and Check terms, and Settings only once a section is registered', () => {
+    const none = toolbarMenuEntries({ worksheetId: 'w1', readOnly: false, hasSettings: false });
+    expect(none.translate.map((e) => e.label)).toEqual(['Translate…', 'Check terms…']);
+    expect(none.translate[1].run).toEqual({ kind: 'translate', request: paperRequest('w1', 'check') });
+    expect(none.settings).toEqual([]);
+    const some = toolbarMenuEntries({ worksheetId: 'w1', readOnly: false, hasSettings: true, settingsHint: '⌘,' });
+    expect(some.settings).toEqual([{ label: 'Settings…', hint: '⌘,', run: { kind: 'settings' } }]);
+  });
+
+  it('drops the Translate items but keeps Settings in a read-only document', () => {
+    const readOnly = toolbarMenuEntries({ worksheetId: 'w1', readOnly: true, hasSettings: true });
+    expect(readOnly.translate).toEqual([]);
+    expect(readOnly.settings.map((e) => [e.label, e.hint])).toEqual([['Settings…', undefined]]);
   });
 });
 

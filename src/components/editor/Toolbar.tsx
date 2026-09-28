@@ -9,7 +9,7 @@ import { useWorksheetStore } from '@/store/worksheetStore';
 import { downloadWorksheetFile, worksheetStore } from '@/storage';
 import { isDesktop, revealFile, revealLabel } from '@/platform';
 import { Button, IconButton, Pill, Segmented } from '@/components/ui';
-import { DownloadIcon, RedoIcon, SettingsIcon, UndoIcon } from '@/components/ui/icons';
+import { DownloadIcon, PageSetupIcon, RedoIcon, SettingsIcon, UndoIcon } from '@/components/ui/icons';
 import { Menu } from '@/components/ui/Menu';
 import { Dialog } from '@/components/ui/Dialog';
 import { AppMark } from '@/components/ui/AppMark';
@@ -23,9 +23,42 @@ import { hasCoverSheet } from './sheets';
 import { FeedbackDialog } from '@/components/feedback/FeedbackDialog';
 import { WhatsNewDialog } from '@/components/whatsNew/WhatsNewDialog';
 import { describeDocument } from '@/feedback/feedback';
+import { useEffect } from 'react';
+import { useAppDialogs, type TranslateRequest } from '@/store/appDialogs';
+import { useSettingsSections } from '@/settings/sections';
+import { paperRequest, toolbarMenuEntries, type ToolbarEntry } from '@/components/translate/translateMenu';
+import { PILL_TITLE, pillLabel } from '@/components/translate/copy';
 
 /** A transient status line, optionally with one follow-up action. */
 type Notice = { message: string; action?: { label: string; run: () => void } };
+
+/** An action (desktop "Show in Finder", Undo) stays long enough to be reached. */
+function showNotice(
+  set: (update: (current: Notice | undefined) => Notice | undefined) => void,
+  message: string,
+  action?: Notice['action'],
+) {
+  const next: Notice = { message, action };
+  set(() => next);
+  setTimeout(() => set((current) => (current === next ? undefined : current)), action ? 8000 : 2400);
+}
+
+/** The front door to Translate: a button while the document can change, else a plain
+ *  count. Nothing when every printed text has both languages. */
+export function UntranslatedPill({ count, onOpen }: { count: number; onOpen?: () => void }) {
+  if (count <= 0) return null;
+  if (!onOpen) return <Pill tone="warn">{pillLabel(count)}</Pill>;
+  return (
+    <button
+      type="button"
+      title={PILL_TITLE}
+      onClick={onOpen}
+      className="cursor-pointer rounded-full transition-[filter,transform,scale] duration-150 ease-out-soft hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97]"
+    >
+      <Pill tone="warn">{pillLabel(count)}</Pill>
+    </button>
+  );
+}
 
 /**
  * Output controls, export actions and persistence (§5.4, §6, §7).
@@ -82,17 +115,44 @@ export function Toolbar({
           return sum + (definition.countMissingTranslations?.(question) ?? 0);
         }, 0);
 
-  // An action (desktop "Show in Finder") stays long enough to be reached.
-  const flash = (message: string, action?: Notice['action']) => {
-    const next: Notice = { message, action };
-    setNotice(next);
-    setTimeout(
-      () => setNotice((current) => (current === next ? undefined : current)),
-      action ? 8000 : 2400,
-    );
-  };
+  const flash = (message: string, action?: Notice['action']) => showNotice(setNotice, message, action);
 
   const appVersion = useUpdateStore((s) => s.current);
+
+  // Translate and Settings open through the one app-dialog store (never stacked); their
+  // hosts and BiTextField report back through it, so every status line shares this flash.
+  useEffect(
+    () =>
+      useAppDialogs.subscribe((state, prev) => {
+        if (state.notice && state.notice !== prev.notice) showNotice(setNotice, state.notice.message, state.notice.action);
+      }),
+    [],
+  );
+  const openTranslate = (request: TranslateRequest) => useAppDialogs.getState().openTranslate(request);
+  /** Export is a component-owned dialog: it closes before Translate opens. */
+  const translateFromExport = (mode: 'translate' | 'check') => {
+    setExporting(false);
+    openTranslate(paperRequest(worksheet.id, mode));
+  };
+  const desktop = isDesktop();
+  const hasSettings = useSettingsSections({ desktop }).length > 0;
+  const entries = toolbarMenuEntries({
+    worksheetId: worksheet.id,
+    readOnly,
+    hasSettings,
+    settingsHint: desktop ? (/Mac/.test(navigator.platform) ? '⌘,' : 'Ctrl+,') : undefined,
+  });
+  const menuItem = (entry: ToolbarEntry) => {
+    const run = entry.run;
+    return run.kind === 'settings'
+      ? {
+          label: entry.label,
+          hint: entry.hint,
+          icon: <SettingsIcon size={15} />,
+          onSelect: () => useAppDialogs.getState().openSettings(),
+        }
+      : { label: entry.label, onSelect: () => openTranslate(run.request) };
+  };
 
   /** A ready update surfaces in the banner; every other outcome is said here. */
   const handleCheckUpdates = async () => {
@@ -300,7 +360,7 @@ export function Toolbar({
           disabled={readOnly}
           title="Title, paper, margins, header and footer"
         >
-          <SettingsIcon size={15} />
+          <PageSetupIcon size={15} />
           <span className="hidden md:inline">Setup</span>
         </Button>
 
@@ -316,7 +376,10 @@ export function Toolbar({
               {notice.action.label}
             </Button>
           )}
-          {untranslated > 0 && <Pill tone="warn">{untranslated} untranslated</Pill>}
+          <UntranslatedPill
+            count={untranslated}
+            onOpen={readOnly ? undefined : () => openTranslate(paperRequest(worksheet.id))}
+          />
           {/* Status, not selection: the summary is facts about the document, so it
               stays in the grey family — the accent is reserved for interaction. */}
           <PaperSummaryBar
@@ -348,6 +411,7 @@ export function Toolbar({
           label="File and export options"
           items={[
             { label: busy === 'copy' ? 'Copying…' : 'Copy for Word', onSelect: () => void handleCopy() },
+            ...entries.translate.map(menuItem),
             /*
              * One door to every document, rather than "New" and "Open" as separate
              * items that each did half the job. The start screen lists what is saved and
@@ -366,6 +430,7 @@ export function Toolbar({
                   },
                 ]
               : []),
+            ...entries.settings.map(menuItem),
             { label: 'What’s new…', onSelect: () => setWhatsNew(true) },
             { label: 'Send feedback…', onSelect: () => setFeedback(true) },
             {
@@ -395,7 +460,15 @@ export function Toolbar({
           onClose={closeExport}
           onExported={handleExported}
           onPrint={handlePrint}
-          checks={<PaperHealthPanel worksheet={worksheet} language={mode.language} />}
+          checks={
+            <PaperHealthPanel
+              worksheet={worksheet}
+              language={mode.language}
+              version={mode.version}
+              onTranslate={readOnly ? undefined : () => translateFromExport('translate')}
+              onReviewTerms={readOnly ? undefined : () => translateFromExport('check')}
+            />
+          }
         />
       )}
 
@@ -447,6 +520,9 @@ export function Toolbar({
             Every worksheet on the start screen lives {isDesktop() ? 'on this computer' : 'in this browser'}, not in the code,
             which is why your work comes back after a restart. Clearing empties that list
             and returns you to it.
+          </p>
+          <p className="mt-2 text-[13px] leading-relaxed text-ink-subtle">
+            Your settings and AI keys are kept — remove a key in Settings → AI &amp; translation.
           </p>
         </Dialog>
       )}

@@ -5,6 +5,7 @@ import type { EditTarget } from '@/render/ir';
 import type { TranslateRequest } from '@/store/appDialogs';
 import type { TranslateScope } from '@/translate/types';
 import type { PageMenuPayload } from '@/components/preview/PageContextMenu';
+import { MENU_CHECK_TERMS, MENU_SETTINGS, MENU_TRANSLATE } from './copy';
 
 /**
  * Every Translate entry point's request, built pure (§A.2): the page menu's "Translation"
@@ -120,6 +121,34 @@ function blockItems(
   if (questionId === undefined && spansCopies(scoped)) return [{ label, disabled: true, title: AMBIGUOUS_TITLE }];
   const scope: TranslateScope = questionId === undefined ? { kind: 'block', blockId } : { kind: 'block', blockId, questionId };
   return [{ label, request: translate(worksheetId, scope, fillable <= AUTO_START_MAX ? { autoStart: true } : undefined) }];
+}
+
+export interface ToolbarEntry {
+  label: string;
+  hint?: string;
+  run: { kind: 'translate'; request: TranslateRequest } | { kind: 'settings' };
+}
+
+/** The ⋯ menu's additions: Translate… and Check terms… after "Copy for Word" (absent when
+ *  read-only); Settings… before "What's new…" (kept when read-only — not a document
+ *  action; absent while no Settings section is registered). */
+export function toolbarMenuEntries(opts: {
+  worksheetId: string;
+  readOnly: boolean;
+  hasSettings: boolean;
+  /** Desktop only: ⌘, / Ctrl+,. A browser may claim the shortcut first. */
+  settingsHint?: string;
+}): { translate: ToolbarEntry[]; settings: ToolbarEntry[] } {
+  const translate: ToolbarEntry[] = opts.readOnly
+    ? []
+    : [
+        { label: MENU_TRANSLATE, run: { kind: 'translate', request: paperRequest(opts.worksheetId) } },
+        { label: MENU_CHECK_TERMS, run: { kind: 'translate', request: paperRequest(opts.worksheetId, 'check') } },
+      ];
+  const settings: ToolbarEntry[] = opts.hasSettings
+    ? [{ label: MENU_SETTINGS, ...(opts.settingsHint ? { hint: opts.settingsHint } : {}), run: { kind: 'settings' } }]
+    : [];
+  return { translate, settings };
 }
 
 /** The multi-select pill: every selected flow item (questions and layout elements). */

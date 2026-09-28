@@ -39,6 +39,23 @@ describe('PaperHealthPanel', () => {
     // Chrome takes semantic tokens, never literal hex.
     expect(markup).not.toMatch(/#[0-9a-f]{3,6}/i);
   });
+
+  it('links the untranslated finding to Translate only when a handler is given (never read-only)', () => {
+    const oneSided = mcq(0, 'Only English');
+    oneSided.blocks = [createParagraphBlock(bi('Only English', ''))];
+    const worksheet = withFlow(createWorksheet(), [oneSided], { replaceLayout: true });
+    const noop = () => {};
+    const editable = renderToStaticMarkup(
+      <PaperHealthPanel worksheet={worksheet} language="bilingual" onTranslate={noop} onReviewTerms={noop} />,
+    );
+    expect(editable).toContain('written in one language only.');
+    expect(editable).toContain('>Translate…</button>');
+    // Toolbar passes no handlers in a read-only document.
+    const readOnly = renderToStaticMarkup(<PaperHealthPanel worksheet={worksheet} language="bilingual" />);
+    expect(readOnly).toContain('written in one language only.');
+    expect(readOnly).not.toContain('Translate…');
+    expect(readOnly).not.toContain('Review terms…');
+  });
 });
 
 describe('formatRefs', () => {

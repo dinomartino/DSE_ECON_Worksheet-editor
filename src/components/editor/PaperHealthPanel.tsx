@@ -7,7 +7,10 @@ import {
   type PaperHealthReport,
   type QuestionRef,
 } from '@/model/paperHealth';
-import type { LanguageMode, Worksheet } from '@/model/types';
+import type { LanguageMode, VersionMode, Worksheet } from '@/model/types';
+import { useGlossary } from '@/glossary/useGlossary';
+import { termSummary } from '@/translate/termCheck';
+import { PAPER_CHECK_REVIEW_TERMS, PAPER_CHECK_TRANSLATE } from '@/components/translate/copy';
 
 export { countWarnings } from '@/model/paperHealth';
 
@@ -50,12 +53,32 @@ export function summaryLine(report: PaperHealthReport): string {
 export function PaperHealthPanel({
   worksheet,
   language,
+  version,
+  onTranslate,
+  onReviewTerms,
 }: {
   worksheet: Worksheet;
   /** The edition being exported; untranslated strings are judged only for zh / bilingual. */
   language?: LanguageMode;
+  version?: VersionMode;
+  /** The `untranslated` finding's link; absent (read-only) → no link. */
+  onTranslate?: () => void;
+  /** The `terminology` finding's link; absent (read-only) → no link. */
+  onReviewTerms?: () => void;
 }) {
-  const report = useMemo(() => checkPaper(worksheet, { language }), [worksheet, language]);
+  // No terminology finding until the glossary has loaded.
+  const glossary = useGlossary();
+  const terms = useMemo(() => (glossary ? termSummary(worksheet, glossary) : undefined), [worksheet, glossary]);
+  const report = useMemo(
+    () => checkPaper(worksheet, { language, version, terms }),
+    [worksheet, language, version, terms],
+  );
+  const actionFor = (finding: HealthFinding): FindingAction | undefined =>
+    finding.id === 'untranslated' && onTranslate
+      ? { label: PAPER_CHECK_TRANSLATE, run: onTranslate }
+      : finding.id === 'terminology' && onReviewTerms
+        ? { label: PAPER_CHECK_REVIEW_TERMS, run: onReviewTerms }
+        : undefined;
 
   if (report.questionCount === 0) {
     return (
@@ -99,7 +122,7 @@ export function PaperHealthPanel({
 
       <ul className="space-y-1">
         {report.findings.map((finding, index) => (
-          <FindingRow key={`${finding.id}-${index}`} finding={finding} />
+          <FindingRow key={`${finding.id}-${index}`} finding={finding} action={actionFor(finding)} />
         ))}
       </ul>
     </section>
@@ -132,7 +155,9 @@ function LetterBar({ report, flagged }: { report: PaperHealthReport; flagged: Se
   );
 }
 
-function FindingRow({ finding }: { finding: HealthFinding }) {
+type FindingAction = { label: string; run: () => void };
+
+function FindingRow({ finding, action }: { finding: HealthFinding; action?: FindingAction }) {
   const warn = finding.severity === 'warn';
   const refs = formatRefs(finding.questions);
   return (
@@ -144,6 +169,18 @@ function FindingRow({ finding }: { finding: HealthFinding }) {
       <span className={warn ? 'text-ink' : ''}>
         {finding.message}
         {refs && <span className="text-ink-subtle"> {refs}</span>}
+        {action && (
+          <>
+            {' '}
+            <button
+              type="button"
+              onClick={action.run}
+              className="cursor-pointer font-medium text-accent-ink underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none"
+            >
+              {action.label}
+            </button>
+          </>
+        )}
       </span>
     </li>
   );
