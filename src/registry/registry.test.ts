@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { DEFAULT_LIST_INDENTS, STEM_TEXT_INDENT } from '@/model/numbering';
 import { readFileSync } from 'node:fs';
 import { questionMarks } from '@/model/marks';
@@ -11,9 +11,9 @@ import { buildAcceptanceWorksheet } from '@/test/fixtures';
 import { buildTranslateFixture } from '@/test/translateFixture';
 import { createParagraphBlock, createStructuredQuestion } from '@/model/factories';
 import { bi } from '@/model/text';
-import { patch, type TextSlot, type TextWalker } from '@/model/textSlots';
+import { patch, type TextSlot } from '@/model/textSlots';
 import { collectTexts, mapWorksheetTexts } from '@/model/textWalk';
-import type { ContentBlock, StructuredQuestion } from '@/model/types';
+import type { StructuredQuestion } from '@/model/types';
 import { getQuestionType, listQuestionTypes, requireQuestionType, type QuestionTypeDefinition } from '.';
 
 /**
@@ -184,21 +184,37 @@ describe('question-type registry (§9)', () => {
     // And the clipboard backend renders it too.
     const html = worksheetClipboardHtml(worksheet, { language: 'en', version: 'student' });
     expect(html).toContain('<p');
+  });
 
-    // A new type states its own texts (`mapTexts` is required), and the one walk finds them.
+  it("finds a new type's texts through its required mapTexts, in the one walk", async () => {
+    const structured = getQuestionType('structured') as unknown as QuestionTypeDefinition<StructuredQuestion>;
     const essay: QuestionTypeDefinition<StructuredQuestion> = {
-      ...(definition as unknown as QuestionTypeDefinition<StructuredQuestion>),
+      ...structured,
+      id: 'essay' as StructuredQuestion['type'],
       mapTexts: (question, walk) => patch(question, { blocks: walk.blocks('blocks', question.blocks, { paragraphKind: 'stem' }) }),
     };
-    const question = { ...createStructuredQuestion(), blocks: [createParagraphBlock(bi('Discuss.', ''))] };
-    const slots: TextSlot[] = [];
-    essay.mapTexts(question, {
-      blocks: (_segment: string, blocks: ContentBlock[]) => {
-        for (const block of blocks) if (block.kind === 'paragraph') slots.push({ text: block.text } as TextSlot);
-        return blocks;
-      },
-    } as unknown as TextWalker);
-    expect(slots.map((slot) => slot.text)).toEqual([question.blocks[0].kind === 'paragraph' && question.blocks[0].text]);
+    const block = createParagraphBlock(bi('Discuss.', ''));
+    const question = { ...createStructuredQuestion(), type: 'essay', parts: [], blocks: [block] };
+    const worksheet = buildAcceptanceWorksheet();
+    worksheet.questions.push(question as unknown as Question);
+    const essaySlots = (slots: TextSlot[]) => slots.filter((slot) => slot.questionId === question.id);
+    // Unregistered, the type is skipped.
+    expect(essaySlots(collectTexts(worksheet))).toEqual([]);
+
+    vi.resetModules();
+    vi.doMock('@/registry', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('.')>();
+      return { ...actual, getQuestionType: (id: string) => (id === 'essay' ? essay : actual.getQuestionType(id)) };
+    });
+    try {
+      const walk = await import('@/model/textWalk');
+      const [slot, ...rest] = essaySlots(walk.collectTexts(worksheet));
+      expect(rest).toEqual([]);
+      expect(slot).toMatchObject({ path: `q:${question.id}/blocks/b:${block.id}`, kind: 'stem', text: block.text });
+    } finally {
+      vi.doUnmock('@/registry');
+      vi.resetModules();
+    }
   });
 
   it('walks every text a registered type owns, and an identity visit keeps the question', () => {
