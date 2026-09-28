@@ -16,7 +16,7 @@ import {
 } from '@/platform';
 import { Dialog } from '@/components/ui/Dialog';
 import { AppMark } from '@/components/ui/AppMark';
-import { ArchiveIcon, ChevronLeftIcon, FolderIcon, FolderOpenIcon, SettingsIcon, SheetIcon } from '@/components/ui/icons';
+import { ArchiveIcon, FolderIcon, FolderOpenIcon, SettingsIcon, SheetIcon } from '@/components/ui/icons';
 import type { MenuItem } from '@/components/ui/Menu';
 import { VersionLine } from '@/components/editor/UpdateBanner';
 import { FeedbackDialog } from '@/components/feedback/FeedbackDialog';
@@ -104,27 +104,13 @@ type Notice = {
  * A full screen rather than a dialog over the editor: a dialog would have a blank
  * document rendering behind the choice of which document to open, which reads as though
  * the choice has already been made. Reached again later from the toolbar's
- * "Worksheets" crumb, or ⋯ → Worksheets….
+ * "Worksheets" crumb, or ⋯ → Worksheets…, and always the same home page: no "Back", so
+ * the document just left reopens only from its own card, like any other.
  */
 export function StartScreen({
   onOpen,
-  onClose,
-  returnTo,
-  onTrashed,
 }: {
   onOpen: (worksheet: Worksheet, language?: LanguageMode) => void;
-  /** A document went to Trash — the host drops "Back" if it was the one open. */
-  onTrashed?: (id: string) => void;
-  /**
-   * Leave without opening anything, or `undefined` when there is nothing to go back to.
-   *
-   * Absent on first load — there is no editor behind the screen yet, so a Cancel would
-   * dismiss to nothing. Present when reopened from the editor, where the document
-   * being edited is still there to return to.
-   */
-  onClose?: () => void;
-  /** The open document's name, for the "Back to …" control that `onClose` wears. */
-  returnTo?: string;
 }) {
   const [summaries, setSummaries] = useState<WorksheetSummary[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -329,7 +315,6 @@ export function StartScreen({
     setError(undefined);
     try {
       await worksheetStore.trash(summary.id);
-      onTrashed?.(summary.id);
     } catch {
       setError('Could not move that worksheet to the Trash.');
     }
@@ -646,20 +631,6 @@ export function StartScreen({
         rail, so the screen reads as the same room as the tool it opens.
       */}
       <aside className="zone-light flex shrink-0 flex-col overflow-y-auto border-b border-line bg-surface px-9 pb-8 pt-9 lg:h-full lg:w-[400px] lg:border-b-0 lg:border-r">
-        {/* Named, and first in the panel: a bare "Back" in the header's corner did not
-            say where it went. */}
-        {onClose && (
-          <Button
-            variant="subtle"
-            size="sm"
-            className="-ml-2 -mt-4 mb-5 max-w-full self-start"
-            title={returnTo ? `Back to ${returnTo}` : undefined}
-            onClick={onClose}
-          >
-            <ChevronLeftIcon size={14} />
-            <span className="truncate">{returnTo ? `Back to ${returnTo}` : 'Back'}</span>
-          </Button>
-        )}
         <header className="flex items-center gap-2.5">
           <span className="flex shrink-0 text-ink">
             <AppMark size={22} />
@@ -731,12 +702,11 @@ export function StartScreen({
               </TextLink>
             </p>
           )}
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-line pt-3">
-            <span className="flex items-center gap-2">
-              <SettingsButton />
-              <VersionLine />
-            </span>
-            <span className="flex items-center gap-3">
+          {/* Desktop only; its own line, as the footer row cannot also hold it at 400px. */}
+          <VersionLine />
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line pt-3">
+            <SettingsButton />
+            <span className="ml-auto flex items-center gap-3">
               <TextLink onClick={() => setWhatsNew(true)}>What’s new</TextLink>
               <TextLink onClick={() => setFeedback(true)}>Send feedback</TextLink>
             </span>

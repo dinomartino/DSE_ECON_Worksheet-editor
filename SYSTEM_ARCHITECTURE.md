@@ -1787,9 +1787,12 @@ the way in; `NewWorksheetForm` asks the once-per-document decisions.
 - **The gate lives in `EditorHost`, outside the editor**, as session state (`chosen`) —
   it resets on reload, and an overlay inside the editor would run the paginator over a
   blank worksheet on every visit to the list.
+- **The start screen is always home.** Leaving the editor clears `chosen`, unmounting it;
+  there is no "Back" — the document just left reopens only from its own card.
 - **Leaving the editor must flush the autosave** (the 1.2s debounce dies with
   `EditorApp`'s unmount). Both departure paths save **by value** — `store.save()` reads
-  `getState().worksheet`, which `replaceWorksheet` has already swapped.
+  `getState().worksheet`, which `replaceWorksheet` has already swapped. Leaving awaits
+  the write (`flushBeforeLeaving`) and marks clean only a value that was itself written.
 - **A new document is saved before it is edited** — `replaceWorksheet` marks the store
   clean and autosave only fires on dirty, so an untouched new worksheet was never
   written.
@@ -1808,8 +1811,8 @@ the way in; `NewWorksheetForm` asks the once-per-document decisions.
   flashes a refusal. Web `File`s and desktop paths share `start/fileDrop.ts:planDrop`
   (§Desktop shell for how paths arrive).
 - **Delete moves to Trash** (`TrashList`, reached by "Trash (N)" beside the count).
-  Trashing the open document drops the editor's "Back" (`onTrashed`), or its next
-  autosave would make it live again.
+  The document just left is clean and its editor unmounted, so nothing writes a
+  trashed one back.
 
 ### The file dashboard (`start/FileDashboard.tsx`)
 
@@ -2621,7 +2624,7 @@ it is ready, and "Restart now" flushes pending edits (`setBeforeRestart`) before
 installing and relaunching. It never restarts on its own. GitHub's `latest`
 excludes prereleases, so a `-beta.N` tag never reaches a stable install.
 One shared state (`desktop/updateStore.ts`) checks **once per launch**; the banner, the
-start screen's version line (bottom-left) and the editor's ⋯ "Check for updates" all read
+start screen's version line (above its footer row) and the editor's ⋯ "Check for updates" all read
 it. A failed check is `failed`, never "up to date".
 
 **What's new** is `CHANGELOG.md`, bundled at build time (`scripts/sync-changelog.mjs` →

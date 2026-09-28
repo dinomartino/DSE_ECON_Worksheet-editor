@@ -7,7 +7,7 @@ import { AppSettingsHost } from '@/components/settings/AppSettingsHost';
 import { setBeforeRestart } from '@/desktop/updateStore';
 import { StartScreen } from '@/components/start/StartScreen';
 import type { LanguageMode, Worksheet } from '@/model/types';
-import { NewerDocumentError, worksheetStore, worksheetTitle } from '@/storage';
+import { NewerDocumentError, worksheetStore } from '@/storage';
 import { useWorksheetStore } from '@/store/worksheetStore';
 
 /**
@@ -34,6 +34,21 @@ const EditorApp = dynamic(
 );
 
 /**
+ * Save the open document before the editor unmounts: autosave's 1.2s debounce dies with
+ * `EditorApp`. By **value**, as `open` does, and awaited, so the start screen reads the
+ * new summary. Only a value that was itself written is marked clean — typing, or a
+ * document swapped in, during the write is saved in turn. Leaving clean means nothing
+ * writes the document back if it is then trashed. Rejects on a failed write, so the
+ * caller stays in the editor.
+ */
+export async function flushBeforeLeaving(save = (w: Worksheet) => worksheetStore.save(w)): Promise<void> {
+  for (let state = useWorksheetStore.getState(); state.dirty; state = useWorksheetStore.getState()) {
+    await save(state.worksheet);
+    if (useWorksheetStore.getState().worksheet === state.worksheet) state.markSaved();
+  }
+}
+
+/**
  * Start screen or editor — the one place that decides which.
  *
  * The gate lives *outside* the editor rather than as an overlay inside it, because the
@@ -48,15 +63,16 @@ const EditorApp = dynamic(
  * most recently saved document automatically, is what this screen replaces: it made
  * every worksheet but the newest unreachable, and it meant the app decided what you
  * were working on before you did.
+ *
+ * Leaving the editor clears `chosen` too: the start screen is one home page, never a
+ * detour with a way back to the document just left.
  */
 const noSubscribe = () => () => {};
 
 export function EditorHost() {
   const hydrated = useSyncExternalStore(noSubscribe, () => true, () => false);
   const [chosen, setChosen] = useState(false);
-  const [showingFiles, setShowingFiles] = useState(false);
   const replaceWorksheet = useWorksheetStore((s) => s.replaceWorksheet);
-  const openName = useWorksheetStore((s) => worksheetTitle(s.worksheet));
 
   // Restarting into an update kills the autosave debounce; write pending edits first.
   useEffect(
@@ -71,23 +87,9 @@ export function EditorHost() {
   );
   const setMode = useWorksheetStore((s) => s.setMode);
 
-  /**
-   * Leave the editor for the file list, saving first.
-   *
-   * Autosave is a 1.2s debounce living in an effect *inside* `EditorApp`, so unmounting
-   * it cancels a pending save — up to 1.2 seconds of typing would be dropped by the act
-   * of going to look at the file list, and the list would then show a stale
-   * "updated" time for the very document just edited. Flushing here is what makes
-   * leaving safe.
-   *
-   * Saved by value and marked clean in one step, matching `open` below — the store's
-   * own `save()` would do the same thing here, but the two departure paths reading state
-   * differently is exactly how one of them would later be given the wrong document.
-   */
-  const leaveForFiles = () => {
-    const { worksheet, dirty, markSaved } = useWorksheetStore.getState();
-    if (dirty) void worksheetStore.save(worksheet).then(markSaved);
-    setShowingFiles(true);
+  const leave = async () => {
+    await flushBeforeLeaving();
+    setChosen(false);
   };
 
   const open = (worksheet: Worksheet, language?: LanguageMode) => {
@@ -125,7 +127,6 @@ export function EditorHost() {
     // the current view mode alone, since the document does not store one.
     if (language) setMode({ language });
     setChosen(true);
-    setShowingFiles(false);
   };
 
   // The start screen reads the platform and localStorage while rendering, which the
@@ -141,21 +142,10 @@ export function EditorHost() {
       {/* App Settings: the start screen and the editor both reach it. */}
       <AppSettingsHost />
       <div className="min-h-0 flex-1">
-        {!chosen || showingFiles ? (
-          <StartScreen
-            onOpen={open}
-            // No way back before a document exists — there is no editor behind the screen
-            // yet, so a Cancel would dismiss to nothing.
-            onClose={chosen ? () => setShowingFiles(false) : undefined}
-            returnTo={chosen ? openName : undefined}
-            // Trashing the open document removes the way back to it: its next autosave
-            // would quietly make it live again.
-            onTrashed={(id) => {
-              if (id === useWorksheetStore.getState().worksheet.id) setChosen(false);
-            }}
-          />
+        {!chosen ? (
+          <StartScreen onOpen={open} />
         ) : (
-          <EditorApp onOpenFiles={leaveForFiles} onOpenDocument={open} />
+          <EditorApp onOpenFiles={() => void leave()} onOpenDocument={open} />
         )}
       </div>
     </div>
