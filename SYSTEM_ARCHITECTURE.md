@@ -1952,8 +1952,10 @@ The toolbar's mark carries the app; the word beside it is the document's name
 
 ### Settings live in a dialog
 
-Once-per-document decisions → `DocumentSettings`, a tabbed dialog from the toolbar's
-**Setup** and the outline's **Settings**. It claims the keyboard via `useModalLayer()`.
+Once-per-document decisions → `DocumentSettings` ("Document setup"), a tabbed dialog from
+the toolbar's and the outline's **Setup** (page-setup icon; the gear means app Settings).
+It claims the keyboard via `useModalLayer()`. App-wide preferences are the separate app
+Settings (§ AI translation, glossary and app Settings).
 Header *text* is typed on the page; whether the header *exists* lives here.
 
 - **Tabs group by where a thing prints** — the `furniture` tab reads down the page.
@@ -2181,9 +2183,27 @@ rebuilt. Copy: `src/components/translate/copy.ts`.
 <!-- e2:entry start -->
 ### Entry points
 
-Not mounted yet. Planned: the untranslated pill, the ⋯ menu, the page menu, the paper check and a per-field fill
-button open Translate; Settings opens from the ⋯ menu, the start screen and ⌘, / Ctrl+,.
-Every Translate entry point is hidden when the document is read-only.
+Every Translate entry point builds its request in `src/components/translate/translateMenu.ts`
+(pure, slot sources injected) and hands it to `useAppDialogs().openTranslate`: the
+untranslated pill (`src/components/editor/Toolbar.tsx:UntranslatedPill`), the ⋯ menu's
+Translate… / Check terms…, the page menu's "Translation" group, the multi-select pill, the
+Outline row and the paper check's links. Each is absent when the document is read-only.
+
+- **The page menu is keyed by the emitting question.** `ItemBody` adds `questionId` to every
+  `PageMenuPayload`, so a Duplicate's copy (same block ids) is the one filled; a still
+  ambiguous target disables the item. Built at event time from the store's live document;
+  nothing new is read at render time, so `ctxStamp` is unchanged.
+- **A page `Fill …` auto-starts** (the click is the send); Re-translate opens Setup with
+  Replace locked. A block with at most three texts to fill also skips Setup.
+- **`BiTextField` fills one field inline** when a call site passes `translate` (what it
+  holds; without it there is no button, since a guessed kind would drop the wording
+  rules). `src/components/translate/fieldFill.ts` decides the button and runs one fill,
+  written through the field's own `onChange` (one commit) only over an unchanged source and
+  a still-empty side. Without a provider it deep-links to Settings — never over a modal
+  layer (Setup, a canvas), where the button is disabled instead.
+- **Settings** opens from the ⋯ menu (hint only on desktop), the start screen and ⌘, /
+  Ctrl+,, each hidden while no section is registered. Export's paper check closes Export
+  before Translate opens, so dialogs never stack.
 <!-- e2:entry end -->
 
 ---

@@ -266,6 +266,9 @@ it (`// P-<X> replaces this body`).
 - `src/settings/types.ts:SettingsSchema` · `src/settings/validators.ts:recordOf` · `src/settings/sections.ts:registerSettingsSection` · `src/settings/sections.ts:useSettingsSections` · `src/settings/store.ts:appSettings` (stub) · `src/settings/aiSettings.ts:AI_SETTINGS` · `src/settings/aiSettings.ts:useAiStatus` (stub)
 - `src/platform/secrets.ts:readSecret` · `src/platform/secrets.ts:peekSecret` — the only holder of AI keys (stubs)
 - `src/components/translate/copy.ts` — the copy deck
+- `src/components/translate/translateMenu.ts:pageTranslateItems` · `src/components/translate/translateMenu.ts:toolbarMenuEntries` · `src/components/translate/translateMenu.ts:outlineTranslateItem` — every Translate entry point's request, pure
+- `src/components/translate/fieldFill.ts:fillButton` · `src/components/translate/fieldFill.ts:runFieldFill` — `BiTextField`'s inline fill (the `translate` prop)
+- `src/components/editor/Toolbar.tsx:UntranslatedPill` — the front door; `src/components/start/StartScreen.tsx:SettingsLink`; `src/components/ui/icons.tsx:PageSetupIcon` (Setup; the gear is app Settings)
 
 Invariants:
 - Nothing new is stored in a document; settings under `econgen.settings.<section>`, keys only in the secrets store.

@@ -5,7 +5,9 @@ and Traditional Chinese (Hong Kong usage), and export a **native Microsoft Word 
 that stays fully editable in Word — live numbering, real styles, real tables, per-script
 fonts.
 
-It runs entirely in the browser. No account, no server, no database, no API keys.
+It runs entirely in the browser. No account, no server, no database. Optional AI
+translation uses **your own** key and sends the texts you choose to translate, plus nearby
+already-translated lines from the same question, straight to the provider you choose.
 
 ```bash
 git clone https://github.com/dinomartino/DSE_ECON_Worksheet-editor
@@ -32,6 +34,7 @@ That is the whole setup. If the page loads, you have a working environment.
   - [The five invariants](#the-five-invariants)
   - [Adding a question type](#adding-a-question-type)
   - [Testing](#testing)
+  - [Privacy and AI translation](#privacy-and-ai-translation)
   - [Deployment](#deployment)
   - [Desktop app](#desktop-app)
   - [Contributing](#contributing)
@@ -253,6 +256,29 @@ Two conventions worth knowing:
 - **After UI work, prove the export still holds.** The `.docx` is the product. Run
   `npm run samples`, unzip one, and confirm the XML parses and `word/media/` contains
   what you expect.
+
+## Privacy and AI translation
+
+Translation is optional and off until a teacher adds a key in **Settings → AI &
+translation** (⋯ → Settings…).
+
+- **What is sent:** only the texts the teacher chose to translate (a whole paper, a
+  question, a figure or one field), plus already-translated lines from the same question
+  for context — the Translate dialog states both counts before anything is sent. Nothing
+  leaves before an explicit Translate, Fill or Save & test click.
+- **To whom:** straight from the browser (or the desktop app) to the chosen provider —
+  Gemini, DeepSeek, Qwen, OpenRouter, OpenAI, Anthropic, a custom OpenAI-compatible
+  endpoint or a local Ollama. There is no server of ours in between.
+- **Free vs paid keys:** providers set their own terms. Google may use text sent with a
+  free Gemini key to improve its products, and people may read it; DeepSeek processes and
+  stores data in mainland China. The settings card for each provider says which applies.
+- **The key stays on the device:** in this browser's storage (for the session, or
+  remembered if asked) or the desktop's system keychain. It is never written into a
+  worksheet, a backup, an export or the settings file, and is sent only in a request
+  header to its own provider.
+
+Check terms (comparing a worksheet's Chinese with the EDB Economics glossary) needs no
+key and sends nothing.
 
 ## Deployment
 
