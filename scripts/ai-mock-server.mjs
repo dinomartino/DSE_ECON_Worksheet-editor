@@ -15,6 +15,7 @@ import { pathToFileURL } from 'node:url';
  *   - anything else → the source with a 譯： / EN: prefix, tags kept.
  * A request whose system prompt is the answer writer's (E1) gets a valid canned answer,
  * a scheme of 1-mark points totalling the marks, and a rationale per asked option.
+ * A quality-check request (E4) gets canned findings instead (`qualityReply`).
  * Base-URL prefixes: `/region/v1` answers Gemini's FAILED_PRECONDITION location error,
  * `/401/v1` rejects the key, `/slow/v1` answers after 4 s (Stop and the scrim question). `GET /__count` and `POST /__reset` expose the request count.
  *
@@ -115,9 +116,42 @@ function answersReply(payload) {
   return completion(JSON.stringify({ items }));
 }
 
+/** The quality check (E4), recognised by its system prompt's marker (`src/quality/promptText.ts`). */
+const QUALITY_MARKER = 'HKDSE Economics co-marker';
+
+function systemOf(body) {
+  const messages = Array.isArray(body?.messages) ? body.messages : [];
+  const system = messages.find((m) => m.role === 'system');
+  return typeof system?.content === 'string' ? system.content : '';
+}
+
+/**
+ * Canned co-marker findings: an unemphasised "not"/"except" in a stem, "Explain" for
+ * 1 mark, and English "rise/rose" against 中文 下跌. Anything else is fine: `{"items":[]}`.
+ */
+export function qualityReply(payload) {
+  const items = [];
+  for (const question of payload?.questions ?? []) {
+    for (const entry of question.entries ?? []) {
+      const en = entry.en ?? '';
+      const zh = entry.zh ?? '';
+      if (entry.role === 'stem' && /\b(not|except)\b/.test(en.replace(/<b>.*?<\/b>/g, ''))) {
+        items.push({ key: entry.key, issue: 'negativeStem', severity: 'look', text: 'The word “not” in the stem is not emphasised, so candidates may miss it.', suggestion: en.replace(/\bnot\b/, '<b>NOT</b>') });
+      }
+      if (entry.role === 'part' && entry.marks === 1 && /^Explain\b/.test(en)) {
+        items.push({ key: entry.key, issue: 'commandMarks', severity: 'look', text: '“Explain” asks for a chain of reasoning, which 1 mark cannot reward.', suggestion: en.replace(/^Explain/, 'State') });
+      }
+      if (/\b(rise|rose)\b/.test(en) && zh.includes('下跌')) {
+        items.push({ key: entry.key, issue: 'bilingual', severity: 'fix', text: 'The English says the price rose; the Chinese says it fell (下跌).', suggestion: '' });
+      }
+    }
+  }
+  return completion(JSON.stringify({ items }));
+}
+
 export function reply(body) {
-  const system = (Array.isArray(body?.messages) ? body.messages : []).find((m) => m.role === 'system');
-  if (typeof system?.content === 'string' && system.content.includes(ANSWERS_MARKER)) return answersReply(payloadOf(body));
+  if (systemOf(body).includes(ANSWERS_MARKER)) return answersReply(payloadOf(body));
+  if (systemOf(body).includes(QUALITY_MARKER)) return qualityReply(payloadOf(body));
   const items = itemsOf(payloadOf(body));
   if (items.length > 1 && items.some((i) => i.text.includes('(long)'))) {
     return completion('{"items":[{"key":"' + items[0].key + '","text":"', 'length');

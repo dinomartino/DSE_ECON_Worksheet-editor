@@ -2,7 +2,8 @@ import type { ComponentType } from 'react';
 import type { AnswerVisitor } from '@/model/answerLeaves';
 import type { TextWalker } from '@/model/textSlots';
 import type { BiText, ContentBlock, Question } from '@/model/types';
-import type { RenderContext, RenderNode } from '@/render/ir';
+import type { MarkScheme } from '@/model/markSchemeTypes';
+import type { EditTarget, RenderContext, RenderNode } from '@/render/ir';
 import type { AnswerKeyContext, AnswerKeyEntry } from '@/render/answerKey';
 
 /**
@@ -71,6 +72,38 @@ export interface QuestionTypeDefinition<Q extends Question = Question> {
   variant?: (question: Q, context: VariantContext) => QuestionVariant<Q>;
   /** How the paper summary counts and times this type (`model/paperSummary.ts`). */
   summary?: QuestionSummaryInfo;
+  /** The question as a co-marker reads it, for the AI quality check (`quality/`); absent = not checked. */
+  qualityView?: (question: Q) => QualityView;
+}
+
+/** One place in a question a reviewer can point at, in print order. */
+export interface QualityAnchor {
+  /** Unique within the question and readable: "stem", "A", "(1)", "(b)(ii)". */
+  ref: string;
+  role: 'stem' | 'leadIn' | 'statement' | 'option' | 'part';
+  /** Card label: "Option B", "Statement (2)", "(b)(ii)"; '' for the stem. */
+  label: string;
+  /** The printed words: one line, blocks, or both (an option with a figure). */
+  text?: BiText;
+  blocks?: ContentBlock[];
+  /** Where `text` renders on the page; absent = the first paragraph of `blocks`. */
+  target?: EditTarget;
+  /** Marks the paper prints for this anchor; absent = prints none. */
+  marks?: number;
+  /** `marks` is the total of the sub-parts below. */
+  marksTotal?: true;
+  /** Teacher-only marking scheme, checked against `schemeMarks ?? marks`. */
+  scheme?: MarkScheme;
+  /** The printed marks `scheme` must total when they are not this anchor's own (a shared label). */
+  schemeMarks?: number;
+  /** The option set as the answer. */
+  keyed?: true;
+}
+
+export interface QualityView {
+  /** Plain words for the reviewer: "multiple choice", "structured". */
+  format: string;
+  anchors: QualityAnchor[];
 }
 
 export interface QuestionSummaryInfo {

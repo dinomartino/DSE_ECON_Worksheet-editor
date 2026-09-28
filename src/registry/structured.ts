@@ -1,6 +1,6 @@
 import { fillWritten, type AnswerVisitor } from '@/model/answerLeaves';
 import { createStructuredQuestion } from '@/model/factories';
-import { questionMarks } from '@/model/marks';
+import { partMarks, questionMarks } from '@/model/marks';
 import { isSchemeEmpty } from '@/model/markScheme';
 import type { MarkScheme } from '@/model/markSchemeTypes';
 import {
@@ -21,7 +21,7 @@ import { renderMarkScheme } from '@/render/markScheme';
 import { answerGraphNode } from '@/render/answerGraph';
 import { StructuredEditorPanel } from '@/components/editor/StructuredEditorPanel';
 import type { AnswerKeyEntry, AnswerKeyRow } from '@/render/answerKey';
-import type { QuestionHealthFacts, QuestionTypeDefinition } from './types';
+import type { QualityAnchor, QualityView, QuestionHealthFacts, QuestionTypeDefinition } from './types';
 
 /**
  * Structured rendering (§8): stem -> parts (a).. -> sub-parts (i).. with marks on
@@ -510,6 +510,44 @@ function answerKey(question: StructuredQuestion): AnswerKeyEntry {
   return { kind: 'scheme', marks, rows };
 }
 
+/**
+ * The stem, then each part, its lead-in and its sub-parts. A part with sub-parts carries
+ * their total; a shared label (no sub-part marked) is the part's, and its last sub-part's
+ * scheme is checked against it, as the editor does.
+ */
+function qualityView(question: StructuredQuestion): QualityView {
+  const anchors: QualityAnchor[] = [{
+    ref: 'stem', role: 'stem', label: '', blocks: question.blocks,
+    ...(question.parts.length === 0 && question.marks !== undefined ? { marks: question.marks } : {}),
+  }];
+  question.parts.forEach((part, index) => {
+    const ref = partLabel(index);
+    const subParts = part.subParts ?? [];
+    const shared = subParts.length > 0 && subParts.every((sub) => sub.marks === undefined);
+    if (!areBlocksEmpty(part.blocksBefore)) {
+      anchors.push({ ref: `${ref} lead-in`, role: 'leadIn', label: `Before ${ref}`, blocks: part.blocksBefore });
+    }
+    const marks = subParts.length > 0 && !shared ? partMarks(part) : part.marks;
+    anchors.push({
+      ref, role: 'part', label: ref, blocks: part.blocks,
+      ...(marks !== undefined ? { marks } : {}),
+      ...(subParts.length > 0 ? { marksTotal: true as const } : {}),
+      ...(part.scheme ? { scheme: part.scheme } : {}),
+    });
+    subParts.forEach((sub, subIndex) => {
+      const subRef = `${ref}${subPartLabel(subIndex)}`;
+      const sharedLabel = shared && subIndex === subParts.length - 1 && part.marks !== undefined;
+      anchors.push({
+        ref: subRef, role: 'part', label: subRef, blocks: sub.blocks,
+        ...(sub.marks !== undefined ? { marks: sub.marks } : {}),
+        ...(sub.scheme ? { scheme: sub.scheme } : {}),
+        ...(sub.scheme && sharedLabel ? { schemeMarks: part.marks } : {}),
+      });
+    });
+  });
+  return { format: 'structured', anchors };
+}
+
 export const structuredType: QuestionTypeDefinition<StructuredQuestion> = {
   id: 'structured',
   displayName: bi('Structured Question', '結構性問題'),
@@ -520,6 +558,7 @@ export const structuredType: QuestionTypeDefinition<StructuredQuestion> = {
   mapAnswers,
   healthFacts,
   answerKey,
+  qualityView,
   // Timed by marks, at the paper's rate (`MINUTES_PER_MARK`).
   summary: { label: { en: 'structured', zh: '結構題' } },
 };
