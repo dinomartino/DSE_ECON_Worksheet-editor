@@ -27,6 +27,7 @@
     "eval:translate": "vitest run --config vitest.eval.config.ts",
     "demo": "node scripts/demo.mjs",
     "demo:diagrams": "node scripts/demo.mjs --story=diagrams",
+    "demo:ai": "node scripts/demo.mjs --story=ai",
     "film": "node scripts/film/film.mjs",
     "film:preview": "node scripts/film/film.mjs --preview",
     "film:doctor": "node scripts/film/tools/doctor.mjs",

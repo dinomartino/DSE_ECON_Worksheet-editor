@@ -108,3 +108,59 @@ export const DIAGRAMS = {
     taxPercent: 20,
   },
 };
+
+/**
+ * The ✦ AI film (`npm run demo:ai`): a bilingual worksheet seeded off camera with some
+ * 中文 missing. `zh: null` is a text whose 中文 is missing; `fill` is the 中文 the canned
+ * provider returns for it (EDB glossary terms: the seed test proves they all check).
+ * `planted` is the one teacher-written 中文 term Check terms flags, and its EDB fix.
+ * Layout: part (c) must sit high enough on the page (no instructions line, one answer
+ * line for (a) and (b)) for the page to scroll it to the middle, so its finding card
+ * clears the AI bar at the foot of the window; the film fails if it does not.
+ */
+export const AI = {
+  title: ['S4 Economics: Rent Control', '中四經濟：租金管制'],
+  mcq: {
+    stem: {
+      en: 'The government sets a price ceiling on rents below the equilibrium rent. Which of the following will result?',
+      zh: null,
+      fill: '政府為租金設定低於均衡租金的價格上限。以下哪一項會因此出現？',
+    },
+    options: [
+      ['A shortage of flats for rent', '出租單位短缺'],
+      ['More flats offered for rent', '更多單位放租'],
+      ['A fall in the demand for flats', '單位的需求下降'],
+      ['A higher rent paid by tenants', '租客支付更高的租金'],
+    ],
+    answer: 0,
+  },
+  structured: {
+    stem: [
+      'Under rent control, the rent of a flat may not exceed $8,000 a month, below the equilibrium rent of $10,000.',
+      '在租金管制下，單位的月租不得超過8,000元，低於10,000元的均衡租金。',
+    ],
+    parts: [
+      {
+        en: 'Explain why rent control leads to a shortage of flats.',
+        zh: null,
+        fill: '解釋為何租金管制會導致單位短缺。',
+        marks: 2,
+        lines: 1,
+      },
+      {
+        en: 'Suggest a way, other than price, that landlords may use to choose tenants.',
+        zh: null,
+        fill: '除價格外，建議一個業主可用以挑選租客的方法。',
+        marks: 2,
+        lines: 1,
+      },
+      {
+        en: 'How does rent control affect consumer surplus? Explain.',
+        zh: '租金管制對消費者剩餘有何影響？試加以解釋。',
+        marks: 4,
+        lines: 3,
+      },
+    ],
+  },
+  planted: { wrong: '消費者剩餘', fix: '消費者盈餘' },
+};
