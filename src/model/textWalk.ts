@@ -201,9 +201,12 @@ class Walk implements TextWalker {
           table: block.table && w.table('table', block.table, role),
         });
       }
-      default:
-        // A block kind from a newer build: carried through untouched.
-        return block;
+      default: {
+        // A block kind from a newer build: carried through untouched. A kind added to
+        // `ContentBlock` fails to compile here until the walk reads its text.
+        const newer: never = block;
+        return newer;
+      }
     }
   }
 
@@ -336,16 +339,16 @@ function mapCover(w: Walk, cover: CoverPage): CoverPage {
 }
 
 /**
- * A band field's authored wording. A stored `prefix` — or, without one, the deprecated
- * `label` that `bandFieldSideText` still reads — is a slot; a changed side is written
- * through `applyBandFieldSide`, which drops `label`. An absent side is never created.
+ * A band field's authored wording. Every kind but `text` is read alike: a stored `prefix` —
+ * or, without one, the deprecated `label` that `bandFieldSideText` still reads — and
+ * `suffix` are slots; a changed side is written through `applyBandFieldSide`, which drops
+ * `label`. An absent side is never created.
  */
 function mapBandField(w: Walk, field: BandField): BandField {
   const target = (side: 'prefix' | 'suffix'): EditTarget => ({ kind: 'bandField', fieldId: field.id, side });
   if (field.kind === 'text') {
     return patch(field, { text: w.text('text', field.text, { kind: 'bandText', role: 'print', target: target('prefix') }) });
   }
-  if (field.kind !== 'totalMarks' && field.kind !== 'fillIn' && field.kind !== 'pageNumber') return field;
   const prefix = field.prefix ?? (field as { label?: BiText }).label;
   const nextPrefix = w.optional('prefix', prefix, {
     kind: 'wording', role: 'print', aroundValue: 'before', target: target('prefix'),
@@ -353,9 +356,13 @@ function mapBandField(w: Walk, field: BandField): BandField {
   const nextSuffix = w.optional('suffix', field.suffix, {
     kind: 'wording', role: 'print', aroundValue: 'after', target: target('suffix'),
   });
+  const suffixChanged = nextSuffix !== field.suffix && nextSuffix;
   let next: BandField = field;
-  if (nextPrefix !== prefix && nextPrefix) next = applyBandFieldSide(next, 'prefix', nextPrefix);
-  if (nextSuffix !== field.suffix && nextSuffix) next = applyBandFieldSide(next, 'suffix', nextSuffix);
+  // Any write drops `label`, so a label-only prefix moves to `prefix` with it.
+  if (nextPrefix && (nextPrefix !== prefix || (suffixChanged && field.prefix === undefined))) {
+    next = applyBandFieldSide(next, 'prefix', nextPrefix);
+  }
+  if (suffixChanged) next = applyBandFieldSide(next, 'suffix', suffixChanged);
   return next;
 }
 
@@ -434,8 +441,17 @@ function mapLayout(w: Walk, element: LayoutElement): LayoutElement {
           return patch(row, { label: rw.text('label', row.label, cell('label')), value: rw.text('value', row.value, cell('value')) });
         }),
       });
-    default:
+    case 'spacer':
+    case 'divider':
+    case 'pageBreak':
+    case 'answerLines':
+    case 'answerSpace':
       return element;
+    default: {
+      // A kind from a newer build; a kind added to `LayoutElement` fails to compile here.
+      const newer: never = element;
+      return newer;
+    }
   }
 }
 

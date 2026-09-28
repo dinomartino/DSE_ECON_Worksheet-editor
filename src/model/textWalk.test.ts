@@ -117,6 +117,18 @@ describe('mapWorksheetTexts: absent stays absent', () => {
     expect(field.kind === 'fillIn' && field.prefix).toEqual(bi('Name:', '名字：'));
     expect('label' in field).toBe(false);
   });
+
+  it('keeps a legacy band label as the prefix when only the suffix is written', () => {
+    const ws = buildTranslateFixture();
+    const zone = ws.bands![0].zones.center;
+    zone[1] = { ...zone[1], suffix: bi('(in full)', '') } as BandField;
+
+    const next = mapWorksheetTexts(ws, fillZh('bands/band:mast/center/f:f-fill/suffix', '（全名）'));
+    const field = next.bands![0].zones.center[1] as BandField & { label?: unknown };
+    expect(field.kind === 'fillIn' && field.prefix).toEqual(bi('Name:', '姓名：'));
+    expect(field.kind === 'fillIn' && field.suffix).toEqual(bi('(in full)', '（全名）'));
+    expect('label' in field).toBe(false);
+  });
 });
 
 describe('mapWorksheetTexts: paths', () => {
