@@ -29,7 +29,7 @@ function slot(path: string, text: BiText, over: Partial<TextSlot & SlotMeta> = {
   };
 }
 
-/** Stands in for `slotsForTarget`/`collectTexts` until the walker lands. */
+/** Hand-built slots; `translateMenu.integration.test.ts` runs the real walker. */
 const sources = (slots: TextSlot[], kinds: Record<string, string> = {}): PageMenuSources => ({
   slotsForTarget: (t2) => slots.filter((s) => JSON.stringify(s.target) === JSON.stringify(t2)),
   slots: () => slots,

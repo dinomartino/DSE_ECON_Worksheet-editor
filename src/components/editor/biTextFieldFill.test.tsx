@@ -1,17 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { missingSide } from '@/model/textSlots';
 import type { BiText } from '@/model/types';
 
-// The walker's real `fieldNeedsFill` lands with P-TEXT; until then, missingSide minus
-// digits-and-symbols text stands in (the integration run drops this mock).
-vi.mock('@/model/textWalk', () => ({
-  fieldNeedsFill: (text: BiText) => {
-    const side = missingSide(text);
-    const present = (side === 'zh' ? text.en : text.zh).map((run) => run.text).join('');
-    return side && /[A-Za-z一-鿿]{3,}/.test(present) ? side : null;
-  },
-}));
 const store = { mode: { language: 'bilingual' }, readOnly: false };
 vi.mock('@/store/worksheetStore', () => ({
   useWorksheetStore: (select: (s: typeof store) => unknown) => select(store),
