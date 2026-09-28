@@ -7,6 +7,8 @@ import { rt } from '@/model/text';
 import type { TextSlot } from '@/model/textSlots';
 import type { AiStatus } from '@/settings/aiSettings';
 import type { TermRow, TranslationPlan } from '@/translate/types';
+import { LowerRankList, ManualList, termItems } from './CheckTermsPanel';
+import { CopiesList } from './ReviewPanel';
 import { PAPER_REQUEST, counts, fakePlan, job, result, reviewRun, seeded } from './sessionFixtures';
 import { scopeChoices, type TranslateView } from './SetupPanel';
 import { TranslateDialog } from './TranslateDialog';
@@ -208,9 +210,13 @@ describe('Translate dialog · Review', () => {
     expect(row(markup, 't2')).toContain('lang="zh-HK"');
   });
 
-  it('dock guard: review has no editable element', () => {
+  it('dock guard: review has no editable element, the collapsed copies list included', () => {
     expectNoEditable(render(review()));
     expectNoEditable(render(review({ filter: 'look' })));
+    const copies = [{ path: 'q:Q3/c', side: 'zh' as const, sourceSnapshot: rt('E₀'), targetSnapshot: [], next: rt('E₀') }];
+    const list = renderToStaticMarkup(<CopiesList copies={copies} />);
+    expectNoEditable(list);
+    expect(list).toContain('E₀');
   });
 
   it('renders proposed text as text, never markup', () => {
@@ -371,8 +377,26 @@ describe('Translate dialog · Check terms', () => {
     expect(markup).toContain('Terms: EDB (2020)');
   });
 
-  it('dock guard: Check terms has no editable element', () => {
+  it('dock guard: Check terms has no editable element, collapsed groups included', () => {
     expectNoEditable(render(checking(), view(), rows));
+    // Collapsible mounts its body on first open, so render the group bodies directly.
+    const items = termItems(rows);
+    const lower = renderToStaticMarkup(<LowerRankList session={checking()} items={items.lower} actions={actions} />);
+    expectNoEditable(lower);
+    expect(lower).toMatch(/type="checkbox"/);
+    expect(lower).not.toMatch(/checked=""/);
+    expect(lower).toContain('Use 效率損失');
+    const manual = renderToStaticMarkup(<ManualList items={items.manual} actions={actions} />);
+    expectNoEditable(manual);
+    expect(manual).toContain('Show on page');
+    expect(manual).not.toMatch(/<input/);
+  });
+
+  it('a Replace where every text changed says so, whatever the rows now show', () => {
+    const stale = seeded({ mode: 'check', nothingInserted: true });
+    expect(render(stale, view(), rows)).toContain('Nothing replaced — these texts changed since the check.');
+    expect(render(stale, view(), [])).toContain('Nothing replaced — these texts changed since the check.');
+    expect(render(checking(), view(), rows)).not.toContain('Nothing replaced');
   });
 });
 

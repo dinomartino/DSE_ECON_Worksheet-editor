@@ -16,7 +16,7 @@ import {
   type TranslateSession,
 } from './translateSession';
 
-interface TermItem { row: TermRow; index: number; check: TermCheck }
+export interface TermItem { row: TermRow; index: number; check: TermCheck }
 
 export function termItems(rows: readonly TermRow[]): Record<TermBucket, TermItem[]> {
   const out: Record<TermBucket, TermItem[]> = { fix: [], lower: [], manual: [] };
@@ -109,6 +109,66 @@ export function CheckTermsFooter({
 const heading = (row: TermRow): string =>
   [row.slot?.group?.label, row.slot?.label].filter(Boolean).join(' · ');
 
+/** Lower-rank fixes: collapsed and unticked by default. Exported for the dock guard. */
+export function LowerRankList({
+  session,
+  items,
+  actions,
+}: {
+  session: TranslateSession;
+  items: TermItem[];
+  actions: TranslateController;
+}) {
+  return (
+    <ul className="space-y-1.5">
+      {items.map(({ row, index, check }) => (
+        <li key={termKey(row.path, index)} className="flex items-center gap-3 text-xs text-ink">
+          <span className="min-w-0 flex-1" lang="zh-HK">
+            {copy.lowerRankLine(check.en, check.found?.text ?? '', check.expected)}
+          </span>
+          <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-ink-muted">
+            <input
+              type="checkbox"
+              checked={isTermTicked(session, row, index)}
+              onChange={(event) => actions.toggleTerm(termKey(row.path, index), event.target.checked)}
+              className="h-4 w-4 cursor-pointer accent-[var(--accent)]"
+            />
+            <span lang="zh-HK">{copy.usePreferred(check.fix?.to ?? check.expected)}</span>
+          </label>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Findings with nothing to replace automatically: Show on page, or where they are. */
+export function ManualList({ items, actions }: { items: TermItem[]; actions: TranslateController }) {
+  return (
+    <ul className="space-y-1.5">
+      {items.map(({ row, index, check }) => (
+        <li key={termKey(row.path, index)} className="flex items-center gap-3 text-xs">
+          <span className="min-w-0 flex-1 text-ink" lang="zh-HK">
+            {check.en}
+            {check.found && ` → ${check.found.text}`} — EDB: {check.expected}
+            {check.conflict && (
+              <span className="block text-[11px] text-warn-ink">
+                {copy.conflictChip(check.conflict.form, check.conflict.meansEn)}
+              </span>
+            )}
+          </span>
+          {row.slot?.target ? (
+            <Button size="sm" variant="subtle" onClick={() => actions.showOnPage(row.slot)}>
+              {copy.SHOW_ON_PAGE}
+            </Button>
+          ) : (
+            <span className="shrink-0 text-ink-muted">{heading(row)}</span>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /**
  * Check terms (keyless): the Chinese against the EDB glossary. Deterministic fixes are
  * checkboxes; nothing here is editable. Wrong forms are pre-ticked, variants and lower
@@ -130,6 +190,7 @@ export function CheckTermsPanel({
   return (
     <div className="space-y-4">
       <ModeSwitch mode={session.mode} onChange={actions.setMode} />
+      {session.nothingInserted && <p className="text-[13px] text-warn-ink">{copy.NOTHING_REPLACED}</p>}
       {glossaryFailed ? (
         <p className="text-[13px] text-ink-muted">{copy.TERMS_UNAVAILABLE}</p>
       ) : !items ? (
@@ -145,52 +206,14 @@ export function CheckTermsPanel({
           {items.lower.length > 0 && (
             <div className="-mx-3">
               <Collapsible title={`${copy.LOWER_RANK_GROUP} (${items.lower.length})`}>
-                <ul className="space-y-1.5">
-                  {items.lower.map(({ row, index, check }) => (
-                    <li key={termKey(row.path, index)} className="flex items-center gap-3 text-xs text-ink">
-                      <span className="min-w-0 flex-1" lang="zh-HK">
-                        {copy.lowerRankLine(check.en, check.found?.text ?? '', check.expected)}
-                      </span>
-                      <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-ink-muted">
-                        <input
-                          type="checkbox"
-                          checked={isTermTicked(session, row, index)}
-                          onChange={(event) => actions.toggleTerm(termKey(row.path, index), event.target.checked)}
-                          className="h-4 w-4 cursor-pointer accent-[var(--accent)]"
-                        />
-                        <span lang="zh-HK">{copy.usePreferred(check.fix?.to ?? check.expected)}</span>
-                      </label>
-                    </li>
-                  ))}
-                </ul>
+                <LowerRankList session={session} items={items.lower} actions={actions} />
               </Collapsible>
             </div>
           )}
           {items.manual.length > 0 && (
             <div className="-mx-3">
               <Collapsible title={`${copy.MANUAL_GROUP} (${items.manual.length})`}>
-                <ul className="space-y-1.5">
-                  {items.manual.map(({ row, index, check }) => (
-                    <li key={termKey(row.path, index)} className="flex items-center gap-3 text-xs">
-                      <span className="min-w-0 flex-1 text-ink" lang="zh-HK">
-                        {check.en}
-                        {check.found && ` → ${check.found.text}`} — EDB: {check.expected}
-                        {check.conflict && (
-                          <span className="block text-[11px] text-warn-ink">
-                            {copy.conflictChip(check.conflict.form, check.conflict.meansEn)}
-                          </span>
-                        )}
-                      </span>
-                      {row.slot?.target ? (
-                        <Button size="sm" variant="subtle" onClick={() => actions.showOnPage(row.slot)}>
-                          {copy.SHOW_ON_PAGE}
-                        </Button>
-                      ) : (
-                        <span className="shrink-0 text-ink-muted">{heading(row)}</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+                <ManualList items={items.manual} actions={actions} />
               </Collapsible>
             </div>
           )}

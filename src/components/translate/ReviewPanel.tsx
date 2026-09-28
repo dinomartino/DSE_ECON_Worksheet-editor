@@ -1,5 +1,6 @@
 import type { Glossary } from '@/glossary/types';
 import { plain } from '@/model/text';
+import type { TranslationWrite } from '@/model/textSlots';
 import { Button, Eyebrow, Segmented } from '@/components/ui';
 import { Collapsible } from '@/components/ui/Collapsible';
 import * as copy from './copy';
@@ -101,16 +102,23 @@ export function ReviewPanel({
                 />
               }
             >
-              <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
-                {copies.map((write, i) => (
-                  <li key={`${write.path}-${i}`}>{plain(write.next)}</li>
-                ))}
-              </ul>
+              <CopiesList copies={copies} />
             </Collapsible>
           </div>
         )}
       </div>
     </>
+  );
+}
+
+/** The copied symbols, read-only (the group's one checkbox sits in its header). */
+export function CopiesList({ copies }: { copies: readonly TranslationWrite[] }) {
+  return (
+    <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
+      {copies.map((write, i) => (
+        <li key={`${write.path}-${i}`}>{plain(write.next)}</li>
+      ))}
+    </ul>
   );
 }
 

@@ -125,7 +125,7 @@ export function reduceSession(state: TranslateSession, action: SessionAction): T
     case 'reset':
       return EMPTY_SESSION;
     case 'setMode':
-      return state.phase === 'setup' ? { ...state, mode: action.mode, confirm: null } : state;
+      return state.phase === 'setup' ? { ...state, mode: action.mode, confirm: null, nothingInserted: false } : state;
     case 'setScope':
       return state.phase === 'setup' ? { ...state, scope: action.scope } : state;
     case 'setOptions':
@@ -165,7 +165,7 @@ export function reduceSession(state: TranslateSession, action: SessionAction): T
     case 'toggleTerm': {
       const termTicks = new Map(state.termTicks);
       termTicks.set(action.key, action.value);
-      return { ...state, termTicks };
+      return { ...state, termTicks, nothingInserted: false };
     }
   }
 }

@@ -112,6 +112,11 @@ describe('translateSession reducer', () => {
     expect(s.phase).toBe('setup');
   });
 
+  it('the next term tick clears "Nothing replaced"', () => {
+    const s = seeded({ mode: 'check', nothingInserted: true });
+    expect(reduceSession(s, { type: 'toggleTerm', key: 'a#0', value: true }).nothingInserted).toBe(false);
+  });
+
   it('closing asks first: Stop while running, Discard with rows pending', () => {
     const running = seeded({ phase: 'running', run: reviewRun() });
     expect(closeIntent(running)).toBe('askStop');

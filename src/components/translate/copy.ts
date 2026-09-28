@@ -187,6 +187,7 @@ export const NO_TERM_FINDINGS = 'No term differs from the EDB glossary.';
 export const LOWER_RANK_GROUP = 'Acceptable, not the first choice';
 export const MANUAL_GROUP = "Can't fix automatically";
 export const SHOW_ON_PAGE = 'Show on page';
+export const NOTHING_REPLACED = 'Nothing replaced — these texts changed since the check.';
 export const usePreferred = (form: string): string => `Use ${form}`;
 export const lowerRankLine = (en: string, found: string, expected: string): string =>
   `${en}: ${found} — EDB lists ${expected} first`;
