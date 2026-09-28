@@ -1,3 +1,4 @@
+import { isPaused } from '@/assist/paused';
 import { verbs } from '@/assist/registry';
 import type { AiVerb, VerbAvailability, VerbContext, VerbGroup } from '@/assist/types';
 
@@ -24,12 +25,13 @@ export interface MenuGroup {
   rows: MenuRow[];
 }
 
-/** Every offered verb in registry order, grouped; `available() === null` hides one, and
- *  `query` filters by label (case-insensitive). */
+/** Every offered verb in registry order, grouped; a paused verb (`PAUSED_VERBS`) or
+ *  `available() === null` hides one, and `query` filters by label (case-insensitive). */
 export function menuGroups(ctx: VerbContext, query = ''): MenuGroup[] {
   const needle = query.trim().toLowerCase();
   const groups: MenuGroup[] = [];
   for (const verb of verbs()) {
+    if (isPaused(verb.id)) continue;
     const availability = verb.available(ctx);
     if (!availability) continue;
     const label = verb.label(ctx);

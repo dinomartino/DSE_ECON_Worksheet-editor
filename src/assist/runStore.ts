@@ -2,6 +2,7 @@ import { create, type StoreApi, type UseBoundStore } from 'zustand';
 import { isAiError, type AiErrorInfo, type ProviderId } from '@/ai/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { useAiMenu } from './menuStore';
+import { isPaused } from './paused';
 import { verbById } from './registry';
 import { scopeFromSelection, scopeLabel } from './scope';
 import type { VerbContext, VerbOutcome } from './types';
@@ -17,7 +18,8 @@ export type AiRunPhase =
 export interface AiRunState {
   phase: AiRunPhase;
   /** Builds the context from the worksheet store and the menu's scope (else the selection),
-   *  closes the menu and runs. Refused while read-only or while another run is going. */
+   *  closes the menu and runs. Refused for a paused verb, while read-only or while another
+   *  run is going. */
   startVerb(verbId: string, input?: string): Promise<void>;
   /** Aborts; a verb returns what already finished (inserted) on abort. */
   stop(): void;
@@ -83,7 +85,7 @@ export const useAiRun: UseBoundStore<StoreApi<AiRunState>> = create<AiRunState>(
   startVerb: async (verbId, input) => {
     const again = retrying;
     retrying = null;
-    const verb = verbById(verbId);
+    const verb = isPaused(verbId) ? undefined : verbById(verbId);
     if (!verb || controller || get().phase.kind === 'running') return;
     if (useWorksheetStore.getState().readOnly) return;
     const ctx = again ?? buildVerbContext();

@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, webkit } from 'playwright-core';
@@ -14,11 +14,13 @@ import { MOCK_MODEL, startMockServer } from './ai-mock-server.mjs';
  *   npm run build && node scripts/ai-verify.mjs [--out=/tmp/ai-verify]
  *        [--engines=chromium,webkit] [--only=entry,translate,…] [--port=8787] [--app-port=3417]
  *
- * Groups: entry (the ✦ AI button, ⌘J, right-click, multi-select, Export, read-only, no
- * Translate left in ⋯ or the Outline, one toolbar row at 1024), translate (fill → bar →
- * highlights → card → Undo all / ⌘Z, Stop, re-translate), terms (keyless Check terms),
- * answers (E1), source (E3), quality (E4), setup (the SetupCard), error (the bar's error
- * actions), field (BiTextField's ✦ Fill).
+ * Groups: entry (the ✦ AI button, ⌘J, the paused verbs absent, right-click, multi-select,
+ * Export, read-only, no Translate left in ⋯ or the Outline, one toolbar row at 1024),
+ * translate (fill → bar → highlights → card → Undo all / ⌘Z, Stop, re-translate), terms
+ * (keyless Check terms), setup (the SetupCard), error (the bar's error actions), field
+ * (BiTextField's ✦ Fill). Paused with their verbs (`src/assist/paused.ts`), kept for when
+ * they return and skipped even under --only: answers (E1), source (E3), quality (E4). A
+ * last check per engine: E3's lazily loaded engine chunk was never fetched.
  *
  * The privacy check: nothing reaches the mock before an explicit verb click, Save &
  * continue or Fill, and no real provider host is ever reached (every attempt is stubbed
@@ -238,6 +240,7 @@ async function newContext(browser, { viewport = { width: 1280, height: 800 }, ro
       return route.fulfill({ response, headers: { ...response.headers(), 'access-control-allow-origin': '*' } });
     },
   );
+  context.on('request', (request) => fetched.add(request.url().split('/').pop()));
   const page = await context.newPage();
   page.on('pageerror', (e) => console.log(`  PAGE ERR: ${e.message}`));
   await mockReset();
@@ -307,6 +310,15 @@ async function nothingSent(leaks) {
   expect(sent === 0 && leaks.length === 0, `mock saw ${sent}, providers saw ${leaks.length}`);
 }
 
+/** Mirrors `src/assist/paused.ts:PAUSED_VERBS`: the menu must never offer these. */
+const PAUSED_VERBS = ['write.answers', 'create.fromSource', 'check.quality'];
+/** E3's lazily loaded engine (`src/generate/run.ts`), found by one of its strings. A paused
+ *  verb never runs, so no group may fetch it. */
+const CHUNKS = join(ROOT, 'out/_next/static/chunks');
+const E3_CHUNKS = readdirSync(CHUNKS).filter((f) => f.endsWith('.js') && readFileSync(join(CHUNKS, f), 'utf8').includes('The reply had no structured question.'));
+/** Every script the browser fetched, by file name. */
+const fetched = new Set();
+
 const shooter = (engine) => (page, name) => page.screenshot({ path: `${OUT}/${engine}-${name}.png` });
 
 /** Every way in, on an English-only paper; nothing may be sent. */
@@ -342,6 +354,25 @@ async function entryChecks(engine, browser) {
     expect((await aiMenu(page).count()) === 0, 'Escape left the menu open');
   });
 
+  await check(engine, 'paused verbs (E1, E3, E4) are not in the menu, not even by search', async () => {
+    await openMenu(page);
+    const search = aiMenu(page).getByRole('textbox', { name: 'Search AI actions' });
+    const seen = [];
+    for (const query of ['', 'answers', 'source', 'quality']) {
+      await search.fill(query);
+      await page.waitForTimeout(150);
+      for (const id of PAUSED_VERBS) if ((await verbRow(page, id).count()) > 0) seen.push(`${id} for "${query}"`);
+    }
+    await search.fill('');
+    await page.waitForTimeout(150);
+    const offered = await aiMenu(page).locator('[data-verb]').evaluateAll((rows) => rows.map((r) => r.getAttribute('data-verb')));
+    await shot(page, 'entry-02b-no-paused');
+    await page.keyboard.press('Escape');
+    expect(seen.length === 0, `listed: ${seen.join(', ')}`);
+    expect(offered.includes('translate.fillZh'), `offered ${offered.join(', ')}`);
+    return offered.join(', ');
+  });
+
   await check(engine, 'right-click "✦ AI…" opens on the clicked text', async () => {
     await rightClickText(page);
     await page.getByRole('menuitem', { name: '✦ AI…', exact: true }).click();
@@ -355,7 +386,7 @@ async function entryChecks(engine, browser) {
     expect(/1 text\b/.test(fill), `Fill row reads "${fill}"`);
   });
 
-  await check(engine, 'multi-select pill "✦ AI" opens on the selected questions', async () => {
+  await check(engine, 'multi-select pill "✦ AI" opens on the selection', async () => {
     await clickMargin(page);
     await page.keyboard.press(`${META}+KeyA`);
     const pill = page.getByRole('button', { name: '✦ AI', exact: true });
@@ -363,10 +394,12 @@ async function entryChecks(engine, browser) {
     await pill.click();
     await aiMenu(page).waitFor({ timeout: 3000 });
     await page.waitForTimeout(200);
-    const scope = await aiMenu(page).getByText(/^\d+ questions$/).first().innerText();
+    // The scope chip, not a row's count (E4's "2 questions" once matched here).
+    const scope = (await aiMenu(page).getByRole('button', { name: /^Scope: / }).innerText()).trim();
     await shot(page, 'entry-04-multiselect');
     await page.keyboard.press('Escape');
     await page.keyboard.press('Escape');
+    expect(/^([2-9]|\d{2,}) (questions|items)$/.test(scope), `scope chip "${scope}"`);
     return scope;
   });
 
@@ -597,7 +630,7 @@ async function termsChecks(engine, browser) {
   await context.close();
 }
 
-/** E1: Write answers & mark scheme fills the empty parts, shows them, and Undo all. */
+/** Paused (PAUSED_GROUPS). E1: Write answers & mark scheme fills the empty parts, shows them, and Undo all. */
 async function answersChecks(engine, browser) {
   const shot = shooter(engine);
   const { context, page, leaks } = await newContext(browser);
@@ -637,7 +670,7 @@ async function answersChecks(engine, browser) {
 const SOURCE = 'Hong Kong, 2026. After a typhoon damaged farms in Guangdong, fewer vegetables reached local markets. ' +
   'Prices of choi sum rose by 40 per cent within a week, while shoppers bought less of it.';
 
-/** E3: the input step, Generate, questions inserted before END OF PAPER, Undo all. */
+/** Paused (PAUSED_GROUPS). E3: the input step, Generate, questions inserted before END OF PAPER, Undo all. */
 async function sourceChecks(engine, browser) {
   const shot = shooter(engine);
   const { context, page, leaks } = await newContext(browser);
@@ -684,7 +717,7 @@ async function sourceChecks(engine, browser) {
   await context.close();
 }
 
-/** E4: findings and their cards; the document is not touched. */
+/** Paused (PAUSED_GROUPS). E4: findings and their cards; the document is not touched. */
 async function qualityChecks(engine, browser) {
   const shot = shooter(engine);
   const { context, page, leaks } = await newContext(browser);
@@ -844,7 +877,10 @@ async function fieldChecks(engine, browser) {
 
 // ---- main ----
 
-const GROUPS = { entry: entryChecks, translate: translateChecks, terms: termsChecks, answers: answersChecks, source: sourceChecks, quality: qualityChecks, setup: setupChecks, error: errorChecks, field: fieldChecks };
+const GROUPS = { entry: entryChecks, translate: translateChecks, terms: termsChecks, setup: setupChecks, error: errorChecks, field: fieldChecks };
+/** Their verbs are paused (`PAUSED_VERBS`): the checks stay, unrun. Unpause the verb, then
+ *  move its group back into GROUPS. */
+const PAUSED_GROUPS = { answers: answersChecks, source: sourceChecks, quality: qualityChecks };
 
 const mock = await startMockServer(MOCK_PORT);
 const app = await startStaticServer(APP_PORT);
@@ -853,7 +889,18 @@ try {
     const browser = engine === 'webkit' ? await webkit.launch() : await chromium.launch({ channel: 'chrome' });
     console.log(`${engine}:`);
     try {
-      for (const name of ONLY ? ONLY.split(',') : Object.keys(GROUPS)) await GROUPS[name](engine, browser);
+      for (const name of ONLY ? ONLY.split(',') : Object.keys(GROUPS)) {
+        if (name in PAUSED_GROUPS) console.log(`  ${name}: paused — skipped`);
+        else if (!GROUPS[name]) throw new Error(`no group "${name}"`);
+        else await GROUPS[name](engine, browser);
+      }
+      await check(engine, "paused E3's engine was never fetched", () => {
+        expect(E3_CHUNKS.length > 0, 'no E3 engine chunk found in out/');
+        const got = E3_CHUNKS.filter((f) => fetched.has(f));
+        expect(got.length === 0, `fetched ${got.join(', ')}`);
+        return E3_CHUNKS.join(', ');
+      });
+      fetched.clear();
     } finally {
       await browser.close();
     }

@@ -6,6 +6,7 @@ import { findingsReply, qualityWorksheet } from '@/quality/testKit';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { scriptedClient } from '@/translate/testKit';
 import { openAi } from '../menuStore';
+import { setPausedForTest } from '../paused';
 import { verbById } from '../registry';
 import { resetAiRunForTest, useAiRun } from '../runStore';
 import type { VerbContext } from '../types';
@@ -29,11 +30,16 @@ const ctxFor = (scope: VerbContext['scope']): VerbContext => ({
 
 describe('check.quality', () => {
   beforeEach(() => {
+    // Paused for teachers (`PAUSED_VERBS`); its own tests still run it.
+    setPausedForTest();
     resetAiRunForTest();
     fake.ok = true;
     useWorksheetStore.getState().replaceWorksheet(qualityWorksheet());
   });
-  afterEach(() => resetAiRunForTest());
+  afterEach(() => {
+    resetAiRunForTest();
+    setPausedForTest(null);
+  });
 
   it('is offered in the check group with a question count, and hidden with no questions in scope', () => {
     const verb = verbById('check.quality')!;
