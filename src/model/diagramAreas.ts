@@ -390,9 +390,9 @@ export interface RevenuePoints {
 }
 
 export const REVENUE_PRESETS: Array<{ id: RevenuePreset; name: string; label: BiText }> = [
-  { id: 'totalRevenue', name: 'Total revenue', label: { en: [{ text: 'TR' }], zh: [{ text: '總收益' }] } },
-  { id: 'revenueGain', name: 'Revenue gain', label: { en: [{ text: 'Gain' }], zh: [{ text: '收益增加' }] } },
-  { id: 'revenueLoss', name: 'Revenue loss', label: { en: [{ text: 'Loss' }], zh: [{ text: '收益減少' }] } },
+  { id: 'totalRevenue', name: 'Total revenue', label: { en: [{ text: 'TR' }], zh: [{ text: '總收入' }] } },
+  { id: 'revenueGain', name: 'Revenue gain', label: { en: [{ text: 'Gain' }], zh: [{ text: '收入增加' }] } },
+  { id: 'revenueLoss', name: 'Revenue loss', label: { en: [{ text: 'Loss' }], zh: [{ text: '收入減少' }] } },
 ];
 
 const plainText = (label: BiText | undefined) => (label?.en ?? []).map((run) => run.text).join('');

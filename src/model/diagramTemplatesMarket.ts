@@ -199,7 +199,7 @@ function ceilingLowered(): Diagram {
         band([{ curve: d.id }, { curve: s.id }], at(q1), at(q0), {
           fill: 'hatch',
           pattern: 'horizontal',
-          label: bi('increase\nin DWL', '無謂損失\n增加'),
+          label: bi('increase\nin DWL', '效率損失\n增加'),
           labelOffset: { x: -0.14, y: 0.24 },
           labelPlacement: 'leader',
         }),
@@ -347,7 +347,8 @@ function mcRiseTss(): Diagram {
       arrows: [arrow([0.56, 0.62], [0.56, 0.8])],
       spans: axisArrows(e0, e1),
     }),
-    (r) => shade(r, 'tssLoss', { demand: d.id, supply: s0.id, shifted: s1.id }),
+    // Right of D: left to the placer, the long 總社會盈餘損失 lands on D in EN+中.
+    (r) => shade(r, 'tssLoss', { demand: d.id, supply: s0.id, shifted: s1.id }, { labelOffset: { x: 0.65, y: 0.03 } }),
   );
 }
 
@@ -411,7 +412,7 @@ function quotaEnlarged(): Diagram {
         band([{ curve: d.id }, { curve: s.id }], at(e1), at(e2), {
           fill: 'hatch',
           pattern: 'cross',
-          label: bi('DWL falls', '無謂損失減少'),
+          label: bi('DWL falls', '效率損失減少'),
           labelPlacement: 'leader',
         }),
       ],
@@ -449,7 +450,7 @@ function quotaDemandIncrease(): Diagram {
           band: { edges: [{ curve: d0.id }, { curve: d1.id }], from: at(e0), to: at(f1), cap: { curve: s.id } },
           fill: 'hatch',
           pattern: 'horizontal',
-          label: bi('increase\nin DWL', '無謂損失\n增加'),
+          label: bi('increase\nin DWL', '效率損失\n增加'),
           labelOffset: { x: 0.29, y: 0.02 },
           labelPlacement: 'leader',
         },
@@ -488,7 +489,7 @@ function perUnit(kind: 'tax' | 'subsidy'): Diagram {
       points: [e0, e1, kept],
       spans: [wedge, ...axisArrows(e0, e1)],
       labels: tax
-        ? [label(0.68, 0.53, bi("a: buyers' burden\nb: sellers' burden", 'a：買家負擔\nb：賣家負擔'), { align: 'left' })]
+        ? [label(0.68, 0.53, bi("a: buyers' burden\nb: sellers' burden", 'a：買方稅負\nb：賣方稅負'), { align: 'left' })]
         : [],
     }),
     (r) =>
@@ -549,15 +550,15 @@ export const MARKET_TEMPLATES: DiagramTemplate[] = [
   {
     id: 'elastic-revenue',
     group: 'supplyDemand',
-    name: bi('Elastic demand: revenue', '富彈性需求：收益'),
-    hint: bi('A price rise along a flat D: gain (+) < loss (−).', '沿平坦需求曲線加價：收益增加 (+) < 減少 (−)。'),
+    name: bi('Elastic demand: revenue', '彈性需求：總收入'),
+    hint: bi('A price rise along a flat D: gain (+) < loss (−).', '沿平坦需求曲線加價：收入增加 (+) < 減少 (−)。'),
     build: () => alongDemand([[0.06, 0.64], [0.9, 0.34]], 0.38, 0.52),
   },
   {
     id: 'inelastic-revenue',
     group: 'supplyDemand',
-    name: bi('Inelastic demand: revenue', '缺乏彈性需求：收益'),
-    hint: bi('A price rise along a steep D: gain (+) > loss (−).', '沿陡峭需求曲線加價：收益增加 (+) > 減少 (−)。'),
+    name: bi('Inelastic demand: revenue', '低彈性需求：總收入'),
+    hint: bi('A price rise along a steep D: gain (+) > loss (−).', '沿陡峭需求曲線加價：收入增加 (+) > 減少 (−)。'),
     build: () => alongDemand([[0.3, 0.92], [0.62, 0.1]], 0.3, 0.56),
   },
   {
@@ -584,8 +585,8 @@ export const MARKET_TEMPLATES: DiagramTemplate[] = [
   {
     id: 'mc-rise-tss',
     group: 'supplyDemand',
-    name: bi('MC rises: TSS loss', '邊際成本上升：總盈餘損失'),
-    hint: bi('S = MC shifts up; the TSS loss is the band between MC₀ and MC₁.', 'S = MC 上移；總盈餘損失為 MC₀ 與 MC₁ 之間的帶。'),
+    name: bi('MC rises: TSS loss', '邊際成本上升：總社會盈餘損失'),
+    hint: bi('S = MC shifts up; the TSS loss is the band between MC₀ and MC₁.', 'S = MC 上移；總社會盈餘損失為 MC₀ 與 MC₁ 之間的帶。'),
     build: mcRiseTss,
   },
   {
@@ -605,15 +606,15 @@ export const MARKET_TEMPLATES: DiagramTemplate[] = [
   {
     id: 'price-control-dwl',
     group: 'controls',
-    name: bi('Price ceiling: deadweight loss', '價格上限：無謂損失'),
-    hint: bi('D = MB, S = MC; DWL from the quantity sold to Qe.', 'D = MB，S = MC；由成交量至 Qe 的無謂損失。'),
+    name: bi('Price ceiling: deadweight loss', '價格上限：效率損失'),
+    hint: bi('D = MB, S = MC; DWL from the quantity sold to Qe.', 'D = MB，S = MC；由成交量至 Qe 的效率損失。'),
     build: () => ceiling(true),
   },
   {
     id: 'ceiling-lowered',
     group: 'controls',
-    name: bi('Ceiling lowered: more DWL', '上限下調：無謂損失增加'),
-    hint: bi('Pc₀ → Pc₁: DWL₀ and the increase in DWL, shaded apart.', 'Pc₀ → Pc₁：DWL₀ 及無謂損失的增加。'),
+    name: bi('Ceiling lowered: more DWL', '上限下調：效率損失增加'),
+    hint: bi('Pc₀ → Pc₁: DWL₀ and the increase in DWL, shaded apart.', 'Pc₀ → Pc₁：DWL₀ 及效率損失的增加。'),
     build: ceilingLowered,
   },
   {
@@ -634,7 +635,7 @@ export const MARKET_TEMPLATES: DiagramTemplate[] = [
     id: 'fixed-price-revenue',
     group: 'controls',
     name: bi('Revenue at a fixed price', '固定價格下的收益'),
-    hint: bi('TR = P × the short side (Qs under a ceiling), with the shortage.', '總收益 = P × 較少一方（上限下為 Qs），附短缺。'),
+    hint: bi('TR = P × the short side (Qs under a ceiling), with the shortage.', '總收入 = P × 較少一方（上限下為 Qs），附短缺。'),
     build: fixedPriceRevenue,
   },
   {
@@ -669,21 +670,21 @@ export const MARKET_TEMPLATES: DiagramTemplate[] = [
     id: 'quota-enlarged',
     group: 'controls',
     name: bi('Quota enlarged', '配額增加'),
-    hint: bi('The vertical segment moves right: P falls, Q rises, DWL falls.', '垂直部分右移：價格下降，數量上升，無謂損失減少。'),
+    hint: bi('The vertical segment moves right: P falls, Q rises, DWL falls.', '垂直部分右移：價格下降，數量上升，效率損失減少。'),
     build: quotaEnlarged,
   },
   {
     id: 'quota-demand-increase',
     group: 'controls',
     name: bi('Quota: demand rises', '配額：需求上升'),
-    hint: bi('D₀ → D₁ at a fixed quota: Q stays, the efficient Q rises, DWL grows.', '配額不變下 D₀ → D₁：數量不變，有效率數量上升，無謂損失增加。'),
+    hint: bi('D₀ → D₁ at a fixed quota: Q stays, the efficient Q rises, DWL grows.', '配額不變下 D₀ → D₁：數量不變，有效率數量上升，效率損失增加。'),
     build: quotaDemandIncrease,
   },
   {
     id: 'per-unit-tax',
     group: 'taxSubsidy',
     name: bi('Per-unit tax', '從量稅'),
-    hint: bi("S shifts up by t: buyers' and sellers' burdens.", '供應上移 t：買家及賣家負擔。'),
+    hint: bi("S shifts up by t: buyers' and sellers' burdens.", '供應上移 t：買方及賣方稅負。'),
     build: () => perUnit('tax'),
   },
   {
@@ -696,8 +697,8 @@ export const MARKET_TEMPLATES: DiagramTemplate[] = [
   {
     id: 'subsidy-efficiency',
     group: 'taxSubsidy',
-    name: bi('Subsidy: overproduction', '津貼：生產過多'),
-    hint: bi('At Q₁, MC on S₀ is above MB on D; the DWL between them.', '在 Q₁，S₀ 上的 MC 高於 D 上的 MB；其間為無謂損失。'),
+    name: bi('Subsidy: overproduction', '津貼：生產過剩'),
+    hint: bi('At Q₁, MC on S₀ is above MB on D; the DWL between them.', '在 Q₁，S₀ 上的 MC 高於 D 上的 MB；其間為效率損失。'),
     build: subsidyEfficiency,
   },
 ];

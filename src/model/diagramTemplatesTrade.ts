@@ -41,7 +41,7 @@ import {
  * is a tangent, and quantities are anchored where the scheme reads them.
  */
 
-const GOOD = { x: bi('Good X', 'X 貨品'), y: bi('Good Y', 'Y 貨品') };
+const GOOD = { x: bi('Good X', '物品X'), y: bi('Good Y', '物品Y') };
 
 function fixedExportPrice(): Diagram {
   const p = priceLine(0.48, sym('P'));
@@ -188,7 +188,7 @@ function importQuotaDemand(): Diagram {
 function importQuotaIncrease(): Diagram {
   const s1 = curve([[0.06, 0.14], [0.22, 0.4], [0.44, 0.4], [0.66, 0.82]], sub('S', '1'));
   return finish(
-    axes(bi('Quantity of Good X', 'X 貨品數量'), AXIS.price, {
+    axes(bi('Quantity of Good X', '物品X的數量'), AXIS.price, {
       curves: [curve([[0.06, 0.9], [0.86, 0.26]], sym('D')), s1, shiftOf(s1, 0.18, 0, sub('S', '2'))],
       arrows: [arrow([0.5, 0.6], [0.66, 0.6])],
     }),
@@ -285,7 +285,7 @@ function monopolySameOutput(): Diagram {
           band: { edges: [{ curve: mc0.id }, { curve: mc1.id }], from: cross(mr, mc0), to: cross(d, mc1), cap: { curve: d.id } },
           fill: 'hatch',
           pattern: 'horizontal',
-          label: bi('increase in DL', '無謂損失增加'),
+          label: bi('increase in DL', '效率損失增加'),
           labelPlacement: 'leader',
         },
       ],
@@ -449,7 +449,7 @@ function lorenz(): Diagram {
       curves: [equality, before, after],
       labels: [
         // Above-left of the diagonal it names; the key below it, left of the diagonal.
-        label(0.74, 0.84, bi('Line of equality', '絕對平均線'), { align: 'right' }),
+        label(0.74, 0.84, bi('Line of equality', '絕對平等線'), { align: 'right' }),
         label(0.03, 0.64, bi('A: before tax\nB: after tax', 'A：稅前\nB：稅後'), { align: 'left' }),
       ],
     }),
@@ -463,7 +463,7 @@ export const TRADE_TEMPLATES: DiagramTemplate[] = [
     id: 'exchange-rate-revenue',
     group: 'trade',
     name: bi('Exchange rate: import value', '匯率：進口值'),
-    hint: bi('Price in HK$ rises along D: gain (+) and loss (−) rectangles.', '以港元計價格沿 D 上升：收益增加 (+) 及減少 (−)。'),
+    hint: bi('Price in HK$ rises along D: gain (+) and loss (−) rectangles.', '以港元計價格沿 D 上升：收入增加 (+) 及減少 (−)。'),
     build: () =>
       alongDemand([[0.06, 0.72], [0.9, 0.3]], 0.4, 0.54, {
         x: bi('Quantity of imports', '進口量'),
@@ -474,7 +474,7 @@ export const TRADE_TEMPLATES: DiagramTemplate[] = [
     id: 'fixed-export-price',
     group: 'trade',
     name: bi('Fixed exporter price', '出口商定價不變'),
-    hint: bi("Price fixed in the seller's currency: D₀ → D₁, gain P × ΔQ.", '以賣方貨幣定價：D₀ → D₁，收益增加 P × ΔQ。'),
+    hint: bi("Price fixed in the seller's currency: D₀ → D₁, gain P × ΔQ.", '以賣方貨幣定價：D₀ → D₁，收入增加 P × ΔQ。'),
     build: fixedExportPrice,
   },
   {
@@ -502,14 +502,14 @@ export const TRADE_TEMPLATES: DiagramTemplate[] = [
     id: 'import-quota-increase',
     group: 'trade',
     name: bi('Import quota increase', '進口配額增加'),
-    hint: bi('A kinked supply curve shifting outwards.', '有拗折的供應曲線向外移。'),
+    hint: bi('A kinked supply curve shifting outwards.', '折曲供應曲線向外移。'),
     build: importQuotaIncrease,
   },
   {
     id: 'monopoly',
     group: 'electives',
     name: bi('Monopoly', '壟斷'),
-    hint: bi('D, MR at twice the slope, constant MC: Qm, Pm, Qc and the DWL.', 'D、斜率加倍的 MR、固定 MC：Qm、Pm、Qc 及無謂損失。'),
+    hint: bi('D, MR at twice the slope, constant MC: Qm, Pm, Qc and the DWL.', 'D、斜率加倍的 MR、固定 MC：Qm、Pm、Qc 及效率損失。'),
     build: () => monopoly(),
   },
   {
@@ -523,28 +523,28 @@ export const TRADE_TEMPLATES: DiagramTemplate[] = [
     id: 'monopoly-mc-zero',
     group: 'electives',
     name: bi('Monopoly with MC = 0', '邊際成本為零的壟斷'),
-    hint: bi('QM at the midpoint, QE at D’s intercept, the DWL between.', 'QM 在中點，QE 在需求截距，其間為無謂損失。'),
+    hint: bi('QM at the midpoint, QE at D’s intercept, the DWL between.', 'QM 在中點，QE 在需求截距，其間為效率損失。'),
     build: monopolyMcZero,
   },
   {
     id: 'monopoly-cost-fall',
     group: 'electives',
     name: bi('Monopoly: MC falls', '壟斷：邊際成本下降'),
-    hint: bi('MC₁ → MC₂: Q rises, P falls, old and new DWL.', 'MC₁ → MC₂：數量上升、價格下降，新舊無謂損失。'),
+    hint: bi('MC₁ → MC₂: Q rises, P falls, old and new DWL.', 'MC₁ → MC₂：數量上升、價格下降，新舊效率損失。'),
     build: monopolyCostFall,
   },
   {
     id: 'monopoly-mc-rises',
     group: 'electives',
     name: bi('Monopoly: MC rises', '壟斷：邊際成本上升'),
-    hint: bi('MC₁ → MC₂: Q₂ < QM, P₂ > PM, the DWL at MC₂.', 'MC₁ → MC₂：Q₂ < QM，P₂ > PM，MC₂ 的無謂損失。'),
+    hint: bi('MC₁ → MC₂: Q₂ < QM, P₂ > PM, the DWL at MC₂.', 'MC₁ → MC₂：Q₂ < QM，P₂ > PM，MC₂ 的效率損失。'),
     build: monopolyMcRises,
   },
   {
     id: 'monopoly-same-output',
     group: 'electives',
     name: bi('Monopoly: MC falls, same P and Q', '壟斷：MC 下降但價量不變'),
-    hint: bi('MC₀ → MC₁ with Qm and Pm kept: DL₀ and the increase in DL.', 'MC₀ → MC₁ 而 Qm、Pm 不變：DL₀ 及無謂損失的增加。'),
+    hint: bi('MC₀ → MC₁ with Qm and Pm kept: DL₀ and the increase in DL.', 'MC₀ → MC₁ 而 Qm、Pm 不變：DL₀ 及效率損失的增加。'),
     build: monopolySameOutput,
   },
   {
@@ -558,21 +558,21 @@ export const TRADE_TEMPLATES: DiagramTemplate[] = [
     id: 'ppf-linear-trade',
     group: 'electives',
     name: bi('Linear PPF with trade', '直線 PPF 與貿易'),
-    hint: bi('Specialise at an intercept; CPF at the TOT; exports and imports.', '在截距專門生產；CPF 斜率為貿易條件；出口及進口。'),
+    hint: bi('Specialise at an intercept; CPF at the TOT; exports and imports.', '在截距專門化生產；CPF 斜率為貿易比率；出口及進口。'),
     build: ppfLinearTrade,
   },
   {
     id: 'ppf-two-countries',
     group: 'electives',
     name: bi('Two countries: PPFs and CPFs', '兩國：PPF 及 CPF'),
-    hint: bi('Both PPFs on one figure, each specialising; parallel CPFs at the TOT.', '兩國 PPF 同圖，各自專門生產；貿易條件下平行的 CPF。'),
+    hint: bi('Both PPFs on one figure, each specialising; parallel CPFs at the TOT.', '兩國 PPF 同圖，各自專門化生產；貿易比率下平行的 CPF。'),
     build: ppfTwoCountries,
   },
   {
     id: 'ppf-concave-trade',
     group: 'electives',
     name: bi('Concave PPF with trade', '凹向原點 PPF 與貿易'),
-    hint: bi('CPF tangent at production B, parallel to TOT; consumption C.', 'CPF 在生產點 B 相切並與貿易條件平行；消費點 C。'),
+    hint: bi('CPF tangent at production B, parallel to TOT; consumption C.', 'CPF 在生產點 B 相切並與貿易比率線平行；消費點 C。'),
     build: ppfConcaveTrade,
   },
   {
@@ -585,8 +585,8 @@ export const TRADE_TEMPLATES: DiagramTemplate[] = [
   {
     id: 'lorenz',
     group: 'taxSubsidy',
-    name: bi('Lorenz curve', '洛倫茲曲線'),
-    hint: bi('Line of equality, a before-tax curve and a flatter after-tax one.', '絕對平均線、稅前曲線及較接近對角線的稅後曲線。'),
+    name: bi('Lorenz curve', '洛倫茨曲線'),
+    hint: bi('Line of equality, a before-tax curve and a flatter after-tax one.', '絕對平等線、稅前曲線及較接近對角線的稅後曲線。'),
     build: lorenz,
   },
 ];

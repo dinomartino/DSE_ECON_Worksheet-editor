@@ -304,7 +304,7 @@ export const AXIS = {
   wage: bi('Wage rate', '工資率'),
   // Two lines: one would take the plot's width for its reserved room.
   labour: bi('Quantity\nof labour', '勞工數量'),
-  priceLevel: bi('Price level', '價格水平'),
+  priceLevel: bi('Price level', '物價水平'),
   realOutput: bi('Real output', '實質產出'),
   interest: bi('Nominal interest rate', '名義利率'),
   money: bi('Quantity\nof money', '貨幣數量'),

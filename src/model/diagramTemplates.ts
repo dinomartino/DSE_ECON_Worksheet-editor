@@ -133,14 +133,14 @@ const ORIGINAL_TEMPLATES: DiagramTemplate[] = [
     name: bi('Tax schedule', '稅項圖'),
     hint: bi('A single line against income — for progressive / proportional questions.', '單一線對應收入，用於累進／比例稅題目。'),
     build: () =>
-      axes(bi('Taxable income ($)', '應課稅入息（$）'), bi('Tax rate (%)', '稅率（%）'), {
+      axes(bi('Taxable income ($)', '應課稅收入 ($)'), bi('Tax rate (%)', '稅率（%）'), {
         curves: [curve([[0.0, 0.1], [0.86, 0.86]])],
       }),
   },
   {
     id: 'business-cycle',
     group: 'macro',
-    name: bi('Business cycle', '經濟週期'),
+    name: bi('Business cycle', '經濟周期'),
     hint: bi(
       'A wave around a dashed average growth line, with a marked point.',
       '圍繞平均增長虛線的波浪，附標記點。',
@@ -170,10 +170,10 @@ const ORIGINAL_TEMPLATES: DiagramTemplate[] = [
   {
     id: 'ppc',
     group: 'electives',
-    name: bi('Production possibility curve', '生產可能性曲線'),
+    name: bi('Production possibility curve', '生產可能曲線'),
     hint: bi('A concave PPC with a point on, inside and outside it.', '凹向原點的 PPC，附曲線上、內、外的點。'),
     build: () =>
-      axes(bi('Good X', 'X 貨品'), bi('Good Y', 'Y 貨品'), {
+      axes(bi('Good X', '物品X'), bi('Good Y', '物品Y'), {
         curves: [
           curve([[0.06, 0.9], [0.34, 0.82], [0.62, 0.62], [0.82, 0.12]], undefined, {
             shape: 'curved',
@@ -248,9 +248,9 @@ const ORIGINAL_TEMPLATES: DiagramTemplate[] = [
       arrows: [],
       pie: {
         slices: [
-          { id: newId(), label: bi('Firm A', '公司甲'), value: 40 },
-          { id: newId(), label: bi('Firm B', '公司乙'), value: 30 },
-          { id: newId(), label: bi('Firm C', '公司丙'), value: 20 },
+          { id: newId(), label: bi('Firm A', '廠商A'), value: 40 },
+          { id: newId(), label: bi('Firm B', '廠商B'), value: 30 },
+          { id: newId(), label: bi('Firm C', '廠商C'), value: 20 },
           { id: newId(), label: bi('Others', '其他'), value: 10 },
         ],
       },

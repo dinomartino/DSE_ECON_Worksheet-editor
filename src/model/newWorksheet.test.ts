@@ -211,4 +211,15 @@ describe('sections', () => {
     const endPaper = textElements.find((el) => el.text?.en[0]?.text === 'END OF PAPER')!;
     expect(flowIds[flowIds.length - 1]).toBe(endPaper.id);
   });
+
+  it('bolds the Chinese for the sample question’s English CAPITAL, as HKDSE papers do', () => {
+    const worksheet = createWorksheetFrom({ documentType: 'lqMock' });
+    const sample = worksheet.questions[0];
+    if (sample.type !== 'structured') throw new Error('expected the structured sample');
+    const block = sample.parts[1].blocks[0];
+    if (block.kind !== 'paragraph') throw new Error('expected a paragraph');
+    expect(plain(block.text.en)).toContain('ONE reason');
+    expect(block.text.zh).toContainEqual({ text: '一個', bold: true });
+    expect(plain(block.text.zh)).toBe('解釋市場可能對公園供應不足的一個原因。');
+  });
 });

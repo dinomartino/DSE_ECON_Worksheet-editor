@@ -279,7 +279,7 @@ export interface DiagramArea {
 
 /** One axis: its title, whether it carries an arrowhead, and its tick marks. */
 export interface DiagramAxis {
-  /** "Price level" / "價格水平". Printed at the far end of the axis. */
+  /** "Price level" / "物價水平". Printed at the far end of the axis. */
   title?: BiText;
   /**
    * Nudge for the title, in unit space, from its computed anchor.
