@@ -65,6 +65,10 @@ Remove from this list once released.
   `src/components/editor/PaperSummaryBar.tsx`, `Worksheet.target` edited in Setup; target
   misses in the paper check. Not yet: pages count the preview's language, not the export's;
   a target cannot be set per section.
+- **AI translation + Check terms + app Settings** (was E2, 2026-09-28) — `src/translate/`,
+  `src/glossary/`, `src/ai/`, `src/settings/`, `src/components/translate/`. Not yet: a live
+  run with a real key, an HK-network check, the desktop Keychain in a built app; "N match"
+  in Check terms; the keyless half is Check terms, not a paper-wide lint of every save.
 - **In-app feedback** — `src/feedback/feedback.ts`, `src/components/feedback/FeedbackDialog.tsx`:
   prefilled GitHub issue (URL capped at 3,500 chars — GitHub's sign-in redirect breaks
   above ~4k), `mailto:` to dseconmentor@gmail.com, or clipboard. Labels only stick when
@@ -73,7 +77,7 @@ Remove from this list once released.
 ## Recommended order
 
 1. **Now** — topic tags (C1) → local question library (C2).
-2. **Later** — paste/Word import (D1, D2), BYOK AI (E), item analysis (G1), remaining
+2. **Later** — paste/Word import (D1, D2), more AI (E1, E3, E4 on the E2 base), item analysis (G1), remaining
    diagram upgrades (B3b).
 
 ## A. Export and paper checks
@@ -119,16 +123,16 @@ rebuildable index; copies keep a `lineage.rootId`; packs reuse the backup zip).
 
 ## E. AI — bring your own key, review before insert
 
-Constraints: no server, so BYOK from the browser (accept any OpenAI-compatible base
-URL — major APIs may restrict Hong Kong, **unverified**) or desktop-only with the key in
-the keychain. Output is JSON validated against the question types, shown in a review
-dialog, inserted through normal store actions — the `.docx` path is unchanged. Never embed
-a key. Never mark student scripts: student scripts are never sent anywhere; translation
-sends only the text a teacher chooses. *All of MagicSchool, Brisk, Diffit, Eduaide, QuestionWell, MS Teach.*
+E2 built the base every later item reuses: the provider layer (`src/ai/`), the text
+walker (`mapTexts`), the EDB glossary engine, app Settings and a read-only review dialog.
+Hong Kong (verified 2026-09-28): Google does not offer the Gemini API or AI Studio there,
+OpenAI and Anthropic are unavailable, DeepSeek and Qwen (Alibaba Model Studio) work
+(`src/ai/providers.ts`). Never embed a key. Never mark student scripts: student scripts
+are never sent anywhere; translation sends only the text a teacher chooses. *All of
+MagicSchool, Brisk, Diffit, Eduaide, QuestionWell, MS Teach.*
 
 - **E1 Answers, mark schemes and MCQ explanations for existing questions** (S).
-- **E2 EN↔繁中 fill with a pinned HKDSE glossary** (S–M). A keyless half: bundle the
-  EDB's official term list and flag non-standard terms (M).
+- **E2 EN↔繁中 fill with the EDB glossary** — built (above).
 - **E3 Source → HKDSE items** (M): paste a news extract, get Paper 1 MCQs (including
   combination statements) and Paper 2 parts with marks.
 - **E4 Item quality check** (S): the non-AI checks are the paper health check; the AI half flags ambiguous

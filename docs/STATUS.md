@@ -8,6 +8,20 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 - **Branching: work is on `develop`** (since 2026-09-24); `main` deploys to teachers.
   Collecting features for the release after v0.4.0 — merge to `main` only when the user says.
+- **AI translation E2 (2026-09-28, merged on `develop`, not released)** — Translate (fill the
+  missing 中文/English, read-only review, one Undo), Check terms (keyless, EDB glossary) and
+  app-wide **Settings** (⌘,; the per-document dialog is now **Setup**). Bring-your-own-key:
+  Gemini recommended, DeepSeek/Qwen marked available in HK; web key per tab unless
+  "Remember", desktop key in the Keychain (`keyring`). Code: `src/translate/`,
+  `src/glossary/` (bundled `src/glossary/data/edb-economics-2020.json`, 進口 the one
+  rank exception), `src/ai/`, `src/settings/`, `src/components/translate/`,
+  `src/components/settings/`; design in SYSTEM_ARCHITECTURE "AI translation, glossary and
+  app Settings". Browser check: `node scripts/ai-verify.mjs` (mock provider, 66/66 Chromium
+  + WebKit). Seeded Chinese now follows the glossary (new documents only).
+  **Before release (user):** a live Save & test + translation with a real key and
+  `npm run eval:translate` (prompt e2.2 never run live; model ids in `src/ai/providers.ts`
+  unverified); one try from an HK network without VPN (Gemini region error → Use DeepSeek);
+  desktop Keychain prompt in a built app (`npm run desktop:build:debug`), incl. Windows.
 - **Desktop app — shipped 2026-09-22.** Tauri 2 wraps the same static `out/`; documents
   become files under `$APPDATA/worksheets/` (`src/storage/fileStore.ts`), saving uses the
   native dialog, updates come from GitHub Releases. `src/platform/index.ts` ·
@@ -56,14 +70,28 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Last verified
 
-- `npm test` — 1732 tests, ~3s (2026-09-27). `cargo check` in `src-tauri` clean. `npm run build` green; `npm run samples` exports.
+- `npm test` — 2472 tests, ~7s (2026-09-28). `cargo check --locked` clean. `npm run build`
+  green (postbuild: glossary only in a lazy chunk); `npm run samples` exports.
 - `npm run typecheck` — clean.
-- `npm run lint` — 44 pre-existing problems (3 errors, 41 warnings) in `Preview.tsx` and
+- `npm run lint` — 43 pre-existing problems (3 errors, 40 warnings) in `Preview.tsx` and
   `InlineEditable.tsx`. Not a regression; do not "fix" by rewriting those files.
-- Backends agreeing: `scripts/cover-verify.mjs` and `scripts/lq-verify.mjs` were the last
-  three-way checks; both need LibreOffice and a running dev server.
+- Backends agreeing: `scripts/cover-verify.mjs` and `scripts/lq-verify.mjs` passed
+  2026-09-28 (LibreOffice at `/opt/homebrew/bin/soffice`, a dev server running).
 
 ## Open threads and known gaps
+
+- **E2 loose ends:** the toolbar pill and the Translate dialog count different sets (pill
+  counts symbol gaps, dialog counts teacher text), so pill − Insert need not equal the new
+  pill; Check terms has no "N match" count; the billing error opens the key page (no
+  `billingUrl` in presets); DWL/TR stay symbols, so their 中文 falls back to English;
+  Qwen's DashScope domain gets no new features after 2026-09-30 (workspace URL ships);
+  `npm version` rewrites `Cargo.toml` but not `Cargo.lock` (`sync-version`) — check the lock
+  at release. Root `economics_translation_library.json` is the user's untracked copy of the
+  bundled glossary: delete or ignore it at their choice.
+- **HKEAA paper furniture wording** (全卷完 → 試卷完, 任答一題 → 選答一題, 結構性問題 …) —
+  the user deferred it to a separate task; the AI follows the seeds until then.
+- **Never SendMessage a running workflow agent** — it forks a second writer; and a usage
+  limit only pauses a workflow (TaskStop it before relaunching over its worktrees).
 
 - **Verify diagrams in WebKit too.** Safari and the desktop webview ignore SVG
   `dominant-baseline` on `<text>` with `<tspan>`s; labels rose through the axis while
@@ -93,8 +121,6 @@ off the bottom.** It is the first thing a fresh session reads — then
   in the preview while Word starts it on page 1 (pre-existing; seen with stem diagrams).
 - **Combined answer key uses the current document's page setup and font size** for every
   part; a 10pt Paper 2 key inside an 11pt Paper 1 prints at 11pt.
-- **`scripts/cover-verify.mjs` / `lq-verify.mjs` not re-run** since B3/B4 (lq-verify passed
-  for the B4 agent; needs `LQ_DIR`).
 - **Windows builds are unsigned.** SmartScreen warns on first run. An OV certificate
   (~US$215/yr) is the option; Azure Trusted Signing is not open to a Hong Kong maintainer.
 - **The updater signing key** lives only at `~/.tauri/econ-worksheet.key`. Lose it and no
@@ -109,18 +135,12 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
+- **2026-09-28** — E2 AI translation + app Settings on `develop`: research → judge-panel
+  design → WP-0 contracts + seed fixes → 7 parallel worktree packages (build → adversarial
+  review → fix) → sequential integration → 4-lens final review (33 confirmed, all code ones
+  fixed on `feature/e2-polish`). ESLint now ignores `.claude/**` (agent worktrees).
 - **2026-09-27 (later)** — Product film merged (`scripts/film/`, skill `econ-film`), built
   by parallel agents: capture ∥ stage ∥ score → scene groups → critic → fixer → whole-film
   lens panel. Workflow agents die after 180 s silent: chunk renders, small edits.
 - **2026-09-27** — **Released v0.4.0** (published, `latest` updater live; macOS arm64/x64 +
   Windows assets and signatures checked). `develop` = `main` after the release.
-- **2026-09-26 (late)** — Page rail shows for cover + 1 page (`editor/sheets.ts`); EN-only
-  "Shift a copy" named S₅₀ (empty zh side counted as taken) → S₁; inflationary/deflationary
-  gap drawn just above the axis (`gap-narrows` kept below — no room). 1727+ tests green.
-- **2026-09-26 (evening)** — Motion polish: four parallel branches (foundation, editor
-  chrome, page chrome, start + diagrams) merged clean; 1721 tests, lint baseline, build green.
-- **2026-09-26** — Diagram fine-tune per the user's reference figure: axis change arrows
-  outside the axes, tick labels on the axis, arrow-only tax/subsidy wedge (direction
-  derived), equilibria unlabelled by default ("Label E₀" opt-in). A5 paper summary bar +
-  target (`src/model/paperSummary.ts`; Paper 2 pace corrected to 1.25 min/mark). Question
-  library design: `docs/design/question-library.md`.
