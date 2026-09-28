@@ -9,6 +9,7 @@ import { createWorksheetFrom, type DocumentType } from '@/model/newWorksheet';
 import type { BiText } from '@/model/types';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
 import { buildMarkSchemeWorksheet } from '@/test/markSchemeFixture';
+import { encodeRuns } from './wire';
 
 function isBiText(value: unknown): value is BiText {
   if (typeof value !== 'object' || value === null) return false;
@@ -80,3 +81,32 @@ export function payloadOf(req: CompletionRequest): {
 
 export const reply = (items: Array<[string, string]>): string =>
   JSON.stringify({ items: items.map(([key, text]) => ({ key, text })) });
+
+/** A canned translator that answers from the document's own bilingual text: each English
+ *  wire maps to its Chinese wire (and back), so a one-sided copy round-trips through the
+ *  whole pipeline. Anything unknown comes back as the source, which fails validation. */
+export function referenceClient(bilingual: unknown): AiClient & { requests: CompletionRequest[] } {
+  const answers = new Map<string, string>();
+  for (const text of allBiTexts(bilingual)) {
+    const en = encodeRuns(text.en).wire;
+    const zh = encodeRuns(text.zh).wire;
+    if (!en || !zh) continue;
+    if (!answers.has(en)) answers.set(en, zh);
+    if (!answers.has(zh)) answers.set(zh, en);
+  }
+  return scriptedClient([(req) => {
+    const items = payloadOf(req).groups.flatMap((g) => g.items);
+    return reply(items.map((item) => [item.key, answers.get(item.text) ?? item.text]));
+  }]);
+}
+
+/** A deep copy with one side of every BiText emptied (the input is untouched). */
+export function oneSided<T>(root: T, keep: 'en' | 'zh'): T {
+  const visit = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(visit);
+    if (typeof value !== 'object' || value === null) return value;
+    if (isBiText(value)) return { ...value, [keep === 'en' ? 'zh' : 'en']: [] };
+    return Object.fromEntries(Object.entries(value).map(([key, inner]) => [key, visit(inner)]));
+  };
+  return visit(root) as T;
+}

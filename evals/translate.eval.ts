@@ -17,12 +17,13 @@ import type { Glossary } from '@/glossary/types';
 import { createWorksheetFrom, type DocumentType } from '@/model/newWorksheet';
 import { plain } from '@/model/text';
 import type { SlotGroup, SlotKind, TextSlot } from '@/model/textSlots';
-import type { BiText, RichText, Worksheet } from '@/model/types';
+import type { RichText, Worksheet } from '@/model/types';
 import { planFromSlots, planTranslation } from '@/translate/plan';
 import { PROMPT_VERSION, wireFor } from '@/translate/prompt';
 import { runTranslation } from '@/translate/run';
 import { SIMPLIFIED_PAIRS } from '@/translate/simplified';
 import type { Direction, RunOutcome, TranslateOptions, TranslationPlan } from '@/translate/types';
+import { oneSided } from '@/translate/testKit';
 import { decodeWire } from '@/translate/wire';
 import { MCQS, STRUCTURED } from '../scripts/demo/content.mjs';
 
@@ -37,15 +38,6 @@ const OPTIONS: TranslateOptions = {
   includeDiagramLabels: true,
   copySymbols: { toZh: false, toEn: false },
 };
-
-/** The same document with one side emptied everywhere (deep copy; the input is untouched). */
-function oneSided(root: unknown, keep: 'en' | 'zh'): unknown {
-  if (Array.isArray(root)) return root.map((item) => oneSided(item, keep));
-  if (typeof root !== 'object' || root === null) return root;
-  const { en, zh } = root as Partial<BiText>;
-  if (Array.isArray(en) && Array.isArray(zh)) return { ...root, [keep === 'en' ? 'zh' : 'en']: [] };
-  return Object.fromEntries(Object.entries(root).map(([key, value]) => [key, oneSided(value, keep)]));
-}
 
 /** Hand-built slots for text that is not a worksheet: one group per case, in order. */
 function pairSlots(pairs: readonly Pair[], label: string, source: 'en' | 'zh'): TextSlot[] {
@@ -67,7 +59,7 @@ function pairCase(name: string, pairs: readonly Pair[], source: 'en' | 'zh'): Ca
 }
 
 function worksheetCase(name: string, ws: Worksheet): Case {
-  const english = oneSided(ws, 'en') as Worksheet;
+  const english = oneSided(ws, 'en');
   return { name, plan: (options) => planTranslation(english, { kind: 'paper' }, options), references: new Map() };
 }
 
