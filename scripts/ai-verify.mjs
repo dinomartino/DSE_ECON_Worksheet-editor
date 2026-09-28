@@ -12,7 +12,7 @@ import { MOCK_MODEL, startMockServer } from './ai-mock-server.mjs';
  * pass/fail line per check land in --out.
  *
  *   npm run build && node scripts/ai-verify.mjs [--out=/tmp/ai-verify]
- *        [--engines=chromium,webkit] [--phase=entry|full] [--port=8787] [--app-port=3417]
+ *        [--engines=chromium,webkit] [--phase=entry|full] [--only=settings,…] [--port=8787] [--app-port=3417]
  *
  * `--phase=entry` checks what exists before the Translate dialog and Settings pane are
  * merged (entry points, the Setup rename, nothing sent) and only records a missing
@@ -32,6 +32,8 @@ const opt = (name, fallback) => {
 const OUT = opt('out', '/tmp/ai-verify');
 const ENGINES = opt('engines', 'chromium,webkit').split(',');
 const PHASE = opt('phase', 'full');
+/** Run only these check groups (entry,journey,edge,error,settings), e.g. while fixing one. */
+const ONLY = opt('only', '');
 const MOCK_PORT = Number(opt('port', '8787'));
 const APP_PORT = Number(opt('app-port', '3417'));
 const MOCK_BASE = `http://localhost:${MOCK_PORT}/v1`;
@@ -664,14 +666,18 @@ async function settingsChecks(engine, browser) {
   await check(engine, 'BiTextField fill: region error, Use DeepSeek switches provider', async () => {
     await openDocument(fp, 'english');
     await setLanguage(fp, 'EN+中');
-    await fp.locator('#print-root [data-question-id]').first().click();
-    await fp.getByRole('tab', { name: /Edit/ }).click();
+    // Question 2 (a) holds the corpus's one model answer: selecting its text opens it.
+    await fp.locator('#print-root').getByText('Define tax incidence.').first().click();
+    await fp.waitForTimeout(600);
+    await shot(fp, '32a-field-panel');
     const fill = fp.getByRole('button', { name: 'Fill 中文', exact: true }).first();
     await fill.waitFor({ timeout: 5000 });
     expect((await mockCount()) === 0, 'a request before the Fill click');
     await fill.click();
     const use = fp.getByRole('button', { name: 'Use DeepSeek', exact: true }).first();
     await use.waitFor({ timeout: 10_000 });
+    await use.scrollIntoViewIfNeeded();
+    await fp.waitForTimeout(300);
     await shot(fp, '32-field-fill-region');
     await use.click();
     await fp.waitForTimeout(1500);
@@ -691,13 +697,9 @@ try {
     const browser = engine === 'webkit' ? await webkit.launch() : await chromium.launch({ channel: 'chrome' });
     console.log(`${engine}:`);
     try {
-      await entryChecks(engine, browser);
-      if (PHASE === 'full') {
-        await journeyChecks(engine, browser);
-        await edgeChecks(engine, browser);
-        await errorChecks(engine, browser);
-        await settingsChecks(engine, browser);
-      }
+      const groups = { entry: entryChecks, journey: journeyChecks, edge: edgeChecks, error: errorChecks, settings: settingsChecks };
+      const names = ONLY ? ONLY.split(',') : PHASE === 'full' ? Object.keys(groups) : ['entry'];
+      for (const name of names) await groups[name](engine, browser);
     } finally {
       await browser.close();
     }

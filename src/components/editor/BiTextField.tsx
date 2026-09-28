@@ -303,9 +303,16 @@ function useFieldFill(
         ? 'text-warn-ink'
         : 'text-ok';
   const text = !current ? '' : current.kind === 'done' && current.tone === 'ok' ? `✓ ${current.text}` : current.text;
+  // Action buttons (switch provider, insert anyway) need both columns: in one half they
+  // overflow the panel and the message truncates to nothing.
+  const wide = !!current && !busy && (current.kind === 'look' || (current.kind === 'error' && current.switchTo.length > 0));
   return (
     <div className="grid grid-cols-2 gap-1.5">
-      <div className={`flex min-w-0 items-center gap-1.5 ${side === 'zh' ? 'col-start-2' : 'col-start-1'}`}>
+      <div
+        className={`flex min-w-0 items-center gap-1.5 ${
+          wide ? 'col-span-2 flex-wrap' : side === 'zh' ? 'col-start-2' : 'col-start-1'
+        }`}
+      >
         {button.show && (
           <button
             type="button"
@@ -318,7 +325,7 @@ function useFieldFill(
           </button>
         )}
         {current && !busy && (
-          <span className={`min-w-0 truncate text-[11px] ${tone}`} title={text}>
+          <span className={`min-w-0 text-[11px] ${tone} ${wide ? 'order-first basis-full' : 'truncate'}`} title={text}>
             {text}
           </span>
         )}
