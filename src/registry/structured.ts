@@ -367,8 +367,10 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
 }
 
 /**
- * Stem, then each part and sub-part: body, blank axes, answer, answer figure, scheme.
- * The question-level figures print only without parts, so under parts they are unprinted.
+ * Print order: stem, answer figure, blank axes, then each part — interlude, body, its
+ * sub-parts (body, answer, answer figure, scheme, blank axes), answer, answer figure,
+ * scheme, blank axes. A part without sub-parts prints its answer before the (empty)
+ * sub-parts, so one order serves both. Question-level figures print only without parts.
  * Letters label review rows only; they are never text to translate.
  */
 function mapTexts(question: StructuredQuestion, walk: TextWalker): StructuredQuestion {
@@ -376,25 +378,24 @@ function mapTexts(question: StructuredQuestion, walk: TextWalker): StructuredQue
   const own = question.parts.length > 0 ? walk.unprinted() : walk;
   return patch(question, {
     blocks: walk.blocks('blocks', question.blocks, { paragraphKind: 'stem' }),
-    answerGraph: own.answerGraph('answerGraph', question.answerGraph, 'print'),
     answerDiagram: own.diagramBlock('answerDiagram', question.answerDiagram, 'teacher'),
+    answerGraph: own.answerGraph('answerGraph', question.answerGraph, 'print'),
     parts: mapSame(question.parts, (part, index) => {
       const partId = part.id;
       const w = walk.scope(`part:${partId}`, partLabel(index));
       return patch(part, {
         blocksBefore: w.optionalBlocks('blocksBefore', part.blocksBefore),
         blocks: w.blocks('blocks', part.blocks, { paragraphKind: 'part' }),
-        answerGraph: w.answerGraph('answerGraph', part.answerGraph, 'print'),
         subParts: part.subParts && mapSame(part.subParts, (sub, subIndex) => {
           const sw = w.scope(`sub:${sub.id}`, `${partLabel(index)}${subPartLabel(subIndex)}`);
           return patch(sub, {
             blocks: sw.blocks('blocks', sub.blocks, { paragraphKind: 'part' }),
-            answerGraph: sw.answerGraph('answerGraph', sub.answerGraph, 'print'),
             answer: sw.optional('answer', sub.answer, {
               kind: 'answer', role: 'teacher', target: { kind: 'subPartAnswer', questionId, partId, subPartId: sub.id },
             }),
             answerDiagram: sw.diagramBlock('answerDiagram', sub.answerDiagram, 'teacher'),
             scheme: sw.scheme('scheme', sub.scheme),
+            answerGraph: sw.answerGraph('answerGraph', sub.answerGraph, 'print'),
           });
         }),
         answer: w.optional('answer', part.answer, {
@@ -402,6 +403,7 @@ function mapTexts(question: StructuredQuestion, walk: TextWalker): StructuredQue
         }),
         answerDiagram: w.diagramBlock('answerDiagram', part.answerDiagram, 'teacher'),
         scheme: w.scheme('scheme', part.scheme),
+        answerGraph: w.answerGraph('answerGraph', part.answerGraph, 'print'),
       });
     }),
   });

@@ -176,6 +176,25 @@ describe('mapWorksheetTexts: paths', () => {
     expect(slot.label).toBe('(a)(i)');
     expect(slot).toMatchObject({ kind: 'answer', role: 'teacher', questionId: 'sq1', flowId: 'sq1' });
   });
+
+  it('visits a structured question in print order', () => {
+    /** `q:sq1/part:x/sub:y/answerDiagram/d/…` → `part/sub/answerDiagram`, runs collapsed. */
+    const fields = (questionId: string) => collectTexts(buildTranslateFixture())
+      .filter((slot) => slot.questionId === questionId)
+      .map((slot) => {
+        const segments = slot.path.split('/').slice(1).map((segment) => segment.replace(/:.*/, ''));
+        const field = segments.findIndex((segment) => segment !== 'part' && segment !== 'sub');
+        return segments.slice(0, field + 1).join('/');
+      })
+      .filter((field, index, all) => field !== all[index - 1]);
+    expect(fields('sq1')).toEqual([
+      'blocks', 'answerDiagram', 'answerGraph',
+      'part/blocksBefore', 'part/blocks',
+      'part/sub/blocks', 'part/sub/answer', 'part/sub/answerDiagram', 'part/sub/scheme', 'part/sub/answerGraph',
+      'part/answer', 'part/answerDiagram', 'part/scheme', 'part/answerGraph',
+    ]);
+    expect(fields('sq2')).toEqual(['blocks', 'answerDiagram', 'answerGraph']);
+  });
 });
 
 describe('mapWorksheetTexts: what it never touches', () => {
