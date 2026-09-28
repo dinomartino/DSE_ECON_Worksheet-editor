@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { terminologyFinding } from '@/components/translate/copy';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
 
 // The real check plus the terminology finding it emits once the glossary has loaded.
@@ -10,7 +9,7 @@ vi.mock('@/model/paperHealth', async (importOriginal) => {
     ...real,
     checkPaper: (...args: Parameters<typeof real.checkPaper>) => {
       const report = real.checkPaper(...args);
-      const finding = { id: 'terminology' as const, severity: 'warn' as const, message: terminologyFinding(2) };
+      const finding = { id: 'terminology' as const, severity: 'warn' as const, message: '2 terms differ from the EDB glossary.' };
       return { ...report, findings: [...report.findings, finding] };
     },
   };
