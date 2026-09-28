@@ -5,6 +5,7 @@ import { worksheetClipboardHtml } from '@/export/clipboard';
 import { applyDeleteTarget, applyEditTarget, editTargetKey, textOfTarget } from '@/model/edits';
 import { createMcqQuestion, createWorksheet } from '@/model/factories';
 import { listIndentScheme } from '@/model/numbering';
+import { countUntranslated } from '@/model/textWalk';
 import { bi, emptyBiText, plain } from '@/model/text';
 import type { LanguageMode, McqQuestion, OutputMode, Worksheet } from '@/model/types';
 import { renderAnswerKey } from '@/render/answerKey';
@@ -250,8 +251,12 @@ describe('editing the notes', () => {
   });
 
   it('counts a half-translated note as missing a translation', () => {
-    const noted = { ...question, provenance: bi('DSE 2023 Q1', ''), options: question.options.map((option) => ({ ...option })) };
+    const noted = { ...question, provenance: bi('Modelled on DSE 2023 Q1', ''), options: question.options.map((option) => ({ ...option })) };
     noted.options[0].rationale = bi('', '只有中文');
-    expect(mcqType.countMissingTranslations!(noted)).toBe(mcqType.countMissingTranslations!(question) + 2);
+    // Teacher notes print only in the teacher version, so only it counts them.
+    const count = (q: McqQuestion, version: 'student' | 'teacher') =>
+      countUntranslated({ ...worksheet, questions: [q] }, { language: 'bilingual', version });
+    expect(count(noted, 'teacher')).toBe(count(question, 'teacher') + 2);
+    expect(count(noted, 'student')).toBe(count(question, 'student'));
   });
 });

@@ -1,0 +1,13 @@
+{
+  "source": "recorded 2026-09-28 with a dummy key",
+  "status": 401,
+  "headers": {},
+  "body": {
+    "error": {
+      "message": "Authentication Fails, Your api key: ****0000 is invalid (request_id: bc28d341-5ac6-4a43-af96-cd0640c6fd5d)",
+      "type": "authentication_error",
+      "param": null,
+      "code": "invalid_request_error"
+    }
+  }
+}

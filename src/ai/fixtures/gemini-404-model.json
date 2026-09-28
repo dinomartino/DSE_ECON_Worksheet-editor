@@ -1,0 +1,12 @@
+{
+  "source": "documented shape (not recorded: needs a real key or network)",
+  "status": 404,
+  "headers": {},
+  "body": {
+    "error": {
+      "code": 404,
+      "message": "models/gemini-9-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.",
+      "status": "NOT_FOUND"
+    }
+  }
+}

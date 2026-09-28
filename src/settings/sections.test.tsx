@@ -55,4 +55,11 @@ describe('the Settings section registry', () => {
       '<ul><li>Again</li><li>desk</li><li>b</li></ul>',
     );
   });
+
+  it('shows a section registered after the first render (the cached snapshot is dropped)', () => {
+    registerSettingsSection(def('late', 30));
+    expect(renderToStaticMarkup(createElement(Rail, { env: web }))).toBe(
+      '<ul><li>Again</li><li>b</li><li>late</li></ul>',
+    );
+  });
 });

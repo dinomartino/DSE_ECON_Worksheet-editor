@@ -129,6 +129,9 @@ On Windows, SmartScreen warns: **More info → Run anyway**.
   (start screen → **Back up all…**) if the build under test changes storage.
 - **It replaces the installed app.** Dragging into Applications overwrites the released
   version; to go back, download the latest release again.
+- **Keychain prompt.** Unsigned and dev builds ask "Econ Worksheet wants to use… your
+  keychain" when an AI key is saved or read (the Keychain ties access to the code
+  signature, which changes every build). Expected; signed releases don't ask.
 - **Updates.** The build carries the version in `package.json`. "Check for updates"
   compares it with the latest *published* release, so an unreleased build of the same
   version says "Up to date" — expected.
