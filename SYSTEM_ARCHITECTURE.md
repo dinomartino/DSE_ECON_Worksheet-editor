@@ -2204,6 +2204,9 @@ Outline row and the paper check's links. Each is absent when the document is rea
 - **Settings** opens from the ⋯ menu (hint only on desktop), the start screen and ⌘, /
   Ctrl+,, each hidden while no section is registered. Export's paper check closes Export
   before Translate opens, so dialogs never stack.
+- **Browser run:** `scripts/ai-verify.mjs` serves `out/`, points Custom at
+  `scripts/ai-mock-server.mjs` (canned replies, no key) and asserts nothing is sent before an
+  explicit Translate, Fill or Save & test click. Production code has no test hooks.
 <!-- e2:entry end -->
 
 ---
