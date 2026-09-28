@@ -11,6 +11,8 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
 ## Unreleased
 
 ### Added
+- **Light or dark, your choice**: Settings → Appearance picks Light, Dark or System (follows
+  your computer, as before). Worksheets still print black on white.
 - **✦ AI**: one button (or ⌘J, Ctrl+J on Windows) holds every AI tool, for the whole
   paper or whatever you have selected — right-click any text, table or question for AI on
   just that part. The number on the button is how many texts still need translating. It

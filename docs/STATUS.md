@@ -164,6 +164,10 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
+- **2026-09-28 (later)** — Settings → Appearance (System / Light / Dark, default System):
+  `src/settings/appearance.ts`; dark tokens and `dark:` now key on `<html data-theme>`, set
+  before paint by `THEME_BOOT_SCRIPT` in `layout.tsx`, kept live by `AppearanceEffect`.
+  Verified in Chromium (live switch, reload with no flash, System follows an OS change).
 - **2026-09-28** — E2 AI translation + app Settings on `develop`: research → judge-panel
   design → WP-0 contracts + seed fixes → 7 parallel worktree packages (build → adversarial
   review → fix) → sequential integration → 4-lens final review (33 confirmed, all code ones

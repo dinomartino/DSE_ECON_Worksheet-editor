@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* `dark:` follows the chosen scheme, not the OS. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 /*
  * Design tokens.
  *
@@ -275,63 +278,63 @@
   --ok-line: var(--panel-ok-line);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Panels go deep warm grey (the reference's olive-warm dark, not blue-black);
-       the frame drops nearly to black beneath them. */
-    --panel-surface: oklch(23% 0.008 100);
-    --panel-raised: oklch(27% 0.009 100);
-    --panel-sunken: oklch(20% 0.007 100);
-    --panel-hover: oklch(30% 0.01 100);
-    --panel-ink: oklch(93% 0.006 95);
-    --panel-ink-muted: oklch(74% 0.01 95);
-    --panel-ink-subtle: oklch(60% 0.01 95);
-    --panel-line: oklch(31% 0.008 100);
-    --panel-line-strong: oklch(40% 0.008 100);
-    --panel-accent-soft: oklch(30% 0.07 245);
-    --panel-accent-ink: oklch(80% 0.09 245);
-    --panel-danger-soft: oklch(28% 0.06 20);
-    --panel-danger-ink: oklch(80% 0.11 20);
-    --panel-warn-soft: oklch(29% 0.05 85);
-    --panel-warn-ink: oklch(84% 0.11 90);
-    --panel-ok: oklch(76% 0.11 165);
-    --panel-ok-soft: oklch(27% 0.05 165);
-    --panel-ok-line: oklch(38% 0.07 165);
+/* The dark scheme. Keyed on the resolved `data-theme` (Settings → Appearance; the boot
+   script in layout.tsx sets it before first paint), never on the OS query directly. */
+:root[data-theme="dark"] {
+  /* Panels go deep warm grey (the reference's olive-warm dark, not blue-black);
+     the frame drops nearly to black beneath them. */
+  --panel-surface: oklch(23% 0.008 100);
+  --panel-raised: oklch(27% 0.009 100);
+  --panel-sunken: oklch(20% 0.007 100);
+  --panel-hover: oklch(30% 0.01 100);
+  --panel-ink: oklch(93% 0.006 95);
+  --panel-ink-muted: oklch(74% 0.01 95);
+  --panel-ink-subtle: oklch(60% 0.01 95);
+  --panel-line: oklch(31% 0.008 100);
+  --panel-line-strong: oklch(40% 0.008 100);
+  --panel-accent-soft: oklch(30% 0.07 245);
+  --panel-accent-ink: oklch(80% 0.09 245);
+  --panel-danger-soft: oklch(28% 0.06 20);
+  --panel-danger-ink: oklch(80% 0.11 20);
+  --panel-warn-soft: oklch(29% 0.05 85);
+  --panel-warn-ink: oklch(84% 0.11 90);
+  --panel-ok: oklch(76% 0.11 165);
+  --panel-ok-soft: oklch(27% 0.05 165);
+  --panel-ok-line: oklch(38% 0.07 165);
 
-    --chrome-surface: oklch(19% 0.008 100);
-    --chrome-raised: oklch(24% 0.009 100);
-    --chrome-sunken: oklch(16% 0.006 100);
-    --chrome-hover: oklch(26% 0.009 100);
-    /* The chrome ink and status tints must drop with their surfaces — left at their
-       light-scheme values they are dark-on-dark, and every zone-dark label vanishes. */
-    --chrome-ink: oklch(93% 0.006 95);
-    --chrome-ink-muted: oklch(74% 0.01 95);
-    --chrome-ink-subtle: oklch(60% 0.01 95);
-    --chrome-line: oklch(28% 0.008 100);
-    --chrome-line-strong: oklch(37% 0.008 100);
-    --chrome-accent-soft: oklch(30% 0.07 245);
-    --chrome-accent-ink: oklch(80% 0.09 245);
-    --chrome-danger-soft: oklch(28% 0.06 20);
-    --chrome-danger-ink: oklch(80% 0.11 20);
-    --chrome-warn-soft: oklch(29% 0.05 85);
-    --chrome-warn-ink: oklch(84% 0.11 90);
-    --chrome-ok: oklch(76% 0.11 165);
-    --chrome-ok-soft: oklch(27% 0.05 165);
-    --chrome-ok-line: oklch(38% 0.07 165);
+  --chrome-surface: oklch(19% 0.008 100);
+  --chrome-raised: oklch(24% 0.009 100);
+  --chrome-sunken: oklch(16% 0.006 100);
+  --chrome-hover: oklch(26% 0.009 100);
+  /* The chrome ink and status tints must drop with their surfaces — left at their
+     light-scheme values they are dark-on-dark, and every zone-dark label vanishes. */
+  --chrome-ink: oklch(93% 0.006 95);
+  --chrome-ink-muted: oklch(74% 0.01 95);
+  --chrome-ink-subtle: oklch(60% 0.01 95);
+  --chrome-line: oklch(28% 0.008 100);
+  --chrome-line-strong: oklch(37% 0.008 100);
+  --chrome-accent-soft: oklch(30% 0.07 245);
+  --chrome-accent-ink: oklch(80% 0.09 245);
+  --chrome-danger-soft: oklch(28% 0.06 20);
+  --chrome-danger-ink: oklch(80% 0.11 20);
+  --chrome-warn-soft: oklch(29% 0.05 85);
+  --chrome-warn-ink: oklch(84% 0.11 90);
+  --chrome-ok: oklch(76% 0.11 165);
+  --chrome-ok-soft: oklch(27% 0.05 165);
+  --chrome-ok-line: oklch(38% 0.07 165);
 
-    --desk: oklch(15% 0.006 100);
+  --desk: oklch(15% 0.006 100);
 
-    --accent: oklch(65% 0.15 245);
-    --accent-hover: oklch(70% 0.13 245);
-    --on-accent: oklch(15% 0.01 100);
+  --accent: oklch(65% 0.15 245);
+  --accent-hover: oklch(70% 0.13 245);
+  --on-accent: oklch(15% 0.01 100);
 
-    /* The CTA inverts with the scheme: light fill, dark label. */
-    --cta: oklch(92% 0.008 95);
-    --cta-hover: oklch(96% 0.008 95);
-    --on-cta: oklch(20% 0.008 100);
+  /* The CTA inverts with the scheme: light fill, dark label. */
+  --cta: oklch(92% 0.008 95);
+  --cta-hover: oklch(96% 0.008 95);
+  --on-cta: oklch(20% 0.008 100);
 
-    --danger: #f87171;
-  }
+  --danger: #f87171;
 }
 
 body {
@@ -534,12 +537,10 @@ body {
     0 24px 48px -12px rgb(0 0 0 / 0.11);
 }
 
-@media (prefers-color-scheme: dark) {
-  .paper-shadow {
-    box-shadow:
-      0 1px 2px rgb(0 0 0 / 0.5),
-      0 8px 32px -6px rgb(0 0 0 / 0.6);
-  }
+:root[data-theme="dark"] .paper-shadow {
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.5),
+    0 8px 32px -6px rgb(0 0 0 / 0.6);
 }
 
 /* Custom scrollbars — the default macOS/Windows bars are the loudest thing in a

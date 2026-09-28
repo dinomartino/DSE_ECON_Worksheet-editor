@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Newsreader } from 'next/font/google';
+import { THEME_BOOT_SCRIPT } from '@/settings/appearance';
 import './globals.css';
 
 // The chrome's one display voice (see design/icons/design.md § Typography): a light editorial
@@ -24,8 +25,12 @@ export default function RootLayout({
 }>) {
   return (
     // The document language is English, but content is bilingual; individual
-    // elements carry their own lang so browsers pick correct CJK fonts.
-    <html lang="en" className={`h-full antialiased ${newsreader.variable}`}>
+    // elements carry their own lang so browsers pick correct CJK fonts. `data-theme` is
+    // set by the boot script before hydration, hence suppressHydrationWarning.
+    <html lang="en" className={`h-full antialiased ${newsreader.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+      </head>
       <body className="min-h-full">{children}</body>
     </html>
   );

@@ -293,6 +293,7 @@ through `AppSettingsHost` alone.
 - `src/settings/types.ts:SettingsSchema` · `src/settings/validators.ts:recordOf` · `src/settings/sections.ts:registerSettingsSection` · `src/settings/sections.ts:useSettingsSections` — schema and section registry
 - `src/settings/store.ts:createSettingsStore` · `src/settings/store.ts:appSettings` · `src/settings/store.ts:useSettings` — per-field validation, unknown keys kept, never lowers `v`
 - `src/settings/aiSettings.ts:AI_SETTINGS` · `src/settings/aiSettings.ts:readAiStatus` · `src/settings/aiSettings.ts:useAiStatus` · `src/settings/aiSettings.ts:resolveAiConfig` — status never reads the keychain
+- `src/settings/appearance.ts:APPEARANCE_SETTINGS` · `src/settings/appearance.ts:THEME_BOOT_SCRIPT` — the colour scheme; dark tokens in `globals.css` key on `<html data-theme>`, never the OS query; `src/components/settings/sections/appearanceSection/AppearanceEffect.tsx:AppearanceEffect` follows the OS while System
 - `src/platform/secrets.ts:readSecret` · `src/platform/secrets.ts:writeSecret` · `src/platform/secrets.ts:peekSecret` — the only holder of AI keys; `src-tauri/src/secrets.rs` the keychain commands
 - `src/components/settings/AppSettingsHost.tsx:AppSettingsHost` — mounted in `src/app/EditorHost.tsx`; Effects, ⌘, listener, the dialog
 - `src/components/settings/AppSettingsDialog.tsx:AppSettingsDialog` · `src/components/settings/AppSettingsDialog.tsx:AppSettingsFooter` · `src/components/settings/AppSettingsDialog.tsx:closeStep` — rail, lazy pane, close guard
