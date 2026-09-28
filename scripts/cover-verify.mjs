@@ -2,6 +2,8 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, renameSync } from 'node:fs';
 import { chromium } from 'playwright-core';
 
+const APP_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
+
 /**
  * The three-way cover harness (COVER_HANDOFF.md §4.4).
  *
@@ -164,11 +166,13 @@ try {
       deviceScaleFactor: 2,
     });
     await context.addInitScript(
-      ([indexJson, key, doc]) => {
+      ([indexJson, key, doc, version]) => {
         window.localStorage.setItem('econ-worksheet-index', indexJson);
         window.localStorage.setItem(key, doc);
+        // What's new would cover the start screen and swallow the click below.
+        window.localStorage.setItem('econ-worksheet-last-seen-version', version);
       },
-      [index, `econ-worksheet:${worksheet.id}`, json],
+      [index, `econ-worksheet:${worksheet.id}`, json, APP_VERSION],
     );
     const page = await context.newPage();
     page.on('pageerror', (e) => console.log(`PAGE ERR (${name}):`, e.message));
@@ -191,7 +195,8 @@ try {
     // The sheets sit inside a `scale()` transform, and an element screenshot uses the
     // untransformed box — capturing the layout height with the visual height painted at
     // scale, so grey shows below the sheet. Clip to the *visual* rect instead.
-    const sheet = page.locator('.paper', { has: page.locator('[data-cover]') });
+    // #print-root: the page rail's thumbnails are .paper sheets too.
+    const sheet = page.locator('#print-root .paper', { has: page.locator('[data-cover]') });
     // Page coordinates (clip is document-absolute, the rect is viewport-relative).
     const clip = await sheet.evaluate((el) => {
       const r = el.getBoundingClientRect();

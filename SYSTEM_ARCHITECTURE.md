@@ -2396,7 +2396,7 @@ Outline row and the paper check's links. Each is absent when the document is rea
 - **Browser run:** `scripts/ai-verify.mjs` serves `out/`, points Custom at
   `scripts/ai-mock-server.mjs` (canned replies, no key) and asserts nothing is sent before an
   explicit Translate, Fill or Save & test click. Production code has no test hooks.
-  `--phase=entry` tolerates controls other packages provide; `full` requires them.
+  It runs Chromium and WebKit; `--only=entry,journey,edge,error,settings` picks groups.
 <!-- e2:entry end -->
 
 ---
