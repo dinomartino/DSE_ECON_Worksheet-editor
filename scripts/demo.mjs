@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { takeScreenshots, SHOTS } from './demo/screenshots.mjs';
 import { recordStoryboard } from './demo/record.mjs';
 import { recordDiagrams } from './demo/diagrams.mjs';
+import { recordAi } from './demo/ai.mjs';
 import { sidecars } from './demo/subtitles.mjs';
 
 /**
@@ -25,6 +26,12 @@ import { sidecars } from './demo/subtitles.mjs';
  * The diagram film instead: scripts/demo/diagrams.mjs:diagramStoryboard, a diagram drawn
  * from blank axes in one recording, plus numbered stills and the exported .docx, into
  * `demo-media/diagrams/`.
+ *
+ *   node scripts/demo.mjs --story=ai                         # npm run demo:ai
+ *
+ * The ✦ AI film: scripts/demo/ai.mjs:aiStoryboard (Fill missing 中文, then Check terms),
+ * into `demo-media/ai/`. `--out=<dir>` writes to another demo-media folder (from a
+ * worktree, the main checkout's).
  */
 
 const args = process.argv.slice(2);
@@ -32,14 +39,15 @@ const urlArg = args.find((a) => a.startsWith('--url='));
 const URL = (urlArg ? urlArg.slice(6) : 'http://localhost:3931').replace(/\/?$/, '/');
 const storyAt = args.findIndex((a) => a === '--story' || a.startsWith('--story='));
 const STORY = storyAt < 0 ? 'site' : args[storyAt].startsWith('--story=') ? args[storyAt].slice(8) : args[storyAt + 1];
-if (!['site', 'diagrams'].includes(STORY)) {
-  console.error(`demo: unknown story "${STORY}" (site | diagrams)`);
+if (!['site', 'diagrams', 'ai'].includes(STORY)) {
+  console.error(`demo: unknown story "${STORY}" (site | diagrams | ai)`);
   process.exit(1);
 }
 const wantVideo = args.includes('--video') || !args.includes('--shots');
 const wantShots = args.includes('--shots') || !args.includes('--video');
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const OUT = path.join(ROOT, 'demo-media');
+const outArg = args.find((a) => a.startsWith('--out='));
+const OUT = outArg ? path.resolve(outArg.slice(6)) : path.join(ROOT, 'demo-media');
 const log = (m) => console.log(m);
 
 const has = (bin) => spawnSync('which', [bin]).status === 0;
@@ -102,6 +110,7 @@ function encodeFilm(rec, base, { gif: wantGif }) {
 }
 
 const DIAGRAMS_OUT = path.join(OUT, 'diagrams');
+const AI_OUT = path.join(OUT, 'ai');
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'econ-demo-'));
 fs.mkdirSync(OUT, { recursive: true });
 // Without the flag, Chrome's screencast delivers CSS-pixel frames even at 2×, and the
@@ -126,6 +135,15 @@ try {
     encodeFilm(film.rec, path.join(DIAGRAMS_OUT, 'diagrams'), { gif: false });
     for (const still of film.stills) still.path = encodeImage(still.png, path.join(DIAGRAMS_OUT, 'stills', still.file));
     notes.push(...film.notes);
+  } else if (STORY === 'ai') {
+    const film = await recordAi({ browser, url: URL, root: ROOT, tmpDir, log });
+    fs.rmSync(AI_OUT, { recursive: true, force: true });
+    fs.mkdirSync(AI_OUT, { recursive: true });
+    timeline = film.rec.timeline;
+    cues = film.rec.cues;
+    shots = film.rec.shots;
+    encodeFilm(film.rec, path.join(AI_OUT, 'ai'), { gif: false });
+    notes.push(...film.notes);
   } else if (wantVideo) {
     const rec = await recordStoryboard({ browser, url: URL, tmpDir, log });
     timeline = rec.timeline;
@@ -138,8 +156,9 @@ try {
   await browser.close();
 }
 
-const DIR = STORY === 'diagrams' ? DIAGRAMS_OUT : OUT;
+const DIR = STORY === 'diagrams' ? DIAGRAMS_OUT : STORY === 'ai' ? AI_OUT : OUT;
 if (STORY === 'diagrams') writeDiagramsReadme();
+else if (STORY === 'ai') writeAiReadme();
 else writeReadme();
 log(`done → ${path.relative(ROOT, DIR)}/`);
 for (const f of listFiles(DIR)) log(`  ${f.rel}  ${f.dims}  ${kb(f.size)}`);
@@ -151,14 +170,14 @@ function kb(n) {
   return n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)} MB` : `${Math.round(n / 1000)} KB`;
 }
 
-/** Every file under `root` but the README; the diagram film's folder is its own. */
+/** Every file under `root` but the README; each story film's folder is its own. */
 function listFiles(root = OUT) {
   const files = [];
   const walk = (dir) => {
     for (const name of fs.readdirSync(dir).sort()) {
       const p = path.join(dir, name);
       if (fs.statSync(p).isDirectory()) {
-        if (p !== DIAGRAMS_OUT || root === DIAGRAMS_OUT) walk(p);
+        if (p !== DIAGRAMS_OUT && p !== AI_OUT) walk(p);
       } else if (name !== 'README.md') {
         const rel = path.relative(root, p);
         const media = /\.(mp4|gif|jpe?g|png|webp)$/i.test(name);
@@ -240,6 +259,48 @@ function writeDiagramsReadme() {
     '',
   ].join('\n');
   fs.writeFileSync(path.join(DIAGRAMS_OUT, 'README.md'), text);
+}
+
+function writeAiReadme() {
+  const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  const secs = Number(probe(path.join(AI_OUT, 'ai.mp4'), 'format=duration')).toFixed(1);
+  const rows = listFiles(AI_OUT).map((f) => {
+    const what =
+      f.rel === 'ai.mp4' ? `H.264, 30 fps, ${secs} s, no audio: the whole walkthrough`
+        : f.rel === 'ai-poster.jpg' ? 'First frame, for `<video poster>`'
+          : /^ai\.(vtt|srt)$/.test(f.rel) ? 'The subtitles burned into the film, as a sidecar' : '';
+    return `| \`${f.rel}\` | ${f.dims} | ${kb(f.size)} | ${what} |`;
+  });
+  const text = [
+    '# Demo media: ✦ AI',
+    '',
+    'A bilingual worksheet with some 中文 missing: **✦ AI → Fill missing 中文** puts it',
+    'straight onto the page, highlighted, and the film steps through it; then **Check terms**',
+    '(keyless) underlines a non-EDB term in the teacher’s own 中文 and one click replaces it.',
+    '',
+    'Generated by `npm run demo:ai` (`scripts/demo/ai.mjs`) from the built web app in Chrome,',
+    'from a seeded worksheet (`scripts/demo/ai-seed.test.ts`; original example text). The',
+    'film is recorded at 2× and framed afterwards by a virtual camera (the Camera column);',
+    'the subtitles are drawn over it, unzoomed, and are also in `ai.vtt` / `.srt`.',
+    '',
+    '**What is canned:** there is no real key. The app runs its real Gemini path, but the',
+    'request is answered inside the browser (`scripts/demo/ai-provider.mjs`) with the 中文',
+    'written for the three demo texts in `scripts/demo/content.mjs:AI`; the seed test checks',
+    'that it uses EDB glossary terms. The key in the settings is a placeholder. **What is',
+    'real:** everything else: the menu, the insert, the highlights and cards, and Check',
+    'terms, which needs no key and runs the bundled EDB glossary.',
+    '',
+    '| File | Dimensions | Size | What it shows |',
+    '|---|---|---|---|',
+    ...rows,
+    ...(notes.length ? ['', '## Notes on this build', '', ...notes.map((n) => `- ${n}`)] : []),
+    '',
+    '## Video storyboard',
+    '',
+    storyboardTable(fmt),
+    '',
+  ].join('\n');
+  fs.writeFileSync(path.join(AI_OUT, 'README.md'), text);
 }
 
 function writeReadme() {
