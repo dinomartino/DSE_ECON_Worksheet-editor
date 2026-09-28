@@ -38,6 +38,8 @@ describe('matchEn', () => {
     expect(keys('price elasticities of demand')).toEqual(['price elasticity of demand']);
     expect(keys("consumers' surplus")).toEqual(['consumer surplus']);
     expect(keys('a stabilisation policy')).toEqual(['stabilization policy']);
+    expect(keys('financial crises')).toEqual(['financial crisis']);
+    expect(hits('cost-benefit analyses')).toEqual([['cost-benefit analyses', 'cost benefit analysis']]);
     expect(keys('a cooperative society')).toEqual(['co-operative society']);
     expect(keys('a co-operative society')).toEqual(['co-operative society']);
     expect(keys('the production possibility curve')).toEqual(['production-possibility curve']);

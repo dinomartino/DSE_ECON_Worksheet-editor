@@ -79,6 +79,8 @@ export function foldEnToken(token: string): string {
     .toLowerCase()
     .replace(/’/g, "'")
     .replace(/'s$|'$/, '')
+    // crises, analyses: a -sis plural, before the -ise fold would read it as crize(s).
+    .replace(/^(cris|analys)es$/, '$1is')
     .replace(/is(e|ed|es|er|ers|ing|ation|ations)$/, 'iz$1')
     .replace(/^(labo|behavio|neighbo|favo|colo)ur/, '$1r')
     .replace(/^centre/, 'center')
