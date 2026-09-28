@@ -57,8 +57,9 @@ The full policy — collapsing migrations, their size budget, files from a newer
 
 ## Verifying work
 
-- `npm test` — ~1500 tests, ~3s. `npm run typecheck`, `npm run lint` (44 pre-existing
-  problems: 3 errors, 41 warnings — in `Preview.tsx` and `InlineEditable.tsx`).
+- `npm test` — ~2500 tests, ~7s. `npm run typecheck`, `npm run lint` (43 pre-existing
+  problems: 3 errors in `Preview.tsx` and `InlineEditable.tsx`, 40 warnings spread
+  across other files).
 - `src/test/codemap.test.ts` guards the docs: every path and `path:symbol` cited in
   `docs/` must still exist. If it fails, the map rotted — fix the map.
 - **UI work is verified in a browser**, not by reading source: screenshot with

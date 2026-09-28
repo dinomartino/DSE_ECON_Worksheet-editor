@@ -283,7 +283,7 @@ node scripts/lq-verify.mjs                      # the QAB booklet, same three wa
 Seed the shot — an empty document hides exactly the crowding this is meant to catch.
 After any UI work, open an exported `.docx` in Word: it is the load-bearing output.
 
-Guard: `npm test`, `npm run typecheck`, `npm run lint` (44 pre-existing problems).
+Guard: `npm test`, `npm run typecheck`, `npm run lint` (43 pre-existing problems).
 
 ## Record the demo video and screenshots
 
