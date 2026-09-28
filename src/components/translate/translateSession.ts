@@ -1,7 +1,7 @@
 import { create, type StoreApi, type UseBoundStore } from 'zustand';
 import type { AiErrorInfo } from '@/ai/types';
 import type { TextPath } from '@/model/textSlots';
-import type { TranslateRequest } from '@/store/appDialogs';
+import type { AppDialog, TranslateRequest } from '@/store/appDialogs';
 import type {
   JobResult,
   RunOutcome,
@@ -318,6 +318,25 @@ export function acceptedTermFixes(session: TranslateSession, rows: readonly Term
     if (indices.size > 0) accepted.set(row.path, indices);
   }
   return accepted;
+}
+
+// ---- host ----
+
+/**
+ * What `TranslateHost` does when the app dialog or the document changes: open (or resume)
+ * the request; close a request for another document or a read-only one; keep the session
+ * while Settings holds it as `returnTo`; otherwise drop it.
+ */
+export function hostAction(
+  open: AppDialog | null,
+  session: TranslateSession,
+  doc: { worksheetId: string; readOnly: boolean },
+): 'open' | 'closeStale' | 'keep' | 'reset' {
+  if (open?.kind === 'translate') {
+    return open.request.worksheetId === doc.worksheetId && !doc.readOnly ? 'open' : 'closeStale';
+  }
+  if (open?.kind === 'settings' && sameRequest(open.returnTo, session.request)) return 'keep';
+  return 'reset';
 }
 
 // ---- store ----
