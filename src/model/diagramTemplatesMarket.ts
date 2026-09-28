@@ -347,7 +347,8 @@ function mcRiseTss(): Diagram {
       arrows: [arrow([0.56, 0.62], [0.56, 0.8])],
       spans: axisArrows(e0, e1),
     }),
-    (r) => shade(r, 'tssLoss', { demand: d.id, supply: s0.id, shifted: s1.id }),
+    // Right of D: left to the placer, the long 總社會盈餘損失 lands on D in EN+中.
+    (r) => shade(r, 'tssLoss', { demand: d.id, supply: s0.id, shifted: s1.id }, { labelOffset: { x: 0.65, y: 0.03 } }),
   );
 }
 
