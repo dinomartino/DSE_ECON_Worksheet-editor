@@ -14,6 +14,8 @@ import {
 } from '@/render/ir';
 import { McqEditorPanel } from '@/components/editor/McqEditorPanel';
 import type {
+  QualityAnchor,
+  QualityView,
   QuestionHealthFacts,
   QuestionTypeDefinition,
   QuestionVariant,
@@ -483,6 +485,26 @@ function quizItem(question: McqQuestion): QuizItem {
   };
 }
 
+/** Stem, statements, then the options with the key marked, for the AI quality check. */
+function qualityView(question: McqQuestion): QualityView {
+  const questionId = question.id;
+  const anchors: QualityAnchor[] = [{ ref: 'stem', role: 'stem', label: '', blocks: question.blocks }];
+  (question.statements ?? []).forEach((text, index) => {
+    const ref = statementLabel(index);
+    anchors.push({ ref, role: 'statement', label: `Statement ${ref}`, text, target: { kind: 'mcqStatement', questionId, index } });
+  });
+  question.options.forEach((option, index) => {
+    const ref = toUpperLetter(index);
+    anchors.push({
+      ref, role: 'option', label: `Option ${ref}`, text: option.text,
+      ...(option.blocks ? { blocks: option.blocks } : {}),
+      target: { kind: 'mcqOption', questionId, optionId: option.id },
+      ...(index === question.answerIndex ? { keyed: true as const } : {}),
+    });
+  });
+  return { format: 'multiple choice', anchors };
+}
+
 /** "All of the above", "none of these", "Both A and C", 以上皆是… — text whose meaning is its place. */
 const POSITIONAL = [
   /\b(all|none|both|neither|either)\s+of\s+(the\s+)?(above|these|them|those)\b/i,
@@ -559,6 +581,7 @@ export const mcqType: QuestionTypeDefinition<McqQuestion> = {
   answerKey,
   quizItem,
   variant,
+  qualityView,
   // HKDSE Paper 1: 45 MCQs in 1 hour (HKEAA assessment framework), ~1.3 min an item.
   summary: { label: { en: 'MCQ', zh: '選擇題' }, minutesPerItem: 60 / 45 },
 };

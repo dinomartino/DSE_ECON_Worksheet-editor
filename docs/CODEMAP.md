@@ -73,7 +73,7 @@ Invariants:
 
 `src/registry/types.ts:QuestionTypeDefinition` — `id` · `create` · `render` · `EditorPanel` ·
 `mapTexts` · `examGapLines?` · `healthFacts?` · `answerKey?` · `variant?` ·
-`summary?` (short count label + `minutesPerItem`, for the paper summary).
+`summary?` (short count label + `minutesPerItem`, for the paper summary) · `qualityView?` (anchors for the AI quality check).
 
 - `src/registry/index.ts:listQuestionTypes` · `:requireQuestionType`
 - `src/registry/mcq.ts:mcqType` · `:resolveOptionLayout` · `:optionRationales` — teacher-only notes:
@@ -328,6 +328,7 @@ Invariants:
 - `src/assist/menuStore.ts:openAi` — what every entry point calls; `src/assist/runStore.ts:useAiRun` — one run at a time: running → review (after a direct insert) or error
 - `src/components/ai/AiHost.tsx:AiHost` — mounted once in `EditorApp`; renders `src/components/ai/AiMenu.tsx` and `src/components/ai/AiBar.tsx`, owns ⌘J / Ctrl+J (`src/components/ai/shortcut.ts:shouldOpenAi`)
 - `src/assist/verbs/fromSource.ts:makeFromSourceVerb` — E3 "Questions from a source…": `src/generate/recipe.ts:recipeFor` (what this paper can contain) → `src/generate/run.ts:generateFromSource` (one request, `src/generate/prompt.ts:SOURCE_QUESTIONS_SCHEMA`) → `src/generate/validate.ts:checkDraft` → `src/generate/build.ts:buildBatch` → the store's `insertQuestionBatch`
+- `src/assist/verbs/quality.ts:qualityVerb` — Check question quality (E4), findings only; engine `src/quality/run.ts:runQuality` · `src/quality/checks.ts:deterministicFindings` · `src/quality/collect.ts:qualityQuestions` (reads the registry's `qualityView`); words `src/quality/promptText.ts:SYSTEM_QUALITY`, `src/quality/prompt.ts:PROMPT_VERSION`
 
 Invariants:
 - Results insert directly as one commit; review is after, and `undoAll` reverts that one commit.
