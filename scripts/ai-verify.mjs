@@ -37,7 +37,6 @@ const ONLY = opt('only', '');
 const MOCK_PORT = Number(opt('port', '8787'));
 const APP_PORT = Number(opt('app-port', '3417'));
 const MOCK_ORIGIN = `http://localhost:${MOCK_PORT}`;
-const MOCK_BASE = `${MOCK_ORIGIN}/v1`;
 const APP = `http://localhost:${APP_PORT}`;
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 
