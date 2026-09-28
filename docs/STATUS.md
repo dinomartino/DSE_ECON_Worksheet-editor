@@ -27,16 +27,18 @@ off the bottom.** It is the first thing a fresh session reads — then
   selection; right-click "✦ AI…" and the multi-select bar open the same menu. A click runs:
   **results insert directly** (one commit, one ⌘Z — the user's call), then highlight on the
   page with a review bar (‹ ›, item card, Undo all). The Translate dialog is gone. Verbs:
-  Fill missing 中文/English, Re-translate, Check terms (keyless), **E1** Write answers & mark
-  scheme (`src/answers/`), **E3** Questions from a source (`src/generate/`), **E4** Check
-  question quality (`src/quality/`). No key → SetupCard in the menu (Gemini stays
-  Recommended). Code: `src/assist/`, `src/components/ai/`. `node scripts/ai-verify.mjs`:
-  37/37 Chromium + WebKit (mock). Design: artifact RNXkAnKMXcvJM6PWECe74S.
-  **Before release (user):** every verb against a real key (E1/E3/E4 prompts never run live);
+  Fill missing 中文/English, Re-translate, Check terms (keyless). **E1** answers & mark scheme
+  (`src/answers/`), **E3** questions from a source (`src/generate/`) and **E4** quality check
+  (`src/quality/`) are built but **paused** — hidden from teachers by
+  `src/assist/paused.ts:PAUSED_VERBS` (the user: the AI isn't good enough yet); remove an id
+  to bring one back. No key → SetupCard in the menu (Gemini stays Recommended; in HK the copy
+  says turn on a VPN before the key page and while using it). Code: `src/assist/`, `src/components/ai/`. `node scripts/ai-verify.mjs`:
+  29/29 Chromium + WebKit (mock; paused groups skipped). Design: artifact RNXkAnKMXcvJM6PWECe74S.
+  **Before release (user):** Fill and Re-translate against a real key;
   the badge (edition's untranslated) and "Fill missing" count (adds teacher text + symbol
-  copies) differ on the same paper — decide if that confuses; E3 keeps a pasted source on
-  its own side in a bilingual paper; a partless structured question gets no E1 answer
-  (no field for it).
+  copies) differ on the same paper — decide if that confuses. Gemini's privacy line now reads
+  "Google's terms only cover use from places where it offers Gemini" (softened from "VPN use
+  is against Google's terms") — the user may drop it.
 - **Home navigation (2026-09-28, merged on `develop`)** — start screen: Settings is a gear
   icon bottom-left (`StartScreen.tsx:SettingsButton`), version line above it (desktop).
   Editor: `[logo] Worksheets › <title>` crumb goes home (word hides <1280px; ⋯ →
@@ -99,7 +101,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Last verified
 
-- `npm test` — 2550 tests, ~7s (2026-09-28, after the AI door). `cargo check --locked` clean. `npm run build`
+- `npm test` — 2559 tests, ~7s (2026-09-28, after the AI door, pause and VPN copy). `cargo check --locked` clean. `npm run build`
   green (postbuild: glossary only in a lazy chunk); `npm run samples` exports.
 - `npm run typecheck` — clean.
 - `npm run lint` — 43 pre-existing problems (3 errors, 40 warnings) in `Preview.tsx` and
