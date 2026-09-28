@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { DEFAULT_LIST_INDENTS, STEM_TEXT_INDENT } from '@/model/numbering';
 import { readFileSync } from 'node:fs';
 import { questionMarks } from '@/model/marks';
@@ -8,7 +8,13 @@ import { collectListStreams, renderWorksheet } from '@/render/worksheet';
 import { buildDocxParts } from '@/export/docx';
 import { worksheetClipboardHtml } from '@/export/clipboard';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
-import { getQuestionType, listQuestionTypes, requireQuestionType } from '.';
+import { buildTranslateFixture } from '@/test/translateFixture';
+import { createParagraphBlock, createStructuredQuestion } from '@/model/factories';
+import { bi } from '@/model/text';
+import { patch, type TextSlot } from '@/model/textSlots';
+import { collectTexts, mapWorksheetTexts } from '@/model/textWalk';
+import type { StructuredQuestion } from '@/model/types';
+import { getQuestionType, listQuestionTypes, requireQuestionType, type QuestionTypeDefinition } from '.';
 
 /**
  * §9 is an architectural acceptance criterion, so it gets asserted like one: a new
@@ -147,6 +153,10 @@ describe('question-type registry (§9)', () => {
       'src/model/paperHealth.ts',
       'src/model/versions.ts',
       'src/model/paperSummary.ts',
+      'src/model/textWalk.ts',
+      'src/model/translationApply.ts',
+      'src/model/diagramText.ts',
+      'src/model/symbols.ts',
     ];
     for (const path of shared) {
       const source = readFileSync(path, 'utf8');
@@ -174,6 +184,65 @@ describe('question-type registry (§9)', () => {
     // And the clipboard backend renders it too.
     const html = worksheetClipboardHtml(worksheet, { language: 'en', version: 'student' });
     expect(html).toContain('<p');
+  });
+
+  it("finds a new type's texts through its required mapTexts, in the one walk", async () => {
+    const structured = getQuestionType('structured') as unknown as QuestionTypeDefinition<StructuredQuestion>;
+    const essay: QuestionTypeDefinition<StructuredQuestion> = {
+      ...structured,
+      id: 'essay' as StructuredQuestion['type'],
+      mapTexts: (question, walk) => patch(question, { blocks: walk.blocks('blocks', question.blocks, { paragraphKind: 'stem' }) }),
+    };
+    const block = createParagraphBlock(bi('Discuss.', ''));
+    const question = { ...createStructuredQuestion(), type: 'essay', parts: [], blocks: [block] };
+    const worksheet = buildAcceptanceWorksheet();
+    worksheet.questions.push(question as unknown as Question);
+    const essaySlots = (slots: TextSlot[]) => slots.filter((slot) => slot.questionId === question.id);
+    // Unregistered, the type is skipped.
+    expect(essaySlots(collectTexts(worksheet))).toEqual([]);
+
+    vi.resetModules();
+    vi.doMock('@/registry', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('.')>();
+      return { ...actual, getQuestionType: (id: string) => (id === 'essay' ? essay : actual.getQuestionType(id)) };
+    });
+    try {
+      const walk = await import('@/model/textWalk');
+      const [slot, ...rest] = essaySlots(walk.collectTexts(worksheet));
+      expect(rest).toEqual([]);
+      expect(slot).toMatchObject({ path: `q:${question.id}/blocks/b:${block.id}`, kind: 'stem', text: block.text });
+    } finally {
+      vi.doUnmock('@/registry');
+      vi.resetModules();
+    }
+  });
+
+  it('walks every text a registered type owns, and an identity visit keeps the question', () => {
+    const ws = buildTranslateFixture();
+    for (const question of ws.questions) {
+      const definition = requireQuestionType(question);
+      expect(typeof definition.mapTexts, definition.id).toBe('function');
+      const alone = { ...ws, questions: [question] };
+      expect(mapWorksheetTexts(alone, (slot) => slot.text).questions[0]).toBe(question);
+    }
+    const paths = (index: number) => collectTexts(ws)
+      .filter((slot) => slot.questionId === ws.questions[index].id)
+      .map((slot) => slot.path.replace(/:[^/#]+/g, ':*'));
+    // Everything countMissingTranslations saw, plus tables, figures, statements and answer graphs.
+    expect(paths(0)).toEqual(expect.arrayContaining([
+      'q:*/blocks/b:*', 'q:*/blocks/b:*/row:*/cell:*', 'q:*/blocks/b:*/caption', 'q:*/statements/0',
+      'q:*/option:*/text', 'q:*/option:*/blocks/b:*/d/x/title', 'q:*/option:*/rationale',
+      'q:*/explanation', 'q:*/provenance',
+    ]));
+    expect(paths(1)).toEqual(expect.arrayContaining([
+      'q:*/blocks/b:*/label', 'q:*/blocks/b:*/blocks/b:*', 'q:*/blocks/b:*/footnote', 'q:*/blocks/b:*/figure/d/title',
+      'q:*/answerGraph/x/title', 'q:*/answerDiagram/d/title',
+      'q:*/part:*/blocksBefore/b:*', 'q:*/part:*/blocks/b:*', 'q:*/part:*/answer', 'q:*/part:*/answerGraph/y/title',
+      'q:*/part:*/answerDiagram/d/x/title', 'q:*/part:*/scheme/route:*/group:*/point:*',
+      'q:*/part:*/scheme/route:*/group:*/point:*/alt/0', 'q:*/part:*/scheme/level:*', 'q:*/part:*/scheme/ec/descriptor:*',
+      'q:*/part:*/sub:*/blocks/b:*', 'q:*/part:*/sub:*/answer', 'q:*/part:*/sub:*/scheme/level:*',
+      'q:*/part:*/sub:*/answerGraph/x/title', 'q:*/part:*/sub:*/answerDiagram/d/x/title',
+    ]));
   });
 });
 

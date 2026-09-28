@@ -1721,14 +1721,14 @@ paths). Verify by measuring the same text node in both states.
 ## Question-type registry (`src/registry/`)
 
 `QuestionTypeDefinition`: `id` · `displayName` (bilingual) · `create()` ·
-`render(question, context) → RenderNode[]` · `EditorPanel` ·
-`countMissingTranslations?` · `examGapLines?` · `healthFacts?` · `answerKey?` · `variant?`. Registered:
+`render(question, context) → RenderNode[]` · `EditorPanel` · `mapTexts` ·
+`examGapLines?` · `healthFacts?` · `answerKey?` · `variant?`. Registered:
 `mcq`, `structured`. A new type needs only a definition.
 
 - **The hand-built numbered paragraph must copy the block's `format` itself** — the
   four hand-assembled sites (MCQ stem; structured stem, part, sub-part) each omitted it
   once. `registry.test.ts` asserts it reaches the IR for every type.
-- **No shared module may branch on a concrete type.** `registry.test.ts` greps twelve
+- **No shared module may branch on a concrete type.** `registry.test.ts` greps sixteen
   modules for `'mcq'`/`'structured'` literals.
 - **The paper check asks, never inspects.** `model/paperHealth.ts:checkPaper` (the Export
   dialog's pre-print summary: letter balance and runs, missing keys, marks, time estimate,
@@ -2168,11 +2168,42 @@ data is evidence: corrections and policy live in `src/glossary/overrides.ts`, ne
 ### Text slots, the walk and apply
 
 `src/model/textSlots.ts` is the contract: `TextSlot`, `TextWalker`, `TranslationWrite`,
-`ApplyReport`, and the identity helpers `patch`, `mapSame`, `sameRuns`, `missingSide`. The
-walk is `src/model/textWalk.ts` (diagram text: `src/model/diagramText.ts`), the batch apply
-`src/model/translationApply.ts`, symbol-only text `src/model/symbols.ts`. The store action is
-`applyTranslations`; the paper check takes a precomputed `TermSummary`
-(`src/model/paperHealth.ts`) and imports nothing from the glossary or translation.
+`ApplyReport`, and the identity helpers `patch`, `mapSame`, `sameRuns`, `missingSide`.
+
+- **One walk.** `mapWorksheetTexts` (`src/model/textWalk.ts`) visits every BiText in print
+  order: title and instructions, cover, bands (masthead, header, page-1 header, footer,
+  page-1 footer), the flow (layout and questions interleaved), the margin note. Questions
+  go through the **required** registry hook `mapTexts`; diagram text through
+  `mapDiagramTexts` (`src/model/diagramText.ts`). Never visited: `name`, `__unknown`,
+  pre-v1 shapes, questions of an unknown type.
+- **Identity.** A visitor returning `slot.text` leaves the slot; an all-identity visit
+  returns the same `Worksheet`, and a write rebuilds only the objects on its path — so the
+  per-question IR cache stays warm and an all-stale batch commits nothing.
+- **Absent stays absent.** An absent prefix, suffix, caption or note is not a slot. A band
+  field's legacy `label` is visited as its prefix and written through `applyBandFieldSide`;
+  a suffix write moves it to `prefix` too, since any write drops `label`.
+- **Paths** (`q:<id>/part:<id>/blocks/b:<id>`) are request-local; a repeated segment gets
+  `#2` (Duplicate keeps block ids). `slotsForTarget` matches a page `EditTarget` by deep
+  equality and may return both copies.
+- **Unprinted** (a disabled header/footer's bands, question-level answer figures under
+  parts, merged-away table cells) is a slot but never a gap.
+- **Counting.** `needsTranslation` asks whether this edition prints the missing side;
+  teacher text counts only in the teacher version, alt text never, and symbol-only text
+  (`isSymbolOnly`, `src/model/symbols.ts`: short tokens and capitals, minus English words
+  such as `PAPER`, `ONE`, `No` — `CAPITAL_WORDS`) only where it would print as a gap. The toolbar
+  pill is `useUntranslatedCount` (`src/components/editor/useUntranslatedCount.ts`), cached
+  per question object and mode (`questionUntranslated`: a count, never paths). `checkPaper` counts inclusively (EN+中, teacher) by default
+  and takes Check terms' result as a precomputed `TermSummary`; it imports nothing from
+  the glossary or translation.
+- **Apply.** `applyTranslationBatch` (`src/model/translationApply.ts`) writes one side per
+  slot, skipping a write whose source or target changed since it was read
+  (`sourceChanged`, `targetChanged`, `gone`). A diagram whose text changed is re-measured in
+  `'bilingual'` before and after, and resized only when that measure moved (never when
+  cropped). The store's `applyTranslations` is one `commit` — one undo — refused when
+  read-only or when another document is open.
+- **Guards.** `src/model/textWalk.census.test.ts` proves every stored `{en, zh}` in the
+  corpus, presets, fixtures, diagram templates and `src/test/translateFixture.ts` is a slot;
+  `src/model/diagramText.test.ts` holds diagram text to `handleText` parity.
 <!-- e2:text end -->
 
 <!-- e2:ai start -->

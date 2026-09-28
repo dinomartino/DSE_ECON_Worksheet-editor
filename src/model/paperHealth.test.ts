@@ -273,6 +273,47 @@ describe('checkPaper', () => {
       );
       expect(ids(checkPaper(worksheet, { language: 'zh' }))).toContain('untranslated');
     });
+
+    it('counts text outside the questions, and names the questions that have gaps', () => {
+      const first = mcq(0, 'x');
+      const second = mcq(1, 'y');
+      second.options[1].text = { en: second.options[1].text.en, zh: [] };
+      const worksheet = sheet(first, second);
+      worksheet.title = bi('Mock exam', '');
+      const report = checkPaper(worksheet, { language: 'bilingual' });
+      expect(report.untranslated).toBe(2);
+      expect(report.findings.find((f) => f.id === 'untranslated')?.questions?.map((q) => q.label)).toEqual(['Q2']);
+    });
+
+    it('follows the edition it is asked about', () => {
+      const question = mcq(0, 'x');
+      question.explanation = bi('Because.', '');
+      const worksheet = sheet(question);
+      expect(checkPaper(worksheet).untranslated).toBe(1);
+      expect(checkPaper(worksheet, { language: 'bilingual', version: 'student' }).untranslated).toBe(0);
+      expect(checkPaper(worksheet, { language: 'en', version: 'teacher' }).untranslated).toBe(0);
+    });
+  });
+
+  describe('terminology', () => {
+    const worksheet = () => sheet(mcq(0, 'x'), mcq(1, 'y'));
+    const terms = (questionIds: string[], warn = 3) => ({ warn, questionIds, outsideQuestions: 0 });
+
+    it('warns in a Chinese or bilingual edition, naming the questions', () => {
+      const ws = worksheet();
+      const finding = checkPaper(ws, { language: 'zh', terms: terms([ws.questions[1].id]) }).findings
+        .find((f) => f.id === 'terminology');
+      expect(finding).toMatchObject({ severity: 'warn', message: '3 terms differ from the EDB glossary.' });
+      expect(finding?.questions?.map((q) => q.label)).toEqual(['Q2']);
+      expect(ids(checkPaper(ws, { language: 'bilingual', terms: terms([], 1) }))).toContain('terminology');
+    });
+
+    it('says nothing in English, with no warns, or without a summary', () => {
+      const ws = worksheet();
+      expect(ids(checkPaper(ws, { language: 'en', terms: terms([ws.questions[0].id]) }))).not.toContain('terminology');
+      expect(ids(checkPaper(ws, { language: 'zh', terms: terms([], 0) }))).not.toContain('terminology');
+      expect(checkPaper(ws, { language: 'zh' })).toEqual(checkPaper(ws, { language: 'zh', terms: terms([], 0) }));
+    });
   });
 
   it('orders warnings before notes', () => {
