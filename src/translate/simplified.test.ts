@@ -38,6 +38,11 @@ describe('SIMPLIFIED_PAIRS', () => {
     expect(hits).toEqual([]);
   });
 
+  it('leaves out characters with more than one Traditional form', () => {
+    const oneToMany = [...'尽获汇发复历干后里面台只余系准冲范钟云制须签团采征斗几借了志卷苏赞板伙占周划涂郁胡'];
+    expect(oneToMany.filter((ch) => SIMPLIFIED_PAIRS.has(ch))).toEqual([]);
+  });
+
   it('finds and converts', () => {
     expect(simplifiedChars('这个价格这')).toEqual(['这', '个', '价']);
     expect(toTraditional('这个价格会上升')).toBe('這個價格會上升');
