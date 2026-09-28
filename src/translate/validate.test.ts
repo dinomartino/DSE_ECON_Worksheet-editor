@@ -110,6 +110,16 @@ describe('validateItem', () => {
       .not.toEqual(expect.arrayContaining([expect.stringMatching(/^(numbers|breaks|duration)/)]));
   });
 
+  it('accepts the HKEAA number forms the prompt asks for', () => {
+    expect(codes([{ text: 'Give ' }, { text: '2', bold: true }, { text: ' reasons why demand rises.' }], '舉出<b>兩個</b>原因，解釋需求為何上升。')).not.toContain('numbers:warn');
+    expect(codes('Prices rose by 5 per cent.', '價格上升了5%。')).toEqual([]);
+    expect(codes('Spending is $45 billion.', '開支為450億元。')).toEqual([]);
+    expect(codes('It cost $3.2 million.', '成本為320萬元。')).toEqual([]);
+    expect(codes('政府開支為450億元。', 'Government spending is $45 billion.', 'part', 'toEn')).toEqual([]);
+    expect(codes('In the 2nd quarter, output fell.', '在第二季，產量下跌。')).toEqual([]);
+    expect(codes('It cost $3.2 million.', '成本為32萬元。')).toContain('numbers:warn');
+  });
+
   it('keeps symbols, satisfied by the HKEAA conventions', () => {
     expect(codes('AD shifts to the right.', '總需求向右移。')).toContain('symbols:warn');
     expect(codes('AD shifts to the right.', 'AD向右移。')).toEqual([]);

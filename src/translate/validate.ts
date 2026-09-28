@@ -76,8 +76,26 @@ function clockMatches(text: string): RegExpMatchArray[] {
   return [...folded.matchAll(EN_CLOCK), ...folded.matchAll(ZH_CLOCK)];
 }
 
-/** Digit groups the output may leave out: a kept duration or clock time, or a small count
- *  written as a Chinese numeral in instructions and furniture ("Answer any 2" → 任答兩題). */
+/** A counting word or ordinal (兩個原因, 第二季): prompt rule 9's numerals, in any prose. */
+const ZH_COUNTED = /第?([一兩二三四五六七八九十])(?=[個項種點題部季名間類])|第([一二三四五六七八九十])/g;
+const SCALE: Readonly<Record<string, number>> = {
+  thousand: 1e3, million: 1e6, billion: 1e9, trillion: 1e12,
+  千: 1e3, 萬: 1e4, 十萬: 1e5, 百萬: 1e6, 千萬: 1e7, 億: 1e8, 十億: 1e9, 百億: 1e10, 千億: 1e11, 兆: 1e12,
+};
+const SCALED = /(\d+(?:\.\d+)?)\s*(thousand|million|billion|trillion|十萬|百萬|千萬|十億|百億|千億|萬|億|兆|千)?/gi;
+
+/** Each digit group with the value its scale word gives it: 45 billion and 450億 are one number. */
+function scaledNumbers(text: string): Array<{ group: string; value: number }> {
+  const folded = foldWidth(text).replace(/(\d)[,  ](?=\d{3}(?!\d))/g, '$1');
+  return [...folded.matchAll(SCALED)].map((m) => ({
+    group: m[1],
+    value: Number(m[1]) * (m[2] ? SCALE[m[2].toLowerCase()] : 1),
+  }));
+}
+
+/** Digit groups the output may leave out: a kept duration or clock time, the same amount on
+ *  another scale (320萬 for 3.2 million), a count or ordinal as a Chinese numeral (兩個原因,
+ *  第二季), or any small count in instructions and furniture ("Answer any 2" → 任答兩題). */
 function satisfiedNumbers(kind: SlotKind, source: string, output: string): Set<string> {
   const out = new Set<string>();
   const minutes = parseDuration(source);
@@ -86,6 +104,11 @@ function satisfiedNumbers(kind: SlotKind, source: string, output: string): Set<s
   }
   if (COUNT_KINDS.has(kind)) {
     for (let n = 1; n <= 10; n += 1) if (output.includes(ZH_COUNT[n])) out.add(String(n));
+  }
+  for (const m of output.matchAll(ZH_COUNTED)) out.add(String(zhNum(m[1] ?? m[2])));
+  const values = scaledNumbers(output).map((n) => n.value);
+  for (const { group, value } of scaledNumbers(source)) {
+    if (values.some((v) => Math.abs(v - value) <= Math.abs(value) * 1e-9)) out.add(group);
   }
   const times = new Set(clockMatches(output).map((m) => clockKey(m[1], m[2])));
   for (const m of clockMatches(source)) {
@@ -242,7 +265,9 @@ function checkFacts(
   const have = digitGroups(out);
   const satisfied = satisfiedNumbers(job.kind, source, out);
   if (toZh) consumedDigits(source, out).forEach((g) => satisfied.add(g));
-  const missing = codec.numbers.filter((g) => !satisfied.has(g) && !have.includes(g));
+  // 5 per cent is 5%: a percentage sign is not part of the number.
+  const bare = (g: string) => g.replace(/%$/, '');
+  const missing = codec.numbers.filter((g) => !satisfied.has(bare(g)) && !have.some((h) => bare(h) === bare(g)));
   if (missing.length) add({ code: 'numbers', severity: 'warn', message: 'Numbers differ', fix: `Keep the number ${missing[0]}.` });
 
   if (toZh) {

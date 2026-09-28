@@ -2315,7 +2315,9 @@ Pure modules with injected dependencies; types in `src/translate/types.ts`.
   sub/superscript, or an added number, label or marks, is a fail and is **never applied**.
   HKEAA forms that rewrite Latin letters, currency or paper furniture (甲國, 500港元, 總供需圖,
   中六, 試卷一) are one table, `src/translate/conventions.ts`, which also renders prompt rule
-  12. Clock times and durations spelled in Chinese keep their numbers; cover and band
+  12. Clock times and durations spelled in Chinese, counting words and ordinals (兩個原因,
+  第二季), a rescaled amount (450億 for 45 billion) and 5% for 5 per cent keep their
+  numbers; cover and band
   lines may break anywhere. A symbol to keep is 1–2 capitals (D, AD, E1), a scripted
   token or a listed diagram label (SRAS, MSC); acronyms Chinese writes out (US, WTO, GDP,
   PPF, R&D) are not symbols. Hong Kong punctuation, forms and CJK–Latin spacing:
