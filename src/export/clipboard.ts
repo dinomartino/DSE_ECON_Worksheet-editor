@@ -1,4 +1,5 @@
 import { plain, runLines } from '@/model/text';
+import { cssFontFamilies } from '@/model/fonts';
 import { contentWidth, DEFAULT_PAGE_SETUP, pageSetupOf, twipsToPt } from '@/model/page';
 import { answerGraphBox } from '@/render/answerGraph';
 import type {
@@ -51,7 +52,7 @@ export function richHtml(text: BiText | undefined, language: LanguageMode): stri
         if (runItem.fontSize !== undefined) styles.push(`font-size:${runItem.fontSize}pt;`);
         if (runItem.color) styles.push(`color:#${runItem.color};`);
         if (runItem.fonts) {
-          styles.push(`font-family:'${runItem.fonts.latin}','${runItem.fonts.eastAsia}';`);
+          styles.push(`font-family:${cssFontFamilies(runItem.fonts, "'", ',')};`);
         }
         if (styles.length) html = `<span style="${styles.join('')}">${html}</span>`;
         return html;
@@ -111,7 +112,7 @@ export function formatCss(format: TextFormat | undefined): string {
   if (format.color) parts.push(`color:#${format.color};`);
   if (format.spaceBefore !== undefined) parts.push(`margin-top:${format.spaceBefore}pt;`);
   if (format.spaceAfter !== undefined) parts.push(`margin-bottom:${format.spaceAfter}pt;`);
-  if (format.fonts) parts.push(`font-family:'${format.fonts.latin}','${format.fonts.eastAsia}',serif;`);
+  if (format.fonts) parts.push(`font-family:${cssFontFamilies(format.fonts, "'", ',')},serif;`);
   return parts.join('');
 }
 
@@ -379,7 +380,7 @@ function nodeHtml(
 }
 
 function fontCss(fonts: FontPair): string {
-  return `font-family:'${fonts.latin}','${fonts.eastAsia}',serif;font-size:12pt;`;
+  return `font-family:${cssFontFamilies(fonts, "'", ',')},serif;font-size:12pt;`;
 }
 
 /** HTML for the whole worksheet, ready to paste into Word. */

@@ -98,6 +98,7 @@ import {
   type ListIndentScheme,
 } from "@/model/numbering";
 import { documentShape } from "@/model/documentShape";
+import { cssFontFamilies } from "@/model/fonts";
 
 /** The context menu's hidden image input, reached by id from the menu item. */
 const PAGE_MENU_IMAGE_INPUT = 'page-menu-image-input';
@@ -276,7 +277,7 @@ function runSpans(runs: BiText["en"], key: string) {
     if (runItem.fontSize !== undefined) style.fontSize = `${runItem.fontSize}pt`;
     if (runItem.color) style.color = `#${runItem.color}`;
     if (runItem.fonts) {
-      style.fontFamily = `'${runItem.fonts.latin}', '${runItem.fonts.eastAsia}', serif`;
+      style.fontFamily = `${cssFontFamilies(runItem.fonts)}, serif`;
     }
     const styled = Object.keys(style).length > 0 ? style : undefined;
 
@@ -858,7 +859,7 @@ function formatStyle(format: TextFormat | undefined): React.CSSProperties {
       : {}),
     ...(format.fonts
       ? {
-          fontFamily: `'${format.fonts.latin}', '${format.fonts.eastAsia}', serif`,
+          fontFamily: `${cssFontFamilies(format.fonts)}, serif`,
         }
       : {}),
   };
@@ -6243,7 +6244,7 @@ export function Preview({
       paddingRight: `${twipsToMm(setup.margins.right)}mm`,
       paddingBottom: `${twipsToMm(setup.margins.bottom + over.footer)}mm`,
       paddingLeft: `${twipsToMm(setup.margins.left)}mm`,
-      fontFamily: `'${worksheet.fonts.latin}', '${worksheet.fonts.eastAsia}', serif`,
+      fontFamily: `${cssFontFamilies(worksheet.fonts)}, serif`,
       // The document's own body size (the QAB is 10pt), over `.paper`'s 11pt default.
       // The line-height deliberately stays `.paper`'s fixed 12pt: the exporter keeps
       // every ≤11pt size on the shared 240-twip line (§ `exactLineFor`), so shrinking
@@ -6617,7 +6618,7 @@ export function Preview({
           top: 0,
           left: -99999,
           width: `calc(${pageWidthMm}mm - ${twipsToMm(setup.margins.left)}mm - ${twipsToMm(setup.margins.right)}mm)`,
-          fontFamily: `'${worksheet.fonts.latin}', '${worksheet.fonts.eastAsia}', serif`,
+          fontFamily: `${cssFontFamilies(worksheet.fonts)}, serif`,
           // The probe must measure at the size the sheets draw (§ pageStyleFor), or
           // every wrapped line is counted at the wrong width and pages break early.
           ...(worksheet.baseFontSize !== undefined

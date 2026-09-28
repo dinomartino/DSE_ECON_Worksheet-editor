@@ -43,6 +43,8 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   two defensible MCQ options, a key that looks wrong, an unbolded NOT, "Explain" for
   1 mark, a marking scheme that doesn't add up to the marks, and English and 中文 that
   ask different things. It only points; nothing in your paper is changed.
+- New font choice **Times New Roman / 標楷體** (Setup → Fonts, or when creating a
+  worksheet): Chinese text prints and exports in 標楷體. The default stays 新細明體.
 
 ### Changed
 - New diagrams and the sample paper now use the Education Bureau glossary's Chinese
