@@ -305,7 +305,7 @@ through `AppSettingsHost` alone.
 - `src/components/translate/translateMenu.ts:pageAiScope` · `src/components/translate/translateMenu.ts:fillVerbFor` · `src/components/translate/translateMenu.ts:toolbarSettingsEntries` — the AI door's entry points, pure (right-click scope, Export's preselect, ⋯ Settings…)
 - `src/components/translate/fieldFill.ts:fillButton` · `src/components/translate/fieldFill.ts:runFieldFill` — `BiTextField`'s inline fill (the `translate` prop)
 - `src/components/start/StartScreen.tsx:SettingsButton`; `src/components/ui/icons.tsx:PageSetupIcon` (Setup; the gear is app Settings)
-- `scripts/ai-verify.mjs` · `scripts/ai-mock-server.mjs` — the Translate browser run against a canned provider; nothing sent before a click
+- `scripts/ai-verify.mjs` · `scripts/ai-mock-server.mjs` — the AI door's browser run (nine groups, Chromium and WebKit) against a canned provider; nothing sent before a click
 
 Invariants:
 - Nothing new is stored in a document; settings under `econgen.settings.<section>`, keys only in the secrets store.

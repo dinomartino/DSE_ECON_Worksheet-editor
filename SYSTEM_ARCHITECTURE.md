@@ -2103,14 +2103,16 @@ hover                      → margin drag grip → reorder
 
 ## AI translation, glossary and app Settings
 
-Fill the missing language of a worksheet (EN ↔ 繁中, Hong Kong) with the teacher's own
-AI key; check Chinese terms against the EDB Economics glossary (2020) without a key; and
-an app-wide Settings dialog that holds the provider and key.
+Every AI action is a **verb behind one door**, the ✦ AI menu: Fill missing 中文 / English,
+Re-translate, Check terms against the EDB Economics glossary (2020, keyless), Write
+answers & mark scheme (E1), Questions from a source (E3) and Check question quality (E4).
+A verb runs with the teacher's own key, writes its result straight into the document as
+one commit, and is reviewed afterwards on the page. App Settings holds the provider and
+key. This section covers the door and the run, then the glossary, the text walk, the
+provider layer, Settings and the translation engine; E1, E3 and E4 follow as their own
+sections.
 
-The pill, the page menu, the Outline, field fills, Export's paper check and Settings are
-the entry points.
-
-Rules every part keeps:
+Rules every verb keeps:
 
 - **Nothing new is persisted in documents.** No schema bump, no `KNOWN_KEYS` change.
   Settings live under `econgen.settings.<section>`, keys in the secrets store — never in a
@@ -2120,10 +2122,89 @@ Rules every part keeps:
   (`src/model/textSlots.ts`); a visit that changes nothing returns the same `Worksheet`.
 - **Collected from the model, never the IR or DOM**, so derived numbers, marks and default
   wording never reach a request, and an absent prefix or suffix stays absent.
-- **One commit per batch**, every write stale-guarded; `readOnly` is inert.
-- **Network only on an explicit click** (an AI verb, a field Fill, Save & test, List my models).
+- **One commit per run**, every write stale-guarded; hard failures are never written;
+  `readOnly` is inert.
+- **Network only on an explicit click** (a verb, a field Fill, Save & continue, Save &
+  test, List my models).
 - **One app dialog at a time** (`src/store/appDialogs.ts`): Settings never stacks on another
   dialog. AI results are reviewed on the page, not in a dialog.
+
+### The AI door (`src/assist/`, `src/components/ai/`)
+
+- **Verbs register themselves** (`src/assist/registry.ts:registerVerb`; one import per file
+  in `src/assist/verbs/index.ts`) against the contract in `src/assist/types.ts`: a group,
+  a label, `available(ctx)` (null hides it, else a count or a disabled reason), `needsKey`,
+  an optional `input`, and `run` returning `inserted`, `findings`, `nothing` or `error`.
+- **One door.** Every entry point calls `openAi` (`src/assist/menuStore.ts`): the toolbar's
+  "✦ AI" (`src/components/ai/AiButton.tsx`, the untranslated count as its badge), ⌘J /
+  Ctrl+J, the page menu's "✦ AI…", the multi-select bar's "✦ AI", and Export's paper check
+  ("Open ✦ AI" closes Export and preselects the fill or Check terms verb). None exists in a
+  read-only document; the ⋯ menu keeps only Settings…. The one other AI control is
+  `BiTextField`'s "✦ Fill …".
+- **Scope** (`src/assist/scope.ts`): the selection as an `AiScope` — a printed text, a
+  table or figure, questions, else the whole paper. A right-click builds it at event time
+  (`src/components/translate/translateMenu.ts:pageAiScope`: the text, a cell's table, the
+  block, else the emitting question; `questionId` on every `PageMenuPayload` picks a
+  Duplicate's copy), so nothing new is read at render time and `ctxStamp` is unchanged. The
+  menu's chip offers that scope, its owning question and the paper (`scopeChoices`).
+- **The menu** (`AiMenu`) lists the offered verbs by group with their counts, filters as
+  you type, and says on the highlighted row what it sends where. A key-needing verb with no
+  provider opens the SetupCard; a verb with `input` (E3's source) its input step; any
+  other runs at once.
+- **First-run setup is the SetupCard** (`src/components/ai/SetupCard.tsx`), over the
+  Settings section's reducer and runner (`src/components/settings/sections/aiSection/setupCardFlow.ts`,
+  live deps in `aiSetupLive.ts`). Gemini is Recommended and first. The radios only show a
+  provider; the key is saved and `ai.provider` committed only after a passing test
+  (`requireOk`), then `onReady` runs the clicked verb. A region refusal offers DeepSeek and
+  Qwen in one line. Settings stays the place to manage providers, models and Remember.
+- **`BiTextField` fills one field inline** when a call site passes `translate` (what it
+  holds; without it there is no button, since a guessed kind would drop the wording
+  rules). `src/components/translate/fieldFill.ts` decides the button and runs one fill,
+  written through the field's own `onChange` (one commit) only over an unchanged source and
+  a still-empty side. A result a page fill would mark `look` is shown with *Insert anyway*,
+  never written silently. Without a provider it deep-links to Settings — never over a
+  modal layer (Setup, a canvas), where the button is disabled instead.
+- **Settings** opens from the ⋯ menu (hint only on desktop), the start screen and ⌘, /
+  Ctrl+,, each hidden while no section is registered.
+
+### Running and reviewing AI results (`src/assist/runStore.ts`, `src/components/ai/`)
+
+There is no pre-insert review. A verb click runs, writes, then shows what it wrote.
+
+- **One run at a time** (`useAiRun`): running → review, or error. It builds the verb's
+  context from the menu's scope, refuses while read-only, and after an insert switches the
+  view to the side or the Teacher version it wrote.
+- **Direct insert, one commit.** Fill missing 中文 / English and Re-translate
+  (`src/assist/verbs/translate.ts`) plan with the defaults a click implies — one direction,
+  teacher text when the Teacher version shows or `ai.includeTeacherText` is on, diagram
+  labels on, symbol copies per the edition rule — run, then make ONE `applyTranslations`
+  with every usable result. Hard failures come back as `failed` items; warnings and content
+  risks are written and come back as `look`. Stale-guard skips are reported, never retried
+  silently. Stop keeps finished chunks and writes them.
+- **One unit: printed texts** (`src/assist/verbs/translateShared.ts:fillCount`): a deduped
+  job is as many texts as it prints, a copied symbol one. The menu count, the running
+  progress and the summary all count it; the sends line counts only what is sent
+  (`textsIn`).
+- **Undo all belongs to its commit** (`commitUndo`): live only while that commit is the
+  latest, so a later edit or ⌘Z retires it rather than undoing something unrelated. A
+  `look` item's one action (Remove, or the glossary's own fix for a reversed term) and each
+  Check terms fix is its own commit; Replace N applies only the safe fixes (wrong forms,
+  never a textbook variant or a lower rank) in one.
+- **The bar** (`AiBar`) floats over the page column and never reflows it: progress and
+  Stop, then the summary, tone chips, ‹ ›, Undo all / Replace N and Done, or an error with
+  exactly the actions it names (Retry reruns the same verb over the same scope; a region
+  error offers DeepSeek and Qwen). It claims no modal layer; Escape inside it ends review.
+  `ItemCard` sits by the item's text.
+- **Highlights are imperative** (`src/components/ai/pageMarks.ts`): a `data-ai-mark`
+  attribute on `#print-root [data-page-target]`, re-applied by a MutationObserver, styled
+  under `@media screen` only. The IR and `ItemBody` read nothing new; nothing prints and
+  the `.docx` never sees them. They clear on Done, Undo all, a new run or another document.
+- **Browser run:** `scripts/ai-verify.mjs` serves `out/`, points Custom at
+  `scripts/ai-mock-server.mjs` (canned replies, no key) and drives Chromium and WebKit
+  through 37 checks per engine in nine groups (entry, translate, terms, answers, source,
+  quality, setup, error, field; `--only=` picks some). It asserts nothing is sent before a
+  verb click, Save & continue or Fill, and that no real provider host is reached. Production
+  code has no test hooks.
 
 ### The glossary (`src/glossary/`)
 
@@ -2266,7 +2347,7 @@ with a dummy key or follows a documented shape.
   `src/components/settings/AppSettingsDialog.tsx` while `useAppDialogs` holds a settings
   request. With no section registered it renders nothing and the shortcut is inert.
 - **Close guard.** A section with uncommitted input (a pasted key) sets a `CloseGuard`;
-  Done, Continue, Escape, ✕ and the scrim then ask "Discard / Save & test" in the footer.
+  Done, Escape, ✕ and the scrim then ask "Discard / Save & test" in the footer.
   Every route is the pure `closeStep` in the dialog file.
 - **The AI section**: `src/components/settings/sections/ai.ts` registers it (imported by
   `src/components/settings/sections/index.ts`); the pane is
@@ -2281,11 +2362,6 @@ with a dummy key or follows a documented shape.
   `sk-`) unless the teacher presses Test anyway. A key-shaped model id
   (`src/ai/keyShape.ts:looksLikeKey`) is refused by the settings validator, so it is never
   stored or shown.
-- **First-run setup is in the AI menu**, not Settings: `src/components/ai/SetupCard.tsx`
-  drives the same reducer and runner (`src/components/settings/sections/aiSection/setupCardFlow.ts`,
-  live deps in `aiSetupLive.ts`). Its radios only show a provider; the key is saved and
-  `ai.provider` committed only after a passing test (`requireOk`), then `onReady` runs the
-  clicked verb. Settings stays the place to manage providers, models and Remember.
 - **Status without the keychain.** `src/settings/aiSettings.ts:readAiStatus` reads settings
   and `peekSecret` only; on desktop `keychainSaved` is a presence flag, never key material.
   `resolveAiConfig` reads the key once per session and clears a stale flag.
@@ -2348,93 +2424,34 @@ Pure modules with injected dependencies; types in `src/translate/types.ts`.
   `EVAL_*_KEY` environment variables, outside `npm test`; the report stays out of the
   repo.
 
-### Running and reviewing AI results (`src/components/ai/`, `src/assist/verbs/`)
+---
 
-There is no pre-insert review. A verb click runs, writes, then shows what it wrote.
+## AI answers and mark schemes (E1)
 
-- **Direct insert, one commit.** Fill missing 中文 / English and Re-translate
-  (`src/assist/verbs/translate.ts`) plan with the defaults a click implies — one direction,
-  teacher text when the Teacher version shows or `ai.includeTeacherText` is on, diagram
-  labels on, symbol copies per the edition rule — run, then make ONE `applyTranslations`
-  with every usable result. Hard failures are never written and come back as `failed`
-  items; warnings and content risks are written and come back as `look`. Stale-guard skips
-  are reported, never retried silently. Stop keeps finished chunks and writes them.
-- **One unit: printed texts** (`src/assist/verbs/translateShared.ts:textsIn`): a deduped
-  job is as many texts as it prints, a copied symbol one — the menu count, the progress and
-  the summary all use it.
-- **Undo all belongs to its commit** (`commitUndo`): live only while that commit is the
-  latest, so a later edit retires it rather than undoing something unrelated. A `look`
-  item's one action (Remove, or the glossary's own fix for a reversed term) and each Check
-  terms fix is its own commit; Replace N applies only the safe fixes (wrong forms, never a
-  textbook variant or a lower rank) in one.
-- **The bar** (`AiBar`) floats over the page column and never reflows it: progress and
-  Stop, then the summary, tone chips, ‹ ›, Undo all / Replace N and Done, or an error with
-  exactly the actions it names (Retry reruns the same verb over the same scope; a region
-  error offers DeepSeek and Qwen). It claims no modal layer; Escape inside it ends review.
-  `ItemCard` sits by the item's text.
-- **Highlights are imperative** (`src/components/ai/pageMarks.ts`): a `data-ai-mark`
-  attribute on `#print-root [data-page-target]`, re-applied by a MutationObserver, styled
-  under `@media screen` only. The IR and `ItemBody` read nothing new; nothing prints and
-  the `.docx` never sees them. They clear on Done, Undo all, a new run or another document.
+The AI door's `write.answers` verb (`src/assist/verbs/writeAnswers.ts`) fills what the
+scope leaves empty: a structured leaf's model answer, its HKEAA scheme, an MCQ option's
+rationale. Engine in `src/answers/`, pure with injected deps like `src/translate/`.
 
-### Entry points
-
-**One door.** Every AI action opens the one menu through `openAi`
-(`src/assist/menuStore.ts`): the toolbar's "✦ AI" (`src/components/ai/AiButton.tsx`, the
-untranslated count as its badge), ⌘J / Ctrl+J, the page menu's one "✦ AI…" item, the
-multi-select bar's "✦ AI", and Export's paper check ("Open ✦ AI", closing Export first and
-preselecting the fill or Check terms verb). None exists in a read-only document; the ⋯ menu
-keeps only Settings…. The one exception is `BiTextField`'s field-level "✦ Fill …".
-
-- **The page item carries the right-clicked scope** (`src/components/translate/translateMenu.ts:pageAiScope`):
-  the one printed text, a cell's table, the block, else the emitting question. `ItemBody`
-  adds `questionId` to every `PageMenuPayload`, so a Duplicate's copy is the one acted on; a
-  still ambiguous target falls back to its question (or the paper). Built at event time;
-  nothing new is read at render time, so `ctxStamp` is unchanged.
-- **The menu's scope chip** offers the scope it opened with, its owning question when
-  narrower, and the whole paper (`scopeChoices`); a change re-evaluates every verb.
-- **`BiTextField` fills one field inline** when a call site passes `translate` (what it
-  holds; without it there is no button, since a guessed kind would drop the wording
-  rules). `src/components/translate/fieldFill.ts` decides the button and runs one fill,
-  written through the field's own `onChange` (one commit) only over an unchanged source and
-  a still-empty side. A result a page fill would mark `look` (a reversed term,
-  a content risk) is shown with *Insert anyway*, never written silently. Without a provider
-  it deep-links to Settings — never over a modal layer (Setup, a canvas), where the button
-  is disabled instead. The pipeline loads on the first fill.
-- **Settings** opens from the ⋯ menu (hint only on desktop), the start screen and ⌘, /
-  Ctrl+,, each hidden while no section is registered.
-- **Browser run:** `scripts/ai-verify.mjs` serves `out/`, points Custom at
-  `scripts/ai-mock-server.mjs` (canned replies, no key) and asserts nothing is sent before an
-  explicit Translate, Fill, Save & test or List my models click. Production code has no
-  test hooks.
-  It runs Chromium and WebKit; `--only=entry,journey,edge,error,settings` picks groups.
-
-## AI question quality check (E4)
-
-The `check.quality` verb (`src/assist/verbs/quality.ts`) over the engine in `src/quality/`
-(pure, injected client; deps from `src/translate/deps.ts:createRunDeps`, no glossary).
-
-- **Findings only.** It writes nothing to the document; each finding is a review item
-  (`tone: 'finding'`) pointing at the page text it concerns, or at the whole question.
-- **Read from the model, through the registry.** A type's `qualityView?` lists its anchors
-  (stem, lead-in, statements, options with the key, parts with printed marks and scheme) in
-  print order; `src/quality/` never names a type (`noTypeBranching.test.ts`).
-- **Deterministic first, never a call**: a scheme totalling other than the printed marks
-  (`schemeMismatch`), an option naming a statement that isn't there. Blank questions are
-  not sent. The prompt tells the model to skip what the paper check already covers.
-- **Whole questions per request** (≤ 6 questions, ≤ 6 000 characters), with request-local
-  keys (`q2.A`, `q1.(b)(ii)`), never app ids. A cut-off, blocked or twice-unreadable reply
-  splits the chunk; a finding whose key anchors to nothing sent is dropped, as are
-  duplicates and a question's fifth. Stop keeps finished findings; a fatal error keeps them too.
-- **Items-shaped schema** (`{items:[{key, issue, severity, text, suggestion}]}`), so a
-  provider on an unenforced rung, told the plain `{key, text}` shape, still parses.
-  Words in `src/quality/promptText.ts`; bump `PROMPT_VERSION` with any change.
+- **Leaves come from the registry hook `mapAnswers`** (`src/model/answerLeaves.ts`): shapes
+  (`written`, `choice`), never type ids — `src/answers/answers.test.ts` greps the engine.
+  A leaf is a part without sub-parts or a sub-part; a partless question has no answer field.
+- **Never overwrites.** Only an empty answer, an empty scheme or an empty rationale is a
+  target, and the hook writes only into empty fields. `answerIndex` is never touched.
+- **A scheme is written only for a leaf that prints marks**, and only when its derived total
+  (`schemeMax`) equals them; otherwise the answer goes in alone with a `look` note.
+- **Languages**: the mode's side plus any side the questions in scope carry; English is
+  always asked for, so the glossary check (auto-fix, then `checkEnToZh` warns as `look`
+  notes) can read the Chinese against it. Pins as translation does.
+- **Apply** is `applyAnswerFills` in the store: one commit, stale-guarded per leaf by the
+  hook's `stamp` (the part, or the MCQ). Unreadable or empty replies are `failed`, never
+  inserted; Stop keeps finished chunks. `CompletionRequest.shapeHint` carries the schema's
+  own JSON hint on rungs that don't enforce it.
 
 ---
 
 ## AI questions from a source (E3)
 
-The `create.fromSource` verb (`src/assist/verbs/fromSource.ts`): the teacher pastes a
+The AI door's `create.fromSource` verb (`src/assist/verbs/fromSource.ts`): the teacher pastes a
 source (≥ 80 characters) and gets HKDSE items grounded only in it, inserted directly.
 The engine is `src/generate/`, pure over injected deps like `src/translate/run.ts`.
 
@@ -2461,26 +2478,26 @@ The engine is `src/generate/`, pure over injected deps like `src/translate/run.t
 
 ---
 
-## AI answers and mark schemes (E1)
+## AI question quality check (E4)
 
-The AI door's `write.answers` verb (`src/assist/verbs/writeAnswers.ts`) fills what the
-scope leaves empty: a structured leaf's model answer, its HKEAA scheme, an MCQ option's
-rationale. Engine in `src/answers/`, pure with injected deps like `src/translate/`.
+The AI door's `check.quality` verb (`src/assist/verbs/quality.ts`) over the engine in `src/quality/`
+(pure, injected client; deps from `src/translate/deps.ts:createRunDeps`, no glossary).
 
-- **Leaves come from the registry hook `mapAnswers`** (`src/model/answerLeaves.ts`): shapes
-  (`written`, `choice`), never type ids — `src/answers/answers.test.ts` greps the engine.
-  A leaf is a part without sub-parts or a sub-part; a partless question has no answer field.
-- **Never overwrites.** Only an empty answer, an empty scheme or an empty rationale is a
-  target, and the hook writes only into empty fields. `answerIndex` is never touched.
-- **A scheme is written only for a leaf that prints marks**, and only when its derived total
-  (`schemeMax`) equals them; otherwise the answer goes in alone with a `look` note.
-- **Languages**: the mode's side plus any side the questions in scope carry; English is
-  always asked for, so the glossary check (auto-fix, then `checkEnToZh` warns as `look`
-  notes) can read the Chinese against it. Pins as translation does.
-- **Apply** is `applyAnswerFills` in the store: one commit, stale-guarded per leaf by the
-  hook's `stamp` (the part, or the MCQ). Unreadable or empty replies are `failed`, never
-  inserted; Stop keeps finished chunks. `CompletionRequest.shapeHint` carries the schema's
-  own JSON hint on rungs that don't enforce it.
+- **Findings only.** It writes nothing to the document; each finding is a review item
+  (`tone: 'finding'`) pointing at the page text it concerns, or at the whole question.
+- **Read from the model, through the registry.** A type's `qualityView?` lists its anchors
+  (stem, lead-in, statements, options with the key, parts with printed marks and scheme) in
+  print order; `src/quality/` never names a type (`noTypeBranching.test.ts`).
+- **Deterministic first, never a call**: a scheme totalling other than the printed marks
+  (`schemeMismatch`), an option naming a statement that isn't there. Blank questions are
+  not sent. The prompt tells the model to skip what the paper check already covers.
+- **Whole questions per request** (≤ 6 questions, ≤ 6 000 characters), with request-local
+  keys (`q2.A`, `q1.(b)(ii)`), never app ids. A cut-off, blocked or twice-unreadable reply
+  splits the chunk; a finding whose key anchors to nothing sent is dropped, as are
+  duplicates and a question's fifth. Stop keeps finished findings; a fatal error keeps them too.
+- **Items-shaped schema** (`{items:[{key, issue, severity, text, suggestion}]}`), so a
+  provider on an unenforced rung, told the plain `{key, text}` shape, still parses.
+  Words in `src/quality/promptText.ts`; bump `PROMPT_VERSION` with any change.
 
 ---
 

@@ -13,36 +13,33 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 ## Unreleased
 
 ### Added
-- **Translate**: fill the missing 中文 or English of a worksheet with AI, using your own
-  key (Gemini, DeepSeek, Qwen and others). Economics terms follow the Education Bureau
+- **✦ AI**: one button (or ⌘J, Ctrl+J on Windows) holds every AI tool, for the whole
+  paper or whatever you have selected — right-click any text, table or question for AI on
+  just that part. The number on the button is how many texts still need translating. It
+  uses your own AI account (Gemini, DeepSeek, Qwen and others): the first time, pick a
+  provider and paste your key right in the menu, and the action you chose runs once the
+  key works.
+- **Fill missing 中文 or English** with AI. Economics terms follow the Education Bureau
   glossary; a single field fills in place.
-- **Check terms**: compare a worksheet's Chinese with the EDB glossary and fix
-  non-standard terms in one click — no key needed.
+- **AI results go straight onto the page**, highlighted: walk through them with ‹ ›, and
+  take them all back with **Undo all** or one ⌘Z. Anything worth a second look is marked
+  in amber; a text that couldn't be translated safely is left as it was and listed.
+- **Check terms**: compare the Chinese with the EDB glossary — no key needed. Findings are
+  underlined on the page; replace them one by one or all at once.
+- **Write answers & mark scheme**: model answers, HKEAA marking points that add up to each
+  part's marks, and a why-right / why-wrong line for each MCQ option — in English and 中文
+  when your paper has both. Only empty answers are filled; nothing you wrote is replaced.
+- **Questions from a source**: paste a news extract or data description and get HKDSE
+  questions built only on it — four MCQs (one with combination statements) for a Paper 1,
+  a structured question with marks for a Paper 2, a mix for a worksheet — with answers,
+  explanations and marking points. The source goes in as printed.
+- **Check question quality**: a second pair of eyes before you print — flags two
+  defensible MCQ options, a key that looks wrong, an unbolded NOT, "Explain" for 1 mark, a
+  marking scheme that doesn't add up to the marks, and English and 中文 that ask different
+  things. It only points; nothing in your paper is changed.
 - **Settings** (⋯ → Settings…): app-wide preferences for this browser or computer,
   starting with AI & translation. The per-document dialog is now called **Setup**
   everywhere.
-- **AI menu**: press ⌘J (Ctrl+J on Windows) to open one menu of AI actions for the
-  whole paper or whatever you have selected.
-- **One ✦ AI button** (⌘J) holds every AI tool, with the untranslated count on it;
-  right-click any text, table or question for AI on just that part.
-- **AI results go straight onto the page**, highlighted, with **Undo all**: walk through
-  what changed with ‹ ›, and anything worth a second look is marked in amber. Check terms
-  underlines its findings on the page and replaces them one by one or all at once.
-- Set up your AI key right where you use it — no trip to Settings. Pick Gemini, DeepSeek
-  or Qwen in the AI menu, paste your key, and the action you chose runs once it works.
-- **Questions from a source** (AI menu): paste a news extract or data description and
-  get HKDSE questions built only on it — four MCQs (one with combination statements) for
-  a Paper 1, a structured question with marks for a Paper 2, a mix for a worksheet —
-  with answers, explanations and marking points. The source goes in as printed, and
-  one Undo takes the whole set back.
-- **Write answers & mark scheme** (AI menu): model answers, HKEAA marking points that add up
-  to each part's marks, and a why-right / why-wrong line for each MCQ option — in English
-  and 中文 when your paper has both. Only empty answers are filled; nothing you wrote is
-  replaced, and one Undo takes it all back.
-- **Check question quality** (AI menu): a second pair of eyes before you print — flags
-  two defensible MCQ options, a key that looks wrong, an unbolded NOT, "Explain" for
-  1 mark, a marking scheme that doesn't add up to the marks, and English and 中文 that
-  ask different things. It only points; nothing in your paper is changed.
 
 ### Changed
 - New diagrams and the sample paper now use the Education Bureau glossary's Chinese
