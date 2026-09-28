@@ -371,7 +371,19 @@ interface WorksheetState {
   setFirstPageMode: (which: 'header' | 'footer', mode: FirstPageMode) => void;
   /** Replace the page-1 rows — how a first-page preset is applied. */
   setFirstPageBands: (which: 'header' | 'footer', bands: Band[]) => void;
+  /**
+   * New questions (each built by its type's own `create`, then filled), optionally led by
+   * one layout element, inserted together at the anchor as one commit — one undo.
+   * Refused when read-only or when `worksheetId` is no longer the open document.
+   */
+  insertQuestionBatch: (items: readonly QuestionBuild[], opts: { worksheetId: string; lead?: LayoutElement }) => QuestionBatchReport;
 }
+
+/** One question to build: the type id, and what to fill into its fresh `create()`. */
+export interface QuestionBuild { typeId: string; fill: (fresh: Question) => Question }
+export type QuestionBatchReport =
+  | { ok: true; questionIds: string[]; leadId?: string; committed: Worksheet }
+  | { ok: false; refused: 'readOnly' | 'otherDocument' | 'nothing' };
 
 /** What page 1 prints, as a single closed choice. */
 export type FirstPageMode = 'same' | 'blank' | 'different';
@@ -1310,6 +1322,36 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
         },
       };
     }),
+
+  // Each item after the last, starting at the anchor (or ahead of "END OF PAPER").
+  insertQuestionBatch: (items, { worksheetId, lead }) => {
+    const state = get();
+    if (state.readOnly) return { ok: false, refused: 'readOnly' };
+    if (state.worksheet.id !== worksheetId) return { ok: false, refused: 'otherDocument' };
+    const types = listQuestionTypes();
+    const built = items.flatMap(({ typeId, fill }) => {
+      const definition = types.find((type) => type.id === typeId);
+      if (!definition) return [];
+      const fresh = definition.create();
+      return [{ ...fill(fresh), id: fresh.id } as Question];
+    });
+    if (!built.length) return { ok: false, refused: 'nothing' };
+    state.commit((draft) => {
+      let next = draft;
+      let after = state.insertAnchorId;
+      if (lead) {
+        next = insertIntoFlow(next, { type: 'layout', id: lead.id }, after, { layout: [...(next.layout ?? []), lead] });
+        after = lead.id;
+      }
+      for (const question of built) {
+        next = insertIntoFlow(next, { type: 'question', id: question.id }, after, { questions: [...next.questions, question] });
+        after = question.id;
+      }
+      return next;
+    });
+    set({ insertAnchorId: built[built.length - 1].id });
+    return { ok: true, questionIds: built.map((q) => q.id), ...(lead ? { leadId: lead.id } : {}), committed: get().worksheet };
+  },
 }));
 
 /**
