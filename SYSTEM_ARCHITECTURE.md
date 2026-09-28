@@ -2351,7 +2351,9 @@ once as `TranslateHost` in `EditorApp`. Copy: `src/components/translate/copy.ts`
   (Stop while running, Discard with rows pending). Stop keeps finished rows; a retry sends
   only the jobs without a usable result.
 - **Insert is one `applyTranslations` call**: one commit, one ⌘Z. If every write is stale,
-  the dialog stays open on "Nothing inserted".
+  the dialog stays open on "Nothing inserted". The flash counts rows, matching a skip to
+  its row by path (`ApplyReport.skipped[].path` is the `TranslationWrite.path` from
+  `writesFor`; `src/components/translate/translateIntegration.test.ts` pins it).
 - **Never stacked.** Settings is offered only in Setup and Error, by replacing the app
   dialog with `returnTo`; the session store keeps scope, options and finished rows across
   the round trip. The host closes a request for another document or a read-only one.

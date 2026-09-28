@@ -5,8 +5,8 @@ import type { JobResult, PlanCounts, TranslationJob, TranslationPlan } from '@/t
 import { EMPTY_SESSION, type RunRecord, type TranslateSession } from './translateSession';
 
 /**
- * Hand-built plans, results and sessions for the dialog's tests: the engine and the walker
- * are stubs until their packages land, so nothing here comes from them.
+ * Hand-built plans, results and sessions for the dialog's unit tests, so each state is
+ * exact. The real engine and store run in `translateIntegration.test.ts`.
  */
 
 export const WS_ID = 'ws-1';

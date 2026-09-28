@@ -307,13 +307,14 @@ it (`// P-<X> replaces this body`).
 - `src/components/translate/translateController.ts:createTranslateController` — plan, run, Stop, Insert and the Settings hand-offs, all injected
 - `src/components/translate/TranslateDialog.tsx:TranslateDialog` — one screen per phase; `src/components/translate/SetupPanel.tsx` · `src/components/translate/RunningPanel.tsx` · `src/components/translate/ReviewPanel.tsx` · `src/components/translate/ErrorPanel.tsx` · `src/components/translate/CheckTermsPanel.tsx`
 - `src/components/translate/ReviewRow.tsx:rowNotes` · `src/components/translate/RichRuns.tsx:RichRuns` — a read-only row (no text field: the dock guard in `src/components/translate/translateDialog.test.tsx`)
+- `src/components/translate/translateIntegration.test.ts` — the controller over the real engine, glossary, Settings and store: one commit per Insert or Replace, stale skips by path
 
 Invariants:
 - Nothing new is stored in a document; settings under `econgen.settings.<section>`, keys only in the secrets store.
 - `src/ai/` imports nothing from React, the store, `src/model`, `src/settings`, `@/platform` or Tauri (`src/ai/imports.test.ts`).
 - Network calls appear only in `src/ai/http.ts` (`src/test/networkCalls.test.ts`).
 - The glossary data is reached only through `src/glossary/load.ts` (a lazy chunk).
-- Mounted UI that imports a stub stays inert (renders nothing, calls nothing) until an entry point opens it; no entry point exists before P-ENTRY.
+- `TranslateHost` renders nothing and calls nothing until an entry point opens a translate request.
 
 ## scripts — the harnesses
 
