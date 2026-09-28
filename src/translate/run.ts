@@ -92,9 +92,11 @@ export function repairNotesFor(pass: Pass): string[] | null {
   const failing = pass.issues.filter((i) => i.severity === 'fail');
   const simplified = pass.issues.filter((i) => i.code === 'simplified');
   const terms = pass.terms.filter((t) => t.severity === 'warn');
-  if (!failing.length && !simplified.length && !terms.length && !pass.error) return null;
+  const reversed = pass.issues.filter((i) => i.code === 'polarity');
+  if (!failing.length && !simplified.length && !terms.length && !reversed.length && !pass.error) return null;
   const notes = [
     ...failing.map((i) => i.fix),
+    ...reversed.map((i) => i.fix),
     ...terms.map(termNote),
     ...simplified.map((i) => i.fix),
     ...pass.issues.filter((i) => RIDE_ALONG.has(i.code)).map((i) => i.fix),
@@ -103,7 +105,7 @@ export function repairNotesFor(pass: Pass): string[] | null {
   return [...new Set(notes)];
 }
 
-const CONTENT_RISK: ReadonlySet<Issue['code']> = new Set(['numbers', 'symbols', 'duration', 'length', 'latinInZh']);
+const CONTENT_RISK: ReadonlySet<Issue['code']> = new Set(['numbers', 'symbols', 'duration', 'length', 'latinInZh', 'polarity']);
 
 /** Simplified conversion on what remains, then status and the default tick. */
 export function finalize(job: TranslationJob, pass: Pass, passes: 1 | 2, glossary: Glossary | null): JobResult {

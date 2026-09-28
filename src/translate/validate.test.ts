@@ -199,6 +199,15 @@ describe('validateItem through the pipeline (normalise first)', async () => {
     expect(through('需求上升。', 'Demand rises.', 'toEn')).toEqual([]);
   });
 
+  it('flags a reversed elasticity predicate, which the glossary cannot see', () => {
+    expect(through('Demand for rice is price inelastic.', '米的需求富價格彈性。')).toContain('polarity:warn');
+    expect(through('Demand for rice is elastic.', '米的需求缺乏彈性。')).toContain('polarity:warn');
+    expect(through('Demand for rice is price inelastic.', '米的需求缺乏價格彈性。')).toEqual([]);
+    expect(through('Demand for rice is elastic.', '米的需求富彈性。')).toEqual([]);
+    // The noun phrase is the term check's conflict, not a second note.
+    expect(through('Rice has an elastic demand.', '米的需求缺乏彈性。')).not.toContain('polarity:warn');
+  });
+
   it('keeps an abbreviation rendered through its glossary term', () => {
     expect(through('GDP rises.', '本地生產總值上升。')).toEqual([]);
     expect(through('Real GDP falls.', '實質本地生產總值下降。')).toEqual([]);

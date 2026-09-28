@@ -117,6 +117,22 @@ function satisfiedNumbers(kind: SlotKind, source: string, output: string): Set<s
   return out;
 }
 
+/**
+ * "Demand is price inelastic" as 需求富價格彈性, or "elastic" as 缺乏彈性: the reversal the
+ * glossary can't see (it has the nouns, elastic demand, not the adjectives). The noun
+ * phrases stay the term check's. Returns the reversed Chinese, or null.
+ */
+function reversedElasticity(source: string, output: string): { found: string; means: string } | null {
+  const en = source.toLowerCase();
+  if (/\b(?:in)?elastic (?:demand|supply)\b/.test(en)) return null;
+  const rich = output.match(/(?:富|高)(?:價格|收入|供應|需求)?彈性/)?.[0];
+  const poor = output.match(/(?:缺乏|低)(?:價格|收入|供應|需求)?彈性/)?.[0];
+  const inelastic = /\binelastic\b/.test(en);
+  if (inelastic && rich && !poor) return { found: rich, means: 'elastic' };
+  if (!inelastic && /\belastic\b/.test(en) && poor && !rich) return { found: poor, means: 'inelastic' };
+  return null;
+}
+
 /** Kept in Latin, or inside a glossary hit (form or abbreviation) whose rendering is in the
  *  output: GDP → 本地生產總值, real GDP → 實質本地生產總值. */
 function symbolKept(token: string, source: string, output: string, glossary: Glossary | null | undefined): boolean {
@@ -270,6 +286,11 @@ function checkFacts(
   const missing = codec.numbers.filter((g) => !satisfied.has(bare(g)) && !have.some((h) => bare(h) === bare(g)));
   if (missing.length) add({ code: 'numbers', severity: 'warn', message: 'Numbers differ', fix: `Keep the number ${missing[0]}.` });
 
+  const reversed = toZh ? reversedElasticity(source, out) : null;
+  if (reversed) {
+    add({ code: 'polarity', severity: 'warn', message: `Meaning reversed? ${reversed.found} is “${reversed.means}”`,
+      fix: `${reversed.found} means “${reversed.means}”, the opposite of the English. Keep the English meaning.` });
+  }
   if (toZh) {
     const consumed = consumedSymbols(source, out);
     const lost = codec.latinSymbols.filter((t) => !consumed.has(t) && !symbolKept(t, source, out, glossary));

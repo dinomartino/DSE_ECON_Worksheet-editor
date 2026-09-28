@@ -2312,7 +2312,9 @@ Pure modules with injected dependencies; types in `src/translate/types.ts`.
   numbers; cover and band
   lines may break anywhere. A symbol to keep is 1–2 capitals (D, AD, E1), a scripted
   token or a listed diagram label (SRAS, MSC); acronyms Chinese writes out (US, WTO, GDP,
-  PPF, R&D) are not symbols. Hong Kong punctuation, forms and CJK–Latin spacing:
+  PPF, R&D) are not symbols. "Demand is (price) inelastic" as 富(價格)彈性, or "elastic" as
+  缺乏彈性, is a `polarity` warn that unticks the row and sends it to repair: the glossary
+  holds only the noun phrases. Hong Kong punctuation, forms and CJK–Latin spacing:
   `src/translate/normalize.ts`; Simplified detection by S→T pairs that are never valid
   Traditional and never one-to-many: `src/translate/simplified.ts`.
 - **Prompt** (`src/translate/promptText.ts` words, `src/translate/prompt.ts` assembly): a
