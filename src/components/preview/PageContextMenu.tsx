@@ -15,16 +15,20 @@ import { useModalLayer } from '@/components/ui/modalLayer';
 
 import type { EditTarget } from '@/render/ir';
 
-/** What was right-clicked — resolved by the render site, never by walking the DOM. */
+/** What was right-clicked — resolved by the render site, never by walking the DOM.
+ *  `questionId` is the emitting question's, so a duplicated question's copy (same block
+ *  ids) is told apart whatever is selected. */
 export type PageMenuPayload =
-  | { kind: 'text'; target: EditTarget }
-  | { kind: 'cell'; blockId: string; cellId: string }
-  | { kind: 'block'; blockId: string };
+  | { kind: 'text'; target: EditTarget; questionId?: string }
+  | { kind: 'cell'; blockId: string; cellId: string; questionId?: string }
+  | { kind: 'block'; blockId: string; questionId?: string };
 
 export interface PageMenuItem {
   label: string;
   danger?: boolean;
   disabled?: boolean;
+  /** Why a disabled item is disabled. */
+  title?: string;
   onSelect: () => void;
 }
 
@@ -113,6 +117,7 @@ export function PageContextMenu({
               type="button"
               role="menuitem"
               disabled={item.disabled}
+              title={item.title}
               className={`flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-[background-color,color,opacity] duration-150 ease-out-soft disabled:opacity-40 ${
                 item.danger
                   ? 'text-danger hover:bg-danger-soft'

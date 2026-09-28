@@ -235,7 +235,7 @@ export const CLIPS = [
     async record(r, { page }) {
       const dialog = page.getByRole('dialog');
       await r.hold(0.2);
-      await r.clickAt(0.6, page.getByRole('button', { name: 'Setup' }), { dur: 0.45, label: 'Setup' });
+      await r.clickAt(0.6, page.getByRole('button', { name: 'Setup', exact: true }).first(), { dur: 0.45, label: 'Setup' });
       await r.hold(0.3);
       const three = dialog.getByRole('radiogroup', { name: 'Number of versions' }).getByRole('radio', { name: '3', exact: true });
       await r.clickAt(1.6, three, { dur: 0.5, label: 'Versions 3', kind: 'toggle' });

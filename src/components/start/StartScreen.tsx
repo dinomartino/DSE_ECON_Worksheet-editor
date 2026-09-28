@@ -70,6 +70,9 @@ import {
   moveToFolder,
   renameFolder,
 } from '@/storage/folders';
+import { useSettingsSections } from '@/settings/sections';
+import { useAppDialogs } from '@/store/appDialogs';
+import { START_SETTINGS_LINK } from '@/components/translate/copy';
 
 /** A dropped file from either source: a browser `File`, or a desktop path. */
 type Dropped = { name: string; type?: string; read: () => Promise<Uint8Array | Blob> };
@@ -704,7 +707,10 @@ export function StartScreen({
             (backup, restore, folders, Trash) sit with the library, on the right. */}
         <div className="mt-auto space-y-3 pt-8 text-[11px] leading-relaxed text-ink-subtle">
           {isDesktop() ? (
-            <p>Stored on this computer only — no account, no server.</p>
+            <p>
+              Stored on this computer only — no account. AI translation, when you use it, sends the
+              texts you choose (and nearby translated lines for context) to your chosen provider.
+            </p>
           ) : (
             <p>
               Stored in this browser only — clearing site data deletes it.{' '}
@@ -716,6 +722,7 @@ export function StartScreen({
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-line pt-3">
             <VersionLine />
             <span className="flex items-center gap-3">
+              <SettingsLink />
               <TextLink onClick={() => setWhatsNew(true)}>What’s new</TextLink>
               <TextLink onClick={() => setFeedback(true)}>Send feedback</TextLink>
             </span>
@@ -1229,6 +1236,13 @@ function TextLink({
       {children}
     </button>
   );
+}
+
+/** App-wide Settings; absent while no section is registered. */
+export function SettingsLink() {
+  const sections = useSettingsSections({ desktop: isDesktop() });
+  if (sections.length === 0) return null;
+  return <TextLink onClick={() => useAppDialogs.getState().openSettings()}>{START_SETTINGS_LINK}</TextLink>;
 }
 
 function NoticeBox({ notice, onDismiss }: { notice: Notice; onDismiss: () => void }) {

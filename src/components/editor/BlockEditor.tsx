@@ -776,6 +776,7 @@ function CellImageField({
       </div>
       {image && (
         <BiTextField
+          translate={{ kind: 'altText' }}
           label="Picture alt text"
           value={image.altText}
           rows={1}
@@ -838,6 +839,7 @@ function ImageBlockEditor({
         onChange={(align) => onChange({ ...block, align })}
       />
       <BiTextField
+        translate={{ kind: 'altText' }}
         label="Alt text"
         value={block.altText}
         onChange={(altText) => onChange({ ...block, altText })}

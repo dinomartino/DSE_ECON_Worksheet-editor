@@ -189,6 +189,13 @@ import {
   type PackItem,
   type PageComposition,
 } from "./pagination";
+import {
+  flowItemsRequest,
+  pageTranslateItems,
+  TRANSLATION_GROUP,
+} from "@/components/translate/translateMenu";
+import { collectTexts, slotsForTarget } from "@/model/textWalk";
+import { useAppDialogs } from "@/store/appDialogs";
 
 // Re-exported so the page rail keeps importing the type from the component that
 // publishes it, rather than having to know pagination is factored out.
@@ -3570,7 +3577,19 @@ const itemBodyId = (item: RenderedItem) =>
   item.type === "question" ? item.question.questionId : item.layout.elementId;
 
 const ItemBody = memo(
-  function ItemBody({ item, language, ctx, selected, onSelect, range }: ItemBodyProps) {
+  function ItemBody({ item, language, ctx: pageCtx, selected, onSelect, range }: ItemBodyProps) {
+    const questionId = item.type === "question" ? item.question.questionId : undefined;
+    // A right-click inside a question names it, so a Duplicate's copy (same block ids)
+    // is the one acted on whatever is selected. Nothing new is read at render time.
+    const ctx = useMemo(() => {
+      const open = pageCtx?.contextMenu;
+      if (!pageCtx || !open || questionId === undefined) return pageCtx;
+      return {
+        ...pageCtx,
+        contextMenu: (payload: PageMenuPayload, at: { x: number; y: number }) =>
+          open(payload.questionId ? payload : { ...payload, questionId }, at),
+      };
+    }, [pageCtx, questionId]);
     const all = itemBodyNodes(item);
     // The slice keeps the node's own index as its React key, so a continuation's nodes
     // keep the identity they had before the split and React reuses their DOM.
@@ -4110,6 +4129,8 @@ export function Preview({
    * threaded as a prop, since this component already subscribes.
    */
   const printPreview = useWorksheetStore((s) => s.printPreview);
+  // Only for the multi-select pill's Translate: a read-only document offers none.
+  const readOnly = useWorksheetStore((s) => s.readOnly);
 
   /*
    * Where the add rail will put the next item.
@@ -5067,6 +5088,36 @@ export function Preview({
                 },
               ]),
         ],
+      });
+    }
+
+    /*
+     * Translation: read from the store's live document (a memoised item may hold an
+     * older closure), and keyed by the emitting question so a duplicate's copy is the
+     * one filled. Read-only documents get nothing (the menu is absent there anyway).
+     */
+    const live = store.worksheet;
+    const translateItems = pageTranslateItems(
+      live.id,
+      payload,
+      {
+        slotsForTarget: (target) => slotsForTarget(live, target),
+        slots: () => collectTexts(live),
+        blockKind: (id) => (findTableBlock(live, id) ? "table" : findFigureBlock(live, id)?.kind),
+      },
+      store.readOnly,
+    );
+    if (translateItems.length > 0) {
+      groups.push({
+        label: TRANSLATION_GROUP,
+        items: translateItems.map(({ label, disabled, title, request }) => ({
+          label,
+          disabled,
+          title,
+          onSelect: () => {
+            if (request) useAppDialogs.getState().openTranslate(request);
+          },
+        })),
       });
     }
 
@@ -6622,6 +6673,20 @@ export function Preview({
             <span className="text-[11px] text-ink-subtle">
               ⌘C copy · ⌘V paste · ⌫ delete · Esc clear
             </span>
+            {multiIds.size > 0 && !readOnly && (
+              <button
+                type="button"
+                title="Fill the missing language of the selected items with AI translation"
+                onClick={() =>
+                  useAppDialogs
+                    .getState()
+                    .openTranslate(flowItemsRequest(useWorksheetStore.getState().worksheet.id, [...multiIds]))
+                }
+                className="cursor-pointer rounded-full px-2.5 py-1 text-[12px] font-medium text-accent-ink transition-colors duration-150 ease-out-soft hover:bg-accent-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                Translate
+              </button>
+            )}
             <IconButton
               label="Clear selection"
               onClick={() => {

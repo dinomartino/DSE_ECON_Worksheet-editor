@@ -237,6 +237,7 @@ export function DiagramEditor({ block, onChange }: Props) {
           A diagram has no caption — its words are `diagram.title`, typed on the canvas
           and drawn inside the image itself. */}
       <BiTextField
+        translate={{ kind: 'altText' }}
         label="Alt text"
         value={block.altText}
         onChange={(altText) => onChange({ ...block, altText })}
@@ -250,6 +251,7 @@ export function DiagramEditor({ block, onChange }: Props) {
           and deliberately does not let it be selected, dragged or retyped there: one
           address for a diagram's words, with no second surface to disagree with. */}
       <BiTextField
+        translate={{ kind: 'diagramTitle', fallsBack: true }}
         label="Title"
         value={block.diagram.title ?? emptyBiText()}
         onChange={(title) => {
@@ -372,6 +374,7 @@ function ForumFields({
           <div className="flex items-center gap-1">
             <div className="min-w-0 flex-1">
               <BiTextField
+                translate={{ kind: 'speaker', fallsBack: true }}
                 ariaLabel={`Bubble ${index + 1} speaker`}
                 value={bubble.speaker}
                 onChange={(speaker) => patch(bubble.id, { speaker })}
@@ -397,6 +400,7 @@ function ForumFields({
             </IconButton>
           </div>
           <BiTextField
+            translate={{ kind: 'bubble', fallsBack: true }}
             ariaLabel={`Bubble ${index + 1} view`}
             value={bubble.text}
             onChange={(text) => patch(bubble.id, { text })}
@@ -477,6 +481,7 @@ function PieSliceFields({
         <div key={slice.id} className="flex items-center gap-1">
           <div className="min-w-0 flex-1">
             <BiTextField
+              translate={{ kind: 'diagramLabel', fallsBack: true }}
               ariaLabel={`Slice ${index + 1} name`}
               value={slice.label}
               onChange={(label) => patch(slice.id, { label })}

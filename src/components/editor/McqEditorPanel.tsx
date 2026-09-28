@@ -395,6 +395,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
             })}
           >
             <BiTextField
+              translate={{ kind: 'explanation' }}
               label="Explanation (teacher version)"
               value={question.explanation ?? emptyBiText()}
               onChange={(explanation) => onChange({ explanation })}
@@ -447,6 +448,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
                   {open && (
                     <div className="animate-fade-in pb-1.5 pl-7 pt-0.5">
                       <BiTextField
+                        translate={{ kind: 'rationale' }}
                         ariaLabel={`Rationale for option ${optionLabel(index)}`}
                         value={option.rationale ?? emptyBiText()}
                         onChange={(text) => setRationale(option.id, text)}
@@ -467,6 +469,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
             })}
           >
             <BiTextField
+              translate={{ kind: 'provenance' }}
               label="Source"
               rows={1}
               value={question.provenance ?? emptyBiText()}

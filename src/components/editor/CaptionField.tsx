@@ -36,6 +36,7 @@ export function CaptionField({
   return (
     <>
       <BiTextField
+        translate={{ kind: 'caption' }}
         label="Caption"
         value={value ?? emptyBiText()}
         onChange={(caption) =>

@@ -2,6 +2,8 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, renameSync } from 'node:fs';
 import { chromium } from 'playwright-core';
 
+const APP_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
+
 /**
  * The LQ (Question-Answer Book) harness — `cover-verify`'s sibling for the booklet
  * (§ LQ_MODE_HANDOFF §5). One command that answers "do the three outputs agree, is the
@@ -162,11 +164,13 @@ try {
     deviceScaleFactor: 2,
   });
   await context.addInitScript(
-    ([indexJson, key, doc]) => {
+    ([indexJson, key, doc, version]) => {
       window.localStorage.setItem('econ-worksheet-index', indexJson);
       window.localStorage.setItem(key, doc);
+      // What's new would cover the start screen and swallow the click below.
+      window.localStorage.setItem('econ-worksheet-last-seen-version', version);
     },
-    [index, `econ-worksheet:${worksheet.id}`, json],
+    [index, `econ-worksheet:${worksheet.id}`, json, APP_VERSION],
   );
   const page = await context.newPage();
   page.on('pageerror', (e) => console.log('PAGE ERR:', e.message));

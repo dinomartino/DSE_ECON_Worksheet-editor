@@ -31,11 +31,13 @@ export function StimulusEditorPanel({
           hint="the question numbers between the two halves are derived"
         />
         <BiTextField
+          translate={{ kind: 'wording', aroundValue: 'before' }}
           label="Before the numbers"
           value={element.prefix ?? DEFAULT_STIMULUS_WORDING.prefix}
           onChange={(prefix) => onChange({ prefix })}
         />
         <BiTextField
+          translate={{ kind: 'wording', aroundValue: 'after' }}
           label="After the numbers"
           value={element.suffix ?? DEFAULT_STIMULUS_WORDING.suffix}
           onChange={(suffix) => onChange({ suffix })}

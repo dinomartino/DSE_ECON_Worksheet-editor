@@ -145,6 +145,7 @@ function PointRow({
         )}
         <div className={stacked ? 'order-last min-w-0 basis-full' : 'min-w-0 flex-1'}>
           <BiTextField
+            translate={{ kind: 'schemePoint' }}
             ariaLabel={`Marking point ${index + 1}`}
             value={point.text}
             rows={1}
@@ -163,6 +164,7 @@ function PointRow({
           </span>
           <div className="min-w-0 flex-1">
             <BiTextField
+              translate={{ kind: 'schemePoint' }}
               ariaLabel={`Alternative ${altIndex + 1} to point ${index + 1}`}
               value={alternative}
               rows={1}
@@ -336,6 +338,7 @@ function LevelsBlock({
             </IconButton>
           </div>
           <BiTextField
+            translate={{ kind: 'schemeLevel' }}
             ariaLabel={`Level ${index + 1} descriptor`}
             value={level.descriptor}
             rows={1}
@@ -395,6 +398,7 @@ function EcBlock({
           />
           <div className={stacked ? 'order-last min-w-0 basis-full' : 'min-w-0 flex-1'}>
             <BiTextField
+              translate={{ kind: 'schemeEc' }}
               ariaLabel={`EC descriptor for ${row.marks} marks`}
               value={row.text}
               rows={1}

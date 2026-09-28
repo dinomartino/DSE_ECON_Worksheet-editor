@@ -162,6 +162,7 @@ function DocumentTab() {
         }
       >
         <BiTextField
+          translate={{ kind: 'title' }}
           ariaLabel="Worksheet title"
           value={worksheet.title}
           rows={1}
@@ -183,6 +184,7 @@ function DocumentTab() {
         }
       >
         <BiTextField
+          translate={{ kind: 'instructions' }}
           ariaLabel="Instructions"
           value={worksheet.instructions ?? emptyBiText()}
           rows={2}
@@ -1285,7 +1287,7 @@ export function DocumentSettings({
 
   return (
     <Dialog
-      title="Document settings"
+      title="Document setup"
       description="Applies to the whole worksheet. Changes show on the page immediately."
       onClose={onClose}
       width={760}

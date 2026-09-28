@@ -12,6 +12,16 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 
 ## Unreleased
 
+### Added
+- **Translate**: fill the missing 中文 or English of a worksheet with AI, using your own
+  key (Gemini, DeepSeek, Qwen and others). Every line is shown for review before it goes
+  in, Economics terms follow the Education Bureau glossary, and one Undo takes it all back.
+- **Check terms**: compare a worksheet's Chinese with the EDB glossary and fix
+  non-standard terms in one click — no key needed.
+- **Settings** (⋯ → Settings…): app-wide preferences for this browser or computer,
+  starting with AI & translation. The per-document dialog is now called **Setup**
+  everywhere.
+
 ### Changed
 - New diagrams and the sample paper now use the Education Bureau glossary's Chinese
   terms (物價水平, 總收入, 生產可能曲線, 洛倫茨曲線 …), and 效率損失 for deadweight loss,

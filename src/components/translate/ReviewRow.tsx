@@ -16,9 +16,10 @@ const TONE: Record<NoteTone, string> = {
 };
 const ORDER: Record<NoteTone, number> = { fail: 0, warn: 1, note: 2, ok: 3 };
 
-/** A row's notes, only when it is not plainly ready: fail, warn, note, then what was fixed. */
+/** A row's notes, only when it is not plainly ready: fail, warn, note, then what was fixed
+ *  (the engine leaves an auto-fixed row `ready`, but §A.3 still shows `Term fixed`). */
 export function rowNotes(result: JobResult, glossary: Glossary | null): RowNote[] {
-  if (result.status === 'ready') return [];
+  if (result.status === 'ready' && result.fixes.length === 0) return [];
   if (result.status === 'failed') {
     if (result.error?.kind === 'safety') return [{ tone: 'fail', text: copy.SAFETY_ROW }];
     const reason = result.issues.find((i) => i.severity === 'fail')?.message ?? result.error?.message ?? 'no answer';

@@ -122,9 +122,9 @@ rebuildable index; copies keep a `lineage.rootId`; packs reuse the backup zip).
 Constraints: no server, so BYOK from the browser (accept any OpenAI-compatible base
 URL — major APIs may restrict Hong Kong, **unverified**) or desktop-only with the key in
 the keychain. Output is JSON validated against the question types, shown in a review
-tray, inserted through normal store actions — the `.docx` path is unchanged. Never embed
-a key. Never mark student scripts: "no student data leaves your machine" is a selling
-point. *All of MagicSchool, Brisk, Diffit, Eduaide, QuestionWell, MS Teach.*
+dialog, inserted through normal store actions — the `.docx` path is unchanged. Never embed
+a key. Never mark student scripts: student scripts are never sent anywhere; translation
+sends only the text a teacher chooses. *All of MagicSchool, Brisk, Diffit, Eduaide, QuestionWell, MS Teach.*
 
 - **E1 Answers, mark schemes and MCQ explanations for existing questions** (S).
 - **E2 EN↔繁中 fill with a pinned HKDSE glossary** (S–M). A keyless half: bundle the

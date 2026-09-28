@@ -45,10 +45,10 @@ export const SHOTS = [
   },
   {
     file: '05-setup-versions',
-    caption: 'Document settings, with Versions set to 3 (A/B/C)',
+    caption: 'Document setup, with Versions set to 3 (A/B/C)',
     async prepare({ page, wait }) {
       await page.keyboard.press('Escape');
-      await page.getByRole('button', { name: 'Setup' }).click();
+      await page.getByRole('button', { name: 'Setup', exact: true }).first().click();
       await wait(400);
       await page.getByRole('dialog').getByText('3', { exact: true }).click();
     },

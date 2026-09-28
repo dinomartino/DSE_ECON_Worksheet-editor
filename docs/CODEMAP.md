@@ -251,8 +251,8 @@ Invariant: chrome uses semantic tokens (`src/app/globals.css`); anything on the 
 ## Translation, glossary, settings
 
 AI translation (EN ↔ 繁中), Check terms and app-wide Settings — § AI translation, glossary
-and app Settings. Contracts first: a stub keeps its signature and says which package fills
-it (`// P-<X> replaces this body`).
+and app Settings. `src/components/settings/settingsVisible.test.tsx` proves Settings registers
+through `AppSettingsHost` alone.
 
 - `src/model/textSlots.ts:TextSlot` · `src/model/textSlots.ts:TextWalker` · `src/model/textSlots.ts:TranslationWrite` · `src/model/textSlots.ts:ApplyReport` — the slot contract; helpers `src/model/textSlots.ts:patch` · `src/model/textSlots.ts:mapSame` · `src/model/textSlots.ts:sameRuns` · `src/model/textSlots.ts:missingSide`
 - `src/model/textWalk.ts:mapWorksheetTexts` · `src/model/textWalk.ts:collectTexts` · `src/model/textWalk.ts:slotsForTarget` — the one identity-preserving walk over every BiText, in print order; questions through `src/registry/types.ts:QuestionTypeDefinition` `mapTexts`
@@ -297,11 +297,15 @@ it (`// P-<X> replaces this body`).
 - `src/components/settings/AppSettingsDialog.tsx:AppSettingsDialog` · `src/components/settings/AppSettingsDialog.tsx:AppSettingsFooter` · `src/components/settings/AppSettingsDialog.tsx:closeStep` — rail, lazy pane, close guard
 - `src/components/settings/shortcut.ts:shouldOpenSettings` — ⌘, / Ctrl+, rules
 - `src/components/settings/sections/index.ts` — one import per section
-- `src/components/settings/sections/ai.ts` — registers AI & translation (not imported yet)
+- `src/components/settings/sections/ai.ts` — registers AI & translation
 - `src/components/settings/sections/aiSection/aiSetup.ts:aiSetupReducer` · `src/components/settings/sections/aiSection/AiSection.tsx` · `src/components/settings/sections/aiSection/AiSectionView.tsx:AiSectionView` — the AI pane
 - `src/components/settings/sections/aiSection/aiSetupRunner.ts:createAiSetupRunner` — the pane's side effects, injected; a flow never outlives its card
 - `src/test/secretsNeverLeave.test.ts` — a key is in no document, backup, export or setting
 - `src/components/translate/copy.ts` — the copy deck
+- `src/components/translate/translateMenu.ts:pageTranslateItems` · `src/components/translate/translateMenu.ts:toolbarMenuEntries` · `src/components/translate/translateMenu.ts:outlineTranslateItem` — every Translate entry point's request, pure
+- `src/components/translate/fieldFill.ts:fillButton` · `src/components/translate/fieldFill.ts:runFieldFill` — `BiTextField`'s inline fill (the `translate` prop)
+- `src/components/editor/Toolbar.tsx:UntranslatedPill` — the front door; `src/components/start/StartScreen.tsx:SettingsLink`; `src/components/ui/icons.tsx:PageSetupIcon` (Setup; the gear is app Settings)
+- `scripts/ai-verify.mjs` · `scripts/ai-mock-server.mjs` — the Translate browser run against a canned provider; nothing sent before a click
 - `src/components/translate/TranslateHost.tsx:TranslateHost` — mounted once in `EditorApp`; opens, resumes or drops the session as the app dialog changes
 - `src/components/translate/translateSession.ts:reduceSession` — the phases as a pure reducer (setup → running → review, or error); `src/components/translate/translateSession.ts:closeIntent` asks before paid work is lost
 - `src/components/translate/translateController.ts:createTranslateController` — plan, run, Stop, Insert and the Settings hand-offs, all injected
