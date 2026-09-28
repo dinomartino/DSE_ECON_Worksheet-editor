@@ -146,6 +146,8 @@ describe('validateItem', () => {
     expect(codes('Section A: Short questions', '甲部：短題目', 'sectionHeading')).toEqual([]);
     expect(codes('(1) and (3) only', '第一及第三項', 'option')).toContain('combination:warn');
     expect(codes('Explain why the price of rice rises.', '解')).toContain('length:warn');
+    for (const [zh, en] of [['2025年', '2025'], ['上午10時', '10 am'], ['2024年度', '2024'], ['下午3時30分', '3:30 pm']])
+      expect(codes(zh, en, 'tableCell', 'toEn'), zh).not.toContain('length:warn');
   });
 });
 

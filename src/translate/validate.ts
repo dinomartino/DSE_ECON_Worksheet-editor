@@ -289,8 +289,9 @@ function checkFacts(
   if (job.kind === 'option' && COMBINATION.test(source) && !/[(（]\s*(?:\d+|[ivx]+)\s*[)）]|只有|only/i.test(out)) {
     add({ code: 'combination', severity: 'warn', message: 'Combination wording differs', fix: toZh ? 'Write it as “只有(1)及(2)”.' : 'Write it as “(1) and (2) only”.' });
   }
+  // A ratio says nothing about a short cell or label: 2025年 → 2025, 上午10時 → 10 am.
   const from = source.replace(/\s+/g, '').length;
-  if (from >= 4) {
+  if (from >= (SHORT_KINDS.has(job.kind) ? 10 : 4)) {
     const ratio = out.replace(/\s+/g, '').length / from;
     if (toZh ? ratio < 0.15 || ratio > 1.3 : ratio < 1.2 || ratio > 7) {
       add({ code: 'length', severity: 'warn', message: 'Check length' });
