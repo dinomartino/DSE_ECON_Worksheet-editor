@@ -130,6 +130,17 @@ describe('validateItem', () => {
     expect(codes('Country X imports cars.', 'X國進口汽車。')).toEqual([]);
   });
 
+  it('keeps plural and lower-case lettered names: Countries A and B → 甲、乙兩國', () => {
+    for (const [en, zh, kind] of [
+      ['Countries A and B trade with each other.', '甲國和乙國互相貿易。', 'part'],
+      ['Countries A and B trade with each other.', '甲、乙兩國互相貿易。', 'part'],
+      ['Students A and B disagree.', '學生甲和學生乙意見不同。', 'part'],
+      ['Answer all questions in Sections A and B.', '甲部和乙部所有題目均須作答。', 'instructions'],
+      ['In country A, wages rose.', '在甲國，工資上升。', 'part'],
+      ['Country E exports rice.', '戊國出口米。', 'part'],
+    ] as const) expect(codes(en, zh, kind), en).not.toContain('symbols:warn');
+  });
+
   it('checks heading colons, combination options and length', () => {
     expect(codes('Section A: Short questions', '甲部 短題目', 'sectionHeading')).toContain('colon:warn');
     expect(codes('Section A: Short questions', '甲部：短題目', 'sectionHeading')).toEqual([]);

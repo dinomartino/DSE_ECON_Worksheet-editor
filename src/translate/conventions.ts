@@ -16,30 +16,41 @@ export interface Convention {
   promptLine: string;
 }
 
-const STEMS = ['甲', '乙', '丙', '丁'];
-const stem = (letter: string) => STEMS['ABCD'.indexOf(letter)];
+const STEMS = ['甲', '乙', '丙', '丁', '戊', '己'];
+const stem = (letter: string) => STEMS['ABCDEF'.indexOf(letter)];
 const NUMERALS = ['', '一', '二', '三', '四', '五', '六'];
+const COUNTS = ['', '一', '兩', '三', '四', '五', '六'];
+
+/** "Country A", "country A", "Countries A and B", "Sections A, B or C": the letters in m[1]. */
+const lettered = (noun: string) => new RegExp(`\\b${noun} ([A-F](?:(?:,\\s*|,?\\s+(?:and|or)\\s+)[A-F])*)\\b`, 'g');
+const lettersOf = (m: RegExpMatchArray) => m[1].match(/[A-F]/g) ?? [];
+/** Each 甲國, or the joint 甲、乙兩國. */
+const letteredZh = (m: RegExpMatchArray, form: (stem: string) => string, unit: string) => {
+  const letters = lettersOf(m);
+  const each = letters.map((l) => form(stem(l)));
+  return letters.length > 1 ? [...each, `${letters.map(stem).join('、')}${COUNTS[letters.length]}${unit}`] : each;
+};
 
 export const CONVENTIONS: readonly Convention[] = [
   {
     id: 'country',
-    en: /\bCountry ([A-D])\b/g,
-    zh: (m) => [`${stem(m[1])}國`],
-    consumes: (m) => [m[1]],
+    en: lettered('[Cc]ountr(?:y|ies)'),
+    zh: (m) => letteredZh(m, (s) => `${s}國`, '國'),
+    consumes: lettersOf,
     promptLine: 'Country A / B → 甲國 / 乙國',
   },
   {
     id: 'student',
-    en: /\bStudent ([A-D])\b/g,
-    zh: (m) => [`學生${stem(m[1])}`],
-    consumes: (m) => [m[1]],
+    en: lettered('[Ss]tudents?'),
+    zh: (m) => letteredZh(m, (s) => `學生${s}`, '位學生'),
+    consumes: lettersOf,
     promptLine: 'Student A / B → 學生甲 / 學生乙',
   },
   {
     id: 'section',
-    en: /\bSection ([A-D])\b/g,
-    zh: (m) => [`${stem(m[1])}部`],
-    consumes: (m) => [m[1]],
+    en: lettered('Sections?'),
+    zh: (m) => letteredZh(m, (s) => `${s}部`, '部'),
+    consumes: lettersOf,
     promptLine: 'Section A / B / C → 甲部 / 乙部 / 丙部',
   },
   {
