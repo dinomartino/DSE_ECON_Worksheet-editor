@@ -4,11 +4,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { copyForWord, worksheetClipboardHtml, worksheetPlainText } from '@/export/clipboard';
 import { renderDiagramImages } from '@/export/diagramImage';
 import type { LanguageMode, OutputMode, VersionMode } from '@/model/types';
-import { useUntranslatedCount } from './useUntranslatedCount';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { downloadWorksheetFile } from '@/storage';
 import { isDesktop, revealFile, revealLabel } from '@/platform';
-import { Button, IconButton, Pill, Segmented } from '@/components/ui';
+import { Button, IconButton, Segmented } from '@/components/ui';
 import { ChevronRightIcon, DownloadIcon, PageSetupIcon, RedoIcon, SettingsIcon, UndoIcon } from '@/components/ui/icons';
 import { Menu } from '@/components/ui/Menu';
 import { Dialog } from '@/components/ui/Dialog';
@@ -23,10 +22,12 @@ import { hasCoverSheet } from './sheets';
 import { FeedbackDialog } from '@/components/feedback/FeedbackDialog';
 import { WhatsNewDialog } from '@/components/whatsNew/WhatsNewDialog';
 import { describeDocument } from '@/feedback/feedback';
-import { useAppDialogs, type NoticeAction, type TranslateRequest } from '@/store/appDialogs';
+import { useAppDialogs, type NoticeAction } from '@/store/appDialogs';
 import { useSettingsSections } from '@/settings/sections';
-import { paperRequest, toolbarMenuEntries, type ToolbarEntry } from '@/components/translate/translateMenu';
-import { PILL_TITLE, pillLabel } from '@/components/translate/copy';
+import { fillVerbFor, toolbarSettingsEntries } from '@/components/translate/translateMenu';
+import { openAi } from '@/assist/menuStore';
+import { collectTexts } from '@/model/textWalk';
+import { AiButton } from '@/components/ai/AiButton';
 
 /** A transient status line, optionally with one follow-up action. */
 type Notice = { message: string; action?: NoticeAction };
@@ -40,23 +41,6 @@ function showNotice(
   const next: Notice = { message, action };
   set(() => next);
   setTimeout(() => set((current) => (current === next ? undefined : current)), action ? 8000 : 2400);
-}
-
-/** The front door to Translate: a button while the document can change, else a plain
- *  count. Nothing when every printed text has both languages. */
-export function UntranslatedPill({ count, onOpen }: { count: number; onOpen?: () => void }) {
-  if (count <= 0) return null;
-  if (!onOpen) return <Pill tone="warn">{pillLabel(count)}</Pill>;
-  return (
-    <button
-      type="button"
-      title={PILL_TITLE}
-      onClick={onOpen}
-      className="cursor-pointer rounded-full transition-[filter,transform,scale] duration-150 ease-out-soft hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97]"
-    >
-      <Pill tone="warn">{pillLabel(count)}</Pill>
-    </button>
-  );
 }
 
 /**
@@ -135,15 +119,14 @@ export function Toolbar({
   const [whatsNew, setWhatsNew] = useState(false);
   const closeWhatsNew = useCallback(() => setWhatsNew(false), []);
 
-  const untranslated = useUntranslatedCount(worksheet, mode);
   const saveStatus = readOnly ? 'Read-only' : dirty ? 'Unsaved…' : 'Saved';
 
   const flash = (message: string, action?: Notice['action']) => showNotice(setNotice, message, action);
 
   const appVersion = useUpdateStore((s) => s.current);
 
-  // Translate and Settings open through the one app-dialog store (never stacked); their
-  // hosts and BiTextField report back through it, so every status line shares this flash.
+  // Settings opens through the one app-dialog store (never stacked); it and BiTextField
+  // report back through it, so every status line shares this flash.
   useEffect(
     () =>
       useAppDialogs.subscribe((state, prev) => {
@@ -164,31 +147,22 @@ export function Toolbar({
     setNotice(undefined);
     action.run();
   };
-  const openTranslate = (request: TranslateRequest) => useAppDialogs.getState().openTranslate(request);
-  /** Export is a component-owned dialog: it closes before Translate opens. */
-  const translateFromExport = (mode: 'translate' | 'check') => {
+  /** Export is a component-owned dialog: it closes before the AI menu opens. */
+  const aiFromExport = (finding: 'untranslated' | 'terminology') => {
     setExporting(false);
-    openTranslate(paperRequest(worksheet.id, mode));
+    const preselect = finding === 'terminology' ? 'check.terms' : fillVerbFor(collectTexts(worksheet), mode.language);
+    openAi({ scope: { kind: 'paper' }, preselect });
   };
   const desktop = isDesktop();
   const hasSettings = useSettingsSections({ desktop }).length > 0;
-  const entries = toolbarMenuEntries({
-    worksheetId: worksheet.id,
-    readOnly,
+  const settingsItems = toolbarSettingsEntries({
     hasSettings,
     settingsHint: desktop ? (/Mac/.test(navigator.platform) ? '⌘,' : 'Ctrl+,') : undefined,
-  });
-  const menuItem = (entry: ToolbarEntry) => {
-    const run = entry.run;
-    return run.kind === 'settings'
-      ? {
-          label: entry.label,
-          hint: entry.hint,
-          icon: <SettingsIcon size={15} />,
-          onSelect: () => useAppDialogs.getState().openSettings(),
-        }
-      : { label: entry.label, onSelect: () => openTranslate(run.request) };
-  };
+  }).map((entry) => ({
+    ...entry,
+    icon: <SettingsIcon size={15} />,
+    onSelect: () => useAppDialogs.getState().openSettings(),
+  }));
 
   /** A ready update surfaces in the banner; every other outcome is said here. */
   const handleCheckUpdates = async () => {
@@ -391,10 +365,6 @@ export function Toolbar({
 
         {/* Status sits with the document, not with the actions. */}
         <span className="ml-auto flex shrink-0 items-center gap-2 text-[11px] text-ink-muted">
-          <UntranslatedPill
-            count={untranslated}
-            onOpen={readOnly ? undefined : () => openTranslate(paperRequest(worksheet.id))}
-          />
           {/* Status, not selection: the summary is facts about the document, so it
               stays in the grey family — the accent is reserved for interaction. */}
           <PaperSummaryBar
@@ -420,6 +390,9 @@ export function Toolbar({
           </span>
         </span>
 
+        {/* Every AI tool behind one door (⌘J); the untranslated count rides on it. */}
+        <AiButton />
+
         {/* One Export action, the bar's only filled button: .docx to keep editing, PDF to
             print or send, .json to keep the worksheet itself. The format is chosen
             inside, beside what it applies to, rather than as look-alike buttons here. */}
@@ -432,7 +405,6 @@ export function Toolbar({
           label="File and export options"
           items={[
             { label: busy === 'copy' ? 'Copying…' : 'Copy for Word', onSelect: () => void handleCopy() },
-            ...entries.translate.map(menuItem),
             /*
              * One door to every document, rather than "New" and "Open" as separate
              * items that each did half the job. The start screen lists what is saved and
@@ -451,7 +423,7 @@ export function Toolbar({
                   },
                 ]
               : []),
-            ...entries.settings.map(menuItem),
+            ...settingsItems,
             { label: 'What’s new…', onSelect: () => setWhatsNew(true) },
             { label: 'Send feedback…', onSelect: () => setFeedback(true) },
             {
@@ -504,8 +476,7 @@ export function Toolbar({
               worksheet={worksheet}
               language={mode.language}
               version={mode.version}
-              onTranslate={readOnly ? undefined : () => translateFromExport('translate')}
-              onReviewTerms={readOnly ? undefined : () => translateFromExport('check')}
+              onOpenAi={readOnly ? undefined : aiFromExport}
             />
           }
         />

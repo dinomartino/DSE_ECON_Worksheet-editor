@@ -302,9 +302,9 @@ through `AppSettingsHost` alone.
 - `src/components/settings/sections/aiSection/aiSetupRunner.ts:createAiSetupRunner` — the pane's side effects, injected; a flow never outlives its card
 - `src/test/secretsNeverLeave.test.ts` — a key is in no document, backup, export or setting
 - `src/components/translate/copy.ts` — the copy deck
-- `src/components/translate/translateMenu.ts:pageTranslateItems` · `src/components/translate/translateMenu.ts:toolbarMenuEntries` · `src/components/translate/translateMenu.ts:outlineTranslateItem` — every Translate entry point's request, pure
+- `src/components/translate/translateMenu.ts:pageAiScope` · `src/components/translate/translateMenu.ts:fillVerbFor` · `src/components/translate/translateMenu.ts:toolbarSettingsEntries` — the AI door's entry points, pure (right-click scope, Export's preselect, ⋯ Settings…)
 - `src/components/translate/fieldFill.ts:fillButton` · `src/components/translate/fieldFill.ts:runFieldFill` — `BiTextField`'s inline fill (the `translate` prop)
-- `src/components/editor/Toolbar.tsx:UntranslatedPill` — the front door; `src/components/start/StartScreen.tsx:SettingsButton`; `src/components/ui/icons.tsx:PageSetupIcon` (Setup; the gear is app Settings)
+- `src/components/start/StartScreen.tsx:SettingsButton`; `src/components/ui/icons.tsx:PageSetupIcon` (Setup; the gear is app Settings)
 - `scripts/ai-verify.mjs` · `scripts/ai-mock-server.mjs` — the Translate browser run against a canned provider; nothing sent before a click
 
 Invariants:
@@ -321,6 +321,7 @@ Invariants:
 - `src/assist/menuStore.ts:openAi` — what every entry point calls; `src/assist/runStore.ts:useAiRun` — one run at a time: running → review (after a direct insert) or error
 - `src/components/ai/SetupCard.tsx:SetupCard` — the no-key card inside the menu (provider, key, Save & continue → `onReady`); flow in `src/components/settings/sections/aiSection/setupCardFlow.ts:createSetupCardFlow` over the Settings runner
 - `src/components/ai/AiHost.tsx:AiHost` — mounted once in `EditorApp`; renders `src/components/ai/AiMenu.tsx` and `src/components/ai/AiBar.tsx`, owns ⌘J / Ctrl+J (`src/components/ai/shortcut.ts:shouldOpenAi`)
+- `src/components/ai/AiButton.tsx:AiButton` — the toolbar's "✦ AI" (untranslated count as its badge); `src/components/ai/AiMenu.tsx:AiMenuPopover` — filter, scope chip (`src/assist/scope.ts:scopeChoices`), grouped verbs, setup and input steps, provider footer; rows pure in `src/components/ai/aiMenuModel.ts:menuGroups`
 - `src/assist/verbs/translate.ts:translateVerb` — Fill missing / Re-translate 中文 or English: one `applyTranslations`, then `inserted` review items; `src/assist/verbs/checkTerms.ts:checkTermsVerb` — keyless findings, Replace N; shared rules in `src/assist/verbs/translateShared.ts` (`fillOptions`, `textsIn`, `rowNotes`, `depsError`, `commitUndo`)
 - `src/components/ai/AiBar.tsx:AiBar` — running / review / error bar over the page column; `src/components/ai/ItemCard.tsx:ItemCard` beside the text; `src/components/ai/errorActions.ts:errorActions` the error's buttons
 - `src/components/ai/pageMarks.ts:usePageMarks` — review highlights as a `data-ai-mark` attribute on `#print-root` text, re-applied by a MutationObserver; styled under `@media screen` in `src/app/globals.css`

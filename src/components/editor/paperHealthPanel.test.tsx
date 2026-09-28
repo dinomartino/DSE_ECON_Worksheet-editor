@@ -40,21 +40,20 @@ describe('PaperHealthPanel', () => {
     expect(markup).not.toMatch(/#[0-9a-f]{3,6}/i);
   });
 
-  it('links the untranslated finding to Translate only when a handler is given (never read-only)', () => {
+  it('links the untranslated finding to Open ✦ AI only when a handler is given (never read-only)', () => {
     const oneSided = mcq(0, 'Only English');
     oneSided.blocks = [createParagraphBlock(bi('Only English', ''))];
     const worksheet = withFlow(createWorksheet(), [oneSided], { replaceLayout: true });
     const noop = () => {};
     const editable = renderToStaticMarkup(
-      <PaperHealthPanel worksheet={worksheet} language="bilingual" onTranslate={noop} onReviewTerms={noop} />,
+      <PaperHealthPanel worksheet={worksheet} language="bilingual" onOpenAi={noop} />,
     );
     expect(editable).toContain('written in one language only.');
-    expect(editable).toContain('>Translate…</button>');
+    expect(editable).toContain('>Open ✦ AI</button>');
     // Toolbar passes no handlers in a read-only document.
     const readOnly = renderToStaticMarkup(<PaperHealthPanel worksheet={worksheet} language="bilingual" />);
     expect(readOnly).toContain('written in one language only.');
-    expect(readOnly).not.toContain('Translate…');
-    expect(readOnly).not.toContain('Review terms…');
+    expect(readOnly).not.toContain('Open ✦ AI');
   });
 });
 

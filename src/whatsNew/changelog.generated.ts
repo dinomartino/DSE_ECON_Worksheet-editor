@@ -23,6 +23,8 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   everywhere.
 - **AI menu**: press ⌘J (Ctrl+J on Windows) to open one menu of AI actions for the
   whole paper or whatever you have selected.
+- **One ✦ AI button** (⌘J) holds every AI tool, with the untranslated count on it;
+  right-click any text, table or question for AI on just that part.
 - **AI results go straight onto the page**, highlighted, with **Undo all**: walk through
   what changed with ‹ ›, and anything worth a second look is marked in amber. Check terms
   underlines its findings on the page and replaces them one by one or all at once.
