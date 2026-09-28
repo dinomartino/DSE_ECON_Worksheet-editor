@@ -3,7 +3,7 @@ import { createQuestionCountElement, createSectionElement } from './flow';
 import { DEFAULT_FONTS, createWorksheet, newId } from './factories';
 import { DEFAULT_MARGINS } from './page';
 import { createQabFurniture, QAB_MARGINS } from './pageFurniture';
-import { bi, emptyBiText } from './text';
+import { bi, emptyBiText, parseRuns, rt } from './text';
 import type {
   FontPair,
   LayoutElement,
@@ -259,10 +259,11 @@ function resolveDocumentType(options: NewWorksheetOptions): DocumentType {
  * reference's — § copyright), and deletable in one keystroke.
  */
 function sampleLqQuestion(): StructuredQuestion {
+  // zh takes `**bold**` markup: HKDSE bolds the Chinese for an English CAPITAL (ONE → 一個).
   const paragraph = (text: string, zh: string) => ({
     kind: 'paragraph' as const,
     id: newId(),
-    text: bi(text, zh),
+    text: { en: rt(text), zh: parseRuns(zh) },
   });
   return {
     id: newId(),
@@ -276,7 +277,7 @@ function sampleLqQuestion(): StructuredQuestion {
     parts: [
       {
         id: newId(),
-        blocks: [paragraph('State the opportunity cost of the plan.', '指出該計劃的機會成本。')],
+        blocks: [paragraph('State the opportunity cost of the plan.', '寫出該計劃的機會成本。')],
         marks: 2,
         answerSpace: 5,
       },
@@ -285,7 +286,7 @@ function sampleLqQuestion(): StructuredQuestion {
         blocks: [
           paragraph(
             'Explain ONE reason why the garden may be under-provided by the market.',
-            '解釋市場可能供應不足的一個原因。',
+            '解釋市場可能對公園供應不足的**一個**原因。',
           ),
         ],
         marks: 4,

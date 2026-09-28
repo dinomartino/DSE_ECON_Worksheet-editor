@@ -173,7 +173,7 @@ const ORIGINAL_TEMPLATES: DiagramTemplate[] = [
     name: bi('Production possibility curve', '生產可能曲線'),
     hint: bi('A concave PPC with a point on, inside and outside it.', '凹向原點的 PPC，附曲線上、內、外的點。'),
     build: () =>
-      axes(bi('Good X', 'X 貨品'), bi('Good Y', 'Y 貨品'), {
+      axes(bi('Good X', '物品X'), bi('Good Y', '物品Y'), {
         curves: [
           curve([[0.06, 0.9], [0.34, 0.82], [0.62, 0.62], [0.82, 0.12]], undefined, {
             shape: 'curved',
@@ -248,9 +248,9 @@ const ORIGINAL_TEMPLATES: DiagramTemplate[] = [
       arrows: [],
       pie: {
         slices: [
-          { id: newId(), label: bi('Firm A', '公司甲'), value: 40 },
-          { id: newId(), label: bi('Firm B', '公司乙'), value: 30 },
-          { id: newId(), label: bi('Firm C', '公司丙'), value: 20 },
+          { id: newId(), label: bi('Firm A', '廠商A'), value: 40 },
+          { id: newId(), label: bi('Firm B', '廠商B'), value: 30 },
+          { id: newId(), label: bi('Firm C', '廠商C'), value: 20 },
           { id: newId(), label: bi('Others', '其他'), value: 10 },
         ],
       },

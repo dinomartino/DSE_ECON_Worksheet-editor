@@ -126,7 +126,7 @@ export const WELFARE_PATTERNS: Record<WelfarePreset, DiagramAreaPattern> = {
 };
 const CONSUMPTION_DWL_PATTERN: DiagramAreaPattern = 'horizontal';
 
-const DWL = bi('DWL', '無謂損失');
+const DWL = bi('DWL', '效率損失');
 
 /*
  * ── Reading the diagram ─────────────────────────────────────────────────────────

@@ -41,7 +41,7 @@ import {
  * is a tangent, and quantities are anchored where the scheme reads them.
  */
 
-const GOOD = { x: bi('Good X', 'X 貨品'), y: bi('Good Y', 'Y 貨品') };
+const GOOD = { x: bi('Good X', '物品X'), y: bi('Good Y', '物品Y') };
 
 function fixedExportPrice(): Diagram {
   const p = priceLine(0.48, sym('P'));
@@ -188,7 +188,7 @@ function importQuotaDemand(): Diagram {
 function importQuotaIncrease(): Diagram {
   const s1 = curve([[0.06, 0.14], [0.22, 0.4], [0.44, 0.4], [0.66, 0.82]], sub('S', '1'));
   return finish(
-    axes(bi('Quantity of Good X', 'X 貨品數量'), AXIS.price, {
+    axes(bi('Quantity of Good X', '物品X的數量'), AXIS.price, {
       curves: [curve([[0.06, 0.9], [0.86, 0.26]], sym('D')), s1, shiftOf(s1, 0.18, 0, sub('S', '2'))],
       arrows: [arrow([0.5, 0.6], [0.66, 0.6])],
     }),
@@ -285,7 +285,7 @@ function monopolySameOutput(): Diagram {
           band: { edges: [{ curve: mc0.id }, { curve: mc1.id }], from: cross(mr, mc0), to: cross(d, mc1), cap: { curve: d.id } },
           fill: 'hatch',
           pattern: 'horizontal',
-          label: bi('increase in DL', '無謂損失增加'),
+          label: bi('increase in DL', '效率損失增加'),
           labelPlacement: 'leader',
         },
       ],
@@ -509,7 +509,7 @@ export const TRADE_TEMPLATES: DiagramTemplate[] = [
     id: 'monopoly',
     group: 'electives',
     name: bi('Monopoly', '壟斷'),
-    hint: bi('D, MR at twice the slope, constant MC: Qm, Pm, Qc and the DWL.', 'D、斜率加倍的 MR、固定 MC：Qm、Pm、Qc 及無謂損失。'),
+    hint: bi('D, MR at twice the slope, constant MC: Qm, Pm, Qc and the DWL.', 'D、斜率加倍的 MR、固定 MC：Qm、Pm、Qc 及效率損失。'),
     build: () => monopoly(),
   },
   {
@@ -523,28 +523,28 @@ export const TRADE_TEMPLATES: DiagramTemplate[] = [
     id: 'monopoly-mc-zero',
     group: 'electives',
     name: bi('Monopoly with MC = 0', '邊際成本為零的壟斷'),
-    hint: bi('QM at the midpoint, QE at D’s intercept, the DWL between.', 'QM 在中點，QE 在需求截距，其間為無謂損失。'),
+    hint: bi('QM at the midpoint, QE at D’s intercept, the DWL between.', 'QM 在中點，QE 在需求截距，其間為效率損失。'),
     build: monopolyMcZero,
   },
   {
     id: 'monopoly-cost-fall',
     group: 'electives',
     name: bi('Monopoly: MC falls', '壟斷：邊際成本下降'),
-    hint: bi('MC₁ → MC₂: Q rises, P falls, old and new DWL.', 'MC₁ → MC₂：數量上升、價格下降，新舊無謂損失。'),
+    hint: bi('MC₁ → MC₂: Q rises, P falls, old and new DWL.', 'MC₁ → MC₂：數量上升、價格下降，新舊效率損失。'),
     build: monopolyCostFall,
   },
   {
     id: 'monopoly-mc-rises',
     group: 'electives',
     name: bi('Monopoly: MC rises', '壟斷：邊際成本上升'),
-    hint: bi('MC₁ → MC₂: Q₂ < QM, P₂ > PM, the DWL at MC₂.', 'MC₁ → MC₂：Q₂ < QM，P₂ > PM，MC₂ 的無謂損失。'),
+    hint: bi('MC₁ → MC₂: Q₂ < QM, P₂ > PM, the DWL at MC₂.', 'MC₁ → MC₂：Q₂ < QM，P₂ > PM，MC₂ 的效率損失。'),
     build: monopolyMcRises,
   },
   {
     id: 'monopoly-same-output',
     group: 'electives',
     name: bi('Monopoly: MC falls, same P and Q', '壟斷：MC 下降但價量不變'),
-    hint: bi('MC₀ → MC₁ with Qm and Pm kept: DL₀ and the increase in DL.', 'MC₀ → MC₁ 而 Qm、Pm 不變：DL₀ 及無謂損失的增加。'),
+    hint: bi('MC₀ → MC₁ with Qm and Pm kept: DL₀ and the increase in DL.', 'MC₀ → MC₁ 而 Qm、Pm 不變：DL₀ 及效率損失的增加。'),
     build: monopolySameOutput,
   },
   {
