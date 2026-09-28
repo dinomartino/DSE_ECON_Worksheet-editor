@@ -276,7 +276,7 @@ Invariants:
 - Nothing new is stored in a document; settings under `econgen.settings.<section>`, keys only in the secrets store.
 - `src/ai/` imports nothing from React, the store, `src/model`, `src/settings`, `@/platform` or Tauri.
 - The glossary data is reached only through `src/glossary/load.ts` (a lazy chunk).
-- Nothing mounted imports a stub until its package lands.
+- Mounted UI that imports a stub stays inert (renders nothing, calls nothing) until an entry point opens it; no entry point exists before P-ENTRY.
 
 ## scripts — the harnesses
 
