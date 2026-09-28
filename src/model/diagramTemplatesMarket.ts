@@ -549,15 +549,15 @@ export const MARKET_TEMPLATES: DiagramTemplate[] = [
   {
     id: 'elastic-revenue',
     group: 'supplyDemand',
-    name: bi('Elastic demand: revenue', '富彈性需求：收益'),
-    hint: bi('A price rise along a flat D: gain (+) < loss (−).', '沿平坦需求曲線加價：收益增加 (+) < 減少 (−)。'),
+    name: bi('Elastic demand: revenue', '彈性需求：總收入'),
+    hint: bi('A price rise along a flat D: gain (+) < loss (−).', '沿平坦需求曲線加價：收入增加 (+) < 減少 (−)。'),
     build: () => alongDemand([[0.06, 0.64], [0.9, 0.34]], 0.38, 0.52),
   },
   {
     id: 'inelastic-revenue',
     group: 'supplyDemand',
-    name: bi('Inelastic demand: revenue', '缺乏彈性需求：收益'),
-    hint: bi('A price rise along a steep D: gain (+) > loss (−).', '沿陡峭需求曲線加價：收益增加 (+) > 減少 (−)。'),
+    name: bi('Inelastic demand: revenue', '低彈性需求：總收入'),
+    hint: bi('A price rise along a steep D: gain (+) > loss (−).', '沿陡峭需求曲線加價：收入增加 (+) > 減少 (−)。'),
     build: () => alongDemand([[0.3, 0.92], [0.62, 0.1]], 0.3, 0.56),
   },
   {
@@ -584,8 +584,8 @@ export const MARKET_TEMPLATES: DiagramTemplate[] = [
   {
     id: 'mc-rise-tss',
     group: 'supplyDemand',
-    name: bi('MC rises: TSS loss', '邊際成本上升：總盈餘損失'),
-    hint: bi('S = MC shifts up; the TSS loss is the band between MC₀ and MC₁.', 'S = MC 上移；總盈餘損失為 MC₀ 與 MC₁ 之間的帶。'),
+    name: bi('MC rises: TSS loss', '邊際成本上升：總社會盈餘損失'),
+    hint: bi('S = MC shifts up; the TSS loss is the band between MC₀ and MC₁.', 'S = MC 上移；總社會盈餘損失為 MC₀ 與 MC₁ 之間的帶。'),
     build: mcRiseTss,
   },
   {
@@ -634,7 +634,7 @@ export const MARKET_TEMPLATES: DiagramTemplate[] = [
     id: 'fixed-price-revenue',
     group: 'controls',
     name: bi('Revenue at a fixed price', '固定價格下的收益'),
-    hint: bi('TR = P × the short side (Qs under a ceiling), with the shortage.', '總收益 = P × 較少一方（上限下為 Qs），附短缺。'),
+    hint: bi('TR = P × the short side (Qs under a ceiling), with the shortage.', '總收入 = P × 較少一方（上限下為 Qs），附短缺。'),
     build: fixedPriceRevenue,
   },
   {
@@ -696,7 +696,7 @@ export const MARKET_TEMPLATES: DiagramTemplate[] = [
   {
     id: 'subsidy-efficiency',
     group: 'taxSubsidy',
-    name: bi('Subsidy: overproduction', '津貼：生產過多'),
+    name: bi('Subsidy: overproduction', '津貼：生產過剩'),
     hint: bi('At Q₁, MC on S₀ is above MB on D; the DWL between them.', '在 Q₁，S₀ 上的 MC 高於 D 上的 MB；其間為無謂損失。'),
     build: subsidyEfficiency,
   },

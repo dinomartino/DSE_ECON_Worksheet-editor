@@ -361,14 +361,14 @@ export const MACRO_TEMPLATES: DiagramTemplate[] = [
   {
     id: 'shock-recovery',
     group: 'macro',
-    name: bi('Supply shock and recovery', '供應衝擊及復元'),
+    name: bi('Supply shock and recovery', '供應衝擊及復蘇'),
     hint: bi('SRAS shifts left (1), then back (2); P returns to P₀.', 'SRAS 先左移 (1) 再回復 (2)；價格回到 P₀。'),
     build: shockRecovery,
   },
   {
     id: 'ad-shift-at-capacity',
     group: 'macro',
-    name: bi('AD shift at full capacity', '全民就業下的總需求變動'),
+    name: bi('AD shift at full capacity', '充分就業下的總需求變動'),
     hint: bi('AD₀ → AD₁ on a vertical LRAS: P rises, Y stays at Yf.', '垂直 LRAS 上 AD₀ → AD₁：價格上升，產出維持在 Yf。'),
     build: adShiftAtCapacity,
   },

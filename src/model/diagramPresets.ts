@@ -377,7 +377,7 @@ export const SHADE_PRESETS: ShadePreset[] = [
     'tax',
     // abE₁E₀: between S and S₁ up to demand — S₁ capped by D past the new equilibrium.
     ({ d, s, s1, e0 }) => band([{ curve: s1 }, { curve: s }], 0, e0, { curve: d }),
-    bi('TSS loss', '總盈餘損失'),
+    bi('TSS loss', '總社會盈餘損失'),
     'surplus',
   ),
 
@@ -434,7 +434,7 @@ export const SHADE_PRESETS: ShadePreset[] = [
     'Revenue at the fixed price',
     'either',
     ({ c, qt }) => band([level(0), c], 0, qt),
-    bi('TR', '總收益'),
+    bi('TR', '總收入'),
   ),
   controlled(
     'controlGap',

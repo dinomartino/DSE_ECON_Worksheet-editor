@@ -10,6 +10,11 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
 
 ## Unreleased
 
+### Changed
+- New diagrams and the sample paper now use the Education Bureau glossary's Chinese
+  terms (物價水平, 總收入, 生產可能曲線, 洛倫茨曲線 …). Worksheets you already made keep
+  their wording.
+
 ## 0.4.0 — 2026-09-27
 
 ### Added

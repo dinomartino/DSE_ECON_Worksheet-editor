@@ -235,7 +235,7 @@ function pickSides(text: BiText | undefined, language: LanguageMode): RichText[]
   // written the same in both languages, and a teacher fills both sides so the label
   // survives whichever mode the worksheet is printed in. Stacking two identical lines
   // would print "AD" twice on top of the curve, so an identical side is dropped —
-  // only a genuine translation ("Price level" / "價格水平") stacks.
+  // only a genuine translation ("Price level" / "物價水平") stacks.
   if (hasZh && !(hasEn && sameText(en, zh))) sides.push(...richLines(zh));
   return sides;
 }

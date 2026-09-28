@@ -110,8 +110,8 @@ describe('revenue gain and loss: the four ways price and quantity move', () => {
   it('carries one label per gain or loss, hatched so it reads in monochrome', () => {
     const gain = revenueArea('revenueGain', { before, after }, 'g')!;
     const loss = revenueArea('revenueLoss', { before, after }, 'l')!;
-    expect(gain).toMatchObject({ fill: 'hatch', pattern: 'dots', label: { en: [{ text: 'Gain' }], zh: [{ text: '收益增加' }] } });
-    expect(loss).toMatchObject({ fill: 'hatch', pattern: 'cross', label: { en: [{ text: 'Loss' }], zh: [{ text: '收益減少' }] } });
+    expect(gain).toMatchObject({ fill: 'hatch', pattern: 'dots', label: { en: [{ text: 'Gain' }], zh: [{ text: '收入增加' }] } });
+    expect(loss).toMatchObject({ fill: 'hatch', pattern: 'cross', label: { en: [{ text: 'Loss' }], zh: [{ text: '收入減少' }] } });
     expect(revenueArea('revenueGain', { before }, 'g')).toBeNull();
   });
 });
@@ -121,7 +121,7 @@ describe('total revenue', () => {
     const d = twoPoints({ x: 0.4, y: 0.5 }, { x: 0.6, y: 0.3 });
     const tr = revenueArea('totalRevenue', { before }, 'tr')!;
     expect(tr.band).toBeDefined();
-    expect(tr.label).toEqual({ en: [{ text: 'TR' }], zh: [{ text: '總收益' }] });
+    expect(tr.label).toEqual({ en: [{ text: 'TR' }], zh: [{ text: '總收入' }] });
     expect(extent(areaPolygon(d, tr)!)).toEqual({ x0: 0, x1: 0.4, y0: 0, y1: 0.5 });
     const moved = applyDrag(d, { kind: 'point', pointId: 'E0' }, { x: 0.4, y: 0.5 }, { x: 0.5, y: 0.7 });
     const box = extent(areaPolygon(moved, tr)!);

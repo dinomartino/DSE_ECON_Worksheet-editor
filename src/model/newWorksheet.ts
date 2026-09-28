@@ -316,7 +316,7 @@ function sampleMcqQuestion(): McqQuestion {
         id: newId(),
         text: bi(
           'A bakery raises the price of its bread and finds its total revenue falls.',
-          '某麵包店提高麵包售價後，發現總收益下跌。',
+          '某麵包店提高麵包售價後，發現總收入下跌。',
         ),
       },
     ],

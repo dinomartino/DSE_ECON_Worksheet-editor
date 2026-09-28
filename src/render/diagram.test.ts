@@ -158,7 +158,7 @@ describe('diagram SVG rendering', () => {
     expect((svg.match(/>LRAS</g) ?? []).length).toBe(1);
     // A genuinely translated axis title still stacks both languages.
     expect(svg).toContain('Price level');
-    expect(svg).toContain('價格水平');
+    expect(svg).toContain('物價水平');
   });
 
   it('scales every dimension so an export can rasterize at print resolution', () => {
@@ -222,7 +222,7 @@ describe('axis titles sit beside their own axis', () => {
     // the second line, and the `Math.max` floor is what stops a plot that starts near
     // the top from pushing the first line off the canvas — where an SVG silently clips.
     const diagram = createBlankDiagram();
-    diagram.y = { title: bi('Price level', '價格水平') };
+    diagram.y = { title: bi('Price level', '物價水平') };
     const svg = diagramSvg(diagram, { widthPx: 400, heightPx: 300, language: 'bilingual' });
     expect(Math.min(...textYs(svg))).toBeGreaterThan(0);
   });
