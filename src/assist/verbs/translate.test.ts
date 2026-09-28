@@ -114,12 +114,27 @@ describe('Fill missing 中文 over the real engine and store', () => {
     expect(filled).toBe(expected);
     expect(outcome.summary).toMatch(new RegExp(`^Filled ${expected} 中文 texts`));
     expect(outcome.items.filter((i) => i.targetKey !== undefined).length).toBeGreaterThan(expected / 2);
-    expect(run.progress).toHaveBeenCalledWith(0, expect.any(Number), 'Translating into 中文');
+    // Running progress counts what the summary counts: every text written, copies included.
+    expect(run.progress).toHaveBeenCalledWith(0, expected, 'Translating into 中文');
+    expect(run.progress).toHaveBeenLastCalledWith(expected, expected, 'Translating into 中文');
 
     expect(outcome.undo?.live()).toBe(true);
     outcome.undo!.run();
     expect(store().worksheet).toBe(before);
     expect(outcome.undo?.live()).toBe(false);
+  });
+
+  it('running progress and the summary count the same texts, symbol copies included', async () => {
+    load(paperOf([['Explain why the price rises.', ''], ['$200', '']]));
+    const zhOnly: OutputMode = { language: 'zh', version: 'student' };
+    const client = scriptedClient([(req) => reply(payloadOf(req).groups.flatMap((g) => g.items).map((i) => [i.key, `解釋：${i.text}`]))]);
+    const verb = translateVerb('zh', false, depsWith(client));
+    const run = io();
+    const outcome = await verb.run(ctx(zhOnly), run);
+    if (outcome.kind !== 'inserted') throw new Error(outcome.kind);
+    expect(run.progress).toHaveBeenCalledWith(0, 2, 'Translating into 中文');
+    expect(run.progress).toHaveBeenLastCalledWith(2, 2, 'Translating into 中文');
+    expect(outcome.summary).toMatch(/^Filled 2 中文 texts/);
   });
 
   it('a hard failure is never inserted; it comes back as a failed item with the reason', async () => {
