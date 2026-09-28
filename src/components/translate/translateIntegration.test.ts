@@ -8,7 +8,7 @@ import type { OutputMode, RichText, Worksheet } from '@/model/types';
 import { peekSecret, writeSecret } from '@/platform/secrets';
 import { AI_SETTINGS, readAiStatus } from '@/settings/aiSettings';
 import { appSettings } from '@/settings/store';
-import type { TranslateRequest } from '@/store/appDialogs';
+import { useAppDialogs, type TranslateRequest } from '@/store/appDialogs';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
 import { createRunDeps } from '@/translate/deps';
@@ -19,8 +19,8 @@ import { oneSided, readCorpus, referenceClient } from '@/translate/testKit';
 import type { TermRow } from '@/translate/types';
 import { filledFlash, replacedTermsFlash } from './copy';
 import { glossaryTermCount, scopeChoices, setupState, type TranslateView } from './SetupPanel';
-import { createTranslateController } from './translateController';
-import { acceptedKeys, createSessionStore, insertCount, probeOptions, termKey } from './translateSession';
+import { createTranslateController, type ControllerDeps } from './translateController';
+import { acceptedKeys, createSessionStore, hostAction, insertCount, probeOptions, termKey } from './translateSession';
 
 /**
  * The dialog's controller over the real producers: planTranslation, runTranslation,
@@ -64,7 +64,7 @@ function editZh(paths: ReadonlySet<TextPath>, zh: RichText = [{ text: '老師自
 const aiSettings = () => appSettings.read(AI_SETTINGS);
 
 /** The controller bound as TranslateHost binds it; only the AiClient and the flash are fakes. */
-function harness(client = referenceClient(buildAcceptanceWorksheet()), mode: OutputMode = { language: 'bilingual', version: 'student' }) {
+function harness(client = referenceClient(buildAcceptanceWorksheet()), mode: OutputMode = { language: 'bilingual', version: 'student' }, over: Partial<ControllerDeps> = {}) {
   const session = createSessionStore();
   const writes: TranslationWrite[][] = [];
   const reports: ApplyReport[] = [];
@@ -105,6 +105,7 @@ function harness(client = referenceClient(buildAcceptanceWorksheet()), mode: Out
     setModel: vi.fn(),
     openExternal: vi.fn(),
     showOnPage: vi.fn(),
+    ...over,
   });
   const request = (mode: TranslateRequest['mode']): TranslateRequest => ({ worksheetId: store().worksheet.id, mode, scope: { kind: 'paper' } });
   return { controller, session: () => session.getState().session, writes, reports, notify, closeDialog, client, request, glossary: () => glossaryLoaded };
@@ -345,5 +346,53 @@ describe('Setup over the real plan, glossary and settings', () => {
     next.controller.open({ ...next.request('translate'), scope: { kind: 'questions', ids: [store().worksheet.questions[0].id] } });
     expect(next.session().options?.includeTeacher).toBe(false);
     appSettings.write(AI_SETTINGS, { includeTeacherText: true });
+  });
+});
+
+describe('the Settings round trip through the real app-dialog store', () => {
+  /** TranslateHost's effect: what it does whenever the app dialog changes. */
+  function hosted(t: ReturnType<typeof harness>) {
+    const effect = () => {
+      const open = useAppDialogs.getState().open;
+      const action = hostAction(open, t.session(), { worksheetId: store().worksheet.id, readOnly: false });
+      if (action === 'open' && open?.kind === 'translate') t.controller.open(open.request);
+      else if (action === 'reset') t.controller.reset();
+      return action;
+    };
+    return effect;
+  }
+  const bound = (): Partial<ControllerDeps> => ({
+    closeDialog: () => useAppDialogs.getState().close(),
+    openSettings: (request, returnTo) => useAppDialogs.getState().openSettings(request, returnTo),
+  });
+
+  it('Set up → Continue to Translate resumes Setup with the options as the teacher left them', () => {
+    load(oneSided(buildAcceptanceWorksheet(), 'en'));
+    const t = harness(undefined, undefined, bound());
+    const effect = hosted(t);
+    useAppDialogs.getState().openTranslate(t.request('translate'));
+    expect(effect()).toBe('open');
+    t.controller.setOptions({ includeDiagramLabels: false });
+    t.controller.setUp('gemini');
+    expect(useAppDialogs.getState().open).toMatchObject({ kind: 'settings', request: { section: 'ai', params: { provider: 'gemini' } } });
+    expect(effect()).toBe('keep');
+    expect(t.session().options?.includeDiagramLabels).toBe(false);
+
+    useAppDialogs.getState().close({ resume: true });
+    expect(effect()).toBe('open');
+    expect(t.session()).toMatchObject({ phase: 'setup', mode: 'translate', options: { includeDiagramLabels: false } });
+  });
+
+  it('closing Settings without resuming drops the session', () => {
+    load(oneSided(buildAcceptanceWorksheet(), 'en'));
+    const t = harness(undefined, undefined, bound());
+    const effect = hosted(t);
+    useAppDialogs.getState().openTranslate(t.request('translate'));
+    effect();
+    t.controller.openSettings('model');
+    expect(effect()).toBe('keep');
+    useAppDialogs.getState().close();
+    expect(effect()).toBe('reset');
+    expect(t.session().request).toBeNull();
   });
 });
