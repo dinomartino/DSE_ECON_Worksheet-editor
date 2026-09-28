@@ -24,6 +24,8 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   everywhere.
 - **AI menu**: press ⌘J (Ctrl+J on Windows) to open one menu of AI actions for the
   whole paper or whatever you have selected.
+- Set up your AI key right where you use it — no trip to Settings. Pick Gemini, DeepSeek
+  or Qwen in the AI menu, paste your key, and the action you chose runs once it works.
 
 ### Changed
 - New diagrams and the sample paper now use the Education Bureau glossary's Chinese

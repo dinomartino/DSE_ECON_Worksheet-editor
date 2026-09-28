@@ -326,6 +326,7 @@ Invariants:
 - `src/assist/registry.ts:registerVerb` · `src/assist/registry.ts:verbs` — verbs self-register; `src/assist/verbs/index.ts` has one import per verb file
 - `src/assist/scope.ts:scopeFromSelection` · `src/assist/scope.ts:scopeLabel` — the selection as an `AiScope`, pure (multi-selection via the store's `selectedFlowIds`)
 - `src/assist/menuStore.ts:openAi` — what every entry point calls; `src/assist/runStore.ts:useAiRun` — one run at a time: running → review (after a direct insert) or error
+- `src/components/ai/SetupCard.tsx:SetupCard` — the no-key card inside the menu (provider, key, Save & continue → `onReady`); flow in `src/components/settings/sections/aiSection/setupCardFlow.ts:createSetupCardFlow` over the Settings runner
 - `src/components/ai/AiHost.tsx:AiHost` — mounted once in `EditorApp`; renders `src/components/ai/AiMenu.tsx` and `src/components/ai/AiBar.tsx`, owns ⌘J / Ctrl+J (`src/components/ai/shortcut.ts:shouldOpenAi`)
 
 Invariants:

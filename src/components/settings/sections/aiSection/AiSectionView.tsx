@@ -4,14 +4,15 @@ import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'rea
 import { looksLikeKey } from '@/ai/keyShape';
 import { PRESETS, presetFor } from '@/ai/providers';
 import { PROVIDER_IDS, type ModelInfo, type ProviderId, type ProviderPreset } from '@/ai/types';
-import { Button, CheckField, Pill } from '@/components/ui';
+import { Button, CheckField } from '@/components/ui';
 import { Collapsible } from '@/components/ui/Collapsible';
 import { GLOSSARY_ATTRIBUTION } from '@/glossary/attribution';
 import { secretStoreLabel } from '@/platform/secrets';
 import type { AiSettings } from '@/settings/aiSettings';
 import type { SettingsEnv } from '@/settings/types';
 import type { AiSectionActions } from './AiSection';
-import { canTest, qwenWorkspaceUrl, type AiSetupState } from './aiSetup';
+import { canTest, qwenWorkspaceUrl, TOP_PROVIDERS, type AiSetupState } from './aiSetup';
+import { HkNote, ProviderBadges } from './providerBadges';
 
 /**
  * The AI section's markup, driven entirely by props so each state renders in a test.
@@ -19,7 +20,7 @@ import { canTest, qwenWorkspaceUrl, type AiSetupState } from './aiSetup';
  * are one line. Chrome uses semantic tokens; every "not in Hong Kong" note is warn ink.
  */
 
-const TOP = PROVIDER_IDS.filter((id) => PRESETS[id].group === 'top');
+const TOP = TOP_PROVIDERS;
 const MORE = PROVIDER_IDS.filter((id) => PRESETS[id].group === 'more');
 const MORE_TITLE = `More providers — ${MORE.map((id) => PRESETS[id].label.split(' ')[0]).join(', ')}`;
 const OTHER_MODEL = '__other__';
@@ -130,13 +131,7 @@ function ProviderCard({
           {selected && <span className="h-2 w-2 rounded-full bg-accent" />}
         </span>
         <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink">{preset.label}</span>
-        {preset.recommended && <Pill tone="accent">Recommended</Pill>}
-        {preset.hk.status === 'available' && (
-          <span className="flex shrink-0 items-center gap-1 text-[11px] text-ink-muted">
-            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ok" />
-            Available in Hong Kong
-          </span>
-        )}
+        <ProviderBadges preset={preset} />
       </button>
       {children}
     </div>
@@ -544,16 +539,4 @@ function keyPlaceholder(state: AiSetupState): string {
   const saved = state.key.kind === 'saved' ? state.key : state.key.kind === 'editing' ? state.key.saved : undefined;
   if (!saved) return 'Paste your key';
   return saved.last4 ? `Saved key ending ${saved.last4} — paste to replace` : 'Saved key — paste to replace';
-}
-
-/** The warn-ink note for a provider Hong Kong can't use officially; a muted one otherwise. */
-function HkNote({ preset }: { preset: ProviderPreset }) {
-  if (preset.hk.status === 'available') return null;
-  const warn = preset.hk.status === 'notOfficial' || preset.hk.status === 'unavailable';
-  return (
-    <p className={warn ? 'rounded-md bg-warn-soft px-2 py-1.5 text-[11px] text-warn-ink' : 'text-[11px] text-ink-muted'}>
-      {warn && '⚠ '}
-      {preset.hk.note}
-    </p>
-  );
 }
