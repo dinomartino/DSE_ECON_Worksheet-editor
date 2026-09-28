@@ -64,8 +64,7 @@ function finish(en: string, zh: string, glossary: Glossary | null, notes: string
   if (glossary && zhRuns.length > 0 && enRuns.length > 0) {
     zhRuns = glossary.autoFix(plain(enRuns), zhRuns).runs;
     for (const term of glossary.checkEnToZh(plain(enRuns), plain(zhRuns))) {
-      // An answer is written, not translated: a term the Chinese leaves out is no finding.
-      if (term.severity === 'warn' && term.state !== 'missing') notes.push(`EDB: ${term.expected} for “${term.source.text}”`);
+      if (term.severity === 'warn') notes.push(`EDB: ${term.expected} for “${term.source.text}”`);
     }
   }
   return { en: normalizeRuns(enRuns), zh: normalizeRuns(zhRuns) };

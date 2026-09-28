@@ -79,6 +79,8 @@ import type {
 import type { EditTarget } from '@/render/ir';
 import { listQuestionTypes } from '@/registry';
 import { worksheetStore } from '@/storage';
+import { applyAnswerWrites } from '@/answers/apply';
+import type { AnswerApplyReport, AnswerWrite } from '@/answers/types';
 
 /**
  * The document store. **Every mutation goes through `commit`** — a pure recipe plus an
@@ -371,6 +373,12 @@ interface WorksheetState {
   setFirstPageMode: (which: 'header' | 'footer', mode: FirstPageMode) => void;
   /** Replace the page-1 rows — how a first-page preset is applied. */
   setFirstPageBands: (which: 'header' | 'footer', bands: Band[]) => void;
+  /**
+   * The AI answer writer's fills (`src/answers/`): one commit, one undo; a leaf edited
+   * since the plan is skipped, and only empty fields are written. Refused when read-only
+   * or when another document is open.
+   */
+  applyAnswerFills: (writes: readonly AnswerWrite[], opts: { worksheetId: string }) => AnswerApplyReport;
 }
 
 /** What page 1 prints, as a single closed choice. */
@@ -1310,6 +1318,19 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
         },
       };
     }),
+
+  applyAnswerFills: (writes, { worksheetId }) => {
+    const state = get();
+    if (state.readOnly) return { applied: [], skipped: [], refused: 'readOnly' };
+    if (state.worksheet.id !== worksheetId) return { applied: [], skipped: [], refused: 'otherDocument' };
+    let report: AnswerApplyReport = { applied: [], skipped: [] };
+    state.commit((draft) => {
+      const result = applyAnswerWrites(draft, writes);
+      report = result.report;
+      return result.worksheet;
+    });
+    return report;
+  },
 }));
 
 /**

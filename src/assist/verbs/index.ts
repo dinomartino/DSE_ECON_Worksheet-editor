@@ -3,3 +3,4 @@
  * e.g. `import './translate';` — `AiHost` imports this module for its side effects.
  */
 export {};
+import './writeAnswers';
