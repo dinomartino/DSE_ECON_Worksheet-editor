@@ -252,4 +252,24 @@ describe('testConnection', () => {
     const result = await testConnection(gemini, new AbortController().signal, instantDeps(fetch).deps);
     expect(result).toMatchObject({ ok: false, error: { kind: 'badKey', provider: 'gemini' } });
   });
+
+  it('gives up after the 30 s probe timeout, not the 120 s run timeout (listModels too)', async () => {
+    vi.useFakeTimers();
+    try {
+      const probe = fakeFetch(['hang']);
+      let settled = false;
+      const pending = testConnection(gemini, new AbortController().signal, instantDeps(probe.fetch).deps).finally(() => (settled = true));
+      await vi.advanceTimersByTimeAsync(29_999);
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(await pending).toMatchObject({ ok: false, error: { kind: 'timeout' } });
+
+      const list = fakeFetch(['hang']);
+      const models = createClient(gemini, instantDeps(list.fetch).deps).listModels(new AbortController().signal);
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(await models).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
