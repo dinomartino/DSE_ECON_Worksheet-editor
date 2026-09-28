@@ -21,7 +21,7 @@ export interface QualityQuestion {
   questionId: string;
   /** "Question 3". */
   where: string;
-  /** "multiple choice", "structured". */
+  /** The type's own words for the reviewer (`QualityView.format`). */
   format: string;
   anchors: QualityAnchor[];
 }

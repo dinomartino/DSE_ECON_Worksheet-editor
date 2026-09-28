@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { presetFor } from '@/ai/providers';
 import { AiError, type CompletionResult } from '@/ai/types';
@@ -85,6 +86,10 @@ describe('the request', () => {
     expect(payload.questions[2].entries.find((e) => e.key === 'q3.(c)')).toMatchObject({ marks: 3, marksTotal: true });
     expect(req.turns.at(-1)!.content).not.toMatch(/Q1o|Q3a|W1/);
     expect(PROMPT_VERSION).toMatch(/^e4\./);
+  });
+
+  it('carries the marker the mock provider answers by', () => {
+    expect(readFileSync('scripts/ai-mock-server.mjs', 'utf8')).toContain(`'${QUALITY_MARKER}'`);
   });
 
   it('chunks by whole question under the question budget', () => {
