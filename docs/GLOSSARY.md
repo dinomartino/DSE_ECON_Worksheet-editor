@@ -114,7 +114,8 @@ Words this repository uses in its own way. One line each, with where the thing l
 - **BiText** — `{ en, zh }`, the bilingual pair every authored string is. `src/model/text.ts`
 - **Settings** vs **Setup** — *Settings* is the app's: this browser or computer, every
   worksheet, never saved in one (`src/settings/sections.ts`). *Setup* is the document's own
-  dialog (`src/components/editor/DocumentSettings.tsx`, titled "Document setup").
+  dialog (`src/components/editor/DocumentSettings.tsx`); its Outline button still reads
+  "Settings" until the Translate entry points rename it "Setup" ("Document setup").
 - **Slot** — one BiText in a worksheet as the translation walk sees it: its path, kind,
   role and page target. `src/model/textSlots.ts:TextSlot`
 - **Fill** — write the missing side of a one-sided BiText; never overwrites a side that

@@ -50,7 +50,7 @@ export interface TermCheck {
   source: { text: string; start: number; end: number };
   state: TermState;
   severity: TermSeverity;
-  /** Rank-1 display, '/'-equals joined. */
+  /** The preferred display ('/'-equals joined): rank 1, or the entry's PREFERRED_OVERRIDES form. */
   expected: string;
   /** Original-string offsets. */
   found?: { text: string; start: number; end: number; rank: number };

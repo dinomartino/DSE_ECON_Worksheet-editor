@@ -1,6 +1,6 @@
 /**
  * The provider layer's contract. `src/ai/` imports nothing from React, the store,
- * `src/model`, `src/settings`, `@/platform` or `@tauri-apps/*`: it is plain transport.
+ * `src/model`, `src/settings`, `@/platform` or Tauri: it is plain transport.
  */
 
 export const PROVIDER_IDS = ['gemini', 'deepseek', 'qwen', 'openrouter', 'openai', 'anthropic', 'custom', 'ollama'] as const;

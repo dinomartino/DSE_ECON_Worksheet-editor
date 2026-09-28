@@ -41,9 +41,12 @@ export const replacedTermsFlash = (n: number): string => `Replaced ${n} ${plural
 
 // ---- paper check ----
 
-export const untranslatedFinding = (n: number): string => `${n} strings are written in one language only.`;
+/** Matches `checkPaper`'s existing wording, singular included. */
+export const untranslatedFinding = (n: number): string =>
+  `${n} ${n === 1 ? 'string is' : 'strings are'} written in one language only.`;
 export const PAPER_CHECK_TRANSLATE = 'Translate…';
-export const terminologyFinding = (n: number): string => `${n} terms differ from the EDB glossary.`;
+export const terminologyFinding = (n: number): string =>
+  `${n} ${n === 1 ? 'term differs' : 'terms differ'} from the EDB glossary.`;
 export const PAPER_CHECK_REVIEW_TERMS = 'Review terms…';
 
 // ---- footer ----
