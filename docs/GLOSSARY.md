@@ -112,3 +112,19 @@ Words this repository uses in its own way. One line each, with where the thing l
 - **Run** — one formatted span of text; `RichText` is `InlineRun[]` and a `\n` inside
   `run.text` is a real line break. `src/model/types.ts:InlineRun`
 - **BiText** — `{ en, zh }`, the bilingual pair every authored string is. `src/model/text.ts`
+- **Settings** vs **Setup** — *Settings* is the app's: this browser or computer, every
+  worksheet, never saved in one (`src/settings/sections.ts`). *Setup* is the document's own
+  dialog (`src/components/editor/DocumentSettings.tsx`, titled "Document setup").
+- **Slot** — one BiText in a worksheet as the translation walk sees it: its path, kind,
+  role and page target. `src/model/textSlots.ts:TextSlot`
+- **Fill** — write the missing side of a one-sided BiText; never overwrites a side that
+  has words (that is *re-translate*). `src/model/textSlots.ts:missingSide`
+- **Pin** — a glossary line put in the prompt next to the text it governs ("price level →
+  物價水平"). `src/glossary/types.ts:PinnedTerm`
+- **Rank-1 form** — the first rendering the EDB glossary lists for a term, the one pinned
+  and preferred; lower ranks still pass as "not preferred". The one exception table is
+  `src/glossary/types.ts:PreferredOverrides` (import → 進口).
+- **Deny form** — a known wrong or non-HK rendering of a glossary term (市場失靈 for market
+  failure), fixed deterministically; never itself a glossary variant.
+- **Symbol-only** — text with no words to translate (E₀, $14 000, MC = MR, AD); never sent
+  to a model, copied only when that side prints alone. `src/model/symbols.ts:isSymbolOnly`
