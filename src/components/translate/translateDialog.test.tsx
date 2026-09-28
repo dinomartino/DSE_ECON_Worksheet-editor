@@ -255,7 +255,9 @@ describe('Translate dialog · Review', () => {
     expect(row(markup, 't2')).toMatch(/line-through[^>]*>[\s\S]*供給減少/);
     expect(markup).toContain('Stopped · 3 of 4 translated');
     expect(markup.toUpperCase()).toContain('NUMBERS AND SYMBOLS · COPIED AS THEY ARE (1)');
-    expect(markup).toContain('Insert 3');
+    // Texts, not rows: the ×2 row is two, plus t2 and the copy.
+    expect(markup).toContain('Insert 4');
+    expect(markup).toContain('English → 中文 · 5 texts');
     expect(markup).toContain('Retry failed');
   });
 

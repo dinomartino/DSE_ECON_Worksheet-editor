@@ -2350,9 +2350,11 @@ once as `TranslateHost` in `EditorApp`. Copy: `src/components/translate/copy.ts`
   (Stop while running, Discard with rows pending). Stop keeps finished rows; a retry sends
   only the jobs without a usable result.
 - **Insert is one `applyTranslations` call**: one commit, one ⌘Z. If every write is stale,
-  the dialog stays open on "Nothing inserted". The flash counts rows, matching a skip to
-  its row by path (`ApplyReport.skipped[].path` is the `TranslationWrite.path` from
-  `writesFor`; `src/components/translate/translateIntegration.test.ts` pins it).
+  the dialog stays open on "Nothing inserted". Every count in the dialog is printed texts
+  (slots), as Setup's "Translate N" is: a ×2 row is two, a copied number one
+  (`src/components/translate/translateSession.ts:textsIn`). The flash matches a skip by path
+  (`ApplyReport.skipped[].path` is the `TranslationWrite.path` from `writesFor`;
+  `src/components/translate/translateIntegration.test.ts` pins it).
 - **The flash's Undo belongs to its commit** (`src/store/appDialogs.ts:NoticeAction`
   `live`): a later edit or ⌘Z retires it, never undoing something unrelated. Notices float
   under the toolbar's right edge, so they never reflow the bar.

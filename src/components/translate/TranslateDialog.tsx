@@ -10,7 +10,7 @@ import { ReviewFooter, ReviewPanel } from './ReviewPanel';
 import { RunningFooter, RunningPanel } from './RunningPanel';
 import { SetupFooter, SetupPanel, type TranslateView } from './SetupPanel';
 import type { TranslateController } from './translateController';
-import type { TranslateSession } from './translateSession';
+import { textsIn, type TranslateSession } from './translateSession';
 
 /** The body pads itself and scrolls its own pane; actions live in the footer. */
 function Pane({ children }: { children: ReactNode }) {
@@ -29,7 +29,7 @@ export function dialogDescription(session: TranslateSession, view: TranslateView
     if (direction === 'toEn') toEn = true;
   }
   const model = view.status.preset.models.find((m) => m.id === run.model)?.label ?? run.model;
-  return copy.reviewSummary({ directions: copy.directionsLabel(toZh, toEn), texts: run.results.size, model, ms: run.ms });
+  return copy.reviewSummary({ directions: copy.directionsLabel(toZh, toEn), texts: textsIn(run, run.results.keys()), model, ms: run.ms });
 }
 
 /**

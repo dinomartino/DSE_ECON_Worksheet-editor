@@ -107,7 +107,7 @@ describe('translateController', () => {
     expect(t.session().request).toBeNull();
   });
 
-  it('the flash counts rows like the Insert button: a ×2 row is one text', async () => {
+  it('the flash counts texts like the Insert button: a ×2 row is two', async () => {
     const twice = job('t1', 'Price ($)', { slots: [JOBS[0].slots[0], { ...JOBS[0].slots[0], path: 'q:Q3/dup' }] });
     const stale = (w: readonly TranslationWrite[]): ApplyReport => ({
       applied: w.length - 1,
@@ -121,7 +121,7 @@ describe('translateController', () => {
     t.scripted.release();
     await flush();
     t.controller.insert();
-    expect(t.deps.notify).toHaveBeenCalledWith('Filled 2 texts · 1 skipped (changed while translating)', expect.anything());
+    expect(t.deps.notify).toHaveBeenCalledWith('Filled 3 texts · 1 skipped (changed while translating)', expect.anything());
   });
 
   it('offers View 中文 when the filled side is hidden in the editor', async () => {
