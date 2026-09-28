@@ -53,7 +53,7 @@ function safeBaseUrl(url: string): URL | null {
 }
 
 function log(info: AiErrorInfo): void {
-  console.warn('AI request failed', { kind: info.kind, status: info.status });
+  if (info.kind !== 'cancelled') console.warn('AI request failed', { kind: info.kind, status: info.status });
 }
 
 export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): AiClient {
