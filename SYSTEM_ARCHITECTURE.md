@@ -2281,6 +2281,11 @@ with a dummy key or follows a documented shape.
   `sk-`) unless the teacher presses Test anyway. A key-shaped model id
   (`src/ai/keyShape.ts:looksLikeKey`) is refused by the settings validator, so it is never
   stored or shown.
+- **First-run setup is in the AI menu**, not Settings: `src/components/ai/SetupCard.tsx`
+  drives the same reducer and runner (`src/components/settings/sections/aiSection/setupCardFlow.ts`,
+  live deps in `aiSetupLive.ts`). Its radios only show a provider; the key is saved and
+  `ai.provider` committed only after a passing test (`requireOk`), then `onReady` runs the
+  clicked verb. Settings stays the place to manage providers, models and Remember.
 - **Status without the keychain.** `src/settings/aiSettings.ts:readAiStatus` reads settings
   and `peekSecret` only; on desktop `keychainSaved` is a presence flag, never key material.
   `resolveAiConfig` reads the key once per session and clears a stale flag.

@@ -22,6 +22,8 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
   everywhere.
 - **AI menu**: press ⌘J (Ctrl+J on Windows) to open one menu of AI actions for the
   whole paper or whatever you have selected.
+- Set up your AI key right where you use it — no trip to Settings. Pick Gemini, DeepSeek
+  or Qwen in the AI menu, paste your key, and the action you chose runs once it works.
 - **Questions from a source** (AI menu): paste a news extract or data description and
   get HKDSE questions built only on it — four MCQs (one with combination statements) for
   a Paper 1, a structured question with marks for a Paper 2, a mix for a worksheet —

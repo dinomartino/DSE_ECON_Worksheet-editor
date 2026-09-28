@@ -1,4 +1,4 @@
-import { presetFor } from '@/ai/providers';
+import { PRESETS, presetFor } from '@/ai/providers';
 import { keyShapeProblem } from '@/ai/keyShape';
 import { PROVIDER_IDS, type AiErrorInfo, type ConnectionTest, type ProviderId } from '@/ai/types';
 import type { SecretError, SecretStore } from '@/platform/secrets';
@@ -59,6 +59,9 @@ export type AiSetupEvent =
   | { type: 'baseUrl'; url: string | null }
   | { type: 'workspace'; value: string }
   | { type: 'remember'; value: boolean };
+
+/** The first-choice providers, in Settings order (Gemini first, Recommended). */
+export const TOP_PROVIDERS: readonly ProviderId[] = PROVIDER_IDS.filter((id) => PRESETS[id].group === 'top');
 
 export const isProviderId = (x: unknown): x is ProviderId =>
   typeof x === 'string' && (PROVIDER_IDS as readonly string[]).includes(x);
