@@ -44,6 +44,9 @@ describe('matchEn', () => {
     expect(keys('a co-operative society')).toEqual(['co-operative society']);
     expect(keys('the production possibility curve')).toEqual(['production-possibility curve']);
     expect(keys('tie-in sales')).toEqual(['tie-in-sales']);
+    expect(keys('deadweight losses')).toEqual(['deadweight loss']);
+    expect(keys('private enterprises')).toEqual([key(g.matchEn('private enterprise')[0].entryId)]);
+    expect(keys('franchises')).toEqual(keys('franchise'));
   });
 
   it('needs a capital for a one-word proper name', () => {

@@ -13,6 +13,7 @@ import {
   insertCount,
   isTicked,
   pendingKeys,
+  textsIn,
   reviewGroups,
   selectableKeys,
   unattemptedCount,
@@ -161,7 +162,7 @@ export function ReviewFooter({
       </Attribution>
       <Button onClick={actions.back}>{copy.BACK}</Button>
       {configured && pending > 0 && (
-        <Button onClick={actions.retry}>{unattempted > 0 ? copy.translateRest(pending) : copy.RETRY_FAILED}</Button>
+        <Button onClick={actions.retry}>{unattempted > 0 ? copy.translateRest(textsIn(run, pendingKeys(run))) : copy.RETRY_FAILED}</Button>
       )}
       <Button variant="primary" disabled={n === 0} onClick={actions.insert}>
         {copy.insertButton(n)}

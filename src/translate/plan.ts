@@ -114,9 +114,10 @@ export function planFromSlots(
     if (isSymbolOnly(source)) {
       // Re-translating never copies a symbol over text the teacher already has ('2024年').
       if (replacing) continue;
+      // Diagram text falls back and de-duplicates in the renderer: never copied, nor counted.
+      if (slot.fallsBack) continue;
       counts.symbols[direction] += 1;
-      // Diagram text falls back and de-duplicates in the renderer: never copied.
-      if (!slot.fallsBack && options.copySymbols[direction]) {
+      if (options.copySymbols[direction]) {
         copies.push({ ...planned, next: source.map((run) => ({ ...run })) });
         counts.copied += 1;
       }

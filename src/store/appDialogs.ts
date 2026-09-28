@@ -23,7 +23,13 @@ export interface SettingsRequest { section?: string; focus?: string; params?: Re
 export type AppDialog =
   | { kind: 'settings'; request: SettingsRequest; returnTo?: TranslateRequest }
   | { kind: 'translate'; request: TranslateRequest };
-export interface AppNotice { id: number; message: string; action?: { label: string; run: () => void } }
+export interface NoticeAction {
+  label: string;
+  run: () => void;
+  /** False once the action no longer applies; the toolbar then drops the notice. */
+  live?: () => boolean;
+}
+export interface AppNotice { id: number; message: string; action?: NoticeAction }
 export interface AppDialogsState {
   open: AppDialog | null;
   notice: AppNotice | null;

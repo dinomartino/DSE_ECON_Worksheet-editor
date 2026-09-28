@@ -1,3 +1,4 @@
+import { looksLikeKey } from './keyShape';
 import { presetFor } from './providers';
 import { isAiError, type AiAction, type AiErrorInfo, type AiErrorKind, type ProviderId } from './types';
 
@@ -111,7 +112,7 @@ const KEY_SHAPES = [/\bsk-ant-[\w-]+/g, /\bsk-[\w-]{8,}/g, /\bAIza[\w-]{20,}/g, 
 
 /** A model id that is, or contains, the key (pasted into the wrong field): never sent, never shown. */
 export function keyLikeModel(model: string, key: string | null): boolean {
-  return (!!key && key.length >= 4 && model.includes(key)) || /^(?:sk-|AIza)[\w-]{16,}$/.test(model);
+  return (!!key && key.length >= 4 && model.includes(key)) || looksLikeKey(model);
 }
 
 /** The key itself and anything shaped like a key removed; at most 300 characters. */

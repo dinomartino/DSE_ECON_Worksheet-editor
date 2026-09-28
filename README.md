@@ -56,8 +56,9 @@ Optional, only for the screenshot harness (`scripts/shot.mjs`):
   *not* download its own browser; the script launches your system Chrome via
   `channel: 'chrome'`. Skip this and everything else still works.
 
-There are **no environment variables**. Nothing in `src/` reads `process.env`, so there
-is no `.env` file to create and no secrets to obtain.
+The app has **no environment variables**. Nothing in `src/` reads `process.env`, so there
+is no `.env` file to create. Only the optional live translation eval
+(`npm run eval:translate`) reads provider keys, from `EVAL_*_KEY`.
 
 ## Getting started
 
@@ -70,14 +71,15 @@ Then, to check your environment is sound before you change anything:
 
 ```bash
 npm run typecheck    # tsc --noEmit
-npm test             # 750 unit + export tests, ~1s
+npm test             # ~2500 unit + export tests, ~7s
 npm run lint
 ```
 
-`typecheck` and `test` pass clean on a fresh checkout. `npm run lint` reports ~41
-pre-existing warnings (unused vars, exhaustive-deps) and **2 pre-existing errors**, both
-in `MarksTrail` (`src/components/preview/Preview.tsx`) from the React Compiler's
-`set-state-in-effect` and memoization rules. They flag a deliberate, documented pattern:
+`typecheck` and `test` pass clean on a fresh checkout. `npm run lint` reports 40
+pre-existing warnings (unused vars, exhaustive-deps) and **3 pre-existing errors**: a ref
+read during render in `src/components/preview/InlineEditable.tsx`, and two in
+`src/components/preview/Preview.tsx` from the React Compiler's `set-state-in-effect` and
+memoization rules. The `MarksTrail` one flags a deliberate, documented pattern:
 the marks label's placement can only be decided by measuring the laid-out line, so the
 measurement must run in a layout effect and set state (see *"(4 marks)" sits on the last
 line with text* in [`SYSTEM_ARCHITECTURE.md`](./SYSTEM_ARCHITECTURE.md)). Treat any *new*
@@ -108,6 +110,7 @@ download it as portable `.json` (images included, base64-encoded) or load one ba
 | `npm run test:watch` | The same suite in watch mode. |
 | `npm run typecheck` | `tsc --noEmit`. |
 | `npm run lint` | ESLint (`eslint-config-next`). |
+| `npm run eval:translate` | Live translation eval against real providers; reads `EVAL_*_KEY` (outside `npm test`). |
 | `npm run samples` | Writes real `.docx` files to `/tmp/econ-samples` so you can open them in Word by hand. Override with `SAMPLE_DIR=./out`. |
 
 `npm run samples` is the fastest way to eyeball export changes:
@@ -264,8 +267,11 @@ key) in **Settings → AI & translation** (⋯ → Settings…).
 
 - **What is sent:** only the texts the teacher chose to translate (a whole paper, a
   question, a figure or one field), plus already-translated lines from the same question
-  for context — the Translate dialog states both counts before anything is sent. Nothing
-  leaves before an explicit Translate, Fill or Save & test click.
+  for context. When a paper, a question or a larger figure is translated, the Translate
+  dialog states both counts before anything is sent; a single Fill (a field, or a page
+  item with three or fewer texts) sends when it is clicked. Nothing leaves before an
+  explicit Translate, Fill, Save & test or List my models click (List my models sends
+  only the key).
 - **To whom:** straight from the browser (or the desktop app) to the chosen provider —
   Gemini, DeepSeek, Qwen, OpenRouter, OpenAI, Anthropic, a custom OpenAI-compatible
   endpoint or a local Ollama. There is no server of ours in between.
@@ -274,7 +280,7 @@ key) in **Settings → AI & translation** (⋯ → Settings…).
   stores data in mainland China. The settings card for each provider says which applies.
 - **The key stays on the device:** in this browser's storage (for the session, or
   remembered if asked) or the desktop's system keychain. It is never written into a
-  worksheet, a backup, an export or the settings file, and is sent only in a request
+  worksheet, a backup, an export or the app's saved settings, and is sent only in a request
   header to its own provider.
 
 Check terms (comparing a worksheet's Chinese with the EDB Economics glossary) needs no

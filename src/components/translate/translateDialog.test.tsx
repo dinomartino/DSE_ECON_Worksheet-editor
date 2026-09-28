@@ -255,7 +255,9 @@ describe('Translate dialog · Review', () => {
     expect(row(markup, 't2')).toMatch(/line-through[^>]*>[\s\S]*供給減少/);
     expect(markup).toContain('Stopped · 3 of 4 translated');
     expect(markup.toUpperCase()).toContain('NUMBERS AND SYMBOLS · COPIED AS THEY ARE (1)');
-    expect(markup).toContain('Insert 3');
+    // Texts, not rows: the ×2 row is two, plus t2 and the copy.
+    expect(markup).toContain('Insert 4');
+    expect(markup).toContain('English → 中文 · 5 texts');
     expect(markup).toContain('Retry failed');
   });
 
@@ -368,6 +370,21 @@ describe('Translate dialog · Check terms', () => {
     expect(render(checking(), view({ glossaryFailed: true }))).toContain('Terminology check unavailable');
     expect(render(checking(), view(), [])).toContain('No term differs from the EDB glossary.');
     expect(render(checking())).toContain('Compare the Chinese with the EDB Economics glossary. No key needed.');
+  });
+
+  it('a lone textbook variant is offered unticked, not counted as something to fix', () => {
+    const variant: TermRow = {
+      path: 'q:Q2/stem',
+      slot: slot('Question 2'),
+      en: rt('Define tax incidence.'),
+      zh: rt('定義稅項歸宿。'),
+      checks: [check({ en: 'tax incidence', expected: '稅收承擔', found: { text: '稅項歸宿', start: 2, end: 6, rank: 0 }, fix: { start: 2, end: 6, to: '稅收承擔', kind: 'deny', denyKind: 'variant' } })],
+    };
+    const markup = render(checking(), view(), [variant]);
+    expect(markup).toContain('1 textbook variant');
+    expect(markup).not.toContain('to fix');
+    expect(markup).toContain('A textbook form; EDB lists 稅收承擔 first. Tick to replace.');
+    expect(markup).not.toMatch(/type="checkbox"[^>]*checked=""/);
   });
 
   it('wrong forms pre-ticked with a preview; lower ranks and manual finds grouped apart', () => {

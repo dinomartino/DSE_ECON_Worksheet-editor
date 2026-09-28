@@ -163,6 +163,13 @@ describe('source facts', () => {
     expect(symbols('Name the ECON test. NONE of these, write TOTAL.')).toEqual([]);
   });
 
+  it('never lists an acronym Chinese translates: 美國, 世界貿易組織, 研究及發展', () => {
+    const symbols = (text: string) => latinSymbolsOf([{ text }]);
+    for (const text of ['The US and the EU', 'The HKSAR, the WTO and the MPF', 'R&D and TV', 'In Q1(a), use AI', 'TRUE or FALSE? You MUST'])
+      expect(symbols(text), text).toEqual([]);
+    expect(symbols('SRAS meets AD; MSC exceeds MPC at Q1')).toEqual(['SRAS', 'AD', 'MSC', 'MPC', 'Q1']);
+  });
+
   it('shares one word list with isSymbolOnly', () => {
     for (const word of [...EMPHASIS_WORDS, ...CAPITAL_WORDS]) {
       expect(CAPITAL_WORDS.has(word), word).toBe(true);

@@ -2,7 +2,7 @@ import type { RunProgress } from '@/translate/types';
 import { Button } from '@/components/ui';
 import * as copy from './copy';
 import type { TranslateController } from './translateController';
-import { pendingKeys, type TranslateSession } from './translateSession';
+import { pendingKeys, textsIn, type TranslateSession } from './translateSession';
 
 export function phaseLine(progress: RunProgress | null, provider: string): string {
   switch (progress?.phase) {
@@ -20,7 +20,7 @@ export function phaseLine(progress: RunProgress | null, provider: string): strin
 /** One request per direction for a typical paper: the bar moves in request steps. */
 export function RunningPanel({ session, provider }: { session: TranslateSession; provider: string }) {
   const plan = session.run?.plan;
-  const texts = session.run ? pendingKeys(session.run).length : 0;
+  const texts = session.run ? textsIn(session.run, pendingKeys(session.run)) : 0;
   const progress = session.progress;
   const total = progress?.requestsTotal ?? plan?.chunks.length ?? 0;
   const done = progress?.requestsDone ?? 0;

@@ -2101,9 +2101,8 @@ Fill the missing language of a worksheet (EN ↔ 繁中, Hong Kong) with the tea
 AI key; check Chinese terms against the EDB Economics glossary (2020) without a key; and
 an app-wide Settings dialog that holds the provider and key.
 
-**Status:** live on `develop` (unreleased). The pill, the page menu, the Outline, field
-fills, Export's paper check and Settings are the entry points; each subsection below is
-owned by the package that built it.
+The pill, the page menu, the Outline, field fills, Export's paper check and Settings are
+the entry points.
 
 Rules every part keeps:
 
@@ -2116,13 +2115,10 @@ Rules every part keeps:
 - **Collected from the model, never the IR or DOM**, so derived numbers, marks and default
   wording never reach a request, and an absent prefix or suffix stays absent.
 - **One commit per batch**, every write stale-guarded; `readOnly` is inert.
-- **Network only on an explicit click** (Translate, Fill, Save & test).
+- **Network only on an explicit click** (Translate, Fill, Save & test, List my models).
 - **One app dialog at a time** (`src/store/appDialogs.ts`): Translate and Settings hand off
   and never stack.
-- **Contracts first.** Each module below was created with its final signature before its
-  body; a signature change is a contract change across packages.
 
-<!-- e2:glossary start -->
 ### The glossary (`src/glossary/`)
 
 The EDB Economics glossary (2020), bundled verbatim as `src/glossary/data/edb-economics-2020.json`
@@ -2152,7 +2148,8 @@ data is evidence: corrections and policy live in `src/glossary/overrides.ts`, ne
   term — stops 低彈性需求 passing for "elastic demand". Only a single-word term may also be
   covered by a term the source rewords ("unitary elastic" → 需求彈性; `reshapedInSource`).
   A covering term whose key extends the source key also stands (`extendsKey`: demand →
-  需求曲線, tax → 徵稅); one that only contains it (inelastic, non-price) does not.
+  需求曲線, tax → 徵稅); one that only contains it (inelastic, non-price) or inflects it
+  (quantity demanded) does not.
   A rendering inside or touching a deny form never counts. Generic-tier words are info only.
 - **Fixes are safe to apply together.** They never overlap: a fix inside a longer one drops
   its result (總供給 → 總供應 mends supply's 供給). None spans folded-away text (a line
@@ -2162,12 +2159,13 @@ data is evidence: corrections and policy live in `src/glossary/overrides.ts`, ne
   first, under the same guards, never inside sub/superscripts; the new text takes the
   format of the span's first character.
 - **Pins** (`src/glossary/pin.ts`): the preferred rendering only, first occurrence first,
-  capped at 200; ZH→EN never pins a generic word or a one-character term.
+  capped at 200; ZH→EN never pins a generic word, a one-character term, or a piece of an
+  elasticity predicate (缺乏(價格)彈性 is "(price) inelastic", not scarcity). The reverse
+  check (`checkZhToEn`) skips the same hits, and warns only on a missing 3+ character term
+  with a multi-word key; a word the English may rephrase (徵稅, 企業) is a note.
 - **Seeds stay on the glossary**: `src/glossary/seededTerms.test.ts` checks every template,
   preset and sample — no warning, and rank 1 except the rank-2 gap short forms.
-<!-- e2:glossary end -->
 
-<!-- e2:text start -->
 ### Text slots, the walk and apply
 
 `src/model/textSlots.ts` is the contract: `TextSlot`, `TextWalker`, `TranslationWrite`,
@@ -2207,9 +2205,7 @@ data is evidence: corrections and policy live in `src/glossary/overrides.ts`, ne
 - **Guards.** `src/model/textWalk.census.test.ts` proves every stored `{en, zh}` in the
   corpus, presets, fixtures, diagram templates and `src/test/translateFixture.ts` is a slot;
   `src/model/diagramText.test.ts` holds diagram text to `handleText` parity.
-<!-- e2:text end -->
 
-<!-- e2:ai start -->
 ### The provider layer (`src/ai/`)
 
 Contracts in `src/ai/types.ts`; presets are data (`src/ai/providers.ts`); one flat response
@@ -2223,7 +2219,8 @@ way to a provider: it checks the config, runs the structured-output ladder and t
   No `temperature` for anyone; Gemini never gets `thinkingBudget`.
 - **One file sends.** `src/ai/http.ts:send` is the only `fetch` in `src/`
   (`src/test/networkCalls.test.ts`): `credentials:'omit'`, `redirect:'error'`, no referrer,
-  body capped at 2 MB, the key only in a header (`x-goog-api-key`, `x-api-key`, Bearer).
+  the response body read to at most 2 MB, the key only in a header (`x-goog-api-key`,
+  `x-api-key`, Bearer).
   Transport retries live here: a 429 once if it asks ≤ 20 s, a 5xx or overload twice, a
   network `TypeError` once. The caller's signal and the timer are combined by hand; the
   abort reason decides `cancelled` vs `timeout`.
@@ -2237,18 +2234,14 @@ way to a provider: it checks the config, runs the structured-output ladder and t
   its project's API (Settings discards a bad key); one naming a model is `model`.
 - **Nothing unsafe is sent.** No key, an `http:` base URL off this computer, credentials or
   an unfilled `{WorkspaceId}` in the URL, or a malformed or key-shaped model id fail before
-  any request; `keyShapeProblem`
-  (`src/ai/keyShape.ts`) stops a key visibly from another provider (`sk-ant-`, `sk-or-`
-  checked before the generic `sk-`).
+  any request.
 - **`testConnection`** sends one real item with the pin `price level → 物價水平`: it proves
   key, region, CORS, model and dialect in one call and caches the working rung.
 
 `src/ai/` imports nothing else in `src/` and no React, zustand or Tauri
 (`src/ai/imports.test.ts`). Error bodies in `src/ai/fixtures/` say whether each was recorded
 with a dummy key or follows a documented shape.
-<!-- e2:ai end -->
 
-<!-- e2:settings start -->
 ### App Settings and secrets
 
 "Settings" is the app (this browser or computer, every worksheet); "Setup" is the document.
@@ -2270,14 +2263,18 @@ with a dummy key or follows a documented shape.
   Done, Continue, Escape, ✕ and the scrim then ask "Discard / Save & test" in the footer.
   Every route is the pure `closeStep` in the dialog file.
 - **The AI section**: `src/components/settings/sections/ai.ts` registers it (imported by
-  the index only when Translate ships); the pane is
+  `src/components/settings/sections/index.ts`); the pane is
   `src/components/settings/sections/aiSection/AiSection.tsx` over the pure
   `src/components/settings/sections/aiSection/aiSetup.ts`, its effects in the injected
   `src/components/settings/sections/aiSection/aiSetupRunner.ts`. A deep link opens a card;
   only a card click or a saved key commits `ai.provider`. Only a rejected key (`badKey`,
   `keyBlocked`) is not saved after a test. A flow takes its provider before its first
   await: a card switched meanwhile drops the result, so a key is never saved or sent under
-  another provider. List my models passes the same key-shape check as Save & test.
+  another provider. Save & test and List my models stop a key visibly from another
+  provider (`src/ai/keyShape.ts:keyShapeProblem`; `sk-ant-`, `sk-or-` before the generic
+  `sk-`) unless the teacher presses Test anyway. A key-shaped model id
+  (`src/ai/keyShape.ts:looksLikeKey`) is refused by the settings validator, so it is never
+  stored or shown.
 - **Status without the keychain.** `src/settings/aiSettings.ts:readAiStatus` reads settings
   and `peekSecret` only; on desktop `keychainSaved` is a presence flag, never key material.
   `resolveAiConfig` reads the key once per session and clears a stale flag.
@@ -2292,9 +2289,7 @@ with a dummy key or follows a documented shape.
   `econ-worksheet:`, so documents, the index, backups and "Clear saved documents" never
   touch them (`src/test/secretsNeverLeave.test.ts`). The older per-viewer keys
   (`econgen.startView`, `econgen.lastFolder`, …) stay where they are.
-<!-- e2:settings end -->
 
-<!-- e2:engine start -->
 ### The translation engine (`src/translate/`)
 
 Pure modules with injected dependencies; types in `src/translate/types.ts`.
@@ -2312,8 +2307,14 @@ Pure modules with injected dependencies; types in `src/translate/types.ts`.
   sub/superscript, or an added number, label or marks, is a fail and is **never applied**.
   HKEAA forms that rewrite Latin letters, currency or paper furniture (甲國, 500港元, 總供需圖,
   中六, 試卷一) are one table, `src/translate/conventions.ts`, which also renders prompt rule
-  12. Clock times and durations spelled in Chinese keep their numbers; cover and band
-  lines may break anywhere. Hong Kong punctuation, forms and CJK–Latin spacing:
+  12. Clock times and durations spelled in Chinese, counting words and ordinals (兩個原因,
+  第二季), a rescaled amount (450億 for 45 billion) and 5% for 5 per cent keep their
+  numbers; cover and band
+  lines may break anywhere. A symbol to keep is 1–2 capitals (D, AD, E1), a scripted
+  token or a listed diagram label (SRAS, MSC); acronyms Chinese writes out (US, WTO, GDP,
+  PPF, R&D) are not symbols. "Demand is (price) inelastic" as 富(價格)彈性, or "elastic" as
+  缺乏彈性, is a `polarity` warn that unticks the row and sends it to repair: the glossary
+  holds only the noun phrases. Hong Kong punctuation, forms and CJK–Latin spacing:
   `src/translate/normalize.ts`; Simplified detection by S→T pairs that are never valid
   Traditional and never one-to-many: `src/translate/simplified.ts`.
 - **Prompt** (`src/translate/promptText.ts` words, `src/translate/prompt.ts` assembly): a
@@ -2335,9 +2336,7 @@ Pure modules with injected dependencies; types in `src/translate/types.ts`.
 - **Eval** (`evals/translate.eval.ts`, `npm run eval:translate`): live providers from
   `EVAL_*_KEY` environment variables, outside `npm test`; the report stays out of the
   repo.
-<!-- e2:engine end -->
 
-<!-- e2:dialog start -->
 ### The Translate dialog (`src/components/translate/`)
 
 One dialog, two modes (Translate, Check terms), opened through `useAppDialogs` and mounted
@@ -2354,9 +2353,14 @@ once as `TranslateHost` in `EditorApp`. Copy: `src/components/translate/copy.ts`
   (Stop while running, Discard with rows pending). Stop keeps finished rows; a retry sends
   only the jobs without a usable result.
 - **Insert is one `applyTranslations` call**: one commit, one ⌘Z. If every write is stale,
-  the dialog stays open on "Nothing inserted". The flash counts rows, matching a skip to
-  its row by path (`ApplyReport.skipped[].path` is the `TranslationWrite.path` from
-  `writesFor`; `src/components/translate/translateIntegration.test.ts` pins it).
+  the dialog stays open on "Nothing inserted". Every count in the dialog is printed texts
+  (slots), as Setup's "Translate N" is: a ×2 row is two, a copied number one
+  (`src/components/translate/translateSession.ts:textsIn`). The flash matches a skip by path
+  (`ApplyReport.skipped[].path` is the `TranslationWrite.path` from `writesFor`;
+  `src/components/translate/translateIntegration.test.ts` pins it).
+- **The flash's Undo belongs to its commit** (`src/store/appDialogs.ts:NoticeAction`
+  `live`): a later edit or ⌘Z retires it, never undoing something unrelated. Notices float
+  under the toolbar's middle, so they never reflow the bar.
 - **Never stacked.** Settings is offered only in Setup and Error, by replacing the app
   dialog with `returnTo`; the session store keeps scope, options and finished rows across
   the round trip. The host closes a request for another document or a read-only one.
@@ -2365,9 +2369,7 @@ once as `TranslateHost` in `EditorApp`. Copy: `src/components/translate/copy.ts`
   fill and opens on Check terms.
 - **Setup's scopes** add the editor's selected question and page element to whatever the
   entry sent, so the paper-wide entries (pill, ⋯ menu) can still narrow.
-<!-- e2:dialog end -->
 
-<!-- e2:entry start -->
 ### Entry points
 
 Every Translate entry point builds its request in `src/components/translate/translateMenu.ts`
@@ -2395,9 +2397,9 @@ Outline row and the paper check's links. Each is absent when the document is rea
   before Translate opens, so dialogs never stack.
 - **Browser run:** `scripts/ai-verify.mjs` serves `out/`, points Custom at
   `scripts/ai-mock-server.mjs` (canned replies, no key) and asserts nothing is sent before an
-  explicit Translate, Fill or Save & test click. Production code has no test hooks.
+  explicit Translate, Fill, Save & test or List my models click. Production code has no
+  test hooks.
   It runs Chromium and WebKit; `--only=entry,journey,edge,error,settings` picks groups.
-<!-- e2:entry end -->
 
 ---
 

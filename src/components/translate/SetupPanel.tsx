@@ -110,6 +110,7 @@ function OptionRow({
   count,
   checked,
   disabled,
+  nested,
   onChange,
 }: {
   label: string;
@@ -117,10 +118,12 @@ function OptionRow({
   count: number;
   checked: boolean;
   disabled?: boolean;
+  /** Part of the texts counted above (teacher text, diagram labels), not more of them. */
+  nested?: boolean;
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className={`flex items-start gap-2.5 py-1 ${disabled ? 'cursor-default' : 'cursor-pointer'}`}>
+    <label className={`flex items-start gap-2.5 py-1 ${nested ? 'pl-6' : ''} ${disabled ? 'cursor-default' : 'cursor-pointer'}`}>
       <input
         type="checkbox"
         checked={checked}
@@ -242,6 +245,7 @@ function SetupOptions({
         {counts.teacher > 0 && (
           <OptionRow
             label={copy.OPTION_TEACHER}
+            nested
             count={counts.teacher}
             checked={options.includeTeacher}
             onChange={(on) => actions.setOptions({ includeTeacher: on })}
@@ -250,6 +254,7 @@ function SetupOptions({
         {counts.diagramLabels > 0 && (
           <OptionRow
             label={copy.OPTION_DIAGRAM}
+            nested
             count={counts.diagramLabels}
             checked={options.includeDiagramLabels}
             onChange={(on) => actions.setOptions({ includeDiagramLabels: on })}

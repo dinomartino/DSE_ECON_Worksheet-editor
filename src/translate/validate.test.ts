@@ -110,6 +110,16 @@ describe('validateItem', () => {
       .not.toEqual(expect.arrayContaining([expect.stringMatching(/^(numbers|breaks|duration)/)]));
   });
 
+  it('accepts the HKEAA number forms the prompt asks for', () => {
+    expect(codes([{ text: 'Give ' }, { text: '2', bold: true }, { text: ' reasons why demand rises.' }], '舉出<b>兩個</b>原因，解釋需求為何上升。')).not.toContain('numbers:warn');
+    expect(codes('Prices rose by 5 per cent.', '價格上升了5%。')).toEqual([]);
+    expect(codes('Spending is $45 billion.', '開支為450億元。')).toEqual([]);
+    expect(codes('It cost $3.2 million.', '成本為320萬元。')).toEqual([]);
+    expect(codes('政府開支為450億元。', 'Government spending is $45 billion.', 'part', 'toEn')).toEqual([]);
+    expect(codes('In the 2nd quarter, output fell.', '在第二季，產量下跌。')).toEqual([]);
+    expect(codes('It cost $3.2 million.', '成本為32萬元。')).toContain('numbers:warn');
+  });
+
   it('keeps symbols, satisfied by the HKEAA conventions', () => {
     expect(codes('AD shifts to the right.', '總需求向右移。')).toContain('symbols:warn');
     expect(codes('AD shifts to the right.', 'AD向右移。')).toEqual([]);
@@ -120,11 +130,24 @@ describe('validateItem', () => {
     expect(codes('Country X imports cars.', 'X國進口汽車。')).toEqual([]);
   });
 
+  it('keeps plural and lower-case lettered names: Countries A and B → 甲、乙兩國', () => {
+    for (const [en, zh, kind] of [
+      ['Countries A and B trade with each other.', '甲國和乙國互相貿易。', 'part'],
+      ['Countries A and B trade with each other.', '甲、乙兩國互相貿易。', 'part'],
+      ['Students A and B disagree.', '學生甲和學生乙意見不同。', 'part'],
+      ['Answer all questions in Sections A and B.', '甲部和乙部所有題目均須作答。', 'instructions'],
+      ['In country A, wages rose.', '在甲國，工資上升。', 'part'],
+      ['Country E exports rice.', '戊國出口米。', 'part'],
+    ] as const) expect(codes(en, zh, kind), en).not.toContain('symbols:warn');
+  });
+
   it('checks heading colons, combination options and length', () => {
     expect(codes('Section A: Short questions', '甲部 短題目', 'sectionHeading')).toContain('colon:warn');
     expect(codes('Section A: Short questions', '甲部：短題目', 'sectionHeading')).toEqual([]);
     expect(codes('(1) and (3) only', '第一及第三項', 'option')).toContain('combination:warn');
     expect(codes('Explain why the price of rice rises.', '解')).toContain('length:warn');
+    for (const [zh, en] of [['2025年', '2025'], ['上午10時', '10 am'], ['2024年度', '2024'], ['下午3時30分', '3:30 pm']])
+      expect(codes(zh, en, 'tableCell', 'toEn'), zh).not.toContain('length:warn');
   });
 });
 
@@ -176,9 +199,30 @@ describe('validateItem through the pipeline (normalise first)', async () => {
     expect(through('需求上升。', 'Demand rises.', 'toEn')).toEqual([]);
   });
 
+  it('toEn emphasis: any bold counting word or negation, kept by bold capitals', () => {
+    const bold = (before: string, word: string, after: string): RichText => [{ text: before }, { text: word, bold: true }, { text: after }];
+    expect(codes(bold('舉出', '兩種', '方法。'), 'Give two ways.', 'part', 'toEn')).toContain('emphasis:warn');
+    expect(codes(bold('選答', '一題', '。'), 'Answer one question.', 'instructions', 'toEn')).toContain('emphasis:warn');
+    expect(codes(bold('價格', '未必', '上升。'), 'The price will not necessarily rise.', 'part', 'toEn')).toContain('emphasis:warn');
+    expect(codes(bold('列出', '三個', '因素。'), 'List <b>THREE</b> factors.', 'part', 'toEn')).not.toContain('emphasis:warn');
+    expect(codes(bold('下列哪項', '不正確', '？'), 'Which of the following is <b>INCORRECT</b>?', 'stem', 'toEn')).not.toContain('emphasis:warn');
+  });
+
+  it('flags a reversed elasticity predicate, which the glossary cannot see', () => {
+    expect(through('Demand for rice is price inelastic.', '米的需求富價格彈性。')).toContain('polarity:warn');
+    expect(through('Demand for rice is elastic.', '米的需求缺乏彈性。')).toContain('polarity:warn');
+    expect(through('Demand for rice is price inelastic.', '米的需求缺乏價格彈性。')).toEqual([]);
+    expect(through('Demand for rice is elastic.', '米的需求富彈性。')).toEqual([]);
+    // The noun phrase is the term check's conflict, not a second note.
+    expect(through('Rice has an elastic demand.', '米的需求缺乏彈性。')).not.toContain('polarity:warn');
+  });
+
   it('keeps an abbreviation rendered through its glossary term', () => {
     expect(through('GDP rises.', '本地生產總值上升。')).toEqual([]);
     expect(through('Real GDP falls.', '實質本地生產總值下降。')).toEqual([]);
-    expect(through('Real GDP falls.', '實質產出下降。')).toContain('symbols:warn');
+    // GDP is an acronym, not a diagram symbol: the term check owns 產出 for real GDP.
+    expect(through('Real GDP falls.', '實質產出下降。')).not.toContain('symbols:warn');
+    expect(through('The US imposes a tariff on steel.', '美國向鋼鐵徵收關稅。')).not.toContain('symbols:warn');
+    expect(through('Draw a PPF.', '畫出生產可能曲線。')).toEqual([]);
   });
 });

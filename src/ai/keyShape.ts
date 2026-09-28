@@ -9,6 +9,9 @@ const OWNED_PREFIXES: ReadonlyArray<readonly [string, ProviderId]> = [
   ['AIza', 'gemini'],
 ];
 
+/** Text shaped like an API key (sk-…, AIza…): never stored or shown as a model id. */
+export const looksLikeKey = (text: string): boolean => /^(?:sk-|AIza)[\w-]{16,}$/.test(text.trim());
+
 const article = (label: string) => (/^[AEIOU]/.test(label) ? 'an' : 'a');
 
 /**

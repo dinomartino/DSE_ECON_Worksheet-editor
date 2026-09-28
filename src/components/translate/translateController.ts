@@ -158,9 +158,18 @@ export function createTranslateController(deps: ControllerDeps) {
   function flashAction(writes: readonly TranslationWrite[]): AppNotice['action'] {
     const shown = deps.getMode().language;
     const hidden = shown === 'bilingual' ? undefined : writes.find((w) => w.side !== shown)?.side;
-    return hidden
-      ? { label: viewSideAction(hidden), run: () => deps.showSide(hidden) }
-      : { label: UNDO_ACTION, run: deps.undo };
+    return hidden ? { label: viewSideAction(hidden), run: () => deps.showSide(hidden) } : undoAction();
+  }
+
+  /** Undoes the commit just made, and only while it is still the latest: a later edit,
+   *  ⌘Z or a second click retires it rather than undoing something unrelated. */
+  function undoAction(): NonNullable<AppNotice['action']> {
+    const committed = deps.getWorksheet();
+    const live = () => deps.getWorksheet() === committed;
+    const run = () => {
+      if (live()) deps.undo();
+    };
+    return { label: UNDO_ACTION, run, live };
   }
 
   function apply(writes: readonly TranslationWrite[]): ApplyReport | null {
@@ -250,7 +259,7 @@ export function createTranslateController(deps: ControllerDeps) {
       const skipped = new Set(result.skipped.map((s) => s.path));
       let terms = 0;
       for (const write of writes) if (!skipped.has(write.path)) terms += accepted.get(write.path)?.size ?? 0;
-      report(result, replacedTermsFlash(terms), { label: UNDO_ACTION, run: deps.undo });
+      report(result, replacedTermsFlash(terms), undoAction());
     },
     showOnPage(slot: TextSlot) {
       finish();

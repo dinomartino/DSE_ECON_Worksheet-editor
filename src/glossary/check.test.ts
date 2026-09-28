@@ -128,11 +128,16 @@ describe('checkEnToZh states (§D.7)', () => {
     expect(only('The price rose.', '非價格競爭')).toMatchObject({ state: 'missing', conflict: { meansEn: 'non-price competition' } });
   });
 
+  it('需求量 is quantity demanded, never demand; the supply case already warned', () => {
+    expect(only('Demand for rice increases.', '米的需求量增加。')).toMatchObject({ state: 'missing', severity: 'warn', conflict: { meansEn: 'quantity demanded' } });
+    expect(only('Supply of rice increases.', '米的供應量增加。')).toMatchObject({ state: 'missing', conflict: { meansEn: 'quantity supplied' } });
+  });
+
   it('extendsKey: every key word equals or starts a word of the longer key', () => {
     const e = (en: string) => ({ en, enForms: [en] }) as unknown as GlossaryEntry;
     expect(extendsKey(e('demand curve'), e('demand'))).toBe(true);
     expect(extendsKey(e('taxation'), e('tax'))).toBe(true);
-    expect(extendsKey(e('quantity demanded'), e('demand'))).toBe(true);
+    expect(extendsKey(e('quantity demanded'), e('demand'))).toBe(false);
     expect(extendsKey(e('supply curves'), e('supply curve'))).toBe(true);
     expect(extendsKey(e('inelastic demand'), e('elastic demand'))).toBe(false);
     expect(extendsKey(e('non-price competition'), e('price'))).toBe(false);
@@ -210,6 +215,19 @@ describe('checkZhToEn', () => {
   it('keeps a term with several keys at info', () => {
     const [c] = g.checkZhToEn('廠商的總收入', "The firm's total revenue");
     expect(c).toMatchObject({ en: 'total revenue', state: 'info', severity: 'info', expected: 'aggregate income / total revenue' });
+  });
+
+  it('a word the English may inflect or rephrase is a note, not a warn', () => {
+    expect(g.checkZhToEn('政府向香煙徵稅', 'The government imposes a tax on cigarettes')).toEqual([
+      expect.objectContaining({ source: expect.objectContaining({ text: '徵稅' }), state: 'missing', severity: 'note' }),
+    ]);
+  });
+
+  it('never reads an elasticity predicate as terms: 缺乏 there is not scarcity', () => {
+    const checks = g.checkZhToEn('若需求缺乏價格彈性，價格上升。', 'If demand is price inelastic, price rises.');
+    expect(checks.map((c) => c.source.text)).toEqual(['需求']);
+    expect(checks.every((c) => c.severity === 'none')).toBe(true);
+    expect(g.checkZhToEn('其麵包的需求缺乏彈性。', 'Demand for its bread is inelastic.').filter((c) => c.severity === 'warn')).toEqual([]);
   });
 
   it('skips generic words and one-character terms', () => {

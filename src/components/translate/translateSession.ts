@@ -246,24 +246,32 @@ export function acceptedKeys(session: TranslateSession): Set<string> {
   return keys;
 }
 
-export function insertCount(session: TranslateSession): number {
-  const copies = session.run?.plan.copies.length ?? 0;
-  return acceptedKeys(session).size + (session.acceptCopies ? copies : 0);
+/**
+ * The dialog's one unit is the printed text (slot), as Setup's "Translate N" counts it: a
+ * deduped row (×2) is two texts, and each copied number is one.
+ */
+export function textsIn(run: RunRecord, keys: Iterable<string>): number {
+  let n = 0;
+  for (const key of keys) n += run.plan.jobs.get(key)?.slots.length ?? 0;
+  return n;
 }
 
-/** Insert's outcome in the button's unit, rows: a deduped row (×n) is one, and counts as
- *  filled when any of its slots was written. `filled + skipped` = `insertCount`. */
+function insertPaths(session: TranslateSession): TextPath[] {
+  const run = session.run;
+  if (!run) return [];
+  const paths = [...acceptedKeys(session)].flatMap((key) => run.plan.jobs.get(key)?.slots.map((s) => s.path) ?? []);
+  if (session.acceptCopies) paths.push(...run.plan.copies.map((write) => write.path));
+  return paths;
+}
+
+/** Texts Insert writes: the ticked rows' slots, plus the copies when ticked. */
+export const insertCount = (session: TranslateSession): number => insertPaths(session).length;
+
+/** Insert's outcome in the button's unit. `filled + skipped` = `insertCount`. */
 export function insertTally(session: TranslateSession, skippedPaths: ReadonlySet<TextPath>): { filled: number; skipped: number } {
-  const rows: TextPath[][] = [];
-  for (const key of acceptedKeys(session)) rows.push(session.run?.plan.jobs.get(key)?.slots.map((s) => s.path) ?? []);
-  if (session.acceptCopies) for (const write of session.run?.plan.copies ?? []) rows.push([write.path]);
-  let filled = 0;
-  let skipped = 0;
-  for (const paths of rows) {
-    if (paths.some((path) => !skippedPaths.has(path))) filled += 1;
-    else skipped += 1;
-  }
-  return { filled, skipped };
+  const paths = insertPaths(session);
+  const skipped = paths.filter((path) => skippedPaths.has(path)).length;
+  return { filled: paths.length - skipped, skipped };
 }
 
 /** What Escape, ✕ or the scrim does now. Paid work is never lost to one stray press. */

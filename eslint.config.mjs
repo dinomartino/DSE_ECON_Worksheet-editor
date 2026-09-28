@@ -52,6 +52,8 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "src-tauri/target/**",
+    // Agent worktrees carry their own copies of src/.
+    ".claude/**",
   ]),
 ]);
 

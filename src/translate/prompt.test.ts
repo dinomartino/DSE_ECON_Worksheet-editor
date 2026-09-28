@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { presetFor } from '@/ai/providers';
 import { loadGlossary } from '@/glossary/load';
+import { plain } from '@/model/text';
 import type { SlotKind } from '@/model/textSlots';
 import { CONVENTIONS } from './conventions';
 import { fakeGlossary } from './fakeGlossary';
@@ -11,7 +12,7 @@ import { evaluateItem, finalize } from './run';
 import type { Chunk, Direction, TranslationJob } from './types';
 import { decodeWire, encodeRuns } from './wire';
 
-const RENDERED_SHA = '524879dfc2d23d29b6e026a7d1afe9c9a1819c43d7aaed691b51407a36bc4872';
+const RENDERED_SHA = '32a397d362db6b71e247759d433fc7ccb75bfc0990b47874174e67b9ca45dfaf';
 
 function rendered(): string {
   return [
@@ -23,7 +24,7 @@ function rendered(): string {
 describe('prompt', () => {
   it('is pinned: a change needs a new PROMPT_VERSION and an eval run', () => {
     const sha = createHash('sha256').update(rendered()).digest('hex');
-    expect(PROMPT_VERSION).toBe('e2.1');
+    expect(PROMPT_VERSION).toBe('e2.2');
     expect(sha, 'prompt changed: bump PROMPT_VERSION and re-run npm run eval:translate').toBe(RENDERED_SHA);
   });
 
@@ -123,6 +124,11 @@ describe('few-shot answers pass the app’s own pipeline', async () => {
           expect(result.status, item.key).toBe('ready');
         }
       }
+    });
+
+    it(`${direction}: shows the glossary lines pin() really sends for these sources`, () => {
+      const sources = shot.user.groups.flatMap((group) => group.items.map((item) => plain(decodeRoundTrip(item.text))));
+      expect(shot.user.glossary).toEqual(glossary.pin(sources, direction, { denyHints: true }).map((pin) => pin.line));
     });
   }
 });

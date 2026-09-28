@@ -98,6 +98,9 @@ describe('an AI key never leaves the secrets store', () => {
     expect(keychain.get('ai:openrouter')).toBe(KEYS.openrouter);
     vi.stubGlobal('window', window());
     pane.selectProvider('deepseek');
+    pane.model(KEYS.gemini); // pasted into the wrong field: refused
+    pane.model(KEYS.deepseek);
+    expect(settings.read(AI_SETTINGS).models.deepseek).toBeUndefined();
     pane.model('deepseek-flash');
     await pane.listModels();
     pane.draft(KEYS.deepseek);
@@ -122,6 +125,13 @@ describe('an AI key never leaves the secrets store', () => {
       if (name.startsWith('econgen.settings.')) expect(String(local[name])).not.toMatch(/"(sk-|AIza)/);
     }
     expect(Object.keys(local).some((name) => name.startsWith('econgen.settings.'))).toBe(true);
+  });
+
+  it('a key already stored as a model id is dropped on read', () => {
+    local = new FakeStorage();
+    local.setItem('econgen.settings.ai', JSON.stringify({ v: 1, provider: 'gemini', models: { gemini: KEYS.gemini, deepseek: 'deepseek-flash' } }));
+    const settings = createSettingsStore(() => local, { desktop: false });
+    expect(settings.read(AI_SETTINGS).models).toEqual({ deepseek: 'deepseek-flash' });
   });
 
   it('survives "Clear saved documents", with settings', async () => {

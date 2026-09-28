@@ -107,7 +107,7 @@ describe('translateController', () => {
     expect(t.session().request).toBeNull();
   });
 
-  it('the flash counts rows like the Insert button: a ×2 row is one text', async () => {
+  it('the flash counts texts like the Insert button: a ×2 row is two', async () => {
     const twice = job('t1', 'Price ($)', { slots: [JOBS[0].slots[0], { ...JOBS[0].slots[0], path: 'q:Q3/dup' }] });
     const stale = (w: readonly TranslationWrite[]): ApplyReport => ({
       applied: w.length - 1,
@@ -121,7 +121,7 @@ describe('translateController', () => {
     t.scripted.release();
     await flush();
     t.controller.insert();
-    expect(t.deps.notify).toHaveBeenCalledWith('Filled 2 texts · 1 skipped (changed while translating)', expect.anything());
+    expect(t.deps.notify).toHaveBeenCalledWith('Filled 3 texts · 1 skipped (changed while translating)', expect.anything());
   });
 
   it('offers View 中文 when the filled side is hidden in the editor', async () => {
@@ -317,5 +317,28 @@ describe('translateController', () => {
     t.controller.replaceTerms(rows);
     expect(t.applied[0].map((w) => w.path)).toEqual(['a']);
     expect(t.deps.notify).toHaveBeenCalledWith('Replaced 1 term', expect.objectContaining({ label: 'Undo' }));
+  });
+
+  it("the flash's Undo undoes its own commit only while that commit is the latest", async () => {
+    let ws = { ...createWorksheet(), id: WS_ID };
+    const t = setup({
+      getWorksheet: () => ws,
+      apply: vi.fn((writes: readonly TranslationWrite[]): ApplyReport => {
+        ws = { ...ws };
+        return { applied: writes.length, skipped: [], resized: 0 };
+      }),
+    });
+    t.controller.open(PAPER_REQUEST);
+    t.controller.translate();
+    await flush();
+    t.scripted.release();
+    await flush();
+    t.controller.insert();
+    const action = vi.mocked(t.deps.notify).mock.calls[0][1]!;
+    expect(action.live?.()).toBe(true);
+    ws = { ...ws }; // a later edit, or ⌘Z
+    expect(action.live?.()).toBe(false);
+    action.run();
+    expect(t.deps.undo).not.toHaveBeenCalled();
   });
 });

@@ -14,8 +14,9 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 
 ### Added
 - **Translate**: fill the missing 中文 or English of a worksheet with AI, using your own
-  key (Gemini, DeepSeek, Qwen and others). Every line is shown for review before it goes
-  in, Economics terms follow the Education Bureau glossary, and one Undo takes it all back.
+  key (Gemini, DeepSeek, Qwen and others). A paper or question is shown line by line for
+  review before it goes in; a single field fills in place. Economics terms follow the
+  Education Bureau glossary, and one Undo takes it all back.
 - **Check terms**: compare a worksheet's Chinese with the EDB glossary and fix
   non-standard terms in one click — no key needed.
 - **Settings** (⋯ → Settings…): app-wide preferences for this browser or computer,
@@ -29,6 +30,8 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   paper would (寫出…, **一個**). Worksheets you already made keep their wording.
 - The ‘untranslated’ count now covers the whole paper — cover, header and footer, tables
   and diagram labels — and shows in 中文 mode too.
+- Status messages such as "Exported .pdf" float under the toolbar instead of pushing the
+  page down, and "Saved" shows its time when you point at it.
 
 ## 0.4.0 — 2026-09-27
 

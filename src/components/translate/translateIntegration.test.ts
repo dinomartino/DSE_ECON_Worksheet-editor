@@ -151,7 +151,7 @@ describe('Translate over the real engine and store', () => {
     expect(store().past).toHaveLength(0);
   });
 
-  it('a text edited while translating is skipped by the path writesFor gave it; the flash counts rows', async () => {
+  it('a text edited while translating is skipped by the path writesFor gave it; the flash counts texts', async () => {
     const t = await translatedToReview();
     const run = t.session().run!;
     const accepted = [...acceptedKeys(t.session())].map((key) => run.plan.jobs.get(key)!);
@@ -173,7 +173,8 @@ describe('Translate over the real engine and store', () => {
     }
     expect(report.applied).toBe(t.writes[0].length - stale.size);
     expect(store().past).toHaveLength(1);
-    expect(t.notify).toHaveBeenCalledWith(filledFlash(count - 1, 1), expect.anything());
+    expect(t.notify).toHaveBeenCalledWith(filledFlash(count - 2, 2), expect.anything());
+    expect(count).toBe(t.writes[0].length);
   });
 
   it('a batch that is all stale inserts nothing: no undo entry, the dialog stays with its message', async () => {

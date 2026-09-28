@@ -88,13 +88,15 @@ export const REPAIR_LINE =
   'Items with "previous" and "fix": return a corrected translation that changes only what the fix notes ask.';
 
 /** Original sentences; no HKEAA rubric text is reproduced. A test runs every answer
- *  through the app's own pipeline: zero fails, zero warns, zero warn-severity terms. */
+ *  through the app's own pipeline: zero fails, zero warns, zero warn-severity terms; its
+ *  glossary lines are exactly what `pin` sends for these sources. */
 export const FEWSHOT_TO_ZH: { user: PromptPayload; model: Array<{ key: string; text: string }> } = {
   user: {
     task: 'translate',
     glossary: [
-      'per unit tax → 從量稅', 'deadweight loss → 效率損失', 'consumer surplus → 消費者盈餘', 'quantity demanded → 需求量',
-      'perfect competition → 完全競爭', 'export → 出口 [quantity or value]', '[only if economic sense] price → 價格 / 物價',
+      'per unit tax → 從量稅', 'deadweight loss → 效率損失', 'tax → 稅', 'consumer surplus → 消費者盈餘 (not 消費者剩餘)',
+      'perfect competition → 完全競爭', '[only if economic sense] price → 價格 / 物價', 'quantity demanded → 需求量',
+      'export → 出口 [quantity or value]',
     ],
     groups: [
       {
@@ -132,7 +134,10 @@ export const FEWSHOT_TO_ZH: { user: PromptPayload; model: Array<{ key: string; t
 export const FEWSHOT_TO_EN: { user: PromptPayload; model: Array<{ key: string; text: string }> } = {
   user: {
     task: 'translate',
-    glossary: ['效率損失 → deadweight loss', '比較優勢 → comparative advantage', '從量稅 → per unit tax'],
+    glossary: [
+      '效率損失 → deadweight loss / efficiency loss — choose by context', '比較優勢 → comparative advantage',
+      '從量稅 → per unit tax / unit tax — choose by context', '消費者 → consumer',
+    ],
     groups: [
       {
         where: 'Question 2',

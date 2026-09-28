@@ -52,6 +52,10 @@ describe('English folds', () => {
     expect(singular('indices')).toBe('index');
     expect(singular('theses')).toBe('thesis');
     expect(singular('goods')).toBe('good');
+    expect(singular('losses')).toBe('loss');
+    expect(singular('businesses')).toBe('business');
+    expect(singular(foldEnToken('enterprises'))).toBe(foldEnToken('enterprise'));
+    expect(singular('freezes')).toBe('freeze');
     for (const word of ['economics', 'gross', 'bonus', 'analysis', 'various']) expect(singular(word)).toBe(word);
   });
 

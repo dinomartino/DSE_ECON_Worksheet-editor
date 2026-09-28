@@ -119,11 +119,22 @@ export function digitGroups(text: string): string[] {
   return folded.match(/\d+(?:\.\d+)?%?/g) ?? [];
 }
 
+/** Capitals of three or more letters that label a curve or area on a diagram. PPF is not
+ *  one: Chinese may write out 生產可能曲線. */
+const DIAGRAM_SYMBOLS: ReadonlySet<string> = new Set([
+  'SRAS', 'LRAS', 'ATC', 'AVC', 'AFC', 'TFC', 'TVC', 'LRAC', 'SRAC', 'LRMC', 'SRMC', 'DWL',
+  'MSB', 'MSC', 'MPB', 'MPC', 'MEB', 'MEC', 'MRP', 'MFC', 'VMP',
+]);
+/** Short capitals a Chinese sentence rightly translates (美國, 人工智能), never keeps. */
+const NOT_SYMBOLS: ReadonlySet<string> = new Set(['US', 'UK', 'EU', 'HK', 'UN', 'AI', 'TV', 'IT']);
+
 /**
  * Symbol tokens in prose (what the `symbols` check compares): a Latin token carrying a
- * sub/superscript (P₁), or 1–5 capitals with optional digits (D, AD, SRAS, E1) — except
- * English words in capitals (`CAPITAL_WORDS`, the list `isSymbolOnly` uses), the pronoun I, a sentence-initial A before a lower-case word, and any
- * token inside a run of two or more all-capital words (END OF PAPER, SECTION A).
+ * sub/superscript (P₁), 1–2 capitals with optional digits (D, AD, E1), or a longer diagram
+ * symbol (`DIAGRAM_SYMBOLS`: SRAS, MSC) — except English words in capitals (`CAPITAL_WORDS`,
+ * the list `isSymbolOnly` uses), acronyms Chinese translates (`NOT_SYMBOLS`, R&D, Q1(a)), the
+ * pronoun I, a sentence-initial A before a lower-case word, and any token inside a run of
+ * two or more all-capital words (END OF PAPER, SECTION A).
  */
 export function latinSymbolsOf(runs: RichText): string[] {
   const list = cells(runs);
@@ -146,6 +157,9 @@ export function latinSymbolsOf(runs: RichText): string[] {
     const scripted = word !== match[0] || /[₀-₉]/.test(word);
     if (!scripted) {
       if (!/^[A-Z]{1,5}$/.test(letters) || CAPITAL_WORDS.has(letters) || letters === 'I') return;
+      if (NOT_SYMBOLS.has(letters) || (letters.length > 2 && !DIAGRAM_SYMBOLS.has(letters))) return;
+      if (text[end] === '&' || text[start - 1] === '&') return; // R&D
+      if (/^Q\d+$/.test(match[0]) && text[end] === '(') return; // Q1(a): a question number
       const next = words[index + 1];
       const prev = words[index - 1];
       if (letters === 'A' && next && /^[a-z]/.test(next[0]) && /^\s+$/.test(gap(match, next))) {

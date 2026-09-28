@@ -284,7 +284,7 @@ through `AppSettingsHost` alone.
 - `src/glossary/seededTerms.test.ts` — every seeded template, preset and sample passes the check
 - `src/ai/types.ts:ProviderPreset` · `src/ai/types.ts:AiError` · `src/ai/providers.ts:PRESETS` · `src/ai/schema.ts:ITEMS_SCHEMA` · `src/ai/schema.ts:parseItemsPayload`
 - `src/ai/client.ts:createClient` · `src/ai/client.ts:testConnection` — config check, the structured-output ladder, the rung cache
-- `src/ai/http.ts:send` — the only `fetch` in `src/`; fetch hygiene, 2 MB cap, timeouts, transport retries
+- `src/ai/http.ts:send` — the only `fetch` in `src/`; fetch hygiene, 2 MB response cap, timeouts, transport retries
 - `src/ai/errors.ts:mapHttpError` · `src/ai/errors.ts:mapThrown` · `src/ai/errors.ts:isSchemaRejection` · `src/ai/errors.ts:redact` — table-driven error mapping, teacher-facing messages
 - `src/ai/adapters/gemini.ts:geminiAdapter` · `src/ai/adapters/openaiCompat.ts:openaiCompatAdapter` · `src/ai/adapters/anthropic.ts:anthropicAdapter` — wire shapes (`src/ai/adapters/adapter.ts:Adapter`)
 - `src/ai/keyShape.ts:keyShapeProblem` — a key from another provider is never sent without "test anyway"

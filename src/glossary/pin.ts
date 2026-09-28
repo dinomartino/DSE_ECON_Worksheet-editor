@@ -71,7 +71,7 @@ export function pin(
     const src = foldZh(text);
     for (const seg of index.zh.matchFolded(src.folded)) {
       if (pins.length >= limit) return pins;
-      const candidates = pinnableZh(index, seg);
+      const candidates = pinnableZh(index, seg, src.folded);
       const key = candidates?.map((e) => e.id).join(',');
       if (!candidates || !key || seen.has(key)) continue;
       seen.add(key);

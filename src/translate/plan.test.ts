@@ -77,7 +77,8 @@ describe('planFromSlots', () => {
     const on = planFromSlots('ws', [cell, tick], paper, options({ copySymbols: { toZh: true, toEn: false } }));
     expect(on.jobs.size).toBe(0);
     expect(on.copies).toEqual([{ path: cell.path, side: 'zh', sourceSnapshot: cell.text.en, targetSnapshot: [], next: [{ text: '2024' }] }]);
-    expect(on.counts).toMatchObject({ symbols: { toZh: 2, toEn: 0 }, copied: 1 });
+    // The tick is never copied, so Setup's copy row doesn't count it either.
+    expect(on.counts).toMatchObject({ symbols: { toZh: 1, toEn: 0 }, copied: 1 });
     const off = planFromSlots('ws', [cell, tick], paper, options({ copySymbols: { toZh: false, toEn: true } }));
     expect(off.copies).toEqual([]);
   });

@@ -1,6 +1,5 @@
 import { newId } from './factories';
 import { bi, emptyBiText, isBiTextEmpty } from './text';
-import type { BiText } from './types';
 import type {
   MarkEc,
   MarkGroup,
@@ -164,20 +163,4 @@ export function schemeMismatch(
   if (!scheme || isSchemeEmpty(scheme) || printedMarks === undefined) return undefined;
   const total = schemeMax(scheme);
   return total === printedMarks ? undefined : { scheme: total, printed: printedMarks };
-}
-
-/** Every authored string in a scheme, for the translation count. */
-export function schemeTexts(scheme: MarkScheme | undefined): BiText[] {
-  if (!scheme) return [];
-  const texts: BiText[] = [];
-  for (const route of schemeRoutes(scheme)) {
-    for (const group of routeGroups(route)) {
-      for (const point of groupPoints(group)) {
-        texts.push(point.text, ...(point.alternatives ?? []));
-      }
-    }
-  }
-  for (const level of schemeLevels(scheme)) texts.push(level.descriptor);
-  for (const row of scheme.ec?.descriptors ?? []) texts.push(row.text);
-  return texts.filter((text): text is BiText => Boolean(text && text.en && text.zh));
 }

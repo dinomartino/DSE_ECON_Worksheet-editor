@@ -13,7 +13,6 @@ import {
   routesDisagree,
   schemeMax,
   schemeMismatch,
-  schemeTexts,
 } from './markScheme';
 import type { MarkGroup, MarkPoint, MarkScheme } from './markSchemeTypes';
 import { bi } from './text';
@@ -138,16 +137,6 @@ describe('a malformed saved scheme', () => {
     const broken = { routes: [{ id: 'r' }, { id: 'q', groups: [{ id: 'g' }] }] } as unknown as MarkScheme;
     expect(isSchemeEmpty(broken)).toBe(true);
     expect(schemeMax(broken)).toBe(0);
-    expect(schemeTexts(broken)).toEqual([]);
     expect(schemeMax({} as MarkScheme)).toBe(0);
-  });
-});
-
-describe('schemeTexts', () => {
-  it('lists every authored string', () => {
-    const s = scheme([group([{ ...point('a', 1), alternatives: [bi('a2', '')] }])]);
-    s.levels = [{ ...createMarkLevel(), descriptor: bi('L1', '') }];
-    s.ec = createMarkEc();
-    expect(schemeTexts(s)).toHaveLength(2 + 1 + 3);
   });
 });

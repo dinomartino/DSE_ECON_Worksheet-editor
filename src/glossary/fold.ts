@@ -97,7 +97,8 @@ export function singular(token: string): string {
   if (token === 'indices') return 'index';
   if (/theses$/.test(token)) return token.slice(0, -2) + 'is';
   if (/[^aeiou]ies$/.test(token)) return token.slice(0, -3) + 'y';
-  if (/(ch|sh|x|z)es$/.test(token)) return token.slice(0, -2);
+  // losses → loss; enterprizes (folded -ise) → enterprize, never enterpriz.
+  if (/(ss|ch|sh|x|zz)es$/.test(token)) return token.slice(0, -2);
   if (token.endsWith('s')) return token.slice(0, -1);
   return token;
 }

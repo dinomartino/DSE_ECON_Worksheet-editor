@@ -65,7 +65,7 @@ export interface PlanCounts {
   toEn: number;
   teacher: number;
   diagramLabels: number;
-  /** Symbol-only slots found. */
+  /** Symbol-only slots a copy could fill (never diagram text): Setup's copy row. */
   symbols: { toZh: number; toEn: number };
   /** Copies that will be written. */
   copied: number;
@@ -105,7 +105,8 @@ export interface PromptPayload {
 export type IssueCode =
   | 'missingKey' | 'duplicateKey' | 'empty' | 'untranslated' | 'unbalanced' | 'unknownStyle'
   | 'blanks' | 'breaks' | 'scripts' | 'derived' | 'wordingDigits' | 'simplified' | 'latinInZh'
-  | 'emphasis' | 'styles' | 'numbers' | 'symbols' | 'duration' | 'colon' | 'combination' | 'length';
+  | 'emphasis' | 'styles' | 'numbers' | 'symbols' | 'duration' | 'colon' | 'combination' | 'length'
+  | 'polarity';
 export interface Issue { code: IssueCode; severity: 'fail' | 'warn' | 'note'; message: string }
 export interface JobResult {
   key: string;
