@@ -9,7 +9,7 @@ import { useWorksheetStore } from '@/store/worksheetStore';
 import { downloadWorksheetFile, worksheetStore } from '@/storage';
 import { isDesktop, revealFile, revealLabel } from '@/platform';
 import { Button, IconButton, Pill, Segmented } from '@/components/ui';
-import { DownloadIcon, PageSetupIcon, RedoIcon, SettingsIcon, UndoIcon } from '@/components/ui/icons';
+import { ChevronRightIcon, DownloadIcon, PageSetupIcon, RedoIcon, SettingsIcon, UndoIcon } from '@/components/ui/icons';
 import { Menu } from '@/components/ui/Menu';
 import { Dialog } from '@/components/ui/Dialog';
 import { AppMark } from '@/components/ui/AppMark';
@@ -56,6 +56,33 @@ export function UntranslatedPill({ count, onOpen }: { count: number; onOpen?: ()
     >
       <Pill tone="warn">{pillLabel(count)}</Pill>
     </button>
+  );
+}
+
+/**
+ * `[mark] Worksheets › name`: the mark and word are one button home to the start screen.
+ * Below `xl` the word and chevron fold away, so the crumb adds no width at laptop sizes;
+ * the mark keeps the name. The ⋯ menu's "Worksheets…" stays as the second route.
+ */
+export function HomeCrumb({ onOpenFiles }: { onOpenFiles: () => void }) {
+  return (
+    <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1">
+      <button
+        type="button"
+        aria-label="All worksheets"
+        title="All worksheets"
+        onClick={onOpenFiles}
+        className="flex shrink-0 cursor-pointer items-center gap-2 rounded-md p-1 text-[13px] font-medium text-ink-muted transition-[background-color,color,scale] duration-150 ease-out-soft hover:bg-surface-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97] xl:pr-2"
+      >
+        {/* The app's own face, shared with the browser tab (`src/app/icon.svg`). */}
+        <span className="flex text-ink">
+          <AppMark size={22} />
+        </span>
+        <span className="hidden xl:inline">Worksheets</span>
+      </button>
+      <ChevronRightIcon size={13} className="hidden text-ink-subtle xl:block" />
+      <DocumentName />
+    </nav>
   );
 }
 
@@ -271,23 +298,9 @@ export function Toolbar({
   return (
     <div className="zone-dark relative border-b border-line bg-surface px-4 py-2.5">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        {/* Identity gets a mark, not just a word. A tool with a face on it reads as a
-            product; a bare bold string reads as a page heading.
-
-            The mark carries the app; the word beside it names the *document*. Printing
-            the app's own name there spent the most prominent slot on the one fact a
-            teacher already knows, while the document's name — which the `.docx`
-            downloads as, and which is all that distinguishes one mock paper from the
-            next — appeared nowhere in the editor. */}
-        <span className="flex items-center gap-2">
-          {/* The app's own face, shared with the browser tab (`src/app/icon.svg`).
-              It was a serif `W.` monogram, which read as a *document's* initial in
-              the one slot that names the *tool*. */}
-          <span title="Worksheet — HKDSE Economics" className="flex shrink-0 text-ink">
-            <AppMark size={22} />
-          </span>
-          <DocumentName />
-        </span>
+        {/* The mark carries the app and the way home; the name beside it is the
+            *document's* — what the `.docx` downloads as. */}
+        <HomeCrumb onOpenFiles={onOpenFiles} />
 
         <span className="h-6 w-px bg-line" />
 

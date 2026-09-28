@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Button } from '@/components/ui';
+import { Button, IconButton } from '@/components/ui';
 import {
   exportsFolder,
   isDesktop,
@@ -16,7 +16,7 @@ import {
 } from '@/platform';
 import { Dialog } from '@/components/ui/Dialog';
 import { AppMark } from '@/components/ui/AppMark';
-import { ArchiveIcon, FolderIcon, FolderOpenIcon, SheetIcon } from '@/components/ui/icons';
+import { ArchiveIcon, ChevronLeftIcon, FolderIcon, FolderOpenIcon, SettingsIcon, SheetIcon } from '@/components/ui/icons';
 import type { MenuItem } from '@/components/ui/Menu';
 import { VersionLine } from '@/components/editor/UpdateBanner';
 import { FeedbackDialog } from '@/components/feedback/FeedbackDialog';
@@ -72,7 +72,7 @@ import {
 } from '@/storage/folders';
 import { useSettingsSections } from '@/settings/sections';
 import { useAppDialogs } from '@/store/appDialogs';
-import { START_SETTINGS_LINK } from '@/components/translate/copy';
+import { isMacPlatform } from '@/components/settings/shortcut';
 
 /** A dropped file from either source: a browser `File`, or a desktop path. */
 type Dropped = { name: string; type?: string; read: () => Promise<Uint8Array | Blob> };
@@ -103,12 +103,13 @@ type Notice = {
  *
  * A full screen rather than a dialog over the editor: a dialog would have a blank
  * document rendering behind the choice of which document to open, which reads as though
- * the choice has already been made. Reached again later from the File menu, where
- * "Open…" now means this rather than a bare file picker.
+ * the choice has already been made. Reached again later from the toolbar's
+ * "Worksheets" crumb, or ⋯ → Worksheets….
  */
 export function StartScreen({
   onOpen,
   onClose,
+  returnTo,
   onTrashed,
 }: {
   onOpen: (worksheet: Worksheet, language?: LanguageMode) => void;
@@ -118,10 +119,12 @@ export function StartScreen({
    * Leave without opening anything, or `undefined` when there is nothing to go back to.
    *
    * Absent on first load — there is no editor behind the screen yet, so a Cancel would
-   * dismiss to nothing. Present when reopened from the File menu, where the document
+   * dismiss to nothing. Present when reopened from the editor, where the document
    * being edited is still there to return to.
    */
   onClose?: () => void;
+  /** The open document's name, for the "Back to …" control that `onClose` wears. */
+  returnTo?: string;
 }) {
   const [summaries, setSummaries] = useState<WorksheetSummary[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -643,17 +646,26 @@ export function StartScreen({
         rail, so the screen reads as the same room as the tool it opens.
       */}
       <aside className="zone-light flex shrink-0 flex-col overflow-y-auto border-b border-line bg-surface px-9 pb-8 pt-9 lg:h-full lg:w-[400px] lg:border-b-0 lg:border-r">
+        {/* Named, and first in the panel: a bare "Back" in the header's corner did not
+            say where it went. */}
+        {onClose && (
+          <Button
+            variant="subtle"
+            size="sm"
+            className="-ml-2 -mt-4 mb-5 max-w-full self-start"
+            title={returnTo ? `Back to ${returnTo}` : undefined}
+            onClick={onClose}
+          >
+            <ChevronLeftIcon size={14} />
+            <span className="truncate">{returnTo ? `Back to ${returnTo}` : 'Back'}</span>
+          </Button>
+        )}
         <header className="flex items-center gap-2.5">
           <span className="flex shrink-0 text-ink">
             <AppMark size={22} />
           </span>
           <span className="text-[13px] font-semibold text-ink">Worksheet</span>
           <span className="text-[11px] text-ink-subtle">HKDSE Economics</span>
-          {onClose && (
-            <Button variant="subtle" size="sm" className="ml-auto" onClick={onClose}>
-              Back
-            </Button>
-          )}
         </header>
 
         {/* The screen's one display moment: the chrome's serif voice (design/icons/design.md §
@@ -720,9 +732,11 @@ export function StartScreen({
             </p>
           )}
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-line pt-3">
-            <VersionLine />
+            <span className="flex items-center gap-2">
+              <SettingsButton />
+              <VersionLine />
+            </span>
             <span className="flex items-center gap-3">
-              <SettingsLink />
               <TextLink onClick={() => setWhatsNew(true)}>What’s new</TextLink>
               <TextLink onClick={() => setFeedback(true)}>Send feedback</TextLink>
             </span>
@@ -1238,11 +1252,23 @@ function TextLink({
   );
 }
 
-/** App-wide Settings; absent while no section is registered. */
-export function SettingsLink() {
-  const sections = useSettingsSections({ desktop: isDesktop() });
+/** App-wide Settings, as the gear in the panel's corner; absent while no section is registered. */
+export function SettingsButton() {
+  const desktop = isDesktop();
+  const sections = useSettingsSections({ desktop });
   if (sections.length === 0) return null;
-  return <TextLink onClick={() => useAppDialogs.getState().openSettings()}>{START_SETTINGS_LINK}</TextLink>;
+  // The shortcut is named on desktop only, as in the ⋯ menu: a browser may claim it first.
+  const hint = desktop ? (isMacPlatform() ? ' (⌘,)' : ' (Ctrl+,)') : '';
+  return (
+    <IconButton
+      label="Settings"
+      title={`Settings${hint}`}
+      className="-my-1 -ml-1.5"
+      onClick={() => useAppDialogs.getState().openSettings()}
+    >
+      <SettingsIcon size={16} />
+    </IconButton>
+  );
 }
 
 function NoticeBox({ notice, onDismiss }: { notice: Notice; onDismiss: () => void }) {

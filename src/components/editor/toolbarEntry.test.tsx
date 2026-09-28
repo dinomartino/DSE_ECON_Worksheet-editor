@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { PILL_TITLE } from '@/components/translate/copy';
 import { createMcqQuestion, createParagraphBlock, createWorksheet } from '@/model/factories';
@@ -13,7 +14,7 @@ vi.mock('@/store/worksheetStore', async (importOriginal) => {
 });
 
 const { useWorksheetStore } = await import('@/store/worksheetStore');
-const { Toolbar, UntranslatedPill } = await import('./Toolbar');
+const { HomeCrumb, Toolbar, UntranslatedPill } = await import('./Toolbar');
 
 const initial = useWorksheetStore.getState();
 afterEach(() => useWorksheetStore.setState(initial, true));
@@ -49,5 +50,21 @@ describe('Toolbar entry points', () => {
     const readOnly = render(true);
     expect(readOnly).toMatch(/untranslated<\/span>/);
     expect(readOnly).not.toContain(`title="${PILL_TITLE}"`);
+  });
+
+  it('leads with a Worksheets crumb home, read-only documents included', () => {
+    type Home = ReactElement<{ 'aria-label': string; onClick: () => void }>;
+    const onOpenFiles = vi.fn();
+    const crumb = HomeCrumb({ onOpenFiles }) as ReactElement<{ children: Home[] }>;
+    const home = crumb.props.children[0];
+    expect(home.props['aria-label']).toBe('All worksheets');
+    home.props.onClick();
+    expect(onOpenFiles).toHaveBeenCalledOnce();
+
+    useWorksheetStore.setState({ readOnly: true });
+    const markup = renderToStaticMarkup(<Toolbar onOpenSettings={() => {}} onOpenFiles={() => {}} />);
+    expect(markup).toMatch(/<nav aria-label="Breadcrumb"[^>]*><button type="button" aria-label="All worksheets"/);
+    // Word and chevron fold away below `xl`, where the bar has no width to spare.
+    expect(markup).toContain('<span class="hidden xl:inline">Worksheets</span>');
   });
 });

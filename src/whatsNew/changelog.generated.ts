@@ -32,6 +32,9 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   and diagram labels — and shows in 中文 mode too.
 - Status messages such as "Exported .pdf" float under the toolbar instead of pushing the
   page down, and "Saved" shows its time when you point at it.
+- Getting around is easier: click **Worksheets** at the top-left of the editor to see all
+  your worksheets, and **Back to …** returns you to the one you were editing. On the
+  start screen, Settings is the gear in the bottom-left corner.
 
 ## 0.4.0 — 2026-09-27
 
