@@ -29,8 +29,9 @@ export function AiMenu() {
 
 const run = (verbId: string, input?: string) => void useAiRun.getState().startVerb(verbId, input);
 
-/** Opens below its anchor, clamped into the viewport; too low → flips above it. */
-function place(anchor: AiMenuOpen['anchor'], box: DOMRect): { x: number; y: number } {
+/** Opens below its anchor, clamped into the viewport; too low → flips above it. `box` is
+ *  the layout size (offsetWidth/Height): the pop-in's scale would shrink a client rect. */
+function place(anchor: AiMenuOpen['anchor'], box: { width: number; height: number }): { x: number; y: number } {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   const at = anchor ?? { x: (vw - box.width) / 2, y: TOOLBAR_BOTTOM };
@@ -66,9 +67,9 @@ export function AiMenuPopover({ open }: { open: AiMenuOpen }) {
   const current = highlighted(groups, active, open.preselect);
 
   useLayoutEffect(() => {
-    const box = ref.current?.getBoundingClientRect();
-    if (!box) return;
-    const next = place(open.anchor, box);
+    const node = ref.current;
+    if (!node) return;
+    const next = place(open.anchor, { width: node.offsetWidth, height: node.offsetHeight });
     setPos((prev) => (prev && prev.x === next.x && prev.y === next.y ? prev : next));
   }, [open.anchor, step, groups.length]);
 
@@ -221,7 +222,9 @@ function VerbList({
                 aria-disabled={!runnable || undefined}
                 title={availability.disabledReason}
                 data-verb={verb.id}
-                onMouseEnter={() => runnable && onHover(verb.id)}
+                // Moves, not enters: a menu opening under a resting pointer (WebKit fires
+                // mouseenter then) must keep its preselected verb.
+                onMouseMove={() => runnable && verb.id !== current && onHover(verb.id)}
                 onClick={() => runnable && onChoose(verb.id)}
                 className={`block w-full rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors duration-100 ease-out-soft ${
                   runnable ? 'cursor-pointer' : 'cursor-default opacity-45'
