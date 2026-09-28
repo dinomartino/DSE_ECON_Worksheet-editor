@@ -249,7 +249,7 @@ function VerbList({
 function ScopeChip({ label, choices, onChoose }: { label: string; choices: ScopeChoice[]; onChoose(c: ScopeChoice): void }) {
   const [open, setOpen] = useState(false);
   const chip = 'flex h-7 shrink-0 items-center gap-1 rounded-md px-2 text-[12px] font-medium text-ink-muted';
-  if (choices.length <= 1) return <span className={`${chip} bg-surface-hover`}>{label}</span>;
+  if (choices.length <= 1) return <span className={chip}>{label}</span>;
   return (
     <span className="relative shrink-0">
       <button
