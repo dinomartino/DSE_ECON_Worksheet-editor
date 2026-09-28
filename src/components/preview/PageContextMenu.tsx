@@ -15,11 +15,13 @@ import { useModalLayer } from '@/components/ui/modalLayer';
 
 import type { EditTarget } from '@/render/ir';
 
-/** What was right-clicked — resolved by the render site, never by walking the DOM. */
+/** What was right-clicked — resolved by the render site, never by walking the DOM.
+ *  `questionId` is the emitting question's, so a duplicated question's copy (same block
+ *  ids) is told apart whatever is selected. */
 export type PageMenuPayload =
-  | { kind: 'text'; target: EditTarget }
-  | { kind: 'cell'; blockId: string; cellId: string }
-  | { kind: 'block'; blockId: string };
+  | { kind: 'text'; target: EditTarget; questionId?: string }
+  | { kind: 'cell'; blockId: string; cellId: string; questionId?: string }
+  | { kind: 'block'; blockId: string; questionId?: string };
 
 export interface PageMenuItem {
   label: string;
