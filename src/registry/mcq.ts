@@ -1,6 +1,7 @@
 import { createMcqQuestion } from '@/model/factories';
 import { optionLabel, statementLabel, toUpperLetter } from '@/model/numbering';
 import { areBlocksEmpty, bi, isBiTextEmpty, plain, provenanceLabel } from '@/model/text';
+import { mapSame, patch, type TextWalker } from '@/model/textSlots';
 import type { BiText, LanguageMode, McqOption, McqOptionLayout, McqQuestion } from '@/model/types';
 import { shuffledOrder } from '@/model/versions';
 import {
@@ -397,23 +398,33 @@ function teacherNotes(question: McqQuestion, language: LanguageMode): Array<Text
   return notes;
 }
 
-function countMissingTranslations(question: McqQuestion): number {
-  let missing = 0;
-  const check = (text?: { en: unknown[]; zh: unknown[] }) => {
-    if (!text) return;
-    const hasEn = text.en.length > 0;
-    const hasZh = text.zh.length > 0;
-    if (hasEn !== hasZh) missing += 1;
-  };
-  for (const block of question.blocks) {
-    if (block.kind === 'paragraph') check(block.text);
-  }
-  (question.statements ?? []).forEach(check);
-  question.options.forEach((option) => check(option.text));
-  check(question.explanation);
-  question.options.forEach((option) => check(option.rationale));
-  check(question.provenance);
-  return missing;
+/** Stem, statements, options (text, figures, rationale), then the teacher notes. */
+function mapTexts(question: McqQuestion, walk: TextWalker): McqQuestion {
+  const questionId = question.id;
+  return patch(question, {
+    blocks: walk.blocks('blocks', question.blocks, { paragraphKind: 'stem' }),
+    statements: walk.list('statements', question.statements, (index) => ({
+      kind: 'statement', role: 'print', label: `Statement ${index + 1}`,
+      target: { kind: 'mcqStatement', questionId, index },
+    })),
+    options: mapSame(question.options, (option, index) => {
+      const w = walk.scope(`option:${option.id}`, `Option ${toUpperLetter(index)}`);
+      const optionId = option.id;
+      return patch(option, {
+        text: w.text('text', option.text, { kind: 'option', role: 'print', target: { kind: 'mcqOption', questionId, optionId } }),
+        blocks: w.optionalBlocks('blocks', option.blocks, { paragraphKind: 'option' }),
+        rationale: w.optional('rationale', option.rationale, {
+          kind: 'rationale', role: 'teacher', target: { kind: 'mcqRationale', questionId, optionId },
+        }),
+      });
+    }),
+    explanation: walk.optional('explanation', question.explanation, {
+      kind: 'explanation', role: 'teacher', target: { kind: 'mcqExplanation', questionId },
+    }),
+    provenance: walk.optional('provenance', question.provenance, {
+      kind: 'provenance', role: 'teacher', target: { kind: 'mcqProvenance', questionId },
+    }),
+  });
 }
 
 /** The key as a letter (null when it points at no option), blank and duplicate options. */
@@ -543,7 +554,7 @@ export const mcqType: QuestionTypeDefinition<McqQuestion> = {
   render,
   examGapLines: MCQ_EXAM_GAP_LINES,
   EditorPanel: McqEditorPanel,
-  countMissingTranslations,
+  mapTexts,
   healthFacts,
   answerKey,
   quizItem,
