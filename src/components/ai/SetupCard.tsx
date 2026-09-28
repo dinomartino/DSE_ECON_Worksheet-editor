@@ -109,7 +109,8 @@ export function SetupCardView(props: SetupCardViewProps) {
           />
         ))}
       </div>
-      <HkNote preset={preset} />
+      {/* Settings' note, but the Hong Kong rows sit above it here. */}
+      <HkNote preset={preset} text={preset.hk.note.replace(/ below\.$/, '.')} />
       <div className="flex items-center justify-between gap-2 text-[11px]">
         {preset.keyUrl ? <LinkButton onClick={() => props.onGetKey(preset.keyUrl!)}>Get a {shortName(preset.id)} key ↗</LinkButton> : <span />}
         <button type="button" onClick={props.onMore} className="cursor-pointer text-ink-muted hover:text-ink hover:underline">
@@ -148,7 +149,7 @@ function ProviderRow({ id, selected, highlight, onPick }: { id: ProviderId; sele
       >
         {selected && <span className="h-1.5 w-1.5 rounded-full bg-accent" />}
       </span>
-      <span className="min-w-0 flex-1 truncate text-xs font-medium text-ink">{preset.label}</span>
+      <span className="min-w-0 flex-1 truncate text-xs font-medium text-ink">{preset.label.split(' · ')[0]}</span>
       <ProviderBadges preset={preset} />
     </button>
   );

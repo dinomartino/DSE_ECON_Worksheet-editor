@@ -41,6 +41,7 @@ describe('the setup card', () => {
     expect(html).toMatch(/aria-checked="true" data-provider="gemini"/);
     expect(rowOf(html, 'gemini')).toContain('Recommended');
     for (const id of ['deepseek', 'qwen']) expect(rowOf(html, id)).toContain('Available in Hong Kong');
+    expect(html).toMatch(/text-warn-ink">⚠ Google doesn(’|&#x27;)t offer[^<]*choose DeepSeek or Qwen\.</);
     expect(html).toContain('Get a Gemini key ↗');
     expect(html).toContain('More providers…');
   });
