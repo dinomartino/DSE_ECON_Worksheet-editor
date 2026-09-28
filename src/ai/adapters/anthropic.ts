@@ -20,7 +20,7 @@ export const anthropicAdapter: Adapter = {
     const body: Record<string, unknown> = {
       model: config.model,
       max_tokens: req.maxOutputTokens,
-      system: systemFor(req.system, enforced),
+      system: systemFor(req.system, enforced, req.shapeHint),
       messages: req.turns.map((t) => ({ role: t.role, content: t.content })),
       ...preset.extraBody,
       ...modelExtra(preset, config.model),

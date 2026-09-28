@@ -205,6 +205,19 @@ describe('anthropic', () => {
     expect(json.system).toBe(`SYSTEM\n\n${JSON_SHAPE_HINT}`);
   });
 
+  it("carries a request's own shapeHint on an unenforced rung, in every family", () => {
+    const own = { ...req, shapeHint: 'OWN SHAPE' };
+    for (const [adapter, provider, dialect] of [
+      [geminiAdapter, 'gemini', 'gemini-mime'],
+      [openaiCompatAdapter, 'deepseek', 'openai-jsonObject'],
+      [anthropicAdapter, 'anthropic', 'prompt'],
+    ] as const) {
+      const body = adapter.build(PRESETS[provider], config(provider), own, dialect).body ?? '';
+      expect(body).toContain('SYSTEM\\n\\nOWN SHAPE');
+      expect(body).not.toContain('{\\"items\\"');
+    }
+  });
+
   it('extracts text blocks and maps stop_reason', () => {
     const body = { content: [{ type: 'text', text: '{"items":[]}' }], stop_reason: 'end_turn', usage: { input_tokens: 3, output_tokens: 2 } };
     expect(anthropicAdapter.extract(body)).toEqual({ text: '{"items":[]}', finish: 'stop', usage: { input: 3, output: 2 } });

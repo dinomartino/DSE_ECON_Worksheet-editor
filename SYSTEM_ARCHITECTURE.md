@@ -1722,7 +1722,7 @@ paths). Verify by measuring the same text node in both states.
 
 `QuestionTypeDefinition`: `id` · `displayName` (bilingual) · `create()` ·
 `render(question, context) → RenderNode[]` · `EditorPanel` · `mapTexts` ·
-`examGapLines?` · `healthFacts?` · `answerKey?` · `variant?`. Registered:
+`examGapLines?` · `healthFacts?` · `answerKey?` · `variant?` · `qualityView?`. Registered:
 `mcq`, `structured`. A new type needs only a definition.
 
 - **The hand-built numbered paragraph must copy the block's `format` itself** — the
@@ -2411,6 +2411,56 @@ Outline row and the paper check's links. Each is absent when the document is rea
   explicit Translate, Fill, Save & test or List my models click. Production code has no
   test hooks.
   It runs Chromium and WebKit; `--only=entry,journey,edge,error,settings` picks groups.
+
+## AI question quality check (E4)
+
+The `check.quality` verb (`src/assist/verbs/quality.ts`) over the engine in `src/quality/`
+(pure, injected client; deps from `src/translate/deps.ts:createRunDeps`, no glossary).
+
+- **Findings only.** It writes nothing to the document; each finding is a review item
+  (`tone: 'finding'`) pointing at the page text it concerns, or at the whole question.
+- **Read from the model, through the registry.** A type's `qualityView?` lists its anchors
+  (stem, lead-in, statements, options with the key, parts with printed marks and scheme) in
+  print order; `src/quality/` never names a type (`noTypeBranching.test.ts`).
+- **Deterministic first, never a call**: a scheme totalling other than the printed marks
+  (`schemeMismatch`), an option naming a statement that isn't there. Blank questions are
+  not sent. The prompt tells the model to skip what the paper check already covers.
+- **Whole questions per request** (≤ 6 questions, ≤ 6 000 characters), with request-local
+  keys (`q2.A`, `q1.(b)(ii)`), never app ids. A cut-off, blocked or twice-unreadable reply
+  splits the chunk; a finding whose key anchors to nothing sent is dropped, as are
+  duplicates and a question's fifth. Stop keeps finished findings; a fatal error keeps them too.
+- **Items-shaped schema** (`{items:[{key, issue, severity, text, suggestion}]}`), so a
+  provider on an unenforced rung, told the plain `{key, text}` shape, still parses.
+  Words in `src/quality/promptText.ts`; bump `PROMPT_VERSION` with any change.
+
+---
+
+## AI questions from a source (E3)
+
+The `create.fromSource` verb (`src/assist/verbs/fromSource.ts`): the teacher pastes a
+source (≥ 80 characters) and gets HKDSE items grounded only in it, inserted directly.
+The engine is `src/generate/`, pure over injected deps like `src/translate/run.ts`.
+
+- **What it makes follows the paper** (`recipeFor`, from `documentShape`): Paper 1 → 4
+  MCQs, at least one an HKEAA combination-statement item; a Question-Answer Book or an
+  LQ worksheet (dotted answer space in its questions) → one structured question of 8–12
+  marks with per-part answer space; a classroom worksheet → 3 MCQs + a 3–6 mark
+  structured question. Languages are the sides the edition prints.
+- **The source prints once, verbatim**, on the side it is written in: a shared
+  `stimulus` spanning the batch, or an unlabelled `SourceBlock` under the structured
+  question's lead-in.
+- **One request, its own schema** (`SOURCE_QUESTIONS_SCHEMA`); `CompletionRequest.shapeHint`
+  replaces the items hint on rungs that don't enforce a schema. No repair pass.
+- **Checks are deterministic** (`src/generate/validate.ts`). Never inserted (`failed`):
+  not exactly 4 options, a key outside A–D, duplicate options, an empty stem or side,
+  marks that are not positive integers, a combination item whose options don't combine
+  its statements. Inserted and highlighted (`look`): a number the source never states, a
+  marks total off the range, a 中文 term off the EDB glossary (deny forms are fixed in
+  place, as in translation). A mark scheme whose points don't total the part is dropped.
+- **The store builds every question** with its type's `create()`;
+  `insertQuestionBatch` fills and inserts the batch at the anchor (else ahead of "END OF
+  PAPER") as one commit. Type-specific filling lives in `src/generate/build.ts`, never
+  in a shared module.
 
 ---
 

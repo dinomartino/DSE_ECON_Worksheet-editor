@@ -22,9 +22,9 @@ export interface Adapter {
 export interface WireRequest { url: string; headers: Record<string, string>; body?: string }
 export type Extracted = Pick<CompletionResult, 'text' | 'finish' | 'usage'>;
 
-/** A rung that doesn't enforce the schema carries the JSON shape hint in `system`. */
-export function systemFor(system: string, enforced: boolean): string {
-  return enforced ? system : `${system}\n\n${JSON_SHAPE_HINT}`;
+/** A rung that doesn't enforce the schema carries the JSON shape hint in `system` (the request's own, else the items shape). */
+export function systemFor(system: string, enforced: boolean, hint: string = JSON_SHAPE_HINT): string {
+  return enforced ? system : `${system}\n\n${hint}`;
 }
 
 /** The base URL without a trailing slash. */
