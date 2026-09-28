@@ -58,6 +58,8 @@ export const EN_OVERRIDES: Readonly<Record<string, readonly string[]>> = {
 /** Extra English forms teachers and the app's own templates write. */
 export const EN_ALIASES: Readonly<Record<string, readonly string[]>> = {
   'line of perfect equality': ['line of equality'],
+  // The glossary has no micro "total expenditure" (P × Q); HK writes the same 總開支 / 總支出.
+  'aggregate expenditure': ['total expenditure'],
 };
 
 /** Applied to every rendering we show, pin or insert; matching folds these anyway. */
