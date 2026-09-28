@@ -66,15 +66,36 @@ function notify() {
   for (const listener of [...listeners]) listener();
 }
 
-/** Keyring errors (a denied or cancelled prompt, a locked keychain) all mean "the keychain said no". */
+/** Thrown when the shell's API itself would not load. */
+class ShellUnavailable extends Error {}
+
+/**
+ * keyring's message says which: "Couldn't access platform secure storage" is a missing or
+ * locked keychain; a platform failure naming a cancel or refusal is the teacher's "Deny".
+ * Anything else that is not keyring's (a missing command or capability) is unavailable.
+ */
 function keychainError(error: unknown): SecretError {
+  if (error instanceof ShellUnavailable) return { kind: 'unavailable', message: "The keychain couldn't be reached." };
   const text = typeof error === 'string' ? error : error instanceof Error ? error.message : '';
   if (/^bad (account|secret)$/.test(text)) return { kind: 'invalid', message: 'The key was refused.' };
-  return { kind: 'denied', message: "The keychain didn't allow access." };
+  if (text.startsWith("Couldn't access platform secure storage")) {
+    return { kind: 'unavailable', message: "The keychain couldn't be reached." };
+  }
+  if (text.startsWith('Platform secure storage failure')) {
+    return /cancel|denied|not allowed|passphrase|interaction|authori[sz]/i.test(text)
+      ? { kind: 'denied', message: "The keychain didn't allow access." }
+      : { kind: 'failed', message: "The keychain couldn't save or read the key." };
+  }
+  return { kind: 'unavailable', message: "The keychain couldn't be reached." };
 }
 
 async function invokeKeychain<T>(command: string, args: Record<string, unknown>): Promise<T> {
-  const { invoke } = await import('@tauri-apps/api/core');
+  let invoke: typeof import('@tauri-apps/api/core').invoke;
+  try {
+    ({ invoke } = await import('@tauri-apps/api/core'));
+  } catch {
+    throw new ShellUnavailable();
+  }
   return invoke<T>(command, args);
 }
 

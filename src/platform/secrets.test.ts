@@ -178,6 +178,22 @@ describe('secrets on desktop', () => {
     expect(peekSecret('ai:gemini')).toBeNull();
   });
 
+  it('tells a refusal from an unreachable keychain and from any other failure', async () => {
+    const kindFor = async (fail: string) => {
+      keychain.fail = fail;
+      const written = await writeSecret('ai:gemini', KEY, { remember: true });
+      return written.ok ? 'ok' : written.error.kind;
+    };
+    expect(await kindFor('Platform secure storage failure: The user name or passphrase you entered is not correct.')).toBe('denied');
+    expect(await kindFor('Platform secure storage failure: Access is denied. (os error 5)')).toBe('denied');
+    expect(await kindFor("Couldn't access platform secure storage: The specified keychain could not be found.")).toBe('unavailable');
+    expect(await kindFor('secret_set not allowed. Command not found')).toBe('unavailable');
+    expect(await kindFor('Command secret_set not found')).toBe('unavailable');
+    expect(await kindFor('Platform secure storage failure: The item already exists in the keychain.')).toBe('failed');
+    expect(await kindFor('bad secret')).toBe('invalid');
+    expect(local.data.size + session.data.size).toBe(0);
+  });
+
   it('keeps a key for this session only when not remembered, and clears the keychain copy', async () => {
     keychain.items.set('ai:gemini', 'old-key-12345678');
     expect(await writeSecret('ai:gemini', KEY, { remember: false })).toEqual({ ok: true, store: 'memory' });
