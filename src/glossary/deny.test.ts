@@ -3,6 +3,7 @@ import raw from './data/edb-economics-2020.json';
 import { parseGlossary, type RawGlossary } from './parse';
 import { foldZh } from './fold';
 import { DENY } from './deny';
+import { createGlossary } from './glossary';
 
 const entries = parseGlossary(raw as RawGlossary);
 const byKey = new Map(entries.map((e) => [e.en, e]));
@@ -37,6 +38,32 @@ describe('DENY', () => {
       for (const form of row.forms) {
         const others = (owners.get(fold(form)) ?? []).filter((key) => key !== row.en);
         if (others.length) expect(row.reversal, `${row.en}: ${form} renders ${others.join(', ')}`).toBe(true);
+      }
+    }
+  });
+
+  it('covers every entry that shares a rendering with a row entry', () => {
+    // Shares a rendering, but the row's slip is no slip for it: 應課稅入息 is taxable income's.
+    const exempt: Record<string, string> = { 'assessable income': 'taxable income', 'aggregate income': 'total revenue' };
+    const formsOf = (key: string) =>
+      new Set(DENY.filter((r) => r.en === key && !r.reversal).flatMap((r) => r.forms));
+    for (const key of new Set(DENY.filter((r) => !r.reversal).map((r) => r.en))) {
+      const sharing = [...variantsOf(key)].flatMap((v) => owners.get(v) ?? []).filter((k) => k !== key);
+      for (const other of new Set(sharing)) {
+        if (exempt[other] === key) continue;
+        expect([...formsOf(key)].filter((f) => !formsOf(other).has(f)), `${other} shares a rendering with ${key}`).toEqual([]);
+      }
+    }
+  });
+
+  it('never rewrites a longer glossary term that holds a deny form', () => {
+    const g = createGlossary(raw as RawGlossary);
+    for (const row of DENY.filter((r) => !r.reversal)) {
+      for (const form of row.forms.map(fold)) {
+        for (const host of owners.keys()) {
+          if (host.length <= form.length || !host.includes(form)) continue;
+          expect(g.autoFix(row.en, [{ text: host }]).fixes, `${row.en}: ${form} in ${host}`).toEqual([]);
+        }
       }
     }
   });

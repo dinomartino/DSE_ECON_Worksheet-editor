@@ -71,6 +71,13 @@ function occurrences(haystack: string, needle: string): Occurrence[] {
 const inside = (a: Occurrence, b: Occurrence) => a.from >= b.from && a.to <= b.to;
 const overlaps = (a: Occurrence, b: Occurrence) => a.from < b.to && a.to > b.from;
 
+/** Strictly inside a longer glossary term (公共財 in 公共財產): correct text, never a deny form. */
+const hosted = (o: Occurrence, hosts: readonly FoldedHit[]) =>
+  hosts.some((h) => inside(o, h) && h.to - h.from > o.to - o.from);
+
+/** The occurrence has nothing folded away inside it (a space, a line break, a blank), so replacing it drops nothing. */
+const contiguous = (f: FoldedZh, o: Occurrence) => f.map[o.to - 1] - f.map[o.from] === o.to - o.from - 1;
+
 /** Hits not strictly inside a longer hit, one per entry: the outer term is reported once. */
 function outermost(hits: readonly EnHit[]): EnHit[] {
   const out: EnHit[] = [];
@@ -159,21 +166,38 @@ function severityFor(entry: GlossaryEntry, state: TermState, check: Partial<Term
   if (entry.tier === 'generic') return 'info';
   if (state === 'ok' || state === 'ok-abbr') return check.senseAmbiguous ? 'note' : 'none';
   if (state === 'not-preferred' || state === 'near') return 'note';
-  if (check.conflict || check.fix?.kind === 'deny' || isMultiWord(entry)) return 'warn';
+  if (check.conflict || check.found?.rank === 0 || isMultiWord(entry)) return 'warn';
   return 'note';
 }
 
-/** Folded occurrences of `forms`, longest form first, never overlapping one another. */
-function denyOccurrences(text: string, rows: readonly DenyRow[]): Array<Occurrence & { row: DenyRow }> {
-  const all = rows
-    .flatMap((row) => row.forms.flatMap((form) => occurrences(text, foldZh(form).folded).map((o) => ({ ...o, row }))))
-    .sort((a, b) => b.to - b.from - (a.to - a.from) || a.from - b.from);
-  const taken: Array<Occurrence & { row: DenyRow }> = [];
-  for (const o of all) if (!taken.some((t) => overlaps(t, o))) taken.push(o);
+/** `all` longest first, keeping those that overlap none already kept; in text order. */
+function longestFirst<T extends Occurrence>(all: readonly T[]): T[] {
+  const taken: T[] = [];
+  for (const o of [...all].sort((a, b) => b.to - b.from - (a.to - a.from) || a.from - b.from)) {
+    if (!taken.some((t) => overlaps(t, o))) taken.push(o);
+  }
   return taken.sort((a, b) => a.from - b.from);
 }
 
-/** The first rule of §D.7 that applies to one source term. */
+/**
+ * Folded occurrences of the rows' forms, longest form first, never overlapping one another.
+ * A non-reversal form hosted by a longer glossary term is that term's text, not a slip.
+ */
+function denyOccurrences(
+  text: string,
+  rows: readonly DenyRow[],
+  hosts: readonly FoldedHit[],
+): Array<Occurrence & { row: DenyRow }> {
+  const all = rows.flatMap((row) =>
+    row.forms.flatMap((form) => occurrences(text, foldZh(form).folded).map((o) => ({ ...o, row }))),
+  );
+  return longestFirst(all.filter((o) => o.row.reversal || !hosted(o, hosts)));
+}
+
+/**
+ * The first rule of §D.7 that applies to one source term. A lower rank or a deny form gives
+ * one check per occurrence in the output, each with its own fix.
+ */
 function checkTerm(
   index: GlossaryIndex,
   hit: EnHit,
@@ -181,8 +205,9 @@ function checkTerm(
   outputZh: string,
   out: FoldedZh,
   segments: readonly FoldedHit[],
+  hosts: readonly FoldedHit[],
   inSource: (id: number) => boolean,
-): TermCheck {
+): TermCheck[] {
   const entry = index.entries[hit.entryId];
   const T = out.folded;
   const base = {
@@ -202,11 +227,16 @@ function checkTerm(
     const { start, end } = unfoldSpan(out, o.from, o.to);
     return { text: outputZh.slice(start, end), start, end, rank };
   };
+  /** A replacement of `o`, unless replacing it would also drop what the fold skipped. */
+  const fixAt = (o: Occurrence, to: string, kind: 'deny' | 'lowerRank', denyKind?: DenyRow['kind']) => {
+    if (!contiguous(out, o)) return {};
+    const { start, end } = unfoldSpan(out, o.from, o.to);
+    return { fix: { start, end, to, kind, ...(denyKind ? { denyKind } : {}) } };
+  };
 
-  if (hit.viaAbbreviation && entry.abbreviation && T.includes(entry.abbreviation)) return result('ok-abbr');
+  if (hit.viaAbbreviation && entry.abbreviation && T.includes(entry.abbreviation)) return [result('ok-abbr')];
 
-  const rows = index.deny.get(entry.id) ?? [];
-  const denied = denyOccurrences(T, rows);
+  const denied = denyOccurrences(T, index.deny.get(entry.id) ?? [], hosts);
   const allowed = (id: number) => id === entry.id || inSource(id);
   const variants = index.variants.get(entry.id) ?? [];
   const standing: Array<Occurrence & { v: Variant }> = [];
@@ -228,46 +258,84 @@ function checkTerm(
     // A multi-sense entry met on a later sense: the check can't tell a wrong sense (公司 for firm).
     const ambiguous =
       entry.senses.length > 1 && !entry.pinSenses && !standing.some((o) => o.v.preferred && o.v.sense === 0);
-    return result('ok', { found: original(best, best.v.rank), ...(ambiguous ? { senseAmbiguous: true } : {}) });
+    return [result('ok', { found: original(best, best.v.rank), ...(ambiguous ? { senseAmbiguous: true } : {}) })];
   }
-  const lower = [...standing].sort((a, b) => a.v.rank - b.v.rank)[0];
-  if (lower) {
-    const at = original(lower, lower.v.rank);
-    const pinned = !entry.pinSenses || entry.pinSenses.includes(lower.v.sense);
-    const to = PREFERRED_OVERRIDES[entry.en] ?? (pinned ? entry.senses[lower.v.sense].ranks[0][0] : entry.preferred);
-    return result('not-preferred', { found: at, fix: { start: at.start, end: at.end, to, kind: 'lowerRank' } });
+  if (standing.length) {
+    return longestFirst(standing).map((o) => {
+      const pinned = !entry.pinSenses || entry.pinSenses.includes(o.v.sense);
+      const to = PREFERRED_OVERRIDES[entry.en] ?? (pinned ? entry.senses[o.v.sense].ranks[0][0] : entry.preferred);
+      return result('not-preferred', { found: original(o, o.v.rank), ...fixAt(o, to, 'lowerRank') });
+    });
   }
-  const deny = denied.find((d) => !d.row.reversal) ?? denied[0];
-  if (deny) {
-    const at = original(deny, 0);
-    if (deny.row.reversal) {
-      return result('missing', { found: at, conflict: { form: at.text, meansEn: deny.row.means ?? '' } });
-    }
-    const fix = { start: at.start, end: at.end, to: deny.row.fix ?? entry.preferred, kind: 'deny' as const };
-    return result('missing', { found: at, fix: { ...fix, denyKind: deny.row.kind } });
+  const wrong = denied.filter((d) => !d.row.reversal);
+  if (wrong.length) {
+    return wrong.map((d) =>
+      result('missing', { found: original(d, 0), ...fixAt(d, d.row.fix ?? entry.preferred, 'deny', d.row.kind) }),
+    );
+  }
+  if (denied.length) {
+    const at = original(denied[0], 0);
+    return [result('missing', { found: at, conflict: { form: at.text, meansEn: denied[0].row.means ?? '' } })];
   }
   if (conflict) {
     const form = original(conflict.seg, 0).text;
     const meansEn = index.entries[conflict.seg.entryIds[0]].en;
-    return result('missing', { conflict: { form, meansEn } });
+    return [result('missing', { conflict: { form, meansEn } })];
   }
-  if (isNear(T, variants)) return result('near');
-  return result('missing');
+  if (isNear(T, variants)) return [result('near')];
+  return [result('missing')];
+}
+
+/**
+ * Fixes never overlap, so Check terms can apply them all. A fix inside a longer one is that
+ * one's job (總供給 → 總供應 also mends supply's 供給), so its check goes; a fix that only
+ * partly overlaps a kept one loses its fix and keeps its check.
+ */
+function separateFixes(checks: readonly TermCheck[]): TermCheck[] {
+  type Fix = NonNullable<TermCheck['fix']>;
+  const span = (f: Fix) => ({ from: f.start, to: f.end });
+  const kept: Fix[] = [];
+  const drop = new Set<TermCheck>();
+  const strip = new Set<TermCheck>();
+  const withFix = checks.filter((c) => c.fix).sort((a, b) => {
+    const [x, y] = [a.fix!, b.fix!];
+    return y.end - y.start - (x.end - x.start) || x.start - y.start;
+  });
+  for (const c of withFix) {
+    const f = span(c.fix!);
+    if (kept.some((k) => inside(f, span(k)))) drop.add(c);
+    else if (kept.some((k) => overlaps(f, span(k)))) strip.add(c);
+    else kept.push(c.fix!);
+  }
+  return checks
+    .filter((c) => !drop.has(c))
+    .map((c) => {
+      if (!strip.has(c)) return c;
+      const { fix: _fix, ...rest } = c;
+      return rest;
+    });
 }
 
 /**
  * Each glossary term in `sourceEn`, checked against `outputZh`. Nested terms are covered by
- * their outer term, so a source term is reported once.
+ * their outer term, so a source term is reported once, or once per offending occurrence.
+ * A single-word term may also be covered by a term the source rewords (reshapedInSource);
+ * a multi-word term keeps the strict rule, so a second clause can't vouch for 低彈性需求.
  */
 export function checkEnToZh(index: GlossaryIndex, sourceEn: string, outputZh: string): TermCheck[] {
   const hits = index.en.matchEnAll(sourceEn);
   if (!hits.length) return [];
   const ids = new Set(hits.map((h) => h.entryId));
   const words = sourceEn.toLowerCase().match(/[a-z]+/g) ?? [];
-  const inSource = (id: number) => ids.has(id) || reshapedInSource(index.entries[id], words);
+  const reworded = (id: number) => ids.has(id) || reshapedInSource(index.entries[id], words);
   const out = foldZh(outputZh);
   const segments = index.zh.matchFolded(out.folded);
-  return outermost(hits).map((h) => checkTerm(index, h, sourceEn, outputZh, out, segments, inSource));
+  const hosts = index.zh.matchFoldedAll(out.folded);
+  const checks = outermost(hits).flatMap((h) => {
+    const inSource = isMultiWord(index.entries[h.entryId]) ? (id: number) => ids.has(id) : reworded;
+    return checkTerm(index, h, sourceEn, outputZh, out, segments, hosts, inSource);
+  });
+  return separateFixes(checks);
 }
 
 /**
@@ -320,8 +388,9 @@ function replaceSpan(runs: RichText, start: number, end: number, to: string): Ri
 
 /**
  * Deny forms of terms in `sourceEn`, replaced in `zh` with the glossary rendering: longest
- * form first, right to left, never inside a sub/superscript run, never inside a correct
- * rendering of a source term. Unchanged input comes back as the same array.
+ * form first, right to left. Never inside a sub/superscript run, a longer glossary term
+ * (公共財產) or across folded-away text (a space, a line break). The new text takes the
+ * format of the replaced span's first character. Unchanged input comes back as the same array.
  */
 export function autoFix(
   index: GlossaryIndex,
@@ -333,7 +402,7 @@ export function autoFix(
   if (!rows.length) return { runs: zh, fixes: [] };
   const text = plain(zh);
   const out = foldZh(text);
-  const correct = index.zh.matchFoldedAll(out.folded).filter((h) => h.entryIds.some((id) => inSource.has(id)));
+  const hosts = index.zh.matchFoldedAll(out.folded);
   const locked: Occurrence[] = [];
   let at = 0;
   for (const run of zh) {
@@ -342,8 +411,8 @@ export function autoFix(
   }
   const byKey = new Map(index.entries.map((e) => [e.en, e]));
   const fixes: Array<{ from: string; to: string; entryId: number; start: number; end: number }> = [];
-  for (const d of denyOccurrences(out.folded, rows)) {
-    if (correct.some((c) => inside(d, c))) continue;
+  for (const d of denyOccurrences(out.folded, rows, hosts)) {
+    if (!contiguous(out, d)) continue;
     const { start, end } = unfoldSpan(out, d.from, d.to);
     if (locked.some((l) => overlaps(l, { from: start, to: end }))) continue;
     const entry = byKey.get(d.row.en);

@@ -99,6 +99,61 @@ describe('checkEnToZh states (§D.7)', () => {
     expect(g.checkEnToZh('price elasticity of demand', '需求價格彈性').map((c) => c.en)).toEqual(['price elasticity of demand']);
   });
 
+  it('a second clause never vouches for a multi-word term', () => {
+    const [demand, , elastic] = g.checkEnToZh(
+      'If demand is inelastic, buyers bear the tax; with elastic demand sellers bear it.',
+      '若需求缺乏彈性，買家承擔稅款；若屬低彈性需求，賣家承擔。',
+    );
+    expect(demand).toMatchObject({ en: 'demand', state: 'ok' });
+    expect(elastic).toMatchObject({ en: 'elastic demand', state: 'missing', severity: 'warn' });
+    expect(elastic.conflict).toBeDefined();
+    expect(elastic.fix).toBeUndefined();
+  });
+
+  it('gives each repeated wrong form its own check and fix', () => {
+    const checks = g.checkEnToZh('The price level rose twice. The price level fell.', '價格水平上升兩次。價格水平下跌。');
+    expect(checks.map((c) => [c.state, c.fix?.start, c.fix?.to])).toEqual([
+      ['missing', 0, '物價水平'],
+      ['missing', 9, '物價水平'],
+    ]);
+  });
+
+  it('never offers overlapping fixes: the longer fix covers the nested term', () => {
+    const cases: Array<[string, string]> = [
+      ['Supply rose, and so did aggregate supply.', '總供給上升。'],
+      ['money supply and supply', '貨幣供給'],
+      ['Imports fell after the import quota.', '入口配額'],
+    ];
+    for (const [en, zh] of cases) {
+      const fixes = g.checkEnToZh(en, zh).flatMap((c) => (c.fix ? [c.fix] : []));
+      expect(fixes, en).toHaveLength(1);
+    }
+    expect(g.checkEnToZh('Supply rose, and so did aggregate supply.', '總供給上升。')).toEqual([
+      expect.objectContaining({ en: 'aggregate supply', fix: expect.objectContaining({ to: '總供應' }) }),
+    ]);
+  });
+
+  it('never denies a form inside a longer glossary term', () => {
+    expect(only('A public good', '公共財產')).toMatchObject({ state: 'missing' });
+    expect(only('A public good', '公共財產').fix).toBeUndefined();
+    expect(only('A public good', '公共財政').found).toBeUndefined();
+  });
+
+  it('reports a wrong form split by a line break or a blank, but offers no fix', () => {
+    for (const zh of ['價格\n水平', '價格 水平']) {
+      const c = only('price level', zh);
+      expect(c).toMatchObject({ state: 'missing', severity: 'warn', found: { rank: 0 } });
+      expect(c.fix).toBeUndefined();
+    }
+  });
+
+  it('fixes 生產可能性曲線 for the frontier as for the curve', () => {
+    expect(only('Draw the production possibility frontier (PPF).', '繪畫生產可能性曲線。')).toMatchObject({
+      state: 'missing',
+      fix: { to: '生產可能曲線', kind: 'deny' },
+    });
+  });
+
   it('flags the frozen corpus pair as a variant deny, and never rewrites the corpus', () => {
     const path = join(__dirname, '..', 'test', 'corpus', 'v1-published.json');
     const before = readFileSync(path, 'utf8');
@@ -152,6 +207,25 @@ describe('autoFix', () => {
 
   it('fixes variant rows too: new AI text follows the glossary', () => {
     expect(g.autoFix('tax incidence', [{ text: '稅項歸宿' }]).runs).toEqual([{ text: '稅收承擔' }]);
+  });
+
+  it('gives a span across two runs the format of its first character', () => {
+    const zh: RichText = [{ text: '這是' }, { text: '市場', bold: true }, { text: '失靈。' }];
+    expect(g.autoFix('market failure', zh).runs).toEqual([{ text: '這是' }, { text: '市場失效', bold: true }, { text: '。' }]);
+  });
+
+  it('never rewrites a deny form inside a longer, correct glossary term', () => {
+    const zh: RichText = [{ text: '公園是公共財產，但它們是共用品嗎？' }];
+    expect(g.autoFix('Parks are public property, but are they a public good?', zh)).toEqual({ runs: zh, fixes: [] });
+    const finance: RichText = [{ text: '公共財政與公共財' }];
+    expect(g.autoFix('public finance and a public good', finance).runs).toEqual([{ text: '公共財政與共用品' }]);
+  });
+
+  it('never drops a line break or a blank inside a deny form', () => {
+    for (const text of ['價格\n水平', '價格 水平']) {
+      const zh: RichText = [{ text }];
+      expect(g.autoFix('price level', zh)).toEqual({ runs: zh, fixes: [] });
+    }
   });
 
   it('never edits inside a sub/superscript run', () => {

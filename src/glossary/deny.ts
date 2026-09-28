@@ -4,7 +4,8 @@
  * English source, so HK's normal 需求缺乏彈性 for "demand is inelastic" is never flagged.
  *
  * Invariants (`deny.test.ts`): every `fix` is a variant of its entry; no form is a variant
- * of its own entry; a form that is another entry's variant must be `reversal`.
+ * of its own entry; a form that is another entry's variant must be `reversal`; an entry
+ * sharing a rendering with a row's entry shares the row (or is exempted there).
  */
 export interface DenyRow {
   /** The glossary key, verbatim. */
@@ -36,6 +37,8 @@ export const DENY: readonly DenyRow[] = [
   { en: 'inelastic demand', forms: ['缺乏彈性需求'], kind: 'wrong', evidence: 'app seed; src/test/markSchemeFixture.ts' },
   { en: 'unitary elastic demand', forms: ['需求彈性等於一'], kind: 'wrong', evidence: 'app seed' },
   { en: 'production-possibility curve', forms: ['生產可能性曲線'], kind: 'wrong', evidence: 'app seed; HKEAA 2025' },
+  // Same rendering as the curve; PPF and "production possibility frontier" match this key.
+  { en: 'production-possibility frontier', forms: ['生產可能性曲線'], kind: 'wrong', evidence: 'app seed; HKEAA 2025' },
   { en: 'Lorenz curve', forms: ['洛倫茲曲線'], kind: 'wrong', evidence: 'app seed' },
   { en: 'line of perfect equality', forms: ['絕對平均線'], kind: 'wrong', evidence: 'app seed' },
   { en: 'full employment', forms: ['全民就業'], kind: 'wrong', evidence: 'app seed' },
