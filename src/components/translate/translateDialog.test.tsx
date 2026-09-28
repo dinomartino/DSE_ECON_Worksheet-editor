@@ -8,7 +8,7 @@ import type { TextSlot } from '@/model/textSlots';
 import type { AiStatus } from '@/settings/aiSettings';
 import type { TermRow, TranslationPlan } from '@/translate/types';
 import { PAPER_REQUEST, counts, fakePlan, job, result, reviewRun, seeded } from './sessionFixtures';
-import type { TranslateView } from './SetupPanel';
+import { scopeChoices, type TranslateView } from './SetupPanel';
 import { TranslateDialog } from './TranslateDialog';
 import type { TranslateController } from './translateController';
 import type { TranslateSession } from './translateSession';
@@ -95,6 +95,19 @@ describe('Translate dialog · Setup', () => {
     const replace = markup.match(/<label[^>]*>(?:(?!<\/label>)[\s\S])*Also replace existing 中文[\s\S]*?<\/label>/)?.[0] ?? '';
     expect(replace).toMatch(/<input type="checkbox"[^>]*disabled=""[^>]*checked=""/);
     expect(replace).toContain('38');
+  });
+
+  it('scope choices: a paper-wide entry still offers the selected question and page element, each once', () => {
+    const slots = [{ questionId: 'Q3', group: { kind: 'question', id: 'Q3', label: 'Question 3' } }] as unknown as TextSlot[];
+    const labels = (choices: ReturnType<typeof scopeChoices>) => choices.map((c) => c.label);
+    expect(labels(scopeChoices({ kind: 'paper' }, slots))).toEqual(['Whole paper']);
+    const paper = scopeChoices({ kind: 'paper' }, slots, { questionId: 'Q3', elementId: 'L1' });
+    expect(labels(paper)).toEqual(['Whole paper', 'Question 3', 'Selected (1)']);
+    expect(paper[1].scope).toEqual({ kind: 'questions', ids: ['Q3'] });
+    expect(paper[2].scope).toEqual({ kind: 'flowItems', ids: ['L1'] });
+    // The request's own question is not listed twice; an unlabelled one falls back.
+    expect(labels(scopeChoices({ kind: 'questions', ids: ['Q3'] }, slots, { questionId: 'Q3' }))).toEqual(['Whole paper', 'Question 3']);
+    expect(labels(scopeChoices({ kind: 'paper' }, [], { questionId: 'Q9' }))).toEqual(['Whole paper', 'This question']);
   });
 
   it('counts the glossary terms the sources will follow; says so when the glossary fails', () => {

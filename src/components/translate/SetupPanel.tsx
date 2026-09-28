@@ -8,7 +8,7 @@ import type { TranslateScope, TranslationPlan } from '@/translate/types';
 import { Button, Segmented } from '@/components/ui';
 import * as copy from './copy';
 import type { TranslateController } from './translateController';
-import type { SessionMode, TranslateSession } from './translateSession';
+import { sameScope, type SessionMode, type TranslateSession } from './translateSession';
 
 /** Everything the dialog shows that is not session state: computed by the host. */
 export interface TranslateView {
@@ -35,26 +35,45 @@ export function setupState(view: TranslateView): SetupState {
 export const planTexts = (plan: TranslationPlan | null): number => (plan ? plan.counts.toZh + plan.counts.toEn : 0);
 const copiesCount = (plan: TranslationPlan | null): number => plan?.counts.copied ?? 0;
 
-/** The request's own scope beside the whole paper, labelled from the walker's groups. */
+/** The editor's own selection, which a paper-wide entry (the pill, the ⋯ menu) does not carry. */
+export interface EditorSelection {
+  questionId?: string;
+  /** A layout element selected on the page. */
+  elementId?: string;
+}
+
+/** Only scopes that exist, each once: the whole paper, the request's own scope, then the
+ *  selected question and page element. Labels come from the walker's groups. */
 export function scopeChoices(
   scope: TranslateScope,
   slots: readonly TextSlot[],
+  selection: EditorSelection = {},
 ): Array<{ scope: TranslateScope; label: string }> {
-  const paper = { scope: { kind: 'paper' } as const, label: copy.SCOPE_PAPER };
+  const choices: Array<{ scope: TranslateScope; label: string }> = [{ scope: { kind: 'paper' }, label: copy.SCOPE_PAPER }];
+  const add = (next: TranslateScope, label: string) => {
+    if (!choices.some((choice) => sameScope(choice.scope, next))) choices.push({ scope: next, label });
+  };
+  const questionLabel = (id: string) => slots.find((s) => s.questionId === id)?.group.label ?? copy.scopeQuestions(1);
   switch (scope.kind) {
     case 'paper':
-      return [paper];
-    case 'questions': {
-      const heading = scope.ids.length === 1 ? slots.find((s) => s.questionId === scope.ids[0])?.group.label : undefined;
-      return [paper, { scope, label: heading ?? copy.scopeQuestions(scope.ids.length) }];
-    }
+      break;
+    case 'questions':
+      add(scope, scope.ids.length === 1 ? questionLabel(scope.ids[0]) : copy.scopeQuestions(scope.ids.length));
+      break;
     case 'flowItems':
-      return [paper, { scope, label: copy.scopeSelected(scope.ids.length) }];
+      add(scope, copy.scopeSelected(scope.ids.length));
+      break;
     case 'paths':
-      return [paper, { scope, label: scope.paths.length === 1 ? copy.SCOPE_TEXT : copy.scopeSelected(scope.paths.length) }];
+      add(scope, scope.paths.length === 1 ? copy.SCOPE_TEXT : copy.scopeSelected(scope.paths.length));
+      break;
     case 'block':
-      return [paper, { scope, label: copy.SCOPE_FIGURE }];
+      add(scope, copy.SCOPE_FIGURE);
+      break;
   }
+  const { questionId, elementId } = selection;
+  if (questionId) add({ kind: 'questions', ids: [questionId] }, questionLabel(questionId));
+  if (elementId) add({ kind: 'flowItems', ids: [elementId] }, copy.scopeSelected(1));
+  return choices;
 }
 
 /** Distinct glossary entries found in the sources this plan sends. */
@@ -187,11 +206,11 @@ function SetupOptions({
         <div role="radiogroup" aria-label={copy.SCOPE_LABEL} className="flex flex-wrap items-center gap-x-5 gap-y-1">
           <span className="text-[13px] font-medium text-ink">{copy.SCOPE_LABEL}</span>
           {view.scopeChoices.map((choice) => (
-            <label key={choice.label} className="flex cursor-pointer items-center gap-1.5 text-[13px] text-ink">
+            <label key={JSON.stringify(choice.scope)} className="flex cursor-pointer items-center gap-1.5 text-[13px] text-ink">
               <input
                 type="radio"
                 name="translate-scope"
-                checked={JSON.stringify(choice.scope) === JSON.stringify(session.scope)}
+                checked={sameScope(choice.scope, session.scope)}
                 onChange={() => actions.setScope(choice.scope)}
                 className="h-3.5 w-3.5 cursor-pointer accent-[var(--accent)]"
               />

@@ -97,6 +97,8 @@ export function sameRequest(a: TranslateRequest | null | undefined, b: Translate
   return a === b || canonical(a) === canonical(b);
 }
 
+export const sameScope = (a: TranslateScope, b: TranslateScope): boolean => canonical(a) === canonical(b);
+
 function canonical(value: unknown): string {
   return JSON.stringify(value, (_key, v: unknown) =>
     v && typeof v === 'object' && !Array.isArray(v)

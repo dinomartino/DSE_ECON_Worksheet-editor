@@ -103,6 +103,8 @@ function useDialogGlossary(): { glossary: Glossary | null; failed: boolean } {
 
 function TranslateRoot({ session }: { session: TranslateSession }) {
   const worksheet = useWorksheetStore((s) => s.worksheet);
+  const selectedQuestionId = useWorksheetStore((s) => s.selectedQuestionId);
+  const selectedElementId = useWorksheetStore((s) => s.selectedElementId);
   const status = useAiStatus();
   const { glossary, failed } = useDialogGlossary();
   const { request, scope, options, phase, mode } = session;
@@ -117,10 +119,15 @@ function TranslateRoot({ session }: { session: TranslateSession }) {
     () => (setup && options ? planTranslation(worksheet, scope, probeOptions(options)) : null),
     [setup, worksheet, scope, options],
   );
-  const choices = useMemo(
-    () => (request ? scopeChoices(request.scope, request.scope.kind === 'questions' ? collectTexts(worksheet) : []) : []),
-    [request, worksheet],
-  );
+  // The pill and the ⋯ menu send the whole paper; the editor's selection adds the narrower scopes.
+  const choices = useMemo(() => {
+    if (!request) return [];
+    const selection = {
+      questionId: worksheet.questions.some((q) => q.id === selectedQuestionId) ? selectedQuestionId : undefined,
+      elementId: worksheet.layout.some((l) => l.id === selectedElementId) ? selectedElementId : undefined,
+    };
+    return scopeChoices(request.scope, collectTexts(worksheet), selection);
+  }, [request, worksheet, selectedQuestionId, selectedElementId]);
   const termRows = useMemo(
     () => (mode === 'check' && glossary ? buildTermCheck(worksheet, glossary, scope) : null),
     [mode, glossary, worksheet, scope],
