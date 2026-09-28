@@ -1,6 +1,9 @@
+import { useSyncExternalStore } from 'react';
 import { presetFor } from '@/ai/providers';
 import { PROVIDER_IDS, type ProviderConfig, type ProviderId, type ProviderPreset } from '@/ai/types';
-import type { SecretError, SecretStore } from '@/platform/secrets';
+import { isDesktop } from '@/platform';
+import { peekSecret, readSecret, subscribeSecrets, type SecretError, type SecretStore } from '@/platform/secrets';
+import { appSettings } from './store';
 import type { SettingsSchema } from './types';
 import { baseUrl, bool, oneOf, recordOf, text, trueFlag } from './validators';
 
@@ -51,7 +54,8 @@ export interface AiStatus {
   preset: ProviderPreset;
   model: string;
   baseUrl: string;
-  /** Keyless provider, or peekSecret() finds a key, or (desktop) keychainSaved[provider]. Never reads the keychain. */
+  /** Keyless provider, or peekSecret() finds a key, or (desktop) keychainSaved[provider]; and
+   *  a model and base URL are set. Never reads the keychain. */
   configured: boolean;
   keyStore: SecretStore | null;
   /** Only from memory or web storage. */
@@ -63,34 +67,94 @@ export type AiConfigResult =
   | { ok: false; provider: ProviderId; reason: 'noKey' | 'noModel' | 'noBaseUrl' }
   | { ok: false; provider: ProviderId; reason: 'secretError'; error: SecretError };
 
-function unconfigured(): AiStatus {
-  const preset = presetFor('gemini');
+/** The model and base URL in effect for `provider`: the saved choice, else the preset's. */
+export function providerChoice(settings: AiSettings, provider: ProviderId): { model: string; baseUrl: string } {
+  const preset = presetFor(provider);
   return {
-    provider: 'gemini',
-    preset,
-    model: preset.models[0]?.id ?? '',
-    baseUrl: preset.baseUrl,
-    configured: false,
-    keyStore: null,
+    model: settings.models[provider] ?? preset.models[0]?.id ?? '',
+    baseUrl: settings.baseUrls[provider] ?? preset.baseUrl,
   };
 }
-const UNCONFIGURED = unconfigured();
+
+let memo: { inputs: unknown[]; status: AiStatus } | null = null;
 
 /** Synchronous. */
 export function readAiStatus(): AiStatus {
-  // P-SETTINGS replaces this body
-  return UNCONFIGURED;
+  const settings = appSettings.read(AI_SETTINGS);
+  const desktop = isDesktop();
+  const provider = settings.provider;
+  const peek = peekSecret(`ai:${provider}`);
+  const inputs = [settings, desktop, peek?.store, peek?.last4];
+  if (memo && memo.inputs.every((value, i) => value === inputs[i])) return memo.status;
+
+  const preset = presetFor(provider);
+  const { model, baseUrl } = providerChoice(settings, provider);
+  const inKeychain = desktop && settings.keychainSaved[provider] === true;
+  const hasKey = !preset.keyRequired || peek !== null || inKeychain;
+  const status: AiStatus = {
+    provider,
+    preset,
+    model,
+    baseUrl,
+    configured: hasKey && model !== '' && baseUrl !== '',
+    keyStore: peek?.store ?? (inKeychain ? 'keychain' : null),
+    ...(peek ? { keyLast4: peek.last4 } : {}),
+  };
+  memo = { inputs, status };
+  return status;
+}
+
+function subscribeStatus(listener: () => void): () => void {
+  const offSettings = appSettings.subscribe(AI_SETTINGS, listener);
+  const offSecrets = subscribeSecrets(listener);
+  // A key remembered or forgotten in another tab.
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === null || event.key.startsWith('econgen.secret.')) listener();
+  };
+  window.addEventListener('storage', onStorage);
+  return () => {
+    offSettings();
+    offSecrets();
+    window.removeEventListener('storage', onStorage);
+  };
+}
+
+let serverStatus: AiStatus | null = null;
+function readServerStatus(): AiStatus {
+  if (!serverStatus) {
+    const preset = presetFor('gemini');
+    const { model, baseUrl } = providerChoice(AI_SETTINGS.defaults({ desktop: false }), 'gemini');
+    serverStatus = { provider: 'gemini', preset, model, baseUrl, configured: false, keyStore: null };
+  }
+  return serverStatus;
 }
 
 /** Re-renders on settings and secrets changes. */
 export function useAiStatus(): AiStatus {
-  // P-SETTINGS replaces this body
-  return UNCONFIGURED;
+  return useSyncExternalStore(subscribeStatus, readAiStatus, readServerStatus);
 }
 
 /** Reads the secret (one keychain read per session, then cached in memory). A missing
  *  keychain item clears keychainSaved. */
-export function resolveAiConfig(provider?: ProviderId): Promise<AiConfigResult> {
-  // P-SETTINGS replaces this body
-  return Promise.resolve({ ok: false, provider: provider ?? 'gemini', reason: 'noKey' });
+export async function resolveAiConfig(provider?: ProviderId): Promise<AiConfigResult> {
+  const settings = appSettings.read(AI_SETTINGS);
+  const id = provider ?? settings.provider;
+  const preset = presetFor(id);
+  const { model, baseUrl } = providerChoice(settings, id);
+  if (!model) return { ok: false, provider: id, reason: 'noModel' };
+  if (!baseUrl) return { ok: false, provider: id, reason: 'noBaseUrl' };
+
+  const saved = settings.keychainSaved[id] === true;
+  // A keyless provider never prompts the keychain for a key it may not have.
+  const read = preset.keyRequired || saved || peekSecret(`ai:${id}`) ? await readSecret(`ai:${id}`) : null;
+  if (read && !read.ok) return { ok: false, provider: id, reason: 'secretError', error: read.error };
+  const apiKey = read?.value ?? null;
+  if (apiKey === null && saved && isDesktop()) {
+    const { [id]: _gone, ...rest } = settings.keychainSaved;
+    void _gone;
+    appSettings.write(AI_SETTINGS, { keychainSaved: rest });
+  }
+  if (apiKey === null && preset.keyRequired) return { ok: false, provider: id, reason: 'noKey' };
+  return { ok: true, config: { provider: id, apiKey, model, baseUrl }, preset };
 }
+
