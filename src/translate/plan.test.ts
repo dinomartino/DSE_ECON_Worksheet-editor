@@ -1,15 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { SlotGroup, TextSlot } from '@/model/textSlots';
 import { CHUNK_CHARS, defaultTranslateOptions, planFromSlots, slotInScope } from './plan';
 import type { TranslateOptions } from './types';
-
-// P-TEXT owns isSymbolOnly; until it lands, a faithful-enough stand-in for the plan rules.
-vi.mock('@/model/symbols', () => ({
-  isSymbolOnly: (runs: Array<{ text: string }>) => {
-    const text = runs.map((r) => r.text).join('');
-    return !/[㐀-鿿]/.test(text) && (text.match(/[A-Za-z]+/g) ?? []).every((t) => t.length <= 2 || /^[A-Z]{1,6}$/.test(t));
-  },
-}));
 
 const Q = (id: string, n: number): SlotGroup => ({ kind: 'question', id, label: `Question ${n}` });
 let seq = 0;

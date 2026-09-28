@@ -87,9 +87,9 @@ describe('termSummaryFromSlots', () => {
   });
 });
 
-// Needs P-TEXT's walker; until it lands `collectTexts` returns [] and this is skipped.
 const corpus = migrate(structuredClone(readCorpus()));
-describe.skipIf(collectTexts(corpus).length === 0)('buildTermCheck on the corpus copy', () => {
+describe('buildTermCheck on the corpus copy', () => {
+  it('walks the corpus', () => expect(collectTexts(corpus).length).toBeGreaterThan(0));
   it('finds 稅收承擔 as a variant fix', () => {
     const rows = buildTermCheck(corpus, glossary, paper);
     const fix = rows.flatMap((r) => r.checks).find((c) => c.en === 'tax incidence')?.fix;

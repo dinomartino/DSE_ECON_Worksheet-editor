@@ -244,10 +244,10 @@ function writeReport(name: string, report: unknown): string {
 // ---- runs ----
 
 describe('eval harness', () => {
-  it('builds every case without a key (the walker-backed cases fill in once P-TEXT lands)', () => {
+  it('builds every case without a key', () => {
     for (const c of cases()) {
       const plan = c.plan(OPTIONS);
-      expect(plan.jobs.size, c.name).toBeGreaterThanOrEqual(c.name.startsWith('preset:') || c.name.startsWith('corpus:') ? 0 : 1);
+      expect(plan.jobs.size, c.name).toBeGreaterThanOrEqual(1);
     }
   });
 

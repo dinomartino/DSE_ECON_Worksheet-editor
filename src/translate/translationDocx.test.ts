@@ -23,7 +23,7 @@ import { decodeWire, encodeRuns } from './wire';
  * The engine's output is safe to export: decoded runs carry no wire tag, a blank prints as
  * underlined spaces, a subscript as w:vertAlign, and derived text (numbers, marks) prints
  * once. Part one writes the results by hand into a question it built; part two runs the
- * real walker and apply over whole fixtures once P-TEXT is in the tree, and compares the
+ * real walker and apply over whole fixtures, and compares the
  * export with the original's (its Chinese cleaned up as the pipeline does).
  */
 
@@ -105,7 +105,7 @@ describe('engine output exports leak-free', () => {
   });
 });
 
-// ---- part two: the real walker and apply (skipped until P-TEXT is in the tree) ----
+// ---- part two: the real walker and apply ----
 
 const DOCUMENTS: Array<[string, () => Worksheet]> = [
   ['acceptance fixture', buildAcceptanceWorksheet],
@@ -114,7 +114,6 @@ const DOCUMENTS: Array<[string, () => Worksheet]> = [
     (documentType): [string, () => Worksheet] => [`preset ${documentType}`, () => createWorksheetFrom({ documentType })],
   ),
 ];
-const walkerReady = collectTexts(buildAcceptanceWorksheet()).length > 0;
 
 /**
  * The original's own Chinese as a reference reply comes back: through the decoder and the
@@ -128,7 +127,8 @@ function asPipelineReturns(zh: RichText, kind: TextSlot['kind']): RichText {
   return normalizeRuns(traditionalize(normalizeZh(decoded.runs).runs).runs);
 }
 
-describe.skipIf(!walkerReady)('an English-only paper translated end to end', () => {
+describe('an English-only paper translated end to end', () => {
+  it('the walker sees the fixture', () => expect(collectTexts(buildAcceptanceWorksheet()).length).toBeGreaterThan(0));
   for (const [name, build] of DOCUMENTS) {
     it(`${name}: plan → run → apply → .docx matches the bilingual original`, async () => {
       const original = build();
