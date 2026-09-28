@@ -126,10 +126,23 @@ describe('the AI section', () => {
 
 describe('the AI section states', () => {
   it('offers session-only use when the Keychain refuses', () => {
-    const html = view({ keychainDenied: true, key: { kind: 'editing', draft: KEY } }, {}, { desktop: true }, 'mac');
+    const html = view({ keychainError: 'denied', key: { kind: 'editing', draft: KEY } }, {}, { desktop: true }, 'mac');
     expect(html).toContain('macOS didn’t allow access to your Keychain. Use this key for this session only?');
     expect(html).toContain('Use for this session');
     expect(html).toContain('Try again');
+  });
+
+  it('words any other keychain failure without blaming a refusal', () => {
+    const html = view({ keychainError: 'failed', key: { kind: 'editing', draft: KEY } }, {}, { desktop: true }, 'windows');
+    expect(html).toContain('The key couldn’t be saved in Windows Credential Manager. Use this key for this session only?');
+    expect(html).not.toContain('allow access');
+    expect(html).toContain('Use for this session');
+  });
+
+  it('keeps naming the provider that refused after switching cards', () => {
+    const html = view({ provider: 'deepseek', model: 'deepseek-flash', regionRefusedBy: 'gemini' }, { provider: 'deepseek' });
+    expect(html).toContain('Google Gemini refused a request from your location.');
+    expect(html).not.toContain('DeepSeek refused');
   });
 
   it('confirms Forget inline, without a second dialog', () => {

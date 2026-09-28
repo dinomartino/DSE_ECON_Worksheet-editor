@@ -49,7 +49,8 @@ export function AiSectionView(props: AiSectionViewProps) {
     target?.scrollIntoView({ block: 'center' });
     target?.focus();
   }, [props.focus]);
-  const regionFocus = state.highlightHk && props.focus === undefined;
+  const refusedBy = state.regionRefusedBy;
+  const regionFocus = refusedBy !== null && props.focus === undefined;
   useEffect(() => {
     if (regionFocus) hkRef.current?.focus();
   }, [regionFocus]);
@@ -60,7 +61,7 @@ export function AiSectionView(props: AiSectionViewProps) {
       key={id}
       preset={presetFor(id)}
       selected={id === state.provider}
-      highlight={state.highlightHk && presetFor(id).hk.status === 'available'}
+      highlight={refusedBy !== null && presetFor(id).hk.status === 'available'}
       buttonRef={id === 'deepseek' ? hkRef : undefined}
       onSelect={() => actions.selectProvider(id)}
     >
@@ -70,9 +71,9 @@ export function AiSectionView(props: AiSectionViewProps) {
 
   return (
     <div className="space-y-4">
-      {state.highlightHk && (
+      {refusedBy && (
         <p role="status" className="rounded-lg bg-warn-soft px-3 py-2 text-xs text-warn-ink">
-          ⚠ {presetFor(settings.provider).label} refused a request from your location. DeepSeek and Qwen work from Hong
+          ⚠ {presetFor(refusedBy).label} refused a request from your location. DeepSeek and Qwen work from Hong
           Kong.
         </p>
       )}
@@ -210,7 +211,7 @@ function CardDetails({
       )}
       {!preset.keyRequired && (
         <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" variant="primary" disabled={testing} onClick={actions.saveAndTest}>
+          <Button size="sm" variant="primary" disabled={testing || !canTest(state)} onClick={actions.saveAndTest}>
             {testing ? 'Testing…' : 'Test connection'}
           </Button>
           <TestLine state={state} actions={actions} />
@@ -242,9 +243,12 @@ function KeyStatus({ state, actions, platform, env }: AiSectionViewProps) {
         </p>
       )}
       <TestLine state={state} actions={actions} />
-      {state.keychainDenied && (
+      {state.keychainError && (
         <p className="text-warn-ink">
-          {where} didn&rsquo;t allow access to {secretStoreLabel('keychain', platform)}. Use this key for this session only?{' '}
+          {state.keychainError === 'denied'
+            ? `${where} didn’t allow access to ${secretStoreLabel('keychain', platform)}.`
+            : `The key couldn’t be saved in ${secretStoreLabel('keychain', platform)}.`}{' '}
+          Use this key for this session only?{' '}
           <InlineAction onClick={actions.useForSession}>Use for this session</InlineAction> ·{' '}
           <InlineAction onClick={actions.retryKeychain}>Try again</InlineAction>
         </p>
@@ -441,8 +445,8 @@ function BaseUrlField({ state, settings, actions }: AiSectionViewProps) {
               const index = Number(event.target.value);
               setRegion(index);
               const next = preset.baseUrlChoices![index];
-              const url = next.template ? qwenWorkspaceUrl(next.url, workspace) : next.url;
-              if (url) actions.baseUrl(url);
+              // A workspace region with no valid workspace yet blocks the test until one is typed.
+              actions.baseUrl(next.template ? qwenWorkspaceUrl(next.url, workspace) : next.url);
             }}
             className={`${INPUT} min-w-[220px] flex-1 cursor-pointer`}
           >
@@ -464,8 +468,7 @@ function BaseUrlField({ state, settings, actions }: AiSectionViewProps) {
               onChange={(event) => {
                 setWorkspace(event.target.value);
                 actions.workspace(event.target.value);
-                const url = qwenWorkspaceUrl(choice.url, event.target.value);
-                if (url) actions.baseUrl(url);
+                actions.baseUrl(qwenWorkspaceUrl(choice.url, event.target.value));
               }}
               className={`${INPUT} w-full font-mono`}
             />

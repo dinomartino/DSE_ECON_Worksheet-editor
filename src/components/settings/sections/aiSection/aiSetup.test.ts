@@ -3,6 +3,7 @@ import type { AiErrorInfo, AiErrorKind, ConnectionTest } from '@/ai/types';
 import { AI_SETTINGS, type AiSettings } from '@/settings/aiSettings';
 import {
   aiSetupReducer,
+  canTest,
   cardState,
   initialAiSetup,
   needsCloseGuard,
@@ -70,18 +71,47 @@ describe('the AI section state', () => {
     }
   });
 
-  it('highlights the Hong Kong providers after a region error or a region deep link', () => {
+  it('remembers which provider refused the location, after a region error or a region deep link', () => {
     const tested = run(start(), { type: 'draft', value: 'AIzaSyTESTKEY0000' }, { type: 'saveAndTest' });
-    expect(run(tested, { type: 'testFinished', result: failed('quota') }).highlightHk).toBe(false);
-    expect(run(tested, { type: 'testFinished', result: failed('region') }).highlightHk).toBe(true);
-    expect(start({}, { provider: 'deepseek', reason: 'region' })).toMatchObject({ provider: 'deepseek', highlightHk: true });
+    expect(run(tested, { type: 'testFinished', result: failed('quota') }).regionRefusedBy).toBeNull();
+    expect(run(tested, { type: 'testFinished', result: failed('region') }).regionRefusedBy).toBe('gemini');
+    expect(start({}, { provider: 'deepseek', reason: 'region' })).toMatchObject({ provider: 'deepseek', regionRefusedBy: 'gemini' });
+  });
+
+  it('still names the refusing provider after switching to a Hong Kong one', () => {
+    const refused = run(
+      start(),
+      { type: 'draft', value: 'AIzaSyTESTKEY0000' },
+      { type: 'saveAndTest' },
+      { type: 'testFinished', result: failed('region') },
+    );
+    const s = settings({ provider: 'deepseek' });
+    const switched = run(refused, { type: 'selectProvider', id: 'deepseek', ...cardState(s, web, 'deepseek', null) });
+    expect(switched).toMatchObject({ provider: 'deepseek', regionRefusedBy: 'gemini' });
+  });
+
+  it('lists models only past the same shape check as Save & test', () => {
+    const typed = run(start(), { type: 'draft', value: 'sk-1234567890abcdef' });
+    expect(run(typed, { type: 'listAsked' }).key).toMatchObject({ kind: 'editing', shape: { likely: 'deepseek' } });
+    const plausible = run(start(), { type: 'draft', value: 'AIzaSyTESTKEY0000' });
+    expect(run(plausible, { type: 'listAsked' })).toBe(plausible);
+  });
+
+  it('blocks Save & test while a workspace region has no valid workspace', () => {
+    const qwen = start({ provider: 'qwen' });
+    expect(canTest(run(qwen, { type: 'draft', value: 'sk-1234567890' }))).toBe(true);
+    const pending = run(qwen, { type: 'draft', value: 'sk-1234567890' }, { type: 'baseUrl', url: null });
+    expect(canTest(pending)).toBe(false);
+    expect(run(pending, { type: 'saveAndTest' }).test.kind).toBe('idle');
+    const hk = 'https://llm-abc.cn-hongkong.maas.aliyuncs.com/compatible-mode/v1';
+    expect(canTest(run(pending, { type: 'baseUrl', url: hk }))).toBe(true);
   });
 
   it('offers session-only use after a Keychain refusal', () => {
-    const denied = run(start(), { type: 'draft', value: 'AIzaSyTESTKEY0000' }, { type: 'keychainDenied' });
-    expect(denied.keychainDenied).toBe(true);
+    const denied = run(start(), { type: 'draft', value: 'AIzaSyTESTKEY0000' }, { type: 'keychainError', kind: 'denied' });
+    expect(denied.keychainError).toBe('denied');
     const session = run(denied, { type: 'useForSession' }, { type: 'saved', store: 'memory', last4: '0000' });
-    expect(session).toMatchObject({ keychainDenied: false, key: { kind: 'saved', store: 'memory' } });
+    expect(session).toMatchObject({ keychainError: null, key: { kind: 'saved', store: 'memory' } });
   });
 
   it('confirms before forgetting one key or all of them', () => {

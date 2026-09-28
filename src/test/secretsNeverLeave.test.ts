@@ -4,7 +4,9 @@
  */
 import JSZip from 'jszip';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { writeSecret, resetSecretsForTest } from '@/platform/secrets';
+import { deleteSecret, peekSecret, readSecret, resetSecretsForTest, writeSecret } from '@/platform/secrets';
+import { initialAiSetup } from '@/components/settings/sections/aiSection/aiSetup';
+import { createAiSetupRunner, type AiSetupDeps } from '@/components/settings/sections/aiSection/aiSetupRunner';
 import { AI_SETTINGS } from '@/settings/aiSettings';
 import { createSettingsStore } from '@/settings/store';
 import { buildBackup } from '@/storage/backup';
@@ -73,15 +75,35 @@ describe('an AI key never leaves the secrets store', () => {
     await writeSecret('ai:deepseek', KEYS.deepseek, { remember: false });
     vi.stubGlobal('window', window({ sessionStorage: new RefusingStorage(), localStorage: new RefusingStorage() }));
     await writeSecret('ai:qwen', KEYS.qwen, { remember: false });
+
+    // The AI section's own flows, over the real secrets module and a settings store.
+    const settings = createSettingsStore(() => local, { desktop: false });
+    const deps: AiSetupDeps = {
+      env: { desktop: true },
+      testConnection: async () => ({ ok: true, ms: 1, model: 'm', sample: '物價水平', followedGlossary: true }),
+      listModels: async () => [],
+      readSecret,
+      writeSecret,
+      deleteSecret,
+      peekSecret,
+      readSettings: () => settings.read(AI_SETTINGS),
+      writeSettings: (patch) => void settings.write(AI_SETTINGS, patch),
+    };
+    const pane = createAiSetupRunner(deps, initialAiSetup(settings.read(AI_SETTINGS), deps.env, undefined, () => null));
     vi.stubGlobal('window', window({ __TAURI_INTERNALS__: {} }));
-    await writeSecret('ai:openrouter', KEYS.openrouter, { remember: true });
+    pane.selectProvider('openrouter');
+    await pane.remember(true);
+    pane.draft(KEYS.openrouter);
+    await expect(pane.saveAndTest()).resolves.toBe(true);
     expect(keychain.get('ai:openrouter')).toBe(KEYS.openrouter);
     vi.stubGlobal('window', window());
-
-    // The AI section's settings flows, written as the pane writes them.
-    const settings = createSettingsStore(() => local, { desktop: false });
-    settings.write(AI_SETTINGS, { provider: 'deepseek', rememberKey: true, keychainSaved: { openrouter: true } });
-    settings.write(AI_SETTINGS, { models: { deepseek: 'deepseek-flash' }, includeTeacherText: false });
+    pane.selectProvider('deepseek');
+    pane.model('deepseek-flash');
+    await pane.listModels();
+    pane.draft(KEYS.deepseek);
+    await expect(pane.saveAndTest()).resolves.toBe(true);
+    settings.write(AI_SETTINGS, { includeTeacherText: false });
+    expect(settings.read(AI_SETTINGS)).toMatchObject({ provider: 'deepseek', keychainSaved: { openrouter: true } });
 
     const worksheet = buildAcceptanceWorksheet();
     const store = new LocalStorageWorksheetStore();
