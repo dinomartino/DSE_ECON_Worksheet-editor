@@ -318,4 +318,27 @@ describe('translateController', () => {
     expect(t.applied[0].map((w) => w.path)).toEqual(['a']);
     expect(t.deps.notify).toHaveBeenCalledWith('Replaced 1 term', expect.objectContaining({ label: 'Undo' }));
   });
+
+  it("the flash's Undo undoes its own commit only while that commit is the latest", async () => {
+    let ws = { ...createWorksheet(), id: WS_ID };
+    const t = setup({
+      getWorksheet: () => ws,
+      apply: vi.fn((writes: readonly TranslationWrite[]): ApplyReport => {
+        ws = { ...ws };
+        return { applied: writes.length, skipped: [], resized: 0 };
+      }),
+    });
+    t.controller.open(PAPER_REQUEST);
+    t.controller.translate();
+    await flush();
+    t.scripted.release();
+    await flush();
+    t.controller.insert();
+    const action = vi.mocked(t.deps.notify).mock.calls[0][1]!;
+    expect(action.live?.()).toBe(true);
+    ws = { ...ws }; // a later edit, or ⌘Z
+    expect(action.live?.()).toBe(false);
+    action.run();
+    expect(t.deps.undo).not.toHaveBeenCalled();
+  });
 });

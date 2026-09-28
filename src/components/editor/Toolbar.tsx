@@ -23,13 +23,13 @@ import { hasCoverSheet } from './sheets';
 import { FeedbackDialog } from '@/components/feedback/FeedbackDialog';
 import { WhatsNewDialog } from '@/components/whatsNew/WhatsNewDialog';
 import { describeDocument } from '@/feedback/feedback';
-import { useAppDialogs, type TranslateRequest } from '@/store/appDialogs';
+import { useAppDialogs, type NoticeAction, type TranslateRequest } from '@/store/appDialogs';
 import { useSettingsSections } from '@/settings/sections';
 import { paperRequest, toolbarMenuEntries, type ToolbarEntry } from '@/components/translate/translateMenu';
 import { PILL_TITLE, pillLabel } from '@/components/translate/copy';
 
 /** A transient status line, optionally with one follow-up action. */
-type Notice = { message: string; action?: { label: string; run: () => void } };
+type Notice = { message: string; action?: NoticeAction };
 
 /** An action (desktop "Show in Finder", Undo) stays long enough to be reached. */
 function showNotice(
@@ -120,6 +120,19 @@ export function Toolbar({
       }),
     [],
   );
+  // An action tied to one commit (Undo) goes as soon as history moves past it.
+  useEffect(
+    () =>
+      useWorksheetStore.subscribe((state, prev) => {
+        if (state.worksheet === prev.worksheet) return;
+        setNotice((current) => (current?.action?.live && !current.action.live() ? undefined : current));
+      }),
+    [],
+  );
+  const runNotice = (action: NoticeAction) => {
+    setNotice(undefined);
+    action.run();
+  };
   const openTranslate = (request: TranslateRequest) => useAppDialogs.getState().openTranslate(request);
   /** Export is a component-owned dialog: it closes before Translate opens. */
   const translateFromExport = (mode: 'translate' | 'check') => {
@@ -256,7 +269,7 @@ export function Toolbar({
   };
 
   return (
-    <div className="zone-dark border-b border-line bg-surface px-4 py-2.5">
+    <div className="zone-dark relative border-b border-line bg-surface px-4 py-2.5">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         {/* Identity gets a mark, not just a word. A tool with a face on it reads as a
             product; a bare bold string reads as a page heading.
@@ -358,16 +371,6 @@ export function Toolbar({
 
         {/* Status sits with the document, not with the actions. */}
         <span className="ml-auto flex items-center gap-2 text-[11px] text-ink-muted">
-          {notice && (
-            <span key={notice.message} className="animate-fade-in font-medium text-ok">
-              {notice.message}
-            </span>
-          )}
-          {notice?.action && (
-            <Button variant="ghostAccent" size="sm" className="animate-fade-in" onClick={notice.action.run}>
-              {notice.action.label}
-            </Button>
-          )}
           <UntranslatedPill
             count={untranslated}
             onOpen={readOnly ? undefined : () => openTranslate(paperRequest(worksheet.id))}
@@ -380,14 +383,12 @@ export function Toolbar({
             pages={bodySheets ? bodySheets + (hasCoverSheet(worksheet, mode) ? 1 : 0) : undefined}
             onOpen={readOnly ? undefined : onOpenSettings}
           />
-          <span className="hidden sm:inline">
-            {readOnly
-              ? 'Read-only'
-              : dirty
-                ? 'Unsaved…'
-                : lastSavedAt
-                  ? `Saved ${new Date(lastSavedAt).toLocaleTimeString()}`
-                  : 'Saved'}
+          {/* The time lives in the tooltip: a clock string beside the pill wrapped the row. */}
+          <span
+            className="hidden sm:inline"
+            title={!readOnly && !dirty && lastSavedAt ? `Saved at ${new Date(lastSavedAt).toLocaleTimeString()}` : undefined}
+          >
+            {readOnly ? 'Read-only' : dirty ? 'Unsaved…' : 'Saved'}
           </span>
         </span>
 
@@ -435,6 +436,23 @@ export function Toolbar({
         />
 
       </div>
+
+      {/* Floats under the bar's right edge: an inline notice wrapped the row and moved the page. */}
+      {notice && (
+        <div
+          key={notice.message}
+          role="status"
+          data-print-hide
+          className="absolute right-4 top-full z-30 mt-1.5 flex animate-fade-in items-center gap-2 rounded-lg border border-line bg-surface px-3 py-1 text-[11px] shadow-sm"
+        >
+          <span className="font-medium text-ok">{notice.message}</span>
+          {notice.action && (
+            <Button variant="ghostAccent" size="sm" onClick={() => notice.action && runNotice(notice.action)}>
+              {notice.action.label}
+            </Button>
+          )}
+        </div>
+      )}
 
       {error && (
         <p

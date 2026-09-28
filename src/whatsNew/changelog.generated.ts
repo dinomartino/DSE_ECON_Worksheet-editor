@@ -29,6 +29,8 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   paper would (寫出…, **一個**). Worksheets you already made keep their wording.
 - The ‘untranslated’ count now covers the whole paper — cover, header and footer, tables
   and diagram labels — and shows in 中文 mode too.
+- Status messages such as "Exported .pdf" float under the toolbar instead of pushing the
+  page down, and "Saved" shows its time when you point at it.
 
 ## 0.4.0 — 2026-09-27
 

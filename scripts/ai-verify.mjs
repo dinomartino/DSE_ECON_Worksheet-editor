@@ -435,9 +435,13 @@ async function journeyChecks(engine, browser) {
 
   await check(engine, 'Insert → flash → print has no chrome → one ⌘Z undoes it', async () => {
     const before = await page.locator('#print-root').innerText();
+    const exportTop = async () => (await page.getByRole('button', { name: 'Export…' }).boundingBox())?.y;
+    const topBefore = await exportTop();
     await dialog.getByRole('button', { name: /^Insert \d+$/ }).click();
     await page.getByText(/^Filled \d+ text/).waitFor({ timeout: 5000 });
     await shot(page, '12-inserted-zh');
+    const topAfter = await exportTop();
+    expect(topAfter === topBefore, `the flash moved the toolbar (Export top ${topBefore} → ${topAfter})`);
     const after = await page.locator('#print-root').innerText();
     expect(after !== before, 'the page did not change');
     // §I.4 item 7, on the inserted page.
@@ -453,6 +457,8 @@ async function journeyChecks(engine, browser) {
     await page.keyboard.press(`${META}+KeyZ`);
     await page.waitForTimeout(500);
     expect((await page.locator('#print-root').innerText()) === before, 'one Undo did not restore the page');
+    // ⌘Z retires the flash's Undo: it must not stay up to undo an earlier edit.
+    expect((await page.getByText(/^Filled \d+ text/).count()) === 0, 'the flash outlived its commit');
     await shot(page, '15-undone');
   });
 
