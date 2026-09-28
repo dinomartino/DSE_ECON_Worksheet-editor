@@ -2121,9 +2121,9 @@ Rules every part keeps:
 - **Collected from the model, never the IR or DOM**, so derived numbers, marks and default
   wording never reach a request, and an absent prefix or suffix stays absent.
 - **One commit per batch**, every write stale-guarded; `readOnly` is inert.
-- **Network only on an explicit click** (Translate, Fill, Save & test, List my models).
-- **One app dialog at a time** (`src/store/appDialogs.ts`): Translate and Settings hand off
-  and never stack.
+- **Network only on an explicit click** (an AI verb, a field Fill, Save & test, List my models).
+- **One app dialog at a time** (`src/store/appDialogs.ts`): Settings never stacks on another
+  dialog. AI results are reviewed on the page, not in a dialog.
 
 ### The glossary (`src/glossary/`)
 
@@ -2348,38 +2348,34 @@ Pure modules with injected dependencies; types in `src/translate/types.ts`.
   `EVAL_*_KEY` environment variables, outside `npm test`; the report stays out of the
   repo.
 
-### The Translate dialog (`src/components/translate/`)
+### Running and reviewing AI results (`src/components/ai/`, `src/assist/verbs/`)
 
-One dialog, two modes (Translate, Check terms), opened through `useAppDialogs` and mounted
-once as `TranslateHost` in `EditorApp`. Copy: `src/components/translate/copy.ts`.
+There is no pre-insert review. A verb click runs, writes, then shows what it wrote.
 
-- **Phases are a pure reducer** (`src/components/translate/translateSession.ts`: setup →
-  running → review, or error). Every screen is a function of the session and a view, so
-  each is a static-markup test. Effects — plan, run, abort, Insert, hand-offs — are
-  injected into `src/components/translate/translateController.ts`.
-- **Review is read-only**: ticks and notes, no text input. A wrong row is unticked or fixed
-  on the page after inserting; the rejected translation dock is never rebuilt (the markup
-  test fails on any text field, textarea or contentEditable).
-- **Paid work is never lost to one stray press.** The first Escape, ✕ or scrim click asks
-  (Stop while running, Discard with rows pending). Stop keeps finished rows; a retry sends
-  only the jobs without a usable result.
-- **Insert is one `applyTranslations` call**: one commit, one ⌘Z. If every write is stale,
-  the dialog stays open on "Nothing inserted". Every count in the dialog is printed texts
-  (slots), as Setup's "Translate N" is: a ×2 row is two, a copied number one
-  (`src/components/translate/translateSession.ts:textsIn`). The flash matches a skip by path
-  (`ApplyReport.skipped[].path` is the `TranslationWrite.path` from `writesFor`;
-  `src/components/translate/translateIntegration.test.ts` pins it).
-- **The flash's Undo belongs to its commit** (`src/store/appDialogs.ts:NoticeAction`
-  `live`): a later edit or ⌘Z retires it, never undoing something unrelated. Notices float
-  under the toolbar's middle, so they never reflow the bar.
-- **Never stacked.** Settings is offered only in Setup and Error, by replacing the app
-  dialog with `returnTo`; the session store keeps scope, options and finished rows across
-  the round trip. The host closes a request for another document or a read-only one.
-- **A symbol gap counts only as a copy the options write** (by default only for the side
-  the edition prints alone). In EN+中 a paper whose only gaps are symbols has nothing to
-  fill and opens on Check terms.
-- **Setup's scopes** add the editor's selected question and page element to whatever the
-  entry sent, so the paper-wide entries (pill, ⋯ menu) can still narrow.
+- **Direct insert, one commit.** Fill missing 中文 / English and Re-translate
+  (`src/assist/verbs/translate.ts`) plan with the defaults a click implies — one direction,
+  teacher text when the Teacher version shows or `ai.includeTeacherText` is on, diagram
+  labels on, symbol copies per the edition rule — run, then make ONE `applyTranslations`
+  with every usable result. Hard failures are never written and come back as `failed`
+  items; warnings and content risks are written and come back as `look`. Stale-guard skips
+  are reported, never retried silently. Stop keeps finished chunks and writes them.
+- **One unit: printed texts** (`src/assist/verbs/translateShared.ts:textsIn`): a deduped
+  job is as many texts as it prints, a copied symbol one — the menu count, the progress and
+  the summary all use it.
+- **Undo all belongs to its commit** (`commitUndo`): live only while that commit is the
+  latest, so a later edit retires it rather than undoing something unrelated. A `look`
+  item's one action (Remove, or the glossary's own fix for a reversed term) and each Check
+  terms fix is its own commit; Replace N applies only the safe fixes (wrong forms, never a
+  textbook variant or a lower rank) in one.
+- **The bar** (`AiBar`) floats over the page column and never reflows it: progress and
+  Stop, then the summary, tone chips, ‹ ›, Undo all / Replace N and Done, or an error with
+  exactly the actions it names (Retry reruns the same verb over the same scope; a region
+  error offers DeepSeek and Qwen). It claims no modal layer; Escape inside it ends review.
+  `ItemCard` sits by the item's text.
+- **Highlights are imperative** (`src/components/ai/pageMarks.ts`): a `data-ai-mark`
+  attribute on `#print-root [data-page-target]`, re-applied by a MutationObserver, styled
+  under `@media screen` only. The IR and `ItemBody` read nothing new; nothing prints and
+  the `.docx` never sees them. They clear on Done, Undo all, a new run or another document.
 
 ### Entry points
 
@@ -2401,7 +2397,7 @@ keeps only Settings…. The one exception is `BiTextField`'s field-level "✦ Fi
   holds; without it there is no button, since a guessed kind would drop the wording
   rules). `src/components/translate/fieldFill.ts` decides the button and runs one fill,
   written through the field's own `onChange` (one commit) only over an unchanged source and
-  a still-empty side. A result the Translate review would leave unticked (a reversed term,
+  a still-empty side. A result a page fill would mark `look` (a reversed term,
   a content risk) is shown with *Insert anyway*, never written silently. Without a provider
   it deep-links to Settings — never over a modal layer (Setup, a canvas), where the button
   is disabled instead. The pipeline loads on the first fill.

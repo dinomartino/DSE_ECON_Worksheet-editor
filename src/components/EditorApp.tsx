@@ -10,7 +10,6 @@ import { Sidebar } from '@/components/editor/Sidebar';
 import { DocumentSettings } from '@/components/editor/DocumentSettings';
 import { Toolbar } from '@/components/editor/Toolbar';
 import { NewerVersionNotice } from '@/components/editor/NewerVersionNotice';
-import { TranslateHost } from '@/components/translate/TranslateHost';
 import { AiHost } from '@/components/ai/AiHost';
 import { IconButton } from '@/components/ui';
 import { ChevronRightIcon, CloseIcon } from '@/components/ui/icons';
@@ -529,9 +528,6 @@ export function EditorApp({
       </div>
 
       {settingsOpen && <DocumentSettings onClose={() => setSettingsOpen(false)} />}
-
-      {/* Translate and Check terms: opened through `useAppDialogs`, never stacked. */}
-      <TranslateHost />
 
       {/* The AI door: menu, run bar and ⌘J / Ctrl+J. */}
       <AiHost />

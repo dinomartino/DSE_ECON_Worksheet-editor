@@ -1,4 +1,4 @@
-import { depsError } from '@/components/translate/translateController';
+import { depsError } from './translateShared';
 import { editTargetKey } from '@/model/edits';
 import { isDesktop } from '@/platform';
 import { qualityQuestions, questionEmpty } from '@/quality/collect';
@@ -48,7 +48,8 @@ export const qualityVerb: AiVerb = {
     const questions = qualityQuestions(ctx.worksheet, ctx.scope);
     if (questions.length === 0) return null;
     const count = questions.filter((q) => !questionEmpty(q)).length;
-    return count > 0 ? { count, unit: 'questions' } : { count, unit: 'questions', disabledReason: 'These questions are blank' };
+    const unit = count === 1 ? 'question' : 'questions';
+    return count > 0 ? { count, unit } : { count, unit, disabledReason: 'These questions are blank' };
   },
 
   sendsLine(ctx, providerLabel) {

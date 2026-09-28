@@ -14,9 +14,8 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 
 ### Added
 - **Translate**: fill the missing 中文 or English of a worksheet with AI, using your own
-  key (Gemini, DeepSeek, Qwen and others). A paper or question is shown line by line for
-  review before it goes in; a single field fills in place. Economics terms follow the
-  Education Bureau glossary, and one Undo takes it all back.
+  key (Gemini, DeepSeek, Qwen and others). Economics terms follow the Education Bureau
+  glossary; a single field fills in place.
 - **Check terms**: compare a worksheet's Chinese with the EDB glossary and fix
   non-standard terms in one click — no key needed.
 - **Settings** (⋯ → Settings…): app-wide preferences for this browser or computer,
@@ -26,6 +25,9 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   whole paper or whatever you have selected.
 - **One ✦ AI button** (⌘J) holds every AI tool, with the untranslated count on it;
   right-click any text, table or question for AI on just that part.
+- **AI results go straight onto the page**, highlighted, with **Undo all**: walk through
+  what changed with ‹ ›, and anything worth a second look is marked in amber. Check terms
+  underlines its findings on the page and replaces them one by one or all at once.
 - Set up your AI key right where you use it — no trip to Settings. Pick Gemini, DeepSeek
   or Qwen in the AI menu, paste your key, and the action you chose runs once it works.
 - **Questions from a source** (AI menu): paste a news extract or data description and
