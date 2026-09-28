@@ -54,8 +54,10 @@ export interface CompletionRequest {
   system: string;
   /** Few-shot pair(s), then the real payload last. */
   turns: ChatTurn[];
-  /** ITEMS_SCHEMA. */
+  /** ITEMS_SCHEMA, or a caller's own flat schema with its `shapeHint`. */
   schema: JsonSchema;
+  /** The shape hint for rungs that don't enforce `schema`; default JSON_SHAPE_HINT (ITEMS_SCHEMA's). */
+  shapeHint?: string;
   maxOutputTokens: number;
   signal: AbortSignal;
   /** Default 120 000. */

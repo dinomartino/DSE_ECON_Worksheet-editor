@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react';
+import type { AnswerVisitor } from '@/model/answerLeaves';
 import type { TextWalker } from '@/model/textSlots';
 import type { BiText, ContentBlock, Question } from '@/model/types';
 import type { RenderContext, RenderNode } from '@/render/ir';
@@ -51,6 +52,12 @@ export interface QuestionTypeDefinition<Q extends Question = Question> {
    * this question (`q:<id>`, group "Question n").
    */
   mapTexts: (question: Q, walk: TextWalker) => Q;
+  /**
+   * The leaves the AI answer writer may fill (`model/answerLeaves.ts`), in print order,
+   * each visited once; a returned fill writes only into empty fields. Return the question
+   * itself when nothing was written. Absent = nothing to answer.
+   */
+  mapAnswers?: (question: Q, visit: AnswerVisitor) => Q;
   /** Per-type facts for the pre-print paper check (`model/paperHealth.ts`). */
   healthFacts?: (question: Q) => QuestionHealthFacts;
   /** This question's entry in the separate answer key (`render/answerKey.ts`); absent = none. */

@@ -1,3 +1,4 @@
+import { fillRationale, type AnswerVisitor } from '@/model/answerLeaves';
 import { createMcqQuestion } from '@/model/factories';
 import { optionLabel, statementLabel, toUpperLetter } from '@/model/numbering';
 import { areBlocksEmpty, bi, isBiTextEmpty, plain, provenanceLabel } from '@/model/text';
@@ -427,6 +428,20 @@ function mapTexts(question: McqQuestion, walk: TextWalker): McqQuestion {
   });
 }
 
+/** The whole question is one leaf: a rationale per option. The question is its stamp. */
+function mapAnswers(question: McqQuestion, visit: AnswerVisitor): McqQuestion {
+  const questionId = question.id;
+  const fill = visit({
+    shape: 'choice', key: 'options', label: '', stamp: question, answerIndex: question.answerIndex,
+    options: question.options.map((option, index) => ({
+      id: option.id, letter: toUpperLetter(index), rationale: option.rationale,
+      blank: isBiTextEmpty(option.text) && areBlocksEmpty(option.blocks),
+      target: { kind: 'mcqRationale', questionId, optionId: option.id },
+    })),
+  });
+  return fill ? patch(question, { options: mapSame(question.options, (option) => fillRationale(option, fill)) }) : question;
+}
+
 /** The key as a letter (null when it points at no option), blank and duplicate options. */
 function healthFacts(question: McqQuestion): QuestionHealthFacts {
   const { answerIndex, options } = question;
@@ -555,6 +570,7 @@ export const mcqType: QuestionTypeDefinition<McqQuestion> = {
   examGapLines: MCQ_EXAM_GAP_LINES,
   EditorPanel: McqEditorPanel,
   mapTexts,
+  mapAnswers,
   healthFacts,
   answerKey,
   quizItem,
