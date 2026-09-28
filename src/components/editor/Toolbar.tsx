@@ -6,7 +6,7 @@ import { renderDiagramImages } from '@/export/diagramImage';
 import type { LanguageMode, OutputMode, VersionMode } from '@/model/types';
 import { useUntranslatedCount } from './useUntranslatedCount';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { downloadWorksheetFile, worksheetStore } from '@/storage';
+import { downloadWorksheetFile } from '@/storage';
 import { isDesktop, revealFile, revealLabel } from '@/platform';
 import { Button, IconButton, Pill, Segmented } from '@/components/ui';
 import { ChevronRightIcon, DownloadIcon, PageSetupIcon, RedoIcon, SettingsIcon, UndoIcon } from '@/components/ui/icons';
@@ -97,6 +97,7 @@ export function HomeCrumb({ onOpenFiles }: { onOpenFiles: () => void }) {
 export function Toolbar({
   onOpenSettings,
   onOpenFiles,
+  onClearAll,
   bodySheets,
 }: {
   onOpenSettings: () => void;
@@ -104,6 +105,8 @@ export function Toolbar({
   bodySheets?: number;
   /** Show the start screen: the saved-worksheet list, and the new-document form. */
   onOpenFiles: () => void;
+  /** Delete every saved document, this one included, and show the (empty) start screen. */
+  onClearAll: () => Promise<void>;
 }) {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const mode = useWorksheetStore((s) => s.mode);
@@ -282,14 +285,14 @@ export function Toolbar({
    * It ends on the **start screen**, not on a fresh blank document: having just emptied
    * the list, dropping the teacher into an untitled worksheet would put them straight
    * back into a document they did not ask to start, with no sign the clear had done
-   * anything. The empty list is the honest result.
+   * anything. The empty list is the honest result. Not through `onOpenFiles`: that
+   * leave saves unsaved edits, which would put the open document straight back.
    */
   const handleClearAll = async () => {
     setConfirmingClear(false);
     setError(undefined);
     try {
-      await worksheetStore.clear();
-      onOpenFiles();
+      await onClearAll();
     } catch {
       setError('Could not clear saved documents.');
     }

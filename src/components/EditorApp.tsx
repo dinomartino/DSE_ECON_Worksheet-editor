@@ -27,9 +27,12 @@ import { worksheetStore } from '@/storage';
 /** Two-pane shell (§5.1): structural editor on the left, live preview on the right. */
 export function EditorApp({
   onOpenFiles,
+  onClearAll,
   onOpenDocument,
 }: {
   onOpenFiles: () => void;
+  /** Delete every saved document and leave for the start screen, without saving this one. */
+  onClearAll: () => Promise<void>;
   /** Open another document in the editor (the read-only notice's editable copy). */
   onOpenDocument: (worksheet: Worksheet) => void;
 }) {
@@ -345,6 +348,8 @@ export function EditorApp({
   useEffect(() => {
     if (!dirty) return;
     const timer = setTimeout(() => {
+      // Cleaned since it was armed (Clear saved documents): nothing to write back.
+      if (!useWorksheetStore.getState().dirty) return;
       void worksheetStore.save(worksheet).then(markSaved);
     }, 1200);
     return () => clearTimeout(timer);
@@ -404,6 +409,7 @@ export function EditorApp({
       <Toolbar
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenFiles={onOpenFiles}
+        onClearAll={onClearAll}
         bodySheets={pages.length}
       />
       {readOnly && <NewerVersionNotice onOpenDocument={onOpenDocument} />}

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createWorksheet } from '@/model/factories';
 import type { Worksheet } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { flushBeforeLeaving } from './EditorHost';
+import { clearSavedDocuments, flushBeforeLeaving } from './EditorHost';
 
 const initial = useWorksheetStore.getState();
 afterEach(() => useWorksheetStore.setState(initial, true));
@@ -49,6 +49,37 @@ describe('leaving the editor flushes the open document', () => {
     useWorksheetStore.getState().replaceWorksheet(createWorksheet());
     edit('Quiz');
     await expect(flushBeforeLeaving(() => Promise.reject(new Error('disk full')))).rejects.toThrow('disk full');
+    expect(useWorksheetStore.getState().dirty).toBe(true);
+  });
+});
+
+describe('Clear saved documents leaves without saving', () => {
+  /** A store with only what the clear and a leave touch. */
+  const memoryStore = () => {
+    const docs = new Map<string, Worksheet>();
+    return {
+      docs,
+      save: async (w: Worksheet) => void docs.set(w.id, w),
+      clear: async () => docs.clear(),
+    };
+  };
+
+  it('a dirty open document does not survive the clear', async () => {
+    const store = memoryStore();
+    useWorksheetStore.getState().replaceWorksheet(createWorksheet());
+    await store.save(useWorksheetStore.getState().worksheet);
+    edit('Unsaved edit');
+
+    await clearSavedDocuments(store.clear);
+    // Anything that flushes afterwards (a leave, a due autosave) finds nothing to write.
+    await flushBeforeLeaving(store.save);
+    expect(store.docs.size).toBe(0);
+  });
+
+  it('keeps the edits dirty when the clear fails', async () => {
+    useWorksheetStore.getState().replaceWorksheet(createWorksheet());
+    edit('Quiz');
+    await expect(clearSavedDocuments(() => Promise.reject(new Error('locked')))).rejects.toThrow('locked');
     expect(useWorksheetStore.getState().dirty).toBe(true);
   });
 });

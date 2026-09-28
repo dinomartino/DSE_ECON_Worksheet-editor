@@ -1793,6 +1793,9 @@ the way in; `NewWorksheetForm` asks the once-per-document decisions.
   `EditorApp`'s unmount). Both departure paths save **by value** — `store.save()` reads
   `getState().worksheet`, which `replaceWorksheet` has already swapped. Leaving awaits
   the write (`flushBeforeLeaving`) and marks clean only a value that was itself written.
+  **"Clear saved documents" is the one leave that must not flush** (`clearSavedDocuments`):
+  it marks the store clean before the clear, and the desktop `clear()` waits out saves
+  already writing, so nothing writes the open document back.
 - **A new document is saved before it is edited** — `replaceWorksheet` marks the store
   clean and autosave only fires on dirty, so an untouched new worksheet was never
   written.

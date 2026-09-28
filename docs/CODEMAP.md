@@ -203,7 +203,7 @@ Invariants:
 - `src/components/start/PageThumbnail.tsx:PageThumbnail` · `src/components/start/thumbnail.ts:loadThumbnail` — derived first page
 
 Invariants:
-- The gate lives in `src/app/EditorHost.tsx:EditorHost`, outside the editor; the start screen is always home, with no way back but a card; leaving awaits `src/app/EditorHost.tsx:flushBeforeLeaving` — §The start screen.
+- The gate lives in `src/app/EditorHost.tsx:EditorHost`, outside the editor; the start screen is always home, with no way back but a card; leaving awaits `src/app/EditorHost.tsx:flushBeforeLeaving`, except clearing, which must not save (`src/app/EditorHost.tsx:clearSavedDocuments`) — §The start screen.
 - A thumbnail is derived from the IR, never stored — §The file dashboard.
 - In-page drags use pointer events, never HTML5 drag-and-drop — §The file dashboard.
 
