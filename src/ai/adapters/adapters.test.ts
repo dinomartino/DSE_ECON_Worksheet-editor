@@ -205,10 +205,38 @@ describe('anthropic', () => {
     expect(json.system).toBe(`SYSTEM\n\n${JSON_SHAPE_HINT}`);
   });
 
+  it("carries a request's own shapeHint on an unenforced rung, in every family", () => {
+    const own = { ...req, shapeHint: 'OWN SHAPE' };
+    for (const [adapter, provider, dialect] of [
+      [geminiAdapter, 'gemini', 'gemini-mime'],
+      [openaiCompatAdapter, 'deepseek', 'openai-jsonObject'],
+      [anthropicAdapter, 'anthropic', 'prompt'],
+    ] as const) {
+      const body = adapter.build(PRESETS[provider], config(provider), own, dialect).body ?? '';
+      expect(body).toContain('SYSTEM\\n\\nOWN SHAPE');
+      expect(body).not.toContain('{\\"items\\"');
+    }
+  });
+
   it('extracts text blocks and maps stop_reason', () => {
     const body = { content: [{ type: 'text', text: '{"items":[]}' }], stop_reason: 'end_turn', usage: { input_tokens: 3, output_tokens: 2 } };
     expect(anthropicAdapter.extract(body)).toEqual({ text: '{"items":[]}', finish: 'stop', usage: { input: 3, output: 2 } });
     expect(anthropicAdapter.extract({ content: [], stop_reason: 'max_tokens' })?.finish).toBe('length');
     expect(anthropicAdapter.extract({ content: [], stop_reason: 'refusal' })?.finish).toBe('safety');
+  });
+});
+
+describe('a caller-owned schema', () => {
+  it("carries the caller's shape hint on every unenforced rung, never the items hint", () => {
+    const own = { ...req, shapeHint: 'OWN HINT' };
+    const bodies = [
+      openaiCompatAdapter.build(PRESETS.deepseek, config('deepseek'), own, 'openai-jsonObject').body ?? '',
+      anthropicAdapter.build(PRESETS.anthropic, config('anthropic'), own, 'prompt').body ?? '',
+      geminiAdapter.build(PRESETS.gemini, config('gemini'), own, 'prompt').body ?? '',
+    ];
+    for (const body of bodies) {
+      expect(body).toContain('SYSTEM\\n\\nOWN HINT');
+      expect(body).not.toContain(JSON.stringify(JSON_SHAPE_HINT).slice(1, -1));
+    }
   });
 });

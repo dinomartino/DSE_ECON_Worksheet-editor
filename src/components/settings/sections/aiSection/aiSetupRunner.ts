@@ -84,8 +84,11 @@ export function createAiSetupRunner(deps: AiSetupDeps, initial: AiSetupState) {
     if (shown(p)) send({ type: 'saved', store: written.store, last4: read.value.slice(-4) });
   };
 
-  /** Save & test. Resolves true when the key (or a keyless provider) is now in use. */
-  const saveAndTest = async (anyway = false): Promise<boolean> => {
+  /**
+   * Save & test. Resolves true when the key (or a keyless provider) is now in use.
+   * `requireOk` (the menu's SetupCard): a failed test saves and commits nothing.
+   */
+  const saveAndTest = async (anyway = false, opts: { requireOk?: boolean } = {}): Promise<boolean> => {
     const next = send(anyway ? { type: 'testAnyway' } : { type: 'saveAndTest' });
     if (next.test.kind !== 'testing') return false;
     const p = next.provider;
@@ -97,7 +100,7 @@ export function createAiSetupRunner(deps: AiSetupDeps, initial: AiSetupState) {
     if (abort.signal.aborted || !shown(p)) return false;
     testing = null;
     send({ type: 'testFinished', result });
-    if (!shouldSaveAfterTest(result)) return false;
+    if (!shouldSaveAfterTest(result) || (opts.requireOk && !result.ok)) return false;
     if (key) return persistKey(p, key, state.remember);
     patch(() => ({ provider: p }));
     return result.ok;
@@ -112,14 +115,17 @@ export function createAiSetupRunner(deps: AiSetupDeps, initial: AiSetupState) {
       };
     },
     saveAndTest,
-    /** A card click opens and commits it; a test still running for the old card is dropped. */
-    selectProvider(id: ProviderId): void {
+    /**
+     * A card click opens and commits it (`commit: false` only shows it, as the SetupCard's
+     * radios do); a test still running for the old card is dropped.
+     */
+    selectProvider(id: ProviderId, commit = true): void {
       if (!shown(id)) {
         testing?.abort();
         testing = null;
       }
       send({ type: 'selectProvider', id, ...cardState(deps.readSettings(), deps.env, id, deps.peekSecret(account(id))) });
-      deps.writeSettings({ provider: id });
+      if (commit) deps.writeSettings({ provider: id });
     },
     draft: (value: string) => void send({ type: 'draft', value }),
     saveWithoutTesting(): Promise<boolean> {

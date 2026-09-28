@@ -38,7 +38,7 @@ export interface AppDialogsState {
   openTranslate(request: TranslateRequest): void;
   /** Settings with returnTo and resume:true → reopens that translate request. */
   close(opts?: { resume?: boolean }): void;
-  /** Toolbar flash from outside the toolbar (TranslateHost, BiTextField). */
+  /** Toolbar flash from outside the toolbar (AI verbs, BiTextField). */
   notify(message: string, action?: AppNotice['action']): void;
 }
 

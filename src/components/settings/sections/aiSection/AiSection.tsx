@@ -1,16 +1,15 @@
 'use client';
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { createClient, testConnection } from '@/ai/client';
 import type { ModelInfo, ProviderId } from '@/ai/types';
 import { openExternal } from '@/platform';
-import { deleteSecret, peekSecret, readSecret, writeSecret } from '@/platform/secrets';
+import { peekSecret } from '@/platform/secrets';
 import { AI_SETTINGS, useAiStatus } from '@/settings/aiSettings';
 import type { SettingsSectionProps } from '@/settings/sections';
-import { appSettings, useSettings } from '@/settings/store';
-import type { SettingsEnv } from '@/settings/types';
+import { useSettings } from '@/settings/store';
 import { initialAiSetup, needsCloseGuard, resumeReady } from './aiSetup';
-import { createAiSetupRunner, type AiSetupDeps } from './aiSetupRunner';
+import { liveDeps, secretPlatform } from './aiSetupLive';
+import { createAiSetupRunner } from './aiSetupRunner';
 import { AiSectionView } from './AiSectionView';
 
 /**
@@ -19,24 +18,7 @@ import { AiSectionView } from './AiSectionView';
  * `aiSetupReducer`; `createAiSetupRunner` runs its side effects and writes settings live.
  */
 
-function liveDeps(env: SettingsEnv): AiSetupDeps {
-  return {
-    env,
-    testConnection,
-    listModels: (config, signal) => createClient(config).listModels(signal),
-    readSecret,
-    writeSecret,
-    deleteSecret,
-    peekSecret,
-    readSettings: () => appSettings.read(AI_SETTINGS),
-    writeSettings: (patch) => void appSettings.write(AI_SETTINGS, patch),
-  };
-}
-
-export function secretPlatform(desktop: boolean): 'mac' | 'windows' | 'web' {
-  if (!desktop) return 'web';
-  return typeof navigator !== 'undefined' && /Windows|Win32|Win64/.test(navigator.userAgent ?? '') ? 'windows' : 'mac';
-}
+export { secretPlatform };
 
 export const UNSAVED_KEY = "You haven't saved this key.";
 export const RESUME_HINT = 'Save & test a key first';

@@ -13,6 +13,9 @@ import { pathToFileURL } from 'node:url';
  *   - a source holding "(long)" in a request of more than one item → finish_reason
  *     "length" (the run bisects);
  *   - anything else → the source with a 譯： / EN: prefix, tags kept.
+ * A system prompt naming "questions-from-source" (E3) gets canned, valid questions instead.
+ * A request whose system prompt is the answer writer's (E1) gets a valid canned answer,
+ * a scheme of 1-mark points totalling the marks, and a rationale per asked option.
  * A quality-check request (E4) gets canned findings instead (`qualityReply`).
  * Base-URL prefixes: `/region/v1` answers Gemini's FAILED_PRECONDITION location error,
  * `/401/v1` rejects the key, `/slow/v1` answers after 4 s (Stop and the scrim question). `GET /__count` and `POST /__reset` expose the request count.
@@ -77,6 +80,100 @@ function itemsOf(payload) {
   return out;
 }
 
+/** "Questions from a source" (E3): canned, valid items for what the payload's `make` asks. */
+function sourceReply(body) {
+  const payload = payloadOf(body);
+  const langs = Array.isArray(payload.languages) ? payload.languages : ['en'];
+  const t = (en, zh) => ({ en: langs.includes('en') ? en : '', zh: langs.includes('zh') ? zh : '' });
+  const questions = [];
+  const mcq = payload.make?.mcq?.count ?? 0;
+  for (let i = 0; i < mcq; i += 1) {
+    if (i === 0) {
+      questions.push({
+        kind: 'mcq',
+        stem: t('Which of the following about the market in the source is/are correct?', '根據資料，以下有關該市場的描述，何者正確？'),
+        statements: [t('Demand for the good increased.', '該物品的需求增加。'), t('The price of the good rose.', '該物品的價格上升。'), t('Supply of the good fell.', '該物品的供應減少。')],
+        options: [t('(1) and (2) only', '只有(1)及(2)'), t('(1) and (3) only', '只有(1)及(3)'), t('(2) and (3) only', '只有(2)及(3)'), t('(1), (2) and (3)', '(1)、(2)及(3)')],
+        answer: 0,
+        explanation: t('The source reports higher demand and a higher price.', '資料指出需求增加及價格上升。'),
+        parts: [],
+      });
+      continue;
+    }
+    const letter = ['A', 'B', 'C', 'D', 'E', 'F'][i] ?? String(i);
+    questions.push({
+      kind: 'mcq',
+      stem: t(`Question ${letter} about the source: which change best explains the price movement?`, `有關資料的問題${letter}：以下哪項變化最能解釋價格變動？`),
+      statements: [],
+      options: [t('An increase in demand', '需求增加'), t('A decrease in demand', '需求減少'), t('An increase in supply', '供應增加'), t('A price ceiling', '價格上限')],
+      answer: 0,
+      explanation: t('Higher demand raises the equilibrium price.', '需求增加令均衡價格上升。'),
+      parts: [],
+    });
+  }
+  if (payload.make?.structured) {
+    const long = /(\d+)\D+(\d+)/.exec(String(payload.make.structured.totalMarks ?? ''));
+    const marks = long && Number(long[2]) >= 8 ? [2, 4, 4] : [2, 3];
+    const stems = [
+      ['Identify **ONE** change in the market described in the source.', '指出資料所述市場的**一項**變化。'],
+      ['With reference to the source, explain the change in price.', '參考資料，解釋價格的變化。'],
+      ['Discuss whether the government should intervene in this market.', '討論政府應否干預這個市場。'],
+    ];
+    questions.push({
+      kind: 'structured',
+      stem: t('Read the source below and answer the questions.', '細閱以下資料，然後回答問題。'),
+      statements: [],
+      options: [],
+      answer: 0,
+      explanation: t('', ''),
+      parts: marks.map((m, i) => ({
+        stem: t(stems[i][0], stems[i][1]),
+        marks: m,
+        answer: t('A model answer drawn from the source.', '根據資料的參考答案。'),
+        points: Array.from({ length: m }, (_, k) => ({ text: t(`Point ${k + 1}`, `要點${k + 1}`), marks: 1 })),
+      })),
+    });
+  }
+  return completion(JSON.stringify({ questions }));
+}
+
+/** The answer writer's system prompt (`src/answers/promptText.ts`) opens with this. */
+const ANSWERS_MARKER = 'You write HKDSE Economics model answers';
+
+/** E1: a model answer, 1-mark points totalling the marks, a rationale per asked letter. */
+function answersReply(payload) {
+  const zh = (payload.languages ?? []).includes('zh');
+  const items = (payload.questions ?? []).flatMap((q) =>
+    (q.items ?? []).map((item) => {
+      const write = item.write ?? [];
+      if (item.type === 'choice') {
+        const rationales = write.map((letter) => ({
+          option: letter,
+          en: letter === item.correct ? 'Correct: street lighting is non-rival and non-excludable.' : `Incorrect: option ${letter} is rival and excludable.`,
+          zh: zh ? (letter === item.correct ? '正確：街燈具非競爭性及非排他性。' : `錯誤：選項${letter}具競爭性及排他性。`) : '',
+        }));
+        return { key: item.key, answerEn: '', answerZh: '', points: [], rationales };
+      }
+      const answer = write.includes('answer');
+      const points = write.includes('scheme')
+        ? Array.from({ length: item.marks ?? 0 }, (_, n) => ({
+            en: n === 0 ? 'The tax raises the cost of production.' : `Supply decreases, so the price rises (${n + 1}).`,
+            zh: zh ? (n === 0 ? '稅項令生產成本上升。' : `供應減少，因此價格上升（${n + 1}）。`) : '',
+            marks: 1,
+          }))
+        : [];
+      return {
+        key: item.key,
+        answerEn: answer ? 'The tax raises the cost of production.\nSupply decreases, so the equilibrium price rises.' : '',
+        answerZh: answer && zh ? '稅項令生產成本上升。\n供應減少，因此均衡價格上升。' : '',
+        points,
+        rationales: [],
+      };
+    }),
+  );
+  return completion(JSON.stringify({ items }));
+}
+
 /** The quality check (E4), recognised by its system prompt's marker (`src/quality/promptText.ts`). */
 const QUALITY_MARKER = 'HKDSE Economics co-marker';
 
@@ -111,7 +208,9 @@ export function qualityReply(payload) {
 }
 
 export function reply(body) {
+  if (systemOf(body).includes(ANSWERS_MARKER)) return answersReply(payloadOf(body));
   if (systemOf(body).includes(QUALITY_MARKER)) return qualityReply(payloadOf(body));
+  if (systemOf(body).includes('questions-from-source')) return sourceReply(body);
   const items = itemsOf(payloadOf(body));
   if (items.length > 1 && items.some((i) => i.text.includes('(long)'))) {
     return completion('{"items":[{"key":"' + items[0].key + '","text":"', 'length');

@@ -319,11 +319,16 @@ Invariants:
 - `src/assist/registry.ts:registerVerb` · `src/assist/registry.ts:verbs` — verbs self-register; `src/assist/verbs/index.ts` has one import per verb file
 - `src/assist/scope.ts:scopeFromSelection` · `src/assist/scope.ts:scopeLabel` — the selection as an `AiScope`, pure (multi-selection via the store's `selectedFlowIds`)
 - `src/assist/menuStore.ts:openAi` — what every entry point calls; `src/assist/runStore.ts:useAiRun` — one run at a time: running → review (after a direct insert) or error
+- `src/components/ai/SetupCard.tsx:SetupCard` — the no-key card inside the menu (provider, key, Save & continue → `onReady`); flow in `src/components/settings/sections/aiSection/setupCardFlow.ts:createSetupCardFlow` over the Settings runner
 - `src/components/ai/AiHost.tsx:AiHost` — mounted once in `EditorApp`; renders `src/components/ai/AiMenu.tsx` and `src/components/ai/AiBar.tsx`, owns ⌘J / Ctrl+J (`src/components/ai/shortcut.ts:shouldOpenAi`)
 - `src/assist/verbs/translate.ts:translateVerb` — Fill missing / Re-translate 中文 or English: one `applyTranslations`, then `inserted` review items; `src/assist/verbs/checkTerms.ts:checkTermsVerb` — keyless findings, Replace N; shared rules in `src/assist/verbs/translateShared.ts` (`fillOptions`, `textsIn`, `rowNotes`, `depsError`, `commitUndo`)
 - `src/components/ai/AiBar.tsx:AiBar` — running / review / error bar over the page column; `src/components/ai/ItemCard.tsx:ItemCard` beside the text; `src/components/ai/errorActions.ts:errorActions` the error's buttons
 - `src/components/ai/pageMarks.ts:usePageMarks` — review highlights as a `data-ai-mark` attribute on `#print-root` text, re-applied by a MutationObserver; styled under `@media screen` in `src/app/globals.css`
+- `src/assist/verbs/fromSource.ts:makeFromSourceVerb` — E3 "Questions from a source…": `src/generate/recipe.ts:recipeFor` (what this paper can contain) → `src/generate/run.ts:generateFromSource` (one request, `src/generate/prompt.ts:SOURCE_QUESTIONS_SCHEMA`) → `src/generate/validate.ts:checkDraft` → `src/generate/build.ts:buildBatch` → the store's `insertQuestionBatch`
 - `src/assist/verbs/quality.ts:qualityVerb` — Check question quality (E4), findings only; engine `src/quality/run.ts:runQuality` · `src/quality/checks.ts:deterministicFindings` · `src/quality/collect.ts:qualityQuestions` (reads the registry's `qualityView`); words `src/quality/promptText.ts:SYSTEM_QUALITY`, `src/quality/prompt.ts:PROMPT_VERSION`
+
+- `src/assist/verbs/writeAnswers.ts:makeWriteAnswersVerb` — E1 `write.answers` (§ AI answers and mark schemes); engine `src/answers/plan.ts:planAnswers` · `src/answers/run.ts:runAnswers` · `src/answers/validate.ts:evaluateAnswer` · `src/answers/apply.ts:applyAnswerWrites` · `src/answers/prompt.ts:PROMPT_VERSION`
+- `src/model/answerLeaves.ts:AnswerLeaf` — what the registry hook `mapAnswers` offers; test-only `src/answers/testKit.ts`
 
 Invariants:
 - Results insert directly as one commit; review is after, and `undoAll` reverts that one commit.
