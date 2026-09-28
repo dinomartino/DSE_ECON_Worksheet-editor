@@ -7,7 +7,7 @@ import { peekSecret } from '@/platform/secrets';
 import { AI_SETTINGS, useAiStatus } from '@/settings/aiSettings';
 import type { SettingsSectionProps } from '@/settings/sections';
 import { useSettings } from '@/settings/store';
-import { initialAiSetup, needsCloseGuard, resumeReady } from './aiSetup';
+import { initialAiSetup, needsCloseGuard } from './aiSetup';
 import { liveDeps, secretPlatform } from './aiSetupLive';
 import { createAiSetupRunner } from './aiSetupRunner';
 import { AiSectionView } from './AiSectionView';
@@ -21,9 +21,8 @@ import { AiSectionView } from './AiSectionView';
 export { secretPlatform };
 
 export const UNSAVED_KEY = "You haven't saved this key.";
-export const RESUME_HINT = 'Save & test a key first';
 
-export default function AiSection({ env, focus, params, setResumeReady, setCloseGuard }: SettingsSectionProps) {
+export default function AiSection({ env, focus, params, setCloseGuard }: SettingsSectionProps) {
   const [settings, update] = useSettings(AI_SETTINGS);
   const status = useAiStatus();
   const [runner] = useState(() =>
@@ -33,9 +32,6 @@ export default function AiSection({ env, focus, params, setResumeReady, setClose
   const [listed, setListed] = useState<{ provider: ProviderId; models: ModelInfo[] } | null>(null);
 
   useEffect(() => () => runner.dispose(), [runner]);
-
-  const ready = resumeReady(state, settings.provider, status.configured);
-  useEffect(() => setResumeReady(ready, RESUME_HINT), [ready, setResumeReady]);
 
   const guarded = needsCloseGuard(state);
   useEffect(() => {

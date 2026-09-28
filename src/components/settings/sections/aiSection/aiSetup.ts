@@ -201,14 +201,9 @@ export function shouldSaveAfterTest(result: ConnectionTest): boolean {
   return result.ok || (result.error.kind !== 'badKey' && result.error.kind !== 'keyBlocked');
 }
 
-/** A typed, unsaved key: Done, Continue, Escape, ✕ and the scrim ask first. */
+/** A typed, unsaved key: Done, Escape, ✕ and the scrim ask first. */
 export function needsCloseGuard(state: AiSetupState): boolean {
   return draftOf(state) !== '';
-}
-
-/** Continue never resumes with a provider other than the committed one. */
-export function resumeReady(state: AiSetupState, committed: ProviderId, configured: boolean): boolean {
-  return state.provider === committed && configured;
 }
 
 const WORKSPACE_ID = /^[a-z0-9-]{3,63}$/;

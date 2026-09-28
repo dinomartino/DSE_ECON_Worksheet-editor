@@ -26,8 +26,7 @@ const guard = (run: () => Promise<boolean>): CloseGuard => ({
 const footer = (props: Partial<Parameters<typeof AppSettingsFooter>[0]>) =>
   renderToStaticMarkup(
     createElement(AppSettingsFooter, {
-      ready: false,
-      asking: null,
+      asking: false,
       guard: null,
       saving: false,
       onClose: () => {},
@@ -82,23 +81,14 @@ describe('the Settings dialog', () => {
 });
 
 describe('the Settings footer', () => {
-  it('shows Done alone without a pending Translate', () => {
+  it('shows Done alone', () => {
     const html = footer({});
     expect(html).toContain('Done');
-    expect(html).not.toContain('Continue');
-  });
-
-  it('adds Continue to Translate, disabled with the section hint until ready', () => {
-    const blocked = footer({ resume: { label: 'Continue to Translate' }, hint: 'Save & test a key first' });
-    expect(blocked).toMatch(/<button[^>]*disabled=""[^>]*title="Save &amp; test a key first"[^>]*>Continue to Translate/);
-    expect(blocked).toContain('>Save &amp; test a key first</span>');
-    const ready = footer({ resume: { label: 'Continue to Translate' }, ready: true, hint: 'Save & test a key first' });
-    expect(ready).not.toContain('disabled=""');
-    expect(ready).not.toContain('a key first');
+    expect(html).not.toContain('Discard');
   });
 
   it('turns into the unsaved-key question while a guard is asking', () => {
-    const html = footer({ asking: 'done', guard: guard(async () => true) });
+    const html = footer({ asking: true, guard: guard(async () => true) });
     expect(html).toContain('You haven&#x27;t saved this key.');
     expect(html).toContain('Discard');
     expect(html).toContain('Save &amp; test');
@@ -121,42 +111,32 @@ describe('answering the close guard', () => {
 });
 
 describe('every route out of the dialog', () => {
-  const at = (patch: Partial<Parameters<typeof closeStep>[0]> = {}) => ({
-    asking: null,
-    saving: false,
-    guarded: false,
-    ready: true,
-    ...patch,
-  });
+  const at = (patch: Partial<Parameters<typeof closeStep>[0]> = {}) => ({ asking: false, saving: false, guarded: false, ...patch });
 
   it('closes at once without an unsaved key', () => {
-    expect(closeStep(at(), 'done')).toEqual({ close: true, resume: false });
-    expect(closeStep(at(), 'dismiss')).toEqual({ close: true, resume: false });
-    expect(closeStep(at(), 'resume')).toEqual({ close: true, resume: true });
-    expect(closeStep(at({ ready: false }), 'resume')).toEqual({ close: false, asking: null });
+    expect(closeStep(at(), 'done')).toEqual({ close: true });
+    expect(closeStep(at(), 'dismiss')).toEqual({ close: true });
   });
 
-  it('asks first over an unsaved key: Done, Continue, Escape, ✕ and the scrim', () => {
+  it('asks first over an unsaved key: Done, Escape, ✕ and the scrim', () => {
     const guarded = at({ guarded: true });
-    expect(closeStep(guarded, 'done')).toEqual({ close: false, asking: 'done' });
-    expect(closeStep(guarded, 'resume')).toEqual({ close: false, asking: 'resume' });
-    expect(closeStep(guarded, 'dismiss')).toEqual({ close: false, asking: 'done' });
+    expect(closeStep(guarded, 'done')).toEqual({ close: false, asking: true });
+    expect(closeStep(guarded, 'dismiss')).toEqual({ close: false, asking: true });
   });
 
   it('drops the question on a second Escape, and ignores everything while saving', () => {
-    expect(closeStep(at({ guarded: true, asking: 'resume' }), 'dismiss')).toEqual({ close: false, asking: null });
-    const saving = at({ guarded: true, asking: 'done', saving: true });
-    for (const input of ['done', 'resume', 'dismiss', { answered: true }] as const) {
-      expect(closeStep(saving, input)).toEqual({ close: false, asking: 'done' });
+    expect(closeStep(at({ guarded: true, asking: true }), 'dismiss')).toEqual({ close: false, asking: false });
+    const saving = at({ guarded: true, asking: true, saving: true });
+    for (const input of ['done', 'dismiss', { answered: true }] as const) {
+      expect(closeStep(saving, input)).toEqual({ close: false, asking: true });
     }
   });
 
   it('closes after Discard or a successful save, and stays after a failed save', () => {
-    const asking = at({ guarded: true, asking: 'resume' });
-    expect(closeStep(asking, { answered: true })).toEqual({ close: true, resume: true });
-    expect(closeStep(at({ guarded: true, asking: 'done' }), { answered: true })).toEqual({ close: true, resume: false });
-    expect(closeStep(asking, { answered: false })).toEqual({ close: false, asking: null });
-    expect(closeStep(at({ guarded: true }), { answered: true })).toEqual({ close: false, asking: null });
+    const asking = at({ guarded: true, asking: true });
+    expect(closeStep(asking, { answered: true })).toEqual({ close: true });
+    expect(closeStep(asking, { answered: false })).toEqual({ close: false, asking: false });
+    expect(closeStep(at({ guarded: true }), { answered: true })).toEqual({ close: false, asking: false });
   });
 });
 

@@ -85,8 +85,9 @@ async function runFill(
   replace: boolean,
   deps: TranslateVerbDeps,
 ): Promise<VerbOutcome> {
-  const total = textsIn(plan);
-  if (total + plan.copies.length === 0) return { kind: 'nothing', summary: NOTHING_TO_FILL };
+  // The same unit the summary counts: every text written, symbol copies included.
+  const total = fillCount(plan);
+  if (total === 0) return { kind: 'nothing', summary: NOTHING_TO_FILL };
   const label = `Translating into ${sideName(side)}`;
   let outcome: RunOutcome = { results: new Map(), stopped: false, model: '', ms: 0 };
   let glossary: Glossary | null = null;

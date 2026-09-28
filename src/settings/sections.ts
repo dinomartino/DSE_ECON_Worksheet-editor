@@ -13,11 +13,7 @@ export interface SettingsSectionProps {
   focus?: string;
   /** Deep-link parameters, e.g. { provider: 'deepseek', reason: 'region' }. */
   params?: Readonly<Record<string, string>>;
-  /** Set when another dialog is waiting to resume, e.g. { label: 'Continue to Translate' }. */
-  resume?: { label: string };
-  /** The section says whether the resume action can run now, and why not (AI: "Save & test a key first"). */
-  setResumeReady(ready: boolean, hint?: string): void;
-  /** Something typed but not committed (AI: a pasted key). Done, Continue, Escape, ✕ and the
+  /** Something typed but not committed (AI: a pasted key). Done, Escape, ✕ and the
    *  scrim then ask first instead of closing. null clears it. */
   setCloseGuard(guard: CloseGuard | null): void;
 }

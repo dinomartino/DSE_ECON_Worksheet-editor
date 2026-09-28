@@ -36,32 +36,24 @@ export function initialSection(
   return sections.find((s) => s.id === requested)?.id ?? sections[0]?.id ?? '';
 }
 
-export type CloseIntent = 'done' | 'resume';
-export type CloseInput = CloseIntent | 'dismiss' | { answered: boolean };
-export type CloseStep =
-  | { close: true; resume: boolean }
-  | { close: false; asking: CloseIntent | null };
+export type CloseInput = 'done' | 'dismiss' | { answered: boolean };
+export type CloseStep = { close: true } | { close: false; asking: boolean };
 
 /**
- * Every route out of the dialog. Done, Continue, and 'dismiss' (Escape, ✕, the scrim) ask
- * first over an unsaved key; a second dismiss drops the question; an answer closes only
- * when Discard or the save succeeded. Nothing moves while a save runs.
+ * Every route out of the dialog. Done and 'dismiss' (Escape, ✕, the scrim) ask first over
+ * an unsaved key; a second dismiss drops the question; an answer closes only when Discard
+ * or the save succeeded. Nothing moves while a save runs.
  */
-export function closeStep(
-  at: { asking: CloseIntent | null; saving: boolean; guarded: boolean; ready: boolean },
-  input: CloseInput,
-): CloseStep {
-  const stay = (asking: CloseIntent | null): CloseStep => ({ close: false, asking });
+export function closeStep(at: { asking: boolean; saving: boolean; guarded: boolean }, input: CloseInput): CloseStep {
+  const stay = (asking: boolean): CloseStep => ({ close: false, asking });
   if (at.saving) return stay(at.asking);
   if (typeof input === 'object') {
-    if (!at.asking) return stay(null);
-    return input.answered ? { close: true, resume: at.asking === 'resume' } : stay(null);
+    if (!at.asking) return stay(false);
+    return input.answered ? { close: true } : stay(false);
   }
-  if (input === 'dismiss' && at.asking) return stay(null);
-  const intent = input === 'dismiss' ? 'done' : input;
-  if (intent === 'resume' && !at.ready) return stay(at.asking);
-  if (at.guarded) return stay(intent);
-  return { close: true, resume: intent === 'resume' };
+  if (input === 'dismiss' && at.asking) return stay(false);
+  if (at.guarded) return stay(true);
+  return { close: true };
 }
 
 /** Runs the guard's answer: Discard proceeds; Save proceeds only when the save succeeded. */
@@ -112,25 +104,19 @@ export function AppSettingsDialog({
   sections,
   env,
   request,
-  resume,
   onClose,
 }: {
   /** Registered and available; never empty (the host renders nothing otherwise). */
   sections: readonly SettingsSectionDef[];
   env: SettingsEnv;
   request: SettingsRequest;
-  /** Set when Translate waits to resume: the footer adds this primary action. */
-  resume?: { label: string };
-  onClose: (opts: { resume: boolean }) => void;
+  onClose: () => void;
 }) {
   const [active, setActive] = useState(() =>
     initialSection(sections, request.section),
   );
-  const [ready, setReady] = useState<{ ready: boolean; hint?: string }>({
-    ready: false,
-  });
   const [guard, setGuard] = useState<CloseGuard | null>(null);
-  const [asking, setAsking] = useState<CloseIntent | null>(null);
+  const [asking, setAsking] = useState(false);
   const [saving, setSaving] = useState(false);
   // Read each render: a write refused while the dialog is open shows the line on the next.
   const persistent = appSettings.persistent();
@@ -138,18 +124,14 @@ export function AppSettingsDialog({
   const def = sections.find((s) => s.id === active) ?? sections[0];
   const deepLinked = def?.id === request.section;
 
-  const setResumeReady = useCallback(
-    (value: boolean, hint?: string) => setReady({ ready: value, hint }),
-    [],
-  );
   const setCloseGuard = useCallback((next: CloseGuard | null) => {
     setGuard(next);
-    if (!next) setAsking(null);
+    if (!next) setAsking(false);
   }, []);
 
-  const step = (input: CloseInput, at = { asking, saving, guarded: guard !== null, ready: ready.ready }) => {
+  const step = (input: CloseInput, at = { asking, saving, guarded: guard !== null }) => {
     const next = closeStep(at, input);
-    if (next.close) onClose({ resume: next.resume });
+    if (next.close) onClose();
     else setAsking(next.asking);
   };
 
@@ -158,7 +140,7 @@ export function AppSettingsDialog({
     setSaving(true);
     const proceed = await answerGuard(guard, choice);
     setSaving(false);
-    step({ answered: proceed }, { asking, saving: false, guarded: true, ready: ready.ready });
+    step({ answered: proceed }, { asking, saving: false, guarded: true });
   };
 
   return (
@@ -171,9 +153,6 @@ export function AppSettingsDialog({
       scrollBody={false}
       footer={
         <AppSettingsFooter
-          resume={resume}
-          ready={ready.ready}
-          hint={ready.hint}
           asking={asking}
           guard={guard}
           saving={saving}
@@ -187,7 +166,6 @@ export function AppSettingsDialog({
         onChange={(id) => {
           if (id === active || guard) return;
           setActive(id);
-          setReady({ ready: false });
         }}
         tabs={sections.map((s) => ({ id: s.id, label: s.label, hint: s.hint }))}
       >
@@ -212,8 +190,6 @@ export function AppSettingsDialog({
               env={env}
               focus={deepLinked ? request.focus : undefined}
               params={deepLinked ? request.params : undefined}
-              resume={resume}
-              setResumeReady={setResumeReady}
               setCloseGuard={setCloseGuard}
             />
           </section>
@@ -224,23 +200,17 @@ export function AppSettingsDialog({
 }
 
 export function AppSettingsFooter({
-  resume,
-  ready,
-  hint,
   asking,
   guard,
   saving,
   onClose,
   onAnswer,
 }: {
-  resume?: { label: string };
-  ready: boolean;
-  hint?: string;
   /** Set while the close guard's question replaces the buttons. */
-  asking: CloseIntent | null;
+  asking: boolean;
   guard: CloseGuard | null;
   saving: boolean;
-  onClose: (intent: CloseIntent) => void;
+  onClose: (intent: 'done') => void;
   onAnswer: (answer: 'discard' | 'save') => void;
 }) {
   if (asking && guard) {
@@ -262,28 +232,9 @@ export function AppSettingsFooter({
       </>
     );
   }
-  const blockedHint = resume && !ready ? hint : undefined;
   return (
-    <>
-      {blockedHint && (
-        <span className="mr-auto text-xs text-ink-muted">{blockedHint}</span>
-      )}
-      <Button
-        variant={resume ? 'default' : 'primary'}
-        onClick={() => onClose('done')}
-      >
-        Done
-      </Button>
-      {resume && (
-        <Button
-          variant="primary"
-          disabled={!ready}
-          title={blockedHint}
-          onClick={() => onClose('resume')}
-        >
-          {resume.label}
-        </Button>
-      )}
-    </>
+    <Button variant="primary" onClick={() => onClose('done')}>
+      Done
+    </Button>
   );
 }

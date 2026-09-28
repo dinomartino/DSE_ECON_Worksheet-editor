@@ -35,7 +35,8 @@ function useAnchor(targetKey: string | undefined, card: React.RefObject<HTMLDivE
         Object.assign(node.style, { left: '50%', top: '', bottom: `${BAR_CLEARANCE - GAP}px`, transform: 'translateX(-50%)' });
         return;
       }
-      const box = node.getBoundingClientRect();
+      // Layout size: the pop-in's scale would shrink a client rect.
+      const box = { width: node.offsetWidth, height: node.offsetHeight };
       const rect = el.getBoundingClientRect();
       const below = rect.bottom + GAP;
       const top = below + box.height > window.innerHeight - BAR_CLEARANCE ? rect.top - GAP - box.height : below;

@@ -11,7 +11,7 @@ const web = { desktop: false };
 const KEY = 'AIzaSyTESTKEY000000000000007Qx4';
 
 function render(params?: Record<string, string>, env = web) {
-  const props: SettingsSectionProps = { env, params, setResumeReady: () => {}, setCloseGuard: () => {} };
+  const props: SettingsSectionProps = { env, params, setCloseGuard: () => {} };
   return renderToStaticMarkup(createElement(AiSection, props));
 }
 
