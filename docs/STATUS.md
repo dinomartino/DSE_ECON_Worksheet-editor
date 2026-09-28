@@ -7,7 +7,12 @@ off the bottom.** It is the first thing a fresh session reads — then
 ## Current initiatives
 
 - **Branching: work is on `develop`** (since 2026-09-24); `main` deploys to teachers.
-  Collecting features for the release after v0.4.0 — merge to `main` only when the user says.
+  **v0.5.0 released 2026-09-28** (✦ AI, Check terms, Settings, light/dark, 標楷體, home
+  navigation). Collecting features for the next release — merge to `main` only when the user says.
+- **✦ AI demo film (merged on `develop`)** — `npm run demo:ai` → `demo-media/ai/` (38 s,
+  subtitles, no audio). Translations are canned in the browser (`scripts/demo/ai-provider.mjs`,
+  text in `scripts/demo/content.mjs:AI`); Check terms is real. App nit seen while filming:
+  after a finding card's Replace, the bar still reads "1 to fix · Replace 1" until Done.
 - **AI translation E2 (2026-09-28, merged on `develop`, not released)** — Translate (fill the
   missing 中文/English, read-only review, one Undo), Check terms (keyless, EDB glossary) and
   app-wide **Settings** (⌘,; the per-document dialog is now **Setup**). Bring-your-own-key:
@@ -101,7 +106,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Last verified
 
-- `npm test` — 2559 tests, ~7s (2026-09-28, after the AI door, pause and VPN copy). `cargo check --locked` clean. `npm run build`
+- `npm test` — 2565 tests, ~7s (2026-09-28, at the v0.5.0 release). `cargo check --locked` clean. `npm run build`
   green (postbuild: glossary only in a lazy chunk); `npm run samples` exports.
 - `npm run typecheck` — clean.
 - `npm run lint` — 43 pre-existing problems (3 errors, 40 warnings) in `Preview.tsx` and
@@ -114,8 +119,8 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **E2 loose ends:** Check terms has no "N match" count; the billing error opens the key page (no
   `billingUrl` in presets); DWL/TR stay symbols, so their 中文 falls back to English;
   Qwen's DashScope domain gets no new features after 2026-09-30 (workspace URL ships);
-  `npm version` rewrites `Cargo.toml` but not `Cargo.lock` (`sync-version`) — check the lock
-  at release. Root `economics_translation_library.json` is the user's untracked copy of the
+  `npm version` rewrites `Cargo.toml` but not `Cargo.lock` (`sync-version`) — bump the lock on
+  `develop` after a release (done for 0.5.0; CI does not build `--locked`). Root `economics_translation_library.json` is the user's untracked copy of the
   bundled glossary: delete or ignore it at their choice.
 - **HKEAA paper furniture wording** (全卷完 → 試卷完, 任答一題 → 選答一題, 結構性問題 …) —
   the user deferred it to a separate task; the AI follows the seeds until then.
