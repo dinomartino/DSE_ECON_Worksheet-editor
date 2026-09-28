@@ -10,6 +10,8 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
 
 ## Unreleased
 
+## 0.5.0 — 2026-09-28
+
 ### Added
 - **Light or dark, your choice**: Settings → Appearance picks Light, Dark or System (follows
   your computer, as before). Worksheets still print black on white.
