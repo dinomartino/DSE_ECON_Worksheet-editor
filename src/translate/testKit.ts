@@ -4,8 +4,10 @@
  */
 import { readFileSync } from 'node:fs';
 import type { AiClient, CompletionRequest, CompletionResult } from '@/ai/types';
+import { HEADER_FOOTER_PRESETS } from '@/model/bands';
 import { DIAGRAM_TEMPLATES } from '@/model/diagramTemplates';
 import { createWorksheetFrom, type DocumentType } from '@/model/newWorksheet';
+import { TABLE_TEMPLATES } from '@/model/tableTemplates';
 import type { BiText } from '@/model/types';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
 import { buildMarkSchemeWorksheet } from '@/test/markSchemeFixture';
@@ -45,6 +47,8 @@ export function shippedBiTexts(): BiText[] {
     buildAcceptanceWorksheet(),
     buildMarkSchemeWorksheet(),
     DIAGRAM_TEMPLATES,
+    TABLE_TEMPLATES.map((template) => [template.name, template.hint, template.build()]),
+    HEADER_FOOTER_PRESETS.map((preset) => preset.build()),
     ...DOCUMENT_TYPES.map((documentType) => createWorksheetFrom({ documentType })),
   ]);
 }
