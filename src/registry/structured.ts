@@ -1,12 +1,13 @@
 import { createStructuredQuestion } from '@/model/factories';
 import { questionMarks } from '@/model/marks';
-import { isSchemeEmpty, schemeTexts } from '@/model/markScheme';
+import { isSchemeEmpty } from '@/model/markScheme';
 import type { MarkScheme } from '@/model/markSchemeTypes';
 import {
   partLabel,
   subPartLabel,
 } from '@/model/numbering';
 import { areBlocksEmpty, bi, isBiTextEmpty } from '@/model/text';
+import { mapSame, patch, type TextWalker } from '@/model/textSlots';
 import type { BiText, DiagramBlock, StructuredQuestion } from '@/model/types';
 import {
   diagramNodeFor,
@@ -365,28 +366,47 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
   return nodes;
 }
 
-function countMissingTranslations(question: StructuredQuestion): number {
-  let missing = 0;
-  const check = (text?: { en: unknown[]; zh: unknown[] }) => {
-    if (!text) return;
-    if ((text.en.length > 0) !== (text.zh.length > 0)) missing += 1;
-  };
-  const checkBlocks = (blocks: StructuredQuestion['blocks']) => {
-    for (const block of blocks) if (block.kind === 'paragraph') check(block.text);
-  };
-  checkBlocks(question.blocks);
-  question.parts.forEach((part) => {
-    checkBlocks(part.blocksBefore ?? []);
-    checkBlocks(part.blocks);
-    check(part.answer);
-    schemeTexts(part.scheme).forEach(check);
-    (part.subParts ?? []).forEach((sub) => {
-      checkBlocks(sub.blocks);
-      check(sub.answer);
-      schemeTexts(sub.scheme).forEach(check);
-    });
+/**
+ * Print order: stem, answer figure, blank axes, then each part — interlude, body, its
+ * sub-parts (body, answer, answer figure, scheme, blank axes), answer, answer figure,
+ * scheme, blank axes. A part without sub-parts prints its answer before the (empty)
+ * sub-parts, so one order serves both. Question-level figures print only without parts.
+ * Letters label review rows only; they are never text to translate.
+ */
+function mapTexts(question: StructuredQuestion, walk: TextWalker): StructuredQuestion {
+  const questionId = question.id;
+  const own = question.parts.length > 0 ? walk.unprinted() : walk;
+  return patch(question, {
+    blocks: walk.blocks('blocks', question.blocks, { paragraphKind: 'stem' }),
+    answerDiagram: own.diagramBlock('answerDiagram', question.answerDiagram, 'teacher'),
+    answerGraph: own.answerGraph('answerGraph', question.answerGraph, 'print'),
+    parts: mapSame(question.parts, (part, index) => {
+      const partId = part.id;
+      const w = walk.scope(`part:${partId}`, partLabel(index));
+      return patch(part, {
+        blocksBefore: w.optionalBlocks('blocksBefore', part.blocksBefore),
+        blocks: w.blocks('blocks', part.blocks, { paragraphKind: 'part' }),
+        subParts: part.subParts && mapSame(part.subParts, (sub, subIndex) => {
+          const sw = w.scope(`sub:${sub.id}`, `${partLabel(index)}${subPartLabel(subIndex)}`);
+          return patch(sub, {
+            blocks: sw.blocks('blocks', sub.blocks, { paragraphKind: 'part' }),
+            answer: sw.optional('answer', sub.answer, {
+              kind: 'answer', role: 'teacher', target: { kind: 'subPartAnswer', questionId, partId, subPartId: sub.id },
+            }),
+            answerDiagram: sw.diagramBlock('answerDiagram', sub.answerDiagram, 'teacher'),
+            scheme: sw.scheme('scheme', sub.scheme),
+            answerGraph: sw.answerGraph('answerGraph', sub.answerGraph, 'print'),
+          });
+        }),
+        answer: w.optional('answer', part.answer, {
+          kind: 'answer', role: 'teacher', target: { kind: 'partAnswer', questionId, partId },
+        }),
+        answerDiagram: w.diagramBlock('answerDiagram', part.answerDiagram, 'teacher'),
+        scheme: w.scheme('scheme', part.scheme),
+        answerGraph: w.answerGraph('answerGraph', part.answerGraph, 'print'),
+      });
+    }),
   });
-  return missing;
 }
 
 /** A part's answer covers its sub-parts; otherwise each unanswered leaf counts once. */
@@ -465,7 +485,7 @@ export const structuredType: QuestionTypeDefinition<StructuredQuestion> = {
   create: createStructuredQuestion,
   render,
   EditorPanel: StructuredEditorPanel,
-  countMissingTranslations,
+  mapTexts,
   healthFacts,
   answerKey,
   // Timed by marks, at the paper's rate (`MINUTES_PER_MARK`).

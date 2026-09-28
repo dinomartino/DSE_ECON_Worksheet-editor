@@ -344,6 +344,13 @@ copyright, so they are gitignored and excluded from the repository and its histo
 comment or a doc cites a reference paper, it is describing what was observed in it, not a
 file you will find here.
 
+**One third-party file ships, outside the MIT grant:** `src/glossary/data/edb-economics-2020.json`,
+a transcription of the Education Bureau's *An English-Chinese Glossary of Terms Commonly
+Used in the Teaching of Economics in Secondary Schools* (Curriculum Development Institute,
+2020) — © The Government of the Hong Kong Special Administrative Region. It is included for
+reference, so the app can check Chinese terms against the glossary Hong Kong schools use.
+The Education Bureau is not an exam board. See [`src/glossary/NOTICE.md`](./src/glossary/NOTICE.md).
+
 The diagram templates in `src/model/diagramTemplates.ts` are original code that
 *reproduces the conventional shapes* of standard Economics diagrams (supply and demand,
 AD–AS, PPC). Those conventions are not copyrightable, so the templates ship freely.

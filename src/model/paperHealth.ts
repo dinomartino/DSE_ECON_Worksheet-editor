@@ -5,6 +5,7 @@ import { questionMarks, sectionMarksById } from './marks';
 import { computeNumbering, toUpperLetter } from './numbering';
 import { summarizePaper, targetMisses, type PaperSummary } from './paperSummary';
 import { plain } from './text';
+import { collectTexts, needsTranslation } from './textWalk';
 import type { BiText, LanguageMode, LayoutElement, VersionMode, Worksheet } from './types';
 
 /**
@@ -91,7 +92,7 @@ export interface PaperHealthReport {
   summary: PaperSummary;
   /** Time allowed as printed on the cover or masthead, when it can be read. */
   statedMinutes?: number;
-  /** One-sided bilingual strings, by the registry's own count. */
+  /** One-sided strings this edition prints (`countUntranslated`; EN+中 teacher by default). */
   untranslated: number;
   /** Warnings first, then notes. */
   findings: HealthFinding[];
@@ -119,7 +120,6 @@ interface Entry {
 
 export function checkPaper(
   worksheet: Worksheet,
-  // `version` and `terms` are not read yet: P-TEXT implements them.
   mode: { language?: LanguageMode; version?: VersionMode; terms?: TermSummary } = {},
 ): PaperHealthReport {
   const summary = summarizePaper(worksheet);
@@ -133,10 +133,13 @@ export function checkPaper(
 
   const numbers = plan.questions.map((entry) => entry.number);
   const ambiguous = new Set(numbers).size !== numbers.length;
-  let untranslated = 0;
+  // Inclusive by default (EN+中, teacher): every one-sided string the paper can print.
+  const gaps = collectTexts(worksheet).filter((slot) =>
+    needsTranslation(slot, { language: mode.language ?? 'bilingual', version: mode.version ?? 'teacher' }),
+  );
+  const untranslated = gaps.length;
   const entries: Entry[] = plan.questions.map(({ question, number, sectionId }) => {
     const definition = requireQuestionType(question);
-    untranslated += definition.countMissingTranslations?.(question) ?? 0;
     const section = sectionId ? sectionsById.get(sectionId) : undefined;
     const prefix = ambiguous && section ? `${sectionShortName(section.text)} ` : '';
     return {
@@ -177,11 +180,25 @@ export function checkPaper(
   findings.push(...balanceFindings(choice, letters), ...runFindings(entries));
 
   if (mode.language === 'zh' || mode.language === 'bilingual') {
+    const refsFor = (ids: Iterable<string>) => {
+      const wanted = new Set(ids);
+      const refs = entries.filter((e) => wanted.has(e.ref.questionId)).map((e) => e.ref);
+      return refs.length > 0 ? { questions: refs } : {};
+    };
     if (untranslated > 0) {
       findings.push({
         id: 'untranslated',
         severity: 'warn',
         message: `${plural(untranslated, 'string is', 'strings are')} written in one language only.`,
+        ...refsFor(gaps.flatMap((slot) => (slot.questionId === undefined ? [] : [slot.questionId]))),
+      });
+    }
+    if (mode.terms && mode.terms.warn > 0) {
+      findings.push({
+        id: 'terminology',
+        severity: 'warn',
+        message: `${plural(mode.terms.warn, 'term differs', 'terms differ')} from the EDB glossary.`,
+        ...refsFor(mode.terms.questionIds),
       });
     }
   }

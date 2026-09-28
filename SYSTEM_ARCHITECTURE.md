@@ -1721,14 +1721,14 @@ paths). Verify by measuring the same text node in both states.
 ## Question-type registry (`src/registry/`)
 
 `QuestionTypeDefinition`: `id` · `displayName` (bilingual) · `create()` ·
-`render(question, context) → RenderNode[]` · `EditorPanel` ·
-`countMissingTranslations?` · `examGapLines?` · `healthFacts?` · `answerKey?` · `variant?`. Registered:
+`render(question, context) → RenderNode[]` · `EditorPanel` · `mapTexts` ·
+`examGapLines?` · `healthFacts?` · `answerKey?` · `variant?`. Registered:
 `mcq`, `structured`. A new type needs only a definition.
 
 - **The hand-built numbered paragraph must copy the block's `format` itself** — the
   four hand-assembled sites (MCQ stem; structured stem, part, sub-part) each omitted it
   once. `registry.test.ts` asserts it reaches the IR for every type.
-- **No shared module may branch on a concrete type.** `registry.test.ts` greps twelve
+- **No shared module may branch on a concrete type.** `registry.test.ts` greps sixteen
   modules for `'mcq'`/`'structured'` literals.
 - **The paper check asks, never inspects.** `model/paperHealth.ts:checkPaper` (the Export
   dialog's pre-print summary: letter balance and runs, missing keys, marks, time estimate,
@@ -2124,60 +2124,246 @@ Rules every part keeps:
 <!-- e2:glossary start -->
 ### The glossary (`src/glossary/`)
 
-Types in `src/glossary/types.ts`; the citation in `src/glossary/attribution.ts`
-(`GLOSSARY_ATTRIBUTION`, shown wherever terms are used; the data is © HKSAR Government and
-outside the MIT grant). `loadGlossary` (`src/glossary/load.ts`) is the only way to the data,
-so it stays a lazy chunk; `useGlossary` is null until it resolves. Rank 1 is preferred,
-with one exception table (`PreferredOverrides`: the import family prefers 進口).
+The EDB Economics glossary (2020), bundled verbatim as `src/glossary/data/edb-economics-2020.json`
+(sha256 pinned by `src/glossary/parse.test.ts`; © HKSAR Government, outside the MIT grant —
+`src/glossary/NOTICE.md`, `GLOSSARY_ATTRIBUTION` in `src/glossary/attribution.ts`). The
+data is evidence: corrections and policy live in `src/glossary/overrides.ts`, never in the JSON.
+
+- **Loading.** `loadGlossary` (`src/glossary/load.ts`) dynamic-imports the data and the
+  engine (`src/glossary/glossary.ts:createGlossary`), memoised; a failed load is retried by
+  the next caller. Nothing else names the data (`src/glossary/load.test.ts`), and
+  `scripts/check-web-bundle.mjs` proves it is a lazy chunk once UI imports it.
+  `useGlossary` is null until it resolves.
+- **Parse** (`src/glossary/parse.ts`). `；` ranks (first preferred), ` / ` equal variants,
+  `(1)…，(2)…` senses; qualifiers become `note`; 住户 displays as 住戶. English forms add
+  the abbreviation only where it spells the words ("real GDP").
+- **Preferred = rank 1**, with one exception: `PREFERRED_OVERRIDES` (the import family →
+  進口). It drives `preferred`, pins, the check's `ok` and every suggested fix; 入口 passes as
+  not preferred. The GDP family pins sense (1), Hong Kong usage.
+- **Match** (`src/glossary/matchEn.ts`, `src/glossary/matchZh.ts`, folds in
+  `src/glossary/fold.ts`). English: a token trie with spelling, plural, hyphen and
+  possessive folds. Chinese: a character trie on folded text whose index map returns the
+  teacher's own offsets. Both leftmost-longest; `matchEnAll` keeps nested terms.
+- **Check** (`src/glossary/check.ts`). One result per outermost source term, first rule
+  wins: ok-abbr, ok, not-preferred, deny form, coverage conflict, near, missing. A lower
+  rank or a deny form gives one result per output occurrence, each with its own fix. The
+  **coverage rule** — the longest glossary span over a rendering must belong to a source
+  term — stops 低彈性需求 passing for "elastic demand". Only a single-word term may also be
+  covered by a term the source rewords ("unitary elastic" → 需求彈性; `reshapedInSource`).
+  A covering term whose key extends the source key also stands (`extendsKey`: demand →
+  需求曲線, tax → 徵稅); one that only contains it (inelastic, non-price) does not.
+  A rendering inside or touching a deny form never counts. Generic-tier words are info only.
+- **Fixes are safe to apply together.** They never overlap: a fix inside a longer one drops
+  its result (總供給 → 總供應 mends supply's 供給). None spans folded-away text (a line
+  break, a blank), and none rewrites a deny form inside a longer glossary term (公共財產).
+- **Deny list** (`src/glossary/deny.ts`): rows are entry-scoped, cite evidence, and obey the
+  invariants in `src/glossary/deny.test.ts`. `autoFix` replaces non-reversal forms, longest
+  first, under the same guards, never inside sub/superscripts; the new text takes the
+  format of the span's first character.
+- **Pins** (`src/glossary/pin.ts`): the preferred rendering only, first occurrence first,
+  capped at 200; ZH→EN never pins a generic word or a one-character term.
+- **Seeds stay on the glossary**: `src/glossary/seededTerms.test.ts` checks every template,
+  preset and sample — no warning, and rank 1 except the rank-2 gap short forms.
 <!-- e2:glossary end -->
 
 <!-- e2:text start -->
 ### Text slots, the walk and apply
 
 `src/model/textSlots.ts` is the contract: `TextSlot`, `TextWalker`, `TranslationWrite`,
-`ApplyReport`, and the identity helpers `patch`, `mapSame`, `sameRuns`, `missingSide`. The
-walk is `src/model/textWalk.ts` (diagram text: `src/model/diagramText.ts`), the batch apply
-`src/model/translationApply.ts`, symbol-only text `src/model/symbols.ts`. The store action is
-`applyTranslations`; the paper check takes a precomputed `TermSummary`
-(`src/model/paperHealth.ts`) and imports nothing from the glossary or translation.
+`ApplyReport`, and the identity helpers `patch`, `mapSame`, `sameRuns`, `missingSide`.
+
+- **One walk.** `mapWorksheetTexts` (`src/model/textWalk.ts`) visits every BiText in print
+  order: title and instructions, cover, bands (masthead, header, page-1 header, footer,
+  page-1 footer), the flow (layout and questions interleaved), the margin note. Questions
+  go through the **required** registry hook `mapTexts`; diagram text through
+  `mapDiagramTexts` (`src/model/diagramText.ts`). Never visited: `name`, `__unknown`,
+  pre-v1 shapes, questions of an unknown type.
+- **Identity.** A visitor returning `slot.text` leaves the slot; an all-identity visit
+  returns the same `Worksheet`, and a write rebuilds only the objects on its path — so the
+  per-question IR cache stays warm and an all-stale batch commits nothing.
+- **Absent stays absent.** An absent prefix, suffix, caption or note is not a slot. A band
+  field's legacy `label` is visited as its prefix and written through `applyBandFieldSide`;
+  a suffix write moves it to `prefix` too, since any write drops `label`.
+- **Paths** (`q:<id>/part:<id>/blocks/b:<id>`) are request-local; a repeated segment gets
+  `#2` (Duplicate keeps block ids). `slotsForTarget` matches a page `EditTarget` by deep
+  equality and may return both copies.
+- **Unprinted** (a disabled header/footer's bands, question-level answer figures under
+  parts, merged-away table cells) is a slot but never a gap.
+- **Counting.** `needsTranslation` asks whether this edition prints the missing side;
+  teacher text counts only in the teacher version, alt text never, and symbol-only text
+  (`isSymbolOnly`, `src/model/symbols.ts`: short tokens and capitals, minus English words
+  such as `PAPER`, `ONE`, `No` — `CAPITAL_WORDS`) only where it would print as a gap. The toolbar
+  pill is `useUntranslatedCount` (`src/components/editor/useUntranslatedCount.ts`), cached
+  per question object and mode (`questionUntranslated`: a count, never paths). `checkPaper` counts inclusively (EN+中, teacher) by default
+  and takes Check terms' result as a precomputed `TermSummary`; it imports nothing from
+  the glossary or translation.
+- **Apply.** `applyTranslationBatch` (`src/model/translationApply.ts`) writes one side per
+  slot, skipping a write whose source or target changed since it was read
+  (`sourceChanged`, `targetChanged`, `gone`). A diagram whose text changed is re-measured in
+  `'bilingual'` before and after, and resized only when that measure moved (never when
+  cropped). The store's `applyTranslations` is one `commit` — one undo — refused when
+  read-only or when another document is open.
+- **Guards.** `src/model/textWalk.census.test.ts` proves every stored `{en, zh}` in the
+  corpus, presets, fixtures, diagram templates and `src/test/translateFixture.ts` is a slot;
+  `src/model/diagramText.test.ts` holds diagram text to `handleText` parity.
 <!-- e2:text end -->
 
 <!-- e2:ai start -->
 ### The provider layer (`src/ai/`)
 
 Contracts in `src/ai/types.ts`; presets are data (`src/ai/providers.ts`); one flat response
-schema and its guard (`src/ai/schema.ts`); the client is `src/ai/client.ts`, the key-shape
-check `src/ai/keyShape.ts`. `src/ai/` imports nothing from React, the store, `src/model`,
-`src/settings`, `@/platform` or Tauri.
+schema and its guard (`src/ai/schema.ts`). `createClient` (`src/ai/client.ts`) is the only
+way to a provider: it checks the config, runs the structured-output ladder and throws
+`AiError` only. Rules:
+
+- **Three adapters, quirks as data.** Gemini native `generateContent`, one OpenAI-compatible
+  adapter, Anthropic Messages (`src/ai/adapters/`). A provider's odd parameters live in its
+  preset (`extraBody`, `extraHeaders`, `maxTokensParam`, a model's `extra`), never in a branch.
+  No `temperature` for anyone; Gemini never gets `thinkingBudget`.
+- **One file sends.** `src/ai/http.ts:send` is the only `fetch` in `src/`
+  (`src/test/networkCalls.test.ts`): `credentials:'omit'`, `redirect:'error'`, no referrer,
+  body capped at 2 MB, the key only in a header (`x-goog-api-key`, `x-api-key`, Bearer).
+  Transport retries live here: a 429 once if it asks ≤ 20 s, a 5xx or overload twice, a
+  network `TypeError` once. The caller's signal and the timer are combined by hand; the
+  abort reason decides `cancelled` vs `timeout`.
+- **The ladder** steps one rung down on a 400 naming a schema feature (`isSchemaRejection`,
+  checked after region and key errors), caches the rung per `provider|model|baseUrl` for
+  the session, and steps down once, uncached, on an unreadable reply.
+- **Errors are table-driven, body first** (`src/ai/errors.ts:mapHttpError`): Gemini
+  reports a bad key as 400. `detail` is `redact`ed (the key and key shapes), ≤ 300
+  characters; `console` sees `{kind, status}` only. OpenAI hides a bad key from browsers,
+  so its `TypeError` is `networkOrKey`. A 403 is `badKey` only when it names the key or
+  its project's API (Settings discards a bad key); one naming a model is `model`.
+- **Nothing unsafe is sent.** No key, an `http:` base URL off this computer, credentials or
+  an unfilled `{WorkspaceId}` in the URL, or a malformed or key-shaped model id fail before
+  any request; `keyShapeProblem`
+  (`src/ai/keyShape.ts`) stops a key visibly from another provider (`sk-ant-`, `sk-or-`
+  checked before the generic `sk-`).
+- **`testConnection`** sends one real item with the pin `price level → 物價水平`: it proves
+  key, region, CORS, model and dialect in one call and caches the working rung.
+
+`src/ai/` imports nothing else in `src/` and no React, zustand or Tauri
+(`src/ai/imports.test.ts`). Error bodies in `src/ai/fixtures/` say whether each was recorded
+with a dummy key or follows a documented shape.
 <!-- e2:ai end -->
 
 <!-- e2:settings start -->
 ### App Settings and secrets
 
 "Settings" is the app (this browser or computer, every worksheet); "Setup" is the document.
-A typed, versioned schema per section (`src/settings/types.ts`, `src/settings/validators.ts`),
-validated per field so one bad value never resets the rest; the store is
-`src/settings/store.ts`. A new tab is one section file plus one import line
-(`src/settings/sections.ts`); with no section registered every entry point is absent. The
-AI section's schema and status: `src/settings/aiSettings.ts`. Keys: `src/platform/secrets.ts`
-only.
+
+- **Schema per section** (`src/settings/types.ts`, `src/settings/validators.ts`), one JSON
+  value `{"v":…, …fields}` under `econgen.settings.<section>`. `src/settings/store.ts` reads
+  per field (a bad value falls back alone), and a write keeps unknown keys, record entries
+  it can't read and a higher `v` — an older build never erases a newer one's settings.
+  Blocked storage keeps writes in memory for the tab (`persistent()` probes one write, so
+  private mode shows one line in the dialog up front). A `storage` event re-reads that
+  section only.
+- **Sections register themselves** (`src/settings/sections.ts`): metadata eager, pane lazy.
+  `src/components/settings/AppSettingsHost.tsx` is mounted once in `src/app/EditorHost.tsx`,
+  imports `src/components/settings/sections/index.ts` (the one eager importer), mounts each
+  `Effect`, owns ⌘, / Ctrl+, (`src/components/settings/shortcut.ts`), and shows
+  `src/components/settings/AppSettingsDialog.tsx` while `useAppDialogs` holds a settings
+  request. With no section registered it renders nothing and the shortcut is inert.
+- **Close guard.** A section with uncommitted input (a pasted key) sets a `CloseGuard`;
+  Done, Continue, Escape, ✕ and the scrim then ask "Discard / Save & test" in the footer.
+  Every route is the pure `closeStep` in the dialog file.
+- **The AI section**: `src/components/settings/sections/ai.ts` registers it (imported by
+  the index only when Translate ships); the pane is
+  `src/components/settings/sections/aiSection/AiSection.tsx` over the pure
+  `src/components/settings/sections/aiSection/aiSetup.ts`, its effects in the injected
+  `src/components/settings/sections/aiSection/aiSetupRunner.ts`. A deep link opens a card;
+  only a card click or a saved key commits `ai.provider`. Only a rejected key (`badKey`,
+  `keyBlocked`) is not saved after a test. A flow takes its provider before its first
+  await: a card switched meanwhile drops the result, so a key is never saved or sent under
+  another provider. List my models passes the same key-shape check as Save & test.
+- **Status without the keychain.** `src/settings/aiSettings.ts:readAiStatus` reads settings
+  and `peekSecret` only; on desktop `keychainSaved` is a presence flag, never key material.
+  `resolveAiConfig` reads the key once per session and clears a stale flag.
+- **Keys**: `src/platform/secrets.ts` only. Web: `econgen.secret.ai:<provider>` in
+  `sessionStorage`, or `localStorage` when *Remember* is ticked (off by default), memory if
+  storage throws. Desktop: the OS keychain through `secret_get` / `secret_set` /
+  `secret_delete` (`src-tauri/src/secrets.rs`, keyring with `apple-native` +
+  `windows-native`; Linux would fall back to keyring's mock store and is not shipped). A
+  refused prompt is `denied`, a missing keychain or command `unavailable`, anything else
+  `failed`; each offers session-only use — never a silent plaintext fallback. Unsigned builds prompt for Keychain access; signed releases don't.
+- **Storage namespace**: `econgen.settings.*` and `econgen.secret.*` sit outside
+  `econ-worksheet:`, so documents, the index, backups and "Clear saved documents" never
+  touch them (`src/test/secretsNeverLeave.test.ts`). The older per-viewer keys
+  (`econgen.startView`, `econgen.lastFolder`, …) stay where they are.
 <!-- e2:settings end -->
 
 <!-- e2:engine start -->
 ### The translation engine (`src/translate/`)
 
-Types in `src/translate/types.ts`: a plan (`src/translate/plan.ts`) dedupes slots into jobs
-and packs single-direction chunks; a run (`src/translate/run.ts`) never rejects and keeps
-finished chunks on Stop; Check terms is `src/translate/termCheck.ts`; run dependencies come
-from `src/translate/deps.ts`.
+Pure modules with injected dependencies; types in `src/translate/types.ts`.
+
+- **Plan** (`src/translate/plan.ts`): slots from the walker are filtered by scope, role,
+  `unprinted` and diagram labels; the missing side sets the direction (never the editor
+  mode). Symbol-only text is never sent — copied only when the edition prints that side
+  alone, never for diagram text, never over an existing target on re-translate. Jobs
+  dedupe by direction, kind class and source; chunks are single-direction, ≤ 4 000
+  characters and 60 jobs, and carry same-group bilingual context.
+- **Wire** (`src/translate/wire.ts`): rich text travels as a closed tag set (`<b> <i> <u>
+  <sub> <sup> <sN> <blank/> <br/>`). Edge newlines, boundary spaces and blank widths stay
+  in the codec and are restored on decode; anything else that looks like a tag is literal.
+- **Checks** (`src/translate/validate.ts`): deterministic. A lost blank, break (prose) or
+  sub/superscript, or an added number, label or marks, is a fail and is **never applied**.
+  HKEAA forms that rewrite Latin letters, currency or paper furniture (甲國, 500港元, 總供需圖,
+  中六, 試卷一) are one table, `src/translate/conventions.ts`, which also renders prompt rule
+  12. Clock times and durations spelled in Chinese keep their numbers; cover and band
+  lines may break anywhere. Hong Kong punctuation, forms and CJK–Latin spacing:
+  `src/translate/normalize.ts`; Simplified detection by S→T pairs that are never valid
+  Traditional and never one-to-many: `src/translate/simplified.ts`.
+- **Prompt** (`src/translate/promptText.ts` words, `src/translate/prompt.ts` assembly): a
+  static system prompt and few-shot pair, then one JSON payload per chunk with its
+  glossary pins. A test pins a sha of the rendered prompt: any change bumps
+  `PROMPT_VERSION` and re-runs the eval. The few-shot answers must pass the pipeline with
+  no issue.
+- **Run** (`src/translate/run.ts`): decode → normalise → validate → glossary check → deny
+  auto-fix, then at most **one** repair request per chunk; each item keeps the better
+  pass. Truncation and safety blocks bisect; a fatal provider error stops the remaining
+  chunks; Stop keeps finished ones. It never rejects. The client's rate-limit wait shows
+  as `waiting` through `RunDeps.sleep` (`announcedSleep`). `writesFor` fans an accepted
+  job out to every slot it stands for, each with its own stale-guard snapshots.
+- **Check terms** (`src/translate/termCheck.ts`): keyless, EN→ZH over printed slots with
+  both sides (never alt text); fixes replace right to left and keep the replaced span's
+  format. `termSummary` is what the paper check receives.
+- **Deps** (`src/translate/deps.ts`): Settings → client, preset, model; a glossary that
+  fails to load means no pins or chips, not a failed run.
+- **Eval** (`evals/translate.eval.ts`, `npm run eval:translate`): live providers from
+  `EVAL_*_KEY` environment variables, outside `npm test`; the report stays out of the
+  repo.
 <!-- e2:engine end -->
 
 <!-- e2:dialog start -->
-### The Translate dialog
+### The Translate dialog (`src/components/translate/`)
 
-One dialog, two modes (Translate, Check terms), opened through `useAppDialogs`. Review is
-read-only: checkboxes and chips, no text inputs — the rejected translation dock is never
-rebuilt. Copy: `src/components/translate/copy.ts`.
+One dialog, two modes (Translate, Check terms), opened through `useAppDialogs` and mounted
+once as `TranslateHost` in `EditorApp`. Copy: `src/components/translate/copy.ts`.
+
+- **Phases are a pure reducer** (`src/components/translate/translateSession.ts`: setup →
+  running → review, or error). Every screen is a function of the session and a view, so
+  each is a static-markup test. Effects — plan, run, abort, Insert, hand-offs — are
+  injected into `src/components/translate/translateController.ts`.
+- **Review is read-only**: ticks and notes, no text input. A wrong row is unticked or fixed
+  on the page after inserting; the rejected translation dock is never rebuilt (the markup
+  test fails on any text field, textarea or contentEditable).
+- **Paid work is never lost to one stray press.** The first Escape, ✕ or scrim click asks
+  (Stop while running, Discard with rows pending). Stop keeps finished rows; a retry sends
+  only the jobs without a usable result.
+- **Insert is one `applyTranslations` call**: one commit, one ⌘Z. If every write is stale,
+  the dialog stays open on "Nothing inserted". The flash counts rows, matching a skip to
+  its row by path (`ApplyReport.skipped[].path` is the `TranslationWrite.path` from
+  `writesFor`; `src/components/translate/translateIntegration.test.ts` pins it).
+- **Never stacked.** Settings is offered only in Setup and Error, by replacing the app
+  dialog with `returnTo`; the session store keeps scope, options and finished rows across
+  the round trip. The host closes a request for another document or a read-only one.
+- **A symbol gap counts only as a copy the options write** (by default only for the side
+  the edition prints alone). In EN+中 a paper whose only gaps are symbols has nothing to
+  fill and opens on Check terms.
+- **Setup's scopes** add the editor's selected question and page element to whatever the
+  entry sent, so the paper-wide entries (pill, ⋯ menu) can still narrow.
 <!-- e2:dialog end -->
 
 <!-- e2:entry start -->
@@ -2378,7 +2564,7 @@ intact but unreachable.
 ```
 Vercel (or any static host): Next.js build → fully prerendered. No API routes, DB, or server runtime.
 Desktop:  the same `out/` wrapped by Tauri 2 → signed .dmg (macOS arm64 + x64) and .exe (Windows x64).
-Browser:  .docx via JSZip client-side · localStorage autosave · file up/download · PDF via window.print()
+Browser:  .docx via JSZip client-side · localStorage autosave · file up/download · PDF via window.print() · optional AI translation: `fetch` from `src/ai/http.ts` straight to the teacher's chosen provider
 ```
 
 Nothing in `src/` reads `process.env` or the filesystem at runtime. New on-page chrome

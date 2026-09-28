@@ -25,6 +25,8 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
   terms (物價水平, 總收入, 生產可能曲線, 洛倫茨曲線 …), and 效率損失 for deadweight loss,
   物品X and 廠商A as in HKDSE papers; the sample Paper 2 question now reads as an HKDSE
   paper would (寫出…, **一個**). Worksheets you already made keep their wording.
+- The ‘untranslated’ count now covers the whole paper — cover, header and footer, tables
+  and diagram labels — and shows in 中文 mode too.
 
 ## 0.4.0 — 2026-09-27
 

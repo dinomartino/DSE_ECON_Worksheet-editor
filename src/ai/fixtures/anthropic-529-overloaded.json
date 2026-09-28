@@ -1,0 +1,12 @@
+{
+  "source": "documented shape (not recorded: needs a real key or network)",
+  "status": 529,
+  "headers": {},
+  "body": {
+    "type": "error",
+    "error": {
+      "type": "overloaded_error",
+      "message": "Overloaded"
+    }
+  }
+}

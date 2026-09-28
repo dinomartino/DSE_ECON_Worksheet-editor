@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react';
+import type { TextWalker } from '@/model/textSlots';
 import type { BiText, ContentBlock, Question } from '@/model/types';
 import type { RenderContext, RenderNode } from '@/render/ir';
 import type { AnswerKeyContext, AnswerKeyEntry } from '@/render/answerKey';
@@ -42,8 +43,14 @@ export interface QuestionTypeDefinition<Q extends Question = Question> {
   examGapLines?: number;
   /** The type's editor panel. */
   EditorPanel: ComponentType<EditorPanelProps<Q>>;
-  /** Count of untranslated BiText fields, for the editor's warning badge (§5.2). */
-  countMissingTranslations?: (question: Q) => number;
+  /**
+   * Every BiText this question owns, through one walker that both reads and writes
+   * (`model/textWalk.ts`). Return the question itself when `walk` changed nothing; never
+   * create an absent optional field. Required: a field a type forgets is invisible to
+   * translation and to the untranslated count, silently. The walker is already scoped to
+   * this question (`q:<id>`, group "Question n").
+   */
+  mapTexts: (question: Q, walk: TextWalker) => Q;
   /** Per-type facts for the pre-print paper check (`model/paperHealth.ts`). */
   healthFacts?: (question: Q) => QuestionHealthFacts;
   /** This question's entry in the separate answer key (`render/answerKey.ts`); absent = none. */

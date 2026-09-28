@@ -3,7 +3,7 @@
  * Word by hand. Run with `npx vitest run scripts/emit-samples.test.ts`.
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { it } from 'vitest';
+import { expect, it } from 'vitest';
 import {
   answerKeyFileName,
   docxFileName,
@@ -15,6 +15,12 @@ import { bi } from '@/model/text';
 import { buildAcceptanceWorksheet, TINY_PNG } from '@/test/fixtures';
 import { buildMarkSchemeWorksheet } from '@/test/markSchemeFixture';
 import type { OutputMode, StructuredQuestion } from '@/model/types';
+import { presetFor } from '@/ai/providers';
+import { loadGlossary } from '@/glossary/load';
+import { applyTranslationBatch } from '@/model/translationApply';
+import { defaultTranslateOptions, planTranslation } from '@/translate/plan';
+import { runTranslation, writesFor } from '@/translate/run';
+import { oneSided, referenceClient } from '@/translate/testKit';
 
 const OUT = process.env.SAMPLE_DIR ?? '/tmp/econ-samples';
 
@@ -111,4 +117,34 @@ it('emits a long question with a model answer diagram, and its answer key', asyn
   const path = `${OUT}/answer-diagram-answer-key.docx`;
   writeFileSync(path, bytes);
   console.log(`${bytes.length} bytes -> ${path}`);
+});
+
+it('emits an English-only paper filled by the translation pipeline', async () => {
+  mkdirSync(OUT, { recursive: true });
+  // The fixture's own Chinese is the canned model, so the whole pipeline runs offline:
+  // plan → run (decode, validate, normalise, the real glossary) → writes → one apply → export.
+  const original = buildAcceptanceWorksheet();
+  // A subscript and a blank, so the sample shows both survive the wire.
+  const structured = original.questions.find((q): q is StructuredQuestion => q.type === 'structured')!;
+  const blank = { text: ' '.repeat(12), underline: true };
+  structured.blocks.push(createParagraphBlock({
+    en: [{ text: 'At E' }, { text: '0', vertAlign: 'subscript' }, { text: ', the price is $' }, blank, { text: '.' }],
+    zh: [{ text: '在E' }, { text: '0', vertAlign: 'subscript' }, { text: '時，價格為$' }, blank, { text: '。' }],
+  }));
+  const english = oneSided(original, 'en');
+  const mode: OutputMode = { language: 'zh', version: 'teacher' };
+  const plan = planTranslation(english, { kind: 'paper' }, defaultTranslateOptions(mode, true));
+  const deps = { client: referenceClient(original), preset: presetFor('gemini'), model: 'canned', glossary: await loadGlossary() };
+  const outcome = await runTranslation(plan, deps, new AbortController().signal, () => {});
+  const writes = writesFor(plan, outcome, new Set(plan.jobs.keys()), true);
+  const { worksheet, report } = applyTranslationBatch(english, writes);
+  console.log(`translated: ${report.applied} applied, ${report.skipped.length} skipped, ${plan.jobs.size} jobs`);
+  expect(report.applied).toBeGreaterThan(0);
+  expect(report.skipped).toEqual([]);
+  for (const language of ['zh', 'bilingual'] as const) {
+    const bytes = await exportDocxBuffer(worksheet, { language, version: 'teacher' });
+    const path = `${OUT}/translated-${language}.docx`;
+    writeFileSync(path, bytes);
+    console.log(`${bytes.length} bytes -> ${path}`);
+  }
 });

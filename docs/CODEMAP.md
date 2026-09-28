@@ -72,7 +72,7 @@ Invariants:
 ## registry — the question-type extension point
 
 `src/registry/types.ts:QuestionTypeDefinition` — `id` · `create` · `render` · `EditorPanel` ·
-`examGapLines?` · `countMissingTranslations?` · `healthFacts?` · `answerKey?` · `variant?` ·
+`mapTexts` · `examGapLines?` · `healthFacts?` · `answerKey?` · `variant?` ·
 `summary?` (short count label + `minutesPerItem`, for the paper summary).
 
 - `src/registry/index.ts:listQuestionTypes` · `:requireQuestionType`
@@ -82,7 +82,7 @@ Invariants:
 - `src/registry/structured.ts:structuredType`
 
 Invariants:
-- No shared module branches on a concrete type id; `src/registry/registry.test.ts` greps twelve modules — §Question-type registry.
+- No shared module branches on a concrete type id; `src/registry/registry.test.ts` greps sixteen modules — §Question-type registry.
 - A hand-built numbered paragraph must copy the block's `format` itself — same section.
 
 ## render — the IR, and the walker that fills it
@@ -255,27 +255,70 @@ and app Settings. Contracts first: a stub keeps its signature and says which pac
 it (`// P-<X> replaces this body`).
 
 - `src/model/textSlots.ts:TextSlot` · `src/model/textSlots.ts:TextWalker` · `src/model/textSlots.ts:TranslationWrite` · `src/model/textSlots.ts:ApplyReport` — the slot contract; helpers `src/model/textSlots.ts:patch` · `src/model/textSlots.ts:mapSame` · `src/model/textSlots.ts:sameRuns` · `src/model/textSlots.ts:missingSide`
-- `src/model/textWalk.ts:mapWorksheetTexts` · `src/model/textWalk.ts:collectTexts` · `src/model/textWalk.ts:slotsForTarget` · `src/model/textWalk.ts:countUntranslated` · `src/model/textWalk.ts:fieldNeedsFill` — the one walk (stub)
-- `src/model/diagramText.ts:mapDiagramTexts` · `src/model/translationApply.ts:applyTranslationBatch` · `src/model/symbols.ts:isSymbolOnly` (stubs)
-- `src/store/worksheetStore.ts:applyTranslations` — one commit per batch (stub); `src/model/paperHealth.ts:TermSummary` — Check terms' input to `checkPaper`
+- `src/model/textWalk.ts:mapWorksheetTexts` · `src/model/textWalk.ts:collectTexts` · `src/model/textWalk.ts:slotsForTarget` — the one identity-preserving walk over every BiText, in print order; questions through `src/registry/types.ts:QuestionTypeDefinition` `mapTexts`
+- `src/model/textWalk.ts:needsTranslation` · `src/model/textWalk.ts:countUntranslated` · `src/model/textWalk.ts:fieldNeedsFill` — one definition of "missing", per edition
+- `src/model/diagramText.ts:mapDiagramTexts` — every BiText in a diagram (parity with `src/model/diagramDraw.ts:handleText`)
+- `src/model/symbols.ts:isSymbolOnly` · `src/model/symbols.ts:CAPITAL_WORDS` — E₀, `MC = MR`, `$14 000`: never sent, counted only where it prints as a gap; `PAPER 2`, `ONE`, `No` are words
+- `src/model/translationApply.ts:applyTranslationBatch` — stale-guarded batch apply; re-measures a changed diagram bilingually
+- `src/components/editor/useUntranslatedCount.ts:useUntranslatedCount` — the toolbar pill, cached per question
+- `src/test/translateFixture.ts:buildTranslateFixture` — the kitchen sink: every slot kind; `src/model/textWalk.census.test.ts` proves the walk misses no `{en, zh}`
+- `src/store/worksheetStore.ts:applyTranslations` — one commit (one undo) per batch; `src/model/paperHealth.ts:TermSummary` — Check terms' input to `checkPaper`
 - `src/store/appDialogs.ts:useAppDialogs` — one app dialog at a time (Translate, Settings)
 - `src/translate/types.ts:TranslationPlan` · `src/translate/types.ts:JobResult` · `src/translate/types.ts:TermRow` · `src/translate/types.ts:RunDepsResult`
-- `src/translate/plan.ts:planTranslation` · `src/translate/plan.ts:defaultTranslateOptions` · `src/translate/run.ts:runTranslation` · `src/translate/run.ts:translateOne` · `src/translate/termCheck.ts:buildTermCheck` · `src/translate/termCheck.ts:termSummary` · `src/translate/deps.ts:createRunDeps` (stubs; `src/translate/types.test.ts` pins the Check terms signatures)
-- `src/glossary/types.ts:Glossary` · `src/glossary/types.ts:PreferredOverrides` · `src/glossary/attribution.ts:GLOSSARY_ATTRIBUTION` · `src/glossary/load.ts:loadGlossary` (stub) · `src/glossary/useGlossary.ts:useGlossary` · `src/glossary/index.ts`
-- `src/ai/types.ts:ProviderPreset` · `src/ai/types.ts:AiError` · `src/ai/providers.ts:PRESETS` · `src/ai/schema.ts:ITEMS_SCHEMA` · `src/ai/schema.ts:parseItemsPayload` · `src/ai/client.ts:createClient` (stub) · `src/ai/keyShape.ts:keyShapeProblem` (stub)
-- `src/settings/types.ts:SettingsSchema` · `src/settings/validators.ts:recordOf` · `src/settings/sections.ts:registerSettingsSection` · `src/settings/sections.ts:useSettingsSections` · `src/settings/store.ts:appSettings` (stub) · `src/settings/aiSettings.ts:AI_SETTINGS` · `src/settings/aiSettings.ts:useAiStatus` (stub)
-- `src/platform/secrets.ts:readSecret` · `src/platform/secrets.ts:peekSecret` — the only holder of AI keys (stubs)
+- `src/translate/plan.ts:planFromSlots` · `src/translate/plan.ts:planTranslation` · `src/translate/plan.ts:defaultTranslateOptions` · `src/translate/plan.ts:slotInScope` — scope, direction, symbol copies, dedupe, context, chunks
+- `src/translate/wire.ts:encodeRuns` · `src/translate/wire.ts:decodeWire` — the closed tag set; edges and blank widths live in the codec
+- `src/translate/validate.ts:validateItem` · `src/translate/conventions.ts:CONVENTIONS` — deterministic item checks; HKEAA letter, currency and paper-furniture forms (also prompt rule 12)
+- `src/translate/normalize.ts:normalizeZh` · `src/translate/normalize.ts:normalizeEn` · `src/translate/simplified.ts:SIMPLIFIED_PAIRS` — Hong Kong punctuation and forms; Simplified detection
+- `src/translate/promptText.ts` · `src/translate/prompt.ts:buildRequest` · `src/translate/prompt.ts:PROMPT_VERSION` — the prompt's words and assembly (sha-pinned in `src/translate/prompt.test.ts`)
+- `src/translate/run.ts:runTranslation` · `src/translate/run.ts:writesFor` · `src/translate/run.ts:translateOne` · `src/translate/run.ts:announcedSleep` — per-chunk pipeline, one repair pass, better of two; rate-limit waits shown as `waiting`
+- `src/translate/termCheck.ts:buildTermCheck` · `src/translate/termCheck.ts:termFixWrites` · `src/translate/termCheck.ts:termSummary` — Check terms (`src/translate/types.test.ts` pins the signatures)
+- `src/translate/deps.ts:createRunDeps` — Settings to client, preset, model and glossary
+- `src/translate/testKit.ts` · `src/translate/fakeGlossary.ts` — test-only: scripted client, reference client, a 20-entry glossary
+- `evals/translate.eval.ts` · `vitest.eval.config.ts` — the live quality eval (`npm run eval:translate`), never under `npm test`
+- `src/glossary/types.ts:Glossary` · `src/glossary/types.ts:PreferredOverrides` · `src/glossary/attribution.ts:GLOSSARY_ATTRIBUTION` · `src/glossary/load.ts:loadGlossary` · `src/glossary/useGlossary.ts:useGlossary` · `src/glossary/index.ts`
+- `src/glossary/data/edb-economics-2020.json` — the EDB data, verbatim (`src/glossary/NOTICE.md`); `src/glossary/glossary.ts:createGlossary` builds the `Glossary` from it
+- `src/glossary/overrides.ts:PREFERRED_OVERRIDES` (import → 進口) · `src/glossary/overrides.ts:GENERIC_TIER` · `src/glossary/overrides.ts:ZH_OVERRIDES` · `src/glossary/overrides.ts:EN_OVERRIDES` — corrections and policy over the data
+- `src/glossary/deny.ts:DENY` — known wrong forms and their fixes
+- `src/glossary/parse.ts:parseGlossary` · `src/glossary/fold.ts:foldZh` · `src/glossary/matchEn.ts:buildEnMatcher` · `src/glossary/matchZh.ts:buildZhMatcher`
+- `src/glossary/check.ts:checkEnToZh` · `src/glossary/check.ts:checkZhToEn` · `src/glossary/check.ts:autoFix` · `src/glossary/pin.ts:pin`
+- `src/glossary/seededTerms.test.ts` — every seeded template, preset and sample passes the check
+- `src/ai/types.ts:ProviderPreset` · `src/ai/types.ts:AiError` · `src/ai/providers.ts:PRESETS` · `src/ai/schema.ts:ITEMS_SCHEMA` · `src/ai/schema.ts:parseItemsPayload`
+- `src/ai/client.ts:createClient` · `src/ai/client.ts:testConnection` — config check, the structured-output ladder, the rung cache
+- `src/ai/http.ts:send` — the only `fetch` in `src/`; fetch hygiene, 2 MB cap, timeouts, transport retries
+- `src/ai/errors.ts:mapHttpError` · `src/ai/errors.ts:mapThrown` · `src/ai/errors.ts:isSchemaRejection` · `src/ai/errors.ts:redact` — table-driven error mapping, teacher-facing messages
+- `src/ai/adapters/gemini.ts:geminiAdapter` · `src/ai/adapters/openaiCompat.ts:openaiCompatAdapter` · `src/ai/adapters/anthropic.ts:anthropicAdapter` — wire shapes (`src/ai/adapters/adapter.ts:Adapter`)
+- `src/ai/keyShape.ts:keyShapeProblem` — a key from another provider is never sent without "test anyway"
+- `src/ai/fixtures/` — provider error bodies (recorded with dummy keys, or documented shapes); `src/ai/fakeFetch.ts` — the scripted fetch tests use
+- `src/settings/types.ts:SettingsSchema` · `src/settings/validators.ts:recordOf` · `src/settings/sections.ts:registerSettingsSection` · `src/settings/sections.ts:useSettingsSections` — schema and section registry
+- `src/settings/store.ts:createSettingsStore` · `src/settings/store.ts:appSettings` · `src/settings/store.ts:useSettings` — per-field validation, unknown keys kept, never lowers `v`
+- `src/settings/aiSettings.ts:AI_SETTINGS` · `src/settings/aiSettings.ts:readAiStatus` · `src/settings/aiSettings.ts:useAiStatus` · `src/settings/aiSettings.ts:resolveAiConfig` — status never reads the keychain
+- `src/platform/secrets.ts:readSecret` · `src/platform/secrets.ts:writeSecret` · `src/platform/secrets.ts:peekSecret` — the only holder of AI keys; `src-tauri/src/secrets.rs` the keychain commands
+- `src/components/settings/AppSettingsHost.tsx:AppSettingsHost` — mounted in `src/app/EditorHost.tsx`; Effects, ⌘, listener, the dialog
+- `src/components/settings/AppSettingsDialog.tsx:AppSettingsDialog` · `src/components/settings/AppSettingsDialog.tsx:AppSettingsFooter` · `src/components/settings/AppSettingsDialog.tsx:closeStep` — rail, lazy pane, close guard
+- `src/components/settings/shortcut.ts:shouldOpenSettings` — ⌘, / Ctrl+, rules
+- `src/components/settings/sections/index.ts` — one import per section
+- `src/components/settings/sections/ai.ts` — registers AI & translation
+- `src/components/settings/sections/aiSection/aiSetup.ts:aiSetupReducer` · `src/components/settings/sections/aiSection/AiSection.tsx` · `src/components/settings/sections/aiSection/AiSectionView.tsx:AiSectionView` — the AI pane
+- `src/components/settings/sections/aiSection/aiSetupRunner.ts:createAiSetupRunner` — the pane's side effects, injected; a flow never outlives its card
+- `src/test/secretsNeverLeave.test.ts` — a key is in no document, backup, export or setting
 - `src/components/translate/copy.ts` — the copy deck
 - `src/components/translate/translateMenu.ts:pageTranslateItems` · `src/components/translate/translateMenu.ts:toolbarMenuEntries` · `src/components/translate/translateMenu.ts:outlineTranslateItem` — every Translate entry point's request, pure
 - `src/components/translate/fieldFill.ts:fillButton` · `src/components/translate/fieldFill.ts:runFieldFill` — `BiTextField`'s inline fill (the `translate` prop)
 - `src/components/editor/Toolbar.tsx:UntranslatedPill` — the front door; `src/components/start/StartScreen.tsx:SettingsLink`; `src/components/ui/icons.tsx:PageSetupIcon` (Setup; the gear is app Settings)
 - `scripts/ai-verify.mjs` · `scripts/ai-mock-server.mjs` — the Translate browser run against a canned provider; nothing sent before a click
+- `src/components/translate/TranslateHost.tsx:TranslateHost` — mounted once in `EditorApp`; opens, resumes or drops the session as the app dialog changes
+- `src/components/translate/translateSession.ts:reduceSession` — the phases as a pure reducer (setup → running → review, or error); `src/components/translate/translateSession.ts:closeIntent` asks before paid work is lost
+- `src/components/translate/translateController.ts:createTranslateController` — plan, run, Stop, Insert and the Settings hand-offs, all injected
+- `src/components/translate/TranslateDialog.tsx:TranslateDialog` — one screen per phase; `src/components/translate/SetupPanel.tsx` · `src/components/translate/RunningPanel.tsx` · `src/components/translate/ReviewPanel.tsx` · `src/components/translate/ErrorPanel.tsx` · `src/components/translate/CheckTermsPanel.tsx`
+- `src/components/translate/ReviewRow.tsx:rowNotes` · `src/components/translate/RichRuns.tsx:RichRuns` — a read-only row (no text field: the dock guard in `src/components/translate/translateDialog.test.tsx`)
+- `src/components/translate/translateIntegration.test.ts` — the controller over the real engine, glossary, Settings and store: one commit per Insert or Replace, stale skips by path
 
 Invariants:
 - Nothing new is stored in a document; settings under `econgen.settings.<section>`, keys only in the secrets store.
-- `src/ai/` imports nothing from React, the store, `src/model`, `src/settings`, `@/platform` or Tauri.
+- `src/ai/` imports nothing from React, the store, `src/model`, `src/settings`, `@/platform` or Tauri (`src/ai/imports.test.ts`).
+- Network calls appear only in `src/ai/http.ts` (`src/test/networkCalls.test.ts`).
 - The glossary data is reached only through `src/glossary/load.ts` (a lazy chunk).
-- Nothing mounted imports a stub until its package lands.
+- `TranslateHost` renders nothing and calls nothing until an entry point opens a translate request.
 
 ## scripts — the harnesses
 

@@ -236,7 +236,7 @@ const ORIGINAL_TEMPLATES: DiagramTemplate[] = [
     name: bi('Pie chart', '圓形圖'),
     hint: bi(
       'Patterned slices with derived percentages — market shares.',
-      '以不同紋理表示份額，百分比自動計算。',
+      '以不同紋理表示市場佔有率，百分比自動計算。',
     ),
     // `pie` makes this a pie chart; round 40/30/20/10 so the derived percents visibly work.
     build: () => ({
