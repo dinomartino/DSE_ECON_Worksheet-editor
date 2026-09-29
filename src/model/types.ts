@@ -345,6 +345,11 @@ export interface QuestionBase {
   gapBefore?: number;
   /** Machine identity across copies (`model/lineage.ts`); never printed. Absent = an original. */
   lineage?: QuestionLineage;
+  /**
+   * Topic codes (`model/topics.ts`, e.g. 'C', 'C.ped') plus free-text tags. Never printed;
+   * codes are stored, names looked up. Absent = untagged.
+   */
+  tags?: string[];
 }
 
 export interface QuestionLineage {
@@ -852,6 +857,12 @@ export interface Worksheet {
    * and the paper check measure the derived totals against. Absent = no target.
    */
   target?: PaperTarget;
+  /** A question bank (`src/library/`) rather than a paper. Absent = a paper. */
+  kind?: 'bank';
+  /** The class this paper was set for ("5A 2025-26"); the bank's "used with" reads it. */
+  classTag?: string;
+  /** Keep this document's questions out of the question bank. Absent = indexed. */
+  bankHidden?: boolean;
   createdAt: string;
   updatedAt: string;
   /**
