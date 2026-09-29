@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Button, IconButton } from '@/components/ui';
+import { Button } from '@/components/ui';
 import {
   exportsFolder,
   isDesktop,
@@ -18,7 +18,7 @@ import { Dialog } from '@/components/ui/Dialog';
 import { AppMark } from '@/components/ui/AppMark';
 import { ScrollEdgeHints } from '@/components/ui/ScrollEdgeHints';
 import { useScrollEdges } from '@/components/ui/scrollEdges';
-import { ArchiveIcon, BankIcon, FolderIcon, FolderOpenIcon, SettingsIcon, SheetIcon } from '@/components/ui/icons';
+import { ArchiveIcon, BankIcon, FolderIcon, FolderOpenIcon, SheetIcon } from '@/components/ui/icons';
 import type { MenuItem } from '@/components/ui/Menu';
 import { VersionLine } from '@/components/editor/UpdateBanner';
 import { FeedbackDialog } from '@/components/feedback/FeedbackDialog';
@@ -77,9 +77,7 @@ import {
   moveToFolder,
   renameFolder,
 } from '@/storage/folders';
-import { useSettingsSections } from '@/settings/sections';
-import { useAppDialogs } from '@/store/appDialogs';
-import { isMacPlatform } from '@/components/settings/shortcut';
+import { SettingsButton } from '@/components/settings/SettingsButton';
 
 /** A dropped file from either source: a browser `File`, or a desktop path. */
 type Dropped = { name: string; type?: string; read: () => Promise<Uint8Array | Blob> };
@@ -667,7 +665,7 @@ export function StartScreen({
                 <NoticeBox notice={notice} onDismiss={() => setNotice(undefined)} flush />
               ) : undefined
             }
-            settings={<SettingsButton />}
+            settings={<SettingsButton separated />}
             onHome={() => {
               useBankReturn.getState().clear();
               showView('home');
@@ -701,6 +699,9 @@ export function StartScreen({
           </span>
           <span className="text-[13px] font-semibold text-ink">Worksheet</span>
           <span className="text-[11px] text-ink-subtle">HKDSE Economics</span>
+          {/* Stacked below `lg`, this row is the screen's top edge, so the gear sits here;
+              from `lg` up it moves to the desk's header, the top-right corner. */}
+          <SettingsButton className="-my-1 ml-auto lg:hidden" />
         </header>
 
         {/* The screen's one display moment: the chrome's serif voice (design/icons/design.md §
@@ -786,11 +787,8 @@ export function StartScreen({
           {/* Desktop only; its own line, as the footer row cannot also hold it at 400px. */}
           <VersionLine />
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line pt-3">
-            <SettingsButton />
-            <span className="ml-auto flex items-center gap-3">
-              <TextLink onClick={() => setWhatsNew(true)}>What’s new</TextLink>
-              <TextLink onClick={() => setFeedback(true)}>Send feedback</TextLink>
-            </span>
+            <TextLink onClick={() => setWhatsNew(true)}>What’s new</TextLink>
+            <TextLink onClick={() => setFeedback(true)}>Send feedback</TextLink>
           </div>
         </div>
       </aside>
@@ -816,6 +814,12 @@ export function StartScreen({
             onRestore={(row) => void restoreFromTrash(row)}
             onPurge={setConfirmingPurge}
             onEmpty={() => setConfirmingEmpty(true)}
+            // No rule here: the Trash's top row has no tools of its own to set it apart from.
+            settings={
+              <span className="hidden lg:flex">
+                <SettingsButton />
+              </span>
+            }
           />
         ) : (
           <FileDashboard
@@ -829,6 +833,7 @@ export function StartScreen({
             folderId={folderId}
             onFolderChange={enterFolder}
             folderActions={folderActions}
+            settings={<SettingsButton separated className="hidden lg:flex" />}
           />
         )}
       </main>
@@ -1301,25 +1306,6 @@ function TextLink({
     >
       {children}
     </button>
-  );
-}
-
-/** App-wide Settings, as the gear in the panel's corner; absent while no section is registered. */
-export function SettingsButton() {
-  const desktop = isDesktop();
-  const sections = useSettingsSections({ desktop });
-  if (sections.length === 0) return null;
-  // The shortcut is named on desktop only, as in the ⋯ menu: a browser may claim it first.
-  const hint = desktop ? (isMacPlatform() ? ' (⌘,)' : ' (Ctrl+,)') : '';
-  return (
-    <IconButton
-      label="Settings"
-      title={`Settings${hint}`}
-      className="-my-1 -ml-1.5"
-      onClick={() => useAppDialogs.getState().openSettings()}
-    >
-      <SettingsIcon size={16} />
-    </IconButton>
   );
 }
 

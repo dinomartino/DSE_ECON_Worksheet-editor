@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { settingsSections } from '@/settings/sections';
 import { MENU_SETTINGS } from '@/components/translate/copy';
 import { toolbarSettingsEntries } from '@/components/translate/translateMenu';
-import { SettingsButton } from '@/components/start/StartScreen';
+import { SettingsButton } from './SettingsButton';
 // The one eager importer: nothing else registers a section.
 import './AppSettingsHost';
 

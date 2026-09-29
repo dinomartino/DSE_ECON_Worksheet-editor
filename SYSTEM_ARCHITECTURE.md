@@ -2176,8 +2176,10 @@ Rules every verb keeps:
   a still-empty side. A result a page fill would mark `look` is shown with *Insert anyway*,
   never written silently. Without a provider it deep-links to Settings — never over a
   modal layer (Setup, a canvas), where the button is disabled instead.
-- **Settings** opens from the ⋯ menu (hint only on desktop), the start screen and ⌘, /
-  Ctrl+,, each hidden while no section is registered.
+- **Settings** opens from the editor's ⋯ menu (hint only on desktop), the gear
+  (`SettingsButton`) at the far right of the start screen's and the bank's top row, and
+  ⌘, / Ctrl+,, each hidden while no section is registered. The editor bar has no gear:
+  at 1024 px it would cost the document name a third of its width.
 
 ### Running and reviewing AI results (`src/assist/runStore.ts`, `src/components/ai/`)
 
