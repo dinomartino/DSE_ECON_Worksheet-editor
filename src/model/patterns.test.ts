@@ -4,7 +4,9 @@ import {
   holdsPatterns,
   isFreeTag,
   isPatternTag,
+  matchPatternName,
   parsePatternTag,
+  patternKey,
   patternsIn,
   patternTag,
   samePatternName,
@@ -60,5 +62,30 @@ describe('題型 tags', () => {
     expect(withoutOrphanPatterns(['C.ped::A', 'C.pes::B', 'free'], (topic) => topic === 'C.pes')).toEqual(['C.pes::B', 'free']);
     expect(tagSearchWords('C.ped::Calculate PED')).toEqual(['Calculate PED']);
     expect(tagSearchWords('C.ped')).toContain('Price elasticity of demand');
+  });
+});
+
+describe('matching a typed 題型 name', () => {
+  it('reads case, spacing and punctuation alike', () => {
+    expect(patternKey('Calculate PED (TR)')).toBe('calculatepedtr');
+    expect(patternKey(' calculate  ped tr ')).toBe('calculatepedtr');
+    expect(patternKey('計算需求價格彈性：總收入')).toBe('計算需求價格彈性總收入');
+    expect(patternKey('???')).toBe('???');
+  });
+
+  it('ranks the same name, a prefix, a part, then a close one', () => {
+    const name = 'Calculate PED from a change in TR';
+    expect(matchPatternName('calculate ped from a change in tr.', name)).toBe('same');
+    expect(matchPatternName('Calc', name)).toBe('prefix');
+    expect(matchPatternName('change in', name)).toBe('contains');
+    expect(matchPatternName('Calculate PED from a change in TR and TE', name)).toBe('close');
+    expect(matchPatternName('Calculate PED from a chnage in TR', name)).toBe('close');
+    expect(matchPatternName('Identify elastic demand', name)).toBeUndefined();
+    expect(matchPatternName('', name)).toBeUndefined();
+  });
+
+  it('does not call a short name close to everything', () => {
+    expect(matchPatternName('PES', 'PED')).toBeUndefined();
+    expect(matchPatternName('Graphs of PED', 'Graph')).toBe('close');
   });
 });

@@ -5,7 +5,6 @@ import { Button, Segmented } from '@/components/ui';
 import { Dialog } from '@/components/ui/Dialog';
 import { holdsPatterns } from '@/model/patterns';
 import { TOPICS, topicOf, type Topic } from '@/model/topics';
-import type { PatternId } from '@/library/patterns';
 import { PatternPicker } from '../PatternPicker';
 
 /** A row of choices over the list (bulk: Add, Remove, Replace), owned by the caller. */
@@ -16,21 +15,28 @@ export interface PickerModes<T extends string> {
   onChange: (value: T) => void;
 }
 
-/** 題型 under the ticked sub-topics, for questions of one type. */
+/** 題型 under the ticked sub-topics. */
 export interface PickerPatterns {
-  typeId: string;
+  /** The one question type in hand. Absent for a mix of types, which can only clear a 題型. */
+  typeId?: string;
   /** "MCQ" or "LQ". */
   kind: string;
   /** The 題型 offered under a sub-topic (`patternNames`). */
   names: (topic: string) => string[];
   /** Each sub-topic's 題型 on open. */
   initial?: Readonly<Record<string, string>>;
+  /** Bulk: offer "No 題型", which clears it on every question in hand. */
+  clearable?: boolean;
+  /** Sub-topic → questions in hand carrying a 題型 under it; a mix of types offers Clear only there. */
+  present?: ReadonlyMap<string, number>;
 }
 
-/** What the dialog chose besides the codes: each ticked sub-topic's 題型 (undefined = none), and the new names. */
+/**
+ * Each ticked sub-topic's 題型: a name sets it, `null` clears it, `undefined` is none
+ * chosen. New names are not here: the picker registers one as it is made.
+ */
 export interface PickedPatterns {
-  patterns: Record<string, string | undefined>;
-  created: PatternId[];
+  patterns: Record<string, string | null | undefined>;
 }
 
 /**
@@ -47,6 +53,7 @@ export function TopicPickerDialog<M extends string = never>({
   present,
   allowEmpty = true,
   patterns,
+  patternRemoval,
   patternNote,
   onClose,
   onDone,
@@ -64,13 +71,18 @@ export function TopicPickerDialog<M extends string = never>({
   allowEmpty?: boolean;
   /** Offer a 題型 under each ticked sub-topic. */
   patterns?: PickerPatterns;
+  /**
+   * Bulk Remove: sub-topic → questions in hand carrying a 題型 under it. A ticked one can
+   * stay and lose only its 題型 (it is left out of the codes and set to `null`).
+   */
+  patternRemoval?: ReadonlyMap<string, number>;
   /** Why no 題型 is offered (e.g. questions of two types), shown quietly. */
   patternNote?: string;
   onClose: () => void;
   onDone: (codes: string[], picked: PickedPatterns) => void;
 }) {
-  const [chosenPatterns, setChosenPatterns] = useState<Record<string, string | undefined>>(() => ({ ...(patterns?.initial ?? {}) }));
-  const [created, setCreated] = useState<ReadonlySet<string>>(new Set());
+  const [chosenPatterns, setChosenPatterns] = useState<Record<string, string | null | undefined>>(() => ({ ...(patterns?.initial ?? {}) }));
+  const [onlyPattern, setOnlyPattern] = useState<ReadonlySet<string>>(new Set());
   const [picked, setPicked] = useState<ReadonlySet<string>>(() => new Set(initial.filter((tag) => topicOf(tag))));
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState<ReadonlySet<string>>(
@@ -99,34 +111,60 @@ export function TopicPickerDialog<M extends string = never>({
     });
   // Guide order, so a question's tags read A before C and a coarse code before its fine ones.
   const ordered = () => TOPICS.flatMap((topic) => [topic, ...topic.children]).map((t) => t.code).filter((code) => picked.has(code));
+  const keepsTopic = (code: string) => Boolean(patternRemoval?.get(code)) && onlyPattern.has(code);
   const done = () => {
     const codes = ordered();
-    const chosen: Record<string, string | undefined> = {};
-    const fresh: PatternId[] = [];
-    if (patterns) {
-      for (const code of codes.filter(holdsPatterns)) {
-        const name = chosenPatterns[code];
-        chosen[code] = name;
-        if (name && created.has(`${code}\u0000${name}`)) fresh.push({ topic: code, typeId: patterns.typeId, name });
-      }
-    }
-    onDone(codes, { patterns: chosen, created: fresh });
+    const chosen: Record<string, string | null | undefined> = {};
+    if (patterns) for (const code of codes.filter(holdsPatterns)) chosen[code] = chosenPatterns[code];
+    for (const code of codes.filter(keepsTopic)) chosen[code] = null;
+    onDone(
+      codes.filter((code) => !keepsTopic(code)),
+      { patterns: chosen },
+    );
   };
-  const patternFor = (child: Topic) =>
-    patterns && picked.has(child.code) ? (
+  const patternFor = (child: Topic) => {
+    if (!picked.has(child.code) || !holdsPatterns(child.code)) return null;
+    const carrying = patternRemoval?.get(child.code) ?? 0;
+    if (patternRemoval) {
+      if (carrying === 0) return null;
+      return (
+        <label className="mb-1 ml-[100px] mr-2 flex cursor-pointer items-baseline gap-1.5 text-[11px] text-ink-muted">
+          <input
+            type="checkbox"
+            checked={onlyPattern.has(child.code)}
+            onChange={() =>
+              setOnlyPattern((current) => {
+                const next = new Set(current);
+                if (next.has(child.code)) next.delete(child.code);
+                else next.add(child.code);
+                return next;
+              })
+            }
+            className="h-3 w-3 shrink-0 translate-y-[1px] cursor-pointer accent-[var(--accent)]"
+          />
+          Keep {child.code}, remove only its 題型
+          <span className="tabular-nums text-ink-subtle">(on {carrying})</span>
+        </label>
+      );
+    }
+    if (!patterns) return null;
+    const canSet = patterns.typeId !== undefined;
+    if (!canSet && !patterns.present?.get(child.code)) return null;
+    return (
       <div className="mb-1 ml-[100px] mr-2">
         <PatternPicker
           topic={child.code}
           kind={patterns.kind}
-          names={patterns.names(child.code)}
+          typeId={patterns.typeId}
+          names={canSet ? patterns.names(child.code) : []}
           value={chosenPatterns[child.code]}
-          onChange={(name, isNew) => {
-            setChosenPatterns((current) => ({ ...current, [child.code]: name }));
-            if (name && isNew) setCreated((current) => new Set(current).add(`${child.code}\u0000${name}`));
-          }}
+          clearable={patterns.clearable}
+          canSet={canSet}
+          onChange={(name) => setChosenPatterns((current) => ({ ...current, [child.code]: name }))}
         />
       </div>
-    ) : null;
+    );
+  };
 
   return (
     <Dialog

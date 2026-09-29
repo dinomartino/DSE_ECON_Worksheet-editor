@@ -8,6 +8,8 @@ import type { Question, Worksheet } from '@/model/types';
 import type { PatternRegistry } from '@/storage/patterns';
 import {
   listPatterns,
+  patternEdits,
+  patternMix,
   patternNames,
   patternWrites,
   removePatternEdit,
@@ -17,7 +19,7 @@ import {
   setPatternsEdit,
   thenEdit,
 } from './patterns';
-import { addTopics, removeTopics, replaceTopics, writeTags } from './tagWrites';
+import { addTopics, bulkTopicEdit, removeTopics, replaceTopics, writeTags } from './tagWrites';
 
 const MCQ = choiceQuestion('x').type;
 const LQ = partsQuestion('x').type;
@@ -86,6 +88,34 @@ describe('tag edits keep 題型 with their sub-topic', () => {
   it('sets, swaps and clears one 題型 per sub-topic', () => {
     const edit = thenEdit(replaceTopics(['C.ped', 'C.pes']), setPatternsEdit({ 'C.ped': 'Calculate', 'C.pes': undefined }));
     expect(edit(tags)).toEqual(['C.ped', 'C.ped::Calculate', 'C.pes', 'mock']);
+  });
+
+  it('a picker’s choices become edits: a name sets, null clears, none chosen is left (or cleared when exact)', () => {
+    const chosen = { 'C.ped': 'Calculate', 'C.pes': null, 'C.pd': undefined };
+    expect(patternEdits(chosen)).toEqual({ 'C.ped': 'Calculate', 'C.pes': undefined });
+    expect(patternEdits(chosen, true)).toEqual({ 'C.ped': 'Calculate', 'C.pes': undefined, 'C.pd': undefined });
+    expect(patternEdits(undefined)).toEqual({});
+  });
+
+  it('bulk clears a 題型 without the sub-topic (Remove, "only its 題型"), or with Add and Replace', () => {
+    const clearPed = setPatternsEdit(patternEdits({ 'C.ped': null }));
+    expect(thenEdit(bulkTopicEdit('remove', []), clearPed)(tags)).toEqual(['C.ped', 'C.pes', 'C.pes::Identify', 'mock']);
+    expect(thenEdit(bulkTopicEdit('add', ['C.ped']), clearPed)(tags)).toEqual(['C.ped', 'C.pes', 'C.pes::Identify', 'mock']);
+    expect(thenEdit(bulkTopicEdit('replace', ['C.ped']), clearPed)(tags)).toEqual(['C.ped', 'mock']);
+    // A sub-topic left alone keeps its 題型 in bulk.
+    expect(thenEdit(bulkTopicEdit('add', ['C.ped']), setPatternsEdit(patternEdits({ 'C.ped': undefined })))(tags)).toEqual(tags);
+  });
+
+  it('counts the questions carrying a 題型 under each sub-topic, once per question', () => {
+    const mix = patternMix([
+      { tags: ['C.ped', 'C.ped::A', 'C.ped::B'] },
+      { tags: ['C.ped', 'C.ped::A', 'C.pes', 'C.pes::X'] },
+      { tags: ['C.ped', 'C.ped'] },
+    ]);
+    expect([...mix]).toEqual([
+      ['C.ped', 2],
+      ['C.pes', 1],
+    ]);
   });
 
   it('rename, merge and delete touch only the named 題型', () => {

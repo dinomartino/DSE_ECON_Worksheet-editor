@@ -153,6 +153,33 @@ export const setPatternsEdit =
   (tags) =>
     Object.entries(patterns).reduce<string[]>((acc, [topic, name]) => withPattern(acc, topic, name), [...tags]);
 
+/**
+ * A picker's 題型 per sub-topic as `setPatternsEdit` takes them: a name sets it, `null`
+ * clears it. A sub-topic with none chosen is left alone (bulk, tag as you go), or with
+ * `exact` (one question's whole state) cleared.
+ */
+export function patternEdits(
+  chosen: Readonly<Record<string, string | null | undefined>> | undefined,
+  exact = false,
+): Record<string, string | undefined> {
+  const out: Record<string, string | undefined> = {};
+  for (const [topic, name] of Object.entries(chosen ?? {})) {
+    if (name) out[topic] = name;
+    else if (name === null || exact) out[topic] = undefined;
+  }
+  return out;
+}
+
+/** Sub-topic → how many of the rows carry a 題型 under it. */
+export function patternMix(rows: readonly Pick<BankRow, 'tags'>[]): Map<string, number> {
+  const mix = new Map<string, number>();
+  for (const row of rows) {
+    const topics = new Set(row.tags.flatMap((tag) => parsePatternTag(tag)?.topic ?? []));
+    for (const topic of topics) mix.set(topic, (mix.get(topic) ?? 0) + 1);
+  }
+  return mix;
+}
+
 /** `first`, then `second` on its result. */
 export const thenEdit =
   (first: TagEdit, second: TagEdit): TagEdit =>
