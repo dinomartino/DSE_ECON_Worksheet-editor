@@ -2101,6 +2101,9 @@ hover                      → margin drag grip → reorder
 - **Hover changes colour, nothing else**: a clickable row or button answers the pointer
   with a background or text tint; no accent bar, nudge or new decoration. The accent bar
   marks the selected item only.
+- **A scroll pane that can hide content shows an edge hint, not a forced scrollbar**
+  (macOS overlay scrollbars are invisible until scrolled): `useScrollEdges` +
+  `ScrollEdgeHints` (`src/components/ui/`), as on the start screen's aside.
 
 ---
 
