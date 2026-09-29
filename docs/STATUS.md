@@ -54,7 +54,9 @@ off the bottom.** It is the first thing a fresh session reads — then
   accent bar/nudge/lift; rule in SYSTEM_ARCHITECTURE § Layout rules); start-screen aside
   shows scroll edge hints (`src/components/ui/scrollEdges.ts`, `ScrollEdgeHints.tsx`),
   reusable for other panes. Settings gear top-right on start + bank
-  (stacked layout: brand row). Left alone: swatches grow on hover, dark-mode row tint is faint.
+  (stacked layout: brand row). Editor ⋯ lost Worksheets… (crumb is the route home).
+  Right-click inside a question box opens its menu (`kind: 'question'`, AI only); layout
+  elements still have no box menu. Left alone: swatches grow on hover, dark-mode row tint is faint.
 - **AI Settings keys (merged on `develop` 2026-09-29, not released)**: "Your keys" list
   (count, masked last 4, In use, per-key Test/Forget, in-memory status), "Key saved" chip on
   provider rows, card's button reads Test for a saved key, About folded into one Collapsible.
