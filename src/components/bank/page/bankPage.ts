@@ -1,0 +1,430 @@
+import { roundMinutes, MINUTES_PER_MARK } from '@/model/paperSummary';
+import { TOPICS, topicLabel, topicOf } from '@/model/topics';
+import { getQuestionType, listQuestionTypes } from '@/registry';
+import { sameClass } from '@/library/history';
+import { searchRows } from '@/library/search';
+import type { BankGroup, BankRow, BankStatus } from '@/library/types';
+import type { WorksheetSummary } from '@/storage/types';
+
+/**
+ * The Question bank page's pure half: coverage, tree counts, filters, the selection
+ * tray's sums and when the index is stale. Types reach it only through the registry.
+ * Every count is of distinct questions (`rootId`), so a question copied into three
+ * papers counts once, as the list shows it once.
+ */
+
+/** The topics tree's selection: every question, one topic code, or those with no topic. */
+export type TopicPick = 'all' | 'untagged' | string;
+
+/** A row has a topic when any of its tags is a known code; free tags do not count. */
+export function hasTopic(row: Pick<BankRow, 'tags'>): boolean {
+  return row.tags.some((tag) => topicOf(tag) !== undefined);
+}
+
+/** The coarse codes a row falls under ('C.ped' → 'C'), each once. */
+export function coarseCodes(row: Pick<BankRow, 'tags'>): string[] {
+  const codes = new Set<string>();
+  for (const tag of row.tags) {
+    const topic = topicOf(tag);
+    if (topic) codes.add(topic.parent ?? topic.code);
+  }
+  return [...codes];
+}
+
+export interface CoverageBar {
+  code: string;
+  /** Distinct questions per type id, in registry order. */
+  byType: { typeId: string; count: number }[];
+  total: number;
+  /** Few enough to warrant the amber floor rule. */
+  thin: boolean;
+}
+
+export interface Coverage {
+  bars: CoverageBar[];
+  /** The tallest bar's total: every bar is drawn to this one scale. */
+  max: number;
+  /** Distinct questions with no topic code. */
+  untagged: number;
+  /** Distinct questions in the bank. */
+  total: number;
+  /** Type ids present anywhere, in registry order (the legend). */
+  typeIds: string[];
+  /** Documents the rows come from: papers and bank documents. */
+  papers: number;
+  banks: number;
+}
+
+/** Thin: under a fifth of the tallest bar, and never above 3 questions as the floor. */
+export function isThin(total: number, max: number): boolean {
+  return max > 0 && total < Math.max(3, Math.round(max * 0.2));
+}
+
+/** One bar per coarse topic (A–J, EL1, EL2), each question counted once per topic it touches. */
+export function coverage(rows: readonly BankRow[]): Coverage {
+  const typeOrder = listQuestionTypes().map((type) => type.id);
+  const byTopic = new Map<string, Map<string, Set<string>>>();
+  const untagged = new Set<string>();
+  const all = new Set<string>();
+  const seenTypes = new Set<string>();
+  const docs = new Map<string, BankRow['docKind']>();
+  for (const row of rows) {
+    docs.set(row.docId, row.docKind);
+    all.add(row.rootId);
+    seenTypes.add(row.typeId);
+    const codes = coarseCodes(row);
+    if (codes.length === 0) untagged.add(row.rootId);
+    for (const code of codes) {
+      const types = byTopic.get(code) ?? new Map<string, Set<string>>();
+      byTopic.set(code, types);
+      const roots = types.get(row.typeId) ?? new Set<string>();
+      types.set(row.typeId, roots);
+      roots.add(row.rootId);
+    }
+  }
+  // A question tagged under a topic in one copy and untagged in another is tagged.
+  for (const types of byTopic.values()) for (const roots of types.values()) for (const root of roots) untagged.delete(root);
+
+  const ordered = [...typeOrder.filter((id) => seenTypes.has(id)), ...[...seenTypes].filter((id) => !typeOrder.includes(id)).sort()];
+  const bars = TOPICS.map((topic) => {
+    const types = byTopic.get(topic.code);
+    const byType = ordered.map((typeId) => ({ typeId, count: types?.get(typeId)?.size ?? 0 }));
+    const roots = new Set<string>();
+    for (const set of types?.values() ?? []) for (const root of set) roots.add(root);
+    return { code: topic.code, byType, total: roots.size, thin: false };
+  });
+  const max = Math.max(0, ...bars.map((bar) => bar.total));
+  for (const bar of bars) bar.thin = isThin(bar.total, max);
+  const kinds = [...docs.values()];
+  return {
+    bars,
+    max,
+    untagged: untagged.size,
+    total: all.size,
+    typeIds: ordered,
+    papers: kinds.filter((kind) => kind === 'paper').length,
+    banks: kinds.filter((kind) => kind === 'bank').length,
+  };
+}
+
+/**
+ * Distinct questions per tree entry: 'all', 'untagged', every coarse and fine code. A
+ * coarse count includes its fine codes (`matchesTopic`), so C ≥ C.ped.
+ */
+export function treeCounts(rows: readonly BankRow[]): Map<TopicPick, number> {
+  const sets = new Map<TopicPick, Set<string>>();
+  const add = (key: TopicPick, root: string) => {
+    const set = sets.get(key) ?? new Set<string>();
+    sets.set(key, set);
+    set.add(root);
+  };
+  for (const row of rows) {
+    add('all', row.rootId);
+    if (!hasTopic(row)) add('untagged', row.rootId);
+    for (const tag of new Set(row.tags)) {
+      const topic = topicOf(tag);
+      if (!topic) continue;
+      add(topic.code, row.rootId);
+      if (topic.parent) add(topic.parent, row.rootId);
+    }
+  }
+  // Tagged in any copy is tagged (the same rule as `coverage`).
+  const untagged = sets.get('untagged');
+  if (untagged) {
+    for (const [key, set] of sets) {
+      if (key === 'all' || key === 'untagged') continue;
+      for (const root of set) untagged.delete(root);
+    }
+  }
+  const counts = new Map<TopicPick, number>();
+  for (const [key, set] of sets) counts.set(key, set.size);
+  return counts;
+}
+
+/* ------------------------------------------------------------------------------------ */
+/* Filters                                                                              */
+/* ------------------------------------------------------------------------------------ */
+
+export type MarksBand = 'any' | '1' | '2-4' | '5-8' | '9+';
+export type Since = 'ever' | 'year' | '12m' | '6m';
+export type SourceFilter = 'all' | 'paper' | 'bank';
+
+export interface BankFilters {
+  text: string;
+  topic: TopicPick;
+  typeId?: string;
+  marks: MarksBand;
+  /** Leave out questions used with this class… */
+  notUsedWith?: string;
+  /** …on a paper saved since this point. */
+  since: Since;
+  source: SourceFilter;
+}
+
+export const DEFAULT_FILTERS: BankFilters = { text: '', topic: 'all', marks: 'any', since: 'ever', source: 'all' };
+
+export const MARKS_BANDS: { value: MarksBand; label: string; min?: number; max?: number }[] = [
+  { value: 'any', label: 'Any marks' },
+  { value: '1', label: '1 mark', min: 1, max: 1 },
+  { value: '2-4', label: '2–4 marks', min: 2, max: 4 },
+  { value: '5-8', label: '5–8 marks', min: 5, max: 8 },
+  { value: '9+', label: '9+ marks', min: 9 },
+];
+
+export const SINCE_CHOICES: { value: Since; label: string }[] = [
+  { value: 'ever', label: 'at any time' },
+  { value: 'year', label: 'this school year' },
+  { value: '12m', label: 'in the last 12 months' },
+  { value: '6m', label: 'in the last 6 months' },
+];
+
+/** The cut-off an ISO `docUpdatedAt` must reach; undefined = any time. School years start 1 Sep. */
+export function sinceIso(since: Since, now: Date): string | undefined {
+  if (since === 'ever') return undefined;
+  if (since === 'year') {
+    const year = now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1;
+    return new Date(year, 8, 1).toISOString();
+  }
+  const back = new Date(now);
+  back.setMonth(back.getMonth() - (since === '12m' ? 12 : 6));
+  return back.toISOString();
+}
+
+/** The class tags on saved papers, trimmed, one spelling per class (first seen), sorted. */
+export function classTags(rows: readonly BankRow[]): string[] {
+  const seen = new Map<string, string>();
+  for (const row of rows) {
+    const tag = row.classTag?.trim();
+    if (tag && row.docKind === 'paper' && !seen.has(tag.toLowerCase())) seen.set(tag.toLowerCase(), tag);
+  }
+  return [...seen.values()].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+}
+
+/**
+ * The rows the page's filters admit. Text, topic, type and marks go through `searchRows`;
+ * untagged, source and "not used with <class> since…" are this page's own.
+ */
+export function filterRows(rows: readonly BankRow[], filters: BankFilters, now = new Date()): BankRow[] {
+  const band = MARKS_BANDS.find((b) => b.value === filters.marks);
+  const topic = filters.topic === 'all' || filters.topic === 'untagged' ? undefined : filters.topic;
+  const matched = searchRows(rows, {
+    text: filters.text,
+    ...(topic ? { topic } : {}),
+    ...(filters.typeId ? { typeId: filters.typeId } : {}),
+    ...(band && band.value !== 'any' ? { marks: { min: band.min, max: band.max } } : {}),
+  });
+  const cutoff = sinceIso(filters.since, now);
+  const used = filters.notUsedWith?.trim()
+    ? new Set(
+        rows
+          .filter(
+            (row) =>
+              row.docKind === 'paper' &&
+              sameClass(row.classTag, filters.notUsedWith) &&
+              (cutoff === undefined || row.docUpdatedAt >= cutoff),
+          )
+          .map((row) => row.rootId),
+      )
+    : undefined;
+  const tagged = filters.topic === 'untagged' ? new Set(rows.filter(hasTopic).map((row) => row.rootId)) : undefined;
+  return matched.filter(
+    (row) =>
+      (!tagged || !tagged.has(row.rootId)) &&
+      (filters.source === 'all' || row.docKind === filters.source) &&
+      (!used || !used.has(row.rootId)),
+  );
+}
+
+/** One narrowing filter, named the way the empty state says it. */
+export interface ActiveFilter {
+  key: keyof BankFilters;
+  label: string;
+}
+
+export function activeFilters(filters: BankFilters): ActiveFilter[] {
+  const active: ActiveFilter[] = [];
+  if (filters.text.trim()) active.push({ key: 'text', label: `“${filters.text.trim()}”` });
+  if (filters.topic === 'untagged') active.push({ key: 'topic', label: 'untagged' });
+  else if (filters.topic !== 'all') active.push({ key: 'topic', label: topicName(filters.topic) });
+  if (filters.typeId) active.push({ key: 'typeId', label: typeName(filters.typeId) });
+  if (filters.marks !== 'any') active.push({ key: 'marks', label: MARKS_BANDS.find((b) => b.value === filters.marks)?.label ?? '' });
+  if (filters.notUsedWith?.trim()) {
+    const since = filters.since === 'ever' ? '' : ` ${SINCE_CHOICES.find((s) => s.value === filters.since)?.label}`;
+    active.push({ key: 'notUsedWith', label: `not used with ${filters.notUsedWith.trim()}${since}` });
+  }
+  if (filters.source !== 'all') active.push({ key: 'source', label: filters.source === 'bank' ? 'from banks' : 'from worksheets' });
+  return active;
+}
+
+/** Filters with one of them back at its default. */
+export function clearFilter(filters: BankFilters, key: keyof BankFilters): BankFilters {
+  if (key === 'notUsedWith') return { ...filters, notUsedWith: undefined, since: 'ever' };
+  if (key === 'typeId') return { ...filters, typeId: undefined };
+  return { ...filters, [key]: DEFAULT_FILTERS[key] };
+}
+
+/** "C · Price elasticity of demand" for a fine code, "C · Market and Price" for a coarse one. */
+export function topicName(code: string): string {
+  const topic = topicOf(code);
+  if (!topic) return code;
+  return `${topic.parent ?? topic.code} · ${topic.en}`;
+}
+
+/** The registry's short label ("MCQ", "Structured"); the plural reads fine unpluralised. */
+export function typeName(typeId: string): string {
+  const definition = getQuestionType(typeId);
+  const label = definition?.summary?.label.en ?? typeId;
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+/** Each distinct version of a group once (its newest copy), newest first. */
+export function distinctVersions(group: BankGroup): BankRow[] {
+  const seen = new Set<string>();
+  return group.rows.filter((row) => {
+    if (seen.has(row.contentKey)) return false;
+    seen.add(row.contentKey);
+    return true;
+  });
+}
+
+/* ------------------------------------------------------------------------------------ */
+/* Selection tray                                                                       */
+/* ------------------------------------------------------------------------------------ */
+
+export interface TraySummary {
+  count: number;
+  marks: number;
+  /** Estimated working minutes at the classroom pace (`paperSummary.ts`). */
+  minutes: number;
+  /** Topic codes by how many picked questions carry them, most first; ties by guide order. */
+  mix: { code: string; count: number }[];
+}
+
+/** One question's minutes, by the paper summary's rule: its type's per-item pace, else marks. */
+export function rowMinutes(row: Pick<BankRow, 'typeId' | 'marks'>): number {
+  return getQuestionType(row.typeId)?.summary?.minutesPerItem ?? row.marks * MINUTES_PER_MARK.classroom;
+}
+
+const GUIDE_ORDER = new Map(
+  TOPICS.flatMap((topic) => [topic, ...topic.children]).map((topic, index) => [topic.code, index] as const),
+);
+
+export function traySummary(rows: readonly BankRow[]): TraySummary {
+  const mix = new Map<string, number>();
+  for (const row of rows) {
+    for (const tag of new Set(row.tags)) if (topicOf(tag)) mix.set(tag, (mix.get(tag) ?? 0) + 1);
+  }
+  return {
+    count: rows.length,
+    marks: rows.reduce((sum, row) => sum + row.marks, 0),
+    minutes: roundMinutes(rows.reduce((sum, row) => sum + rowMinutes(row), 0)),
+    mix: [...mix]
+      .map(([code, count]) => ({ code, count }))
+      .sort((a, b) => b.count - a.count || (GUIDE_ORDER.get(a.code) ?? 0) - (GUIDE_ORDER.get(b.code) ?? 0)),
+  };
+}
+
+/** "C.ped ×3, C.intervention ×1"; the first three, then "+N more". */
+export function mixLabel(mix: TraySummary['mix'], shown = 3): string {
+  const head = mix.slice(0, shown).map(({ code, count }) => `${code} ×${count}`);
+  const rest = mix.length - shown;
+  return rest > 0 ? `${head.join(', ')} +${rest} more` : head.join(', ');
+}
+
+/** The key a picked or focused row is held by; a question is unique within its document. */
+export const rowKey = (row: Pick<BankRow, 'docId' | 'questionId'>) => `${row.docId}\u0000${row.questionId}`;
+
+/* ------------------------------------------------------------------------------------ */
+/* Freshness and targets                                                                */
+/* ------------------------------------------------------------------------------------ */
+
+/**
+ * Whether the index is behind the saved documents: a row names a document that is gone or
+ * was saved since, or a document newer than everything indexed has appeared. A document
+ * that yields no rows (empty, hidden) can read stale; the caller refreshes once per
+ * `summariesKey`, never in a loop.
+ */
+export function bankIsStale(rows: readonly BankRow[], summaries: readonly WorksheetSummary[], status: BankStatus): boolean {
+  if (status.state !== 'ready') return false;
+  const saved = new Map(summaries.map((summary) => [summary.id, summary.updatedAt]));
+  let newest = '';
+  for (const row of rows) {
+    if (saved.get(row.docId) !== row.docUpdatedAt) return true;
+    if (row.docUpdatedAt > newest) newest = row.docUpdatedAt;
+  }
+  return summaries.some((summary) => summary.questionCount !== 0 && summary.updatedAt > newest);
+}
+
+export const summariesKey = (summaries: readonly WorksheetSummary[]) =>
+  summaries.map((summary) => `${summary.id}@${summary.updatedAt}`).join('|');
+
+/**
+ * Where "Add to …" puts the picks: the document open last in this session if it is still
+ * saved, else the most recently edited paper. Never a bank document (its rows say so).
+ */
+export function addTarget(
+  summaries: readonly WorksheetSummary[],
+  rows: readonly BankRow[],
+  lastOpenId: string | undefined,
+): WorksheetSummary | undefined {
+  const banks = new Set(rows.filter((row) => row.docKind === 'bank').map((row) => row.docId));
+  const usable = summaries.filter((summary) => !banks.has(summary.id));
+  return usable.find((summary) => summary.id === lastOpenId) ?? usable[0];
+}
+
+/**
+ * Short coarse-topic names for the 192px tree, where the guide's titles clip to their
+ * shared first words. Display only: the full title is the row's tooltip.
+ */
+const SHORT: Record<string, string> = {
+  A: 'Basic concepts',
+  B: 'Firms, production',
+  C: 'Market and price',
+  D: 'Competition',
+  E: 'Efficiency, equity',
+  F: 'Measurement',
+  G: 'National income',
+  H: 'Money and banking',
+  I: 'Macro policy',
+  J: 'Trade and finance',
+  EL1: 'Monopoly pricing',
+  EL2: 'Growth, trade',
+};
+
+export function shortTopicName(code: string): string {
+  return SHORT[code] ?? topicOf(code)?.en ?? code;
+}
+
+/** "11 questions · 3 worksheets · 1 bank". */
+export function bankCountLabel(coverage: Pick<Coverage, 'total' | 'papers' | 'banks'>): string {
+  const n = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
+  return [n(coverage.total, 'question'), n(coverage.papers, 'worksheet'), ...(coverage.banks ? [n(coverage.banks, 'bank')] : [])].join(' · ');
+}
+
+/** "C.ped Price elasticity of demand" lines for the preview's Topics. */
+export function tagLines(tags: readonly string[]): { code: string; name?: string }[] {
+  return tags.map((tag) => (topicOf(tag) ? { code: tag, name: topicLabel(tag, 'en') } : { code: tag }));
+}
+
+/* ------------------------------------------------------------------------------------ */
+/* Remembered tab                                                                       */
+/* ------------------------------------------------------------------------------------ */
+
+export type StartTab = 'worksheets' | 'bank';
+const TAB_KEY = 'econgen.startTab';
+
+export function readStartTab(): StartTab {
+  try {
+    return window.localStorage.getItem(TAB_KEY) === 'bank' ? 'bank' : 'worksheets';
+  } catch {
+    return 'worksheets';
+  }
+}
+
+export function writeStartTab(tab: StartTab): void {
+  try {
+    window.localStorage.setItem(TAB_KEY, tab);
+  } catch {
+    // Private mode or blocked storage: the tab just doesn't outlive the visit.
+  }
+}

@@ -16,6 +16,9 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 - **Tag questions with DSE topics.** Pick a topic (A–J and the electives, or your own
   free tag) in the Edit panel, and set the class in Setup. Tags never print.
 - **Copy questions to a question bank from the outline.** Use a question's ⋯ menu to copy it to a bank (or start a new one); after you improve a question, "Update bank copy" refreshes the bank's version, and "Treat as a new question" cuts a copy loose from its origin. Banks show as "Question bank" on the Worksheets tab.
+- **Question bank 題庫 on the start screen**: every question from your worksheets, by topic,
+  with a coverage chart, a Teacher-version preview (diagrams and mark schemes), topics you
+  can set, and "New worksheet from these" or "Add to" your last worksheet for the ones you tick.
 
 ### Fixed
 - **Editing a duplicated question no longer changes the original.** Worksheets where a
