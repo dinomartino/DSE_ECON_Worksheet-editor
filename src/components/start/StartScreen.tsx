@@ -721,7 +721,7 @@ export function StartScreen({
 
         {/* The bank is every question already written, so it is a way *in* too: its own
             screen, like a document, with ← Home to come back. */}
-        <section className="mt-8">
+        <section className="mt-7">
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
             Reuse questions
           </h2>
@@ -730,7 +730,7 @@ export function StartScreen({
               icon={<BankIcon size={16} />}
               title="Question bank 題庫"
               trailing={bankGroups.length > 0 ? `${bankGroups.length} ${bankGroups.length === 1 ? 'question' : 'questions'}` : undefined}
-              hint="Every question in your worksheets, by topic. Tag them, then build a new paper."
+              hint="Every question from your worksheets, by topic."
               onClick={() => setView('bank')}
             />
           </div>

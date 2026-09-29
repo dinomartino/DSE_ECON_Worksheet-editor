@@ -73,7 +73,7 @@ export function TopicCards({
                 className="group flex w-full cursor-pointer flex-col gap-2 rounded-[10px] border border-line bg-surface-raised px-4 pb-3 pt-3.5 text-left shadow-[0_1px_0_var(--line)] transition-colors duration-150 ease-out-soft hover:border-line-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
                 <span className="flex items-baseline gap-2.5">
-                  <span className="font-display min-w-[34px] text-[26px] leading-none text-ink">{bar.code}</span>
+                  <span className="font-display min-w-[34px] shrink-0 text-[26px] leading-none text-ink">{bar.code}</span>
                   <span className="grid min-w-0 text-[13px] leading-[1.25] text-ink">
                     <span className="group-hover:text-accent-ink">{topic?.en}</span>
                     <small className="text-[12px] text-ink-subtle">{topic?.zh}</small>
@@ -99,12 +99,11 @@ export function TopicCards({
                       ) : null,
                     )}
                 </span>
-                {bar.total === 0 ? (
-                  // Amber only once something is tagged: a bank with no topics yet has one
-                  // problem (the strip above), not twelve.
-                  coverage.max > 0 && <span className="text-[12px] text-warn-ink">None yet. Worth adding some</span>
-                ) : (
-                  bar.thin && <span className="text-[12px] tabular-nums text-warn-ink">Only {bar.total}. Worth adding more</span>
+                {/* Amber for a thin topic only. An empty one is said by its count: early on
+                    most topics are empty, and twelve amber lines would bury the one strip
+                    that needs doing. */}
+                {bar.total > 0 && bar.thin && (
+                  <span className="text-[12px] tabular-nums text-warn-ink">Only {bar.total}. Worth adding more</span>
                 )}
               </button>
             </li>

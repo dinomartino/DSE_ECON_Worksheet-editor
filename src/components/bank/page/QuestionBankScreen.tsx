@@ -164,8 +164,13 @@ export function QuestionBankScreen({
 
   const pickedRows = picks.map((key) => byKey.get(key)).filter((row): row is BankRow => row !== undefined);
   const pickedSet = useMemo(() => new Set(pickedRows.map(rowKey)), [pickedRows]);
-  // Read at render: the editor's store still holds the document open last in this session.
-  const target = addTarget(summaries, rows, useWorksheetStore.getState().worksheet.id);
+  // The editor's store still holds the document open last in this session. Pinned for the
+  // visit: a topic saved here moves that paper to the top of the list, and "Add to" must
+  // not follow it there.
+  const [targetId, setTargetId] = useState<string>();
+  const fresh = addTarget(summaries, rows, useWorksheetStore.getState().worksheet.id);
+  if (targetId === undefined && fresh) setTargetId(fresh.id);
+  const target = summaries.find((summary) => summary.id === targetId) ?? fresh;
 
   /* ---------------------------------------------------------------------------------- */
   /* Actions                                                                            */
@@ -285,7 +290,11 @@ export function QuestionBankScreen({
     const target = event.target as HTMLElement | null;
     const typing = isTypingTarget(target);
     const tag = target?.tagName;
-    const onButton = tag === 'BUTTON' || (tag === 'INPUT' && (target as HTMLInputElement).type === 'checkbox');
+    // A focused button keeps Space and Enter for itself, except the preview toggles
+    // (radios, where Space would re-pick the picked option), so Space still selects.
+    const onButton =
+      (tag === 'BUTTON' && target?.getAttribute('role') !== 'radio') ||
+      (tag === 'INPUT' && (target as HTMLInputElement).type === 'checkbox');
 
     if (event.key === 'Escape') {
       if (typing) {

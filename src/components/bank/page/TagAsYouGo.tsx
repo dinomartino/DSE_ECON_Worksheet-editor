@@ -68,8 +68,8 @@ export function TagAsYouGo({
   }
 
   return (
-    <div ref={scrollRef} className="scroll-slim min-h-0 flex-1 overflow-y-auto bg-surface">
-      <div className="bg-[var(--chrome-sunken)] px-4 py-[22px]">
+    <div ref={scrollRef} className="scroll-slim min-h-0 flex-1 overflow-y-auto bg-[var(--chrome-sunken)]">
+      <div className="px-4 pt-[22px]">
         <div className="mx-auto flex items-start justify-center gap-3" style={{ maxWidth: SHEET_MAX_WIDTH + 2 * 46 }}>
           <Nav label="Previous question (skip back)" disabled={position <= 0} onClick={() => onStep(-1)}>
             ‹
@@ -89,7 +89,7 @@ export function TagAsYouGo({
         </div>
       </div>
 
-      <div className="mx-auto grid gap-3 px-[22px] py-5" style={{ maxWidth: SHEET_MAX_WIDTH + 44 }}>
+      <div className="mx-auto grid gap-3 px-[22px] pb-8 pt-4" style={{ maxWidth: SHEET_MAX_WIDTH + 44 }}>
         <p className="text-[12.5px] tabular-nums text-ink-muted">
           <span className="text-ink-subtle">Lives in</span> {sourceLabel(row)}
         </p>
@@ -105,24 +105,24 @@ export function TagAsYouGo({
                 aria-pressed={on}
                 title={`${code} · ${topicLabel(code, 'en')} ${topicLabel(code, 'zh')}`}
                 onClick={() => onToggle(code)}
-                className={`relative grid min-w-0 cursor-pointer rounded-[7px] border px-2 py-1.5 text-left text-[12px] transition-colors duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                className={`relative grid min-w-0 cursor-pointer content-start rounded-[7px] border px-2 py-1.5 text-left text-[12px] transition-colors duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                   on ? 'border-accent bg-accent-soft shadow-[inset_0_0_0_1px_var(--accent)]' : 'border-line-strong bg-surface-raised hover:border-ink-subtle'
                 }`}
               >
                 <span className="absolute right-1.5 top-1 text-[10.5px] tabular-nums text-ink-subtle">{index + 1}</span>
                 <b className="text-[13px] font-semibold text-ink">{coarse}</b>
-                <small className="truncate text-[12px] text-ink-muted">{name}</small>
+                <small className="line-clamp-2 text-[12px] leading-snug text-ink-muted">{name}</small>
               </button>
             );
           })}
           <button
             type="button"
             onClick={onAllTopics}
-            className="relative grid min-w-0 cursor-pointer rounded-[7px] border border-line-strong bg-surface-raised px-2 py-1.5 text-left text-[12px] transition-colors duration-150 ease-out-soft hover:border-ink-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="relative grid min-w-0 cursor-pointer content-start rounded-[7px] border border-line-strong bg-surface-raised px-2 py-1.5 text-left text-[12px] transition-colors duration-150 ease-out-soft hover:border-ink-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <span className="absolute right-1.5 top-1 text-[10.5px] tabular-nums text-ink-subtle">{suggestions.length + 1}</span>
             <b className="text-[13px] font-semibold text-ink">…</b>
-            <small className="truncate text-[12px] text-ink-muted">All topics</small>
+            <small className="text-[12px] leading-snug text-ink-muted">All topics</small>
           </button>
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">

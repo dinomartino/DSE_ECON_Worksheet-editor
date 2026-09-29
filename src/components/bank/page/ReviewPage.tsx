@@ -310,9 +310,10 @@ function Stage({
         <span className="hidden text-[12px] text-ink-subtle xl:inline">↑ ↓ to move · Space to select</span>
       </div>
 
-      <div ref={scrollRef} className="scroll-slim min-h-0 flex-1 overflow-y-auto">
-        {/* The desk tone sits behind the paper only. */}
-        <div className="bg-[var(--chrome-sunken)] px-4 py-[22px]">
+      {/* The stage is the one place the desk tone appears: the paper sits on it, and the
+          facts under the paper share it. Lists stay on the light surfaces. */}
+      <div ref={scrollRef} className="scroll-slim min-h-0 flex-1 overflow-y-auto bg-[var(--chrome-sunken)]">
+        <div className="px-4 pt-[22px]">
           <div className="mx-auto flex items-start justify-center gap-3" style={{ maxWidth: SHEET_MAX_WIDTH + 2 * 46 }}>
             <NavButton label="Previous question" disabled={index <= 0} onClick={() => onStep(-1)}>
               ‹
@@ -331,7 +332,7 @@ function Stage({
           </div>
         </div>
 
-        <div className="mx-auto grid grid-cols-1 gap-x-6 gap-y-4 px-[22px] py-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]" style={{ maxWidth: SHEET_MAX_WIDTH + 44 }}>
+        <div className="mx-auto grid grid-cols-1 gap-x-6 gap-y-4 px-[22px] pb-8 pt-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]" style={{ maxWidth: SHEET_MAX_WIDTH + 44 }}>
           <Facts>
             <dt className="text-ink-subtle">Topics</dt>
             <dd className="min-w-0">
@@ -376,7 +377,7 @@ function Stage({
                 disabled={busy}
                 onClick={() => onAddOne(row)}
                 title={`Open “${targetTitle}” and add this question at the end`}
-                className="max-w-[240px]"
+                className="max-w-[280px]"
               >
                 <span className="truncate">Add to “{targetTitle}”</span>
               </Button>
