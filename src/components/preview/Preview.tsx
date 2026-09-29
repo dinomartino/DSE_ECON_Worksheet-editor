@@ -3324,6 +3324,10 @@ function breakAfterNodes(nodes: RenderNode[]): number[] {
  * the footer and was then simply missing (§ `packPages`). The probe therefore measures
  * each block's *nodes* as well as the block, so the packer has boundaries to choose from.
  */
+/** Never mutated: each measurement is a new map. */
+const NO_HEIGHTS: Map<string, number> = new Map();
+const NO_NODE_HEIGHTS: Map<string, number[]> = new Map();
+
 function usePagination(
   blocks: FlowBlock[],
   contentHeightPx: number,
@@ -3337,20 +3341,28 @@ function usePagination(
   /** The slice each placement renders, for the blocks that had to be broken. */
   fragments: Map<string, ItemFragment>;
   probeRef: React.RefObject<HTMLDivElement | null>;
+  /**
+   * Whether this render packed from the latest measurement. False for the one render
+   * after a change whose re-measure is still on its way: effects that write what they
+   * measure back into the model wait for the next (a cancelled 題庫 drag must leave the
+   * document exactly as it was).
+   */
+  isFresh: () => boolean;
 } {
   const probeRef = useRef<HTMLDivElement>(null);
-  const [heights, setHeights] = useState<Map<string, number>>(new Map());
+  const [heights, setHeights] = useState<Map<string, number>>(NO_HEIGHTS);
   /** Per block: the cumulative bottom of each of its nodes, from the block's own top. */
-  const [nodeHeights, setNodeHeights] = useState<Map<string, number[]>>(new Map());
+  const [nodeHeights, setNodeHeights] = useState<Map<string, number[]>>(NO_NODE_HEIGHTS);
   /**
    * The last measurement handed to the setters. Compared *before* calling them: the
    * effect runs on every keystroke, and even an updater that returns `prev` schedules a
    * second render of the whole document (React cannot bail out eagerly right after an
    * update) — under fast input those pile up into "Maximum update depth exceeded".
+   * Starts as the state's own maps, so `isFresh` holds before anything is measured.
    */
   const lastMeasured = useRef<{ heights: Map<string, number>; nodes: Map<string, number[]> }>({
-    heights: new Map(),
-    nodes: new Map(),
+    heights: NO_HEIGHTS,
+    nodes: NO_NODE_HEIGHTS,
   });
 
   // Measure after paint, and re-measure whenever the content or the page geometry
@@ -3467,7 +3479,12 @@ function usePagination(
     [packable, heights, contentHeightPx],
   );
 
-  return { pages, openedBy, heights, fragments, probeRef };
+  const isFresh = useCallback(
+    () => lastMeasured.current.heights === heights && lastMeasured.current.nodes === nodeHeights,
+    [heights, nodeHeights],
+  );
+
+  return { pages, openedBy, heights, fragments, probeRef, isFresh };
 }
 
 /**
@@ -3595,6 +3612,29 @@ const SELECTED_ITEM = "bg-[#0d77c9]/[0.04] shadow-[0_0_0_1px_#bcdcf2]";
  * run is on screen. Shared by `DraggableItem` and `DocumentField`, which must agree.
  */
 const MULTI_SELECTED_ITEM = "bg-[#0d77c9]/[0.10]";
+
+/**
+ * The 題庫 drag's provisional question: drawn where it would land, faded under a dashed
+ * outline. Outline and tag reserve no space (the paginator measures the real height);
+ * `data-print-hide` because it is never in the document. `data-flow-id` so the drag can
+ * find it on the sheet, `data-bank-ghost` so it is told apart.
+ */
+function ProvisionalItem({ id, children }: { id: string; children: React.ReactNode }) {
+  return (
+    <div
+      data-flow-id={id}
+      data-bank-ghost
+      data-print-hide
+      aria-hidden
+      className="pointer-events-none relative rounded-[3px] bg-[#0d77c9]/[0.04] outline-dashed outline-[1.5px] outline-offset-2 outline-[#0d77c9]"
+    >
+      <div className="opacity-55">{children}</div>
+      <span className="absolute -top-2 right-1 rounded-[3px] bg-[#0d77c9] px-1.5 py-px font-sans text-[9px] font-semibold leading-tight text-white">
+        題庫
+      </span>
+    </div>
+  );
+}
 
 const itemBodyNodes = (item: RenderedItem) =>
   item.type === "question" ? item.question.nodes : item.layout.nodes;
@@ -3965,6 +4005,12 @@ interface Props {
    * carries the whole selection, and the target cannot re-derive it.
    */
   onDragItemChange?: (ids: string[] | undefined) => void;
+  /**
+   * A question drawn in place but not in the document: the 題庫 drag's provisional copy
+   * (`bank/bankDrag.tsx`). Drawn faded and inert, `data-print-hide`; while it is set the
+   * page is a preview, so nothing measured off it is written back (split, trim, fill).
+   */
+  provisionalId?: string;
 }
 
 /**
@@ -4160,6 +4206,7 @@ export function Preview({
   onOpenBank,
   onPagesChange,
   onDragItemChange,
+  provisionalId,
 }: Props) {
   /*
    * The one document walk, memoised on its only two inputs.
@@ -5805,7 +5852,8 @@ export function Preview({
           item={item}
           range={range}
           language={language}
-          ctx={ctx}
+          // The provisional question is a picture of the drop, not something to edit.
+          ctx={id === provisionalId ? undefined : ctx}
           ctxStamp={ctxStamp}
           selected={
             item.type === "layout"
@@ -5874,7 +5922,9 @@ export function Preview({
       // The chrome around the body is the same whichever slice is inside it, so it is
       // built from the body rather than around one fixed copy of it.
       const wrap = (body: React.ReactNode) =>
-        !onReorder ? (
+        id === provisionalId ? (
+          <ProvisionalItem id={id}>{body}</ProvisionalItem>
+        ) : !onReorder ? (
           body
         ) : (
           <DraggableItem
@@ -6051,6 +6101,7 @@ export function Preview({
     heights: heightsOf,
     fragments,
     probeRef,
+    isFresh,
   } = usePagination(blocks, contentHeightPx, [
     // Deliberately *not* keyed on the selection or the drag: selection chrome paints
     // rings and absolutely-positioned grips that reserve no space (that is its own
@@ -6087,7 +6138,7 @@ export function Preview({
    */
   const splitting = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (!onSplitRows || dragId || !measurementsSettled) return;
+    if (!onSplitRows || dragId || provisionalId || !measurementsSettled || !isFresh()) return;
     const root = containerRef.current;
     if (!root) return;
 
@@ -6137,7 +6188,7 @@ export function Preview({
     }
     // Nothing overflows any more, so the latch can be released for the next one.
     splitting.current = undefined;
-  }, [pages, worksheet, contentHeightPx, onSplitRows, dragId, scale, measurementsSettled]);
+  }, [pages, worksheet, contentHeightPx, onSplitRows, dragId, provisionalId, scale, measurementsSettled, isFresh]);
 
   /*
    * Trim a leaf question's answer space to what its sheet can hold — same
@@ -6147,7 +6198,7 @@ export function Preview({
    */
   const trimming = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (!onTrimQuestionAnswerSpace || dragId || !measurementsSettled) return;
+    if (!onTrimQuestionAnswerSpace || dragId || provisionalId || !measurementsSettled || !isFresh()) return;
     const root = containerRef.current;
     if (!root) return;
 
@@ -6182,7 +6233,7 @@ export function Preview({
       return;
     }
     trimming.current = undefined;
-  }, [pages, worksheet, contentHeightPx, onTrimQuestionAnswerSpace, dragId, scale, measurementsSettled]);
+  }, [pages, worksheet, contentHeightPx, onTrimQuestionAnswerSpace, dragId, provisionalId, scale, measurementsSettled, isFresh]);
 
   /*
    * Resolve every fill answer-space to the room left on its sheet (§3.2).
@@ -6197,7 +6248,7 @@ export function Preview({
   useEffect(() => {
     // Settled-gated like the trim above: a resolution against the transient packing
     // self-heals a frame later, but it still writes junk counts through autosave.
-    if (!onResolveFills || dragId || !measurementsSettled) return;
+    if (!onResolveFills || dragId || provisionalId || !measurementsSettled || !isFresh()) return;
     const fillPitch = new Map<string, number>();
     for (const element of worksheet.layout) {
       if (element.kind === 'answerSpace' && element.fill) {
@@ -6237,7 +6288,9 @@ export function Preview({
     worksheet,
     onResolveFills,
     dragId,
+    provisionalId,
     measurementsSettled,
+    isFresh,
   ]);
 
   /*

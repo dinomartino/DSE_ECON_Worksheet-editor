@@ -6,6 +6,8 @@ import type { BankRow as BankRowData, BankUse } from '@/library/types';
 import { plain } from '@/model/text';
 import type { LanguageMode } from '@/model/types';
 import { getQuestionType } from '@/registry';
+import { GripIcon } from '@/components/ui/icons';
+import type { RowDragProps } from './bankDrag';
 
 /**
  * One question-bank row, shared by the editor's 題庫 tab and the Question bank page.
@@ -31,6 +33,10 @@ export interface BankRowProps {
   hideSource?: boolean;
   selected?: boolean;
   onSelect?: () => void;
+  /** Drag the row onto the page (`useBankRowDrag`): a grip, and the grab cursor. */
+  drag?: RowDragProps;
+  /** This row's question is in hand. */
+  dragging?: boolean;
 }
 
 export function BankRow({
@@ -45,17 +51,34 @@ export function BankRow({
   hideSource,
   selected = false,
   onSelect,
+  drag,
+  dragging = false,
 }: BankRowProps) {
   const excerpt = language === 'zh' ? row.excerpt.zh : row.excerpt.en;
   const missing = missingLanguageLabel(row, language);
+  const excerptText = (
+    <span className="line-clamp-2 text-xs leading-snug text-ink" title={excerpt}>
+      {excerpt || <span className="text-ink-subtle">Untitled question</span>}
+    </span>
+  );
   return (
     <div
       data-bank-row={row.questionId}
       aria-selected={selected}
+      {...drag}
       className={`group relative flex items-start gap-2.5 border-b border-line py-2.5 pl-3.5 pr-3.5 transition-colors duration-150 ease-out-soft ${
-        selected ? 'bg-surface-hover' : 'hover:bg-surface-hover'
-      }`}
+        selected || dragging ? 'bg-surface-hover' : 'hover:bg-surface-hover'
+      } ${drag ? 'cursor-grab select-none' : ''} ${dragging ? 'opacity-60' : ''}`}
     >
+      {drag && (
+        <span
+          aria-hidden
+          title="Drag onto the page"
+          className="pointer-events-none absolute left-0.5 top-3 text-ink-subtle/60 transition-colors duration-150 ease-out-soft group-hover:text-ink-muted"
+        >
+          <GripIcon size={11} />
+        </span>
+      )}
       <span
         aria-hidden
         className={`absolute inset-y-1 left-0 w-0.5 rounded-full bg-accent transition-[opacity,scale] duration-150 ease-out-soft ${
@@ -64,16 +87,18 @@ export function BankRow({
       />
       {leading && <span className="shrink-0 pt-0.5">{leading}</span>}
       <div className={`min-w-0 flex-1 ${inPaper ? 'opacity-55' : ''}`}>
-        <button
-          type="button"
-          onClick={onSelect}
-          disabled={!onSelect}
-          className="block w-full cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 disabled:cursor-default"
-        >
-          <span className="line-clamp-2 text-xs leading-snug text-ink" title={excerpt}>
-            {excerpt || <span className="text-ink-subtle">Untitled question</span>}
-          </span>
-        </button>
+        {onSelect ? (
+          <button
+            type="button"
+            onClick={onSelect}
+            className="block w-full cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1"
+          >
+            {excerptText}
+          </button>
+        ) : (
+          // Not a disabled button: a disabled control swallows the press a drag starts from.
+          <div className="block w-full text-left">{excerptText}</div>
+        )}
         <div className="mt-1 flex flex-wrap gap-x-2.5 gap-y-0.5 text-[11px] tabular-nums text-ink-subtle">
           <span>{typeLabel(row.typeId)}</span>
           <span>{marksLabel(row.marks)}</span>

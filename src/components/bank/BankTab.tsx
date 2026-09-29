@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { pickFill } from '@/library/fill';
 import { groupRows } from '@/library/group';
 import { classesLabel } from '@/library/cohort';
@@ -15,6 +15,7 @@ import {
   fromDocuments,
   paperClasses,
   paperRoots,
+  rowKey,
   topicName,
   versionRows,
   visibleGroups,
@@ -31,13 +32,15 @@ import { listQuestionTypes } from '@/registry';
 import { useAppDialogs } from '@/store/appDialogs';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { BankRow, typeLabel } from './BankRow';
-import { insertFromBank } from './bankSession';
+import { insertFromBank, type InsertReport } from './bankSession';
+import { useBankDrag, useBankRowDrag } from './bankDrag';
 import { emptySentence, typePlural } from './tabText';
 
 /**
  * The editor's 題庫 tab: find questions in the other saved documents and insert copies
  * after the anchor, or Fill a set by topic. Sticky (§ Sidebar): while open, a click on the
  * page moves the anchor. Rows are text; the page is where a copy is seen at full size.
+ * A row also drags onto the page, which shows the result before the drop (`bankDrag.tsx`).
  */
 
 const PAGE = 60;
@@ -103,6 +106,8 @@ export function BankTab() {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const anchorId = useWorksheetStore((s) => s.insertAnchorId);
   const language = useWorksheetStore((s) => s.mode.language);
+  const readOnly = useWorksheetStore((s) => s.readOnly);
+  const printPreview = useWorksheetStore((s) => s.printPreview);
 
   const [filters, setFilters] = useState<TabFilters>(NO_FILTERS);
   const [expanded, setExpanded] = useState<string | undefined>();
@@ -136,22 +141,33 @@ export function BankTab() {
     setLimit(PAGE);
   };
 
+  const reportMissing = useCallback(
+    (report: InsertReport) => {
+      if (!report.missing.length) return;
+      const n = report.missing.length;
+      useAppDialogs
+        .getState()
+        .notify(`${n} question${n === 1 ? '' : 's'} changed since the bank was read, so ${n === 1 ? 'it was' : 'they were'} skipped.`);
+      refresh();
+    },
+    [refresh],
+  );
+
   const run = async (picked: readonly BankRowData[]) => {
     if (busy || !picked.length) return;
     setBusy(true);
     try {
-      const report = await insertFromBank(picked);
-      if (report.missing.length) {
-        const n = report.missing.length;
-        useAppDialogs
-          .getState()
-          .notify(`${n} question${n === 1 ? '' : 's'} changed since the bank was read, so ${n === 1 ? 'it was' : 'they were'} skipped.`);
-        refresh();
-      }
+      reportMissing(await insertFromBank(picked));
     } finally {
       setBusy(false);
     }
   };
+
+  // Print preview shows the sheets as they print; a read-only document takes nothing.
+  const drag = useBankRowDrag({ enabled: !readOnly && !printPreview && !busy, onReport: reportMissing });
+  const draggingKey = useBankDrag((s) => s.active?.key);
+  const dragFor = (row: BankRowData) =>
+    drag.sourceProps(row, rowKey(row), (language === 'zh' ? row.excerpt.zh || row.excerpt.en : row.excerpt.en || row.excerpt.zh) || 'Question');
 
   // Fill: its own type and topic, following the filters until set.
   const effectiveFillType = fillType ?? (filters.typeId || types[0]?.id || '');
@@ -243,6 +259,8 @@ export function BankTab() {
                 onVersions={() => setExpanded((open) => (open === group.rootId ? undefined : group.rootId))}
                 onSelect={inPaper ? () => useWorksheetStore.getState().select(inPaper.questionId) : undefined}
                 action={<InsertButton disabled={busy} onClick={() => void run([row])} />}
+                drag={inPaper ? undefined : dragFor(row)}
+                dragging={draggingKey === rowKey(row)}
               />
               {others.length > 0 && (
                 <div className="border-b border-line bg-surface-sunken pl-3">
@@ -252,6 +270,8 @@ export function BankTab() {
                       row={version}
                       language={language}
                       action={<InsertButton disabled={busy} onClick={() => void run([version])} />}
+                      drag={dragFor(version)}
+                      dragging={draggingKey === rowKey(version)}
                     />
                   ))}
                 </div>

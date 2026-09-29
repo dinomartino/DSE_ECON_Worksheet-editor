@@ -33,6 +33,10 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   type or marks and insert copies after the question you click, in one click, or Fill a
   set by topic, preferring ones your class has not seen. The new questions are highlighted
   on the page, and one Undo takes the whole set back out.
+- **Drag a question from the 題庫 tab onto the page.** While you drag, the page shows the
+  result before you let go: the question sits where it would land, the questions after it
+  renumber and the pages re-flow. Let go to insert it (one Undo takes it out); press Esc or
+  let go off the page and nothing changes.
 
 - **Your own 題型 (Patterns) in the question bank.** Inside a sub-topic, file questions
   under the kinds of question you set, such as "Calculate PED from a change in TR". Pick

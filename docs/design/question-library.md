@@ -241,7 +241,18 @@ bank document), "Update bank copy" (only when `lineage.fromDocId` is a bank and 
 content differs), "Treat as a new question" (drops `lineage`); banks get a distinct
 card on the Worksheets tab and are excluded from paper counts.
 
-Later: ✦ Suggest topics, drag from the tab onto the page, packs.
+Later: ✦ Suggest topics, packs.
+
+**Drag from the tab onto the page (built 2026-09-30).** A row drags (grip, grab cursor,
+5px threshold so a click stays a click); the Insert button stays as the keyboard path.
+While in hand the page shows the result: the copy drawn faded in its slot
+(`data-print-hide`), later questions renumbered, sheets re-flowed. A slot is a gap of the
+resolved flow, so either side of a section marker is its own slot, and none lies after
+"END OF PAPER" (`lastQuestionGap`). Release = `commitBankCopies` at that gap: the same
+copy, tags and review as Insert, one commit. Esc, a lost pointer or a release off the page
+leave the document untouched and clean. Body only: over a header/footer band the slot holds;
+read-only and print preview offer no drag. Near the page's top or bottom edge it scrolls.
+Code: `src/components/bank/bankDrag.tsx`, `src/components/bank/dropSlot.ts`.
 
 ## Copy exchange, later
 

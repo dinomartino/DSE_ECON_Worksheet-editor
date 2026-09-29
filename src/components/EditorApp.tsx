@@ -25,6 +25,8 @@ import { useWorksheetStore, type BandScope } from '@/store/worksheetStore';
 import { worksheetStore } from '@/storage';
 import { BankReviewBar } from '@/components/bank/BankReviewBar';
 import { useBankSession } from '@/components/bank/bankSession';
+import { BankDragLayer, useBankDrag } from '@/components/bank/bankDrag';
+import { provisionalWorksheet } from '@/components/bank/dropSlot';
 
 /** The empty page's "From 題庫…": stable, so the memoised page never re-renders for it. */
 const openBank = () => useBankSession.getState().openBank();
@@ -490,7 +492,7 @@ export function EditorApp({
           ref={scrollerRef}
           className={`zone-dark scroll-slim min-w-0 flex-1 overflow-auto bg-desk px-6 pt-14 ${bankReviewing ? 'pb-36' : 'pb-16'}`}
         >
-          <Preview
+          <PreviewWithBankDrop
             worksheet={worksheet}
             mode={mode}
             selectedQuestionId={selectedQuestionId}
@@ -545,6 +547,7 @@ export function EditorApp({
       {/* The AI door: menu, run bar and ⌘J / Ctrl+J. */}
       <AiHost />
       <BankReviewBar />
+      <BankDragLayer />
 
       {/* The how-to-edit hint. It was a grey line of text pinned above the page, which
           pushed the document down and read as a disclaimer. As a floating pill it sits
@@ -581,6 +584,22 @@ export function EditorApp({
         ))}
     </div>
   );
+}
+
+/**
+ * The page, with a 題庫 drag's provisional question drawn in its slot. Subscribes here,
+ * not in `EditorApp`, so a slot change re-renders the page alone. The derived document
+ * never leaves this component: autosave, undo and export read the store.
+ */
+function PreviewWithBankDrop(props: React.ComponentProps<typeof Preview>) {
+  const ghost = useBankDrag((s) => s.ghost);
+  const slot = useBankDrag((s) => s.slot);
+  const { worksheet } = props;
+  const shown = useMemo(
+    () => (ghost && slot !== null ? provisionalWorksheet(worksheet, ghost, slot) : worksheet),
+    [worksheet, ghost, slot],
+  );
+  return <Preview {...props} worksheet={shown} provisionalId={shown !== worksheet ? ghost?.id : undefined} />;
 }
 
 function HintPill() {

@@ -180,6 +180,19 @@ export function moveRunInFlow(
   return applyOrder(doc, rest);
 }
 
+/**
+ * Put a new question at gap `index` of the resolved flow (0 = before everything,
+ * `flowOf(doc).length` = after everything; clamped). Writes both lists through
+ * `applyOrder`, so the position holds across section markers. Every existing question
+ * keeps its object identity (the render cache keys on it).
+ */
+export function insertQuestionAt(doc: FlowDoc, question: Question, index: number): FlowMove {
+  const entries = flowOf(doc);
+  const at = Math.max(0, Math.min(entries.length, Math.round(index)));
+  entries.splice(at, 0, { type: 'question', id: question.id });
+  return applyOrder({ ...doc, questions: [...doc.questions, question] }, entries);
+}
+
 /** Shift `id` one position up (-1) or down (+1) in the document flow. */
 export function nudgeInFlow(doc: FlowDoc, id: string, direction: -1 | 1): FlowMove {
   const entries = flowOf(doc);
