@@ -14,6 +14,7 @@ import { Button, CheckField, GroupHeader, IconButton, Pill } from '@/components/
 import { CloseIcon, ListIcon } from '@/components/ui/icons';
 import { SizeStepper } from '@/components/ui/SizeStepper';
 import { biExcerpt, ExcerptRow } from './panelRows';
+import { TopicRow } from './TopicRow';
 import { StimulusEditorPanel } from './StimulusEditorPanel';
 
 /**
@@ -353,6 +354,13 @@ export function Inspector({
           question={selected}
           onChange={(patch) => updateQuestion(selected.id, patch)}
         />
+        <div className="mt-4">
+          <TopicRow
+            key={selected.id}
+            tags={selected.tags}
+            onChange={(tags) => updateQuestion(selected.id, { tags })}
+          />
+        </div>
       </div>
     </div>
   );

@@ -212,6 +212,8 @@ function DocumentTab() {
 
       <TargetField />
 
+      <BankField />
+
       {/* Section headings are typed on the page, not here.
           A section is a heading in the flow now, so it has a visual representation to
           click — which is the rule for what belongs on the paper rather than in a panel
@@ -305,6 +307,33 @@ function typeLabel(definition: AnyQuestionTypeDefinition, language: LanguageMode
  * summary shows progress against it and the paper check lists a miss. Emptying every
  * box removes the target, so an untouched document never carries one.
  */
+function BankField() {
+  const worksheet = useWorksheetStore((s) => s.worksheet);
+  const updateWorksheet = useWorksheetStore((s) => s.updateWorksheet);
+  return (
+    <Field
+      label="Class 班別"
+      hint="Used by the question bank to warn about questions this class has seen. Never printed."
+    >
+      <div className="space-y-2">
+        <input
+          type="text"
+          aria-label="Class"
+          value={worksheet.classTag ?? ''}
+          placeholder="e.g. 5B"
+          onChange={(event) => updateWorksheet({ classTag: event.target.value || undefined })}
+          className="h-8 w-40 rounded-lg border border-line bg-surface px-2 text-xs text-ink outline-none transition-colors duration-150 ease-out-soft placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
+        />
+        <CheckField
+          label="Hide from question bank"
+          checked={Boolean(worksheet.bankHidden)}
+          onChange={(hidden) => updateWorksheet({ bankHidden: hidden || undefined })}
+        />
+      </div>
+    </Field>
+  );
+}
+
 function TargetField() {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const updateWorksheet = useWorksheetStore((s) => s.updateWorksheet);

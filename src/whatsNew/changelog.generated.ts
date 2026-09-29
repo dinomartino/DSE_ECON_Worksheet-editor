@@ -12,6 +12,10 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 
 ## Unreleased
 
+### Added
+- **Tag questions with DSE topics.** Pick a topic (A–J and the electives, or your own
+  free tag) in the Edit panel, and set the class in Setup. Tags never print.
+
 ### Fixed
 - **Editing a duplicated question no longer changes the original.** Worksheets where a
   duplicate and its original were stuck together are separated when you open them.

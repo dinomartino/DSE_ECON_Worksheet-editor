@@ -391,6 +391,14 @@ function QuestionRow({
       >
         {typeBadge(question)}
       </span>
+      {question.tags && question.tags.length > 0 && (
+        <span
+          className="max-w-[72px] shrink-0 truncate text-[10px] text-ink-subtle"
+          title={question.tags.join(', ')}
+        >
+          {question.tags.join(' ')}
+        </span>
+      )}
       <span className="shrink-0 text-[10px] tabular-nums text-ink-subtle">
         {questionMarks(question)}m
       </span>
