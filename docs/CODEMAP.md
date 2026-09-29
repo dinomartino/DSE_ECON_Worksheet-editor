@@ -237,7 +237,7 @@ Invariants:
 - `src/components/editor/KeyDocumentsField.tsx:KeyDocumentsField` — "Also include": other saved documents' keys in the same answer key; `src/components/editor/exportSession.ts:loadKeyDocuments` reads them read-only, skipping (and naming) any that will not open — export-time, never stored
 - `src/components/editor/printPdf.ts:printWorksheetPdf` — PDF: set the print mode, wait for the sheets, then `printPage()` (web; flags lifted on `afterprint`) or, given a desktop file, `savePdf()` (flags lifted when it resolves; the print sheet if it fails)
 - `src/components/editor/exportSession.ts:paperMode` — "Include" toggles → `OutputMode.omitCover` / `omitAnswerSpace` (export-time, never stored; the preview ignores them)
-- `src/components/editor/Sidebar.tsx:Sidebar` · `src/components/editor/Inspector.tsx:Inspector`
+- `src/components/editor/Sidebar.tsx:Sidebar` · `src/components/editor/Inspector.tsx:Inspector` · `src/components/editor/TopicRow.tsx:TopicRow` (tags row under every EditorPanel)
 - `src/components/editor/MarkSchemeEditor.tsx:MarkSchemeEditor` — points, `n@`/any/max, OR, levels, EC for one leaf
 - `src/components/editor/AnswerDiagramRow.tsx:AnswerDiagramRow` — a leaf's model diagram: thumbnail, Draw…, template, width
 - `src/components/editor/Outline.tsx:Outline` · `:groupByPage` · `src/components/editor/AddRail.tsx:AddRail`
