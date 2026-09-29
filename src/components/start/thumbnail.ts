@@ -115,7 +115,7 @@ function fontFamily(fonts: FontPair): string {
  * `diagramSvg` drawing, but it needs no canvas (so it works in node), costs no decode
  * pass, and an `<img>` scales a vector crisply.
  */
-function diagramImages(worksheet: Worksheet, mode: OutputMode): DiagramImageMap {
+export function diagramImages(worksheet: Worksheet, mode: OutputMode): DiagramImageMap {
   const images: DiagramImageMap = new Map();
   for (const node of collectDiagramNodes(worksheet, mode)) {
     try {

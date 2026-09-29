@@ -199,7 +199,7 @@ Invariants:
 `src/components/start/StartScreen.tsx:StartScreen` — the list and the only way in;
 `src/components/start/NewWorksheetForm.tsx:NewWorksheetForm` — once-per-document decisions.
 
-- `src/components/start/FileDashboard.tsx:FileDashboard` — grid of first pages / list; search, kind, order
+- `src/components/start/FileDashboard.tsx:FileDashboard` — grid of first pages / list; search, kind, order (the Worksheets tab; Question bank is the other, § library)
 - `src/components/start/dashboard.ts:visibleSummaries` · `:scopedSummaries` — folder scope, then filter and sort, pure
 - `src/components/start/dashboardDrag.ts:stepDrag` · `:parseDropTarget` — document→folder drag state machine, pure
 - `src/components/start/useDocumentDrag.tsx:useDocumentDrag` — pointer-event drag: capture, ghost, one `drop` on release
@@ -224,9 +224,15 @@ scan; rebuildable, so no teacher's work lives in it.
 - `src/library/useBank.ts:useBank` — the one read both surfaces use; naive in-memory scan (`:createBankIndex`), replaced internally by the persistent index
 - `src/components/bank/BankRow.tsx:BankRow` — the shared row: excerpt, quiet meta, action slot, in-paper / used-with-class / missing-language / selected states
 - `src/store/worksheetStore.ts:insertQuestionCopies` — bank copies in (`copyQuestion`), one commit, one undo
+- `src/components/bank/page/QuestionBankPage.tsx:QuestionBankPage` — the start screen's Question bank tab: coverage strip, Topics tree (in the Folders slot), grouped list, Teacher preview, selection tray
+- `src/components/bank/page/bankPage.ts:coverage` · `:treeCounts` · `:filterRows` · `:traySummary` · `:bankIsStale` · `:addTarget` — the page's pure half; counts are distinct `rootId`s
+- `src/components/bank/page/questionPreview.ts:questionPreviewHtml` — one question through the clipboard reader of the IR, Teacher mode, in its own document's setup
+- `src/components/bank/page/writeBack.ts:writeTags` · `:withQuestionTags` — topic edits into the owning documents, one save per document
+- `src/components/bank/page/fromSelection.ts:worksheetFromPicks` · `src/components/bank/page/addToOpen.ts:addPicksToOpenDocument` — New worksheet from these / Add to the open paper (one ⌘Z)
 
 Invariants:
 - A bank is a `Worksheet` with `kind: 'bank'`; no second storage format.
+- The bank page writes documents only while no editor is mounted (the start screen replaces it), so there is no in-memory copy to save over the write.
 - Copies are independent; identity is `lineage.rootId`, never a shared id.
 - No module in `src/library/` branches on a type id (`src/library/noTypeBranching.test.ts`).
 

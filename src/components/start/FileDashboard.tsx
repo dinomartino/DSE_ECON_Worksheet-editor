@@ -66,7 +66,7 @@ export function FileDashboard({
   actions,
   trashCount = 0,
   onShowTrash,
-  libraryItems = [],
+  backupItems = [],
   folders,
   folderId,
   onFolderChange,
@@ -84,8 +84,8 @@ export function FileDashboard({
   /** The Trash icon beside the count; its badge shows how many are in it. */
   trashCount?: number;
   onShowTrash?: () => void;
-  /** Whole-library actions (backup, restore, folders) behind one ⋯ menu. */
-  libraryItems?: MenuItem[];
+  /** Actions over every saved document (backup, restore, folders) behind one ⋯ menu. */
+  backupItems?: MenuItem[];
 }) {
   const [query, setQuery] = useState<DashboardQuery>(DEFAULT_QUERY);
   // Lazy initialiser: `EditorHost` renders the start screen only after hydration, so
@@ -131,8 +131,8 @@ export function FileDashboard({
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
           {isDesktop() ? 'Saved on this computer' : 'Saved in this browser'}
         </h2>
-        {/* The library's own tools sit with the library: the count, the Trash, and the
-            rare whole-library actions behind ⋯ — never as a column of links. */}
+        {/* The saved documents' own tools sit with them: the count, the Trash, and the
+            rare all-document actions behind ⋯ — never as a column of links. */}
         <span className="flex items-center gap-1 text-[11px] tabular-nums text-ink-subtle">
           {summaries.length > 0 && (
             <span className="mr-2">
@@ -155,8 +155,8 @@ export function FileDashboard({
               )}
             </IconButton>
           )}
-          {libraryItems.length > 0 && (
-            <Menu label="Back up, restore and folders" items={libraryItems} />
+          {backupItems.length > 0 && (
+            <Menu label="Back up, restore and folders" items={backupItems} />
           )}
         </span>
       </div>

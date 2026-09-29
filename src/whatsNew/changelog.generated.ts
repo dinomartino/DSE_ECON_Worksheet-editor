@@ -12,6 +12,11 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 
 ## Unreleased
 
+### Added
+- **Question bank 題庫 on the start screen**: every question from your worksheets, by topic,
+  with a coverage chart, a Teacher-version preview (diagrams and mark schemes), topics you
+  can set, and "New worksheet from these" or "Add to" your last worksheet for the ones you tick.
+
 ### Fixed
 - **Editing a duplicated question no longer changes the original.** Worksheets where a
   duplicate and its original were stuck together are separated when you open them.

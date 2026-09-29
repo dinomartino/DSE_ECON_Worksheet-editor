@@ -37,6 +37,8 @@ import {
   type ImportCounts,
 } from './fileDrop';
 import { NEW_WORKSHEET_FORM_ID, NewWorksheetForm } from './NewWorksheetForm';
+import { QuestionBankPage } from '@/components/bank/page/QuestionBankPage';
+import { readStartTab, writeStartTab, type StartTab } from '@/components/bank/page/bankPage';
 import { RenameDialog, renameWorksheet } from './RenameDialog';
 import { TrashList } from './TrashList';
 import { newId } from '@/model/factories';
@@ -133,6 +135,8 @@ export function StartScreen({
   const [naming, setNaming] = useState<Naming | undefined>();
   const [moving, setMoving] = useState<WorksheetSummary | undefined>();
   const [deletingFolder, setDeletingFolder] = useState<Folder | undefined>();
+  // Lazy, like the folder: rendered only after hydration. Remembered per viewer.
+  const [tab, setTab] = useState<StartTab>(readStartTab);
   const closeFeedback = useCallback(() => setFeedback(false), []);
   const [whatsNew, setWhatsNew] = useState(false);
   const closeWhatsNew = useCallback(() => setWhatsNew(false), []);
@@ -190,7 +194,8 @@ export function StartScreen({
     };
   }, []);
 
-  const openSaved = async (id: string) => {
+  /** Open a saved document; `then` runs once it is the editor's document (the bank's inserts). */
+  const openSaved = async (id: string, then?: () => void) => {
     setError(undefined);
     try {
       const worksheet = await worksheetStore.load(id);
@@ -204,6 +209,7 @@ export function StartScreen({
         return;
       }
       onOpen(worksheet);
+      then?.();
     } catch {
       setError('Could not open that worksheet.');
     }
@@ -411,7 +417,7 @@ export function StartScreen({
 
   /**
    * One drop, from the page (web) or the shell (desktop): a single `.json` opens, a single
-   * `.zip` restores, several are imported into the library without opening any.
+   * `.zip` restores, several are imported into saved documents without opening any.
    */
   const handleDrop = async (files: Dropped[]) => {
     const plan = planDrop(files, (file) => droppedKind(file.name, file.type));
@@ -524,7 +530,8 @@ export function StartScreen({
       }
     })();
 
-  const libraryItems: MenuItem[] = [
+  /** Backup, restore and (desktop) the folders on disk: the ⋯ beside the document count. */
+  const backupItems: MenuItem[] = [
     {
       label: busy === 'backup' ? 'Backing up…' : 'Back up all…',
       hint: '.zip',
@@ -675,8 +682,8 @@ export function StartScreen({
           </div>
         </section>
 
-        {/* One quiet line about where work lives, then the build. Library actions
-            (backup, restore, folders, Trash) sit with the library, on the right. */}
+        {/* One quiet line about where work lives, then the build. Backup, restore,
+            folders and Trash sit with the saved documents, on the right. */}
         <div className="mt-auto space-y-3 pt-8 text-[11px] leading-relaxed text-ink-subtle">
           {isDesktop() ? (
             <p>
@@ -704,38 +711,71 @@ export function StartScreen({
       </aside>
 
       {/* The desk side: every document already on the desk, as its first page. */}
-      <main className="min-h-0 flex-1 overflow-y-auto px-9 py-9 lg:px-14 lg:py-12">
+      <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-9 py-9 lg:px-14 lg:py-12">
         {/* Results sit above the list: below it, a long archive scrolls them out of view. */}
         {error && (
           <p
             role="alert"
-            className="mx-auto mb-5 max-w-5xl animate-slide-down-in rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink"
+            className="mx-auto mb-5 w-full max-w-5xl shrink-0 animate-slide-down-in rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink"
           >
             {error}
           </p>
         )}
         {notice && <NoticeBox notice={notice} onDismiss={() => setNotice(undefined)} />}
-        {showingTrash ? (
-          <TrashList
-            rows={trashRows}
-            onBack={() => setShowingTrash(false)}
-            onRestore={(row) => void restoreFromTrash(row)}
-            onPurge={setConfirmingPurge}
-            onEmpty={() => setConfirmingEmpty(true)}
-          />
+        <StartTabs
+          tab={tab}
+          onChange={(next) => {
+            setTab(next);
+            writeStartTab(next);
+            setShowingTrash(false);
+          }}
+        />
+        {tab === 'bank' ? (
+          <div className="mx-auto flex w-full max-w-5xl flex-col lg:min-h-0 lg:flex-1">
+            <QuestionBankPage
+              summaries={summaries}
+              loaded={loaded}
+              onOpenDocument={(id, then) => void openSaved(id, then)}
+              onOpenWorksheet={(worksheet) => onOpen(worksheet)}
+              onDocumentsChanged={() => void refresh()}
+              onNotice={(message) => {
+                setError(undefined);
+                setNotice({ message });
+              }}
+              onError={(message) => {
+                setNotice(undefined);
+                setError(message);
+              }}
+              onStartNew={() => setCreating('classroom')}
+            />
+          </div>
+        ) : showingTrash ? (
+          // Wrapped: the main column is a flex column (for the bank's height), and a flex
+          // item with auto margins would shrink to its content instead of filling it.
+          <div className="shrink-0">
+            <TrashList
+              rows={trashRows}
+              onBack={() => setShowingTrash(false)}
+              onRestore={(row) => void restoreFromTrash(row)}
+              onPurge={setConfirmingPurge}
+              onEmpty={() => setConfirmingEmpty(true)}
+            />
+          </div>
         ) : (
-          <FileDashboard
-            summaries={summaries}
-            loaded={loaded}
-            actions={actions}
-            trashCount={trashRows.length}
-            onShowTrash={() => setShowingTrash(true)}
-            libraryItems={libraryItems}
-            folders={folders}
-            folderId={folderId}
-            onFolderChange={enterFolder}
-            folderActions={folderActions}
-          />
+          <div className="shrink-0">
+            <FileDashboard
+              summaries={summaries}
+              loaded={loaded}
+              actions={actions}
+              trashCount={trashRows.length}
+              onShowTrash={() => setShowingTrash(true)}
+              backupItems={backupItems}
+              folders={folders}
+              folderId={folderId}
+              onFolderChange={enterFolder}
+              folderActions={folderActions}
+            />
+          </div>
         )}
       </main>
 
@@ -1005,6 +1045,45 @@ export function StartScreen({
 }
 
 /**
+ * Worksheets | Question bank: the two things on the desk. Typographic tabs with the 2px
+ * accent underline, like the sidebar's. The bank is every question in the worksheets,
+ * so it sits beside them rather than in a menu.
+ */
+function StartTabs({ tab, onChange }: { tab: StartTab; onChange: (tab: StartTab) => void }) {
+  const tabs: { id: StartTab; label: string; zh: string }[] = [
+    { id: 'worksheets', label: 'Worksheets', zh: '工作紙' },
+    { id: 'bank', label: 'Question bank', zh: '題庫' },
+  ];
+  return (
+    <div role="tablist" aria-label="Start screen" className="mx-auto mb-5 flex w-full max-w-5xl shrink-0 gap-6 border-b border-line">
+      {tabs.map((entry) => {
+        const active = entry.id === tab;
+        return (
+          <button
+            key={entry.id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(entry.id)}
+            className={`relative -mb-px cursor-pointer pb-2 text-[13.5px] transition-colors duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+              active ? 'font-semibold text-ink' : 'font-medium text-ink-muted hover:text-ink'
+            }`}
+          >
+            {entry.label} <span className={`font-normal ${active ? 'text-ink-muted' : 'text-ink-subtle'}`}>{entry.zh}</span>
+            <span
+              aria-hidden
+              className={`absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-accent transition-[opacity,scale] duration-200 ease-out-soft ${
+                active ? 'scale-x-100 opacity-100' : 'scale-x-50 opacity-0'
+              }`}
+            />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
  * One way to start, as a line in an index rather than an icon card. The accent bar
  * that slides in on hover is the row's whole affordance — the text stays put, the
  * colour arrives, nothing lifts or casts a shadow.
@@ -1235,7 +1314,7 @@ function NoticeBox({ notice, onDismiss }: { notice: Notice; onDismiss: () => voi
   return (
     <div
       role="status"
-      className="zone-light mx-auto mb-5 max-w-5xl animate-slide-down-in rounded-xl border border-line bg-surface px-4 py-3"
+      className="zone-light mx-auto mb-5 w-full max-w-5xl shrink-0 animate-slide-down-in rounded-xl border border-line bg-surface px-4 py-3"
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <p className="min-w-0 flex-1 text-[12.5px] font-medium text-ink">{notice.message}</p>
