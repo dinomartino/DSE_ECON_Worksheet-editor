@@ -25,7 +25,7 @@ export function keyShapeProblem(provider: ProviderId, key: string): { likely?: P
   const owner = OWNED_PREFIXES.find(([prefix]) => k.startsWith(prefix))?.[1];
   if (owner && owner !== provider) {
     const label = presetFor(owner).label;
-    return { likely: owner, message: `This looks like ${article(label)} ${label} key — switch to ${label}?` };
+    return { likely: owner, message: `This looks like ${article(label)} ${label} key. Switch to ${label}?` };
   }
   if (owner) return null;
   if (provider === 'gemini' && k.startsWith('sk-')) {

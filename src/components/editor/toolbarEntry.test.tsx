@@ -66,7 +66,7 @@ describe('Toolbar entry points', () => {
     useWorksheetStore.setState({ worksheet: { ...createWorksheet(), name: 'Unit 3 · Demand and supply practice' } });
     const markup = renderToStaticMarkup(<Toolbar onOpenSettings={() => {}} onOpenFiles={() => {}} onClearAll={async () => {}} />);
     expect(markup).toMatch(/<div class="[^"]*\bwhitespace-nowrap lg:flex-nowrap\b/);
-    expect(markup).toMatch(/<button type="button" title="Unit 3 · Demand and supply practice — click to rename" class="min-w-0 [^"]*\btruncate\b/);
+    expect(markup).toMatch(/<button type="button" title="Unit 3 · Demand and supply practice. Click to rename" class="min-w-0 [^"]*\btruncate\b/);
     // Icon-only controls keep their names.
     expect(markup).toMatch(/<button[^>]*aria-label="Setup"[^>]*title="Setup: [^"]*"/);
     expect(markup).toContain('<span class="sr-only xl:not-sr-only">Saved</span>');

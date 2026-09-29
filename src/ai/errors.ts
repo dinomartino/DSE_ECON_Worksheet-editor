@@ -59,7 +59,7 @@ function messageFor(kind: AiErrorKind, provider: ProviderId, ctx: ErrorContext):
         ? 'Google has blocked this key. Create a new key in AI Studio.'
         : `${p} has blocked this key. Create a new key.`;
     case 'networkOrKey':
-      return `${p} didn't answer. Usually this is a wrong key — ${p} hides the reason from browsers — or no connection.`;
+      return `${p} didn't answer. Usually this is a wrong key, but ${p} hides the reason from browsers. Or there is no connection.`;
     case 'network': {
       const base = `Couldn't reach ${ctx.host ?? p}. Check your connection.`;
       if (provider === 'ollama') return `${base} Is it running, and does it allow this app (OLLAMA_ORIGINS)?`;

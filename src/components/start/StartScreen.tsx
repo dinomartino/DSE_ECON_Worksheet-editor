@@ -385,7 +385,7 @@ export function StartScreen({
       const report = await restoreBackup(worksheetStore, worksheets, undefined, filed);
       setNotice({
         message: restoreSummary(report, failures.length),
-        details: [...failures, ...report.failed].map((f) => `${f.name} — ${f.reason}`),
+        details: [...failures, ...report.failed].map((f) => `${f.name}: ${f.reason}`),
       });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not read that backup.');
@@ -435,7 +435,7 @@ export function StartScreen({
     try {
       data = await plan.file.read();
     } catch (cause) {
-      const reason = cause instanceof Error ? ` — ${cause.message}` : '';
+      const reason = cause instanceof Error ? `: ${cause.message}` : '';
       setError(`Could not read “${plan.file.name}”${reason}.`);
       return;
     }
@@ -473,11 +473,11 @@ export function StartScreen({
         counts.copied += report.copied.length;
         counts.skipped += report.skipped.length;
         counts.failed += report.failed.length;
-        details.push(...report.failed.map((f) => `${f.name} — ${f.reason}`));
+        details.push(...report.failed.map((f) => `${f.name}: ${f.reason}`));
       };
       const unreadable = (name: string, reason: string) => {
         counts.unreadable += 1;
-        details.push(`${name} — ${reason}`);
+        details.push(`${name}: ${reason}`);
       };
 
       const entries = [];
@@ -676,7 +676,7 @@ export function StartScreen({
             <StartRow
               icon={<FolderOpenIcon size={16} />}
               title="Open a file…"
-              hint="A .json worksheet or a backup .zip — or drop one anywhere here."
+              hint="A .json worksheet or a backup .zip. Or drop one anywhere here."
               onClick={() => void importFile()}
             />
           </div>
@@ -687,12 +687,12 @@ export function StartScreen({
         <div className="mt-auto space-y-3 pt-8 text-[11px] leading-relaxed text-ink-subtle">
           {isDesktop() ? (
             <p>
-              Stored on this computer only — no account. AI translation, when you use it, sends the
+              Stored on this computer only. No account. AI translation, when you use it, sends the
               texts you choose (and nearby translated lines for context) to your chosen provider.
             </p>
           ) : (
             <p>
-              Stored in this browser only — clearing site data deletes it.{' '}
+              Stored in this browser only. Clearing site data deletes it.{' '}
               <TextLink onClick={() => void backUpAll()} disabled={busy !== undefined}>
                 {busy === 'backup' ? 'Backing up…' : 'Back up now'}
               </TextLink>
@@ -824,7 +824,7 @@ export function StartScreen({
       {creating && (
         <Dialog
           title="New worksheet"
-          description="The decisions that are awkward to change once questions are written. Every one has a default — press Create to take them all."
+          description="The decisions that are awkward to change once questions are written. Every one has a default. Press Create to take them all."
           width={560}
           onClose={() => setCreating(undefined)}
           // Pinned outside the scrolling body, so Create stays reachable at any window

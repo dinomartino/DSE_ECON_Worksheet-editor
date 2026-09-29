@@ -17,7 +17,7 @@ describe('keyShapeProblem', () => {
   it('suggests the switch for a known foreign prefix', () => {
     expect(keyShapeProblem('deepseek', 'sk-or-v1-abc')).toEqual({
       likely: 'openrouter',
-      message: 'This looks like an OpenRouter key — switch to OpenRouter?',
+      message: 'This looks like an OpenRouter key. Switch to OpenRouter?',
     });
     expect(keyShapeProblem('qwen', 'AIzaSyExample')).toMatchObject({ likely: 'gemini' });
     expect(keyShapeProblem('deepseek', 'sk-proj-abc')).toMatchObject({ likely: 'openai' });

@@ -187,8 +187,8 @@ function TableRow({ block }: { block: TableBlock }) {
 
       {(
         [
-          ['all', 'Grid', 'Rule every cell — an ordinary table'],
-          ['box', 'Box', 'Rule the frame only — a boxed stimulus'],
+          ['all', 'Grid', 'Rule every cell: an ordinary table'],
+          ['box', 'Box', 'Rule the frame only: a boxed stimulus'],
           ['headerRule', 'T-account', 'Frame, a rule under the top row and one down the middle'],
         ] as Array<[TableBorders, string, string]>
       ).map(([value, word, title]) => (

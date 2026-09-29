@@ -228,7 +228,7 @@ export function ForumCanvas({
 
         <span className="flex-1" />
         <span className="max-w-96 text-xs leading-snug text-ink-muted">
-          Drag a bubble&rsquo;s inner edge to resize it — the words re-wrap to fit. Wording,
+          Drag a bubble&rsquo;s inner edge to resize it. The words re-wrap to fit. Wording,
           corners and the picture are edited in the sidebar.
         </span>
         <Button onClick={onClose}>Done</Button>

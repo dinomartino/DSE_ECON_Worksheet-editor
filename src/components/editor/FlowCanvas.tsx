@@ -874,7 +874,7 @@ function FlowInspector({
             onChange={(boxed) => patch({ boxed: boxed ? undefined : false })}
           />
           <p className="text-[11px] leading-relaxed text-ink-muted">
-            Drag the box on the chart to move it — past the outermost column starts a
+            Drag the box on the chart to move it. Past the outermost column starts a
             new column.
           </p>
         </div>
@@ -1004,7 +1004,7 @@ function FlowInspector({
         </ul>
       )}
       <p className="mt-4 border-t border-line pt-3 text-[11px] leading-relaxed text-ink-muted">
-        Drag a box to move it between columns — past the outermost column starts a new
+        Drag a box to move it between columns. Past the outermost column starts a new
         one. Double-click any text to retype it. Pick <strong>Arrow</strong> and drag
         box-to-box to connect stages; release on empty paper for an open-ended stub.
         ⌫ deletes the selection.

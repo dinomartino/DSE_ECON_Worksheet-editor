@@ -31,7 +31,7 @@ export const termFixed = (from: string, to: string): string => `Term fixed: ${fr
 export const SIMPLIFIED_FIXED = 'Simplified characters changed to Traditional';
 export const conflictChip = (form: string, meansEn: string): string => `Meaning reversed? ${form} is “${meansEn}”`;
 export const termChip = (state: string, en: string, expected: string): string =>
-  state === 'not-preferred' ? `EDB lists ${expected} first for “${en}”` : `${en} — EDB: ${expected}`;
+  state === 'not-preferred' ? `EDB lists ${expected} first for “${en}”` : `${en} (EDB: ${expected})`;
 export const failedRow = (reason: string): string => `Couldn't translate this text safely (${reason}).`;
 export const SAFETY_ROW = 'The provider declined to translate this text.';
 
@@ -65,9 +65,9 @@ export const checkSummary = (fix: number, variants: number, lower: number, manua
   ]
     .filter(Boolean)
     .join(' · ');
-export const NOTHING_REPLACED = 'Nothing replaced — these texts changed since the check.';
+export const NOTHING_REPLACED = 'Nothing replaced. These texts changed since the check.';
 export const lowerRankLine = (en: string, found: string, expected: string): string =>
-  `${en}: ${found} — EDB lists ${expected} first`;
+  `${en}: ${found} (EDB lists ${expected} first)`;
 
 function plural(n: number, word: string): string {
   return n === 1 ? word : `${word}s`;

@@ -206,7 +206,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
                     {
                       value: 'columns2',
                       label: '2 columns',
-                      title: 'Two options per line — figure options print as a grid',
+                      title: 'Two options per line. Figure options print as a grid',
                     },
                   ]
                 : [

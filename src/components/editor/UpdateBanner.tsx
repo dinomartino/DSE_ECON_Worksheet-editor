@@ -34,10 +34,10 @@ export function UpdateBar({
     >
       <span className="min-w-0 flex-1 truncate">
         {state === 'installing'
-          ? `Installing version ${version} — the app will restart in a moment.`
+          ? `Installing version ${version}. The app will restart in a moment.`
           : state === 'failed'
             ? `Version ${version} could not be installed. Try again, or download it from the releases page.`
-            : `Version ${version} is ready — restart to finish updating. Your work is saved first.`}
+            : `Version ${version} is ready. Restart to finish updating. Your work is saved first.`}
       </span>
       <Button
         size="sm"
@@ -127,7 +127,7 @@ function VersionAction({
     case 'downloading':
       return <span role="status">Downloading {available} in the background…</span>;
     case 'installing':
-      return <span role="status">Installing {available} — the app will restart…</span>;
+      return <span role="status">Installing {available}. The app will restart…</span>;
     case 'ready':
     case 'installFailed':
       return (

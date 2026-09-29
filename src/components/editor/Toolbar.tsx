@@ -169,8 +169,8 @@ export function Toolbar({
     const status = await useUpdateStore.getState().check();
     const found = useUpdateStore.getState().available;
     if (status === 'current') flash(`You have the latest version${appVersion ? ` (${appVersion})` : ''}`);
-    else if (status === 'failed') flash('Could not check for updates — are you online?');
-    else if (status === 'downloading') flash(`Downloading version ${found} — you will be told when it is ready`);
+    else if (status === 'failed') flash('Could not check for updates. Are you online?');
+    else if (status === 'downloading') flash(`Downloading version ${found}. You will be told when it is ready`);
   };
 
   /** Desktop only: a saved file's path becomes a one-click reveal. */
@@ -207,9 +207,9 @@ export function Toolbar({
         worksheetClipboardHtml(worksheet, mode, diagramImages),
         worksheetPlainText(worksheet, mode),
       );
-      flash('Copied — paste into Word');
+      flash('Copied. Paste into Word');
     } catch {
-      setError('Copy failed — the browser blocked clipboard access.');
+      setError('Copy failed. The browser blocked clipboard access.');
     } finally {
       setBusy(undefined);
     }
@@ -237,7 +237,7 @@ export function Toolbar({
         else if (outcome.fallback !== undefined) {
           // Kept (not flashed): the sheet is modal and would outlast a transient line.
           setError(
-            `Could not save the PDF directly (${outcome.fallback}), so the print dialog opened — choose Save as PDF there.`,
+            `Could not save the PDF directly (${outcome.fallback}), so the print dialog opened. Choose Save as PDF there.`,
           );
         }
       })
@@ -302,8 +302,8 @@ export function Toolbar({
           value={mode.version}
           onChange={(version) => setMode({ version: version as VersionMode })}
           options={[
-            { value: 'student', label: 'Student', title: 'Student version — answers hidden' },
-            { value: 'teacher', label: 'Teacher', title: 'Teacher version / 教師版 — answers shown' },
+            { value: 'student', label: 'Student', title: 'Student version: answers hidden' },
+            { value: 'teacher', label: 'Teacher', title: 'Teacher version / 教師版: answers shown' },
           ]}
         />
 
@@ -498,7 +498,7 @@ export function Toolbar({
       {confirmingClear && (
         <Dialog
           title="Clear saved documents?"
-          description={`Every worksheet saved ${isDesktop() ? 'on this computer' : 'in this browser'} will be deleted. This cannot be undone — nothing is stored on a server.`}
+          description={`Every worksheet saved ${isDesktop() ? 'on this computer' : 'in this browser'} will be deleted. This cannot be undone. Nothing is stored on a server.`}
           width={460}
           onClose={() => setConfirmingClear(false)}
           footer={
@@ -532,7 +532,7 @@ export function Toolbar({
             and returns you to it.
           </p>
           <p className="mt-2 text-[13px] leading-relaxed text-ink-subtle">
-            Your settings and AI keys are kept — remove a key in Settings → AI &amp; translation.
+            Your settings and AI keys are kept. Remove a key in Settings → AI &amp; translation.
           </p>
         </Dialog>
       )}

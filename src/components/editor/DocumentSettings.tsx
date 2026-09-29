@@ -157,7 +157,7 @@ function DocumentTab() {
         label="Title"
         hint={
           usingTitleBlock
-            ? 'The title block prints on page 1 instead — edit that on the page. To rename the file, click its name in the toolbar.'
+            ? 'The title block prints on page 1 instead. Edit that on the page. To rename the file, click its name in the toolbar.'
             : 'Printed at the top of the first page. To rename the file, click its name in the toolbar.'
         }
       >
@@ -179,8 +179,8 @@ function DocumentTab() {
         label="Instructions"
         hint={
           worksheet.cover
-            ? 'A line under the title. This paper’s rubric lives on the cover — edit it there.'
-            : 'A line under the title — e.g. “Answer ALL questions.”'
+            ? 'A line under the title. This paper’s rubric lives on the cover. Edit it there.'
+            : 'A line under the title, e.g. “Answer ALL questions.”'
         }
       >
         <BiTextField
@@ -358,7 +358,7 @@ function TargetField() {
             clearable
             label={typeLabel(definition, language)}
             value={target.counts?.[definition.id]}
-            placeholder="—"
+            placeholder="–"
             onChange={(value) => setCount(definition.id, value)}
           />
         ))}
@@ -366,7 +366,7 @@ function TargetField() {
           clearable
           label="Marks"
           value={target.marks}
-          placeholder="—"
+          placeholder="–"
           onChange={(marks) => set({ marks })}
         />
         <NumberField
@@ -374,7 +374,7 @@ function TargetField() {
           label="Time"
           suffix="min"
           value={target.minutes}
-          placeholder="—"
+          placeholder="–"
           onChange={(minutes) => set({ minutes })}
         />
       </div>
@@ -413,7 +413,7 @@ function PageTab() {
       {shape === 'lqMock' ? (
         <Field label="Paper size" hint="Fixed by the booklet's page frame.">
           <span className="block text-xs text-ink-muted">
-            {PAPER_SIZES[setup.paper].label} — the size the reference booklet’s frame and
+            {PAPER_SIZES[setup.paper].label}: the size the reference booklet’s frame and
             answer-line pitch were measured against.
           </span>
         </Field>
@@ -526,7 +526,7 @@ function PageTab() {
             options={[
               {
                 value: 0,
-                label: `Default — ${
+                label: `Default: ${
                   // Read off the paper's own questions rather than naming a type:
                   // whatever kind this paper holds states its own measured gap.
                   (worksheet.questions[0]
@@ -847,7 +847,7 @@ function HeaderFooterSection({
               label="Page 1"
               hint={
                 separated
-                  ? 'Its own rows — the cover.'
+                  ? 'Its own rows: the cover.'
                   : 'Currently the same rows as later pages.'
               }
               bands={firstPage.bands}
@@ -917,7 +917,7 @@ function HeaderFooterSection({
 
           {separated && (
             <p className="rounded-lg bg-surface px-2.5 py-2 text-[11px] leading-relaxed text-ink-muted">
-              Both are edited on the page too — hover the {which} on the sheet you want to
+              Both are edited on the page too. Hover the {which} on the sheet you want to
               change and type, add a row or remove one.
             </p>
           )}
@@ -1168,7 +1168,7 @@ function TitleSection() {
       <div>
         <h3 className="text-[13px] font-semibold text-ink">Title on page 1</h3>
         <p className="text-[11px] leading-relaxed text-ink-muted">
-          Printed below the header, above the first question. Choose one — a title block
+          Printed below the header, above the first question. Choose one. A title block
           takes the place of the plain title rather than printing as well as it.
         </p>
       </div>
@@ -1290,7 +1290,7 @@ function EdgeSections() {
           <section>
             <h3 className="text-[13px] font-semibold text-ink">Header</h3>
             <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
-              A Question-Answer Book prints no header — the page frame and the margin
+              A Question-Answer Book prints no header. The page frame and the margin
               notes occupy the top of every sheet, as the reference booklet has it.
             </p>
           </section>

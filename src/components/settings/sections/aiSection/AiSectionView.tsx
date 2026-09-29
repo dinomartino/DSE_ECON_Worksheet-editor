@@ -23,7 +23,7 @@ import { regionBanner } from './setupCardFlow';
 
 const TOP = TOP_PROVIDERS;
 const MORE = PROVIDER_IDS.filter((id) => PRESETS[id].group === 'more');
-const MORE_TITLE = `More providers — ${MORE.map((id) => PRESETS[id].label.split(' ')[0]).join(', ')}`;
+const MORE_TITLE = `More providers: ${MORE.map((id) => PRESETS[id].label.split(' ')[0]).join(', ')}`;
 const OTHER_MODEL = '__other__';
 const INPUT =
   'h-8 min-w-0 rounded-lg border border-line bg-surface px-2 text-xs text-ink outline-none transition-colors duration-150 ease-out-soft placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25';
@@ -361,7 +361,7 @@ function ModelField({ state, listed, actions, modelRef }: AiSectionViewProps & {
             <optgroup label="Suggested">
               {preset.models.map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.note ? `${m.label} — ${m.note}` : m.label}
+                  {m.note ? `${m.label} (${m.note})` : m.label}
                 </option>
               ))}
             </optgroup>
@@ -411,7 +411,7 @@ function ModelField({ state, listed, actions, modelRef }: AiSectionViewProps & {
   );
 }
 
-export const KEY_IN_MODEL = 'That looks like an API key — paste it into the key field.';
+export const KEY_IN_MODEL = 'That looks like an API key. Paste it into the key field.';
 
 const WORKSPACE_HINT = 'Model Studio → Workspace Management → copy the API Host';
 
@@ -540,5 +540,5 @@ function About({ state, env, actions }: AiSectionViewProps) {
 function keyPlaceholder(state: AiSetupState): string {
   const saved = state.key.kind === 'saved' ? state.key : state.key.kind === 'editing' ? state.key.saved : undefined;
   if (!saved) return 'Paste your key';
-  return saved.last4 ? `Saved key ending ${saved.last4} — paste to replace` : 'Saved key — paste to replace';
+  return saved.last4 ? `Saved key ending ${saved.last4}. Paste to replace` : 'Saved key. Paste to replace';
 }

@@ -248,7 +248,7 @@ export function FormatToolbar({
             type="button"
             aria-label="Subscript"
             aria-pressed={vertAlign === 'subscript'}
-            title="Subscript — S₁"
+            title="Subscript (S₁)"
             className={`${BTN} ${vertAlign === 'subscript' ? ACTIVE : IDLE}`}
             onClick={() => onVertAlign(vertAlign === 'subscript' ? undefined : 'subscript')}
           >
@@ -260,7 +260,7 @@ export function FormatToolbar({
             type="button"
             aria-label="Superscript"
             aria-pressed={vertAlign === 'superscript'}
-            title="Superscript — m²"
+            title="Superscript (m²)"
             className={`${BTN} ${vertAlign === 'superscript' ? ACTIVE : IDLE}`}
             onClick={() => onVertAlign(vertAlign === 'superscript' ? undefined : 'superscript')}
           >

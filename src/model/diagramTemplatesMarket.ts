@@ -565,7 +565,7 @@ export const MARKET_TEMPLATES: DiagramTemplate[] = [
     id: 'fixed-supply',
     group: 'supplyDemand',
     name: bi('Fixed supply', '固定供應'),
-    hint: bi('A vertical S — shares, licences, seats — with a demand shift.', '垂直供應曲線（股票、牌照、座位）及需求變動。'),
+    hint: bi('A vertical S (shares, licences, seats) with a demand shift.', '垂直供應曲線（股票、牌照、座位）及需求變動。'),
     build: fixedSupply,
   },
   {

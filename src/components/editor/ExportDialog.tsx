@@ -572,8 +572,8 @@ export function ExportDialog({
                     value={version}
                     onChange={setVersion}
                     options={[
-                      { value: 'student', label: 'Student', title: 'Student version — answers hidden' },
-                      { value: 'teacher', label: 'Teacher', title: 'Teacher version / 教師版 — answers shown' },
+                      { value: 'student', label: 'Student', title: 'Student version: answers hidden' },
+                      { value: 'teacher', label: 'Teacher', title: 'Teacher version / 教師版: answers shown' },
                     ]}
                   />
                 </Field>

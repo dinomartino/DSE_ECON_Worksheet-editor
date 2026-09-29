@@ -184,7 +184,7 @@ export function ResizableBlock({
           the boundary and must stay grabbable. */}
       <button
         type="button"
-        aria-label={onOpen ? 'Select image — double-click to edit' : 'Select image to resize'}
+        aria-label={onOpen ? 'Select image. Double-click to edit' : 'Select image to resize'}
         data-print-hide
         onClick={(event) => {
           event.stopPropagation();

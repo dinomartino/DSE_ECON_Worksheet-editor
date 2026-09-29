@@ -52,7 +52,7 @@ export function reviewItems(plan: AnswerPlan, outcome: AnswersOutcome, report: A
       const targetKey = targetKeyOf(target, outcome);
       items.push({ ...base, tone: result.status === 'look' ? 'look' : 'inserted', ...(targetKey ? { targetKey } : {}), notes: result.notes });
     } else if (stale.has(key)) {
-      items.push({ ...base, tone: 'failed', notes: ['Changed while writing — not inserted'] });
+      items.push({ ...base, tone: 'failed', notes: ['Changed while writing. Not inserted'] });
     } else if (result.status === 'failed') {
       items.push({ ...base, tone: 'failed', notes: result.notes });
     }
@@ -86,7 +86,7 @@ export function makeWriteAnswersVerb(deps: () => Promise<AnswerDepsResult> = ans
       const store = useWorksheetStore.getState();
       const report = store.applyAnswerFills(writesFor(answers, outcome), { worksheetId: answers.worksheetId });
       const items = reviewItems(answers, outcome, report);
-      const tail = outcome.stopped ? ' — stopped' : outcome.fatal ? ` — ${outcome.fatal.message}` : '';
+      const tail = outcome.stopped ? ': stopped' : outcome.fatal ? `: ${outcome.fatal.message}` : '';
       if (report.applied.length === 0) {
         return items.length > 0
           ? { kind: 'findings', summary: `Nothing inserted${tail}`, items }

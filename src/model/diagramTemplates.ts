@@ -77,7 +77,7 @@ const ORIGINAL_TEMPLATES: DiagramTemplate[] = [
     id: 'ad-as',
     group: 'macro',
     name: bi('AD–AS with LRAS', 'AD–AS 及 LRAS'),
-    hint: bi('AD, SRAS and a vertical LRAS — the DSE macro diagram.', 'AD、SRAS 及垂直的 LRAS，DSE 常見宏觀圖。'),
+    hint: bi('AD, SRAS and a vertical LRAS: the DSE macro diagram.', 'AD、SRAS 及垂直的 LRAS，DSE 常見宏觀圖。'),
     build: () => {
       const ad = curve([[0.1, 0.78], [0.82, 0.18]], bi('AD', 'AD'));
       const sras = curve([[0.1, 0.18], [0.82, 0.78]], bi('SRAS', 'SRAS'));
@@ -131,7 +131,7 @@ const ORIGINAL_TEMPLATES: DiagramTemplate[] = [
     id: 'proportional-tax',
     group: 'taxSubsidy',
     name: bi('Tax schedule', '稅項圖'),
-    hint: bi('A single line against income — for progressive / proportional questions.', '單一線對應收入，用於累進／比例稅題目。'),
+    hint: bi('A single line against income, for progressive / proportional questions.', '單一線對應收入，用於累進／比例稅題目。'),
     build: () =>
       axes(bi('Taxable income ($)', '應課稅收入 ($)'), bi('Tax rate (%)', '稅率（%）'), {
         curves: [curve([[0.0, 0.1], [0.86, 0.86]])],
@@ -191,7 +191,7 @@ const ORIGINAL_TEMPLATES: DiagramTemplate[] = [
     group: 'data',
     name: bi('Flow chart', '流程圖'),
     hint: bi(
-      'Boxed stages joined by labelled arrows — production chains.',
+      'Boxed stages joined by labelled arrows, for production chains.',
       '方框加帶標籤箭嘴，適用於生產鏈流程圖。',
     ),
     // `flow` makes this a flow chart: the renderer ignores the axes, and the sidebar
@@ -235,7 +235,7 @@ const ORIGINAL_TEMPLATES: DiagramTemplate[] = [
     group: 'data',
     name: bi('Pie chart', '圓形圖'),
     hint: bi(
-      'Patterned slices with derived percentages — market shares.',
+      'Patterned slices with derived percentages, for market shares.',
       '以不同紋理表示市場佔有率，百分比自動計算。',
     ),
     // `pie` makes this a pie chart; round 40/30/20/10 so the derived percents visibly work.
@@ -261,7 +261,7 @@ const ORIGINAL_TEMPLATES: DiagramTemplate[] = [
     group: 'data',
     name: bi('Forum views', '論壇意見'),
     hint: bi(
-      'Speech bubbles around a picture — views expressed in a forum.',
+      'Speech bubbles around a picture, for views expressed in a forum.',
       '圍繞圖片的對話氣泡，適用於論壇意見。',
     ),
     // `forum` makes this a forum figure; invented wording, and no picture — the

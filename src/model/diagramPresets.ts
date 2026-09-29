@@ -213,7 +213,7 @@ function controlSide(diagram: Diagram, r: PresetRoles): 'ceiling' | 'floor' | st
   if (!e0) return 'Demand and supply do not cross';
   const y = levelHeight(diagram, r.control!, e0.x);
   if (y === null) return 'The price line is gone';
-  if (Math.abs(y - e0.y) < 1e-6) return 'The price line sits at equilibrium — it fixes nothing';
+  if (Math.abs(y - e0.y) < 1e-6) return 'The price line sits at equilibrium. It fixes nothing';
   return y < e0.y ? 'ceiling' : 'floor';
 }
 
@@ -247,7 +247,7 @@ function original(id: AreaPreset, group: PresetGroup, name: string, needsTax: bo
     ],
     build: (r) => {
       const area = newPresetArea(id, { demand: r.demand, supply: r.supply, taxed: r.shifted }, 'probe');
-      return area ? [area] : 'Needs a taxed supply curve — shift S up first';
+      return area ? [area] : 'Needs a taxed supply curve. Shift S up first';
     },
   };
 }
@@ -270,7 +270,7 @@ function shifted(
       const direction = shiftDirection(diagram, r);
       if (direction !== wants) {
         if (direction === 'tax' || direction === 'subsidy') {
-          return wants === 'tax' ? 'Needs S₁ above S — shift S up for a tax' : 'Needs S₁ below S — shift S down for a subsidy';
+          return wants === 'tax' ? 'Needs S₁ above S. Shift S up for a tax' : 'Needs S₁ below S. Shift S down for a subsidy';
         }
         return direction;
       }
@@ -312,8 +312,8 @@ function controlled(
     build: (r, diagram) => {
       const side = controlSide(diagram, r);
       if (side !== 'ceiling' && side !== 'floor') return side;
-      if (wants === 'ceiling' && side !== 'ceiling') return 'Needs the price line below equilibrium — a ceiling';
-      if (wants === 'floor' && side !== 'floor') return 'Needs the line above equilibrium — a minimum wage or floor';
+      if (wants === 'ceiling' && side !== 'ceiling') return 'Needs the price line below equilibrium (a ceiling)';
+      if (wants === 'floor' && side !== 'floor') return 'Needs the line above equilibrium (a minimum wage or floor)';
       const c = r.control!;
       const qs = along(r.supply!, c);
       const qd = along(r.demand!, c);
@@ -353,7 +353,7 @@ function traded(
       if (w === null || t === null) return 'A price line is gone';
       if (w >= e0.y - 1e-6) return 'Needs the world price below the domestic equilibrium';
       if (t <= w + 1e-6) return `Needs ${raisedName} above the world price`;
-      if (t >= e0.y - 1e-6) return `Needs ${raisedName} below the domestic equilibrium — else nothing is imported`;
+      if (t >= e0.y - 1e-6) return `Needs ${raisedName} below the domestic equilibrium, else nothing is imported`;
       const q = [
         along(r.supply!, r.world!),
         along(r.supply!, r.raised!),
@@ -517,7 +517,7 @@ export const ROLE_NAMES: Record<PresetRole, string> = {
 const ROLE_NEEDS: Record<PresetRole, string> = {
   demand: 'Needs a falling demand curve',
   supply: 'Needs a rising supply curve',
-  shifted: 'Needs a shifted supply curve — shift S first',
+  shifted: 'Needs a shifted supply curve. Shift S first',
   mr: 'Needs a falling MR curve beside demand',
   mc: 'Needs an MC curve',
   control: 'Needs a horizontal price line',
@@ -669,7 +669,7 @@ export function planPreset(
   const built = preset.build(roles, diagram);
   if (typeof built === 'string') return { why: built };
   if (built.some((p) => !areaPolygon(diagram, { ...p, id: 'probe' }))) {
-    return { why: 'Nothing to shade — the curves do not bound that area' };
+    return { why: 'Nothing to shade. The curves do not bound that area' };
   }
   return { areas: built.map((p) => ({ ...p, id: newId() })) };
 }

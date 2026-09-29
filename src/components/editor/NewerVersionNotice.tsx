@@ -48,7 +48,7 @@ export function NewerVersionBar({
     >
       <p className="min-w-0 flex-1">
         <span className="font-semibold">{NEWER_VERSION_MESSAGE}</span>{' '}
-        <span className="opacity-80">Open read-only — nothing you do here changes the file.</span>
+        <span className="opacity-80">Open read-only. Nothing you do here changes the file.</span>
       </p>
       {status && (
         <span key={status} className="animate-fade-in text-[12px]">
@@ -93,9 +93,9 @@ export function NewerVersionNotice({
     const result = await useUpdateStore.getState().check();
     const found = useUpdateStore.getState().available;
     setBusy(false);
-    if (result === 'failed') setStatus('Could not check for updates — are you online?');
+    if (result === 'failed') setStatus('Could not check for updates. Are you online?');
     else if (result === 'current') setStatus('No newer version is available yet.');
-    else if (found) setStatus(`Downloading version ${found} — you will be told when it is ready.`);
+    else if (found) setStatus(`Downloading version ${found}. You will be told when it is ready.`);
     else setStatus(undefined);
   };
 

@@ -85,7 +85,7 @@ function numberList(numbers: number[]): string {
 
 function unkeyedWarning(rows: Array<{ number: number; keyed: boolean }>, consequence: string): string[] {
   const unkeyed = rows.filter((row) => !row.keyed).map((row) => row.number);
-  return unkeyed.length === 0 ? [] : [`${numberList(unkeyed)}: no key set — ${consequence}.`];
+  return unkeyed.length === 0 ? [] : [`${numberList(unkeyed)}: no key set. ${consequence}.`];
 }
 
 /**
@@ -210,7 +210,7 @@ function quizWarnings(
   const tooMany = questions.filter((q) => q.answers.length > QUIZ_MAX_ANSWERS);
   const kept = questions.filter((q) => q.answers.length <= QUIZ_MAX_ANSWERS);
   if (tooMany.length > 0) {
-    warnings.push(`${numberList(tooMany.map((q) => q.number))}: more than ${QUIZ_MAX_ANSWERS} options — left out; ${tool} takes ${QUIZ_MAX_ANSWERS}.`);
+    warnings.push(`${numberList(tooMany.map((q) => q.number))}: more than ${QUIZ_MAX_ANSWERS} options. Left out; ${tool} takes ${QUIZ_MAX_ANSWERS}.`);
   }
   warnings.push(...unkeyedWarning(
     kept.map((q) => ({ number: q.number, keyed: q.correct !== undefined })),
@@ -218,7 +218,7 @@ function quizWarnings(
   ));
   const figures = kept.filter((q) => q.figure).map((q) => q.number);
   if (figures.length > 0) {
-    warnings.push(`${numberList(figures)}: a table or figure is left out — ${tool} gets the text only.`);
+    warnings.push(`${numberList(figures)}: a table or figure is left out. ${tool} gets the text only.`);
   }
   if (limits) {
     for (const q of kept) {

@@ -78,10 +78,10 @@ export function rowNotes(result: JobResult): RowNote[] {
   return notes.sort((a, b) => ORDER[a.tone] - ORDER[b.tone]);
 }
 
-export const CHANGED_WHILE_TRANSLATING = 'Changed while translating — left as it is.';
+export const CHANGED_WHILE_TRANSLATING = 'Changed while translating. Left as it is.';
 export const NOTHING_TO_FILL = 'Nothing to fill here';
-export const STOPPED_NOTHING = 'Stopped — nothing was changed.';
-export const DOCUMENT_CHANGED = 'Another document is open — nothing was inserted.';
+export const STOPPED_NOTHING = 'Stopped. Nothing was changed.';
+export const DOCUMENT_CHANGED = 'Another document is open. Nothing was inserted.';
 
 /** "Filled 47 中文 texts, 5 need a look, 2 couldn't be translated". */
 export function fillSummary(o: {

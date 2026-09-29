@@ -193,7 +193,7 @@ function insertedItem(
 }
 
 const worksheetId = () => useWorksheetStore.getState().worksheet.id;
-const CHANGED_SINCE = 'Nothing changed — this text was edited since.';
+const CHANGED_SINCE = 'Nothing changed. This text was edited since.';
 
 /** Puts the side back as it was before the fill, in one commit, only if it is untouched. */
 function removeAction(write: TranslationWrite): NonNullable<ReviewItem['action']> {
