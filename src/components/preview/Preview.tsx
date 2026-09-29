@@ -696,8 +696,9 @@ export interface EditContext {
    * Open the page's right-click menu for a component (§ PageContextMenu). The render
    * site resolves what was clicked and hands the payload over — never a DOM walk.
    * Absent on read-only paths, which lets the browser's own menu through there.
+   * Returns whether a menu opened (one with nothing to offer does not).
    */
-  contextMenu?: (payload: PageMenuPayload, at: { x: number; y: number }) => void;
+  contextMenu?: (payload: PageMenuPayload, at: { x: number; y: number }) => boolean;
   /**
    * A rectangular run of cells swept by dragging across the table — Excel's selection,
    * for the panel's bulk verbs (align every caught cell at once). Corner ids, not
@@ -920,8 +921,8 @@ function TextNodeView({
       // as `data-edit-target`; a distinct attribute so neither query doubles.
       data-page-target={node.edit ? editTargetKey(node.edit) : undefined}
       // The Word reflex: right-click offers this paragraph's own verbs. Only where an
-      // edit target names it — derived text (marks totals, numbers) keeps the
-      // browser's menu.
+      // edit target names it — derived text (marks totals, numbers) bubbles to the
+      // question's box and gets the question's menu (§ `ItemBody`).
       onContextMenu={
         ctx?.contextMenu && node.edit
           ? (event) => {
@@ -2258,6 +2259,21 @@ function NodeView({
           <span
             key={index}
             className="min-w-0"
+            // A cell's own text, as a paragraph's (see `TextNodeView`): an option in a
+            // row layout is "this text", its letter included. No edit target bubbles
+            // to the question's box.
+            onContextMenu={
+              ctx?.contextMenu && cell.edit
+                ? (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    ctx.contextMenu!(
+                      { kind: "text", target: cell.edit! },
+                      { x: event.clientX, y: event.clientY },
+                    );
+                  }
+                : undefined
+            }
             style={{
               // The last cell takes the rest of the row so long text can still wrap.
               // With a hang, the first cell is exactly the gutter the marker sits in —
@@ -3627,10 +3643,26 @@ const ItemBody = memo(
         </div>
       );
     }
+    const questionMenu = pageCtx?.contextMenu;
     return (
       <div
         data-question-id={item.question.questionId}
         onClick={onSelect}
+        // Right-click anywhere in the box that no finer target claimed (the padding,
+        // beside a figure, the number, option letters, marks): the question's menu.
+        // Selects first, like a block or cell, so the menu describes what is selected.
+        // The browser's menu stays only when there is nothing to offer (read-only).
+        onContextMenu={
+          questionMenu
+            ? (event) => {
+                const at = { x: event.clientX, y: event.clientY };
+                const payload = { kind: "question", questionId: item.question.questionId } as const;
+                if (!questionMenu(payload, at)) return;
+                event.preventDefault();
+                onSelect(event);
+              }
+            : undefined
+        }
         aria-current={selected}
         className={`relative cursor-pointer rounded-[3px] px-1 transition-[background-color,box-shadow] duration-150 ease-out-soft ${
           selected ? SELECTED_ITEM : "hover:bg-black/[0.03]"
@@ -5059,13 +5091,15 @@ export function Preview({
      */
     // A model answer diagram is a field, not a list entry: nothing lands after it.
     const insertAfterId =
-      payload.kind === "text"
-        ? "blockId" in payload.target
-          ? payload.target.blockId
-          : undefined
-        : isAnswerDiagram(worksheet, payload.blockId)
-          ? undefined
-          : payload.blockId;
+      payload.kind === "question"
+        ? undefined
+        : payload.kind === "text"
+          ? "blockId" in payload.target
+            ? payload.target.blockId
+            : undefined
+          : isAnswerDiagram(worksheet, payload.blockId)
+            ? undefined
+            : payload.blockId;
     if (insertAfterId) {
       groups.push({
         label: payload.kind === "cell" ? "Insert below the table" : "Insert below",
@@ -5158,10 +5192,11 @@ export function Preview({
    * reason the teacher can see.
    */
   const openPageMenu = (payload: PageMenuPayload, at: { x: number; y: number }) => {
-    if (isModalLayerOpen()) return;
+    if (isModalLayerOpen()) return false;
     const groups = buildPageMenu(payload, at);
-    if (groups.length === 0) return;
+    if (groups.length === 0) return false;
     setPageMenu({ groups, at });
+    return true;
   };
 
   const ctx: EditContext | undefined = onEdit

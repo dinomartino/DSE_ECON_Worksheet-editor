@@ -46,9 +46,10 @@ function blockScope(blockId: string, questionId: string | undefined, sources: Pa
 }
 
 /** What a right-click's AI item acts on, finest first: the one printed text, a cell's
- *  table, the block, else the emitting question. An ambiguous target falls back to its
- *  question. Built at event time. */
+ *  table, the block, else the emitting question (the question's own box names it
+ *  outright). An ambiguous target falls back to its question. Built at event time. */
 export function pageAiScope(payload: PageMenuPayload, sources: PageMenuSources): AiScope {
+  if (payload.kind === 'question') return { kind: 'questions', ids: [payload.questionId] };
   if (payload.kind === 'block') return blockScope(payload.blockId, payload.questionId, sources);
   const target: EditTarget =
     payload.kind === 'cell' ? { kind: 'tableCell', blockId: payload.blockId, cellId: payload.cellId } : payload.target;

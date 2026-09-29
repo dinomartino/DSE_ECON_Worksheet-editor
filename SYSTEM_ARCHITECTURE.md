@@ -1922,6 +1922,12 @@ a menu with nothing to offer never opens.
   `replaceBlock`); a figure's carries Edit drawing and Delete; a text target's Delete
   comes from `describeDelete`. Right-click on a cell/picture selects it first — the
   menu always describes what is now selected.
+- **A question's box is the catch-all**: a right-click inside it that no finer target
+  claimed (padding, beside a figure, derived text such as a number or marks) selects
+  the question and opens its menu (`kind: 'question'`: the AI item). A row-layout cell
+  with an edit target (an MCQ option, letter included) is a text target, like a
+  paragraph. The browser's menu shows only where the page has nothing to offer (the
+  box's menu is empty read-only). Layout elements have no box payload.
 - Claims the modal layer while open, so the page's window-level keys stand down.
 
 ### What a document is called is not what it prints
@@ -2154,7 +2160,7 @@ Rules every verb keeps:
 - **Scope** (`src/assist/scope.ts`): the selection as an `AiScope` — a printed text, a
   table or figure, questions, else the whole paper. A right-click builds it at event time
   (`src/components/translate/translateMenu.ts:pageAiScope`: the text, a cell's table, the
-  block, else the emitting question; `questionId` on every `PageMenuPayload` picks a
+  block, else the emitting question, which the question's own box names outright; `questionId` on every `PageMenuPayload` picks a
   Duplicate's copy), so nothing new is read at render time and `ctxStamp` is unchanged. The
   menu's chip offers that scope, its owning question and the paper (`scopeChoices`).
 - **The menu** (`AiMenu`) lists the offered verbs by group with their counts, filters as
