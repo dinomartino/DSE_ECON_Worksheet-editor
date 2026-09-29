@@ -18,7 +18,8 @@ off the bottom.** It is the first thing a fresh session reads — then
   + D start-screen bank page (`src/components/bank/page/`) + E lineage actions
   (`src/library/bankDocs.ts`). **Redesigned the same day:** the bank is its own screen
   (`src/components/bank/page/QuestionBankScreen.tsx`: topic cards → review page → tag as you
-  go), opened from the start screen's aside. Teacher screen text has no em dashes (user rule).
+  go), opened from the start screen's aside. The review page's only action is Open in
+  worksheet (its "Add to …" confused the user, removed 2026-09-29); adding goes via the tray. Teacher screen text has no em dashes (user rule).
   **Integration QA + polish merged** (`feature/bank-polish`):
   end-to-end in Chromium + WebKit, `.docx` leak-free; fixed a real "Maximum update depth"
   crash in `usePagination`/band measuring (a no-op `setState` per render queued a second
