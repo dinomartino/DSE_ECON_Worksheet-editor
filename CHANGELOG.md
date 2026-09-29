@@ -45,6 +45,7 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
   backup and never print.
 
 ### Changed
+- **The ⋯ menu no longer has "Worksheets…".** Click the app mark at the top left to go back to your worksheets.
 - **Settings is easier to find.** Its gear now sits in the top-right corner of the start
   screen and the question bank. In a worksheet, Settings is still in the ⋯ menu.
 - Start screen rows and saved worksheets now highlight on hover without the blue side bar.

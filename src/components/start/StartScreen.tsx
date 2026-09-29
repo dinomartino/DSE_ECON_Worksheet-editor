@@ -109,7 +109,7 @@ type Notice = {
  * A full screen rather than a dialog over the editor: a dialog would have a blank
  * document rendering behind the choice of which document to open, which reads as though
  * the choice has already been made. Reached again later from the toolbar's
- * "Worksheets" crumb, or ⋯ → Worksheets…, and always the same home page: no "Back", so
+ * "Worksheets" crumb, and always the same home page: no "Back", so
  * the document just left reopens only from its own card, like any other.
  */
 export function StartScreen({

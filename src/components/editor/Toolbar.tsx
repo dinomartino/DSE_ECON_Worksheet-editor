@@ -46,7 +46,7 @@ function showNotice(
 /**
  * `[mark] Worksheets › name`: the mark and word are one button home to the start screen.
  * Below 1440px the word and chevron fold away, so the crumb adds no width at laptop
- * sizes; the mark keeps the name. The ⋯ menu's "Worksheets…" stays as the second route.
+ * sizes; the mark keeps the name. It is the editor's one route home.
  */
 export function HomeCrumb({ onOpenFiles }: { onOpenFiles: () => void }) {
   return (
@@ -421,27 +421,22 @@ export function Toolbar({
           label="File and export options"
           items={[
             { label: busy === 'copy' ? 'Copying…' : 'Copy for Word', onSelect: () => void handleCopy() },
-            /*
-             * One door to every document, rather than "New" and "Open" as separate
-             * items that each did half the job. The start screen lists what is saved and
-             * offers the new-document form, so both intentions arrive at the same place —
-             * and "New" no longer silently archives the document on screen by being the
-             * only way to leave it (the old menu had no way *back* to what it replaced).
-             */
-            { label: 'Worksheets…', onSelect: onOpenFiles, separated: true },
-            ...(readOnly ? [] : [{ label: 'Save now', onSelect: () => void save() }]),
-            ...(isDesktop()
-              ? [
-                  {
-                    label: 'Check for updates',
-                    hint: appVersion ? `v${appVersion}` : undefined,
-                    onSelect: () => void handleCheckUpdates(),
-                  },
-                ]
-              : []),
-            ...settingsItems,
-            { label: 'What’s new…', onSelect: () => setWhatsNew(true) },
-            { label: 'Send feedback…', onSelect: () => setFeedback(true) },
+            // The group after Copy for Word opens on a rule, whichever item leads it.
+            ...[
+              ...(readOnly ? [] : [{ label: 'Save now', onSelect: () => void save() }]),
+              ...(isDesktop()
+                ? [
+                    {
+                      label: 'Check for updates',
+                      hint: appVersion ? `v${appVersion}` : undefined,
+                      onSelect: () => void handleCheckUpdates(),
+                    },
+                  ]
+                : []),
+              ...settingsItems,
+              { label: 'What’s new…', onSelect: () => setWhatsNew(true) },
+              { label: 'Send feedback…', onSelect: () => setFeedback(true) },
+            ].map((item, i) => (i === 0 ? { ...item, separated: true } : item)),
             {
               label: 'Clear saved documents…',
               onSelect: () => setConfirmingClear(true),
