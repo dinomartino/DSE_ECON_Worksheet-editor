@@ -29,9 +29,10 @@ off the bottom.** It is the first thing a fresh session reads — then
   `docs/IDEAS.md` § C). **C5 + C6 merged 2026-09-29**: a use = `classes` + `satOn`
   (`src/model/classes.ts`), cohort derived (`src/library/cohort.ts`), legacy develop-only
   `classTag` folded on load (no schema bump; it never shipped); bank topic edits write every
-  copy and display the union (`src/library/sharedTags.ts`). Known: editor topic row edits
-  one copy only; a copy inserted from the bank takes the picked copy's tags, not the union;
-  narrow "Used in" column truncates titles. Next: C7–C11 (build flow). Teacher screen text has no em dashes (user rule).
+  copy and display the union (`src/library/sharedTags.ts`); editor topic edits sync other
+  copies too (`src/components/editor/topicSync.ts`), bank copies take the union. Known:
+  ⌘Z undoes the open copy only; a second tab holding a copy can overwrite synced tags;
+  Filter button label truncates. Next: C24 teacher-defined 題型 (in progress), then C7–C11. Teacher screen text has no em dashes (user rule).
   **Integration QA + polish merged** (`feature/bank-polish`):
   end-to-end in Chromium + WebKit, `.docx` leak-free; fixed a real "Maximum update depth"
   crash in `usePagination`/band measuring (a no-op `setState` per render queued a second
