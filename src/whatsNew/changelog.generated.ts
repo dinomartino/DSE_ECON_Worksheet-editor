@@ -32,6 +32,9 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 ### Changed
 - **Plainer wording in messages and hints.** Hints, notices and error messages now use
   short sentences instead of long dashes.
+- **Question bank: one action per question.** Reading a question, you now see only "Open
+  in worksheet". To add questions to your last worksheet, tick them and use the bar at the
+  bottom.
 
 ### Fixed
 - **Typing on the page is lighter.** The page no longer redraws twice for every key you
