@@ -1,6 +1,6 @@
 import { createClient, testConnection } from '@/ai/client';
 import { deleteSecret, peekSecret, readSecret, writeSecret } from '@/platform/secrets';
-import { AI_SETTINGS } from '@/settings/aiSettings';
+import { AI_SETTINGS, resolveAiConfig } from '@/settings/aiSettings';
 import { appSettings } from '@/settings/store';
 import type { SettingsEnv } from '@/settings/types';
 import type { AiSetupDeps } from './aiSetupRunner';
@@ -15,6 +15,7 @@ export function liveDeps(env: SettingsEnv): AiSetupDeps {
     writeSecret,
     deleteSecret,
     peekSecret,
+    resolveConfig: resolveAiConfig,
     readSettings: () => appSettings.read(AI_SETTINGS),
     writeSettings: (patch) => void appSettings.write(AI_SETTINGS, patch),
   };

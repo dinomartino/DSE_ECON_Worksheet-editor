@@ -17,7 +17,7 @@ import { MOCK_MODEL, startMockServer } from './ai-mock-server.mjs';
  * Groups: entry (the ✦ AI button, ⌘J, the paused verbs absent, right-click, multi-select,
  * Export, read-only, no Translate left in ⋯ or the Outline, one toolbar row at 1024),
  * translate (fill → bar → highlights → card → Undo all / ⌘Z, Stop, re-translate), terms
- * (keyless Check terms), setup (the SetupCard), error (the bar's error actions), field
+ * (keyless Check terms), setup (the SetupCard, then Settings' Your keys Test), error (the bar's error actions), field
  * (BiTextField's ✦ Fill). Paused with their verbs (`src/assist/paused.ts`), kept for when
  * they return and skipped even under --only: answers (E1), source (E3), quality (E4). A
  * last check per engine: E3's lazily loaded engine chunk was never fetched.
@@ -802,6 +802,26 @@ async function setupChecks(engine, browser) {
     expect(hosts.has('api.deepseek.com'), 'nothing went to DeepSeek');
     expect(leaks.length === 0, `leaked to ${leaks.join(', ')}`);
     return [...hosts].join(', ');
+  });
+
+  await check(engine, 'Settings: Your keys lists the key masked; Test sends only on its click', async () => {
+    await page.keyboard.press('Escape');
+    await page.keyboard.press(`${META}+Comma`);
+    const settings = page.getByRole('dialog', { name: /Settings/ });
+    const row = settings.locator('[data-key-row="deepseek"]');
+    await row.waitFor({ timeout: 5000 });
+    await page.waitForTimeout(400);
+    const before = served.length;
+    expect((await row.innerText()).includes(`••••••••${DEEPSEEK_KEY.slice(-4)}`), 'no masked key in the row');
+    expect(!(await page.content()).includes(DEEPSEEK_KEY.slice(0, 12)), 'key material in the DOM');
+    expect(served.length === before, 'opening Settings sent a request');
+    await row.getByRole('button', { name: 'Test', exact: true }).click();
+    await row.getByText('Connected').waitFor({ timeout: 10_000 });
+    await shot(page, 'setup-04-settings-keys');
+    const sent = served.slice(before).map((u) => new URL(u).hostname);
+    expect(sent.length > 0 && sent.every((h) => h === 'api.deepseek.com'), `Test sent to ${sent.join(', ') || 'nothing'}`);
+    expect(leaks.length === 0, `leaked to ${leaks.join(', ')}`);
+    return `${sent.length} request(s) to api.deepseek.com`;
   });
   await context.close();
 }

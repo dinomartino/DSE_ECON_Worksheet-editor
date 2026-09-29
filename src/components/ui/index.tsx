@@ -197,12 +197,13 @@ export function Pill({
   tone = 'neutral',
 }: {
   children: ReactNode;
-  tone?: 'neutral' | 'warn' | 'accent';
+  tone?: 'neutral' | 'warn' | 'accent' | 'ok';
 }) {
   const tones = {
     neutral: 'bg-surface-hover text-ink-muted',
     warn: 'bg-warn-soft text-warn-ink',
     accent: 'bg-accent-soft text-accent-ink',
+    ok: 'bg-ok-soft text-ok',
   };
   return (
     <span

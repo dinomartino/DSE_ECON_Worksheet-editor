@@ -43,6 +43,10 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   backup and never print.
 
 ### Changed
+- **See and test your saved AI keys.** Settings › AI & translation now starts with "Your
+  keys": each saved key with its provider, only its last 4 characters shown, which one is
+  in use, and a Test button that checks it any time. Providers with a key say "Key saved",
+  and the key panel is shorter.
 - **Plainer wording in messages and hints.** Hints, notices and error messages now use
   short sentences instead of long dashes.
 - **Question bank: one action per question.** Reading a question, you now see only "Open

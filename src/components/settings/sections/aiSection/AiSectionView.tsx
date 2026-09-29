@@ -3,20 +3,30 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { looksLikeKey } from '@/ai/keyShape';
 import { PRESETS, presetFor } from '@/ai/providers';
-import { PROVIDER_IDS, type ModelInfo, type ProviderId, type ProviderPreset } from '@/ai/types';
-import { Button, CheckField } from '@/components/ui';
+import { PROVIDER_IDS, type AiErrorKind, type ModelInfo, type ProviderId, type ProviderPreset } from '@/ai/types';
+import { Button, CheckField, Pill } from '@/components/ui';
 import { Collapsible } from '@/components/ui/Collapsible';
 import { GLOSSARY_ATTRIBUTION } from '@/glossary/attribution';
 import { secretStoreLabel } from '@/platform/secrets';
 import type { AiSettings } from '@/settings/aiSettings';
 import type { SettingsEnv } from '@/settings/types';
 import type { AiSectionActions } from './AiSection';
-import { canTest, qwenWorkspaceUrl, TOP_PROVIDERS, type AiSetupState } from './aiSetup';
-import { HkNote, ProviderBadges } from './providerBadges';
+import {
+  canTest,
+  canTestSaved,
+  qwenWorkspaceUrl,
+  shownTest,
+  TOP_PROVIDERS,
+  type AiSetupState,
+  type SavedKeyRow,
+  type TestState,
+} from './aiSetup';
+import { HkNote, ProviderBadges, type RowKeyStatus } from './providerBadges';
 import { regionBanner } from './setupCardFlow';
 
 /**
  * The AI section's markup, driven entirely by props so each state renders in a test.
+ * "Your keys" lists every saved key (masked to its last 4) with its own Test and Forget.
  * The selected provider's key, model and base URL sit inside its card; unselected cards
  * are one line. Chrome uses semantic tokens; every "not in Hong Kong" note is warn ink.
  */
@@ -33,6 +43,8 @@ export interface AiSectionViewProps {
   focus?: string;
   state: AiSetupState;
   settings: AiSettings;
+  /** Every provider with a saved key: store and last 4 only. */
+  keys: SavedKeyRow[];
   configured: boolean;
   /** "Models from your account", once List my models succeeded for the shown provider. */
   listed: ModelInfo[] | null;
@@ -59,10 +71,12 @@ export function AiSectionView(props: AiSectionViewProps) {
   }, [regionFocus]);
 
   const selectedInMore = PRESETS[state.provider]?.group === 'more';
+  const keyed = new Set(props.keys.map((k) => k.provider));
   const card = (id: ProviderId) => (
     <ProviderCard
       key={id}
       preset={presetFor(id)}
+      keyStatus={keyed.has(id) ? 'saved' : presetFor(id).keyRequired ? null : 'keyless'}
       selected={id === state.provider}
       highlight={refusedBy !== null && presetFor(id).hk.status === 'available'}
       buttonRef={id === 'deepseek' ? hkRef : undefined}
@@ -79,6 +93,7 @@ export function AiSectionView(props: AiSectionViewProps) {
           ⚠ {regionBanner(refusedBy)}
         </p>
       )}
+      <YourKeys {...props} />
       <div role="radiogroup" aria-label="AI provider" className="divide-y divide-line overflow-hidden rounded-xl border border-line">
         {TOP.map(card)}
       </div>
@@ -94,13 +109,152 @@ export function AiSectionView(props: AiSectionViewProps) {
         checked={settings.includeTeacherText}
         onChange={actions.includeTeacher}
       />
-      <About {...props} />
+      <div className="-mx-3 -mt-2">
+        <Collapsible title="Privacy and terminology" keepMounted>
+          <About {...props} />
+        </Collapsible>
+      </div>
     </div>
   );
 }
 
+const MASK = '••••••••';
+
+/** A failed test's status, short enough for a key row; the full message sits under it. */
+const SHORT_ERROR: Partial<Record<AiErrorKind, string>> = {
+  region: 'Not available here',
+  badKey: 'Key not accepted',
+  keyBlocked: 'Key blocked',
+  networkOrKey: 'No answer',
+  network: 'No connection',
+  quota: 'Limit reached',
+  billing: 'No balance',
+  model: 'Model not found',
+  timeout: 'Timed out',
+  server: 'Provider trouble',
+  notConfigured: 'Not set up',
+};
+
+/** Every saved key, masked, with its status, Test and Forget. Absent until a key is saved. */
+function YourKeys({ keys, state, settings, actions, env, platform }: AiSectionViewProps) {
+  if (keys.length === 0) return null;
+  const where = env.desktop ? platform : 'web';
+  return (
+    <section aria-label="Your keys" className="space-y-1.5">
+      <div className="flex min-h-6 items-center gap-2 text-xs">
+        <h4 className="text-[13px] font-medium text-ink">Your keys</h4>
+        <span className="text-ink-muted">{keys.length} saved</span>
+        <span className="ml-auto">
+          {state.confirmForget === 'all' ? (
+            <span className="text-ink">
+              Forget every AI key saved here? <InlineAction onClick={() => void actions.forget()}>Forget all</InlineAction> ·{' '}
+              <InlineAction onClick={actions.cancelForget}>Cancel</InlineAction>
+            </span>
+          ) : (
+            <InlineAction tone="muted" onClick={() => actions.forgetAsked('all')}>
+              Forget all
+            </InlineAction>
+          )}
+        </span>
+      </div>
+      <ul className="divide-y divide-line rounded-xl border border-line">
+        {keys.map((key) => (
+          <KeyRow
+            key={key.provider}
+            row={key}
+            where={where}
+            inUse={settings.provider === key.provider}
+            open={state.provider === key.provider}
+            test={state.savedTests[key.provider] ?? { kind: 'idle' }}
+            confirming={state.confirmForget === key.provider}
+            actions={actions}
+          />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function KeyRow({
+  row,
+  where,
+  inUse,
+  open,
+  test,
+  confirming,
+  actions,
+}: {
+  row: SavedKeyRow;
+  where: 'mac' | 'windows' | 'web';
+  inUse: boolean;
+  /** Its card is open, and shows a failure in full there. */
+  open: boolean;
+  test: TestState;
+  confirming: boolean;
+  actions: AiSectionActions;
+}) {
+  const preset = presetFor(row.provider);
+  const store = secretStoreLabel(row.store, where);
+  // Keychain keys stay unread until a test, so their last 4 may be unknown: name the store.
+  const storeNote = !row.last4 || row.store === 'session' || row.store === 'memory' ? `in ${store}` : null;
+  return (
+    <li data-key-row={row.provider} className="px-3 py-2">
+      <div className="flex items-center gap-2">
+        <span className="min-w-0 truncate text-[13px] font-medium text-ink">{preset.label}</span>
+        <span title={`Saved in ${store}`} className="shrink-0 font-mono text-[11px] tracking-tight text-ink-muted">
+          {MASK}
+          {row.last4 ?? ''}
+        </span>
+        {storeNote && <span className="shrink-0 text-[11px] text-ink-subtle">{storeNote}</span>}
+        {inUse && <Pill tone="accent">In use</Pill>}
+        <span className="flex-1" />
+        {confirming ? (
+          <span className="shrink-0 text-xs text-ink">
+            Forget this key? <InlineAction onClick={() => void actions.forget()}>Forget</InlineAction> ·{' '}
+            <InlineAction onClick={actions.cancelForget}>Cancel</InlineAction>
+          </span>
+        ) : (
+          <>
+            <SavedStatus test={test} />
+            <Button size="sm" variant="default" disabled={test.kind === 'testing'} onClick={() => actions.testSaved(row.provider)}>
+              Test
+            </Button>
+            <span className="text-xs">
+              <InlineAction tone="muted" onClick={() => actions.forgetAsked(row.provider)}>
+                Forget
+              </InlineAction>
+            </span>
+          </>
+        )}
+      </div>
+      {test.kind === 'error' && !open && <p className="mt-1 text-[11px] text-danger-ink">{test.error.message}</p>}
+    </li>
+  );
+}
+
+function SavedStatus({ test }: { test: TestState }) {
+  const base = 'shrink-0 text-[11px]';
+  if (test.kind === 'testing') return <span className={`${base} text-ink-muted`}>Testing…</span>;
+  if (test.kind === 'ok') {
+    return (
+      <span className={`${base} font-medium text-ok`} title={`${(test.ms / 1000).toFixed(1)} s · ${test.sample}`}>
+        ✓ Connected
+      </span>
+    );
+  }
+  if (test.kind === 'error') {
+    return (
+      <span className={`${base} font-medium text-danger-ink`} title={test.error.message}>
+        {SHORT_ERROR[test.error.kind] ?? 'Test failed'}
+      </span>
+    );
+  }
+  return <span className={`${base} text-ink-subtle`}>Not tested</span>;
+}
+
 function ProviderCard({
   preset,
+  keyStatus,
   selected,
   highlight,
   buttonRef,
@@ -108,6 +262,7 @@ function ProviderCard({
   children,
 }: {
   preset: ProviderPreset;
+  keyStatus: RowKeyStatus;
   selected: boolean;
   highlight: boolean;
   buttonRef?: RefObject<HTMLButtonElement | null>;
@@ -122,7 +277,7 @@ function ProviderCard({
         role="radio"
         aria-checked={selected}
         onClick={onSelect}
-        className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2.5 text-left transition-colors duration-150 ease-out-soft hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+        className="@container flex w-full cursor-pointer items-center gap-2.5 px-3 py-2.5 text-left transition-colors duration-150 ease-out-soft hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
       >
         <span
           aria-hidden
@@ -131,7 +286,7 @@ function ProviderCard({
           {selected && <span className="h-2 w-2 rounded-full bg-accent" />}
         </span>
         <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink">{preset.label}</span>
-        <ProviderBadges preset={preset} />
+        <ProviderBadges preset={preset} keyStatus={keyStatus} />
       </button>
       {children}
     </div>
@@ -149,9 +304,13 @@ function CardDetails({
   const { state, actions } = props;
   const preset = presetFor(state.provider);
   const [show, setShow] = useState(false);
-  const testing = state.test.kind === 'testing';
+  const testing = shownTest(state).kind === 'testing';
   const draft = state.key.kind === 'editing' ? state.key.draft : '';
   const noTestLink = preset.id === 'custom' || preset.id === 'ollama';
+  // A saved key and an empty field: the button tests the saved key; typing replaces it.
+  const savedMode = state.key.kind === 'saved';
+  const hasSaved = savedMode || (state.key.kind === 'editing' && state.key.saved !== undefined);
+  const primary = savedMode ? () => actions.testSaved(state.provider) : actions.saveAndTest;
 
   return (
     <div className="space-y-3 pb-3 pl-9 pr-3">
@@ -177,7 +336,7 @@ function CardDetails({
                 data-lpignore="true"
                 onChange={(event) => actions.draft(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter') actions.saveAndTest();
+                  if (event.key === 'Enter') primary();
                 }}
                 className="h-8 min-w-0 flex-1 bg-transparent px-2 font-mono text-xs text-ink outline-none placeholder:font-sans placeholder:text-ink-subtle"
               />
@@ -189,8 +348,13 @@ function CardDetails({
                 {show ? 'Hide' : 'Show'}
               </button>
             </span>
-            <Button size="sm" variant="primary" disabled={testing || !canTest(state)} onClick={actions.saveAndTest}>
-              {testing ? 'Testing…' : 'Save & test'}
+            <Button
+              size="sm"
+              variant="primary"
+              disabled={testing || !(savedMode ? canTestSaved(state) : canTest(state))}
+              onClick={primary}
+            >
+              {testing ? 'Testing…' : savedMode ? 'Test' : 'Save & test'}
             </Button>
             {preset.keyUrl && (
               <button
@@ -201,7 +365,7 @@ function CardDetails({
                 Get a key ↗
               </button>
             )}
-            {preset.keyUrl && preset.keyHint && <span className="text-[11px] text-ink-muted">{preset.keyHint}</span>}
+            {preset.keyUrl && preset.keyHint && !hasSaved && <span className="text-[11px] text-ink-muted">{preset.keyHint}</span>}
           </div>
           <KeyStatus {...props} />
         </div>
@@ -211,7 +375,7 @@ function CardDetails({
           <Button size="sm" variant="primary" disabled={testing || !canTest(state)} onClick={actions.saveAndTest}>
             {testing ? 'Testing…' : 'Test connection'}
           </Button>
-          <TestLine state={state} actions={actions} />
+          <TestLine test={state.test} actions={actions} retry={actions.saveAndTest} />
         </div>
       )}
       {noTestLink && (
@@ -219,17 +383,16 @@ function CardDetails({
           {preset.keyRequired ? 'Save without testing' : 'Use without testing'}
         </button>
       )}
-      {preset.keyRequired && <RememberField {...props} />}
+      {preset.keyRequired && !savedMode && <RememberField {...props} />}
       <ModelField {...props} modelRef={modelRef} />
       <BaseUrlField {...props} />
     </div>
   );
 }
 
-function KeyStatus({ state, actions, platform, env }: AiSectionViewProps) {
-  const preset = presetFor(state.provider);
+function KeyStatus({ state, actions, platform }: AiSectionViewProps) {
   const shape = state.key.kind === 'editing' ? state.key.shape : undefined;
-  const saved = state.key.kind === 'saved' ? state.key : undefined;
+  const savedMode = state.key.kind === 'saved';
   const where = platform === 'windows' ? 'Windows' : 'macOS';
   return (
     <div className="space-y-1 text-[11px]">
@@ -239,7 +402,11 @@ function KeyStatus({ state, actions, platform, env }: AiSectionViewProps) {
           <InlineAction onClick={actions.testAnyway}>Test anyway</InlineAction>
         </p>
       )}
-      <TestLine state={state} actions={actions} />
+      <TestLine
+        test={shownTest(state)}
+        actions={actions}
+        retry={savedMode ? () => actions.testSaved(state.provider) : actions.saveAndTest}
+      />
       {state.keychainError && (
         <p className="text-warn-ink">
           {state.keychainError === 'denied'
@@ -250,25 +417,11 @@ function KeyStatus({ state, actions, platform, env }: AiSectionViewProps) {
           <InlineAction onClick={actions.retryKeychain}>Try again</InlineAction>
         </p>
       )}
-      {saved && state.confirmForget !== 'one' && (
-        <p className="text-ink-muted">
-          Saved in {secretStoreLabel(saved.store, env.desktop ? platform : 'web')}
-          {saved.last4 && ` · ends in ${saved.last4}`} ·{' '}
-          <InlineAction onClick={() => actions.forgetAsked('one')}>Forget key</InlineAction>
-        </p>
-      )}
-      {saved && state.confirmForget === 'one' && (
-        <p className="text-ink">
-          Forget the {preset.label} key? <InlineAction onClick={() => void actions.forget()}>Forget</InlineAction> ·{' '}
-          <InlineAction onClick={actions.cancelForget}>Cancel</InlineAction>
-        </p>
-      )}
     </div>
   );
 }
 
-function TestLine({ state, actions }: Pick<AiSectionViewProps, 'state' | 'actions'>) {
-  const test = state.test;
+function TestLine({ test, actions, retry }: { test: TestState; actions: AiSectionActions; retry: () => void }) {
   if (test.kind === 'testing') return <p className="text-[11px] text-ink-muted">Testing…</p>;
   if (test.kind === 'ok') {
     return (
@@ -285,7 +438,7 @@ function TestLine({ state, actions }: Pick<AiSectionViewProps, 'state' | 'action
       {test.error.kind === 'region' && (
         <>
           {' '}
-          <InlineAction onClick={actions.saveAndTest}>Try again</InlineAction> ·{' '}
+          <InlineAction onClick={retry}>Try again</InlineAction> ·{' '}
           <InlineAction onClick={() => actions.selectProvider('deepseek')}>Use DeepSeek</InlineAction> ·{' '}
           <InlineAction onClick={() => actions.selectProvider('qwen')}>Use Qwen</InlineAction>
         </>
@@ -294,9 +447,10 @@ function TestLine({ state, actions }: Pick<AiSectionViewProps, 'state' | 'action
   );
 }
 
-function InlineAction({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+function InlineAction({ onClick, tone = 'accent', children }: { onClick: () => void; tone?: 'accent' | 'muted'; children: ReactNode }) {
+  const ink = tone === 'muted' ? 'text-ink-muted hover:text-danger-ink' : 'font-medium text-accent-ink';
   return (
-    <button type="button" onClick={onClick} className="cursor-pointer font-medium text-accent-ink hover:underline">
+    <button type="button" onClick={onClick} className={`shrink-0 cursor-pointer ${ink} hover:underline`}>
       {children}
     </button>
   );
@@ -309,13 +463,12 @@ function RememberField({ state, actions, env, platform }: AiSectionViewProps) {
       ? 'Remember in Windows Credential Manager'
       : "Remember in your Mac's Keychain";
   return (
-    <div>
+    <div
+      className="flex flex-wrap items-center gap-x-2"
+      title={env.desktop ? undefined : 'Left off, the key is forgotten when you close the tab.'}
+    >
       <CheckField label={label} checked={state.remember} onChange={actions.remember} />
-      {!env.desktop && (
-        <p className="ml-6 text-[11px] text-ink-subtle">
-          Leave off on a shared computer: the key is then forgotten when you close the tab.
-        </p>
-      )}
+      {!env.desktop && <span className="text-[11px] text-ink-subtle">Leave off on a shared computer.</span>}
     </div>
   );
 }
@@ -507,16 +660,16 @@ function BaseUrlField({ state, settings, actions }: AiSectionViewProps) {
   );
 }
 
-function About({ state, env, actions }: AiSectionViewProps) {
+function About({ state, env }: AiSectionViewProps) {
   const preset = presetFor(state.provider);
   const g = GLOSSARY_ATTRIBUTION;
   return (
-    <div className="space-y-3 border-t border-line pt-4 text-xs text-ink-muted">
+    <div className="space-y-3 text-xs text-ink-muted">
       <section className="space-y-1">
         <h4 className="text-[13px] font-medium text-ink">What is sent</h4>
         {/* One string: SWC drops the space in `{label} with` when the text wraps after it. */}
         <p>
-          {`When you translate, the texts you choose (and nearby translated lines from the same question, for context) go straight from this ${env.desktop ? 'computer' : 'browser'} to ${preset.label} with your key. Nothing is sent until you press Translate, Fill, Save & test or List my models. ${preset.privacy}`}
+          {`When you translate, the texts you choose (and nearby translated lines from the same question, for context) go straight from this ${env.desktop ? 'computer' : 'browser'} to ${preset.label} with your key. Nothing is sent until you press Translate, Fill, Test, Save & test or List my models. ${preset.privacy}`}
         </p>
       </section>
       <section className="space-y-1">
@@ -525,20 +678,11 @@ function About({ state, env, actions }: AiSectionViewProps) {
           Economics terms follow &ldquo;{g.title}&rdquo; ({g.publisher}, {g.year}). {g.notice}. {g.licence}
         </p>
       </section>
-      {state.confirmForget === 'all' ? (
-        <p className="text-ink">
-          Forget every AI key saved here? <InlineAction onClick={() => void actions.forget()}>Forget all</InlineAction> ·{' '}
-          <InlineAction onClick={actions.cancelForget}>Cancel</InlineAction>
-        </p>
-      ) : (
-        <InlineAction onClick={() => actions.forgetAsked('all')}>Forget all AI keys</InlineAction>
-      )}
     </div>
   );
 }
 
 function keyPlaceholder(state: AiSetupState): string {
   const saved = state.key.kind === 'saved' ? state.key : state.key.kind === 'editing' ? state.key.saved : undefined;
-  if (!saved) return 'Paste your key';
-  return saved.last4 ? `Saved key ending ${saved.last4}. Paste to replace` : 'Saved key. Paste to replace';
+  return saved ? 'Paste a new key to replace' : 'Paste your key';
 }

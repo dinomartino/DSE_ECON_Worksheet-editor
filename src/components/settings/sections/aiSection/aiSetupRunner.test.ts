@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ConnectionTest, ModelInfo, ProviderConfig } from '@/ai/types';
 import type { SecretAccount, SecretWrite } from '@/platform/secrets';
-import { AI_SETTINGS } from '@/settings/aiSettings';
+import { AI_SETTINGS, providerChoice } from '@/settings/aiSettings';
 import { createSettingsStore } from '@/settings/store';
 import { initialAiSetup } from './aiSetup';
 import { createAiSetupRunner, type AiSetupDeps } from './aiSetupRunner';
@@ -44,6 +44,12 @@ function setup(opts: { provider?: 'gemini' | 'qwen'; params?: Record<string, str
       }),
     deleteSecret: async (a) => void secrets.delete(a),
     peekSecret: (a) => (secrets.has(a) ? { store: 'session', last4: secrets.get(a)!.slice(-4) } : null),
+    resolveConfig: async (provider) => {
+      const apiKey = secrets.get(`ai:${provider}`);
+      if (!apiKey) return { ok: false, provider, reason: 'noKey' };
+      const { model, baseUrl } = providerChoice(store.read(AI_SETTINGS), provider);
+      return { ok: true, config: { provider, apiKey, model, baseUrl }, preset: {} as never };
+    },
     readSettings: () => store.read(AI_SETTINGS),
     writeSettings: (patch) => void store.write(AI_SETTINGS, patch),
   };
@@ -173,12 +179,62 @@ describe('Forget', () => {
     const { runner, secrets } = setup();
     secrets.set('ai:gemini', 'AIzaSySAVED0000000');
     secrets.set('ai:deepseek', 'sk-deepseek-0000000');
-    runner.forgetAsked('one');
+    runner.forgetAsked('gemini');
     await runner.forget();
     expect([...secrets.keys()]).toEqual(['ai:deepseek']);
     runner.forgetAsked('all');
     await runner.forget();
     expect(secrets.size).toBe(0);
     expect(runner.current()).toMatchObject({ confirmForget: null, key: { kind: 'none' } });
+  });
+});
+
+describe('Test a saved key', () => {
+  const DEEPSEEK_KEY = 'sk-deepseek-saved-0000abcd';
+
+  it('tests that provider\'s saved key, and changes neither the provider in use nor the open card', async () => {
+    const { runner, secrets, tests, settings } = setup();
+    secrets.set('ai:deepseek', DEEPSEEK_KEY);
+    const testing = runner.testSaved('deepseek');
+    expect(runner.current().savedTests.deepseek).toEqual({ kind: 'testing' });
+    await vi.waitFor(() => expect(tests).toHaveLength(1));
+    expect(tests[0].config).toMatchObject({ provider: 'deepseek', apiKey: DEEPSEEK_KEY, model: 'deepseek-flash' });
+    tests[0].done(passed);
+    await expect(testing).resolves.toBe(true);
+    expect(runner.current()).toMatchObject({ provider: 'gemini', test: { kind: 'idle' }, savedTests: { deepseek: { kind: 'ok' } } });
+    expect(settings().provider).toBe('gemini');
+    expect([...secrets]).toEqual([['ai:deepseek', DEEPSEEK_KEY]]);
+  });
+
+  it('reports a missing key without sending anything', async () => {
+    const { runner, tests } = setup();
+    await expect(runner.testSaved('qwen')).resolves.toBe(false);
+    expect(tests).toEqual([]);
+    expect(runner.current().savedTests.qwen).toMatchObject({ kind: 'error', error: { kind: 'notConfigured' } });
+  });
+
+  it('drops a test whose key was forgotten meanwhile', async () => {
+    const { runner, secrets, tests } = setup();
+    secrets.set('ai:deepseek', DEEPSEEK_KEY);
+    const testing = runner.testSaved('deepseek');
+    await vi.waitFor(() => expect(tests).toHaveLength(1));
+    runner.forgetAsked('deepseek');
+    await runner.forget();
+    expect(tests[0].signal.aborted).toBe(true);
+    tests[0].done(passed);
+    await expect(testing).resolves.toBe(false);
+    expect(runner.current().savedTests).toEqual({});
+  });
+
+  it('marks a newly saved key with the test it just passed, else untested', async () => {
+    const { runner, tests } = setup();
+    runner.draft(GEMINI_KEY);
+    const saving = runner.saveAndTest();
+    tests[0].done(passed);
+    await saving;
+    expect(runner.current().savedTests.gemini).toMatchObject({ kind: 'ok' });
+    runner.draft('AIzaSyANOTHERKEY00000000');
+    await runner.saveWithoutTesting();
+    expect(runner.current().savedTests.gemini).toEqual({ kind: 'idle' });
   });
 });

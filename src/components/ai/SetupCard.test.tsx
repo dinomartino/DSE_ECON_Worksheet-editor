@@ -95,6 +95,7 @@ function setup(opts: { env?: { desktop: boolean }; write?: AiSetupDeps['writeSec
     writeSecret: opts.write ?? (async (a, value) => (secrets.set(a, value), { ok: true, store: 'session' })),
     deleteSecret: async (a) => void secrets.delete(a),
     peekSecret: (a) => (secrets.has(a) ? { store: 'session', last4: secrets.get(a)!.slice(-4) } : null),
+    resolveConfig: async (provider) => ({ ok: false, provider, reason: 'noKey' }),
     readSettings: () => store.read(AI_SETTINGS),
     writeSettings: (patch) => void store.write(AI_SETTINGS, patch),
   };
