@@ -14,7 +14,6 @@ import {
   mixLabel,
   sinceIso,
   traySummary,
-  treeCounts,
 } from './bankPage';
 
 const choice = createMcqQuestion().type;
@@ -46,7 +45,7 @@ describe('coverage', () => {
   it('a question tagged in any copy is not untagged', () => {
     const rows = [row({ rootId: 'a', tags: [] }), row({ rootId: 'a', tags: ['E'], docId: 'd2' })];
     expect(coverage(rows).untagged).toBe(0);
-    expect(treeCounts(rows).get('untagged') ?? 0).toBe(0);
+    expect(filterRows(rows, { ...DEFAULT_FILTERS, topic: 'untagged' })).toEqual([]);
   });
 
   it('marks thin topics against the tallest bar, never when nothing is tagged', () => {
@@ -56,24 +55,6 @@ describe('coverage', () => {
     expect(isThin(0, 0)).toBe(false);
     const result = coverage([row({ tags: [] })]);
     expect(result.bars.every((bar) => !bar.thin)).toBe(true);
-  });
-});
-
-describe('treeCounts', () => {
-  it('counts distinct questions; a coarse topic includes its fine codes', () => {
-    const rows = [
-      row({ rootId: 'a', tags: ['C.ped'] }),
-      row({ rootId: 'a', tags: ['C.ped'], docId: 'copy' }),
-      row({ rootId: 'b', tags: ['C'] }),
-      row({ rootId: 'c', tags: [] }),
-      row({ rootId: 'd', tags: ['not a code'] }),
-    ];
-    const counts = treeCounts(rows);
-    expect(counts.get('all')).toBe(4);
-    expect(counts.get('C')).toBe(2);
-    expect(counts.get('C.ped')).toBe(1);
-    expect(counts.get('untagged')).toBe(2);
-    expect(counts.get('D')).toBeUndefined();
   });
 });
 

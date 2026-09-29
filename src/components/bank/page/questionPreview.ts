@@ -1,11 +1,12 @@
 import { questionClipboardHtml } from '@/export/clipboard';
 import { cssFontFamilies } from '@/model/fonts';
 import { contentWidth, pageSetupOf } from '@/model/page';
-import type { LanguageMode, OutputMode, Worksheet } from '@/model/types';
+import type { LanguageMode, OutputMode, VersionMode, Worksheet } from '@/model/types';
 import { diagramImages } from '@/components/start/thumbnail';
 
 /**
- * One bank question as the teacher's paper prints it, for the bank page's preview.
+ * One bank question as its paper prints it (Teacher version by default), for the bank
+ * screen's preview.
  *
  * The same route as the start screen's thumbnails: the IR's clipboard reader (so content,
  * answers and mark schemes can never disagree with the export), diagrams as SVG data URLs.
@@ -48,10 +49,11 @@ export function questionPreviewHtml(
   worksheet: Worksheet,
   questionId: string,
   language: LanguageMode,
+  version: VersionMode = 'teacher',
 ): QuestionPreview | undefined {
   const single = oneQuestionWorksheet(worksheet, questionId);
   if (!single) return undefined;
-  const mode: OutputMode = { language, version: 'teacher', omitAnswerSpace: true };
+  const mode: OutputMode = { language, version, omitAnswerSpace: true };
   const body = bodyOf(questionClipboardHtml(single, questionId, mode, diagramImages(single, mode)));
   // The clipboard writes its paste size (12pt); the page prints at the document's body size.
   const family = `font-family:${cssFontFamilies(worksheet.fonts, "'", ',')},serif;`;

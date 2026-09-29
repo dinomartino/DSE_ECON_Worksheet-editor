@@ -13,8 +13,10 @@ Revised from the 2026-09-26 proposal after an audit against the code at `9f2009b
   after C2, once a term → topic table exists.
 - **Phase 0 fixes the duplicate bug and repairs saved documents on open.** Built.
 - **UI (design page, artifact FyR7Xdd6BpgvFL42tdzz2T):** an editor sidebar tab **題庫 Bank**
-  for refilling the open paper, and a **Question bank 題庫** tab on the start screen beside
-  Worksheets (the dashboard). No add-rail drawer, no full-screen builder.
+  for refilling the open paper, and the **Question bank 題庫** dashboard. Revised the same
+  day (design page § "The bank as its own screen"): the dashboard is its own screen,
+  opened from the start screen and left by ← Home, with three levels (topic cards, a
+  topic's review page, untagged tag-as-you-go). No add-rail drawer.
 - **The bank fills itself:** every saved worksheet's questions are indexed automatically.
   A worksheet can opt out with `bankHidden` (Setup).
 - **Copies are independent.** Editing a copy never changes its source and vice versa.
@@ -163,7 +165,7 @@ the last inserted; review bar (‹ ›, Undo, Done); hover ghost preview at the 
 Fill N from topic via `pickFill`; entry points in the add rail's Question menu and the
 empty page.
 
-**WP-D · Question bank page** (M): start-screen tab beside Worksheets; Topics tree in the
+**WP-D · Question bank page** (M, built; since redesigned as its own screen, see Decisions): start-screen tab beside Worksheets; Topics tree in the
 Folders slot; coverage strip (MCQ / structured per topic, thin floor, "N untagged →
 Tag"); list of `groupRows` with "N versions" expansion; preview through the IR in
 teacher mode with Topics editable (written to the owning document, then re-indexed);

@@ -199,7 +199,7 @@ Invariants:
 `src/components/start/StartScreen.tsx:StartScreen` — the list and the only way in;
 `src/components/start/NewWorksheetForm.tsx:NewWorksheetForm` — once-per-document decisions.
 
-- `src/components/start/FileDashboard.tsx:FileDashboard` — grid of first pages / list; search, kind, order (the Worksheets tab; Question bank is the other, § library)
+- `src/components/start/FileDashboard.tsx:FileDashboard` — grid of first pages / list; search, kind, order (the start screen's Question bank entry opens § library's own screen)
 - `src/components/start/dashboard.ts:visibleSummaries` · `:scopedSummaries` — folder scope, then filter and sort, pure
 - `src/components/start/dashboardDrag.ts:stepDrag` · `:parseDropTarget` — document→folder drag state machine, pure
 - `src/components/start/useDocumentDrag.tsx:useDocumentDrag` — pointer-event drag: capture, ghost, one `drop` on release
@@ -230,9 +230,11 @@ scan; rebuildable, so no teacher's work lives in it.
 - `src/storage/fileStore.ts:libraryIndexFile` — desktop: `worksheets/library/index.json`
 - `src/components/bank/BankRow.tsx:BankRow` — the shared row: excerpt, quiet meta, action slot, in-paper / used-with-class / missing-language / selected states
 - `src/store/worksheetStore.ts:insertQuestionCopies` — bank copies in (`copyQuestion`), one commit, one undo
-- `src/components/bank/page/QuestionBankPage.tsx:QuestionBankPage` — the start screen's Question bank tab: coverage strip, Topics tree (in the Folders slot), grouped list, Teacher preview, selection tray
-- `src/components/bank/page/bankPage.ts:coverage` · `:treeCounts` · `:filterRows` · `:traySummary` · `:addTarget` — the page's pure half; counts are distinct `rootId`s
-- `src/components/bank/page/questionPreview.ts:questionPreviewHtml` — one question through the clipboard reader of the IR, Teacher mode, in its own document's setup
+- `src/components/bank/page/QuestionBankScreen.tsx:QuestionBankScreen` — the bank as its own screen (the start screen's `view`, left by ← Home): levels, filters, picks, the one window key listener, topic writes
+- `src/components/bank/page/TopicCards.tsx:TopicCards` (level 1: topic cards, untagged strip) · `src/components/bank/page/ReviewPage.tsx:ReviewPage` (level 2: sub-topic rail, collapsible, large preview, facts) · `src/components/bank/page/TagAsYouGo.tsx:TagAsYouGo` (level 3: one untagged question, numbered topic keys) · `src/components/bank/page/FilterPopover.tsx:FilterPopover`
+- `src/components/bank/page/bankScreen.ts:levelUp` · `:levelForSearch` · `:railSections` · `:suggestTopics` · `:latestClassUsage` — the screen's pure half: levels, rail headings (sub-topics, then General), suggestion ranking
+- `src/components/bank/page/bankPage.ts:coverage` · `:filterRows` · `:traySummary` · `:addTarget` — the data half; counts are distinct `rootId`s
+- `src/components/bank/page/PaperPreview.tsx:PaperPreview` · `src/components/bank/page/questionPreview.ts:questionPreviewHtml` — one question through the clipboard reader of the IR, Student or Teacher, at print size in its own document's setup
 - `src/components/bank/page/writeBack.ts:writeTags` · `:withQuestionTags` — topic edits into the owning documents, one save per document
 - `src/components/bank/page/fromSelection.ts:worksheetFromPicks` · `src/components/bank/page/addToOpen.ts:addPicksToOpenDocument` — New worksheet from these / Add to the open paper (one ⌘Z)
 - `src/library/tabFilters.ts:visibleGroups` · `:paperRoots` · `:anchorLabel` · `:blockingFilter` — the editor tab's filters, "in this paper", the anchor line, which filter emptied the list
@@ -242,7 +244,7 @@ scan; rebuildable, so no teacher's work lives in it.
 
 Invariants:
 - A bank is a `Worksheet` with `kind: 'bank'`; no second storage format.
-- The bank page writes documents only while no editor is mounted (the start screen replaces it), so there is no in-memory copy to save over the write.
+- The bank screen writes documents only while no editor is mounted (it is part of the start screen, which replaces the editor), so there is no in-memory copy to save over the write. Writes are queued one at a time.
 - Copies are independent; identity is `lineage.rootId`, never a shared id.
 - No module in `src/library/` branches on a type id (`src/library/noTypeBranching.test.ts`).
 - The index follows `list()`, never storage keys (a trashed web document keeps its key); it holds no images and no teacher's work — §Persistence.

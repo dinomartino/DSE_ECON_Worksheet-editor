@@ -13,10 +13,14 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
 ### Added
 - **Tag questions with DSE topics.** Pick a topic (A–J and the electives, or your own
   free tag) in the Edit panel, and set the class in Setup. Tags never print.
-- **Copy questions to a question bank from the outline.** Use a question's ⋯ menu to copy it to a bank (or start a new one); after you improve a question, "Update bank copy" refreshes the bank's version, and "Treat as a new question" cuts a copy loose from its origin. Banks show as "Question bank" on the Worksheets tab.
-- **Question bank 題庫 on the start screen**: a full-width page (the side panel steps aside) with every question from your worksheets, by topic,
-  with a coverage chart, a Teacher-version preview (diagrams and mark schemes), topics you
-  can set, and "New worksheet from these" or "Add to" your last worksheet for the ones you tick.
+- **Copy questions to a question bank from the outline.** Use a question's ⋯ menu to copy it to a bank (or start a new one); after you improve a question, "Update bank copy" refreshes the bank's version, and "Treat as a new question" cuts a copy loose from its origin. Banks show as "Question bank" in your list of documents.
+- **Question bank 題庫, its own screen**: open it from the start screen to see every
+  question from your worksheets as topic cards (how many of each, and which topics are
+  thin). Open a topic to read its questions one by one at print size, in English, 中文 or
+  both, Student or Teacher version, with the list grouped by sub-topic (hide it for more
+  room). Tick questions to make a new worksheet from them or add them to your last one.
+  Untagged questions get a quick tagging mode: press 1 to 6 to pick a suggested topic,
+  Enter to save and see the next. ← Home takes you back.
 - **題庫 tab in the editor**: find questions from your other worksheets by words, topic,
   type or marks and insert copies after the question you click, in one click, or Fill a
   set by topic, preferring ones your class has not seen. The new questions are highlighted

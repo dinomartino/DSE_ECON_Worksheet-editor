@@ -16,7 +16,7 @@ import {
 } from '@/platform';
 import { Dialog } from '@/components/ui/Dialog';
 import { AppMark } from '@/components/ui/AppMark';
-import { ArchiveIcon, FolderIcon, FolderOpenIcon, SettingsIcon, SheetIcon } from '@/components/ui/icons';
+import { ArchiveIcon, BankIcon, FolderIcon, FolderOpenIcon, SettingsIcon, SheetIcon } from '@/components/ui/icons';
 import type { MenuItem } from '@/components/ui/Menu';
 import { VersionLine } from '@/components/editor/UpdateBanner';
 import { FeedbackDialog } from '@/components/feedback/FeedbackDialog';
@@ -37,8 +37,8 @@ import {
   type ImportCounts,
 } from './fileDrop';
 import { NEW_WORKSHEET_FORM_ID, NewWorksheetForm } from './NewWorksheetForm';
-import { QuestionBankPage } from '@/components/bank/page/QuestionBankPage';
-import { readStartTab, writeStartTab, type StartTab } from '@/components/bank/page/bankPage';
+import { QuestionBankScreen } from '@/components/bank/page/QuestionBankScreen';
+import { useBank } from '@/library/useBank';
 import { RenameDialog, renameWorksheet } from './RenameDialog';
 import { TrashList } from './TrashList';
 import { newId } from '@/model/factories';
@@ -135,8 +135,10 @@ export function StartScreen({
   const [naming, setNaming] = useState<Naming | undefined>();
   const [moving, setMoving] = useState<WorksheetSummary | undefined>();
   const [deletingFolder, setDeletingFolder] = useState<Folder | undefined>();
-  // Lazy, like the folder: rendered only after hydration. Remembered per viewer.
-  const [tab, setTab] = useState<StartTab>(readStartTab);
+  // The Question bank replaces this screen's view the way opening a document replaces
+  // it; ← Home comes back. Session state: the app always opens on the documents.
+  const [view, setView] = useState<'home' | 'bank'>('home');
+  const { groups: bankGroups } = useBank();
   const closeFeedback = useCallback(() => setFeedback(false), []);
   const [whatsNew, setWhatsNew] = useState(false);
   const closeWhatsNew = useCallback(() => setWhatsNew(false), []);
@@ -626,7 +628,41 @@ export function StartScreen({
         documents already on it. The panel runs the full height like the editor's own
         rail, so the screen reads as the same room as the tool it opens.
       */}
-      {tab !== 'bank' && (
+      {view === 'bank' ? (
+        <div className="min-h-0 min-w-0 flex-1">
+          <QuestionBankScreen
+            summaries={summaries}
+            loaded={loaded}
+            banner={
+              error ? (
+                <p role="alert" className="animate-slide-down-in rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink">
+                  {error}
+                </p>
+              ) : notice ? (
+                <NoticeBox notice={notice} onDismiss={() => setNotice(undefined)} flush />
+              ) : undefined
+            }
+            settings={<SettingsButton />}
+            onHome={() => setView('home')}
+            onOpenDocument={(id, then) => void openSaved(id, then)}
+            onOpenWorksheet={(worksheet) => onOpen(worksheet)}
+            onDocumentsChanged={() => void refresh()}
+            onNotice={(message) => {
+              setError(undefined);
+              setNotice({ message });
+            }}
+            onError={(message) => {
+              setNotice(undefined);
+              setError(message);
+            }}
+            onStartNew={() => {
+              setView('home');
+              setCreating('classroom');
+            }}
+          />
+        </div>
+      ) : (
+      <>
       <aside className="zone-light flex shrink-0 flex-col overflow-y-auto border-b border-line bg-surface px-9 pb-8 pt-9 lg:h-full lg:w-[400px] lg:border-b-0 lg:border-r">
         <header className="flex items-center gap-2.5">
           <span className="flex shrink-0 text-ink">
@@ -683,6 +719,23 @@ export function StartScreen({
           </div>
         </section>
 
+        {/* The bank is every question already written, so it is a way *in* too: its own
+            screen, like a document, with ← Home to come back. */}
+        <section className="mt-7">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
+            Reuse questions
+          </h2>
+          <div className="mt-3 flex flex-col border-t border-line">
+            <StartRow
+              icon={<BankIcon size={16} />}
+              title="Question bank 題庫"
+              trailing={bankGroups.length > 0 ? `${bankGroups.length} ${bankGroups.length === 1 ? 'question' : 'questions'}` : undefined}
+              hint="Every question from your worksheets, by topic."
+              onClick={() => setView('bank')}
+            />
+          </div>
+        </section>
+
         {/* One quiet line about where work lives, then the build. Backup, restore,
             folders and Trash sit with the saved documents, on the right. */}
         <div className="mt-auto space-y-3 pt-8 text-[11px] leading-relaxed text-ink-subtle">
@@ -710,77 +763,44 @@ export function StartScreen({
           </div>
         </div>
       </aside>
-      )}
 
       {/* The desk side: every document already on the desk, as its first page. */}
-      <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-9 py-9 lg:px-14 lg:py-12">
+      <main className="min-h-0 flex-1 overflow-y-auto px-9 py-9 lg:px-14 lg:py-12">
         {/* Results sit above the list: below it, a long archive scrolls them out of view. */}
         {error && (
           <p
             role="alert"
-            className="mx-auto mb-5 w-full max-w-5xl shrink-0 animate-slide-down-in rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink"
+            className="mx-auto mb-5 max-w-5xl animate-slide-down-in rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink"
           >
             {error}
           </p>
         )}
         {notice && <NoticeBox notice={notice} onDismiss={() => setNotice(undefined)} />}
-        <StartTabs
-          wide={tab === 'bank'}
-          tab={tab}
-          onChange={(next) => {
-            setTab(next);
-            writeStartTab(next);
-            setShowingTrash(false);
-          }}
-        />
-        {tab === 'bank' ? (
-          <div className="mx-auto flex w-full max-w-[1680px] flex-col lg:min-h-0 lg:flex-1">
-            <QuestionBankPage
-              summaries={summaries}
-              loaded={loaded}
-              onOpenDocument={(id, then) => void openSaved(id, then)}
-              onOpenWorksheet={(worksheet) => onOpen(worksheet)}
-              onDocumentsChanged={() => void refresh()}
-              onNotice={(message) => {
-                setError(undefined);
-                setNotice({ message });
-              }}
-              onError={(message) => {
-                setNotice(undefined);
-                setError(message);
-              }}
-              onStartNew={() => setCreating('classroom')}
-            />
-          </div>
-        ) : showingTrash ? (
-          // Wrapped: the main column is a flex column (for the bank's height), and a flex
-          // item with auto margins would shrink to its content instead of filling it.
-          <div className="shrink-0">
-            <TrashList
-              rows={trashRows}
-              onBack={() => setShowingTrash(false)}
-              onRestore={(row) => void restoreFromTrash(row)}
-              onPurge={setConfirmingPurge}
-              onEmpty={() => setConfirmingEmpty(true)}
-            />
-          </div>
+        {showingTrash ? (
+          <TrashList
+            rows={trashRows}
+            onBack={() => setShowingTrash(false)}
+            onRestore={(row) => void restoreFromTrash(row)}
+            onPurge={setConfirmingPurge}
+            onEmpty={() => setConfirmingEmpty(true)}
+          />
         ) : (
-          <div className="shrink-0">
-            <FileDashboard
-              summaries={summaries}
-              loaded={loaded}
-              actions={actions}
-              trashCount={trashRows.length}
-              onShowTrash={() => setShowingTrash(true)}
-              backupItems={backupItems}
-              folders={folders}
-              folderId={folderId}
-              onFolderChange={enterFolder}
-              folderActions={folderActions}
-            />
-          </div>
+          <FileDashboard
+            summaries={summaries}
+            loaded={loaded}
+            actions={actions}
+            trashCount={trashRows.length}
+            onShowTrash={() => setShowingTrash(true)}
+            backupItems={backupItems}
+            folders={folders}
+            folderId={folderId}
+            onFolderChange={enterFolder}
+            folderActions={folderActions}
+          />
         )}
       </main>
+      </>
+      )}
 
       <input
         ref={backupInput}
@@ -1048,71 +1068,6 @@ export function StartScreen({
 }
 
 /**
- * Worksheets | Question bank: the two things on the desk. Typographic tabs with the 2px
- * accent underline, like the sidebar's. The bank is every question in the worksheets,
- * so it sits beside them rather than in a menu.
- */
-function StartTabs({
-  tab,
-  onChange,
-  wide,
-}: {
-  tab: StartTab;
-  onChange: (tab: StartTab) => void;
-  /** Bank mode: the aside is gone, so the row carries the brand and the Settings gear. */
-  wide?: boolean;
-}) {
-  const tabs: { id: StartTab; label: string; zh: string }[] = [
-    { id: 'worksheets', label: 'Worksheets', zh: '工作紙' },
-    { id: 'bank', label: 'Question bank', zh: '題庫' },
-  ];
-  return (
-    <div
-      className={`mx-auto mb-5 flex w-full shrink-0 items-end gap-6 border-b border-line ${wide ? 'max-w-[1680px]' : 'max-w-5xl'}`}
-    >
-      {wide && (
-        <span className="flex items-center gap-2.5 self-center pb-2 pr-3">
-          <span className="flex shrink-0 text-ink">
-            <AppMark size={22} />
-          </span>
-          <span className="text-[13px] font-semibold text-ink">Worksheet</span>
-        </span>
-      )}
-      <div role="tablist" aria-label="Start screen" className="flex gap-6">
-      {tabs.map((entry) => {
-        const active = entry.id === tab;
-        return (
-          <button
-            key={entry.id}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => onChange(entry.id)}
-            className={`relative -mb-px cursor-pointer pb-2 text-[13.5px] transition-colors duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-              active ? 'font-semibold text-ink' : 'font-medium text-ink-muted hover:text-ink'
-            }`}
-          >
-            {entry.label} <span className={`font-normal ${active ? 'text-ink-muted' : 'text-ink-subtle'}`}>{entry.zh}</span>
-            <span
-              aria-hidden
-              className={`absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-accent transition-[opacity,scale] duration-200 ease-out-soft ${
-                active ? 'scale-x-100 opacity-100' : 'scale-x-50 opacity-0'
-              }`}
-            />
-          </button>
-        );
-      })}
-      </div>
-      {wide && (
-        <span className="ml-auto self-center pb-1.5">
-          <SettingsButton />
-        </span>
-      )}
-    </div>
-  );
-}
-
-/**
  * One way to start, as a line in an index rather than an icon card. The accent bar
  * that slides in on hover is the row's whole affordance — the text stays put, the
  * colour arrives, nothing lifts or casts a shadow.
@@ -1121,11 +1076,14 @@ function StartRow({
   title,
   hint,
   icon,
+  trailing,
   onClick,
 }: {
   title: string;
   hint: string;
   icon?: ReactNode;
+  /** Quiet text at the title's far end (a count). */
+  trailing?: string;
   onClick: () => void;
 }) {
   return (
@@ -1147,6 +1105,7 @@ function StartRow({
           </span>
         )}
         {title}
+        {trailing && <span className="ml-auto text-[11.5px] font-normal tabular-nums text-ink-subtle">{trailing}</span>}
       </span>
       <span className="mt-0.5 block text-[11px] leading-snug text-ink-muted">{hint}</span>
     </button>
@@ -1338,12 +1297,12 @@ export function SettingsButton() {
   );
 }
 
-function NoticeBox({ notice, onDismiss }: { notice: Notice; onDismiss: () => void }) {
+function NoticeBox({ notice, onDismiss, flush }: { notice: Notice; onDismiss: () => void; flush?: boolean }) {
   const details = notice.details ?? [];
   return (
     <div
       role="status"
-      className="zone-light mx-auto mb-5 w-full max-w-5xl shrink-0 animate-slide-down-in rounded-xl border border-line bg-surface px-4 py-3"
+      className={`zone-light animate-slide-down-in rounded-xl border border-line bg-surface px-4 py-3 ${flush ? '' : 'mx-auto mb-5 max-w-5xl'}`}
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <p className="min-w-0 flex-1 text-[12.5px] font-medium text-ink">{notice.message}</p>
