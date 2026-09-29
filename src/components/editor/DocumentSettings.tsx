@@ -18,6 +18,8 @@ import {
   defaultFooter,
   defaultHeader,
   firstPageHeaderFooter,
+  firstPageModeOf,
+  type FirstPageMode,
   headerFooterOf,
   MARGIN_PRESETS,
   PAPER_SIZES,
@@ -63,14 +65,7 @@ import { BiTextField } from './BiTextField';
  * all has no visual representation there and so lives in a panel.
  */
 
-/**
- * Four tabs became three.
- *
- * "Title block" was its own tab while printing on page 1 immediately below the header
- * and replacing the title set on the "Worksheet" tab — one decision spread over three
- * places, none of which mentioned the other two. They are now one tab ordered down the
- * page: title, then header, then footer.
- */
+/** `furniture` is the header & footer tab, which also holds page 1's title. */
 type Tab = 'document' | 'page' | 'furniture' | 'cover';
 
 /** Top/bottom before left/right — the order Word and every print dialog state them in. */
@@ -594,22 +589,6 @@ function PageTab() {
 }
 
 /**
- * Header and footer settings.
- *
- * Organised by **where a thing prints** — the top of every page, the bottom of every
- * page, page 1's own — rather than by which model field stores it. That is the question
- * a teacher actually arrives with ("how do I get the school name at the top?"), and the
- * old arrangement answered a different one: it grouped by mechanism, so the masthead sat
- * on a separate "Title block" tab from the header despite printing three centimetres
- * below it and doing a visibly similar job.
- *
- * Everything with a place on the printed page — the text, the rows, which zone a field
- * sits in — is still edited *on* the page (§ "the preview is the editor"). What stays
- * here is what has no visual representation there: whether the band prints at all,
- * whether it carries a rule, what page 1 does, and the presets, because choosing a
- * starting layout is a decision about the document rather than a manipulation of it.
- */
-/**
  * Says when the same computed field prints twice.
  *
  * The header presets and the title block each carry a marks total, so choosing both —
@@ -693,300 +672,457 @@ function BandOverflowNotice() {
 }
 
 /**
- * One editable row list — either page 1's or the running rows.
+ * One editable row list: page 1's own, or the running rows (`scope`).
  *
- * Both surfaces are the same thing (a `Band[]` printed at one edge), so they get one
- * component: the only differences are which list the writes are scoped to and what the
- * surface is called. Two hand-written copies would drift, and the pair has to look alike
- * for the split to read as "the same choice, made twice".
+ * Text is typed on the page; this surface keeps what has no place there: the rule, a
+ * new row, clearing, and the presets.
  */
 function BandSurface({
   which,
   scope,
-  label,
-  hint,
   bands,
   rule,
   onRule,
-  extraAction,
 }: {
   which: 'header' | 'footer';
   scope: BandScope;
-  label: string;
-  hint: string;
   bands: Band[];
   rule: boolean | undefined;
-  onRule?: (rule: boolean) => void;
-  extraAction?: React.ReactNode;
+  onRule: (rule: boolean) => void;
 }) {
   const setBands = useWorksheetStore((s) => s.setHeaderFooterBands);
   const addBand = useWorksheetStore((s) => s.addHeaderFooterBand);
   const presets = HEADER_FOOTER_PRESETS.filter((preset) => preset.edge === which);
 
+  // Empty: one way forward, pick a layout. With rows: what prints, and its controls.
+  if (bands.length === 0) {
+    return (
+      <div className="space-y-1.5">
+        <div className="grid grid-cols-2 gap-2">
+          {presets.map((preset) => (
+            <BandPresetCard
+              key={preset.id}
+              name={preset.name}
+              bands={preset.build()}
+              edge={which}
+              onClick={() => setBands(which, preset.build(), scope)}
+            />
+          ))}
+        </div>
+        <Button size="sm" variant="subtle" onClick={() => addBand(which, undefined, scope)}>
+          Or start with an empty row
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2">
-      <GroupHeader title={label} hint={hint} />
-
-      {/*
-        An empty surface offers exactly one way forward — pick a layout. With rows present
-        it offers the opposite: what is printing now, and the controls to adjust it.
-        Showing both at once gave three competing answers to "how do I start".
-      */}
-      {bands.length === 0 ? (
-        <div className="space-y-1.5">
-          <div className="grid grid-cols-2 gap-2">
-            {presets.map((preset) => (
-              <BandPresetCard
-                key={preset.id}
-                name={preset.name}
-                bands={preset.build()}
-                edge={which}
-                onClick={() => setBands(which, preset.build(), scope)}
-              />
-            ))}
-          </div>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <Button size="sm" variant="subtle" onClick={() => addBand(which, undefined, scope)}>
-              Or start with an empty row
-            </Button>
-            {extraAction}
-          </div>
+      <div>
+        <div className="rounded-lg border border-line bg-[#fdfcfa] py-1.5 text-[#3f3b38]">
+          <BandPreview
+            bands={bands}
+            rule={rule}
+            edge={which}
+            page={scope === 'firstPage' ? { number: 1, count: 12 } : undefined}
+          />
         </div>
-      ) : (
-        <>
-          <div>
-            <div className="rounded-lg border border-line bg-[#fdfcfa] py-1.5 text-[#3f3b38]">
-              <BandPreview bands={bands} rule={rule} edge={which} />
-            </div>
-            <p className="mt-1 text-[11px] text-ink-muted">
-              Click this {which} on the page to type in it, or drag a field between the left,
-              centre and right zones.
-            </p>
-          </div>
+        <p className="mt-1 text-[11px] text-ink-muted">
+          Double-click this {which} on the page to type in it, or drag a field between the
+          left, centre and right zones.
+        </p>
+      </div>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-            {onRule && (
-              <CheckField label="Rule line" checked={Boolean(rule)} onChange={onRule} />
-            )}
-            <Button size="sm" variant="subtle" onClick={() => addBand(which, undefined, scope)}>
-              + Row
-            </Button>
-            <Button size="sm" variant="subtle" onClick={() => setBands(which, [], scope)}>
-              Clear
-            </Button>
-            {extraAction}
-          </div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+        <CheckField label="Rule line" checked={Boolean(rule)} onChange={onRule} />
+        <Button size="sm" variant="subtle" onClick={() => addBand(which, undefined, scope)}>
+          + Row
+        </Button>
+        <Button size="sm" variant="subtle" onClick={() => setBands(which, [], scope)}>
+          Clear
+        </Button>
+      </div>
 
-          {/* Presets as pictures. A name told a teacher nothing about the layout, so the
-              only way to compare them was to apply each in turn — destroying whatever was
-              there each time. */}
-          <details className="group/presets pt-0.5">
-            <summary className="cursor-pointer list-none text-[11px] font-medium text-ink-muted transition-colors duration-150 ease-out-soft hover:text-ink">
-              Replace with a different layout{' '}
-              <span
-                aria-hidden
-                className="inline-block transition-transform duration-150 ease-out-soft group-open/presets:rotate-180"
-              >
-                ▾
-              </span>
-            </summary>
-            <div className="mt-2 grid animate-fade-in grid-cols-2 gap-2">
-              {presets.map((preset) => (
-                <BandPresetCard
-                  key={preset.id}
-                  name={preset.name}
-                  bands={preset.build()}
-                  edge={which}
-                  onClick={() => setBands(which, preset.build(), scope)}
-                />
-              ))}
-            </div>
-          </details>
-        </>
-      )}
+      <details className="group/presets pt-0.5">
+        <summary className="cursor-pointer list-none text-[11px] font-medium text-ink-muted transition-colors duration-150 ease-out-soft hover:text-ink">
+          Replace with a different layout{' '}
+          <span
+            aria-hidden
+            className="inline-block transition-transform duration-150 ease-out-soft group-open/presets:rotate-180"
+          >
+            ▾
+          </span>
+        </summary>
+        <div className="mt-2 grid animate-fade-in grid-cols-2 gap-2">
+          {presets.map((preset) => (
+            <BandPresetCard
+              key={preset.id}
+              name={preset.name}
+              bands={preset.build()}
+              edge={which}
+              onClick={() => setBands(which, preset.build(), scope)}
+            />
+          ))}
+        </div>
+      </details>
     </div>
   );
 }
 
+/** Which page the panel is editing. */
+type PageView = 'first' | 'later';
+
 /**
- * One edge, presented as the two surfaces it actually prints on.
- *
- * **Page 1 comes first, and is edited directly.** It used to be defined *relative to* the
- * running rows: a teacher wanting a cover had to build a header for pages 2+ they might
- * not want, then choose "Its own rows" — which copied it — then edit the copy. That is
- * backwards from how a paper is made, where the cover is the first thing decided and the
- * running line is the afterthought. Now each surface owns its rows, its presets and its
- * rule, and choosing a page-1 layout writes `firstPage` directly (the store creates the
- * separation on the first page-1 write rather than demanding it already exist).
- *
- * The two are still linked, because most papers do repeat one header: "Same as page 1"
- * copies across, and "Same as pages 2+" collapses the split back to one list. Those are
- * offered as quiet actions rather than as the mode a teacher must pass through.
+ * A header/footer as the panel reads it. A Question-Answer Book prints no header and
+ * always prints its footer: withheld and explained, not greyed out.
  */
-function HeaderFooterSection({
+function useEdge(which: 'header' | 'footer') {
+  const worksheet = useWorksheetStore((s) => s.worksheet);
+  const qab = isQabDocument(worksheet);
+  const value = headerFooterOf(worksheet[which], which === 'header' ? defaultHeader : defaultFooter);
+  return {
+    value,
+    withheld: qab && which === 'header',
+    alwaysOn: qab && which === 'footer',
+    enabled: (qab && which === 'footer') || value.enabled,
+  };
+}
+
+/** The edge's master switch, which governs it on every page. */
+function EdgeSwitch({ which }: { which: 'header' | 'footer' }) {
+  const setHeaderFooter = useWorksheetStore((s) => s.setHeaderFooter);
+  const { value, withheld, alwaysOn } = useEdge(which);
+  if (withheld) return <span className="text-xs text-ink-muted">No header on this booklet</span>;
+  if (alwaysOn) return <span className="text-xs text-ink-muted">Footer always prints</span>;
+  return (
+    <CheckField
+      label={`Print a ${which}`}
+      checked={value.enabled}
+      onChange={(on) => setHeaderFooter(which, { enabled: on })}
+    />
+  );
+}
+
+/** Heading for one edge inside a page view. */
+function EdgeHeading({ title, hint, action }: { title: string; hint?: string; action?: React.ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+      <div className="min-w-0">
+        <h3 className="text-[13px] font-semibold text-ink">{title}</h3>
+        {hint && <p className="text-[11px] leading-relaxed text-ink-muted">{hint}</p>}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+/** The one-line state of an edge that prints nothing here. */
+function EdgeOff({ which }: { which: 'header' | 'footer' }) {
+  const { withheld } = useEdge(which);
+  return (
+    <p className="text-[11px] leading-relaxed text-ink-muted">
+      {withheld
+        ? 'A Question-Answer Book prints no header. The page frame and the margin notes occupy the top of every sheet, as the reference booklet has it.'
+        : `The ${which} is off on every page. Tick “Print a ${which}” above to turn it on.`}
+    </p>
+  );
+}
+
+const FIRST_PAGE_OPTIONS: Array<{ value: FirstPageMode; label: string }> = [
+  { value: 'same', label: 'Same as pages 2+' },
+  { value: 'different', label: 'Its own' },
+  { value: 'blank', label: 'Nothing' },
+];
+
+/** One edge on page 1: the same rows as later pages, its own, or nothing. */
+function FirstPageEdge({
   which,
-  alwaysOn = false,
+  onEditLater,
 }: {
   which: 'header' | 'footer';
-  /**
-   * Withhold the on/off switch — the booklet's footer is part of its shape, not an
-   * option (§ `EdgeSections`). The rows themselves stay fully editable.
-   */
-  alwaysOn?: boolean;
+  onEditLater: () => void;
 }) {
-  const worksheet = useWorksheetStore((s) => s.worksheet);
   const setHeaderFooter = useWorksheetStore((s) => s.setHeaderFooter);
   const setFirstPageMode = useWorksheetStore((s) => s.setFirstPageMode);
-  const setFirstPageBands = useWorksheetStore((s) => s.setFirstPageBands);
+  const { value, withheld, enabled } = useEdge(which);
+  const title = `${which === 'header' ? 'Header' : 'Footer'} on page 1`;
 
-  const value = headerFooterOf(
-    worksheet[which],
-    which === 'header' ? defaultHeader : defaultFooter,
-  );
-  const name = which === 'header' ? 'Header' : 'Footer';
-  const edge = which === 'header' ? 'top' : 'bottom';
-  const enabled = alwaysOn || value.enabled;
+  if (withheld || !enabled) {
+    return (
+      <section className="space-y-1">
+        <EdgeHeading title={title} />
+        <EdgeOff which={which} />
+      </section>
+    );
+  }
 
-  // Resolved in the model, so the panel cannot disagree with the page about which of the
-  // three states this document is in (§ Page 1 can differ).
-  const firstPage = firstPageHeaderFooter(value);
-  const separated = Boolean(value.firstPage);
-  const blankOnFirst = !separated && value.showOnFirstPage === false;
+  // Read through the model, so the control cannot disagree with the page.
+  const mode = firstPageModeOf(value);
+  const resolved = firstPageHeaderFooter(value);
 
   return (
-    <section className="space-y-3">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-[13px] font-semibold text-ink">{name}</h3>
-          <p className="text-[11px] text-ink-muted">
-            {alwaysOn
-              ? `Always printed on a Question-Answer Book.`
-              : `Printed at the ${edge} of the page.`}
+    <section className="space-y-2.5">
+      <EdgeHeading
+        title={title}
+        action={
+          <Segmented<FirstPageMode>
+            label={title}
+            value={mode}
+            options={FIRST_PAGE_OPTIONS}
+            onChange={(next) => setFirstPageMode(which, next)}
+          />
+        }
+      />
+
+      {mode === 'same' && (
+        <div className="space-y-1.5">
+          <div className="rounded-lg border border-line bg-[#fdfcfa] py-1.5 text-[#3f3b38]">
+            <BandPreview
+              bands={value.bands}
+              rule={value.rule}
+              edge={which}
+              page={{ number: 1, count: 2 }}
+              emptyLabel={`Pages 2+ have no ${which} rows yet`}
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <p className="text-[11px] text-ink-muted">Prints the pages 2+ {which}.</p>
+            <Button size="sm" variant="subtle" onClick={onEditLater}>
+              Edit on Pages 2+
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {mode === 'different' && (
+        <div className="space-y-2">
+          <BandSurface
+            which={which}
+            scope="firstPage"
+            bands={resolved.bands}
+            rule={resolved.rule}
+            onRule={(rule) => setHeaderFooter(which, { firstPage: { ...value.firstPage!, rule } })}
+          />
+          <p className="text-[11px] text-ink-subtle">
+            Page 1 has its own rows. Switching back discards them (⌘Z undoes).
           </p>
         </div>
-        {!alwaysOn && (
-          <CheckField
-            label="Show"
-            checked={value.enabled}
-            onChange={(on) => setHeaderFooter(which, { enabled: on })}
-          />
-        )}
-      </div>
+      )}
 
-      {enabled && (
-        <div className="space-y-3.5 rounded-xl border border-line bg-surface-sunken p-3.5">
-          {/*
-            Page 1 first: it is the sheet a teacher builds first, and the one they are
-            looking at when they open this dialog.
-          */}
-          {blankOnFirst ? (
-            <div className="space-y-2">
-              <GroupHeader title="Page 1" hint="Nothing prints on the first sheet." />
-              <Button size="sm" variant="subtle" onClick={() => setFirstPageMode(which, 'same')}>
-                Print the {which} on page 1 too
-              </Button>
-            </div>
-          ) : (
-            <BandSurface
-              which={which}
-              scope={separated ? 'firstPage' : 'running'}
-              label="Page 1"
-              hint={
-                separated
-                  ? 'Its own rows: the cover.'
-                  : 'Currently the same rows as later pages.'
-              }
-              bands={firstPage.bands}
-              rule={firstPage.rule}
-              onRule={
-                separated
-                  ? (rule) =>
-                      setHeaderFooter(which, { firstPage: { ...value.firstPage!, rule } })
-                  : (rule) => setHeaderFooter(which, { rule })
-              }
-              extraAction={
-                <Button
-                  size="sm"
-                  variant="subtle"
-                  onClick={() => setFirstPageMode(which, 'blank')}
-                >
-                  Leave page 1 blank
-                </Button>
-              }
-            />
-          )}
-
-          <div className="space-y-2 border-t border-line pt-3">
-            {separated ? (
-              <BandSurface
-                which={which}
-                scope="running"
-                label="Pages 2 onward"
-                hint="The running line, repeated on every later sheet."
-                bands={value.bands}
-                rule={value.rule}
-                onRule={(rule) => setHeaderFooter(which, { rule })}
-                extraAction={
-                  <Button
-                    size="sm"
-                    variant="subtle"
-                    onClick={() => setFirstPageMode(which, 'same')}
-                  >
-                    Same as page 1
-                  </Button>
-                }
-              />
-            ) : (
-              <div className="space-y-1.5">
-                <GroupHeader
-                  title="Pages 2 onward"
-                  hint={
-                    blankOnFirst ? 'The rows above print from page 2.' : 'The same rows as page 1.'
-                  }
-                />
-                {/*
-                  The one action that opens the split, offered *after* page 1 is built
-                  rather than required before it. It copies the current rows, since a
-                  teacher separating the two almost always wants "like the others, but
-                  with the school name" — starting blank would make them rebuild it.
-                */}
-                <Button
-                  size="sm"
-                  variant="subtle"
-                  onClick={() => setFirstPageMode(which, 'different')}
-                >
-                  Give page 1 its own {which}
-                </Button>
-              </div>
-            )}
-          </div>
-
-          {separated && (
-            <p className="rounded-lg bg-surface px-2.5 py-2 text-[11px] leading-relaxed text-ink-muted">
-              Both are edited on the page too. Hover the {which} on the sheet you want to
-              change and type, add a row or remove one.
-            </p>
-          )}
-        </div>
+      {mode === 'blank' && (
+        <p className="text-[11px] text-ink-muted">Page 1 prints no {which}. Pages 2+ still do.</p>
       )}
     </section>
   );
 }
 
+/** One edge on pages 2 onward: the running rows. */
+function LaterPagesEdge({ which }: { which: 'header' | 'footer' }) {
+  const setHeaderFooter = useWorksheetStore((s) => s.setHeaderFooter);
+  const { value, withheld, enabled } = useEdge(which);
+  const title = `${which === 'header' ? 'Header' : 'Footer'} on pages 2+`;
+
+  if (withheld || !enabled) {
+    return (
+      <section className="space-y-1">
+        <EdgeHeading title={title} />
+        <EdgeOff which={which} />
+      </section>
+    );
+  }
+
+  const mode = firstPageModeOf(value);
+  const hint =
+    mode === 'same'
+      ? 'Page 1 prints these rows too.'
+      : mode === 'different'
+        ? 'Page 1 has its own rows. Change that on the Page 1 tab.'
+        : 'Page 1 prints none. Change that on the Page 1 tab.';
+
+  return (
+    <section className="space-y-2.5">
+      <EdgeHeading title={title} hint={hint} />
+      <BandSurface
+        which={which}
+        scope="running"
+        bands={value.bands}
+        rule={value.rule}
+        onRule={(rule) => setHeaderFooter(which, { rule })}
+      />
+    </section>
+  );
+}
+
+/** The title as page 1 prints it, in the miniature. */
+function MiniTitle() {
+  const worksheet = useWorksheetStore((s) => s.worksheet);
+  const bands = worksheet.bands ?? [];
+  if (bands.length > 0) return <BandPreview bands={bands} page={{ number: 1, count: 2 }} />;
+  const title = plain(worksheet.title.en) || plain(worksheet.title.zh);
+  return title ? (
+    <p className="truncate px-1.5 text-center text-[8px] font-semibold">{title}</p>
+  ) : (
+    // An untitled page still reserves the title line; drawn as a bar.
+    <div className="mx-auto mt-1 h-[4px] w-2/5 rounded-full bg-[#cfc8bf]" />
+  );
+}
+
 /**
- * The masthead — the rows printed on page 1 between the header and the first question.
- *
- * Presented as **two ways of titling the document**, one of which is in use, because
- * that is what they are and the interface used to hide it. `worksheet.title` and the
- * masthead bands both print a centred bold line near the top of page 1, the bands
- * *silently replace* the title when present (see `Preview`'s masthead block), and the
- * two lived on separate tabs — "Worksheet" and "Title block" — with nothing saying so.
- * A teacher who added a title block watched their typed title disappear and had no way
- * to connect the two actions.
- *
- * So the choice is stated once, as a choice, with the consequence drawn under each
- * option rather than discovered by trying it.
+ * A page picture that doubles as the tab choosing which page the panel edits. Paper
+ * inside, so literal hex; the selected tab takes the accent border.
  */
+function PageThumbTab({
+  view,
+  selected,
+  onSelect,
+  label,
+  caption,
+}: {
+  view: PageView;
+  selected: boolean;
+  onSelect: () => void;
+  label: string;
+  caption: string;
+}) {
+  const header = useEdge('header');
+  const footer = useEdge('footer');
+  const pageNumber = view === 'first' ? 1 : 2;
+  const page = { number: pageNumber, count: 2 };
+  const rowsOf = (edge: ReturnType<typeof useEdge>) =>
+    edge.withheld || !edge.enabled
+      ? { bands: [], rule: false }
+      : view === 'first'
+        ? firstPageHeaderFooter(edge.value)
+        : { bands: edge.value.bands, rule: edge.value.rule };
+  const top = rowsOf(header);
+  const bottom = rowsOf(footer);
+
+  return (
+    <button
+      type="button"
+      role="tab"
+      id={`hf-tab-${view}`}
+      aria-selected={selected}
+      aria-controls="hf-panel"
+      onClick={onSelect}
+      className={`flex min-w-0 flex-1 cursor-pointer flex-col gap-1.5 rounded-xl border p-2 text-left transition-colors duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+        selected ? 'border-accent bg-surface' : 'border-line bg-surface hover:border-line-strong'
+      }`}
+    >
+      <div aria-hidden className="flex h-[136px] flex-col overflow-hidden rounded border border-line/70 bg-[#fdfcfa] py-1.5 text-[#3f3b38]">
+        <div className="min-h-0 shrink space-y-1 overflow-hidden">
+          {top.bands.length > 0 && <BandPreview bands={top.bands} rule={top.rule} page={page} />}
+          {view === 'first' && <MiniTitle />}
+        </div>
+        {/* Body text, drawn as lines; gives way first when the header is tall. */}
+        <div className="min-h-0 flex-1 space-y-[5px] overflow-hidden px-2 pt-2.5">
+          {[92, 78, 86, 60].map((width) => (
+            <div key={width} className="h-[3px] rounded-full bg-[#e7e2dc]" style={{ width: `${width}%` }} />
+          ))}
+        </div>
+        <div className="shrink-0">
+          {bottom.bands.length > 0 && (
+            <BandPreview bands={bottom.bands} rule={bottom.rule} edge="footer" page={page} />
+          )}
+        </div>
+      </div>
+      <span className="px-0.5">
+        <span className={`block text-[12px] font-medium ${selected ? 'text-ink' : 'text-ink-muted'}`}>
+          {label}
+        </span>
+        <span className="block truncate text-[11px] text-ink-subtle">{caption}</span>
+      </span>
+    </button>
+  );
+}
+
+/** How page 1 differs, in a few words, for its tab caption. */
+function firstPageCaption(edges: Array<{ name: string; edge: ReturnType<typeof useEdge> }>): string {
+  const parts = edges.flatMap(({ name, edge }) => {
+    if (edge.withheld || !edge.enabled) return [];
+    const mode = firstPageModeOf(edge.value);
+    if (mode === 'different') return [`own ${name}`];
+    if (mode === 'blank') return [`no ${name}`];
+    return [];
+  });
+  if (parts.length === 0) return 'Same as later pages, plus the title';
+  const text = `${parts.join(', ')}, plus the title`;
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/**
+ * Header and footer, organised by page: two page pictures choose which page is edited.
+ * Page 1 chooses per edge between the later pages' rows, its own, or nothing, and holds
+ * the title because only page 1 prints it (§ Page 1 can differ).
+ */
+function HeaderFooterTab() {
+  const [view, setView] = useState<PageView>('first');
+  const header = useEdge('header');
+  const footer = useEdge('footer');
+
+  return (
+    <div className="space-y-5">
+      <BandOverflowNotice />
+      <DuplicateFieldNotice />
+
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-line bg-surface-sunken px-3.5 py-2.5">
+        <EdgeSwitch which="header" />
+        <EdgeSwitch which="footer" />
+        {!header.withheld && (
+          <span className="text-[11px] text-ink-subtle">On or off for every page.</span>
+        )}
+      </div>
+
+      <div role="tablist" aria-label="Page to edit" className="flex gap-3">
+        <PageThumbTab
+          view="first"
+          selected={view === 'first'}
+          onSelect={() => setView('first')}
+          label="Page 1"
+          caption={firstPageCaption([
+            { name: 'header', edge: header },
+            { name: 'footer', edge: footer },
+          ])}
+        />
+        <PageThumbTab
+          view="later"
+          selected={view === 'later'}
+          onSelect={() => setView('later')}
+          label="Pages 2 onward"
+          caption="Every page after the first"
+        />
+      </div>
+
+      <div
+        id="hf-panel"
+        role="tabpanel"
+        aria-labelledby={`hf-tab-${view}`}
+        key={view}
+        className="animate-fade-in space-y-6 border-t border-line pt-5"
+      >
+        {view === 'first' ? (
+          <>
+            <FirstPageEdge which="header" onEditLater={() => setView('later')} />
+            <div className="border-t border-line pt-5">
+              <TitleSection />
+            </div>
+            <div className="border-t border-line pt-5">
+              <FirstPageEdge which="footer" onEditLater={() => setView('later')} />
+            </div>
+          </>
+        ) : (
+          <>
+            <LaterPagesEdge which="header" />
+            <div className="border-t border-line pt-5">
+              <LaterPagesEdge which="footer" />
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /**
  * Build a mock-exam cover.
  *
@@ -1201,6 +1337,10 @@ function CoverOptions() {
   );
 }
 
+/**
+ * The title printed on page 1: the plain title, or a title block that replaces it.
+ * Stated as one choice because the block silently takes the title's place.
+ */
 function TitleSection() {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const setBands = useWorksheetStore((s) => s.setBands);
@@ -1212,7 +1352,7 @@ function TitleSection() {
   return (
     <section className="space-y-3">
       <div>
-        <h3 className="text-[13px] font-semibold text-ink">Title on page 1</h3>
+        <h3 className="text-[13px] font-semibold text-ink">Title (page 1 only)</h3>
         <p className="text-[11px] leading-relaxed text-ink-muted">
           Printed below the header, above the first question. Choose one. A title block
           takes the place of the plain title rather than printing as well as it.
@@ -1318,39 +1458,6 @@ function TitleSection() {
   );
 }
 
-/**
- * The header and footer sections, shaped by what the document is.
- *
- * A Question-Answer Book always prints its footer and never offers a header: the
- * header part is the vehicle for the page frame and margin notes, and no page of the
- * reference booklet carries a headed line. The controls are **withheld, not greyed
- * out** — a disabled switch invites the question "why can't I", while a sentence
- * answers it (§ missing per-cell controls are explained).
- */
-function EdgeSections() {
-  const qab = useWorksheetStore((s) => isQabDocument(s.worksheet));
-  return (
-    <>
-      <div className="border-t border-line pt-5">
-        {qab ? (
-          <section>
-            <h3 className="text-[13px] font-semibold text-ink">Header</h3>
-            <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
-              A Question-Answer Book prints no header. The page frame and the margin
-              notes occupy the top of every sheet, as the reference booklet has it.
-            </p>
-          </section>
-        ) : (
-          <HeaderFooterSection which="header" />
-        )}
-      </div>
-      <div className="border-t border-line pt-5">
-        <HeaderFooterSection which="footer" alwaysOn={qab} />
-      </div>
-    </>
-  );
-}
-
 export function DocumentSettings({
   initialTab = 'document',
   onClose,
@@ -1379,7 +1486,7 @@ export function DocumentSettings({
         tabs={[
           { id: 'document', label: 'Worksheet', hint: 'Title, fonts, sections' },
           { id: 'page', label: 'Page', hint: 'Paper, margins' },
-          { id: 'furniture', label: 'Title & edges', hint: 'Header, footer, page 1' },
+          { id: 'furniture', label: 'Header & footer', hint: 'Page 1, later pages' },
           { id: 'cover', label: 'Cover', hint: 'Mock exam front page' },
         ]}
       >
@@ -1388,16 +1495,7 @@ export function DocumentSettings({
           {tab === 'document' && <DocumentTab />}
           {tab === 'cover' && <CoverTab onClose={onClose} />}
           {tab === 'page' && <PageTab />}
-          {/* Ordered down the page — title, then the top of every page, then the bottom —
-              so the panel reads in the order the printed sheet does. */}
-          {tab === 'furniture' && (
-            <div className="space-y-6">
-              <BandOverflowNotice />
-              <DuplicateFieldNotice />
-              <TitleSection />
-              <EdgeSections />
-            </div>
-          )}
+          {tab === 'furniture' && <HeaderFooterTab />}
         </div>
       </DialogTabs>
     </Dialog>

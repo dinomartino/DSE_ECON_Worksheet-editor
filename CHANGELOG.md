@@ -73,8 +73,13 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
   classes it covers listed underneath.
 - **The start screen shows when there's more to scroll.** Its left column fades at the
   bottom while more is below, and shows a thin line at the top once you have scrolled down.
+- **Header & footer settings are organised by page.** In Setup, pick Page 1 or Pages 2
+  onward, then choose whether page 1's header and footer are the same as later pages, its
+  own, or nothing. Page 1's title settings sit with them.
 
 ### Fixed
+- **A mislabelled button no longer deletes page 1's own header.** "Same as page 1" kept
+  the later pages' header and removed page 1's. The new page choices replace it.
 - **Typing on the page is lighter.** The page no longer redraws twice for every key you
   press, which on a busy computer could stop the editor with an error mid-sentence.
 - **Editing a duplicated question no longer changes the original.** Worksheets where a

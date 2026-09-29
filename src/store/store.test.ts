@@ -13,7 +13,7 @@ import {
 import { computeNumbering } from '@/model/numbering';
 import { createWorksheetFrom } from '@/model/newWorksheet';
 import { HEADER_FOOTER_PRESETS } from '@/model/bands';
-import { defaultHeader, firstPageHeaderFooter, headerFooterOf } from '@/model/page';
+import { defaultHeader, firstPageHeaderFooter, firstPageModeOf, headerFooterOf } from '@/model/page';
 import { bi, plain, rt } from '@/model/text';
 import type { TranslationWrite } from '@/model/textSlots';
 import { mapWorksheetTexts } from '@/model/textWalk';
@@ -595,6 +595,52 @@ describe('first-page header rows (§ page 1 can differ)', () => {
     expect(after.firstPage!.bands.some((b) => b.id === target)).toBe(false);
     expect(after.firstPage!.bands).toHaveLength(before.firstPage!.bands.length - 1);
     expect(after.bands).toHaveLength(before.bands.length);
+  });
+});
+
+/** The settings panel reads its three-way control from `firstPageModeOf`. */
+describe('first-page mode round-trips (§ page 1 can differ)', () => {
+  const header = () => headerFooterOf(store().worksheet.header, defaultHeader);
+
+  beforeEach(() => {
+    store().setHeaderFooterBands('header', HEADER_FOOTER_PRESETS[0].build());
+  });
+
+  it('reads back every mode it was set to', () => {
+    for (const mode of ['different', 'blank', 'same', 'different', 'same'] as const) {
+      store().setFirstPageMode('header', mode);
+      expect(firstPageModeOf(header())).toBe(mode);
+    }
+  });
+
+  it('agrees with what page 1 prints', () => {
+    store().setFirstPageMode('header', 'same');
+    expect(firstPageHeaderFooter(header()).bands).toEqual(header().bands);
+    store().setFirstPageMode('header', 'blank');
+    expect(firstPageHeaderFooter(header()).bands).toEqual([]);
+    store().setFirstPageMode('header', 'different');
+    expect(firstPageHeaderFooter(header()).bands).toBe(header().firstPage!.bands);
+  });
+
+  it('"same" keeps the running rows and drops the page-1 rows', () => {
+    const running = header().bands.map((b) => b.id);
+    store().setFirstPageMode('header', 'different');
+    store().setHeaderFooterBands('header', HEADER_FOOTER_PRESETS[2].build(), 'firstPage');
+    store().setFirstPageMode('header', 'same');
+    expect(header().firstPage).toBeUndefined();
+    expect(header().bands.map((b) => b.id)).toEqual(running);
+  });
+
+  it('reads an empty page-1 list as its own rows, not as blank', () => {
+    store().setFirstPageMode('header', 'different');
+    store().setHeaderFooterBands('header', [], 'firstPage');
+    expect(firstPageModeOf(header())).toBe('different');
+  });
+
+  it('lets page-1 rows win over a stale showOnFirstPage: false', () => {
+    expect(
+      firstPageModeOf({ ...header(), showOnFirstPage: false, firstPage: { bands: [] } }),
+    ).toBe('different');
   });
 });
 
