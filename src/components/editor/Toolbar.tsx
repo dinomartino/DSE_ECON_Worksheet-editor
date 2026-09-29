@@ -81,6 +81,7 @@ export function HomeCrumb({ onOpenFiles }: { onOpenFiles: () => void }) {
 export function Toolbar({
   onOpenSettings,
   onOpenFiles,
+  onBackToBank,
   onClearAll,
   bodySheets,
 }: {
@@ -89,6 +90,8 @@ export function Toolbar({
   bodySheets?: number;
   /** Show the start screen: the saved-worksheet list, and the new-document form. */
   onOpenFiles: () => void;
+  /** Present when the document was opened from a bank question: back to that place in the bank. */
+  onBackToBank?: () => void;
   /** Delete every saved document, this one included, and show the (empty) start screen. */
   onClearAll: () => Promise<void>;
 }) {
@@ -281,6 +284,19 @@ export function Toolbar({
         {/* The mark carries the app and the way home; the name beside it is the
             *document's* — what the `.docx` downloads as. */}
         <HomeCrumb onOpenFiles={onOpenFiles} />
+        {onBackToBank && (
+          <button
+            type="button"
+            data-print-hide
+            data-back-to-bank
+            title="Back to Question bank 題庫"
+            aria-label="Back to Question bank"
+            onClick={onBackToBank}
+            className="shrink-0 cursor-pointer rounded-md border border-line-strong px-2 py-1 text-[12.5px] text-ink-muted transition-colors duration-150 ease-out-soft hover:bg-surface-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            ← <span className="min-[1680px]:hidden">Bank</span><span className="hidden min-[1680px]:inline">Back to Question bank</span>
+          </button>
+        )}
 
         <span className="h-6 w-px shrink-0 bg-line" />
 

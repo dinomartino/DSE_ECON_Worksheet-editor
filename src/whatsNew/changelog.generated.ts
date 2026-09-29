@@ -22,7 +22,8 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   both, Student or Teacher version, with the list grouped by sub-topic (hide it for more
   room). Tick questions to make a new worksheet from them or add them to your last one.
   Untagged questions get a quick tagging mode: press 1 to 6 to pick a suggested topic,
-  Enter to save and see the next. ← Home takes you back.
+  Enter to save and see the next. Open any question right where it sits in its worksheet,
+  and come back to the same place in the bank. ← Home takes you back.
 - **題庫 tab in the editor**: find questions from your other worksheets by words, topic,
   type or marks and insert copies after the question you click, in one click, or Fill a
   set by topic, preferring ones your class has not seen. The new questions are highlighted

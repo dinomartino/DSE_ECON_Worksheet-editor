@@ -32,10 +32,13 @@ const openBank = () => useBankSession.getState().openBank();
 /** Two-pane shell (§5.1): structural editor on the left, live preview on the right. */
 export function EditorApp({
   onOpenFiles,
+  onBackToBank,
   onClearAll,
   onOpenDocument,
 }: {
   onOpenFiles: () => void;
+  /** Set when the document was opened from a bank question: the way back to it. */
+  onBackToBank?: () => void;
   /** Delete every saved document and leave for the start screen, without saving this one. */
   onClearAll: () => Promise<void>;
   /** Open another document in the editor (the read-only notice's editable copy). */
@@ -417,6 +420,7 @@ export function EditorApp({
       <Toolbar
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenFiles={onOpenFiles}
+        onBackToBank={onBackToBank}
         onClearAll={onClearAll}
         bodySheets={pages.length}
       />

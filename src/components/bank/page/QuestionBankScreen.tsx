@@ -10,6 +10,7 @@ import type { LanguageMode, VersionMode, Worksheet } from '@/model/types';
 import { worksheetStore, type WorksheetSummary } from '@/storage';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { addPicksToOpenDocument } from './addToOpen';
+import { afterOpen, tagIndexOf, useBankReturn } from './bankReturn';
 import {
   activeFilters,
   addTarget,
@@ -91,9 +92,11 @@ export function QuestionBankScreen({
   onStartNew: () => void;
 }) {
   const { rows, status } = useBank();
-  const [level, setLevelState] = useState<BankLevel>(readLevel);
-  const [filters, setFilters] = useState<BankFilters>(DEFAULT_FILTERS);
-  const [focusKey, setFocusKey] = useState<string>();
+  // Coming back from a worksheet opened from here: the same level, filters and question.
+  const [back] = useState(() => useBankReturn.getState().saved);
+  const [level, setLevelState] = useState<BankLevel>(() => back?.level ?? readLevel());
+  const [filters, setFilters] = useState<BankFilters>(back?.filters ?? DEFAULT_FILTERS);
+  const [focusKey, setFocusKey] = useState<string | undefined>(back?.focusKey);
   const [picks, setPicks] = useState<string[]>([]);
   const [railHidden, setRailHiddenState] = useState(readRailHidden);
   const [language, setLanguage] = useState<LanguageMode>('en');
@@ -259,7 +262,19 @@ export function QuestionBankScreen({
     }
   };
 
-  const openRow = (row: BankRow) => onOpenDocument(row.docId, () => useWorksheetStore.getState().select(row.questionId));
+  /** Open the question where it sits in its worksheet; the editor's back button returns here. */
+  const openRow = (row: BankRow) =>
+    onOpenDocument(row.docId, () =>
+      afterOpen(row.questionId, { level, filters, focusKey: level.kind === 'review' ? rowKey(row) : undefined, tagRoot: level.kind === 'untagged' ? tagRoot : undefined }),
+    );
+
+  // Back from a worksheet in tag as you go: land on the question left, once the list is read.
+  const tagRestore = useRef(back?.level.kind === 'untagged' ? back.tagRoot : undefined);
+  useEffect(() => {
+    if (tagRestore.current === undefined || untagged.length === 0) return;
+    setTagIndex(tagIndexOf(untagged.map((group) => group.rootId), tagRestore.current));
+    tagRestore.current = undefined;
+  }, [untagged]);
 
   /** Tag as you go: every copy of the question on screen gets the codes, then the next appears. */
   const saveTags = (codes: readonly string[]) => {
@@ -320,6 +335,11 @@ export function QuestionBankScreen({
         step(down ? 1 : -1);
         return;
       }
+      if ((event.key === 'o' || event.key === 'O') && focused) {
+        event.preventDefault();
+        openRow(focused);
+        return;
+      }
       if (event.key === ' ' && !onButton && focused) {
         event.preventDefault();
         togglePick(focused);
@@ -331,6 +351,11 @@ export function QuestionBankScreen({
       if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
         event.preventDefault();
         setTagIndex(Math.max(0, tagPosition + (event.key === 'ArrowRight' ? 1 : -1)));
+        return;
+      }
+      if ((event.key === 'o' || event.key === 'O') && tagRow) {
+        event.preventDefault();
+        openRow(tagRow);
         return;
       }
       const digit = Number(event.key);
@@ -540,6 +565,7 @@ export function QuestionBankScreen({
           onSave={() => saveTags([...chosen])}
           onStep={(delta) => setTagIndex(Math.max(0, tagPosition + delta))}
           onDone={() => setLevel(TOPICS_LEVEL)}
+          onOpen={() => tagRow && openRow(tagRow)}
         />
       )}
 
