@@ -69,9 +69,8 @@ Loose ends on shipped features:
 Design: `docs/design/question-library.md` (a bank is a Worksheet; the index is derived and
 rebuildable; copies keep `lineage.rootId`). Deep analysis, sources and traps:
 `docs/research/2026-09-question-bank.md`. C1, C2, C4's usage history, C5, C6 and C24 are built (above).
-- **題型 follow-ups** (S each): Enter on a partly typed name makes a near-duplicate;
-  bulk Set topic can't clear a 題型; a name made in a cancelled dialog isn't kept; Fill
-  and coverage could spread across 題型 (user chose group + filter only for now).
+- **題型 in Fill and coverage** (S–M): spread picks across 題型, show missing 題型 of a
+  tested sub-topic (user chose group + filter only for now).
 
 **The build flow** — every mature bank starts from the paper or shows the target:
 - **C7 A real cart** (S–M): the tray lists its picks (remove one, reorder, MCQ before LQ)

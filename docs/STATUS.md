@@ -33,8 +33,9 @@ off the bottom.** It is the first thing a fresh session reads — then
   copies too (`src/components/editor/topicSync.ts`), bank copies take the union. Known:
   ⌘Z undoes the open copy only; a second tab holding a copy can overwrite synced tags;
   Filter button label truncates. **C24 題型 merged**: tag form `C.ped::<name>` (`src/model/patterns.ts`), registry
-  `src/storage/patterns.ts` (in backup); unverified in WebKit/desktop shell; the start
-  screen's notice banner lingers onto the 題型 page. Next: C7–C11. Teacher screen text has no em dashes (user rule).
+  `src/storage/patterns.ts` (in backup). Gaps fixed 2026-09-29 (Enter picks a match, bulk
+  clear, kept on cancel, success notices clear on level change); Chromium + WebKit verified;
+  desktop registry covered by unit tests only, Tauri shell not clicked through. Next: C7–C11. Teacher screen text has no em dashes (user rule).
   **Integration QA + polish merged** (`feature/bank-polish`):
   end-to-end in Chromium + WebKit, `.docx` leak-free; fixed a real "Maximum update depth"
   crash in `usePagination`/band measuring (a no-op `setState` per render queued a second
