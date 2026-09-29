@@ -4,7 +4,7 @@ The feature backlog: what we could build next, ranked, with where each idea came
 Evidence is in [`research/2026-09-competitive/`](./research/2026-09-competitive/README.md)
 (five slices, researched 2026-09-24). What is being built *now* lives in
 [`STATUS.md`](./STATUS.md) — move an idea there when work starts, and delete it here
-when it ships.
+when it ships (`CHANGELOG.md` is the record of what shipped).
 
 Sizes: **S** ≈ a session, **M** ≈ a few, **L** ≈ an initiative. Every idea must respect
 the constraints in `CLAUDE.md`: static web + desktop, no server, `.docx` is the
@@ -12,108 +12,67 @@ load-bearing output, saved documents always reopen.
 
 ## Where we stand
 
-No HK tool does what this one does — bilingual on-page authoring of DSE-format papers
-with native `.docx`. Every international builder treats Word as its lossy "editable"
-export; ours is the faithful one. The gap competitors expose is everything **around**
-authoring: a question library, the export dialog (answer keys, versions), and what
-happens after the paper is sat. Nobody makes editable economics diagrams.
+No HK tool does bilingual on-page authoring of DSE-format papers with native `.docx`;
+international builders treat Word as a lossy export. Released through 0.5.0: the export
+dialog (answer keys, versions, other apps), paper checks and targets, marking schemes,
+diagram areas and templates, file management, and ✦ AI translation. The question bank is
+built on `develop`. What remains open: getting existing material in (D), what happens
+after the paper is sat (G), and AI authoring (E1/E3/E4 built but paused).
 
 ## Built on `develop`, awaiting release
 
 Remove from this list once released.
 
-- **Export dialog + separate answer key** (was A1) — `src/components/editor/ExportDialog.tsx`,
-  `src/render/answerKey.ts:renderAnswerKey`.
-- **Paper health check** (was A2) — `src/model/paperHealth.ts:checkPaper`, shown in the
-  export dialog. Not yet: "answer any ONE" sections are summed in full. Paper 2 pace is
-  150 min / 120 marks (HKEAA 2024 framework).
-- **Backup zip + restore** (was F1) — `src/storage/backup.ts`.
-- **Trash with 30-day restore** (was F2) — `src/storage/trash.ts`.
-- **Seeded MCQ versions A–D** (was A3) — `src/model/versions.ts`, registry `variant` hook,
-  per-version keys and a version map in the answer key. Not yet: version in the running
-  header; the side panel lists options in version A order while the page shows B.
-- **Other-apps export** (was A4) — `src/export/csv/answerKeyCsv.ts`: ZipGrade key, plain
-  key CSV, Kahoot `.xlsx`, Blooket CSV. No real import tried in any of the four apps.
-- **Export toggles** — cover on/off, answer space on/off (`OutputMode.omitCover` /
-  `omitAnswerSpace`, export-time only).
-- **Marking scheme in HKEAA notation** (was B1, 2026-09-25) — `src/model/markSchemeTypes.ts`,
-  `src/model/markScheme.ts`, `src/render/markScheme.ts`, `MarkSchemeEditor.tsx`. Not yet:
-  on-page editing of scheme text; the mismatch warning is panel-only, not in the paper
-  check; Chinese labels and default EC wording unverified against a real HKEAA scheme.
-- **MCQ rationale + provenance** (was B2, 2026-09-25) — `McqOption.rationale`,
-  `McqQuestion.provenance`; teacher version + answer key. Not yet: versioned key prints
-  notes once in Version A letters; bilingual "Source 出處：" spacing.
-- **Diagram shaded areas + shift curve** (was B3, 2026-09-25) — `src/model/diagramAreas.ts`,
-  `src/model/diagramShift.ts`, `DiagramAreaControls.tsx`; CS / PS / DWL / tax presets.
-  Not yet: shifted equilibrium point is not attached to its curves; template curves stop
-  short of the y-axis so CS/PS leave a small strip; print-PDF leg not re-run.
-- **Graph answer space** (was B4, 2026-09-25) — `src/model/answerGraph.ts`,
-  `src/render/answerGraph.ts`, `AnswerGraphFields.tsx`; blank axes, grid, 12/16/20/24 lines.
-  Not yet: on-page select/resize; custom height; Word itself untested (LibreOffice only).
-- **Model answer diagram** (2026-09-25) — `answerDiagram` on a part / sub-part / partless
-  question; `src/components/editor/AnswerDiagramRow.tsx`, answer-key `.docx` now carries
-  pictures. Not yet: alt text and title are not editable for it; Word itself untested.
-- **Combined answer key across documents** (2026-09-25) — export-time "Also include" list;
-  `src/render/answerKey.ts:renderCombinedAnswerKey`. Not yet: per-part page setup.
-- **Folders on the dashboard** (2026-09-25, was part of F3) — `src/storage/folders.ts`;
-  pointer-event drag. Not yet: nesting, multi-select move, touch drag.
-- **One Export button (.docx / PDF / .json)** (2026-09-25) — `printPdf.ts`. PDF prints the
-  question paper only.
-- **CHANGELOG + What's new** (2026-09-25) — `src/whatsNew/`, `scripts/release-notes.mjs`.
-- **Area colours + leader labels** (2026-09-25) — six-tint palette, Auto/Inside/Leader.
-- **Paper summary bar with a target** (was A5) — `src/model/paperSummary.ts:summarizePaper`,
-  `src/components/editor/PaperSummaryBar.tsx`, `Worksheet.target` edited in Setup; target
-  misses in the paper check. Not yet: pages count the preview's language, not the export's;
-  a target cannot be set per section.
-- **AI translation + Check terms + app Settings** (was E2, 2026-09-28) — `src/translate/`,
-  `src/glossary/`, `src/ai/`, `src/settings/`, `src/components/translate/`. Not yet: a live
-  run with a real key, an HK-network check, the desktop Keychain in a built app; "N match"
-  in Check terms; the keyless half is Check terms, not a paper-wide lint of every save.
-- **In-app feedback** — `src/feedback/feedback.ts`, `src/components/feedback/FeedbackDialog.tsx`:
-  prefilled GitHub issue (URL capped at 3,500 chars — GitHub's sign-in redirect breaks
-  above ~4k), `mailto:` to dseconmentor@gmail.com, or clipboard. Labels only stick when
-  the reporter can triage the repo. Not tried: desktop opener, a signed-in GitHub form.
+- **Question bank 題庫** (C1 tags, C2 bank, C4 usage history) — CHANGELOG Unreleased;
+  `docs/design/question-library.md`.
 
 ## Recommended order
 
-1. **Now** — the question bank 題庫: duplicate-id fix → topic tags (C1) → insert from
-   another document (C3) → bank view (C2) → history (C4). Plan in
-   `docs/design/question-library.md`.
-2. **Later** — paste/Word import (D1, D2), more AI (E1, E3, E4 on the E2 base), item analysis (G1), remaining
-   diagram upgrades (B3b).
+1. **Now** — release the question bank, then its follow-ups (C).
+2. **Next** — paste-to-structure (D1), the cheapest way to fill the bank; item analysis
+   (G1), which also completes C4's facility.
+3. **Later** — `.docx` import (D2), unpausing E1/E3/E4 after live evals, data charts
+   (B3b), answer frames and the examiner grid (B6, B7), dashboard extras (F).
 
 ## A. Export and paper checks
 
-Nothing open: A1–A5 are built (above).
+Loose ends on shipped features:
+- **Optional sections** (S–M): "answer any ONE" sections are summed in full by the paper
+  check and summary; a target cannot be set per section.
+- **Versions** (S): the version letter prints only atop page 1, not in the running
+  header; the side panel lists options in version A order while the page shows B; a
+  versioned key prints MCQ rationale once, in Version A letters.
+- **PDF of the answer key** (S): PDF export prints the question paper only.
+- **Mark scheme** (S–M): text is edited in the panel, not on the page; the scheme/marks
+  mismatch warning is panel-only, not in the paper check.
+- **Combined answer key** (S): every part takes the current document's page setup and
+  font size.
+- **Paper summary** (S): page count follows the preview's language, not the export's.
 
 ## B. Content model
 
-- **B3b Diagram upgrades, remaining** (M): line/bar charts from a table for
-  data-response; more templates. Shaded areas and shift-curve shipped 2026-09-25.
-  Geometry in `src/model/diagram.ts`, drawing in `src/render/diagram.ts:diagramSvg`.
-  *Aristo e-Graph.*
+- **B3b Data charts** (M): line/bar charts from a table for data-response; close the 11
+  partial rows in `docs/Diagram_Requirements/COVERAGE.md`. Geometry in
+  `src/model/diagram.ts`, drawing in `src/render/diagram.ts:diagramSvg`. *Aristo e-Graph.*
 - **B6 Fill-in-blank answer frames** (S–M): blanks for students, answers for teachers.
   *Econ Excelsior "LQ答題框架", PickMyQuiz.*
 - **B7 "For examiner's use" marks grid on the cover** (S–M), from derived marks, as a
   real table. *LaTeX `\gradetable`, OCR covers.*
+- **Loose ends** (S each): graph answer space has no on-page select/resize and no custom
+  height (four fixed sizes); a model answer diagram has no alt text or title field.
 
-## C. Question library — the most-requested gap
+## C. Question library
 
-Design: `docs/design/question-library.md` (a bank is a Worksheet; the library is a
-rebuildable index; copies keep a `lineage.rootId`; packs reuse the backup zip).
+Design: `docs/design/question-library.md` (a bank is a Worksheet; the index is derived and
+rebuildable; copies keep `lineage.rootId`). C1, C2 and C4's usage history are built (above).
 
-- **C1 Topic tags** (S): an optional field on questions — EDB topics A–J + electives,
-  or DSEconMentor's 71 MCQ / 50 LQ topics. `KNOWN_KEYS` guards only top-level
-  `Worksheet` fields, so a question-level field passes through — still check
-  `src/model/migrations.ts:migrate` normalises nothing away, and prove it on the corpus.
-- **C2 Local question library** (L): search every saved document's questions by topic,
-  type, marks, "not used with this class since…"; insert a copy. Web: IndexedDB;
-  desktop: a folder. Ship no HKEAA content (copyright). *EdCity OQB, OUP, IB
-  Questionbank, OCR ExamBuilder, Exampro.*
-- **C3 Merge documents / insert from another document** (M) — the cheap first step
-  toward C2. *Kuta, Wayground.*
-- **C4 Question history** (M): "used in Mock 2025 5A, P1 Q12, facility 0.34". Needs a
-  stable origin id carried through copies. *Moodle, ExamSoft.*
+- **C4 facility** (S, after G1): "used in Mock 2025 5A, P1 Q12, facility 0.34" — usage is
+  shown; facility needs results.
+- **✦ Suggest topics from the text** (S): tag-as-you-go suggests from neighbouring
+  questions' tags; a keyless glossary term → topic table would read the question itself.
+- **Drag from the 題庫 tab onto the page** (S).
+- **Packs** (M): bank worksheets in the backup zip with `{publisher, license}`; import
+  flags questions already held by `rootId`, never overwrites. Ship no HKEAA content.
 
 ## D. Getting existing material in
 
@@ -125,32 +84,31 @@ rebuildable index; copies keep a `lineage.rootId`; packs reuse the backup zip).
 
 ## E. AI — bring your own key, one ✦ AI door, results insert directly
 
-E2 built the base every later item reuses: the provider layer (`src/ai/`), the text
-walker (`mapTexts`), the EDB glossary engine, app Settings and a read-only review dialog.
-Hong Kong (verified 2026-09-28): Google does not offer the Gemini API or AI Studio there,
-OpenAI and Anthropic are unavailable, DeepSeek and Qwen (Alibaba Model Studio) work
-(`src/ai/providers.ts`). Gemini stays Recommended: the app tells teachers to use a VPN for
-the key page and while using it; DeepSeek and Qwen are the no-VPN alternatives. Never embed a key. Never mark student scripts: student scripts
-are never sent anywhere; translation sends only the text a teacher chooses. *All of
-MagicSchool, Brisk, Diffit, Eduaide, QuestionWell, MS Teach.*
+The base shipped in 0.5.0: provider layer (`src/ai/`), text walker, EDB glossary, app
+Settings, the ✦ AI menu (`src/assist/`). In HK, Gemini needs a VPN; DeepSeek and Qwen work
+without one (`src/ai/providers.ts`). Never embed a key; never send student scripts.
+*MagicSchool, Brisk, Diffit, Eduaide, QuestionWell, MS Teach.*
 
-- **E1 Answers, mark schemes and MCQ explanations for existing questions** — built 2026-09-28 (`src/answers/`, verb `write.answers`).
-- **E2 EN↔繁中 fill with the EDB glossary** — built (above).
-- **E3 Source → HKDSE items** — built 2026-09-28 (`src/generate/`, verb `create.fromSource`): paste a news extract, get Paper 1 MCQs (including
-  combination statements) and Paper 2 parts with marks.
-- **E4 Item quality check** — built 2026-09-28 (`src/quality/`, verb `check.quality`): the non-AI checks are the paper health check; the AI half flags ambiguous
-  stems and two defensible options.
+- **Unpause E1 answers, E3 source → items, E4 quality check** (S each): built
+  (`src/answers/`, `src/generate/`, `src/quality/`) but hidden by
+  `src/assist/paused.ts:PAUSED_VERBS` until live evals show the output is good enough.
+- **Term lint on save** (S): Check terms runs on demand; a keyless paper-wide lint could
+  run on every save.
 - **E5 Differentiated copy** (M), **E6 data-response builder** with diagrams from a preset
   vocabulary, never raw model coordinates (L).
 
-## F. File management — continues the 2026-09-24 dashboard
+## F. File management
 
-- **F3 Tags, stars and filter chips on the dashboard** (S–M; folders shipped); extend
-  `src/components/start/dashboard.ts:visibleSummaries`. **F4** total marks and page
-  count on each card, derived (S). **F5** full-text search of question text (M, shares
-  an index with C2).
+- **F3 Tags, stars and filter chips on the dashboard** (S–M); extend
+  `src/components/start/dashboard.ts:visibleSummaries`. Folders lack nesting,
+  multi-select move and touch drag.
+- **F4 Total marks and page count on each card**, derived (S); the index stores only
+  question count and cover.
+- **F5 Full-text search from the dashboard** (S): the 題庫 searches question text; the
+  dashboard still matches titles only.
 - **F6 Local version snapshots** (M) — on export and before import; watch the quota.
-- **F7 Collections** exported as one `.docx` (M).
+- **F7 Collections** (M): several documents exported as one `.docx`; today only the
+  answer key can combine documents.
 - **F8 Department sharing via a shared cloud folder** on desktop (M): read-only until
   "Copy to edit", author initials, conflicted-copy detection. *OCR, Kognity.*
 
@@ -162,14 +120,15 @@ MagicSchool, Brisk, Diffit, Eduaide, QuestionWell, MS Teach.*
 - **G2 Follow-ups** (S each, after G1): corrections worksheet, retrieval sets.
 - **G3 Teacher-defined level boundaries** (S), labelled a school estimate — HKEAA
   publishes no cut scores.
-- **G4 In-browser phone OMR** (L) — do A4 first; existing apps already scan.
+- **G4 In-browser phone OMR** (L) — low priority: the ZipGrade key export already feeds
+  apps that scan.
 
 ## Other
 
-
 - **Presentation mode** (M): one question at a time, reveal the scheme. *Kuta.*
-- **Large-print / dyslexia output profile** (M) — conflicts with the fixed 12pt line, so
-  it must be a separate profile. *Twinkl, Wayground.*
+- **Large-print / dyslexia output profile** (M): `baseFontSize` scales text but the 12pt
+  line is fixed, so it must be a separate profile that scales the line too. *Twinkl,
+  Wayground.*
 - **Product page** (S): the aimakecoolstuff.com Econ-editor page has no screenshots, no
   "open the app" link, no desktop download and no Chinese version.
 
@@ -179,4 +138,5 @@ AI marking of student scripts (student data + server); web share links / QR (nee
 hosting); storage caps or expiry; a free-form canvas (layout is slot-based by decision);
 shipping HKEAA past-paper content; embedding any API key in the bundle; year-specific
 paper templates (e.g. "2028 Paper 2") — the generic mock template serves every year,
-and a dated template would need re-doing annually.
+and a dated template would need re-doing annually; a separate "Insert from another
+document" dialog (was C3) — the 題庫 tab's From filter does it.
