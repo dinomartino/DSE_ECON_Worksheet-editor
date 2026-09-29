@@ -94,7 +94,7 @@ const settled = (key: string, fill: AnswerFill, notes: string[]): AnswerResult =
 });
 
 export function evaluateAnswer(target: AnswerTarget, item: ReplyItem | undefined, sides: readonly Side[], glossary: Glossary | null): AnswerResult {
-  if (!item) return failed(target.key, ['Missing from the reply — nothing inserted']);
+  if (!item) return failed(target.key, ['Missing from the reply. Nothing inserted']);
   const notes: string[] = [];
   const { leaf, needs } = target;
   if (leaf.shape === 'written' && needs.shape === 'written') {
@@ -102,7 +102,7 @@ export function evaluateAnswer(target: AnswerTarget, item: ReplyItem | undefined
     if (needs.answer) {
       const text = onSides(finish(item.answerEn, item.answerZh, glossary, notes), sides);
       const gaps = missing(text, sides);
-      if (gaps.length === sides.length) return failed(target.key, ['The reply had no answer — nothing inserted']);
+      if (gaps.length === sides.length) return failed(target.key, ['The reply had no answer. Nothing inserted']);
       gaps.forEach((side) => notes.push(`No ${SIDE_NAME[side]} answer`));
       answer = text;
     }
@@ -115,7 +115,7 @@ export function evaluateAnswer(target: AnswerTarget, item: ReplyItem | undefined
         scheme = built;
         notes.push(...schemeNotes);
       } else {
-        notes.push(built ? `Mark scheme didn't add up to ${marks} marks — not inserted` : 'Mark scheme came back incomplete — not inserted');
+        notes.push(built ? `Mark scheme didn't add up to ${marks} marks. Not inserted` : 'Mark scheme came back incomplete. Not inserted');
       }
     }
     if (!answer && !scheme) return failed(target.key, notes);
@@ -133,7 +133,7 @@ export function evaluateAnswer(target: AnswerTarget, item: ReplyItem | undefined
       missing(text, sides).forEach((side) => notes.push(`Option ${option.letter}: no ${SIDE_NAME[side]}`));
       rationales[option.id] = text;
     }
-    if (Object.keys(rationales).length === 0) return failed(target.key, ['The reply had no explanations — nothing inserted']);
+    if (Object.keys(rationales).length === 0) return failed(target.key, ['The reply had no explanations. Nothing inserted']);
     return settled(target.key, { shape: 'choice', rationales }, notes);
   }
   return failed(target.key, ['Nothing to write']);

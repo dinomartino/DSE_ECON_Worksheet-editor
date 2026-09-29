@@ -691,7 +691,7 @@ export function Outline({
           if (items.length === 0) {
             return (
               <p className="px-2 py-2.5 text-[11px] text-ink-subtle">
-                Empty — add something below.
+                Empty. Add something below.
               </p>
             );
           }
@@ -761,7 +761,7 @@ export function Outline({
                   <ul className="space-y-px border-l border-line pl-1.5 ml-2">
                     {group.items.length === 0 ? (
                       <li className="py-1.5 pl-1 text-[11px] text-ink-subtle">
-                        Empty page — drag something here.
+                        Empty page. Drag something here.
                       </li>
                     ) : (
                       renderItems(group)

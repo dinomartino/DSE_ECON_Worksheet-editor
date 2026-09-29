@@ -72,7 +72,7 @@ describe('answer-key rows', () => {
     const { text, warnings } = keyCsv(answerKeyRows(worksheet), 'en');
     expect(text.startsWith(BOM)).toBe(true);
     expect(lines(text)).toEqual(['Question,Answer', '1,', '2,B', '']);
-    expect(warnings).toEqual(['Q1: no key set — its answer is left blank.']);
+    expect(warnings).toEqual(['Q1: no key set. its answer is left blank.']);
   });
 
   it('adds a Section column to the plain key only when numbers repeat', () => {
@@ -105,7 +105,7 @@ describe('ZipGrade key', () => {
       'A,3,,1',
       '',
     ]);
-    expect(warnings).toEqual(['Q3: no key set — its response is left blank.']);
+    expect(warnings).toEqual(['Q3: no key set. its response is left blank.']);
   });
 
   it('numbers 1–N in paper order when a section restart would repeat a number', () => {
@@ -154,7 +154,7 @@ describe('quiz tools', () => {
     expect(rows[7][7]).toMatch(/^Correct answer/);
     expect(rows[8]).toEqual([1, 'Which?', 'a', 'b', 'c', 'd', 30, 3]);
     expect(rows[9]).toEqual([2, 'Q', 'a', 'b', '', '', 30, '']);
-    expect(warnings).toEqual(['Q2: no key set — Kahoot needs a correct answer.']);
+    expect(warnings).toEqual(['Q2: no key set. Kahoot needs a correct answer.']);
   });
 
   it('leaves out a question with more than four options, and says so', () => {
@@ -164,7 +164,7 @@ describe('quiz tools', () => {
     const { text, warnings } = blooketCsv(quizQuestions(worksheet, 'en'));
     expect(lines(text)).toHaveLength(4);
     expect(lines(text)[2]).toBe('1,Which?,a,b,c,d,30,2');
-    expect(warnings[0]).toMatch(/^Q1: more than 4 options — left out/);
+    expect(warnings[0]).toMatch(/^Q1: more than 4 options. Left out/);
   });
 
   it('writes Blooket as its template: an eight-field title row, then the header, no BOM', () => {
@@ -180,7 +180,7 @@ describe('quiz tools', () => {
     question.options[1].blocks = [{ kind: 'paragraph', id: newId(), text: bi('fig', '') }];
     const worksheet = withFlow(createWorksheet(), [question], { replaceLayout: true });
     const { warnings } = blooketCsv(quizQuestions(worksheet, 'en'));
-    expect(warnings).toEqual(['Q1: a table or figure is left out — Blooket gets the text only.']);
+    expect(warnings).toEqual(['Q1: a table or figure is left out. Blooket gets the text only.']);
   });
 });
 

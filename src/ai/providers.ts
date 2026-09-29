@@ -220,7 +220,7 @@ const ollama: ProviderPreset = {
   group: 'more',
   hk: {
     status: 'local',
-    note: 'Runs on this computer — nothing leaves it. Web and Windows need OLLAMA_ORIGINS; Safari blocks it.',
+    note: 'Runs on this computer. Nothing leaves it. Web and Windows need OLLAMA_ORIGINS; Safari blocks it.',
   },
   blurb: 'Models running on this computer.',
   privacy: 'Nothing leaves this computer.',

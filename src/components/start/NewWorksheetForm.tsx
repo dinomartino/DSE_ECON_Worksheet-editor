@@ -141,7 +141,7 @@ export function NewWorksheetForm({
     >
       <Field
         label="Document type"
-        hint="Decides the cover, sections and page furniture — everything else below is paper."
+        hint="Decides the cover, sections and page furniture. Everything else below is paper."
       >
         <div role="radiogroup" className="grid grid-cols-2 items-stretch gap-2">
           {DOCUMENT_TYPES.map(({ value, label, hint }) => (
@@ -216,8 +216,8 @@ export function NewWorksheetForm({
           {documentType === 'lqMock'
             ? 'Starts with Sections A–C (derived marks totals) and one sample long question.'
             : documentType === 'paper1'
-              ? 'Starts with the “There are N questions…” line, one sample question and “END OF PAPER” — no section headings.'
-              : 'Starts with one sample long question — no section headings.'}
+              ? 'Starts with the “There are N questions…” line, one sample question and “END OF PAPER”. No section headings.'
+              : 'Starts with one sample long question. No section headings.'}
         </p>
       )}
 

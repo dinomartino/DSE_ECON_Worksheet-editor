@@ -32,7 +32,7 @@ import { bandFieldText } from '@/render/worksheet';
  */
 function fieldText(field: BandField): string {
   const text = bandFieldText(field, 45, { number: 5, count: 12 });
-  return plain(text.en) || plain(text.zh) || '—';
+  return plain(text.en) || plain(text.zh) || '–';
 }
 
 export function BandPreview({

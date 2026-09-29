@@ -30,8 +30,8 @@ import { StimulusEditorPanel } from './StimulusEditorPanel';
 const LAYOUT_HINT: Record<LayoutElement['kind'], string> = {
   section: 'names the run of questions below it',
   stimulus: 'content the questions below refer to',
-  heading: 'a display line — typed on the page',
-  text: 'a note or closing line — typed on the page',
+  heading: 'a display line, typed on the page',
+  text: 'a note or closing line, typed on the page',
   partHeader: 'part heading with a derived marks total',
   questionCount: 'authored wording around the derived count',
   labelList: 'side-by-side label · value rows',
@@ -96,7 +96,7 @@ function LayoutElementPanel({ element }: { element: LayoutElement }) {
             <Pill>fills page</Pill>
             <p className="text-xs leading-relaxed text-ink-muted">
               This space stretches to the bottom of its page, so the line count is set
-              by the layout — currently {element.lines} lines.
+              by the layout. Currently {element.lines} lines.
             </p>
             <p className="text-xs text-ink-subtle">此答題空間自動填滿頁面。</p>
           </div>
@@ -167,7 +167,7 @@ function LayoutElementPanel({ element }: { element: LayoutElement }) {
               key={row.id}
               text={[biExcerpt(row.label), biExcerpt(row.value)]
                 .filter(Boolean)
-                .join(' — ')}
+                .join(': ')}
               targetKey={editTargetKey({
                 kind: 'labelListCell',
                 elementId: element.id,
@@ -196,7 +196,7 @@ function LayoutElementPanel({ element }: { element: LayoutElement }) {
       {(element.kind === 'divider' || element.kind === 'pageBreak') && (
         <p className="text-xs leading-relaxed text-ink-muted">
           {element.kind === 'divider'
-            ? 'A rule across the text column. It has no settings — drag it on the page or in Content to move it.'
+            ? 'A rule across the text column. It has no settings. Drag it on the page or in Content to move it.'
             : 'Everything after this starts on a new sheet. Drag it to move the break.'}
         </p>
       )}

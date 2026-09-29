@@ -276,7 +276,7 @@ function useFieldFill(
       return;
     }
     latest.current.onChange({ ...now, [look.side]: look.runs });
-    showDone(look.side, look.runs, 'Inserted — check it on the page.', 'warn');
+    showDone(look.side, look.runs, 'Inserted. Check it on the page.', 'warn');
   };
 
   const switchProvider = (provider: ProviderId, side: Side) => {

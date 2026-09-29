@@ -153,7 +153,7 @@ export function DiagramEditor({ block, onChange }: Props) {
           </Button>
           <span className="text-[11px] text-ink-subtle">
             {diagram.flow.nodes.length === 0
-              ? 'Empty — add boxes and arrows on the canvas'
+              ? 'Empty. Add boxes and arrows on the canvas'
               : `${diagram.flow.nodes.length} ${diagram.flow.nodes.length === 1 ? 'box' : 'boxes'} · ${diagram.flow.arrows.length} ${diagram.flow.arrows.length === 1 ? 'arrow' : 'arrows'}`}
           </span>
         </div>
@@ -171,7 +171,7 @@ export function DiagramEditor({ block, onChange }: Props) {
           </Button>
           <span className="text-[11px] text-ink-subtle">
             {elementCount === 0
-              ? 'Empty — draw curves, points and labels'
+              ? 'Empty. Draw curves, points and labels'
               : `${elementCount} ${elementCount === 1 ? 'element' : 'elements'} · edit them on the canvas`}
           </span>
         </div>
@@ -367,7 +367,7 @@ function ForumFields({
   return (
     <div className="space-y-1">
       <span className="text-[11px] font-medium text-ink-subtle">
-        Speech bubbles — around the picture
+        Speech bubbles, around the picture
       </span>
       {bubbles.map((bubble, index) => (
         <div key={bubble.id} className="space-y-1 rounded border border-line p-1.5">
@@ -475,7 +475,7 @@ function PieSliceFields({
   return (
     <div className="space-y-1">
       <span className="text-[11px] font-medium text-ink-subtle">
-        Slices — clockwise from the top
+        Slices, clockwise from the top
       </span>
       {slices.map((slice, index) => (
         <div key={slice.id} className="flex items-center gap-1">

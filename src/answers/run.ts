@@ -12,9 +12,9 @@ import { evaluateAnswer, parseAnswersReply, type ReplyItem } from './validate';
 const MAX_DEPTH = 3;
 
 const ROW_MESSAGES: Partial<Record<AiErrorKind, string>> = {
-  truncated: 'The reply was cut off — nothing inserted',
-  safety: 'The provider declined this question — nothing inserted',
-  badOutput: "The reply couldn't be read — nothing inserted",
+  truncated: 'The reply was cut off. Nothing inserted',
+  safety: 'The provider declined this question. Nothing inserted',
+  badOutput: "The reply couldn't be read. Nothing inserted",
 };
 
 interface Run {
@@ -76,7 +76,7 @@ export async function runAnswers(
         else {
           // Transport trouble after the client's retries: these targets fail; the run goes on.
           const message = isAiError(error) ? error.info.message : 'Something went wrong.';
-          settle(run, chunk.targetKeys.filter((key) => !results.has(key)), null, `${message} — nothing inserted`);
+          settle(run, chunk.targetKeys.filter((key) => !results.has(key)), null, `${message}. Nothing inserted`);
         }
       }
     }

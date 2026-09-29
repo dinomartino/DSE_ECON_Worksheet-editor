@@ -285,7 +285,7 @@ function BetweenBuilder({
         onChange={(to) => setBand({ ...band, to })}
       />
       {!drawable && (
-        <p className="text-[11px] text-ink-subtle">Nothing to shade between those — widen the range.</p>
+        <p className="text-[11px] text-ink-subtle">Nothing to shade between those. Widen the range.</p>
       )}
       <div className="flex justify-end gap-1">
         <Button size="sm" variant="subtle" onClick={onCancel}>
@@ -391,7 +391,7 @@ export function ShadeMenu({
     const why = !points.before
       ? 'Needs a marked point, such as an equilibrium E'
       : preset.id !== 'totalRevenue' && !points.after
-        ? 'Needs two equilibrium points — shift a curve first'
+        ? 'Needs two equilibrium points. Shift a curve first'
         : empty
           ? preset.id === 'revenueGain'
             ? 'No gain: the new price and quantity are both lower'
@@ -412,7 +412,7 @@ export function ShadeMenu({
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
-        title="Shade an area — surplus, tax and subsidy, price controls, trade, monopoly or revenue"
+        title="Shade an area: surplus, tax and subsidy, price controls, trade, monopoly or revenue"
         onClick={() => (open ? close() : onOpenChange(true))}
         className={
           'flex h-11 items-center gap-1.5 rounded-lg border px-3 text-base ' +
@@ -607,7 +607,7 @@ const PATTERNS: Array<{ value: DiagramAreaPattern; name: string }> = [
 
 const DENSITIES: Array<{ value: DiagramAreaDensity; label: string; title: string }> = [
   { value: 'normal', label: 'Normal', title: 'The usual spacing' },
-  { value: 'dense', label: 'Dense', title: 'Lines or dots closer together — a darker area' },
+  { value: 'dense', label: 'Dense', title: 'Lines or dots closer together: a darker area' },
 ];
 
 const SWATCH = 22;
@@ -745,7 +745,7 @@ export function AreaInspector({
             value={area.fill ?? 'shade'}
             options={[
               { value: 'shade', label: 'Shade', title: 'A flat tint' },
-              { value: 'hatch', label: 'Hatch', title: 'A pattern of lines or dots — reads on a black-and-white copy' },
+              { value: 'hatch', label: 'Hatch', title: 'A pattern of lines or dots. Reads on a black-and-white copy' },
             ]}
             onChange={(fill) => patch({ ...area, fill })}
           />
@@ -895,10 +895,10 @@ function FreezeButton({
 
 type Direction = 'left' | 'right' | 'up' | 'down';
 const DIRECTIONS: Array<{ value: Direction; label: string; title: string }> = [
-  { value: 'left', label: '←', title: 'Shift left — a decrease' },
-  { value: 'right', label: '→', title: 'Shift right — an increase' },
-  { value: 'up', label: '↑', title: 'Shift up — e.g. a per-unit tax on supply' },
-  { value: 'down', label: '↓', title: 'Shift down — e.g. a subsidy' },
+  { value: 'left', label: '←', title: 'Shift left: a decrease' },
+  { value: 'right', label: '→', title: 'Shift right: an increase' },
+  { value: 'up', label: '↑', title: 'Shift up, e.g. a per-unit tax on supply' },
+  { value: 'down', label: '↓', title: 'Shift down, e.g. a subsidy' },
 ];
 
 /**
@@ -952,7 +952,7 @@ export function ShiftCurveControls({
       </Button>
       <p className="text-[11px] text-ink-muted">
         {failed
-          ? 'That shift moves the curve off the diagram — try a smaller one.'
+          ? 'That shift moves the curve off the diagram. Try a smaller one.'
           : 'Moves a copy by that share of the axis, with a shift arrow and the new equilibrium dashed to both axes.'}
       </p>
     </div>

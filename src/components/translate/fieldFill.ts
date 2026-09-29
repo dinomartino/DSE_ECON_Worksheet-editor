@@ -85,10 +85,10 @@ export type FieldFillOutcome =
   /** `switchTo`: the providers a region error offers (`[Use DeepSeek]`). */
   | { kind: 'failed'; message: string; switchTo: ProviderId[] };
 
-export const FILL_STALE = 'Not filled — this text changed while translating.';
+export const FILL_STALE = 'Not filled. This text changed while translating.';
 export const INSERT_ANYWAY = 'Insert anyway';
 const FILL_FAILED = 'Couldn’t translate this text safely.';
-const NEEDS_LOOK = 'Not filled — check this translation first.';
+const NEEDS_LOOK = 'Not filled. Check this translation first.';
 /** The two providers that serve Hong Kong (§A.5 region), by their button names. */
 const SWITCH_TARGETS: Partial<Record<ProviderId, string>> = { deepseek: 'DeepSeek', qwen: 'Qwen' };
 
@@ -146,8 +146,8 @@ function filledNote(result: JobResult): string {
 
 const termLine = (t: TermCheck): string =>
   t.conflict
-    ? `${t.conflict.form} means “${t.conflict.meansEn}” (${t.en} — EDB: ${t.expected})`
-    : `${t.en} — EDB: ${t.expected}`;
+    ? `${t.conflict.form} means “${t.conflict.meansEn}” (${t.en}, EDB: ${t.expected})`
+    : `${t.en} (EDB: ${t.expected})`;
 
 /** The first thing the review would chip, most severe first. */
 function caveatOf(result: JobResult): string | undefined {
@@ -163,7 +163,7 @@ function caveatOf(result: JobResult): string | undefined {
 
 function lookNote(result: JobResult): string {
   const caveat = caveatOf(result);
-  return caveat ? `Not filled — ${caveat}` : NEEDS_LOOK;
+  return caveat ? `Not filled: ${caveat}` : NEEDS_LOOK;
 }
 
 /** After a run finds no usable provider: deep-link with the reason, or, over a modal

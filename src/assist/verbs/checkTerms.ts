@@ -33,9 +33,9 @@ export function fixedPreview(row: TermRow, check: TermCheck): string {
 }
 
 export function termNotes(row: TermRow, check: TermCheck): string[] {
-  const edb = `${check.en} — EDB: ${check.expected}`;
+  const edb = `${check.en} (EDB: ${check.expected})`;
   if (!check.fix) {
-    const found = check.found ? `${check.en} → ${check.found.text} — EDB: ${check.expected}` : edb;
+    const found = check.found ? `${check.en} → ${check.found.text} (EDB: ${check.expected})` : edb;
     return check.conflict ? [found, copy.conflictChip(check.conflict.form, check.conflict.meansEn)] : [found];
   }
   if (check.fix.kind === 'lowerRank') return [copy.lowerRankLine(check.en, check.found?.text ?? '', check.expected)];
@@ -43,7 +43,7 @@ export function termNotes(row: TermRow, check: TermCheck): string[] {
   return isVariant(check) ? [edb, preview, `A textbook form; EDB lists ${check.fix.to} first.`] : [edb, preview];
 }
 
-const NOTHING_REPLACED_ONE = 'Nothing replaced — this text changed since the check.';
+const NOTHING_REPLACED_ONE = 'Nothing replaced. This text changed since the check.';
 
 function replace(rows: readonly TermRow[], accepted: Map<TextPath, Set<number>>, worksheetId: string): number {
   const writes = termFixWrites(rows, accepted);

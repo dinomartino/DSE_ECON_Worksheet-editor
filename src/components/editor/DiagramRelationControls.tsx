@@ -135,7 +135,7 @@ export function ValueField({
         type="text"
         inputMode="decimal"
         value={shown}
-        placeholder={clearable ? '—' : undefined}
+        placeholder={clearable ? '–' : undefined}
         className="h-8 w-16 rounded-lg border border-line bg-surface px-2 text-xs tabular-nums text-ink outline-none transition-colors duration-150 ease-out-soft placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
         onChange={(event) => setDraft(event.target.value)}
         onBlur={commit}
@@ -215,7 +215,7 @@ export function CurveRelationControls({
           />
         )}
         <Button size="sm" variant="subtle" onClick={detach}>
-          Detach — keep it where it is
+          Detach: keep it where it is
         </Button>
       </div>
     );
@@ -238,7 +238,7 @@ export function CurveRelationControls({
           variant="subtle"
           onClick={() => add(derivedCurve(newId(), { kind: 'marginalRevenue', of: curve.id }, curve.points, same('MR')))}
         >
-          MR — same intercept, twice as steep
+          MR: same intercept, twice as steep
         </Button>
       )}
       {diagram.points.length > 0 && (
@@ -312,7 +312,7 @@ export function PointRelationControls({
               })
             }
           >
-            Detach — keep it where it is
+            Detach: keep it where it is
           </Button>
         </div>
       )}

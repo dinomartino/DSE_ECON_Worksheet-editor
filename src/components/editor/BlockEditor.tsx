@@ -674,7 +674,7 @@ function TablePaddingSection({
 
       <div className="flex items-center gap-2 pl-14">
         <span className="text-[11px] leading-snug text-ink-subtle">
-          {overridden ? `Set on ${scopeLabel}.` : `Inherited — typing sets ${scopeLabel}.`}
+          {overridden ? `Set on ${scopeLabel}.` : `Inherited. Typing sets ${scopeLabel}.`}
         </span>
         {overridden && (
           <Button
@@ -888,7 +888,7 @@ function SourceBlockEditor({
   return (
     <div className="space-y-3">
       <div>
-        <GroupHeader title="Label" hint="Printed above the panel — typed on the page." />
+        <GroupHeader title="Label" hint="Printed above the panel, typed on the page." />
         {hasLabel ? (
           <ExcerptRow
             text={biExcerpt(block.label)}
@@ -955,7 +955,7 @@ function SourceBlockEditor({
       <div className="border-t border-line pt-2">
         <GroupHeader
           title="Footnote"
-          hint="Printed below the panel, in italic — typed on the page."
+          hint="Printed below the panel, in italic, typed on the page."
         />
         {hasFootnote ? (
           <ExcerptRow

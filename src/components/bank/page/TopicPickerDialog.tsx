@@ -77,7 +77,7 @@ export function TopicPickerDialog({
           type="search"
           value={query}
           autoFocus
-          placeholder="Find a topic — name, code or 中文"
+          placeholder="Find a topic by name, code or 中文"
           onChange={(event) => setQuery(event.target.value)}
           className="h-8 w-full rounded-lg border border-line bg-surface px-2.5 text-[12.5px] text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
         />

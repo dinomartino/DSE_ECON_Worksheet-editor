@@ -3951,7 +3951,7 @@ function EmptyState({ onAddQuestion, onOpenBank }: { onAddQuestion: (typeId: str
         Start your worksheet
       </p>
       <p className="mt-1 text-[13px] text-[#8f8a86]">
-        Add your first question — or pick one from the rail on the left.
+        Add your first question. Or pick one from the rail on the left.
       </p>
       <p className="mt-1 text-[12px] text-[#a5a09b]">開始製作工作紙</p>
 
@@ -4072,7 +4072,7 @@ function BlankPage({
       )}
 
       <p className="mt-4 text-[11px] text-[#b5b0ab]">
-        This page is empty — it will still appear in the exported document.
+        This page is empty. It will still appear in the exported document.
       </p>
     </div>
   );

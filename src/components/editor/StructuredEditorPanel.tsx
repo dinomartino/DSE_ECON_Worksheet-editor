@@ -423,7 +423,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                             : `Part (${partLabel(partIndex)}) marks`
                         }
                         value={part.marks}
-                        placeholder="—"
+                        placeholder="–"
                         onChange={(marks) => patchPart(partIndex, { marks })}
                       />
                     )
@@ -432,7 +432,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                     <MiniNumber
                       label={`Part (${partLabel(partIndex)}) answer space (dotted lines)`}
                       value={part.answerSpace}
-                      placeholder="—"
+                      placeholder="–"
                       onChange={(answerSpace) => patchPart(partIndex, { answerSpace })}
                     />
                   }
@@ -554,7 +554,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                                   <MiniNumber
                                     label={`Sub-part ${subPartLabel(subIndex)} answer space (dotted lines)`}
                                     value={subPart.answerSpace}
-                                    placeholder="—"
+                                    placeholder="–"
                                     onChange={(answerSpace) =>
                                       patchPart(partIndex, {
                                         subParts: subParts.map((s, i) =>

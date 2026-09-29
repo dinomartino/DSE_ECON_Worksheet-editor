@@ -72,7 +72,7 @@ export function FeedbackDialog({
       await navigator.clipboard.writeText(text);
       return true;
     } catch {
-      setError('Copy failed — the browser blocked clipboard access.');
+      setError('Copy failed. The browser blocked clipboard access.');
       return false;
     }
   };
@@ -158,7 +158,7 @@ export function FeedbackDialog({
 
         <label className="flex flex-col gap-1.5">
           <span className="text-[13px] font-medium text-ink">
-            Email <span className="font-normal text-ink-muted">— optional, so we can reply</span>
+            Email <span className="font-normal text-ink-muted">(optional, so we can reply)</span>
           </span>
           <input
             type="email"
@@ -174,7 +174,7 @@ export function FeedbackDialog({
             Details we attach
             <span className="font-normal text-ink-subtle">
               {' '}
-              — version {details.appVersion}, {details.platform}, {details.system}
+              (version {details.appVersion}, {details.platform}, {details.system})
             </span>
           </summary>
           <ul className="mt-1.5 animate-slide-down-in space-y-0.5 pl-1">
@@ -195,7 +195,7 @@ export function FeedbackDialog({
               ? 'Press Submit on the GitHub page to send it.'
               : 'Press Send in your mail app to send it.'}
             {sent.truncated &&
-              ' The message was too long for the link — the full report is on your clipboard, paste the rest in.'}
+              ' The message was too long for the link. The full report is on your clipboard, paste the rest in.'}
           </p>
         )}
 

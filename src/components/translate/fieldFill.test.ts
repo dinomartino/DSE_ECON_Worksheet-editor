@@ -122,7 +122,7 @@ describe('runFieldFill', () => {
     expect(out).toEqual({
       kind: 'needsLook',
       runs: [{ text: '低彈性需求' }],
-      note: 'Not filled — 低彈性需求 means “inelastic demand” (elastic demand — EDB: 高彈性需求)',
+      note: 'Not filled: 低彈性需求 means “inelastic demand” (elastic demand, EDB: 高彈性需求)',
     });
   });
 

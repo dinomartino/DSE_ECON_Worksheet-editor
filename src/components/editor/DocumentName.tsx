@@ -105,7 +105,7 @@ export function DocumentName() {
     <button
       type="button"
       onClick={open}
-      title={`${name} — click to rename`}
+      title={`${name}. Click to rename`}
       /* `max-w` with a truncate so a long title cannot push the export buttons off the
          bar; `min-w-0` lets it give way further when the bar is short. The full name
          stays available as the tooltip. */

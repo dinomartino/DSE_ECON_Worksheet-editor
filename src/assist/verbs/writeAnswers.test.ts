@@ -77,7 +77,7 @@ describe('write.answers through useAiRun', () => {
     await useAiRun.getState().startVerb('write.answers');
     const phase = useAiRun.getState().phase;
     if (phase.kind !== 'review' || phase.outcome.kind !== 'inserted') throw new Error('not inserted');
-    expect(phase.outcome.items[0]).toMatchObject({ tone: 'look', notes: ["Mark scheme didn't add up to 4 marks — not inserted"] });
+    expect(phase.outcome.items[0]).toMatchObject({ tone: 'look', notes: ["Mark scheme didn't add up to 4 marks. Not inserted"] });
     expect(q1().parts[0].answer).toBeDefined();
     expect(q1().parts[0].scheme).toBeUndefined();
   });

@@ -136,7 +136,7 @@ function PointRow({
           <MiniNumber
             label={`Point ${index + 1} marks`}
             value={point.marks}
-            placeholder="—"
+            placeholder="–"
             onChange={(marks) => {
               const rest = omit(point, 'marks');
               onChange(marks === undefined ? rest : { ...rest, marks });
@@ -214,7 +214,7 @@ function GroupBox({
           <MiniNumber
             label={`Group ${index + 1}: marks per point (n@)`}
             value={group.each}
-            placeholder="—"
+            placeholder="–"
             onChange={(each) => onChange(withRule(group, 'each', each))}
           />
         </Rule>
@@ -222,7 +222,7 @@ function GroupBox({
           <MiniNumber
             label={`Group ${index + 1}: max marks`}
             value={group.max}
-            placeholder="—"
+            placeholder="–"
             onChange={(max) => onChange(withRule(group, 'max', max))}
           />
         </Rule>

@@ -236,7 +236,7 @@ export function FileDashboard({
           ) : summaries.length === 0 ? (
             <div className="zone-light mt-4 rounded-xl border border-line bg-surface px-6 py-10">
               <p className="max-w-md text-[13px] leading-relaxed text-ink-muted">
-                Nothing saved yet. Worksheets you start are kept {place} — save a .json copy to
+                Nothing saved yet. Worksheets you start are kept {place}. Save a .json copy to
                 move one to another machine.
               </p>
             </div>
@@ -365,7 +365,7 @@ function FolderNav({
       </ul>
       {list.length === 0 && (
         <p className="mt-2 hidden pl-2 text-[11px] leading-snug text-ink-subtle md:block">
-          Group documents by class or term — press + to make a folder.
+          Group documents by class or term. Press + to make a folder.
         </p>
       )}
     </nav>

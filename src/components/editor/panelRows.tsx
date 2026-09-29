@@ -86,7 +86,7 @@ export function MiniNumber({
 export function ExcerptRow({
   marker,
   text,
-  emptyHint = 'Empty — type on the page',
+  emptyHint = 'Empty. Type on the page',
   targetKey,
   actions,
   badge,

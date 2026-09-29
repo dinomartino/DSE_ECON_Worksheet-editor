@@ -211,12 +211,12 @@ interface CropRect {
 }
 
 const TOOLS: Array<{ id: Tool; glyph: string; name: string; hint: string }> = [
-  { id: 'select', glyph: '↖', name: 'Select', hint: 'Drag to move — it lets go on release. Click to select and edit. Drag empty space to box-select.' },
-  { id: 'curve', glyph: '╱', name: 'Curve', hint: 'Drag to draw a line. A near-flat one straightens itself — hold Shift to keep a shallow slope. Double-click text to retype it.' },
+  { id: 'select', glyph: '↖', name: 'Select', hint: 'Drag to move. It lets go on release. Click to select and edit. Drag empty space to box-select.' },
+  { id: 'curve', glyph: '╱', name: 'Curve', hint: 'Drag to draw a line. A near-flat one straightens itself. Hold Shift to keep a shallow slope. Double-click text to retype it.' },
   { id: 'point', glyph: '•', name: 'Point', hint: 'Click to mark a point. It snaps to curve intersections.' },
-  { id: 'label', glyph: 'A', name: 'Label', hint: 'Click to place free text — the "a b c d" areas of a tariff diagram.' },
-  { id: 'arrow', glyph: '→', name: 'Arrow', hint: 'Drag to draw a shift arrow between two curves. A near-flat one straightens itself — hold Shift to keep a shallow angle.' },
-  { id: 'span', glyph: '↔', name: 'Span', hint: 'Click two ends — points and crossings attach, so the bracket or arrow follows them. Pick a style, and whether it sits on an axis.' },
+  { id: 'label', glyph: 'A', name: 'Label', hint: 'Click to place free text, such as the "a b c d" areas of a tariff diagram.' },
+  { id: 'arrow', glyph: '→', name: 'Arrow', hint: 'Drag to draw a shift arrow between two curves. A near-flat one straightens itself. Hold Shift to keep a shallow angle.' },
+  { id: 'span', glyph: '↔', name: 'Span', hint: 'Click two ends. Points and crossings attach, so the bracket or arrow follows them. Pick a style, and whether it sits on an axis.' },
 ];
 
 interface Props {
@@ -1145,7 +1145,7 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
             <button
               key={item.id}
               type="button"
-              title={`${item.name} — ${item.hint}`}
+              title={`${item.name}: ${item.hint}`}
               aria-pressed={tool === item.id}
               onClick={() => {
                 setTool(item.id);
@@ -1269,7 +1269,7 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
         <button
           type="button"
           aria-pressed={cropping}
-          title="Crop — drag the frame to choose the white space around the plot. The frame becomes the printed size; the plot keeps its own."
+          title="Crop: drag the frame to choose the white space around the plot. The frame becomes the printed size; the plot keeps its own."
           onClick={toggleCrop}
           className={
             'flex h-11 items-center gap-1.5 rounded-lg border px-3 text-base ' +
@@ -1291,7 +1291,7 @@ export function DiagramCanvas({ block, onChange, onClose }: Props) {
             comfortable contrast on the dark bar. */}
         <span className="max-w-96 text-xs leading-snug text-ink-muted">
           {cropping
-            ? 'Drag the frame edges — a wider frame is how a long title gets its room.'
+            ? 'Drag the frame edges. A wider frame is how a long title gets its room.'
             : spanDraft
               ? 'Now click the other end. Esc cancels.'
               : selected.length > 1
@@ -1545,7 +1545,7 @@ function TextEditor({
         <button
           key={marker}
           type="button"
-          title={`${label} — ${marker === '_' ? 'S₁' : 'm²'}`}
+          title={`${label}: ${marker === '_' ? 'S₁' : 'm²'}`}
           aria-label={label}
           onMouseDown={(event) => {
             event.preventDefault();
@@ -2716,7 +2716,7 @@ function ElementIndex({
       <p className="mt-4 border-t border-line pt-3 text-[11px] leading-relaxed text-ink-muted">
         Drag anything to move it. Click it instead to select it and edit its properties
         here. Drag empty space to box-select; shift-click adds. Arrow keys nudge a
-        selection — hold Shift for bigger steps. ⌘C / ⌘V / ⌘D / ⌫ act on a selection,
+        selection. Hold Shift for bigger steps. ⌘C / ⌘V / ⌘D / ⌫ act on a selection,
         ⌘A selects everything.
       </p>
     </div>

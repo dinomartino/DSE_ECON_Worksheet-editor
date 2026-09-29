@@ -226,7 +226,7 @@ export function validateItem(
   }
   const leak = derived(job, source, out);
   if (leak) {
-    add({ code: 'derived', severity: 'fail', message: `Remove “${leak}”`, fix: `Remove “${leak}” — the app prints numbers, labels and marks itself.` });
+    add({ code: 'derived', severity: 'fail', message: `Remove “${leak}”`, fix: `Remove “${leak}”. The app prints numbers, labels and marks itself.` });
   }
   if (job.kind === 'wording') {
     const digits = new Set(source.match(/\d/g) ?? []);

@@ -104,7 +104,7 @@ describe('evaluateAnswer', () => {
     const result = evaluateAnswer(a, item({ points: [{ en: 'One', zh: '', marks: 1 }] }), ['en'], null);
     expect(result.status).toBe('look');
     expect(result.fill).toEqual({ shape: 'written', answer: bi('Demand rises.', '') });
-    expect(result.notes).toEqual(["Mark scheme didn't add up to 4 marks — not inserted"]);
+    expect(result.notes).toEqual(["Mark scheme didn't add up to 4 marks. Not inserted"]);
   });
 
   it('builds an HKEAA scheme whose derived total is the leaf marks', () => {
@@ -116,7 +116,7 @@ describe('evaluateAnswer', () => {
 
   it('fails when a scheme-only leaf gets no usable scheme, or the answer is empty', () => {
     expect(evaluateAnswer(bii, item({ key: 'a3', points: [{ en: 'x', zh: '', marks: 0 }] }), ['en'], null)).toMatchObject({ status: 'failed' });
-    expect(evaluateAnswer(a, item({ answerEn: '  ' }), ['en'], null)).toMatchObject({ status: 'failed', notes: ['The reply had no answer — nothing inserted'] });
+    expect(evaluateAnswer(a, item({ answerEn: '  ' }), ['en'], null)).toMatchObject({ status: 'failed', notes: ['The reply had no answer. Nothing inserted'] });
     expect(evaluateAnswer(a, undefined, ['en'], null).status).toBe('failed');
   });
 
@@ -240,7 +240,7 @@ describe('runAnswers and apply', () => {
     const split: AnswerPlan = { ...plan, chunks: [{ id: 'c1', targetKeys: ['a1'] }, { id: 'c2', targetKeys: ['a2'] }] };
     const down = new AiError({ kind: 'server', provider: 'gemini', message: 'The provider had a problem', fatal: false, actions: [] });
     const outcome = await runAnswers(split, deps(scriptedClient([down, (req: CompletionRequest) => cannedReply(req)])), new AbortController().signal);
-    expect(outcome.results.get('a1')).toMatchObject({ status: 'failed', notes: ['The provider had a problem — nothing inserted'] });
+    expect(outcome.results.get('a1')).toMatchObject({ status: 'failed', notes: ['The provider had a problem. Nothing inserted'] });
     expect(outcome.results.get('a2')?.status).toBe('ok');
   });
 });

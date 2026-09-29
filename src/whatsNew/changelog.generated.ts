@@ -20,9 +20,13 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   with a coverage chart, a Teacher-version preview (diagrams and mark schemes), topics you
   can set, and "New worksheet from these" or "Add to" your last worksheet for the ones you tick.
 - **題庫 tab in the editor**: find questions from your other worksheets by words, topic,
-  type or marks and insert copies after the question you click, in one click — or Fill a
+  type or marks and insert copies after the question you click, in one click, or Fill a
   set by topic, preferring ones your class has not seen. The new questions are highlighted
   on the page, and one Undo takes the whole set back out.
+
+### Changed
+- **Plainer wording in messages and hints.** Hints, notices and error messages now use
+  short sentences instead of long dashes.
 
 ### Fixed
 - **Typing on the page is lighter.** The page no longer redraws twice for every key you

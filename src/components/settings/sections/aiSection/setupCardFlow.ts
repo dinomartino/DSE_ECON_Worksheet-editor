@@ -58,7 +58,7 @@ export function initialSetupCard(
 export function regionLine(provider: ProviderId): string {
   return provider === 'gemini'
     ? GEMINI_REGION_MESSAGE
-    : `${presetFor(provider).label} refused a request from your location — try DeepSeek or Qwen.`;
+    : `${presetFor(provider).label} refused a request from your location. Try DeepSeek or Qwen.`;
 }
 
 /** Settings' banner after a refusal: the same line, then the Hong Kong alternatives. */
