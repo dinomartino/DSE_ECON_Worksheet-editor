@@ -16,10 +16,16 @@ off the bottom.** It is the first thing a fresh session reads — then
   Hide from bank) + B persistent index (`src/storage/changes.ts`, `src/library/bankIndex.ts`,
   IndexedDB / `worksheets/library/index.json`) + C editor 題庫 tab (`src/components/bank/`)
   + D start-screen bank page (`src/components/bank/page/`) + E lineage actions
-  (`src/library/bankDocs.ts`). Each verified alone in Chrome; **integration QA + polish
-  running** (`feature/bank-polish`). **Unverified:** desktop index file in the real shell;
-  WebKit. Follow-ups: native `<select>` filters, list keyboard navigation, Set topic only adds,
-  ↻ swap per Fill pick, hover ghost preview, ✦ Suggest topics.
+  (`src/library/bankDocs.ts`). **Integration QA + polish merged** (`feature/bank-polish`):
+  end-to-end in Chromium + WebKit, `.docx` leak-free; fixed a real "Maximum update depth"
+  crash in `usePagination`/band measuring (a no-op `setState` per render queued a second
+  full render per keystroke — compare before calling the setter). lq-verify and
+  cover-verify pass after it. **Unverified:** desktop index file in the real shell.
+  Follow-ups: "Update bank copy" menu item appears a beat late (rows shift); new banks all
+  titled "Question bank"; From filter shows same-titled docs alike; native `<select>`
+  filters wrap at 1280px; no list keyboard nav; Set topic only adds; ↻ per Fill pick; hover
+  ghost preview; ✦ Suggest topics. Pre-existing, not bank: a new Classroom worksheet's first
+  question lands after the Section B heading.
 - **✦ AI demo film (merged on `develop`)** — `npm run demo:ai` → `demo-media/ai/` (38 s,
   subtitles, no audio). Translations are canned in the browser (`scripts/demo/ai-provider.mjs`,
   text in `scripts/demo/content.mjs:AI`); Check terms is real. App nit seen while filming:
@@ -179,6 +185,9 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
+- **2026-09-29** — Question bank 題庫: audit → design page → Phase 0 dup-id fix → WP-0 core →
+  A–E in parallel worktrees (Sonnet for A/E, Opus for B–D) → integration QA/polish. All on
+  `develop`, 2725 tests; nothing pushed.
 - **2026-09-28 (later)** — Settings → Appearance (System / Light / Dark, default System):
   `src/settings/appearance.ts`; dark tokens and `dark:` now key on `<html data-theme>`, set
   before paint by `THEME_BOOT_SCRIPT` in `layout.tsx`, kept live by `AppearanceEffect`.
