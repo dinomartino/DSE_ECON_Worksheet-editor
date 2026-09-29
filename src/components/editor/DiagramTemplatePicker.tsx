@@ -113,10 +113,10 @@ function TemplateGrid({
           aria-pressed={card.id === currentId}
           onClick={() => onPick(card.id)}
           className={
-            // A small lift on hover, back down when pressed. The ring is selection, not
-            // focus (focus keeps the browser outline), so it may ease with the shadow.
-            'rounded-lg border p-1.5 text-left transition-[background-color,border-color,box-shadow,translate,scale] duration-150 ease-out-soft ' +
-            'hover:-translate-y-0.5 hover:bg-surface-sunken hover:shadow-md active:translate-y-0 active:scale-[0.98] ' +
+            // Hover tints the card; nothing moves. The ring is selection, not focus
+            // (focus keeps the browser outline).
+            'rounded-lg border p-1.5 text-left transition-[background-color,border-color,box-shadow,scale] duration-150 ease-out-soft ' +
+            'hover:bg-surface-sunken active:scale-[0.98] ' +
             (card.id === currentId
               ? 'border-accent ring-1 ring-accent'
               : 'border-line')
