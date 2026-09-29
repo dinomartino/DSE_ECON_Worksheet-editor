@@ -2769,13 +2769,25 @@ call goes through a dynamic `import()` inside a function, behind an `isDesktop()
 `<id>.worksheet.json` per document plus `index.json` — when `isDesktop()`, else the
 `localStorage` store. Both share the per-row index validation (`storage/summaries.ts`);
 the file store can also rebuild a lost index by scanning the directory. Saving `.docx`,
-`.json` and PDF uses the native save dialog on desktop; the web downloads (`.docx`, `.json`)
-or prints (PDF).
+`.json` and PDF uses the native save dialog on desktop; the web prints PDF, and saves the
+rest as below.
+
+**Saving asks where first** (`platform/index.ts:chooseSaveTarget`, `:chooseFolderTarget`).
+The target is chosen inside the click, *then* the file is built and written: a browser
+picker needs the click's activation, which a `.docx` build can outlast, so names come from
+light modules (`export/docx/fileNames.ts`, `storage/backupName.ts`). Desktop: a save sheet.
+Chrome/Edge: `showSaveFilePicker` (`platform/webPicker.ts`); any failure but a cancel falls
+back to the anchor download, which Firefox/Safari always use (the dialog says so).
+`undefined` means cancelled everywhere; nothing is written and the dialog stays. Several
+files in one export ask once for a folder (desktop folder sheet, `showDirectoryPicker`)
+and take ` (2)` rather than replace a file there; without a folder picker the web keeps
+one download per click (`exportSession.ts:deliverFiles`).
 
 **Where files go.** Save and open dialogs start in the last-used folder, else
 `~/Documents/Econ Worksheets` (created on demand; the one `$DOCUMENT` path `fs:allow-mkdir`
 grants). The last folder is a `localStorage` key outside the `econ-worksheet:` prefix.
-Picked paths need no fs grant — the dialog plugin scopes them at runtime. After a save the
+Picked paths need no fs grant — the dialog plugin scopes them at runtime (a picked
+folder's direct children, for a multi-file export). After a save the
 toolbar offers `revealLabel()` (Show in Finder/Explorer); the start screen links the
 store folder and the exports folder, and each saved document can be revealed.
 

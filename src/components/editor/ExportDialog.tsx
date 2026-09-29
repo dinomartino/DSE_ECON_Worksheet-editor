@@ -3,16 +3,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { LanguageMode, OutputMode, VersionMode, Worksheet } from '@/model/types';
 import {
+  canChooseFolder,
+  canChooseLocation,
+  chooseFolderTarget,
   chooseSavePath,
+  chooseSaveTarget,
   CSV_FILTERS,
   DOCX_FILTERS,
   isDesktop,
   PDF_FILTERS,
-  saveFile,
   XLSX_FILTERS,
 } from '@/platform';
 import { downloadWorksheetFile, worksheetStore, worksheetTitle, type WorksheetSummary } from '@/storage';
 import { buildAppExport, type AppExport, type AppFormat } from '@/export/csv/answerKeyCsv';
+import { answerKeyFileName, docxFileName } from '@/export/docx/fileNames';
 import { Button, CheckField, Segmented } from '@/components/ui';
 import { Dialog, Field } from '@/components/ui/Dialog';
 import { DownloadIcon, PdfIcon } from '@/components/ui/icons';
@@ -28,13 +32,18 @@ import {
   paperMode,
   pdfDestination,
   pdfVariant,
+  planned,
   skippedNote,
+  withPlace,
   type ExportChoice,
   type ExportFile,
   type ExportFormat,
   type ExportRun,
+  type ExportSaver,
   type ExportWhat,
   type KeyDocumentPick,
+  type PlannedFile,
+  type SavedPlace,
 } from './exportSession';
 
 export interface ExportDialogProps {
@@ -68,29 +77,29 @@ export interface ExportDialogProps {
 const loadSaved = (id: string) => worksheetStore.load(id);
 
 /**
- * Build the chosen files. `@/export/docx` (OOXML builders + JSZip) is imported here, on
- * click, so no page load pays for it; a chunk that fails to load reports as an export
- * failure like any other.
+ * Name the chosen files; each builds when delivered, after the save picker. The `.docx`
+ * builders (OOXML + JSZip) are imported then, on click, so no page load pays for them; a
+ * chunk that fails to load reports as an export failure like any other.
  */
-async function buildFiles(
+async function planFiles(
   worksheet: Worksheet,
   choice: ExportChoice,
   loadDocument: (id: string) => Promise<Worksheet | undefined>,
-): Promise<ExportFile[]> {
+): Promise<PlannedFile[]> {
   if (choice.what === 'apps') {
     const built = buildAppExport(worksheet, choice.app ?? 'zipgrade', choice.language);
-    return [{ kind: 'apps', name: built.fileName, blob: await appBlob(built) }];
+    return [{ kind: 'apps', name: built.fileName, build: () => appBlob(built) }];
   }
-  const docx = await import('@/export/docx');
-  const files: ExportFile[] = [];
+  const docx = () => import('@/export/docx');
+  const files: PlannedFile[] = [];
   for (const kind of exportKinds(choice.what)) {
     if (kind === 'paper') {
       for (const variant of choice.variants ?? [undefined]) {
         const mode: OutputMode = { ...paperMode(choice), ...(variant ? { variant } : {}) };
         files.push({
           kind,
-          name: docx.docxFileName(worksheet, mode),
-          blob: await docx.exportDocx(worksheet, mode),
+          name: docxFileName(worksheet, mode),
+          build: async () => (await docx()).exportDocx(worksheet, mode),
           ...(variant ? { variant } : {}),
         });
       }
@@ -104,8 +113,8 @@ async function buildFiles(
       const note = skippedNote(skipped);
       files.push({
         kind,
-        name: docx.answerKeyFileName(worksheet, choice.language, others),
-        blob: await docx.exportAnswerKeyDocx(worksheet, choice.language, others),
+        name: answerKeyFileName(worksheet, choice.language, others),
+        build: async () => (await docx()).exportAnswerKeyDocx(worksheet, choice.language, others),
         ...(note ? { note, leftOut: skipped.length } : {}),
       });
     }
@@ -120,12 +129,15 @@ async function appBlob(built: AppExport): Promise<Blob> {
   return buildXlsx(built.data.rows);
 }
 
-const saveExport = (file: ExportFile) =>
-  saveFile(
-    file.blob,
-    file.name,
-    file.name.endsWith('.csv') ? CSV_FILTERS : file.name.endsWith('.xlsx') ? XLSX_FILTERS : DOCX_FILTERS,
-  );
+const filtersFor = (name: string) =>
+  name.endsWith('.csv') ? CSV_FILTERS : name.endsWith('.xlsx') ? XLSX_FILTERS : DOCX_FILTERS;
+
+/** Where export files go: the platform's pickers, read at click time. */
+const exportSaver = (): ExportSaver => ({
+  folders: canChooseFolder(),
+  chooseFile: (file) => chooseSaveTarget(file.name, filtersFor(file.name)),
+  chooseFolder: chooseFolderTarget,
+});
 
 /**
  * PDF differs by platform: the desktop app writes the file itself; a browser can only
@@ -183,17 +195,24 @@ const WARNINGS_SHOWN = 4;
 const savedNotes = (files: ExportFile[]) => files.flatMap((file) => (file.note ? [file.note] : []));
 
 /** Hand what was written to the toolbar's status line; nothing written, nothing said. */
-function report(saved: ExportRun['saved'], onExported: ExportDialogProps['onExported']): void {
+function report(
+  saved: ExportRun['saved'],
+  onExported: ExportDialogProps['onExported'],
+  folder?: SavedPlace,
+): void {
   if (saved.length === 0) return;
   const leftOut = saved.reduce((sum, { file }) => sum + (file.leftOut ?? 0), 0);
-  const message =
+  const message = withPlace(
     saved.length > 1
       ? `Exported ${saved.length} files`
       : saved[0].file.kind === 'answerKey'
         ? 'Exported answer key'
         : saved[0].file.kind === 'apps'
           ? `Exported .${saved[0].file.name.split('.').pop()}`
-          : 'Exported .docx';
+          : 'Exported .docx',
+    saved,
+    folder,
+  );
   onExported(leftOut > 0 ? `${message}, ${leftOut} left out` : message, saved[saved.length - 1].path);
 }
 
@@ -215,6 +234,8 @@ export function ExportDialog({
 }: ExportDialogProps) {
   const [format, setFormat] = useState<ExportFormat>(initialFormat);
   const desktop = isDesktop();
+  // Firefox and Safari: no picker, so the browser's own download setting decides where.
+  const downloadsOnly = !canChooseLocation();
   const formats = formatOptions(desktop);
   const [chosenWhat, setWhat] = useState<ExportWhat>(initialWhat);
   // PDF prints what is on the page, and only the question paper is; the choice is kept
@@ -288,15 +309,19 @@ export function ExportDialog({
     callbacks.current.onClose();
   }, [waiting]);
 
-  const finish = (run: ExportRun, before: ExportRun['saved']) => {
+  const finish = (run: ExportRun, before: ExportRun['saved'], retry?: ExportFile[]) => {
+    // A cancelled picker wrote nothing; the dialog stays for another try.
+    if (run.cancelled) {
+      if (retry) setWaiting({ pending: retry, saved: before });
+      return;
+    }
     const saved = [...before, ...run.saved];
     if (run.pending.length > 0) {
       setWaiting({ pending: run.pending, saved });
       return;
     }
-    // A cancelled first sheet wrote nothing; the dialog stays for another try.
     if (saved.length === 0) return;
-    report(saved, onExported);
+    report(saved, onExported, run.folder);
     const notes = savedNotes(saved.map(({ file }) => file));
     if (notes.length > 0) {
       setLeftOut(notes.join('; '));
@@ -305,12 +330,16 @@ export function ExportDialog({
     onClose();
   };
 
-  const run = async (produce: () => Promise<{ files: ExportFile[]; before: ExportRun['saved'] }>) => {
+  // Planning is quick, so the picker still opens inside the click; the files build after it.
+  const run = async (
+    plan: () => Promise<PlannedFile[]>,
+    before: ExportRun['saved'] = [],
+    retry?: ExportFile[],
+  ) => {
     setBusy(true);
     setError(undefined);
     try {
-      const { files, before } = await produce();
-      finish(await deliverFiles(files, { desktop: isDesktop(), save: saveExport }), before);
+      finish(await deliverFiles(await plan(), exportSaver()), before, retry);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Export failed.');
     } finally {
@@ -349,12 +378,9 @@ export function ExportDialog({
     setBusy(true);
     setError(undefined);
     try {
-      const saved = await deliverWorksheetJson({
-        desktop: isDesktop(),
-        save: () => downloadWorksheetFile(worksheet),
-      });
+      const saved = await deliverWorksheetJson({ save: () => downloadWorksheetFile(worksheet) });
       if (!saved) return;
-      onExported(saved.message, saved.path);
+      onExported(withPlace(saved.message, [saved]), saved.path);
       onClose();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Export failed.');
@@ -364,8 +390,8 @@ export function ExportDialog({
   };
 
   const handleExport = () =>
-    void run(async () => ({
-      files: await buildFiles(
+    void run(() =>
+      planFiles(
         worksheet,
         {
           what,
@@ -379,15 +405,14 @@ export function ExportDialog({
         },
         loadDocument,
       ),
-      before: [],
-    }));
+    );
 
   // A fresh click, and the file is already built: nothing stands between it and the download.
   const handleNext = () => {
     if (!waiting) return;
     const { pending, saved } = waiting;
     setWaiting(undefined);
-    void run(async () => ({ files: pending, before: saved }));
+    void run(async () => pending.map(planned), saved, pending);
   };
 
   const next = waiting?.pending[0];
@@ -475,8 +500,10 @@ export function ExportDialog({
                 hint={
                   pdf
                     ? 'PDF prints the question paper only; the others export under .docx.'
-                    : what === 'both' && !isDesktop()
-                      ? `${fileCount} files. Each downloads on its own click.`
+                    : what === 'both'
+                      ? canChooseFolder()
+                        ? `${fileCount} files, saved together in a folder you choose.`
+                        : `${fileCount} files. Each downloads on its own click.`
                       : what === 'apps'
                         ? 'The MCQs, for a bubble-sheet scanner or a quiz game.'
                         : 'The answer key is a separate document: answer grid and marking scheme.'
@@ -637,6 +664,13 @@ export function ExportDialog({
               )}
             </div>
           </>
+        )}
+
+        {downloadsOnly && !pdf && !leftOut && (
+          <p className="text-[11px] leading-relaxed text-ink-muted">
+            Your browser saves to its Downloads folder. To choose a folder each time, turn on
+            “Ask where to save” in the browser’s settings.
+          </p>
         )}
 
         {error && (

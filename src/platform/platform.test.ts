@@ -5,8 +5,14 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  canChooseFolder,
+  canChooseLocation,
+  chooseFolderTarget,
   chooseSavePath,
+  chooseSaveTarget,
+  CSV_FILTERS,
   DOCX_FILTERS,
+  freeName,
   exportsFolder,
   isDesktop,
   JSON_FILTERS,
@@ -54,10 +60,10 @@ describe('isDesktop', () => {
 });
 
 describe('saveFile on the web', () => {
-  it('downloads the text and returns no path', async () => {
-    const path = await saveFile('{"a":1}', 'doc.worksheet.json');
-    // Web has no destination to report — the browser chose it.
-    expect(path).toBeUndefined();
+  it('downloads the text and reports nowhere', async () => {
+    const saved = await saveFile('{"a":1}', 'doc.worksheet.json');
+    // Web has no destination to report — the browser chose it. Not `undefined`: not cancelled.
+    expect(saved).toEqual({});
     // triggerDownload's blob read is async; let it land.
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(downloads).toEqual([{ fileName: 'doc.worksheet.json', text: '{"a":1}' }]);
@@ -73,6 +79,139 @@ describe('saveFile on the web', () => {
     await saveFile(new TextEncoder().encode('hi'), 'x.docx');
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(downloads[0]?.text).toBe('hi');
+  });
+});
+
+// ---- The browser's own pickers (Chrome, Edge) --------------------------------------
+
+/** A picked file whose writes are recorded. */
+function fakeFile(name: string) {
+  const chunks: string[] = [];
+  return {
+    name,
+    text: () => chunks.join(''),
+    createWritable: async () => ({
+      write: async (blob: Blob) => void chunks.push(await blob.text()),
+      close: async () => undefined,
+      abort: async () => undefined,
+    }),
+  };
+}
+
+function fakeFolder(name: string, existing: string[] = []) {
+  const files = new Map(existing.map((file) => [file, fakeFile(file)]));
+  return {
+    name,
+    files,
+    getFileHandle: async (file: string, options?: { create?: boolean }) => {
+      const found = files.get(file);
+      if (found) return found;
+      if (!options?.create) throw new DOMException('missing', 'NotFoundError');
+      const made = fakeFile(file);
+      files.set(file, made);
+      return made;
+    },
+  };
+}
+
+const abort = () => new DOMException('The user aborted a request.', 'AbortError');
+
+describe('saveFile with a Save As picker', () => {
+  it('opens the picker before any await, so the click still counts', async () => {
+    const picked = fakeFile('Mine.docx');
+    const show = vi.fn(async () => picked);
+    vi.stubGlobal('window', { showSaveFilePicker: show });
+    const choosing = chooseSaveTarget('paper.docx', DOCX_FILTERS);
+    expect(show).toHaveBeenCalledTimes(1);
+    expect(show.mock.calls[0]).toEqual([
+      {
+        suggestedName: 'paper.docx',
+        id: 'econ-export',
+        startIn: 'documents',
+        types: [
+          {
+            description: 'Word document',
+            accept: {
+              'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+            },
+          },
+        ],
+      },
+    ]);
+    const target = await choosing;
+    expect(await target?.write(new Blob(['docx-bytes']))).toEqual({ name: 'Mine.docx' });
+    expect(picked.text()).toBe('docx-bytes');
+    expect(downloads).toEqual([]);
+  });
+
+  it('drops mime parameters, which the picker rejects', async () => {
+    const show = vi.fn(async () => fakeFile('k.csv'));
+    vi.stubGlobal('window', { showSaveFilePicker: show });
+    await saveFile('a,b', 'key.csv', CSV_FILTERS);
+    expect(show.mock.calls[0]).toMatchObject([{ types: [{ accept: { 'text/csv': ['.csv'] } }] }]);
+  });
+
+  it('a cancel is not a save: undefined, and no download', async () => {
+    vi.stubGlobal('window', { showSaveFilePicker: async () => Promise.reject(abort()) });
+    expect(await saveFile('x', 'a.docx', DOCX_FILTERS)).toBeUndefined();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(downloads).toEqual([]);
+  });
+
+  it('any other failure (a lost click, a frame) falls back to the download', async () => {
+    vi.stubGlobal('window', {
+      showSaveFilePicker: async () => Promise.reject(new DOMException('no activation', 'SecurityError')),
+    });
+    expect(await saveFile('x', 'a.docx', DOCX_FILTERS)).toEqual({});
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(downloads).toEqual([{ fileName: 'a.docx', text: 'x' }]);
+  });
+
+  it('can choose only where the browser has the pickers', () => {
+    vi.stubGlobal('window', {});
+    expect(canChooseLocation()).toBe(false);
+    expect(canChooseFolder()).toBe(false);
+    vi.stubGlobal('window', { showSaveFilePicker: () => undefined, showDirectoryPicker: () => undefined });
+    expect(canChooseLocation()).toBe(true);
+    expect(canChooseFolder()).toBe(true);
+  });
+});
+
+describe('a folder picker on the web', () => {
+  it('writes each file into the picked folder, never over one already there', async () => {
+    const folder = fakeFolder('Unit 3', ['paper.docx']);
+    const show = vi.fn(async () => folder);
+    vi.stubGlobal('window', { showDirectoryPicker: show });
+    const target = await chooseFolderTarget();
+    if (typeof target === 'string') throw new Error(target);
+    expect(show.mock.calls[0]).toEqual([{ id: 'econ-export', mode: 'readwrite', startIn: 'documents' }]);
+    expect(target.name).toBe('Unit 3');
+    expect(await target.write('paper.docx', 'P')).toEqual({ name: 'paper (2).docx' });
+    expect(await target.write('key.docx', new Blob(['K']))).toEqual({ name: 'key.docx' });
+    expect(folder.files.get('paper.docx')?.text()).toBe('');
+    expect(folder.files.get('paper (2).docx')?.text()).toBe('P');
+    expect(folder.files.get('key.docx')?.text()).toBe('K');
+  });
+
+  it('is cancelled by a cancel, and unavailable without the picker or when it fails', async () => {
+    vi.stubGlobal('window', { showDirectoryPicker: async () => Promise.reject(abort()) });
+    expect(await chooseFolderTarget()).toBe('cancelled');
+    vi.stubGlobal('window', {
+      showDirectoryPicker: async () => Promise.reject(new DOMException('system folder', 'SecurityError')),
+    });
+    expect(await chooseFolderTarget()).toBe('unavailable');
+    vi.stubGlobal('window', {});
+    expect(await chooseFolderTarget()).toBe('unavailable');
+  });
+});
+
+describe('freeName', () => {
+  it('keeps a free name, else counts up before the extension', async () => {
+    const taken = (names: string[]) => async (name: string) => names.includes(name);
+    expect(await freeName('a.docx', taken([]))).toBe('a.docx');
+    expect(await freeName('a.docx', taken(['a.docx', 'a (2).docx']))).toBe('a (3).docx');
+    expect(await freeName('README', taken(['README']))).toBe('README (2)');
+    await expect(freeName('a.docx', async () => true)).rejects.toThrow('too many copies');
   });
 });
 
@@ -130,6 +269,7 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
     if (text === undefined) throw new Error(`ENOENT ${path}`);
     return text;
   },
+  exists: async (path: string) => tauri.readable.has(path) || tauri.written.has(path),
   readFile: async (path: string) => {
     const text = tauri.readable.get(path);
     if (text === undefined) throw new Error(`ENOENT ${path}`);
@@ -278,7 +418,7 @@ describe('saveFile on desktop', () => {
   it('starts in ~/Documents/Econ Worksheets, creating it', async () => {
     desktop();
     tauri.saveResult = `${DEFAULT}/paper.docx`;
-    const path = await saveFile('bytes', 'paper.docx', DOCX_FILTERS);
+    const path = (await saveFile('bytes', 'paper.docx', DOCX_FILTERS))?.path;
     expect(tauri.mkdirs).toEqual([DEFAULT]);
     expect(tauri.saveCalls[0]?.defaultPath).toBe(`${DEFAULT}/paper.docx`);
     expect(path).toBe(`${DEFAULT}/paper.docx`);
@@ -300,14 +440,14 @@ describe('saveFile on desktop', () => {
     desktop();
     tauri.mkdirFails = true;
     tauri.saveResult = '/somewhere/c.docx';
-    expect(await saveFile('x', 'c.docx')).toBe('/somewhere/c.docx');
+    expect(await saveFile('x', 'c.docx')).toEqual({ path: '/somewhere/c.docx' });
     expect(tauri.saveCalls[0]?.defaultPath).toBe('c.docx');
   });
 
   it('still exports when localStorage is unavailable', async () => {
     desktop('throws');
     tauri.saveResult = `${DEFAULT}/d.docx`;
-    expect(await saveFile('x', 'd.docx')).toBe(`${DEFAULT}/d.docx`);
+    expect(await saveFile('x', 'd.docx')).toEqual({ path: `${DEFAULT}/d.docx` });
     expect(tauri.saveCalls[0]?.defaultPath).toBe(`${DEFAULT}/d.docx`);
   });
 
@@ -315,6 +455,43 @@ describe('saveFile on desktop', () => {
     const storage = desktop();
     expect(await saveFile('x', 'e.docx')).toBeUndefined();
     expect(storage !== 'throws' && storage.getItem(LAST_FOLDER_KEY)).toBe(null);
+  });
+});
+
+describe('a folder for several files, on desktop', () => {
+  it('opens the folder sheet in the start folder, remembers it, and writes each file there', async () => {
+    const storage = desktop();
+    tauri.openResult = '/Users/t/Desktop/Unit 3';
+    const folder = await chooseFolderTarget();
+    if (typeof folder === 'string') throw new Error(folder);
+    expect(tauri.openCalls[0]).toMatchObject({ directory: true, multiple: false, defaultPath: DEFAULT });
+    expect(storage !== 'throws' && storage.getItem(LAST_FOLDER_KEY)).toBe('/Users/t/Desktop/Unit 3');
+    expect(folder.path).toBe('/Users/t/Desktop/Unit 3');
+    expect(await folder.write('a.docx', 'A')).toEqual({ path: '/Users/t/Desktop/Unit 3/a.docx', name: 'a.docx' });
+    expect(tauri.written.get('/Users/t/Desktop/Unit 3/a.docx')).toBe('A');
+  });
+
+  it('never replaces a file already there: the next free name', async () => {
+    desktop();
+    tauri.openResult = '/D';
+    tauri.readable.set('/D/a.docx', 'old');
+    const folder = await chooseFolderTarget();
+    if (typeof folder === 'string') throw new Error(folder);
+    expect(await folder.write('a.docx', 'new')).toEqual({ path: '/D/a (2).docx', name: 'a (2).docx' });
+    expect(tauri.written.get('/D/a (2).docx')).toBe('new');
+    expect(tauri.written.has('/D/a.docx')).toBe(false);
+  });
+
+  it('is cancelled when the sheet is, remembering nothing', async () => {
+    const storage = desktop();
+    expect(await chooseFolderTarget()).toBe('cancelled');
+    expect(storage !== 'throws' && storage.getItem(LAST_FOLDER_KEY)).toBe(null);
+  });
+
+  it('can always choose on desktop', () => {
+    desktop();
+    expect(canChooseLocation()).toBe(true);
+    expect(canChooseFolder()).toBe(true);
   });
 });
 

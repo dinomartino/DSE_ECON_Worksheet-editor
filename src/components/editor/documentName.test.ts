@@ -69,7 +69,7 @@ describe('renaming a document', () => {
     const sources = [
       'src/components/editor/Outline.tsx',
       'src/components/editor/DocumentName.tsx',
-      'src/export/docx/index.ts',
+      'src/export/docx/fileNames.ts',
       'src/storage/index.ts',
     ];
     // Either directly, through `worksheetTitle` (plus the file list's fallback word) or

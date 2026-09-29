@@ -50,6 +50,11 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   filters by one, and counts them on the topic cards. The 題型 Patterns page lists them
   all and renames, merges or deletes one in every worksheet at once. They come with your
   backup and never print.
+- **Choose where your export is saved.** In Chrome and Edge, exporting a worksheet, the
+  worksheet file or a backup now asks where to save it, as the desktop app does. Exporting
+  several files at once (Student and Teacher, versions A, B and C, or the answer key too)
+  asks for one folder instead of once per file, and never replaces a file already there.
+  Firefox and Safari still save to your Downloads folder.
 
 ### Changed
 - **The ⋯ menu no longer has "Worksheets…".** Click the app mark at the top left to go back to your worksheets.

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui';
 import {
+  chooseSaveTarget,
   exportsFolder,
   isDesktop,
   openFolder,
@@ -10,7 +11,6 @@ import {
   readDroppedFile,
   revealFile,
   revealLabel,
-  saveFile,
   subscribeToFileDrops,
   ZIP_FILTERS,
 } from '@/platform';
@@ -70,6 +70,7 @@ import {
   type TrashedSummary,
   type WorksheetSummary,
 } from '@/storage';
+import { backupFileName } from '@/storage/backupName';
 import {
   copyAssignment,
   createFolder,
@@ -354,11 +355,20 @@ export function StartScreen({
     setNotice(undefined);
     setBusy('backup');
     try {
-      const { backupFileName, buildBackup } = await import('@/storage/backup');
+      const summaries = await worksheetStore.list();
+      if (summaries.length === 0) {
+        setError('There is nothing saved to back up yet.');
+        return;
+      }
+      // Where first, inside the click: a browser's Save As needs it, and the zip takes a while.
+      const target = await chooseSaveTarget(backupFileName(), ZIP_FILTERS);
+      // A cancelled sheet or picker wrote nothing, so there is nothing to report.
+      if (!target) return;
+      const { buildBackup } = await import('@/storage/backup');
       const { readPatternRegistry } = await import('@/storage/patterns');
       const worksheets: Worksheet[] = [];
       let unreadable = 0;
-      for (const summary of await worksheetStore.list()) {
+      for (const summary of summaries) {
         const worksheet = await worksheetStore.load(summary.id).catch(() => undefined);
         if (worksheet) worksheets.push(worksheet);
         else unreadable += 1;
@@ -368,13 +378,9 @@ export function StartScreen({
         return;
       }
       const filed = await worksheetStore.readFolders();
-      const path = await saveFile(
+      const { path } = await target.write(
         await buildBackup(worksheets, undefined, filed, await readPatternRegistry(patternStorage)),
-        backupFileName(),
-        ZIP_FILTERS,
       );
-      // A cancelled desktop sheet wrote nothing, so there is nothing to report.
-      if (path === undefined && isDesktop()) return;
       setNotice({
         message:
           `Backed up ${plural(worksheets.length, 'document')}.` +

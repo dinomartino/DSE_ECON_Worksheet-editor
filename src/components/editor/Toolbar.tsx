@@ -184,11 +184,11 @@ export function Toolbar({
 
   const handleDownloadJson = async (message?: string) => {
     try {
-      const path = await downloadWorksheetFile(worksheet);
-      // A cancelled desktop sheet wrote nothing, so there is nothing to report.
-      if (path === undefined && isDesktop()) return;
-      if (message) flash(message, revealAction(path));
-      else if (path !== undefined) flash('Saved a copy', revealAction(path));
+      const saved = await downloadWorksheetFile(worksheet);
+      // A cancelled save sheet or picker wrote nothing, so there is nothing to report.
+      if (!saved) return;
+      if (message) flash(message, revealAction(saved.path));
+      else if (saved.path !== undefined) flash('Saved a copy', revealAction(saved.path));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Download failed.');
     }
