@@ -235,7 +235,8 @@ scan; rebuildable, so no teacher's work lives in it.
 - `src/components/bank/page/bankScreen.ts:levelUp` · `:levelForSearch` · `:railSections` · `:suggestTopics` · `:latestClassUsage` — the screen's pure half: levels, rail headings (sub-topics, then General), suggestion ranking
 - `src/components/bank/page/bankPage.ts:coverage` · `:filterRows` · `:traySummary` · `:addTarget` — the data half; counts are distinct `rootId`s
 - `src/components/bank/page/PaperPreview.tsx:PaperPreview` · `src/components/bank/page/questionPreview.ts:questionPreviewHtml` — one question through the clipboard reader of the IR, Student or Teacher, at print size in its own document's setup
-- `src/components/bank/page/writeBack.ts:writeTags` · `:withQuestionTags` — topic edits into the owning documents, one save per document
+- `src/components/bank/page/writeBack.ts:writeTags` · `:withQuestionTags` · `:copyWrites` · `:bulkTopicEdit` — topic edits into the owning documents, one save per document; every bank edit writes every copy of the question
+- `src/library/sharedTags.ts:withSharedTags` — one truth for tags: every copy reads the union of its root's tags; applied once where the index publishes (`src/library/bankIndex.ts:createBankIndex`), stored rows keep each copy's own
 - `src/components/bank/page/fromSelection.ts:worksheetFromPicks` · `src/components/bank/page/addToOpen.ts:addPicksToOpenDocument` — New worksheet from these / Add to the open paper (one ⌘Z)
 - `src/library/tabFilters.ts:visibleGroups` · `:paperRoots` · `:anchorLabel` · `:blockingFilter` — the editor tab's filters, "in this paper", the anchor line, which filter emptied the list
 - `src/components/bank/BankTab.tsx:BankTab` — the editor's 題庫 sidebar tab: anchor line, filters, list, Fill

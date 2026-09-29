@@ -46,11 +46,37 @@ import { TagAsYouGo } from './TagAsYouGo';
 import { CoverageBar } from './CoverageBar';
 import { TopicCards } from './TopicCards';
 import { TopicPickerDialog } from './TopicPickerDialog';
-import { addTopics, replaceTopics, writeTags, type TagEdit, type TagWrite } from './writeBack';
+import {
+  addTopics,
+  bulkTopicEdit,
+  copyWrites,
+  replaceTopics,
+  writeTags,
+  type BulkTopicMode,
+  type TagEdit,
+  type TagWrite,
+} from './writeBack';
 
 const NONE: ReadonlySet<string> = new Set();
 
-type Picker = { mode: 'edit'; row: BankRow } | { mode: 'bulk' } | { mode: 'tag'; rows: BankRow[] };
+type Picker = { mode: 'edit'; row: BankRow } | { mode: 'bulk'; topicMode: BulkTopicMode } | { mode: 'tag'; rows: BankRow[] };
+
+const BULK_MODES: { value: BulkTopicMode; label: string }[] = [
+  { value: 'add', label: 'Add' },
+  { value: 'remove', label: 'Remove' },
+  { value: 'replace', label: 'Replace' },
+];
+
+const BULK_TEXT: Record<BulkTopicMode, { description: string; confirm: (ticked: number) => string; done: string }> = {
+  add: { description: 'Adds the topics you tick. Topics already on a question stay.', confirm: () => 'Add topics', done: 'Tagged' },
+  remove: { description: 'Takes the topics you tick off. Other topics stay.', confirm: () => 'Remove topics', done: 'Removed topics from' },
+  replace: {
+    description: 'Each question gets exactly the topics you tick. Tick none to clear them.',
+    confirm: (ticked) => (ticked === 0 ? 'Clear topics' : 'Replace topics'),
+    done: 'Set topics on',
+  },
+};
+
 
 /**
  * The Question bank 題庫 as its own screen, opened from the start screen and left by
@@ -168,6 +194,10 @@ export function QuestionBankScreen({
 
   const pickedRows = picks.map((key) => byKey.get(key)).filter((row): row is BankRow => row !== undefined);
   const pickedSet = useMemo(() => new Set(pickedRows.map(rowKey)), [pickedRows]);
+  // Picks are questions: two copies of one question picked are one, and share its topics.
+  const pickedByRoot = [...new Map(pickedRows.map((row) => [row.rootId, row])).values()];
+  const pickedRoots = new Set(pickedByRoot.map((row) => row.rootId));
+  const pickedMix = new Map(traySummary(pickedByRoot).mix.map(({ code, count }) => [code, count] as const));
   // The editor's store still holds the document open last in this session. Pinned for the
   // visit: a topic saved here moves that paper to the top of the list, and "Add to" must
   // not follow it there.
@@ -215,9 +245,11 @@ export function QuestionBankScreen({
     return out;
   };
 
-  const report = (failed: { docId: string; reason: string }[]) => {
+  /** Copies left as they were, named; what did save is said first, so a partial write reads as one. */
+  const report = (failed: { docId: string; reason: string }[], saved: number) => {
     const title = (id: string) => summaries.find((s) => s.id === id)?.title ?? 'A worksheet';
-    onError(failed.map((f) => `“${title(f.docId)}” was not changed: ${f.reason}.`).join(' '));
+    const lead = saved > 0 ? `Saved in ${saved} ${saved === 1 ? 'worksheet' : 'worksheets'}. ` : '';
+    onError(lead + failed.map((f) => `“${title(f.docId)}” was not changed: ${f.reason}.`).join(' '));
   };
 
   /** One write at a time: tagging fast must never load a document before the last save lands. */
@@ -225,7 +257,7 @@ export function QuestionBankScreen({
     const run = async () => {
       const result = await writeTags(worksheetStore, list, edit);
       if (result.saved.length > 0) onDocumentsChanged();
-      if (result.failed.length > 0) report(result.failed);
+      if (result.failed.length > 0) report(result.failed, result.saved.length);
       else if (done && result.saved.length > 0) onNotice(done(result.saved.length));
     };
     writes.current = writes.current.then(run, run);
@@ -281,10 +313,7 @@ export function QuestionBankScreen({
     if (!tagGroup || codes.length === 0) return;
     const root = tagGroup.rootId;
     setTagged((current) => new Set(current).add(root));
-    void writeTopics(
-      tagGroup.rows.map((row) => ({ docId: row.docId, questionId: row.questionId })),
-      addTopics(codes),
-    );
+    void writeTopics(copyWrites(rows, [root]), addTopics(codes));
   };
   const toggleChosen = (code: string) => {
     const next = new Set(chosen);
@@ -572,7 +601,7 @@ export function QuestionBankScreen({
           targetTitle={target?.title}
           busy={busy}
           onClear={() => setPicks([])}
-          onSetTopic={() => setPicker({ mode: 'bulk' })}
+          onSetTopic={() => setPicker({ mode: 'bulk', topicMode: 'add' })}
           onAddTo={() => void addTo(pickedRows)}
           onNewWorksheet={() => void newWorksheet()}
         />
@@ -581,30 +610,39 @@ export function QuestionBankScreen({
       {picker?.mode === 'edit' && (
         <TopicPickerDialog
           title="Topics"
-          description={`Saved into “${picker.row.docTitle}”${picker.row.number !== undefined ? ` · Q${picker.row.number}` : ''}. Other copies keep their own.`}
+          description={editDescription(picker.row, copyWrites(rows, [picker.row.rootId]).length)}
           initial={picker.row.tags}
           confirmLabel="Save topics"
           onClose={() => setPicker(undefined)}
           onDone={(codes) => {
             const row = picker.row;
             setPicker(undefined);
-            void writeTopics([{ docId: row.docId, questionId: row.questionId }], replaceTopics(codes), () => 'Topics saved.');
+            void writeTopics(copyWrites(rows, [row.rootId]), replaceTopics(codes), () => 'Topics saved.');
           }}
         />
       )}
       {picker?.mode === 'bulk' && (
-        <TopicPickerDialog
-          title={`Set topic for ${pickedRows.length} ${pickedRows.length === 1 ? 'question' : 'questions'}`}
-          description="Adds the topics you tick. Topics already on a question stay."
+        <TopicPickerDialog<BulkTopicMode>
+          title={`Set topic for ${pickedRoots.size} ${pickedRoots.size === 1 ? 'question' : 'questions'}`}
+          description={`${BULK_TEXT[picker.topicMode].description} Every copy of each question changes.`}
           initial={[]}
-          confirmLabel="Add topics"
+          modes={{
+            label: 'How to set topics',
+            value: picker.topicMode,
+            options: BULK_MODES,
+            onChange: (topicMode) => setPicker({ mode: 'bulk', topicMode }),
+          }}
+          present={pickedMix}
+          allowEmpty={picker.topicMode === 'replace'}
+          confirmLabel={BULK_TEXT[picker.topicMode].confirm}
           onClose={() => setPicker(undefined)}
           onDone={(codes) => {
-            const list = pickedRows.map((row) => ({ docId: row.docId, questionId: row.questionId }));
+            const mode = picker.topicMode;
+            const count = pickedRoots.size;
             setPicker(undefined);
-            if (codes.length === 0) return;
-            void writeTopics(list, addTopics(codes), (saved) =>
-              `Tagged ${list.length} ${list.length === 1 ? 'question' : 'questions'} in ${saved} ${saved === 1 ? 'worksheet' : 'worksheets'}.`,
+            if (codes.length === 0 && mode !== 'replace') return;
+            void writeTopics(copyWrites(rows, pickedRoots), bulkTopicEdit(mode, codes), (saved) =>
+              `${BULK_TEXT[mode].done} ${count} ${count === 1 ? 'question' : 'questions'} in ${saved} ${saved === 1 ? 'worksheet' : 'worksheets'}.`,
             );
           }}
         />
@@ -624,6 +662,12 @@ export function QuestionBankScreen({
       )}
     </div>
   );
+}
+
+/** Where Edit topics writes: the one worksheet, or every copy. */
+function editDescription(row: BankRow, copies: number): string {
+  if (copies > 1) return `Saved into all ${copies} copies of this question.`;
+  return `Saved into “${row.docTitle}”${row.number !== undefined ? ` · Q${row.number}` : ''}.`;
 }
 
 /** A field that owns its keys: text inputs, text areas, selects, editable text. Checkboxes are not. */

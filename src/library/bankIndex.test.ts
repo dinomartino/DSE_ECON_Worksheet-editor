@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createParagraphBlock } from '@/model/factories';
+import { copyQuestion } from '@/model/lineage';
 import { bi } from '@/model/text';
 import type { Worksheet } from '@/model/types';
 import { LocalStorageWorksheetStore } from '@/storage';
@@ -139,6 +140,25 @@ describe('createBankIndex — reconcile', () => {
     loads.length = 0;
     await index.refresh();
     expect(loads).toEqual([]);
+  });
+
+  it('publishes one set of tags per question, but stores each copy’s own', async () => {
+    const { index, other, backend } = setup();
+    const original = choiceQuestion('Tagged in one paper', '', ['C.ped']);
+    const copy = { ...copyQuestion(original, 'x'), tags: ['mock'] };
+    const a = paper([]);
+    const b = paper([]);
+    await other.save({ ...a, questions: [original], flow: [{ type: 'question', id: original.id }] });
+    await other.save({ ...b, questions: [copy], flow: [{ type: 'question', id: copy.id }] });
+    await index.refresh();
+    await index.settled();
+
+    const { rows, groups } = index.getSnapshot();
+    expect(rows.map((r) => r.tags)).toEqual([['mock', 'C.ped'], ['mock', 'C.ped']]);
+    expect(groups[0].rows.every((r) => r.tags.includes('C.ped'))).toBe(true);
+    const stored = await backend.load();
+    expect(stored?.get(b.id)?.rows[0].tags).toEqual(['mock']);
+    expect(stored?.get(a.id)?.rows[0].tags).toEqual(['C.ped']);
   });
 
   it('publishes progress while scanning', async () => {

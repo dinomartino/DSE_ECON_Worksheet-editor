@@ -1,20 +1,31 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Button } from '@/components/ui';
+import { Button, Segmented } from '@/components/ui';
 import { Dialog } from '@/components/ui/Dialog';
 import { TOPICS, topicOf, type Topic } from '@/model/topics';
 
+/** A row of choices over the list (bulk: Add, Remove, Replace), owned by the caller. */
+export interface PickerModes<T extends string> {
+  label: string;
+  value: T;
+  options: { value: T; label: string }[];
+  onChange: (value: T) => void;
+}
+
 /**
  * Tick topics from the guide's list. Edits one question's codes (its free tags are kept by
- * the caller) or, in bulk, adds codes to many. The dialog pads its own body and keeps its
- * actions in the footer.
+ * the caller) or, in bulk, adds, removes or replaces codes on many. The dialog pads its
+ * own body and keeps its actions in the footer.
  */
-export function TopicPickerDialog({
+export function TopicPickerDialog<M extends string = never>({
   title,
   description,
   initial,
   confirmLabel,
+  modes,
+  present,
+  allowEmpty = true,
   onClose,
   onDone,
 }: {
@@ -22,14 +33,23 @@ export function TopicPickerDialog({
   description: string;
   /** Codes ticked on open; free tags are ignored here. */
   initial: readonly string[];
-  confirmLabel: string;
+  /** The confirm button's words, given how many topics are ticked. */
+  confirmLabel: string | ((ticked: number) => string);
+  modes?: PickerModes<M>;
+  /** How many of the questions in hand carry each code: shown beside it, and its topic opens. */
+  present?: ReadonlyMap<string, number>;
+  /** Whether confirming with nothing ticked means something (clearing); else it is disabled. */
+  allowEmpty?: boolean;
   onClose: () => void;
   onDone: (codes: string[]) => void;
 }) {
   const [picked, setPicked] = useState<ReadonlySet<string>>(() => new Set(initial.filter((tag) => topicOf(tag))));
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState<ReadonlySet<string>>(
-    () => new Set(initial.flatMap((tag) => (topicOf(tag)?.parent ? [topicOf(tag)!.parent!] : []))),
+    () =>
+      new Set(
+        [...initial, ...(present?.keys() ?? [])].flatMap((tag) => (topicOf(tag)?.parent ? [topicOf(tag)!.parent!] : [])),
+      ),
   );
   const needle = query.trim().toLowerCase();
   const matches = (topic: Topic) =>
@@ -66,13 +86,18 @@ export function TopicPickerDialog({
           <Button variant="subtle" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={() => onDone(ordered())}>
-            {confirmLabel}
+          <Button variant="primary" disabled={!allowEmpty && picked.size === 0} onClick={() => onDone(ordered())}>
+            {typeof confirmLabel === 'function' ? confirmLabel(picked.size) : confirmLabel}
           </Button>
         </>
       }
     >
       <div className="px-5 pb-4 pt-4">
+        {modes && (
+          <div className="-ml-2.5 -mt-2 mb-2">
+            <Segmented<M> label={modes.label} value={modes.value} options={modes.options} onChange={modes.onChange} />
+          </div>
+        )}
         <input
           type="search"
           value={query}
@@ -87,7 +112,7 @@ export function TopicPickerDialog({
             return (
               <li key={topic.code}>
                 <div className="flex items-center gap-1">
-                  <TopicCheck topic={topic} checked={picked.has(topic.code)} onToggle={() => toggle(topic.code)} />
+                  <TopicCheck topic={topic} checked={picked.has(topic.code)} count={present?.get(topic.code)} onToggle={() => toggle(topic.code)} />
                   {topic.children.length > 0 && !needle && (
                     <button
                       type="button"
@@ -111,7 +136,7 @@ export function TopicPickerDialog({
                   <ul className="mb-1 ml-6">
                     {children.map((child) => (
                       <li key={child.code}>
-                        <TopicCheck topic={child} checked={picked.has(child.code)} onToggle={() => toggle(child.code)} />
+                        <TopicCheck topic={child} checked={picked.has(child.code)} count={present?.get(child.code)} onToggle={() => toggle(child.code)} />
                       </li>
                     ))}
                   </ul>
@@ -130,7 +155,7 @@ function countIn(topic: Topic, picked: ReadonlySet<string>): number {
   return topic.children.filter((child) => picked.has(child.code)).length;
 }
 
-function TopicCheck({ topic, checked, onToggle }: { topic: Topic; checked: boolean; onToggle: () => void }) {
+function TopicCheck({ topic, checked, count, onToggle }: { topic: Topic; checked: boolean; count?: number; onToggle: () => void }) {
   return (
     <label className="flex min-w-0 flex-1 cursor-pointer items-baseline gap-2 rounded-md px-1.5 py-1 text-[12.5px] text-ink transition-colors hover:bg-surface-hover">
       <input
@@ -143,6 +168,11 @@ function TopicCheck({ topic, checked, onToggle }: { topic: Topic; checked: boole
       <span className="min-w-0 flex-1">
         {topic.en} <span className="text-ink-subtle">{topic.zh}</span>
       </span>
+      {count !== undefined && count > 0 && (
+        <span className="shrink-0 text-[11px] tabular-nums text-ink-subtle" title={`On ${count} selected`}>
+          ×{count}
+        </span>
+      )}
     </label>
   );
 }

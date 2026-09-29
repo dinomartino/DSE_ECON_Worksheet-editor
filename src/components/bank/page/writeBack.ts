@@ -1,4 +1,5 @@
 import { isNewerThanBuild } from '@/model/migrations';
+import type { BankRow } from '@/library/types';
 import { topicOf } from '@/model/topics';
 import type { Worksheet } from '@/model/types';
 import type { WorksheetStore } from '@/storage/types';
@@ -10,6 +11,10 @@ import type { WorksheetStore } from '@/storage/types';
  * start screen *instead of* `EditorApp`, and leaving the editor awaits
  * `flushBeforeLeaving`, so no in-memory copy of any document is waiting to be saved over
  * this write. Opening a document afterwards loads it from storage again.
+ *
+ * Every edit from the bank goes to every copy of the question (`copyWrites`), so all the
+ * copies it may write end with the same topics. Hidden and trashed documents are not in
+ * the index and keep their own; a document from a newer build is reported, not written.
  */
 
 /** A question's new tags, from its current ones. */
@@ -24,6 +29,20 @@ export const replaceTopics =
 export const addTopics =
   (codes: readonly string[]): TagEdit =>
   (tags) => unique([...tags, ...codes]);
+
+/** Take topic codes off, keep everything else. */
+export const removeTopics =
+  (codes: readonly string[]): TagEdit =>
+  (tags) => unique(tags.filter((tag) => !codes.includes(tag)));
+
+/** Bulk "Set topic": add the ticked topics, take them off, or make them the only ones. */
+export type BulkTopicMode = 'add' | 'remove' | 'replace';
+
+export function bulkTopicEdit(mode: BulkTopicMode, codes: readonly string[]): TagEdit {
+  if (mode === 'remove') return removeTopics(codes);
+  if (mode === 'replace') return replaceTopics(codes);
+  return addTopics(codes);
+}
 
 function unique(tags: readonly string[]): string[] {
   return [...new Set(tags.map((tag) => tag.trim()).filter(Boolean))];
@@ -61,6 +80,23 @@ export function withQuestionTags(
 export interface TagWrite {
   docId: string;
   questionId: string;
+}
+
+/**
+ * One write per copy of each listed question: every row of the index whose `rootId` is
+ * one of `rootIds`, in index order, each (document, question) once.
+ */
+export function copyWrites(rows: readonly Pick<BankRow, 'rootId' | 'docId' | 'questionId'>[], rootIds: Iterable<string>): TagWrite[] {
+  const roots = new Set(rootIds);
+  const seen = new Set<string>();
+  const out: TagWrite[] = [];
+  for (const row of rows) {
+    const key = `${row.docId}\u0000${row.questionId}`;
+    if (!roots.has(row.rootId) || seen.has(key)) continue;
+    seen.add(key);
+    out.push({ docId: row.docId, questionId: row.questionId });
+  }
+  return out;
 }
 
 export interface WriteReport {

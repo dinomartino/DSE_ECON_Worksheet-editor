@@ -4,6 +4,7 @@ import type { WorksheetStore } from '@/storage/types';
 import { createMemoryBackend, type BankIndexBackend, type IndexedDocs, type StoredDoc } from './bankBackend';
 import { groupRows } from './group';
 import { rowsOf } from './indexer';
+import { withSharedTags } from './sharedTags';
 import type { BankGroup, BankRow, BankStatus } from './types';
 
 /**
@@ -26,6 +27,7 @@ import type { BankGroup, BankRow, BankStatus } from './types';
 
 export interface BankSnapshot {
   status: BankStatus;
+  /** Each row's `tags` is its question's union over every copy (`withSharedTags`). */
   rows: BankRow[];
   groups: BankGroup[];
 }
@@ -163,7 +165,8 @@ export function createBankIndex(
   }
 
   function publish(status?: BankStatus) {
-    const rows = orderedRows(docs);
+    // Stored rows keep each copy's own tags; readers see one set per question.
+    const rows = withSharedTags(orderedRows(docs));
     snapshot = { status: status ?? snapshot.status, rows, groups: groupRows(rows) };
     for (const listener of listeners) listener();
   }
