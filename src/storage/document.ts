@@ -51,6 +51,8 @@ export function summarize(worksheet: Worksheet): WorksheetSummary {
     updatedAt: worksheet.updatedAt,
     questionCount: worksheet.questions.length,
     hasCover: Boolean(worksheet.cover),
+    // Only written for banks, so a paper's index row is byte-identical to before.
+    ...(worksheet.kind === 'bank' ? { kind: 'bank' as const } : {}),
   };
 }
 
