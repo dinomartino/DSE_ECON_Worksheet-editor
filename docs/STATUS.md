@@ -26,9 +26,12 @@ off the bottom.** It is the first thing a fresh session reads — then
   go), opened from the start screen's aside. The review page's only action is Open in
   worksheet (its "Add to …" confused the user, removed 2026-09-29); adding goes via the tray.
   **Deep analysis 2026-09-29** (`docs/research/2026-09-question-bank.md`, backlog in
-  `docs/IDEAS.md` § C): settle C5 (what a "use" means: classes, sat-on date, cohort; stop
-  `updatedAt` doubling as use date) and C6 (tags on all copies) **before release** — those
-  fields are not on `main`, so the shape is free until then. Teacher screen text has no em dashes (user rule).
+  `docs/IDEAS.md` § C). **C5 + C6 merged 2026-09-29**: a use = `classes` + `satOn`
+  (`src/model/classes.ts`), cohort derived (`src/library/cohort.ts`), legacy develop-only
+  `classTag` folded on load (no schema bump; it never shipped); bank topic edits write every
+  copy and display the union (`src/library/sharedTags.ts`). Known: editor topic row edits
+  one copy only; a copy inserted from the bank takes the picked copy's tags, not the union;
+  narrow "Used in" column truncates titles. Next: C7–C11 (build flow). Teacher screen text has no em dashes (user rule).
   **Integration QA + polish merged** (`feature/bank-polish`):
   end-to-end in Chromium + WebKit, `.docx` leak-free; fixed a real "Maximum update depth"
   crash in `usePagination`/band measuring (a no-op `setState` per render queued a second

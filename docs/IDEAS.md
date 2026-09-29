@@ -23,13 +23,14 @@ after the paper is sat (G), and AI authoring (E1/E3/E4 built but paused).
 
 Remove from this list once released.
 
-- **Question bank 題庫** (C1 tags, C2 bank, C4 usage history) — CHANGELOG Unreleased;
+- **Question bank 題庫** (C1 tags, C2 bank, C4 usage history, C5 classes + sat-on date +
+  derived cohort, C6 one tag set across copies) — CHANGELOG Unreleased;
   `docs/design/question-library.md`.
 
 ## Recommended order
 
-1. **Now** — before releasing the question bank, settle C5 and C6 (stored shape is free
-   until then); then the build flow C7–C10 and the cheap C11.
+1. **Now** — release the question bank (C5, C6 settled its stored shape); then the build
+   flow C7–C10 and the cheap C11.
 2. **Next** — paste-to-structure (D1), the cheapest way to fill the bank; item analysis
    (G1), which also completes C4's facility.
 3. **Later** — `.docx` import (D2), unpausing E1/E3/E4 after live evals, data charts
@@ -66,16 +67,7 @@ Loose ends on shipped features:
 
 Design: `docs/design/question-library.md` (a bank is a Worksheet; the index is derived and
 rebuildable; copies keep `lineage.rootId`). Deep analysis, sources and traps:
-`docs/research/2026-09-question-bank.md`. C1, C2 and C4's usage history are built (above).
-
-**Before release** — these touch stored fields that are not on `main` yet, so they are free
-now and a migration later:
-- **C5 What a "use" means** (M, schema): replace the single `classTag` with classes plus
-  a sat-on date and a cohort ("DSE 2027"), so a uniform test sat by 5A–5E counts for all
-  and "not used with this cohort" survives S4→S6. Drafts don't count; tagging or fixing a
-  typo stops bumping the use date (index freshness gets its own stamp).
-- **C6 One truth for tags** (S): every topic edit writes all copies of a root; bulk Set
-  topic can replace and remove, not only add.
+`docs/research/2026-09-question-bank.md`. C1, C2, C4's usage history, C5 and C6 are built (above).
 
 **The build flow** — every mature bank starts from the paper or shows the target:
 - **C7 A real cart** (S–M): the tray lists its picks (remove one, reorder, MCQ before LQ)
