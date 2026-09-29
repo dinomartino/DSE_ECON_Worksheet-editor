@@ -6,6 +6,11 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Current initiatives
 
+- **Never checked** (dropped from IDEAS in its 2026-09-29 cleanup, kept here): a real
+  import of our key exports into the four other apps; graph answer space and model answer
+  diagrams in Word; print-PDF of shaded areas; HKEAA Chinese labels and EC wording; the
+  desktop feedback opener; curves stopping short of the y-axis on a CS/PS strip.
+
 - **Branching: work is on `develop`** (since 2026-09-24); `main` deploys to teachers.
   **v0.5.0 released 2026-09-28** (✦ AI, Check terms, Settings, light/dark, 標楷體, home
   navigation). Collecting features for the next release — merge to `main` only when the user says.
@@ -19,7 +24,11 @@ off the bottom.** It is the first thing a fresh session reads — then
   (`src/library/bankDocs.ts`). **Redesigned the same day:** the bank is its own screen
   (`src/components/bank/page/QuestionBankScreen.tsx`: topic cards → review page → tag as you
   go), opened from the start screen's aside. The review page's only action is Open in
-  worksheet (its "Add to …" confused the user, removed 2026-09-29); adding goes via the tray. Teacher screen text has no em dashes (user rule).
+  worksheet (its "Add to …" confused the user, removed 2026-09-29); adding goes via the tray.
+  **Deep analysis 2026-09-29** (`docs/research/2026-09-question-bank.md`, backlog in
+  `docs/IDEAS.md` § C): settle C5 (what a "use" means: classes, sat-on date, cohort; stop
+  `updatedAt` doubling as use date) and C6 (tags on all copies) **before release** — those
+  fields are not on `main`, so the shape is free until then. Teacher screen text has no em dashes (user rule).
   **Integration QA + polish merged** (`feature/bank-polish`):
   end-to-end in Chromium + WebKit, `.docx` leak-free; fixed a real "Maximum update depth"
   crash in `usePagination`/band measuring (a no-op `setState` per render queued a second

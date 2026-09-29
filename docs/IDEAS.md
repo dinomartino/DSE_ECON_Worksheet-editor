@@ -28,7 +28,8 @@ Remove from this list once released.
 
 ## Recommended order
 
-1. **Now** — release the question bank, then its follow-ups (C).
+1. **Now** — before releasing the question bank, settle C5 and C6 (stored shape is free
+   until then); then the build flow C7–C10 and the cheap C11.
 2. **Next** — paste-to-structure (D1), the cheapest way to fill the bank; item analysis
    (G1), which also completes C4's facility.
 3. **Later** — `.docx` import (D2), unpausing E1/E3/E4 after live evals, data charts
@@ -64,15 +65,75 @@ Loose ends on shipped features:
 ## C. Question library
 
 Design: `docs/design/question-library.md` (a bank is a Worksheet; the index is derived and
-rebuildable; copies keep `lineage.rootId`). C1, C2 and C4's usage history are built (above).
+rebuildable; copies keep `lineage.rootId`). Deep analysis, sources and traps:
+`docs/research/2026-09-question-bank.md`. C1, C2 and C4's usage history are built (above).
 
-- **C4 facility** (S, after G1): "used in Mock 2025 5A, P1 Q12, facility 0.34" — usage is
-  shown; facility needs results.
-- **✦ Suggest topics from the text** (S): tag-as-you-go suggests from neighbouring
-  questions' tags; a keyless glossary term → topic table would read the question itself.
+**Before release** — these touch stored fields that are not on `main` yet, so they are free
+now and a migration later:
+- **C5 What a "use" means** (M, schema): replace the single `classTag` with classes plus
+  a sat-on date and a cohort ("DSE 2027"), so a uniform test sat by 5A–5E counts for all
+  and "not used with this cohort" survives S4→S6. Drafts don't count; tagging or fixing a
+  typo stops bumping the use date (index freshness gets its own stamp).
+- **C6 One truth for tags** (S): every topic edit writes all copies of a root; bulk Set
+  topic can replace and remove, not only add.
+
+**The build flow** — every mature bank starts from the paper or shows the target:
+- **C7 A real cart** (S–M): the tray lists its picks (remove one, reorder, MCQ before LQ)
+  and survives Open in worksheet and Home.
+- **C8 Choose where it goes** (S–M): a visible "Adding to: ‹paper ▾›" picker, or a new
+  Paper 1 / Paper 2 / Classroom sheet with sections; "already in this paper" badges.
+- **C9 Add from bank inside the editor** (M): the review page opens as a drawer with the
+  open paper as target and running totals; one filter module instead of two.
+- **C10 Blueprint and fill to spec** (M, schema): "36 MCQ across A–J, 45 min" or "60 marks
+  from C, G, I"; show the picks before inserting, ↻ per pick, name the gaps honestly.
+  A top-level `blueprint?` in `KNOWN_KEYS` — never inside `target`, which `targetOf` strips.
+
+**Finding and judging**:
+- **C11 Names, not slugs, and the free filters** (S): "Market intervention 市場干預"
+  everywhere; filter has-diagram, missing 中文/English, source paper; sort by least used,
+  oldest, marks. The data is already indexed.
+- **C12 Derived item facts** (S–M): per leaf, command word → skill band (Know /
+  Apply-Analyse / Evaluate, EN and 中文 lexicon); per question, stimulus kind (data,
+  diagram, extract). Filter on them. Registry hook, no type branching; no schema change.
+- **C13 Coverage grid** (S–M): the open paper's 雙向細目表 — topic × band × marks, flags for
+  an empty compulsory topic, one topic over 40%, no Evaluate marks in Paper 2, MCQ keys
+  clustered on B/C. In the summary popover and the export paper check.
+- **C14 Command word × marks lint** (S): "Explain" for 1 mark, "State" for 6, "with the
+  aid of a diagram" with no answer graph, Evaluate with no levels. Keyless.
+- **C15 Source in HKEAA form** (S–M): index `provenance`; "2019 DSE P2 Q4(b)" as a filter;
+  an optional "Licensed by copyright owner: HKEAA" line; a warning before a ✦ AI verb
+  sends an HKEAA-sourced question (the licence forbids AI use).
+- **C4 facility** (S, after G1): stats keyed by version (`contentKey`), not lineage;
+  bands with n, never two decimals; flag only a likely mis-key or negative discrimination.
+
+**Curating**:
+- **C16 Canonical version** (S–M): "Make this the bank version"; the bank copy leads its
+  group, else the newest — not whichever copy was touched last.
+- **C17 Retire and star** (S, schema): per-question hide or "vetted", honoured by filters
+  and Fill. Add to `contentKey`'s ignored list.
+- **C18 Near-duplicate finder** (M–L): retyped questions → "these look the same, link as
+  versions" (sets `lineage.rootId`).
+- **C19 Reserve for the mock** (S): hidden from Fill and the 題庫 tab until a date.
+- **✦ Suggest topics from the text** (S): a keyless glossary term → topic table, merged
+  into tag-as-you-go; today it suggests only from neighbouring tags.
 - **Drag from the 題庫 tab onto the page** (S).
+
+**Marking and sharing**:
+- **C20 Examiner notes** (S): a teacher-only "common mistakes" note on a leaf's scheme,
+  printed in the teacher version only; prompted after results ("Q12(b): 31%. What went
+  wrong?").
+- **C21 Level and EC presets** (S): insert HKEAA-style bands (L1 1–2 / L2 3–4 / L3 5–6,
+  EC 2/1/0) into a scheme, bilingual.
+- **C22 Parallel paper** (M, after C12/C13): swap each question for a sibling with the
+  same sub-topic, type, marks and band, unused by the cohort. MCQ option shuffle only.
+- **C23 Inventory CSV** (S): one row per question — topic, bands, marks, uses, facility —
+  for the panel head's Excel audit.
 - **Packs** (M): bank worksheets in the backup zip with `{publisher, license}`; import
-  flags questions already held by `rootId`, never overwrites. Ship no HKEAA content.
+  flags questions already held by `rootId`, strips foreign class tags, never overwrites.
+
+**Engineering** (S each): don't hash image bytes on every autosave; per-document desktop
+index files; virtualise the review rail; guard the bank screen's tag writes against a
+second tab holding the same paper.
 
 ## D. Getting existing material in
 
@@ -139,4 +200,6 @@ hosting); storage caps or expiry; a free-form canvas (layout is slot-based by de
 shipping HKEAA past-paper content; embedding any API key in the bundle; year-specific
 paper templates (e.g. "2028 Paper 2") — the generic mock template serves every year,
 and a dated template would need re-doing annually; a separate "Insert from another
-document" dialog (was C3) — the 題庫 tab's From filter does it.
+document" dialog (was C3) — the 題庫 tab's From filter does it; mandatory metadata
+forms, Bloom/AO tagging or teacher-rated difficulty (derive instead, and measure); QTI
+export (HK schools are paper-first).
