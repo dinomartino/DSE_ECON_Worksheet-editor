@@ -25,6 +25,11 @@ Revised from the 2026-09-26 proposal after an audit against the code at `9f2009b
   `lineage`.
 - **Fill is deterministic:** best match first, then least recently used, never already
   in the paper; ↻ swaps one pick.
+- **The bank page is its own screen (2026-09-29, redesign on the design page):** no tab bar,
+  "← Home" only; three levels: All topics (cards replace the coverage chart and tree) → one
+  topic (list rail grouped by sub-topic, collapsible; large preview on top) → Untagged
+  (tag as you go, suggested sub-topics, 1–6 keys). Light surfaces for lists; the desk tone
+  only behind the paper. EDB sub-topics stay.
 - **The C3 "Insert from another document" dialog is dropped.** The 題庫 tab's From filter
   does the job.
 
