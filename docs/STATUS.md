@@ -14,6 +14,17 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **Branching: work is on `develop`** (since 2026-09-24); `main` deploys to teachers.
   **v0.5.0 released 2026-09-28** (✦ AI, Check terms, Settings, light/dark, 標楷體, home
   navigation). Collecting features for the next release — merge to `main` only when the user says.
+- **2026-09-30 on `develop`, not released:** (1) **Renamed to Econ Studio 經濟備課室**
+  (user-facing only). Tauri `productName` stays "Econ Worksheet": renaming it breaks the
+  Windows NSIS update (second install, stale shortcut). A clean switch needs an NSIS hook
+  that removes the old install; not built, user not yet asked to decide. The film still says
+  Econ Worksheet (`scripts/film/timeline.mjs`). (2) **Header & footer tab by page**: Page 1 /
+  Pages 2 onward thumbnails as tabs, per-edge Same / Its own / Nothing on page 1
+  (`firstPageModeOf`, `pageBandScope` in `src/model/page.ts`), title inside the Page 1 view;
+  fixed "Same as page 1" discarding page 1's rows. (3) **Export asks where to save**:
+  Save As picker on Chromium (`src/platform/webPicker.ts`), one folder for multi-file exports
+  (web + desktop), Safari/Firefox keep downloads plus a hint. Desktop folder path unit-tested
+  only, not clicked through in the shell.
 - **Question bank 題庫 (merged on `develop` 2026-09-29, not released)** — C1–C4 from
   `docs/IDEAS.md`; plan, decisions, taxonomy: `docs/design/question-library.md`; UI design:
   artifact FyR7Xdd6BpgvFL42tdzz2T. Phase 0 (`src/model/lineage.ts`, `dedupeIds`) + WP-0
@@ -223,6 +234,9 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
+- **2026-09-30** — Rename to Econ Studio, header/footer page tabs (+ blank page-1 row
+  fix), export save location: four Opus worktree agents, merged to `develop`, 2929 tests,
+  build green; nothing pushed.
 - **2026-09-29** — Question bank 題庫: audit → design page → Phase 0 dup-id fix → WP-0 core →
   A–E in parallel worktrees (Sonnet for A/E, Opus for B–D) → integration QA/polish. All on
   `develop`, 2725 tests; nothing pushed.
