@@ -22,7 +22,11 @@ Revised from the 2026-09-26 proposal after an audit against the code at `9f2009b
 - **Copies are independent.** Editing a copy never changes its source and vice versa.
   The bank groups rows by `rootId`: identical copies (same `contentKey`) collapse into
   one row ("Used in 3 papers"); edited copies show as "N versions". "Used with 5A" counts
-  every version. **Update bank copy** (explicit, never automatic) writes an edited
+  every version. **Topics are one truth per question** (C6): every topic edit made in the
+  bank (Edit topics, tag as you go, Set topic add/remove/replace) writes every copy it may
+  (not hidden, trashed or newer-build documents; those are reported), and the bank reads
+  the union of all copies' tags (`src/library/sharedTags.ts`). The editor's Topic row
+  still edits only the open copy; the bank then shows the union. **Update bank copy** (explicit, never automatic) writes an edited
   question back to the bank document it came from; **Treat as a new question** drops
   `lineage`.
 - **Fill is deterministic:** best match first, then least recently used, never already
@@ -165,8 +169,8 @@ empty page.
 **WP-D · Question bank page** (M, built; since redesigned as its own screen, see Decisions): start-screen tab beside Worksheets; Topics tree in the
 Folders slot; coverage strip (MCQ / structured per topic, thin floor, "N untagged →
 Tag"); list of `groupRows` with "N versions" expansion; preview through the IR in
-teacher mode with Topics editable (written to the owning document, then re-indexed);
-selection tray (marks, minutes, topic mix; Set topic…, Add to "<last open>", New
+teacher mode with Topics editable (written to every copy's document, then re-indexed);
+selection tray (marks, minutes, topic mix; Set topic… add/remove/replace, Add to "<last open>", New
 worksheet from these); first-run and empty states; rename `libraryItems`.
 
 **WP-E · Lineage actions** (S–M): Outline row menu "Copy to bank" (create or append to a

@@ -33,6 +33,9 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
 - **Question bank: one action per question.** Reading a question, you now see only "Open
   in worksheet". To add questions to your last worksheet, tick them and use the bar at the
   bottom.
+- **Question bank: one set of topics per question.** Changing a question's topics in the
+  bank now changes every copy of it in your worksheets, and the bank shows the same topics
+  everywhere. Set topic for ticked questions can now add, remove or replace topics.
 
 ### Fixed
 - **Typing on the page is lighter.** The page no longer redraws twice for every key you
