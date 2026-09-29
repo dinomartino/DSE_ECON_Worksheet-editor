@@ -24,7 +24,7 @@ export function CoverageBar({
     <section aria-label="Coverage by topic" className="shrink-0 border-b border-line bg-surface px-7 pb-2.5 pt-3">
       <div className="mx-auto flex w-full max-w-[1280px] items-end gap-5">
         <p className="w-16 shrink-0 self-start pt-0.5 text-[12px] font-semibold text-ink">Coverage</p>
-        <ul className="grid min-w-0 max-w-[760px] flex-1 grid-flow-col auto-cols-fr gap-1">
+        <ul className="grid min-w-0 flex-1 grid-flow-col auto-cols-fr gap-2">
           {bars.map((bar) => {
             const name = topicOf(bar.code)?.en ?? bar.code;
             const parts = bar.byType.filter((part) => part.count > 0);
@@ -41,7 +41,7 @@ export function CoverageBar({
                 >
                   <span className="h-3 text-[10px] leading-3 tabular-nums text-ink-subtle">{bar.total > 0 ? bar.total : ''}</span>
                   <span
-                    className="flex w-full max-w-[26px] flex-col-reverse border-b border-line-strong"
+                    className="flex w-full max-w-[34px] flex-col-reverse border-b border-line-strong"
                     style={{ height: FULL }}
                   >
                     {bar.byType.map((part, index) => (

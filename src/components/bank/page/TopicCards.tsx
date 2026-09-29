@@ -5,7 +5,7 @@ import { typeName, type Coverage } from './bankPage';
 import type { ClassUsage } from './bankScreen';
 
 /** Split-bar fills by registry position: the first type solid, the rest lighter steps of the accent. */
-export const SPLIT_FILL = ['bg-accent', 'bg-accent/40', 'bg-accent/20'];
+export const SPLIT_FILL = ['bg-accent', 'bg-split-2', 'bg-split-2/50'];
 
 /**
  * Level 1 of the bank: a card per topic (A to J, EL1, EL2) with its count and a thin
