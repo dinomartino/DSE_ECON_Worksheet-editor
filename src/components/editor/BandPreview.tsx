@@ -30,8 +30,10 @@ import { bandFieldText } from '@/render/worksheet';
  * numbers are specimens (45 marks, page 5 of 12) because a thumbnail illustrates a shape,
  * not this document.
  */
-function fieldText(field: BandField): string {
-  const text = bandFieldText(field, 45, { number: 5, count: 12 });
+const SPECIMEN_PAGE = { number: 5, count: 12 };
+
+function fieldText(field: BandField, page = SPECIMEN_PAGE): string {
+  const text = bandFieldText(field, 45, page);
   return plain(text.en) || plain(text.zh) || '–';
 }
 
@@ -42,11 +44,14 @@ export function BandPreview({
   edge = 'header',
   /** Renders an explicit "nothing prints here" state rather than an empty box. */
   emptyLabel,
+  /** The page a page-number field shows; a specimen when omitted. */
+  page,
 }: {
   bands: Band[];
   rule?: boolean;
   edge?: 'header' | 'footer';
   emptyLabel?: string;
+  page?: { number: number; count: number };
 }) {
   if (bands.length === 0) {
     return (
@@ -98,7 +103,7 @@ export function BandPreview({
                         : {}),
                     }}
                   >
-                    {fieldText(field)}
+                    {fieldText(field, page)}
                   </span>
                 ))}
               </div>

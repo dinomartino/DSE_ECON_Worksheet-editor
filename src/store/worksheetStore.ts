@@ -61,7 +61,7 @@ import {
   type CoverPage,
   type CoverRegion,
 } from '@/model/cover';
-import { defaultFooter, defaultHeader, headerFooterOf } from '@/model/page';
+import { defaultFooter, defaultHeader, headerFooterOf, type FirstPageMode } from '@/model/page';
 import type {
   Band,
   BandField,
@@ -373,8 +373,6 @@ interface WorksheetState {
    * separate setters could leave a document both blank and carrying first-page rows.
    */
   setFirstPageMode: (which: 'header' | 'footer', mode: FirstPageMode) => void;
-  /** Replace the page-1 rows — how a first-page preset is applied. */
-  setFirstPageBands: (which: 'header' | 'footer', bands: Band[]) => void;
   /**
    * New questions (each built by its type's own `create`, then filled), optionally led by
    * one layout element, inserted together at the anchor as one commit — one undo.
@@ -407,8 +405,7 @@ export type QuestionBatchReport =
   | { ok: true; questionIds: string[]; leadId?: string; committed: Worksheet }
   | { ok: false; refused: 'readOnly' | 'otherDocument' | 'nothing' };
 
-/** What page 1 prints, as a single closed choice. */
-export type FirstPageMode = 'same' | 'blank' | 'different';
+export type { FirstPageMode };
 
 /**
  * Which of a header/footer's two row lists a structural edit targets. A row being
@@ -1310,22 +1307,6 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
           enabled: true,
           showOnFirstPage: true,
           firstPage: current.firstPage ?? { bands: current.bands.map(cloneBand) },
-        },
-      };
-    }),
-
-  setFirstPageBands: (which, bands) =>
-    get().commit((draft) => {
-      const current = headerFooterOf(
-        draft[which],
-        which === 'header' ? defaultHeader : defaultFooter,
-      );
-      return {
-        ...draft,
-        [which]: {
-          ...current,
-          enabled: true,
-          firstPage: { ...(current.firstPage ?? {}), bands },
         },
       };
     }),

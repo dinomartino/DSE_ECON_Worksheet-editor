@@ -2645,7 +2645,7 @@ function HeaderFooterBand({
       label={
         scope === "firstPage"
           ? `Page 1 ${edge}`
-          : value.firstPage
+          : firstPageHeaderFooter(value).differs
             ? `${edge === "header" ? "Header" : "Footer"} · pages 2+`
             : edge === "header"
               ? "Header · every page"

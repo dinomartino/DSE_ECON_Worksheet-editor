@@ -182,6 +182,18 @@ export function firstPageHeaderFooter(value: HeaderFooter): {
   return { bands: value.bands ?? [], rule: value.rule, differs: false };
 }
 
+/** What page 1 prints, as a single closed choice (`setFirstPageMode`). */
+export type FirstPageMode = 'same' | 'blank' | 'different';
+
+/**
+ * Which of the three states a header/footer is in, with `firstPageHeaderFooter`'s
+ * precedence: page 1's own rows win (even when empty), then blank, then same.
+ */
+export function firstPageModeOf(value: HeaderFooter): FirstPageMode {
+  if (value.firstPage) return 'different';
+  return value.showOnFirstPage === false ? 'blank' : 'same';
+}
+
 /**
  * True when a field would print nothing.
  *

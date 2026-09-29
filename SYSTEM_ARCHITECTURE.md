@@ -1639,9 +1639,11 @@ switches page 1 *wholesale*, so once either edge differs **both** need a first-p
 part; a part is emitted when either the running rows or page 1's would print.
 
 **A write aimed at page 1 creates the separation**: `scope: 'firstPage'` creates
-`firstPage` on first write (and sets `showOnFirstPage: true`). The panel renders two
-labelled surfaces — "Page 1" first, then "Pages 2 onward" — with two quiet link actions
-("Same as page 1" / "Give page 1 its own header").
+`firstPage` on first write (and sets `showOnFirstPage: true`). The panel ("Header &
+footer" tab) is organised by page: two page miniatures act as tabs. Page 1 offers, per
+edge, a three-way control (Same as pages 2+ / Its own / Nothing) read by
+`firstPageModeOf` and written by `setFirstPageMode`, and holds the title, which only page
+1 prints. Pages 2 onward edits the running rows. The per-edge on/off sits above both.
 
 ### Editing bands on the page
 
