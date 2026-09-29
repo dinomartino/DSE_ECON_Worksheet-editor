@@ -2558,6 +2558,14 @@ Four rules bound it:
 - **Pagination re-measures on content and geometry, not selection or drag** —
   selection chrome reserves no space; the probe's `ResizeObserver` catches anything
   that genuinely changes size.
+- **A 題庫 drag re-paginates per slot, not per frame** (`bank/bankDrag.tsx`): the pointer
+  lives in the drag session and is read once per animation frame; the page's input is a
+  derived document (`provisionalWorksheet`, every other question object kept) that
+  changes only when the slot does. The drawn copy is `Preview`'s `provisionalId`: inert,
+  `data-print-hide`, and while it is set nothing measured is written back (split, trim,
+  fill). Those writes also skip a render whose measurement is stale (`isFresh`), so the
+  page coming back from a cancelled drag cannot dirty the document. ~50ms per slot
+  change on a 20-question paper.
 
 ---
 

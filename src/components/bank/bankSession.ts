@@ -69,22 +69,22 @@ export interface InsertReport {
   refused?: 'readOnly' | 'otherDocument';
 }
 
-/**
- * Copies of `rows`' questions into the open paper after the insert anchor: each source
- * document is loaded read-only (never saved), then **one** `insertQuestionCopies` call —
- * one commit, one ⌘Z — and the review starts on the copies.
- *
- * An insert straight after another (no edit between, the review still open) extends that
- * review rather than replacing it: ‹ › walks every copy, and Undo takes them all out.
- */
-export async function insertFromBank(
-  rows: readonly BankRow[],
-  summary: (count: number) => string = reviewSummary,
-  source: Pick<WorksheetStore, 'load'> = worksheetStore,
-): Promise<InsertReport> {
-  const openId = useWorksheetStore.getState().worksheet.id;
-  if (useWorksheetStore.getState().readOnly) return { inserted: [], missing: [], refused: 'readOnly' };
+/** The questions behind some bank rows, read from their documents (never saved). */
+export interface LoadedCopies {
+  /** The open document when the read began; a commit into another is refused. */
+  openId: string;
+  /** Each found question with the bank's union of topic tags (`withRowTags`). */
+  found: Array<{ question: Question; docId: string }>;
+  /** Rows whose question was not found in its document (edited or deleted since the scan). */
+  missing: BankRow[];
+}
 
+/** Read each row's source document read-only, once per document. */
+export async function loadBankCopies(
+  rows: readonly BankRow[],
+  source: Pick<WorksheetStore, 'load'> = worksheetStore,
+): Promise<LoadedCopies> {
+  const openId = useWorksheetStore.getState().worksheet.id;
   const docs = new Map<string, Promise<Map<string, Question> | undefined>>();
   const questionsOf = (docId: string) => {
     let pending = docs.get(docId);
@@ -98,7 +98,7 @@ export async function insertFromBank(
     return pending;
   };
 
-  const found: Array<{ question: Question; docId: string }> = [];
+  const found: LoadedCopies['found'] = [];
   const missing: BankRow[] = [];
   for (const row of rows) {
     const question = (await questionsOf(row.docId))?.get(row.questionId);
@@ -106,7 +106,33 @@ export async function insertFromBank(
     if (question) found.push({ question: withRowTags(question, row), docId: row.docId });
     else missing.push(row);
   }
+  return { openId, found, missing };
+}
 
+/**
+ * Copies of `rows`' questions into the open paper after the insert anchor: each source
+ * document is loaded read-only (never saved), then **one** `insertQuestionCopies` call —
+ * one commit, one ⌘Z — and the review starts on the copies.
+ *
+ * An insert straight after another (no edit between, the review still open) extends that
+ * review rather than replacing it: ‹ › walks every copy, and Undo takes them all out.
+ * `place.at` puts the copies at a flow gap instead (a drag from the tab, `bankDrag.tsx`).
+ */
+export async function insertFromBank(
+  rows: readonly BankRow[],
+  summary: (count: number) => string = reviewSummary,
+  source: Pick<WorksheetStore, 'load'> = worksheetStore,
+  place: { at?: number } = {},
+): Promise<InsertReport> {
+  if (useWorksheetStore.getState().readOnly) return { inserted: [], missing: [], refused: 'readOnly' };
+  return commitBankCopies(await loadBankCopies(rows, source), { summary, ...place });
+}
+
+/** The synchronous half of `insertFromBank`: one commit of what `loadBankCopies` read. */
+export function commitBankCopies(
+  { openId, found, missing }: LoadedCopies,
+  { summary = reviewSummary, at }: { summary?: (count: number) => string; at?: number } = {},
+): InsertReport {
   const store = useWorksheetStore.getState();
   if (store.worksheet.id !== openId) return { inserted: [], missing, refused: 'otherDocument' };
   if (store.readOnly) return { inserted: [], missing, refused: 'readOnly' };
@@ -118,7 +144,7 @@ export async function insertFromBank(
   const anchorBefore = extend ? previous.anchorBefore : store.insertAnchorId;
   const inserted = store.insertQuestionCopies(
     found.map((entry) => entry.question),
-    { fromDocId: found.map((entry) => entry.docId) },
+    { fromDocId: found.map((entry) => entry.docId), ...(at !== undefined ? { at } : {}) },
   );
   if (!inserted.length) return { inserted, missing };
   const committed = useWorksheetStore.getState().worksheet;

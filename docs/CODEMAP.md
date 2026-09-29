@@ -243,7 +243,8 @@ scan; rebuildable, so no teacher's work lives in it.
 - `src/components/bank/page/fromSelection.ts:worksheetFromPicks` · `src/components/bank/page/addToOpen.ts:addPicksToOpenDocument` — New worksheet from these / Add to the open paper (one ⌘Z)
 - `src/library/tabFilters.ts:visibleGroups` · `:paperRoots` · `:anchorLabel` · `:blockingFilter` — the editor tab's filters, "in this paper", the anchor line, which filter emptied the list
 - `src/components/bank/BankTab.tsx:BankTab` — the editor's 題庫 sidebar tab: anchor line, filters, list, Fill
-- `src/components/bank/bankSession.ts:insertFromBank` — load sources read-only, one `insertQuestionCopies`, start the review; `:useBankSession` also carries the open-tab request
+- `src/components/bank/bankSession.ts:insertFromBank` — load sources read-only (`:loadBankCopies`), one `insertQuestionCopies` (`:commitBankCopies`), start the review; `:useBankSession` also carries the open-tab request
+- `src/components/bank/bankDrag.tsx:useBankRowDrag` · `:BankDragLayer` · `:useBankDrag` — drag a tab row onto the page: pointer capture past a threshold, the slot re-aimed once per frame, the store touched only on release (`commitBankCopies` at the slot, one ⌘Z); Esc / off the page cancels. `src/components/bank/dropSlot.ts:pickSlot` (flow gap under the pointer, hysteresis, held over the ghost and the bands) · `:provisionalWorksheet` (derived, never stored); the page draws it through `src/components/EditorApp.tsx:PreviewWithBankDrop` and `Preview`'s `provisionalId`
 - `src/components/bank/BankReviewBar.tsx:BankReviewBar` — inserted copies highlighted on the page (`data-bank-new`), ‹ ›, Undo, Done
 
 Invariants:
@@ -255,6 +256,7 @@ Invariants:
 - A 題型 is (sub-topic, type id, name); the question's own type decides its list, and the name on the question is the truth. It never reaches the IR (`src/components/editor/topicTags.test.ts`).
 - The index follows `list()`, never storage keys (a trashed web document keeps its key); it holds no images and no teacher's work — §Persistence.
 - The 題庫 tab is sticky: while open, a page selection moves the insert anchor instead of switching to Edit (`src/components/editor/Sidebar.tsx:Sidebar`).
+- A drag from the tab re-paginates per *slot*, never per pointer frame; while a provisional question is drawn, the page writes nothing it measures back (split, trim, fill), and those writes also wait for a fresh measurement (`usePagination`'s `isFresh`).
 
 ## components/editor — the chrome around the page
 

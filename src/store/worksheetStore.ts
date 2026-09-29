@@ -40,6 +40,7 @@ import {
   createAnswerLinesElement,
   createAnswerSpaceElement,
   flowOf,
+  insertQuestionAt,
   moveInFlow,
   moveRunInFlow,
   nudgeInFlow,
@@ -385,10 +386,12 @@ interface WorksheetState {
    * in order after `afterId` (default: the insertion anchor, as `addQuestion`). One commit,
    * one undo; the anchor moves to the last copy. Returns the new ids ([] when read-only).
    * `fromDocId` as a list gives each question its own source (a Fill across documents).
+   * `at` (a gap of the resolved flow, as a 題庫 drag drops) places the first copy there
+   * instead, and wins over `afterId`.
    */
   insertQuestionCopies: (
     questions: readonly Question[],
-    opts?: { fromDocId?: string | readonly (string | undefined)[]; afterId?: string },
+    opts?: { fromDocId?: string | readonly (string | undefined)[]; afterId?: string; at?: number },
   ) => string[];
   /**
    * The AI answer writer's fills (`src/answers/`): one commit, one undo; a leaf edited
@@ -484,6 +487,14 @@ function insertIntoFlow(
  * `paper1`/`lqMock`; questions and the stimulus only (any other unanchored layout
  * element genuinely means the end).
  */
+/**
+ * The last flow gap a question may be dropped into: ahead of the trailing closing lines
+ * on the exam papers (§ Nothing lands after "END OF PAPER"), the end otherwise.
+ */
+export function lastQuestionGap(worksheet: Worksheet): number {
+  return appendIndexFor(worksheet, flowOf(worksheet), { type: 'question', id: '' });
+}
+
 function appendIndexFor(worksheet: Worksheet, flow: FlowItem[], entry: FlowItem): number {
   // Questions, and the one layout element that *is* question content: a stimulus
   // introduces the questions that follow it, so appending one after "END OF PAPER"
@@ -1349,7 +1360,7 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     return { ok: true, questionIds: built.map((q) => q.id), ...(lead ? { leadId: lead.id } : {}), committed: get().worksheet };
   },
 
-  insertQuestionCopies: (questions, { fromDocId, afterId } = {}) => {
+  insertQuestionCopies: (questions, { fromDocId, afterId, at } = {}) => {
     const state = get();
     if (state.readOnly) return [];
     const known = new Set(listQuestionTypes().map((type) => type.id));
@@ -1361,8 +1372,12 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     state.commit((draft) => {
       let next = draft;
       let after = afterId ?? state.insertAnchorId;
-      for (const copy of copies) {
-        next = insertIntoFlow(next, { type: 'question', id: copy.id }, after, { questions: [...next.questions, copy] });
+      for (const [index, copy] of copies.entries()) {
+        // The same derivation the drag's provisional page used, so the drop lands where it showed.
+        next =
+          index === 0 && at !== undefined
+            ? { ...next, ...insertQuestionAt(next, copy, at) }
+            : insertIntoFlow(next, { type: 'question', id: copy.id }, after, { questions: [...next.questions, copy] });
         after = copy.id;
       }
       return next;
