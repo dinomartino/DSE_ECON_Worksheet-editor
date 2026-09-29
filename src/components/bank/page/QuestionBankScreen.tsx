@@ -534,11 +534,9 @@ export function QuestionBankScreen({
             language,
             version,
             classTag: filters.notUsedWith,
-            targetTitle: target?.title,
           }}
           fullGroup={focused ? fullGroups.get(focused.rootId) : undefined}
           empty={emptyReview}
-          busy={busy}
           onFocus={(row) => setFocusKey(rowKey(row))}
           onStep={step}
           onPick={togglePick}
@@ -546,7 +544,6 @@ export function QuestionBankScreen({
           onLanguage={setLanguage}
           onVersion={setVersion}
           onEditTopics={(row) => setPicker({ mode: 'edit', row })}
-          onAddOne={(row) => void addTo([row])}
           onOpen={openRow}
         />
       )}

@@ -27,8 +27,6 @@ export interface ReviewState {
   version: VersionMode;
   /** The Filter's "not used with" class: its uses read amber. */
   classTag?: string;
-  /** Where "Add to" puts a question; absent hides the action. */
-  targetTitle?: string;
 }
 
 /**
@@ -40,7 +38,6 @@ export function ReviewPage({
   state,
   fullGroup,
   empty,
-  busy,
   onFocus,
   onStep,
   onPick,
@@ -48,7 +45,6 @@ export function ReviewPage({
   onLanguage,
   onVersion,
   onEditTopics,
-  onAddOne,
   onOpen,
 }: {
   state: ReviewState;
@@ -56,7 +52,6 @@ export function ReviewPage({
   fullGroup: BankGroup | undefined;
   /** Shown instead of the stage when the list is empty. */
   empty: ReactNode;
-  busy: boolean;
   onFocus: (row: BankRow) => void;
   onStep: (delta: number) => void;
   onPick: (row: BankRow) => void;
@@ -65,7 +60,6 @@ export function ReviewPage({
   onVersion: (version: VersionMode) => void;
   /** Offered only once the owning document has loaded and this build may write it. */
   onEditTopics?: (row: BankRow) => void;
-  onAddOne: (row: BankRow) => void;
   onOpen: (row: BankRow) => void;
 }) {
   const { order, focused, railHidden } = state;
@@ -87,13 +81,11 @@ export function ReviewPage({
           state={state}
           row={focused}
           fullGroup={fullGroup}
-          busy={busy}
           onStep={onStep}
           onFocus={onFocus}
           onLanguage={onLanguage}
           onVersion={onVersion}
           onEditTopics={onEditTopics}
-          onAddOne={onAddOne}
           onOpen={onOpen}
         />
       )}
@@ -250,28 +242,24 @@ function Stage({
   state,
   row,
   fullGroup,
-  busy,
   onStep,
   onFocus,
   onLanguage,
   onVersion,
   onEditTopics,
-  onAddOne,
   onOpen,
 }: {
   state: ReviewState;
   row: BankRow;
   fullGroup: BankGroup | undefined;
-  busy: boolean;
   onStep: (delta: number) => void;
   onFocus: (row: BankRow) => void;
   onLanguage: (language: LanguageMode) => void;
   onVersion: (version: VersionMode) => void;
   onEditTopics?: (row: BankRow) => void;
-  onAddOne: (row: BankRow) => void;
   onOpen: (row: BankRow) => void;
 }) {
-  const { order, index, language, version, classTag, targetTitle } = state;
+  const { order, index, language, version, classTag } = state;
   const { worksheet, failed } = useOwningDocument(row);
   const shown = shownLanguage(row, language);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -370,18 +358,6 @@ function Stage({
             </dd>
           </Facts>
           <div className="flex flex-wrap items-start gap-2 md:flex-col md:items-end">
-            {targetTitle !== undefined && (
-              <Button
-                variant="primary"
-                size="sm"
-                disabled={busy}
-                onClick={() => onAddOne(row)}
-                title={`Open “${targetTitle}” and add this question at the end`}
-                className="max-w-[280px]"
-              >
-                <span className="truncate">Add to “{targetTitle}”</span>
-              </Button>
-            )}
             <Button size="sm" onClick={() => onOpen(row)} title="Open this question in its worksheet (O)">
               Open in worksheet
             </Button>
