@@ -9,6 +9,11 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **Branching: work is on `develop`** (since 2026-09-24); `main` deploys to teachers.
   **v0.5.0 released 2026-09-28** (✦ AI, Check terms, Settings, light/dark, 標楷體, home
   navigation). Collecting features for the next release — merge to `main` only when the user says.
+- **Question bank 題庫 (planned 2026-09-29, nothing built)** — C1–C4 from `docs/IDEAS.md`.
+  Plan, decisions and the EDB topic taxonomy: `docs/design/question-library.md`. Phase 0
+  first: **editing a duplicated question also edits the original** (copies keep block/option/
+  cell ids and `mapAllBlocks` patches every match) — deep re-id plus repair on open. Then
+  C1 tags → C3 insert from another document → C2 bank view → C4 history.
 - **✦ AI demo film (merged on `develop`)** — `npm run demo:ai` → `demo-media/ai/` (38 s,
   subtitles, no audio). Translations are canned in the browser (`scripts/demo/ai-provider.mjs`,
   text in `scripts/demo/content.mjs:AI`); Check terms is real. App nit seen while filming:
@@ -150,8 +155,7 @@ off the bottom.** It is the first thing a fresh session reads — then
   newer-version notice covers a file saved by this build and opened in ≤0.3.0 only once
   the schema version is bumped — it is not, so the areas silently do not show there.
 - **Model answer diagram** (`feature/answer-diagram`): no alt text / title field for it;
-  Duplicate question keeps block ids (pre-existing, stem diagrams too), so a copy's figure
-  shares the original's id. A question taller than the rest of sheet 1 starts on sheet 2
+  duplicating a question keeps block ids (Phase 0 of the question bank fixes it). A question taller than the rest of sheet 1 starts on sheet 2
   in the preview while Word starts it on page 1 (pre-existing; seen with stem diagrams).
 - **Combined answer key uses the current document's page setup and font size** for every
   part; a 10pt Paper 2 key inside an 11pt Paper 1 prints at 11pt.

@@ -1,154 +1,183 @@
-# Question library — design (C1–C4, and a future exchange)
+# Question bank 題庫 — design (C1–C4, and a future exchange)
 
-Status: proposal, 2026-09-26. Answers `docs/IDEAS.md` §C. Nothing here is built.
+Status: planned, 2026-09-29. Answers `docs/IDEAS.md` §C. Nothing here is built.
+Revised from the 2026-09-26 proposal after an audit against the code at `9f2009b`.
+
+## Decisions (the user, 2026-09-29)
+
+- **Teacher-facing name: "Question bank 題庫".** Code keeps `src/library/`; the start
+  screen's backup/restore menu (`libraryItems`) is renamed so the word means one thing.
+- **Taxonomy: topics + sub-topics** from the EDB 2025 C&A Guide (appendix). A filter on a
+  topic matches its sub-topics.
+- **Tagging: manual first.** A keyless "✦ Suggest topics" (glossary term → topic) comes
+  after C2, once a term → topic table exists.
+- **Phase 0 fixes the duplicate bug and repairs saved documents on open.**
 
 ## The one decision everything else follows from
 
-**A question is already the unit of storage; do not invent a second format.** A
-`Question` is self-contained JSON: stem blocks, options, parts, answers, marking scheme,
-diagrams as geometry, images as `data:` URLs. Every guard the repo has — `migrate`,
-`KNOWN_KEYS`, the frozen corpus, backup zips, Trash, the desktop file store — protects a
-`Worksheet`. So:
+**A question is already the unit of storage; do not invent a second format.** Every guard
+the repo has — `migrate`, `KNOWN_KEYS`, the frozen corpus, backup zips, Trash, the desktop
+file store — protects a `Worksheet`. So:
 
-1. **A bank is a `Worksheet`** with `kind: 'bank'` (an optional top-level field, in
-   `KNOWN_KEYS`). Questions a teacher keeps outside any paper live in bank documents.
-   Storage, backup, migration, folders, Trash, desktop files, the newer-build guard: all
-   free. An older build opens a bank as an ordinary worksheet and loses nothing.
-2. **The library is an index, never a source of truth.** It is derived from every saved
-   document (papers and banks alike), per-row validated, and rebuildable by scanning —
-   the same contract as the dashboard index (`econ-worksheet-index`). If it corrupts or
-   the schema changes, delete and rebuild; no teacher's work is in it.
-3. **Identity travels with copies.** Every question gains an optional `lineage`. A copy
-   gets a fresh `id` (and fresh block ids — today's `duplicateQuestion` does not, which is
-   a known bug) but keeps `lineage.rootId`. History (C4), de-duplication on import, and
-   "already in this paper" checks all key on `rootId`.
+1. **A bank is a `Worksheet`** with `kind: 'bank'` (top-level, in `KNOWN_KEYS`). Storage,
+   backup, folders, Trash, desktop files, the newer-build guard: all free. Builds back to
+   v0.2.0 keep unknown top-level keys in `__unknown` and write them back, so an older build
+   saves a bank without losing `kind`; it just shows it as a paper.
+2. **The index is derived, never a source of truth** — rebuildable by scanning, validated
+   per row, like `econ-worksheet-index`. No teacher's work is in it.
+3. **Identity travels with copies.** A copy gets fresh ids at every level but keeps
+   `lineage.rootId`. History, de-duplication on import and "already in this paper" key on it.
 
 ```
-documents (papers + banks)  ── scan ──►  library index (derived, rebuildable)
+documents (papers + banks)  ── scan ──►  bank index (derived, rebuildable)
         ▲                                        │
         │ insert copy (fresh ids, keep lineage)  ▼
-    editor  ◄──────────────────────────  Library screen (search · preview · used-in · insert)
+    editor  ◄──────────────────────────  Question bank view (search · preview · used in · insert)
 ```
 
-## Model additions (all optional, question-level, no schema bump)
+## Model additions (all optional, no schema bump)
 
 ```ts
 interface QuestionBase {
-  // …existing
-  tags?: string[];          // C1: topic codes from the taxonomy, plus free tags
+  tags?: string[];          // topic codes ('C', 'C.ped') plus free tags
   lineage?: {
-    rootId: string;         // the first ancestor's id; equal to `id` for an original
-    fromDocId?: string;     // the document it was copied out of, if any
+    rootId: string;         // first ancestor's id; equal to `id` for an original
+    fromDocId?: string;
     copiedAt?: string;
-    publisher?: string;     // exchange: who shared the pack; absent = mine
+    publisher?: string;     // exchange only; absent = mine
   };
 }
 interface Worksheet {
-  kind?: 'bank';            // absent = a paper; MUST be added to KNOWN_KEYS
-  classTag?: string;        // "5A 2025-26" — the "not used with this class since…" key
+  kind?: 'bank';            // KNOWN_KEYS
+  classTag?: string;        // "5A 2025-26"; KNOWN_KEYS
 }
 ```
 
-`migrate` filters only top-level keys, so question-level fields pass through unchanged.
-Prove it: a corpus round-trip test that a v1 document with an injected `tags`/`lineage`
-reloads with them intact, and that `serializeWorksheet` leaves them in.
+- `migrate` checks only top-level keys; question objects pass through, and every
+  per-question rewrite (`mapQuestion`, the text walker's `patch`, `mapAllBlocks`) spreads.
+  Prove `tags`/`lineage` the way `backwardCompat.test.ts` proves `rationale`/`provenance`.
+- `McqQuestion.provenance` is unrelated: printed teacher prose ("Modelled on DSE 2023
+  Q1"). `lineage` is machine identity and never prints.
+- `tags` is not a `BiText`; keep it out of `textSlots.ts` roles.
+- Codes are stored, names looked up (`src/model/topics.ts`), so renaming never touches a
+  document.
 
-**Taxonomy** (`src/model/topics.ts`, pure data): EDB curriculum topics A–J and the two
-electives as codes with bilingual names; a second, finer list (the 71 MCQ / 50 LQ topics)
-maps *onto* those codes, so a filter by "D. Firms and production" also matches the fine
-tags. Codes are stored, names are looked up — renaming a topic never touches documents.
-Free-text tags are allowed beside codes.
+## Ids — what a copy must renew
 
-## Module topology
+A question holds ids on: itself; every `ContentBlock` (paragraph, table, image, diagram,
+figureRow and its `figure`/`table`, source and its nested `blocks`); `TableRow`,
+`TableCell`; `McqOption` and its `blocks`; parts and sub-parts with `blocksBefore`,
+`blocks`, `answerDiagram`; the question's own `answerDiagram`; mark-scheme routes, groups,
+points, levels and EC descriptors.
 
-New area `src/library/` (pure code first, UI last), following the storage split:
+**Not renewed:** ids *inside* a diagram (curves, points, labels, areas). They are
+cross-referenced by `DiagramAnchorRef` and `{curve}` and scoped to their diagram.
 
-| Module | Role | Pure? |
-|---|---|---|
-| `src/model/topics.ts` | taxonomy codes, names, coarse↔fine mapping | yes |
-| `src/model/lineage.ts` | `copyQuestion(q, fromDocId)`: fresh ids, kept `rootId`; `withFreshIds` for blocks/options/parts/diagrams | yes |
-| `src/library/row.ts` | `LibraryRow` = pointer `{docId, questionId, rootId}` + facets `{type, marks, tags, excerpt, hasDiagram, docUpdatedAt}` | yes |
-| `src/library/indexer.ts` | `rowsOf(worksheet)`: derive rows from one document via registry hooks; never stores images | yes |
-| `src/library/search.ts` | filter + rank rows: text, type, marks range, tags, class/last-used | yes |
-| `src/library/history.ts` | `usedIn(rootId, rows, summaries)`: documents, question numbers, dates, class (C4) | yes |
-| `src/library/types.ts` | `LibraryIndexStore` interface: `rows()`, `replaceDoc(docId, rows)`, `dropDoc`, `stamp(docId)` | — |
-| `src/library/idbIndex.ts` | web: IndexedDB (outside the ~5 MB `localStorage` budget) | — |
-| `src/library/fileIndex.ts` | desktop: `worksheets/library/index.json` | — |
-| `src/library/sync.ts` | keeps the index current: on `save()`, re-index that doc; on start, re-index docs whose `updatedAt` ≠ stamp (same freshness key the thumbnail cache uses) | — |
-| `src/components/library/*` | Library screen and the Insert dialog | — |
+Walk block lists with `questionBlockLists` / `flattenBlocks` (`src/model/edits.ts`), which
+already enumerate every list without branching on type. `newId` is `nanoid(10)` from
+`src/model/factories.ts`.
 
-Rules that keep it modular:
+A copied MCQ gets a new id, so versions B–D shuffle it differently from its original
+(`versions.ts` keys the shuffle by question id). Accepted.
 
-- **Facets come from the registry, not from type ids.** Add one hook,
-  `libraryFacets?(question): { excerpt: BiText; marks: number; searchText: string }`; the
-  indexer and the Library card call it. `registry.test.ts`'s no-type-branching grep
-  extends to `src/library/`.
-- **The index stores pointers and text, never pictures.** Thumbnails are rendered on
-  demand from the document through the existing IR → `PageThumbnail` path (a
-  one-question worksheet), so a diagram-heavy bank costs nothing in the index.
-- **Reading another document is read-only.** `exportSession.ts:loadKeyDocuments` already
-  loads other documents without touching them; the Insert dialog and the indexer reuse
-  that path. The store's `save()` is never called on a document the user did not open.
-- **The store interface stays put.** `WorksheetStore` gains nothing; the library index is
-  a sibling store chosen the same way (`isDesktop()` → file, else IndexedDB), so a remote
-  implementation later slots in without editor changes.
+## Phases
 
-## The four items, in order
+### 0 · Deep re-id and repair (S) — ship first, on its own
 
-**C1 Topic tags (S).** `tags` on `QuestionBase`; a tag field in each question's Edit panel
-(a picker over `topics.ts` plus free text); tags are teacher-only and never print. Also
-`classTag` in Document Settings. Ships first because C2–C4 index it.
+The bug: the private `withFreshIds` in `worksheetStore.ts` renews only question, part and
+sub-part ids. `mapAllBlocks` patches every block with the target id anywhere in the
+document, so editing a duplicated question's text also edits the original. Also hits
+`duplicateMany`.
 
-**C3 Insert from another document (M).** Start screen or editor: "Insert from…" → pick a
-saved document (read-only load) → a list of its questions with excerpts → tick → insert
-copies after the current question, through `copyQuestion`. Also fixes the shared-block-id
-bug in `duplicateQuestion` by routing it through `withFreshIds`. This is C2's insert path,
-shipped before the index exists.
+- `src/model/lineage.ts`: `freshIds(question)` — the full walk above; replaces the
+  private `withFreshIds`. `copyQuestion(q, fromDocId?)` = `freshIds` + `lineage`.
+- **Repair on open:** a pure `dedupeIds(worksheet)` run at load. The first owner in flow
+  order keeps its ids; later duplicates are renewed. Must return the *same object* when
+  nothing is duplicated (corpus round-trip stays byte-identical; ids never print, so
+  exports do not change). Not a migration — no schema bump.
+- Tests: editing a copy's paragraph, option, cell and answer diagram leaves the original
+  untouched; `dedupeIds` is a no-op on the corpus; a document with duplicated ids opens,
+  edits independently, and exports identically to before.
+- CHANGELOG: "Editing a duplicated question no longer changes the original."
 
-**C2 Library (L).** The index modules above; a **Library** tab on the start screen beside
-Trash (search box; facets: type, topic, marks, "not used with class X since"); each row
-opens a preview card (IR render), "Used in" (C4), "Insert into <open document>", "Copy to
-bank". Banks appear in the dashboard with a distinct card and are excluded from paper
-counts. Scale: 1 000 documents × 40 questions = 40 000 rows of a few hundred bytes — well
-under IndexedDB comfort; the search is an in-memory filter over rows, no full-text engine
-needed until it measurably hurts.
+### 1 · C1 Topic tags (S)
 
-**C4 History (M).** Entirely derived: for a `rootId`, every document containing a question
-with that `rootId`, its printed number (`computeNumbering`), the document's `classTag`,
-`updatedAt`. "Facility 0.34" needs results the app does not have; when item analysis (G1)
-arrives, results are a separate record keyed `{rootId, docId}` in the same index store,
-never inside the worksheet.
+- `src/model/topics.ts`: the appendix as data; `topicOf(code)`, `matchesTopic(tags, code)`.
+- `tags` on `QuestionBase`; a **Topic** row in the Inspector below the type's
+  `EditorPanel` (shared, not per type); picker over topics + free text.
+- `classTag` in Setup → Worksheet, beside Target (copy `TargetField`).
+- Tags never print: a test that the preview IR, `.docx` and clipboard carry no tag text.
+- Corpus test for the nested fields; `KNOWN_KEYS` for `classTag`.
+- `src/library/noTypeBranching.test.ts` from the start (per-folder pattern, like
+  `src/translate/`).
+
+### 2 · C3 Insert from another document (M)
+
+- Entry: the add rail (a separate "Insert from…" entry), the Outline's "Add here" menu.
+- Pick one document (a single-pick variant of `KeyDocumentsField`) → load read-only with a
+  neutral loader (not `loadKeyDocuments`, which answer-key-renders every document) → list
+  its questions with excerpts → tick → insert copies after the anchor.
+- Insert through `insertQuestionBatch` extended to accept whole questions via
+  `copyQuestion`: one commit, one ⌘Z.
+- Move the excerpt helpers (`biExcerpt`, `excerptOfBlocks`, the Outline's inline stem
+  excerpt) into one model-level function the Outline, this dialog and the index share.
+- "Copy to bank" in the Outline row menu (creates or appends to a bank document).
+
+### 3 · C2 The question bank view (L)
+
+- **Change feed:** nothing announces a save today (≈10 call sites write documents). Wrap
+  the store at the singleton in `src/storage/index.ts` with a decorator that emits
+  `{docId, kind: 'saved'|'trashed'|'restored'|'removed'|'cleared'}`. It catches imports
+  and backup restores too (`restoreBackup` calls `save`).
+- **Index store:** IndexedDB database `econ-worksheet-library` (web; first IndexedDB use),
+  `worksheets/library/index.json` (desktop). Rows keyed `(docId, questionId)` — question
+  ids already repeat across documents (`duplicateWorksheet`, backup copies keep them).
+- **Freshness:** stamp `docId → updatedAt`; on start, re-index what differs. Follow
+  `list()`, never raw keys (a trashed web document keeps its `econ-worksheet:<id>` key).
+  Desktop restore can return a new id. Two web tabs: re-check stamps on focus.
+- Row: `{docId, questionId, rootId, type, marks, tags, excerpt, searchText, hasDiagram,
+  docUpdatedAt}` from registry hooks; never images (`data:` URLs are inline).
+- Indexing cost: one full load + migrate per document; run in idle chunks, never blocking
+  the start screen.
+- **UI:** a third view beside Trash on the start screen; search + type, topic, marks,
+  "not used with class X since"; card preview through the IR in teacher mode; "Insert into
+  <open document>". Banks get a distinct card and are excluded from paper counts.
+
+### 4 · C4 "Used in" history (M)
+
+Derived: for a `rootId`, every document holding it, its printed number
+(`computeNumbering`), `classTag`, `updatedAt`. Facility needs G1 results, stored as a
+separate record `{rootId, docId}` in the index store, never in the worksheet.
 
 ## Copy exchange, later
 
-The exchange unit is a **pack** = a bank worksheet (or several) in the existing backup zip
-with its `manifest.json` gaining `{ publisher, license, exportedAt }`. Import reuses
-`readBackup` → `restoreBackup` with two additions: questions whose `rootId` is already in
-the library are flagged "already have it" (de-dup, never silent overwrite), and
-`lineage.publisher` is stamped so provenance survives every later copy. A pack is just a
-file, so it works by email or a shared drive today; a server exchange later is a
-`LibraryIndexStore`-shaped remote catalogue of packs plus download. Ship no HKEAA content;
-the manifest's `license` and the publisher stamp are what make third-party packs
-reviewable.
+A **pack** = bank worksheet(s) in the backup zip, manifest gains `{publisher, license,
+exportedAt}`. Import reuses `readBackup` → `restoreBackup`; questions whose `rootId` is
+already indexed are flagged "already have it", never overwritten; `lineage.publisher` is
+stamped. Ship no HKEAA content.
 
-## Restore and review
+## Appendix — topic taxonomy
 
-- **Restore = reopen.** A library entry is a pointer into a document; the document is the
-  backup. Deleting the index loses only search speed, and `sync.ts` rebuilds it from the
-  stamps on next start.
-- **Review** happens in the Library card: the question rendered through the same IR as the
-  paper (teacher mode, so answers and schemes show), its tags editable in place (the edit
-  writes to the owning document via the ordinary store `commit` on that document, then
-  re-indexes it), and its history list. Nothing in the index is edited directly.
-- **Trash and banks.** Trashing a document drops its rows; restoring re-indexes. A bank
-  document in Trash is out of the library until restored — the same rule as papers.
+Source: *Economics Curriculum and Assessment Guide (S4–6)*, CDC & HKEAA, 2007 with updates
+in 2025 (effective S4 2025/26, DSE 2028+); EDBCM 113/2024. The 2021 optimisation did not
+touch Economics; the elective part remains (students may skip it; Paper 2 Section C).
+MCQs cover A–J only. Ship titles only — never the guide's explanatory text. Chinese
+proof-read once before shipping (rejoined from PDF line wraps).
 
-## Compatibility checklist before building
+Coarse codes `A`–`J`, `EL1`, `EL2` (not `E1`/`E2`, which read as topic E). Fine codes are
+frozen slugs, never ordinals.
 
-- `kind`, `classTag` → `KNOWN_KEYS`; `tags`, `lineage` are nested and pass through.
-- Corpus test: a v1 document with injected nested fields reloads intact.
-- A bank opened by ≤0.3.0 is an ordinary worksheet; nothing is dropped on save there
-  except that build's own unknown *top-level* keys — `kind` would be lost, so the library
-  must tolerate a bank that lost its `kind` (it still indexes as a document).
-- The index lives in a key/dir older builds never read: IndexedDB database
-  `econ-worksheet-library`, or `worksheets/library/`.
+| Code | Topic | 中文 | Sub-topics (code: English 中文) |
+|---|---|---|---|
+| A | Basic Economic Concepts | 基本經濟概念 | `A.social-science` Economics as a social science 經濟學作為一門社會科學 · `A.scarcity` Scarcity, choice and opportunity cost 稀少性，選擇和機會成本 · `A.basic-problems` Three basic economic problems 三個基本經濟問題 · `A.specialization` Specialization and exchange 專門化及交易 · `A.circular-flow` Circular flow 經濟活動的循環流程 · `A.positive-normative` Positive and normative statements 實證性和規範性的陳述 |
+| B | Firms and Production | 廠商與生產 | `B.ownership` Ownership of firms 廠商的所有權 · `B.production-types` Types and stages of production 生產的種類/階段 · `B.goods` Types of goods and services 物品和服務的種類 · `B.division-of-labour` Division of labour 分工 · `B.factors` Factors of production 生產要素 · `B.costs` Production and costs 短期和長期生產及生產成本 · `B.objectives` Objectives of firms 廠商目標 |
+| C | Market and Price | 市場與價格 | `C.law-of-demand` Law of demand 需求定律 · `C.individual-demand` Individual demand 個別需求 · `C.market-demand` Market demand 市場需求 · `C.individual-supply` Individual supply 個別供應 · `C.market-supply` Market supply 市場供應 · `C.equilibrium` Demand, supply and price 需求、供應和價格的相互作用 · `C.surplus` Consumer and producer surplus 消費者盈餘及生產者盈餘 · `C.price-functions` Functions of prices 價格的功能 · `C.ped` Price elasticity of demand 需求價格彈性 · `C.pes` Price elasticity of supply 供應價格彈性 · `C.intervention` Market intervention 市場干預 |
+| D | Competition and Market Structure | 競爭與市場結構 | `D.structure` Perfect and imperfect competition 完全競爭和不完全競爭 |
+| E | Efficiency, Equity and the Role of Government | 效率、公平和政府的角色 | `E.efficiency` Efficiency 效率 · `E.equity` Equity 公平 · `E.policy` Policy concerns 政策的考慮 |
+| F | Measurement of Economic Performance | 經濟表現的量度 | `F.national-income` National income 國民收入 · `F.price-level` General price level 一般物價水平 · `F.unemployment` Unemployment and underemployment rates 失業率及就業不足率 · `F.hk-trends` Recent Hong Kong trends 香港近期趨勢 |
+| G | National Income Determination and Price Level | 國民收入決定及價格水平 | `G.ad` Aggregate demand 總需求 · `G.as` Aggregate supply 總供應 · `G.equilibrium` Determination of output and price level 產出和價格水平的決定 |
+| H | Money and Banking | 貨幣與銀行 | `H.money` Money 貨幣 · `H.banks` Banks 銀行的功能和服務 · `H.money-supply` Money supply 貨幣供應 · `H.money-demand` Money demand 貨幣需求 · `H.interest` Interest-rate determination 貨幣市場中利率的決定 · `H.financial-centre` Hong Kong as a financial centre 香港作為金融中心 |
+| I | Macroeconomic Problems and Policies | 宏觀經濟問題和政策 | `I.cycles` Business cycles 經濟周期 · `I.inflation` Inflation and deflation 通貨膨脹和通貨緊縮 · `I.unemployment` Unemployment 失業 · `I.fiscal` Fiscal policy 財政政策 · `I.monetary` Monetary policy 貨幣政策 |
+| J | International Trade and Finance | 國際貿易和金融 | `J.trade` Free trade and trade barriers 自由貿易及貿易障礙 · `J.bop` Balance of payments 國際收支平衡表 · `J.exchange-rate` Exchange rate 匯率 |
+| EL1 | Monopoly Pricing, Anti-competitive Behaviours and Competition Policy | 壟斷定價、反競爭行為及競爭政策 | `EL1.pricing` Monopoly pricing 壟斷定價 · `EL1.competition-policy` Anti-competitive behaviours and competition policy 反競爭行為及競爭政策 |
+| EL2 | Extension of Trade Theory, Economic Growth and Development | 貿易理論之延伸、經濟增長及發展 | `EL2.trade-theory` Extension of trade theory 貿易理論之延伸 · `EL2.growth` Economic growth and development 經濟增長及發展 |

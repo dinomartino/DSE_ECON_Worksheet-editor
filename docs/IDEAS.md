@@ -76,7 +76,9 @@ Remove from this list once released.
 
 ## Recommended order
 
-1. **Now** — topic tags (C1) → local question library (C2).
+1. **Now** — the question bank 題庫: duplicate-id fix → topic tags (C1) → insert from
+   another document (C3) → bank view (C2) → history (C4). Plan in
+   `docs/design/question-library.md`.
 2. **Later** — paste/Word import (D1, D2), more AI (E1, E3, E4 on the E2 base), item analysis (G1), remaining
    diagram upgrades (B3b).
 
