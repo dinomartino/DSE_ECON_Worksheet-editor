@@ -50,6 +50,11 @@ off the bottom.** It is the first thing a fresh session reads — then
   subtitles, no audio). Translations are canned in the browser (`scripts/demo/ai-provider.mjs`,
   text in `scripts/demo/content.mjs:AI`); Check terms is real. App nit seen while filming:
   after a finding card's Replace, the bar still reads "1 to fix · Replace 1" until Done.
+- **AI Settings keys (merged on `develop` 2026-09-29, not released)**: "Your keys" list
+  (count, masked last 4, In use, per-key Test/Forget, in-memory status), "Key saved" chip on
+  provider rows, card's button reads Test for a saved key, About folded into one Collapsible.
+  One key per provider (multi-key per provider not built). Unverified in the desktop shell
+  (Keychain rows show no last 4 until read).
 - **AI translation E2 (2026-09-28, merged on `develop`, not released)** — Translate (fill the
   missing 中文/English, read-only review, one Undo), Check terms (keyless, EDB glossary) and
   app-wide **Settings** (⌘,; the per-document dialog is now **Setup**). Bring-your-own-key:
