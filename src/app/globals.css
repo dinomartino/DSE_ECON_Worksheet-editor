@@ -45,6 +45,7 @@
   --color-accent-hover: var(--accent-hover);
   --color-accent-soft: var(--accent-soft);
   --color-accent-ink: var(--accent-ink);
+  --color-split-2: var(--split-2);
   --color-on-accent: var(--on-accent);
 
   /* The one filled action button. Neutral ink, not accent blue (studied from
@@ -211,6 +212,8 @@
   --accent-soft: var(--panel-accent-soft);
   --accent-ink: var(--panel-accent-ink);
   --on-accent: #ffffff;
+  /* The second question type in split bars (bank cards, coverage bar). */
+  --split-2: color-mix(in oklab, var(--accent) 40%, transparent);
 
   --cta: oklch(27% 0.012 75);
   --cta-hover: oklch(35% 0.014 75);
@@ -328,6 +331,7 @@
   --accent: oklch(65% 0.15 245);
   --accent-hover: oklch(70% 0.13 245);
   --on-accent: oklch(15% 0.01 100);
+  --split-2: oklch(72% 0.06 245);
 
   /* The CTA inverts with the scheme: light fill, dark label. */
   --cta: oklch(92% 0.008 95);

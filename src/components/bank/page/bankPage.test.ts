@@ -8,6 +8,7 @@ import {
   classTags,
   clearFilter,
   coverage,
+  barPx,
   DEFAULT_FILTERS,
   filterRows,
   isThin,
@@ -55,6 +56,22 @@ describe('coverage', () => {
     expect(isThin(0, 0)).toBe(false);
     const result = coverage([row({ tags: [] })]);
     expect(result.bars.every((bar) => !bar.thin)).toBe(true);
+  });
+});
+
+describe('barPx', () => {
+  it('draws to one scale, empty is flat, a lone question stays visible', () => {
+    expect(barPx(10, 10, 40)).toBe(40);
+    expect(barPx(5, 10, 40)).toBe(20);
+    expect(barPx(0, 10, 40)).toBe(0);
+    expect(barPx(0, 0, 40)).toBe(0);
+    expect(barPx(1, 100, 40)).toBe(2);
+  });
+
+  it('untagged questions never set the scale', () => {
+    const result = coverage([row({ rootId: 'a', tags: ['C'] }), ...['u1', 'u2', 'u3', 'u4'].map((rootId) => row({ rootId, tags: [] }))]);
+    expect(result.untagged).toBe(4);
+    expect(result.max).toBe(1);
   });
 });
 

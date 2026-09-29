@@ -60,6 +60,14 @@ export function isThin(total: number, max: number): boolean {
   return max > 0 && total < Math.max(3, Math.round(max * 0.2));
 }
 
+/**
+ * Height in px of a bar segment on the shared scale. The scale is the tallest topic bar
+ * (untagged is not a bar, so it never flattens the rest); an empty topic is 0.
+ */
+export function barPx(count: number, max: number, full: number): number {
+  return count > 0 && max > 0 ? Math.max(2, (count / max) * full) : 0;
+}
+
 /** One bar per coarse topic (A–J, EL1, EL2), each question counted once per topic it touches. */
 export function coverage(rows: readonly BankRow[]): Coverage {
   const typeOrder = listQuestionTypes().map((type) => type.id);
