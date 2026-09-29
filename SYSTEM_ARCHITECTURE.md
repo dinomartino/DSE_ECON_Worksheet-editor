@@ -2125,7 +2125,7 @@ Rules every verb keeps:
 - **One commit per run**, every write stale-guarded; hard failures are never written;
   `readOnly` is inert.
 - **Network only on an explicit click** (a verb, a field Fill, Save & continue, Save &
-  test, List my models).
+  test, Test, List my models).
 - **One app dialog at a time** (`src/store/appDialogs.ts`): Settings never stacks on another
   dialog. AI results are reviewed on the page, not in a dialog.
 
@@ -2208,7 +2208,7 @@ There is no pre-insert review. A verb click runs, writes, then shows what it wro
   the `.docx` never sees them. They clear on Done, Undo all, a new run or another document.
 - **Browser run:** `scripts/ai-verify.mjs` serves `out/`, points Custom at
   `scripts/ai-mock-server.mjs` (canned replies, no key) and drives Chromium and WebKit
-  through 29 checks per engine in six groups (entry, translate, terms, setup, error, field;
+  through 30 checks per engine in six groups (entry, translate, terms, setup, error, field;
   `--only=` picks some). The answers, source and quality groups are kept but skipped while
   their verbs are paused; entry asserts the menu never lists them and a last check that
   E3's engine chunk is never fetched. It asserts nothing is sent before a verb click, Save
@@ -2362,7 +2362,10 @@ with a dummy key or follows a documented shape.
   `src/components/settings/sections/index.ts`); the pane is
   `src/components/settings/sections/aiSection/AiSection.tsx` over the pure
   `src/components/settings/sections/aiSection/aiSetup.ts`, its effects in the injected
-  `src/components/settings/sections/aiSection/aiSetupRunner.ts`. A deep link opens a card;
+  `src/components/settings/sections/aiSection/aiSetupRunner.ts`. "Your keys" lists each saved
+  key (last 4 only; a desktop Keychain key shows its store until read) with Test, which tests
+  the saved key through `resolveAiConfig` without committing its provider, and Forget. Test
+  results live in the reducer (`savedTests`), never in settings. A deep link opens a card;
   only a card click or a saved key commits `ai.provider`. Only a rejected key (`badKey`,
   `keyBlocked`) is not saved after a test. A flow takes its provider before its first
   await: a card switched meanwhile drops the result, so a key is never saved or sent under

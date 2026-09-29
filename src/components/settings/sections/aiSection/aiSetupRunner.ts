@@ -1,9 +1,17 @@
 import { presetFor } from '@/ai/providers';
 import { PROVIDER_IDS, type ConnectionTest, type ModelInfo, type ProviderConfig, type ProviderId } from '@/ai/types';
 import type { SecretAccount, SecretError, SecretRead, SecretStore, SecretWrite } from '@/platform/secrets';
-import { AI_SETTINGS, providerChoice, type AiSettings } from '@/settings/aiSettings';
+import { AI_SETTINGS, providerChoice, type AiConfigResult, type AiSettings } from '@/settings/aiSettings';
 import type { SettingsEnv } from '@/settings/types';
-import { aiSetupReducer, cardState, draftOf, shouldSaveAfterTest, type AiSetupEvent, type AiSetupState } from './aiSetup';
+import {
+  aiSetupReducer,
+  cardState,
+  draftOf,
+  shouldSaveAfterTest,
+  testStateOf,
+  type AiSetupEvent,
+  type AiSetupState,
+} from './aiSetup';
 
 /**
  * The AI section's side effects over the pure `aiSetupReducer`, every dependency injected.
@@ -19,6 +27,8 @@ export interface AiSetupDeps {
   writeSecret(account: SecretAccount, value: string, opts: { remember: boolean }): Promise<SecretWrite>;
   deleteSecret(account: SecretAccount): Promise<void>;
   peekSecret(account: SecretAccount): { store: SecretStore; last4: string } | null;
+  /** A provider's saved config (`resolveAiConfig`): its saved key, model and address. */
+  resolveConfig(provider: ProviderId): Promise<AiConfigResult>;
   /** The latest settings: flows await, so never a render's copy. */
   readSettings(): AiSettings;
   writeSettings(patch: Partial<AiSettings>): void;
@@ -27,6 +37,19 @@ export interface AiSetupDeps {
 export type AiSetupRunner = ReturnType<typeof createAiSetupRunner>;
 
 const account = (p: ProviderId): SecretAccount => `ai:${p}`;
+
+/** Why a saved key couldn't be tested, as a test failure. */
+function unresolved(result: Extract<AiConfigResult, { ok: false }>): ConnectionTest {
+  const message =
+    result.reason === 'secretError'
+      ? result.error.message
+      : result.reason === 'noKey'
+        ? 'No key is saved for this provider.'
+        : result.reason === 'noModel'
+          ? 'Choose a model first.'
+          : 'Enter the server address first.';
+  return { ok: false, error: { kind: 'notConfigured', provider: result.provider, message, fatal: true, actions: [] } };
+}
 
 function withFlag(flags: AiSettings['keychainSaved'], p: ProviderId, on: boolean): AiSettings['keychainSaved'] {
   const { [p]: _old, ...rest } = flags;
@@ -39,6 +62,7 @@ export function createAiSetupRunner(deps: AiSetupDeps, initial: AiSetupState) {
   const listeners = new Set<() => void>();
   let testing: AbortController | null = null;
   let listing: AbortController | null = null;
+  const savedTesting = new Map<ProviderId, AbortController>();
 
   const current = () => state;
   const send = (event: AiSetupEvent): AiSetupState => {
@@ -69,6 +93,9 @@ export function createAiSetupRunner(deps: AiSetupDeps, initial: AiSetupState) {
       ...(commit ? { provider: p } : {}),
     }));
     if (commit) send({ type: 'saved', store: written.store, last4: key.slice(-4) });
+    // A new key: its status is this card's test, if it just ran; otherwise untested.
+    const tested = commit && (state.test.kind === 'ok' || state.test.kind === 'error');
+    send({ type: 'savedTest', provider: p, test: tested ? state.test : { kind: 'idle' } });
     return commit;
   };
 
@@ -106,6 +133,25 @@ export function createAiSetupRunner(deps: AiSetupDeps, initial: AiSetupState) {
     return result.ok;
   };
 
+  /** Tests `p`'s saved key with its saved model and address; the shown card and provider stay. */
+  const testSaved = async (p: ProviderId): Promise<boolean> => {
+    savedTesting.get(p)?.abort();
+    const abort = new AbortController();
+    savedTesting.set(p, abort);
+    send({ type: 'savedTest', provider: p, test: { kind: 'testing' } });
+    const resolved = await deps.resolveConfig(p);
+    if (abort.signal.aborted) return false;
+    const result = resolved.ok ? await deps.testConnection(resolved.config, abort.signal) : unresolved(resolved);
+    if (abort.signal.aborted) return false;
+    savedTesting.delete(p);
+    send({ type: 'savedTest', provider: p, test: testStateOf(result) });
+    return result.ok;
+  };
+  const stopSavedTest = (p: ProviderId) => {
+    savedTesting.get(p)?.abort();
+    savedTesting.delete(p);
+  };
+
   return {
     current,
     subscribe(listener: () => void): () => void {
@@ -115,6 +161,7 @@ export function createAiSetupRunner(deps: AiSetupDeps, initial: AiSetupState) {
       };
     },
     saveAndTest,
+    testSaved,
     /**
      * A card click opens and commits it (`commit: false` only shows it, as the SetupCard's
      * radios do); a test still running for the old card is dropped.
@@ -151,15 +198,17 @@ export function createAiSetupRunner(deps: AiSetupDeps, initial: AiSetupState) {
       deps.writeSettings({ rememberKey: value });
       return moveSavedKey(state.provider, value);
     },
-    forgetAsked: (which: 'one' | 'all') => void send({ type: 'forgetAsked', which }),
+    forgetAsked: (which: ProviderId | 'all') => void send({ type: 'forgetAsked', which }),
     cancelForget: () => void send({ type: 'cancelForget' }),
+    /** Forgets the key (or every key) awaiting confirmation. */
     async forget(): Promise<void> {
-      const { confirmForget: which, provider: p } = state;
+      const which = state.confirmForget;
       if (!which) return;
-      if (which === 'all') await Promise.all(PROVIDER_IDS.map((id) => deps.deleteSecret(account(id))));
-      else await deps.deleteSecret(account(p));
-      patch((s) => ({ keychainSaved: which === 'all' ? {} : withFlag(s.keychainSaved, p, false) }));
-      if (which === 'all' || shown(p)) send({ type: 'forgotten' });
+      const gone = which === 'all' ? PROVIDER_IDS : [which];
+      gone.forEach(stopSavedTest);
+      await Promise.all(gone.map((id) => deps.deleteSecret(account(id))));
+      patch((s) => ({ keychainSaved: which === 'all' ? {} : withFlag(s.keychainSaved, which, false) }));
+      send({ type: 'forgotten', which });
     },
     model(id: string): void {
       const p = state.provider;
@@ -195,6 +244,7 @@ export function createAiSetupRunner(deps: AiSetupDeps, initial: AiSetupState) {
       testing?.abort();
       listing?.abort();
       testing = listing = null;
+      [...savedTesting.keys()].forEach(stopSavedTest);
     },
   };
 }

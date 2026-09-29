@@ -4,11 +4,14 @@ import { AI_SETTINGS, type AiSettings } from '@/settings/aiSettings';
 import {
   aiSetupReducer,
   canTest,
+  canTestSaved,
   cardState,
   initialAiSetup,
   needsCloseGuard,
   qwenWorkspaceUrl,
+  savedKeys,
   shouldSaveAfterTest,
+  shownTest,
   type AiSetupEvent,
   type AiSetupState,
 } from './aiSetup';
@@ -109,15 +112,44 @@ describe('the AI section state', () => {
 
   it('confirms before forgetting one key or all of them', () => {
     const saved = run(start(), { type: 'saved', store: 'browser', last4: 'abcd' });
-    expect(run(saved, { type: 'forgetAsked', which: 'one' }).confirmForget).toBe('one');
+    expect(run(saved, { type: 'forgetAsked', which: 'gemini' }).confirmForget).toBe('gemini');
     expect(run(saved, { type: 'forgetAsked', which: 'all' }, { type: 'cancelForget' })).toMatchObject({
       confirmForget: null,
       key: { kind: 'saved' },
     });
-    expect(run(saved, { type: 'forgetAsked', which: 'all' }, { type: 'forgotten' })).toMatchObject({
+    expect(run(saved, { type: 'forgetAsked', which: 'all' }, { type: 'forgotten', which: 'all' })).toMatchObject({
       confirmForget: null,
       key: { kind: 'none' },
     });
+  });
+
+  it('forgets another provider\'s key without touching the open card', () => {
+    const tested = run(start(), { type: 'saved', store: 'browser', last4: 'abcd' }, { type: 'savedTest', provider: 'deepseek', test: { kind: 'ok', sample: 's', ms: 1, followedGlossary: true } });
+    const gone = run(tested, { type: 'forgetAsked', which: 'deepseek' }, { type: 'forgotten', which: 'deepseek' });
+    expect(gone).toMatchObject({ confirmForget: null, key: { kind: 'saved', last4: 'abcd' }, savedTests: {} });
+  });
+
+  it('shows the saved key\'s test on its card, and a typed key\'s own test', () => {
+    const saved = run(start(), { type: 'saved', store: 'browser', last4: 'abcd' });
+    expect(canTest(saved)).toBe(false);
+    expect(canTestSaved(saved)).toBe(true);
+    expect(shownTest(saved).kind).toBe('idle');
+    const ok = run(saved, { type: 'savedTest', provider: 'gemini', test: { kind: 'ok', sample: 's', ms: 1, followedGlossary: true } });
+    expect(shownTest(ok).kind).toBe('ok');
+    const typing = run(ok, { type: 'draft', value: 'AIzaSyNEWKEY00000' });
+    expect(canTestSaved(typing)).toBe(false);
+    expect(shownTest(typing).kind).toBe('idle');
+    expect(canTestSaved(run(saved, { type: 'baseUrl', url: null }))).toBe(false);
+  });
+
+  it('lists every saved key by its last 4 only, in list order', () => {
+    const peek = (p: string) => (p === 'deepseek' ? { store: 'browser' as const, last4: 'wxyz' } : p === 'gemini' ? { store: 'session' as const, last4: 'abcd' } : null);
+    expect(savedKeys(settings(), web, peek)).toEqual([
+      { provider: 'gemini', store: 'session', last4: 'abcd' },
+      { provider: 'deepseek', store: 'browser', last4: 'wxyz' },
+    ]);
+    expect(savedKeys(settings({ keychainSaved: { qwen: true } }), { desktop: true }, () => null)).toEqual([{ provider: 'qwen', store: 'keychain' }]);
+    expect(savedKeys(settings({ keychainSaved: { qwen: true } }), web, () => null)).toEqual([]);
   });
 
   it('keeps model and base URL per provider', () => {

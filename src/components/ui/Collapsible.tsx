@@ -15,18 +15,21 @@ import { ChevronRightIcon } from './icons';
 export function Collapsible({
   title,
   defaultOpen = false,
+  keepMounted = false,
   actions,
   children,
 }: {
   title: ReactNode;
   defaultOpen?: boolean;
+  /** Render the body while closed too (inert), for text that must stay in the page. */
+  keepMounted?: boolean;
   actions?: ReactNode;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   // Children mount on first open and then stay, so closing can animate; a closed body
   // is `inert`, out of the tab order and the accessibility tree.
-  const [mounted, setMounted] = useState(defaultOpen);
+  const [mounted, setMounted] = useState(defaultOpen || keepMounted);
 
   return (
     <div className="border-b border-line">

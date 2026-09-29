@@ -31,7 +31,9 @@ export interface AiSetupState {
   remember: boolean;
   key: KeyState;
   test: TestState;
-  confirmForget: 'one' | 'all' | null;
+  /** Each saved key's last test this session, by provider. In memory only, never persisted. */
+  savedTests: Partial<Record<ProviderId, TestState>>;
+  confirmForget: ProviderId | 'all' | null;
   /** Desktop: the keychain refused or failed; the key can still be used for this session. */
   keychainError: KeychainErrorKind | null;
   /** The provider that refused this location: its banner shows, the Hong Kong cards are highlighted. */
@@ -48,12 +50,14 @@ export type AiSetupEvent =
   | { type: 'testAnyway' }
   | { type: 'testFinished'; result: ConnectionTest }
   | { type: 'saved'; store: SecretStore; last4?: string }
+  /** A saved key's test, for any provider: the shown card is unchanged. */
+  | { type: 'savedTest'; provider: ProviderId; test: TestState }
   | { type: 'keychainError'; kind: KeychainErrorKind }
   /** List my models: the same shape check as Save & test, before anything is sent. */
   | { type: 'listAsked' }
   | { type: 'useForSession' }
-  | { type: 'forgetAsked'; which: 'one' | 'all' }
-  | { type: 'forgotten' }
+  | { type: 'forgetAsked'; which: ProviderId | 'all' }
+  | { type: 'forgotten'; which: ProviderId | 'all' }
   | { type: 'cancelForget' }
   | { type: 'model'; id: string }
   | { type: 'baseUrl'; url: string | null }
@@ -78,6 +82,21 @@ export function savedKeyFor(
   return { kind: 'none' };
 }
 
+export interface SavedKeyRow { provider: ProviderId; store: SecretStore; last4?: string }
+
+/** Every provider with a saved key, in list order: "Your keys". Never key material beyond last4. */
+export function savedKeys(
+  settings: AiSettings,
+  env: SettingsEnv,
+  peek: (provider: ProviderId) => { store: SecretStore; last4: string } | null,
+): SavedKeyRow[] {
+  return PROVIDER_IDS.flatMap((provider) => {
+    const key = savedKeyFor(settings, env, provider, peek(provider));
+    if (key.kind !== 'saved') return [];
+    return [{ provider, store: key.store, ...(key.last4 ? { last4: key.last4 } : {}) }];
+  });
+}
+
 export function cardState(
   settings: AiSettings,
   env: SettingsEnv,
@@ -100,6 +119,7 @@ export function initialAiSetup(
     ...cardState(settings, env, provider, peek(provider)),
     remember: settings.rememberKey,
     test: { kind: 'idle' },
+    savedTests: {},
     confirmForget: null,
     keychainError: null,
     regionRefusedBy: params?.reason === 'region' ? settings.provider : null,
@@ -116,6 +136,23 @@ export function draftOf(state: AiSetupState): string {
 function savedOf(key: KeyState): SavedKey | undefined {
   if (key.kind === 'saved') return { store: key.store, last4: key.last4 };
   return key.kind === 'editing' ? key.saved : undefined;
+}
+
+/** A connection test's result as the state shows it. */
+export function testStateOf(result: ConnectionTest): TestState {
+  if (!result.ok) return { kind: 'error', error: result.error };
+  const { sample, ms, followedGlossary } = result;
+  return { kind: 'ok', sample, ms, followedGlossary };
+}
+
+/** The test the open card shows: its saved key's, unless a new key is typed or none is needed. */
+export function shownTest(state: AiSetupState): TestState {
+  return state.key.kind === 'saved' ? (state.savedTests[state.provider] ?? IDLE) : state.test;
+}
+
+/** Can the open card test its saved key: one is saved, the field is empty, the address is usable. */
+export function canTestSaved(state: AiSetupState): boolean {
+  return state.key.kind === 'saved' && state.baseUrl !== null && presetFor(state.provider).keyRequired;
 }
 
 /** Can Save & test run: a usable address, and a typed key or a keyless provider. */
@@ -163,18 +200,17 @@ export function aiSetupReducer(state: AiSetupState, event: AiSetupEvent): AiSetu
     }
     case 'testFinished': {
       const result = event.result;
-      if (result.ok) {
-        const { sample, ms, followedGlossary } = result;
-        return { ...state, test: { kind: 'ok', sample, ms, followedGlossary } };
-      }
+      if (result.ok) return { ...state, test: testStateOf(result) };
       return {
         ...state,
-        test: { kind: 'error', error: result.error },
+        test: testStateOf(result),
         regionRefusedBy: result.error.kind === 'region' ? state.provider : state.regionRefusedBy,
       };
     }
     case 'saved':
       return { ...state, key: { kind: 'saved', store: event.store, last4: event.last4 }, keychainError: null };
+    case 'savedTest':
+      return { ...state, savedTests: { ...state.savedTests, [event.provider]: event.test } };
     case 'keychainError':
       return { ...state, keychainError: event.kind };
     case 'useForSession':
@@ -183,8 +219,13 @@ export function aiSetupReducer(state: AiSetupState, event: AiSetupEvent): AiSetu
       return { ...state, confirmForget: event.which };
     case 'cancelForget':
       return { ...state, confirmForget: null };
-    case 'forgotten':
-      return { ...state, key: { kind: 'none' }, test: IDLE, confirmForget: null, keychainError: null };
+    case 'forgotten': {
+      const { [event.which as ProviderId]: _gone, ...kept } = state.savedTests;
+      void _gone;
+      const savedTests = event.which === 'all' ? {} : kept;
+      if (event.which !== 'all' && event.which !== state.provider) return { ...state, savedTests, confirmForget: null };
+      return { ...state, key: { kind: 'none' }, test: IDLE, savedTests, confirmForget: null, keychainError: null };
+    }
     case 'model':
       return { ...state, model: event.id };
     case 'baseUrl':

@@ -86,6 +86,7 @@ describe('an AI key never leaves the secrets store', () => {
       writeSecret,
       deleteSecret,
       peekSecret,
+      resolveConfig: async (provider) => ({ ok: false, provider, reason: 'noKey' }),
       readSettings: () => settings.read(AI_SETTINGS),
       writeSettings: (patch) => void settings.write(AI_SETTINGS, patch),
     };
