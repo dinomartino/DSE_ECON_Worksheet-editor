@@ -79,6 +79,36 @@ describe('insertFromBank', () => {
     expect(store().worksheet.classTag).toBe('5A');
   });
 
+  it('extends the open review with a consecutive insert; its Undo takes them all out', async () => {
+    const first = await insertFromBank([rowOf('doc-a', a1.id)], undefined, source);
+    const second = await insertFromBank([rowOf('doc-b', b1.id), rowOf('doc-a', a2.id)], undefined, source);
+    const review = useBankSession.getState().review!;
+    expect(review.questionIds).toEqual([...first.inserted, ...second.inserted]);
+    expect(review.index).toBe(1);
+    expect(review.summary).toBe('3 questions added from 題庫');
+    expect(review.commits).toBe(2);
+    useBankSession.getState().walk(-1);
+    expect(useBankSession.getState().review!.index).toBe(0);
+    useBankSession.getState().undo();
+    expect(store().worksheet.questions.map((q) => q.id)).toEqual(open.questions.map((q) => q.id));
+    expect(store().insertAnchorId).toBe(open.questions[0].id);
+  });
+
+  it('starts a fresh review after Done, or after an edit between inserts', async () => {
+    await insertFromBank([rowOf('doc-a', a1.id)], undefined, source);
+    useBankSession.getState().dismiss();
+    const after = await insertFromBank([rowOf('doc-b', b1.id)], undefined, source);
+    expect(useBankSession.getState().review!.questionIds).toEqual(after.inserted);
+
+    store().updateWorksheet({ classTag: '5A' });
+    const later = await insertFromBank([rowOf('doc-a', a2.id)], undefined, source);
+    expect(useBankSession.getState().review).toMatchObject({ questionIds: later.inserted, commits: 1 });
+    // Undo reverts only its own insert: the edit before it stays.
+    useBankSession.getState().undo();
+    expect(store().worksheet.classTag).toBe('5A');
+    expect(store().worksheet.questions.some((q) => q.id === after.inserted[0])).toBe(true);
+  });
+
   it('skips rows whose question is gone, and writes nothing when read-only', async () => {
     const report = await insertFromBank([rowOf('doc-a', 'deleted'), rowOf('doc-z', 'x'), rowOf('doc-b', b1.id)], undefined, source);
     expect(report.inserted).toHaveLength(1);

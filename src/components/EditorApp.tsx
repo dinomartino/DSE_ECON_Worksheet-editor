@@ -46,6 +46,9 @@ export function EditorApp({
   const mode = useWorksheetStore((s) => s.mode);
   const printPreview = useWorksheetStore((s) => s.printPreview);
   const setPrintPreview = useWorksheetStore((s) => s.setPrintPreview);
+  // The 題庫 review bar floats over the page's foot; room below the last sheet lets its
+  // last lines scroll clear of it.
+  const bankReviewing = useBankSession((s) => s.review !== null);
   const dirty = useWorksheetStore((s) => s.dirty);
   const selectedQuestionId = useWorksheetStore((s) => s.selectedQuestionId);
   const select = useWorksheetStore((s) => s.select);
@@ -481,7 +484,7 @@ export function EditorApp({
             would scroll the page under the pointer mid-edit. */}
         <main
           ref={scrollerRef}
-          className="zone-dark scroll-slim min-w-0 flex-1 overflow-auto bg-desk px-6 pb-16 pt-14"
+          className={`zone-dark scroll-slim min-w-0 flex-1 overflow-auto bg-desk px-6 pt-14 ${bankReviewing ? 'pb-36' : 'pb-16'}`}
         >
           <Preview
             worksheet={worksheet}
@@ -579,6 +582,8 @@ export function EditorApp({
 function HintPill() {
   const [dismissed, setDismissed] = useState(false);
   const printPreview = useWorksheetStore((s) => s.printPreview);
+  // Gives way to the 題庫 review bar, which takes the same spot over the page's foot.
+  const bankReviewing = useBankSession((s) => s.review !== null);
 
   // It retires itself. A how-to-edit hint is only useful until it has been read once,
   // and a permanent instruction strip is a standing admission that the interface is
@@ -591,7 +596,7 @@ function HintPill() {
 
   // Not in print preview: it teaches an interaction that mode deliberately removes, so
   // it would be instructing the teacher to do something the page no longer allows.
-  if (dismissed || printPreview) return null;
+  if (dismissed || printPreview || bankReviewing) return null;
   return (
     // `data-print-hide` so anything that strips page chrome (print CSS, the screenshot
     // harness) drops the pill — it floats over the sheet, so a capture of the page
