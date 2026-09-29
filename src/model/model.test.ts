@@ -514,6 +514,9 @@ describe('schema versioning and document round-trip (§6, §11.11)', () => {
       bands: [],
       examGapLines: 2,
       versions: { count: 3, seed: 7 },
+      kind: 'bank' as const,
+      classTag: '5A 2025-26',
+      bankHidden: true,
     };
     const missing = Object.keys(populated).filter((key) => !KNOWN_KEYS.has(key));
     expect(missing).toEqual([]);

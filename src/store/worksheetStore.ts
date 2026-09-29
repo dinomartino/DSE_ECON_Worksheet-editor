@@ -32,7 +32,7 @@ import {
   setRowHeight,
 } from '@/model/table';
 import { createWorksheet, newId } from '@/model/factories';
-import { freshIds } from '@/model/lineage';
+import { copyQuestion, freshIds } from '@/model/lineage';
 import {
   applyOrder,
   clampAnswerLines,
@@ -380,6 +380,12 @@ interface WorksheetState {
    * Refused when read-only or when `worksheetId` is no longer the open document.
    */
   insertQuestionBatch: (items: readonly QuestionBuild[], opts: { worksheetId: string; lead?: LayoutElement }) => QuestionBatchReport;
+  /**
+   * Copies of questions from the bank (`copyQuestion`: fresh ids, lineage to `fromDocId`),
+   * in order after `afterId` (default: the insertion anchor, as `addQuestion`). One commit,
+   * one undo; the anchor moves to the last copy. Returns the new ids ([] when read-only).
+   */
+  insertQuestionCopies: (questions: readonly Question[], opts?: { fromDocId?: string; afterId?: string }) => string[];
   /**
    * The AI answer writer's fills (`src/answers/`): one commit, one undo; a leaf edited
    * since the plan is skipped, and only empty fields are written. Refused when read-only
@@ -1337,6 +1343,25 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     });
     set({ insertAnchorId: built[built.length - 1].id });
     return { ok: true, questionIds: built.map((q) => q.id), ...(lead ? { leadId: lead.id } : {}), committed: get().worksheet };
+  },
+
+  insertQuestionCopies: (questions, { fromDocId, afterId } = {}) => {
+    const state = get();
+    if (state.readOnly) return [];
+    const known = new Set(listQuestionTypes().map((type) => type.id));
+    const copies = questions.filter((question) => known.has(question.type)).map((question) => copyQuestion(question, fromDocId));
+    if (!copies.length) return [];
+    state.commit((draft) => {
+      let next = draft;
+      let after = afterId ?? state.insertAnchorId;
+      for (const copy of copies) {
+        next = insertIntoFlow(next, { type: 'question', id: copy.id }, after, { questions: [...next.questions, copy] });
+        after = copy.id;
+      }
+      return next;
+    });
+    set({ insertAnchorId: copies[copies.length - 1].id });
+    return copies.map((copy) => copy.id);
   },
 
   applyAnswerFills: (writes, { worksheetId }) => {

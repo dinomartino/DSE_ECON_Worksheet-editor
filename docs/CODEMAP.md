@@ -38,6 +38,8 @@ the whole schema, one file.
 - `src/model/marks.ts:partMarks` · `:questionMarks` · `:sectionMarks` — derived totals
 - `src/model/edits.ts:applyEditTarget` · `:applyDeleteTarget` · `:insertBlockAfter` — every mutation recipe
 - `src/model/lineage.ts:freshIds` · `:copyQuestion` · `:questionIdOwners` — every id a question holds, renewed for a copy (a diagram's own geometry is kept); `src/model/dedupeIds.ts:dedupeIds` — ids held twice repaired on open, in `src/storage/document.ts:parseWorksheet`
+- `src/model/topics.ts:TOPICS` · `:topicOf` · `:parentCode` · `:matchesTopic` · `:topicLabel` — the EDB topic taxonomy as data; `Question.tags` stores codes, names are looked up
+- `src/model/excerpt.ts:questionExcerpt` · `:biTextExcerpt` · `:blocksExcerpt` — one-line plain text of a stem (Outline, panel rows, the bank), the asked-for language first
 - `src/model/bands.ts:createBand` · `src/model/bandSegments.ts:bandFieldSegments` — masthead rows
 - `src/model/text.ts:BiText` helpers — `:rt` · `:plain` · `:normalizeRuns` · `:applyRunFormat`
 - `src/model/page.ts:pageSetupOf` · `:headerFooterOffsets` · `src/model/pageFurniture.ts:furnitureBoxes`
@@ -209,6 +211,24 @@ Invariants:
 - The gate lives in `src/app/EditorHost.tsx:EditorHost`, outside the editor; the start screen is always home, with no way back but a card; leaving awaits `src/app/EditorHost.tsx:flushBeforeLeaving`, except clearing, which must not save (`src/app/EditorHost.tsx:clearSavedDocuments`) — §The start screen.
 - A thumbnail is derived from the IR, never stored — §The file dashboard.
 - In-page drags use pointer events, never HTML5 drag-and-drop — §The file dashboard.
+
+## library — the question bank 題庫 (derived, never a source of truth)
+
+Design: `docs/design/question-library.md`. Every saved document's questions, indexed by a
+scan; rebuildable, so no teacher's work lives in it.
+
+- `src/library/types.ts:BankRow` · `:BankGroup` · `:BankQuery` · `:BankStatus` · `:StoreChange` — the contracts
+- `src/library/indexer.ts:rowsOf` — a document's rows (text only, never images; `bankHidden` yields none)
+- `src/library/contentKey.ts:contentKey` — content fingerprint ignoring ids, `lineage`, `tags`
+- `src/library/search.ts:searchRows` · `src/library/group.ts:groupRows` · `src/library/history.ts:usedIn` · `:usedWithClass` · `src/library/fill.ts:pickFill`
+- `src/library/useBank.ts:useBank` — the one read both surfaces use; naive in-memory scan (`:createBankIndex`), replaced internally by the persistent index
+- `src/components/bank/BankRow.tsx:BankRow` — the shared row: excerpt, quiet meta, action slot, in-paper / used-with-class / missing-language / selected states
+- `src/store/worksheetStore.ts:insertQuestionCopies` — bank copies in (`copyQuestion`), one commit, one undo
+
+Invariants:
+- A bank is a `Worksheet` with `kind: 'bank'`; no second storage format.
+- Copies are independent; identity is `lineage.rootId`, never a shared id.
+- No module in `src/library/` branches on a type id (`src/library/noTypeBranching.test.ts`).
 
 ## components/editor — the chrome around the page
 

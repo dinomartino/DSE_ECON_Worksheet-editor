@@ -939,3 +939,53 @@ describe('applyTranslations', () => {
     expect(store().dirty).toBe(false);
   });
 });
+
+describe('insertQuestionCopies', () => {
+  const ids = (question: Question) => [...questionIdOwners(question)].map(({ owner }) => owner.id);
+
+  it('inserts copies after the anchor, in order, as one undo, and returns their ids', () => {
+    const before = store().worksheet;
+    const anchor = before.questions[0].id;
+    const sources = [richStructured(), richMcq()];
+    const newIds = store().insertQuestionCopies(sources, { fromDocId: 'bank-doc', afterId: anchor });
+
+    const after = store().worksheet;
+    expect(newIds).toHaveLength(2);
+    expect(after.questions.map((q) => q.id).slice(0, 3)).toEqual([anchor, ...newIds]);
+    const flowIds = after.flow.map((entry) => entry.id);
+    expect(flowIds.indexOf(newIds[0])).toBe(flowIds.indexOf(anchor) + 1);
+    expect(flowIds.indexOf(newIds[1])).toBe(flowIds.indexOf(anchor) + 2);
+    expect(store().insertAnchorId).toBe(newIds[1]);
+
+    newIds.forEach((id, i) => {
+      const copy = after.questions.find((q) => q.id === id)!;
+      expect(copy.lineage).toMatchObject({ rootId: sources[i].id, fromDocId: 'bank-doc' });
+      expect(ids(copy).filter((x) => ids(sources[i]).includes(x))).toEqual([]);
+    });
+
+    expect(store().past).toHaveLength(1);
+    store().undo();
+    expect(store().worksheet).toEqual(before);
+  });
+
+  it('defaults to the insertion anchor, and keeps a copy of a copy on its root', () => {
+    const anchor = store().worksheet.questions[1].id;
+    useWorksheetStore.setState({ insertAnchorId: anchor });
+    const original = richMcq();
+    const [firstId] = store().insertQuestionCopies([original]);
+    const first = store().worksheet.questions.find((q) => q.id === firstId)!;
+    const [secondId] = store().insertQuestionCopies([first]);
+    const qids = store().worksheet.questions.map((q) => q.id);
+    expect(qids.indexOf(firstId)).toBe(qids.indexOf(anchor) + 1);
+    expect(qids.indexOf(secondId)).toBe(qids.indexOf(firstId) + 1);
+    expect(store().worksheet.questions.find((q) => q.id === secondId)!.lineage?.rootId).toBe(original.id);
+  });
+
+  it('does nothing when read-only or given nothing', () => {
+    expect(store().insertQuestionCopies([])).toEqual([]);
+    useWorksheetStore.setState({ readOnly: true });
+    expect(store().insertQuestionCopies([richMcq()])).toEqual([]);
+    expect(store().past).toHaveLength(0);
+    useWorksheetStore.setState({ readOnly: false });
+  });
+});

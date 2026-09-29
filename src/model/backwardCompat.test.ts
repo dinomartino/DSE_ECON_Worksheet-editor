@@ -187,4 +187,30 @@ describe('a document saved by the published build still opens', () => {
     expect(reloaded.questions.slice(0, -1)).toEqual(loaded.questions);
     expect(reloaded.questions.at(-1)!.lineage).toEqual(question.lineage);
   });
+
+  it('carries question tags through load → save → load', () => {
+    const loaded = migrate(structuredClone(v1Corpus));
+    expect(JSON.stringify(loaded.questions)).not.toMatch(/"tags"/);
+
+    const question = { ...createMcqQuestion(), tags: ['C', 'C.ped', 'past paper'] };
+    const edited = { ...loaded, questions: [...loaded.questions, question] };
+
+    const reloaded = migrate(JSON.parse(JSON.stringify(serializeWorksheet(edited))));
+    expect(reloaded.__unknown).toBeUndefined();
+    expect(reloaded.questions.slice(0, -1)).toEqual(loaded.questions);
+    expect(reloaded.questions.at(-1)!.tags).toEqual(['C', 'C.ped', 'past paper']);
+  });
+
+  it('carries the bank fields (kind, classTag, bankHidden) through load → save → load', () => {
+    const loaded = migrate(structuredClone(v1Corpus));
+    expect(loaded.kind).toBeUndefined();
+    expect(loaded.classTag).toBeUndefined();
+    expect(loaded.bankHidden).toBeUndefined();
+
+    const fields = { kind: 'bank' as const, classTag: '5A 2025-26', bankHidden: true };
+    const reloaded = migrate(JSON.parse(JSON.stringify(serializeWorksheet({ ...loaded, ...fields }))));
+    expect(reloaded.__unknown).toBeUndefined();
+    expect({ kind: reloaded.kind, classTag: reloaded.classTag, bankHidden: reloaded.bankHidden }).toEqual(fields);
+    expect({ ...reloaded, kind: undefined, classTag: undefined, bankHidden: undefined }).toEqual(loaded);
+  });
 });

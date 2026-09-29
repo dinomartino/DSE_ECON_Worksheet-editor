@@ -19,6 +19,7 @@ import { questionMarks } from '@/model/marks';
 import type { NumberingPlan } from '@/model/numbering';
 import { resolveFlow } from '@/model/flow';
 import { bi, documentName, plain } from '@/model/text';
+import { questionExcerpt } from '@/model/excerpt';
 import type { LayoutElement, Question, Worksheet } from '@/model/types';
 import { listQuestionTypes, requireQuestionType } from '@/registry';
 import { useWorksheetStore } from '@/store/worksheetStore';
@@ -281,13 +282,7 @@ function QuestionRow({
   }, [isSelected]);
 
   const number = numbering.byQuestionId.get(question.id)?.number;
-  const stem = question.blocks.find((block) => block.kind === 'paragraph');
-  const excerpt =
-    stem && stem.kind === 'paragraph'
-      ? plain(mode.language === 'zh' ? stem.text.zh : stem.text.en) ||
-        plain(stem.text.zh) ||
-        plain(stem.text.en)
-      : '';
+  const excerpt = questionExcerpt(question, mode.language);
 
   // "Move to section" is now "move to the head of that section's run": a section owns
   // nothing, so the destination is a position after its heading rather than a container
@@ -536,9 +531,7 @@ function dragLabelFor(
   const question = worksheet.questions.find((q) => q.id === dragId);
   if (question) {
     const number = numbering.byQuestionId.get(dragId)?.number;
-    const stem = question.blocks.find((b) => b.kind === 'paragraph');
-    const excerpt =
-      stem && stem.kind === 'paragraph' ? plain(stem.text.en) || plain(stem.text.zh) : '';
+    const excerpt = questionExcerpt(question, 'en');
     return {
       label: number ? `Question ${number}` : 'Question',
       // The type's own name comes from the registry, so a new type labels its ghost
