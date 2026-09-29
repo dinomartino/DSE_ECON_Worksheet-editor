@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { plain } from '@/model/text';
+import { biTextExcerpt, blocksExcerpt } from '@/model/excerpt';
 import type { BiText, ContentBlock } from '@/model/types';
 
 /**
@@ -28,14 +28,12 @@ export function scrollPageTo(targetKey: string): void {
 
 /** One line of a bilingual value, preferring whichever side has words. */
 export function biExcerpt(value: BiText | undefined): string {
-  if (!value) return '';
-  return plain(value.en) || plain(value.zh);
+  return biTextExcerpt(value, 'en');
 }
 
 /** The first paragraph's text, for naming a collapsed card or a block row. */
 export function excerptOfBlocks(blocks: ContentBlock[]): string {
-  const para = blocks.find((block) => block.kind === 'paragraph');
-  return para && para.kind === 'paragraph' ? biExcerpt(para.text) : '';
+  return blocksExcerpt(blocks, 'en');
 }
 
 /**
