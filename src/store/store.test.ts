@@ -13,7 +13,13 @@ import {
 import { computeNumbering } from '@/model/numbering';
 import { createWorksheetFrom } from '@/model/newWorksheet';
 import { HEADER_FOOTER_PRESETS } from '@/model/bands';
-import { defaultHeader, firstPageHeaderFooter, firstPageModeOf, headerFooterOf } from '@/model/page';
+import {
+  defaultHeader,
+  firstPageHeaderFooter,
+  firstPageModeOf,
+  headerFooterOf,
+  pageBandScope,
+} from '@/model/page';
 import { bi, plain, rt } from '@/model/text';
 import type { TranslationWrite } from '@/model/textSlots';
 import { mapWorksheetTexts } from '@/model/textWalk';
@@ -641,6 +647,41 @@ describe('first-page mode round-trips (§ page 1 can differ)', () => {
     expect(
       firstPageModeOf({ ...header(), showOnFirstPage: false, firstPage: { bands: [] } }),
     ).toBe('different');
+  });
+});
+
+/** A row added on a sheet goes to the list that sheet prints (`pageBandScope`). */
+describe('page-1 row scope follows the first-page mode', () => {
+  const header = () => headerFooterOf(store().worksheet.header, defaultHeader);
+
+  beforeEach(() => {
+    store().setHeaderFooterBands('header', HEADER_FOOTER_PRESETS[0].build());
+  });
+
+  it('page 1 edits the running rows only when it prints them', () => {
+    store().setFirstPageMode('header', 'same');
+    expect(pageBandScope(header(), 1)).toBe('running');
+    store().setFirstPageMode('header', 'blank');
+    expect(pageBandScope(header(), 1)).toBe('firstPage');
+    store().setFirstPageMode('header', 'different');
+    expect(pageBandScope(header(), 1)).toBe('firstPage');
+  });
+
+  it('later pages always edit the running rows', () => {
+    for (const mode of ['same', 'blank', 'different'] as const) {
+      store().setFirstPageMode('header', mode);
+      expect(pageBandScope(header(), 2)).toBe('running');
+    }
+  });
+
+  it('a row added on a blank page 1 lands on page 1 alone', () => {
+    store().setFirstPageMode('header', 'blank');
+    const running = header().bands.map((b) => b.id);
+    store().addHeaderFooterBand('header', undefined, pageBandScope(header(), 1));
+    const value = header();
+    expect(value.bands.map((b) => b.id)).toEqual(running);
+    expect(firstPageModeOf(value)).toBe('different');
+    expect(firstPageHeaderFooter(value).bands).toHaveLength(1);
   });
 });
 

@@ -85,6 +85,8 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 ### Fixed
 - **A mislabelled button no longer deletes page 1's own header.** "Same as page 1" kept
   the later pages' header and removed page 1's. The new page choices replace it.
+- **A row added on page 1 stays on page 1.** When page 1 was set to no header or footer,
+  adding a row there put it on every later page instead. Page 1 now gets its own rows.
 - **Typing on the page is lighter.** The page no longer redraws twice for every key you
   press, which on a busy computer could stop the editor with an error mid-sentence.
 - **Editing a duplicated question no longer changes the original.** Worksheets where a

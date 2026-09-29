@@ -1658,7 +1658,8 @@ presets.
   (`setFirstPageMode` re-ids on copy).
 - **A structural edit must name its list (`BandScope`)**: a row being created has no id
   yet, so add/set take `'running' | 'firstPage'`, resolved from the sheet the click
-  landed on. Deletion needs no scope.
+  landed on by `pageBandScope`: page 1 is `'firstPage'` unless its mode is 'same', so a
+  row added to a blank page 1 becomes its own. Deletion needs no scope.
 - `BandEditor` offers hover-revealed `+ Row`, per-row `✕`, and a label naming the
   surface. All `data-print-hide`, positioned outside the flow.
 - **An empty band list still renders while editing** (`bandsShouldRender(bands,
