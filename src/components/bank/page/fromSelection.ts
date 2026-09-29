@@ -1,13 +1,36 @@
+import { withRowTags } from '@/library/sharedTags';
+import type { BankRow } from '@/library/types';
 import { copyQuestion } from '@/model/lineage';
 import { createWorksheetFrom } from '@/model/newWorksheet';
 import { topicOf } from '@/model/topics';
 import type { Question, Worksheet } from '@/model/types';
 import { getQuestionType } from '@/registry';
+import type { WorksheetStore } from '@/storage/types';
 
 /** A picked question and the document it was read from. */
 export interface PickedQuestion {
   question: Question;
   fromDocId: string;
+}
+
+/**
+ * The rows' questions read from their documents, in order, each document loaded once; a
+ * question no longer there is left out. Each carries the tags its row shows (the union
+ * over every copy, `withRowTags`), so both "New worksheet from these" and "Add to" give
+ * the copy every topic the bank showed.
+ */
+export async function readPicks(
+  store: Pick<WorksheetStore, 'load'>,
+  rows: readonly Pick<BankRow, 'docId' | 'questionId' | 'tags'>[],
+): Promise<PickedQuestion[]> {
+  const docs = new Map<string, Worksheet | undefined>();
+  const out: PickedQuestion[] = [];
+  for (const row of rows) {
+    if (!docs.has(row.docId)) docs.set(row.docId, await store.load(row.docId).catch(() => undefined));
+    const question = docs.get(row.docId)?.questions.find((q) => q.id === row.questionId);
+    if (question) out.push({ question: withRowTags(question, row), fromDocId: row.docId });
+  }
+  return out;
 }
 
 /**

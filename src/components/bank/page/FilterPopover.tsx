@@ -5,6 +5,7 @@ import { useModalLayer } from '@/components/ui/modalLayer';
 import { listQuestionTypes } from '@/registry';
 import {
   activeFilters,
+  classChoiceText,
   DEFAULT_FILTERS,
   MARKS_BANDS,
   SINCE_CHOICES,
@@ -89,6 +90,7 @@ function Panel({
 
   const set = <K extends keyof BankFilters>(key: K, value: BankFilters[K]) => onChange({ ...filters, [key]: value });
   const narrowed = activeFilters({ ...filters, text: '', topic: 'all' }).length > 0;
+  const chosenClass = classes.find((entry) => entry.id === filters.notUsedWith?.id) ?? filters.notUsedWith;
   return (
     <div
       ref={ref}
@@ -110,21 +112,22 @@ function Panel({
           options={MARKS_BANDS.map((band) => ({ value: band.value, label: band.label }))}
         />
       </Field>
-      <Field label="Class">
+      <Field label="Class" note={chosenClass && classChoiceText(chosenClass).note}>
         <Select
           value={filters.notUsedWith?.id ?? ''}
           disabled={classes.length === 0}
-          title={classes.length === 0 ? 'Say which classes sat a paper in Setup to use this' : undefined}
+          title={classes.length === 0 ? 'Say which classes sat a paper in Setup to use this' : chosenClass ? classChoiceText(chosenClass).open : undefined}
           onChange={(value) => {
             const choice = classes.find((entry) => entry.id === value);
             onChange({ ...filters, notUsedWith: choice, since: choice ? filters.since : 'ever' });
           }}
           options={[
             { value: '', label: classes.length === 0 ? 'No classes yet' : 'Any class' },
-            ...classes.map((choice) => ({
-              value: choice.id,
-              label: `Not used with ${choice.label}${choice.detail ? ` (${choice.detail})` : ''}`,
-            })),
+            // The open list tells the whole story; the closed select shows the short form.
+            ...classes.map((choice) => {
+              const text = classChoiceText(choice);
+              return { value: choice.id, label: text.open, closedLabel: text.closed };
+            }),
           ]}
         />
       </Field>
@@ -169,11 +172,12 @@ function Panel({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, note, children }: { label: string; note?: string; children: React.ReactNode }) {
   return (
-    <label className="grid grid-cols-[64px_minmax(0,1fr)] items-center gap-2.5 text-[12px] text-ink-subtle">
+    <label className="grid grid-cols-[64px_minmax(0,1fr)] items-center gap-x-2.5 gap-y-1 text-[12px] text-ink-subtle">
       {label}
       {children}
+      {note && <span className="col-start-2 whitespace-normal text-[11.5px] leading-snug text-ink-muted">{note}</span>}
     </label>
   );
 }
@@ -186,7 +190,8 @@ function Select({
   title,
 }: {
   value: string;
-  options: { value: string; label: string }[];
+  /** `closedLabel`: what the chosen option reads as, so the closed select is not cut off. */
+  options: { value: string; label: string; closedLabel?: string }[];
   onChange: (value: string) => void;
   disabled?: boolean;
   title?: string;
@@ -202,8 +207,8 @@ function Select({
       }`}
     >
       {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
+        <option key={option.value} value={option.value} title={option.label}>
+          {option.value === value && option.closedLabel ? option.closedLabel : option.label}
         </option>
       ))}
     </select>

@@ -175,6 +175,17 @@ export interface ClassChoice {
 }
 
 /**
+ * The Class filter's words for one choice. `closed` fits the closed select (the chosen
+ * option shows it); `open` is the whole story, for the open list; `note` repeats a
+ * cohort's classes under the select, since the closed label leaves them out.
+ */
+export function classChoiceText(choice: ClassChoice): { closed: string; open: string; note?: string } {
+  const closed = `Not used with ${choice.label}`;
+  if (!choice.detail) return { closed, open: closed };
+  return { closed, open: `${closed} (${choice.detail})`, note: `Same students: ${choice.detail}` };
+}
+
+/**
  * Whom papers were sat by: each DSE cohort (oldest first), then each class whose name has
  * no form number, by name. Drafts and banks name no one.
  */

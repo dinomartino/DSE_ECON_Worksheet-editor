@@ -41,8 +41,13 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   in worksheet". To add questions to your last worksheet, tick them and use the bar at the
   bottom.
 - **Question bank: one set of topics per question.** Changing a question's topics in the
-  bank now changes every copy of it in your worksheets, and the bank shows the same topics
-  everywhere. Set topic for ticked questions can now add, remove or replace topics.
+  bank, or in the Edit panel of a worksheet, now changes every copy of it in your other
+  worksheets ("Also updated in 2 other worksheets"), and the bank shows the same topics
+  everywhere. A question you add from the bank brings all of its topics with it. Set
+  topic for ticked questions can now add, remove or replace topics.
+- **Question bank: easier to read.** "Used in" puts each paper's full title on its own
+  line, and the Class filter shows a short name ("Not used with DSE 2027") with the
+  classes it covers listed underneath.
 
 ### Fixed
 - **Typing on the page is lighter.** The page no longer redraws twice for every key you

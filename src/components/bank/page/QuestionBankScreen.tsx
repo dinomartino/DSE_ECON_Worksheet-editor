@@ -39,7 +39,7 @@ import {
   type BankLevel,
 } from './bankScreen';
 import { FilterPopover } from './FilterPopover';
-import { worksheetFromPicks, type PickedQuestion } from './fromSelection';
+import { readPicks, worksheetFromPicks, type PickedQuestion } from './fromSelection';
 import { ReviewPage } from './ReviewPage';
 import { SelectionTray } from './SelectionTray';
 import { TagAsYouGo } from './TagAsYouGo';
@@ -55,7 +55,7 @@ import {
   type BulkTopicMode,
   type TagEdit,
   type TagWrite,
-} from './writeBack';
+} from '@/library/tagWrites';
 
 const NONE: ReadonlySet<string> = new Set();
 
@@ -85,7 +85,7 @@ const BULK_TEXT: Record<BulkTopicMode, { description: string; confirm: (ticked: 
  *
  * Writes (topics) go straight into the owning documents. That is safe only because the
  * start screen, which hosts this screen, replaces the editor: no in-memory copy of any
- * document can be saved over the write (`writeBack.ts`).
+ * document can be saved over the write (`src/library/tagWrites.ts`).
  */
 export function QuestionBankScreen({
   summaries,
@@ -233,17 +233,8 @@ export function QuestionBankScreen({
     }
   };
 
-  /** Read the given rows' questions from their documents, in order. */
-  const readQuestions = async (list: readonly BankRow[]): Promise<PickedQuestion[]> => {
-    const loadedDocs = new Map<string, Worksheet | undefined>();
-    const out: PickedQuestion[] = [];
-    for (const row of list) {
-      if (!loadedDocs.has(row.docId)) loadedDocs.set(row.docId, await worksheetStore.load(row.docId).catch(() => undefined));
-      const question = loadedDocs.get(row.docId)?.questions.find((q) => q.id === row.questionId);
-      if (question) out.push({ question, fromDocId: row.docId });
-    }
-    return out;
-  };
+  /** Read the given rows' questions from their documents, in order, with the bank's topics. */
+  const readQuestions = (list: readonly BankRow[]): Promise<PickedQuestion[]> => readPicks(worksheetStore, list);
 
   /** Copies left as they were, named; what did save is said first, so a partial write reads as one. */
   const report = (failed: { docId: string; reason: string }[], saved: number) => {

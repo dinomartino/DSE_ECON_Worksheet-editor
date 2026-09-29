@@ -6,6 +6,7 @@ import { libraryIndexFile, onStoreChange, worksheetStore } from '@/storage';
 import { createJsonFileBackend, createMemoryBackend, type BankIndexBackend } from './bankBackend';
 import { browserWake, createBankIndex, idle, INITIAL_SNAPSHOT, type BankIndex, type BankSnapshot } from './bankIndex';
 import { createIdbBackend } from './idbBackend';
+import type { BankRow } from './types';
 
 /**
  * The one read both bank surfaces use. Backed by the persistent index (§ bankIndex.ts):
@@ -43,4 +44,14 @@ export function useBank(): UseBank {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const refresh = useCallback(() => void sharedIndex().refresh(), []);
   return { ...snapshot, refresh };
+}
+
+/**
+ * The published rows outside React (the editor's Topic row). An index nothing has read
+ * yet, or one still scanning, is reconciled first so a copy is not missed for that.
+ */
+export async function bankRowsNow(): Promise<readonly BankRow[]> {
+  const index = sharedIndex();
+  if (index.getSnapshot().status.state !== 'ready') await index.refresh();
+  return index.getSnapshot().rows;
 }

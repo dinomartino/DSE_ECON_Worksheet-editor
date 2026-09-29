@@ -1,4 +1,5 @@
 import { create, type StoreApi, type UseBoundStore } from 'zustand';
+import { withRowTags } from '@/library/sharedTags';
 import type { BankRow } from '@/library/types';
 import type { Question } from '@/model/types';
 import { worksheetStore, type WorksheetStore } from '@/storage';
@@ -101,7 +102,8 @@ export async function insertFromBank(
   const missing: BankRow[] = [];
   for (const row of rows) {
     const question = (await questionsOf(row.docId))?.get(row.questionId);
-    if (question) found.push({ question, docId: row.docId });
+    // The copy starts with every topic the bank shows for the question (`withRowTags`).
+    if (question) found.push({ question: withRowTags(question, row), docId: row.docId });
     else missing.push(row);
   }
 
