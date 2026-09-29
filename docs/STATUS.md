@@ -40,7 +40,8 @@ off the bottom.** It is the first thing a fresh session reads — then
   `dropSlot.ts`): live provisional layout, one commit on drop; measurement write-backs now
   skip stale renders (`usePagination` `isFresh`), lq-verify + cover-verify re-run and pass.
   Open: ⌘Z during a drag still undoes the store; page-rail thumbnails don't show the ghost;
-  no touch drag; not tried in the Tauri shell. Next: C7–C11. Teacher screen text has no em dashes (user rule).
+  no touch drag; not tried in the Tauri shell. Insert button removed (drag only; Enter on a focused row
+  inserts after the selected question). Next: C7–C11. Teacher screen text has no em dashes (user rule).
   **Integration QA + polish merged** (`feature/bank-polish`):
   end-to-end in Chromium + WebKit, `.docx` leak-free; fixed a real "Maximum update depth"
   crash in `usePagination`/band measuring (a no-op `setState` per render queued a second
