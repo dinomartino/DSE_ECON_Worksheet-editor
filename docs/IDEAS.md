@@ -111,7 +111,6 @@ rebuildable; copies keep `lineage.rootId`). Deep analysis, sources and traps:
 - **C19 Reserve for the mock** (S): hidden from Fill and the 題庫 tab until a date.
 - **✦ Suggest topics from the text** (S): a keyless glossary term → topic table, merged
   into tag-as-you-go; today it suggests only from neighbouring tags.
-- **Drag from the 題庫 tab onto the page** (S).
 
 **Marking and sharing**:
 - **C20 Examiner notes** (S): a teacher-only "common mistakes" note on a leaf's scheme,
