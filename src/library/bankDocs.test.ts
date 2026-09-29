@@ -104,4 +104,15 @@ describe('bankCopyDiffers / updateBankCopy', () => {
   it('createBank makes an empty kind:bank document', () => {
     expect(createBank().kind).toBe('bank');
   });
+
+  it('a new bank holds only its questions: no section headings, no instructions', async () => {
+    const bank = createBank();
+    expect(bank.layout).toEqual([]);
+    expect(bank.flow).toEqual([]);
+    expect(bank.instructions).toBeUndefined();
+    const { store, map } = memoryStore(docWith([choiceQuestion('Stem')], { id: 'p' }));
+    const saved = await copyToBank(map.get('p')!.questions, 'p', undefined, { store, openDocId: 'p' });
+    expect(saved.layout).toEqual([]);
+    expect(saved.flow.map((entry) => entry.type)).toEqual(['question']);
+  });
 });

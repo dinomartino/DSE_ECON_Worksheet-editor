@@ -27,9 +27,14 @@ function versionsOf(bankDoc: Worksheet, rootId: string): Question[] {
   return bankDoc.questions.filter((q) => (q.lineage?.rootId ?? q.id) === rootId);
 }
 
-/** A new, empty bank document. */
+/**
+ * A new, empty bank document: its title and nothing else — no Section A/B headings and no
+ * "Answer ALL questions." line, which belong to a paper. Existing banks are not touched.
+ */
 export function createBank(): Worksheet {
-  return { ...createWorksheet(), kind: 'bank', title: bi(BANK_NAME.en, BANK_NAME.zh) };
+  const { instructions: _paperOnly, ...base } = createWorksheet();
+  void _paperOnly;
+  return { ...base, kind: 'bank', title: bi(BANK_NAME.en, BANK_NAME.zh), questions: [], layout: [], flow: [] };
 }
 
 /**
