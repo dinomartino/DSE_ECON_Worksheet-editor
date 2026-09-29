@@ -18,7 +18,7 @@ guards the result. The map is [`CODEMAP.md`](./CODEMAP.md); the *why* is in
 No other file may learn the id. `render()` must copy the block's `format` onto every
 hand-built numbered paragraph.
 
-Guard: `src/registry/registry.test.ts` (greps sixteen shared modules for type literals, and
+Guard: `src/registry/registry.test.ts` (greps eighteen shared modules for type literals, and
 asserts `format` reaches the IR for every registered type).
 
 ## Give a new question type `mapTexts`

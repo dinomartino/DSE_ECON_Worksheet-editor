@@ -9,11 +9,11 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **Branching: work is on `develop`** (since 2026-09-24); `main` deploys to teachers.
   **v0.5.0 released 2026-09-28** (✦ AI, Check terms, Settings, light/dark, 標楷體, home
   navigation). Collecting features for the next release — merge to `main` only when the user says.
-- **Question bank 題庫 (planned 2026-09-29, nothing built)** — C1–C4 from `docs/IDEAS.md`.
-  Plan, decisions and the EDB topic taxonomy: `docs/design/question-library.md`. Phase 0
-  first: **editing a duplicated question also edits the original** (copies keep block/option/
-  cell ids and `mapAllBlocks` patches every match) — deep re-id plus repair on open. Then
-  C1 tags → C3 insert from another document → C2 bank view → C4 history.
+- **Question bank 題庫 (planned 2026-09-29)** — C1–C4 from `docs/IDEAS.md`.
+  Plan, decisions and the EDB topic taxonomy: `docs/design/question-library.md`. **Phase 0
+  built on `feature/dup-ids`** (not merged): `freshIds`/`copyQuestion` (`src/model/lineage.ts`)
+  replace the shallow re-id in Duplicate and paste; `dedupeIds` repairs ids held twice in
+  `parseWorksheet`. Then C1 tags → C3 insert from another document → C2 bank view → C4 history.
 - **✦ AI demo film (merged on `develop`)** — `npm run demo:ai` → `demo-media/ai/` (38 s,
   subtitles, no audio). Translations are canned in the browser (`scripts/demo/ai-provider.mjs`,
   text in `scripts/demo/content.mjs:AI`); Check terms is real. App nit seen while filming:

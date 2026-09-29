@@ -1,6 +1,6 @@
 # Question bank 題庫 — design (C1–C4, and a future exchange)
 
-Status: planned, 2026-09-29. Answers `docs/IDEAS.md` §C. Nothing here is built.
+Status: planned, 2026-09-29. Answers `docs/IDEAS.md` §C. Phase 0 is built; the rest is not.
 Revised from the 2026-09-26 proposal after an audit against the code at `9f2009b`.
 
 ## Decisions (the user, 2026-09-29)

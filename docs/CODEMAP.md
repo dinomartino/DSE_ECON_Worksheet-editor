@@ -37,6 +37,7 @@ the whole schema, one file.
 - `src/model/numbering.ts:computeNumbering` · `:listIndentScheme` — derived numbers
 - `src/model/marks.ts:partMarks` · `:questionMarks` · `:sectionMarks` — derived totals
 - `src/model/edits.ts:applyEditTarget` · `:applyDeleteTarget` · `:insertBlockAfter` — every mutation recipe
+- `src/model/lineage.ts:freshIds` · `:copyQuestion` · `:questionIdOwners` — every id a question holds, renewed for a copy (a diagram's own geometry is kept); `src/model/dedupeIds.ts:dedupeIds` — ids held twice repaired on open, in `src/storage/document.ts:parseWorksheet`
 - `src/model/bands.ts:createBand` · `src/model/bandSegments.ts:bandFieldSegments` — masthead rows
 - `src/model/text.ts:BiText` helpers — `:rt` · `:plain` · `:normalizeRuns` · `:applyRunFormat`
 - `src/model/page.ts:pageSetupOf` · `:headerFooterOffsets` · `src/model/pageFurniture.ts:furnitureBoxes`
@@ -68,6 +69,7 @@ Invariants:
 - A `section` is a marker carrying `restartNumbering`, not a container — §A section is a marker.
 - A new optional field must be in `KNOWN_KEYS` or it vanishes on reload — §The published-document promise.
 - A document from a newer build opens read-only and is never overwritten — §Schema evolution.
+- A second copy of a question in one document goes through `freshIds`; any id left shared makes an edit to one land in both — §Persistence.
 - A band field is authored wording around a derived value — §A field is authored wording.
 
 ## registry — the question-type extension point
@@ -83,7 +85,7 @@ Invariants:
 - `src/registry/structured.ts:structuredType`
 
 Invariants:
-- No shared module branches on a concrete type id; `src/registry/registry.test.ts` greps sixteen modules — §Question-type registry.
+- No shared module branches on a concrete type id; `src/registry/registry.test.ts` greps eighteen modules — §Question-type registry.
 - A hand-built numbered paragraph must copy the block's `format` itself — same section.
 
 ## render — the IR, and the walker that fills it

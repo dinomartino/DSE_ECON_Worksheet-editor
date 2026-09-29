@@ -1728,7 +1728,7 @@ paths). Verify by measuring the same text node in both states.
 - **The hand-built numbered paragraph must copy the block's `format` itself** — the
   four hand-assembled sites (MCQ stem; structured stem, part, sub-part) each omitted it
   once. `registry.test.ts` asserts it reaches the IR for every type.
-- **No shared module may branch on a concrete type.** `registry.test.ts` greps sixteen
+- **No shared module may branch on a concrete type.** `registry.test.ts` greps eighteen
   modules for `'mcq'`/`'structured'` literals.
 - **The paper check asks, never inspects.** `model/paperHealth.ts:checkPaper` (the Export
   dialog's pre-print summary: letter balance and runs, missing keys, marks, time estimate,
@@ -2565,7 +2565,11 @@ in-flight values stay local; the store is called on pointer-up.
   the index is derived from it, so patching the entry alone is undone by the next
   autosave.
 - **A worksheet copy re-ids the document and nothing inside it** (the opposite of
-  duplicating a question, where `withFreshIds` must walk the clone).
+  duplicating a question, where `freshIds` in `model/lineage.ts` renews every id but a
+  diagram's own geometry — edits are addressed by id, so one shared id edits both).
+- **Ids held twice are repaired on open.** `parseWorksheet` runs `dedupeIds` after
+  `migrate`: the first owner in flow order keeps its ids, later holders are renewed. Not a
+  migration; a document with nothing duplicated comes back as the same object.
 - **Migration chain** `migrate()`: ordered pure functions, currently empty because v1
   is current — the machinery runs on every load (validation, `__unknown` stashing,
   `normalize` defaulting). Adding a migration = append to `MIGRATIONS` + bump the
