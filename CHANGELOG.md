@@ -11,7 +11,8 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
 ## Unreleased
 
 ### Fixed
-- **Editing a duplicated question no longer changes the original.**
+- **Editing a duplicated question no longer changes the original.** Worksheets where a
+  duplicate and its original were stuck together are separated when you open them.
 
 ## 0.5.0 — 2026-09-28
 

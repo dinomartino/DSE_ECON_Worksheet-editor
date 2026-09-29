@@ -157,6 +157,8 @@ describe('question-type registry (§9)', () => {
       'src/model/translationApply.ts',
       'src/model/diagramText.ts',
       'src/model/symbols.ts',
+      'src/model/lineage.ts',
+      'src/model/dedupeIds.ts',
     ];
     for (const path of shared) {
       const source = readFileSync(path, 'utf8');

@@ -1,3 +1,4 @@
+import { dedupeIds } from '@/model/dedupeIds';
 import { CURRENT_SCHEMA_VERSION, migrate, serializeWorksheet } from '@/model/migrations';
 import { documentName } from '@/model/text';
 import type { Worksheet } from '@/model/types';
@@ -5,9 +6,12 @@ import type { WorksheetSummary } from './types';
 
 /** Reading, writing and naming a document — the parts no store implementation owns. */
 
-/** Round-trip through the migration chain so a load always yields a current doc. */
+/**
+ * Round-trip through the migration chain so a load always yields a current doc. Every
+ * load goes through here, so it is also where ids held twice are repaired (`dedupeIds`).
+ */
 export function parseWorksheet(json: string): Worksheet {
-  return migrate(JSON.parse(json));
+  return dedupeIds(migrate(JSON.parse(json)));
 }
 
 export function stringifyWorksheet(worksheet: Worksheet): string {
