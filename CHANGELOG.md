@@ -17,6 +17,10 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
 - **Question bank 題庫 on the start screen**: every question from your worksheets, by topic,
   with a coverage chart, a Teacher-version preview (diagrams and mark schemes), topics you
   can set, and "New worksheet from these" or "Add to" your last worksheet for the ones you tick.
+- **題庫 tab in the editor**: find questions from your other worksheets by words, topic,
+  type or marks and insert copies after the question you click, in one click — or Fill a
+  set by topic, preferring ones your class has not seen. The new questions are highlighted
+  on the page, and one Undo takes the whole set back out.
 
 ### Fixed
 - **Editing a duplicated question no longer changes the original.** Worksheets where a

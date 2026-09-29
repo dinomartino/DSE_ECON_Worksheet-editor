@@ -122,6 +122,7 @@ import {
   ChevronUpIcon,
   CloseIcon,
   GripIcon,
+  ListIcon,
   McqIcon,
   MinusIcon,
   PlusIcon,
@@ -3905,6 +3906,8 @@ interface Props {
    * as plain prose — a read-only preview has nowhere to put the click.
    */
   onAddQuestion?: (typeId: string) => void;
+  /** Open the 題庫 tab from the empty page (a third button beside the question types). */
+  onOpenBank?: () => void;
   /**
    * How the flow ended up divided across sheets, published after each repagination.
    *
@@ -3931,7 +3934,7 @@ interface Props {
  * An empty document is the best possible moment to offer the first action, so the
  * buttons are simply *here*, doing what the sentence used to describe.
  */
-function EmptyState({ onAddQuestion }: { onAddQuestion: (typeId: string) => void }) {
+function EmptyState({ onAddQuestion, onOpenBank }: { onAddQuestion: (typeId: string) => void; onOpenBank?: () => void }) {
   return (
     <div className="mt-10 rounded-2xl border-2 border-dashed border-[#ddd8d2] px-6 py-12 text-center">
       <p className="text-[15px] font-semibold text-[#4a4643]">
@@ -3958,6 +3961,16 @@ function EmptyState({ onAddQuestion }: { onAddQuestion: (typeId: string) => void
             {plain(definition.displayName.en)}
           </button>
         ))}
+        {onOpenBank && (
+          <button
+            type="button"
+            onClick={onOpenBank}
+            className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-[#ddd8d2] bg-white px-4 py-2.5 text-[13px] font-medium text-[#4a4643] transition-[background-color,border-color,color,opacity,filter,transform,scale] duration-150 ease-out-soft hover:bg-[#f6f5f4] active:scale-[0.97]"
+          >
+            <ListIcon size={16} />
+            From 題庫…
+          </button>
+        )}
       </div>
     </div>
   );
@@ -4094,6 +4107,7 @@ export function Preview({
   headerEditing,
   footerEditing,
   onAddQuestion,
+  onOpenBank,
   onPagesChange,
   onDragItemChange,
 }: Props) {
@@ -5912,7 +5926,7 @@ export function Preview({
     blocks.push({
       key: "empty-state",
       structural: true,
-      node: <EmptyState onAddQuestion={onAddQuestion} />,
+      node: <EmptyState onAddQuestion={onAddQuestion} onOpenBank={onOpenBank} />,
     });
   }
 

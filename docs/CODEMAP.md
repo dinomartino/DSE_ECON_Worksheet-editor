@@ -235,6 +235,10 @@ scan; rebuildable, so no teacher's work lives in it.
 - `src/components/bank/page/questionPreview.ts:questionPreviewHtml` — one question through the clipboard reader of the IR, Teacher mode, in its own document's setup
 - `src/components/bank/page/writeBack.ts:writeTags` · `:withQuestionTags` — topic edits into the owning documents, one save per document
 - `src/components/bank/page/fromSelection.ts:worksheetFromPicks` · `src/components/bank/page/addToOpen.ts:addPicksToOpenDocument` — New worksheet from these / Add to the open paper (one ⌘Z)
+- `src/library/tabFilters.ts:visibleGroups` · `:paperRoots` · `:anchorLabel` · `:blockingFilter` — the editor tab's filters, "in this paper", the anchor line, which filter emptied the list
+- `src/components/bank/BankTab.tsx:BankTab` — the editor's 題庫 sidebar tab: anchor line, filters, list, Fill
+- `src/components/bank/bankSession.ts:insertFromBank` — load sources read-only, one `insertQuestionCopies`, start the review; `:useBankSession` also carries the open-tab request
+- `src/components/bank/BankReviewBar.tsx:BankReviewBar` — inserted copies highlighted on the page (`data-bank-new`), ‹ ›, Undo, Done
 
 Invariants:
 - A bank is a `Worksheet` with `kind: 'bank'`; no second storage format.
@@ -242,6 +246,7 @@ Invariants:
 - Copies are independent; identity is `lineage.rootId`, never a shared id.
 - No module in `src/library/` branches on a type id (`src/library/noTypeBranching.test.ts`).
 - The index follows `list()`, never storage keys (a trashed web document keeps its key); it holds no images and no teacher's work — §Persistence.
+- The 題庫 tab is sticky: while open, a page selection moves the insert anchor instead of switching to Edit (`src/components/editor/Sidebar.tsx:Sidebar`).
 
 ## components/editor — the chrome around the page
 

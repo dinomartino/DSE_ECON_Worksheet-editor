@@ -20,7 +20,7 @@ const CHIP: Record<Exclude<ReviewTone, 'inserted'>, { className: string; label: 
   finding: { className: 'bg-warn-soft text-warn-ink', label: (n) => `${n} ${n === 1 ? 'finding' : 'findings'}` },
 };
 
-function BarButton({ primary = false, className = '', ...rest }: React.ButtonHTMLAttributes<HTMLButtonElement> & { primary?: boolean }) {
+export function BarButton({ primary = false, className = '', ...rest }: React.ButtonHTMLAttributes<HTMLButtonElement> & { primary?: boolean }) {
   const look = primary ? 'bg-on-cta text-cta hover:opacity-90' : 'text-on-cta/80 hover:bg-cta-hover hover:text-on-cta';
   return (
     <button

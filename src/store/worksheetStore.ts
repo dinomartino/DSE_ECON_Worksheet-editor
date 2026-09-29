@@ -384,8 +384,12 @@ interface WorksheetState {
    * Copies of questions from the bank (`copyQuestion`: fresh ids, lineage to `fromDocId`),
    * in order after `afterId` (default: the insertion anchor, as `addQuestion`). One commit,
    * one undo; the anchor moves to the last copy. Returns the new ids ([] when read-only).
+   * `fromDocId` as a list gives each question its own source (a Fill across documents).
    */
-  insertQuestionCopies: (questions: readonly Question[], opts?: { fromDocId?: string; afterId?: string }) => string[];
+  insertQuestionCopies: (
+    questions: readonly Question[],
+    opts?: { fromDocId?: string | readonly (string | undefined)[]; afterId?: string },
+  ) => string[];
   /**
    * The AI answer writer's fills (`src/answers/`): one commit, one undo; a leaf edited
    * since the plan is skipped, and only empty fields are written. Refused when read-only
@@ -1349,7 +1353,10 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     const state = get();
     if (state.readOnly) return [];
     const known = new Set(listQuestionTypes().map((type) => type.id));
-    const copies = questions.filter((question) => known.has(question.type)).map((question) => copyQuestion(question, fromDocId));
+    const sourceOf = (index: number) => (typeof fromDocId === 'string' || fromDocId === undefined ? fromDocId : fromDocId[index]);
+    const copies = questions.flatMap((question, index) =>
+      known.has(question.type) ? [copyQuestion(question, sourceOf(index))] : [],
+    );
     if (!copies.length) return [];
     state.commit((draft) => {
       let next = draft;
