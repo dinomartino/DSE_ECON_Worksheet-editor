@@ -13,7 +13,7 @@ const MODES: OutputMode[] = [
   { language: 'bilingual', version: 'teacher' },
   { language: 'en', version: 'student' },
 ];
-const MARKERS = ['C.ped', 'zz-free-tag-zz', 'zz-class-zz'];
+const MARKERS = ['C.ped', 'zz-free-tag-zz', 'zz-class-zz', 'zz-pattern-zz', '題型'];
 
 function tagged() {
   const worksheet = buildAcceptanceWorksheet();
@@ -22,12 +22,12 @@ function tagged() {
     classes: ['zz-class-zz'],
     satOn: '2025-11-03',
     questions: worksheet.questions.map((question, index) =>
-      index === 0 ? { ...question, tags: ['C.ped', 'zz-free-tag-zz'] } : question,
+      index === 0 ? { ...question, tags: ['C.ped', 'C.ped::zz-pattern-zz', 'zz-free-tag-zz'] } : question,
     ),
   };
 }
 
-describe('topic tags never print', () => {
+describe('topic tags and 題型 never print', () => {
   it('are absent from the IR, the .docx and the clipboard HTML', async () => {
     const worksheet = tagged();
     for (const mode of MODES) {

@@ -32,6 +32,14 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
   set by topic, preferring ones your class has not seen. The new questions are highlighted
   on the page, and one Undo takes the whole set back out.
 
+- **Your own 題型 (Patterns) in the question bank.** Inside a sub-topic, file questions
+  under the kinds of question you set, such as "Calculate PED from a change in TR". Pick
+  one or type a new name while you set a question's topic, in the bank or the Edit panel;
+  MCQ and LQ keep separate lists. The bank groups each sub-topic's questions by 題型,
+  filters by one, and counts them on the topic cards. The 題型 Patterns page lists them
+  all and renames, merges or deletes one in every worksheet at once. They come with your
+  backup and never print.
+
 ### Changed
 - **Plainer wording in messages and hints.** Hints, notices and error messages now use
   short sentences instead of long dashes.

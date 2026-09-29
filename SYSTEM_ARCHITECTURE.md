@@ -2595,6 +2595,12 @@ in-flight values stay local; the store is called on pointer-up.
   back to its folder; a desktop restore-as-copy copies it); purge, Empty Trash, expiry and
   `remove()` forget it; `clear()` takes the file. Writes go read-modify-write through
   `updateFolders`, from what is stored, never from a screen's copy.
+- **The 題型 registry is a separate list too** (`storage/patterns.ts`): key
+  `econ-worksheet-patterns`, `worksheets/patterns.json` on desktop, for the reasons above.
+  It holds only the 題型 a teacher defined (sub-topic, type id, name); a question carries
+  its own 題型 as a tag (`model/patterns.ts`), so the registry adds names no question uses
+  yet and is never needed to read one. Validated per row; `clear()` takes it; it rides in
+  the backup manifest (`patterns`) and a restore only adds.
 - **Backup** (`storage/backup.ts`) is one zip of `.worksheet.json` entries plus
   `manifest.json`; Trash is left out. Restore parses every entry through `migrate`, skips
   and names bad ones, and **never overwrites**: an identical live id is skipped, any

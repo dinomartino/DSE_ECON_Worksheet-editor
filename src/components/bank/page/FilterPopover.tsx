@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useModalLayer } from '@/components/ui/modalLayer';
 import { listQuestionTypes } from '@/registry';
+import { samePattern, type PatternItem } from '@/library/patterns';
+import { holdsPatterns } from '@/model/patterns';
 import {
   activeFilters,
   classChoiceText,
@@ -18,19 +20,25 @@ import {
 } from './bankPage';
 
 /**
- * Every narrowing filter behind one "Filter" button: type, marks, not used with a class
- * (and since when), source. The button names what is on. While open the popover owns the
+ * Every narrowing filter behind one "Filter" button: type, 題型, marks, not used with a
+ * class (and since when), source. The button names what is on. While open the popover owns the
  * keyboard (`useModalLayer`), so Esc closes it rather than leaving the level.
  */
 export function FilterPopover({
   filters,
   classes,
+  patterns,
+  scope,
   onChange,
 }: {
   /** The page's filters; `text` and `topic` are the bar's and the level's, not shown here. */
   filters: BankFilters;
   /** Cohorts and plain classes that sat a paper (`classChoices`). */
   classes: ClassChoice[];
+  /** The 題型 in use within the topic on screen (`listPatterns`). */
+  patterns: PatternItem[];
+  /** The topic on screen: a sub-topic's 題型 read by name alone. */
+  scope: string;
   onChange: (next: BankFilters) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -53,7 +61,9 @@ export function FilterPopover({
           ▾
         </span>
       </button>
-      {open && <Panel filters={filters} classes={classes} onChange={onChange} onClose={() => setOpen(false)} />}
+      {open && (
+        <Panel filters={filters} classes={classes} patterns={patterns} scope={scope} onChange={onChange} onClose={() => setOpen(false)} />
+      )}
     </div>
   );
 }
@@ -61,11 +71,15 @@ export function FilterPopover({
 function Panel({
   filters,
   classes,
+  patterns,
+  scope,
   onChange,
   onClose,
 }: {
   filters: BankFilters;
   classes: ClassChoice[];
+  patterns: PatternItem[];
+  scope: string;
   onChange: (next: BankFilters) => void;
   onClose: () => void;
 }) {
@@ -103,6 +117,18 @@ function Panel({
           value={filters.typeId ?? ''}
           onChange={(value) => set('typeId', value || undefined)}
           options={[{ value: '', label: 'Any type' }, ...listQuestionTypes().map((type) => ({ value: type.id, label: typeName(type.id) }))]}
+        />
+      </Field>
+      <Field label="題型">
+        <Select
+          value={patternValue(patterns, filters)}
+          disabled={patterns.length === 0 && !filters.pattern}
+          title={patterns.length === 0 ? 'No question here has a 題型 yet' : undefined}
+          onChange={(value) => set('pattern', patterns[Number(value)] ? toId(patterns[Number(value)]) : undefined)}
+          options={[
+            { value: '', label: patterns.length === 0 ? 'No 題型 yet' : 'Any 題型' },
+            ...patterns.map((item, index) => ({ value: String(index), label: patternOption(item, scope) })),
+          ]}
         />
       </Field>
       <Field label="Marks">
@@ -170,6 +196,22 @@ function Panel({
       </div>
     </div>
   );
+}
+
+const toId = (item: PatternItem) => ({ topic: item.topic, typeId: item.typeId, name: item.name });
+
+/** The chosen 題型's index in the list, as the select's value; '' for none. */
+function patternValue(patterns: PatternItem[], filters: BankFilters): string {
+  const chosen = filters.pattern;
+  if (!chosen) return '';
+  const at = patterns.findIndex((item) => samePattern(item, chosen));
+  return at >= 0 ? String(at) : '';
+}
+
+/** "Calculate PED from TR · MCQ ×3"; the sub-topic code first unless the page is that sub-topic. */
+function patternOption(item: PatternItem, scope: string): string {
+  const where = holdsPatterns(scope) ? '' : `${item.topic} · `;
+  return `${where}${item.name} · ${typeName(item.typeId)} ×${item.count}`;
 }
 
 function Field({ label, note, children }: { label: string; note?: string; children: React.ReactNode }) {

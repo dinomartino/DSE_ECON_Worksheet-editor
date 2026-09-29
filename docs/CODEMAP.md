@@ -239,6 +239,7 @@ scan; rebuildable, so no teacher's work lives in it.
 - `src/library/tagWrites.ts:writeTags` · `:withQuestionTags` · `:copyWrites` · `:bulkTopicEdit` · `:matchEdit` · `:otherCopyWrites` — topic edits into the owning documents, one save per document; every topic edit (bank or editor) writes every copy of the question
 - `src/components/editor/topicSync.ts:setQuestionTopics` — the editor's Topic row: the open copy through the store (one undo), every other document's copy through storage, never the open one; "Also updated in N other worksheets"
 - `src/library/sharedTags.ts:withSharedTags` — one truth for tags: every copy reads the union of its root's tags; applied once where the index publishes (`src/library/bankIndex.ts:createBankIndex`), stored rows keep each copy's own. `:withRowTags` gives a copy taken from the bank that union (`src/components/bank/page/fromSelection.ts:readPicks`, `src/components/bank/bankSession.ts:insertFromBank`)
+- 題型 (Patterns): `src/model/patterns.ts:parsePatternTag` · `:withPattern` — the tag form `<sub-topic>::<name>` on `Question.tags`; `src/library/patterns.ts:listPatterns` · `:patternWrites` · `:renamePatternEdit` · `:removePatternEdit` — lists per sub-topic × type (registry ∪ names on questions), and the edits a rename, merge or delete writes into every copy; `src/storage/patterns.ts:usablePatterns` · `:updatePatternRegistry` — the app-level registry (`econ-worksheet-patterns` / `worksheets/patterns.json`), per-row validated, in the backup manifest; `src/library/usePatterns.ts:usePatternRegistry`; UI `src/components/bank/PatternPicker.tsx:PatternPicker` (Topic row and topic dialog) · `src/components/bank/page/PatternsPage.tsx:PatternsPage` (the manage level)
 - `src/components/bank/page/fromSelection.ts:worksheetFromPicks` · `src/components/bank/page/addToOpen.ts:addPicksToOpenDocument` — New worksheet from these / Add to the open paper (one ⌘Z)
 - `src/library/tabFilters.ts:visibleGroups` · `:paperRoots` · `:anchorLabel` · `:blockingFilter` — the editor tab's filters, "in this paper", the anchor line, which filter emptied the list
 - `src/components/bank/BankTab.tsx:BankTab` — the editor's 題庫 sidebar tab: anchor line, filters, list, Fill
@@ -251,6 +252,7 @@ Invariants:
 - Copies are independent; identity is `lineage.rootId`, never a shared id.
 - A use is a paper with `classes`, dated `satOn ?? createdAt`; never `updatedAt`, which only stamps index freshness. Drafts list where a question lives but never count as uses.
 - No module in `src/library/` branches on a type id (`src/library/noTypeBranching.test.ts`).
+- A 題型 is (sub-topic, type id, name); the question's own type decides its list, and the name on the question is the truth. It never reaches the IR (`src/components/editor/topicTags.test.ts`).
 - The index follows `list()`, never storage keys (a trashed web document keeps its key); it holds no images and no teacher's work — §Persistence.
 - The 題庫 tab is sticky: while open, a page selection moves the insert anchor instead of switching to Edit (`src/components/editor/Sidebar.tsx:Sidebar`).
 

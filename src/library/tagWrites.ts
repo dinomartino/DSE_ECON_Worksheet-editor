@@ -1,4 +1,5 @@
 import { isNewerThanBuild } from '@/model/migrations';
+import { parsePatternTag } from '@/model/patterns';
 import { topicOf } from '@/model/topics';
 import type { Question, Worksheet } from '@/model/types';
 import type { BankRow } from './types';
@@ -22,20 +23,37 @@ import type { WorksheetStore } from '@/storage/types';
 /** A question's new tags, from its current ones. */
 export type TagEdit = (tags: readonly string[]) => string[];
 
-/** Replace the topic codes, keep free tags (in their place, after the codes). */
+/**
+ * Replace the topic codes, keep free tags (in their place, after the codes). A 題型 stays
+ * only while its sub-topic does.
+ */
 export const replaceTopics =
   (codes: readonly string[]): TagEdit =>
-  (tags) => unique([...codes, ...tags.filter((tag) => !topicOf(tag))]);
+  (tags) =>
+    unique([
+      ...codes,
+      ...tags.filter((tag) => {
+        if (topicOf(tag)) return false;
+        const pattern = parsePatternTag(tag);
+        return !pattern || codes.includes(pattern.topic);
+      }),
+    ]);
 
 /** Add topic codes to whatever is there. */
 export const addTopics =
   (codes: readonly string[]): TagEdit =>
   (tags) => unique([...tags, ...codes]);
 
-/** Take topic codes off, keep everything else. */
+/** Take topic codes off, with their 題型; keep everything else. */
 export const removeTopics =
   (codes: readonly string[]): TagEdit =>
-  (tags) => unique(tags.filter((tag) => !codes.includes(tag)));
+  (tags) =>
+    unique(
+      tags.filter((tag) => {
+        const pattern = parsePatternTag(tag);
+        return !codes.includes(tag) && !(pattern && codes.includes(pattern.topic));
+      }),
+    );
 
 /** Bulk "Set topic": add the ticked topics, take them off, or make them the only ones. */
 export type BulkTopicMode = 'add' | 'remove' | 'replace';

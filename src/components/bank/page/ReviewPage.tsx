@@ -7,9 +7,10 @@ import { refsOf, usedWith as usedWithTargets } from '@/library/history';
 import { anySameStudents } from '@/library/cohort';
 import type { BankGroup, BankRow } from '@/library/types';
 import { isNewerThanBuild } from '@/model/migrations';
+import { isPatternTag } from '@/model/patterns';
 import { topicLabel, topicOf } from '@/model/topics';
 import type { LanguageMode, VersionMode } from '@/model/types';
-import { distinctVersions, rowKey, type ClassChoice } from './bankPage';
+import { distinctVersions, patternLines, rowKey, type ClassChoice } from './bankPage';
 import type { RailSection } from './bankScreen';
 import { PaperPreview, SHEET_MAX_WIDTH } from './PaperPreview';
 import { useOwningDocument } from './useOwningDocument';
@@ -145,43 +146,59 @@ function Rail({
               </span>
               <span className="tabular-nums">{section.groups.length}</span>
             </h3>
-            {section.groups.map((group) => {
-              const lead = group.rows[0];
-              const on = focusedRoot === group.rootId;
-              const used = usedWith ? usedWithTargets(group, [usedWith.target]) : undefined;
-              return (
-                <div
-                  key={group.rootId}
-                  role="listitem"
-                  data-rail-root={group.rootId}
-                  onClick={() => onFocus(lead)}
-                  className={`relative grid cursor-pointer grid-cols-[16px_minmax(0,1fr)] gap-2 px-3.5 py-[7px] transition-colors duration-100 ${
-                    on ? 'bg-surface' : 'hover:bg-surface-hover'
-                  }`}
-                >
-                  <span aria-hidden className={`absolute inset-y-0 left-0 w-0.5 bg-accent ${on ? 'opacity-100' : 'opacity-0'}`} />
-                  <input
-                    type="checkbox"
-                    tabIndex={-1}
-                    aria-label={`Select “${lead.excerpt.en || lead.excerpt.zh || 'question'}”`}
-                    checked={picked.has(rowKey(lead))}
-                    onClick={(event) => event.stopPropagation()}
-                    onChange={() => onPick(lead)}
-                    className="mt-[3px] h-3.5 w-3.5 cursor-pointer accent-[var(--accent)]"
-                  />
-                  <div className="min-w-0">
-                    <p className={`truncate text-[13px] leading-[1.4] ${on ? 'text-ink' : 'text-ink'}`} title={lead.excerpt.en || lead.excerpt.zh}>
-                      {lead.excerpt.en || lead.excerpt.zh || <span className="text-ink-subtle">Untitled question</span>}
-                    </p>
-                    <p className="truncate text-[11px] tabular-nums text-ink-subtle">
-                      {typeLabel(lead.typeId)} · {marksLabel(lead.marks)}
-                      {lead.hasDiagram && ' · diagram'}
-                      {used && <span className="text-warn-ink"> · {usedLabel(used)}</span>}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
+            {(section.parts ?? [{ key: '', label: '', groups: section.groups }]).map((part) => (
+              <div key={part.key} data-rail-part={part.key || undefined}>
+                {part.key && (
+                  <h4
+                    className={`flex justify-between gap-2 px-3.5 pb-0.5 pt-1.5 text-[11.5px] ${part.pattern ? 'font-medium text-ink-muted' : 'text-ink-subtle'}`}
+                    title={part.pattern ? `${part.label} · ${part.kind} 題型` : undefined}
+                  >
+                    <span className="min-w-0 truncate">
+                      {part.label}
+                      {part.kind && <span className="ml-1.5 text-[10.5px] font-normal text-ink-subtle">{part.kind}</span>}
+                    </span>
+                    <span className="shrink-0 tabular-nums text-ink-subtle">{part.groups.length}</span>
+                  </h4>
+                )}
+                {part.groups.map((group) => {
+                  const lead = group.rows[0];
+                  const on = focusedRoot === group.rootId;
+                  const used = usedWith ? usedWithTargets(group, [usedWith.target]) : undefined;
+                  return (
+                    <div
+                      key={group.rootId}
+                      role="listitem"
+                      data-rail-root={group.rootId}
+                      onClick={() => onFocus(lead)}
+                      className={`relative grid cursor-pointer grid-cols-[16px_minmax(0,1fr)] gap-2 px-3.5 py-[7px] transition-colors duration-100 ${
+                        on ? 'bg-surface' : 'hover:bg-surface-hover'
+                      }`}
+                    >
+                      <span aria-hidden className={`absolute inset-y-0 left-0 w-0.5 bg-accent ${on ? 'opacity-100' : 'opacity-0'}`} />
+                      <input
+                        type="checkbox"
+                        tabIndex={-1}
+                        aria-label={`Select “${lead.excerpt.en || lead.excerpt.zh || 'question'}”`}
+                        checked={picked.has(rowKey(lead))}
+                        onClick={(event) => event.stopPropagation()}
+                        onChange={() => onPick(lead)}
+                        className="mt-[3px] h-3.5 w-3.5 cursor-pointer accent-[var(--accent)]"
+                      />
+                      <div className="min-w-0">
+                        <p className={`truncate text-[13px] leading-[1.4] ${on ? 'text-ink' : 'text-ink'}`} title={lead.excerpt.en || lead.excerpt.zh}>
+                          {lead.excerpt.en || lead.excerpt.zh || <span className="text-ink-subtle">Untitled question</span>}
+                        </p>
+                        <p className="truncate text-[11px] tabular-nums text-ink-subtle">
+                          {typeLabel(lead.typeId)} · {marksLabel(lead.marks)}
+                          {lead.hasDiagram && ' · diagram'}
+                          {used && <span className="text-warn-ink"> · {usedLabel(used)}</span>}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
           </section>
         ))}
       </div>
@@ -262,6 +279,8 @@ function Stage({
 }) {
   const { order, index, language, version, usedWith } = state;
   const { worksheet, failed } = useOwningDocument(row);
+  const topicTags = row.tags.filter((tag) => !isPatternTag(tag));
+  const patterns = patternLines(row.tags);
   const shown = shownLanguage(row, language);
   const scrollRef = useRef<HTMLDivElement>(null);
   const key = rowKey(row);
@@ -325,11 +344,11 @@ function Stage({
           <Facts>
             <dt className="text-ink-subtle">Topics</dt>
             <dd className="min-w-0">
-              {row.tags.length === 0 ? (
+              {topicTags.length === 0 ? (
                 <span className="text-ink-subtle">None yet</span>
               ) : (
-                <span title={row.tags.map((tag) => (topicOf(tag) ? `${tag} ${topicLabel(tag, 'en')}` : tag)).join('\n')}>
-                  {row.tags.join(' · ')}
+                <span title={topicTags.map((tag) => (topicOf(tag) ? `${tag} ${topicLabel(tag, 'en')}` : tag)).join('\n')}>
+                  {topicTags.join(' · ')}
                 </span>
               )}
               {onEditTopics && worksheet && !isNewerThanBuild(worksheet) && (
@@ -342,6 +361,19 @@ function Stage({
                 </button>
               )}
             </dd>
+            {patterns.length > 0 && (
+              <>
+                <dt className="text-ink-subtle">題型</dt>
+                <dd className="min-w-0" data-fact-patterns>
+                  {patterns.map((ref, i) => (
+                    <span key={`${ref.topic} ${ref.name}`} title={`${ref.topic} · ${ref.name}`}>
+                      {i > 0 && ' · '}
+                      {ref.name}
+                    </span>
+                  ))}
+                </dd>
+              </>
+            )}
             <dt className="text-ink-subtle">Lives in</dt>
             <dd className="min-w-0 truncate" title={sourceLabel(row)}>
               {sourceLabel(row)}

@@ -112,6 +112,10 @@ Words this repository uses in its own way. One line each, with where the thing l
 - **Run** — one formatted span of text; `RichText` is `InlineRun[]` and a `\n` inside
   `run.text` is a real line break. `src/model/types.ts:InlineRun`
 - **BiText** — `{ en, zh }`, the bilingual pair every authored string is. `src/model/text.ts`
+- **Pattern (題型)** — a teacher-defined kind of question inside one sub-topic, for one
+  question type (MCQ and LQ lists are separate); stored on the question as the tag
+  `C.ped::<name>`, never printed. Not "question type", which is the registry's MCQ vs
+  structured. `src/model/patterns.ts:parsePatternTag` · `src/storage/patterns.ts:PatternRegistry`
 - **Settings** vs **Setup** — *Settings* is the app's: this browser or computer, every
   worksheet, never saved in one (`src/settings/sections.ts`). *Setup* is the document's own
   dialog (`src/components/editor/DocumentSettings.tsx`, titled "Document setup"), opened by

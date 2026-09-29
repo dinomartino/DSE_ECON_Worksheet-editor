@@ -15,9 +15,11 @@ import {
   MANIFEST_NAME,
   readBackup,
   restoreBackup,
+  restorePatterns,
   restoreSummary,
   type BackupEntry,
 } from './backup';
+import { localPatternFile, readPatternRegistry, updatePatternRegistry } from './patterns';
 import type { WorksheetStore } from './types';
 import {
   createFolder,
@@ -267,5 +269,59 @@ describe('folders in a backup', () => {
     expect(folderOf(state, 'b-copy')?.id).toBe('mine'); // the copy, into the reused folder
     expect(folderOf(state, 'c')?.id).toBe('mine');
     expect(state.folders.map((f) => f.name)).toEqual(['mocks', 'Elsewhere', 'Term 1']);
+  });
+});
+
+describe('題型 in a backup', () => {
+  const registry = {
+    patterns: [
+      { topic: 'C.ped', typeId: 'mcq', name: 'Calculate PED from TR' },
+      { topic: 'C.ped', typeId: 'structured', name: 'Factors affecting PED' },
+    ],
+  };
+
+  it('ride inside the manifest and come back validated per row', async () => {
+    const bytes = await buildBackup([doc('a')], 'T', EMPTY_FOLDERS, registry);
+    const zip = await JSZip.loadAsync(bytes);
+    const read = Object.keys(zip.files).filter((n) => n.endsWith('.json') && n !== MANIFEST_NAME);
+    expect(read).toHaveLength(1);
+    const manifest = JSON.parse(await zip.file(MANIFEST_NAME)!.async('string'));
+    expect(manifest.patterns.patterns).toHaveLength(2);
+    expect((await readBackup(bytes)).patterns.patterns.map((p) => p.name)).toEqual([
+      'Calculate PED from TR',
+      'Factors affecting PED',
+    ]);
+  });
+
+  it('an older backup reads as none; a mangled row costs only itself', async () => {
+    expect((await readBackup(await buildBackup([doc('a')], 'T'))).patterns).toEqual({ patterns: [] });
+    const zip = new JSZip();
+    zip.file(
+      MANIFEST_NAME,
+      JSON.stringify({ app: 'econ-worksheet', format: 1, patterns: { patterns: [42, registry.patterns[0]] } }),
+    );
+    zip.file('a.worksheet.json', stringifyWorksheet(doc('a')));
+    const contents = await readBackup(await zip.generateAsync({ type: 'uint8array' }));
+    expect(contents.worksheets).toHaveLength(1);
+    expect(contents.patterns.patterns.map((p) => p.name)).toEqual(['Calculate PED from TR']);
+  });
+
+  it('restore adds what is missing and never removes or renames what is here', async () => {
+    const storage = memoryStorage();
+    const file = localPatternFile(() => storage);
+    await updatePatternRegistry(file, () => ({
+      patterns: [
+        { topic: 'C.ped', typeId: 'mcq', name: 'calculate ped from tr' },
+        { topic: 'C.pes', typeId: 'mcq', name: 'Mine' },
+      ],
+    }));
+    const { patterns } = await readBackup(await buildBackup([doc('a')], 'T', EMPTY_FOLDERS, registry));
+    await restorePatterns(file, patterns);
+    const after = await readPatternRegistry(file);
+    expect(after.patterns.map((p) => `${p.typeId}:${p.name}`)).toEqual([
+      'mcq:calculate ped from tr',
+      'mcq:Mine',
+      'structured:Factors affecting PED',
+    ]);
   });
 });

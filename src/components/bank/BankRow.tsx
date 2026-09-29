@@ -1,5 +1,6 @@
 'use client';
 
+import { tagText } from '@/model/patterns';
 import type { ReactNode } from 'react';
 import type { BankRow as BankRowData, BankUse } from '@/library/types';
 import { plain } from '@/model/text';
@@ -76,7 +77,7 @@ export function BankRow({
         <div className="mt-1 flex flex-wrap gap-x-2.5 gap-y-0.5 text-[11px] tabular-nums text-ink-subtle">
           <span>{typeLabel(row.typeId)}</span>
           <span>{marksLabel(row.marks)}</span>
-          {row.tags.length > 0 && <span>{row.tags.join(' · ')}</span>}
+          {row.tags.length > 0 && <span>{row.tags.map(tagText).join(' · ')}</span>}
           {row.hasDiagram && <span>◩ diagram</span>}
           {!hideSource && <span>{sourceLabel(row)}</span>}
           {missing && <span>{missing}</span>}

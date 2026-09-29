@@ -14,6 +14,15 @@ import {
   usableFolders,
   type FolderState,
 } from './folders';
+import {
+  addPatternEntries,
+  isEmptyPatterns,
+  serializePatterns,
+  updatePatternRegistry,
+  usablePatterns,
+  type PatternFile,
+  type PatternRegistry,
+} from './patterns';
 
 /**
  * "Back up all" and "Restore from backup": every saved document in one `.zip`.
@@ -24,7 +33,8 @@ import {
  *
  * Folders ride **inside `manifest.json`**, never as an entry of their own: every shipped
  * build's `readBackup` parses each `.json` entry except the manifest as a worksheet, so
- * a `folders.json` entry would restore there as an unreadable (or blank) document.
+ * a `folders.json` entry would restore there as an unreadable (or blank) document. The
+ * 題型 registry rides there too, for the same reason: it is not rebuildable (§ patterns.ts).
  */
 
 export const MANIFEST_NAME = 'manifest.json';
@@ -38,6 +48,8 @@ export interface BackupManifest {
   schemaVersion: number;
   /** The folders and the assignments of the documents in this backup; absent if none. */
   folders?: Record<string, unknown>;
+  /** The 題型 registry (§ patterns.ts); absent if empty. */
+  patterns?: Record<string, unknown>;
 }
 
 export interface BackupEntry {
@@ -52,6 +64,8 @@ export interface BackupContents {
   failures: { name: string; reason: string }[];
   /** From the manifest; empty for an older backup, or an unreadable manifest. */
   folders: FolderState;
+  /** The 題型 registry from the manifest, validated per row; empty when absent. */
+  patterns: PatternRegistry;
 }
 
 export class BackupError extends Error {}
@@ -77,6 +91,7 @@ export async function buildBackup(
   worksheets: Worksheet[],
   createdAt = new Date().toISOString(),
   folders?: FolderState,
+  patterns?: PatternRegistry,
 ): Promise<Uint8Array> {
   const zip = new JSZip();
   const manifest: BackupManifest = {
@@ -89,6 +104,7 @@ export async function buildBackup(
   };
   const filed = folders && foldersForBackup(folders, worksheets.map((worksheet) => worksheet.id));
   if (filed && !isEmptyFolders(filed)) manifest.folders = serializeFolders(filed);
+  if (patterns && !isEmptyPatterns(patterns)) manifest.patterns = serializePatterns(patterns);
   zip.file(MANIFEST_NAME, JSON.stringify(manifest, null, 2));
   for (const worksheet of worksheets) {
     zip.file(backupEntryName(worksheet), stringifyWorksheet(worksheet));
@@ -111,9 +127,14 @@ export async function readBackup(data: Uint8Array | ArrayBuffer | Blob): Promise
   const worksheets: BackupEntry[] = [];
   const failures: BackupContents['failures'] = [];
   let folders = usableFolders(undefined);
+  let patterns = usablePatterns(undefined);
   try {
     const manifest = await zip.file(MANIFEST_NAME)?.async('string');
-    if (manifest) folders = usableFolders(JSON.parse(manifest).folders);
+    if (manifest) {
+      const parsed = JSON.parse(manifest);
+      folders = usableFolders(parsed?.folders);
+      patterns = usablePatterns(parsed?.patterns);
+    }
   } catch {
     // An unreadable manifest costs the filing, never a document.
   }
@@ -134,7 +155,7 @@ export async function readBackup(data: Uint8Array | ArrayBuffer | Blob): Promise
       failures.push({ name: entry.name, reason: entryFailure(cause) });
     }
   }
-  return { worksheets, failures, folders };
+  return { worksheets, failures, folders, patterns };
 }
 
 /**
@@ -227,6 +248,15 @@ export async function restoreBackup(
     );
   }
   return report;
+}
+
+/**
+ * A backup's 題型 joined into the registry here: every entry not already present is added,
+ * none is removed or renamed. Best effort, like the folders: never fails the restore.
+ */
+export async function restorePatterns(file: PatternFile, patterns: PatternRegistry): Promise<void> {
+  if (isEmptyPatterns(patterns)) return;
+  await updatePatternRegistry(file, (state) => addPatternEntries(state, patterns.patterns)).catch(() => undefined);
 }
 
 /** "Restored 12 · skipped 3 already here · 1 unreadable" — the sentence the screen shows. */

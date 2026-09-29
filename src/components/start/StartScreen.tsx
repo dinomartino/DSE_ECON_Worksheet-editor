@@ -40,6 +40,7 @@ import { NEW_WORKSHEET_FORM_ID, NewWorksheetForm } from './NewWorksheetForm';
 import { useBankReturn } from '@/components/bank/page/bankReturn';
 import { QuestionBankScreen } from '@/components/bank/page/QuestionBankScreen';
 import { useBank } from '@/library/useBank';
+import { reloadPatterns } from '@/library/usePatterns';
 import { RenameDialog, renameWorksheet } from './RenameDialog';
 import { TrashList } from './TrashList';
 import { newId } from '@/model/factories';
@@ -54,6 +55,7 @@ import {
   savedWorksheetsFolder,
   TRASH_RETENTION_DAYS,
   worksheetStore,
+  patternStorage,
   EMPTY_FOLDERS,
   FOLDER_NAME_MAX,
   folderCounts,
@@ -342,6 +344,7 @@ export function StartScreen({
     setBusy('backup');
     try {
       const { backupFileName, buildBackup } = await import('@/storage/backup');
+      const { readPatternRegistry } = await import('@/storage/patterns');
       const worksheets: Worksheet[] = [];
       let unreadable = 0;
       for (const summary of await worksheetStore.list()) {
@@ -355,7 +358,7 @@ export function StartScreen({
       }
       const filed = await worksheetStore.readFolders();
       const path = await saveFile(
-        await buildBackup(worksheets, undefined, filed),
+        await buildBackup(worksheets, undefined, filed, await readPatternRegistry(patternStorage)),
         backupFileName(),
         ZIP_FILTERS,
       );
@@ -384,9 +387,11 @@ export function StartScreen({
     setNotice(undefined);
     setBusy('restore');
     try {
-      const { readBackup, restoreBackup, restoreSummary } = await import('@/storage/backup');
-      const { worksheets, failures, folders: filed } = await readBackup(data);
+      const { readBackup, restoreBackup, restorePatterns, restoreSummary } = await import('@/storage/backup');
+      const { worksheets, failures, folders: filed, patterns } = await readBackup(data);
       const report = await restoreBackup(worksheetStore, worksheets, undefined, filed);
+      await restorePatterns(patternStorage, patterns);
+      reloadPatterns();
       setNotice({
         message: restoreSummary(report, failures.length),
         details: [...failures, ...report.failed].map((f) => `${f.name}: ${f.reason}`),
@@ -460,7 +465,7 @@ export function StartScreen({
     setNotice(undefined);
     setBusy('restore');
     try {
-      const { entryFailure, readBackup, restoreBackup, worksheetEntry } = await import(
+      const { entryFailure, readBackup, restoreBackup, restorePatterns, worksheetEntry } = await import(
         '@/storage/backup'
       );
       const counts: ImportCounts = {
@@ -503,8 +508,10 @@ export function StartScreen({
 
       for (const file of backups) {
         try {
-          const { worksheets: inside, failures, folders: filed } = await readBackup(await file.read());
+          const { worksheets: inside, failures, folders: filed, patterns } = await readBackup(await file.read());
           tally(await restoreBackup(worksheetStore, inside, undefined, filed));
+          await restorePatterns(patternStorage, patterns);
+          reloadPatterns();
           for (const failure of failures) unreadable(`${file.name}: ${failure.name}`, failure.reason);
         } catch (cause) {
           unreadable(file.name, cause instanceof Error ? cause.message : 'could not be read');

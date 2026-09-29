@@ -361,6 +361,7 @@ export function Inspector({
           <TopicRow
             key={selected.id}
             tags={selected.tags}
+            typeId={selected.type}
             note={topicNote?.questionId === selected.id ? topicNote.text : undefined}
             onChange={(tags) => {
               const questionId = selected.id;

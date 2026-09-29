@@ -1,7 +1,9 @@
 import { TOPICS, topicOf } from '@/model/topics';
 import type { BankGroup, BankRow } from '@/library/types';
 import { refsOf, rowUsedWith } from '@/library/history';
-import { classChoices, type ClassChoice, type TopicPick } from './bankPage';
+import { comparePatterns, rowPattern } from '@/library/patterns';
+import { holdsPatterns } from '@/model/patterns';
+import { classChoices, typeName, type ClassChoice, type TopicPick } from './bankPage';
 
 /**
  * The Question bank screen's pure half: which level is showing, how the review rail is
@@ -14,16 +16,18 @@ import { classChoices, type ClassChoice, type TopicPick } from './bankPage';
 
 /**
  * All topics (the landing page), one topic or every question as a review page (`search`
- * when it was opened by typing in the bar), or the untagged questions one at a time.
+ * when it was opened by typing in the bar), the untagged questions one at a time, or the
+ * 題型 manage page (scoped to a topic when opened from one).
  */
 export type BankLevel =
   | { kind: 'topics' }
   | { kind: 'review'; topic: TopicPick; search?: boolean }
-  | { kind: 'untagged' };
+  | { kind: 'untagged' }
+  | { kind: 'patterns'; topic?: string };
 
 export const TOPICS_LEVEL: BankLevel = { kind: 'topics' };
 
-/** Esc and "← Topics": a review or the tagging mode goes back to the topics; the topics go home. */
+/** Esc and "← Topics": a review, the tagging mode or the 題型 page goes back to the topics; the topics go home. */
 export function levelUp(level: BankLevel): BankLevel | 'home' {
   return level.kind === 'topics' ? 'home' : TOPICS_LEVEL;
 }
@@ -49,6 +53,9 @@ export function parseLevel(raw: string | null | undefined): BankLevel {
   try {
     const value = JSON.parse(raw) as Partial<{ kind: string; topic: string }>;
     if (value.kind === 'untagged') return { kind: 'untagged' };
+    if (value.kind === 'patterns') {
+      return typeof value.topic === 'string' && topicOf(value.topic) ? { kind: 'patterns', topic: value.topic } : { kind: 'patterns' };
+    }
     if (value.kind === 'review' && typeof value.topic === 'string') {
       if (value.topic === 'all' || topicOf(value.topic)) return { kind: 'review', topic: value.topic };
     }
@@ -60,6 +67,7 @@ export function parseLevel(raw: string | null | undefined): BankLevel {
 
 export function serializeLevel(level: BankLevel): string {
   if (level.kind === 'review') return level.search ? JSON.stringify(TOPICS_LEVEL) : JSON.stringify({ kind: 'review', topic: level.topic });
+  if (level.kind === 'patterns') return JSON.stringify(level.topic ? { kind: 'patterns', topic: level.topic } : { kind: 'patterns' });
   return JSON.stringify({ kind: level.kind });
 }
 
@@ -104,6 +112,19 @@ export interface RailSection {
   /** A topic code, 'general' (the coarse code only) or 'none' (no topic). */
   key: string;
   label: string;
+  /** In reading order: by 題型 when `parts` is set. */
+  groups: BankGroup[];
+  /** A sub-topic's questions by 題型, then "No 題型"; absent when none of them has one. */
+  parts?: RailPart[];
+}
+
+/** One 題型 inside a sub-topic section, or its questions with none (`pattern` absent). */
+export interface RailPart {
+  key: string;
+  label: string;
+  /** The 題型's type ("MCQ", "LQ"); absent for "No 題型". */
+  kind?: string;
+  pattern?: { topic: string; typeId: string; name: string };
   groups: BankGroup[];
 }
 
@@ -145,7 +166,40 @@ export function railSections(groups: readonly BankGroup[], topic: TopicPick): Ra
   const rank = (key: string) => (key === 'general' || key === 'none' ? Number.MAX_SAFE_INTEGER : (GUIDE_ORDER.get(key) ?? 0));
   return [...buckets]
     .sort(([a], [b]) => rank(a) - rank(b))
-    .map(([key, list]) => ({ key, label: label(key), groups: list }));
+    .map(([key, list]) => withParts({ key, label: label(key), groups: list }));
+}
+
+/**
+ * A sub-topic section split by 題型: each 題型 (sub-topic, type, name) in list order, then
+ * "No 題型" last. A question sits under its first 題型 for this sub-topic. Groups keep
+ * their incoming order inside a part; the section's `groups` follow the parts.
+ */
+function withParts(section: RailSection): RailSection {
+  if (!holdsPatterns(section.key)) return section;
+  const parts = new Map<string, RailPart>();
+  const none: BankGroup[] = [];
+  for (const group of section.groups) {
+    const lead = group.rows[0];
+    const name = lead ? rowPattern(lead, section.key) : undefined;
+    if (!lead || !name) {
+      none.push(group);
+      continue;
+    }
+    const key = `${lead.typeId}\u0000${name.toLocaleLowerCase()}`;
+    const part = parts.get(key) ?? {
+      key,
+      label: name,
+      kind: typeName(lead.typeId),
+      pattern: { topic: section.key, typeId: lead.typeId, name },
+      groups: [],
+    };
+    part.groups.push(group);
+    parts.set(key, part);
+  }
+  if (parts.size === 0) return section;
+  const ordered = [...parts.values()].sort((a, b) => comparePatterns(a.pattern!, b.pattern!));
+  if (none.length > 0) ordered.push({ key: 'none', label: 'No 題型', groups: none });
+  return { ...section, groups: ordered.flatMap((part) => part.groups), parts: ordered };
 }
 
 /** The rail's groups in reading order: what ↑ ↓ and "Question n of N" step through. */

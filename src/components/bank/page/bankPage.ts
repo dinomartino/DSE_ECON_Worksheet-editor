@@ -3,7 +3,9 @@ import { TOPICS, topicLabel, topicOf } from '@/model/topics';
 import { getQuestionType, listQuestionTypes } from '@/registry';
 import { cohortLabel, schoolYearEnd, schoolYearLabel, type ClassTarget } from '@/library/cohort';
 import { refsOf, rowUsedWith } from '@/library/history';
+import { rowHasPattern, type PatternId } from '@/library/patterns';
 import { searchRows } from '@/library/search';
+import { isPatternTag, parsePatternTag } from '@/model/patterns';
 import type { BankGroup, BankRow } from '@/library/types';
 import type { WorksheetSummary } from '@/storage/types';
 
@@ -134,6 +136,8 @@ export interface BankFilters {
   /** …on a paper sat since this point. */
   since: Since;
   source: SourceFilter;
+  /** One 題型: its type and its name under its sub-topic. */
+  pattern?: PatternId;
 }
 
 export const DEFAULT_FILTERS: BankFilters = { text: '', topic: 'all', marks: 'any', since: 'ever', source: 'all' };
@@ -251,6 +255,7 @@ export function filterRows(rows: readonly BankRow[], filters: BankFilters, now =
     (row) =>
       (!tagged || !tagged.has(row.rootId)) &&
       (filters.source === 'all' || row.docKind === filters.source) &&
+      (!filters.pattern || rowHasPattern(row, filters.pattern)) &&
       (!used || !used.has(row.rootId)),
   );
 }
@@ -273,6 +278,7 @@ export function activeFilters(filters: BankFilters): ActiveFilter[] {
     active.push({ key: 'notUsedWith', label: `not used with ${filters.notUsedWith.label}${since}` });
   }
   if (filters.source !== 'all') active.push({ key: 'source', label: filters.source === 'bank' ? 'from banks' : 'from worksheets' });
+  if (filters.pattern) active.push({ key: 'pattern', label: `題型 ${filters.pattern.name}` });
   return active;
 }
 
@@ -280,6 +286,7 @@ export function activeFilters(filters: BankFilters): ActiveFilter[] {
 export function clearFilter(filters: BankFilters, key: keyof BankFilters): BankFilters {
   if (key === 'notUsedWith') return { ...filters, notUsedWith: undefined, since: 'ever' };
   if (key === 'typeId') return { ...filters, typeId: undefined };
+  if (key === 'pattern') return { ...filters, pattern: undefined };
   return { ...filters, [key]: DEFAULT_FILTERS[key] };
 }
 
@@ -379,7 +386,15 @@ export function bankCountLabel(coverage: Pick<Coverage, 'total' | 'papers' | 'ba
   return [n(coverage.total, 'question'), n(coverage.papers, 'worksheet'), ...(coverage.banks ? [n(coverage.banks, 'bank')] : [])].join(' · ');
 }
 
-/** "C.ped Price elasticity of demand" lines for the preview's Topics. */
+/** "C.ped Price elasticity of demand" lines for the preview's Topics; 題型 are listed apart (`patternLines`). */
 export function tagLines(tags: readonly string[]): { code: string; name?: string }[] {
-  return tags.map((tag) => (topicOf(tag) ? { code: tag, name: topicLabel(tag, 'en') } : { code: tag }));
+  return tags.filter((tag) => !isPatternTag(tag)).map((tag) => (topicOf(tag) ? { code: tag, name: topicLabel(tag, 'en') } : { code: tag }));
+}
+
+/** A row's 題型 as the preview lists them: sub-topic code and name. */
+export function patternLines(tags: readonly string[]): { topic: string; name: string }[] {
+  return tags.flatMap((tag) => {
+    const ref = parsePatternTag(tag);
+    return ref ? [ref] : [];
+  });
 }

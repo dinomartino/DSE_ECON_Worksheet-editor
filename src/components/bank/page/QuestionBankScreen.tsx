@@ -3,6 +3,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { isModalLayerOpen } from '@/components/ui/modalLayer';
 import { groupRows } from '@/library/group';
+import {
+  listPatterns,
+  patternNames,
+  patternWrites,
+  removePatternEdit,
+  renamePatternEdit,
+  rowPattern,
+  setPatternsEdit,
+  thenEdit,
+  type PatternId,
+  type PatternItem,
+} from '@/library/patterns';
+import { registerPatterns, renameRegisteredPattern, unregisterPattern, usePatternRegistry } from '@/library/usePatterns';
+import { holdsPatterns } from '@/model/patterns';
 import type { BankRow } from '@/library/types';
 import { useBank } from '@/library/useBank';
 import { topicOf } from '@/model/topics';
@@ -22,6 +36,7 @@ import {
   filterRows,
   rowKey,
   traySummary,
+  typeName,
   type BankFilters,
 } from './bankPage';
 import {
@@ -45,7 +60,8 @@ import { SelectionTray } from './SelectionTray';
 import { TagAsYouGo } from './TagAsYouGo';
 import { CoverageBar } from './CoverageBar';
 import { TopicCards } from './TopicCards';
-import { TopicPickerDialog } from './TopicPickerDialog';
+import { TopicPickerDialog, type PickedPatterns, type PickerPatterns } from './TopicPickerDialog';
+import { PatternsPage } from './PatternsPage';
 import {
   addTopics,
   bulkTopicEdit,
@@ -118,6 +134,7 @@ export function QuestionBankScreen({
   onStartNew: () => void;
 }) {
   const { rows, status } = useBank();
+  const registry = usePatternRegistry();
   // Coming back from a worksheet opened from here: the same level, filters and question.
   const [back] = useState(() => useBankReturn.getState().saved);
   const [level, setLevelState] = useState<BankLevel>(() => back?.level ?? readLevel());
@@ -141,6 +158,8 @@ export function QuestionBankScreen({
     setLevelState(next);
     writeLevel(next);
     setFocusKey(undefined);
+    // A 題型 filter belongs to the topic it was set in.
+    setFilters((current) => (current.pattern ? { ...current, pattern: undefined } : current));
   }, []);
   const goUp = useCallback(() => {
     const up = levelUp(level);
@@ -165,8 +184,24 @@ export function QuestionBankScreen({
   const cover = useMemo(() => coverageOf(rows), [rows]);
   const classes = useMemo(() => classChoices(rows), [rows]);
   const classUsage = useMemo(() => latestClassUsage(rows), [rows]);
+  const patternItems = useMemo(() => listPatterns(rows, registry), [rows, registry]);
+  /** Each coarse topic's 題型 in use, for its card. */
+  const patternsByTopic = useMemo(() => {
+    const map = new Map<string, PatternItem[]>();
+    for (const item of patternItems) {
+      if (item.count === 0) continue;
+      const coarse = topicOf(item.topic)?.parent ?? item.topic;
+      map.set(coarse, [...(map.get(coarse) ?? []), item]);
+    }
+    return map;
+  }, [patternItems]);
 
   const topic = level.kind === 'review' ? level.topic : 'all';
+  // The Filter's 題型: those in use within the topic on screen.
+  const filterPatterns = useMemo(
+    () => (topic === 'untagged' ? [] : listPatterns(rows, registry, topic === 'all' ? {} : { topic }).filter((item) => item.count > 0)),
+    [rows, registry, topic],
+  );
   const sections = useMemo(
     () => (level.kind === 'review' ? railSections(groupRows(filterRows(rows, { ...filters, topic })), topic) : []),
     [rows, filters, topic, level.kind],
@@ -197,6 +232,7 @@ export function QuestionBankScreen({
   // Picks are questions: two copies of one question picked are one, and share its topics.
   const pickedByRoot = [...new Map(pickedRows.map((row) => [row.rootId, row])).values()];
   const pickedRoots = new Set(pickedByRoot.map((row) => row.rootId));
+  const pickedTypes = [...new Set(pickedByRoot.map((row) => row.typeId))];
   const pickedMix = new Map(traySummary(pickedByRoot).mix.map(({ code, count }) => [code, count] as const));
   // The editor's store still holds the document open last in this session. Pinned for the
   // visit: a topic saved here moves that paper to the top of the list, and "Add to" must
@@ -299,12 +335,57 @@ export function QuestionBankScreen({
     tagRestore.current = undefined;
   }, [untagged]);
 
-  /** Tag as you go: every copy of the question on screen gets the codes, then the next appears. */
-  const saveTags = (codes: readonly string[]) => {
+  /** Tag as you go: every copy of the question on screen gets the codes (and any 題型), then the next appears. */
+  const saveTags = (codes: readonly string[], picked?: PickedPatterns) => {
     if (!tagGroup || codes.length === 0) return;
     const root = tagGroup.rootId;
     setTagged((current) => new Set(current).add(root));
-    void writeTopics(copyWrites(rows, [root]), addTopics(codes));
+    void registerPatterns(picked?.created ?? []);
+    void writeTopics(copyWrites(rows, [root]), thenEdit(addTopics(codes), setPatternsEdit(chosenOnly(picked))));
+  };
+
+  /** The 題型 picker for questions of one type; `initial` from a row's own 題型. */
+  const pickerPatterns = (typeId: string, row?: BankRow): PickerPatterns => ({
+    typeId,
+    kind: typeName(typeId),
+    names: (code) => patternNames(rows, registry, code, typeId),
+    initial: row
+      ? Object.fromEntries(
+          row.tags.filter(holdsPatterns).flatMap((code) => {
+            const name = rowPattern(row, code);
+            return name ? [[code, name] as const] : [];
+          }),
+        )
+      : undefined,
+  });
+
+  /* 題型 manage page: the registry, then every copy of every question using it. */
+  const patternDone = (message: string) => (saved: number) =>
+    `${message} ${saved} ${saved === 1 ? 'worksheet' : 'worksheets'} changed.`;
+  const createPattern = (pattern: PatternId) => {
+    void registerPatterns([pattern]).then(() => onNotice(`Added 題型 “${pattern.name}”.`));
+  };
+  const renamePattern = (item: PatternItem, to: string) => {
+    const list = patternWrites(rows, item);
+    void renameRegisteredPattern(item, to);
+    if (list.length === 0) onNotice(`Renamed to “${to}”.`);
+    else void writeTopics(list, renamePatternEdit(item.topic, item.name, to), patternDone(`Renamed to “${to}”.`));
+  };
+  const mergePattern = (item: PatternItem, into: PatternItem) => {
+    const list = patternWrites(rows, item);
+    void renameRegisteredPattern(item, into.name);
+    if (list.length === 0) onNotice(`Merged into “${into.name}”.`);
+    else void writeTopics(list, renamePatternEdit(item.topic, item.name, into.name), patternDone(`Merged into “${into.name}”.`));
+  };
+  const deletePattern = (item: PatternItem) => {
+    const list = patternWrites(rows, item);
+    void unregisterPattern(item);
+    if (list.length === 0) onNotice(`Deleted 題型 “${item.name}”.`);
+    else void writeTopics(list, removePatternEdit(item.topic, item.name), patternDone(`Deleted 題型 “${item.name}”.`));
+  };
+  const showPattern = (item: PatternItem) => {
+    setLevel({ kind: 'review', topic: item.topic });
+    setFilters((current) => ({ ...current, text: '', pattern: { topic: item.topic, typeId: item.typeId, name: item.name } }));
   };
   const toggleChosen = (code: string) => {
     const next = new Set(chosen);
@@ -341,7 +422,7 @@ export function QuestionBankScreen({
       return;
     }
     if (typing) return;
-    if (event.key === '/' && level.kind !== 'untagged') {
+    if (event.key === '/' && level.kind !== 'untagged' && level.kind !== 'patterns') {
       event.preventDefault();
       searchRef.current?.focus();
       return;
@@ -418,6 +499,7 @@ export function QuestionBankScreen({
         </h1>
       );
     }
+    if (level.kind === 'patterns') return <h1 className="text-[13.5px] font-semibold text-ink">題型 Patterns</h1>;
     const found = level.topic === 'all' ? undefined : topicOf(level.topic);
     return (
       <h1 className="min-w-0 truncate text-[13.5px] text-ink-muted">
@@ -468,7 +550,7 @@ export function QuestionBankScreen({
         <span className="flex-1" />
         {level.kind === 'untagged' ? (
           <span className="text-[12px] text-ink-subtle">Tag a question, the next one appears</span>
-        ) : (
+        ) : level.kind === 'patterns' ? null : (
           <label className="relative w-[min(340px,32vw)] min-w-[200px]">
             <span className="sr-only">Search questions</span>
             <input
@@ -491,7 +573,19 @@ export function QuestionBankScreen({
             <SearchGlyph />
           </label>
         )}
-        {level.kind === 'review' && <FilterPopover filters={filters} classes={classes} onChange={setFilter} />}
+        {level.kind === 'review' && (
+          <FilterPopover filters={filters} classes={classes} patterns={filterPatterns} scope={topic} onChange={setFilter} />
+        )}
+        {(level.kind === 'topics' || level.kind === 'review') && (
+          <button
+            type="button"
+            onClick={() => setLevel({ kind: 'patterns', topic: level.kind === 'review' && topicOf(level.topic) ? level.topic : undefined })}
+            title="Define, rename, merge or delete your 題型"
+            className="shrink-0 cursor-pointer rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[12.5px] text-ink-muted transition-colors duration-150 ease-out-soft hover:border-line-strong hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            題型 Patterns
+          </button>
+        )}
         {level.kind === 'topics' && (
           <span className="text-[12px] tabular-nums text-ink-subtle" role={scanning ? 'status' : undefined}>
             {scanning ? `Reading your worksheets · ${status.done} of ${status.total}` : bankCountLabel(cover)}
@@ -526,6 +620,7 @@ export function QuestionBankScreen({
           ) : (
             <TopicCards
               coverage={cover}
+              patterns={patternsByTopic}
               classUsage={classUsage}
               onTopic={(code) => setLevel({ kind: 'review', topic: code })}
               onUntagged={() => {
@@ -586,7 +681,21 @@ export function QuestionBankScreen({
         />
       )}
 
-      {pickedRows.length > 0 && level.kind !== 'untagged' && (
+      {level.kind === 'patterns' && (
+        <PatternsPage
+          items={patternItems}
+          scope={level.topic}
+          busy={busy}
+          onScope={(scope) => setLevel({ kind: 'patterns', topic: scope })}
+          onCreate={createPattern}
+          onRename={renamePattern}
+          onMerge={mergePattern}
+          onDelete={deletePattern}
+          onShow={showPattern}
+        />
+      )}
+
+      {pickedRows.length > 0 && level.kind !== 'untagged' && level.kind !== 'patterns' && (
         <SelectionTray
           summary={traySummary(pickedRows)}
           targetTitle={target?.title}
@@ -603,12 +712,14 @@ export function QuestionBankScreen({
           title="Topics"
           description={editDescription(picker.row, copyWrites(rows, [picker.row.rootId]).length)}
           initial={picker.row.tags}
+          patterns={pickerPatterns(picker.row.typeId, picker.row)}
           confirmLabel="Save topics"
           onClose={() => setPicker(undefined)}
-          onDone={(codes) => {
+          onDone={(codes, picked) => {
             const row = picker.row;
             setPicker(undefined);
-            void writeTopics(copyWrites(rows, [row.rootId]), replaceTopics(codes), () => 'Topics saved.');
+            void registerPatterns(picked.created);
+            void writeTopics(copyWrites(rows, [row.rootId]), thenEdit(replaceTopics(codes), setPatternsEdit(picked.patterns)), () => 'Topics saved.');
           }}
         />
       )}
@@ -625,14 +736,22 @@ export function QuestionBankScreen({
           }}
           present={pickedMix}
           allowEmpty={picker.topicMode === 'replace'}
+          patterns={picker.topicMode !== 'remove' && pickedTypes.length === 1 ? pickerPatterns(pickedTypes[0]) : undefined}
+          patternNote={
+            picker.topicMode !== 'remove' && pickedTypes.length > 1
+              ? 'To set a 題型, select questions of one type (MCQ or LQ) only.'
+              : undefined
+          }
           confirmLabel={BULK_TEXT[picker.topicMode].confirm}
           onClose={() => setPicker(undefined)}
-          onDone={(codes) => {
+          onDone={(codes, picked) => {
             const mode = picker.topicMode;
             const count = pickedRoots.size;
             setPicker(undefined);
             if (codes.length === 0 && mode !== 'replace') return;
-            void writeTopics(copyWrites(rows, pickedRoots), bulkTopicEdit(mode, codes), (saved) =>
+            void registerPatterns(picked.created);
+            const edit = thenEdit(bulkTopicEdit(mode, codes), setPatternsEdit(chosenOnly(picked)));
+            void writeTopics(copyWrites(rows, pickedRoots), edit, (saved) =>
               `${BULK_TEXT[mode].done} ${count} ${count === 1 ? 'question' : 'questions'} in ${saved} ${saved === 1 ? 'worksheet' : 'worksheets'}.`,
             );
           }}
@@ -643,16 +762,24 @@ export function QuestionBankScreen({
           title="Topics for this question"
           description="Tick every topic it tests. Saving moves on to the next question."
           initial={[...chosen]}
+          patterns={tagRow ? pickerPatterns(tagRow.typeId) : undefined}
           confirmLabel="Save and next"
           onClose={() => setPicker(undefined)}
-          onDone={(codes) => {
+          onDone={(codes, picked) => {
             setPicker(undefined);
-            saveTags(codes);
+            saveTags(codes, picked);
           }}
         />
       )}
     </div>
   );
+}
+
+/** The 題型 a dialog set, leaving out sub-topics it left without one (bulk never clears). */
+function chosenOnly(picked: PickedPatterns | undefined): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [code, name] of Object.entries(picked?.patterns ?? {})) if (name) out[code] = name;
+  return out;
 }
 
 /** Where Edit topics writes: the one worksheet, or every copy. */
