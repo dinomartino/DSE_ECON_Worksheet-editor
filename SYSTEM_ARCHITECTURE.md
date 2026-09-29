@@ -1,4 +1,4 @@
-# System Architecture — Bilingual HKDSE Economics Worksheet Generator
+# System Architecture — Econ Studio (bilingual HKDSE Economics worksheets)
 
 Data flow, render pipeline, numbering, diagrams, pagination, header/footer geometry.
 Setup and first tour: [`README.md`](./README.md).
@@ -2788,6 +2788,13 @@ excludes prereleases, so a `-beta.N` tag never reaches a stable install.
 One shared state (`desktop/updateStore.ts`) checks **once per launch**; the banner, the
 start screen's version line (above its footer row) and the editor's ⋯ "Check for updates" all read
 it. A failed check is `failed`, never "up to date".
+
+**Two names are frozen.** On screen the app is Econ Studio (window `title`, page metadata),
+but `productName` stays `Econ Worksheet`: the Windows NSIS updater finds the installed copy
+by an uninstall key and `%LOCALAPPDATA%` folder named after it, so a renamed product
+installs beside the old one, which keeps the Start-menu shortcut. `identifier`
+(`hk.econworksheet.desktop`) names `$APPDATA`, the webview's storage and the keychain
+service. Neither changes without an installer migration.
 
 **What's new** is `CHANGELOG.md`, bundled at build time (`scripts/sync-changelog.mjs` →
 `src/whatsNew/changelog.generated.ts`, committed, checked fresh by a test) — no server,

@@ -200,7 +200,7 @@ export function mailtoUrl(report: FeedbackReport, limit = MAILTO_URL_LIMIT): Fee
   const message = report.input.message.trim();
   return fitMessage(message, limit, (m) => {
     // mailto takes RFC 3986 escapes; URLSearchParams' `+` for space is wrong there.
-    const subject = encodeURIComponent(`Econ worksheet editor: ${report.title}`);
+    const subject = encodeURIComponent(`Econ Studio: ${report.title}`);
     const body = encodeURIComponent(plainText(report.input, m).replace(/\n/g, '\r\n'));
     return `mailto:${FEEDBACK_EMAIL}?subject=${subject}&body=${body}`;
   });

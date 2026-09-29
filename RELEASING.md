@@ -115,6 +115,10 @@ Assets that must be there before you publish:
 - `Econ Worksheet_<version>_x64-setup.exe` + `.sig`
 - `latest.json`
 
+The files keep the old name on purpose: the app is called Econ Studio on screen, but
+`productName` stays `Econ Worksheet` so Windows updates replace the installed copy
+(`SYSTEM_ARCHITECTURE.md` § Desktop shell).
+
 No `latest.json`, or a missing `.sig`, means the signing secrets were absent — installed
 apps will not update. Fix the secrets and re-run the workflow rather than publishing.
 
@@ -123,7 +127,7 @@ warning. That is the notarisation working.
 
 ## First install, for teachers
 
-- **macOS** — open the `.dmg`, drag *Econ Worksheet* to Applications. Apple Silicon Macs
+- **macOS** — open the `.dmg`, drag *Econ Worksheet* (Econ Studio's app bundle) to Applications. Apple Silicon Macs
   take the `aarch64` file, Intel Macs the `x64` one.
 - **Windows** — run the `-setup.exe`. It is unsigned, so SmartScreen shows "Windows
   protected your PC": click **More info** → **Run anyway**.

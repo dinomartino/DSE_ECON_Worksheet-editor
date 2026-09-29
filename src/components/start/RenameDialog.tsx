@@ -6,7 +6,7 @@ import { Dialog } from '@/components/ui/Dialog';
 import { NewerDocumentError, type WorksheetStore, type WorksheetSummary } from '@/storage';
 
 export const RENAME_NEWER_MESSAGE =
-  'This worksheet was saved by a newer version of Econ Worksheet and cannot be renamed here. Update to rename it.';
+  'This worksheet was saved by a newer version of Econ Studio and cannot be renamed here. Update to rename it.';
 
 /**
  * Rename a saved document, returning what to tell the teacher if it was refused.

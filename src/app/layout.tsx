@@ -13,9 +13,8 @@ const newsreader = Newsreader({
 });
 
 export const metadata: Metadata = {
-  title: 'HKDSE Economics Worksheet Generator',
-  description:
-    'Build bilingual (English / 繁體中文) HKDSE Economics worksheets and export native Microsoft Word documents.',
+  title: 'Econ Studio 經濟備課室',
+  description: 'Worksheets, papers and notes for HKDSE Economics teachers.',
 };
 
 export default function RootLayout({

@@ -138,7 +138,7 @@ const openrouter: ProviderPreset = {
   extraBody: { provider: { require_parameters: true, data_collection: 'deny' } },
   extraHeaders: {
     'HTTP-Referer': 'https://github.com/dinomartino/DSE_ECON_Worksheet-editor',
-    'X-Title': 'Econ Worksheet',
+    'X-Title': 'Econ Studio',
   },
   concurrency: 3,
   denyHintsInPrompt: true,

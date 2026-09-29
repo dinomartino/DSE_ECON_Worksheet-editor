@@ -27,7 +27,7 @@ export function stringifyWorksheet(worksheet: Worksheet): string {
  */
 export class NewerDocumentError extends Error {
   constructor() {
-    super('This worksheet was saved by a newer version of Econ Worksheet. Update to change it.');
+    super('This worksheet was saved by a newer version of Econ Studio. Update to change it.');
     this.name = 'NewerDocumentError';
   }
 }

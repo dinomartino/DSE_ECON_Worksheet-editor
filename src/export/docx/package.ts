@@ -321,7 +321,7 @@ export function buildAppPropsXml(): string {
     XML_DECL +
     '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" ' +
     'xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">' +
-    '<Application>HKDSE Economics Worksheet Generator</Application>' +
+    '<Application>Econ Studio</Application>' +
     '</Properties>'
   );
 }

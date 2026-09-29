@@ -2,7 +2,7 @@
 // Run `npm run changelog` after changing CHANGELOG.md.
 export const CHANGELOG_MD = `# Changelog
 
-What each release of Econ Worksheet contains, newest first. Written for teachers: name
+What each release of Econ Studio contains, newest first. Written for teachers: name
 the thing they can now do, not the file that changed.
 
 Rules: every feature or fix that lands on \`develop\` adds a line under **Unreleased** in
@@ -52,6 +52,9 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   backup and never print.
 
 ### Changed
+- **The app is now called Econ Studio (經濟備課室).** Your worksheets, settings and saved
+  keys carry over unchanged. The desktop app keeps its old file name, Econ Worksheet, so
+  updates keep arriving.
 - **The ⋯ menu no longer has "Worksheets…".** Click the app mark at the top left to go back to your worksheets.
 - **Settings is easier to find.** Its gear now sits in the top-right corner of the start
   screen and the question bank. In a worksheet, Settings is still in the ⋯ menu.
