@@ -1,7 +1,7 @@
 'use client';
 
 import { tagText } from '@/model/patterns';
-import type { ReactNode } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 import type { BankRow as BankRowData, BankUse } from '@/library/types';
 import { plain } from '@/model/text';
 import type { LanguageMode } from '@/model/types';
@@ -12,17 +12,15 @@ import type { RowDragProps } from './bankDrag';
 /**
  * One question-bank row, shared by the editor's 題庫 tab and the Question bank page.
  * Presentational: facts as quiet tabular text, no chips; the only colour is amber for
- * "used with this class". The caller owns every action through the slots.
+ * "used with this class". The caller owns every action: a drag, and Enter on the focused row.
  */
 export interface BankRowProps {
   row: BankRowData;
   /** The paper's language: picks the excerpt side and flags a missing one. Default 'en'. */
   language?: LanguageMode;
-  /** The trailing action (e.g. an Insert button); hidden while `inPaper`. */
-  action?: ReactNode;
   /** A leading slot (e.g. the bank page's checkbox). */
   leading?: ReactNode;
-  /** Already in the open paper (matched by rootId): dimmed, action replaced by where it is. */
+  /** Already in the open paper (matched by rootId): dimmed, and says where it is. */
   inPaper?: { number?: number };
   /** The most recent use with the paper's class (`usedWithClass`): amber meta text. */
   usedWithClass?: BankUse;
@@ -37,12 +35,15 @@ export interface BankRowProps {
   drag?: RowDragProps;
   /** This row's question is in hand. */
   dragging?: boolean;
+  /** The keyboard path: the row takes focus, and Enter or Space runs this. */
+  onActivate?: () => void;
+  /** What the focused row does, for assistive tech ("Drag onto the page, or press Enter…"). */
+  activateHint?: string;
 }
 
 export function BankRow({
   row,
   language = 'en',
-  action,
   leading,
   inPaper,
   usedWithClass,
@@ -53,6 +54,8 @@ export function BankRow({
   onSelect,
   drag,
   dragging = false,
+  onActivate,
+  activateHint,
 }: BankRowProps) {
   const excerpt = language === 'zh' ? row.excerpt.zh : row.excerpt.en;
   const missing = missingLanguageLabel(row, language);
@@ -64,19 +67,32 @@ export function BankRow({
   return (
     <div
       data-bank-row={row.questionId}
-      aria-selected={selected}
       {...drag}
-      className={`group relative flex items-start gap-2.5 border-b border-line py-2.5 pl-3.5 pr-3.5 transition-colors duration-150 ease-out-soft ${
+      {...(onActivate
+        ? {
+            role: 'group',
+            tabIndex: 0,
+            'aria-label': excerpt || 'Untitled question',
+            ...(activateHint ? { 'aria-description': activateHint } : {}),
+            onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => {
+              // Only the row itself: Enter on its versions button is that button's.
+              if (event.target !== event.currentTarget || (event.key !== 'Enter' && event.key !== ' ')) return;
+              event.preventDefault();
+              onActivate();
+            },
+          }
+        : {})}
+      className={`group relative flex items-start gap-2.5 border-b border-line py-2.5 pl-5 pr-3.5 transition-[background-color,box-shadow] duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
         selected || dragging ? 'bg-surface-hover' : 'hover:bg-surface-hover'
-      } ${drag ? 'cursor-grab select-none' : ''} ${dragging ? 'opacity-60' : ''}`}
+      } ${drag ? 'cursor-grab select-none hover:shadow-[inset_0_0_0_1px_var(--line-strong)] active:cursor-grabbing' : ''} ${dragging ? 'opacity-60' : ''}`}
     >
       {drag && (
         <span
           aria-hidden
           title="Drag onto the page"
-          className="pointer-events-none absolute left-0.5 top-3 text-ink-subtle/60 transition-colors duration-150 ease-out-soft group-hover:text-ink-muted"
+          className="pointer-events-none absolute left-1 top-[11px] text-ink-subtle transition-colors duration-150 ease-out-soft group-hover:text-accent-ink"
         >
-          <GripIcon size={11} />
+          <GripIcon size={14} />
         </span>
       )}
       <span
@@ -121,13 +137,11 @@ export function BankRow({
             ))}
         </div>
       </div>
-      <span className="shrink-0 pt-px text-xs">
-        {inPaper ? (
-          <span className="text-ink-subtle">In this paper{inPaper.number !== undefined ? ` · Q${inPaper.number}` : ''}</span>
-        ) : (
-          action
-        )}
-      </span>
+      {inPaper && (
+        <span className="shrink-0 pt-px text-xs text-ink-muted">
+          In this paper{inPaper.number !== undefined ? ` · Q${inPaper.number}` : ''}
+        </span>
+      )}
     </div>
   );
 }

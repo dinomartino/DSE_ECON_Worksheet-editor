@@ -18,26 +18,50 @@ const base = row({
 });
 
 describe('BankRow', () => {
-  it('shows the excerpt, the quiet meta line and the action', () => {
-    const out = html({ row: base, action: createElement('button', null, 'Insert') });
+  it('shows the excerpt and the quiet meta line, with no button of its own', () => {
+    const out = html({ row: base });
     expect(out).toContain('Along a straight-line demand curve…');
     expect(out).toContain('MCQ');
     expect(out).toContain('1 mark<');
     expect(out).toContain('C.ped · C.equilibrium');
     expect(out).toContain('Mock 2025 · Q14');
-    expect(out).toContain('>Insert</button>');
+    expect(out).not.toContain('<button');
     expect(out).not.toContain('text-warn-ink');
+  });
+
+  it('takes focus and Enter only with a keyboard path, and says what it does', () => {
+    expect(html({ row: base })).not.toContain('tabindex');
+    const out = html({ row: base, onActivate: () => {}, activateHint: 'Drag onto the page, or press Enter to insert after Q3' });
+    expect(out).toContain('tabindex="0"');
+    expect(out).toContain('role="group"');
+    expect(out).toContain('aria-label="Along a straight-line demand curve…"');
+    expect(out).toContain('aria-description="Drag onto the page, or press Enter to insert after Q3"');
+  });
+
+  it('runs the keyboard path on Enter or Space on the row itself, not on a control inside it', () => {
+    let runs = 0;
+    const root = BankRow({ row: base, onActivate: () => (runs += 1) }) as { props: { onKeyDown: (event: unknown) => void } };
+    const self = {};
+    let prevented = 0;
+    const press = (key: string, target: object = self) =>
+      root.props.onKeyDown({ key, target, currentTarget: self, preventDefault: () => (prevented += 1) });
+    press('Enter');
+    press(' ');
+    press('a');
+    press('Enter', {});
+    expect(runs).toBe(2);
+    expect(prevented).toBe(2);
   });
 
   it('reads the paper’s language', () => {
     expect(html({ row: base, language: 'zh' })).toContain('沿直線需求曲線…');
   });
 
-  it('dims a question already in the paper and replaces the action', () => {
-    const out = html({ row: base, inPaper: { number: 3 }, action: createElement('button', null, 'Insert') });
+  it('dims a question already in the paper and says where it is', () => {
+    const out = html({ row: base, inPaper: { number: 3 } });
     expect(out).toContain('In this paper · Q3');
     expect(out).toContain('opacity-55');
-    expect(out).not.toContain('>Insert<');
+    expect(out).not.toContain('cursor-grab');
   });
 
   it('warns in amber when used with the class, and offers versions', () => {

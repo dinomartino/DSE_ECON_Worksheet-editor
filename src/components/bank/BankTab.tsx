@@ -37,10 +37,10 @@ import { useBankDrag, useBankRowDrag } from './bankDrag';
 import { emptySentence, typePlural } from './tabText';
 
 /**
- * The editor's 題庫 tab: find questions in the other saved documents and insert copies
- * after the anchor, or Fill a set by topic. Sticky (§ Sidebar): while open, a click on the
- * page moves the anchor. Rows are text; the page is where a copy is seen at full size.
- * A row also drags onto the page, which shows the result before the drop (`bankDrag.tsx`).
+ * The editor's 題庫 tab: find questions in the other saved documents and drag copies onto
+ * the page, which shows the result before the drop (`bankDrag.tsx`), or Fill a set by topic.
+ * The keyboard path is Enter on a focused row: copies after the anchor. Sticky (§ Sidebar):
+ * while open, a click on the page moves the anchor. Rows are text; the page shows a copy.
  */
 
 const PAGE = 60;
@@ -85,19 +85,6 @@ function MiniSelect({
     >
       {children}
     </select>
-  );
-}
-
-function InsertButton({ onClick, disabled }: { onClick: () => void; disabled: boolean }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="cursor-pointer rounded px-1 py-0.5 text-xs font-semibold text-accent-ink transition-colors duration-150 ease-out-soft hover:bg-accent-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-wait disabled:opacity-50"
-    >
-      Insert
-    </button>
   );
 }
 
@@ -168,6 +155,12 @@ export function BankTab() {
   const draggingKey = useBankDrag((s) => s.active?.key);
   const dragFor = (row: BankRowData) =>
     drag.sourceProps(row, rowKey(row), (language === 'zh' ? row.excerpt.zh || row.excerpt.en : row.excerpt.en || row.excerpt.zh) || 'Question');
+  // No visible button: a focused row takes Enter or Space, and copies after the anchor.
+  const where = anchor ? `after ${anchor}` : 'at the end';
+  const keyboardFor = (row: BankRowData) =>
+    readOnly
+      ? {}
+      : { onActivate: () => void run([row]), activateHint: `Drag onto the page, or press Enter to insert ${where}` };
 
   // Fill: its own type and topic, following the filters until set.
   const effectiveFillType = fillType ?? (filters.typeId || types[0]?.id || '');
@@ -258,9 +251,9 @@ export function BankTab() {
                 versions={group.versions}
                 onVersions={() => setExpanded((open) => (open === group.rootId ? undefined : group.rootId))}
                 onSelect={inPaper ? () => useWorksheetStore.getState().select(inPaper.questionId) : undefined}
-                action={<InsertButton disabled={busy} onClick={() => void run([row])} />}
                 drag={inPaper ? undefined : dragFor(row)}
                 dragging={draggingKey === rowKey(row)}
+                {...(inPaper ? {} : keyboardFor(row))}
               />
               {others.length > 0 && (
                 <div className="border-b border-line bg-surface-sunken pl-3">
@@ -269,9 +262,9 @@ export function BankTab() {
                       key={version.questionId + version.docId}
                       row={version}
                       language={language}
-                      action={<InsertButton disabled={busy} onClick={() => void run([version])} />}
                       drag={dragFor(version)}
                       dragging={draggingKey === rowKey(version)}
+                      {...keyboardFor(version)}
                     />
                   ))}
                 </div>
@@ -294,18 +287,17 @@ export function BankTab() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex shrink-0 items-baseline justify-between gap-2 border-b border-line px-3.5 py-2 text-xs text-ink-muted">
-        <span className="truncate">
-          {anchor ? (
-            <>
-              Inserts after <span className="font-semibold text-accent-ink">{anchor}</span>
-            </>
-          ) : (
-            'Inserts at the end'
-          )}
-        </span>
-        <span className="shrink-0 text-ink-subtle">click a question to move</span>
-      </div>
+      <p className="shrink-0 truncate border-b border-line px-3.5 py-2 text-xs text-ink-muted">
+        {readOnly ? (
+          'This paper is read-only.'
+        ) : printPreview ? (
+          'Leave print preview to drag questions in.'
+        ) : (
+          <>
+            Drag a question onto the page <span className="text-ink-subtle">拖到頁面上插入</span>
+          </>
+        )}
+      </p>
 
       {!emptyBank && (
         <div className="flex shrink-0 flex-col gap-2 border-b border-line px-3.5 py-2.5">
@@ -425,6 +417,7 @@ export function BankTab() {
             <button
               type="button"
               disabled={busy || picks.length === 0}
+              title={`Adds ${where}`}
               onClick={() => void run(picks.map((group) => group.rows[0]))}
               className="h-7 shrink-0 cursor-pointer rounded-md bg-cta px-3 text-xs font-semibold text-on-cta transition-[background-color,opacity,scale] duration-150 ease-out-soft hover:bg-cta-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 active:scale-[0.97] disabled:cursor-default disabled:opacity-45"
             >
@@ -438,8 +431,8 @@ export function BankTab() {
                   : picks.length < fillCount
                     ? `Only ${picks.length} left in ${fillTopicLabel}.`
                     : classLabel
-                      ? `None used with ${classLabel} · one ⌘Z undoes it`
-                      : 'One ⌘Z undoes the set.'}
+                      ? `None used with ${classLabel} · adds ${where}`
+                      : `Adds ${where} · one ⌘Z undoes it`}
             </span>
           </div>
         </div>

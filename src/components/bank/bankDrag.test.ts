@@ -121,7 +121,7 @@ describe('dragging a 題庫 row onto the page', () => {
     expect(order.map((id) => (id === copy.id ? 'new' : id))).toEqual(
       resolveFlow(shown).map((item) => (item.id === ghost.id ? 'new' : item.id)),
     );
-    // The same copy the Insert button makes: fresh ids, lineage, the bank's tag union, a review.
+    // The same copy Enter on a focused row makes: fresh ids, lineage, the bank's tag union, a review.
     expect(copy.id).not.toBe(picked.id);
     expect(copy.lineage).toMatchObject({ rootId: picked.id, fromDocId: bank.id });
     expect(copy.tags).toEqual(['C.pes', 'C.ped']);
