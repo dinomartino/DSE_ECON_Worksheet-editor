@@ -7,7 +7,7 @@ import { Button, GroupHeader, IconButton } from '@/components/ui';
 import { CloseIcon } from '@/components/ui/icons';
 import { patternNames } from '@/library/patterns';
 import { useBank } from '@/library/useBank';
-import { registerPatterns, usePatternRegistry } from '@/library/usePatterns';
+import { usePatternRegistry } from '@/library/usePatterns';
 import { holdsPatterns, isPatternTag, parsePatternTag, patternsIn, withPattern } from '@/model/patterns';
 import { TOPICS, topicOf, type Topic } from '@/model/topics';
 
@@ -64,8 +64,8 @@ export function TopicRow({
     const next = current.filter((tag) => tag !== code && parsePatternTag(tag)?.topic !== code);
     onChange(next.length > 0 ? next : undefined);
   };
-  const setPattern = (code: string, name: string | undefined, created: boolean) => {
-    if (name && created) void registerPatterns([{ topic: code, typeId, name }]);
+  // A new name is registered by the picker as it is made.
+  const setPattern = (code: string, name: string | undefined) => {
     const next = withPattern(current, code, name);
     if (next !== current) onChange(next.length > 0 ? next : undefined);
   };
@@ -135,9 +135,10 @@ export function TopicRow({
                     <PatternPicker
                       topic={tag}
                       kind={typeLabel(typeId)}
+                      typeId={typeId}
                       names={patternNames(rows, registry, tag, typeId)}
                       value={patternsIn(current, tag)[0]}
-                      onChange={(name, created) => setPattern(tag, name, created)}
+                      onChange={(name) => setPattern(tag, name ?? undefined)}
                     />
                   </div>
                 )}

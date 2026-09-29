@@ -60,6 +60,20 @@ Revised from the 2026-09-26 proposal after an audit against the code at `9f2009b
   **題型 Patterns** level (`PatternsPage.tsx`), which also renames, merges and deletes:
   every copy is rewritten through `writeTags`; hidden, trashed and newer-build documents
   keep the old name (newer-build ones are named in the notice).
+- **The picker never makes a near-duplicate by accident** (`src/components/bank/patternOptions.ts`).
+  Typing matches ignoring case, spacing and punctuation (`src/model/patterns.ts:matchPatternName`):
+  a name that differs only so *is* that 題型 (no New row); a prefix or part highlights the
+  existing one, so Enter picks it; ↑/↓ reach the others and "New 題型"; a close name
+  (it is a prefix of what was typed, or a letter or two off) is named on the New row. The
+  manage page's New 題型 form applies the same rule. Identity in the registry is unchanged.
+- **Creating is an explicit act**: the picker registers a new name at once, so it outlives
+  a cancelled dialog. Every entry point uses the same picker, so they all behave alike.
+- **Bulk Set topic can clear**: Add and Replace offer "No 題型" (a mix of MCQ and LQ can
+  only clear, and only where a pick has one); Remove can keep a ticked sub-topic and take
+  only its 題型. Setting one still needs every pick to be one type.
+- **Notices belong to their level**: a plain result ("Topics saved.") clears when the bank
+  moves to another level or topic, or to and from Home; an error, or a notice listing
+  files, stays until dismissed.
 - **Bank uses: group and filter only.** The review rail splits a sub-topic by 題型, "No
   題型" last; the Filter has a 題型 field scoped to the topic on screen; topic cards count
   the 題型 in use. Fill and coverage are unchanged. Never printed.

@@ -3,8 +3,8 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui';
 import { Dialog } from '@/components/ui/Dialog';
-import { samePattern, type PatternId, type PatternItem } from '@/library/patterns';
-import { cleanPatternName, PATTERN_NAME_MAX, samePatternName } from '@/model/patterns';
+import type { PatternId, PatternItem } from '@/library/patterns';
+import { cleanPatternName, matchPatternName, PATTERN_NAME_MAX, samePatternName } from '@/model/patterns';
 import { TOPICS, topicOf } from '@/model/topics';
 import { listQuestionTypes } from '@/registry';
 import { typeName } from './bankPage';
@@ -361,7 +361,11 @@ function NewPattern({
   const [name, setName] = useState('');
   const chosenTopic = subTopics.some((child) => child.code === topic) ? topic : (subTopics[0]?.code ?? '');
   const clean = cleanPatternName(name);
-  const exists = items.find((item) => samePattern(item, { topic: chosenTopic, typeId, name: clean }));
+  // Same as the picker: a name differing only by case, spacing or punctuation is that one;
+  // a close one is named, softly.
+  const siblings = items.filter((item) => item.topic === chosenTopic && item.typeId === typeId);
+  const exists = clean ? siblings.find((item) => matchPatternName(clean, item.name) === 'same') : undefined;
+  const close = clean && !exists ? siblings.find((item) => matchPatternName(clean, item.name) !== undefined) : undefined;
   return (
     <form
       aria-label="New 題型"
@@ -410,6 +414,7 @@ function NewPattern({
         Add
       </Button>
       {exists && <span className="basis-full text-[11.5px] text-warn-ink">“{exists.name}” is already in this list.</span>}
+      {close && <span className="basis-full text-[11.5px] text-ink-subtle">Close to “{close.name}”. Add it only if it is a different 題型.</span>}
     </form>
   );
 }

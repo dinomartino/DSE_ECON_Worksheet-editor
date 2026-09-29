@@ -56,6 +56,52 @@ export function samePatternName(a: string, b: string): boolean {
   return cleanPatternName(a).toLocaleLowerCase() === cleanPatternName(b).toLocaleLowerCase();
 }
 
+/**
+ * A name as typing matches it: lower case, without spacing or punctuation, so "Calculate
+ * PED (TR)" and "calculate ped tr" read alike. A name of punctuation only keeps it.
+ */
+export function patternKey(name: string): string {
+  const lower = cleanPatternName(name).toLocaleLowerCase();
+  return lower.replace(/[\s\p{P}\p{S}]+/gu, '') || lower;
+}
+
+/**
+ * How a typed name meets an existing one: `same` (differs only by case, spacing or
+ * punctuation), `prefix` / `contains` (the typed text is part of it), `close` (it is part
+ * of the typed text, or one or two letters off). Undefined when unrelated or nothing typed.
+ */
+export type PatternMatch = 'same' | 'prefix' | 'contains' | 'close';
+
+export function matchPatternName(typed: string, name: string): PatternMatch | undefined {
+  const t = patternKey(typed);
+  const n = patternKey(name);
+  if (!t || !n) return undefined;
+  if (t === n) return 'same';
+  if (n.startsWith(t)) return 'prefix';
+  if (n.includes(t)) return 'contains';
+  const shorter = Math.min(t.length, n.length);
+  if (shorter >= 4 && t.startsWith(n)) return 'close';
+  if (shorter >= 4 && editDistance(t, n, 2) <= (shorter >= 12 ? 2 : 1)) return 'close';
+  return undefined;
+}
+
+/** Levenshtein distance, stopping early once it passes `limit`. */
+function editDistance(a: string, b: string, limit: number): number {
+  if (Math.abs(a.length - b.length) > limit) return limit + 1;
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i += 1) {
+    const next = [i];
+    let best = i;
+    for (let j = 1; j <= b.length; j += 1) {
+      next[j] = Math.min(prev[j] + 1, next[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      best = Math.min(best, next[j]);
+    }
+    if (best > limit) return limit + 1;
+    prev = next;
+  }
+  return prev[b.length];
+}
+
 /** The 題型 names a question's tags hold under one sub-topic, in tag order. */
 export function patternsIn(tags: readonly string[] | undefined, topic: string): string[] {
   const names: string[] = [];

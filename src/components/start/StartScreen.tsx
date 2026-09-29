@@ -144,6 +144,16 @@ export function StartScreen({
   const [view, setView] = useState<'home' | 'bank'>(() => (useBankReturn.getState().saved ? 'bank' : 'home'));
   const { groups: bankGroups } = useBank();
   const closeFeedback = useCallback(() => setFeedback(false), []);
+  // A plain result ("Topics saved.") is done once the teacher moves on. One listing files
+  // stays until dismissed, like an error: it may be the only record of what was skipped.
+  const clearPassingNotice = useCallback(
+    () => setNotice((current) => (current && !current.details?.length ? undefined : current)),
+    [],
+  );
+  const showView = (next: 'home' | 'bank') => {
+    clearPassingNotice();
+    setView(next);
+  };
   const [whatsNew, setWhatsNew] = useState(false);
   const closeWhatsNew = useCallback(() => setWhatsNew(false), []);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -644,9 +654,12 @@ export function StartScreen({
             loaded={loaded}
             banner={
               error ? (
-                <p role="alert" className="animate-slide-down-in rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink">
-                  {error}
-                </p>
+                <div role="alert" className="flex animate-slide-down-in items-start gap-3 rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink">
+                  <p className="min-w-0 flex-1 py-0.5">{error}</p>
+                  <Button variant="subtle" size="sm" onClick={() => setError(undefined)}>
+                    Dismiss
+                  </Button>
+                </div>
               ) : notice ? (
                 <NoticeBox notice={notice} onDismiss={() => setNotice(undefined)} flush />
               ) : undefined
@@ -654,7 +667,7 @@ export function StartScreen({
             settings={<SettingsButton />}
             onHome={() => {
               useBankReturn.getState().clear();
-              setView('home');
+              showView('home');
             }}
             onOpenDocument={(id, then) => void openSaved(id, then)}
             onOpenWorksheet={(worksheet) => onOpen(worksheet)}
@@ -667,8 +680,9 @@ export function StartScreen({
               setNotice(undefined);
               setError(message);
             }}
+            onLeaveLevel={clearPassingNotice}
             onStartNew={() => {
-              setView('home');
+              showView('home');
               setCreating('classroom');
             }}
           />
@@ -743,7 +757,7 @@ export function StartScreen({
               title="Question bank 題庫"
               trailing={bankGroups.length > 0 ? `${bankGroups.length} ${bankGroups.length === 1 ? 'question' : 'questions'}` : undefined}
               hint="Every question from your worksheets, by topic."
-              onClick={() => setView('bank')}
+              onClick={() => showView('bank')}
             />
           </div>
         </section>

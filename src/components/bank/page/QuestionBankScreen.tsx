@@ -5,6 +5,8 @@ import { isModalLayerOpen } from '@/components/ui/modalLayer';
 import { groupRows } from '@/library/group';
 import {
   listPatterns,
+  patternEdits,
+  patternMix,
   patternNames,
   patternWrites,
   removePatternEdit,
@@ -85,7 +87,11 @@ const BULK_MODES: { value: BulkTopicMode; label: string }[] = [
 
 const BULK_TEXT: Record<BulkTopicMode, { description: string; confirm: (ticked: number) => string; done: string }> = {
   add: { description: 'Adds the topics you tick. Topics already on a question stay.', confirm: () => 'Add topics', done: 'Tagged' },
-  remove: { description: 'Takes the topics you tick off. Other topics stay.', confirm: () => 'Remove topics', done: 'Removed topics from' },
+  remove: {
+    description: 'Takes the topics you tick off. Other topics stay. A ticked sub-topic can stay and lose only its 題型.',
+    confirm: () => 'Remove',
+    done: 'Removed topics from',
+  },
   replace: {
     description: 'Each question gets exactly the topics you tick. Tick none to clear them.',
     confirm: (ticked) => (ticked === 0 ? 'Clear topics' : 'Replace topics'),
@@ -114,6 +120,7 @@ export function QuestionBankScreen({
   onDocumentsChanged,
   onNotice,
   onError,
+  onLeaveLevel,
   onStartNew,
 }: {
   summaries: WorksheetSummary[];
@@ -131,6 +138,8 @@ export function QuestionBankScreen({
   onDocumentsChanged: () => void;
   onNotice: (message: string) => void;
   onError: (message: string) => void;
+  /** The level changed: a result notice from the last one is done. An error stays until dismissed. */
+  onLeaveLevel?: () => void;
   onStartNew: () => void;
 }) {
   const { rows, status } = useBank();
@@ -170,6 +179,15 @@ export function QuestionBankScreen({
     setFilters((current) => ({ ...current, text: '' }));
     setLevel(up);
   }, [level, onHome, setLevel]);
+  // A notice belongs to the level it was made on: another kind of level or another topic
+  // clears it (§ onLeaveLevel). Narrowing the 題型 page's scope does not.
+  const levelKey = level.kind === 'review' ? `review:${level.topic}` : level.kind;
+  const shownLevel = useRef(levelKey);
+  useEffect(() => {
+    if (shownLevel.current === levelKey) return;
+    shownLevel.current = levelKey;
+    onLeaveLevel?.();
+  }, [levelKey, onLeaveLevel]);
   const setRailHidden = (hidden: boolean) => {
     setRailHiddenState(hidden);
     writeRailHidden(hidden);
@@ -234,6 +252,7 @@ export function QuestionBankScreen({
   const pickedRoots = new Set(pickedByRoot.map((row) => row.rootId));
   const pickedTypes = [...new Set(pickedByRoot.map((row) => row.typeId))];
   const pickedMix = new Map(traySummary(pickedByRoot).mix.map(({ code, count }) => [code, count] as const));
+  const pickedPatternMix = patternMix(pickedByRoot);
   // The editor's store still holds the document open last in this session. Pinned for the
   // visit: a topic saved here moves that paper to the top of the list, and "Add to" must
   // not follow it there.
@@ -340,8 +359,7 @@ export function QuestionBankScreen({
     if (!tagGroup || codes.length === 0) return;
     const root = tagGroup.rootId;
     setTagged((current) => new Set(current).add(root));
-    void registerPatterns(picked?.created ?? []);
-    void writeTopics(copyWrites(rows, [root]), thenEdit(addTopics(codes), setPatternsEdit(chosenOnly(picked))));
+    void writeTopics(copyWrites(rows, [root]), thenEdit(addTopics(codes), setPatternsEdit(patternEdits(picked?.patterns))));
   };
 
   /** The 題型 picker for questions of one type; `initial` from a row's own 題型. */
@@ -718,8 +736,11 @@ export function QuestionBankScreen({
           onDone={(codes, picked) => {
             const row = picker.row;
             setPicker(undefined);
-            void registerPatterns(picked.created);
-            void writeTopics(copyWrites(rows, [row.rootId]), thenEdit(replaceTopics(codes), setPatternsEdit(picked.patterns)), () => 'Topics saved.');
+            void writeTopics(
+              copyWrites(rows, [row.rootId]),
+              thenEdit(replaceTopics(codes), setPatternsEdit(patternEdits(picked.patterns, true))),
+              () => 'Topics saved.',
+            );
           }}
         />
       )}
@@ -736,10 +757,17 @@ export function QuestionBankScreen({
           }}
           present={pickedMix}
           allowEmpty={picker.topicMode === 'replace'}
-          patterns={picker.topicMode !== 'remove' && pickedTypes.length === 1 ? pickerPatterns(pickedTypes[0]) : undefined}
+          patterns={
+            picker.topicMode === 'remove'
+              ? undefined
+              : pickedTypes.length === 1
+                ? { ...pickerPatterns(pickedTypes[0]), clearable: true }
+                : { kind: 'mixed', names: () => [], clearable: true, present: pickedPatternMix }
+          }
+          patternRemoval={picker.topicMode === 'remove' ? pickedPatternMix : undefined}
           patternNote={
             picker.topicMode !== 'remove' && pickedTypes.length > 1
-              ? 'To set a 題型, select questions of one type (MCQ or LQ) only.'
+              ? 'To set a 題型, select questions of one type (MCQ or LQ) only. You can still clear one.'
               : undefined
           }
           confirmLabel={BULK_TEXT[picker.topicMode].confirm}
@@ -747,12 +775,14 @@ export function QuestionBankScreen({
           onDone={(codes, picked) => {
             const mode = picker.topicMode;
             const count = pickedRoots.size;
+            const patternChanges = patternEdits(picked.patterns);
             setPicker(undefined);
-            if (codes.length === 0 && mode !== 'replace') return;
-            void registerPatterns(picked.created);
-            const edit = thenEdit(bulkTopicEdit(mode, codes), setPatternsEdit(chosenOnly(picked)));
+            if (codes.length === 0 && mode !== 'replace' && Object.keys(patternChanges).length === 0) return;
+            const onlyPatterns = codes.length === 0 && mode !== 'replace';
+            const edit = thenEdit(bulkTopicEdit(mode, codes), setPatternsEdit(patternChanges));
+            const questions = `${count} ${count === 1 ? 'question' : 'questions'}`;
             void writeTopics(copyWrites(rows, pickedRoots), edit, (saved) =>
-              `${BULK_TEXT[mode].done} ${count} ${count === 1 ? 'question' : 'questions'} in ${saved} ${saved === 1 ? 'worksheet' : 'worksheets'}.`,
+              `${onlyPatterns ? 'Cleared 題型 on' : BULK_TEXT[mode].done} ${questions} in ${saved} ${saved === 1 ? 'worksheet' : 'worksheets'}.`,
             );
           }}
         />
@@ -773,13 +803,6 @@ export function QuestionBankScreen({
       )}
     </div>
   );
-}
-
-/** The 題型 a dialog set, leaving out sub-topics it left without one (bulk never clears). */
-function chosenOnly(picked: PickedPatterns | undefined): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const [code, name] of Object.entries(picked?.patterns ?? {})) if (name) out[code] = name;
-  return out;
 }
 
 /** Where Edit topics writes: the one worksheet, or every copy. */

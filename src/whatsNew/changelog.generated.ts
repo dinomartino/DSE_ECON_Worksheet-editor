@@ -37,7 +37,11 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 - **Your own 題型 (Patterns) in the question bank.** Inside a sub-topic, file questions
   under the kinds of question you set, such as "Calculate PED from a change in TR". Pick
   one or type a new name while you set a question's topic, in the bank or the Edit panel;
-  MCQ and LQ keep separate lists. The bank groups each sub-topic's questions by 題型,
+  MCQ and LQ keep separate lists. Typing part of a name and pressing Enter picks the
+  existing 題型 (use the arrow keys to choose another, or New), a name close to one you
+  already have is pointed out, and a new 題型 is kept even if you cancel the dialog. Set
+  topic on selected questions can also clear a 題型, or remove only the 題型 and keep the
+  sub-topic, for questions of any type. The bank groups each sub-topic's questions by 題型,
   filters by one, and counts them on the topic cards. The 題型 Patterns page lists them
   all and renames, merges or deletes one in every worksheet at once. They come with your
   backup and never print.
