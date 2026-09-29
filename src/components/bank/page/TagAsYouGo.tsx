@@ -30,6 +30,7 @@ export function TagAsYouGo({
   onSave,
   onStep,
   onDone,
+  onOpen,
 }: {
   /** The question on screen; absent when none are left. */
   row: BankRow | undefined;
@@ -45,6 +46,8 @@ export function TagAsYouGo({
   onSave: () => void;
   onStep: (delta: number) => void;
   onDone: () => void;
+  /** Open the question where it sits in its worksheet. */
+  onOpen: () => void;
 }) {
   const { worksheet, failed } = useOwningDocument(row);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -90,9 +93,14 @@ export function TagAsYouGo({
       </div>
 
       <div className="mx-auto grid gap-3 px-[22px] pb-8 pt-4" style={{ maxWidth: SHEET_MAX_WIDTH + 44 }}>
-        <p className="text-[12.5px] tabular-nums text-ink-muted">
-          <span className="text-ink-subtle">Lives in</span> {sourceLabel(row)}
-        </p>
+        <div className="flex min-w-0 items-center gap-3">
+          <p className="min-w-0 truncate text-[12.5px] tabular-nums text-ink-muted" title={sourceLabel(row)}>
+            <span className="text-ink-subtle">Lives in</span> {sourceLabel(row)}
+          </p>
+          <Button size="sm" onClick={onOpen} title="Open this question in its worksheet (O)" className="shrink-0">
+            Open in worksheet
+          </Button>
+        </div>
         <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6" role="group" aria-label="Topics for this question">
           {suggestions.map((code, index) => {
             const { code: coarse, name } = suggestionLabel(code);

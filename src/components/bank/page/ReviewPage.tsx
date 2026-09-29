@@ -307,7 +307,7 @@ function Stage({
           ]}
         />
         <span className="flex-1" />
-        <span className="hidden text-[12px] text-ink-subtle xl:inline">↑ ↓ to move · Space to select</span>
+        <span className="hidden text-[12px] text-ink-subtle xl:inline">↑ ↓ to move · Space to select · O to open in worksheet</span>
       </div>
 
       {/* The stage is the one place the desk tone appears: the paper sits on it, and the
@@ -382,8 +382,8 @@ function Stage({
                 <span className="truncate">Add to “{targetTitle}”</span>
               </Button>
             )}
-            <Button size="sm" onClick={() => onOpen(row)}>
-              Open worksheet
+            <Button size="sm" onClick={() => onOpen(row)} title="Open this question in its worksheet (O)">
+              Open in worksheet
             </Button>
           </div>
         </div>

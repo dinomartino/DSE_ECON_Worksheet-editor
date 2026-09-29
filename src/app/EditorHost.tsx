@@ -5,6 +5,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { UpdateBanner } from '@/components/editor/UpdateBanner';
 import { AppSettingsHost } from '@/components/settings/AppSettingsHost';
 import { setBeforeRestart } from '@/desktop/updateStore';
+import { useBankReturn } from '@/components/bank/page/bankReturn';
 import { StartScreen } from '@/components/start/StartScreen';
 import type { LanguageMode, Worksheet } from '@/model/types';
 import { NewerDocumentError, worksheetStore } from '@/storage';
@@ -103,17 +104,28 @@ export function EditorHost() {
   );
   const setMode = useWorksheetStore((s) => s.setMode);
 
+  const cameFromBank = useBankReturn((s) => s.saved !== null);
   const leave = async () => {
+    await flushBeforeLeaving();
+    // Home the normal way forgets where the bank was.
+    useBankReturn.getState().clear();
+    setChosen(false);
+  };
+  // Back to the question bank: same flush, and the bank reads where it left off.
+  const backToBank = async () => {
     await flushBeforeLeaving();
     setChosen(false);
   };
   // The one leave that must not flush: the document on screen was just deleted.
   const clearAndLeave = async () => {
     await clearSavedDocuments();
+    useBankReturn.getState().clear();
     setChosen(false);
   };
 
   const open = (worksheet: Worksheet, language?: LanguageMode) => {
+    // Any open forgets the way back; the bank's "open in worksheet" sets it again after.
+    useBankReturn.getState().clear();
     /*
      * Flush the outgoing document, for the reason above — but by **value**, not through
      * `store.save()`.
@@ -166,7 +178,7 @@ export function EditorHost() {
         {!chosen ? (
           <StartScreen onOpen={open} />
         ) : (
-          <EditorApp onOpenFiles={() => void leave()} onClearAll={clearAndLeave} onOpenDocument={open} />
+          <EditorApp onOpenFiles={() => void leave()} onBackToBank={cameFromBank ? () => void backToBank() : undefined} onClearAll={clearAndLeave} onOpenDocument={open} />
         )}
       </div>
     </div>

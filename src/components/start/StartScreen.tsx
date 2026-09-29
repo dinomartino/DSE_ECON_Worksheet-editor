@@ -37,6 +37,7 @@ import {
   type ImportCounts,
 } from './fileDrop';
 import { NEW_WORKSHEET_FORM_ID, NewWorksheetForm } from './NewWorksheetForm';
+import { useBankReturn } from '@/components/bank/page/bankReturn';
 import { QuestionBankScreen } from '@/components/bank/page/QuestionBankScreen';
 import { useBank } from '@/library/useBank';
 import { RenameDialog, renameWorksheet } from './RenameDialog';
@@ -137,7 +138,8 @@ export function StartScreen({
   const [deletingFolder, setDeletingFolder] = useState<Folder | undefined>();
   // The Question bank replaces this screen's view the way opening a document replaces
   // it; ← Home comes back. Session state: the app always opens on the documents.
-  const [view, setView] = useState<'home' | 'bank'>('home');
+  // Back from a worksheet opened from a bank question: straight into the bank.
+  const [view, setView] = useState<'home' | 'bank'>(() => (useBankReturn.getState().saved ? 'bank' : 'home'));
   const { groups: bankGroups } = useBank();
   const closeFeedback = useCallback(() => setFeedback(false), []);
   const [whatsNew, setWhatsNew] = useState(false);
@@ -643,7 +645,10 @@ export function StartScreen({
               ) : undefined
             }
             settings={<SettingsButton />}
-            onHome={() => setView('home')}
+            onHome={() => {
+              useBankReturn.getState().clear();
+              setView('home');
+            }}
             onOpenDocument={(id, then) => void openSaved(id, then)}
             onOpenWorksheet={(worksheet) => onOpen(worksheet)}
             onDocumentsChanged={() => void refresh()}
