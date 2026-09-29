@@ -9,11 +9,21 @@
  * the bundler splits into a chunk the web path never requests. Guarded by
  * `src/test/tauriImports.test.ts`, lint, and `scripts/check-web-bundle.mjs`.
  *
- * The web behaviour is the unchanged one: an anchor download and `window.print()`.
- * Desktop adds a real save dialog and a real path on disk.
+ * Web: the browser's Save As and folder pickers where it has them (Chrome, Edge), else
+ * the anchor download that shipped; PDF is `window.print()`. Desktop: native dialogs and
+ * a real path on disk.
  */
+import {
+  folderHas,
+  hasFolderPicker,
+  hasSavePicker,
+  isAbort,
+  pickFolder,
+  pickSaveFile,
+  writeHandle,
+} from './webPicker';
 
-/** File-type presets for the save dialog; the web path ignores them. */
+/** File-type presets for the save dialog and the browser's Save As picker. */
 export type SaveFilter = { name: string; extensions: string[] };
 
 export const DOCX_FILTERS: SaveFilter[] = [
@@ -71,13 +81,22 @@ function lastFolder(): string | undefined {
   }
 }
 
+/** Remember `folder` for the next dialog. Best effort — never fails the caller. */
+function rememberFolder(folder: string): void {
+  try {
+    window.localStorage.setItem(LAST_FOLDER_KEY, folder);
+  } catch {
+    // Storage blocked: the next dialog just starts at the default.
+  }
+}
+
 /** Remember the folder holding `path`. Best effort — never fails the caller. */
 async function rememberFolderOf(path: string): Promise<void> {
   try {
     const { dirname } = await import('@tauri-apps/api/path');
-    window.localStorage.setItem(LAST_FOLDER_KEY, await dirname(path));
+    rememberFolder(await dirname(path));
   } catch {
-    // Storage blocked or path unparseable: the next dialog just starts at the default.
+    // Path unparseable: the next dialog just starts at the default.
   }
 }
 
@@ -112,37 +131,168 @@ async function defaultPathFor(name: string): Promise<string> {
 }
 
 /**
- * Write a file where the user asks for it.
- *
- * Desktop: a native save sheet opened in the last-used folder (else
- * `~/Documents/Econ Worksheets`), then a write to the chosen path — the dialog's result
- * is auto-scoped by the shell, so no fs capability is needed for the path itself.
- * Returns the path, or `undefined` when the sheet was cancelled.
- *
- * Web: the existing anchor download, byte-for-byte the behaviour that shipped. The
- * browser owns the destination, so there is no path to return — `undefined`.
+ * Where a save went. `path`: on disk (desktop), what `revealFile` shows. `name`: the file
+ * or folder the teacher picked in a browser picker. Neither for a plain download.
  */
-export async function saveFile(
-  data: Blob | Uint8Array | string,
+export interface SavedTo {
+  path?: string;
+  name?: string;
+}
+
+/** A place chosen for one file, written once the file is built. */
+export interface SaveTarget {
+  write(data: Blob | Uint8Array | string): Promise<SavedTo>;
+}
+
+/** A folder chosen for several files. A name already there gets ` (2)`: nothing is replaced. */
+export interface FolderTarget {
+  name?: string;
+  path?: string;
+  write(fileName: string, data: Blob | Uint8Array | string): Promise<SavedTo>;
+}
+
+/** Will a save ask where (a save sheet or Save As), so that it can be cancelled? */
+export function canChooseLocation(): boolean {
+  return isDesktop() || hasSavePicker();
+}
+
+/** Can several files go to one folder picked once? */
+export function canChooseFolder(): boolean {
+  return isDesktop() || hasFolderPicker();
+}
+
+async function writePath(path: string, data: Blob | Uint8Array | string): Promise<void> {
+  const bytes = await toBytes(data);
+  const fs = await import('@tauri-apps/plugin-fs');
+  if (typeof bytes === 'string') await fs.writeTextFile(path, bytes);
+  else await fs.writeFile(path, bytes);
+}
+
+/**
+ * Ask where one file goes; write it later with `target.write`. `undefined` = cancelled.
+ *
+ * Desktop: a native save sheet in the last-used folder (else `~/Documents/Econ
+ * Worksheets`); the shell scopes the chosen path, so no fs grant is needed for it.
+ * Web: the browser's Save As picker, opened before any `await` so the click's activation
+ * still holds; without one (Firefox, Safari), or if it fails, the anchor download.
+ */
+export async function chooseSaveTarget(
   suggestedName: string,
   filters: SaveFilter[] = [],
-): Promise<string | undefined> {
+): Promise<SaveTarget | undefined> {
   if (!isDesktop()) {
-    const { triggerDownload } = await import('@/storage/download');
-    triggerDownload(toBlob(data, mimeFor(suggestedName)), suggestedName);
-    return undefined;
+    const mime = mimeFor(suggestedName);
+    if (hasSavePicker()) {
+      try {
+        const handle = await pickSaveFile(suggestedName, filters, mime);
+        return {
+          write: async (data) => {
+            await writeHandle(handle, toBlob(data, mime));
+            return { name: handle.name };
+          },
+        };
+      } catch (cause) {
+        if (isAbort(cause)) return undefined;
+        // Lost activation, a cross-origin frame, a policy: the download still works.
+      }
+    }
+    return {
+      write: async (data) => {
+        const { triggerDownload } = await import('@/storage/download');
+        triggerDownload(toBlob(data, mime), suggestedName);
+        return {};
+      },
+    };
   }
 
   const { save } = await import('@tauri-apps/plugin-dialog');
   const path = await save({ defaultPath: await defaultPathFor(suggestedName), filters });
   if (!path) return undefined;
+  return {
+    write: async (data) => {
+      await writePath(path, data);
+      await rememberFolderOf(path);
+      return { path };
+    },
+  };
+}
 
-  const bytes = await toBytes(data);
-  const fs = await import('@tauri-apps/plugin-fs');
-  if (typeof bytes === 'string') await fs.writeTextFile(path, bytes);
-  else await fs.writeFile(path, bytes);
-  await rememberFolderOf(path);
-  return path;
+/**
+ * Write a file where the user asks for it: `chooseSaveTarget`, then the write. Only for
+ * data already in hand; a file built after the click should choose its target first.
+ * `undefined` when the teacher cancelled, so nothing was written.
+ */
+export async function saveFile(
+  data: Blob | Uint8Array | string,
+  suggestedName: string,
+  filters: SaveFilter[] = [],
+): Promise<SavedTo | undefined> {
+  const target = await chooseSaveTarget(suggestedName, filters);
+  return target ? target.write(data) : undefined;
+}
+
+/** `name`, else `name (2).ext`, `(3)`…: a folder export never replaces a file. */
+export async function freeName(
+  name: string,
+  taken: (candidate: string) => Promise<boolean>,
+): Promise<string> {
+  const dot = name.lastIndexOf('.');
+  const stem = dot > 0 ? name.slice(0, dot) : name;
+  const extension = dot > 0 ? name.slice(dot) : '';
+  for (let copy = 1; copy < 100; copy += 1) {
+    const candidate = copy === 1 ? name : `${stem} (${copy})${extension}`;
+    if (!(await taken(candidate))) return candidate;
+  }
+  throw new Error(`That folder already has too many copies of ${name}.`);
+}
+
+/**
+ * Ask once for a folder to hold several files. Desktop: the native folder sheet (the
+ * dialog plugin scopes the folder's files at runtime). Web: the browser's folder picker.
+ * `unavailable` when there is none, or it failed for a reason other than a cancel.
+ */
+export async function chooseFolderTarget(): Promise<FolderTarget | 'cancelled' | 'unavailable'> {
+  if (!isDesktop()) {
+    if (!hasFolderPicker()) return 'unavailable';
+    let folder: FileSystemDirectoryHandle;
+    try {
+      folder = await pickFolder();
+    } catch (cause) {
+      return isAbort(cause) ? 'cancelled' : 'unavailable';
+    }
+    return {
+      name: folder.name,
+      write: async (fileName, data) => {
+        const name = await freeName(fileName, (candidate) => folderHas(folder, candidate));
+        const handle = await folder.getFileHandle(name, { create: true });
+        await writeHandle(handle, toBlob(data, mimeFor(name)));
+        return { name };
+      },
+    };
+  }
+
+  const { open } = await import('@tauri-apps/plugin-dialog');
+  const start = await startFolder();
+  const folder = await open({
+    directory: true,
+    multiple: false,
+    canCreateDirectories: true,
+    title: 'Choose a folder for the exported files',
+    ...(start ? { defaultPath: start } : {}),
+  });
+  if (typeof folder !== 'string') return 'cancelled';
+  rememberFolder(folder);
+  const { join } = await import('@tauri-apps/api/path');
+  const { exists } = await import('@tauri-apps/plugin-fs');
+  return {
+    path: folder,
+    write: async (fileName, data) => {
+      const name = await freeName(fileName, async (candidate) => exists(await join(folder, candidate)));
+      const path = await join(folder, name);
+      await writePath(path, data);
+      return { path, name };
+    },
+  };
 }
 
 /**

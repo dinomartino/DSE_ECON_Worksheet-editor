@@ -1,5 +1,5 @@
 import type { Worksheet } from '@/model/types';
-import { isDesktop, JSON_FILTERS, pickTextFile, saveFile } from '@/platform';
+import { isDesktop, JSON_FILTERS, pickTextFile, saveFile, type SavedTo } from '@/platform';
 import { isNewerThanBuild } from '@/model/migrations';
 import {
   NewerDocumentError,
@@ -320,11 +320,10 @@ export class LocalStorageWorksheetStore implements WorksheetStore {
 /**
  * Write the worksheet out as a portable .json file.
  *
- * Through `saveFile`, so the web keeps its anchor download and the desktop build gets a
- * native save sheet and a real path. Returns that path on desktop, `undefined` on the
- * web or when the sheet was cancelled.
+ * Through `saveFile`: the desktop save sheet, the browser's Save As where it has one,
+ * else the anchor download. `undefined` when the teacher cancelled.
  */
-export async function downloadWorksheetFile(worksheet: Worksheet): Promise<string | undefined> {
+export async function downloadWorksheetFile(worksheet: Worksheet): Promise<SavedTo | undefined> {
   const fileName = `${worksheetTitle(worksheet).replace(/[\\/:*?"<>|]/g, '-')}.worksheet.json`;
   return saveFile(stringifyWorksheet(worksheet), fileName, JSON_FILTERS);
 }

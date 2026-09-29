@@ -112,7 +112,7 @@ Invariants:
 ## export/docx — raw OOXML, built client-side
 
 `src/export/docx/index.ts:exportDocx` · `:exportDocxBuffer` · `:docxFileName` ·
-`:exportAnswerKeyDocx` · `:answerKeyFileName`.
+`:exportAnswerKeyDocx` · `:answerKeyFileName` (from `src/export/docx/fileNames.ts`, light enough to name a file before the builders load).
 
 - `src/export/docx/body.ts:renderNodeXml` · `:coverXml` · `:formatParagraphProps`
 - `src/export/docx/styles.ts:buildStylesXml` · `:FIXED_LINE_TWIPS` · `:exactLineFor` · `:LQ_LINE_PITCH_TWIPS`
@@ -176,6 +176,7 @@ Invariants:
 
 - `src/platform/index.ts:isDesktop` · `:saveFile` · `:pickTextFile` · `:pickFile` · `:printPage` · `:revealFile` · `:openFolder` · `:exportsFolder` · `:openExternal`
 - `src/platform/index.ts:chooseSavePath` · `:savePdf` — desktop PDF: the save sheet, then the shell's `print_to_pdf` command
+- `src/platform/index.ts:chooseSaveTarget` · `:chooseFolderTarget` · `:canChooseLocation` — ask where first (inside the click), write after the build; `src/platform/webPicker.ts` is the browser's Save As / folder picker (Chrome, Edge), the anchor download elsewhere
 - `src-tauri/src/pdf/mod.rs` — the one app command, `print_to_pdf` (path, page box, sheet count); `src-tauri/src/pdf/macos.rs` (WKWebView save job) · `src-tauri/src/pdf/windows.rs` (WebView2 `PrintToPdf`). Declared in `src-tauri/build.rs`, granted as `allow-print-to-pdf` in `src-tauri/capabilities/default.json`
 - `src/platform/index.ts:listenForFileDrops` · `:readDroppedFile` — Finder/Explorer file drops arrive as Tauri's native event, never HTML5 `drop`; effects use `:subscribeToFileDrops`, and every Tauri unlisten goes through `:unlistenSafely` (it can reject before the listener registers)
 - `src/storage/fileStore.ts:savedWorksheetPath` · `:savedWorksheetsFolder` · `src/storage/index.ts:pickWorksheetFile`
@@ -261,7 +262,7 @@ Invariants:
 ## components/editor — the chrome around the page
 
 - `src/components/EditorApp.tsx:EditorApp` — the shell, autosave, export actions
-- `src/components/editor/ExportDialog.tsx:ExportDialog` — the one Export action: format `.docx` / PDF / `.json`, then paper / answer key / both / other apps; `src/components/editor/exportSession.ts:deliverFiles` — one web download per click
+- `src/components/editor/ExportDialog.tsx:ExportDialog` — the one Export action: format `.docx` / PDF / `.json`, then paper / answer key / both / other apps; `src/components/editor/exportSession.ts:deliverFiles` — picker before build; several files to one folder, else one plain download per click
 - `src/components/editor/KeyDocumentsField.tsx:KeyDocumentsField` — "Also include": other saved documents' keys in the same answer key; `src/components/editor/exportSession.ts:loadKeyDocuments` reads them read-only, skipping (and naming) any that will not open — export-time, never stored
 - `src/components/editor/printPdf.ts:printWorksheetPdf` — PDF: set the print mode, wait for the sheets, then `printPage()` (web; flags lifted on `afterprint`) or, given a desktop file, `savePdf()` (flags lifted when it resolves; the print sheet if it fails)
 - `src/components/editor/exportSession.ts:paperMode` — "Include" toggles → `OutputMode.omitCover` / `omitAnswerSpace` (export-time, never stored; the preview ignores them)

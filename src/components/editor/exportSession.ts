@@ -6,7 +6,8 @@ import { renderWorksheet } from '@/render/worksheet';
 
 /**
  * What the Export dialog writes, and how the files reach disk. Pure, so the delivery
- * rule — one browser download per click — is tested without a DOM.
+ * rules (ask where before building, one folder for several files, one plain download
+ * per click) are tested without a DOM.
  */
 
 /** The file the dialog writes: Word, a print of the sheets, or the worksheet document. */
@@ -150,49 +151,100 @@ export function exportFileCount(choice: Pick<ExportChoice, 'what' | 'variants'>)
   );
 }
 
+/** A file named but not yet built: where it goes is asked first, inside the click. */
+export type PlannedFile = Omit<ExportFile, 'blob'> & { build: () => Promise<Blob> };
+
+/** An already built file, planned again (the next click of the download dance). */
+export const planned = (file: ExportFile): PlannedFile => ({ ...file, build: async () => file.blob });
+
+/** Where a delivered file or folder went: a path on desktop, a picked name on the web. */
+export interface SavedPlace {
+  path?: string;
+  name?: string;
+}
+
 export interface ExportRun {
-  /** Delivered files, with the path a desktop save sheet returned. */
-  saved: Array<{ file: ExportFile; path?: string }>;
-  /** Built but not delivered: on the web each further download waits for its own click. */
+  /** Delivered files, with where each went. */
+  saved: Array<{ file: ExportFile } & SavedPlace>;
+  /** Built but not delivered: a plain download waits for its own click. */
   pending: ExportFile[];
-  /** A desktop save sheet was cancelled; nothing after it was offered. */
+  /** A picker was cancelled: nothing was written. */
   cancelled: boolean;
+  /** The folder several files went to, when one was picked. */
+  folder?: SavedPlace;
+}
+
+/** Where files can go (from `src/platform`), injected so the rules test without a DOM. */
+export interface ExportSaver {
+  /** Several files may go to one folder, asked for once. */
+  folders: boolean;
+  /** Ask where one file goes; `undefined` = cancelled. */
+  chooseFile: (
+    file: PlannedFile,
+  ) => Promise<{ write: (blob: Blob) => Promise<SavedPlace> } | undefined>;
+  chooseFolder: () => Promise<
+    | (SavedPlace & { write: (name: string, blob: Blob) => Promise<SavedPlace> })
+    | 'cancelled'
+    | 'unavailable'
+  >;
 }
 
 /**
- * Deliver built files. Desktop: one save sheet each, in order, stopping at a cancel.
- * Web: only the first — a browser blocks (or prompts for) a second download started by
- * the same gesture, so the rest wait in `pending` for the next click.
+ * Deliver files, asking where before anything is built: a browser picker needs the
+ * click's activation, which the `.docx` build can outlast. Several files: one folder,
+ * then every file into it. Otherwise the first file only; the rest wait in `pending`,
+ * built, since a browser blocks a second download started by the same click.
  */
-export async function deliverFiles(
-  files: ExportFile[],
-  options: { desktop: boolean; save: (file: ExportFile) => Promise<string | undefined> },
-): Promise<ExportRun> {
+export async function deliverFiles(files: PlannedFile[], saver: ExportSaver): Promise<ExportRun> {
   const run: ExportRun = { saved: [], pending: [], cancelled: false };
-  const now = options.desktop ? files : files.slice(0, 1);
-  for (const file of now) {
-    const path = await options.save(file);
-    if (options.desktop && path === undefined) {
-      run.cancelled = true;
+  if (files.length === 0) return run;
+  if (files.length > 1 && saver.folders) {
+    const folder = await saver.chooseFolder();
+    if (folder === 'cancelled') return { ...run, cancelled: true };
+    if (folder !== 'unavailable') {
+      for (const plan of files) {
+        const file = await built(plan);
+        run.saved.push({ file, ...(await folder.write(file.name, file.blob)) });
+      }
+      run.folder = { path: folder.path, name: folder.name };
       return run;
     }
-    run.saved.push({ file, path });
   }
-  run.pending = files.slice(now.length);
+  const target = await saver.chooseFile(files[0]);
+  if (!target) return { ...run, cancelled: true };
+  const all: ExportFile[] = [];
+  for (const plan of files) all.push(await built(plan));
+  const [first, ...rest] = all;
+  run.saved.push({ file: first, ...(await target.write(first.blob)) });
+  run.pending = rest;
   return run;
+}
+
+async function built({ build, ...file }: PlannedFile): Promise<ExportFile> {
+  return { ...file, blob: await build() };
+}
+
+/**
+ * The status line, naming where the file went when a browser picker told us. A desktop
+ * path is left to the reveal button beside the line.
+ */
+export function withPlace(message: string, saved: SavedPlace[], folder?: SavedPlace): string {
+  if (saved.some((place) => place.path !== undefined)) return message;
+  if (folder?.name) return `${message} to “${folder.name}”`;
+  if (saved.length === 1 && saved[0].name) return `Exported “${saved[0].name}”`;
+  return message;
 }
 
 /**
  * Save the worksheet document itself (`.json`). What the status line should say, or
- * `undefined` when a desktop save sheet was cancelled — nothing written, dialog stays.
+ * `undefined` when a picker was cancelled: nothing written, the dialog stays.
  */
 export async function deliverWorksheetJson(options: {
-  desktop: boolean;
-  save: () => Promise<string | undefined>;
-}): Promise<{ message: string; path?: string } | undefined> {
-  const path = await options.save();
-  if (path === undefined && options.desktop) return undefined;
-  return { message: 'Exported .json', path };
+  save: () => Promise<SavedPlace | undefined>;
+}): Promise<({ message: string } & SavedPlace) | undefined> {
+  const saved = await options.save();
+  if (!saved) return undefined;
+  return { message: 'Exported .json', ...saved };
 }
 
 /**

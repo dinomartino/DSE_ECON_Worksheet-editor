@@ -81,11 +81,7 @@ export function backupEntryName(worksheet: Worksheet): string {
   return `${safeName(worksheetTitle(worksheet))} (${safeName(worksheet.id)}).worksheet.json`;
 }
 
-export function backupFileName(now = new Date()): string {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const day = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-  return `Worksheets backup ${day}.zip`;
-}
+export { backupFileName } from './backupName';
 
 export async function buildBackup(
   worksheets: Worksheet[],

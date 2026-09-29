@@ -84,6 +84,25 @@ describe('ExportDialog', () => {
     }
   });
 
+  it('says where a download goes only on a browser with no save picker', () => {
+    const hint = 'Your browser saves to its Downloads folder.';
+    expect(render()).toContain(hint);
+    // PDF goes through the print dialog, which asks anyway.
+    expect(render(undefined, 'pdf')).not.toContain(hint);
+    vi.stubGlobal('window', { showSaveFilePicker: () => undefined, showDirectoryPicker: () => undefined });
+    try {
+      expect(render()).not.toContain(hint);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    vi.stubGlobal('window', { __TAURI_INTERNALS__: {} });
+    try {
+      expect(render()).not.toContain(hint);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('PDF keeps the cover and answer-space toggles, for this print only', () => {
     const markup = render(undefined, 'pdf', createWorksheetFrom({ documentType: 'lqMock' }));
     expect(markup).toContain('Cover page');
