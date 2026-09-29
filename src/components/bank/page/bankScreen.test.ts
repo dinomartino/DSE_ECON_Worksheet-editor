@@ -125,15 +125,21 @@ describe('suggestTopics', () => {
     expect(suggestTopics(rows[0], rows)).toEqual(['G.ad']);
   });
 
-  it('reads the class on the newest paper and counts the distinct questions it has seen', () => {
+  it('reads the class on the most recently sat paper and counts the questions its cohort has seen', () => {
     const rows = [
-      row({ docId: 'old', rootId: 'a', classTag: '4B', docUpdatedAt: '2025-01-01T00:00:00.000Z' }),
-      row({ docId: 'new', rootId: 'b', classTag: ' 5A ', docUpdatedAt: '2026-03-01T00:00:00.000Z' }),
-      row({ docId: 'mock', rootId: 'a', classTag: '5a', docUpdatedAt: '2026-01-01T00:00:00.000Z' }),
-      row({ docId: 'bank', rootId: 'c', classTag: '5A', docKind: 'bank', docUpdatedAt: '2026-09-01T00:00:00.000Z' }),
-      row({ docId: 'x', rootId: 'd' }),
+      // 4B in 2024-25 and 5A in 2025-26 are both DSE 2027.
+      row({ docId: 'old', rootId: 'e', classes: ['4B'], usedOn: '2025-01-01' }),
+      row({ docId: 'new', rootId: 'b', classes: [' 5A '], usedOn: '2026-03-01' }),
+      row({ docId: 'mock', rootId: 'a', classes: ['5a'], usedOn: '2026-01-01' }),
+      // Edited this month but sat long ago, a bank, and a draft: none is the latest use.
+      row({ docId: 'tagged', rootId: 'f', classes: ['6C'], usedOn: '2024-03-01', docUpdatedAt: '2026-09-28T00:00:00.000Z' }),
+      row({ docId: 'bank', rootId: 'c', classes: ['5A'], docKind: 'bank', usedOn: '2026-09-01' }),
+      row({ docId: 'x', rootId: 'd', usedOn: '2026-09-02' }),
     ];
-    expect(latestClassUsage(rows)).toEqual({ classTag: '5A', used: 2, total: 4 });
+    const usage = latestClassUsage(rows)!;
+    expect(usage).toMatchObject({ label: '5A · DSE 2027', used: 3, total: 6 });
+    expect(usage.choice).toMatchObject({ id: 'dse:2027', target: { cohort: 2027 } });
+    expect(latestClassUsage([row({ classes: ['Econ X'] })])).toMatchObject({ label: 'Class Econ X', used: 1, total: 1 });
     expect(latestClassUsage([row({})])).toBeUndefined();
   });
 

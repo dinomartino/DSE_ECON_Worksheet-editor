@@ -27,7 +27,7 @@ export interface BankIndexBackend {
  * The shape of a stored row. Bump when `rowsOf`'s output changes meaning, and every
  * persisted index is dropped and rebuilt on next use.
  */
-export const INDEX_FORMAT = 1;
+export const INDEX_FORMAT = 2;
 
 const isString = (value: unknown): value is string => typeof value === 'string';
 const isStringArray = (value: unknown): value is string[] => Array.isArray(value) && value.every(isString);
@@ -42,7 +42,8 @@ export function isBankRow(value: unknown): value is BankRow {
     isString(row.docTitle) &&
     isString(row.docUpdatedAt) &&
     (row.docKind === 'paper' || row.docKind === 'bank') &&
-    (row.classTag === undefined || isString(row.classTag)) &&
+    isString(row.usedOn) &&
+    (row.classes === undefined || isStringArray(row.classes)) &&
     isString(row.questionId) &&
     isString(row.rootId) &&
     isString(row.typeId) &&

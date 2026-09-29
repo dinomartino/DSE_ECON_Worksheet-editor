@@ -1,7 +1,8 @@
 import { roundMinutes, MINUTES_PER_MARK } from '@/model/paperSummary';
 import { TOPICS, topicLabel, topicOf } from '@/model/topics';
 import { getQuestionType, listQuestionTypes } from '@/registry';
-import { sameClass } from '@/library/history';
+import { cohortLabel, schoolYearEnd, schoolYearLabel, type ClassTarget } from '@/library/cohort';
+import { refsOf, rowUsedWith } from '@/library/history';
 import { searchRows } from '@/library/search';
 import type { BankGroup, BankRow } from '@/library/types';
 import type { WorksheetSummary } from '@/storage/types';
@@ -128,9 +129,9 @@ export interface BankFilters {
   topic: TopicPick;
   typeId?: string;
   marks: MarksBand;
-  /** Leave out questions used with this class… */
-  notUsedWith?: string;
-  /** …on a paper saved since this point. */
+  /** Leave out questions used with these students (a cohort, or a class by name)… */
+  notUsedWith?: ClassChoice;
+  /** …on a paper sat since this point. */
   since: Since;
   source: SourceFilter;
 }
@@ -152,26 +153,64 @@ export const SINCE_CHOICES: { value: Since; label: string }[] = [
   { value: '6m', label: 'in the last 6 months' },
 ];
 
-/** The cut-off an ISO `docUpdatedAt` must reach; undefined = any time. School years start 1 Sep. */
-export function sinceIso(since: Since, now: Date): string | undefined {
+/** The first day (`YYYY-MM-DD`, local) a use date must reach; undefined = any time. School years start 1 Sep. */
+export function sinceDate(since: Since, now: Date): string | undefined {
   if (since === 'ever') return undefined;
-  if (since === 'year') {
-    const year = now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1;
-    return new Date(year, 8, 1).toISOString();
-  }
+  if (since === 'year') return `${now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1}-09-01`;
   const back = new Date(now);
   back.setMonth(back.getMonth() - (since === '12m' ? 12 : 6));
-  return back.toISOString();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${back.getFullYear()}-${pad(back.getMonth() + 1)}-${pad(back.getDate())}`;
 }
 
-/** The class tags on saved papers, trimmed, one spelling per class (first seen), sorted. */
-export function classTags(rows: readonly BankRow[]): string[] {
-  const seen = new Map<string, string>();
+/** One entry in the Class filter: a DSE cohort and the classes it has been, or a class with no form in its name. */
+export interface ClassChoice {
+  /** Stable across renders: `dse:2027` or `class:<key>`. */
+  id: string;
+  /** "DSE 2027", or the class as first spelled. */
+  label: string;
+  /** A cohort's classes by school year, "4A 24-25, 5A 5B 25-26"; absent for a plain class. */
+  detail?: string;
+  target: ClassTarget;
+}
+
+/**
+ * Whom papers were sat by: each DSE cohort (oldest first), then each class whose name has
+ * no form number, by name. Drafts and banks name no one.
+ */
+export function classChoices(rows: readonly BankRow[]): ClassChoice[] {
+  const cohorts = new Map<number, Map<string, { name: string; year: number }>>();
+  const plain = new Map<string, string>();
   for (const row of rows) {
-    const tag = row.classTag?.trim();
-    if (tag && row.docKind === 'paper' && !seen.has(tag.toLowerCase())) seen.set(tag.toLowerCase(), tag);
+    if (row.docKind !== 'paper') continue;
+    for (const ref of refsOf(row)) {
+      if (ref.cohort === undefined) {
+        if (!plain.has(ref.key)) plain.set(ref.key, ref.name);
+        continue;
+      }
+      const year = schoolYearEnd(row.usedOn) ?? 0;
+      const members = cohorts.get(ref.cohort) ?? new Map<string, { name: string; year: number }>();
+      cohorts.set(ref.cohort, members);
+      const member = `${year} ${ref.key}`;
+      if (!members.has(member)) members.set(member, { name: ref.name, year });
+    }
   }
-  return [...seen.values()].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  const byName = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true });
+  const cohortChoices = [...cohorts]
+    .sort(([a], [b]) => a - b)
+    .map(([cohort, members]): ClassChoice => {
+      const years = new Map<number, string[]>();
+      for (const { name, year } of members.values()) years.set(year, [...(years.get(year) ?? []), name]);
+      const detail = [...years]
+        .sort(([a], [b]) => a - b)
+        .map(([year, names]) => `${names.sort(byName).join(' ')} ${schoolYearLabel(year)}`)
+        .join(', ');
+      return { id: `dse:${cohort}`, label: cohortLabel(cohort), detail, target: { cohort } };
+    });
+  const plainChoices = [...plain]
+    .sort(([, a], [, b]) => byName(a, b))
+    .map(([key, name]): ClassChoice => ({ id: `class:${key}`, label: name, target: { key } }));
+  return [...cohortChoices, ...plainChoices];
 }
 
 /**
@@ -187,16 +226,12 @@ export function filterRows(rows: readonly BankRow[], filters: BankFilters, now =
     ...(filters.typeId ? { typeId: filters.typeId } : {}),
     ...(band && band.value !== 'any' ? { marks: { min: band.min, max: band.max } } : {}),
   });
-  const cutoff = sinceIso(filters.since, now);
-  const used = filters.notUsedWith?.trim()
+  const cutoff = sinceDate(filters.since, now);
+  const target = filters.notUsedWith?.target;
+  const used = target
     ? new Set(
         rows
-          .filter(
-            (row) =>
-              row.docKind === 'paper' &&
-              sameClass(row.classTag, filters.notUsedWith) &&
-              (cutoff === undefined || row.docUpdatedAt >= cutoff),
-          )
+          .filter((row) => rowUsedWith(row, [target]) && (cutoff === undefined || row.usedOn.slice(0, 10) >= cutoff))
           .map((row) => row.rootId),
       )
     : undefined;
@@ -222,9 +257,9 @@ export function activeFilters(filters: BankFilters): ActiveFilter[] {
   else if (filters.topic !== 'all') active.push({ key: 'topic', label: topicName(filters.topic) });
   if (filters.typeId) active.push({ key: 'typeId', label: typeName(filters.typeId) });
   if (filters.marks !== 'any') active.push({ key: 'marks', label: MARKS_BANDS.find((b) => b.value === filters.marks)?.label ?? '' });
-  if (filters.notUsedWith?.trim()) {
+  if (filters.notUsedWith) {
     const since = filters.since === 'ever' ? '' : ` ${SINCE_CHOICES.find((s) => s.value === filters.since)?.label}`;
-    active.push({ key: 'notUsedWith', label: `not used with ${filters.notUsedWith.trim()}${since}` });
+    active.push({ key: 'notUsedWith', label: `not used with ${filters.notUsedWith.label}${since}` });
   }
   if (filters.source !== 'all') active.push({ key: 'source', label: filters.source === 'bank' ? 'from banks' : 'from worksheets' });
   return active;

@@ -14,7 +14,12 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 
 ### Added
 - **Tag questions with DSE topics.** Pick a topic (A–J and the electives, or your own
-  free tag) in the Edit panel, and set the class in Setup. Tags never print.
+  free tag) in the Edit panel. Tags never print.
+- **Say which classes sat a paper, and when.** In Setup, list the classes (5A, 5B) and
+  the date it was sat. The question bank counts a paper as used only once it names a
+  class, and knows that 4A last year and 5A this year are the same students, so "not used
+  with" follows a year group up the school (shown as DSE 2027 and so on). Tagging or
+  correcting an old paper no longer makes it look used this year.
 - **Copy questions to a question bank from the outline.** Use a question's ⋯ menu to copy it to a bank (or start a new one); after you improve a question, "Update bank copy" refreshes the bank's version, and "Treat as a new question" cuts a copy loose from its origin. Banks show as "Question bank" in your list of documents.
 - **Question bank 題庫, its own screen**: open it from the start screen to see every
   question from your worksheets as topic cards (how many of each, and which topics are

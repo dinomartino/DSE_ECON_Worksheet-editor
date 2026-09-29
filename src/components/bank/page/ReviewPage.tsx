@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Button, Segmented } from '@/components/ui';
-import { marksLabel, sourceLabel, typeLabel, usedLabel } from '@/components/bank/BankRow';
-import { sameClass, usedWithClass } from '@/library/history';
+import { marksLabel, sourceLabel, typeLabel, sittingLabel, usedLabel } from '@/components/bank/BankRow';
+import { refsOf, usedWith as usedWithTargets } from '@/library/history';
+import { anySameStudents } from '@/library/cohort';
 import type { BankGroup, BankRow } from '@/library/types';
 import { isNewerThanBuild } from '@/model/migrations';
 import { topicLabel, topicOf } from '@/model/topics';
 import type { LanguageMode, VersionMode } from '@/model/types';
-import { distinctVersions, rowKey } from './bankPage';
+import { distinctVersions, rowKey, type ClassChoice } from './bankPage';
 import type { RailSection } from './bankScreen';
 import { PaperPreview, SHEET_MAX_WIDTH } from './PaperPreview';
 import { useOwningDocument } from './useOwningDocument';
@@ -25,8 +26,8 @@ export interface ReviewState {
   railHidden: boolean;
   language: LanguageMode;
   version: VersionMode;
-  /** The Filter's "not used with" class: its uses read amber. */
-  classTag?: string;
+  /** The Filter's "not used with" students: their uses read amber. */
+  usedWith?: ClassChoice;
 }
 
 /**
@@ -108,7 +109,7 @@ function Rail({
   onPick: (row: BankRow) => void;
   onHide: () => void;
 }) {
-  const { sections, order, focused, picked, classTag } = state;
+  const { sections, order, focused, picked, usedWith } = state;
   const listRef = useRef<HTMLDivElement>(null);
   const focusedRoot = focused?.rootId;
 
@@ -147,7 +148,7 @@ function Rail({
             {section.groups.map((group) => {
               const lead = group.rows[0];
               const on = focusedRoot === group.rootId;
-              const used = classTag ? usedWithClass(group, classTag) : undefined;
+              const used = usedWith ? usedWithTargets(group, [usedWith.target]) : undefined;
               return (
                 <div
                   key={group.rootId}
@@ -259,7 +260,7 @@ function Stage({
   onEditTopics?: (row: BankRow) => void;
   onOpen: (row: BankRow) => void;
 }) {
-  const { order, index, language, version, classTag } = state;
+  const { order, index, language, version, usedWith } = state;
   const { worksheet, failed } = useOwningDocument(row);
   const shown = shownLanguage(row, language);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -350,7 +351,7 @@ function Stage({
           <Facts>
             <dt className="text-ink-subtle">Used in</dt>
             <dd className="min-w-0">
-              <UsedIn group={fullGroup} classTag={classTag} />
+              <UsedIn group={fullGroup} usedWith={usedWith} />
             </dd>
             <dt className="text-ink-subtle">Versions</dt>
             <dd className="min-w-0">
@@ -372,18 +373,20 @@ function Facts({ children }: { children: ReactNode }) {
   return <dl className="m-0 grid grid-cols-[70px_minmax(0,1fr)] content-start gap-x-2.5 gap-y-1 text-[12.5px] tabular-nums text-ink">{children}</dl>;
 }
 
-function UsedIn({ group, classTag }: { group: BankGroup | undefined; classTag?: string }) {
+/** Each paper holding a copy: who sat it and when, then where. A draft names no class. */
+function UsedIn({ group, usedWith }: { group: BankGroup | undefined; usedWith?: ClassChoice }) {
   const uses = group?.usedIn ?? [];
   if (uses.length === 0) return <span className="text-ink-subtle">No paper yet</span>;
   return (
     <ul>
       {uses.slice(0, 3).map((use) => {
-        const amber = classTag && sameClass(use.classTag, classTag);
+        const amber = usedWith && anySameStudents(refsOf(use), [usedWith.target]);
+        const where = `${use.docTitle}${use.number !== undefined ? ` · Q${use.number}` : ''}`;
         return (
-          <li key={use.docId} className={`truncate ${amber ? 'text-warn-ink' : ''}`} title={use.docTitle}>
-            {amber ? `${usedLabel(use)} · ` : ''}
-            {use.docTitle}
-            {use.number !== undefined && ` · Q${use.number}`}
+          <li key={use.docId} className={`truncate ${amber ? 'text-warn-ink' : ''}`} title={`${sittingLabel(use)} · ${where}`}>
+            <span className={amber ? '' : use.classes?.length ? 'text-ink' : 'text-ink-subtle'}>{sittingLabel(use)}</span>
+            {' · '}
+            {where}
           </li>
         );
       })}

@@ -25,7 +25,7 @@ export function TopicCards({
   onTopic: (code: string) => void;
   onUntagged: () => void;
   onAll: () => void;
-  onClassGap: (classTag: string) => void;
+  onClassGap: (choice: ClassUsage['choice']) => void;
 }) {
   const { bars, untagged, total } = coverage;
   return (
@@ -44,11 +44,11 @@ export function TopicCards({
         {classUsage && (
           <button
             type="button"
-            onClick={() => onClassGap(classUsage.classTag)}
-            title={`Show the questions ${classUsage.classTag} has not used`}
+            onClick={() => onClassGap(classUsage.choice)}
+            title={`Show the questions ${classUsage.choice.label} has not used${classUsage.choice.detail ? ` (${classUsage.choice.detail})` : ''}`}
             className="cursor-pointer rounded-lg bg-surface-sunken px-3.5 py-2.5 text-left text-[13px] tabular-nums text-ink-muted transition-colors duration-150 ease-out-soft hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
-            Class {classUsage.classTag} has used {classUsage.used} of {classUsage.total} questions
+            {classUsage.label} has used {classUsage.used} of {classUsage.total} questions
           </button>
         )}
         <button

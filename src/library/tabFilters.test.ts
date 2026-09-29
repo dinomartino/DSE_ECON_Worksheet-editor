@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { createSectionElement } from '@/model/flow';
 import { createMcqQuestion, createStructuredQuestion } from '@/model/factories';
+import { classRefs } from './cohort';
 import { choiceQuestion, docWith, row } from './testKit';
 import {
   NO_FILTERS,
   anchorLabel,
   blockingFilter,
   fromDocuments,
+  paperClasses,
   paperRoots,
   tabQuery,
   versionRows,
@@ -16,7 +18,8 @@ import {
 
 const choice = createMcqQuestion().type;
 const parts = createStructuredQuestion().type;
-const ctx = { openDocId: 'open', classTag: '5A' };
+// 5A in November 2025: school year 2025-26, so DSE 2027.
+const ctx = { openDocId: 'open', classes: classRefs(['5A'], '2025-11-03') };
 const f = (patch: Partial<TabFilters>): TabFilters => ({ ...NO_FILTERS, ...patch });
 
 describe('tabQuery — the filters as one BankQuery', () => {
@@ -29,7 +32,7 @@ describe('tabQuery — the filters as one BankQuery', () => {
       topic: 'C',
       typeId: choice,
       marks: { min: 2, max: 4 },
-      notUsedWithClass: '5A',
+      notUsedWith: ctx.classes,
       fromDocId: 'd1',
       excludeDocId: 'open',
     });
@@ -41,10 +44,10 @@ describe('tabQuery — the filters as one BankQuery', () => {
 });
 
 describe('visibleGroups', () => {
-  const older = row({ docId: 'a', rootId: 'r1', docUpdatedAt: '2026-01-01', contentKey: 'k1', typeId: choice, tags: ['C.ped'], searchText: 'elastic demand' });
-  const newer = row({ docId: 'b', rootId: 'r1', docUpdatedAt: '2026-03-01', contentKey: 'k2', typeId: choice, tags: ['C.pes'], searchText: 'supply' });
-  const openCopy = row({ docId: 'open', rootId: 'r1', docUpdatedAt: '2026-09-01', contentKey: 'k3' });
-  const banked = row({ docId: 'bank', docKind: 'bank', rootId: 'r2', docUpdatedAt: '2026-02-01', typeId: parts, marks: 6, searchText: 'harvest' });
+  const older = row({ docId: 'a', rootId: 'r1', usedOn: '2026-01-01', contentKey: 'k1', typeId: choice, tags: ['C.ped'], searchText: 'elastic demand' });
+  const newer = row({ docId: 'b', rootId: 'r1', usedOn: '2026-03-01', contentKey: 'k2', typeId: choice, tags: ['C.pes'], searchText: 'supply' });
+  const openCopy = row({ docId: 'open', rootId: 'r1', usedOn: '2026-09-01', contentKey: 'k3' });
+  const banked = row({ docId: 'bank', docKind: 'bank', rootId: 'r2', usedOn: '2026-02-01', typeId: parts, marks: 6, searchText: 'harvest' });
   const rows = [older, newer, openCopy, banked];
 
   it('never shows the open paper\'s own saved rows, and shows the newest admitted copy', () => {
@@ -66,10 +69,27 @@ describe('visibleGroups', () => {
   });
 
   it('"not used with" counts every version, but not the open paper\'s saved copy', () => {
-    const used = row({ docId: 'c', rootId: 'r2', classTag: '5a', docUpdatedAt: '2025-01-01' });
+    const used = row({ docId: 'c', rootId: 'r2', classes: ['5a'], usedOn: '2025-10-01' });
     expect(visibleGroups([...rows, used], f({ notUsedWithClass: true }), ctx).map((g) => g.group.rootId)).toEqual(['r1']);
-    const openUsed = { ...openCopy, classTag: '5A' };
+    const openUsed = { ...openCopy, classes: ['5A'] };
     expect(visibleGroups([older, newer, openUsed], f({ notUsedWithClass: true }), ctx)).toHaveLength(1);
+  });
+
+  it('"not used with" follows the cohort across years, and ignores drafts', () => {
+    // 4B in 2024-25 is DSE 2027, as the open paper's 5A is; 5B in 2024-25 is DSE 2026.
+    const lastYear = row({ docId: 'c', rootId: 'r2', classes: ['4B'], usedOn: '2025-03-01' });
+    expect(visibleGroups([...rows, lastYear], f({ notUsedWithClass: true }), ctx).map((g) => g.group.rootId)).toEqual(['r1']);
+    const olderCohort = row({ docId: 'c', rootId: 'r2', classes: ['5B'], usedOn: '2025-03-01' });
+    expect(visibleGroups([...rows, olderCohort], f({ notUsedWithClass: true }), ctx)).toHaveLength(2);
+    const draft = row({ docId: 'c', rootId: 'r2', usedOn: '2025-11-03' });
+    expect(visibleGroups([...rows, draft], f({ notUsedWithClass: true }), ctx)).toHaveLength(2);
+  });
+
+  it('reads the open paper\'s classes on its use date, never its last edit', () => {
+    const paper = { classes: ['6A'], satOn: '2026-10-05', createdAt: '2026-09-01T00:00:00.000Z' };
+    expect(paperClasses(paper)).toEqual([{ name: '6A', key: '6a', cohort: 2027 }]);
+    expect(paperClasses({ ...paper, satOn: undefined })).toEqual([{ name: '6A', key: '6a', cohort: 2027 }]);
+    expect(paperClasses({ createdAt: '2026-09-01T00:00:00.000Z' })).toEqual([]);
   });
 
   it('names the one filter whose clearing brings rows back', () => {
@@ -83,9 +103,9 @@ describe('versionRows / fromDocuments', () => {
   it('one row per distinct content, newest first', () => {
     const [group] = visibleGroups(
       [
-        row({ docId: 'x', rootId: 'r', contentKey: 'same', docUpdatedAt: '2026-01-01' }),
-        row({ docId: 'y', rootId: 'r', contentKey: 'same', docUpdatedAt: '2026-02-01' }),
-        row({ docId: 'z', rootId: 'r', contentKey: 'edited', docUpdatedAt: '2026-03-01' }),
+        row({ docId: 'x', rootId: 'r', contentKey: 'same', usedOn: '2026-01-01' }),
+        row({ docId: 'y', rootId: 'r', contentKey: 'same', usedOn: '2026-02-01' }),
+        row({ docId: 'z', rootId: 'r', contentKey: 'edited', usedOn: '2026-03-01' }),
       ],
       NO_FILTERS,
       ctx,

@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { pickFill } from '@/library/fill';
 import { groupRows } from '@/library/group';
-import { usedWithClass } from '@/library/history';
+import { classesLabel } from '@/library/cohort';
+import { usedWith } from '@/library/history';
 import {
   MARK_BANDS,
   NO_FILTERS,
@@ -12,6 +13,7 @@ import {
   blockingFilter,
   clearFilter,
   fromDocuments,
+  paperClasses,
   paperRoots,
   topicName,
   versionRows,
@@ -113,11 +115,11 @@ export function BankTab() {
   // Opening the tab reads the store again: papers saved since the last scan show up.
   useEffect(() => refresh(), [refresh]);
 
-  const classTag = worksheet.classTag?.trim() || undefined;
-  const ctx: TabContext = useMemo(
-    () => ({ openDocId: worksheet.id, ...(classTag ? { classTag } : {}) }),
-    [worksheet.id, classTag],
-  );
+  // The open paper's classes on its use date; none = a draft, and the class filter hides.
+  const { classes, satOn, createdAt } = worksheet;
+  const paperRefs = useMemo(() => paperClasses({ classes, satOn, createdAt }), [classes, satOn, createdAt]);
+  const classLabel = paperRefs.length > 0 ? classesLabel(paperRefs) : undefined;
+  const ctx: TabContext = useMemo(() => ({ openDocId: worksheet.id, classes: paperRefs }), [worksheet.id, paperRefs]);
   const types = useMemo(() => listQuestionTypes(), []);
   const base = useMemo(() => bankRowsBesides(rows, ctx.openDocId), [rows, ctx.openDocId]);
   const baseGroups = useMemo(() => groupRows(base), [base]);
@@ -160,10 +162,10 @@ export function BankTab() {
         count: fillCount,
         ...(effectiveFillType ? { typeId: effectiveFillType } : {}),
         ...(effectiveFillTopic ? { topic: effectiveFillTopic } : {}),
-        ...(classTag ? { classTag } : {}),
+        usedWith: paperRefs,
         excludeRootIds: roots.keys(),
       }),
-    [baseGroups, fillCount, effectiveFillType, effectiveFillTopic, classTag, roots],
+    [baseGroups, fillCount, effectiveFillType, effectiveFillTopic, paperRefs, roots],
   );
 
   const filterLabel = (key: FilterKey): string => {
@@ -177,7 +179,7 @@ export function BankTab() {
       case 'marks':
         return MARK_BANDS.find((band) => band.value === filters.marks)?.label ?? 'marks';
       case 'notUsedWithClass':
-        return `not used with ${classTag}`;
+        return `not used with ${classLabel}`;
       case 'from':
         return filters.from === 'banks'
           ? 'banks only'
@@ -216,7 +218,7 @@ export function BankTab() {
     const blocking = blockingFilter(rows, filters, ctx);
     body = (
       <StateNote>
-        {emptySentence(filters, classTag)}{' '}
+        {emptySentence(filters, classLabel)}{' '}
         {blocking ? (
           <LinkButton onClick={() => update(clearFilter(filters, blocking))}>Clear {filterLabel(blocking)}</LinkButton>
         ) : (
@@ -236,7 +238,7 @@ export function BankTab() {
                 row={row}
                 language={language}
                 inPaper={inPaper ? { ...(inPaper.number !== undefined ? { number: inPaper.number } : {}) } : undefined}
-                usedWithClass={classTag ? usedWithClass(group, classTag) : undefined}
+                usedWithClass={usedWith(group, paperRefs)}
                 versions={group.versions}
                 onVersions={() => setExpanded((open) => (open === group.rootId ? undefined : group.rootId))}
                 onSelect={inPaper ? () => useWorksheetStore.getState().select(inPaper.questionId) : undefined}
@@ -267,7 +269,7 @@ export function BankTab() {
   }
 
   // Fill prefers questions not used with the class; say so when it had to take some.
-  const usedCount = classTag ? picks.filter((group) => usedWithClass(group, classTag)).length : 0;
+  const usedCount = picks.filter((group) => usedWith(group, paperRefs)).length;
   const fillTopicLabel = effectiveFillTopic ? topicName(effectiveFillTopic) : 'any topic';
 
   return (
@@ -342,7 +344,7 @@ export function BankTab() {
             </MiniSelect>
           </div>
           <div className="flex gap-1.5">
-            {classTag && (
+            {classLabel && (
               <MiniSelect
                 label="Class"
                 value={filters.notUsedWithClass ? 'not' : 'any'}
@@ -350,7 +352,7 @@ export function BankTab() {
                 className="flex-1"
               >
                 <option value="any">Any use</option>
-                <option value="not">Not used with {classTag}</option>
+                <option value="not">Not used with {classLabel}</option>
               </MiniSelect>
           )}
           <MiniSelect label="From" value={fromValue(filters.from)} onChange={(value) => update({ from: parseFrom(value) })} className="flex-1">
@@ -412,11 +414,11 @@ export function BankTab() {
               {picks.length === 0
                 ? `Nothing left in ${fillTopicLabel}.`
                 : usedCount > 0
-                  ? `${usedCount} already used with ${classTag}`
+                  ? `${usedCount} already used with ${classLabel}`
                   : picks.length < fillCount
                     ? `Only ${picks.length} left in ${fillTopicLabel}.`
-                    : classTag
-                      ? `None used with ${classTag} · one ⌘Z undoes it`
+                    : classLabel
+                      ? `None used with ${classLabel} · one ⌘Z undoes it`
                       : 'One ⌘Z undoes the set.'}
             </span>
           </div>

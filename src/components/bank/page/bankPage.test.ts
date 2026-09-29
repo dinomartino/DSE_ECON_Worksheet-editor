@@ -5,7 +5,7 @@ import type { WorksheetSummary } from '@/storage/types';
 import {
   activeFilters,
   addTarget,
-  classTags,
+  classChoices,
   clearFilter,
   coverage,
   barPx,
@@ -13,7 +13,7 @@ import {
   filterRows,
   isThin,
   mixLabel,
-  sinceIso,
+  sinceDate,
   traySummary,
 } from './bankPage';
 
@@ -80,10 +80,14 @@ describe('filterRows', () => {
   const rows = [
     row({ rootId: 'a', typeId: choice, marks: 1, tags: ['C.ped'], searchText: 'elasticity', docKind: 'paper' }),
     row({ rootId: 'b', typeId: parts, marks: 6, tags: [], searchText: 'harvest', docKind: 'bank' }),
-    // `a` used with 5A in March 2026, `b` used with 5A in 2024.
-    row({ rootId: 'a', docId: 'used', classTag: '5A', docUpdatedAt: '2026-03-01T00:00:00.000Z' }),
-    row({ rootId: 'b', docId: 'old', classTag: '5a ', docUpdatedAt: '2024-03-01T00:00:00.000Z' }),
+    // `a` sat by 5A in March 2026, `b` by 3A in March 2024: both DSE 2027. The 2024 paper was
+    // tagged last week, which must not make it recent.
+    row({ rootId: 'a', docId: 'used', classes: ['5A'], usedOn: '2026-03-01' }),
+    row({ rootId: 'b', docId: 'old', classes: ['3a '], usedOn: '2024-03-01', docUpdatedAt: '2026-09-22T00:00:00.000Z' }),
+    // A draft holding `b` this month: never a use.
+    row({ rootId: 'b', docId: 'draft', usedOn: '2026-09-20' }),
   ];
+  const dse2027 = classChoices(rows)[0];
   const ids = (list: ReturnType<typeof filterRows>) => [...new Set(list.map((r) => r.rootId))];
 
   it('untagged, source, type and marks', () => {
@@ -96,31 +100,45 @@ describe('filterRows', () => {
   });
 
   it('"not used with <class> since…" drops every copy used in that window', () => {
-    expect(ids(filterRows(rows, { ...DEFAULT_FILTERS, notUsedWith: '5A' }, now))).toEqual([]);
-    expect(ids(filterRows(rows, { ...DEFAULT_FILTERS, notUsedWith: '5A', since: 'year' }, now))).toEqual(['a', 'b']);
-    expect(ids(filterRows(rows, { ...DEFAULT_FILTERS, notUsedWith: '5A', since: '12m' }, now))).toEqual(['b']);
+    expect(ids(filterRows(rows, { ...DEFAULT_FILTERS, notUsedWith: dse2027 }, now))).toEqual([]);
+    expect(ids(filterRows(rows, { ...DEFAULT_FILTERS, notUsedWith: dse2027, since: 'year' }, now))).toEqual(['a', 'b']);
+    expect(ids(filterRows(rows, { ...DEFAULT_FILTERS, notUsedWith: dse2027, since: '12m' }, now))).toEqual(['b']);
   });
 
   it('school years start in September', () => {
-    expect(sinceIso('year', new Date(2026, 8, 29))).toBe(new Date(2026, 8, 1).toISOString());
-    expect(sinceIso('year', new Date(2026, 1, 3))).toBe(new Date(2025, 8, 1).toISOString());
-    expect(sinceIso('ever', now)).toBeUndefined();
+    expect(sinceDate('year', new Date(2026, 8, 29))).toBe('2026-09-01');
+    expect(sinceDate('year', new Date(2026, 1, 3))).toBe('2025-09-01');
+    expect(sinceDate('12m', new Date(2026, 8, 29))).toBe('2025-09-29');
+    expect(sinceDate('ever', now)).toBeUndefined();
   });
 
   it('names each active filter so the empty state can clear it', () => {
-    const filters = { ...DEFAULT_FILTERS, topic: 'C.ped', typeId: choice, notUsedWith: '5A' };
+    const filters = { ...DEFAULT_FILTERS, topic: 'C.ped', typeId: choice, notUsedWith: dse2027 };
     expect(activeFilters(filters).map((f) => f.label)).toEqual([
       'C · Price elasticity of demand',
       'MCQ',
-      'not used with 5A',
+      'not used with DSE 2027',
     ]);
     expect(clearFilter(filters, 'notUsedWith')).toEqual({ ...filters, notUsedWith: undefined, since: 'ever' });
     expect(clearFilter(filters, 'topic').topic).toBe('all');
     expect(activeFilters(DEFAULT_FILTERS)).toEqual([]);
   });
 
-  it('lists class tags once per class, papers only', () => {
-    expect(classTags(rows)).toEqual(['5A']);
+  it('offers each cohort with the classes it has been, then classes with no form, papers only', () => {
+    expect(classChoices(rows)).toEqual([{ id: 'dse:2027', label: 'DSE 2027', detail: '3a 23-24, 5A 25-26', target: { cohort: 2027 } }]);
+    const more = [
+      ...rows,
+      row({ docId: 'u', classes: ['5B', '5A'], usedOn: '2025-12-01' }),
+      row({ docId: 'v', classes: ['5A'], usedOn: '2026-10-01' }),
+      row({ docId: 'w', classes: ['Econ X', 'econ x'], usedOn: '2026-10-01' }),
+      row({ docId: 'bank', docKind: 'bank', classes: ['Bank class'], usedOn: '2026-10-01' }),
+    ];
+    expect(classChoices(more).map((c) => [c.label, c.detail])).toEqual([
+      ['DSE 2027', '3a 23-24, 5A 5B 25-26'],
+      ['DSE 2028', '5A 26-27'],
+      ['Econ X', undefined],
+    ]);
+    expect(classChoices(more)[2].target).toEqual({ key: 'econx' });
   });
 });
 

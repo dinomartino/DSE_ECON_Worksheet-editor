@@ -859,8 +859,13 @@ export interface Worksheet {
   target?: PaperTarget;
   /** A question bank (`src/library/`) rather than a paper. Absent = a paper. */
   kind?: 'bank';
-  /** The class this paper was set for ("5A 2025-26"); the bank's "used with" reads it. */
-  classTag?: string;
+  /**
+   * The classes that sat this paper ("5A", "5B"), for the question bank's "used with".
+   * Absent = a draft, which never counts as a use (`model/classes.ts`). Never printed.
+   */
+  classes?: string[];
+  /** When the paper was sat or set, `YYYY-MM-DD`. Absent = `createdAt` stands in. */
+  satOn?: string;
   /** Keep this document's questions out of the question bank. Absent = indexed. */
   bankHidden?: boolean;
   createdAt: string;

@@ -1,7 +1,9 @@
+import { cleanClasses, dateOfUse } from '@/model/classes';
 import { flowItemLabel } from '@/model/flow';
 import { computeNumbering } from '@/model/numbering';
 import { topicLabel } from '@/model/topics';
 import type { Worksheet } from '@/model/types';
+import { classRefs, type ClassRef } from './cohort';
 import { groupRows } from './group';
 import { searchRows } from './search';
 import type { BankGroup, BankQuery, BankRow } from './types';
@@ -32,17 +34,23 @@ export interface TabFilters {
   /** Registry type id; '' = any. */
   typeId: string;
   marks: MarkBand;
-  /** Only honoured when the paper has a `classTag`. */
+  /** Only honoured when the paper names classes. */
   notUsedWithClass: boolean;
   from: FromFilter;
 }
 
 export const NO_FILTERS: TabFilters = { text: '', topic: '', typeId: '', marks: 'any', notUsedWithClass: false, from: 'all' };
 
-/** What the open paper contributes: its id (left out of the bank) and its class. */
+/** What the open paper contributes: its id (left out of the bank) and its classes. */
 export interface TabContext {
   openDocId: string;
-  classTag?: string;
+  /** The open paper's classes on its use date (`paperClasses`); empty or absent = a draft. */
+  classes?: readonly ClassRef[];
+}
+
+/** The open paper's classes on its use date, cohorts derived. */
+export function paperClasses(worksheet: Pick<Worksheet, 'classes' | 'satOn' | 'createdAt'>): ClassRef[] {
+  return classRefs(cleanClasses(worksheet.classes), dateOfUse(worksheet));
 }
 
 /** Every row but the open document's own (its saved copy lags the live paper). */
@@ -52,14 +60,14 @@ export function bankRowsBesides(rows: readonly BankRow[], openDocId: string): Ba
 
 /** The filters as a `BankQuery` ('banks' is a kind, not a query field: see `visibleGroups`). */
 export function tabQuery(filters: TabFilters, ctx: TabContext): BankQuery {
-  const classTag = ctx.classTag?.trim();
+  const classes = ctx.classes ?? [];
   const range = MARK_BANDS.find((band) => band.value === filters.marks)?.range;
   return {
     ...(filters.text.trim() ? { text: filters.text } : {}),
     ...(filters.topic ? { topic: filters.topic } : {}),
     ...(filters.typeId ? { typeId: filters.typeId } : {}),
     ...(range ? { marks: range } : {}),
-    ...(filters.notUsedWithClass && classTag ? { notUsedWithClass: classTag } : {}),
+    ...(filters.notUsedWithClass && classes.length > 0 ? { notUsedWith: classes } : {}),
     ...(typeof filters.from === 'object' ? { fromDocId: filters.from.docId } : {}),
     excludeDocId: ctx.openDocId,
   };
@@ -138,7 +146,7 @@ export function clearFilter(filters: TabFilters, key: FilterKey): TabFilters {
 
 export function activeFilters(filters: TabFilters, ctx: TabContext): FilterKey[] {
   const keys: FilterKey[] = [];
-  if (filters.notUsedWithClass && ctx.classTag?.trim()) keys.push('notUsedWithClass');
+  if (filters.notUsedWithClass && (ctx.classes?.length ?? 0) > 0) keys.push('notUsedWithClass');
   if (filters.from !== 'all') keys.push('from');
   if (filters.marks !== 'any') keys.push('marks');
   if (filters.typeId) keys.push('typeId');

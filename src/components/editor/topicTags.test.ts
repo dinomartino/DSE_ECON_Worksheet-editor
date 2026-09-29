@@ -19,7 +19,8 @@ function tagged() {
   const worksheet = buildAcceptanceWorksheet();
   return {
     ...worksheet,
-    classTag: 'zz-class-zz',
+    classes: ['zz-class-zz'],
+    satOn: '2025-11-03',
     questions: worksheet.questions.map((question, index) =>
       index === 0 ? { ...question, tags: ['C.ped', 'zz-free-tag-zz'] } : question,
     ),

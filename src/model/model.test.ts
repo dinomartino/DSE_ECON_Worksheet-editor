@@ -515,7 +515,8 @@ describe('schema versioning and document round-trip (§6, §11.11)', () => {
       examGapLines: 2,
       versions: { count: 3, seed: 7 },
       kind: 'bank' as const,
-      classTag: '5A 2025-26',
+      classes: ['5A', '5B'],
+      satOn: '2025-11-03',
       bankHidden: true,
     };
     const missing = Object.keys(populated).filter((key) => !KNOWN_KEYS.has(key));

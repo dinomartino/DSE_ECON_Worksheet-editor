@@ -221,7 +221,8 @@ scan; rebuildable, so no teacher's work lives in it.
 - `src/library/indexer.ts:rowsOf` — a document's rows (text only, never images; `bankHidden` yields none)
 - `src/library/contentKey.ts:contentKey` — content fingerprint ignoring ids, `lineage`, `tags`
 - `src/library/bankDocs.ts:copyToBank` · `:bankCopyDiffers` · `:updateBankCopy` — the only writes into a bank document; UI in `src/components/editor/BankActions.tsx:useBankActions`
-- `src/library/search.ts:searchRows` · `src/library/group.ts:groupRows` · `src/library/history.ts:usedIn` · `:usedWithClass` · `src/library/fill.ts:pickFill`
+- `src/library/search.ts:searchRows` · `src/library/group.ts:groupRows` · `src/library/history.ts:usedIn` · `:usedWith` · `:newestFirst` · `src/library/fill.ts:pickFill`
+- `src/model/classes.ts:dateOfUse` · `:parseClasses` · `:foldLegacyClassTag` — who sat a paper (`classes`, `satOn`) and when it counts from; `src/library/cohort.ts:cohortOf` · `:sameStudents` — the derived DSE cohort the anti-repeat filters match by
 - `src/library/useBank.ts:useBank` — the one read both surfaces use, over the persistent index below
 - `src/library/bankIndex.ts:createBankIndex` — stored rows first, then reconcile `list()` against `updatedAt` stamps (idle chunks, newest first), then the change feed; wakes on focus for other tabs
 - `src/library/bankBackend.ts:BankIndexBackend` · `:createJsonFileBackend` · `:createMemoryBackend` · `:INDEX_FORMAT` — where rows persist; unreadable is dropped and rebuilt
@@ -247,6 +248,7 @@ Invariants:
 - A bank is a `Worksheet` with `kind: 'bank'`; no second storage format.
 - The bank screen writes documents only while no editor is mounted (it is part of the start screen, which replaces the editor), so there is no in-memory copy to save over the write. Writes are queued one at a time.
 - Copies are independent; identity is `lineage.rootId`, never a shared id.
+- A use is a paper with `classes`, dated `satOn ?? createdAt`; never `updatedAt`, which only stamps index freshness. Drafts list where a question lives but never count as uses.
 - No module in `src/library/` branches on a type id (`src/library/noTypeBranching.test.ts`).
 - The index follows `list()`, never storage keys (a trashed web document keeps its key); it holds no images and no teacher's work — §Persistence.
 - The 題庫 tab is sticky: while open, a page selection moves the insert anchor instead of switching to Edit (`src/components/editor/Sidebar.tsx:Sidebar`).

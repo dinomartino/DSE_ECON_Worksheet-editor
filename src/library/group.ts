@@ -3,8 +3,8 @@ import type { BankGroup, BankRow } from './types';
 
 /**
  * Rows grouped by `rootId` — every copy of one question, however edited. Rows in a group
- * are newest first; groups are ordered by their newest row, then `rootId`, so the result
- * is deterministic for any input order.
+ * are newest first by use date (`newestFirst`), so editing an old paper never makes its copy
+ * the lead; groups are ordered by their lead row, then `rootId`, deterministic for any input.
  */
 export function groupRows(rows: readonly BankRow[]): BankGroup[] {
   const byRoot = new Map<string, BankRow[]>();

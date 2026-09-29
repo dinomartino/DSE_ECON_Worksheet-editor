@@ -2615,6 +2615,8 @@ in-flight values stay local; the store is called on pointer-up.
   longer names; events keep it current (saved/restored → re-index, trashed/removed →
   drop, cleared → wipe). Anything unreadable, or an `INDEX_FORMAT` mismatch, is dropped
   and rebuilt — never an error at the UI. No image and no teacher's work is in it.
+  The stamp is freshness only: a row's use date (`usedOn` = `satOn ?? createdAt`) orders
+  copies and dates uses, so editing an old paper never makes it look recently used.
 - **`KNOWN_KEYS` must list every top-level field** — an unlisted key is stripped into
   `__unknown`: it saves fine and vanishes on reload. A test fails when a populated
   worksheet carries a key the set lacks.
@@ -2664,6 +2666,9 @@ intact but unreachable.
   is deltas. The promise is that a file *opens*, not that it prints identically.
 - **Additive first**: an optional field with a default needs no bump (top-level ones go in
   `KNOWN_KEYS`; nested fields pass through).
+- **A field that never shipped** in a release (only develop builds wrote it) is read
+  tolerantly inside `migrate` (e.g. `foldLegacyClassTag`), not migrated: no released document
+  holds it, and a version bump would make released builds open every new document read-only.
 - **A shape change** appends one `MIGRATIONS` step, bumps `CURRENT_SCHEMA_VERSION`, and adds
   a new frozen `src/test/corpus/v<N>-published.json` written by that version's last build;
   old corpus files never change.

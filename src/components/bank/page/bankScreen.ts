@@ -1,6 +1,7 @@
 import { TOPICS, topicOf } from '@/model/topics';
 import type { BankGroup, BankRow } from '@/library/types';
-import type { TopicPick } from './bankPage';
+import { refsOf, rowUsedWith } from '@/library/history';
+import { classChoices, type ClassChoice, type TopicPick } from './bankPage';
 
 /**
  * The Question bank screen's pure half: which level is showing, how the review rail is
@@ -202,29 +203,38 @@ export function suggestTopics(
 /* ------------------------------------------------------------------------------------ */
 
 export interface ClassUsage {
-  classTag: string;
-  /** Distinct questions used on a paper with this class. */
+  /** The filter "Show the questions … has not used" applies: the class's cohort, or the class. */
+  choice: ClassChoice;
+  /** How the strip names it: "5A · DSE 2027", or "Class 5A" when no cohort derives. */
+  label: string;
+  /** Distinct questions used on a paper with these students. */
   used: number;
   /** Distinct questions in the bank. */
   total: number;
 }
 
 /**
- * The quiet strip beside the untagged one: how much of the bank the class on the most
- * recently saved paper has already seen. Undefined when no paper names a class.
+ * The quiet strip beside the untagged one: how much of the bank the students of the most
+ * recent use (by use date, never by edit) have already seen. Undefined when no paper names a class.
  */
 export function latestClassUsage(rows: readonly BankRow[]): ClassUsage | undefined {
   let latest: BankRow | undefined;
   for (const row of rows) {
-    if (row.docKind !== 'paper' || !row.classTag?.trim()) continue;
-    if (!latest || row.docUpdatedAt > latest.docUpdatedAt) latest = row;
+    if (row.docKind !== 'paper' || !row.classes?.length) continue;
+    if (!latest || row.usedOn > latest.usedOn || (row.usedOn === latest.usedOn && row.docId < latest.docId)) latest = row;
   }
-  if (!latest?.classTag) return undefined;
-  const tag = latest.classTag.trim().toLowerCase();
-  const used = new Set(
-    rows.filter((row) => row.docKind === 'paper' && row.classTag?.trim().toLowerCase() === tag).map((row) => row.rootId),
-  );
-  return { classTag: latest.classTag.trim(), used: used.size, total: new Set(rows.map((row) => row.rootId)).size };
+  const ref = latest ? refsOf(latest)[0] : undefined;
+  if (!ref) return undefined;
+  const id = ref.cohort !== undefined ? `dse:${ref.cohort}` : `class:${ref.key}`;
+  const choice = classChoices(rows).find((entry) => entry.id === id);
+  if (!choice) return undefined;
+  const used = new Set(rows.filter((row) => rowUsedWith(row, [choice.target])).map((row) => row.rootId));
+  return {
+    choice,
+    label: ref.cohort !== undefined ? `${ref.name} · ${choice.label}` : `Class ${ref.name}`,
+    used: used.size,
+    total: new Set(rows.map((row) => row.rootId)).size,
+  };
 }
 
 /** The key's two lines: the coarse code, and the sub-topic's (or topic's) own name. */

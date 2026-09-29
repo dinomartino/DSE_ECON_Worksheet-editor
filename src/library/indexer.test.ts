@@ -12,15 +12,16 @@ describe('rowsOf', () => {
   it('derives one row per question, in printed order, named and dated by the summary', () => {
     const a = choiceQuestion('Which is a free good?', '以下哪項是免費物品？', ['A.scarcity']);
     const b = partsQuestion('A city plans a garden.');
-    const doc = docWith([a, b], { classTag: ' 5A 2025-26 ' });
+    const doc = docWith([a, b], { classes: [' 5A ', '5B', '5a', ''], satOn: '2025-11-03', createdAt: '2025-10-01T00:00:00.000Z' });
     const rows = rowsOf(doc, summary);
     expect(rows.map((r) => r.questionId)).toEqual([a.id, b.id]);
     expect(rows[0]).toMatchObject({
       docId: doc.id,
       docTitle: 'Mock 2026',
       docUpdatedAt: '2026-03-01T00:00:00.000Z',
+      usedOn: '2025-11-03',
       docKind: 'paper',
-      classTag: '5A 2025-26',
+      classes: ['5A', '5B'],
       rootId: a.id,
       typeId: a.type,
       marks: 1,
@@ -49,7 +50,7 @@ describe('rowsOf', () => {
     expect(row.rootId).toBe(original.id);
     expect(row.questionId).toBe(copy.id);
     expect(row.docKind).toBe('bank');
-    expect(row.classTag).toBeUndefined();
+    expect(row.classes).toBeUndefined();
   });
 
   it('skips a hidden document', () => {

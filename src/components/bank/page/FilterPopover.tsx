@@ -10,6 +10,7 @@ import {
   SINCE_CHOICES,
   typeName,
   type BankFilters,
+  type ClassChoice,
   type MarksBand,
   type Since,
   type SourceFilter,
@@ -27,7 +28,8 @@ export function FilterPopover({
 }: {
   /** The page's filters; `text` and `topic` are the bar's and the level's, not shown here. */
   filters: BankFilters;
-  classes: string[];
+  /** Cohorts and plain classes that sat a paper (`classChoices`). */
+  classes: ClassChoice[];
   onChange: (next: BankFilters) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -62,7 +64,7 @@ function Panel({
   onClose,
 }: {
   filters: BankFilters;
-  classes: string[];
+  classes: ClassChoice[];
   onChange: (next: BankFilters) => void;
   onClose: () => void;
 }) {
@@ -110,13 +112,19 @@ function Panel({
       </Field>
       <Field label="Class">
         <Select
-          value={filters.notUsedWith ?? ''}
+          value={filters.notUsedWith?.id ?? ''}
           disabled={classes.length === 0}
-          title={classes.length === 0 ? 'Give a worksheet a class in Setup to use this' : undefined}
-          onChange={(value) => onChange({ ...filters, notUsedWith: value || undefined, since: value ? filters.since : 'ever' })}
+          title={classes.length === 0 ? 'Say which classes sat a paper in Setup to use this' : undefined}
+          onChange={(value) => {
+            const choice = classes.find((entry) => entry.id === value);
+            onChange({ ...filters, notUsedWith: choice, since: choice ? filters.since : 'ever' });
+          }}
           options={[
             { value: '', label: classes.length === 0 ? 'No classes yet' : 'Any class' },
-            ...classes.map((tag) => ({ value: tag, label: `Not used with ${tag}` })),
+            ...classes.map((choice) => ({
+              value: choice.id,
+              label: `Not used with ${choice.label}${choice.detail ? ` (${choice.detail})` : ''}`,
+            })),
           ]}
         />
       </Field>

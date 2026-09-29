@@ -1,20 +1,29 @@
+import { anySameStudents, classRefs, type ClassRef, type ClassTarget } from './cohort';
 import type { BankGroup, BankRow, BankUse } from './types';
 
-/** Class tags compare trimmed and case-insensitive ("5A 2025-26" = "5a 2025-26 "). */
-export function sameClass(a: string | undefined, b: string | undefined): boolean {
-  const left = a?.trim().toLowerCase();
-  return Boolean(left) && left === b?.trim().toLowerCase();
+/**
+ * Newest use date first (`usedOn`: sat, else made — never edited); ties by docId, so the
+ * order never depends on input order and curating an old paper never promotes it.
+ */
+export function newestFirst(a: { usedOn: string; docId: string }, b: { usedOn: string; docId: string }): number {
+  if (a.usedOn !== b.usedOn) return a.usedOn < b.usedOn ? 1 : -1;
+  return a.docId < b.docId ? -1 : a.docId > b.docId ? 1 : 0;
 }
 
-/** Newest document first; ties by docId, so the order never depends on input order. */
-export function newestFirst(a: { docUpdatedAt: string; docId: string }, b: { docUpdatedAt: string; docId: string }): number {
-  if (a.docUpdatedAt !== b.docUpdatedAt) return a.docUpdatedAt < b.docUpdatedAt ? 1 : -1;
-  return a.docId < b.docId ? -1 : a.docId > b.docId ? 1 : 0;
+/** A row's or use's classes on its date, cohorts derived. A draft has none. */
+export function refsOf(entry: Pick<BankRow, 'classes' | 'usedOn'>): ClassRef[] {
+  return classRefs(entry.classes, entry.usedOn);
+}
+
+/** Whether this paper row counts as a use with any of `targets`' students. Banks and drafts never do. */
+export function rowUsedWith(row: Pick<BankRow, 'docKind' | 'classes' | 'usedOn'>, targets: readonly ClassTarget[]): boolean {
+  return row.docKind === 'paper' && targets.length > 0 && anySameStudents(refsOf(row), targets);
 }
 
 /**
  * The papers holding a copy of `rootId` (every version), newest first, one entry per
- * document (its first copy's number). Bank documents are storage, not uses, so never count.
+ * document (its first copy's number). Bank documents are storage, not uses, so never
+ * appear. Drafts (no classes) do: they show where a question lives, but `usedWith` skips them.
  */
 export function usedIn(rootId: string, rows: readonly BankRow[]): BankUse[] {
   const byDoc = new Map<string, BankUse>();
@@ -23,15 +32,21 @@ export function usedIn(rootId: string, rows: readonly BankRow[]): BankUse[] {
     byDoc.set(row.docId, {
       docId: row.docId,
       docTitle: row.docTitle,
-      docUpdatedAt: row.docUpdatedAt,
-      ...(row.classTag ? { classTag: row.classTag } : {}),
+      usedOn: row.usedOn,
+      ...(row.classes ? { classes: row.classes } : {}),
       ...(row.number !== undefined ? { number: row.number } : {}),
     });
   }
   return [...byDoc.values()].sort(newestFirst);
 }
 
-/** The most recent use of any version of this question with `classTag`; undefined if never. */
-export function usedWithClass(group: BankGroup, classTag: string | undefined): BankUse | undefined {
-  return group.usedIn.find((use) => sameClass(use.classTag, classTag));
+/** The most recent use of any version of this question with `targets`' students; undefined if never. */
+export function usedWith(group: BankGroup, targets: readonly ClassTarget[]): BankUse | undefined {
+  if (targets.length === 0) return undefined;
+  return group.usedIn.find((use) => anySameStudents(refsOf(use), targets));
+}
+
+/** The most recent real use (a paper with classes), whoever sat it; undefined if only drafts. */
+export function lastUse(group: BankGroup): BankUse | undefined {
+  return group.usedIn.find((use) => (use.classes?.length ?? 0) > 0);
 }

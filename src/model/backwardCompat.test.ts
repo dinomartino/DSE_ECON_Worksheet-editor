@@ -201,16 +201,17 @@ describe('a document saved by the published build still opens', () => {
     expect(reloaded.questions.at(-1)!.tags).toEqual(['C', 'C.ped', 'past paper']);
   });
 
-  it('carries the bank fields (kind, classTag, bankHidden) through load → save → load', () => {
+  it('carries the bank fields (kind, classes, satOn, bankHidden) through load → save → load', () => {
     const loaded = migrate(structuredClone(v1Corpus));
     expect(loaded.kind).toBeUndefined();
-    expect(loaded.classTag).toBeUndefined();
+    expect(loaded.classes).toBeUndefined();
+    expect(loaded.satOn).toBeUndefined();
     expect(loaded.bankHidden).toBeUndefined();
 
-    const fields = { kind: 'bank' as const, classTag: '5A 2025-26', bankHidden: true };
+    const fields = { kind: 'bank' as const, classes: ['5A', '5B'], satOn: '2025-11-03', bankHidden: true };
     const reloaded = migrate(JSON.parse(JSON.stringify(serializeWorksheet({ ...loaded, ...fields }))));
     expect(reloaded.__unknown).toBeUndefined();
-    expect({ kind: reloaded.kind, classTag: reloaded.classTag, bankHidden: reloaded.bankHidden }).toEqual(fields);
-    expect({ ...reloaded, kind: undefined, classTag: undefined, bankHidden: undefined }).toEqual(loaded);
+    expect({ kind: reloaded.kind, classes: reloaded.classes, satOn: reloaded.satOn, bankHidden: reloaded.bankHidden }).toEqual(fields);
+    expect({ ...reloaded, kind: undefined, classes: undefined, satOn: undefined, bankHidden: undefined }).toEqual(loaded);
   });
 });

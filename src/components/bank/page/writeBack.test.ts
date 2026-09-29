@@ -10,7 +10,7 @@ const NOW = '2026-09-29T00:00:00.000Z';
 describe('withQuestionTags', () => {
   const target = choiceQuestion('Along a straight-line demand curve…', '', ['C', 'mock 2025']);
   const other = partsQuestion('Explain a bumper harvest.');
-  const doc = docWith([target, other], { classTag: '5A', updatedAt: '2026-01-01T00:00:00.000Z' });
+  const doc = docWith([target, other], { classes: ['5A'], updatedAt: '2026-01-01T00:00:00.000Z' });
 
   it('changes only the target question’s tags and preserves everything else', () => {
     const next = withQuestionTags(doc, [target.id], replaceTopics(['C.ped', 'C.equilibrium']), NOW);

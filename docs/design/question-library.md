@@ -72,9 +72,30 @@ interface QuestionBase {
 }
 interface Worksheet {
   kind?: 'bank';            // KNOWN_KEYS
-  classTag?: string;        // "5A 2025-26"; KNOWN_KEYS
+  classes?: string[];       // ["5A", "5B"]: who sat it; absent = a draft; KNOWN_KEYS
+  satOn?: string;           // "2025-11-03": when; absent = createdAt; KNOWN_KEYS
 }
 ```
+
+### What a use means (C5)
+
+- **A use is a paper that names classes.** A paper without `classes` is a draft: "Used in"
+  still lists it as a place the question lives, but no anti-repeat filter, Fill ranking or
+  class strip counts it. Banks are never uses.
+- **The use date is `satOn ?? createdAt`** (`src/model/classes.ts:dateOfUse`), never
+  `updatedAt`: tagging or fixing a 2024 paper must not make it look used this year, nor make
+  it the group's lead copy. Rows carry it as `usedOn`; `docUpdatedAt` stays the index's
+  freshness stamp only. Groups lead with the newest use date, ties by docId.
+- **Cohort, derived, never stored** (`src/library/cohort.ts`): a class starting with a form
+  number ("5A", "S5A", "中五甲") on its use date's school year (Sept to Aug) sits the DSE in
+  schoolYearEnd + (6 − form). 4A in 2024-25, 5A in 2025-26 and 6A in 2026-27 are DSE 2027.
+  "Not used with" matches by cohort when both sides derive one, else by class name
+  (case- and space-insensitive).
+- **A copy is unsat**: Duplicate and "New worksheet from these" never carry `classes`/`satOn`.
+- **Develop builds stored `classTag`** (one string, never released). `migrate` folds it into
+  `classes` (`src/model/classes.ts:foldLegacyClassTag`); a trailing school year becomes a
+  `satOn` only when the paper was made in another year. No schema bump: no released
+  document holds it, and a bump would make released builds open new documents read-only.
 
 - `migrate` checks only top-level keys; question objects pass through, and every
   per-question rewrite (`mapQuestion`, the text walker's `patch`, `mapAllBlocks`) spreads.
@@ -130,8 +151,8 @@ package owns the files listed; anything else it needs from another package it ta
 from WP-0's contracts, not from that package's branch.
 
 **WP-0 · Contracts and the pure core.**
-- Model: `tags?: string[]` on `QuestionBase`; `kind?: 'bank'`, `classTag?: string`,
-  `bankHidden?: boolean` on `Worksheet` (all in `KNOWN_KEYS`); corpus tests.
+- Model: `tags?: string[]` on `QuestionBase`; `kind?: 'bank'`, `classes?: string[]`,
+  `satOn?: string`, `bankHidden?: boolean` on `Worksheet` (all in `KNOWN_KEYS`); corpus tests.
 - `src/model/topics.ts`: the appendix as data; `TOPICS`, `topicOf(code)`,
   `parentCode(code)`, `matchesTopic(tags, code)` (a coarse code matches its fine ones),
   `topicLabel(code, lang)`.
@@ -151,7 +172,7 @@ from WP-0's contracts, not from that package's branch.
   one commit, one ⌘Z, returns the new ids.
 
 **WP-A · Topic tags UI** (S): the Topic row in the Inspector (picker over `TOPICS` +
-free text), `classTag` and "Hide from bank" in Setup → Worksheet, a quiet tag line in
+free text), classes, sat-on date and "Hide from bank" in Setup → Worksheet, a quiet tag line in
 Outline rows; test that tags never reach IR, `.docx` or clipboard.
 
 **WP-B · Persistent index** (M–L): the change-feed decorator at the store singleton
