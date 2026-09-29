@@ -556,6 +556,13 @@ export function questionUntranslated(question: Question, mode: Pick<OutputMode, 
   return count;
 }
 
+/** One question's slots, walked on its own (the question bank's search text and languages). */
+export function questionTexts(question: Question): TextSlot[] {
+  const slots: TextSlot[] = [];
+  mapQuestion({ visit: recordInto(slots), opts: {}, claimed: new Map() }, question, undefined);
+  return slots;
+}
+
 /** Deep equality of plain data; an `undefined` key reads as absent. */
 function sameData(a: unknown, b: unknown): boolean {
   if (a === b) return true;
