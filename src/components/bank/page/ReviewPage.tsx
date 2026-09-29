@@ -373,20 +373,23 @@ function Facts({ children }: { children: ReactNode }) {
   return <dl className="m-0 grid grid-cols-[70px_minmax(0,1fr)] content-start gap-x-2.5 gap-y-1 text-[12.5px] tabular-nums text-ink">{children}</dl>;
 }
 
-/** Each paper holding a copy: who sat it and when, then where. A draft names no class. */
+/**
+ * Each paper holding a copy: who sat it and when, then the paper and question number on
+ * their own line (up to two lines, so a long title stays readable in the narrow column).
+ * A draft names no class.
+ */
 function UsedIn({ group, usedWith }: { group: BankGroup | undefined; usedWith?: ClassChoice }) {
   const uses = group?.usedIn ?? [];
   if (uses.length === 0) return <span className="text-ink-subtle">No paper yet</span>;
   return (
-    <ul>
+    <ul className="space-y-1">
       {uses.slice(0, 3).map((use) => {
         const amber = usedWith && anySameStudents(refsOf(use), [usedWith.target]);
         const where = `${use.docTitle}${use.number !== undefined ? ` · Q${use.number}` : ''}`;
         return (
-          <li key={use.docId} className={`truncate ${amber ? 'text-warn-ink' : ''}`} title={`${sittingLabel(use)} · ${where}`}>
-            <span className={amber ? '' : use.classes?.length ? 'text-ink' : 'text-ink-subtle'}>{sittingLabel(use)}</span>
-            {' · '}
-            {where}
+          <li key={use.docId} className={amber ? 'text-warn-ink' : ''} title={`${sittingLabel(use)} · ${where}`} data-used-in>
+            <span className={`block truncate ${amber ? '' : use.classes?.length ? 'text-ink' : 'text-ink-subtle'}`}>{sittingLabel(use)}</span>
+            <span className={`line-clamp-2 break-words leading-snug ${amber ? '' : 'text-ink-muted'}`}>{where}</span>
           </li>
         );
       })}

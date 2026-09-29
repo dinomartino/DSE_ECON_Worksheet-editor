@@ -1,5 +1,18 @@
 import { topicLabel } from '@/model/topics';
+import type { Question } from '@/model/types';
 import type { BankRow } from './types';
+
+/**
+ * A question read from its document, given the tags its bank row shows (the root's union,
+ * `withSharedTags`): its own first, then the rest. Every copy taken from the bank goes
+ * through this, so the new copy starts with every topic the bank showed, not only the
+ * picked copy's. The same object when nothing is added.
+ */
+export function withRowTags<Q extends Question>(question: Q, row: Pick<BankRow, 'tags'>): Q {
+  const own = question.tags ?? [];
+  const added = row.tags.filter((tag, i) => !own.includes(tag) && row.tags.indexOf(tag) === i);
+  return added.length > 0 ? { ...question, tags: [...own, ...added] } : question;
+}
 
 /**
  * One truth for tags: every copy of a question (same `rootId`) reads the union of all its

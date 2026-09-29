@@ -15,7 +15,7 @@ import { useOwningDocument } from './useOwningDocument';
  * Level 3: the untagged questions one at a time. The question large, then up to five
  * suggested topics and "… All topics" as six numbered keys; Enter saves and the next
  * question appears. Saving writes the owning documents directly, which is safe only
- * because no editor is mounted on this screen (`writeBack.ts`).
+ * because no editor is mounted on this screen (`src/library/tagWrites.ts`).
  */
 export function TagAsYouGo({
   row,

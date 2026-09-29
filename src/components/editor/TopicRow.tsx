@@ -27,9 +27,12 @@ export function filterTopics(query: string): Array<{ topic: Topic; children: Top
  */
 export function TopicRow({
   tags,
+  note,
   onChange,
 }: {
   tags: readonly string[] | undefined;
+  /** A quiet line after an edit, e.g. "Also updated in 2 other worksheets." */
+  note?: string;
   /** `undefined` clears the field, so an untagged question carries none. */
   onChange: (tags: string[] | undefined) => void;
 }) {
@@ -110,6 +113,11 @@ export function TopicRow({
             );
           })}
         </ul>
+      )}
+      {note && (
+        <p role="status" className="animate-fade-in text-[11px] text-ink-subtle">
+          {note}
+        </p>
       )}
 
       {open && (

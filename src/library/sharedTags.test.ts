@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { copyQuestion } from '@/model/lineage';
 import { rowsOf } from './indexer';
 import { searchRows } from './search';
-import { tagsByRoot, withSharedTags } from './sharedTags';
+import { tagsByRoot, withRowTags, withSharedTags } from './sharedTags';
 import { choiceQuestion, docWith, row } from './testKit';
 
 describe('tagsByRoot', () => {
@@ -40,5 +40,16 @@ describe('withSharedTags', () => {
     expect(searchRows(rows, { text: 'market intervention' })).toHaveLength(2);
     expect(searchRows(rows, { text: '市場干預' })).toHaveLength(2);
     expect(searchRows(rows, { topic: 'C' })).toHaveLength(2);
+  });
+});
+
+describe('withRowTags', () => {
+  it('joins the row’s tags after the question’s own, once each, and is the same object when nothing is added', () => {
+    const question = choiceQuestion('Along a straight-line demand curve…', '', ['C', 'mock']);
+    expect(withRowTags(question, { tags: ['C.ped', 'C', 'C.ped'] }).tags).toEqual(['C', 'mock', 'C.ped']);
+    expect(withRowTags(question, { tags: ['mock'] })).toBe(question);
+    const bare = choiceQuestion('Untagged');
+    expect(withRowTags(bare, { tags: [] })).toBe(bare);
+    expect(withRowTags(bare, { tags: ['D'] }).tags).toEqual(['D']);
   });
 });

@@ -1,20 +1,22 @@
 import { isNewerThanBuild } from '@/model/migrations';
-import type { BankRow } from '@/library/types';
 import { topicOf } from '@/model/topics';
-import type { Worksheet } from '@/model/types';
+import type { Question, Worksheet } from '@/model/types';
+import type { BankRow } from './types';
 import type { WorksheetStore } from '@/storage/types';
 
 /**
- * Topic edits from the bank page, written into the documents that own the questions.
+ * Topic edits written into the documents that own the questions: one truth per question
+ * (C6), so every copy it may write ends with the same topics. Hidden and trashed documents
+ * are not in the index and keep their own; a document from a newer build is reported, not
+ * written.
  *
- * Safe on the start screen because no editor is mounted there: `EditorHost` renders the
- * start screen *instead of* `EditorApp`, and leaving the editor awaits
- * `flushBeforeLeaving`, so no in-memory copy of any document is waiting to be saved over
- * this write. Opening a document afterwards loads it from storage again.
- *
- * Every edit from the bank goes to every copy of the question (`copyWrites`), so all the
- * copies it may write end with the same topics. Hidden and trashed documents are not in
- * the index and keep their own; a document from a newer build is reported, not written.
+ * Two writers, each safe for its own reason:
+ * - **The bank screen** writes any copy. No editor is mounted there (`EditorHost` renders
+ *   the start screen *instead of* `EditorApp`, and leaving the editor awaits
+ *   `flushBeforeLeaving`), so no in-memory copy can be saved over the write.
+ * - **The editor's Topic row** (`src/components/editor/topicSync.ts`) changes the open
+ *   copy through the store (one undo) and writes only the *other* documents here, never
+ *   the open one, whose autosave would otherwise race this write.
  */
 
 /** A question's new tags, from its current ones. */
@@ -49,6 +51,23 @@ function unique(tags: readonly string[]): string[] {
 }
 
 const sameList = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((tag, i) => tag === b[i]);
+const sameSet = (a: readonly string[], b: readonly string[]) => new Set(a).size === new Set(b).size && a.every((tag) => b.includes(tag));
+
+/**
+ * One copy's topic change, carried to another copy: it ends holding every tag the edited
+ * copy now holds, minus what the edit took off, plus whatever else it already had. A copy
+ * already holding that set, in any order, is left as it is.
+ */
+export function matchEdit(before: readonly string[], after: readonly string[]): TagEdit {
+  const removed = new Set(before.filter((tag) => !after.includes(tag)));
+  return (tags) => {
+    const next = unique([...after, ...tags.filter((tag) => !removed.has(tag))]);
+    return sameSet(next, tags) ? [...tags] : next;
+  };
+}
+
+/** A question's identity across copies, keyed as the index keys it (`BankRow.rootId`). */
+export const rootOf = (question: Pick<Question, 'id' | 'lineage'>): string => question.lineage?.rootId ?? question.id;
 
 /**
  * The document with `edit` applied to the listed questions' `tags` and nothing else:
@@ -99,6 +118,18 @@ export function copyWrites(rows: readonly Pick<BankRow, 'rootId' | 'docId' | 'qu
   return out;
 }
 
+/** Every indexed copy of `question` in a document other than `openDocId` (`copyWrites`). */
+export function otherCopyWrites(
+  rows: readonly Pick<BankRow, 'rootId' | 'docId' | 'questionId'>[],
+  question: Pick<Question, 'id' | 'lineage'>,
+  openDocId: string,
+): TagWrite[] {
+  return copyWrites(
+    rows.filter((row) => row.docId !== openDocId),
+    [rootOf(question)],
+  );
+}
+
 export interface WriteReport {
   /** Documents saved. */
   saved: string[];
@@ -115,11 +146,14 @@ export async function writeTags(
   store: Pick<WorksheetStore, 'load' | 'save'>,
   writes: readonly TagWrite[],
   edit: TagEdit,
+  /** Checked just before each document is read: true leaves it alone, unreported. */
+  skip: (docId: string) => boolean = () => false,
 ): Promise<WriteReport> {
   const byDoc = new Map<string, string[]>();
   for (const write of writes) byDoc.set(write.docId, [...(byDoc.get(write.docId) ?? []), write.questionId]);
   const report: WriteReport = { saved: [], failed: [] };
   for (const [docId, questionIds] of byDoc) {
+    if (skip(docId)) continue;
     try {
       const worksheet = await store.load(docId);
       if (!worksheet) {

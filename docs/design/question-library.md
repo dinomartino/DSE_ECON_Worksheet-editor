@@ -25,8 +25,13 @@ Revised from the 2026-09-26 proposal after an audit against the code at `9f2009b
   every version. **Topics are one truth per question** (C6): every topic edit made in the
   bank (Edit topics, tag as you go, Set topic add/remove/replace) writes every copy it may
   (not hidden, trashed or newer-build documents; those are reported), and the bank reads
-  the union of all copies' tags (`src/library/sharedTags.ts`). The editor's Topic row
-  still edits only the open copy; the bank then shows the union. **Update bank copy** (explicit, never automatic) writes an edited
+  the union of all copies' tags (`src/library/sharedTags.ts`). The editor's Topic row does
+  the same (`src/components/editor/topicSync.ts`): the open copy through the store (⌘Z
+  undoes it, and only it), every other indexed copy of its root through storage, never the
+  open document; each other copy gains the edited copy's topics, loses what the edit took
+  off and keeps its own extras. A copy taken from the bank (Insert, Fill, Add to, New
+  worksheet from these) starts with the union, not the picked copy's tags
+  (`src/library/sharedTags.ts:withRowTags`). **Update bank copy** (explicit, never automatic) writes an edited
   question back to the bank document it came from; **Treat as a new question** drops
   `lineage`.
 - **Fill is deterministic:** best match first, then least recently used, never already

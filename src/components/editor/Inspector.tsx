@@ -1,6 +1,6 @@
 'use client';
 
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { editTargetKey } from '@/model/edits';
 import { LAYOUT_NAME, MIN_ANSWER_LINES, MIN_SPACER_PT } from '@/model/flow';
 import { newId } from '@/model/factories';
@@ -15,6 +15,7 @@ import { CloseIcon, ListIcon } from '@/components/ui/icons';
 import { SizeStepper } from '@/components/ui/SizeStepper';
 import { biExcerpt, ExcerptRow } from './panelRows';
 import { TopicRow } from './TopicRow';
+import { setQuestionTopics, topicSyncDeps } from './topicSync';
 import { StimulusEditorPanel } from './StimulusEditorPanel';
 
 /**
@@ -231,6 +232,8 @@ export function Inspector({
   const selectElement = useWorksheetStore((s) => s.selectElement);
   const updateQuestion = useWorksheetStore((s) => s.updateQuestion);
   const updateLayoutElement = useWorksheetStore((s) => s.updateLayoutElement);
+  // "Also updated in 2 other worksheets": shown in the Topic row of the question it is about.
+  const [topicNote, setTopicNote] = useState<{ questionId: string; text: string }>();
 
   const selected = worksheet.questions.find((question) => question.id === selectedQuestionId);
 
@@ -358,7 +361,15 @@ export function Inspector({
           <TopicRow
             key={selected.id}
             tags={selected.tags}
-            onChange={(tags) => updateQuestion(selected.id, { tags })}
+            note={topicNote?.questionId === selected.id ? topicNote.text : undefined}
+            onChange={(tags) => {
+              const questionId = selected.id;
+              setTopicNote(undefined);
+              void setQuestionTopics(questionId, tags, {
+                ...topicSyncDeps(),
+                notify: (text) => setTopicNote({ questionId, text }),
+              });
+            }}
           />
         </div>
       </div>

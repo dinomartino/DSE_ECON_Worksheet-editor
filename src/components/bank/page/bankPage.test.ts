@@ -6,6 +6,7 @@ import {
   activeFilters,
   addTarget,
   classChoices,
+  classChoiceText,
   clearFilter,
   coverage,
   barPx,
@@ -139,6 +140,19 @@ describe('filterRows', () => {
       ['Econ X', undefined],
     ]);
     expect(classChoices(more)[2].target).toEqual({ key: 'econx' });
+  });
+
+  it('words a choice short for the closed select and in full for the open list', () => {
+    const [dse] = classChoices(rows);
+    expect(classChoiceText(dse)).toEqual({
+      closed: 'Not used with DSE 2027',
+      open: 'Not used with DSE 2027 (3a 23-24, 5A 25-26)',
+      note: 'Same students: 3a 23-24, 5A 25-26',
+    });
+    expect(classChoiceText({ id: 'class:econx', label: 'Econ X', target: { key: 'econx' } })).toEqual({
+      closed: 'Not used with Econ X',
+      open: 'Not used with Econ X',
+    });
   });
 });
 

@@ -1,9 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { rowsOf } from '@/library/indexer';
+import { withSharedTags } from '@/library/sharedTags';
 import { choiceQuestion, docWith, partsQuestion } from '@/library/testKit';
+import { copyQuestion } from '@/model/lineage';
+import type { Worksheet } from '@/model/types';
+import { useWorksheetStore } from '@/store/worksheetStore';
+import { addPicksToOpenDocument } from './addToOpen';
 import { computeNumbering } from '@/model/numbering';
 import { plain } from '@/model/text';
 import { questionPreviewHtml } from './questionPreview';
-import { sharedTopic, worksheetFromPicks } from './fromSelection';
+import { readPicks, sharedTopic, worksheetFromPicks } from './fromSelection';
 
 describe('worksheetFromPicks', () => {
   it('copies the picks in picked order, with fresh ids and lineage back to their source', () => {
@@ -55,5 +61,44 @@ describe('questionPreviewHtml', () => {
     expect(preview.html).not.toMatch(/<script/i);
     expect(preview.widthPx).toBeCloseTo((11906 - 2880) / 15, 0);
     expect(questionPreviewHtml(doc, 'missing', 'en')).toBeUndefined();
+  });
+});
+
+describe('readPicks', () => {
+  const original = choiceQuestion('Along a straight-line demand curve…', '', ['C']);
+  const home = docWith([original]);
+  const copy = { ...copyQuestion(original, home.id), tags: ['C.ped', 'mock 2025'] };
+  const other = docWith([copy, partsQuestion('Explain a bumper harvest.')]);
+  const sources = new Map<string, Worksheet>([
+    [home.id, home],
+    [other.id, other],
+  ]);
+  const loads: string[] = [];
+  const store = {
+    load: async (id: string) => {
+      loads.push(id);
+      return sources.get(id);
+    },
+  };
+  const rows = withSharedTags([...rowsOf(home), ...rowsOf(other)]);
+  const homeRow = rows.find((r) => r.docId === home.id)!;
+
+  beforeEach(() => {
+    loads.length = 0;
+  });
+
+  it('gives each pick the tags its row shows, so New worksheet from these carries the union', async () => {
+    const picked = await readPicks(store, [homeRow, { ...homeRow, questionId: 'gone' }]);
+    expect(picked).toHaveLength(1);
+    expect(picked[0].question.tags).toEqual(['C', 'C.ped', 'mock 2025']);
+    expect(worksheetFromPicks(picked).questions[0].tags).toEqual(['C', 'C.ped', 'mock 2025']);
+    expect(loads).toEqual([home.id]); // one load per document
+    expect(home.questions[0].tags).toEqual(['C']); // the source is only read
+  });
+
+  it('and Add to the open paper does too', async () => {
+    useWorksheetStore.setState({ worksheet: docWith([partsQuestion('Already here')]), past: [], future: [], readOnly: false });
+    const [id] = addPicksToOpenDocument(await readPicks(store, [homeRow]));
+    expect(useWorksheetStore.getState().worksheet.questions.find((q) => q.id === id)?.tags).toEqual(['C', 'C.ped', 'mock 2025']);
   });
 });

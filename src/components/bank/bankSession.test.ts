@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { rowsOf } from '@/library/indexer';
+import { withSharedTags } from '@/library/sharedTags';
 import { choiceQuestion, docWith, row } from '@/library/testKit';
+import { copyQuestion } from '@/model/lineage';
 import type { Worksheet } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { insertFromBank, useBankSession } from './bankSession';
@@ -140,5 +143,30 @@ describe('tab text', () => {
     const filters = { ...NO_FILTERS, typeId: choiceQuestion('x').type, topic: 'C.ped', notUsedWithClass: true };
     expect(emptySentence(filters, '5A')).toBe('No MCQs in C · Price elasticity of demand not used with 5A.');
     expect(emptySentence(filters, undefined)).toBe('No MCQs in C · Price elasticity of demand.');
+  });
+});
+
+describe('a copy from the bank takes every copy’s topics', () => {
+  it('inserts with the union the bank shows, not only the picked copy’s tags', async () => {
+    const original = choiceQuestion('Along a straight-line demand curve…', '', ['C']);
+    const home = { ...docWith([original]), id: 'doc-home' };
+    const copy = { ...copyQuestion(original, home.id), tags: ['C.ped'] };
+    const other = { ...docWith([copy]), id: 'doc-other' };
+    // The published snapshot: every row carries its root's union.
+    const shared = withSharedTags([...rowsOf(home), ...rowsOf(other)]);
+    const picked = shared.find((r) => r.docId === home.id)!;
+    expect(picked.tags).toEqual(['C', 'C.ped']);
+
+    store().replaceWorksheet(docWith([choiceQuestion('Already here')]));
+    useBankSession.setState({ review: null });
+    const sources = new Map<string, Worksheet>([
+      [home.id, home],
+      [other.id, other],
+    ]);
+    const { inserted } = await insertFromBank([picked], undefined, { load: async (id: string) => sources.get(id) });
+    const made = store().worksheet.questions.find((q) => q.id === inserted[0])!;
+    expect(made.tags).toEqual(['C', 'C.ped']);
+    // The source is only read.
+    expect(home.questions[0].tags).toEqual(['C']);
   });
 });
