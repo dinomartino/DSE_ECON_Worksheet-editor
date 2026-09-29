@@ -69,6 +69,13 @@ Design: `docs/design/question-library.md` (a bank is a Worksheet; the index is d
 rebuildable; copies keep `lineage.rootId`). Deep analysis, sources and traps:
 `docs/research/2026-09-question-bank.md`. C1, C2, C4's usage history, C5 and C6 are built (above).
 
+**Next up (user's request, 2026-09-29)**:
+- **C24 Teacher-defined 題型 / Pattern** (M): a finer level under a sub-topic ("Calculate
+  PED from a TR change"). Separate MCQ and LQ lists; created while tagging, renamed /
+  merged / deleted on a manage page (writes every copy). The bank groups the review rail by
+  題型 inside a sub-topic, filters by it, and counts it on topic cards. **No default list**:
+  each panel defines its own. Never printed. Not "question type" (that means MCQ vs LQ).
+
 **The build flow** — every mature bank starts from the paper or shows the target:
 - **C7 A real cart** (S–M): the tray lists its picks (remove one, reorder, MCQ before LQ)
   and survives Open in worksheet and Home.
