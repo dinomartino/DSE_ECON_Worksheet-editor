@@ -1094,9 +1094,8 @@ export function StartScreen({
 }
 
 /**
- * One way to start, as a line in an index rather than an icon card. The accent bar
- * that slides in on hover is the row's whole affordance — the text stays put, the
- * colour arrives, nothing lifts or casts a shadow.
+ * One way to start, as a line in an index rather than an icon card. Hover answers
+ * with colour only: the row tints and the title turns accent; nothing moves.
  */
 function StartRow({
   title,
@@ -1116,15 +1115,9 @@ function StartRow({
     <button
       type="button"
       onClick={onClick}
-      className="group relative cursor-pointer border-b border-line py-3.5 pl-4 pr-2 text-left transition-colors duration-150 ease-out-soft hover:bg-surface-sunken active:bg-surface-hover active:duration-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+      className="group cursor-pointer border-b border-line py-3.5 pl-4 pr-2 text-left transition-colors duration-150 ease-out-soft hover:bg-surface-sunken active:bg-surface-hover active:duration-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
     >
-      <span
-        aria-hidden
-        className="absolute inset-y-0 left-0 w-0.5 bg-accent opacity-0 transition-opacity duration-150 ease-out-soft group-hover:opacity-100 group-focus-visible:opacity-100"
-      />
-      {/* The title steps right a hair toward the bar as it appears — the row answers
-          the pointer without the row itself moving. */}
-      <span className="flex items-center gap-2 text-[13.5px] font-medium text-ink transition-[color,translate] duration-150 ease-out-soft group-hover:translate-x-0.5 group-hover:text-accent-ink">
+      <span className="flex items-center gap-2 text-[13.5px] font-medium text-ink transition-colors duration-150 ease-out-soft group-hover:text-accent-ink">
         {icon && (
           <span className="text-ink-subtle transition-colors duration-150 ease-out-soft group-hover:text-accent-ink">
             {icon}

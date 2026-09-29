@@ -45,6 +45,7 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
   backup and never print.
 
 ### Changed
+- Start screen rows and saved worksheets now highlight on hover without the blue side bar.
 - **See and test your saved AI keys.** Settings › AI & translation now starts with "Your
   keys": each saved key with its provider, only its last 4 characters shown, which one is
   in use, and a Test button that checks it any time. Providers with a key say "Key saved",

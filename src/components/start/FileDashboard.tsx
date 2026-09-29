@@ -631,12 +631,6 @@ function SavedRow({
       style={rise.style}
       {...drag}
     >
-      {/* The same accent bar the Start rows use. Opacity, never display — a reveal
-          that changes layout moves the row out from under the pointer reaching for it. */}
-      <span
-        aria-hidden
-        className="absolute inset-y-0 left-0 w-0.5 bg-accent opacity-0 transition-opacity duration-150 ease-out-soft group-hover:opacity-100 group-focus-within:opacity-100"
-      />
       <button
         type="button"
         onClick={() => actions.open(summary)}

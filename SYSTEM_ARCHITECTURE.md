@@ -2098,6 +2098,9 @@ hover                      → margin drag grip → reorder
   Glyph-only buttons take a required `label`.
 - **Selection is bidirectional**: either pane selects, the other scrolls into view.
 - **Depth is carried by rule and label, not more boxes.**
+- **Hover changes colour, nothing else**: a clickable row or button answers the pointer
+  with a background or text tint; no accent bar, nudge or new decoration. The accent bar
+  marks the selected item only.
 
 ---
 
