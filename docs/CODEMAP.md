@@ -354,7 +354,7 @@ through `AppSettingsHost` alone.
 - `src/components/translate/copy.ts` — the copy deck
 - `src/components/translate/translateMenu.ts:pageAiScope` · `src/components/translate/translateMenu.ts:fillVerbFor` · `src/components/translate/translateMenu.ts:toolbarSettingsEntries` — the AI door's entry points, pure (right-click scope, Export's preselect, ⋯ Settings…)
 - `src/components/translate/fieldFill.ts:fillButton` · `src/components/translate/fieldFill.ts:runFieldFill` — `BiTextField`'s inline fill (the `translate` prop)
-- `src/components/start/StartScreen.tsx:SettingsButton`; `src/components/ui/icons.tsx:PageSetupIcon` (Setup; the gear is app Settings)
+- `src/components/settings/SettingsButton.tsx:SettingsButton` — the gear, far right of the start screen's and bank's top row; the editor keeps ⋯ Settings… (no room at 1024); `src/components/ui/icons.tsx:PageSetupIcon` (Setup; the gear is app Settings)
 - `scripts/ai-verify.mjs` · `scripts/ai-mock-server.mjs` — the AI door's browser run (six groups, Chromium and WebKit; answers / source / quality paused) against a canned provider; nothing sent before a click
 
 Invariants:

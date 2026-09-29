@@ -47,6 +47,8 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   backup and never print.
 
 ### Changed
+- **Settings is easier to find.** Its gear now sits in the top-right corner of the start
+  screen and the question bank. In a worksheet, Settings is still in the ⋯ menu.
 - Start screen rows and saved worksheets now highlight on hover without the blue side bar.
 - **See and test your saved AI keys.** Settings › AI & translation now starts with "Your
   keys": each saved key with its provider, only its last 4 characters shown, which one is

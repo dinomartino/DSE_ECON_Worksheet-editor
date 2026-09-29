@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { IconButton, Segmented } from '@/components/ui';
 import { Menu, type MenuItem } from '@/components/ui/Menu';
 import { FolderIcon, PlusIcon, SheetIcon, TrashIcon } from '@/components/ui/icons';
@@ -72,6 +72,7 @@ export function FileDashboard({
   folderId,
   onFolderChange,
   folderActions,
+  settings,
 }: {
   summaries: WorksheetSummary[];
   loaded: boolean;
@@ -87,6 +88,8 @@ export function FileDashboard({
   onShowTrash?: () => void;
   /** Actions over every saved document (backup, restore, folders) behind one ⋯ menu. */
   backupItems?: MenuItem[];
+  /** The app's Settings gear, last in the header row: the screen's top-right corner. */
+  settings?: ReactNode;
 }) {
   const [query, setQuery] = useState<DashboardQuery>(DEFAULT_QUERY);
   // Lazy initialiser: `EditorHost` renders the start screen only after hydration, so
@@ -128,13 +131,14 @@ export function FileDashboard({
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
+      {/* One row at every width: the label is what gives, so the gear keeps its corner. */}
+      <div className="flex items-center justify-between gap-x-4">
+        <h2 className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
           {isDesktop() ? 'Saved on this computer' : 'Saved in this browser'}
         </h2>
         {/* The saved documents' own tools sit with them: the count, the Trash, and the
             rare all-document actions behind ⋯ — never as a column of links. */}
-        <span className="flex items-center gap-1 text-[11px] tabular-nums text-ink-subtle">
+        <span className="flex shrink-0 items-center gap-1 text-[11px] tabular-nums text-ink-subtle">
           {summaries.length > 0 && (
             <span className="mr-2">
               {shown.length === inScope.length
@@ -159,6 +163,7 @@ export function FileDashboard({
           {backupItems.length > 0 && (
             <Menu label="Back up, restore and folders" items={backupItems} />
           )}
+          {settings}
         </span>
       </div>
 

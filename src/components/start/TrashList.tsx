@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { Button } from '@/components/ui';
 import { SheetIcon } from '@/components/ui/icons';
 import { TRASH_RETENTION_DAYS, type TrashedSummary } from '@/storage';
@@ -16,23 +17,29 @@ export function TrashList({
   onRestore,
   onPurge,
   onEmpty,
+  settings,
 }: {
   rows: TrashedSummary[];
   onBack: () => void;
   onRestore: (row: TrashedSummary) => void;
   onPurge: (row: TrashedSummary) => void;
   onEmpty: () => void;
+  /** The app's Settings gear, kept in the corner it holds on the dashboard. */
+  settings?: ReactNode;
 }) {
   return (
     // Fades in over the dashboard it replaces, so the swap reads as one view turning.
     <div className="mx-auto max-w-5xl animate-fade-in">
-      <button
-        type="button"
-        onClick={onBack}
-        className="cursor-pointer text-[12px] font-medium text-accent-ink underline decoration-line-strong underline-offset-4 transition-colors duration-150 ease-out-soft hover:decoration-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-      >
-        ← All documents
-      </button>
+      <div className="flex min-h-7 items-center justify-between gap-x-4">
+        <button
+          type="button"
+          onClick={onBack}
+          className="cursor-pointer text-[12px] font-medium text-accent-ink underline decoration-line-strong underline-offset-4 transition-colors duration-150 ease-out-soft hover:decoration-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          ← All documents
+        </button>
+        {settings}
+      </div>
       <div className="mt-5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
           Trash
