@@ -42,6 +42,8 @@ export function visibleSummaries(
   const inScope = scopedSummaries(summaries, scope);
   const shown = inScope.filter((summary) => {
     if (query.kind === 'mock' && !summary.hasCover) return false;
+    // A question bank is neither a worksheet nor a mock: it shows under All only.
+    if (query.kind !== 'all' && summary.kind === 'bank') return false;
     if (query.kind === 'worksheet' && summary.hasCover) return false;
     return needle === '' || summary.title.toLocaleLowerCase().includes(needle);
   });
@@ -63,6 +65,20 @@ export function scopedSummaries(
 ): WorksheetSummary[] {
   if (!scope || scope.folderId === undefined) return summaries;
   return summaries.filter((summary) => folderOf(scope.folders, summary.id)?.id === scope.folderId);
+}
+
+const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
+
+/**
+ * The count beside the saved documents: papers and banks apart, so a bank never reads as
+ * one more worksheet ("3 worksheets · 1 bank").
+ */
+export function documentCount(summaries: readonly WorksheetSummary[]): string {
+  const banks = summaries.filter((summary) => summary.kind === 'bank').length;
+  const papers = summaries.length - banks;
+  const parts = papers > 0 || banks === 0 ? [plural(papers, 'worksheet')] : [];
+  if (banks > 0) parts.push(plural(banks, 'bank'));
+  return parts.join(' · ');
 }
 
 /** Whether any filter is narrowing the list — decides "no matches" vs "nothing saved". */
