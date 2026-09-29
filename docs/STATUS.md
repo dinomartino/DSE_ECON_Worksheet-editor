@@ -53,7 +53,8 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **UI polish (merged on `develop` 2026-09-29, not released)**: hover is colour only (no
   accent bar/nudge/lift; rule in SYSTEM_ARCHITECTURE § Layout rules); start-screen aside
   shows scroll edge hints (`src/components/ui/scrollEdges.ts`, `ScrollEdgeHints.tsx`),
-  reusable for other panes. Left alone: swatches grow on hover, dark-mode row tint is faint.
+  reusable for other panes. Settings gear top-right on start + bank
+  (stacked layout: brand row). Left alone: swatches grow on hover, dark-mode row tint is faint.
 - **AI Settings keys (merged on `develop` 2026-09-29, not released)**: "Your keys" list
   (count, masked last 4, In use, per-key Test/Forget, in-memory status), "Key saved" chip on
   provider rows, card's button reads Test for a saved key, About folded into one Collapsible.
@@ -90,8 +91,8 @@ off the bottom.** It is the first thing a fresh session reads — then
   copies) differ on the same paper — decide if that confuses. Gemini's privacy line now reads
   "Google's terms only cover use from places where it offers Gemini" (softened from "VPN use
   is against Google's terms") — the user may drop it.
-- **Home navigation (2026-09-28, merged on `develop`)** — start screen: Settings is a gear
-  icon bottom-left (`StartScreen.tsx:SettingsButton`), version line above it (desktop).
+- **Home navigation (2026-09-28, merged on `develop`)** — start screen: Settings gear moved
+  top-right 2026-09-29 (`src/components/settings/SettingsButton.tsx`; editor keeps ⋯ only), version line above it (desktop).
   Editor: `[logo] Worksheets › <title>` crumb goes home (word hides <1280px; ⋯ →
   Worksheets… kept for the film). The start screen is always home — no Back to the last
   document; leaving flushes then unmounts the editor (`EditorHost.tsx:flushBeforeLeaving`).
