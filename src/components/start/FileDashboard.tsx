@@ -488,6 +488,14 @@ function menuItems(summary: WorksheetSummary, actions: DocumentActions): MenuIte
  * link/focus/selection, and a label that cannot be clicked must not wear it.
  */
 function KindAndCount({ summary }: { summary: WorksheetSummary }) {
+  if (summary.kind === 'bank') {
+    return (
+      <>
+        <span className="text-ink-subtle">Question bank</span>
+        {summary.questionCount !== undefined && <> · {plural(summary.questionCount, 'question')}</>}
+      </>
+    );
+  }
   return (
     <>
       <span className={summary.hasCover ? 'font-semibold text-ink-muted' : 'text-ink-subtle'}>
@@ -527,6 +535,7 @@ function DocumentCard({
   enter?: number;
 }) {
   const rise = entrance(enter);
+  const isBank = summary.kind === 'bank';
   return (
     <li
       className={`group relative min-w-0 transition-opacity duration-150 ease-out-soft ${dragging ? 'opacity-40' : ''} ${rise.className}`}
@@ -563,9 +572,14 @@ function DocumentCard({
             {summary.title}
           </span>
           <span className="mt-1 block truncate text-[11px] leading-tight text-ink-subtle">
-            <span className={summary.hasCover ? 'font-semibold text-ink-muted' : undefined}>
-              {summary.hasCover ? 'Mock exam paper' : 'Worksheet'}
-            </span>
+            {isBank ? (
+              // A bank's count is its kind line: "Question bank · 12 questions".
+              `Question bank${summary.questionCount !== undefined ? ` · ${plural(summary.questionCount, 'question')}` : ''}`
+            ) : (
+              <span className={summary.hasCover ? 'font-semibold text-ink-muted' : undefined}>
+                {summary.hasCover ? 'Mock exam paper' : 'Worksheet'}
+              </span>
+            )}
           </span>
           {/* Its own line: beside "Mock exam paper" at card width the name clipped to "M…". */}
           {folder && (
@@ -575,7 +589,8 @@ function DocumentCard({
             </span>
           )}
           <span className="mt-0.5 block truncate text-[11px] tabular-nums leading-tight text-ink-subtle">
-            {summary.questionCount !== undefined &&
+            {!isBank &&
+              summary.questionCount !== undefined &&
               `${plural(summary.questionCount, 'question')} · `}
             {relativeTime(summary.updatedAt)}
           </span>

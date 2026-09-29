@@ -227,3 +227,19 @@ describe('folders never cost a legacy document its place in the list', () => {
     expect(FOLDERS_KEY.startsWith(PREFIX)).toBe(false);
   });
 });
+
+describe('the optional `kind` on an index row', () => {
+  it('lists rows without it, and writes it only for banks', async () => {
+    storage.setItem(INDEX_KEY, JSON.stringify([LEGACY_ENTRY]));
+    storage.setItem(PREFIX + 'legacy-doc', JSON.stringify(LEGACY_DOC));
+    const paper = (await store().load('legacy-doc'))!;
+    await store().save({ ...paper, id: 'paper-2' });
+    await store().save({ ...paper, id: 'bank-1', kind: 'bank' });
+
+    const rows = await store().list();
+    expect(rows.map((r) => r.id).sort()).toEqual(['bank-1', 'legacy-doc', 'paper-2']);
+    expect(rows.find((r) => r.id === 'legacy-doc')?.kind).toBeUndefined();
+    expect(rows.find((r) => r.id === 'paper-2')).not.toHaveProperty('kind');
+    expect(rows.find((r) => r.id === 'bank-1')?.kind).toBe('bank');
+  });
+});

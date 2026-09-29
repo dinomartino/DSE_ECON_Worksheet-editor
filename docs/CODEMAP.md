@@ -220,6 +220,7 @@ scan; rebuildable, so no teacher's work lives in it.
 - `src/library/types.ts:BankRow` · `:BankGroup` · `:BankQuery` · `:BankStatus` · `:StoreChange` — the contracts
 - `src/library/indexer.ts:rowsOf` — a document's rows (text only, never images; `bankHidden` yields none)
 - `src/library/contentKey.ts:contentKey` — content fingerprint ignoring ids, `lineage`, `tags`
+- `src/library/bankDocs.ts:copyToBank` · `:bankCopyDiffers` · `:updateBankCopy` — the only writes into a bank document; UI in `src/components/editor/BankActions.tsx:useBankActions`
 - `src/library/search.ts:searchRows` · `src/library/group.ts:groupRows` · `src/library/history.ts:usedIn` · `:usedWithClass` · `src/library/fill.ts:pickFill`
 - `src/library/useBank.ts:useBank` — the one read both surfaces use; naive in-memory scan (`:createBankIndex`), replaced internally by the persistent index
 - `src/components/bank/BankRow.tsx:BankRow` — the shared row: excerpt, quiet meta, action slot, in-paper / used-with-class / missing-language / selected states

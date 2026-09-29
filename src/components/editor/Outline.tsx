@@ -48,6 +48,7 @@ import {
   TrashIcon,
 } from '@/components/ui/icons';
 import { Menu, type MenuItem } from '@/components/ui/Menu';
+import { useBankActions } from './BankActions';
 
 /**
  * The question navigator.
@@ -293,6 +294,8 @@ function QuestionRow({
       element.kind === 'section' && element.id !== currentSectionId,
   );
 
+  const bank = useBankActions(question);
+
   const menuItems: MenuItem[] = [
     { label: 'Duplicate', onSelect: () => duplicateQuestion(question.id) },
     {
@@ -305,6 +308,7 @@ function QuestionRow({
         );
       },
     },
+    ...bank.items,
     ...otherSections.map((candidate, index) => ({
       label: `Move to ${plain(candidate.text.en) || plain(candidate.text.zh) || `Section ${index + 1}`}`,
       onSelect: () => reorderFlowItem(question.id, candidate.id, 'after'),
@@ -403,8 +407,9 @@ function QuestionRow({
         <IconButton label="Move down" onClick={() => moveQuestion(question.id, 1)}>
           <ChevronDownIcon size={14} />
         </IconButton>
-        <Menu items={menuItems} label={`Actions for question ${number ?? ''}`} />
+        <Menu items={menuItems} label={`Actions for question ${number ?? ''}`} onOpen={bank.onOpen} />
       </span>
+      {bank.dialog}
     </li>
   );
 }

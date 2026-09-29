@@ -12,6 +12,9 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 
 ## Unreleased
 
+### Added
+- **Copy questions to a question bank from the outline.** Use a question's ⋯ menu to copy it to a bank (or start a new one); after you improve a question, "Update bank copy" refreshes the bank's version, and "Treat as a new question" cuts a copy loose from its origin. Banks show as "Question bank" on the Worksheets tab.
+
 ### Fixed
 - **Editing a duplicated question no longer changes the original.** Worksheets where a
   duplicate and its original were stuck together are separated when you open them.

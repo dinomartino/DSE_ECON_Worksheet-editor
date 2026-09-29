@@ -47,17 +47,28 @@ export function Menu({
   label = 'More actions',
   align = 'right',
   trigger,
+  onOpen,
 }: {
   items: MenuItem[];
   label?: string;
   align?: 'left' | 'right';
   trigger?: ReactNode;
+  /** Fires each time the menu opens, for items that have to be looked up first. */
+  onOpen?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const id = useId();
+  const onOpenRef = useRef(onOpen);
+  useEffect(() => {
+    onOpenRef.current = onOpen;
+  });
+
+  useEffect(() => {
+    if (open) onOpenRef.current?.();
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
