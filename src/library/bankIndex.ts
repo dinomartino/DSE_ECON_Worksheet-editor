@@ -168,6 +168,11 @@ export function createBankIndex(
     for (const listener of listeners) listener();
   }
 
+  /** Publish after a change: a ready index stays ready, counting what it now holds. */
+  function settle() {
+    publish(snapshot.status.state === 'ready' ? { state: 'ready', done: docs.size, total: docs.size } : undefined);
+  }
+
   function wipe() {
     generation++;
     epoch++;
@@ -274,7 +279,7 @@ export function createBankIndex(
         if (!current()) return;
         if (kind === 'trashed' || kind === 'removed') {
           drop(docId);
-          publish();
+          settle();
           return;
         }
         await pause();
@@ -290,7 +295,7 @@ export function createBankIndex(
         } else {
           drop(docId);
         }
-        publish();
+        settle();
       })(),
     );
   }
