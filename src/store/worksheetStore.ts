@@ -61,7 +61,13 @@ import {
   type CoverPage,
   type CoverRegion,
 } from '@/model/cover';
-import { defaultFooter, defaultHeader, headerFooterOf, type FirstPageMode } from '@/model/page';
+import {
+  defaultFooter,
+  defaultHeader,
+  headerFooterOf,
+  type BandScope,
+  type FirstPageMode,
+} from '@/model/page';
 import type {
   Band,
   BandField,
@@ -405,14 +411,7 @@ export type QuestionBatchReport =
   | { ok: true; questionIds: string[]; leadId?: string; committed: Worksheet }
   | { ok: false; refused: 'readOnly' | 'otherDocument' | 'nothing' };
 
-export type { FirstPageMode };
-
-/**
- * Which of a header/footer's two row lists a structural edit targets. A row being
- * *created* has no id to find, so add/replace must name their list; field edits
- * address by id and need no scope. Defaults to `'running'`.
- */
-export type BandScope = 'running' | 'firstPage';
+export type { BandScope, FirstPageMode };
 
 /** Apply a patch to the question with this id. */
 function mapQuestion(

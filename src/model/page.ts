@@ -195,6 +195,24 @@ export function firstPageModeOf(value: HeaderFooter): FirstPageMode {
 }
 
 /**
+ * Which of a header/footer's two row lists a structural edit targets. A row being
+ * *created* has no id to find, so add/replace must name their list; field edits
+ * address by id and need no scope. Defaults to `'running'`.
+ */
+export type BandScope = 'running' | 'firstPage';
+
+/**
+ * The row list a structural edit on this sheet belongs to.
+ *
+ * Page 1 edits the running rows only when it prints them ('same'). When it is blank, a
+ * row added there is the request for page 1 to have its own rows, not for every later
+ * page to gain one.
+ */
+export function pageBandScope(value: HeaderFooter, pageNumber: number): BandScope {
+  return pageNumber === 1 && firstPageModeOf(value) !== 'same' ? 'firstPage' : 'running';
+}
+
+/**
  * True when a field would print nothing.
  *
  * Only authored text can be blank: a page number and a fill-in rule always draw

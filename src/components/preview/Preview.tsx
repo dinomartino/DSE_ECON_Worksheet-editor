@@ -12,6 +12,7 @@ import {
   firstPageHeaderFooter,
   headerFooterOf,
   isHeaderFooterActive,
+  pageBandScope,
   pageDimensions,
   pageSetupOf,
   twipsToMm,
@@ -2603,14 +2604,9 @@ function HeaderFooterBand({
 
   if (!value.enabled) return null;
 
-  /*
-   * Which of the two row lists a structural edit here belongs to.
-   *
-   * Page 1 only owns its rows when the document is actually in "different" mode; in
-   * "same" mode the first sheet shows the *running* rows, and adding a row there must
-   * add it to every page — which is what the teacher is looking at and editing.
-   */
-  const scope: BandScope = pageNumber === 1 && value.firstPage ? "firstPage" : "running";
+  // Which row list a structural edit here belongs to (`pageBandScope`): page 1 edits the
+  // running rows only in "same" mode, so a row added to a blank page 1 becomes its own.
+  const scope: BandScope = pageBandScope(value, pageNumber);
 
   /*
    * An empty band list still renders while editing, so there is somewhere to put the
