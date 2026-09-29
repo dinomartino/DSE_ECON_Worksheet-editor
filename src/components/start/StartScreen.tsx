@@ -697,8 +697,10 @@ export function StartScreen({
           <span className="flex shrink-0 text-ink">
             <AppMark size={22} />
           </span>
-          <span className="text-[13px] font-semibold text-ink">Worksheet</span>
-          <span className="text-[11px] text-ink-subtle">HKDSE Economics</span>
+          <span className="text-[13px] font-semibold text-ink">Econ Studio</span>
+          <span lang="zh-HK" className="text-[11px] text-ink-subtle">
+            經濟備課室
+          </span>
           {/* Stacked below `lg`, this row is the screen's top edge, so the gear sits here;
               from `lg` up it moves to the desk's header, the top-right corner. */}
           <SettingsButton className="-my-1 ml-auto lg:hidden" />

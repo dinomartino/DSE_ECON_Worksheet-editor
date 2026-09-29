@@ -45,7 +45,8 @@ CI=true npx tauri build --bundles dmg --config '{"bundle":{"createUpdaterArtifac
 If it still fails at `bundle_dmg.sh`, a half-made image is probably mounted — eject it
 (`ls /Volumes`, then `diskutil eject force "/Volumes/dmg.XXXXXX"`) and build again.
 
-**2. Open it.** The installer window appears; drag **Econ Worksheet** into Applications:
+**2. Open it.** The installer window appears; drag **Econ Worksheet** into Applications
+(the bundle keeps its old name so updates replace it; the window says Econ Studio):
 
 ```bash
 open src-tauri/target/release/bundle/dmg/*.dmg

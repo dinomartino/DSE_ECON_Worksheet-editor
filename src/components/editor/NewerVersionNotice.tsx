@@ -21,7 +21,7 @@ export const DOWNLOAD_URL =
   'https://github.com/dinomartino/DSE_ECON_Worksheet-editor/releases/latest';
 
 export const NEWER_VERSION_MESSAGE =
-  'This worksheet was saved by a newer version of Econ Worksheet. Update to edit it safely.';
+  'This worksheet was saved by a newer version of Econ Studio. Update to edit it safely.';
 
 /** The bar itself, with no store of its own, so it can be rendered in a test. */
 export function NewerVersionBar({

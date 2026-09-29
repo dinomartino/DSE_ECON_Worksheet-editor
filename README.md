@@ -1,4 +1,6 @@
-# HKDSE Economics Worksheet Generator
+# Econ Studio 經濟備課室
+
+Worksheets, papers and notes for HKDSE Economics teachers.
 
 Build printable Economics worksheets, quizzes and assessments at HKDSE level in English
 and Traditional Chinese (Hong Kong usage), and export a **native Microsoft Word `.docx`**
@@ -22,7 +24,7 @@ That is the whole setup. If the page loads, you have a working environment.
 
 ## Table of contents
 
-- [HKDSE Economics Worksheet Generator](#hkdse-economics-worksheet-generator)
+- [Econ Studio 經濟備課室](#econ-studio-經濟備課室)
   - [Table of contents](#table-of-contents)
   - [Requirements](#requirements)
   - [Getting started](#getting-started)

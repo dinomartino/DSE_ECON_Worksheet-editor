@@ -137,7 +137,7 @@ describe('openai-compatible', () => {
   it('OpenRouter: require_parameters, data_collection deny, and its two headers', () => {
     const wire = built('openrouter', 'openai-jsonSchema');
     expect(wire.json.provider).toEqual({ require_parameters: true, data_collection: 'deny' });
-    expect(wire.headers['X-Title']).toBe('Econ Worksheet');
+    expect(wire.headers['X-Title']).toBe('Econ Studio');
     expect(wire.headers['HTTP-Referer']).toMatch(/^https:\/\//);
   });
 

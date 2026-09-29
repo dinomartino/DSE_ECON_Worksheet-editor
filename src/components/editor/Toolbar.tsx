@@ -342,7 +342,7 @@ export function Toolbar({
               value: 'edit',
               label: 'Edit',
               title: readOnly
-                ? 'Read-only: saved by a newer version of Econ Worksheet'
+                ? 'Read-only: saved by a newer version of Econ Studio'
                 : 'Edit the worksheet on the page',
               disabled: readOnly,
             },
