@@ -1,6 +1,6 @@
 # Question bank 題庫 — design (C1–C4, and a future exchange)
 
-Status: planned, 2026-09-29. Answers `docs/IDEAS.md` §C. Phase 0 is built; the rest is not.
+Status: building, 2026-09-29. Answers `docs/IDEAS.md` §C. Phase 0 is merged; WP-0 to WP-E below.
 Revised from the 2026-09-26 proposal after an audit against the code at `9f2009b`.
 
 ## Decisions (the user, 2026-09-29)
@@ -11,7 +11,22 @@ Revised from the 2026-09-26 proposal after an audit against the code at `9f2009b
   topic matches its sub-topics.
 - **Tagging: manual first.** A keyless "✦ Suggest topics" (glossary term → topic) comes
   after C2, once a term → topic table exists.
-- **Phase 0 fixes the duplicate bug and repairs saved documents on open.**
+- **Phase 0 fixes the duplicate bug and repairs saved documents on open.** Built.
+- **UI (design page, artifact FyR7Xdd6BpgvFL42tdzz2T):** an editor sidebar tab **題庫 Bank**
+  for refilling the open paper, and a **Question bank 題庫** tab on the start screen beside
+  Worksheets (the dashboard). No add-rail drawer, no full-screen builder.
+- **The bank fills itself:** every saved worksheet's questions are indexed automatically.
+  A worksheet can opt out with `bankHidden` (Setup).
+- **Copies are independent.** Editing a copy never changes its source and vice versa.
+  The bank groups rows by `rootId`: identical copies (same `contentKey`) collapse into
+  one row ("Used in 3 papers"); edited copies show as "N versions". "Used with 5A" counts
+  every version. **Update bank copy** (explicit, never automatic) writes an edited
+  question back to the bank document it came from; **Treat as a new question** drops
+  `lineage`.
+- **Fill is deterministic:** best match first, then least recently used, never already
+  in the paper; ↻ swaps one pick.
+- **The C3 "Insert from another document" dialog is dropped.** The 題庫 tab's From filter
+  does the job.
 
 ## The one decision everything else follows from
 
@@ -100,54 +115,62 @@ document, so editing a duplicated question's text also edits the original. Also 
   edits independently, and exports identically to before.
 - CHANGELOG: "Editing a duplicated question no longer changes the original."
 
-### 1 · C1 Topic tags (S)
+### Build packages (2026-09-29)
 
-- `src/model/topics.ts`: the appendix as data; `topicOf(code)`, `matchesTopic(tags, code)`.
-- `tags` on `QuestionBase`; a **Topic** row in the Inspector below the type's
-  `EditorPanel` (shared, not per type); picker over topics + free text.
-- `classTag` in Setup → Worksheet, beside Target (copy `TargetField`).
-- Tags never print: a test that the preview IR, `.docx` and clipboard carry no tag text.
-- Corpus test for the nested fields; `KNOWN_KEYS` for `classTag`.
-- `src/library/noTypeBranching.test.ts` from the start (per-folder pattern, like
-  `src/translate/`).
+WP-0 lands first on `develop`; A–E then run in parallel on branches cut from it. Each
+package owns the files listed; anything else it needs from another package it takes
+from WP-0's contracts, not from that package's branch.
 
-### 2 · C3 Insert from another document (M)
+**WP-0 · Contracts and the pure core.**
+- Model: `tags?: string[]` on `QuestionBase`; `kind?: 'bank'`, `classTag?: string`,
+  `bankHidden?: boolean` on `Worksheet` (all in `KNOWN_KEYS`); corpus tests.
+- `src/model/topics.ts`: the appendix as data; `TOPICS`, `topicOf(code)`,
+  `parentCode(code)`, `matchesTopic(tags, code)` (a coarse code matches its fine ones),
+  `topicLabel(code, lang)`.
+- `src/model/excerpt.ts`: one `questionExcerpt(question, lang)` (moves `biExcerpt` /
+  `excerptOfBlocks` / the Outline's inline stem excerpt behind it).
+- `src/library/`: `types.ts` (`BankRow`, `BankGroup`, `BankQuery`, `BankStatus`,
+  `StoreChange`), `indexer.ts` (`rowsOf(worksheet, summary)`), `contentKey.ts` (content
+  hash ignoring ids and lineage), `search.ts` (`searchRows`), `group.ts` (`groupRows` by
+  `rootId`, then `contentKey`), `history.ts` (`usedIn`), `fill.ts` (`pickFill`),
+  `noTypeBranching.test.ts`.
+- `src/library/useBank.ts`: the one hook both surfaces read — `useBank(): { status,
+  rows, groups, refresh }`. WP-0 ships a **naive working provider** (scan `list()` +
+  `load()` in memory, rescan on `refresh`); WP-B replaces its internals, never its API.
+- `src/components/bank/BankRow.tsx`: the shared row (excerpt, quiet meta text, action
+  slot, states normal / in this paper / used with class / missing language).
+- Store: `insertQuestionCopies(questions, { fromDocId, afterId })` — `copyQuestion` each,
+  one commit, one ⌘Z, returns the new ids.
 
-- Entry: the add rail (a separate "Insert from…" entry), the Outline's "Add here" menu.
-- Pick one document (a single-pick variant of `KeyDocumentsField`) → load read-only with a
-  neutral loader (not `loadKeyDocuments`, which answer-key-renders every document) → list
-  its questions with excerpts → tick → insert copies after the anchor.
-- Insert through `insertQuestionBatch` extended to accept whole questions via
-  `copyQuestion`: one commit, one ⌘Z.
-- Move the excerpt helpers (`biExcerpt`, `excerptOfBlocks`, the Outline's inline stem
-  excerpt) into one model-level function the Outline, this dialog and the index share.
-- "Copy to bank" in the Outline row menu (creates or appends to a bank document).
+**WP-A · Topic tags UI** (S): the Topic row in the Inspector (picker over `TOPICS` +
+free text), `classTag` and "Hide from bank" in Setup → Worksheet, a quiet tag line in
+Outline rows; test that tags never reach IR, `.docx` or clipboard.
 
-### 3 · C2 The question bank view (L)
+**WP-B · Persistent index** (M–L): the change-feed decorator at the store singleton
+(`src/storage/index.ts`), IndexedDB `econ-worksheet-library` (web) and
+`worksheets/library/index.json` (desktop), freshness stamps, idle chunked indexing,
+focus re-check; swaps into `useBank` without changing its API.
 
-- **Change feed:** nothing announces a save today (≈10 call sites write documents). Wrap
-  the store at the singleton in `src/storage/index.ts` with a decorator that emits
-  `{docId, kind: 'saved'|'trashed'|'restored'|'removed'|'cleared'}`. It catches imports
-  and backup restores too (`restoreBackup` calls `save`).
-- **Index store:** IndexedDB database `econ-worksheet-library` (web; first IndexedDB use),
-  `worksheets/library/index.json` (desktop). Rows keyed `(docId, questionId)` — question
-  ids already repeat across documents (`duplicateWorksheet`, backup copies keep them).
-- **Freshness:** stamp `docId → updatedAt`; on start, re-index what differs. Follow
-  `list()`, never raw keys (a trashed web document keeps its `econ-worksheet:<id>` key).
-  Desktop restore can return a new id. Two web tabs: re-check stamps on focus.
-- Row: `{docId, questionId, rootId, type, marks, tags, excerpt, searchText, hasDiagram,
-  docUpdatedAt}` from registry hooks; never images (`data:` URLs are inline).
-- Indexing cost: one full load + migrate per document; run in idle chunks, never blocking
-  the start screen.
-- **UI:** a third view beside Trash on the start screen; search + type, topic, marks,
-  "not used with class X since"; card preview through the IR in teacher mode; "Insert into
-  <open document>". Banks get a distinct card and are excluded from paper counts.
+**WP-C · Editor 題庫 tab + Fill** (M): third sidebar tab; sticky (selection moves the
+insert anchor instead of switching to Edit); anchor line; search, topic, type, marks,
+"not used with <class>", From filters; Insert → `insertQuestionCopies`, anchor moves to
+the last inserted; review bar (‹ ›, Undo, Done); hover ghost preview at the anchor;
+Fill N from topic via `pickFill`; entry points in the add rail's Question menu and the
+empty page.
 
-### 4 · C4 "Used in" history (M)
+**WP-D · Question bank page** (M): start-screen tab beside Worksheets; Topics tree in the
+Folders slot; coverage strip (MCQ / structured per topic, thin floor, "N untagged →
+Tag"); list of `groupRows` with "N versions" expansion; preview through the IR in
+teacher mode with Topics editable (written to the owning document, then re-indexed);
+selection tray (marks, minutes, topic mix; Set topic…, Add to "<last open>", New
+worksheet from these); first-run and empty states; rename `libraryItems`.
 
-Derived: for a `rootId`, every document holding it, its printed number
-(`computeNumbering`), `classTag`, `updatedAt`. Facility needs G1 results, stored as a
-separate record `{rootId, docId}` in the index store, never in the worksheet.
+**WP-E · Lineage actions** (S–M): Outline row menu "Copy to bank" (create or append to a
+bank document), "Update bank copy" (only when `lineage.fromDocId` is a bank and the
+content differs), "Treat as a new question" (drops `lineage`); banks get a distinct
+card on the Worksheets tab and are excluded from paper counts.
+
+Later: ✦ Suggest topics, drag from the tab onto the page, packs.
 
 ## Copy exchange, later
 
