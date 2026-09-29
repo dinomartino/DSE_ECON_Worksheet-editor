@@ -2,7 +2,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { row } from '@/library/testKit';
-import { createMcqQuestion } from '@/model/factories';
+import { createMcqQuestion, createStructuredQuestion } from '@/model/factories';
 import { BankRow, missingLanguageLabel, typeLabel, usedLabel, type BankRowProps } from './BankRow';
 
 const html = (props: BankRowProps) => renderToStaticMarkup(createElement(BankRow, props));
@@ -65,6 +65,7 @@ describe('BankRow', () => {
 
   it('labels types from the registry and an unknown one by its id', () => {
     expect(typeLabel(choice)).toBe('MCQ');
+    expect(typeLabel(createStructuredQuestion().type)).toBe('LQ');
     expect(typeLabel('from-a-newer-build')).toBe('From-a-newer-build');
     expect(usedLabel({ docId: 'd', docTitle: 'x', docUpdatedAt: 'nonsense' })).toBe('Used with this class');
   });

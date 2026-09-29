@@ -106,10 +106,12 @@ export function BankRow({
   );
 }
 
-/** "MCQ", "Structured": the registry's short label, never a branch on the id. */
+/** "MCQ", "LQ": the registry's short label, never a branch on the id. */
 export function typeLabel(typeId: string): string {
   const definition = getQuestionType(typeId);
-  const label = definition?.summary?.label.en ?? (definition ? plain(definition.displayName.en) : undefined) ?? typeId;
+  const summary = definition?.summary;
+  const label =
+    (summary?.short ?? summary?.label)?.en ?? (definition ? plain(definition.displayName.en) : undefined) ?? typeId;
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 

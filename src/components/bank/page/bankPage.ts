@@ -244,10 +244,10 @@ export function topicName(code: string): string {
   return `${topic.parent ?? topic.code} · ${topic.en}`;
 }
 
-/** The registry's short label ("MCQ", "Structured"); the plural reads fine unpluralised. */
+/** The registry's short label ("MCQ", "LQ"); the plural reads fine unpluralised. */
 export function typeName(typeId: string): string {
-  const definition = getQuestionType(typeId);
-  const label = definition?.summary?.label.en ?? typeId;
+  const summary = getQuestionType(typeId)?.summary;
+  const label = (summary?.short ?? summary?.label)?.en ?? typeId;
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 

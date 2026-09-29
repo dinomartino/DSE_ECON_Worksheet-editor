@@ -560,5 +560,5 @@ export const structuredType: QuestionTypeDefinition<StructuredQuestion> = {
   answerKey,
   qualityView,
   // Timed by marks, at the paper's rate (`MINUTES_PER_MARK`).
-  summary: { label: { en: 'structured', zh: '結構題' } },
+  summary: { label: { en: 'structured', zh: '結構題' }, short: { en: 'LQ', zh: '長題目' } },
 };

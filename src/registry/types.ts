@@ -109,6 +109,8 @@ export interface QualityView {
 export interface QuestionSummaryInfo {
   /** Short count label, unpluralised so "1 MCQ" and "38 MCQ" both read: "MCQ" / "選擇題". */
   label: { en: string; zh: string };
+  /** Compact label for dense lists (the question bank); absent = `label`. */
+  short?: { en: string; zh: string };
   /** Minutes per item whatever its marks; absent = its marks at the paper's minutes-per-mark. */
   minutesPerItem?: number;
 }
