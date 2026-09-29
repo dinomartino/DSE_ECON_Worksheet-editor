@@ -96,6 +96,14 @@ describe('pageAiScope — blocks', () => {
   });
 });
 
+describe('pageAiScope — the question box', () => {
+  it('is that question, even with no slots or a copied question elsewhere', () => {
+    const copies = [slot('q:Q1/b:b1', t('Demand', ''), { questionId: 'Q1' }), slot('q:Q2/b:b1', t('Demand', ''), { questionId: 'Q2' })];
+    expect(pageAiScope({ kind: 'question', questionId: 'Q2' }, sources(copies))).toEqual({ kind: 'questions', ids: ['Q2'] });
+    expect(pageAiScope({ kind: 'question', questionId: 'Q9' }, sources([]))).toEqual({ kind: 'questions', ids: ['Q9'] });
+  });
+});
+
 describe('fillVerbFor', () => {
   it("preselects the edition's side, or for a bilingual paper the side missing more often", () => {
     const slots = [slot('a', t('One', '')), slot('b', t('', '二')), slot('c', t('', '三')), slot('d', t('', '四'), { unprinted: true })];

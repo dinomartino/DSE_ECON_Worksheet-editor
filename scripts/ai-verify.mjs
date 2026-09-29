@@ -14,8 +14,9 @@ import { MOCK_MODEL, startMockServer } from './ai-mock-server.mjs';
  *   npm run build && node scripts/ai-verify.mjs [--out=/tmp/ai-verify]
  *        [--engines=chromium,webkit] [--only=entry,translate,…] [--port=8787] [--app-port=3417]
  *
- * Groups: entry (the ✦ AI button, ⌘J, the paused verbs absent, right-click, multi-select,
- * Export, read-only, no Translate left in ⋯ or the Outline, one toolbar row at 1024),
+ * Groups: entry (the ✦ AI button, ⌘J, the paused verbs absent, right-click on text and in a
+ * question's blank box, multi-select, Export, read-only, no Translate left in ⋯ or the
+ * Outline, one toolbar row at 1024),
  * translate (fill → bar → highlights → card → Undo all / ⌘Z, Stop, re-translate), terms
  * (keyless Check terms), setup (the SetupCard, then Settings' Your keys Test), error (the bar's error actions), field
  * (BiTextField's ✦ Fill). Paused with their verbs (`src/assist/paused.ts`), kept for when
@@ -167,6 +168,28 @@ function sourceFixture() {
   return { ...doc, flow };
 }
 
+/** The corpus with an MCQ as Question 2: a stem, a narrow diagram (blank paper beside it)
+ *  and four options, for right-clicks that land in the question's box and no finer target. */
+function mcqFixture() {
+  const doc = structuredClone(corpus);
+  const text = (en, zh) => ({ en: [{ text: en }], zh: [{ text: zh }] });
+  const diagram = JSON.parse(JSON.stringify(byId(doc, 'id013')).replace(/"id0(1[3-6])"/g, '"mcq-$1"'));
+  doc.questions.splice(1, 0, {
+    id: 'mcq-q',
+    type: 'mcq',
+    blocks: [
+      { kind: 'paragraph', id: 'mcq-stem', text: text('A per-unit tax shifts the supply curve. Which is correct?', '從量稅令供應曲線移動。以下哪項正確？') },
+      { ...diagram, widthPx: 260, heightPx: 218 },
+    ],
+    options: ['Price rises', 'Price falls', 'Output rises', 'No change'].map((en, n) => ({ id: `mcq-o${n}`, text: text(en, ['價格上升', '價格下降', '產量上升', '沒有改變'][n]) })),
+    answerIndex: 0,
+    optionLayout: 'columns2',
+  });
+  // `questions` owns the order; the flow only has to hold it in the same place.
+  doc.flow.splice(doc.flow.findIndex((item) => item.id === 'id005') + 1, 0, { type: 'question', id: 'mcq-q' });
+  return doc;
+}
+
 const named = (doc, id, title) => ({ ...doc, id, title: { en: [{ text: title }], zh: [] } });
 const FIXTURES = {
   english: named(englishOnly(corpus), 'ai-verify-english', 'AI verify English only'),
@@ -174,6 +197,7 @@ const FIXTURES = {
   long: named(longFixture(), 'ai-verify-long', 'AI verify long texts'),
   terms: named(termsFixture(), 'ai-verify-terms', 'AI verify terms'),
   answers: named(structuredClone(corpus), 'ai-verify-answers', 'AI verify answers'),
+  mcq: named(mcqFixture(), 'ai-verify-mcq', 'AI verify MCQ'),
   source: named(sourceFixture(), 'ai-verify-source', 'AI verify source'),
   quality: named(qualityFixture(), 'ai-verify-quality', 'AI verify quality'),
   // A newer build's file opens read-only: no AI entry point may show.
@@ -321,7 +345,7 @@ const fetched = new Set();
 
 const shooter = (engine) => (page, name) => page.screenshot({ path: `${OUT}/${engine}-${name}.png` });
 
-/** Every way in, on an English-only paper; nothing may be sent. */
+/** Every way in, on an English-only paper (the question box on the MCQ one); nothing may be sent. */
 async function entryChecks(engine, browser) {
   const shot = shooter(engine);
   const { context, page, leaks } = await newContext(browser, { viewport: { width: 1440, height: 900 } });
@@ -446,6 +470,73 @@ async function entryChecks(engine, browser) {
     await page.setViewportSize({ width: 1440, height: 900 });
     expect(row.spread <= 4 && row.overflow <= 1 && row.height < 44, JSON.stringify(row));
     return `row ${Math.round(row.height)} px high`;
+  });
+
+  // The question's box: blank paper beside a diagram belongs to no finer target, yet must
+  // open the page menu (not the browser's) for the whole question; an option letter in a
+  // row layout, its option's.
+  await openDocument(page, 'mcq');
+  const qbox = page.locator('#print-root [data-question-id="mcq-q"]').first();
+  const pageMenu = page.getByRole('menu', { name: 'Page actions' });
+  /** Right-clicks (x, y), which must land in the box and on no printed paragraph; the
+   *  menu's items, then its ✦ AI scope chip. */
+  const rightClickBox = async (x, y) => {
+    const hit = await page.evaluate(([px, py]) => {
+      const el = document.elementFromPoint(px, py);
+      return { inBox: !!el?.closest('[data-question-id="mcq-q"]'), onText: !!el?.closest('[data-page-target]') };
+    }, [x, y]);
+    expect(hit.inBox && !hit.onText, `(${Math.round(x)}, ${Math.round(y)}) lands ${JSON.stringify(hit)}`);
+    await page.mouse.click(x, y, { button: 'right' });
+    await pageMenu.waitFor({ timeout: 3000 });
+    await page.waitForTimeout(250);
+    return pageMenu.getByRole('menuitem').allInnerTexts();
+  };
+  const aiScopeChip = async () => {
+    await page.getByRole('menuitem', { name: '✦ AI…', exact: true }).click();
+    await aiMenu(page).waitFor({ timeout: 3000 });
+    const chip = (await aiMenu(page).getByRole('button', { name: /^Scope: / }).innerText()).trim();
+    await page.keyboard.press('Escape');
+    return chip;
+  };
+  await check(engine, 'right-click beside a diagram in a question opens its ✦ AI menu', async () => {
+    await clickMargin(page);
+    await qbox.scrollIntoViewIfNeeded();
+    // Let any scroll settle: the open menu closes on the next scroll.
+    await page.waitForTimeout(500);
+    const figure = await qbox.locator('svg').first().boundingBox();
+    const items = await rightClickBox(figure.x + figure.width + 80, figure.y + figure.height / 2);
+    const selected = await qbox.getAttribute('aria-current');
+    await shot(page, 'entry-09a-question-box-beside-diagram');
+    const chip = await aiScopeChip();
+    expect(items.includes('✦ AI…'), `menu offered ${items.join(', ')}`);
+    expect(selected === 'true', 'the question was not selected');
+    expect(chip === 'Question 2', `scope chip "${chip}"`);
+    return items.join(', ');
+  });
+  await check(engine, 'right-click a row-layout option letter opens its ✦ AI menu', async () => {
+    await clickMargin(page);
+    await qbox.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(500);
+    const letter = await qbox.evaluate((box) => {
+      const walker = document.createTreeWalker(box, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const at = node.data.indexOf('A.');
+        if (at < 0 || node.parentElement.closest('[data-page-target]')) continue;
+        const range = document.createRange();
+        range.setStart(node, at);
+        range.setEnd(node, at + 2);
+        const r = range.getBoundingClientRect();
+        return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+      }
+      return undefined;
+    });
+    expect(letter, 'no "A." marker outside printed text');
+    const items = await rightClickBox(letter.x, letter.y);
+    await shot(page, 'entry-09b-question-box-option-letter');
+    const chip = await aiScopeChip();
+    expect(items.includes('✦ AI…'), `menu offered ${items.join(', ')}`);
+    expect(chip === 'This text', `scope chip "${chip}"`);
+    return items.join(', ');
   });
 
   await check(engine, 'nothing sent without a click', () => nothingSent(leaks));

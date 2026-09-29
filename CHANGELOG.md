@@ -74,6 +74,9 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
   press, which on a busy computer could stop the editor with an error mid-sentence.
 - **Editing a duplicated question no longer changes the original.** Worksheets where a
   duplicate and its original were stuck together are separated when you open them.
+- **Right-clicking anywhere inside a question now opens its menu**, including ✦ AI: the
+  space beside a diagram, the question number, option letters and marks no longer bring
+  up the browser's own menu.
 
 ## 0.5.0 — 2026-09-28
 

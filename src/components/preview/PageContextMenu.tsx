@@ -16,11 +16,13 @@ import { useModalLayer } from '@/components/ui/modalLayer';
 import type { EditTarget } from '@/render/ir';
 
 /** What was right-clicked — resolved by the render site, never by walking the DOM.
- *  `questionId` is the emitting question's, so it is told apart whatever is selected. */
+ *  `questionId` is the emitting question's, so it is told apart whatever is selected.
+ *  `question` is the question's own box: anywhere inside it no finer target claimed. */
 export type PageMenuPayload =
   | { kind: 'text'; target: EditTarget; questionId?: string }
   | { kind: 'cell'; blockId: string; cellId: string; questionId?: string }
-  | { kind: 'block'; blockId: string; questionId?: string };
+  | { kind: 'block'; blockId: string; questionId?: string }
+  | { kind: 'question'; questionId: string };
 
 export interface PageMenuItem {
   label: string;
