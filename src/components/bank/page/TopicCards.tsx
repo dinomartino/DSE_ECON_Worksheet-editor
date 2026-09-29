@@ -5,7 +5,7 @@ import { typeName, type Coverage } from './bankPage';
 import type { ClassUsage } from './bankScreen';
 
 /** Split-bar fills by registry position: the first type solid, the rest lighter steps of the accent. */
-const SPLIT_FILL = ['bg-accent', 'bg-accent/40', 'bg-accent/20'];
+export const SPLIT_FILL = ['bg-accent', 'bg-accent/40', 'bg-accent/20'];
 
 /**
  * Level 1 of the bank: a card per topic (A to J, EL1, EL2) with its count and a thin
@@ -27,7 +27,7 @@ export function TopicCards({
   onAll: () => void;
   onClassGap: (classTag: string) => void;
 }) {
-  const { bars, untagged, total, typeIds } = coverage;
+  const { bars, untagged, total } = coverage;
   return (
     <div className="mx-auto grid w-full max-w-[1280px] gap-5">
       <div className="flex flex-wrap items-center gap-3">
@@ -110,17 +110,6 @@ export function TopicCards({
           );
         })}
       </ul>
-
-      {typeIds.length > 1 && (
-        <p className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-ink-subtle" aria-hidden>
-          {typeIds.map((typeId, index) => (
-            <span key={typeId} className="flex items-center gap-1.5">
-              <span className={`h-2 w-2 rounded-[2px] ${SPLIT_FILL[Math.min(index, SPLIT_FILL.length - 1)]}`} />
-              {typeName(typeId)}
-            </span>
-          ))}
-        </p>
-      )}
     </div>
   );
 }

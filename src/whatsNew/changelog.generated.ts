@@ -18,7 +18,7 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 - **Copy questions to a question bank from the outline.** Use a question's ⋯ menu to copy it to a bank (or start a new one); after you improve a question, "Update bank copy" refreshes the bank's version, and "Treat as a new question" cuts a copy loose from its origin. Banks show as "Question bank" in your list of documents.
 - **Question bank 題庫, its own screen**: open it from the start screen to see every
   question from your worksheets as topic cards (how many of each, and which topics are
-  thin). Open a topic to read its questions one by one at print size, in English, 中文 or
+  thin) under a coverage bar across the topics. Open a topic to read its questions one by one at print size, in English, 中文 or
   both, Student or Teacher version, with the list grouped by sub-topic (hide it for more
   room). Tick questions to make a new worksheet from them or add them to your last one.
   Untagged questions get a quick tagging mode: press 1 to 6 to pick a suggested topic,

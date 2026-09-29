@@ -42,6 +42,7 @@ import { worksheetFromPicks, type PickedQuestion } from './fromSelection';
 import { ReviewPage } from './ReviewPage';
 import { SelectionTray } from './SelectionTray';
 import { TagAsYouGo } from './TagAsYouGo';
+import { CoverageBar } from './CoverageBar';
 import { TopicCards } from './TopicCards';
 import { TopicPickerDialog } from './TopicPickerDialog';
 import { addTopics, replaceTopics, writeTags, type TagEdit, type TagWrite } from './writeBack';
@@ -455,6 +456,17 @@ export function QuestionBankScreen({
       </header>
 
       {banner && <div className="shrink-0 px-4 pt-3">{banner}</div>}
+
+      {level.kind === 'topics' && !noDocuments && (
+        <CoverageBar
+          coverage={cover}
+          onTopic={(code) => setLevel({ kind: 'review', topic: code })}
+          onUntagged={() => {
+            setTagIndex(0);
+            setLevel({ kind: 'untagged' });
+          }}
+        />
+      )}
 
       {level.kind === 'topics' && (
         <div className="scroll-slim min-h-0 flex-1 overflow-y-auto px-7 py-[22px]">
