@@ -185,6 +185,17 @@ export function ArchiveIcon(props: IconProps) {
   );
 }
 
+/** The Question bank: a stack of question cards. */
+export function BankIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="4" y="8" width="16" height="12.5" rx="1.5" />
+      <path d="M6.5 5h11M9 2.5h6" />
+      <path d="M8 12.5h8M8 16h5" opacity="0.55" />
+    </Svg>
+  );
+}
+
 /** Check again. */
 export function RefreshIcon(props: IconProps) {
   return (

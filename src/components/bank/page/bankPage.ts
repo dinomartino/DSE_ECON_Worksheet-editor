@@ -7,13 +7,13 @@ import type { BankGroup, BankRow } from '@/library/types';
 import type { WorksheetSummary } from '@/storage/types';
 
 /**
- * The Question bank page's pure half: coverage, tree counts, filters, the selection
- * tray's sums and when the index is stale. Types reach it only through the registry.
+ * The Question bank screen's data half: coverage (the topic cards), filters, the
+ * selection tray's sums and the Add-to target. Types reach it only through the registry.
  * Every count is of distinct questions (`rootId`), so a question copied into three
  * papers counts once, as the list shows it once.
  */
 
-/** The topics tree's selection: every question, one topic code, or those with no topic. */
+/** A review's scope: every question, one topic code, or those with no topic. */
 export type TopicPick = 'all' | 'untagged' | string;
 
 /** A row has a topic when any of its tags is a known code; free tags do not count. */
@@ -105,40 +105,6 @@ export function coverage(rows: readonly BankRow[]): Coverage {
     papers: kinds.filter((kind) => kind === 'paper').length,
     banks: kinds.filter((kind) => kind === 'bank').length,
   };
-}
-
-/**
- * Distinct questions per tree entry: 'all', 'untagged', every coarse and fine code. A
- * coarse count includes its fine codes (`matchesTopic`), so C ≥ C.ped.
- */
-export function treeCounts(rows: readonly BankRow[]): Map<TopicPick, number> {
-  const sets = new Map<TopicPick, Set<string>>();
-  const add = (key: TopicPick, root: string) => {
-    const set = sets.get(key) ?? new Set<string>();
-    sets.set(key, set);
-    set.add(root);
-  };
-  for (const row of rows) {
-    add('all', row.rootId);
-    if (!hasTopic(row)) add('untagged', row.rootId);
-    for (const tag of new Set(row.tags)) {
-      const topic = topicOf(tag);
-      if (!topic) continue;
-      add(topic.code, row.rootId);
-      if (topic.parent) add(topic.parent, row.rootId);
-    }
-  }
-  // Tagged in any copy is tagged (the same rule as `coverage`).
-  const untagged = sets.get('untagged');
-  if (untagged) {
-    for (const [key, set] of sets) {
-      if (key === 'all' || key === 'untagged') continue;
-      for (const root of set) untagged.delete(root);
-    }
-  }
-  const counts = new Map<TopicPick, number>();
-  for (const [key, set] of sets) counts.set(key, set.size);
-  return counts;
 }
 
 /* ------------------------------------------------------------------------------------ */
@@ -352,29 +318,6 @@ export function addTarget(
   return usable.find((summary) => summary.id === lastOpenId) ?? usable[0];
 }
 
-/**
- * Short coarse-topic names for the 192px tree, where the guide's titles clip to their
- * shared first words. Display only: the full title is the row's tooltip.
- */
-const SHORT: Record<string, string> = {
-  A: 'Basic concepts',
-  B: 'Firms, production',
-  C: 'Market and price',
-  D: 'Competition',
-  E: 'Efficiency, equity',
-  F: 'Measurement',
-  G: 'National income',
-  H: 'Money and banking',
-  I: 'Macro policy',
-  J: 'Trade and finance',
-  EL1: 'Monopoly pricing',
-  EL2: 'Growth, trade',
-};
-
-export function shortTopicName(code: string): string {
-  return SHORT[code] ?? topicOf(code)?.en ?? code;
-}
-
 /** "11 questions · 3 worksheets · 1 bank". */
 export function bankCountLabel(coverage: Pick<Coverage, 'total' | 'papers' | 'banks'>): string {
   // A no-break space: a narrow column wraps between the parts, never inside "1 bank".
@@ -385,27 +328,4 @@ export function bankCountLabel(coverage: Pick<Coverage, 'total' | 'papers' | 'ba
 /** "C.ped Price elasticity of demand" lines for the preview's Topics. */
 export function tagLines(tags: readonly string[]): { code: string; name?: string }[] {
   return tags.map((tag) => (topicOf(tag) ? { code: tag, name: topicLabel(tag, 'en') } : { code: tag }));
-}
-
-/* ------------------------------------------------------------------------------------ */
-/* Remembered tab                                                                       */
-/* ------------------------------------------------------------------------------------ */
-
-export type StartTab = 'worksheets' | 'bank';
-const TAB_KEY = 'econgen.startTab';
-
-export function readStartTab(): StartTab {
-  try {
-    return window.localStorage.getItem(TAB_KEY) === 'bank' ? 'bank' : 'worksheets';
-  } catch {
-    return 'worksheets';
-  }
-}
-
-export function writeStartTab(tab: StartTab): void {
-  try {
-    window.localStorage.setItem(TAB_KEY, tab);
-  } catch {
-    // Private mode or blocked storage: the tab just doesn't outlive the visit.
-  }
 }
