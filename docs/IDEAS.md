@@ -24,7 +24,8 @@ after the paper is sat (G), and AI authoring (E1/E3/E4 built but paused).
 Remove from this list once released.
 
 - **Question bank 題庫** (C1 tags, C2 bank, C4 usage history, C5 classes + sat-on date +
-  derived cohort, C6 one tag set across copies) — CHANGELOG Unreleased;
+  derived cohort, C6 one tag set across copies, C24 teacher-defined 題型) — CHANGELOG
+  Unreleased;
   `docs/design/question-library.md`.
 
 ## Recommended order
@@ -67,14 +68,10 @@ Loose ends on shipped features:
 
 Design: `docs/design/question-library.md` (a bank is a Worksheet; the index is derived and
 rebuildable; copies keep `lineage.rootId`). Deep analysis, sources and traps:
-`docs/research/2026-09-question-bank.md`. C1, C2, C4's usage history, C5 and C6 are built (above).
-
-**Next up (user's request, 2026-09-29)**:
-- **C24 Teacher-defined 題型 / Pattern** (M): a finer level under a sub-topic ("Calculate
-  PED from a TR change"). Separate MCQ and LQ lists; created while tagging, renamed /
-  merged / deleted on a manage page (writes every copy). The bank groups the review rail by
-  題型 inside a sub-topic, filters by it, and counts it on topic cards. **No default list**:
-  each panel defines its own. Never printed. Not "question type" (that means MCQ vs LQ).
+`docs/research/2026-09-question-bank.md`. C1, C2, C4's usage history, C5, C6 and C24 are built (above).
+- **題型 follow-ups** (S each): Enter on a partly typed name makes a near-duplicate;
+  bulk Set topic can't clear a 題型; a name made in a cancelled dialog isn't kept; Fill
+  and coverage could spread across 題型 (user chose group + filter only for now).
 
 **The build flow** — every mature bank starts from the paper or shows the target:
 - **C7 A real cart** (S–M): the tray lists its picks (remove one, reorder, MCQ before LQ)

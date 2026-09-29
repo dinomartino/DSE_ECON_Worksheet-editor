@@ -32,7 +32,9 @@ off the bottom.** It is the first thing a fresh session reads — then
   copy and display the union (`src/library/sharedTags.ts`); editor topic edits sync other
   copies too (`src/components/editor/topicSync.ts`), bank copies take the union. Known:
   ⌘Z undoes the open copy only; a second tab holding a copy can overwrite synced tags;
-  Filter button label truncates. Next: C24 teacher-defined 題型 (in progress), then C7–C11. Teacher screen text has no em dashes (user rule).
+  Filter button label truncates. **C24 題型 merged**: tag form `C.ped::<name>` (`src/model/patterns.ts`), registry
+  `src/storage/patterns.ts` (in backup); unverified in WebKit/desktop shell; the start
+  screen's notice banner lingers onto the 題型 page. Next: C7–C11. Teacher screen text has no em dashes (user rule).
   **Integration QA + polish merged** (`feature/bank-polish`):
   end-to-end in Chromium + WebKit, `.docx` leak-free; fixed a real "Maximum update depth"
   crash in `usePagination`/band measuring (a no-op `setState` per render queued a second
