@@ -24,6 +24,7 @@ import { worksheetMarks } from '@/model/marks';
 import { renderWorksheet } from '@/render/worksheet';
 import { resolveFlow } from '@/model/flow';
 import { createMcqQuestion } from '@/model/factories';
+import { copyQuestion } from '@/model/lineage';
 import { bi } from '@/model/text';
 import type { McqQuestion, OutputMode } from '@/model/types';
 
@@ -172,5 +173,18 @@ describe('a document saved by the published build still opens', () => {
     const back = reloaded.questions[reloaded.questions.length - 1] as McqQuestion;
     expect(back.options[1].rationale).toEqual(question.options[1].rationale);
     expect(back.provenance).toEqual(question.provenance);
+  });
+
+  it('carries question lineage through load → save → load', () => {
+    const loaded = migrate(structuredClone(v1Corpus));
+    expect(JSON.stringify(loaded.questions)).not.toMatch(/"lineage"/);
+
+    const question = copyQuestion(createMcqQuestion(), 'doc-source');
+    const edited = { ...loaded, questions: [...loaded.questions, question] };
+
+    const reloaded = migrate(JSON.parse(JSON.stringify(serializeWorksheet(edited))));
+    expect(reloaded.__unknown).toBeUndefined();
+    expect(reloaded.questions.slice(0, -1)).toEqual(loaded.questions);
+    expect(reloaded.questions.at(-1)!.lineage).toEqual(question.lineage);
   });
 });

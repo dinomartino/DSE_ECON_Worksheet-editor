@@ -17,8 +17,11 @@ import { defaultHeader, firstPageHeaderFooter, headerFooterOf } from '@/model/pa
 import { bi, plain, rt } from '@/model/text';
 import type { TranslationWrite } from '@/model/textSlots';
 import { mapWorksheetTexts } from '@/model/textWalk';
-import type { McqQuestion, StructuredQuestion } from '@/model/types';
-import { buildAcceptanceWorksheet } from '@/test/fixtures';
+import { createWorksheet } from '@/model/factories';
+import { questionIdOwners } from '@/model/lineage';
+import type { DiagramBlock, McqQuestion, Question, StructuredQuestion, TableBlock } from '@/model/types';
+import { buildAcceptanceWorksheet, withFlow } from '@/test/fixtures';
+import { richMcq, richStructured } from '@/test/idFixture';
 import { buildTranslateFixture } from '@/test/translateFixture';
 import { useWorksheetStore } from './worksheetStore';
 
@@ -124,6 +127,52 @@ describe('question operations (§5.3)', () => {
     };
     expect(stemText(clone)).toBe(stemText(original));
     expect(stemText(clone)).toBeTruthy();
+
+    // No id the copy holds is the original's (diagram geometry aside, which is scoped).
+    const owned = (question: Question) => [...questionIdOwners(question)].map(({ owner }) => owner.id);
+    expect(owned(clone).filter((id) => owned(original).includes(id))).toEqual([]);
+  });
+
+  it.each([
+    ['duplicateQuestion', (id: string) => store().duplicateQuestion(id)],
+    ['duplicateMany', (id: string) => store().duplicateMany([id])],
+  ])('%s: editing the copy leaves the original untouched', (_name, duplicate) => {
+    useWorksheetStore.setState({ worksheet: withFlow(createWorksheet(), [richStructured(), richMcq()]) });
+    duplicate(store().worksheet.questions[0].id);
+    duplicate(store().worksheet.questions[2].id);
+    const [original, copy, mcq, mcqCopy] = store().worksheet.questions as [
+      StructuredQuestion,
+      StructuredQuestion,
+      McqQuestion,
+      McqQuestion,
+    ];
+
+    const stem = copy.blocks[0];
+    store().applyEdit({ kind: 'blockText', blockId: stem.id }, bi('Edited stem', '已改題幹'));
+    const table = copy.blocks[1] as TableBlock;
+    store().applyEdit(
+      { kind: 'tableCell', blockId: table.id, cellId: table.rows[0].cells[0].id },
+      bi('Edited cell', '已改'),
+    );
+    const answer = copy.parts[0].answerDiagram!;
+    store().replaceBlock(answer.id, { ...answer, widthPx: 123 });
+    store().applyEdit(
+      { kind: 'mcqOption', questionId: mcqCopy.id, optionId: mcqCopy.options[0].id },
+      bi('Edited option', '已改選項'),
+    );
+    const optionDiagram = mcqCopy.options[0].blocks![0] as DiagramBlock;
+    store().replaceBlock(optionDiagram.id, { ...optionDiagram, widthPx: 77 });
+
+    const after = store().worksheet.questions;
+    expect(after[0]).toEqual(original);
+    expect(after[2]).toEqual(mcq);
+    const edited = after[1] as StructuredQuestion;
+    const editedMcq = after[3] as McqQuestion;
+    expect(edited.blocks[0].kind === 'paragraph' && plain(edited.blocks[0].text.en)).toBe('Edited stem');
+    expect(plain((edited.blocks[1] as TableBlock).rows[0].cells[0].text.en)).toBe('Edited cell');
+    expect(edited.parts[0].answerDiagram!.widthPx).toBe(123);
+    expect(plain(editedMcq.options[0].text.en)).toBe('Edited option');
+    expect((editedMcq.options[0].blocks![0] as DiagramBlock).widthPx).toBe(77);
   });
 
   it('moves a question under another section and renumbers', () => {

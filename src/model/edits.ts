@@ -139,7 +139,7 @@ function clearAnswerDiagram<T extends AnswerDiagramOwner>(owner: T, blockId: str
  * so this walks the optional `parts`/`subParts` structure generically rather than
  * switching on a concrete type id (§9).
  */
-function questionBlockLists(question: Question): ContentBlock[][] {
+export function questionBlockLists(question: Question): ContentBlock[][] {
   const lists: ContentBlock[][] = [question.blocks, ...answerDiagramList(question)];
   const parts = (
     question as {
@@ -178,7 +178,7 @@ function questionBlockLists(question: Question): ContentBlock[][] {
  * the walk reads the field structurally like `questionBlockLists` reads `parts`, so a
  * future block-bearing element joins every block edit for free.
  */
-function layoutBlockLists(element: LayoutElement): ContentBlock[][] {
+export function layoutBlockLists(element: LayoutElement): ContentBlock[][] {
   return 'blocks' in element ? [element.blocks] : [];
 }
 

@@ -343,6 +343,17 @@ export interface QuestionBase {
    * never on the first item of a page, an unlike neighbour, or a classroom worksheet.
    */
   gapBefore?: number;
+  /** Machine identity across copies (`model/lineage.ts`); never printed. Absent = an original. */
+  lineage?: QuestionLineage;
+}
+
+export interface QuestionLineage {
+  /** The first ancestor's id; a question copied from an original names that original. */
+  rootId: string;
+  /** The document the copy was taken from. */
+  fromDocId?: string;
+  /** ISO timestamp of the copy. */
+  copiedAt?: string;
 }
 
 export interface McqOption {

@@ -3577,8 +3577,8 @@ const itemBodyId = (item: RenderedItem) =>
 const ItemBody = memo(
   function ItemBody({ item, language, ctx: pageCtx, selected, onSelect, range }: ItemBodyProps) {
     const questionId = item.type === "question" ? item.question.questionId : undefined;
-    // A right-click inside a question names it, so a Duplicate's copy (same block ids)
-    // is the one acted on whatever is selected. Nothing new is read at render time.
+    // A right-click inside a question names it, so the question acted on is the one
+    // clicked whatever is selected. Nothing new is read at render time.
     const ctx = useMemo(() => {
       const open = pageCtx?.contextMenu;
       if (!pageCtx || !open || questionId === undefined) return pageCtx;

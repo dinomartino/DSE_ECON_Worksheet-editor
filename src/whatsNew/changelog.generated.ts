@@ -12,6 +12,9 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 
 ## Unreleased
 
+### Fixed
+- **Editing a duplicated question no longer changes the original.**
+
 ## 0.5.0 — 2026-09-28
 
 ### Added

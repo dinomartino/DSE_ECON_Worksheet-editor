@@ -32,6 +32,7 @@ import {
   setRowHeight,
 } from '@/model/table';
 import { createWorksheet, newId } from '@/model/factories';
+import { freshIds } from '@/model/lineage';
 import {
   applyOrder,
   clampAnswerLines,
@@ -503,29 +504,6 @@ function appendIndexFor(worksheet: Worksheet, flow: FlowItem[], entry: FlowItem)
   return at;
 }
 
-/**
- * Give every id in a question a fresh value.
- *
- * Duplicating has to re-id *through* the nested parts and sub-parts, not just the
- * question: two questions sharing a part id would make an edit to one silently rewrite
- * the other, and the numbering plan would key two entries to the same address.
- */
-function withFreshIds(question: Question): Question {
-  const next = { ...question, id: newId() } as Question;
-  const parts = (next as { parts?: Array<Record<string, unknown>> }).parts;
-  if (parts) {
-    (next as { parts: unknown }).parts = parts.map((part) => ({
-      ...part,
-      id: newId(),
-      subParts: (part.subParts as Array<Record<string, unknown>> | undefined)?.map((sub) => ({
-        ...sub,
-        id: newId(),
-      })),
-    }));
-  }
-  return next;
-}
-
 /** Apply a band mutator to whichever masthead band holds `fieldId`. */
 function patchBandHolding(
   worksheet: Worksheet,
@@ -796,7 +774,7 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     get().commit((draft) => {
       const index = draft.questions.findIndex((question) => question.id === questionId);
       if (index < 0) return draft;
-      const clone = withFreshIds(draft.questions[index]);
+      const clone = freshIds(draft.questions[index]);
       // Placed straight after the original in both lists, so the copy appears where the
       // teacher is looking rather than at the end of the document.
       return insertIntoFlow(draft, { type: 'question', id: clone.id }, questionId, {
@@ -916,7 +894,7 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
       for (const question of draft.questions) {
         questions.push(question);
         if (!set_.has(question.id)) continue;
-        const clone = withFreshIds(question);
+        const clone = freshIds(question);
         questions.push(clone);
         // Each copy is placed after its own original, so duplicating a selection that
         // spans a section heading keeps every copy on the side of it that it came from.
