@@ -50,6 +50,10 @@ off the bottom.** It is the first thing a fresh session reads — then
   subtitles, no audio). Translations are canned in the browser (`scripts/demo/ai-provider.mjs`,
   text in `scripts/demo/content.mjs:AI`); Check terms is real. App nit seen while filming:
   after a finding card's Replace, the bar still reads "1 to fix · Replace 1" until Done.
+- **UI polish (merged on `develop` 2026-09-29, not released)**: hover is colour only (no
+  accent bar/nudge/lift; rule in SYSTEM_ARCHITECTURE § Layout rules); start-screen aside
+  shows scroll edge hints (`src/components/ui/scrollEdges.ts`, `ScrollEdgeHints.tsx`),
+  reusable for other panes. Left alone: swatches grow on hover, dark-mode row tint is faint.
 - **AI Settings keys (merged on `develop` 2026-09-29, not released)**: "Your keys" list
   (count, masked last 4, In use, per-key Test/Forget, in-memory status), "Key saved" chip on
   provider rows, card's button reads Test for a saved key, About folded into one Collapsible.
