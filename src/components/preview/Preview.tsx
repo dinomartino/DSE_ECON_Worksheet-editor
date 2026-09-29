@@ -3326,6 +3326,16 @@ function usePagination(
   const [heights, setHeights] = useState<Map<string, number>>(new Map());
   /** Per block: the cumulative bottom of each of its nodes, from the block's own top. */
   const [nodeHeights, setNodeHeights] = useState<Map<string, number[]>>(new Map());
+  /**
+   * The last measurement handed to the setters. Compared *before* calling them: the
+   * effect runs on every keystroke, and even an updater that returns `prev` schedules a
+   * second render of the whole document (React cannot bail out eagerly right after an
+   * update) — under fast input those pile up into "Maximum update depth exceeded".
+   */
+  const lastMeasured = useRef<{ heights: Map<string, number>; nodes: Map<string, number[]> }>({
+    heights: new Map(),
+    nodes: new Map(),
+  });
 
   // Measure after paint, and re-measure whenever the content or the page geometry
   // changes. A ResizeObserver on the probe catches reflows the dependency list cannot
@@ -3386,26 +3396,26 @@ function usePagination(
           );
         }
       }
-      setHeights((prev) => {
-        if (prev.size === next.size && [...next].every(([k, v]) => prev.get(k) === v)) {
-          return prev; // Bail out rather than re-render on an identical measurement.
-        }
-        return next;
-      });
-      setNodeHeights((prev) => {
-        // Compared by value for the reason the block heights are: the effect re-runs per
-        // measurement pass, and a fresh Map every time would re-pack on every keystroke.
-        if (
-          prev.size === nodeTops.size &&
+      // Bail out rather than re-render on an identical measurement.
+      const last = lastMeasured.current;
+      if (!(last.heights.size === next.size && [...next].every(([k, v]) => last.heights.get(k) === v))) {
+        last.heights = next;
+        setHeights(next);
+      }
+      // Compared by value for the reason the block heights are: the effect re-runs per
+      // measurement pass, and a fresh Map every time would re-pack on every keystroke.
+      if (
+        !(
+          last.nodes.size === nodeTops.size &&
           [...nodeTops].every(([key, tops]) => {
-            const was = prev.get(key);
+            const was = last.nodes.get(key);
             return was?.length === tops.length && tops.every((top, i) => was[i] === top);
           })
-        ) {
-          return prev;
-        }
-        return nodeTops;
-      });
+        )
+      ) {
+        last.nodes = nodeTops;
+        setNodeHeights(nodeTops);
+      }
     };
 
     measure();
@@ -4068,6 +4078,14 @@ function BlankPage({
   );
 }
 
+/** Band heights within a twip of each other: the same measurement. */
+function sameBands(
+  a: { header: number; footer: number } | undefined,
+  b: { header: number; footer: number },
+): boolean {
+  return a !== undefined && Math.abs(a.header - b.header) < 1 && Math.abs(a.footer - b.footer) < 1;
+}
+
 export function Preview({
   worksheet,
   mode,
@@ -4280,14 +4298,12 @@ export function Preview({
 
       if (sheet) {
         const next = { header: toTwips(box('header')), footer: toTwips(box('footer')) };
-        // Only commit a real change, or the state write re-renders forever.
-        setMeasured((prev) =>
-          prev &&
-          Math.abs(prev.header - next.header) < 1 &&
-          Math.abs(prev.footer - next.footer) < 1
-            ? prev
-            : next,
-        );
+        // Only commit a real change, or the state write re-renders forever. Checked
+        // before calling the setter too: this runs after every render, and even a
+        // no-op updater schedules a second render of the whole document per keystroke
+        // (React cannot bail out eagerly right after an update) — which, under fast
+        // input, piles up into "Maximum update depth exceeded".
+        if (!sameBands(measured, next)) setMeasured((prev) => (sameBands(prev, next) ? prev : next));
       }
 
       // Page 1 separately, since it may print a taller cover than the running rows and
@@ -4301,13 +4317,9 @@ export function Preview({
         header: toTwips(firstBox('header')),
         footer: toTwips(firstBox('footer')),
       };
-      setMeasuredFirst((prev) =>
-        prev &&
-        Math.abs(prev.header - nextFirst.header) < 1 &&
-        Math.abs(prev.footer - nextFirst.footer) < 1
-          ? prev
-          : nextFirst,
-      );
+      if (!sameBands(measuredFirst, nextFirst)) {
+        setMeasuredFirst((prev) => (sameBands(prev, nextFirst) ? prev : nextFirst));
+      }
     };
 
     read();
