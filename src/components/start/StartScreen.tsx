@@ -16,6 +16,8 @@ import {
 } from '@/platform';
 import { Dialog } from '@/components/ui/Dialog';
 import { AppMark } from '@/components/ui/AppMark';
+import { ScrollEdgeHints } from '@/components/ui/ScrollEdgeHints';
+import { useScrollEdges } from '@/components/ui/scrollEdges';
 import { ArchiveIcon, BankIcon, FolderIcon, FolderOpenIcon, SettingsIcon, SheetIcon } from '@/components/ui/icons';
 import type { MenuItem } from '@/components/ui/Menu';
 import { VersionLine } from '@/components/editor/UpdateBanner';
@@ -158,6 +160,7 @@ export function StartScreen({
   const closeWhatsNew = useCallback(() => setWhatsNew(false), []);
   const fileInput = useRef<HTMLInputElement>(null);
   const backupInput = useRef<HTMLInputElement>(null);
+  const { ref: asideRef, edges: asideEdges } = useScrollEdges<HTMLElement>();
   const rejectTimer = useRef<number | undefined>(undefined);
   const handleDropRef = useRef<(files: Dropped[]) => Promise<void>>(async () => undefined);
 
@@ -689,7 +692,9 @@ export function StartScreen({
         </div>
       ) : (
       <>
-      <aside className="zone-light flex shrink-0 flex-col overflow-y-auto border-b border-line bg-surface px-9 pb-8 pt-9 lg:h-full lg:w-[400px] lg:border-b-0 lg:border-r">
+      {/* The panel's box lives on this wrapper so the edge hints can sit over the scroller. */}
+      <div className="zone-light relative flex shrink-0 flex-col border-b border-line bg-surface lg:h-full lg:w-[400px] lg:border-b-0 lg:border-r">
+      <aside ref={asideRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto px-9 pb-8 pt-9">
         <header className="flex items-center gap-2.5">
           <span className="flex shrink-0 text-ink">
             <AppMark size={22} />
@@ -789,6 +794,8 @@ export function StartScreen({
           </div>
         </div>
       </aside>
+      <ScrollEdgeHints edges={asideEdges} />
+      </div>
 
       {/* The desk side: every document already on the desk, as its first page. */}
       <main className="min-h-0 flex-1 overflow-y-auto px-9 py-9 lg:px-14 lg:py-12">

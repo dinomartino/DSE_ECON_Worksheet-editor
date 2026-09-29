@@ -64,6 +64,8 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 - **Question bank: easier to read.** "Used in" puts each paper's full title on its own
   line, and the Class filter shows a short name ("Not used with DSE 2027") with the
   classes it covers listed underneath.
+- **The start screen shows when there's more to scroll.** Its left column fades at the
+  bottom while more is below, and shows a thin line at the top once you have scrolled down.
 
 ### Fixed
 - **Typing on the page is lighter.** The page no longer redraws twice for every key you

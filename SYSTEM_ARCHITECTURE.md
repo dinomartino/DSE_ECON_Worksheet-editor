@@ -2098,6 +2098,9 @@ hover                      → margin drag grip → reorder
   Glyph-only buttons take a required `label`.
 - **Selection is bidirectional**: either pane selects, the other scrolls into view.
 - **Depth is carried by rule and label, not more boxes.**
+- **A scroll pane that can hide content shows an edge hint, not a forced scrollbar**
+  (macOS overlay scrollbars are invisible until scrolled): `useScrollEdges` +
+  `ScrollEdgeHints` (`src/components/ui/`), as on the start screen's aside.
 
 ---
 
