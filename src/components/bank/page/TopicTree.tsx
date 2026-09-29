@@ -117,7 +117,9 @@ function TreeRow({
         } ${active ? 'text-ink' : count === 0 ? 'text-ink-subtle hover:text-ink' : 'text-ink-muted hover:text-ink'}`}
       >
         {code && <b className="w-6 shrink-0 font-semibold tabular-nums text-ink">{code}</b>}
-        <span className={`min-w-0 flex-1 truncate ${active ? 'font-medium' : ''}`}>{label}</span>
+        {/* Two lines rather than an ellipsis: the slot's width is the Folders column's,
+            and "Scarcity, choice and opportunity cost" must still be readable in it. */}
+        <span className={`line-clamp-2 min-w-0 flex-1 break-words leading-snug ${active ? 'font-medium' : ''}`}>{label}</span>
         <span className="shrink-0 text-[11px] tabular-nums text-ink-subtle">{count}</span>
       </button>
       {/* The chevron's slot is kept on every row, so counts sit in one column. */}

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { FolderState, WorksheetSummary } from '@/storage';
 import {
   DEFAULT_QUERY,
+  documentCount,
   isFiltered,
   relativeTime,
   scopedSummaries,
@@ -119,5 +120,23 @@ describe('trashAgeLabel', () => {
     expect(trashAgeLabel(deleted, at(0))).toBe('Deleted today · removed in 30 days');
     expect(trashAgeLabel(deleted, at(1))).toBe('Deleted yesterday · removed in 29 days');
     expect(trashAgeLabel(deleted, at(29.5))).toBe('Deleted 29 days ago · removed in 1 day');
+  });
+});
+
+describe('banks on the Worksheets tab', () => {
+  const bank = { id: 'k', title: 'Question bank', updatedAt: '2026-09-21T00:00:00Z', kind: 'bank' } as WorksheetSummary;
+
+  it('counts banks apart from worksheets', () => {
+    expect(documentCount(rows)).toBe('4 worksheets');
+    expect(documentCount([...rows, bank])).toBe('4 worksheets · 1 bank');
+    expect(documentCount([bank])).toBe('1 bank');
+    expect(documentCount([])).toBe('0 worksheets');
+  });
+
+  it('shows a bank under All only, never as a worksheet or a mock', () => {
+    const all = [...rows, bank];
+    expect(ids(visibleSummaries(all, DEFAULT_QUERY))).toContain('k');
+    expect(ids(visibleSummaries(all, { ...DEFAULT_QUERY, kind: 'worksheet' }))).not.toContain('k');
+    expect(ids(visibleSummaries(all, { ...DEFAULT_QUERY, kind: 'mock' }))).not.toContain('k');
   });
 });

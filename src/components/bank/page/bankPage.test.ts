@@ -5,7 +5,6 @@ import type { WorksheetSummary } from '@/storage/types';
 import {
   activeFilters,
   addTarget,
-  bankIsStale,
   classTags,
   clearFilter,
   coverage,
@@ -20,7 +19,6 @@ import {
 
 const choice = createMcqQuestion().type;
 const parts = createStructuredQuestion().type;
-const ready = { state: 'ready' as const, done: 1, total: 1 };
 
 describe('coverage', () => {
   it('counts each question once per coarse topic, types stacked in registry order', () => {
@@ -148,19 +146,8 @@ describe('traySummary', () => {
   });
 });
 
-describe('freshness and targets', () => {
+describe('targets', () => {
   const summary = (id: string, updatedAt: string, questionCount = 1): WorksheetSummary => ({ id, title: id, updatedAt, questionCount });
-
-  it('is stale when a document was saved since, went away, or a newer one appeared', () => {
-    const rows = [row({ docId: 'a', docUpdatedAt: '2026-01-01' })];
-    expect(bankIsStale(rows, [summary('a', '2026-01-01')], ready)).toBe(false);
-    expect(bankIsStale(rows, [summary('a', '2026-02-01')], ready)).toBe(true);
-    expect(bankIsStale(rows, [], ready)).toBe(true);
-    expect(bankIsStale(rows, [summary('a', '2026-01-01'), summary('b', '2026-03-01')], ready)).toBe(true);
-    // An empty newer document yields no rows: not a reason to rescan.
-    expect(bankIsStale(rows, [summary('a', '2026-01-01'), summary('b', '2026-03-01', 0)], ready)).toBe(false);
-    expect(bankIsStale(rows, [], { state: 'scanning', done: 0, total: 1 })).toBe(false);
-  });
 
   it('adds to the document open last, else the newest paper, never a bank', () => {
     const summaries = [summary('bank', '3'), summary('new', '2'), summary('old', '1')];

@@ -25,6 +25,8 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   on the page, and one Undo takes the whole set back out.
 
 ### Fixed
+- **Typing on the page is lighter.** The page no longer redraws twice for every key you
+  press, which on a busy computer could stop the editor with an error mid-sentence.
 - **Editing a duplicated question no longer changes the original.** Worksheets where a
   duplicate and its original were stuck together are separated when you open them.
 

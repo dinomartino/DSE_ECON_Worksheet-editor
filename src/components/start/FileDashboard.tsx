@@ -16,6 +16,7 @@ import {
 import { PageThumbnail } from './PageThumbnail';
 import {
   DEFAULT_QUERY,
+  documentCount,
   isFiltered,
   readDashboardView,
   relativeTime,
@@ -137,8 +138,8 @@ export function FileDashboard({
           {summaries.length > 0 && (
             <span className="mr-2">
               {shown.length === inScope.length
-                ? plural(inScope.length, 'document')
-                : `${shown.length} of ${plural(inScope.length, 'document')}`}
+                ? documentCount(inScope)
+                : `${shown.length} shown · ${documentCount(inScope)}`}
             </span>
           )}
           {onShowTrash && (

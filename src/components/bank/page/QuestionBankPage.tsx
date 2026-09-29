@@ -14,7 +14,6 @@ import { useWorksheetStore } from '@/store/worksheetStore';
 import {
   activeFilters,
   addTarget,
-  bankIsStale,
   classTags,
   clearFilter,
   coverage as coverageOf,
@@ -24,7 +23,6 @@ import {
   MARKS_BANDS,
   rowKey,
   SINCE_CHOICES,
-  summariesKey,
   traySummary,
   treeCounts,
   typeName,
@@ -44,9 +42,6 @@ import { addPicksToOpenDocument } from './addToOpen';
 
 /** Groups drawn at first; more on request, so a 900-question bank never renders at once. */
 const PAGE = 120;
-
-/** The summaries the index was last refreshed for (per session): at most one catch-up per change. */
-let refreshedFor: string | undefined;
 
 type Picker = { mode: 'edit'; row: BankRowData } | { mode: 'bulk' };
 
@@ -80,7 +75,7 @@ export function QuestionBankPage({
   onError: (message: string) => void;
   onStartNew: () => void;
 }) {
-  const { rows, status, refresh } = useBank();
+  const { rows, status } = useBank();
   const [filters, setFilters] = useState<BankFilters>(DEFAULT_FILTERS);
   const [focusKey, setFocusKey] = useState<string>();
   const [picks, setPicks] = useState<string[]>([]);
@@ -90,17 +85,8 @@ export function QuestionBankPage({
   const [busy, setBusy] = useState(false);
   const [docs, setDocs] = useState<ReadonlyMap<string, Worksheet | null>>(new Map());
 
-  // The index catches up with documents saved since it last read them (an edit in the
-  // editor, a rename here). Once per change of the saved list — a document that yields no
-  // rows would otherwise read stale forever and rescan in a loop.
-  const savedKey = summariesKey(summaries);
-  useEffect(() => {
-    if (!loaded || refreshedFor === savedKey) return;
-    if (status.state === 'ready' && bankIsStale(rows, summaries, status)) {
-      refreshedFor = savedKey;
-      refresh();
-    }
-  }, [loaded, savedKey, rows, summaries, status, refresh]);
+  // No catch-up here: the index follows the store's change feed (`useBank`), so a save,
+  // rename, trash or restore reaches these rows without a rescan.
 
   const byKey = useMemo(() => new Map(rows.map((row) => [rowKey(row), row])), [rows]);
   const fullGroups = useMemo(() => new Map(groupRows(rows).map((group) => [group.rootId, group])), [rows]);
@@ -161,10 +147,7 @@ export function QuestionBankPage({
     setBusy(true);
     try {
       const report = await writeTags(worksheetStore, writes, edit);
-      if (report.saved.length > 0) {
-        refresh();
-        onDocumentsChanged();
-      }
+      if (report.saved.length > 0) onDocumentsChanged();
       if (report.failed.length > 0) {
         const title = (id: string) => summaries.find((s) => s.id === id)?.title ?? 'A worksheet';
         onError(report.failed.map((f) => `“${title(f.docId)}” was not changed: ${f.reason}.`).join(' '));

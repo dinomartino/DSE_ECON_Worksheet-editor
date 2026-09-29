@@ -231,7 +231,7 @@ scan; rebuildable, so no teacher's work lives in it.
 - `src/components/bank/BankRow.tsx:BankRow` — the shared row: excerpt, quiet meta, action slot, in-paper / used-with-class / missing-language / selected states
 - `src/store/worksheetStore.ts:insertQuestionCopies` — bank copies in (`copyQuestion`), one commit, one undo
 - `src/components/bank/page/QuestionBankPage.tsx:QuestionBankPage` — the start screen's Question bank tab: coverage strip, Topics tree (in the Folders slot), grouped list, Teacher preview, selection tray
-- `src/components/bank/page/bankPage.ts:coverage` · `:treeCounts` · `:filterRows` · `:traySummary` · `:bankIsStale` · `:addTarget` — the page's pure half; counts are distinct `rootId`s
+- `src/components/bank/page/bankPage.ts:coverage` · `:treeCounts` · `:filterRows` · `:traySummary` · `:addTarget` — the page's pure half; counts are distinct `rootId`s
 - `src/components/bank/page/questionPreview.ts:questionPreviewHtml` — one question through the clipboard reader of the IR, Teacher mode, in its own document's setup
 - `src/components/bank/page/writeBack.ts:writeTags` · `:withQuestionTags` — topic edits into the owning documents, one save per document
 - `src/components/bank/page/fromSelection.ts:worksheetFromPicks` · `src/components/bank/page/addToOpen.ts:addPicksToOpenDocument` — New worksheet from these / Add to the open paper (one ⌘Z)

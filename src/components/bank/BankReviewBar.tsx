@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useAiRun } from '@/assist/runStore';
 import { BarButton } from '@/components/ai/AiBar';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { useBankSession } from './bankSession';
+import { reviewSummary, useBankSession } from './bankSession';
 
 /**
  * What 題庫 just inserted, reviewed the way ✦ AI's inserts are: the copies highlighted on
@@ -57,6 +57,14 @@ function reveal(id: string | undefined): void {
   if (id) document.querySelector(questionSelector(id))?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
+/** The bar and the toolbar cover the viewport's edges; a copy under either is not seen. */
+function revealIfHidden(id: string | undefined): void {
+  const el = id ? document.querySelector(questionSelector(id)) : null;
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  if (rect.top < 64 || rect.bottom > window.innerHeight - 120) reveal(id);
+}
+
 export function BankReviewBar() {
   const review = useBankSession((s) => s.review);
   // Re-render on every edit: Undo hides once its commit is no longer the latest.
@@ -79,9 +87,32 @@ export function BankReviewBar() {
   // Undone from anywhere (⌘Z, the toolbar): the copies are gone, so is their review.
   const present = review ? review.questionIds.filter((id) => worksheet.questions.some((q) => q.id === id)) : [];
   const gone = review !== null && present.length === 0;
+  // Some gone (⌘Z took the latest of several inserts): ‹ › and the count follow what is left.
+  const pruned = review !== null && !gone && present.length < review.questionIds.length ? present.join(' ') : '';
   useEffect(() => {
     if (gone) useBankSession.getState().dismiss();
   }, [gone]);
+  useEffect(() => {
+    if (!pruned) return;
+    const current = useBankSession.getState().review;
+    if (!current) return;
+    const questionIds = pruned.split(' ');
+    const at = questionIds.indexOf(current.questionIds[current.index]);
+    useBankSession.setState({
+      review: { ...current, questionIds, index: at >= 0 ? at : 0, summary: reviewSummary(questionIds.length) },
+    });
+  }, [pruned]);
+
+  // A new or extended review: bring its copy into view once the page has laid it out.
+  const reviewIds = review?.questionIds;
+  useEffect(() => {
+    if (!reviewIds) return;
+    const timer = window.setTimeout(() => {
+      const latest = useBankSession.getState().review;
+      revealIfHidden(latest?.questionIds[latest.index]);
+    }, 150);
+    return () => window.clearTimeout(timer);
+  }, [reviewIds]);
 
   const current = review?.questionIds[review.index];
   useQuestionMarks(review?.questionIds, current);

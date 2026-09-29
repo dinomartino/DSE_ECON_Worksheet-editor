@@ -3,7 +3,7 @@ import { TOPICS, topicLabel, topicOf } from '@/model/topics';
 import { getQuestionType, listQuestionTypes } from '@/registry';
 import { sameClass } from '@/library/history';
 import { searchRows } from '@/library/search';
-import type { BankGroup, BankRow, BankStatus } from '@/library/types';
+import type { BankGroup, BankRow } from '@/library/types';
 import type { WorksheetSummary } from '@/storage/types';
 
 /**
@@ -335,28 +335,8 @@ export function mixLabel(mix: TraySummary['mix'], shown = 3): string {
 export const rowKey = (row: Pick<BankRow, 'docId' | 'questionId'>) => `${row.docId}\u0000${row.questionId}`;
 
 /* ------------------------------------------------------------------------------------ */
-/* Freshness and targets                                                                */
+/* Targets                                                                              */
 /* ------------------------------------------------------------------------------------ */
-
-/**
- * Whether the index is behind the saved documents: a row names a document that is gone or
- * was saved since, or a document newer than everything indexed has appeared. A document
- * that yields no rows (empty, hidden) can read stale; the caller refreshes once per
- * `summariesKey`, never in a loop.
- */
-export function bankIsStale(rows: readonly BankRow[], summaries: readonly WorksheetSummary[], status: BankStatus): boolean {
-  if (status.state !== 'ready') return false;
-  const saved = new Map(summaries.map((summary) => [summary.id, summary.updatedAt]));
-  let newest = '';
-  for (const row of rows) {
-    if (saved.get(row.docId) !== row.docUpdatedAt) return true;
-    if (row.docUpdatedAt > newest) newest = row.docUpdatedAt;
-  }
-  return summaries.some((summary) => summary.questionCount !== 0 && summary.updatedAt > newest);
-}
-
-export const summariesKey = (summaries: readonly WorksheetSummary[]) =>
-  summaries.map((summary) => `${summary.id}@${summary.updatedAt}`).join('|');
 
 /**
  * Where "Add to …" puts the picks: the document open last in this session if it is still
@@ -397,7 +377,8 @@ export function shortTopicName(code: string): string {
 
 /** "11 questions · 3 worksheets · 1 bank". */
 export function bankCountLabel(coverage: Pick<Coverage, 'total' | 'papers' | 'banks'>): string {
-  const n = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
+  // A no-break space: a narrow column wraps between the parts, never inside "1 bank".
+  const n = (count: number, noun: string) => `${count}\u00a0${noun}${count === 1 ? '' : 's'}`;
   return [n(coverage.total, 'question'), n(coverage.papers, 'worksheet'), ...(coverage.banks ? [n(coverage.banks, 'bank')] : [])].join(' · ');
 }
 

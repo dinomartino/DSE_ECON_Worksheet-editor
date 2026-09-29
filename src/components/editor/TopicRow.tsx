@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { GroupHeader, IconButton } from '@/components/ui';
+import { Button, GroupHeader, IconButton } from '@/components/ui';
 import { CloseIcon } from '@/components/ui/icons';
 import { TOPICS, topicOf, type Topic } from '@/model/topics';
 
@@ -77,14 +77,11 @@ export function TopicRow({
         title="Topics"
         hint="課題 · never printed"
         action={
-          <button
-            type="button"
-            onClick={() => setOpen((value) => !value)}
-            aria-expanded={open}
-            className="cursor-pointer rounded-md px-1.5 py-0.5 text-[11px] font-medium text-accent-ink transition-colors duration-150 ease-out-soft hover:bg-accent-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-          >
+          // A quiet panel action, like "+ Statement" beside it: the filled CTA is ink, and
+          // accent is for links, focus and selection.
+          <Button size="sm" variant="subtle" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
             {open ? 'Done' : 'Add topic'}
-          </button>
+          </Button>
         }
       />
 
