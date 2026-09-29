@@ -549,15 +549,9 @@ function DocumentCard({
         aria-label={`Open ${summary.title}`}
         className="group/open block w-full cursor-pointer rounded-lg text-left focus-visible:outline-none"
       >
-        {/* The paper answers hover with a small lift and the accent ring — the same
-            signal the Start rows' accent bar gives — and sinks back when pressed. Only
-            transform and opacity move: the deeper shadow and the hover ring are layers
-            that fade, and the focus ring (a box-shadow) appears at once. */}
-        <span className="relative block transition-transform duration-[180ms] ease-out-soft group-hover:-translate-y-[3px] group-active/open:translate-y-0 group-active/open:scale-[0.985] group-active/open:duration-100">
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-0 rounded-[3px] opacity-0 shadow-[0_4px_8px_rgba(0,0,0,0.12),0_14px_30px_rgba(0,0,0,0.16)] transition-opacity duration-[180ms] ease-out-soft group-hover:opacity-100"
-          />
+        {/* Hover is colour only: the accent ring fades in, the paper stays put. The
+            focus ring (a box-shadow) appears at once. */}
+        <span className="relative block transition-transform duration-[180ms] ease-out-soft group-active/open:scale-[0.985] group-active/open:duration-100">
           <span className="relative block overflow-hidden rounded-[3px] shadow-[0_1px_2px_rgba(0,0,0,0.18),0_4px_14px_rgba(0,0,0,0.14)] ring-1 ring-black/5 group-focus-within:ring-2 group-focus-within:ring-accent">
             <PageThumbnail id={summary.id} updatedAt={summary.updatedAt} />
           </span>
