@@ -277,7 +277,7 @@ export function QuestionBankPage({
               ]}
             />
           </div>
-          <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_clamp(248px,42%,340px)]">
+          <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_clamp(280px,44%,600px)]">
             <div className="scroll-slim min-h-0 overflow-y-auto" role="list" aria-label="Questions">
               {groups.length > 0 && (
                 <div className="sticky top-0 z-10 flex items-center gap-2.5 border-b border-line bg-surface px-3.5 py-1.5 text-[11px] tabular-nums text-ink-subtle">

@@ -626,6 +626,7 @@ export function StartScreen({
         documents already on it. The panel runs the full height like the editor's own
         rail, so the screen reads as the same room as the tool it opens.
       */}
+      {tab !== 'bank' && (
       <aside className="zone-light flex shrink-0 flex-col overflow-y-auto border-b border-line bg-surface px-9 pb-8 pt-9 lg:h-full lg:w-[400px] lg:border-b-0 lg:border-r">
         <header className="flex items-center gap-2.5">
           <span className="flex shrink-0 text-ink">
@@ -709,6 +710,7 @@ export function StartScreen({
           </div>
         </div>
       </aside>
+      )}
 
       {/* The desk side: every document already on the desk, as its first page. */}
       <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-9 py-9 lg:px-14 lg:py-12">
@@ -723,6 +725,7 @@ export function StartScreen({
         )}
         {notice && <NoticeBox notice={notice} onDismiss={() => setNotice(undefined)} />}
         <StartTabs
+          wide={tab === 'bank'}
           tab={tab}
           onChange={(next) => {
             setTab(next);
@@ -731,7 +734,7 @@ export function StartScreen({
           }}
         />
         {tab === 'bank' ? (
-          <div className="mx-auto flex w-full max-w-5xl flex-col lg:min-h-0 lg:flex-1">
+          <div className="mx-auto flex w-full max-w-[1680px] flex-col lg:min-h-0 lg:flex-1">
             <QuestionBankPage
               summaries={summaries}
               loaded={loaded}
@@ -1049,13 +1052,33 @@ export function StartScreen({
  * accent underline, like the sidebar's. The bank is every question in the worksheets,
  * so it sits beside them rather than in a menu.
  */
-function StartTabs({ tab, onChange }: { tab: StartTab; onChange: (tab: StartTab) => void }) {
+function StartTabs({
+  tab,
+  onChange,
+  wide,
+}: {
+  tab: StartTab;
+  onChange: (tab: StartTab) => void;
+  /** Bank mode: the aside is gone, so the row carries the brand and the Settings gear. */
+  wide?: boolean;
+}) {
   const tabs: { id: StartTab; label: string; zh: string }[] = [
     { id: 'worksheets', label: 'Worksheets', zh: '工作紙' },
     { id: 'bank', label: 'Question bank', zh: '題庫' },
   ];
   return (
-    <div role="tablist" aria-label="Start screen" className="mx-auto mb-5 flex w-full max-w-5xl shrink-0 gap-6 border-b border-line">
+    <div
+      className={`mx-auto mb-5 flex w-full shrink-0 items-end gap-6 border-b border-line ${wide ? 'max-w-[1680px]' : 'max-w-5xl'}`}
+    >
+      {wide && (
+        <span className="flex items-center gap-2.5 self-center pb-2 pr-3">
+          <span className="flex shrink-0 text-ink">
+            <AppMark size={22} />
+          </span>
+          <span className="text-[13px] font-semibold text-ink">Worksheet</span>
+        </span>
+      )}
+      <div role="tablist" aria-label="Start screen" className="flex gap-6">
       {tabs.map((entry) => {
         const active = entry.id === tab;
         return (
@@ -1079,6 +1102,12 @@ function StartTabs({ tab, onChange }: { tab: StartTab; onChange: (tab: StartTab)
           </button>
         );
       })}
+      </div>
+      {wide && (
+        <span className="ml-auto self-center pb-1.5">
+          <SettingsButton />
+        </span>
+      )}
     </div>
   );
 }
