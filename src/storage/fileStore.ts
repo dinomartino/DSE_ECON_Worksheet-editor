@@ -67,6 +67,38 @@ export async function savedWorksheetPath(id: string): Promise<string | undefined
 
 type Fs = typeof import('@tauri-apps/plugin-fs');
 
+/** The question bank's derived index (§ src/library/bankBackend.ts), relative to `$APPDATA`. */
+export const LIBRARY_INDEX = `${DIR}/library/index.json`;
+const LIBRARY_DIR = `${DIR}/library`;
+
+/**
+ * Text access to `worksheets/library/index.json` for the bank index. A subdirectory, so
+ * no build's rebuild-by-scan or `clear()` reads it as a document. Inert on the web: read
+ * is `undefined`, writes do nothing. Errors propagate; the index treats them as "rebuild".
+ */
+export const libraryIndexFile = {
+  async read(): Promise<string | undefined> {
+    if (!isDesktop()) return undefined;
+    const fs = await import('@tauri-apps/plugin-fs');
+    const opts = { baseDir: fs.BaseDirectory.AppData };
+    if (!(await fs.exists(LIBRARY_INDEX, opts))) return undefined;
+    return fs.readTextFile(LIBRARY_INDEX, opts);
+  },
+  async write(text: string): Promise<void> {
+    if (!isDesktop()) return;
+    const fs = await import('@tauri-apps/plugin-fs');
+    const opts = { baseDir: fs.BaseDirectory.AppData };
+    if (!(await fs.exists(LIBRARY_DIR, opts))) await fs.mkdir(LIBRARY_DIR, { ...opts, recursive: true });
+    await fs.writeTextFile(LIBRARY_INDEX, text, opts);
+  },
+  async remove(): Promise<void> {
+    if (!isDesktop()) return;
+    const fs = await import('@tauri-apps/plugin-fs');
+    const opts = { baseDir: fs.BaseDirectory.AppData };
+    if (await fs.exists(LIBRARY_INDEX, opts)) await fs.remove(LIBRARY_INDEX, opts);
+  },
+};
+
 export class FileWorksheetStore implements WorksheetStore {
   private fsModule: Promise<Fs> | undefined;
   private readonly now: () => number;

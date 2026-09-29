@@ -152,7 +152,7 @@ Invariants:
 ## storage — two halves that fail independently
 
 `src/storage/index.ts:worksheetStore` — chosen once at load: file store on desktop, else
-`:LocalStorageWorksheetStore`.
+`:LocalStorageWorksheetStore`; wrapped in the change feed (`src/storage/changes.ts:withChangeFeed`).
 
 - `src/storage/types.ts:WorksheetStore` · `:WorksheetSummary`
 - `src/storage/fileStore.ts:FileWorksheetStore` — `$APPDATA/worksheets/<id>.worksheet.json` + `index.json`
@@ -222,7 +222,12 @@ scan; rebuildable, so no teacher's work lives in it.
 - `src/library/contentKey.ts:contentKey` — content fingerprint ignoring ids, `lineage`, `tags`
 - `src/library/bankDocs.ts:copyToBank` · `:bankCopyDiffers` · `:updateBankCopy` — the only writes into a bank document; UI in `src/components/editor/BankActions.tsx:useBankActions`
 - `src/library/search.ts:searchRows` · `src/library/group.ts:groupRows` · `src/library/history.ts:usedIn` · `:usedWithClass` · `src/library/fill.ts:pickFill`
-- `src/library/useBank.ts:useBank` — the one read both surfaces use; naive in-memory scan (`:createBankIndex`), replaced internally by the persistent index
+- `src/library/useBank.ts:useBank` — the one read both surfaces use, over the persistent index below
+- `src/library/bankIndex.ts:createBankIndex` — stored rows first, then reconcile `list()` against `updatedAt` stamps (idle chunks, newest first), then the change feed; wakes on focus for other tabs
+- `src/library/bankBackend.ts:BankIndexBackend` · `:createJsonFileBackend` · `:createMemoryBackend` · `:INDEX_FORMAT` — where rows persist; unreadable is dropped and rebuilt
+- `src/library/idbBackend.ts:createIdbBackend` — web: IndexedDB `econ-worksheet-library` (`rows` keyed `[docId, questionId]`, `stamps`, `meta`)
+- `src/storage/changes.ts:withChangeFeed` · `:onStoreChange` — the store singleton announces each successful mutation (`StoreChange`)
+- `src/storage/fileStore.ts:libraryIndexFile` — desktop: `worksheets/library/index.json`
 - `src/components/bank/BankRow.tsx:BankRow` — the shared row: excerpt, quiet meta, action slot, in-paper / used-with-class / missing-language / selected states
 - `src/store/worksheetStore.ts:insertQuestionCopies` — bank copies in (`copyQuestion`), one commit, one undo
 
@@ -230,6 +235,7 @@ Invariants:
 - A bank is a `Worksheet` with `kind: 'bank'`; no second storage format.
 - Copies are independent; identity is `lineage.rootId`, never a shared id.
 - No module in `src/library/` branches on a type id (`src/library/noTypeBranching.test.ts`).
+- The index follows `list()`, never storage keys (a trashed web document keeps its key); it holds no images and no teacher's work — §Persistence.
 
 ## components/editor — the chrome around the page
 

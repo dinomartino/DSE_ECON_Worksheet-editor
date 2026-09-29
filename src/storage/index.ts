@@ -9,6 +9,7 @@ import {
   worksheetTitle,
 } from './document';
 import { FileWorksheetStore } from './fileStore';
+import { withChangeFeed } from './changes';
 import { triggerDownload } from './download';
 import { usableSummaries, withSummaryFirst } from './summaries';
 import { settleTrash, untrashed, usableTrash } from './trash';
@@ -43,8 +44,10 @@ export {
   summarize,
   worksheetTitle,
 } from './document';
+export { onStoreChange, type StoreChangeListener } from './changes';
 export {
   FileWorksheetStore,
+  libraryIndexFile,
   savedWorksheetPath,
   savedWorksheetsFolder,
   WORKSHEET_SUFFIX,
@@ -344,8 +347,9 @@ export async function pickWorksheetFile(): Promise<Worksheet | undefined> {
  * Chosen once, at module load, by where we are running: the desktop shell keeps
  * documents as files under its app data directory, the browser keeps them in
  * `localStorage`. Both implement the same interface and the same rules, so nothing
- * above this line knows which it has.
+ * above this line knows which it has. Wrapped in the change feed (§ changes.ts), which
+ * announces every successful mutation — the question bank's index listens to it.
  */
-export const worksheetStore: WorksheetStore = isDesktop()
-  ? new FileWorksheetStore()
-  : new LocalStorageWorksheetStore();
+export const worksheetStore: WorksheetStore = withChangeFeed(
+  isDesktop() ? new FileWorksheetStore() : new LocalStorageWorksheetStore(),
+);

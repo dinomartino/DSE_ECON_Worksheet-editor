@@ -2605,6 +2605,16 @@ in-flight values stay local; the store is called on pointer-up.
   entry: v0.3.0's reader parses every other `.json` entry as a worksheet. Restore merges
   without overwriting — a same-id or same-named folder is reused, and a restored document
   (or its copy) is filed only if it has no folder here yet.
+- **The question bank index is derived, and persisted beside the documents**
+  (`src/library/bankIndex.ts`). The store singleton is wrapped in a change feed
+  (`storage/changes.ts`) that announces each mutation after it succeeds — the only choke
+  point every save passes. Rows persist in IndexedDB `econ-worksheet-library` (web) or
+  `worksheets/library/index.json` (desktop, a subdirectory no rebuild or `clear()`
+  reads), with a stamp per document (`updatedAt`). On first use stored rows paint, then a
+  reconcile re-indexes only documents whose stamp differs and drops those `list()` no
+  longer names; events keep it current (saved/restored → re-index, trashed/removed →
+  drop, cleared → wipe). Anything unreadable, or an `INDEX_FORMAT` mismatch, is dropped
+  and rebuilt — never an error at the UI. No image and no teacher's work is in it.
 - **`KNOWN_KEYS` must list every top-level field** — an unlisted key is stripped into
   `__unknown`: it saves fine and vanishes on reload. A test fails when a populated
   worksheet carries a key the set lacks.
