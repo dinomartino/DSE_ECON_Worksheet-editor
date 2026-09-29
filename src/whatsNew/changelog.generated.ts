@@ -12,6 +12,12 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 
 ## Unreleased
 
+### Added
+- **題庫 tab in the editor**: find questions from your other worksheets by words, topic,
+  type or marks and insert copies after the question you click, in one click — or Fill a
+  set by topic, preferring ones your class has not seen. The new questions are highlighted
+  on the page, and one Undo takes the whole set back out.
+
 ### Fixed
 - **Editing a duplicated question no longer changes the original.** Worksheets where a
   duplicate and its original were stuck together are separated when you open them.

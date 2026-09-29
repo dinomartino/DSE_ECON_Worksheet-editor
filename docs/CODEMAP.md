@@ -224,11 +224,16 @@ scan; rebuildable, so no teacher's work lives in it.
 - `src/library/useBank.ts:useBank` — the one read both surfaces use; naive in-memory scan (`:createBankIndex`), replaced internally by the persistent index
 - `src/components/bank/BankRow.tsx:BankRow` — the shared row: excerpt, quiet meta, action slot, in-paper / used-with-class / missing-language / selected states
 - `src/store/worksheetStore.ts:insertQuestionCopies` — bank copies in (`copyQuestion`), one commit, one undo
+- `src/library/tabFilters.ts:visibleGroups` · `:paperRoots` · `:anchorLabel` · `:blockingFilter` — the editor tab's filters, "in this paper", the anchor line, which filter emptied the list
+- `src/components/bank/BankTab.tsx:BankTab` — the editor's 題庫 sidebar tab: anchor line, filters, list, Fill
+- `src/components/bank/bankSession.ts:insertFromBank` — load sources read-only, one `insertQuestionCopies`, start the review; `:useBankSession` also carries the open-tab request
+- `src/components/bank/BankReviewBar.tsx:BankReviewBar` — inserted copies highlighted on the page (`data-bank-new`), ‹ ›, Undo, Done
 
 Invariants:
 - A bank is a `Worksheet` with `kind: 'bank'`; no second storage format.
 - Copies are independent; identity is `lineage.rootId`, never a shared id.
 - No module in `src/library/` branches on a type id (`src/library/noTypeBranching.test.ts`).
+- The 題庫 tab is sticky: while open, a page selection moves the insert anchor instead of switching to Edit (`src/components/editor/Sidebar.tsx:Sidebar`).
 
 ## components/editor — the chrome around the page
 

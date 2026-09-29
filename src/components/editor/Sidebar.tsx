@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { LAYOUT_NAME } from '@/model/flow';
 import { computeNumbering } from '@/model/numbering';
 import { useWorksheetStore } from '@/store/worksheetStore';
+import { BankTab } from '@/components/bank/BankTab';
+import { useBankSession } from '@/components/bank/bankSession';
 import { Inspector } from './Inspector';
 import type { PageComposition } from '@/components/preview/pagination';
 import { Outline } from './Outline';
@@ -13,9 +15,12 @@ import { Outline } from './Outline';
  * **Edit** is the selection; each gets the full column height. Once-per-document
  * settings live in `DocumentSettings`. The tab follows the selection — selecting a
  * question *is* the request to edit it; closing the editor returns to Content.
+ * **題庫 Bank** is sticky: while it is open a selection only moves the insert anchor;
+ * leaving is a click on Content or Edit.
  */
 
-type Tab = 'content' | 'edit';
+type Tab = 'content' | 'edit' | 'bank';
+const TAB_ORDER: readonly Tab[] = ['content', 'edit', 'bank'];
 
 export function Sidebar({
   pages,
@@ -50,8 +55,18 @@ export function Sidebar({
   useEffect(() => {
     if (selectionKey === lastSelection.current) return;
     lastSelection.current = selectionKey;
-    setTab(selectionKey ? 'edit' : 'content');
+    // The bank tab stays put: a click on the page is where the next insert lands.
+    setTab((current) => (current === 'bank' ? current : selectionKey ? 'edit' : 'content'));
   }, [selectionKey]);
+
+  // "From 題庫…" (the add rail, the empty page): an event, subscribed rather than rendered.
+  useEffect(
+    () =>
+      useBankSession.subscribe((state, previous) => {
+        if (state.openRequest !== previous.openRequest) setTab('bank');
+      }),
+    [],
+  );
 
   const selected = worksheet.questions.find((question) => question.id === selectedQuestionId);
 
@@ -66,6 +81,7 @@ export function Sidebar({
   const tabs: Array<{ id: Tab; label: string; count?: number }> = [
     { id: 'content', label: 'Content', count: totalQuestions },
     { id: 'edit', label: editLabel },
+    { id: 'bank', label: '題庫 Bank' },
   ];
 
   return (
@@ -96,13 +112,12 @@ export function Sidebar({
             </button>
           );
         })}
-        {/* One tab's width (the tablist's `px-2` taken off, halved), inset like the
-            old per-tab bar; `translate-x-full` moves it exactly one tab over. */}
+        {/* One tab's width (the tablist's `px-2` taken off, divided by three), inset like
+            the old per-tab bar; each 100% of translation moves it exactly one tab over. */}
         <span
           aria-hidden
-          className={`pointer-events-none absolute bottom-0 left-2 w-[calc((100%-1rem)/2)] px-4 transition-transform duration-200 ease-out-soft ${
-            tab === 'edit' ? 'translate-x-full' : 'translate-x-0'
-          }`}
+          style={{ transform: `translateX(${TAB_ORDER.indexOf(tab) * 100}%)` }}
+          className="pointer-events-none absolute bottom-0 left-2 w-[calc((100%-1rem)/3)] px-4 transition-transform duration-200 ease-out-soft"
         >
           <span className="block h-0.5 rounded-full bg-accent" />
         </span>
@@ -116,6 +131,8 @@ export function Sidebar({
       <div key={tab} className="flex min-h-0 flex-1 animate-fade-in flex-col">
         {tab === 'content' ? (
           <Outline numbering={numbering} pages={pages} onOpenSettings={onOpenSettings} />
+        ) : tab === 'bank' ? (
+          <BankTab />
         ) : (
           <Inspector numbering={numbering} onShowContent={() => setTab('content')} />
         )}

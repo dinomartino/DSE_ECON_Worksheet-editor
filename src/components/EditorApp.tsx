@@ -23,6 +23,11 @@ import type { BandFieldSide, BiText, TextFormat, Worksheet } from '@/model/types
 import type { EditTarget } from '@/render/ir';
 import { useWorksheetStore, type BandScope } from '@/store/worksheetStore';
 import { worksheetStore } from '@/storage';
+import { BankReviewBar } from '@/components/bank/BankReviewBar';
+import { useBankSession } from '@/components/bank/bankSession';
+
+/** The empty page's "From 題庫…": stable, so the memoised page never re-renders for it. */
+const openBank = () => useBankSession.getState().openBank();
 
 /** Two-pane shell (§5.1): structural editor on the left, live preview on the right. */
 export function EditorApp({
@@ -517,6 +522,7 @@ export function EditorApp({
             headerEditing={headerEditing}
             footerEditing={footerEditing}
             onAddQuestion={handleAddFirstQuestion}
+            onOpenBank={openBank}
             // `setPages` is referentially stable, which the preview's publish effect
             // depends on — a fresh closure each render would re-notify forever.
             onPagesChange={setPages}
@@ -531,6 +537,7 @@ export function EditorApp({
 
       {/* The AI door: menu, run bar and ⌘J / Ctrl+J. */}
       <AiHost />
+      <BankReviewBar />
 
       {/* The how-to-edit hint. It was a grey line of text pinned above the page, which
           pushed the document down and read as a disclaimer. As a floating pill it sits

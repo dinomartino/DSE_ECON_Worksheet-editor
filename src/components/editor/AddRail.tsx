@@ -22,12 +22,14 @@ import { bi, plain } from '@/model/text';
 import type { LayoutElement } from '@/model/types';
 import { listQuestionTypes } from '@/registry';
 import { useWorksheetStore } from '@/store/worksheetStore';
+import { useBankSession } from '@/components/bank/bankSession';
 import {
   AnswerLinesIcon,
   AnswerSpaceIcon,
   DividerIcon,
   HeadingIcon,
   LabelListIcon,
+  ListIcon,
   McqIcon,
   PageBreakIcon,
   PartHeaderIcon,
@@ -152,6 +154,15 @@ export function AddRail() {
     icon: definition.id === 'mcq' ? <McqIcon size={18} /> : <StructuredIcon size={18} />,
     run: (afterId) => addQuestion(definition.id, afterId),
   }));
+  // Copies from the other saved documents: opens the sidebar's 題庫 tab, where the
+  // anchor line names the same destination this flyout does.
+  questionEntries.push({
+    id: 'fromBank',
+    label: 'From 題庫…',
+    hint: 'questions from your other worksheets',
+    icon: <ListIcon size={18} />,
+    run: () => useBankSession.getState().openBank(),
+  });
 
   const layoutEntries: Entry[] = [
     {

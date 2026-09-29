@@ -794,4 +794,13 @@ body {
   #print-root [data-ai-mark="finding"][data-ai-current] {
     outline-color: #c27c0e;
   }
+  /* 題庫 inserts (`src/components/bank/BankReviewBar.tsx`): whole questions, same blue. */
+  #print-root [data-question-id][data-bank-new] {
+    background-color: #eef6fc;
+    box-shadow: inset 3px 0 0 #5ba8dd;
+  }
+  #print-root [data-question-id][data-bank-current] {
+    outline: 1.5px dashed #0d77c9;
+    outline-offset: 3px;
+  }
 }
