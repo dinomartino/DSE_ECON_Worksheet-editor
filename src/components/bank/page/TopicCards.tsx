@@ -1,5 +1,6 @@
 'use client';
 
+import type { PatternItem } from '@/library/patterns';
 import { topicOf } from '@/model/topics';
 import { typeName, type Coverage } from './bankPage';
 import type { ClassUsage } from './bankScreen';
@@ -14,6 +15,7 @@ export const SPLIT_FILL = ['bg-accent', 'bg-split-2', 'bg-split-2/50'];
  */
 export function TopicCards({
   coverage,
+  patterns,
   classUsage,
   onTopic,
   onUntagged,
@@ -21,6 +23,8 @@ export function TopicCards({
   onClassGap,
 }: {
   coverage: Coverage;
+  /** Each coarse topic's 題型 in use: counted on its card, listed in its tooltip. */
+  patterns?: ReadonlyMap<string, PatternItem[]>;
   classUsage?: ClassUsage;
   onTopic: (code: string) => void;
   onUntagged: () => void;
@@ -65,6 +69,8 @@ export function TopicCards({
           const topic = topicOf(bar.code);
           const split = bar.byType.filter((part) => part.count > 0);
           const splitTitle = split.map((part) => `${part.count} ${typeName(part.typeId)}`).join(', ');
+          const own = patterns?.get(bar.code) ?? [];
+          const patternTitle = own.map((item) => `${item.topic} · ${item.name} · ${typeName(item.typeId)} ×${item.count}`).join('\n');
           return (
             <li key={bar.code} className="flex">
               <button
@@ -81,6 +87,12 @@ export function TopicCards({
                 </span>
                 <span className="mt-auto text-[13px] font-semibold tabular-nums text-ink">
                   {bar.total} <span className="font-normal text-ink-subtle">{bar.total === 1 ? 'question' : 'questions'}</span>
+                  {own.length > 0 && (
+                    <span className="font-normal text-ink-subtle" title={patternTitle} data-card-patterns>
+                      {' '}
+                      · {own.length} 題型
+                    </span>
+                  )}
                 </span>
                 <span
                   className="flex h-[5px] overflow-hidden rounded-[3px] bg-surface-sunken"

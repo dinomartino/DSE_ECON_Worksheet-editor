@@ -1,8 +1,14 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { PatternPicker } from '@/components/bank/PatternPicker';
+import { typeLabel } from '@/components/bank/BankRow';
 import { Button, GroupHeader, IconButton } from '@/components/ui';
 import { CloseIcon } from '@/components/ui/icons';
+import { patternNames } from '@/library/patterns';
+import { useBank } from '@/library/useBank';
+import { registerPatterns, usePatternRegistry } from '@/library/usePatterns';
+import { holdsPatterns, isPatternTag, parsePatternTag, patternsIn, withPattern } from '@/model/patterns';
 import { TOPICS, topicOf, type Topic } from '@/model/topics';
 
 /** Does the topic match a typed query — by code, English or 中文? */
@@ -23,20 +29,26 @@ export function filterTopics(query: string): Array<{ topic: Topic; children: Top
 
 /**
  * The shared "Topics 課題" row of the Edit panel: a question's tags as quiet text, each
- * removable, plus an inline picker over the taxonomy and free text. Tags never print.
+ * removable, plus an inline picker over the taxonomy and free text. Each sub-topic takes
+ * one 題型 (Pattern) from its list for this question's type, or a new name. Tags never print.
  */
 export function TopicRow({
   tags,
+  typeId,
   note,
   onChange,
 }: {
   tags: readonly string[] | undefined;
+  /** The question's registry type: its 題型 list (MCQ and LQ lists are separate). */
+  typeId: string;
   /** A quiet line after an edit, e.g. "Also updated in 2 other worksheets." */
   note?: string;
   /** `undefined` clears the field, so an untagged question carries none. */
   onChange: (tags: string[] | undefined) => void;
 }) {
   const current = tags ?? [];
+  const { rows } = useBank();
+  const registry = usePatternRegistry();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const groups = useMemo(() => filterTopics(query), [query]);
@@ -48,9 +60,16 @@ export function TopicRow({
     setQuery('');
   };
   const remove = (code: string) => {
-    const next = current.filter((tag) => tag !== code);
+    // A sub-topic's 題型 goes with it.
+    const next = current.filter((tag) => tag !== code && parsePatternTag(tag)?.topic !== code);
     onChange(next.length > 0 ? next : undefined);
   };
+  const setPattern = (code: string, name: string | undefined, created: boolean) => {
+    if (name && created) void registerPatterns([{ topic: code, typeId, name }]);
+    const next = withPattern(current, code, name);
+    if (next !== current) onChange(next.length > 0 ? next : undefined);
+  };
+  const listed = current.filter((tag) => !isPatternTag(tag));
 
   const option = (topic: Topic, indent: boolean) => {
     const chosen = current.includes(topic.code);
@@ -91,24 +110,37 @@ export function TopicRow({
       {current.length === 0 && !open && (
         <p className="text-[11px] text-ink-subtle">No topic yet. Tags feed the question bank.</p>
       )}
-      {current.length > 0 && (
+      {listed.length > 0 && (
         <ul className="space-y-0.5">
-          {current.map((tag) => {
+          {listed.map((tag) => {
             const topic = topicOf(tag);
             return (
-              <li key={tag} className="flex items-center gap-1 text-xs text-ink-muted">
-                <span className="min-w-0 flex-1 truncate" title={topic ? `${topic.en} ${topic.zh}` : tag}>
-                  {topic ? (
-                    <>
-                      <span className="tabular-nums text-ink-subtle">{tag}</span> {topic.en}
-                    </>
-                  ) : (
-                    tag
-                  )}
-                </span>
-                <IconButton label={`Remove topic ${tag}`} onClick={() => remove(tag)}>
-                  <CloseIcon size={12} />
-                </IconButton>
+              <li key={tag} className="text-xs text-ink-muted">
+                <div className="flex items-center gap-1">
+                  <span className="min-w-0 flex-1 truncate" title={topic ? `${topic.en} ${topic.zh}` : tag}>
+                    {topic ? (
+                      <>
+                        <span className="tabular-nums text-ink-subtle">{tag}</span> {topic.en}
+                      </>
+                    ) : (
+                      tag
+                    )}
+                  </span>
+                  <IconButton label={`Remove topic ${tag}`} onClick={() => remove(tag)}>
+                    <CloseIcon size={12} />
+                  </IconButton>
+                </div>
+                {holdsPatterns(tag) && (
+                  <div className="pb-1 pl-3">
+                    <PatternPicker
+                      topic={tag}
+                      kind={typeLabel(typeId)}
+                      names={patternNames(rows, registry, tag, typeId)}
+                      value={patternsIn(current, tag)[0]}
+                      onChange={(name, created) => setPattern(tag, name, created)}
+                    />
+                  </div>
+                )}
               </li>
             );
           })}

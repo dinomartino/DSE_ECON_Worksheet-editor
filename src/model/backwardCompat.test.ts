@@ -25,6 +25,7 @@ import { renderWorksheet } from '@/render/worksheet';
 import { resolveFlow } from '@/model/flow';
 import { createMcqQuestion } from '@/model/factories';
 import { copyQuestion } from '@/model/lineage';
+import { parsePatternTag } from '@/model/patterns';
 import { bi } from '@/model/text';
 import type { McqQuestion, OutputMode } from '@/model/types';
 
@@ -199,6 +200,19 @@ describe('a document saved by the published build still opens', () => {
     expect(reloaded.__unknown).toBeUndefined();
     expect(reloaded.questions.slice(0, -1)).toEqual(loaded.questions);
     expect(reloaded.questions.at(-1)!.tags).toEqual(['C', 'C.ped', 'past paper']);
+  });
+
+  it('carries a 題型 (a reserved-form tag) through load → save → load, still readable', () => {
+    const loaded = migrate(structuredClone(v1Corpus));
+    const tags = ['C.ped', 'C.ped::Calculate PED from a change in TR', 'past paper'];
+    const question = { ...createMcqQuestion(), tags };
+    const edited = { ...loaded, questions: [...loaded.questions, question] };
+
+    const reloaded = migrate(JSON.parse(JSON.stringify(serializeWorksheet(edited))));
+    expect(reloaded.__unknown).toBeUndefined();
+    expect(reloaded.questions.slice(0, -1)).toEqual(loaded.questions);
+    expect(reloaded.questions.at(-1)!.tags).toEqual(tags);
+    expect(parsePatternTag(reloaded.questions.at(-1)!.tags![1])).toEqual({ topic: 'C.ped', name: 'Calculate PED from a change in TR' });
   });
 
   it('carries the bank fields (kind, classes, satOn, bankHidden) through load → save → load', () => {

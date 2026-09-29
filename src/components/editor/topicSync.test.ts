@@ -128,6 +128,16 @@ describe('the editor Topic row writes every copy', () => {
     expect(writes).toEqual([]);
     expect(notices).toEqual([]);
   });
+
+  it('carries a 題型 swap to every copy: the new one on, the old one off', async () => {
+    const withOld = (doc: Worksheet, q: Question) => ({ ...doc, questions: doc.questions.map((x) => (x.id === q.id ? { ...x, tags: ['C.ped', 'C.ped::Old'] } : x)) });
+    const a = withOld(docA, original);
+    const b = withOld(docB, copyB);
+    const { saved, deps } = harness([a, b]);
+    open(b);
+    await setQuestionTopics(copyB.id, ['C.ped', 'C.ped::New'], deps);
+    expect(tagsIn(saved.get(docA.id), original.id)).toEqual(['C.ped', 'C.ped::New']);
+  });
 });
 
 describe('copiesMessage', () => {

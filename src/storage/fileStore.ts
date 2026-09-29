@@ -14,6 +14,7 @@ import {
   serializeFolders,
   type FolderState,
 } from './folders';
+import type { PatternFile } from './patterns';
 
 /**
  * The desktop store: real files under the app's data directory.
@@ -50,6 +51,8 @@ const trashPath = (id: string) => `${TRASH_DIR}/${id}${SUFFIX}`;
  * `index.json`, so an older build's `clear()` leaves it (harmless: it names no file).
  */
 const FOLDERS = `${DIR}/folders.json`;
+/** The 題型 registry (§ patterns.ts), beside `folders.json` and for the same reasons. */
+export const PATTERNS_FILE = `${DIR}/patterns.json`;
 
 /** Absolute path of `$APPDATA/worksheets` on desktop; `undefined` on the web. */
 export async function savedWorksheetsFolder(): Promise<string | undefined> {
@@ -96,6 +99,28 @@ export const libraryIndexFile = {
     const fs = await import('@tauri-apps/plugin-fs');
     const opts = { baseDir: fs.BaseDirectory.AppData };
     if (await fs.exists(LIBRARY_INDEX, opts)) await fs.remove(LIBRARY_INDEX, opts);
+  },
+};
+
+/** Text access to `worksheets/patterns.json` (§ patterns.ts). Inert on the web. */
+export const patternsFile: PatternFile = {
+  async read(): Promise<string | undefined> {
+    if (!isDesktop()) return undefined;
+    const fs = await import('@tauri-apps/plugin-fs');
+    const opts = { baseDir: fs.BaseDirectory.AppData };
+    if (!(await fs.exists(PATTERNS_FILE, opts))) return undefined;
+    return fs.readTextFile(PATTERNS_FILE, opts);
+  },
+  async write(text: string | undefined): Promise<void> {
+    if (!isDesktop()) return;
+    const fs = await import('@tauri-apps/plugin-fs');
+    const opts = { baseDir: fs.BaseDirectory.AppData };
+    if (text === undefined) {
+      if (await fs.exists(PATTERNS_FILE, opts)) await fs.remove(PATTERNS_FILE, opts);
+      return;
+    }
+    if (!(await fs.exists(DIR, opts))) await fs.mkdir(DIR, { ...opts, recursive: true });
+    await fs.writeTextFile(PATTERNS_FILE, text, opts);
   },
 };
 
@@ -480,7 +505,7 @@ export class FileWorksheetStore implements WorksheetStore {
   /**
    * Forget every saved document — only this app's own worksheets directory, never the
    * wider app data tree, which other things (window state, settings) also live in.
-   * Trash and folders included.
+   * Trash, folders and the 題型 registry included.
    */
   async clear(): Promise<void> {
     // Unlike `localStorage`, a file save spans many awaits and can straddle a clear.
@@ -488,10 +513,12 @@ export class FileWorksheetStore implements WorksheetStore {
     const fs = await this.fs();
     const opts = await this.base();
     await this.clearTrashDir();
-    try {
-      if (await fs.exists(FOLDERS, opts)) await fs.remove(FOLDERS, opts);
-    } catch {
-      // Keep going: the documents matter more than their filing.
+    for (const file of [FOLDERS, PATTERNS_FILE]) {
+      try {
+        if (await fs.exists(file, opts)) await fs.remove(file, opts);
+      } catch {
+        // Keep going: the documents matter more than their filing.
+      }
     }
     if (!(await fs.exists(DIR, opts))) return;
     for (const entry of await fs.readDir(DIR, opts)) {

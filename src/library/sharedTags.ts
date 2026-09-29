@@ -1,4 +1,4 @@
-import { topicLabel } from '@/model/topics';
+import { tagSearchWords } from '@/model/patterns';
 import type { Question } from '@/model/types';
 import type { BankRow } from './types';
 
@@ -42,7 +42,7 @@ export function withSharedTags(rows: readonly BankRow[]): BankRow[] {
     const tags = byRoot.get(row.rootId) ?? row.tags;
     if (tags.length === row.tags.length && tags.every((tag, i) => tag === row.tags[i])) return row;
     const added = tags.filter((tag) => !row.tags.includes(tag));
-    const words = added.flatMap((tag) => [tag, topicLabel(tag, 'en'), topicLabel(tag, 'zh')]);
+    const words = added.flatMap(tagSearchWords);
     return {
       ...row,
       tags: [...tags],

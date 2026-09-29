@@ -21,6 +21,8 @@ import {
   type FolderState,
 } from './folders';
 import type { TrashedSummary, WorksheetStore, WorksheetSummary } from './types';
+import { localPatternFile, PATTERNS_KEY, type PatternFile } from './patterns';
+import { patternsFile } from './fileStore';
 
 export type { TrashedSummary, WorksheetStore, WorksheetSummary } from './types';
 export {
@@ -305,7 +307,11 @@ export class LocalStorageWorksheetStore implements WorksheetStore {
     // "clear site data" — destroys more than this app has any business touching.
     const mine = Object.keys(storage).filter(
       (key) =>
-        key === INDEX_KEY || key === TRASH_KEY || key === FOLDERS_KEY || key.startsWith(PREFIX),
+        key === INDEX_KEY ||
+        key === TRASH_KEY ||
+        key === FOLDERS_KEY ||
+        key === PATTERNS_KEY ||
+        key.startsWith(PREFIX),
     );
     for (const key of mine) storage.removeItem(key);
   }
@@ -353,3 +359,18 @@ export async function pickWorksheetFile(): Promise<Worksheet | undefined> {
 export const worksheetStore: WorksheetStore = withChangeFeed(
   isDesktop() ? new FileWorksheetStore() : new LocalStorageWorksheetStore(),
 );
+
+/**
+ * Where the 題型 registry lives (§ patterns.ts): `worksheets/patterns.json` on desktop,
+ * one `localStorage` key on the web. Chosen once, like the store.
+ */
+export const patternStorage: PatternFile = isDesktop()
+  ? patternsFile
+  : localPatternFile(() => {
+      if (typeof window === 'undefined') return undefined;
+      try {
+        return window.localStorage;
+      } catch {
+        return undefined;
+      }
+    });

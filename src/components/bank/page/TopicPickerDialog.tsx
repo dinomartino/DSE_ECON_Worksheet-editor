@@ -3,7 +3,10 @@
 import { useMemo, useState } from 'react';
 import { Button, Segmented } from '@/components/ui';
 import { Dialog } from '@/components/ui/Dialog';
+import { holdsPatterns } from '@/model/patterns';
 import { TOPICS, topicOf, type Topic } from '@/model/topics';
+import type { PatternId } from '@/library/patterns';
+import { PatternPicker } from '../PatternPicker';
 
 /** A row of choices over the list (bulk: Add, Remove, Replace), owned by the caller. */
 export interface PickerModes<T extends string> {
@@ -11,6 +14,23 @@ export interface PickerModes<T extends string> {
   value: T;
   options: { value: T; label: string }[];
   onChange: (value: T) => void;
+}
+
+/** 題型 under the ticked sub-topics, for questions of one type. */
+export interface PickerPatterns {
+  typeId: string;
+  /** "MCQ" or "LQ". */
+  kind: string;
+  /** The 題型 offered under a sub-topic (`patternNames`). */
+  names: (topic: string) => string[];
+  /** Each sub-topic's 題型 on open. */
+  initial?: Readonly<Record<string, string>>;
+}
+
+/** What the dialog chose besides the codes: each ticked sub-topic's 題型 (undefined = none), and the new names. */
+export interface PickedPatterns {
+  patterns: Record<string, string | undefined>;
+  created: PatternId[];
 }
 
 /**
@@ -26,6 +46,8 @@ export function TopicPickerDialog<M extends string = never>({
   modes,
   present,
   allowEmpty = true,
+  patterns,
+  patternNote,
   onClose,
   onDone,
 }: {
@@ -40,9 +62,15 @@ export function TopicPickerDialog<M extends string = never>({
   present?: ReadonlyMap<string, number>;
   /** Whether confirming with nothing ticked means something (clearing); else it is disabled. */
   allowEmpty?: boolean;
+  /** Offer a 題型 under each ticked sub-topic. */
+  patterns?: PickerPatterns;
+  /** Why no 題型 is offered (e.g. questions of two types), shown quietly. */
+  patternNote?: string;
   onClose: () => void;
-  onDone: (codes: string[]) => void;
+  onDone: (codes: string[], picked: PickedPatterns) => void;
 }) {
+  const [chosenPatterns, setChosenPatterns] = useState<Record<string, string | undefined>>(() => ({ ...(patterns?.initial ?? {}) }));
+  const [created, setCreated] = useState<ReadonlySet<string>>(new Set());
   const [picked, setPicked] = useState<ReadonlySet<string>>(() => new Set(initial.filter((tag) => topicOf(tag))));
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState<ReadonlySet<string>>(
@@ -71,6 +99,34 @@ export function TopicPickerDialog<M extends string = never>({
     });
   // Guide order, so a question's tags read A before C and a coarse code before its fine ones.
   const ordered = () => TOPICS.flatMap((topic) => [topic, ...topic.children]).map((t) => t.code).filter((code) => picked.has(code));
+  const done = () => {
+    const codes = ordered();
+    const chosen: Record<string, string | undefined> = {};
+    const fresh: PatternId[] = [];
+    if (patterns) {
+      for (const code of codes.filter(holdsPatterns)) {
+        const name = chosenPatterns[code];
+        chosen[code] = name;
+        if (name && created.has(`${code}\u0000${name}`)) fresh.push({ topic: code, typeId: patterns.typeId, name });
+      }
+    }
+    onDone(codes, { patterns: chosen, created: fresh });
+  };
+  const patternFor = (child: Topic) =>
+    patterns && picked.has(child.code) ? (
+      <div className="mb-1 ml-[100px] mr-2">
+        <PatternPicker
+          topic={child.code}
+          kind={patterns.kind}
+          names={patterns.names(child.code)}
+          value={chosenPatterns[child.code]}
+          onChange={(name, isNew) => {
+            setChosenPatterns((current) => ({ ...current, [child.code]: name }));
+            if (name && isNew) setCreated((current) => new Set(current).add(`${child.code}\u0000${name}`));
+          }}
+        />
+      </div>
+    ) : null;
 
   return (
     <Dialog
@@ -86,7 +142,7 @@ export function TopicPickerDialog<M extends string = never>({
           <Button variant="subtle" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="primary" disabled={!allowEmpty && picked.size === 0} onClick={() => onDone(ordered())}>
+          <Button variant="primary" disabled={!allowEmpty && picked.size === 0} onClick={done}>
             {typeof confirmLabel === 'function' ? confirmLabel(picked.size) : confirmLabel}
           </Button>
         </>
@@ -98,6 +154,7 @@ export function TopicPickerDialog<M extends string = never>({
             <Segmented<M> label={modes.label} value={modes.value} options={modes.options} onChange={modes.onChange} />
           </div>
         )}
+        {patternNote && <p className="mb-2 text-[11.5px] text-ink-subtle">{patternNote}</p>}
         <input
           type="search"
           value={query}
@@ -137,6 +194,7 @@ export function TopicPickerDialog<M extends string = never>({
                     {children.map((child) => (
                       <li key={child.code}>
                         <TopicCheck topic={child} checked={picked.has(child.code)} count={present?.get(child.code)} onToggle={() => toggle(child.code)} />
+                        {patternFor(child)}
                       </li>
                     ))}
                   </ul>

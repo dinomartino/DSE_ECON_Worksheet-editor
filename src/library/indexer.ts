@@ -6,7 +6,7 @@ import { computeNumbering } from '@/model/numbering';
 import { plain } from '@/model/text';
 import { isSymbolOnly } from '@/model/symbols';
 import { questionTexts } from '@/model/textWalk';
-import { topicLabel } from '@/model/topics';
+import { tagSearchWords } from '@/model/patterns';
 import type { Question, Worksheet } from '@/model/types';
 import { worksheetTitle } from '@/storage/document';
 import type { WorksheetSummary } from '@/storage/types';
@@ -52,7 +52,7 @@ function rowOf(question: Question, doc: DocFields, number: number | undefined): 
     has.en ||= Boolean(en) && !isSymbolOnly(slot.text.en);
     has.zh ||= Boolean(zh) && !isSymbolOnly(slot.text.zh);
   }
-  for (const tag of tags) words.push(tag, topicLabel(tag, 'en'), topicLabel(tag, 'zh'));
+  for (const tag of tags) words.push(...tagSearchWords(tag));
   const languages = (['en', 'zh'] as BankLang[]).filter((lang) => has[lang]);
   return {
     ...doc,

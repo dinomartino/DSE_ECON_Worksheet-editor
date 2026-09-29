@@ -41,6 +41,29 @@ Revised from the 2026-09-26 proposal after an audit against the code at `9f2009b
 - **The C3 "Insert from another document" dialog is dropped.** The 題庫 tab's From filter
   does the job.
 
+### 題型 / Pattern (C24, 2026-09-29)
+
+- **A 題型 belongs to one sub-topic and one question type.** Coarse topics hold none. MCQ
+  and LQ lists are separate because the question's registry type decides the list (read
+  from `BankRow.typeId`, never a branch). No default list ships.
+- **Stored as a tag, `C.ped::<name>`** (`src/model/patterns.ts`). It rides on `tags`, so
+  copies carry it, bank reads take the union, every write path (`tagWrites.ts`,
+  `topicSync.ts`) reaches every copy, and `contentKey` already ignores it. A tag whose
+  prefix is not a sub-topic is a free tag. One 題型 per sub-topic per question;
+  removing or replacing a sub-topic takes its 題型. Names match ignoring case and spacing.
+- **An app-level registry** (`src/storage/patterns.ts`) keeps the 題型 a teacher defined,
+  including unused ones: `econ-worksheet-patterns` / `worksheets/patterns.json`, per-row
+  validated, cleared with the store, in the backup manifest (restore adds only). The list
+  shown for a sub-topic × type is the registry joined with names on questions.
+- **Created while tagging** (the Edit panel's Topic row, the bank's topic dialog for
+  Edit, Set topic when every pick is one type, and tag as you go's full list) or on the
+  **題型 Patterns** level (`PatternsPage.tsx`), which also renames, merges and deletes:
+  every copy is rewritten through `writeTags`; hidden, trashed and newer-build documents
+  keep the old name (newer-build ones are named in the notice).
+- **Bank uses: group and filter only.** The review rail splits a sub-topic by 題型, "No
+  題型" last; the Filter has a 題型 field scoped to the topic on screen; topic cards count
+  the 題型 in use. Fill and coverage are unchanged. Never printed.
+
 ## The one decision everything else follows from
 
 **A question is already the unit of storage; do not invent a second format.** Every guard

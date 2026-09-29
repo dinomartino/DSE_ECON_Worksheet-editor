@@ -69,7 +69,7 @@ export interface WorksheetStore {
    * Distinct from `remove` per id because the editor reopens the most recently saved
    * worksheet on load, so "start completely fresh" is a statement about the *store*,
    * not about one document — deleting them one at a time would need the caller to
-   * enumerate what it is trying to forget. Takes Trash and folders with it. A save
+   * enumerate what it is trying to forget. Takes Trash, folders and 題型 with it. A save
    * already writing when it starts must not land after it.
    */
   clear(): Promise<void>;
