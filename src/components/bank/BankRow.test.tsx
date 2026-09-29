@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { row } from '@/library/testKit';
 import { createMcqQuestion, createStructuredQuestion } from '@/model/factories';
-import { BankRow, missingLanguageLabel, typeLabel, usedLabel, type BankRowProps } from './BankRow';
+import { BankRow, missingLanguageLabel, typeLabel, sittingLabel, usedLabel, type BankRowProps } from './BankRow';
 
 const html = (props: BankRowProps) => renderToStaticMarkup(createElement(BankRow, props));
 const choice = createMcqQuestion().type;
@@ -41,7 +41,7 @@ describe('BankRow', () => {
   });
 
   it('warns in amber when used with the class, and offers versions', () => {
-    const use = { docId: 'd', docTitle: '5A Mock', classTag: '5A', docUpdatedAt: '2026-03-10T00:00:00.000Z' };
+    const use = { docId: 'd', docTitle: '5A Mock', classes: ['5A'], usedOn: '2026-03-10' };
     const out = html({ row: base, usedWithClass: use, versions: 3, onVersions: () => {} });
     expect(out).toContain('text-warn-ink');
     expect(out).toContain('Used with 5A · Mar 2026');
@@ -67,6 +67,9 @@ describe('BankRow', () => {
     expect(typeLabel(choice)).toBe('MCQ');
     expect(typeLabel(createStructuredQuestion().type)).toBe('LQ');
     expect(typeLabel('from-a-newer-build')).toBe('From-a-newer-build');
-    expect(usedLabel({ docId: 'd', docTitle: 'x', docUpdatedAt: 'nonsense' })).toBe('Used with this class');
+    expect(usedLabel({ docId: 'd', docTitle: 'x', usedOn: 'nonsense' })).toBe('Used with this class');
+    expect(usedLabel({ docId: 'd', docTitle: 'x', classes: ['5A', '5B'], usedOn: '2025-11-03' })).toBe('Used with 5A, 5B · Nov 2025');
+    expect(sittingLabel({ docId: 'd', docTitle: 'x', classes: ['5A'], usedOn: '2025-11-03' })).toBe('5A · Nov 2025');
+    expect(sittingLabel({ docId: 'd', docTitle: 'x', usedOn: '2025-11-03T09:00:00.000Z' })).toBe('No class · Nov 2025');
   });
 });

@@ -136,8 +136,20 @@ export function missingLanguageLabel(row: Pick<BankRowData, 'languages'>, langua
 
 const MONTH = new Intl.DateTimeFormat('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 
-/** "Used with 5A · Mar 2026". */
+/** "Mar 2026" for a use date; empty when it will not parse. */
+function monthOf(use: Pick<BankUse, 'usedOn'>): string {
+  const when = Date.parse(use.usedOn);
+  return Number.isNaN(when) ? '' : MONTH.format(when);
+}
+
+/** "Used with 5A, 5B · Mar 2026". */
 export function usedLabel(use: BankUse): string {
-  const when = Date.parse(use.docUpdatedAt);
-  return `Used with ${use.classTag ?? 'this class'}${Number.isNaN(when) ? '' : ` · ${MONTH.format(when)}`}`;
+  const month = monthOf(use);
+  return `Used with ${use.classes?.join(', ') || 'this class'}${month ? ` · ${month}` : ''}`;
+}
+
+/** Who sat a paper and when: "5A, 5B · Mar 2026"; a paper naming no class says so. */
+export function sittingLabel(use: BankUse): string {
+  const month = monthOf(use);
+  return `${use.classes?.join(', ') || 'No class'}${month ? ` · ${month}` : ''}`;
 }

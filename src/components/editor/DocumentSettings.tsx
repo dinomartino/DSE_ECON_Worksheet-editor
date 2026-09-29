@@ -37,6 +37,9 @@ import {
   versionLetters,
 } from '@/model/versions';
 import { targetOf } from '@/model/paperSummary';
+import { cleanClasses, isIsoDate, parseClasses } from '@/model/classes';
+import { cohortLabel } from '@/library/cohort';
+import { paperClasses } from '@/library/tabFilters';
 import type { Band, HeaderFooter, LanguageMode, PageMargins, PaperSize, PaperTarget } from '@/model/types';
 import type { AnyQuestionTypeDefinition } from '@/registry/types';
 import { useWorksheetStore, type BandScope } from '@/store/worksheetStore';
@@ -303,27 +306,57 @@ function typeLabel(definition: AnyQuestionTypeDefinition, language: LanguageMode
 }
 
 /**
- * The paper's blueprint: marks, minutes and items per type, each optional. The toolbar
- * summary shows progress against it and the paper check lists a miss. Emptying every
- * box removes the target, so an untouched document never carries one.
+ * Who sat this paper and when (`model/classes.ts`), for the question bank's "used with".
+ * No classes = a draft the bank never counts as a use. The classes box keeps what is typed
+ * while focused and stores the parsed list, so "5A, " is not tidied away mid-word.
  */
 function BankField() {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const updateWorksheet = useWorksheetStore((s) => s.updateWorksheet);
+  const [typing, setTyping] = useState<string | undefined>();
+  const stored = cleanClasses(worksheet.classes);
+  const refs = paperClasses(worksheet);
+  const cohorts = [...new Set(refs.flatMap((ref) => (ref.cohort !== undefined ? [cohortLabel(ref.cohort)] : [])))];
+  const satOn = isIsoDate(worksheet.satOn) ? worksheet.satOn : '';
+  const setClasses = (text: string) => {
+    setTyping(text);
+    const next = cleanClasses(parseClasses(text).classes);
+    if ((next ?? []).join('\u0000') !== (stored ?? []).join('\u0000')) updateWorksheet({ classes: next });
+  };
+  const status =
+    refs.length === 0
+      ? 'No class yet: the bank treats this paper as a draft.'
+      : [cohorts.length > 0 ? `Year group: ${cohorts.join(', ')}` : undefined, satOn ? undefined : `No date set: counts from ${formatDay(worksheet.createdAt)}, when the paper was made`]
+          .filter(Boolean)
+          .join(' · ');
   return (
     <Field
-      label="Class 班別"
-      hint="Used by the question bank to warn about questions this class has seen. Never printed."
+      label="Classes 班別"
+      hint="Which classes sat this paper, and when. The question bank uses it to warn about questions these students have seen. Never printed."
     >
       <div className="space-y-2">
-        <input
-          type="text"
-          aria-label="Class"
-          value={worksheet.classTag ?? ''}
-          placeholder="e.g. 5B"
-          onChange={(event) => updateWorksheet({ classTag: event.target.value || undefined })}
-          className="h-8 w-40 rounded-lg border border-line bg-surface px-2 text-xs text-ink outline-none transition-colors duration-150 ease-out-soft placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
-        />
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <input
+            type="text"
+            aria-label="Classes"
+            value={typing ?? (stored ?? []).join(', ')}
+            placeholder="e.g. 5A, 5B"
+            onChange={(event) => setClasses(event.target.value)}
+            onBlur={() => setTyping(undefined)}
+            className="h-8 w-44 rounded-lg border border-line bg-surface px-2 text-xs text-ink outline-none transition-colors duration-150 ease-out-soft placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
+          />
+          <label className="flex items-center gap-2 text-xs text-ink-muted">
+            Sat on
+            <input
+              type="date"
+              aria-label="Sat on"
+              value={satOn}
+              onChange={(event) => updateWorksheet({ satOn: isIsoDate(event.target.value) ? event.target.value : undefined })}
+              className="h-8 rounded-lg border border-line bg-surface px-2 text-xs text-ink outline-none transition-colors duration-150 ease-out-soft focus:border-accent focus:ring-2 focus:ring-accent/25"
+            />
+          </label>
+        </div>
+        {status && <p className="text-[11px] text-ink-subtle">{status}</p>}
         <CheckField
           label="Hide from question bank"
           checked={Boolean(worksheet.bankHidden)}
@@ -334,6 +367,19 @@ function BankField() {
   );
 }
 
+const DAY = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+/** "3 Nov 2025" for an ISO date or timestamp; the raw text if it will not parse. */
+function formatDay(iso: string): string {
+  const when = Date.parse(iso);
+  return Number.isNaN(when) ? iso : DAY.format(when);
+}
+
+/**
+ * The paper's blueprint: marks, minutes and items per type, each optional. The toolbar
+ * summary shows progress against it and the paper check lists a miss. Emptying every
+ * box removes the target, so an untouched document never carries one.
+ */
 function TargetField() {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const updateWorksheet = useWorksheetStore((s) => s.updateWorksheet);

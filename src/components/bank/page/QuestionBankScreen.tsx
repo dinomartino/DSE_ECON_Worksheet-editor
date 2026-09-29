@@ -15,7 +15,7 @@ import {
   activeFilters,
   addTarget,
   bankCountLabel,
-  classTags,
+  classChoices,
   clearFilter,
   coverage as coverageOf,
   DEFAULT_FILTERS,
@@ -137,7 +137,7 @@ export function QuestionBankScreen({
   const byKey = useMemo(() => new Map(rows.map((row) => [rowKey(row), row])), [rows]);
   const fullGroups = useMemo(() => new Map(groupRows(rows).map((group) => [group.rootId, group])), [rows]);
   const cover = useMemo(() => coverageOf(rows), [rows]);
-  const classes = useMemo(() => classTags(rows), [rows]);
+  const classes = useMemo(() => classChoices(rows), [rows]);
   const classUsage = useMemo(() => latestClassUsage(rows), [rows]);
 
   const topic = level.kind === 'review' ? level.topic : 'all';
@@ -513,8 +513,8 @@ export function QuestionBankScreen({
                 setLevel({ kind: 'untagged' });
               }}
               onAll={() => setLevel({ kind: 'review', topic: 'all' })}
-              onClassGap={(classTag) => {
-                setFilters({ ...DEFAULT_FILTERS, notUsedWith: classTag });
+              onClassGap={(choice) => {
+                setFilters({ ...DEFAULT_FILTERS, notUsedWith: choice });
                 setLevel({ kind: 'review', topic: 'all' });
               }}
             />
@@ -533,7 +533,7 @@ export function QuestionBankScreen({
             railHidden,
             language,
             version,
-            classTag: filters.notUsedWith,
+            usedWith: filters.notUsedWith,
           }}
           fullGroup={focused ? fullGroups.get(focused.rootId) : undefined}
           empty={emptyReview}

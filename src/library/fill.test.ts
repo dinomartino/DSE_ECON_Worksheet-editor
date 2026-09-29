@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { pickFill } from './fill';
+import { classRefs } from './cohort';
 import { groupRows } from './group';
 import { row } from './testKit';
 
@@ -9,10 +10,10 @@ describe('pickFill', () => {
   // Bank copies of five questions, plus uses in papers.
   const rows = [
     ...['a', 'b', 'c', 'd', 'e'].map((id) =>
-      row({ rootId: id, docId: 'bank', docKind: 'bank', docUpdatedAt: at(1), tags: id === 'e' ? ['G'] : id === 'd' ? ['C'] : ['C.ped'] }),
+      row({ rootId: id, docId: 'bank', docKind: 'bank', usedOn: at(1), tags: id === 'e' ? ['G'] : id === 'd' ? ['C'] : ['C.ped'] }),
     ),
-    row({ rootId: 'a', docId: 'p-old', docUpdatedAt: at(2), classTag: '5B', tags: ['C.ped'] }),
-    row({ rootId: 'b', docId: 'p-new', docUpdatedAt: at(6), classTag: '5A', tags: ['C.ped'] }),
+    row({ rootId: 'a', docId: 'p-old', usedOn: at(2), classes: ['5B'], tags: ['C.ped'] }),
+    row({ rootId: 'b', docId: 'p-new', usedOn: at(6), classes: ['5A'], tags: ['C.ped'] }),
   ];
   const groups = groupRows(rows);
 
@@ -25,8 +26,17 @@ describe('pickFill', () => {
   });
 
   it('ranks questions used with the class last', () => {
-    expect(pickFill(groups, { count: 3, topic: 'C.ped', classTag: '5a' }).map((g) => g.rootId)).toEqual(['c', 'a', 'b']);
-    expect(pickFill(groups, { count: 3, topic: 'C.ped', classTag: '5B' }).map((g) => g.rootId)).toEqual(['c', 'b', 'a']);
+    expect(pickFill(groups, { count: 3, topic: 'C.ped', usedWith: [{ key: '5a' }] }).map((g) => g.rootId)).toEqual(['c', 'a', 'b']);
+    expect(pickFill(groups, { count: 3, topic: 'C.ped', usedWith: [{ key: '5b' }] }).map((g) => g.rootId)).toEqual(['c', 'b', 'a']);
+  });
+
+  it('ranks by cohort: this year’s 6A sat last year’s 5A and 5B papers', () => {
+    // Both uses were in 2025-26 by form 5, so DSE 2027; 6A in 2026-27 is DSE 2027 too.
+    expect(pickFill(groups, { count: 3, topic: 'C.ped', usedWith: classRefs(['6A'], '2026-10-01') }).map((g) => g.rootId)).toEqual(['c', 'a', 'b']);
+    // A draft (no classes) is not a use: it only breaks ties after real uses.
+    const withDraft = groupRows([...rows, row({ rootId: 'c', docId: 'draft', usedOn: at(9), tags: ['C.ped'] })]);
+    expect(pickFill(withDraft, { count: 3, topic: 'C.ped', usedWith: [{ key: '5a' }] }).map((g) => g.rootId)).toEqual(['c', 'a', 'b']);
+    expect(pickFill(withDraft, { count: 3, topic: 'C.ped' }).map((g) => g.rootId)).toEqual(['c', 'a', 'b']);
   });
 
   it('never returns a question already in the paper, and honours count and type', () => {

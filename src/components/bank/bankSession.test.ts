@@ -72,11 +72,11 @@ describe('insertFromBank', () => {
 
   it('retires Undo after a later edit', async () => {
     await insertFromBank([rowOf('doc-a', a1.id)], undefined, source);
-    store().updateWorksheet({ classTag: '5A' });
+    store().updateWorksheet({ classes: ['5A'] });
     const review = useBankSession.getState().review!;
     expect(review.undo.live()).toBe(false);
     useBankSession.getState().undo();
-    expect(store().worksheet.classTag).toBe('5A');
+    expect(store().worksheet.classes).toEqual(['5A']);
   });
 
   it('extends the open review with a consecutive insert; its Undo takes them all out', async () => {
@@ -100,12 +100,12 @@ describe('insertFromBank', () => {
     const after = await insertFromBank([rowOf('doc-b', b1.id)], undefined, source);
     expect(useBankSession.getState().review!.questionIds).toEqual(after.inserted);
 
-    store().updateWorksheet({ classTag: '5A' });
+    store().updateWorksheet({ classes: ['5A'] });
     const later = await insertFromBank([rowOf('doc-a', a2.id)], undefined, source);
     expect(useBankSession.getState().review).toMatchObject({ questionIds: later.inserted, commits: 1 });
     // Undo reverts only its own insert: the edit before it stays.
     useBankSession.getState().undo();
-    expect(store().worksheet.classTag).toBe('5A');
+    expect(store().worksheet.classes).toEqual(['5A']);
     expect(store().worksheet.questions.some((q) => q.id === after.inserted[0])).toBe(true);
   });
 

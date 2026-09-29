@@ -39,6 +39,7 @@ export function row(overrides: Partial<BankRow> = {}): BankRow {
     docId: 'doc',
     docTitle: 'Doc',
     docUpdatedAt: '2026-01-01T00:00:00.000Z',
+    usedOn: '2026-01-01',
     docKind: 'paper',
     questionId: `q${seq}`,
     rootId: `q${seq}`,

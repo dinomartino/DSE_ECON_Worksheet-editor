@@ -22,6 +22,9 @@ describe('worksheetFromPicks', () => {
     expect(numbering.questions.map((entry) => entry.question.id)).toEqual(made.questions.map((q) => q.id));
     expect(made.layout).toEqual([]); // no section headings to reorder them under
     expect(made.kind).toBeUndefined();
+    // Nobody has sat the new worksheet: it is a draft until Setup names a class.
+    expect(made.classes).toBeUndefined();
+    expect(made.satOn).toBeUndefined();
   });
 
   it('leaves out a question of a type this build does not know', () => {

@@ -27,7 +27,12 @@ const stored = { updatedAt: doc.updatedAt, rows: rowsOf(doc, summarize(doc)) };
 describe('isBankRow', () => {
   it('accepts what rowsOf writes and rejects anything else', () => {
     expect(stored.rows.every(isBankRow)).toBe(true);
-    expect(isBankRow(row({ classTag: '5A', number: 3 }))).toBe(true);
+    expect(isBankRow(row({ classes: ['5A', '5B'], number: 3 }))).toBe(true);
+    // A format-1 row (`classTag`, no use date) is not ours: the index is rebuilt.
+    const formatOne: Record<string, unknown> = { ...row(), classTag: '5A' };
+    delete formatOne.usedOn;
+    expect(isBankRow(formatOne)).toBe(false);
+    expect(isBankRow({ ...row(), classes: '5A' })).toBe(false);
     expect(isBankRow({ ...row(), excerpt: 'flat' })).toBe(false);
     expect(isBankRow({ ...row(), marks: '1' })).toBe(false);
     expect(isBankRow(null)).toBe(false);

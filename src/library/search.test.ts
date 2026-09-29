@@ -29,11 +29,13 @@ describe('searchRows', () => {
 
   it('drops every version of a question used in a paper with the class', () => {
     const inBank = row({ rootId: 'r1', docId: 'bank', docKind: 'bank' });
-    const usedWith5A = row({ rootId: 'r1', docId: 'old', classTag: '5A 2025-26', contentKey: 'edited' });
-    const bankOnly5A = row({ rootId: 'r2', docId: 'bank2', docKind: 'bank', classTag: '5A 2025-26' });
-    const other = row({ rootId: 'r3', docId: 'x', classTag: '5B' });
-    const all = [inBank, usedWith5A, bankOnly5A, other];
-    expect(searchRows(all, { notUsedWithClass: '5a 2025-26 ' })).toEqual([bankOnly5A, other]);
-    expect(searchRows(all, { notUsedWithClass: '' })).toEqual(all);
+    const usedWith5A = row({ rootId: 'r1', docId: 'old', classes: ['5A'], contentKey: 'edited' });
+    const bankOnly5A = row({ rootId: 'r2', docId: 'bank2', docKind: 'bank', classes: ['5A'] });
+    const other = row({ rootId: 'r3', docId: 'x', classes: ['Econ X'] });
+    const draft = row({ rootId: 'r4', docId: 'draft' });
+    const all = [inBank, usedWith5A, bankOnly5A, other, draft];
+    expect(searchRows(all, { notUsedWith: [{ key: '5a' }] })).toEqual([bankOnly5A, other, draft]);
+    expect(searchRows(all, { notUsedWith: [{ key: 'econx' }] })).toEqual([inBank, usedWith5A, bankOnly5A, draft]);
+    expect(searchRows(all, { notUsedWith: [] })).toEqual(all);
   });
 });

@@ -1,3 +1,4 @@
+import { foldLegacyClassTag } from './classes';
 import type { Worksheet } from './types';
 
 /**
@@ -63,7 +64,8 @@ export const KNOWN_KEYS = new Set([
   'versions',
   'target',
   'kind',
-  'classTag',
+  'classes',
+  'satOn',
   'bankHidden',
   'createdAt',
   'updatedAt',
@@ -94,6 +96,11 @@ export function migrate(input: unknown): Worksheet {
     if (!step) throw new SchemaError(`Missing migration from schema version ${v}.`);
     doc = step(doc);
   }
+
+  // Develop-only shapes that never reached a release are read tolerantly, not migrated:
+  // no released document holds them, so no version bump (which would make every released
+  // build open new documents read-only).
+  doc = foldLegacyClassTag(doc);
 
   // Re-collect unknown fields (a newer doc may carry keys this build never sees).
   const unknown: Record<string, unknown> = { ...((doc.__unknown as Record<string, unknown>) ?? {}) };

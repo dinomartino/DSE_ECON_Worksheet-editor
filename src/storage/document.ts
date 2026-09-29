@@ -66,11 +66,12 @@ export function summarize(worksheet: Worksheet): WorksheetSummary {
  * lands in the same id space as its original and must be re-idded.)
  *
  * `createdAt` is reset because the copy is new; `updatedAt` is what the list sorts on,
- * so a fresh one puts the copy where the teacher is looking for it.
+ * so a fresh one puts the copy where the teacher is looking for it. Who sat the original
+ * (`classes`, `satOn`) is not copied: nobody has sat the copy yet.
  */
 export function duplicateWorksheet(worksheet: Worksheet, id: string): Worksheet {
   const now = new Date().toISOString();
-  return {
+  const copy: Worksheet = {
     ...worksheet,
     id,
     title: {
@@ -80,6 +81,9 @@ export function duplicateWorksheet(worksheet: Worksheet, id: string): Worksheet 
     createdAt: now,
     updatedAt: now,
   };
+  delete copy.classes;
+  delete copy.satOn;
+  return copy;
 }
 
 /**

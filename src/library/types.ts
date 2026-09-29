@@ -1,3 +1,5 @@
+import type { ClassTarget } from './cohort';
+
 /**
  * The question bank's contracts (§ docs/design/question-library.md). Rows are derived from
  * saved documents and rebuildable by a scan — never a source of truth, never stored in one.
@@ -9,11 +11,16 @@ export type BankLang = 'en' | 'zh';
 export interface BankRow {
   docId: string;
   docTitle: string;
-  /** The owning document's `updatedAt` (ISO): the "when" of every use. */
+  /** The owning document's `updatedAt` (ISO): which saved version the row was read from. */
   docUpdatedAt: string;
+  /**
+   * The owning document's use date (`dateOfUse`: `satOn`, else `createdAt`). Orders copies
+   * and dates uses; never `updatedAt`, so editing an old paper does not make it recent.
+   */
+  usedOn: string;
   docKind: 'paper' | 'bank';
-  /** The owning document's `classTag`, trimmed; absent when unset. */
-  classTag?: string;
+  /** The classes that sat the owning document, cleaned; absent = a draft, never a use. */
+  classes?: string[];
   questionId: string;
   /** `lineage.rootId`, or the question's own id for an original. */
   rootId: string;
@@ -36,19 +43,23 @@ export interface BankRow {
   number?: number;
 }
 
-/** One use of a question: a paper that holds a copy of it. */
+/**
+ * A paper that holds a copy of a question. It is a *use* only when it names classes; a
+ * draft still shows where the question lives, but no anti-repeat filter counts it.
+ */
 export interface BankUse {
   docId: string;
   docTitle: string;
-  classTag?: string;
+  classes?: string[];
   number?: number;
-  docUpdatedAt: string;
+  /** `BankRow.usedOn`: when it was sat, else when it was made. */
+  usedOn: string;
 }
 
 /** Every copy of one question (same `rootId`), however edited. */
 export interface BankGroup {
   rootId: string;
-  /** Newest document first; `rows[0]` is the copy to show and insert. */
+  /** Newest use date first (`usedOn`, then docId); `rows[0]` is the copy to show and insert. */
   rows: BankRow[];
   /** Distinct `contentKey`s: 1 = identical copies, more = "N versions". */
   versions: number;
@@ -64,8 +75,8 @@ export interface BankQuery {
   topic?: string;
   typeId?: string;
   marks?: { min?: number; max?: number };
-  /** Drop every version of a question already used in a paper with this class tag. */
-  notUsedWithClass?: string;
+  /** Drop every version of a question already used with any of these students (`cohort.ts`). */
+  notUsedWith?: readonly ClassTarget[];
   /** Only rows from this document. */
   fromDocId?: string;
   /** Leave this document out (usually the open paper). */
