@@ -1871,7 +1871,10 @@ toolbar mark. It is chrome, never IR: nothing reaches the `.docx`, clipboard or 
   — Trash, and backup/restore/"Show … folder" behind ⋯ — sit in the dashboard header.
 - **An empty desk welcomes** (`start/WelcomeDesk.tsx`): once the index reads empty, the
   four kinds appear as sketched pages opening the same form, plus Open a file / Restore a
-  backup. Nothing is added to the list for the teacher; with one document it is the list.
+  backup. They are then the one way in: the sidebar drops its four rows and "Open a file…"
+  (`StartScreen.tsx:StartNewSection`), keeping the headline and Question bank. Before the
+  index is read nothing changes, so a returning teacher sees no flash. Nothing is added to
+  the list for the teacher; with one document it is the list, and the rows are back.
 - **Folders narrow, never hide.** A folder column (All documents, then folders by name,
   with counts) scopes the list first (`dashboard.ts:scopedSummaries`); search, kind and
   order then work inside it. All documents shows every row, filed or not, and says which
