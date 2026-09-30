@@ -16,9 +16,9 @@ export interface PickedQuestion {
 
 /**
  * The rows' questions read from their documents, in order, each document loaded once; a
- * question no longer there is left out. Each carries the tags its row shows (the union
- * over every copy, `withRowTags`), so both "New worksheet from these" and "Add to" give
- * the copy every topic the bank showed.
+ * question no longer there is left out. Each carries the tags its row shows (the newest
+ * copy's set, `withRowTags`), so both "New worksheet from these" and "Add to" give the
+ * copy exactly the topics the bank showed.
  */
 export async function readPicks(
   store: Pick<WorksheetStore, 'load'>,

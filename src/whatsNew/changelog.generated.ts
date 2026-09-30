@@ -110,6 +110,9 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 - **Question bank: easier to read.** "Used in" puts each paper's full title on its own
   line, and the Class filter shows a short name ("Not used with DSE 2027") with the
   classes it covers listed underneath.
+- **MCQ and LQ, the same words everywhere.** Setup's Target now counts MCQ and LQ, as the
+  question bank does; the Edit panel says "1 mark", not "1 marks"; and the 題庫 tab's topic
+  lists group each topic's sub-topics under it.
 - **The start screen shows when there's more to scroll.** Its left column fades at the
   bottom while more is below, and shows a thin line at the top once you have scrolled down.
 - **Header & footer settings are organised by page.** In Setup, pick Page 1 or Pages 2

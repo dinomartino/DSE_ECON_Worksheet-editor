@@ -335,6 +335,7 @@ export function Inspector({
 
   const definition = requireQuestionType(selected);
   const number = numbering.byQuestionId.get(selected.id)?.number;
+  const marks = questionMarks(selected);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -346,7 +347,7 @@ export function Inspector({
             Question {number ?? '–'}
           </span>
           <span className="block truncate text-[11px] text-ink-muted">
-            {plain(definition.displayName.en)} · {questionMarks(selected)} marks
+            {plain(definition.displayName.en)} · {marks} {marks === 1 ? 'mark' : 'marks'}
           </span>
         </span>
         <IconButton label="Close editor" onClick={() => select(undefined)}>

@@ -291,13 +291,14 @@ function VersionsField() {
   );
 }
 
-/** The registry's short count label, in the chrome's language. */
+/** The registry's short name ("MCQ", "LQ", as the bank says it), in the chrome's language. */
 function typeLabel(definition: AnyQuestionTypeDefinition, language: LanguageMode): string {
   const zh = language === 'zh';
+  const summary = definition.summary;
   const label =
-    definition.summary?.label[zh ? 'zh' : 'en'] ??
+    (summary?.short ?? summary?.label)?.[zh ? 'zh' : 'en'] ??
     plain(zh ? definition.displayName.zh : definition.displayName.en);
-  // Beside "Marks" and "Time", so capitalised: "Structured".
+  // Beside "Marks" and "Time", so capitalised.
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
