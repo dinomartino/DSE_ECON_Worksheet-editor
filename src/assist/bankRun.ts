@@ -44,6 +44,8 @@ export interface BankRunDeps {
   loadGlossary(): Promise<Glossary>;
   desktop(): boolean;
   now?(): string;
+  /** Runs one document write after any other write the screen has queued (topic edits), never beside it. */
+  exclusive?<T>(work: () => Promise<T>): Promise<T>;
 }
 
 export type BankProgress = (done: number, total: number, label: string) => void;
@@ -74,6 +76,8 @@ export const CHANGED_SINCE_READ = 'Changed since the bank read it. Left as it is
 export const NOT_WRITTEN = 'No copy of it could be written.';
 
 const now = (deps: BankRunDeps) => deps.now?.() ?? new Date().toISOString();
+/** A write, queued behind the screen's other writes: a topic edit and a fill never load and save one document at once. */
+export const exclusively = <T,>(deps: Pick<BankRunDeps, 'exclusive'>, work: () => Promise<T>): Promise<T> => (deps.exclusive ? deps.exclusive(work) : work());
 const questions = (n: number) => `${n} ${n === 1 ? 'question' : 'questions'}`;
 const sameRef = (a: CopyRef, b: CopyRef) => a.docId === b.docId && a.questionId === b.questionId;
 
@@ -224,7 +228,7 @@ export async function runBankFill(req: FillRequest, deps: BankRunDeps, signal: A
     }
     // Hard failures are never written: `writesFor` takes the usable results only.
     const writes = writesFor(plan, outcome, ok, true);
-    const result = await writeIntoCopies(deps.store, { sourceSlots: read.slots, writes, copies: req.copiesOf(unit), expectedKey: unit.contentKey }, now(deps));
+    const result = await exclusively(deps, () => writeIntoCopies(deps.store, { sourceSlots: read.slots, writes, copies: req.copiesOf(unit), expectedKey: unit.contentKey }, now(deps)));
     records.push(...result.written);
     skipped.push(...result.skipped);
     const written = result.written.some((record) => sameRef(record, unit));
@@ -356,7 +360,7 @@ export async function replaceTerms(
 ): Promise<ReplaceResult> {
   const { unit } = findings;
   const writes = termFixWrites(findings.rows, accepted);
-  const result = await writeIntoCopies(deps.store, { sourceSlots: findings.slots, writes, copies: findings.copies, expectedKey: unit.contentKey }, now(deps));
+  const result = await exclusively(deps, () => writeIntoCopies(deps.store, { sourceSlots: findings.slots, writes, copies: findings.copies, expectedKey: unit.contentKey }, now(deps)));
   const saved = result.saved.get(unit.docId);
   const question = saved?.questions.find((q) => q.id === unit.questionId);
   if (!saved || !question || !result.written.some((record) => sameRef(record, unit))) {

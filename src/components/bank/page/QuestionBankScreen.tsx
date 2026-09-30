@@ -183,10 +183,12 @@ export function QuestionBankScreen({
   // A question whose tags were just taken back, shown until the list holds it again.
   const [restoring, setRestoring] = useState<{ group: BankGroup; settled: boolean }>();
   const searchRef = useRef<HTMLInputElement>(null);
-  const writes = useRef<Promise<void>>(Promise.resolve());
+  // Every document write this screen makes, one at a time: tagging fast, or tagging while a
+  // ✦ run writes, must never load a document before the last save to it lands.
+  const [writes] = useState(createWriteQueue);
   // ✦ AI: one run at a time, for this visit. Leaving the screen stops it and waits for
   // its last write, so no document is written once the editor may hold it.
-  const [bankAi] = useState(() => createBankAi({ store: worksheetStore, createRunDeps, loadGlossary, desktop: isDesktop }));
+  const [bankAi] = useState(() => createBankAi({ store: worksheetStore, createRunDeps, loadGlossary, desktop: isDesktop, exclusive: writes.run }));
   const aiPhase = bankAi((s) => s.phase);
   const aiRun = useRef<{ level: BankLevel; side?: 'en' | 'zh' }>(undefined);
   useEffect(() => () => void bankAi.getState().settle(), [bankAi]);
@@ -365,8 +367,7 @@ export function QuestionBankScreen({
       if (result.failed.length > 0) report(result.failed, result.saved.length);
       else if (done && result.saved.length > 0) onNotice(done(result.saved.length));
     };
-    writes.current = writes.current.then(run, run);
-    return writes.current;
+    return writes.run(run);
   };
 
   const newWorksheet = async () => {
@@ -1085,5 +1086,17 @@ function unitOf(row: BankRow, labels: ReadonlyMap<string, string>): BankUnit {
     rootId: row.rootId,
     contentKey: row.contentKey,
     label: row.number !== undefined ? `${title} · Q${row.number}` : title,
+  };
+}
+
+/** A queue of writes: each starts once the one before it has settled, whatever its outcome. */
+function createWriteQueue() {
+  let last: Promise<unknown> = Promise.resolve();
+  return {
+    run<T>(work: () => Promise<T>): Promise<T> {
+      const next = last.then(work, work);
+      last = next.catch(() => undefined);
+      return next;
+    },
   };
 }

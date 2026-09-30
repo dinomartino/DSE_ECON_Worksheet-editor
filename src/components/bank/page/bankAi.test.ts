@@ -65,7 +65,14 @@ describe('the bank ✦ run', () => {
     const b = docWith([copyQuestion(original, 'a')], { id: 'b' } as Partial<Worksheet>);
     const rows = [a, b].flatMap((doc) => rowsOf(doc));
     const store = memoryStore([a, b]);
-    const run = createBankAi(deps(store));
+    let queued = 0;
+    const run = createBankAi({
+      ...deps(store),
+      exclusive: <T,>(work: () => Promise<T>) => {
+        queued += 1;
+        return work();
+      },
+    });
     const heard = hooks();
     await run.getState().start({ verb: 'fill', side: 'zh', includeTeacher: false, units: [unitOf(rows[0])], copiesOf: () => identicalCopies(rows, rows[0]) }, heard);
     const phase = run.getState().phase;
@@ -75,6 +82,8 @@ describe('the bank ✦ run', () => {
 
     await run.getState().undoAll();
     expect(run.getState().phase).toEqual({ kind: 'idle' });
+    // Writes go through the screen's queue (so a topic edit never interleaves with them).
+    expect(queued).toBe(2);
     expect(contentKey(store.saved.get('a')!.questions[0])).toBe(rows[0].contentKey);
     expect(contentKey(store.saved.get('b')!.questions[0])).toBe(rows[0].contentKey);
     expect(heard.onNotice).toHaveBeenCalledWith('Put back 1 question as it was.');

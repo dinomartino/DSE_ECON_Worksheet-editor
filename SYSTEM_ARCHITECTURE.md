@@ -2166,7 +2166,8 @@ Rules every verb keeps:
 - **Collected from the model, never the IR or DOM**, so derived numbers, marks and default
   wording never reach a request, and an absent prefix or suffix stays absent.
 - **One commit per run**, every write stale-guarded; hard failures are never written;
-  `readOnly` is inert.
+  `readOnly` is inert. (The question bank has no undo stack: one save per document per
+  question, and its own Undo all; § The question bank, a second surface.)
 - **Network only on an explicit click** (a verb, a field Fill, Save & continue, Save &
   test, Test, List my models).
 - **One app dialog at a time** (`src/store/appDialogs.ts`): Settings never stacks on another
@@ -2259,6 +2260,47 @@ There is no pre-insert review. A verb click runs, writes, then shows what it wro
   E3's engine chunk is never fetched. It asserts nothing is sent before a verb click, Save
   & continue or Fill, and that no real provider host is reached. Production code has no
   test hooks.
+
+### The question bank, a second surface (`src/assist/bankRun.ts`)
+
+The bank screen (`src/components/bank/page/`) offers Fill missing 中文 / English and Check
+terms over saved documents, not the open one: for the question on screen, the questions in
+the list, or every question the review page shows. Re-translate is not offered there (it
+overwrites a teacher's own words in every copy); E1, E3 and E4 stay paused. The door is
+`BankAiMenu` beside Filter; the run store is `src/components/bank/page/bankAi.ts`; the bar
+is `BankAiBar`, in the editor bar's voice and look (its pieces are shared,
+`src/components/ai/barParts.tsx`).
+
+- **Same engine, pure rules.** Plan, run, validate, the glossary and `applyTranslationBatch`
+  are the editor's; the store-free rules live in `src/assist/fillRules.ts` and
+  `src/assist/termRules.ts`, which the editor's verbs re-export. `runErrorAction` takes the
+  run it drives, so errors offer the same actions on both surfaces.
+- **One question at a time.** Each question is read from its document, planned with the
+  defaults a click implies (the side asked for; teacher text when the preview shows Teacher
+  or AI Settings include it; symbol copies as that language's edition prints), sent, then
+  written before the next. Progress counts questions; Stop keeps every question done
+  ("Stopped. 12 of 40 done."). A question missing nothing on that side is skipped silently.
+  Over 20 questions asks first, with a rough time (`CONFIRM_OVER`, `SECONDS_PER_QUESTION`).
+- **Every identical copy** (`src/library/sameCopies.ts`). A question lives in several
+  documents. A result computed on the shown copy is written into every copy with the same
+  `lineage.rootId` and the same `contentKey` before the change, slot for slot (a copy's
+  slots walk in the same order to the same texts; only their ids differ), so they remain
+  one version after it. A copy already different is left alone. Never written: a document
+  in Trash (saving would bring it back), one hidden from the bank (the bank does not reach
+  into it, as topic edits do not), one from a newer build. Each document is loaded,
+  checked (`contentKey` and every text lined up) and saved in one step, through the same
+  queue as the screen's topic writes; a copy changed underneath is skipped and reported,
+  never overwritten.
+- **Undo all** keeps each written copy's `before` for the visit and puts it back only where
+  the copy still says exactly what the run wrote; tags, their stamp and lineage stay as
+  they are now. Check terms' fixes (one finding, or Replace N) join the same Undo all.
+- **Review after.** Reviewed questions carry a ✦ in the rail, a note above the paper and
+  marks on it (`PaperPreview`'s `markTexts`, inside its shadow root, screen only); a
+  Missing filter keeps the questions it filled in view until the review ends.
+- **Leaving stops it.** The run belongs to one visit of the bank screen: Home, Open in
+  worksheet, Add to and New worksheet stop it and wait for its last write (`settle`), so
+  nothing is written once the editor may hold the document.
+- **Browser run:** `scripts/bank-ai-verify.mjs` (Chromium and WebKit, the same mock).
 
 ### The glossary (`src/glossary/`)
 

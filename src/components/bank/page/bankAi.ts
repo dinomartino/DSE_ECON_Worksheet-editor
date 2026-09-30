@@ -1,6 +1,7 @@
 import { create, type StoreApi, type UseBoundStore } from 'zustand';
 import { isAiError, type AiErrorInfo } from '@/ai/types';
 import {
+  exclusively,
   replaceTerms,
   runBankFill,
   runBankTerms,
@@ -255,7 +256,7 @@ export function createBankAi(deps: BankRunDeps): UseBoundStore<StoreApi<BankAiSt
         const phase = get().phase;
         if (phase.kind !== 'review' || phase.busy || records.length === 0) return;
         set({ phase: { ...phase, busy: true } });
-        const result = await track(restoreCopies(deps.store, records));
+        const result = await track(exclusively(deps, () => restoreCopies(deps.store, records)));
         findings = [];
         set({ phase: { kind: 'idle' } });
         if (result.saved.size > 0) hooks?.onWritten();
