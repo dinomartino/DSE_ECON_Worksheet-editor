@@ -430,7 +430,9 @@ makes the score stale (rebuilt by `npm run film:score`).
 ## tests and corpus
 
 `npm test` = `vitest run src`. Tests sit beside what they test; `scripts/*.test.ts` are
-harnesses run by hand (`vitest.config.ts` includes them, `npm test` does not).
+harnesses run by hand: `vitest.config.ts` includes them only when the command names a
+`scripts/` path, so a bare `npx vitest run` is `src/` only. The corpus emitter also
+refuses to write without `EMIT_V1_CORPUS=1`.
 
 - `src/test/fixtures.ts:buildAcceptanceWorksheet` — the shared document
 - `src/test/corpus/v1-published.json` — frozen v1 output; **never regenerate**

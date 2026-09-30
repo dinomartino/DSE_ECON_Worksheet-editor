@@ -1,8 +1,8 @@
 /**
  * Not a unit test: regenerates the frozen schema-v1 corpus fixture.
  *
- * Run deliberately, and essentially never again:
- *   npx vitest run scripts/emit-v1-corpus.test.ts
+ * Run deliberately, and essentially never again (it refuses without the variable):
+ *   EMIT_V1_CORPUS=1 npx vitest run scripts/emit-v1-corpus.test.ts
  *
  * The corpus it writes (`src/test/corpus/v1-published.json`) stands in for the
  * documents real teachers have saved from the published build. Its whole value is
@@ -132,6 +132,13 @@ function richStructured(): StructuredQuestion {
 }
 
 it('emits the frozen schema-v1 corpus', () => {
+  if (process.env.EMIT_V1_CORPUS !== '1') {
+    throw new Error(
+      `Refusing to rewrite the frozen corpus ${OUT}. It is never regenerated; ` +
+        'set EMIT_V1_CORPUS=1 only when deliberately cutting a new corpus.',
+    );
+  }
+
   // `lqMock` is the widest document this app makes: cover, page furniture, sections
   // with derived totals, a QAB footer and a 10pt base size. Everything else is a
   // subset of its surface, so one corpus covers the rest.

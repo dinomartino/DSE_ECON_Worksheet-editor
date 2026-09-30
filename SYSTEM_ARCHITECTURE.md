@@ -2683,7 +2683,8 @@ guarantee — changing how an old document *prints* is allowed; breaking *open* 
   written once by the v1 build and is **never regenerated** — every other schema test
   round-trips a document this build constructed, which cannot catch a migration that
   drops a field. `scripts/emit-v1-corpus.test.ts` runs only when cutting a **new**
-  version; a new version gets a new corpus file beside the old.
+  version (named explicitly, with `EMIT_V1_CORPUS=1`, or it refuses); a new version
+  gets a new corpus file beside the old.
 - **`backwardCompat.test.ts` asserts six things** about the corpus: loads with nothing
   in `__unknown`, keeps every top-level structure, keeps all four block kinds, keeps an
   unmarked sub-part unmarked, loses no authored text, survives load → save → load.
