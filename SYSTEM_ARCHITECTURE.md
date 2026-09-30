@@ -2681,6 +2681,15 @@ in-flight values stay local; the store is called on pointer-up.
   question (results, canonical picks, reserves) keys on these, never a bare `questionId`.
   The stamp is freshness only: a row's use date (`usedOn` = `satOn ?? createdAt`) orders
   copies and dates uses, so editing an old paper never makes it look recently used.
+- **One tag set per question: the newest tag change wins** (`src/library/sharedTags.ts:sharedTags`).
+  Every tag write stamps `Question.tagsAt`; the set of all copies of a root is the tags of
+  the copy stamped last (unstamped copies rank oldest, ties give their union, no stamp at
+  all gives the union, as before stamping). Rows are resolved once where the index
+  publishes; stored rows keep each copy's own. A write applies the edit to that set and
+  every reachable copy adopts it under one stamp, so a removal outranks a copy it could not
+  reach (hidden, trashed, newer build). Adoption is lazy: the editor resolves at display
+  time (`src/components/editor/sharedTopics.ts:useShownTags`) and never rewrites a document
+  for being opened. Stamps are device clocks; skew can let an earlier change win.
 - **`KNOWN_KEYS` must list every top-level field** — an unlisted key is stripped into
   `__unknown`: it saves fine and vanishes on reload. A test fails when a populated
   worksheet carries a key the set lacks.

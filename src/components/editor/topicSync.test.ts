@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { rowsOf } from '@/library/indexer';
+import { searchRows } from '@/library/search';
+import { withSharedTags } from '@/library/sharedTags';
 import { choiceQuestion, docWith } from '@/library/testKit';
 import { copyQuestion } from '@/model/lineage';
 import { bi } from '@/model/text';
@@ -19,11 +21,15 @@ function harness(docs: Worksheet[]) {
         saved.set(worksheet.id, worksheet);
       },
     },
-    rows: async () => docs.flatMap((doc) => rowsOf(doc)),
+    // Published rows, as `bankRowsNow` gives them: each holds its question's shared set.
+    rows: async () => withSharedTags(docs.flatMap((doc) => rowsOf(doc))),
     notify: (message) => notices.push(message),
   };
   return { saved, writes, notices, deps };
 }
+
+const T1 = '2026-01-01T00:00:00.000Z';
+const T2 = '2026-01-02T00:00:00.000Z';
 
 const tagsIn = (doc: Worksheet | undefined, id: string) => doc?.questions.find((q) => q.id === id)?.tags;
 
@@ -79,13 +85,70 @@ describe('the editor Topic row writes every copy', () => {
     expect(tagsIn(useWorksheetStore.getState().worksheet, copyB.id)).toEqual(['C', 'mock 2025']);
   });
 
-  it('takes a removed topic off every copy and keeps what another copy had besides', async () => {
+  it('takes a removed topic off every copy, keeping a topic of the shared set the row had not shown yet', async () => {
+    // No copy stamped: the shared set is the union, F.gdp included. Called without `shown`
+    // (the bank had not loaded), the change is read against the open copy's own tags.
     const extra = { ...docC, questions: [{ ...copyC, tags: ['C', 'mock 2025', 'F.gdp'] }] };
     const { saved, deps } = harness([docA, docB, extra]);
     open(docB);
     await setQuestionTopics(copyB.id, ['mock 2025'], deps);
-    expect(tagsIn(saved.get(docA.id), original.id)).toEqual(['mock 2025']);
+    expect(tagsIn(saved.get(docA.id), original.id)).toEqual(['mock 2025', 'F.gdp']);
     expect(tagsIn(saved.get(docC.id), copyC.id)).toEqual(['mock 2025', 'F.gdp']);
+    // One stamp on every copy: tied, so the set is their union, and C is gone everywhere.
+    const openDoc = useWorksheetStore.getState().worksheet;
+    const rows = withSharedTags([openDoc, saved.get(docA.id)!, saved.get(docC.id)!].flatMap((doc) => rowsOf(doc)));
+    expect(new Set(rows.filter((r) => r.rootId === original.id).map((r) => r.tags.join()))).toEqual(new Set(['mock 2025,F.gdp']));
+  });
+
+  it('reads the change against the shown set, so a stale open copy adopts the newest', async () => {
+    // B was left behind (older stamp); A and C hold the newest set, without D.
+    const staleB = { ...copyB, tags: ['C', 'D'], tagsAt: T1 };
+    const b = { ...docB, questions: [staleB, docB.questions[1]] };
+    const a = { ...docA, questions: [{ ...original, tags: ['C', 'mock 2025'], tagsAt: T2 }] };
+    const c = { ...docC, questions: [{ ...copyC, tags: ['C', 'mock 2025'], tagsAt: T2 }] };
+    const { saved, deps } = harness([a, b, c]);
+    open(b);
+    // The Topic row showed the newest set; the teacher removes 'mock 2025'.
+    await setQuestionTopics(staleB.id, ['C'], deps, ['C', 'mock 2025']);
+    const openDoc = useWorksheetStore.getState().worksheet;
+    expect(tagsIn(openDoc, staleB.id)).toEqual(['C']);
+    expect(tagsIn(saved.get(a.id), original.id)).toEqual(['C']);
+    expect(tagsIn(saved.get(c.id), copyC.id)).toEqual(['C']);
+    // D, which only the stale copy held, does not come back.
+    const rows = withSharedTags([openDoc, saved.get(a.id)!, saved.get(c.id)!].flatMap((doc) => rowsOf(doc)));
+    expect(rows.filter((r) => r.rootId === original.id).map((r) => r.tags)).toEqual([['C'], ['C'], ['C']]);
+  });
+
+  it('stamps the open copy when the edit only drops what its own tags never had', async () => {
+    const staleB = { ...copyB, tags: ['C'], tagsAt: T1 };
+    const b = { ...docB, questions: [staleB, docB.questions[1]] };
+    const a = { ...docA, questions: [{ ...original, tags: ['C', 'D'], tagsAt: T2 }] };
+    const { saved, deps } = harness([a, b]);
+    open(b);
+    await setQuestionTopics(staleB.id, ['C'], deps, ['C', 'D']);
+    const q = useWorksheetStore.getState().worksheet.questions.find((x) => x.id === staleB.id)!;
+    expect(q.tags).toEqual(['C']);
+    expect(Date.parse(q.tagsAt!)).toBeGreaterThan(Date.parse(T2));
+    expect(tagsIn(saved.get(a.id), original.id)).toEqual(['C']);
+  });
+
+  it('makes a removal stick over a copy it cannot reach: a newer-build file, and a trashed one restored later', async () => {
+    const tagged = (doc: Worksheet, q: Question) => ({ ...doc, questions: doc.questions.map((x) => (x.id === q.id ? { ...x, tags: ['C', 'D'], tagsAt: T1 } : x)) });
+    const a = tagged(docA, original);
+    const b = tagged(docB, copyB);
+    const newer = { ...tagged(docC, copyC), schemaVersion: 999 };
+    const trashedQ = { ...copyQuestion(original, docA.id), tags: ['C', 'D'], tagsAt: T1 };
+    const trashed = docWith([trashedQ]);
+    // The trashed paper is not in the index while the edit runs.
+    const { saved, deps } = harness([a, b, newer]);
+    open(b);
+    await setQuestionTopics(copyB.id, ['C'], deps, ['C', 'D']);
+    expect(saved.get(newer.id)).toBe(newer);
+    // Restored: indexed again beside everything else. Its tags and the newer file's are older.
+    const all = [useWorksheetStore.getState().worksheet, saved.get(a.id)!, newer, trashed];
+    const rows = withSharedTags(all.flatMap((doc) => rowsOf(doc)));
+    expect(rows.filter((r) => r.rootId === original.id).map((r) => r.tags)).toEqual([['C'], ['C'], ['C'], ['C']]);
+    expect(searchRows(rows, { topic: 'D' })).toEqual([]);
   });
 
   it('reaches the copies of an original (no lineage) opened in its own paper', async () => {

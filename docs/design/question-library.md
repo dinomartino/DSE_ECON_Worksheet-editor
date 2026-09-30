@@ -24,13 +24,13 @@ Revised from the 2026-09-26 proposal after an audit against the code at `9f2009b
   one row ("Used in 3 papers"); edited copies show as "N versions". "Used with 5A" counts
   every version. **Topics are one truth per question** (C6): every topic edit made in the
   bank (Edit topics, tag as you go, Set topic add/remove/replace) writes every copy it may
-  (not hidden, trashed or newer-build documents; those are reported), and the bank reads
-  the union of all copies' tags (`src/library/sharedTags.ts`). The editor's Topic row does
-  the same (`src/components/editor/topicSync.ts`): the open copy through the store (⌘Z
-  undoes it, and only it), every other indexed copy of its root through storage, never the
-  open document; each other copy gains the edited copy's topics, loses what the edit took
-  off and keeps its own extras. A copy taken from the bank (Insert, Fill, Add to, New
-  worksheet from these) starts with the union, not the picked copy's tags
+  (not hidden, trashed or newer-build documents; those are reported), and every surface
+  reads one set per question: **the newest tag change wins** (§ One tag set). The editor's
+  Topic row does the same (`src/components/editor/topicSync.ts`): the open copy through
+  the store (⌘Z undoes it, and only it), every other indexed copy of its root through
+  storage, never the open document; every copy it reaches ends with the edited set. A copy
+  taken from the bank (Insert, Fill, Add to, New worksheet from these) starts with the
+  shared set and its stamp, not the picked copy's tags
   (`src/library/sharedTags.ts:withRowTags`). **Update bank copy** (explicit, never automatic) writes an edited
   question back to the bank document it came from; **Treat as a new question** drops
   `lineage`.
@@ -47,7 +47,7 @@ Revised from the 2026-09-26 proposal after an audit against the code at `9f2009b
   and LQ lists are separate because the question's registry type decides the list (read
   from `BankRow.typeId`, never a branch). No default list ships.
 - **Stored as a tag, `C.ped::<name>`** (`src/model/patterns.ts`). It rides on `tags`, so
-  copies carry it, bank reads take the union, every write path (`tagWrites.ts`,
+  copies carry it, bank reads take the shared set, every write path (`tagWrites.ts`,
   `topicSync.ts`) reaches every copy, and `contentKey` already ignores it. A `::` tag
   whose prefix is not a sub-topic this build knows is kept and shown as stored, never a
   free tag (§ Tag grammar). One 題型 per sub-topic per question;
@@ -179,13 +179,40 @@ interface Worksheet {
 - `McqQuestion.provenance` is unrelated: printed teacher prose ("Modelled on DSE 2023
   Q1"). `lineage` is machine identity and never prints.
 - `tags` is not a `BiText`; keep it out of `textSlots.ts` roles.
-- **Removing a tag is not durable yet**: the union across copies brings it back from a
-  copy the write could not reach (hidden, trashed, newer-build, restored). Unchanged for
-  now, but every tag write (`withQuestionTags`, `setQuestionTopics`) stamps `tagsAt`, on
-  removal too, so a later build can choose newest-wins from the history accumulated since
-  the first release.
+- Every tag write (`withQuestionTags`, `setQuestionTopics`) stamps `tagsAt`, on removal
+  too; § One tag set reads it.
 - Codes are stored, names looked up (`src/model/topics.ts`), so renaming never touches a
   document.
+
+### One tag set: the newest change wins (the user, 2026-09-30)
+
+The union of every copy's tags (the first C6 rule) made removal impossible: a copy the
+write could not reach (hidden, trashed, newer-build, restored) brought the tag back.
+`src/library/sharedTags.ts:sharedTags` replaces it, and every reader goes through it.
+
+- **The set of a question is the tags of the copy with the newest `tagsAt`.** Unstamped
+  copies (everything saved before stamping) rank oldest. **No stamped copy: the union**,
+  so older data behaves as before until someone edits its tags. Copies tied on the newest
+  time give their union. An unreadable stamp counts as none.
+- **Read once, where the index publishes** (`withSharedTags` in `bankIndex.ts`): each row's
+  `tags`, `tagsAt` and tag words in `searchText` become the shared set's, so display,
+  coverage, the rail, search, Fill, "Not used with" and the tab's filters agree. Stored
+  rows keep each copy's own (`BankRow.tagsAt`, `INDEX_FORMAT` 5).
+- **A write applies the edit to the shared set** (`TagWrite.shared`, from the row) and
+  every reachable copy adopts the result under one stamp (`writeTags`'s `now`, the open
+  copy's in `setQuestionTopics`). A copy already holding the result is still stamped when
+  the edit changed the set, so it outranks the copies the write missed.
+- **Adoption is lazy.** A stale copy adopts the set on the next tag write to its question,
+  or when copied out of the bank. The editor shows the shared set at display time (the
+  Topic row and Outline, `src/components/editor/sharedTopics.ts:useShownTags`, reading the
+  other documents' rows and the open document's live copies); opening a document never
+  rewrites or dirties it. An edit in the Topic row is read against what it showed.
+- **Trashed and hidden copies are not indexed**, so they never override. Restored or
+  unhidden, their older stamp loses to the newest set.
+- **⌘Z after a topic edit** restores the open copy's old tags and stamp, but the other
+  copies hold the newer change, so the Topic row keeps showing it. Edit the topic back.
+- **Clock skew is accepted.** Stamps come from each device's clock; a desktop and a web
+  copy whose clocks disagree can let the earlier change win. Kept simple on purpose.
 
 ## The identity contract (2026-09-30)
 

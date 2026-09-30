@@ -27,8 +27,13 @@ export interface BankRow {
   typeId: string;
   /** Derived total (`questionMarks`). */
   marks: number;
-  /** `Question.tags` verbatim: topic codes plus free tags. */
+  /**
+   * `Question.tags` (its strings): topic codes plus free tags. Published rows hold the
+   * question's shared set instead (`withSharedTags`); stored rows keep the copy's own.
+   */
   tags: string[];
+  /** `Question.tagsAt` when a string; published rows hold the shared set's stamp. */
+  tagsAt?: string;
   /** The stem's first paragraph per language, each falling back to the other; clipped. */
   excerpt: { en: string; zh: string };
   /** Lower-cased printed text (both languages) plus topic names; what `searchRows` matches. */

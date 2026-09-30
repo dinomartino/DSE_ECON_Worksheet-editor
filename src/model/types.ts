@@ -352,8 +352,8 @@ export interface QuestionBase {
   tags?: string[];
   /**
    * ISO time `tags` was last written by a tag edit (the bank, the Topic row, topic sync),
-   * set on removal too. Nothing reads it yet: it accumulates so a later build can let the
-   * newest copy's topics win. Metadata, never content (`contentKey` ignores it).
+   * set on removal too. The copy stamped last gives every copy its topics
+   * (`library/sharedTags.ts:sharedTags`). Metadata, never content (`contentKey` ignores it).
    */
   tagsAt?: string;
 }

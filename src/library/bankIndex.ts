@@ -27,7 +27,7 @@ import type { BankGroup, BankRow, BankStatus } from './types';
 
 export interface BankSnapshot {
   status: BankStatus;
-  /** Each row's `tags` is its question's union over every copy (`withSharedTags`). */
+  /** Each row's `tags` and `tagsAt` are its question's shared set over every copy (`withSharedTags`). */
   rows: BankRow[];
   groups: BankGroup[];
 }
