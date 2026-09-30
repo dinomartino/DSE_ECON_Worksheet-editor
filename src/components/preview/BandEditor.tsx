@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ZONES, zonesOf, type ZoneName } from '@/model/bands';
-import { bandFieldSegments } from '@/model/bandSegments';
+import { bandFieldSegments, mirrorBilingualEdit } from '@/model/bandSegments';
 import { plain } from '@/model/text';
 import type { Band, BandField, BandFieldSide, BiText, LanguageMode } from '@/model/types';
 import { InlineEditable } from './InlineEditable';
@@ -373,7 +373,13 @@ export function BandEditor({
                               plain(segment.text.en).length === 0 &&
                               plain(segment.text.zh).length === 0
                             }
-                            onCommit={(next) => onEditField(field.id, next, segment.side)}
+                            onCommit={(next) =>
+                              onEditField(
+                                field.id,
+                                mirrorBilingualEdit(segment.text, next, language),
+                                segment.side,
+                              )
+                            }
                             selected={selection?.isSelected(field.id, segment.side) ?? false}
                             onSelect={
                               selection

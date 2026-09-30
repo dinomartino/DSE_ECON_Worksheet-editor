@@ -1,6 +1,6 @@
 import { pageNumberPlaceholder } from './page';
 import { emptyBiText, plain } from './text';
-import type { BandField, BandFieldSide, BiText, RichText } from './types';
+import type { BandField, BandFieldSide, BiText, LanguageMode, RichText } from './types';
 
 /**
  * A band field decomposed into **authored text · derived value · authored text** —
@@ -161,6 +161,78 @@ export function bandFieldSegments(
   }
   segments.push(suffix);
   return segments;
+}
+
+/**
+ * Which language lines a field prints, in order, under `language`.
+ *
+ * A single-language export prints its own side, always. Bilingual stacks English over
+ * 中文, but only a side that says something the other does not:
+ *
+ * - **Identical sides print once.** A paper code ("2026-27-ECON 2–") is authored the same
+ *   in both, and a derived value (a page number, a total) is the same on both sides by
+ *   construction — stacked, the QAB footer printed its code and its page number twice.
+ * - **A side with no wording of its own is dropped** when the other side has some: it
+ *   would only restate the derived value ("Full marks: 45 marks" over a bare "45").
+ *
+ * One answer for every band surface — the page, the IR's masthead cells and the .docx
+ * header/footer runs all read it, so they cannot disagree about how many lines print.
+ */
+export function bandFieldPrintSides(
+  field: BandField,
+  context: BandSegmentContext,
+  language: LanguageMode,
+): Array<'en' | 'zh'> {
+  if (language !== 'bilingual') return [language];
+  const segments = bandFieldSegments(field, context);
+  const line = (side: 'en' | 'zh') => segments.map((segment) => plain(segment.text[side])).join('');
+  const hasWording = (side: 'en' | 'zh') =>
+    segments.some((segment) => segment.kind === 'text' && plain(segment.text[side]).length > 0);
+
+  if (line('en') === line('zh')) return ['en'];
+  const en = hasWording('en');
+  const zh = hasWording('zh');
+  if (en && !zh) return ['en'];
+  if (zh && !en) return ['zh'];
+  return ['en', 'zh'];
+}
+
+/**
+ * The field's printed text for `language`: `bandFieldSegments` flattened, with any side
+ * `bandFieldPrintSides` leaves out emptied — the shape `biTextRuns` and the preview's
+ * read-only text already print one side of. A single-language export gets the full text.
+ */
+export function bandFieldPrintText(
+  field: BandField,
+  context: BandSegmentContext,
+  language: LanguageMode,
+): BiText {
+  const segments = bandFieldSegments(field, context);
+  const sides = bandFieldPrintSides(field, context, language);
+  const side = (key: 'en' | 'zh'): RichText =>
+    language !== 'bilingual' || sides.includes(key)
+      ? segments.flatMap((segment) => segment.text[key])
+      : [];
+  return { en: side('en'), zh: side('zh') };
+}
+
+/**
+ * A bilingual edit to wording that reads the same in both languages keeps it so.
+ *
+ * Bilingual prints such wording once (§ `bandFieldPrintSides`) and the page edits it as
+ * its English side. Writing English alone would split the pair, and the untouched
+ * Chinese copy would reappear as a second line — so the edit writes both. Empty wording
+ * is not "the same": typing into an empty prefix must not fill in the other language.
+ */
+export function mirrorBilingualEdit(
+  before: BiText,
+  next: BiText,
+  language: LanguageMode,
+): BiText {
+  if (language !== 'bilingual') return next;
+  const en = plain(before.en);
+  if (!en || en !== plain(before.zh)) return next;
+  return { ...next, zh: next.en };
 }
 
 /**

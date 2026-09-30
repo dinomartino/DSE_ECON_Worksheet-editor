@@ -15,7 +15,7 @@ import {
 import { zonesOf } from '@/model/bands';
 import { documentShape } from '@/model/documentShape';
 import { listIndentScheme } from '@/model/numbering';
-import { bandFieldSegments } from '@/model/bandSegments';
+import { bandFieldPrintSides, bandFieldSegments } from '@/model/bandSegments';
 import { worksheetMarks } from '@/model/marks';
 import { furnitureHeaderXml } from './furniture';
 import { plain } from '@/model/text';
@@ -52,7 +52,7 @@ import {
   type ImageAsset,
   type PackageParts,
 } from './package';
-import { biTextRuns, formatRunOptions, rFonts, run, runProperties } from './runs';
+import { formatRunOptions, lineBreak, rFonts, richTextRuns, run, runProperties } from './runs';
 import { buildStylesXml, STYLE_IDS } from './styles';
 
 /**
@@ -244,23 +244,33 @@ function zoneRuns(
        * Deriving the split from `bandFieldSegments` rather than re-splitting the pattern
        * here is what stops the exporter and the preview disagreeing about which
        * characters are authored: there is one answer, and both read it.
+       *
+       * Bilingual stacks **whole lines**, one per language side that prints — the
+       * preview's shape — never each segment: per segment, the QAB's "…-ECON 2–" printed
+       * twice around a single page number. Which sides print is `bandFieldPrintSides`,
+       * so a line identical in both languages prints once.
        */
-      return bandFieldSegments(field, { totalMarks })
-        .map((segment) => {
-          if (segment.kind === 'value') {
-            if (segment.token === 'page') {
-              // A pattern literal ("Page ", " of ") rides as a `page` value too, so only
-              // an actual placeholder becomes a field; the rest stays text.
-              const text = plain(segment.text.en);
-              return text === '#'
-                ? fieldRuns('PAGE', runProps, '1')
-                : run(text, fieldFonts, base);
-            }
-            if (segment.token === 'pageCount') return fieldRuns('NUMPAGES', runProps, '1');
-          }
-          return biTextRuns(segment.text, fieldFonts, language, base);
-        })
-        .join('');
+      const segments = bandFieldSegments(field, { totalMarks });
+      return bandFieldPrintSides(field, { totalMarks }, language)
+        .map((side) =>
+          segments
+            .map((segment) => {
+              if (segment.kind === 'value') {
+                if (segment.token === 'page') {
+                  // A pattern literal ("Page ", " of ") rides as a `page` value too, so
+                  // only an actual placeholder becomes a field; the rest stays text.
+                  const text = plain(segment.text[side]);
+                  return text === '#'
+                    ? fieldRuns('PAGE', runProps, '1')
+                    : run(text, fieldFonts, base);
+                }
+                if (segment.token === 'pageCount') return fieldRuns('NUMPAGES', runProps, '1');
+              }
+              return richTextRuns(segment.text[side], fieldFonts, base);
+            })
+            .join(''),
+        )
+        .join(lineBreak());
     })
     .join('');
 }

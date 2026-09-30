@@ -22,6 +22,7 @@ import { TableColumnResizer } from "./TableColumnResizer";
 import { TableGridControls } from "./TableGridControls";
 import { sheetStackMargin } from "./sheetStack";
 import { zonesOf, type ZoneName } from "@/model/bands";
+import { bandFieldPrintText } from "@/model/bandSegments";
 import { COVER_PANEL } from "@/model/cover";
 import {
   describeDelete,
@@ -92,7 +93,7 @@ import {
   type TextNode,
   trailLabel,
 } from "@/render/ir";
-import { bandFieldText, renderWorksheet, type RenderedItem } from "@/render/worksheet";
+import { renderWorksheet, type RenderedItem } from "@/render/worksheet";
 import { listQuestionTypes, requireQuestionType } from "@/registry";
 import {
   computeNumbering,
@@ -2768,16 +2769,18 @@ function ReadOnlyBandRow({
         // carries its own spacing ("Full marks: " · 45 · " marks"), and HTML would
         // collapse it away — here on the path that actually prints and becomes the PDF.
         <span key={field.id} className="mx-0.5 whitespace-pre-wrap" style={bandFieldStyle(field)}>
-          {/* The sheet is passed to `bandFieldText`, which substitutes the page number
-              only when one is given — the .docx backend passes none, so Word still gets
-              the placeholder it needs to emit a live PAGE field rather than a literal
-              frozen to whichever page the preview happened to draw.
+          {/* The sheet is passed to `bandFieldPrintText`, which substitutes the page
+              number only when one is given — the .docx backend passes none, so Word
+              still gets the placeholder it needs to emit a live PAGE field rather than a
+              literal frozen to whichever page the preview happened to draw. In bilingual
+              mode it empties a side that would repeat the other, so a paper code or a
+              bare page number prints once, as in the .docx (§ `bandFieldPrintSides`).
 
               Rendered through `richNodes` in every case, including page numbers: the
               wording around a number is authored rich text now, so flattening it to
               `plain` here would drop a bold or coloured run that the editing path and
               the export both honour. */}
-          {richNodes(bandFieldText(field, totalMarks, page), language)}
+          {richNodes(bandFieldPrintText(field, { totalMarks, page }, language), language)}
         </span>
       ))}
     </div>
