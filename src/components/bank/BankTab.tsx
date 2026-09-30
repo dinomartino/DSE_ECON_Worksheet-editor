@@ -49,13 +49,31 @@ import { versionDiff } from './bankText';
 const PAGE = 60;
 const FILL_COUNTS = [1, 2, 3, 4, 5, 6, 8, 10] as const;
 
-const TOPIC_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: '', label: 'Any topic' },
-  ...TOPICS.flatMap((topic) => [
-    { value: topic.code, label: `${topic.code} · ${topic.en}` },
-    ...topic.children.map((child) => ({ value: child.code, label: ` ${child.en}` })),
-  ]),
-];
+/** Each topic an optgroup: the whole topic first, then its sub-topics. */
+const TOPIC_GROUPS = TOPICS.map((topic) => ({
+  label: `${topic.code} · ${topic.en}`,
+  options: [
+    { value: topic.code, label: `All of ${topic.code} · ${topic.en}` },
+    ...topic.children.map((child) => ({ value: child.code, label: child.en })),
+  ],
+}));
+
+function TopicOptions() {
+  return (
+    <>
+      <option value="">Any topic</option>
+      {TOPIC_GROUPS.map((group) => (
+        <optgroup key={group.label} label={group.label}>
+          {group.options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </optgroup>
+      ))}
+    </>
+  );
+}
 
 function fromValue(from: FromFilter): string {
   return typeof from === 'object' ? `doc:${from.docId}` : from;
@@ -359,11 +377,7 @@ export function BankTab() {
           </label>
           <div className="flex gap-1.5">
             <MiniSelect label="Topic" value={filters.topic} onChange={(topic) => update({ topic })} className="flex-[1.6]">
-              {TOPIC_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
+              <TopicOptions />
             </MiniSelect>
             <MiniSelect label="Type" value={filters.typeId} onChange={(typeId) => update({ typeId })} className="flex-1">
               <option value="">Any type</option>
@@ -448,11 +462,7 @@ export function BankTab() {
             </MiniSelect>
             <span className="shrink-0">from</span>
             <MiniSelect label="Fill topic" value={effectiveFillTopic} onChange={setFillTopic} className="flex-1">
-              {TOPIC_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
+              <TopicOptions />
             </MiniSelect>
           </div>
           <div className="flex items-center gap-2.5">
