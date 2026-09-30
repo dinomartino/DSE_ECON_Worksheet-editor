@@ -30,7 +30,7 @@ export interface PatternItem extends PatternId {
 export const samePattern = (a: PatternId, b: PatternId): boolean =>
   a.topic === b.topic && a.typeId === b.typeId && samePatternName(a.name, b.name);
 
-/** Whether a row (its tags are the root's union) carries the 題型: its type and its name. */
+/** Whether a row (its tags are the root's shared set) carries the 題型: its type and its name. */
 export function rowHasPattern(row: Pick<BankRow, 'typeId' | 'tags'>, pattern: PatternId): boolean {
   if (row.typeId !== pattern.typeId) return false;
   return row.tags.some((tag) => {

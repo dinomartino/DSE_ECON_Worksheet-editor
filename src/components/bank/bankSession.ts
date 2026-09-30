@@ -76,7 +76,7 @@ export interface InsertReport {
 export interface LoadedCopies {
   /** The open document when the read began; a commit into another is refused. */
   openId: string;
-  /** Each found question with the bank's union of topic tags (`withRowTags`). */
+  /** Each found question with the topic tags its row shows, the newest copy's (`withRowTags`). */
   found: Array<{ question: Question; docId: string }>;
   /** Rows whose question was not found in its document (edited or deleted since the scan). */
   missing: BankRow[];
