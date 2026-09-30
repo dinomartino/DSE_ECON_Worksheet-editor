@@ -702,7 +702,8 @@ export function StartScreen({
           the last way in, still shows without scrolling. */}
       <aside ref={asideRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto px-9 pb-8 pt-9 [@media(max-height:820px)]:pt-7">
         <header className="flex items-center gap-2.5">
-          <span className="flex shrink-0 text-ink">
+          {/* The launch splash's mark lands here (`src/launch/splash.ts`). */}
+          <span data-launch-target className="flex shrink-0 text-ink">
             <AppMark size={22} />
           </span>
           <span className="text-[13px] font-semibold text-ink">Econ Studio</span>

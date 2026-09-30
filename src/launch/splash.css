@@ -1,0 +1,202 @@
+/*
+ * The launch splash (`splash.ts`). Hidden unless the boot script set `data-splash` on
+ * <html>. Timeline "Draw the market", 1300ms; each element's own style is its end state,
+ * so `.ls-end` (a skip) is just "no animations". Easings are the exact cubics: ease-out
+ * 1-(1-t)^3, ease-in-out as two halves, and easeOutBack with c1 = 1.9.
+ */
+#launch-splash {
+  display: none;
+}
+
+:root[data-splash] #launch-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: grid;
+  place-items: center;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#launch-splash .ls-bg {
+  position: absolute;
+  inset: 0;
+  background: var(--desk);
+}
+
+#launch-splash .ls-lockup {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+}
+
+#launch-splash .ls-mark {
+  width: clamp(64px, 12vw, 104px);
+  height: clamp(64px, 12vw, 104px);
+}
+
+#launch-splash svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+#launch-splash .ls-word {
+  text-align: center;
+  color: var(--chrome-ink);
+}
+
+#launch-splash .ls-en {
+  font-family: var(--font-display-serif), ui-serif, Georgia, serif;
+  font-size: clamp(18px, 2.6vw, 26px);
+  line-height: 1.25;
+}
+
+#launch-splash .ls-zh {
+  margin-top: 2px;
+  padding-left: 0.3em; /* balances the trailing letter-space */
+  font-size: clamp(12px, 1.4vw, 14px);
+  letter-spacing: 0.3em;
+  color: var(--chrome-ink-muted);
+}
+
+#launch-splash .ls-axis {
+  stroke-dasharray: 288 288;
+}
+
+#launch-splash .ls-curve {
+  stroke-dasharray: 300 300;
+}
+
+#launch-splash .ls-knock,
+#launch-splash .ls-dot,
+#launch-splash .ls-ripple {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* A constant 6 icon units wide however far it spreads, as the icon is drawn at 512. */
+#launch-splash .ls-ripple {
+  vector-effect: non-scaling-stroke;
+  stroke-width: clamp(0.75px, 0.1406vw, 1.22px);
+}
+
+:root[data-splash="play"] #launch-splash svg {
+  animation: ls-tile 160ms cubic-bezier(0.333, 1, 0.667, 1) both;
+}
+:root[data-splash="play"] #launch-splash .ls-axis-v {
+  animation: ls-axis 320ms 80ms cubic-bezier(0.333, 1, 0.667, 1) both;
+}
+:root[data-splash="play"] #launch-splash .ls-axis-h {
+  animation: ls-axis 300ms 120ms cubic-bezier(0.333, 1, 0.667, 1) both;
+}
+:root[data-splash="play"] #launch-splash .ls-demand {
+  animation: ls-curve 420ms 300ms linear both;
+}
+:root[data-splash="play"] #launch-splash .ls-supply {
+  animation: ls-curve 420ms 360ms linear both;
+}
+:root[data-splash="play"] #launch-splash .ls-knock {
+  animation: ls-pop 220ms 680ms cubic-bezier(0.333, 1.633, 0.667, 1) both;
+}
+:root[data-splash="play"] #launch-splash .ls-dot {
+  animation: ls-pop 220ms 740ms cubic-bezier(0.333, 1.633, 0.667, 1) both;
+}
+:root[data-splash="play"] #launch-splash .ls-ripple {
+  animation:
+    ls-ripple-grow 400ms 900ms cubic-bezier(0.333, 1, 0.667, 1) both,
+    ls-ripple-fade 400ms 900ms linear forwards;
+}
+:root[data-splash="play"] #launch-splash .ls-word {
+  animation: ls-word 380ms 715ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/* Reduced motion: no drawing, the whole lockup fades in. `!important` and the id outrank
+   globals.css's reduced-motion rule, which would otherwise cut it to 0.01ms. */
+:root[data-splash="reduce"] #launch-splash .ls-lockup {
+  animation: ls-fade 200ms ease-out both !important;
+}
+
+#launch-splash.ls-end,
+#launch-splash.ls-end * {
+  animation: none !important;
+}
+
+@media print {
+  #launch-splash {
+    display: none !important;
+  }
+}
+
+@keyframes ls-tile {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+}
+
+/* Hidden at progress 0: a zero-length dash would still paint its round cap. */
+@keyframes ls-axis {
+  from {
+    stroke-dashoffset: 288;
+    visibility: hidden;
+  }
+  to {
+    stroke-dashoffset: 0;
+    visibility: visible;
+  }
+}
+
+@keyframes ls-curve {
+  0% {
+    stroke-dashoffset: 300;
+    visibility: hidden;
+    animation-timing-function: cubic-bezier(0.333, 0, 0.667, 0);
+  }
+  50% {
+    stroke-dashoffset: 150;
+    visibility: visible;
+    animation-timing-function: cubic-bezier(0.333, 1, 0.667, 1);
+  }
+  100% {
+    stroke-dashoffset: 0;
+    visibility: visible;
+  }
+}
+
+@keyframes ls-pop {
+  from {
+    transform: scale(0);
+  }
+}
+
+@keyframes ls-ripple-grow {
+  from {
+    transform: scale(0.3);
+  }
+}
+
+@keyframes ls-ripple-fade {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes ls-word {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes ls-fade {
+  from {
+    opacity: 0;
+  }
+}

@@ -165,7 +165,8 @@ export function EditorHost() {
   // The start screen reads the platform and localStorage while rendering, which the
   // static prerender (a web build, no storage) cannot know — so it renders only on the
   // client. Hydrating it against the prerender made the desktop app rebuild the tree.
-  if (!hydrated) return <div className="h-screen bg-desk" />;
+  // `data-app-booting` tells the launch splash the start screen is not up yet.
+  if (!hydrated) return <div data-app-booting className="h-screen bg-desk" />;
 
   // The banner takes its own row; the screen below gets what is left, so neither ever
   // overflows the window (both used to be `h-screen` under the banner).

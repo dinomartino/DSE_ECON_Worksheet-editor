@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import { Newsreader } from 'next/font/google';
 import { THEME_BOOT_SCRIPT } from '@/settings/appearance';
+import { SPLASH_BOOT_SCRIPT, SPLASH_HTML } from '@/launch/splash';
 import './globals.css';
+import '@/launch/splash.css';
 
 // The chrome's one display voice (see design/icons/design.md § Typography): a light editorial
 // serif for the screen-level greeting, standing in for the studied reference's
@@ -29,8 +31,14 @@ export default function RootLayout({
     <html lang="en" className={`h-full antialiased ${newsreader.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: SPLASH_BOOT_SCRIPT }} />
       </head>
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        {children}
+        {/* The launch splash, static so it paints before hydration. React owns only this
+            host: the boot script removes what is inside it when the splash ends. */}
+        <div suppressHydrationWarning dangerouslySetInnerHTML={{ __html: SPLASH_HTML }} />
+      </body>
     </html>
   );
 }

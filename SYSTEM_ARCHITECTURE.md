@@ -1841,6 +1841,25 @@ name (`Worksheet.name`, never printed; every other field has a default).
   The document just left is clean and its editor unmounted, so nothing writes a
   trashed one back.
 
+### The launch splash (`src/launch/`)
+
+The mark draws itself (axes, demand, supply, the point) and travels to the start screen's
+toolbar mark. It is chrome, never IR: nothing reaches the `.docx`, clipboard or print.
+
+- **Static, so it paints before hydration.** `SPLASH_HTML` sits in a React-owned host in
+  `layout.tsx` (`dangerouslySetInnerHTML`, `suppressHydrationWarning`); `splash.css` draws
+  it. `SPLASH_BOOT_SCRIPT`, inline in <head> after the theme script, decides, sets
+  `<html data-splash>`, and runs the hand-off. Removing the overlay empties the host,
+  never the host itself, so hydration matches whenever it lands.
+- **The play rule is `splashMode`**: once per session (`sessionStorage`; a throw means
+  play; a desktop cold start is a new session), `reduce` under reduced motion (fade, no
+  travel). **Automation skips it**: `navigator.webdriver` or `?nosplash`; `?splash=1`
+  forces it for filming. A reload never restores the editor, so it only covers the list.
+- **It never makes anyone wait.** A click or key skips to the hand-off (the skip key is
+  spent; shortcuts with a modifier still reach the app); it steals no focus. The flight
+  waits for `[data-app-booting]` to go, then FLIPs onto `[data-launch-target]` if that is
+  really on screen, else fades; the overlay is removed either way.
+
 ### The file dashboard (`start/FileDashboard.tsx`)
 
 - **A grid of first pages, or a list.** Search, kind (by `hasCover`) and order narrow the

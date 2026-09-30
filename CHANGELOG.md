@@ -11,6 +11,10 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
 ## Unreleased
 
 ### Added
+- **Econ Studio opens with a short animation of its mark**: the axes, demand and supply
+  draw in and meet at the equilibrium, then the mark settles into its place on the start
+  screen. Click or press any key to skip it. It plays once per session and respects
+  Reduce motion.
 - **Tag questions with DSE topics.** Pick a topic (A–J and the electives, or your own
   free tag) in the Edit panel. Tags never print. A free tag can't look like a topic code
   (such as "K" or "C.ped"), contain "::" or start with "@"; those are kept for topics.
