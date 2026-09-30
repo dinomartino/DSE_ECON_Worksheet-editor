@@ -837,7 +837,7 @@ async function qualityChecks(engine, browser) {
     await page.waitForTimeout(1500);
     expect((await pageText(page)) === text, 'the page changed');
     expect((await storedDoc(page, 'quality')) === stored, 'the stored document changed');
-    expect((await page.getByText('Unsaved…').count()) === 0, 'the document is dirty');
+    expect((await page.locator('[data-save-state="saving"], [data-save-state="stalled"]').count()) === 0, 'the document is dirty');
   });
   await check(engine, 'quality: no real provider reached', () => expect(leaks.length === 0, `leaked to ${leaks.join(', ')}`));
   await context.close();

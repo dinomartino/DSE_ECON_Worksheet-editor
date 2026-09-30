@@ -58,6 +58,19 @@ describe('PaperSummaryBar', () => {
     expect(markup).toContain('Under target: 38/45 MCQ');
   });
 
+  it('keeps the chip compact: counts only in the tooltip, unless one is over its target', () => {
+    const plain = renderToStaticMarkup(<PaperSummaryBar worksheet={paper(38, [8, 6])} language="en" pages={3} onOpen={() => {}} />);
+    expect(plain).toContain('<span class="hidden"><span>38 MCQ</span>');
+    expect(plain).toContain('title="38 MCQ · 2 structured · 52 marks · ~65 min · 3 pages');
+    const worksheet = paper(38, [8, 6]);
+    worksheet.target = { counts: { mcq: 30 } };
+    const over = renderToStaticMarkup(<PaperSummaryBar worksheet={worksheet} language="en" />);
+    expect(over).toContain('<span><span data-status="over" class="text-warn-ink">38/30 MCQ</span>');
+    // Narrow windows give the chip's width to the document name, but never hide a miss.
+    expect(plain).toMatch(/<button[^>]*class="hidden xl:inline-block /);
+    expect(over).not.toMatch(/class="hidden xl:inline-block /);
+  });
+
   it('shows a paper under every target without the warning tone', () => {
     const worksheet = paper(10, []);
     worksheet.target = { marks: 45, counts: { mcq: 45 } };

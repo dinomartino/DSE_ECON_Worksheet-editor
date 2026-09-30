@@ -109,7 +109,7 @@ export function DocumentName() {
       /* `max-w` with a truncate so a long title cannot push the export buttons off the
          bar; `min-w-0` lets it give way further when the bar is short. The full name
          stays available as the tooltip. */
-      className="min-w-0 max-w-[22ch] truncate rounded-md px-1.5 py-1 text-[13px] font-semibold leading-tight text-ink transition-colors duration-150 ease-out-soft hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      className="min-w-0 max-w-[22ch] truncate xl:max-w-[30ch] min-[1440px]:max-w-[40ch] rounded-md px-1.5 py-1 text-[13px] font-semibold leading-tight text-ink transition-colors duration-150 ease-out-soft hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
       {name}
     </button>

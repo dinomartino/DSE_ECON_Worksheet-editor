@@ -69,6 +69,13 @@ describe('Toolbar entry points', () => {
     expect(markup).toMatch(/<button type="button" title="Unit 3 · Demand and supply practice. Click to rename" class="min-w-0 [^"]*\btruncate\b/);
     // Icon-only controls keep their names.
     expect(markup).toMatch(/<button[^>]*aria-label="Setup"[^>]*title="Setup: [^"]*"/);
-    expect(markup).toContain('<span class="sr-only xl:not-sr-only">Saved</span>');
+    // Save status: a dot whose words reach screen readers and the tooltip.
+    expect(markup).toMatch(/data-save-state="saved" title="All changes saved"[^>]*>.*?<span class="sr-only">Saved<\/span>/);
+  });
+
+  it('says a read-only document in words, not just a dot', () => {
+    useWorksheetStore.setState({ readOnly: true });
+    const markup = renderToStaticMarkup(<Toolbar onOpenSettings={() => {}} onOpenFiles={() => {}} onClearAll={async () => {}} />);
+    expect(markup).toMatch(/data-save-state="readOnly"[^>]*>.*?<span>Read-only<\/span>/);
   });
 });
