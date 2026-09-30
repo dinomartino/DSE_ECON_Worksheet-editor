@@ -1,5 +1,5 @@
 {
-  "format": 5,
+  "format": 6,
   "rows": [
     {
       "docId": "doc-golden",
@@ -49,6 +49,20 @@
       "tags": [
         "C.equilibrium"
       ],
+      "slots": [
+        {
+          "key": "p1",
+          "path": "0",
+          "label": "(a)",
+          "leaf": true,
+          "tags": [
+            "C.equilibrium"
+          ]
+        }
+      ],
+      "ownTags": [
+        "C.equilibrium"
+      ],
       "excerpt": {
         "en": "Explain a bumper harvest.",
         "zh": "Explain a bumper harvest."
@@ -60,6 +74,94 @@
       ],
       "contentKey": "2fbxcvxebx",
       "number": 2
+    },
+    {
+      "docId": "doc-golden",
+      "docTitle": "Golden paper",
+      "docUpdatedAt": "2026-03-05T00:00:00.000Z",
+      "usedOn": "2026-03-02",
+      "docKind": "paper",
+      "classes": [
+        "5A"
+      ],
+      "questionId": "q-parts",
+      "rootId": "root-2",
+      "typeId": "structured",
+      "marks": 7,
+      "tags": [
+        "C.ped",
+        "C.ped::Explain PED",
+        "C.intervention",
+        "E.efficiency",
+        "mock 2025"
+      ],
+      "tagsAt": "2026-03-04T09:00:00.000Z",
+      "slots": [
+        {
+          "key": "root-p2",
+          "path": "0",
+          "label": "(a)",
+          "leaf": true,
+          "own": [
+            "C.ped",
+            "C.ped::Explain PED"
+          ],
+          "tags": [
+            "C.ped",
+            "C.ped::Explain PED"
+          ]
+        },
+        {
+          "key": "p3",
+          "path": "1",
+          "label": "(b)",
+          "leaf": false,
+          "own": [
+            "C.intervention"
+          ],
+          "tags": [
+            "C.intervention"
+          ]
+        },
+        {
+          "key": "root-s1",
+          "path": "1.0",
+          "label": "(b)(i)",
+          "parent": "p3",
+          "leaf": true,
+          "tags": [
+            "C.intervention"
+          ]
+        },
+        {
+          "key": "s2",
+          "path": "1.1",
+          "label": "(b)(ii)",
+          "parent": "p3",
+          "leaf": true,
+          "own": [
+            "E.efficiency"
+          ],
+          "tags": [
+            "E.efficiency"
+          ]
+        }
+      ],
+      "ownTags": [
+        "mock 2025"
+      ],
+      "excerpt": {
+        "en": "The government sets a price ceiling on rice.",
+        "zh": "政府為米設定價格上限。"
+      },
+      "searchText": "the government sets a price ceiling on rice.\n政府為米設定價格上限。\nexplain the effect on quantity demanded.\nwith reference to the ceiling:\ndraw the shortage.\nis it efficient?\nc.ped\nprice elasticity of demand\n需求價格彈性\nexplain ped\nc.intervention\nmarket intervention\n市場干預\ne.efficiency\nefficiency\n效率\nmock 2025\nmock 2025\nmock 2025",
+      "hasDiagram": false,
+      "languages": [
+        "en",
+        "zh"
+      ],
+      "contentKey": "1ukulsyf6ny",
+      "number": 3
     }
   ]
 }

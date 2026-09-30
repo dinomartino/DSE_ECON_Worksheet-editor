@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { rowsOf } from '@/library/indexer';
 import { choiceQuestion, docWith, partsQuestion, row } from '@/library/testKit';
 import { copyQuestion } from '@/model/lineage';
-import type { Worksheet } from '@/model/types';
+import type { StructuredQuestion, Worksheet } from '@/model/types';
 import { addTopics, bulkTopicEdit, copyWrites, removeTopics, replaceTopics, withQuestionTags, writeTags } from './tagWrites';
 
 const NOW = '2026-09-29T00:00:00.000Z';
@@ -27,7 +27,9 @@ describe('withQuestionTags', () => {
   it('adds without removing, drops an emptied key, and is a no-op when nothing changes', () => {
     const added = withQuestionTags(doc, [target.id, other.id], addTopics(['D']), NOW);
     expect(added.questions[0].tags).toEqual(['C', 'mock 2025', 'D']);
-    expect(added.questions[1].tags).toEqual(['D']);
+    // A question with parts is tagged per part: a whole-question add reaches every part.
+    expect(added.questions[1].tags).toBeUndefined();
+    expect((added.questions[1] as StructuredQuestion).parts.map((part) => part.tags)).toEqual([['D']]);
 
     const cleared = withQuestionTags(doc, [target.id], () => [], NOW);
     expect('tags' in cleared.questions[0]).toBe(false);
@@ -113,15 +115,15 @@ describe('copyWrites', () => {
       row({ rootId: 'r', docId: 'd2', questionId: 'c' }),
     ];
     expect(copyWrites(rows, ['r'])).toEqual([
-      { docId: 'd1', questionId: 'a', shared: [] },
-      { docId: 'd2', questionId: 'c', shared: [] },
+      { docId: 'd1', questionId: 'a', shared: { tags: [], slots: [] } },
+      { docId: 'd2', questionId: 'c', shared: { tags: [], slots: [] } },
     ]);
     expect(copyWrites(rows, new Set(['r', 'x']))).toHaveLength(3);
     expect(copyWrites(rows, [])).toEqual([]);
   });
 
   it('passes on the shared set a row shows, and nothing when the row has no tags field', () => {
-    expect(copyWrites([row({ rootId: 'r', docId: 'd', questionId: 'a', tags: ['C'] })], ['r'])).toEqual([{ docId: 'd', questionId: 'a', shared: ['C'] }]);
+    expect(copyWrites([row({ rootId: 'r', docId: 'd', questionId: 'a', tags: ['C'] })], ['r'])).toEqual([{ docId: 'd', questionId: 'a', shared: { tags: ['C'], slots: [] } }]);
     expect(copyWrites([{ rootId: 'r', docId: 'd', questionId: 'a' }], ['r'])).toEqual([{ docId: 'd', questionId: 'a' }]);
   });
 });
@@ -132,7 +134,7 @@ describe('an edit applied to the shared set (newest change wins)', () => {
   it('makes the copy adopt the edited shared set, not its own stale tags, and keeps a non-string tag', () => {
     const stale = { ...choiceQuestion('Along a straight-line demand curve…', '', ['C', 'C.ped', 7 as unknown as string]), tagsAt: T1 };
     const doc = docWith([stale]);
-    const next = withQuestionTags(doc, [stale.id], removeTopics(['D']), NOW, new Map([[stale.id, ['C', 'D']]]));
+    const next = withQuestionTags(doc, [stale.id], removeTopics(['D']), NOW, new Map([[stale.id, { tags: ['C', 'D'], slots: [] }]]));
     expect(next.questions[0].tags).toEqual(['C', 7]);
     expect(next.questions[0].tagsAt).toBe(NOW);
   });
@@ -141,7 +143,7 @@ describe('an edit applied to the shared set (newest change wins)', () => {
     // This copy already lacks D; a copy the write cannot reach still has it and was stamped later.
     const current = { ...choiceQuestion('Along a straight-line demand curve…', '', ['C']), tagsAt: T1 };
     const doc = docWith([current]);
-    const next = withQuestionTags(doc, [current.id], removeTopics(['D']), NOW, new Map([[current.id, ['C', 'D']]]));
+    const next = withQuestionTags(doc, [current.id], removeTopics(['D']), NOW, new Map([[current.id, { tags: ['C', 'D'], slots: [] }]]));
     expect(next.questions[0].tags).toEqual(['C']);
     expect(next.questions[0].tagsAt).toBe(NOW);
   });
@@ -149,7 +151,7 @@ describe('an edit applied to the shared set (newest change wins)', () => {
   it('leaves a copy alone when the edit changes nothing and it already holds the set', () => {
     const held = { ...choiceQuestion('Along a straight-line demand curve…', '', ['D', 'C']), tagsAt: T1 };
     const doc = docWith([held]);
-    expect(withQuestionTags(doc, [held.id], addTopics(['C']), NOW, new Map([[held.id, ['C', 'D']]]))).toBe(doc);
+    expect(withQuestionTags(doc, [held.id], addTopics(['C']), NOW, new Map([[held.id, { tags: ['C', 'D'], slots: [] }]]))).toBe(doc);
   });
 
   it('writes every copy under one stamp', async () => {

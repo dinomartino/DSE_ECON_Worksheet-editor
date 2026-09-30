@@ -28,12 +28,22 @@ export interface BankRow {
   /** Derived total (`questionMarks`). */
   marks: number;
   /**
-   * `Question.tags` (its strings): topic codes plus free tags. Published rows hold the
-   * question's shared set instead (`withSharedTags`); stored rows keep the copy's own.
+   * The question's tags, derived (`model/tagSlots.ts:derivedTags`): topic codes plus free
+   * tags; on a question tagged per part, every part's topics in print order, then the
+   * question's free tags. Published rows hold the question's shared state instead
+   * (`withSharedTags`); stored rows keep the copy's own.
    */
   tags: string[];
-  /** `Question.tagsAt` when a string; published rows hold the shared set's stamp. */
+  /** `Question.tagsAt` when a string; published rows hold the shared state's stamp. */
   tagsAt?: string;
+  /**
+   * Topics per part, print order (`model/tagSlots.ts`); absent for a question tagged as
+   * a whole (MCQ, a structured question with no parts). Block ids are not stored: a
+   * preview reads them from the loaded question's `tagSlots`.
+   */
+  slots?: BankSlot[];
+  /** With `slots`: the question's own list (free tags, and older whole-question topics). */
+  ownTags?: string[];
   /** The stem's first paragraph per language, each falling back to the other; clipped. */
   excerpt: { en: string; zh: string };
   /** Lower-cased printed text (both languages) plus topic names; what `searchRows` matches. */
@@ -46,6 +56,24 @@ export interface BankRow {
   contentKey: string;
   /** The printed number in its document (`computeNumbering`). */
   number?: number;
+}
+
+/** One part or sub-part of a row's question (`model/tagSlots.ts:SlotState`) and what it tests. */
+export interface BankSlot {
+  /** `rootId ?? id` of the part: equal across copies. */
+  key: string;
+  /** Position ("0", "0.1"), for copies of the same shape. */
+  path: string;
+  /** "(a)", "(a)(ii)". */
+  label: string;
+  /** The part's key, on a sub-part. */
+  parent?: string;
+  /** Counts toward the derived `tags` (a part without sub-parts, or a sub-part). */
+  leaf: boolean;
+  /** Its own list; absent = inherits (its part's, or the question's older topics). */
+  own?: string[];
+  /** Its effective topics and 題型: what it tests. */
+  tags: string[];
 }
 
 /**

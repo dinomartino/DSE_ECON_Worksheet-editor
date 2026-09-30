@@ -45,13 +45,42 @@ const DOC = {
       blocks: [{ kind: 'paragraph', id: 'b2', text: text('Explain a bumper harvest.') }],
       parts: [{ id: 'p1', blocks: [{ kind: 'paragraph', id: 'b3', text: text('Draw the diagram.') }], marks: 4 }],
       lineage: { rootId: 'root-1', fromDocId: 'bank-1', copiedAt: '2026-01-01T00:00:00.000Z' },
+      // Develop's shape: a topic on the whole of a question with parts (every part's default).
       tags: ['C.equilibrium'],
+    },
+    {
+      // Tagged per part: part roots, a part list, a sub-part's own list replacing its part's.
+      id: 'q-parts',
+      type: 'structured',
+      blocks: [{ kind: 'paragraph', id: 'b4', text: text('The government sets a price ceiling on rice.', '政府為米設定價格上限。') }],
+      parts: [
+        {
+          id: 'p2',
+          rootId: 'root-p2',
+          blocks: [{ kind: 'paragraph', id: 'b5', text: text('Explain the effect on quantity demanded.') }],
+          marks: 2,
+          tags: ['C.ped', 'C.ped::Explain PED'],
+        },
+        {
+          id: 'p3',
+          blocks: [{ kind: 'paragraph', id: 'b6', text: text('With reference to the ceiling:') }],
+          tags: ['C.intervention'],
+          subParts: [
+            { id: 's1', rootId: 'root-s1', blocks: [{ kind: 'paragraph', id: 'b7', text: text('Draw the shortage.') }], marks: 2 },
+            { id: 's2', blocks: [{ kind: 'paragraph', id: 'b8', text: text('Is it efficient?') }], marks: 3, tags: ['E.efficiency'] },
+          ],
+        },
+      ],
+      lineage: { rootId: 'root-2' },
+      tags: ['mock 2025'],
+      tagsAt: '2026-03-04T09:00:00.000Z',
     },
   ],
   layout: [],
   flow: [
     { type: 'question', id: 'q-mcq' },
     { type: 'question', id: 'q-lq' },
+    { type: 'question', id: 'q-parts' },
   ],
   createdAt: '2026-03-01T00:00:00.000Z',
   updatedAt: '2026-03-05T00:00:00.000Z',

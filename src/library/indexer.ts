@@ -8,11 +8,12 @@ import { isSymbolOnly } from '@/model/symbols';
 import { questionTexts } from '@/model/textWalk';
 import { rootIdOf } from '@/model/lineage';
 import { tagSearchWords } from '@/model/patterns';
-import { stringTags } from '@/model/topics';
+import { tagStateOf } from '@/model/tagSlots';
 import type { Question, Worksheet } from '@/model/types';
 import { worksheetTitle } from '@/storage/document';
 import type { WorksheetSummary } from '@/storage/types';
 import { contentKey } from './contentKey';
+import { rowTagFields } from './sharedTags';
 import type { BankLang, BankRow } from './types';
 
 /** Longest stored excerpt, in characters; a row shows one or two lines of it. */
@@ -46,8 +47,10 @@ type DocFields = Pick<BankRow, 'docId' | 'docTitle' | 'docUpdatedAt' | 'usedOn' 
 
 function rowOf(question: Question, doc: DocFields, number: number | undefined): BankRow {
   // Total over any saved shape: a tag or a rootId that is not a string is left in the
-  // document and ignored here, so one odd question never stops the bank.
-  const tags = stringTags(question.tags);
+  // document and ignored here, so one odd question never stops the bank. On a question
+  // tagged per part, `tags` is derived (every part's topics, then free tags).
+  const tagFields = rowTagFields(tagStateOf(question));
+  const tags = tagFields.tags;
   const printed = questionTexts(question).filter((slot) => slot.role === 'print' && !slot.unprinted);
   const words: string[] = [];
   const has = { en: false, zh: false };
@@ -70,6 +73,7 @@ function rowOf(question: Question, doc: DocFields, number: number | undefined): 
     marks: questionMarks(question),
     tags,
     ...(typeof question.tagsAt === 'string' ? { tagsAt: question.tagsAt } : {}),
+    ...(tagFields.slots ? { slots: tagFields.slots, ownTags: tagFields.ownTags } : {}),
     excerpt: {
       en: questionExcerpt(question, 'en', EXCERPT_MAX),
       zh: questionExcerpt(question, 'zh', EXCERPT_MAX),
