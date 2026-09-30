@@ -1,4 +1,4 @@
-import { cleanPatternName, parsePatternTag, patternTag, samePatternName, withPattern } from '@/model/patterns';
+import { cleanPatternName, holdsPatterns, parsePatternTag, patternTag, samePatternName, withPattern } from '@/model/patterns';
 import { TOPICS, topicOf } from '@/model/topics';
 import { listQuestionTypes } from '@/registry';
 import type { PatternRegistry } from '@/storage/patterns';
@@ -84,7 +84,8 @@ export function listPatterns(rows: readonly BankRow[], registry: PatternRegistry
   const roots: Set<string>[] = [];
   const find = (id: PatternId) => items.findIndex((item) => samePattern(item, id));
   for (const entry of registry.patterns) {
-    if (!inScope(entry, scope) || find(entry) >= 0) continue;
+    // A later build's sub-topic stays in the registry, unshown here.
+    if (!holdsPatterns(entry.topic) || !inScope(entry, scope) || find(entry) >= 0) continue;
     items.push({ topic: entry.topic, typeId: entry.typeId, name: entry.name, count: 0, registered: true });
     roots.push(new Set());
   }

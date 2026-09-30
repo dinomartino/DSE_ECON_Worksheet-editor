@@ -181,3 +181,17 @@ describe('rename, merge and delete write every copy of every question using the 
     expect(tagsOf(second.id, copy.id)).toEqual(['C.ped']);
   });
 });
+
+describe('a later build’s sub-topic in the registry', () => {
+  it('is kept but not shown', () => {
+    const registry: PatternRegistry = {
+      patterns: [
+        { topic: 'C.ped', typeId: MCQ, name: 'Shown' },
+        { topic: 'C.new-sub', typeId: MCQ, name: 'Kept, unshown' },
+      ],
+    };
+    expect(listPatterns([], registry).map((p) => p.name)).toEqual(['Shown']);
+    expect(listPatterns([], registry, { topic: 'C' }).map((p) => p.name)).toEqual(['Shown']);
+  });
+});
+

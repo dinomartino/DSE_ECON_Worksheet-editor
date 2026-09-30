@@ -54,7 +54,9 @@ Revised from the 2026-09-26 proposal after an audit against the code at `9f2009b
 - **An app-level registry** (`src/storage/patterns.ts`) keeps the 題型 a teacher defined,
   including unused ones: `econ-worksheet-patterns` / `worksheets/patterns.json`, per-row
   validated, cleared with the store, in the backup manifest (restore adds only). The list
-  shown for a sub-topic × type is the registry joined with names on questions.
+  shown for a sub-topic × type is the registry joined with names on questions. Forward
+  compatible: rows this build cannot use are written back verbatim, sub-topics are judged
+  by the code grammar (§ Tag grammar), and a newer `format` makes the registry read-only.
 - **Created while tagging** (the Edit panel's Topic row, the bank's topic dialog for
   Edit, Set topic when every pick is one type, and tag as you go's full list) or on the
   **題型 Patterns** level (`PatternsPage.tsx`), which also renames, merges and deletes:

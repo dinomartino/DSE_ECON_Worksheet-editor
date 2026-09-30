@@ -99,6 +99,23 @@ const DATA: Row[] = [
   ]],
 ];
 
+/**
+ * The tag grammar a topic code is written in, this build's and every later one's: a coarse
+ * code (`C`, `EL1`) or a coarse code, a dot and a lower-case slug (`C.ped`). Anything in
+ * this shape is a topic code, known here or not, and never a free tag.
+ */
+export const TOPIC_CODE_PATTERN = /^[A-Z][A-Z0-9]*(\.[a-z0-9-]+)?$/;
+
+/** A string in the topic-code grammar, whether or not this build knows the code. */
+export function isTopicCode(tag: unknown): tag is string {
+  return typeof tag === 'string' && TOPIC_CODE_PATTERN.test(tag);
+}
+
+/** A sub-topic code by grammar (`C.ped`, or a later build's `C.new`). */
+export function isSubTopicCode(tag: unknown): tag is string {
+  return isTopicCode(tag) && tag.includes('.');
+}
+
 /** The coarse topics in guide order, each with its fine `children`. */
 export const TOPICS: readonly Topic[] = DATA.map(([code, en, zh, subs]) => ({
   code,

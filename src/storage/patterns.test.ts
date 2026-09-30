@@ -4,7 +4,9 @@ import { LocalStorageWorksheetStore } from '.';
 import { vi } from 'vitest';
 import {
   addPatternEntries,
+  addUnusableRows,
   localPatternFile,
+  NewerPatternsError,
   parsePatterns,
   PATTERNS_KEY,
   readPatternRegistry,
@@ -44,13 +46,56 @@ describe('the 題型 registry is validated row by row', () => {
 
   it('reads anything unreadable as empty, and keeps a newer build’s fields through a rewrite', () => {
     for (const raw of [undefined, '', 'not json', '[]', '{"patterns": "no"}']) expect(parsePatterns(raw).patterns).toEqual([]);
-    const state = usablePatterns({ format: 2, patterns: [{ ...ped('A'), colour: 'red' }], future: { x: 1 } });
+    const state = usablePatterns({ format: 1, patterns: [{ ...ped('A'), colour: 'red' }], future: { x: 1 } });
     expect(state.__unknown).toEqual({ future: { x: 1 } });
     const written = serializePatterns(addPatternEntries(state, [ped('B')], NOW));
     expect(written.future).toEqual({ x: 1 });
     expect((written.patterns as unknown[])[0]).toMatchObject({ name: 'A', colour: 'red' });
   });
 });
+
+describe('a newer build’s registry survives this build', () => {
+  const later = { topic: 'C.new-sub', typeId: 'mcq', name: 'A later sub-topic' };
+  const reshaped = { id: 'p1', topics: ['C.ped'], label: { en: 'Reshaped' } };
+
+  it('judges a sub-topic by the grammar, and keeps rows it cannot use verbatim', () => {
+    const state = usablePatterns({ format: 1, patterns: [ped('A'), later, reshaped, 42] });
+    expect(state.patterns.map((p) => p.topic)).toEqual(['C.ped', 'C.new-sub']);
+    expect(state.__rows).toEqual([reshaped, 42]);
+    const written = serializePatterns(removePatternEntry(addPatternEntries(state, [ped('B')], NOW), ped('A')));
+    expect(written.patterns).toEqual([later, { ...ped('B'), createdAt: NOW }, reshaped, 42]);
+  });
+
+  it('never writes over a registry in a newer format, and a backup carries it verbatim', async () => {
+    const stored = { format: 2, patterns: [ped('A'), reshaped], extra: true };
+    const file = memoryFile(JSON.stringify(stored));
+    const state = await readPatternRegistry(file);
+    expect(state.patterns.map((p) => p.name)).toEqual(['A']);
+    await expect(updatePatternRegistry(file, (s) => addPatternEntries(s, [ped('B')], NOW))).rejects.toBeInstanceOf(NewerPatternsError);
+    expect(JSON.parse(file.text!)).toEqual(stored);
+    expect(serializePatterns(state)).toEqual(stored);
+  });
+
+  it('a restore adds a backup’s unusable rows once', () => {
+    const state = addUnusableRows({ patterns: [], __rows: [reshaped] }, [reshaped, 42, 42]);
+    expect(state.__rows).toEqual([reshaped, 42]);
+  });
+
+  it('an empty registry holding only rows it cannot use is still written, not removed', async () => {
+    const file = memoryFile(JSON.stringify({ format: 1, patterns: [ped('A'), reshaped] }));
+    await updatePatternRegistry(file, (s) => removePatternEntry(s, ped('A')));
+    expect(JSON.parse(file.text!).patterns).toEqual([reshaped]);
+  });
+});
+
+function memoryFile(initial?: string): PatternFile & { text?: string } {
+  const file: PatternFile & { text?: string } = {
+    text: initial,
+    read: async () => file.text,
+    write: async (text) => void (file.text = text),
+  };
+  return file;
+}
 
 describe('registry edits', () => {
   const base: PatternRegistry = { patterns: [ped('A'), ped('B'), ped('A', 'structured')] };

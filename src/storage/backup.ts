@@ -16,6 +16,7 @@ import {
 } from './folders';
 import {
   addPatternEntries,
+  addUnusableRows,
   isEmptyPatterns,
   serializePatterns,
   updatePatternRegistry,
@@ -252,7 +253,9 @@ export async function restoreBackup(
  */
 export async function restorePatterns(file: PatternFile, patterns: PatternRegistry): Promise<void> {
   if (isEmptyPatterns(patterns)) return;
-  await updatePatternRegistry(file, (state) => addPatternEntries(state, patterns.patterns)).catch(() => undefined);
+  await updatePatternRegistry(file, (state) => addUnusableRows(addPatternEntries(state, patterns.patterns), patterns.__rows)).catch(
+    () => undefined,
+  );
 }
 
 /** "Restored 12 · skipped 3 already here · 1 unreadable" — the sentence the screen shows. */
