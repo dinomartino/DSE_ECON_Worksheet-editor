@@ -104,6 +104,9 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
 - **Right-clicking anywhere inside a question now opens its menu**, including ✦ AI: the
   space beside a diagram, the question number, option letters and marks no longer bring
   up the browser's own menu.
+- **Undo waits while you drag from the 題庫 tab.** Pressing ⌘Z (or Ctrl+Z) mid-drag used
+  to change the worksheet under the question in your hand. Now it does nothing until you
+  let go; after the drop, one Undo takes the new question out.
 
 ## 0.5.0 — 2026-09-28
 

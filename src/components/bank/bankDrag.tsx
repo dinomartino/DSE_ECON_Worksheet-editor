@@ -11,6 +11,7 @@ import { create, type StoreApi, type UseBoundStore } from 'zustand';
 import { DRAG_THRESHOLD_PX } from '@/components/start/dashboardDrag';
 import { DragChip } from '@/components/ui/DragGhost';
 import { useModalLayer } from '@/components/ui/modalLayer';
+import { isUndoRedoKey } from '@/components/ui/undoChord';
 import type { BankRow } from '@/library/types';
 import { flowOf } from '@/model/flow';
 import { copyQuestion } from '@/model/lineage';
@@ -24,7 +25,9 @@ import { pickSlot, type SlotBox, type SlotGeometry } from './dropSlot';
  * Drag a question from the 題庫 tab onto the page. While it is in hand the page shows the
  * result (the question in place, faded; the rest renumbered and re-paginated); release
  * commits once through `commitBankCopies` (one ⌘Z), Esc or a release off the page puts
- * the page back as it was. Nothing reaches the worksheet store until the drop.
+ * the page back as it was. Nothing reaches the worksheet store until the drop, and
+ * undo/redo stand down until then (`isBankDragActive`): the page is showing a document
+ * the store does not hold.
  *
  * Pointer events, captured once the press becomes a drag (as `useDocumentDrag`): the
  * desktop webview never delivers HTML5 `dragover`. The pointer's position lives in the
@@ -264,6 +267,20 @@ export function cancelBankDrag() {
   finish(false);
 }
 
+/**
+ * A drag is in hand, or dropped and not yet committed. Read synchronously by the page's
+ * ⌘Z: undoing now would change the document under the provisional page.
+ */
+export function isBankDragActive(): boolean {
+  return useBankDrag.getState().active !== null;
+}
+
+/** What a key does while the drag lasts: Esc cancels; undo/redo are swallowed, not acted on. */
+export function bankDragKey(event: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'shiftKey'>): 'cancel' | 'swallow' | null {
+  if (event.key === 'Escape') return 'cancel';
+  return isUndoRedoKey(event) ? 'swallow' : null;
+}
+
 /** Test seam: aim the drag as a pointer over the page would. */
 export function aimBankDragForTest(slot: number | null) {
   if (!session) return;
@@ -378,7 +395,8 @@ export function useBankRowDrag({
 
 /**
  * Mount once in the editor: the chip under the pointer (moved imperatively), and the
- * keyboard while the drag lasts (Esc cancels; `useModalLayer` so page shortcuts stand down).
+ * keyboard while the drag lasts (Esc cancels; `useModalLayer` so page shortcuts stand down;
+ * undo/redo swallowed, so not even a focused field's own undo runs).
  */
 export function BankDragLayer() {
   const active = useBankDrag((s) => s.active);
@@ -388,9 +406,10 @@ export function BankDragLayer() {
   useEffect(() => {
     if (!dragging) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
+      const action = bankDragKey(event);
+      if (!action) return;
       event.preventDefault();
-      cancelBankDrag();
+      if (action === 'cancel') cancelBankDrag();
     };
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('blur', cancelBankDrag);

@@ -5,7 +5,15 @@ import { createSectionElement, resolveFlow } from '@/model/flow';
 import { bi } from '@/model/text';
 import type { Worksheet } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { aimBankDragForTest, cancelBankDrag, resetBankDragForTest, rowDragHandlers, useBankDrag } from './bankDrag';
+import {
+  aimBankDragForTest,
+  bankDragKey,
+  cancelBankDrag,
+  isBankDragActive,
+  resetBankDragForTest,
+  rowDragHandlers,
+  useBankDrag,
+} from './bankDrag';
 import { useBankSession } from './bankSession';
 import { provisionalWorksheet } from './dropSlot';
 
@@ -133,6 +141,48 @@ describe('dragging a 題庫 row onto the page', () => {
     store().undo();
     expect(store().worksheet.questions).toEqual(open.questions);
     expect(resolveFlow(store().worksheet).map((item) => item.id)).toEqual(resolveFlow(open).map((item) => item.id));
+  });
+
+  it('⌘Z and redo are swallowed while the drag is in hand; the page undo stands down', async () => {
+    const chord = (k: string, mods: Record<string, boolean> = {}) => ({ key: k, metaKey: false, ctrlKey: false, shiftKey: false, ...mods });
+    expect(isBankDragActive()).toBe(false);
+    const handlers = await pickUp();
+    aimBankDragForTest(3);
+    expect(isBankDragActive()).toBe(true);
+    expect(bankDragKey(chord('z', { metaKey: true }))).toBe('swallow');
+    expect(bankDragKey(chord('Z', { metaKey: true, shiftKey: true }))).toBe('swallow');
+    expect(bankDragKey(chord('z', { ctrlKey: true }))).toBe('swallow');
+    expect(bankDragKey(chord('y', { ctrlKey: true }))).toBe('swallow');
+    expect(bankDragKey(chord('Escape'))).toBe('cancel');
+    expect(bankDragKey(chord('a'))).toBeNull();
+    // The drag is untouched: same slot, same copy, nothing written.
+    expect(useBankDrag.getState().slot).toBe(3);
+    expect(store().worksheet).toBe(open);
+
+    handlers.onPointerUp(event(300, 400));
+    expect(isBankDragActive()).toBe(false);
+    expect(store().past).toHaveLength(1);
+  });
+
+  it('a drop before the question is read still holds undo off until it commits', async () => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const slow = { load: async (id: string) => (await gate, source.load(id)) };
+    const handlers = rowDragHandlers(bankRow, 'k', 'label', { source: slow });
+    handlers.onPointerDown(event(10, 10));
+    handlers.onPointerMove(event(40, 30));
+    aimBankDragForTest(1);
+    handlers.onPointerUp(event(300, 400));
+    expect(isBankDragActive()).toBe(true);
+    expect(store().past).toHaveLength(0);
+
+    release();
+    await flush();
+    await flush();
+    expect(isBankDragActive()).toBe(false);
+    expect(store().past).toHaveLength(1);
   });
 
   it('reaches the very start of the paper', async () => {
