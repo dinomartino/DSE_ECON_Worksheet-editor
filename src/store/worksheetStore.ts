@@ -456,7 +456,7 @@ function livingAnchor(anchorId: string | undefined, next: Worksheet): string | u
  * must write **both** lists — `questions` owns question order, so a question
  * positioned only in `flow` prints last. `applyOrder` is the one rule for splitting
  * an ordered flow back into the two lists. An unanchored question lands via
- * `appendIndexFor`, not at the very end.
+ * `unanchoredIndexFor`, not at the very end.
  */
 function insertIntoFlow(
   worksheet: Worksheet,
@@ -469,20 +469,13 @@ function insertIntoFlow(
   const merged = { ...worksheet, ...patch } as Worksheet;
   const flow = flowOf(worksheet);
   const at = afterId ? flow.findIndex((item) => item.id === afterId) : -1;
-  if (at < 0) flow.splice(appendIndexFor(merged, flow, entry), 0, entry);
+  if (at < 0) flow.splice(unanchoredIndexFor(merged, flow, entry), 0, entry);
   else flow.splice(at + 1, 0, entry);
 
   const ordered = applyOrder(merged, flow);
   return { ...merged, questions: ordered.questions, flow: ordered.flow };
 }
 
-/**
- * Where an *unanchored* item joins the flow. Both exam papers end in a closing line
- * ("END OF PAPER"), so a question must land ahead of the trailing closing lines, not
- * at the very end. Derived from shape and format, never a stored flag; scoped to
- * `paper1`/`lqMock`; questions and the stimulus only (any other unanchored layout
- * element genuinely means the end).
- */
 /**
  * The last flow gap a question may be dropped into: ahead of the trailing closing lines
  * on the exam papers (§ Nothing lands after "END OF PAPER"), the end otherwise.
@@ -491,33 +484,80 @@ export function lastQuestionGap(worksheet: Worksheet): number {
   return appendIndexFor(worksheet, flowOf(worksheet), { type: 'question', id: '' });
 }
 
-function appendIndexFor(worksheet: Worksheet, flow: FlowItem[], entry: FlowItem): number {
-  // Questions, and the one layout element that *is* question content: a stimulus
-  // introduces the questions that follow it, so appending one after "END OF PAPER"
-  // (and the questions that then land behind it) put new content past the line that
-  // declares the paper finished. Every other layout element appended with no anchor
-  // genuinely means the end.
-  const isStimulus =
-    entry.type === 'layout' &&
-    (worksheet.layout ?? []).find((element) => element.id === entry.id)?.kind === 'stimulus';
-  if (entry.type !== 'question' && !isStimulus) return flow.length;
+/**
+ * The item an unanchored question would land behind when that is not "the end": the
+ * first section's last item, in a sectioned document with no questions yet. For the
+ * destination labels, which otherwise say "at the end".
+ */
+export function unanchoredQuestionAfter(worksheet: Worksheet): string | undefined {
+  const flow = flowOf(worksheet);
+  const at = firstSectionGap(worksheet, flow, { type: 'question', id: '' });
+  return at === undefined || at === 0 ? undefined : flow[at - 1].id;
+}
 
+/** Where an *unanchored* item joins the flow (§ Where things land). */
+function unanchoredIndexFor(worksheet: Worksheet, flow: FlowItem[], entry: FlowItem): number {
+  return firstSectionGap(worksheet, flow, entry) ?? appendIndexFor(worksheet, flow, entry);
+}
+
+/**
+ * Questions, and the one layout element that *is* question content: a stimulus
+ * introduces the questions that follow it, so it lands where they would. Every other
+ * layout element appended with no anchor genuinely means the end.
+ */
+function isQuestionContent(worksheet: Worksheet, entry: FlowItem): boolean {
+  if (entry.type === 'question') return true;
+  return (worksheet.layout ?? []).find((element) => element.id === entry.id)?.kind === 'stimulus';
+}
+
+/**
+ * The exam papers' closing-line test, or undefined on any other shape. Only a *centred*
+ * text element is a closing line; ranged-left elements (the lead-in, "Answer any ONE
+ * question.") introduce what follows. Derived from shape and format, never a stored flag.
+ */
+function closingLineTest(worksheet: Worksheet): ((item: FlowItem) => boolean) | undefined {
   const shape = documentShape(worksheet);
-  if (shape !== 'paper1' && shape !== 'lqMock') return flow.length;
-
-  // Walk back over the trailing closing lines. Only a *centred* text element is
-  // walked past — centring is what makes a closing line a closing line; ranged-left
-  // tail elements (the lead-in, "Answer any ONE question.") introduce what follows.
-  // A section marker stops the walk, keeping a new question under the last section.
+  if (shape !== 'paper1' && shape !== 'lqMock') return undefined;
   const layout = new Map((worksheet.layout ?? []).map((element) => [element.id, element]));
-  const closesThePaper = (item: FlowItem): boolean => {
+  return (item) => {
     if (item.type !== 'layout') return false;
     const element = layout.get(item.id);
     return element?.kind === 'text' && element.format?.align === 'center';
   };
+}
 
+/**
+ * A sectioned document's first question goes at the end of its **first** section, not
+ * under its last heading (a new classroom worksheet's first question used to print below
+ * "Section B" with Section A empty). Ahead of that section's closing line on the exam
+ * papers ("END OF SECTION A"). Undefined, so the append rule applies, once the document
+ * holds a question or when it has no section marker.
+ */
+function firstSectionGap(worksheet: Worksheet, flow: FlowItem[], entry: FlowItem): number | undefined {
+  if (!isQuestionContent(worksheet, entry)) return undefined;
+  if (flow.some((item) => item.type === 'question')) return undefined;
+  const kinds = new Map((worksheet.layout ?? []).map((element) => [element.id, element.kind]));
+  const isSection = (item: FlowItem) => item.type === 'layout' && kinds.get(item.id) === 'section';
+  const first = flow.findIndex(isSection);
+  if (first < 0) return undefined;
+  const next = flow.findIndex((item, index) => index > first && isSection(item));
+  let at = next < 0 ? flow.length : next;
+  const closes = closingLineTest(worksheet);
+  while (closes && at > first + 1 && closes(flow[at - 1])) at -= 1;
+  return at;
+}
+
+/**
+ * Where an unanchored question joins a document that has questions: ahead of the
+ * trailing closing lines on the exam papers ("END OF PAPER"), not at the very end. The
+ * walk stops at anything else, a section marker included, so a new question stays under
+ * the last section.
+ */
+function appendIndexFor(worksheet: Worksheet, flow: FlowItem[], entry: FlowItem): number {
+  if (!isQuestionContent(worksheet, entry)) return flow.length;
+  const closes = closingLineTest(worksheet);
   let at = flow.length;
-  while (at > 0 && closesThePaper(flow[at - 1])) at -= 1;
+  while (closes && at > 0 && closes(flow[at - 1])) at -= 1;
   return at;
 }
 

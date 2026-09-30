@@ -30,7 +30,7 @@ import { useBank } from '@/library/useBank';
 import { TOPICS } from '@/model/topics';
 import { listQuestionTypes } from '@/registry';
 import { useAppDialogs } from '@/store/appDialogs';
-import { useWorksheetStore } from '@/store/worksheetStore';
+import { unanchoredQuestionAfter, useWorksheetStore } from '@/store/worksheetStore';
 import { BankRow, typeLabel } from './BankRow';
 import { insertFromBank, type InsertReport } from './bankSession';
 import { useBankDrag, useBankRowDrag } from './bankDrag';
@@ -119,7 +119,8 @@ export function BankTab() {
   const roots = useMemo(() => paperRoots(worksheet), [worksheet]);
   const documents = useMemo(() => fromDocuments(rows, ctx.openDocId), [rows, ctx.openDocId]);
   const hasBanks = documents.some((doc) => doc.kind === 'bank');
-  const anchor = anchorLabel(worksheet, anchorId);
+  // No anchor in an empty sectioned document still lands in its first section.
+  const anchor = anchorLabel(worksheet, anchorId ?? unanchoredQuestionAfter(worksheet));
   // Nothing to filter: the empty state stands alone rather than under inert controls.
   const emptyBank = status.state === 'ready' && base.length === 0;
 

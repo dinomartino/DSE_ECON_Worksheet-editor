@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { choiceQuestion, docWith, partsQuestion } from '@/library/testKit';
+import { flowOf } from '@/model/flow';
+import { createWorksheetFrom } from '@/model/newWorksheet';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { addPicksToOpenDocument } from './addToOpen';
 
@@ -29,6 +31,16 @@ describe('addPicksToOpenDocument', () => {
     expect(store().past).toHaveLength(1);
     store().undo();
     expect(store().worksheet).toEqual(loaded);
+  });
+
+  it('puts picks into Section A of an empty sectioned worksheet, not after Section B', () => {
+    store().replaceWorksheet(createWorksheetFrom({ documentType: 'classroom' }));
+    const [a, b] = store().worksheet.layout;
+    const ids = addPicksToOpenDocument([
+      { question: choiceQuestion('One'), fromDocId: 'doc-a' },
+      { question: partsQuestion('Two'), fromDocId: 'doc-b' },
+    ]);
+    expect(flowOf(store().worksheet).map((item) => item.id)).toEqual([a.id, ...ids, b.id]);
   });
 
   it('leaves a read-only document alone', () => {
