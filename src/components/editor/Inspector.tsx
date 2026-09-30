@@ -15,6 +15,7 @@ import { CloseIcon, ListIcon } from '@/components/ui/icons';
 import { SizeStepper } from '@/components/ui/SizeStepper';
 import { biExcerpt, ExcerptRow } from './panelRows';
 import { TopicRow } from './TopicRow';
+import { useShownTags } from './sharedTopics';
 import { setQuestionTopics, topicSyncDeps } from './topicSync';
 import { StimulusEditorPanel } from './StimulusEditorPanel';
 
@@ -236,6 +237,8 @@ export function Inspector({
   const [topicNote, setTopicNote] = useState<{ questionId: string; text: string }>();
 
   const selected = worksheet.questions.find((question) => question.id === selectedQuestionId);
+  // The question's one topic set across copies (newest change wins); display only.
+  const shownTags = useShownTags(selected);
 
   /*
    * Bring the control for the page's selection into view.
@@ -360,16 +363,18 @@ export function Inspector({
         <div className="mt-4">
           <TopicRow
             key={selected.id}
-            tags={selected.tags}
+            tags={shownTags}
             typeId={selected.type}
             note={topicNote?.questionId === selected.id ? topicNote.text : undefined}
             onChange={(tags) => {
               const questionId = selected.id;
               setTopicNote(undefined);
-              void setQuestionTopics(questionId, tags, {
-                ...topicSyncDeps(),
-                notify: (text) => setTopicNote({ questionId, text }),
-              });
+              void setQuestionTopics(
+                questionId,
+                tags,
+                { ...topicSyncDeps(), notify: (text) => setTopicNote({ questionId, text }) },
+                shownTags,
+              );
             }}
           />
         </div>

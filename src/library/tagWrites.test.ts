@@ -113,11 +113,56 @@ describe('copyWrites', () => {
       row({ rootId: 'r', docId: 'd2', questionId: 'c' }),
     ];
     expect(copyWrites(rows, ['r'])).toEqual([
-      { docId: 'd1', questionId: 'a' },
-      { docId: 'd2', questionId: 'c' },
+      { docId: 'd1', questionId: 'a', shared: [] },
+      { docId: 'd2', questionId: 'c', shared: [] },
     ]);
     expect(copyWrites(rows, new Set(['r', 'x']))).toHaveLength(3);
     expect(copyWrites(rows, [])).toEqual([]);
+  });
+
+  it('passes on the shared set a row shows, and nothing when the row has no tags field', () => {
+    expect(copyWrites([row({ rootId: 'r', docId: 'd', questionId: 'a', tags: ['C'] })], ['r'])).toEqual([{ docId: 'd', questionId: 'a', shared: ['C'] }]);
+    expect(copyWrites([{ rootId: 'r', docId: 'd', questionId: 'a' }], ['r'])).toEqual([{ docId: 'd', questionId: 'a' }]);
+  });
+});
+
+describe('an edit applied to the shared set (newest change wins)', () => {
+  const T1 = '2026-09-01T00:00:00.000Z';
+
+  it('makes the copy adopt the edited shared set, not its own stale tags, and keeps a non-string tag', () => {
+    const stale = { ...choiceQuestion('Along a straight-line demand curve…', '', ['C', 'C.ped', 7 as unknown as string]), tagsAt: T1 };
+    const doc = docWith([stale]);
+    const next = withQuestionTags(doc, [stale.id], removeTopics(['D']), NOW, new Map([[stale.id, ['C', 'D']]]));
+    expect(next.questions[0].tags).toEqual(['C', 7]);
+    expect(next.questions[0].tagsAt).toBe(NOW);
+  });
+
+  it('stamps a copy that already held the result when the edit changed the shared set', () => {
+    // This copy already lacks D; a copy the write cannot reach still has it and was stamped later.
+    const current = { ...choiceQuestion('Along a straight-line demand curve…', '', ['C']), tagsAt: T1 };
+    const doc = docWith([current]);
+    const next = withQuestionTags(doc, [current.id], removeTopics(['D']), NOW, new Map([[current.id, ['C', 'D']]]));
+    expect(next.questions[0].tags).toEqual(['C']);
+    expect(next.questions[0].tagsAt).toBe(NOW);
+  });
+
+  it('leaves a copy alone when the edit changes nothing and it already holds the set', () => {
+    const held = { ...choiceQuestion('Along a straight-line demand curve…', '', ['D', 'C']), tagsAt: T1 };
+    const doc = docWith([held]);
+    expect(withQuestionTags(doc, [held.id], addTopics(['C']), NOW, new Map([[held.id, ['C', 'D']]]))).toBe(doc);
+  });
+
+  it('writes every copy under one stamp', async () => {
+    const original = choiceQuestion('A price ceiling below equilibrium', '', ['C']);
+    const copy = copyQuestion(original, 'bank');
+    const docA = docWith([original]);
+    const docB = docWith([copy]);
+    const saved = new Map([docA, docB].map((doc) => [doc.id, doc]));
+    const store = { load: async (id: string) => saved.get(id), save: async (w: Worksheet) => void saved.set(w.id, w) };
+    const rows = [docA, docB].flatMap((doc) => rowsOf(doc));
+    await writeTags(store, copyWrites(rows, [original.id]), addTopics(['D']), undefined, NOW);
+    expect(saved.get(docA.id)!.questions[0].tagsAt).toBe(NOW);
+    expect(saved.get(docB.id)!.questions[0].tagsAt).toBe(NOW);
   });
 });
 

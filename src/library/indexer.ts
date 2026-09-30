@@ -69,6 +69,7 @@ function rowOf(question: Question, doc: DocFields, number: number | undefined): 
     typeId: question.type,
     marks: questionMarks(question),
     tags,
+    ...(typeof question.tagsAt === 'string' ? { tagsAt: question.tagsAt } : {}),
     excerpt: {
       en: questionExcerpt(question, 'en', EXCERPT_MAX),
       zh: questionExcerpt(question, 'zh', EXCERPT_MAX),

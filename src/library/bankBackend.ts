@@ -31,7 +31,7 @@ export interface BankIndexBackend {
  * text, `contentKey`), and every persisted index is dropped and rebuilt on next use. The
  * golden test in `indexer.test.ts` fails when the output moves, to say so.
  */
-export const INDEX_FORMAT = 4;
+export const INDEX_FORMAT = 5;
 
 /**
  * What a stored index is stamped with and checked against: the rows version plus a hash of
@@ -64,6 +64,7 @@ export function isBankRow(value: unknown): value is BankRow {
     isString(row.typeId) &&
     typeof row.marks === 'number' &&
     isStringArray(row.tags) &&
+    (row.tagsAt === undefined || isString(row.tagsAt)) &&
     !!excerpt &&
     isString(excerpt.en) &&
     isString(excerpt.zh) &&

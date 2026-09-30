@@ -1,5 +1,5 @@
 {
-  "format": 4,
+  "format": 5,
   "rows": [
     {
       "docId": "doc-golden",
@@ -19,6 +19,7 @@
         "C.ped::Straight-line PED",
         "mock 2025"
       ],
+      "tagsAt": "2026-03-04T08:00:00.000Z",
       "excerpt": {
         "en": "Along a straight-line demand curve, PED is",
         "zh": "沿直線需求曲線，需求價格彈性"

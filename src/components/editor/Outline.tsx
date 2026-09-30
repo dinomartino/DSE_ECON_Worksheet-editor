@@ -51,6 +51,7 @@ import {
 } from '@/components/ui/icons';
 import { Menu, type MenuItem } from '@/components/ui/Menu';
 import { useBankActions } from './BankActions';
+import { useShownTags } from './sharedTopics';
 
 /**
  * The question navigator.
@@ -297,6 +298,8 @@ function QuestionRow({
   );
 
   const bank = useBankActions(question);
+  // The question's one topic set across copies (newest change wins), as the Topic row shows it.
+  const tags = stringTags(useShownTags(question));
 
   const menuItems: MenuItem[] = [
     { label: 'Duplicate', onSelect: () => duplicateQuestion(question.id) },
@@ -397,12 +400,12 @@ function QuestionRow({
       >
         {typeBadge(question)}
       </span>
-      {stringTags(question.tags).length > 0 && (
+      {tags.length > 0 && (
         <span
           className="max-w-[72px] shrink-0 truncate text-[10px] text-ink-subtle"
-          title={stringTags(question.tags).map(tagText).join(', ')}
+          title={tags.map(tagText).join(', ')}
         >
-          {stringTags(question.tags).map(tagText).join(' ')}
+          {tags.map(tagText).join(' ')}
         </span>
       )}
       <span className="shrink-0 text-[10px] tabular-nums text-ink-subtle">

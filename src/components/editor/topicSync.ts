@@ -1,6 +1,8 @@
-import { matchEdit, otherCopyWrites, writeTags, type WriteReport } from '@/library/tagWrites';
+import { sharedTags } from '@/library/sharedTags';
+import { matchEdit, otherCopyWrites, rootOf, writeTags, type WriteReport } from '@/library/tagWrites';
 import type { BankRow } from '@/library/types';
 import { bankRowsNow } from '@/library/useBank';
+import { stringTags } from '@/model/topics';
 import { worksheetStore, type WorksheetStore } from '@/storage';
 import { useAppDialogs } from '@/store/appDialogs';
 import { useWorksheetStore } from '@/store/worksheetStore';
@@ -8,9 +10,10 @@ import { useWorksheetStore } from '@/store/worksheetStore';
 /**
  * The editor's Topic row, one truth per question (C6): the open copy changes through the
  * store (one ⌘Z, autosaved as ever), then every other indexed copy of the same question
- * (`rootOf`) is written through storage, one save per document. The open document is
- * never written here; a document from a newer build is reported, not written. ⌘Z undoes
- * the open copy only.
+ * (`rootOf`) is written through storage, one save per document, all under the open copy's
+ * `tagsAt`. The open document is never written here; a document from a newer build is
+ * reported, not written (its older stamp loses). ⌘Z undoes the open copy only, and since
+ * the other copies now hold the newest change, the Topic row keeps showing it.
  *
  * Known risk, not solved here: another tab holding one of those documents open saves its
  * own copy over this write on its next autosave (the same as any two-tab edit).
@@ -35,33 +38,45 @@ let queue: Promise<unknown> = Promise.resolve();
 
 /**
  * Set a question's topics in the open document, then in the other documents holding a
- * copy of it. Resolves with what was written elsewhere (`undefined` when nothing needed to
- * be, e.g. no other copy, or a read-only document).
+ * copy of it. `shown` is what the Topic row showed (`useShownTags`, the shared set): the
+ * change is read against it, so a stale open copy adopts the set as it is edited. Resolves
+ * with what was written elsewhere (`undefined` when nothing needed to be, e.g. no other
+ * copy, or a read-only document).
  */
 export function setQuestionTopics(
   questionId: string,
   tags: string[] | undefined,
   deps: TopicSyncDeps = topicSyncDeps(),
+  shown?: readonly string[],
 ): Promise<WriteReport | undefined> {
   const editor = useWorksheetStore.getState();
   const question = editor.worksheet.questions.find((q) => q.id === questionId);
   if (!question) return Promise.resolve(undefined);
-  // `tagsAt` only when the tags really change: the same tags leave the store untouched.
-  const same = JSON.stringify(question.tags ?? []) === JSON.stringify(tags ?? []);
-  if (!same) editor.updateQuestion(questionId, { tags, tagsAt: new Date().toISOString() });
+  const before = shown ?? question.tags ?? [];
+  const after = tags ?? [];
+  // Stamped only on a real change: the same tags leave the store untouched.
+  if (JSON.stringify(before) === JSON.stringify(after)) return Promise.resolve(undefined);
+  const now = new Date().toISOString();
+  editor.updateQuestion(questionId, { tags, tagsAt: now });
   const committed = useWorksheetStore.getState();
-  // Read-only, or the same tags: the store did not move, so neither do the copies.
+  // Read-only: the store did not move, so neither do the copies.
   if (committed.worksheet === editor.worksheet) return Promise.resolve(undefined);
 
   const openDocId = committed.worksheet.id;
-  const before = question.tags ?? [];
-  const after = tags ?? [];
   const run = async (): Promise<WriteReport | undefined> => {
     const rows = await deps.rows();
     const writes = otherCopyWrites(rows, question, openDocId);
     if (writes.length === 0) return undefined;
+    // The set as it stood before the edit (the Topic row may have shown the copy's own
+    // tags before the bank loaded): the change applies to it, and every copy adopts that.
+    const root = rootOf(question);
+    const stood = sharedTags([
+      ...rows.filter((row) => row.rootId === root && row.docId !== openDocId),
+      { tags: stringTags(question.tags), tagsAt: question.tagsAt },
+    ]);
+    const next = matchEdit(before, after)(stood.tags);
     // Whatever is open by the time a document's turn comes is left alone too.
-    const report = await writeTags(deps.store, writes, matchEdit(before, after), (docId) => docId === useWorksheetStore.getState().worksheet.id);
+    const report = await writeTags(deps.store, writes, () => next, (docId) => docId === useWorksheetStore.getState().worksheet.id, now);
     const message = copiesMessage(report, rows);
     if (message) deps.notify(message);
     return report;

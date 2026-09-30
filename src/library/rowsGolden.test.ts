@@ -37,6 +37,7 @@ const DOC = {
       options: ['constant', 'rising', 'falling', 'zero'].map((en, i) => ({ id: `o${i}`, text: text(en, `選項${i + 1}`) })),
       answerIndex: 1,
       tags: ['C.ped', 'C.ped::Straight-line PED', 'mock 2025'],
+      tagsAt: '2026-03-04T08:00:00.000Z',
     },
     {
       id: 'q-lq',
