@@ -111,16 +111,22 @@ off the bottom.** It is the first thing a fresh session reads — then
   scripts/bank-ai-verify.mjs` 28/28 (mock provider only, no real key). Follow-ups: ⌘J doesn't
   open the bank menu; highlights miss text split across formatting runs; `writeTags` can save
   into a trashed paper from a stale row (pre-existing; reuse `sameCopies`' check).
-- **Topics per part (in progress, paused 2026-09-30)** — the user's call: on a long question
+- **Topics per part (merged on `develop` 2026-09-30, not released)** — on a long question
   topics and 題型 live on parts (a sub-part's own list replaces its part's), free tags on the
   question, parent derived; bulk Set topic writes every part; any tagged part leaves Untagged.
-  Design and handoff are committed on the branch: docs/design/wip/part-tags-design.md and
-  docs/design/wip/part-tags-wp0-handoff.md (on `feature/part-tags-core` only). WP-0
-  (model/registry/library core) is on `feature/part-tags-core` from 48a2c05, paused green
-  (3144 tests) with tests, docs, build and samples still to do.
-  On resume: merge `develop` (INDEX_FORMAT is already 6 from the AI branch, so WP-0 bumps to 7
-  and regenerates the golden), finish WP-0, then UI packages A (Topic row), B (review page
-  "(b) tests this"), C (bank tagging dialogs).
+  Design + as-built: `docs/design/part-tags.md`. WP-0 core (optional part `tags`/`rootId`,
+  registry `tagSlots`/`withSlotTags`, `src/model/tagSlots.ts`, `StateEdit`, INDEX_FORMAT 7),
+  editor Topic row per part (`src/components/editor/PartTopics.tsx`), review page "Part (b)
+  tests this" + highlight + "also in", bank Edit topics part column + tag-as-you-go part strip.
+  QA: whole journey passes Chromium + WebKit, compat (v1 corpus, develop-era docs, backup) and
+  all harnesses pass; verdict ready. Gaps (low): ⌘Z after a part edit undoes the open copy only;
+  unstamped multi-copy legacy questions lose the "Set on the whole question" note
+  (`sharedTags.ts:sharedState`); Edit topics part column doesn't say "its own".
+- **Launch animation (merged on `develop` 2026-09-30, not released)** — study A "Draw the
+  market" + hand-off to the toolbar mark (`src/launch/`, markup in `layout.tsx`); once per
+  session, any key/click skips, Reduce motion fades; skipped under webdriver or `?nosplash`,
+  `?splash=1` forces it for filming. Prototype artifact F3ZMi46kmV9n8aktaCfaF5. Unverified:
+  the Tauri shell (Mac/Windows) plays once per cold start.
 - **Write a question from the bank (proposal only)** — `docs/design/bank-authoring.md`, C25 in
   IDEAS; three questions for the user at its end. For a future session.
 - **✦ AI demo film (merged on `develop`)** — `npm run demo:ai` → `demo-media/ai/` (38 s,
@@ -291,6 +297,9 @@ off the bottom.** It is the first thing a fresh session reads — then
   the store from inside the diagram canvas (acts as its undo).
 
 ## Log
+
+- **2026-09-30 (night)** — Topics per part (WP-0 + A/B/C + QA) and the launch animation merged to
+  `develop`, 3224 tests; bank authoring proposal written. Nothing pushed.
 
 - **2026-09-30 (evening)** — 題庫 ✦ AI merged (3127 tests); topics-per-part designed, WP-0
   paused; bank authoring proposal written. Nothing pushed.
