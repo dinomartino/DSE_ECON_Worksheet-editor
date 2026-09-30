@@ -24,6 +24,8 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
   thin) under a coverage bar across the topics. Open a topic to read its questions one by one at print size, in English, 中文 or
   both, Student or Teacher version, with the list grouped by sub-topic (hide it for more
   room). Tick questions to make a new worksheet from them or add them to your last one.
+  Adding skips any question that worksheet already has ("Skipped 1 already in this
+  paper") and opens it at the new questions, highlighted, with one Undo for the lot.
   Untagged questions get a quick tagging mode: press 1 to 6 to pick a suggested topic,
   Enter to save and see the next. Open any question right where it sits in its worksheet,
   and come back to the same place in the bank. ← Home takes you back.

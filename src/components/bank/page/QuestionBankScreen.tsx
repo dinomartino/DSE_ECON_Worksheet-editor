@@ -26,8 +26,8 @@ import { topicOf } from '@/model/topics';
 import type { LanguageMode, VersionMode, Worksheet } from '@/model/types';
 import { worksheetStore, type WorksheetSummary } from '@/storage';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { addPicksToOpenDocument } from './addToOpen';
-import { afterOpen, tagIndexOf, useBankReturn } from './bankReturn';
+import { addPicksToOpenDocument, nothingAddedText, splitAlreadyInPaper } from './addToOpen';
+import { afterOpen, revealQuestion, tagIndexOf, useBankReturn } from './bankReturn';
 import {
   activeFilters,
   addTarget,
@@ -334,8 +334,19 @@ export function QuestionBankScreen({
         onError('Those questions are no longer saved here.');
         return;
       }
-      // Opened the start screen's way, then inserted through the store (`addToOpen.ts`).
-      onOpenDocument(target.id, () => void addPicksToOpenDocument(picked));
+      // All already there: stay here and say so. The open re-checks against what it loads.
+      const saved = await worksheetStore.load(target.id).catch(() => undefined);
+      const { fresh, skipped } = saved ? splitAlreadyInPaper(saved, picked) : { fresh: picked, skipped: [] };
+      if (fresh.length === 0) {
+        onNotice(nothingAddedText(skipped.length, target.title));
+        return;
+      }
+      // Opened the start screen's way, then inserted through the store (`addToOpen.ts`),
+      // scrolled to the first copy once the sheets are laid out.
+      onOpenDocument(target.id, () => {
+        const { inserted } = addPicksToOpenDocument(picked);
+        if (inserted[0]) revealQuestion(inserted[0]);
+      });
     } finally {
       setBusy(false);
     }
