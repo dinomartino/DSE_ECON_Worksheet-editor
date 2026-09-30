@@ -85,6 +85,7 @@ import {
   BLANK_LINE_PT,
   type CoverRenderNode,
   type EditTarget,
+  type NodeStyle,
   type RenderNode,
   type TableNode,
   type TextNode,
@@ -326,6 +327,8 @@ function richNodes(
    * carries a list marker, so `inline-block` has no hanging indent to break.
    */
   fillWidth?: boolean,
+  /** Empty sides take the quiet prompt (§ `QUIET_PROMPT_STYLES`). */
+  quietPrompt?: boolean,
 ) {
   if (!text) return null;
 
@@ -345,6 +348,7 @@ function richNodes(
         onSelectionChange={ctx.onTextSelectionChange}
         keepEditing={ctx.keepEditing}
         fillWidth={compactPlaceholder || fillWidth}
+        quietPlaceholder={quietPrompt && !compactPlaceholder}
         onTab={onTab}
       >
         {rendered}
@@ -358,12 +362,16 @@ function richNodes(
    *
    * A middle dot rather than a truncated sentence — it reads as "there is a field
    * here", fits the narrowest figure column at any font size, and cannot be mistaken
-   * for content the way an abbreviated instruction ("Add English…") could.
+   * for content the way an abbreviated instruction ("Add English…") could in a figure
+   * column. A quiet field's short prompt is safe: it is grey and sits beside its marker.
    */
-  const prompt = (long: string) => (compactPlaceholder ? "·" : long);
+  const prompt = (long: string, short: string) =>
+    compactPlaceholder ? "·" : quietPrompt ? short : long;
+  const enPrompt = prompt("Double-click to add English", "Add English");
+  const zhPrompt = prompt("Double-click to add 中文", "Add 中文");
 
-  if (language === "en") return editable("en", prompt("Double-click to add English"));
-  if (language === "zh") return editable("zh", prompt("Double-click to add 中文"));
+  if (language === "en") return editable("en", enPrompt);
+  if (language === "zh") return editable("zh", zhPrompt);
 
   // In bilingual mode an empty side still needs a click target, otherwise the only
   // way to add the missing translation would be the sidebar.
@@ -377,12 +385,28 @@ function richNodes(
   // one numbered paragraph separated by `w:br` (§5.4).
   return (
     <>
-      {showEn && editable("en", prompt("Double-click to add English"))}
+      {showEn && editable("en", enPrompt)}
       {showEn && showZh && <br />}
-      {showZh && editable("zh", prompt("Double-click to add 中文"))}
+      {showZh && editable("zh", zhPrompt)}
     </>
   );
 }
+
+/*
+ * Only the text that stands for a whole item (a stem, heading, note, title) keeps the
+ * full blue prompt. Everything that hangs under a question's stem is quiet (short, grey)
+ * so an empty question still reads as its shape; table cells keep their own "·".
+ */
+const QUIET_PROMPT_STYLES: ReadonlySet<NodeStyle> = new Set<NodeStyle>([
+  "MCQ Option",
+  "Statement",
+  "Sub-question",
+  "Sub-sub-question",
+  "Table Caption",
+  "Image Caption",
+  "Answer",
+  "Marking Scheme",
+]);
 
 /*
  * Paper styles carry no vertical margin.
@@ -984,6 +1008,7 @@ function TextNodeView({
          * paragraph is exempt, because its box really is the text column.
          */
         node.edit?.kind === "sourceLabel" || node.edit?.kind === "sourceFootnote",
+        QUIET_PROMPT_STYLES.has(node.style),
       )}
       {trailingBreakFiller && <br aria-hidden />}
       {trailText && (
@@ -1031,7 +1056,16 @@ function BlockCaption({
   if (!node.caption || node.captionPlacement !== side) return null;
   return (
     <p className={STYLE_CLASS[style]}>
-      {richNodes(node.caption, language, node.captionEdit, ctx)}
+      {richNodes(
+        node.caption,
+        language,
+        node.captionEdit,
+        ctx,
+        undefined,
+        undefined,
+        undefined,
+        QUIET_PROMPT_STYLES.has(style),
+      )}
     </p>
   );
 }
@@ -2293,7 +2327,16 @@ function NodeView({
             {cell.marker && (
               <span className="font-medium">{cell.marker}&nbsp;</span>
             )}
-            {richNodes(cell.text, language, cell.edit, ctx)}
+            {richNodes(
+              cell.text,
+              language,
+              cell.edit,
+              ctx,
+              undefined,
+              undefined,
+              undefined,
+              QUIET_PROMPT_STYLES.has(node.style),
+            )}
           </span>
         ))}
       </div>
