@@ -1,0 +1,98 @@
+{
+  "lowThreshold": 0.2,
+  "timeoutMs": 6000,
+  "chunkChars": 8000,
+  "maxChunks": 40,
+  "questions": {
+    "prints": "Does `diff` change what prints on the worksheet paper, in the exported .docx or the printed PDF (text, layout, spacing, numbering, marks, diagrams)?",
+    "ui": "Does `diff` add or change something a teacher sees on screen in the app (a control, label, layout, style, dialog or interaction)?",
+    "stored": "Does `diff` change the shape or meaning of saved document data (Worksheet fields, migrations, or how documents and the document index are written to storage)?",
+    "teacher": "Would a teacher using the app notice `diff`, as a new feature, a changed behaviour or a bug fix, rather than a refactor, test, comment or developer tooling?",
+    "cover": "Does `diff` change how the mock-exam cover page is laid out, rendered or exported?",
+    "lq": "Does `diff` change the long-question answer booklet (QAB): its dotted answer lines, page furniture, fill-to-page line count or 10pt sizing?"
+  },
+  "checks": [
+    { "id": "test", "cmd": "npm test", "always": true, "why": "always" },
+    { "id": "typecheck", "cmd": "npm run typecheck", "always": true, "why": "always" },
+    {
+      "id": "lint",
+      "cmd": "npm run lint",
+      "why": "source or lint config changed; the hook reduces the 43 known problems to one line",
+      "triggers": ["**/*.{ts,tsx,js,jsx,mjs,cjs}", "eslint.config.*", "package.json"],
+      "ignore": [".claude/**", "scripts/film/**"]
+    },
+    {
+      "id": "backcompat",
+      "cmd": "npx vitest run src/model/backwardCompat.test.ts src/storage/legacyIndex.test.ts",
+      "why": "stored data may change: a failure means a published document broke; migrate, never regenerate the corpus",
+      "triggers": ["src/model/types.ts", "src/model/coverTypes.ts", "src/model/markSchemeTypes.ts", "src/model/migrations.ts", "src/storage/**"],
+      "scope": ["src/model/**", "src/store/**", "src/library/**"],
+      "questions": ["stored"]
+    },
+    {
+      "id": "screenshot",
+      "cmd": "node scripts/shot.mjs <png> --seed",
+      "why": "UI is verified in a browser, not by reading source",
+      "triggers": ["src/**/*.css", "tailwind.config.*"],
+      "scope": ["src/components/**", "src/app/**", "src/launch/**"],
+      "questions": ["ui"]
+    },
+    {
+      "id": "docx",
+      "cmd": "npm run samples",
+      "why": "the .docx is the load-bearing output: open it and check it is leak-free; UI work must prove it still exports",
+      "triggers": ["src/export/docx/**", "src/render/**", "src/registry/**"],
+      "scope": ["src/model/**", "src/components/**", "src/export/**", "src/app/**"],
+      "questions": ["prints", "ui"]
+    },
+    {
+      "id": "cover-verify",
+      "cmd": "node scripts/cover-verify.mjs",
+      "why": "the cover's three backends (preview, .docx, print PDF) must agree",
+      "triggers": ["src/model/cover.ts", "src/model/coverTypes.ts", "src/components/**/*Cover*", "scripts/cover-*"],
+      "scope": ["src/export/docx/**", "src/render/**", "src/components/preview/**", "src/app/globals.css", "src/model/page*.ts"],
+      "questions": ["cover"]
+    },
+    {
+      "id": "lq-verify",
+      "cmd": "node scripts/lq-verify.mjs",
+      "why": "the booklet's three backends and page count must agree",
+      "triggers": ["src/model/pageFurniture.ts", "src/export/docx/furniture.ts", "src/registry/answerSpace*", "scripts/lq-*"],
+      "scope": ["src/export/docx/**", "src/render/**", "src/components/preview/**", "src/app/globals.css", "src/model/page*.ts", "src/registry/**"],
+      "questions": ["lq"]
+    },
+    {
+      "id": "desktop",
+      "cmd": "npm run desktop:dev",
+      "why": "desktop work is verified in the shell",
+      "triggers": ["src-tauri/**", "src/desktop/**", "src/platform/**", "src/storage/fileStore.ts"]
+    },
+    {
+      "id": "web-build",
+      "cmd": "npm run build",
+      "why": "desktop-adjacent or build config changed; postbuild checks no Tauri in the web bundle",
+      "triggers": ["src/desktop/**", "src/platform/**", "src/storage/fileStore.ts", "next.config.*", "package.json", "scripts/check-web-bundle.mjs"]
+    },
+    {
+      "id": "changelog-line",
+      "cmd": "CHANGELOG.md Unreleased line",
+      "why": "every feature or fix adds a line for teachers in the same commit, then npm run changelog",
+      "satisfiedBy": ["CHANGELOG.md"],
+      "scope": ["src/**", "src-tauri/**"],
+      "ignore": ["**/*.test.{ts,tsx}", "src/test/**"],
+      "questions": ["teacher"]
+    },
+    {
+      "id": "changelog-regen",
+      "cmd": "npm run changelog",
+      "why": "CHANGELOG.md changed; CI fails on the stale generated copy",
+      "triggers": ["CHANGELOG.md"]
+    },
+    {
+      "id": "film-doctor",
+      "cmd": "npm run film:doctor",
+      "why": "the product film changed",
+      "triggers": ["scripts/film/**"]
+    }
+  ]
+}
