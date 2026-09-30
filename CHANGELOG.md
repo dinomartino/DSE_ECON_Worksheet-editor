@@ -100,8 +100,10 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
 
 ### Changed
 - **The how-to-edit tip sits below the page instead of on top of it**, so the bottom of
-  a page is never hidden, and scrolling to the end of a document no longer leaves a long
-  empty gap.
+  a page is never hidden, and scrolling to the end of a document no longer runs on past
+  the last page. On a smaller screen the tip stays on two lines.
+- **The Add Question menu says where each type goes**: "in Section A" or "in Section B",
+  instead of a heading cut off mid-word.
 - **A tidier question panel.** The Add row (Text, Table, Image, Diagram, Source) fits on
   one line, and empty paragraphs simply say "Empty".
 - **HKEAA wording on new exam papers.** New Paper 1 and Paper 2 mock papers end with
