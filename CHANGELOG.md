@@ -19,12 +19,12 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
   class, and knows that 4A last year and 5A this year are the same students, so "not used
   with" follows a year group up the school (shown as DSE 2027 and so on). Tagging or
   correcting an old paper no longer makes it look used this year.
-- **Copy questions to a question bank from the outline.** Use a question's ⋯ menu to copy it to a bank (or start a new one); after you improve a question, "Update bank copy" refreshes the bank's version, and "Treat as a new question" cuts a copy loose from its origin. A new bank asks for its name, and the list of banks tells two alike apart. A bank that already has the question says so instead of taking a second copy, and offers "Update bank copy" when your version differs.
+- **Copy questions to a question bank from the outline.** Use a question's ⋯ menu to copy it to a bank (or start a new one); after you improve a question, "Update bank copy" refreshes the bank's version, and "Treat as a new question" cuts a copy loose from its origin (it explains what that means before it does anything, and one Undo reverses it). A new bank asks for its name, and the list of banks tells two alike apart. A bank that already has the question says so instead of taking a second copy, and offers "Update bank copy" when your version differs.
 - **Question bank 題庫, its own screen**: open it from the start screen to see every
   question from your worksheets as topic cards (how many of each, and which topics are
   thin) under a coverage bar across the topics. Open a topic to read its questions one by one at print size, in English, 中文 or
   both, Student or Teacher version, with the list grouped by sub-topic (hide it for more
-  room). Tick questions to make a new worksheet from them or add them to the worksheet
+  room; Tab reaches the list, and the arrow keys move through it). Each question shows its own number from its paper, and the Filter button counts the filters that are on. Tick questions to make a new worksheet from them or add them to the worksheet
   you had open last (if you have not opened one yet, only a new worksheet is offered).
   Adding skips any question that worksheet already has ("Skipped 1 already in this
   paper") and opens it at the new questions, highlighted, with one Undo for the lot.
@@ -33,17 +33,23 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
   a question in its worksheet, go Home or reload the page, and empties once the questions
   are in a worksheet.
   Untagged questions get a quick tagging mode: press 1 to 6 to pick a suggested topic,
-  Enter to save and see the next. Open any question right where it sits in its worksheet,
+  Enter to save and see the next. Pressed the wrong key? Backspace, ⌘Z or Undo brings the
+  last question back with its topic taken off. Open any question right where it sits in its worksheet,
   and come back to the same place in the bank. ← Home takes you back.
 - **題庫 tab in the editor**: find questions from your other worksheets by words, topic,
   type or marks and drag copies onto the page, or Fill a set by topic after the question
-  you click, preferring ones your class has not seen. The new questions are highlighted
-  on the page, and one Undo takes the whole set back out.
+  you click, preferring ones your class has not seen. The list and Fill start on what your
+  paper takes (MCQs on a Paper 1, LQs on a booklet or LQ worksheet, both on a classroom
+  worksheet); add another type anyway and a short note says so. The new questions are
+  highlighted on the page, and one Undo takes the whole set back out.
 - **Drag a question from the 題庫 tab onto the page.** While you drag, the page shows the
   result before you let go: the question sits where it would land, the questions after it
   renumber and the pages re-flow. Let go to insert it (one Undo takes it out); press Esc or
   let go off the page and nothing changes. Dragging replaces the Insert button; from the
-  keyboard, Tab to a question and press Enter to add it after the one you clicked.
+  keyboard, Tab to the list, move with the arrow keys and press Enter to add a question after
+  the one you clicked. On a small screen (1024 wide) the page now sits beside the sidebar
+  instead of under it, so all of it takes the drop, and the page thumbnails show where the
+  question will land.
 
 - **Your own 題型 (Patterns) in the question bank.** Inside a sub-topic, file questions
   under the kinds of question you set, such as "Calculate PED from a change in TR". Pick
@@ -67,7 +73,8 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
   your list. The name is for filing and the file name, and does not print on the paper.
   A duplicated worksheet is now listed as "(copy)" of that name.
 - **A worksheet made from the question bank is named after its topic** (or "Questions
-  from bank" when the questions cover several topics) instead of Untitled.
+  from bank" when the questions cover several topics) instead of Untitled. Like any new
+  worksheet, it prints no title until you type one.
 - **The app is now called Econ Studio (經濟備課室).** Your worksheets, settings and saved
   keys carry over unchanged. The desktop app keeps its old file name, Econ Worksheet, so
   updates keep arriving.

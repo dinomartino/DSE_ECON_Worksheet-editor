@@ -4,6 +4,7 @@ import type { BankRow } from '@/library/types';
 import type { Question } from '@/model/types';
 import { worksheetStore, type WorksheetStore } from '@/storage';
 import { useWorksheetStore } from '@/store/worksheetStore';
+import { outsidePaperNote } from './tabText';
 
 /**
  * The editor side of the 題庫 tab: the request that opens it (the add rail, the empty
@@ -16,6 +17,8 @@ export interface BankReview {
   questionIds: string[];
   index: number;
   summary: string;
+  /** A type the paper does not normally take came in (`outsidePaperNote`): said, never refused. */
+  note?: string;
   /** Reverts every insert of this review, only while the latest is still the latest edit. */
   undo: { run(): void; live(): boolean };
   /** Insert commits the review spans: consecutive inserts extend it (see `insertFromBank`). */
@@ -142,6 +145,8 @@ export function commitBankCopies(
   const previous = useBankSession.getState().review;
   const extend = previous !== null && previous.worksheetId === store.worksheet.id && previous.undo.live();
   const anchorBefore = extend ? previous.anchorBefore : store.insertAnchorId;
+  // Judged against the paper as it was: the copies themselves could change what it reads as.
+  const note = outsidePaperNote(store.worksheet, found.map((entry) => entry.question.type)) ?? (extend ? previous.note : undefined);
   const inserted = store.insertQuestionCopies(
     found.map((entry) => entry.question),
     { fromDocId: found.map((entry) => entry.docId), ...(at !== undefined ? { at } : {}) },
@@ -157,6 +162,7 @@ export function commitBankCopies(
       questionIds,
       index: extend ? previous.questionIds.length : 0,
       summary: summary(questionIds.length),
+      ...(note ? { note } : {}),
       commits,
       ...(anchorBefore ? { anchorBefore } : {}),
       undo: {

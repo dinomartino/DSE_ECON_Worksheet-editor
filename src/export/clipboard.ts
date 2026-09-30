@@ -424,19 +424,25 @@ export function worksheetClipboardHtml(
   return wrapHtml(parts.join(''), css);
 }
 
-/** HTML for a single question (per-question copy button, §7.7). */
+/**
+ * HTML for a single question (per-question copy button, §7.7). `printedNumber` replaces
+ * the number this worksheet derives on the question's own line: a question rendered out
+ * of a one-question copy of its paper keeps the number it has in the paper.
+ */
 export function questionClipboardHtml(
   worksheet: Worksheet,
   questionId: string,
   mode: OutputMode,
   diagramImages: DiagramImageMap = new Map(),
+  printedNumber?: number,
 ): string {
   const rendered = renderWorksheet(worksheet, mode);
   const css = fontCss(worksheet.fonts);
   const match = rendered.questions.find((entry) => entry.questionId === questionId);
   if (match) {
+    const nodes = printedNumber === undefined ? match.nodes : match.nodes.map((node) => withQuestionNumber(node, printedNumber));
     return wrapHtml(
-      match.nodes
+      nodes
         .map((node) =>
           nodeHtml(node, mode.language, css, diagramImages, contentWidth(pageSetupOf(worksheet))),
         )
@@ -445,6 +451,12 @@ export function questionClipboardHtml(
     );
   }
   return wrapHtml('', css);
+}
+
+/** The question's own numbered line (`listRef.definition` 'question', level 0) carrying `number`. */
+function withQuestionNumber(node: RenderNode, number: number): RenderNode {
+  if (node.kind !== 'text' || node.listRef?.definition !== 'question' || node.listRef.level !== 0) return node;
+  return { ...node, listRef: { ...node.listRef, marker: `${number}.` } };
 }
 
 function wrapHtml(body: string, css: string): string {

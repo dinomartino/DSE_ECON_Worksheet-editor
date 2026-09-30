@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { rowsOf } from '@/library/indexer';
 import { withSharedTags } from '@/library/sharedTags';
-import { choiceQuestion, docWith, row } from '@/library/testKit';
+import { choiceQuestion, docWith, partsQuestion, row } from '@/library/testKit';
+import { createWorksheetFrom } from '@/model/newWorksheet';
 import { copyQuestion } from '@/model/lineage';
 import type { Worksheet } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { insertFromBank, useBankSession } from './bankSession';
-import { emptySentence, typePlural } from './tabText';
+import { emptySentence, outsidePaperNote, typePlural } from './tabText';
 import { NO_FILTERS } from '@/library/tabFilters';
 
 const store = () => useWorksheetStore.getState();
@@ -168,5 +169,31 @@ describe('a copy from the bank takes every copy’s topics', () => {
     expect(made.tags).toEqual(['C', 'C.ped']);
     // The source is only read.
     expect(home.questions[0].tags).toEqual(['C']);
+  });
+});
+
+describe('a type the paper does not normally take', () => {
+  it('goes in, and the review says so in one line', async () => {
+    const lq = { ...docWith([partsQuestion('Hong Kong’s Composite CPI rose by 6% last year.')]), id: 'doc-lq' };
+    const mcq = { ...docWith([choiceQuestion('A progressive tax system means that')]), id: 'doc-mcq' };
+    const sources = new Map<string, Worksheet>([
+      [lq.id, lq],
+      [mcq.id, mcq],
+    ]);
+    const load = { load: async (id: string) => sources.get(id) };
+    store().replaceWorksheet(createWorksheetFrom({ documentType: 'paper1', name: 'Paper 1' }));
+    useBankSession.setState({ review: null });
+
+    await insertFromBank([rowOf('doc-mcq', mcq.questions[0].id)], undefined, load);
+    expect(useBankSession.getState().review!.note).toBeUndefined();
+
+    const { inserted } = await insertFromBank([rowOf('doc-lq', lq.questions[0].id)], undefined, load);
+    expect(inserted).toHaveLength(1);
+    expect(useBankSession.getState().review!.note).toBe('This paper usually takes MCQs only.');
+  });
+
+  it('says nothing on a classroom sheet, which takes both', () => {
+    const sheet = docWith([choiceQuestion('Q1')]);
+    expect(outsidePaperNote(sheet, [partsQuestion('x').type, choiceQuestion('y').type])).toBeUndefined();
   });
 });

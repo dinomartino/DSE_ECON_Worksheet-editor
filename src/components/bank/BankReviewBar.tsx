@@ -141,6 +141,8 @@ export function BankReviewBar() {
         <span className="min-w-0 max-w-[28rem] truncate" title={review.summary}>
           {review.summary}
         </span>
+        {/* Its own quiet line under the actions, so the row never wraps round it. */}
+        {review.note && <span className="order-last basis-full pb-0.5 text-[12px] text-on-cta/70">{review.note}</span>}
         {count > 1 && (
           <span className="flex shrink-0 items-center">
             <BarButton aria-label="Previous" onClick={() => step(-1)}>

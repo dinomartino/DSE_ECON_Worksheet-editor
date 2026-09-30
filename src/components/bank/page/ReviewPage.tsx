@@ -116,11 +116,15 @@ function Rail({
   const listRef = useRef<HTMLDivElement>(null);
   const focusedRoot = focused?.rootId;
 
-  // Keep the focused row in view as ↑ ↓ move it.
+  // Keep the focused row in view as ↑ ↓ move it; when a row has the keyboard, it moves too.
   useEffect(() => {
     if (!focusedRoot) return;
     const node = listRef.current?.querySelector<HTMLElement>(`[data-rail-root="${CSS.escape(focusedRoot)}"]`);
     node?.scrollIntoView({ block: 'nearest' });
+    const active = document.activeElement;
+    if (node && active !== node && active instanceof HTMLElement && active.hasAttribute('data-rail-root') && listRef.current?.contains(active)) {
+      node.focus({ preventScroll: true });
+    }
   }, [focusedRoot]);
 
   const pickedHere = order.filter((group) => picked.has(group.rootId)).length;
@@ -171,9 +175,16 @@ function Rail({
                       key={group.rootId}
                       role="listitem"
                       data-rail-root={group.rootId}
+                      // One Tab stop for the list (the question on the stage); ↑ ↓ then move it,
+                      // Space picks it, O opens it (the screen's key listener).
+                      tabIndex={on ? 0 : -1}
+                      aria-current={on || undefined}
                       onClick={() => onFocus(lead)}
-                      className={`relative grid cursor-pointer grid-cols-[16px_minmax(0,1fr)] gap-2 px-3.5 py-[7px] transition-colors duration-100 ${
-                        on ? 'bg-surface' : 'hover:bg-surface-hover'
+                      onFocus={(event) => {
+                        if (event.target === event.currentTarget && !on) onFocus(lead);
+                      }}
+                      className={`relative grid cursor-pointer grid-cols-[16px_minmax(0,1fr)] gap-2 px-3.5 py-[7px] transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
+                        on ? 'bg-accent-soft' : 'hover:bg-surface-hover'
                       }`}
                     >
                       <span aria-hidden className={`absolute inset-y-0 left-0 w-0.5 bg-accent ${on ? 'opacity-100' : 'opacity-0'}`} />

@@ -9,7 +9,6 @@ import type { Worksheet } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { addPicksToOpenDocument } from './addToOpen';
 import { computeNumbering } from '@/model/numbering';
-import { plain } from '@/model/text';
 import { questionPreviewHtml } from './questionPreview';
 import { readPicks, sharedTopic, worksheetFromPicks } from './fromSelection';
 
@@ -50,7 +49,7 @@ describe('worksheetFromPicks', () => {
     expect(worksheetFromPicks([{ question: unknown, fromDocId: 'x' }]).questions).toEqual([]);
   });
 
-  it('is titled after the one coarse topic every pick shares', () => {
+  it('finds the one coarse topic every pick shares', () => {
     expect(sharedTopic([choiceQuestion('a', '', ['C.ped']), choiceQuestion('b', '', ['C', 'D'])])).toEqual({
       en: 'Market and Price',
       zh: '市場與價格',
@@ -58,7 +57,7 @@ describe('worksheetFromPicks', () => {
     expect(sharedTopic([choiceQuestion('a', '', ['C.ped']), choiceQuestion('b', '', ['D'])])).toBeUndefined();
     expect(sharedTopic([choiceQuestion('a')])).toBeUndefined();
     const made = worksheetFromPicks([{ question: choiceQuestion('a', '', ['H.money']), fromDocId: 'x' }]);
-    expect(plain(made.title.en)).toBe('Money and Banking');
+    expect(made.name).toBe('Money and Banking');
   });
 
   it('is named after the shared topic, so the file list does not read Untitled', () => {
@@ -67,8 +66,8 @@ describe('worksheetFromPicks', () => {
       { question: choiceQuestion('b', '', ['C']), fromDocId: 'y' },
     ]);
     expect(made.name).toBe('Market and Price');
-    expect(plain(made.title.en)).toBe('Market and Price'); // the printed title is unchanged
-    expect(plain(made.title.zh)).toBe('市場與價格');
+    // Never a printed title, as the New worksheet form: the heading is the teacher's to type.
+    expect(made.title).toEqual(createWorksheetFrom({ documentType: 'classroom', sections: false }).title);
     expect(worksheetTitle(made)).toBe('Market and Price');
   });
 
@@ -94,6 +93,13 @@ describe('questionPreviewHtml', () => {
     expect(preview.html).not.toMatch(/<script/i);
     expect(preview.widthPx).toBeCloseTo((11906 - 2880) / 15, 0);
     expect(questionPreviewHtml(doc, 'missing', 'en')).toBeUndefined();
+  });
+
+  it('keeps the number the question has in its paper, not 1', () => {
+    const doc = docWith([choiceQuestion('First'), choiceQuestion('Second'), choiceQuestion('Third question here')]);
+    const preview = questionPreviewHtml(doc, doc.questions[2].id, 'en')!;
+    expect(preview.html).toContain('>3.&nbsp;Third question here');
+    expect(preview.html).not.toContain('>1.&nbsp;');
   });
 });
 

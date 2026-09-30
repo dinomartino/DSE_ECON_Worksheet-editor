@@ -44,6 +44,7 @@ export function FilterPopover({
   const [open, setOpen] = useState(false);
   const on = activeFilters({ ...filters, text: '', topic: 'all' });
   const label = on.length === 0 ? 'Filter' : `Filter · ${on.map((f) => f.label).join(', ')}`;
+  const shown = filterButtonLabel(on.map((f) => f.label));
   return (
     <div className="relative shrink-0">
       <button
@@ -52,11 +53,17 @@ export function FilterPopover({
         aria-haspopup="dialog"
         onClick={() => setOpen((current) => !current)}
         title={label}
+        aria-label={label}
         className={`inline-flex h-8 max-w-[280px] cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-[12.5px] transition-colors duration-150 ease-out-soft hover:border-line-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
           on.length > 0 ? 'border-line-strong bg-surface text-ink' : 'border-line bg-surface text-ink-muted hover:text-ink'
         }`}
       >
-        <span className="truncate">{label}</span>
+        <span className="truncate">{shown.text}</span>
+        {shown.count !== undefined && (
+          <span className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-accent-soft px-1 text-[11px] font-semibold tabular-nums text-accent-ink">
+            {shown.count}
+          </span>
+        )}
         <span aria-hidden className="text-[10px] text-ink-subtle">
           ▾
         </span>
@@ -66,6 +73,20 @@ export function FilterPopover({
       )}
     </div>
   );
+}
+
+/** Longest single filter the button names in full; past it, or with several, it counts. */
+const FILTER_LABEL_MAX = 22;
+
+/**
+ * What the Filter button says: "Filter", "Filter · MCQ" for one short filter, else
+ * "Filters" and a count. The full list stays in its tooltip and accessible name, and the
+ * button never truncates mid-word.
+ */
+export function filterButtonLabel(labels: readonly string[]): { text: string; count?: number } {
+  if (labels.length === 0) return { text: 'Filter' };
+  if (labels.length === 1 && labels[0].length <= FILTER_LABEL_MAX) return { text: `Filter · ${labels[0]}` };
+  return { text: labels.length === 1 ? 'Filter' : 'Filters', count: labels.length };
 }
 
 function Panel({

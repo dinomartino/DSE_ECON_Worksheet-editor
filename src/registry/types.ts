@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react';
 import type { AnswerVisitor } from '@/model/answerLeaves';
+import type { DocumentShape } from '@/model/documentShape';
 import type { TextWalker } from '@/model/textSlots';
 import type { BiText, ContentBlock, Question } from '@/model/types';
 import type { MarkScheme } from '@/model/markSchemeTypes';
@@ -72,6 +73,12 @@ export interface QuestionTypeDefinition<Q extends Question = Question> {
   variant?: (question: Q, context: VariantContext) => QuestionVariant<Q>;
   /** How the paper summary counts and times this type (`model/paperSummary.ts`). */
   summary?: QuestionSummaryInfo;
+  /**
+   * The kinds of paper this type normally belongs on (`paperKind`); absent = every kind.
+   * Advisory: the 題庫 tab defaults its type filter and Fill from it and notes an insert
+   * outside it, but nothing is refused.
+   */
+  paperKinds?: readonly DocumentShape[];
   /** The question as a co-marker reads it, for the AI quality check (`quality/`); absent = not checked. */
   qualityView?: (question: Q) => QualityView;
 }

@@ -31,6 +31,8 @@ export function TagAsYouGo({
   onStep,
   onDone,
   onOpen,
+  lastSaved,
+  onUndo,
 }: {
   /** The question on screen; absent when none are left. */
   row: BankRow | undefined;
@@ -48,7 +50,12 @@ export function TagAsYouGo({
   onDone: () => void;
   /** Open the question where it sits in its worksheet. */
   onOpen: () => void;
+  /** The last save this visit, as Undo names it; absent = nothing to take back. */
+  lastSaved?: string;
+  /** Take the last save back (also ⌫ or ⌘Z). */
+  onUndo?: () => void;
 }) {
+  const undoLine = lastSaved && onUndo && <UndoLine text={lastSaved} onUndo={onUndo} />;
   const { worksheet, failed } = useOwningDocument(row);
   const scrollRef = useRef<HTMLDivElement>(null);
   const key = row ? `${row.docId}/${row.questionId}` : '';
@@ -62,6 +69,7 @@ export function TagAsYouGo({
         <div className="max-w-md text-center">
           <p className="font-display text-[26px] font-normal leading-tight text-ink">Every question has a topic.</p>
           <p className="mt-2 text-[13px] text-ink-muted">New questions you write appear here until they are tagged.</p>
+          {undoLine && <div className="mt-4 flex justify-center">{undoLine}</div>}
           <Button className="mt-5" onClick={onDone}>
             Back to topics
           </Button>
@@ -101,6 +109,7 @@ export function TagAsYouGo({
             Open in worksheet
           </Button>
         </div>
+        {undoLine}
         <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6" role="group" aria-label="Topics for this question">
           {suggestions.map((code, index) => {
             const { code: coarse, name } = suggestionLabel(code);
@@ -145,6 +154,26 @@ export function TagAsYouGo({
         </div>
       </div>
     </div>
+  );
+}
+
+/** The last save, and the way back: one quiet line, never a block. */
+function UndoLine({ text, onUndo }: { text: string; onUndo: () => void }) {
+  return (
+    <p role="status" className="flex min-w-0 items-center gap-2 text-[12.5px] text-ink-muted">
+      <span className="min-w-0 truncate" title={text}>
+        {text}.
+      </span>
+      <button
+        type="button"
+        onClick={onUndo}
+        title="Take these topics off again (⌫ or ⌘Z)"
+        className="shrink-0 cursor-pointer rounded-md px-1.5 py-0.5 font-medium text-accent-ink transition-colors duration-150 ease-out-soft hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      >
+        Undo
+      </button>
+      <span className="shrink-0 text-[11.5px] text-ink-subtle">⌫</span>
+    </p>
   );
 }
 

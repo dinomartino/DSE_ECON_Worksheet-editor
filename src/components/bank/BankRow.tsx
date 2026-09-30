@@ -39,6 +39,8 @@ export interface BankRowProps {
   onActivate?: () => void;
   /** What the focused row does, for assistive tech ("Drag onto the page, or press Enter…"). */
   activateHint?: string;
+  /** A list with one Tab stop passes -1 to every row but its current one. Default 0. */
+  tabIndex?: 0 | -1;
 }
 
 export function BankRow({
@@ -56,6 +58,7 @@ export function BankRow({
   dragging = false,
   onActivate,
   activateHint,
+  tabIndex = 0,
 }: BankRowProps) {
   const excerpt = language === 'zh' ? row.excerpt.zh : row.excerpt.en;
   const missing = missingLanguageLabel(row, language);
@@ -71,7 +74,7 @@ export function BankRow({
       {...(onActivate
         ? {
             role: 'group',
-            tabIndex: 0,
+            tabIndex,
             'aria-label': excerpt || 'Untitled question',
             ...(activateHint ? { 'aria-description': activateHint } : {}),
             onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => {
