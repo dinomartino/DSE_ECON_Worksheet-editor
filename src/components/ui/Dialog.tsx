@@ -56,7 +56,8 @@ export function Dialog({
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Escape closes, and focus moves into the panel so the first Tab lands inside the
-  // dialog rather than back in the document behind it.
+  // dialog rather than back in the document behind it. Not when focus is already inside:
+  // that would undo a field's `autoFocus`.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -65,7 +66,7 @@ export function Dialog({
       }
     };
     window.addEventListener('keydown', onKeyDown);
-    panelRef.current?.focus();
+    if (!panelRef.current?.contains(document.activeElement)) panelRef.current?.focus();
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [onClose]);
 

@@ -142,6 +142,16 @@ describe('duplicating', () => {
     expect(list.map((entry) => entry.title).sort()).toEqual(['Mock paper', 'Mock paper (copy)']);
   });
 
+  it('names a named document apart, since the list shows the name before the title', async () => {
+    const worksheet = { ...createWorksheet(), name: 'S5 Demand quiz' };
+    await store().save(worksheet);
+
+    await store().save(duplicateWorksheet(worksheet, newId()));
+
+    const titles = (await store().list()).map((entry) => entry.title).sort();
+    expect(titles).toEqual(['S5 Demand quiz', 'S5 Demand quiz (copy)']);
+  });
+
   it('keeps the ids inside the document, changing only the document id', async () => {
     /*
      * Every id *inside* a worksheet addresses something within that one document, so

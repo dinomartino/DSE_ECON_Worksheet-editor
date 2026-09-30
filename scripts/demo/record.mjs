@@ -53,6 +53,7 @@ export const STORYBOARD = [
       await d.click(dialog.getByTitle('Bilingual'));
       await d.wait(700);
       await d.focus(null);
+      await dialog.getByLabel('Name', { exact: true }).fill('S4 Demand and supply');
       await d.click(d.page.getByRole('button', { name: /Create worksheet/ }));
       await d.wait(1400);
     },

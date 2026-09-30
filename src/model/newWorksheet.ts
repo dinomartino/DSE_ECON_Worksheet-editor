@@ -36,6 +36,8 @@ export interface NewWorksheetOptions {
    * keep producing exactly what they produced.
    */
   documentType?: DocumentType;
+  /** The filing name (`Worksheet.name`): file list and `.docx` filename, never printed. */
+  name?: string;
   title?: string;
   titleZh?: string;
   paper?: PaperSize;
@@ -336,6 +338,7 @@ export function createWorksheetFrom(options: NewWorksheetOptions = {}): Workshee
   const base = createWorksheet();
   const documentType = resolveDocumentType(options);
 
+  const name = options.name?.trim();
   const title = options.title?.trim();
   const titleZh = options.titleZh?.trim();
 
@@ -403,6 +406,7 @@ export function createWorksheetFrom(options: NewWorksheetOptions = {}): Workshee
     // A fresh id per document, so "New" beside an open worksheet saves as its own entry
     // rather than overwriting the one it was started from.
     id: newId(),
+    ...(name ? { name } : {}),
     // Only a typed title is stored. An empty box stays empty — a new document carries
     // no default heading (§ `createWorksheet`); it lists as "Untitled" until named.
     ...(title || titleZh ? { title: bi(title || '', titleZh || '') } : {}),

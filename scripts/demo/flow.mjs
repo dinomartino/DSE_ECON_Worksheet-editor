@@ -147,18 +147,12 @@ export async function createWorksheet(d, template, { bilingual = false, name } =
   await page.getByText(template, { exact: true }).first().click();
   await d.wait(300);
   if (bilingual) await page.getByRole('dialog').getByTitle('Bilingual').click();
+  // The dialog requires a name before it creates anything.
+  await page.getByRole('dialog').getByLabel('Name', { exact: true }).fill(name ?? template);
   await page.getByRole('button', { name: /Create worksheet/ }).click();
   await d.wait(1200);
   const hint = page.getByRole('button', { name: 'Dismiss hint' });
   if (await hint.count()) await hint.click();
-  if (name) {
-    await page.getByTitle(/click to rename/).click();
-    await d.wait(200);
-    await page.keyboard.press('Meta+A');
-    await page.keyboard.type(name);
-    await page.keyboard.press('Enter');
-    await d.wait(300);
-  }
 }
 
 /** Insert a question in the gap below the flow row containing `rowText`. */

@@ -78,6 +78,8 @@ export function duplicateWorksheet(worksheet: Worksheet, id: string): Worksheet 
       en: worksheet.title.en.length > 0 ? appendCopy(worksheet.title.en) : worksheet.title.en,
       zh: worksheet.title.zh,
     },
+    // Named apart in the file list, which shows `name` before the printed title.
+    ...(worksheet.name ? { name: `${worksheet.name} (copy)` } : {}),
     createdAt: now,
     updatedAt: now,
   };
@@ -98,8 +100,6 @@ export function editableCopy(worksheet: Worksheet, id: string): Worksheet {
   const copy: Worksheet = {
     ...duplicateWorksheet(worksheet, id),
     schemaVersion: CURRENT_SCHEMA_VERSION,
-    // Named apart in the file list, which shows `name` before the printed title.
-    ...(worksheet.name ? { name: `${worksheet.name} (copy)` } : {}),
   };
   delete copy.__unknown;
   return copy;

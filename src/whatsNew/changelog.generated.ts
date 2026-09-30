@@ -57,6 +57,9 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   Firefox and Safari still save to your Downloads folder.
 
 ### Changed
+- **A new worksheet asks for its name first**, so it no longer appears as Untitled in
+  your list. The name is for filing and the file name, and does not print on the paper.
+  A duplicated worksheet is now listed as "(copy)" of that name.
 - **The app is now called Econ Studio (經濟備課室).** Your worksheets, settings and saved
   keys carry over unchanged. The desktop app keeps its old file name, Econ Worksheet, so
   updates keep arriving.

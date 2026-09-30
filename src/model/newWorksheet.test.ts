@@ -3,7 +3,8 @@ import { createWorksheetFrom } from './newWorksheet';
 import { createWorksheet } from './factories';
 import { coverHasPanel } from './cover';
 import { resolveFlow } from './flow';
-import { plain } from './text';
+import { documentName, plain } from './text';
+import { worksheetTitle } from '@/storage/document';
 
 /**
  * The start screen's answers become a document.
@@ -61,6 +62,20 @@ describe('answers reach the document', () => {
     const worksheet = createWorksheetFrom({ title: 'S6 Mock', titleZh: '模擬試卷' });
     expect(plain(worksheet.title.en)).toBe('S6 Mock');
     expect(plain(worksheet.title.zh)).toBe('模擬試卷');
+  });
+
+  it('stores the name, trimmed, as the filing name and never as the printed title', () => {
+    const worksheet = createWorksheetFrom({ documentType: 'lqMock', name: '  S6 Mock Paper 2  ' });
+    expect(worksheet.name).toBe('S6 Mock Paper 2');
+    expect(plain(worksheet.title.en)).toBe('');
+    expect(plain(worksheet.title.zh)).toBe('');
+    expect(worksheetTitle(worksheet)).toBe('S6 Mock Paper 2');
+    expect(documentName(worksheet)).toBe('S6 Mock Paper 2');
+  });
+
+  it('stores no name for a blank one, so the document lists as it always did', () => {
+    expect('name' in createWorksheetFrom({ name: '   ' })).toBe(false);
+    expect('name' in createWorksheetFrom()).toBe(false);
   });
 
   it('stores paper, margins and fonts', () => {
