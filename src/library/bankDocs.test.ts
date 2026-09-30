@@ -3,9 +3,10 @@ import type { WorksheetStore } from '@/storage';
 import { copyQuestion } from '@/model/lineage';
 import { bi } from '@/model/text';
 import { createParagraphBlock } from '@/model/factories';
-import type { Question, Worksheet } from '@/model/types';
+import { questionTagSlots } from '@/model/tagSlots';
+import type { Question, StructuredQuestion, Worksheet } from '@/model/types';
 import { bankChoices, bankCopyDiffers, bankHolds, copyToBank, createBank, nextBankName, updateBankCopy } from './bankDocs';
-import { choiceQuestion, docWith } from './testKit';
+import { choiceQuestion, docWith, partedQuestion } from './testKit';
 
 /** An in-memory store: only the calls bankDocs makes. */
 function memoryStore(...docs: Worksheet[]) {
@@ -136,6 +137,19 @@ describe('bankCopyDiffers / updateBankCopy', () => {
     expect(bankCopyDiffers(improved, saved)).toBe(false);
     const blockId = (x: Question) => (x as unknown as { blocks: { id: string }[] }).blocks[0].id;
     expect(blockId(saved.questions[1])).not.toBe(blockId(improved));
+  });
+
+  it('keeps the paper copy’s part roots, which name the bank’s parts, so part keys stay stable', async () => {
+    const bankQ = partedQuestion([{ tags: ['C.ped'] }, { subs: [undefined] }]);
+    const bank = { ...docWith([bankQ]), kind: 'bank' as const };
+    const paperQ = copyQuestion(bankQ, bank.id);
+    paperQ.blocks = [createParagraphBlock(bi('A better stem.', ''))];
+    const { store, map } = memoryStore(bank);
+    expect(await updateBankCopy(paperQ, bank.id, { store, openDocId: 'paper' })).toBe(true);
+    const saved = map.get(bank.id)!.questions[0];
+    expect(saved.id).toBe(bankQ.id);
+    expect(questionTagSlots(saved).map((slot) => slot.key)).toEqual(questionTagSlots(bankQ).map((slot) => slot.key));
+    expect((saved as StructuredQuestion).parts[0].id).not.toBe(paperQ.parts[0].id);
   });
 
   it('never writes the open document and refuses non-banks', async () => {

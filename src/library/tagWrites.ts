@@ -202,6 +202,18 @@ export function matchEdit(before: readonly string[], after: readonly string[]): 
   };
 }
 
+/**
+ * Only the change from `before` to `after`: what was added goes on, what was taken off comes
+ * off, anything else a list holds stays. Unlike `matchEdit`, it never copies the rest of
+ * `after` in, so applied to every part (`wholeQuestion`) it does not give one part's topics
+ * to another.
+ */
+export function changeEdit(before: readonly string[], after: readonly string[]): TagEdit {
+  const removed = new Set(before.filter((tag) => !after.includes(tag)));
+  const added = after.filter((tag) => !before.includes(tag));
+  return (tags) => unique([...tags.filter((tag) => !removed.has(tag)), ...added]);
+}
+
 /** A question's identity across copies, keyed as the index keys it (`BankRow.rootId`). */
 export const rootOf = (question: Pick<Question, 'id' | 'lineage'>): string => rootIdOf(question);
 

@@ -3,7 +3,7 @@ import { summarize } from '@/storage/document';
 import { createJsonFileBackend, STORED_INDEX_FORMAT, isBankRow, type TextFilePort } from './bankBackend';
 import { docsFromRecords } from './idbBackend';
 import { rowsOf } from './indexer';
-import { choiceQuestion, docWith, row } from './testKit';
+import { choiceQuestion, docWith, partedQuestion, row } from './testKit';
 
 function memoryFile(initial?: string) {
   const file = { text: initial, writes: 0, removes: 0 };
@@ -135,6 +135,45 @@ describe('docsFromRecords (the IndexedDB stores, read)', () => {
     const out = docsFromRecords(format, stamps, rows);
     expect([...out!.docs.keys()]).toEqual([good.id]);
     expect(out!.bad.sort()).toEqual(['badRow', 'badStamp', 'noStamp']);
+  });
+});
+
+describe('rows of a question tagged per part', () => {
+  const parted = docWith([partedQuestion([{ tags: ['C.ped'] }, { subs: [['D'], undefined] }], ['mock'])]);
+  const partRows = rowsOf(parted, summarize(parted));
+
+  it('are accepted as rowsOf writes them, and refused with a malformed part list', () => {
+    expect(partRows[0].slots).toHaveLength(4);
+    expect(partRows.every(isBankRow)).toBe(true);
+    const [slot] = partRows[0].slots!;
+    expect(isBankRow({ ...partRows[0], slots: 'flat' })).toBe(false);
+    expect(isBankRow({ ...partRows[0], slots: [{ ...slot, leaf: 'yes' }] })).toBe(false);
+    expect(isBankRow({ ...partRows[0], slots: [{ ...slot, own: [7] }] })).toBe(false);
+    expect(isBankRow({ ...partRows[0], slots: [{ ...slot, tags: undefined }] })).toBe(false);
+    expect(isBankRow({ ...partRows[0], slots: [{ ...slot, parent: 3 }] })).toBe(false);
+    expect(isBankRow({ ...partRows[0], ownTags: 'mock' })).toBe(false);
+  });
+
+  it('a malformed part list drops only its own document', () => {
+    const format = { key: 'format', value: STORED_INDEX_FORMAT };
+    const good = docWith([choiceQuestion('A')]);
+    const goodRows = rowsOf(good, summarize(good));
+    const bad = { ...partRows[0], docId: 'badSlots', slots: [{ key: 'k' }] };
+    const out = docsFromRecords(
+      format,
+      [
+        { docId: good.id, updatedAt: 't' },
+        { docId: 'badSlots', updatedAt: 't' },
+        { docId: parted.id, updatedAt: 't' },
+      ],
+      [
+        { docId: good.id, questionId: 'q0', seq: 0, row: goodRows[0] },
+        { docId: 'badSlots', questionId: 'q0', seq: 0, row: bad },
+        { docId: parted.id, questionId: 'q0', seq: 0, row: partRows[0] },
+      ],
+    );
+    expect([...out!.docs.keys()].sort()).toEqual([good.id, parted.id].sort());
+    expect(out!.bad).toEqual(['badSlots']);
   });
 });
 

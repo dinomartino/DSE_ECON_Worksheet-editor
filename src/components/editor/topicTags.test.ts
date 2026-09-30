@@ -1,12 +1,12 @@
 import JSZip from 'jszip';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { exportDocxBuffer } from '@/export/docx';
-import { worksheetClipboardHtml } from '@/export/clipboard';
+import { questionClipboardHtml, worksheetClipboardHtml } from '@/export/clipboard';
 import { renderWorksheet } from '@/render/worksheet';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
 import { TOPICS } from '@/model/topics';
-import type { OutputMode } from '@/model/types';
+import type { OutputMode, StructuredQuestion } from '@/model/types';
 import { freeTagIssue } from '@/model/patterns';
 import { filterTopics, freeTagMessage } from './TopicRow';
 
@@ -41,6 +41,35 @@ describe('topic tags and 題型 never print', () => {
         expect(html, `html ${marker}`).not.toContain(marker);
         expect(xml, `docx ${marker}`).not.toContain(marker);
       }
+    }
+  });
+});
+
+describe('topics per part never print', () => {
+  it('a question with part and sub-part topics and roots prints exactly as without them', async () => {
+    const plain = buildAcceptanceWorksheet();
+    const index = plain.questions.findIndex((q) => ((q as StructuredQuestion).parts ?? []).some((part) => part.subParts?.length));
+    expect(index).toBeGreaterThanOrEqual(0);
+    const source = plain.questions[index] as StructuredQuestion;
+    const taggedQ: StructuredQuestion = {
+      ...source,
+      parts: source.parts.map((part, i) => ({
+        ...part,
+        tags: ['C.ped', 'C.ped::zz-pattern-zz'],
+        rootId: `zz-root-${i}`,
+        subParts: part.subParts?.map((sub, j) => ({ ...sub, tags: ['D'], rootId: `zz-root-${i}.${j}` })),
+      })),
+    };
+    const tagged = { ...plain, questions: plain.questions.map((q, i) => (i === index ? taggedQ : q)) };
+    for (const mode of MODES) {
+      expect(JSON.stringify(renderWorksheet(tagged, mode))).toBe(JSON.stringify(renderWorksheet(plain, mode)));
+      expect(worksheetClipboardHtml(tagged, mode)).toBe(worksheetClipboardHtml(plain, mode));
+      expect(questionClipboardHtml(tagged, taggedQ.id, mode)).toBe(questionClipboardHtml(plain, source.id, mode));
+      const xml = async (w: typeof plain) =>
+        (await JSZip.loadAsync(await exportDocxBuffer(w, mode))).file('word/document.xml')!.async('string');
+      const taggedXml = await xml(tagged);
+      expect(taggedXml).toBe(await xml(plain));
+      expect(taggedXml).not.toContain('zz-');
     }
   });
 });

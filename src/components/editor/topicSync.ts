@@ -1,5 +1,6 @@
 import { sharedState, stateOfRow } from '@/library/sharedTags';
 import {
+  changeEdit,
   matchEdit,
   otherCopyWrites,
   retagQuestion,
@@ -110,10 +111,10 @@ export function setQuestionTags(
 
 /**
  * The Topic row as one list (kept until the per-part row lands): the question's tags set
- * to `tags`, read against `shown` (the list the row showed, `useShownTags`). The change
- * travels as `matchEdit(shown, tags)` over the whole question, so on a question tagged
- * per part every part gets an added topic and loses a removed one; free tags stay on the
- * question.
+ * to `tags`, read against `shown` (the list the row showed, `useShownTags`). Without parts
+ * the change travels as `matchEdit(shown, tags)`, as it always did; on a question tagged
+ * per part as `changeEdit` over the whole question, so every part gets an added topic and
+ * loses a removed one, and free tags stay on the question.
  */
 export function setQuestionTopics(
   questionId: string,
@@ -127,8 +128,10 @@ export function setQuestionTopics(
   const before = shown ? stringTags(shown) : derivedTags(state);
   const after = stringTags(tags ?? []);
   // Without parts the row's list is the question's whole state; with them, the row showed a
-  // derived list, so the edit reads the question's own state.
-  const base = shown && state.slots.length === 0 ? { tags: before, slots: [] } : undefined;
+  // derived list, so the edit reads the question's own state and carries only the change
+  // (an added topic to every part, a removed one off every part).
+  if (state.slots.length > 0) return setQuestionTags(questionId, changeEdit(before, after), deps);
+  const base = shown ? { tags: before, slots: [] } : undefined;
   return setQuestionTags(questionId, matchEdit(before, after), deps, base);
 }
 
