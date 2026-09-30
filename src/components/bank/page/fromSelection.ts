@@ -6,6 +6,7 @@ import { rollupTopic, topicOf } from '@/model/topics';
 import type { Question, Worksheet } from '@/model/types';
 import { getQuestionType } from '@/registry';
 import type { WorksheetStore } from '@/storage/types';
+import { uniquePicks } from './addToOpen';
 
 /** A picked question and the document it was read from. */
 export interface PickedQuestion {
@@ -37,11 +38,12 @@ export async function readPicks(
  * "New worksheet from these": a classroom worksheet (no sections, so nothing reorders
  * them) holding a copy of each pick, numbered in the order picked. Copies get fresh ids
  * and keep `lineage` (`copyQuestion`); a type this build does not know is left out, as
- * `insertQuestionCopies` does. Titled and named after the topic when every pick shares
- * one; otherwise named `BANK_WORKSHEET_NAME` and left untitled.
+ * `insertQuestionCopies` does, and so is a second copy of a question already picked
+ * (`uniquePicks`). Titled and named after the topic when every pick shares one; otherwise
+ * named `BANK_WORKSHEET_NAME` and left untitled.
  */
 export function worksheetFromPicks(picks: readonly PickedQuestion[]): Worksheet {
-  const known = picks.filter((pick) => getQuestionType(pick.question.type));
+  const known = uniquePicks(picks).filter((pick) => getQuestionType(pick.question.type));
   const topic = sharedTopic(known.map((pick) => pick.question));
   const base = createWorksheetFrom({
     documentType: 'classroom',

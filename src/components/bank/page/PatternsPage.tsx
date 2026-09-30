@@ -7,6 +7,7 @@ import type { PatternId, PatternItem } from '@/library/patterns';
 import { cleanPatternName, matchPatternName, PATTERN_NAME_MAX, samePatternName } from '@/model/patterns';
 import { TOPICS, topicOf } from '@/model/topics';
 import { listQuestionTypes } from '@/registry';
+import { escapeClears } from '../escapeClears';
 import { typeName } from './bankPage';
 
 type Confirm = { kind: 'merge'; item: PatternItem; into: PatternItem } | { kind: 'delete'; item: PatternItem };
@@ -408,6 +409,7 @@ function NewPattern({
         aria-label="題型 name"
         placeholder="e.g. Calculate PED from a change in TR"
         onChange={(event) => setName(event.target.value)}
+        onKeyDown={(event) => void escapeClears(event, name, () => setName(''))}
         className="h-8 min-w-[220px] flex-1 rounded-lg border border-line bg-surface px-2.5 text-[12.5px] text-ink outline-none placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
       />
       <Button size="sm" type="submit" variant="primary" disabled={busy || !clean || Boolean(exists)}>

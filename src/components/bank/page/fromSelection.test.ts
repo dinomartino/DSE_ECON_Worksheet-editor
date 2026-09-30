@@ -35,6 +35,16 @@ describe('worksheetFromPicks', () => {
     expect(made.satOn).toBeUndefined();
   });
 
+  it('holds one copy of a question picked twice (two copies of it ticked)', () => {
+    const q = choiceQuestion('Picked in two papers');
+    const made = worksheetFromPicks([
+      { question: q, fromDocId: 'doc-a' },
+      { question: copyQuestion(q, 'doc-a'), fromDocId: 'doc-b' },
+    ]);
+    expect(made.questions).toHaveLength(1);
+    expect(made.questions[0].lineage).toMatchObject({ rootId: q.id, fromDocId: 'doc-a' });
+  });
+
   it('leaves out a question of a type this build does not know', () => {
     const unknown = { ...choiceQuestion('from the future'), type: 'hologram' } as unknown as ReturnType<typeof choiceQuestion>;
     expect(worksheetFromPicks([{ question: unknown, fromDocId: 'x' }]).questions).toEqual([]);
@@ -121,7 +131,7 @@ describe('readPicks', () => {
 
   it('and Add to the open paper does too', async () => {
     useWorksheetStore.setState({ worksheet: docWith([partsQuestion('Already here')]), past: [], future: [], readOnly: false });
-    const [id] = addPicksToOpenDocument(await readPicks(store, [homeRow]));
+    const { inserted: [id] } = addPicksToOpenDocument(await readPicks(store, [homeRow]));
     expect(useWorksheetStore.getState().worksheet.questions.find((q) => q.id === id)?.tags).toEqual(['C', 'C.ped', 'mock 2025']);
   });
 });

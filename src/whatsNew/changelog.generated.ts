@@ -16,17 +16,20 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 - **Tag questions with DSE topics.** Pick a topic (A–J and the electives, or your own
   free tag) in the Edit panel. Tags never print. A free tag can't look like a topic code
   (such as "K" or "C.ped"), contain "::" or start with "@"; those are kept for topics.
-- **Say which classes sat a paper, and when.** In Setup, list the classes (5A, 5B) and
-  the date it was sat. The question bank counts a paper as used only once it names a
+- **Say which classes sat a paper, and when.** In Setup, add the classes (type 5A and press
+  Enter or a comma after each) and the date it was sat. The question bank counts a paper as used only once it names a
   class, and knows that 4A last year and 5A this year are the same students, so "not used
   with" follows a year group up the school (shown as DSE 2027 and so on). Tagging or
   correcting an old paper no longer makes it look used this year.
-- **Copy questions to a question bank from the outline.** Use a question's ⋯ menu to copy it to a bank (or start a new one); after you improve a question, "Update bank copy" refreshes the bank's version, and "Treat as a new question" cuts a copy loose from its origin. Banks show as "Question bank" in your list of documents.
+- **Copy questions to a question bank from the outline.** Use a question's ⋯ menu to copy it to a bank (or start a new one); after you improve a question, "Update bank copy" refreshes the bank's version, and "Treat as a new question" cuts a copy loose from its origin. A new bank asks for its name, and the list of banks tells two alike apart. A bank that already has the question says so instead of taking a second copy, and offers "Update bank copy" when your version differs.
 - **Question bank 題庫, its own screen**: open it from the start screen to see every
   question from your worksheets as topic cards (how many of each, and which topics are
   thin) under a coverage bar across the topics. Open a topic to read its questions one by one at print size, in English, 中文 or
   both, Student or Teacher version, with the list grouped by sub-topic (hide it for more
-  room). Tick questions to make a new worksheet from them or add them to your last one.
+  room). Tick questions to make a new worksheet from them or add them to the worksheet
+  you had open last (if you have not opened one yet, only a new worksheet is offered).
+  Adding skips any question that worksheet already has ("Skipped 1 already in this
+  paper") and opens it at the new questions, highlighted, with one Undo for the lot.
   Picks stay in a list you can reorder (drag, or Alt+↑ ↓), put MCQ before LQ in one click,
   or trim, with the count, marks and MCQ/LQ split as you go. The list keeps while you open
   a question in its worksheet, go Home or reload the page, and empties once the questions

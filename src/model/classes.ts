@@ -59,6 +59,53 @@ export function parseClasses(text: string): { classes: string[]; schoolYearEnd?:
   return { classes, ...(yearEnd !== undefined ? { schoolYearEnd: yearEnd } : {}) };
 }
 
+/**
+ * A class as it is added: a form-led code ("5a", "s5b", "F.4c") in capitals, anything else
+ * as typed. Cosmetic only: classes compare by `classKey` (case-insensitive), so "5a" on an
+ * old paper and "5A" on a new one are one class, and a stored name is never rewritten.
+ */
+export function normaliseClassName(name: string): string {
+  const text = name.trim();
+  return /^(?:[sf]\.?)?[1-6][a-z]{0,2}$/i.test(text) ? text.toUpperCase() : text;
+}
+
+const CLASS_SEPARATOR = /[,，、;；/\s]/;
+
+/**
+ * The Classes box, where each class becomes a chip. Enter, a comma (or space) or leaving
+ * the box commits what is typed (`final`); while typing, only what comes before the last
+ * separator is committed and the rest stays in the box. New names are tidied
+ * (`normaliseClassName`), a class already listed (by `classKey`) is not added twice, and
+ * the classes already there are returned untouched.
+ */
+export function commitClassInput(
+  existing: readonly string[],
+  typed: string,
+  final: boolean,
+): { classes: string[]; rest: string } {
+  let cut = typed.length;
+  if (!final) {
+    cut = -1;
+    for (let i = typed.length - 1; i >= 0; i -= 1) {
+      if (CLASS_SEPARATOR.test(typed[i])) {
+        cut = i + 1;
+        break;
+      }
+    }
+    if (cut < 0) return { classes: [...existing], rest: typed };
+  }
+  const classes = [...existing];
+  const seen = new Set(existing.map(classKey));
+  for (const name of parseClasses(typed.slice(0, cut)).classes) {
+    const tidy = normaliseClassName(name);
+    const key = classKey(tidy);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    classes.push(tidy);
+  }
+  return { classes, rest: final ? '' : typed.slice(cut) };
+}
+
 /** A stored `classes` value, cleaned: trimmed, blanks, repeats and non-strings dropped. Empty → undefined. */
 export function cleanClasses(classes: unknown): string[] | undefined {
   if (!Array.isArray(classes)) return undefined;

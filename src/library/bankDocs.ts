@@ -2,7 +2,7 @@ import { createWorksheet } from '@/model/factories';
 import { copyQuestion, freshIds, rootIdOf } from '@/model/lineage';
 import { bi } from '@/model/text';
 import type { Question, Worksheet } from '@/model/types';
-import { worksheetStore, type WorksheetStore } from '@/storage';
+import { worksheetStore, type WorksheetStore, type WorksheetSummary } from '@/storage';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { contentKey } from './contentKey';
 
@@ -29,35 +29,72 @@ function versionsOf(bankDoc: Worksheet, rootId: string): Question[] {
 
 /**
  * A new, empty bank document: its title and nothing else — no Section A/B headings and no
- * "Answer ALL questions." line, which belong to a paper. Existing banks are not touched.
+ * "Answer ALL questions." line, which belong to a paper. `name` is its filing name (the
+ * teacher's, as a new worksheet's); the printed title stays "Question bank 題庫". Existing
+ * banks are not touched.
  */
-export function createBank(): Worksheet {
+export function createBank(name?: string): Worksheet {
   const { instructions: _paperOnly, ...base } = createWorksheet();
   void _paperOnly;
-  return { ...base, kind: 'bank', title: bi(BANK_NAME.en, BANK_NAME.zh), questions: [], layout: [], flow: [] };
+  const filing = name?.trim();
+  return {
+    ...base,
+    ...(filing ? { name: filing } : {}),
+    kind: 'bank',
+    title: bi(BANK_NAME.en, BANK_NAME.zh),
+    questions: [],
+    layout: [],
+    flow: [],
+  };
+}
+
+/** Where Copy to bank writes: an existing bank's id, or a new bank with this name. */
+export type BankTarget = string | { name?: string };
+
+export interface CopyToBankResult {
+  /** The bank as saved (or, when nothing was copied, as it already was). */
+  bank: Worksheet;
+  copied: number;
+  /** Questions the bank already held a copy of (any version): never copied twice. */
+  already: Question[];
 }
 
 /**
- * Append copies of `questions` to a bank, or to a new one when `bankId` is omitted.
- * Copies get fresh ids and a lineage naming `fromDocId`. Resolves to the bank saved.
+ * Append copies of `questions` to a bank, or to a new one (`{ name }`, or omitted). Copies
+ * get fresh ids and a lineage naming `fromDocId`. A question the bank already holds, in
+ * any version (same `rootId`), is not copied again: it is returned in `already`, and an
+ * edited one is brought up to date by `updateBankCopy`, never by a second copy. Nothing
+ * to copy saves nothing.
  */
 export async function copyToBank(
   questions: Question[],
   fromDocId: string,
-  bankId?: string,
+  to: BankTarget = {},
   io: BankIO = {},
-): Promise<Worksheet> {
+): Promise<CopyToBankResult> {
   const store = io.store ?? worksheetStore;
-  if (bankId !== undefined && bankId === openId(io)) throw new Error('That bank is open; close it first.');
+  if (typeof to === 'string' && to === openId(io)) throw new Error('That bank is open; close it first.');
   let bank: Worksheet;
-  if (bankId === undefined) {
-    bank = createBank();
+  if (typeof to !== 'string') {
+    bank = createBank(to.name);
   } else {
-    const loaded = await store.load(bankId);
+    const loaded = await store.load(to);
     if (!loaded || loaded.kind !== 'bank') throw new Error('That is not a question bank.');
     bank = loaded;
   }
-  const copies = questions.map((q) => copyQuestion(q, fromDocId));
+  const held = new Set(bank.questions.map(rootIdOf));
+  const fresh: Question[] = [];
+  const already: Question[] = [];
+  for (const question of questions) {
+    const root = rootIdOf(question);
+    if (held.has(root)) already.push(question);
+    else {
+      held.add(root);
+      fresh.push(question);
+    }
+  }
+  if (fresh.length === 0) return { bank, copied: 0, already };
+  const copies = fresh.map((q) => copyQuestion(q, fromDocId));
   const next: Worksheet = {
     ...bank,
     questions: [...bank.questions, ...copies],
@@ -65,19 +102,69 @@ export async function copyToBank(
     updatedAt: new Date().toISOString(),
   };
   await store.save(next);
-  return next;
+  return { bank: next, copied: copies.length, already };
+}
+
+
+/**
+ * What a bank holds of this question: no version of it (`none`), one saying exactly what
+ * it says now (`same`), or only other versions (`differs`: "Update bank copy" applies).
+ * Copies have fresh ids, so the match is by `rootId`, then `contentKey`.
+ */
+export function bankHolds(question: Question, bankDoc: Worksheet): 'none' | 'same' | 'differs' {
+  const versions = versionsOf(bankDoc, rootIdOf(question));
+  if (versions.length === 0) return 'none';
+  const key = contentKey(question);
+  return versions.some((v) => contentKey(v) === key) ? 'same' : 'differs';
 }
 
 /**
  * Whether the bank holds a version of this question, and none of them says what it says
- * now. Copies have fresh ids, so the match is by `rootId`, not id. False when the bank has
- * no version of it at all (nothing to update) or already holds this exact content.
+ * now. False when the bank has no version of it at all (nothing to update) or already
+ * holds this exact content.
  */
 export function bankCopyDiffers(question: Question, bankDoc: Worksheet): boolean {
-  const versions = versionsOf(bankDoc, rootIdOf(question));
-  if (versions.length === 0) return false;
-  const key = contentKey(question);
-  return versions.every((v) => contentKey(v) !== key);
+  return bankHolds(question, bankDoc) === 'differs';
+}
+
+/**
+ * A new bank's suggested name: "Question bank", or the first "Question bank N" no bank
+ * has yet, so two banks are never made alike by default.
+ */
+export function nextBankName(existing: readonly string[]): string {
+  const taken = new Set(existing.map((name) => name.trim().toLowerCase()));
+  if (!taken.has(BANK_NAME.en.toLowerCase())) return BANK_NAME.en;
+  for (let n = 2; ; n += 1) {
+    const name = `${BANK_NAME.en} ${n}`;
+    if (!taken.has(name.toLowerCase())) return name;
+  }
+}
+
+export interface BankChoice {
+  id: string;
+  name: string;
+  /** "12 questions"; a name two banks share also gets the date it was last saved. */
+  detail: string;
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** "29 Sep 2026", the same in every browser (ICU's en-GB says "Sept" in some). */
+const day = (when: number) => {
+  const date = new Date(when);
+  return `${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+};
+
+/** The banks a picker lists, by name, with enough beside each to tell two alike apart. */
+export function bankChoices(banks: readonly Pick<WorksheetSummary, 'id' | 'title' | 'updatedAt' | 'questionCount'>[]): BankChoice[] {
+  const named = new Map<string, number>();
+  for (const bank of banks) named.set(bank.title.trim().toLowerCase(), (named.get(bank.title.trim().toLowerCase()) ?? 0) + 1);
+  return banks.map((bank) => {
+    const count = bank.questionCount;
+    const parts = count === undefined ? [] : [`${count} ${count === 1 ? 'question' : 'questions'}`];
+    const when = Date.parse(bank.updatedAt);
+    if ((named.get(bank.title.trim().toLowerCase()) ?? 0) > 1 && !Number.isNaN(when)) parts.push(`saved ${day(when)}`);
+    return { id: bank.id, name: bank.title, detail: parts.join(' · ') };
+  });
 }
 
 /**

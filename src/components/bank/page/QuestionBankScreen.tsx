@@ -21,12 +21,13 @@ import { registerPatterns, renameRegisteredPattern, unregisterPattern, usePatter
 import { holdsPatterns } from '@/model/patterns';
 import type { BankRow } from '@/library/types';
 import { useBank } from '@/library/useBank';
+import { escapeClears } from '@/components/bank/escapeClears';
 import { topicOf } from '@/model/topics';
 import type { LanguageMode, VersionMode, Worksheet } from '@/model/types';
 import { worksheetStore, type WorksheetSummary } from '@/storage';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { addPicksToOpenDocument } from './addToOpen';
-import { afterOpen, tagIndexOf, useBankReturn } from './bankReturn';
+import { addPicksToOpenDocument, nothingAddedText, splitAlreadyInPaper } from './addToOpen';
+import { afterOpen, revealQuestion, tagIndexOf, useBankReturn } from './bankReturn';
 import { useBankCart } from './bankCart';
 import {
   activeFilters,
@@ -349,9 +350,19 @@ export function QuestionBankScreen({
         onError('Those questions are no longer saved here.');
         return;
       }
-      // Opened the start screen's way, then inserted through the store (`addToOpen.ts`).
+      // All already there: stay here and say so. The open re-checks against what it loads.
+      const saved = await worksheetStore.load(target.id).catch(() => undefined);
+      const { fresh, skipped } = saved ? splitAlreadyInPaper(saved, picked) : { fresh: picked, skipped: [] };
+      if (fresh.length === 0) {
+        onNotice(nothingAddedText(skipped.length, target.title));
+        return;
+      }
+      // Opened the start screen's way, then inserted through the store (`addToOpen.ts`),
+      // scrolled to the first copy once the sheets are laid out.
       onOpenDocument(target.id, () => {
-        if (addPicksToOpenDocument(picked).length > 0) useBankCart.getState().reset();
+        const { inserted } = addPicksToOpenDocument(picked);
+        if (inserted.length > 0) useBankCart.getState().reset();
+        if (inserted[0]) revealQuestion(inserted[0]);
       });
     } finally {
       setBusy(false);
@@ -450,10 +461,8 @@ export function QuestionBankScreen({
       (tag === 'INPUT' && (target as HTMLInputElement).type === 'checkbox');
 
     if (event.key === 'Escape') {
-      if (typing) {
-        if (target === searchRef.current && filters.text) return; // the field clears itself
-        (target as HTMLElement).blur();
-      }
+      // A field holding text took its Esc already (`escapeClears`); an empty one lets go.
+      if (typing) (target as HTMLElement).blur();
       goUp();
       return;
     }
@@ -598,7 +607,8 @@ export function QuestionBankScreen({
               }
               onChange={(event) => onSearch(event.target.value)}
               onKeyDown={(event) => {
-                if (event.key === 'Escape' && filters.text) onSearch('');
+                // Esc with text clears only; an empty field's Esc goes up a level (`handleKey`).
+                if (escapeClears(event, filters.text, () => onSearch(''))) return;
                 if (event.key === 'ArrowDown' && level.kind === 'review') {
                   // From the field straight into the list.
                   event.currentTarget.blur();

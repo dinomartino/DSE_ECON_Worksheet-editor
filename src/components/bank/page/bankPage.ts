@@ -369,8 +369,9 @@ export const rowKey = (row: Pick<BankRow, 'docId' | 'questionId'>) => `${row.doc
 /* ------------------------------------------------------------------------------------ */
 
 /**
- * Where "Add to …" puts the picks: the document open last in this session if it is still
- * saved, else the most recently edited paper. Never a bank document (its rows say so).
+ * Where "Add to …" puts the picks: the document open last in this session, if it is still
+ * saved. Never a guess (the newest paper may be the wrong kind entirely): none opened, or a
+ * bank (its rows say so), and there is no "Add to", only "New worksheet from these".
  */
 export function addTarget(
   summaries: readonly WorksheetSummary[],
@@ -379,7 +380,7 @@ export function addTarget(
 ): WorksheetSummary | undefined {
   const banks = new Set(rows.filter((row) => row.docKind === 'bank').map((row) => row.docId));
   const usable = summaries.filter((summary) => !banks.has(summary.id));
-  return usable.find((summary) => summary.id === lastOpenId) ?? usable[0];
+  return usable.find((summary) => summary.id === lastOpenId);
 }
 
 /** "11 questions · 3 worksheets · 1 bank". */

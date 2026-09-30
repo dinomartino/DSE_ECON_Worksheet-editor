@@ -39,7 +39,7 @@ import {
   versionLetters,
 } from '@/model/versions';
 import { targetOf } from '@/model/paperSummary';
-import { cleanClasses, isIsoDate, parseClasses } from '@/model/classes';
+import { cleanClasses, commitClassInput, isIsoDate } from '@/model/classes';
 import { cohortLabel } from '@/library/cohort';
 import { paperClasses } from '@/library/tabFilters';
 import type { Band, HeaderFooter, LanguageMode, PageMargins, PaperSize, PaperTarget } from '@/model/types';
@@ -47,6 +47,7 @@ import type { AnyQuestionTypeDefinition } from '@/registry/types';
 import { useWorksheetStore, type BandScope } from '@/store/worksheetStore';
 import { BandPreview, BandPresetCard } from './BandPreview';
 import { BiTextField } from './BiTextField';
+import { CloseIcon } from '@/components/ui/icons';
 
 /**
  * Everything decided once per document, in one dialog.
@@ -302,21 +303,25 @@ function typeLabel(definition: AnyQuestionTypeDefinition, language: LanguageMode
 
 /**
  * Who sat this paper and when (`model/classes.ts`), for the question bank's "used with".
- * No classes = a draft the bank never counts as a use. The classes box keeps what is typed
- * while focused and stores the parsed list, so "5A, " is not tidied away mid-word.
+ * No classes = a draft the bank never counts as a use. Each class is a chip: Enter, a
+ * comma or leaving the box commits what is typed (`commitClassInput`), Backspace in an
+ * empty box takes the last one off.
  */
 function BankField() {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const updateWorksheet = useWorksheetStore((s) => s.updateWorksheet);
-  const [typing, setTyping] = useState<string | undefined>();
-  const stored = cleanClasses(worksheet.classes);
+  const [draft, setDraft] = useState('');
+  const stored = cleanClasses(worksheet.classes) ?? [];
   const refs = paperClasses(worksheet);
   const cohorts = [...new Set(refs.flatMap((ref) => (ref.cohort !== undefined ? [cohortLabel(ref.cohort)] : [])))];
   const satOn = isIsoDate(worksheet.satOn) ? worksheet.satOn : '';
-  const setClasses = (text: string) => {
-    setTyping(text);
-    const next = cleanClasses(parseClasses(text).classes);
-    if ((next ?? []).join('\u0000') !== (stored ?? []).join('\u0000')) updateWorksheet({ classes: next });
+  const saveClasses = (next: string[]) => {
+    if (next.join('\u0000') !== stored.join('\u0000')) updateWorksheet({ classes: next.length > 0 ? next : undefined });
+  };
+  const commit = (typed: string, final: boolean) => {
+    const { classes, rest } = commitClassInput(stored, typed, final);
+    saveClasses(classes);
+    setDraft(rest);
   };
   const status =
     refs.length === 0
@@ -331,15 +336,39 @@ function BankField() {
     >
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <input
-            type="text"
-            aria-label="Classes"
-            value={typing ?? (stored ?? []).join(', ')}
-            placeholder="e.g. 5A, 5B"
-            onChange={(event) => setClasses(event.target.value)}
-            onBlur={() => setTyping(undefined)}
-            className="h-8 w-44 rounded-lg border border-line bg-surface px-2 text-xs text-ink outline-none transition-colors duration-150 ease-out-soft placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
-          />
+          <div className="flex min-h-8 w-64 flex-wrap items-center gap-1 rounded-lg border border-line bg-surface px-1.5 py-1 transition-colors duration-150 ease-out-soft focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/25">
+            {stored.map((name, index) => (
+              <span key={`${name}-${index}`} className="inline-flex h-6 items-center gap-0.5 rounded-md bg-surface-sunken pl-1.5 text-xs text-ink">
+                {name}
+                <button
+                  type="button"
+                  aria-label={`Remove class ${name}`}
+                  onClick={() => saveClasses(stored.filter((_, at) => at !== index))}
+                  className="flex h-6 w-5 cursor-pointer items-center justify-center rounded-md text-ink-subtle transition-colors duration-150 ease-out-soft hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                  <CloseIcon size={10} />
+                </button>
+              </span>
+            ))}
+            <input
+              type="text"
+              aria-label="Classes"
+              value={draft}
+              placeholder={stored.length === 0 ? 'e.g. 5A, 5B' : 'Add a class'}
+              onChange={(event) => commit(event.target.value, false)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  commit(draft, true);
+                } else if (event.key === 'Backspace' && draft === '' && stored.length > 0) {
+                  event.preventDefault();
+                  saveClasses(stored.slice(0, -1));
+                }
+              }}
+              onBlur={() => commit(draft, true)}
+              className="h-6 min-w-[4.5rem] flex-1 bg-transparent px-1 text-xs text-ink outline-none placeholder:text-ink-subtle"
+            />
+          </div>
           <label className="flex items-center gap-2 text-xs text-ink-muted">
             Sat on
             <input

@@ -179,12 +179,14 @@ describe('traySummary', () => {
 describe('targets', () => {
   const summary = (id: string, updatedAt: string, questionCount = 1): WorksheetSummary => ({ id, title: id, updatedAt, questionCount });
 
-  it('adds to the document open last, else the newest paper, never a bank', () => {
+  it('adds to the document open last, never a guessed one, never a bank', () => {
     const summaries = [summary('bank', '3'), summary('new', '2'), summary('old', '1')];
     const rows = [row({ docId: 'bank', docKind: 'bank' })];
     expect(addTarget(summaries, rows, 'old')?.id).toBe('old');
-    expect(addTarget(summaries, rows, 'gone')?.id).toBe('new');
-    expect(addTarget(summaries, rows, 'bank')?.id).toBe('new');
+    // Nothing opened this session (or it is gone, or a bank): no guess.
+    expect(addTarget(summaries, rows, 'gone')).toBeUndefined();
+    expect(addTarget(summaries, rows, 'bank')).toBeUndefined();
+    expect(addTarget(summaries, rows, undefined)).toBeUndefined();
     expect(addTarget([], rows, undefined)).toBeUndefined();
   });
 });
