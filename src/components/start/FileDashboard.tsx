@@ -167,7 +167,9 @@ export function FileDashboard({
         </span>
       </div>
 
-      <div className={showFolders ? 'mt-4 flex flex-col gap-x-8 gap-y-3 md:flex-row' : ''}>
+      {/* The folder column needs `xl`: beside it at 1024 the list was a 288px strip, one
+          card wide, and its controls wrapped. Narrower, the folders are a row of chips. */}
+      <div className={showFolders ? 'mt-4 flex flex-col gap-x-8 gap-y-3 xl:flex-row' : ''}>
         {showFolders && folders && folderActions && (
           <FolderNav
             folders={folders}
@@ -182,8 +184,10 @@ export function FileDashboard({
           {/* The controls only appear once there is something to control; on an empty
               desk they would be four inert widgets around a sentence. */}
           {loaded && summaries.length > 0 && (
-            <div className={`${showFolders ? '' : 'mt-4 '}flex flex-wrap items-center gap-x-3 gap-y-2`}>
-              <label className="relative min-w-[200px] flex-1">
+            // One row from 1024 up: order and view are icon toggles, named by aria-label
+            // and tooltip, so the words go to the kind filter, which needs them.
+            <div className={`${showFolders ? '' : 'mt-4 '}flex flex-wrap items-center gap-x-2 gap-y-2`}>
+              <label className="relative min-w-[140px] flex-1">
                 <span className="sr-only">Search saved documents</span>
                 <input
                   type="search"
@@ -211,23 +215,23 @@ export function FileDashboard({
                 ]}
               />
               <span aria-hidden className="h-4 w-px bg-line" />
-              <Segmented<SortOrder>
+              <IconChoice<SortOrder>
                 label="Order"
                 value={query.sort}
                 onChange={(sort) => setQuery((q) => ({ ...q, sort }))}
                 options={[
-                  { value: 'recent', label: 'Recent', title: 'Most recently edited first' },
-                  { value: 'name', label: 'A–Z', title: 'By name' },
+                  { value: 'recent', label: 'Recent', title: 'Recent: last edited first', icon: <ClockGlyph /> },
+                  { value: 'name', label: 'A–Z', title: 'A–Z: by name', icon: <AzGlyph /> },
                 ]}
               />
               <span aria-hidden className="h-4 w-px bg-line" />
-              <Segmented<DashboardView>
+              <IconChoice<DashboardView>
                 label="View"
                 value={view}
                 onChange={chooseView}
                 options={[
-                  { value: 'grid', label: 'Pages', title: 'First pages, as a grid' },
-                  { value: 'list', label: 'List', title: 'A compact list' },
+                  { value: 'grid', label: 'Pages', title: 'Pages: first pages, as a grid', icon: <GridGlyph /> },
+                  { value: 'list', label: 'List', title: 'List: a compact list', icon: <RowsGlyph /> },
                 ]}
               />
             </div>
@@ -266,7 +270,10 @@ export function FileDashboard({
               )}
             </div>
           ) : view === 'grid' ? (
-            <ul className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(168px,1fr))] gap-x-6 gap-y-8">
+            // Fixed-width tracks: one card is the same size as one of many, at any width.
+            // 168px keeps three across at 1024 and beside the folders at 1280. On a phone
+            // the cards share the width two across instead.
+            <ul className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(136px,1fr))] gap-x-4 gap-y-8 sm:grid-cols-[repeat(auto-fill,168px)]">
               {shown.map((summary, index) => (
                 <DocumentCard
                   key={summary.id}
@@ -328,8 +335,9 @@ function FolderNav({
   );
   const list = sortedFolders(folders);
   return (
-    <nav aria-label="Folders" className="shrink-0 md:w-48">
-      <div className="flex items-center justify-between pb-1 pl-2">
+    <nav aria-label="Folders" className="shrink-0 xl:w-44">
+      {/* As a row of chips (below `xl`) the + stays by its label, not across the pane. */}
+      <div className="flex items-center gap-1 pb-1 pl-2 xl:justify-between">
         <span className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
           Folders
         </span>
@@ -337,7 +345,7 @@ function FolderNav({
           <PlusIcon size={14} />
         </IconButton>
       </div>
-      <ul className="flex flex-wrap gap-1 md:flex-col md:flex-nowrap md:gap-0.5">
+      <ul className="flex flex-wrap gap-1 xl:flex-col xl:flex-nowrap xl:gap-0.5">
         <FolderRow
           name="All documents"
           count={summaries.length}
@@ -369,7 +377,7 @@ function FolderNav({
         ))}
       </ul>
       {list.length === 0 && (
-        <p className="mt-2 hidden pl-2 text-[11px] leading-snug text-ink-subtle md:block">
+        <p className="mt-2 hidden pl-2 text-[11px] leading-snug text-ink-subtle xl:block">
           Group documents by class or term. Press + to make a folder.
         </p>
       )}
@@ -401,7 +409,7 @@ function FolderRow({
       data-folder-drop={dropValue}
       // The drop ring eases in with the fill; it is not the focus ring (that is the
       // button's own, and appears instantly).
-      className={`group relative flex min-w-0 items-center rounded-lg transition-[background-color,box-shadow] duration-150 ease-out-soft md:w-full ${
+      className={`group relative flex min-w-0 items-center rounded-lg transition-[background-color,box-shadow] duration-150 ease-out-soft xl:w-full ${
         over
           ? 'bg-accent-soft ring-2 ring-inset ring-accent'
           : active
@@ -666,6 +674,113 @@ function FolderTag({ name }: { name: string }) {
       <FolderIcon size={11} className="mr-0.5 inline-block align-[-1px]" />
       {name || 'Untitled folder'}
     </>
+  );
+}
+
+/**
+ * `Segmented` with icons for words: the same radios, ink and accent underline, but each
+ * option square. The name is the option's `aria-label`; the tooltip says what it does.
+ */
+function IconChoice<T extends string>({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: T;
+  onChange: (value: T) => void;
+  options: { value: T; label: string; title: string; icon: ReactNode }[];
+}) {
+  return (
+    <div role="radiogroup" aria-label={label} className="inline-flex items-center">
+      {options.map((option) => {
+        const active = option.value === value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            aria-label={option.label}
+            title={option.title}
+            onClick={() => onChange(option.value)}
+            className={`relative flex h-8 w-8 cursor-pointer items-center justify-center rounded-md transition-colors duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
+              active ? 'text-ink' : 'text-ink-muted hover:text-ink'
+            }`}
+          >
+            {option.icon}
+            <span
+              aria-hidden
+              className={`absolute inset-x-2 bottom-0.5 h-0.5 rounded-full bg-accent transition-[opacity,scale] duration-200 ease-out-soft ${
+                active ? 'scale-x-100 opacity-100' : 'scale-x-50 opacity-0'
+              }`}
+            />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function Glyph({ children }: { children: ReactNode }) {
+  return (
+    <svg
+      aria-hidden
+      focusable="false"
+      width={16}
+      height={16}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {children}
+    </svg>
+  );
+}
+
+/** Recent: a clock face. */
+function ClockGlyph() {
+  return (
+    <Glyph>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" />
+    </Glyph>
+  );
+}
+
+/** A–Z: the two letters over a downward arrow. */
+function AzGlyph() {
+  return (
+    <Glyph>
+      <path d="M3.5 11 6.5 3l3 8M4.6 8.2h3.8" />
+      <path d="M3.5 14h6l-6 7h6" />
+      <path d="M17 4v16m-3.5-3.5L17 20l3.5-3.5" />
+    </Glyph>
+  );
+}
+
+/** Pages: four sheets in a grid. */
+function GridGlyph() {
+  return (
+    <Glyph>
+      <rect x="4" y="3.5" width="6.5" height="7.5" rx="1" />
+      <rect x="13.5" y="3.5" width="6.5" height="7.5" rx="1" />
+      <rect x="4" y="13" width="6.5" height="7.5" rx="1" />
+      <rect x="13.5" y="13" width="6.5" height="7.5" rx="1" />
+    </Glyph>
+  );
+}
+
+/** List: stacked rows. */
+function RowsGlyph() {
+  return (
+    <Glyph>
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </Glyph>
   );
 }
 

@@ -109,6 +109,10 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   show "More below" when a setting is out of view; click it to scroll. In Export, the two
   version choices are now "Student or teacher copy" and "Shuffled versions". In AI
   settings, the model list shows each model's name in full with its details underneath.
+- **A tidier start screen on smaller laptops.** Worksheet previews are one steady size
+  however many you have, the search, filter, order and view controls fit on one line at
+  1024 pixels wide, and What's new, Send feedback and Back up now stay easy to read at
+  the bottom of the left panel.
 - **A new worksheet asks for its name first**, so it no longer appears as Untitled in
   your list. The name is for filing and the file name, and does not print on the paper.
   A duplicated worksheet is now listed as "(copy)" of that name.
