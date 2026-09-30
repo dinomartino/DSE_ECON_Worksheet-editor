@@ -97,7 +97,7 @@ function scaledNumbers(text: string): Array<{ group: string; value: number }> {
 
 /** Digit groups the output may leave out: a kept duration or clock time, the same amount on
  *  another scale (320萬 for 3.2 million), a count or ordinal as a Chinese numeral (兩個原因,
- *  第二季), or any small count in instructions and furniture ("Answer any 2" → 任答兩題). */
+ *  第二季), or any small count in instructions and furniture ("Answer any 2" → 選答兩題). */
 function satisfiedNumbers(kind: SlotKind, source: string, output: string): Set<string> {
   const out = new Set<string>();
   const minutes = parseDuration(source);

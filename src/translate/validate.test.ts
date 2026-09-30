@@ -96,7 +96,7 @@ describe('validateItem', () => {
     expect(codes('Time allowed: 1 hour 30 minutes', '時限：1小時30分鐘', 'coverLine')).toEqual([]);
     expect(codes('Time allowed: 1 hour 30 minutes', '時限：一小時三十分', 'coverLine')).toEqual([]);
     expect(codes('Time allowed: 1 hour 30 minutes', '時限：1小時', 'coverLine')).toEqual(expect.arrayContaining(['numbers:warn', 'duration:warn']));
-    expect(codes('Answer any 2 questions.', '任答兩題。', 'instructions')).toEqual([]);
+    expect(codes('Answer any 2 questions.', '選答兩題。', 'instructions')).toEqual([]);
   });
 
   it('keeps clock times written the Hong Kong way, and the cover’s own timing lines', () => {
