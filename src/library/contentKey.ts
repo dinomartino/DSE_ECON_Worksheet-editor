@@ -27,7 +27,7 @@ function stableJson(value: unknown): string {
 }
 
 /** cyrb53: a fast 53-bit string hash, as base-36. Not cryptographic; collisions are negligible here. */
-function hash(text: string): string {
+export function hash(text: string): string {
   let h1 = 0xdeadbeef;
   let h2 = 0x41c6ce57;
   for (let i = 0; i < text.length; i++) {

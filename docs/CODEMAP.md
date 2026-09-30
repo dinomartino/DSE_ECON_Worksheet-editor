@@ -226,7 +226,7 @@ scan; rebuildable, so no teacher's work lives in it.
 - `src/model/classes.ts:dateOfUse` · `:parseClasses` · `:foldLegacyClassTag` — who sat a paper (`classes`, `satOn`) and when it counts from; `src/library/cohort.ts:cohortOf` · `:sameStudents` — the derived DSE cohort the anti-repeat filters match by
 - `src/library/useBank.ts:useBank` — the one read both surfaces use, over the persistent index below
 - `src/library/bankIndex.ts:createBankIndex` — stored rows first, then reconcile `list()` against `updatedAt` stamps (idle chunks, newest first), then the change feed; wakes on focus for other tabs
-- `src/library/bankBackend.ts:BankIndexBackend` · `:createJsonFileBackend` · `:createMemoryBackend` · `:INDEX_FORMAT` — where rows persist; unreadable is dropped and rebuilt
+- `src/library/bankBackend.ts:BankIndexBackend` · `:createJsonFileBackend` · `:createMemoryBackend` · `:INDEX_FORMAT` · `:STORED_INDEX_FORMAT` — where rows persist; a bad entry drops only its document, another format key rebuilds all. The key folds a hash of the topic labels; bump `INDEX_FORMAT` when `rowsOf` output changes (`src/library/rowsGolden.test.ts` fails to say so)
 - `src/library/idbBackend.ts:createIdbBackend` — web: IndexedDB `econ-worksheet-library` (`rows` keyed `[docId, questionId]`, `stamps`, `meta`)
 - `src/storage/changes.ts:withChangeFeed` · `:onStoreChange` — the store singleton announces each successful mutation (`StoreChange`)
 - `src/storage/fileStore.ts:libraryIndexFile` — desktop: `worksheets/library/index.json`

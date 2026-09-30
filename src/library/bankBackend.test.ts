@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { summarize } from '@/storage/document';
-import { createJsonFileBackend, INDEX_FORMAT, isBankRow, type TextFilePort } from './bankBackend';
+import { createJsonFileBackend, STORED_INDEX_FORMAT, isBankRow, type TextFilePort } from './bankBackend';
 import { docsFromRecords } from './idbBackend';
 import { rowsOf } from './indexer';
 import { choiceQuestion, docWith, row } from './testKit';
@@ -44,7 +44,7 @@ describe('createJsonFileBackend', () => {
   it('round-trips documents, keeping printed order', async () => {
     const { port, file } = memoryFile();
     await createJsonFileBackend(port).commit([[doc.id, stored]], []);
-    expect(JSON.parse(file.text!).format).toBe(INDEX_FORMAT);
+    expect(JSON.parse(file.text!).format).toBe(STORED_INDEX_FORMAT);
 
     const reloaded = await createJsonFileBackend(port).load();
     expect(reloaded?.get(doc.id)?.rows.map((r) => r.excerpt.en)).toEqual(['One', 'Two', 'Three']);
@@ -72,7 +72,7 @@ describe('createJsonFileBackend', () => {
 
   it.each([
     ['not JSON', '{oops'],
-    ['another format', JSON.stringify({ format: INDEX_FORMAT + 1, docs: {} })],
+    ['another format', JSON.stringify({ format: 'another', docs: {} })],
   ])('drops a file holding %s, so the index rebuilds', async (_label, text) => {
     const { port, file } = memoryFile(text);
     expect(await createJsonFileBackend(port).load()).toBeUndefined();
@@ -87,7 +87,7 @@ describe('createJsonFileBackend', () => {
   ])('drops only the document holding %s; the rest load', async (_label, bad) => {
     const good = docWith([choiceQuestion('Kept')]);
     const text = JSON.stringify({
-      format: INDEX_FORMAT,
+      format: STORED_INDEX_FORMAT,
       docs: { bad, [good.id]: { updatedAt: good.updatedAt, rows: rowsOf(good, summarize(good)) } },
     });
     const { port, file } = memoryFile(text);
@@ -104,7 +104,7 @@ describe('createJsonFileBackend', () => {
 });
 
 describe('docsFromRecords (the IndexedDB stores, read)', () => {
-  const format = { key: 'format', value: INDEX_FORMAT };
+  const format = { key: 'format', value: STORED_INDEX_FORMAT };
   const good = docWith([choiceQuestion('A'), choiceQuestion('B')]);
   const goodRows = rowsOf(good, summarize(good));
   const records = (docId: string, rows: unknown[]) => rows.map((row, seq) => ({ docId, questionId: `q${seq}`, seq, row }));
@@ -116,7 +116,7 @@ describe('docsFromRecords (the IndexedDB stores, read)', () => {
   });
 
   it('rejects everything only for another format', () => {
-    expect(docsFromRecords({ key: 'format', value: INDEX_FORMAT + 1 }, [], [])).toBeUndefined();
+    expect(docsFromRecords({ key: 'format', value: 'another' }, [], [])).toBeUndefined();
     expect(docsFromRecords(undefined, [], [])).toBeUndefined();
   });
 

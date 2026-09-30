@@ -2664,7 +2664,9 @@ in-flight values stay local; the store is called on pointer-up.
   reads), with a stamp per document (`updatedAt`). On first use stored rows paint, then a
   reconcile re-indexes only documents whose stamp differs and drops those `list()` no
   longer names; events keep it current (saved/restored → re-index, trashed/removed →
-  drop, cleared → wipe). An `INDEX_FORMAT` mismatch or an unreadable store is dropped and
+  drop, cleared → wipe). A format mismatch (`STORED_INDEX_FORMAT`: the rows version `INDEX_FORMAT` plus a hash of
+  the topic labels, which rows bake into `searchText`; a golden `rowsOf` test says when to
+  bump) or an unreadable store is dropped and
   rebuilt; a stored entry that fails validation costs only its own document — never an
   error at the UI. **Indexing is total**: a tag or `rootId` that is not a string is read
   as absent, and a document that still throws is skipped and logged (no rows, no stamp,

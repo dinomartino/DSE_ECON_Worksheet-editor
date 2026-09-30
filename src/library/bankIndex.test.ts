@@ -7,7 +7,7 @@ import { LocalStorageWorksheetStore } from '@/storage';
 import { withChangeFeed } from '@/storage/changes';
 import { summarize } from '@/storage/document';
 import type { WorksheetStore } from '@/storage/types';
-import { createJsonFileBackend, createMemoryBackend, INDEX_FORMAT, type BankIndexBackend } from './bankBackend';
+import { createJsonFileBackend, createMemoryBackend, STORED_INDEX_FORMAT, type BankIndexBackend } from './bankBackend';
 import { createBankIndex, type BankIndex, type BankSource } from './bankIndex';
 import { installLocalStorage, localFeed } from './bankTestKit';
 import { rowsOf } from './indexer';
@@ -352,7 +352,7 @@ describe('createBankIndex — persistence', () => {
     expect(file.removed).toBe(1);
     expect(excerpts(index)).toEqual(['Rebuilt']);
     const written = JSON.parse(file.text!);
-    expect(written.format).toBe(INDEX_FORMAT);
+    expect(written.format).toBe(STORED_INDEX_FORMAT);
     expect(Object.values(written.docs)).toHaveLength(1);
   });
 

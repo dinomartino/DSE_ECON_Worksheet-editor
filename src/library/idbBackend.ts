@@ -1,4 +1,4 @@
-import { INDEX_FORMAT, isBankRow, type BankIndexBackend, type IndexedDocs } from './bankBackend';
+import { isBankRow, STORED_INDEX_FORMAT, type BankIndexBackend, type IndexedDocs } from './bankBackend';
 import type { BankRow } from './types';
 
 /**
@@ -8,8 +8,8 @@ import type { BankRow } from './types';
  *             (`seq` keeps printed order, which the key order would lose; a document's
  *             rows are deleted by key range, in order before its puts);
  *  - `stamps` `{ docId, updatedAt }`, keyed `docId` — the freshness stamps;
- *  - `meta`   `{ key: 'format', value: INDEX_FORMAT }`.
- * A `DB_VERSION` bump deletes and recreates every store; an `INDEX_FORMAT` mismatch or a
+ *  - `meta`   `{ key: 'format', value: STORED_INDEX_FORMAT }`.
+ * A `DB_VERSION` bump deletes and recreates every store; a `STORED_INDEX_FORMAT` mismatch or a
  * failed read clears them; an unreadable record drops only its own document. A database this build cannot open (a
  * newer build's version, IndexedDB disabled) leaves the backend inert: the index still
  * works, in memory.
@@ -36,13 +36,13 @@ export interface StoredRecords {
 }
 
 /**
- * The stores' contents → stored documents. Only another `INDEX_FORMAT` (or no format)
+ * The stores' contents → stored documents. Only another `STORED_INDEX_FORMAT` (or no format)
  * rejects everything. Otherwise each document stands alone: a malformed stamp or row, a
  * row filed under another document or a row without a stamp drops that document's rows
  * and stamp, and the rest load. A record naming no document at all is ignored.
  */
 export function docsFromRecords(format: unknown, stamps: unknown, records: unknown): StoredRecords | undefined {
-  if ((format as { value?: unknown } | undefined)?.value !== INDEX_FORMAT) return undefined;
+  if ((format as { value?: unknown } | undefined)?.value !== STORED_INDEX_FORMAT) return undefined;
   const docs: IndexedDocs = new Map();
   const bad = new Set<string>();
   for (const stamp of Array.isArray(stamps) ? (stamps as { docId?: unknown; updatedAt?: unknown }[]) : []) {
@@ -121,7 +121,7 @@ export function createIdbBackend(
   async function wipe(handle: IDBDatabase): Promise<void> {
     const tx = handle.transaction(STORES, 'readwrite');
     for (const name of STORES) tx.objectStore(name).clear();
-    tx.objectStore(META).put({ key: 'format', value: INDEX_FORMAT });
+    tx.objectStore(META).put({ key: 'format', value: STORED_INDEX_FORMAT });
     await finished(tx);
   }
 
