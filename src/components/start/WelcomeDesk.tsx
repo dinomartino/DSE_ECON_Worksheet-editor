@@ -9,9 +9,10 @@ import { START_KINDS } from './startKinds';
 /**
  * The desk before anything is saved: a welcome, and the four kinds of paper drawn as
  * the page each one prints, since a first-time teacher knows a Question-Answer Book by
- * its shape sooner than by its name. Each card opens the same new-worksheet form as the
- * panel's rows; the file routes below bring existing work in. Nothing is added to the
- * teacher's list on their behalf.
+ * its shape sooner than by its name. The cards are the one way in while it shows: the
+ * panel drops its own rows until something is saved. Each opens the same new-worksheet
+ * form; the file routes below bring existing work in. Nothing is added to the teacher's
+ * list on their behalf.
  */
 export function WelcomeDesk({
   onCreate,
@@ -73,8 +74,8 @@ export function WelcomeDesk({
               <span lang="zh-HK" className="mt-0.5 block text-[11.5px] leading-snug text-ink-subtle">
                 {kind.titleZh}
               </span>
-              {/* From `xl` only: narrower, a card is ~110px and the panel's rows say it already. */}
-              <span className="mt-1 hidden text-[11px] leading-snug text-ink-muted xl:block">{kind.caption}</span>
+              {/* At every width: the panel has no rows while this shows, so the card says it. */}
+              <span className="mt-1 block text-pretty text-[11px] leading-snug text-ink-muted">{kind.caption}</span>
             </button>
           </li>
         ))}

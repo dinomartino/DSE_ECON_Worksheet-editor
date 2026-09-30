@@ -729,38 +729,20 @@ export function StartScreen({
           {empty ? 'Start your first worksheet.' : 'Start a worksheet, or pick up where you left off.'}
         </h1>
 
-        <section className="mt-9 [@media(max-height:820px)]:mt-6">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
-            Start new
-          </h2>
-          {/* Typographic rows, not icon cards: the four kinds differ by *what they
-              print*, and a sentence says that better than four look-alike glyphs.
-              All four open the same form; the row only preselects the type. */}
-          <div className="mt-3 flex flex-col border-t border-line">
-            {START_KINDS.map((kind) => (
-              <StartRow
-                key={kind.type}
-                title={kind.title}
-                hint={kind.hint}
-                onClick={() => setCreating(kind.type)}
-              />
-            ))}
-          </div>
-          {/* Opening a file is the fifth way in, so it wears the same row — set apart by
-              its icon and a gap, rather than being a stray link under the list. */}
-          <div className="mt-4 flex flex-col border-t border-line">
-            <StartRow
-              icon={<FolderOpenIcon size={16} />}
-              title="Open a file…"
-              hint="A .json worksheet or a backup .zip. Or drop one anywhere here."
-              onClick={() => void importFile()}
-            />
-          </div>
-        </section>
+        <StartNewSection
+          empty={empty}
+          onCreate={setCreating}
+          onOpenFile={() => void importFile()}
+        />
 
         {/* The bank is every question already written, so it is a way *in* too: its own
-            screen, like a document, with ← Home to come back. */}
-        <section className="mt-7 [@media(max-height:820px)]:mt-5">
+            screen, like a document, with ← Home to come back. Alone under the headline
+            while the desk is empty, it takes the list's distance from it. */}
+        <section
+          className={
+            empty ? 'mt-9 [@media(max-height:820px)]:mt-6' : 'mt-7 [@media(max-height:820px)]:mt-5'
+          }
+        >
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
             Reuse questions
           </h2>
@@ -1126,6 +1108,48 @@ export function StartScreen({
       {whatsNew && <WhatsNewDialog onClose={closeWhatsNew} />}
       <WhatsNewOnLaunch ready={loaded} returningUser={summaries.length + trashRows.length > 0} />
     </div>
+  );
+}
+
+/**
+ * The panel's ways to start: the four kinds, then "Open a file…". Absent while the desk
+ * is empty (read and found so), where the welcome's cards are the one way in and a
+ * second list of the same four would only compete with them.
+ */
+export function StartNewSection({
+  empty,
+  onCreate,
+  onOpenFile,
+}: {
+  empty: boolean;
+  onCreate: (type: DocumentType) => void;
+  onOpenFile: () => void;
+}) {
+  if (empty) return null;
+  return (
+    <section className="mt-9 [@media(max-height:820px)]:mt-6">
+      <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
+        Start new
+      </h2>
+      {/* Typographic rows, not icon cards: the four kinds differ by *what they
+          print*, and a sentence says that better than four look-alike glyphs.
+          All four open the same form; the row only preselects the type. */}
+      <div className="mt-3 flex flex-col border-t border-line">
+        {START_KINDS.map((kind) => (
+          <StartRow key={kind.type} title={kind.title} hint={kind.hint} onClick={() => onCreate(kind.type)} />
+        ))}
+      </div>
+      {/* Opening a file is the fifth way in, so it wears the same row — set apart by
+          its icon and a gap, rather than being a stray link under the list. */}
+      <div className="mt-4 flex flex-col border-t border-line">
+        <StartRow
+          icon={<FolderOpenIcon size={16} />}
+          title="Open a file…"
+          hint="A .json worksheet or a backup .zip. Or drop one anywhere here."
+          onClick={onOpenFile}
+        />
+      </div>
+    </section>
   );
 }
 

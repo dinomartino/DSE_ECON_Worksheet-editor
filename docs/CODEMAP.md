@@ -201,7 +201,7 @@ Invariants:
 `src/components/start/NewWorksheetForm.tsx:NewWorksheetForm` — once-per-document decisions.
 
 - `src/components/start/FileDashboard.tsx:FileDashboard` — grid of first pages / list; search, kind, order (the start screen's Question bank entry opens § library's own screen)
-- `src/components/start/WelcomeDesk.tsx:WelcomeDesk` — the desk while nothing is saved: welcome, the four papers sketched as cards (same form as the rows), open a file / restore a backup; `src/components/start/startKinds.ts:START_KINDS` names the four kinds for both
+- `src/components/start/WelcomeDesk.tsx:WelcomeDesk` — the desk while nothing is saved: welcome, the four papers sketched as cards (same form as the rows, which `StartScreen.tsx:StartNewSection` hides while it shows), open a file / restore a backup; `src/components/start/startKinds.ts:START_KINDS` names the four kinds for both
 - `src/components/start/dashboard.ts:visibleSummaries` · `:scopedSummaries` — folder scope, then filter and sort, pure
 - `src/components/start/dashboardDrag.ts:stepDrag` · `:parseDropTarget` — document→folder drag state machine, pure
 - `src/components/start/useDocumentDrag.tsx:useDocumentDrag` — pointer-event drag: capture, ghost, one `drop` on release
