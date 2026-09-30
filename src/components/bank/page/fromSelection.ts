@@ -2,6 +2,7 @@ import { withRowTags } from '@/library/sharedTags';
 import type { BankRow } from '@/library/types';
 import { copyQuestion } from '@/model/lineage';
 import { createWorksheetFrom } from '@/model/newWorksheet';
+import { derivedTags } from '@/model/tagSlots';
 import { rollupTopic, topicOf } from '@/model/topics';
 import type { Question, Worksheet } from '@/model/types';
 import { getQuestionType } from '@/registry';
@@ -22,7 +23,7 @@ export interface PickedQuestion {
  */
 export async function readPicks(
   store: Pick<WorksheetStore, 'load'>,
-  rows: readonly Pick<BankRow, 'docId' | 'questionId' | 'tags'>[],
+  rows: readonly (Pick<BankRow, 'docId' | 'questionId' | 'tags' | 'tagsAt'> & Partial<Pick<BankRow, 'slots' | 'ownTags'>>)[],
 ): Promise<PickedQuestion[]> {
   const docs = new Map<string, Worksheet | undefined>();
   const out: PickedQuestion[] = [];
@@ -62,13 +63,13 @@ export function worksheetFromPicks(picks: readonly PickedQuestion[]): Worksheet 
 /** The filing name of a worksheet made from picks that share no topic. */
 export const BANK_WORKSHEET_NAME = 'Questions from bank';
 
-/** The one coarse topic every question is tagged under, if there is exactly one. */
+/** The one coarse topic every question is tagged under (any part counts), if there is exactly one. */
 export function sharedTopic(questions: readonly Question[]): { en: string; zh: string } | undefined {
   if (questions.length === 0) return undefined;
   let shared: Set<string> | undefined;
   for (const question of questions) {
     const coarse = new Set(
-      (question.tags ?? []).flatMap((tag) => {
+      derivedTags(question).flatMap((tag) => {
         const topic = rollupTopic(tag);
         return topic ? [topic.parent ?? topic.code] : [];
       }),

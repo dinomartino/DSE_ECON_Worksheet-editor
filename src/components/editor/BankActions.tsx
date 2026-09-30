@@ -9,6 +9,7 @@ import {
   updateBankCopy,
   type BankChoice,
 } from '@/library/bankDocs';
+import { withoutLineage } from '@/model/lineage';
 import type { Question } from '@/model/types';
 import { worksheetStore, worksheetTitle, type WorksheetSummary } from '@/storage';
 import { useWorksheetStore } from '@/store/worksheetStore';
@@ -116,12 +117,8 @@ export function useBankActions(question: Question): {
     setPanel(undefined);
     commit((draft) => ({
       ...draft,
-      questions: draft.questions.map((q) => {
-        if (q.id !== question.id) return q;
-        const { lineage: _dropped, ...rest } = q;
-        void _dropped;
-        return rest as Question;
-      }),
+      // Its parts' roots go too (`withoutLineage`): the question is the root of its own copies now.
+      questions: draft.questions.map((q) => (q.id === question.id ? withoutLineage(q) : q)),
     }));
   };
 

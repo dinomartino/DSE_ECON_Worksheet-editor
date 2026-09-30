@@ -91,18 +91,38 @@ export function rootIdOf(question: Pick<Question, 'id' | 'lineage'>): string {
 }
 
 /**
+ * A part's or sub-part's identity across copies: its `rootId`, or its own id for a part
+ * of an original. A `rootId` that is not a string reads as absent, as `rootIdOf` does.
+ */
+export function partRootOf(part: { id: string; rootId?: unknown }): string {
+  const rootId = part.rootId;
+  return typeof rootId === 'string' && rootId ? rootId : part.id;
+}
+
+/**
  * A copy taken from another document: fresh ids, plus the lineage that ties it back to
  * its first ancestor. `rootId` survives a copy of a copy. Only the per-copy fields
  * (`fromDocId`, `copiedAt`) are renewed; any other lineage field (a later build's
  * publisher, licence or source) travels with the copy unchanged.
+ *
+ * Every part and sub-part is stamped with its source's `partRootOf`, read structurally
+ * (the `part` owners of `questionIdOwners`, walked in step on the source and the copy),
+ * so copies agree on "part (b)" however either is later reordered (`model/tagSlots.ts`).
  */
 export function copyQuestion<Q extends Question>(question: Q, fromDocId?: string): Q {
   const lineage = question.lineage;
   const kept = lineage && typeof lineage === 'object' && !Array.isArray(lineage) ? { ...lineage } : {};
   delete (kept as Partial<QuestionLineage>).fromDocId;
   delete (kept as Partial<QuestionLineage>).copiedAt;
+  const copy = freshIds(question);
+  const sources = [...questionIdOwners(question)];
+  const copies = [...questionIdOwners(copy)];
+  sources.forEach((source, index) => {
+    if (source.space !== 'part') return;
+    (copies[index].owner as { rootId?: string }).rootId = partRootOf(source.owner);
+  });
   return {
-    ...freshIds(question),
+    ...copy,
     lineage: {
       ...kept,
       rootId: rootIdOf(question),
@@ -110,4 +130,23 @@ export function copyQuestion<Q extends Question>(question: Q, fromDocId?: string
       copiedAt: new Date().toISOString(),
     },
   };
+}
+
+/**
+ * "Treat as a new question": the question cut loose from its origin. `lineage` goes, and
+ * so does every part's and sub-part's `rootId` (read structurally), so it becomes the
+ * root of its own copies. Its content, ids and tags are kept. The same object when it
+ * carries neither.
+ */
+export function withoutLineage<Q extends Question>(question: Q): Q {
+  const parts = [...questionIdOwners(question)].filter(
+    (entry) => entry.space === 'part' && 'rootId' in entry.owner,
+  );
+  if (!('lineage' in question) && parts.length === 0) return question;
+  const copy = structuredClone(question);
+  delete (copy as Partial<Question>).lineage;
+  for (const { space, owner } of questionIdOwners(copy)) {
+    if (space === 'part') delete (owner as { rootId?: unknown }).rootId;
+  }
+  return copy;
 }

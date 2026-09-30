@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { rowsOf } from '@/library/indexer';
 import { withSharedTags } from '@/library/sharedTags';
-import { choiceQuestion, docWith, partsQuestion, row } from '@/library/testKit';
+import { choiceQuestion, docWith, partedQuestion, partsQuestion, row } from '@/library/testKit';
 import { copyQuestion } from '@/model/lineage';
 import { CURRENT_SCHEMA_VERSION } from '@/model/migrations';
-import type { Question, Worksheet } from '@/model/types';
+import type { Question, StructuredQuestion, Worksheet } from '@/model/types';
 import type { PatternRegistry } from '@/storage/patterns';
 import {
+  everyTag,
   listPatterns,
   patternEdits,
   patternMix,
@@ -16,6 +17,8 @@ import {
   renamePatternEdit,
   resolvePatternName,
   rowHasPattern,
+  rowPattern,
+  rowPatterns,
   setPatternsEdit,
   thenEdit,
 } from './patterns';
@@ -192,6 +195,30 @@ describe('a later build’s sub-topic in the registry', () => {
     };
     expect(listPatterns([], registry).map((p) => p.name)).toEqual(['Shown']);
     expect(listPatterns([], registry, { topic: 'C' }).map((p) => p.name)).toEqual(['Shown']);
+  });
+});
+
+describe('題型 on a question tagged per part', () => {
+  it('lists every 題型 a question carries under a sub-topic, once each', () => {
+    const [lq] = rowsOf(docWith([partedQuestion([{ tags: ['C.ped', 'C.ped::Calculate PED'] }, { tags: ['C.ped', 'C.ped::Explain PED', 'C.ped::calculate  ped'] }])]));
+    expect(rowPatterns(lq, 'C.ped')).toEqual(['Calculate PED', 'Explain PED']);
+    expect(rowPattern(lq, 'C.ped')).toBe('Calculate PED');
+    expect(rowHasPattern(lq, { topic: 'C.ped', typeId: lq.typeId, name: 'Explain PED' })).toBe(true);
+  });
+
+  it('a rename or delete reaches a part list no leaf inherits', async () => {
+    // (a)'s own list is shadowed: both its sub-parts have their own.
+    const question = partedQuestion([{ tags: ['C.ped', 'C.ped::Old'], subs: [['D'], ['E.equity']] }]);
+    const doc = docWith([question]);
+    const rows = withSharedTags(rowsOf(doc));
+    const pattern = { topic: 'C.ped', typeId: rows[0].typeId, name: 'Old' };
+    expect(rowHasPattern(rows[0], pattern)).toBe(false); // not in the derived tags
+    expect(everyTag(rows[0])).toContain('C.ped::Old');
+    const writes = patternWrites(rows, pattern);
+    expect(writes).toHaveLength(1);
+    const saved = new Map([[doc.id, doc]]);
+    await writeTags({ load: async (id) => saved.get(id), save: async (w: Worksheet) => void saved.set(w.id, w) }, writes, removePatternEdit('C.ped', 'Old'));
+    expect((saved.get(doc.id)!.questions[0] as StructuredQuestion).parts[0].tags).toEqual(['C.ped']);
   });
 });
 

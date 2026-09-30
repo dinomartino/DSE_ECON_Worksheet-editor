@@ -1,9 +1,28 @@
 import { describe, expect, it } from 'vitest';
 import { rowsOf } from '@/library/indexer';
-import { choiceQuestion, docWith, partsQuestion, row } from '@/library/testKit';
+import { choiceQuestion, docWith, partedQuestion, partsQuestion, row } from '@/library/testKit';
 import { copyQuestion } from '@/model/lineage';
-import type { Worksheet } from '@/model/types';
-import { addTopics, bulkTopicEdit, copyWrites, removeTopics, replaceTopics, withQuestionTags, writeTags } from './tagWrites';
+import { derivedTags, slotRef, tagStateOf } from '@/model/tagSlots';
+import type { Question, StructuredQuestion, Worksheet } from '@/model/types';
+import { renamePatternEdit } from './patterns';
+import { withSharedTags } from './sharedTags';
+import {
+  addTopics,
+  atSlot,
+  bulkTopicEdit,
+  copyWrites,
+  everywhere,
+  freeTags,
+  inheritAtSlot,
+  isStateEdit,
+  removeTopics,
+  replaceTopics,
+  retagQuestion,
+  thenState,
+  wholeQuestion,
+  withQuestionTags,
+  writeTags,
+} from './tagWrites';
 
 const NOW = '2026-09-29T00:00:00.000Z';
 
@@ -27,7 +46,9 @@ describe('withQuestionTags', () => {
   it('adds without removing, drops an emptied key, and is a no-op when nothing changes', () => {
     const added = withQuestionTags(doc, [target.id, other.id], addTopics(['D']), NOW);
     expect(added.questions[0].tags).toEqual(['C', 'mock 2025', 'D']);
-    expect(added.questions[1].tags).toEqual(['D']);
+    // A question with parts is tagged per part: a whole-question add reaches every part.
+    expect(added.questions[1].tags).toBeUndefined();
+    expect((added.questions[1] as StructuredQuestion).parts.map((part) => part.tags)).toEqual([['D']]);
 
     const cleared = withQuestionTags(doc, [target.id], () => [], NOW);
     expect('tags' in cleared.questions[0]).toBe(false);
@@ -113,15 +134,15 @@ describe('copyWrites', () => {
       row({ rootId: 'r', docId: 'd2', questionId: 'c' }),
     ];
     expect(copyWrites(rows, ['r'])).toEqual([
-      { docId: 'd1', questionId: 'a', shared: [] },
-      { docId: 'd2', questionId: 'c', shared: [] },
+      { docId: 'd1', questionId: 'a', shared: { tags: [], slots: [] } },
+      { docId: 'd2', questionId: 'c', shared: { tags: [], slots: [] } },
     ]);
     expect(copyWrites(rows, new Set(['r', 'x']))).toHaveLength(3);
     expect(copyWrites(rows, [])).toEqual([]);
   });
 
   it('passes on the shared set a row shows, and nothing when the row has no tags field', () => {
-    expect(copyWrites([row({ rootId: 'r', docId: 'd', questionId: 'a', tags: ['C'] })], ['r'])).toEqual([{ docId: 'd', questionId: 'a', shared: ['C'] }]);
+    expect(copyWrites([row({ rootId: 'r', docId: 'd', questionId: 'a', tags: ['C'] })], ['r'])).toEqual([{ docId: 'd', questionId: 'a', shared: { tags: ['C'], slots: [] } }]);
     expect(copyWrites([{ rootId: 'r', docId: 'd', questionId: 'a' }], ['r'])).toEqual([{ docId: 'd', questionId: 'a' }]);
   });
 });
@@ -132,7 +153,7 @@ describe('an edit applied to the shared set (newest change wins)', () => {
   it('makes the copy adopt the edited shared set, not its own stale tags, and keeps a non-string tag', () => {
     const stale = { ...choiceQuestion('Along a straight-line demand curve…', '', ['C', 'C.ped', 7 as unknown as string]), tagsAt: T1 };
     const doc = docWith([stale]);
-    const next = withQuestionTags(doc, [stale.id], removeTopics(['D']), NOW, new Map([[stale.id, ['C', 'D']]]));
+    const next = withQuestionTags(doc, [stale.id], removeTopics(['D']), NOW, new Map([[stale.id, { tags: ['C', 'D'], slots: [] }]]));
     expect(next.questions[0].tags).toEqual(['C', 7]);
     expect(next.questions[0].tagsAt).toBe(NOW);
   });
@@ -141,7 +162,7 @@ describe('an edit applied to the shared set (newest change wins)', () => {
     // This copy already lacks D; a copy the write cannot reach still has it and was stamped later.
     const current = { ...choiceQuestion('Along a straight-line demand curve…', '', ['C']), tagsAt: T1 };
     const doc = docWith([current]);
-    const next = withQuestionTags(doc, [current.id], removeTopics(['D']), NOW, new Map([[current.id, ['C', 'D']]]));
+    const next = withQuestionTags(doc, [current.id], removeTopics(['D']), NOW, new Map([[current.id, { tags: ['C', 'D'], slots: [] }]]));
     expect(next.questions[0].tags).toEqual(['C']);
     expect(next.questions[0].tagsAt).toBe(NOW);
   });
@@ -149,7 +170,7 @@ describe('an edit applied to the shared set (newest change wins)', () => {
   it('leaves a copy alone when the edit changes nothing and it already holds the set', () => {
     const held = { ...choiceQuestion('Along a straight-line demand curve…', '', ['D', 'C']), tagsAt: T1 };
     const doc = docWith([held]);
-    expect(withQuestionTags(doc, [held.id], addTopics(['C']), NOW, new Map([[held.id, ['C', 'D']]]))).toBe(doc);
+    expect(withQuestionTags(doc, [held.id], addTopics(['C']), NOW, new Map([[held.id, { tags: ['C', 'D'], slots: [] }]]))).toBe(doc);
   });
 
   it('writes every copy under one stamp', async () => {
@@ -214,5 +235,128 @@ describe('a tag this build cannot read', () => {
   ])('survives %s without throwing', (_label, edit) => {
     const next = edit(['C', ...odd, 'mock']);
     expect(next).toEqual(expect.arrayContaining(odd));
+  });
+});
+
+describe('writes to a question tagged per part', () => {
+  const T1 = '2026-09-01T00:00:00.000Z';
+  const partTags = (question: Question) => (question as StructuredQuestion).parts.map((part) => part.tags);
+  const subTags = (question: Question) => (question as StructuredQuestion).parts.map((part) => part.subParts?.map((sub) => sub.tags));
+  const store = (docs: Worksheet[]) => {
+    const saved = new Map(docs.map((doc) => [doc.id, doc]));
+    const writes: string[] = [];
+    return {
+      saved,
+      writes,
+      load: async (id: string) => saved.get(id),
+      save: async (w: Worksheet) => {
+        writes.push(w.id);
+        saved.set(w.id, w);
+      },
+    };
+  };
+
+  it('a whole-question edit tags every part, keeps free tags on the question, and leaves inheriting sub-parts inheriting', () => {
+    const question = partedQuestion([{}, { subs: [undefined, ['E.equity']] }], ['mock']);
+    const doc = docWith([question]);
+    const next = withQuestionTags(doc, [question.id], addTopics(['C.ped']), NOW).questions[0];
+    expect(next.tags).toEqual(['mock']);
+    expect(partTags(next)).toEqual([['C.ped'], ['C.ped']]);
+    expect(subTags(next)).toEqual([undefined, [undefined, ['E.equity', 'C.ped']]]);
+    expect(next.tagsAt).toBe(NOW);
+    // Replace makes every part say exactly that; a sub-part's list equal to its part's goes.
+    const replaced = withQuestionTags(docWith([next]), [next.id], replaceTopics(['D']), NOW).questions[0];
+    expect(partTags(replaced)).toEqual([['D'], ['D']]);
+    expect(subTags(replaced)).toEqual([undefined, [undefined, undefined]]);
+    expect(replaced.tags).toEqual(['mock']);
+  });
+
+  it('atSlot changes one part only; a sub-part’s own list replaces its part’s', () => {
+    const question = partedQuestion([{ tags: ['C.ped'], subs: [undefined, undefined] }, { tags: ['C.intervention'] }]);
+    const state = tagStateOf(question);
+    const sub = slotRef(state.slots, state.slots[2].key)!;
+    const next = retagQuestion(question, atSlot(sub, addTopics(['D.structure'])), NOW);
+    expect(subTags(next)).toEqual([[undefined, ['C.ped', 'D.structure']], undefined]);
+    expect(partTags(next)).toEqual([['C.ped'], ['C.intervention']]);
+    expect(derivedTags(next)).toEqual(['C.ped', 'D.structure', 'C.intervention']);
+    // Back to "Same as (a)": the list goes, the sub-part takes its part's again.
+    const back = retagQuestion(next, inheritAtSlot(sub), NOW);
+    expect(subTags(back)).toEqual([[undefined, undefined], undefined]);
+    // Free tags go on the question only.
+    const free = retagQuestion(back, freeTags(addTopics(['mock 2025'])), NOW);
+    expect(free.tags).toEqual(['mock 2025']);
+    expect(partTags(free)).toEqual([['C.ped'], ['C.intervention']]);
+  });
+
+  it('lands a part edit on the right part of a reordered copy, and skips a copy without that part', async () => {
+    const original = partedQuestion([{ tags: ['C.ped'] }, { tags: ['C.intervention'] }]);
+    const reordered = copyQuestion(original, 'bank');
+    reordered.parts.reverse();
+    const reshaped = partedQuestion([{}, {}, {}]); // an unrooted copy of another shape
+    const lineage = { rootId: original.id };
+    const docs = [docWith([original]), docWith([reordered]), docWith([{ ...reshaped, lineage }])];
+    const s = store(docs);
+    const rows = withSharedTags(docs.flatMap((doc) => rowsOf(doc)));
+    const state = tagStateOf(original);
+    const b = slotRef(state.slots, state.slots[1].key)!;
+    const report = await writeTags(s, copyWrites(rows, [original.id]), atSlot(b, addTopics(['E.policy'])), undefined, NOW);
+    expect(partTags(s.saved.get(docs[0].id)!.questions[0])).toEqual([['C.ped'], ['C.intervention', 'E.policy']]);
+    // The reordered copy prints (b) first: that is where it lands.
+    expect(partTags(s.saved.get(docs[1].id)!.questions[0])).toEqual([['C.intervention', 'E.policy'], ['C.ped']]);
+    // No such part there (another shape, no roots): left alone, not even stamped.
+    expect(s.saved.get(docs[2].id)).toBe(docs[2]);
+    expect(report.saved).toEqual([docs[0].id, docs[1].id]);
+    expect(s.writes).toEqual([docs[0].id, docs[1].id]);
+  });
+
+  it('matches an unrooted copy of the same shape by position', async () => {
+    const original = partedQuestion([{ tags: ['C.ped'] }, { tags: ['C.intervention'] }]);
+    const twin = { ...partedQuestion([{ tags: ['C.ped'] }, { tags: ['C.intervention'] }]), lineage: { rootId: original.id } };
+    const docs = [docWith([original]), docWith([twin])];
+    const s = store(docs);
+    const rows = withSharedTags(docs.flatMap((doc) => rowsOf(doc)));
+    const state = tagStateOf(original);
+    await writeTags(s, copyWrites(rows, [original.id]), atSlot(slotRef(state.slots, state.slots[0].key)!, removeTopics(['C.ped'])), undefined, NOW);
+    expect(partTags(s.saved.get(docs[1].id)!.questions[0])).toEqual([undefined, ['C.intervention']]);
+  });
+
+  it('a rename reaches a part list no leaf inherits (everywhere)', () => {
+    const question = partedQuestion([{ tags: ['C.ped', 'C.ped::Old'], subs: [['D'], ['E.equity']] }]);
+    const next = retagQuestion(question, everywhere(renamePatternEdit('C.ped', 'Old', 'New')), NOW);
+    expect(partTags(next)).toEqual([['C.ped', 'C.ped::New']]);
+    expect(subTags(next)).toEqual([[['D'], ['E.equity']]]);
+    // The whole-question reading of the same list edit reaches it too.
+    expect(retagQuestion(question, renamePatternEdit('C.ped', 'Old', 'New'), NOW)).toEqual(next);
+  });
+
+  it('moves older whole-question topics down in the same save as the edit, never on its own', async () => {
+    const legacy = { ...partedQuestion([{}, { tags: ['D'] }]), tags: ['C.equilibrium', 'mock'], tagsAt: T1 };
+    const doc = docWith([legacy]);
+    // No change: no write, the develop-era shape kept.
+    expect(withQuestionTags(doc, [legacy.id], removeTopics(['J']), NOW)).toBe(doc);
+    const s = store([doc]);
+    await writeTags(s, [{ docId: doc.id, questionId: legacy.id }], thenState(atSlot(slotRef(tagStateOf(legacy).slots, tagStateOf(legacy).slots[0].key)!, addTopics(['C.ped']))));
+    const written = s.saved.get(doc.id)!.questions[0];
+    expect(written.tags).toEqual(['mock']);
+    expect(partTags(written)).toEqual([['C.equilibrium', 'C.ped'], ['D']]);
+    expect(s.writes).toEqual([doc.id]);
+  });
+
+  it('bulk remove takes a topic off every part and sub-part list', () => {
+    const question = partedQuestion([{ tags: ['C.ped', 'C'], subs: [['C.ped'], undefined] }, { tags: ['C.ped'] }]);
+    const next = retagQuestion(question, bulkTopicEdit('remove', ['C.ped']), NOW);
+    expect(partTags(next)).toEqual([['C'], undefined]);
+    expect(subTags(next)).toEqual([[undefined, undefined], undefined]);
+    expect(derivedTags(next)).toEqual(['C']);
+  });
+
+  it('a list edit and its whole-question state edit are the same write', () => {
+    const question = partedQuestion([{}, {}], ['mock']);
+    const doc = docWith([question]);
+    expect(withQuestionTags(doc, [question.id], addTopics(['C']), NOW)).toEqual(
+      withQuestionTags(doc, [question.id], wholeQuestion(addTopics(['C'])), NOW),
+    );
+    expect(isStateEdit(addTopics(['C']))).toBe(false);
+    expect(isStateEdit(wholeQuestion(addTopics(['C'])))).toBe(true);
   });
 });

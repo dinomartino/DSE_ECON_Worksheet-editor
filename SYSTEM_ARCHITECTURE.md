@@ -1730,7 +1730,16 @@ paths). Verify by measuring the same text node in both states.
 `QuestionTypeDefinition`: `id` · `displayName` (bilingual) · `create()` ·
 `render(question, context) → RenderNode[]` · `EditorPanel` · `mapTexts` ·
 `examGapLines?` · `healthFacts?` · `answerKey?` · `variant?` · `qualityView?` ·
-`paperKinds?`. Registered: `mcq`, `structured`. A new type needs only a definition.
+`paperKinds?` · `tagSlots?` · `withSlotTags?`. Registered: `mcq`, `structured`. A new
+type needs only a definition.
+
+- **Topics per place come from the type** (`tagSlots?`, `withSlotTags?`; design
+  `docs/design/part-tags.md`). A type lists the places that carry their own topics and
+  題型 (structured: each part, then its sub-parts) keyed by the part's `rootId ?? id`,
+  and writes a slot's list back; MCQ has none, so its question list holds its topics.
+  Shared code reads them only through `model/tagSlots.ts`, which names no type. Slot keys
+  must be exactly the `part` owners of `questionIdOwners`, since `copyQuestion` stamps
+  part roots structurally (`registry.test.ts` checks both).
 
 - **What a paper normally takes is advice, read from the type** (`paperKinds?`, against
   `model/documentShape.ts:paperKind`, which refines the shape by content: dotted answer
@@ -1742,7 +1751,7 @@ paths). Verify by measuring the same text node in both states.
 - **The hand-built numbered paragraph must copy the block's `format` itself** — the
   four hand-assembled sites (MCQ stem; structured stem, part, sub-part) each omitted it
   once. `registry.test.ts` asserts it reaches the IR for every type.
-- **No shared module may branch on a concrete type.** `registry.test.ts` greps eighteen
+- **No shared module may branch on a concrete type.** `registry.test.ts` greps nineteen
   modules for `'mcq'`/`'structured'` literals.
 - **The paper check asks, never inspects.** `model/paperHealth.ts:checkPaper` (the Export
   dialog's pre-print summary: letter balance and runs, missing keys, marks, time estimate,
@@ -2758,6 +2767,19 @@ in-flight values stay local; the store is called on pointer-up.
   document's tags for being opened (`src/app/EditorHost.tsx:EditorHost` still saves every
   opened document once, as loaded, so a new one reaches the list). Stamps are device
   clocks; skew can let an earlier change win.
+- **Topics per part: one tag state per question** (`src/model/tagSlots.ts`,
+  `src/library/sharedTags.ts:sharedState`). On a structured question with parts, topics
+  live on `QuestionPart.tags` / `QuestionSubPart.tags` (a sub-part's list replaces its
+  part's), free tags on the question; `BankRow.tags` is derived (every leaf's topics, then
+  free tags), so every reader is unchanged. One `tagsAt` covers every list: the newest
+  copy's whole state wins, mapped part by part by the part `rootId` `copyQuestion` stamps,
+  else by position between copies of the same shape. Whole-question topics written by
+  develop builds read as every untagged part's; the first tag write moves them down in the
+  same save, never an open. The part fields are optional and nested: no `KNOWN_KEYS`
+  entry, no schema bump; v0.5.0 spreads parts, so it keeps them. **`contentKey` ignores
+  part `tags` and `rootId`** (`IGNORED_PART`, pinned by
+  `src/library/contentKeyFields.test.ts`), or every copy made since would be a false
+  version and the ✦ AI writes would stop finding identical copies.
 - **`KNOWN_KEYS` must list every top-level field** — an unlisted key is stripped into
   `__unknown`: it saves fine and vanishes on reload. A test fails when a populated
   worksheet carries a key the set lacks.

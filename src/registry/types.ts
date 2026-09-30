@@ -81,6 +81,42 @@ export interface QuestionTypeDefinition<Q extends Question = Question> {
   paperKinds?: readonly DocumentShape[];
   /** The question as a co-marker reads it, for the AI quality check (`quality/`); absent = not checked. */
   qualityView?: (question: Q) => QualityView;
+  /**
+   * Where this type's questions carry topics per place (§ docs/design/part-tags.md), in
+   * print order, a part before its sub-parts. Absent, or `[]` for a question: the
+   * question's own `tags` hold its topics (MCQ, a structured question with no parts).
+   * Shared code reads it only through `model/tagSlots.ts`.
+   */
+  tagSlots?: (question: Q) => TagSlotInfo[];
+  /**
+   * The question with each named slot's own list stored as given (`undefined` or an empty
+   * list removes it). Slots not named are untouched; only their `tags` is written. The
+   * same object when nothing changes. Lists may carry entries this build cannot read, kept
+   * from the stored list (`model/tagSlots.ts:withTagState` decides them).
+   */
+  withSlotTags?: (question: Q, owns: ReadonlyMap<string, readonly unknown[] | undefined>) => Q;
+}
+
+/** One place in a question that carries its own topics and 題型 (a part, a sub-part). */
+export interface TagSlotInfo {
+  /** Stable across copies: `rootId ?? id` of the part or sub-part (`model/lineage.ts:partRootOf`). Unique in the question. */
+  key: string;
+  /** Position, for pairing copies of the same shape only: "0", "0.1". */
+  path: string;
+  /** How it reads: "(a)", "(a)(ii)". */
+  label: string;
+  /** The enclosing slot's key (a sub-part's part); absent at the top. */
+  parent?: string;
+  /** A part without sub-parts, or a sub-part: what the question's derived topics are made of. */
+  leaf: boolean;
+  /** The stored own list as found (may hold non-strings); absent = inherits. */
+  own?: unknown[];
+  /** Ids of the blocks it prints (its `blocks`, its model answer diagram), nested blocks included. */
+  blockIds: string[];
+  /** Ids of its interlude's blocks (`blocksBefore`): selecting them selects the slot; context, not the part, when highlighting. */
+  leadInIds: string[];
+  /** The ids its answer edit targets name (`partAnswer` / `subPartAnswer`). */
+  answerIds: string[];
 }
 
 /** One place in a question a reviewer can point at, in print order. */

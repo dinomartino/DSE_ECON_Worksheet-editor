@@ -2,12 +2,14 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { rowsOf } from '@/library/indexer';
 import { searchRows } from '@/library/search';
 import { withSharedTags } from '@/library/sharedTags';
-import { choiceQuestion, docWith } from '@/library/testKit';
+import { choiceQuestion, docWith, partedQuestion } from '@/library/testKit';
+import { addTopics, atSlot } from '@/library/tagWrites';
+import { slotRef, tagStateOf } from '@/model/tagSlots';
 import { copyQuestion } from '@/model/lineage';
 import { bi } from '@/model/text';
-import type { Question, Worksheet } from '@/model/types';
+import type { Question, StructuredQuestion, Worksheet } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { copiesMessage, setQuestionTopics, type TopicSyncDeps } from './topicSync';
+import { copiesMessage, setQuestionTags, setQuestionTopics, type TopicSyncDeps } from './topicSync';
 
 function harness(docs: Worksheet[]) {
   const saved = new Map(docs.map((doc) => [doc.id, doc]));
@@ -206,6 +208,46 @@ describe('the editor Topic row writes every copy', () => {
     open(b);
     await setQuestionTopics(copyB.id, ['C.ped', 'C.ped::New'], deps);
     expect(tagsIn(saved.get(docA.id), original.id)).toEqual(['C.ped', 'C.ped::New']);
+  });
+});
+
+describe('the Topic row on a question tagged per part', () => {
+  const partTags = (doc: Worksheet | undefined, id: string) =>
+    (doc?.questions.find((q) => q.id === id) as StructuredQuestion | undefined)?.parts.map((part) => part.tags);
+
+  it('an edit to part (b) lands on (b) of a reordered copy in another paper, one undo here', async () => {
+    const original = partedQuestion([{ tags: ['C.ped'] }, { tags: ['C.intervention'] }]);
+    const docA = docWith([original], { title: bi('Paper A', '') });
+    const reordered = copyQuestion(original, docA.id);
+    reordered.parts.reverse();
+    const docB = docWith([reordered], { title: bi('Paper B', '') });
+    const { saved, deps, notices } = harness([docA, docB]);
+    open(docA);
+    const slots = tagStateOf(original).slots;
+    const b = slotRef(slots, slots[1].key)!;
+    const report = await setQuestionTags(original.id, atSlot(b, addTopics(['E.policy'])), deps);
+    expect(partTags(useWorksheetStore.getState().worksheet, original.id)).toEqual([['C.ped'], ['C.intervention', 'E.policy']]);
+    expect(useWorksheetStore.getState().past).toHaveLength(1);
+    expect(report?.saved).toEqual([docB.id]);
+    expect(partTags(saved.get(docB.id), reordered.id)).toEqual([['C.intervention', 'E.policy'], ['C.ped']]);
+    expect(notices).toEqual(['Also updated in 1 other worksheet.']);
+    useWorksheetStore.getState().undo();
+    expect(partTags(useWorksheetStore.getState().worksheet, original.id)).toEqual([['C.ped'], ['C.intervention']]);
+  });
+
+  it('the one-list row (until the per-part row lands) adds to and removes from every part, free tags to the question', async () => {
+    const question = partedQuestion([{ tags: ['C.ped'] }, { tags: ['C.intervention'] }]);
+    const doc = docWith([question]);
+    const { deps } = harness([doc]);
+    open(doc);
+    const shown = ['C.ped', 'C.intervention'];
+    await setQuestionTopics(question.id, [...shown, 'D', 'mock'], deps, shown);
+    const after = useWorksheetStore.getState().worksheet.questions[0] as StructuredQuestion;
+    expect(after.parts.map((part) => part.tags)).toEqual([['C.ped', 'D'], ['C.intervention', 'D']]);
+    expect(after.tags).toEqual(['mock']);
+    await setQuestionTopics(question.id, ['C.intervention', 'D', 'mock'], deps, ['C.ped', 'D', 'C.intervention', 'mock']);
+    const removed = useWorksheetStore.getState().worksheet.questions[0] as StructuredQuestion;
+    expect(removed.parts.map((part) => part.tags)).toEqual([['D'], ['C.intervention', 'D']]);
   });
 });
 

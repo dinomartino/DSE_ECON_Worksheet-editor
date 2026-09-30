@@ -3,11 +3,11 @@ import { copyQuestion } from '@/model/lineage';
 import { CURRENT_SCHEMA_VERSION } from '@/model/migrations';
 import { plain } from '@/model/text';
 import type { TranslationWrite } from '@/model/textSlots';
-import type { Question, Worksheet } from '@/model/types';
+import type { Question, StructuredQuestion, Worksheet } from '@/model/types';
 import { contentKey } from './contentKey';
 import { rowsOf } from './indexer';
 import { identicalCopies, questionSlots, restoreCopies, SKIP_REASON, writeIntoCopies, writesForCopy } from './sameCopies';
-import { choiceQuestion, docWith } from './testKit';
+import { choiceQuestion, docWith, partedQuestion } from './testKit';
 
 const NOW = '2026-09-30T10:00:00.000Z';
 
@@ -162,5 +162,42 @@ describe('writeIntoCopies and restoreCopies', () => {
     expect(contentKey(back)).toBe(shown.contentKey);
     expect(back.tags).toEqual(['B']); // the topic edit made meanwhile stays
     expect(zhOf(store.saved.get('b')!.questions[0])).toBe('老師改過');
+  });
+});
+
+describe('copies tagged per part', () => {
+  it('are identical whatever their part topics and part roots, written together, and undone keeping a later part topic edit', async () => {
+    const original = partedQuestion([{ tags: ['C.ped'] }, { subs: [['D'], undefined] }]);
+    const a = docWith([original], { id: 'a' } as Partial<Worksheet>);
+    const copy = copyQuestion(original, 'a');
+    expect(copy.parts[0].rootId).toBe(original.parts[0].id);
+    copy.parts[0].tags = ['C.pes']; // a stale copy's topics differ; its words do not
+    const b = docWith([copy], { id: 'b' } as Partial<Worksheet>);
+    const rows = [a, b].flatMap((doc) => rowsOf(doc));
+    expect(rows[1].contentKey).toBe(rows[0].contentKey);
+    const copies = identicalCopies(rows, rows[0]);
+    expect(copies.map((ref) => ref.docId)).toEqual(['a', 'b']);
+
+    const store = memoryStore([a, b]);
+    const written = await writeIntoCopies(
+      store,
+      { sourceSlots: questionSlots(a, original.id), writes: fillWrites(a, original.id), copies, expectedKey: rows[0].contentKey },
+      NOW,
+    );
+    expect(written.written.map((r) => r.docId)).toEqual(['a', 'b']);
+    const qb = store.saved.get('b')!.questions[0] as StructuredQuestion;
+    expect(qb.parts[0]).toMatchObject({ tags: ['C.pes'], rootId: original.parts[0].id });
+
+    // A topic edit on b's (b)(i) after the write: Undo all still restores b and keeps it.
+    const retagged = structuredClone(qb);
+    retagged.parts[1].subParts![0].tags = ['E.equity'];
+    store.saved.set('b', { ...store.saved.get('b')!, questions: [{ ...retagged, tagsAt: NOW }] });
+    const undone = await restoreCopies(store, written.written, NOW);
+    expect(undone.skipped).toEqual([]);
+    const back = store.saved.get('b')!.questions[0] as StructuredQuestion;
+    expect(contentKey(back)).toBe(rows[0].contentKey);
+    expect(back.parts[1].subParts![0].tags).toEqual(['E.equity']);
+    expect(back.parts[0]).toMatchObject({ tags: ['C.pes'], rootId: original.parts[0].id });
+    expect(back.tagsAt).toBe(NOW);
   });
 });

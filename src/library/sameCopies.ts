@@ -4,7 +4,8 @@ import { collectTexts } from '@/model/textWalk';
 import { applyTranslationBatch } from '@/model/translationApply';
 import type { Question, Worksheet } from '@/model/types';
 import type { WorksheetStore } from '@/storage/types';
-import { contentKey, IGNORED, stableJson } from './contentKey';
+import { questionIdOwners } from '@/model/lineage';
+import { contentKey, IGNORED, IGNORED_PART, stableJson } from './contentKey';
 import type { BankRow } from './types';
 
 /**
@@ -206,25 +207,43 @@ export async function writeIntoCopies(
   return result;
 }
 
-/** What a question says and where its ids are, ignoring the metadata a topic edit moves. */
+/** The part and sub-part objects of a question (`questionIdOwners`' `part` owners), in walk order. */
+const partsOf = (question: Question) =>
+  [...questionIdOwners(question)].filter((entry) => entry.space === 'part').map((entry) => entry.owner as Record<string, unknown>);
+
+/**
+ * What a question says and where its ids are, ignoring the metadata a topic edit moves:
+ * `IGNORED` on the question, `IGNORED_PART` on each part and sub-part.
+ */
 const sameContent = (a: Question, b: Question): boolean => {
   const strip = (q: Question) => {
-    const copy = { ...q } as Record<string, unknown>;
+    const copy = structuredClone(q) as Question & Record<string, unknown>;
     for (const key of IGNORED) delete copy[key];
+    for (const part of partsOf(copy)) for (const key of IGNORED_PART) delete part[key];
     return stableJson(copy);
   };
   return strip(a) === strip(b);
 };
 
-/** `before`'s content under `current`'s metadata (tags, stamp, lineage), which the write never touched. */
-function restored(before: Question, current: Question): Question {
-  const out = { ...before } as Record<string, unknown>;
-  const now = current as unknown as Record<string, unknown>;
-  for (const key of IGNORED) {
-    if (key in now) out[key] = now[key];
-    else delete out[key];
+/** Copy `keys` from `from` onto `to`: present there, set here; absent there, removed here. */
+function carry(to: Record<string, unknown>, from: Record<string, unknown> | undefined, keys: readonly string[]) {
+  for (const key of keys) {
+    if (from && key in from) to[key] = from[key];
+    else delete to[key];
   }
-  return out as unknown as Question;
+}
+
+/**
+ * `before`'s content under `current`'s metadata (tags, stamp, lineage, and each part's
+ * topics and root), which the write never touched. `current` says what the write left
+ * (`sameContent`), so its parts line up with `before`'s one for one.
+ */
+function restored(before: Question, current: Question): Question {
+  const out = structuredClone(before) as Question & Record<string, unknown>;
+  carry(out, current as unknown as Record<string, unknown>, IGNORED);
+  const now = partsOf(current);
+  partsOf(out).forEach((part, index) => carry(part, now[index], IGNORED_PART));
+  return out;
 }
 
 export interface RestoreResult {

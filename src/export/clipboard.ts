@@ -10,7 +10,7 @@ import type {
   TextFormat,
   Worksheet,
 } from '@/model/types';
-import { trailLabel, type RenderNode, type TextNode } from '@/render/ir';
+import { trailLabel, type EditTarget, type RenderNode, type TextNode } from '@/render/ir';
 import { renderWorksheet } from '@/render/worksheet';
 import type { DiagramImageMap } from './diagramImage';
 
@@ -436,21 +436,92 @@ export function questionClipboardHtml(
   diagramImages: DiagramImageMap = new Map(),
   printedNumber?: number,
 ): string {
+  const nodes = questionClipboardNodes(worksheet, questionId, mode, diagramImages, printedNumber);
+  return wrapHtml(nodes.map((node) => node.html).join(''), fontCss(worksheet.fonts));
+}
+
+/** One top-level IR node of a question as clipboard HTML, and the id it names (`nodeTarget`). */
+export interface ClipboardNodeHtml {
+  html: string;
+  target?: string;
+}
+
+/**
+ * `questionClipboardHtml`'s body, node by node: joined, exactly its body. For a reader that
+ * marks part of a question (the bank preview's "this part tests it" highlight, fed
+ * `model/tagSlots.ts:slotHighlightIds` and `highlightedNodes`) without the clipboard ever
+ * carrying the mark. Empty when the question is not in the worksheet.
+ */
+export function questionClipboardNodes(
+  worksheet: Worksheet,
+  questionId: string,
+  mode: OutputMode,
+  diagramImages: DiagramImageMap = new Map(),
+  printedNumber?: number,
+): ClipboardNodeHtml[] {
   const rendered = renderWorksheet(worksheet, mode);
   const css = fontCss(worksheet.fonts);
   const match = rendered.questions.find((entry) => entry.questionId === questionId);
-  if (match) {
-    const nodes = printedNumber === undefined ? match.nodes : match.nodes.map((node) => withQuestionNumber(node, printedNumber));
-    return wrapHtml(
-      nodes
-        .map((node) =>
-          nodeHtml(node, mode.language, css, diagramImages, contentWidth(pageSetupOf(worksheet))),
-        )
-        .join(''),
-      css,
-    );
+  if (!match) return [];
+  const nodes = printedNumber === undefined ? match.nodes : match.nodes.map((node) => withQuestionNumber(node, printedNumber));
+  const width = contentWidth(pageSetupOf(worksheet));
+  return nodes.map((node) => {
+    const target = nodeTarget(node);
+    const html = nodeHtml(node, mode.language, css, diagramImages, width);
+    return target === undefined ? { html } : { html, target };
+  });
+}
+
+/** The block, part or sub-part an edit target belongs to. */
+function targetOwner(edit: EditTarget | undefined): string | undefined {
+  if (!edit) return undefined;
+  switch (edit.kind) {
+    case 'blockText':
+    case 'blockCaption':
+    case 'sourceLabel':
+    case 'sourceFootnote':
+    case 'tableCell':
+      return edit.blockId;
+    case 'partAnswer':
+      return edit.partId;
+    case 'subPartAnswer':
+      return edit.subPartId;
+    default:
+      return undefined;
   }
-  return wrapHtml('', css);
+}
+
+/**
+ * The id a node names: the block it was rendered from, or for an answer the part or
+ * sub-part it answers (`model/tagSlots.ts:TagSlotInfo`'s `blockIds` and `answerIds`).
+ * Undefined for a node that names nothing (a gap, answer lines, a scheme).
+ */
+export function nodeTarget(node: RenderNode): string | undefined {
+  switch (node.kind) {
+    case 'text':
+      return targetOwner(node.edit);
+    case 'table':
+    case 'image':
+    case 'diagram':
+    case 'figureRow':
+    case 'source':
+      return node.blockId;
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Which nodes a highlight covers, by each node's `target`: a node naming a highlighted id
+ * starts or continues a run, a node naming nothing belongs with the node before it, and a
+ * node naming anything else ends the run.
+ */
+export function highlightedNodes(targets: readonly (string | undefined)[], highlight: ReadonlySet<string>): boolean[] {
+  let inRun = false;
+  return targets.map((target) => {
+    if (target !== undefined) inRun = highlight.has(target);
+    return inRun;
+  });
 }
 
 /** The question's own numbered line (`listRef.definition` 'question', level 0) carrying `number`. */

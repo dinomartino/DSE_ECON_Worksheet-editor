@@ -31,7 +31,7 @@ export interface BankIndexBackend {
  * text, `contentKey`), and every persisted index is dropped and rebuilt on next use. The
  * golden test in `indexer.test.ts` fails when the output moves, to say so.
  */
-export const INDEX_FORMAT = 6;
+export const INDEX_FORMAT = 7;
 
 /**
  * What a stored index is stamped with and checked against: the rows version plus a hash of
@@ -46,6 +46,21 @@ export const STORED_INDEX_FORMAT = `${INDEX_FORMAT}.${hash(
 
 const isString = (value: unknown): value is string => typeof value === 'string';
 const isStringArray = (value: unknown): value is string[] => Array.isArray(value) && value.every(isString);
+
+/** A row's `slots` entry as `rowsOf` writes it. */
+function isBankSlot(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false;
+  const slot = value as Record<string, unknown>;
+  return (
+    isString(slot.key) &&
+    isString(slot.path) &&
+    isString(slot.label) &&
+    (slot.parent === undefined || isString(slot.parent)) &&
+    typeof slot.leaf === 'boolean' &&
+    (slot.own === undefined || isStringArray(slot.own)) &&
+    isStringArray(slot.tags)
+  );
+}
 
 /** A row as the current `rowsOf` writes it; anything else means the store is not ours. */
 export function isBankRow(value: unknown): value is BankRow {
@@ -65,6 +80,8 @@ export function isBankRow(value: unknown): value is BankRow {
     typeof row.marks === 'number' &&
     isStringArray(row.tags) &&
     (row.tagsAt === undefined || isString(row.tagsAt)) &&
+    (row.slots === undefined || (Array.isArray(row.slots) && row.slots.every(isBankSlot))) &&
+    (row.ownTags === undefined || isStringArray(row.ownTags)) &&
     !!excerpt &&
     isString(excerpt.en) &&
     isString(excerpt.zh) &&

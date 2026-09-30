@@ -30,22 +30,38 @@ export interface PatternItem extends PatternId {
 export const samePattern = (a: PatternId, b: PatternId): boolean =>
   a.topic === b.topic && a.typeId === b.typeId && samePatternName(a.name, b.name);
 
-/** Whether a row (its tags are the root's shared set) carries the 題型: its type and its name. */
-export function rowHasPattern(row: Pick<BankRow, 'typeId' | 'tags'>, pattern: PatternId): boolean {
-  if (row.typeId !== pattern.typeId) return false;
-  return row.tags.some((tag) => {
+const holdsPattern = (tags: readonly string[], pattern: PatternId) =>
+  tags.some((tag) => {
     const ref = parsePatternTag(tag);
     return ref !== undefined && ref.topic === pattern.topic && samePatternName(ref.name, pattern.name);
   });
+
+/** Whether a row (its tags are the root's shared set, derived) carries the 題型: its type and its name. */
+export function rowHasPattern(row: Pick<BankRow, 'typeId' | 'tags'>, pattern: PatternId): boolean {
+  return row.typeId === pattern.typeId && holdsPattern(row.tags, pattern);
 }
 
 /** The row's first 題型 under a sub-topic, in its own tag order. */
 export function rowPattern(row: Pick<BankRow, 'tags'>, topic: string): string | undefined {
+  return rowPatterns(row, topic)[0];
+}
+
+/** Every 題型 the row carries under a sub-topic, in tag order (parts may differ). */
+export function rowPatterns(row: Pick<BankRow, 'tags'>, topic: string): string[] {
+  const names: string[] = [];
   for (const tag of row.tags) {
     const ref = parsePatternTag(tag);
-    if (ref && ref.topic === topic) return ref.name;
+    if (ref && ref.topic === topic && !names.some((name) => samePatternName(name, ref.name))) names.push(ref.name);
   }
-  return undefined;
+  return names;
+}
+
+/**
+ * Every tag list a row holds, as one list: the derived `tags`, the question's own list and
+ * each part's own, a list no leaf inherits included. What a rename or delete must reach.
+ */
+export function everyTag(row: Pick<BankRow, 'tags'> & Partial<Pick<BankRow, 'slots' | 'ownTags'>>): string[] {
+  return [...new Set([...row.tags, ...(row.ownTags ?? []), ...(row.slots ?? []).flatMap((slot) => slot.own ?? [])])];
 }
 
 /** Where a list is scoped: a coarse or fine topic code (a coarse one takes its sub-topics), a type. */
@@ -120,9 +136,14 @@ export function resolvePatternName(typed: string, names: readonly string[]): str
   return names.find((name) => samePatternName(name, typed)) ?? cleanPatternName(typed);
 }
 
-/** One write per copy of every question carrying the 題型 (`copyWrites`). */
+/**
+ * One write per copy of every question carrying the 題型 in any of its lists (`everyTag`,
+ * so a part's list no leaf inherits is reached too), through `copyWrites`.
+ */
 export function patternWrites(rows: readonly BankRow[], pattern: PatternId): TagWrite[] {
-  const roots = new Set(rows.filter((row) => rowHasPattern(row, pattern)).map((row) => row.rootId));
+  const roots = new Set(
+    rows.filter((row) => row.typeId === pattern.typeId && holdsPattern(everyTag(row), pattern)).map((row) => row.rootId),
+  );
   return copyWrites(rows, roots);
 }
 

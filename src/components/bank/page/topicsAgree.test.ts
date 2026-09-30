@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { groupRows } from '@/library/group';
 import { rowsOf } from '@/library/indexer';
 import { withSharedTags } from '@/library/sharedTags';
-import { choiceQuestion, docWith } from '@/library/testKit';
+import { choiceQuestion, docWith, partedQuestion } from '@/library/testKit';
 import { copyQuestion } from '@/model/lineage';
 import { coverage, DEFAULT_FILTERS, filterRows, traySummary } from './bankPage';
 import { railSections } from './bankScreen';
@@ -28,5 +28,38 @@ describe('divergent copies read one set of topics', () => {
     expect(filterRows(rows, { ...DEFAULT_FILTERS, topic: 'C.ped' })).toHaveLength(2);
     expect(filterRows(rows, { ...DEFAULT_FILTERS, topic: 'untagged' })).toHaveLength(0);
     expect(traySummary([groupRows(rows)[0].rows[0]]).mix).toEqual([{ code: 'C.ped', count: 1 }]);
+  });
+});
+
+/**
+ * One question with two parts on two sub-topics: every reader goes by its derived tags,
+ * so it counts once under C and is found under either sub-topic.
+ */
+describe('a question tagged per part reads as every part’s topics', () => {
+  const original = partedQuestion([{ tags: ['C.ped'] }, { tags: ['C.intervention'] }]);
+  const copy = copyQuestion(original, 'bank');
+  const rows = withSharedTags([...rowsOf(docWith([original])), ...rowsOf(docWith([copy]))]);
+
+  it('counts once under its coarse topic, and every filter finds it', () => {
+    expect(coverage(rows).bars.find((bar) => bar.code === 'C')?.total).toBe(1);
+    expect(coverage(rows).untagged).toBe(0);
+    expect(filterRows(rows, { ...DEFAULT_FILTERS, topic: 'C.ped' })).toHaveLength(2);
+    expect(filterRows(rows, { ...DEFAULT_FILTERS, topic: 'C.intervention' })).toHaveLength(2);
+    expect(filterRows(rows, { ...DEFAULT_FILTERS, topic: 'untagged' })).toHaveLength(0);
+    expect(traySummary([groupRows(rows)[0].rows[0]]).mix).toEqual(
+      expect.arrayContaining([
+        { code: 'C.ped', count: 1 },
+        { code: 'C.intervention', count: 1 },
+      ]),
+    );
+  });
+
+  it('leaves Untagged as soon as any part has a topic', () => {
+    const one = partedQuestion([{}, { tags: ['C.ped'] }, {}]);
+    const oneRows = withSharedTags(rowsOf(docWith([one])));
+    expect(coverage(oneRows).untagged).toBe(0);
+    expect(filterRows(oneRows, { ...DEFAULT_FILTERS, topic: 'untagged' })).toHaveLength(0);
+    const none = withSharedTags(rowsOf(docWith([partedQuestion([{}, {}], ['mock'])])));
+    expect(coverage(none).untagged).toBe(1);
   });
 });

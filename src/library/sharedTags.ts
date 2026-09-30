@@ -1,7 +1,19 @@
 import { tagSearchWords } from '@/model/patterns';
+import {
+  collapseTagState,
+  derivedTags,
+  effectiveSlotTags,
+  isTopicalTag,
+  matchSlots,
+  normalizeTagState,
+  stateFor,
+  tagStateOf,
+  withTagState,
+  type TagState,
+} from '@/model/tagSlots';
 import { stringTags } from '@/model/topics';
 import type { Question } from '@/model/types';
-import type { BankRow } from './types';
+import type { BankRow, BankSlot } from './types';
 
 /**
  * One truth for tags (C6): every copy of a question (same `rootId`) reads one set, so
@@ -11,6 +23,10 @@ import type { BankRow } from './types';
  * **The newest tag change wins.** A copy's `tagsAt` stamps its last tag write; the set is
  * the tags of the copy stamped last. A removal therefore sticks: an unreachable copy keeps
  * the tag, but its older stamp loses. Derived at read time; documents keep their own.
+ *
+ * On a question tagged per part the unit is its whole **tag state** (`model/tagSlots.ts`):
+ * the winner's question list and every part's list, mapped onto each copy slot by slot
+ * (`sharedState`, `model/tagSlots.ts:stateFor`). One stamp covers them all.
  */
 
 /** One copy as the resolution reads it: its string tags and when they were last written. */
@@ -32,6 +48,21 @@ export function tagTime(tagsAt: unknown): number | undefined {
   return Number.isNaN(time) ? undefined : time;
 }
 
+/** The copies stamped newest, and that stamp; every copy when none is stamped. */
+function newestOf<C extends { tagsAt?: unknown }>(copies: readonly C[]): { winners: readonly C[]; at?: string } {
+  let newest: number | undefined;
+  let at: string | undefined;
+  for (const copy of copies) {
+    const time = tagTime(copy.tagsAt);
+    if (time !== undefined && (newest === undefined || time > newest)) {
+      newest = time;
+      at = copy.tagsAt as string;
+    }
+  }
+  const winners = newest === undefined ? copies : copies.filter((copy) => tagTime(copy.tagsAt) === newest);
+  return at === undefined ? { winners } : { winners, at };
+}
+
 /**
  * The shared set of one question's copies: the tags of the copy with the newest `tagsAt`.
  * An unstamped copy (every copy saved before stamping existed) ranks oldest; when no copy
@@ -43,16 +74,7 @@ export function tagTime(tagsAt: unknown): number | undefined {
  * change win. Kept simple on purpose (§ docs/design/question-library.md, "One tag set").
  */
 export function sharedTags(copies: readonly TagCopy[]): SharedTags {
-  let newest: number | undefined;
-  let at: string | undefined;
-  for (const copy of copies) {
-    const time = tagTime(copy.tagsAt);
-    if (time !== undefined && (newest === undefined || time > newest)) {
-      newest = time;
-      at = copy.tagsAt as string;
-    }
-  }
-  const winners = newest === undefined ? copies : copies.filter((copy) => tagTime(copy.tagsAt) === newest);
+  const { winners, at } = newestOf(copies);
   const tags: string[] = [];
   for (const copy of winners) for (const tag of copy.tags) if (!tags.includes(tag)) tags.push(tag);
   return at === undefined ? { tags } : { tags, tagsAt: at };
@@ -66,6 +88,109 @@ export function sharedTagsByRoot(rows: readonly Pick<BankRow, 'rootId' | 'tags' 
 }
 
 const sameList = (a: readonly unknown[], b: readonly unknown[]) => a.length === b.length && a.every((tag, i) => tag === b[i]);
+const unique = (tags: readonly string[]) => [...new Set(tags)];
+
+/** One copy as the state resolution reads it: its tag state and when it was last written. */
+export interface StateCopy {
+  state: TagState;
+  tagsAt?: unknown;
+}
+
+/** A question's one tag state, and the stamp of the change it comes from (absent: none stamped). */
+export interface SharedState {
+  state: TagState;
+  tagsAt?: string;
+}
+
+/** `other` added to `base`, list by list over matched slots (both normalized). */
+function unionState(base: TagState, other: TagState): TagState {
+  if (base.slots.length === 0) return { tags: unique([...base.tags, ...derivedTags(other)]), slots: [] };
+  if (other.slots.length === 0) {
+    // A copy tagged as a whole: its topics reach every part, as a whole-question edit would.
+    const topics = other.tags.filter(isTopicalTag);
+    return {
+      tags: unique([...base.tags, ...other.tags.filter((tag) => !isTopicalTag(tag))]),
+      slots: base.slots.map((slot) =>
+        slot.parent === undefined && topics.length > 0 ? { ...slot, own: unique([...(slot.own ?? []), ...topics]) } : slot,
+      ),
+    };
+  }
+  const match = matchSlots(base.slots, other.slots);
+  const byKey = new Map(other.slots.map((slot) => [slot.key, slot]));
+  const baseEffective = effectiveSlotTags(base);
+  const otherEffective = effectiveSlotTags(other);
+  return {
+    tags: unique([...base.tags, ...other.tags]),
+    slots: base.slots.map((slot) => {
+      const key = match.get(slot.key);
+      const theirs = key === undefined ? undefined : byKey.get(key);
+      if (!theirs || (!slot.own && !theirs.own)) return slot;
+      // A normalized part without a list has none; a sub-part without one has its part's.
+      const own =
+        slot.parent === undefined
+          ? unique([...(slot.own ?? []), ...(theirs.own ?? [])])
+          : unique([...(baseEffective.get(slot.key) ?? []), ...(otherEffective.get(theirs.key) ?? [])]);
+      return { ...slot, own };
+    }),
+  };
+}
+
+/**
+ * The shared state of one question's copies (`sharedTags`, over whole states): the state
+ * of the copy with the newest `tagsAt`. Copies tied on the newest time, or no stamped copy
+ * at all, give their union, list by list over matched slots (`matchSlots`), each normalized
+ * first (`normalizeTagState`) so older whole-question topics count on every part. For
+ * copies without slots this is exactly `sharedTags`.
+ */
+export function sharedState(copies: readonly StateCopy[]): SharedState {
+  const { winners, at } = newestOf(copies);
+  let state: TagState;
+  if (winners.length === 0) state = { tags: [], slots: [] };
+  else if (winners.length === 1) state = winners[0].state;
+  else {
+    state = collapseTagState(
+      winners.slice(1).reduce((acc, copy) => unionState(acc, normalizeTagState(copy.state)), normalizeTagState(winners[0].state)),
+    );
+  }
+  return at === undefined ? { state } : { state, tagsAt: at };
+}
+
+/** A row's tag state: its own list and its slots' own lists (on a published row, the shared state's). */
+export function stateOfRow(row: {
+  tags: readonly string[];
+  slots?: readonly BankSlot[];
+  ownTags?: readonly string[];
+}): TagState {
+  if (!row.slots) return { tags: [...row.tags], slots: [] };
+  return {
+    tags: [...(row.ownTags ?? [])],
+    slots: row.slots.map((slot) => ({
+      key: slot.key,
+      path: slot.path,
+      label: slot.label,
+      ...(slot.parent !== undefined ? { parent: slot.parent } : {}),
+      leaf: slot.leaf,
+      ...(slot.own && slot.own.length > 0 ? { own: [...slot.own] } : {}),
+    })),
+  };
+}
+
+/** The row fields a tag state gives: the derived `tags`, and with slots each one's lists and `ownTags`. */
+export function rowTagFields(state: TagState): Pick<BankRow, 'tags' | 'slots' | 'ownTags'> {
+  const tags = [...derivedTags(state)];
+  if (state.slots.length === 0) return { tags };
+  const effective = effectiveSlotTags(state);
+  const slots: BankSlot[] = state.slots.map((slot) => ({
+    key: slot.key,
+    path: slot.path,
+    label: slot.label,
+    ...(slot.parent !== undefined ? { parent: slot.parent } : {}),
+    leaf: slot.leaf,
+    ...(slot.own ? { own: [...slot.own] } : {}),
+    tags: [...(effective.get(slot.key) ?? [])],
+  }));
+  return { tags, slots, ownTags: [...state.tags] };
+}
 
 /** The words `rowsOf` appends to `searchText` for these tags (its last lines). */
 const tagWords = (tags: readonly string[]) => tags.flatMap(tagSearchWords).join('\n').toLowerCase();
@@ -80,23 +205,37 @@ function sharedSearchText(row: BankRow, tags: readonly string[]): string {
   return [printed, tagWords(tags)].filter(Boolean).join('\n');
 }
 
+const slotsJson = (fields: Pick<BankRow, 'slots' | 'ownTags'>) => JSON.stringify([fields.ownTags, fields.slots]);
+
 /**
- * `rows` with every row's `tags` and `tagsAt` set to its question's shared set
- * (`sharedTagsByRoot`), and `searchText` matching those tags: a tag the shared set dropped
- * no longer finds the row. A row already holding its set is returned as the same object.
+ * `rows` with every row's tags set to its question's shared state (`sharedState` over the
+ * rows of its root, mapped onto this copy by `stateFor`): `tags`, `tagsAt`, `slots`,
+ * `ownTags`, and `searchText` matching the derived tags, so a tag the shared state dropped
+ * no longer finds the row. A row already holding its state is returned as the same object.
  */
 export function withSharedTags(rows: readonly BankRow[]): BankRow[] {
-  const byRoot = sharedTagsByRoot(rows);
-  return rows.map((row) => {
+  const states = rows.map(stateOfRow);
+  const copies = new Map<string, StateCopy[]>();
+  rows.forEach((row, index) => {
+    copies.set(row.rootId, [...(copies.get(row.rootId) ?? []), { state: states[index], tagsAt: row.tagsAt }]);
+  });
+  const byRoot = new Map([...copies].map(([rootId, list]) => [rootId, sharedState(list)]));
+  return rows.map((row, index) => {
     const shared = byRoot.get(row.rootId);
-    if (!shared || (sameList(shared.tags, row.tags) && shared.tagsAt === row.tagsAt)) return row;
-    const { tagsAt: _own, ...rest } = row;
+    if (!shared) return row;
+    const fields = rowTagFields(stateFor(states[index], shared.state));
+    const sameTags = sameList(fields.tags, row.tags);
+    if (sameTags && shared.tagsAt === row.tagsAt && slotsJson(fields) === slotsJson(row)) return row;
+    const { tagsAt: _own, slots: _slots, ownTags: _ownTags, ...rest } = row;
     void _own;
+    void _slots;
+    void _ownTags;
     return {
       ...rest,
-      tags: [...shared.tags],
+      tags: fields.tags,
       ...(shared.tagsAt !== undefined ? { tagsAt: shared.tagsAt } : {}),
-      searchText: sameList(shared.tags, row.tags) ? row.searchText : sharedSearchText(row, shared.tags),
+      ...(fields.slots ? { slots: fields.slots, ownTags: fields.ownTags } : {}),
+      searchText: sameTags ? row.searchText : sharedSearchText(row, fields.tags),
     };
   });
 }
@@ -116,18 +255,21 @@ export function adoptTags(own: string[] | undefined, shared: readonly string[]):
 }
 
 /**
- * A question read from its document, given the tags its bank row shows (the shared set,
+ * A question read from its document, given the tags its bank row shows (the shared state,
  * `withSharedTags`). Every copy taken from the bank goes through this, so the new copy
- * starts with the set the bank showed, not the picked copy's own (which may be stale), and
- * with that set's stamp, so it never outranks a later change. The same object when nothing
- * changes.
+ * starts with what the bank showed, not the picked copy's own (which may be stale): the
+ * question list and each part's list, by the picked copy's own slot keys (`copyQuestion`
+ * then stamps part roots, so the new copy's keys equal the source's). It takes that
+ * state's stamp, so it never outranks a later change. The same object when nothing changes.
  */
-export function withRowTags<Q extends Question>(question: Q, row: Pick<BankRow, 'tags' | 'tagsAt'>): Q {
-  const tags = adoptTags(question.tags, row.tags);
+export function withRowTags<Q extends Question>(
+  question: Q,
+  row: Pick<BankRow, 'tags' | 'tagsAt'> & Partial<Pick<BankRow, 'slots' | 'ownTags'>>,
+): Q {
+  const tagged = withTagState(question, stateFor(tagStateOf(question), stateOfRow(row)));
   const tagsAt = row.tagsAt ?? question.tagsAt;
-  if (tags === question.tags && tagsAt === question.tagsAt) return question;
-  const { tags: _tags, tagsAt: _at, ...rest } = question;
-  void _tags;
+  if (tagged === question && tagsAt === question.tagsAt) return question;
+  const { tagsAt: _at, ...rest } = tagged;
   void _at;
-  return { ...rest, ...(tags ? { tags } : {}), ...(tagsAt !== undefined ? { tagsAt } : {}) } as Q;
+  return { ...rest, ...(tagsAt !== undefined ? { tagsAt } : {}) } as Q;
 }

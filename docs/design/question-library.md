@@ -213,7 +213,8 @@ write could not reach (hidden, trashed, newer-build, restored) brought the tag b
 - **Read once, where the index publishes** (`withSharedTags` in `bankIndex.ts`): each row's
   `tags`, `tagsAt` and tag words in `searchText` become the shared set's, so display,
   coverage, the rail, search, Fill, "Not used with" and the tab's filters agree. Stored
-  rows keep each copy's own (`BankRow.tagsAt`, `INDEX_FORMAT` 5).
+  rows keep each copy's own (`BankRow.tagsAt`). On a question tagged per part the unit is
+  its whole tag state (§ Per-part topics).
 - **A write applies the edit to the shared set** (`TagWrite.shared`, from the row) and
   every reachable copy adopts the result under one stamp (`writeTags`'s `now`, the open
   copy's in `setQuestionTopics`). A copy already holding the result is still stamped when
@@ -229,6 +230,28 @@ write could not reach (hidden, trashed, newer-build, restored) brought the tag b
   copies hold the newer change, so the Topic row keeps showing it. Edit the topic back.
 - **Clock skew is accepted.** Stamps come from each device's clock; a desktop and a web
   copy whose clocks disagree can let the earlier change win. Kept simple on purpose.
+
+### Per-part topics (the user, 2026-09-30)
+
+Full design and contracts: [`part-tags.md`](./part-tags.md). In short:
+
+- **A structured question with parts takes topics and 題型 per part** (`QuestionPart.tags`,
+  `QuestionSubPart.tags`); a sub-part's own list **replaces** its part's. Free tags stay on
+  the question. MCQ and a structured question without parts are tagged as a whole, as before.
+- **The question's topics are derived**: every leaf's topics, then its free tags
+  (`src/model/tagSlots.ts:derivedTags`). `BankRow.tags` keeps its meaning, so coverage,
+  search, filters, Fill and the cart need no change; a question leaves Untagged as soon as
+  any part has a topic. Rows add `slots` and `ownTags` (`INDEX_FORMAT` 7).
+- **Parts are matched across copies by `rootId`** (`copyQuestion` stamps it), else by
+  position between copies of the same shape. One `tagsAt` covers every list: the newest
+  copy's whole state wins, mapped part by part (`src/library/sharedTags.ts:sharedState`).
+- **Develop-era topics on the whole of a question with parts** are every untagged part's
+  default when read, and are moved onto the parts by the first tag write, in the same
+  save. Opening never writes.
+- **A list edit means the whole question**: every part gets it (bulk Set topic included).
+  `atSlot` edits one part (`src/library/tagWrites.ts`).
+- `contentKey` ignores part `tags` and `rootId`, so copies still group and the ✦ AI
+  writes still find identical copies.
 
 ## The identity contract (2026-09-30)
 

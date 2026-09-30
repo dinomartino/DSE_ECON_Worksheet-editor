@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { rowsOf } from '@/library/indexer';
 import { withSharedTags } from '@/library/sharedTags';
-import { choiceQuestion, docWith } from '@/library/testKit';
+import { choiceQuestion, docWith, partedQuestion } from '@/library/testKit';
 import { copyQuestion } from '@/model/lineage';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { openSharedTags, shownTags } from './sharedTopics';
+import { openSharedTags, shownTagState, shownTags } from './sharedTopics';
 
 const T1 = '2026-01-01T00:00:00.000Z';
 const T2 = '2026-01-02T00:00:00.000Z';
@@ -33,6 +33,24 @@ describe('the topics the editor shows', () => {
     const docB = docWith([{ ...copyQuestion(a, docA.id), tags: ['C', 'mock'] }]);
     const legacy = withSharedTags([docA, docB].flatMap((doc) => rowsOf(doc)));
     expect(shownTags(a, openSharedTags(legacy, docA))).toEqual(['C', 'mock']);
+  });
+
+  it('opens a develop-era question (topics on the whole of a question with parts) clean, showing every part with them', () => {
+    const legacy = { ...partedQuestion([{}, { tags: ['D'] }]), tags: ['C.equilibrium', 'mock'], tagsAt: T1 };
+    const doc = docWith([legacy]);
+    const copyDoc = docWith([{ ...copyQuestion(legacy, doc.id), tagsAt: T1 }]);
+    const published = withSharedTags([doc, copyDoc].flatMap((d) => rowsOf(d)));
+    useWorksheetStore.getState().replaceWorksheet(doc);
+    const opened = useWorksheetStore.getState();
+    const shared = openSharedTags(published, opened.worksheet);
+    expect(shownTags(legacy, shared)).toEqual(['C.equilibrium', 'D', 'mock']);
+    // Shown with the older topics on the part that has none (copies tied: their union, normalized).
+    expect(shownTagState(legacy, shared).slots.map((slot) => slot.own)).toEqual([['C.equilibrium'], ['D']]);
+    const after = useWorksheetStore.getState();
+    expect(after.dirty).toBe(false);
+    expect(after.worksheet).toBe(doc);
+    expect(after.worksheet.questions[0]).toBe(legacy);
+    expect(after.past).toEqual([]);
   });
 
   it('never dirties or rewrites a document just for opening it', () => {

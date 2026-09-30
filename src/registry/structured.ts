@@ -1,5 +1,7 @@
 import { fillWritten, type AnswerVisitor } from '@/model/answerLeaves';
+import { flattenBlocks } from '@/model/edits';
 import { createStructuredQuestion } from '@/model/factories';
+import { partRootOf } from '@/model/lineage';
 import { partMarks, questionMarks } from '@/model/marks';
 import { isSchemeEmpty } from '@/model/markScheme';
 import type { MarkScheme } from '@/model/markSchemeTypes';
@@ -9,7 +11,7 @@ import {
 } from '@/model/numbering';
 import { areBlocksEmpty, bi, isBiTextEmpty } from '@/model/text';
 import { mapSame, patch, type TextWalker } from '@/model/textSlots';
-import type { BiText, DiagramBlock, StructuredQuestion } from '@/model/types';
+import type { BiText, ContentBlock, DiagramBlock, QuestionPart, QuestionSubPart, StructuredQuestion } from '@/model/types';
 import {
   diagramNodeFor,
   pushGap,
@@ -21,7 +23,7 @@ import { renderMarkScheme } from '@/render/markScheme';
 import { answerGraphNode } from '@/render/answerGraph';
 import { StructuredEditorPanel } from '@/components/editor/StructuredEditorPanel';
 import type { AnswerKeyEntry, AnswerKeyRow } from '@/render/answerKey';
-import type { QualityAnchor, QualityView, QuestionHealthFacts, QuestionTypeDefinition } from './types';
+import type { QualityAnchor, QualityView, QuestionHealthFacts, QuestionTypeDefinition, TagSlotInfo } from './types';
 
 /**
  * Structured rendering (§8): stem -> parts (a).. -> sub-parts (i).. with marks on
@@ -548,6 +550,97 @@ function qualityView(question: StructuredQuestion): QualityView {
   return { format: 'structured', anchors };
 }
 
+/**
+ * Each part's and sub-part's slot key (`partRootOf`), in print order. A key met twice in
+ * one question (never made by this build) falls back to the leaf's own id, so every slot
+ * stays addressable.
+ */
+function slotKeys(question: StructuredQuestion): Map<QuestionPart | QuestionSubPart, string> {
+  const keys = new Map<QuestionPart | QuestionSubPart, string>();
+  const seen = new Set<string>();
+  const claim = (leaf: QuestionPart | QuestionSubPart) => {
+    let key = partRootOf(leaf);
+    if (seen.has(key)) key = leaf.id;
+    for (let n = 2; seen.has(key); n++) key = `${leaf.id}#${n}`;
+    seen.add(key);
+    keys.set(leaf, key);
+  };
+  for (const part of question.parts) {
+    claim(part);
+    for (const sub of part.subParts ?? []) claim(sub);
+  }
+  return keys;
+}
+
+const blockIdsOf = (blocks: ContentBlock[] | undefined, extra?: DiagramBlock): string[] => [
+  ...flattenBlocks(blocks ?? []).map((block) => block.id),
+  ...(extra ? [extra.id] : []),
+];
+
+/** Topics per part: every part, then its sub-parts; a question with no parts has none. */
+function tagSlots(question: StructuredQuestion): TagSlotInfo[] {
+  const keys = slotKeys(question);
+  const slots: TagSlotInfo[] = [];
+  question.parts.forEach((part, index) => {
+    const subParts = part.subParts ?? [];
+    const key = keys.get(part)!;
+    slots.push({
+      key,
+      path: String(index),
+      label: partLabel(index),
+      leaf: subParts.length === 0,
+      ...(part.tags !== undefined ? { own: part.tags as unknown[] } : {}),
+      blockIds: blockIdsOf(part.blocks, part.answerDiagram),
+      leadInIds: blockIdsOf(part.blocksBefore),
+      answerIds: [part.id],
+    });
+    subParts.forEach((sub, subIndex) => {
+      slots.push({
+        key: keys.get(sub)!,
+        path: `${index}.${subIndex}`,
+        label: `${partLabel(index)}${subPartLabel(subIndex)}`,
+        parent: key,
+        leaf: true,
+        ...(sub.tags !== undefined ? { own: sub.tags as unknown[] } : {}),
+        blockIds: blockIdsOf(sub.blocks, sub.answerDiagram),
+        leadInIds: [],
+        answerIds: [sub.id],
+      });
+    });
+  });
+  return slots;
+}
+
+/** A leaf with its `tags` set to `list`, or without the key for none; the same object when unchanged. */
+function withOwn<T extends { tags?: string[] }>(leaf: T, list: readonly unknown[] | undefined): T {
+  if (list === undefined || list.length === 0) {
+    if (!('tags' in leaf)) return leaf;
+    const next = { ...leaf };
+    delete next.tags;
+    return next;
+  }
+  if (leaf.tags === list) return leaf;
+  return { ...leaf, tags: list as string[] };
+}
+
+function withSlotTags(
+  question: StructuredQuestion,
+  owns: ReadonlyMap<string, readonly unknown[] | undefined>,
+): StructuredQuestion {
+  if (owns.size === 0) return question;
+  const keys = slotKeys(question);
+  const apply = <T extends QuestionPart | QuestionSubPart>(leaf: T): T => {
+    const key = keys.get(leaf)!;
+    return owns.has(key) ? withOwn(leaf, owns.get(key)) : leaf;
+  };
+  const parts = mapSame(question.parts, (part) => {
+    const own = apply(part);
+    const subParts = part.subParts && mapSame(part.subParts, apply);
+    return subParts === part.subParts ? own : { ...own, subParts };
+  });
+  return parts === question.parts ? question : { ...question, parts };
+}
+
 export const structuredType: QuestionTypeDefinition<StructuredQuestion> = {
   id: 'structured',
   displayName: bi('Structured Question', '結構性問題'),
@@ -559,6 +652,8 @@ export const structuredType: QuestionTypeDefinition<StructuredQuestion> = {
   healthFacts,
   answerKey,
   qualityView,
+  tagSlots,
+  withSlotTags,
   // Timed by marks, at the paper's rate (`MINUTES_PER_MARK`).
   summary: { label: { en: 'structured', zh: '結構題' }, short: { en: 'LQ', zh: '長題目' } },
   // Everything but Paper 1, which is answered on a separate MCQ answer sheet.
