@@ -9,8 +9,8 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **Jev dev tooling (2026-09-30, on `develop`, dev only)**: `.claude/skills/jev/` + hooks in
   `.claude/settings.json`. Doc pointers on each prompt, an edit guard (`rules.json`), `verify-plan`
   for a diff, lint shown against a baseline. Key in `~/.claude/jev.env`; all hooks fail open.
-  Health: `node .claude/skills/jev/bin/doctor.mjs`. Open: the rewritten lint command asks for
-  permission once per session (no allow rule added; user's call).
+  Health: `node .claude/skills/jev/bin/doctor.mjs`. CLAUDE.md now says: read STATUS whole,
+  use `find.mjs` for the other docs. Allow rules for the four scripts are in the settings file.
 - **Paid service analysis (2026-09-30, research only, no code)**: accounts, hosted AI, cloud sync,
   payments. `docs/research/2026-09-paid-product/`, artifact FywY8LdptidVU4EobqsjQW. Key finding: only
   Vertex AI Gemini / Qwen HK may serve HK users; the in-app "use a VPN" Gemini advice breaks Google's
