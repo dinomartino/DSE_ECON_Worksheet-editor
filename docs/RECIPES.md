@@ -269,6 +269,8 @@ only a desktop run proves it: `npm run desktop:dev`, export a multi-page bilingu
 a diagram and a cover, then `pdfinfo` the file — page count equals the sheets on screen,
 page size is the paper's — and open it. WebKit's print can differ from Chrome's
 (a hard-stop CSS gradient printed as a solid box); draw rules on the paper as SVG.
+Export with a wide window (1800 px or more): text must be at true size (a 20 mm margin
+sits at 56.7 pt in `pdftotext -bbox`), and every footer must sit at its page's bottom.
 
 ## Verify UI
 

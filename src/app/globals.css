@@ -659,6 +659,13 @@ body {
     visibility: visible !important;
   }
 
+  /* WebKit's print keeps screen-width breakpoints, so hidden chrome overflows the paper
+     and WebKit shrinks the whole page to fit. `#print-root`'s containing block is the
+     page (its ancestors stay unpositioned), so it escapes this clip. */
+  body *:has(#print-root) {
+    overflow-x: clip !important;
+  }
+
   /* …except a space-reserving twin, which the rule above would print (the marks
      label came out twice). */
   #print-root [data-marks-trail] > [aria-hidden] {
