@@ -1,8 +1,8 @@
 # Per-part topics and 題型: design
 
-Status: WP-0 (model, registry hooks, library and sync core) built 2026-09-30 on
-`feature/part-tags-core`; the UI built 2026-09-30: WP-A (editor), WP-B (review page) and WP-C
-(bank tagging), each § "As built" below; WP-D (docs) next. Written against `develop` @ ba349fa,
+Status: **built** (2026-09-30). WP-0 (model, registry hooks, library and sync core) on
+`feature/part-tags-core`; WP-A (editor), WP-B (review page) and WP-C (bank tagging), each
+§ "As built" below; end-to-end QA in § "QA (2026-09-30)". Written against `develop` @ ba349fa,
 so line numbers below are that commit's; § "As built" says where the code differs from
 the proposal, and the code wins.
 Binding user decisions: topics and 題型 live per part on a structured question with parts; the
@@ -198,8 +198,37 @@ questionId, mode, images?, printedNumber?) → { html; target? }[]` (joined, exa
   parts, it applies to every part; change one part alone in Edit topics." when a pick has
   parts. **PatternsPage** is unchanged; rename, merge and delete reach part lists through
   `patternWrites`/`everyTag` (test in `partTopics.test.ts`, browser-checked).
-- Not done here: the preview does not highlight the chosen part while tagging (WP-B's
-  `highlight` prop; wire `slotHighlightIds` for the strip's target once both are merged).
+- The paper marks the strip's target (its slot key into `PaperPreview`'s `highlight`,
+  mapped by `slotHighlightIds`); the whole question marks nothing. A clicked chip carries
+  `data-tag-part`, so Enter still saves (as on a key).
+
+### QA (2026-09-30, `feature/part-tags-qa`)
+
+- **Editor**: a page click that points the Topic row at a part scrolls the row into view
+  when its first line is out of view (`PartTopics.tsx`; nearest, smooth unless Reduce
+  motion, focus stays on the page; the row's own part links do not scroll).
+- **Journey**, production build, Chromium and WebKit at 1280×800, 1024×768 and dark, all
+  pass: build a Paper 2 LQ with (a)(i)(ii) and (b) and tag it per part in the editor
+  ((a)(ii) its own with a 題型, a free tag on the question); ⌘Z/⇧⌘Z on a part tag; review
+  under C ("Part (a)(i) tests this · Also in …", highlight) and under PED; ✦ Fill missing
+  中文 keeps the highlight and marks; tag as you go part by part with the highlight, then
+  Undo; bulk Set topic on two questions with parts; add to a Paper 1 from the list (part
+  topics and roots carried); Edit topics on (b) reaches both copies and the editor;
+  student and teacher `.docx` valid and free of topics, 題型, free tags and highlight.
+- **Compatibility** (both engines): the frozen v1 corpus in a v0.5.0-shaped browser opens
+  (one save, content unchanged), renders, and is listed by the bank without a write; a
+  develop-era question with question-level topics opens unchanged and the bank never
+  writes it; a backup made by this build restores part tags and part `rootId`s.
+- **Remaining gaps** (none blocks release):
+  - ⌘Z after a topic edit on a question with copies restores the open copy only; the row
+    keeps showing the other copies' newer change (as documented for whole-question
+    topics, `question-library.md`). Low to medium: looks like Undo did nothing.
+  - An older question with its topics on the whole question and two or more unstamped
+    copies shows each part's topics as its own (the no-stamp union is normalized), so the
+    "Set on the whole question" note is missing there. Display only; low.
+  - The Edit topics part column says "(ii) Price elasticity of demand" where the editor
+    says "· its own"; the review page's Topics fact truncates long names per part (the
+    tooltip has them). Cosmetic.
 
 ---
 
