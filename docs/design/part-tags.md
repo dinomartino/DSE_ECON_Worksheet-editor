@@ -1,7 +1,8 @@
 # Per-part topics and 題型: design
 
 Status: WP-0 (model, registry hooks, library and sync core) built 2026-09-30 on
-`feature/part-tags-core`; WP-A to WP-D (the UI) next. Written against `develop` @ ba349fa,
+`feature/part-tags-core`; WP-C (bank tagging) built on `feature/part-tags-bank-tagging`
+(§ "As built (WP-C)"); WP-A, WP-B, WP-D (the rest of the UI) in parallel. Written against `develop` @ ba349fa,
 so line numbers below are that commit's; § "As built" says where the code differs from
 the proposal, and the code wins.
 Binding user decisions: topics and 題型 live per part on a structured question with parts; the
@@ -104,6 +105,38 @@ questionId, mode, images?, printedNumber?) → { html; target? }[]` (joined, exa
   each part's `tags` and `rootId`, as it did the question's metadata.
 - A slot key repeated inside one question (never made by this build) falls back to the
   part's own id, so every slot stays addressable.
+
+### As built (WP-C, bank tagging)
+
+- **Picks are edits.** `src/components/bank/page/partTopics.ts` holds the pure half: a
+  draft (`draftOf` = the row's state normalized and collapsed, as a write sees it), and each
+  pick as a `StateEdit` on a target (`undefined` = the whole question, else a slot key):
+  `toggleAt` (whole: `wholeQuestion(add | remove)`; a part: `atSlot`), `changeAt` (All
+  topics: `changeEdit`, so other parts keep theirs), `patternEditAt` (a 題型 set only on the
+  lists holding its sub-topic; `withPattern` alone would add it to every part), `sameAsPart`
+  (`inheritAtSlot`). A save replays `thenState(...picks)` on each copy's shared state, so a
+  reordered copy gets "(b)" by key. Nothing changed hands back no edit and writes nothing.
+- **Edit topics** (`TopicPickerDialog.tsx:PartTopicPickerDialog`, rows with `slots`): a part
+  column (Whole question, (a), (i), (ii), (b), each with its topics, "Same as (a)" or "No
+  topic yet"), one topic list for the chosen target. On the whole question a topic on some
+  parts only is half-ticked with where ("(a)(ii)"); ticking it puts it on every part. A
+  sub-part: "Tick or untick one to give it its own", then "Same as (a)" to go back. The
+  footer names the parts with no topic yet. Rows without slots keep the one-list dialog and
+  its `replaceTopics` write unchanged.
+- **Tag as you go**: a part strip over the keys; `[` and `]` step along it (Whole question,
+  (a), (a)(i) ... (b)), a click picks one; ← → still move between questions. The keys tag
+  the whole question by default; on the whole question a topic on some parts only shows a
+  dashed key with the parts' labels. All topics on a question with parts returns to the
+  strip ("Done") rather than saving, so another part can follow. Undo is
+  `everywhere(removeTopics(every code the save put anywhere))` (the question had none
+  before); its line says what went where ("tagged J · …; (b) C · …", `savedByPart`).
+- **Bulk Set topic** is unchanged code: a list edit, so `wholeQuestion` gives every part the
+  topic (Remove takes it off every list a leaf reads). The dialog adds "On a question with
+  parts, it applies to every part; change one part alone in Edit topics." when a pick has
+  parts. **PatternsPage** is unchanged; rename, merge and delete reach part lists through
+  `patternWrites`/`everyTag` (test in `partTopics.test.ts`, browser-checked).
+- Not done here: the preview does not highlight the chosen part while tagging (WP-B's
+  `highlight` prop; wire `slotHighlightIds` for the strip's target once both are merged).
 
 ---
 

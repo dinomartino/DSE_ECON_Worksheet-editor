@@ -4,9 +4,10 @@ import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui';
 import { SourceText } from '@/components/bank/BankRow';
 import type { BankRow } from '@/library/types';
-import { topicHeading } from '@/model/topics';
+import { topicDisplay, topicHeading } from '@/model/topics';
 import type { LanguageMode } from '@/model/types';
 import { suggestionLabel } from './bankScreen';
+import type { PartLine, PartTarget } from './partTopics';
 import { PaperPreview, SHEET_MAX_WIDTH } from './PaperPreview';
 import { shownLanguage } from './ReviewPage';
 import { useOwningDocument } from './useOwningDocument';
@@ -16,6 +17,10 @@ import { useOwningDocument } from './useOwningDocument';
  * suggested topics and "… All topics" as six numbered keys; Enter saves and the next
  * question appears. Saving writes the owning documents directly, which is safe only
  * because no editor is mounted on this screen (`src/library/tagWrites.ts`).
+ *
+ * A question with parts adds a part strip over the keys: the keys tag the whole question
+ * (every part) until a part is picked, by clicking it or with [ and ]; then they tag that
+ * part alone. One save writes every part's topics.
  */
 export function TagAsYouGo({
   row,
@@ -23,6 +28,9 @@ export function TagAsYouGo({
   left,
   suggestions,
   chosen,
+  partial,
+  canSave,
+  parts,
   language,
   busy,
   onToggle,
@@ -40,7 +48,14 @@ export function TagAsYouGo({
   position: number;
   left: number;
   suggestions: string[];
+  /** Topics on where the keys tag now: the whole question (on every part), or one part. */
   chosen: ReadonlySet<string>;
+  /** The whole question: topics on some parts only, with where. */
+  partial?: ReadonlyMap<string, string[]>;
+  /** Some part (or the question) has a topic to save. */
+  canSave: boolean;
+  /** A question with parts: its parts, and where the keys tag. */
+  parts?: { lines: PartLine[]; at: PartTarget; name: string; onAt: (at: PartTarget) => void };
   language: LanguageMode;
   busy: boolean;
   onToggle: (code: string) => void;
@@ -111,23 +126,32 @@ export function TagAsYouGo({
           </Button>
         </div>
         {undoLine}
-        <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6" role="group" aria-label="Topics for this question">
+        {parts && <PartStrip {...parts} />}
+        <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6" role="group" aria-label={parts ? `Topics for ${parts.name}` : 'Topics for this question'}>
           {suggestions.map((code, index) => {
             const { code: coarse, name, zh } = suggestionLabel(code);
             const on = chosen.has(code);
+            const some = on ? undefined : partial?.get(code);
             return (
               <button
                 key={code}
                 type="button"
                 data-tag-key
-                aria-pressed={on}
-                title={topicHeading(code, 'both')}
+                aria-pressed={on ? true : some ? 'mixed' : false}
+                title={some ? `${topicHeading(code, 'both')}: on ${some.join(', ')} only. Press to put it on every part.` : topicHeading(code, 'both')}
                 onClick={() => onToggle(code)}
                 className={`relative grid min-w-0 cursor-pointer content-start rounded-[7px] border px-2 py-1.5 text-left text-[12px] transition-colors duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-                  on ? 'border-accent bg-accent-soft shadow-[inset_0_0_0_1px_var(--accent)]' : 'border-line-strong bg-surface-raised hover:border-ink-subtle'
+                  on
+                    ? 'border-accent bg-accent-soft shadow-[inset_0_0_0_1px_var(--accent)]'
+                    : some
+                      ? 'border-dashed border-accent bg-surface-raised'
+                      : 'border-line-strong bg-surface-raised hover:border-ink-subtle'
                 }`}
               >
-                <span className="absolute right-1.5 top-1 text-[10.5px] tabular-nums text-ink-subtle">{index + 1}</span>
+                <span className="absolute right-1.5 top-1 text-[10.5px] tabular-nums text-ink-subtle">
+                  {some && <span className="mr-1 text-accent-ink">{some.join(' ')}</span>}
+                  {index + 1}
+                </span>
                 <b className="text-[13px] font-semibold text-ink">{coarse}</b>
                 <small className="line-clamp-2 text-[12px] leading-snug text-ink-muted">{name}</small>
                 {zh && <small className="truncate text-[12px] leading-snug text-ink-subtle">{zh}</small>}
@@ -149,13 +173,75 @@ export function TagAsYouGo({
             {suggestions.length > 0
               ? `Suggestions come from topics used on the same worksheet, then your most used. Press 1 to ${suggestions.length + 1} or click; Enter saves and moves on.`
               : 'Nothing to suggest yet: choose from All topics. Enter saves and moves on.'}
+            {parts && ' The keys tag the whole question until you pick a part (click it, or press [ and ]).'}
           </p>
-          <Button variant="primary" size="sm" disabled={busy || chosen.size === 0} onClick={onSave} data-tag-save>
+          <Button variant="primary" size="sm" disabled={busy || !canSave} onClick={onSave} data-tag-save>
             Save and next
           </Button>
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Where the keys tag: "Whole question", then each part and sub-part with what it has so
+ * far. Picked with a click, or [ and ] (`QuestionBankScreen`'s keys).
+ */
+function PartStrip({ lines, at, onAt }: { lines: PartLine[]; at: PartTarget; onAt: (at: PartTarget) => void }) {
+  return (
+    <div role="group" aria-label="Tag the whole question or one part" className="flex min-w-0 flex-wrap items-stretch gap-1.5">
+      <PartChip selected={at === undefined} label="Whole question" detail="Every part" onClick={() => onAt(undefined)} />
+      {lines.map((line) => (
+        <PartChip
+          key={line.key}
+          selected={at === line.key}
+          label={line.sub ? line.short : line.label}
+          title={line.label}
+          detail={
+            line.inherits
+              ? `Same as ${line.parentLabel}`
+              : line.codes.length === 0
+                ? 'No topic yet'
+                : line.codes.map((code) => topicDisplay(code)).join(', ')
+          }
+          quiet={line.inherits || line.codes.length === 0}
+          onClick={() => onAt(line.key)}
+        />
+      ))}
+      <span className="self-center pl-1 text-[11.5px] text-ink-subtle">[ ] move</span>
+    </div>
+  );
+}
+
+function PartChip({
+  selected,
+  label,
+  title,
+  detail,
+  quiet = false,
+  onClick,
+}: {
+  selected: boolean;
+  label: string;
+  title?: string;
+  detail: string;
+  quiet?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      title={title ? `${title}: ${detail}` : detail}
+      onClick={onClick}
+      className={`grid min-w-0 max-w-[180px] cursor-pointer content-start rounded-[7px] border px-2 py-1 text-left transition-colors duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+        selected ? 'border-accent bg-accent-soft' : 'border-line bg-surface hover:bg-surface-hover'
+      }`}
+    >
+      <span className={`text-[12px] font-medium ${selected ? 'text-accent-ink' : 'text-ink'}`}>{label}</span>
+      <span className={`truncate text-[11px] ${quiet ? 'text-ink-subtle' : 'text-ink-muted'}`}>{detail}</span>
+    </button>
   );
 }
 

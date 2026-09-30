@@ -1,13 +1,28 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Button, Segmented } from '@/components/ui';
 import { Dialog } from '@/components/ui/Dialog';
+import type { StateEdit } from '@/library/tagWrites';
+import { thenState } from '@/library/tagWrites';
 import { holdsPatterns } from '@/model/patterns';
-import { TOPICS, topicHeading, topicOf, type Topic } from '@/model/topics';
+import { sameTagState, type TagState } from '@/model/tagSlots';
+import { TOPICS, topicDisplay, topicHeading, topicOf, type Topic } from '@/model/topics';
 import { countOf } from '../bankText';
 import { escapeClears } from '../escapeClears';
 import { PatternPicker } from '../PatternPicker';
+import {
+  applyDraft,
+  partLines,
+  patternAt,
+  patternEditAt,
+  sameAsPart,
+  targetName,
+  ticksAt,
+  toggleAt,
+  type PartLine,
+  type PartTarget,
+} from './partTopics';
 
 /** A row of choices over the list (bulk: Add, Remove, Replace), owned by the caller. */
 export interface PickerModes<T extends string> {
@@ -86,24 +101,6 @@ export function TopicPickerDialog<M extends string = never>({
   const [chosenPatterns, setChosenPatterns] = useState<Record<string, string | null | undefined>>(() => ({ ...(patterns?.initial ?? {}) }));
   const [onlyPattern, setOnlyPattern] = useState<ReadonlySet<string>>(new Set());
   const [picked, setPicked] = useState<ReadonlySet<string>>(() => new Set(initial.filter((tag) => topicOf(tag))));
-  const [query, setQuery] = useState('');
-  const [open, setOpen] = useState<ReadonlySet<string>>(
-    () =>
-      new Set(
-        [...initial, ...(present?.keys() ?? [])].flatMap((tag) => (topicOf(tag)?.parent ? [topicOf(tag)!.parent!] : [])),
-      ),
-  );
-  const needle = query.trim().toLowerCase();
-  const matches = (topic: Topic) =>
-    !needle || topic.code.toLowerCase().includes(needle) || topic.en.toLowerCase().includes(needle) || topic.zh.includes(needle);
-  const shown = useMemo(
-    () =>
-      TOPICS.map((topic) => ({ topic, children: topic.children.filter((child) => matches(child) || matches(topic)) })).filter(
-        ({ topic, children }) => matches(topic) || children.length > 0,
-      ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [needle],
-  );
   const toggle = (code: string) =>
     setPicked((current) => {
       const next = new Set(current);
@@ -112,7 +109,7 @@ export function TopicPickerDialog<M extends string = never>({
       return next;
     });
   // Guide order, so a question's tags read A before C and a coarse code before its fine ones.
-  const ordered = () => TOPICS.flatMap((topic) => [topic, ...topic.children]).map((t) => t.code).filter((code) => picked.has(code));
+  const ordered = () => GUIDE_CODES.filter((code) => picked.has(code));
   const keepsTopic = (code: string) => Boolean(patternRemoval?.get(code)) && onlyPattern.has(code);
   const done = () => {
     const codes = ordered();
@@ -195,58 +192,297 @@ export function TopicPickerDialog<M extends string = never>({
           </div>
         )}
         {patternNote && <p className="mb-2 text-[11.5px] text-ink-subtle">{patternNote}</p>}
-        <input
-          type="search"
-          value={query}
-          autoFocus
-          placeholder="Find a topic by name or 中文"
-          onChange={(event) => setQuery(event.target.value)}
-          onKeyDown={(event) => void escapeClears(event, query, () => setQuery(''))}
-          className="h-8 w-full rounded-lg border border-line bg-surface px-2.5 text-[12.5px] text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
+        <TopicChecklist
+          ticked={picked}
+          openFor={[...initial, ...(present?.keys() ?? [])]}
+          count={(code) => present?.get(code)}
+          onToggle={toggle}
+          below={patternFor}
         />
-        <ul className="mt-3 space-y-0.5">
-          {shown.map(({ topic, children }) => {
-            const expanded = Boolean(needle) || open.has(topic.code);
-            return (
-              <li key={topic.code}>
-                <div className="flex items-center gap-1">
-                  <TopicCheck topic={topic} checked={picked.has(topic.code)} count={present?.get(topic.code)} onToggle={() => toggle(topic.code)} />
-                  {topic.children.length > 0 && !needle && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setOpen((current) => {
-                          const next = new Set(current);
-                          if (next.has(topic.code)) next.delete(topic.code);
-                          else next.add(topic.code);
-                          return next;
-                        })
-                      }
-                      className="shrink-0 cursor-pointer rounded px-1.5 py-0.5 text-[11px] tabular-nums text-ink-subtle hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                      aria-expanded={expanded}
-                    >
-                      {expanded ? 'Hide' : countOf(topic.children.length, 'sub-topic')}
-                      {!expanded && countIn(topic, picked) > 0 && ` · ${countIn(topic, picked)} ticked`}
-                    </button>
-                  )}
-                </div>
-                {expanded && (
-                  <ul className="mb-1 ml-6">
-                    {children.map((child) => (
-                      <li key={child.code}>
-                        <TopicCheck topic={child} checked={picked.has(child.code)} count={present?.get(child.code)} onToggle={() => toggle(child.code)} />
-                        {patternFor(child)}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </li>
-            );
-          })}
-          {shown.length === 0 && <li className="py-2 text-[12px] text-ink-subtle">No topic matches “{query.trim()}”.</li>}
-        </ul>
       </div>
     </Dialog>
+  );
+}
+
+const GUIDE_CODES = TOPICS.flatMap((topic) => [topic, ...topic.children]).map((topic) => topic.code);
+
+/**
+ * Edit topics for one question with parts: a part column ("Whole question", then each part
+ * and sub-part) beside the topic list. Ticks on the whole question go on every part; a
+ * part then changes alone; a sub-part has its part's topics until it is given its own,
+ * which replace them. Confirming hands back one edit, every pick in order, which a save
+ * replays on each copy (`partTopics.ts`); nothing changed hands back `undefined`.
+ */
+export function PartTopicPickerDialog({
+  title,
+  description,
+  state,
+  patterns,
+  confirmLabel,
+  onClose,
+  onDone,
+}: {
+  title: string;
+  description: string;
+  /** The question's tag state as the bank shows it, in stored form (`draftOf`). */
+  state: TagState;
+  /** 題型 under each ticked sub-topic; `initial` is read from the draft, not from here. */
+  patterns?: Omit<PickerPatterns, 'initial' | 'clearable' | 'present'>;
+  confirmLabel: string;
+  onClose: () => void;
+  onDone: (edit: StateEdit | undefined) => void;
+}) {
+  const [draft, setDraft] = useState(state);
+  const [edits, setEdits] = useState<StateEdit[]>([]);
+  const [at, setAt] = useState<PartTarget>(undefined);
+  const lines = useMemo(() => partLines(draft), [draft]);
+  const ticks = useMemo(() => ticksAt(draft, at), [draft, at]);
+  const apply = (edit: StateEdit) => {
+    setDraft((current) => applyDraft(current, edit));
+    setEdits((current) => [...current, edit]);
+  };
+  const line = lines.find((entry) => entry.key === at);
+  const untagged = lines.filter((entry) => draft.slots.find((slot) => slot.key === entry.key)?.leaf && entry.codes.length === 0);
+  const changed = edits.length > 0 && !sameTagState(draft, state);
+
+  const patternFor = (child: Topic) => {
+    if (!patterns || !ticks.ticked.has(child.code) || !holdsPatterns(child.code)) return null;
+    const { name, mixed } = patternAt(draft, at, child.code);
+    return (
+      <div className="mb-1 ml-[28px] mr-2">
+        {mixed && <p className="mb-0.5 text-[11px] text-ink-subtle">The parts have different 題型 here. Pick one to set it on every part.</p>}
+        <PatternPicker
+          topic={child.code}
+          kind={patterns.kind}
+          typeId={patterns.typeId}
+          names={patterns.names(child.code)}
+          value={name}
+          onChange={(next) => apply(patternEditAt(draft, at, child.code, next ?? undefined))}
+        />
+      </div>
+    );
+  };
+
+  return (
+    <Dialog
+      title={title}
+      description={description}
+      width={720}
+      height={640}
+      scrollBody={false}
+      onClose={onClose}
+      footer={
+        <>
+          <span className="mr-auto min-w-0 truncate text-[11.5px] text-ink-subtle">
+            {untagged.length === 0
+              ? 'Every part has a topic'
+              : untagged.length === lines.filter((entry) => draft.slots.find((slot) => slot.key === entry.key)?.leaf).length
+                ? 'No part has a topic yet'
+                : `No topic yet on ${untagged.map((entry) => entry.label).join(', ')}`}
+          </span>
+          <Button variant="subtle" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={() => onDone(changed ? thenState(...edits) : undefined)}>
+            {confirmLabel}
+          </Button>
+        </>
+      }
+    >
+      <div className="flex min-h-0 flex-1">
+        <nav aria-label="Where the topics go" className="scroll-slim w-[196px] shrink-0 overflow-y-auto border-r border-line bg-surface-sunken px-2 py-3">
+          <PartButton selected={at === undefined} onClick={() => setAt(undefined)} label="Whole question" detail="Every part" />
+          {lines.map((entry) => (
+            <PartButton
+              key={entry.key}
+              selected={at === entry.key}
+              sub={entry.sub}
+              onClick={() => setAt(entry.key)}
+              label={entry.sub ? entry.short : entry.label}
+              title={entry.label}
+              detail={partDetail(entry)}
+              quiet={entry.inherits || entry.codes.length === 0}
+            />
+          ))}
+        </nav>
+        <div className="scroll-slim min-w-0 flex-1 overflow-y-auto px-5 pb-4 pt-3">
+          <TargetNote line={line} onSameAsPart={line ? () => apply(sameAsPart(draft, line.key)) : undefined} name={targetName(draft, at)} />
+          <TopicChecklist
+            // Each target opens on its own topics.
+            key={at ?? ''}
+            ticked={ticks.ticked}
+            openFor={[...ticks.ticked, ...ticks.partial.keys()]}
+            partial={ticks.partial}
+            onToggle={(code) => apply(toggleAt(draft, at, code, !ticks.ticked.has(code)))}
+            below={patternFor}
+          />
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
+/** A part's line in the column: its topics' names, "Same as (a)", or "No topic yet". */
+function partDetail(line: PartLine): string {
+  if (line.inherits) return `Same as ${line.parentLabel}`;
+  if (line.codes.length === 0) return 'No topic yet';
+  return line.codes.map((code) => topicDisplay(code)).join(', ');
+}
+
+/** What ticking does here, in one line; a sub-part also says whose topics it has. */
+function TargetNote({ line, name, onSameAsPart }: { line?: PartLine; name: string; onSameAsPart?: () => void }) {
+  let text: ReactNode;
+  if (!line) text = 'Ticks here go on every part. Then pick a part to change it alone.';
+  else if (!line.sub) text = `Ticks here change ${name} only.`;
+  else if (line.inherits) text = `${line.label} has the same topics as ${line.parentLabel}. Tick or untick one to give it its own.`;
+  else
+    text = (
+      <>
+        {line.label} has its own topics, in place of {line.parentLabel}’s.{' '}
+        <button
+          type="button"
+          onClick={onSameAsPart}
+          className="cursor-pointer rounded px-1 font-medium text-accent-ink transition-colors duration-150 ease-out-soft hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          Same as {line.parentLabel}
+        </button>
+      </>
+    );
+  return <p className="mb-2.5 text-[12px] leading-snug text-ink-muted">{text}</p>;
+}
+
+function PartButton({
+  selected,
+  sub = false,
+  quiet = false,
+  label,
+  title,
+  detail,
+  onClick,
+}: {
+  selected: boolean;
+  sub?: boolean;
+  quiet?: boolean;
+  label: string;
+  title?: string;
+  detail: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      title={title ? `${title}: ${detail}` : detail}
+      onClick={onClick}
+      className={`mb-0.5 grid w-full min-w-0 cursor-pointer rounded-md py-1.5 pr-2 text-left transition-colors duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+        sub ? 'pl-6' : 'pl-2'
+      } ${selected ? 'bg-accent-soft' : 'hover:bg-surface-hover'}`}
+    >
+      <span className={`text-[12.5px] font-medium ${selected ? 'text-accent-ink' : 'text-ink'}`}>{label}</span>
+      <span className={`truncate text-[11.5px] ${quiet ? 'text-ink-subtle' : 'text-ink-muted'}`}>{detail}</span>
+    </button>
+  );
+}
+
+/**
+ * The guide's topics to tick, with a search. A topic opens when one of `openFor` is under
+ * it. `partial` (a whole question with parts): codes on some parts only, shown half-ticked
+ * with the parts' labels; ticking one puts it on every part.
+ */
+function TopicChecklist({
+  ticked,
+  openFor,
+  partial,
+  count,
+  onToggle,
+  below,
+}: {
+  ticked: ReadonlySet<string>;
+  openFor: readonly string[];
+  partial?: ReadonlyMap<string, string[]>;
+  count?: (code: string) => number | undefined;
+  onToggle: (code: string) => void;
+  /** Under a sub-topic: its 題型 picker, or nothing. */
+  below: (child: Topic) => ReactNode;
+}) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState<ReadonlySet<string>>(
+    () => new Set(openFor.flatMap((tag) => (topicOf(tag)?.parent ? [topicOf(tag)!.parent!] : []))),
+  );
+  const needle = query.trim().toLowerCase();
+  const matches = (topic: Topic) =>
+    !needle || topic.code.toLowerCase().includes(needle) || topic.en.toLowerCase().includes(needle) || topic.zh.includes(needle);
+  const shown = useMemo(
+    () =>
+      TOPICS.map((topic) => ({ topic, children: topic.children.filter((child) => matches(child) || matches(topic)) })).filter(
+        ({ topic, children }) => matches(topic) || children.length > 0,
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [needle],
+  );
+  const check = (topic: Topic) => (
+    <TopicCheck
+      topic={topic}
+      checked={ticked.has(topic.code)}
+      where={partial?.get(topic.code)}
+      count={count?.(topic.code)}
+      onToggle={() => onToggle(topic.code)}
+    />
+  );
+  return (
+    <>
+      <input
+        type="search"
+        value={query}
+        autoFocus
+        placeholder="Find a topic by name or 中文"
+        onChange={(event) => setQuery(event.target.value)}
+        onKeyDown={(event) => void escapeClears(event, query, () => setQuery(''))}
+        className="h-8 w-full rounded-lg border border-line bg-surface px-2.5 text-[12.5px] text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
+      />
+      <ul className="mt-3 space-y-0.5">
+        {shown.map(({ topic, children }) => {
+          const expanded = Boolean(needle) || open.has(topic.code);
+          const inside = countIn(topic, ticked);
+          return (
+            <li key={topic.code}>
+              <div className="flex items-center gap-1">
+                {check(topic)}
+                {topic.children.length > 0 && !needle && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOpen((current) => {
+                        const next = new Set(current);
+                        if (next.has(topic.code)) next.delete(topic.code);
+                        else next.add(topic.code);
+                        return next;
+                      })
+                    }
+                    className="shrink-0 cursor-pointer rounded px-1.5 py-0.5 text-[11px] tabular-nums text-ink-subtle hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    aria-expanded={expanded}
+                  >
+                    {expanded ? 'Hide' : countOf(topic.children.length, 'sub-topic')}
+                    {!expanded && inside > 0 && ` · ${inside} ticked`}
+                  </button>
+                )}
+              </div>
+              {expanded && (
+                <ul className="mb-1 ml-6">
+                  {children.map((child) => (
+                    <li key={child.code}>
+                      {check(child)}
+                      {below(child)}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          );
+        })}
+        {shown.length === 0 && <li className="py-2 text-[12px] text-ink-subtle">No topic matches “{query.trim()}”.</li>}
+      </ul>
+    </>
   );
 }
 
@@ -254,12 +490,30 @@ function countIn(topic: Topic, picked: ReadonlySet<string>): number {
   return topic.children.filter((child) => picked.has(child.code)).length;
 }
 
-function TopicCheck({ topic, checked, count, onToggle }: { topic: Topic; checked: boolean; count?: number; onToggle: () => void }) {
+function TopicCheck({
+  topic,
+  checked,
+  where,
+  count,
+  onToggle,
+}: {
+  topic: Topic;
+  checked: boolean;
+  /** On some parts only: their labels, and the box shows half-ticked. */
+  where?: readonly string[];
+  count?: number;
+  onToggle: () => void;
+}) {
+  const partial = !checked && where !== undefined && where.length > 0;
   return (
     <label className="flex min-w-0 flex-1 cursor-pointer items-baseline gap-2 rounded-md px-1.5 py-1 text-[12.5px] text-ink transition-colors hover:bg-surface-hover">
       <input
         type="checkbox"
         checked={checked}
+        ref={(element) => {
+          if (element) element.indeterminate = partial;
+        }}
+        aria-checked={partial ? 'mixed' : checked}
         onChange={onToggle}
         className="h-3.5 w-3.5 shrink-0 translate-y-[2px] cursor-pointer accent-[var(--accent)]"
       />
@@ -268,6 +522,11 @@ function TopicCheck({ topic, checked, count, onToggle }: { topic: Topic; checked
       <span className="min-w-0 flex-1" title={topicHeading(topic.code, 'both')}>
         {topic.en} <span className="text-ink-subtle">{topic.zh}</span>
       </span>
+      {partial && (
+        <span className="shrink-0 text-[11px] tabular-nums text-ink-subtle" title={`On ${where.join(', ')} only. Tick to put it on every part.`}>
+          {where.join(' ')}
+        </span>
+      )}
       {count !== undefined && count > 0 && (
         <span className="shrink-0 text-[11px] tabular-nums text-ink-subtle" title={`On ${count} selected`}>
           ×{count}
