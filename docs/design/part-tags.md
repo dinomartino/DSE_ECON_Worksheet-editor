@@ -1,6 +1,9 @@
 # Per-part topics and 題型: design
 
-Status: proposal, 2026-09-30, read against `develop` @ ba349fa. Nothing here is built.
+Status: WP-0 (model, registry hooks, library and sync core) built 2026-09-30 on
+`feature/part-tags-core`; WP-A to WP-D (the UI) next. Written against `develop` @ ba349fa,
+so line numbers below are that commit's; § "As built" says where the code differs from
+the proposal, and the code wins.
 Binding user decisions: topics and 題型 live per part on a structured question with parts; the
 parent's are derived; sub-parts share their part's by default and may have their own; free
 tags stay on the whole question; the bank lists and inserts whole questions but says and
@@ -21,6 +24,86 @@ carries the per-part sets for the rail's "also in", the "(b)" marker and the pre
 One `tagsAt` per question still decides newest-wins; the winning copy's whole state wins, mapped
 onto each copy slot by slot (by part `rootId`, falling back to position only between copies of
 the same shape). Writes stay one save per document; opening never writes.
+
+---
+
+## As built (WP-0) — the contracts the UI packages use
+
+No schema bump, no `KNOWN_KEYS` change, `src/test/corpus/v1-published.json` untouched.
+`INDEX_FORMAT` is **7** (the bank ✦ AI branch took 6 for `missing`/`missingTeacher`).
+
+**Model** (`src/model/tagSlots.ts`, registry-free by name, in the `registry.test.ts` grep list):
+
+| Export | Signature | Use |
+|---|---|---|
+| `TagState` | `{ tags: string[]; slots: SlotState[] }` | A question's lists: its own, each slot's own |
+| `SlotState` | `{ key; path; label; parent?; leaf; own?: string[] }` | `own` absent = inherits |
+| `SlotRef` | `{ key; path; shape: string }` | How an edit finds "(b)" in another copy |
+| `questionTagSlots(q)` | `→ TagSlotInfo[]` | Slots with `blockIds`, `leadInIds`, `answerIds` (selection, highlight) |
+| `tagStateOf(q)` | `→ TagState` | Stored state, strings only |
+| `derivedTags(q \| state)` | `→ string[]` | Leaves' topics in print order, then free tags; no slots: the list as stored |
+| `effectiveSlotTags(state)` | `→ Map<key, string[]>` | What each slot tests |
+| `normalizeTagState`, `collapseTagState`, `sameTagState` | | § B move-down; § A2 storage rules; set equality |
+| `stateFor(copy, shared)` | `→ TagState` | The shared state as one copy shows it |
+| `withTagState(q, state)` | `→ Q` | Writes lists through `withSlotTags`; same object when unchanged |
+| `matchSlots`, `findSlot`, `slotRef`, `sameShape`, `shapeOf` | | § D1 identity |
+| `slotAtTarget(slots, editTargetKey)` | `→ slot \| undefined` | The Topic row's mode from the page selection (finest wins) |
+| `slotHighlightIds(slots, keys)` | `→ Set<string>` | Ids to mark in the preview (a part with its sub-parts, never its lead-in) |
+| `isTopicalTag(tag)` | | Topic code (grammar) or `::` tag: what a part may hold |
+
+**Registry** (`src/registry/types.ts`): `tagSlots?(q): TagSlotInfo[]`,
+`withSlotTags?(q, owns: ReadonlyMap<string, readonly unknown[] | undefined>): Q`
+(lists may keep entries this build cannot read). `structuredType` implements both;
+`mcqType` neither. **Lineage** (`src/model/lineage.ts`): `partRootOf(part)`,
+`copyQuestion` stamps part roots, `withoutLineage(q)` (Treat as a new question, in
+`src/components/editor/BankActions.tsx`).
+
+**Writes** (`src/library/tagWrites.ts`): `StateEdit` is a branded function made by
+`stateEdit(fn)`; `isStateEdit`, `asStateEdit`. Lifters: `everywhere(edit)`,
+`wholeQuestion(edit)`, `atSlot(ref, edit)`, `inheritAtSlot(ref)` ("Same as (a)"),
+`freeTags(edit)`, `thenState(...edits)`. **A plain `TagEdit` given to a write means
+`wholeQuestion`**, so every existing caller (bank Edit topics, tag as you go, bulk Set
+topic, 題型 rename/merge/delete) tags every part without a change. `changeEdit(before,
+after)` carries only a list's change (the one-list Topic row on a question with parts).
+`retagQuestion(q, edit, now, shared?)` is one question's write; `withQuestionTags` and
+`writeTags` take `TagEdit | StateEdit` and `shared: TagState`; `TagWrite.shared` is a
+`TagState` (from `stateOfRow`).
+
+**Reads** (`src/library/sharedTags.ts`): `sharedState(copies)` (newest copy's whole state;
+ties and no stamps: union list by list, normalized), `stateOfRow(row)`, `rowTagFields(state)`,
+state-aware `withSharedTags` and `withRowTags`. `BankRow.tags` is derived; `BankRow.slots`
+(`BankSlot`: `SlotState` + effective `tags`) and `ownTags` are new.
+`src/library/slotMatch.ts:slotsMatching(row, { topic } | { pattern })` gives the leaf
+slots for "(b) tests this" (empty when every leaf or none matches, or no slots).
+`src/library/patterns.ts`: `rowPatterns(row, topic)`, `everyTag(row)`; `patternWrites`
+matches every list.
+
+**Editor** (`src/components/editor/topicSync.ts`): `setQuestionTags(questionId, edit,
+deps?, shown?: TagState)`; `setQuestionTopics` stays as a one-list wrapper
+(`matchEdit` without parts, `changeEdit` with them). `src/components/editor/sharedTopics.ts`:
+`useShownTagState(q)`, `shownTagState(q, shared)`; `useShownTags` returns the derived list.
+
+**Preview highlight** (`src/export/clipboard.ts`): `questionClipboardNodes(worksheet,
+questionId, mode, images?, printedNumber?) → { html; target? }[]` (joined, exactly
+`questionClipboardHtml`'s body, proven by test and byte-compared with the build before),
+`nodeTarget(node)`, `highlightedNodes(targets, highlight)`.
+
+**Deviations from the proposal below**
+- `StateEdit` is branded so list edits keep working everywhere; `renamePatternEdit` /
+  `removePatternEdit` stay list edits, since after normalizing `wholeQuestion` of a
+  rename or removal reaches every list, shadowed ones included (a test pins it equal to
+  `everywhere`).
+- `TagSlotInfo.leadInIds` is separate from `blockIds`: the interlude selects its part but
+  is not highlighted. `withSlotTags` takes `unknown[]` lists, not `string[]`.
+- `stateFor`: a copy without slots takes the winner's derived list; a winner without
+  slots makes the copy's slots inherit its list (the winner's whole state wins).
+- The one-list Topic row on a question with parts sends `changeEdit`, not `matchEdit`,
+  which would have copied one part's topics onto every other part.
+- The clipboard additions landed in WP-0, not WP-B; `questionPreview.ts` is untouched.
+- The bank ✦ AI branch's Undo all (`src/library/sameCopies.ts`) now also ignores and keeps
+  each part's `tags` and `rootId`, as it did the question's metadata.
+- A slot key repeated inside one question (never made by this build) falls back to the
+  part's own id, so every slot stays addressable.
 
 ---
 
@@ -322,7 +405,7 @@ export interface BankSlot {
 - `isBankRow` (bankBackend.ts:51-75): validate `slots` (array of objects with string
   key/path/label, boolean leaf, string-array tags/own) and `ownTags`; a bad one costs its
   document only (existing rule).
-- `INDEX_FORMAT` 5 → **6** (bankBackend.ts:34). Regenerate `rowsGolden.json`; extend the
+- `INDEX_FORMAT` 5 → **6** (built as 7, after the ✦ AI branch took 6) (bankBackend.ts:34). Regenerate `rowsGolden.json`; extend the
   golden DOC with: a partful question with part tags and a sub-part own list and part
   `rootId`s, and keep `q-lq` as the legacy shape (question-level topic on a partful question)
   so its derived row is pinned.
@@ -484,7 +567,7 @@ Library:
   free tags stay on the question; `everywhere(rename)` reaches a shadowed part list; one save
   per document; newer-build refusal unchanged; a legacy question is normalized in the same
   save.
-- `rowsGolden.test.ts`: INDEX_FORMAT 6, extended DOC (E1). `bankBackend.test.ts`: a malformed
+- `rowsGolden.test.ts`: INDEX_FORMAT 7 as built, extended DOC (E1). `bankBackend.test.ts`: a malformed
   `slots` drops only its document.
 - `topicsAgree.test.ts`: add a two-part question tagged C.ped on (a) and C.intervention on
   (b): coverage counts it once under C, rail lists it under both sub-topics with "also in",
@@ -504,19 +587,19 @@ Never printed:
 **M5 frozen bank fixtures (STATUS.md:87) must add**: a structured question with part `tags`,
 a sub-part own list, part and sub-part `rootId`s, question-level free tags only; a copy pair
 sharing part roots across two documents; one legacy-shaped question (question-level topics on
-a question with parts) since develop data holds that shape; `INDEX_FORMAT` 6 rows.
+a question with parts) since develop data holds that shape; `INDEX_FORMAT` 7 rows.
 
 ---
 
 ## I. Work breakdown
 
-**WP-0 · Model, registry hooks, library core (L).** Merged first; every other package builds
+**WP-0 · Model, registry hooks, library core (L). Built 2026-09-30 (§ As built).** Merged first; every other package builds
 on its contracts only.
 - Files: `src/model/types.ts` (fields + docs), `src/model/lineage.ts` (`partRootOf`,
   `copyQuestion` part roots), `src/model/tagSlots.ts` (new), `src/registry/types.ts`,
   `src/registry/structured.ts` (hooks), `src/library/contentKey.ts` (+ fields test),
   `src/library/types.ts`, `src/library/indexer.ts`, `src/library/bankBackend.ts`
-  (`isBankRow`, INDEX_FORMAT 6), `src/library/rowsGolden.*`, `src/library/sharedTags.ts`
+  (`isBankRow`, INDEX_FORMAT 7), `src/library/rowsGolden.*`, `src/library/sharedTags.ts`
   (state resolution, `withRowTags`, `slotsMatching`), `src/library/tagWrites.ts`
   (`StateEdit`, lifters), `src/library/patterns.ts` (`rowPatterns`, every-list matching),
   `src/library/bankDocs.ts` (Treat as new drops part roots),
