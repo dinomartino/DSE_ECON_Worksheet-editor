@@ -20,7 +20,7 @@ import { useOwningDocument } from './useOwningDocument';
  *
  * A question with parts adds a part strip over the keys: the keys tag the whole question
  * (every part) until a part is picked, by clicking it or with [ and ]; then they tag that
- * part alone. One save writes every part's topics.
+ * part alone, and the paper marks it. One save writes every part's topics.
  */
 export function TagAsYouGo({
   row,
@@ -107,6 +107,7 @@ export function TagAsYouGo({
               language={shownLanguage(row, language)}
               version="teacher"
               failed={failed}
+              highlight={parts?.at === undefined ? undefined : [parts.at]}
             />
           </div>
           <Nav label="Next question (skip)" disabled={position >= left - 1} onClick={() => onStep(1)}>

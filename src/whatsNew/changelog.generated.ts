@@ -130,7 +130,8 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   In the bank, tag a long question as a whole or part by part: Edit topics lists its parts,
   so you tick topics for the whole question and then change one part (or sub-part) alone.
   Tagging as you go does the same: the keys tag the whole question until you pick a part
-  (click it, or press [ and ]). Set topic for ticked questions gives every part the topic.
+  (click it, or press [ and ]), and the paper marks the part you picked. Set topic for
+  ticked questions gives every part the topic.
 - **Question bank: easier to read.** "Used in" puts each paper's full title on its own
   line, and the Class filter shows a short name ("Not used with DSE 2027") with the
   classes it covers listed underneath.
