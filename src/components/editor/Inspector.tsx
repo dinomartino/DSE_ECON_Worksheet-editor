@@ -15,8 +15,9 @@ import { CloseIcon, ListIcon } from '@/components/ui/icons';
 import { SizeStepper } from '@/components/ui/SizeStepper';
 import { biExcerpt, ExcerptRow } from './panelRows';
 import { TopicRow } from './TopicRow';
-import { useShownTags } from './sharedTopics';
-import { setQuestionTopics, topicSyncDeps } from './topicSync';
+import { PartTopics } from './PartTopics';
+import { useShownTags, useShownTagState } from './sharedTopics';
+import { setQuestionTags, setQuestionTopics, topicSyncDeps } from './topicSync';
 import { StimulusEditorPanel } from './StimulusEditorPanel';
 
 /**
@@ -239,6 +240,8 @@ export function Inspector({
   const selected = worksheet.questions.find((question) => question.id === selectedQuestionId);
   // The question's one topic set across copies (newest change wins); display only.
   const shownTags = useShownTags(selected);
+  // A question with parts is tagged per part: each part's list, as the Topic row shows it.
+  const shownState = useShownTagState(selected);
 
   /*
    * Bring the control for the page's selection into view.
@@ -362,22 +365,41 @@ export function Inspector({
           onChange={(patch) => updateQuestion(selected.id, patch)}
         />
         <div className="mt-4">
-          <TopicRow
-            key={selected.id}
-            tags={shownTags}
-            typeId={selected.type}
-            note={topicNote?.questionId === selected.id ? topicNote.text : undefined}
-            onChange={(tags) => {
-              const questionId = selected.id;
-              setTopicNote(undefined);
-              void setQuestionTopics(
-                questionId,
-                tags,
-                { ...topicSyncDeps(), notify: (text) => setTopicNote({ questionId, text }) },
-                shownTags,
-              );
-            }}
-          />
+          {shownState && shownState.slots.length > 0 ? (
+            <PartTopics
+              key={selected.id}
+              question={selected}
+              shown={shownState}
+              note={topicNote?.questionId === selected.id ? topicNote.text : undefined}
+              onEdit={(edit) => {
+                const questionId = selected.id;
+                setTopicNote(undefined);
+                void setQuestionTags(
+                  questionId,
+                  edit,
+                  { ...topicSyncDeps(), notify: (text) => setTopicNote({ questionId, text }) },
+                  shownState,
+                );
+              }}
+            />
+          ) : (
+            <TopicRow
+              key={selected.id}
+              tags={shownTags}
+              typeId={selected.type}
+              note={topicNote?.questionId === selected.id ? topicNote.text : undefined}
+              onChange={(tags) => {
+                const questionId = selected.id;
+                setTopicNote(undefined);
+                void setQuestionTopics(
+                  questionId,
+                  tags,
+                  { ...topicSyncDeps(), notify: (text) => setTopicNote({ questionId, text }) },
+                  shownTags,
+                );
+              }}
+            />
+          )}
         </div>
       </div>
     </div>

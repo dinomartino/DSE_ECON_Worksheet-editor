@@ -20,6 +20,10 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 - **Tag questions with DSE topics.** Pick a topic (A–J and the electives, or your own
   free tag) in the Edit panel. Tags never print. A free tag can't look like a topic code
   (such as "K" or "C.ped"), contain "::" or start with "@"; those are kept for topics.
+- **Tag each part of a long question with its own topic and 題型.** Click a part on the
+  page to tag it; a sub-part can follow its part or have its own. Click the stem to see
+  every part's topics at once, which parts have none yet, and "Add to every part". With a
+  topic chosen in the 題庫 tab, a long question says which part tests it.
 - **Say which classes sat a paper, and when.** In Setup, add the classes (type 5A and press
   Enter or a comma after each) and the date it was sat. The question bank counts a paper as used only once it names a
   class, and knows that 4A last year and 5A this year are the same students, so "not used

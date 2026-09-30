@@ -1,7 +1,7 @@
 'use client';
 
 import { isPatternTag, tagText } from '@/model/patterns';
-import { topicHeading } from '@/model/topics';
+import { topicDisplay, topicHeading } from '@/model/topics';
 import type { KeyboardEvent, ReactNode } from 'react';
 import type { BankRow as BankRowData, BankUse } from '@/library/types';
 import { plain } from '@/model/text';
@@ -34,6 +34,11 @@ export interface BankRowProps {
   docLabel?: string;
   /** An edited version shown beside another: how it differs (`versionDiff`). */
   differs?: string;
+  /**
+   * The parts that test the topic a list is filtered to (`slotsMatching`), when not every
+   * part does: "(b) Market failure" leads the tag line. The row stays the whole question.
+   */
+  partsFor?: { labels: readonly string[]; topic: string };
   selected?: boolean;
   onSelect?: () => void;
   /** Drag the row onto the page (`useBankRowDrag`): a grip, and the grab cursor. */
@@ -59,6 +64,7 @@ export function BankRow({
   hideSource,
   docLabel,
   differs,
+  partsFor,
   selected = false,
   onSelect,
   drag,
@@ -129,6 +135,14 @@ export function BankRow({
         <div className="mt-1 flex flex-wrap gap-x-2.5 gap-y-0.5 text-[11px] tabular-nums text-ink-subtle">
           <span>{typeLabel(row.typeId)}</span>
           <span>{marksLabel(row.marks)}</span>
+          {partsFor && partsFor.labels.length > 0 && (
+            <span
+              className="min-w-0 max-w-full truncate text-ink-muted"
+              title={`${partsFor.labels.join(' and ')} ${partsFor.labels.length === 1 ? 'tests' : 'test'} ${topicHeading(partsFor.topic, 'both')}`}
+            >
+              {partsFor.labels.join(' ')} {topicDisplay(partsFor.topic, language === 'zh' ? 'zh' : 'en')}
+            </span>
+          )}
           {tags && (
             <span className="min-w-0 max-w-full truncate" title={tagTitle(row.tags)}>
               {tags}
