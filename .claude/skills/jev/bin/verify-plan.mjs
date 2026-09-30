@@ -136,7 +136,9 @@ async function main() {
   const json = args.includes('--json');
   const ci = args.indexOf('--commit');
   const commit = ci >= 0 ? args[ci + 1] : null;
-  const base = args.find((a, i) => !a.startsWith('--') && i !== ci + 1) ?? 'develop';
+  // Skip --commit's value only when --commit is present (else ci + 1 is 0, the base itself).
+  const commitValueAt = ci >= 0 ? ci + 1 : -1;
+  const base = args.find((a, i) => !a.startsWith('--') && i !== commitValueAt) ?? 'develop';
   const cfg = loadData('verify.json');
   const diff = collect({ base, commit });
   if (!diff.files.length) {
