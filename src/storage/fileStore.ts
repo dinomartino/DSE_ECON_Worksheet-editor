@@ -102,7 +102,11 @@ export const libraryIndexFile = {
   },
 };
 
-/** Text access to `worksheets/patterns.json` (§ patterns.ts). Inert on the web. */
+/**
+ * Text access to `worksheets/patterns.json` (§ patterns.ts). Inert on the web. Written
+ * through a temp file and a rename; an unreadable one is set aside beside it first. Neither
+ * name is a `*.worksheet.json`, so no build's rebuild-by-scan reads them.
+ */
 export const patternsFile: PatternFile = {
   async read(): Promise<string | undefined> {
     if (!isDesktop()) return undefined;
@@ -120,7 +124,24 @@ export const patternsFile: PatternFile = {
       return;
     }
     if (!(await fs.exists(DIR, opts))) await fs.mkdir(DIR, { ...opts, recursive: true });
-    await fs.writeTextFile(PATTERNS_FILE, text, opts);
+    // Whole or not at all: write beside it, then rename over it. Should the rename be
+    // refused, write in place rather than lose the change.
+    const temp = `${PATTERNS_FILE}.tmp`;
+    await fs.writeTextFile(temp, text, opts);
+    try {
+      await fs.rename(temp, PATTERNS_FILE, { oldPathBaseDir: opts.baseDir, newPathBaseDir: opts.baseDir });
+    } catch {
+      await fs.writeTextFile(PATTERNS_FILE, text, opts);
+      await fs.remove(temp, opts).catch(() => undefined);
+    }
+  },
+  /** An unreadable registry is kept as `worksheets/patterns.corrupt-<time>.json`. */
+  async setAside(text: string): Promise<void> {
+    if (!isDesktop()) return;
+    const fs = await import('@tauri-apps/plugin-fs');
+    const opts = { baseDir: fs.BaseDirectory.AppData };
+    if (!(await fs.exists(DIR, opts))) await fs.mkdir(DIR, { ...opts, recursive: true });
+    await fs.writeTextFile(`${DIR}/patterns.corrupt-${new Date().toISOString().replace(/[:.]/g, '-')}.json`, text, opts);
   },
 };
 

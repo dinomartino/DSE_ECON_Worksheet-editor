@@ -16,7 +16,7 @@ import { isSubTopicCode } from '@/model/topics';
  * this build's list, so a later build's sub-topic survives. Fields a newer build wrote are
  * kept through a rewrite. A registry stored in a newer `format` is read, never written
  * (`NewerPatternsError`): writing would downgrade it. Anything unreadable is an empty
- * registry.
+ * registry, and its text is set aside (`PatternFile.setAside`) before the first write.
  */
 
 export interface PatternEntry {
@@ -39,6 +39,8 @@ export interface PatternRegistry {
    * read-only here, and a backup carries it verbatim.
    */
   __newer?: Record<string, unknown>;
+  /** The stored text, when it could not be read at all: set aside before the first write. */
+  __corrupt?: string;
 }
 
 /** The stored registry is in a newer `format` than this build writes: it is never overwritten. */
@@ -103,14 +105,23 @@ export function usablePatterns(parsed: unknown): PatternRegistry {
   return state;
 }
 
-/** A stored string → registry; anything unparseable is an empty one. */
+/**
+ * A stored string → registry. Anything unreadable (not JSON, not an object, a `patterns`
+ * that is not a list) reads as empty, carrying the text in `__corrupt` so the next write
+ * sets it aside rather than over it.
+ */
 export function parsePatterns(raw: string | null | undefined): PatternRegistry {
   if (!raw) return { patterns: [] };
+  let parsed: unknown;
   try {
-    return usablePatterns(JSON.parse(raw));
+    parsed = JSON.parse(raw);
   } catch {
-    return { patterns: [] };
+    return { patterns: [], __corrupt: raw };
   }
+  if (!isRecord(parsed) || (parsed.patterns !== undefined && !Array.isArray(parsed.patterns))) {
+    return { patterns: [], __corrupt: raw };
+  }
+  return usablePatterns(parsed);
 }
 
 /** What is stored: a newer registry exactly as read; otherwise this build's rows, then the kept ones. */
@@ -180,7 +191,17 @@ export interface PatternFile {
   read(): Promise<string | undefined>;
   /** `undefined` removes it. */
   write(text: string | undefined): Promise<void>;
+  /**
+   * Keep an unreadable registry's text somewhere no write touches, before it is replaced.
+   * Without it, an unreadable registry is never overwritten.
+   */
+  setAside?(text: string): Promise<void>;
 }
+
+/** Where the web keeps an unreadable registry it set aside: this plus a timestamp. */
+export const PATTERNS_CORRUPT_PREFIX = `${PATTERNS_KEY}-corrupt-`;
+
+const stamp = () => new Date().toISOString().replace(/[:.]/g, '-');
 
 /** The web's registry: one `localStorage` key. Blocked storage reads as empty; writes throw. */
 export function localPatternFile(storage: () => Storage | undefined): PatternFile {
@@ -197,6 +218,11 @@ export function localPatternFile(storage: () => Storage | undefined): PatternFil
       if (!store) throw new Error('storage is not available');
       if (text === undefined) store.removeItem(PATTERNS_KEY);
       else store.setItem(PATTERNS_KEY, text);
+    },
+    async setAside(text) {
+      const store = storage();
+      if (!store) throw new Error('storage is not available');
+      store.setItem(`${PATTERNS_CORRUPT_PREFIX}${stamp()}`, text);
     },
   };
 }
@@ -222,6 +248,13 @@ export async function updatePatternRegistry(
   const next = recipe(state);
   if (next === state) return state;
   if (state.__newer) throw new NewerPatternsError();
+  if (state.__corrupt !== undefined) {
+    // Never write over what could not be read: keep a copy first, or do not write.
+    if (!file.setAside) throw new Error('The 題型 list could not be read, and there is nowhere to keep a copy.');
+    await file.setAside(state.__corrupt);
+  }
   await file.write(isEmptyPatterns(next) && !next.__unknown ? undefined : JSON.stringify(serializePatterns(next)));
-  return next;
+  const { __corrupt: _set, ...written } = next;
+  void _set;
+  return written;
 }

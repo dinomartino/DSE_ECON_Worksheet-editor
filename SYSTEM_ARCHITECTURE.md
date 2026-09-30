@@ -2645,7 +2645,11 @@ in-flight values stay local; the store is called on pointer-up.
   the backup manifest (`patterns`) and a restore only adds. **It never deletes a newer
   build's data**: a row it cannot use is written back verbatim (`__rows`), a sub-topic is
   judged by the code grammar rather than this build's list, and a registry whose `format`
-  is newer than `PATTERNS_FORMAT` is read-only here (`NewerPatternsError`).
+  is newer than `PATTERNS_FORMAT` is read-only here (`NewerPatternsError`). An unreadable
+  registry is set aside before the first write replaces it (web:
+  `econ-worksheet-patterns-corrupt-<time>`; desktop: `worksheets/patterns.corrupt-<time>.json`),
+  or not replaced at all; `clear()` leaves those copies. Desktop writes go through
+  `patterns.json.tmp` and a rename.
 - **Backup** (`storage/backup.ts`) is one zip of `.worksheet.json` entries plus
   `manifest.json`; Trash is left out. Restore parses every entry through `migrate`, skips
   and names bad ones, and **never overwrites**: an identical live id is skipped, any
