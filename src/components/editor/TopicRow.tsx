@@ -8,8 +8,8 @@ import { CloseIcon } from '@/components/ui/icons';
 import { patternNames } from '@/library/patterns';
 import { useBank } from '@/library/useBank';
 import { usePatternRegistry } from '@/library/usePatterns';
-import { holdsPatterns, isPatternTag, parsePatternTag, patternsIn, withPattern } from '@/model/patterns';
-import { stringTags, TOPICS, topicOf, type Topic } from '@/model/topics';
+import { freeTagIssue, holdsPatterns, isPatternTag, parsePatternTag, patternsIn, withPattern, type FreeTagIssue } from '@/model/patterns';
+import { isTopicCode, stringTags, TOPICS, topicOf, type Topic } from '@/model/topics';
 
 /** Does the topic match a typed query — by code, English or 中文? */
 function matches(topic: Topic, query: string): boolean {
@@ -25,6 +25,16 @@ export function filterTopics(query: string): Array<{ topic: Topic; children: Top
     const children = topic.children.filter((child) => self || matches(child, query));
     return self || children.length > 0 ? [{ topic, children }] : [];
   });
+}
+
+/**
+ * Why a typed tag cannot be a free tag, in words a teacher reads (§ the tag grammar,
+ * `model/topics.ts`): those forms are kept for topics and for later versions of the app.
+ */
+export function freeTagMessage(issue: FreeTagIssue, typed: string): string {
+  if (issue === 'code') return `“${typed}” is written like a topic code, so it can’t be a tag. Add a word, for example “${typed} notes”.`;
+  if (issue === 'separator') return 'A tag can’t contain “::”.';
+  return 'A tag can’t start with “@”.';
 }
 
 /**
@@ -51,11 +61,19 @@ export function TopicRow({
   const registry = usePatternRegistry();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  /** Enter was pressed on a tag that cannot be added: say why until the text changes. */
+  const [refused, setRefused] = useState(false);
   const groups = useMemo(() => filterTopics(query), [query]);
+  const typed = query.trim();
+  const issue = freeTagIssue(typed);
 
   const add = (code: string) => {
     const value = code.trim();
     if (!value || current.includes(value)) return;
+    if (freeTagIssue(value)) {
+      setRefused(true);
+      return;
+    }
     onChange([...current, value]);
     setQuery('');
   };
@@ -123,6 +141,9 @@ export function TopicRow({
                       <>
                         <span className="tabular-nums text-ink-subtle">{tag}</span> {topic.en}
                       </>
+                    ) : isTopicCode(tag) ? (
+                      // A code this version does not list (a later version's topic): its code.
+                      <span className="tabular-nums text-ink-subtle">{tag}</span>
                     ) : (
                       tag
                     )}
@@ -161,7 +182,12 @@ export function TopicRow({
             value={query}
             aria-label="Filter topics or type a free tag"
             placeholder="Filter, or type a tag and press Enter"
-            onChange={(event) => setQuery(event.target.value)}
+            aria-invalid={refused && issue ? true : undefined}
+            aria-describedby={issue ? 'topic-row-tag-issue' : undefined}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setRefused(false);
+            }}
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
                 event.preventDefault();
@@ -173,6 +199,11 @@ export function TopicRow({
             }}
             className="h-8 w-full rounded-lg border border-line bg-surface px-2 text-xs text-ink outline-none transition-colors duration-150 ease-out-soft placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
           />
+          {issue && (refused || groups.length === 0) && (
+            <p id="topic-row-tag-issue" role="status" className="px-1 text-[11px] text-ink-muted">
+              {freeTagMessage(issue, typed)}
+            </p>
+          )}
           <ul className="scroll-slim max-h-56 overflow-y-auto">
             {groups.map(({ topic, children }) => (
               <li key={topic.code}>
@@ -182,9 +213,9 @@ export function TopicRow({
                 </ul>
               </li>
             ))}
-            {groups.length === 0 && (
+            {groups.length === 0 && !issue && (
               <li className="px-1 py-2 text-[11px] text-ink-subtle">
-                No matching topic. Press Enter to add “{query.trim()}” as a free tag.
+                No matching topic. Press Enter to add “{typed}” as a free tag.
               </li>
             )}
           </ul>

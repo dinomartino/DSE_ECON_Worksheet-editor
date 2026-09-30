@@ -48,8 +48,9 @@ Revised from the 2026-09-26 proposal after an audit against the code at `9f2009b
   from `BankRow.typeId`, never a branch). No default list ships.
 - **Stored as a tag, `C.ped::<name>`** (`src/model/patterns.ts`). It rides on `tags`, so
   copies carry it, bank reads take the union, every write path (`tagWrites.ts`,
-  `topicSync.ts`) reaches every copy, and `contentKey` already ignores it. A tag whose
-  prefix is not a sub-topic is a free tag. One 題型 per sub-topic per question;
+  `topicSync.ts`) reaches every copy, and `contentKey` already ignores it. A `::` tag
+  whose prefix is not a sub-topic this build knows is kept and shown as stored, never a
+  free tag (§ Tag grammar). One 題型 per sub-topic per question;
   removing or replacing a sub-topic takes its 題型. Names match ignoring case and spacing.
 - **An app-level registry** (`src/storage/patterns.ts`) keeps the 題型 a teacher defined,
   including unused ones: `econ-worksheet-patterns` / `worksheets/patterns.json`, per-row
@@ -79,6 +80,33 @@ Revised from the 2026-09-26 proposal after an audit against the code at `9f2009b
 - **Bank uses: group and filter only.** The review rail splits a sub-topic by 題型, "No
   題型" last; the Filter has a 題型 field scoped to the topic on screen; topic cards count
   the 題型 in use. Fill and coverage are unchanged. Never printed.
+
+### Tag grammar (reserved before release, 2026-09-30)
+
+`Question.tags` is one list of strings, so its forms are reserved now: once teachers can
+type into it, a later build cannot claim a form without reinterpreting their tags. The
+constants live in `src/model/topics.ts` (`TOPIC_CODE_PATTERN`, `SYSTEM_TAG_SIGIL`) and
+`src/model/patterns.ts` (`PATTERN_SEPARATOR`, `isReservedTag`, `freeTagIssue`).
+
+| Form | Grammar | Example |
+|---|---|---|
+| Topic code | `^(?:[A-Z]\|EL[0-9]+)(?:\.[a-z0-9-]+)?$`: one capital, or `EL` + a number; then optionally `.` + a lower-case slug | `C`, `EL1`, `C.ped` |
+| 題型 | a sub-topic code, `::`, a name | `C.ped::Calculate PED` |
+| System tag | starts with `@`; none exist yet | (reserved) |
+| Free tag | any other string | `mock 2025`, `MCQ`, `S5` |
+
+- **The grammar is narrow on purpose**: "MCQ", "S5" or "DSE2023" stay free tags. A later
+  build adding a coarse topic must name it inside it (a letter, or `EL` + a number).
+- **Unknown codes are topics, not free tags.** Parent codes are derived by grammar
+  (`parentCode`), so a later build's `C.new` rolls up under `C` (`rollupTopic`,
+  `matchesTopic`); an unknown `K` shows as its code and counts as no topic. Tag edits keep
+  codes they cannot show (Replace keeps them, as it keeps free tags), and the 題型 registry
+  keeps rows for sub-topics it does not list.
+- **Only typing is refused.** The Topic row's free-text entry refuses a code this build
+  does not list, anything holding `::`, or a leading `@`, with a one-line reason. A tag
+  already stored in a reserved form (typed before this rule) is left exactly as it is.
+- **Non-string tags** (a later build's shape, a hand-edited file) are never read and never
+  dropped: `stringTags` for reading, every write keeps them in place.
 
 ## The one decision everything else follows from
 

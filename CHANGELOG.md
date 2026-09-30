@@ -12,7 +12,8 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
 
 ### Added
 - **Tag questions with DSE topics.** Pick a topic (A–J and the electives, or your own
-  free tag) in the Edit panel. Tags never print.
+  free tag) in the Edit panel. Tags never print. A free tag can't look like a topic code
+  (such as "K" or "C.ped"), contain "::" or start with "@"; those are kept for topics.
 - **Say which classes sat a paper, and when.** In Setup, list the classes (5A, 5B) and
   the date it was sat. The question bank counts a paper as used only once it names a
   class, and knows that 4A last year and 5A this year are the same students, so "not used

@@ -1,4 +1,4 @@
-import { TOPICS, topicOf } from '@/model/topics';
+import { rollupTopic, topicOf, TOPICS } from '@/model/topics';
 import type { BankGroup, BankRow } from '@/library/types';
 import { refsOf, rowUsedWith } from '@/library/history';
 import { comparePatterns, rowPattern } from '@/library/patterns';
@@ -152,7 +152,7 @@ export function railSections(groups: readonly BankGroup[], topic: TopicPick): Ra
       const fine = tags.find((tag) => topicOf(tag)?.parent === picked.code);
       put(fine ?? 'general', group);
     } else {
-      const coarse = tags.map((tag) => topicOf(tag)).find((t) => t !== undefined);
+      const coarse = tags.map(rollupTopic).find((t) => t !== undefined);
       put(coarse ? (coarse.parent ?? coarse.code) : 'none', group);
     }
   }

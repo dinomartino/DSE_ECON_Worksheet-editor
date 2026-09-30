@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TOPICS, matchesTopic, parentCode, topicLabel, topicOf } from './topics';
+import { TOPICS, isSubTopicCode, isSystemTag, isTopicCode, matchesTopic, parentCode, rollupTopic, topicLabel, topicOf } from './topics';
 
 describe('topics', () => {
   it('lists the twelve coarse topics A–J, EL1, EL2 in guide order', () => {
@@ -25,11 +25,34 @@ describe('topics', () => {
     expect(topicOf('c')).toBeUndefined();
   });
 
-  it('names a fine code’s parent', () => {
+  it('writes every code this build ships in the topic-code grammar', () => {
+    for (const code of TOPICS.flatMap((t) => [t.code, ...t.children.map((c) => c.code)])) {
+      expect(isTopicCode(code), code).toBe(true);
+      expect(isSubTopicCode(code), code).toBe(code.includes('.'));
+    }
+    for (const tag of ['c', 'c.ped', 'C.', '.ped', 'C.Ped', 'C.ped.x', 'C ped', '1A', 'EL 3', 'EL', 'MCQ', 'Q1', 'S5', 'C.ped::x', '@x', '']) {
+      expect(isTopicCode(tag), tag).toBe(false);
+    }
+    expect(isTopicCode('EL3')).toBe(true);
+    expect(isTopicCode(7)).toBe(false);
+    expect(isSystemTag('@star')).toBe(true);
+    expect(isSystemTag('star')).toBe(false);
+  });
+
+  it('names a fine code’s parent by grammar, known or not', () => {
     expect(parentCode('C.ped')).toBe('C');
     expect(parentCode('EL2.growth')).toBe('EL2');
     expect(parentCode('C')).toBeUndefined();
-    expect(parentCode('C.nonsense')).toBeUndefined();
+    expect(parentCode('C.nonsense')).toBe('C');
+    expect(parentCode('past.paper')).toBeUndefined();
+  });
+
+  it('rolls an unknown sub-topic up to its known coarse topic', () => {
+    expect(rollupTopic('C.ped')?.code).toBe('C.ped');
+    expect(rollupTopic('C.new')?.code).toBe('C');
+    expect(rollupTopic('K')).toBeUndefined();
+    expect(rollupTopic('K.new')).toBeUndefined();
+    expect(rollupTopic('mock')).toBeUndefined();
   });
 
   it('matches a coarse code against its fine codes, never the other way', () => {
@@ -41,9 +64,11 @@ describe('topics', () => {
     expect(matchesTopic(undefined, 'C')).toBe(false);
   });
 
-  it('never matches a free-text tag, even one spelled like a code', () => {
-    expect(matchesTopic(['C.made-up'], 'C')).toBe(false);
+  it('matches a later build’s sub-topic under its coarse code, and never a free tag', () => {
+    expect(matchesTopic(['C.made-up'], 'C')).toBe(true);
+    expect(matchesTopic(['C.made-up'], 'C.ped')).toBe(false);
     expect(matchesTopic(['past paper'], 'past paper')).toBe(false);
+    expect(matchesTopic(['c.ped'], 'C')).toBe(false);
   });
 
   it('labels a code in either language; a free tag is itself', () => {

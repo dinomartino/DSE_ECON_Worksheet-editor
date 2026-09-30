@@ -1,5 +1,5 @@
 import { roundMinutes, MINUTES_PER_MARK } from '@/model/paperSummary';
-import { TOPICS, topicLabel, topicOf } from '@/model/topics';
+import { rollupTopic, topicLabel, topicOf, TOPICS } from '@/model/topics';
 import { getQuestionType, listQuestionTypes } from '@/registry';
 import { cohortLabel, schoolYearEnd, schoolYearLabel, type ClassTarget } from '@/library/cohort';
 import { refsOf, rowUsedWith } from '@/library/history';
@@ -19,16 +19,19 @@ import type { WorksheetSummary } from '@/storage/types';
 /** A review's scope: every question, one topic code, or those with no topic. */
 export type TopicPick = 'all' | 'untagged' | string;
 
-/** A row has a topic when any of its tags is a known code; free tags do not count. */
+/**
+ * A row has a topic when any of its tags falls under a known code (`rollupTopic`: a later
+ * build's 'C.new' counts under C); free tags do not count.
+ */
 export function hasTopic(row: Pick<BankRow, 'tags'>): boolean {
-  return row.tags.some((tag) => topicOf(tag) !== undefined);
+  return row.tags.some((tag) => rollupTopic(tag) !== undefined);
 }
 
-/** The coarse codes a row falls under ('C.ped' → 'C'), each once. */
+/** The coarse codes a row falls under ('C.ped' → 'C', and a later build's 'C.new' → 'C'), each once. */
 export function coarseCodes(row: Pick<BankRow, 'tags'>): string[] {
   const codes = new Set<string>();
   for (const tag of row.tags) {
-    const topic = topicOf(tag);
+    const topic = rollupTopic(tag);
     if (topic) codes.add(topic.parent ?? topic.code);
   }
   return [...codes];

@@ -1,4 +1,4 @@
-import { topicLabel, topicOf } from './topics';
+import { isSystemTag, isTopicCode, topicLabel, topicOf } from './topics';
 
 /**
  * A 題型 (Pattern): a teacher-defined kind of question inside one sub-topic ("Calculate
@@ -50,8 +50,29 @@ export function parsePatternTag(tag: string): PatternRef | undefined {
 
 export const isPatternTag = (tag: string): boolean => parsePatternTag(tag) !== undefined;
 
-/** A free tag: neither a topic code nor a 題型. */
-export const isFreeTag = (tag: string): boolean => !topicOf(tag) && !isPatternTag(tag);
+/**
+ * In a reserved form (§ `model/topics.ts`, the tag grammar): a topic code (known or not),
+ * anything holding `::`, or a system tag. Only what a teacher types is refused for it; a
+ * reserved tag already stored is kept as it is.
+ */
+export function isReservedTag(tag: string): boolean {
+  return isTopicCode(tag) || (typeof tag === 'string' && tag.includes(PATTERN_SEPARATOR)) || isSystemTag(tag);
+}
+
+/** A free tag: a string in no reserved form. */
+export const isFreeTag = (tag: string): boolean => typeof tag === 'string' && !isReservedTag(tag);
+
+/** Why a typed tag cannot be added as a free tag; undefined when it can (or is a known code). */
+export type FreeTagIssue = 'code' | 'separator' | 'system';
+
+export function freeTagIssue(typed: string): FreeTagIssue | undefined {
+  const tag = typed.trim();
+  if (!tag || topicOf(tag)) return undefined;
+  if (isTopicCode(tag)) return 'code';
+  if (tag.includes(PATTERN_SEPARATOR)) return 'separator';
+  if (isSystemTag(tag)) return 'system';
+  return undefined;
+}
 
 /** Same name, ignoring case and spacing: how a typed name finds an existing 題型. */
 export function samePatternName(a: string, b: string): boolean {
