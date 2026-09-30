@@ -16,7 +16,8 @@ beforeEach(() => useBankSession.setState({ review: null }));
 describe('addPicksToOpenDocument', () => {
   it('appends copies in picked order, each tied to its own source, and one undo removes them all', () => {
     const own = choiceQuestion('Already in the paper');
-    const loaded = docWith([own]);
+    // No sections: the picks keep their order rather than each finding its type's section.
+    const loaded = docWith([own], { layout: [] });
     store().replaceWorksheet(loaded);
     const a = choiceQuestion('From A, first');
     const b = partsQuestion('From B');
@@ -97,14 +98,14 @@ describe('addPicksToOpenDocument', () => {
     expect(skipped).toBe(0);
   });
 
-  it('puts picks into Section A of an empty sectioned worksheet, not after Section B', () => {
+  it('puts each pick into the section for its type in an empty classroom worksheet', () => {
     store().replaceWorksheet(createWorksheetFrom({ documentType: 'classroom' }));
     const [a, b] = store().worksheet.layout;
-    const { inserted: ids } = addPicksToOpenDocument([
+    const { inserted: [one, two] } = addPicksToOpenDocument([
       { question: choiceQuestion('One'), fromDocId: 'doc-a' },
       { question: partsQuestion('Two'), fromDocId: 'doc-b' },
     ]);
-    expect(flowOf(store().worksheet).map((item) => item.id)).toEqual([a.id, ...ids, b.id]);
+    expect(flowOf(store().worksheet).map((item) => item.id)).toEqual([a.id, one, b.id, two]);
   });
 
   it('leaves a read-only document alone', () => {

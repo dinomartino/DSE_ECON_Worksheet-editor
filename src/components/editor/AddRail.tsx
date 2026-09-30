@@ -108,12 +108,20 @@ export function AddRail() {
    * reading "after Q1" beside a question printed "5." is worse than no label.
    */
   const numbering = useMemo(() => computeNumbering(worksheet), [worksheet]);
-  // With no anchor, a question in an empty sectioned document lands in its first section.
-  const anchorLabel = flowItemLabel(
-    worksheet,
-    afterId ?? (open === 'questions' ? unanchoredQuestionAfter(worksheet) : undefined),
-    (questionId) => numbering.byQuestionId.get(questionId)?.number,
-  );
+  const labelFor = (id: string | undefined) =>
+    flowItemLabel(worksheet, id, (questionId) => numbering.byQuestionId.get(questionId)?.number);
+  // With no anchor, each question type lands in the section made for it (or the first
+  // section of an empty sectioned document). When the types part ways, each row says where.
+  const typeDestinations =
+    open === 'questions' && !afterId
+      ? new Map(listQuestionTypes().map((type) => [type.id, labelFor(unanchoredQuestionAfter(worksheet, type.id))]))
+      : undefined;
+  const splitDestinations = new Set(typeDestinations?.values()).size > 1;
+  const anchorLabel = afterId
+    ? labelFor(afterId)
+    : splitDestinations
+      ? undefined
+      : typeDestinations?.values().next().value;
 
   useEffect(() => {
     if (!open) return;
@@ -148,13 +156,17 @@ export function AddRail() {
 
   // Question types come from the registry, never a hard-coded list — a new type shows
   // up in the rail with no change here (§9).
-  const questionEntries: Entry[] = listQuestionTypes().map((definition) => ({
-    id: definition.id,
-    label: plain(definition.displayName.en),
-    hint: plain(definition.displayName.zh),
-    icon: definition.id === 'mcq' ? <McqIcon size={18} /> : <StructuredIcon size={18} />,
-    run: (afterId) => addQuestion(definition.id, afterId),
-  }));
+  const questionEntries: Entry[] = listQuestionTypes().map((definition) => {
+    const zh = plain(definition.displayName.zh);
+    const destination = typeDestinations?.get(definition.id);
+    return {
+      id: definition.id,
+      label: plain(definition.displayName.en),
+      hint: splitDestinations ? `${zh} · ${destination ? `after ${destination}` : 'at the end'}` : zh,
+      icon: definition.id === 'mcq' ? <McqIcon size={18} /> : <StructuredIcon size={18} />,
+      run: (afterId) => addQuestion(definition.id, afterId),
+    };
+  });
   // Copies from the other saved documents: opens the sidebar's 題庫 tab, where the
   // anchor line names the same destination this flyout does.
   questionEntries.push({
@@ -367,6 +379,8 @@ export function AddRail() {
               <>
                 Inserts after <span className="font-semibold text-ink">{anchorLabel}</span>
               </>
+            ) : splitDestinations && active.id === 'questions' ? (
+              'Each type goes to its own section'
             ) : (
               'Inserts at the end'
             )}

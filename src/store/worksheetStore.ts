@@ -51,6 +51,7 @@ import { isNewerThanBuild } from '@/model/migrations';
 import type { ApplyReport, TranslationWrite } from '@/model/textSlots';
 import { applyTranslationBatch } from '@/model/translationApply';
 import { documentShape } from '@/model/documentShape';
+import { sectionSpans } from '@/model/sectionFit';
 import {
   addCoverLine,
   createCoverPage,
@@ -452,25 +453,45 @@ function livingAnchor(anchorId: string | undefined, next: Worksheet): string | u
 }
 
 /**
+ * How `insertIntoFlow` places an item beyond "after `afterId`".
+ * - `routed`: `afterId` is only where a batch has reached, not a place the teacher chose,
+ *   so a question whose section is made for another type still moves to its own.
+ * - `typeId`: the type an unanchored stimulus is placed for (the questions it leads).
+ */
+interface Placement {
+  routed?: boolean;
+  typeId?: string;
+}
+
+/**
  * Place a new item in the flow, after `afterId` when given. An insert is a move and
  * must write **both** lists — `questions` owns question order, so a question
  * positioned only in `flow` prints last. `applyOrder` is the one rule for splitting
  * an ordered flow back into the two lists. An unanchored question lands via
- * `unanchoredIndexFor`, not at the very end.
+ * `unanchoredGap`, not at the very end.
  */
 function insertIntoFlow(
   worksheet: Worksheet,
   entry: FlowItem,
   afterId: string | undefined,
   patch: Partial<Worksheet>,
+  placement: Placement = {},
 ): Worksheet {
   // The patch carries the new item into `questions` or `layout`; ordering below reads
   // that merged document, so the entry resolves to something that exists.
   const merged = { ...worksheet, ...patch } as Worksheet;
   const flow = flowOf(worksheet);
+  const typeId =
+    placement.typeId ??
+    (entry.type === 'question' ? merged.questions.find((question) => question.id === entry.id)?.type : undefined);
   const at = afterId ? flow.findIndex((item) => item.id === afterId) : -1;
-  if (at < 0) flow.splice(unanchoredIndexFor(merged, flow, entry), 0, entry);
-  else flow.splice(at + 1, 0, entry);
+  const gap =
+    at < 0
+      ? unanchoredGap(merged, flow, entry, typeId)
+      : placement.routed
+        ? (fittingSectionGap(merged, flow, typeId, at + 1) ?? at + 1)
+        : at + 1;
+  flow.splice(gap, 0, entry);
 
   const ordered = applyOrder(merged, flow);
   return { ...merged, questions: ordered.questions, flow: ordered.flow };
@@ -485,19 +506,47 @@ export function lastQuestionGap(worksheet: Worksheet): number {
 }
 
 /**
- * The item an unanchored question would land behind when that is not "the end": the
- * first section's last item, in a sectioned document with no questions yet. For the
- * destination labels, which otherwise say "at the end".
+ * The item an unanchored question (of `typeId`, when known) would land behind when that
+ * is not "the end": the end of the section made for its type, or the first section of a
+ * sectioned document with no questions yet. For the destination labels, which otherwise
+ * say "at the end".
  */
-export function unanchoredQuestionAfter(worksheet: Worksheet): string | undefined {
+export function unanchoredQuestionAfter(worksheet: Worksheet, typeId?: string): string | undefined {
   const flow = flowOf(worksheet);
-  const at = firstSectionGap(worksheet, flow, { type: 'question', id: '' });
-  return at === undefined || at === 0 ? undefined : flow[at - 1].id;
+  const entry: FlowItem = { type: 'question', id: '' };
+  const at = unanchoredGap(worksheet, flow, entry, typeId);
+  return at === 0 || at === appendIndexFor(worksheet, flow, entry) ? undefined : flow[at - 1].id;
 }
 
 /** Where an *unanchored* item joins the flow (§ Where things land). */
-function unanchoredIndexFor(worksheet: Worksheet, flow: FlowItem[], entry: FlowItem): number {
-  return firstSectionGap(worksheet, flow, entry) ?? appendIndexFor(worksheet, flow, entry);
+function unanchoredGap(worksheet: Worksheet, flow: FlowItem[], entry: FlowItem, typeId: string | undefined): number {
+  const at = firstSectionGap(worksheet, flow, entry) ?? appendIndexFor(worksheet, flow, entry);
+  return isQuestionContent(worksheet, entry) ? (fittingSectionGap(worksheet, flow, typeId, at) ?? at) : at;
+}
+
+/**
+ * A question of `typeId` headed for gap `at` goes instead to the end of the section made
+ * for its type, when `at` sits in a section made for another ("Section A: Multiple
+ * Choice" for a structured question). The last such section, ahead of its closing line on
+ * the exam papers. Undefined, so `at` stands, when `at`'s section fits the type or no type,
+ * or no section fits it (`model/sectionFit.ts`).
+ */
+function fittingSectionGap(
+  worksheet: Worksheet,
+  flow: FlowItem[],
+  typeId: string | undefined,
+  at: number,
+): number | undefined {
+  if (!typeId) return undefined;
+  const spans = sectionSpans(worksheet, flow);
+  const here = spans.find((span) => span.start < at && at <= span.end);
+  if (!here?.fits || here.fits === typeId) return undefined;
+  const target = spans.filter((span) => span.fits === typeId).at(-1);
+  if (!target) return undefined;
+  const closes = closingLineTest(worksheet);
+  let gap = target.end;
+  while (closes && gap > target.start + 1 && closes(flow[gap - 1])) gap -= 1;
+  return gap;
 }
 
 /**
@@ -1366,12 +1415,15 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     state.commit((draft) => {
       let next = draft;
       let after = state.insertAnchorId;
+      // Unanchored, the lead goes where its first question would and the questions stay
+      // with it. Without a lead, each question may take its type's own section.
+      const routed = after === undefined && !lead;
       if (lead) {
-        next = insertIntoFlow(next, { type: 'layout', id: lead.id }, after, { layout: [...(next.layout ?? []), lead] });
+        next = insertIntoFlow(next, { type: 'layout', id: lead.id }, after, { layout: [...(next.layout ?? []), lead] }, { typeId: built[0].type });
         after = lead.id;
       }
       for (const question of built) {
-        next = insertIntoFlow(next, { type: 'question', id: question.id }, after, { questions: [...next.questions, question] });
+        next = insertIntoFlow(next, { type: 'question', id: question.id }, after, { questions: [...next.questions, question] }, { routed });
         after = question.id;
       }
       return next;
@@ -1392,12 +1444,14 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
     state.commit((draft) => {
       let next = draft;
       let after = afterId ?? state.insertAnchorId;
+      // Nowhere chosen (no anchor, no drop): each copy may take its type's own section.
+      const routed = after === undefined && at === undefined;
       for (const [index, copy] of copies.entries()) {
         // The same derivation the drag's provisional page used, so the drop lands where it showed.
         next =
           index === 0 && at !== undefined
             ? { ...next, ...insertQuestionAt(next, copy, at) }
-            : insertIntoFlow(next, { type: 'question', id: copy.id }, after, { questions: [...next.questions, copy] });
+            : insertIntoFlow(next, { type: 'question', id: copy.id }, after, { questions: [...next.questions, copy] }, { routed });
         after = copy.id;
       }
       return next;
