@@ -32,8 +32,7 @@ off the bottom.** It is the first thing a fresh session reads — then
   only, not clicked through in the shell.
   (4) **New worksheet asks for a name** (required, sets `name`, never `title`); Duplicate
   adds " (copy)"; `Dialog` no longer steals a field's autoFocus; toolbar crumb reads Econ
-  Studio. Open: 題庫 "New worksheet from these" still sets the printed `title` to the topic and
-  no `name`; film capture script clicks a removed ⋯ "Worksheets…" item (broken before this).
+  Studio. (Film capture now goes home via the crumb; "New worksheet from these" sets the name only.)
   (5) **WebKit PDF shrink fixed** (Mac desktop + Safari): print kept screen breakpoints, the
   hidden toolbar widened the document, WebKit shrank pages to fit (0.72 at 1800 px). Fix:
   `overflow-x: clip` on `#print-root`'s ancestors. Verified with a scratch WKWebView harness
@@ -53,29 +52,52 @@ off the bottom.** It is the first thing a fresh session reads — then
   `docs/IDEAS.md` § C). **C5 + C6 merged 2026-09-29**: a use = `classes` + `satOn`
   (`src/model/classes.ts`), cohort derived (`src/library/cohort.ts`), legacy develop-only
   `classTag` folded on load (no schema bump; it never shipped); bank topic edits write every
-  copy and display the union (`src/library/sharedTags.ts`); editor topic edits sync other
-  copies too (`src/components/editor/topicSync.ts`), bank copies take the union. Known:
-  ⌘Z undoes the open copy only; a second tab holding a copy can overwrite synced tags;
-  Filter button label truncates. **C24 題型 merged**: tag form `C.ped::<name>` (`src/model/patterns.ts`), registry
+  copy (`src/library/sharedTags.ts`; newest `tagsAt` wins since 2026-09-30); editor topic
+  edits sync other copies too (`src/components/editor/topicSync.ts`). Known: ⌘Z undoes the
+  open copy only; a second tab holding a copy can overwrite synced tags. **C24 題型 merged**: tag form `C.ped::<name>` (`src/model/patterns.ts`), registry
   `src/storage/patterns.ts` (in backup). Gaps fixed 2026-09-29 (Enter picks a match, bulk
   clear, kept on cancel, success notices clear on level change); Chromium + WebKit verified;
   desktop registry covered by unit tests only, Tauri shell not clicked through.
   **Drag from the 題庫 tab merged 2026-09-30** (`src/components/bank/bankDrag.tsx`,
   `dropSlot.ts`): live provisional layout, one commit on drop; measurement write-backs now
   skip stale renders (`usePagination` `isFresh`), lq-verify + cover-verify re-run and pass.
-  Open: ⌘Z during a drag still undoes the store; page-rail thumbnails don't show the ghost;
-  no touch drag; not tried in the Tauri shell. Insert button removed (drag only; Enter on a focused row
-  inserts after the selected question). Next: C7–C11. Teacher screen text has no em dashes (user rule).
+  Open: no touch drag; not tried in the Tauri shell. Insert button removed (drag only; Enter
+  on a focused row inserts after the selected question). Teacher screen text has no em dashes (user rule).
   **Integration QA + polish merged** (`feature/bank-polish`):
   end-to-end in Chromium + WebKit, `.docx` leak-free; fixed a real "Maximum update depth"
   crash in `usePagination`/band measuring (a no-op `setState` per render queued a second
   full render per keystroke — compare before calling the setter). lq-verify and
   cover-verify pass after it. **Unverified:** desktop index file in the real shell.
-  Follow-ups: "Update bank copy" menu item appears a beat late (rows shift); new banks all
-  titled "Question bank"; From filter shows same-titled docs alike; native `<select>`
-  filters wrap at 1280px; no list keyboard nav; Set topic only adds; ↻ per Fill pick; hover
-  ghost preview; ✦ Suggest topics. Pre-existing, not bank: a new Classroom worksheet's first
-  question lands after the Section B heading.
+- **題庫 pre-release polish (2026-09-30, merged on `develop`, not released)** — the user asked
+  to polish the bank and make its stored shapes future-proof before v0.6.0. Two read-only audits
+  (architecture + hands-on UX, Chromium + WebKit, 3000-question stress seed) → 8 Opus worktree
+  branches → integration QA (all journeys pass both engines; verdict: ready). User decisions:
+  full polish incl. C7 + C11; **tag removal wins** (newest `tagsAt` across copies, union only
+  when no copy is stamped; display-time, opening never changes tags); **Add to skips questions
+  already in the paper and says so**. Landed: compat hardening (per-document index failure,
+  registry keeps newer/unknown rows and goes read-only on a newer `format`, corrupt registry set
+  aside, `copyQuestion` spreads lineage, reserved tag grammar `TOPIC_CODE_PATTERN` / `::` / `@`
+  in `src/model/topics.ts`, unknown `kind` never a paper, `STORED_INDEX_FORMAT` hashes topic
+  labels + `rowsGolden.test.ts`, `contentKeyFields.test.ts`, identity contract in the design
+  doc); cart C7 (`bankCart.ts`, sessionStorage); bug fixes (Esc, Add-to skip/no guessed target,
+  Copy to bank no duplicates + bank names, WebKit drag scroll `holdScrollers`, class chips);
+  names not codes C11 + source lines + search by paper title + proportional cards; editor tab
+  follows the paper (`paperKinds`, `src/library/paperTypes.ts`), roving lists, 1024 layout
+  (`#print-root` margin places the scaled sheet), tag-as-you-go Undo, Treat-as-new dialog.
+  **At release (M5): emit frozen bank fixtures from the release commit** (`v1-bank.json` with
+  kind/classes/satOn/bankHidden/tags/題型/tagsAt/lineage, a frozen patterns registry + manifest,
+  the shipped topic-code list, `TOPIC_CODE_PATTERN` and `PATTERNS_FORMAT`, v0.5.0's KNOWN_KEYS)
+  and never regenerate them. Remaining (none blocks): teacher `.docx` with an empty header prints
+  "— Teacher Version" (pre-existing, changes pinned bytes: user's call); Open in worksheet from
+  the bank makes that paper the Add-to target (may surprise); Update bank copy can move a newer
+  bank-only tag change backwards (second tab only); sticky rail heading at scroll edge; native
+  checkboxes bright in dark mode; newer-format registry edits stay in memory with no notice;
+  S4 second-tab tag sync, S8 publish coalescing, per-document desktop index files (past ~200
+  papers the single `index.json` is rewritten per autosave: 14 MB at 9k questions), virtualised
+  rail. Still open from before: "Update bank copy" late on desktop?; ↻ per Fill pick; hover ghost
+  preview; ✦ Suggest topics; C8 target picker. Opening a document saves it once as loaded
+  (`EditorHost.open`, since before v0.5.0; content and `updatedAt` unchanged). Audits:
+  session scratchpad only, conclusions here.
 - **✦ AI demo film (merged on `develop`)** — `npm run demo:ai` → `demo-media/ai/` (38 s,
   subtitles, no audio). Translations are canned in the browser (`scripts/demo/ai-provider.mjs`,
   text in `scripts/demo/content.mjs:AI`); Check terms is real. App nit seen while filming:
@@ -125,8 +147,7 @@ off the bottom.** It is the first thing a fresh session reads — then
   is against Google's terms") — the user may drop it.
 - **Home navigation (2026-09-28, merged on `develop`)** — start screen: Settings gear moved
   top-right 2026-09-29 (`src/components/settings/SettingsButton.tsx`; editor keeps ⋯ only), version line above it (desktop).
-  Editor: `[logo] Worksheets › <title>` crumb goes home (word hides <1280px; ⋯ →
-  Worksheets… kept for the film). The start screen is always home — no Back to the last
+  Editor: `[logo] Worksheets › <title>` crumb goes home (word hides <1280px). The start screen is always home — no Back to the last
   document; leaving flushes then unmounts the editor (`EditorHost.tsx:flushBeforeLeaving`).
   Fixed after: Clear saved documents discards the open document (`EditorHost.tsx:clearSavedDocuments`);
   toolbar one row from 1024px (name truncates; Setup icon-only and Saved a dot below xl);
@@ -185,13 +206,13 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Last verified
 
-- `npm test` — 2565 tests, ~7s (2026-09-28, at the v0.5.0 release). `cargo check --locked` clean. `npm run build`
+- `npm test` — 3102 tests, ~7s (2026-09-30 on `develop`; 2565 at the v0.5.0 release). `cargo check --locked` clean. `npm run build`
   green (postbuild: glossary only in a lazy chunk); `npm run samples` exports.
 - `npm run typecheck` — clean.
 - `npm run lint` — 43 pre-existing problems (3 errors, 40 warnings) in `Preview.tsx` and
   `InlineEditable.tsx`. Not a regression; do not "fix" by rewriting those files.
 - Backends agreeing: `scripts/cover-verify.mjs` and `scripts/lq-verify.mjs` passed
-  2026-09-28 (LibreOffice at `/opt/homebrew/bin/soffice`, a dev server running).
+  2026-09-30 (LibreOffice at `/opt/homebrew/bin/soffice`, a dev server running).
 
 ## Open threads and known gaps
 
@@ -237,15 +258,19 @@ off the bottom.** It is the first thing a fresh session reads — then
   (~US$215/yr) is the option; Azure Trusted Signing is not open to a Hong Kong maintainer.
 - **The updater signing key** lives only at `~/.tauri/econ-worksheet.key`. Lose it and no
   installed app can ever accept another update.
-- **A bare `npx vitest run` rewrites the frozen corpus**: `scripts/emit-v1-corpus.test.ts`
-  runs and regenerates `src/test/corpus/v1-published.json`. Always use `npm test`; if the
-  corpus shows as modified, `git checkout` it. Consider excluding that script from the
-  default vitest include.
-- **`scripts/*.test.ts` are not in `npm test`** (which is `vitest run src`), though
-  `vitest.config.ts` includes them. They are hand-run harnesses; nothing in CI catches a
-  break in them.
+- **`scripts/*.test.ts` are hand-run harnesses**: `vitest.config.ts` includes them only when a
+  `scripts/` path is named, and `emit-v1-corpus` refuses without `EMIT_V1_CORPUS=1` (fixed
+  2026-09-30). Nothing in CI catches a break in them.
+- **⌘Z may land mid-resize** on page-level resize drags (`ResizableBlock` does not claim the
+  modal layer); unchecked. SYSTEM_ARCHITECTURE says canvas undo is unreachable, but ⌘Z reaches
+  the store from inside the diagram canvas (acts as its undo).
 
 ## Log
+
+- **2026-09-30 (later)** — Small fixes (vitest corpus guard, film capture crumb, ⌘Z during a
+  題庫 drag, Classroom first question lands in Section A) + 題庫 pre-release polish (above): 12
+  Opus worktree agents, all merged to `develop`, 3102 tests, typecheck clean, lint 43,
+  lq-verify + cover-verify + samples pass; nothing pushed.
 
 - **2026-09-30** — Rename to Econ Studio, header/footer page tabs (+ blank page-1 row
   fix), export save location: four Opus worktree agents, merged to `develop`, 2929 tests,

@@ -24,14 +24,15 @@ after the paper is sat (G), and AI authoring (E1/E3/E4 built but paused).
 Remove from this list once released.
 
 - **Question bank 題庫** (C1 tags, C2 bank, C4 usage history, C5 classes + sat-on date +
-  derived cohort, C6 one tag set across copies, C24 teacher-defined 題型) — CHANGELOG
+  derived cohort, C6 one tag set across copies (newest change wins), C7 cart, C11 names
+  not codes + search by paper, C24 teacher-defined 題型) — CHANGELOG
   Unreleased;
   `docs/design/question-library.md`.
 
 ## Recommended order
 
-1. **Now** — release the question bank (C5, C6 settled its stored shape); then the build
-   flow C7–C10 and the cheap C11.
+1. **Now** — release the question bank (polished and hardened 2026-09-30; emit the frozen
+   bank fixtures from the release commit); then C8–C10 and C11's remaining filters.
 2. **Next** — paste-to-structure (D1), the cheapest way to fill the bank; item analysis
    (G1), which also completes C4's facility.
 3. **Later** — `.docx` import (D2), unpausing E1/E3/E4 after live evals, data charts
@@ -73,8 +74,6 @@ rebuildable; copies keep `lineage.rootId`). Deep analysis, sources and traps:
   tested sub-topic (user chose group + filter only for now).
 
 **The build flow** — every mature bank starts from the paper or shows the target:
-- **C7 A real cart** (S–M): the tray lists its picks (remove one, reorder, MCQ before LQ)
-  and survives Open in worksheet and Home.
 - **C8 Choose where it goes** (S–M): a visible "Adding to: ‹paper ▾›" picker, or a new
   Paper 1 / Paper 2 / Classroom sheet with sections; "already in this paper" badges.
 - **C9 Add from bank inside the editor** (M): the review page opens as a drawer with the
@@ -84,9 +83,8 @@ rebuildable; copies keep `lineage.rootId`). Deep analysis, sources and traps:
   A top-level `blueprint?` in `KNOWN_KEYS` — never inside `target`, which `targetOf` strips.
 
 **Finding and judging**:
-- **C11 Names, not slugs, and the free filters** (S): "Market intervention 市場干預"
-  everywhere; filter has-diagram, missing 中文/English, source paper; sort by least used,
-  oldest, marks. The data is already indexed.
+- **C11 The free filters** (S): names and search by paper shipped; still to add: filter
+  has-diagram, missing 中文/English; sort by least used, oldest, marks. The data is indexed.
 - **C12 Derived item facts** (S–M): per leaf, command word → skill band (Know /
   Apply-Analyse / Evaluate, EN and 中文 lexicon); per question, stimulus kind (data,
   diagram, extract). Filter on them. Registry hook, no type branching; no schema change.
