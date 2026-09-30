@@ -1,7 +1,7 @@
 import { flattenBlocks, questionBlockLists } from './edits';
 import { newId } from './factories';
 import type { MarkScheme } from './markSchemeTypes';
-import type { ContentBlock, Question } from './types';
+import type { ContentBlock, Question, QuestionLineage } from './types';
 
 /**
  * Question identity across copies (§ docs/design/question-library.md, "Ids").
@@ -82,14 +82,30 @@ export function freshIds<Q extends Question>(question: Q): Q {
 }
 
 /**
+ * A question's identity across copies: `lineage.rootId`, or its own id for an original.
+ * A `rootId` that is not a string (a hand-edited file) reads as absent.
+ */
+export function rootIdOf(question: Pick<Question, 'id' | 'lineage'>): string {
+  const rootId = question.lineage?.rootId as unknown;
+  return typeof rootId === 'string' && rootId ? rootId : question.id;
+}
+
+/**
  * A copy taken from another document: fresh ids, plus the lineage that ties it back to
- * its first ancestor. `rootId` survives a copy of a copy.
+ * its first ancestor. `rootId` survives a copy of a copy. Only the per-copy fields
+ * (`fromDocId`, `copiedAt`) are renewed; any other lineage field (a later build's
+ * publisher, licence or source) travels with the copy unchanged.
  */
 export function copyQuestion<Q extends Question>(question: Q, fromDocId?: string): Q {
+  const lineage = question.lineage;
+  const kept = lineage && typeof lineage === 'object' && !Array.isArray(lineage) ? { ...lineage } : {};
+  delete (kept as Partial<QuestionLineage>).fromDocId;
+  delete (kept as Partial<QuestionLineage>).copiedAt;
   return {
     ...freshIds(question),
     lineage: {
-      rootId: question.lineage?.rootId ?? question.id,
+      ...kept,
+      rootId: rootIdOf(question),
       ...(fromDocId ? { fromDocId } : {}),
       copiedAt: new Date().toISOString(),
     },

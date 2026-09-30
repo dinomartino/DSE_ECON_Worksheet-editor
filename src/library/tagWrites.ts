@@ -1,3 +1,4 @@
+import { rootIdOf } from '@/model/lineage';
 import { isNewerThanBuild } from '@/model/migrations';
 import { parsePatternTag } from '@/model/patterns';
 import { topicOf } from '@/model/topics';
@@ -87,7 +88,7 @@ export function matchEdit(before: readonly string[], after: readonly string[]): 
 }
 
 /** A question's identity across copies, keyed as the index keys it (`BankRow.rootId`). */
-export const rootOf = (question: Pick<Question, 'id' | 'lineage'>): string => question.lineage?.rootId ?? question.id;
+export const rootOf = (question: Pick<Question, 'id' | 'lineage'>): string => rootIdOf(question);
 
 /**
  * The document with `edit` applied to the listed questions' `tags` and nothing else:

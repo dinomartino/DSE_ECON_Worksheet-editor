@@ -6,6 +6,7 @@ import { computeNumbering } from '@/model/numbering';
 import { plain } from '@/model/text';
 import { isSymbolOnly } from '@/model/symbols';
 import { questionTexts } from '@/model/textWalk';
+import { rootIdOf } from '@/model/lineage';
 import { tagSearchWords } from '@/model/patterns';
 import { stringTags } from '@/model/topics';
 import type { Question, Worksheet } from '@/model/types';
@@ -43,7 +44,6 @@ function rowOf(question: Question, doc: DocFields, number: number | undefined): 
   // Total over any saved shape: a tag or a rootId that is not a string is left in the
   // document and ignored here, so one odd question never stops the bank.
   const tags = stringTags(question.tags);
-  const rootId = question.lineage?.rootId;
   const printed = questionTexts(question).filter((slot) => slot.role === 'print' && !slot.unprinted);
   const words: string[] = [];
   const has = { en: false, zh: false };
@@ -61,7 +61,7 @@ function rowOf(question: Question, doc: DocFields, number: number | undefined): 
   return {
     ...doc,
     questionId: question.id,
-    rootId: typeof rootId === 'string' && rootId ? rootId : question.id,
+    rootId: rootIdOf(question),
     typeId: question.type,
     marks: questionMarks(question),
     tags,

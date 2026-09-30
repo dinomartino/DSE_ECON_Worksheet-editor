@@ -1,5 +1,5 @@
 import { createWorksheet } from '@/model/factories';
-import { copyQuestion, freshIds } from '@/model/lineage';
+import { copyQuestion, freshIds, rootIdOf } from '@/model/lineage';
 import { bi } from '@/model/text';
 import type { Question, Worksheet } from '@/model/types';
 import { worksheetStore, type WorksheetStore } from '@/storage';
@@ -24,7 +24,7 @@ const openId = (io: BankIO) => io.openDocId ?? useWorksheetStore.getState().work
 
 /** A bank's questions that descend from `rootId`, in document order. */
 function versionsOf(bankDoc: Worksheet, rootId: string): Question[] {
-  return bankDoc.questions.filter((q) => (q.lineage?.rootId ?? q.id) === rootId);
+  return bankDoc.questions.filter((q) => rootIdOf(q) === rootId);
 }
 
 /**
@@ -74,7 +74,7 @@ export async function copyToBank(
  * no version of it at all (nothing to update) or already holds this exact content.
  */
 export function bankCopyDiffers(question: Question, bankDoc: Worksheet): boolean {
-  const versions = versionsOf(bankDoc, question.lineage?.rootId ?? question.id);
+  const versions = versionsOf(bankDoc, rootIdOf(question));
   if (versions.length === 0) return false;
   const key = contentKey(question);
   return versions.every((v) => contentKey(v) !== key);
@@ -98,7 +98,7 @@ export async function updateBankCopy(
   if (bankDocId === openId(io)) throw new Error('That bank is open; close it first.');
   const bank = await store.load(bankDocId);
   if (!bank || bank.kind !== 'bank') return false;
-  const target = versionsOf(bank, question.lineage?.rootId ?? question.id)[0];
+  const target = versionsOf(bank, rootIdOf(question))[0];
   if (!target) return false;
   const replacement = { ...freshIds(question), id: target.id } as Question;
   if (target.lineage) replacement.lineage = target.lineage;

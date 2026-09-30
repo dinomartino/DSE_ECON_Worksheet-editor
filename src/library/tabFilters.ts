@@ -1,5 +1,6 @@
 import { cleanClasses, dateOfUse } from '@/model/classes';
 import { flowItemLabel } from '@/model/flow';
+import { rootIdOf } from '@/model/lineage';
 import { computeNumbering } from '@/model/numbering';
 import { topicLabel } from '@/model/topics';
 import type { Worksheet } from '@/model/types';
@@ -110,7 +111,7 @@ export function paperRoots(worksheet: Worksheet): Map<string, { questionId: stri
   const numbering = computeNumbering(worksheet);
   const out = new Map<string, { questionId: string; number?: number }>();
   for (const question of worksheet.questions) {
-    const rootId = question.lineage?.rootId ?? question.id;
+    const rootId = rootIdOf(question);
     if (out.has(rootId)) continue;
     const number = numbering.byQuestionId.get(question.id)?.number;
     out.set(rootId, { questionId: question.id, ...(number !== undefined ? { number } : {}) });
