@@ -231,7 +231,8 @@ export async function runBankFill(req: FillRequest, deps: BankRunDeps, signal: A
     const result = await exclusively(deps, () => writeIntoCopies(deps.store, { sourceSlots: read.slots, writes, copies: req.copiesOf(unit), expectedKey: unit.contentKey }, now(deps)));
     records.push(...result.written);
     skipped.push(...result.skipped);
-    const written = result.written.some((record) => sameRef(record, unit));
+    // Written when any copy took it: the shown one may be read-only (a newer build's paper).
+    const written = result.written.length > 0;
     if (written) filled += 1;
     if (writes.length > 0 || outcome.results.size > 0) items.push(fillItem(unit, plan, outcome, writes, read.slots, written));
     done += 1;
