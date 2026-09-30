@@ -347,13 +347,16 @@ export interface QuestionBase {
   lineage?: QuestionLineage;
   /**
    * Topic codes (`model/topics.ts`, e.g. 'C', 'C.ped') plus free-text tags. Never printed;
-   * codes are stored, names looked up. Absent = untagged.
+   * codes are stored, names looked up. Absent = untagged. On a question whose type tags
+   * per part (`model/tagSlots.ts`) this holds free and system tags once written by a
+   * per-part build; older whole-question topics here are every untagged part's default.
    */
   tags?: string[];
   /**
    * ISO time `tags` was last written by a tag edit (the bank, the Topic row, topic sync),
-   * set on removal too. The copy stamped last gives every copy its topics
-   * (`library/sharedTags.ts:sharedTags`). Metadata, never content (`contentKey` ignores it).
+   * set on removal too. One stamp for every tag list the question holds (its own, each
+   * part's, each sub-part's). The copy stamped last gives every copy its topics
+   * (`library/sharedTags.ts:sharedState`). Metadata, never content (`contentKey` ignores it).
    */
   tagsAt?: string;
 }
@@ -430,6 +433,13 @@ export interface QuestionSubPart {
    * the answer text and before the marking scheme, and in the answer key.
    */
   answerDiagram?: DiagramBlock;
+  /**
+   * Its own topic codes and 題型 (`model/tagSlots.ts`); absent = the same as its part's.
+   * Replaces the part's list, never adds to it. Never printed, never content.
+   */
+  tags?: string[];
+  /** As `QuestionPart.rootId`. */
+  rootId?: string;
 }
 
 /**
@@ -483,6 +493,19 @@ export interface QuestionPart {
    * the answer text and before the marking scheme (with sub-parts, after the group).
    */
   answerDiagram?: DiagramBlock;
+  /**
+   * Topic codes and 題型 this part tests (`model/tagSlots.ts`). Never printed, never
+   * content (`contentKey` ignores it). Absent = none of its own: the part takes the
+   * question's older whole-question topics, if any. Free tags never live here; they stay
+   * on the question.
+   */
+  tags?: string[];
+  /**
+   * This part's id in the question's first ancestor (`copyQuestion` stamps it). Absent =
+   * the part is its own root (`id`). How copies agree on "part (b)" whatever was
+   * reordered. Never printed; `contentKey` ignores it.
+   */
+  rootId?: string;
 }
 
 export interface StructuredQuestion extends QuestionBase {

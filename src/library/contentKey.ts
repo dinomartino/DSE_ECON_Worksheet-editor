@@ -4,14 +4,22 @@ import type { Question } from '@/model/types';
 /** Fields that say where a copy sits or came from, not what it says. */
 export const IGNORED = ['lineage', 'tags', 'tagsAt', 'gapBefore'] as const;
 
+/** The same, on every part and sub-part (`questionIdOwners`' `part` owners): its topics and its identity across copies. */
+export const IGNORED_PART = ['tags', 'rootId'] as const;
+
 /**
  * A fingerprint of what a question says: every id `questionIdOwners` finds is blanked and
- * the `IGNORED` metadata (`lineage`, `tags`, `tagsAt`, `gapBefore`) dropped, so `freshIds` copies are equal and any text
+ * the `IGNORED` metadata (`lineage`, `tags`, `tagsAt`, `gapBefore`) dropped, with each
+ * part's `IGNORED_PART` (`tags`, `rootId`), so `copyQuestion` copies are equal and any text
  * edit is not. Keys are sorted, so field order never matters.
  */
 export function contentKey(question: Question): string {
   const copy = structuredClone(question) as Question & Record<string, unknown>;
-  for (const { owner } of questionIdOwners(copy)) owner.id = '';
+  for (const { space, owner } of questionIdOwners(copy)) {
+    owner.id = '';
+    if (space !== 'part') continue;
+    for (const key of IGNORED_PART) delete (owner as Record<string, unknown>)[key];
+  }
   for (const key of IGNORED) delete copy[key];
   return hash(stableJson(copy));
 }
