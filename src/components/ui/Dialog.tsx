@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { IconButton } from './index';
-import { CloseIcon } from './icons';
+import { ChevronDownIcon, CloseIcon } from './icons';
 import { useModalLayer } from './modalLayer';
+import { ScrollEdgeHints } from './ScrollEdgeHints';
+import { useScrollEdges } from './scrollEdges';
 
 /**
  * A centred modal dialog.
@@ -115,13 +117,11 @@ export function Dialog({
         {/* Tabbed dialogs scroll *inside* each pane, so the body only clips; an untabbed
             one has no inner scroller and needs its own. Two scrollers would otherwise
             stack a scrollbar around the whole body as well as within the panel. */}
-        <div
-          className={`flex min-h-0 flex-1 flex-col ${
-            scrollBody ? 'scroll-slim overflow-y-auto' : 'overflow-hidden'
-          }`}
-        >
-          {children}
-        </div>
+        {scrollBody ? (
+          <ScrollPane className="flex flex-col">{children}</ScrollPane>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
+        )}
 
         {footer && (
           <footer className="flex items-center justify-end gap-2 border-t border-line bg-surface-sunken px-5 py-3">
@@ -129,6 +129,58 @@ export function Dialog({
           </footer>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * A dialog's scrolling region. At 900px a long body ends under the footer, and an overlay
+ * scrollbar (macOS) gives no sign there is more. The edge fade alone is not enough here:
+ * a body usually breaks between fields, so the fade lies over blank space and a whole
+ * field hides below it unannounced. Hence the "More below" chip, which also scrolls.
+ * Its own component so a scroll re-renders only this, not the dialog.
+ */
+function ScrollPane({ className, children }: { className: string; children: ReactNode }) {
+  const { ref, edges } = useScrollEdges<HTMLDivElement>();
+  const pane = useRef<HTMLDivElement | null>(null);
+  const setPane = useCallback(
+    (node: HTMLDivElement | null) => {
+      pane.current = node;
+      ref(node);
+    },
+    [ref],
+  );
+  const scrollOn = () => {
+    const el = pane.current;
+    if (!el) return;
+    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    el.scrollBy({ top: el.clientHeight * 0.75, behavior: still ? 'auto' : 'smooth' });
+  };
+  return (
+    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+      <div ref={setPane} data-dialog-scroll className={`scroll-slim min-h-0 flex-1 overflow-y-auto ${className}`}>
+        {children}
+      </div>
+      <ScrollEdgeHints edges={edges} />
+      {!edges.atBottom && (
+        // Mouse convenience only: out of the tab order, since Tab already scrolls a
+        // focused field into view.
+        <div className="pointer-events-none absolute bottom-2.5 left-0 z-20 flex justify-center" style={{ right: edges.gutter }}>
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-hidden
+            data-scroll-more
+            // Focus stays where it was: a click here is not a move away from a field.
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={scrollOn}
+            className="pointer-events-auto flex animate-fade-in cursor-pointer items-center gap-1 rounded-full border border-line bg-surface-raised py-0.5 pl-2.5 pr-2 text-[11px] font-medium text-ink-muted shadow-sm transition-colors duration-150 ease-out-soft hover:bg-surface-hover hover:text-ink"
+          >
+            More below
+            <ChevronDownIcon size={12} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -193,12 +245,12 @@ export function DialogTabs<T extends string>({
           );
         })}
       </nav>
-      <div className="scroll-slim min-w-0 flex-1 overflow-y-auto p-5">
+      <ScrollPane className="min-w-0 p-5">
         {/* Keyed by tab so the new pane fades in rather than snapping. */}
         <div key={value} className="animate-fade-in">
           {children}
         </div>
-      </div>
+      </ScrollPane>
     </div>
   );
 }
