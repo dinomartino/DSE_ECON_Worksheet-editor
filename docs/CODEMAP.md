@@ -207,11 +207,13 @@ Invariants:
 - `src/components/start/fileDrop.ts:planDrop` · `:overlayFor` · `:importSummary` — files dropped on the start screen (web `File`s, desktop paths): one opens/restores, several import, pure
 - `src/components/start/TrashList.tsx:TrashList` — Restore / Delete forever / Empty Trash
 - `src/components/start/PageThumbnail.tsx:PageThumbnail` · `src/components/start/thumbnail.ts:loadThumbnail` — derived first page
+- `src/launch/splash.ts:splashMode` · `src/launch/splash.ts:SPLASH_BOOT_SCRIPT` · `src/launch/splash.ts:SPLASH_HTML` · `src/launch/splash.css` — the launch splash: static in `layout.tsx`, drawn by keyframes, handed off to the start screen's `[data-launch-target]` mark by the inline script
 
 Invariants:
 - The gate lives in `src/app/EditorHost.tsx:EditorHost`, outside the editor; the start screen is always home, with no way back but a card; leaving awaits `src/app/EditorHost.tsx:flushBeforeLeaving`, except clearing, which must not save (`src/app/EditorHost.tsx:clearSavedDocuments`) — §The start screen.
 - A thumbnail is derived from the IR, never stored — §The file dashboard.
 - In-page drags use pointer events, never HTML5 drag-and-drop — §The file dashboard.
+- The launch splash plays once per session and never under automation (`navigator.webdriver`, `?nosplash`; `?splash=1` forces it); it never waits on React and is removed when it ends — §The launch splash.
 
 ## library — the question bank 題庫 (derived, never a source of truth)
 
