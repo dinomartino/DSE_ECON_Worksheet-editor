@@ -52,7 +52,7 @@ export function StimulusEditorPanel({
 
       <BlockEditor
         label="Stimulus content"
-        labelHint="the diagram, table or text the questions share"
+        labelHint="what the questions share · typed on the page"
         blocks={element.blocks}
         onChange={(blocks) => onChange({ blocks })}
       />

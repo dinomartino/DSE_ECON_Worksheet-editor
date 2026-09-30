@@ -342,13 +342,13 @@ export function diagramStoryboard(seed) {
 
   steps.push({
     name: 'Blank axes',
-    caption: 'Selects the question stem and chooses **+ Diagram ▾ → Blank axes**.',
+    caption: 'Selects the question stem and chooses **Diagram ▾ → Blank axes**.',
     async run(d) {
-      await d.say('Select the question,\nthen + Diagram ▾ → Blank axes.');
+      await d.say('Select the question,\nthen Diagram ▾ → Blank axes.');
       await d.focus(null);
       await d.click(d.page.locator('#print-root').getByText('The government imposes'));
       await d.wait(800);
-      await d.click(d.page.getByRole('button', { name: /\+ Diagram/ }).first());
+      await d.click(d.page.getByRole('button', { name: /^Add diagram/ }).first());
       await d.wait(900);
       const card = d.page
         .locator('[data-template-group] button')
@@ -629,16 +629,16 @@ export function diagramStoryboard(seed) {
 
   steps.push({
     name: 'Templates',
-    caption: `Opens **+ Diagram ▾** for a moment: ${seed.templateCount} ready-made templates, edited on the same canvas.`,
+    caption: `Opens **Diagram ▾** for a moment: ${seed.templateCount} ready-made templates, edited on the same canvas.`,
     async run(d) {
       await d.say('Want a head start?');
       // Centred first: the popover opens below its trigger and is only as tall as the room left.
-      const trigger = d.page.getByRole('button', { name: /\+ Diagram/ }).first();
+      const trigger = d.page.getByRole('button', { name: /^Add diagram/ }).first();
       await reveal(d, trigger);
       await d.click(trigger);
-      await d.say(`+ Diagram ▾ also has ${seed.templateCount} templates,\nall edited on the same canvas.`);
+      await d.say(`Diagram ▾ also has ${seed.templateCount} templates,\nall edited on the same canvas.`);
       await d.wait(2600);
-      await d.still('templates', `+ Diagram ▾: blank axes and ${seed.templateCount} ready-made templates`);
+      await d.still('templates', `Diagram ▾: blank axes and ${seed.templateCount} ready-made templates`);
       await d.page.keyboard.press('Escape');
       await d.wait(700);
     },

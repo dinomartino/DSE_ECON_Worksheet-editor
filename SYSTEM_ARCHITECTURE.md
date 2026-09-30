@@ -361,7 +361,7 @@ which is why `TableCell.image` exists instead of nested blocks).
   seeds the next free letter (`nextSourceLetter`) and stores no index.
 - **One level deep.** A source may contain neither another source nor a `figureRow`
   (itself a layout table): a third level of `w:tbl` is past what `figureRowXml` proved.
-  The sidebar withholds "+ Source" inside a body.
+  The sidebar withholds the add row's Source inside a body.
 - **The `.docx` is a one-cell layout table**, the same construction `figureRowXml` uses
   — a cell is the one OOXML container that holds a nested table beside prose. Framed
   draws four sides; bare draws `none` on all six, **never omitted** (an unstated border
@@ -691,7 +691,7 @@ one down the middle.
 ### A table can start from a named shape (`src/model/tableTemplates.ts`)
 
 `TABLE_TEMPLATES` ships the shapes the syllabus draws every year (balance sheet,
-two-period comparison, boxed extract), offered above the size grid in the `+ Table`
+two-period comparison, boxed extract), offered above the size grid in the add row's `Table`
 popover.
 
 - **A template is only an initial value** — fresh ids, no stored `templateId`.

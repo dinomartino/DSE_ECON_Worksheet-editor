@@ -61,6 +61,8 @@ function textRowFor(element: LayoutElement) {
   return (
     <ExcerptRow
       text={text}
+      // The panel's one text row, with no group header to say where it is typed.
+      emptyHint="Empty. Type on the page"
       targetKey={editTargetKey({ kind: 'layoutText', elementId: element.id })}
     />
   );

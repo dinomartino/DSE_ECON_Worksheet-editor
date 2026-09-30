@@ -1,7 +1,7 @@
 // The documents every capture starts from, built once off camera and cached as a
 // Playwright storage state: the demo's quiz typed through the real UI (flow.mjs), the
 // library papers (seed-docs.test.ts), and the diagram question with blank axes added
-// through + Diagram (the demo's diagram seed). Timestamps are pinned relative to EPOCH.
+// through the Diagram add button (the demo's diagram seed). Timestamps are pinned relative to EPOCH.
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -84,7 +84,7 @@ export async function seedState({ browser, url, root, force = false, log }) {
     id: w.id, title: DIAGRAMS.title, updatedAt: w.updatedAt, questionCount: w.questions.length, hasCover: false,
   });
 
-  // + Diagram → Blank axes, as the demo's storyboard does it.
+  // Diagram ▾ → Blank axes, as the demo's storyboard does it.
   await page.goto(url, { waitUntil: 'networkidle' });
   await page.getByRole('button', { name: new RegExp(DIAGRAMS.title.split(':')[0]) }).first().click();
   await page.waitForSelector('#print-root .paper');
@@ -93,7 +93,7 @@ export async function seedState({ browser, url, root, force = false, log }) {
   if (await hint.count()) await hint.click();
   await page.locator('#print-root').getByText('The government imposes').click();
   await d.wait(500);
-  await page.getByRole('button', { name: /\+ Diagram/ }).first().click();
+  await page.getByRole('button', { name: /^Add diagram/ }).first().click();
   await d.wait(700);
   await page
     .locator('[data-template-group] button')

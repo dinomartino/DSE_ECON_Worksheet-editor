@@ -208,13 +208,27 @@ export function BlockEditor({
         );
       })}
 
-      <div className="flex flex-wrap gap-1">
+      {/* One "Add" word for the whole row, not a "+" on every button: five "+ Kind"
+          labels overflow the 380px sidebar and orphan the last one on a second line.
+          Each button's name still says what it adds. "Text", not "Paragraph", and buttons
+          a step narrower than `sm` (direct children only, never the popovers' own buttons)
+          so the row fits a sub-part's body with room to spare; it wraps, never clips. */}
+      <div
+        role="group"
+        aria-label="Add a block"
+        className="flex flex-wrap items-center [&>button]:px-1.5 [&>div>button]:px-1.5"
+      >
+        <span aria-hidden className="pr-1 text-[11px] text-ink-subtle">
+          Add
+        </span>
         <Button
           size="sm"
           variant="subtle"
+          aria-label="Add text"
+          title="Add a paragraph"
           onClick={() => onChange([...blocks, createParagraphBlock(emptyBiText())])}
         >
-          + Paragraph
+          Text
         </Button>
         <TableInsertButton
           onPick={(rows, columns) =>
@@ -236,15 +250,21 @@ export function BlockEditor({
             onChange([...blocks, buildTableFromTemplate(templateId)])
           }
         />
-        <Button size="sm" variant="subtle" onClick={() => fileInput.current?.click()}>
-          + Image
+        <Button
+          size="sm"
+          variant="subtle"
+          aria-label="Add image"
+          onClick={() => fileInput.current?.click()}
+        >
+          Image
         </Button>
         {/* Templates are offered at insert time rather than after: a teacher who wants
             an AD–AS diagram should not have to insert blank axes and then convert. The
             picker is visual — the same card grid the diagram panel's Template button
             opens, so the choice looks identical at both moments. */}
         <DiagramTemplatePopover
-          trigger={<>+ Diagram ▾</>}
+          trigger={<>Diagram ▾</>}
+          label="Add diagram"
           onPick={(templateId) => onChange([...blocks, createDiagramBlock(templateId, figureWidth)])}
         />
         {/* Withheld inside a source: a source may not contain another (§`SourceBlock`),
@@ -254,6 +274,7 @@ export function BlockEditor({
           <Button
             size="sm"
             variant="subtle"
+            aria-label="Add source"
             onClick={() =>
               onChange([
                 ...blocks,
@@ -265,7 +286,7 @@ export function BlockEditor({
               ])
             }
           >
-            + Source
+            Source
           </Button>
         )}
         <input
@@ -287,7 +308,7 @@ export function BlockEditor({
 }
 
 /**
- * "+ Table", opening Word's grid picker rather than inserting a blind 3×3.
+ * The add row's "Table", opening Word's grid picker rather than inserting a blind 3×3.
  *
  * The old button created a fixed 3×3 — the wrong size for every table in the reference
  * papers (13×2, 8×2, 4×3) — so inserting was always followed by a run of "+ Row" clicks.
@@ -318,11 +339,12 @@ function TableInsertButton({
       <Button
         size="sm"
         variant="subtle"
+        aria-label="Add table"
         aria-expanded={open}
         aria-haspopup="grid"
         onClick={() => setOpen((current) => !current)}
       >
-        + Table
+        Table
       </Button>
       {open && (
         /*
