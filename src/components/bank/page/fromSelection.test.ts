@@ -3,6 +3,8 @@ import { rowsOf } from '@/library/indexer';
 import { withSharedTags } from '@/library/sharedTags';
 import { choiceQuestion, docWith, partsQuestion } from '@/library/testKit';
 import { copyQuestion } from '@/model/lineage';
+import { createWorksheetFrom } from '@/model/newWorksheet';
+import { worksheetTitle } from '@/storage/document';
 import type { Worksheet } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { addPicksToOpenDocument } from './addToOpen';
@@ -47,6 +49,27 @@ describe('worksheetFromPicks', () => {
     expect(sharedTopic([choiceQuestion('a')])).toBeUndefined();
     const made = worksheetFromPicks([{ question: choiceQuestion('a', '', ['H.money']), fromDocId: 'x' }]);
     expect(plain(made.title.en)).toBe('Money and Banking');
+  });
+
+  it('is named after the shared topic, so the file list does not read Untitled', () => {
+    const made = worksheetFromPicks([
+      { question: choiceQuestion('a', '', ['C.ped']), fromDocId: 'x' },
+      { question: choiceQuestion('b', '', ['C']), fromDocId: 'y' },
+    ]);
+    expect(made.name).toBe('Market and Price');
+    expect(plain(made.title.en)).toBe('Market and Price'); // the printed title is unchanged
+    expect(plain(made.title.zh)).toBe('市場與價格');
+    expect(worksheetTitle(made)).toBe('Market and Price');
+  });
+
+  it('is named "Questions from bank" when the picks share no topic, and stays untitled', () => {
+    const made = worksheetFromPicks([
+      { question: choiceQuestion('a', '', ['C.ped']), fromDocId: 'x' },
+      { question: choiceQuestion('b', '', ['D']), fromDocId: 'y' },
+    ]);
+    expect(made.name).toBe('Questions from bank');
+    expect(made.title).toEqual(createWorksheetFrom({ documentType: 'classroom', sections: false }).title);
+    expect(worksheetTitle(made)).toBe('Questions from bank');
   });
 });
 

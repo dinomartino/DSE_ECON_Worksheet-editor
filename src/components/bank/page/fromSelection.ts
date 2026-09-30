@@ -37,7 +37,8 @@ export async function readPicks(
  * "New worksheet from these": a classroom worksheet (no sections, so nothing reorders
  * them) holding a copy of each pick, numbered in the order picked. Copies get fresh ids
  * and keep `lineage` (`copyQuestion`); a type this build does not know is left out, as
- * `insertQuestionCopies` does. Titled after the topic when every pick shares one.
+ * `insertQuestionCopies` does. Titled and named after the topic when every pick shares
+ * one; otherwise named `BANK_WORKSHEET_NAME` and left untitled.
  */
 export function worksheetFromPicks(picks: readonly PickedQuestion[]): Worksheet {
   const known = picks.filter((pick) => getQuestionType(pick.question.type));
@@ -45,6 +46,7 @@ export function worksheetFromPicks(picks: readonly PickedQuestion[]): Worksheet 
   const base = createWorksheetFrom({
     documentType: 'classroom',
     sections: false,
+    name: topic ? topic.en : BANK_WORKSHEET_NAME,
     ...(topic ? { title: topic.en, titleZh: topic.zh } : {}),
   });
   const questions = known.map((pick) => copyQuestion(pick.question, pick.fromDocId));
@@ -54,6 +56,9 @@ export function worksheetFromPicks(picks: readonly PickedQuestion[]): Worksheet 
     flow: [...base.flow, ...questions.map((question) => ({ type: 'question' as const, id: question.id }))],
   };
 }
+
+/** The filing name of a worksheet made from picks that share no topic. */
+export const BANK_WORKSHEET_NAME = 'Questions from bank';
 
 /** The one coarse topic every question is tagged under, if there is exactly one. */
 export function sharedTopic(questions: readonly Question[]): { en: string; zh: string } | undefined {
