@@ -11,7 +11,7 @@ import { planFromSlots } from '@/translate/plan';
 import { runTranslation, writesFor } from '@/translate/run';
 import { termFixWrites, termRowsFromSlots } from '@/translate/termCheck';
 import type { JobResult, RunDepsResult, RunOutcome, TermRow } from '@/translate/types';
-import { depsError, fillCount, fillOptions, needsLook, rowNotes, sideName, usable, whereOf } from './fillRules';
+import { depsError, fillCount, fillOptions, needsLook, rowNotes, sideName, usable } from './fillRules';
 import { termNotes, termTally, tallySummary } from './termRules';
 
 /**
@@ -151,7 +151,7 @@ function fillItem(unit: BankUnit, plan: ReturnType<typeof planFromSlots>, outcom
     const result = outcome.results.get(key);
     if (!result) continue;
     results.set(key, result);
-    const where = whereOf(byPath.get(job.slots[0].path));
+    const where = byPath.get(job.slots[0].path)?.label ?? '';
     const lines = rowNotes(result).map((note) => note.text);
     if (!usable(result)) failed = true;
     else if (needsLook(result)) look = true;
@@ -305,7 +305,7 @@ export function termItems(findings: readonly UnitFindings[]): BankReviewItem[] {
   return findings.flatMap(({ unit, rows }) =>
     rows.flatMap((row) =>
       row.checks.map((check, index): BankReviewItem => {
-        const where = whereOf(row.slot);
+        const where = row.slot.label ?? '';
         const notes = termNotes(row, check);
         return {
           id: `${unit.docId}\u0000${unit.questionId}\u0000${row.path}#${index}`,

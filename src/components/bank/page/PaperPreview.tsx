@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { BankMark } from '@/assist/bankRun';
 import type { LanguageMode, VersionMode, Worksheet } from '@/model/types';
 import { questionPreviewHtml } from './questionPreview';
 
@@ -22,7 +23,10 @@ export function PaperPreview({
   language,
   version,
   failed,
+  marks,
 }: {
+  /** ✦ review: texts to highlight (what a fill wrote, the term a finding is about). */
+  marks?: readonly BankMark[];
   /** The owning document, once loaded. */
   worksheet: Worksheet | undefined;
   questionId: string;
@@ -54,6 +58,7 @@ export function PaperPreview({
   const scale = preview && width > 0 ? Math.min(1, Math.max(MIN_SCALE, width / preview.widthPx)) : 0;
   const layoutWidth = preview && scale > 0 ? Math.min(preview.widthPx, width / scale) : 0;
 
+  const markKey = marks && marks.length > 0 ? JSON.stringify(marks) : '';
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
@@ -62,6 +67,7 @@ export function PaperPreview({
       // innerHTML never runs scripts, and the clipboard HTML carries none.
       root.innerHTML = preview ? preview.html.replace(`width:${preview.widthPx}px;`, `width:${layoutWidth}px;`) : '';
       const sheet = root.querySelector<HTMLElement>('.sheet');
+      if (sheet && markKey) markTexts(sheet, JSON.parse(markKey) as BankMark[]);
       if (!sheet || typeof ResizeObserver === 'undefined') return;
       // Diagrams are images: the height settles as they decode, so it is observed, not read once.
       const observer = new ResizeObserver(() => setHeight(sheet.offsetHeight));
@@ -70,7 +76,7 @@ export function PaperPreview({
     } catch {
       // No shadow DOM: the sheet stays blank.
     }
-  }, [preview, layoutWidth]);
+  }, [preview, layoutWidth, markKey]);
 
   return (
     <div
@@ -108,3 +114,41 @@ export function PaperPreview({
 
 /** The widest the sheet is drawn: an A4 text column at print size plus the sheet's margins. */
 export const SHEET_MAX_WIDTH = 760;
+
+/** Most spans a review marks on one paper: a guard, not a limit anyone meets. */
+const MARK_BUDGET = 80;
+
+/**
+ * Wraps each occurrence of the marked texts in a `data-ai-mark` span, longest first, so a
+ * sentence claims its words before a term inside it. A text the paper splits across runs
+ * (a bold word inside it) is not found and stays unmarked: marks are a guide, not a record.
+ */
+export function markTexts(sheet: HTMLElement, marks: readonly BankMark[]): void {
+  const pieces = marks
+    .flatMap((mark) => mark.text.split('\n').map((text) => ({ text: text.trim(), tone: mark.tone })))
+    .filter((piece) => piece.text.length > 0)
+    .sort((a, b) => b.text.length - a.text.length);
+  let budget = MARK_BUDGET;
+  const doc = sheet.ownerDocument;
+  for (const piece of pieces) {
+    const walker = doc.createTreeWalker(sheet, NodeFilter.SHOW_TEXT);
+    const hits: Text[] = [];
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const text = node as Text;
+      if (!text.parentElement?.closest('[data-ai-mark]') && text.data.includes(piece.text)) hits.push(text);
+    }
+    for (let rest of hits) {
+      let at = rest.data.indexOf(piece.text);
+      while (at >= 0 && budget > 0) {
+        budget -= 1;
+        const match = rest.splitText(at);
+        rest = match.splitText(piece.text.length);
+        const span = doc.createElement('span');
+        span.setAttribute('data-ai-mark', piece.tone);
+        match.replaceWith(span);
+        span.appendChild(match);
+        at = rest.data.indexOf(piece.text);
+      }
+    }
+  }
+}

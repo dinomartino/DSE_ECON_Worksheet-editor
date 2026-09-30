@@ -30,6 +30,15 @@ import { worksheetStore, type WorksheetSummary } from '@/storage';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { AI_SETTINGS } from '@/settings/aiSettings';
 import { useSettings } from '@/settings/store';
+import type { BankItemTone, BankReviewItem, BankUnit } from '@/assist/bankRun';
+import { loadGlossary } from '@/glossary/load';
+import { identicalCopies, type CopySkip } from '@/library/sameCopies';
+import { isDesktop } from '@/platform';
+import { createRunDeps } from '@/translate/deps';
+import { createBankAi } from './bankAi';
+import type { BankVerbId } from './bankAiScopes';
+import { BankAiBar, BankAiNote } from './BankAiBar';
+import { BankAiMenu } from './BankAiMenu';
 import { addPicksToOpenDocument, nothingAddedText, splitAlreadyInPaper } from './addToOpen';
 import { afterOpen, revealQuestion, tagIndexOf, useBankReturn } from './bankReturn';
 import { useBankCart } from './bankCart';
@@ -63,7 +72,7 @@ import {
 } from './bankScreen';
 import { FilterPopover } from './FilterPopover';
 import { readPicks, worksheetFromPicks, type PickedQuestion } from './fromSelection';
-import { ReviewPage } from './ReviewPage';
+import { ReviewPage, type StageAi } from './ReviewPage';
 import { SelectionTray } from './SelectionTray';
 import { TagAsYouGo } from './TagAsYouGo';
 import { CoverageBar } from './CoverageBar';
@@ -175,6 +184,15 @@ export function QuestionBankScreen({
   const [restoring, setRestoring] = useState<{ group: BankGroup; settled: boolean }>();
   const searchRef = useRef<HTMLInputElement>(null);
   const writes = useRef<Promise<void>>(Promise.resolve());
+  // ✦ AI: one run at a time, for this visit. Leaving the screen stops it and waits for
+  // its last write, so no document is written once the editor may hold it.
+  const [bankAi] = useState(() => createBankAi({ store: worksheetStore, createRunDeps, loadGlossary, desktop: isDesktop }));
+  const aiPhase = bankAi((s) => s.phase);
+  const aiRun = useRef<{ level: BankLevel; side?: 'en' | 'zh' }>(undefined);
+  useEffect(() => () => void bankAi.getState().settle(), [bankAi]);
+  /** Stop any ✦ run and let its last write land, then go. */
+  const afterAi = useCallback((then: () => void) => void bankAi.getState().settle().then(then), [bankAi]);
+  const goHome = useCallback(() => afterAi(onHome), [afterAi, onHome]);
 
   const setLevel = useCallback((next: BankLevel) => {
     setLevelState(next);
@@ -186,12 +204,12 @@ export function QuestionBankScreen({
   const goUp = useCallback(() => {
     const up = levelUp(level);
     if (up === 'home') {
-      onHome();
+      goHome();
       return;
     }
     setFilters((current) => ({ ...current, text: '' }));
     setLevel(up);
-  }, [level, onHome, setLevel]);
+  }, [level, goHome, setLevel]);
   // A notice belongs to the level it was made on: another kind of level or another topic
   // clears it (§ onLeaveLevel). Narrowing the 題型 page's scope does not.
   const levelKey = level.kind === 'review' ? `review:${level.topic}` : level.kind;
@@ -240,10 +258,18 @@ export function QuestionBankScreen({
   // Teacher text counts toward a missing language when the preview shows it or AI Settings include it (as ✦ Fill).
   const [aiSettings] = useSettings(AI_SETTINGS);
   const teacherText = version === 'teacher' || aiSettings.includeTeacherText;
-  const sections = useMemo(
-    () => (level.kind === 'review' ? railSections(groupRows(filterRows(rows, { ...filters, topic }, undefined, { teacherText })), topic) : []),
-    [rows, filters, topic, level.kind, teacherText],
-  );
+  const aiItems = aiPhase.kind === 'review' ? aiPhase.items : NO_ITEMS;
+  const aiTones = useMemo(() => reviewTones(aiItems), [aiItems]);
+  const sections = useMemo(() => {
+    if (level.kind !== 'review') return [];
+    const admitted = filterRows(rows, { ...filters, topic }, undefined, { teacherText });
+    // A ✦ fill under "Missing 中文" would empty the list it filled: reviewed questions stay.
+    const kept =
+      filters.missing && aiTones.size > 0
+        ? filterRows(rows, { ...filters, topic, missing: undefined }, undefined, { teacherText }).filter((row) => aiTones.has(row.rootId) && !admitted.includes(row))
+        : [];
+    return railSections(groupRows([...admitted, ...kept]), topic);
+  }, [rows, filters, topic, level.kind, teacherText, aiTones]);
   const order = useMemo(() => railOrder(sections), [sections]);
   const orderIndex = useMemo(() => new Map(order.map((group, index) => [group.rootId, index])), [order]);
   const candidate = focusKey ? byKey.get(focusKey) : undefined;
@@ -344,6 +370,7 @@ export function QuestionBankScreen({
   };
 
   const newWorksheet = async () => {
+    await bankAi.getState().settle();
     setBusy(true);
     try {
       const picked = await readQuestions(pickedRows);
@@ -360,6 +387,7 @@ export function QuestionBankScreen({
 
   const addTo = async (list: readonly BankRow[]) => {
     if (!target) return;
+    await bankAi.getState().settle();
     setBusy(true);
     try {
       const picked = await readQuestions(list);
@@ -388,8 +416,10 @@ export function QuestionBankScreen({
 
   /** Open the question where it sits in its worksheet; the editor's back button returns here. */
   const openRow = (row: BankRow) =>
-    onOpenDocument(row.docId, () =>
-      afterOpen(row.questionId, { level, filters, focusKey: level.kind === 'review' ? rowKey(row) : undefined, tagRoot: level.kind === 'untagged' ? tagRoot : undefined }),
+    afterAi(() =>
+      onOpenDocument(row.docId, () =>
+        afterOpen(row.questionId, { level, filters, focusKey: level.kind === 'review' ? rowKey(row) : undefined, tagRoot: level.kind === 'untagged' ? tagRoot : undefined }),
+      ),
     );
 
   // Back from a worksheet in tag as you go: land on the question left, once the list is read.
@@ -399,6 +429,23 @@ export function QuestionBankScreen({
     setTagIndex(tagIndexOf(untagged.map((group) => group.rootId), tagRestore.current));
     tagRestore.current = undefined;
   }, [untagged]);
+
+  /* ✦ AI: Fill missing 中文 / English and Check terms, over the shown copies. */
+  const skippedReport = (skipped: CopySkip[], saved: number) => {
+    const byDoc = new Map<string, string>();
+    for (const skip of skipped) if (!byDoc.has(skip.docId)) byDoc.set(skip.docId, skip.reason);
+    report([...byDoc].map(([docId, reason]) => ({ docId, reason })), saved);
+  };
+  const runAi = (verb: BankVerbId, list: BankRow[]) => {
+    const snapshot = rows;
+    const units = list.map((row) => unitOf(row, docLabels));
+    const copiesOf = (unit: BankUnit) => identicalCopies(snapshot, unit);
+    const hooks = { onWritten: onDocumentsChanged, onSkipped: skippedReport, onNotice };
+    aiRun.current = { level, ...(verb === 'terms' ? {} : { side: verb === 'fill.zh' ? ('zh' as const) : ('en' as const) }) };
+    void bankAi
+      .getState()
+      .start(verb === 'terms' ? { verb: 'terms', units, copiesOf } : { verb: 'fill', side: verb === 'fill.zh' ? 'zh' : 'en', includeTeacher: teacherText, units, copiesOf }, hooks);
+  };
 
   /** Tag as you go: every copy of the question on screen gets the codes (and any 題型), then the next appears. */
   const saveTags = (codes: readonly string[], picked?: PickedPatterns) => {
@@ -494,6 +541,33 @@ export function QuestionBankScreen({
     else next.add(code);
     setChosenFor({ root: tagRoot, codes: next });
   };
+
+  // The review walks the stage: each item's question comes on screen, in the level the run
+  // started from; a fill's review shows the side it wrote, as the editor's does.
+  const aiIndex = aiPhase.kind === 'review' ? aiPhase.index : -1;
+  const aiCurrent = aiPhase.kind === 'review' ? aiPhase.items[aiPhase.index] : undefined;
+  const reviewing = aiPhase.kind === 'review';
+  useEffect(() => {
+    if (!reviewing || !aiRun.current) return;
+    // Check terms reads the 中文 against the English: an English-only preview shows both.
+    const side = aiRun.current.side;
+    if (side) setLanguage((current) => (current === 'bilingual' || current === side ? current : side));
+    else setLanguage((current) => (current === 'en' ? 'bilingual' : current));
+  }, [reviewing]);
+  const revealRef = useRef<(item: BankReviewItem) => void>(() => undefined);
+  useEffect(() => {
+    revealRef.current = (item) => {
+      const origin = aiRun.current?.level;
+      if (level.kind !== 'review' && origin?.kind === 'review') {
+        setLevelState(origin);
+        writeLevel(origin);
+      }
+      setFocusKey(rowKey(item.unit));
+    };
+  });
+  useEffect(() => {
+    if (aiCurrent) revealRef.current(aiCurrent);
+  }, [aiCurrent, aiIndex]);
 
   /* ---------------------------------------------------------------------------------- */
   /* Keyboard                                                                           */
@@ -594,6 +668,19 @@ export function QuestionBankScreen({
   /* Render                                                                             */
   /* ---------------------------------------------------------------------------------- */
 
+  const stageAi = ((): StageAi | undefined => {
+    if (!focused || aiItems.length === 0) return undefined;
+    const mine = aiItems.filter((item) => item.unit.rootId === focused.rootId);
+    if (mine.length === 0) return undefined;
+    const item = aiCurrent && aiCurrent.unit.rootId === focused.rootId ? aiCurrent : mine[0];
+    const at = aiItems.indexOf(item);
+    const busyNow = aiPhase.kind === 'review' && Boolean(aiPhase.busy);
+    return {
+      note: <BankAiNote item={item} busy={busyNow} onFix={item.fix ? () => void bankAi.getState().applyItem(at) : undefined} />,
+      marks: mine.flatMap((entry) => entry.marks),
+    };
+  })();
+
   const scanning = status.state === 'scanning';
   const reviewCount = order.length;
   const noDocuments = loaded && summaries.length === 0;
@@ -649,7 +736,7 @@ export function QuestionBankScreen({
       <header className="flex h-12 shrink-0 items-center gap-3.5 whitespace-nowrap border-b border-line bg-surface px-4">
         <button
           type="button"
-          onClick={level.kind === 'topics' ? onHome : goUp}
+          onClick={level.kind === 'topics' ? goHome : goUp}
           className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-[13px] text-ink-muted transition-colors duration-150 ease-out-soft hover:bg-surface-sunken hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
           ← {level.kind === 'topics' ? 'Home' : 'Topics'}
@@ -685,6 +772,16 @@ export function QuestionBankScreen({
         {level.kind === 'review' && (
           <FilterPopover filters={filters} classes={classes} patterns={filterPatterns} scope={topic} onChange={setFilter} />
         )}
+        {level.kind === 'review' && (
+          <BankAiMenu
+            question={focused}
+            list={pickedByRoot}
+            shown={order.map((group) => group.rows[0])}
+            teacherText={teacherText}
+            disabled={aiPhase.kind === 'running' || (aiPhase.kind === 'review' && Boolean(aiPhase.busy))}
+            onRun={runAi}
+          />
+        )}
         {(level.kind === 'topics' || level.kind === 'review') && (
           <button
             type="button"
@@ -705,6 +802,7 @@ export function QuestionBankScreen({
 
       {banner && <div className="shrink-0 px-4 pt-3">{banner}</div>}
 
+      <div className="relative flex min-h-0 flex-1 flex-col">
       {level.kind === 'topics' && !noDocuments && (
         <CoverageBar coverage={cover} onTopic={(code) => setLevel({ kind: 'review', topic: code })} />
       )}
@@ -752,7 +850,9 @@ export function QuestionBankScreen({
             version,
             usedWith: filters.notUsedWith,
             docLabels,
+            aiTones,
           }}
+          stageAi={stageAi}
           fullGroup={focused ? fullGroups.get(focused.rootId) : undefined}
           empty={emptyReview}
           onFocus={(row) => setFocusKey(rowKey(row))}
@@ -799,6 +899,8 @@ export function QuestionBankScreen({
           onShow={showPattern}
         />
       )}
+      <BankAiBar run={bankAi} left={level.kind === 'review' ? (railHidden ? 52 : 300) : 0} />
+      </div>
 
       {(pickedRows.length > 0 || cart.cleared) && level.kind !== 'untagged' && level.kind !== 'patterns' && (
         <SelectionTray
@@ -959,4 +1061,29 @@ function SearchGlyph() {
       <path d="m20 20-3.5-3.5" />
     </svg>
   );
+}
+
+const NO_ITEMS: readonly BankReviewItem[] = [];
+const TONE_RANK: Record<BankItemTone, number> = { failed: 3, look: 2, finding: 1, inserted: 0 };
+
+/** Each reviewed question's strongest tone, by `rootId`: failed over look over finding over filled. */
+function reviewTones(items: readonly BankReviewItem[]): ReadonlyMap<string, BankItemTone> {
+  const tones = new Map<string, BankItemTone>();
+  for (const item of items) {
+    const had = tones.get(item.unit.rootId);
+    if (!had || TONE_RANK[item.tone] > TONE_RANK[had]) tones.set(item.unit.rootId, item.tone);
+  }
+  return tones;
+}
+
+/** A row as a ✦ run's unit: the copy read, and where it lives ("Mock 2026 Paper 1 · Q4"). */
+function unitOf(row: BankRow, labels: ReadonlyMap<string, string>): BankUnit {
+  const title = labels.get(row.docId) ?? row.docTitle;
+  return {
+    docId: row.docId,
+    questionId: row.questionId,
+    rootId: row.rootId,
+    contentKey: row.contentKey,
+    label: row.number !== undefined ? `${title} · Q${row.number}` : title,
+  };
 }

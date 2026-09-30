@@ -6,6 +6,7 @@ import { marksLabel, SourceText, sourceLabel, tagTitle, typeLabel, sittingLabel,
 import { versionDiff } from '@/components/bank/bankText';
 import { refsOf, usedWith as usedWithTargets } from '@/library/history';
 import { anySameStudents } from '@/library/cohort';
+import type { BankItemTone, BankMark } from '@/assist/bankRun';
 import type { BankGroup, BankRow } from '@/library/types';
 import { isNewerThanBuild } from '@/model/migrations';
 import { isPatternTag } from '@/model/patterns';
@@ -33,6 +34,31 @@ export interface ReviewState {
   usedWith?: ClassChoice;
   /** Each document's name where two share a title (`distinctDocLabels`); default its title. */
   docLabels?: ReadonlyMap<string, string>;
+  /** A ✦ review: each reviewed question's tone, by `rootId` (rail marks). */
+  aiTones?: ReadonlyMap<string, BankItemTone>;
+}
+
+/** The ✦ review of the question on the stage: its note above the paper, its marks on it. */
+export interface StageAi {
+  note?: ReactNode;
+  marks?: readonly BankMark[];
+}
+
+const AI_TONE: Record<BankItemTone, { className: string; title: string }> = {
+  inserted: { className: 'text-accent-ink', title: 'Filled by ✦ AI' },
+  look: { className: 'text-warn-ink', title: 'Filled by ✦ AI, worth a look' },
+  failed: { className: 'text-danger-ink', title: 'Some of it could not be translated' },
+  finding: { className: 'text-warn-ink', title: 'Check terms found something' },
+};
+
+/** The rail's ✦ for a reviewed question. */
+function AiGlyph({ tone }: { tone: BankItemTone | undefined }) {
+  if (!tone) return null;
+  return (
+    <span data-bank-ai={tone} title={AI_TONE[tone].title} className={`shrink-0 whitespace-pre ${AI_TONE[tone].className}`}>
+      {' ✦'}
+    </span>
+  );
 }
 
 /**
@@ -52,8 +78,11 @@ export function ReviewPage({
   onVersion,
   onEditTopics,
   onOpen,
+  stageAi,
 }: {
   state: ReviewState;
+  /** The ✦ review of the question on the stage. */
+  stageAi?: StageAi;
   /** The focused question across the whole bank: versions and uses are never filtered. */
   fullGroup: BankGroup | undefined;
   /** Shown instead of the stage when the list is empty. */
@@ -94,6 +123,7 @@ export function ReviewPage({
           onEditTopics={onEditTopics}
           onOpen={onOpen}
           onPick={onPick}
+          ai={stageAi}
         />
       )}
     </div>
@@ -213,6 +243,7 @@ function Rail({
                             {' · '}
                           </span>
                           <SourceText title={docLabel(state, lead)} number={lead.number} />
+                          <AiGlyph tone={state.aiTones?.get(group.rootId)} />
                         </p>
                         {used && <p className="truncate text-[11px] tabular-nums text-warn-ink">{usedLabel(used)}</p>}
                       </div>
@@ -266,6 +297,7 @@ function NumberStrip({ state, onFocus, onShow }: { state: ReviewState; onFocus: 
               <span aria-hidden className={`absolute inset-y-0 left-0 w-0.5 bg-accent ${on ? 'opacity-100' : 'opacity-0'}`} />
               {index + 1}
               {picked.has(group.rootId) && <span aria-label="in your list" className="h-1.5 w-1.5 rounded-full bg-accent" />}
+              <AiGlyph tone={state.aiTones?.get(group.rootId)} />
             </button>
           );
         })}
@@ -289,9 +321,11 @@ function Stage({
   onEditTopics,
   onOpen,
   onPick,
+  ai,
 }: {
   state: ReviewState;
   row: BankRow;
+  ai?: StageAi;
   fullGroup: BankGroup | undefined;
   onStep: (delta: number) => void;
   onFocus: (row: BankRow) => void;
@@ -352,7 +386,8 @@ function Stage({
               ‹
             </NavButton>
             <div className="min-w-0 flex-1" style={{ maxWidth: SHEET_MAX_WIDTH }}>
-              <PaperPreview worksheet={worksheet} questionId={row.questionId} language={shown} version={version} failed={failed} />
+              {ai?.note}
+              <PaperPreview worksheet={worksheet} questionId={row.questionId} language={shown} version={version} failed={failed} marks={ai?.marks} />
               {shown !== language && (
                 <p className="mt-2 text-center text-[12px] text-ink-muted">
                   {language === 'zh' ? 'No 中文 text yet. Showing English.' : language === 'en' ? 'No English text yet. Showing 中文.' : 'One language only. Showing what there is.'}

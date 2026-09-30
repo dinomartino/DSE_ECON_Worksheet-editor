@@ -10,10 +10,11 @@ import type { VerbContext, VerbInput } from '@/assist/types';
 import { Button } from '@/components/ui';
 import { ChevronDownIcon, ChevronRightIcon, SparkleIcon } from '@/components/ui/icons';
 import { useModalLayer } from '@/components/ui/modalLayer';
-import { useAiStatus, type AiStatus } from '@/settings/aiSettings';
+import { useAiStatus } from '@/settings/aiSettings';
 import { useAppDialogs } from '@/store/appDialogs';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { countLabel, highlighted, menuGroups, stepFor, stepHighlight, type MenuGroup, type MenuStep } from './aiMenuModel';
+import { ProviderFooter } from './ProviderFooter';
 import { SetupCard } from './SetupCard';
 
 export const AI_MENU_WIDTH = 360;
@@ -163,7 +164,13 @@ export function AiMenuPopover({ open }: { open: AiMenuOpen }) {
           onHover={setActive}
           onChoose={choose}
         />
-        <ProviderFooter status={status} />
+        <ProviderFooter
+          status={status}
+          onSettings={() => {
+            close();
+            useAppDialogs.getState().openSettings({ section: 'ai' });
+          }}
+        />
       </>
     );
   }
@@ -339,29 +346,6 @@ export function InputStep({
           Generate
         </Button>
       </div>
-    </div>
-  );
-}
-
-function ProviderFooter({ status }: { status: AiStatus }) {
-  const model = status.preset.models.find((m) => m.id === status.model)?.label ?? status.model;
-  return (
-    <div className="flex items-center gap-1.5 border-t border-line px-3 py-2 text-[11px] text-ink-muted">
-      <span aria-hidden className={`size-1.5 shrink-0 rounded-full ${status.configured ? 'bg-ok' : 'bg-line-strong'}`} />
-      <span className="min-w-0 flex-1 truncate">
-        {status.preset.label}
-        {status.configured ? (model ? ` · ${model}` : '') : ' · not set up'}
-      </span>
-      <button
-        type="button"
-        onClick={() => {
-          useAiMenu.getState().close();
-          useAppDialogs.getState().openSettings({ section: 'ai' });
-        }}
-        className="shrink-0 cursor-pointer font-medium text-accent-ink underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none"
-      >
-        Settings
-      </button>
     </div>
   );
 }
