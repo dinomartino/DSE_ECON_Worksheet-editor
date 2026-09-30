@@ -151,6 +151,9 @@ interface Worksheet {
 
 ### What a use means (C5)
 
+- **Only papers (no `kind`) and banks are indexed.** A later build's kind (a `notes`
+  document) yields no rows, so it is never a paper, a use or a bank here; `summarize`
+  passes its `kind` string through untouched.
 - **A use is a paper that names classes.** A paper without `classes` is a draft: "Used in"
   still lists it as a place the question lives, but no anti-repeat filter, Fill ranking or
   class strip counts it. Banks are never uses.

@@ -20,10 +20,14 @@ export const EXCERPT_MAX = 200;
 
 /**
  * The bank rows of one saved document, in printed order. `summary` (its index row) names
- * it and stamps its freshness; the use date is the document's own (`dateOfUse`). A `bankHidden` document yields none. Text only — images never enter a row.
+ * it and stamps its freshness; the use date is the document's own (`dateOfUse`). A `bankHidden` document, or one of a kind this build does not know, yields none. Text only — images never enter a row.
  */
 export function rowsOf(worksheet: Worksheet, summary?: Pick<WorksheetSummary, 'title' | 'updatedAt'>): BankRow[] {
   if (worksheet.bankHidden) return [];
+  // Only papers (no kind) and banks hold questions for the bank. A later build's kind
+  // (notes, say) yields none: never a paper, never a use.
+  const kind = worksheet.kind as unknown;
+  if (kind !== undefined && kind !== 'bank') return [];
   const numbering = computeNumbering(worksheet);
   const classes = cleanClasses(worksheet.classes);
   const doc = {

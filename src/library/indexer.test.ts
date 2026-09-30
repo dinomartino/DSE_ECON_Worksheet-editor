@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createDiagramBlock, createImageBlock } from '@/model/factories';
 import { copyQuestion } from '@/model/lineage';
-import type { ContentBlock, Question } from '@/model/types';
+import type { ContentBlock, Question, Worksheet } from '@/model/types';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
 import { isBankRow } from './bankBackend';
 import { EXCERPT_MAX, rowsOf } from './indexer';
@@ -96,5 +96,12 @@ describe('rowsOf', () => {
   it('reads tags that are not a list as none', () => {
     const odd = { ...choiceQuestion('Odd'), tags: 'C.ped' } as unknown as Question;
     expect(rowsOf(docWith([odd]))[0].tags).toEqual([]);
+  });
+
+  it('yields no rows for a kind this build does not know, so it is never a paper or a use', () => {
+    const notes = { ...docWith([choiceQuestion('A note')]), kind: 'notes', classes: ['5A'] } as unknown as Worksheet;
+    expect(rowsOf(notes)).toEqual([]);
+    expect(rowsOf(docWith([choiceQuestion('Paper')]))).toHaveLength(1);
+    expect(rowsOf(docWith([choiceQuestion('Bank')], { kind: 'bank' }))[0].docKind).toBe('bank');
   });
 });

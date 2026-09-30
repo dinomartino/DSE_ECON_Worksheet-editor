@@ -24,8 +24,11 @@ export interface WorksheetSummary {
    */
   questionCount?: number;
   hasCover?: boolean;
-  /** 'bank' for a question bank (`Worksheet.kind`). Absent = a paper; read it as `=== 'bank'`. */
-  kind?: 'bank';
+  /**
+   * `Worksheet.kind` as stored: 'bank' for a question bank, or a later build's kind passed
+   * through. Absent = a paper; read it as `=== 'bank'`.
+   */
+  kind?: 'bank' | (string & {});
 }
 
 /** A Trash row: the summary the document had when it was deleted, plus when. */
