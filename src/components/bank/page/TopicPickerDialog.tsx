@@ -5,6 +5,7 @@ import { Button, Segmented } from '@/components/ui';
 import { Dialog } from '@/components/ui/Dialog';
 import { holdsPatterns } from '@/model/patterns';
 import { TOPICS, topicOf, type Topic } from '@/model/topics';
+import { escapeClears } from '../escapeClears';
 import { PatternPicker } from '../PatternPicker';
 
 /** A row of choices over the list (bulk: Add, Remove, Replace), owned by the caller. */
@@ -199,6 +200,7 @@ export function TopicPickerDialog<M extends string = never>({
           autoFocus
           placeholder="Find a topic by name, code or 中文"
           onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={(event) => void escapeClears(event, query, () => setQuery(''))}
           className="h-8 w-full rounded-lg border border-line bg-surface px-2.5 text-[12.5px] text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
         />
         <ul className="mt-3 space-y-0.5">

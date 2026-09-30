@@ -27,6 +27,7 @@ import {
 } from '@/library/tabFilters';
 import type { BankRow as BankRowData } from '@/library/types';
 import { useBank } from '@/library/useBank';
+import { escapeClears } from './escapeClears';
 import { TOPICS } from '@/model/topics';
 import { listQuestionTypes } from '@/registry';
 import { useAppDialogs } from '@/store/appDialogs';
@@ -309,12 +310,7 @@ export function BankTab() {
               value={filters.text}
               placeholder="Search 搜尋 · both languages"
               onChange={(event) => update({ text: event.target.value })}
-              onKeyDown={(event) => {
-                if (event.key === 'Escape' && filters.text) {
-                  event.stopPropagation();
-                  update({ text: '' });
-                }
-              }}
+              onKeyDown={(event) => void escapeClears(event, filters.text, () => update({ text: '' }))}
               className="h-8 w-full rounded-lg border border-line bg-surface pl-8 pr-2.5 text-[12.5px] text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
             />
             <svg
