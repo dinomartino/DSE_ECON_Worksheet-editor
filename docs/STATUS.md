@@ -25,6 +25,10 @@ off the bottom.** It is the first thing a fresh session reads — then
   Save As picker on Chromium (`src/platform/webPicker.ts`), one folder for multi-file exports
   (web + desktop), Safari/Firefox keep downloads plus a hint. Desktop folder path unit-tested
   only, not clicked through in the shell.
+  (4) **New worksheet asks for a name** (required, sets `name`, never `title`); Duplicate
+  adds " (copy)"; `Dialog` no longer steals a field's autoFocus; toolbar crumb reads Econ
+  Studio. Open: 題庫 "New worksheet from these" still sets the printed `title` to the topic and
+  no `name`; film capture script clicks a removed ⋯ "Worksheets…" item (broken before this).
 - **Question bank 題庫 (merged on `develop` 2026-09-29, not released)** — C1–C4 from
   `docs/IDEAS.md`; plan, decisions, taxonomy: `docs/design/question-library.md`; UI design:
   artifact FyR7Xdd6BpgvFL42tdzz2T. Phase 0 (`src/model/lineage.ts`, `dedupeIds`) + WP-0
