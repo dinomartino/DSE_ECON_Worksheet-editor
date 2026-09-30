@@ -35,7 +35,7 @@ ${NEVER_ADD}
 
 SYMBOLS AND NUMBERS
 8. Keep symbols and curve or point labels in Latin letters exactly: D, S, AD, AS, SRAS, LRAS, MC, MR, AR, DWL, P₁, Q₀, E, Yf. In a sentence, a glossary term that has an abbreviation is written in Chinese (real GDP → 實質本地生產總值) unless the English uses the abbreviation as a label.
-9. Keep every number. Arabic numerals for data, years, percentages, labels and durations (圖1, 表2, 資料A, 60分鐘, 1小時30分鐘); Chinese numerals for counting words in instructions (兩個原因, 一項因素, 任答兩題). Thousands are separated by a space (3 000). Keep "$" before the number ($85, 每小時$40); HK$ and US$ follow rule 12.
+9. Keep every number. Arabic numerals for data, years, percentages, labels and durations (圖1, 表2, 資料A, 60分鐘, 1小時30分鐘); Chinese numerals for counting words in instructions (兩個原因, 一項因素, 選答兩題). Thousands are separated by a space (3 000). Keep "$" before the number ($85, 每小時$40); HK$ and US$ follow rule 12.
 
 HONG KONG STYLE
 10. Hong Kong characters and forms: 什麼 (not 甚麼), 周期, 線, 着, 住戶. Never use Simplified Chinese.

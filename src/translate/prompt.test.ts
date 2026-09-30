@@ -12,7 +12,7 @@ import { evaluateItem, finalize } from './run';
 import type { Chunk, Direction, TranslationJob } from './types';
 import { decodeWire, encodeRuns } from './wire';
 
-const RENDERED_SHA = 'c5b79f82badf0a4f72c973ef27771e5a81e7973d00d3bae34e147229220730a5';
+const RENDERED_SHA = '8daecf5d49080ffb0308b3b644f6130a325a3ce0c18be68222dce00b20cfbbc3';
 
 function rendered(): string {
   return [

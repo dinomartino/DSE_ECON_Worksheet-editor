@@ -90,7 +90,7 @@ const CONVENTION_SET: Pair[] = [
   { kind: 'part', en: 'A ticket costs HK$500 and a meal US$20.', zh: '一張門票500港元，一頓飯20美元。' },
   { kind: 'part', en: 'With the aid of an AD-AS diagram, explain the effect on real GDP.', zh: '以一幅總供需圖輔助，解釋對實質本地生產總值的影響。' },
   { kind: 'coverLine', en: 'Time allowed: 1 hour 30 minutes', zh: '時限：1小時30分鐘' },
-  { kind: 'instructions', en: 'Answer any 2 questions.', zh: '任答兩題。' },
+  { kind: 'instructions', en: 'Answer any 2 questions.', zh: '選答兩題。' },
   { kind: 'coverLine', en: 'S.6 MOCK EXAMINATION 2026 – 2027', zh: '2026 – 2027 年度中六模擬考試' },
   { kind: 'coverLine', en: 'PAPER 1', zh: '卷一' },
   { kind: 'coverLine', en: 'ECON', zh: '經濟' },
