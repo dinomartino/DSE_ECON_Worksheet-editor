@@ -6,6 +6,11 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Current initiatives
 
+- **Paid service analysis (2026-09-30, research only, no code)**: accounts, hosted AI, cloud sync,
+  payments. `docs/research/2026-09-paid-product/`, artifact FywY8LdptidVU4EobqsjQW. Key finding: only
+  Vertex AI Gemini / Qwen HK may serve HK users; the in-app "use a VPN" Gemini advice breaks Google's
+  terms. v2 same day: convenience at ~HK$0 fixed, no school sales; folder sync + AI
+  pages (Cloudflare free, desktop first). Awaiting the user's calls (what first, VPN wording).
 - **Never checked** (dropped from IDEAS in its 2026-09-29 cleanup, kept here): a real
   import of our key exports into the four other apps; graph answer space and model answer
   diagrams in Word; print-PDF of shaded areas; HKEAA Chinese labels and EC wording; the
@@ -29,6 +34,10 @@ off the bottom.** It is the first thing a fresh session reads — then
   adds " (copy)"; `Dialog` no longer steals a field's autoFocus; toolbar crumb reads Econ
   Studio. Open: 題庫 "New worksheet from these" still sets the printed `title` to the topic and
   no `name`; film capture script clicks a removed ⋯ "Worksheets…" item (broken before this).
+  (5) **WebKit PDF shrink fixed** (Mac desktop + Safari): print kept screen breakpoints, the
+  hidden toolbar widened the document, WebKit shrank pages to fit (0.72 at 1800 px). Fix:
+  `overflow-x: clip` on `#print-root`'s ancestors. Verified with a scratch WKWebView harness
+  (same NSPrintInfo as `macos.rs`), not yet in the packaged app.
 - **Question bank 題庫 (merged on `develop` 2026-09-29, not released)** — C1–C4 from
   `docs/IDEAS.md`; plan, decisions, taxonomy: `docs/design/question-library.md`; UI design:
   artifact FyR7Xdd6BpgvFL42tdzz2T. Phase 0 (`src/model/lineage.ts`, `dedupeIds`) + WP-0
