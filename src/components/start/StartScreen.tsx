@@ -893,7 +893,7 @@ export function StartScreen({
       {creating && (
         <Dialog
           title="New worksheet"
-          description="The decisions that are awkward to change once questions are written. Every one has a default. Press Create to take them all."
+          description="Name it, then press Create. Everything else has a default and is awkward to change once questions are written."
           width={560}
           onClose={() => setCreating(undefined)}
           // Pinned outside the scrolling body, so Create stays reachable at any window

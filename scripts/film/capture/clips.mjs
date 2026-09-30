@@ -187,6 +187,8 @@ export const CLIPS = [
       await r.clickAt(0.9, page.getByText('Classroom worksheet', { exact: true }).first(), { dur: 0.6, label: 'Classroom worksheet' });
       await r.hold(0.4);
       await r.clickAt(2.1, dialog.getByTitle('Bilingual'), { dur: 0.5, label: 'EN+中', kind: 'toggle' });
+      // The dialog requires a name; filled off-beat so the cut's timing is unchanged.
+      await dialog.getByLabel('Name', { exact: true }).fill('S4 Demand and supply');
       await r.clickAt(3.0, page.getByRole('button', { name: /Create worksheet/ }), { dur: 0.5, label: 'Create worksheet' });
       await r.hold(0.4);
       const hint = page.getByRole('button', { name: 'Dismiss hint' });

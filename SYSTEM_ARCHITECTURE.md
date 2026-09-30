@@ -1785,7 +1785,8 @@ paths). Verify by measuring the same text node in both states.
 ## The start screen (`src/components/start/`)
 
 The app opens on a list of documents, not on a document. `StartScreen` is the list plus
-the way in; `NewWorksheetForm` asks the once-per-document decisions.
+the way in; `NewWorksheetForm` asks the once-per-document decisions, led by a required
+name (`Worksheet.name`, never printed; every other field has a default).
 
 - **The gate lives in `EditorHost`, outside the editor**, as session state (`chosen`) —
   it resets on reload, and an overlay inside the editor would run the paginator over a
@@ -1942,7 +1943,9 @@ worksheet, which is why one field served both — and why renaming used to stamp
 decision ("DSE Mock 2026 (final)") across the top of the paper.
 
 - **A rename writes `name` and never touches `title`.** Both routes — the toolbar and
-  the start screen's dialog — go through `worksheetStore.rename`.
+  the start screen's dialog — go through `worksheetStore.rename`. The new-worksheet form
+  sets `name` the same way (`createWorksheetFrom({ name })`), and Duplicate appends
+  " (copy)" to it so the copy lists apart.
 - **`documentName()` (`model/text.ts`) is the one fallback chain**: `name` → `title.en`
   → `title.zh` → undefined. It lives in `model/` because `export/` and `storage/` both
   need it and neither may depend on the other. Every consumer reads it (or

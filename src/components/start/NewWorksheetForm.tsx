@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { CheckField, Segmented, SelectField } from '@/components/ui';
 import { Field } from '@/components/ui/Dialog';
 import { FONT_PRESETS } from '@/model/factories';
@@ -16,9 +16,8 @@ import type { LanguageMode, PageMargins, PaperSize, Worksheet } from '@/model/ty
 /**
  * The once-per-document decisions, asked before the first question exists.
  *
- * A **form, not a wizard of steps**: everything fits on one screen, and a teacher who
- * wants none of it presses Create immediately. Every field has a working default, so
- * there is nothing that must be answered before the editor can open.
+ * A **form, not a wizard of steps**: everything fits on one screen. Only the name must
+ * be typed; every other field has a working default.
  *
  * The **document type leads** and everything else follows from it. It used to be the
  * other way around — the cover was one question, sections another — which made the
@@ -72,6 +71,29 @@ const DOCUMENT_TYPES: Array<{
   },
 ];
 
+/** A realistic filing name per type, shown as the Name field's placeholder. */
+export function namePlaceholder(type: DocumentType, now?: Date): string {
+  const year = academicYear(now).short;
+  switch (type) {
+    case 'classroom':
+      return 'S5 Demand and supply quiz';
+    case 'lqWorksheet':
+      return 'S6 Market structure LQ practice';
+    case 'paper1':
+      return `S6 Mock Paper 1 ${year}`;
+    case 'lqMock':
+      return `S6 Mock Paper 2 ${year}`;
+  }
+}
+
+/** The name to create under, or undefined when nothing but whitespace was typed. */
+export function newWorksheetName(typed: string): string | undefined {
+  return typed.trim() || undefined;
+}
+
+export const NAME_REQUIRED_MESSAGE = 'Give it a name first.';
+const NAME_ERROR_ID = 'new-worksheet-name-error';
+
 /** Which types carry a mock-exam cover, and so ask for its fields. */
 const HAS_COVER: Record<DocumentType, boolean> = {
   classroom: false,
@@ -104,6 +126,9 @@ export function NewWorksheetForm({
   onCreate: (worksheet: Worksheet, language: LanguageMode) => void;
 }) {
   const [documentType, setDocumentType] = useState<DocumentType>(initialType ?? 'classroom');
+  const [name, setName] = useState('');
+  const [nameMissing, setNameMissing] = useState(false);
+  const nameRef = useRef<HTMLInputElement>(null);
   const [language, setLanguage] = useState<LanguageMode>('en');
   const [paper, setPaper] = useState<PaperSize>('A4');
   const [marginIndex, setMarginIndex] = useState(0);
@@ -116,8 +141,15 @@ export function NewWorksheetForm({
   const [examName, setExamName] = useState('');
 
   const submit = () => {
+    const filingName = newWorksheetName(name);
+    if (!filingName) {
+      setNameMissing(true);
+      nameRef.current?.focus();
+      return;
+    }
     const options: NewWorksheetOptions = {
       documentType,
+      name: filingName,
       paper,
       margins: MARGIN_PRESETS[marginIndex]?.margins as PageMargins,
       fonts: {
@@ -139,6 +171,36 @@ export function NewWorksheetForm({
         submit();
       }}
     >
+      <Field
+        label="Name"
+        hint="What it's called in your list and the file name. It doesn't print on the paper."
+      >
+        <input
+          ref={nameRef}
+          type="text"
+          value={name}
+          autoFocus
+          placeholder={namePlaceholder(documentType)}
+          aria-label="Name"
+          aria-invalid={nameMissing}
+          aria-describedby={nameMissing ? NAME_ERROR_ID : undefined}
+          className={`h-9 w-full rounded-lg border bg-surface px-2.5 text-[13px] text-ink outline-none transition-colors duration-150 ease-out-soft placeholder:text-ink-subtle focus:ring-2 ${
+            nameMissing
+              ? 'border-danger focus:border-danger focus:ring-danger/25'
+              : 'border-line focus:border-accent focus:ring-accent/25'
+          }`}
+          onChange={(event) => {
+            setName(event.target.value);
+            if (nameMissing && newWorksheetName(event.target.value)) setNameMissing(false);
+          }}
+        />
+        {nameMissing && (
+          <p id={NAME_ERROR_ID} role="alert" className="animate-fade-in text-xs text-danger-ink">
+            {NAME_REQUIRED_MESSAGE}
+          </p>
+        )}
+      </Field>
+
       <Field
         label="Document type"
         hint="Decides the cover, sections and page furniture. Everything else below is paper."
@@ -221,12 +283,8 @@ export function NewWorksheetForm({
         </p>
       )}
 
-      {/*
-        No title fields. A new document starts untitled — nothing is stamped into it
-        (§ `createWorksheet`) — and the name is given where naming happens: typed onto
-        the page, in Setup, or via Rename in the file list. Asking here was a box most
-        teachers skipped, which then printed a heading nobody wrote.
-      */}
+      {/* No title field: the Name above is `Worksheet.name`, which never prints. The
+          printed heading is typed onto the page, where it is seen. */}
       <Field
         label="Language"
         hint="Which side the editor shows. Both are always stored."
