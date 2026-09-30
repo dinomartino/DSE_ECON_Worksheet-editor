@@ -8,6 +8,10 @@
 4. [`docs/GLOSSARY.md`](./docs/GLOSSARY.md) — words this repo uses in its own way.
 5. [`docs/IDEAS.md`](./docs/IDEAS.md) — the ranked feature backlog, from competitor research.
 
+Read `STATUS.md` whole. For the rest, ask for the section first and read only that line
+range: `node .claude/skills/jev/bin/find.mjs "<question>"` (the `jev` skill). Read a doc
+whole only when the pointers miss.
+
 Open `SYSTEM_ARCHITECTURE.md` only for the section you are about to touch. **Update
 `docs/STATUS.md` before ending the session.**
 
@@ -60,6 +64,8 @@ The full policy — collapsing migrations, their size budget, files from a newer
 - `npm test` — ~2500 tests, ~7s. `npm run typecheck`, `npm run lint` (43 pre-existing
   problems: 3 errors in `Preview.tsx` and `InlineEditable.tsx`, 40 warnings spread
   across other files).
+- `node .claude/skills/jev/bin/verify-plan.mjs` lists which of the checks below a diff
+  needs. Tests and typecheck always run; when unsure it says required.
 - `src/test/codemap.test.ts` guards the docs: every path and `path:symbol` cited in
   `docs/` must still exist. If it fails, the map rotted — fix the map.
 - **UI work is verified in a browser**, not by reading source: screenshot with
