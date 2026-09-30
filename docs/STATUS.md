@@ -98,6 +98,25 @@ off the bottom.** It is the first thing a fresh session reads — then
   preview; ✦ Suggest topics; C8 target picker. Opening a document saves it once as loaded
   (`EditorHost.open`, since before v0.5.0; content and `updatedAt` unchanged). Audits:
   session scratchpad only, conclusions here.
+- **題庫 ✦ AI (merged on `develop` 2026-09-30, not released)** — Fill missing 中文/English and
+  keyless Check terms on the bank review page (question on screen / your list / the topic), a
+  Missing 中文/English filter; results go into every copy with the same `rootId` + contentKey
+  (`src/library/sameCopies.ts`), never Trash, hidden or newer-build papers; over 20 confirms,
+  Stop keeps what's done, Undo all; bank AI and topic writes share one queue. `node
+  scripts/bank-ai-verify.mjs` 28/28 (mock provider only, no real key). Follow-ups: ⌘J doesn't
+  open the bank menu; highlights miss text split across formatting runs; `writeTags` can save
+  into a trashed paper from a stale row (pre-existing; reuse `sameCopies`' check).
+- **Topics per part (in progress, paused 2026-09-30)** — the user's call: on a long question
+  topics and 題型 live on parts (a sub-part's own list replaces its part's), free tags on the
+  question, parent derived; bulk Set topic writes every part; any tagged part leaves Untagged.
+  Design: session scratchpad `part-tags-design.md` (to land as `docs/design/part-tags.md`).
+  WP-0 (model/registry/library core) on `feature/part-tags-core` from 48a2c05, paused mid-way
+  when the user went offline; handoff note `part-tags-wp0-handoff.md` in the same scratchpad.
+  On resume: merge `develop` (INDEX_FORMAT is already 6 from the AI branch, so WP-0 bumps to 7
+  and regenerates the golden), finish WP-0, then UI packages A (Topic row), B (review page
+  "(b) tests this"), C (bank tagging dialogs).
+- **Write a question from the bank (proposal only)** — `docs/design/bank-authoring.md`, C25 in
+  IDEAS; three questions for the user at its end. For a future session.
 - **✦ AI demo film (merged on `develop`)** — `npm run demo:ai` → `demo-media/ai/` (38 s,
   subtitles, no audio). Translations are canned in the browser (`scripts/demo/ai-provider.mjs`,
   text in `scripts/demo/content.mjs:AI`); Check terms is real. App nit seen while filming:
@@ -267,6 +286,8 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
+- **2026-09-30 (evening)** — 題庫 ✦ AI merged (3127 tests); topics-per-part designed, WP-0
+  paused; bank authoring proposal written. Nothing pushed.
 - **2026-09-30 (later)** — Small fixes (vitest corpus guard, film capture crumb, ⌘Z during a
   題庫 drag, Classroom first question lands in Section A) + 題庫 pre-release polish (above): 12
   Opus worktree agents, all merged to `develop`, 3102 tests, typecheck clean, lint 43,
