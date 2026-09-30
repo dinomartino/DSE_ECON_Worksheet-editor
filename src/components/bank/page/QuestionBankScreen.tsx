@@ -699,8 +699,9 @@ export function QuestionBankScreen({
         else setPicker({ mode: 'tag', rows: tagGroup.rows });
         return;
       }
-      // Enter saves, except on a button that is not one of the keys (its own click stands).
-      if (event.key === 'Enter' && (!onButton || target?.hasAttribute('data-tag-key') || target?.hasAttribute('data-tag-save'))) {
+      // Enter saves, except on a button that is not one of the keys or parts (its own click stands).
+      const tagButton = target?.hasAttribute('data-tag-key') || target?.hasAttribute('data-tag-part') || target?.hasAttribute('data-tag-save');
+      if (event.key === 'Enter' && (!onButton || tagButton)) {
         event.preventDefault();
         saveTags();
       }

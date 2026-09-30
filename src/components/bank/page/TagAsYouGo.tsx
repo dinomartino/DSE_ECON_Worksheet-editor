@@ -233,6 +233,7 @@ function PartChip({
   return (
     <button
       type="button"
+      data-tag-part
       aria-pressed={selected}
       title={title ? `${title}: ${detail}` : detail}
       onClick={onClick}
