@@ -13,6 +13,9 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 ## Unreleased
 
 ### Added
+- **A proper welcome on first launch.** With nothing saved yet, the start screen shows
+  the four kinds of paper as pictures of the page each one prints. Click one to name it
+  and start, or open a file or restore a backup you already have.
 - **Econ Studio opens with a short animation of its mark**: the axes, demand and supply
   draw in and meet at the equilibrium, then the mark settles into its place on the start
   screen. Click or press any key to skip it. It plays once per session and respects
@@ -98,6 +101,14 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   Firefox and Safari still save to your Downloads folder.
 
 ### Changed
+- **The how-to-edit tip sits below the page instead of on top of it**, so the bottom of
+  a page is never hidden, and scrolling to the end of a document no longer leaves a long
+  empty gap.
+- **A tidier question panel.** The Add row (Text, Table, Image, Diagram, Source) fits on
+  one line, and empty paragraphs simply say "Empty".
+- **HKEAA wording on new exam papers.** New Paper 1 and Paper 2 mock papers end with
+  試卷完 and say 選答一題, and AI translation writes END OF PAPER as 試卷完. Papers you
+  already saved keep their own wording.
 - **A new question looks calmer on the page.** Only the question text keeps the blue
   "Double-click to add" prompt; empty options, parts and captions show a short grey
   "Add English" or "Add 中文" instead. Prompts still never print or export.
@@ -160,9 +171,10 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   own, or nothing. Page 1's title settings sit with them.
 
 ### Fixed
-- **The first question in a new worksheet with sections now goes into Section A.** It
-  used to land after the "Section B" heading, leaving Section A empty. Select a heading
-  first to add a question under that section.
+- **A new question goes to the section made for its type.** With nothing selected, a
+  Multiple Choice question lands in Section A and a Structured question in Section B,
+  including questions added from 題庫. It used to land after the last heading whatever its
+  type. Select a question or heading first to put it right after that instead.
 - **A mislabelled button no longer deletes page 1's own header.** "Same as page 1" kept
   the later pages' header and removed page 1's. The new page choices replace it.
 - **PDF export on Mac (and in Safari) no longer shrinks the pages or runs them into each
