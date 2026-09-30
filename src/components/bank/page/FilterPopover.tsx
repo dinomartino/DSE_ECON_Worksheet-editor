@@ -11,6 +11,7 @@ import {
   classChoiceText,
   DEFAULT_FILTERS,
   MARKS_BANDS,
+  missingLabel,
   SINCE_CHOICES,
   typeName,
   type BankFilters,
@@ -22,7 +23,7 @@ import {
 
 /**
  * Every narrowing filter behind one "Filter" button: type, 題型, marks, not used with a
- * class (and since when), source. The button names what is on. While open the popover owns the
+ * class (and since when), a missing language, source. The button names what is on. While open the popover owns the
  * keyboard (`useModalLayer`), so Esc closes it rather than leaving the level.
  */
 export function FilterPopover({
@@ -189,6 +190,17 @@ function Panel({
           />
         </Field>
       )}
+      <Field label="Language">
+        <Select
+          value={filters.missing ?? ''}
+          onChange={(value) => set('missing', value === 'zh' || value === 'en' ? value : undefined)}
+          options={[
+            { value: '', label: 'Any language' },
+            { value: 'zh', label: missingLabel('zh') },
+            { value: 'en', label: missingLabel('en') },
+          ]}
+        />
+      </Field>
       <Field label="Source">
         <Select
           value={filters.source}

@@ -28,6 +28,8 @@ import { allOf } from '@/components/bank/bankText';
 import type { LanguageMode, VersionMode, Worksheet } from '@/model/types';
 import { worksheetStore, type WorksheetSummary } from '@/storage';
 import { useWorksheetStore } from '@/store/worksheetStore';
+import { AI_SETTINGS } from '@/settings/aiSettings';
+import { useSettings } from '@/settings/store';
 import { addPicksToOpenDocument, nothingAddedText, splitAlreadyInPaper } from './addToOpen';
 import { afterOpen, revealQuestion, tagIndexOf, useBankReturn } from './bankReturn';
 import { useBankCart } from './bankCart';
@@ -235,9 +237,12 @@ export function QuestionBankScreen({
     () => (topic === 'untagged' ? [] : listPatterns(rows, registry, topic === 'all' ? {} : { topic }).filter((item) => item.count > 0)),
     [rows, registry, topic],
   );
+  // Teacher text counts toward a missing language when the preview shows it or AI Settings include it (as ✦ Fill).
+  const [aiSettings] = useSettings(AI_SETTINGS);
+  const teacherText = version === 'teacher' || aiSettings.includeTeacherText;
   const sections = useMemo(
-    () => (level.kind === 'review' ? railSections(groupRows(filterRows(rows, { ...filters, topic })), topic) : []),
-    [rows, filters, topic, level.kind],
+    () => (level.kind === 'review' ? railSections(groupRows(filterRows(rows, { ...filters, topic }, undefined, { teacherText })), topic) : []),
+    [rows, filters, topic, level.kind, teacherText],
   );
   const order = useMemo(() => railOrder(sections), [sections]);
   const orderIndex = useMemo(() => new Map(order.map((group, index) => [group.rootId, index])), [order]);

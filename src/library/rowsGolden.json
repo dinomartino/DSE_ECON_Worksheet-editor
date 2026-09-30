@@ -1,5 +1,5 @@
 {
-  "format": 5,
+  "format": 6,
   "rows": [
     {
       "docId": "doc-golden",
@@ -57,6 +57,12 @@
       "hasDiagram": false,
       "languages": [
         "en"
+      ],
+      "missing": [
+        "zh"
+      ],
+      "missingTeacher": [
+        "zh"
       ],
       "contentKey": "2fbxcvxebx",
       "number": 2
