@@ -25,7 +25,8 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   question from your worksheets as topic cards (how many of each, and which topics are
   thin) under a coverage bar across the topics. Open a topic to read its questions one by one at print size, in English, 中文 or
   both, Student or Teacher version, with the list grouped by sub-topic (hide it for more
-  room). Tick questions to make a new worksheet from them or add them to your last one.
+  room). Tick questions to make a new worksheet from them or add them to the worksheet
+  you had open last (if you have not opened one yet, only a new worksheet is offered).
   Adding skips any question that worksheet already has ("Skipped 1 already in this
   paper") and opens it at the new questions, highlighted, with one Undo for the lot.
   Untagged questions get a quick tagging mode: press 1 to 6 to pick a suggested topic,
