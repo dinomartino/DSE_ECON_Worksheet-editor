@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createDiagramBlock, createImageBlock } from '@/model/factories';
 import { copyQuestion } from '@/model/lineage';
-import type { ContentBlock, Question, Worksheet } from '@/model/types';
+import type { ContentBlock, McqQuestion, Question, Worksheet } from '@/model/types';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
 import { isBankRow } from './bankBackend';
 import { EXCERPT_MAX, rowsOf } from './indexer';
@@ -103,5 +103,24 @@ describe('rowsOf', () => {
     expect(rowsOf(notes)).toEqual([]);
     expect(rowsOf(docWith([choiceQuestion('Paper')]))).toHaveLength(1);
     expect(rowsOf(docWith([choiceQuestion('Bank')], { kind: 'bank' }))[0].docKind).toBe('bank');
+  });
+});
+
+describe('rowsOf: missing languages', () => {
+  it('names the side a printed text lacks, per edition, as the editor counts it', () => {
+    const english = choiceQuestion('Which is a free good?');
+    const both = choiceQuestion('Which is a free good?', '以下哪項是免費物品？');
+    const chinese = choiceQuestion('', '以下哪項是免費物品？');
+    // Half done: the stem has both sides, an option lacks 中文.
+    const half = choiceQuestion('Which is a free good?', '以下哪項是免費物品？') as McqQuestion;
+    half.options = half.options.map((option, i) => (i === 0 ? { ...option, text: { en: [{ text: 'Air' }], zh: [] } } : option));
+    const [e, b, c, h] = rowsOf(docWith([english, both, chinese, half]), summary);
+    expect(e.missing).toEqual(['zh']);
+    expect(b.missing).toBeUndefined();
+    expect(b.missingTeacher).toBeUndefined();
+    expect(c.missing).toEqual(['en']);
+    expect(h.missing).toEqual(['zh']);
+    expect(h.languages).toEqual(['en', 'zh']);
+    for (const row of [e, b, c, h]) expect(isBankRow(row)).toBe(true);
   });
 });

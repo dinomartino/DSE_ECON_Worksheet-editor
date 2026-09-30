@@ -71,6 +71,15 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   filters by one, and counts them on the topic cards. The 題型 Patterns page lists them
   all and renames, merges or deletes one in every worksheet at once. They come with your
   backup and never print.
+- **✦ AI in the question bank.** On a topic's page, ✦ AI fills in missing 中文 or English
+  for the question on screen, the questions in your list, or every question shown. Check
+  terms (free, no key needed) finds terms that differ from the EDB glossary and replaces
+  them. A question used in several worksheets changes in every copy that says the same
+  thing, so the bank still shows it once; a copy you have edited, a paper hidden from the
+  bank and a paper in Trash are left as they are. Up to 20 questions start straight away;
+  more asks first and says roughly how long it takes, and Stop keeps what is done. What
+  changed is highlighted in the list and on the paper, ‹ › steps through it, and Undo all
+  puts it back. The Filter has a new Language choice: Missing 中文 or Missing English.
 - **Choose where your export is saved.** In Chrome and Edge, exporting a worksheet, the
   worksheet file or a backup now asks where to save it, as the desktop app does. Exporting
   several files at once (Student and Teacher, versions A, B and C, or the answer key too)

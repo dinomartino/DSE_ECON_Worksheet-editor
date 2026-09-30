@@ -199,3 +199,25 @@ describe('targets', () => {
     expect(addTarget([], rows, undefined)).toBeUndefined();
   });
 });
+
+describe('the missing-language filter', () => {
+  const english = row({ rootId: 'e', missing: ['zh'], missingTeacher: ['zh'] });
+  const answersOnly = row({ rootId: 'a', missingTeacher: ['zh'] });
+  const done = row({ rootId: 'd' });
+  const chinese = row({ rootId: 'c', missing: ['en'], missingTeacher: ['en'] });
+  const rows = [english, answersOnly, done, chinese];
+  const ids = (list: { rootId: string }[]) => list.map((r) => r.rootId);
+
+  it('keeps questions lacking the side; teacher text counts only when asked', () => {
+    expect(ids(filterRows(rows, { ...DEFAULT_FILTERS, missing: 'zh' }))).toEqual(['e']);
+    expect(ids(filterRows(rows, { ...DEFAULT_FILTERS, missing: 'zh' }, undefined, { teacherText: true }))).toEqual(['e', 'a']);
+    expect(ids(filterRows(rows, { ...DEFAULT_FILTERS, missing: 'en' }))).toEqual(['c']);
+    expect(ids(filterRows(rows, DEFAULT_FILTERS))).toEqual(['e', 'a', 'd', 'c']);
+  });
+
+  it('is named, and clears, like any other filter', () => {
+    const filters = { ...DEFAULT_FILTERS, missing: 'zh' as const };
+    expect(activeFilters(filters)).toEqual([{ key: 'missing', label: 'Missing 中文' }]);
+    expect(clearFilter(filters, 'missing').missing).toBeUndefined();
+  });
+});

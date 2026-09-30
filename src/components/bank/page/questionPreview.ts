@@ -43,7 +43,12 @@ const PREVIEW_CSS =
   '.sheet *{line-height:max(12pt,calc(12em / 11))}' +
   '.sheet p,.sheet h1,.sheet h2,.sheet h3,.sheet ul,.sheet ol,.sheet li{margin-block:0}' +
   '.sheet hr{margin:6px 0}' +
-  '.sheet img{max-width:100%;height:auto}';
+  '.sheet img{max-width:100%;height:auto}' +
+  // ✦ review marks (`PaperPreview`'s `marks`): the editor's page colours, screen only.
+  '.sheet [data-ai-mark]{text-decoration-line:underline;text-decoration-thickness:1.5px;text-underline-offset:3px;text-decoration-skip-ink:none;border-radius:2px}' +
+  '.sheet [data-ai-mark="inserted"]{background-color:#eef6fc;text-decoration-color:#0d77c9}' +
+  '.sheet [data-ai-mark="look"]{background-color:#fdf1d8;text-decoration-color:#c27c0e}' +
+  '.sheet [data-ai-mark="finding"]{text-decoration-style:wavy;text-decoration-thickness:1px;text-decoration-color:#c27c0e}';
 
 const bodyOf = (html: string) => /<body style="[^"]*">([\s\S]*)<\/body>/.exec(html)?.[1] ?? '';
 

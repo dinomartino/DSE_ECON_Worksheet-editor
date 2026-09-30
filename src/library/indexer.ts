@@ -5,7 +5,7 @@ import { cleanClasses, dateOfUse } from '@/model/classes';
 import { computeNumbering } from '@/model/numbering';
 import { plain } from '@/model/text';
 import { isSymbolOnly } from '@/model/symbols';
-import { questionTexts } from '@/model/textWalk';
+import { needsTranslation, questionTexts } from '@/model/textWalk';
 import { rootIdOf } from '@/model/lineage';
 import { tagSearchWords } from '@/model/patterns';
 import { tagStateOf } from '@/model/tagSlots';
@@ -51,7 +51,8 @@ function rowOf(question: Question, doc: DocFields, number: number | undefined): 
   // tagged per part, `tags` is derived (every part's topics, then free tags).
   const tagFields = rowTagFields(tagStateOf(question));
   const tags = tagFields.tags;
-  const printed = questionTexts(question).filter((slot) => slot.role === 'print' && !slot.unprinted);
+  const texts = questionTexts(question);
+  const printed = texts.filter((slot) => slot.role === 'print' && !slot.unprinted);
   const words: string[] = [];
   const has = { en: false, zh: false };
   for (const slot of printed) {
@@ -65,6 +66,11 @@ function rowOf(question: Question, doc: DocFields, number: number | undefined): 
   }
   for (const tag of tags) words.push(...tagSearchWords(tag));
   const languages = (['en', 'zh'] as BankLang[]).filter((lang) => has[lang]);
+  // A side is missing when its own edition would print a gap (the editor's count).
+  const lacking = (version: 'student' | 'teacher') =>
+    (['en', 'zh'] as BankLang[]).filter((side) => texts.some((slot) => needsTranslation(slot, { language: side, version })));
+  const missing = lacking('student');
+  const missingTeacher = lacking('teacher');
   return {
     ...doc,
     questionId: question.id,
@@ -83,6 +89,8 @@ function rowOf(question: Question, doc: DocFields, number: number | undefined): 
       flattenBlocks(list).some((block) => block.kind === 'diagram' || block.kind === 'image'),
     ),
     languages,
+    ...(missing.length ? { missing } : {}),
+    ...(missingTeacher.length ? { missingTeacher } : {}),
     contentKey: contentKey(question),
     ...(number !== undefined ? { number } : {}),
   };

@@ -6,7 +6,7 @@ import { refsOf, rowUsedWith } from '@/library/history';
 import { rowHasPattern, type PatternId } from '@/library/patterns';
 import { searchRows } from '@/library/search';
 import { isPatternTag, parsePatternTag } from '@/model/patterns';
-import type { BankGroup, BankRow } from '@/library/types';
+import type { BankGroup, BankLang, BankRow } from '@/library/types';
 import type { WorksheetSummary } from '@/storage/types';
 
 /**
@@ -146,6 +146,8 @@ export interface BankFilters {
   source: SourceFilter;
   /** One 題型: its type and its name under its sub-topic. */
   pattern?: PatternId;
+  /** Only questions some printed text of which lacks this language ("Missing 中文"). */
+  missing?: BankLang;
 }
 
 export const DEFAULT_FILTERS: BankFilters = { text: '', topic: 'all', marks: 'any', since: 'ever', source: 'all' };
@@ -236,11 +238,27 @@ export function classChoices(rows: readonly BankRow[]): ClassChoice[] {
   return [...cohortChoices, ...plainChoices];
 }
 
+/** "Missing 中文" / "Missing English": the filter's words for a language. */
+export const missingLabel = (side: BankLang): string => (side === 'zh' ? 'Missing 中文' : 'Missing English');
+
+/**
+ * The sides a row's printed text lacks: over the Teacher paper when teacher text counts
+ * (the preview shows Teacher, or AI Settings include it), else the Student paper's.
+ */
+export function missingSides(row: Pick<BankRow, 'missing' | 'missingTeacher'>, teacherText: boolean): BankLang[] {
+  return (teacherText ? row.missingTeacher : row.missing) ?? [];
+}
+
 /**
  * The rows the page's filters admit. Text, topic, type and marks go through `searchRows`;
- * untagged, source and "not used with <class> since…" are this page's own.
+ * untagged, source, missing language and "not used with <class> since…" are this page's own.
  */
-export function filterRows(rows: readonly BankRow[], filters: BankFilters, now = new Date()): BankRow[] {
+export function filterRows(
+  rows: readonly BankRow[],
+  filters: BankFilters,
+  now = new Date(),
+  opts: { teacherText?: boolean } = {},
+): BankRow[] {
   const band = MARKS_BANDS.find((b) => b.value === filters.marks);
   const topic = filters.topic === 'all' || filters.topic === 'untagged' ? undefined : filters.topic;
   const matched = searchRows(rows, {
@@ -264,6 +282,7 @@ export function filterRows(rows: readonly BankRow[], filters: BankFilters, now =
       (!tagged || !tagged.has(row.rootId)) &&
       (filters.source === 'all' || row.docKind === filters.source) &&
       (!filters.pattern || rowHasPattern(row, filters.pattern)) &&
+      (!filters.missing || missingSides(row, opts.teacherText ?? false).includes(filters.missing)) &&
       (!used || !used.has(row.rootId)),
   );
 }
@@ -287,6 +306,7 @@ export function activeFilters(filters: BankFilters): ActiveFilter[] {
   }
   if (filters.source !== 'all') active.push({ key: 'source', label: filters.source === 'bank' ? 'from banks' : 'from worksheets' });
   if (filters.pattern) active.push({ key: 'pattern', label: `題型 ${filters.pattern.name}` });
+  if (filters.missing) active.push({ key: 'missing', label: missingLabel(filters.missing) });
   return active;
 }
 
@@ -295,6 +315,7 @@ export function clearFilter(filters: BankFilters, key: keyof BankFilters): BankF
   if (key === 'notUsedWith') return { ...filters, notUsedWith: undefined, since: 'ever' };
   if (key === 'typeId') return { ...filters, typeId: undefined };
   if (key === 'pattern') return { ...filters, pattern: undefined };
+  if (key === 'missing') return { ...filters, missing: undefined };
   return { ...filters, [key]: DEFAULT_FILTERS[key] };
 }
 

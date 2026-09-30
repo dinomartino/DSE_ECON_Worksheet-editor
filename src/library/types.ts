@@ -52,6 +52,14 @@ export interface BankRow {
   hasDiagram: boolean;
   /** Languages with printed words; one entry means the other side is missing. */
   languages: BankLang[];
+  /**
+   * Sides some printed text lacks in the Student paper, as the editor's untranslated count
+   * reads it (`needsTranslation` in that language's edition). Absent = none. The "Missing
+   * 中文 / English" filter and the bank's ✦ Fill read it.
+   */
+  missing?: BankLang[];
+  /** The same over the Teacher paper (answers and mark schemes too); absent = none. */
+  missingTeacher?: BankLang[];
   /** Content fingerprint ignoring ids, lineage and tags (`contentKey.ts`). */
   contentKey: string;
   /** The printed number in its document (`computeNumbering`). */

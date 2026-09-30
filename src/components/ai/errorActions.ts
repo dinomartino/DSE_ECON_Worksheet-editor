@@ -49,17 +49,27 @@ export const errorNote = (error: AiErrorInfo): string | undefined =>
 const aiSettings = () => appSettings.read(AI_SETTINGS);
 const keySaved = (provider: ProviderId) => peekSecret(`ai:${provider}`) !== null || aiSettings().keychainSaved[provider] === true;
 
-function openSettings(focus: 'key' | 'model', params?: Record<string, string>) {
-  useAiRun.getState().dismiss();
+/** What an error's buttons drive: the editor's run (`useAiRun`) or the question bank's. */
+export interface RunControl {
+  retry(): void;
+  dismiss(): void;
+}
+
+const editorRun: RunControl = {
+  retry: () => useAiRun.getState().retry(),
+  dismiss: () => useAiRun.getState().dismiss(),
+};
+
+function openSettings(run: RunControl, focus: 'key' | 'model', params?: Record<string, string>) {
+  run.dismiss();
   useAppDialogs.getState().openSettings({ section: 'ai', focus, ...(params ? { params } : {}) });
 }
 
 /** Region: switch and retry when that provider's key is saved, else set it up in Settings. */
-export function runErrorAction(action: ErrorAction, error: AiErrorInfo): void {
-  const run = useAiRun.getState();
+export function runErrorAction(action: ErrorAction, error: AiErrorInfo, run: RunControl = editorRun): void {
   switch (action.kind) {
     case 'useProvider':
-      if (!keySaved(action.provider)) return openSettings('key', { provider: action.provider, reason: 'region' });
+      if (!keySaved(action.provider)) return openSettings(run, 'key', { provider: action.provider, reason: 'region' });
       appSettings.write(AI_SETTINGS, { provider: action.provider });
       return run.retry();
     case 'keyPage': {
@@ -74,9 +84,9 @@ export function runErrorAction(action: ErrorAction, error: AiErrorInfo): void {
       return run.retry();
     }
     case 'chooseModel':
-      return openSettings('model');
+      return openSettings(run, 'model');
     case 'settings':
-      return openSettings('key');
+      return openSettings(run, 'key');
     case 'retry':
       return run.retry();
   }
