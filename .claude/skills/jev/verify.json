@@ -17,7 +17,7 @@
     {
       "id": "lint",
       "cmd": "npm run lint",
-      "why": "source or lint config changed; the hook reduces the 43 known problems to one line",
+      "why": "source or lint config changed; the hook reduces the known baseline problems to one line",
       "triggers": ["**/*.{ts,tsx,js,jsx,mjs,cjs}", "eslint.config.*", "package.json"],
       "ignore": [".claude/**", "scripts/film/**"]
     },

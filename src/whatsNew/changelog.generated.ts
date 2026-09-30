@@ -173,6 +173,9 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   own, or nothing. Page 1's title settings sit with them.
 
 ### Fixed
+- **Bilingual papers no longer print the footer twice.** A paper code or page number that
+  reads the same in English and 中文 now prints once, on screen, in the PDF and in Word.
+  Cover instruction numbers such as (1) print once too.
 - **A new question goes to the section made for its type.** With nothing selected, a
   Multiple Choice question lands in Section A and a Structured question in Section B,
   including questions added from 題庫. It used to land after the last heading whatever its

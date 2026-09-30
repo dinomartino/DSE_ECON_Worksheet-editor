@@ -143,9 +143,21 @@ off the bottom.** It is the first thing a fresh session reads — then
   (4) Start: footer pinned below the scroller (the fade had covered the links), icon
   order/view toggles, fixed 168px cards, folder column from 1280px only.
   **User's call:** 6s threshold; no "Saved" word at any width; grey prompt ~2.4:1; parts
-  treated as secondary. **Not yet done:** Inspector "+ Paragraph … + Source" wrap and
-  repeated "Empty. Type on the page"; a Structured question added to a Classroom sheet
-  lands in Section A; bottom tip bar covers the page; the empty start screen.
+  treated as secondary. Its leftovers were done in round 3 (below).
+- **Clean-up round 3 (merged on `develop` 2026-10-01, not released)** — Opus worktree agents
+  + integration QA (Chromium + WebKit, verdict ready). Inspector add row "Add Text Table Image
+  Diagram ▾ Source" on one line, empty rows say "Empty"; a new question goes to the section
+  made for its type (`src/model/sectionFit.ts`, content outranks the heading so older
+  all-in-B papers are left alone; flyout says "in Section A/B", `sectionShortLabel`); edit tip
+  is a `HintRow` below the scroller (reads "Double-click text to edit"), preview stack
+  reclaims cover + gaps when scaled (`src/components/preview/sheetStack.ts`); empty start
+  screen is a welcome with four paper cards (`src/components/start/WelcomeDesk.tsx`), the
+  aside hides Start new + Open a file while empty (user's call); HKEAA 試卷完 / 選答一題 in new
+  seeds, prompt e2.3; bilingual band text identical in both languages prints once
+  (`src/model/bandSegments.ts:bandFieldPrintSides`, cover numbers too; user approved the
+  print change). Root glossary copy deleted. **Unverified:** Tauri shell; Chinese card names
+  (課堂工作紙 / 長題目工作紙 / 卷一模擬試卷 / 卷二模擬試卷) not teacher-checked;
+  `mirrorBilingualEdit` (editing a footer in bilingual mode) unit-tested only.
 - **UI polish (merged on `develop` 2026-09-29, not released)**: hover is colour only (no
   accent bar/nudge/lift; rule in SYSTEM_ARCHITECTURE § Layout rules); start-screen aside
   shows scroll edge hints (`src/components/ui/scrollEdges.ts`, `ScrollEdgeHints.tsx`),
@@ -169,7 +181,7 @@ off the bottom.** It is the first thing a fresh session reads — then
   app Settings". Browser check: `node scripts/ai-verify.mjs` (mock provider, 66/66 Chromium
   + WebKit). Seeded Chinese now follows the glossary (new documents only).
   **Before release (user):** a live Save & test + translation with a real key and
-  `npm run eval:translate` (prompt e2.2 never run live; model ids in `src/ai/providers.ts`
+  `npm run eval:translate` (prompt e2.3 never run live; model ids in `src/ai/providers.ts`
   unverified); one try from an HK network without VPN (Gemini region error → Try again / Use DeepSeek);
   desktop Keychain prompt in a built app (`npm run desktop:build:debug`), incl. Windows.
 - **AI door (2026-09-28, merged on `develop`, not released)** — one **✦ AI** button (replaces
@@ -250,28 +262,26 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Last verified
 
-- `npm test` — 3234 tests, ~8s (2026-09-30 on `develop`; 2565 at the v0.5.0 release). `cargo check --locked` clean. `npm run build`
+- `npm test` — 3272 tests, ~10s (2026-10-01 on `develop`; 2565 at the v0.5.0 release). `cargo check --locked` clean. `npm run build`
   green (postbuild: glossary only in a lazy chunk); `npm run samples` exports.
 - `npm run typecheck` — clean.
-- `npm run lint` — 43 pre-existing problems (3 errors, 40 warnings) in `Preview.tsx` and
-  `InlineEditable.tsx`. Not a regression; do not "fix" by rewriting those files.
+- `npm run lint` — 41 pre-existing problems (3 errors, 38 warnings; baseline refreshed
+  2026-10-01) in `Preview.tsx` and `InlineEditable.tsx`. Not a regression; do not "fix" by rewriting those files.
 - Backends agreeing: `scripts/cover-verify.mjs` and `scripts/lq-verify.mjs` passed
-  2026-09-30 (LibreOffice at `/opt/homebrew/bin/soffice`, a dev server running).
+  2026-10-01 (`--out` now reaches the fixture step) (LibreOffice at `/opt/homebrew/bin/soffice`, a dev server running).
 
 ## Open threads and known gaps
 
-- **`verify-plan.mjs` ignores a positional base** (`main()`: with no `--commit`, `ci + 1` is 0,
-  so the first argument is skipped and base stays `develop`). Workaround: put any flag first,
-  `verify-plan.mjs --x <sha>`. Unfixed.
+- **Bilingual Paper 2 cover, older gaps (seen in QA 2026-10-01, not fixed):** the corner code
+  is a stored `line(code, code)` so it prints twice; the cover overflows onto a second page in
+  LibreOffice; "Answers written in the margins will not be marked" is English-only in the
+  preview but stacked EN over 中文 in the `.docx` margin boxes. Each changes exported bytes.
 
 - **E2 loose ends:** Check terms has no "N match" count; the billing error opens the key page (no
   `billingUrl` in presets); DWL/TR stay symbols, so their 中文 falls back to English;
   Qwen's DashScope domain gets no new features after 2026-09-30 (workspace URL ships);
   `npm version` rewrites `Cargo.toml` but not `Cargo.lock` (`sync-version`) — bump the lock on
-  `develop` after a release (done for 0.5.0; CI does not build `--locked`). Root `economics_translation_library.json` is the user's untracked copy of the
-  bundled glossary: delete or ignore it at their choice.
-- **HKEAA paper furniture wording** (全卷完 → 試卷完, 任答一題 → 選答一題, 結構性問題 …) —
-  the user deferred it to a separate task; the AI follows the seeds until then.
+  `develop` after a release (done for 0.5.0; CI does not build `--locked`). The user's untracked root copy of the glossary was deleted 2026-10-01.
 - **Never SendMessage a running workflow agent** — it forks a second writer; and a usage
   limit only pauses a workflow (TaskStop it before relaunching over its worktrees).
 
@@ -315,6 +325,9 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
+- **2026-10-01** — Clean-up round 3 (above): 10 Opus worktree agents incl. integration QA,
+  all merged to `develop`, 3272 tests, typecheck clean, lint 41, build + samples +
+  cover-verify + lq-verify pass. Nothing pushed yet.
 - **2026-09-30 (late night)** — UI polish round 2: four Opus worktree agents, merged to
   `develop`, 3234 tests, typecheck clean, lint 43, samples + cover-verify pass, merged
   whole screenshotted light/dark at 1440 and 1024. Nothing pushed.
