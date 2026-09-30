@@ -650,12 +650,10 @@ function HintRow({ rowRef, onDismiss }: { rowRef: React.Ref<HTMLDivElement>; onD
       style={{ gridTemplateColumns: `minmax(0,1fr) auto ${ZOOM_LANE}` }}
     >
       <div className="col-start-2 flex min-w-0 animate-slide-up-in items-center gap-2 rounded-lg border border-line bg-surface-raised py-1.5 pl-3.5 pr-1.5 text-[12px] text-ink-muted shadow-md">
-        {/* Breaks between phrases, never inside one, when a narrow desk wraps it. */}
+        {/* One phrase per language, each unbreakable: at most two lines even beside an
+            open page rail at 1024 wide (a 228px pill), one line where there is room. */}
         <span className="flex flex-wrap gap-x-2">
-          <span>
-            <span className="whitespace-nowrap">Click text to select ·</span>{' '}
-            <span className="whitespace-nowrap">double-click to edit</span>
-          </span>
+          <span className="whitespace-nowrap">Double-click text to edit</span>
           <span className="whitespace-nowrap text-ink-subtle">按頁面文字即可編輯</span>
         </span>
         <IconButton label="Dismiss hint" onClick={onDismiss}>
