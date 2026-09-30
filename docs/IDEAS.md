@@ -82,6 +82,11 @@ rebuildable; copies keep `lineage.rootId`). Deep analysis, sources and traps:
   from C, G, I"; show the picks before inserting, ↻ per pick, name the gaps honestly.
   A top-level `blueprint?` in `KNOWN_KEYS` — never inside `target`, which `targetOf` strips.
 
+- **C25 Write a question from the bank** (M): a panel (the real editor in an author mode,
+  as a sheet over the bank screen) to write a new question, pre-tagged with the topic you
+  were browsing, saved into a bank document; "New question from this" for variants. Full
+  proposal: `docs/design/bank-authoring.md` (user asked 2026-09-30; for a future session).
+
 **Finding and judging**:
 - **C11 The free filters** (S): names and search by paper shipped; still to add: filter
   has-diagram, missing 中文/English; sort by least used, oldest, marks. The data is indexed.
