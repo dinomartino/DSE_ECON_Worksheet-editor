@@ -54,6 +54,14 @@ describe('a question tagged per part reads as every part’s topics', () => {
     );
   });
 
+  it('is listed under both sub-topics on the rail, each entry naming the other', () => {
+    const sections = railSections(groupRows(filterRows(rows, { ...DEFAULT_FILTERS, topic: 'C' })), 'C');
+    expect(sections.map((s) => [s.key, s.entries.map((e) => e.alsoIn)])).toEqual([
+      ['C.ped', [['Market intervention']]],
+      ['C.intervention', [['Price elasticity of demand']]],
+    ]);
+  });
+
   it('leaves Untagged as soon as any part has a topic', () => {
     const one = partedQuestion([{}, { tags: ['C.ped'] }, {}]);
     const oneRows = withSharedTags(rowsOf(docWith([one])));

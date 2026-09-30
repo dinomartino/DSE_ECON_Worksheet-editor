@@ -1,7 +1,8 @@
 # Per-part topics and 題型: design
 
 Status: WP-0 (model, registry hooks, library and sync core) built 2026-09-30 on
-`feature/part-tags-core`; WP-A (the editor) built on `feature/part-tags-editor`; WP-B to
+`feature/part-tags-core`; WP-A (the editor) on `feature/part-tags-editor`; WP-B (review page)
+on `feature/part-tags-review`; WP-C,
 WP-D next. Written against `develop` @ ba349fa,
 so line numbers below are that commit's; § "As built" says where the code differs from
 the proposal, and the code wins.
@@ -100,7 +101,7 @@ questionId, mode, images?, printedNumber?) → { html; target? }[]` (joined, exa
   slots makes the copy's slots inherit its list (the winner's whole state wins).
 - The one-list Topic row on a question with parts sends `changeEdit`, not `matchEdit`,
   which would have copied one part's topics onto every other part.
-- The clipboard additions landed in WP-0, not WP-B; `questionPreview.ts` is untouched.
+- The clipboard additions landed in WP-0, not WP-B (WP-B then changed `questionPreview.ts`).
 - The bank ✦ AI branch's Undo all (`src/library/sameCopies.ts`) now also ignores and keeps
   each part's `tags` and `rootId`, as it did the question's metadata.
 - A slot key repeated inside one question (never made by this build) falls back to the
@@ -139,6 +140,35 @@ questionId, mode, images?, printedNumber?) → { html; target? }[]` (joined, exa
   has no 題型 filter, so only topics are matched there.
 - The pure view helpers are `src/components/editor/partTopicView.ts` (not
   `partTopics.ts`: on a case-insensitive disk it would shadow `PartTopics.tsx`).
+
+## As built (WP-B) — the review page
+
+- **Rail entries** (`src/components/bank/page/bankScreen.ts`): `RailSection.entries` /
+  `RailPart.entries` replace `groups`. A `RailEntry` is `{ key: 'section|part|rootId', group,
+  query?, alsoIn }`; `query` is what its heading names (`{ topic }`, General's coarse code,
+  a 題型 part's `{ pattern }`; absent under "No topic"). A question is listed under every
+  sub-topic (coarse topic on All questions and search) and every 題型 of a sub-topic it
+  carries. MCQs with two sub-topics are listed twice as well, the same rule. `alsoIn` names the
+  other headings: another 題型 of the same section by name, another section by its label.
+- **Focus is an entry**: `QuestionBankScreen` keeps `focusEntry` beside `focusKey`;
+  `entryIndex(order, rootId, entryKey)` keeps the remembered entry while it lists the
+  question, else the question's first. ↑ ↓, "Question n of N" and section counts go by
+  entries; the rail header ("30 questions") and its "in your list" count distinct
+  questions. Rows carry `data-rail-entry` (and keep `data-rail-root`).
+- **Words**: `partsTesting(row, query)` wraps `slotsMatching`, a part standing for its
+  sub-parts when all match ("(a)", not "(a)(i) and (a)(ii)"). Rail row line
+  `testsThisText` + `alsoInText` ("Part (a)(ii) tests this · Also in Law of demand"); the
+  stage line above the paper `testsWhatText` ("Part (b) tests Market intervention", or the
+  題型 name under a 題型 heading); the Topics fact goes part by part (`topicsByPart`) when
+  the parts differ.
+- **Highlight**: `questionPreviewHtml(..., highlight: slotKeys)` joins
+  `questionClipboardNodes` and wraps each highlighted run in `<div data-part-mark>` (a
+  green wash and margin rule drawn with shadows, so nothing moves). No highlight takes the
+  old `questionClipboardHtml` path, byte for byte (test). ✦ review marks are inline spans
+  inside it and keep their own colour. `PaperPreview` takes `highlight`; Tag as you go can
+  pass it for the part strip.
+- Cart labels (`bankCart.ts:cartTopicLabel`) read the derived list in print order, so a
+  partful question reads by its first part's topic ("C · Law of demand +2"); no change.
 
 ---
 

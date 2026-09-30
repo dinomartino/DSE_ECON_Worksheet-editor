@@ -252,6 +252,11 @@ Full design and contracts: [`part-tags.md`](./part-tags.md). In short:
   `atSlot` edits one part (`src/library/tagWrites.ts`).
 - `contentKey` ignores part `tags` and `rootId`, so copies still group and the ✦ AI
   writes still find identical copies.
+- **The review page says and shows which part tests the heading**: a question is listed
+  under every sub-topic (and 題型) it carries, each entry saying where else it is; the row
+  and the stage say "Part (b) tests this", and the preview highlights that part, screen
+  only (`src/components/bank/page/bankScreen.ts:partsTesting`). Topic cards and coverage
+  still count each question once.
 
 ## The identity contract (2026-09-30)
 

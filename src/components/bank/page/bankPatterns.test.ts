@@ -21,15 +21,15 @@ describe('the review rail by 題型', () => {
   it('groups a sub-topic by 題型 (MCQ, then LQ), with the questions without one last', () => {
     const sections = railSections(groups, 'C');
     const ped = sections.find((s) => s.key === 'C.ped')!;
-    expect(ped.parts!.map((p) => [p.label, p.kind, p.groups.map((g) => g.rootId)])).toEqual([
+    expect(ped.parts!.map((p) => [p.label, p.kind, p.entries.map((e) => e.group.rootId)])).toEqual([
       ['Calculate PED', 'MCQ', ['calc', 'calc2']],
       ['Factors', 'MCQ', ['fac']],
       ['Calculate PED', 'LQ', ['lq']],
       ['No 題型', undefined, ['none']],
     ]);
     // Reading order follows the parts, so ↑ ↓ walk what the rail shows.
-    expect(ped.groups.map((g) => g.rootId)).toEqual(['calc', 'calc2', 'fac', 'lq', 'none']);
-    expect(railOrder(sections).map((g) => g.rootId)).toEqual(['calc', 'calc2', 'fac', 'lq', 'none', 'pes']);
+    expect(ped.entries.map((e) => e.group.rootId)).toEqual(['calc', 'calc2', 'fac', 'lq', 'none']);
+    expect(railOrder(sections).map((e) => e.group.rootId)).toEqual(['calc', 'calc2', 'fac', 'lq', 'none', 'pes']);
     // A sub-topic with no 題型 at all is not split.
     expect(sections.find((s) => s.key === 'C.pes')!.parts).toBeUndefined();
   });

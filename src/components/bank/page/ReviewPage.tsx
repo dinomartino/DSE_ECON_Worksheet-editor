@@ -13,17 +13,17 @@ import { isPatternTag } from '@/model/patterns';
 import { topicDisplay } from '@/model/topics';
 import type { LanguageMode, VersionMode } from '@/model/types';
 import { distinctVersions, patternLines, rowKey, type ClassChoice } from './bankPage';
-import type { RailSection } from './bankScreen';
+import { alsoInText, partsTesting, testsThisText, testsWhatText, topicsByPart, type RailEntry, type RailSection } from './bankScreen';
 import { PaperPreview, SHEET_MAX_WIDTH } from './PaperPreview';
 import { useOwningDocument } from './useOwningDocument';
 
 export interface ReviewState {
   sections: RailSection[];
-  /** The rail's groups in reading order (`railOrder`). */
-  order: BankGroup[];
-  /** The row on the stage (any copy of a group in `order`). */
+  /** The rail's entries in reading order (`railOrder`): a question under two headings is two. */
+  order: RailEntry[];
+  /** The row on the stage (any copy of a question in `order`). */
   focused: BankRow | undefined;
-  /** Its position in `order`. */
+  /** Its entry's position in `order` (`entryIndex`). */
   index: number;
   /** The questions in the cart, by `rootId`: any copy picked marks the question. */
   picked: ReadonlySet<string>;
@@ -87,7 +87,8 @@ export function ReviewPage({
   fullGroup: BankGroup | undefined;
   /** Shown instead of the stage when the list is empty. */
   empty: ReactNode;
-  onFocus: (row: BankRow) => void;
+  /** `entry`: the rail entry chosen (`RailEntry.key`); absent keeps the question's current one. */
+  onFocus: (row: BankRow, entry?: string) => void;
   onStep: (delta: number) => void;
   onPick: (row: BankRow) => void;
   onRailHidden: (hidden: boolean) => void;
@@ -141,31 +142,33 @@ function Rail({
   onHide,
 }: {
   state: ReviewState;
-  onFocus: (row: BankRow) => void;
+  onFocus: (row: BankRow, entry?: string) => void;
   onPick: (row: BankRow) => void;
   onHide: () => void;
 }) {
-  const { sections, order, focused, picked, usedWith } = state;
+  const { sections, order, focused, picked, usedWith, index } = state;
   const listRef = useRef<HTMLDivElement>(null);
-  const focusedRoot = focused?.rootId;
+  const focusedEntry = focused ? order[index]?.key : undefined;
 
   // Keep the focused row in view as ↑ ↓ move it; when a row has the keyboard, it moves too.
   useEffect(() => {
-    if (!focusedRoot) return;
-    const node = listRef.current?.querySelector<HTMLElement>(`[data-rail-root="${CSS.escape(focusedRoot)}"]`);
+    if (!focusedEntry) return;
+    const node = listRef.current?.querySelector<HTMLElement>(`[data-rail-entry="${CSS.escape(focusedEntry)}"]`);
     node?.scrollIntoView({ block: 'nearest' });
     const active = document.activeElement;
     if (node && active !== node && active instanceof HTMLElement && active.hasAttribute('data-rail-root') && listRef.current?.contains(active)) {
       node.focus({ preventScroll: true });
     }
-  }, [focusedRoot]);
+  }, [focusedEntry]);
 
-  const pickedHere = order.filter((group) => picked.has(group.rootId)).length;
+  // Counts are of questions: one listed under two headings is one.
+  const roots = new Set(order.map((entry) => entry.group.rootId));
+  const pickedHere = [...roots].filter((root) => picked.has(root)).length;
   return (
     <aside aria-label="Questions" className="flex min-h-0 flex-col border-r border-line bg-surface-sunken">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line px-3.5 py-2.5 text-[12px] tabular-nums text-ink-muted">
         <span className="truncate">
-          {order.length} {order.length === 1 ? 'question' : 'questions'}
+          {roots.size} {roots.size === 1 ? 'question' : 'questions'}
           {picked.size > 0 && ` · ${pickedHere === picked.size ? picked.size : `${pickedHere} of ${picked.size}`} in your list`}
         </span>
         <button
@@ -183,9 +186,9 @@ function Rail({
               <span className="truncate" title={section.label}>
                 {section.label}
               </span>
-              <span className="tabular-nums">{section.groups.length}</span>
+              <span className="tabular-nums">{section.entries.length}</span>
             </h3>
-            {(section.parts ?? [{ key: '', label: '', groups: section.groups }]).map((part) => (
+            {(section.parts ?? [{ key: '', label: '', entries: section.entries }]).map((part) => (
               <div key={part.key} data-rail-part={part.key || undefined}>
                 {part.key && (
                   <h4
@@ -196,25 +199,28 @@ function Rail({
                       {part.label}
                       {part.kind && <span className="ml-1.5 text-[10.5px] font-normal text-ink-subtle">{part.kind}</span>}
                     </span>
-                    <span className="shrink-0 tabular-nums text-ink-subtle">{part.groups.length}</span>
+                    <span className="shrink-0 tabular-nums text-ink-subtle">{part.entries.length}</span>
                   </h4>
                 )}
-                {part.groups.map((group) => {
+                {part.entries.map((entry) => {
+                  const { group } = entry;
                   const lead = group.rows[0];
-                  const on = focusedRoot === group.rootId;
+                  const on = focusedEntry === entry.key;
                   const used = usedWith ? usedWithTargets(group, [usedWith.target]) : undefined;
+                  const where = [testsThisText(partsTesting(lead, entry.query).map((slot) => slot.label)), alsoInText(entry.alsoIn)].filter(Boolean).join(' · ');
                   return (
                     <div
-                      key={group.rootId}
+                      key={entry.key}
                       role="listitem"
                       data-rail-root={group.rootId}
+                      data-rail-entry={entry.key}
                       // One Tab stop for the list (the question on the stage); ↑ ↓ then move it,
                       // Space picks it, O opens it (the screen's key listener).
                       tabIndex={on ? 0 : -1}
                       aria-current={on || undefined}
-                      onClick={() => onFocus(lead)}
+                      onClick={() => onFocus(lead, entry.key)}
                       onFocus={(event) => {
-                        if (event.target === event.currentTarget && !on) onFocus(lead);
+                        if (event.target === event.currentTarget && !on) onFocus(lead, entry.key);
                       }}
                       className={`relative grid cursor-pointer grid-cols-[16px_minmax(0,1fr)] gap-2 px-3.5 py-[7px] transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
                         on ? 'bg-accent-soft' : 'hover:bg-surface-hover'
@@ -245,7 +251,12 @@ function Rail({
                           <SourceText title={docLabel(state, lead)} number={lead.number} />
                           <AiGlyph tone={state.aiTones?.get(group.rootId)} />
                         </p>
-                        {used && <p className="truncate text-[11px] tabular-nums text-warn-ink">{usedLabel(used)}</p>}
+                        {where && (
+                          <p className="line-clamp-2 text-[11px] leading-snug text-ink-muted" title={where} data-rail-where>
+                            {where}
+                          </p>
+                        )}
+                        {used &&<p className="truncate text-[11px] tabular-nums text-warn-ink">{usedLabel(used)}</p>}
                       </div>
                     </div>
                   );
@@ -260,14 +271,22 @@ function Rail({
 }
 
 /** The rail folded: question numbers only, the focused one marked, picks dotted. */
-function NumberStrip({ state, onFocus, onShow }: { state: ReviewState; onFocus: (row: BankRow) => void; onShow: () => void }) {
-  const { order, focused, picked } = state;
+function NumberStrip({
+  state,
+  onFocus,
+  onShow,
+}: {
+  state: ReviewState;
+  onFocus: (row: BankRow, entry?: string) => void;
+  onShow: () => void;
+}) {
+  const { order, focused, picked, index: focusedIndex } = state;
   const listRef = useRef<HTMLDivElement>(null);
-  const focusedRoot = focused?.rootId;
+  const focusedEntry = focused ? order[focusedIndex]?.key : undefined;
   useEffect(() => {
-    if (!focusedRoot) return;
-    listRef.current?.querySelector<HTMLElement>(`[data-rail-root="${CSS.escape(focusedRoot)}"]`)?.scrollIntoView({ block: 'nearest' });
-  }, [focusedRoot]);
+    if (!focusedEntry) return;
+    listRef.current?.querySelector<HTMLElement>(`[data-rail-entry="${CSS.escape(focusedEntry)}"]`)?.scrollIntoView({ block: 'nearest' });
+  }, [focusedEntry]);
   return (
     <aside aria-label="Questions" className="flex min-h-0 flex-col border-r border-line bg-surface-sunken">
       <button
@@ -280,15 +299,17 @@ function NumberStrip({ state, onFocus, onShow }: { state: ReviewState; onFocus: 
         ›
       </button>
       <div ref={listRef} className="scroll-slim min-h-0 flex-1 overflow-y-auto py-1.5">
-        {order.map((group, index) => {
-          const on = group.rootId === focusedRoot;
+        {order.map((entry, index) => {
+          const { group } = entry;
+          const on = entry.key === focusedEntry;
           const lead = group.rows[0];
           return (
             <button
-              key={group.rootId}
+              key={entry.key}
               type="button"
               data-rail-root={group.rootId}
-              onClick={() => onFocus(lead)}
+              data-rail-entry={entry.key}
+              onClick={() => onFocus(lead, entry.key)}
               title={lead.excerpt.en || lead.excerpt.zh}
               className={`relative flex w-full cursor-pointer items-center justify-center gap-1 py-1.5 text-[12px] tabular-nums transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
                 on ? 'bg-surface font-semibold text-ink' : 'text-ink-muted hover:bg-surface-hover hover:text-ink'
@@ -339,7 +360,16 @@ function Stage({
   const inList = picked.has(row.rootId);
   const { worksheet, failed } = useOwningDocument(row);
   const topicTags = row.tags.filter((tag) => !isPatternTag(tag));
+  const byPart = topicsByPart(row);
   const patterns = patternLines(row.tags);
+  // Which part tests the heading it is listed under: said above the paper, marked on it.
+  const query = order[index]?.query;
+  const testing = partsTesting(row, query);
+  const testsWhat = testsWhatText(
+    testing.map((slot) => slot.label),
+    query,
+  );
+  const highlight = testing.map((slot) => slot.key);
   const shown = shownLanguage(row, language);
   const scrollRef = useRef<HTMLDivElement>(null);
   const key = rowKey(row);
@@ -387,7 +417,24 @@ function Stage({
             </NavButton>
             <div className="min-w-0 flex-1" style={{ maxWidth: SHEET_MAX_WIDTH }}>
               {ai?.note}
-              <PaperPreview worksheet={worksheet} questionId={row.questionId} language={shown} version={version} failed={failed} marks={ai?.marks} />
+              {testsWhat && (
+                <p className="mb-2 flex items-center gap-2 text-[12.5px] text-ink-muted" data-stage-tests>
+                  {/* The paper's margin rule, as a key: literal hex like the sheet's mark. */}
+                  <span aria-hidden className="h-3.5 w-[3px] shrink-0 rounded-full" style={{ background: '#6f9f5a' }} />
+                  <span className="min-w-0 truncate" title={testsWhat}>
+                    {testsWhat}
+                  </span>
+                </p>
+              )}
+              <PaperPreview
+                worksheet={worksheet}
+                questionId={row.questionId}
+                language={shown}
+                version={version}
+                failed={failed}
+                marks={ai?.marks}
+                highlight={highlight}
+              />
               {shown !== language && (
                 <p className="mt-2 text-center text-[12px] text-ink-muted">
                   {language === 'zh' ? 'No 中文 text yet. Showing English.' : language === 'en' ? 'No English text yet. Showing 中文.' : 'One language only. Showing what there is.'}
@@ -406,6 +453,20 @@ function Stage({
             <dd className="min-w-0">
               {topicTags.length === 0 ? (
                 <span className="text-ink-subtle">None yet</span>
+              ) : byPart ? (
+                <span className="grid" data-fact-by-part>
+                  {byPart.map((line) => {
+                    const names = line.tags.filter((tag) => !isPatternTag(tag));
+                    return (
+                      <span key={line.label} className="flex min-w-0 gap-1.5" title={tagTitle(line.tags)}>
+                        <span className="shrink-0 text-ink-muted">{line.label}</span>
+                        <span className={`min-w-0 truncate ${names.length === 0 ? 'text-ink-subtle' : ''}`}>
+                          {names.length === 0 ? 'No topic yet' : names.map((tag) => topicDisplay(tag, 'both')).join(' · ')}
+                        </span>
+                      </span>
+                    );
+                  })}
+                </span>
               ) : (
                 <span title={tagTitle(topicTags)}>{topicTags.map((tag) => topicDisplay(tag, 'both')).join(' · ')}</span>
               )}
