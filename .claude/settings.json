@@ -1,4 +1,13 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(node .claude/skills/jev/bin/find.mjs *)",
+      "Bash(node .claude/skills/jev/bin/verify-plan.mjs*)",
+      "Bash(node .claude/skills/jev/bin/doctor.mjs)",
+      "Bash(node .claude/skills/jev/bin/lint-delta.mjs)",
+      "Bash(node */.claude/skills/jev/bin/lint-delta.mjs* --stdin)"
+    ]
+  },
   "hooks": {
     "UserPromptSubmit": [
       {
