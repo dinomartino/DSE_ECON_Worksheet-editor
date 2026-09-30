@@ -2576,6 +2576,9 @@ Four rules bound it:
   fill). Those writes also skip a render whose measurement is stale (`isFresh`), so the
   page coming back from a cancelled drag cannot dirty the document. ~50ms per slot
   change on a 20-question paper.
+- **Undo stands down while a 題庫 drag is in hand** (`isBankDragActive`, read by the
+  editor's ⌘Z): the page shows a document the store does not hold. The drag layer
+  swallows ⌘Z / ⌘⇧Z / Ctrl+Y rather than cancelling; only Esc cancels.
 
 ---
 

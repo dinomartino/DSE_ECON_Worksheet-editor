@@ -25,7 +25,8 @@ import { useWorksheetStore, type BandScope } from '@/store/worksheetStore';
 import { worksheetStore } from '@/storage';
 import { BankReviewBar } from '@/components/bank/BankReviewBar';
 import { useBankSession } from '@/components/bank/bankSession';
-import { BankDragLayer, useBankDrag } from '@/components/bank/bankDrag';
+import { BankDragLayer, isBankDragActive, useBankDrag } from '@/components/bank/bankDrag';
+import { undoChord } from '@/components/ui/undoChord';
 import { provisionalWorksheet } from '@/components/bank/dropSlot';
 
 /** The empty page's "From 題庫…": stable, so the memoised page never re-renders for it. */
@@ -397,7 +398,10 @@ export function EditorApp({
   // Undo/redo shortcuts (§11.13).
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'z') return;
+      const action = undoChord(event);
+      if (!action) return;
+      // A 題庫 drag shows a document the store does not hold; its layer swallows the key.
+      if (isBankDragActive()) return;
       // While typing, ⌘Z belongs to the text field — it should take back a character,
       // not roll the whole document to its previous commit. Document-level undo
       // applies only when focus is outside an input.
@@ -410,7 +414,7 @@ export function EditorApp({
         return;
       }
       event.preventDefault();
-      if (event.shiftKey) redo();
+      if (action === 'redo') redo();
       else undo();
     };
     window.addEventListener('keydown', onKeyDown);
