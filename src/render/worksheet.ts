@@ -1,5 +1,5 @@
 import { bandIsEmpty, ZONES, zonesOf } from '@/model/bands';
-import { bandFieldSegments } from '@/model/bandSegments';
+import { bandFieldPrintText, bandFieldSegments } from '@/model/bandSegments';
 import { documentShape, type DocumentShape } from '@/model/documentShape';
 import {
   DEFAULT_QUESTION_COUNT_WORDING,
@@ -15,6 +15,7 @@ import type {
   Band,
   BandField,
   BiText,
+  LanguageMode,
   LayoutElement,
   OutputMode,
   Question,
@@ -120,7 +121,11 @@ export interface RenderedWorksheet {
  * which is what a masthead needs; an occupied-zones-only layout would centre the middle
  * of the *content* instead and drift as fields are added.
  */
-function renderBand(band: Band, totalMarks: number): RenderNode | undefined {
+function renderBand(
+  band: Band,
+  totalMarks: number,
+  language: LanguageMode,
+): RenderNode | undefined {
   if (bandIsEmpty(band)) return undefined;
   const zones = zonesOf(band);
 
@@ -131,11 +136,12 @@ function renderBand(band: Band, totalMarks: number): RenderNode | undefined {
   for (const zone of ZONES) {
     for (const field of zones[zone]) {
       // One cell per field (a cell is a tab stop; splitting segments across cells would
-      // scatter the field). `text` stays populated for consumers that only want the
-      // string; `parts` tells typed text from computed.
+      // scatter the field). `text` is the printed string — in bilingual mode a side that
+      // repeats the other is left empty (§ `bandFieldPrintSides`); `parts` tells typed
+      // text from computed.
       const segments = bandFieldSegments(field, { totalMarks });
       cells.push({
-        text: bandFieldText(field, totalMarks),
+        text: bandFieldPrintText(field, { totalMarks }, language),
         at: positions[zone],
         align: alignments[zone],
         format: field.format,
@@ -198,7 +204,11 @@ const questionRenderCache = new WeakMap<
  * new. Instruction numbers are derived from position, as literal text (a cover's
  * instructions are not part of question numbering).
  */
-function renderCover(cover: CoverPage, baseFontSize?: number): CoverRenderNode {
+function renderCover(
+  cover: CoverPage,
+  language: LanguageMode,
+  baseFontSize?: number,
+): CoverRenderNode {
   // The cover's own font reaches every line, merged *under* the line's own format.
   const withFonts = (format: CoverLine['format']) =>
     cover.fonts ? { fonts: cover.fonts, ...format } : format;
@@ -247,7 +257,16 @@ function renderCover(cover: CoverPage, baseFontSize?: number): CoverRenderNode {
       // under its own number (§ ColumnsNode.hanging).
       hanging: COVER_INSTRUCTION_HANGING,
       cells: [
-        { text: bi(marker(index), marker(index)), at: 0, format: withFonts(undefined) },
+        {
+          // A number reads the same in both languages, so bilingual prints it once, beside
+          // the English line: stacked, "(1)" also broke the Chinese line off the hang.
+          text:
+            language === 'bilingual'
+              ? { en: [{ text: marker(index) }], zh: [] }
+              : bi(marker(index), marker(index)),
+          at: 0,
+          format: withFonts(undefined),
+        },
         {
           text: line.text,
           at: 0.5,
@@ -316,11 +335,11 @@ export function renderWorksheet(worksheet: Worksheet, mode: OutputMode): Rendere
   // `sectionMarksById`. Same numbers, computed before the item walk needs them.
   const sectionTotals = sectionMarksById(worksheet);
   const bands = (worksheet.bands ?? [])
-    .map((band) => renderBand(band, total))
+    .map((band) => renderBand(band, total, mode.language))
     .filter((node): node is RenderNode => node !== undefined);
 
   const cover = worksheet.cover && !mode.omitCover
-    ? renderCover(worksheet.cover, worksheet.baseFontSize)
+    ? renderCover(worksheet.cover, mode.language, worksheet.baseFontSize)
     : undefined;
 
   const title: RenderNode | undefined = isBiTextEmpty(worksheet.title)

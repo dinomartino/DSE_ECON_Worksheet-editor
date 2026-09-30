@@ -1625,6 +1625,11 @@ needed, clamped at `MIN_EDGE_TWIPS`.
 Each row exports as one paragraph with tab stops from live content width. A rule draws
 only on the edge-most row.
 
+**Bilingual stacks a field's whole lines, and only lines that differ.**
+`bandFieldPrintSides` decides for page, masthead IR and .docx alike: identical sides
+print once (a paper code, a bare page number), and a side with no wording of its own is
+dropped. A bilingual edit to such wording writes both sides (`mirrorBilingualEdit`).
+
 ### Page 1 can differ
 
 | State | Stored as | Page 1 prints |
