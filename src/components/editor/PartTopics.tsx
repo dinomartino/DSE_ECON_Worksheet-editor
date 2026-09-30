@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button, GroupHeader, IconButton, Segmented } from '@/components/ui';
 import { CloseIcon } from '@/components/ui/icons';
 import { addTopics, atSlot, freeTags, inheritAtSlot, matchEdit, wholeQuestion, type StateEdit } from '@/library/tagWrites';
@@ -41,68 +41,102 @@ export function PartTopics({
     setFocus(undefined);
   }
   const mode = topicMode(infos, selectedTargetKey, focus);
-  const effective = effectiveSlotTags(shown);
-  const slotOf = (key: string) => shown.slots.find((slot) => slot.key === key);
-  const topicsOf = (key: string) => (effective.get(key) ?? []).filter(isTopicalTag);
-  const wholeLink = <QuietLink onClick={() => setFocus('question')}>Whole question</QuietLink>;
+  // A click on the page that points the row at another part brings the row into view: it
+  // sits under the long parts grid, so its change would otherwise go unseen.
+  const rowRef = useRef<HTMLDivElement>(null);
+  const modeKey = mode.kind === 'question' ? '' : mode.key;
+  const lastMode = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const before = lastMode.current;
+    lastMode.current = modeKey;
+    if (!modeKey || modeKey === before || focus !== undefined) return;
+    const row = rowRef.current;
+    if (row && isOffScreen(row)) row.scrollIntoView({ block: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  }, [modeKey, focus]);
 
-  if (mode.kind === 'question') {
-    return <WholeQuestionTopics shown={shown} note={note} onEdit={onEdit} onPick={(key) => setFocus({ key })} />;
-  }
+  return (
+    <div ref={rowRef} className="scroll-my-3.5">
+      {partTopicsBody()}
+    </div>
+  );
 
-  const slot = slotOf(mode.key);
-  const ref = slotRef(shown.slots, mode.key);
-  if (!slot || !ref) return null;
-  const tags = topicsOf(slot.key);
-  const setTags = (next: string[] | undefined) => onEdit(atSlot(ref, matchEdit(tags, next ?? [])));
-  const noFreeTag = 'A part takes topics and 題型 only. Tags go on the whole question.';
+  function partTopicsBody(): ReactNode {
+    const effective = effectiveSlotTags(shown);
+    const slotOf = (key: string) => shown.slots.find((slot) => slot.key === key);
+    const topicsOf = (key: string) => (effective.get(key) ?? []).filter(isTopicalTag);
+    const wholeLink = <QuietLink onClick={() => setFocus('question')}>Whole question</QuietLink>;
 
-  if (mode.kind === 'part') {
-    const ownSubs = shown.slots.filter((sub) => sub.parent === slot.key && sub.own);
+    if (mode.kind === 'question') {
+      return <WholeQuestionTopics shown={shown} note={note} onEdit={onEdit} onPick={(key) => setFocus({ key })} />;
+    }
+
+    const slot = slotOf(mode.key);
+    const ref = slotRef(shown.slots, mode.key);
+    if (!slot || !ref) return null;
+    const tags = topicsOf(slot.key);
+    const setTags = (next: string[] | undefined) => onEdit(atSlot(ref, matchEdit(tags, next ?? [])));
+    const noFreeTag = 'A part takes topics and 題型 only. Tags go on the whole question.';
+
+    if (mode.kind === 'part') {
+      const ownSubs = shown.slots.filter((sub) => sub.parent === slot.key && sub.own);
+      return (
+        <TopicRow
+          key={slot.key}
+          title={`Topics for ${slot.label}`}
+          tags={tags}
+          typeId={question.type}
+          note={note}
+          noFreeTag={noFreeTag}
+          empty="No topic yet."
+          onChange={setTags}
+          intro={
+            <div className="space-y-1 text-[11px] text-ink-subtle">
+              {!slot.own && tags.length > 0 && <p>Set on the whole question. A change here is for {slot.label} only.</p>}
+              {ownSubs.length > 0 && (
+                <p>
+                  {ownSubs.map((sub) => sub.label).join(' and ')} {ownSubs.length === 1 ? 'has its' : 'have their'} own topics
+                  instead.
+                </p>
+              )}
+              <p>{wholeLink}</p>
+            </div>
+          }
+        />
+      );
+    }
+
+    const parent = slotOf(mode.parent);
+    if (!parent) return null;
     return (
-      <TopicRow
+      <SubPartTopics
         key={slot.key}
-        title={`Topics for ${slot.label}`}
+        slot={slot}
+        parent={parent}
         tags={tags}
+        parentTags={topicsOf(parent.key)}
         typeId={question.type}
         note={note}
         noFreeTag={noFreeTag}
-        empty="No topic yet."
-        onChange={setTags}
-        intro={
-          <div className="space-y-1 text-[11px] text-ink-subtle">
-            {!slot.own && tags.length > 0 && <p>Set on the whole question. A change here is for {slot.label} only.</p>}
-            {ownSubs.length > 0 && (
-              <p>
-                {ownSubs.map((sub) => sub.label).join(' and ')} {ownSubs.length === 1 ? 'has its' : 'have their'} own topics
-                instead.
-              </p>
-            )}
-            <p>{wholeLink}</p>
-          </div>
-        }
+        wholeLink={wholeLink}
+        onSetTags={setTags}
+        onSame={() => onEdit(inheritAtSlot(ref))}
       />
     );
   }
-
-  const parent = slotOf(mode.parent);
-  if (!parent) return null;
-  return (
-    <SubPartTopics
-      key={slot.key}
-      slot={slot}
-      parent={parent}
-      tags={tags}
-      parentTags={topicsOf(parent.key)}
-      typeId={question.type}
-      note={note}
-      noFreeTag={noFreeTag}
-      wholeLink={wholeLink}
-      onSetTags={setTags}
-      onSame={() => onEdit(inheritAtSlot(ref))}
-    />
-  );
 }
+
+/** Whether a row's first line is out of its scrolling panel's view (a sliver counts as out). */
+function isOffScreen(element: HTMLElement): boolean {
+  let scroller = element.parentElement;
+  while (scroller && !/(auto|scroll)/.test(getComputedStyle(scroller).overflowY)) scroller = scroller.parentElement;
+  const box = element.getBoundingClientRect();
+  const view = scroller ? scroller.getBoundingClientRect() : { top: 0, bottom: window.innerHeight };
+  const LINE = 32;
+  return box.top > view.bottom - LINE || box.bottom < view.top + LINE;
+}
+
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** "(ii)" from "(a)(ii)": a sub-part named beside its part. */
 const shortLabel = (slot: SlotState, parent: SlotState) =>
