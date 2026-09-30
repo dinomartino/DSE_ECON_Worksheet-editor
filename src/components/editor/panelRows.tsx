@@ -86,7 +86,7 @@ export function MiniNumber({
 export function ExcerptRow({
   marker,
   text,
-  emptyHint = 'Empty. Type on the page',
+  emptyHint = 'Empty',
   targetKey,
   actions,
   badge,
@@ -94,7 +94,11 @@ export function ExcerptRow({
   /** Short leading glyph or label: `¶`, `A.`, `(1)` … */
   marker?: ReactNode;
   text: string;
-  /** Shown when the excerpt is empty, so a blank block still has a visible row. */
+  /**
+   * Shown when the excerpt is empty, so a blank block still has a visible row. A bare
+   * "Empty": the group header above already says the text is typed on the page, and an
+   * empty stem, parts and options would otherwise repeat that sentence down the panel.
+   */
   emptyHint?: string;
   /** `data-edit-target` key, so the page's selection can scroll this row into view. */
   targetKey?: string;

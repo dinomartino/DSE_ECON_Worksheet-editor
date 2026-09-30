@@ -4,7 +4,7 @@
  * - `worksheet`: one structured question with no diagram yet, built from the model's own
  *   factories so the seed cannot drift from the schema. The film adds the diagram.
  * - `canvas`: where the film's gestures land on the drawing canvas, in the SVG's own
- *   pixels — the blank-axes block `+ Diagram` inserts, projected by `diagramPlot`, the
+ *   pixels — the blank-axes block the Diagram add button inserts, projected by `diagramPlot`, the
  *   projection the canvas itself inverts. The film checks the block has this size.
  * - `shiftNamesCopy`: whether this build's "Shift a copy" names the film's copy S₁.
  * - `templateCount`: the ready-made templates besides blank axes, for the last caption.

@@ -146,10 +146,13 @@ const POPOVER_MARGIN = 8;
 
 export function DiagramTemplatePopover({
   trigger,
+  label,
   currentId,
   onPick,
 }: {
   trigger: React.ReactNode;
+  /** Accessible name, when the visible trigger leans on its surroundings for meaning. */
+  label?: string;
   currentId?: string;
   onPick: (templateId: string) => void;
 }) {
@@ -199,6 +202,7 @@ export function DiagramTemplatePopover({
       <Button
         size="sm"
         variant="subtle"
+        aria-label={label}
         aria-expanded={open}
         aria-haspopup="listbox"
         onClick={toggle}
