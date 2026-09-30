@@ -45,8 +45,9 @@ CI=true npx tauri build --bundles dmg --config '{"bundle":{"createUpdaterArtifac
 If it still fails at `bundle_dmg.sh`, a half-made image is probably mounted — eject it
 (`ls /Volumes`, then `diskutil eject force "/Volumes/dmg.XXXXXX"`) and build again.
 
-**2. Open it.** The installer window appears; drag **Econ Worksheet** into Applications
-(the bundle keeps its old name so updates replace it; the window says Econ Studio):
+**2. Open it.** The installer window appears; drag **Econ Studio** into Applications.
+If *Econ Worksheet* (0.5.0 or earlier) is there too, move it to the Bin: same app, same
+saved worksheets.
 
 ```bash
 open src-tauri/target/release/bundle/dmg/*.dmg
@@ -55,17 +56,17 @@ open src-tauri/target/release/bundle/dmg/*.dmg
 **3. Launch it:**
 
 ```bash
-open -a "Econ Worksheet"
+open -a "Econ Studio"
 ```
 
-**Or install in one go** — quits the app, replaces it in Applications, launches it
-(saved worksheets live elsewhere and are not touched):
+**Or install in one go** — quits the app, replaces it in Applications (removing an old
+*Econ Worksheet* copy too), launches it (saved worksheets live elsewhere and are not touched):
 
 ```bash
-osascript -e 'quit app "Econ Worksheet"' 2>/dev/null
+osascript -e 'tell application id "hk.econworksheet.desktop" to quit' 2>/dev/null
 M=$(hdiutil attach -nobrowse -readonly src-tauri/target/release/bundle/dmg/*.dmg | grep -o '/Volumes/.*' | tail -1)
-rm -rf "/Applications/Econ Worksheet.app" && ditto "$M/Econ Worksheet.app" "/Applications/Econ Worksheet.app"
-hdiutil detach "$M" && open -a "Econ Worksheet"
+rm -rf "/Applications/Econ Studio.app" "/Applications/Econ Worksheet.app" && ditto "$M/Econ Studio.app" "/Applications/Econ Studio.app"
+hdiutil detach "$M" && open -a "Econ Studio"
 ```
 
 **Test the auto-update.** Build the same code labelled as an *older* version; installed,
@@ -105,18 +106,18 @@ sleep 5 && gh run watch "$(gh run list --workflow desktop-preview.yml --limit 1 
 ```bash
 rm -rf ~/Downloads/econ-preview
 gh run download "$(gh run list --workflow desktop-preview.yml --limit 1 --json databaseId -q '.[0].databaseId')" \
-  --name econ-worksheet-macos-aarch64 --dir ~/Downloads/econ-preview
+  --name econ-studio-macos-aarch64 --dir ~/Downloads/econ-preview
 open "$(find ~/Downloads/econ-preview -name '*.dmg' | head -1)"
 ```
 
-The Windows installer is the `econ-worksheet-windows-x64` artifact (swap the `--name`).
+The Windows installer is the `econ-studio-windows-x64` artifact (swap the `--name`).
 Artifacts are kept for 14 days. The Mac build is Apple Silicon only.
 
 **4. First launch on another Mac.** The preview is unsigned, so macOS blocks it once.
 Either right-click the app → **Open** → **Open**, or clear the flag:
 
 ```bash
-xattr -dr com.apple.quarantine "/Applications/Econ Worksheet.app"
+xattr -dr com.apple.quarantine "/Applications/Econ Studio.app"
 ```
 
 On Windows, SmartScreen warns: **More info → Run anyway**.
@@ -130,7 +131,7 @@ On Windows, SmartScreen warns: **More info → Run anyway**.
   (start screen → **Back up all…**) if the build under test changes storage.
 - **It replaces the installed app.** Dragging into Applications overwrites the released
   version; to go back, download the latest release again.
-- **Keychain prompt.** Unsigned and dev builds ask "Econ Worksheet wants to use… your
+- **Keychain prompt.** Unsigned and dev builds ask "Econ Studio wants to use… your
   keychain" when an AI key is saved or read (the Keychain ties access to the code
   signature, which changes every build). Expected; signed releases don't ask.
 - **Updates.** The build carries the version in `package.json`. "Check for updates"

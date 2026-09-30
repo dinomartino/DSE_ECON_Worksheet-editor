@@ -2969,12 +2969,18 @@ One shared state (`desktop/updateStore.ts`) checks **once per launch**; the bann
 start screen's version line (above its footer row) and the editor's ⋯ "Check for updates" all read
 it. A failed check is `failed`, never "up to date".
 
-**Two names are frozen.** On screen the app is Econ Studio (window `title`, page metadata),
-but `productName` stays `Econ Worksheet`: the Windows NSIS updater finds the installed copy
-by an uninstall key and `%LOCALAPPDATA%` folder named after it, so a renamed product
-installs beside the old one, which keeps the Start-menu shortcut. `identifier`
-(`hk.econworksheet.desktop`) names `$APPDATA`, the webview's storage and the keychain
-service. Neither changes without an installer migration.
+**Names.** `identifier` (`hk.econworksheet.desktop`) is frozen: it names `$APPDATA`, the
+webview's storage, the keychain service (`src-tauri/src/secrets.rs`) and the signed
+macOS bundle's keychain access. `mainBinaryName` is pinned to `econ-worksheet`, the
+executable every release has had: the installer's running-app check and shortcut targets
+use it. `productName` became `Econ Studio` in 0.6.0 (0.5.0 and earlier: `Econ Worksheet`).
+It names the `.app`, the menu, the release assets and, on Windows, the uninstall key,
+`%LOCALAPPDATA%` folder and shortcuts, so the renamed installer lands beside an old copy.
+`src-tauri/windows/hooks.nsh` (`NSIS_HOOK_POSTINSTALL`) runs that copy's uninstaller
+silently, which keeps app data, and recreates the shortcuts an `/UPDATE` run skips. The
+macOS updater unpacks into the running bundle's path, so an updated Mac keeps the folder
+`Econ Worksheet.app` (Finder and Dock say Econ Worksheet; the menu bar says Econ Studio);
+a fresh `.dmg` installs `Econ Studio.app`, sharing the same data.
 
 **What's new** is `CHANGELOG.md`, bundled at build time (`scripts/sync-changelog.mjs` →
 `src/whatsNew/changelog.generated.ts`, committed, checked fresh by a test) — no server,

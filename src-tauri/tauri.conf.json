@@ -1,6 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Econ Worksheet",
+  "productName": "Econ Studio",
+  "mainBinaryName": "econ-worksheet",
   "version": "0.5.0",
   "identifier": "hk.econworksheet.desktop",
   "build": {
@@ -52,7 +53,8 @@
     "windows": {
       "nsis": {
         "installMode": "currentUser",
-        "languages": ["English", "TradChinese"]
+        "languages": ["English", "TradChinese"],
+        "installerHooks": "./windows/hooks.nsh"
       }
     }
   },

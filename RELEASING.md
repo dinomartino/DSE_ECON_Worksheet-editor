@@ -110,14 +110,20 @@ normal version afterwards.
 
 Assets that must be there before you publish:
 
-- `Econ Worksheet_<version>_aarch64.dmg` and `..._x64.dmg`
-- `Econ Worksheet.app.tar.gz` + `.sig`, one per macOS arch
-- `Econ Worksheet_<version>_x64-setup.exe` + `.sig`
+- `Econ.Studio_<version>_aarch64.dmg` and `..._x64.dmg`
+- `Econ.Studio_aarch64.app.tar.gz` and `Econ.Studio_x64.app.tar.gz`, each with its `.sig`
+- `Econ.Studio_<version>_x64-setup.exe` + `.sig`
 - `latest.json`
 
-The files keep the old name on purpose: the app is called Econ Studio on screen, but
-`productName` stays `Econ Worksheet` so Windows updates replace the installed copy
-(`SYSTEM_ARCHITECTURE.md` § Desktop shell).
+GitHub turns the space in `Econ Studio` into a dot. Up to 0.5.0 the product was
+`Econ Worksheet`; the Windows installer removes that copy on update
+(`src-tauri/windows/hooks.nsh`, `SYSTEM_ARCHITECTURE.md` § Desktop shell).
+
+**The first release after the rename (0.6.0)**: before publishing, on a Windows PC with
+0.5.0 installed, save a worksheet and an AI key, then run the draft's `-setup.exe` with
+`/P /UPDATE /R` (what the updater runs). Expect one app in Settings › Apps (Econ Studio),
+one Start-menu shortcut, no `%LOCALAPPDATA%\Econ Worksheet` folder, and the worksheet and
+key still there. The hook cannot be run on macOS.
 
 No `latest.json`, or a missing `.sig`, means the signing secrets were absent — installed
 apps will not update. Fix the secrets and re-run the workflow rather than publishing.
@@ -127,8 +133,10 @@ warning. That is the notarisation working.
 
 ## First install, for teachers
 
-- **macOS** — open the `.dmg`, drag *Econ Worksheet* (Econ Studio's app bundle) to Applications. Apple Silicon Macs
-  take the `aarch64` file, Intel Macs the `x64` one.
+- **macOS** — open the `.dmg`, drag *Econ Studio* to Applications. Apple Silicon Macs
+  take the `aarch64` file, Intel Macs the `x64` one. Someone who still has *Econ Worksheet*
+  there from 0.5.0 or earlier can move it to the Bin: both are the same app and share the
+  same saved worksheets.
 - **Windows** — run the `-setup.exe`. It is unsigned, so SmartScreen shows "Windows
   protected your PC": click **More info** → **Run anyway**.
 
