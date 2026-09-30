@@ -696,11 +696,14 @@ export function StartScreen({
         </div>
       ) : (
       <>
-      {/* The panel's box lives on this wrapper so the edge hints can sit over the scroller. */}
+      {/* The panel's box: the scroller (with its edge hints) above the pinned footer. */}
       <div className="zone-light relative flex shrink-0 flex-col border-b border-line bg-surface lg:h-full lg:w-[400px] lg:border-b-0 lg:border-r">
+      {/* The scroller and its edge hints share a box that stops above the footer, so the
+          bottom fade can never sit over the footer's links. */}
+      <div className="relative flex min-h-0 flex-1 flex-col bg-surface">
       {/* A short window (1024×768) tightens the vertical rhythm so the Question bank row,
           the last way in, still shows without scrolling. */}
-      <aside ref={asideRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto px-9 pb-8 pt-9 [@media(max-height:820px)]:pt-7">
+      <aside ref={asideRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto px-9 pb-6 pt-9 [@media(max-height:820px)]:pb-4 [@media(max-height:820px)]:pt-7">
         <header className="flex items-center gap-2.5">
           {/* The launch splash's mark lands here (`src/launch/splash.ts`). */}
           <span data-launch-target className="flex shrink-0 text-ink">
@@ -779,35 +782,38 @@ export function StartScreen({
           </div>
         </section>
 
-        {/* One quiet line about where work lives, then the build. Backup, restore,
-            folders and Trash sit with the saved documents, on the right. */}
-        <div className="mt-auto space-y-3 pt-8 text-[11px] leading-relaxed text-ink-subtle">
-          {isDesktop() ? (
-            <p>
-              Stored on this computer only. No account. AI translation, when you use it, sends the
-              texts you choose (and nearby translated lines for context) to your chosen provider.
-            </p>
-          ) : (
-            <p>
-              Stored in this browser only. Clearing site data deletes it.{' '}
-              <TextLink onClick={() => void backUpAll()} disabled={busy !== undefined}>
-                {busy === 'backup' ? 'Backing up…' : 'Back up now'}
-              </TextLink>
-            </p>
-          )}
-          {/* Desktop only; its own line, as the footer row cannot also hold it at 400px. */}
-          <VersionLine />
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line pt-3">
-            <TextLink onClick={() => setWhatsNew(true)}>What’s new</TextLink>
-            <TextLink onClick={() => setFeedback(true)}>Send feedback</TextLink>
-          </div>
-        </div>
       </aside>
       <ScrollEdgeHints edges={asideEdges} />
       </div>
 
+      {/* Pinned below the scroller: one quiet line about where work lives, the build, and
+          the links, always at full ink. Backup, restore, folders and Trash sit with the
+          saved documents, on the right. */}
+      <footer className="shrink-0 space-y-1.5 border-t border-line px-9 pb-5 pt-3.5 text-[11px] leading-relaxed text-ink-muted [@media(max-height:820px)]:pb-4 [@media(max-height:820px)]:pt-3">
+        {isDesktop() ? (
+          <p>
+            Stored on this computer only. No account. AI translation, when you use it, sends the
+            texts you choose (and nearby translated lines for context) to your chosen provider.
+          </p>
+        ) : (
+          <p>Stored in this browser only. Clearing site data deletes it.</p>
+        )}
+        {/* Desktop only; its own line, as the links row cannot also hold it at 400px. */}
+        <VersionLine />
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          {!isDesktop() && (
+            <TextLink onClick={() => void backUpAll()} disabled={busy !== undefined}>
+              {busy === 'backup' ? 'Backing up…' : 'Back up now'}
+            </TextLink>
+          )}
+          <TextLink onClick={() => setWhatsNew(true)}>What’s new</TextLink>
+          <TextLink onClick={() => setFeedback(true)}>Send feedback</TextLink>
+        </div>
+      </footer>
+      </div>
+
       {/* The desk side: every document already on the desk, as its first page. */}
-      <main className="min-h-0 flex-1 overflow-y-auto px-9 py-9 lg:px-14 lg:py-12">
+      <main className="min-h-0 flex-1 overflow-y-auto px-9 py-9 lg:py-12 xl:px-14">
         {/* Results sit above the list: below it, a long archive scrolls them out of view. */}
         {error && (
           <p
@@ -1138,7 +1144,7 @@ function StartRow({
     <button
       type="button"
       onClick={onClick}
-      className="group cursor-pointer border-b border-line py-3.5 pl-4 pr-2 text-left transition-colors duration-150 ease-out-soft hover:bg-surface-sunken active:bg-surface-hover active:duration-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+      className="group cursor-pointer border-b border-line py-3.5 pl-4 pr-2 text-left [@media(max-height:920px)]:py-3 transition-colors duration-150 ease-out-soft hover:bg-surface-sunken active:bg-surface-hover active:duration-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
     >
       <span className="flex items-center gap-2 text-[13.5px] font-medium text-ink transition-colors duration-150 ease-out-soft group-hover:text-accent-ink">
         {icon && (

@@ -98,6 +98,10 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   Firefox and Safari still save to your Downloads folder.
 
 ### Changed
+- **A tidier start screen on smaller laptops.** Worksheet previews are one steady size
+  however many you have, the search, filter, order and view controls fit on one line at
+  1024 pixels wide, and What's new, Send feedback and Back up now stay easy to read at
+  the bottom of the left panel.
 - **A new worksheet asks for its name first**, so it no longer appears as Untitled in
   your list. The name is for filing and the file name, and does not print on the paper.
   A duplicated worksheet is now listed as "(copy)" of that name.
