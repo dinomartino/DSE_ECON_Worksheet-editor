@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState, type ReactNode } from 'react';
 import { PatternPicker } from '@/components/bank/PatternPicker';
 import { typeLabel } from '@/components/bank/BankRow';
 import { Button, GroupHeader, IconButton } from '@/components/ui';
@@ -38,66 +38,86 @@ export function freeTagMessage(issue: FreeTagIssue, typed: string): string {
 }
 
 /**
- * The shared "Topics 課題" row of the Edit panel: a question's tags as quiet text, each
- * removable, plus an inline picker over the taxonomy and free text. Each sub-topic takes
- * one 題型 (Pattern) from its list for this question's type, or a new name. Tags never print.
+ * The one topic typed text names, if it names exactly one: a known code, or a filter
+ * that leaves a single topic. How Enter picks where free tags are not taken.
  */
-export function TopicRow({
-  tags,
-  typeId,
-  note,
-  onChange,
+export function onlyTopic(typed: string): string | undefined {
+  const text = typed.trim();
+  if (!text) return undefined;
+  if (topicOf(text)) return text;
+  const hits = filterTopics(text).flatMap(({ topic, children }) => [
+    ...(matches(topic, text) ? [topic] : []),
+    ...children.filter((child) => matches(child, text)),
+  ]);
+  return hits.length === 1 ? hits[0].code : undefined;
+}
+
+/**
+ * The taxonomy picker the Topic row opens: a filter box over every topic and sub-topic,
+ * and (with `onFreeTag`) typed text taken as a free tag on Enter. Without `onFreeTag`,
+ * Enter takes the one topic the text names, and anything else is refused with `noFreeTag`.
+ */
+export function TopicPicker({
+  isChosen,
+  onPick,
+  onFreeTag,
+  noFreeTag = 'Pick a topic from the list.',
+  onClose,
 }: {
-  tags: readonly string[] | undefined;
-  /** The question's registry type: its 題型 list (MCQ and LQ lists are separate). */
-  typeId: string;
-  /** A quiet line after an edit, e.g. "Also updated in 2 other worksheets." */
-  note?: string;
-  /** `undefined` clears the field, so an untagged question carries none. */
-  onChange: (tags: string[] | undefined) => void;
+  /** Already there: shown greyed, not offered. */
+  isChosen: (code: string) => boolean;
+  onPick: (code: string) => void;
+  /** Typed text on Enter, a known topic code included. Absent: only topics are taken. */
+  onFreeTag?: (tag: string) => void;
+  /** Why typed text is not taken, when `onFreeTag` is absent. */
+  noFreeTag?: string;
+  onClose: () => void;
 }) {
-  const current = tags ?? [];
-  const { rows } = useBank();
-  const registry = usePatternRegistry();
-  const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  /** Enter was pressed on a tag that cannot be added: say why until the text changes. */
+  /** Enter was pressed on text that cannot be added: say why until the text changes. */
   const [refused, setRefused] = useState(false);
   const groups = useMemo(() => filterTopics(query), [query]);
   const typed = query.trim();
   const issue = freeTagIssue(typed);
+  const issueId = useId();
 
-  const add = (code: string) => {
-    const value = code.trim();
-    if (!value || current.includes(value)) return;
-    if (freeTagIssue(value)) {
+  const enter = () => {
+    if (!typed) return;
+    if (!onFreeTag) {
+      const only = onlyTopic(typed);
+      if (only && !isChosen(only)) {
+        onPick(only);
+        setQuery('');
+      } else setRefused(true);
+      return;
+    }
+    if (issue) {
       setRefused(true);
       return;
     }
-    onChange([...current, value]);
+    onFreeTag(typed);
     setQuery('');
   };
-  const remove = (code: string) => {
-    // A sub-topic's 題型 goes with it.
-    const next = current.filter((tag) => tag !== code && parsePatternTag(tag)?.topic !== code);
-    onChange(next.length > 0 ? next : undefined);
-  };
-  // A new name is registered by the picker as it is made.
-  const setPattern = (code: string, name: string | undefined) => {
-    const next = withPattern(current, code, name);
-    if (next !== current) onChange(next.length > 0 ? next : undefined);
-  };
-  // Only string tags are shown; anything else rides along untouched through every write.
-  const listed = stringTags(current).filter((tag) => !isPatternTag(tag));
+
+  const refusal = !onFreeTag
+    ? refused
+      ? noFreeTag
+      : undefined
+    : issue && (refused || groups.length === 0)
+      ? freeTagMessage(issue, typed)
+      : undefined;
 
   const option = (topic: Topic, indent: boolean) => {
-    const chosen = current.includes(topic.code);
+    const chosen = isChosen(topic.code);
     return (
       <li key={topic.code}>
         <button
           type="button"
           disabled={chosen}
-          onClick={() => add(topic.code)}
+          onClick={() => {
+            onPick(topic.code);
+            setQuery('');
+          }}
           className={`flex w-full cursor-pointer items-baseline gap-2 rounded-md py-1 pr-2 text-left text-xs text-ink transition-colors duration-150 ease-out-soft hover:bg-accent-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent ${
             indent ? 'pl-10' : 'pl-1 font-medium'
           }`}
@@ -114,10 +134,121 @@ export function TopicRow({
   };
 
   return (
+    <div className="space-y-1.5 rounded-lg border border-line bg-surface p-2">
+      <input
+        autoFocus
+        value={query}
+        aria-label={onFreeTag ? 'Filter topics or type a free tag' : 'Filter topics'}
+        placeholder={onFreeTag ? 'Filter, or type a tag and press Enter' : 'Filter topics'}
+        aria-invalid={refusal ? true : undefined}
+        aria-describedby={refusal ? issueId : undefined}
+        onChange={(event) => {
+          setQuery(event.target.value);
+          setRefused(false);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            enter();
+          } else if (event.key === 'Escape') {
+            event.stopPropagation();
+            onClose();
+          }
+        }}
+        className="h-8 w-full rounded-lg border border-line bg-surface px-2 text-xs text-ink outline-none transition-colors duration-150 ease-out-soft placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
+      />
+      {refusal && (
+        <p id={issueId} role="status" className="px-1 text-[11px] text-ink-muted">
+          {refusal}
+        </p>
+      )}
+      <ul className="scroll-slim max-h-56 overflow-y-auto">
+        {groups.map(({ topic, children }) => (
+          <li key={topic.code}>
+            <ul>
+              {option(topic, false)}
+              {children.map((child) => option(child, true))}
+            </ul>
+          </li>
+        ))}
+        {groups.length === 0 && !refusal && (
+          <li className="px-1 py-2 text-[11px] text-ink-subtle">
+            {onFreeTag ? <>No matching topic. Press Enter to add “{typed}” as a free tag.</> : 'No matching topic.'}
+          </li>
+        )}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * The shared "Topics 課題" row of the Edit panel: a list's tags as quiet text, each
+ * removable, plus an inline picker over the taxonomy and free text. Each sub-topic takes
+ * one 題型 (Pattern) from its list for this question's type, or a new name. Tags never print.
+ *
+ * By default the whole question's list (MCQ, a question without parts). `PartTopics.tsx`
+ * also uses it for one part's list: titled for the part, `noFreeTag` set (a part holds
+ * topics and 題型 only), and its own lines in `intro`.
+ */
+export function TopicRow({
+  tags,
+  typeId,
+  note,
+  onChange,
+  title = 'Topics',
+  hint = '課題 · never printed',
+  empty = 'No topic yet. Tags feed the question bank.',
+  noFreeTag,
+  intro,
+  startOpen = false,
+}: {
+  tags: readonly string[] | undefined;
+  /** The question's registry type: its 題型 list (MCQ and LQ lists are separate). */
+  typeId: string;
+  /** A quiet line after an edit, e.g. "Also updated in 2 other worksheets." */
+  note?: string;
+  /** `undefined` clears the field, so an untagged question carries none. */
+  onChange: (tags: string[] | undefined) => void;
+  title?: string;
+  hint?: string;
+  /** Shown while the list is empty and the picker closed. */
+  empty?: ReactNode;
+  /** Set: typed text is never a tag here, and this says why. */
+  noFreeTag?: string;
+  /** Lines between the header and the list: where the list comes from, a way back. */
+  intro?: ReactNode;
+  /** Open the picker at once (a list just made to be edited). */
+  startOpen?: boolean;
+}) {
+  const current = tags ?? [];
+  const { rows } = useBank();
+  const registry = usePatternRegistry();
+  const [open, setOpen] = useState(startOpen);
+
+  // The picker refuses what cannot be a tag before it gets here.
+  const add = (code: string) => {
+    const value = code.trim();
+    if (!value || current.includes(value)) return;
+    onChange([...current, value]);
+  };
+  const remove = (code: string) => {
+    // A sub-topic's 題型 goes with it.
+    const next = current.filter((tag) => tag !== code && parsePatternTag(tag)?.topic !== code);
+    onChange(next.length > 0 ? next : undefined);
+  };
+  // A new name is registered by the picker as it is made.
+  const setPattern = (code: string, name: string | undefined) => {
+    const next = withPattern(current, code, name);
+    if (next !== current) onChange(next.length > 0 ? next : undefined);
+  };
+  // Only string tags are shown; anything else rides along untouched through every write.
+  const listed = stringTags(current).filter((tag) => !isPatternTag(tag));
+
+  return (
     <div className="space-y-2 border-t border-line pt-3" data-topic-row>
       <GroupHeader
-        title="Topics"
-        hint="課題 · never printed"
+        title={title}
+        hint={hint}
         action={
           // A quiet panel action, like "+ Statement" beside it: the filled CTA is ink, and
           // accent is for links, focus and selection.
@@ -126,10 +257,9 @@ export function TopicRow({
           </Button>
         }
       />
+      {intro}
 
-      {current.length === 0 && !open && (
-        <p className="text-[11px] text-ink-subtle">No topic yet. Tags feed the question bank.</p>
-      )}
+      {current.length === 0 && !open && <p className="text-[11px] text-ink-subtle">{empty}</p>}
       {listed.length > 0 && (
         <ul className="space-y-0.5">
           {listed.map((tag) => {
@@ -178,50 +308,13 @@ export function TopicRow({
       )}
 
       {open && (
-        <div className="space-y-1.5 rounded-lg border border-line bg-surface p-2">
-          <input
-            autoFocus
-            value={query}
-            aria-label="Filter topics or type a free tag"
-            placeholder="Filter, or type a tag and press Enter"
-            aria-invalid={refused && issue ? true : undefined}
-            aria-describedby={issue ? 'topic-row-tag-issue' : undefined}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setRefused(false);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault();
-                add(query);
-              } else if (event.key === 'Escape') {
-                event.stopPropagation();
-                setOpen(false);
-              }
-            }}
-            className="h-8 w-full rounded-lg border border-line bg-surface px-2 text-xs text-ink outline-none transition-colors duration-150 ease-out-soft placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
-          />
-          {issue && (refused || groups.length === 0) && (
-            <p id="topic-row-tag-issue" role="status" className="px-1 text-[11px] text-ink-muted">
-              {freeTagMessage(issue, typed)}
-            </p>
-          )}
-          <ul className="scroll-slim max-h-56 overflow-y-auto">
-            {groups.map(({ topic, children }) => (
-              <li key={topic.code}>
-                <ul>
-                  {option(topic, false)}
-                  {children.map((child) => option(child, true))}
-                </ul>
-              </li>
-            ))}
-            {groups.length === 0 && !issue && (
-              <li className="px-1 py-2 text-[11px] text-ink-subtle">
-                No matching topic. Press Enter to add “{typed}” as a free tag.
-              </li>
-            )}
-          </ul>
-        </div>
+        <TopicPicker
+          isChosen={(code) => current.includes(code)}
+          onPick={add}
+          onFreeTag={noFreeTag === undefined ? add : undefined}
+          noFreeTag={noFreeTag}
+          onClose={() => setOpen(false)}
+        />
       )}
     </div>
   );

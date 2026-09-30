@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { pickFill } from '@/library/fill';
+import { slotsMatching } from '@/library/slotMatch';
 import { groupRows } from '@/library/group';
 import { paperTypeFilter } from '@/library/paperTypes';
 import { classesLabel } from '@/library/cohort';
@@ -208,6 +209,13 @@ export function BankTab() {
     };
   };
 
+  // A topic filter set: the parts of a long question that test it, when not every part does.
+  const partsFor = (row: BankRowData) => {
+    if (!filters.topic) return undefined;
+    const labels = slotsMatching(row, { topic: filters.topic }).map((slot) => slot.label);
+    return labels.length > 0 ? { labels, topic: filters.topic } : undefined;
+  };
+
   // Fill: its own type and topic, following the filters (so the paper's type) until set.
   const effectiveFillType = fillType ?? filters.typeId;
   const effectiveFillTopic = fillTopic ?? filters.topic;
@@ -296,6 +304,7 @@ export function BankTab() {
                 inPaper={inPaper ? { ...(inPaper.number !== undefined ? { number: inPaper.number } : {}) } : undefined}
                 usedWithClass={usedWith(group, paperRefs)}
                 versions={group.versions}
+                partsFor={partsFor(row)}
                 onVersions={() => setExpanded((open) => (open === group.rootId ? undefined : group.rootId))}
                 onSelect={inPaper ? () => useWorksheetStore.getState().select(inPaper.questionId) : undefined}
                 drag={inPaper ? undefined : dragFor(row)}
@@ -311,6 +320,7 @@ export function BankTab() {
                       language={language}
                       docLabel={docLabels.get(version.docId)}
                       differs={versionDiff(version, row, language)}
+                      partsFor={partsFor(version)}
                       drag={dragFor(version)}
                       dragging={draggingKey === rowKey(version)}
                       {...keyboardFor(version)}

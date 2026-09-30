@@ -52,7 +52,8 @@ import {
 } from '@/components/ui/icons';
 import { Menu, type MenuItem } from '@/components/ui/Menu';
 import { useBankActions } from './BankActions';
-import { useShownTags } from './sharedTopics';
+import { useShownTags, useShownTagState } from './sharedTopics';
+import { outlineTagLine } from './partTopicView';
 
 /**
  * The question navigator.
@@ -297,6 +298,10 @@ function QuestionRow({
   const bank = useBankActions(question);
   // The question's one topic set across copies (newest change wins), as the Topic row shows it.
   const tags = stringTags(useShownTags(question));
+  // Tagged per part: each part's names after its label when the parts differ; the tooltip goes part by part.
+  const shownState = useShownTagState(question);
+  const byPart = shownState && shownState.slots.length > 0 ? outlineTagLine(shownState) : undefined;
+  const tagLine = byPart ?? (tags.length > 0 ? { text: tags.map((tag) => tagText(tag)).join(' · '), title: tagTitle(tags) } : undefined);
 
   const menuItems: MenuItem[] = [
     { label: 'Duplicate', onSelect: () => duplicateQuestion(question.id) },
@@ -397,12 +402,9 @@ function QuestionRow({
       >
         {typeBadge(question)}
       </span>
-      {tags.length > 0 && (
-        <span
-          className="max-w-[72px] shrink-0 truncate text-[10px] text-ink-subtle"
-          title={tagTitle(tags)}
-        >
-          {tags.map((tag) => tagText(tag)).join(' · ')}
+      {tagLine && (
+        <span className="max-w-[72px] shrink-0 truncate text-[10px] text-ink-subtle" title={tagLine.title}>
+          {tagLine.text}
         </span>
       )}
       <span className="shrink-0 text-[10px] tabular-nums text-ink-subtle">

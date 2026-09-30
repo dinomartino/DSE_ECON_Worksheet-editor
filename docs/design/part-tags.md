@@ -1,7 +1,8 @@
 # Per-part topics and 題型: design
 
 Status: WP-0 (model, registry hooks, library and sync core) built 2026-09-30 on
-`feature/part-tags-core`; WP-A to WP-D (the UI) next. Written against `develop` @ ba349fa,
+`feature/part-tags-core`; WP-A (the editor) built on `feature/part-tags-editor`; WP-B to
+WP-D next. Written against `develop` @ ba349fa,
 so line numbers below are that commit's; § "As built" says where the code differs from
 the proposal, and the code wins.
 Binding user decisions: topics and 題型 live per part on a structured question with parts; the
@@ -104,6 +105,40 @@ questionId, mode, images?, printedNumber?) → { html; target? }[]` (joined, exa
   each part's `tags` and `rootId`, as it did the question's metadata.
 - A slot key repeated inside one question (never made by this build) falls back to the
   part's own id, so every slot stays addressable.
+
+## As built (WP-A) — the editor
+
+- **Topic row** (`src/components/editor/Inspector.tsx`): a question with slots gets
+  `PartTopics.tsx`, anything else today's `TopicRow`. The mode is
+  `partTopicView.ts:topicMode(slots, selectedTargetKey, focus)`: `slotAtTarget` on the
+  page's click, overridden by a part picked in the row (or "Whole question") until the
+  page's selection moves. Every write is one `StateEdit` through `setQuestionTags(id,
+  edit, deps, shownState)`.
+  - **Whole question**: one line per part (`partTopicLines`), a sub-part only when it has
+    its own ("(ii) … · its own"), "No topic yet" on a part testing nothing, 題型 shown as
+    "· 題型 name". Older whole-question topics read "Set on the whole question, so every
+    part has them". "Add to every part" = `wholeQuestion(addTopics)`; the picker takes
+    topics only. Free tags on a "Tags" line (`freeTags`), "+ Tag" types one; a topic
+    typed there is refused.
+  - **Part**: `TopicRow` titled "Topics for (b)", list edits as `atSlot(ref,
+    matchEdit(shown, next))`, the 題型 picker per topic writes that part; typed free text
+    is refused (`noFreeTag`). Says when the list came from the whole question, and which
+    sub-parts have their own.
+  - **Sub-part**: a `Segmented` "Same as (a)" / "Its own". "Its own" opens the list
+    seeded with the part's set and writes nothing until a change; "Same as (a)" on an
+    own list is `inheritAtSlot`. Removing the last own topic returns to "Same as (a)"
+    (A2: an empty own list is absent).
+- `TopicRow.tsx` gained `TopicPicker` (shared by both rows) and optional `title`, `hint`,
+  `empty`, `noFreeTag`, `intro`, `startOpen`; its default render is unchanged.
+- **Outline** (`Outline.tsx`, `partTopicView.ts:outlineTagLine`): when the parts test
+  different things the line reads "(a) Law of demand (b) Efficiency" in the same 72px, and
+  the tooltip lists every part ("(c) No topic yet" included) and the tags. The MCQ icon
+  literal in the add menu is left as it was.
+- **題庫 tab** (`BankTab.tsx`, `BankRow.tsx` `partsFor`): with a Topic filter, a row whose
+  question has only some parts testing it leads its meta with "(b) Efficiency". The tab
+  has no 題型 filter, so only topics are matched there.
+- The pure view helpers are `src/components/editor/partTopicView.ts` (not
+  `partTopics.ts`: on a case-insensitive disk it would shadow `PartTopics.tsx`).
 
 ---
 

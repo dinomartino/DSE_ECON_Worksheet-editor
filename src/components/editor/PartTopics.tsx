@@ -1,0 +1,398 @@
+'use client';
+
+import { useMemo, useState, type ReactNode } from 'react';
+import { Button, GroupHeader, IconButton, Segmented } from '@/components/ui';
+import { CloseIcon } from '@/components/ui/icons';
+import { addTopics, atSlot, freeTags, inheritAtSlot, matchEdit, wholeQuestion, type StateEdit } from '@/library/tagWrites';
+import { freeTagIssue } from '@/model/patterns';
+import { effectiveSlotTags, isTopicalTag, questionTagSlots, slotRef, type SlotState, type TagState } from '@/model/tagSlots';
+import { topicHeading, topicOf } from '@/model/topics';
+import type { Question } from '@/model/types';
+import { useWorksheetStore } from '@/store/worksheetStore';
+import { freeTagMessage, TopicPicker, TopicRow } from './TopicRow';
+import { partTopicLines, questionFreeTags, topicMode, topicNames, topicsWithPatterns, type TopicFocus } from './partTopicView';
+
+/**
+ * The Edit panel's Topic row on a question tagged per part (§ part-tags.md F1). The page's
+ * selection picks what it edits: the stem shows every part, a click in part (b) edits (b),
+ * a click in sub-part (a)(ii) edits (a)(ii). A part named in the row points it there too,
+ * until the page's selection moves. Every change is one `StateEdit` (`onEdit`): one ⌘Z
+ * for the open copy, and the other copies take it part by part.
+ */
+export function PartTopics({
+  question,
+  shown,
+  note,
+  onEdit,
+}: {
+  question: Question;
+  /** The question's tag state as the editor shows it (`useShownTagState`). */
+  shown: TagState;
+  note?: string;
+  onEdit: (edit: StateEdit) => void;
+}) {
+  const selectedTargetKey = useWorksheetStore((s) => s.selectedTargetKey);
+  const infos = useMemo(() => questionTagSlots(question), [question]);
+  const [focus, setFocus] = useState<TopicFocus>();
+  // A new click on the page wins over a part picked here.
+  const [focusFor, setFocusFor] = useState(selectedTargetKey);
+  if (focusFor !== selectedTargetKey) {
+    setFocusFor(selectedTargetKey);
+    setFocus(undefined);
+  }
+  const mode = topicMode(infos, selectedTargetKey, focus);
+  const effective = effectiveSlotTags(shown);
+  const slotOf = (key: string) => shown.slots.find((slot) => slot.key === key);
+  const topicsOf = (key: string) => (effective.get(key) ?? []).filter(isTopicalTag);
+  const wholeLink = <QuietLink onClick={() => setFocus('question')}>Whole question</QuietLink>;
+
+  if (mode.kind === 'question') {
+    return <WholeQuestionTopics shown={shown} note={note} onEdit={onEdit} onPick={(key) => setFocus({ key })} />;
+  }
+
+  const slot = slotOf(mode.key);
+  const ref = slotRef(shown.slots, mode.key);
+  if (!slot || !ref) return null;
+  const tags = topicsOf(slot.key);
+  const setTags = (next: string[] | undefined) => onEdit(atSlot(ref, matchEdit(tags, next ?? [])));
+  const noFreeTag = 'A part takes topics and 題型 only. Tags go on the whole question.';
+
+  if (mode.kind === 'part') {
+    const ownSubs = shown.slots.filter((sub) => sub.parent === slot.key && sub.own);
+    return (
+      <TopicRow
+        key={slot.key}
+        title={`Topics for ${slot.label}`}
+        tags={tags}
+        typeId={question.type}
+        note={note}
+        noFreeTag={noFreeTag}
+        empty="No topic yet."
+        onChange={setTags}
+        intro={
+          <div className="space-y-1 text-[11px] text-ink-subtle">
+            {!slot.own && tags.length > 0 && <p>Set on the whole question. A change here is for {slot.label} only.</p>}
+            {ownSubs.length > 0 && (
+              <p>
+                {ownSubs.map((sub) => sub.label).join(' and ')} {ownSubs.length === 1 ? 'has its' : 'have their'} own topics
+                instead.
+              </p>
+            )}
+            <p>{wholeLink}</p>
+          </div>
+        }
+      />
+    );
+  }
+
+  const parent = slotOf(mode.parent);
+  if (!parent) return null;
+  return (
+    <SubPartTopics
+      key={slot.key}
+      slot={slot}
+      parent={parent}
+      tags={tags}
+      parentTags={topicsOf(parent.key)}
+      typeId={question.type}
+      note={note}
+      noFreeTag={noFreeTag}
+      wholeLink={wholeLink}
+      onSetTags={setTags}
+      onSame={() => onEdit(inheritAtSlot(ref))}
+    />
+  );
+}
+
+/** "(ii)" from "(a)(ii)": a sub-part named beside its part. */
+const shortLabel = (slot: SlotState, parent: SlotState) =>
+  slot.label.startsWith(parent.label) ? slot.label.slice(parent.label.length) : slot.label;
+
+/**
+ * A sub-part: "Same as (a)" (its part's topics) or "Its own", which replace its part's.
+ * "Its own" starts from the part's set and writes nothing until a topic is added or taken
+ * off, so "(a)'s topic and one more" is one pick.
+ */
+function SubPartTopics({
+  slot,
+  parent,
+  tags,
+  parentTags,
+  typeId,
+  note,
+  noFreeTag,
+  wholeLink,
+  onSetTags,
+  onSame,
+}: {
+  slot: SlotState;
+  parent: SlotState;
+  tags: string[];
+  parentTags: string[];
+  typeId: string;
+  note?: string;
+  noFreeTag: string;
+  wholeLink: ReactNode;
+  onSetTags: (tags: string[] | undefined) => void;
+  onSame: () => void;
+}) {
+  const [draft, setDraft] = useState(false);
+  const own = Boolean(slot.own);
+  const choice = own || draft ? 'own' : 'same';
+  const sub = shortLabel(slot, parent);
+  const toggle = (
+    <Segmented<'same' | 'own'>
+      label={`Topics for ${slot.label}`}
+      value={choice}
+      options={[
+        { value: 'same', label: `Same as ${parent.label}`, title: `${sub} tests what ${parent.label} tests` },
+        { value: 'own', label: 'Its own', title: `Give ${sub} its own topics, in place of ${parent.label}’s` },
+      ]}
+      onChange={(value) => {
+        if (value === 'own') setDraft(true);
+        else {
+          setDraft(false);
+          if (own) onSame();
+        }
+      }}
+    />
+  );
+
+  if (choice === 'own') {
+    return (
+      <TopicRow
+        title={`Topics for ${slot.label}`}
+        tags={tags}
+        typeId={typeId}
+        note={note}
+        noFreeTag={noFreeTag}
+        empty="No topic yet."
+        startOpen={!own}
+        onChange={onSetTags}
+        intro={
+          <div className="space-y-1">
+            <div className="-ml-2.5">{toggle}</div>
+            <p className="text-[11px] text-ink-subtle">
+              {own
+                ? `In place of ${parent.label}’s topics.`
+                : `Starts from ${parent.label}’s topics. Add or remove one to give ${sub} its own.`}
+            </p>
+            <p className="text-[11px] text-ink-subtle">{wholeLink}</p>
+          </div>
+        }
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-2 border-t border-line pt-3" data-topic-row>
+      <GroupHeader title={`Topics for ${slot.label}`} hint="課題 · never printed" />
+      <div className="-ml-2.5">{toggle}</div>
+      {parentTags.length > 0 ? (
+        <TopicLines tags={parentTags} />
+      ) : (
+        <p className="text-[11px] text-ink-subtle">{parent.label} has no topic yet.</p>
+      )}
+      <p className="text-[11px] text-ink-subtle">{wholeLink}</p>
+      {note && (
+        <p role="status" className="animate-fade-in text-[11px] text-ink-subtle">
+          {note}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Topics as read-only lines: "C Law of demand 需求定律 · 題型 Price ceiling". */
+function TopicLines({ tags }: { tags: string[] }) {
+  return (
+    <ul className="space-y-0.5">
+      {topicsWithPatterns(tags).map(({ topic, pattern }) => {
+        const known = topicOf(topic);
+        return (
+          <li key={topic} className="truncate text-xs text-ink-muted" title={topicHeading(topic, 'both')}>
+            {known ? (
+              <>
+                <span className="tabular-nums text-ink-subtle">{known.parent ?? known.code}</span> {known.en}{' '}
+                <span className="text-ink-subtle">{known.zh}</span>
+              </>
+            ) : (
+              topic
+            )}
+            {pattern && <span className="text-ink-subtle"> · 題型 {pattern}</span>}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/**
+ * The whole question: each part and what it tests (a part with none says so), a sub-part
+ * with its own topics under its part, "Add to every part", and the question's free tags.
+ */
+function WholeQuestionTopics({
+  shown,
+  note,
+  onEdit,
+  onPick,
+}: {
+  shown: TagState;
+  note?: string;
+  onEdit: (edit: StateEdit) => void;
+  onPick: (key: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const lines = partTopicLines(shown);
+  const effective = effectiveSlotTags(shown);
+  const leaves = shown.slots.filter((slot) => slot.leaf);
+  const everyPartHas = (code: string) => leaves.length > 0 && leaves.every((slot) => (effective.get(slot.key) ?? []).includes(code));
+  const fromQuestion = lines.some((line) => line.from === 'question');
+
+  return (
+    <div className="space-y-2 border-t border-line pt-3" data-topic-row>
+      <GroupHeader
+        title="Topics"
+        hint="課題 · by part · never printed"
+        action={
+          <Button size="sm" variant="subtle" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
+            {open ? 'Done' : 'Add to every part'}
+          </Button>
+        }
+      />
+      <ul className="-mx-1 space-y-px">
+        {lines.map((line) => (
+          <li key={line.key}>
+            <button
+              type="button"
+              onClick={() => onPick(line.key)}
+              title={`Topics for ${line.fullLabel}`}
+              className={`flex w-full cursor-pointer items-baseline gap-2 rounded-md py-1 pr-1 text-left text-xs transition-colors duration-150 ease-out-soft hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                line.depth === 1 ? 'pl-5' : 'pl-1'
+              }`}
+            >
+              <span className="w-8 shrink-0 font-semibold tabular-nums text-ink-muted">{line.label}</span>
+              {line.tags.length > 0 ? (
+                <span className="min-w-0 flex-1 truncate text-ink-muted" title={line.tags.map((tag) => topicHeading(tag, 'both')).join('\n')}>
+                  {topicsWithPatterns(line.tags).map(({ topic, pattern }, index) => (
+                    <span key={topic}>
+                      {index > 0 && ' · '}
+                      {topicNames([topic])}
+                      {pattern && <span className="text-ink-subtle"> · 題型 {pattern}</span>}
+                    </span>
+                  ))}
+                  {line.depth === 1 && <span className="text-ink-subtle"> · its own</span>}
+                </span>
+              ) : (
+                <span className="min-w-0 flex-1 truncate text-ink-subtle">No topic yet</span>
+              )}
+            </button>
+          </li>
+        ))}
+      </ul>
+      <p className="text-[11px] text-ink-subtle">
+        {fromQuestion
+          ? 'Set on the whole question, so every part has them. Click a part to change it alone.'
+          : 'Click a part, here or on the page, to tag it.'}
+      </p>
+      {open && (
+        <TopicPicker
+          isChosen={everyPartHas}
+          onPick={(code) => onEdit(wholeQuestion(addTopics([code])))}
+          noFreeTag="Only topics go on every part. Add a tag under Tags."
+          onClose={() => setOpen(false)}
+        />
+      )}
+      <FreeTagsLine tags={questionFreeTags(shown)} onEdit={onEdit} />
+      {note && (
+        <p role="status" className="animate-fade-in text-[11px] text-ink-subtle">
+          {note}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** The question's free tags ("mock 2025"), each removable, and "+ Tag" to type one. */
+function FreeTagsLine({ tags, onEdit }: { tags: string[]; onEdit: (edit: StateEdit) => void }) {
+  const [typing, setTyping] = useState(false);
+  const [text, setText] = useState('');
+  const [refused, setRefused] = useState<string>();
+  const add = () => {
+    const typed = text.trim();
+    if (!typed) return;
+    const issue = freeTagIssue(typed);
+    if (topicOf(typed) || isTopicalTag(typed)) {
+      setRefused('That is a topic. Click a part to add it, or use Add to every part.');
+      return;
+    }
+    if (issue) {
+      setRefused(freeTagMessage(issue, typed));
+      return;
+    }
+    onEdit(freeTags((list) => [...list, typed]));
+    setText('');
+  };
+  return (
+    <div className="space-y-1">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+        <span className="text-[11px] font-medium text-ink-muted">Tags</span>
+        {tags.map((tag) => (
+          <span key={tag} className="inline-flex items-center text-ink-muted">
+            {tag}
+            <IconButton label={`Remove tag ${tag}`} onClick={() => onEdit(freeTags((list) => list.filter((entry) => entry !== tag)))}>
+              <CloseIcon size={11} />
+            </IconButton>
+          </span>
+        ))}
+        {!typing && <QuietLink onClick={() => setTyping(true)}>+ Tag</QuietLink>}
+      </div>
+      {typing && (
+        <input
+          autoFocus
+          value={text}
+          aria-label="New tag"
+          placeholder="Type a tag and press Enter"
+          aria-invalid={refused ? true : undefined}
+          onChange={(event) => {
+            setText(event.target.value);
+            setRefused(undefined);
+          }}
+          onBlur={() => {
+            if (!text.trim()) setTyping(false);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              add();
+            } else if (event.key === 'Escape') {
+              event.stopPropagation();
+              setTyping(false);
+              setText('');
+              setRefused(undefined);
+            }
+          }}
+          className="h-7 w-full rounded-lg border border-line bg-surface px-2 text-xs text-ink outline-none transition-colors duration-150 ease-out-soft placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
+        />
+      )}
+      {refused && (
+        <p role="status" className="text-[11px] text-ink-muted">
+          {refused}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** A quiet in-text action: accent ink, underlined on hover. */
+function QuietLink({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="cursor-pointer text-[11px] font-medium text-accent-ink underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+    >
+      {children}
+    </button>
+  );
+}
