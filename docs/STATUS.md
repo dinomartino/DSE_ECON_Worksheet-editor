@@ -109,9 +109,10 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **Topics per part (in progress, paused 2026-09-30)** — the user's call: on a long question
   topics and 題型 live on parts (a sub-part's own list replaces its part's), free tags on the
   question, parent derived; bulk Set topic writes every part; any tagged part leaves Untagged.
-  Design: session scratchpad `part-tags-design.md` (to land as `docs/design/part-tags.md`).
-  WP-0 (model/registry/library core) on `feature/part-tags-core` from 48a2c05, paused mid-way
-  when the user went offline; handoff note `part-tags-wp0-handoff.md` in the same scratchpad.
+  Design and handoff are committed on the branch: docs/design/wip/part-tags-design.md and
+  docs/design/wip/part-tags-wp0-handoff.md (on `feature/part-tags-core` only). WP-0
+  (model/registry/library core) is on `feature/part-tags-core` from 48a2c05, paused green
+  (3144 tests) with tests, docs, build and samples still to do.
   On resume: merge `develop` (INDEX_FORMAT is already 6 from the AI branch, so WP-0 bumps to 7
   and regenerates the golden), finish WP-0, then UI packages A (Topic row), B (review page
   "(b) tests this"), C (bank tagging dialogs).
