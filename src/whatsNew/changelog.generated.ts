@@ -98,6 +98,9 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   Firefox and Safari still save to your Downloads folder.
 
 ### Changed
+- **A new question looks calmer on the page.** Only the question text keeps the blue
+  "Double-click to add" prompt; empty options, parts and captions show a short grey
+  "Add English" or "Add 中文" instead. Prompts still never print or export.
 - **A new worksheet asks for its name first**, so it no longer appears as Untitled in
   your list. The name is for filing and the file name, and does not print on the paper.
   A duplicated worksheet is now listed as "(copy)" of that name.

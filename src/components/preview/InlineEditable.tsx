@@ -100,6 +100,8 @@ interface Props {
    * it would put the hover box somewhere other than the words.
    */
   fillWidth?: boolean;
+  /** Paint the empty prompt muted grey rather than blue: a secondary field. */
+  quietPlaceholder?: boolean;
 }
 
 export function InlineEditable({
@@ -117,6 +119,7 @@ export function InlineEditable({
   keepEditing = false,
   printHidden = false,
   fillWidth = false,
+  quietPlaceholder = false,
   onTab,
 }: Props) {
   const [editing, setEditing] = useState(false);
@@ -448,7 +451,9 @@ export function InlineEditable({
           : 'hover:bg-[#eef6fc] hover:shadow-[0_1px_0_0_#8fc2e9]'
       } ${
         isEmpty
-          ? 'text-[#8fc2e9] underline decoration-[#8fc2e9] decoration-dashed underline-offset-4'
+          ? quietPlaceholder
+            ? 'text-[#a3aab4] underline decoration-[#d7dce2] decoration-dotted underline-offset-4'
+            : 'text-[#8fc2e9] underline decoration-[#8fc2e9] decoration-dashed underline-offset-4'
           : ''
       } ${
         /*
