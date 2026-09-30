@@ -1,8 +1,14 @@
+#[cfg(any(target_os = "macos", test))]
+pub mod bundle_rename;
 pub mod pdf;
 pub mod secrets;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+  // Before any window: may rename `Econ Worksheet.app`, relaunch and exit.
+  #[cfg(target_os = "macos")]
+  bundle_rename::rename_legacy_bundle();
+
   tauri::Builder::default()
     .invoke_handler(tauri::generate_handler![
       pdf::print_to_pdf,
