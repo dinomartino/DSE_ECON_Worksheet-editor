@@ -41,6 +41,9 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
   Enter to save and see the next. Pressed the wrong key? Backspace, ⌘Z or Undo brings the
   last question back with its topic taken off. Open any question right where it sits in its worksheet,
   and come back to the same place in the bank. ← Home takes you back.
+  A long question shows which part tests the topic you are browsing ("Part (b) tests
+  this"), and that part is highlighted on the paper. A question on two sub-topics is listed
+  under both, each saying where else it is, and its topics show part by part.
 - **題庫 tab in the editor**: find questions from your other worksheets by words, topic,
   type or marks and drag copies onto the page, or Fill a set by topic after the question
   you click, preferring ones your class has not seen. The list and Fill start on what your

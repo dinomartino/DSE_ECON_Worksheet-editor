@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { rowsOf } from '@/library/indexer';
 import { withSharedTags } from '@/library/sharedTags';
-import { choiceQuestion, docWith, partsQuestion } from '@/library/testKit';
+import { choiceQuestion, docWith, partedQuestion, partsQuestion } from '@/library/testKit';
+import { questionClipboardHtml } from '@/export/clipboard';
+import { questionTagSlots } from '@/model/tagSlots';
 import { copyQuestion } from '@/model/lineage';
 import { createWorksheetFrom } from '@/model/newWorksheet';
 import { worksheetTitle } from '@/storage/document';
@@ -9,7 +11,7 @@ import type { Worksheet } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { addPicksToOpenDocument } from './addToOpen';
 import { computeNumbering } from '@/model/numbering';
-import { questionPreviewHtml } from './questionPreview';
+import { oneQuestionWorksheet, questionPreviewHtml } from './questionPreview';
 import { readPicks, sharedTopic, worksheetFromPicks } from './fromSelection';
 
 describe('worksheetFromPicks', () => {
@@ -100,6 +102,39 @@ describe('questionPreviewHtml', () => {
     const preview = questionPreviewHtml(doc, doc.questions[2].id, 'en')!;
     expect(preview.html).toContain('>3.&nbsp;Third question here');
     expect(preview.html).not.toContain('>1.&nbsp;');
+  });
+
+  it('marks the parts asked for, and only on the preview: the clipboard never carries it', () => {
+    const question = partedQuestion([{ tags: ['C.ped'] }, { tags: ['I.fiscal'], subs: [undefined, undefined] }, {}]);
+    const doc = docWith([choiceQuestion('First'), question]);
+    const plain = questionPreviewHtml(doc, question.id, 'en')!;
+    // No highlight, or one naming nothing here: exactly the plain preview.
+    expect(questionPreviewHtml(doc, question.id, 'en', 'teacher', [])!.html).toBe(plain.html);
+    expect(questionPreviewHtml(doc, question.id, 'en', 'teacher', ['not-a-part'])!.html).toBe(plain.html);
+    expect(plain.html).not.toContain('<div data-part-mark>');
+
+    const b = questionTagSlots(question).find((slot) => slot.label === '(b)')!;
+    const marked = questionPreviewHtml(doc, question.id, 'en', 'teacher', [b.key])!.html;
+    const [before, rest] = marked.split('<div data-part-mark>');
+    expect(marked.split('<div data-part-mark>')).toHaveLength(2);
+    // The wrapper's own close is the one byte run the plain preview lacks.
+    const unwrapped = before + rest;
+    let close = 0;
+    while (unwrapped[close] === plain.html[close]) close += 1;
+    // The next node opens with "<" too, so the first difference can fall one byte in.
+    close = unwrapped.lastIndexOf('<', close);
+    expect(unwrapped.slice(close, close + 6)).toBe('</div>');
+    expect(unwrapped.slice(0, close) + unwrapped.slice(close + 6)).toBe(plain.html);
+    const inside = unwrapped.slice(before.length, close);
+    expect(inside).toContain('Part 2');
+    expect(inside).toContain('Part 2.1');
+    expect(inside).toContain('Part 2.2');
+    expect(inside).not.toContain('Part 3');
+    expect(before).toContain('Part 1');
+    expect(before).not.toContain('Part 2');
+    // The clipboard is untouched.
+    const clip = questionClipboardHtml(oneQuestionWorksheet(doc, question.id)!, question.id, { language: 'en', version: 'teacher' });
+    expect(clip).not.toContain('data-part-mark');
   });
 });
 

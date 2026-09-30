@@ -24,9 +24,12 @@ export function PaperPreview({
   version,
   failed,
   marks,
+  highlight,
 }: {
   /** ✦ review: texts to highlight (what a fill wrote, the term a finding is about). */
   marks?: readonly BankMark[];
+  /** Parts to mark (tag slot keys): the part that tests what is being browsed. Screen only. */
+  highlight?: readonly string[];
   /** The owning document, once loaded. */
   worksheet: Worksheet | undefined;
   questionId: string;
@@ -38,14 +41,15 @@ export function PaperPreview({
   const hostRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const [height, setHeight] = useState(0);
+  const highlightKey = highlight?.join('\u0000') ?? '';
   const preview = useMemo(() => {
     if (!worksheet) return undefined;
     try {
-      return questionPreviewHtml(worksheet, questionId, language, version);
+      return questionPreviewHtml(worksheet, questionId, language, version, highlightKey ? highlightKey.split('\u0000') : []);
     } catch {
       return undefined;
     }
-  }, [worksheet, questionId, language, version]);
+  }, [worksheet, questionId, language, version, highlightKey]);
 
   useEffect(() => {
     const frame = frameRef.current;

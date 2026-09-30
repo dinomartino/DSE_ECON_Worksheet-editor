@@ -1,7 +1,8 @@
-import { questionClipboardHtml } from '@/export/clipboard';
+import { highlightedNodes, questionClipboardHtml, questionClipboardNodes, type ClipboardNodeHtml } from '@/export/clipboard';
 import { cssFontFamilies } from '@/model/fonts';
 import { computeNumbering } from '@/model/numbering';
 import { contentWidth, pageSetupOf } from '@/model/page';
+import { questionTagSlots, slotHighlightIds } from '@/model/tagSlots';
 import type { LanguageMode, OutputMode, VersionMode, Worksheet } from '@/model/types';
 import { diagramImages } from '@/components/start/thumbnail';
 
@@ -14,6 +15,10 @@ import { diagramImages } from '@/components/start/thumbnail';
  * The question is rendered alone in its own document's page setup and fonts, under the
  * number it has in that document (the facts say "Q24", so the paper does too). Answer
  * space is left out: a preview is for reading, not writing in.
+ *
+ * `highlight` names parts (tag slot keys, `model/tagSlots.ts`) to mark: the part that tests
+ * the topic being browsed. The mark is the preview's own wrapper around the clipboard's
+ * nodes; the clipboard never carries it.
  */
 
 /** A copy of `worksheet` holding only this question, with nothing that prints around it. */
@@ -48,21 +53,41 @@ const PREVIEW_CSS =
   '.sheet [data-ai-mark]{text-decoration-line:underline;text-decoration-thickness:1.5px;text-underline-offset:3px;text-decoration-skip-ink:none;border-radius:2px}' +
   '.sheet [data-ai-mark="inserted"]{background-color:#eef6fc;text-decoration-color:#0d77c9}' +
   '.sheet [data-ai-mark="look"]{background-color:#fdf1d8;text-decoration-color:#c27c0e}' +
-  '.sheet [data-ai-mark="finding"]{text-decoration-style:wavy;text-decoration-thickness:1px;text-decoration-color:#c27c0e}';
+  '.sheet [data-ai-mark="finding"]{text-decoration-style:wavy;text-decoration-thickness:1px;text-decoration-color:#c27c0e}' +
+  // The part that tests the topic being browsed: a green highlighter wash with a rule in the
+  // margin, drawn by shadows so the text never moves. Screen only; ✦ marks sit on top.
+  '.sheet [data-part-mark]{background-color:#eef6e9;box-shadow:-10px 0 0 #eef6e9,10px 0 0 #eef6e9,-13px 0 0 #6f9f5a}';
 
 const bodyOf = (html: string) => /<body style="[^"]*">([\s\S]*)<\/body>/.exec(html)?.[1] ?? '';
+
+/** The nodes joined as the clipboard joins them, each highlighted run wrapped in one `data-part-mark` block. */
+function markedBody(nodes: readonly ClipboardNodeHtml[], ids: ReadonlySet<string>): string {
+  const marked = highlightedNodes(
+    nodes.map((node) => node.target),
+    ids,
+  );
+  return nodes
+    .map((node, i) => `${marked[i] && !marked[i - 1] ? '<div data-part-mark>' : ''}${node.html}${marked[i] && !marked[i + 1] ? '</div>' : ''}`)
+    .join('');
+}
 
 export function questionPreviewHtml(
   worksheet: Worksheet,
   questionId: string,
   language: LanguageMode,
   version: VersionMode = 'teacher',
+  highlight: readonly string[] = [],
 ): QuestionPreview | undefined {
   const single = oneQuestionWorksheet(worksheet, questionId);
   if (!single) return undefined;
   const mode: OutputMode = { language, version, omitAnswerSpace: true };
   const number = computeNumbering(worksheet).byQuestionId.get(questionId)?.number;
-  const body = bodyOf(questionClipboardHtml(single, questionId, mode, diagramImages(single, mode), number));
+  const images = diagramImages(single, mode);
+  const ids = highlight.length > 0 ? slotHighlightIds(questionTagSlots(single.questions[0]), highlight) : undefined;
+  const body =
+    ids && ids.size > 0
+      ? markedBody(questionClipboardNodes(single, questionId, mode, images, number), ids)
+      : bodyOf(questionClipboardHtml(single, questionId, mode, images, number));
   // The clipboard writes its paste size (12pt); the page prints at the document's body size.
   const family = `font-family:${cssFontFamilies(worksheet.fonts, "'", ',')},serif;`;
   const printed = `${family}font-size:${worksheet.baseFontSize ?? 11}pt;`;

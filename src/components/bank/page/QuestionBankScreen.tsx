@@ -57,6 +57,7 @@ import {
   type BankFilters,
 } from './bankPage';
 import {
+  entryIndex,
   latestClassUsage,
   levelForSearch,
   levelUp,
@@ -165,6 +166,9 @@ export function QuestionBankScreen({
   const [level, setLevelState] = useState<BankLevel>(() => back?.level ?? readLevel());
   const [filters, setFilters] = useState<BankFilters>(back?.filters ?? DEFAULT_FILTERS);
   const [focusKey, setFocusKey] = useState<string | undefined>(back?.focusKey);
+  // Which heading the stage's question was reached under (`RailEntry.key`): a question listed
+  // twice is highlighted for the heading it was stepped to or clicked under.
+  const [focusEntry, setFocusEntry] = useState<string>();
   // The cart: kept per tab across Open in worksheet, Home and a reload (`bankCart.ts`).
   const cart = useBankCart();
   const picks = useMemo(() => cart.picks.map(rowKey), [cart.picks]);
@@ -273,10 +277,10 @@ export function QuestionBankScreen({
     return railSections(groupRows([...admitted, ...kept]), topic);
   }, [rows, filters, topic, level.kind, teacherText, aiTones]);
   const order = useMemo(() => railOrder(sections), [sections]);
-  const orderIndex = useMemo(() => new Map(order.map((group, index) => [group.rootId, index])), [order]);
   const candidate = focusKey ? byKey.get(focusKey) : undefined;
-  const focused = candidate && orderIndex.has(candidate.rootId) ? candidate : order[0]?.rows[0];
-  const index = focused ? (orderIndex.get(focused.rootId) ?? 0) : 0;
+  const candidateAt = entryIndex(order, candidate?.rootId, focusEntry);
+  const focused = candidate && candidateAt >= 0 ? candidate : order[0]?.group.rows[0];
+  const index = candidate && candidateAt >= 0 ? candidateAt : 0;
 
   const untagged = useMemo(
     () =>
@@ -316,7 +320,9 @@ export function QuestionBankScreen({
   const step = useCallback(
     (delta: number) => {
       const next = order[Math.min(order.length - 1, Math.max(0, index + delta))];
-      if (next) setFocusKey(rowKey(next.rows[0]));
+      if (!next) return;
+      setFocusKey(rowKey(next.group.rows[0]));
+      setFocusEntry(next.key);
     },
     [order, index],
   );
@@ -777,7 +783,7 @@ export function QuestionBankScreen({
           <BankAiMenu
             question={focused}
             list={pickedByRoot}
-            shown={order.map((group) => group.rows[0])}
+            shown={[...new Map(order.map((entry) => [entry.group.rootId, entry.group.rows[0]])).values()]}
             teacherText={teacherText}
             disabled={aiPhase.kind === 'running' || (aiPhase.kind === 'review' && Boolean(aiPhase.busy))}
             onRun={runAi}
@@ -856,7 +862,10 @@ export function QuestionBankScreen({
           stageAi={stageAi}
           fullGroup={focused ? fullGroups.get(focused.rootId) : undefined}
           empty={emptyReview}
-          onFocus={(row) => setFocusKey(rowKey(row))}
+          onFocus={(row, entry) => {
+            setFocusKey(rowKey(row));
+            if (entry) setFocusEntry(entry);
+          }}
           onStep={step}
           onPick={togglePick}
           onRailHidden={setRailHidden}

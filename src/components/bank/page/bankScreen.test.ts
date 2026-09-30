@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { groupRows } from '@/library/group';
-import { row } from '@/library/testKit';
+import { rowsOf } from '@/library/indexer';
+import type { SlotQuery } from '@/library/slotMatch';
+import { docWith, partedQuestion, row } from '@/library/testKit';
+import { cartTopicLabel } from './bankCart';
 import {
+  alsoInText,
+  entryIndex,
+  partsTesting,
+  testsThisText,
+  testsWhatText,
+  topicsByPart,
   latestClassUsage,
   levelForSearch,
   levelUp,
@@ -57,17 +66,41 @@ describe('railSections', () => {
       row({ rootId: 'ped2', tags: ['C.ped', 'C.equilibrium'], docUpdatedAt: '2025-12-01T00:00:00.000Z' }),
     ]);
     const sections = railSections(groups, 'C');
-    expect(sections.map((s) => [s.key, s.label, s.groups.map((g) => g.rootId)])).toEqual([
-      ['C.equilibrium', 'Demand, supply and price', ['eq']],
+    expect(sections.map((s) => [s.key, s.label, s.entries.map((e) => e.group.rootId)])).toEqual([
+      ['C.equilibrium', 'Demand, supply and price', ['eq', 'ped2']],
       ['C.ped', 'Price elasticity of demand', ['ped', 'ped2']],
       ['general', 'General', ['coarse']],
     ]);
-    expect(railOrder(sections).map((g) => g.rootId)).toEqual(['eq', 'ped', 'ped2', 'coarse']);
+    expect(railOrder(sections).map((e) => e.group.rootId)).toEqual(['eq', 'ped2', 'ped', 'ped2', 'coarse']);
   });
 
-  it('a question under two sub-topics sits once, under its first tag', () => {
+  it('a question under two sub-topics is listed under each, saying where else', () => {
     const groups = groupRows([row({ rootId: 'x', tags: ['C.pes', 'C.ped'] })]);
-    expect(railSections(groups, 'C').map((s) => s.key)).toEqual(['C.pes']);
+    const sections = railSections(groups, 'C');
+    // Guide order: PED before PES, whatever order the tags were given in.
+    expect(sections.map((s) => [s.key, s.entries.map((e) => e.alsoIn)])).toEqual([
+      ['C.ped', [['Price elasticity of supply']]],
+      ['C.pes', [['Price elasticity of demand']]],
+    ]);
+    const order = railOrder(sections);
+    expect(new Set(order.map((e) => e.key)).size).toBe(2);
+    expect(order.map((e) => e.query)).toEqual([{ topic: 'C.ped' }, { topic: 'C.pes' }]);
+  });
+
+  it('All questions lists a question under every coarse topic it touches', () => {
+    const groups = groupRows([row({ rootId: 'x', tags: ['C.ped', 'I.fiscal'] })]);
+    const sections = railSections(groups, 'all');
+    expect(sections.map((s) => [s.key, s.entries.map((e) => [e.query, e.alsoIn])])).toEqual([
+      ['C', [[{ topic: 'C' }, ['I · Macroeconomic Problems and Policies']]]],
+      ['I', [[{ topic: 'I' }, ['C · Market and Price']]]],
+    ]);
+  });
+
+  it('General asks after the coarse topic, No topic after nothing', () => {
+    const general = railSections(groupRows([row({ rootId: 'g', tags: ['C'] })]), 'C');
+    expect(general[0].entries[0].query).toEqual({ topic: 'C' });
+    const none = railSections(groupRows([row({ rootId: 'n', tags: ['mine'] })]), 'all');
+    expect(none[0].entries[0].query).toBeUndefined();
   });
 
   it('search results and All questions are sectioned by coarse topic, untagged last', () => {
@@ -147,5 +180,93 @@ describe('suggestTopics', () => {
     expect(suggestionLabel('H.money-supply')).toEqual({ code: 'H', name: 'Money supply', zh: '貨幣供應' });
     expect(suggestionLabel('C')).toEqual({ code: 'C', name: 'Market and Price', zh: '市場與價格' });
     expect(suggestionLabel('C.new')).toEqual({ code: 'C.new', name: 'C.new' });
+  });
+});
+
+describe('a question tagged by part on the review page', () => {
+  // (a) Law of demand, its (ii) on PED of its own; (b) Fiscal policy.
+  const question = partedQuestion([{ tags: ['C.law-of-demand'], subs: [undefined, ['C.ped']] }, { tags: ['I.fiscal'] }]);
+  const [lq] = rowsOf(docWith([question]));
+  const labels = (query: SlotQuery) => partsTesting(lq, query).map((slot) => slot.label);
+
+  it('is listed under each sub-topic of the topic, each entry naming the other', () => {
+    const sections = railSections(groupRows([lq]), 'C');
+    expect(sections.map((s) => [s.key, s.entries.map((e) => [e.query, e.alsoIn])])).toEqual([
+      ['C.law-of-demand', [[{ topic: 'C.law-of-demand' }, ['Price elasticity of demand']]]],
+      ['C.ped', [[{ topic: 'C.ped' }, ['Law of demand']]]],
+    ]);
+    expect(alsoInText(sections[0].entries[0].alsoIn)).toBe('Also in Price elasticity of demand');
+    expect(alsoInText([])).toBeUndefined();
+  });
+
+  it('says which part tests the heading, a part standing for its sub-parts when all match', () => {
+    expect(labels({ topic: 'C.law-of-demand' })).toEqual(['(a)(i)']);
+    expect(labels({ topic: 'C.ped' })).toEqual(['(a)(ii)']);
+    expect(labels({ topic: 'C' })).toEqual(['(a)']);
+    expect(labels({ topic: 'I' })).toEqual(['(b)']);
+    // Every part, or none: nothing to say.
+    expect(labels({ topic: 'J' })).toEqual([]);
+    expect(partsTesting(lq, undefined)).toEqual([]);
+    const [whole] = rowsOf(docWith([partedQuestion([{ tags: ['C.ped'] }, { tags: ['C.ped'] }])]));
+    expect(partsTesting(whole, { topic: 'C.ped' })).toEqual([]);
+  });
+
+  it('reads in plain words', () => {
+    expect(testsThisText(['(a)'])).toBe('Part (a) tests this');
+    expect(testsThisText(['(a)(ii)', '(c)'])).toBe('Parts (a)(ii) and (c) test this');
+    expect(testsThisText(['(a)', '(b)', '(d)'])).toBe('Parts (a), (b) and (d) test this');
+    expect(testsThisText([])).toBeUndefined();
+    expect(testsWhatText(['(a)(ii)'], { topic: 'C.ped' })).toBe('Part (a)(ii) tests Price elasticity of demand');
+    expect(testsWhatText(['(a)', '(b)'], { pattern: { topic: 'C.ped', typeId: lq.typeId, name: 'Calculate PED' } })).toBe(
+      'Parts (a) and (b) test Calculate PED',
+    );
+    expect(testsWhatText([], { topic: 'C' })).toBeUndefined();
+  });
+
+  it('lists a question once per 題型 it carries for the sub-topic, parts apart', () => {
+    const two = partedQuestion([{ tags: ['C.ped', 'C.ped::Calculate PED'] }, { tags: ['C.ped', 'C.ped::Factors'] }]);
+    const [row2] = rowsOf(docWith([two]));
+    const [ped] = railSections(groupRows([row2]), 'C.ped');
+    expect(ped.parts!.map((p) => [p.label, p.entries.map((e) => e.alsoIn)])).toEqual([
+      ['Calculate PED', [['Factors']]],
+      ['Factors', [['Calculate PED']]],
+    ]);
+    expect(ped.parts!.map((p) => partsTesting(row2, p.entries[0].query).map((slot) => slot.label))).toEqual([['(a)'], ['(b)']]);
+    // Keys are unique and safe in a DOM attribute and a selector.
+    const keys = ped.entries.map((e) => e.key);
+    expect(new Set(keys).size).toBe(2);
+    expect(keys.some((key) => key.includes('\u0000'))).toBe(false);
+    // The sub-topic itself: every part tests it, so nothing is said.
+    expect(partsTesting(row2, { topic: 'C.ped' })).toEqual([]);
+  });
+
+  it('steps through entries, and the stage keeps the heading it was reached under', () => {
+    const order = railOrder(railSections(groupRows([lq, row({ rootId: 'other', tags: ['C.ped'] })]), 'C'));
+    expect(order.map((e) => e.group.rootId)).toEqual([lq.rootId, lq.rootId, 'other']);
+    expect(entryIndex(order, lq.rootId, order[1].key)).toBe(1);
+    expect(entryIndex(order, lq.rootId, undefined)).toBe(0);
+    expect(entryIndex(order, lq.rootId, order[2].key)).toBe(0);
+    expect(entryIndex(order, 'gone', undefined)).toBe(-1);
+    expect(entryIndex(order, undefined, order[0].key)).toBe(-1);
+  });
+
+  it('shows its topics by part, and as one list when every part tests the same', () => {
+    expect(topicsByPart(lq)).toEqual([
+      { label: '(a)(i)', tags: ['C.law-of-demand'] },
+      { label: '(a)(ii)', tags: ['C.ped'] },
+      { label: '(b)', tags: ['I.fiscal'] },
+    ]);
+    const [same] = rowsOf(docWith([partedQuestion([{ tags: ['C.ped'], subs: [undefined, ['C.ped']] }, { tags: ['I.fiscal'] }])]));
+    expect(topicsByPart(same)).toEqual([
+      { label: '(a)', tags: ['C.ped'] },
+      { label: '(b)', tags: ['I.fiscal'] },
+    ]);
+    const [whole] = rowsOf(docWith([partedQuestion([{ tags: ['C.ped'] }, { tags: ['C.ped'] }])]));
+    expect(topicsByPart(whole)).toBeUndefined();
+    expect(topicsByPart(row({ tags: ['C.ped'] }))).toBeUndefined();
+  });
+
+  it('reads in the cart by its first part’s topic', () => {
+    expect(cartTopicLabel(lq.tags)).toBe('C · Law of demand +2');
   });
 });
