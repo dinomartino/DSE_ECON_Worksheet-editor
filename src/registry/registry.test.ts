@@ -14,6 +14,9 @@ import { bi } from '@/model/text';
 import { patch, type TextSlot } from '@/model/textSlots';
 import { collectTexts, mapWorksheetTexts } from '@/model/textWalk';
 import type { StructuredQuestion } from '@/model/types';
+import { partRootOf, questionIdOwners } from '@/model/lineage';
+import { questionTagSlots } from '@/model/tagSlots';
+import { richMcq, richStructured } from '@/test/idFixture';
 import { getQuestionType, listQuestionTypes, requireQuestionType, type QuestionTypeDefinition } from '.';
 
 /**
@@ -132,6 +135,22 @@ describe('question-type registry (§9)', () => {
     }
   });
 
+  it('keys every tag slot by a part’s root, and writes a slot’s list back where it read it', () => {
+    // Part roots are stamped structurally (`copyQuestion` walks the `part` owners), so a
+    // type's slots must be exactly those owners, or copies would not agree on a part.
+    for (const question of [richStructured(), richMcq(), ...listQuestionTypes().map((type) => type.create() as Question)]) {
+      const definition = requireQuestionType(question);
+      const owners = [...questionIdOwners(question)].filter((entry) => entry.space === 'part').map((entry) => partRootOf(entry.owner));
+      const slots = questionTagSlots(question);
+      expect(slots.map((slot) => slot.key), definition.id).toEqual(slots.length > 0 ? owners : []);
+      if (slots.length === 0) continue;
+      const owns = new Map(slots.map((slot, index) => [slot.key, [`X.s${index}`]] as const));
+      const written = definition.withSlotTags!(question, owns);
+      expect(questionTagSlots(written).map((slot) => slot.own)).toEqual(slots.map((_, index) => [`X.s${index}`]));
+      expect(definition.withSlotTags!(written, new Map())).toBe(written);
+    }
+  });
+
   it('throws loudly on an unknown type instead of silently dropping a question', () => {
     expect(getQuestionType('nope')).toBeUndefined();
     expect(() => requireQuestionType({ type: 'nope' } as unknown as Question)).toThrow(/Unknown question type/);
@@ -159,6 +178,7 @@ describe('question-type registry (§9)', () => {
       'src/model/symbols.ts',
       'src/model/lineage.ts',
       'src/model/dedupeIds.ts',
+      'src/model/tagSlots.ts',
     ];
     for (const path of shared) {
       const source = readFileSync(path, 'utf8');

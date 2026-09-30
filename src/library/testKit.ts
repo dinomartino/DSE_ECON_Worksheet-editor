@@ -1,6 +1,13 @@
-import { createMcqQuestion, createParagraphBlock, createStructuredQuestion, createWorksheet } from '@/model/factories';
+import {
+  createMcqQuestion,
+  createParagraphBlock,
+  createPart,
+  createStructuredQuestion,
+  createSubPart,
+  createWorksheet,
+} from '@/model/factories';
 import { bi } from '@/model/text';
-import type { Question, Worksheet } from '@/model/types';
+import type { Question, StructuredQuestion, Worksheet } from '@/model/types';
 import type { BankRow } from './types';
 
 /** Test-only builders for the bank's modules. */
@@ -18,6 +25,37 @@ export function partsQuestion(en: string, zh = ''): Question {
   const question = createStructuredQuestion();
   question.blocks = [createParagraphBlock(bi(en, zh))];
   return question;
+}
+
+/** One part for `partedQuestion`: its own tags, and each sub-part's (`undefined`: none of its own). */
+export interface PartSpec {
+  tags?: string[];
+  subs?: (string[] | undefined)[];
+}
+
+/**
+ * A structured question with a part per spec, in order, each part and sub-part holding the
+ * given `tags` (absent when not given) and a paragraph naming it ("Part 1", "Part 1.2").
+ */
+export function partedQuestion(specs: readonly PartSpec[], tags?: string[], en = 'A market for rice.'): StructuredQuestion {
+  const question = createStructuredQuestion();
+  question.blocks = [createParagraphBlock(bi(en, ''))];
+  question.parts = specs.map((spec, index) => {
+    const part = createPart();
+    part.blocks = [createParagraphBlock(bi(`Part ${index + 1}`, ''))];
+    if (spec.tags) part.tags = spec.tags;
+    if (spec.subs) {
+      delete part.marks;
+      part.subParts = spec.subs.map((subTags, subIndex) => {
+        const sub = createSubPart();
+        sub.blocks = [createParagraphBlock(bi(`Part ${index + 1}.${subIndex + 1}`, ''))];
+        if (subTags) sub.tags = subTags;
+        return sub;
+      });
+    }
+    return part;
+  });
+  return tags ? { ...question, tags } : question;
 }
 
 /** A saved document holding `questions` in that order. */

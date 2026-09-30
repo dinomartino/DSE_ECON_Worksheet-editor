@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { richMcq, richStructured } from '@/test/idFixture';
 import { resolveDiagram } from './diagramAnchors';
-import { copyQuestion, freshIds } from './lineage';
+import { copyQuestion, freshIds, partRootOf, withoutLineage } from './lineage';
+import { questionTagSlots } from './tagSlots';
 
 /** Every `id` in a value, except those inside a diagram's own geometry. */
 function ids(value: unknown, out: string[] = []): string[] {
@@ -101,5 +102,49 @@ describe('copyQuestion', () => {
   it('roots a copy at the question itself when rootId is not a string', () => {
     const odd = { ...richMcq(), lineage: { rootId: 42 } } as unknown as ReturnType<typeof richMcq>;
     expect(copyQuestion(odd).lineage!.rootId).toBe(odd.id);
+  });
+});
+
+describe('part roots', () => {
+  const partKeys = (question: ReturnType<typeof richStructured>) =>
+    question.parts.flatMap((part) => [part, ...(part.subParts ?? [])].map((leaf) => leaf.rootId));
+
+  it('stamps every part and sub-part of a copy with its source’s root, through a copy of a copy', () => {
+    const original = richStructured();
+    const leaves = original.parts.flatMap((part) => [part, ...(part.subParts ?? [])]);
+    const first = copyQuestion(original, 'doc-a');
+    expect(partKeys(first)).toEqual(leaves.map((leaf) => leaf.id));
+    expect(partKeys(copyQuestion(first))).toEqual(leaves.map((leaf) => leaf.id));
+    expect(partKeys(original)).toEqual(leaves.map(() => undefined)); // the source is untouched
+    // Its slots are the source's: every copy agrees on "part (b)".
+    expect(questionTagSlots(first).map((slot) => slot.key)).toEqual(questionTagSlots(original).map((slot) => slot.key));
+  });
+
+  it('keeps part roots verbatim on an in-document duplicate, and gives a multiple-choice copy none', () => {
+    const copy = copyQuestion(richStructured());
+    expect(partKeys(freshIds(copy))).toEqual(partKeys(copy));
+    const mcq = copyQuestion(richMcq());
+    expect(mcq.options.every((option) => !('rootId' in option))).toBe(true);
+    expect(Object.keys(mcq).filter((key) => key === 'rootId')).toEqual([]);
+  });
+
+  it('reads a root that is not a string as absent', () => {
+    expect(partRootOf({ id: 'p', rootId: 7 })).toBe('p');
+    expect(partRootOf({ id: 'p', rootId: '' })).toBe('p');
+    expect(partRootOf({ id: 'p', rootId: 'r' })).toBe('r');
+  });
+
+  it('treating a question as new drops its lineage and its part roots, and nothing else', () => {
+    const copy = { ...copyQuestion(richStructured(), 'doc-a'), tags: ['mock'] };
+    copy.parts[0].tags = ['C.ped'];
+    const loose = withoutLineage(copy);
+    expect(loose.lineage).toBeUndefined();
+    expect(partKeys(loose).every((key) => key === undefined)).toBe(true);
+    expect(loose.parts[0].tags).toEqual(['C.ped']);
+    expect(loose.tags).toEqual(['mock']);
+    expect(loose.id).toBe(copy.id);
+    expect(copy.lineage).toBeDefined(); // the input is untouched
+    const plain = richStructured();
+    expect(withoutLineage(plain)).toBe(plain);
   });
 });

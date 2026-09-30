@@ -23,11 +23,11 @@ import { computeNumbering } from '@/model/numbering';
 import { worksheetMarks } from '@/model/marks';
 import { renderWorksheet } from '@/render/worksheet';
 import { resolveFlow } from '@/model/flow';
-import { createMcqQuestion } from '@/model/factories';
+import { createMcqQuestion, createStructuredQuestion, createSubPart } from '@/model/factories';
 import { copyQuestion } from '@/model/lineage';
 import { parsePatternTag } from '@/model/patterns';
 import { bi } from '@/model/text';
-import type { McqQuestion, OutputMode } from '@/model/types';
+import type { McqQuestion, OutputMode, StructuredQuestion } from '@/model/types';
 
 const MODE: OutputMode = { language: 'bilingual', version: 'student' };
 
@@ -225,6 +225,46 @@ describe('a document saved by the published build still opens', () => {
     expect(reloaded.questions.slice(0, -1)).toEqual(loaded.questions);
     expect(reloaded.questions.at(-1)!.tags).toEqual(tags);
     expect(parsePatternTag(reloaded.questions.at(-1)!.tags![1])).toEqual({ topic: 'C.ped', name: 'Calculate PED from a change in TR' });
+  });
+
+  it('carries part and sub-part topics and roots through load → save → load', () => {
+    // Nested question fields have no KNOWN_KEYS either: `migrate` reads top-level keys only.
+    const loaded = migrate(structuredClone(v1Corpus));
+    expect(JSON.stringify(loaded.questions)).not.toMatch(/"rootId"|"tags"/);
+
+    const question = copyQuestion(createStructuredQuestion(), 'doc-source');
+    const sub = createSubPart();
+    question.parts[0] = { ...question.parts[0], tags: ['C.ped', 'C.ped::Explain PED'], subParts: [{ ...sub, tags: ['D'], rootId: 'root-sub' }] };
+    question.tags = ['mock 2025'];
+    const edited = { ...loaded, questions: [...loaded.questions, question] };
+
+    const reloaded = migrate(JSON.parse(JSON.stringify(serializeWorksheet(edited))));
+    expect(reloaded.__unknown).toBeUndefined();
+    expect(reloaded.questions.slice(0, -1)).toEqual(loaded.questions);
+    const back = reloaded.questions.at(-1) as StructuredQuestion;
+    expect(back.parts[0].tags).toEqual(['C.ped', 'C.ped::Explain PED']);
+    expect(back.parts[0].rootId).toBe(question.parts[0].rootId);
+    expect(back.parts[0].subParts![0]).toMatchObject({ tags: ['D'], rootId: 'root-sub' });
+    expect(back.tags).toEqual(['mock 2025']);
+  });
+
+  it('keeps part topics and roots through v0.5.0’s duplicate, which spreads parts', () => {
+    // v0.5.0's `withFreshIds` (src/store/worksheetStore.ts at the tag), verbatim in shape:
+    // the released build a document with part fields may be opened and edited in.
+    const v050Duplicate = (question: StructuredQuestion): StructuredQuestion => ({
+      ...question,
+      id: 'new-q',
+      parts: question.parts.map((part, i) => ({
+        ...part,
+        id: `new-p${i}`,
+        subParts: part.subParts?.map((sub, j) => ({ ...sub, id: `new-s${i}.${j}` })),
+      })),
+    });
+    const question = copyQuestion(createStructuredQuestion(), 'doc-source');
+    question.parts[0] = { ...question.parts[0], tags: ['C.ped'], subParts: [{ ...createSubPart(), tags: ['D'], rootId: 'root-sub' }] };
+    const copy = v050Duplicate(question);
+    expect(copy.parts[0]).toMatchObject({ tags: ['C.ped'], rootId: question.parts[0].rootId });
+    expect(copy.parts[0].subParts![0]).toMatchObject({ tags: ['D'], rootId: 'root-sub' });
   });
 
   it('carries the bank fields (kind, classes, satOn, bankHidden) through load → save → load', () => {
