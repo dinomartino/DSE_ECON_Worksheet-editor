@@ -44,17 +44,16 @@ function showNotice(
 }
 
 /**
- * `[mark] Worksheets › name`: the mark and word are one button home to the start screen.
- * Below 1440px the word and chevron fold away, so the crumb adds no width at laptop
- * sizes; the mark keeps the name. It is the editor's one route home.
+ * `[mark] Econ Studio › name`: one button home to the start screen, the editor's only route
+ * there. Below 1440px the word and chevron fold away; the mark keeps the label.
  */
 export function HomeCrumb({ onOpenFiles }: { onOpenFiles: () => void }) {
   return (
     <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1">
       <button
         type="button"
-        aria-label="All worksheets"
-        title="All worksheets"
+        aria-label="Econ Studio home"
+        title="Econ Studio home"
         onClick={onOpenFiles}
         className="flex shrink-0 cursor-pointer items-center gap-2 rounded-md p-1 text-[13px] font-medium text-ink-muted transition-[background-color,color,scale] duration-150 ease-out-soft hover:bg-surface-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97] min-[1440px]:pr-2"
       >
@@ -62,7 +61,7 @@ export function HomeCrumb({ onOpenFiles }: { onOpenFiles: () => void }) {
         <span className="flex text-ink">
           <AppMark size={22} />
         </span>
-        <span className="hidden min-[1440px]:inline">Worksheets</span>
+        <span className="hidden min-[1440px]:inline">Econ Studio</span>
       </button>
       <ChevronRightIcon size={13} className="hidden shrink-0 text-ink-subtle min-[1440px]:block" />
       <DocumentName />

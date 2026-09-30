@@ -46,20 +46,20 @@ describe('Toolbar entry points', () => {
     expect(readOnly).not.toContain('data-ai-door');
   });
 
-  it('leads with a Worksheets crumb home, read-only documents included', () => {
+  it('leads with an Econ Studio crumb home, read-only documents included', () => {
     type Home = ReactElement<{ 'aria-label': string; onClick: () => void }>;
     const onOpenFiles = vi.fn();
     const crumb = HomeCrumb({ onOpenFiles }) as ReactElement<{ children: Home[] }>;
     const home = crumb.props.children[0];
-    expect(home.props['aria-label']).toBe('All worksheets');
+    expect(home.props['aria-label']).toBe('Econ Studio home');
     home.props.onClick();
     expect(onOpenFiles).toHaveBeenCalledOnce();
 
     useWorksheetStore.setState({ readOnly: true });
     const markup = renderToStaticMarkup(<Toolbar onOpenSettings={() => {}} onOpenFiles={() => {}} onClearAll={async () => {}} />);
-    expect(markup).toMatch(/<nav aria-label="Breadcrumb"[^>]*><button type="button" aria-label="All worksheets"/);
+    expect(markup).toMatch(/<nav aria-label="Breadcrumb"[^>]*><button type="button" aria-label="Econ Studio home"/);
     // Word and chevron fold away below 1440px, where the bar has no width to spare.
-    expect(markup).toContain('<span class="hidden min-[1440px]:inline">Worksheets</span>');
+    expect(markup).toContain('<span class="hidden min-[1440px]:inline">Econ Studio</span>');
   });
 
   it('stays one row from lg up: nothing wraps, the name is what gives way', () => {
