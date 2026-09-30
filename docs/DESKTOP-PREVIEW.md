@@ -134,6 +134,13 @@ On Windows, SmartScreen warns: **More info → Run anyway**.
 - **Keychain prompt.** Unsigned and dev builds ask "Econ Studio wants to use… your
   keychain" when an AI key is saved or read (the Keychain ties access to the code
   signature, which changes every build). Expected; signed releases don't ask.
+- **An `Econ Worksheet.app` renames itself.** Any build opened from a folder named
+  `Econ Worksheet.app` renames it `Econ Studio.app` and reopens (how a Mac updated from
+  0.5.0 gets the new name; `SYSTEM_ARCHITECTURE.md` § Desktop shell). It leaves it alone
+  when `Econ Studio.app` is already beside it, and tries each folder only once
+  (`~/Library/Application Support/hk.econworksheet.desktop/bundle-rename-attempted` lists
+  the folders tried; the reason for a skip is in
+  `~/Library/Logs/hk.econworksheet.desktop/bundle-rename.log`).
 - **Updates.** The build carries the version in `package.json`. "Check for updates"
   compares it with the latest *published* release, so an unreleased build of the same
   version says "Up to date" — expected.

@@ -125,6 +125,18 @@ GitHub turns the space in `Econ Studio` into a dot. Up to 0.5.0 the product was
 one Start-menu shortcut, no `%LOCALAPPDATA%\Econ Worksheet` folder, and the worksheet and
 key still there. The hook cannot be run on macOS.
 
+On a Mac, the updater installs 0.6.0 into the old `Econ Worksheet.app` folder; on the
+restart the app renames that folder to `Econ Studio.app` and reopens itself from there
+before any window shows. Finder, Launchpad and Spotlight then say Econ Studio.
+It leaves the old name alone, and says why in
+`~/Library/Logs/hk.econworksheet.desktop/bundle-rename.log`, when renaming would need an
+administrator password (a standard, non-admin account), when *Econ Studio* is already
+in the same folder, or when run from the `.dmg`. Either name runs the same app on the
+same data. To check the draft: on a Mac with 0.5.0 in Applications, update from inside
+the app, press Restart now, and expect `/Applications/Econ Studio.app` and no
+`Econ Worksheet.app`. A Dock icon usually follows the rename; if it shows a question
+mark, drag Econ Studio back into the Dock.
+
 No `latest.json`, or a missing `.sig`, means the signing secrets were absent — installed
 apps will not update. Fix the secrets and re-run the workflow rather than publishing.
 

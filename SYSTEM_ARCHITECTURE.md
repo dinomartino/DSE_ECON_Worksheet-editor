@@ -2978,9 +2978,16 @@ It names the `.app`, the menu, the release assets and, on Windows, the uninstall
 `%LOCALAPPDATA%` folder and shortcuts, so the renamed installer lands beside an old copy.
 `src-tauri/windows/hooks.nsh` (`NSIS_HOOK_POSTINSTALL`) runs that copy's uninstaller
 silently, which keeps app data, and recreates the shortcuts an `/UPDATE` run skips. The
-macOS updater unpacks into the running bundle's path, so an updated Mac keeps the folder
-`Econ Worksheet.app` (Finder and Dock say Econ Worksheet; the menu bar says Econ Studio);
-a fresh `.dmg` installs `Econ Studio.app`, sharing the same data.
+macOS updater unpacks into the running bundle's path, so an updated Mac first launches
+from `Econ Worksheet.app`; `src-tauri/src/bundle_rename.rs` then, before any window,
+renames that folder to `Econ Studio.app` and relaunches once via `open -n` (which also
+registers the new path with LaunchServices). It skips, and logs why to
+`~/Library/Logs/hk.econworksheet.desktop/bundle-rename.log`, unless the folder is exactly
+`Econ Worksheet.app`, is not translocated or under `/Volumes`, has no `Econ Studio.app`
+beside it, and sits in a folder the user can write without an administrator. One try
+per folder: its path is appended to `$APPDATA/bundle-rename-attempted` first (a test copy
+elsewhere never blocks the real one), and the relaunch carries `--econ-studio-renamed`. A
+failed relaunch renames the folder back and starts normally. A fresh `.dmg` installs `Econ Studio.app`, sharing the same data.
 
 **What's new** is `CHANGELOG.md`, bundled at build time (`scripts/sync-changelog.mjs` →
 `src/whatsNew/changelog.generated.ts`, committed, checked fresh by a test) — no server,

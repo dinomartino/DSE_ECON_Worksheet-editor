@@ -178,6 +178,7 @@ Invariants:
 - `src/platform/index.ts:chooseSavePath` · `:savePdf` — desktop PDF: the save sheet, then the shell's `print_to_pdf` command
 - `src/platform/index.ts:chooseSaveTarget` · `:chooseFolderTarget` · `:canChooseLocation` — ask where first (inside the click), write after the build; `src/platform/webPicker.ts` is the browser's Save As / folder picker (Chrome, Edge), the anchor download elsewhere
 - `src-tauri/src/pdf/mod.rs` — the one app command, `print_to_pdf` (path, page box, sheet count); `src-tauri/src/pdf/macos.rs` (WKWebView save job) · `src-tauri/src/pdf/windows.rs` (WebView2 `PrintToPdf`). Declared in `src-tauri/build.rs`, granted as `allow-print-to-pdf` in `src-tauri/capabilities/default.json`
+- `src-tauri/src/bundle_rename.rs:decide` · `:rename_legacy_bundle` — macOS, before any window: an updated `Econ Worksheet.app` renames itself `Econ Studio.app` and relaunches once, else logs why it skipped (`cargo test`)
 - `src/platform/index.ts:listenForFileDrops` · `:readDroppedFile` — Finder/Explorer file drops arrive as Tauri's native event, never HTML5 `drop`; effects use `:subscribeToFileDrops`, and every Tauri unlisten goes through `:unlistenSafely` (it can reject before the listener registers)
 - `src/storage/fileStore.ts:savedWorksheetPath` · `:savedWorksheetsFolder` · `src/storage/index.ts:pickWorksheetFile`
 - `src/desktop/updater.ts:checkForUpdate` · `:currentVersion` · `src/desktop/updateStore.ts:checkOnLaunch` — one check per launch
