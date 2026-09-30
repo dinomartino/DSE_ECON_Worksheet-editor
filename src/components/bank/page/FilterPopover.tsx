@@ -5,6 +5,7 @@ import { useModalLayer } from '@/components/ui/modalLayer';
 import { listQuestionTypes } from '@/registry';
 import { samePattern, type PatternItem } from '@/library/patterns';
 import { holdsPatterns } from '@/model/patterns';
+import { topicDisplay } from '@/model/topics';
 import {
   activeFilters,
   classChoiceText,
@@ -148,7 +149,8 @@ function Panel({
           onChange={(value) => set('pattern', patterns[Number(value)] ? toId(patterns[Number(value)]) : undefined)}
           options={[
             { value: '', label: patterns.length === 0 ? 'No 題型 yet' : 'Any 題型' },
-            ...patterns.map((item, index) => ({ value: String(index), label: patternOption(item, scope) })),
+            // Closed, the chosen 題型 reads by its name: the sub-topic would push it out of view.
+            ...patterns.map((item, index) => ({ value: String(index), label: patternOption(item, scope), closedLabel: patternOption(item, item.topic) })),
           ]}
         />
       </Field>
@@ -229,9 +231,9 @@ function patternValue(patterns: PatternItem[], filters: BankFilters): string {
   return at >= 0 ? String(at) : '';
 }
 
-/** "Calculate PED from TR · MCQ ×3"; the sub-topic code first unless the page is that sub-topic. */
+/** "Calculate PED from TR · MCQ ×3"; the sub-topic's name first unless the page is that sub-topic. */
 function patternOption(item: PatternItem, scope: string): string {
-  const where = holdsPatterns(scope) ? '' : `${item.topic} · `;
+  const where = holdsPatterns(scope) ? '' : `${topicDisplay(item.topic)} · `;
   return `${where}${item.name} · ${typeName(item.typeId)} ×${item.count}`;
 }
 

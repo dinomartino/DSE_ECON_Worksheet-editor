@@ -5,7 +5,7 @@ import { Button } from '@/components/ui';
 import { Dialog } from '@/components/ui/Dialog';
 import type { PatternId, PatternItem } from '@/library/patterns';
 import { cleanPatternName, matchPatternName, PATTERN_NAME_MAX, samePatternName } from '@/model/patterns';
-import { TOPICS, topicOf } from '@/model/topics';
+import { TOPICS, topicDisplay, type Topic } from '@/model/topics';
 import { listQuestionTypes } from '@/registry';
 import { escapeClears } from '../escapeClears';
 import { typeName } from './bankPage';
@@ -78,7 +78,7 @@ export function PatternsPage({
                   </option>
                   {topic.children.map((child) => (
                     <option key={child.code} value={child.code}>
-                      {child.code} · {child.en}
+                      {child.en}
                     </option>
                   ))}
                 </optgroup>
@@ -91,18 +91,18 @@ export function PatternsPage({
 
         {shown.length === 0 ? (
           <p className="text-[13px] text-ink-muted">
-            No 題型 {scope ? `in ${scope} ` : ''}yet. Add one above, or while you set a question&apos;s topic.
+            No 題型 {scope ? `in ${topicDisplay(scope)} ` : ''}yet. Add one above, or while you set a question&apos;s topic.
           </p>
         ) : (
           shown.map((child) => (
             <section
               key={child.code}
-              aria-label={`${child.code} ${child.en}`}
+              aria-label={child.en}
               className="rounded-[10px] border border-line bg-surface-raised px-4 pb-3 pt-3.5"
               data-pattern-topic={child.code}
             >
               <h2 className="flex flex-wrap items-baseline gap-x-2 text-[13.5px] text-ink">
-                <span className="tabular-nums text-ink-subtle">{child.code}</span>
+                <span className="tabular-nums text-ink-subtle">{child.parent}</span>
                 <span className="font-semibold">{child.en}</span>
                 <span className="text-ink-subtle">{child.zh}</span>
               </h2>
@@ -351,7 +351,7 @@ function NewPattern({
   busy,
   onCreate,
 }: {
-  subTopics: { code: string; en: string }[];
+  subTopics: Topic[];
   types: string[];
   items: PatternItem[];
   busy: boolean;
@@ -360,7 +360,9 @@ function NewPattern({
   const [topic, setTopic] = useState('');
   const [typeId, setTypeId] = useState(types[0] ?? '');
   const [name, setName] = useState('');
-  const chosenTopic = subTopics.some((child) => child.code === topic) ? topic : (subTopics[0]?.code ?? '');
+  // One sub-topic in view (the page is scoped to it) is the default; among several, the
+  // teacher chooses: a guessed first one files the 題型 under the wrong topic.
+  const chosenTopic = subTopics.some((child) => child.code === topic) ? topic : subTopics.length === 1 ? subTopics[0].code : '';
   const clean = cleanPatternName(name);
   // Same as the picker: a name differing only by case, spacing or punctuation is that one;
   // a close one is named, softly.
@@ -385,10 +387,21 @@ function NewPattern({
         onChange={(event) => setTopic(event.target.value)}
         className="h-8 w-[220px] cursor-pointer rounded-lg border border-line bg-surface px-2 text-[12.5px] text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
       >
-        {subTopics.map((child) => (
-          <option key={child.code} value={child.code}>
-            {child.code} · {topicOf(child.code)?.en}
+        {!chosenTopic && (
+          <option value="" disabled>
+            Choose a sub-topic
           </option>
+        )}
+        {TOPICS.filter((parent) => subTopics.some((child) => child.parent === parent.code)).map((parent) => (
+          <optgroup key={parent.code} label={`${parent.code} · ${parent.en}`}>
+            {subTopics
+              .filter((child) => child.parent === parent.code)
+              .map((child) => (
+                <option key={child.code} value={child.code}>
+                  {child.en}
+                </option>
+              ))}
+          </optgroup>
         ))}
       </select>
       <select
@@ -412,7 +425,7 @@ function NewPattern({
         onKeyDown={(event) => void escapeClears(event, name, () => setName(''))}
         className="h-8 min-w-[220px] flex-1 rounded-lg border border-line bg-surface px-2.5 text-[12.5px] text-ink outline-none placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
       />
-      <Button size="sm" type="submit" variant="primary" disabled={busy || !clean || Boolean(exists)}>
+      <Button size="sm" type="submit" variant="primary" disabled={busy || !clean || !chosenTopic || Boolean(exists)}>
         Add
       </Button>
       {exists && <span className="basis-full text-[11.5px] text-warn-ink">“{exists.name}” is already in this list.</span>}

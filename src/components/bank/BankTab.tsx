@@ -37,6 +37,7 @@ import { BankRow, typeLabel } from './BankRow';
 import { insertFromBank, type InsertReport } from './bankSession';
 import { useBankDrag, useBankRowDrag } from './bankDrag';
 import { emptySentence, typePlural } from './tabText';
+import { versionDiff } from './bankText';
 
 /**
  * The editor's 題庫 tab: find questions in the other saved documents and drag copies onto
@@ -129,6 +130,8 @@ export function BankTab() {
   const roots = useMemo(() => paperRoots(worksheet), [worksheet]);
   const documents = useMemo(() => fromDocuments(rows, ctx.openDocId), [rows, ctx.openDocId]);
   const hasBanks = documents.some((doc) => doc.kind === 'bank');
+  // Rows name their paper as the From list does: two called "Quiz" read apart.
+  const docLabels = useMemo(() => new Map(documents.map((doc) => [doc.docId, doc.title])), [documents]);
   // No anchor in an empty sectioned document still lands in its first section.
   const anchor = anchorLabel(worksheet, anchorId ?? unanchoredQuestionAfter(worksheet));
   // Nothing to filter: the empty state stands alone rather than under inert controls.
@@ -271,6 +274,7 @@ export function BankTab() {
               <BankRow
                 row={row}
                 language={language}
+                docLabel={docLabels.get(row.docId)}
                 inPaper={inPaper ? { ...(inPaper.number !== undefined ? { number: inPaper.number } : {}) } : undefined}
                 usedWithClass={usedWith(group, paperRefs)}
                 versions={group.versions}
@@ -287,6 +291,8 @@ export function BankTab() {
                       key={version.questionId + version.docId}
                       row={version}
                       language={language}
+                      docLabel={docLabels.get(version.docId)}
+                      differs={versionDiff(version, row, language)}
                       drag={dragFor(version)}
                       dragging={draggingKey === rowKey(version)}
                       {...keyboardFor(version)}
@@ -383,7 +389,7 @@ export function BankTab() {
                 onChange={(value) => update({ notUsedWithClass: value === 'not' })}
                 className="flex-1"
               >
-                <option value="any">Any use</option>
+                <option value="any">Any class</option>
                 <option value="not">Not used with {classLabel}</option>
               </MiniSelect>
           )}

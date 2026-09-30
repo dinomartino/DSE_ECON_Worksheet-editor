@@ -1,5 +1,5 @@
 import { roundMinutes, MINUTES_PER_MARK } from '@/model/paperSummary';
-import { rollupTopic, topicLabel, topicOf, TOPICS } from '@/model/topics';
+import { rollupTopic, topicDisplay, topicHeading, topicLabel, topicOf, TOPICS } from '@/model/topics';
 import { getQuestionType, listQuestionTypes } from '@/registry';
 import { cohortLabel, schoolYearEnd, schoolYearLabel, type ClassTarget } from '@/library/cohort';
 import { refsOf, rowUsedWith } from '@/library/history';
@@ -72,6 +72,11 @@ export function isThin(total: number, max: number): boolean {
  */
 export function barPx(count: number, max: number, full: number): number {
   return count > 0 && max > 0 ? Math.max(2, (count / max) * full) : 0;
+}
+
+/** A topic card's filled width, in % of its track, on the same scale: never under 2% when not empty. */
+export function barPercent(count: number, max: number): number {
+  return count > 0 && max > 0 ? Math.max(2, (count / max) * 100) : 0;
 }
 
 /** One bar per coarse topic (A–J, EL1, EL2), each question counted once per topic it touches. */
@@ -273,7 +278,7 @@ export function activeFilters(filters: BankFilters): ActiveFilter[] {
   const active: ActiveFilter[] = [];
   if (filters.text.trim()) active.push({ key: 'text', label: `“${filters.text.trim()}”` });
   if (filters.topic === 'untagged') active.push({ key: 'topic', label: 'untagged' });
-  else if (filters.topic !== 'all') active.push({ key: 'topic', label: topicName(filters.topic) });
+  else if (filters.topic !== 'all') active.push({ key: 'topic', label: topicHeading(filters.topic) });
   if (filters.typeId) active.push({ key: 'typeId', label: typeName(filters.typeId) });
   if (filters.marks !== 'any') active.push({ key: 'marks', label: MARKS_BANDS.find((b) => b.value === filters.marks)?.label ?? '' });
   if (filters.notUsedWith) {
@@ -291,13 +296,6 @@ export function clearFilter(filters: BankFilters, key: keyof BankFilters): BankF
   if (key === 'typeId') return { ...filters, typeId: undefined };
   if (key === 'pattern') return { ...filters, pattern: undefined };
   return { ...filters, [key]: DEFAULT_FILTERS[key] };
-}
-
-/** "C · Price elasticity of demand" for a fine code, "C · Market and Price" for a coarse one. */
-export function topicName(code: string): string {
-  const topic = topicOf(code);
-  if (!topic) return code;
-  return `${topic.parent ?? topic.code} · ${topic.en}`;
 }
 
 /** The registry's short label ("MCQ", "LQ"); the plural reads fine unpluralised. */
@@ -354,9 +352,9 @@ export function traySummary(rows: readonly BankRow[]): TraySummary {
   };
 }
 
-/** "C.ped ×3, C.intervention ×1"; the first three, then "+N more". */
+/** "Price elasticity of demand ×3, Market intervention ×1"; the first three, then "+N more". */
 export function mixLabel(mix: TraySummary['mix'], shown = 3): string {
-  const head = mix.slice(0, shown).map(({ code, count }) => `${code} ×${count}`);
+  const head = mix.slice(0, shown).map(({ code, count }) => `${topicDisplay(code)} ×${count}`);
   const rest = mix.length - shown;
   return rest > 0 ? `${head.join(', ')} +${rest} more` : head.join(', ');
 }

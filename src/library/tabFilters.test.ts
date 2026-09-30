@@ -120,6 +120,18 @@ describe('versionRows / fromDocuments', () => {
     );
     expect(docs.map((d) => d.title)).toEqual(['B', 'A']);
   });
+
+  it('tells two documents of one title apart by the day they were sat', () => {
+    const docs = fromDocuments(
+      [
+        row({ docId: 'q1', docTitle: 'Quiz', usedOn: '2025-11-03', docUpdatedAt: '2' }),
+        row({ docId: 'q2', docTitle: 'Quiz', usedOn: '2026-03-12', docUpdatedAt: '1' }),
+        row({ docId: 'm', docTitle: 'Mock', docUpdatedAt: '0' }),
+      ],
+      'open',
+    );
+    expect(docs.map((d) => d.title)).toEqual(['Quiz · 3 Nov 2025', 'Quiz · 12 Mar 2026', 'Mock']);
+  });
 });
 
 describe('paperRoots — "In this paper · Qn"', () => {

@@ -2,6 +2,7 @@
 
 import { tagText } from '@/model/patterns';
 import { stringTags } from '@/model/topics';
+import { tagTitle, typeLabel } from '@/components/bank/BankRow';
 import { useEffect, useRef, useState } from 'react';
 import { copyForWord, questionClipboardHtml } from '@/export/clipboard';
 import { renderDiagramImages } from '@/export/diagramImage';
@@ -63,16 +64,12 @@ import { useShownTags } from './sharedTopics';
  * appears on hover or keyboard focus.
  */
 
-/** A stable short code per registered type, derived from the registry's display name. */
+/**
+ * The type as the rest of the app names it (the 題庫 tab, the bank, the paper summary):
+ * the registry's short label, "MCQ", "LQ", never a branch on the id.
+ */
 function typeBadge(question: Question): string {
-  const words = plain(requireQuestionType(question).displayName.en).split(/\s+/).filter(Boolean);
-  if (words.length === 0) return '?';
-  if (words.length === 1) return words[0].slice(0, 3).toUpperCase();
-  return words
-    .map((word) => word[0])
-    .join('')
-    .slice(0, 3)
-    .toUpperCase();
+  return typeLabel(question.type);
 }
 
 /* `LAYOUT_NAME` comes from `model/flow` — the rail, this outline and the add rail's
@@ -403,9 +400,9 @@ function QuestionRow({
       {tags.length > 0 && (
         <span
           className="max-w-[72px] shrink-0 truncate text-[10px] text-ink-subtle"
-          title={tags.map(tagText).join(', ')}
+          title={tagTitle(tags)}
         >
-          {tags.map(tagText).join(' ')}
+          {tags.map((tag) => tagText(tag)).join(' · ')}
         </span>
       )}
       <span className="shrink-0 text-[10px] tabular-nums text-ink-subtle">

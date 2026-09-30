@@ -16,6 +16,18 @@ describe('searchRows', () => {
     expect(searchRows(rows, {})).toEqual(rows);
   });
 
+  it('finds questions by the title of the paper they live in, word by word', () => {
+    const mock = row({ searchText: 'a tax on petrol', docId: 'm', docTitle: 'Mock 2026 Paper 1' });
+    const quiz = row({ searchText: 'the mock market', docId: 'q', docTitle: 'Quiz 2025' });
+    const all = [mock, quiz];
+    expect(searchRows(all, { text: 'Mock 2026' })).toEqual([mock]);
+    expect(searchRows(all, { text: 'mock' })).toEqual([mock, quiz]);
+    // A word may come from the title and another from the question.
+    expect(searchRows(all, { text: 'mock petrol' })).toEqual([mock]);
+    expect(searchRows(all, { text: 'paper 2' })).toEqual([mock]);
+    expect(searchRows(all, { text: 'Mock 2027' })).toEqual([]);
+  });
+
   it('filters by topic (coarse covers fine), type, marks and document', () => {
     expect(searchRows(rows, { topic: 'C' })).toEqual([elastic]);
     expect(searchRows(rows, { topic: 'C.pes' })).toEqual([]);

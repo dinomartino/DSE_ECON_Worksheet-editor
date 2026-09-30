@@ -23,8 +23,11 @@ describe('BankRow', () => {
     expect(out).toContain('Along a straight-line demand curve…');
     expect(out).toContain('MCQ');
     expect(out).toContain('1 mark<');
-    expect(out).toContain('C.ped · C.equilibrium');
-    expect(out).toContain('Mock 2025 · Q14');
+    expect(out).toContain('Price elasticity of demand · Demand, supply and price');
+    expect(out).not.toContain('C.ped');
+    expect(out).toContain('Mock 2025');
+    expect(out).toContain(' · Q14');
+    expect(out).toContain('title="Mock 2025 · Q14"');
     expect(out).not.toContain('<button');
     expect(out).not.toContain('text-warn-ink');
   });
@@ -55,6 +58,24 @@ describe('BankRow', () => {
 
   it('reads the paper’s language', () => {
     expect(html({ row: base, language: 'zh' })).toContain('沿直線需求曲線…');
+  });
+
+  it('names topics in the paper’s language, and a code this build does not list as stored', () => {
+    expect(html({ row: base, language: 'zh' })).toContain('需求價格彈性 · 需求、供應和價格的相互作用');
+    expect(html({ row: { ...base, tags: ['C.new', 'K', 'mock 2025'] } })).toContain('C.new · K · mock 2025');
+  });
+
+  it('keeps the question number when a long title is cut, and tells same-titled papers apart', () => {
+    const long = { ...base, docTitle: 'S6 Final Revision Package on Macroeconomic Problems and Policies', number: 5 };
+    const out = html({ row: long });
+    expect(out).toContain('<span class="min-w-0 truncate">S6 Final Revision Package on Macroeconomic Problems and Policies</span>');
+    expect(out).toContain('<span class="shrink-0 whitespace-pre"> · Q5</span>');
+    expect(html({ row: base, docLabel: 'Quiz · 12 Mar 2026' })).toContain('Quiz · 12 Mar 2026');
+  });
+
+  it('says how an edited version differs', () => {
+    expect(html({ row: base, differs: 'Says “…by 25% and…”' })).toContain('Says “…by 25% and…”');
+    expect(html({ row: base })).not.toContain('Says');
   });
 
   it('dims a question already in the paper and says where it is', () => {

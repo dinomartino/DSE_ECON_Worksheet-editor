@@ -74,7 +74,7 @@ export interface BankGroup {
 
 /** A filter over rows; every field optional, all given fields must hold. */
 export interface BankQuery {
-  /** Whitespace-separated words, each matched case-insensitively in either language. */
+  /** Whitespace-separated words, each matched case-insensitively in either language or in the paper's title. */
   text?: string;
   /** A topic code; a coarse code matches its fine codes (`matchesTopic`). */
   topic?: string;

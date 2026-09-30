@@ -1,4 +1,4 @@
-import { rollupTopic, topicOf, TOPICS } from '@/model/topics';
+import { rollupTopic, topicDisplay, topicOf, TOPICS } from '@/model/topics';
 import type { BankGroup, BankRow } from '@/library/types';
 import { refsOf, rowUsedWith } from '@/library/history';
 import { comparePatterns, rowPattern } from '@/library/patterns';
@@ -291,9 +291,9 @@ export function latestClassUsage(rows: readonly BankRow[]): ClassUsage | undefin
   };
 }
 
-/** The key's two lines: the coarse code, and the sub-topic's (or topic's) own name. */
-export function suggestionLabel(code: string): { code: string; name: string } {
+/** The key's lines: the coarse code, then the sub-topic's (or topic's) own name, in English and 中文. */
+export function suggestionLabel(code: string): { code: string; name: string; zh?: string } {
   const topic = topicOf(code);
   if (!topic) return { code, name: code };
-  return { code: topic.parent ?? topic.code, name: topic.en };
+  return { code: topic.parent ?? topic.code, name: topicDisplay(code, 'en'), zh: topicDisplay(code, 'zh') };
 }

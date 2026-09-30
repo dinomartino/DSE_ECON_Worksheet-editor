@@ -32,6 +32,11 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
   or trim, with the count, marks and MCQ/LQ split as you go. The list keeps while you open
   a question in its worksheet, go Home or reload the page, and empties once the questions
   are in a worksheet.
+  Topics show by name, in English and 中文 ("Law of demand 需求定律"), never as a code.
+  Each question in the list says which worksheet it lives in and its number, so copies and
+  questions that start alike read apart, and an edited version says what it changed.
+  Search finds questions by the name of their worksheet too (type "Mock 2026"). Each topic
+  card's bar is drawn to scale, so a topic with one question looks like one.
   Untagged questions get a quick tagging mode: press 1 to 6 to pick a suggested topic,
   Enter to save and see the next. Pressed the wrong key? Backspace, ⌘Z or Undo brings the
   last question back with its topic taken off. Open any question right where it sits in its worksheet,
@@ -41,7 +46,9 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
   you click, preferring ones your class has not seen. The list and Fill start on what your
   paper takes (MCQs on a Paper 1, LQs on a booklet or LQ worksheet, both on a classroom
   worksheet); add another type anyway and a short note says so. The new questions are
-  highlighted on the page, and one Undo takes the whole set back out.
+  highlighted on the page, and one Undo takes the whole set back out. Each question shows
+  the worksheet it comes from on a line of its own, and two worksheets with the same name
+  are told apart by date.
 - **Drag a question from the 題庫 tab onto the page.** While you drag, the page shows the
   result before you let go: the question sits where it would land, the questions after it
   renumber and the pages re-flow. Let go to insert it (one Undo takes it out); press Esc or

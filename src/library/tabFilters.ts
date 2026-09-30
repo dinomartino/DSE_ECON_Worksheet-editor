@@ -2,7 +2,8 @@ import { cleanClasses, dateOfUse } from '@/model/classes';
 import { flowItemLabel } from '@/model/flow';
 import { rootIdOf } from '@/model/lineage';
 import { computeNumbering } from '@/model/numbering';
-import { topicLabel } from '@/model/topics';
+import { topicHeading } from '@/model/topics';
+import { distinctDocLabels } from './docLabels';
 import type { Worksheet } from '@/model/types';
 import { classRefs, type ClassRef } from './cohort';
 import { groupRows } from './group';
@@ -126,16 +127,20 @@ export function anchorLabel(worksheet: Worksheet, anchorId: string | undefined):
   return flowItemLabel(worksheet, anchorId, (id) => numbering.byQuestionId.get(id)?.number);
 }
 
-/** The documents the From picker offers: every other document with rows, newest first. */
+/**
+ * The documents the From picker offers: every other document with rows, newest first.
+ * `title` tells two of one title apart (`distinctDocLabels`: "Quiz · 12 Mar 2026").
+ */
 export function fromDocuments(rows: readonly BankRow[], openDocId: string): Array<{ docId: string; title: string; kind: BankRow['docKind'] }> {
-  const seen = new Map<string, { docId: string; title: string; kind: BankRow['docKind']; at: string }>();
+  const seen = new Map<string, { row: BankRow; at: string }>();
   for (const row of rows) {
     if (row.docId === openDocId || seen.has(row.docId)) continue;
-    seen.set(row.docId, { docId: row.docId, title: row.docTitle, kind: row.docKind, at: row.docUpdatedAt });
+    seen.set(row.docId, { row, at: row.docUpdatedAt });
   }
+  const labels = distinctDocLabels([...seen.values()].map((entry) => entry.row));
   return [...seen.values()]
-    .sort((a, b) => (a.at !== b.at ? (a.at < b.at ? 1 : -1) : a.docId < b.docId ? -1 : 1))
-    .map(({ docId, title, kind }) => ({ docId, title, kind }));
+    .sort((a, b) => (a.at !== b.at ? (a.at < b.at ? 1 : -1) : a.row.docId < b.row.docId ? -1 : 1))
+    .map(({ row }) => ({ docId: row.docId, title: labels.get(row.docId) ?? row.docTitle, kind: row.docKind }));
 }
 
 export type FilterKey = 'text' | 'topic' | 'typeId' | 'marks' | 'notUsedWithClass' | 'from';
@@ -164,8 +169,7 @@ export function blockingFilter(rows: readonly BankRow[], filters: TabFilters, ct
   return activeFilters(filters, ctx).find((key) => visibleGroups(rows, clearFilter(filters, key), ctx).length > 0);
 }
 
-/** A topic as the tab names it: "C · Price elasticity of demand". */
+/** A topic as the tab names it: "C · Price elasticity of demand" (`topicHeading`). */
 export function topicName(code: string): string {
-  const coarse = code.split('.')[0];
-  return `${coarse} · ${topicLabel(code, 'en')}`;
+  return topicHeading(code);
 }

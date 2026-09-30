@@ -191,3 +191,28 @@ export function topicLabel(code: string, lang: TopicLang): string {
   const topic = topicOf(code);
   return topic ? topic[lang] : code;
 }
+
+/** Which names a label shows: one language, or both ("Law of demand 需求定律"). */
+export type TopicNames = TopicLang | 'both';
+
+/**
+ * **How a topic reads on screen**, everywhere: its name, never its slug ("Law of demand",
+ * or with `both`, "Law of demand 需求定律"). A code this build does not list (a later
+ * syllabus's `C.new`, or `K`) and a free tag read as stored (§ the tag grammar).
+ */
+export function topicDisplay(code: string, names: TopicNames = 'en'): string {
+  const topic = topicOf(code);
+  if (!topic) return code;
+  return names === 'both' ? `${topic.en} ${topic.zh}` : topic[names];
+}
+
+/**
+ * The name with its coarse letter first, where the topic is not otherwise clear: "C · Law
+ * of demand", "C · Market and Price". Also the full form for a tooltip behind a cut-off
+ * name. An unknown code or a free tag reads as stored.
+ */
+export function topicHeading(code: string, names: TopicNames = 'en'): string {
+  const topic = topicOf(code);
+  if (!topic) return code;
+  return `${topic.parent ?? topic.code} · ${topicDisplay(code, names)}`;
+}

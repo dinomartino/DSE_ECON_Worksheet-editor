@@ -8,8 +8,8 @@ import { CloseIcon } from '@/components/ui/icons';
 import { patternNames } from '@/library/patterns';
 import { useBank } from '@/library/useBank';
 import { usePatternRegistry } from '@/library/usePatterns';
-import { freeTagIssue, holdsPatterns, isPatternTag, parsePatternTag, patternsIn, withPattern, type FreeTagIssue } from '@/model/patterns';
-import { isTopicCode, stringTags, TOPICS, topicOf, type Topic } from '@/model/topics';
+import { freeTagIssue, holdsPatterns, isPatternTag, parsePatternTag, patternsIn, tagText, withPattern, type FreeTagIssue } from '@/model/patterns';
+import { isTopicCode, stringTags, TOPICS, topicHeading, topicOf, type Topic } from '@/model/topics';
 
 /** Does the topic match a typed query — by code, English or 中文? */
 function matches(topic: Topic, query: string): boolean {
@@ -99,10 +99,11 @@ export function TopicRow({
           disabled={chosen}
           onClick={() => add(topic.code)}
           className={`flex w-full cursor-pointer items-baseline gap-2 rounded-md py-1 pr-2 text-left text-xs text-ink transition-colors duration-150 ease-out-soft hover:bg-accent-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent ${
-            indent ? 'pl-5' : 'pl-1 font-medium'
+            indent ? 'pl-10' : 'pl-1 font-medium'
           }`}
         >
-          <span className="w-14 shrink-0 truncate tabular-nums text-ink-subtle">{topic.code}</span>
+          {/* A topic's letter; a sub-topic, indented under it, reads by its name alone. */}
+          {!indent && <span className="w-7 shrink-0 tabular-nums text-ink-subtle">{topic.code}</span>}
           <span className="min-w-0 flex-1">
             {topic.en}
             <span className="ml-1.5 font-normal text-ink-muted">{topic.zh}</span>
@@ -136,10 +137,11 @@ export function TopicRow({
             return (
               <li key={tag} className="text-xs text-ink-muted">
                 <div className="flex items-center gap-1">
-                  <span className="min-w-0 flex-1 truncate" title={topic ? `${topic.en} ${topic.zh}` : tag}>
+                  <span className="min-w-0 flex-1 truncate" title={topic ? topicHeading(tag, 'both') : tag}>
                     {topic ? (
                       <>
-                        <span className="tabular-nums text-ink-subtle">{tag}</span> {topic.en}
+                        <span className="tabular-nums text-ink-subtle">{topic.parent ?? topic.code}</span> {topic.en}{' '}
+                        <span className="text-ink-subtle">{topic.zh}</span>
                       </>
                     ) : isTopicCode(tag) ? (
                       // A code this version does not list (a later version's topic): its code.
@@ -148,7 +150,7 @@ export function TopicRow({
                       tag
                     )}
                   </span>
-                  <IconButton label={`Remove topic ${tag}`} onClick={() => remove(tag)}>
+                  <IconButton label={`Remove topic ${tagText(tag)}`} onClick={() => remove(tag)}>
                     <CloseIcon size={12} />
                   </IconButton>
                 </div>

@@ -5,6 +5,7 @@ import { IconButton } from '@/components/ui';
 import { CloseIcon } from '@/components/ui/icons';
 import { registerPatterns } from '@/library/usePatterns';
 import { samePatternName } from '@/model/patterns';
+import { topicDisplay } from '@/model/topics';
 import { patternOptions, stepActive, type PatternOption } from './patternOptions';
 
 /**
@@ -101,7 +102,7 @@ export function PatternPicker({
           <>
             <span className="min-w-0 truncate px-1 text-ink">No 題型</span>
             <span className="shrink-0 text-ink-subtle">· cleared on save</span>
-            <IconButton label={`Keep the ${kind} 題型 under ${topic}`} onClick={() => onChange(undefined, false)}>
+            <IconButton label={`Keep the ${kind} 題型 under ${topicDisplay(topic)}`} onClick={() => onChange(undefined, false)}>
               <CloseIcon size={11} />
             </IconButton>
           </>
@@ -147,7 +148,7 @@ export function PatternPicker({
         aria-controls={listId}
         aria-autocomplete="list"
         aria-activedescendant={active >= 0 ? optionId(active) : undefined}
-        aria-label={`${kind} 題型 for ${topic}`}
+        aria-label={`${kind} 題型 for ${topicDisplay(topic)}`}
         placeholder={`Pick an ${kind} 題型 or type a new one`}
         onChange={(event) => {
           setQuery(event.target.value);
@@ -170,7 +171,7 @@ export function PatternPicker({
         }}
         className="h-7 w-full rounded-md border border-line bg-surface px-2 text-[11.5px] text-ink outline-none transition-colors duration-150 ease-out-soft placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
       />
-      <ul id={listId} role="listbox" aria-label={`${kind} 題型 under ${topic}`} className="scroll-slim max-h-40 overflow-y-auto">
+      <ul id={listId} role="listbox" aria-label={`${kind} 題型 under ${topicDisplay(topic)}`} className="scroll-slim max-h-40 overflow-y-auto">
         {options.map((option, index) => (
           <li
             key={option.kind === 'name' ? `n:${option.name}` : option.kind}

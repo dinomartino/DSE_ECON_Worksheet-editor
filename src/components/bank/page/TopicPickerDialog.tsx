@@ -4,7 +4,8 @@ import { useMemo, useState } from 'react';
 import { Button, Segmented } from '@/components/ui';
 import { Dialog } from '@/components/ui/Dialog';
 import { holdsPatterns } from '@/model/patterns';
-import { TOPICS, topicOf, type Topic } from '@/model/topics';
+import { TOPICS, topicHeading, topicOf, type Topic } from '@/model/topics';
+import { countOf } from '../bankText';
 import { escapeClears } from '../escapeClears';
 import { PatternPicker } from '../PatternPicker';
 
@@ -129,7 +130,7 @@ export function TopicPickerDialog<M extends string = never>({
     if (patternRemoval) {
       if (carrying === 0) return null;
       return (
-        <label className="mb-1 ml-[100px] mr-2 flex cursor-pointer items-baseline gap-1.5 text-[11px] text-ink-muted">
+        <label className="mb-1 ml-[28px] mr-2 flex cursor-pointer items-baseline gap-1.5 text-[11px] text-ink-muted">
           <input
             type="checkbox"
             checked={onlyPattern.has(child.code)}
@@ -143,7 +144,7 @@ export function TopicPickerDialog<M extends string = never>({
             }
             className="h-3 w-3 shrink-0 translate-y-[1px] cursor-pointer accent-[var(--accent)]"
           />
-          Keep {child.code}, remove only its 題型
+          Keep {child.en}, remove only its 題型
           <span className="tabular-nums text-ink-subtle">(on {carrying})</span>
         </label>
       );
@@ -152,7 +153,7 @@ export function TopicPickerDialog<M extends string = never>({
     const canSet = patterns.typeId !== undefined;
     if (!canSet && !patterns.present?.get(child.code)) return null;
     return (
-      <div className="mb-1 ml-[100px] mr-2">
+      <div className="mb-1 ml-[28px] mr-2">
         <PatternPicker
           topic={child.code}
           kind={patterns.kind}
@@ -198,7 +199,7 @@ export function TopicPickerDialog<M extends string = never>({
           type="search"
           value={query}
           autoFocus
-          placeholder="Find a topic by name, code or 中文"
+          placeholder="Find a topic by name or 中文"
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={(event) => void escapeClears(event, query, () => setQuery(''))}
           className="h-8 w-full rounded-lg border border-line bg-surface px-2.5 text-[12.5px] text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
@@ -224,7 +225,7 @@ export function TopicPickerDialog<M extends string = never>({
                       className="shrink-0 cursor-pointer rounded px-1.5 py-0.5 text-[11px] tabular-nums text-ink-subtle hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                       aria-expanded={expanded}
                     >
-                      {expanded ? 'Hide' : `${topic.children.length} sub-topics`}
+                      {expanded ? 'Hide' : countOf(topic.children.length, 'sub-topic')}
                       {!expanded && countIn(topic, picked) > 0 && ` · ${countIn(topic, picked)} ticked`}
                     </button>
                   )}
@@ -262,8 +263,9 @@ function TopicCheck({ topic, checked, count, onToggle }: { topic: Topic; checked
         onChange={onToggle}
         className="h-3.5 w-3.5 shrink-0 translate-y-[2px] cursor-pointer accent-[var(--accent)]"
       />
-      <span className="w-[74px] shrink-0 truncate text-[11px] tabular-nums text-ink-subtle">{topic.code}</span>
-      <span className="min-w-0 flex-1">
+      {/* A topic's letter, which its card shows too; a sub-topic reads by its name alone. */}
+      {!topic.parent && <span className="w-7 shrink-0 text-[11px] font-semibold tabular-nums text-ink-subtle">{topic.code}</span>}
+      <span className="min-w-0 flex-1" title={topicHeading(topic.code, 'both')}>
         {topic.en} <span className="text-ink-subtle">{topic.zh}</span>
       </span>
       {count !== undefined && count > 0 && (

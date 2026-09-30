@@ -144,6 +144,7 @@ describe('already in this paper', () => {
     expect(addedSummary(3, 0)).toBe('3 questions added from 題庫');
     expect(addedSummary(3, 1)).toBe('3 questions added from 題庫. Skipped 1 already in this paper.');
     expect(nothingAddedText(1, 'Mock 2026 Paper 1')).toBe('That question is already in “Mock 2026 Paper 1”. Nothing was added.');
-    expect(nothingAddedText(2, 'Mock 2026 Paper 1')).toBe('All 2 questions are already in “Mock 2026 Paper 1”. Nothing was added.');
+    expect(nothingAddedText(2, 'Mock 2026 Paper 1')).toBe('Both questions are already in “Mock 2026 Paper 1”. Nothing was added.');
+    expect(nothingAddedText(3, 'Mock 2026 Paper 1')).toBe('All 3 questions are already in “Mock 2026 Paper 1”. Nothing was added.');
   });
 });
