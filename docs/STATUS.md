@@ -327,7 +327,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 - **2026-10-01** — Clean-up round 3 (above): 10 Opus worktree agents incl. integration QA,
   all merged to `develop`, 3272 tests, typecheck clean, lint 41, build + samples +
-  cover-verify + lq-verify pass. Nothing pushed yet.
+  cover-verify + lq-verify pass. Pushed; CI green.
 - **2026-09-30 (late night)** — UI polish round 2: four Opus worktree agents, merged to
   `develop`, 3234 tests, typecheck clean, lint 43, samples + cover-verify pass, merged
   whole screenshotted light/dark at 1440 and 1024. Nothing pushed.
