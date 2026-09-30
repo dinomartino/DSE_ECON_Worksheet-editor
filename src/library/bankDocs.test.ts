@@ -4,7 +4,7 @@ import { copyQuestion } from '@/model/lineage';
 import { bi } from '@/model/text';
 import { createParagraphBlock } from '@/model/factories';
 import type { Question, Worksheet } from '@/model/types';
-import { bankCopyDiffers, copyToBank, createBank, updateBankCopy } from './bankDocs';
+import { bankChoices, bankCopyDiffers, bankHolds, copyToBank, createBank, nextBankName, updateBankCopy } from './bankDocs';
 import { choiceQuestion, docWith } from './testKit';
 
 /** An in-memory store: only the calls bankDocs makes. */
@@ -30,7 +30,7 @@ describe('copyToBank', () => {
     const source = docWith([q]);
     const before = structuredClone(source);
     const { store, map } = memoryStore(source);
-    const bank = await copyToBank([q], source.id, undefined, { store, openDocId: source.id });
+    const { bank } = await copyToBank([q], source.id, undefined, { store, openDocId: source.id });
     expect(bank.kind).toBe('bank');
     expect(bank.title.en.map((r) => r.text).join('')).toBe('Question bank');
     expect(bank.questions).toHaveLength(1);
@@ -45,10 +45,47 @@ describe('copyToBank', () => {
     const existing = choiceQuestion('Old');
     const bank = { ...docWith([existing]), kind: 'bank' as const };
     const { store } = memoryStore(bank);
-    const next = await copyToBank([choiceQuestion('New')], 'paper', bank.id, { store, openDocId: 'paper' });
+    const { bank: next } = await copyToBank([choiceQuestion('New')], 'paper', bank.id, { store, openDocId: 'paper' });
     expect(next.questions[0]).toEqual(existing);
     expect(next.questions).toHaveLength(2);
     expect(next.flow).toHaveLength(2);
+  });
+
+  it('never copies a question into a bank that already holds it', async () => {
+    const q = choiceQuestion('Stem');
+    const paper = docWith([q], { id: 'paper' });
+    const { store, map, saves } = memoryStore(paper);
+    const { bank: made } = await copyToBank([q], 'paper', { name: 'Macro MCQ' }, { store, openDocId: 'paper' });
+    expect(saves).toHaveLength(1);
+
+    // The same question again: nothing copied, nothing saved.
+    const again = await copyToBank([q], 'paper', made.id, { store, openDocId: 'paper' });
+    expect(again).toMatchObject({ copied: 0, already: [q] });
+    expect(saves).toHaveLength(1);
+    expect(map.get(made.id)!.questions).toHaveLength(1);
+
+    // An edited copy of it (same root, new words) is the same question: Update bank copy, not a copy.
+    const edited = edit(copyQuestion(q, 'paper'), 'Better stem');
+    const third = await copyToBank([edited, choiceQuestion('New one')], 'other', made.id, { store, openDocId: 'other' });
+    expect(third.copied).toBe(1);
+    expect(third.already).toEqual([edited]);
+    expect(map.get(made.id)!.questions).toHaveLength(2);
+  });
+
+  it('copies a question picked twice once', async () => {
+    const q = choiceQuestion('Stem');
+    const { store } = memoryStore();
+    const { bank, copied } = await copyToBank([q, copyQuestion(q, 'x')], 'paper', undefined, { store, openDocId: 'paper' });
+    expect(copied).toBe(1);
+    expect(bank.questions).toHaveLength(1);
+  });
+
+  it('names a new bank as asked; the printed title stays Question bank 題庫', async () => {
+    const { store } = memoryStore();
+    const { bank } = await copyToBank([choiceQuestion('Stem')], 'paper', { name: '  Macro MCQ  ' }, { store, openDocId: 'paper' });
+    expect(bank.name).toBe('Macro MCQ');
+    expect(bank.title.en.map((r) => r.text).join('')).toBe('Question bank');
+    expect(createBank('').name).toBeUndefined();
   });
 
   it('refuses a paper as the target and the open document', async () => {
@@ -69,6 +106,14 @@ describe('bankCopyDiffers / updateBankCopy', () => {
     const bank = { ...docWith([otherBankQ, bankQ]), kind: 'bank' as const };
     return { q, bankQ, otherBankQ, bank };
   };
+
+  it('says whether the bank holds the question, as it is or in another version', () => {
+    const { q, bank } = setup();
+    expect(bankHolds(q, bank)).toBe('same');
+    expect(bankHolds(copyQuestion(q, 'another paper'), bank)).toBe('same');
+    expect(bankHolds(edit(q, 'Better stem'), bank)).toBe('differs');
+    expect(bankHolds(choiceQuestion('Stem'), bank)).toBe('none'); // same words, another question
+  });
 
   it('is false for an identical copy or an unknown question, true once edited', () => {
     const { q, bank } = setup();
@@ -111,8 +156,29 @@ describe('bankCopyDiffers / updateBankCopy', () => {
     expect(bank.flow).toEqual([]);
     expect(bank.instructions).toBeUndefined();
     const { store, map } = memoryStore(docWith([choiceQuestion('Stem')], { id: 'p' }));
-    const saved = await copyToBank(map.get('p')!.questions, 'p', undefined, { store, openDocId: 'p' });
+    const { bank: saved } = await copyToBank(map.get('p')!.questions, 'p', undefined, { store, openDocId: 'p' });
     expect(saved.layout).toEqual([]);
     expect(saved.flow.map((entry) => entry.type)).toEqual(['question']);
+  });
+});
+
+describe('naming banks', () => {
+  it('suggests a name no bank has yet', () => {
+    expect(nextBankName([])).toBe('Question bank');
+    expect(nextBankName(['Macro MCQ'])).toBe('Question bank');
+    expect(nextBankName(['question bank ', 'Question bank 2'])).toBe('Question bank 3');
+  });
+
+  it('lists banks by name, and tells two alike apart', () => {
+    const choices = bankChoices([
+      { id: 'a', title: 'Question bank', updatedAt: '2026-09-29T10:00:00.000Z', questionCount: 12 },
+      { id: 'b', title: 'Question bank', updatedAt: '2026-09-30T10:00:00.000Z', questionCount: 1 },
+      { id: 'c', title: 'Macro MCQ', updatedAt: '2026-09-30T10:00:00.000Z' },
+    ]);
+    expect(choices).toEqual([
+      { id: 'a', name: 'Question bank', detail: '12 questions · saved 29 Sep 2026' },
+      { id: 'b', name: 'Question bank', detail: '1 question · saved 30 Sep 2026' },
+      { id: 'c', name: 'Macro MCQ', detail: '' },
+    ]);
   });
 });

@@ -221,7 +221,7 @@ scan; rebuildable, so no teacher's work lives in it.
 - `src/library/types.ts:BankRow` · `:BankGroup` · `:BankQuery` · `:BankStatus` · `:StoreChange` — the contracts
 - `src/library/indexer.ts:rowsOf` — a document's rows (text only, never images; `bankHidden` yields none)
 - `src/library/contentKey.ts:contentKey` — content fingerprint ignoring ids, `lineage`, `tags`
-- `src/library/bankDocs.ts:copyToBank` · `:bankCopyDiffers` · `:updateBankCopy` — the only writes into a bank document; UI in `src/components/editor/BankActions.tsx:useBankActions`
+- `src/library/bankDocs.ts:copyToBank` · `:bankHolds` · `:updateBankCopy` — the only writes into a bank document; a bank never holds two copies of one root (a question already there is skipped; an edited one is updated, never copied again); a new bank takes the teacher's name (`:nextBankName`, picker labels `:bankChoices`); UI in `src/components/editor/BankActions.tsx:useBankActions`
 - `src/library/search.ts:searchRows` · `src/library/group.ts:groupRows` · `src/library/history.ts:usedIn` · `:usedWith` · `:newestFirst` · `src/library/fill.ts:pickFill`
 - `src/model/classes.ts:dateOfUse` · `:parseClasses` · `:foldLegacyClassTag` — who sat a paper (`classes`, `satOn`) and when it counts from; `src/library/cohort.ts:cohortOf` · `:sameStudents` — the derived DSE cohort the anti-repeat filters match by
 - `src/library/useBank.ts:useBank` — the one read both surfaces use, over the persistent index below

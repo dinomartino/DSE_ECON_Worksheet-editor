@@ -18,7 +18,7 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
   class, and knows that 4A last year and 5A this year are the same students, so "not used
   with" follows a year group up the school (shown as DSE 2027 and so on). Tagging or
   correcting an old paper no longer makes it look used this year.
-- **Copy questions to a question bank from the outline.** Use a question's ⋯ menu to copy it to a bank (or start a new one); after you improve a question, "Update bank copy" refreshes the bank's version, and "Treat as a new question" cuts a copy loose from its origin. Banks show as "Question bank" in your list of documents.
+- **Copy questions to a question bank from the outline.** Use a question's ⋯ menu to copy it to a bank (or start a new one); after you improve a question, "Update bank copy" refreshes the bank's version, and "Treat as a new question" cuts a copy loose from its origin. A new bank asks for its name, and the list of banks tells two alike apart. A bank that already has the question says so instead of taking a second copy, and offers "Update bank copy" when your version differs.
 - **Question bank 題庫, its own screen**: open it from the start screen to see every
   question from your worksheets as topic cards (how many of each, and which topics are
   thin) under a coverage bar across the topics. Open a topic to read its questions one by one at print size, in English, 中文 or
