@@ -93,8 +93,8 @@ export const rootOf = (question: Pick<Question, 'id' | 'lineage'>): string => ro
 /**
  * The document with `edit` applied to the listed questions' `tags` and nothing else:
  * every other question keeps its object, every other field its value. An empty result
- * removes the key rather than storing `[]`. Returns the same object when nothing changes;
- * `updatedAt` moves only when something did.
+ * removes the key rather than storing `[]`. A changed question's `tagsAt` is stamped `now`.
+ * Returns the same object when nothing changes; `updatedAt` moves only when something did.
  */
 export function withQuestionTags(
   worksheet: Worksheet,
@@ -112,7 +112,9 @@ export function withQuestionTags(
     changed = true;
     const { tags: _old, ...rest } = question;
     void _old;
-    return (after.length > 0 ? { ...rest, tags: after } : rest) as typeof question;
+    // Stamped on removal too, so a later build can tell which copy's topics are newest.
+    const stamped = { ...rest, tagsAt: now };
+    return (after.length > 0 ? { ...stamped, tags: after } : stamped) as typeof question;
   });
   return changed ? { ...worksheet, questions, updatedAt: now } : worksheet;
 }

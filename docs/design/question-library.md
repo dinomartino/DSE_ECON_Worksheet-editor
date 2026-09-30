@@ -135,6 +135,7 @@ documents (papers + banks)  ── scan ──►  bank index (derived, rebuilda
 ```ts
 interface QuestionBase {
   tags?: string[];          // topic codes ('C', 'C.ped') plus free tags
+  tagsAt?: string;          // ISO time of the last tag write; metadata, contentKey ignores it
   lineage?: {
     rootId: string;         // first ancestor's id; equal to `id` for an original
     fromDocId?: string;
@@ -178,6 +179,11 @@ interface Worksheet {
 - `McqQuestion.provenance` is unrelated: printed teacher prose ("Modelled on DSE 2023
   Q1"). `lineage` is machine identity and never prints.
 - `tags` is not a `BiText`; keep it out of `textSlots.ts` roles.
+- **Removing a tag is not durable yet**: the union across copies brings it back from a
+  copy the write could not reach (hidden, trashed, newer-build, restored). Unchanged for
+  now, but every tag write (`withQuestionTags`, `setQuestionTopics`) stamps `tagsAt`, on
+  removal too, so a later build can choose newest-wins from the history accumulated since
+  the first release.
 - Codes are stored, names looked up (`src/model/topics.ts`), so renaming never touches a
   document.
 

@@ -19,7 +19,7 @@ describe('contentKey', () => {
   it('ignores lineage, tags, the gap above and key order', () => {
     const question = choiceQuestion('Stem');
     const key = contentKey(question);
-    expect(contentKey({ ...question, tags: ['C.ped'], gapBefore: 3 })).toBe(key);
+    expect(contentKey({ ...question, tags: ['C.ped'], tagsAt: '2026-09-30T00:00:00.000Z', gapBefore: 3 })).toBe(key);
     const reordered = Object.fromEntries(Object.entries(question).reverse()) as typeof question;
     expect(contentKey(reordered)).toBe(key);
   });

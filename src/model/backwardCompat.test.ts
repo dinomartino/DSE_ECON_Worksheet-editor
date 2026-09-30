@@ -202,6 +202,18 @@ describe('a document saved by the published build still opens', () => {
     expect(reloaded.questions.at(-1)!.tags).toEqual(['C', 'C.ped', 'past paper']);
   });
 
+  it('carries a question’s tagsAt stamp through load → save → load', () => {
+    // Question fields have no KNOWN_KEYS: `migrate` passes question objects through.
+    const loaded = migrate(structuredClone(v1Corpus));
+    const question = { ...createMcqQuestion(), tags: ['C.ped'], tagsAt: '2026-09-30T01:02:03.000Z' };
+    const edited = { ...loaded, questions: [...loaded.questions, question] };
+
+    const reloaded = migrate(JSON.parse(JSON.stringify(serializeWorksheet(edited))));
+    expect(reloaded.__unknown).toBeUndefined();
+    expect(reloaded.questions.slice(0, -1)).toEqual(loaded.questions);
+    expect(reloaded.questions.at(-1)!.tagsAt).toBe('2026-09-30T01:02:03.000Z');
+  });
+
   it('carries a 題型 (a reserved-form tag) through load → save → load, still readable', () => {
     const loaded = migrate(structuredClone(v1Corpus));
     const tags = ['C.ped', 'C.ped::Calculate PED from a change in TR', 'past paper'];

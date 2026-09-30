@@ -350,6 +350,12 @@ export interface QuestionBase {
    * codes are stored, names looked up. Absent = untagged.
    */
   tags?: string[];
+  /**
+   * ISO time `tags` was last written by a tag edit (the bank, the Topic row, topic sync),
+   * set on removal too. Nothing reads it yet: it accumulates so a later build can let the
+   * newest copy's topics win. Metadata, never content (`contentKey` ignores it).
+   */
+  tagsAt?: string;
 }
 
 export interface QuestionLineage {

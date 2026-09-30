@@ -20,7 +20,7 @@ describe('withQuestionTags', () => {
     expect(updatedAt).toBe(NOW);
     expect(restAfter).toEqual(restBefore);
     expect(after[1]).toBe(before[1]); // the other question is the same object
-    expect(after[0]).toEqual({ ...target, tags: ['C.ped', 'C.equilibrium', 'mock 2025'] });
+    expect(after[0]).toEqual({ ...target, tags: ['C.ped', 'C.equilibrium', 'mock 2025'], tagsAt: NOW });
     expect(doc.questions[0].tags).toEqual(['C', 'mock 2025']); // the input is untouched
   });
 
@@ -31,6 +31,9 @@ describe('withQuestionTags', () => {
 
     const cleared = withQuestionTags(doc, [target.id], () => [], NOW);
     expect('tags' in cleared.questions[0]).toBe(false);
+    // A removal is a tag write too: stamped, so a later build can tell it is the newest.
+    expect(cleared.questions[0].tagsAt).toBe(NOW);
+    expect(added.questions[1].tagsAt).toBe(NOW);
 
     expect(withQuestionTags(doc, [target.id], addTopics(['C']), NOW)).toBe(doc);
     expect(withQuestionTags(doc, ['missing'], addTopics(['C']), NOW)).toBe(doc);

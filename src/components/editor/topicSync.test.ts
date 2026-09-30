@@ -65,6 +65,12 @@ describe('the editor Topic row writes every copy', () => {
     expect(tagsIn(saved.get(docC.id), copyC.id)).toEqual(['C', 'mock 2025', 'C.ped']);
     expect(notices).toEqual(['Also updated in 2 other worksheets.']);
 
+    // Every copy written, the open one included, carries the tag-write stamp.
+    const at = (doc: Worksheet | undefined, id: string) => doc?.questions.find((q) => q.id === id)?.tagsAt;
+    expect(Date.parse(at(useWorksheetStore.getState().worksheet, copyB.id) ?? '')).not.toBeNaN();
+    expect(Date.parse(at(saved.get(docA.id), original.id) ?? '')).not.toBeNaN();
+    expect(Date.parse(at(saved.get(docC.id), copyC.id) ?? '')).not.toBeNaN();
+
     // Dates are left alone: a tag edit is not a use.
     expect(saved.get(docA.id)?.createdAt).toBe(docA.createdAt);
     expect(saved.get(docA.id)?.satOn).toBe(docA.satOn);
