@@ -1,6 +1,7 @@
 'use client';
 
 import { tagText } from '@/model/patterns';
+import { stringTags } from '@/model/topics';
 import { useEffect, useRef, useState } from 'react';
 import { copyForWord, questionClipboardHtml } from '@/export/clipboard';
 import { renderDiagramImages } from '@/export/diagramImage';
@@ -396,12 +397,12 @@ function QuestionRow({
       >
         {typeBadge(question)}
       </span>
-      {question.tags && question.tags.length > 0 && (
+      {stringTags(question.tags).length > 0 && (
         <span
           className="max-w-[72px] shrink-0 truncate text-[10px] text-ink-subtle"
-          title={question.tags.map(tagText).join(', ')}
+          title={stringTags(question.tags).map(tagText).join(', ')}
         >
-          {question.tags.map(tagText).join(' ')}
+          {stringTags(question.tags).map(tagText).join(' ')}
         </span>
       )}
       <span className="shrink-0 text-[10px] tabular-nums text-ink-subtle">

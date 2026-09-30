@@ -136,6 +136,14 @@ export function matchesTopic(tags: readonly string[] | undefined, code: string):
   return tags.some((tag) => tag === code || (topicOf(tag) !== undefined && parentCode(tag) === code));
 }
 
+/**
+ * A question's tags as this build reads them: strings only. Anything else (a newer build's
+ * shape, a hand-edited file) stays in the document untouched and is never read.
+ */
+export function stringTags(tags: unknown): string[] {
+  return Array.isArray(tags) ? tags.filter((tag): tag is string => typeof tag === 'string') : [];
+}
+
 /** The topic's name in one language; a free-text tag is returned as itself. */
 export function topicLabel(code: string, lang: TopicLang): string {
   const topic = topicOf(code);

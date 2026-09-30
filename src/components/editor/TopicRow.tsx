@@ -9,7 +9,7 @@ import { patternNames } from '@/library/patterns';
 import { useBank } from '@/library/useBank';
 import { usePatternRegistry } from '@/library/usePatterns';
 import { holdsPatterns, isPatternTag, parsePatternTag, patternsIn, withPattern } from '@/model/patterns';
-import { TOPICS, topicOf, type Topic } from '@/model/topics';
+import { stringTags, TOPICS, topicOf, type Topic } from '@/model/topics';
 
 /** Does the topic match a typed query — by code, English or 中文? */
 function matches(topic: Topic, query: string): boolean {
@@ -69,7 +69,8 @@ export function TopicRow({
     const next = withPattern(current, code, name);
     if (next !== current) onChange(next.length > 0 ? next : undefined);
   };
-  const listed = current.filter((tag) => !isPatternTag(tag));
+  // Only string tags are shown; anything else rides along untouched through every write.
+  const listed = stringTags(current).filter((tag) => !isPatternTag(tag));
 
   const option = (topic: Topic, indent: boolean) => {
     const chosen = current.includes(topic.code);

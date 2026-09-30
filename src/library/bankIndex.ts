@@ -164,6 +164,23 @@ export function createBankIndex(
     write(docId, null);
   }
 
+  /**
+   * Index one document. One that cannot be read into rows (a shape this build does not
+   * expect) is skipped and logged: it holds no rows and no stamp, so the next reconcile
+   * tries it again, and every other document is indexed as usual.
+   */
+  function index(docId: string, derive: () => StoredDoc) {
+    let doc: StoredDoc;
+    try {
+      doc = derive();
+    } catch (error) {
+      console.warn(`Question bank: skipped document ${docId}; it could not be indexed.`, error);
+      drop(docId);
+      return;
+    }
+    apply(docId, doc);
+  }
+
   function publish(status?: BankStatus) {
     // Stored rows keep each copy's own tags; readers see one set per question.
     const rows = withSharedTags(orderedRows(docs));
@@ -243,11 +260,8 @@ export function createBankIndex(
           }
           if (mine !== generation) return;
           if (!failed && unchanged(summary.id)) {
-            if (worksheet) {
-              apply(summary.id, { updatedAt: summary.updatedAt ?? '', rows: rowsOf(worksheet, summary) });
-            } else {
-              drop(summary.id);
-            }
+            if (worksheet) index(summary.id, () => ({ updatedAt: summary.updatedAt ?? '', rows: rowsOf(worksheet, summary) }));
+            else drop(summary.id);
           }
           done++;
           if ((i + 1) % DOCS_PER_SLOT === 0 && i + 1 < work.length) publish({ state: 'scanning', done, total });
@@ -293,8 +307,11 @@ export function createBankIndex(
           if (!current()) return;
         }
         if (doc) {
-          const summary = summarize(doc);
-          apply(docId, { updatedAt: summary.updatedAt, rows: rowsOf(doc, summary) });
+          const found = doc;
+          index(docId, () => {
+            const summary = summarize(found);
+            return { updatedAt: summary.updatedAt, rows: rowsOf(found, summary) };
+          });
         } else {
           drop(docId);
         }

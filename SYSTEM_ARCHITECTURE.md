@@ -2661,8 +2661,11 @@ in-flight values stay local; the store is called on pointer-up.
   reads), with a stamp per document (`updatedAt`). On first use stored rows paint, then a
   reconcile re-indexes only documents whose stamp differs and drops those `list()` no
   longer names; events keep it current (saved/restored → re-index, trashed/removed →
-  drop, cleared → wipe). Anything unreadable, or an `INDEX_FORMAT` mismatch, is dropped
-  and rebuilt — never an error at the UI. No image and no teacher's work is in it.
+  drop, cleared → wipe). An `INDEX_FORMAT` mismatch or an unreadable store is dropped and
+  rebuilt; a stored entry that fails validation costs only its own document — never an
+  error at the UI. **Indexing is total**: a tag or `rootId` that is not a string is read
+  as absent, and a document that still throws is skipped and logged (no rows, no stamp,
+  retried next reconcile), so one odd file never stops the scan. No image and no teacher's work is in it.
   The stamp is freshness only: a row's use date (`usedOn` = `satOn ?? createdAt`) orders
   copies and dates uses, so editing an old paper never makes it look recently used.
 - **`KNOWN_KEYS` must list every top-level field** — an unlisted key is stripped into

@@ -155,3 +155,16 @@ describe('an edit from the bank reaches every copy', () => {
     expect(store.saved.get(docB.id)!.questions[0].tags).toEqual(['G']);
   });
 });
+
+describe('a tag this build cannot read', () => {
+  // A newer build's tag shape, or a hand-edited file: every edit keeps it where it was.
+  const odd = [{ code: 'C' }, 7] as unknown as string[];
+  it.each([
+    ['replace', replaceTopics(['C.ped'])],
+    ['add', addTopics(['C.ped'])],
+    ['remove', removeTopics(['C'])],
+  ])('survives %s without throwing', (_label, edit) => {
+    const next = edit(['C', ...odd, 'mock']);
+    expect(next).toEqual(expect.arrayContaining(odd));
+  });
+});

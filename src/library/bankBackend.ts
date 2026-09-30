@@ -3,7 +3,8 @@ import type { BankRow } from './types';
 /**
  * Where the bank index persists between visits. Derived data only: every backend may
  * lose everything at any time, and anything it cannot read back is dropped and rebuilt
- * from the documents — never an error at the UI.
+ * from the documents — never an error at the UI. Judged per document: one entry that
+ * fails validation drops only that document's rows and stamp, never the whole index.
  */
 
 /** One document's rows and the `updatedAt` they were derived from (its freshness stamp). */
@@ -144,9 +145,9 @@ export function createJsonFileBackend(port: TextFilePort): BankIndexBackend {
         }
         const loaded: IndexedDocs = new Map();
         for (const [id, value] of Object.entries(parsed.docs)) {
+          // A bad entry costs only its own document, which the reconcile re-indexes.
           const doc = storedDoc(id, value);
-          if (!doc) return drop();
-          loaded.set(id, doc);
+          if (doc) loaded.set(id, doc);
         }
         docs = loaded;
         return new Map(docs);

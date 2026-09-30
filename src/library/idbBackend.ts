@@ -9,8 +9,8 @@ import type { BankRow } from './types';
  *             rows are deleted by key range, in order before its puts);
  *  - `stamps` `{ docId, updatedAt }`, keyed `docId` — the freshness stamps;
  *  - `meta`   `{ key: 'format', value: INDEX_FORMAT }`.
- * A `DB_VERSION` bump deletes and recreates every store; an `INDEX_FORMAT` mismatch, an
- * unreadable record or a failed read clears them. A database this build cannot open (a
+ * A `DB_VERSION` bump deletes and recreates every store; an `INDEX_FORMAT` mismatch or a
+ * failed read clears them; an unreadable record drops only its own document. A database this build cannot open (a
  * newer build's version, IndexedDB disabled) leaves the backend inert: the index still
  * works, in memory.
  */
@@ -27,6 +27,45 @@ interface RowRecord {
   questionId: string;
   seq: number;
   row: BankRow;
+}
+
+/** What the stores held, judged per document: `bad` names documents dropped for a bad record. */
+export interface StoredRecords {
+  docs: IndexedDocs;
+  bad: string[];
+}
+
+/**
+ * The stores' contents → stored documents. Only another `INDEX_FORMAT` (or no format)
+ * rejects everything. Otherwise each document stands alone: a malformed stamp or row, a
+ * row filed under another document or a row without a stamp drops that document's rows
+ * and stamp, and the rest load. A record naming no document at all is ignored.
+ */
+export function docsFromRecords(format: unknown, stamps: unknown, records: unknown): StoredRecords | undefined {
+  if ((format as { value?: unknown } | undefined)?.value !== INDEX_FORMAT) return undefined;
+  const docs: IndexedDocs = new Map();
+  const bad = new Set<string>();
+  for (const stamp of Array.isArray(stamps) ? (stamps as { docId?: unknown; updatedAt?: unknown }[]) : []) {
+    if (typeof stamp?.docId !== 'string') continue;
+    if (typeof stamp.updatedAt !== 'string') bad.add(stamp.docId);
+    else docs.set(stamp.docId, { updatedAt: stamp.updatedAt, rows: [] });
+  }
+  const seqs = new Map<BankRow, number>();
+  for (const record of Array.isArray(records) ? (records as Partial<RowRecord>[]) : []) {
+    const docId = record?.docId;
+    if (typeof docId !== 'string') continue;
+    const row = record.row;
+    const doc = docs.get(docId);
+    if (!doc || !isBankRow(row) || row.docId !== docId || typeof record.seq !== 'number') {
+      bad.add(docId);
+      continue;
+    }
+    doc.rows.push(row);
+    seqs.set(row, record.seq);
+  }
+  for (const id of bad) docs.delete(id);
+  for (const doc of docs.values()) doc.rows.sort((a, b) => seqs.get(a)! - seqs.get(b)!);
+  return { docs, bad: [...bad] };
 }
 
 const done = (request: IDBRequest) =>
@@ -86,42 +125,40 @@ export function createIdbBackend(
     await finished(tx);
   }
 
-  async function read(handle: IDBDatabase): Promise<IndexedDocs | undefined> {
+  async function read(handle: IDBDatabase): Promise<StoredRecords | undefined> {
     const tx = handle.transaction(STORES, 'readonly');
     const [format, stamps, records] = await Promise.all([
       done(tx.objectStore(META).get('format')),
       done(tx.objectStore(STAMPS).getAll()),
       done(tx.objectStore(ROWS).getAll()),
     ]);
-    if ((format as { value?: unknown } | undefined)?.value !== INDEX_FORMAT) return undefined;
-    const docs: IndexedDocs = new Map();
-    for (const stamp of stamps as { docId?: unknown; updatedAt?: unknown }[]) {
-      if (typeof stamp?.docId !== 'string' || typeof stamp.updatedAt !== 'string') return undefined;
-      docs.set(stamp.docId, { updatedAt: stamp.updatedAt, rows: [] });
-    }
-    const seqs = new Map<BankRow, number>();
-    for (const record of records as Partial<RowRecord>[]) {
-      const row = record?.row;
-      if (!isBankRow(row) || row.docId !== record.docId || typeof record.seq !== 'number') return undefined;
-      const doc = docs.get(row.docId);
-      if (!doc) return undefined;
-      doc.rows.push(row);
-      seqs.set(row, record.seq);
-    }
-    for (const doc of docs.values()) doc.rows.sort((a, b) => seqs.get(a)! - seqs.get(b)!);
-    return docs;
+    return docsFromRecords(format, stamps, records);
   }
 
   /** Every row of `docId`: the compound keys `[docId, *]` sort between these two. */
   const docRange = (docId: string) => IDBKeyRange.bound([docId], [docId, []]);
+
+  async function forget(handle: IDBDatabase, ids: readonly string[]): Promise<void> {
+    const tx = handle.transaction([ROWS, STAMPS], 'readwrite');
+    for (const id of ids) {
+      tx.objectStore(ROWS).delete(docRange(id));
+      tx.objectStore(STAMPS).delete(id);
+    }
+    await finished(tx);
+  }
 
   return {
     async load() {
       const handle = await database();
       if (!handle) return undefined;
       try {
-        const docs = await read(handle);
-        if (docs) return docs.size > 0 ? docs : undefined;
+        const stored = await read(handle);
+        if (stored) {
+          const { docs, bad } = stored;
+          // Forget what could not be read (best effort); the reconcile re-indexes it.
+          if (bad.length > 0) await forget(handle, bad).catch(() => undefined);
+          return docs.size > 0 ? docs : undefined;
+        }
       } catch {
         // Unreadable: fall through and start over.
       }

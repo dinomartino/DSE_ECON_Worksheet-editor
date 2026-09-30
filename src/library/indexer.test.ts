@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { createDiagramBlock, createImageBlock } from '@/model/factories';
 import { copyQuestion } from '@/model/lineage';
-import type { ContentBlock } from '@/model/types';
+import type { ContentBlock, Question } from '@/model/types';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
+import { isBankRow } from './bankBackend';
 import { EXCERPT_MAX, rowsOf } from './indexer';
 import { choiceQuestion, docWith, partsQuestion } from './testKit';
 
@@ -79,5 +80,21 @@ describe('rowsOf', () => {
   it('indexes the acceptance worksheet without throwing, one row per question', () => {
     const doc = buildAcceptanceWorksheet();
     expect(rowsOf(doc)).toHaveLength(doc.questions.length);
+  });
+
+  it('reads only string tags, and falls back to the question id for a rootId that is not a string', () => {
+    // A newer build's tag shape, or a hand-edited file: never a crash, never lost.
+    const odd = { ...choiceQuestion('Odd', '', ['C.ped']), lineage: { rootId: 42 } } as unknown as Question;
+    (odd as unknown as { tags: unknown[] }).tags = ['C.ped', 7, { code: 'C' }, null, 'mine'];
+    const [row] = rowsOf(docWith([odd]));
+    expect(row.tags).toEqual(['C.ped', 'mine']);
+    expect(row.rootId).toBe(odd.id);
+    expect(isBankRow(row)).toBe(true);
+    expect(odd.tags).toHaveLength(5);
+  });
+
+  it('reads tags that are not a list as none', () => {
+    const odd = { ...choiceQuestion('Odd'), tags: 'C.ped' } as unknown as Question;
+    expect(rowsOf(docWith([odd]))[0].tags).toEqual([]);
   });
 });

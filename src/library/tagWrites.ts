@@ -64,8 +64,10 @@ export function bulkTopicEdit(mode: BulkTopicMode, codes: readonly string[]): Ta
   return addTopics(codes);
 }
 
+/** Trimmed, blanks and repeats dropped. A non-string tag is not ours to read: kept as it is. */
 function unique(tags: readonly string[]): string[] {
-  return [...new Set(tags.map((tag) => tag.trim()).filter(Boolean))];
+  const kept = tags.map((tag) => (typeof tag === 'string' ? tag.trim() : tag)).filter((tag) => tag !== '');
+  return [...new Set(kept)];
 }
 
 const sameList = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((tag, i) => tag === b[i]);

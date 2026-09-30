@@ -39,6 +39,8 @@ export function patternTag(topic: string, name: string): string {
 
 /** A 題型 tag's sub-topic and name; undefined for a topic code or a free tag. */
 export function parsePatternTag(tag: string): PatternRef | undefined {
+  // Total over what a document may hold: a non-string tag is never a 題型.
+  if (typeof tag !== 'string') return undefined;
   const at = tag.indexOf(PATTERN_SEPARATOR);
   if (at <= 0) return undefined;
   const topic = tag.slice(0, at);
