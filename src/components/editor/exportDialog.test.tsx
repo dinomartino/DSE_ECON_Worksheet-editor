@@ -36,7 +36,7 @@ describe('ExportDialog', () => {
 
   it('offers paper, key and both, and starts from the editor’s own mode', () => {
     const markup = render();
-    for (const label of ['Question paper', 'Answer key', 'Both', 'Paper version']) {
+    for (const label of ['Question paper', 'Answer key', 'Both', 'Student or teacher copy']) {
       expect(markup).toContain(label);
     }
     // 中文 and Teacher are the checked radios.

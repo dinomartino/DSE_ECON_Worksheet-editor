@@ -257,7 +257,7 @@ export function ExportDialog({
     () => (what === 'apps' && !json ? buildAppExport(worksheet, app, language) : undefined),
     [what, json, worksheet, app, language],
   );
-  // Paper versions (`Worksheet.versions`): every one by default, one file each.
+  // Shuffled versions (`Worksheet.versions`): every one by default, one file each.
   const letters = versionLetters(worksheet);
   const [variantChoice, setVariantChoice] = useState<string>('all');
   const variants =
@@ -587,15 +587,15 @@ export function ExportDialog({
                 className={`transition-opacity duration-200 ease-out-soft ${keyOnly ? 'opacity-40' : ''}`}
               >
                 <Field
-                  label="Paper version"
+                  label="Student or teacher copy"
                   hint={
                     keyOnly
                       ? 'Applies to the question paper only.'
-                      : 'Teacher shows the answers inline.'
+                      : 'The teacher copy shows the answers inline.'
                   }
                 >
                   <Segmented
-                    label="Paper version"
+                    label="Student or teacher copy"
                     value={version}
                     onChange={setVersion}
                     options={[
@@ -607,15 +607,15 @@ export function ExportDialog({
                 {letters.length > 0 && (
                   <div className="mt-5">
                     <Field
-                      label="Paper versions"
+                      label="Shuffled versions"
                       hint={
                         pdf
-                          ? 'PDF prints one version at a time.'
-                          : 'One file per version. The answer key covers them all.'
+                          ? 'Options shuffle per version. PDF prints one version at a time.'
+                          : 'Options shuffle per version. One file each; the answer key covers them all.'
                       }
                     >
                       <Segmented
-                        label="Paper versions"
+                        label="Shuffled versions"
                         value={pdf ? (printVariant ?? 'all') : variants && variants.length === 1 ? variants[0] : 'all'}
                         onChange={setVariantChoice}
                         options={[

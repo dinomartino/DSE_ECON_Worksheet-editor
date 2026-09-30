@@ -21,7 +21,7 @@ describe('ExportDialog "Include"', () => {
     expect(markup).toContain('Cover page');
     expect(markup).toContain('Answer space');
     expect(markup.match(/<input type="checkbox"[^>]*checked=""/g)).toHaveLength(2);
-    expect(markup.indexOf('Paper version')).toBeLessThan(markup.indexOf('Cover page'));
+    expect(markup.indexOf('Student or teacher copy')).toBeLessThan(markup.indexOf('Cover page'));
   });
 
   it('is absent when there is nothing to leave out', () => {

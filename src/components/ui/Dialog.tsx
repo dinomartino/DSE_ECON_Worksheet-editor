@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { IconButton } from './index';
-import { CloseIcon } from './icons';
+import { ChevronDownIcon, CloseIcon } from './icons';
 import { useModalLayer } from './modalLayer';
+import { ScrollEdgeHints } from './ScrollEdgeHints';
+import { useScrollEdges } from './scrollEdges';
 
 /**
  * A centred modal dialog.
@@ -54,6 +56,9 @@ export function Dialog({
 }) {
   useModalLayer();
   const panelRef = useRef<HTMLDivElement>(null);
+  // How to scroll the body on, while it has more below; shown in the footer.
+  const [more, setMore] = useState<(() => void) | null>(null);
+  const reportMore = useCallback((scrollOn: (() => void) | null) => setMore(() => scrollOn), []);
 
   // Escape closes, and focus moves into the panel so the first Tab lands inside the
   // dialog rather than back in the document behind it. Not when focus is already inside:
@@ -115,20 +120,89 @@ export function Dialog({
         {/* Tabbed dialogs scroll *inside* each pane, so the body only clips; an untabbed
             one has no inner scroller and needs its own. Two scrollers would otherwise
             stack a scrollbar around the whole body as well as within the panel. */}
-        <div
-          className={`flex min-h-0 flex-1 flex-col ${
-            scrollBody ? 'scroll-slim overflow-y-auto' : 'overflow-hidden'
-          }`}
-        >
-          {children}
-        </div>
+        <MoreBelowContext.Provider value={reportMore}>
+          {scrollBody ? (
+            <ScrollPane className="flex flex-col">{children}</ScrollPane>
+          ) : (
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
+          )}
+        </MoreBelowContext.Provider>
 
         {footer && (
           <footer className="flex items-center justify-end gap-2 border-t border-line bg-surface-sunken px-5 py-3">
+            {more && <MoreBelow onClick={more} />}
             {footer}
           </footer>
         )}
       </div>
+    </div>
+  );
+}
+
+/** The dialog's scroll pane reports here how to show more of it, or null at the end. */
+const MoreBelowContext = createContext<((scrollOn: (() => void) | null) => void) | null>(null);
+
+/**
+ * "More below" in the footer's free left side: never over the body, so it cannot hide
+ * what it points at. Mouse convenience only: out of the tab order (Tab already scrolls a
+ * focused field into view), and a press keeps focus where it was.
+ */
+function MoreBelow({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      tabIndex={-1}
+      aria-hidden
+      data-scroll-more
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={onClick}
+      className="mr-auto flex animate-fade-in cursor-pointer items-center gap-1 rounded-md px-1.5 py-1 text-xs text-ink-muted transition-colors duration-150 ease-out-soft hover:bg-surface-hover hover:text-ink"
+    >
+      More below
+      <ChevronDownIcon size={13} />
+    </button>
+  );
+}
+
+/**
+ * A dialog's scrolling region. At 900px a long body ends under the footer, and an overlay
+ * scrollbar (macOS) gives no sign there is more. The edge fade alone is not enough here:
+ * a body usually breaks between fields, so the fade lies over blank space and a whole
+ * field hides below it unannounced. Hence "More below" in the footer, which also scrolls.
+ * Its own component so a scroll re-renders only this; the dialog re-renders only when
+ * "more below" flips.
+ */
+function ScrollPane({ className, children }: { className: string; children: ReactNode }) {
+  const { ref, edges } = useScrollEdges<HTMLDivElement>();
+  const report = useContext(MoreBelowContext);
+  const pane = useRef<HTMLDivElement | null>(null);
+  const setPane = useCallback(
+    (node: HTMLDivElement | null) => {
+      pane.current = node;
+      ref(node);
+    },
+    [ref],
+  );
+  useEffect(() => {
+    if (!report) return;
+    report(
+      edges.atBottom
+        ? null
+        : () => {
+            const el = pane.current;
+            if (!el) return;
+            const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+            el.scrollBy({ top: el.clientHeight * 0.75, behavior: still ? 'auto' : 'smooth' });
+          },
+    );
+    return () => report(null);
+  }, [report, edges.atBottom]);
+  return (
+    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+      <div ref={setPane} data-dialog-scroll className={`scroll-slim min-h-0 flex-1 overflow-y-auto ${className}`}>
+        {children}
+      </div>
+      <ScrollEdgeHints edges={edges} />
     </div>
   );
 }
@@ -193,12 +267,12 @@ export function DialogTabs<T extends string>({
           );
         })}
       </nav>
-      <div className="scroll-slim min-w-0 flex-1 overflow-y-auto p-5">
+      <ScrollPane className="min-w-0 p-5">
         {/* Keyed by tab so the new pane fades in rather than snapping. */}
         <div key={value} className="animate-fade-in">
           {children}
         </div>
-      </div>
+      </ScrollPane>
     </div>
   );
 }

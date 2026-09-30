@@ -33,7 +33,12 @@ import { regionBanner } from './setupCardFlow';
 
 const TOP = TOP_PROVIDERS;
 const MORE = PROVIDER_IDS.filter((id) => PRESETS[id].group === 'more');
-const MORE_TITLE = `More providers: ${MORE.map((id) => PRESETS[id].label.split(' ')[0]).join(', ')}`;
+const MORE_NAMES = MORE.map((id) => PRESETS[id].label.split(' ')[0]).join(', ');
+const MORE_TITLE = (
+  <>
+    More providers <span className="font-normal text-ink-muted">{MORE_NAMES}</span>
+  </>
+);
 const OTHER_MODEL = '__other__';
 const INPUT =
   'h-8 min-w-0 rounded-lg border border-line bg-surface px-2 text-xs text-ink outline-none transition-colors duration-150 ease-out-soft placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25';
@@ -98,7 +103,7 @@ export function AiSectionView(props: AiSectionViewProps) {
         {TOP.map(card)}
       </div>
       <div className="-mx-3">
-        <Collapsible title={MORE_TITLE} defaultOpen={selectedInMore}>
+        <Collapsible plain title={MORE_TITLE} defaultOpen={selectedInMore}>
           <div role="radiogroup" aria-label="More AI providers" className="divide-y divide-line overflow-hidden rounded-xl border border-line">
             {MORE.map(card)}
           </div>
@@ -110,7 +115,7 @@ export function AiSectionView(props: AiSectionViewProps) {
         onChange={actions.includeTeacher}
       />
       <div className="-mx-3 -mt-2">
-        <Collapsible title="Privacy and terminology" keepMounted>
+        <Collapsible plain title="Privacy and terminology" keepMounted>
           <About {...props} />
         </Collapsible>
       </div>
@@ -311,6 +316,7 @@ function CardDetails({
   const savedMode = state.key.kind === 'saved';
   const hasSaved = savedMode || (state.key.kind === 'editing' && state.key.saved !== undefined);
   const primary = savedMode ? () => actions.testSaved(state.provider) : actions.saveAndTest;
+  const awaitingKey = !savedMode && !testing && draft.trim() === '';
 
   return (
     <div className="space-y-3 pb-3 pl-9 pr-3">
@@ -348,14 +354,19 @@ function CardDetails({
                 {show ? 'Hide' : 'Show'}
               </button>
             </span>
-            <Button
-              size="sm"
-              variant="primary"
-              disabled={testing || !(savedMode ? canTestSaved(state) : canTest(state))}
-              onClick={primary}
-            >
-              {testing ? 'Testing…' : savedMode ? 'Test' : 'Save & test'}
-            </Button>
+            {/* With no key typed the button waits in the quiet outline style, not as a
+                faded black block that reads as broken; the title explains. It is on the
+                wrapper because a disabled button takes no pointer events. */}
+            <span className="inline-flex" title={awaitingKey ? 'Paste a key first' : undefined}>
+              <Button
+                size="sm"
+                variant={awaitingKey ? 'default' : 'primary'}
+                disabled={testing || !(savedMode ? canTestSaved(state) : canTest(state))}
+                onClick={primary}
+              >
+                {testing ? 'Testing…' : savedMode ? 'Test' : 'Save & test'}
+              </Button>
+            </span>
             {preset.keyUrl && (
               <button
                 type="button"
@@ -482,6 +493,7 @@ function ModelField({ state, listed, actions, modelRef }: AiSectionViewProps & {
   const [otherBad, setOtherBad] = useState<string | null>(null);
   const [listing, setListing] = useState(false);
   const showOther = otherOpen || !known.includes(state.model);
+  const chosenNote = showOther ? undefined : preset.models.find((m) => m.id === state.model)?.note;
   const commitOther = () => {
     const value = other.trim();
     if (!value) return;
@@ -513,8 +525,8 @@ function ModelField({ state, listed, actions, modelRef }: AiSectionViewProps & {
           >
             <optgroup label="Suggested">
               {preset.models.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.note ? `${m.label} (${m.note})` : m.label}
+                <option key={m.id} value={m.id} title={m.note}>
+                  {m.label}
                 </option>
               ))}
             </optgroup>
@@ -558,6 +570,8 @@ function ModelField({ state, listed, actions, modelRef }: AiSectionViewProps & {
           className={`${INPUT} w-full font-mono`}
         />
       )}
+      {/* The detail sits under the select, not in the option: a long option truncates mid-word. */}
+      {chosenNote && <p className="text-[11px] text-ink-muted">{chosenNote}</p>}
       {otherBad && <p className="text-[11px] text-danger-ink">{otherBad}</p>}
       {listed && listed.length === 0 && <p className="text-[11px] text-ink-muted">No models were listed for this key.</p>}
     </div>

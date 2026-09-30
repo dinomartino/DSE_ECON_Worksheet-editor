@@ -16,6 +16,7 @@ export function Collapsible({
   title,
   defaultOpen = false,
   keepMounted = false,
+  plain = false,
   actions,
   children,
 }: {
@@ -23,6 +24,8 @@ export function Collapsible({
   defaultOpen?: boolean;
   /** Render the body while closed too (inert), for text that must stay in the page. */
   keepMounted?: boolean;
+  /** A sentence-case title instead of the uppercase eyebrow, for a long title inside a pane. */
+  plain?: boolean;
   actions?: ReactNode;
   children: ReactNode;
 }) {
@@ -49,7 +52,11 @@ export function Collapsible({
           >
             <ChevronRightIcon size={13} />
           </span>
-          <Eyebrow className="truncate">{title}</Eyebrow>
+          {plain ? (
+            <span className="min-w-0 truncate text-xs font-medium text-ink">{title}</span>
+          ) : (
+            <Eyebrow className="truncate">{title}</Eyebrow>
+          )}
         </button>
         {actions}
       </div>
