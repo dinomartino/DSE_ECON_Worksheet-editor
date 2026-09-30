@@ -18,6 +18,7 @@ import { browserPrintDeps, printWorksheetPdf } from './printPdf';
 import { useUpdateStore } from '@/desktop/updateStore';
 import { PaperHealthPanel } from './PaperHealthPanel';
 import { PaperSummaryBar } from './PaperSummaryBar';
+import { SaveStatus } from './SaveStatus';
 import { hasCoverSheet } from './sheets';
 import { FeedbackDialog } from '@/components/feedback/FeedbackDialog';
 import { WhatsNewDialog } from '@/components/whatsNew/WhatsNewDialog';
@@ -101,8 +102,6 @@ export function Toolbar({
   const redo = useWorksheetStore((s) => s.redo);
   const past = useWorksheetStore((s) => s.past);
   const future = useWorksheetStore((s) => s.future);
-  const dirty = useWorksheetStore((s) => s.dirty);
-  const lastSavedAt = useWorksheetStore((s) => s.lastSavedAt);
   const save = useWorksheetStore((s) => s.save);
   const select = useWorksheetStore((s) => s.select);
   const printPreview = useWorksheetStore((s) => s.printPreview);
@@ -120,8 +119,6 @@ export function Toolbar({
   const closeFeedback = useCallback(() => setFeedback(false), []);
   const [whatsNew, setWhatsNew] = useState(false);
   const closeWhatsNew = useCallback(() => setWhatsNew(false), []);
-
-  const saveStatus = readOnly ? 'Read-only' : dirty ? 'Unsaved…' : 'Saved';
 
   const flash = (message: string, action?: Notice['action']) => showNotice(setNotice, message, action);
 
@@ -388,21 +385,7 @@ export function Toolbar({
             pages={bodySheets ? bodySheets + (hasCoverSheet(worksheet, mode) ? 1 : 0) : undefined}
             onOpen={readOnly ? undefined : onOpenSettings}
           />
-          {/* The time lives in the tooltip: a clock string beside the pill wrapped the row.
-              Below `xl` the word becomes a dot, the word moving to the tooltip. */}
-          <span
-            className="flex items-center"
-            title={
-              !readOnly && !dirty && lastSavedAt
-                ? `Saved at ${new Date(lastSavedAt).toLocaleTimeString()}`
-                : saveStatus
-            }
-          >
-            <span aria-hidden className="flex h-5 w-3 items-center justify-center xl:hidden">
-              <span className={`size-1.5 rounded-full ${dirty || readOnly ? 'bg-ink-subtle' : 'bg-ok'}`} />
-            </span>
-            <span className="sr-only xl:not-sr-only">{saveStatus}</span>
-          </span>
+          <SaveStatus />
         </span>
 
         {/* Every AI tool behind one door (⌘J); the untranslated count rides on it. */}

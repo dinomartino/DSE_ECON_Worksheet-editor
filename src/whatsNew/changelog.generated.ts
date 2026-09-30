@@ -98,6 +98,10 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   Firefox and Safari still save to your Downloads folder.
 
 ### Changed
+- **A tidier top bar with more room for the worksheet's name.** The summary chip shows
+  marks and pages (point at it for the full count of each question type), and saving is
+  a small dot: point at it to see when your changes were saved. It only says something
+  in words if your changes could not be saved.
 - **A new worksheet asks for its name first**, so it no longer appears as Untitled in
   your list. The name is for filing and the file name, and does not print on the paper.
   A duplicated worksheet is now listed as "(copy)" of that name.

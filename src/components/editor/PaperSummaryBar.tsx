@@ -5,6 +5,7 @@ import {
   summarizePaper,
   summaryParts,
   targetMisses,
+  type SummaryPart,
   type SummaryPartKind,
   type TargetStatus,
 } from '@/model/paperSummary';
@@ -17,13 +18,18 @@ const TONE: Record<TargetStatus, string> = {
   under: '',
 };
 
-/** From what window width each phrase shows. */
+/**
+ * From what window width each phrase shows. The chip stays compact so the document name
+ * keeps the width: question counts live in the tooltip, unless one is over its target.
+ */
 const VISIBLE: Record<SummaryPartKind, string> = {
-  count: 'hidden min-[1440px]:inline',
+  count: 'hidden',
   marks: '',
-  minutes: 'hidden xl:inline',
-  pages: 'hidden min-[1440px]:inline',
+  minutes: 'hidden min-[1440px]:inline',
+  pages: 'hidden xl:inline',
 };
+
+const visibility = (part: SummaryPart) => (part.status === 'over' ? '' : VISIBLE[part.kind]);
 
 /**
  * The toolbar's one-line paper summary: "38/45 MCQ · 52/50 marks · ~61/60 min · 3 pages".
@@ -61,7 +67,7 @@ export function PaperSummaryBar({
     const dot = <span aria-hidden className="text-ink-subtle"> · </span>;
     const leads = part.kind === 'minutes' || part.kind === 'pages';
     return (
-      <span key={part.kind + index} className={VISIBLE[part.kind] || undefined}>
+      <span key={part.kind + index} className={visibility(part) || undefined}>
         {leads && index > 0 && dot}
         <span data-status={part.status} className={(part.status && TONE[part.status]) || undefined}>
           {part.text}
@@ -71,7 +77,11 @@ export function PaperSummaryBar({
     );
   });
 
+  // Below `xl` the whole chip steps aside for the document name, unless a measure is over
+  // its target: that warning is worth the width.
+  const narrow = misses.over.length > 0 ? '' : 'hidden xl:inline-block ';
   const className =
+    narrow +
     'shrink-0 whitespace-nowrap rounded-md bg-surface-hover px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-ink-muted';
 
   return onOpen ? (
