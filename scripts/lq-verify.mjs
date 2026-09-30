@@ -28,14 +28,19 @@ const APP_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.me
  *
  *   node scripts/lq-verify.mjs [--out=/tmp/lq-verify] [--url=http://localhost:3000]
  *                              [--skip-fixtures]
+ *
+ *   `--out` (default $LQ_DIR, else the path shown) also receives the fixtures.
  */
 
 const args = process.argv.slice(2);
+// `--name=value` or `--name value`.
 const opt = (name, fallback) => {
   const hit = args.find((a) => a.startsWith(`--${name}=`));
-  return hit ? hit.slice(name.length + 3) : fallback;
+  if (hit) return hit.slice(name.length + 3);
+  const at = args.indexOf(`--${name}`);
+  return at >= 0 && args[at + 1] && !args[at + 1].startsWith('--') ? args[at + 1] : fallback;
 };
-const OUT = opt('out', '/tmp/lq-verify');
+const OUT = opt('out', process.env.LQ_DIR ?? '/tmp/lq-verify');
 const URL_BASE = opt('url', 'http://localhost:3000');
 const SOFFICE = '/Applications/LibreOffice.app/Contents/MacOS/soffice';
 
@@ -77,8 +82,8 @@ const collectPage = (prefix, dest) => {
   process.exit(1);
 };
 
-const run = (cmd, cmdArgs, label, soft = false) => {
-  const res = spawnSync(cmd, cmdArgs, { stdio: 'pipe', encoding: 'utf8' });
+const run = (cmd, cmdArgs, label, soft = false, env = process.env) => {
+  const res = spawnSync(cmd, cmdArgs, { stdio: 'pipe', encoding: 'utf8', env });
   if (res.status !== 0) {
     if (soft) {
       console.log(`skipped: ${label} (${res.error?.code ?? `exit ${res.status}`})`);
@@ -107,7 +112,7 @@ const checkPages = (pages, label) => {
 
 // ── 1. Fixture ──────────────────────────────────────────────────────────────────
 if (!args.includes('--skip-fixtures')) {
-  run('npx', ['vitest', 'run', 'scripts/lq-fixtures.test.ts'], 'emit fixture', false);
+  run('npx', ['vitest', 'run', 'scripts/lq-fixtures.test.ts'], 'emit fixture', false, { ...process.env, LQ_DIR: OUT });
 }
 
 // ── 2. .docx leg ────────────────────────────────────────────────────────────────
