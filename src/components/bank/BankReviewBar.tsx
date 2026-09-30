@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useAiRun } from '@/assist/runStore';
-import { BarButton } from '@/components/ai/AiBar';
+import { BarButton } from '@/components/ai/barParts';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { reviewSummary, useBankSession } from './bankSession';
 

@@ -5,7 +5,7 @@ import { cleanClasses, dateOfUse } from '@/model/classes';
 import { computeNumbering } from '@/model/numbering';
 import { plain } from '@/model/text';
 import { isSymbolOnly } from '@/model/symbols';
-import { questionTexts } from '@/model/textWalk';
+import { needsTranslation, questionTexts } from '@/model/textWalk';
 import { rootIdOf } from '@/model/lineage';
 import { tagSearchWords } from '@/model/patterns';
 import { stringTags } from '@/model/topics';
@@ -48,7 +48,8 @@ function rowOf(question: Question, doc: DocFields, number: number | undefined): 
   // Total over any saved shape: a tag or a rootId that is not a string is left in the
   // document and ignored here, so one odd question never stops the bank.
   const tags = stringTags(question.tags);
-  const printed = questionTexts(question).filter((slot) => slot.role === 'print' && !slot.unprinted);
+  const slots = questionTexts(question);
+  const printed = slots.filter((slot) => slot.role === 'print' && !slot.unprinted);
   const words: string[] = [];
   const has = { en: false, zh: false };
   for (const slot of printed) {
@@ -62,6 +63,11 @@ function rowOf(question: Question, doc: DocFields, number: number | undefined): 
   }
   for (const tag of tags) words.push(...tagSearchWords(tag));
   const languages = (['en', 'zh'] as BankLang[]).filter((lang) => has[lang]);
+  // A side is missing when its own edition would print a gap (the editor's count).
+  const lacking = (version: 'student' | 'teacher') =>
+    (['en', 'zh'] as BankLang[]).filter((side) => slots.some((slot) => needsTranslation(slot, { language: side, version })));
+  const missing = lacking('student');
+  const missingTeacher = lacking('teacher');
   return {
     ...doc,
     questionId: question.id,
@@ -79,6 +85,8 @@ function rowOf(question: Question, doc: DocFields, number: number | undefined): 
       flattenBlocks(list).some((block) => block.kind === 'diagram' || block.kind === 'image'),
     ),
     languages,
+    ...(missing.length ? { missing } : {}),
+    ...(missingTeacher.length ? { missingTeacher } : {}),
     contentKey: contentKey(question),
     ...(number !== undefined ? { number } : {}),
   };

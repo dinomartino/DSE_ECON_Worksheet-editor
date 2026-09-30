@@ -108,6 +108,22 @@ constants live in `src/model/topics.ts` (`TOPIC_CODE_PATTERN`, `SYSTEM_TAG_SIGIL
 - **Non-string tags** (a later build's shape, a hand-edited file) are never read and never
   dropped: `stringTags` for reading, every write keeps them in place.
 
+### ✦ AI on bank questions (the user, 2026-09-30)
+
+- **Bank screen only**: Fill missing 中文 / English and Check terms (keyless) for the
+  question on screen, the list, or every question shown; a "Missing 中文 / English" filter
+  (`BankRow.missing` / `missingTeacher`, derived by `rowsOf`, `INDEX_FORMAT` 6).
+- **A version stays one version.** A result is written into every copy whose `rootId` and
+  `contentKey` match the shown copy's before the change (`src/library/sameCopies.ts`), so
+  the bank still shows one question; a copy already edited is another version and is left
+  alone. The unit of a batch is the version a row shows: the rail's lead copy, the picked
+  copy, or the copy on screen.
+- **Hidden papers are not written**, as topic edits leave them: "Hide from question bank"
+  keeps the bank out of that paper, and the index cannot see its copies. Trash and
+  newer-build documents are never written either. Each skip is reported by paper.
+- **Up to 20 on click**, more asks once; Stop keeps what is done; Undo all puts back only
+  copies still holding what was written. Tags, `tagsAt` and lineage are never touched.
+
 ## The one decision everything else follows from
 
 **A question is already the unit of storage; do not invent a second format.** Every guard
