@@ -1,8 +1,50 @@
 import { describe, expect, it } from 'vitest';
 import { createWorksheet } from './factories';
-import { cleanClasses, foldLegacyClassTag, isIsoDate, parseClasses, dateOfUse } from './classes';
+import { cleanClasses, commitClassInput, foldLegacyClassTag, isIsoDate, normaliseClassName, parseClasses, dateOfUse } from './classes';
+import { classRefs, sameStudents } from '@/library/cohort';
 import { KNOWN_KEYS, migrate, serializeWorksheet } from './migrations';
 import { duplicateWorksheet, editableCopy } from '@/storage/document';
+
+describe('the Classes box', () => {
+  it('Enter commits "5a" as a class, so "5B" typed next is another one (not "5a5B")', () => {
+    const first = commitClassInput([], '5a', true);
+    expect(first).toEqual({ classes: ['5A'], rest: '' });
+    expect(commitClassInput(first.classes, '5B', true)).toEqual({ classes: ['5A', '5B'], rest: '' });
+  });
+
+  it('a comma or space commits what comes before it; the rest stays in the box', () => {
+    expect(commitClassInput([], '5a,', false)).toEqual({ classes: ['5A'], rest: '' });
+    expect(commitClassInput([], '5a, 5b', false)).toEqual({ classes: ['5A'], rest: '5b' });
+    expect(commitClassInput([], '5a 5b 5', false)).toEqual({ classes: ['5A', '5B'], rest: '5' });
+    expect(commitClassInput(['5A'], '5', false)).toEqual({ classes: ['5A'], rest: '5' });
+  });
+
+  it('never adds a class twice, and leaves the ones already there as they were stored', () => {
+    expect(commitClassInput(['5a'], '5A', true)).toEqual({ classes: ['5a'], rest: '' });
+    expect(commitClassInput(['5 a'], '5b, 5B', true)).toEqual({ classes: ['5 a', '5B'], rest: '' });
+    expect(commitClassInput([], '   ', true)).toEqual({ classes: [], rest: '' });
+  });
+
+  it('capitalises form-led codes only', () => {
+    expect(['5a', 's5b', 'F.4c', '6', '中五甲', 'Econ club', '5science'].map(normaliseClassName)).toEqual([
+      '5A',
+      'S5B',
+      'F.4C',
+      '6',
+      '中五甲',
+      'Econ club',
+      '5science',
+    ]);
+  });
+
+  it('tidying changes nothing the bank matches on: "5a" stored and "5A" added are the same students', () => {
+    const [old] = classRefs(['5a'], '2025-11-03');
+    const [added] = classRefs([normaliseClassName('5a')], '2025-11-03');
+    expect(old.key).toBe(added.key);
+    expect(old.cohort).toBe(added.cohort);
+    expect(sameStudents(old, added)).toBe(true);
+  });
+});
 
 describe('parseClasses', () => {
   it('splits on commas, spaces and slashes, once per class', () => {

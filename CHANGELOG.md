@@ -13,8 +13,8 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
 ### Added
 - **Tag questions with DSE topics.** Pick a topic (A–J and the electives, or your own
   free tag) in the Edit panel. Tags never print.
-- **Say which classes sat a paper, and when.** In Setup, list the classes (5A, 5B) and
-  the date it was sat. The question bank counts a paper as used only once it names a
+- **Say which classes sat a paper, and when.** In Setup, add the classes (type 5A and press
+  Enter or a comma after each) and the date it was sat. The question bank counts a paper as used only once it names a
   class, and knows that 4A last year and 5A this year are the same students, so "not used
   with" follows a year group up the school (shown as DSE 2027 and so on). Tagging or
   correcting an old paper no longer makes it look used this year.
