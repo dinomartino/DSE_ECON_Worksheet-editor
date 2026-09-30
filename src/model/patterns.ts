@@ -1,4 +1,4 @@
-import { isSystemTag, isTopicCode, topicLabel, topicOf } from './topics';
+import { isSystemTag, isTopicCode, topicDisplay, topicLabel, topicOf, type TopicNames } from './topics';
 
 /**
  * A 題型 (Pattern): a teacher-defined kind of question inside one sub-topic ("Calculate
@@ -165,7 +165,10 @@ export function tagSearchWords(tag: string): string[] {
   return [tag, topicLabel(tag, 'en'), topicLabel(tag, 'zh')];
 }
 
-/** How a tag reads in quiet chrome: a 題型 by its name, anything else as stored. */
-export function tagText(tag: string): string {
-  return parsePatternTag(tag)?.name ?? tag;
+/**
+ * How a tag reads in quiet chrome: a 題型 by its name, a topic by its name
+ * (`topicDisplay`), anything else (a free tag, a code this build does not list) as stored.
+ */
+export function tagText(tag: string, names: TopicNames = 'en'): string {
+  return parsePatternTag(tag)?.name ?? topicDisplay(tag, names);
 }

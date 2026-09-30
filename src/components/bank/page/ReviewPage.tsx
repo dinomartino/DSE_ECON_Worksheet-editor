@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Button, Segmented } from '@/components/ui';
-import { marksLabel, sourceLabel, typeLabel, sittingLabel, usedLabel } from '@/components/bank/BankRow';
+import { marksLabel, SourceText, sourceLabel, tagTitle, typeLabel, sittingLabel, usedLabel } from '@/components/bank/BankRow';
+import { versionDiff } from '@/components/bank/bankText';
 import { refsOf, usedWith as usedWithTargets } from '@/library/history';
 import { anySameStudents } from '@/library/cohort';
 import type { BankGroup, BankRow } from '@/library/types';
 import { isNewerThanBuild } from '@/model/migrations';
 import { isPatternTag } from '@/model/patterns';
-import { topicLabel, topicOf } from '@/model/topics';
+import { topicDisplay } from '@/model/topics';
 import type { LanguageMode, VersionMode } from '@/model/types';
 import { distinctVersions, patternLines, rowKey, type ClassChoice } from './bankPage';
 import type { RailSection } from './bankScreen';
@@ -30,6 +31,8 @@ export interface ReviewState {
   version: VersionMode;
   /** The Filter's "not used with" students: their uses read amber. */
   usedWith?: ClassChoice;
+  /** Each document's name where two share a title (`distinctDocLabels`); default its title. */
+  docLabels?: ReadonlyMap<string, string>;
 }
 
 /**
@@ -187,14 +190,20 @@ function Rail({
                         className="mt-[3px] h-3.5 w-3.5 cursor-pointer accent-[var(--accent)]"
                       />
                       <div className="min-w-0">
-                        <p className={`truncate text-[13px] leading-[1.4] ${on ? 'text-ink' : 'text-ink'}`} title={lead.excerpt.en || lead.excerpt.zh}>
+                        <p className="line-clamp-2 text-[13px] leading-[1.4] text-ink" title={lead.excerpt.en || lead.excerpt.zh}>
                           {lead.excerpt.en || lead.excerpt.zh || <span className="text-ink-subtle">Untitled question</span>}
                         </p>
-                        <p className="truncate text-[11px] tabular-nums text-ink-subtle">
-                          {typeLabel(lead.typeId)} · {marksLabel(lead.marks)}
-                          {lead.hasDiagram && ' · diagram'}
-                          {used && <span className="text-warn-ink"> · {usedLabel(used)}</span>}
+                        {/* Look-alikes (a copy, a retyped question) read apart by where they live. */}
+                        <p className="flex min-w-0 text-[11px] tabular-nums text-ink-subtle">
+                          <span className="shrink-0 whitespace-pre">
+                            {typeLabel(lead.typeId)} · {marksLabel(lead.marks)}
+                            {lead.hasDiagram && ' · diagram'}
+                            {group.versions > 1 && ` · ${group.versions} versions`}
+                            {' · '}
+                          </span>
+                          <SourceText title={docLabel(state, lead)} number={lead.number} />
                         </p>
+                        {used && <p className="truncate text-[11px] tabular-nums text-warn-ink">{usedLabel(used)}</p>}
                       </div>
                     </div>
                   );
@@ -352,9 +361,7 @@ function Stage({
               {topicTags.length === 0 ? (
                 <span className="text-ink-subtle">None yet</span>
               ) : (
-                <span title={topicTags.map((tag) => (topicOf(tag) ? `${tag} ${topicLabel(tag, 'en')}` : tag)).join('\n')}>
-                  {topicTags.join(' · ')}
-                </span>
+                <span title={tagTitle(topicTags)}>{topicTags.map((tag) => topicDisplay(tag, 'both')).join(' · ')}</span>
               )}
               {onEditTopics && worksheet && !isNewerThanBuild(worksheet) && (
                 <button
@@ -371,7 +378,7 @@ function Stage({
                 <dt className="text-ink-subtle">題型</dt>
                 <dd className="min-w-0" data-fact-patterns>
                   {patterns.map((ref, i) => (
-                    <span key={`${ref.topic} ${ref.name}`} title={`${ref.topic} · ${ref.name}`}>
+                    <span key={`${ref.topic} ${ref.name}`} title={`${topicDisplay(ref.topic, 'both')} · ${ref.name}`}>
                       {i > 0 && ' · '}
                       {ref.name}
                     </span>
@@ -380,19 +387,20 @@ function Stage({
               </>
             )}
             <dt className="text-ink-subtle">Lives in</dt>
-            <dd className="min-w-0 truncate" title={sourceLabel(row)}>
-              {sourceLabel(row)}
-              {row.docKind === 'bank' && <span className="text-ink-subtle"> · bank</span>}
+            <dd className="min-w-0">
+              <SourceText title={docLabel(state, row)} number={row.number}>
+                {row.docKind === 'bank' && <span className="shrink-0 whitespace-pre text-ink-subtle"> · bank</span>}
+              </SourceText>
             </dd>
           </Facts>
           <Facts>
             <dt className="text-ink-subtle">Used in</dt>
             <dd className="min-w-0">
-              <UsedIn group={fullGroup} usedWith={usedWith} />
+              <UsedIn group={fullGroup} usedWith={usedWith} labels={state.docLabels} />
             </dd>
             <dt className="text-ink-subtle">Versions</dt>
             <dd className="min-w-0">
-              <Versions group={fullGroup} row={row} onFocus={onFocus} />
+              <Versions group={fullGroup} row={row} labels={state.docLabels} language={language} onFocus={onFocus} />
             </dd>
           </Facts>
           <div className="flex flex-wrap items-start gap-2 md:flex-col md:items-end">
@@ -424,14 +432,22 @@ function Facts({ children }: { children: ReactNode }) {
  * their own line (up to two lines, so a long title stays readable in the narrow column).
  * A draft names no class.
  */
-function UsedIn({ group, usedWith }: { group: BankGroup | undefined; usedWith?: ClassChoice }) {
+function UsedIn({
+  group,
+  usedWith,
+  labels,
+}: {
+  group: BankGroup | undefined;
+  usedWith?: ClassChoice;
+  labels?: ReadonlyMap<string, string>;
+}) {
   const uses = group?.usedIn ?? [];
   if (uses.length === 0) return <span className="text-ink-subtle">No paper yet</span>;
   return (
     <ul className="space-y-1">
       {uses.slice(0, 3).map((use) => {
         const amber = usedWith && anySameStudents(refsOf(use), [usedWith.target]);
-        const where = `${use.docTitle}${use.number !== undefined ? ` · Q${use.number}` : ''}`;
+        const where = sourceLabel({ docTitle: labels?.get(use.docId) ?? use.docTitle, number: use.number });
         return (
           <li key={use.docId} className={amber ? 'text-warn-ink' : ''} title={`${sittingLabel(use)} · ${where}`} data-used-in>
             <span className={`block truncate ${amber ? '' : use.classes?.length ? 'text-ink' : 'text-ink-subtle'}`}>{sittingLabel(use)}</span>
@@ -444,8 +460,23 @@ function UsedIn({ group, usedWith }: { group: BankGroup | undefined; usedWith?: 
   );
 }
 
-/** The count, and (when edited copies differ) each version as a line that previews it. */
-function Versions({ group, row, onFocus }: { group: BankGroup | undefined; row: BankRow; onFocus: (row: BankRow) => void }) {
+/**
+ * The count, and (when edited copies differ) each version as a line that previews it: where
+ * it lives, and what it says that the one showing does not.
+ */
+function Versions({
+  group,
+  row,
+  labels,
+  language,
+  onFocus,
+}: {
+  group: BankGroup | undefined;
+  row: BankRow;
+  labels?: ReadonlyMap<string, string>;
+  language: LanguageMode;
+  onFocus: (row: BankRow) => void;
+}) {
   if (!group || group.versions <= 1) return <span>1</span>;
   const versions = distinctVersions(group);
   return (
@@ -459,10 +490,12 @@ function Versions({ group, row, onFocus }: { group: BankGroup | undefined; row: 
             type="button"
             onClick={() => onFocus(version)}
             disabled={on}
-            className="cursor-pointer truncate text-left text-accent-ink underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:text-ink disabled:no-underline"
+            className="grid cursor-pointer text-left text-accent-ink underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:text-ink disabled:no-underline"
           >
-            {sourceLabel(version)}
-            {on && <span className="text-ink-subtle"> · showing</span>}
+            <SourceText title={labels?.get(version.docId) ?? version.docTitle} number={version.number}>
+              {on && <span className="shrink-0 whitespace-pre text-ink-subtle"> · showing</span>}
+            </SourceText>
+            {!on && <span className="truncate text-[11.5px] text-ink-muted">{versionDiff(version, row, language)}</span>}
           </button>
         );
       })}
@@ -483,6 +516,11 @@ function NavButton({ label, disabled, onClick, children }: { label: string; disa
       {children}
     </button>
   );
+}
+
+/** A document's name in the review: its title, or the one telling it from another of that title. */
+function docLabel(state: Pick<ReviewState, 'docLabels'>, row: Pick<BankRow, 'docId' | 'docTitle'>): string {
+  return state.docLabels?.get(row.docId) ?? row.docTitle;
 }
 
 /** The language drawn: the one asked for when the question has it, else what it has. */

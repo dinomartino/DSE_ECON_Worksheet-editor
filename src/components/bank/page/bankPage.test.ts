@@ -10,6 +10,7 @@ import {
   clearFilter,
   coverage,
   barPx,
+  barPercent,
   DEFAULT_FILTERS,
   filterRows,
   isThin,
@@ -67,6 +68,14 @@ describe('barPx', () => {
     expect(barPx(0, 10, 40)).toBe(0);
     expect(barPx(0, 0, 40)).toBe(0);
     expect(barPx(1, 100, 40)).toBe(2);
+  });
+
+  it('gives a topic card its share of the biggest topic, so 1 question never looks like 27', () => {
+    expect(barPercent(27, 27)).toBe(100);
+    expect(barPercent(1, 27)).toBeCloseTo(3.7, 1);
+    expect(barPercent(1, 200)).toBe(2);
+    expect(barPercent(0, 27)).toBe(0);
+    expect(barPercent(0, 0)).toBe(0);
   });
 
   it('untagged questions never set the scale', () => {
@@ -171,7 +180,7 @@ describe('traySummary', () => {
       { code: 'C.ped', count: 3 },
       { code: 'C.intervention', count: 1 },
     ]);
-    expect(mixLabel(summary.mix)).toBe('C.ped ×3, C.intervention ×1');
+    expect(mixLabel(summary.mix)).toBe('Price elasticity of demand ×3, Market intervention ×1');
     expect(mixLabel([1, 2, 3, 4, 5].map((n) => ({ code: `X${n}`, count: 1 })))).toBe('X1 ×1, X2 ×1, X3 ×1 +2 more');
   });
 });

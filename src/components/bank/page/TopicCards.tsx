@@ -1,8 +1,8 @@
 'use client';
 
 import type { PatternItem } from '@/library/patterns';
-import { topicOf } from '@/model/topics';
-import { typeName, type Coverage } from './bankPage';
+import { topicDisplay, topicOf } from '@/model/topics';
+import { barPercent, typeName, type Coverage } from './bankPage';
 import type { ClassUsage } from './bankScreen';
 
 /** Split-bar fills by registry position: the first type solid, the rest lighter steps of the accent. */
@@ -31,7 +31,7 @@ export function TopicCards({
   onAll: () => void;
   onClassGap: (choice: ClassUsage['choice']) => void;
 }) {
-  const { bars, untagged, total } = coverage;
+  const { bars, max, untagged, total } = coverage;
   return (
     <div className="mx-auto grid w-full max-w-[1280px] gap-5">
       <div className="flex flex-wrap items-center gap-3">
@@ -70,7 +70,7 @@ export function TopicCards({
           const split = bar.byType.filter((part) => part.count > 0);
           const splitTitle = split.map((part) => `${part.count} ${typeName(part.typeId)}`).join(', ');
           const own = patterns?.get(bar.code) ?? [];
-          const patternTitle = own.map((item) => `${item.topic} · ${item.name} · ${typeName(item.typeId)} ×${item.count}`).join('\n');
+          const patternTitle = own.map((item) => `${topicDisplay(item.topic)} · ${item.name} · ${typeName(item.typeId)} ×${item.count}`).join('\n');
           return (
             <li key={bar.code} className="flex">
               <button
@@ -94,22 +94,27 @@ export function TopicCards({
                     </span>
                   )}
                 </span>
+                {/* One scale across the cards (the biggest topic fills its track), split by type:
+                    a 1-question topic reads as small as it is. */}
                 <span
                   className="flex h-[5px] overflow-hidden rounded-[3px] bg-surface-sunken"
                   title={splitTitle || undefined}
                   aria-label={splitTitle || 'No questions'}
                   role="img"
                 >
-                  {bar.total > 0 &&
-                    bar.byType.map((part, index) =>
-                      part.count > 0 ? (
-                        <i
-                          key={part.typeId}
-                          className={`block ${SPLIT_FILL[Math.min(index, SPLIT_FILL.length - 1)]}`}
-                          style={{ width: `${(part.count / sumOf(bar.byType)) * 100}%` }}
-                        />
-                      ) : null,
-                    )}
+                  {bar.total > 0 && (
+                    <span className="flex h-full" style={{ width: `${barPercent(bar.total, max)}%` }}>
+                      {bar.byType.map((part, index) =>
+                        part.count > 0 ? (
+                          <i
+                            key={part.typeId}
+                            className={`block ${SPLIT_FILL[Math.min(index, SPLIT_FILL.length - 1)]}`}
+                            style={{ width: `${(part.count / sumOf(bar.byType)) * 100}%` }}
+                          />
+                        ) : null,
+                      )}
+                    </span>
+                  )}
                 </span>
                 {/* Amber for a thin topic only. An empty one is said by its count: early on
                     most topics are empty, and twelve amber lines would bury the one strip

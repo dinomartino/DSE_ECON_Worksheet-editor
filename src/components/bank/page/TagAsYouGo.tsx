@@ -2,9 +2,9 @@
 
 import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui';
-import { sourceLabel } from '@/components/bank/BankRow';
+import { SourceText } from '@/components/bank/BankRow';
 import type { BankRow } from '@/library/types';
-import { topicLabel } from '@/model/topics';
+import { topicHeading } from '@/model/topics';
 import type { LanguageMode } from '@/model/types';
 import { suggestionLabel } from './bankScreen';
 import { PaperPreview, SHEET_MAX_WIDTH } from './PaperPreview';
@@ -94,8 +94,9 @@ export function TagAsYouGo({
 
       <div className="mx-auto grid gap-3 px-[22px] pb-8 pt-4" style={{ maxWidth: SHEET_MAX_WIDTH + 44 }}>
         <div className="flex min-w-0 items-center gap-3">
-          <p className="min-w-0 truncate text-[12.5px] tabular-nums text-ink-muted" title={sourceLabel(row)}>
-            <span className="text-ink-subtle">Lives in</span> {sourceLabel(row)}
+          <p className="flex min-w-0 text-[12.5px] tabular-nums text-ink-muted">
+            <span className="shrink-0 whitespace-pre text-ink-subtle">Lives in </span>
+            <SourceText title={row.docTitle} number={row.number} />
           </p>
           <Button size="sm" onClick={onOpen} title="Open this question in its worksheet (O)" className="shrink-0">
             Open in worksheet
@@ -103,7 +104,7 @@ export function TagAsYouGo({
         </div>
         <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6" role="group" aria-label="Topics for this question">
           {suggestions.map((code, index) => {
-            const { code: coarse, name } = suggestionLabel(code);
+            const { code: coarse, name, zh } = suggestionLabel(code);
             const on = chosen.has(code);
             return (
               <button
@@ -111,7 +112,7 @@ export function TagAsYouGo({
                 type="button"
                 data-tag-key
                 aria-pressed={on}
-                title={`${code} · ${topicLabel(code, 'en')} ${topicLabel(code, 'zh')}`}
+                title={topicHeading(code, 'both')}
                 onClick={() => onToggle(code)}
                 className={`relative grid min-w-0 cursor-pointer content-start rounded-[7px] border px-2 py-1.5 text-left text-[12px] transition-colors duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                   on ? 'border-accent bg-accent-soft shadow-[inset_0_0_0_1px_var(--accent)]' : 'border-line-strong bg-surface-raised hover:border-ink-subtle'
@@ -120,6 +121,7 @@ export function TagAsYouGo({
                 <span className="absolute right-1.5 top-1 text-[10.5px] tabular-nums text-ink-subtle">{index + 1}</span>
                 <b className="text-[13px] font-semibold text-ink">{coarse}</b>
                 <small className="line-clamp-2 text-[12px] leading-snug text-ink-muted">{name}</small>
+                {zh && <small className="truncate text-[12px] leading-snug text-ink-subtle">{zh}</small>}
               </button>
             );
           })}

@@ -1,6 +1,7 @@
 'use client';
 
-import { tagText } from '@/model/patterns';
+import { isPatternTag, tagText } from '@/model/patterns';
+import { topicHeading } from '@/model/topics';
 import type { KeyboardEvent, ReactNode } from 'react';
 import type { BankRow as BankRowData, BankUse } from '@/library/types';
 import { plain } from '@/model/text';
@@ -29,6 +30,10 @@ export interface BankRowProps {
   onVersions?: () => void;
   /** Hide "source doc · Q n" (e.g. when the list is already filtered to one document). */
   hideSource?: boolean;
+  /** The source document's name when another shares its title (`distinctDocLabels`); default its title. */
+  docLabel?: string;
+  /** An edited version shown beside another: how it differs (`versionDiff`). */
+  differs?: string;
   selected?: boolean;
   onSelect?: () => void;
   /** Drag the row onto the page (`useBankRowDrag`): a grip, and the grab cursor. */
@@ -50,6 +55,8 @@ export function BankRow({
   versions = 1,
   onVersions,
   hideSource,
+  docLabel,
+  differs,
   selected = false,
   onSelect,
   drag,
@@ -59,6 +66,7 @@ export function BankRow({
 }: BankRowProps) {
   const excerpt = language === 'zh' ? row.excerpt.zh : row.excerpt.en;
   const missing = missingLanguageLabel(row, language);
+  const tags = row.tags.map((tag) => tagText(tag, language === 'zh' ? 'zh' : 'en')).join(' · ');
   const excerptText = (
     <span className="line-clamp-2 text-xs leading-snug text-ink" title={excerpt}>
       {excerpt || <span className="text-ink-subtle">Untitled question</span>}
@@ -84,7 +92,7 @@ export function BankRow({
         : {})}
       className={`group relative flex items-start gap-2.5 border-b border-line py-2.5 pl-5 pr-3.5 transition-[background-color,box-shadow] duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
         selected || dragging ? 'bg-surface-hover' : 'hover:bg-surface-hover'
-      } ${drag ? 'cursor-grab select-none hover:shadow-[inset_0_0_0_1px_var(--line-strong)] active:cursor-grabbing' : ''} ${dragging ? 'opacity-60' : ''}`}
+      } ${drag ? 'cursor-grab select-none active:cursor-grabbing' : ''} ${dragging ? 'opacity-60' : ''}`}
     >
       {drag && (
         <span
@@ -118,9 +126,17 @@ export function BankRow({
         <div className="mt-1 flex flex-wrap gap-x-2.5 gap-y-0.5 text-[11px] tabular-nums text-ink-subtle">
           <span>{typeLabel(row.typeId)}</span>
           <span>{marksLabel(row.marks)}</span>
-          {row.tags.length > 0 && <span>{row.tags.map(tagText).join(' · ')}</span>}
+          {tags && (
+            <span className="min-w-0 max-w-full truncate" title={tagTitle(row.tags)}>
+              {tags}
+            </span>
+          )}
           {row.hasDiagram && <span>◩ diagram</span>}
-          {!hideSource && <span>{sourceLabel(row)}</span>}
+          {differs && (
+            <span className="min-w-0 max-w-full truncate text-ink-muted" title={differs}>
+              {differs}
+            </span>
+          )}
           {missing && <span>{missing}</span>}
           {usedWithClass && <span className="text-warn-ink">{usedLabel(usedWithClass)}</span>}
           {versions > 1 &&
@@ -136,6 +152,7 @@ export function BankRow({
               <span>{versions} versions</span>
             ))}
         </div>
+        {!hideSource && <SourceText title={docLabel ?? row.docTitle} number={row.number} className="mt-0.5 text-[11px] text-ink-subtle" />}
       </div>
       {inPaper && (
         <span className="shrink-0 pt-px text-xs text-ink-muted">
@@ -162,6 +179,37 @@ export function marksLabel(marks: number): string {
 /** "Mock 2025 · Q14"; a bank document's rows name the bank. */
 export function sourceLabel(row: Pick<BankRowData, 'docTitle' | 'number'>): string {
   return row.number !== undefined ? `${row.docTitle} · Q${row.number}` : row.docTitle;
+}
+
+/**
+ * Where a question lives, on one line: "Mock 2026 Paper 1 · Q4". A long title is cut; the
+ * question number never is, and the whole reads in the tooltip.
+ */
+export function SourceText({
+  title,
+  number,
+  className = '',
+  children,
+}: {
+  title: string;
+  number?: number;
+  className?: string;
+  /** Quiet words after the number (e.g. " · bank"). */
+  children?: ReactNode;
+}) {
+  const full = sourceLabel({ docTitle: title, number });
+  return (
+    <span className={`flex min-w-0 ${className}`} title={full}>
+      <span className="min-w-0 truncate">{title}</span>
+      {number !== undefined && <span className="shrink-0 whitespace-pre">{` · Q${number}`}</span>}
+      {children}
+    </span>
+  );
+}
+
+/** A row's topics in full, for the tooltip behind a cut-off tag line: "C · Law of demand 需求定律". */
+export function tagTitle(tags: readonly string[]): string {
+  return tags.map((tag) => (isPatternTag(tag) ? `題型 ${tagText(tag)}` : topicHeading(tag, 'both'))).join('\n');
 }
 
 /** "中文 only" / "English only" when the paper prints a language the question lacks. */

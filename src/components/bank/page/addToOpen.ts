@@ -1,6 +1,7 @@
 import { rootOf } from '@/library/tagWrites';
 import type { Worksheet } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
+import { allOf } from '../bankText';
 import { commitBankCopies, reviewSummary } from '../bankSession';
 import type { PickedQuestion } from './fromSelection';
 
@@ -36,6 +37,8 @@ export function splitAlreadyInPaper(
 }
 
 /** The review bar's line after "Add to": what went in, and what was already there. */
+const capitalise = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
 export function addedSummary(added: number, skipped: number): string {
   return skipped === 0 ? reviewSummary(added) : `${reviewSummary(added)}. Skipped ${skipped} already in this paper.`;
 }
@@ -44,7 +47,7 @@ export function addedSummary(added: number, skipped: number): string {
 export function nothingAddedText(skipped: number, title: string): string {
   return skipped === 1
     ? `That question is already in “${title}”. Nothing was added.`
-    : `All ${skipped} questions are already in “${title}”. Nothing was added.`;
+    : `${capitalise(allOf(skipped, 'questions'))} are already in “${title}”. Nothing was added.`;
 }
 
 /**

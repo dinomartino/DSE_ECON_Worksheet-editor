@@ -22,7 +22,9 @@ import { holdsPatterns } from '@/model/patterns';
 import type { BankRow } from '@/library/types';
 import { useBank } from '@/library/useBank';
 import { escapeClears } from '@/components/bank/escapeClears';
-import { topicOf } from '@/model/topics';
+import { topicDisplay, topicOf } from '@/model/topics';
+import { distinctDocLabels } from '@/library/docLabels';
+import { allOf } from '@/components/bank/bankText';
 import type { LanguageMode, VersionMode, Worksheet } from '@/model/types';
 import { worksheetStore, type WorksheetSummary } from '@/storage';
 import { useWorksheetStore } from '@/store/worksheetStore';
@@ -203,6 +205,7 @@ export function QuestionBankScreen({
 
   const byKey = useMemo(() => new Map(rows.map((row) => [rowKey(row), row])), [rows]);
   const fullGroups = useMemo(() => new Map(groupRows(rows).map((group) => [group.rootId, group])), [rows]);
+  const docLabels = useMemo(() => distinctDocLabels(rows), [rows]);
   const cover = useMemo(() => coverageOf(rows), [rows]);
   const classes = useMemo(() => classChoices(rows), [rows]);
   const classUsage = useMemo(() => latestClassUsage(rows), [rows]);
@@ -563,7 +566,7 @@ export function QuestionBankScreen({
   const emptyReview = (() => {
     if (scanning && rows.length === 0) return <p role="status">Reading your worksheets · {status.done} of {status.total}</p>;
     const active = activeFilters({ ...filters, topic: 'all' });
-    const where = level.kind === 'review' && level.topic !== 'all' ? ` in ${level.topic}` : '';
+    const where = level.kind === 'review' && level.topic !== 'all' ? ` in ${topicDisplay(level.topic)}` : '';
     if (active.length === 0) return <p>No questions{where} yet. Tag questions with this topic and they appear here.</p>;
     return (
       <>
@@ -603,7 +606,7 @@ export function QuestionBankScreen({
               type="search"
               value={filters.text}
               placeholder={
-                level.kind === 'review' && level.topic !== 'all' ? `Search in ${level.topic}` : 'Search every question 搜尋全部題目'
+                level.kind === 'review' && level.topic !== 'all' ? `Search in ${topicDisplay(level.topic)}` : 'Search every question 搜尋全部題目'
               }
               onChange={(event) => onSearch(event.target.value)}
               onKeyDown={(event) => {
@@ -643,14 +646,7 @@ export function QuestionBankScreen({
       {banner && <div className="shrink-0 px-4 pt-3">{banner}</div>}
 
       {level.kind === 'topics' && !noDocuments && (
-        <CoverageBar
-          coverage={cover}
-          onTopic={(code) => setLevel({ kind: 'review', topic: code })}
-          onUntagged={() => {
-            setTagIndex(0);
-            setLevel({ kind: 'untagged' });
-          }}
-        />
+        <CoverageBar coverage={cover} onTopic={(code) => setLevel({ kind: 'review', topic: code })} />
       )}
 
       {level.kind === 'topics' && (
@@ -695,6 +691,7 @@ export function QuestionBankScreen({
             language,
             version,
             usedWith: filters.notUsedWith,
+            docLabels,
           }}
           fullGroup={focused ? fullGroups.get(focused.rootId) : undefined}
           empty={emptyReview}
@@ -841,7 +838,7 @@ export function QuestionBankScreen({
 
 /** Where Edit topics writes: the one worksheet, or every copy. */
 function editDescription(row: BankRow, copies: number): string {
-  if (copies > 1) return `Saved into all ${copies} copies of this question.`;
+  if (copies > 1) return `Saved into ${allOf(copies, 'copies')} of this question.`;
   return `Saved into “${row.docTitle}”${row.number !== undefined ? ` · Q${row.number}` : ''}.`;
 }
 

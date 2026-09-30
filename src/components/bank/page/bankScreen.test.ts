@@ -144,7 +144,8 @@ describe('suggestTopics', () => {
   });
 
   it('labels a key by its coarse code and own name', () => {
-    expect(suggestionLabel('H.money-supply')).toEqual({ code: 'H', name: 'Money supply' });
-    expect(suggestionLabel('C')).toEqual({ code: 'C', name: 'Market and Price' });
+    expect(suggestionLabel('H.money-supply')).toEqual({ code: 'H', name: 'Money supply', zh: '貨幣供應' });
+    expect(suggestionLabel('C')).toEqual({ code: 'C', name: 'Market and Price', zh: '市場與價格' });
+    expect(suggestionLabel('C.new')).toEqual({ code: 'C.new', name: 'C.new' });
   });
 });

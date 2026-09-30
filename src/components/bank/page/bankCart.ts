@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { roundMinutes } from '@/model/paperSummary';
 import { isPatternTag } from '@/model/patterns';
-import { topicOf } from '@/model/topics';
+import { topicHeading, topicOf } from '@/model/topics';
 import { listQuestionTypes } from '@/registry';
 import type { BankRow } from '@/library/types';
 import { rowKey, rowMinutes, typeName } from './bankPage';
@@ -210,8 +210,7 @@ export function typeSplitLabel(totals: Pick<CartTotals, 'byType'>): string {
 export function cartTopicLabel(tags: readonly string[]): string | undefined {
   const topics = tags.filter((tag) => !isPatternTag(tag) && topicOf(tag));
   if (topics.length === 0) return undefined;
-  const first = topicOf(topics[0])!;
-  const name = `${first.parent ?? first.code} · ${first.en}`;
+  const name = topicHeading(topics[0]);
   return topics.length > 1 ? `${name} +${topics.length - 1}` : name;
 }
 

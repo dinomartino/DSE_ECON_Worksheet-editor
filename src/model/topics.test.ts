@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { TOPICS, isSubTopicCode, isSystemTag, isTopicCode, matchesTopic, parentCode, rollupTopic, topicLabel, topicOf } from './topics';
+import {
+  TOPICS,
+  isSubTopicCode,
+  isSystemTag,
+  isTopicCode,
+  matchesTopic,
+  parentCode,
+  rollupTopic,
+  topicDisplay,
+  topicHeading,
+  topicLabel,
+  topicOf,
+} from './topics';
 
 describe('topics', () => {
   it('lists the twelve coarse topics A–J, EL1, EL2 in guide order', () => {
@@ -75,5 +87,29 @@ describe('topics', () => {
     expect(topicLabel('I.monetary', 'en')).toBe('Monetary policy');
     expect(topicLabel('I.monetary', 'zh')).toBe('貨幣政策');
     expect(topicLabel('past paper', 'zh')).toBe('past paper');
+  });
+
+  it('shows a topic by its name, never its slug, in one language or both', () => {
+    expect(topicDisplay('C.law-of-demand')).toBe('Law of demand');
+    expect(topicDisplay('C.law-of-demand', 'zh')).toBe('需求定律');
+    expect(topicDisplay('C.law-of-demand', 'both')).toBe('Law of demand 需求定律');
+    expect(topicDisplay('C', 'both')).toBe('Market and Price 市場與價格');
+    expect(topicHeading('C.ped')).toBe('C · Price elasticity of demand');
+    expect(topicHeading('EL1.pricing', 'both')).toBe('EL1 · Monopoly pricing 壟斷定價');
+    expect(topicHeading('C')).toBe('C · Market and Price');
+  });
+
+  it('shows a code this build does not list, and a free tag, as stored', () => {
+    for (const tag of ['C.new', 'K', 'K.new', 'EL3', 'mock 2025']) {
+      expect(topicDisplay(tag, 'both'), tag).toBe(tag);
+      expect(topicHeading(tag), tag).toBe(tag);
+    }
+  });
+
+  it('gives every listed topic a name in both languages', () => {
+    for (const topic of TOPICS.flatMap((t) => [t, ...t.children])) {
+      expect(topicDisplay(topic.code, 'both'), topic.code).not.toContain('.');
+      expect(topic.en.trim() && topic.zh.trim(), topic.code).toBeTruthy();
+    }
   });
 });

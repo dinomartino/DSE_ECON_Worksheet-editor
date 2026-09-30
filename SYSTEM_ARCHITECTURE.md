@@ -2679,6 +2679,9 @@ in-flight values stay local; the store is called on pointer-up.
   error at the UI. **Indexing is total**: a tag or `rootId` that is not a string is read
   as absent, and a document that still throws is skipped and logged (no rows, no stamp,
   retried next reconcile), so one odd file never stops the scan. No image and no teacher's work is in it.
+  Search also matches the paper's title (`searchRows`), read from `docTitle` at query time
+  rather than baked into `searchText`, so a renamed paper is found by its new name with no
+  format bump.
   **Identity contract**: a copy is `(docId, questionId)`, a question is `lineage.rootId`
   (`rootIdOf`), a version is `contentKey`. Question ids are unique per document only
   (whole-document Duplicate and restore-as-copy keep them), so anything stored about a
