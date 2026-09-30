@@ -133,8 +133,11 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   from bank" when the questions cover several topics) instead of Untitled. Like any new
   worksheet, it prints no title until you type one.
 - **The app is now called Econ Studio (經濟備課室).** Your worksheets, settings and saved
-  keys carry over unchanged. The desktop app keeps its old file name, Econ Worksheet, so
-  updates keep arriving.
+  keys carry over unchanged. On Windows, updating replaces Econ Worksheet with Econ Studio
+  in the Start menu; pin it to the taskbar again if you had pinned it. On a Mac, the app
+  renames itself from Econ Worksheet to Econ Studio the first time it opens after the
+  update, so Finder, Launchpad and Spotlight show the new name. If you already have both,
+  they are the same app with the same worksheets: move Econ Worksheet to the Bin.
 - **The ⋯ menu no longer has "Worksheets…".** Click the app mark at the top left to go back to your worksheets.
 - **Settings is easier to find.** Its gear now sits in the top-right corner of the start
   screen and the question bank. In a worksheet, Settings is still in the ⋯ menu.

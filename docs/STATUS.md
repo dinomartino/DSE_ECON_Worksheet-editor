@@ -25,10 +25,14 @@ off the bottom.** It is the first thing a fresh session reads — then
   **v0.5.0 released 2026-09-28** (✦ AI, Check terms, Settings, light/dark, 標楷體, home
   navigation). Collecting features for the next release — merge to `main` only when the user says.
 - **2026-09-30 on `develop`, not released:** (1) **Renamed to Econ Studio 經濟備課室**
-  (user-facing only). Tauri `productName` stays "Econ Worksheet": renaming it breaks the
-  Windows NSIS update (second install, stale shortcut). A clean switch needs an NSIS hook
-  that removes the old install; not built, user not yet asked to decide. The film still says
-  Econ Worksheet (`scripts/film/timeline.mjs`). (2) **Header & footer tab by page**: Page 1 /
+  **Desktop too since 2026-10-01**: `productName` "Econ Studio", identifier and exe
+  (`mainBinaryName` econ-worksheet) frozen (`src/test/desktopIdentity.test.ts`); Windows
+  `src-tauri/windows/hooks.nsh` uninstalls the old "Econ Worksheet" after install (compiled
+  with makensis only, **never run on Windows: the user's Windows test in RELEASING.md gates
+  v0.6.0**); macOS `src-tauri/src/bundle_rename.rs` renames an updated `Econ Worksheet.app`
+  to `Econ Studio.app` once and relaunches (scratch-folder e2e only; check the real
+  `/Applications` update on the 0.6.0 draft). The film still says Econ Worksheet
+  (`scripts/film/timeline.mjs`). (2) **Header & footer tab by page**: Page 1 /
   Pages 2 onward thumbnails as tabs, per-edge Same / Its own / Nothing on page 1
   (`firstPageModeOf`, `pageBandScope` in `src/model/page.ts`), title inside the Page 1 view;
   fixed "Same as page 1" discarding page 1's rows. (3) **Export asks where to save**:
@@ -328,6 +332,8 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **2026-10-01** — Clean-up round 3 (above): 10 Opus worktree agents incl. integration QA,
   all merged to `develop`, 3272 tests, typecheck clean, lint 41, build + samples +
   cover-verify + lq-verify pass. Pushed; CI green.
+- **2026-10-01 (later)** — Desktop rename to Econ Studio (Windows NSIS hook, Mac self-rename),
+  two Opus worktree agents, merged; 3276 tests, 12 Rust tests, build green.
 - **2026-09-30 (late night)** — UI polish round 2: four Opus worktree agents, merged to
   `develop`, 3234 tests, typecheck clean, lint 43, samples + cover-verify pass, merged
   whole screenshotted light/dark at 1440 and 1024. Nothing pushed.
