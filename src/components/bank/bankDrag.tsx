@@ -77,6 +77,8 @@ interface Session {
   settleUntil: number;
   onReport?: (report: InsertReport) => void;
   source?: Pick<WorksheetStore, 'load'>;
+  /** The row's scrolling ancestors, held for the drag (`holdScrollers`). */
+  hold?: ScrollHold;
 }
 
 let session: Session | null = null;
@@ -92,6 +94,70 @@ function holdSelection(on: boolean) {
   if (typeof document === 'undefined' || !document.addEventListener) return;
   if (on) document.addEventListener('selectstart', blockSelection, true);
   else document.removeEventListener('selectstart', blockSelection, true);
+}
+
+/**
+ * WebKit (Safari, the Mac app) autoscrolls the scroll container a press started in toward
+ * the pointer, for as long as the button is held: dragging a row out to the page ran the
+ * 題庫 list to its top or its end, and it stayed there. So from the drag's start until the
+ * button is up, the row's scrolling ancestors are held where they were: put back on every
+ * scroll event and every drag frame (before paint). The page's own scroller is never one of
+ * them; the drag scrolls it on purpose.
+ */
+export interface ScrollHold {
+  /** Put every held scroller back where it was. */
+  restore(): void;
+  /** Stop holding: now, or once the button is up (Esc ends a drag with it still down). */
+  release(buttonUp: boolean): void;
+}
+
+export function holdScrollers(from: HTMLElement): ScrollHold {
+  const none: ScrollHold = { restore: () => undefined, release: () => undefined };
+  if (typeof document === 'undefined' || !document.addEventListener) return none;
+  const page = document.getElementById('print-root');
+  const held: Array<{ el: HTMLElement; top: number; left: number }> = [];
+  for (let el = from.parentElement; el && el !== document.body; el = el.parentElement) {
+    if (page && el.contains(page)) break;
+    if (el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth) {
+      held.push({ el, top: el.scrollTop, left: el.scrollLeft });
+    }
+  }
+  if (held.length === 0) return none;
+  const restore = (only?: EventTarget | null) => {
+    for (const { el, top, left } of held) {
+      if (only && only !== el) continue;
+      if (el.scrollTop !== top) el.scrollTop = top;
+      if (el.scrollLeft !== left) el.scrollLeft = left;
+    }
+  };
+  // Scroll events do not bubble; a capturing listener on the document sees every element's.
+  const onScroll = (event: Event) => restore(event.target);
+  document.addEventListener('scroll', onScroll, true);
+  let released = false;
+  const stop = () => {
+    if (released) return;
+    released = true;
+    document.removeEventListener('scroll', onScroll, true);
+    window.removeEventListener('pointerup', stop, true);
+    window.removeEventListener('pointercancel', stop, true);
+    window.removeEventListener('pointermove', onMove, true);
+    window.removeEventListener('blur', stop);
+    restore();
+  };
+  const onMove = (event: PointerEvent) => {
+    if ((event.buttons & 1) === 0) stop();
+  };
+  return {
+    restore: () => restore(),
+    release: (buttonUp) => {
+      if (buttonUp) return stop();
+      restore();
+      window.addEventListener('pointerup', stop, true);
+      window.addEventListener('pointercancel', stop, true);
+      window.addEventListener('pointermove', onMove, true);
+      window.addEventListener('blur', stop);
+    },
+  };
 }
 
 /** The press is over (a click, or the end of a drag). */
@@ -182,6 +248,7 @@ function tick() {
     }
   }
   placeChip(s.x, s.y);
+  s.hold?.restore();
 
   const now = performance.now();
   if (now >= s.settleUntil) {
@@ -199,13 +266,15 @@ function tick() {
   s.frame = requestAnimationFrame(tick);
 }
 
-function releasePointer(s: Session) {
+function releasePointer(s: Session, buttonUp: boolean) {
   cancelAnimationFrame(s.frame);
   try {
     if (s.el.hasPointerCapture(s.pointerId)) s.el.releasePointerCapture(s.pointerId);
   } catch {
     // Already released.
   }
+  s.hold?.release(buttonUp);
+  s.hold = undefined;
   s.el.style.cursor = '';
   document.body.style.cursor = '';
   document.body.style.userSelect = '';
@@ -218,6 +287,7 @@ function releasePointer(s: Session) {
 
 function begin(s: Session, label: string) {
   s.phase = 'dragging';
+  s.hold = holdScrollers(s.el);
   try {
     s.el.setPointerCapture(s.pointerId);
   } catch {
@@ -240,12 +310,15 @@ function begin(s: Session, label: string) {
   s.frame = requestAnimationFrame(tick);
 }
 
-/** End the drag. `drop` commits at the current slot; otherwise the page goes back. */
-function finish(drop: boolean) {
+/**
+ * End the drag. `drop` commits at the current slot; otherwise the page goes back.
+ * `buttonUp`: the button is known to be up (a release, a cancelled pointer).
+ */
+function finish(drop: boolean, buttonUp = false) {
   const s = session;
   endPress();
   if (!s || s.phase !== 'dragging') return;
-  releasePointer(s);
+  releasePointer(s, buttonUp);
   const slot = s.slot;
   if (!drop || slot === null) {
     useBankDrag.setState(IDLE);
@@ -290,7 +363,10 @@ export function aimBankDragForTest(slot: number | null) {
 
 /** Test seam. */
 export function resetBankDragForTest() {
-  if (session) cancelAnimationFrame(session.frame);
+  if (session) {
+    cancelAnimationFrame(session.frame);
+    session.hold?.release(true);
+  }
   endPress();
   flowCache = undefined;
   useBankDrag.setState(IDLE);
@@ -357,11 +433,11 @@ export function rowDragHandlers(
       if (!s || event.pointerId !== s.pointerId) return;
       // A press that never travelled is a click: let it through.
       if (s.phase === 'pressed') endPress();
-      else finish(true);
+      else finish(true, true);
     },
     onPointerCancel: () => {
       if (session?.phase === 'pressed') endPress();
-      else finish(false);
+      else finish(false, true);
     },
     onLostPointerCapture: () => {
       if (session?.phase === 'dragging') finish(false);

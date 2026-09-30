@@ -2580,6 +2580,10 @@ Four rules bound it:
   fill). Those writes also skip a render whose measurement is stale (`isFresh`), so the
   page coming back from a cancelled drag cannot dirty the document. ~50ms per slot
   change on a 20-question paper.
+- **A 題庫 drag holds the tab list still** (`holdScrollers`): WebKit autoscrolls the
+  container a press began in toward the pointer for as long as the button is held, so the
+  row's scrolling ancestors (never the page's scroller) are put back on every scroll event
+  and drag frame, until the button is up. Esc ends the drag with it still down.
 - **Undo stands down while a 題庫 drag is in hand** (`isBankDragActive`, read by the
   editor's ⌘Z): the page shows a document the store does not hold. The drag layer
   swallows ⌘Z / ⌘⇧Z / Ctrl+Y rather than cancelling; only Esc cancels.
