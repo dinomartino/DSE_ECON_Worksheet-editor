@@ -187,6 +187,26 @@ interface Worksheet {
 - Codes are stored, names looked up (`src/model/topics.ts`), so renaming never touches a
   document.
 
+## The identity contract (2026-09-30)
+
+Three identities, and every stored reference to a question must use one of them:
+
+| Identity | Key | Meaning |
+|---|---|---|
+| A **copy** | `(docId, questionId)` | one question in one saved document |
+| A **question** | `lineage.rootId` (`rootIdOf`: its own id when absent) | every copy of it, however edited |
+| A **version** | `contentKey` | copies that say the same thing |
+
+- **A bare `questionId` is never an identity across documents.** Ids are unique within
+  one document only: a whole-document Duplicate (`duplicateWorksheet`) and a restore as a
+  copy (`restoreBackup`) keep every question id.
+- An in-document Duplicate (`freshIds`) keeps `lineage` verbatim: a duplicate of a copy
+  shares its root, a duplicate of an original becomes a new root. "Treat as a new
+  question" drops `lineage`.
+- **Future stored references key on these**: item analysis results (G1/C4) on the copy
+  plus its `contentKey`; canonical picks (C16), retire/star (C17) and reserves (C19) on the
+  root. `contentKey`'s ignored fields are pinned by `src/library/contentKeyFields.test.ts`.
+
 ## Ids — what a copy must renew
 
 A question holds ids on: itself; every `ContentBlock` (paragraph, table, image, diagram,

@@ -2675,6 +2675,10 @@ in-flight values stay local; the store is called on pointer-up.
   error at the UI. **Indexing is total**: a tag or `rootId` that is not a string is read
   as absent, and a document that still throws is skipped and logged (no rows, no stamp,
   retried next reconcile), so one odd file never stops the scan. No image and no teacher's work is in it.
+  **Identity contract**: a copy is `(docId, questionId)`, a question is `lineage.rootId`
+  (`rootIdOf`), a version is `contentKey`. Question ids are unique per document only
+  (whole-document Duplicate and restore-as-copy keep them), so anything stored about a
+  question (results, canonical picks, reserves) keys on these, never a bare `questionId`.
   The stamp is freshness only: a row's use date (`usedOn` = `satOn ?? createdAt`) orders
   copies and dates uses, so editing an old paper never makes it look recently used.
 - **`KNOWN_KEYS` must list every top-level field** — an unlisted key is stripped into
