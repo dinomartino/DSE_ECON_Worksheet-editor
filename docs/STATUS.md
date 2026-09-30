@@ -133,6 +133,19 @@ off the bottom.** It is the first thing a fresh session reads — then
   subtitles, no audio). Translations are canned in the browser (`scripts/demo/ai-provider.mjs`,
   text in `scripts/demo/content.mjs:AI`); Check terms is real. App nit seen while filming:
   after a finding card's Replace, the bar still reads "1 to fix · Replace 1" until Done.
+- **UI polish round 2 (merged on `develop` 2026-09-30, not released)** — four Opus worktree
+  branches from 35e728f. (1) Toolbar: name gets room, compact summary chip (hidden below xl
+  unless over target), save status is a dot (`SaveStatus.tsx`; "Not saved yet" after 6s
+  stalled). (2) Quiet prompts: only item-level text keeps "Double-click to add"; options,
+  parts, captions show grey "Add English" (`Preview.tsx:QUIET_PROMPT_STYLES`). (3) Dialogs:
+  fade hints + "More below" in the footer (`Dialog.tsx` ScrollPane); Export labels "Student
+  or teacher copy" / "Shuffled versions"; AI model select shows names, details underneath.
+  (4) Start: footer pinned below the scroller (the fade had covered the links), icon
+  order/view toggles, fixed 168px cards, folder column from 1280px only.
+  **User's call:** 6s threshold; no "Saved" word at any width; grey prompt ~2.4:1; parts
+  treated as secondary. **Not yet done:** Inspector "+ Paragraph … + Source" wrap and
+  repeated "Empty. Type on the page"; a Structured question added to a Classroom sheet
+  lands in Section A; bottom tip bar covers the page; the empty start screen.
 - **UI polish (merged on `develop` 2026-09-29, not released)**: hover is colour only (no
   accent bar/nudge/lift; rule in SYSTEM_ARCHITECTURE § Layout rules); start-screen aside
   shows scroll edge hints (`src/components/ui/scrollEdges.ts`, `ScrollEdgeHints.tsx`),
@@ -181,7 +194,7 @@ off the bottom.** It is the first thing a fresh session reads — then
   Editor: `[logo] Worksheets › <title>` crumb goes home (word hides <1280px). The start screen is always home — no Back to the last
   document; leaving flushes then unmounts the editor (`EditorHost.tsx:flushBeforeLeaving`).
   Fixed after: Clear saved documents discards the open document (`EditorHost.tsx:clearSavedDocuments`);
-  toolbar one row from 1024px (name truncates; Setup icon-only and Saved a dot below xl);
+  toolbar one row from 1024px (name truncates; Setup icon-only below xl; save status a dot at every width);
   desktop file-drop unlisten never rejects (`src/platform/index.ts:unlistenSafely`) — not
   yet run in the real desktop shell.
 - **標楷體 font preset (2026-09-28, merged on `develop`)** — teacher request: "Times New
@@ -237,7 +250,7 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Last verified
 
-- `npm test` — 3102 tests, ~7s (2026-09-30 on `develop`; 2565 at the v0.5.0 release). `cargo check --locked` clean. `npm run build`
+- `npm test` — 3234 tests, ~8s (2026-09-30 on `develop`; 2565 at the v0.5.0 release). `cargo check --locked` clean. `npm run build`
   green (postbuild: glossary only in a lazy chunk); `npm run samples` exports.
 - `npm run typecheck` — clean.
 - `npm run lint` — 43 pre-existing problems (3 errors, 40 warnings) in `Preview.tsx` and
@@ -246,6 +259,10 @@ off the bottom.** It is the first thing a fresh session reads — then
   2026-09-30 (LibreOffice at `/opt/homebrew/bin/soffice`, a dev server running).
 
 ## Open threads and known gaps
+
+- **`verify-plan.mjs` ignores a positional base** (`main()`: with no `--commit`, `ci + 1` is 0,
+  so the first argument is skipped and base stays `develop`). Workaround: put any flag first,
+  `verify-plan.mjs --x <sha>`. Unfixed.
 
 - **E2 loose ends:** Check terms has no "N match" count; the billing error opens the key page (no
   `billingUrl` in presets); DWL/TR stay symbols, so their 中文 falls back to English;
@@ -298,6 +315,9 @@ off the bottom.** It is the first thing a fresh session reads — then
 
 ## Log
 
+- **2026-09-30 (late night)** — UI polish round 2: four Opus worktree agents, merged to
+  `develop`, 3234 tests, typecheck clean, lint 43, samples + cover-verify pass, merged
+  whole screenshotted light/dark at 1440 and 1024. Nothing pushed.
 - **2026-09-30 (night)** — Topics per part (WP-0 + A/B/C + QA) and the launch animation merged to
   `develop`, 3224 tests; bank authoring proposal written. Nothing pushed.
 
