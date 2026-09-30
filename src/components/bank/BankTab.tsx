@@ -33,7 +33,7 @@ import { escapeClears } from './escapeClears';
 import { TOPICS } from '@/model/topics';
 import { listQuestionTypes } from '@/registry';
 import { useAppDialogs } from '@/store/appDialogs';
-import { unanchoredQuestionAfter, useWorksheetStore } from '@/store/worksheetStore';
+import { unanchoredQuestionSectionLabel, useWorksheetStore } from '@/store/worksheetStore';
 import { BankRow, typeLabel } from './BankRow';
 import { insertFromBank, type InsertReport } from './bankSession';
 import { useBankDrag, useBankRowDrag } from './bankDrag';
@@ -156,10 +156,11 @@ export function BankTab() {
   const typeDestinations = anchorId
     ? undefined
     : new Set((filters.typeId ? [filters.typeId] : types.map((type) => type.id)).map((typeId) =>
-        anchorLabel(worksheet, unanchoredQuestionAfter(worksheet, typeId)),
+        unanchoredQuestionSectionLabel(worksheet, typeId),
       ));
-  const anchor = anchorId ? anchorLabel(worksheet, anchorId) : typeDestinations?.values().next().value;
+  const anchor = anchorId ? anchorLabel(worksheet, anchorId) : undefined;
   const splitDestinations = (typeDestinations?.size ?? 0) > 1;
+  const section = splitDestinations ? undefined : typeDestinations?.values().next().value;
   // Nothing to filter: the empty state stands alone rather than under inert controls.
   const emptyBank = status.state === 'ready' && base.length === 0;
 
@@ -196,7 +197,13 @@ export function BankTab() {
   const dragFor = (row: BankRowData) =>
     drag.sourceProps(row, rowKey(row), (language === 'zh' ? row.excerpt.zh || row.excerpt.en : row.excerpt.en || row.excerpt.zh) || 'Question');
   // No visible button: a focused row takes Enter or Space, and copies after the anchor.
-  const where = splitDestinations ? 'in the section for its type' : anchor ? `after ${anchor}` : 'at the end';
+  const where = splitDestinations
+    ? 'in the section for its type'
+    : anchor
+      ? `after ${anchor}`
+      : section
+        ? `in ${section}`
+        : 'at the end';
   // One Tab stop for the list: the row last focused (else the first); ↑ ↓ move between rows.
   const [stopKey, setStopKey] = useState<string>();
   // The rows Enter inserts, in list order (rows already in the paper are not among them).

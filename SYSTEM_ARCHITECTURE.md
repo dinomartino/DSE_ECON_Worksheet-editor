@@ -2044,8 +2044,8 @@ item lands behind (undefined = append). An explicit `afterId` wins.
   the element's own text).
 - **A sectioned document's first question goes into its first section** (`firstSectionGap`),
   ahead of that section's closing line on the exam papers. Appending put it under the
-  last heading. Unanchored questions and the stimulus only; the labels name it via
-  `unanchoredQuestionAfter()`. Drops are placed by the pointer and keep their full range.
+  last heading. Unanchored questions and the stimulus only; the labels name the section
+  ("in Section B") via `unanchoredQuestionSection()` and `sectionShortLabel()`. Drops are placed by the pointer and keep their full range.
 - **An unanchored question goes to the section made for its type** (`fittingSectionGap`,
   `src/model/sectionFit.ts`): redirected only when its default section fits another type.
   A section's questions decide its type; an empty one is read by its heading against the

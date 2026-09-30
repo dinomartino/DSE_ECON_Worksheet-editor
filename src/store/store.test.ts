@@ -29,7 +29,12 @@ import type { DiagramBlock, McqQuestion, Question, StructuredQuestion, TableBloc
 import { buildAcceptanceWorksheet, withFlow } from '@/test/fixtures';
 import { richMcq, richStructured } from '@/test/idFixture';
 import { buildTranslateFixture } from '@/test/translateFixture';
-import { lastQuestionGap, unanchoredQuestionAfter, useWorksheetStore } from './worksheetStore';
+import {
+  lastQuestionGap,
+  unanchoredQuestionSection,
+  unanchoredQuestionSectionLabel,
+  useWorksheetStore,
+} from './worksheetStore';
 
 const store = () => useWorksheetStore.getState();
 
@@ -1064,15 +1069,18 @@ describe('insertion anchor (§where things land)', () => {
 
     it('names Section A as the destination until the document holds a question', () => {
       load('classroom');
-      const [a] = sections();
-      expect(unanchoredQuestionAfter(store().worksheet)).toBe(a.id);
+      const [a, b] = sections();
+      expect(unanchoredQuestionSection(store().worksheet)).toBe(a.id);
+      expect(unanchoredQuestionSectionLabel(store().worksheet)).toBe('Section A');
       store().addQuestion('mcq');
-      expect(unanchoredQuestionAfter(store().worksheet)).toBeUndefined();
+      // Then an untyped question appends, under the last heading.
+      expect(unanchoredQuestionSection(store().worksheet)).toBe(b.id);
     });
 
     it('changes nothing on a Paper 1, which has no sections', () => {
       load('paper1');
-      expect(unanchoredQuestionAfter(store().worksheet)).toBeUndefined();
+      expect(unanchoredQuestionSection(store().worksheet)).toBeUndefined();
+      expect(unanchoredQuestionSectionLabel(store().worksheet)).toBeUndefined();
     });
   });
 
@@ -1169,17 +1177,18 @@ describe('insertion anchor (§where things land)', () => {
       expect(ids().indexOf(added)).toBe(ids().indexOf(a.id) + 1);
     });
 
-    it('names the destination per type for the flyout', () => {
+    it('names the destination section per type for the flyout', () => {
       load('classroom');
       const [a, b] = sections();
-      expect(unanchoredQuestionAfter(store().worksheet, 'mcq')).toBe(a.id);
-      // Section B is last, so "at the end" is the truth for a structured question.
-      expect(unanchoredQuestionAfter(store().worksheet, 'structured')).toBeUndefined();
+      const label = (typeId: string) => unanchoredQuestionSectionLabel(store().worksheet, typeId);
+      expect(unanchoredQuestionSection(store().worksheet, 'mcq')).toBe(a.id);
+      // Section B is last, so a structured question appends into it: named, not "the end".
+      expect(unanchoredQuestionSection(store().worksheet, 'structured')).toBe(b.id);
+      expect([label('mcq'), label('structured')]).toEqual(['Section A', 'Section B']);
       const s1 = add('structured');
-      expect(unanchoredQuestionAfter(store().worksheet, 'mcq')).toBe(a.id);
+      expect(label('mcq')).toBe('Section A');
       const m1 = add('mcq');
-      expect(unanchoredQuestionAfter(store().worksheet, 'mcq')).toBe(m1);
-      expect(unanchoredQuestionAfter(store().worksheet, 'structured')).toBeUndefined();
+      expect([label('mcq'), label('structured')]).toEqual(['Section A', 'Section B']);
       expect(ids()).toEqual([a.id, m1, b.id, s1]);
     });
 

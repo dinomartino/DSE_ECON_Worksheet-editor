@@ -266,6 +266,26 @@ export function flowItemLabel(
   return text.length > MAX_LABEL_CHARS ? `${text.slice(0, MAX_LABEL_CHARS).trimEnd()}…` : text;
 }
 
+const MAX_SECTION_LABEL_CHARS = 16;
+
+/**
+ * A section marker's short name, for "in Section A" destination labels: its heading up
+ * to the colon ("Section A: Multiple Choice" → "Section A", 甲部：多項選擇題 → 甲部), else
+ * the heading truncated, else its place in the flow ("section 2"). Undefined when `id`
+ * names no section.
+ */
+export function sectionShortLabel(doc: FlowDoc, id: string | undefined): string | undefined {
+  const sections = resolveFlow(doc).filter((item) => item.type === 'layout' && item.element.kind === 'section');
+  const at = sections.findIndex((item) => item.id === id);
+  if (at < 0) return undefined;
+  const element = (sections[at] as Extract<ResolvedItem, { type: 'layout' }>).element;
+  const text = 'text' in element ? (plain(element.text.en) || plain(element.text.zh)).trim() : '';
+  const head = text.split(/[:：]/)[0].trim();
+  const label = head && head.length <= MAX_SECTION_LABEL_CHARS ? head : text;
+  if (!label) return `section ${at + 1}`;
+  return label.length > MAX_SECTION_LABEL_CHARS ? `${label.slice(0, MAX_SECTION_LABEL_CHARS).trimEnd()}…` : label;
+}
+
 export function createHeadingElement(text: BiText = emptyBiText()): LayoutElement {
   return { kind: 'heading', id: newId(), text };
 }

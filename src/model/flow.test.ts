@@ -10,6 +10,7 @@ import {
   moveRunInFlow,
   nudgeInFlow,
   resolveFlow,
+  sectionShortLabel,
   type FlowDoc,
 } from './flow';
 import { createMcqQuestion, createWorksheet } from './factories';
@@ -367,5 +368,26 @@ describe('applyOrder writes a position into both lists', () => {
     const doc: FlowDoc = { questions: [q('q1'), q('q2')] };
     const moved = applyOrder(doc, [{ type: 'question', id: 'q2' }]);
     expect(moved.questions.map((question) => question.id)).toEqual(['q2', 'q1']);
+  });
+});
+
+describe('sectionShortLabel: "in Section A" destinations', () => {
+  it('takes the heading up to its colon, the heading truncated, else its place', () => {
+    const a = createSectionElement(bi('Section A: Multiple Choice', '甲部：多項選擇題'));
+    const zh = createSectionElement(bi('', '乙部：結構式題目'));
+    const long = createSectionElement(bi('Questions on market structures and pricing', ''));
+    const bare = createSectionElement();
+    const divider = createDividerElement();
+    const doc: FlowDoc = {
+      questions: [],
+      layout: [a, zh, long, bare, divider],
+      flow: [a, zh, long, bare, divider].map((element) => ({ type: 'layout' as const, id: element.id })),
+    };
+    expect(sectionShortLabel(doc, a.id)).toBe('Section A');
+    expect(sectionShortLabel(doc, zh.id)).toBe('乙部');
+    expect(sectionShortLabel(doc, long.id)).toBe('Questions on mar…');
+    expect(sectionShortLabel(doc, bare.id)).toBe('section 4');
+    expect(sectionShortLabel(doc, divider.id)).toBeUndefined();
+    expect(sectionShortLabel(doc, undefined)).toBeUndefined();
   });
 });

@@ -21,16 +21,21 @@ const APP_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.me
  *   node scripts/cover-verify.mjs [--out=/tmp/cover-verify] [--url=http://localhost:3000]
  *                                 [--skip-fixtures]
  *
+ *   `--out` (default $COVER_DIR, else the path shown) also receives the fixtures.
+ *
  * Needs LibreOffice and pdftoppm (poppler). Starts `npm run dev` itself if the URL is
  * not already serving, and stops it again on exit.
  */
 
 const args = process.argv.slice(2);
+// `--name=value` or `--name value`.
 const opt = (name, fallback) => {
   const hit = args.find((a) => a.startsWith(`--${name}=`));
-  return hit ? hit.slice(name.length + 3) : fallback;
+  if (hit) return hit.slice(name.length + 3);
+  const at = args.indexOf(`--${name}`);
+  return at >= 0 && args[at + 1] && !args[at + 1].startsWith('--') ? args[at + 1] : fallback;
 };
-const OUT = opt('out', '/tmp/cover-verify');
+const OUT = opt('out', process.env.COVER_DIR ?? '/tmp/cover-verify');
 const URL_BASE = opt('url', 'http://localhost:3000');
 const SOFFICE = '/Applications/LibreOffice.app/Contents/MacOS/soffice';
 
@@ -57,8 +62,8 @@ const collectPage = (prefix, dest) => {
  * @param soft When true, a failure returns `undefined` instead of ending the run — for
  *   an optional tool whose absence should cost one check, not the whole harness.
  */
-const run = (cmd, cmdArgs, label, soft = false) => {
-  const res = spawnSync(cmd, cmdArgs, { stdio: 'pipe', encoding: 'utf8' });
+const run = (cmd, cmdArgs, label, soft = false, env = process.env) => {
+  const res = spawnSync(cmd, cmdArgs, { stdio: 'pipe', encoding: 'utf8', env });
   if (res.status !== 0) {
     if (soft) {
       console.log(`skipped: ${label} (${res.error?.code ?? `exit ${res.status}`})`);
@@ -76,6 +81,8 @@ if (!args.includes('--skip-fixtures')) {
     'npx',
     ['vitest', 'run', 'scripts/cover-fixtures.test.ts'],
     'emit fixtures',
+    false,
+    { ...process.env, COVER_DIR: OUT },
   );
 }
 

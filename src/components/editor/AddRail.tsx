@@ -21,7 +21,7 @@ import { computeNumbering } from '@/model/numbering';
 import { bi, plain } from '@/model/text';
 import type { LayoutElement } from '@/model/types';
 import { listQuestionTypes } from '@/registry';
-import { unanchoredQuestionAfter, useWorksheetStore } from '@/store/worksheetStore';
+import { unanchoredQuestionSectionLabel, useWorksheetStore } from '@/store/worksheetStore';
 import { useBankSession } from '@/components/bank/bankSession';
 import {
   AnswerLinesIcon,
@@ -111,17 +111,16 @@ export function AddRail() {
   const labelFor = (id: string | undefined) =>
     flowItemLabel(worksheet, id, (questionId) => numbering.byQuestionId.get(questionId)?.number);
   // With no anchor, each question type lands in the section made for it (or the first
-  // section of an empty sectioned document). When the types part ways, each row says where.
+  // section of an empty sectioned document), named by its short label ("in Section B").
+  // When the types part ways, each row says where.
   const typeDestinations =
     open === 'questions' && !afterId
-      ? new Map(listQuestionTypes().map((type) => [type.id, labelFor(unanchoredQuestionAfter(worksheet, type.id))]))
+      ? new Map(listQuestionTypes().map((type) => [type.id, unanchoredQuestionSectionLabel(worksheet, type.id)]))
       : undefined;
   const splitDestinations = new Set(typeDestinations?.values()).size > 1;
-  const anchorLabel = afterId
-    ? labelFor(afterId)
-    : splitDestinations
-      ? undefined
-      : typeDestinations?.values().next().value;
+  const anchorLabel = afterId ? labelFor(afterId) : undefined;
+  // One destination for every type: the header states it ("Inserts in Section A").
+  const sharedSection = splitDestinations ? undefined : typeDestinations?.values().next().value;
 
   useEffect(() => {
     if (!open) return;
@@ -162,7 +161,7 @@ export function AddRail() {
     return {
       id: definition.id,
       label: plain(definition.displayName.en),
-      hint: splitDestinations ? `${zh} · ${destination ? `after ${destination}` : 'at the end'}` : zh,
+      hint: splitDestinations ? `${zh} · ${destination ? `in ${destination}` : 'at the end'}` : zh,
       icon: definition.id === 'mcq' ? <McqIcon size={18} /> : <StructuredIcon size={18} />,
       run: (afterId) => addQuestion(definition.id, afterId),
     };
@@ -381,6 +380,10 @@ export function AddRail() {
               </>
             ) : splitDestinations && active.id === 'questions' ? (
               'Each type goes to its own section'
+            ) : sharedSection && active.id === 'questions' ? (
+              <>
+                Inserts in <span className="font-semibold text-ink">{sharedSection}</span>
+              </>
             ) : (
               'Inserts at the end'
             )}
