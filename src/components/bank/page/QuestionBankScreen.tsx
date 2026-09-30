@@ -27,6 +27,7 @@ import { worksheetStore, type WorksheetSummary } from '@/storage';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { addPicksToOpenDocument } from './addToOpen';
 import { afterOpen, tagIndexOf, useBankReturn } from './bankReturn';
+import { useBankCart } from './bankCart';
 import {
   activeFilters,
   addTarget,
@@ -149,7 +150,9 @@ export function QuestionBankScreen({
   const [level, setLevelState] = useState<BankLevel>(() => back?.level ?? readLevel());
   const [filters, setFilters] = useState<BankFilters>(back?.filters ?? DEFAULT_FILTERS);
   const [focusKey, setFocusKey] = useState<string | undefined>(back?.focusKey);
-  const [picks, setPicks] = useState<string[]>([]);
+  // The cart: kept per tab across Open in worksheet, Home and a reload (`bankCart.ts`).
+  const cart = useBankCart();
+  const picks = useMemo(() => cart.picks.map(rowKey), [cart.picks]);
   const [railHidden, setRailHiddenState] = useState(readRailHidden);
   const [language, setLanguage] = useState<LanguageMode>('en');
   const [version, setVersion] = useState<VersionMode>('teacher');
@@ -246,7 +249,6 @@ export function QuestionBankScreen({
   const chosen = chosenFor.root === tagRoot ? chosenFor.codes : NONE;
 
   const pickedRows = picks.map((key) => byKey.get(key)).filter((row): row is BankRow => row !== undefined);
-  const pickedSet = useMemo(() => new Set(pickedRows.map(rowKey)), [pickedRows]);
   // Picks are questions: two copies of one question picked are one, and share its topics.
   const pickedByRoot = [...new Map(pickedRows.map((row) => [row.rootId, row])).values()];
   const pickedRoots = new Set(pickedByRoot.map((row) => row.rootId));
@@ -272,11 +274,24 @@ export function QuestionBankScreen({
     },
     [order, index],
   );
-  const togglePick = useCallback(
-    (row: BankRow) =>
-      setPicks((current) => (current.includes(rowKey(row)) ? current.filter((key) => key !== rowKey(row)) : [...current, rowKey(row)])),
-    [],
-  );
+  const togglePick = useCallback((row: BankRow) => useBankCart.getState().toggle(row, (key) => byKey.get(key)?.rootId), [byKey]);
+  // A pick whose question is gone (deleted, trashed, hidden) leaves the list, once the index
+  // has caught up with the saved documents; a scan still running proves nothing.
+  const noticeRef = useRef(onNotice);
+  useEffect(() => {
+    noticeRef.current = onNotice;
+  });
+  useEffect(() => {
+    if (status.state !== 'ready') return;
+    const dropped = useBankCart.getState().prune((key) => byKey.has(key));
+    if (dropped > 0) {
+      noticeRef.current(
+        dropped === 1
+          ? 'Took 1 question off your list: it is no longer in your worksheets.'
+          : `Took ${dropped} questions off your list: they are no longer in your worksheets.`,
+      );
+    }
+  }, [status.state, byKey]);
   const setFilter = (next: BankFilters) => setFilters(next);
   const onSearch = (text: string) => {
     setFilters((current) => ({ ...current, text }));
@@ -319,6 +334,7 @@ export function QuestionBankScreen({
         return;
       }
       onOpenWorksheet(worksheetFromPicks(picked));
+      useBankCart.getState().reset();
     } finally {
       setBusy(false);
     }
@@ -334,7 +350,9 @@ export function QuestionBankScreen({
         return;
       }
       // Opened the start screen's way, then inserted through the store (`addToOpen.ts`).
-      onOpenDocument(target.id, () => void addPicksToOpenDocument(picked));
+      onOpenDocument(target.id, () => {
+        if (addPicksToOpenDocument(picked).length > 0) useBankCart.getState().reset();
+      });
     } finally {
       setBusy(false);
     }
@@ -662,7 +680,7 @@ export function QuestionBankScreen({
             order,
             focused,
             index,
-            picked: pickedSet,
+            picked: pickedRoots,
             railHidden,
             language,
             version,
@@ -713,12 +731,18 @@ export function QuestionBankScreen({
         />
       )}
 
-      {pickedRows.length > 0 && level.kind !== 'untagged' && level.kind !== 'patterns' && (
+      {(pickedRows.length > 0 || cart.cleared) && level.kind !== 'untagged' && level.kind !== 'patterns' && (
         <SelectionTray
-          summary={traySummary(pickedRows)}
+          rows={pickedRows}
           targetTitle={target?.title}
           busy={busy}
-          onClear={() => setPicks([])}
+          canUndo={cart.cleared !== null}
+          onRemove={cart.remove}
+          onMove={cart.move}
+          onSortByType={() => cart.sortByType((key) => byKey.get(key)?.typeId)}
+          onClear={cart.clear}
+          onUndo={cart.undoClear}
+          onDismiss={cart.dismissUndo}
           onSetTopic={() => setPicker({ mode: 'bulk', topicMode: 'add' })}
           onAddTo={() => void addTo(pickedRows)}
           onNewWorksheet={() => void newWorksheet()}

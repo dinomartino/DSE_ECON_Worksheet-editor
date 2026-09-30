@@ -26,6 +26,10 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   thin) under a coverage bar across the topics. Open a topic to read its questions one by one at print size, in English, 中文 or
   both, Student or Teacher version, with the list grouped by sub-topic (hide it for more
   room). Tick questions to make a new worksheet from them or add them to your last one.
+  Picks stay in a list you can reorder (drag, or Alt+↑ ↓), put MCQ before LQ in one click,
+  or trim, with the count, marks and MCQ/LQ split as you go. The list keeps while you open
+  a question in its worksheet, go Home or reload the page, and empties once the questions
+  are in a worksheet.
   Untagged questions get a quick tagging mode: press 1 to 6 to pick a suggested topic,
   Enter to save and see the next. Open any question right where it sits in its worksheet,
   and come back to the same place in the bank. ← Home takes you back.

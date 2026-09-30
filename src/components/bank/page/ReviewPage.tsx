@@ -23,6 +23,7 @@ export interface ReviewState {
   focused: BankRow | undefined;
   /** Its position in `order`. */
   index: number;
+  /** The questions in the cart, by `rootId`: any copy picked marks the question. */
   picked: ReadonlySet<string>;
   railHidden: boolean;
   language: LanguageMode;
@@ -89,6 +90,7 @@ export function ReviewPage({
           onVersion={onVersion}
           onEditTopics={onEditTopics}
           onOpen={onOpen}
+          onPick={onPick}
         />
       )}
     </div>
@@ -121,13 +123,13 @@ function Rail({
     node?.scrollIntoView({ block: 'nearest' });
   }, [focusedRoot]);
 
-  const pickedHere = order.filter((group) => picked.has(rowKey(group.rows[0]))).length;
+  const pickedHere = order.filter((group) => picked.has(group.rootId)).length;
   return (
     <aside aria-label="Questions" className="flex min-h-0 flex-col border-r border-line bg-surface-sunken">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line px-3.5 py-2.5 text-[12px] tabular-nums text-ink-muted">
         <span className="truncate">
           {order.length} {order.length === 1 ? 'question' : 'questions'}
-          {picked.size > 0 && ` · ${pickedHere === picked.size ? picked.size : `${pickedHere} of ${picked.size}`} selected`}
+          {picked.size > 0 && ` · ${pickedHere === picked.size ? picked.size : `${pickedHere} of ${picked.size}`} in your list`}
         </span>
         <button
           type="button"
@@ -179,7 +181,7 @@ function Rail({
                         type="checkbox"
                         tabIndex={-1}
                         aria-label={`Select “${lead.excerpt.en || lead.excerpt.zh || 'question'}”`}
-                        checked={picked.has(rowKey(lead))}
+                        checked={picked.has(group.rootId)}
                         onClick={(event) => event.stopPropagation()}
                         onChange={() => onPick(lead)}
                         className="mt-[3px] h-3.5 w-3.5 cursor-pointer accent-[var(--accent)]"
@@ -243,7 +245,7 @@ function NumberStrip({ state, onFocus, onShow }: { state: ReviewState; onFocus: 
             >
               <span aria-hidden className={`absolute inset-y-0 left-0 w-0.5 bg-accent ${on ? 'opacity-100' : 'opacity-0'}`} />
               {index + 1}
-              {picked.has(rowKey(lead)) && <span aria-label="selected" className="h-1.5 w-1.5 rounded-full bg-accent" />}
+              {picked.has(group.rootId) && <span aria-label="in your list" className="h-1.5 w-1.5 rounded-full bg-accent" />}
             </button>
           );
         })}
@@ -266,6 +268,7 @@ function Stage({
   onVersion,
   onEditTopics,
   onOpen,
+  onPick,
 }: {
   state: ReviewState;
   row: BankRow;
@@ -276,8 +279,10 @@ function Stage({
   onVersion: (version: VersionMode) => void;
   onEditTopics?: (row: BankRow) => void;
   onOpen: (row: BankRow) => void;
+  onPick: (row: BankRow) => void;
 }) {
-  const { order, index, language, version, usedWith } = state;
+  const { order, index, language, version, usedWith, picked } = state;
+  const inList = picked.has(row.rootId);
   const { worksheet, failed } = useOwningDocument(row);
   const topicTags = row.tags.filter((tag) => !isPatternTag(tag));
   const patterns = patternLines(row.tags);
@@ -315,7 +320,7 @@ function Stage({
           ]}
         />
         <span className="flex-1" />
-        <span className="hidden text-[12px] text-ink-subtle xl:inline">↑ ↓ to move · Space to select · O to open in worksheet</span>
+        <span className="hidden text-[12px] text-ink-subtle xl:inline">↑ ↓ to move · Space to add to your list · O to open in worksheet</span>
       </div>
 
       {/* The stage is the one place the desk tone appears: the paper sits on it, and the
@@ -391,6 +396,15 @@ function Stage({
             </dd>
           </Facts>
           <div className="flex flex-wrap items-start gap-2 md:flex-col md:items-end">
+            <Button
+              size="sm"
+              variant={inList ? 'ghostAccent' : 'default'}
+              aria-pressed={inList}
+              onClick={() => onPick(row)}
+              title={inList ? 'Take it off your list (Space)' : 'Add it to your list (Space)'}
+            >
+              {inList ? '✓ In your list' : 'Add to list'}
+            </Button>
             <Button size="sm" onClick={() => onOpen(row)} title="Open this question in its worksheet (O)">
               Open in worksheet
             </Button>
