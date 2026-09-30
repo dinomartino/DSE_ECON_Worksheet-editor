@@ -11,8 +11,9 @@ import { useWorksheetStore } from '@/store/worksheetStore';
 /**
  * The topics the editor shows for a question: its shared set (`sharedTags`, newest tag
  * change wins), read from the other documents' bank rows and the open document's live
- * copies. Display only: a stale copy is shown the newest set but never rewritten for being
- * viewed, so opening a document leaves it clean; it adopts the set on its next tag write
+ * copies. Display only: a stale copy is shown the newest set but its tags are never
+ * changed for being viewed, so opening a document leaves it clean (the one save on open,
+ * `EditorHost`'s, writes it as loaded); it adopts the set on its next tag write
  * (`setQuestionTopics`).
  */
 

@@ -2712,8 +2712,10 @@ in-flight values stay local; the store is called on pointer-up.
   publishes; stored rows keep each copy's own. A write applies the edit to that set and
   every reachable copy adopts it under one stamp, so a removal outranks a copy it could not
   reach (hidden, trashed, newer build). Adoption is lazy: the editor resolves at display
-  time (`src/components/editor/sharedTopics.ts:useShownTags`) and never rewrites a document
-  for being opened. Stamps are device clocks; skew can let an earlier change win.
+  time (`src/components/editor/sharedTopics.ts:useShownTags`) and never changes a
+  document's tags for being opened (`src/app/EditorHost.tsx:EditorHost` still saves every
+  opened document once, as loaded, so a new one reaches the list). Stamps are device
+  clocks; skew can let an earlier change win.
 - **`KNOWN_KEYS` must list every top-level field** — an unlisted key is stripped into
   `__unknown`: it saves fine and vanishes on reload. A test fails when a populated
   worksheet carries a key the set lacks.
