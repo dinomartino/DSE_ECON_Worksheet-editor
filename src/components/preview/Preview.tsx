@@ -20,6 +20,7 @@ import {
 } from "@/model/page";
 import { TableColumnResizer } from "./TableColumnResizer";
 import { TableGridControls } from "./TableGridControls";
+import { sheetStackMargin } from "./sheetStack";
 import { zonesOf, type ZoneName } from "@/model/bands";
 import { COVER_PANEL } from "@/model/cover";
 import {
@@ -6530,11 +6531,8 @@ export function Preview({
           // A transform does not change layout size, so the scroll area would keep
           // reserving the unscaled height. Reclaim the difference — negative when
           // scaled down, positive when zoomed in, which is what lets a zoomed page
-          // actually scroll to its own bottom.
-          marginBottom:
-            scale === 1
-              ? undefined
-              : `${(scale - 1) * pageHeightMm * pages.length}mm`,
+          // actually scroll to its own bottom. The cover is a sheet too.
+          marginBottom: sheetStackMargin(scale, pageHeightMm, pages.length + (rendered.cover ? 1 : 0)),
         }}
       >
         {/*
