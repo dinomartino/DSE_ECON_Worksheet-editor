@@ -1709,6 +1709,10 @@ save sheet first (a cancel keeps the dialog, as `.json` does; name = the `.docx`
 Printing) — no print sheet; flags lift when it resolves, and the status line offers the
 reveal. If the command fails, the print sheet opens instead and the error line says why.
 Both use print media CSS, so there is still one description of the printed page.
+WebKit's print keeps screen-width breakpoints, so hidden chrome can be wider than the
+paper and WebKit shrinks the whole document to fit. Print CSS clips `overflow-x` on every
+ancestor of `#print-root`; that works only while those ancestors stay unpositioned, so the
+page stays `#print-root`'s containing block.
 The answer key (`.docx` only) may take other saved documents' keys into the same file
 ("Also include", § the answer key); the question paper stays this document's alone.
 
