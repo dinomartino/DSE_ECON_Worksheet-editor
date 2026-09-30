@@ -37,8 +37,8 @@ the whole schema, one file.
 - `src/model/numbering.ts:computeNumbering` · `:listIndentScheme` — derived numbers
 - `src/model/marks.ts:partMarks` · `:questionMarks` · `:sectionMarks` — derived totals
 - `src/model/edits.ts:applyEditTarget` · `:applyDeleteTarget` · `:insertBlockAfter` — every mutation recipe
-- `src/model/lineage.ts:freshIds` · `:copyQuestion` · `:questionIdOwners` — every id a question holds, renewed for a copy (a diagram's own geometry is kept); `src/model/dedupeIds.ts:dedupeIds` — ids held twice repaired on open, in `src/storage/document.ts:parseWorksheet`
-- `src/model/topics.ts:TOPICS` · `:topicOf` · `:parentCode` · `:matchesTopic` · `:topicLabel` — the EDB topic taxonomy as data; `Question.tags` stores codes, names are looked up
+- `src/model/lineage.ts:freshIds` · `:copyQuestion` · `:rootIdOf` · `:questionIdOwners` — every id a question holds, renewed for a copy (a diagram's own geometry is kept); `src/model/dedupeIds.ts:dedupeIds` — ids held twice repaired on open, in `src/storage/document.ts:parseWorksheet`
+- `src/model/topics.ts:TOPICS` · `:topicOf` · `:parentCode` · `:matchesTopic` · `:topicLabel` — the EDB topic taxonomy as data; `Question.tags` stores codes, names are looked up. The tag grammar: `:TOPIC_CODE_PATTERN` · `:SYSTEM_TAG_SIGIL` · `:rollupTopic` · `:stringTags`, with `src/model/patterns.ts:isReservedTag` · `:freeTagIssue`
 - `src/model/excerpt.ts:questionExcerpt` · `:biTextExcerpt` · `:blocksExcerpt` — one-line plain text of a stem (Outline, panel rows, the bank), the asked-for language first
 - `src/model/bands.ts:createBand` · `src/model/bandSegments.ts:bandFieldSegments` — masthead rows
 - `src/model/text.ts:BiText` helpers — `:rt` · `:plain` · `:normalizeRuns` · `:applyRunFormat`
@@ -220,7 +220,7 @@ scan; rebuildable, so no teacher's work lives in it.
 
 - `src/library/types.ts:BankRow` · `:BankGroup` · `:BankQuery` · `:BankStatus` · `:StoreChange` — the contracts
 - `src/library/indexer.ts:rowsOf` — a document's rows (text only, never images; `bankHidden` yields none)
-- `src/library/contentKey.ts:contentKey` — content fingerprint ignoring ids, `lineage`, `tags`
+- `src/library/contentKey.ts:contentKey` · `:IGNORED` — content fingerprint ignoring ids and the metadata fields (`lineage`, `tags`, `tagsAt`, `gapBefore`); `src/library/contentKeyFields.test.ts` classifies every question field as content or metadata and fails on a new one
 - `src/library/bankDocs.ts:copyToBank` · `:bankCopyDiffers` · `:updateBankCopy` — the only writes into a bank document; UI in `src/components/editor/BankActions.tsx:useBankActions`
 - `src/library/search.ts:searchRows` · `src/library/group.ts:groupRows` · `src/library/history.ts:usedIn` · `:usedWith` · `:newestFirst` · `src/library/fill.ts:pickFill`
 - `src/model/classes.ts:dateOfUse` · `:parseClasses` · `:foldLegacyClassTag` — who sat a paper (`classes`, `satOn`) and when it counts from; `src/library/cohort.ts:cohortOf` · `:sameStudents` — the derived DSE cohort the anti-repeat filters match by
