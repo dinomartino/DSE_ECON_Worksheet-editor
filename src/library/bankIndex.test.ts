@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createParagraphBlock } from '@/model/factories';
 import { copyQuestion } from '@/model/lineage';
 import { bi } from '@/model/text';
@@ -7,7 +7,7 @@ import { LocalStorageWorksheetStore } from '@/storage';
 import { withChangeFeed } from '@/storage/changes';
 import { summarize } from '@/storage/document';
 import type { WorksheetStore } from '@/storage/types';
-import { createJsonFileBackend, createMemoryBackend, INDEX_FORMAT, type BankIndexBackend } from './bankBackend';
+import { createJsonFileBackend, createMemoryBackend, STORED_INDEX_FORMAT, type BankIndexBackend } from './bankBackend';
 import { createBankIndex, type BankIndex, type BankSource } from './bankIndex';
 import { installLocalStorage, localFeed } from './bankTestKit';
 import { rowsOf } from './indexer';
@@ -352,7 +352,7 @@ describe('createBankIndex — persistence', () => {
     expect(file.removed).toBe(1);
     expect(excerpts(index)).toEqual(['Rebuilt']);
     const written = JSON.parse(file.text!);
-    expect(written.format).toBe(INDEX_FORMAT);
+    expect(written.format).toBe(STORED_INDEX_FORMAT);
     expect(Object.values(written.docs)).toHaveLength(1);
   });
 
@@ -370,3 +370,38 @@ describe('createBankIndex — persistence', () => {
     expect(index.getSnapshot().status.state).toBe('ready');
   });
 });
+
+describe('createBankIndex — a document it cannot read into rows', () => {
+  it('skips that document, logs it, indexes the rest and still reaches ready', async () => {
+    const { store, other } = setup();
+    const good = paper(['Good']);
+    const bad = paper(['Bad']);
+    await store.save(good);
+    await store.save(bad);
+    const source: BankSource = {
+      list: () => other.list(),
+      load: async (id) => {
+        const doc = await other.load(id);
+        if (id !== bad.id || !doc) return doc;
+        // A shape this build does not expect: reading it throws.
+        return Object.defineProperty({ ...doc }, 'bankHidden', {
+          get() {
+            throw new Error('unexpected shape');
+          },
+        });
+      },
+    };
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const backend = createMemoryBackend();
+    const index = createBankIndex(source, noPause, { backend });
+    await index.refresh();
+    await index.settled();
+    expect(index.getSnapshot().status).toEqual({ state: 'ready', done: 2, total: 2 });
+    expect(excerpts(index)).toEqual(['Good']);
+    expect(warn).toHaveBeenCalled();
+    // No stamp for the skipped one, so the next visit tries it again.
+    expect(backend.docs.has(bad.id)).toBe(false);
+    warn.mockRestore();
+  });
+});
+

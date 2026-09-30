@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   cleanPatternName,
   holdsPatterns,
+  freeTagIssue,
   isFreeTag,
+  isReservedTag,
   isPatternTag,
   matchPatternName,
   parsePatternTag,
@@ -25,16 +27,41 @@ describe('題型 tags', () => {
     expect(tagText(tag)).toBe('Calculate PED from TR');
   });
 
-  it('is held by a sub-topic only: a coarse topic, a free prefix or an empty name is a free tag', () => {
+  it('is held by a sub-topic only: a coarse topic, a free prefix or an empty name is no 題型', () => {
     expect(holdsPatterns('C.ped')).toBe(true);
     expect(holdsPatterns('C')).toBe(false);
     expect(holdsPatterns('mock 2025')).toBe(false);
     for (const tag of ['C::Anything', 'mock::2025', 'C.ped::   ', '::C.ped', 'C.ped']) {
       expect(parsePatternTag(tag), tag).toBeUndefined();
     }
-    expect(isFreeTag('C::Anything')).toBe(true);
+    // Anything holding `::` is reserved, 題型 or not: never a free tag.
+    expect(isFreeTag('C::Anything')).toBe(false);
     expect(isFreeTag('C.ped')).toBe(false);
     expect(isFreeTag('C.ped::X')).toBe(false);
+  });
+
+  it('reserves the tag grammar: codes known or not, `::` and the system sigil', () => {
+    for (const tag of ['K', 'EL3', 'C.new', 'C.market-failure', 'SBA::x', '@star', 'C.ped']) {
+      expect(isReservedTag(tag), tag).toBe(true);
+      expect(isFreeTag(tag), tag).toBe(false);
+    }
+    for (const tag of ['mock 2025', 'past paper', 'c.ped', 'K notes', 'hard', 'e-mail', 'Q1', 'MCQ', 'S5', 'DSE2023', 'a@b']) {
+      expect(isFreeTag(tag), tag).toBe(true);
+    }
+    expect(isFreeTag(7 as unknown as string)).toBe(false);
+  });
+
+  it('names why a typed tag is refused, and lets a known code or a plain word through', () => {
+    expect(freeTagIssue('K')).toBe('code');
+    expect(freeTagIssue(' EL3 ')).toBe('code');
+    expect(freeTagIssue('C.new')).toBe('code');
+    expect(freeTagIssue('SBA::x')).toBe('separator');
+    expect(freeTagIssue('C.ped::Calculate')).toBe('separator');
+    expect(freeTagIssue('@star')).toBe('system');
+    expect(freeTagIssue('C.ped')).toBeUndefined();
+    expect(freeTagIssue('EL1')).toBeUndefined();
+    expect(freeTagIssue('mock 2025')).toBeUndefined();
+    expect(freeTagIssue('   ')).toBeUndefined();
   });
 
   it('matches names ignoring case and spacing', () => {

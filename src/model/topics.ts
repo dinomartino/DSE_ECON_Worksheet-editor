@@ -99,6 +99,37 @@ const DATA: Row[] = [
   ]],
 ];
 
+/**
+ * **The tag grammar** (§ docs/design/question-library.md, Tag grammar). Reserved now so no
+ * teacher's tag can be read as something a later build means by it:
+ *  - a **topic code** is a coarse code (one capital letter, or `EL` and a number: `C`,
+ *    `EL1`) or a coarse code, a dot and a lower-case slug (`C.ped`). Anything in this shape
+ *    is a topic code, known here or not, and never a free tag. Narrow on purpose, so
+ *    "MCQ", "S5" or "DSE2023" stay free tags; a later build's coarse topic must fit it;
+ *  - a **題型** is a sub-topic code, `::`, a name (`C.ped::Calculate PED`; `model/patterns.ts`);
+ *  - a tag starting with `SYSTEM_TAG_SIGIL` is a **system tag**, kept for later builds;
+ *  - anything else is a **free tag**.
+ */
+export const TOPIC_CODE_PATTERN = /^(?:[A-Z]|EL[0-9]+)(?:\.[a-z0-9-]+)?$/;
+
+/** Starts a system tag (`@…`): none exist yet; a later build's are kept, never typed. */
+export const SYSTEM_TAG_SIGIL = '@';
+
+/** A tag in the reserved system namespace. */
+export function isSystemTag(tag: unknown): boolean {
+  return typeof tag === 'string' && tag.startsWith(SYSTEM_TAG_SIGIL);
+}
+
+/** A string in the topic-code grammar, whether or not this build knows the code. */
+export function isTopicCode(tag: unknown): boolean {
+  return typeof tag === 'string' && TOPIC_CODE_PATTERN.test(tag);
+}
+
+/** A sub-topic code by grammar (`C.ped`, or a later build's `C.new`). */
+export function isSubTopicCode(tag: unknown): tag is string {
+  return typeof tag === 'string' && isTopicCode(tag) && tag.includes('.');
+}
+
 /** The coarse topics in guide order, each with its fine `children`. */
 export const TOPICS: readonly Topic[] = DATA.map(([code, en, zh, subs]) => ({
   code,
@@ -122,18 +153,37 @@ export function topicOf(code: string): Topic | undefined {
   return BY_CODE.get(code);
 }
 
-/** 'C.ped' → 'C'; a coarse code or free tag → undefined. */
+/**
+ * 'C.ped' → 'C', by grammar: a later build's 'C.new' → 'C' too. A coarse code or a free
+ * tag → undefined.
+ */
 export function parentCode(code: string): string | undefined {
-  return topicOf(code)?.parent;
+  return isSubTopicCode(code) ? code.slice(0, code.indexOf('.')) : undefined;
+}
+
+/**
+ * The known topic a tag falls under: its own, or for a sub-topic this build does not know
+ * ('C.new'), its coarse topic. Undefined for a free tag or an unknown coarse code.
+ */
+export function rollupTopic(tag: string): Topic | undefined {
+  return topicOf(tag) ?? topicOf(parentCode(tag) ?? '');
 }
 
 /**
  * Whether a question's tags fall under `code`: the code itself, or (for a coarse code) any
- * of its fine codes. Free-text tags never match a code.
+ * of its fine codes, known or not. Free-text tags never match a code.
  */
 export function matchesTopic(tags: readonly string[] | undefined, code: string): boolean {
   if (!tags || !topicOf(code)) return false;
-  return tags.some((tag) => tag === code || (topicOf(tag) !== undefined && parentCode(tag) === code));
+  return tags.some((tag) => tag === code || parentCode(tag) === code);
+}
+
+/**
+ * A question's tags as this build reads them: strings only. Anything else (a newer build's
+ * shape, a hand-edited file) stays in the document untouched and is never read.
+ */
+export function stringTags(tags: unknown): string[] {
+  return Array.isArray(tags) ? tags.filter((tag): tag is string => typeof tag === 'string') : [];
 }
 
 /** The topic's name in one language; a free-text tag is returned as itself. */

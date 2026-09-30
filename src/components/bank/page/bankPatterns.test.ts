@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { groupRows } from '@/library/group';
 import { row } from '@/library/testKit';
 import { createMcqQuestion, createStructuredQuestion } from '@/model/factories';
-import { activeFilters, clearFilter, coverage, DEFAULT_FILTERS, filterRows, hasTopic, traySummary } from './bankPage';
+import { activeFilters, clearFilter, coarseCodes, coverage, DEFAULT_FILTERS, filterRows, hasTopic, tagLines, traySummary } from './bankPage';
 import { levelUp, parseLevel, railOrder, railSections, serializeLevel, suggestTopics, TOPICS_LEVEL, type BankLevel } from './bankScreen';
 
 const MCQ = createMcqQuestion().type;
@@ -78,3 +78,22 @@ describe('the 題型 level', () => {
     expect(levelUp({ kind: 'patterns' })).toEqual(TOPICS_LEVEL);
   });
 });
+
+describe('a topic code this build does not list', () => {
+  const later = row({ rootId: 'later', typeId: MCQ, tags: ['C.new'] });
+  const unknownCoarse = row({ rootId: 'k', typeId: MCQ, tags: ['K'] });
+
+  it('rolls a later sub-topic up under its coarse topic', () => {
+    expect(hasTopic(later)).toBe(true);
+    expect(coarseCodes(later)).toEqual(['C']);
+    expect(filterRows([later, unknownCoarse], { ...DEFAULT_FILTERS, topic: 'C' }).map((r) => r.rootId)).toEqual(['later']);
+    expect(railSections(groupRows([later]), 'all').map((section) => section.key)).toEqual(['C']);
+  });
+
+  it('shows an unknown coarse code as its code, never as a topic', () => {
+    expect(hasTopic(unknownCoarse)).toBe(false);
+    expect(coarseCodes(unknownCoarse)).toEqual([]);
+    expect(tagLines(['K', 'C.new'])).toEqual([{ code: 'K' }, { code: 'C.new' }]);
+  });
+});
+

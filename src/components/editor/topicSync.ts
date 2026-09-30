@@ -46,7 +46,9 @@ export function setQuestionTopics(
   const editor = useWorksheetStore.getState();
   const question = editor.worksheet.questions.find((q) => q.id === questionId);
   if (!question) return Promise.resolve(undefined);
-  editor.updateQuestion(questionId, { tags });
+  // `tagsAt` only when the tags really change: the same tags leave the store untouched.
+  const same = JSON.stringify(question.tags ?? []) === JSON.stringify(tags ?? []);
+  if (!same) editor.updateQuestion(questionId, { tags, tagsAt: new Date().toISOString() });
   const committed = useWorksheetStore.getState();
   // Read-only, or the same tags: the store did not move, so neither do the copies.
   if (committed.worksheet === editor.worksheet) return Promise.resolve(undefined);

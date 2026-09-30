@@ -6,7 +6,9 @@ import { computeNumbering } from '@/model/numbering';
 import { plain } from '@/model/text';
 import { isSymbolOnly } from '@/model/symbols';
 import { questionTexts } from '@/model/textWalk';
+import { rootIdOf } from '@/model/lineage';
 import { tagSearchWords } from '@/model/patterns';
+import { stringTags } from '@/model/topics';
 import type { Question, Worksheet } from '@/model/types';
 import { worksheetTitle } from '@/storage/document';
 import type { WorksheetSummary } from '@/storage/types';
@@ -18,10 +20,14 @@ export const EXCERPT_MAX = 200;
 
 /**
  * The bank rows of one saved document, in printed order. `summary` (its index row) names
- * it and stamps its freshness; the use date is the document's own (`dateOfUse`). A `bankHidden` document yields none. Text only — images never enter a row.
+ * it and stamps its freshness; the use date is the document's own (`dateOfUse`). A `bankHidden` document, or one of a kind this build does not know, yields none. Text only — images never enter a row.
  */
 export function rowsOf(worksheet: Worksheet, summary?: Pick<WorksheetSummary, 'title' | 'updatedAt'>): BankRow[] {
   if (worksheet.bankHidden) return [];
+  // Only papers (no kind) and banks hold questions for the bank. A later build's kind
+  // (notes, say) yields none: never a paper, never a use.
+  const kind = worksheet.kind as unknown;
+  if (kind !== undefined && kind !== 'bank') return [];
   const numbering = computeNumbering(worksheet);
   const classes = cleanClasses(worksheet.classes);
   const doc = {
@@ -39,7 +45,9 @@ export function rowsOf(worksheet: Worksheet, summary?: Pick<WorksheetSummary, 't
 type DocFields = Pick<BankRow, 'docId' | 'docTitle' | 'docUpdatedAt' | 'usedOn' | 'docKind' | 'classes'>;
 
 function rowOf(question: Question, doc: DocFields, number: number | undefined): BankRow {
-  const tags = [...(question.tags ?? [])];
+  // Total over any saved shape: a tag or a rootId that is not a string is left in the
+  // document and ignored here, so one odd question never stops the bank.
+  const tags = stringTags(question.tags);
   const printed = questionTexts(question).filter((slot) => slot.role === 'print' && !slot.unprinted);
   const words: string[] = [];
   const has = { en: false, zh: false };
@@ -57,7 +65,7 @@ function rowOf(question: Question, doc: DocFields, number: number | undefined): 
   return {
     ...doc,
     questionId: question.id,
-    rootId: question.lineage?.rootId ?? question.id,
+    rootId: rootIdOf(question),
     typeId: question.type,
     marks: questionMarks(question),
     tags,

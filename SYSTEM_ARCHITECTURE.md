@@ -2642,7 +2642,14 @@ in-flight values stay local; the store is called on pointer-up.
   It holds only the 題型 a teacher defined (sub-topic, type id, name); a question carries
   its own 題型 as a tag (`model/patterns.ts`), so the registry adds names no question uses
   yet and is never needed to read one. Validated per row; `clear()` takes it; it rides in
-  the backup manifest (`patterns`) and a restore only adds.
+  the backup manifest (`patterns`) and a restore only adds. **It never deletes a newer
+  build's data**: a row it cannot use is written back verbatim (`__rows`), a sub-topic is
+  judged by the code grammar rather than this build's list, and a registry whose `format`
+  is newer than `PATTERNS_FORMAT` is read-only here (`NewerPatternsError`). An unreadable
+  registry is set aside before the first write replaces it (web:
+  `econ-worksheet-patterns-corrupt-<time>`; desktop: `worksheets/patterns.corrupt-<time>.json`),
+  or not replaced at all; `clear()` leaves those copies. Desktop writes go through
+  `patterns.json.tmp` and a rename.
 - **Backup** (`storage/backup.ts`) is one zip of `.worksheet.json` entries plus
   `manifest.json`; Trash is left out. Restore parses every entry through `migrate`, skips
   and names bad ones, and **never overwrites**: an identical live id is skipped, any
@@ -2661,8 +2668,17 @@ in-flight values stay local; the store is called on pointer-up.
   reads), with a stamp per document (`updatedAt`). On first use stored rows paint, then a
   reconcile re-indexes only documents whose stamp differs and drops those `list()` no
   longer names; events keep it current (saved/restored → re-index, trashed/removed →
-  drop, cleared → wipe). Anything unreadable, or an `INDEX_FORMAT` mismatch, is dropped
-  and rebuilt — never an error at the UI. No image and no teacher's work is in it.
+  drop, cleared → wipe). A format mismatch (`STORED_INDEX_FORMAT`: the rows version `INDEX_FORMAT` plus a hash of
+  the topic labels, which rows bake into `searchText`; a golden `rowsOf` test says when to
+  bump) or an unreadable store is dropped and
+  rebuilt; a stored entry that fails validation costs only its own document — never an
+  error at the UI. **Indexing is total**: a tag or `rootId` that is not a string is read
+  as absent, and a document that still throws is skipped and logged (no rows, no stamp,
+  retried next reconcile), so one odd file never stops the scan. No image and no teacher's work is in it.
+  **Identity contract**: a copy is `(docId, questionId)`, a question is `lineage.rootId`
+  (`rootIdOf`), a version is `contentKey`. Question ids are unique per document only
+  (whole-document Duplicate and restore-as-copy keep them), so anything stored about a
+  question (results, canonical picks, reserves) keys on these, never a bare `questionId`.
   The stamp is freshness only: a row's use date (`usedOn` = `satOn ?? createdAt`) orders
   copies and dates uses, so editing an old paper never makes it look recently used.
 - **`KNOWN_KEYS` must list every top-level field** — an unlisted key is stripped into

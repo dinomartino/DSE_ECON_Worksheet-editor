@@ -1,0 +1,64 @@
+{
+  "format": 4,
+  "rows": [
+    {
+      "docId": "doc-golden",
+      "docTitle": "Golden paper",
+      "docUpdatedAt": "2026-03-05T00:00:00.000Z",
+      "usedOn": "2026-03-02",
+      "docKind": "paper",
+      "classes": [
+        "5A"
+      ],
+      "questionId": "q-mcq",
+      "rootId": "q-mcq",
+      "typeId": "mcq",
+      "marks": 1,
+      "tags": [
+        "C.ped",
+        "C.ped::Straight-line PED",
+        "mock 2025"
+      ],
+      "excerpt": {
+        "en": "Along a straight-line demand curve, PED is",
+        "zh": "沿直線需求曲線，需求價格彈性"
+      },
+      "searchText": "along a straight-line demand curve, ped is\n沿直線需求曲線，需求價格彈性\nconstant\n選項1\nrising\n選項2\nfalling\n選項3\nzero\n選項4\nc.ped\nprice elasticity of demand\n需求價格彈性\nstraight-line ped\nmock 2025\nmock 2025\nmock 2025",
+      "hasDiagram": false,
+      "languages": [
+        "en",
+        "zh"
+      ],
+      "contentKey": "1q717cu0w3v",
+      "number": 1
+    },
+    {
+      "docId": "doc-golden",
+      "docTitle": "Golden paper",
+      "docUpdatedAt": "2026-03-05T00:00:00.000Z",
+      "usedOn": "2026-03-02",
+      "docKind": "paper",
+      "classes": [
+        "5A"
+      ],
+      "questionId": "q-lq",
+      "rootId": "root-1",
+      "typeId": "structured",
+      "marks": 4,
+      "tags": [
+        "C.equilibrium"
+      ],
+      "excerpt": {
+        "en": "Explain a bumper harvest.",
+        "zh": "Explain a bumper harvest."
+      },
+      "searchText": "explain a bumper harvest.\ndraw the diagram.\nc.equilibrium\ndemand, supply and price\n需求、供應和價格的相互作用",
+      "hasDiagram": false,
+      "languages": [
+        "en"
+      ],
+      "contentKey": "2fbxcvxebx",
+      "number": 2
+    }
+  ]
+}

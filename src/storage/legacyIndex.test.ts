@@ -242,4 +242,11 @@ describe('the optional `kind` on an index row', () => {
     expect(rows.find((r) => r.id === 'paper-2')).not.toHaveProperty('kind');
     expect(rows.find((r) => r.id === 'bank-1')?.kind).toBe('bank');
   });
+
+  it('passes a later build’s kind through untouched', async () => {
+    storage.setItem(PREFIX + 'legacy-doc', JSON.stringify(LEGACY_DOC));
+    const paper = (await store().load('legacy-doc'))!;
+    await store().save({ ...paper, id: 'notes-1', kind: 'notes' } as unknown as typeof paper);
+    expect((await store().list()).find((r) => r.id === 'notes-1')?.kind).toBe('notes');
+  });
 });

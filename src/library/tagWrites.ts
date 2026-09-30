@@ -1,3 +1,4 @@
+import { rootIdOf } from '@/model/lineage';
 import { isNewerThanBuild } from '@/model/migrations';
 import { parsePatternTag } from '@/model/patterns';
 import { topicOf } from '@/model/topics';
@@ -64,8 +65,10 @@ export function bulkTopicEdit(mode: BulkTopicMode, codes: readonly string[]): Ta
   return addTopics(codes);
 }
 
+/** Trimmed, blanks and repeats dropped. A non-string tag is not ours to read: kept as it is. */
 function unique(tags: readonly string[]): string[] {
-  return [...new Set(tags.map((tag) => tag.trim()).filter(Boolean))];
+  const kept = tags.map((tag) => (typeof tag === 'string' ? tag.trim() : tag)).filter((tag) => tag !== '');
+  return [...new Set(kept)];
 }
 
 const sameList = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((tag, i) => tag === b[i]);
@@ -85,13 +88,13 @@ export function matchEdit(before: readonly string[], after: readonly string[]): 
 }
 
 /** A question's identity across copies, keyed as the index keys it (`BankRow.rootId`). */
-export const rootOf = (question: Pick<Question, 'id' | 'lineage'>): string => question.lineage?.rootId ?? question.id;
+export const rootOf = (question: Pick<Question, 'id' | 'lineage'>): string => rootIdOf(question);
 
 /**
  * The document with `edit` applied to the listed questions' `tags` and nothing else:
  * every other question keeps its object, every other field its value. An empty result
- * removes the key rather than storing `[]`. Returns the same object when nothing changes;
- * `updatedAt` moves only when something did.
+ * removes the key rather than storing `[]`. A changed question's `tagsAt` is stamped `now`.
+ * Returns the same object when nothing changes; `updatedAt` moves only when something did.
  */
 export function withQuestionTags(
   worksheet: Worksheet,
@@ -109,7 +112,9 @@ export function withQuestionTags(
     changed = true;
     const { tags: _old, ...rest } = question;
     void _old;
-    return (after.length > 0 ? { ...rest, tags: after } : rest) as typeof question;
+    // Stamped on removal too, so a later build can tell which copy's topics are newest.
+    const stamped = { ...rest, tagsAt: now };
+    return (after.length > 0 ? { ...stamped, tags: after } : stamped) as typeof question;
   });
   return changed ? { ...worksheet, questions, updatedAt: now } : worksheet;
 }

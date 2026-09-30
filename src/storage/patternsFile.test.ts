@@ -29,6 +29,12 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
   remove: async (path: string) => {
     if (!files.delete(path)) throw new Error(`ENOENT ${path}`);
   },
+  rename: async (from: string, to: string) => {
+    const value = files.get(from);
+    if (value === undefined) throw new Error(`ENOENT ${from}`);
+    files.delete(from);
+    files.set(to, value);
+  },
   readDir: async (path: string) =>
     [...new Set([...files.keys()].filter((key) => key.startsWith(`${path}/`)).map((key) => key.slice(path.length + 1).split('/')[0]))].map(
       (name) => ({ name, isFile: !dirs.has(`${path}/${name}`), isDirectory: dirs.has(`${path}/${name}`) }),
@@ -73,6 +79,13 @@ describe('the desktop app stores the 題型 registry in worksheets/patterns.json
     expect(files.has(PATTERNS_FILE)).toBe(false);
   });
 
+  it('writes through a temp file and a rename, leaving no temp behind', async () => {
+    await updatePatternRegistry(patternsFile, (state) => addPatternEntries(state, [entry('A')]));
+    await updatePatternRegistry(patternsFile, (state) => addPatternEntries(state, [entry('B')]));
+    expect([...files.keys()]).toEqual([PATTERNS_FILE]);
+    expect(await names(patternsFile)).toEqual(['mcq:A', 'mcq:B']);
+  });
+
   it('is cleared with the store', async () => {
     await updatePatternRegistry(patternsFile, (state) => addPatternEntries(state, [entry('A')]));
     await new FileWorksheetStore().clear();
@@ -106,6 +119,22 @@ describe.each(cases)('the 題型 registry, %s', (_, fileOf, putRaw) => {
   it('reads an unreadable file as empty', async () => {
     putRaw('{ not json');
     expect(await names(fileOf())).toEqual([]);
+  });
+
+  it.each(['{ not json', '[1, 2]', '{"patterns": "no"}'])('sets an unreadable registry aside before writing over it: %s', async (raw) => {
+    putRaw(raw);
+    const file = fileOf();
+    await updatePatternRegistry(file, (state) => addPatternEntries(state, [entry('New')]));
+    expect(await names(file)).toEqual(['mcq:New']);
+    const kept = [...files.entries(), ...memory.entries()].filter(([key]) => key.includes('corrupt'));
+    expect(kept.map(([, text]) => text)).toEqual([raw]);
+  });
+
+  it('never writes over an unreadable registry it cannot set aside', async () => {
+    putRaw('{ not json');
+    const file = { ...fileOf(), setAside: () => Promise.reject(new Error('disk full')) };
+    await expect(updatePatternRegistry(file, (state) => addPatternEntries(state, [entry('New')]))).rejects.toThrow('disk full');
+    expect(await file.read()).toBe('{ not json');
   });
 
   it('writes from what is stored now, so another window’s addition survives', async () => {

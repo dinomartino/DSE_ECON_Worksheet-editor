@@ -7,7 +7,8 @@ import { useWorksheetStore } from '@/store/worksheetStore';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
 import { TOPICS } from '@/model/topics';
 import type { OutputMode } from '@/model/types';
-import { filterTopics } from './TopicRow';
+import { freeTagIssue } from '@/model/patterns';
+import { filterTopics, freeTagMessage } from './TopicRow';
 
 const MODES: OutputMode[] = [
   { language: 'bilingual', version: 'teacher' },
@@ -86,3 +87,22 @@ describe('topic picker filter', () => {
     expect(filterTopics(zh).some(({ topic }) => topic.code === TOPICS[0].code)).toBe(true);
   });
 });
+
+describe('a typed tag in a reserved form is refused, in plain words', () => {
+  it.each([
+    ['K', 'code'],
+    ['SBA::x', 'separator'],
+    ['@star', 'system'],
+  ] as const)('%s', (typed, issue) => {
+    expect(freeTagIssue(typed)).toBe(issue);
+    const message = freeTagMessage(issue, typed);
+    expect(message).not.toMatch(/[—–]/);
+    expect(message.length).toBeLessThan(110);
+  });
+
+  it('lets a plain word or a listed code through', () => {
+    expect(freeTagIssue('mock 2025')).toBeUndefined();
+    expect(freeTagIssue('C.ped')).toBeUndefined();
+  });
+});
+

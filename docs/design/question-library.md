@@ -48,13 +48,16 @@ Revised from the 2026-09-26 proposal after an audit against the code at `9f2009b
   from `BankRow.typeId`, never a branch). No default list ships.
 - **Stored as a tag, `C.ped::<name>`** (`src/model/patterns.ts`). It rides on `tags`, so
   copies carry it, bank reads take the union, every write path (`tagWrites.ts`,
-  `topicSync.ts`) reaches every copy, and `contentKey` already ignores it. A tag whose
-  prefix is not a sub-topic is a free tag. One 題型 per sub-topic per question;
+  `topicSync.ts`) reaches every copy, and `contentKey` already ignores it. A `::` tag
+  whose prefix is not a sub-topic this build knows is kept and shown as stored, never a
+  free tag (§ Tag grammar). One 題型 per sub-topic per question;
   removing or replacing a sub-topic takes its 題型. Names match ignoring case and spacing.
 - **An app-level registry** (`src/storage/patterns.ts`) keeps the 題型 a teacher defined,
   including unused ones: `econ-worksheet-patterns` / `worksheets/patterns.json`, per-row
   validated, cleared with the store, in the backup manifest (restore adds only). The list
-  shown for a sub-topic × type is the registry joined with names on questions.
+  shown for a sub-topic × type is the registry joined with names on questions. Forward
+  compatible: rows this build cannot use are written back verbatim, sub-topics are judged
+  by the code grammar (§ Tag grammar), and a newer `format` makes the registry read-only.
 - **Created while tagging** (the Edit panel's Topic row, the bank's topic dialog for
   Edit, Set topic when every pick is one type, and tag as you go's full list) or on the
   **題型 Patterns** level (`PatternsPage.tsx`), which also renames, merges and deletes:
@@ -77,6 +80,33 @@ Revised from the 2026-09-26 proposal after an audit against the code at `9f2009b
 - **Bank uses: group and filter only.** The review rail splits a sub-topic by 題型, "No
   題型" last; the Filter has a 題型 field scoped to the topic on screen; topic cards count
   the 題型 in use. Fill and coverage are unchanged. Never printed.
+
+### Tag grammar (reserved before release, 2026-09-30)
+
+`Question.tags` is one list of strings, so its forms are reserved now: once teachers can
+type into it, a later build cannot claim a form without reinterpreting their tags. The
+constants live in `src/model/topics.ts` (`TOPIC_CODE_PATTERN`, `SYSTEM_TAG_SIGIL`) and
+`src/model/patterns.ts` (`PATTERN_SEPARATOR`, `isReservedTag`, `freeTagIssue`).
+
+| Form | Grammar | Example |
+|---|---|---|
+| Topic code | `^(?:[A-Z]\|EL[0-9]+)(?:\.[a-z0-9-]+)?$`: one capital, or `EL` + a number; then optionally `.` + a lower-case slug | `C`, `EL1`, `C.ped` |
+| 題型 | a sub-topic code, `::`, a name | `C.ped::Calculate PED` |
+| System tag | starts with `@`; none exist yet | (reserved) |
+| Free tag | any other string | `mock 2025`, `MCQ`, `S5` |
+
+- **The grammar is narrow on purpose**: "MCQ", "S5" or "DSE2023" stay free tags. A later
+  build adding a coarse topic must name it inside it (a letter, or `EL` + a number).
+- **Unknown codes are topics, not free tags.** Parent codes are derived by grammar
+  (`parentCode`), so a later build's `C.new` rolls up under `C` (`rollupTopic`,
+  `matchesTopic`); an unknown `K` shows as its code and counts as no topic. Tag edits keep
+  codes they cannot show (Replace keeps them, as it keeps free tags), and the 題型 registry
+  keeps rows for sub-topics it does not list.
+- **Only typing is refused.** The Topic row's free-text entry refuses a code this build
+  does not list, anything holding `::`, or a leading `@`, with a one-line reason. A tag
+  already stored in a reserved form (typed before this rule) is left exactly as it is.
+- **Non-string tags** (a later build's shape, a hand-edited file) are never read and never
+  dropped: `stringTags` for reading, every write keeps them in place.
 
 ## The one decision everything else follows from
 
@@ -105,6 +135,7 @@ documents (papers + banks)  ── scan ──►  bank index (derived, rebuilda
 ```ts
 interface QuestionBase {
   tags?: string[];          // topic codes ('C', 'C.ped') plus free tags
+  tagsAt?: string;          // ISO time of the last tag write; metadata, contentKey ignores it
   lineage?: {
     rootId: string;         // first ancestor's id; equal to `id` for an original
     fromDocId?: string;
@@ -121,6 +152,9 @@ interface Worksheet {
 
 ### What a use means (C5)
 
+- **Only papers (no `kind`) and banks are indexed.** A later build's kind (a `notes`
+  document) yields no rows, so it is never a paper, a use or a bank here; `summarize`
+  passes its `kind` string through untouched.
 - **A use is a paper that names classes.** A paper without `classes` is a draft: "Used in"
   still lists it as a place the question lives, but no anti-repeat filter, Fill ranking or
   class strip counts it. Banks are never uses.
@@ -145,8 +179,33 @@ interface Worksheet {
 - `McqQuestion.provenance` is unrelated: printed teacher prose ("Modelled on DSE 2023
   Q1"). `lineage` is machine identity and never prints.
 - `tags` is not a `BiText`; keep it out of `textSlots.ts` roles.
+- **Removing a tag is not durable yet**: the union across copies brings it back from a
+  copy the write could not reach (hidden, trashed, newer-build, restored). Unchanged for
+  now, but every tag write (`withQuestionTags`, `setQuestionTopics`) stamps `tagsAt`, on
+  removal too, so a later build can choose newest-wins from the history accumulated since
+  the first release.
 - Codes are stored, names looked up (`src/model/topics.ts`), so renaming never touches a
   document.
+
+## The identity contract (2026-09-30)
+
+Three identities, and every stored reference to a question must use one of them:
+
+| Identity | Key | Meaning |
+|---|---|---|
+| A **copy** | `(docId, questionId)` | one question in one saved document |
+| A **question** | `lineage.rootId` (`rootIdOf`: its own id when absent) | every copy of it, however edited |
+| A **version** | `contentKey` | copies that say the same thing |
+
+- **A bare `questionId` is never an identity across documents.** Ids are unique within
+  one document only: a whole-document Duplicate (`duplicateWorksheet`) and a restore as a
+  copy (`restoreBackup`) keep every question id.
+- An in-document Duplicate (`freshIds`) keeps `lineage` verbatim: a duplicate of a copy
+  shares its root, a duplicate of an original becomes a new root. "Treat as a new
+  question" drops `lineage`.
+- **Future stored references key on these**: item analysis results (G1/C4) on the copy
+  plus its `contentKey`; canonical picks (C16), retire/star (C17) and reserves (C19) on the
+  root. `contentKey`'s ignored fields are pinned by `src/library/contentKeyFields.test.ts`.
 
 ## Ids — what a copy must renew
 

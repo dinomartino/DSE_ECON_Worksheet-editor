@@ -85,4 +85,21 @@ describe('copyQuestion', () => {
     expect(second.lineage).not.toHaveProperty('fromDocId');
     expect(original.lineage).toBeUndefined();
   });
+
+  it('keeps lineage fields it does not know, renewing only the per-copy ones', () => {
+    // A later build's `publisher` / `licence` must survive every copy this build makes.
+    const future = {
+      ...richMcq(),
+      lineage: { rootId: 'root-1', fromDocId: 'old-doc', copiedAt: '2020-01-01T00:00:00.000Z', publisher: 'pack', licence: { kind: 'cc-by' } },
+    } as unknown as ReturnType<typeof richMcq>;
+    const copy = copyQuestion(future, 'doc-b');
+    expect(copy.lineage).toMatchObject({ rootId: 'root-1', fromDocId: 'doc-b', publisher: 'pack', licence: { kind: 'cc-by' } });
+    expect(copy.lineage!.copiedAt).not.toBe('2020-01-01T00:00:00.000Z');
+    expect(copyQuestion(future).lineage).not.toHaveProperty('fromDocId');
+  });
+
+  it('roots a copy at the question itself when rootId is not a string', () => {
+    const odd = { ...richMcq(), lineage: { rootId: 42 } } as unknown as ReturnType<typeof richMcq>;
+    expect(copyQuestion(odd).lineage!.rootId).toBe(odd.id);
+  });
 });

@@ -20,7 +20,7 @@ describe('withQuestionTags', () => {
     expect(updatedAt).toBe(NOW);
     expect(restAfter).toEqual(restBefore);
     expect(after[1]).toBe(before[1]); // the other question is the same object
-    expect(after[0]).toEqual({ ...target, tags: ['C.ped', 'C.equilibrium', 'mock 2025'] });
+    expect(after[0]).toEqual({ ...target, tags: ['C.ped', 'C.equilibrium', 'mock 2025'], tagsAt: NOW });
     expect(doc.questions[0].tags).toEqual(['C', 'mock 2025']); // the input is untouched
   });
 
@@ -31,6 +31,9 @@ describe('withQuestionTags', () => {
 
     const cleared = withQuestionTags(doc, [target.id], () => [], NOW);
     expect('tags' in cleared.questions[0]).toBe(false);
+    // A removal is a tag write too: stamped, so a later build can tell it is the newest.
+    expect(cleared.questions[0].tagsAt).toBe(NOW);
+    expect(added.questions[1].tagsAt).toBe(NOW);
 
     expect(withQuestionTags(doc, [target.id], addTopics(['C']), NOW)).toBe(doc);
     expect(withQuestionTags(doc, ['missing'], addTopics(['C']), NOW)).toBe(doc);
@@ -153,5 +156,18 @@ describe('an edit from the bank reaches every copy', () => {
     await writeTags(store, copyWrites(rows, [q.id]), bulkTopicEdit('remove', ['C.ped']));
     expect(store.saved.get(docA.id)!.questions[0].tags).toEqual(['C']);
     expect(store.saved.get(docB.id)!.questions[0].tags).toEqual(['G']);
+  });
+});
+
+describe('a tag this build cannot read', () => {
+  // A newer build's tag shape, or a hand-edited file: every edit keeps it where it was.
+  const odd = [{ code: 'C' }, 7] as unknown as string[];
+  it.each([
+    ['replace', replaceTopics(['C.ped'])],
+    ['add', addTopics(['C.ped'])],
+    ['remove', removeTopics(['C'])],
+  ])('survives %s without throwing', (_label, edit) => {
+    const next = edit(['C', ...odd, 'mock']);
+    expect(next).toEqual(expect.arrayContaining(odd));
   });
 });

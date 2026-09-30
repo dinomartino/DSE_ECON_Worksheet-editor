@@ -2,11 +2,11 @@ import { questionIdOwners } from '@/model/lineage';
 import type { Question } from '@/model/types';
 
 /** Fields that say where a copy sits or came from, not what it says. */
-const IGNORED = ['lineage', 'tags', 'gapBefore'] as const;
+export const IGNORED = ['lineage', 'tags', 'tagsAt', 'gapBefore'] as const;
 
 /**
  * A fingerprint of what a question says: every id `questionIdOwners` finds is blanked and
- * `lineage`, `tags` and `gapBefore` dropped, so `freshIds` copies are equal and any text
+ * the `IGNORED` metadata (`lineage`, `tags`, `tagsAt`, `gapBefore`) dropped, so `freshIds` copies are equal and any text
  * edit is not. Keys are sorted, so field order never matters.
  */
 export function contentKey(question: Question): string {
@@ -27,7 +27,7 @@ function stableJson(value: unknown): string {
 }
 
 /** cyrb53: a fast 53-bit string hash, as base-36. Not cryptographic; collisions are negligible here. */
-function hash(text: string): string {
+export function hash(text: string): string {
   let h1 = 0xdeadbeef;
   let h2 = 0x41c6ce57;
   for (let i = 0; i < text.length; i++) {

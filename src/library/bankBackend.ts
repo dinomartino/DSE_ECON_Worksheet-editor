@@ -1,9 +1,12 @@
+import { TOPICS } from '@/model/topics';
+import { hash } from './contentKey';
 import type { BankRow } from './types';
 
 /**
  * Where the bank index persists between visits. Derived data only: every backend may
  * lose everything at any time, and anything it cannot read back is dropped and rebuilt
- * from the documents — never an error at the UI.
+ * from the documents — never an error at the UI. Judged per document: one entry that
+ * fails validation drops only that document's rows and stamp, never the whole index.
  */
 
 /** One document's rows and the `updatedAt` they were derived from (its freshness stamp). */
@@ -24,10 +27,22 @@ export interface BankIndexBackend {
 }
 
 /**
- * The shape of a stored row. Bump when `rowsOf`'s output changes meaning, and every
- * persisted index is dropped and rebuilt on next use.
+ * The rows logic's version. Bump when `rowsOf`'s output changes (shape, excerpt, search
+ * text, `contentKey`), and every persisted index is dropped and rebuilt on next use. The
+ * golden test in `indexer.test.ts` fails when the output moves, to say so.
  */
-export const INDEX_FORMAT = 3;
+export const INDEX_FORMAT = 4;
+
+/**
+ * What a stored index is stamped with and checked against: the rows version plus a hash of
+ * every topic code and label, since rows bake labels into `searchText`. Renaming a topic
+ * rebuilds the index without anyone remembering to bump.
+ */
+export const STORED_INDEX_FORMAT = `${INDEX_FORMAT}.${hash(
+  TOPICS.flatMap((topic) => [topic, ...topic.children])
+    .map((topic) => `${topic.code}\u0000${topic.en}\u0000${topic.zh}`)
+    .join('\n'),
+)}`;
 
 const isString = (value: unknown): value is string => typeof value === 'string';
 const isStringArray = (value: unknown): value is string[] => Array.isArray(value) && value.every(isString);
@@ -102,7 +117,7 @@ export function createJsonFileBackend(port: TextFilePort): BankIndexBackend {
   let again = false;
 
   const serialize = () =>
-    JSON.stringify({ format: INDEX_FORMAT, docs: Object.fromEntries(docs) });
+    JSON.stringify({ format: STORED_INDEX_FORMAT, docs: Object.fromEntries(docs) });
 
   function flush(): Promise<void> {
     if (writing) {
@@ -139,14 +154,14 @@ export function createJsonFileBackend(port: TextFilePort): BankIndexBackend {
       if (text === undefined) return undefined;
       try {
         const parsed = JSON.parse(text) as { format?: unknown; docs?: unknown };
-        if (parsed?.format !== INDEX_FORMAT || !parsed.docs || typeof parsed.docs !== 'object') {
+        if (parsed?.format !== STORED_INDEX_FORMAT || !parsed.docs || typeof parsed.docs !== 'object') {
           return drop();
         }
         const loaded: IndexedDocs = new Map();
         for (const [id, value] of Object.entries(parsed.docs)) {
+          // A bad entry costs only its own document, which the reconcile re-indexes.
           const doc = storedDoc(id, value);
-          if (!doc) return drop();
-          loaded.set(id, doc);
+          if (doc) loaded.set(id, doc);
         }
         docs = loaded;
         return new Map(docs);

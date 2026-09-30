@@ -2,7 +2,7 @@ import { withRowTags } from '@/library/sharedTags';
 import type { BankRow } from '@/library/types';
 import { copyQuestion } from '@/model/lineage';
 import { createWorksheetFrom } from '@/model/newWorksheet';
-import { topicOf } from '@/model/topics';
+import { rollupTopic, topicOf } from '@/model/topics';
 import type { Question, Worksheet } from '@/model/types';
 import { getQuestionType } from '@/registry';
 import type { WorksheetStore } from '@/storage/types';
@@ -67,7 +67,7 @@ export function sharedTopic(questions: readonly Question[]): { en: string; zh: s
   for (const question of questions) {
     const coarse = new Set(
       (question.tags ?? []).flatMap((tag) => {
-        const topic = topicOf(tag);
+        const topic = rollupTopic(tag);
         return topic ? [topic.parent ?? topic.code] : [];
       }),
     );
