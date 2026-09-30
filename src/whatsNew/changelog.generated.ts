@@ -93,6 +93,9 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   own, or nothing. Page 1's title settings sit with them.
 
 ### Fixed
+- **The first question in a new worksheet with sections now goes into Section A.** It
+  used to land after the "Section B" heading, leaving Section A empty. Select a heading
+  first to add a question under that section.
 - **A mislabelled button no longer deletes page 1's own header.** "Same as page 1" kept
   the later pages' header and removed page 1's. The new page choices replace it.
 - **PDF export on Mac (and in Safari) no longer shrinks the pages or runs them into each

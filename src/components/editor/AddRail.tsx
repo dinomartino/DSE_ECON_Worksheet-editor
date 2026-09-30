@@ -21,7 +21,7 @@ import { computeNumbering } from '@/model/numbering';
 import { bi, plain } from '@/model/text';
 import type { LayoutElement } from '@/model/types';
 import { listQuestionTypes } from '@/registry';
-import { useWorksheetStore } from '@/store/worksheetStore';
+import { unanchoredQuestionAfter, useWorksheetStore } from '@/store/worksheetStore';
 import { useBankSession } from '@/components/bank/bankSession';
 import {
   AnswerLinesIcon,
@@ -108,9 +108,10 @@ export function AddRail() {
    * reading "after Q1" beside a question printed "5." is worse than no label.
    */
   const numbering = useMemo(() => computeNumbering(worksheet), [worksheet]);
+  // With no anchor, a question in an empty sectioned document lands in its first section.
   const anchorLabel = flowItemLabel(
     worksheet,
-    afterId,
+    afterId ?? (open === 'questions' ? unanchoredQuestionAfter(worksheet) : undefined),
     (questionId) => numbering.byQuestionId.get(questionId)?.number,
   );
 

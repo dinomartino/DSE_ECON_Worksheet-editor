@@ -29,7 +29,7 @@ import type { DiagramBlock, McqQuestion, Question, StructuredQuestion, TableBloc
 import { buildAcceptanceWorksheet, withFlow } from '@/test/fixtures';
 import { richMcq, richStructured } from '@/test/idFixture';
 import { buildTranslateFixture } from '@/test/translateFixture';
-import { useWorksheetStore } from './worksheetStore';
+import { lastQuestionGap, unanchoredQuestionAfter, useWorksheetStore } from './worksheetStore';
 
 const store = () => useWorksheetStore.getState();
 
@@ -859,8 +859,13 @@ describe('insertion anchor (§where things land)', () => {
   describe('an unanchored question lands with the questions', () => {
     const ids = () => resolveFlow(store().worksheet).map((item) => item.id);
 
-    const load = (documentType: 'paper1' | 'lqMock' | 'classroom') => {
-      store().replaceWorksheet(createWorksheetFrom({ documentType, seedSample: false }));
+    const load = (documentType: 'paper1' | 'lqMock' | 'classroom', sections?: boolean) => {
+      store().replaceWorksheet(createWorksheetFrom({ documentType, seedSample: false, sections }));
+    };
+    // One question already in place, anchor cleared: the next add takes the append rule.
+    const seedOne = (typeId: string) => {
+      store().addQuestion(typeId);
+      store().setInsertAnchor(undefined);
     };
 
     it('goes before "END OF PAPER" on a Paper 1, not after it', () => {
@@ -898,6 +903,7 @@ describe('insertion anchor (§where things land)', () => {
       const closing = elements.at(-1)!;
       const lastSection = elements.filter((el) => el.kind === 'section').at(-1)!;
 
+      seedOne('structured');
       store().addQuestion('structured');
       const order = ids();
       const added = order.indexOf(store().selectedQuestionId!);
@@ -927,6 +933,7 @@ describe('insertion anchor (§where things land)', () => {
       const note = store().worksheet.layout.find((el) =>
         el.kind === 'text' && el.format?.align !== 'center',
       )!;
+      seedOne('structured');
       store().addQuestion('structured');
       const order = ids();
       expect(order.indexOf(store().selectedQuestionId!)).toBeGreaterThan(order.indexOf(note.id));
@@ -953,8 +960,8 @@ describe('insertion anchor (§where things land)', () => {
       expect(order.at(-1)).toBe(closing.id);
     });
 
-    it('appends when the document has no questions yet', () => {
-      load('classroom');
+    it('appends when the document has no questions and no sections', () => {
+      load('classroom', false);
       store().addQuestion('mcq');
       expect(ids().at(-1)).toBe(store().selectedQuestionId);
     });
@@ -962,7 +969,7 @@ describe('insertion anchor (§where things land)', () => {
     it('leaves a classroom worksheet appending past its own trailing element', () => {
       // Nothing is known to close a worksheet, so a teacher's trailing note keeps
       // whatever position they gave it and the question goes after it, as always.
-      load('classroom');
+      load('classroom', false);
       const note = createTextElement(bi('A closing thought', ''));
       store().addLayoutElement(
         note.kind === 'text' ? { ...note, format: { align: 'center' } } : note,
@@ -970,6 +977,102 @@ describe('insertion anchor (§where things land)', () => {
       store().setInsertAnchor(undefined);
       store().addQuestion('mcq');
       expect(ids().at(-1)).toBe(store().selectedQuestionId);
+    });
+  });
+
+  /*
+   * A sectioned document's first question goes into its first section. Appending put a
+   * new classroom worksheet's first question below "Section B", with Section A empty,
+   * on every unanchored path: the rail, the outline's "Add here", the 題庫 tab's Enter
+   * and Fill, and "add to last worksheet" from the bank screen.
+   */
+  describe('the first question of a sectioned document', () => {
+    const ids = () => resolveFlow(store().worksheet).map((item) => item.id);
+    const sections = () => store().worksheet.layout.filter((el) => el.kind === 'section');
+    const load = (documentType: 'classroom' | 'lqMock' | 'paper1') =>
+      store().replaceWorksheet(createWorksheetFrom({ documentType, seedSample: false }));
+
+    it('lands in Section A of a new classroom worksheet, numbered 1', () => {
+      load('classroom');
+      const [a, b] = sections();
+      store().addQuestion('mcq');
+      const added = store().selectedQuestionId!;
+      expect(ids()).toEqual([a.id, added, b.id]);
+      expect(computeNumbering(store().worksheet).byQuestionId.get(added)?.number).toBe(1);
+    });
+
+    it('keeps consecutive adds in Section A, in order', () => {
+      load('classroom');
+      const [a, b] = sections();
+      store().addQuestion('mcq');
+      const one = store().selectedQuestionId!;
+      store().addQuestion('mcq');
+      const two = store().selectedQuestionId!;
+      expect(ids()).toEqual([a.id, one, two, b.id]);
+    });
+
+    it('lands in Section B when Section B is the anchor', () => {
+      load('classroom');
+      const [a, b] = sections();
+      store().setInsertAnchor(b.id);
+      store().addQuestion('structured');
+      expect(ids()).toEqual([a.id, b.id, store().selectedQuestionId]);
+    });
+
+    it('lands under the booklet’s Section A, ahead of "END OF SECTION A"', () => {
+      load('lqMock');
+      const [a, b] = sections();
+      store().addQuestion('structured');
+      const order = ids();
+      const added = order.indexOf(store().selectedQuestionId!);
+      expect(added).toBe(order.indexOf(a.id) + 1);
+      // The closing line stays between the question and Section B.
+      expect(order.indexOf(b.id)).toBe(added + 2);
+    });
+
+    it('takes bank copies (Enter, Fill, add to last worksheet) into Section A, in order', () => {
+      load('classroom');
+      const [a, b] = sections();
+      const copies = store().insertQuestionCopies([richMcq(), richStructured()], { fromDocId: 'elsewhere' });
+      expect(ids()).toEqual([a.id, ...copies, b.id]);
+    });
+
+    it('takes a generated set and its stimulus into Section A', () => {
+      load('classroom');
+      const [a, b] = sections();
+      const lead = createStimulusElement();
+      const report = store().insertQuestionBatch([{ typeId: 'mcq', fill: (q) => q }], {
+        worksheetId: store().worksheet.id,
+        lead,
+      });
+      if (!report.ok) throw new Error('batch refused');
+      expect(ids()).toEqual([a.id, lead.id, ...report.questionIds, b.id]);
+    });
+
+    it('still appends an unanchored layout element, which means the end', () => {
+      load('classroom');
+      const spacer = createSpacerElement();
+      store().addLayoutElement(spacer);
+      expect(ids().at(-1)).toBe(spacer.id);
+    });
+
+    it('leaves the drag range reaching past the last section', () => {
+      // A drop is placed by the pointer; only the unanchored default moved.
+      load('classroom');
+      expect(lastQuestionGap(store().worksheet)).toBe(ids().length);
+    });
+
+    it('names Section A as the destination until the document holds a question', () => {
+      load('classroom');
+      const [a] = sections();
+      expect(unanchoredQuestionAfter(store().worksheet)).toBe(a.id);
+      store().addQuestion('mcq');
+      expect(unanchoredQuestionAfter(store().worksheet)).toBeUndefined();
+    });
+
+    it('changes nothing on a Paper 1, which has no sections', () => {
+      load('paper1');
+      expect(unanchoredQuestionAfter(store().worksheet)).toBeUndefined();
     });
   });
 

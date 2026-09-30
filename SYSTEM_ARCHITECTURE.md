@@ -146,7 +146,7 @@ around a derived question range** (the `questionCount` decomposition) plus a ful
 - **On Paper 1 it opens a question group**: the wide question boundary above
   (`stimulusGapLines`, same override chain), the lead-in gap (2 lines) to the
   question below, and the `keepQuestionWhole` chain through its nodes.
-- **An unanchored stimulus lands ahead of the closing lines** — `appendIndexFor`
+- **An unanchored stimulus lands ahead of the closing lines** — `isQuestionContent`
   treats it as question content (the anchor advances onto it, so the questions added
   next would otherwise follow it past "END OF PAPER").
 - **Selection is mirrored, not lifted**: the preview's local layout selection is
@@ -1998,6 +1998,10 @@ item lands behind (undefined = append). An explicit `afterId` wins.
   covers undo/redo and removals.
 - **The flyout states its destination** (`flowItemLabel()`: derived question number or
   the element's own text).
+- **A sectioned document's first question goes into its first section** (`firstSectionGap`),
+  ahead of that section's closing line on the exam papers. Appending put it under the
+  last heading. Unanchored questions and the stimulus only; the labels name it via
+  `unanchoredQuestionAfter()`. Drops are placed by the pointer and keep their full range.
 - **Hovering previews the position; it does not take it.**
 
 ### Nothing lands after "END OF PAPER"
