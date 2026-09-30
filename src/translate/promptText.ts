@@ -40,7 +40,7 @@ SYMBOLS AND NUMBERS
 HONG KONG STYLE
 10. Hong Kong characters and forms: 什麼 (not 甚麼), 周期, 線, 着, 住戶. Never use Simplified Chinese.
 11. Full-width punctuation in Chinese text: ，。：；？！、「」『』（）. Half-width ( ) only around a pure symbol, unit or abbreviation: 價格 ($), 本地生產總值 (GDP). Never type a space between a Chinese character and a Latin letter or digit: 資料A, 圖1, 廠商A, 2025年.
-12. Hong Kong forms for letters, currency, diagram names and paper furniture: {CONVENTIONS}. Country X → X國. Other letters follow the noun with no space: 資料A, 廠商A, 物品X, 方案I. END OF PAPER → 全卷完.
+12. Hong Kong forms for letters, currency, diagram names and paper furniture: {CONVENTIONS}. Country X → X國. Other letters follow the noun with no space: 資料A, 廠商A, 物品X, 方案I. END OF PAPER → 試卷完.
 13. Command words, as HKEAA writes them:
     Explain … → 解釋… | Explain your answer. → 試加解釋。 | Explain whether … → 解釋…是否…
     State … → 寫出… | State whether … → 指出…是否…

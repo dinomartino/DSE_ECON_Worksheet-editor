@@ -119,7 +119,7 @@ function paper1Layout(): LayoutElement[] {
     {
       kind: 'text',
       id: newId(),
-      text: bi('END OF PAPER', '全卷完'),
+      text: bi('END OF PAPER', '試卷完'),
       format: { bold: true, align: 'center' },
     },
   ];
@@ -129,7 +129,7 @@ function paper1Layout(): LayoutElement[] {
  * The QAB's three sections: derived totals (`showMarks`), continuous numbering
  * (`restartNumbering: false`), body-size bold headings. "Answer any ONE question."
  * and the closing lines ("END OF SECTION A/B", "END OF PAPER"; Section C has none;
- * Chinese 甲部完／乙部完／全卷完) are ordinary text elements — landmarks a teacher may
+ * Chinese 甲部完／乙部完／試卷完) are ordinary text elements — landmarks a teacher may
  * move or reword, not derived furniture.
  */
 function qabSections(): LayoutElement[] {
@@ -150,7 +150,7 @@ function qabSections(): LayoutElement[] {
   const chooseOne: LayoutElement = {
     kind: 'text',
     id: newId(),
-    text: bi('Answer any ONE question.', '任答一題。'),
+    text: bi('Answer any ONE question.', '選答一題。'),
     format: { bold: true },
   };
   return [
@@ -160,7 +160,7 @@ function qabSections(): LayoutElement[] {
     endLine('END OF SECTION B', '乙部完'),
     heading('Section C', '丙部'),
     chooseOne,
-    endLine('END OF PAPER', '全卷完'),
+    endLine('END OF PAPER', '試卷完'),
   ];
 }
 
