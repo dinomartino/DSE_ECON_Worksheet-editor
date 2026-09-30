@@ -600,4 +600,6 @@ export const mcqType: QuestionTypeDefinition<McqQuestion> = {
   qualityView,
   // HKDSE Paper 1: 45 MCQs in 1 hour (HKEAA assessment framework), ~1.3 min an item.
   summary: { label: { en: 'MCQ', zh: '選擇題' }, minutesPerItem: 60 / 45 },
+  // Paper 1 and classroom sheets; a Question-Answer Book or LQ worksheet is written in.
+  paperKinds: ['paper1', 'classroom'],
 };

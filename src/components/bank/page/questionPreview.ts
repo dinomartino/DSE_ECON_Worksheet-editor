@@ -1,5 +1,6 @@
 import { questionClipboardHtml } from '@/export/clipboard';
 import { cssFontFamilies } from '@/model/fonts';
+import { computeNumbering } from '@/model/numbering';
 import { contentWidth, pageSetupOf } from '@/model/page';
 import type { LanguageMode, OutputMode, VersionMode, Worksheet } from '@/model/types';
 import { diagramImages } from '@/components/start/thumbnail';
@@ -10,8 +11,9 @@ import { diagramImages } from '@/components/start/thumbnail';
  *
  * The same route as the start screen's thumbnails: the IR's clipboard reader (so content,
  * answers and mark schemes can never disagree with the export), diagrams as SVG data URLs.
- * The question is rendered alone in its own document's page setup and fonts; its number
- * is therefore 1. Answer space is left out — a preview is for reading, not writing in.
+ * The question is rendered alone in its own document's page setup and fonts, under the
+ * number it has in that document (the facts say "Q24", so the paper does too). Answer
+ * space is left out: a preview is for reading, not writing in.
  */
 
 /** A copy of `worksheet` holding only this question, with nothing that prints around it. */
@@ -54,7 +56,8 @@ export function questionPreviewHtml(
   const single = oneQuestionWorksheet(worksheet, questionId);
   if (!single) return undefined;
   const mode: OutputMode = { language, version, omitAnswerSpace: true };
-  const body = bodyOf(questionClipboardHtml(single, questionId, mode, diagramImages(single, mode)));
+  const number = computeNumbering(worksheet).byQuestionId.get(questionId)?.number;
+  const body = bodyOf(questionClipboardHtml(single, questionId, mode, diagramImages(single, mode), number));
   // The clipboard writes its paste size (12pt); the page prints at the document's body size.
   const family = `font-family:${cssFontFamilies(worksheet.fonts, "'", ',')},serif;`;
   const printed = `${family}font-size:${worksheet.baseFontSize ?? 11}pt;`;

@@ -39,8 +39,9 @@ export async function readPicks(
  * them) holding a copy of each pick, numbered in the order picked. Copies get fresh ids
  * and keep `lineage` (`copyQuestion`); a type this build does not know is left out, as
  * `insertQuestionCopies` does, and so is a second copy of a question already picked
- * (`uniquePicks`). Titled and named after the topic when every pick shares one; otherwise
- * named `BANK_WORKSHEET_NAME` and left untitled.
+ * (`uniquePicks`). Named after the topic when every pick shares one, otherwise
+ * `BANK_WORKSHEET_NAME`; never titled, as the New worksheet form never titles: the name
+ * files it, and the printed heading is the teacher's to type.
  */
 export function worksheetFromPicks(picks: readonly PickedQuestion[]): Worksheet {
   const known = uniquePicks(picks).filter((pick) => getQuestionType(pick.question.type));
@@ -49,7 +50,6 @@ export function worksheetFromPicks(picks: readonly PickedQuestion[]): Worksheet 
     documentType: 'classroom',
     sections: false,
     name: topic ? topic.en : BANK_WORKSHEET_NAME,
-    ...(topic ? { title: topic.en, titleZh: topic.zh } : {}),
   });
   const questions = known.map((pick) => copyQuestion(pick.question, pick.fromDocId));
   return {

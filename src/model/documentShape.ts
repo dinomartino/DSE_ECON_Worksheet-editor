@@ -29,6 +29,31 @@ export function documentShape(worksheet: Worksheet): DocumentShape {
 }
 
 /**
+ * `documentShape`, refined by content into the four kinds the new-worksheet form offers:
+ * a classroom-shaped document whose questions carry dotted answer space is an LQ
+ * worksheet. What a paper normally takes (the 題庫 tab's default type, AI questions from a
+ * source) follows from this. Derived, never stored.
+ */
+export function paperKind(worksheet: Worksheet): DocumentShape {
+  const shape = documentShape(worksheet);
+  if (shape === 'classroom' && hasDottedAnswerSpace(worksheet)) return 'lqWorksheet';
+  return shape;
+}
+
+/**
+ * Any part, sub-part or question with `answerSpace`, or a dotted answer-space element in
+ * the flow. Read structurally, so no type is named.
+ */
+function hasDottedAnswerSpace(worksheet: Worksheet): boolean {
+  if ((worksheet.layout ?? []).some((element) => element.kind === 'answerSpace')) return true;
+  return worksheet.questions.some((question) => {
+    const q = question as { answerSpace?: number; parts?: Array<{ answerSpace?: number; subParts?: Array<{ answerSpace?: number }> }> };
+    if (q.answerSpace) return true;
+    return (q.parts ?? []).some((part) => part.answerSpace || (part.subParts ?? []).some((sub) => sub.answerSpace));
+  });
+}
+
+/**
  * Layout elements this document has no use for — each produces something the paper
  * cannot contain: an MCQ paper has no writing room and no numbering restarts; a QAB's
  * answer space is the dotted primitive, so ruled lines are a second rhythm.

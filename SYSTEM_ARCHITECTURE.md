@@ -1729,8 +1729,15 @@ paths). Verify by measuring the same text node in both states.
 
 `QuestionTypeDefinition`: `id` · `displayName` (bilingual) · `create()` ·
 `render(question, context) → RenderNode[]` · `EditorPanel` · `mapTexts` ·
-`examGapLines?` · `healthFacts?` · `answerKey?` · `variant?` · `qualityView?`. Registered:
-`mcq`, `structured`. A new type needs only a definition.
+`examGapLines?` · `healthFacts?` · `answerKey?` · `variant?` · `qualityView?` ·
+`paperKinds?`. Registered: `mcq`, `structured`. A new type needs only a definition.
+
+- **What a paper normally takes is advice, read from the type** (`paperKinds?`, against
+  `model/documentShape.ts:paperKind`, which refines the shape by content: dotted answer
+  space makes an LQ worksheet). `library/paperTypes.ts` reads it: the 題庫 tab's type
+  filter and Fill start on the paper's type, and an insert of another type is noted in
+  the review bar, never refused. A worksheet also takes the types it already holds; the
+  exam shapes are decided by shape alone.
 
 - **The hand-built numbered paragraph must copy the block's `format` itself** — the
   four hand-assembled sites (MCQ stem; structured stem, part, sub-part) each omitted it
@@ -1956,6 +1963,9 @@ decision ("DSE Mock 2026 (final)") across the top of the paper.
   `worksheetTitle()`, which adds the list's "Untitled"); a test greps all four. Two
   respelled copies existed, and each one kept showing the *printed title* after a
   rename.
+- **Nothing that makes a document titles it.** The bank's "New worksheet from these"
+  names it after the shared topic (else "Questions from bank") and leaves `title` empty,
+  as the form does: the printed heading is the teacher's to type.
 - **Absent `name` means the old behaviour exactly** — a document saved before the field
   existed names itself by its title, as it always did. No migration, no version bump.
 - **`docProps` in the `.docx` is not this** — it carries the printed, language-aware
@@ -2121,6 +2131,13 @@ hover                      → margin drag grip → reorder
 - **Hover changes colour, nothing else**: a clickable row or button answers the pointer
   with a background or text tint; no accent bar, nudge or new decoration. The accent bar
   marks the selected item only.
+- **The page is placed by its scaled width** (`Preview`'s `#print-root` margin): centred
+  while the scaled sheet fits the column, else from the column's left edge. Placing the
+  unscaled box (`mx-auto`) put a fitted page under the sidebar at 1024, and a zoomed one
+  past the left edge where no scroll reaches.
+- **A list is one Tab stop; arrows move within it** (the 題庫 tab's rows, the bank's
+  review rail): the current row holds `tabIndex` 0, the rest -1, and the focus ring is
+  the accent inset ring in both themes.
 - **A scroll pane that can hide content shows an edge hint, not a forced scrollbar**
   (macOS overlay scrollbars are invisible until scrolled): `useScrollEdges` +
   `ScrollEdgeHints` (`src/components/ui/`), as on the start screen's aside.

@@ -45,8 +45,10 @@ export function PageThumb({
     // Strip editing chrome the preview draws on the page. These are affordances for a
     // surface you can click; at thumbnail scale they are noise, and the drag grips in
     // particular would print a column of pills down the side of every card.
+    // A 題庫 drag's provisional question stays: the card shows where it would land. It
+    // is print-hidden only because it is never in the document.
     copy
-      .querySelectorAll('[data-print-hide], [contenteditable], textarea')
+      .querySelectorAll('[data-print-hide]:not([data-bank-ghost]), [contenteditable], textarea')
       .forEach((node) => node.remove());
     // Selection styling belongs to the live page's state, not to what is printed — a
     // violet-tinted question in the thumbnail reads as content, since the rail is far

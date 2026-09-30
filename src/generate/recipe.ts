@@ -1,4 +1,4 @@
-import { documentShape } from '@/model/documentShape';
+import { paperKind } from '@/model/documentShape';
 import type { Side } from '@/model/textSlots';
 import type { LanguageMode, Worksheet } from '@/model/types';
 import type { Recipe } from './types';
@@ -10,13 +10,13 @@ import type { Recipe } from './types';
  * structured question; a classroom worksheet a mix. Derived, never stored.
  */
 export function recipeFor(worksheet: Worksheet): Recipe {
-  const shape = documentShape(worksheet);
+  const shape = paperKind(worksheet);
   if (shape === 'paper1') {
     return { paper: 'paper1', mcq: 4, structured: 0, combination: 1, marks: { min: 0, max: 0 }, sourceAs: 'stimulus', answerSpace: false };
   }
-  if (shape === 'lqMock' || hasDottedAnswerSpace(worksheet)) {
+  if (shape === 'lqMock' || shape === 'lqWorksheet') {
     return {
-      paper: shape === 'lqMock' ? 'lqMock' : 'lqWorksheet',
+      paper: shape,
       mcq: 0,
       structured: 1,
       combination: 0,
@@ -26,20 +26,6 @@ export function recipeFor(worksheet: Worksheet): Recipe {
     };
   }
   return { paper: 'classroom', mcq: 3, structured: 1, combination: 1, marks: { min: 3, max: 6 }, sourceAs: 'stimulus', answerSpace: false };
-}
-
-/**
- * A plain LQ worksheet is a classroom-shaped document whose questions carry dotted
- * answer space (`documentShape` leaves that to content): any part, sub-part or
- * question with `answerSpace`, or a dotted answer-space element in the flow.
- */
-function hasDottedAnswerSpace(worksheet: Worksheet): boolean {
-  if ((worksheet.layout ?? []).some((element) => element.kind === 'answerSpace')) return true;
-  return worksheet.questions.some((question) => {
-    const q = question as { answerSpace?: number; parts?: Array<{ answerSpace?: number; subParts?: Array<{ answerSpace?: number }> }> };
-    if (q.answerSpace) return true;
-    return (q.parts ?? []).some((part) => part.answerSpace || (part.subParts ?? []).some((sub) => sub.answerSpace));
-  });
 }
 
 /** The sides this edition prints; the model writes exactly these. */

@@ -698,7 +698,9 @@ export function StartScreen({
       <>
       {/* The panel's box lives on this wrapper so the edge hints can sit over the scroller. */}
       <div className="zone-light relative flex shrink-0 flex-col border-b border-line bg-surface lg:h-full lg:w-[400px] lg:border-b-0 lg:border-r">
-      <aside ref={asideRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto px-9 pb-8 pt-9">
+      {/* A short window (1024×768) tightens the vertical rhythm so the Question bank row,
+          the last way in, still shows without scrolling. */}
+      <aside ref={asideRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto px-9 pb-8 pt-9 [@media(max-height:820px)]:pt-7">
         <header className="flex items-center gap-2.5">
           <span className="flex shrink-0 text-ink">
             <AppMark size={22} />
@@ -714,11 +716,11 @@ export function StartScreen({
 
         {/* The screen's one display moment: the chrome's serif voice (design/icons/design.md §
             Typography). Everything below it stays on the UI grotesque. */}
-        <h1 className="font-display mt-10 text-balance text-[32px] font-normal leading-[1.15] tracking-[-0.015em] text-ink">
+        <h1 className="font-display mt-10 text-balance text-[32px] font-normal leading-[1.15] tracking-[-0.015em] text-ink [@media(max-height:820px)]:mt-7 [@media(max-height:820px)]:text-[28px]">
           Start a worksheet, or pick up where you left off.
         </h1>
 
-        <section className="mt-9">
+        <section className="mt-9 [@media(max-height:820px)]:mt-6">
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
             Start new
           </h2>
@@ -761,7 +763,7 @@ export function StartScreen({
 
         {/* The bank is every question already written, so it is a way *in* too: its own
             screen, like a document, with ← Home to come back. */}
-        <section className="mt-7">
+        <section className="mt-7 [@media(max-height:820px)]:mt-5">
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
             Reuse questions
           </h2>

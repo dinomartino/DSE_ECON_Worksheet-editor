@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { pickFill } from '@/library/fill';
 import { groupRows } from '@/library/group';
+import { paperTypeFilter } from '@/library/paperTypes';
 import { classesLabel } from '@/library/cohort';
 import { usedWith } from '@/library/history';
 import {
@@ -97,13 +98,21 @@ export function BankTab() {
   const readOnly = useWorksheetStore((s) => s.readOnly);
   const printPreview = useWorksheetStore((s) => s.printPreview);
 
-  const [filters, setFilters] = useState<TabFilters>(NO_FILTERS);
+  // The type filter starts on what this paper takes (Paper 1: MCQs); a classroom sheet takes any.
+  const [filters, setFilters] = useState<TabFilters>(() => ({ ...NO_FILTERS, typeId: paperTypeFilter(worksheet) }));
   const [expanded, setExpanded] = useState<string | undefined>();
   const [limit, setLimit] = useState(PAGE);
   const [busy, setBusy] = useState(false);
   const [fillCount, setFillCount] = useState(4);
   const [fillType, setFillType] = useState<string | undefined>();
   const [fillTopic, setFillTopic] = useState<string | undefined>();
+  // Another paper opened under the open tab: its own type, and Fill follows it again.
+  const [filtersFor, setFiltersFor] = useState(worksheet.id);
+  if (filtersFor !== worksheet.id) {
+    setFiltersFor(worksheet.id);
+    setFilters((current) => ({ ...current, typeId: paperTypeFilter(worksheet) }));
+    setFillType(undefined);
+  }
 
   // Opening the tab reads the store again: papers saved since the last scan show up.
   useEffect(() => refresh(), [refresh]);
@@ -159,13 +168,27 @@ export function BankTab() {
     drag.sourceProps(row, rowKey(row), (language === 'zh' ? row.excerpt.zh || row.excerpt.en : row.excerpt.en || row.excerpt.zh) || 'Question');
   // No visible button: a focused row takes Enter or Space, and copies after the anchor.
   const where = anchor ? `after ${anchor}` : 'at the end';
-  const keyboardFor = (row: BankRowData) =>
-    readOnly
-      ? {}
-      : { onActivate: () => void run([row]), activateHint: `Drag onto the page, or press Enter to insert ${where}` };
+  // One Tab stop for the list: the row last focused (else the first); ↑ ↓ move between rows.
+  const [stopKey, setStopKey] = useState<string>();
+  // The rows Enter inserts, in list order (rows already in the paper are not among them).
+  const stops = readOnly
+    ? []
+    : visible.slice(0, limit).flatMap(({ group, row }) => [
+        ...(roots.has(group.rootId) ? [] : [rowKey(row)]),
+        ...(expanded === group.rootId ? versionRows(group).filter((v) => v.contentKey !== row.contentKey).map(rowKey) : []),
+      ]);
+  const tabStop = stopKey !== undefined && stops.includes(stopKey) ? stopKey : stops[0];
+  const keyboardFor = (row: BankRowData) => {
+    if (readOnly) return {};
+    return {
+      onActivate: () => void run([row]),
+      activateHint: `Drag onto the page, or press Enter to insert ${where}. Up and down arrows move between questions.`,
+      tabIndex: rowKey(row) === tabStop ? (0 as const) : (-1 as const),
+    };
+  };
 
-  // Fill: its own type and topic, following the filters until set.
-  const effectiveFillType = fillType ?? (filters.typeId || types[0]?.id || '');
+  // Fill: its own type and topic, following the filters (so the paper's type) until set.
+  const effectiveFillType = fillType ?? filters.typeId;
   const effectiveFillTopic = fillTopic ?? filters.topic;
   const picks = useMemo(
     () =>
@@ -378,7 +401,23 @@ export function BankTab() {
 
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto" aria-busy={status.state === 'scanning'}>
+      <div
+        className="min-h-0 flex-1 overflow-y-auto"
+        aria-busy={status.state === 'scanning'}
+        onFocus={(event) => {
+          const at = listRows(event.currentTarget).indexOf(event.target as HTMLElement);
+          if (at >= 0 && stops[at] !== stopKey) setStopKey(stops[at]);
+        }}
+        onKeyDown={(event) => {
+          const step = event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0;
+          if (!step) return;
+          const rows = listRows(event.currentTarget);
+          const at = rows.indexOf(event.target as HTMLElement);
+          if (at < 0) return;
+          event.preventDefault();
+          rows[Math.min(rows.length - 1, Math.max(0, at + step))]?.focus();
+        }}
+      >
         {body}
       </div>
 
@@ -436,6 +475,11 @@ export function BankTab() {
       )}
     </div>
   );
+}
+
+/** The rows a key can reach (the ones Enter inserts), in list order. */
+function listRows(list: HTMLElement): HTMLElement[] {
+  return [...list.querySelectorAll<HTMLElement>('[data-bank-row][role="group"]')];
 }
 
 function StateNote({ children }: { children: ReactNode }) {

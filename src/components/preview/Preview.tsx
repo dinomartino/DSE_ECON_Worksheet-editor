@@ -6470,9 +6470,15 @@ export function Preview({
       <div
         id="print-root"
         ref={sheetsRef}
-        className="mx-auto flex flex-col items-center gap-6"
+        className="flex flex-col items-center gap-6"
         style={{
           width: `${pageWidthMm}mm`,
+          // Place the *scaled* sheet: centred while it fits the column, else from the
+          // column's left edge so all of it scrolls into reach. `mx-auto` placed the
+          // unscaled box, which is wider than a narrow column (1024 with the sidebar
+          // open), so the scale about its top centre drew the page under the sidebar.
+          // The scale's own shift, (1 − s)·w / 2, is taken back out.
+          marginLeft: `calc(max(0px, (100% - ${scale * pageWidthMm}mm) / 2) - ${((1 - scale) * pageWidthMm) / 2}mm)`,
           transform: scale === 1 ? undefined : `scale(${scale})`,
           transformOrigin: "top center",
           // A transform does not change layout size, so the scroll area would keep

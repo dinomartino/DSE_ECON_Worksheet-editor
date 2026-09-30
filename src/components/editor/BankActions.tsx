@@ -26,7 +26,11 @@ import type { MenuItem } from '@/components/ui/Menu';
  */
 
 type Holds = ReturnType<typeof bankHolds>;
-type Panel = { kind: 'pick' } | { kind: 'done'; text: string } | { kind: 'error'; text: string };
+type Panel = { kind: 'pick' } | { kind: 'treatNew' } | { kind: 'done'; text: string } | { kind: 'error'; text: string };
+
+/** What "Treat as a new question" does, said before it runs: no silent unlinking. */
+export const TREAT_NEW_TEXT =
+  'This copy will no longer be linked to the bank’s version or to its other copies. The bank will list it as a question of its own, and Update bank copy will not change it. Nothing on the page changes, and ⌘Z undoes it.';
 
 const NEW_BANK = '';
 const NAME_REQUIRED = 'Give it a name first.';
@@ -101,21 +105,25 @@ export function useBankActions(question: Question): {
     ...(question.lineage
       ? [
           {
-            label: 'Treat as a new question',
-            onSelect: () =>
-              commit((draft) => ({
-                ...draft,
-                questions: draft.questions.map((q) => {
-                  if (q.id !== question.id) return q;
-                  const { lineage: _dropped, ...rest } = q;
-                  void _dropped;
-                  return rest as Question;
-                }),
-              })),
+            label: 'Treat as a new question…',
+            onSelect: () => setPanel({ kind: 'treatNew' }),
           },
         ]
       : []),
   ];
+
+  const treatAsNew = () => {
+    setPanel(undefined);
+    commit((draft) => ({
+      ...draft,
+      questions: draft.questions.map((q) => {
+        if (q.id !== question.id) return q;
+        const { lineage: _dropped, ...rest } = q;
+        void _dropped;
+        return rest as Question;
+      }),
+    }));
+  };
 
   const close = () => setPanel(undefined);
   const chosen: Holds = target === NEW_BANK ? 'none' : (holds.get(target) ?? 'none');
@@ -157,7 +165,15 @@ export function useBankActions(question: Question): {
       }}
     >
       <Dialog
-        title={panel.kind === 'pick' ? 'Copy to bank' : panel.kind === 'done' ? 'Question bank' : 'Could not save'}
+        title={
+          panel.kind === 'pick'
+            ? 'Copy to bank'
+            : panel.kind === 'treatNew'
+              ? 'Treat as a new question?'
+              : panel.kind === 'done'
+                ? 'Question bank'
+                : 'Could not save'
+        }
         width={400}
         onClose={close}
         footer={
@@ -175,6 +191,15 @@ export function useBankActions(question: Question): {
                   Copy
                 </Button>
               )}
+            </>
+          ) : panel.kind === 'treatNew' ? (
+            <>
+              <Button variant="subtle" onClick={close}>
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={treatAsNew}>
+                Treat as new
+              </Button>
             </>
           ) : (
             <Button variant="primary" onClick={close}>
@@ -238,6 +263,8 @@ export function useBankActions(question: Question): {
                 </p>
               )}
             </fieldset>
+          ) : panel.kind === 'treatNew' ? (
+            <p className="leading-relaxed">{TREAT_NEW_TEXT}</p>
           ) : (
             <p role="status">{panel.text}</p>
           )}

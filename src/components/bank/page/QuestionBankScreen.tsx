@@ -19,7 +19,7 @@ import {
 } from '@/library/patterns';
 import { registerPatterns, renameRegisteredPattern, unregisterPattern, usePatternRegistry } from '@/library/usePatterns';
 import { holdsPatterns } from '@/model/patterns';
-import type { BankRow } from '@/library/types';
+import type { BankGroup, BankRow } from '@/library/types';
 import { useBank } from '@/library/useBank';
 import { escapeClears } from '@/components/bank/escapeClears';
 import { topicOf } from '@/model/topics';
@@ -39,6 +39,7 @@ import {
   DEFAULT_FILTERS,
   filterRows,
   rowKey,
+  topicName,
   traySummary,
   typeName,
   type BankFilters,
@@ -70,6 +71,7 @@ import {
   addTopics,
   bulkTopicEdit,
   copyWrites,
+  removeTopics,
   replaceTopics,
   writeTags,
   type BulkTopicMode,
@@ -164,6 +166,10 @@ export function QuestionBankScreen({
   const [tagIndex, setTagIndex] = useState(0);
   const [chosenFor, setChosenFor] = useState<{ root?: string; codes: ReadonlySet<string> }>({ codes: new Set() });
   const [tagged, setTagged] = useState<ReadonlySet<string>>(new Set());
+  // What tag as you go saved this visit, newest last: ⌫ or ⌘Z takes the last one back.
+  const [tagHistory, setTagHistory] = useState<TagSave[]>([]);
+  // A question whose tags were just taken back, shown until the list holds it again.
+  const [restoring, setRestoring] = useState<{ group: BankGroup; settled: boolean }>();
   const searchRef = useRef<HTMLInputElement>(null);
   const writes = useRef<Promise<void>>(Promise.resolve());
 
@@ -190,6 +196,9 @@ export function QuestionBankScreen({
   useEffect(() => {
     if (shownLevel.current === levelKey) return;
     shownLevel.current = levelKey;
+    // Tag as you go's Undo belongs to that visit.
+    setTagHistory([]);
+    setRestoring(undefined);
     onLeaveLevel?.();
   }, [levelKey, onLeaveLevel]);
   const setRailHidden = (hidden: boolean) => {
@@ -242,7 +251,8 @@ export function QuestionBankScreen({
     [rows, tagged, level.kind],
   );
   const tagPosition = Math.min(tagIndex, Math.max(0, untagged.length - 1));
-  const tagGroup = untagged[tagPosition];
+  const restoredAt = restoring ? untagged.findIndex((group) => group.rootId === restoring.group.rootId) : -1;
+  const tagGroup = restoring ? (restoredAt >= 0 ? untagged[restoredAt] : restoring.group) : untagged[tagPosition];
   const tagRow = tagGroup?.rows[0];
   const suggestions = useMemo(() => (tagRow ? suggestTopics(tagRow, rows) : []), [tagRow, rows]);
   const tagRoot = tagGroup?.rootId;
@@ -387,8 +397,45 @@ export function QuestionBankScreen({
   const saveTags = (codes: readonly string[], picked?: PickedPatterns) => {
     if (!tagGroup || codes.length === 0) return;
     const root = tagGroup.rootId;
+    if (restoring) {
+      if (restoredAt >= 0) setTagIndex(restoredAt);
+      setRestoring(undefined);
+    }
     setTagged((current) => new Set(current).add(root));
+    setTagHistory((current) => [...current, { group: tagGroup, codes: [...codes] }]);
     void writeTopics(copyWrites(rows, [root]), thenEdit(addTopics(codes), setPatternsEdit(patternEdits(picked?.patterns))));
+  };
+
+  /**
+   * Take the last save back: one write per copy, taking off exactly the topics it added
+   * (and their 題型; the question had no topic before, or it would not have been here).
+   * The question comes back on screen at once and stays until the list holds it again.
+   */
+  const undoTagSave = () => {
+    const last = tagHistory[tagHistory.length - 1];
+    if (!last) return;
+    const root = last.group.rootId;
+    setTagHistory((current) => current.slice(0, -1));
+    setTagged((current) => {
+      const next = new Set(current);
+      next.delete(root);
+      return next;
+    });
+    setChosenFor({ root, codes: new Set() });
+    setRestoring({ group: last.group, settled: false });
+    void writeTopics(copyWrites(rows, [root]), removeTopics(last.codes)).then(() =>
+      setRestoring((current) => (current?.group.rootId === root ? { ...current, settled: true } : current)),
+    );
+  };
+
+  // Back in the list (the index has caught up with the undo): point at it there.
+  if (restoring?.settled && restoredAt >= 0) {
+    setTagIndex(restoredAt);
+    setRestoring(undefined);
+  }
+  const stepTag = (delta: number) => {
+    setRestoring(undefined);
+    setTagIndex(Math.max(0, tagPosition + delta));
   };
 
   /** The 題型 picker for questions of one type; `initial` from a row's own 題型. */
@@ -450,9 +497,18 @@ export function QuestionBankScreen({
   // key from a text field or select (nor calls preventDefault on one).
   const keyRef = useRef<(event: KeyboardEvent) => void>(() => undefined);
   const handleKey = (event: KeyboardEvent) => {
-    if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || isModalLayerOpen() || picker) return;
+    if (event.defaultPrevented || isModalLayerOpen() || picker) return;
     const target = event.target as HTMLElement | null;
     const typing = isTypingTarget(target);
+    // Tag as you go: ⌫ or ⌘Z / Ctrl+Z takes the last save back.
+    const undoChord = (event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'z';
+    const backspace = event.key === 'Backspace' && !event.metaKey && !event.ctrlKey && !event.altKey;
+    if (level.kind === 'untagged' && !typing && (undoChord || backspace) && tagHistory.length > 0) {
+      event.preventDefault();
+      undoTagSave();
+      return;
+    }
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
     const tag = target?.tagName;
     // A focused button keeps Space and Enter for itself, except the preview toggles
     // (radios, where Space would re-pick the picked option), so Space still selects.
@@ -496,7 +552,7 @@ export function QuestionBankScreen({
     if (level.kind === 'untagged' && tagGroup) {
       if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
         event.preventDefault();
-        setTagIndex(Math.max(0, tagPosition + (event.key === 'ArrowRight' ? 1 : -1)));
+        stepTag(event.key === 'ArrowRight' ? 1 : -1);
         return;
       }
       if ((event.key === 'o' || event.key === 'O') && tagRow) {
@@ -712,8 +768,10 @@ export function QuestionBankScreen({
       {level.kind === 'untagged' && (
         <TagAsYouGo
           row={tagRow}
-          position={tagPosition}
-          left={untagged.length}
+          position={restoring && restoredAt < 0 ? 0 : restoring ? restoredAt : tagPosition}
+          left={untagged.length + (restoring && restoredAt < 0 ? 1 : 0)}
+          lastSaved={tagHistory.length > 0 ? tagSaveText(tagHistory[tagHistory.length - 1]) : undefined}
+          onUndo={undoTagSave}
           suggestions={suggestions}
           chosen={chosen}
           language={language}
@@ -721,7 +779,7 @@ export function QuestionBankScreen({
           onToggle={toggleChosen}
           onAllTopics={() => tagGroup && setPicker({ mode: 'tag', rows: tagGroup.rows })}
           onSave={() => saveTags([...chosen])}
-          onStep={(delta) => setTagIndex(Math.max(0, tagPosition + delta))}
+          onStep={stepTag}
           onDone={() => setLevel(TOPICS_LEVEL)}
           onOpen={() => tagRow && openRow(tagRow)}
         />
@@ -837,6 +895,20 @@ export function QuestionBankScreen({
       )}
     </div>
   );
+}
+
+/** One tag-as-you-go save, kept so it can be taken back. */
+interface TagSave {
+  group: BankGroup;
+  codes: string[];
+}
+
+/** "“A progressive tax…” tagged C · Public Finance": what Undo would take back. */
+function tagSaveText({ group, codes }: TagSave): string {
+  const lead = group.rows[0];
+  const text = lead?.excerpt.en || lead?.excerpt.zh || 'Question';
+  const short = text.length > 48 ? `${text.slice(0, 47).trimEnd()}…` : text;
+  return `“${short}” tagged ${codes.map(topicName).join(', ')}`;
 }
 
 /** Where Edit topics writes: the one worksheet, or every copy. */

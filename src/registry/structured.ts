@@ -561,4 +561,6 @@ export const structuredType: QuestionTypeDefinition<StructuredQuestion> = {
   qualityView,
   // Timed by marks, at the paper's rate (`MINUTES_PER_MARK`).
   summary: { label: { en: 'structured', zh: '結構題' }, short: { en: 'LQ', zh: '長題目' } },
+  // Everything but Paper 1, which is answered on a separate MCQ answer sheet.
+  paperKinds: ['classroom', 'lqWorksheet', 'lqMock'],
 };
