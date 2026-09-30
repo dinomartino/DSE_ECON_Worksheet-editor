@@ -1869,6 +1869,9 @@ toolbar mark. It is chrome, never IR: nothing reaches the `.docx`, clipboard or 
 - **Each thing sits with what it acts on.** The sidebar starts work (four new-document
   rows plus "Open a file…", which opens a .json or restores a .zip); the library's tools
   — Trash, and backup/restore/"Show … folder" behind ⋯ — sit in the dashboard header.
+- **An empty desk welcomes** (`start/WelcomeDesk.tsx`): once the index reads empty, the
+  four kinds appear as sketched pages opening the same form, plus Open a file / Restore a
+  backup. Nothing is added to the list for the teacher; with one document it is the list.
 - **Folders narrow, never hide.** A folder column (All documents, then folders by name,
   with counts) scopes the list first (`dashboard.ts:scopedSummaries`); search, kind and
   order then work inside it. All documents shows every row, filed or not, and says which

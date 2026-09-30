@@ -45,6 +45,8 @@ import { useBank } from '@/library/useBank';
 import { reloadPatterns } from '@/library/usePatterns';
 import { RenameDialog, renameWorksheet } from './RenameDialog';
 import { TrashList } from './TrashList';
+import { START_KINDS } from './startKinds';
+import { WelcomeDesk } from './WelcomeDesk';
 import { newId } from '@/model/factories';
 import type { DocumentType } from '@/model/newWorksheet';
 import type { LanguageMode, Worksheet } from '@/model/types';
@@ -145,6 +147,9 @@ export function StartScreen({
   const [view, setView] = useState<'home' | 'bank'>(() => (useBankReturn.getState().saved ? 'bank' : 'home'));
   const { groups: bankGroups } = useBank();
   const closeFeedback = useCallback(() => setFeedback(false), []);
+  // First launch, or everything deleted: the desk welcomes instead of listing. Never
+  // while storage is still being read, so a returning teacher sees no flash of it.
+  const empty = loaded && summaries.length === 0;
   // A plain result ("Topics saved.") is done once the teacher moves on. One listing files
   // stays until dismissed, like an error: it may be the only record of what was skipped.
   const clearPassingNotice = useCallback(
@@ -721,7 +726,7 @@ export function StartScreen({
         {/* The screen's one display moment: the chrome's serif voice (design/icons/design.md §
             Typography). Everything below it stays on the UI grotesque. */}
         <h1 className="font-display mt-10 text-balance text-[32px] font-normal leading-[1.15] tracking-[-0.015em] text-ink [@media(max-height:820px)]:mt-7 [@media(max-height:820px)]:text-[28px]">
-          Start a worksheet, or pick up where you left off.
+          {empty ? 'Start your first worksheet.' : 'Start a worksheet, or pick up where you left off.'}
         </h1>
 
         <section className="mt-9 [@media(max-height:820px)]:mt-6">
@@ -732,26 +737,14 @@ export function StartScreen({
               print*, and a sentence says that better than four look-alike glyphs.
               All four open the same form; the row only preselects the type. */}
           <div className="mt-3 flex flex-col border-t border-line">
-            <StartRow
-              title="Classroom worksheet"
-              hint="MCQ + structured questions. No cover."
-              onClick={() => setCreating('classroom')}
-            />
-            <StartRow
-              title="LQ worksheet"
-              hint="Long questions with dotted answer space. No exam furniture."
-              onClick={() => setCreating('lqWorksheet')}
-            />
-            <StartRow
-              title="Paper 1 mock · MCQ"
-              hint="Exam cover; answers on a separate answer sheet."
-              onClick={() => setCreating('paper1')}
-            />
-            <StartRow
-              title="Paper 2 mock · booklet"
-              hint="Question-Answer Book: cover, Sections A–C, page frame."
-              onClick={() => setCreating('lqMock')}
-            />
+            {START_KINDS.map((kind) => (
+              <StartRow
+                key={kind.type}
+                title={kind.title}
+                hint={kind.hint}
+                onClick={() => setCreating(kind.type)}
+              />
+            ))}
           </div>
           {/* Opening a file is the fifth way in, so it wears the same row — set apart by
               its icon and a gap, rather than being a stray link under the list. */}
@@ -776,7 +769,12 @@ export function StartScreen({
               icon={<BankIcon size={16} />}
               title="Question bank 題庫"
               trailing={bankGroups.length > 0 ? `${bankGroups.length} ${bankGroups.length === 1 ? 'question' : 'questions'}` : undefined}
-              hint="Every question from your worksheets, by topic."
+              // Nothing saved yet: say what fills it, rather than promise questions.
+              hint={
+                empty && bankGroups.length === 0
+                  ? 'Fills itself, by topic, as you write questions.'
+                  : 'Every question from your worksheets, by topic.'
+              }
               onClick={() => showView('bank')}
             />
           </div>
@@ -801,7 +799,8 @@ export function StartScreen({
         {/* Desktop only; its own line, as the links row cannot also hold it at 400px. */}
         <VersionLine />
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-          {!isDesktop() && (
+          {/* Nothing saved means nothing to back up: the link would only report that. */}
+          {!isDesktop() && !empty && (
             <TextLink onClick={() => void backUpAll()} disabled={busy !== undefined}>
               {busy === 'backup' ? 'Backing up…' : 'Back up now'}
             </TextLink>
@@ -851,6 +850,14 @@ export function StartScreen({
             onFolderChange={enterFolder}
             folderActions={folderActions}
             settings={<SettingsButton separated className="hidden lg:flex" />}
+            welcome={
+              <WelcomeDesk
+                onCreate={setCreating}
+                onOpenFile={() => void importFile()}
+                onRestore={() => void pickBackup()}
+                restoring={busy === 'restore'}
+              />
+            }
           />
         )}
       </main>

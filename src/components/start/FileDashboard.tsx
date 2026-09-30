@@ -73,6 +73,7 @@ export function FileDashboard({
   onFolderChange,
   folderActions,
   settings,
+  welcome,
 }: {
   summaries: WorksheetSummary[];
   loaded: boolean;
@@ -90,6 +91,8 @@ export function FileDashboard({
   backupItems?: MenuItem[];
   /** The app's Settings gear, last in the header row: the screen's top-right corner. */
   settings?: ReactNode;
+  /** Shown in place of the list while nothing is saved (the start screen's `WelcomeDesk`). */
+  welcome?: ReactNode;
 }) {
   const [query, setQuery] = useState<DashboardQuery>(DEFAULT_QUERY);
   // Lazy initialiser: `EditorHost` renders the start screen only after hydration, so
@@ -243,7 +246,7 @@ export function FileDashboard({
           {!loaded ? (
             <p className="mt-5 text-[12px] text-ink-subtle">Reading saved documents…</p>
           ) : summaries.length === 0 ? (
-            <div className="zone-light mt-4 rounded-xl border border-line bg-surface px-6 py-10">
+            welcome ?? <div className="zone-light mt-4 rounded-xl border border-line bg-surface px-6 py-10">
               <p className="max-w-md text-[13px] leading-relaxed text-ink-muted">
                 Nothing saved yet. Worksheets you start are kept {place}. Save a .json copy to
                 move one to another machine.
