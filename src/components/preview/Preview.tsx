@@ -6427,7 +6427,10 @@ export function Preview({
   return (
     <div
       ref={containerRef}
-      className="w-full"
+      // `flow-root` keeps the sheets' scale-reclaiming negative margin inside this box.
+      // Collapsed through it, the box kept the unscaled height and the scroller ran on
+      // past the last sheet, ignoring its own bottom padding.
+      className="flow-root w-full"
       /*
        * A sweep begins anywhere — including *on* an item (a full sheet often has no
        * blank paper to start from); only the drag grip (`data-drag-grip`) is conceded

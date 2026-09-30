@@ -107,6 +107,9 @@ export function EditorApp({
   const duplicateMany = useWorksheetStore((s) => s.duplicateMany);
 
   const scrollerRef = useRef<HTMLElement>(null);
+  // Not in print preview: it teaches an interaction that mode removes. Gives way to the
+  // 題庫 review bar, which takes the foot of the page.
+  const hint = useEditHint(printPreview || bankReviewing);
 
   // How the flow landed on sheets, as reported by the paginator. Pages exist nowhere
   // in the model — they are measured — so the rail can only be told, never derive it.
@@ -492,56 +495,60 @@ export function EditorApp({
             floating over the first lines of the document. The space is constant rather
             than appearing with the selection, because growing the padding on click
             would scroll the page under the pointer mid-edit. */}
-        <main
-          ref={scrollerRef}
-          className={`zone-dark scroll-slim min-w-0 flex-1 overflow-auto bg-desk px-6 pt-14 ${bankReviewing ? 'pb-36' : 'pb-16'}`}
-        >
-          <PreviewWithBankDrop
-            worksheet={worksheet}
-            mode={mode}
-            selectedQuestionId={selectedQuestionId}
-            onSelectQuestion={select}
-            onEdit={handleEdit}
-            onDelete={deleteTarget}
-            onClearCells={clearCells}
-            onDeleteQuestion={removeQuestion}
-            onDeleteLayout={handleDeleteLayout}
-            onLayoutSelectionChange={selectElement}
-            onBulkDelete={removeMany}
-            onBulkDuplicate={duplicateMany}
-            onFormat={formatTarget}
-            onFormatRuns={handleFormatRuns}
-            onInsertBlank={insertBlank}
-            formatOf={formatOf}
-            textOf={textOf}
-            onResizeBlock={resizeBlock}
-            onResizeRows={resizeLayoutElement}
-            onResizeTableColumn={resizeTableColumn}
-            onResizeTableEdge={resizeTableEdge}
-            onResizeTableRow={setTableRowHeight}
-            onInsertTableRow={insertTableRow}
-            onRemoveTableRow={removeTableRow}
-            onInsertTableColumn={insertTableColumn}
-            onRemoveTableColumn={removeTableColumn}
-            onAddCoverInstruction={addCoverInstruction}
-            onRemoveCoverLine={removeCoverLine}
-            onSplitRows={splitLayoutRows}
-            onTrimQuestionAnswerSpace={trimQuestionAnswerSpace}
-            onResolveFills={resolveAnswerSpaceFills}
-            onOpenBlock={setDrawingBlockId}
-            onReorder={handleReorder}
-            onReorderMany={handleReorderMany}
-            bandEditing={bandEditing}
-            headerEditing={headerEditing}
-            footerEditing={footerEditing}
-            onAddQuestion={handleAddFirstQuestion}
-            onOpenBank={openBank}
-            // `setPages` is referentially stable, which the preview's publish effect
-            // depends on — a fresh closure each render would re-notify forever.
-            onPagesChange={setPages}
-            onDragItemChange={setDraggingItemIds}
-          />
-        </main>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <main
+            ref={scrollerRef}
+            className="zone-dark scroll-slim min-h-0 flex-1 overflow-auto bg-desk px-6 pt-14"
+            style={{ paddingBottom: (bankReviewing ? 144 : 64) + hint.room }}
+          >
+            <PreviewWithBankDrop
+              worksheet={worksheet}
+              mode={mode}
+              selectedQuestionId={selectedQuestionId}
+              onSelectQuestion={select}
+              onEdit={handleEdit}
+              onDelete={deleteTarget}
+              onClearCells={clearCells}
+              onDeleteQuestion={removeQuestion}
+              onDeleteLayout={handleDeleteLayout}
+              onLayoutSelectionChange={selectElement}
+              onBulkDelete={removeMany}
+              onBulkDuplicate={duplicateMany}
+              onFormat={formatTarget}
+              onFormatRuns={handleFormatRuns}
+              onInsertBlank={insertBlank}
+              formatOf={formatOf}
+              textOf={textOf}
+              onResizeBlock={resizeBlock}
+              onResizeRows={resizeLayoutElement}
+              onResizeTableColumn={resizeTableColumn}
+              onResizeTableEdge={resizeTableEdge}
+              onResizeTableRow={setTableRowHeight}
+              onInsertTableRow={insertTableRow}
+              onRemoveTableRow={removeTableRow}
+              onInsertTableColumn={insertTableColumn}
+              onRemoveTableColumn={removeTableColumn}
+              onAddCoverInstruction={addCoverInstruction}
+              onRemoveCoverLine={removeCoverLine}
+              onSplitRows={splitLayoutRows}
+              onTrimQuestionAnswerSpace={trimQuestionAnswerSpace}
+              onResolveFills={resolveAnswerSpaceFills}
+              onOpenBlock={setDrawingBlockId}
+              onReorder={handleReorder}
+              onReorderMany={handleReorderMany}
+              bandEditing={bandEditing}
+              headerEditing={headerEditing}
+              footerEditing={footerEditing}
+              onAddQuestion={handleAddFirstQuestion}
+              onOpenBank={openBank}
+              // `setPages` is referentially stable, which the preview's publish effect
+              // depends on — a fresh closure each render would re-notify forever.
+              onPagesChange={setPages}
+              onDragItemChange={setDraggingItemIds}
+            />
+          </main>
+          {hint.shown && <HintRow rowRef={hint.rowRef} onDismiss={hint.dismiss} />}
+        </div>
         {/* The sidebar is an inspector for editing; read-only has nothing to inspect with. */}
         {!readOnly && <Sidebar pages={pages} onOpenSettings={() => setSettingsOpen(true)} />}
       </div>
@@ -552,12 +559,6 @@ export function EditorApp({
       <AiHost />
       <BankReviewBar />
       <BankDragLayer />
-
-      {/* The how-to-edit hint. It was a grey line of text pinned above the page, which
-          pushed the document down and read as a disclaimer. As a floating pill it sits
-          out of the document's way and can be dismissed once it has been learned —
-          a permanent instruction is a sign the interface failed to be obvious. */}
-      <HintPill />
 
       {/* The drawing canvas, opened by double-clicking a diagram on the page.
           Rendered here rather than inside the sidebar's DiagramEditor because that panel
@@ -606,38 +607,58 @@ function PreviewWithBankDrop(props: React.ComponentProps<typeof Preview>) {
   return <Preview {...props} worksheet={shown} provisionalId={shown !== worksheet ? ghost?.id : undefined} />;
 }
 
-function HintPill() {
+/**
+ * The how-to-edit hint. It retires itself after a few seconds (or on dismiss): a
+ * permanent instruction is a sign the interface failed to be obvious.
+ *
+ * It sits in a row under the page's scroller, never over it, so it cannot hide the foot
+ * of a sheet. When the row goes, the scroller's bottom padding grows by the row's height
+ * (`room`): the scroll range stays the same, so a page scrolled to its end does not drop.
+ */
+function useEditHint(hidden: boolean) {
   const [dismissed, setDismissed] = useState(false);
-  const printPreview = useWorksheetStore((s) => s.printPreview);
-  // Gives way to the 題庫 review bar, which takes the same spot over the page's foot.
-  const bankReviewing = useBankSession((s) => s.review !== null);
+  const [rowHeight, setRowHeight] = useState(0);
 
-  // It retires itself. A how-to-edit hint is only useful until it has been read once,
-  // and a permanent instruction strip is a standing admission that the interface is
-  // not self-evident — so it fades after a few seconds rather than living on the
-  // canvas forever. Dismissing early does the same thing sooner.
   useEffect(() => {
     const timer = setTimeout(() => setDismissed(true), 9000);
     return () => clearTimeout(timer);
   }, []);
 
-  // Not in print preview: it teaches an interaction that mode deliberately removes, so
-  // it would be instructing the teacher to do something the page no longer allows.
-  if (dismissed || printPreview || bankReviewing) return null;
+  const rowRef = useCallback((row: HTMLDivElement | null) => {
+    if (!row) return;
+    const observer = new ResizeObserver(() => setRowHeight(row.offsetHeight));
+    observer.observe(row);
+    return () => observer.disconnect();
+  }, []);
+
+  const shown = !dismissed && !hidden;
+  return { shown, rowRef, room: shown ? 0 : rowHeight, dismiss: () => setDismissed(true) };
+}
+
+/**
+ * Width kept clear at the row's right for the zoom control (`Preview`), which floats
+ * there; the row's `py-[13px]` puts the pill on the same centre line.
+ */
+const ZOOM_LANE = 'minmax(136px,1fr)';
+
+function HintRow({ rowRef, onDismiss }: { rowRef: React.Ref<HTMLDivElement>; onDismiss: () => void }) {
   return (
-    // `data-print-hide` so anything that strips page chrome (print CSS, the screenshot
-    // harness) drops the pill — it floats over the sheet, so a capture of the page
-    // otherwise carries it.
     <div
+      ref={rowRef}
       data-print-hide
-      className="pointer-events-none fixed bottom-4 left-[76px] right-[400px] z-20 flex justify-center"
+      className="zone-dark grid shrink-0 items-center border-t border-line bg-desk px-4 py-[13px]"
+      style={{ gridTemplateColumns: `minmax(0,1fr) auto ${ZOOM_LANE}` }}
     >
-      <div className="pointer-events-auto flex animate-slide-up-in items-center gap-2 rounded-lg border border-line bg-surface-raised py-1.5 pl-3.5 pr-1.5 text-[12px] text-ink-muted shadow-md">
-        <span>
-          Click text to select · double-click to edit
-          <span className="ml-2 text-ink-subtle">按頁面文字即可編輯</span>
+      <div className="col-start-2 flex min-w-0 animate-slide-up-in items-center gap-2 rounded-lg border border-line bg-surface-raised py-1.5 pl-3.5 pr-1.5 text-[12px] text-ink-muted shadow-md">
+        {/* Breaks between phrases, never inside one, when a narrow desk wraps it. */}
+        <span className="flex flex-wrap gap-x-2">
+          <span>
+            <span className="whitespace-nowrap">Click text to select ·</span>{' '}
+            <span className="whitespace-nowrap">double-click to edit</span>
+          </span>
+          <span className="whitespace-nowrap text-ink-subtle">按頁面文字即可編輯</span>
         </span>
-        <IconButton label="Dismiss hint" onClick={() => setDismissed(true)}>
+        <IconButton label="Dismiss hint" onClick={onDismiss}>
           <CloseIcon size={14} />
         </IconButton>
       </div>
