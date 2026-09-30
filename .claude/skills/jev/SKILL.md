@@ -14,7 +14,7 @@ Key: env `TYPESAFE_API_KEY`, else `~/.claude/jev.env` (`TYPESAFE_API_KEY=...`). 
 ```sh
 node .claude/skills/jev/bin/find.mjs "why does a new field vanish on reload"   # top 5 doc sections
 node .claude/skills/jev/bin/find.mjs "<question>" --code --grep schemeMax,maxOf # + source files
-node .claude/skills/jev/bin/verify-plan.mjs              # develop...HEAD + working tree
+node .claude/skills/jev/bin/verify-plan.mjs [<base>]     # base (default develop)...HEAD + working tree
 node .claude/skills/jev/bin/verify-plan.mjs --commit <sha>
 node .claude/skills/jev/bin/lint-delta.mjs [--update]    # lint vs lint-baseline.json
 node .claude/skills/jev/bin/doctor.mjs                   # key, API, data, index, hooks

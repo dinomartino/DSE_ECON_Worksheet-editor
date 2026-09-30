@@ -13,7 +13,7 @@ import { encodeRuns, type WireCodec } from './wire';
  */
 
 /** Stamped into eval reports; bump with any rendered-prompt change (a test pins the sha). */
-export const PROMPT_VERSION = 'e2.2';
+export const PROMPT_VERSION = 'e2.3';
 
 export function systemPrompt(direction: Direction, repair = false): string {
   const base =

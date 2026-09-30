@@ -1413,7 +1413,7 @@ older `cover` option maps onto the type.
 - **`lqMock`**: Paper 2 cover, Sections A/B/C with derived totals and continuous
   numbering, the "Answer any ONE question." note, page furniture. Closing lines are
   seeded as ordinary text elements (bold centred "END OF SECTION A/B" / "END OF PAPER";
-  Section C has none; Chinese 甲部完／乙部完／全卷完), and the sample question lands
+  Section C has none; Chinese 甲部完／乙部完／試卷完), and the sample question lands
   inside Section A before its END line.
 - **Both LQ types seed one sample question** (`seedSample`, on by default, invented
   wording) — an empty LQ document hides its whole point. The harness fixture opts out.
