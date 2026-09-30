@@ -44,6 +44,7 @@ import {
   moveInFlow,
   moveRunInFlow,
   nudgeInFlow,
+  sectionShortLabel,
   type FlowMove,
 } from '@/model/flow';
 import { applyBandFieldSide } from '@/model/bandSegments';
@@ -506,16 +507,21 @@ export function lastQuestionGap(worksheet: Worksheet): number {
 }
 
 /**
- * The item an unanchored question (of `typeId`, when known) would land behind when that
- * is not "the end": the end of the section made for its type, or the first section of a
- * sectioned document with no questions yet. For the destination labels, which otherwise
- * say "at the end".
+ * The section marker an unanchored question (of `typeId`, when known) would land in: the
+ * section made for its type, the first section of a sectioned document with no questions
+ * yet, else the last. For the destination labels ("in Section B"); undefined, so they say
+ * "at the end", when it lands outside every section.
  */
-export function unanchoredQuestionAfter(worksheet: Worksheet, typeId?: string): string | undefined {
+export function unanchoredQuestionSection(worksheet: Worksheet, typeId?: string): string | undefined {
   const flow = flowOf(worksheet);
-  const entry: FlowItem = { type: 'question', id: '' };
-  const at = unanchoredGap(worksheet, flow, entry, typeId);
-  return at === 0 || at === appendIndexFor(worksheet, flow, entry) ? undefined : flow[at - 1].id;
+  const at = unanchoredGap(worksheet, flow, { type: 'question', id: '' }, typeId);
+  const span = sectionSpans(worksheet, flow).find((here) => here.start < at && at <= here.end);
+  return span ? flow[span.start].id : undefined;
+}
+
+/** That section's short name ("Section B", `sectionShortLabel`), or undefined (= the end). */
+export function unanchoredQuestionSectionLabel(worksheet: Worksheet, typeId?: string): string | undefined {
+  return sectionShortLabel(worksheet, unanchoredQuestionSection(worksheet, typeId));
 }
 
 /** Where an *unanchored* item joins the flow (§ Where things land). */
