@@ -250,6 +250,10 @@ Full design and contracts: [`part-tags.md`](./part-tags.md). In short:
   save. Opening never writes.
 - **A list edit means the whole question**: every part gets it (bulk Set topic included).
   `atSlot` edits one part (`src/library/tagWrites.ts`).
+- **In the bank**, Edit topics on a question with parts shows a part column (Whole question
+  first) and tag as you go a part strip ([ ] or a click picks a part; the keys tag the whole
+  question until then). Each pick is a `StateEdit` the save replays on every copy
+  (`src/components/bank/page/partTopics.ts`).
 - `contentKey` ignores part `tags` and `rootId`, so copies still group and the ✦ AI
   writes still find identical copies.
 - **The review page says and shows which part tests the heading**: a question is listed

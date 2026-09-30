@@ -78,16 +78,34 @@ import { SelectionTray } from './SelectionTray';
 import { TagAsYouGo } from './TagAsYouGo';
 import { CoverageBar } from './CoverageBar';
 import { TopicCards } from './TopicCards';
-import { TopicPickerDialog, type PickedPatterns, type PickerPatterns } from './TopicPickerDialog';
+import { PartTopicPickerDialog, TopicPickerDialog, type PickerPatterns } from './TopicPickerDialog';
+import {
+  applyDraft,
+  changeAt,
+  draftOf,
+  everyCode,
+  hasTopic,
+  partLines,
+  patternAt,
+  patternEditAt,
+  savedByPart,
+  targetName,
+  ticksAt,
+  toggleAt,
+  type PartTarget,
+} from './partTopics';
+import { stateOfRow } from '@/library/sharedTags';
 import { PatternsPage } from './PatternsPage';
 import {
-  addTopics,
   bulkTopicEdit,
   copyWrites,
+  everywhere,
   removeTopics,
   replaceTopics,
+  thenState,
   writeTags,
   type BulkTopicMode,
+  type StateEdit,
   type TagEdit,
   type TagWrite,
 } from '@/library/tagWrites';
@@ -180,7 +198,9 @@ export function QuestionBankScreen({
   // Tag as you go: where in the untagged list, what is ticked, and what was saved this visit
   // (gone from the list at once, before the index catches up).
   const [tagIndex, setTagIndex] = useState(0);
-  const [chosenFor, setChosenFor] = useState<{ root?: string; codes: ReadonlySet<string> }>({ codes: new Set() });
+  // Each pick on the question on screen is an edit (`partTopics.ts`), replayed on every copy
+  // when it is saved; `at` is where the keys tag now (the whole question, or one part).
+  const [chosenFor, setChosenFor] = useState<TagPicks>(NO_PICKS);
   const [tagged, setTagged] = useState<ReadonlySet<string>>(new Set());
   // What tag as you go saved this visit, newest last: ⌫ or ⌘Z takes the last one back.
   const [tagHistory, setTagHistory] = useState<TagSave[]>([]);
@@ -295,8 +315,14 @@ export function QuestionBankScreen({
   const tagRow = tagGroup?.rows[0];
   const suggestions = useMemo(() => (tagRow ? suggestTopics(tagRow, rows) : []), [tagRow, rows]);
   const tagRoot = tagGroup?.rootId;
-  // Ticks belong to one question: the next one starts with nothing ticked.
-  const chosen = chosenFor.root === tagRoot ? chosenFor.codes : NONE;
+  // Picks belong to one question: the next one starts with nothing ticked, on the whole question.
+  const picksHere = chosenFor.root === tagRoot ? chosenFor : NO_PICKS;
+  const tagBase = useMemo(() => (tagRow ? draftOf(stateOfRow(tagRow)) : undefined), [tagRow]);
+  const tagDraft = useMemo(() => tagBase && picksHere.edits.reduce(applyDraft, tagBase), [tagBase, picksHere.edits]);
+  const tagAt = tagDraft?.slots.some((slot) => slot.key === picksHere.at) ? picksHere.at : undefined;
+  const tagTicks = useMemo(() => (tagDraft ? ticksAt(tagDraft, tagAt) : undefined), [tagDraft, tagAt]);
+  const chosen = tagTicks?.ticked ?? NONE;
+  const tagTargets: PartTarget[] = tagDraft ? [undefined, ...tagDraft.slots.map((slot) => slot.key)] : [undefined];
 
   const pickedRows = picks.map((key) => byKey.get(key)).filter((row): row is BankRow => row !== undefined);
   // Picks are questions: two copies of one question picked are one, and share its topics.
@@ -366,7 +392,7 @@ export function QuestionBankScreen({
   };
 
   /** One write at a time: tagging fast must never load a document before the last save lands. */
-  const writeTopics = (list: TagWrite[], edit: TagEdit, done?: (saved: number) => string) => {
+  const writeTopics = (list: TagWrite[], edit: TagEdit | StateEdit, done?: (saved: number) => string) => {
     const run = async () => {
       const result = await writeTags(worksheetStore, list, edit);
       if (result.saved.length > 0) onDocumentsChanged();
@@ -454,23 +480,30 @@ export function QuestionBankScreen({
       .start(verb === 'terms' ? { verb: 'terms', units, copiesOf } : { verb: 'fill', side: verb === 'fill.zh' ? 'zh' : 'en', includeTeacher: teacherText, units, copiesOf }, hooks);
   };
 
-  /** Tag as you go: every copy of the question on screen gets the codes (and any 題型), then the next appears. */
-  const saveTags = (codes: readonly string[], picked?: PickedPatterns) => {
-    if (!tagGroup || codes.length === 0) return;
+  /**
+   * Tag as you go: every copy of the question on screen gets the picks (each part its own,
+   * on a question with parts), then the next appears. `extra`: one more pick first (All topics).
+   */
+  const saveTags = (extra?: StateEdit) => {
+    if (!tagGroup || !tagBase) return;
+    const edits = extra ? [...picksHere.edits, extra] : picksHere.edits;
+    const saved = edits.reduce(applyDraft, tagBase);
+    if (!hasTopic(saved)) return;
     const root = tagGroup.rootId;
     if (restoring) {
       if (restoredAt >= 0) setTagIndex(restoredAt);
       setRestoring(undefined);
     }
     setTagged((current) => new Set(current).add(root));
-    setTagHistory((current) => [...current, { group: tagGroup, codes: [...codes] }]);
-    void writeTopics(copyWrites(rows, [root]), thenEdit(addTopics(codes), setPatternsEdit(patternEdits(picked?.patterns))));
+    setTagHistory((current) => [...current, { group: tagGroup, codes: everyCode(saved), parts: savedByPart(saved) }]);
+    void writeTopics(copyWrites(rows, [root]), thenState(...edits));
   };
 
   /**
-   * Take the last save back: one write per copy, taking off exactly the topics it added
-   * (and their 題型; the question had no topic before, or it would not have been here).
-   * The question comes back on screen at once and stays until the list holds it again.
+   * Take the last save back: one write per copy, taking off exactly the topics it added,
+   * from every part (and their 題型; the question had no topic before, or it would not
+   * have been here). The question comes back on screen at once and stays until the list
+   * holds it again.
    */
   const undoTagSave = () => {
     const last = tagHistory[tagHistory.length - 1];
@@ -482,9 +515,9 @@ export function QuestionBankScreen({
       next.delete(root);
       return next;
     });
-    setChosenFor({ root, codes: new Set() });
+    setChosenFor({ root, edits: [], at: undefined });
     setRestoring({ group: last.group, settled: false });
-    void writeTopics(copyWrites(rows, [root]), removeTopics(last.codes)).then(() =>
+    void writeTopics(copyWrites(rows, [root]), everywhere(removeTopics(last.codes))).then(() =>
       setRestoring((current) => (current?.group.rootId === root ? { ...current, settled: true } : current)),
     );
   };
@@ -543,10 +576,15 @@ export function QuestionBankScreen({
     setFilters((current) => ({ ...current, text: '', pattern: { topic: item.topic, typeId: item.typeId, name: item.name } }));
   };
   const toggleChosen = (code: string) => {
-    const next = new Set(chosen);
-    if (next.has(code)) next.delete(code);
-    else next.add(code);
-    setChosenFor({ root: tagRoot, codes: next });
+    if (!tagDraft) return;
+    const edit = toggleAt(tagDraft, tagAt, code, !chosen.has(code));
+    setChosenFor({ root: tagRoot, edits: [...picksHere.edits, edit], at: tagAt });
+  };
+  /** Where the keys tag: the whole question, or one part or sub-part. */
+  const setTagAt = (at: PartTarget) => setChosenFor({ root: tagRoot, edits: picksHere.edits, at });
+  const stepTagAt = (delta: number) => {
+    const at = tagTargets.indexOf(tagAt);
+    setTagAt(tagTargets[Math.min(tagTargets.length - 1, Math.max(0, at + delta))]);
   };
 
   // The review walks the stage: each item's question comes on screen, in the level the run
@@ -648,6 +686,12 @@ export function QuestionBankScreen({
         openRow(tagRow);
         return;
       }
+      // [ and ] move along the parts: the whole question, (a), (a)(i), … (b).
+      if ((event.key === '[' || event.key === ']') && tagTargets.length > 1) {
+        event.preventDefault();
+        stepTagAt(event.key === ']' ? 1 : -1);
+        return;
+      }
       const digit = Number(event.key);
       if (Number.isInteger(digit) && digit >= 1 && digit <= suggestions.length + 1) {
         event.preventDefault();
@@ -658,7 +702,7 @@ export function QuestionBankScreen({
       // Enter saves, except on a button that is not one of the keys (its own click stands).
       if (event.key === 'Enter' && (!onButton || target?.hasAttribute('data-tag-key') || target?.hasAttribute('data-tag-save'))) {
         event.preventDefault();
-        saveTags([...chosen]);
+        saveTags();
       }
     }
   };
@@ -885,11 +929,18 @@ export function QuestionBankScreen({
           onUndo={undoTagSave}
           suggestions={suggestions}
           chosen={chosen}
+          partial={tagTicks?.partial}
+          canSave={tagDraft !== undefined && hasTopic(tagDraft)}
+          parts={
+            tagDraft && tagDraft.slots.length > 0
+              ? { lines: partLines(tagDraft), at: tagAt, name: targetName(tagDraft, tagAt), onAt: setTagAt }
+              : undefined
+          }
           language={language}
           busy={false}
           onToggle={toggleChosen}
           onAllTopics={() => tagGroup && setPicker({ mode: 'tag', rows: tagGroup.rows })}
-          onSave={() => saveTags([...chosen])}
+          onSave={() => saveTags()}
           onStep={stepTag}
           onDone={() => setLevel(TOPICS_LEVEL)}
           onOpen={() => tagRow && openRow(tagRow)}
@@ -930,7 +981,22 @@ export function QuestionBankScreen({
         />
       )}
 
-      {picker?.mode === 'edit' && (
+      {picker?.mode === 'edit' && hasParts(picker.row) && (
+        <PartTopicPickerDialog
+          title="Topics"
+          description={`${editDescription(picker.row, copyWrites(rows, [picker.row.rootId]).length)} Tag the whole question, then change a part alone.`}
+          state={draftOf(stateOfRow(picker.row))}
+          patterns={{ typeId: picker.row.typeId, kind: typeName(picker.row.typeId), names: (code) => patternNames(rows, registry, code, picker.row.typeId) }}
+          confirmLabel="Save topics"
+          onClose={() => setPicker(undefined)}
+          onDone={(edit) => {
+            const row = picker.row;
+            setPicker(undefined);
+            if (edit) void writeTopics(copyWrites(rows, [row.rootId]), edit, () => 'Topics saved.');
+          }}
+        />
+      )}
+      {picker?.mode === 'edit' && !hasParts(picker.row) && (
         <TopicPickerDialog
           title="Topics"
           description={editDescription(picker.row, copyWrites(rows, [picker.row.rootId]).length)}
@@ -952,7 +1018,9 @@ export function QuestionBankScreen({
       {picker?.mode === 'bulk' && (
         <TopicPickerDialog<BulkTopicMode>
           title={`Set topic for ${pickedRoots.size} ${pickedRoots.size === 1 ? 'question' : 'questions'}`}
-          description={`${BULK_TEXT[picker.topicMode].description} Every copy of each question changes.`}
+          description={`${BULK_TEXT[picker.topicMode].description} Every copy of each question changes.${
+            pickedByRoot.some(hasParts) ? ' On a question with parts, it applies to every part; change one part alone in Edit topics.' : ''
+          }`}
           initial={[]}
           modes={{
             label: 'How to set topics',
@@ -992,17 +1060,41 @@ export function QuestionBankScreen({
           }}
         />
       )}
-      {picker?.mode === 'tag' && (
+      {picker?.mode === 'tag' && tagDraft && (
         <TopicPickerDialog
-          title="Topics for this question"
-          description="Tick every topic it tests. Saving moves on to the next question."
+          title={tagDraft.slots.length > 0 ? `Topics for ${targetName(tagDraft, tagAt)}` : 'Topics for this question'}
+          description={
+            tagDraft.slots.length === 0
+              ? 'Tick every topic it tests. Saving moves on to the next question.'
+              : tagAt === undefined
+                ? 'Tick every topic it tests. They go on every part.'
+                : `Tick every topic ${targetName(tagDraft, tagAt)} tests.`
+          }
           initial={[...chosen]}
-          patterns={tagRow ? pickerPatterns(tagRow.typeId) : undefined}
-          confirmLabel="Save and next"
+          patterns={
+            tagRow
+              ? {
+                  ...pickerPatterns(tagRow.typeId),
+                  initial: Object.fromEntries(
+                    [...chosen].filter(holdsPatterns).flatMap((code) => {
+                      const name = patternAt(tagDraft, tagAt, code).name;
+                      return name ? [[code, name] as const] : [];
+                    }),
+                  ),
+                }
+              : undefined
+          }
+          confirmLabel={tagDraft.slots.length > 0 ? 'Done' : 'Save and next'}
           onClose={() => setPicker(undefined)}
           onDone={(codes, picked) => {
             setPicker(undefined);
-            saveTags(codes, picked);
+            const edit = thenState(
+              changeAt(tagDraft, tagAt, [...chosen], codes),
+              ...Object.entries(patternEdits(picked.patterns)).map(([code, name]) => patternEditAt(tagDraft, tagAt, code, name)),
+            );
+            // With parts, the picks stay on screen to refine; without, saving moves on, as the keys do.
+            if (tagDraft.slots.length > 0) setChosenFor({ root: tagRoot, edits: [...picksHere.edits, edit], at: tagAt });
+            else saveTags(edit);
           }}
         />
       )}
@@ -1013,15 +1105,31 @@ export function QuestionBankScreen({
 /** One tag-as-you-go save, kept so it can be taken back. */
 interface TagSave {
   group: BankGroup;
+  /** Every topic it put on any part: what Undo takes off again. */
   codes: string[];
+  /** What went where (`savedByPart`), as the Undo line says it. */
+  parts: { label?: string; codes: string[] }[];
 }
 
-/** "“A progressive tax…” tagged C · Public Finance": what Undo would take back. */
-function tagSaveText({ group, codes }: TagSave): string {
+/** Tag as you go's picks on one question: its edits so far, and where the keys tag. */
+interface TagPicks {
+  root?: string;
+  edits: readonly StateEdit[];
+  at: PartTarget;
+}
+
+const NO_PICKS: TagPicks = { edits: [], at: undefined };
+
+/** A row tagged part by part (a question with parts). */
+const hasParts = (row: BankRow) => (row.slots?.length ?? 0) > 0;
+
+/** "“A progressive tax…” tagged C · Public Finance", or "tagged (a) C · …; (b) I · …": what Undo would take back. */
+function tagSaveText({ group, parts }: TagSave): string {
   const lead = group.rows[0];
   const text = lead?.excerpt.en || lead?.excerpt.zh || 'Question';
   const short = text.length > 48 ? `${text.slice(0, 47).trimEnd()}…` : text;
-  return `“${short}” tagged ${codes.map((code) => topicHeading(code)).join(', ')}`;
+  const where = parts.map(({ label, codes }) => `${label ? `${label} ` : ''}${codes.map((code) => topicHeading(code)).join(', ')}`);
+  return `“${short}” tagged ${where.join('; ')}`;
 }
 
 /** Where Edit topics writes: the one worksheet, or every copy. */
