@@ -41,11 +41,13 @@ yarn-error.log*
 next-env.d.ts
 real_life_reference/
 
-# local assistant tooling (skills, agents); the film skill is versioned
+# local assistant tooling (skills, agents); the film and jev skills and the project hooks are versioned
 .claude/*
 !.claude/skills/
+!.claude/settings.json
 .claude/skills/*
 !.claude/skills/econ-film/
+!.claude/skills/jev/
 .agents/
 skills-lock.json
 

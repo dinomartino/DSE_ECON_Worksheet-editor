@@ -1,0 +1,37 @@
+{
+  "sources": [
+    { "path": "docs/STATUS.md", "maxLines": 30 },
+    { "path": "docs/CODEMAP.md", "maxLines": 30 },
+    { "path": "docs/RECIPES.md", "maxLines": 40 },
+    { "path": "docs/GLOSSARY.md", "maxLines": 4, "splitBullets": true },
+    { "path": "SYSTEM_ARCHITECTURE.md", "maxLines": 45 },
+    { "path": "docs/IDEAS.md", "maxLines": 30 }
+  ],
+  "memory": true,
+  "shortlist": 24,
+  "excerptChars": 400,
+  "batchSize": 12,
+  "timeoutMs": 4000,
+  "question": {
+    "instructions": "A developer working in the Econ Studio repository asked `request`. Would reading `section` directly help them do or answer exactly that?",
+    "criteria": {
+      "true": "The section describes the specific code, rule, recipe, term or current state the request is about, so the developer should read it.",
+      "false": "The section is about a different feature or only shares some words with the request."
+    }
+  },
+  "code": {
+    "maxFiles": 30,
+    "shortlist": 12,
+    "matchLines": 3,
+    "include": ["src/**", "scripts/**", "src-tauri/src/**"],
+    "exclude": ["src/test/corpus/**", "**/*.snap", "scripts/film/node_modules/**"]
+  },
+  "hook": {
+    "minPromptChars": 30,
+    "maxPromptChars": 1500,
+    "budgetMs": 3000,
+    "minNoul": 0.75,
+    "max": 4,
+    "header": "Relevant doc sections for this prompt (read these line ranges, not whole files):"
+  }
+}

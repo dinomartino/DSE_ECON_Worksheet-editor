@@ -1,0 +1,19 @@
+[
+  { "q": "a new Worksheet field saves fine but vanishes on reload", "expect": [{ "path": "docs/RECIPES.md", "heading": "Add an optional Worksheet field" }, { "path": "SYSTEM_ARCHITECTURE.md", "heading": "published-document promise" }, { "path": "memory/known-keys-drops-fields.md" }] },
+  { "q": "a new button I put on the page shows up in the exported PDF", "expect": [{ "path": "docs/RECIPES.md", "heading": "Add on-page chrome" }, { "path": "memory/pdf-export-uses-print-css.md" }, { "path": "SYSTEM_ARCHITECTURE.md", "heading": "PDF is a print of the sheets" }] },
+  { "q": "I want teachers to be able to write a new kind of question, like true/false", "expect": [{ "path": "docs/RECIPES.md", "heading": "Add a question type" }, { "path": "SYSTEM_ARCHITECTURE.md", "heading": "Question-type registry" }] },
+  { "q": "how do we ship version 0.6.0 to teachers", "expect": [{ "path": "docs/RECIPES.md", "heading": "Cut a release" }, { "path": "memory/release-means-publish.md" }] },
+  { "q": "where do the rows of the question bank come from", "expect": [{ "path": "docs/CODEMAP.md", "heading": "library" }, { "path": "SYSTEM_ARCHITECTURE.md", "heading": "question bank" }] },
+  { "q": "what does band mean in this codebase", "expect": [{ "path": "docs/GLOSSARY.md", "heading": "Band" }] },
+  { "q": "the Mac app needs to open a native save dialog that the website cannot", "expect": [{ "path": "docs/RECIPES.md", "heading": "desktop-only behaviour" }, { "path": "docs/CODEMAP.md", "heading": "platform / desktop" }, { "path": "SYSTEM_ARCHITECTURE.md", "heading": "Desktop shell" }] },
+  { "q": "question numbers should start again from 1 after a new section", "expect": [{ "path": "SYSTEM_ARCHITECTURE.md", "heading": "section is a marker" }, { "path": "docs/GLOSSARY.md", "heading": "Section-as-marker" }, { "path": "memory/section-is-a-marker-not-container.md" }] },
+  { "q": "dragging a point on the diagram fills the undo history with hundreds of steps", "expect": [{ "path": "memory/drag-gestures-commit-once.md" }, { "path": "SYSTEM_ARCHITECTURE.md", "heading": "Drawing" }] },
+  { "q": "CI fails after I edited CHANGELOG.md", "expect": [{ "path": "docs/RECIPES.md", "heading": "changelog" }, { "path": "memory/changelog-needs-regen.md" }] },
+  { "q": "add DeepSeek as another AI provider teachers can pick in Settings", "expect": [{ "path": "docs/RECIPES.md", "heading": "Add a provider preset" }, { "path": "SYSTEM_ARCHITECTURE.md", "heading": "provider layer" }] },
+  { "q": "how many dotted answer lines does a long question get in the booklet", "expect": [{ "path": "SYSTEM_ARCHITECTURE.md", "heading": "Fill-to-page" }, { "path": "memory/paper2-is-answer-space.md" }, { "path": "SYSTEM_ARCHITECTURE.md", "heading": "dotted answer line" }] },
+  { "q": "the (4 marks) label wraps onto its own line in Word", "expect": [{ "path": "SYSTEM_ARCHITECTURE.md", "heading": "(4 marks)" }, { "path": "memory/marks-label-never-tears.md" }] },
+  { "q": "which is the frozen v1 fixture and may I regenerate it", "expect": [{ "path": "SYSTEM_ARCHITECTURE.md", "heading": "published-document promise" }, { "path": "memory/backward-compat-is-required.md" }, { "path": "docs/CODEMAP.md", "heading": "tests and corpus" }, { "path": "SYSTEM_ARCHITECTURE.md", "heading": "Schema evolution" }] },
+  { "q": "what is being worked on right now and what is broken", "expect": [{ "path": "docs/STATUS.md" }] },
+  { "q": "where is the marking scheme maximum computed", "code": true, "grep": ["schemeMax"], "expect": [{ "path": "src/model/markScheme.ts" }] },
+  { "q": "which test fails when someone statically imports @tauri-apps", "code": true, "expect": [{ "path": "src/test/tauriImports.test.ts" }] }
+]

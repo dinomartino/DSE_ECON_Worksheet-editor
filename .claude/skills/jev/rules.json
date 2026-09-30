@@ -1,0 +1,117 @@
+{
+  "jevThreshold": 0.8,
+  "timeoutMs": 4000,
+  "maxChangeChars": 6000,
+  "rules": [
+    {
+      "id": "frozen-corpus",
+      "kind": "path",
+      "action": "block",
+      "globs": ["src/test/corpus/**"],
+      "onlyExisting": true,
+      "text": "src/test/corpus/ holds frozen evidence written by a released build. Never edit or regenerate it; migrate the data instead, and give a new schema version a new corpus file beside it (CLAUDE.md, Backward compatibility)."
+    },
+    {
+      "id": "tauri-static-import",
+      "kind": "regex",
+      "action": "block",
+      "globs": ["src/**/*.{ts,tsx,mts,js,jsx,mjs}"],
+      "pattern": "^\\s*(?:import\\s+(?!type\\s)(?:[^'\";]*?\\sfrom\\s*)?|export\\s+(?!type\\s)[^'\";]*?\\sfrom\\s*)['\"]@tauri-apps/",
+      "flags": "m",
+      "unless": "^\\s*import\\s*\\{\\s*(?:type\\s+[\\w$]+(?:\\s+as\\s+[\\w$]+)?\\s*,?\\s*)+\\}",
+      "text": "No static `@tauri-apps/*` import anywhere in src/: it puts Tauri in the web bundle. Use `await import()` inside a function behind isDesktop(), in src/platform/, src/desktop/ or src/storage/fileStore.ts (`import type` is fine). Guard: src/test/tauriImports.test.ts."
+    },
+    {
+      "id": "tauri-dynamic-import-scope",
+      "kind": "regex",
+      "action": "block",
+      "globs": ["src/**/*.{ts,tsx,mts,js,jsx,mjs}"],
+      "exclude": ["src/platform/**", "src/desktop/**", "src/storage/fileStore.ts"],
+      "pattern": "\\bimport\\(\\s*['\"]@tauri-apps/",
+      "text": "`import('@tauri-apps/...')` belongs only in src/platform/, src/desktop/ or src/storage/fileStore.ts. Call a function from src/platform/ instead. Guard: src/test/tauriImports.test.ts."
+    },
+    {
+      "id": "no-type-branching",
+      "kind": "regex",
+      "action": "block",
+      "globs": [
+        "src/model/{numbering,migrations,paperHealth,versions,paperSummary,textWalk,translationApply,diagramText,symbols,lineage,dedupeIds,tagSlots}.ts",
+        "src/render/{worksheet,answerKey}.ts",
+        "src/export/docx/{index,body,numbering}.ts",
+        "src/export/clipboard.ts",
+        "src/storage/index.ts",
+        "src/library/*.{ts,tsx}",
+        "src/quality/*.ts",
+        "src/translate/*.ts",
+        "src/components/translate/*.{ts,tsx}",
+        "src/components/ai/*.{ts,tsx}",
+        "src/assist/*.{ts,tsx}",
+        "src/assist/verbs/*.{ts,tsx}"
+      ],
+      "exclude": ["**/*.test.{ts,tsx}", "src/quality/testKit.ts"],
+      "pattern": "['\"](?:mcq|structured)['\"]",
+      "text": "Shared modules never branch on a question-type literal ('mcq' / 'structured'). Put the per-type behaviour on the registry definition (src/registry/) and call it through the registry. Guards: src/registry/registry.test.ts and the noTypeBranching tests."
+    },
+    {
+      "id": "known-keys",
+      "kind": "check",
+      "check": "knownKeys",
+      "action": "remind",
+      "globs": ["src/model/types.ts"],
+      "interface": "Worksheet",
+      "keysFile": "src/model/migrations.ts",
+      "keysSet": "KNOWN_KEYS",
+      "text": "New Worksheet field(s) {names} are not in KNOWN_KEYS (src/model/migrations.ts). Add them there too, or they save and vanish on reload (docs/RECIPES.md, Add an optional Worksheet field)."
+    },
+    {
+      "id": "derived-not-stored",
+      "kind": "jev",
+      "action": "block",
+      "globs": ["src/model/types.ts"],
+      "when": "^\\s*(?:readonly\\s+)?[\\w$]+\\??\\s*:",
+      "question": {
+        "instructions": "The `change` edits the TypeScript types that describe a saved worksheet document. Does `change.added` add a property that saves a result the app computes from the document's content: a question's own number, a numbering label such as '(a)' or 'Q3', or a total of marks summed over several parts, questions or sections?",
+        "criteria": {
+          "true": "The property caches a computed result, e.g. `number: number` on a question, `label: string` holding '(ii)', `totalMarks: number` kept equal to the sum of the questions' marks.",
+          "false": "The property holds something the teacher chooses or types: marks for one part or sub-part, where numbering starts, how many versions to print, a flag that chooses whether to show a total, or any property that is not a computed number, label or total."
+        }
+      },
+      "text": "Numbering and marks are derived, never stored (CLAUDE.md). Compute it (src/model/numbering.ts, src/model/marks.ts) instead of adding a stored field."
+    },
+    {
+      "id": "print-hide",
+      "kind": "jev",
+      "action": "remind",
+      "globs": ["src/components/preview/**/*.tsx"],
+      "exclude": ["**/*.test.tsx"],
+      "when": "<[a-zA-Z]",
+      "skipIf": "data-print-hide|data-screen-only",
+      "threshold": 0.6,
+      "question": {
+        "instructions": "The `change` edits a React component that renders the printed worksheet page. Does `change.added` add a new on-screen editing control (a button, grip, handle, toolbar, outline, badge, hint or overlay that exists only to help editing) rendered on the page?",
+        "criteria": {
+          "true": "It adds a new JSX element for an editing control or on-screen hint that a printed copy of the worksheet must not show.",
+          "false": "It adds or changes content that is meant to print (question text, labels, lines, tables, figures), only changes logic, styles or props, or edits a comment."
+        }
+      },
+      "text": "New on-page chrome needs `data-print-hide`, or it lands in the PDF (docs/RECIPES.md, Add on-page chrome)."
+    },
+    {
+      "id": "no-em-dash-ui-copy",
+      "kind": "jev",
+      "action": "remind",
+      "globs": ["src/components/**/*.{ts,tsx}", "src/app/**/*.tsx", "src/launch/**/*.{ts,tsx}"],
+      "exclude": ["**/*.test.{ts,tsx}"],
+      "when": "—",
+      "threshold": 0.5,
+      "question": {
+        "instructions": "Is there an em dash (—) inside words that `change.added` shows to teachers on screen in the app, such as a label, button, hint, dialog, empty state, placeholder or toast?",
+        "criteria": {
+          "true": "An em dash sits inside a string literal or JSX text that the app displays on screen.",
+          "false": "Every em dash is in a code comment (//, /* */ or {/* */}), in a developer-only message, or in text printed on the worksheet paper."
+        }
+      },
+      "text": "No em dash in teacher-facing screen text: reword with a full stop, colon, comma or parentheses (printed paper text and code comments are exempt)."
+    }
+  ]
+}
