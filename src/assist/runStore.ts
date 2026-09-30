@@ -1,5 +1,6 @@
 import { create, type StoreApi, type UseBoundStore } from 'zustand';
-import { isAiError, type AiErrorInfo, type ProviderId } from '@/ai/types';
+import { isAiError, type AiErrorInfo } from '@/ai/types';
+import { genericError } from './fillRules';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { useAiMenu } from './menuStore';
 import { isPaused } from './paused';
@@ -35,17 +36,7 @@ export interface AiRunState {
   retry(): void;
 }
 
-/** A throw that is not an AiError: shown as a generic, non-fatal failure. */
-export function genericError(err: unknown, provider: ProviderId = 'gemini'): AiErrorInfo {
-  return {
-    kind: 'badOutput',
-    provider,
-    message: 'Something went wrong. Nothing more was changed.',
-    ...(err instanceof Error && err.message ? { detail: err.message.slice(0, 300) } : {}),
-    fatal: false,
-    actions: ['retry'],
-  };
-}
+export { genericError } from './fillRules';
 
 let controller: AbortController | null = null;
 /** The last run's verb, scope and input, for Retry. */

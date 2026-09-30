@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createDiagramBlock, createImageBlock } from '@/model/factories';
 import { copyQuestion } from '@/model/lineage';
-import type { ContentBlock, Question, Worksheet } from '@/model/types';
+import type { ContentBlock, McqQuestion, Question, Worksheet } from '@/model/types';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
 import { isBankRow } from './bankBackend';
 import { EXCERPT_MAX, rowsOf } from './indexer';
@@ -112,7 +112,7 @@ describe('rowsOf: missing languages', () => {
     const both = choiceQuestion('Which is a free good?', '以下哪項是免費物品？');
     const chinese = choiceQuestion('', '以下哪項是免費物品？');
     // Half done: the stem has both sides, an option lacks 中文.
-    const half = choiceQuestion('Which is a free good?', '以下哪項是免費物品？');
+    const half = choiceQuestion('Which is a free good?', '以下哪項是免費物品？') as McqQuestion;
     half.options = half.options.map((option, i) => (i === 0 ? { ...option, text: { en: [{ text: 'Air' }], zh: [] } } : option));
     const [e, b, c, h] = rowsOf(docWith([english, both, chinese, half]), summary);
     expect(e.missing).toEqual(['zh']);

@@ -1,5 +1,5 @@
 import { presetFor } from '@/ai/providers';
-import type { AiErrorInfo } from '@/ai/types';
+import type { AiErrorInfo, ProviderId } from '@/ai/types';
 import * as copy from '@/components/translate/copy';
 import type { Side, TextSlot } from '@/model/textSlots';
 import type { OutputMode } from '@/model/types';
@@ -117,4 +117,16 @@ export function depsError(result: Extract<RunDepsResult, { ok: false }>, desktop
     case 'noKey':
       return { ...base, kind: 'notConfigured', message: copy.noKeyError(label, desktop), actions: ['openSettings'] };
   }
+}
+
+/** A throw that is not an AiError: shown as a generic, non-fatal failure. */
+export function genericError(err: unknown, provider: ProviderId = 'gemini'): AiErrorInfo {
+  return {
+    kind: 'badOutput',
+    provider,
+    message: 'Something went wrong. Nothing more was changed.',
+    ...(err instanceof Error && err.message ? { detail: err.message.slice(0, 300) } : {}),
+    fatal: false,
+    actions: ['retry'],
+  };
 }
