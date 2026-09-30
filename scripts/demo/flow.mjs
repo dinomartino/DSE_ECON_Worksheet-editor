@@ -189,7 +189,7 @@ export async function fillMcq(d, i, m) {
 
 export const partInput = (page, letter, what) =>
   page.locator(
-    `[aria-label="Part ((${letter})) ${what === 'marks' ? 'marks' : 'answer space (dotted lines)'}"]`,
+    `[aria-label="Part (${letter}) ${what === 'marks' ? 'marks' : 'answer space (dotted lines)'}"]`,
   );
 
 export async function fillStructured(d, i, s) {

@@ -420,7 +420,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                             ? subParts.length > 1
                               ? `Marks for ${subPartLabel(0)}–${subPartLabel(subParts.length - 1)} together`
                               : `Marks for ${subPartLabel(0)}`
-                            : `Part (${partLabel(partIndex)}) marks`
+                            : `Part ${partLabel(partIndex)} marks`
                         }
                         value={part.marks}
                         placeholder="–"
@@ -430,14 +430,14 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                   }
                   lines={
                     <MiniNumber
-                      label={`Part (${partLabel(partIndex)}) answer space (dotted lines)`}
+                      label={`Part ${partLabel(partIndex)} answer space (dotted lines)`}
                       value={part.answerSpace}
                       placeholder="–"
                       onChange={(answerSpace) => patchPart(partIndex, { answerSpace })}
                     />
                   }
                   menu={partMenu}
-                  menuLabel={`Actions for part (${partLabel(partIndex)})`}
+                  menuLabel={`Actions for part ${partLabel(partIndex)}`}
                 />
 
                 {partOpen && (
