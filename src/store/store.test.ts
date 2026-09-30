@@ -1033,7 +1033,7 @@ describe('insertion anchor (§where things land)', () => {
     it('takes bank copies (Enter, Fill, add to last worksheet) into Section A, in order', () => {
       load('classroom');
       const [a, b] = sections();
-      const copies = store().insertQuestionCopies([richMcq(), richStructured()], { fromDocId: 'elsewhere' });
+      const copies = store().insertQuestionCopies([richMcq(), richMcq()], { fromDocId: 'elsewhere' });
       expect(ids()).toEqual([a.id, ...copies, b.id]);
     });
 
@@ -1073,6 +1073,143 @@ describe('insertion anchor (§where things land)', () => {
     it('changes nothing on a Paper 1, which has no sections', () => {
       load('paper1');
       expect(unanchoredQuestionAfter(store().worksheet)).toBeUndefined();
+    });
+  });
+
+  /*
+   * With nothing selected, a question goes to the section made for its type. A new
+   * classroom worksheet's first Structured question used to land in "Section A: Multiple
+   * Choice"; with questions in both, an MCQ appended under "Section B: Structured".
+   */
+  describe('a new question goes to the section that fits its type', () => {
+    const ids = () => resolveFlow(store().worksheet).map((item) => item.id);
+    const sections = () => store().worksheet.layout.filter((el) => el.kind === 'section');
+    const load = (documentType: 'classroom' | 'lqMock', seedSample = false) =>
+      store().replaceWorksheet(createWorksheetFrom({ documentType, seedSample }));
+    const add = (typeId: string) => {
+      store().setInsertAnchor(undefined);
+      store().addQuestion(typeId);
+      return store().selectedQuestionId!;
+    };
+
+    it('puts a first Structured question in Section B of a new classroom worksheet', () => {
+      load('classroom');
+      const [a, b] = sections();
+      const added = add('structured');
+      expect(ids()).toEqual([a.id, b.id, added]);
+    });
+
+    it('keeps a first MCQ in Section A', () => {
+      load('classroom');
+      const [a, b] = sections();
+      const added = add('mcq');
+      expect(ids()).toEqual([a.id, added, b.id]);
+    });
+
+    it('sorts unanchored adds of both types into their own sections, in order', () => {
+      load('classroom');
+      const [a, b] = sections();
+      const s1 = add('structured');
+      const m1 = add('mcq');
+      const s2 = add('structured');
+      const m2 = add('mcq');
+      expect(ids()).toEqual([a.id, m1, m2, b.id, s1, s2]);
+    });
+
+    it('reads the Chinese heading as well as the English', () => {
+      load('classroom');
+      const [a, b] = sections();
+      // A teacher who cleared the English keeps 甲部：多項選擇題 / 乙部：結構性問題.
+      store().updateLayoutElement(a.id, { text: bi('', '甲部：多項選擇題') });
+      store().updateLayoutElement(b.id, { text: bi('', '乙部：結構性問題') });
+      const added = add('structured');
+      expect(ids()).toEqual([a.id, b.id, added]);
+    });
+
+    it('reads a neutral heading by what it already holds', () => {
+      load('classroom');
+      const [a, b] = sections();
+      store().updateLayoutElement(a.id, { text: bi('Part 1', '') });
+      store().updateLayoutElement(b.id, { text: bi('Part 2', '') });
+      store().setInsertAnchor(a.id);
+      store().addQuestion('mcq');
+      const m1 = store().selectedQuestionId!;
+      store().setInsertAnchor(b.id);
+      store().addQuestion('structured');
+      const s1 = store().selectedQuestionId!;
+      const m2 = add('mcq');
+      expect(ids()).toEqual([a.id, m1, m2, b.id, s1]);
+    });
+
+    it('leaves a document filled against its headings as it is', () => {
+      // Older builds put every question under Section B: its MCQs say what it is for.
+      load('classroom');
+      const [a, b] = sections();
+      store().setInsertAnchor(b.id);
+      store().addQuestion('mcq');
+      const m1 = store().selectedQuestionId!;
+      const m2 = add('mcq');
+      const s1 = add('structured');
+      expect(ids()).toEqual([a.id, b.id, m1, m2, s1]);
+    });
+
+    it('still inserts after the selected question, whatever its section', () => {
+      load('classroom');
+      const [a, b] = sections();
+      const m1 = add('mcq');
+      // The MCQ is selected, so the anchor is on it: the teacher chose the place.
+      store().addQuestion('structured');
+      expect(ids()).toEqual([a.id, m1, store().selectedQuestionId, b.id]);
+    });
+
+    it('leaves the booklet alone: its headings name no type', () => {
+      load('lqMock');
+      const [a] = sections();
+      const added = add('structured');
+      expect(ids().indexOf(added)).toBe(ids().indexOf(a.id) + 1);
+    });
+
+    it('names the destination per type for the flyout', () => {
+      load('classroom');
+      const [a, b] = sections();
+      expect(unanchoredQuestionAfter(store().worksheet, 'mcq')).toBe(a.id);
+      // Section B is last, so "at the end" is the truth for a structured question.
+      expect(unanchoredQuestionAfter(store().worksheet, 'structured')).toBeUndefined();
+      const s1 = add('structured');
+      expect(unanchoredQuestionAfter(store().worksheet, 'mcq')).toBe(a.id);
+      const m1 = add('mcq');
+      expect(unanchoredQuestionAfter(store().worksheet, 'mcq')).toBe(m1);
+      expect(unanchoredQuestionAfter(store().worksheet, 'structured')).toBeUndefined();
+      expect(ids()).toEqual([a.id, m1, b.id, s1]);
+    });
+
+    it('sends each bank copy to its own section when nothing is selected', () => {
+      load('classroom');
+      const [a, b] = sections();
+      const [m1, s1, m2] = store().insertQuestionCopies([richMcq(), richStructured(), richMcq()], {
+        fromDocId: 'elsewhere',
+      });
+      expect(ids()).toEqual([a.id, m1, m2, b.id, s1]);
+    });
+
+    it('keeps bank copies together after a selected question', () => {
+      load('classroom');
+      const [a, b] = sections();
+      const m1 = add('mcq');
+      const copies = store().insertQuestionCopies([richStructured(), richMcq()], { fromDocId: 'elsewhere' });
+      expect(ids()).toEqual([a.id, m1, ...copies, b.id]);
+    });
+
+    it('takes a generated structured set and its stimulus into Section B', () => {
+      load('classroom');
+      const [a, b] = sections();
+      const lead = createStimulusElement();
+      const report = store().insertQuestionBatch(
+        [{ typeId: 'structured', fill: (q) => q }, { typeId: 'structured', fill: (q) => q }],
+        { worksheetId: store().worksheet.id, lead },
+      );
+      if (!report.ok) throw new Error('batch refused');
+      expect(ids()).toEqual([a.id, b.id, lead.id, ...report.questionIds]);
     });
   });
 

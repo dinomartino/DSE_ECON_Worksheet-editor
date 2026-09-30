@@ -179,6 +179,7 @@ describe('question-type registry (§9)', () => {
       'src/model/lineage.ts',
       'src/model/dedupeIds.ts',
       'src/model/tagSlots.ts',
+      'src/model/sectionFit.ts',
     ];
     for (const path of shared) {
       const source = readFileSync(path, 'utf8');

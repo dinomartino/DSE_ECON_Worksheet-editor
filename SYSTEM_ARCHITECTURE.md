@@ -2040,6 +2040,11 @@ item lands behind (undefined = append). An explicit `afterId` wins.
   ahead of that section's closing line on the exam papers. Appending put it under the
   last heading. Unanchored questions and the stimulus only; the labels name it via
   `unanchoredQuestionAfter()`. Drops are placed by the pointer and keep their full range.
+- **An unanchored question goes to the section made for its type** (`fittingSectionGap`,
+  `src/model/sectionFit.ts`): redirected only when its default section fits another type.
+  A section's questions decide its type; an empty one is read by its heading against the
+  registry's names. Mixed or unnamed fits nothing. A chosen anchor always wins; an
+  unanchored bank or generated batch routes each question (a stimulus keeps its set).
 - **Hovering previews the position; it does not take it.**
 
 ### Nothing lands after "END OF PAPER"
