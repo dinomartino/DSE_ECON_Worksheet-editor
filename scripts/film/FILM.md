@@ -283,7 +283,7 @@ frame-diff stats).
 | `answer-lines` (P0) | 5 s | A structured question with part (a). Set Lines to 6 in the inspector → dotted answer lines appear; "(4 marks)" visible. |
 | `teacher-toggle` (P0) | 4 s | The bilingual MCQ page. Click Teacher (t≈1.0): answers appear in red; hold. |
 | `export` (P1) | 5 s | Export… opens; click Question paper → Answer key → Both → Other apps; hold on the list. Nothing downloads. |
-| `new-worksheet` (P1) | 5 s | Start screen → Classroom worksheet → EN+中 → Create → the editor. |
+| `new-worksheet` (P1) | 5 s | Start screen → New worksheet → Classroom worksheet → EN+中 → Create → the editor. |
 | `scroll-paper` (P1) | 6 s | A multi-page mock paper (Paper 2 booklet) scrolled smoothly (eased `scrollTop`) from the cover through two pages. |
 | `versions` (P2) | 4 s | Setup → Versions 3 → "Version A" appears on the page. |
 

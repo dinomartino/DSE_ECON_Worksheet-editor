@@ -8,7 +8,7 @@ import path from 'node:path';
 import { MCQS, STRUCTURED } from './content.mjs';
 import {
   CONTEXT, CURSOR_SCRIPT, makeDriver, field, flowRow, answerButton, partInput, question,
-  buildQuiz, buildLibrary,
+  buildQuiz, buildLibrary, newWorksheetButton, kindRadio,
 } from './flow.mjs';
 import { auditCues, withSubtitles } from './subtitles.mjs';
 import { renderFrames, withCamera } from './camera.mjs';
@@ -40,11 +40,13 @@ export const STORYBOARD = [
   },
   {
     name: 'New bilingual worksheet',
-    caption: 'Clicks **Classroom worksheet**, picks **EN+中**, then **Create worksheet**.',
+    caption: 'Clicks **New worksheet**, picks **Classroom worksheet** and **EN+中**, then **Create worksheet**.',
     async run(d) {
       await d.say('Start a new Classroom worksheet.');
-      await d.click(d.page.getByText('Classroom worksheet', { exact: true }));
+      await d.click(newWorksheetButton(d.page));
       await d.wait(500);
+      await d.click(kindRadio(d.page, 'Classroom worksheet'));
+      await d.wait(300);
       const dialog = d.page.getByRole('dialog');
       await d.focus([dialog.getByText('Document type', { exact: true }), dialog.getByTitle('Bilingual')], {
         name: 'the new-worksheet dialog', pad: 50,

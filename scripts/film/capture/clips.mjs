@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { MCQS, STRUCTURED } from '../../demo/content.mjs';
-import { field, makeDriver, partInput, question } from '../../demo/flow.mjs';
+import { field, kindRadio, makeDriver, newWorksheetButton, partInput, question } from '../../demo/flow.mjs';
 import {
   backToStart, deselect, openDoc, openQuiz, scrollPage, scrollToShow, selectQuestion, setLanguage, LANGUAGE_TITLE, SCROLLER, zoomBy,
 } from './app.mjs';
@@ -172,7 +172,7 @@ export const CLIPS = [
     name: 'new-worksheet',
     priority: 1,
     dur: 5,
-    about: 'Start screen → Classroom worksheet → EN+中 → Create worksheet → the editor.',
+    about: 'Start screen → New worksheet → Classroom worksheet → EN+中 → Create worksheet → the editor.',
     pointer: { x: 900, y: 520 },
     state: (env) => ensureDiagramDone(env),
     async prepare({ page }) {
@@ -184,8 +184,10 @@ export const CLIPS = [
     async record(r, { page }) {
       const dialog = page.getByRole('dialog');
       await r.hold(0.2);
-      await r.clickAt(0.9, page.getByText('Classroom worksheet', { exact: true }).first(), { dur: 0.6, label: 'Classroom worksheet' });
-      await r.hold(0.4);
+      await r.clickAt(0.9, newWorksheetButton(page), { dur: 0.6, label: 'New worksheet' });
+      // The dialog preselects the last type created: pick it on camera, whatever that was.
+      // Its glide starts at 1.1 (the dialog is up) and ends in time for EN+中 at 2.1.
+      await r.clickAt(1.45, kindRadio(page, 'Classroom worksheet'), { dur: 0.3, dwell: 0.05, label: 'Classroom worksheet', kind: 'toggle' });
       await r.clickAt(2.1, dialog.getByTitle('Bilingual'), { dur: 0.5, label: 'EN+中', kind: 'toggle' });
       // The dialog requires a name; filled off-beat so the cut's timing is unchanged.
       await dialog.getByLabel('Name', { exact: true }).fill('S4 Demand and supply');
