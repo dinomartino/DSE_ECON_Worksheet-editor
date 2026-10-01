@@ -415,44 +415,75 @@ a version heading is edited afterwards.
 ### Added
 - **Light or dark, your choice**: Settings → Appearance picks Light, Dark or System (follows
   your computer, as before). Worksheets still print black on white.
+  <!-- zh: **淺色或深色，隨你選**：設定 → 外觀可選擇淺色、深色或跟隨系統（跟隨電腦設定，
+  一如以往）。工作紙仍然是白底黑字列印。 -->
 - **✦ AI**: one button (or ⌘J, Ctrl+J on Windows) holds every AI tool, for the whole
   paper or whatever you have selected — right-click any text, table or question for AI on
   just that part. The number on the button is how many texts still need translating. It
   uses your own AI account (Gemini, DeepSeek, Qwen and others): the first time, pick a
   provider and paste your key right in the menu, and the action you chose runs once the
   key works.
+  <!-- zh: **✦ AI**：一個按鈕（或 ⌘J，Windows 用 Ctrl+J）集合所有 AI 工具，可用於整份
+  試卷或你選取的部分。在任何文字、表格或題目上按右鍵，即可只對該部分使用 AI。按鈕上的
+  數字是仍未翻譯的文字數目。它使用你自己的 AI 帳戶（Gemini、DeepSeek、Qwen 等）：首次
+  使用時，直接在選單中選擇供應商並貼上 API key，key 生效後便會執行你剛才選的功能。 -->
 - **Fill missing 中文 or English** with AI. Economics terms follow the Education Bureau
   glossary; a single field fills in place.
+  <!-- zh: **用 AI 補上缺少的中文或英文**。經濟學用語依照教育局詞彙表；單一欄位會就地
+  填寫。 -->
 - **AI results go straight onto the page**, highlighted: walk through them with ‹ ›, and
   take them all back with **Undo all** or one ⌘Z. Anything worth a second look is marked
   in amber; a text that couldn't be translated safely is left as it was and listed.
+  <!-- zh: **AI 結果直接放到頁面上**並以醒目標示：可用 ‹ › 逐項查看，亦可按**全部復原*
+  *或按一下 ⌘Z 全部取消。值得再看一遍的內容會以琥珀色標記；無法安全翻譯的文字會保持原
+  樣並列出。 -->
 - **Check terms**: compare the Chinese with the EDB glossary — no key needed. Findings are
   underlined on the page; replace them one by one or all at once.
+  <!-- zh: **檢查用詞**：將中文與教育局詞彙表比對，毋須 API key。問題會在頁面上加底線，
+  可逐項或一次過替換。 -->
 - **Settings** (⋯ → Settings…): app-wide preferences for this browser or computer,
   starting with AI & translation. The per-document dialog is now called **Setup**
   everywhere.
+  <!-- zh: **設定**（⋯ → 設定…）：此瀏覽器或電腦的整體偏好，首先加入 AI 與翻譯。每份文
+  件各自的對話框，現在統一稱為**頁面設定**。 -->
 - New font choice **Times New Roman / 標楷體** (Setup → Fonts, or when creating a
   worksheet): Chinese text prints and exports in 標楷體. The default stays 新細明體.
+  <!-- zh: 新增字型選擇 **Times New Roman / 標楷體**（頁面設定 → 字型，或新增工作紙時
+  選擇）：中文會以標楷體列印和匯出。預設仍為新細明體。 -->
 
 ### Changed
 - New diagrams and the sample paper now use the Education Bureau glossary's Chinese
   terms (物價水平, 總收入, 生產可能曲線, 洛倫茨曲線 …), and 效率損失 for deadweight loss,
   物品X and 廠商A as in HKDSE papers; the sample Paper 2 question now reads as an HKDSE
   paper would (寫出…, **一個**). Worksheets you already made keep their wording.
+  <!-- zh: 新建的圖表和範例試卷現在採用教育局詞彙表的中文用語（物價水平、總收入、生產
+  可能曲線、洛倫茨曲線 …），deadweight loss 用「效率損失」，並沿用 HKDSE 試卷的「物品X」
+  和「廠商A」寫法；範例 Paper 2 題目的措辭也更貼近 HKDSE 試卷（寫出…、**一個**）。你已
+  建立的工作紙用語不變。 -->
 - The ‘untranslated’ count now covers the whole paper — cover, header and footer, tables
   and diagram labels — and shows in 中文 mode too.
+  <!-- zh: 「未翻譯」數目現在涵蓋整份試卷，包括封面、頁首和頁尾、表格及圖表標示，在中
+  文模式下也會顯示。 -->
 - Status messages such as "Exported .pdf" float under the toolbar instead of pushing the
   page down, and "Saved" shows its time when you point at it.
+  <!-- zh: 狀態訊息（例如「已匯出 .pdf」）改為浮在工具列下方，不再把頁面推低；將游標移
+  到「已儲存」上會顯示儲存時間。 -->
 - Getting around is easier: click **Worksheets** at the top-left of the editor to return
   to your home page of worksheets — your work is saved first — and click any worksheet
   there to open it. On the home page, Settings is the gear in the bottom-left corner.
+  <!-- zh: 瀏覽更方便：按編輯器左上角的**工作紙**即可回到工作紙主頁（會先儲存你的工作），
+  再按主頁上任何一份工作紙便可開啟。在主頁上，設定是左下角的齒輪。 -->
 
 ### Fixed
 - **Clear saved documents** now clears the worksheet you have open too, even with
   unsaved changes — it no longer reappears on the home page afterwards.
+  <!-- zh: **清除已儲存的工作紙**現在連你正開啟的工作紙也會清除，即使有未儲存的改動也
+  一樣，之後不會再在主頁重新出現。 -->
 - The toolbar stays on one line on smaller laptop screens: a long worksheet name is
   shortened with "…" (point at it for the full name), Setup shows as its icon, and
   "Saved" becomes a small dot until the window is wider.
+  <!-- zh: 在較小的手提電腦屏幕上，工具列保持單行：過長的工作紙名稱會以「…」縮短（指向
+  它可看到全名），頁面設定顯示為圖示，而「已儲存」在視窗未夠闊前會變成一個小圓點。 -->
 
 ## 0.4.0 — 2026-09-27
 
@@ -666,23 +697,40 @@ a version heading is edited afterwards.
 ### Added
 - **Export dialog**: question paper, a separate **answer key** \`.docx\`, or both, in any
   language, with **include/omit the cover page and the answer space** toggles.
+  <!-- zh: **匯出對話框**：可匯出試卷、獨立的**答案頁** \`.docx\`，或兩者皆有，並可選擇
+  任何語言，亦可切換**包含或不包含封面和答題空間**。 -->
 - **Paper versions A–D**: seeded MCQ option shuffles with a per-version key and a
   version map in the answer key.
+  <!-- zh: **試卷版本 A 至 D**：MCQ 選項按種子隨機排序，每個版本有各自的答案，答案頁附有
+  版本對照表。 -->
 - **Export for other apps**: ZipGrade key, plain key CSV, Kahoot \`.xlsx\`, Blooket CSV.
+  <!-- zh: **匯出給其他應用程式**：ZipGrade 答案、純答案 CSV、Kahoot \`.xlsx\`、Blooket 
+  CSV。 -->
 - **Pre-print paper check**: marks, timing, missing answers and translations, shown
   before export.
+  <!-- zh: **列印前試卷檢查**：匯出前顯示分數、時間、缺少的答案和缺少的翻譯。 -->
 - **Backup all as one zip** and restore (never overwrites); **Trash** with 30-day restore.
+  <!-- zh: **全部備份為一個 zip** 及還原（不會覆蓋現有檔案）；**垃圾桶**可在 30 日內還
+  原。 -->
 - **File dashboard**: saved documents as first-page thumbnails or a list, with search,
   kind filter and ordering. Desktop dialogs start in \`~/Documents/Econ Worksheets\` and
   exported files can be revealed in Finder/Explorer.
+  <!-- zh: **檔案總覽**：已儲存的文件可用第一頁縮圖或清單顯示，並可搜尋、按類別篩選和
+  排序。桌面版的對話框預設在 \`~/Documents/Econ Worksheets\` 開啟，匯出的檔案可在 Finder
+  /檔案總管中顯示。 -->
 - **In-app feedback**: a prefilled GitHub issue, an email, or copy to clipboard.
+  <!-- zh: **應用程式內意見回饋**：預先填寫好的 GitHub issue、電郵，或複製到剪貼簿。 -->
 - **Paste-anywhere download widget** for other websites, always pointing at the latest
   release.
+  <!-- zh: **可貼到任何網站的下載小工具**，永遠連到最新版本。 -->
 
 ### Changed
 - Start-screen sidebar decluttered; version shown with a manual "Check for updates".
+  <!-- zh: 開始畫面的側欄更簡潔；會顯示版本，並提供手動「檢查更新」。 -->
 - Updates download silently and show the banner only when ready; one check per launch.
   Pending edits are saved before the restart.
+  <!-- zh: 更新會在背景下載，準備好才顯示通知列；每次啟動只檢查一次。重新啟動前會先儲
+  存未儲存的改動。 -->
 
 ## 0.2.0 — 2026-09-23
 
@@ -690,11 +738,16 @@ a version heading is edited afterwards.
 - **Desktop app for macOS and Windows** (Tauri 2). Documents become files under the app
   data folder, saving uses the native dialog, and the app updates itself from GitHub
   Releases. The web app is unchanged and stays the primary target.
+  <!-- zh: **macOS 和 Windows 桌面版**（Tauri 2）。文件會成為應用程式資料夾內的檔案，
+  儲存時使用系統對話框，並會從 GitHub Releases 自動更新。網頁版不變，仍是主要版本。 -->
 
 ### Changed
 - The sidebar is an inspector: excerpt rows and a mark-scheme grid, no dead ends.
+  <!-- zh: 側欄改為檢視面板：以摘要列和評卷參考格顯示，不再有死胡同。 -->
 - Contextual tools dock over the page: table and figure rows, right-click menus.
+  <!-- zh: 相關工具浮在頁面上：表格和圖片的工具列，以及右鍵選單。 -->
 - MCQ options with figures lay out two per row.
+  <!-- zh: 附圖的 MCQ 選項改為每行兩個。 -->
 
 ## Earlier (web app, July–September 2026)
 
@@ -706,4 +759,9 @@ page and Paper 2 answer booklet (LQ mode) with dotted answer space; headers and
 footers with a separate first page; faithful \`.docx\` export, print-to-PDF and
 copy-for-Word, all built in the browser; autosave with undo/redo; the warm studio
 theme.
+<!-- zh: 版本編號之前的網頁編輯器：以中英雙語直接在頁面上撰寫 HKDSE 格式的試卷，並可在
+分頁預覽上按一下即編輯；MCQ 和結構題，編號及分數自動計算；部分、標題、資料、附來源的圖
+片和表格；供求、經濟周期、圓形圖和流程圖，並附繪圖畫布；封面及 Paper 2 答題簿（LQ 模式），
+附點線答題空間；可設不同首頁的頁首和頁尾；忠實的 \`.docx\` 匯出、列印成 PDF 及複製到 Wor
+d，全部在瀏覽器內完成；自動儲存及復原／重做；暖色工作室主題。 -->
 `;
