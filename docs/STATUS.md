@@ -24,6 +24,16 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **Branching: work is on `develop`** (since 2026-09-24); `main` deploys to teachers.
   **v0.5.0 released 2026-09-28** (✦ AI, Check terms, Settings, light/dark, 標楷體, home
   navigation). Collecting features for the next release — merge to `main` only when the user says.
+- **2026-10-02 on `develop`, not released: Settings → Language (English / 繁體中文 HK)**
+  (design `docs/design/ui-language.md`, term tables). Chrome only, never the paper; English
+  mode is the old text exactly. `src/i18n/` (`defineMessages`/`useMessages`, co-located
+  `messages.ts`), every area translated (8 Sonnet agents + a gaps pass), literal ratchet at
+  0 (`scripts/i18n-literals.mjs`, `// i18n-ignore: reason`), jev reminder rule
+  `ui-text-both-languages`, wording guard (`src/i18n/wording.ts`). What's new is bilingual:
+  each CHANGELOG bullet carries `<!-- zh: … -->` (enforced by `changelogZh.test.ts`; release
+  notes strip it). Kept HK terms over the gaps agent's 勾選/答題空位/繪畫 (剔選/答題空間/繪圖).
+  **Open:** Tauri shell not clicked through in Chinese; not seen in Chinese: Trash with items,
+  the translate-run progress UI, a populated bank list.
 - **2026-10-02 on `develop`, not released: home polish + Graphs 圖表庫** (design
   `docs/design/graph-library.md`). Sidebar: one ink "New worksheet" CTA (opens on the last-used
   type, `startKinds.ts:readLastKind`), Open a file, a Library section (bank + Graphs); the dialog's
