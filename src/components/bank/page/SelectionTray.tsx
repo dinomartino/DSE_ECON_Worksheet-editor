@@ -4,8 +4,11 @@ import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as Rea
 import { Button } from '@/components/ui';
 import { marksLabel, sourceLabel, typeLabel } from '@/components/bank/BankRow';
 import type { BankRow } from '@/library/types';
+import { useMessages } from '@/i18n/language';
 import { cartTopicLabel, cartTotals, isSortedByType, readCartOpen, sortLabel, stepTarget, typeSplitLabel, writeCartOpen } from './bankCart';
 import { mixLabel, rowKey, traySummary } from './bankPage';
+import { BANK_PAGE_MESSAGES } from './bankPage.messages';
+import { SELECTION_TRAY_MESSAGES } from './SelectionTray.messages';
 
 /** A drag in flight: local until release, when the store is written once. */
 interface Drag {
@@ -64,6 +67,8 @@ export function SelectionTray({
   onAddTo: () => void;
   onNewWorksheet: () => void;
 }) {
+  const m = useMessages(SELECTION_TRAY_MESSAGES);
+  const w = useMessages(BANK_PAGE_MESSAGES);
   const [open, setOpenState] = useState(readCartOpen);
   const setOpen = (next: boolean) => {
     setOpenState(next);
@@ -184,12 +189,12 @@ export function SelectionTray({
     onMove(current.key, keys[current.gap]);
   };
 
-  const summaryText = empty ? 'Your list is empty' : undefined;
+  const summaryText = empty ? m.isEmpty : undefined;
 
   return (
     <div
       role="region"
-      aria-label="Your list"
+      aria-label={m.yourList}
       data-cart-panel
       className="flex shrink-0 animate-slide-up-in flex-col border-t border-line-strong bg-surface"
     >
@@ -197,8 +202,8 @@ export function SelectionTray({
         <div className="border-b border-line">
           <div className="flex items-center gap-3 px-4 pb-1 pt-2">
             <h2 data-cart-heading tabIndex={-1} className="min-w-0 flex-1 truncate text-[11.5px] text-ink-subtle outline-none">
-              <span className="font-semibold uppercase tracking-[0.08em]">Your list</span>
-              {!empty && <span> · prints in this order · drag, or Alt+↑ ↓, to move</span>}
+              <span className="font-semibold uppercase tracking-[0.08em]">{m.yourList}</span>
+              {!empty && <span>{m.orderHint}</span>}
             </h2>
             {!empty && (
               <Button
@@ -206,7 +211,7 @@ export function SelectionTray({
                 size="sm"
                 onClick={onSortByType}
                 disabled={busy || sorted}
-                title={sorted ? 'Already in this order' : 'Keep each type in its order'}
+                title={sorted ? m.sortedTitle : m.sortTitle}
               >
                 {sortLabel()}
               </Button>
@@ -214,19 +219,19 @@ export function SelectionTray({
           </div>
           {empty ? (
             <p className="px-4 pb-3 pt-1 text-[12.5px] leading-relaxed text-ink-muted">
-              Tick a question, or press Space on it, to add it here.
+              {m.emptyHint}
             </p>
           ) : (
             <ol
               ref={listRef}
-              aria-label="Picked questions, in print order"
+              aria-label={m.listLabel}
               className="scroll-slim relative max-h-[min(34vh,320px)] overflow-y-auto pb-1.5"
             >
               {rows.map((row, index) => {
                 const key = keys[index];
-                const excerpt = row.excerpt.en || row.excerpt.zh || 'Untitled question';
+                const excerpt = row.excerpt.en || row.excerpt.zh || m.untitled;
                 const topic = cartTopicLabel(row.tags);
-                const meta = [topic ?? 'No topic', typeLabel(row.typeId), marksLabel(row.marks), sourceLabel(row)].join(' · ');
+                const meta = [topic ?? w.noTopic, typeLabel(row.typeId), marksLabel(row.marks), sourceLabel(row)].join(' · ');
                 const dragging = drag?.moving && drag.key === key;
                 return (
                   <li
@@ -240,8 +245,8 @@ export function SelectionTray({
                     <button
                       type="button"
                       data-cart-control="handle"
-                      aria-label={`Move question ${index + 1}. Drag, or press Alt+↑ or Alt+↓`}
-                      title="Drag to move (Alt+↑ ↓)"
+                      aria-label={m.handleLabel(index + 1)}
+                      title={m.handleTitle}
                       onPointerDown={(event) => onHandleDown(event, key)}
                       onPointerMove={onHandleMove}
                       onPointerUp={onHandleUp}
@@ -260,18 +265,18 @@ export function SelectionTray({
                       </p>
                     </div>
                     <span className="flex items-center">
-                      <RowButton control="up" label={`Move question ${index + 1} up`} disabled={busy || index === 0} onClick={() => move(key, -1, 'up')}>
+                      <RowButton control="up" label={m.moveUp(index + 1)} disabled={busy || index === 0} onClick={() => move(key, -1, 'up')}>
                         ↑
                       </RowButton>
                       <RowButton
                         control="down"
-                        label={`Move question ${index + 1} down`}
+                        label={m.moveDown(index + 1)}
                         disabled={busy || index === rows.length - 1}
                         onClick={() => move(key, 1, 'down')}
                       >
                         ↓
                       </RowButton>
-                      <RowButton control="remove" label={`Take question ${index + 1} off the list`} disabled={busy} onClick={() => remove(key, 'remove')}>
+                      <RowButton control="remove" label={m.takeOff(index + 1)} disabled={busy} onClick={() => remove(key, 'remove')}>
                         ×
                       </RowButton>
                     </span>
@@ -287,18 +292,18 @@ export function SelectionTray({
       )}
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5">
-        <p className="min-w-0 flex-1 truncate text-[12.5px] tabular-nums text-ink" title={mix ? `Topics: ${mix}` : undefined} aria-live="polite">
+        <p className="min-w-0 flex-1 truncate text-[12.5px] tabular-nums text-ink" title={mix ? m.topicsTitle(mix) : undefined} aria-live="polite">
           {summaryText ? (
             <span className="text-ink-muted">{summaryText}</span>
           ) : (
             <>
               <b className="font-semibold">
-                {totals.count} {totals.count === 1 ? 'question' : 'questions'}
+                {w.questions(totals.count)}
               </b>
               <span className="text-ink-muted">
                 {' · '}
                 {marksLabel(totals.marks)}
-                {split && ` · ${split}`} · ≈ {totals.minutes} min
+                {split && ` · ${split}`} · {m.minutes(totals.minutes)}
               </span>
             </>
           )}
@@ -307,33 +312,33 @@ export function SelectionTray({
           <>
             {canUndo && (
               <Button variant="subtle" size="sm" onClick={onUndo}>
-                Undo
+                {m.undo}
               </Button>
             )}
             <Button variant="subtle" size="sm" onClick={onDismiss}>
-              Close
+              {m.close}
             </Button>
           </>
         ) : (
           <>
             <Button variant="subtle" size="sm" aria-expanded={open} onClick={() => setOpen(!open)}>
-              {open ? 'Hide your list' : 'Show your list'}
+              {open ? m.hide : m.show}
             </Button>
-            <Button variant="subtle" size="sm" onClick={onClear} disabled={busy} title="Empty the list (you can undo)">
-              Clear
+            <Button variant="subtle" size="sm" onClick={onClear} disabled={busy} title={m.clearTitle}>
+              {m.clear}
             </Button>
           </>
         )}
         <Button size="sm" onClick={onSetTopic} disabled={busy || empty}>
-          Set topic…
+          {m.setTopic}
         </Button>
         {targetTitle !== undefined && (
-          <Button size="sm" onClick={onAddTo} disabled={busy || empty} title={`Open “${targetTitle}” and add them at the end`} className="max-w-[220px]">
-            <span className="truncate">Add to “{targetTitle}”</span>
+          <Button size="sm" onClick={onAddTo} disabled={busy || empty} title={m.addToTitle(targetTitle)} className="max-w-[220px]">
+            <span className="truncate">{m.addTo(targetTitle)}</span>
           </Button>
         )}
         <Button variant="primary" size="sm" onClick={onNewWorksheet} disabled={busy || empty}>
-          New worksheet from these
+          {m.newWorksheet}
         </Button>
       </div>
     </div>

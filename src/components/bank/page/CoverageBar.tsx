@@ -1,8 +1,11 @@
 'use client';
 
-import { topicDisplay } from '@/model/topics';
+import { useMessages, useUiLanguage } from '@/i18n/language';
 import { barPx, typeName, type Coverage } from './bankPage';
 import { SPLIT_FILL } from './TopicCards';
+import { TOPIC_CARDS_MESSAGES } from './TopicCards.messages';
+import { BANK_PAGE_MESSAGES } from './bankPage.messages';
+import { topicName } from './topicText';
 
 const FULL = 44;
 
@@ -14,23 +17,26 @@ const FULL = 44;
  */
 export function CoverageBar({ coverage, onTopic }: { coverage: Coverage; onTopic: (code: string) => void }) {
   const { bars, max, typeIds } = coverage;
+  const lang = useUiLanguage();
+  const m = useMessages(TOPIC_CARDS_MESSAGES);
+  const w = useMessages(BANK_PAGE_MESSAGES);
   return (
     <section aria-hidden className="shrink-0 border-b border-line bg-surface px-7 pb-2.5 pt-3">
       <div className="mx-auto flex w-full max-w-[1280px] items-end gap-5">
-        <p className="w-16 shrink-0 self-start pt-0.5 text-[12px] font-semibold text-ink">Coverage</p>
+        <p className="w-16 shrink-0 self-start pt-0.5 text-[12px] font-semibold text-ink">{m.coverage}</p>
         <ul className="grid min-w-0 flex-1 grid-flow-col auto-cols-fr gap-2">
           {bars.map((bar) => {
-            const name = topicDisplay(bar.code);
+            const name = topicName(bar.code, 'en', lang);
             const parts = bar.byType.filter((part) => part.count > 0);
-            const detail = parts.map((part) => `${part.count} ${typeName(part.typeId)}`).join(', ');
-            const label = `${bar.code} ${name}, ${bar.total} ${bar.total === 1 ? 'question' : 'questions'}`;
+            const detail = parts.map((part) => `${part.count} ${typeName(part.typeId)}`).join(w.sep);
+            const label = m.coverageLabel(bar.code, name, bar.total);
             return (
               <li key={bar.code} className="flex">
                 <button
                   type="button"
                   tabIndex={-1}
                   onClick={() => onTopic(bar.code)}
-                  title={detail ? `${label} (${detail})` : label}
+                  title={detail ? w.withDetail(label, detail) : label}
                   className="group flex w-full cursor-pointer flex-col items-center justify-end gap-1 rounded-sm px-0.5"
                 >
                   <span

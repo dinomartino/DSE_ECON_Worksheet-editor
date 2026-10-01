@@ -5,14 +5,15 @@ import { Button } from '@/components/ui';
 import { Dialog } from '@/components/ui/Dialog';
 import type { PatternId, PatternItem } from '@/library/patterns';
 import { cleanPatternName, matchPatternName, PATTERN_NAME_MAX, samePatternName } from '@/model/patterns';
-import { TOPICS, topicDisplay, type Topic } from '@/model/topics';
+import { TOPICS, type Topic } from '@/model/topics';
+import { useMessages, useUiLanguage } from '@/i18n/language';
 import { listQuestionTypes } from '@/registry';
 import { escapeClears } from '../escapeClears';
 import { typeName } from './bankPage';
+import { PATTERNS_PAGE_MESSAGES } from './PatternsPage.messages';
+import { topicName } from './topicText';
 
 type Confirm = { kind: 'merge'; item: PatternItem; into: PatternItem } | { kind: 'delete'; item: PatternItem };
-
-const questions = (count: number) => `${count} ${count === 1 ? 'question' : 'questions'}`;
 
 /**
  * The 題型 (Pattern) manage page: every 題型 per sub-topic, MCQ and LQ side by side, with
@@ -44,6 +45,8 @@ export function PatternsPage({
   /** Review the questions filed under it. */
   onShow: (item: PatternItem) => void;
 }) {
+  const m = useMessages(PATTERNS_PAGE_MESSAGES);
+  const lang = useUiLanguage();
   const [confirm, setConfirm] = useState<Confirm>();
   const types = listQuestionTypes().map((type) => type.id);
   const subTopics = useMemo(
@@ -60,25 +63,24 @@ export function PatternsPage({
       <div className="mx-auto grid w-full max-w-[1100px] gap-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <p className="max-w-[560px] text-[13px] leading-relaxed text-ink-muted">
-            題型 (Patterns) are the kinds of question you set within a sub-topic. MCQ and LQ keep separate lists.
-            Renaming, merging or deleting one changes every question that uses it, in every worksheet. Never printed.
+            {m.intro}
           </p>
           <label className="flex items-center gap-2 text-[12px] text-ink-subtle">
-            Show
+            {m.show}
             <select
               value={scope ?? ''}
               onChange={(event) => onScope(event.target.value || undefined)}
               className="h-8 max-w-[280px] cursor-pointer rounded-lg border border-line bg-surface px-2 text-[12.5px] text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
             >
-              <option value="">All topics</option>
+              <option value="">{m.allTopics}</option>
               {TOPICS.map((topic) => (
-                <optgroup key={topic.code} label={`${topic.code} · ${topic.en}`}>
+                <optgroup key={topic.code} label={`${topic.code} · ${topicName(topic.code, 'en', lang)}`}>
                   <option value={topic.code}>
-                    {topic.code} · all sub-topics
+                    {m.allSubTopics(topic.code)}
                   </option>
                   {topic.children.map((child) => (
                     <option key={child.code} value={child.code}>
-                      {child.en}
+                      {topicName(child.code, 'en', lang)}
                     </option>
                   ))}
                 </optgroup>
@@ -91,20 +93,26 @@ export function PatternsPage({
 
         {shown.length === 0 ? (
           <p className="text-[13px] text-ink-muted">
-            No 題型 {scope ? `in ${topicDisplay(scope)} ` : ''}yet. Add one above, or while you set a question&apos;s topic.
+            {m.noneIn(scope ? topicName(scope, 'en', lang) : '')}
           </p>
         ) : (
           shown.map((child) => (
             <section
               key={child.code}
-              aria-label={child.en}
+              aria-label={topicName(child.code, 'en', lang)}
               className="rounded-[10px] border border-line bg-surface-raised px-4 pb-3 pt-3.5"
               data-pattern-topic={child.code}
             >
               <h2 className="flex flex-wrap items-baseline gap-x-2 text-[13.5px] text-ink">
                 <span className="tabular-nums text-ink-subtle">{child.parent}</span>
-                <span className="font-semibold">{child.en}</span>
-                <span className="text-ink-subtle">{child.zh}</span>
+                {lang === 'zh-HK' ? (
+                  <span className="font-semibold">{child.zh}</span>
+                ) : (
+                  <>
+                    <span className="font-semibold">{child.en}</span>
+                    <span className="text-ink-subtle">{child.zh}</span>
+                  </>
+                )}
               </h2>
               <div className="mt-2.5 grid gap-x-6 gap-y-3 md:grid-cols-2">
                 {types.map((typeId) => {
@@ -112,10 +120,10 @@ export function PatternsPage({
                   return (
                     <div key={typeId} className="min-w-0">
                       <h3 className="border-b border-line pb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-subtle">
-                        {typeName(typeId)} 題型 · {list.length}
+                        {m.typeHeading(typeName(typeId), list.length)}
                       </h3>
                       {list.length === 0 ? (
-                        <p className="py-1.5 text-[12px] text-ink-subtle">None yet</p>
+                        <p className="py-1.5 text-[12px] text-ink-subtle">{m.noneYet}</p>
                       ) : (
                         <ul>
                           {list.map((item) => (
@@ -143,14 +151,14 @@ export function PatternsPage({
 
       {confirm?.kind === 'merge' && (
         <Dialog
-          title={`Merge “${confirm.item.name}” into “${confirm.into.name}”?`}
-          description={`${questions(confirm.item.count)} filed under “${confirm.item.name}” ${confirm.item.count === 1 ? 'moves' : 'move'} to “${confirm.into.name}”, in every worksheet that holds a copy. “${confirm.item.name}” is then removed.`}
+          title={m.mergeTitle(confirm.item.name, confirm.into.name)}
+          description={m.mergeText(confirm.item.count, confirm.item.name, confirm.into.name)}
           width={480}
           onClose={() => setConfirm(undefined)}
           footer={
             <>
               <Button variant="subtle" onClick={() => setConfirm(undefined)}>
-                Cancel
+                {m.cancel}
               </Button>
               <Button
                 variant="primary"
@@ -159,7 +167,7 @@ export function PatternsPage({
                   setConfirm(undefined);
                 }}
               >
-                Merge
+                {m.merge}
               </Button>
             </>
           }
@@ -169,18 +177,16 @@ export function PatternsPage({
       )}
       {confirm?.kind === 'delete' && (
         <Dialog
-          title={`Delete 題型 “${confirm.item.name}”?`}
+          title={m.deleteTitle(confirm.item.name)}
           description={
-            confirm.item.count > 0
-              ? `${questions(confirm.item.count)} ${confirm.item.count === 1 ? 'loses' : 'lose'} this 題型, in every worksheet that holds a copy. The questions and their topics stay.`
-              : 'No question uses it. It is removed from the list.'
+            confirm.item.count > 0 ? m.deleteText(confirm.item.count) : m.deleteUnused
           }
           width={480}
           onClose={() => setConfirm(undefined)}
           footer={
             <>
               <Button variant="subtle" onClick={() => setConfirm(undefined)}>
-                Cancel
+                {m.cancel}
               </Button>
               <Button
                 variant="primary"
@@ -189,7 +195,7 @@ export function PatternsPage({
                   setConfirm(undefined);
                 }}
               >
-                Delete 題型
+                {m.deleteButton}
               </Button>
             </>
           }
@@ -219,12 +225,13 @@ function PatternLine({
   onDelete: () => void;
   onShow: () => void;
 }) {
+  const m = useMessages(PATTERNS_PAGE_MESSAGES);
   const [mode, setMode] = useState<'view' | 'rename' | 'merge'>('view');
   const [name, setName] = useState(item.name);
   const [into, setInto] = useState('');
   const clean = cleanPatternName(name);
   const clash = siblings.find((other) => samePatternName(other.name, clean));
-  const renameProblem = !clean ? 'Type a name.' : clash ? `“${clash.name}” is already here. Use Merge to combine them.` : undefined;
+  const renameProblem = !clean ? m.typeName : clash ? m.clash(clash.name) : undefined;
 
   if (mode === 'rename') {
     return (
@@ -242,7 +249,7 @@ function PatternLine({
             autoFocus
             value={name}
             maxLength={PATTERN_NAME_MAX}
-            aria-label={`New name for ${item.name}`}
+            aria-label={m.newNameFor(item.name)}
             onChange={(event) => setName(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Escape') {
@@ -254,10 +261,10 @@ function PatternLine({
             className="h-7 min-w-0 flex-1 rounded-md border border-line bg-surface px-2 text-[12.5px] text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
           />
           <Button size="sm" type="submit" variant="primary" disabled={busy || Boolean(renameProblem)}>
-            Save
+            {m.save}
           </Button>
           <Button size="sm" variant="subtle" onClick={() => setMode('view')}>
-            Cancel
+            {m.cancel}
           </Button>
         </form>
         {renameProblem && clean && <p className="mt-1 text-[11.5px] text-warn-ink">{renameProblem}</p>}
@@ -270,15 +277,15 @@ function PatternLine({
     return (
       <li className="py-1.5">
         <div className="flex items-center gap-1.5 text-[12px] text-ink-muted">
-          <span className="shrink-0">Merge “{item.name}” into</span>
+          <span className="shrink-0">{m.mergeInto(item.name)}</span>
           <select
             autoFocus
             value={into}
-            aria-label={`Merge ${item.name} into`}
+            aria-label={m.mergeIntoLabel(item.name)}
             onChange={(event) => setInto(event.target.value)}
             className="h-7 min-w-0 flex-1 cursor-pointer rounded-md border border-line bg-surface px-1.5 text-[12.5px] text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
           >
-            <option value="">Choose a 題型</option>
+            <option value="">{m.choosePattern}</option>
             {siblings.map((other) => (
               <option key={other.name} value={other.name}>
                 {other.name}
@@ -286,10 +293,10 @@ function PatternLine({
             ))}
           </select>
           <Button size="sm" variant="primary" disabled={busy || !target} onClick={() => target && onMerge(target)}>
-            Merge…
+            {m.mergeEllipsis}
           </Button>
           <Button size="sm" variant="subtle" onClick={() => setMode('view')}>
-            Cancel
+            {m.cancel}
           </Button>
         </div>
       </li>
@@ -305,25 +312,25 @@ function PatternLine({
         <button
           type="button"
           onClick={onShow}
-          title="Review these questions"
+          title={m.reviewTitle}
           className="shrink-0 cursor-pointer tabular-nums text-accent-ink underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
-          {questions(item.count)} →
+          {m.questionsLink(item.count)}
         </button>
       ) : (
-        <span className="shrink-0 text-ink-subtle">Not used yet</span>
+        <span className="shrink-0 text-ink-subtle">{m.notUsed}</span>
       )}
       <span className="flex shrink-0 gap-0.5">
         <LineAction disabled={busy} onClick={() => setMode('rename')}>
-          Rename
+          {m.rename}
         </LineAction>
         {siblings.length > 0 && (
           <LineAction disabled={busy} onClick={() => setMode('merge')}>
-            Merge
+            {m.merge}
           </LineAction>
         )}
         <LineAction disabled={busy} onClick={onDelete}>
-          Delete
+          {m.delete}
         </LineAction>
       </span>
     </li>
@@ -357,6 +364,8 @@ function NewPattern({
   busy: boolean;
   onCreate: (pattern: PatternId) => void;
 }) {
+  const m = useMessages(PATTERNS_PAGE_MESSAGES);
+  const lang = useUiLanguage();
   const [topic, setTopic] = useState('');
   const [typeId, setTypeId] = useState(types[0] ?? '');
   const [name, setName] = useState('');
@@ -371,7 +380,7 @@ function NewPattern({
   const close = clean && !exists ? siblings.find((item) => matchPatternName(clean, item.name) !== undefined) : undefined;
   return (
     <form
-      aria-label="New 題型"
+      aria-label={m.newPattern}
       className="flex flex-wrap items-center gap-2 rounded-[10px] border border-dashed border-line-strong px-3.5 py-2.5 text-[12px] text-ink-subtle"
       onSubmit={(event) => {
         event.preventDefault();
@@ -380,25 +389,25 @@ function NewPattern({
         setName('');
       }}
     >
-      <span className="font-medium text-ink">New 題型</span>
+      <span className="font-medium text-ink">{m.newPattern}</span>
       <select
         value={chosenTopic}
-        aria-label="Sub-topic"
+        aria-label={m.subTopic}
         onChange={(event) => setTopic(event.target.value)}
         className="h-8 w-[220px] cursor-pointer rounded-lg border border-line bg-surface px-2 text-[12.5px] text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
       >
         {!chosenTopic && (
           <option value="" disabled>
-            Choose a sub-topic
+            {m.chooseSubTopic}
           </option>
         )}
         {TOPICS.filter((parent) => subTopics.some((child) => child.parent === parent.code)).map((parent) => (
-          <optgroup key={parent.code} label={`${parent.code} · ${parent.en}`}>
+          <optgroup key={parent.code} label={`${parent.code} · ${topicName(parent.code, 'en', lang)}`}>
             {subTopics
               .filter((child) => child.parent === parent.code)
               .map((child) => (
                 <option key={child.code} value={child.code}>
-                  {child.en}
+                  {topicName(child.code, 'en', lang)}
                 </option>
               ))}
           </optgroup>
@@ -406,7 +415,7 @@ function NewPattern({
       </select>
       <select
         value={typeId}
-        aria-label="Question type"
+        aria-label={m.questionType}
         onChange={(event) => setTypeId(event.target.value)}
         className="h-8 cursor-pointer rounded-lg border border-line bg-surface px-2 text-[12.5px] text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
       >
@@ -419,17 +428,17 @@ function NewPattern({
       <input
         value={name}
         maxLength={PATTERN_NAME_MAX}
-        aria-label="題型 name"
-        placeholder="e.g. Calculate PED from a change in TR"
+        aria-label={m.nameLabel}
+        placeholder={m.namePlaceholder}
         onChange={(event) => setName(event.target.value)}
         onKeyDown={(event) => void escapeClears(event, name, () => setName(''))}
         className="h-8 min-w-[220px] flex-1 rounded-lg border border-line bg-surface px-2.5 text-[12.5px] text-ink outline-none placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
       />
       <Button size="sm" type="submit" variant="primary" disabled={busy || !clean || !chosenTopic || Boolean(exists)}>
-        Add
+        {m.add}
       </Button>
-      {exists && <span className="basis-full text-[11.5px] text-warn-ink">“{exists.name}” is already in this list.</span>}
-      {close && <span className="basis-full text-[11.5px] text-ink-subtle">Close to “{close.name}”. Add it only if it is a different 題型.</span>}
+      {exists && <span className="basis-full text-[11.5px] text-warn-ink">{m.exists(exists.name)}</span>}
+      {close && <span className="basis-full text-[11.5px] text-ink-subtle">{m.close(close.name)}</span>}
     </form>
   );
 }

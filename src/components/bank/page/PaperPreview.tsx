@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { BankMark } from '@/assist/bankRun';
 import type { LanguageMode, VersionMode, Worksheet } from '@/model/types';
+import { useMessages } from '@/i18n/language';
+import { PAPER_PREVIEW_MESSAGES } from './PaperPreview.messages';
 import { questionPreviewHtml } from './questionPreview';
 
 /** The smallest the paper is drawn: 11pt body reads at ~10.5px. Narrower panes reflow instead. */
@@ -37,6 +39,7 @@ export function PaperPreview({
   version: VersionMode;
   failed: boolean;
 }) {
+  const m = useMessages(PAPER_PREVIEW_MESSAGES);
   const frameRef = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -95,7 +98,7 @@ export function PaperPreview({
       <div ref={frameRef} style={{ height: preview ? height * scale : 0, position: 'relative' }}>
         <div
           ref={hostRef}
-          aria-label={`The question as it prints, ${version === 'teacher' ? 'Teacher' : 'Student'} version`}
+          aria-label={m.label(version === 'teacher')}
           style={{
             position: 'absolute',
             left: 0,
@@ -109,7 +112,7 @@ export function PaperPreview({
       </div>
       {!preview && (
         <p className="absolute inset-0 flex items-center justify-center px-4 text-center text-[12.5px]" style={{ color: '#8a857c' }}>
-          {failed ? 'This question could not be read.' : 'Loading…'}
+          {failed ? m.failed : m.loading}
         </p>
       )}
     </div>

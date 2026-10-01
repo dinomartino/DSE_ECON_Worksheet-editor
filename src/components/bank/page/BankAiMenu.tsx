@@ -9,7 +9,9 @@ import { useModalLayer } from '@/components/ui/modalLayer';
 import type { BankRow } from '@/library/types';
 import { useAiStatus } from '@/settings/aiSettings';
 import { useAppDialogs } from '@/store/appDialogs';
+import { useMessages } from '@/i18n/language';
 import { confirmLine, needsConfirm } from './bankAi';
+import { BANK_AI_MESSAGES } from './BankAi.messages';
 import { bankScopes, bankVerbRows, questionCount, sendsLine, type BankScope, type BankScopeKey, type BankVerbId, type BankVerbRow } from './bankAiScopes';
 
 export const BANK_AI_MENU_WIDTH = 360;
@@ -36,6 +38,7 @@ export function BankAiMenu({
   disabled: boolean;
   onRun(verb: BankVerbId, rows: BankRow[]): void;
 }) {
+  const m = useMessages(BANK_AI_MESSAGES);
   const [open, setOpen] = useState(false);
   return (
     <div className="relative shrink-0">
@@ -45,12 +48,12 @@ export function BankAiMenu({
         aria-expanded={open}
         disabled={disabled}
         onClick={() => setOpen((current) => !current)}
-        title={disabled ? 'An AI run is going' : 'AI tools: fill a missing language, check terms'}
+        title={disabled ? m.doorBusy : m.doorTitle}
         data-bank-ai-door
         className="inline-flex h-8 shrink-0 cursor-pointer select-none items-center gap-1 rounded-lg border border-line bg-surface px-2.5 text-[12.5px] font-medium text-ink transition-[background-color,border-color] duration-150 ease-out-soft hover:border-line-strong hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:opacity-50"
       >
         <SparkleIcon size={14} className="text-accent" />
-        AI
+        {m.ai}
       </button>
       {open && (
         <Popover
@@ -81,6 +84,7 @@ function Popover({
   onRun(verb: BankVerbId, rows: BankRow[]): void;
 }) {
   useModalLayer();
+  const m = useMessages(BANK_AI_MESSAGES);
   const ref = useRef<HTMLDivElement>(null);
   const status = useAiStatus();
   const [scopeKey, setScopeKey] = useState<BankScopeKey>(scopes[0]?.key ?? 'question');
@@ -132,10 +136,10 @@ function Popover({
         <p className="text-[11.5px] leading-snug text-ink-muted">{sendsLine(step.verb.rows.length, status.preset.label)}</p>
         <div className="flex justify-end gap-2">
           <Button size="sm" variant="subtle" onClick={() => setStep({ kind: 'list' })}>
-            Back
+            {m.back}
           </Button>
           <Button size="sm" variant="primary" autoFocus onClick={() => onRun(step.verb.id, step.verb.rows)}>
-            Translate {step.verb.rows.length}
+            {m.translateN(step.verb.rows.length)}
           </Button>
         </div>
       </div>
@@ -144,7 +148,7 @@ function Popover({
     body = (
       <>
         {scopes.length > 1 && (
-          <div role="radiogroup" aria-label="Which questions" className="flex flex-wrap gap-1 border-b border-line p-1.5">
+          <div role="radiogroup" aria-label={m.whichQuestions} className="flex flex-wrap gap-1 border-b border-line p-1.5">
             {scopes.map((choice) => {
               const on = choice.key === scope?.key;
               return (
@@ -169,9 +173,9 @@ function Popover({
           </div>
         )}
         {verbs.length === 0 ? (
-          <p className="px-3 py-4 text-[13px] text-ink-muted">Nothing to do for {scope?.key === 'question' ? 'this question' : 'these questions'}</p>
+          <p className="px-3 py-4 text-[13px] text-ink-muted">{scope?.key === 'question' ? m.nothingQuestion : m.nothingQuestions}</p>
         ) : (
-          <div role="menu" aria-label="AI actions" className="p-1">
+          <div role="menu" aria-label={m.actions} className="p-1">
             {verbs.map((verb) => {
               const on = verb.id === current?.id;
               return (
@@ -187,7 +191,7 @@ function Popover({
                 >
                   <span className="flex items-center gap-2">
                     <span className="min-w-0 flex-1 truncate">{verb.label}</span>
-                    {!verb.needsKey && <span className="shrink-0 rounded bg-ok-soft px-1 text-[10px] font-medium text-ok">free</span>}
+                    {!verb.needsKey && <span className="shrink-0 rounded bg-ok-soft px-1 text-[10px] font-medium text-ok">{m.free}</span>}
                     <span className="shrink-0 text-[11px] tabular-nums text-ink-subtle">{questionCount(verb.rows.length)}</span>
                   </span>
                   {on && verb.needsKey && (
@@ -213,7 +217,7 @@ function Popover({
     <div
       ref={ref}
       role="dialog"
-      aria-label="AI tools"
+      aria-label={m.tools}
       className="absolute right-0 top-[calc(100%+6px)] z-40 flex max-h-[min(34rem,calc(100vh-5rem))] origin-top-right animate-pop-in flex-col overflow-hidden whitespace-normal rounded-xl border border-line bg-surface-raised text-ink shadow-2xl"
       style={{ width: BANK_AI_MENU_WIDTH }}
     >

@@ -6,14 +6,16 @@ import { BarButton, ErrorBody, RunningBody, Sparkle } from '@/components/ai/barP
 import type { RunControl } from '@/components/ai/errorActions';
 import type { BankItemTone, BankReviewItem } from '@/assist/bankRun';
 import { Button } from '@/components/ui';
+import { useMessages } from '@/i18n/language';
 import type { BankAiState } from './bankAi';
+import { BANK_AI_MESSAGES } from './BankAi.messages';
 
 const NOTHING_DISMISS_MS = 4000;
 
-const CHIP: Record<Exclude<BankItemTone, 'inserted'>, { className: string; label: (n: number) => string }> = {
-  look: { className: 'bg-warn-soft text-warn-ink', label: (n) => `${n} to look at` },
-  failed: { className: 'bg-danger-soft text-danger-ink', label: (n) => `${n} failed` },
-  finding: { className: 'bg-warn-soft text-warn-ink', label: (n) => `${n} ${n === 1 ? 'finding' : 'findings'}` },
+const CHIP: Record<Exclude<BankItemTone, 'inserted'>, { className: string; label: 'lookChip' | 'failedChip' | 'findingChip' }> = {
+  look: { className: 'bg-warn-soft text-warn-ink', label: 'lookChip' },
+  failed: { className: 'bg-danger-soft text-danger-ink', label: 'failedChip' },
+  finding: { className: 'bg-warn-soft text-warn-ink', label: 'findingChip' },
 };
 
 /**
@@ -23,6 +25,7 @@ const CHIP: Record<Exclude<BankItemTone, 'inserted'>, { className: string; label
  * error with exactly the actions it names. Escape inside it ends the review.
  */
 export function BankAiBar({ run, left }: { run: UseBoundStore<StoreApi<BankAiState>>; left: number }) {
+  const m = useMessages(BANK_AI_MESSAGES);
   const phase = run((s) => s.phase);
   const control: RunControl = useMemo(() => ({ retry: () => run.getState().retry(), dismiss: () => run.getState().dismiss() }), [run]);
 
@@ -67,25 +70,25 @@ export function BankAiBar({ run, left }: { run: UseBoundStore<StoreApi<BankAiSta
             onClick={() => state.goTo(items.findIndex((item) => item.tone === tone))}
             className={`shrink-0 cursor-pointer rounded-full px-2 py-0.5 text-[11px] font-medium ${CHIP[tone].className}`}
           >
-            {CHIP[tone].label(n)}
+            {m[CHIP[tone].label](n)}
           </button>
         ))}
         {items.length > 1 && (
           <span className="flex shrink-0 items-center">
-            <BarButton aria-label="Previous" onClick={state.prev}>
+            <BarButton aria-label={m.previous} onClick={state.prev}>
               ‹
             </BarButton>
             <span className="text-[11px] tabular-nums text-on-cta/70">
               {index + 1} / {items.length}
             </span>
-            <BarButton aria-label="Next" onClick={state.next}>
+            <BarButton aria-label={m.next} onClick={state.next}>
               ›
             </BarButton>
           </span>
         )}
         {phase.undoable && (
           <BarButton disabled={phase.busy} onClick={() => void state.undoAll()}>
-            Undo all
+            {m.undoAll}
           </BarButton>
         )}
         {phase.applyAll && (
@@ -94,7 +97,7 @@ export function BankAiBar({ run, left }: { run: UseBoundStore<StoreApi<BankAiSta
           </BarButton>
         )}
         <BarButton primary={!phase.applyAll} disabled={phase.busy} onClick={state.dismiss}>
-          Done
+          {m.done}
         </BarButton>
       </>
     );
@@ -104,7 +107,7 @@ export function BankAiBar({ run, left }: { run: UseBoundStore<StoreApi<BankAiSta
     <div data-print-hide className="pointer-events-none absolute inset-x-0 bottom-5 z-[35] flex justify-center px-4" style={{ left }}>
       <div
         role={phase.kind === 'error' ? 'alert' : 'status'}
-        aria-label="AI"
+        aria-label={m.ai}
         data-bank-ai-bar={phase.kind}
         onKeyDown={(event) => {
           if (event.key !== 'Escape' || phase.kind === 'running') return;
@@ -119,12 +122,7 @@ export function BankAiBar({ run, left }: { run: UseBoundStore<StoreApi<BankAiSta
   );
 }
 
-const TONE_LABEL: Record<BankItemTone, string> = {
-  inserted: 'Filled',
-  look: 'Needs a look',
-  failed: "Couldn't translate",
-  finding: 'Finding',
-};
+const TONE_LABEL = { inserted: 'toneFilled', look: 'toneLook', failed: 'toneFailed', finding: 'toneFinding' } as const;
 const TONE_CLASS: Record<BankItemTone, string> = {
   inserted: 'text-accent-ink',
   look: 'text-warn-ink',
@@ -137,10 +135,11 @@ const TONE_CLASS: Record<BankItemTone, string> = {
  * source a finding reads, its notes, and a finding's own fix (every identical copy).
  */
 export function BankAiNote({ item, busy, onFix }: { item: BankReviewItem; busy: boolean; onFix?: () => void }) {
+  const m = useMessages(BANK_AI_MESSAGES);
   return (
     <div data-print-hide data-bank-ai-note={item.tone} className="mb-3 rounded-xl border border-line bg-surface-raised px-3.5 py-2.5 text-[13px] text-ink shadow-sm">
       <div className="flex items-baseline gap-2">
-        <span className={`text-[11px] font-semibold uppercase tracking-wide ${TONE_CLASS[item.tone]}`}>✦ {TONE_LABEL[item.tone]}</span>
+        <span className={`text-[11px] font-semibold uppercase tracking-wide ${TONE_CLASS[item.tone]}`}>✦ {m[TONE_LABEL[item.tone]]}</span>
         <span className="min-w-0 truncate text-[12px] text-ink-muted">{item.unit.label}</span>
       </div>
       {item.source && <p className="mt-1 line-clamp-2 text-xs text-ink-muted">{item.source}</p>}
@@ -155,7 +154,7 @@ export function BankAiNote({ item, busy, onFix }: { item: BankReviewItem; busy: 
       )}
       {item.fix && onFix && (
         <div className="mt-2">
-          <Button size="sm" disabled={busy} onClick={onFix} title="Changes every copy of this question that says the same">
+          <Button size="sm" disabled={busy} onClick={onFix} title={m.fixTitle}>
             {item.fix.label}
           </Button>
         </div>

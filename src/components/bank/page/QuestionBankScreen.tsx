@@ -22,9 +22,11 @@ import { holdsPatterns } from '@/model/patterns';
 import type { BankGroup, BankRow } from '@/library/types';
 import { useBank } from '@/library/useBank';
 import { escapeClears } from '@/components/bank/escapeClears';
-import { topicDisplay, topicHeading, topicOf } from '@/model/topics';
+import { topicOf } from '@/model/topics';
+import { useMessages, useUiLanguage } from '@/i18n/language';
+import type { Messages } from '@/i18n/catalogue';
+import type { UiLanguage } from '@/settings/language';
 import { distinctDocLabels } from '@/library/docLabels';
-import { allOf } from '@/components/bank/bankText';
 import type { LanguageMode, VersionMode, Worksheet } from '@/model/types';
 import { worksheetStore, type WorksheetSummary } from '@/storage';
 import { useWorksheetStore } from '@/store/worksheetStore';
@@ -96,6 +98,8 @@ import {
 } from './partTopics';
 import { stateOfRow } from '@/library/sharedTags';
 import { PatternsPage } from './PatternsPage';
+import { BANK_SCREEN_MESSAGES } from './QuestionBankScreen.messages';
+import { topicName, topicTitle } from './topicText';
 import {
   bulkTopicEdit,
   copyWrites,
@@ -114,25 +118,23 @@ const NONE: ReadonlySet<string> = new Set();
 
 type Picker = { mode: 'edit'; row: BankRow } | { mode: 'bulk'; topicMode: BulkTopicMode } | { mode: 'tag'; rows: BankRow[] };
 
-const BULK_MODES: { value: BulkTopicMode; label: string }[] = [
-  { value: 'add', label: 'Add' },
-  { value: 'remove', label: 'Remove' },
-  { value: 'replace', label: 'Replace' },
+type Words = Messages<typeof BANK_SCREEN_MESSAGES>;
+
+const bulkModes = (m: Words): { value: BulkTopicMode; label: string }[] => [
+  { value: 'add', label: m.bulkAdd },
+  { value: 'remove', label: m.bulkRemove },
+  { value: 'replace', label: m.bulkReplace },
 ];
 
-const BULK_TEXT: Record<BulkTopicMode, { description: string; confirm: (ticked: number) => string; done: string }> = {
-  add: { description: 'Adds the topics you tick. Topics already on a question stay.', confirm: () => 'Add topics', done: 'Tagged' },
-  remove: {
-    description: 'Takes the topics you tick off. Other topics stay. A ticked sub-topic can stay and lose only its 題型.',
-    confirm: () => 'Remove',
-    done: 'Removed topics from',
-  },
+const bulkText = (m: Words): Record<BulkTopicMode, { description: string; confirm: (ticked: number) => string; done: (q: number, w: number) => string }> => ({
+  add: { description: m.bulkAddDesc, confirm: () => m.bulkAddConfirm, done: m.bulkAddDone },
+  remove: { description: m.bulkRemoveDesc, confirm: () => m.bulkRemoveConfirm, done: m.bulkRemoveDone },
   replace: {
-    description: 'Each question gets exactly the topics you tick. Tick none to clear them.',
-    confirm: (ticked) => (ticked === 0 ? 'Clear topics' : 'Replace topics'),
-    done: 'Set topics on',
+    description: m.bulkReplaceDesc,
+    confirm: (ticked) => (ticked === 0 ? m.bulkClearConfirm : m.bulkReplaceConfirm),
+    done: m.bulkReplaceDone,
   },
-};
+});
 
 
 /**
@@ -177,6 +179,9 @@ export function QuestionBankScreen({
   onLeaveLevel?: () => void;
   onStartNew: () => void;
 }) {
+  const m = useMessages(BANK_SCREEN_MESSAGES);
+  const lang = useUiLanguage();
+  const BULK_TEXT = bulkText(m);
   const { rows, status } = useBank();
   const registry = usePatternRegistry();
   // Coming back from a worksheet opened from here: the same level, filters and question.
@@ -262,7 +267,7 @@ export function QuestionBankScreen({
   const docLabels = useMemo(() => distinctDocLabels(rows), [rows]);
   const cover = useMemo(() => coverageOf(rows), [rows]);
   const classes = useMemo(() => classChoices(rows), [rows]);
-  const classUsage = useMemo(() => latestClassUsage(rows), [rows]);
+  const classUsage = useMemo(() => latestClassUsage(rows, lang), [rows, lang]);
   const patternItems = useMemo(() => listPatterns(rows, registry), [rows, registry]);
   /** Each coarse topic's 題型 in use, for its card. */
   const patternsByTopic = useMemo(() => {
@@ -294,8 +299,8 @@ export function QuestionBankScreen({
       filters.missing && aiTones.size > 0
         ? filterRows(rows, { ...filters, topic, missing: undefined }, undefined, { teacherText }).filter((row) => aiTones.has(row.rootId) && !admitted.includes(row))
         : [];
-    return railSections(groupRows([...admitted, ...kept]), topic);
-  }, [rows, filters, topic, level.kind, teacherText, aiTones]);
+    return railSections(groupRows([...admitted, ...kept]), topic, lang);
+  }, [rows, filters, topic, level.kind, teacherText, aiTones, lang]);
   const order = useMemo(() => railOrder(sections), [sections]);
   const candidate = focusKey ? byKey.get(focusKey) : undefined;
   const candidateAt = entryIndex(order, candidate?.rootId, focusEntry);
@@ -363,12 +368,9 @@ export function QuestionBankScreen({
     if (status.state !== 'ready') return;
     const dropped = useBankCart.getState().prune((key) => byKey.has(key));
     if (dropped > 0) {
-      noticeRef.current(
-        dropped === 1
-          ? 'Took 1 question off your list: it is no longer in your worksheets.'
-          : `Took ${dropped} questions off your list: they are no longer in your worksheets.`,
-      );
+      noticeRef.current(dropped === 1 ? m.droppedOne : m.droppedMany(dropped));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the notice reads the language it fires in
   }, [status.state, byKey]);
   const setFilter = (next: BankFilters) => setFilters(next);
   const onSearch = (text: string) => {
@@ -386,9 +388,9 @@ export function QuestionBankScreen({
 
   /** Copies left as they were, named; what did save is said first, so a partial write reads as one. */
   const report = (failed: { docId: string; reason: string }[], saved: number) => {
-    const title = (id: string) => summaries.find((s) => s.id === id)?.title ?? 'A worksheet';
-    const lead = saved > 0 ? `Saved in ${saved} ${saved === 1 ? 'worksheet' : 'worksheets'}. ` : '';
-    onError(lead + failed.map((f) => `“${title(f.docId)}” was not changed: ${f.reason}.`).join(' '));
+    const title = (id: string) => summaries.find((s) => s.id === id)?.title ?? m.aWorksheet;
+    const lines = failed.map((f) => m.notChanged(title(f.docId), f.reason));
+    onError([...(saved > 0 ? [m.savedIn(saved)] : []), ...lines].reduce(m.then));
   };
 
   /** One write at a time: tagging fast must never load a document before the last save lands. */
@@ -408,7 +410,7 @@ export function QuestionBankScreen({
     try {
       const picked = await readQuestions(pickedRows);
       if (picked.length === 0) {
-        onError('Those questions are no longer saved here.');
+        onError(m.noLongerSaved);
         return;
       }
       onOpenWorksheet(worksheetFromPicks(picked));
@@ -425,14 +427,14 @@ export function QuestionBankScreen({
     try {
       const picked = await readQuestions(list);
       if (picked.length === 0) {
-        onError('Those questions are no longer saved here.');
+        onError(m.noLongerSaved);
         return;
       }
       // All already there: stay here and say so. The open re-checks against what it loads.
       const saved = await worksheetStore.load(target.id).catch(() => undefined);
       const { fresh, skipped } = saved ? splitAlreadyInPaper(saved, picked) : { fresh: picked, skipped: [] };
       if (fresh.length === 0) {
-        onNotice(nothingAddedText(skipped.length, target.title));
+        onNotice(nothingAddedText(skipped.length, target.title, lang));
         return;
       }
       // Opened the start screen's way, then inserted through the store (`addToOpen.ts`),
@@ -548,28 +550,27 @@ export function QuestionBankScreen({
   });
 
   /* 題型 manage page: the registry, then every copy of every question using it. */
-  const patternDone = (message: string) => (saved: number) =>
-    `${message} ${saved} ${saved === 1 ? 'worksheet' : 'worksheets'} changed.`;
+  const patternDone = (message: string) => (saved: number) => m.patternDone(message, saved);
   const createPattern = (pattern: PatternId) => {
-    void registerPatterns([pattern]).then(() => onNotice(`Added 題型 “${pattern.name}”.`));
+    void registerPatterns([pattern]).then(() => onNotice(m.patternAdded(pattern.name)));
   };
   const renamePattern = (item: PatternItem, to: string) => {
     const list = patternWrites(rows, item);
     void renameRegisteredPattern(item, to);
-    if (list.length === 0) onNotice(`Renamed to “${to}”.`);
-    else void writeTopics(list, renamePatternEdit(item.topic, item.name, to), patternDone(`Renamed to “${to}”.`));
+    if (list.length === 0) onNotice(m.patternRenamed(to));
+    else void writeTopics(list, renamePatternEdit(item.topic, item.name, to), patternDone(m.patternRenamed(to)));
   };
   const mergePattern = (item: PatternItem, into: PatternItem) => {
     const list = patternWrites(rows, item);
     void renameRegisteredPattern(item, into.name);
-    if (list.length === 0) onNotice(`Merged into “${into.name}”.`);
-    else void writeTopics(list, renamePatternEdit(item.topic, item.name, into.name), patternDone(`Merged into “${into.name}”.`));
+    if (list.length === 0) onNotice(m.patternMerged(into.name));
+    else void writeTopics(list, renamePatternEdit(item.topic, item.name, into.name), patternDone(m.patternMerged(into.name)));
   };
   const deletePattern = (item: PatternItem) => {
     const list = patternWrites(rows, item);
     void unregisterPattern(item);
-    if (list.length === 0) onNotice(`Deleted 題型 “${item.name}”.`);
-    else void writeTopics(list, removePatternEdit(item.topic, item.name), patternDone(`Deleted 題型 “${item.name}”.`));
+    if (list.length === 0) onNotice(m.patternDeleted(item.name));
+    else void writeTopics(list, removePatternEdit(item.topic, item.name), patternDone(m.patternDeleted(item.name)));
   };
   const showPattern = (item: PatternItem) => {
     setLevel({ kind: 'review', topic: item.topic });
@@ -738,24 +739,25 @@ export function QuestionBankScreen({
   const noDocuments = loaded && summaries.length === 0;
 
   const crumb = (() => {
-    if (level.kind === 'topics') return <h1 className="font-display text-[19px] font-normal text-ink">Question bank 題庫</h1>;
+    if (level.kind === 'topics') return <h1 className="font-display text-[19px] font-normal text-ink">{m.bankTitle}</h1>;
     if (level.kind === 'untagged') {
       return (
         <h1 className="text-[13.5px] text-ink-muted">
-          <b className="font-semibold text-ink">Untagged</b> · <span className="tabular-nums">{untagged.length}</span> left
+          <b className="font-semibold text-ink">{m.untagged}</b> · {m.leftBefore}<span className="tabular-nums">{untagged.length}</span>
+          {m.leftAfter}
         </h1>
       );
     }
-    if (level.kind === 'patterns') return <h1 className="text-[13.5px] font-semibold text-ink">題型 Patterns</h1>;
+    if (level.kind === 'patterns') return <h1 className="text-[13.5px] font-semibold text-ink">{m.patternsTitle}</h1>;
     const found = level.topic === 'all' ? undefined : topicOf(level.topic);
     return (
       <h1 className="min-w-0 truncate text-[13.5px] text-ink-muted">
         {found ? (
           <>
-            <b className="font-semibold text-ink">{found.code}</b> {found.en} {found.zh}
+            <b className="font-semibold text-ink">{found.code}</b> {topicName(found.code, 'both')}
           </>
         ) : (
-          <b className="font-semibold text-ink">{level.search ? 'Search results' : 'All questions'}</b>
+          <b className="font-semibold text-ink">{level.search ? m.searchResults : m.allQuestionsTitle}</b>
         )}{' '}
         · <span className="tabular-nums">{reviewCount}</span>
       </h1>
@@ -763,19 +765,19 @@ export function QuestionBankScreen({
   })();
 
   const emptyReview = (() => {
-    if (scanning && rows.length === 0) return <p role="status">Reading your worksheets · {status.done} of {status.total}</p>;
-    const active = activeFilters({ ...filters, topic: 'all' });
-    const where = level.kind === 'review' && level.topic !== 'all' ? ` in ${topicDisplay(level.topic)}` : '';
-    if (active.length === 0) return <p>No questions{where} yet. Tag questions with this topic and they appear here.</p>;
+    if (scanning && rows.length === 0) return <p role="status">{m.reading(status.done, status.total)}</p>;
+    const active = activeFilters({ ...filters, topic: 'all' }, lang);
+    const where = level.kind === 'review' && level.topic !== 'all' ? topicName(level.topic, 'en', lang) : '';
+    if (active.length === 0) return <p>{m.noQuestionsYet(where)}</p>;
     return (
       <>
         <p>
-          Nothing{where} matches {active.map((filter) => filter.label).join(' · ')}.
+          {m.nothingMatches(where, active.map((filter) => filter.label).join(' · '))}
         </p>
         <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
           {active.map((filter) => (
             <TextButton key={filter.key} onClick={() => setFilters((current) => clearFilter(current, filter.key))}>
-              Clear {filter.label}
+              {m.clearFilter(filter.label)}
             </TextButton>
           ))}
         </p>
@@ -791,21 +793,21 @@ export function QuestionBankScreen({
           onClick={level.kind === 'topics' ? goHome : goUp}
           className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-[13px] text-ink-muted transition-colors duration-150 ease-out-soft hover:bg-surface-sunken hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
-          ← {level.kind === 'topics' ? 'Home' : 'Topics'}
+          ← {level.kind === 'topics' ? m.home : m.topicsBack}
         </button>
         {crumb}
         <span className="flex-1" />
         {level.kind === 'untagged' ? (
-          <span className="text-[12px] text-ink-subtle">Tag a question, the next one appears</span>
+          <span className="text-[12px] text-ink-subtle">{m.tagHint}</span>
         ) : level.kind === 'patterns' ? null : (
           <label className="relative w-[min(340px,32vw)] min-w-[200px]">
-            <span className="sr-only">Search questions</span>
+            <span className="sr-only">{m.searchLabel}</span>
             <input
               ref={searchRef}
               type="search"
               value={filters.text}
               placeholder={
-                level.kind === 'review' && level.topic !== 'all' ? `Search in ${topicDisplay(level.topic)}` : 'Search every question 搜尋全部題目'
+                level.kind === 'review' && level.topic !== 'all' ? m.searchIn(topicName(level.topic, 'en', lang)) : m.searchAll
               }
               onChange={(event) => onSearch(event.target.value)}
               onKeyDown={(event) => {
@@ -838,15 +840,15 @@ export function QuestionBankScreen({
           <button
             type="button"
             onClick={() => setLevel({ kind: 'patterns', topic: level.kind === 'review' && topicOf(level.topic) ? level.topic : undefined })}
-            title="Define, rename, merge or delete your 題型"
+            title={m.patternsButtonTitle}
             className="shrink-0 cursor-pointer rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[12.5px] text-ink-muted transition-colors duration-150 ease-out-soft hover:border-line-strong hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
-            題型 Patterns
+            {m.patternsTitle}
           </button>
         )}
         {level.kind === 'topics' && (
           <span className="text-[12px] tabular-nums text-ink-subtle" role={scanning ? 'status' : undefined}>
-            {scanning ? `Reading your worksheets · ${status.done} of ${status.total}` : bankCountLabel(cover)}
+            {scanning ? m.reading(status.done, status.total) : bankCountLabel(cover, lang)}
           </span>
         )}
         {settings}
@@ -863,11 +865,8 @@ export function QuestionBankScreen({
         <div className="scroll-slim min-h-0 flex-1 overflow-y-auto px-7 py-[22px]">
           {noDocuments ? (
             <div className="mx-auto max-w-[1280px]">
-              <p className="max-w-md text-[13px] leading-relaxed text-ink-muted">
-                Your bank fills itself from the questions in your worksheets. Start one, and every question you write
-                appears here, by topic.
-              </p>
-              <TextButton onClick={onStartNew}>Start a classroom worksheet</TextButton>
+              <p className="max-w-md text-[13px] leading-relaxed text-ink-muted">{m.noDocuments}</p>
+              <TextButton onClick={onStartNew}>{m.startClassroom}</TextButton>
             </div>
           ) : (
             <TopicCards
@@ -926,7 +925,7 @@ export function QuestionBankScreen({
           row={tagRow}
           position={restoring && restoredAt < 0 ? 0 : restoring ? restoredAt : tagPosition}
           left={untagged.length + (restoring && restoredAt < 0 ? 1 : 0)}
-          lastSaved={tagHistory.length > 0 ? tagSaveText(tagHistory[tagHistory.length - 1]) : undefined}
+          lastSaved={tagHistory.length > 0 ? tagSaveText(tagHistory[tagHistory.length - 1], m, lang) : undefined}
           onUndo={undoTagSave}
           suggestions={suggestions}
           chosen={chosen}
@@ -984,26 +983,26 @@ export function QuestionBankScreen({
 
       {picker?.mode === 'edit' && hasParts(picker.row) && (
         <PartTopicPickerDialog
-          title="Topics"
-          description={`${editDescription(picker.row, copyWrites(rows, [picker.row.rootId]).length)} Tag the whole question, then change a part alone.`}
+          title={m.topics}
+          description={m.partDescription(editDescription(picker.row, copyWrites(rows, [picker.row.rootId]).length, m))}
           state={draftOf(stateOfRow(picker.row))}
           patterns={{ typeId: picker.row.typeId, kind: typeName(picker.row.typeId), names: (code) => patternNames(rows, registry, code, picker.row.typeId) }}
-          confirmLabel="Save topics"
+          confirmLabel={m.saveTopics}
           onClose={() => setPicker(undefined)}
           onDone={(edit) => {
             const row = picker.row;
             setPicker(undefined);
-            if (edit) void writeTopics(copyWrites(rows, [row.rootId]), edit, () => 'Topics saved.');
+            if (edit) void writeTopics(copyWrites(rows, [row.rootId]), edit, () => m.topicsSaved);
           }}
         />
       )}
       {picker?.mode === 'edit' && !hasParts(picker.row) && (
         <TopicPickerDialog
-          title="Topics"
-          description={editDescription(picker.row, copyWrites(rows, [picker.row.rootId]).length)}
+          title={m.topics}
+          description={editDescription(picker.row, copyWrites(rows, [picker.row.rootId]).length, m)}
           initial={picker.row.tags}
           patterns={pickerPatterns(picker.row.typeId, picker.row)}
-          confirmLabel="Save topics"
+          confirmLabel={m.saveTopics}
           onClose={() => setPicker(undefined)}
           onDone={(codes, picked) => {
             const row = picker.row;
@@ -1011,22 +1010,20 @@ export function QuestionBankScreen({
             void writeTopics(
               copyWrites(rows, [row.rootId]),
               thenEdit(replaceTopics(codes), setPatternsEdit(patternEdits(picked.patterns, true))),
-              () => 'Topics saved.',
+              () => m.topicsSaved,
             );
           }}
         />
       )}
       {picker?.mode === 'bulk' && (
         <TopicPickerDialog<BulkTopicMode>
-          title={`Set topic for ${pickedRoots.size} ${pickedRoots.size === 1 ? 'question' : 'questions'}`}
-          description={`${BULK_TEXT[picker.topicMode].description} Every copy of each question changes.${
-            pickedByRoot.some(hasParts) ? ' On a question with parts, it applies to every part; change one part alone in Edit topics.' : ''
-          }`}
+          title={m.bulkTitle(pickedRoots.size)}
+          description={m.bulkDescription(BULK_TEXT[picker.topicMode].description, pickedByRoot.some(hasParts))}
           initial={[]}
           modes={{
-            label: 'How to set topics',
+            label: m.bulkModes,
             value: picker.topicMode,
-            options: BULK_MODES,
+            options: bulkModes(m),
             onChange: (topicMode) => setPicker({ mode: 'bulk', topicMode }),
           }}
           present={pickedMix}
@@ -1041,7 +1038,7 @@ export function QuestionBankScreen({
           patternRemoval={picker.topicMode === 'remove' ? pickedPatternMix : undefined}
           patternNote={
             picker.topicMode !== 'remove' && pickedTypes.length > 1
-              ? 'To set a 題型, select questions of one type (MCQ or LQ) only. You can still clear one.'
+              ? m.bulkPatternNote
               : undefined
           }
           confirmLabel={BULK_TEXT[picker.topicMode].confirm}
@@ -1054,22 +1051,21 @@ export function QuestionBankScreen({
             if (codes.length === 0 && mode !== 'replace' && Object.keys(patternChanges).length === 0) return;
             const onlyPatterns = codes.length === 0 && mode !== 'replace';
             const edit = thenEdit(bulkTopicEdit(mode, codes), setPatternsEdit(patternChanges));
-            const questions = `${count} ${count === 1 ? 'question' : 'questions'}`;
             void writeTopics(copyWrites(rows, pickedRoots), edit, (saved) =>
-              `${onlyPatterns ? 'Cleared 題型 on' : BULK_TEXT[mode].done} ${questions} in ${saved} ${saved === 1 ? 'worksheet' : 'worksheets'}.`,
+              onlyPatterns ? m.bulkPatternsDone(count, saved) : BULK_TEXT[mode].done(count, saved),
             );
           }}
         />
       )}
       {picker?.mode === 'tag' && tagDraft && (
         <TopicPickerDialog
-          title={tagDraft.slots.length > 0 ? `Topics for ${targetName(tagDraft, tagAt)}` : 'Topics for this question'}
+          title={tagDraft.slots.length > 0 ? m.tagTitleParts(targetName(tagDraft, tagAt, lang)) : m.tagTitle}
           description={
             tagDraft.slots.length === 0
-              ? 'Tick every topic it tests. Saving moves on to the next question.'
+              ? m.tagDescOne
               : tagAt === undefined
-                ? 'Tick every topic it tests. They go on every part.'
-                : `Tick every topic ${targetName(tagDraft, tagAt)} tests.`
+                ? m.tagDescWhole
+                : m.tagDescPart(targetName(tagDraft, tagAt, lang))
           }
           initial={[...chosen]}
           patterns={
@@ -1085,7 +1081,7 @@ export function QuestionBankScreen({
                 }
               : undefined
           }
-          confirmLabel={tagDraft.slots.length > 0 ? 'Done' : 'Save and next'}
+          confirmLabel={tagDraft.slots.length > 0 ? m.done : m.saveNext}
           onClose={() => setPicker(undefined)}
           onDone={(codes, picked) => {
             setPicker(undefined);
@@ -1125,18 +1121,18 @@ const NO_PICKS: TagPicks = { edits: [], at: undefined };
 const hasParts = (row: BankRow) => (row.slots?.length ?? 0) > 0;
 
 /** "“A progressive tax…” tagged C · Public Finance", or "tagged (a) C · …; (b) I · …": what Undo would take back. */
-function tagSaveText({ group, parts }: TagSave): string {
+function tagSaveText({ group, parts }: TagSave, m: Words, lang: UiLanguage): string {
   const lead = group.rows[0];
-  const text = lead?.excerpt.en || lead?.excerpt.zh || 'Question';
+  const text = lead?.excerpt.en || lead?.excerpt.zh || m.questionFallback;
   const short = text.length > 48 ? `${text.slice(0, 47).trimEnd()}…` : text;
-  const where = parts.map(({ label, codes }) => `${label ? `${label} ` : ''}${codes.map((code) => topicHeading(code)).join(', ')}`);
-  return `“${short}” tagged ${where.join('; ')}`;
+  const where = parts.map(({ label, codes }) => `${label ? `${label} ` : ''}${codes.map((code) => topicTitle(code, 'en', lang)).join(m.sep)}`);
+  return m.tagSaved(short, where.join(m.semi));
 }
 
 /** Where Edit topics writes: the one worksheet, or every copy. */
-function editDescription(row: BankRow, copies: number): string {
-  if (copies > 1) return `Saved into ${allOf(copies, 'copies')} of this question.`;
-  return `Saved into “${row.docTitle}”${row.number !== undefined ? ` · Q${row.number}` : ''}.`;
+function editDescription(row: BankRow, copies: number, m: Words): string {
+  if (copies > 1) return m.savedIntoCopies(copies);
+  return m.savedIntoDoc(row.docTitle, row.number !== undefined ? ` · Q${row.number}` : '');
 }
 
 /** A field that owns its keys: text inputs, text areas, selects, editable text. Checkboxes are not. */

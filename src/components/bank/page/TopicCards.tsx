@@ -1,9 +1,13 @@
 'use client';
 
 import type { PatternItem } from '@/library/patterns';
-import { topicDisplay, topicOf } from '@/model/topics';
+import { topicOf } from '@/model/topics';
+import { useMessages, useUiLanguage } from '@/i18n/language';
 import { barPercent, typeName, type Coverage } from './bankPage';
 import type { ClassUsage } from './bankScreen';
+import { TOPIC_CARDS_MESSAGES } from './TopicCards.messages';
+import { BANK_PAGE_MESSAGES } from './bankPage.messages';
+import { topicName } from './topicText';
 
 /** Split-bar fills by registry position: the first type solid, the rest lighter steps of the accent. */
 export const SPLIT_FILL = ['bg-accent', 'bg-split-2', 'bg-split-2/50'];
@@ -32,6 +36,9 @@ export function TopicCards({
   onClassGap: (choice: ClassUsage['choice']) => void;
 }) {
   const { bars, max, untagged, total } = coverage;
+  const lang = useUiLanguage();
+  const m = useMessages(TOPIC_CARDS_MESSAGES);
+  const w = useMessages(BANK_PAGE_MESSAGES);
   return (
     <div className="mx-auto grid w-full max-w-[1280px] gap-5">
       <div className="flex flex-wrap items-center gap-3">
@@ -41,18 +48,18 @@ export function TopicCards({
             onClick={onUntagged}
             className="cursor-pointer rounded-lg bg-warn-soft px-3.5 py-2.5 text-left text-[13px] font-semibold tabular-nums text-warn-ink transition-[filter] duration-150 ease-out-soft hover:brightness-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
-            {untagged} {untagged === 1 ? 'question has' : 'questions have'} no topic
-            <span className="font-normal"> · Tag {untagged === 1 ? 'it' : 'them'} now →</span>
+            {m.untaggedLead(untagged)}
+            <span className="font-normal">{untagged === 1 ? m.tagIt : m.tagThem}</span>
           </button>
         )}
         {classUsage && (
           <button
             type="button"
             onClick={() => onClassGap(classUsage.choice)}
-            title={`Show the questions ${classUsage.choice.label} has not used${classUsage.choice.detail ? ` (${classUsage.choice.detail})` : ''}`}
+            title={m.classGapTitle(classUsage.choice.label, classUsage.choice.detail ?? '')}
             className="cursor-pointer rounded-lg bg-surface-sunken px-3.5 py-2.5 text-left text-[13px] tabular-nums text-ink-muted transition-colors duration-150 ease-out-soft hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
-            {classUsage.label} has used {classUsage.used} of {classUsage.total} questions
+            {m.classUsage(classUsage.label, classUsage.used, classUsage.total)}
           </button>
         )}
         <button
@@ -60,17 +67,17 @@ export function TopicCards({
           onClick={onAll}
           className="ml-auto cursor-pointer rounded-md px-1 py-1 text-[13px] font-medium tabular-nums text-accent-ink underline decoration-line-strong underline-offset-4 transition-[text-decoration-color] duration-150 ease-out-soft hover:decoration-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
-          All {total} {total === 1 ? 'question' : 'questions'} →
+          {m.allQuestions(total)}
         </button>
       </div>
 
-      <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4" aria-label="Topics">
+      <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4" aria-label={m.topics}>
         {bars.map((bar) => {
           const topic = topicOf(bar.code);
           const split = bar.byType.filter((part) => part.count > 0);
-          const splitTitle = split.map((part) => `${part.count} ${typeName(part.typeId)}`).join(', ');
+          const splitTitle = split.map((part) => `${part.count} ${typeName(part.typeId)}`).join(w.sep);
           const own = patterns?.get(bar.code) ?? [];
-          const patternTitle = own.map((item) => `${topicDisplay(item.topic)} · ${item.name} · ${typeName(item.typeId)} ×${item.count}`).join('\n');
+          const patternTitle = own.map((item) => `${topicName(item.topic, 'en', lang)} · ${item.name} · ${typeName(item.typeId)} ×${item.count}`).join('\n');
           return (
             <li key={bar.code} className="flex">
               <button
@@ -81,16 +88,21 @@ export function TopicCards({
                 <span className="flex items-baseline gap-2.5">
                   <span className="font-display min-w-[34px] shrink-0 text-[26px] leading-none text-ink">{bar.code}</span>
                   <span className="grid min-w-0 text-[13px] leading-[1.25] text-ink">
-                    <span className="group-hover:text-accent-ink">{topic?.en}</span>
-                    <small className="text-[12px] text-ink-subtle">{topic?.zh}</small>
+                    {lang === 'zh-HK' ? (
+                      <span className="group-hover:text-accent-ink">{topic?.zh}</span>
+                    ) : (
+                      <>
+                        <span className="group-hover:text-accent-ink">{topic?.en}</span>
+                        <small className="text-[12px] text-ink-subtle">{topic?.zh}</small>
+                      </>
+                    )}
                   </span>
                 </span>
                 <span className="mt-auto text-[13px] font-semibold tabular-nums text-ink">
-                  {bar.total} <span className="font-normal text-ink-subtle">{bar.total === 1 ? 'question' : 'questions'}</span>
+                  {bar.total} <span className="font-normal text-ink-subtle">{bar.total === 1 ? m.cardQuestion : m.cardQuestions}</span>
                   {own.length > 0 && (
                     <span className="font-normal text-ink-subtle" title={patternTitle} data-card-patterns>
-                      {' '}
-                      · {own.length} 題型
+                      {m.cardPatterns(own.length)}
                     </span>
                   )}
                 </span>
@@ -99,7 +111,7 @@ export function TopicCards({
                 <span
                   className="flex h-[5px] overflow-hidden rounded-[3px] bg-surface-sunken"
                   title={splitTitle || undefined}
-                  aria-label={splitTitle || 'No questions'}
+                  aria-label={splitTitle || m.noQuestions}
                   role="img"
                 >
                   {bar.total > 0 && (
@@ -120,7 +132,7 @@ export function TopicCards({
                     most topics are empty, and twelve amber lines would bury the one strip
                     that needs doing. */}
                 {bar.total > 0 && bar.thin && (
-                  <span className="text-[12px] tabular-nums text-warn-ink">Only {bar.total}. Worth adding more</span>
+                  <span className="text-[12px] tabular-nums text-warn-ink">{m.thin(bar.total)}</span>
                 )}
               </button>
             </li>

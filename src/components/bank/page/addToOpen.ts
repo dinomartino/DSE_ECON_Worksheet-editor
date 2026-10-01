@@ -1,8 +1,11 @@
 import { rootOf } from '@/library/tagWrites';
 import type { Worksheet } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
-import { allOf } from '../bankText';
-import { commitBankCopies, reviewSummary } from '../bankSession';
+import { commitBankCopies } from '../bankSession';
+import { uiLanguage } from '@/i18n/language';
+import { resolveMessages } from '@/i18n/catalogue';
+import type { UiLanguage } from '@/settings/language';
+import { BANK_PAGE_MESSAGES as M } from './bankPage.messages';
 import type { PickedQuestion } from './fromSelection';
 
 /**
@@ -37,17 +40,15 @@ export function splitAlreadyInPaper(
 }
 
 /** The review bar's line after "Add to": what went in, and what was already there. */
-const capitalise = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
-
-export function addedSummary(added: number, skipped: number): string {
-  return skipped === 0 ? reviewSummary(added) : `${reviewSummary(added)}. Skipped ${skipped} already in this paper.`;
+export function addedSummary(added: number, skipped: number, lang: UiLanguage = uiLanguage()): string {
+  const m = resolveMessages(M, lang);
+  return skipped === 0 ? m.addedFromBank(added) : m.addedSkipped(added, skipped);
 }
 
 /** Every pick was already in the paper: nothing is added, and the bank says so. */
-export function nothingAddedText(skipped: number, title: string): string {
-  return skipped === 1
-    ? `That question is already in “${title}”. Nothing was added.`
-    : `${capitalise(allOf(skipped, 'questions'))} are already in “${title}”. Nothing was added.`;
+export function nothingAddedText(skipped: number, title: string, lang: UiLanguage = uiLanguage()): string {
+  const m = resolveMessages(M, lang);
+  return skipped === 1 ? m.nothingAddedOne(title) : m.nothingAddedMany(skipped, title);
 }
 
 /**
