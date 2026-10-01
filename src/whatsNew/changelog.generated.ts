@@ -23,39 +23,71 @@ a version heading is edited afterwards.
   for buttons, menus and dialogs, in the words Hong Kong teachers use (PDF, MCQ and
   Paper 1 stay in English). Worksheets print exactly as you wrote them in either
   language. Settings and the start screen's panel are translated first; the rest follows.
+  <!-- zh: **設定 → 語言：以繁體中文使用 Econ Studio。** 按鈕、選單和對話框可選英文或繁體中文，
+  用語貼近香港教師慣用的說法（PDF、MCQ 和 Paper 1 保留英文）。不論用哪種語言，
+  工作紙的列印效果都與你所寫的完全一致。設定和開始畫面的面板先行翻譯，其餘陸續跟進。 -->
 - **Graphs 圖表庫: draw a graph once and keep it.** Open Graphs from the start screen,
   start from a template or blank axes, and draw on the full page. Graphs save as you work,
   sit in your backups, and copy straight into Word at their printed size, or download as
   a PNG.
+  <!-- zh: **圖表庫：圖表畫一次便可保留。** 在開始畫面開啟圖表庫，由範本或空白座標軸開始，
+  在整頁上繪圖。圖表會隨你操作自動儲存，包含在備份內，可按列印大小直接複製到 Word，
+  也可下載為 PNG。 -->
 - **Put your saved graphs into questions.** Diagram ▾ has a My graphs tab beside the
   templates: pick one and a copy goes into the question. From a graph, Use in a worksheet…
   adds it to any question (or a new one) and opens the worksheet there. A diagram's panel
   has Save to Graphs to keep it for later. Each copy is independent, so changing one
   never changes another.
+  <!-- zh: **把儲存的圖表放進題目。** 圖表 ▾ 在範本旁多了「我的圖表」分頁：選一個，副本便會放進
+  題目。在圖表頁按「用於工作紙…」，可把它加到任何題目（或新題目），並直接在該處開啟
+  工作紙。圖表的面板有「儲存到圖表庫」，方便日後再用。每個副本互相獨立，改動其中一個
+  不會影響其他。 -->
 - **Pie charts, flow charts and forum figures in Graphs too.** New graph offers every
   template, and each is edited on the Graphs page the way it is in a worksheet: slices,
   boxes and arrows, speech bubbles. Save to Graphs, My graphs and Download PNG work for
   all of them. ⌘Z no longer changes the graph while Use in a worksheet… is open.
+  <!-- zh: **圖表庫也支援圓形圖、流程圖和論壇圖。** 「新增圖表」提供所有範本，編輯方式與在工作紙
+  中相同：扇形、方框和箭頭、對話氣泡。「儲存到圖表庫」、「我的圖表」和「下載 PNG」
+  均適用於全部圖表。開啟「用於工作紙…」時，⌘Z 不再改動圖表。 -->
 - **A proper welcome on first launch.** With nothing saved yet, the start screen shows
   the four kinds of paper as pictures of the page each one prints. Click one to name it
   and start, or open a file or restore a backup you already have.
+  <!-- zh: **首次啟動有親切的歡迎畫面。** 尚未儲存任何內容時，開始畫面會以圖片顯示四種試卷
+  各自列印出來的頁面。按一下其中一種，為它命名即可開始；也可開啟現有檔案或還原備份。 -->
 - **Econ Studio opens with a short animation of its mark**: the axes, demand and supply
   draw in and meet at the equilibrium, then the mark settles into its place on the start
   screen. Click or press any key to skip it. It plays once per session and respects
   Reduce motion.
+  <!-- zh: **Econ Studio 啟動時有一段標誌短動畫**：座標軸、需求線和供給線逐一畫出，相交於均衡點，
+  然後標誌就位於開始畫面。按一下或按任何鍵可略過。每次使用只播放一次，並會遵從
+  「減少動態效果」設定。 -->
 - **Tag questions with DSE topics.** Pick a topic (A–J and the electives, or your own
   free tag) in the Edit panel. Tags never print. A free tag can't look like a topic code
   (such as "K" or "C.ped"), contain "::" or start with "@"; those are kept for topics.
+  <!-- zh: **以 DSE 課題標記題目。** 在編輯面板選擇課題（A 至 J 及選修單元），或自訂標籤。
+  標記不會列印。自訂標籤不可與課題代碼相似（例如「K」或「C.ped」），不可包含「::」，
+  也不可以「@」開頭，這些保留給課題使用。 -->
 - **Tag each part of a long question with its own topic and 題型.** Click a part on the
   page to tag it; a sub-part can follow its part or have its own. Click the stem to see
   every part's topics at once, which parts have none yet, and "Add to every part". With a
   topic chosen in the 題庫 tab, a long question says which part tests it.
+  <!-- zh: **長題目的每個分題可各自標記課題和題型。** 在頁面上按一下分題即可標記；子分題可跟隨
+  所屬分題，也可自行標記。按一下題幹，可一覽各分題的課題、尚未標記的分題，以及
+  「加入所有分題」。在題庫分頁揀選課題後，長題目會指出哪個分題考核該課題。 -->
 - **Say which classes sat a paper, and when.** In Setup, add the classes (type 5A and press
   Enter or a comma after each) and the date it was sat. The question bank counts a paper as used only once it names a
   class, and knows that 4A last year and 5A this year are the same students, so "not used
   with" follows a year group up the school (shown as DSE 2027 and so on). Tagging or
   correcting an old paper no longer makes it look used this year.
+  <!-- zh: **記錄哪些班別考過試卷及考試日期。** 在頁面設定中加入班別（輸入 5A 後按 Enter 或逗號，
+  逐個加入）和考試日期。題庫只會把已註明班別的試卷計作已使用，並明白去年的 4A 與
+  今年的 5A 是同一班學生，因此「未曾用於」會隨年級升上去計算（顯示為 DSE 2027 等）。
+  為舊試卷加標記或更正，也不會再令它看似今年已使用。 -->
 - **Copy questions to a question bank from the outline.** Use a question's ⋯ menu to copy it to a bank (or start a new one); after you improve a question, "Update bank copy" refreshes the bank's version, and "Treat as a new question" cuts a copy loose from its origin (it explains what that means before it does anything, and one Undo reverses it). A new bank asks for its name, and the list of banks tells two alike apart. A bank that already has the question says so instead of taking a second copy, and offers "Update bank copy" when your version differs.
+  <!-- zh: **從大綱把題目複製到題庫。** 用題目的 ⋯ 選單把它複製到題庫（或建立新題庫）；改良題目後，
+  「更新題庫副本」會刷新題庫中的版本，而「視為新題目」會使副本脫離原題（動手前會先解釋
+  其意思，一次復原即可還原）。新題庫會先詢問名稱，題庫清單也會分辨相似的題庫。
+  題庫已有該題時，會直接告知而不重複收錄；若你的版本有分別，則提供「更新題庫副本」。 -->
 - **Question bank 題庫, its own screen**: open it from the start screen to see every
   question from your worksheets as topic cards (how many of each, and which topics are
   thin) under a coverage bar across the topics. Open a topic to read its questions one by one at print size, in English, 中文 or
@@ -80,6 +112,25 @@ a version heading is edited afterwards.
   A long question shows which part tests the topic you are browsing ("Part (b) tests
   this"), and that part is highlighted on the paper. A question on two sub-topics is listed
   under both, each saying where else it is, and its topics show part by part.
+  <!-- zh: **題庫：獨立的畫面**，從開始畫面開啟，即可看到你所有工作紙的題目，以課題卡片顯示
+  （每個課題有多少題、哪些課題偏少），課題上方有覆蓋率長條。開啟課題後，可按列印
+  大小逐題細閱，語言可選英文、中文或雙語，亦可切換學生版或教師版；清單按子課題分組
+  （可收起以騰出空間；按 Tab 可進入清單，以方向鍵移動）。每題會顯示它在試卷中的
+  題號，「篩選」按鈕會顯示已啟用的篩選數目。勾選題目即可建立新工作紙，或加到你上次
+  開啟的工作紙（若你尚未開啟過，則只提供新工作紙）。加入時會略過該工作紙已有的題目
+  （「已略過 1 條已在這份工作紙內的題目」），並在新題目處開啟、加上高亮，一次復原即可
+  全部撤回。所選題目會保留在清單中，可重新排序（拖曳，或按 Alt+↑ ↓）、一鍵把 MCQ 排在
+  LQ 之前，或刪減，同時顯示題數、分數及 MCQ／LQ 比例。你開啟某題所屬的工作紙、返回
+  主頁或重新載入頁面時，清單都會保留；題目放進工作紙後，清單才會清空。
+  課題以名稱顯示，附英文和中文（「Law of demand 需求定律」），不會只顯示代碼。
+  清單中每題都會註明所屬工作紙和題號，因此副本和開頭相近的題目也能分辨；經編輯的版本
+  會說明改了甚麼。搜尋也可按工作紙名稱找題目（輸入「Mock 2026」）。每張課題卡片的長條
+  按比例繪畫，所以只有一題的課題看起來就只有一題。
+  未標記的題目有快速標記模式：按 1 至 6 選擇建議的課題，按 Enter 儲存並看下一題。
+  按錯鍵？按 Backspace、⌘Z 或「復原」，即可取回上一題並取消它的課題。可直接在工作紙
+  中該題所在位置開啟任何題目，之後返回題庫的同一位置。按 ← 主頁即可返回。
+  長題目會顯示哪個分題考核你正在瀏覽的課題（「分題 (b) 考核此課題」），該分題在試卷上
+  亦會高亮。涉及兩個子課題的題目會在兩處都列出，並各自註明另一處；其課題也會逐分題顯示。 -->
 - **題庫 tab in the editor**: find questions from your other worksheets by words, topic,
   type or marks and drag copies onto the page, or Fill a set by topic after the question
   you click, preferring ones your class has not seen. The list and Fill start on what your
@@ -88,6 +139,11 @@ a version heading is edited afterwards.
   highlighted on the page, and one Undo takes the whole set back out. Each question shows
   the worksheet it comes from on a line of its own, and two worksheets with the same name
   are told apart by date.
+  <!-- zh: **編輯器中的題庫分頁**：按文字、課題、類型或分數，從其他工作紙找題目，並拖曳副本到
+  頁面上；或在你按著的題目之後，按課題「填入」一組題目，並優先選擇班別未見過的。
+  清單和「填入」會按你的試卷類型預設（Paper 1 用 MCQ，試題答題簿或 LQ 工作紙用 LQ，
+  課堂工作紙兩者皆用）；仍可加入其他類型，並有簡短提示。新題目會在頁面上高亮，
+  一次復原即可整組移除。每題會在獨立一行顯示來源工作紙，同名的工作紙以日期區分。 -->
 - **Drag a question from the 題庫 tab onto the page.** While you drag, the page shows the
   result before you let go: the question sits where it would land, the questions after it
   renumber and the pages re-flow. Let go to insert it (one Undo takes it out); press Esc or
@@ -96,6 +152,11 @@ a version heading is edited afterwards.
   the one you clicked. On a small screen (1024 wide) the page now sits beside the sidebar
   instead of under it, so all of it takes the drop, and the page thumbnails show where the
   question will land.
+  <!-- zh: **把題庫分頁的題目拖到頁面上。** 拖曳時，頁面會在你放開前預覽結果：題目放在落點位置，
+  之後的題目重新編號，頁面重新編排。放開即插入（一次復原可撤回）；按 Esc 或在頁面外放開
+  則不會有任何改變。拖曳取代了「插入」按鈕；用鍵盤時，按 Tab 進入清單，以方向鍵移動，
+  再按 Enter，即可在你按著的題目之後加入題目。在小螢幕（1024 闊）上，頁面現在位於
+  側邊欄旁而非下方，整頁都可接收拖放，頁面縮圖亦會顯示題目將放在哪裡。 -->
 
 - **Your own 題型 (Patterns) in the question bank.** Inside a sub-topic, file questions
   under the kinds of question you set, such as "Calculate PED from a change in TR". Pick
@@ -108,6 +169,13 @@ a version heading is edited afterwards.
   filters by one, and counts them on the topic cards. The 題型 Patterns page lists them
   all and renames, merges or deletes one in every worksheet at once. They come with your
   backup and never print.
+  <!-- zh: **在題庫自訂題型。** 在子課題內，按你設定的題目種類歸類題目，例如「由總收益變化
+  計算 PED」。設定題目課題時（在題庫或編輯面板），可揀選現有題型或輸入新名稱；MCQ 和 LQ
+  各有獨立清單。輸入部分名稱後按 Enter 會選用現有題型（用方向鍵選其他項目，或選
+  「新增」），與現有名稱相近的會提示，即使你取消對話框，新題型也會保留。「設定課題…」
+  亦可清除題型，或只移除題型而保留子課題，適用於任何類型的題目。題庫會按題型為
+  每個子課題的題目分組、按題型篩選，並在課題卡片上計算數目。「題型」頁面列出全部題型，
+  並可一次過在所有工作紙重新命名、合併或刪除。題型會包含在備份內，不會列印。 -->
 - **✦ AI in the question bank.** On a topic's page, ✦ AI fills in missing 中文 or English
   for the question on screen, the questions in your list, or every question shown. Check
   terms (free, no key needed) finds terms that differ from the EDB glossary and replaces
@@ -117,11 +185,22 @@ a version heading is edited afterwards.
   more asks first and says roughly how long it takes, and Stop keeps what is done. What
   changed is highlighted in the list and on the paper, ‹ › steps through it, and Undo all
   puts it back. The Filter has a new Language choice: Missing 中文 or Missing English.
+  <!-- zh: **題庫內的 ✦ AI。** 在課題頁面，✦ AI 可為畫面上的題目、清單中的題目或所有顯示的題目
+  補上缺少的中文或英文。「按 EDB 詞彙表檢查用詞」（免費，無需 API key）會找出與 EDB
+  詞彙表不同的用詞並加以替換。多份工作紙共用的題目，會在每個內容相同的副本中一併更改，
+  因此題庫仍只顯示一次；你已編輯的副本、題庫中隱藏的試卷和垃圾桶中的試卷則維持不變。
+  最多 20 條題目會立即開始；更多則會先詢問，並說明大約需時，按「停止」會保留已完成的部分。
+  更改的內容會在清單和試卷上高亮，‹ › 可逐項查看，「全部復原」可還原。篩選新增「語言」
+  選項：缺少中文或缺少英文。 -->
 - **Choose where your export is saved.** In Chrome and Edge, exporting a worksheet, the
   worksheet file or a backup now asks where to save it, as the desktop app does. Exporting
   several files at once (Student and Teacher, versions A, B and C, or the answer key too)
   asks for one folder instead of once per file, and never replaces a file already there.
   Firefox and Safari still save to your Downloads folder.
+  <!-- zh: **自選匯出檔案的儲存位置。** 在 Chrome 和 Edge 中，匯出工作紙、工作紙檔案或備份時，
+  現在會詢問儲存位置，與桌面版相同。一次匯出多個檔案（學生版和教師版、A、B、C 卷，
+  或連同答案頁）時，只需選一次資料夾，不用逐個檔案詢問，也不會覆蓋已有的檔案。
+  Firefox 和 Safari 仍會儲存到「下載」資料夾。 -->
 
 ### Changed
 - **One New worksheet button on the start screen.** It opens a gallery of the four kinds
