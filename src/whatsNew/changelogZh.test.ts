@@ -10,7 +10,7 @@ import { parseChangelog, type ChangelogText } from './changelog';
  */
 
 /** true once the existing entries' translations have merged: then every entry needs one. */
-const EVERY_ENTRY = false;
+const EVERY_ENTRY = true;
 
 const log = parseChangelog(readFileSync(path.resolve(__dirname, '../../CHANGELOG.md'), 'utf8'));
 
