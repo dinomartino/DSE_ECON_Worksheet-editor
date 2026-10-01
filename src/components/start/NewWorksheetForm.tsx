@@ -12,6 +12,8 @@ import {
 import { academicYear } from '@/model/cover';
 import { MARGIN_PRESETS } from '@/model/page';
 import type { LanguageMode, PageMargins, PaperSize, Worksheet } from '@/model/types';
+import { PaperSketch } from './PaperSketch';
+import { START_KINDS, writeLastKind } from './startKinds';
 
 /**
  * The once-per-document decisions, asked before the first question exists.
@@ -37,39 +39,6 @@ import type { LanguageMode, PageMargins, PaperSize, Worksheet } from '@/model/ty
  * field and a click on Create take the identical path.
  */
 export const NEW_WORKSHEET_FORM_ID = 'new-worksheet-form';
-
-/**
- * The four documents, in the order a teacher meets them: the everyday sheet first,
- * then the two mocks, with the plain LQ set between them beside the booklet it
- * resembles. Each card names what the choice *includes*, because the whole point of
- * the type is that nothing else needs asking.
- */
-const DOCUMENT_TYPES: Array<{
-  value: DocumentType;
-  label: string;
-  hint: string;
-}> = [
-  {
-    value: 'classroom',
-    label: 'Classroom worksheet',
-    hint: 'MCQ + structured questions. No cover.',
-  },
-  {
-    value: 'lqWorksheet',
-    label: 'LQ worksheet',
-    hint: 'Long questions with dotted answer space. No exam furniture.',
-  },
-  {
-    value: 'paper1',
-    label: 'Paper 1 mock · MCQ',
-    hint: 'Exam cover; answers go on a separate sheet.',
-  },
-  {
-    value: 'lqMock',
-    label: 'Paper 2 mock · booklet',
-    hint: 'Question-Answer Book: cover, Sections A–C, page frame.',
-  },
-];
 
 /** A realistic filing name per type, shown as the Name field's placeholder. */
 export function namePlaceholder(type: DocumentType, now?: Date): string {
@@ -118,7 +87,7 @@ export const ASKS_SECTIONS: Record<DocumentType, boolean> = {
 };
 
 export function NewWorksheetForm({
-  /** Preselected document type, from the card the teacher pressed on the start screen. */
+  /** Preselected document type: the card pressed, or the last type created. */
   initialType,
   onCreate,
 }: {
@@ -159,6 +128,7 @@ export function NewWorksheetForm({
       sections,
       ...(HAS_COVER[documentType] ? { coverDetails: { school, examName } } : {}),
     };
+    writeLastKind(documentType);
     onCreate(createWorksheetFrom(options), language);
   };
 
@@ -205,40 +175,57 @@ export function NewWorksheetForm({
         label="Document type"
         hint="Decides the cover, sections and page furniture. Everything else below is paper."
       >
-        <div role="radiogroup" className="grid grid-cols-2 items-stretch gap-2">
-          {DOCUMENT_TYPES.map(({ value, label, hint }) => (
-            <button
-              key={value}
-              type="button"
-              role="radio"
-              aria-checked={documentType === value}
-              onClick={() => setDocumentType(value)}
-              // The selected state crossfades: border and fill ease, and the outer
-              // ring is a layer that fades in — `box-shadow` itself is not transitioned,
-              // because the focus ring shares it and must appear at once.
-              className={`relative flex cursor-pointer flex-col gap-0.5 rounded-lg border px-3 py-2.5 text-left transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-                documentType === value
-                  ? 'border-accent bg-accent/5'
-                  : 'border-line bg-surface hover:border-ink-subtle'
-              }`}
-            >
-              <span
-                aria-hidden
-                className={`pointer-events-none absolute -inset-px rounded-lg ring-1 ring-accent transition-opacity duration-150 ease-out-soft ${
-                  documentType === value ? 'opacity-100' : 'opacity-0'
-                }`}
-              />
-              <span
-                className={`text-[12px] font-medium transition-colors duration-150 ease-out-soft ${
-                  documentType === value ? 'text-accent' : 'text-ink'
-                }`}
+        {/* A gallery of first pages, the empty desk's own sketches: a teacher knows a
+            paper by its shape sooner than by its name. */}
+        <div role="radiogroup" aria-label="Document type" className="grid grid-cols-4 gap-3">
+          {START_KINDS.map((kind) => {
+            const selected = documentType === kind.type;
+            return (
+              <button
+                key={kind.type}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                onClick={() => setDocumentType(kind.type)}
+                className="group flex min-w-0 cursor-pointer flex-col text-left focus-visible:outline-none"
               >
-                {label}
-              </span>
-              <span className="text-[11px] leading-snug text-ink-muted">{hint}</span>
-            </button>
-          ))}
+                {/* Selected crossfades: border and fill ease, and the ring is a layer that
+                    fades in, since the focus ring shares `box-shadow` and must not. */}
+                <span
+                  className={`relative flex justify-center rounded-lg border px-[21%] py-2.5 transition-colors duration-150 ease-out-soft group-focus-visible:ring-2 group-focus-visible:ring-accent ${
+                    selected
+                      ? 'border-accent bg-accent/5'
+                      : 'border-line bg-surface-sunken group-hover:bg-surface-hover'
+                  }`}
+                >
+                  <span
+                    aria-hidden
+                    className={`pointer-events-none absolute -inset-px rounded-lg ring-1 ring-accent transition-opacity duration-150 ease-out-soft ${
+                      selected ? 'opacity-100' : 'opacity-0'
+                    }`}
+                  />
+                  <span className="block w-full overflow-hidden rounded-[2px] shadow-[0_1px_2px_rgba(0,0,0,0.16),0_3px_8px_rgba(0,0,0,0.10)] ring-1 ring-black/5 transition-transform duration-[180ms] ease-out-soft group-active:scale-[0.985] group-active:duration-100">
+                    <PaperSketch type={kind.type} />
+                  </span>
+                </span>
+                <span
+                  className={`mt-1.5 block text-[12px] font-medium leading-snug transition-colors duration-150 ease-out-soft ${
+                    selected ? 'text-accent-ink' : 'text-ink group-hover:text-accent-ink'
+                  }`}
+                >
+                  {kind.title}
+                </span>
+                <span lang="zh-HK" className="block text-[11px] leading-snug text-ink-subtle">
+                  {kind.titleZh}
+                </span>
+              </button>
+            );
+          })}
         </div>
+        {/* What the chosen type includes. Keyed, so it fades to the new wording. */}
+        <p key={documentType} className="animate-fade-in text-[11px] leading-snug text-ink-muted">
+          {START_KINDS.find((kind) => kind.type === documentType)?.hint}
+        </p>
       </Field>
 
       {/* Indented under the type they belong to, rather than floating as top-level

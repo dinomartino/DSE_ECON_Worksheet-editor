@@ -99,6 +99,9 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
   Firefox and Safari still save to your Downloads folder.
 
 ### Changed
+- **One New worksheet button on the start screen.** It opens a gallery of the four kinds
+  of paper, drawn as the page each one prints, with the kind you made last already
+  chosen. The Question bank now sits under Library, with room to spare on a small screen.
 - **The Edit panel shows which row matches what you clicked.** Click a stem, a statement,
   an option, a table cell, a picture or a part of a long question on the page, and its row
   in the Edit panel lights up in blue with a brief glow, so you can see where to change

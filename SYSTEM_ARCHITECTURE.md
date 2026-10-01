@@ -1832,8 +1832,11 @@ name (`Worksheet.name`, never printed; every other field has a default).
   document; a test pins the two to the same shape.
 - **Turning sections off rewrites `flow` and `layout` together** (the flow names
   elements by id).
-- **The wizard is a form, not steps**; every field has a working default. The start
-  cards preselect a document type and nothing else.
+- **The wizard is a form, not steps**; every field has a working default. Its document
+  type is a gallery of the empty desk's page sketches (`start/PaperSketch.tsx`), and
+  `start/startKinds.ts:START_KINDS` is the one list of the four kinds for both. A welcome
+  card preselects its type; the New worksheet button preselects the last type created
+  (`startKinds.ts:readLastKind`, a per-viewer key outside the `econ-worksheet:` prefix).
 - **The row opens the document; the menu holds the filing actions.** Duplicating saves
   without opening.
 - **A summary can outlive the document it names** — opening one says so and drops the
@@ -1871,15 +1874,16 @@ toolbar mark. It is chrome, never IR: nothing reaches the `.docx`, clipboard or 
   index in `start/dashboard.ts:visibleSummaries`; none of it is stored with a document.
   The grid/list choice is a per-viewer `localStorage` key outside the `econ-worksheet:`
   prefix, which `clear()` treats as documents.
-- **Each thing sits with what it acts on.** The sidebar starts work (four new-document
-  rows plus "Open a file…", which opens a .json or restores a .zip); the library's tools
-  — Trash, and backup/restore/"Show … folder" behind ⋯ — sit in the dashboard header.
+- **Each thing sits with what it acts on.** The sidebar starts work (one New worksheet
+  button, then "Open a file…", which opens a .json or restores a .zip) and lists the
+  libraries (Question bank) under Library; the document tools — Trash, and
+  backup/restore/"Show … folder" behind ⋯ — sit in the dashboard header.
 - **An empty desk welcomes** (`start/WelcomeDesk.tsx`): once the index reads empty, the
   four kinds appear as sketched pages opening the same form, plus Open a file / Restore a
-  backup. They are then the one way in: the sidebar drops its four rows and "Open a file…"
-  (`StartScreen.tsx:StartNewSection`), keeping the headline and Question bank. Before the
-  index is read nothing changes, so a returning teacher sees no flash. Nothing is added to
-  the list for the teacher; with one document it is the list, and the rows are back.
+  backup. The sidebar keeps its New worksheet button and Library but drops "Open a file…"
+  (`StartScreen.tsx:StartNewSection`), which the welcome carries. Before the index is read
+  nothing changes, so a returning teacher sees no flash. Nothing is added to the list for
+  the teacher; with one document it is the list.
 - **Folders narrow, never hide.** A folder column (All documents, then folders by name,
   with counts) scopes the list first (`dashboard.ts:scopedSummaries`); search, kind and
   order then work inside it. All documents shows every row, filed or not, and says which
