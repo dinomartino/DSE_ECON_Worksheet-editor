@@ -4655,6 +4655,20 @@ export function Preview({
     useWorksheetStore.getState().setSelectedTargetKey(selectedTargetKey);
   }, [selectedTargetKey]);
 
+  // A block selection asked for from outside the page (`blockSelectRequest`), taken once.
+  useEffect(() => {
+    const take = (blockId: string | undefined) => {
+      if (!blockId) return;
+      useWorksheetStore.getState().requestBlockSelection(undefined);
+      setSelectedElement(undefined);
+      setSelectedBlockId(blockId);
+    };
+    take(useWorksheetStore.getState().blockSelectRequest);
+    return useWorksheetStore.subscribe((state, previous) => {
+      if (state.blockSelectRequest !== previous.blockSelectRequest) take(state.blockSelectRequest);
+    });
+  }, []);
+
   /*
    * How much taller this element could get before running past its page. Measured off
    * the rendered sheet (the probe omits on-page wrapper chrome, so the packer's

@@ -155,6 +155,7 @@ export function ResizableBlock({
 
   return (
     <div
+      data-figure-block={blockId}
       className="relative mx-auto inline-block align-top"
       style={{ width: liveWidth, lineHeight: 0 }}
     >

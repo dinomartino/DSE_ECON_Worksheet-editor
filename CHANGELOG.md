@@ -15,6 +15,11 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
   start from a template or blank axes, and draw on the full page. Graphs save as you work,
   sit in your backups, and copy straight into Word at their printed size, or download as
   a PNG.
+- **Put your saved graphs into questions.** Diagram ▾ has a My graphs tab beside the
+  templates: pick one and a copy goes into the question. From a graph, Use in a worksheet…
+  adds it to any question (or a new one) and opens the worksheet there. A diagram's panel
+  has Save to Graphs to keep it for later. Each copy is independent, so changing one
+  never changes another.
 - **A proper welcome on first launch.** With nothing saved yet, the start screen shows
   the four kinds of paper as pictures of the page each one prints. Click one to name it
   and start, or open a file or restore a backup you already have.
@@ -185,6 +190,8 @@ text becomes the GitHub release body (see `RELEASING.md`). Sections are grouped 
   own, or nothing. Page 1's title settings sit with them.
 
 ### Fixed
+- **Back up now shows when you have graphs but no worksheets yet**, and the graph
+  editor's tools fit on one row on a 13-inch screen.
 - **Bilingual papers no longer print the footer twice.** A paper code or page number that
   reads the same in English and 中文 now prints once, on screen, in the PDF and in Word.
   Cover instruction numbers such as (1) print once too.

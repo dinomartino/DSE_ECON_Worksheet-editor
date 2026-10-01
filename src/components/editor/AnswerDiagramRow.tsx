@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { DIAGRAM_TEMPLATES, buildFromTemplate } from '@/model/diagramTemplates';
+import { rebaseOnGraph } from '@/model/graph';
 import { plain } from '@/model/text';
 import type { DiagramBlock } from '@/model/types';
 import { diagramSize, diagramSvg } from '@/render/diagram';
@@ -83,6 +84,7 @@ export function AnswerDiagramRow({
               const next = buildFromTemplate(templateId);
               onChange({ ...block, ...diagramSize(next, block.widthPx, language), diagram: next });
             }}
+            onPickGraph={(graph) => onChange(rebaseOnGraph(block, graph, language))}
           />
           <NumberField
             label="Width"

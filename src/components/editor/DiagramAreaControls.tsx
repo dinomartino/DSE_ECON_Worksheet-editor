@@ -350,6 +350,7 @@ export function ShadeMenu({
   onOpenChange,
   onAdd,
   newId,
+  compact = false,
 }: {
   diagram: Diagram;
   open: boolean;
@@ -357,6 +358,8 @@ export function ShadeMenu({
   /** One or more areas from one menu item (the tariff DWL adds two). */
   onAdd: (areas: DiagramArea[]) => void;
   newId: () => string;
+  /** Glyph only below 2xl (the embedded canvas's narrow toolbar); the word stays for readers. */
+  compact?: boolean;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [chosenGroup, setGroup] = useState<ShadeGroup | null>(null);
@@ -423,7 +426,8 @@ export function ShadeMenu({
         }
       >
         <span aria-hidden className="text-lg leading-none">▨</span>
-        <span className="text-xs font-medium">Shade ▾</span>
+        <span className={`text-xs font-medium ${compact ? 'sr-only 2xl:not-sr-only' : ''}`}>Shade</span>
+        <span aria-hidden className="text-xs font-medium">▾</span>
       </button>
       {open && (
         <div

@@ -53,12 +53,17 @@ export function selectQuestion(questionId: string): boolean {
  * hold still, then gives up quietly after `timeoutMs`.
  */
 export function revealQuestion(questionId: string, timeoutMs = 4000): () => void {
+  return revealOnPage(`#print-root [data-question-id="${CSS.escape(questionId)}"]`, timeoutMs);
+}
+
+/** `revealQuestion` for any node on the sheets, by selector. */
+export function revealOnPage(selector: string, timeoutMs = 4000): () => void {
   const started = performance.now();
   let last: number | undefined;
   let stable = 0;
   let frame = 0;
   const tick = () => {
-    const node = document.querySelector(`#print-root [data-question-id="${CSS.escape(questionId)}"]`);
+    const node = document.querySelector(selector);
     if (node) {
       const top = node.getBoundingClientRect().top;
       stable = last !== undefined && Math.abs(top - last) < 1 ? stable + 1 : 0;

@@ -1,6 +1,7 @@
 import { createDiagramBlock, DEFAULT_DIAGRAM_SIZE, newId } from './factories';
 import { getDiagramTemplate } from './diagramTemplates';
 import { CURRENT_SCHEMA_VERSION, migrate } from './migrations';
+import { biTextExcerpt } from './excerpt';
 import { plain } from './text';
 import { diagramSize } from '@/render/diagram';
 import type { DiagramBlock, FontPair, LanguageMode } from './types';
@@ -170,6 +171,51 @@ export function withGraphLanguage(graph: SavedGraph, language: LanguageMode): Sa
 /** Can the drawing canvas edit it? Pie, flow and forum figures have editors of their own. */
 export function isDrawableGraph(block: DiagramBlock): boolean {
   return !block.diagram.pie && !block.diagram.flow && !block.diagram.forum;
+}
+
+/**
+ * A worksheet's copy of a saved graph: a deep clone under a fresh block id, so nothing
+ * links back (later edits to the graph never reach the worksheet). Diagram-internal ids
+ * are kept (`lineage.ts`). Re-measured for the worksheet's language at `widthPx`.
+ */
+export function graphBlockCopy(
+  graph: SavedGraph,
+  language: LanguageMode,
+  widthPx: number = graph.block.widthPx,
+  id = newId(),
+): DiagramBlock {
+  const block = structuredClone(graph.block);
+  return { ...block, id, ...diagramSize(block.diagram, widthPx, language) };
+}
+
+/** A diagram re-based on a saved graph's geometry: the block keeps its id, width and words. */
+export function rebaseOnGraph(block: DiagramBlock, graph: SavedGraph, language: LanguageMode): DiagramBlock {
+  const diagram = structuredClone(graph.block.diagram);
+  return { ...block, ...diagramSize(diagram, block.widthPx, language), diagram };
+}
+
+/** A worksheet diagram as a new saved graph, named from its title (else "Untitled graph"). */
+export function graphFromBlock(
+  block: DiagramBlock,
+  language: LanguageMode,
+  fonts: FontPair = DEFAULT_GRAPH_FONTS,
+  id = newId(),
+  now = new Date().toISOString(),
+): SavedGraph {
+  const copy = structuredClone(block);
+  const name = biTextExcerpt(copy.diagram.title, language).replace(/\s+/g, ' ').trim().slice(0, 120);
+  const templateId = copy.diagram.templateId;
+  return {
+    id,
+    name: name || 'Untitled graph',
+    block: { ...copy, id: newId(), ...diagramSize(copy.diagram, copy.widthPx, language) },
+    language,
+    fonts: { ...fonts },
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    ...(typeof templateId === 'string' ? { templateId } : {}),
+    createdAt: now,
+    updatedAt: now,
+  };
 }
 
 /** A file name from the graph's name: safe on every OS, never empty. */

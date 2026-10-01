@@ -229,9 +229,13 @@ Design: `docs/design/graph-library.md`. The start screen's `view: 'graphs'`.
 - `src/components/graphs/GraphsScreen.tsx:GraphsScreen` · `src/components/graphs/GraphLibrary.tsx:GraphLibrary` · `src/components/graphs/GraphEditor.tsx:GraphEditor` · `src/components/graphs/GraphPanel.tsx:GraphPanel`
 - `src/export/graphImage.ts:copyGraphImage` · `:graphClipboardHtml` · `src/export/diagramImage.ts:rasterizeDiagram`
 - `src/components/editor/fieldScope.ts:FieldScopeContext` — a graph's language for `BiTextField`, over the store
+- Into worksheets: `src/model/graph.ts:graphBlockCopy` · `:rebaseOnGraph` · `:graphFromBlock` (Save to Graphs, in `src/components/editor/DiagramEditor.tsx`)
+- `src/components/graphs/MyGraphsCards.tsx:MyGraphsCards` — the My graphs tab of `src/components/editor/DiagramTemplatePicker.tsx:DiagramTemplatePopover`
+- `src/components/graphs/UseInWorksheetDialog.tsx:UseInWorksheetDialog` → `src/components/graphs/placeGraph.ts:placeGraphInOpenDocument` (via `StartScreen` `openSaved`) · `src/store/worksheetStore.ts:blockSelectRequest`
 
 Invariants:
 - Never under `econ-worksheet:`, never in the index, the dashboard or the bank — §Graphs 圖表庫.
+- Inserting a graph copies it (fresh block id); nothing links a worksheet to a saved graph.
 - `src/test/corpus/graph-v1.json` is frozen; never regenerate it (`src/model/graph.test.ts`).
 - No backup entry for a graph ends in `.json` (shipped builds restore those as worksheets).
 

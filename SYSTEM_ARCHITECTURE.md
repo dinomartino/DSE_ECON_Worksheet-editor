@@ -1870,6 +1870,18 @@ fonts, `schemaVersion`). Design: `docs/design/graph-library.md`.
 - Thumbnails come from `diagramSvg`; images from `export/diagramImage.ts:rasterizeDiagram`.
   Copy writes one `ClipboardItem` (3× PNG, plus `<img width height>` at print size so Word
   pastes it printed size), started inside the click for Safari.
+- **In and out of worksheets is a copy, never a link.** `graphBlockCopy` deep-clones
+  under a fresh block id (diagram-internal ids kept), re-measured for the worksheet's
+  language at the graph's width (a slot's width wins: an MCQ option). Re-basing a diagram
+  on a graph (`rebaseOnGraph`) keeps the block's id, width and alt text. `graphFromBlock`
+  (Save to Graphs) only for kinds the canvas draws (`isDrawableGraph`).
+- **Use in a worksheet… opens the document the start screen's way** (`openSaved`), then
+  `placeGraphInOpenDocument` appends through the store (one commit, ⌘Z removes it),
+  writes the document at once by value (autosave waits 1.2 s), and asks the page to select
+  the block (`blockSelectRequest`, taken once by the preview). A newer build's worksheet
+  is refused in the dialog, before anything opens; a newer graph is never inserted.
+- The embedded canvas's toolbar goes glyph-only below `2xl` (names stay for screen
+  readers and tooltips) so it keeps one row at 1280; the worksheet overlay is unchanged.
 
 ### The launch splash (`src/launch/`)
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
+import type { SavedGraph } from '@/model/graph';
 import { graphStore } from '@/storage';
 import { GraphEditor } from './GraphEditor';
 import { GraphLibrary } from './GraphLibrary';
@@ -9,10 +10,24 @@ import { GraphLibrary } from './GraphLibrary';
  * Graphs 圖表庫: the start screen's own view beside the Question bank, left by ← Home.
  * Two levels, the library and one graph; the open graph is session state, like the bank's.
  */
-export function GraphsScreen({ onHome, settings }: { onHome: () => void; settings?: ReactNode }) {
+export function GraphsScreen({
+  onHome,
+  settings,
+  onUseInWorksheet,
+}: {
+  onHome: () => void;
+  settings?: ReactNode;
+  onUseInWorksheet?: (graph: SavedGraph, worksheetId: string, questionId?: string) => void;
+}) {
   const [openId, setOpenId] = useState<string | undefined>();
   return openId ? (
-    <GraphEditor key={openId} id={openId} onBack={() => setOpenId(undefined)} settings={settings} />
+    <GraphEditor
+      key={openId}
+      id={openId}
+      onBack={() => setOpenId(undefined)}
+      settings={settings}
+      onUseInWorksheet={onUseInWorksheet}
+    />
   ) : (
     <GraphLibrary onHome={onHome} onOpen={setOpenId} settings={settings} />
   );

@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { DIAGRAM_TEMPLATES, DIAGRAM_TEMPLATE_GROUPS } from '@/model/diagramTemplates';
 import { plain } from '@/model/text';
+import type { SavedGraph } from '@/model/graph';
 import { diagramSize, diagramSvg } from '@/render/diagram';
-import { Button } from '@/components/ui';
+import { Button, Segmented } from '@/components/ui';
+import { MyGraphsCards } from '@/components/graphs/MyGraphsCards';
 
 /**
  * The diagram templates as a visual grid — a teacher picks a *shape*, so the picker
@@ -14,7 +16,8 @@ import { Button } from '@/components/ui';
  *
  * Shared by the two places a template is chosen: inserting a diagram (`+ Diagram` in
  * the block editor) and re-basing an existing one (the diagram panel), which is what
- * keeps the choice looking identical at both moments.
+ * keeps the choice looking identical at both moments. With `onPickGraph` the popover
+ * also has a My graphs tab (saved graphs; the caller inserts a copy).
  */
 
 interface TemplateCard {
@@ -152,19 +155,27 @@ function TemplateGrid({
 const POPOVER_WIDTH = 336;
 const POPOVER_MARGIN = 8;
 
+type PickerTab = 'templates' | 'graphs';
+/** The tab last used, for the session: a teacher reusing their graphs keeps landing there. */
+let lastTab: PickerTab = 'templates';
+
 export function DiagramTemplatePopover({
   trigger,
   label,
   currentId,
   onPick,
+  onPickGraph,
 }: {
   trigger: React.ReactNode;
   /** Accessible name, when the visible trigger leans on its surroundings for meaning. */
   label?: string;
   currentId?: string;
   onPick: (templateId: string) => void;
+  /** Offers a My graphs tab; the caller inserts a copy of the picked graph. */
+  onPickGraph?: (graph: SavedGraph) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<PickerTab>(lastTab);
   /**
    * Fixed viewport coordinates, computed from the trigger on open.
    *
@@ -228,13 +239,38 @@ export function DiagramTemplatePopover({
             }
           }}
         >
-          <DiagramTemplateCards
-            currentId={currentId}
-            onPick={(templateId) => {
-              onPick(templateId);
-              setOpen(false);
-            }}
-          />
+          {onPickGraph && (
+            <div className="mb-1.5 border-b border-line">
+              <Segmented<PickerTab>
+                label="Diagram source"
+                value={tab}
+                options={[
+                  { value: 'templates', label: 'Templates' },
+                  { value: 'graphs', label: 'My graphs', title: 'Graphs saved in Graphs 圖表庫' },
+                ]}
+                onChange={(next) => {
+                  lastTab = next;
+                  setTab(next);
+                }}
+              />
+            </div>
+          )}
+          {onPickGraph && tab === 'graphs' ? (
+            <MyGraphsCards
+              onPick={(graph) => {
+                onPickGraph(graph);
+                setOpen(false);
+              }}
+            />
+          ) : (
+            <DiagramTemplateCards
+              currentId={currentId}
+              onPick={(templateId) => {
+                onPick(templateId);
+                setOpen(false);
+              }}
+            />
+          )}
         </div>
       )}
     </div>

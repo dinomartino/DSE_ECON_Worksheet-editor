@@ -42,6 +42,7 @@ import { NEW_WORKSHEET_FORM_ID, NewWorksheetForm } from './NewWorksheetForm';
 import { useBankReturn } from '@/components/bank/page/bankReturn';
 import { QuestionBankScreen } from '@/components/bank/page/QuestionBankScreen';
 import { GraphsScreen, useGraphCount } from '@/components/graphs/GraphsScreen';
+import { placeGraphInOpenDocument } from '@/components/graphs/placeGraph';
 import { useBank } from '@/library/useBank';
 import { reloadPatterns } from '@/library/usePatterns';
 import { RenameDialog, renameWorksheet } from './RenameDialog';
@@ -668,7 +669,14 @@ export function StartScreen({
       */}
       {view === 'graphs' ? (
         <div className="min-h-0 min-w-0 flex-1">
-          <GraphsScreen onHome={() => showView('home')} settings={<SettingsButton separated />} />
+          <GraphsScreen
+            onHome={() => showView('home')}
+            settings={<SettingsButton separated />}
+            // Opened the start screen's way, then placed through the store and saved.
+            onUseInWorksheet={(graph, worksheetId, questionId) =>
+              void openSaved(worksheetId, () => placeGraphInOpenDocument(graph, questionId))
+            }
+          />
         </div>
       ) : view === 'bank' ? (
         <div className="min-h-0 min-w-0 flex-1">
@@ -794,8 +802,8 @@ export function StartScreen({
         {/* Desktop only; its own line, as the links row cannot also hold it at 400px. */}
         <VersionLine />
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-          {/* Nothing saved means nothing to back up: the link would only report that. */}
-          {!isDesktop() && !empty && (
+          {/* Nothing saved (no documents, no graphs) means nothing to back up. */}
+          {!isDesktop() && (!empty || (graphTotal ?? 0) > 0) && (
             <TextLink onClick={() => void backUpAll()} disabled={busy !== undefined}>
               {busy === 'backup' ? 'Backing up…' : 'Back up now'}
             </TextLink>
