@@ -1,8 +1,10 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { nanoid } from 'nanoid';
 import { DIAGRAM_TEMPLATES, buildFromTemplate } from '@/model/diagramTemplates';
+import { graphFromBlock, isDrawableGraph, rebaseOnGraph } from '@/model/graph';
+import { graphStore } from '@/storage';
 import { emptyBiText, isBiTextEmpty, plain } from '@/model/text';
 import type { ForumBubble, ForumChart, ForumSlot, PieSlice } from '@/model/diagram';
 import { prepareImageForStorage } from '@/export/imageImport';
@@ -40,8 +42,25 @@ export function DiagramEditor({ block, onChange }: Props) {
   const language = useWorksheetStore((s) => s.mode.language);
   const fonts = useWorksheetStore((s) => s.worksheet.fonts);
   const [drawing, setDrawing] = useState(false);
+  const [notice, setNotice] = useState<{ text: string; tone: 'ok' | 'error' } | undefined>();
+  const noticeTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(noticeTimer.current), []);
 
   const diagram = block.diagram;
+
+  const saveToGraphs = async () => {
+    const graph = graphFromBlock(block, language, fonts);
+    let next: { text: string; tone: 'ok' | 'error' };
+    try {
+      await graphStore.save(graph);
+      next = { tone: 'ok', text: `Saved to Graphs as “${graph.name}”.` };
+    } catch {
+      next = { tone: 'error', text: 'Could not save to Graphs. Storage may be full.' };
+    }
+    setNotice(next);
+    window.clearTimeout(noticeTimer.current);
+    noticeTimer.current = window.setTimeout(() => setNotice(undefined), next.tone === 'error' ? 8000 : 4000);
+  };
 
   /*
    * Memoised for the reason `DiagramNodeView` memoises its copy: the string goes to
@@ -177,6 +196,23 @@ export function DiagramEditor({ block, onChange }: Props) {
         </div>
       )}
 
+      {/* A copy into Graphs 圖表庫, for the kinds its canvas edits. Nothing stays linked. */}
+      {isDrawableGraph(block) && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="subtle" onClick={() => void saveToGraphs()} title="Keep a copy in Graphs 圖表庫 to reuse or copy into Word">
+            Save to Graphs
+          </Button>
+          {notice && (
+            <span
+              role={notice.tone === 'error' ? 'alert' : 'status'}
+              className={`animate-fade-in text-[11px] ${notice.tone === 'error' ? 'text-danger-ink' : 'text-ink-muted'}`}
+            >
+              {notice.text}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Wraps, because the controls have genuinely different needs: Width is sized by
           its content while the template button wants whatever is left. In a 400px column
           that sum exceeds the row often enough that a second line is the honest answer —
@@ -211,6 +247,8 @@ export function DiagramEditor({ block, onChange }: Props) {
                 diagram: next,
               });
             }}
+            // The same re-base from a saved graph: its geometry, this block's width.
+            onPickGraph={(graph) => onChange(rebaseOnGraph(block, graph, language))}
           />
         </div>
         <NumberField

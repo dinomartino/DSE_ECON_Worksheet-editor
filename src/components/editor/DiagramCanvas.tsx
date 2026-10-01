@@ -231,6 +231,8 @@ interface Props {
   embedded?: boolean;
   /** Shown above the selection inspector (embedded: the graph's own settings). */
   panel?: ReactNode;
+  /** A dialog over the embedded canvas owns the keyboard; the shortcuts stand down. */
+  keysSuspended?: boolean;
 }
 
 /**
@@ -253,7 +255,7 @@ type Gesture =
   | { kind: 'create'; handles: DiagramHandle[]; from: DiagramPoint; base: Diagram; moved: boolean }
   | { kind: 'marquee'; from: DiagramPoint; base: Diagram; moved: boolean; additive: boolean };
 
-export function DiagramCanvas({ block, onChange, onClose, language: languageProp, fonts: fontsProp, embedded = false, panel }: Props) {
+export function DiagramCanvas({ block, onChange, onClose, language: languageProp, fonts: fontsProp, embedded = false, panel, keysSuspended = false }: Props) {
   // The canvas owns the keyboard while it is open. Without this, the preview's own
   // Delete handler fires on the same keypress and removes the whole diagram block that
   // is selected underneath — deleting one curve took the entire picture with it.
@@ -1015,6 +1017,7 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
   // copy of the text the teacher had selected in that field.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      if (keysSuspended) return;
       const target = event.target as HTMLElement | null;
       const typing =
         target &&
@@ -1112,7 +1115,7 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selected, diagram, labelAnchors, setDiagram, onClose, embedded, doCopy, doPaste, doDelete, cropping, shadeOpen, spanDraft, projection, language, spanClear]);
+  }, [selected, diagram, labelAnchors, setDiagram, onClose, embedded, doCopy, doPaste, doDelete, cropping, shadeOpen, spanDraft, projection, language, spanClear, keysSuspended]);
 
   const activeTool = TOOLS.find((t) => t.id === tool);
 
@@ -1144,6 +1147,14 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
     }
     return null;
   }, [editing, labelAnchors, projection, diagram, language, block.widthPx, spanClear]);
+
+  const toolbarHint = cropping
+    ? 'Drag the frame edges. A wider frame is how a long title gets its room.'
+    : spanDraft
+      ? 'Now click the other end. Esc cancels.'
+      : selected.length > 1
+        ? `${selected.length} selected`
+        : activeTool?.hint;
 
   const surface = (
     <div
@@ -1177,7 +1188,9 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
               }
             >
               <span aria-hidden className="text-lg leading-none">{item.glyph}</span>
-              <span className="text-xs font-medium">{item.name}</span>
+              {/* Embedded below 2xl the tools are glyphs (the name stays for readers and in
+                  the tooltip), so the toolbar keeps one row at 1280. */}
+              <span className={`text-xs font-medium ${embedded ? 'sr-only 2xl:not-sr-only' : ''}`}>{item.name}</span>
             </button>
           ))}
           <ShadeMenu
@@ -1185,6 +1198,7 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
             open={shadeOpen}
             onOpenChange={setShadeOpen}
             newId={newId}
+            compact={embedded}
             onAdd={(added) => {
               setDiagram({ ...diagram, areas: [...(diagram.areas ?? []), ...added] });
               setSelected(added.map((area) => ({ kind: 'area', areaId: area.id })));
@@ -1228,9 +1242,10 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
             met ⌘D should still find "Duplicate", and the labels double as the place the
             shortcut is discovered. */}
         <div className="flex gap-1.5">
-          <ToolbarButton label="Copy" hint="⌘C" onClick={doCopy} disabled={selected.length === 0} />
-          <ToolbarButton label="Paste" hint="⌘V" onClick={doPaste} disabled={isClipEmpty(clip)} />
+          <ToolbarButton compact={embedded} label="Copy" hint="⌘C" onClick={doCopy} disabled={selected.length === 0} />
+          <ToolbarButton compact={embedded} label="Paste" hint="⌘V" onClick={doPaste} disabled={isClipEmpty(clip)} />
           <ToolbarButton
+            compact={embedded}
             label="Duplicate"
             hint="⌘D"
             disabled={selected.length === 0}
@@ -1242,6 +1257,7 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
             }}
           />
           <ToolbarButton
+            compact={embedded}
             label="Delete"
             hint="⌫"
             danger
@@ -1305,14 +1321,14 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
         <span className="flex-1" />
         {/* The hint is the toolbar's own teaching line; slate-300 because 400 sat below
             comfortable contrast on the dark bar. */}
-        <span className="max-w-96 text-xs leading-snug text-ink-muted">
-          {cropping
-            ? 'Drag the frame edges. A wider frame is how a long title gets its room.'
-            : spanDraft
-              ? 'Now click the other end. Esc cancels.'
-              : selected.length > 1
-                ? `${selected.length} selected`
-                : activeTool?.hint}
+        <span
+          title={embedded ? toolbarHint : undefined}
+          className={`max-w-96 text-xs leading-snug text-ink-muted ${
+            // Embedded, the hint takes what the row has left rather than a row of its own.
+            embedded ? 'line-clamp-2 min-w-0 basis-0 grow-[100]' : ''
+          }`}
+        >
+          {toolbarHint}
         </span>
         {!embedded && <Button onClick={onClose}>Done</Button>}
       </header>
@@ -2037,12 +2053,15 @@ function ToolbarButton({
   onClick,
   disabled,
   danger,
+  compact = false,
 }: {
   label: string;
   hint: string;
   onClick: () => void;
   disabled?: boolean;
   danger?: boolean;
+  /** The shortcut only in the tooltip below 2xl. */
+  compact?: boolean;
 }) {
   return (
     <button
@@ -2062,7 +2081,7 @@ function ToolbarButton({
       }
     >
       {label}
-      <span aria-hidden className="text-[10px] text-ink-subtle">
+      <span aria-hidden className={`text-[10px] text-ink-subtle ${compact ? 'hidden 2xl:inline' : ''}`}>
         {hint}
       </span>
     </button>

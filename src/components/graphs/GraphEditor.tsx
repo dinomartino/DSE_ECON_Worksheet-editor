@@ -13,6 +13,7 @@ import { diagramSvg } from '@/render/diagram';
 import { graphStore } from '@/storage';
 import { GraphPanel } from './GraphPanel';
 import { graphSaveLabel, type GraphSaveState } from './graphList';
+import { UseInWorksheetDialog } from './UseInWorksheetDialog';
 
 /** The autosave's debounce, as for documents. */
 const AUTOSAVE_MS = 1200;
@@ -27,8 +28,20 @@ type Flash = { text: string; tone: 'ok' | 'error'; action?: { label: string; run
  * settings in its side panel. Autosaves like a document (debounced, flushed on leaving);
  * a graph from a newer build is shown, never written.
  */
-export function GraphEditor({ id, onBack, settings }: { id: string; onBack: () => void; settings?: ReactNode }) {
+export function GraphEditor({
+  id,
+  onBack,
+  settings,
+  onUseInWorksheet,
+}: {
+  id: string;
+  onBack: () => void;
+  settings?: ReactNode;
+  /** Open that worksheet with a copy of the graph added (`questionId` undefined: a new question). */
+  onUseInWorksheet?: (graph: SavedGraph, worksheetId: string, questionId?: string) => void;
+}) {
   const [graph, setGraph] = useState<SavedGraph | undefined>();
+  const [using, setUsing] = useState(false);
   const [missing, setMissing] = useState(false);
   const [saveState, setSaveState] = useState<GraphSaveState>('saved');
   const [flash, setFlash] = useState<Flash | undefined>();
@@ -186,6 +199,19 @@ export function GraphEditor({ id, onBack, settings }: { id: string; onBack: () =
     }
   };
 
+  // Saved first, so the worksheet gets what is on screen and leaving loses nothing.
+  const placeIn = async (worksheetId: string, questionId?: string) => {
+    setUsing(false);
+    try {
+      await flush();
+    } catch {
+      show({ tone: 'error', text: 'Could not save this graph. Your changes are still here; try again.' });
+      return;
+    }
+    const current = graphRef.current;
+    if (current) onUseInWorksheet?.(current, worksheetId, questionId);
+  };
+
   const label = graphSaveLabel(saveState);
 
   return (
@@ -243,6 +269,16 @@ export function GraphEditor({ id, onBack, settings }: { id: string; onBack: () =
           <DownloadIcon size={14} />
           Download PNG
         </Button>
+        {onUseInWorksheet && (
+          <Button
+            size="sm"
+            disabled={!graph || readOnly}
+            onClick={() => setUsing(true)}
+            title={readOnly ? 'Saved by a newer version of Econ Studio. Update to use it in a worksheet.' : 'Add a copy of this graph to a question in one of your worksheets'}
+          >
+            Use in a worksheet…
+          </Button>
+        )}
         {settings}
       </header>
 
@@ -259,11 +295,15 @@ export function GraphEditor({ id, onBack, settings }: { id: string; onBack: () =
             fonts={graph.fonts}
             onChange={(block) => update({ ...graphRef.current!, block })}
             panel={<GraphPanel graph={graph} onChange={update} />}
+            keysSuspended={using}
           />
         ) : (
           <StaticGraph graph={graph} readOnly={readOnly} onChange={update} />
         )}
       </div>
+      {using && graph && (
+        <UseInWorksheetDialog graph={graph} onClose={() => setUsing(false)} onUse={(worksheetId, questionId) => void placeIn(worksheetId, questionId)} />
+      )}
     </div>
   );
 }

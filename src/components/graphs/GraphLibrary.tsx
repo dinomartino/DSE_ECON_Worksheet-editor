@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui';
 import { Dialog } from '@/components/ui/Dialog';
 import { Menu } from '@/components/ui/Menu';
@@ -8,9 +8,9 @@ import { DiagramIcon, PlusIcon } from '@/components/ui/icons';
 import { DiagramTemplateCards } from '@/components/editor/DiagramTemplatePicker';
 import { relativeTime } from '@/components/start/dashboard';
 import { createGraph, type SavedGraph } from '@/model/graph';
-import { diagramSvg } from '@/render/diagram';
 import { graphStore, NewerGraphError, type GraphListing } from '@/storage';
 import { graphCount, isGraphTemplate, searchGraphs } from './graphList';
+import { GraphThumb } from './GraphThumb';
 
 /**
  * The Graphs library: every saved graph as a card drawn from its geometry (never a
@@ -221,28 +221,6 @@ export function GraphLibrary({
     </div>
   );
 }
-
-/** The picture is drawn from geometry, never stored; memoised so typing in search does not redraw every card. */
-const GraphThumb = memo(function GraphThumb({ graph }: { graph: SavedGraph }) {
-  const svg = useMemo(
-    () =>
-      diagramSvg(graph.block.diagram, {
-        widthPx: graph.block.widthPx,
-        heightPx: graph.block.heightPx,
-        language: graph.language,
-        fonts: graph.fonts,
-      }),
-    [graph.block, graph.language, graph.fonts],
-  );
-  return (
-    <span
-      aria-hidden
-      className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-[3px] bg-white p-2 [&_svg]:h-auto [&_svg]:max-h-full [&_svg]:w-auto [&_svg]:max-w-full"
-      style={{ lineHeight: 0 }}
-      dangerouslySetInnerHTML={{ __html: svg }}
-    />
-  );
-});
 
 function GraphCard({
   graph,

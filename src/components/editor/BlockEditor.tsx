@@ -26,6 +26,7 @@ import {
   type PaddingScope,
 } from '@/model/table';
 import { contentWidth, pageSetupOf, ptToTwips, twipsToPt } from '@/model/page';
+import { graphBlockCopy } from '@/model/graph';
 import { TABLE_TEMPLATES, buildTableFromTemplate } from '@/model/tableTemplates';
 import { bi, emptyBiText, isBiTextEmpty, plain } from '@/model/text';
 import type { CellImage, ContentBlock, ImageBlock, TableBlock } from '@/model/types';
@@ -97,6 +98,7 @@ export function BlockEditor({
    * caller would have to learn about it to pass it down.
    */
   const contentWidthTwips = useWorksheetStore((s) => contentWidth(pageSetupOf(s.worksheet)));
+  const language = useWorksheetStore((s) => s.mode.language);
 
   const replace = (index: number, block: ContentBlock) => {
     const next = [...blocks];
@@ -266,6 +268,10 @@ export function BlockEditor({
           trigger={<>Diagram ▾</>}
           label="Add diagram"
           onPick={(templateId) => onChange([...blocks, createDiagramBlock(templateId, figureWidth)])}
+          // A copy at the graph's own print width, unless the slot sets one (an MCQ option).
+          onPickGraph={(graph) =>
+            onChange([...blocks, graphBlockCopy(graph, language, figureWidth ?? graph.block.widthPx)])
+          }
         />
         {/* Withheld inside a source: a source may not contain another (§`SourceBlock`),
             and nesting one framed panel in another would put a third level of `w:tbl`

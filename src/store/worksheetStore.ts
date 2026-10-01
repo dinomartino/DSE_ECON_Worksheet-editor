@@ -163,6 +163,11 @@ interface WorksheetState {
   cellSelection?: { blockId: string; anchorId: string; focusId: string };
   /** The question currently being dragged on the page, if any. */
   dragQuestionId?: string;
+  /**
+   * A block the page should select when it next renders (a graph placed from the Graphs
+   * screen, before the editor mounted). The preview takes it and clears it. Editor state.
+   */
+  blockSelectRequest?: string;
   past: Worksheet[];
   future: Worksheet[];
 
@@ -204,6 +209,8 @@ interface WorksheetState {
     selection?: { blockId: string; anchorId: string; focusId: string },
   ) => void;
   setDragQuestionId: (questionId?: string) => void;
+  /** Ask the page to select this block; see `blockSelectRequest`. */
+  requestBlockSelection: (blockId?: string) => void;
 
   // --- Questions --------------------------------------------------------------
   /** Add a question, after `afterId` when given and at the end otherwise. */
@@ -789,6 +796,7 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
       selectedTargetKey: undefined,
       selectedFlowIds: undefined,
       insertAnchorId: undefined,
+      blockSelectRequest: undefined,
     })),
 
   updateWorksheet: (patch) => get().commit((draft) => ({ ...draft, ...patch })),
@@ -849,6 +857,7 @@ export const useWorksheetStore = create<WorksheetState>((set, get) => ({
         : undefined,
     }),
   setDragQuestionId: (dragQuestionId) => set({ dragQuestionId }),
+  requestBlockSelection: (blockSelectRequest) => set({ blockSelectRequest }),
 
   // --- Questions --------------------------------------------------------------
 
