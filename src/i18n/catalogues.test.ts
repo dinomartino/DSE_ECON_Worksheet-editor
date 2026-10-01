@@ -1,9 +1,8 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { simplifiedChars } from '@/translate/simplified';
 import { registeredCatalogues, type Catalogue, type MessageEntry } from './catalogue';
-import { KEEP_ENGLISH, SIMPLIFIED_ONLY, TAIWAN_ONLY } from './terms';
+import { wordingProblems } from './wording';
 
 /**
  * The guard over every interface catalogue in `src/`: each `messages.ts` or
@@ -61,31 +60,10 @@ function render(entry: MessageEntry): Rendered | string {
   return out.length > 0 ? out : 'not callable with any sample arguments';
 }
 
-const CJK = '[\\u3400-\\u9fff\\uf900-\\ufaff]';
-/** ASCII punctuation straight after a Chinese character: Hong Kong text uses ，。：；？！ */
-const HALF_WIDTH = new RegExp(`${CJK}[,.:;?!]`);
-
 function problems(entry: MessageEntry): string[] {
   const rendered = render(entry);
   if (typeof rendered === 'string') return [rendered];
-  const out: string[] = [];
-  for (const { en, zh } of rendered) {
-    if (zh.trim() === '') out.push('empty zh');
-    for (const { term, match } of KEEP_ENGLISH) {
-      const used = match ? match.test(en) : new RegExp(`(?<![\\w.])${escape(term)}(?![\\w])`).test(en);
-      if (used && !zh.includes(term)) out.push(`"${term}" must stay in English in zh`);
-    }
-    const simplified = [...new Set([...simplifiedChars(zh), ...[...zh].filter((ch) => SIMPLIFIED_ONLY.includes(ch))])];
-    if (simplified.length) out.push(`Simplified characters ${simplified.join(' ')}`);
-    for (const word of TAIWAN_ONLY) if (zh.includes(word)) out.push(`Taiwan wording ${word}`);
-    if (HALF_WIDTH.test(zh)) out.push(`half-width punctuation after Chinese: ${zh.match(HALF_WIDTH)![0]}`);
-    if (zh.includes('—')) out.push('em dash in zh');
-  }
-  return [...new Set(out)];
-}
-
-function escape(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return [...new Set(rendered.flatMap(({ en, zh }) => wordingProblems(en, zh)))];
 }
 
 const byFile = new Map<string, Catalogue[]>();

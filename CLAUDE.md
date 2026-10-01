@@ -80,7 +80,8 @@ The full policy — collapsing migrations, their size budget, files from a newer
   too. A static `@tauri-apps/*` import fails `npm test` (`src/test/tauriImports.test.ts`),
   `npm run lint`, and `npm run build` (`postbuild`: `scripts/check-web-bundle.mjs`).
 - **Every feature or fix adds a line under Unreleased in `CHANGELOG.md`**, in the same
-  commit, written for teachers. It is the release body and the in-app "What's new".
+  commit, written for teachers, with its 繁體中文 as a `<!-- zh: … -->` line under it. It
+  is the release body and the in-app "What's new" (the 中文 one shows the comment).
 - Releases are tags, not pushes: `npm version <patch|minor|major>` then `git push
   --follow-tags`, then publish the draft once its assets are complete
   (`gh release edit vX.Y.Z --draft=false --latest`). See `RELEASING.md`.

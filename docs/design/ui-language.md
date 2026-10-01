@@ -13,8 +13,10 @@ language, with Hong Kong wording, keeping the terms HK teachers say in English.
   it shows the Chinese alone.
 - **Settings → Language 語言**: English | 繁體中文. Per browser/computer
   (`econgen.settings.language`), like Appearance. `<html lang>` follows it (`en` / `zh-HK`).
-- **What's new stays English** (it is the CHANGELOG). AI provider pages and error text from
-  outside services pass through untranslated.
+- **What's new follows the setting.** Each CHANGELOG bullet carries its 繁體中文 as a
+  `<!-- zh: … -->` comment under it (`docs/RECIPES.md` § Adding a changelog line); 中文
+  shows it, English and the GitHub release body never do. AI provider pages and error
+  text from outside services pass through untranslated.
 - Hong Kong Traditional Chinese: HK vocabulary (軟件 not 軟體, 網上 not 線上, 用戶 not 使用者,
   電郵), full-width punctuation （，。：？！）, `…` kept.
 

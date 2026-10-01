@@ -184,7 +184,7 @@ Invariants:
 - `src/desktop/updater.ts:checkForUpdate` · `:currentVersion` · `src/desktop/updateStore.ts:checkOnLaunch` — one check per launch
 - `src/components/editor/UpdateBanner.tsx:UpdateBanner` · `:VersionLine`
 - `src/components/editor/NewerVersionNotice.tsx:NewerVersionNotice` — the read-only bar: check for updates (desktop) / download link (web), "Duplicate as editable copy"
-- `src/whatsNew/changelog.ts:parseChangelog` · `:sectionMarkdown` · `:compareVersions` — `CHANGELOG.md` as data, shared with `scripts/release-notes.mjs`
+- `src/whatsNew/changelog.ts:parseChangelog` · `:sectionMarkdown` · `:compareVersions` — `CHANGELOG.md` as data, shared with `scripts/release-notes.mjs`; each entry is `{ en, zh? }`, `zh` from the `<!-- zh: … -->` under it, which `sectionMarkdown` (the release body) leaves out
 - `src/whatsNew/changelog.generated.ts:CHANGELOG_MD` — the bundled copy, written by `scripts/sync-changelog.mjs` (`predev`/`prebuild`); `src/whatsNew/notes.ts:CHANGELOG` parses it once
 - `src/whatsNew/seen.ts:decideWhatsNew` · `:LAST_SEEN_VERSION_KEY` — pop "What's new" once per new version, never on a first run
 - `src/components/whatsNew/WhatsNewDialog.tsx:WhatsNewDialog` · `:WhatsNewOnLaunch` — one release after an update, or every release (start screen, ⋯ menu)
@@ -195,6 +195,7 @@ Invariants:
 - Nothing reads `process.env` or the filesystem at runtime on the web path — §Deployment.
 - `src-tauri/tauri.conf.json` `app.security.csp` stays `null` — §Desktop shell.
 - The changelog copy is committed and must match `CHANGELOG.md`: `src/whatsNew/changelog.generated.test.ts` fails CI when stale (`npm run changelog`).
+- Every CHANGELOG entry carries its 繁體中文 in HK wording: `src/whatsNew/changelogZh.test.ts`.
 
 ## components/start
 
@@ -385,7 +386,8 @@ through `AppSettingsHost` alone.
 - `src/i18n/catalogue.ts:defineMessages` · `src/i18n/catalogue.ts:resolveMessages` · `src/i18n/catalogue.ts:localize` · `src/i18n/catalogue.ts:TextKey` — co-located interface catalogues (§ Interface language; recipe: Translate an area's interface text)
 - `src/i18n/language.ts:useMessages` · `src/i18n/language.ts:uiLanguage` · `src/i18n/language.ts:UiLanguageOverride` — read a catalogue in the current language; the override pins a test render
 - `src/i18n/terms.ts:KEEP_ENGLISH` · `src/i18n/terms.ts:STANDARD_TRANSLATIONS` — HK wording; `src/i18n/catalogues.test.ts` guards every `messages.ts`
-- `src/i18n/format.ts:relativeTime` — "5 minutes ago" / 5 分鐘前
+- `src/i18n/format.ts:relativeTime` · `src/i18n/format.ts:calendarDate` — "5 minutes ago" / 5 分鐘前; "24 September 2026" / 2026年9月24日
+- `src/i18n/wording.ts:wordingProblems` — the HK wording checks, shared by `src/i18n/catalogues.test.ts` and `src/whatsNew/changelogZh.test.ts`
 - `src/i18n/literals.test.ts` · `scripts/i18n-literals.mjs:literalsIn` · `scripts/i18n-literals.mjs:ALLOWLIST` — the ratchet on English-only UI literals per file; `src/i18n/literals.baseline.json` only shrinks (`--write`)
 - `src/platform/secrets.ts:readSecret` · `src/platform/secrets.ts:writeSecret` · `src/platform/secrets.ts:peekSecret` — the only holder of AI keys; `src-tauri/src/secrets.rs` the keychain commands
 - `src/components/settings/AppSettingsHost.tsx:AppSettingsHost` — mounted in `src/app/EditorHost.tsx`; Effects, ⌘, listener, the dialog

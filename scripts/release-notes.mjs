@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Prints one version's CHANGELOG.md section as Markdown — the GitHub release body:
+// Prints one version's CHANGELOG.md section as Markdown, without its `<!-- zh: … -->`
+// comments — the GitHub release body:
 //   node scripts/release-notes.mjs vX.Y.Z > /tmp/notes.md
 // Exits 1 if that version has no section, or if `## Unreleased` still has entries (the
 // changelog was not closed before tagging). --allow-unreleased skips the second check,

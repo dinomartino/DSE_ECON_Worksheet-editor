@@ -2,7 +2,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { defineMessages, localize, resolveMessages } from './catalogue';
-import { relativeTime } from './format';
+import { calendarDate, relativeTime } from './format';
 import { UiLanguageOverride, useMessages } from './language';
 import { LANGUAGE_BOOT_SCRIPT, LANGUAGE_SETTINGS } from '@/settings/language';
 
@@ -87,5 +87,14 @@ describe('relativeTime', () => {
     expect(relativeTime('2026-09-23T12:00:00Z', now, 'zh-HK')).toBe('昨日');
     expect(relativeTime('2026-09-21T12:00:00Z', now, 'zh-HK')).toBe('3 日前');
     expect(relativeTime('nonsense', now, 'zh-HK')).toBe('不明');
+  });
+});
+
+describe('calendarDate', () => {
+  it('reads the digits in either language, and passes anything else through', () => {
+    expect(calendarDate('2026-09-04', 'en')).toBe('4 September 2026');
+    expect(calendarDate('2026-09-04', 'zh-HK')).toBe('2026年9月4日');
+    expect(calendarDate('2026-13-01', 'en')).toBe('2026-13-01');
+    expect(calendarDate(undefined, 'zh-HK')).toBeUndefined();
   });
 });
