@@ -460,11 +460,19 @@ a version heading is edited afterwards.
   type, marks, minutes) and it reads "38/45 MCQ · 52/50 marks", tinted when you are over;
   the export check lists anything over or under. The time estimate now uses the DSE
   Paper 2 pace of 150 minutes for 120 marks.
+  <!-- zh: **帶目標的試卷摘要**：工具列顯示試卷內容，例如「38 MCQ · 2 structured · 52 分 · 約 65 分
+  鐘 · 5 頁」。在頁面設定中訂下目標（各題型題數、分數、時間），便會顯示「38/45 MCQ · 52/50 分」，
+  超出時變色；匯出檢查會列出超出或不足的項目。時間估算改用 DSE Paper 2 的步速：
+  120 分用 150 分鐘。 -->
 - **Diagram templates follow your drags**: move a curve and the equilibria, dashed
   drops, P and Q arrows, shortage and import brackets, the tax wedge, output gaps and
   shaded areas move with it; D₁ or S + t keeps its shift, MR stays twice as steep as D,
   and the CPF stays tangent to the PPF. Shade ▾ now adds areas on a template without
   asking which curve is which.
+  <!-- zh: **圖表範本跟隨你的拖曳**：移動一條曲線，均衡點、虛線垂線、P 和 Q 箭頭、短缺和進
+  口括號、稅楔、產出缺口和陰影區域都會一同移動；D₁ 或 S + t 保持其平移幅度，MR 維
+  持 D 的兩倍斜度，CPF 保持與 PPF 相切。在範本上按陰影 ▾ 加入區域時，不再追
+  問哪條是哪條曲線。 -->
 - **22 more diagram templates**, one for each scheme item that had none: the MCQ
   double-shift grid, shortage before and after, a lowered ceiling, CS change under a
   ceiling, an ineffective ceiling, revenue at a fixed price, the minimum-wage bill, quota
@@ -473,6 +481,13 @@ a version heading is edited afterwards.
   inflationary self-adjustment, the substitute-good exchange-rate case, a demand rise
   under an import quota with quota rent, monopoly with rising MC, MC rising, a lump-sum
   tax, "same P and Q after MC falls", and two countries' PPFs on one figure.
+  <!-- zh: **再多 22 個圖表範本**，補上評卷參考中尚未有範本的每一項：MCQ 雙重平移格、平
+  移前後的短缺、下調的價格上限、價格上限下的消費者剩餘變化、無效的價格上限、固定價格下的收
+  益、最低工資總額、配額 G / L 與配額下的需求上升、補貼過度生產（MC > MB）、
+  MC 上升時的 TSS 損失、AD 與 SRAS 同時左移、AD 處於全部產能、gap₀ 與 gap
+  ₁、通脹的自我調整、替代品匯率個案、進口配額下需求上升與配額租金、MC 上升的壟斷、MC 上
+  升、一次性總額稅、「MC 下降後 P 和 Q 不變」，以及兩個國家的 PPF 並列於同一
+  圖。 -->
 - **Every welfare area the marking schemes name, one click from Shade ▾**: buyers' and
   sellers' burden, CS loss under a tax, consumer and producer benefit of a subsidy, DWL of
   a tax, subsidy, price control, tariff or monopoly, TSS loss, revenue or wage bill at a
@@ -480,48 +495,87 @@ a version heading is edited afterwards.
   Each is hatched apart from its neighbours, labelled in both languages, and follows the
   curves when you drag them. The menu is grouped, asks which curve is which when it
   cannot tell, and "Between two edges…" shades any region between two curves or levels.
+  <!-- zh: **評卷參考提到的每種福利區域，在陰影 ▾ 一按即得**：買家和賣家的負擔、徵稅下的消費
+  者剩餘損失、補貼的消費者和生產者利益、稅項、補貼、價格管制、關稅或壟斷的 DWL、TSS 損
+  失、固定價格下的收益或工資總額、價格上限下的消費者剩餘增減、關稅收入、生產者剩餘增加、消
+  費者剩餘損失和配額租金。各區域紋理互不相同，附有雙語標示，拖曳曲線時會跟隨移動。選單已分
+  組，分不清哪條是哪條曲線時會詢問；「兩邊之間…」可為兩條曲線或水平之間的任何區域加上陰影。
+   -->
 - **Marking scheme in HKEAA notation** on structured question parts: marking points with
   marks, `/` alternatives, "any N @ 1", `max: N`, "mark the FIRST N only", OR routes,
   level descriptors and Effective Communication marks. Prints in the teacher version
   and the answer key; the student paper is unchanged.
+  <!-- zh: **以 HKEAA 格式撰寫評卷參考**，用於結構題的分題：得分點及分數、`/` 代替答
+  案、「any N @ 1」、`max: N`、「只評前 N 項」、OR 路徑、等級描述和 Effective Communication 分。
+  教師版和答案頁會列印；學生試卷不變。 -->
 - **MCQ rationale and source note**: per option, why it is right or wrong, and a
   "Source:" line such as "modelled on DSE 2023 Q1". Teacher version and answer key only;
   rationale follows its option when paper versions shuffle.
+  <!-- zh: **MCQ 解釋和出處註**：逐個選項說明為何正確或錯誤，另有「Source:」一行，例
+  如「modelled on DSE 2023 Q1」。只見於教師版和答案頁；試卷版本洗牌
+  時，解釋跟隨其選項。 -->
 - **Shaded areas on diagrams**: consumer surplus, producer surplus, deadweight loss and
   tax revenue presets, plus a free shape; grey shade or hatch, draggable label. Areas
   follow the curves they are built on.
+  <!-- zh: **圖表上的陰影區域**：消費者剩餘、生產者剩餘、無謂損失和稅收的預設區域，另有自由形狀；
+  可選灰色陰影或紋理，標示可拖曳。區域跟隨其所依據的曲線。 -->
 - **Hatch patterns for shaded areas**, so areas still tell apart on a black-and-white
   photocopy: diagonal, reverse diagonal, cross-hatch, horizontal, vertical or dots, at
   normal or dense spacing. New CS, PS, DWL and tax revenue areas each start in their own
   pattern; areas you already drew keep their look.
+  <!-- zh: **陰影區域的紋理圖案**，黑白影印後仍分辨得出各區域：斜線、反斜線、交叉線、橫線、直線
+  或點，疏密各有普通和密集。新增的消費者剩餘、生產者剩餘、無謂損失和稅收區域各自採用不同圖
+  案；已畫好的區域外觀不變。 -->
 - **Revenue areas on diagrams**: total revenue (P × Q) at an equilibrium, and the revenue
   gain and loss between E₀ and E₁ after a shift — even when the gain or loss is an
   L-shape. Pick which points they measure; they follow the points when you drag them.
+  <!-- zh: **圖表上的收益區域**：均衡點的總收益（P × Q），以及平移後 E₀ 與 E₁ 之間
+  的收益增減，即使增減呈 L 形也可。自選量度哪些點；拖曳點時，區域隨之移動。 -->
 - **Shift a curve**: shift D or S left/right/up/down by a percentage to get D₁ (or S₁),
   the shift arrow and the new equilibrium E₁ with guide lines and P₁/Q₁ labels.
+  <!-- zh: **平移曲線**：將 D 或 S 向左、右、上、下按百分比平移，得出 D₁（或 S₁）、
+  平移箭頭和新均衡點 E₁，並附輔助線和 P₁/Q₁ 標示。 -->
 - **Model answer diagrams on long questions**: attach a diagram to a part's answer
   from its ⋯ menu ("Add model diagram") and draw it with the same diagram tools. It
   prints in the teacher version and the answer key; the student paper is unchanged.
+  <!-- zh: **長題目的參考答案圖表**：從分題的 ⋯ 選單選擇「加入參考圖表」，並以同一套圖表工具
+  繪畫。教師版和答案頁會列印；學生試卷不變。 -->
 - **Graph answer space**: a blank-axes box (optional grid, axis labels, 12/16/20/24
   lines, half or full width) that students draw on, in any part or sub-part.
+  <!-- zh: **圖表答題空間**：空白座標軸方格（可選格線、座標軸標示、12/16/20/24 行、
+  半幅或全幅），供學生在任何分題或子分題中繪圖。 -->
 - **Folders on the start screen**: create, rename and delete folders; move documents in
   from the menu or by dragging; search and filter inside a folder. Folders are kept in
   backups.
+  <!-- zh: **開始畫面的資料夾**：建立、重新命名和刪除資料夾；從選單或拖曳將文件移入；在資料夾內
+  搜尋和篩選。備份已包括資料夾。 -->
 - **One Export button** for `.docx`, PDF and `.json`, chosen inside the dialog; options
   that do not apply to a format are greyed with a reason.
+  <!-- zh: **單一匯出按鈕**，在對話框內選擇 `.docx`、PDF 或 `.json`；不適用
+  於該格式的選項會變灰並說明原因。 -->
 - **What's new**: the first time a new version opens, a short note lists what it adds,
   once. "What's new" beside Send feedback on the start screen, and in the editor's ⋯
   menu, lists every release.
+  <!-- zh: **最新功能**：新版本首次開啟時，會顯示簡短說明列出新增項目，只顯示一次。開始畫面意見
+  回饋旁的「最新功能」，以及編輯器 ⋯ 選單內的同名項目，會列出每個版本。 -->
 - **Worksheets from a newer version open safely**: a file saved by a newer Econ Worksheet
   opens read-only with a note to update, and is never overwritten. "Duplicate as editable
   copy" makes a copy you can edit now.
+  <!-- zh: **較新版本的工作紙可安全開啟**：較新版 Econ Worksheet 儲存的檔案會以
+  唯讀方式開啟，並提示更新，絕不會被覆寫。「建立可編輯的副本」可立即產生能編輯的副本。 -->
 - **Diagrams that stay connected**: an equilibrium placed on a crossing follows its
   curves, so shifting S₁ moves E₁ with it. Add MR (same intercept, twice as steep),
   a line parallel or tangent to another (CPF, terms of trade), price-level and vertical
   lines, and brackets or arrows between two points: shortage, the tax wedge "t",
   P₁→P₂ on the axis. They follow what they measure.
+  <!-- zh: **互相連動的圖表**：放在交叉點上的均衡點會跟隨其曲線，所以移動 S₁，E₁ 便隨之移
+  動。可加入 MR（截距相同、斜度兩倍）、與另一線平行或相切的線（CPF、貿易條件）、價格
+  水平線和垂直線，以及兩點之間的括號或箭頭：短缺、稅楔「t」、座標軸上的 P₁→P₂。它們
+  跟隨所量度的對象。 -->
 - **Axis scales for diagrams**: give an axis a maximum (30 wheat, 60 cloth) and type a
   point's position as values; empty tick labels print their value.
+  <!-- zh: **圖表座標軸刻度**：可為座標軸訂下最大值（30 小麥、60 布），並以數值輸入點的位
+  置；空白刻度標示會印出其數值。 -->
 - **Diagram templates for every diagram the marking schemes ask for**, grouped by topic
   with a search box: supply and demand shifts (one curve or both), elastic and inelastic
   revenue boxes, fixed supply, labour importation, surplus; price ceiling, minimum wage,
@@ -529,6 +583,11 @@ a version heading is edited afterwards.
   output gaps, self-adjustment, LRAS growth; money supply and demand shifts;
   exchange-rate revenue, tariff, import quota; monopoly (MC constant, MC = 0, MC falls)
   and PPF trade. Each ships the after-state — both curves, both equilibria, the arrows.
+  <!-- zh: **評卷參考要求的每個圖表都有範本**，按課題分組，附搜尋框：供求平移（一條或兩條曲線）、
+  彈性和無彈性的收益方格、固定供應、輸入勞工、剩餘；價格上限、最低工資、配額和無謂損失；從
+  量稅和補貼的負擔、Lorenz 曲線；AD-AS 平移、產出缺口、自我調整、LRAS 增
+  長；貨幣供應和需求平移；匯率收益、關稅、進口配額；壟斷（MC 不變、MC = 0、MC 下
+  降）及 PPF 貿易。每個範本都附有變動後的狀態：兩條曲線、兩個均衡點和箭頭。 -->
 
 ### Changed
 - **Diagrams draw P and Q change arrows the way marking schemes do**: outside the axes,
@@ -540,35 +599,65 @@ a version heading is edited afterwards.
   select a point and click **Label E₀** (it offers the next free number) to add one, and
   it lands right of the dot, clear of the curves. Diagrams you already made keep their
   names.
+  <!-- zh: **圖表上的 P 和 Q 變動箭頭，畫法與評卷參考一致**：位於座標軸外，在 Q₀ Q₁ 標
+  示之下、P₀ P₁ 之左，刻度標示亦緊貼座標軸。座標軸上的括號和間距也在該處；拖曳可將它
+  移遠或移回。S₀ 與 S₁ 之間的稅項 t 和補貼 s 一律是指向 S₁ 的箭頭：稅項向
+  上，補貼向下；將 S₁ 拖過 S₀ 時會掉轉方向。均衡點不再自動附帶 E₀ / E₁ 名
+  稱，與評卷參考的一般畫法相同；選取點後按 **Label E₀**（會建議下一個空號）即
+  可加上，標示會置於點的右側，避開曲線。已有的圖表保留原有名稱。 -->
 - **Desktop: Export → PDF saves a file directly, no print sheet.** Choose where in the
   save dialog (it starts in your exports folder, like `.docx`); the status line then
   offers Show in Finder / Explorer. In a browser, PDF still goes through the print
   dialog's Save as PDF.
+  <!-- zh: **桌面版：匯出 → PDF 直接儲存檔案，不再出現列印頁。** 在儲存對話框選擇位置（
+  預設為匯出資料夾，與 `.docx` 一樣）；完成後狀態列提供「在 Finder 中顯示」
+  （Windows 為 Explorer）。在瀏覽器中，PDF 仍經列印對話框的「另存為 PDF」。
+   -->
 - **Smoother buttons, menus and dialogs**: buttons press in and ease their colours,
   menus grow out of the button that opened them, and dialogs fade in instead of
   appearing all at once. Quick enough never to slow you down.
+  <!-- zh: **更流暢的按鈕、選單和對話框**：按鈕有按下效果並平滑轉色，選單從開啟它的按鈕展開，對
+  話框淡入而非突然出現。速度夠快，絕不拖慢操作。 -->
 
 - **The inflationary and deflationary gap templates mark the gap just above the output
   axis**, between Y₀ and Yf, with its name above the arrow. It still follows AD, SRAS
   and LRAS when you drag them.
+  <!-- zh: **通脹缺口和緊縮缺口範本把缺口標在產出軸之上**，位於 Y₀ 與 Yf 之間，名稱在箭
+  頭上方。拖曳 AD、SRAS 和 LRAS 時，缺口仍會跟隨。 -->
 ### Fixed
 - **Shift a copy in an English-only worksheet named the copy S₅₀** (and its ticks P₅₀
   and Q₅₀). It is now S₁, with P₁ and Q₁.
+  <!-- zh: **在純英文工作紙中平移副本，副本被命名為 S₅₀**（刻度為 P₅₀ 和 Q₅₀）。現
+  在改為 S₁，刻度為 P₁ 和 Q₁。 -->
 - **The import-tariff template had no imports**: Pw + t sat above the market's own
   equilibrium. It now sits between Pw and it, with Q₁, Q₂ and the imports QM marked. The
   old four-quantity figure is still there as "Tariff: welfare areas".
+  <!-- zh: **進口關稅範本沒有進口量**：Pw + t 位於市場本身的均衡點之上。現在位於 Pw 與
+  均衡點之間，並標示 Q₁、Q₂ 和進口量 QM。舊有的四數量圖仍保留為「Tariff: welfare areas」。
+   -->
 - **PDF printed every marks label twice** ("(4 marks)" after the text and again at the
   right margin). It now prints once, at the right.
+  <!-- zh: **PDF 的分數標示列印了兩次**（文字後印一次「(4 marks)」，右邊界再印一次）。
+  現在只在右邊印一次。 -->
 - **Desktop PDF: the cover's corner box printed solid black.** Its diagonal now prints
   as a line.
+  <!-- zh: **桌面版 PDF：封面角落的方格印成全黑。** 現在其對角線會印成一條線。 -->
 - **Desktop: Export → PDF opens the print sheet** instead of failing silently.
+  <!-- zh: **桌面版：匯出 → PDF 會開啟列印頁**，而不是無聲失敗。 -->
 - **Print PDF lost every arrowhead and pie hatching** (axis arrows, shift arrows,
   flow-chart arrows, hatched and dotted pie slices). All now print.
+  <!-- zh: **列印 PDF 時所有箭頭和圓餅圖紋理消失**（座標軸箭頭、平移箭頭、流程圖箭頭、有紋
+  理和點狀的圓餅圖扇形）。現已全部列印。 -->
 - **Dragging a document onto a folder now works in the desktop app.**
+  <!-- zh: **現在可在桌面版把文件拖到資料夾上。** -->
 - **Desktop: dropping a worksheet file onto the start screen imports it.** Drop several
   `.json` files at once to add them all to your list; nothing already there is replaced.
+  <!-- zh: **桌面版：把工作紙檔案拖到開始畫面即可匯入。** 一次拖入多個 `.json` 檔案，
+  可全部加到列表；原有文件不會被取代。 -->
 - **The page rail now appears for a mock paper with a cover and one page** — the cover
   counts as a page, and its card lights up while you are on it.
+  <!-- zh: **有封面和單頁的 Mock 試卷現在會顯示頁面列**：封面算作一頁，在封面上時其卡片會
+  亮起。 -->
 
 ## 0.3.0 — 2026-09-24
 
