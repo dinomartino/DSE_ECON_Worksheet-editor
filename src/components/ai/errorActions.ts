@@ -1,7 +1,7 @@
 import { presetFor } from '@/ai/providers';
 import type { AiErrorInfo, ProviderId } from '@/ai/types';
 import { useAiRun } from '@/assist/runStore';
-import * as copy from '@/components/translate/copy';
+import { copyMessages } from '@/components/translate/text';
 import { openExternal } from '@/platform';
 import { peekSecret } from '@/platform/secrets';
 import { AI_SETTINGS } from '@/settings/aiSettings';
@@ -18,33 +18,34 @@ export type ErrorAction =
 
 /** The buttons an error earns, in order: only the actions it names (the old ErrorPanel's rules). */
 export function errorActions(error: AiErrorInfo): ErrorAction[] {
+  const copy = copyMessages();
   const preset = presetFor(error.provider);
   const region = error.kind === 'region';
   const has = (action: AiErrorInfo['actions'][number]) => error.actions.includes(action);
   const out: ErrorAction[] = [];
   // Region: Try again comes first (a VPN turned on fixes Gemini), the alternatives after.
-  if (region && has('retry')) out.push({ kind: 'retry', label: copy.TRY_AGAIN });
+  if (region && has('retry')) out.push({ kind: 'retry', label: copy.tryAgain });
   if (region) {
     for (const provider of HK_PROVIDERS.filter((id) => id !== error.provider)) {
       out.push({ kind: 'useProvider', provider, label: copy.useProvider(SHORT_NAME[provider] ?? presetFor(provider).label) });
     }
   }
-  if (has('openKeyPage') && preset.keyUrl) out.push({ kind: 'keyPage', label: copy.GET_NEW_KEY });
+  if (has('openKeyPage') && preset.keyUrl) out.push({ kind: 'keyPage', label: copy.getNewKey });
   if (has('openBilling') && preset.keyUrl) out.push({ kind: 'keyPage', label: copy.openProvider(preset.label) });
   const fallback = preset.quotaFallbackModel;
   if (has('useFallbackModel') && fallback) {
     out.push({ kind: 'fallbackModel', label: copy.switchModel(preset.models.find((m) => m.id === fallback)?.label ?? fallback) });
   }
-  if (has('chooseModel')) out.push({ kind: 'chooseModel', label: copy.CHOOSE_MODEL });
-  if (!region && has('switchProvider')) out.push({ kind: 'settings', label: copy.SWITCH_PROVIDER });
-  if (region || has('openSettings')) out.push({ kind: 'settings', label: copy.OPEN_SETTINGS });
-  if (!region && has('retry')) out.push({ kind: 'retry', label: copy.TRY_AGAIN });
+  if (has('chooseModel')) out.push({ kind: 'chooseModel', label: copy.chooseModel });
+  if (!region && has('switchProvider')) out.push({ kind: 'settings', label: copy.switchProvider });
+  if (region || has('openSettings')) out.push({ kind: 'settings', label: copy.openSettings });
+  if (!region && has('retry')) out.push({ kind: 'retry', label: copy.tryAgain });
   return out;
 }
 
 /** Only Gemini's region error carries a note: keep the VPN on, or use DeepSeek or Qwen. */
 export const errorNote = (error: AiErrorInfo): string | undefined =>
-  error.kind === 'region' && error.provider === 'gemini' ? `${copy.REGION_GEMINI_NOTE} ${copy.HK_PROVIDERS_NOTE}` : undefined;
+  error.kind === 'region' && error.provider === 'gemini' ? `${copyMessages().regionGeminiNote} ${copyMessages().hkProvidersNote}` : undefined;
 
 const aiSettings = () => appSettings.read(AI_SETTINGS);
 const keySaved = (provider: ProviderId) => peekSecret(`ai:${provider}`) !== null || aiSettings().keychainSaved[provider] === true;

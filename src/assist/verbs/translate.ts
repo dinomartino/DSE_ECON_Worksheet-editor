@@ -13,6 +13,7 @@ import { planFromSlots } from '@/translate/plan';
 import { runTranslation, writesFor } from '@/translate/run';
 import { termFixWrites, termRowsFromSlots } from '@/translate/termCheck';
 import type { JobResult, RunOutcome, TranslationPlan } from '@/translate/types';
+import { assistMessages } from '../text';
 import { registerVerb } from '../registry';
 import type { AiVerb, ReviewItem, VerbContext, VerbIO, VerbOutcome } from '../types';
 import {
@@ -53,10 +54,7 @@ const realDeps: TranslateVerbDeps = {
   desktop: isDesktop,
 };
 
-const texts = (n: number): string => `${n} ${n === 1 ? 'text' : 'texts'}`;
-
 export function translateVerb(side: Side, replace: boolean, deps: TranslateVerbDeps = realDeps): AiVerb {
-  const name = sideName(side);
   const planFor = (ctx: VerbContext): TranslationPlan =>
     planFromSlots(ctx.worksheet.id, slotsOf(ctx.worksheet), ctx.scope, fillOptions(ctx.mode, deps.includeTeacherText(), side, replace));
   return {
@@ -64,15 +62,15 @@ export function translateVerb(side: Side, replace: boolean, deps: TranslateVerbD
     group: 'translate',
     order: (replace ? 10 : 0) + (side === 'zh' ? 0 : 1),
     needsKey: true,
-    label: () => (replace ? `Re-translate ${name}…` : `Fill missing ${name}`),
+    label: () => (replace ? assistMessages().retranslate(sideName(side)) : assistMessages().fillMissing(sideName(side))),
     available(ctx) {
       if (replace && ctx.scope.kind === 'paper') return null;
       const plan = planFor(ctx);
       if (replace && plan.counts.replaceable === 0) return null;
       const count = replace ? textsIn(plan) : fillCount(plan);
-      return count > 0 ? { count, unit: count === 1 ? 'text' : 'texts' } : null;
+      return count > 0 ? { count, unit: assistMessages().unitTexts(count) } : null;
     },
-    sendsLine: (ctx, provider) => `Sends ${texts(textsIn(planFor(ctx)))} to ${provider} with your key`,
+    sendsLine: (ctx, provider) => assistMessages().sendsTexts(textsIn(planFor(ctx)), provider),
     run: (ctx, io) => runFill(ctx, io, planFor(ctx), side, replace, deps),
   };
 }
@@ -88,7 +86,7 @@ async function runFill(
   // The same unit the summary counts: every text written, symbol copies included.
   const total = fillCount(plan);
   if (total === 0) return { kind: 'nothing', summary: NOTHING_TO_FILL };
-  const label = `Translating into ${sideName(side)}`;
+  const label = assistMessages().translatingInto(sideName(side));
   let outcome: RunOutcome = { results: new Map(), stopped: false, model: '', ms: 0 };
   let glossary: Glossary | null = null;
   if (plan.jobs.size > 0) {
@@ -193,15 +191,14 @@ function insertedItem(
 }
 
 const worksheetId = () => useWorksheetStore.getState().worksheet.id;
-const CHANGED_SINCE = 'Nothing changed. This text was edited since.';
 
 /** Puts the side back as it was before the fill, in one commit, only if it is untouched. */
 function removeAction(write: TranslationWrite): NonNullable<ReviewItem['action']> {
   return {
-    label: 'Remove',
+    label: assistMessages().remove,
     run: () => {
       const report = applyWrites([{ ...write, targetSnapshot: write.next, next: write.targetSnapshot }], worksheetId());
-      if (report.skipped.length) useAppDialogs.getState().notify(CHANGED_SINCE);
+      if (report.skipped.length) useAppDialogs.getState().notify(assistMessages().changedSince);
     },
   };
 }
@@ -215,10 +212,10 @@ function termFixAction(write: TranslationWrite, slot: TextSlot | undefined, glos
   const fix = index >= 0 ? row.checks[index].fix : undefined;
   if (!row || !fix) return undefined;
   return {
-    label: `Replace with ${fix.to}`,
+    label: assistMessages().replaceWith(fix.to),
     run: () => {
       const report = applyWrites(termFixWrites([row], new Map([[row.path, new Set([index])]])), worksheetId());
-      if (report.skipped.length) useAppDialogs.getState().notify(CHANGED_SINCE);
+      if (report.skipped.length) useAppDialogs.getState().notify(assistMessages().changedSince);
     },
   };
 }

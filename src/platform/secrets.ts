@@ -1,5 +1,6 @@
 import type { ProviderId } from '@/ai/types';
 import { isDesktop } from './index';
+import { platformMessages } from './text';
 
 /**
  * The only holder of AI provider keys. Never in a document, a backup, settings, a log or
@@ -29,7 +30,7 @@ const listeners = new Set<() => void>();
 const invalid = (message: string): { ok: false; error: SecretError } => ({ ok: false, error: { kind: 'invalid', message } });
 
 function checkAccount(account: string): { ok: false; error: SecretError } | null {
-  return ACCOUNT.test(account) ? null : invalid('Not a key account.');
+  return ACCOUNT.test(account) ? null : invalid(platformMessages().notKeyAccount);
 }
 
 function webStorage(kind: 'local' | 'session'): Storage | null {
@@ -75,18 +76,18 @@ class ShellUnavailable extends Error {}
  * Anything else that is not keyring's (a missing command or capability) is unavailable.
  */
 function keychainError(error: unknown): SecretError {
-  if (error instanceof ShellUnavailable) return { kind: 'unavailable', message: "The keychain couldn't be reached." };
+  if (error instanceof ShellUnavailable) return { kind: 'unavailable', message: platformMessages().keychainUnreachable };
   const text = typeof error === 'string' ? error : error instanceof Error ? error.message : '';
-  if (/^bad (account|secret)$/.test(text)) return { kind: 'invalid', message: 'The key was refused.' };
+  if (/^bad (account|secret)$/.test(text)) return { kind: 'invalid', message: platformMessages().keyRefused };
   if (text.startsWith("Couldn't access platform secure storage")) {
-    return { kind: 'unavailable', message: "The keychain couldn't be reached." };
+    return { kind: 'unavailable', message: platformMessages().keychainUnreachable };
   }
   if (text.startsWith('Platform secure storage failure')) {
     return /cancel|denied|not allowed|passphrase|interaction|authori[sz]/i.test(text)
-      ? { kind: 'denied', message: "The keychain didn't allow access." }
-      : { kind: 'failed', message: "The keychain couldn't save or read the key." };
+      ? { kind: 'denied', message: platformMessages().keychainDenied }
+      : { kind: 'failed', message: platformMessages().keychainFailed };
   }
-  return { kind: 'unavailable', message: "The keychain couldn't be reached." };
+  return { kind: 'unavailable', message: platformMessages().keychainUnreachable };
 }
 
 async function invokeKeychain<T>(command: string, args: Record<string, unknown>): Promise<T> {
@@ -126,7 +127,7 @@ export async function writeSecret(account: SecretAccount, value: string, opts: {
   const bad = checkAccount(account);
   if (bad) return bad;
   const key = value.trim();
-  if (key.length < 8 || key.length > 512 || BAD_CHAR.test(key)) return invalid("That doesn't look like a key.");
+  if (key.length < 8 || key.length > 512 || BAD_CHAR.test(key)) return invalid(platformMessages().notAKey);
   const result = isDesktop() ? await writeDesktop(account, key, opts.remember) : writeWeb(account, key, opts.remember);
   if (result.ok) notify();
   return result;
@@ -194,15 +195,16 @@ export function subscribeSecrets(listener: () => void): () => void {
 
 /** "your Keychain" · "Windows Credential Manager" · "this browser" · "this tab only". */
 export function secretStoreLabel(store: SecretStore, platform: 'mac' | 'windows' | 'web'): string {
+  const m = platformMessages();
   switch (store) {
     case 'keychain':
-      return platform === 'windows' ? 'Windows Credential Manager' : 'your Keychain';
+      return platform === 'windows' ? m.storeCredentialManager : m.storeKeychain;
     case 'browser':
-      return 'this browser';
+      return m.storeBrowser;
     case 'session':
-      return 'this tab only';
+      return m.storeTab;
     case 'memory':
-      return platform === 'web' ? 'this tab only' : 'this session only';
+      return platform === 'web' ? m.storeTab : m.storeSession;
   }
 }
 

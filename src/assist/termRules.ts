@@ -1,4 +1,6 @@
 import * as copy from '@/components/translate/copy';
+import { copyMessages } from '@/components/translate/text';
+import { ASSIST_EN, assistMessages } from './text';
 import type { TermCheck } from '@/glossary/types';
 import { plain } from '@/model/text';
 import type { TextPath } from '@/model/textSlots';
@@ -10,8 +12,8 @@ import type { TermRow } from '@/translate/types';
  * and the question bank's check (`src/assist/bankRun.ts`) both read them.
  */
 
-export const TERMS_MATCH = 'Terms match the EDB glossary';
-export const NOTHING_REPLACED_ONE = 'Nothing replaced. This text changed since the check.';
+export const TERMS_MATCH = ASSIST_EN.termsMatch;
+export const NOTHING_REPLACED_ONE = ASSIST_EN.nothingReplacedOne;
 
 export const isVariant = (check: TermCheck): boolean => check.fix?.kind === 'deny' && check.fix.denyKind === 'variant';
 
@@ -25,14 +27,15 @@ export function fixedPreview(row: TermRow, check: TermCheck): string {
 }
 
 export function termNotes(row: TermRow, check: TermCheck): string[] {
-  const edb = `${check.en} (EDB: ${check.expected})`;
+  const m = assistMessages();
+  const edb = copyMessages().termChip(check.en, check.expected);
   if (!check.fix) {
-    const found = check.found ? `${check.en} → ${check.found.text} (EDB: ${check.expected})` : edb;
+    const found = check.found ? m.foundLine(check.en, check.found.text, check.expected) : edb;
     return check.conflict ? [found, copy.conflictChip(check.conflict.form, check.conflict.meansEn)] : [found];
   }
   if (check.fix.kind === 'lowerRank') return [copy.lowerRankLine(check.en, check.found?.text ?? '', check.expected)];
   const preview = `→ ${fixedPreview(row, check)}`;
-  return isVariant(check) ? [edb, preview, `A textbook form; EDB lists ${check.fix.to} first.`] : [edb, preview];
+  return isVariant(check) ? [edb, preview, m.textbookForm(check.fix.to)] : [edb, preview];
 }
 
 export interface TermTally {

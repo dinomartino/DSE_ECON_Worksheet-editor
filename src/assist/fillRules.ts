@@ -1,6 +1,8 @@
 import { presetFor } from '@/ai/providers';
 import type { AiErrorInfo, ProviderId } from '@/ai/types';
 import * as copy from '@/components/translate/copy';
+import { copyMessages } from '@/components/translate/text';
+import { ASSIST_EN, assistMessages } from './text';
 import type { Side, TextSlot } from '@/model/textSlots';
 import type { OutputMode } from '@/model/types';
 import { defaultTranslateOptions } from '@/translate/plan';
@@ -14,8 +16,7 @@ import type { JobResult, RunDepsResult, TranslateOptions, TranslationPlan } from
  * runs (`src/assist/bankRun.ts`) both read them; neither owns them.
  */
 
-export const sideName = (side: Side): string => (side === 'zh' ? '中文' : 'English');
-const plural = (n: number, word: string): string => (n === 1 ? word : `${word}s`);
+export const sideName = (side: Side): string => (side === 'zh' ? assistMessages().sideZh : assistMessages().sideEn);
 
 /** One direction; teacher text when the editor shows it or the remembered setting is on;
  *  diagram labels on; symbol copies per the edition rule (`defaultTranslateOptions`). */
@@ -53,7 +54,7 @@ const ORDER: Record<NoteTone, number> = { fail: 0, warn: 1, note: 2, ok: 3 };
 export function rowNotes(result: JobResult): RowNote[] {
   if (result.status === 'ready' && result.fixes.length === 0) return [];
   if (result.status === 'failed') {
-    if (result.error?.kind === 'safety') return [{ tone: 'fail', text: copy.SAFETY_ROW }];
+    if (result.error?.kind === 'safety') return [{ tone: 'fail', text: copyMessages().safetyRow }];
     const reason = result.issues.find((i) => i.severity === 'fail')?.message ?? result.error?.message ?? 'no answer';
     return [{ tone: 'fail', text: copy.failedRow(reason) }];
   }
@@ -64,15 +65,15 @@ export function rowNotes(result: JobResult): RowNote[] {
     notes.push({ tone: term.severity, text });
   }
   for (const fix of result.fixes) {
-    notes.push({ tone: 'ok', text: fix.how === 'simplified' ? copy.SIMPLIFIED_FIXED : copy.termFixed(fix.from, fix.to) });
+    notes.push({ tone: 'ok', text: fix.how === 'simplified' ? copyMessages().simplifiedFixed : copy.termFixed(fix.from, fix.to) });
   }
   return notes.sort((a, b) => ORDER[a.tone] - ORDER[b.tone]);
 }
 
-export const CHANGED_WHILE_TRANSLATING = 'Changed while translating. Left as it is.';
-export const NOTHING_TO_FILL = 'Nothing to fill here';
-export const STOPPED_NOTHING = 'Stopped. Nothing was changed.';
-export const DOCUMENT_CHANGED = 'Another document is open. Nothing was inserted.';
+export const CHANGED_WHILE_TRANSLATING = ASSIST_EN.changedWhileTranslating;
+export const NOTHING_TO_FILL = ASSIST_EN.nothingToFill;
+export const STOPPED_NOTHING = ASSIST_EN.stoppedNothing;
+export const DOCUMENT_CHANGED = ASSIST_EN.documentChanged;
 
 /** "Filled 47 中文 texts, 5 need a look, 2 couldn't be translated". */
 export function fillSummary(o: {
@@ -85,14 +86,15 @@ export function fillSummary(o: {
   stopped: boolean;
   notSent?: { count: number; reason: string };
 }): string {
+  const m = assistMessages();
   const parts = [
-    o.filled > 0 ? `${o.verb} ${o.filled} ${sideName(o.side)} ${plural(o.filled, 'text')}` : `Nothing ${o.verb.toLowerCase()}`,
-    o.look > 0 ? `${o.look} ${o.look === 1 ? 'needs' : 'need'} a look` : '',
-    o.failed > 0 ? `${o.failed} couldn't be translated` : '',
-    o.skipped > 0 ? `${o.skipped} changed while translating` : '',
-    o.notSent && o.notSent.count > 0 ? `${o.notSent.count} not sent (${o.notSent.reason})` : '',
+    o.filled > 0 ? m.summaryFilled(o.verb, o.filled, sideName(o.side)) : m.summaryNothing(o.verb),
+    o.look > 0 ? m.summaryLook(o.look) : '',
+    o.failed > 0 ? m.summaryFailed(o.failed) : '',
+    o.skipped > 0 ? m.summaryChanged(o.skipped) : '',
+    o.notSent && o.notSent.count > 0 ? m.summaryNotSent(o.notSent.count, o.notSent.reason) : '',
   ].filter(Boolean);
-  return `${o.stopped ? 'Stopped · ' : ''}${parts.join(', ')}`;
+  return `${o.stopped ? m.summaryStopped : ''}${parts.join(m.listJoin)}`;
 }
 
 export const whereOf = (slot: TextSlot | undefined, fallback = ''): string =>
@@ -124,7 +126,7 @@ export function genericError(err: unknown, provider: ProviderId = 'gemini'): AiE
   return {
     kind: 'badOutput',
     provider,
-    message: 'Something went wrong. Nothing more was changed.',
+    message: assistMessages().genericError,
     ...(err instanceof Error && err.message ? { detail: err.message.slice(0, 300) } : {}),
     fatal: false,
     actions: ['retry'],

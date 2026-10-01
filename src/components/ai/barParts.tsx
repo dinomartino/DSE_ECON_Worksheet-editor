@@ -1,7 +1,10 @@
 'use client';
 
 import type { AiErrorInfo } from '@/ai/types';
-import * as copy from '@/components/translate/copy';
+import { COPY_MESSAGES } from '@/components/translate/messages';
+import { useMessages } from '@/i18n/language';
+import { localizedErrorMessage } from './errorCopy';
+import { AI_UI_MESSAGES } from './messages';
 import { errorActions, errorNote, runErrorAction, type RunControl } from './errorActions';
 
 /**
@@ -29,6 +32,8 @@ export const Sparkle = () => (
 
 /** "Translating into 中文 ━━━ 3 of 12 Stop". */
 export function RunningBody({ label, done, total, onStop }: { label: string; done: number; total: number; onStop(): void }) {
+  const m = useMessages(AI_UI_MESSAGES);
+  const copy = useMessages(COPY_MESSAGES);
   const share = total > 0 ? Math.min(1, done / total) : 0;
   return (
     <>
@@ -40,11 +45,11 @@ export function RunningBody({ label, done, total, onStop }: { label: string; don
             <span className="block h-full rounded-full bg-on-cta transition-[width] duration-300 ease-out-soft" style={{ width: `${share * 100}%` }} />
           </span>
           <span className="shrink-0 tabular-nums text-on-cta/70">
-            {done} of {total}
+            {m.progress(done, total)}
           </span>
         </>
       )}
-      <BarButton onClick={onStop}>{copy.STOP}</BarButton>
+      <BarButton onClick={onStop}>{copy.stop}</BarButton>
     </>
   );
 }
@@ -52,15 +57,16 @@ export function RunningBody({ label, done, total, onStop }: { label: string; don
 /** The error's message, its note and technical detail, then its actions and Close. */
 export function ErrorBody({ error, onClose, run }: { error: AiErrorInfo; onClose(): void; run?: RunControl }) {
   const note = errorNote(error);
+  const copy = useMessages(COPY_MESSAGES);
   return (
     <>
       <Sparkle />
       <span className="min-w-0 flex-1">
-        <span className="font-medium">{error.message}</span>
+        <span className="font-medium">{localizedErrorMessage(error)}</span>
         {note && <span className="block text-[11px] text-on-cta/70">{note}</span>}
         {error.detail && (
           <details className="text-[11px] text-on-cta/70">
-            <summary className="cursor-pointer select-none">{copy.TECHNICAL_DETAIL}</summary>
+            <summary className="cursor-pointer select-none">{copy.technicalDetail}</summary>
             <span className="mt-0.5 block max-w-[32rem] break-words font-mono">{error.detail.slice(0, 300)}</span>
           </details>
         )}
@@ -70,7 +76,7 @@ export function ErrorBody({ error, onClose, run }: { error: AiErrorInfo; onClose
           {action.label}
         </BarButton>
       ))}
-      <BarButton onClick={onClose}>{copy.CLOSE}</BarButton>
+      <BarButton onClick={onClose}>{copy.close}</BarButton>
     </>
   );
 }

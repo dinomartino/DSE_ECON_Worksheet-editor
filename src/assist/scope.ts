@@ -3,6 +3,7 @@ import { computeNumbering } from '@/model/numbering';
 import type { TextSlot } from '@/model/textSlots';
 import { collectTexts } from '@/model/textWalk';
 import type { Worksheet } from '@/model/types';
+import { assistMessages } from './text';
 import type { AiScope } from './types';
 
 /** The worksheet store's selection fields this module reads (a structural subset). */
@@ -80,25 +81,27 @@ export function scopeFromSelection(state: SelectionState): AiScope {
 
 const questionLabel = (ws: Worksheet, id: string): string => {
   const numbered = computeNumbering(ws).byQuestionId.get(id);
-  return numbered ? `Question ${numbered.number}` : 'This question';
+  const m = assistMessages();
+  return numbered ? m.questionN(numbered.number) : m.thisQuestion;
 };
 
 /** "Whole paper", "Question 2", "3 questions", "This text", "This table", "This figure". */
 export function scopeLabel(worksheet: Worksheet, scope: AiScope): string {
+  const m = assistMessages();
   switch (scope.kind) {
     case 'paper':
-      return 'Whole paper';
+      return m.wholePaper;
     case 'questions':
-      return scope.ids.length === 1 ? questionLabel(worksheet, scope.ids[0]) : `${scope.ids.length} questions`;
+      return scope.ids.length === 1 ? questionLabel(worksheet, scope.ids[0]) : m.questionsN(scope.ids.length);
     case 'flowItems': {
-      if (scope.ids.length > 1) return `${scope.ids.length} items`;
+      if (scope.ids.length > 1) return m.itemsN(scope.ids.length);
       const [id] = scope.ids;
-      return worksheet.questions.some((q) => q.id === id) ? questionLabel(worksheet, id) : 'This item';
+      return worksheet.questions.some((q) => q.id === id) ? questionLabel(worksheet, id) : m.thisItem;
     }
     case 'paths':
-      return scope.paths.length === 1 ? 'This text' : `${scope.paths.length} texts`;
+      return scope.paths.length === 1 ? m.thisText : m.textsN(scope.paths.length);
     case 'block':
-      return findTableBlock(worksheet, scope.blockId) ? 'This table' : 'This figure';
+      return findTableBlock(worksheet, scope.blockId) ? m.thisTable : m.thisFigure;
   }
 }
 

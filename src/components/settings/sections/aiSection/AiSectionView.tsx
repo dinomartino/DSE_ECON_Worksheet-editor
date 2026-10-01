@@ -8,7 +8,9 @@ import { Button, CheckField, Pill } from '@/components/ui';
 import { Collapsible } from '@/components/ui/Collapsible';
 import { GLOSSARY_ATTRIBUTION } from '@/glossary/attribution';
 import type { Messages } from '@/i18n/catalogue';
-import { useMessages } from '@/i18n/language';
+import { baseUrlChoiceLabel, modelNote, providerCopy } from '@/components/ai/providerCopy';
+import { localizedErrorMessage } from '@/components/ai/errorCopy';
+import { useMessages, useUiLanguage } from '@/i18n/language';
 import type { AiSettings } from '@/settings/aiSettings';
 import type { SettingsEnv } from '@/settings/types';
 import type { AiSectionActions } from './AiSection';
@@ -225,7 +227,7 @@ function KeyRow({
           </>
         )}
       </div>
-      {test.kind === 'error' && !open && <p className="mt-1 text-[11px] text-danger-ink">{test.error.message}</p>}
+      {test.kind === 'error' && !open && <p className="mt-1 text-[11px] text-danger-ink">{localizedErrorMessage(test.error)}</p>}
     </li>
   );
 }
@@ -243,7 +245,7 @@ function SavedStatus({ test }: { test: TestState }) {
   }
   if (test.kind === 'error') {
     return (
-      <span className={`${base} font-medium text-danger-ink`} title={test.error.message}>
+      <span className={`${base} font-medium text-danger-ink`} title={localizedErrorMessage(test.error)}>
         {m[SHORT_ERROR_KEYS[test.error.kind] ?? 'testFailed']}
       </span>
     );
@@ -302,6 +304,7 @@ function CardDetails({
 }) {
   const { state, actions } = props;
   const m = useMessages(AI_SECTION_MESSAGES);
+  const lang = useUiLanguage();
   const preset = presetFor(state.provider);
   const [show, setShow] = useState(false);
   const testing = shownTest(state).kind === 'testing';
@@ -315,7 +318,7 @@ function CardDetails({
 
   return (
     <div className="space-y-3 pb-3 pl-9 pr-3">
-      <p className="text-xs text-ink-muted">{preset.blurb}</p>
+      <p className="text-xs text-ink-muted">{providerCopy(preset, lang).blurb}</p>
       <HkNote preset={preset} />
       {preset.keyRequired && (
         <div className="space-y-1.5">
@@ -371,7 +374,7 @@ function CardDetails({
                 {m.getKey}
               </button>
             )}
-            {preset.keyUrl && preset.keyHint && !hasSaved && <span className="text-[11px] text-ink-muted">{preset.keyHint}</span>}
+            {preset.keyUrl && preset.keyHint && !hasSaved && <span className="text-[11px] text-ink-muted">{providerCopy(preset, lang).keyHint}</span>}
           </div>
           <KeyStatus {...props} />
         </div>
@@ -442,7 +445,7 @@ function TestLine({ test, actions, retry }: { test: TestState; actions: AiSectio
   if (test.kind !== 'error') return null;
   return (
     <p role="alert" className="text-[11px] text-danger-ink">
-      {test.error.message}
+      {localizedErrorMessage(test.error)}
       {test.error.kind === 'region' && (
         <>
           {' '}
@@ -480,6 +483,7 @@ function RememberField({ state, actions, env, platform }: AiSectionViewProps) {
 
 function ModelField({ state, listed, actions, modelRef }: AiSectionViewProps & { modelRef: RefObject<HTMLSelectElement | null> }) {
   const m = useMessages(AI_SECTION_MESSAGES);
+  const lang = useUiLanguage();
   const preset = presetFor(state.provider);
   const listedIds = (listed ?? []).map((model) => model.id);
   const known = [...preset.models.map((model) => model.id), ...listedIds];
@@ -488,7 +492,8 @@ function ModelField({ state, listed, actions, modelRef }: AiSectionViewProps & {
   const [otherBad, setOtherBad] = useState<string | null>(null);
   const [listing, setListing] = useState(false);
   const showOther = otherOpen || !known.includes(state.model);
-  const chosenNote = showOther ? undefined : preset.models.find((model) => model.id === state.model)?.note;
+  const chosen = showOther ? undefined : preset.models.find((model) => model.id === state.model);
+  const chosenNote = chosen && modelNote(chosen.id, chosen.note, lang);
   const commitOther = () => {
     const value = other.trim();
     if (!value) return;
@@ -520,7 +525,7 @@ function ModelField({ state, listed, actions, modelRef }: AiSectionViewProps & {
           >
             <optgroup label={m.suggested}>
               {preset.models.map((model) => (
-                <option key={model.id} value={model.id} title={model.note}>
+                <option key={model.id} value={model.id} title={modelNote(model.id, model.note, lang)}>
                   {model.label}
                 </option>
               ))}
@@ -589,6 +594,7 @@ function qwenRegion(preset: ProviderPreset, stored: string | undefined): { index
 
 function BaseUrlField({ state, settings, actions }: AiSectionViewProps) {
   const m = useMessages(AI_SECTION_MESSAGES);
+  const lang = useUiLanguage();
   const preset = presetFor(state.provider);
   const stored = settings.baseUrls[state.provider];
   const [draft, setDraft] = useState(stored ?? preset.baseUrl);
@@ -617,7 +623,7 @@ function BaseUrlField({ state, settings, actions }: AiSectionViewProps) {
           >
             {preset.baseUrlChoices.map((c, index) => (
               <option key={c.url} value={index}>
-                {c.label}
+                {baseUrlChoiceLabel(c.label, lang)}
               </option>
             ))}
           </select>
@@ -668,6 +674,7 @@ function BaseUrlField({ state, settings, actions }: AiSectionViewProps) {
 
 function About({ state, env }: AiSectionViewProps) {
   const m = useMessages(AI_SECTION_MESSAGES);
+  const lang = useUiLanguage();
   const preset = presetFor(state.provider);
   const g = GLOSSARY_ATTRIBUTION;
   return (
@@ -675,7 +682,7 @@ function About({ state, env }: AiSectionViewProps) {
       <section className="space-y-1">
         <h4 className="text-[13px] font-medium text-ink">{m.whatIsSent}</h4>
         {/* One string: SWC drops the space in `{label} with` when the text wraps after it. */}
-        <p>{m.sentBody(env.desktop, preset.label, preset.privacy)}</p>
+        <p>{m.sentBody(env.desktop, preset.label, providerCopy(preset, lang).privacy)}</p>
       </section>
       <section className="space-y-1">
         <h4 className="text-[13px] font-medium text-ink">{m.terminology}</h4>

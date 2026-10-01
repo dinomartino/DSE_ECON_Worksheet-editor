@@ -1,6 +1,7 @@
 import type { ProviderPreset } from '@/ai/types';
 import { Pill } from '@/components/ui';
-import { useMessages } from '@/i18n/language';
+import { providerCopy } from '@/components/ai/providerCopy';
+import { useMessages, useUiLanguage } from '@/i18n/language';
 import { AI_SECTION_MESSAGES } from './messages';
 
 /** Settings' key status on a provider row: a saved key, or none needed. */
@@ -29,13 +30,15 @@ export function ProviderBadges({ preset, keyStatus = null }: { preset: ProviderP
 }
 
 /** The warn-ink note for a provider Hong Kong can't use officially; a muted one otherwise. */
-export function HkNote({ preset, text = preset.hk.note }: { preset: ProviderPreset; text?: string }) {
+export function HkNote({ preset, text }: { preset: ProviderPreset; text?: string }) {
+  const lang = useUiLanguage();
+  const note = text ?? providerCopy(preset, lang).hkNote;
   if (preset.hk.status === 'available') return null;
   const warn = preset.hk.status === 'notOfficial' || preset.hk.status === 'unavailable';
   return (
     <p className={warn ? 'rounded-md bg-warn-soft px-2 py-1.5 text-[11px] text-warn-ink' : 'text-[11px] text-ink-muted'}>
       {warn && '⚠ '}
-      {text}
+      {note}
     </p>
   );
 }

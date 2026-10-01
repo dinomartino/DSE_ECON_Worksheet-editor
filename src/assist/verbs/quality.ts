@@ -5,6 +5,7 @@ import { qualityQuestions, questionEmpty } from '@/quality/collect';
 import { runQuality } from '@/quality/run';
 import type { QualityFinding, QualityOutcome } from '@/quality/types';
 import { createRunDeps } from '@/translate/deps';
+import { assistMessages } from '../text';
 import { registerVerb } from '../registry';
 import type { AiVerb, ReviewItem, VerbContext, VerbOutcome } from '../types';
 
@@ -12,8 +13,6 @@ import type { AiVerb, ReviewItem, VerbContext, VerbOutcome } from '../types';
  * E4 "Check question quality": findings a co-marker would raise, from the model plus the
  * deterministic checks. Writes nothing to the document.
  */
-
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 function reviewItem(finding: QualityFinding): ReviewItem {
   const target = finding.anchor?.target;
@@ -23,18 +22,19 @@ function reviewItem(finding: QualityFinding): ReviewItem {
     ...(target ? { targetKey: editTargetKey(target) } : {}),
     questionId: finding.questionId,
     where: finding.where,
-    notes: [finding.message, ...(finding.suggestion ? [`Suggested: ${finding.suggestion}`] : [])],
+    notes: [finding.message, ...(finding.suggestion ? [assistMessages().suggested(finding.suggestion)] : [])],
   };
 }
 
 /** "3 findings in 12 questions", with what did not finish. */
 export function qualitySummary(outcome: QualityOutcome): string {
+  const m = assistMessages();
   const tail = [
-    outcome.fatal ? `stopped: ${outcome.fatal.message}` : outcome.stopped ? 'stopped early' : '',
-    outcome.failed ? `${plural(outcome.failed, 'question')} could not be checked` : '',
-  ].filter(Boolean).join('; ');
-  const head = `${plural(outcome.findings.length, 'finding')} in ${plural(outcome.total, 'question')}`;
-  return tail ? `${head} (${tail})` : head;
+    outcome.fatal ? m.qualityStoppedWith(outcome.fatal.message) : outcome.stopped ? m.qualityStoppedEarly : '',
+    outcome.failed ? m.qualityCouldNot(outcome.failed) : '',
+  ].filter(Boolean).join(m.tailJoin);
+  const head = m.qualityHead(outcome.findings.length, outcome.total);
+  return tail ? m.qualityWithTail(head, tail) : head;
 }
 
 export const qualityVerb: AiVerb = {
@@ -42,19 +42,19 @@ export const qualityVerb: AiVerb = {
   group: 'check',
   order: 20,
   needsKey: true,
-  label: () => 'Check question quality',
+  label: () => assistMessages().qualityLabel,
 
   available(ctx: VerbContext) {
     const questions = qualityQuestions(ctx.worksheet, ctx.scope);
     if (questions.length === 0) return null;
     const count = questions.filter((q) => !questionEmpty(q)).length;
-    const unit = count === 1 ? 'question' : 'questions';
-    return count > 0 ? { count, unit } : { count, unit, disabledReason: 'These questions are blank' };
+    const unit = assistMessages().unitQuestions(count);
+    return count > 0 ? { count, unit } : { count, unit, disabledReason: assistMessages().questionsBlank };
   },
 
   sendsLine(ctx, providerLabel) {
     const count = qualityQuestions(ctx.worksheet, ctx.scope).filter((q) => !questionEmpty(q)).length;
-    return `Sends ${plural(count, 'question')} to ${providerLabel} with your key. Changes nothing.`;
+    return assistMessages().sendsQuestions(count, providerLabel);
   },
 
   async run(ctx, io): Promise<VerbOutcome> {
@@ -63,7 +63,7 @@ export const qualityVerb: AiVerb = {
     if (!resolved.ok) return { kind: 'error', error: depsError(resolved, isDesktop()) };
     const { client, preset, model } = resolved.deps;
     const outcome = await runQuality(questions, { client, preset, model }, io.signal, ({ done, total }) =>
-      io.progress(done, total, `Checking ${plural(total, 'question')}`),
+      io.progress(done, total, assistMessages().checkingQuestions(total)),
     );
     // A run that stopped before anything came back is the error, not an empty review.
     if (outcome.fatal && outcome.reviewed === 0) return { kind: 'error', error: outcome.fatal };
@@ -72,8 +72,8 @@ export const qualityVerb: AiVerb = {
       return {
         kind: 'nothing',
         summary: whole
-          ? `No problems found in ${plural(outcome.total, 'question')}`
-          : `No problems found in the ${outcome.reviewed} of ${plural(outcome.total, 'question')} checked`,
+          ? assistMessages().noProblems(outcome.total)
+          : assistMessages().noProblemsPartial(outcome.reviewed, outcome.total),
       };
     }
     return { kind: 'findings', summary: qualitySummary(outcome), items: outcome.findings.map(reviewItem) };

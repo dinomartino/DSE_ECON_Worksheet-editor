@@ -10,10 +10,12 @@ import type { VerbContext, VerbInput } from '@/assist/types';
 import { Button } from '@/components/ui';
 import { ChevronDownIcon, ChevronRightIcon, SparkleIcon } from '@/components/ui/icons';
 import { useModalLayer } from '@/components/ui/modalLayer';
+import { useMessages } from '@/i18n/language';
 import { useAiStatus } from '@/settings/aiSettings';
 import { useAppDialogs } from '@/store/appDialogs';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { countLabel, highlighted, menuGroups, stepFor, stepHighlight, type MenuGroup, type MenuStep } from './aiMenuModel';
+import { AI_UI_MESSAGES } from './messages';
 import { ProviderFooter } from './ProviderFooter';
 import { SetupCard } from './SetupCard';
 
@@ -44,6 +46,7 @@ function place(anchor: AiMenuOpen['anchor'], box: { width: number; height: numbe
 
 export function AiMenuPopover({ open }: { open: AiMenuOpen }) {
   useModalLayer();
+  const m = useMessages(AI_UI_MESSAGES);
   const ref = useRef<HTMLDivElement>(null);
   const close = useAiMenu((s) => s.close);
   const worksheet = useWorksheetStore((s) => s.worksheet);
@@ -136,8 +139,8 @@ export function AiMenuPopover({ open }: { open: AiMenuOpen }) {
             autoFocus
             type="text"
             value={query}
-            placeholder="Search AI actions…"
-            aria-label="Search AI actions"
+            placeholder={m.searchPlaceholder}
+            aria-label={m.searchLabel}
             onChange={(event) => {
               setQuery(event.target.value);
               setActive(undefined);
@@ -179,7 +182,7 @@ export function AiMenuPopover({ open }: { open: AiMenuOpen }) {
     <div
       ref={ref}
       role="dialog"
-      aria-label="AI tools"
+      aria-label={m.aiTools}
       data-print-hide
       className="fixed z-[70] flex max-h-[min(34rem,calc(100vh-1rem))] animate-pop-in flex-col overflow-hidden rounded-xl border border-line bg-surface-raised text-ink shadow-2xl"
       style={{ width: AI_MENU_WIDTH, left: pos?.x ?? 0, top: pos?.y ?? 0, visibility: pos ? 'visible' : 'hidden' }}
@@ -206,15 +209,16 @@ function VerbList({
   onHover(id: string): void;
   onChoose(id: string): void;
 }) {
+  const m = useMessages(AI_UI_MESSAGES);
   if (groups.length === 0) {
     return (
       <p className="px-3 py-4 text-[13px] text-ink-muted">
-        {query.trim() ? `No AI action matches “${query.trim()}”` : 'Nothing to do for this selection'}
+        {query.trim() ? m.noMatch(query.trim()) : m.nothingToDo}
       </p>
     );
   }
   return (
-    <div role="menu" aria-label="AI actions" className="scroll-slim min-h-0 flex-1 overflow-y-auto p-1">
+    <div role="menu" aria-label={m.aiActions} className="scroll-slim min-h-0 flex-1 overflow-y-auto p-1">
       {groups.map((group, index) => (
         <div key={group.group} className={index > 0 ? 'mt-1 border-t border-line pt-1' : ''}>
           <div className="px-2.5 pb-0.5 pt-1.5 text-[11px] font-medium text-ink-subtle">{group.heading}</div>
@@ -241,7 +245,7 @@ function VerbList({
                 <span className="flex items-center gap-2">
                   <span className="min-w-0 flex-1 truncate">{label}</span>
                   {!verb.needsKey && (
-                    <span className="shrink-0 rounded bg-ok-soft px-1 text-[10px] font-medium text-ok">free</span>
+                    <span className="shrink-0 rounded bg-ok-soft px-1 text-[10px] font-medium text-ok">{m.free}</span>
                   )}
                   {count && <span className="shrink-0 text-[11px] tabular-nums text-ink-subtle">{count}</span>}
                   {verb.input && <ChevronRightIcon size={13} className="text-ink-subtle" />}
@@ -258,6 +262,7 @@ function VerbList({
 
 /** "Whole paper ▾": the scopes this opening allows. A single choice is a plain label. */
 function ScopeChip({ label, choices, onChoose }: { label: string; choices: ScopeChoice[]; onChoose(c: ScopeChoice): void }) {
+  const m = useMessages(AI_UI_MESSAGES);
   const [open, setOpen] = useState(false);
   const chip = 'flex h-7 shrink-0 items-center gap-1 rounded-md px-2 text-[12px] font-medium text-ink-muted';
   if (choices.length <= 1) return <span className={chip}>{label}</span>;
@@ -267,7 +272,7 @@ function ScopeChip({ label, choices, onChoose }: { label: string; choices: Scope
         type="button"
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={`Scope: ${label}`}
+        aria-label={m.scope(label)}
         onClick={() => setOpen((o) => !o)}
         className={`${chip} cursor-pointer bg-surface-hover transition-colors duration-100 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`}
       >
@@ -315,6 +320,7 @@ export function InputStep({
   onBack(): void;
   onGenerate(text: string): void;
 }) {
+  const m = useMessages(AI_UI_MESSAGES);
   const chars = value.trim().length;
   const short = chars < input.minChars;
   return (
@@ -336,14 +342,14 @@ export function InputStep({
       </label>
       <div className="flex items-center gap-2">
         <span className={`flex-1 text-[11px] tabular-nums ${short && chars > 0 ? 'text-warn-ink' : 'text-ink-subtle'}`}>
-          {chars} {chars === 1 ? 'character' : 'characters'}
-          {short ? ` · at least ${input.minChars}` : ''}
+          {m.characters(chars)}
+          {short ? m.atLeast(input.minChars) : ''}
         </span>
         <Button size="sm" variant="subtle" onClick={onBack}>
-          Back
+          {m.back}
         </Button>
         <Button size="sm" variant="primary" disabled={short} onClick={() => onGenerate(value)}>
-          Generate
+          {m.generate}
         </Button>
       </div>
     </div>

@@ -5,6 +5,8 @@ import { sameRuns, type Side, type SlotKind } from '@/model/textSlots';
 import type { BiText, LanguageMode, RichText } from '@/model/types';
 import type { createRunDeps } from '@/translate/deps';
 import type { translateOne } from '@/translate/run';
+import { localizedErrorMessage } from '@/components/ai/errorCopy';
+import { COPY_EN, copyMessages } from './text';
 import type { Direction, JobResult, RunDepsResult } from '@/translate/types';
 
 /**
@@ -22,9 +24,9 @@ export interface FieldTranslate {
   fallsBack?: boolean;
 }
 
-export const SETUP_TRANSLATION = 'Set up translation…';
-export const SETUP_IN_SETTINGS_TITLE = 'Set up translation in Settings (⋯ → Settings…)';
-export const fillLabel = (side: Side): string => (side === 'zh' ? 'Fill 中文' : 'Fill English');
+export const SETUP_TRANSLATION = COPY_EN.setupTranslation;
+export const SETUP_IN_SETTINGS_TITLE = COPY_EN.setupInSettingsTitle;
+export const fillLabel = (side: Side): string => (side === 'zh' ? copyMessages().fillZh : copyMessages().fillEn);
 
 export type FillButton =
   | { show: false }
@@ -51,9 +53,9 @@ export function fillButton(input: {
   if (!translate || needs === null || input.readOnly || input.language !== 'bilingual') return { show: false };
   if (input.configured) return { show: true, side: needs, action: 'fill', label: fillLabel(needs) };
   if (input.modalOpen) {
-    return { show: true, side: needs, action: 'blocked', label: fillLabel(needs), title: SETUP_IN_SETTINGS_TITLE };
+    return { show: true, side: needs, action: 'blocked', label: fillLabel(needs), title: copyMessages().setupInSettingsTitle };
   }
-  return { show: true, side: needs, action: 'setup', label: SETUP_TRANSLATION };
+  return { show: true, side: needs, action: 'setup', label: copyMessages().setupTranslation };
 }
 
 export const directionFor = (side: Side): Direction => (side === 'zh' ? 'toZh' : 'toEn');
@@ -85,10 +87,8 @@ export type FieldFillOutcome =
   /** `switchTo`: the providers a region error offers (`[Use DeepSeek]`). */
   | { kind: 'failed'; message: string; switchTo: ProviderId[] };
 
-export const FILL_STALE = 'Not filled. This text changed while translating.';
-export const INSERT_ANYWAY = 'Insert anyway';
-const FILL_FAILED = 'Couldn’t translate this text safely.';
-const NEEDS_LOOK = 'Not filled. Check this translation first.';
+export const FILL_STALE = COPY_EN.fillStale;
+export const INSERT_ANYWAY = COPY_EN.insertAnyway;
 /** The two providers that serve Hong Kong (§A.5 region), by their button names. */
 const SWITCH_TARGETS: Partial<Record<ProviderId, string>> = { deepseek: 'DeepSeek', qwen: 'Qwen' };
 
@@ -121,7 +121,7 @@ export async function runFieldFill(
     if (!canApplyFill(now, sent, side)) return { kind: 'stale' };
     const value = { ...now, [side]: result.runs };
     const caveat = result.status === 'flagged' ? caveatOf(result) : undefined;
-    if (caveat) return { kind: 'filled', value, note: `Filled · check: ${caveat}`, tone: 'warn' };
+    if (caveat) return { kind: 'filled', value, note: copyMessages().filledCheck(caveat), tone: 'warn' };
     return { kind: 'filled', value, note: filledNote(result), tone: 'ok' };
   } catch (cause) {
     if (signal.aborted) return { kind: 'cancelled' };
@@ -132,22 +132,22 @@ export async function runFieldFill(
 function failed(info: AiErrorInfo | undefined, current?: ProviderId): FieldFillOutcome {
   const from = info?.provider ?? current;
   const switchTo = info?.actions.includes('switchProvider') ? (Object.keys(SWITCH_TARGETS) as ProviderId[]).filter((p) => p !== from) : [];
-  return { kind: 'failed', message: info?.message ?? FILL_FAILED, switchTo };
+  return { kind: 'failed', message: info ? localizedErrorMessage(info) : copyMessages().fillFailed, switchTo };
 }
 
 /** Only a deterministic glossary fix is credited to the EDB (never a repair or a
  *  Simplified→Traditional conversion). */
 function filledNote(result: JobResult): string {
   const fix = result.fixes.find((f) => f.how === 'autoFix');
-  if (!fix) return 'Filled';
+  if (!fix) return copyMessages().filled;
   const term = result.terms.find((t) => t.expected.split('/').includes(fix.to));
-  return `Filled · ${term?.en ?? fix.from} → ${fix.to} (EDB)`;
+  return copyMessages().filledFix(term?.en ?? fix.from, fix.to);
 }
 
 const termLine = (t: TermCheck): string =>
   t.conflict
-    ? `${t.conflict.form} means “${t.conflict.meansEn}” (${t.en}, EDB: ${t.expected})`
-    : `${t.en} (EDB: ${t.expected})`;
+    ? copyMessages().conflictLine(t.conflict.form, t.conflict.meansEn, t.en, t.expected)
+    : copyMessages().termChip(t.en, t.expected);
 
 /** The first thing the review would chip, most severe first. */
 function caveatOf(result: JobResult): string | undefined {
@@ -163,7 +163,7 @@ function caveatOf(result: JobResult): string | undefined {
 
 function lookNote(result: JobResult): string {
   const caveat = caveatOf(result);
-  return caveat ? `Not filled: ${caveat}` : NEEDS_LOOK;
+  return caveat ? copyMessages().notFilled(caveat) : copyMessages().needsLook;
 }
 
 /** After a run finds no usable provider: deep-link with the reason, or, over a modal
@@ -173,13 +173,13 @@ export function afterNoProvider(
   modalOpen: boolean,
 ): { open: { provider: ProviderId; reason: string } } | { line: string } {
   if (!modalOpen) return { open: { provider: outcome.provider, reason: outcome.reason } };
-  return { line: outcome.reason === 'secretError' && outcome.error ? outcome.error.message : SETUP_IN_SETTINGS_TITLE };
+  return { line: outcome.reason === 'secretError' && outcome.error ? outcome.error.message : copyMessages().setupInSettingsTitle };
 }
 
 /** A switch button of the region error: switch now when that provider's key is saved,
  *  otherwise deep-link to it — never over a modal. */
 export function switchButton(provider: ProviderId, keySaved: boolean, modalOpen: boolean) {
   const action: 'switch' | 'setup' | 'blocked' = keySaved ? 'switch' : modalOpen ? 'blocked' : 'setup';
-  const label = `Use ${SWITCH_TARGETS[provider] ?? provider}`;
-  return { provider, label, action, title: action === 'blocked' ? SETUP_IN_SETTINGS_TITLE : undefined };
+  const label = copyMessages().useProvider(SWITCH_TARGETS[provider] ?? provider);
+  return { provider, label, action, title: action === 'blocked' ? copyMessages().setupInSettingsTitle : undefined };
 }
