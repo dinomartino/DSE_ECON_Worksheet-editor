@@ -4,6 +4,8 @@ import { ZONES, zonesOf } from '@/model/bands';
 import { plain } from '@/model/text';
 import type { Band, BandField } from '@/model/types';
 import { bandFieldText } from '@/render/worksheet';
+import { useMessages } from '@/i18n/language';
+import { BAND_PREVIEW_MESSAGES } from './BandPreview.messages';
 
 /**
  * A miniature of a band list, for choosing between layouts.
@@ -53,10 +55,11 @@ export function BandPreview({
   emptyLabel?: string;
   page?: { number: number; count: number };
 }) {
+  const m = useMessages(BAND_PREVIEW_MESSAGES);
   if (bands.length === 0) {
     return (
       <div className="flex min-h-[38px] items-center justify-center rounded border border-dashed border-line px-2 py-2">
-        <span className="text-[10px] italic text-ink-subtle">{emptyLabel ?? 'Nothing'}</span>
+        <span className="text-[10px] italic text-ink-subtle">{emptyLabel ?? m.nothing}</span>
       </div>
     );
   }

@@ -4,6 +4,8 @@ import { emptyBiText, isBiTextEmpty } from '@/model/text';
 import type { BiText, CaptionPlacement } from '@/model/types';
 import { Segmented } from '@/components/ui';
 import { BiTextField } from './BiTextField';
+import { useMessages } from '@/i18n/language';
+import { CAPTION_MESSAGES } from './CaptionField.messages';
 
 /**
  * A block's caption, plus which side of the block it prints on.
@@ -39,11 +41,12 @@ export function CaptionField({
   onChange: (patch: { caption?: BiText; captionPlacement?: CaptionPlacement }) => void;
   noun: string;
 }) {
+  const m = useMessages(CAPTION_MESSAGES);
   return (
     <div data-edit-target={targetKey} className={`-mx-1.5 rounded-md px-1.5 ${className}`}>
       <BiTextField
         translate={{ kind: 'caption' }}
-        label="Caption"
+        label={m.caption}
         value={value ?? emptyBiText()}
         onChange={(caption) =>
           /*
@@ -64,13 +67,13 @@ export function CaptionField({
       />
       {!isBiTextEmpty(value) && (
         <div className="flex items-center gap-2">
-          <span className="text-[11px] text-ink-subtle">Caption sits</span>
+          <span className="text-[11px] text-ink-subtle">{m.sits}</span>
           <Segmented<CaptionPlacement>
-            label="Caption placement"
+            label={m.placement}
             value={placement ?? 'below'}
             options={[
-              { value: 'above', label: 'Above', title: `Print the caption above the ${noun}` },
-              { value: 'below', label: 'Below', title: `Print the caption below the ${noun}` },
+              { value: 'above', label: m.above, title: m.printAbove(noun) },
+              { value: 'below', label: m.below, title: m.printBelow(noun) },
             ]}
             onChange={(captionPlacement) =>
               onChange({ caption: value ?? emptyBiText(), captionPlacement })
