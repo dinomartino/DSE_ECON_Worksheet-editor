@@ -10,15 +10,15 @@ export const BANK_SCREEN_MESSAGES = defineMessages({
   bulkReplace: { en: 'Replace', zh: '取代' },
   bulkAddDesc: {
     en: 'Adds the topics you tick. Topics already on a question stay.',
-    zh: '新增你勾選的課題。題目已有的課題會保留。',
+    zh: '新增你剔選的課題。題目已有的課題會保留。',
   },
   bulkRemoveDesc: {
     en: 'Takes the topics you tick off. Other topics stay. A ticked sub-topic can stay and lose only its 題型.',
-    zh: '移除你勾選的課題，其他課題會保留。已勾選的子課題可保留，只移除其題型。',
+    zh: '移除你剔選的課題，其他課題會保留。已剔選的子課題可保留，只移除其題型。',
   },
   bulkReplaceDesc: {
     en: 'Each question gets exactly the topics you tick. Tick none to clear them.',
-    zh: '每條題目只會有你勾選的課題。不勾選任何課題即可清除。',
+    zh: '每條題目只會有你剔選的課題。不剔選任何課題即可清除。',
   },
   bulkAddConfirm: { en: 'Add topics', zh: '新增課題' },
   bulkRemoveConfirm: { en: 'Remove', zh: '移除' },
@@ -73,13 +73,13 @@ export const BANK_SCREEN_MESSAGES = defineMessages({
   tagTitle: { en: 'Topics for this question', zh: '這條題目的課題' },
   tagDescOne: {
     en: 'Tick every topic it tests. Saving moves on to the next question.',
-    zh: '勾選它考核的所有課題。儲存後會前往下一條題目。',
+    zh: '剔選它考核的所有課題。儲存後會前往下一條題目。',
   },
   tagDescWhole: {
     en: 'Tick every topic it tests. They go on every part.',
-    zh: '勾選它考核的所有課題。課題會套用到每個分題。',
+    zh: '剔選它考核的所有課題。課題會套用到每個分題。',
   },
-  tagDescPart: { en: (name: string) => `Tick every topic ${name} tests.`, zh: (name: string) => `勾選${name}考核的所有課題。` },
+  tagDescPart: { en: (name: string) => `Tick every topic ${name} tests.`, zh: (name: string) => `剔選${name}考核的所有課題。` },
   done: { en: 'Done', zh: '完成' },
   saveNext: { en: 'Save and next', zh: '儲存並下一條' },
   tagSaved: {

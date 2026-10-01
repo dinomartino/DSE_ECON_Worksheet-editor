@@ -56,7 +56,10 @@ export interface QuestionRef {
 export interface HealthFinding {
   id: HealthFindingId;
   severity: Exclude<HealthSeverity, 'ok'>;
+  /** English; the panel words the same finding in the interface language from `id` + `args`. */
   message: string;
+  /** The numbers the sentence is built from: a count `n`, or the facts of one finding. */
+  args?: Record<string, number | boolean | string>;
   questions?: QuestionRef[];
   /** The answer letter a balance or run finding is about. */
   letter?: string;
@@ -157,7 +160,13 @@ export function checkPaper(
     message: (count: number) => string,
   ) => {
     if (matching.length === 0) return;
-    findings.push({ id, severity, message: message(matching.length), questions: matching.map((e) => e.ref) });
+    findings.push({
+      id,
+      severity,
+      message: message(matching.length),
+      args: { n: matching.length },
+      questions: matching.map((e) => e.ref),
+    });
   };
 
   const live = entries.filter((e) => !e.facts.empty);
@@ -190,6 +199,7 @@ export function checkPaper(
         id: 'untranslated',
         severity: 'warn',
         message: `${plural(untranslated, 'string is', 'strings are')} written in one language only.`,
+        args: { n: untranslated },
         ...refsFor(gaps.flatMap((slot) => (slot.questionId === undefined ? [] : [slot.questionId]))),
       });
     }
@@ -198,6 +208,7 @@ export function checkPaper(
         id: 'terminology',
         severity: 'warn',
         message: `${plural(mode.terms.warn, 'term differs', 'terms differ')} from the EDB glossary.`,
+        args: { n: mode.terms.warn },
         ...refsFor(mode.terms.questionIds),
       });
     }
@@ -219,6 +230,7 @@ export function checkPaper(
         id: 'timeMismatch',
         severity: 'note',
         message: `The estimate (~${minutes} min) is ${minutes > statedMinutes ? 'longer' : 'shorter'} than the ${statedMinutes} min allowed.`,
+        args: { minutes, stated: statedMinutes, longer: minutes > statedMinutes },
       });
     }
   }
@@ -299,6 +311,7 @@ function balanceFindings(choice: Entry[], balance: LetterBalance): HealthFinding
         id: 'letterBalance',
         severity: 'warn',
         letter,
+        args: { count, n, share, fairShare, only: false },
         message: `${letter} is the answer to ${count} of ${n} MCQs (${share}); a fair key gives each letter about ${fairShare}.`,
         questions: keyed.filter((e) => e.facts.answerLetter === letter).map((e) => e.ref),
       });
@@ -307,6 +320,7 @@ function balanceFindings(choice: Entry[], balance: LetterBalance): HealthFinding
         id: 'letterBalance',
         severity: 'warn',
         letter,
+        args: { count, n, share, fairShare, only: true },
         message: `${letter} is the answer to only ${count} of ${n} MCQs (${share}); a fair key gives each letter about ${fairShare}.`,
       });
     }
@@ -325,6 +339,7 @@ function runFindings(entries: Entry[]): HealthFinding[] {
         severity: 'warn',
         letter: run[0].facts.answerLetter!,
         message: `${run.length} questions in a row have answer ${run[0].facts.answerLetter}.`,
+        args: { n: run.length },
         questions: run.map((e) => e.ref),
       });
     }

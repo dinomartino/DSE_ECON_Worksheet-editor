@@ -153,7 +153,7 @@ function formatOptions(
   return [
     {
       value: 'docx',
-      label: '.docx',
+      label: '.docx', // i18n-ignore: file format and service names
       title: m.docxTitle,
       hint: m.docxHint,
     },
@@ -172,7 +172,7 @@ function formatOptions(
         },
     {
       value: 'json',
-      label: '.json',
+      label: '.json', // i18n-ignore: file format and service names
       title: m.jsonTitle,
       hint: m.jsonHint,
     },
@@ -188,10 +188,10 @@ async function pdfFileName(worksheet: Worksheet, mode: OutputMode): Promise<stri
 const appOptions = (
   m: Messages<typeof EXPORT_MESSAGES>,
 ): Array<{ value: AppFormat; label: string; title: string; hint: string }> => [
-  { value: 'zipgrade', label: 'ZipGrade', title: m.zipgradeTitle, hint: m.zipgradeHint },
-  { value: 'keyCsv', label: 'Key CSV', title: m.keyCsvTitle, hint: m.keyCsvHint },
-  { value: 'kahoot', label: 'Kahoot', title: m.kahootTitle, hint: m.kahootHint },
-  { value: 'blooket', label: 'Blooket', title: m.blooketTitle, hint: m.blooketHint },
+  { value: 'zipgrade', label: 'ZipGrade', title: m.zipgradeTitle, hint: m.zipgradeHint }, // i18n-ignore: file format and service names
+  { value: 'keyCsv', label: 'Key CSV', title: m.keyCsvTitle, hint: m.keyCsvHint }, // i18n-ignore: file format and service names
+  { value: 'kahoot', label: 'Kahoot', title: m.kahootTitle, hint: m.kahootHint }, // i18n-ignore: file format and service names
+  { value: 'blooket', label: 'Blooket', title: m.blooketTitle, hint: m.blooketHint }, // i18n-ignore: file format and service names
 ];
 
 /** Warnings shown before the cut: the rest is a count. */

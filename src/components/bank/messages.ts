@@ -161,7 +161,7 @@ export const BANK_REVIEW_MESSAGES = defineMessages({
 });
 
 export const PATTERN_PICKER_MESSAGES = defineMessages({
-  noPattern: { en: 'No 題型', zh: '無題型' },
+  noPattern: { en: 'No 題型', zh: '未有題型' },
   clearedOnSave: { en: '· cleared on save', zh: '· 儲存時清除' },
   keep: {
     en: (kind: string, topic: string) => `Keep the ${kind} 題型 under ${topic}`,

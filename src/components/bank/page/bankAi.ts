@@ -16,6 +16,7 @@ import {
 import { genericError, NOTHING_TO_FILL } from '@/assist/fillRules';
 import { TERMS_MATCH } from '@/assist/termRules';
 import * as copy from '@/components/translate/copy';
+import { copyMessages } from '@/components/translate/text';
 import type { Glossary } from '@/glossary/types';
 import { restoreCopies, type CopyRecord, type CopyRef, type CopySkip } from '@/library/sameCopies';
 import { rootIdOf } from '@/model/lineage';
@@ -171,7 +172,7 @@ export function createBankAi(deps: BankRunDeps): UseBoundStore<StoreApi<BankAiSt
       }
       if (saved > 0) hooks?.onWritten();
       if (skipped.length > 0) hooks?.onSkipped(skipped, saved);
-      showFindings(terms > 0 ? copy.replacedTermsFlash(terms) : copy.NOTHING_REPLACED, index);
+      showFindings(terms > 0 ? copy.replacedTermsFlash(terms) : copyMessages().nothingReplaced, index);
     };
 
     return {

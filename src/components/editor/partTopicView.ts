@@ -1,4 +1,5 @@
 import { isPatternTag, patternsIn, tagText } from '@/model/patterns';
+import type { TopicNames } from '@/model/topics';
 import { derivedTags, effectiveSlotTags, isTopicalTag, slotAtTarget, type SlotState, type TagState } from '@/model/tagSlots';
 import type { TagSlotInfo } from '@/registry/types';
 
@@ -92,8 +93,8 @@ export function partsDiffer(state: TagState): boolean {
 }
 
 /** "Law of demand · Price elasticity of demand · Price ceiling": names, a 題型 by its name. */
-export function topicNames(tags: readonly string[]): string {
-  return tags.map((tag) => tagText(tag)).join(' · ');
+export function topicNames(tags: readonly string[], names: TopicNames = 'en'): string {
+  return tags.map((tag) => tagText(tag, names)).join(' · ');
 }
 
 /** The free and system tags the question itself holds (never a part's). */
@@ -105,18 +106,22 @@ export const questionFreeTags = (state: TagState): string[] => state.tags.filter
  * (b) Market failure"), so a cut-off line still says it is by part. The tooltip lists
  * every part, the ones with no topic too.
  */
-export function outlineTagLine(state: TagState): { text: string; title: string; byPart: boolean } | undefined {
+export function outlineTagLine(
+  state: TagState,
+  names: TopicNames = 'en',
+  words: { noTopic: string; tags: string } = { noTopic: 'No topic yet', tags: 'Tags:' },
+): { text: string; title: string; byPart: boolean } | undefined {
   const lines = partTopicLines(state);
   const free = questionFreeTags(state);
   const byPart = partsDiffer(state);
   const named = lines.filter((line) => line.tags.length > 0);
   if (named.length === 0 && free.length === 0) return undefined;
   const text = byPart
-    ? [...named.map((line) => `${line.fullLabel} ${topicNames(line.tags)}`), ...(free.length ? [topicNames(free)] : [])].join(' ')
-    : topicNames(derivedTags(state));
+    ? [...named.map((line) => `${line.fullLabel} ${topicNames(line.tags, names)}`), ...(free.length ? [topicNames(free, names)] : [])].join(' ')
+    : topicNames(derivedTags(state), names);
   const title = [
-    ...lines.map((line) => `${line.fullLabel} ${line.tags.length ? topicNames(line.tags) : 'No topic yet'}`),
-    ...(free.length ? [`Tags: ${free.join(', ')}`] : []),
+    ...lines.map((line) => `${line.fullLabel} ${line.tags.length ? topicNames(line.tags, names) : words.noTopic}`),
+    ...(free.length ? [`${words.tags} ${free.join(', ')}`] : []),
   ].join('\n');
   return { text, title, byPart };
 }

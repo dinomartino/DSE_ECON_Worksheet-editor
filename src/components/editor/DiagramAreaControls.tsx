@@ -578,9 +578,9 @@ export function ShadeMenu({
 }
 
 const PLACEMENTS: Array<{ value: DiagramAreaLabelPlacement; label: AreaKey; title: AreaKey }> = [
-  { value: 'auto', label: 'placeAuto', title: 'placeAutoHint' },
-  { value: 'inside', label: 'placeInside', title: 'placeInsideHint' },
-  { value: 'leader', label: 'placeLeader', title: 'placeLeaderHint' },
+  { value: 'auto', label: 'placeAuto', title: 'placeAutoHint' }, // i18n-ignore: catalogue key
+  { value: 'inside', label: 'placeInside', title: 'placeInsideHint' }, // i18n-ignore: catalogue key
+  { value: 'leader', label: 'placeLeader', title: 'placeLeaderHint' }, // i18n-ignore: catalogue key
 ];
 
 /**
@@ -642,8 +642,8 @@ const PATTERNS: Array<{ value: DiagramAreaPattern; name: AreaKey }> = [
 ];
 
 const DENSITIES: Array<{ value: DiagramAreaDensity; label: AreaKey; title: AreaKey }> = [
-  { value: 'normal', label: 'densityNormal', title: 'densityNormalHint' },
-  { value: 'dense', label: 'densityDense', title: 'densityDenseHint' },
+  { value: 'normal', label: 'densityNormal', title: 'densityNormalHint' }, // i18n-ignore: catalogue key
+  { value: 'dense', label: 'densityDense', title: 'densityDenseHint' }, // i18n-ignore: catalogue key
 ];
 
 const SWATCH = 22;
@@ -931,10 +931,10 @@ function FreezeButton({
 
 type Direction = 'left' | 'right' | 'up' | 'down';
 const DIRECTIONS: Array<{ value: Direction; label: string; title: AreaKey }> = [
-  { value: 'left', label: '←', title: 'shiftLeft' },
-  { value: 'right', label: '→', title: 'shiftRight' },
-  { value: 'up', label: '↑', title: 'shiftUp' },
-  { value: 'down', label: '↓', title: 'shiftDown' },
+  { value: 'left', label: '←', title: 'shiftLeft' }, // i18n-ignore: catalogue key
+  { value: 'right', label: '→', title: 'shiftRight' }, // i18n-ignore: catalogue key
+  { value: 'up', label: '↑', title: 'shiftUp' }, // i18n-ignore: catalogue key
+  { value: 'down', label: '↓', title: 'shiftDown' }, // i18n-ignore: catalogue key
 ];
 
 /**

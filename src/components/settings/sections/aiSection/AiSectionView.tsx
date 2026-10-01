@@ -658,7 +658,7 @@ function BaseUrlField({ state, settings, actions }: AiSectionViewProps) {
         <span className="text-xs font-medium text-ink">{m.serverAddress}</span>
         <input
           aria-label={m.serverAddress}
-          placeholder="https://…/v1"
+          placeholder="https://…/v1" // i18n-ignore: URL example
           value={draft}
           spellCheck={false}
           autoCapitalize="off"

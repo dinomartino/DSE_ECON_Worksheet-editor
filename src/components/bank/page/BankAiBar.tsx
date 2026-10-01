@@ -13,9 +13,9 @@ import { BANK_AI_MESSAGES } from './BankAi.messages';
 const NOTHING_DISMISS_MS = 4000;
 
 const CHIP: Record<Exclude<BankItemTone, 'inserted'>, { className: string; label: 'lookChip' | 'failedChip' | 'findingChip' }> = {
-  look: { className: 'bg-warn-soft text-warn-ink', label: 'lookChip' },
-  failed: { className: 'bg-danger-soft text-danger-ink', label: 'failedChip' },
-  finding: { className: 'bg-warn-soft text-warn-ink', label: 'findingChip' },
+  look: { className: 'bg-warn-soft text-warn-ink', label: 'lookChip' }, // i18n-ignore: catalogue key
+  failed: { className: 'bg-danger-soft text-danger-ink', label: 'failedChip' }, // i18n-ignore: catalogue key
+  finding: { className: 'bg-warn-soft text-warn-ink', label: 'findingChip' }, // i18n-ignore: catalogue key
 };
 
 /**

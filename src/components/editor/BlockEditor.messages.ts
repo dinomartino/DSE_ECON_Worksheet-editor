@@ -69,7 +69,7 @@ export const BLOCK_EDITOR_MESSAGES = defineMessages({
   },
   reset: { en: 'Reset', zh: '重設' },
   picture: { en: 'Picture', zh: '圖片' },
-  width: { en: 'Width', zh: '闊度' },
+  width: { en: 'Width', zh: '寬度' },
   removePictureFromCell: { en: 'Remove picture from cell', zh: '移除儲存格內的圖片' },
   addPicture: { en: '+ Picture', zh: '+ 圖片' },
   pictureAlt: { en: 'Picture alt text', zh: '圖片替代文字' },

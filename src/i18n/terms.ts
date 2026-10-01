@@ -12,6 +12,8 @@ export interface KeptTerm {
 }
 
 const unit = (u: string): KeptTerm => ({ term: u, match: new RegExp(`\\d\\s?${u}\\b`) });
+/** Inches: "2 in your list" is a word, so a lowercase word may not follow. */
+const inch: KeptTerm = { term: 'in', match: /\d\s?in\b(?!\s+[a-z])/ };
 /** A key name only beside another key or after "press": "Enter the address" is a verb. */
 const key = (k: string): KeptTerm => ({
   term: k,
@@ -34,7 +36,8 @@ export const KEEP_ENGLISH: readonly KeptTerm[] = [
   // Units and keys
   ...['A4', 'A3'].map((term) => ({ term })),
   { term: 'Letter', match: /\bLetter\b(?= size| paper|\s*\(|,| or )/ },
-  ...['px', 'pt', 'cm', 'in'].map(unit),
+  ...['px', 'pt', 'cm'].map(unit),
+  inch,
   { term: '⌘', match: /⌘/ },
   ...['Shift', 'Esc', 'Enter', 'Tab'].map(key),
   // Diagram symbols
@@ -133,6 +136,14 @@ export const STANDARD_TRANSLATIONS: Readonly<Record<string, string>> = {
   Discard: '捨棄',
   'Try again': '再試一次',
   Loading: '載入中',
+  // Unified across areas at the end.
+  Home: '主頁',
+  Width: '寬度',
+  Section: '部分',
+  'Part header': '分部標題',
+  'Answer space': '答題空間',
+  'Double-click': '按兩下',
+  'Tick (a checkbox)': '剔選',
 };
 
 /**

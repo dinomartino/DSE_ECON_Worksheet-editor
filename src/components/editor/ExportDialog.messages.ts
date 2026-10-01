@@ -119,7 +119,7 @@ export const EXPORT_MESSAGES = defineMessages({
     zh: '取消剔選即可從試卷中略去。',
   },
   cover: { en: 'Cover page', zh: '封面' },
-  answerSpace: { en: 'Answer space', zh: '答題空位' },
+  answerSpace: { en: 'Answer space', zh: '答題空間' },
   downloadsOnly: {
     en: 'Your browser saves to its Downloads folder. To choose a folder each time, turn on “Ask where to save” in the browser’s settings.',
     zh: '你的瀏覽器會儲存到「下載」資料夾。如要每次自行選擇資料夾，請在瀏覽器設定中開啟「儲存前詢問位置」。',

@@ -225,7 +225,10 @@ export function DiagramEditor({ block, onChange }: Props) {
                   DIAGRAM_TEMPLATES.find(
                     (template) => template.id === (diagram.templateId ?? 'blank'),
                   )?.name[side] ?? [],
-                ) || (side === 'zh' ? '空白坐標軸' : 'Blank axes')}{' '}
+                ) || (
+                  // i18n-ignore: named in the editing language
+                  side === 'zh' ? '空白坐標軸' : 'Blank axes'
+                )}{' '}
                 ▾
               </>
             }

@@ -8,7 +8,7 @@ export const SELECTION_TRAY_MESSAGES = defineMessages({
   sortTitle: { en: 'Keep each type in its order', zh: '各類型按順序排列' },
   emptyHint: {
     en: 'Tick a question, or press Space on it, to add it here.',
-    zh: '勾選題目，或在題目上按空白鍵，即可加入這裏。',
+    zh: '剔選題目，或在題目上按空白鍵，即可加入這裏。',
   },
   listLabel: { en: 'Picked questions, in print order', zh: '已選題目（按列印順序）' },
   untitled: { en: 'Untitled question', zh: '未命名題目' },

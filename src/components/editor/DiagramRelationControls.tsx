@@ -38,18 +38,18 @@ import { DIAGRAM_RELATION_MESSAGES, pointTitleText } from './diagramEditing.mess
 type RelationKey = TextKey<typeof DIAGRAM_RELATION_MESSAGES>;
 
 export const SPAN_STYLES: Array<{ value: DiagramSpanStyle; label: RelationKey }> = [
-  { value: 'doubleArrow', label: 'doubleArrow' },
-  { value: 'arrow', label: 'arrow' },
-  { value: 'bracket', label: 'bracket' },
-  { value: 'dimension', label: 'dimension' },
+  { value: 'doubleArrow', label: 'doubleArrow' }, // i18n-ignore: catalogue key
+  { value: 'arrow', label: 'arrow' }, // i18n-ignore: catalogue key
+  { value: 'bracket', label: 'bracket' }, // i18n-ignore: catalogue key
+  { value: 'dimension', label: 'dimension' }, // i18n-ignore: catalogue key
 ];
 
 export type SpanAlong = 'none' | 'x' | 'y';
 
 export const SPAN_ALONG: Array<{ value: SpanAlong; label: RelationKey }> = [
-  { value: 'none', label: 'between' },
-  { value: 'x', label: 'onX' },
-  { value: 'y', label: 'onY' },
+  { value: 'none', label: 'between' }, // i18n-ignore: catalogue key
+  { value: 'x', label: 'onX' }, // i18n-ignore: catalogue key
+  { value: 'y', label: 'onY' }, // i18n-ignore: catalogue key
 ];
 
 /** The span options with their labels in the interface language. */

@@ -20,10 +20,12 @@ a version heading is edited afterwards.
 - **Settings → Language 語言: use Econ Studio in 繁體中文.** Choose English or 繁體中文
   for buttons, menus and dialogs, in the words Hong Kong teachers use (PDF, MCQ and
   Paper 1 stay in English). Worksheets print exactly as you wrote them in either
-  language. Settings and the start screen's panel are translated first; the rest follows.
+  language. The whole interface is translated, What's new included; only error text
+  from an AI service stays in English.
   <!-- zh: **設定 → 語言：以繁體中文使用 Econ Studio。** 按鈕、選單和對話框可選英文或繁體中文，
   用語貼近香港教師慣用的說法（PDF、MCQ 和 Paper 1 保留英文）。不論用哪種語言，
-  工作紙的列印效果都與你所寫的完全一致。設定和開始畫面的面板先行翻譯，其餘陸續跟進。 -->
+  工作紙的列印效果都與你所寫的完全一致。整個介面均已翻譯，包括「最新功能」；只有 AI 服務
+  傳回的錯誤訊息保留英文。 -->
 - **Graphs 圖表庫: draw a graph once and keep it.** Open Graphs from the start screen,
   start from a template or blank axes, and draw on the full page. Graphs save as you work,
   sit in your backups, and copy straight into Word at their printed size, or download as

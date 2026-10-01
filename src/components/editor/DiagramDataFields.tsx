@@ -19,10 +19,10 @@ import { DIAGRAM_PANEL_MESSAGES } from './diagramEditing.messages';
 
 /** The four corner slots, in reading order, with the labels the picker shows. */
 const FORUM_SLOTS: Array<{ value: ForumSlot; label: string; title: TextKey<typeof DIAGRAM_PANEL_MESSAGES> }> = [
-  { value: 'topLeft', label: '◤', title: 'topLeft' },
-  { value: 'topRight', label: '◥', title: 'topRight' },
-  { value: 'bottomLeft', label: '◣', title: 'bottomLeft' },
-  { value: 'bottomRight', label: '◢', title: 'bottomRight' },
+  { value: 'topLeft', label: '◤', title: 'topLeft' }, // i18n-ignore: catalogue key
+  { value: 'topRight', label: '◥', title: 'topRight' }, // i18n-ignore: catalogue key
+  { value: 'bottomLeft', label: '◣', title: 'bottomLeft' }, // i18n-ignore: catalogue key
+  { value: 'bottomRight', label: '◢', title: 'bottomRight' }, // i18n-ignore: catalogue key
 ];
 
 /**

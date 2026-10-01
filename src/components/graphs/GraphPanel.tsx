@@ -49,6 +49,7 @@ export function GraphPanel({ graph, onChange }: { graph: SavedGraph; onChange: (
           onChange={(widthPx) => setBlock({ ...block, ...diagramSize(block.diagram, Math.max(160, widthPx), graph.language) })}
         />
         <span className="text-[11px] tabular-nums text-ink-subtle">
+          {/* i18n-ignore: inch unit */}
           {(block.widthPx / 96).toFixed(1)} × {(block.heightPx / 96).toFixed(1)} in
         </span>
       </div>

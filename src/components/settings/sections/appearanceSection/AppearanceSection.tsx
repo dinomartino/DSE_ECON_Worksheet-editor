@@ -14,9 +14,9 @@ import { APPEARANCE_MESSAGES } from './messages';
 
 type Key = TextKey<typeof APPEARANCE_MESSAGES>;
 const OPTIONS: { value: ThemePreference; label: Key; note: Key }[] = [
-  { value: 'system', label: 'system', note: 'systemNote' },
-  { value: 'light', label: 'light', note: 'lightNote' },
-  { value: 'dark', label: 'dark', note: 'darkNote' },
+  { value: 'system', label: 'system', note: 'systemNote' }, // i18n-ignore: catalogue key
+  { value: 'light', label: 'light', note: 'lightNote' }, // i18n-ignore: catalogue key
+  { value: 'dark', label: 'dark', note: 'darkNote' }, // i18n-ignore: catalogue key
 ];
 
 const SCHEMES = {

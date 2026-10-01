@@ -9,7 +9,7 @@ export const LAYOUT_KIND_MESSAGES = defineMessages({
   divider: { en: 'Divider', zh: '分隔線' },
   pageBreak: { en: 'New page', zh: '新頁面' },
   answerLines: { en: 'Answer lines', zh: '答題線' },
-  answerSpace: { en: 'Answer space', zh: '答題空位' },
+  answerSpace: { en: 'Answer space', zh: '答題空間' },
   partHeader: { en: 'Part header', zh: '分部標題' },
   labelList: { en: 'Label list', zh: '標示列表' },
   questionCount: { en: 'Question count', zh: '題目數量' },

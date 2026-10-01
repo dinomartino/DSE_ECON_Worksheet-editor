@@ -1126,7 +1126,8 @@ function DiagramNodeView({
       style={{ lineHeight: 0 }}
       role="img"
       aria-label={
-        plain(node.altText.en) || plain(node.altText.zh) || "Economics diagram"
+        // i18n-ignore: alt text of the printed diagram
+          plain(node.altText.en) || plain(node.altText.zh) || "Economics diagram"
       }
       dangerouslySetInnerHTML={{ __html: svg }}
     />
@@ -4103,7 +4104,7 @@ function EmptyState({ onAddQuestion, onOpenBank }: { onAddQuestion: (typeId: str
             }`}
           >
             {definition.id === 'mcq' ? <McqIcon size={16} /> : <StructuredIcon size={16} />}
-            {plain(definition.displayName.en)}
+            {plain(zh ? definition.displayName.zh : definition.displayName.en)}
           </button>
         ))}
         {onOpenBank && (
@@ -5841,6 +5842,7 @@ export function Preview({
       structural: true,
       node: (
         <p className="mb-2 text-center font-bold text-red-700">
+          {/* i18n-ignore: prints on the paper */}
           Teacher Version / 教師版
         </p>
       ),
@@ -6129,7 +6131,9 @@ export function Preview({
       // its ghost correctly without this file learning about it (§9).
       return {
         label: number ? m.questionN(number) : m.question,
-        detail: excerpt || plain(requireQuestionType(question).displayName.en),
+        detail:
+            excerpt ||
+            plain(requireQuestionType(question).displayName[uiLanguage() === "zh-HK" ? "zh" : "en"]),
       };
     }
     const element = worksheet.layout.find((e) => e.id === dragId);

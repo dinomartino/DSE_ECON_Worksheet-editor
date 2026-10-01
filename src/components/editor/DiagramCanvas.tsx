@@ -216,12 +216,12 @@ interface CropRect {
 type CanvasKey = TextKey<typeof DIAGRAM_CANVAS_MESSAGES>;
 
 const TOOLS: Array<{ id: Tool; glyph: string; name: CanvasKey; hint: CanvasKey }> = [
-  { id: 'select', glyph: '↖', name: 'toolSelect', hint: 'toolSelectHint' },
-  { id: 'curve', glyph: '╱', name: 'toolCurve', hint: 'toolCurveHint' },
-  { id: 'point', glyph: '•', name: 'toolPoint', hint: 'toolPointHint' },
-  { id: 'label', glyph: 'A', name: 'toolLabel', hint: 'toolLabelHint' },
-  { id: 'arrow', glyph: '→', name: 'toolArrow', hint: 'toolArrowHint' },
-  { id: 'span', glyph: '↔', name: 'toolSpan', hint: 'toolSpanHint' },
+  { id: 'select', glyph: '↖', name: 'toolSelect', hint: 'toolSelectHint' }, // i18n-ignore: catalogue key
+  { id: 'curve', glyph: '╱', name: 'toolCurve', hint: 'toolCurveHint' }, // i18n-ignore: catalogue key
+  { id: 'point', glyph: '•', name: 'toolPoint', hint: 'toolPointHint' }, // i18n-ignore: catalogue key
+  { id: 'label', glyph: 'A', name: 'toolLabel', hint: 'toolLabelHint' }, // i18n-ignore: catalogue key
+  { id: 'arrow', glyph: '→', name: 'toolArrow', hint: 'toolArrowHint' }, // i18n-ignore: catalogue key
+  { id: 'span', glyph: '↔', name: 'toolSpan', hint: 'toolSpanHint' }, // i18n-ignore: catalogue key
 ];
 
 interface Props {

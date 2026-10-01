@@ -23,6 +23,8 @@ export interface Measure {
 export interface TypeCount extends Measure {
   typeId: string;
   label: { en: string; zh: string };
+  /** The acronym teachers say, when the type has one (LQ). */
+  short?: { en: string; zh: string };
 }
 
 export interface PaperSummary {
@@ -121,6 +123,7 @@ export function summarizePaper(worksheet: Worksheet): PaperSummary {
         en: plain(definition.displayName.en),
         zh: plain(definition.displayName.zh),
       },
+      ...(definition.summary?.short ? { short: definition.summary.short } : {}),
       ...measure(actual, wanted),
     });
   }
@@ -134,6 +137,11 @@ export function summarizePaper(worksheet: Worksheet): PaperSummary {
     ),
     minutes: measure(estimateMinutes(worksheet.questions, shape), target?.minutes),
   };
+}
+
+/** A type's label in Chinese chrome: an acronym teachers say in English (MCQ, LQ) stays. */
+export function chromeLabel(label: { en: string; zh: string }, zh: boolean): string {
+  return !zh || /^[A-Z]{2,}$/.test(label.en) ? label.en : label.zh;
 }
 
 export type SummaryPartKind = 'count' | 'marks' | 'minutes' | 'pages';
@@ -153,12 +161,14 @@ export function summaryParts(
   summary: PaperSummary,
   language: LanguageMode,
   pages?: number,
+  /** Chinese chrome keeps MCQ and LQ in English; a paper written in Chinese says 選擇題. */
+  keepAcronyms = false,
 ): SummaryPart[] {
   const zh = language === 'zh';
   const ratio = (m: Measure) => (m.target === undefined ? `${m.actual}` : `${m.actual}/${m.target}`);
   const parts: SummaryPart[] = summary.counts.map((count) => ({
     kind: 'count',
-    text: zh ? `${count.label.zh} ${ratio(count)}` : `${ratio(count)} ${count.label.en}`,
+    text: zh ? `${keepAcronyms ? chromeLabel(count.short ?? count.label, true) : count.label.zh} ${ratio(count)}` : `${ratio(count)} ${count.label.en}`,
     status: count.status,
   }));
   const { marks, minutes } = summary;
@@ -185,10 +195,14 @@ export function summaryParts(
   return parts;
 }
 
-/** The measures that miss their target, split by direction, as English phrases. */
-export function targetMisses(summary: PaperSummary): Record<'over' | 'under', string[]> {
+/** The measures that miss their target, split by direction, as phrases in `language`. */
+export function targetMisses(
+  summary: PaperSummary,
+  language: LanguageMode = 'en',
+  keepAcronyms = false,
+): Record<'over' | 'under', string[]> {
   const misses = { over: [] as string[], under: [] as string[] };
-  for (const part of summaryParts(summary, 'en')) {
+  for (const part of summaryParts(summary, language, undefined, keepAcronyms)) {
     if (part.status === 'over' || part.status === 'under') misses[part.status].push(part.text);
   }
   return misses;

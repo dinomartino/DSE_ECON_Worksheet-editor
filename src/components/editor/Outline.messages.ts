@@ -3,13 +3,15 @@ import { defineMessages } from '@/i18n/catalogue';
 /** The Content tab: the outline's rows, page groups, drag ghost and "Add here" menu. */
 export const OUTLINE_MESSAGES = defineMessages({
   untitled: { en: 'Untitled worksheet', zh: '未命名工作紙' },
+  noTopicYet: { en: 'No topic yet', zh: '尚未有課題' },
+  tagsLabel: { en: 'Tags:', zh: '標籤：' },
   setup: { en: 'Setup', zh: '頁面設定' },
   setupTitle: {
     en: 'Title, paper, margins, header and footer',
     zh: '標題、紙張、邊界、頁首及頁尾',
   },
   empty: { en: 'Empty. Add something below.', zh: '暫無內容，請在下方加入。' },
-  emptyPage: { en: 'Empty page. Drag something here.', zh: '空白頁，請把項目拖到這裡。' },
+  emptyPage: { en: 'Empty page. Drag something here.', zh: '空白頁，請把項目拖到這裏。' },
   dragToReorder: { en: 'Drag to reorder', zh: '拖曳以重新排序' },
   moveUp: { en: 'Move up', zh: '上移' },
   moveDown: { en: 'Move down', zh: '下移' },

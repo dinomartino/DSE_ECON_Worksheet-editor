@@ -2,7 +2,7 @@ import { defineMessages } from '@/i18n/catalogue';
 
 /** Native dialog titles, file-type names, "show in Finder" and where a key is kept (`./text.ts`). */
 export const PLATFORM_MESSAGES = defineMessages({
-  wordDocument: { en: 'Word document', zh: 'Word 文件' },
+  wordDocument: { en: 'Word document', zh: 'Word 檔案' },
   worksheet: { en: 'Worksheet', zh: '工作紙' },
   worksheetBackup: { en: 'Worksheet backup', zh: '工作紙備份' },
   excelWorkbook: { en: 'Excel workbook', zh: 'Excel 活頁簿' },

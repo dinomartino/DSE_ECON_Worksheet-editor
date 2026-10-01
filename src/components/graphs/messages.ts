@@ -11,7 +11,7 @@ export const GRAPH_LIBRARY_MESSAGES = defineMessages({
   duplicateFailed: { en: 'Could not duplicate that graph.', zh: '無法建立該圖表的副本。' },
   renameNewer: {
     en: 'This graph was saved by a newer version of Econ Studio and cannot be renamed here.',
-    zh: '這個圖表由較新版本的 Econ Studio 儲存，無法在這裡重新命名。',
+    zh: '這個圖表由較新版本的 Econ Studio 儲存，無法在這裏重新命名。',
   },
   renameFailed: { en: 'Could not rename that graph.', zh: '無法重新命名該圖表。' },
   deleteFailed: { en: 'Could not delete that graph.', zh: '無法刪除該圖表。' },
@@ -46,7 +46,7 @@ export const GRAPH_LIBRARY_MESSAGES = defineMessages({
   renameTitle: { en: 'Rename graph', zh: '重新命名圖表' },
   renameDescription: {
     en: 'What this graph is called here and what a downloaded image is named. It is never printed.',
-    zh: '這個圖表在這裡的名稱，也是下載圖片的檔名。不會列印出來。',
+    zh: '這個圖表在這裏的名稱，也是下載圖片的檔名。不會列印出來。',
   },
   rename: { en: 'Rename', zh: '重新命名' },
   graphName: { en: 'Graph name', zh: '圖表名稱' },
@@ -62,7 +62,7 @@ export const GRAPH_EDITOR_MESSAGES = defineMessages({
   copied: { en: 'Copied. Paste it into Word at its print size.', zh: '已複製。貼到 Word 時會是列印大小。' },
   copyFailed: {
     en: 'Could not copy the image here. Use Download PNG instead.',
-    zh: '無法在這裡複製圖片。請改用「下載 PNG」。',
+    zh: '無法在這裏複製圖片。請改用「下載 PNG」。',
   },
   savedFile: { en: (name: string) => `Saved ${name}.`, zh: (name: string) => `已儲存 ${name}。` },
   saveImageFailed: { en: 'Could not save the image.', zh: '無法儲存圖片。' },
@@ -82,10 +82,10 @@ export const GRAPH_EDITOR_MESSAGES = defineMessages({
     en: 'Add a copy of this graph to a question in one of your worksheets',
     zh: '把這個圖表的副本加到你某份工作紙的題目中',
   },
-  missing: { en: 'This graph is no longer saved here.', zh: '這個圖表已不在這裡儲存。' },
+  missing: { en: 'This graph is no longer saved here.', zh: '這個圖表已不在這裏儲存。' },
   newerNote: {
     en: 'This graph was saved by a newer version of Econ Studio, so it can be copied and downloaded here but not changed. Update to edit it.',
-    zh: '這個圖表由較新版本的 Econ Studio 儲存，所以在這裡只能複製和下載，不能修改。請更新後再編輯。',
+    zh: '這個圖表由較新版本的 Econ Studio 儲存，所以在這裏只能複製和下載，不能修改。請更新後再編輯。',
   },
   resizeHint: {
     en: 'Drag a bubble’s inner edge on the figure to resize it.',
@@ -96,12 +96,12 @@ export const GRAPH_EDITOR_MESSAGES = defineMessages({
   notSaved: { en: 'Not saved', zh: '未儲存' },
   notSavedDetail: {
     en: 'Your latest changes could not be saved. They are kept here; try again.',
-    zh: '最近的修改無法儲存。修改仍保留在這裡，請再試一次。',
+    zh: '最近的修改無法儲存。修改仍保留在這裏，請再試一次。',
   },
   readOnly: { en: 'Read-only', zh: '唯讀' },
   readOnlyDetail: {
     en: 'Saved by a newer version of Econ Studio, so it cannot be changed here',
-    zh: '由較新版本的 Econ Studio 儲存，無法在這裡修改',
+    zh: '由較新版本的 Econ Studio 儲存，無法在這裏修改',
   },
   saved: { en: 'Saved', zh: '已儲存' },
   savedDetail: { en: 'All changes saved', zh: '所有修改已儲存' },
@@ -115,7 +115,7 @@ export const GRAPH_PANEL_MESSAGES = defineMessages({
   name: { en: 'Name', zh: '名稱' },
   namePlaceholder: { en: 'Graph name', zh: '圖表名稱' },
   nameHint: { en: 'Never printed. Names the file you download.', zh: '不會列印出來，只用作下載檔案的名稱。' },
-  printWidth: { en: 'Print width', zh: '列印闊度' },
+  printWidth: { en: 'Print width', zh: '列印寬度' },
   labels: { en: 'Labels', zh: '標示' },
   labelsLanguage: { en: 'Labels language', zh: '標示語言' },
   langEn: { en: 'Labels in English', zh: '標示用英文' },
@@ -136,14 +136,14 @@ export const GRAPH_PANEL_MESSAGES = defineMessages({
 export const GRAPH_USE_MESSAGES = defineMessages({
   gone: {
     en: (title: string) => `“${title}” is no longer saved here.`,
-    zh: (title: string) => `「${title}」已不在這裡儲存。`,
+    zh: (title: string) => `「${title}」已不在這裏儲存。`,
   },
   newer: {
     en: (title: string) =>
       `“${title}” was saved by a newer version of Econ Studio, so it cannot be changed here. Update to add a graph to it.`,
-    zh: (title: string) => `「${title}」由較新版本的 Econ Studio 儲存，無法在這裡修改。請先更新，才能加入圖表。`,
+    zh: (title: string) => `「${title}」由較新版本的 Econ Studio 儲存，無法在這裏修改。請先更新，才能加入圖表。`,
   },
-  whereTitle: { en: 'Where should the graph go?', zh: '圖表要放在哪裡？' },
+  whereTitle: { en: 'Where should the graph go?', zh: '圖表要放在哪裏？' },
   title: { en: 'Use in a worksheet', zh: '用於工作紙' },
   whereDescription: {
     en: 'A copy is added at the end of the question. Later changes to the saved graph do not change it.',
@@ -173,7 +173,7 @@ export const GRAPH_USE_MESSAGES = defineMessages({
   noSaved: { en: 'No saved graphs yet', zh: '尚未有已儲存的圖表' },
   noSavedHint: {
     en: 'Draw one in Home → Graphs 圖表庫, then pick it here. Or use Save to Graphs on a diagram.',
-    zh: '請在「主頁 → 圖表庫」畫一個，再在這裡選用。或在圖表上使用「儲存到圖表庫」。',
+    zh: '請在「主頁 → 圖表庫」畫一個，再在這裏選用。或在圖表上使用「儲存到圖表庫」。',
   },
   searchMine: { en: 'Search my graphs', zh: '搜尋我的圖表' },
   noMatchGraph: { en: 'No graph is named like that.', zh: '沒有名稱相符的圖表。' },

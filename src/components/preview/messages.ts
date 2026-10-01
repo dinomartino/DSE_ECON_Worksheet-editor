@@ -66,8 +66,8 @@ export const PREVIEW_MESSAGES = defineMessages({
   layoutPageBreak: { en: 'New page', zh: '新頁' },
   layoutAnswerLines: { en: 'Answer lines', zh: '答題線' },
   layoutAnswerSpace: { en: 'Answer space', zh: '答題空間' },
-  layoutPartHeader: { en: 'Part header', zh: '分題標題' },
-  layoutLabelList: { en: 'Label list', zh: '標籤列表' },
+  layoutPartHeader: { en: 'Part header', zh: '分部標題' },
+  layoutLabelList: { en: 'Label list', zh: '標示列表' },
   layoutElement: { en: 'Layout element', zh: '版面元素' },
   movingTogether: { en: 'Moving together', zh: '一併移動' },
   itemCount: { en: (n: number) => `${n} items`, zh: (n: number) => `${n} 項` },
@@ -93,8 +93,8 @@ export const PREVIEW_MESSAGES = defineMessages({
   page1Footer: { en: 'Page 1 footer', zh: '第 1 頁頁尾' },
   headerPages2: { en: 'Header · pages 2+', zh: '頁首 · 第 2 頁起' },
   footerPages2: { en: 'Footer · pages 2+', zh: '頁尾 · 第 2 頁起' },
-  headerEvery: { en: 'Header · every page', zh: '頁首 · 每一頁' },
-  footerEvery: { en: 'Footer · every page', zh: '頁尾 · 每一頁' },
+  headerEvery: { en: 'Header · every page', zh: '頁首 · 所有頁面' },
+  footerEvery: { en: 'Footer · every page', zh: '頁尾 · 所有頁面' },
   gapAdjustTitle: { en: 'Drag to adjust the gap above this question', zh: '拖曳以調整此題目上方的間距' },
   gapAdjustLabel: {
     en: (n: number) => `Drag to adjust the gap above this question (${n} ${n === 1 ? 'line' : 'lines'})`,
@@ -114,7 +114,7 @@ export const PREVIEW_MESSAGES = defineMessages({
   fromBank: { en: 'From 題庫…', zh: '從題庫…' },
   dropHere: { en: 'Drop here to place on this page', zh: '放到此頁' },
   newPage: { en: 'New page', zh: '新頁' },
-  newPageHint: { en: 'Drag a question here, or add one below · 新頁', zh: '把題目拖到這裡，或在下方新增' },
+  newPageHint: { en: 'Drag a question here, or add one below · 新頁', zh: '把題目拖到這裏，或在下方新增' },
   pageEmpty: {
     en: 'This page is empty. It will still appear in the exported document.',
     zh: '此頁是空白的，匯出後仍會保留。',
@@ -179,6 +179,8 @@ export const PREVIEW_MESSAGES = defineMessages({
 
 /** Selection handles and resize grips on the page. */
 export const PREVIEW_HANDLE_MESSAGES = defineMessages({
+  editZhText: { en: 'Edit 中文 text', zh: '編輯中文文字' },
+  editEnText: { en: 'Edit English text', zh: '編輯英文文字' },
   selectImageOpen: { en: 'Select image. Double-click to edit', zh: '選取圖片。按兩下即可編輯' },
   selectImageResize: { en: 'Select image to resize', zh: '選取圖片以調整大小' },
   resizeImageLeft: { en: 'Resize image (left)', zh: '調整圖片大小（左）' },
@@ -190,7 +192,7 @@ export const PREVIEW_HANDLE_MESSAGES = defineMessages({
   unitName: { en: (unit: string) => unit, zh: (unit: string) => (unit === 'line' || unit === 'lines' ? '行' : unit) },
   dragLines: { en: 'Drag to add or remove lines', zh: '拖曳以增減答題線' },
   fillsPage: { en: ' · fills the page', zh: ' · 已填滿頁面' },
-  resizeColumn: { en: (n: number) => `Drag to resize column ${n}`, zh: (n: number) => `拖曳以調整第 ${n} 欄的闊度` },
+  resizeColumn: { en: (n: number) => `Drag to resize column ${n}`, zh: (n: number) => `拖曳以調整第 ${n} 欄的寬度` },
   resizeEdge: {
     en: (side: 'left' | 'right') => `Drag to resize the table's ${side} edge`,
     zh: (side: 'left' | 'right') => `拖曳以調整表格的${side === 'left' ? '左' : '右'}邊緣`,

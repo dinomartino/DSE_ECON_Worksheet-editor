@@ -66,6 +66,10 @@ Example: "Paper 1 mock · MCQ" → "Paper 1 Mock · MCQ"; "Download PNG" → "�
 | Shade | 陰影 | Crop / Zoom / Snap | 裁剪 / 縮放 / 吸附 |
 | Title / Name | 標題 / 名稱 | Alt text | 替代文字 |
 | Question-Answer Book | 試題答題簿 | Untitled | 未命名 |
+| Home | 主頁 | Width | 寬度 |
+| Section | 部分 | Part header | 分部標題 |
+| Answer space | 答題空間 | Double-click | 按兩下 |
+| Tick (a checkbox) | 剔選 | Setup | 頁面設定 |
 | Send feedback | 意見回饋 | What's new | 最新功能 |
 | Open a file… | 開啟檔案… | Folder (desktop) | 資料夾 |
 

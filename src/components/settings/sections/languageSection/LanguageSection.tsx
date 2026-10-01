@@ -11,7 +11,7 @@ import { LANGUAGE_MESSAGES } from './messages';
  */
 
 const OPTIONS: { value: UiLanguage; label: string; sample: string }[] = [
-  { value: 'en', label: 'English', sample: 'New worksheet · Question bank · Export' },
+  { value: 'en', label: 'English', sample: 'New worksheet · Question bank · Export' }, // i18n-ignore: a language is named in itself
   { value: 'zh-HK', label: '繁體中文', sample: '新增工作紙 · 題庫 · 匯出' },
 ];
 

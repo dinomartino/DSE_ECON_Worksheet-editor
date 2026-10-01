@@ -301,13 +301,14 @@ function QuestionRow({
       element.kind === 'section' && element.id !== currentSectionId,
   );
 
+  const topicSide = lang === 'zh-HK' ? 'zh' : 'en';
   const bank = useBankActions(question);
   // The question's one topic set across copies (newest change wins), as the Topic row shows it.
   const tags = stringTags(useShownTags(question));
   // Tagged per part: each part's names after its label when the parts differ; the tooltip goes part by part.
   const shownState = useShownTagState(question);
-  const byPart = shownState && shownState.slots.length > 0 ? outlineTagLine(shownState) : undefined;
-  const tagLine = byPart ?? (tags.length > 0 ? { text: tags.map((tag) => tagText(tag)).join(' · '), title: tagTitle(tags) } : undefined);
+  const byPart = shownState && shownState.slots.length > 0 ? outlineTagLine(shownState, topicSide, { noTopic: m.noTopicYet, tags: m.tagsLabel }) : undefined;
+  const tagLine = byPart ?? (tags.length > 0 ? { text: tags.map((tag) => tagText(tag, topicSide)).join(' · '), title: tagTitle(tags) } : undefined);
 
   const menuItems: MenuItem[] = [
     { label: m.duplicate, onSelect: () => duplicateQuestion(question.id) },

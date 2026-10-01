@@ -29,6 +29,7 @@ import { FileDashboard, type DocumentActions, type FolderActions } from './FileD
 import { readDashboardFolder, writeDashboardFolder } from './dashboard';
 import { START_PANEL_MESSAGES } from './messages';
 import { START_SCREEN_MESSAGES } from './screen.messages';
+import { restoreNotice } from './restoreNotice';
 import {
   DROP_REJECTED_MS,
   droppedKind,
@@ -413,7 +414,7 @@ export function StartScreen({
     setNotice(undefined);
     setBusy('restore');
     try {
-      const { readBackup, restoreBackup, restorePatterns, restoreSummary } = await import('@/storage/backup');
+      const { readBackup, restoreBackup, restorePatterns } = await import('@/storage/backup');
       const { restoreGraphs } = await import('@/storage/graphs');
       const { worksheets, failures, folders: filed, patterns, graphs } = await readBackup(data);
       const report = await restoreBackup(worksheetStore, worksheets, undefined, filed);
@@ -421,7 +422,7 @@ export function StartScreen({
       reloadPatterns();
       const graphReport = graphs.length > 0 ? await restoreGraphs(graphStore, graphs) : undefined;
       setNotice({
-        message: restoreSummary(report, failures.length, graphReport),
+        message: restoreNotice(report, failures.length, graphReport),
         details: [...failures, ...report.failed].map((f) => `${f.name}: ${f.reason}`),
       });
     } catch (cause) {
@@ -573,7 +574,7 @@ export function StartScreen({
   const backupItems: MenuItem[] = [
     {
       label: busy === 'backup' ? t.backingUp : t.backUpAll,
-      hint: '.zip',
+      hint: '.zip', // i18n-ignore: brand and file extension
       icon: <ArchiveIcon />,
       disabled: busy !== undefined,
       onSelect: () => void backUpAll(),
@@ -731,6 +732,7 @@ export function StartScreen({
           <span data-launch-target className="flex shrink-0 text-ink">
             <AppMark size={22} />
           </span>
+          {/* i18n-ignore: brand */}
           <span className="text-[13px] font-semibold text-ink">Econ Studio</span>
           <span lang="zh-HK" className="text-[11px] text-ink-subtle">
             經濟備課室

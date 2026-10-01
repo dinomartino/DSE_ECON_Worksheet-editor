@@ -10,7 +10,7 @@ import {
   type TargetStatus,
 } from '@/model/paperSummary';
 import type { LanguageMode, Worksheet } from '@/model/types';
-import { useMessages } from '@/i18n/language';
+import { useMessages, useUiLanguage } from '@/i18n/language';
 import { PAPER_CHECK_MESSAGES } from './shell.messages';
 
 /** Over a target takes the warning tone; met, the ok tone; under stays quiet. */
@@ -51,9 +51,12 @@ export function PaperSummaryBar({
   onOpen?: () => void;
 }) {
   const m = useMessages(PAPER_CHECK_MESSAGES);
+  // The chip follows the interface in Chinese; in English it follows the editing language, as before.
+  const uiZh = useUiLanguage() === 'zh-HK';
+  const chipLanguage: LanguageMode = uiZh ? 'zh' : language;
   const summary = useMemo(() => summarizePaper(worksheet), [worksheet]);
-  const parts = summaryParts(summary, language, pages);
-  const misses = targetMisses(summary);
+  const parts = summaryParts(summary, chipLanguage, pages, uiZh);
+  const misses = targetMisses(summary, chipLanguage, uiZh);
   const title = [
     parts.map((part) => part.text).join(' · '),
     misses.over.length > 0 ? m.overTarget(misses.over.join(', ')) : '',
