@@ -9,6 +9,7 @@ import { effectiveSlotTags, isTopicalTag, questionTagSlots, slotRef, type SlotSt
 import { topicHeading, topicOf } from '@/model/topics';
 import type { Question } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
+import { CURRENT_ATTR } from './panelTarget';
 import { freeTagMessage, TopicPicker, TopicRow } from './TopicRow';
 import { partTopicLines, questionFreeTags, topicMode, topicNames, topicsWithPatterns, type TopicFocus } from './partTopicView';
 
@@ -51,7 +52,7 @@ export function PartTopics({
     lastMode.current = modeKey;
     if (!modeKey || modeKey === before || focus !== undefined) return;
     const row = rowRef.current;
-    if (row && isOffScreen(row)) row.scrollIntoView({ block: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+    if (row && isOffScreen(row) && !hidesCurrent(row)) row.scrollIntoView({ block: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
   }, [modeKey, focus]);
 
   return (
@@ -126,13 +127,35 @@ export function PartTopics({
 }
 
 /** Whether a row's first line is out of its scrolling panel's view (a sliver counts as out). */
-function isOffScreen(element: HTMLElement): boolean {
+function scrollerOf(element: HTMLElement): HTMLElement | null {
   let scroller = element.parentElement;
   while (scroller && !/(auto|scroll)/.test(getComputedStyle(scroller).overflowY)) scroller = scroller.parentElement;
+  return scroller;
+}
+
+function isOffScreen(element: HTMLElement): boolean {
+  const scroller = scrollerOf(element);
   const box = element.getBoundingClientRect();
   const view = scroller ? scroller.getBoundingClientRect() : { top: 0, bottom: window.innerHeight };
   const LINE = 32;
   return box.top > view.bottom - LINE || box.bottom < view.top + LINE;
+}
+
+/**
+ * Would scrolling `row` into view push the control matching the page's selection
+ * (`data-edit-current`, § panelTarget) out of it? That control is what the click was
+ * about, so it keeps the view; the topic row follows only when both fit.
+ */
+function hidesCurrent(row: HTMLElement): boolean {
+  const scroller = scrollerOf(row);
+  const current = scroller?.querySelector(`[${CURRENT_ATTR}]`);
+  if (!scroller || !current) return false;
+  const view = scroller.getBoundingClientRect();
+  const box = row.getBoundingClientRect();
+  const mark = current.getBoundingClientRect();
+  const shift =
+    box.bottom > view.bottom ? box.bottom - view.bottom : box.top < view.top ? box.top - view.top : 0;
+  return mark.top - shift < view.top || mark.bottom - shift > view.bottom;
 }
 
 const prefersReducedMotion = () =>

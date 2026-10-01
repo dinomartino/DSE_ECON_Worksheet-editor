@@ -120,7 +120,7 @@ function SchemeRow({
   menuLabel: string;
 }) {
   return (
-    <div data-edit-target={targetKey} className="flex items-center gap-1.5 px-1 py-0.5">
+    <div data-edit-target={targetKey} className="flex items-center gap-1.5 rounded-md px-1 py-0.5">
       <button
         type="button"
         aria-expanded={open}

@@ -27,14 +27,20 @@ export function CaptionField({
   onChange,
   /** Names the thing being captioned, for the control's tooltips ("above the table"). */
   noun,
+  targetKey,
+  className,
 }: {
+  /** `blockCaption` key, so the page's caption selection finds this field. */
+  targetKey: string;
+  /** The parent's own `space-y`, kept between the field and the placement row. */
+  className: string;
   value?: BiText;
   placement?: CaptionPlacement;
   onChange: (patch: { caption?: BiText; captionPlacement?: CaptionPlacement }) => void;
   noun: string;
 }) {
   return (
-    <>
+    <div data-edit-target={targetKey} className={`-mx-1.5 rounded-md px-1.5 ${className}`}>
       <BiTextField
         translate={{ kind: 'caption' }}
         label="Caption"
@@ -72,6 +78,6 @@ export function CaptionField({
           />
         </div>
       )}
-    </>
+    </div>
   );
 }

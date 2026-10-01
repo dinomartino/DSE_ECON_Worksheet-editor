@@ -546,6 +546,8 @@ function TableBlockEditor({
           both are real in the reference papers and one paper legitimately uses both,
           which is why this is a per-block choice rather than a document-wide rule. */}
       <CaptionField
+        targetKey={editTargetKey({ kind: 'blockCaption', blockId: block.id })}
+        className="space-y-2.5"
         value={block.caption}
         placement={block.captionPlacement}
         noun="table"
@@ -868,6 +870,8 @@ function ImageBlockEditor({
         rows={1}
       />
       <CaptionField
+        targetKey={editTargetKey({ kind: 'blockCaption', blockId: block.id })}
+        className="space-y-2"
         value={block.caption}
         placement={block.captionPlacement}
         noun="picture"
@@ -1018,21 +1022,27 @@ function FigureRowEditor({
 }) {
   return (
     <div className="space-y-3">
-      {block.figure.kind === 'diagram' ? (
-        <DiagramEditor
-          block={block.figure}
-          onChange={(figure) =>
-            figure.kind === 'diagram' && onChange({ ...block, figure })
-          }
-        />
-      ) : (
-        <ImageBlockEditor
-          block={block.figure}
-          onChange={(figure) =>
-            figure.kind === 'image' && onChange({ ...block, figure })
-          }
-        />
-      )}
+      {/* Keyed by the children's own ids: the page selects the figure or a cell, not the row. */}
+      <div
+        className="-mx-1.5 rounded-md px-1.5"
+        data-edit-target={editTargetKey({ kind: 'blockText', blockId: block.figure.id })}
+      >
+        {block.figure.kind === 'diagram' ? (
+          <DiagramEditor
+            block={block.figure}
+            onChange={(figure) =>
+              figure.kind === 'diagram' && onChange({ ...block, figure })
+            }
+          />
+        ) : (
+          <ImageBlockEditor
+            block={block.figure}
+            onChange={(figure) =>
+              figure.kind === 'image' && onChange({ ...block, figure })
+            }
+          />
+        )}
+      </div>
 
       <div className="flex items-center gap-2 border-t border-line pt-2">
         <Eyebrow>table beside</Eyebrow>
@@ -1052,10 +1062,15 @@ function FigureRowEditor({
           Remove table
         </Button>
       </div>
-      <TableBlockEditor
-        block={block.table}
-        onChange={(table) => onChange({ ...block, table })}
-      />
+      <div
+        className="-mx-1.5 rounded-md px-1.5"
+        data-edit-target={editTargetKey({ kind: 'blockText', blockId: block.table.id })}
+      >
+        <TableBlockEditor
+          block={block.table}
+          onChange={(table) => onChange({ ...block, table })}
+        />
+      </div>
     </div>
   );
 }

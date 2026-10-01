@@ -101,6 +101,10 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   Firefox and Safari still save to your Downloads folder.
 
 ### Changed
+- **The Edit panel shows which row matches what you clicked.** Click a stem, a statement,
+  an option, a table cell, a picture or a part of a long question on the page, and its row
+  in the Edit panel lights up in blue with a brief glow, so you can see where to change
+  its settings.
 - **The how-to-edit tip sits below the page instead of on top of it**, so the bottom of
   a page is never hidden, and scrolling to the end of a document no longer runs on past
   the last page. On a smaller screen the tip stays on two lines.
