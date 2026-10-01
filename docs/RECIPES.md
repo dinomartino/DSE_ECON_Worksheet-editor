@@ -281,6 +281,12 @@ Guard: `src/i18n/catalogues.test.ts` imports every catalogue and checks each ent
 functions callable). Existing English tests must pass unchanged; to test Chinese, wrap
 the render in `src/i18n/language.ts:UiLanguageOverride`. Screenshot both languages.
 
+Ratchet: `src/i18n/literals.test.ts` counts English JSX text and text props (`aria-label`,
+`title`, `placeholder`, `label`, `hint` …) per file and fails when a file has more than
+`src/i18n/literals.baseline.json`. After translating, `node scripts/i18n-literals.mjs
+--write` shrinks the baseline (it refuses to grow it; `--grow` only for a moved file).
+Printed text or a brand name: `// i18n-ignore: <reason>` on its line.
+
 ## Add a provider preset
 
 1. `src/ai/types.ts:PROVIDER_IDS` — the new id (a contract change: every `Record<ProviderId, …>`

@@ -20,7 +20,7 @@ const json = (r) => (r.stdout ? JSON.parse(r.stdout) : null);
 const TYPES_EDIT = { old_string: '  examGapLines?: number;\n', new_string: '  examGapLines?: number;\n  /** Sum of all marks, kept current. */\n  totalMarks?: number;\n' };
 const BUTTON = {
   old_string: '      {showZh && editable("zh", prompt("Double-click to add 中文"))}\n',
-  new_string: '      {showZh && editable("zh", prompt("Double-click to add 中文"))}\n      <button type="button" onClick={onRemove}>Remove</button>\n',
+  new_string: '      {showZh && editable("zh", prompt("Double-click to add 中文"))}\n      <button type="button" onClick={onRemove}>{m.remove}</button>\n',
 };
 
 // ---------- guard ----------

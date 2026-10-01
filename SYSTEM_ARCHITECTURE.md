@@ -2264,6 +2264,12 @@ the chrome between English and Hong Kong Traditional Chinese. Design and wording
 - **Guard tests** (`src/i18n/catalogues.test.ts`) import every catalogue and check every
   entry against `src/i18n/terms.ts`: terms kept in English, no Simplified or Taiwan forms,
   full-width punctuation.
+- **No new English-only chrome** (`src/i18n/literals.test.ts`): a ratchet over every
+  component's UI literals (the TypeScript AST, not regexes) against
+  `src/i18n/literals.baseline.json`. A file may only lose literals; `node
+  scripts/i18n-literals.mjs --write` records the drop. Paper directories are not scanned;
+  a printed literal inside a component takes `// i18n-ignore: <reason>`. The jev guard
+  (`ui-text-both-languages`) reminds at write time.
 
 ---
 

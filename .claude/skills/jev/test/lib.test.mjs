@@ -125,6 +125,21 @@ test('tauri rules: static anywhere, type-only fine, dynamic only in owners', asy
   assert.deepEqual(await run('src/model/numbering.test.ts', "if (t === 'structured') {}"), []);
 });
 
+test('ui-text rule: reminds on English JSX text and text props, not catalogue reads', async () => {
+  const data = loadData('rules.json');
+  const run = async (rel, content) => (await evaluate({ ...data, rules: data.rules.filter((r) => r.kind !== 'jev') }, { rel, change: changeOf('Write', { content }, null), checkoutRoot: '/' })).reminds.map((b) => b.id);
+  const id = ['ui-text-both-languages'];
+  assert.deepEqual(await run('src/components/a/A.tsx', '<span>Hello teacher</span>'), id);
+  assert.deepEqual(await run('src/components/a/A.tsx', '<button aria-label="Close panel" />'), id);
+  assert.deepEqual(await run('src/components/a/A.tsx', '<input placeholder={`Search ${n}`} />'), id);
+  assert.deepEqual(await run('src/components/a/A.tsx', '  <p>\n    Start your worksheet\n  </p>'), id);
+  assert.deepEqual(await run('src/components/a/A.tsx', '<span title={m.close}>{m.hello}</span>'), []);
+  assert.deepEqual(await run('src/components/a/A.tsx', '<kbd>⌘K</kbd> <b>PDF</b>'), []);
+  assert.deepEqual(await run('src/components/a/A.tsx', '<b>Econ Studio</b> {/* i18n-ignore: brand */}'), []);
+  assert.deepEqual(await run('src/components/a/A.test.tsx', '<span>Hello teacher</span>'), []);
+  assert.deepEqual(await run('src/render/a.tsx', '<span>Hello teacher</span>'), []);
+});
+
 // ---------- lint ----------
 
 const LINT = `

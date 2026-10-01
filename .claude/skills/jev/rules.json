@@ -53,6 +53,17 @@
       "text": "Shared modules never branch on a question-type literal ('mcq' / 'structured'). Put the per-type behaviour on the registry definition (src/registry/) and call it through the registry. Guards: src/registry/registry.test.ts and the noTypeBranching tests."
     },
     {
+      "id": "ui-text-both-languages",
+      "kind": "regex",
+      "action": "remind",
+      "globs": ["src/components/**/*.tsx"],
+      "exclude": ["**/*.test.tsx"],
+      "pattern": "(?:>[^<>{}\\n]*[A-Za-z][a-z]+[^<>{}\\n]*</|\\b(?:aria-label|title|placeholder|alt)=\\{?\\s*[\"'`][^\"'`\\n]*[A-Za-z][a-z]+|^\\s+[A-Z][a-z]+(?:[ ,]+[\\w'’…·:{}$.-]+)+[.…?!]?\\s*$)",
+      "flags": "m",
+      "unless": "i18n-ignore|^\\s*(?://|\\*|/\\*|\\{/\\*)",
+      "text": "New English interface text: every interface string ships in English and Hong Kong Chinese. Put it in the area's messages.ts with en + zh (HK) and read it with useMessages (docs/RECIPES.md, Translate an area's interface text). Printed text stays English (paper, Paper 1 / MC / LQ, PDF, Word export, document defaults): mark such a line `// i18n-ignore: <reason>`. Guard: src/i18n/literals.test.ts."
+    },
+    {
       "id": "known-keys",
       "kind": "check",
       "check": "knownKeys",

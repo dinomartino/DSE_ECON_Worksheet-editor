@@ -386,6 +386,7 @@ through `AppSettingsHost` alone.
 - `src/i18n/language.ts:useMessages` · `src/i18n/language.ts:uiLanguage` · `src/i18n/language.ts:UiLanguageOverride` — read a catalogue in the current language; the override pins a test render
 - `src/i18n/terms.ts:KEEP_ENGLISH` · `src/i18n/terms.ts:STANDARD_TRANSLATIONS` — HK wording; `src/i18n/catalogues.test.ts` guards every `messages.ts`
 - `src/i18n/format.ts:relativeTime` — "5 minutes ago" / 5 分鐘前
+- `src/i18n/literals.test.ts` · `scripts/i18n-literals.mjs:literalsIn` · `scripts/i18n-literals.mjs:ALLOWLIST` — the ratchet on English-only UI literals per file; `src/i18n/literals.baseline.json` only shrinks (`--write`)
 - `src/platform/secrets.ts:readSecret` · `src/platform/secrets.ts:writeSecret` · `src/platform/secrets.ts:peekSecret` — the only holder of AI keys; `src-tauri/src/secrets.rs` the keychain commands
 - `src/components/settings/AppSettingsHost.tsx:AppSettingsHost` — mounted in `src/app/EditorHost.tsx`; Effects, ⌘, listener, the dialog
 - `src/components/settings/AppSettingsDialog.tsx:AppSettingsDialog` · `src/components/settings/AppSettingsDialog.tsx:AppSettingsFooter` · `src/components/settings/AppSettingsDialog.tsx:closeStep` — rail, lazy pane, close guard
