@@ -7,6 +7,9 @@ import { initialAiSetup, TOP_PROVIDERS, type AiSetupState } from './aiSetup';
 import type { AiSetupRunner } from './aiSetupRunner';
 import type { SecretStore } from '@/platform/secrets';
 import { HK_PROVIDERS_NOTE } from '@/components/translate/copy';
+import { resolveMessages } from '@/i18n/catalogue';
+import { uiLanguage } from '@/i18n/language';
+import { AI_SECTION_MESSAGES } from './messages';
 
 /**
  * The menu's SetupCard over the Settings runner. A radio only shows a provider; a key is
@@ -55,15 +58,15 @@ export function initialSetupCard(
 }
 
 /** The region refusal, as one line naming the refusing provider. */
-export function regionLine(provider: ProviderId): string {
+export function regionLine(provider: ProviderId, lang = uiLanguage()): string {
   return provider === 'gemini'
     ? GEMINI_REGION_MESSAGE
-    : `${presetFor(provider).label} refused a request from your location. Try DeepSeek or Qwen.`;
+    : resolveMessages(AI_SECTION_MESSAGES, lang).refusedTry(presetFor(provider).label);
 }
 
 /** Settings' banner after a refusal: the same line, then the Hong Kong alternatives. */
-export function regionBanner(provider: ProviderId): string {
+export function regionBanner(provider: ProviderId, lang = uiLanguage()): string {
   return provider === 'gemini'
     ? `${GEMINI_REGION_MESSAGE} ${HK_PROVIDERS_NOTE}`
-    : `${presetFor(provider).label} refused a request from your location. DeepSeek and Qwen work from Hong Kong.`;
+    : resolveMessages(AI_SECTION_MESSAGES, lang).refusedHk(presetFor(provider).label);
 }

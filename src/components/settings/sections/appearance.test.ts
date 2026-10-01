@@ -9,7 +9,7 @@ describe('the Appearance section registration', () => {
       expect(settingsSections({ desktop }).map((s) => s.id)).toEqual(['ai', 'appearance']);
     }
     const appearance = settingsSections({ desktop: false })[1];
-    expect(appearance).toMatchObject({ label: 'Appearance', hint: 'Light, dark or system' });
+    expect(appearance).toMatchObject({ label: { en: 'Appearance' }, hint: { en: 'Light, dark or system' } });
     expect(typeof appearance.Effect).toBe('function');
     expect(typeof (await appearance.load()).default).toBe('function');
   });

@@ -24,8 +24,10 @@ import { VersionLine } from '@/components/editor/UpdateBanner';
 import { FeedbackDialog } from '@/components/feedback/FeedbackDialog';
 import { WhatsNewDialog, WhatsNewOnLaunch } from '@/components/whatsNew/WhatsNewDialog';
 import { describeDocument } from '@/feedback/feedback';
+import { useMessages } from '@/i18n/language';
 import { FileDashboard, type DocumentActions, type FolderActions } from './FileDashboard';
 import { readDashboardFolder, writeDashboardFolder } from './dashboard';
+import { START_PANEL_MESSAGES } from './messages';
 import {
   DROP_HINT,
   DROP_REJECTED,
@@ -123,6 +125,7 @@ export function StartScreen({
 }: {
   onOpen: (worksheet: Worksheet, language?: LanguageMode) => void;
 }) {
+  const m = useMessages(START_PANEL_MESSAGES);
   const [summaries, setSummaries] = useState<WorksheetSummary[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [creating, setCreating] = useState<DocumentType | undefined>();
@@ -743,9 +746,10 @@ export function StartScreen({
         </header>
 
         {/* The screen's one display moment: the chrome's serif voice (design/icons/design.md §
-            Typography). Everything below it stays on the UI grotesque. */}
-        <h1 className="font-display mt-10 text-balance text-[32px] font-normal leading-[1.15] tracking-[-0.015em] text-ink [@media(max-height:820px)]:mt-7 [@media(max-height:820px)]:text-[28px]">
-          {empty ? 'Start your first worksheet.' : 'Start a worksheet, or pick up where you left off.'}
+            Typography). Everything below it stays on the UI grotesque. `break-keep`: Chinese
+            wraps at its punctuation, never mid-phrase. */}
+        <h1 className="font-display mt-10 text-balance break-keep text-[32px] font-normal leading-[1.15] tracking-[-0.015em] text-ink [@media(max-height:820px)]:mt-7 [@media(max-height:820px)]:text-[28px]">
+          {empty ? m.greetingFirst : m.greeting}
         </h1>
 
         <StartNewSection
@@ -758,26 +762,24 @@ export function StartScreen({
             with ← Home to come back. One `StartRow` per library. */}
         <section className="mt-9 [@media(max-height:820px)]:mt-7">
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
-            Library
+            {m.library}
           </h2>
           <div className="mt-3 flex flex-col border-t border-line">
             <StartRow
               icon={<BankIcon size={16} />}
-              title="Question bank 題庫"
-              trailing={bankGroups.length > 0 ? `${bankGroups.length} ${bankGroups.length === 1 ? 'question' : 'questions'}` : undefined}
+              title={m.bank}
+              trailing={bankGroups.length > 0 ? m.bankCount(bankGroups.length) : undefined}
               // Nothing saved yet: say what fills it, rather than promise questions.
               hint={
-                empty && bankGroups.length === 0
-                  ? 'Fills itself, by topic, as you write questions.'
-                  : 'Every question from your worksheets, by topic.'
+                empty && bankGroups.length === 0 ? m.bankHintEmpty : m.bankHint
               }
               onClick={() => showView('bank')}
             />
             <StartRow
               icon={<DiagramIcon size={16} />}
-              title="Graphs 圖表庫"
-              trailing={graphTotal ? `${graphTotal} ${graphTotal === 1 ? 'graph' : 'graphs'}` : undefined}
-              hint="Draw a graph once. Reuse it in a question or copy it into Word."
+              title={m.graphs}
+              trailing={graphTotal ? m.graphCount(graphTotal) : undefined}
+              hint={m.graphsHint}
               onClick={() => showView('graphs')}
             />
           </div>
@@ -792,12 +794,9 @@ export function StartScreen({
           saved documents, on the right. */}
       <footer className="shrink-0 space-y-1.5 border-t border-line px-9 pb-5 pt-3.5 text-[11px] leading-relaxed text-ink-muted [@media(max-height:820px)]:pb-4 [@media(max-height:820px)]:pt-3">
         {isDesktop() ? (
-          <p>
-            Stored on this computer only. No account. AI translation, when you use it, sends the
-            texts you choose (and nearby translated lines for context) to your chosen provider.
-          </p>
+          <p>{m.storedDesktop}</p>
         ) : (
-          <p>Stored in this browser only. Clearing site data deletes it.</p>
+          <p>{m.storedWeb}</p>
         )}
         {/* Desktop only; its own line, as the links row cannot also hold it at 400px. */}
         <VersionLine />
@@ -805,11 +804,11 @@ export function StartScreen({
           {/* Nothing saved (no documents, no graphs) means nothing to back up. */}
           {!isDesktop() && (!empty || (graphTotal ?? 0) > 0) && (
             <TextLink onClick={() => void backUpAll()} disabled={busy !== undefined}>
-              {busy === 'backup' ? 'Backing up…' : 'Back up now'}
+              {busy === 'backup' ? m.backingUp : m.backUpNow}
             </TextLink>
           )}
-          <TextLink onClick={() => setWhatsNew(true)}>What’s new</TextLink>
-          <TextLink onClick={() => setFeedback(true)}>Send feedback</TextLink>
+          <TextLink onClick={() => setWhatsNew(true)}>{m.whatsNew}</TextLink>
+          <TextLink onClick={() => setFeedback(true)}>{m.sendFeedback}</TextLink>
         </div>
       </footer>
       </div>
@@ -1146,11 +1145,12 @@ export function StartNewSection({
   onCreate: () => void;
   onOpenFile: () => void;
 }) {
+  const m = useMessages(START_PANEL_MESSAGES);
   return (
     <section className="mt-9 [@media(max-height:820px)]:mt-6">
       <Button variant="primary" size="lg" className="w-full" onClick={onCreate}>
         <PlusIcon size={16} />
-        New worksheet
+        {m.newWorksheet}
       </Button>
       {!empty && (
         // Quieter than the button: one line, colour-only hover.
@@ -1163,9 +1163,9 @@ export function StartNewSection({
             <FolderOpenIcon size={15} />
           </span>
           <span className="text-[13px] font-medium text-ink transition-colors duration-150 ease-out-soft group-hover:text-accent-ink">
-            Open a file…
+            {m.openFile}
           </span>
-          <span className="ml-auto truncate text-[11px] text-ink-subtle">.json or backup .zip</span>
+          <span className="ml-auto truncate text-[11px] text-ink-subtle">{m.openFileHint}</span>
         </button>
       )}
     </section>

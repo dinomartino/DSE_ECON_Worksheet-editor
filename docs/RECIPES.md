@@ -232,6 +232,7 @@ App Settings (this browser or computer) — never the document, which is **Setup
 2. `src/components/settings/sections/<id>.ts` calls `registerSettingsSection` at module
    scope with metadata and `load: () => import('./<id>Section/…')` (the pane, a default
    export taking `SettingsSectionProps`). An app-wide effect (a theme) is its `Effect`.
+   Label, hint and description are entries of `src/components/settings/sections/messages.ts`.
 3. One line in `src/components/settings/sections/index.ts`: `import './<id>';`.
 4. The pane reads and writes with `useSettings(SCHEMA)`; changes apply live.
 
@@ -240,6 +241,45 @@ does not know, so an older build never erases a newer one's settings.
 
 Guard: `src/settings/store.test.ts`, `src/components/settings/AppSettingsDialog.test.tsx`;
 then screenshot the dialog at an 800 px tall viewport (footer unclipped).
+
+## Translate an area's interface text
+
+Settings → Language switches the chrome between English and 繁體中文 (HK). Worked
+examples: `src/components/settings/` (every file) and `src/components/start/messages.ts`.
+
+1. A catalogue beside the components: `messages.ts` in the directory (or
+   `<Component>.messages.ts` in a crowded one), one `defineMessages` per component or
+   group, named `<THING>_MESSAGES`. Nowhere else may call `defineMessages`.
+   ```ts
+   export const BANK_MESSAGES = defineMessages({
+     search: { en: 'Search', zh: '搜尋' },
+     count: { en: (n: number) => `${n} questions`, zh: (n: number) => `${n} 條題目` },
+   });
+   ```
+   Annotate both sides of a function entry; the types demand the same arguments.
+2. In the component, `const m = useMessages(BANK_MESSAGES)` (`src/i18n/language.ts`), then
+   `{m.search}`, `aria-label={m.search}`, `m.count(n)`. Outside React (a store, a pure
+   helper): `resolveMessages(BANK_MESSAGES, uiLanguage())`, or take `lang` as a
+   parameter defaulting to `uiLanguage()`. A table of options keys into the catalogue
+   (`label: TextKey<typeof M>`). Dates and "5 minutes ago": `src/i18n/format.ts:relativeTime`.
+3. `en` is today's text, character for character (curly quotes, `…`, NBSP); move it,
+   never reword it. Bilingual English chrome ("Question bank 題庫") keeps both scripts in
+   `en` and drops the English in `zh`.
+4. `zh` follows `docs/design/ui-language.md` and `src/i18n/terms.ts`: the standard
+   translations, the terms kept in English (PDF, MCQ, Paper 1, ⌘ …), full-width
+   punctuation, no em dash. A new term goes into `src/i18n/terms.ts`.
+
+Never translate: anything that prints or reaches the IR, `.docx`, clipboard or PDF
+(render, export, model, registry defaults, numbering, marks labels); document defaults
+("Answer ALL questions."); diagram symbols and labels; user content; test ids, storage
+keys, `data-*` values; console and dev-only messages; error text from AI providers; the
+CHANGELOG / What's new. `data-print-hide` marks chrome, so its absence is a hint the text
+prints. When unsure, leave it English and say so.
+
+Guard: `src/i18n/catalogues.test.ts` imports every catalogue and checks each entry
+(non-empty `zh`, kept terms, no Simplified or Taiwan forms, half-width punctuation,
+functions callable). Existing English tests must pass unchanged; to test Chinese, wrap
+the render in `src/i18n/language.ts:UiLanguageOverride`. Screenshot both languages.
 
 ## Add a provider preset
 

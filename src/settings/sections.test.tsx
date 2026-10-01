@@ -1,6 +1,7 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import { localize } from '@/i18n/catalogue';
 import {
   registerSettingsSection,
   settingsSections,
@@ -25,7 +26,7 @@ const desktop = { desktop: true };
 
 function Rail({ env }: { env: { desktop: boolean } }) {
   const sections = useSettingsSections(env);
-  return createElement('ul', null, sections.map((s) => createElement('li', { key: s.id }, s.label)));
+  return createElement('ul', null, sections.map((s) => createElement('li', { key: s.id }, localize(s.label, 'en'))));
 }
 
 describe('the Settings section registry', () => {

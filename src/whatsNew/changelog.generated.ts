@@ -13,6 +13,10 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
 ## Unreleased
 
 ### Added
+- **Settings → Language 語言: use Econ Studio in 繁體中文.** Choose English or 繁體中文
+  for buttons, menus and dialogs, in the words Hong Kong teachers use (PDF, MCQ and
+  Paper 1 stay in English). Worksheets print exactly as you wrote them in either
+  language. Settings and the start screen's panel are translated first; the rest follows.
 - **Graphs 圖表庫: draw a graph once and keep it.** Open Graphs from the start screen,
   start from a template or blank axes, and draw on the full page. Graphs save as you work,
   sit in your backups, and copy straight into Word at their printed size, or download as

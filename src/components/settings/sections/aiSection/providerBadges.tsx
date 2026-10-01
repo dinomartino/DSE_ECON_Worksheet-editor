@@ -1,5 +1,7 @@
 import type { ProviderPreset } from '@/ai/types';
 import { Pill } from '@/components/ui';
+import { useMessages } from '@/i18n/language';
+import { AI_SECTION_MESSAGES } from './messages';
 
 /** Settings' key status on a provider row: a saved key, or none needed. */
 export type RowKeyStatus = 'saved' | 'keyless' | null;
@@ -9,18 +11,19 @@ export type RowKeyStatus = 'saved' | 'keyless' | null;
  * key status on a narrow row (an `@container`), the Hong Kong note shrinks to its dot and tooltip.
  */
 export function ProviderBadges({ preset, keyStatus = null }: { preset: ProviderPreset; keyStatus?: RowKeyStatus }) {
+  const m = useMessages(AI_SECTION_MESSAGES);
   const hk = preset.hk.status === 'available';
   return (
     <>
-      {preset.recommended && <Pill tone="accent">Recommended</Pill>}
+      {preset.recommended && <Pill tone="accent">{m.recommended}</Pill>}
       {hk && (
-        <span title="Available in Hong Kong" className="flex shrink-0 items-center gap-1 text-[11px] text-ink-muted">
+        <span title={m.availableInHk} className="flex shrink-0 items-center gap-1 text-[11px] text-ink-muted">
           <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ok" />
-          <span className={keyStatus ? '@max-[26rem]:sr-only' : undefined}>Available in Hong Kong</span>
+          <span className={keyStatus ? '@max-[26rem]:sr-only' : undefined}>{m.availableInHk}</span>
         </span>
       )}
-      {keyStatus === 'saved' && <Pill tone="ok">Key saved</Pill>}
-      {keyStatus === 'keyless' && <Pill>No key needed</Pill>}
+      {keyStatus === 'saved' && <Pill tone="ok">{m.keySaved}</Pill>}
+      {keyStatus === 'keyless' && <Pill>{m.noKeyNeeded}</Pill>}
     </>
   );
 }
