@@ -6,6 +6,8 @@ import { IconButton } from '@/components/ui';
 import { Field } from '@/components/ui/Dialog';
 import { ChevronDownIcon, ChevronUpIcon, CloseIcon } from '@/components/ui/icons';
 import { movePick, type KeyDocumentPick } from './exportSession';
+import { useMessages } from '@/i18n/language';
+import { KEY_DOCUMENTS_MESSAGES } from './KeyDocumentsField.messages';
 
 /** More saved documents than this, and the list gets a search box. */
 export const KEY_DOCUMENTS_SEARCH_FROM = 6;
@@ -41,6 +43,7 @@ export function KeyDocumentsField({
   onChange: (picked: KeyDocumentPick[]) => void;
   currentTitle: string;
 }) {
+  const m = useMessages(KEY_DOCUMENTS_MESSAGES);
   const [search, setSearch] = useState('');
   const choices = keyDocumentChoices(documents, search);
   const position = (id: string) => picked.findIndex((pick) => pick.id === id);
@@ -54,16 +57,16 @@ export function KeyDocumentsField({
 
   return (
     <Field
-      label="Also include"
-      hint="Their answer keys follow this one’s in the same file, each from a new page."
+      label={m.label}
+      hint={m.hint}
     >
       {documents.length > KEY_DOCUMENTS_SEARCH_FROM && (
         <label className="block">
-          <span className="sr-only">Search saved documents</span>
+          <span className="sr-only">{m.searchLabel}</span>
           <input
             type="search"
             value={search}
-            placeholder="Search by name"
+            placeholder={m.searchPlaceholder}
             onChange={(event) => setSearch(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Escape' && search) {
@@ -76,7 +79,7 @@ export function KeyDocumentsField({
         </label>
       )}
       <ul
-        aria-label="Saved documents"
+        aria-label={m.listLabel}
         className="scroll-slim max-h-[9.75rem] divide-y divide-line overflow-y-auto rounded-lg border border-line bg-surface"
       >
         {choices.map((doc) => {
@@ -101,20 +104,20 @@ export function KeyDocumentsField({
           );
         })}
         {choices.length === 0 && (
-          <li className="px-2.5 py-2 text-xs text-ink-muted">No saved document matches “{search.trim()}”.</li>
+          <li className="px-2.5 py-2 text-xs text-ink-muted">{m.noMatch(search.trim())}</li>
         )}
       </ul>
 
       {picked.length > 0 && (
         <div className="pt-1">
           <p id="key-order" className="pb-0.5 text-[11px] text-ink-muted">
-            Order in the file
+            {m.order}
           </p>
           <ol aria-labelledby="key-order" className="text-xs">
             <li className="flex h-7 items-center gap-2 text-ink-muted">
               <span className="w-4 shrink-0 text-right tabular-nums">1</span>
               <span className="min-w-0 flex-1 truncate">
-                {currentTitle} <span className="text-ink-subtle">(this document)</span>
+                {currentTitle} <span className="text-ink-subtle">{m.thisDocument}</span>
               </span>
             </li>
             {picked.map((pick, index) => (
@@ -124,21 +127,21 @@ export function KeyDocumentsField({
                   {pick.title}
                 </span>
                 <IconButton
-                  label={`Move ${pick.title} up`}
+                  label={m.moveUp(pick.title)}
                   disabled={index === 0}
                   onClick={() => onChange(movePick(picked, index, -1))}
                 >
                   <ChevronUpIcon size={14} />
                 </IconButton>
                 <IconButton
-                  label={`Move ${pick.title} down`}
+                  label={m.moveDown(pick.title)}
                   disabled={index === picked.length - 1}
                   onClick={() => onChange(movePick(picked, index, 1))}
                 >
                   <ChevronDownIcon size={14} />
                 </IconButton>
                 <IconButton
-                  label={`Leave out ${pick.title}`}
+                  label={m.leaveOut(pick.title)}
                   onClick={() => onChange(picked.filter((other) => other.id !== pick.id))}
                 >
                   <CloseIcon size={13} />

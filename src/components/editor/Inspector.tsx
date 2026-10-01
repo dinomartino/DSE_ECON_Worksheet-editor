@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useRef, useState } from 'react';
 import { editTargetKey } from '@/model/edits';
-import { LAYOUT_NAME, MIN_ANSWER_LINES, MIN_SPACER_PT } from '@/model/flow';
+import { MIN_ANSWER_LINES, MIN_SPACER_PT } from '@/model/flow';
 import { newId } from '@/model/factories';
 import { questionMarks } from '@/model/marks';
 import type { NumberingPlan } from '@/model/numbering';
@@ -20,6 +20,12 @@ import { useShownTags, useShownTagState } from './sharedTopics';
 import { setQuestionTags, setQuestionTopics, topicSyncDeps } from './topicSync';
 import { StimulusEditorPanel } from './StimulusEditorPanel';
 import { markPanelTarget } from './panelTarget';
+import { useMessages, useUiLanguage } from '@/i18n/language';
+import type { Messages, TextKey } from '@/i18n/catalogue';
+import { INSPECTOR_MESSAGES } from './Inspector.messages';
+
+type M = Messages<typeof INSPECTOR_MESSAGES>;
+type Key = TextKey<typeof INSPECTOR_MESSAGES>;
 
 /**
  * Inputs for whatever is currently selected.
@@ -31,23 +37,39 @@ import { markPanelTarget } from './panelTarget';
  */
 
 /** One line under the element's name, saying what the kind is. */
-const LAYOUT_HINT: Record<LayoutElement['kind'], string> = {
-  section: 'names the run of questions below it',
-  stimulus: 'content the questions below refer to',
-  heading: 'a display line, typed on the page',
-  text: 'a note or closing line, typed on the page',
-  partHeader: 'part heading with a derived marks total',
-  questionCount: 'authored wording around the derived count',
-  labelList: 'side-by-side label · value rows',
-  answerLines: 'ruled lines for written answers',
-  answerSpace: 'dotted lines for written answers',
-  spacer: 'blank vertical space',
-  divider: 'a horizontal rule',
-  pageBreak: 'starts a new sheet',
+const LAYOUT_HINT: Record<LayoutElement['kind'], Key> = {
+  section: 'hintSection',
+  stimulus: 'hintStimulus',
+  heading: 'hintHeading',
+  text: 'hintText',
+  partHeader: 'hintPartHeader',
+  questionCount: 'hintQuestionCount',
+  labelList: 'hintLabelList',
+  answerLines: 'hintAnswerLines',
+  answerSpace: 'hintAnswerSpace',
+  spacer: 'hintSpacer',
+  divider: 'hintDivider',
+  pageBreak: 'hintPageBreak',
+};
+
+/** `LAYOUT_NAME` (`model/flow.ts`) in the interface language. */
+const LAYOUT_NAME_KEY: Record<LayoutElement['kind'], Key> = {
+  section: 'nameSection',
+  heading: 'nameHeading',
+  text: 'nameText',
+  spacer: 'nameSpacer',
+  divider: 'nameDivider',
+  pageBreak: 'namePageBreak',
+  answerLines: 'nameAnswerLines',
+  answerSpace: 'nameAnswerSpace',
+  partHeader: 'namePartHeader',
+  labelList: 'nameLabelList',
+  questionCount: 'nameQuestionCount',
+  stimulus: 'nameStimulus',
 };
 
 /** The kinds whose printed words live on the page, shown here as an address row. */
-function textRowFor(element: LayoutElement) {
+function textRowFor(element: LayoutElement, m: M) {
   if (
     element.kind !== 'section' &&
     element.kind !== 'heading' &&
@@ -63,13 +85,15 @@ function textRowFor(element: LayoutElement) {
     <ExcerptRow
       text={text}
       // The panel's one text row, with no group header to say where it is typed.
-      emptyHint="Empty. Type on the page"
+      emptyHint={m.emptyType}
       targetKey={editTargetKey({ kind: 'layoutText', elementId: element.id })}
     />
   );
 }
 
 function LayoutElementPanel({ element }: { element: LayoutElement }) {
+  const m = useMessages(INSPECTOR_MESSAGES);
+  const showZhNotes = useUiLanguage() !== 'zh-HK';
   const updateLayoutElement = useWorksheetStore((s) => s.updateLayoutElement);
   const resizeLayoutElement = useWorksheetStore((s) => s.resizeLayoutElement);
   const removeLayoutElement = useWorksheetStore((s) => s.removeLayoutElement);
@@ -77,19 +101,19 @@ function LayoutElementPanel({ element }: { element: LayoutElement }) {
 
   return (
     <div className="space-y-4">
-      {textRowFor(element)}
+      {textRowFor(element, m)}
 
       {element.kind === 'section' && (
         <div className="space-y-2">
           <CheckField
-            label="Restart numbering at 1"
+            label={m.restartNumbering}
             checked={Boolean(element.restartNumbering)}
             onChange={(restartNumbering) =>
               updateLayoutElement(element.id, { restartNumbering })
             }
           />
           <CheckField
-            label="Show the section's marks total"
+            label={m.showSectionMarks}
             checked={Boolean(element.showMarks)}
             onChange={(showMarks) => updateLayoutElement(element.id, { showMarks })}
           />
@@ -99,27 +123,24 @@ function LayoutElementPanel({ element }: { element: LayoutElement }) {
       {(element.kind === 'answerLines' || element.kind === 'answerSpace') &&
         (element.kind === 'answerSpace' && element.fill ? (
           <div className="space-y-2">
-            <Pill>fills page</Pill>
-            <p className="text-xs leading-relaxed text-ink-muted">
-              This space stretches to the bottom of its page, so the line count is set
-              by the layout. Currently {element.lines} lines.
-            </p>
-            <p className="text-xs text-ink-subtle">此答題空間自動填滿頁面。</p>
+            <Pill>{m.fillsPage}</Pill>
+            <p className="text-xs leading-relaxed text-ink-muted">{m.fillsPageNote(element.lines)}</p>
+            {showZhNotes && <p className="text-xs text-ink-subtle">{m.fillsPageZh}</p>}
           </div>
         ) : (
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[13px] font-medium text-ink">Lines</p>
-              <p className="text-[11px] text-ink-subtle">行數</p>
+              <p className="text-[13px] font-medium text-ink">{m.lines}</p>
+              {showZhNotes && <p className="text-[11px] text-ink-subtle">{m.linesZh}</p>}
             </div>
             <span className="flex shrink-0 items-center">
               <SizeStepper
                 value={element.lines}
                 min={MIN_ANSWER_LINES}
                 step={1}
-                unit={element.lines === 1 ? 'line' : 'lines'}
+                unit={element.lines === 1 ? m.unitLine : m.unitLines}
                 label={
-                  element.kind === 'answerSpace' ? 'Answer space lines' : 'Answer lines'
+                  element.kind === 'answerSpace' ? m.answerSpaceLines : m.answerLinesLabel
                 }
                 onCommit={(lines) => resizeLayoutElement(element.id, lines)}
               />
@@ -130,8 +151,8 @@ function LayoutElementPanel({ element }: { element: LayoutElement }) {
       {element.kind === 'spacer' && (
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[13px] font-medium text-ink">Height</p>
-            <p className="text-[11px] text-ink-subtle">留白高度</p>
+            <p className="text-[13px] font-medium text-ink">{m.height}</p>
+            {showZhNotes && <p className="text-[11px] text-ink-subtle">{m.heightZh}</p>}
           </div>
           <span className="flex shrink-0 items-center">
             <SizeStepper
@@ -139,7 +160,7 @@ function LayoutElementPanel({ element }: { element: LayoutElement }) {
               min={MIN_SPACER_PT}
               step={6}
               unit="pt"
-              label="Blank space height"
+              label={m.blankHeight}
               onCommit={(heightPt) => resizeLayoutElement(element.id, heightPt)}
             />
           </span>
@@ -149,8 +170,8 @@ function LayoutElementPanel({ element }: { element: LayoutElement }) {
       {element.kind === 'labelList' && (
         <div className="space-y-1">
           <GroupHeader
-            title="Rows"
-            hint="typed on the page"
+            title={m.rows}
+            hint={m.rowsHint}
             action={
               <Button
                 size="sm"
@@ -164,7 +185,7 @@ function LayoutElementPanel({ element }: { element: LayoutElement }) {
                   })
                 }
               >
-                + Row
+                {m.addRow}
               </Button>
             }
           />
@@ -182,7 +203,7 @@ function LayoutElementPanel({ element }: { element: LayoutElement }) {
               })}
               actions={
                 <IconButton
-                  label="Remove row"
+                  label={m.removeRow}
                   variant="danger"
                   disabled={element.rows.length <= 1}
                   onClick={() =>
@@ -201,9 +222,7 @@ function LayoutElementPanel({ element }: { element: LayoutElement }) {
 
       {(element.kind === 'divider' || element.kind === 'pageBreak') && (
         <p className="text-xs leading-relaxed text-ink-muted">
-          {element.kind === 'divider'
-            ? 'A rule across the text column. It has no settings. Drag it on the page or in Content to move it.'
-            : 'Everything after this starts on a new sheet. Drag it to move the break.'}
+          {element.kind === 'divider' ? m.dividerNote : m.pageBreakNote}
         </p>
       )}
 
@@ -216,7 +235,7 @@ function LayoutElementPanel({ element }: { element: LayoutElement }) {
             selectElement(undefined);
           }}
         >
-          Delete {LAYOUT_NAME[element.kind].toLowerCase()}
+          {m.deleteElement(m[LAYOUT_NAME_KEY[element.kind]])}
         </Button>
       </div>
     </div>
@@ -230,6 +249,9 @@ export function Inspector({
   numbering: NumberingPlan;
   onShowContent: () => void;
 }) {
+  const m = useMessages(INSPECTOR_MESSAGES);
+  const lang = useUiLanguage();
+  const showZhNotes = lang !== 'zh-HK';
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const selectedQuestionId = useWorksheetStore((s) => s.selectedQuestionId);
   const selectedElementId = useWorksheetStore((s) => s.selectedElementId);
@@ -303,15 +325,13 @@ export function Inspector({
         <header className="flex shrink-0 items-center gap-2 border-b border-line px-3.5 py-3">
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[13px] font-semibold leading-tight text-ink">
-              {selectedLayout.kind === 'stimulus'
-                ? 'Shared stimulus'
-                : LAYOUT_NAME[selectedLayout.kind]}
+              {m[LAYOUT_NAME_KEY[selectedLayout.kind]]}
             </span>
             <span className="block truncate text-[11px] text-ink-muted">
-              {LAYOUT_HINT[selectedLayout.kind]}
+              {m[LAYOUT_HINT[selectedLayout.kind]]}
             </span>
           </span>
-          <IconButton label="Close editor" onClick={() => selectElement(undefined)}>
+          <IconButton label={m.closeEditor} onClick={() => selectElement(undefined)}>
             <CloseIcon size={14} />
           </IconButton>
         </header>
@@ -337,11 +357,9 @@ export function Inspector({
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
         <div>
-          <p className="font-display text-[19px] text-ink">Pick something to edit.</p>
-          <p className="mt-2 text-xs leading-relaxed text-ink-muted">
-            Click a question on the page, or choose one from Content.
-          </p>
-          <p className="text-xs text-ink-subtle">在頁面或內容清單選擇題目</p>
+          <p className="font-display text-[19px] text-ink">{m.pickSomething}</p>
+          <p className="mt-2 text-xs leading-relaxed text-ink-muted">{m.pickHint}</p>
+          {showZhNotes && <p className="text-xs text-ink-subtle">{m.pickHintZh}</p>}
         </div>
         <button
           type="button"
@@ -349,7 +367,7 @@ export function Inspector({
           className="flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-accent-ink transition-[background-color,color,transform,scale] duration-150 ease-out-soft hover:bg-accent-soft active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
           <ListIcon size={15} />
-          Browse content
+          {m.browseContent}
         </button>
       </div>
     );
@@ -366,13 +384,13 @@ export function Inspector({
       <header className="flex shrink-0 items-center gap-2 border-b border-line px-3.5 py-3">
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[13px] font-semibold leading-tight text-ink">
-            Question {number ?? '–'}
+            {m.questionTitle(number)}
           </span>
           <span className="block truncate text-[11px] text-ink-muted">
-            {plain(definition.displayName.en)} · {marks} {marks === 1 ? 'mark' : 'marks'}
+            {plain(lang === 'zh-HK' ? definition.displayName.zh : definition.displayName.en)} · {m.marksCount(marks)}
           </span>
         </span>
-        <IconButton label="Close editor" onClick={() => select(undefined)}>
+        <IconButton label={m.closeEditor} onClick={() => select(undefined)}>
           <CloseIcon size={14} />
         </IconButton>
       </header>

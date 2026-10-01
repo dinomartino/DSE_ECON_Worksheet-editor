@@ -3,6 +3,8 @@
 import type { ReactNode } from 'react';
 import { biTextExcerpt, blocksExcerpt } from '@/model/excerpt';
 import type { BiText, ContentBlock } from '@/model/types';
+import { useMessages } from '@/i18n/language';
+import { PANEL_ROWS_MESSAGES } from './panelRows.messages';
 
 /**
  * The compact rows the slimmed panels are built from.
@@ -86,7 +88,7 @@ export function MiniNumber({
 export function ExcerptRow({
   marker,
   text,
-  emptyHint = 'Empty',
+  emptyHint,
   targetKey,
   actions,
   badge,
@@ -106,6 +108,7 @@ export function ExcerptRow({
   /** A state that must show without hover, e.g. "Pinned"; beside the text. */
   badge?: ReactNode;
 }) {
+  const m = useMessages(PANEL_ROWS_MESSAGES);
   const body = (
     <>
       {marker !== undefined && (
@@ -117,7 +120,7 @@ export function ExcerptRow({
         <span className="min-w-0 flex-1 truncate text-xs text-ink-muted">{text}</span>
       ) : (
         <span className="min-w-0 flex-1 truncate text-xs italic text-ink-subtle">
-          {emptyHint}
+          {emptyHint ?? m.empty}
         </span>
       )}
     </>
@@ -131,7 +134,7 @@ export function ExcerptRow({
       {targetKey ? (
         <button
           type="button"
-          title="Show on the page"
+          title={m.showOnPage}
           className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           onClick={() => scrollPageTo(targetKey)}
         >

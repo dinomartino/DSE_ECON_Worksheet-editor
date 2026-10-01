@@ -1,0 +1,37 @@
+import { defineMessages } from '@/i18n/catalogue';
+
+/** The table and figure tool row docked over the page. */
+export const CONTEXT_BAR_MESSAGES = defineMessages({
+  tableTools: { en: 'Table tools', zh: '表格工具' },
+  figureTools: { en: 'Figure tools', zh: '圖形工具' },
+  table: { en: 'Table', zh: '表格' },
+  cellCount: { en: (n: number) => ` · ${n} cells`, zh: (n: number) => ` · ${n} 格` },
+  alignCellLeft: { en: 'Align cell left', zh: '儲存格靠左對齊' },
+  alignCellCenter: { en: 'Align cell center', zh: '儲存格置中對齊' },
+  alignCellRight: { en: 'Align cell right', zh: '儲存格靠右對齊' },
+  splitCell: { en: 'Split merged cell', zh: '分割已合併的儲存格' },
+  split: { en: 'Split', zh: '分割' },
+  mergeRightTitle: { en: 'Merge with the cell to the right', zh: '與右方的儲存格合併' },
+  mergeRight: { en: 'Merge →', zh: '合併 →' },
+  mergeDownTitle: { en: 'Merge with the cell below', zh: '與下方的儲存格合併' },
+  mergeDown: { en: 'Merge ↓', zh: '合併 ↓' },
+  alignTableLeft: { en: 'Align table left', zh: '表格靠左對齊' },
+  alignTableCenter: { en: 'Align table center', zh: '表格置中對齊' },
+  alignTableRight: { en: 'Align table right', zh: '表格靠右對齊' },
+  grid: { en: 'Grid', zh: '格線' },
+  gridTitle: { en: 'Rule every cell: an ordinary table', zh: '每個儲存格都有框線：一般表格' },
+  box: { en: 'Box', zh: '方框' },
+  boxTitle: { en: 'Rule the frame only: a boxed stimulus', zh: '只有外框：加框的資料' },
+  tAccount: { en: 'T-account', zh: 'T 字帳' },
+  tAccountTitle: {
+    en: 'Frame, a rule under the top row and one down the middle',
+    zh: '外框、頂行下方一條線，以及中間一條直線',
+  },
+  diagram: { en: 'Diagram', zh: '圖表' },
+  image: { en: 'Image', zh: '圖片' },
+  positionLeft: { en: 'Position figure left', zh: '圖形靠左' },
+  positionCenter: { en: 'Position figure center', zh: '圖形置中' },
+  positionRight: { en: 'Position figure right', zh: '圖形靠右' },
+  editDrawing: { en: 'Edit the drawing', zh: '編輯圖畫' },
+  draw: { en: '✎ Draw', zh: '✎ 繪圖' },
+});

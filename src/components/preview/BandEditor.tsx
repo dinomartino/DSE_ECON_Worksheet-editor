@@ -6,6 +6,8 @@ import { bandFieldSegments, mirrorBilingualEdit } from '@/model/bandSegments';
 import { plain } from '@/model/text';
 import type { Band, BandField, BandFieldSide, BiText, LanguageMode } from '@/model/types';
 import { InlineEditable } from './InlineEditable';
+import { useMessages } from '@/i18n/language';
+import { BAND_EDITOR_MESSAGES, BAND_LABEL_KEYS } from './BandEditor.messages';
 
 /**
  * The masthead, edited in place with fixed drop zones.
@@ -157,6 +159,7 @@ export function BandEditor({
   page,
   selection,
 }: Props) {
+  const m = useMessages(BAND_EDITOR_MESSAGES);
   // Transient drag state; never committed, so it can't reach an undo entry.
   const [dragging, setDragging] = useState<{ bandId: string; fieldId: string } | undefined>();
   const [over, setOver] = useState<{ bandId: string; zone: ZoneName } | undefined>();
@@ -184,7 +187,7 @@ export function BandEditor({
         >
           {label && (
             <span className="pointer-events-auto rounded bg-[#efece7] px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-[#8f8a86]">
-              {label}
+              {BAND_LABEL_KEYS[label] ? m[BAND_LABEL_KEYS[label]] : label}
             </span>
           )}
           {onAddRow && (
@@ -193,7 +196,7 @@ export function BandEditor({
               onClick={onAddRow}
               className="pointer-events-auto cursor-pointer rounded px-1.5 py-0.5 text-[9px] font-medium text-[#8f8a86] transition-[background-color,color,scale] duration-150 ease-out-soft hover:bg-[#d9ebf8] hover:text-[#0a5c9e] active:scale-[0.97]"
             >
-              + Row
+              {m.addRow}
             </button>
           )}
         </div>
@@ -229,8 +232,8 @@ export function BandEditor({
               >
                 <button
                   type="button"
-                  aria-label="Remove this row"
-                  title="Remove this row"
+                  aria-label={m.removeRow}
+                  title={m.removeRow}
                   onClick={() => onRemoveRow(band.id)}
                   className="pointer-events-auto cursor-pointer px-1 py-0.5 text-[10px] leading-none text-[#a5a09b] transition-[color,scale] duration-150 ease-out-soft hover:text-[#dc2626] active:scale-[0.97]"
                 >
@@ -354,7 +357,7 @@ export function BandEditor({
                             value={segment.text}
                             side={language === 'zh' ? 'zh' : 'en'}
                             placeholder={
-                              field.kind === 'text' ? 'Double-click to add text' : '+'
+                              field.kind === 'text' ? m.addText : '+'
                             }
                             /*
                              * An *empty* side of a computed field is pure affordance.
@@ -400,10 +403,10 @@ export function BandEditor({
                             data-band-value
                             title={
                               segment.token === 'totalMarks'
-                                ? 'Computed from the question marks'
+                                ? m.totalMarksTitle
                                 : segment.token === 'rule'
-                                  ? 'A ruled space, sized by the field width'
-                                  : 'Numbered by Word when the document is opened'
+                                  ? m.ruleTitle
+                                  : m.pageNumberTitle
                             }
                             className="cursor-default"
                           >
@@ -413,8 +416,8 @@ export function BandEditor({
                       )}
                       <button
                         type="button"
-                        aria-label="Remove field"
-                        title="Remove field"
+                        aria-label={m.removeField}
+                        title={m.removeField}
                         onClick={() => onRemoveField(field.id)}
                         className="ml-0.5 hidden text-[10px] leading-none text-[#8f8a86] transition-[color] duration-150 ease-out-soft hover:text-[#dc2626] group-hover/field:inline"
                       >
@@ -430,7 +433,7 @@ export function BandEditor({
                     <button
                       type="button"
                       onClick={() => onAddField(band.id, zone)}
-                      aria-label={`Add a field to the ${zone} zone`}
+                      aria-label={m.addField(zone)}
                       className="text-[10px] text-transparent transition-[color] duration-150 ease-out-soft group-hover/band:text-[#a5a09b] hover:!text-[#0a5c9e]"
                     >
                       +

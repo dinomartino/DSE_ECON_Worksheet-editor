@@ -48,6 +48,10 @@ import { useWorksheetStore, type BandScope } from '@/store/worksheetStore';
 import { BandPreview, BandPresetCard } from './BandPreview';
 import { BiTextField } from './BiTextField';
 import { CloseIcon } from '@/components/ui/icons';
+import { useMessages, useUiLanguage } from '@/i18n/language';
+import { DOCUMENT_SETTINGS_MESSAGES } from './DocumentSettings.messages';
+import type { Messages as MessagesOf } from '@/i18n/catalogue';
+import type { UiLanguage } from '@/settings/language';
 
 /**
  * Everything decided once per document, in one dialog.
@@ -70,12 +74,23 @@ import { CloseIcon } from '@/components/ui/icons';
 type Tab = 'document' | 'page' | 'furniture' | 'cover';
 
 /** Top/bottom before left/right — the order Word and every print dialog state them in. */
-const MARGIN_EDGES: Array<{ key: keyof PageMargins; label: string }> = [
-  { key: 'top', label: 'Top' },
-  { key: 'bottom', label: 'Bottom' },
-  { key: 'left', label: 'Left' },
-  { key: 'right', label: 'Right' },
+const MARGIN_EDGES: Array<{
+  key: keyof PageMargins;
+  label: 'marginTop' | 'marginBottom' | 'marginLeft' | 'marginRight';
+}> = [
+  { key: 'top', label: 'marginTop' },
+  { key: 'bottom', label: 'marginBottom' },
+  { key: 'left', label: 'marginLeft' },
+  { key: 'right', label: 'marginRight' },
 ];
+
+const MARGIN_PRESET_KEYS = [
+  'marginPreset0',
+  'marginPreset1',
+  'marginPreset2',
+  'marginPreset3',
+  'marginPreset4',
+] as const;
 
 /**
  * One margin edge, typed in centimetres but stored in twips.
@@ -133,6 +148,7 @@ function CmField({
 
 /** Worksheet identity: what the document is called and what it is set in. */
 function DocumentTab() {
+  const m = useMessages(DOCUMENT_SETTINGS_MESSAGES);
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const updateWorksheet = useWorksheetStore((s) => s.updateWorksheet);
 
@@ -153,16 +169,12 @@ function DocumentTab() {
           the moment the two separated — and a hint that describes a effect the field no
           longer has is worse than none. */}
       <Field
-        label="Title"
-        hint={
-          usingTitleBlock
-            ? 'The title block prints on page 1 instead. Edit that on the page. To rename the file, click its name in the toolbar.'
-            : 'Printed at the top of the first page. To rename the file, click its name in the toolbar.'
-        }
+        label={m.title}
+        hint={usingTitleBlock ? m.titleHintBlock : m.titleHint}
       >
         <BiTextField
           translate={{ kind: 'title' }}
-          ariaLabel="Worksheet title"
+          ariaLabel={m.titleAria}
           value={worksheet.title}
           rows={1}
           onChange={(title) => updateWorksheet({ title })}
@@ -175,27 +187,23 @@ function DocumentTab() {
           the hint says where the real instructions live rather than suggesting wording
           the cover already carries. */}
       <Field
-        label="Instructions"
-        hint={
-          worksheet.cover
-            ? 'A line under the title. This paper’s rubric lives on the cover. Edit it there.'
-            : 'A line under the title, e.g. “Answer ALL questions.”'
-        }
+        label={m.instructions}
+        hint={worksheet.cover ? m.instructionsHintCover : m.instructionsHint}
       >
         <BiTextField
           translate={{ kind: 'instructions' }}
-          ariaLabel="Instructions"
+          ariaLabel={m.instructions}
           value={worksheet.instructions ?? emptyBiText()}
           rows={2}
           onChange={(instructions) => updateWorksheet({ instructions })}
         />
       </Field>
 
-      <Field label="Fonts" hint="Applied to Latin and Chinese text separately in the export.">
+      <Field label={m.fonts} hint={m.fontsHint}>
         <SelectField<number>
           value={fontIndex >= 0 ? fontIndex : -1}
           options={[
-            ...(fontIndex < 0 ? [{ value: -1, label: 'Custom' }] : []),
+            ...(fontIndex < 0 ? [{ value: -1, label: m.custom }] : []),
             ...FONT_PRESETS.map((preset, index) => ({ value: index, label: preset.label })),
           ]}
           onChange={(index) => {
@@ -227,6 +235,7 @@ function DocumentTab() {
  * Version A is the authored order; only the count and seed are stored.
  */
 function VersionsField() {
+  const m = useMessages(DOCUMENT_SETTINGS_MESSAGES);
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const updateWorksheet = useWorksheetStore((s) => s.updateWorksheet);
   const variant = useWorksheetStore((s) => s.mode.variant);
@@ -247,18 +256,18 @@ function VersionsField() {
 
   return (
     <Field
-      label="Versions"
-      hint="Multiple-choice options shuffle per version; version A keeps your order. Pinned, “all of the above” and combination options never move."
+      label={m.versions}
+      hint={m.versionsHint}
     >
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <Segmented<string>
-          label="Number of versions"
+          label={m.versionsCount}
           value={String(count)}
           onChange={(value) => setCount(Number(value))}
           options={Array.from({ length: MAX_VERSIONS }, (_, index) => ({
             value: String(index + 1),
-            label: index === 0 ? 'Off' : String(index + 1),
-            title: index === 0 ? 'One paper' : `Versions A–${versionLetter(index)}`,
+            label: index === 0 ? m.versionsOff : String(index + 1),
+            title: index === 0 ? m.versionsOne : m.versionsRange(versionLetter(index)),
           }))}
         />
         {letters.length > 0 && (
@@ -266,19 +275,19 @@ function VersionsField() {
             <Button
               size="sm"
               variant="subtle"
-              title="Pick a new shuffle for versions B onwards"
+              title={m.reshuffleTitle}
               onClick={() =>
                 updateWorksheet({
                   versions: { count, seed: newVersionSeed(worksheet.versions?.seed) },
                 })
               }
             >
-              Reshuffle
+              {m.reshuffle}
             </Button>
             <span className="flex items-center gap-2 text-[11px] text-ink-muted">
-              Page shows
+              {m.pageShows}
               <Segmented<string>
-                label="Version shown on the page"
+                label={m.versionShown}
                 value={shown}
                 onChange={(letter) => setMode({ variant: letter === 'A' ? undefined : letter })}
                 options={letters.map((letter) => ({ value: letter, label: letter }))}
@@ -309,6 +318,8 @@ function typeLabel(definition: AnyQuestionTypeDefinition, language: LanguageMode
  * empty box takes the last one off.
  */
 function BankField() {
+  const m = useMessages(DOCUMENT_SETTINGS_MESSAGES);
+  const lang = useUiLanguage();
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const updateWorksheet = useWorksheetStore((s) => s.updateWorksheet);
   const [draft, setDraft] = useState('');
@@ -326,14 +337,14 @@ function BankField() {
   };
   const status =
     refs.length === 0
-      ? 'No class yet: the bank treats this paper as a draft.'
-      : [cohorts.length > 0 ? `Year group: ${cohorts.join(', ')}` : undefined, satOn ? undefined : `No date set: counts from ${formatDay(worksheet.createdAt)}, when the paper was made`]
+      ? m.classesNone
+      : [cohorts.length > 0 ? m.yearGroup(cohorts.join(', ')) : undefined, satOn ? undefined : m.noDate(formatDay(worksheet.createdAt, lang))]
           .filter(Boolean)
           .join(' · ');
   return (
     <Field
-      label="Classes 班別"
-      hint="Which classes sat this paper, and when. The question bank uses it to warn about questions these students have seen. Never printed."
+      label={m.classes}
+      hint={m.classesHint}
     >
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -343,7 +354,7 @@ function BankField() {
                 {name}
                 <button
                   type="button"
-                  aria-label={`Remove class ${name}`}
+                  aria-label={m.removeClass(name)}
                   onClick={() => saveClasses(stored.filter((_, at) => at !== index))}
                   className="flex h-6 w-5 cursor-pointer items-center justify-center rounded-md text-ink-subtle transition-colors duration-150 ease-out-soft hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
@@ -353,9 +364,9 @@ function BankField() {
             ))}
             <input
               type="text"
-              aria-label="Classes"
+              aria-label={m.classesAria}
               value={draft}
-              placeholder={stored.length === 0 ? 'e.g. 5A, 5B' : 'Add a class'}
+              placeholder={stored.length === 0 ? m.classesExample : m.addClass}
               onChange={(event) => commit(event.target.value, false)}
               onKeyDown={(event) => {
                 if (event.key === 'Enter') {
@@ -371,10 +382,10 @@ function BankField() {
             />
           </div>
           <label className="flex items-center gap-2 text-xs text-ink-muted">
-            Sat on
+            {m.satOn}
             <input
               type="date"
-              aria-label="Sat on"
+              aria-label={m.satOn}
               value={satOn}
               onChange={(event) => updateWorksheet({ satOn: isIsoDate(event.target.value) ? event.target.value : undefined })}
               className="h-8 rounded-lg border border-line bg-surface px-2 text-xs text-ink outline-none transition-colors duration-150 ease-out-soft focus:border-accent focus:ring-2 focus:ring-accent/25"
@@ -383,7 +394,7 @@ function BankField() {
         </div>
         {status && <p className="text-[11px] text-ink-subtle">{status}</p>}
         <CheckField
-          label="Hide from question bank"
+          label={m.hideFromBank}
           checked={Boolean(worksheet.bankHidden)}
           onChange={(hidden) => updateWorksheet({ bankHidden: hidden || undefined })}
         />
@@ -393,11 +404,12 @@ function BankField() {
 }
 
 const DAY = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+const DAY_ZH = new Intl.DateTimeFormat('zh-HK', { day: 'numeric', month: 'short', year: 'numeric' });
 
 /** "3 Nov 2025" for an ISO date or timestamp; the raw text if it will not parse. */
-function formatDay(iso: string): string {
+function formatDay(iso: string, lang: UiLanguage): string {
   const when = Date.parse(iso);
-  return Number.isNaN(when) ? iso : DAY.format(when);
+  return Number.isNaN(when) ? iso : (lang === 'zh-HK' ? DAY_ZH : DAY).format(when);
 }
 
 /**
@@ -406,6 +418,7 @@ function formatDay(iso: string): string {
  * box removes the target, so an untouched document never carries one.
  */
 function TargetField() {
+  const m = useMessages(DOCUMENT_SETTINGS_MESSAGES);
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const updateWorksheet = useWorksheetStore((s) => s.updateWorksheet);
   const language = useWorksheetStore((s) => s.mode.language);
@@ -419,8 +432,8 @@ function TargetField() {
 
   return (
     <Field
-      label="Target"
-      hint="Optional. The summary in the toolbar counts toward it, and the export check flags a paper over or under it."
+      label={m.target}
+      hint={m.targetHint}
     >
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         {listQuestionTypes().map((definition) => (
@@ -435,15 +448,15 @@ function TargetField() {
         ))}
         <NumberField
           clearable
-          label="Marks"
+          label={m.targetMarks}
           value={target.marks}
           placeholder="–"
           onChange={(marks) => set({ marks })}
         />
         <NumberField
           clearable
-          label="Time"
-          suffix="min"
+          label={m.targetTime}
+          suffix={m.targetMinutes}
           value={target.minutes}
           placeholder="–"
           onChange={(minutes) => set({ minutes })}
@@ -455,6 +468,7 @@ function TargetField() {
 
 /** Paper geometry: size, orientation, margins. */
 function PageTab() {
+  const m = useMessages(DOCUMENT_SETTINGS_MESSAGES);
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const setPageSetup = useWorksheetStore((s) => s.setPageSetup);
   const setExamGapLines = useWorksheetStore((s) => s.setExamGapLines);
@@ -482,14 +496,13 @@ function PageTab() {
           furniture geometry and the lines-per-page were measured against an A4 column,
           so another size moves the frame off the text and re-cuts every answer page. */}
       {shape === 'lqMock' ? (
-        <Field label="Paper size" hint="Fixed by the booklet's page frame.">
+        <Field label={m.paperSize} hint={m.fixedByBooklet}>
           <span className="block text-xs text-ink-muted">
-            {PAPER_SIZES[setup.paper].label}: the size the reference booklet’s frame and
-            answer-line pitch were measured against.
+            {m.paperSizeBooklet(PAPER_SIZES[setup.paper].label)}
           </span>
         </Field>
       ) : (
-        <Field label="Paper size" hint="Written straight into the .docx page setup.">
+        <Field label={m.paperSize} hint={m.paperSizeHint}>
           <SelectField<PaperSize>
             value={setup.paper}
             options={Object.entries(PAPER_SIZES).map(([value, info]) => ({
@@ -507,8 +520,8 @@ function PageTab() {
           nothing when clicked. The model keeps `Orientation` as a two-value union and
           the exporter still writes `w:orient`, so restoring the choice is one edit
           here. */}
-      <Field label="Orientation" hint="Worksheets print portrait.">
-        <span className="block text-xs text-ink-muted">Portrait</span>
+      <Field label={m.orientation} hint={m.orientationHint}>
+        <span className="block text-xs text-ink-muted">{m.portrait}</span>
       </Field>
 
       {/* The booklet's margins are measured, not chosen.
@@ -518,20 +531,12 @@ function PageTab() {
           every answer page. Stated rather than offered-and-ignored (§ `documentShape`:
           withhold, and say why). */}
       {shape === 'lqMock' ? (
-        <Field label="Margins" hint="Fixed by the booklet's page frame.">
-          <span className="block text-xs text-ink-muted">
-            The reference booklet’s own margins. The page frame and margin notes are
-            positioned against this column, so changing it would move them off the text
-            they frame.
-          </span>
+        <Field label={m.margins} hint={m.fixedByBooklet}>
+          <span className="block text-xs text-ink-muted">{m.marginsBooklet}</span>
         </Field>
       ) : shape === 'paper1' ? (
-        <Field label="Margins" hint="Fixed by the reference paper.">
-          <span className="block text-xs text-ink-muted">
-            The reference MCQ paper’s own margins. Question, statement and option
-            indents were measured against this column, so the geometry is fixed
-            together.
-          </span>
+        <Field label={m.margins} hint={m.fixedByPaper}>
+          <span className="block text-xs text-ink-muted">{m.marginsPaper1}</span>
         </Field>
       ) : (
         <>
@@ -540,12 +545,15 @@ function PageTab() {
           once the numbers happened not to match a preset — previously there was no way
           to *reach* custom margins from this panel at all. Choosing it keeps the current
           numbers as the starting point, so it opens the fields rather than resetting. */}
-      <Field label="Margins" hint="Pick a preset, or set each edge yourself.">
+      <Field label={m.margins} hint={m.marginsHint}>
         <SelectField<number>
           value={customOpen || presetIndex < 0 ? -1 : presetIndex}
           options={[
-            ...MARGIN_PRESETS.map((preset, index) => ({ value: index, label: preset.label })),
-            { value: -1, label: 'Custom…' },
+            ...MARGIN_PRESETS.map((preset, index) => ({
+              value: index,
+              label: MARGIN_PRESET_KEYS[index] ? m[MARGIN_PRESET_KEYS[index]] : preset.label,
+            })),
+            { value: -1, label: m.customEllipsis },
           ]}
           onChange={(index) => {
             const preset = MARGIN_PRESETS[index];
@@ -566,7 +574,7 @@ function PageTab() {
             {MARGIN_EDGES.map(({ key, label }) => (
               <CmField
                 key={key}
-                label={label}
+                label={m[label]}
                 twips={setup.margins[key]}
                 onChange={(next) => setPageSetup({ margins: { ...setup.margins, [key]: next } })}
               />
@@ -574,9 +582,7 @@ function PageTab() {
           </div>
           {/* Word's own floor. Below this most printers clip, so the page would not
               print as previewed — the input clamps rather than warning after the fact. */}
-          <p className="text-[11px] text-ink-subtle">
-            0–5 cm per edge. Stored in twips, exactly as Word writes them.
-          </p>
+          <p className="text-[11px] text-ink-subtle">{m.marginsRange}</p>
         </div>
       )}
         </>
@@ -589,25 +595,25 @@ function PageTab() {
           the wide boundary exists nowhere else (§ `boundaryGapLines`). */}
       {shape === 'paper1' && (
         <Field
-          label="Between questions"
-          hint="Blank lines separating one question from the next. A single question can override this in its own panel, or by dragging its gap on the page."
+          label={m.betweenQuestions}
+          hint={m.betweenQuestionsHint}
         >
           <SelectField<number>
             value={worksheet.examGapLines ?? 0}
             options={[
               {
                 value: 0,
-                label: `Default: ${
+                label: m.gapDefault(
                   // Read off the paper's own questions rather than naming a type:
                   // whatever kind this paper holds states its own measured gap.
                   (worksheet.questions[0]
                     ? requireQuestionType(worksheet.questions[0]).examGapLines
-                    : undefined) ?? 3
-                } lines (the reference paper)`,
+                    : undefined) ?? 3,
+                ),
               },
               ...[1, 2, 3, 4, 5, 6].map((lines) => ({
                 value: lines,
-                label: lines === 1 ? '1 line' : `${lines} lines`,
+                label: m.gapLines(lines),
               })),
             ]}
             onChange={(lines) => setExamGapLines(lines === 0 ? undefined : lines)}
@@ -630,6 +636,7 @@ function PageTab() {
  * A notice rather than an automatic fix: which copy to drop depends on the paper.
  */
 function DuplicateFieldNotice() {
+  const m = useMessages(DOCUMENT_SETTINGS_MESSAGES);
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const header = headerFooterOf(worksheet.header, defaultHeader);
   const footer = headerFooterOf(worksheet.footer, defaultFooter);
@@ -646,9 +653,7 @@ function DuplicateFieldNotice() {
 
   return (
     <p className="rounded-lg bg-warn-soft px-3 py-2 text-[11px] leading-relaxed text-warn-ink">
-      <span className="font-medium">Full marks appears more than once.</span> The total is
-      worked out from the questions, so it will print the same number in each place. Remove
-      the one you do not want by hovering it on the page and clicking ✕.
+      <span className="font-medium">{m.dupTitle}</span> {m.dupBody}
     </p>
   );
 }
@@ -666,6 +671,7 @@ function DuplicateFieldNotice() {
  * and silently doing either would change a printed page the teacher had settled on.
  */
 function BandOverflowNotice() {
+  const m = useMessages(DOCUMENT_SETTINGS_MESSAGES);
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const setup = pageSetupOf(worksheet);
   const header = headerFooterOf(worksheet.header, defaultHeader);
@@ -691,14 +697,29 @@ function BandOverflowNotice() {
 
   return (
     <p className="rounded-lg bg-warn-soft px-3 py-2 text-[11px] leading-relaxed text-warn-ink">
-      <span className="font-medium">
-        The {edges.join(' and ')} {edges.length > 1 ? 'are' : 'is'} taller than the margin.
-      </span>{' '}
-      About {cm} cm of it runs into the page, so questions are pushed down. Give the page a
-      bigger {edges[0] === 'header' ? 'top' : 'bottom'} margin on the Page tab, or remove a
-      row.
+      <span className="font-medium">{m.overTitle(edges.includes('header'), edges.includes('footer'))}</span>{' '}
+      {m.overBody(cm, edges[0] === 'header')}
     </p>
   );
+}
+
+type Messages = MessagesOf<typeof DOCUMENT_SETTINGS_MESSAGES>;
+
+/** A header/footer preset's name in the interface language; an unknown id keeps its own. */
+function presetName(m: Messages, preset: { id: string; name: string }): string {
+  switch (preset.id) {
+    case 'running-title':
+    case 'paper-line':
+      return m.presetRunningTitle;
+    case 'exam':
+      return m.presetExam;
+    case 'title-only':
+      return m.presetTitleOnly;
+    case 'publisher':
+      return m.presetPublisher;
+    default:
+      return preset.name;
+  }
 }
 
 /**
@@ -720,6 +741,7 @@ function BandSurface({
   rule: boolean | undefined;
   onRule: (rule: boolean) => void;
 }) {
+  const m = useMessages(DOCUMENT_SETTINGS_MESSAGES);
   const setBands = useWorksheetStore((s) => s.setHeaderFooterBands);
   const addBand = useWorksheetStore((s) => s.addHeaderFooterBand);
   const presets = HEADER_FOOTER_PRESETS.filter((preset) => preset.edge === which);
@@ -732,7 +754,7 @@ function BandSurface({
           {presets.map((preset) => (
             <BandPresetCard
               key={preset.id}
-              name={preset.name}
+              name={presetName(m, preset)}
               bands={preset.build()}
               edge={which}
               onClick={() => setBands(which, preset.build(), scope)}
@@ -740,7 +762,7 @@ function BandSurface({
           ))}
         </div>
         <Button size="sm" variant="subtle" onClick={() => addBand(which, undefined, scope)}>
-          Or start with an empty row
+          {m.startEmptyRow}
         </Button>
       </div>
     );
@@ -758,24 +780,23 @@ function BandSurface({
           />
         </div>
         <p className="mt-1 text-[11px] text-ink-muted">
-          Double-click this {which} on the page to type in it, or drag a field between the
-          left, centre and right zones.
+          {m.dragHint(which)}
         </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-        <CheckField label="Rule line" checked={Boolean(rule)} onChange={onRule} />
+        <CheckField label={m.ruleLine} checked={Boolean(rule)} onChange={onRule} />
         <Button size="sm" variant="subtle" onClick={() => addBand(which, undefined, scope)}>
-          + Row
+          {m.addRow}
         </Button>
         <Button size="sm" variant="subtle" onClick={() => setBands(which, [], scope)}>
-          Clear
+          {m.clear}
         </Button>
       </div>
 
       <details className="group/presets pt-0.5">
         <summary className="cursor-pointer list-none text-[11px] font-medium text-ink-muted transition-colors duration-150 ease-out-soft hover:text-ink">
-          Replace with a different layout{' '}
+          {m.replaceLayout}{' '}
           <span
             aria-hidden
             className="inline-block transition-transform duration-150 ease-out-soft group-open/presets:rotate-180"
@@ -787,7 +808,7 @@ function BandSurface({
           {presets.map((preset) => (
             <BandPresetCard
               key={preset.id}
-              name={preset.name}
+              name={presetName(m, preset)}
               bands={preset.build()}
               edge={which}
               onClick={() => setBands(which, preset.build(), scope)}
@@ -820,13 +841,14 @@ function useEdge(which: 'header' | 'footer') {
 
 /** The edge's master switch, which governs it on every page. */
 function EdgeSwitch({ which }: { which: 'header' | 'footer' }) {
+  const m = useMessages(DOCUMENT_SETTINGS_MESSAGES);
   const setHeaderFooter = useWorksheetStore((s) => s.setHeaderFooter);
   const { value, withheld, alwaysOn } = useEdge(which);
-  if (withheld) return <span className="text-xs text-ink-muted">No header on this booklet</span>;
-  if (alwaysOn) return <span className="text-xs text-ink-muted">Footer always prints</span>;
+  if (withheld) return <span className="text-xs text-ink-muted">{m.noHeaderBooklet}</span>;
+  if (alwaysOn) return <span className="text-xs text-ink-muted">{m.footerAlways}</span>;
   return (
     <CheckField
-      label={`Print a ${which}`}
+      label={m.printEdge(which)}
       checked={value.enabled}
       onChange={(on) => setHeaderFooter(which, { enabled: on })}
     />
@@ -848,20 +870,19 @@ function EdgeHeading({ title, hint, action }: { title: string; hint?: string; ac
 
 /** The one-line state of an edge that prints nothing here. */
 function EdgeOff({ which }: { which: 'header' | 'footer' }) {
+  const m = useMessages(DOCUMENT_SETTINGS_MESSAGES);
   const { withheld } = useEdge(which);
   return (
     <p className="text-[11px] leading-relaxed text-ink-muted">
-      {withheld
-        ? 'A Question-Answer Book prints no header. The page frame and the margin notes occupy the top of every sheet, as the reference booklet has it.'
-        : `The ${which} is off on every page. Tick “Print a ${which}” above to turn it on.`}
+      {withheld ? m.withheldHeader : m.edgeOff(which)}
     </p>
   );
 }
 
-const FIRST_PAGE_OPTIONS: Array<{ value: FirstPageMode; label: string }> = [
-  { value: 'same', label: 'Same as pages 2+' },
-  { value: 'different', label: 'Its own' },
-  { value: 'blank', label: 'Nothing' },
+const firstPageOptions = (m: Messages): Array<{ value: FirstPageMode; label: string }> => [
+  { value: 'same', label: m.sameAsLater },
+  { value: 'different', label: m.itsOwn },
+  { value: 'blank', label: m.nothing },
 ];
 
 /** One edge on page 1: the same rows as later pages, its own, or nothing. */
@@ -872,10 +893,11 @@ function FirstPageEdge({
   which: 'header' | 'footer';
   onEditLater: () => void;
 }) {
+  const m = useMessages(DOCUMENT_SETTINGS_MESSAGES);
   const setHeaderFooter = useWorksheetStore((s) => s.setHeaderFooter);
   const setFirstPageMode = useWorksheetStore((s) => s.setFirstPageMode);
   const { value, withheld, enabled } = useEdge(which);
-  const title = `${which === 'header' ? 'Header' : 'Footer'} on page 1`;
+  const title = m.edgeOnPage1(which);
 
   if (withheld || !enabled) {
     return (
@@ -898,7 +920,7 @@ function FirstPageEdge({
           <Segmented<FirstPageMode>
             label={title}
             value={mode}
-            options={FIRST_PAGE_OPTIONS}
+            options={firstPageOptions(m)}
             onChange={(next) => setFirstPageMode(which, next)}
           />
         }
@@ -912,13 +934,13 @@ function FirstPageEdge({
               rule={value.rule}
               edge={which}
               page={{ number: 1, count: 2 }}
-              emptyLabel={`Pages 2+ have no ${which} rows yet`}
+              emptyLabel={m.laterEmpty(which)}
             />
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <p className="text-[11px] text-ink-muted">Prints the pages 2+ {which}.</p>
+            <p className="text-[11px] text-ink-muted">{m.printsLater(which)}</p>
             <Button size="sm" variant="subtle" onClick={onEditLater}>
-              Edit on Pages 2+
+              {m.editOnLater}
             </Button>
           </div>
         </div>
@@ -933,14 +955,12 @@ function FirstPageEdge({
             rule={resolved.rule}
             onRule={(rule) => setHeaderFooter(which, { firstPage: { ...value.firstPage!, rule } })}
           />
-          <p className="text-[11px] text-ink-subtle">
-            Page 1 has its own rows. Switching back discards them (⌘Z undoes).
-          </p>
+          <p className="text-[11px] text-ink-subtle">{m.ownRowsNote}</p>
         </div>
       )}
 
       {mode === 'blank' && (
-        <p className="text-[11px] text-ink-muted">Page 1 prints no {which}. Pages 2+ still do.</p>
+        <p className="text-[11px] text-ink-muted">{m.page1Blank(which)}</p>
       )}
     </section>
   );
@@ -948,9 +968,10 @@ function FirstPageEdge({
 
 /** One edge on pages 2 onward: the running rows. */
 function LaterPagesEdge({ which }: { which: 'header' | 'footer' }) {
+  const m = useMessages(DOCUMENT_SETTINGS_MESSAGES);
   const setHeaderFooter = useWorksheetStore((s) => s.setHeaderFooter);
   const { value, withheld, enabled } = useEdge(which);
-  const title = `${which === 'header' ? 'Header' : 'Footer'} on pages 2+`;
+  const title = m.edgeOnLater(which);
 
   if (withheld || !enabled) {
     return (
@@ -963,11 +984,7 @@ function LaterPagesEdge({ which }: { which: 'header' | 'footer' }) {
 
   const mode = firstPageModeOf(value);
   const hint =
-    mode === 'same'
-      ? 'Page 1 prints these rows too.'
-      : mode === 'different'
-        ? 'Page 1 has its own rows. Change that on the Page 1 tab.'
-        : 'Page 1 prints none. Change that on the Page 1 tab.';
+    mode === 'same' ? m.laterHintSame : mode === 'different' ? m.laterHintOwn : m.laterHintBlank;
 
   return (
     <section className="space-y-2.5">
@@ -1067,17 +1084,19 @@ function PageThumbTab({
 }
 
 /** How page 1 differs, in a few words, for its tab caption. */
-function firstPageCaption(edges: Array<{ name: string; edge: ReturnType<typeof useEdge> }>): string {
+function firstPageCaption(
+  edges: Array<{ name: string; edge: ReturnType<typeof useEdge> }>,
+  m: Messages,
+): string {
   const parts = edges.flatMap(({ name, edge }) => {
     if (edge.withheld || !edge.enabled) return [];
     const mode = firstPageModeOf(edge.value);
-    if (mode === 'different') return [`own ${name}`];
-    if (mode === 'blank') return [`no ${name}`];
+    if (mode === 'different') return [m.captionOwn(name)];
+    if (mode === 'blank') return [m.captionNo(name)];
     return [];
   });
-  if (parts.length === 0) return 'Same as later pages, plus the title';
-  const text = `${parts.join(', ')}, plus the title`;
-  return text.charAt(0).toUpperCase() + text.slice(1);
+  if (parts.length === 0) return m.captionSame;
+  return m.captionPlus(parts.join(m.captionList));
 }
 
 /**
@@ -1086,6 +1105,7 @@ function firstPageCaption(edges: Array<{ name: string; edge: ReturnType<typeof u
  * the title because only page 1 prints it (§ Page 1 can differ).
  */
 function HeaderFooterTab() {
+  const m = useMessages(DOCUMENT_SETTINGS_MESSAGES);
   const [view, setView] = useState<PageView>('first');
   const header = useEdge('header');
   const footer = useEdge('footer');
@@ -1099,27 +1119,30 @@ function HeaderFooterTab() {
         <EdgeSwitch which="header" />
         <EdgeSwitch which="footer" />
         {!header.withheld && (
-          <span className="text-[11px] text-ink-subtle">On or off for every page.</span>
+          <span className="text-[11px] text-ink-subtle">{m.onOrOff}</span>
         )}
       </div>
 
-      <div role="tablist" aria-label="Page to edit" className="flex gap-3">
+      <div role="tablist" aria-label={m.pageToEdit} className="flex gap-3">
         <PageThumbTab
           view="first"
           selected={view === 'first'}
           onSelect={() => setView('first')}
-          label="Page 1"
-          caption={firstPageCaption([
-            { name: 'header', edge: header },
-            { name: 'footer', edge: footer },
-          ])}
+          label={m.page1}
+          caption={firstPageCaption(
+            [
+              { name: m.edgeHeader, edge: header },
+              { name: m.edgeFooter, edge: footer },
+            ],
+            m,
+          )}
         />
         <PageThumbTab
           view="later"
           selected={view === 'later'}
           onSelect={() => setView('later')}
-          label="Pages 2 onward"
-          caption="Every page after the first"
+          label={m.pages2Onward}
+          caption={m.everyPageAfter}
         />
       </div>
 
@@ -1162,6 +1185,7 @@ function HeaderFooterTab() {
  * `model/cover.ts`). Re-running it replaces the cover rather than stacking a second one.
  */
 function CoverTab({ onClose }: { onClose: () => void }) {
+  const m = useMessages(DOCUMENT_SETTINGS_MESSAGES);
   const applyCover = useWorksheetStore((s) => s.applyCover);
   const removeCover = useWorksheetStore((s) => s.removeCover);
   const hasCover = useWorksheetStore((s) => Boolean(s.worksheet.cover));
@@ -1198,23 +1222,19 @@ function CoverTab({ onClose }: { onClose: () => void }) {
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-[13px] font-semibold text-ink">Mock exam cover</h3>
-        <p className="text-[11px] leading-relaxed text-ink-muted">
-          A two-column front page: the paper’s identity and instructions on the left, a
-          candidate panel on the right. Every line is edited on the page afterwards, like
-          any other text.
-        </p>
+        <h3 className="text-[13px] font-semibold text-ink">{m.coverHeading}</h3>
+        <p className="text-[11px] leading-relaxed text-ink-muted">{m.coverIntro}</p>
       </div>
 
       <Field
-        label="Paper style"
-        hint="The two differ in where candidates put their answers, which is what the instructions have to say."
+        label={m.paperStyle}
+        hint={m.paperStyleHint}
       >
         <div className="grid grid-cols-2 gap-2">
           {(
             [
-              ['mcq', 'Multiple choice', 'Answers on a separate answer sheet'],
-              ['writeIn', 'Write-in booklet', 'Answers in the spaces provided'],
+              ['mcq', m.styleMcq, m.styleMcqHint],
+              ['writeIn', m.styleWriteIn, m.styleWriteInHint],
             ] as Array<[CoverPaperStyle, string, string]>
           ).map(([value, label, hint]) => (
             <button
@@ -1249,18 +1269,18 @@ function CoverTab({ onClose }: { onClose: () => void }) {
           retyped: a placeholder promising "2025-26" while the cover builds 2026-27 is
           a worse lie than no placeholder (§ `academicYear`). */}
       <div className="grid grid-cols-2 gap-3">
-        {field('Corner code', code, setCode, coverYear.short)}
-        {field('School', school, setSchool, 'SCHOOL NAME')}
-        {field('Examination', examName, setExamName, `S.6 MOCK EXAMINATION ${coverYear.long}`)}
-        {field('Paper', paperName, setPaperName, 'ECONOMICS   PAPER 1')}
-        {field('Time allowed', timeAllowed, setTimeAllowed, '8:30 am – 9:30 am (1 hour)')}
+        {field(m.cornerCode, code, setCode, coverYear.short)}
+        {field(m.school, school, setSchool, 'SCHOOL NAME')}
+        {field(m.examination, examName, setExamName, `S.6 MOCK EXAMINATION ${coverYear.long}`)}
+        {field(m.paper, paperName, setPaperName, 'ECONOMICS   PAPER 1')}
+        {field(m.timeAllowed, timeAllowed, setTimeAllowed, '8:30 am – 9:30 am (1 hour)')}
       </div>
 
       {hasCover && <CoverOptions />}
 
       {hasCover && (
         <p className="rounded-lg border border-line bg-surface-sunken p-2.5 text-[11px] leading-relaxed text-ink-muted">
-          This document already has a cover. Building another replaces it.
+          {m.hasCover}
         </p>
       )}
 
@@ -1273,7 +1293,7 @@ function CoverTab({ onClose }: { onClose: () => void }) {
               onClose();
             }}
           >
-            Remove cover
+            {m.removeCover}
           </Button>
         ) : (
           <span />
@@ -1293,7 +1313,7 @@ function CoverTab({ onClose }: { onClose: () => void }) {
             onClose();
           }}
         >
-          {hasCover ? 'Replace cover' : 'Add cover page'}
+          {hasCover ? m.replaceCover : m.addCover}
         </Button>
       </div>
     </div>
@@ -1309,6 +1329,7 @@ function CoverTab({ onClose }: { onClose: () => void }) {
  * generator form above, there is a live subject to act on.
  */
 function CoverOptions() {
+  const m = useMessages(DOCUMENT_SETTINGS_MESSAGES);
   const cover = useWorksheetStore((s) => s.worksheet.cover);
   const updateCover = useWorksheetStore((s) => s.updateCover);
   if (!cover) return null;
@@ -1316,11 +1337,11 @@ function CoverOptions() {
   const marker = cover.instructionMarker ?? 'paren';
   return (
     <div className="space-y-3 rounded-lg border border-line bg-surface p-3">
-      <h4 className="text-[12px] font-semibold text-ink">Cover options</h4>
+      <h4 className="text-[12px] font-semibold text-ink">{m.coverOptions}</h4>
 
       <Field
-        label="Instruction numbers"
-        hint="A house style: the reference’s Paper 1 numbers “1.”, its Paper 2 “(1)”."
+        label={m.instructionNumbers}
+        hint={m.instructionNumbersHint}
       >
         <div className="flex gap-2" role="radiogroup">
           {(
@@ -1348,8 +1369,8 @@ function CoverOptions() {
       </Field>
 
       <Field
-        label="Write-in boxes"
-        hint="Boxes beside the panel label. 0 draws none; with an empty note that removes the panel and the cover prints one wide column."
+        label={m.writeInBoxes}
+        hint={m.writeInBoxesHint}
       >
         <input
           type="number"
@@ -1372,6 +1393,7 @@ function CoverOptions() {
  * Stated as one choice because the block silently takes the title's place.
  */
 function TitleSection() {
+  const m = useMessages(DOCUMENT_SETTINGS_MESSAGES);
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const setBands = useWorksheetStore((s) => s.setBands);
   const addBand = useWorksheetStore((s) => s.addBand);
@@ -1382,11 +1404,8 @@ function TitleSection() {
   return (
     <section className="space-y-3">
       <div>
-        <h3 className="text-[13px] font-semibold text-ink">Title (page 1 only)</h3>
-        <p className="text-[11px] leading-relaxed text-ink-muted">
-          Printed below the header, above the first question. Choose one. A title block
-          takes the place of the plain title rather than printing as well as it.
-        </p>
+        <h3 className="text-[13px] font-semibold text-ink">{m.titleSection}</h3>
+        <p className="text-[11px] leading-relaxed text-ink-muted">{m.titleSectionHint}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
@@ -1409,13 +1428,13 @@ function TitleSection() {
               mid-air reads as unfinished rather than as the simpler option. */}
           <div className="flex min-h-[56px] flex-1 items-center justify-center rounded border border-line/70 bg-[#fdfcfa] px-2 py-1">
             <span className="truncate text-[9px] font-semibold text-[#3f3b38]">
-              {plain(worksheet.title.en) || plain(worksheet.title.zh) || 'Worksheet title'}
+              {plain(worksheet.title.en) || plain(worksheet.title.zh) || m.worksheetTitlePlaceholder}
             </span>
           </div>
           <span
             className={`text-[11px] font-medium ${!usingBlock ? 'text-ink' : 'text-ink-muted'}`}
           >
-            Just the title
+            {m.justTheTitle}
           </span>
         </button>
 
@@ -1445,33 +1464,31 @@ function TitleSection() {
           <span
             className={`text-[11px] font-medium ${usingBlock ? 'text-ink' : 'text-ink-muted'}`}
           >
-            Title block (name, marks, time)
+            {m.titleBlock}
           </span>
         </button>
       </div>
 
       {usingBlock && (
         <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-line bg-surface-sunken p-3">
-          <span className="mr-1 text-[11px] text-ink-muted">
-            Edit the text on the page. Add to the last row:
-          </span>
+          <span className="mr-1 text-[11px] text-ink-muted">{m.titleBlockEdit}</span>
           <Button size="sm" variant="subtle" onClick={() => addBand()}>
-            + Row
+            {m.addRow}
           </Button>
           <Button
             size="sm"
             variant="subtle"
-            title="A total computed from the question marks"
+            title={m.addFullMarksTitle}
             onClick={() =>
               addBandField(bands[bands.length - 1].id, 'left', createTotalMarksField())
             }
           >
-            + Full marks
+            {m.addFullMarks}
           </Button>
           <Button
             size="sm"
             variant="subtle"
-            title="A ruled line to write on"
+            title={m.addFillInTitle}
             onClick={() =>
               addBandField(
                 bands[bands.length - 1].id,
@@ -1480,7 +1497,7 @@ function TitleSection() {
               )
             }
           >
-            + Fill-in
+            {m.addFillIn}
           </Button>
         </div>
       )}
@@ -1495,12 +1512,13 @@ export function DocumentSettings({
   initialTab?: Tab;
   onClose: () => void;
 }) {
+  const m = useMessages(DOCUMENT_SETTINGS_MESSAGES);
   const [tab, setTab] = useState<Tab>(initialTab);
 
   return (
     <Dialog
-      title="Document setup"
-      description="Applies to the whole worksheet. Changes show on the page immediately."
+      title={m.dialogTitle}
+      description={m.dialogDescription}
       onClose={onClose}
       width={760}
       // Fixed, so the panel does not resize as tabs are switched — "Page" is a handful
@@ -1514,10 +1532,10 @@ export function DocumentSettings({
         value={tab}
         onChange={setTab}
         tabs={[
-          { id: 'document', label: 'Worksheet', hint: 'Title, fonts, sections' },
-          { id: 'page', label: 'Page', hint: 'Paper, margins' },
-          { id: 'furniture', label: 'Header & footer', hint: 'Page 1, later pages' },
-          { id: 'cover', label: 'Cover', hint: 'Mock exam front page' },
+          { id: 'document', label: m.tabWorksheet, hint: m.tabWorksheetHint },
+          { id: 'page', label: m.tabPage, hint: m.tabPageHint },
+          { id: 'furniture', label: m.tabFurniture, hint: m.tabFurnitureHint },
+          { id: 'cover', label: m.tabCover, hint: m.tabCoverHint },
         ]}
       >
         {/* Keyed by tab so the incoming panel fades in rather than cutting. */}

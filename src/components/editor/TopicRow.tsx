@@ -10,6 +10,10 @@ import { useBank } from '@/library/useBank';
 import { usePatternRegistry } from '@/library/usePatterns';
 import { freeTagIssue, holdsPatterns, isPatternTag, parsePatternTag, patternsIn, tagText, withPattern, type FreeTagIssue } from '@/model/patterns';
 import { isTopicCode, stringTags, TOPICS, topicHeading, topicOf, type Topic } from '@/model/topics';
+import { resolveMessages } from '@/i18n/catalogue';
+import { uiLanguage, useMessages, useUiLanguage } from '@/i18n/language';
+import type { UiLanguage } from '@/settings/language';
+import { TOPIC_ROW_MESSAGES } from './TopicRow.messages';
 
 /** Does the topic match a typed query — by code, English or 中文? */
 function matches(topic: Topic, query: string): boolean {
@@ -31,10 +35,11 @@ export function filterTopics(query: string): Array<{ topic: Topic; children: Top
  * Why a typed tag cannot be a free tag, in words a teacher reads (§ the tag grammar,
  * `model/topics.ts`): those forms are kept for topics and for later versions of the app.
  */
-export function freeTagMessage(issue: FreeTagIssue, typed: string): string {
-  if (issue === 'code') return `“${typed}” is written like a topic code, so it can’t be a tag. Add a word, for example “${typed} notes”.`;
-  if (issue === 'separator') return 'A tag can’t contain “::”.';
-  return 'A tag can’t start with “@”.';
+export function freeTagMessage(issue: FreeTagIssue, typed: string, lang: UiLanguage = uiLanguage()): string {
+  const m = resolveMessages(TOPIC_ROW_MESSAGES, lang);
+  if (issue === 'code') return m.codeLike(typed);
+  if (issue === 'separator') return m.separator;
+  return m.atSign;
 }
 
 /**
@@ -61,7 +66,7 @@ export function TopicPicker({
   isChosen,
   onPick,
   onFreeTag,
-  noFreeTag = 'Pick a topic from the list.',
+  noFreeTag,
   onClose,
 }: {
   /** Already there: shown greyed, not offered. */
@@ -73,6 +78,9 @@ export function TopicPicker({
   noFreeTag?: string;
   onClose: () => void;
 }) {
+  const m = useMessages(TOPIC_ROW_MESSAGES);
+  const lang = useUiLanguage();
+  const zh = lang === 'zh-HK';
   const [query, setQuery] = useState('');
   /** Enter was pressed on text that cannot be added: say why until the text changes. */
   const [refused, setRefused] = useState(false);
@@ -101,10 +109,10 @@ export function TopicPicker({
 
   const refusal = !onFreeTag
     ? refused
-      ? noFreeTag
+      ? (noFreeTag ?? m.pickFromList)
       : undefined
     : issue && (refused || groups.length === 0)
-      ? freeTagMessage(issue, typed)
+      ? freeTagMessage(issue, typed, lang)
       : undefined;
 
   const option = (topic: Topic, indent: boolean) => {
@@ -125,8 +133,14 @@ export function TopicPicker({
           {/* A topic's letter; a sub-topic, indented under it, reads by its name alone. */}
           {!indent && <span className="w-7 shrink-0 tabular-nums text-ink-subtle">{topic.code}</span>}
           <span className="min-w-0 flex-1">
-            {topic.en}
-            <span className="ml-1.5 font-normal text-ink-muted">{topic.zh}</span>
+            {zh ? (
+              topic.zh
+            ) : (
+              <>
+                {topic.en}
+                <span className="ml-1.5 font-normal text-ink-muted">{topic.zh}</span>
+              </>
+            )}
           </span>
         </button>
       </li>
@@ -138,8 +152,8 @@ export function TopicPicker({
       <input
         autoFocus
         value={query}
-        aria-label={onFreeTag ? 'Filter topics or type a free tag' : 'Filter topics'}
-        placeholder={onFreeTag ? 'Filter, or type a tag and press Enter' : 'Filter topics'}
+        aria-label={onFreeTag ? m.filterAria : m.filterAriaTopicsOnly}
+        placeholder={onFreeTag ? m.filterPlaceholder : m.filterAriaTopicsOnly}
         aria-invalid={refusal ? true : undefined}
         aria-describedby={refusal ? issueId : undefined}
         onChange={(event) => {
@@ -173,7 +187,7 @@ export function TopicPicker({
         ))}
         {groups.length === 0 && !refusal && (
           <li className="px-1 py-2 text-[11px] text-ink-subtle">
-            {onFreeTag ? <>No matching topic. Press Enter to add “{typed}” as a free tag.</> : 'No matching topic.'}
+            {onFreeTag ? m.noMatchFreeTag(typed) : m.noMatch}
           </li>
         )}
       </ul>
@@ -195,9 +209,9 @@ export function TopicRow({
   typeId,
   note,
   onChange,
-  title = 'Topics',
-  hint = '課題 · never printed',
-  empty = 'No topic yet. Tags feed the question bank.',
+  title,
+  hint,
+  empty,
   noFreeTag,
   intro,
   startOpen = false,
@@ -220,6 +234,9 @@ export function TopicRow({
   /** Open the picker at once (a list just made to be edited). */
   startOpen?: boolean;
 }) {
+  const m = useMessages(TOPIC_ROW_MESSAGES);
+  const lang = useUiLanguage();
+  const zh = lang === 'zh-HK';
   const current = tags ?? [];
   const { rows } = useBank();
   const registry = usePatternRegistry();
@@ -247,19 +264,19 @@ export function TopicRow({
   return (
     <div className="space-y-2 border-t border-line pt-3" data-topic-row>
       <GroupHeader
-        title={title}
-        hint={hint}
+        title={title ?? m.title}
+        hint={hint ?? m.hint}
         action={
           // A quiet panel action, like "+ Statement" beside it: the filled CTA is ink, and
           // accent is for links, focus and selection.
           <Button size="sm" variant="subtle" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
-            {open ? 'Done' : 'Add topic'}
+            {open ? m.done : m.addTopic}
           </Button>
         }
       />
       {intro}
 
-      {current.length === 0 && !open && <p className="text-[11px] text-ink-subtle">{empty}</p>}
+      {current.length === 0 && !open && <p className="text-[11px] text-ink-subtle">{empty ?? m.empty}</p>}
       {listed.length > 0 && (
         <ul className="space-y-0.5">
           {listed.map((tag) => {
@@ -267,11 +284,17 @@ export function TopicRow({
             return (
               <li key={tag} className="text-xs text-ink-muted">
                 <div className="flex items-center gap-1">
-                  <span className="min-w-0 flex-1 truncate" title={topic ? topicHeading(tag, 'both') : tag}>
+                  <span className="min-w-0 flex-1 truncate" title={topic ? topicHeading(tag, zh ? 'zh' : 'both') : tag}>
                     {topic ? (
                       <>
-                        <span className="tabular-nums text-ink-subtle">{topic.parent ?? topic.code}</span> {topic.en}{' '}
-                        <span className="text-ink-subtle">{topic.zh}</span>
+                        <span className="tabular-nums text-ink-subtle">{topic.parent ?? topic.code}</span>{' '}
+                        {zh ? (
+                          topic.zh
+                        ) : (
+                          <>
+                            {topic.en} <span className="text-ink-subtle">{topic.zh}</span>
+                          </>
+                        )}
                       </>
                     ) : isTopicCode(tag) ? (
                       // A code this version does not list (a later version's topic): its code.
@@ -280,7 +303,7 @@ export function TopicRow({
                       tag
                     )}
                   </span>
-                  <IconButton label={`Remove topic ${tagText(tag)}`} onClick={() => remove(tag)}>
+                  <IconButton label={m.removeTopic(tagText(tag, zh ? 'zh' : 'en'))} onClick={() => remove(tag)}>
                     <CloseIcon size={12} />
                   </IconButton>
                 </div>

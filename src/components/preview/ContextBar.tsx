@@ -24,6 +24,8 @@ import type {
 } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { TOOLBAR_ACTIVE, TOOLBAR_BTN, TOOLBAR_ENTER, TOOLBAR_IDLE } from './FormatToolbar';
+import { useMessages } from '@/i18n/language';
+import { CONTEXT_BAR_MESSAGES } from './ContextBar.messages';
 
 /**
  * The contextual second toolbar row — Word's "Table Layout appears when you're in a
@@ -69,6 +71,7 @@ function BarButton({
 }
 
 function TableRow({ block }: { block: TableBlock }) {
+  const m = useMessages(CONTEXT_BAR_MESSAGES);
   const activeCell = useWorksheetStore((s) => s.activeCell);
   const cellSelection = useWorksheetStore((s) => s.cellSelection);
 
@@ -103,9 +106,9 @@ function TableRow({ block }: { block: TableBlock }) {
   return (
     <>
       <span className={LABEL}>
-        Table
+        {m.table}
         {multi
-          ? ` · ${range.length} cells`
+          ? m.cellCount(range.length)
           : at
             ? ` · R${at.rowIndex + 1}C${at.cellIndex + 1}`
             : ''}
@@ -122,7 +125,7 @@ function TableRow({ block }: { block: TableBlock }) {
             return (
               <BarButton
                 key={align}
-                label={`Align cell ${align}`}
+                label={align === 'left' ? m.alignCellLeft : align === 'center' ? m.alignCellCenter : m.alignCellRight}
                 pressed={pressed}
                 onClick={() =>
                   apply(
@@ -144,24 +147,24 @@ function TableRow({ block }: { block: TableBlock }) {
               <span className={DIVIDER} aria-hidden />
               {isMerged(cell) ? (
                 <BarButton
-                  label="Split merged cell"
+                  label={m.splitCell}
                   onClick={() => apply(unmerge(block, at.rowIndex, at.cellIndex))}
                 >
-                  Split
+                  {m.split}
                 </BarButton>
               ) : (
                 <>
                   <BarButton
-                    label="Merge with the cell to the right"
+                    label={m.mergeRightTitle}
                     onClick={() => apply(mergeRight(block, at.rowIndex, at.cellIndex))}
                   >
-                    Merge →
+                    {m.mergeRight}
                   </BarButton>
                   <BarButton
-                    label="Merge with the cell below"
+                    label={m.mergeDownTitle}
                     onClick={() => apply(mergeDown(block, at.rowIndex, at.cellIndex))}
                   >
-                    Merge ↓
+                    {m.mergeDown}
                   </BarButton>
                 </>
               )}
@@ -175,7 +178,7 @@ function TableRow({ block }: { block: TableBlock }) {
       {(['left', 'center', 'right'] as TableAlign[]).map((align) => (
         <BarButton
           key={align}
-          label={`Align table ${align}`}
+          label={align === 'left' ? m.alignTableLeft : align === 'center' ? m.alignTableCenter : m.alignTableRight}
           pressed={resolveTableAlign(block) === align}
           onClick={() => apply(setTableAlign(block, align))}
         >
@@ -187,9 +190,9 @@ function TableRow({ block }: { block: TableBlock }) {
 
       {(
         [
-          ['all', 'Grid', 'Rule every cell: an ordinary table'],
-          ['box', 'Box', 'Rule the frame only: a boxed stimulus'],
-          ['headerRule', 'T-account', 'Frame, a rule under the top row and one down the middle'],
+          ['all', m.grid, m.gridTitle],
+          ['box', m.box, m.boxTitle],
+          ['headerRule', m.tAccount, m.tAccountTitle],
         ] as Array<[TableBorders, string, string]>
       ).map(([value, word, title]) => (
         <BarButton
@@ -213,14 +216,15 @@ function FigureRow({
   block: ImageBlock | DiagramBlock;
   onOpen?: () => void;
 }) {
+  const m = useMessages(CONTEXT_BAR_MESSAGES);
   const replaceBlock = useWorksheetStore((s) => s.replaceBlock);
   return (
     <>
-      <span className={LABEL}>{block.kind === 'diagram' ? 'Diagram' : 'Image'}</span>
+      <span className={LABEL}>{block.kind === 'diagram' ? m.diagram : m.image}</span>
       {(['left', 'center', 'right'] as const).map((align) => (
         <BarButton
           key={align}
-          label={`Position figure ${align}`}
+          label={align === 'left' ? m.positionLeft : align === 'center' ? m.positionCenter : m.positionRight}
           pressed={(block.align ?? 'center') === align}
           // Centre is written as nothing, so an untouched figure stays byte-identical
           // (§ `FigureAlignField`).
@@ -237,8 +241,8 @@ function FigureRow({
       {onOpen && (
         <>
           <span className={DIVIDER} aria-hidden />
-          <BarButton label="Edit the drawing" onClick={onOpen}>
-            ✎ Draw
+          <BarButton label={m.editDrawing} onClick={onOpen}>
+            {m.draw}
           </BarButton>
         </>
       )}
@@ -268,6 +272,7 @@ export function ContextDock({
   /** True when the format bar is also docked, so this row sits under it. */
   belowFormatBar: boolean;
 }) {
+  const m = useMessages(CONTEXT_BAR_MESSAGES);
   const activeCell = useWorksheetStore((s) => s.activeCell);
 
   // The finest selection wins, like Delete: a cell click clears the figure selection
@@ -314,7 +319,7 @@ export function ContextDock({
   return (
     <div
       role="toolbar"
-      aria-label={table ? 'Table tools' : 'Figure tools'}
+      aria-label={table ? m.tableTools : m.figureTools}
       className={`fixed z-50 flex flex-wrap items-center gap-0.5 rounded-xl border border-[#454138] bg-[#211f1d]/95 px-1.5 py-1 shadow-xl backdrop-blur ${TOOLBAR_ENTER}`}
       style={{
         left: dock.left,

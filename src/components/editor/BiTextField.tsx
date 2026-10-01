@@ -26,6 +26,8 @@ import { AI_SETTINGS, useAiStatus } from '@/settings/aiSettings';
 import { appSettings } from '@/settings/store';
 import { useAppDialogs } from '@/store/appDialogs';
 import { useFieldScope } from './fieldScope';
+import { useMessages } from '@/i18n/language';
+import { BITEXT_MESSAGES } from './BiTextField.messages';
 
 /**
  * Bilingual input (§5.2).
@@ -97,11 +99,12 @@ export function BiTextField({
   value,
   onChange,
   rows = 2,
-  placeholderEn = 'English…',
-  placeholderZh = '中文…',
+  placeholderEn,
+  placeholderZh,
   ariaLabel,
   translate,
 }: Props) {
+  const m = useMessages(BITEXT_MESSAGES);
   const name = ariaLabel ?? label;
   const id = useId();
   const { language, readOnly } = useFieldScope();
@@ -127,7 +130,7 @@ export function BiTextField({
   const box = (side: 'en' | 'zh', placeholder: string, langTag: string) => {
     // The language names the box when nothing else does — never the `lang` tag, which
     // announces as "en" and says nothing about what the field is for.
-    const sideName = side === 'en' ? 'English' : '中文';
+    const sideName = side === 'en' ? m.sideEn : m.sideZh;
     return (
     <div className="relative">
       <RichTextEditable
@@ -159,16 +162,16 @@ export function BiTextField({
           {halfTranslated && (
             <span
               className="rounded bg-warn-soft px-1 py-px text-[9px] font-medium text-warn-ink"
-              title="One language is missing"
+              title={m.oneMissing}
             >
-              needs translation
+              {m.needsTranslation}
             </span>
           )}
         </div>
       )}
       <div className={bothVisible ? 'grid grid-cols-2 gap-1.5' : ''}>
-        {showEn && box('en', placeholderEn, 'en')}
-        {showZh && box('zh', placeholderZh, 'zh-HK')}
+        {showEn && box('en', placeholderEn ?? m.placeholderEn, 'en')}
+        {showZh && box('zh', placeholderZh ?? m.placeholderZh, 'zh-HK')}
       </div>
       {fill}
     </div>
@@ -186,8 +189,6 @@ async function loadFillDeps(): Promise<FieldFillDeps> {
   ]);
   return { createRunDeps, translateOne };
 }
-
-const LOAD_FAILED = 'Couldn’t load translation. Check your connection and try again.';
 
 /** A key is saved for this provider (memory, web storage, or a desktop Keychain flag). */
 function keySaved(provider: ProviderId): boolean {
@@ -207,6 +208,7 @@ function useFieldFill(
   language: 'en' | 'zh' | 'bilingual',
   readOnly: boolean,
 ) {
+  const m = useMessages(BITEXT_MESSAGES);
   const configured = useAiStatus().configured;
   const [status, setStatus] = useState<FillStatus | undefined>();
   // Read after the request, so a late answer sees what the teacher has typed since.
@@ -247,7 +249,7 @@ function useFieldFill(
     setStatus({ kind: 'busy', side });
     const outcome = await loadFillDeps().then(
       (deps) => runFieldFill(sent, side, translate, () => latest.current.value, abort.signal, deps),
-      (): FieldFillOutcome => ({ kind: 'failed', message: LOAD_FAILED, switchTo: [] }),
+      (): FieldFillOutcome => ({ kind: 'failed', message: m.loadFailed, switchTo: [] }),
     );
     if (abort.signal.aborted) return;
     if (outcome.kind === 'filled') {
@@ -275,7 +277,7 @@ function useFieldFill(
       return;
     }
     latest.current.onChange({ ...now, [look.side]: look.runs });
-    showDone(look.side, look.runs, 'Inserted. Check it on the page.', 'warn');
+    showDone(look.side, look.runs, m.inserted, 'warn');
   };
 
   const switchProvider = (provider: ProviderId, side: Side) => {
@@ -323,7 +325,7 @@ function useFieldFill(
           >
             {/* The AI door's mark, so a field's fill reads as the same AI. */}
             <SparkleIcon size={11} className="text-accent" />
-            {busy ? 'Filling…' : button.label}
+            {busy ? m.filling : button.label}
           </button>
         )}
         {current && !busy && (
