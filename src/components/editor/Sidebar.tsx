@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { LAYOUT_NAME } from '@/model/flow';
 import { computeNumbering } from '@/model/numbering';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { BankTab } from '@/components/bank/BankTab';
@@ -9,6 +8,9 @@ import { useBankSession } from '@/components/bank/bankSession';
 import { Inspector } from './Inspector';
 import type { PageComposition } from '@/components/preview/pagination';
 import { Outline } from './Outline';
+import { useMessages } from '@/i18n/language';
+import { SIDEBAR_MESSAGES } from './shell.messages';
+import { LAYOUT_KIND_MESSAGES } from './layoutKind.messages';
 
 /**
  * The right sidebar: one panel, one thing at a time. **Content** is the outline,
@@ -38,6 +40,8 @@ export function Sidebar({
   const selectedQuestionId = useWorksheetStore((s) => s.selectedQuestionId);
   const selectedElementId = useWorksheetStore((s) => s.selectedElementId);
   const numbering = computeNumbering(worksheet);
+  const m = useMessages(SIDEBAR_MESSAGES);
+  const kinds = useMessages(LAYOUT_KIND_MESSAGES);
 
   const [tab, setTab] = useState<Tab>('content');
 
@@ -73,15 +77,15 @@ export function Sidebar({
   const totalQuestions = worksheet.questions.length;
 
   const editLabel = selected
-    ? `Question ${numbering.byQuestionId.get(selected.id)?.number ?? ''}`.trim()
+    ? m.question(String(numbering.byQuestionId.get(selected.id)?.number ?? ''))
     : panelElement
-      ? LAYOUT_NAME[panelElement.kind]
-      : 'Edit';
+      ? kinds[panelElement.kind]
+      : m.edit;
 
   const tabs: Array<{ id: Tab; label: string; count?: number }> = [
-    { id: 'content', label: 'Content', count: totalQuestions },
+    { id: 'content', label: m.content, count: totalQuestions },
     { id: 'edit', label: editLabel },
-    { id: 'bank', label: '題庫 Bank' },
+    { id: 'bank', label: m.bank },
   ];
 
   return (
@@ -90,7 +94,7 @@ export function Sidebar({
           naming the active one — no icons, no count chip, one control language. The
           underline is one bar that slides between the halves, so the selection travels
           rather than blinking from tab to tab. */}
-      <div role="tablist" aria-label="Sidebar" className="relative flex shrink-0 border-b border-line px-2">
+      <div role="tablist" aria-label={m.sidebar} className="relative flex shrink-0 border-b border-line px-2">
         {tabs.map((entry) => {
           const active = tab === entry.id;
           const dim = entry.id === 'edit' && !selected && !panelElementId;

@@ -28,6 +28,9 @@ import { useBankSession } from '@/components/bank/bankSession';
 import { BankDragLayer, isBankDragActive, useBankDrag } from '@/components/bank/bankDrag';
 import { undoChord } from '@/components/ui/undoChord';
 import { provisionalWorksheet } from '@/components/bank/dropSlot';
+import { useMessages, useUiLanguage } from '@/i18n/language';
+import { PAGE_RAIL_MESSAGES } from '@/components/editor/shell.messages';
+import { EDITOR_APP_MESSAGES } from './EditorApp.messages';
 
 /** The empty page's "From 題庫…": stable, so the memoised page never re-renders for it. */
 const openBank = () => useBankSession.getState().openBank();
@@ -47,6 +50,7 @@ export function EditorApp({
   /** Open another document in the editor (the read-only notice's editable copy). */
   onOpenDocument: (worksheet: Worksheet) => void;
 }) {
+  const rail = useMessages(PAGE_RAIL_MESSAGES);
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const readOnly = useWorksheetStore((s) => s.readOnly);
   const mode = useWorksheetStore((s) => s.mode);
@@ -480,8 +484,8 @@ export function EditorApp({
             >
               <button
                 type="button"
-                aria-label="Show page rail"
-                title="Show page rail"
+                aria-label={rail.showRail}
+                title={rail.showRail}
                 onClick={() => setPageRailOpen(true)}
                 className="flex cursor-pointer items-center justify-center rounded-lg p-1 text-ink-muted transition-[background-color,color,transform,scale] duration-150 ease-out-soft hover:bg-surface-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97]"
               >
@@ -642,6 +646,8 @@ function useEditHint(hidden: boolean) {
 const ZOOM_LANE = 'minmax(136px,1fr)';
 
 function HintRow({ rowRef, onDismiss }: { rowRef: React.Ref<HTMLDivElement>; onDismiss: () => void }) {
+  const m = useMessages(EDITOR_APP_MESSAGES);
+  const bilingual = useUiLanguage() === 'en';
   return (
     <div
       ref={rowRef}
@@ -653,10 +659,10 @@ function HintRow({ rowRef, onDismiss }: { rowRef: React.Ref<HTMLDivElement>; onD
         {/* One phrase per language, each unbreakable: at most two lines even beside an
             open page rail at 1024 wide (a 228px pill), one line where there is room. */}
         <span className="flex flex-wrap gap-x-2">
-          <span className="whitespace-nowrap">Double-click text to edit</span>
-          <span className="whitespace-nowrap text-ink-subtle">按頁面文字即可編輯</span>
+          <span className="whitespace-nowrap">{m.hint}</span>
+          {bilingual && <span className="whitespace-nowrap text-ink-subtle">按頁面文字即可編輯</span>}
         </span>
-        <IconButton label="Dismiss hint" onClick={onDismiss}>
+        <IconButton label={m.dismissHint} onClick={onDismiss}>
           <CloseIcon size={14} />
         </IconButton>
       </div>

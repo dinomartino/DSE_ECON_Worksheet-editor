@@ -16,7 +16,6 @@ import {
   createSectionElement,
   createSpacerElement,
   createTextElement,
-  LAYOUT_NAME,
 } from '@/model/flow';
 import { questionMarks } from '@/model/marks';
 import type { NumberingPlan } from '@/model/numbering';
@@ -54,6 +53,11 @@ import { Menu, type MenuItem } from '@/components/ui/Menu';
 import { useBankActions } from './BankActions';
 import { useShownTags, useShownTagState } from './sharedTopics';
 import { outlineTagLine } from './partTopicView';
+import type { Messages } from '@/i18n/catalogue';
+import { useMessages, useUiLanguage } from '@/i18n/language';
+import type { UiLanguage } from '@/settings/language';
+import { OUTLINE_MESSAGES } from './Outline.messages';
+import { LAYOUT_KIND_MESSAGES } from './layoutKind.messages';
 
 /**
  * The question navigator.
@@ -95,6 +99,8 @@ function SelectionBar({ on }: { on: boolean }) {
  * whole point of the flow is that a divider can be dragged between two questions.
  */
 function LayoutRow({ element }: { element: LayoutElement }) {
+  const m = useMessages(OUTLINE_MESSAGES);
+  const kinds = useMessages(LAYOUT_KIND_MESSAGES);
   const mode = useWorksheetStore((s) => s.mode);
   const removeLayoutElement = useWorksheetStore((s) => s.removeLayoutElement);
   const updateLayoutElement = useWorksheetStore((s) => s.updateLayoutElement);
@@ -114,7 +120,7 @@ function LayoutRow({ element }: { element: LayoutElement }) {
     if (isSelected) rowRef.current?.scrollIntoView({ block: 'nearest' });
   }, [isSelected]);
 
-  const name = LAYOUT_NAME[element.kind];
+  const name = kinds[element.kind];
   const Icon = LAYOUT_ICON[element.kind];
   const isSection = element.kind === 'section';
 
@@ -128,9 +134,9 @@ function LayoutRow({ element }: { element: LayoutElement }) {
         plain(element.text.en) ||
         plain(element.text.zh)
       : element.kind === 'labelList'
-        ? `${element.rows.length} row${element.rows.length === 1 ? '' : 's'}`
+        ? m.rows(element.rows.length)
         : element.kind === 'stimulus'
-          ? `${element.blocks.length} block${element.blocks.length === 1 ? '' : 's'}`
+          ? m.blocks(element.blocks.length)
           : '';
 
   // Answer lines and blank space describe themselves by their size. The outline is
@@ -140,9 +146,9 @@ function LayoutRow({ element }: { element: LayoutElement }) {
     element.kind === 'answerSpace' && element.fill ? (
       // A fill element's count is derived by the paginator, so the row reports the
       // state instead of a number the next resolution would overwrite.
-      <Pill>fills page</Pill>
+      <Pill>{m.fillsPage}</Pill>
     ) : element.kind === 'answerLines' || element.kind === 'answerSpace' ? (
-      <Pill>{`${element.lines} ${element.lines === 1 ? 'line' : 'lines'}`}</Pill>
+      <Pill>{m.lines(element.lines)}</Pill>
     ) : element.kind === 'spacer' ? (
       <Pill>{`${element.heightPt} pt`}</Pill>
     ) : undefined;
@@ -153,9 +159,7 @@ function LayoutRow({ element }: { element: LayoutElement }) {
           {
             // The one control a section really needs, on the row that *is* the
             // section — rather than on a container header the page never showed.
-            label: element.restartNumbering
-              ? 'Continue numbering from previous'
-              : 'Restart numbering at 1',
+            label: element.restartNumbering ? m.continueNumbering : m.restartNumbering,
             onSelect: () =>
               updateLayoutElement(element.id, { restartNumbering: !element.restartNumbering }),
           },
@@ -205,7 +209,7 @@ function LayoutRow({ element }: { element: LayoutElement }) {
       <span
         aria-hidden
         className="cursor-grab text-ink-subtle/50 transition-colors duration-150 ease-out-soft group-hover:text-ink-subtle active:cursor-grabbing"
-        title="Drag to reorder"
+        title={m.dragToReorder}
       >
         <GripIcon size={14} />
       </span>
@@ -224,25 +228,25 @@ function LayoutRow({ element }: { element: LayoutElement }) {
       {isSection && element.kind === 'section' && element.restartNumbering && (
         <span
           className="shrink-0 rounded bg-surface-hover px-1 text-[9px] font-medium text-ink-subtle"
-          title="Numbering restarts at 1 here"
+          title={m.restartsHere}
         >
           ↻1
         </span>
       )}
 
       <span className="flex shrink-0 items-center opacity-0 transition-opacity duration-150 ease-out-soft focus-within:opacity-100 group-hover:opacity-100">
-        <IconButton label="Move up" onClick={() => nudgeFlowItem(element.id, -1)}>
+        <IconButton label={m.moveUp} onClick={() => nudgeFlowItem(element.id, -1)}>
           <ChevronUpIcon size={14} />
         </IconButton>
-        <IconButton label="Move down" onClick={() => nudgeFlowItem(element.id, 1)}>
+        <IconButton label={m.moveDown} onClick={() => nudgeFlowItem(element.id, 1)}>
           <ChevronDownIcon size={14} />
         </IconButton>
         <Menu
-          label={`Actions for ${name}`}
+          label={m.actionsFor(name)}
           items={[
             ...leadingItems,
             {
-              label: `Delete ${name.toLowerCase()}`,
+              label: m.deleteKind(name),
               onSelect: () => removeLayoutElement(element.id),
               danger: true,
               separated: leadingItems.length > 0,
@@ -266,6 +270,8 @@ function QuestionRow({
   isSelected: boolean;
   onSelect: () => void;
 }) {
+  const m = useMessages(OUTLINE_MESSAGES);
+  const lang = useUiLanguage();
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const mode = useWorksheetStore((s) => s.mode);
   const removeQuestion = useWorksheetStore((s) => s.removeQuestion);
@@ -304,9 +310,9 @@ function QuestionRow({
   const tagLine = byPart ?? (tags.length > 0 ? { text: tags.map((tag) => tagText(tag)).join(' · '), title: tagTitle(tags) } : undefined);
 
   const menuItems: MenuItem[] = [
-    { label: 'Duplicate', onSelect: () => duplicateQuestion(question.id) },
+    { label: m.duplicate, onSelect: () => duplicateQuestion(question.id) },
     {
-      label: 'Copy for Word',
+      label: m.copyForWord,
       onSelect: () => {
         // Rasterize first, so a question containing a diagram pastes it as one image
         // rather than dropping it.
@@ -317,12 +323,12 @@ function QuestionRow({
     },
     ...bank.items,
     ...otherSections.map((candidate, index) => ({
-      label: `Move to ${plain(candidate.text.en) || plain(candidate.text.zh) || `Section ${index + 1}`}`,
+      label: m.moveTo(plain(candidate.text.en) || plain(candidate.text.zh) || m.sectionN(index + 1)),
       onSelect: () => reorderFlowItem(question.id, candidate.id, 'after'),
       separated: index === 0,
     })),
     {
-      label: 'Delete question',
+      label: m.deleteQuestion,
       onSelect: () => removeQuestion(question.id),
       danger: true,
       separated: true,
@@ -371,7 +377,7 @@ function QuestionRow({
       <span
         aria-hidden
         className="cursor-grab text-ink-subtle/50 transition-colors duration-150 ease-out-soft group-hover:text-ink-subtle active:cursor-grabbing"
-        title="Drag to reorder"
+        title={m.dragToReorder}
       >
         <GripIcon size={14} />
       </span>
@@ -390,7 +396,7 @@ function QuestionRow({
           {number ?? '–'}
         </span>
         <span className="truncate text-xs text-ink" title={excerpt}>
-          {excerpt || <span className="text-ink-subtle">Untitled question</span>}
+          {excerpt || <span className="text-ink-subtle">{m.untitledQuestion}</span>}
         </span>
       </button>
 
@@ -398,7 +404,7 @@ function QuestionRow({
           one muted line of tabular figures. */}
       <span
         className="shrink-0 text-[10px] font-medium tracking-wide text-ink-subtle"
-        title={plain(requireQuestionType(question).displayName.en)}
+        title={plain(requireQuestionType(question).displayName[lang === 'en' ? 'en' : 'zh'])}
       >
         {typeBadge(question)}
       </span>
@@ -408,18 +414,18 @@ function QuestionRow({
         </span>
       )}
       <span className="shrink-0 text-[10px] tabular-nums text-ink-subtle">
-        {questionMarks(question)}m
+        {m.marksShort(questionMarks(question))}
       </span>
 
       {/* Row actions stay hidden until the row is hovered or focused within. */}
       <span className="flex shrink-0 items-center opacity-0 transition-opacity duration-150 ease-out-soft focus-within:opacity-100 group-hover:opacity-100">
-        <IconButton label="Move up" onClick={() => moveQuestion(question.id, -1)}>
+        <IconButton label={m.moveUp} onClick={() => moveQuestion(question.id, -1)}>
           <ChevronUpIcon size={14} />
         </IconButton>
-        <IconButton label="Move down" onClick={() => moveQuestion(question.id, 1)}>
+        <IconButton label={m.moveDown} onClick={() => moveQuestion(question.id, 1)}>
           <ChevronDownIcon size={14} />
         </IconButton>
-        <Menu items={menuItems} label={`Actions for question ${number ?? ''}`} onOpen={bank.onOpen} />
+        <Menu items={menuItems} label={m.actionsForQuestion(String(number ?? ''))} onOpen={bank.onOpen} />
       </span>
       {bank.dialog}
     </li>
@@ -449,6 +455,7 @@ function PageGroupHeader({
   open: boolean;
   onToggle: () => void;
 }) {
+  const m = useMessages(OUTLINE_MESSAGES);
   const removeLayoutElement = useWorksheetStore((s) => s.removeLayoutElement);
   const removeMany = useWorksheetStore((s) => s.removeMany);
   const reorderFlowItem = useWorksheetStore((s) => s.reorderFlowItem);
@@ -458,7 +465,7 @@ function PageGroupHeader({
 
   const count = group.items.length;
   const label =
-    group.pageNumber === undefined ? 'Not yet placed' : `Page ${group.pageNumber}`;
+    group.pageNumber === undefined ? m.notPlaced : m.page(group.pageNumber);
 
   // Dropping onto the tab lands the item at the head of the page. With no items to
   // aim at, the break itself is the anchor — the same rule the blank sheet follows.
@@ -507,7 +514,7 @@ function PageGroupHeader({
         {/* The count is what a collapsed tab is for — it has to say what is inside
             without being opened. */}
         <span className="truncate text-[10px] text-ink-subtle">
-          {count === 0 ? 'empty' : `${count} item${count === 1 ? '' : 's'}`}
+          {count === 0 ? m.emptyGroup : m.items(count)}
         </span>
       </button>
 
@@ -516,14 +523,14 @@ function PageGroupHeader({
       {group.breakId && (
         <span className="shrink-0 opacity-0 transition-opacity duration-150 ease-out-soft focus-within:opacity-100 group-hover/page:opacity-100">
           <Menu
-            label={`Actions for ${label}`}
+            label={m.actionsFor(label)}
             items={[
               {
-                label: 'Remove page break',
+                label: m.removeBreak,
                 onSelect: () => removeLayoutElement(group.breakId!),
               },
               {
-                label: count === 0 ? 'Delete page' : `Delete page and ${count} item${count === 1 ? '' : 's'}`,
+                label: count === 0 ? m.deletePage : m.deletePageAnd(count),
                 onSelect: () => removeMany([group.breakId!, ...group.items.map((i) => i.id)]),
                 danger: true,
                 separated: true,
@@ -542,6 +549,9 @@ function dragLabelFor(
   worksheet: Worksheet,
   numbering: NumberingPlan,
   dragId: string | undefined,
+  m: Messages<typeof OUTLINE_MESSAGES>,
+  kinds: Messages<typeof LAYOUT_KIND_MESSAGES>,
+  lang: UiLanguage,
 ) {
   if (!dragId) return undefined;
 
@@ -550,16 +560,16 @@ function dragLabelFor(
     const number = numbering.byQuestionId.get(dragId)?.number;
     const excerpt = questionExcerpt(question, 'en');
     return {
-      label: number ? `Question ${number}` : 'Question',
+      label: m.dragQuestion(number ? String(number) : ''),
       // The type's own name comes from the registry, so a new type labels its ghost
       // without this file learning about it (§9).
-      detail: excerpt || plain(requireQuestionType(question).displayName.en),
+      detail: excerpt || plain(requireQuestionType(question).displayName[lang === 'en' ? 'en' : 'zh']),
     };
   }
 
   const element = worksheet.layout.find((e) => e.id === dragId);
-  if (element) return { label: LAYOUT_NAME[element.kind], detail: 'Layout element' };
-  return { label: 'Item' };
+  if (element) return { label: kinds[element.kind], detail: m.dragElement };
+  return { label: m.dragItem };
 }
 
 /**
@@ -647,6 +657,9 @@ export function Outline({
   pages: PageComposition[];
   onOpenSettings: () => void;
 }) {
+  const m = useMessages(OUTLINE_MESSAGES);
+  const kinds = useMessages(LAYOUT_KIND_MESSAGES);
+  const lang = useUiLanguage();
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const selectedQuestionId = useWorksheetStore((s) => s.selectedQuestionId);
   const select = useWorksheetStore((s) => s.select);
@@ -664,13 +677,13 @@ export function Outline({
    */
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
 
-  const ghost = dragLabelFor(worksheet, numbering, dragQuestionId);
+  const ghost = dragLabelFor(worksheet, numbering, dragQuestionId, m, kinds, lang);
 
   // The shared chain, so the outline, the toolbar, the file list and the `.docx`
   // filename give one answer to "what is this document called". Spelling the fallback
   // out here again is how this header kept naming the document by its *printed* title
   // after a rename had given it a different name everywhere else.
-  const title = documentName(worksheet) ?? 'Untitled worksheet';
+  const title = documentName(worksheet) ?? m.untitled;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -683,9 +696,9 @@ export function Outline({
         <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-ink" title={title}>
           {title}
         </span>
-        <Button size="sm" variant="subtle" onClick={onOpenSettings} title="Title, paper, margins, header and footer">
+        <Button size="sm" variant="subtle" onClick={onOpenSettings} title={m.setupTitle}>
           <PageSetupIcon size={14} />
-          Setup
+          {m.setup}
         </Button>
       </div>
 
@@ -695,7 +708,7 @@ export function Outline({
           if (items.length === 0) {
             return (
               <p className="px-2 py-2.5 text-[11px] text-ink-subtle">
-                Empty. Add something below.
+                {m.empty}
               </p>
             );
           }
@@ -765,7 +778,7 @@ export function Outline({
                   <ul className="space-y-px border-l border-line pl-1.5 ml-2">
                     {group.items.length === 0 ? (
                       <li className="py-1.5 pl-1 text-[11px] text-ink-subtle">
-                        Empty page. Drag something here.
+                        {m.emptyPage}
                       </li>
                     ) : (
                       renderItems(group)
@@ -784,28 +797,28 @@ export function Outline({
         <div className="mt-1 px-1">
           <Menu
             align="left"
-            label="Add to worksheet"
+            label={m.addToWorksheet}
             trigger={
               <span className="flex items-center gap-1.5 text-[11px]">
                 <PlusIcon size={13} />
-                Add here
+                {m.addHere}
               </span>
             }
             items={[
               ...listQuestionTypes().map((definition) => ({
-                label: plain(definition.displayName.en),
+                label: plain(definition.displayName[lang === 'en' ? 'en' : 'zh']),
                 onSelect: () => addQuestion(definition.id),
                 icon:
                   definition.id === 'mcq' ? <McqIcon size={15} /> : <StructuredIcon size={15} />,
               })),
               {
-                label: 'Section (restarts numbering)',
+                label: m.addSection,
                 onSelect: () => addLayoutElement(createSectionElement()),
                 icon: <SectionIcon size={15} />,
                 separated: true,
               },
               {
-                label: 'Part header (with marks)',
+                label: m.addPartHeader,
                 onSelect: () =>
                   addLayoutElement(
                     createPartHeaderElement(
@@ -815,37 +828,37 @@ export function Outline({
                 icon: <PartHeaderIcon size={15} />,
               },
               {
-                label: 'Heading',
+                label: kinds.heading,
                 onSelect: () => addLayoutElement(createHeadingElement()),
                 icon: <HeadingIcon size={15} />,
               },
               {
-                label: 'Label list',
+                label: kinds.labelList,
                 onSelect: () => addLayoutElement(createLabelListElement()),
                 icon: <LabelListIcon size={15} />,
               },
               {
-                label: 'Text / note',
+                label: m.addText,
                 onSelect: () => addLayoutElement(createTextElement()),
                 icon: <TextIcon size={15} />,
               },
               {
-                label: 'Answer lines',
+                label: kinds.answerLines,
                 onSelect: () => addLayoutElement(createAnswerLinesElement()),
                 icon: <AnswerLinesIcon size={15} />,
               },
               {
-                label: 'Blank space',
+                label: kinds.spacer,
                 onSelect: () => addLayoutElement(createSpacerElement()),
                 icon: <SpacerIcon size={15} />,
               },
               {
-                label: 'Divider',
+                label: kinds.divider,
                 onSelect: () => addLayoutElement(createDividerElement()),
                 icon: <DividerIcon size={15} />,
               },
               {
-                label: 'New page',
+                label: kinds.pageBreak,
                 onSelect: () => addLayoutElement(createPageBreakElement()),
                 icon: <PageBreakIcon size={15} />,
                 separated: true,

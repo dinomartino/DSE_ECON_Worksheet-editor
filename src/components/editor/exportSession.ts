@@ -3,6 +3,10 @@ import type { LanguageMode, OutputMode, VersionMode, Worksheet } from '@/model/t
 import { renderAnswerKey } from '@/render/answerKey';
 import { isWritingRoom } from '@/render/ir';
 import { renderWorksheet } from '@/render/worksheet';
+import { resolveMessages } from '@/i18n/catalogue';
+import { uiLanguage } from '@/i18n/language';
+import type { UiLanguage } from '@/settings/language';
+import { EXPORT_MESSAGES } from './ExportDialog.messages';
 
 /**
  * What the Export dialog writes, and how the files reach disk. Pure, so the delivery
@@ -82,12 +86,11 @@ export async function loadKeyDocuments(
 }
 
 /** The dialog's sentence for documents left out of a combined key; empty when none. */
-export function skippedNote(skipped: KeyDocumentPick[]): string {
+export function skippedNote(skipped: KeyDocumentPick[], lang: UiLanguage = uiLanguage()): string {
   if (skipped.length === 0) return '';
-  const names = skipped.map((pick) => `“${pick.title}”`).join(', ');
-  return skipped.length === 1
-    ? `${names} could not be opened and was left out`
-    : `${names} could not be opened and were left out`;
+  const m = resolveMessages(EXPORT_MESSAGES, lang);
+  const names = skipped.map((pick) => m.quoted(pick.title)).join(m.listSeparator);
+  return skipped.length === 1 ? m.skippedOne(names) : m.skippedMany(names);
 }
 
 /** Move one entry of an ordered pick list up (-1) or down (+1); out of range is a no-op. */
@@ -228,10 +231,16 @@ async function built({ build, ...file }: PlannedFile): Promise<ExportFile> {
  * The status line, naming where the file went when a browser picker told us. A desktop
  * path is left to the reveal button beside the line.
  */
-export function withPlace(message: string, saved: SavedPlace[], folder?: SavedPlace): string {
+export function withPlace(
+  message: string,
+  saved: SavedPlace[],
+  folder?: SavedPlace,
+  lang: UiLanguage = uiLanguage(),
+): string {
+  const m = resolveMessages(EXPORT_MESSAGES, lang);
   if (saved.some((place) => place.path !== undefined)) return message;
-  if (folder?.name) return `${message} to “${folder.name}”`;
-  if (saved.length === 1 && saved[0].name) return `Exported “${saved[0].name}”`;
+  if (folder?.name) return m.toFolder(message, folder.name);
+  if (saved.length === 1 && saved[0].name) return m.exportedNamed(saved[0].name);
   return message;
 }
 
@@ -244,7 +253,7 @@ export async function deliverWorksheetJson(options: {
 }): Promise<({ message: string } & SavedPlace) | undefined> {
   const saved = await options.save();
   if (!saved) return undefined;
-  return { message: 'Exported .json', ...saved };
+  return { message: resolveMessages(EXPORT_MESSAGES, uiLanguage()).exportedJson, ...saved };
 }
 
 /**

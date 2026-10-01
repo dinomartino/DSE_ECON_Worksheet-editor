@@ -29,6 +29,9 @@ import { fillVerbFor, toolbarSettingsEntries } from '@/components/translate/tran
 import { openAi } from '@/assist/menuStore';
 import { collectTexts } from '@/model/textWalk';
 import { AiButton } from '@/components/ai/AiButton';
+import { resolveMessages } from '@/i18n/catalogue';
+import { uiLanguage, useMessages } from '@/i18n/language';
+import { TOOLBAR_MESSAGES } from './Toolbar.messages';
 
 /** A transient status line, optionally with one follow-up action. */
 type Notice = { message: string; action?: NoticeAction };
@@ -49,12 +52,14 @@ function showNotice(
  * there. Below 1440px the word and chevron fold away; the mark keeps the label.
  */
 export function HomeCrumb({ onOpenFiles }: { onOpenFiles: () => void }) {
+  // Not a hook: tests call this as a plain function. The Toolbar that renders it subscribes.
+  const m = resolveMessages(TOOLBAR_MESSAGES, uiLanguage());
   return (
-    <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1">
+    <nav aria-label={m.breadcrumb} className="flex min-w-0 items-center gap-1">
       <button
         type="button"
-        aria-label="Econ Studio home"
-        title="Econ Studio home"
+        aria-label={m.home}
+        title={m.home}
         onClick={onOpenFiles}
         className="flex shrink-0 cursor-pointer items-center gap-2 rounded-md p-1 text-[13px] font-medium text-ink-muted transition-[background-color,color,scale] duration-150 ease-out-soft hover:bg-surface-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97] min-[1440px]:pr-2"
       >
@@ -95,6 +100,7 @@ export function Toolbar({
   /** Delete every saved document, this one included, and show the (empty) start screen. */
   onClearAll: () => Promise<void>;
 }) {
+  const m = useMessages(TOOLBAR_MESSAGES);
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const mode = useWorksheetStore((s) => s.mode);
   const setMode = useWorksheetStore((s) => s.setMode);
@@ -167,9 +173,9 @@ export function Toolbar({
   const handleCheckUpdates = async () => {
     const status = await useUpdateStore.getState().check();
     const found = useUpdateStore.getState().available;
-    if (status === 'current') flash(`You have the latest version${appVersion ? ` (${appVersion})` : ''}`);
-    else if (status === 'failed') flash('Could not check for updates. Are you online?');
-    else if (status === 'downloading') flash(`Downloading version ${found}. You will be told when it is ready`);
+    if (status === 'current') flash(m.latest(appVersion ?? ''));
+    else if (status === 'failed') flash(m.checkFailed);
+    else if (status === 'downloading') flash(m.downloading(String(found)));
   };
 
   /** Desktop only: a saved file's path becomes a one-click reveal. */
@@ -184,9 +190,9 @@ export function Toolbar({
       // A cancelled save sheet or picker wrote nothing, so there is nothing to report.
       if (!saved) return;
       if (message) flash(message, revealAction(saved.path));
-      else if (saved.path !== undefined) flash('Saved a copy', revealAction(saved.path));
+      else if (saved.path !== undefined) flash(m.savedCopy, revealAction(saved.path));
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Download failed.');
+      setError(cause instanceof Error ? cause.message : m.downloadFailed);
     }
   };
 
@@ -206,9 +212,9 @@ export function Toolbar({
         worksheetClipboardHtml(worksheet, mode, diagramImages),
         worksheetPlainText(worksheet, mode),
       );
-      flash('Copied. Paste into Word');
+      flash(m.copied);
     } catch {
-      setError('Copy failed. The browser blocked clipboard access.');
+      setError(m.copyFailed);
     } finally {
       setBusy(undefined);
     }
@@ -232,16 +238,14 @@ export function Toolbar({
     const deps = browserPrintDeps(setMode, () => select(undefined));
     printWorksheetPdf(worksheet, printMode, deps, file)
       .then((outcome) => {
-        if ('saved' in outcome) flash('Exported .pdf', revealAction(outcome.saved));
+        if ('saved' in outcome) flash(m.exportedPdf, revealAction(outcome.saved));
         else if (outcome.fallback !== undefined) {
           // Kept (not flashed): the sheet is modal and would outlast a transient line.
-          setError(
-            `Could not save the PDF directly (${outcome.fallback}), so the print dialog opened. Choose Save as PDF there.`,
-          );
+          setError(m.pdfFallback(outcome.fallback));
         }
       })
       .catch((cause: unknown) =>
-        setError(`Could not open the print dialog: ${cause instanceof Error ? cause.message : String(cause)}`),
+        setError(m.printFailed(cause instanceof Error ? cause.message : String(cause))),
       );
   };
 
@@ -268,7 +272,7 @@ export function Toolbar({
     try {
       await onClearAll();
     } catch {
-      setError('Could not clear saved documents.');
+      setError(m.clearFailed);
     }
   };
 
@@ -285,37 +289,37 @@ export function Toolbar({
             type="button"
             data-print-hide
             data-back-to-bank
-            title="Back to Question bank 題庫"
-            aria-label="Back to Question bank"
+            title={m.backToBankTitle}
+            aria-label={m.backToBank}
             onClick={onBackToBank}
             className="shrink-0 cursor-pointer rounded-md border border-line-strong px-2 py-1 text-[12.5px] text-ink-muted transition-colors duration-150 ease-out-soft hover:bg-surface-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
-            ← <span className="min-[1680px]:hidden">Bank</span><span className="hidden min-[1680px]:inline">Back to Question bank</span>
+            ← <span className="min-[1680px]:hidden">{m.bankShort}</span><span className="hidden min-[1680px]:inline">{m.backToBank}</span>
           </button>
         )}
 
         <span className="h-6 w-px shrink-0 bg-line" />
 
         <Segmented
-          label="Language"
+          label={m.language}
           value={mode.language}
           onChange={(language) => setMode({ language: language as LanguageMode })}
           options={[
-            { value: 'en', label: 'EN', title: 'English only' },
-            { value: 'zh', label: '中文', title: '中文 only' },
-            { value: 'bilingual', label: 'EN+中', title: 'Bilingual' },
+            { value: 'en', label: 'EN', title: m.langEn },
+            { value: 'zh', label: '中文', title: m.langZh },
+            { value: 'bilingual', label: 'EN+中', title: m.langBoth },
           ]}
         />
 
         <span className="h-5 w-px shrink-0 bg-line" />
 
         <Segmented
-          label="Version"
+          label={m.version}
           value={mode.version}
           onChange={(version) => setMode({ version: version as VersionMode })}
           options={[
-            { value: 'student', label: 'Student', title: 'Student version: answers hidden' },
-            { value: 'teacher', label: 'Teacher', title: 'Teacher version / 教師版: answers shown' },
+            { value: 'student', label: m.student, title: m.studentTitle },
+            { value: 'teacher', label: m.teacher, title: m.teacherTitle },
           ]}
         />
 
@@ -330,22 +334,20 @@ export function Toolbar({
         <span className="h-5 w-px shrink-0 bg-line" />
 
         <Segmented
-          label="Page mode"
+          label={m.pageMode}
           value={printPreview ? 'preview' : 'edit'}
           onChange={(next) => setPrintPreview(next === 'preview')}
           options={[
             {
               value: 'edit',
-              label: 'Edit',
-              title: readOnly
-                ? 'Read-only: saved by a newer version of Econ Studio'
-                : 'Edit the worksheet on the page',
+              label: m.edit,
+              title: readOnly ? m.editReadOnly : m.editTitle,
               disabled: readOnly,
             },
             {
               value: 'preview',
-              label: 'Preview',
-              title: 'See the sheets exactly as they will print (Esc to leave)',
+              label: m.preview,
+              title: m.previewTitle,
             },
           ]}
         />
@@ -353,10 +355,10 @@ export function Toolbar({
         <span className="h-6 w-px shrink-0 bg-line" />
 
         <span className="flex shrink-0 items-center gap-0.5">
-          <IconButton label="Undo (⌘Z)" size="md" onClick={undo} disabled={past.length === 0}>
+          <IconButton label={m.undo} size="md" onClick={undo} disabled={past.length === 0}>
             <UndoIcon />
           </IconButton>
-          <IconButton label="Redo (⇧⌘Z)" size="md" onClick={redo} disabled={future.length === 0}>
+          <IconButton label={m.redo} size="md" onClick={redo} disabled={future.length === 0}>
             <RedoIcon />
           </IconButton>
         </span>
@@ -368,11 +370,11 @@ export function Toolbar({
           variant="subtle"
           onClick={onOpenSettings}
           disabled={readOnly}
-          aria-label="Setup"
-          title="Setup: title, paper, margins, header and footer"
+          aria-label={m.setup}
+          title={m.setupTitle}
         >
           <PageSetupIcon size={15} />
-          <span className="hidden xl:inline">Setup</span>
+          <span className="hidden xl:inline">{m.setup}</span>
         </Button>
 
         {/* Status sits with the document, not with the actions. */}
@@ -394,33 +396,33 @@ export function Toolbar({
         {/* One Export action, the bar's only filled button: .docx to keep editing, PDF to
             print or send, .json to keep the worksheet itself. The format is chosen
             inside, beside what it applies to, rather than as look-alike buttons here. */}
-        <Button variant="primary" onClick={() => setExporting(true)} title="Word, PDF or the worksheet file">
+        <Button variant="primary" onClick={() => setExporting(true)} title={m.exportTitle}>
           <DownloadIcon size={15} />
-          Export…
+          {m.exportButton}
         </Button>
 
         <Menu
-          label="File and export options"
+          label={m.menu}
           items={[
-            { label: busy === 'copy' ? 'Copying…' : 'Copy for Word', onSelect: () => void handleCopy() },
+            { label: busy === 'copy' ? m.copying : m.copyForWord, onSelect: () => void handleCopy() },
             // The group after Copy for Word opens on a rule, whichever item leads it.
             ...[
-              ...(readOnly ? [] : [{ label: 'Save now', onSelect: () => void save() }]),
+              ...(readOnly ? [] : [{ label: m.saveNow, onSelect: () => void save() }]),
               ...(isDesktop()
                 ? [
                     {
-                      label: 'Check for updates',
+                      label: m.checkUpdates,
                       hint: appVersion ? `v${appVersion}` : undefined,
                       onSelect: () => void handleCheckUpdates(),
                     },
                   ]
                 : []),
               ...settingsItems,
-              { label: 'What’s new…', onSelect: () => setWhatsNew(true) },
-              { label: 'Send feedback…', onSelect: () => setFeedback(true) },
+              { label: m.whatsNew, onSelect: () => setWhatsNew(true) },
+              { label: m.sendFeedback, onSelect: () => setFeedback(true) },
             ].map((item, i) => (i === 0 ? { ...item, separated: true } : item)),
             {
-              label: 'Clear saved documents…',
+              label: m.clearSaved,
               onSelect: () => setConfirmingClear(true),
               danger: true,
               separated: true,
@@ -490,20 +492,20 @@ export function Toolbar({
           is the thing a teacher wants the moment they read the warning. */}
       {confirmingClear && (
         <Dialog
-          title="Clear saved documents?"
-          description={`Every worksheet saved ${isDesktop() ? 'on this computer' : 'in this browser'} will be deleted. This cannot be undone. Nothing is stored on a server.`}
+          title={m.clearTitle}
+          description={m.clearDescription(isDesktop())}
           width={460}
           onClose={() => setConfirmingClear(false)}
           footer={
             <div className="flex items-center justify-end gap-2">
               <Button
                 variant="subtle"
-                onClick={() => void handleDownloadJson('Downloaded a copy')}
+                onClick={() => void handleDownloadJson(m.downloadedCopy)}
               >
-                Download this one first
+                {m.downloadFirst}
               </Button>
               <Button variant="subtle" onClick={() => setConfirmingClear(false)}>
-                Cancel
+                {m.cancel}
               </Button>
               {/* Filled, not the `danger` variant. That one is deliberately quiet — it
                   recedes until hovered, which is right for a row's ✕ but wrong here:
@@ -514,18 +516,16 @@ export function Toolbar({
                 onClick={() => void handleClearAll()}
                 className="inline-flex h-[34px] cursor-pointer items-center justify-center rounded-lg border border-transparent bg-danger px-3 text-[13px] font-medium text-white shadow-sm transition-[background-color,border-color,color,opacity,transform,scale,filter] duration-150 ease-out-soft hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-2 focus-visible:ring-offset-surface active:scale-[0.97]"
               >
-                Clear everything
+                {m.clearEverything}
               </button>
             </div>
           }
         >
           <p className="text-[13px] leading-relaxed text-ink-subtle">
-            Every worksheet on the start screen lives {isDesktop() ? 'on this computer' : 'in this browser'}, not in the code,
-            which is why your work comes back after a restart. Clearing empties that list
-            and returns you to it.
+            {m.clearBody(isDesktop())}
           </p>
           <p className="mt-2 text-[13px] leading-relaxed text-ink-subtle">
-            Your settings and AI keys are kept. Remove a key in Settings → AI &amp; translation.
+            {m.clearKept}
           </p>
         </Dialog>
       )}

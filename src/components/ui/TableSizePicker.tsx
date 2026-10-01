@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useMessages } from '@/i18n/language';
+import { UI_MESSAGES } from './messages';
 
 /**
  * Word's table grid picker: hover to size, click to insert, live caption. The grid
@@ -30,6 +32,7 @@ export function TableSizePicker({
   /** Called on Escape, so the host can close the flyout holding this. */
   onDismiss?: () => void;
 }) {
+  const m = useMessages(UI_MESSAGES);
   // The size under the pointer. Zero means "nothing hovered yet", which is why the
   // caption reads as a prompt rather than as a 0×0 table.
   const [rows, setRows] = useState(0);
@@ -83,7 +86,7 @@ export function TableSizePicker({
       ref={rootRef}
       tabIndex={0}
       role="grid"
-      aria-label="Table size"
+      aria-label={m.tableSize}
       onKeyDown={onKeyDown}
       onMouseLeave={() => {
         setRows(0);
@@ -95,7 +98,7 @@ export function TableSizePicker({
           size is *highlighted*, this says what it means, and it is what makes the control
           self-explanatory the first time. */}
       <p className="px-1 pb-1.5 text-[11px] font-medium text-ink" aria-live="polite">
-        {chosen ? `${columns} × ${rows} table` : 'Drag to choose a size'}
+        {chosen ? m.tableChosen(columns, rows) : m.tableDrag}
       </p>
 
       <div className="flex flex-col gap-[3px]">
@@ -110,7 +113,7 @@ export function TableSizePicker({
                   role="gridcell"
                   tabIndex={-1}
                   aria-selected={active}
-                  aria-label={`${columnIndex + 1} by ${rowIndex + 1}`}
+                  aria-label={m.tableCell(columnIndex + 1, rowIndex + 1)}
                   onMouseEnter={() => hover(rowIndex + 1, columnIndex + 1)}
                   onFocus={() => hover(rowIndex + 1, columnIndex + 1)}
                   onClick={() => onPick(rowIndex + 1, columnIndex + 1)}

@@ -3,6 +3,10 @@
 import { useEffect, useState } from 'react';
 import type { Worksheet } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
+import { resolveMessages } from '@/i18n/catalogue';
+import { uiLanguage, useUiLanguage } from '@/i18n/language';
+import type { UiLanguage } from '@/settings/language';
+import { SAVE_STATUS_MESSAGES } from './shell.messages';
 
 /** Still dirty this long after the last edit: autosave (1.2s debounce) should have landed. */
 export const STALLED_AFTER_MS = 6000;
@@ -25,31 +29,34 @@ export function saveStatusView({
   dirty,
   stalled,
   lastSavedAt,
+  lang = uiLanguage(),
 }: {
   readOnly: boolean;
   dirty: boolean;
   stalled: boolean;
   lastSavedAt?: string;
+  lang?: UiLanguage;
 }): SaveStatusView {
+  const m = resolveMessages(SAVE_STATUS_MESSAGES, lang);
   if (readOnly)
     return {
       state: 'readOnly',
-      word: 'Read-only',
-      detail: 'Read-only: saved by a newer version of Econ Studio, so this copy cannot be changed',
+      word: m.readOnly,
+      detail: m.readOnlyDetail,
       visible: true,
     };
   if (dirty && stalled)
     return {
       state: 'stalled',
-      word: 'Not saved yet',
-      detail: 'Your latest changes are not saved yet. Choose Save now in the ⋯ menu to try again',
+      word: m.notSaved,
+      detail: m.notSavedDetail,
       visible: true,
     };
-  if (dirty) return { state: 'saving', word: 'Saving', detail: 'Saving your changes', visible: false };
-  const at = lastSavedAt
-    ? ` at ${new Date(lastSavedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+  if (dirty) return { state: 'saving', word: m.saving, detail: m.savingDetail, visible: false };
+  const time = lastSavedAt
+    ? new Date(lastSavedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
     : '';
-  return { state: 'saved', word: 'Saved', detail: `All changes saved${at}`, visible: false };
+  return { state: 'saved', word: m.saved, detail: m.savedDetail(time), visible: false };
 }
 
 const DOT: Record<SaveState, string> = {
@@ -80,7 +87,8 @@ export function SaveStatus() {
   }, [worksheet, dirty, readOnly]);
   const stalled = stalledOn === worksheet;
 
-  const view = saveStatusView({ readOnly, dirty, stalled, lastSavedAt });
+  const lang = useUiLanguage();
+  const view = saveStatusView({ readOnly, dirty, stalled, lastSavedAt, lang });
   return (
     <span
       data-print-hide

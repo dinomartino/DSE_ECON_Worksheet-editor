@@ -6,6 +6,8 @@ import { ChevronDownIcon, CloseIcon } from './icons';
 import { useModalLayer } from './modalLayer';
 import { ScrollEdgeHints } from './ScrollEdgeHints';
 import { useScrollEdges } from './scrollEdges';
+import { useMessages } from '@/i18n/language';
+import { UI_MESSAGES } from './messages';
 
 /**
  * A centred modal dialog.
@@ -55,6 +57,7 @@ export function Dialog({
   scrollBody?: boolean;
 }) {
   useModalLayer();
+  const m = useMessages(UI_MESSAGES);
   const panelRef = useRef<HTMLDivElement>(null);
   // How to scroll the body on, while it has more below; shown in the footer.
   const [more, setMore] = useState<(() => void) | null>(null);
@@ -112,7 +115,7 @@ export function Dialog({
               <p className="mt-0.5 text-xs text-ink-muted">{description}</p>
             )}
           </div>
-          <IconButton label="Close" size="md" onClick={onClose}>
+          <IconButton label={m.close} size="md" onClick={onClose}>
             <CloseIcon size={16} />
           </IconButton>
         </header>
@@ -148,6 +151,7 @@ const MoreBelowContext = createContext<((scrollOn: (() => void) | null) => void)
  * focused field into view), and a press keeps focus where it was.
  */
 function MoreBelow({ onClick }: { onClick: () => void }) {
+  const m = useMessages(UI_MESSAGES);
   return (
     <button
       type="button"
@@ -158,7 +162,7 @@ function MoreBelow({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       className="mr-auto flex animate-fade-in cursor-pointer items-center gap-1 rounded-md px-1.5 py-1 text-xs text-ink-muted transition-colors duration-150 ease-out-soft hover:bg-surface-hover hover:text-ink"
     >
-      More below
+      {m.moreBelow}
       <ChevronDownIcon size={13} />
     </button>
   );
@@ -225,13 +229,14 @@ export function DialogTabs<T extends string>({
   onChange: (id: T) => void;
   children: ReactNode;
 }) {
+  const m = useMessages(UI_MESSAGES);
   return (
     <div className="flex min-h-0 flex-1">
       {/* `self-stretch` rather than height-by-content: with a fixed-height dialog the
           rail must run the full side, or a short tab leaves its background floating
           above bare surface and the nav stops reading as a rail. */}
       <nav
-        aria-label="Settings sections"
+        aria-label={m.settingsSections}
         className="w-[184px] shrink-0 self-stretch space-y-0.5 overflow-y-auto border-r border-line bg-surface-sunken p-2"
       >
         {/* An index, not a strip of icon chips: text rows with the accent bar naming

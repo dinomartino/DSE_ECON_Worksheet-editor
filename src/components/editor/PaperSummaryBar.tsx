@@ -10,6 +10,8 @@ import {
   type TargetStatus,
 } from '@/model/paperSummary';
 import type { LanguageMode, Worksheet } from '@/model/types';
+import { useMessages } from '@/i18n/language';
+import { PAPER_CHECK_MESSAGES } from './shell.messages';
 
 /** Over a target takes the warning tone; met, the ok tone; under stays quiet. */
 const TONE: Record<TargetStatus, string> = {
@@ -48,14 +50,15 @@ export function PaperSummaryBar({
   /** Absent (read-only): a plain label, not a button. */
   onOpen?: () => void;
 }) {
+  const m = useMessages(PAPER_CHECK_MESSAGES);
   const summary = useMemo(() => summarizePaper(worksheet), [worksheet]);
   const parts = summaryParts(summary, language, pages);
   const misses = targetMisses(summary);
   const title = [
     parts.map((part) => part.text).join(' · '),
-    misses.over.length > 0 ? `Over target: ${misses.over.join(', ')}` : '',
-    misses.under.length > 0 ? `Under target: ${misses.under.join(', ')}` : '',
-    onOpen ? 'Set a target in Setup' : '',
+    misses.over.length > 0 ? m.overTarget(misses.over.join(', ')) : '',
+    misses.under.length > 0 ? m.underTarget(misses.under.join(', ')) : '',
+    onOpen ? m.setTarget : '',
   ]
     .filter(Boolean)
     .join('\n');
@@ -88,7 +91,7 @@ export function PaperSummaryBar({
     <button
       type="button"
       data-print-hide
-      aria-label={`Paper summary: ${parts.map((part) => part.text).join(', ')}`}
+      aria-label={m.summaryAria(parts.map((part) => part.text).join(', '))}
       title={title}
       onClick={onOpen}
       className={`${className} cursor-pointer transition-[background-color,color,transform,scale] duration-150 ease-out-soft hover:bg-line hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97]`}

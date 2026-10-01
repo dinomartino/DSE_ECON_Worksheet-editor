@@ -9,6 +9,8 @@ import { editableCopy, updateFolders, worksheetStore } from '@/storage';
 import { copyAssignment } from '@/storage/folders';
 import { newId } from '@/model/factories';
 import { useWorksheetStore } from '@/store/worksheetStore';
+import { useMessages } from '@/i18n/language';
+import { UPDATE_MESSAGES } from './shell.messages';
 
 /**
  * The read-only notice for a document a newer build saved (`isNewerThanBuild`).
@@ -20,8 +22,7 @@ import { useWorksheetStore } from '@/store/worksheetStore';
 export const DOWNLOAD_URL =
   'https://github.com/dinomartino/DSE_ECON_Worksheet-editor/releases/latest';
 
-export const NEWER_VERSION_MESSAGE =
-  'This worksheet was saved by a newer version of Econ Studio. Update to edit it safely.';
+export const NEWER_VERSION_MESSAGE = UPDATE_MESSAGES.newerMessage.en;
 
 /** The bar itself, with no store of its own, so it can be rendered in a test. */
 export function NewerVersionBar({
@@ -40,6 +41,7 @@ export function NewerVersionBar({
   onDownload: () => void;
   onDuplicate: () => void;
 }) {
+  const m = useMessages(UPDATE_MESSAGES);
   return (
     <div
       data-print-hide
@@ -47,8 +49,8 @@ export function NewerVersionBar({
       className="flex animate-slide-down-in flex-wrap items-center gap-x-3 gap-y-2 border-b border-line bg-warn-soft px-4 py-2 text-[13px] text-warn-ink"
     >
       <p className="min-w-0 flex-1">
-        <span className="font-semibold">{NEWER_VERSION_MESSAGE}</span>{' '}
-        <span className="opacity-80">Open read-only. Nothing you do here changes the file.</span>
+        <span className="font-semibold">{m.newerMessage}</span>{' '}
+        <span className="opacity-80">{m.newerHint}</span>
       </p>
       {status && (
         <span key={status} className="animate-fade-in text-[12px]">
@@ -57,11 +59,11 @@ export function NewerVersionBar({
       )}
       {desktop ? (
         <Button size="sm" variant="primary" disabled={busy} onClick={onCheck}>
-          Check for updates
+          {m.checkUpdates}
         </Button>
       ) : (
         <Button size="sm" variant="primary" onClick={onDownload}>
-          Get the latest version
+          {m.getLatest}
         </Button>
       )}
       <Button
@@ -69,9 +71,9 @@ export function NewerVersionBar({
         variant="default"
         disabled={busy}
         onClick={onDuplicate}
-        title="A copy this version can edit. What only the newer version understands is left out of the copy; the original is untouched."
+        title={m.duplicateTitle}
       >
-        Duplicate as editable copy
+        {m.duplicateEditable}
       </Button>
     </div>
   );
@@ -83,19 +85,20 @@ export function NewerVersionNotice({
   /** Open the editable copy once it is saved. */
   onOpenDocument: (worksheet: Worksheet) => void;
 }) {
+  const m = useMessages(UPDATE_MESSAGES);
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const [status, setStatus] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
 
   const check = async () => {
     setBusy(true);
-    setStatus('Checking…');
+    setStatus(m.newerChecking);
     const result = await useUpdateStore.getState().check();
     const found = useUpdateStore.getState().available;
     setBusy(false);
-    if (result === 'failed') setStatus('Could not check for updates. Are you online?');
-    else if (result === 'current') setStatus('No newer version is available yet.');
-    else if (found) setStatus(`Downloading version ${found}. You will be told when it is ready.`);
+    if (result === 'failed') setStatus(m.newerCheckFailed);
+    else if (result === 'current') setStatus(m.newerCurrent);
+    else if (found) setStatus(m.newerDownloading(found));
     else setStatus(undefined);
   };
 
@@ -110,7 +113,7 @@ export function NewerVersionNotice({
       );
       onOpenDocument(copy);
     } catch {
-      setStatus('Could not save a copy.');
+      setStatus(m.copyFailed);
       setBusy(false);
     }
   };
