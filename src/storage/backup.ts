@@ -3,6 +3,7 @@ import pkg from '../../package.json';
 import { newId } from '@/model/factories';
 import { CURRENT_SCHEMA_VERSION } from '@/model/migrations';
 import type { Worksheet } from '@/model/types';
+import { parseGraph, stringifyGraph, type SavedGraph } from '@/model/graph';
 import { parseWorksheet, stringifyWorksheet, summarize, worksheetTitle } from './document';
 import type { WorksheetStore } from './types';
 import {
@@ -14,6 +15,7 @@ import {
   usableFolders,
   type FolderState,
 } from './folders';
+import type { GraphRestoreReport } from './graphs';
 import {
   addPatternEntries,
   addUnusableRows,
@@ -36,6 +38,9 @@ import {
  * build's `readBackup` parses each `.json` entry except the manifest as a worksheet, so
  * a `folders.json` entry would restore there as an unreadable (or blank) document. The
  * 題型 registry rides there too, for the same reason: it is not rebuildable (§ patterns.ts).
+ *
+ * Saved graphs are entries under `graphs/`, named `.graph` rather than `.json` for the same
+ * reason: a shipped build would restore a `.json` graph as an empty worksheet.
  */
 
 export const MANIFEST_NAME = 'manifest.json';
@@ -67,6 +72,8 @@ export interface BackupContents {
   folders: FolderState;
   /** The 題型 registry from the manifest, validated per row; empty when absent. */
   patterns: PatternRegistry;
+  /** Saved graphs (`graphs/*.graph`), each through the migration chain. */
+  graphs: SavedGraph[];
 }
 
 export class BackupError extends Error {}
@@ -75,6 +82,14 @@ const UNSAFE = /[\\/:*?"<>|\u0000-\u001f]/g;
 
 function safeName(text: string): string {
   return text.replace(UNSAFE, '-').replace(/\s+/g, ' ').trim().slice(0, 80) || 'Untitled';
+}
+
+export const GRAPHS_FOLDER = 'graphs/';
+export const GRAPH_ENTRY_SUFFIX = '.graph';
+
+/** `graphs/<name> (<id>).graph`. */
+export function graphEntryName(graph: SavedGraph): string {
+  return `${GRAPHS_FOLDER}${safeName(graph.name)} (${safeName(graph.id)})${GRAPH_ENTRY_SUFFIX}`;
 }
 
 /** `<title> (<id>).worksheet.json` — readable, and unique because the id is. */
@@ -89,6 +104,7 @@ export async function buildBackup(
   createdAt = new Date().toISOString(),
   folders?: FolderState,
   patterns?: PatternRegistry,
+  graphs: SavedGraph[] = [],
 ): Promise<Uint8Array> {
   const zip = new JSZip();
   const manifest: BackupManifest = {
@@ -106,6 +122,7 @@ export async function buildBackup(
   for (const worksheet of worksheets) {
     zip.file(backupEntryName(worksheet), stringifyWorksheet(worksheet));
   }
+  for (const graph of graphs) zip.file(graphEntryName(graph), stringifyGraph(graph));
   return zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' });
 }
 
@@ -152,7 +169,19 @@ export async function readBackup(data: Uint8Array | ArrayBuffer | Blob): Promise
       failures.push({ name: entry.name, reason: entryFailure(cause) });
     }
   }
-  return { worksheets, failures, folders, patterns };
+  const graphs: SavedGraph[] = [];
+  const graphEntries = Object.values(zip.files)
+    .filter((entry) => !entry.dir && !entry.name.startsWith('__MACOSX/'))
+    .filter((entry) => entry.name.toLowerCase().endsWith(GRAPH_ENTRY_SUFFIX))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  for (const entry of graphEntries) {
+    try {
+      graphs.push(parseGraph(await entry.async('string')));
+    } catch (cause) {
+      failures.push({ name: entry.name, reason: cause instanceof SyntaxError ? 'not valid JSON' : 'not a graph' });
+    }
+  }
+  return { worksheets, failures, folders, patterns, graphs };
 }
 
 /**
@@ -259,7 +288,7 @@ export async function restorePatterns(file: PatternFile, patterns: PatternRegist
 }
 
 /** "Restored 12 · skipped 3 already here · 1 unreadable" — the sentence the screen shows. */
-export function restoreSummary(report: RestoreReport, unreadable: number): string {
+export function restoreSummary(report: RestoreReport, unreadable: number, graphs?: GraphRestoreReport): string {
   const parts: string[] = [];
   const restored = report.restored.length + report.copied.length;
   if (restored > 0) {
@@ -272,6 +301,12 @@ export function restoreSummary(report: RestoreReport, unreadable: number): strin
   if (report.skipped.length > 0) parts.push(`skipped ${report.skipped.length} already here`);
   if (unreadable > 0) parts.push(`${unreadable} unreadable`);
   if (report.failed.length > 0) parts.push(`${report.failed.length} could not be saved`);
+  if (graphs) {
+    const back = graphs.restored + graphs.copied;
+    if (back > 0) parts.push(`${back} ${back === 1 ? 'graph' : 'graphs'} restored`);
+    if (graphs.skipped > 0) parts.push(`${graphs.skipped} ${graphs.skipped === 1 ? 'graph' : 'graphs'} already here`);
+    if (graphs.failed > 0) parts.push(`${graphs.failed} ${graphs.failed === 1 ? 'graph' : 'graphs'} could not be saved`);
+  }
   if (parts.length === 0) return 'That backup has no worksheets in it.';
   const sentence = parts.join(' · ');
   return sentence.charAt(0).toUpperCase() + sentence.slice(1);
