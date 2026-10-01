@@ -1,10 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { FlowChart, FlowNode } from '@/model/diagram';
 import { addFlowNode, connectFlow, moveNodeToSlot, removeFlowNode } from '@/model/flowEdits';
 import { emptyBiText, isBiTextEmpty, parseRuns, plain, serializeRuns } from '@/model/text';
-import type { BiText, DiagramBlock, LanguageMode } from '@/model/types';
+import type { BiText, DiagramBlock, FontPair, LanguageMode } from '@/model/types';
 import {
   diagramSize,
   diagramSvg,
@@ -16,6 +16,7 @@ import { useWorksheetStore } from '@/store/worksheetStore';
 import { Button, CheckField, Eyebrow, IconButton, SelectField } from '@/components/ui';
 import { useModalLayer } from '@/components/ui/modalLayer';
 import { BiTextField } from './BiTextField';
+import { FieldScopeContext } from './fieldScope';
 
 /**
  * The flow chart's editor: direct manipulation on the chart itself.
@@ -75,14 +76,30 @@ export function FlowCanvas({
   block,
   onChange,
   onClose,
+  language: languageProp,
+  fonts: fontsProp,
+  embedded = false,
+  panel,
+  keysSuspended = false,
 }: {
   block: DiagramBlock;
   onChange: (block: DiagramBlock) => void;
-  onClose: () => void;
+  onClose?: () => void;
+  /** Win over the worksheet store: a saved graph draws in its own language and fonts. */
+  language?: LanguageMode;
+  fonts?: FontPair;
+  /** A page surface (Graphs): no Done, Escape never leaves. */
+  embedded?: boolean;
+  /** Shown above the inspector (embedded: the graph's own settings). */
+  panel?: ReactNode;
+  /** A dialog over the embedded canvas owns the keyboard; the shortcuts stand down. */
+  keysSuspended?: boolean;
 }) {
   useModalLayer();
-  const language = useWorksheetStore((s) => s.mode.language);
-  const fonts = useWorksheetStore((s) => s.worksheet.fonts);
+  const storeLanguage = useWorksheetStore((s) => s.mode.language);
+  const storeFonts = useWorksheetStore((s) => s.worksheet.fonts);
+  const language = languageProp ?? storeLanguage;
+  const fonts = fontsProp ?? storeFonts;
 
   const diagram = block.diagram;
   // Memoised so the fallback's identity is stable for the hooks that depend on it.
@@ -285,6 +302,7 @@ export function FlowCanvas({
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      if (keysSuspended) return;
       const target = event.target as HTMLElement | null;
       if (
         target &&
@@ -302,7 +320,7 @@ export function FlowCanvas({
         else if (arrowDraft) setArrowDraft(null);
         else if (tool === 'arrow') setTool('select');
         else if (selection) setSelection(null);
-        else onClose();
+        else if (!embedded) onClose?.();
         return;
       }
       if ((event.key === 'Delete' || event.key === 'Backspace') && selection) {
@@ -312,7 +330,7 @@ export function FlowCanvas({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [confirmClear, arrowDraft, tool, selection, doDelete, onClose]);
+  }, [confirmClear, arrowDraft, tool, selection, doDelete, onClose, embedded, keysSuspended]);
 
   const onPointerDown = (event: React.PointerEvent) => {
     if (event.button !== 0) return;
@@ -456,10 +474,16 @@ export function FlowCanvas({
         ? 'Double-click the empty box (or press + Box) to add the first stage.'
         : 'Drag a box to move it between columns. Click to select and edit. Double-click text to retype it.';
 
-  return (
-    <div className="zone-dark fixed inset-0 z-50 flex animate-fade-in flex-col bg-desk/95 backdrop-blur-sm">
+  const surface = (
+    <div
+      className={
+        embedded
+          ? 'zone-dark flex h-full min-h-0 flex-col bg-desk'
+          : 'zone-dark fixed inset-0 z-50 flex animate-fade-in flex-col bg-desk/95 backdrop-blur-sm'
+      }
+    >
       <header className="flex flex-wrap items-center gap-3 border-b border-line bg-surface px-5 py-3 text-ink">
-        <span className="text-sm font-semibold tracking-wide text-ink">Edit flow chart</span>
+        {!embedded && <span className="text-sm font-semibold tracking-wide text-ink">Edit flow chart</span>}
 
         <div className="flex gap-1.5">
           {(
@@ -564,7 +588,7 @@ export function FlowCanvas({
 
         <span className="flex-1" />
         <span className="max-w-96 text-xs leading-snug text-ink-muted">{hint}</span>
-        <Button onClick={onClose}>Done</Button>
+        {!embedded && <Button onClick={onClose}>Done</Button>}
       </header>
 
       <div className="flex min-h-0 flex-1">
@@ -738,6 +762,7 @@ export function FlowCanvas({
         </div>
 
         <aside className="zone-light w-80 shrink-0 overflow-y-auto border-l border-line bg-surface p-4">
+          {panel && <div className="mb-4 border-b border-line pb-4">{panel}</div>}
           <FlowInspector
             flow={flow}
             selection={selection}
@@ -748,6 +773,12 @@ export function FlowCanvas({
         </aside>
       </div>
     </div>
+  );
+  // A graph's own language reaches every field under the canvas; the editor's reads the store.
+  return languageProp ? (
+    <FieldScopeContext.Provider value={{ language: languageProp, readOnly: false }}>{surface}</FieldScopeContext.Provider>
+  ) : (
+    surface
   );
 }
 

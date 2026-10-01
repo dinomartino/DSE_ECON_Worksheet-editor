@@ -16,12 +16,15 @@ export const GraphThumb = memo(function GraphThumb({ graph, className = 'aspect-
       }),
     [graph.block, graph.language, graph.fonts],
   );
+  // The svg fills an absolute box and scales by its viewBox: WebKit lets `max-height: 100%`
+  // under an aspect-ratio box overflow, which cropped a pie (taller than the 4:3 card).
   return (
-    <span
-      aria-hidden
-      className={`flex items-center justify-center overflow-hidden rounded-[3px] bg-white [&_svg]:h-auto [&_svg]:max-h-full [&_svg]:w-auto [&_svg]:max-w-full ${className}`}
-      style={{ lineHeight: 0 }}
-      dangerouslySetInnerHTML={{ __html: svg }}
-    />
+    <span aria-hidden className={`relative block overflow-hidden rounded-[3px] bg-white ${className}`} style={{ lineHeight: 0 }}>
+      <span
+        className="absolute inset-0 block [&_svg]:h-full [&_svg]:w-full"
+        style={{ padding: 'inherit' }}
+        dangerouslySetInnerHTML={{ __html: svg }}
+      />
+    </span>
   );
 });

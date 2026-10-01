@@ -5,14 +5,18 @@ import { Button } from '@/components/ui';
 import { DownloadIcon } from '@/components/ui/icons';
 import { undoChord } from '@/components/ui/undoChord';
 import { DiagramCanvas } from '@/components/editor/DiagramCanvas';
+import { ForumFields, PieSliceFields } from '@/components/editor/DiagramDataFields';
 import { FieldScopeContext } from '@/components/editor/fieldScope';
+import { FlowCanvas } from '@/components/editor/FlowCanvas';
+import { ForumCanvas } from '@/components/editor/ForumCanvas';
 import { copyGraphImage, dataUrlToBlob, graphPngDataUrl } from '@/export/graphImage';
-import { graphFileName, isDrawableGraph, isGraphNewerThanBuild, type SavedGraph } from '@/model/graph';
+import { graphFileName, isGraphNewerThanBuild, type SavedGraph } from '@/model/graph';
+import type { DiagramBlock } from '@/model/types';
 import { chooseSaveTarget, PNG_FILTERS, revealFile, revealLabel } from '@/platform';
-import { diagramSvg } from '@/render/diagram';
+import { diagramSize, diagramSvg } from '@/render/diagram';
 import { graphStore } from '@/storage';
 import { GraphPanel } from './GraphPanel';
-import { graphSaveLabel, type GraphSaveState } from './graphList';
+import { graphHistoryAction, graphSaveLabel, isTypingTarget, type GraphSaveState } from './graphList';
 import { UseInWorksheetDialog } from './UseInWorksheetDialog';
 
 /** The autosave's debounce, as for documents. */
@@ -126,17 +130,15 @@ export function GraphEditor({
     [commit],
   );
 
-  // ⌘Z / ⇧⌘Z, unless a field owns the keys.
+  // ⌘Z / ⇧⌘Z, unless a field owns the keys or a dialog is open over the editor.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      const action = undoChord(event);
-      if (!action) return;
-      const active = document.activeElement;
-      if (
-        active instanceof HTMLInputElement ||
-        active instanceof HTMLTextAreaElement ||
-        (active instanceof HTMLElement && active.isContentEditable)
-      ) {
+      const typing = isTypingTarget(document.activeElement);
+      const dialogOpen = using || document.querySelector('[role="dialog"][aria-modal="true"]') !== null;
+      const action = graphHistoryAction(event, { typing, dialogOpen });
+      if (!action) {
+        // Nor the browser's own undo, which can still reach a field behind the dialog.
+        if (dialogOpen && !typing && undoChord(event)) event.preventDefault();
         return;
       }
       const current = graphRef.current;
@@ -153,7 +155,7 @@ export function GraphEditor({
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [commit]);
+  }, [commit, using]);
 
   const show = (next: Flash) => {
     setFlash(next);
@@ -287,18 +289,8 @@ export function GraphEditor({
           <div className="zone-light flex h-full items-center justify-center bg-surface">
             <p className="text-[13px] text-ink-muted">This graph is no longer saved here.</p>
           </div>
-        ) : !graph ? null : !readOnly && isDrawableGraph(graph.block) ? (
-          <DiagramCanvas
-            embedded
-            block={graph.block}
-            language={graph.language}
-            fonts={graph.fonts}
-            onChange={(block) => update({ ...graphRef.current!, block })}
-            panel={<GraphPanel graph={graph} onChange={update} />}
-            keysSuspended={using}
-          />
-        ) : (
-          <StaticGraph graph={graph} readOnly={readOnly} onChange={update} />
+        ) : !graph ? null : (
+          <GraphSurface graph={graph} readOnly={readOnly} keysSuspended={using} onChange={update} />
         )}
       </div>
       {using && graph && (
@@ -309,18 +301,76 @@ export function GraphEditor({
 }
 
 /**
- * A graph the canvas cannot edit here: one from a newer build (shown, never written), or a
- * pie, flow or forum figure (edited inside a worksheet).
+ * The editing surface for the graph's kind: the same canvases and fields a worksheet's
+ * diagram uses, with the graph's own language and fonts. A pie has no canvas (its slices
+ * are data), so it shows the figure beside its fields, as a newer build's graph does.
  */
-function StaticGraph({
+function GraphSurface({
   graph,
   readOnly,
+  keysSuspended,
   onChange,
 }: {
   graph: SavedGraph;
   readOnly: boolean;
+  keysSuspended: boolean;
   onChange: (graph: SavedGraph) => void;
 }) {
+  const { block } = graph;
+  const { diagram } = block;
+  const setBlock = (next: DiagramBlock) => onChange({ ...graph, block: next });
+  const settings = <GraphPanel graph={graph} onChange={onChange} />;
+  const canvas = { embedded: true, block, language: graph.language, fonts: graph.fonts, onChange: setBlock, keysSuspended };
+
+  if (readOnly) {
+    return (
+      <StaticGraph graph={graph} readOnly>
+        <p className="text-[12.5px] leading-relaxed text-ink-muted">
+          This graph was saved by a newer version of Econ Studio, so it can be copied and downloaded here but not
+          changed. Update to edit it.
+        </p>
+      </StaticGraph>
+    );
+  }
+  if (diagram.pie) {
+    return (
+      <StaticGraph graph={graph}>
+        {settings}
+        <div className="mt-4 border-t border-line pt-4">
+          <PieSliceFields slices={diagram.pie.slices} onChange={(slices) => setBlock({ ...block, diagram: { ...diagram, pie: { slices } } })} />
+        </div>
+      </StaticGraph>
+    );
+  }
+  if (diagram.flow) return <FlowCanvas {...canvas} panel={settings} />;
+  if (diagram.forum) {
+    return (
+      <ForumCanvas
+        {...canvas}
+        panel={
+          <>
+            {settings}
+            <div className="mt-4 border-t border-line pt-4">
+              <ForumFields
+                forum={diagram.forum}
+                resizeHint="Drag a bubble’s inner edge on the figure to resize it."
+                onChange={(forum) => {
+                  // Re-measured on every edit, as in a worksheet: bubble text sets the box.
+                  const next = { ...diagram, forum };
+                  setBlock({ ...block, ...diagramSize(next, block.widthPx, graph.language), diagram: next });
+                }}
+              />
+            </div>
+          </>
+        }
+      />
+    );
+  }
+  return <DiagramCanvas {...canvas} panel={settings} />;
+}
+
+/** The figure, drawn as it prints, beside a panel: a pie's fields, or a newer graph's note. */
+function StaticGraph({ graph, readOnly = false, children }: { graph: SavedGraph; readOnly?: boolean; children: ReactNode }) {
   const svg = useMemo(
     () =>
       diagramSvg(graph.block.diagram, {
@@ -335,28 +385,18 @@ function StaticGraph({
     <FieldScopeContext.Provider value={{ language: graph.language, readOnly }}>
       <div className="zone-dark flex h-full min-h-0">
         <div className="flex min-w-0 flex-1 items-center justify-center overflow-auto p-8">
+          {/* 2× like the canvases, shrunk to fit the stage (a pie is as tall as it is wide). */}
           <div
             className="bg-white shadow-2xl"
-            style={{ width: graph.block.widthPx * 2, lineHeight: 0 }}
+            style={{
+              width: `min(${graph.block.widthPx * 2}px, 100%, calc((100dvh - 8rem) * ${graph.block.widthPx / graph.block.heightPx}))`,
+              lineHeight: 0,
+            }}
           >
             <span className="block [&_svg]:h-auto [&_svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
           </div>
         </div>
-        <aside className="zone-light w-80 shrink-0 overflow-y-auto border-l border-line bg-surface p-4">
-          {readOnly ? (
-            <p className="text-[12.5px] leading-relaxed text-ink-muted">
-              This graph was saved by a newer version of Econ Studio, so it can be copied and downloaded here but not
-              changed. Update to edit it.
-            </p>
-          ) : (
-            <>
-              <p className="mb-4 border-b border-line pb-4 text-[12.5px] leading-relaxed text-ink-muted">
-                This kind of figure is drawn from its data. Edit it in a worksheet.
-              </p>
-              <GraphPanel graph={graph} onChange={onChange} />
-            </>
-          )}
-        </aside>
+        <aside className="zone-light w-80 shrink-0 overflow-y-auto border-l border-line bg-surface p-4">{children}</aside>
       </div>
     </FieldScopeContext.Provider>
   );

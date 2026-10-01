@@ -1,5 +1,5 @@
-import { isDrawableGraph, type SavedGraph } from '@/model/graph';
-import { buildFromTemplate } from '@/model/diagramTemplates';
+import type { SavedGraph } from '@/model/graph';
+import { undoChord, type UndoAction } from '@/components/ui/undoChord';
 import { questionExcerpt } from '@/model/excerpt';
 import { sectionShortLabel } from '@/model/flow';
 import { computeNumbering } from '@/model/numbering';
@@ -52,10 +52,22 @@ export function graphCount(count: number): string {
   return `${count} ${count === 1 ? 'graph' : 'graphs'}`;
 }
 
-/** A template the Graphs screen offers: one the drawing canvas edits (not pie, flow or forum). */
-export function isGraphTemplate(templateId: string): boolean {
-  const diagram = buildFromTemplate(templateId);
-  return isDrawableGraph({ kind: 'diagram', id: '', diagram, widthPx: 0, heightPx: 0, altText: { en: [], zh: [] } });
+/** A field that keeps its own ⌘Z: a text input, a textarea, or rich text. */
+export function isTypingTarget(element: Element | null): boolean {
+  if (!element) return false;
+  return element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || (element as HTMLElement).isContentEditable === true;
+}
+
+/**
+ * The graph editor's undo or redo for this key, or null: a field keeps its own, and a
+ * dialog over the editor owns the keyboard.
+ */
+export function graphHistoryAction(
+  event: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'shiftKey'>,
+  { typing, dialogOpen }: { typing: boolean; dialogOpen: boolean },
+): UndoAction | null {
+  if (typing || dialogOpen) return null;
+  return undoChord(event);
 }
 
 /** The autosave's word for the top bar. */

@@ -227,6 +227,7 @@ Design: `docs/design/graph-library.md`. The start screen's `view: 'graphs'`.
 - `src/storage/graphs.ts:GraphStore` · `:localGraphFiles` · `:restoreGraphs` · `src/storage/fileStore.ts:graphDirFiles` · `src/storage/index.ts:graphStore`
 - `src/storage/backup.ts:graphEntryName` — `graphs/*.graph` entries in the backup zip
 - `src/components/graphs/GraphsScreen.tsx:GraphsScreen` · `src/components/graphs/GraphLibrary.tsx:GraphLibrary` · `src/components/graphs/GraphEditor.tsx:GraphEditor` · `src/components/graphs/GraphPanel.tsx:GraphPanel`
+- Every kind edits on the worksheet's surfaces, embedded: `src/components/editor/DiagramCanvas.tsx:DiagramCanvas` · `src/components/editor/FlowCanvas.tsx:FlowCanvas` · `src/components/editor/ForumCanvas.tsx:ForumCanvas` · `src/components/editor/DiagramDataFields.tsx:PieSliceFields` · `:ForumFields` · undo gate `src/components/graphs/graphList.ts:graphHistoryAction`
 - `src/export/graphImage.ts:copyGraphImage` · `:graphClipboardHtml` · `src/export/diagramImage.ts:rasterizeDiagram`
 - `src/components/editor/fieldScope.ts:FieldScopeContext` — a graph's language for `BiTextField`, over the store
 - Into worksheets: `src/model/graph.ts:graphBlockCopy` · `:rebaseOnGraph` · `:graphFromBlock` (Save to Graphs, in `src/components/editor/DiagramEditor.tsx`)

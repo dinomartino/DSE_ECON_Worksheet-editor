@@ -22,6 +22,10 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   adds it to any question (or a new one) and opens the worksheet there. A diagram's panel
   has Save to Graphs to keep it for later. Each copy is independent, so changing one
   never changes another.
+- **Pie charts, flow charts and forum figures in Graphs too.** New graph offers every
+  template, and each is edited on the Graphs page the way it is in a worksheet: slices,
+  boxes and arrows, speech bubbles. Save to Graphs, My graphs and Download PNG work for
+  all of them. ⌘Z no longer changes the graph while Use in a worksheet… is open.
 - **A proper welcome on first launch.** With nothing saved yet, the start screen shows
   the four kinds of paper as pictures of the page each one prints. Click one to name it
   and start, or open a file or restore a backup you already have.

@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { ForumChart } from '@/model/diagram';
-import type { DiagramBlock } from '@/model/types';
+import type { DiagramBlock, FontPair, LanguageMode } from '@/model/types';
 import { diagramSize, diagramSvg, forumChartLayout } from '@/render/diagram';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { Button } from '@/components/ui';
 import { useModalLayer } from '@/components/ui/modalLayer';
+import { FieldScopeContext } from './fieldScope';
 
 /**
  * The forum figure's canvas: resizing bubbles on the picture itself.
@@ -46,14 +47,30 @@ export function ForumCanvas({
   block,
   onChange,
   onClose,
+  language: languageProp,
+  fonts: fontsProp,
+  embedded = false,
+  panel,
+  keysSuspended = false,
 }: {
   block: DiagramBlock;
   onChange: (block: DiagramBlock) => void;
-  onClose: () => void;
+  onClose?: () => void;
+  /** Win over the worksheet store: a saved graph draws in its own language and fonts. */
+  language?: LanguageMode;
+  fonts?: FontPair;
+  /** A page surface (Graphs): no Done, Escape never leaves. */
+  embedded?: boolean;
+  /** Embedded: a side panel beside the figure (the graph's settings and bubbles). */
+  panel?: ReactNode;
+  /** A dialog over the embedded canvas owns the keyboard; the shortcuts stand down. */
+  keysSuspended?: boolean;
 }) {
   useModalLayer();
-  const language = useWorksheetStore((s) => s.mode.language);
-  const fonts = useWorksheetStore((s) => s.worksheet.fonts);
+  const storeLanguage = useWorksheetStore((s) => s.mode.language);
+  const storeFonts = useWorksheetStore((s) => s.worksheet.fonts);
+  const language = languageProp ?? storeLanguage;
+  const fonts = fontsProp ?? storeFonts;
 
   const diagram = block.diagram;
   const forum = useMemo(() => diagram.forum ?? { bubbles: [] }, [diagram.forum]);
@@ -103,19 +120,20 @@ export function ForumCanvas({
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      event.preventDefault();
+      if (keysSuspended || event.key !== 'Escape') return;
       // One step back per press: abandon the drag, then the whole editor.
       if (gesture.current) {
+        event.preventDefault();
         gesture.current = null;
         setDrag(null);
-      } else {
-        onClose();
+      } else if (!embedded) {
+        event.preventDefault();
+        onClose?.();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [onClose, embedded, keysSuspended]);
 
   const toNatural = (event: React.PointerEvent) => {
     const rect = stageRef.current!.getBoundingClientRect();
@@ -206,10 +224,16 @@ export function ForumCanvas({
     onChange({ ...block, ...diagramSize(next, block.widthPx, language), diagram: next });
   };
 
-  return (
-    <div className="zone-dark fixed inset-0 z-50 flex animate-fade-in flex-col bg-desk/95 backdrop-blur-sm">
+  const surface = (
+    <div
+      className={
+        embedded
+          ? 'zone-dark flex h-full min-h-0 flex-col bg-desk'
+          : 'zone-dark fixed inset-0 z-50 flex animate-fade-in flex-col bg-desk/95 backdrop-blur-sm'
+      }
+    >
       <header className="flex flex-wrap items-center gap-3 border-b border-line bg-surface px-5 py-3 text-ink">
-        <span className="text-sm font-semibold tracking-wide text-ink">Adjust forum bubbles</span>
+        {!embedded && <span className="text-sm font-semibold tracking-wide text-ink">Adjust forum bubbles</span>}
 
         <label className="flex items-center gap-2 text-xs font-medium text-ink">
           Zoom
@@ -231,67 +255,78 @@ export function ForumCanvas({
           Drag a bubble&rsquo;s inner edge to resize it. The words re-wrap to fit. Wording,
           corners and the picture are edited in the sidebar.
         </span>
-        <Button onClick={onClose}>Done</Button>
+        {!embedded && <Button onClick={onClose}>Done</Button>}
       </header>
 
-      <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-8">
-        <div
-          ref={stageRef}
-          className="relative select-none bg-white shadow-2xl"
-          style={{
-            width: size.widthPx * zoom,
-            height: size.heightPx * zoom,
-            touchAction: 'none',
-            cursor: drag || hoverEdge ? 'ew-resize' : 'default',
-          }}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
-          onPointerLeave={() => setHoverEdge(null)}
-        >
+      <div className="flex min-h-0 flex-1">
+        <div className="flex min-w-0 flex-1 items-center justify-center overflow-auto p-8">
           <div
-            className="pointer-events-none absolute inset-0 [&>svg]:h-full [&>svg]:w-full"
-            dangerouslySetInnerHTML={{ __html: svg }}
-          />
-
-          {/* Grips drawn over the real SVG, so the geometry underneath stays exactly
-              what exports. Always live, never gated on hover (§ canvas rules); the
-              hover state only paints them. */}
-          <svg
-            className="pointer-events-none absolute inset-0 h-full w-full"
-            viewBox={`0 0 ${layout.width} ${layout.height}`}
+            ref={stageRef}
+            className="relative select-none bg-white shadow-2xl"
+            style={{
+              width: size.widthPx * zoom,
+              height: size.heightPx * zoom,
+              touchAction: 'none',
+              cursor: drag || hoverEdge ? 'ew-resize' : 'default',
+            }}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+            onPointerLeave={() => setHoverEdge(null)}
           >
-            {layout.bubbles
-              .filter((box) => box.bubble.id !== 'placeholder')
-              .map((box) => {
-                const edge = innerEdgeX(box, onLeftSide(box.bubble.slot));
-                const active = drag?.bubbleId === box.bubble.id || hoverEdge === box.bubble.id;
-                return (
-                  <g key={box.bubble.id}>
-                    <line
-                      x1={edge}
-                      y1={box.y}
-                      x2={edge}
-                      y2={box.y + box.h}
-                      stroke="#0284c7"
-                      strokeWidth={(active ? 2.5 : 1.25) / zoom}
-                      opacity={active ? 0.9 : 0.35}
-                    />
-                    <rect
-                      x={edge - 2.5}
-                      y={box.y + box.h / 2 - 7}
-                      width={5}
-                      height={14}
-                      rx={2}
-                      fill={active ? '#0284c7' : '#7dd3fc'}
-                    />
-                  </g>
-                );
-              })}
-          </svg>
+            <div
+              className="pointer-events-none absolute inset-0 [&>svg]:h-full [&>svg]:w-full"
+              dangerouslySetInnerHTML={{ __html: svg }}
+            />
+
+            {/* Grips drawn over the real SVG, so the geometry underneath stays exactly
+                what exports. Always live, never gated on hover (§ canvas rules); the
+                hover state only paints them. */}
+            <svg
+              className="pointer-events-none absolute inset-0 h-full w-full"
+              viewBox={`0 0 ${layout.width} ${layout.height}`}
+            >
+              {layout.bubbles
+                .filter((box) => box.bubble.id !== 'placeholder')
+                .map((box) => {
+                  const edge = innerEdgeX(box, onLeftSide(box.bubble.slot));
+                  const active = drag?.bubbleId === box.bubble.id || hoverEdge === box.bubble.id;
+                  return (
+                    <g key={box.bubble.id}>
+                      <line
+                        x1={edge}
+                        y1={box.y}
+                        x2={edge}
+                        y2={box.y + box.h}
+                        stroke="#0284c7"
+                        strokeWidth={(active ? 2.5 : 1.25) / zoom}
+                        opacity={active ? 0.9 : 0.35}
+                      />
+                      <rect
+                        x={edge - 2.5}
+                        y={box.y + box.h / 2 - 7}
+                        width={5}
+                        height={14}
+                        rx={2}
+                        fill={active ? '#0284c7' : '#7dd3fc'}
+                      />
+                    </g>
+                  );
+                })}
+            </svg>
+          </div>
         </div>
+        {panel && (
+          <aside className="zone-light w-80 shrink-0 overflow-y-auto border-l border-line bg-surface p-4">{panel}</aside>
+        )}
       </div>
     </div>
+  );
+  // A graph's own language reaches every field in the panel; the editor's reads the store.
+  return languageProp ? (
+    <FieldScopeContext.Provider value={{ language: languageProp, readOnly: false }}>{surface}</FieldScopeContext.Provider>
+  ) : (
+    surface
   );
 }
