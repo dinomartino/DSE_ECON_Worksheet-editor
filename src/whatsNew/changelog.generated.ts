@@ -192,6 +192,9 @@ text becomes the GitHub release body (see \`RELEASING.md\`). Sections are groupe
   own, or nothing. Page 1's title settings sit with them.
 
 ### Fixed
+- **A diagram's y-axis label in English and 中文 no longer sits on the arrow.** With labels
+  in both languages, "價格" printed on top of the y-axis arrowhead; both lines now sit
+  above it, on screen, in the Graphs editor, in the PDF and in Word.
 - **Back up now shows when you have graphs but no worksheets yet**, and the graph
   editor's tools fit on one row on a 13-inch screen.
 - **Bilingual papers no longer print the footer twice.** A paper code or page number that

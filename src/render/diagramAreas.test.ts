@@ -75,6 +75,8 @@ describe('a diagram saved by the published build renders unchanged', () => {
     // same day when `dominant-baseline` became explicit baselines (WebKit ignored it): an
     // element diff showed every `<text>` y moved by exactly the drop it replaced — hanging
     // 0.712em, middle 0.224em, x ticks 0.72em (their glyph tops) — and nothing else.
+    // Re-frozen 2026-10-02 when a stacked y-axis title rose clear of the arrow tip: an
+    // element diff showed only the bilingual y-title `<text>` y values moved, up one line.
     const worksheet = migrate(structuredClone(v1Corpus));
     const blocks = worksheet.questions
       .flatMap((question) => question.blocks)

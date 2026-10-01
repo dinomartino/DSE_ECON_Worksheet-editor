@@ -1423,13 +1423,27 @@ export function axisTitleAnchor(
             proj.frame.top +
               (diagram.titlePlacement === 'below' ? 0 : titleRoom(diagram, language, scale)) +
               AXIS_TITLE_SIZE * scale * 1.1,
-            proj.plot.top - AXIS_OVERSHOOT * scale - AXIS_TITLE_GAP * scale,
+            // The *last* line ends `AXIS_TITLE_GAP` above the arrow tip, so a stacked
+            // title (EN+中, a hard break) rises into the room `diagramPlot` reserves for
+            // it instead of hanging its second line on the arrowhead.
+            proj.plot.top -
+              AXIS_OVERSHOOT * scale -
+              AXIS_TITLE_GAP * scale -
+              axisTitleStack(pickSides(diagram.y.title, language).length, scale),
           ),
         };
   return {
     x: base.x + (offset ? offset.x * plotSpanX(proj) : 0),
     y: base.y - (offset ? offset.y * plotSpanY(proj) : 0),
   };
+}
+
+/**
+ * How far a stacked y-axis title's lines below the first reach: reserved over the plot by
+ * `diagramPlot` and `diagramSize`, and lifted out of by `axisTitleAnchor`. Zero for one line.
+ */
+function axisTitleStack(count: number, scale: number): number {
+  return Math.max(0, count - 1) * AXIS_TITLE_SIZE * scale * 1.15;
 }
 
 /**
@@ -1503,8 +1517,7 @@ export function diagramSize(
   const bottom = Math.max(PAD.bottom, ...room.x.map((r) => r.fixed + r.offset * plotHeight));
 
   // Both axis titles print outside the plot, and a bilingual pair stacks two lines.
-  const yTitleLines = pickSides(diagram.y.title, language).length;
-  const topRoom = PAD.top + Math.max(0, yTitleLines - 1) * AXIS_TITLE_SIZE * 1.15;
+  const topRoom = PAD.top + axisTitleStack(pickSides(diagram.y.title, language).length, 1);
 
   return {
     widthPx: width,
@@ -2758,9 +2771,7 @@ export function diagramPlot(diagram: Diagram, options: DiagramSvgOptions): Proje
   // Above, the title is stacked over the y-axis title, so its room adds to the same top
   // pad rather than competing for it — otherwise a titled diagram would print its
   // words straight through "Price (Renminbi)".
-  const extraTop =
-    Math.max(0, yTitleLines.length - 1) * AXIS_TITLE_SIZE * scale * 1.15 +
-    (below ? 0 : room);
+  const extraTop = axisTitleStack(yTitleLines.length, scale) + (below ? 0 : room);
   const xTitleLines = pickSides(diagram.x.title, options.language);
   const rightRoom = estimateWidth(xTitleLines, AXIS_TITLE_SIZE * scale) + 30 * scale;
   return projection(

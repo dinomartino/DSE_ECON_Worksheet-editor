@@ -227,6 +227,40 @@ describe('axis titles sit beside their own axis', () => {
     expect(Math.min(...textYs(svg))).toBeGreaterThan(0);
   });
 
+  it.each([
+    ['en', bi('Price', '價格'), 1],
+    ['zh', bi('Price', '價格'), 1],
+    ['bilingual', bi('Price', '價格'), 2],
+    ['bilingual', bi('Price\nlevel', '物價水平'), 3],
+  ] as const)('keeps a %s y-axis title of its lines clear of the arrowhead (%#)', (language, title, lines) => {
+    // EN+中 hung "價格" on the arrow tip: the plot moved down for the second line, but
+    // the title was anchored to the plot, so the reserved room sat empty above it.
+    for (const scale of [1, 3]) {
+      const diagram = createBlankDiagram();
+      diagram.y = { title };
+      const size = diagramSize(diagram, 400, language);
+      const svg = diagramSvg(diagram, { ...size, language, scale });
+      const head = /<path d="M ([\d.]+) ([\d.]+) L ([\d.]+) ([\d.]+) L ([\d.]+) ([\d.]+) z"[^>]*data-arrowhead/g;
+      // The y-axis arrowhead is the one whose base corners share a y: tip on top.
+      const yHead = Array.from(svg.matchAll(head)).map((m) => m.slice(1).map(Number)).find((p) => p[1] === p[5])!;
+      const headBox = { left: yHead[0], right: yHead[4], top: yHead[3], bottom: yHead[1] };
+      const fontSize = 10 * (96 / 72) * scale;
+      const titleYs = Array.from(svg.matchAll(/<text x="([\d.]+)" y="([\d.]+)"[^>]*text-anchor="start"[^>]*>/g))
+        .map((m) => ({ x: Number(m[1]), y: Number(m[2]) }))
+        .filter((t) => t.y < headBox.bottom);
+      expect(titleYs).toHaveLength(lines);
+      // Ink box: CJK caps reach 0.83em above the first baseline, a descender 0.22em below the last.
+      const box = {
+        left: titleYs[0].x,
+        top: titleYs[0].y - 0.83 * fontSize,
+        bottom: titleYs[lines - 1].y + 0.22 * fontSize,
+      };
+      expect(box.left).toBeLessThan(headBox.right); // straddles the axis, so only height can clear it
+      expect(box.bottom).toBeLessThan(headBox.top);
+      expect(box.top).toBeGreaterThan(0);
+    }
+  });
+
   it('starts the x-axis title just past its arrowhead rather than at the far edge', () => {
     const diagram = createBlankDiagram();
     diagram.x = { title: bi('Quantity', 'Quantity') };

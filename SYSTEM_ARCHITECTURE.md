@@ -947,7 +947,9 @@ Renderer rules:
 
 - **Axis titles lay out outside the plot**: right padding from estimated width, capped
   at `MAX_X_TITLE_SHARE`; `axisTitleAnchor` clamps inside the canvas, never left of the
-  arrow tip (lives there because `DiagramCanvas` builds the drag handle from it).
+  arrow tip (lives there because `DiagramCanvas` builds the drag handle from it). A
+  stacked y title's *last* line ends above the y arrow tip; `axisTitleStack` is both
+  the top room reserved for the extra lines and the lift out of it.
 - **Bilingual labels with identical sides print once** (symbols like "AD", "E₀").
 - **Every side is cut at its own hard breaks** (`richLines`, fed by `pickSides` — the
   one funnel from `BiText` to drawn lines). Run-aware, so `vertAlign` survives a break.
