@@ -3,7 +3,7 @@ import { defineMessages } from '@/i18n/catalogue';
 /** The editor's top bar: home crumb, view switches, undo, Setup, Export, the ⋯ menu, its notices. */
 export const TOOLBAR_MESSAGES = defineMessages({
   breadcrumb: { en: 'Breadcrumb', zh: '導覽路徑' },
-  home: { en: 'Econ Studio home', zh: 'Econ Studio 首頁' },
+  home: { en: 'Econ Studio home', zh: 'Econ Studio 主頁' },
   backToBankTitle: { en: 'Back to Question bank 題庫', zh: '返回題庫' },
   backToBank: { en: 'Back to Question bank', zh: '返回題庫' },
   bankShort: { en: 'Bank', zh: '題庫' },

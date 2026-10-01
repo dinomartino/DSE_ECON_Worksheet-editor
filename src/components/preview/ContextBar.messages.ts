@@ -33,5 +33,5 @@ export const CONTEXT_BAR_MESSAGES = defineMessages({
   positionCenter: { en: 'Position figure center', zh: '圖形置中' },
   positionRight: { en: 'Position figure right', zh: '圖形靠右' },
   editDrawing: { en: 'Edit the drawing', zh: '編輯圖畫' },
-  draw: { en: '✎ Draw', zh: '✎ 繪圖' },
+  draw: { en: '✎ Draw', zh: '✎ 繪畫' },
 });

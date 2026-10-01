@@ -6,13 +6,13 @@ const zhEdge = (which: Edge) => (which === 'header' ? '頁首' : '頁尾');
 /** The Setup dialog: Worksheet, Page, Header & footer and Cover tabs. */
 export const DOCUMENT_SETTINGS_MESSAGES = defineMessages({
   // Dialog and tabs
-  dialogTitle: { en: 'Document setup', zh: '文件設定' },
+  dialogTitle: { en: 'Document setup', zh: '頁面設定' },
   dialogDescription: {
     en: 'Applies to the whole worksheet. Changes show on the page immediately.',
     zh: '套用於整份工作紙，更改會即時顯示在頁面上。',
   },
   tabWorksheet: { en: 'Worksheet', zh: '工作紙' },
-  tabWorksheetHint: { en: 'Title, fonts, sections', zh: '標題、字型、分部' },
+  tabWorksheetHint: { en: 'Title, fonts, sections', zh: '標題、字型、部分' },
   tabPage: { en: 'Page', zh: '頁面' },
   tabPageHint: { en: 'Paper, margins', zh: '紙張、邊界' },
   tabFurniture: { en: 'Header & footer', zh: '頁首及頁尾' },
@@ -168,7 +168,7 @@ export const DOCUMENT_SETTINGS_MESSAGES = defineMessages({
   dragHint: {
     en: (which: Edge) =>
       `Double-click this ${which} on the page to type in it, or drag a field between the left, centre and right zones.`,
-    zh: (which: Edge) => `在頁面上連按兩下此${zhEdge(which)}即可輸入文字，或在左、中、右區之間拖曳欄位。`,
+    zh: (which: Edge) => `在頁面上按兩下此${zhEdge(which)}即可輸入文字，或在左、中、右區之間拖曳欄位。`,
   },
   ruleLine: { en: 'Rule line', zh: '分隔線' },
   addRow: { en: '+ Row', zh: '+ 行' },
@@ -187,7 +187,7 @@ export const DOCUMENT_SETTINGS_MESSAGES = defineMessages({
   },
   edgeOff: {
     en: (which: Edge) => `The ${which} is off on every page. Tick “Print a ${which}” above to turn it on.`,
-    zh: (which: Edge) => `所有頁面的${zhEdge(which)}均已關閉。請剔選上方的「印出${zhEdge(which)}」以開啟。`,
+    zh: (which: Edge) => `所有頁面的${zhEdge(which)}均已關閉。請勾選上方的「印出${zhEdge(which)}」以開啟。`,
   },
   sameAsLater: { en: 'Same as pages 2+', zh: '與第 2 頁起相同' },
   itsOwn: { en: 'Its own', zh: '獨立設定' },
@@ -227,7 +227,7 @@ export const DOCUMENT_SETTINGS_MESSAGES = defineMessages({
   pageToEdit: { en: 'Page to edit', zh: '要編輯的頁面' },
   page1: { en: 'Page 1', zh: '第 1 頁' },
   pages2Onward: { en: 'Pages 2 onward', zh: '第 2 頁起' },
-  everyPageAfter: { en: 'Every page after the first', zh: '第一頁之後的每一頁' },
+  everyPageAfter: { en: 'Every page after the first', zh: '第一頁之後的所有頁面' },
   captionSame: { en: 'Same as later pages, plus the title', zh: '與其後頁面相同，另加標題' },
   captionOwn: { en: (edge: string) => `own ${edge}`, zh: (edge: string) => `獨立${edge}` },
   captionNo: { en: (edge: string) => `no ${edge}`, zh: (edge: string) => `不印${edge}` },

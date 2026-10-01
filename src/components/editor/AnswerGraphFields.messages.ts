@@ -11,7 +11,7 @@ export const ANSWER_GRAPH_MESSAGES = defineMessages({
     en: (lines: number, cm: number) => `${lines} lines (${cm} cm)`,
     zh: (lines: number, cm: number) => `${lines} 行（${cm} cm）`,
   },
-  width: { en: 'Width', zh: '闊度' },
+  width: { en: 'Width', zh: '寬度' },
   half: { en: 'Half', zh: '半頁' },
   full: { en: 'Full', zh: '全頁' },
   grid: { en: 'Grid', zh: '格線' },

@@ -376,7 +376,7 @@ function TableInsertButton({
          * panel below, and `right-0` keeps the wider sizes from running off the 380px
          * column into the page.
          */
-        <div className="absolute right-0 top-full z-40 mt-1 origin-top-right animate-pop-in rounded-xl border border-line bg-surface-raised p-1.5 shadow-2xl">
+        <div className="absolute right-0 top-full z-40 mt-1 min-w-[9.5rem] origin-top-right animate-pop-in rounded-xl border border-line bg-surface-raised p-1.5 shadow-2xl">
           {/*
             The named shapes come **first**, above the size grid.
 

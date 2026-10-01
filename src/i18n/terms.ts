@@ -136,6 +136,14 @@ export const STANDARD_TRANSLATIONS: Readonly<Record<string, string>> = {
   Discard: '捨棄',
   'Try again': '再試一次',
   Loading: '載入中',
+  // Unified across areas at the end.
+  Home: '主頁',
+  Width: '寬度',
+  Section: '部分',
+  'Part header': '分部標題',
+  'Answer space': '答題空位',
+  'Double-click': '按兩下',
+  'Tick (a checkbox)': '勾選',
 };
 
 /**

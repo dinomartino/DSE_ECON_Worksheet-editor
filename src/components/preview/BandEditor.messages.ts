@@ -9,7 +9,7 @@ export const BAND_EDITOR_MESSAGES = defineMessages({
     en: (zone: string) => `Add a field to the ${zone} zone`,
     zh: (zone: string) => `在${zone === 'left' ? '左' : zone === 'right' ? '右' : '中'}區加入欄位`,
   },
-  addText: { en: 'Double-click to add text', zh: '連按兩下以加入文字' },
+  addText: { en: 'Double-click to add text', zh: '按兩下以加入文字' },
   totalMarksTitle: { en: 'Computed from the question marks', zh: '由各題分數計算' },
   ruleTitle: { en: 'A ruled space, sized by the field width', zh: '按欄位寬度而定的橫線空位' },
   pageNumberTitle: { en: 'Numbered by Word when the document is opened', zh: '開啟文件時由 Word 編號' },

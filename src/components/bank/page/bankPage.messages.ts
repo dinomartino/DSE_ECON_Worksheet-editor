@@ -125,7 +125,7 @@ export const BANK_PAGE_MESSAGES = defineMessages({
     zh: (n: number, time: string) => `要翻譯 ${n} 條題目嗎？需時${time}，你可隨時停止。`,
   },
   translating: { en: 'Translating', zh: '翻譯中' },
-  checkingTerms: { en: 'Checking terms', zh: '檢查用詞中' },
+  checkingTerms: { en: 'Checking terms', zh: '正在檢查用詞' },
   stopped: { en: 'Stopped', zh: '已停止' },
   replaceN: { en: (n: number) => `Replace ${n}`, zh: (n: number) => `取代 ${n} 項` },
   putBack: {

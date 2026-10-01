@@ -23,6 +23,8 @@ export interface Measure {
 export interface TypeCount extends Measure {
   typeId: string;
   label: { en: string; zh: string };
+  /** The acronym teachers say, when the type has one (LQ). */
+  short?: { en: string; zh: string };
 }
 
 export interface PaperSummary {
@@ -121,6 +123,7 @@ export function summarizePaper(worksheet: Worksheet): PaperSummary {
         en: plain(definition.displayName.en),
         zh: plain(definition.displayName.zh),
       },
+      ...(definition.summary?.short ? { short: definition.summary.short } : {}),
       ...measure(actual, wanted),
     });
   }
@@ -165,7 +168,7 @@ export function summaryParts(
   const ratio = (m: Measure) => (m.target === undefined ? `${m.actual}` : `${m.actual}/${m.target}`);
   const parts: SummaryPart[] = summary.counts.map((count) => ({
     kind: 'count',
-    text: zh ? `${keepAcronyms ? chromeLabel(count.label, true) : count.label.zh} ${ratio(count)}` : `${ratio(count)} ${count.label.en}`,
+    text: zh ? `${keepAcronyms ? chromeLabel(count.short ?? count.label, true) : count.label.zh} ${ratio(count)}` : `${ratio(count)} ${count.label.en}`,
     status: count.status,
   }));
   const { marks, minutes } = summary;

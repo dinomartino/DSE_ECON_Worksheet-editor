@@ -22,7 +22,7 @@ export const BANK_AI_MESSAGES = defineMessages({
   doorBusy: { en: 'An AI run is going', zh: '正在執行 AI' },
   doorTitle: { en: 'AI tools: fill a missing language, check terms', zh: 'AI 工具：補上缺少的語言、檢查用詞' },
   tools: { en: 'AI tools', zh: 'AI 工具' },
-  actions: { en: 'AI actions', zh: 'AI 操作' },
+  actions: { en: 'AI actions', zh: 'AI 功能' },
   whichQuestions: { en: 'Which questions', zh: '哪些題目' },
   back: { en: 'Back', zh: '返回' },
   translateN: { en: (n: number) => `Translate ${n}`, zh: (n: number) => `翻譯 ${n} 條` },

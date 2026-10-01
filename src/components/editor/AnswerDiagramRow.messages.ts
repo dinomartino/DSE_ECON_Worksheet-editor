@@ -8,5 +8,5 @@ export const ANSWER_DIAGRAM_MESSAGES = defineMessages({
   pieData: { en: 'A pie chart is edited as data', zh: '圓形圖以數據編輯' },
   draw: { en: '✎ Draw…', zh: '✎ 繪畫…' },
   blank: { en: 'Blank axes', zh: '空白座標軸' },
-  width: { en: 'Width', zh: '闊度' },
+  width: { en: 'Width', zh: '寬度' },
 });

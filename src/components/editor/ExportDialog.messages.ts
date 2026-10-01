@@ -112,11 +112,11 @@ export const EXPORT_MESSAGES = defineMessages({
   include: { en: 'Include', zh: '包含' },
   includePdf: {
     en: 'Untick to leave it out of this print; the page gets it back after.',
-    zh: '取消剔選即可從今次列印中略去；列印後頁面會恢復。',
+    zh: '取消勾選即可從今次列印中略去；列印後頁面會恢復。',
   },
   includePaper: {
     en: 'Untick to leave it out of the question paper.',
-    zh: '取消剔選即可從試卷中略去。',
+    zh: '取消勾選即可從試卷中略去。',
   },
   cover: { en: 'Cover page', zh: '封面' },
   answerSpace: { en: 'Answer space', zh: '答題空位' },

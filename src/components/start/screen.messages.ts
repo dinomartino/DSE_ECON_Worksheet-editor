@@ -300,7 +300,7 @@ export const START_KIND_MESSAGES = defineMessages({
   lqWorksheetTitle: { en: 'LQ worksheet', zh: 'LQ 工作紙' },
   lqWorksheetHint: {
     en: 'Long questions with dotted answer space. No exam furniture.',
-    zh: '長題目，附點線答題空間。沒有試卷格式。',
+    zh: '長題目，附點線答題空位。沒有試卷格式。',
   },
   lqWorksheetCaption: { en: 'Long questions with dotted lines to write on.', zh: '長題目，附點線供書寫。' },
   paper1Title: { en: 'Paper 1 mock · MCQ', zh: 'Paper 1 Mock · MCQ' },

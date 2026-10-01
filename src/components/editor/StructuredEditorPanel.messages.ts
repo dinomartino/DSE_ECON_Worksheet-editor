@@ -40,7 +40,7 @@ export const STRUCTURED_PANEL_MESSAGES = defineMessages({
   },
   partSpace: {
     en: (label: string) => `Part ${label} answer space (dotted lines)`,
-    zh: (label: string) => `分題 ${label} 的答題空間（點線）`,
+    zh: (label: string) => `分題 ${label} 的答題空位（點線）`,
   },
   partActions: {
     en: (label: string) => `Actions for part ${label}`,
@@ -54,7 +54,7 @@ export const STRUCTURED_PANEL_MESSAGES = defineMessages({
   shared: { en: 'shared', zh: '共用' },
   subSpace: {
     en: (label: string) => `Sub-part ${label} answer space (dotted lines)`,
-    zh: (label: string) => `小分題 ${label} 的答題空間（點線）`,
+    zh: (label: string) => `小分題 ${label} 的答題空位（點線）`,
   },
   subActions: {
     en: (label: string) => `Actions for sub-part ${label}`,

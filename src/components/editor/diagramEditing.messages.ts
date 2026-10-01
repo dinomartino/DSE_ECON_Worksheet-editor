@@ -134,11 +134,11 @@ export const FLOW_CANVAS_MESSAGES = defineMessages({
   },
   hintEmpty: {
     en: 'Double-click the empty box (or press + Box) to add the first stage.',
-    zh: '連按兩下空白方框（或按 + 方框）以加入第一個階段。',
+    zh: '按兩下空白方框（或按 + 方框）以加入第一個階段。',
   },
   hintSelect: {
     en: 'Drag a box to move it between columns. Click to select and edit. Double-click text to retype it.',
-    zh: '拖曳方框可在直欄之間移動。按一下可選取並編輯。連按兩下文字可重新輸入。',
+    zh: '拖曳方框可在直欄之間移動。按一下可選取並編輯。按兩下文字可重新輸入。',
   },
   editText: { en: 'Edit flow chart text', zh: '編輯流程圖文字' },
   box: { en: (n: number) => `Box ${n}`, zh: (n: number) => `方框 ${n}` },
@@ -158,14 +158,14 @@ export const FLOW_CANVAS_MESSAGES = defineMessages({
   emptyPre: { en: 'Nothing here yet. Press ', zh: '尚未有任何項目。按' },
   emptyPost: {
     en: ' (or double-click the empty box) to add the first stage.',
-    zh: '（或連按兩下空白方框）以加入第一個階段。',
+    zh: '（或按兩下空白方框）以加入第一個階段。',
   },
   column: { en: (n: number) => `Column ${n}`, zh: (n: number) => `直欄 ${n}` },
   boxKind: { en: 'Box', zh: '方框' },
   arrows: { en: 'Arrows', zh: '箭頭' },
   helpPre: {
     en: 'Drag a box to move it between columns. Past the outermost column starts a new one. Double-click any text to retype it. Pick ',
-    zh: '拖曳方框可在直欄之間移動，拖到最外側直欄之外會開新直欄。連按兩下任何文字可重新輸入。選擇',
+    zh: '拖曳方框可在直欄之間移動，拖到最外側直欄之外會開新直欄。按兩下任何文字可重新輸入。選擇',
   },
   helpPost: {
     en: ' and drag box-to-box to connect stages; release on empty paper for an open-ended stub. ⌫ deletes the selection.',
@@ -401,7 +401,7 @@ export const DIAGRAM_CANVAS_MESSAGES = defineMessages({
   toolCurve: { en: 'Curve', zh: '曲線' },
   toolCurveHint: {
     en: 'Drag to draw a line. A near-flat one straightens itself. Hold Shift to keep a shallow slope. Double-click text to retype it.',
-    zh: '拖曳以畫線，近乎水平的線會自動拉直。按住 Shift 可保留較平緩的斜度。連按兩下文字可重新輸入。',
+    zh: '拖曳以畫線，近乎水平的線會自動拉直。按住 Shift 可保留較平緩的斜度。按兩下文字可重新輸入。',
   },
   toolPoint: { en: 'Point', zh: '點' },
   toolPointHint: {
@@ -441,7 +441,7 @@ export const DIAGRAM_CANVAS_MESSAGES = defineMessages({
   done: { en: 'Done', zh: '完成' },
   hintCrop: {
     en: 'Drag the frame edges. A wider frame is how a long title gets its room.',
-    zh: '拖曳邊框的邊緣。把邊框拉闊，長標題便有足夠空間。',
+    zh: '拖曳邊框的邊緣。把邊框拉寬，長標題便有足夠空間。',
   },
   hintSpanEnd: { en: 'Now click the other end. Esc cancels.', zh: '現在按另一端。按 Esc 取消。' },
   selectedCount: { en: (n: number) => `${n} selected`, zh: (n: number) => `已選取 ${n} 項` },
@@ -465,7 +465,7 @@ export const DIAGRAM_CANVAS_MESSAGES = defineMessages({
   start: { en: 'Start', zh: '起點' },
   curveNote: {
     en: 'Double-click the line to add a kink. Drag a square handle to move one end. Drag the label ring to move its name.',
-    zh: '連按兩下線可加入轉折點。拖曳方形控點可移動端點。拖曳標示圈可移動名稱。',
+    zh: '按兩下線可加入轉折點。拖曳方形控點可移動端點。拖曳標示圈可移動名稱。',
   },
   labelAs: { en: (name: string) => `Label ${name}`, zh: (name: string) => `標示為 ${name}` },
   dot: { en: 'Dot', zh: '圓點' },

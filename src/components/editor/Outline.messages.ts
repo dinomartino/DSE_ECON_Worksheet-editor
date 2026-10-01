@@ -11,7 +11,7 @@ export const OUTLINE_MESSAGES = defineMessages({
     zh: '標題、紙張、邊界、頁首及頁尾',
   },
   empty: { en: 'Empty. Add something below.', zh: '暫無內容，請在下方加入。' },
-  emptyPage: { en: 'Empty page. Drag something here.', zh: '空白頁，請把項目拖到這裡。' },
+  emptyPage: { en: 'Empty page. Drag something here.', zh: '空白頁，請把項目拖到這裏。' },
   dragToReorder: { en: 'Drag to reorder', zh: '拖曳以重新排序' },
   moveUp: { en: 'Move up', zh: '上移' },
   moveDown: { en: 'Move down', zh: '下移' },

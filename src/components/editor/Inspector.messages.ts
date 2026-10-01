@@ -3,16 +3,16 @@ import { defineMessages } from '@/i18n/catalogue';
 /** The Edit panel's frame: a selected layout element, a question's header, the empty state. */
 export const INSPECTOR_MESSAGES = defineMessages({
   // What each layout element is called
-  nameSection: { en: 'Section', zh: '分部' },
+  nameSection: { en: 'Section', zh: '部分' },
   nameHeading: { en: 'Heading', zh: '標題' },
   nameText: { en: 'Text', zh: '文字' },
   nameSpacer: { en: 'Blank space', zh: '留白' },
   nameDivider: { en: 'Divider', zh: '分隔線' },
   namePageBreak: { en: 'New page', zh: '新頁' },
   nameAnswerLines: { en: 'Answer lines', zh: '答題線' },
-  nameAnswerSpace: { en: 'Answer space', zh: '答題空間' },
-  namePartHeader: { en: 'Part header', zh: '部分標題' },
-  nameLabelList: { en: 'Label list', zh: '標籤列表' },
+  nameAnswerSpace: { en: 'Answer space', zh: '答題空位' },
+  namePartHeader: { en: 'Part header', zh: '分部標題' },
+  nameLabelList: { en: 'Label list', zh: '標示列表' },
   nameQuestionCount: { en: 'Question count', zh: '題數' },
   nameStimulus: { en: 'Shared stimulus', zh: '共用資料' },
 
@@ -21,7 +21,7 @@ export const INSPECTOR_MESSAGES = defineMessages({
   hintStimulus: { en: 'content the questions below refer to', zh: '下面題目所引用的內容' },
   hintHeading: { en: 'a display line, typed on the page', zh: '顯示用的一行字，在頁面上輸入' },
   hintText: { en: 'a note or closing line, typed on the page', zh: '備註或結語，在頁面上輸入' },
-  hintPartHeader: { en: 'part heading with a derived marks total', zh: '部分標題，附自動計算的總分' },
+  hintPartHeader: { en: 'part heading with a derived marks total', zh: '分部標題，附自動計算的總分' },
   hintQuestionCount: { en: 'authored wording around the derived count', zh: '圍繞自動題數的自訂文字' },
   hintLabelList: { en: 'side-by-side label · value rows', zh: '並排的「標籤 · 內容」行' },
   hintAnswerLines: { en: 'ruled lines for written answers', zh: '供書寫答案的橫線' },
@@ -33,7 +33,7 @@ export const INSPECTOR_MESSAGES = defineMessages({
   // Layout element panel
   emptyType: { en: 'Empty. Type on the page', zh: '空白，請在頁面上輸入' },
   restartNumbering: { en: 'Restart numbering at 1', zh: '由 1 重新編號' },
-  showSectionMarks: { en: "Show the section's marks total", zh: '顯示此分部的總分' },
+  showSectionMarks: { en: "Show the section's marks total", zh: '顯示此部分的總分' },
   fillsPage: { en: 'fills page', zh: '填滿頁面' },
   fillsPageNote: {
     en: (lines: number) =>
@@ -41,12 +41,12 @@ export const INSPECTOR_MESSAGES = defineMessages({
     zh: (lines: number) => `此空間會伸展至頁面底部，行數由版面決定，目前為 ${lines} 行。`,
   },
   // Existing Chinese second lines: shown beside the English only.
-  fillsPageZh: { en: '此答題空間自動填滿頁面。', zh: '此答題空間自動填滿頁面。' },
+  fillsPageZh: { en: '此答題空位自動填滿頁面。', zh: '此答題空位自動填滿頁面。' },
   lines: { en: 'Lines', zh: '行數' },
   linesZh: { en: '行數', zh: '行數' },
   unitLine: { en: 'line', zh: '行' },
   unitLines: { en: 'lines', zh: '行' },
-  answerSpaceLines: { en: 'Answer space lines', zh: '答題空間行數' },
+  answerSpaceLines: { en: 'Answer space lines', zh: '答題空位行數' },
   answerLinesLabel: { en: 'Answer lines', zh: '答題線行數' },
   height: { en: 'Height', zh: '高度' },
   heightZh: { en: '留白高度', zh: '留白高度' },

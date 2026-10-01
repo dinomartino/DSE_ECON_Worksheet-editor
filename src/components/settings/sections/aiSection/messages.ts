@@ -124,7 +124,7 @@ export const AI_SECTION_MESSAGES = defineMessages({
     en: (desktop: boolean, provider: string, privacy: string) =>
       `When you translate, the texts you choose (and nearby translated lines from the same question, for context) go straight from this ${desktop ? 'computer' : 'browser'} to ${provider} with your key. Nothing is sent until you press Translate, Fill, Test, Save & test or List my models. ${privacy}`,
     zh: (desktop: boolean, provider: string, privacy: string) =>
-      `翻譯時，你選擇的文字（以及同一題目中附近已翻譯的句子，作為上文下理）會連同你的 API key，由這部${desktop ? '電腦' : '瀏覽器'}直接傳送到 ${provider}。在你按下「翻譯」、「填寫」、「測試」、「儲存並測試」或「列出我的模型」之前，不會傳送任何內容。${privacy}`,
+      `翻譯時，你選擇的文字（以及同一題目中附近已翻譯的句子，作為上下文）會連同你的 API key，由這部${desktop ? '電腦' : '瀏覽器'}直接傳送到 ${provider}。在你按下「翻譯」、「填寫」、「測試」、「儲存並測試」或「列出我的模型」之前，不會傳送任何內容。${privacy}`,
   },
   terminology: { en: 'Terminology', zh: '用詞' },
   termsBody: {
