@@ -18,7 +18,7 @@ import { Dialog } from '@/components/ui/Dialog';
 import { AppMark } from '@/components/ui/AppMark';
 import { ScrollEdgeHints } from '@/components/ui/ScrollEdgeHints';
 import { useScrollEdges } from '@/components/ui/scrollEdges';
-import { ArchiveIcon, BankIcon, FolderIcon, FolderOpenIcon, SheetIcon } from '@/components/ui/icons';
+import { ArchiveIcon, BankIcon, FolderIcon, FolderOpenIcon, PlusIcon, SheetIcon } from '@/components/ui/icons';
 import type { MenuItem } from '@/components/ui/Menu';
 import { VersionLine } from '@/components/editor/UpdateBanner';
 import { FeedbackDialog } from '@/components/feedback/FeedbackDialog';
@@ -45,7 +45,7 @@ import { useBank } from '@/library/useBank';
 import { reloadPatterns } from '@/library/usePatterns';
 import { RenameDialog, renameWorksheet } from './RenameDialog';
 import { TrashList } from './TrashList';
-import { START_KINDS } from './startKinds';
+import { readLastKind } from './startKinds';
 import { WelcomeDesk } from './WelcomeDesk';
 import { newId } from '@/model/factories';
 import type { DocumentType } from '@/model/newWorksheet';
@@ -695,7 +695,7 @@ export function StartScreen({
             onLeaveLevel={clearPassingNotice}
             onStartNew={() => {
               showView('home');
-              setCreating('classroom');
+              setCreating(readLastKind());
             }}
           />
         </div>
@@ -731,20 +731,15 @@ export function StartScreen({
 
         <StartNewSection
           empty={empty}
-          onCreate={setCreating}
+          onCreate={() => setCreating(readLastKind())}
           onOpenFile={() => void importFile()}
         />
 
-        {/* The bank is every question already written, so it is a way *in* too: its own
-            screen, like a document, with ← Home to come back. Alone under the headline
-            while the desk is empty, it takes the list's distance from it. */}
-        <section
-          className={
-            empty ? 'mt-9 [@media(max-height:820px)]:mt-6' : 'mt-7 [@media(max-height:820px)]:mt-5'
-          }
-        >
+        {/* What is already written, as ways *in*: each its own screen, like a document,
+            with ← Home to come back. One `StartRow` per library. */}
+        <section className="mt-9 [@media(max-height:820px)]:mt-7">
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
-            Reuse questions
+            Library
           </h2>
           <div className="mt-3 flex flex-col border-t border-line">
             <StartRow
@@ -892,7 +887,7 @@ export function StartScreen({
         <Dialog
           title="New worksheet"
           description="Name it, then press Create. Everything else has a default and is awkward to change once questions are written."
-          width={560}
+          width={640}
           onClose={() => setCreating(undefined)}
           // Pinned outside the scrolling body, so Create stays reachable at any window
           // height. In the body it scrolled with the fields and was sliced by the panel
@@ -1112,9 +1107,9 @@ export function StartScreen({
 }
 
 /**
- * The panel's ways to start: the four kinds, then "Open a file…". Absent while the desk
- * is empty (read and found so), where the welcome's cards are the one way in and a
- * second list of the same four would only compete with them.
+ * The panel's ways to start: one New worksheet button (the dialog's gallery picks the
+ * type), then "Open a file…". The button stays on an empty desk; the file row does not,
+ * since the welcome carries its own file routes.
  */
 export function StartNewSection({
   empty,
@@ -1122,39 +1117,37 @@ export function StartNewSection({
   onOpenFile,
 }: {
   empty: boolean;
-  onCreate: (type: DocumentType) => void;
+  onCreate: () => void;
   onOpenFile: () => void;
 }) {
-  if (empty) return null;
   return (
     <section className="mt-9 [@media(max-height:820px)]:mt-6">
-      <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
-        Start new
-      </h2>
-      {/* Typographic rows, not icon cards: the four kinds differ by *what they
-          print*, and a sentence says that better than four look-alike glyphs.
-          All four open the same form; the row only preselects the type. */}
-      <div className="mt-3 flex flex-col border-t border-line">
-        {START_KINDS.map((kind) => (
-          <StartRow key={kind.type} title={kind.title} hint={kind.hint} onClick={() => onCreate(kind.type)} />
-        ))}
-      </div>
-      {/* Opening a file is the fifth way in, so it wears the same row — set apart by
-          its icon and a gap, rather than being a stray link under the list. */}
-      <div className="mt-4 flex flex-col border-t border-line">
-        <StartRow
-          icon={<FolderOpenIcon size={16} />}
-          title="Open a file…"
-          hint="A .json worksheet or a backup .zip. Or drop one anywhere here."
+      <Button variant="primary" size="lg" className="w-full" onClick={onCreate}>
+        <PlusIcon size={16} />
+        New worksheet
+      </Button>
+      {!empty && (
+        // Quieter than the button: one line, colour-only hover.
+        <button
+          type="button"
           onClick={onOpenFile}
-        />
-      </div>
+          className="group mt-2 flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left transition-colors duration-150 ease-out-soft hover:bg-surface-sunken active:bg-surface-hover active:duration-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+        >
+          <span className="text-ink-subtle transition-colors duration-150 ease-out-soft group-hover:text-accent-ink">
+            <FolderOpenIcon size={15} />
+          </span>
+          <span className="text-[13px] font-medium text-ink transition-colors duration-150 ease-out-soft group-hover:text-accent-ink">
+            Open a file…
+          </span>
+          <span className="ml-auto truncate text-[11px] text-ink-subtle">.json or backup .zip</span>
+        </button>
+      )}
     </section>
   );
 }
 
 /**
- * One way to start, as a line in an index rather than an icon card. Hover answers
+ * One way in (a library), as a line in an index rather than an icon card. Hover answers
  * with colour only: the row tints and the title turns accent; nothing moves.
  */
 function StartRow({

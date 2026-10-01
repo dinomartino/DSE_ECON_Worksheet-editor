@@ -1,14 +1,14 @@
 import type { DocumentType } from '@/model/newWorksheet';
 
 /**
- * The four ways to start, shared by the start screen's rows and the empty desk's
- * welcome cards, so the two can never name a kind differently. Every one opens the same
- * `NewWorksheetForm`; the kind only preselects its document type.
+ * The four kinds of document, in the order a teacher meets them: the one definition the
+ * empty desk's cards and the new-worksheet gallery both read, so they can never name a
+ * kind differently. Each names what the choice *includes*: nothing else needs asking.
  */
 export interface StartKind {
   type: DocumentType;
   title: string;
-  /** The row's line: what the choice includes. */
+  /** What the choice includes, under the new-worksheet gallery. */
   hint: string;
   /** The welcome card's shorter line, under the sketch of the page. */
   caption: string;
@@ -45,3 +45,26 @@ export const START_KINDS: readonly StartKind[] = [
     titleZh: '卷二模擬試卷',
   },
 ];
+
+/**
+ * The type the New worksheet button preselects: the last one created, per viewer. The key
+ * sits outside the `econ-worksheet:` prefix, which the store treats as documents.
+ */
+const LAST_KIND_KEY = 'econgen.lastNewType';
+
+export function readLastKind(): DocumentType {
+  try {
+    const stored = window.localStorage.getItem(LAST_KIND_KEY);
+    return START_KINDS.find((kind) => kind.type === stored)?.type ?? 'classroom';
+  } catch {
+    return 'classroom';
+  }
+}
+
+export function writeLastKind(type: DocumentType): void {
+  try {
+    window.localStorage.setItem(LAST_KIND_KEY, type);
+  } catch {
+    // Private mode or blocked storage: the button just starts on Classroom.
+  }
+}

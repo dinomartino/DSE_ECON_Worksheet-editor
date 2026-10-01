@@ -144,8 +144,9 @@ export const flowRow = (page, text) =>
 export async function createWorksheet(d, template, { bilingual = false, name } = {}) {
   const { page } = d;
   await page.goto(d.url, { waitUntil: 'networkidle' });
-  await page.getByText(template, { exact: true }).first().click();
+  await page.getByRole('button', { name: 'New worksheet' }).click();
   await d.wait(300);
+  await page.getByRole('dialog').getByRole('radio', { name: new RegExp(`^${template}`) }).click();
   if (bilingual) await page.getByRole('dialog').getByTitle('Bilingual').click();
   // The dialog requires a name before it creates anything.
   await page.getByRole('dialog').getByLabel('Name', { exact: true }).fill(name ?? template);
