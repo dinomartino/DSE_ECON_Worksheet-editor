@@ -18,7 +18,7 @@ import { Dialog } from '@/components/ui/Dialog';
 import { AppMark } from '@/components/ui/AppMark';
 import { ScrollEdgeHints } from '@/components/ui/ScrollEdgeHints';
 import { useScrollEdges } from '@/components/ui/scrollEdges';
-import { ArchiveIcon, BankIcon, FolderIcon, FolderOpenIcon, PlusIcon, SheetIcon } from '@/components/ui/icons';
+import { ArchiveIcon, BankIcon, DiagramIcon, FolderIcon, FolderOpenIcon, PlusIcon, SheetIcon } from '@/components/ui/icons';
 import type { MenuItem } from '@/components/ui/Menu';
 import { VersionLine } from '@/components/editor/UpdateBanner';
 import { FeedbackDialog } from '@/components/feedback/FeedbackDialog';
@@ -41,6 +41,7 @@ import {
 import { NEW_WORKSHEET_FORM_ID, NewWorksheetForm } from './NewWorksheetForm';
 import { useBankReturn } from '@/components/bank/page/bankReturn';
 import { QuestionBankScreen } from '@/components/bank/page/QuestionBankScreen';
+import { GraphsScreen, useGraphCount } from '@/components/graphs/GraphsScreen';
 import { useBank } from '@/library/useBank';
 import { reloadPatterns } from '@/library/usePatterns';
 import { RenameDialog, renameWorksheet } from './RenameDialog';
@@ -60,6 +61,7 @@ import {
   TRASH_RETENTION_DAYS,
   worksheetStore,
   patternStorage,
+  graphStore,
   EMPTY_FOLDERS,
   FOLDER_NAME_MAX,
   folderCounts,
@@ -144,8 +146,9 @@ export function StartScreen({
   // The Question bank replaces this screen's view the way opening a document replaces
   // it; ← Home comes back. Session state: the app always opens on the documents.
   // Back from a worksheet opened from a bank question: straight into the bank.
-  const [view, setView] = useState<'home' | 'bank'>(() => (useBankReturn.getState().saved ? 'bank' : 'home'));
+  const [view, setView] = useState<'home' | 'bank' | 'graphs'>(() => (useBankReturn.getState().saved ? 'bank' : 'home'));
   const { groups: bankGroups } = useBank();
+  const graphTotal = useGraphCount(`${view}:${notice?.message ?? ''}`);
   const closeFeedback = useCallback(() => setFeedback(false), []);
   // First launch, or everything deleted: the desk welcomes instead of listing. Never
   // while storage is still being read, so a returning teacher sees no flash of it.
@@ -156,7 +159,7 @@ export function StartScreen({
     () => setNotice((current) => (current && !current.details?.length ? undefined : current)),
     [],
   );
-  const showView = (next: 'home' | 'bank') => {
+  const showView = (next: 'home' | 'bank' | 'graphs') => {
     clearPassingNotice();
     setView(next);
   };
@@ -361,7 +364,8 @@ export function StartScreen({
     setBusy('backup');
     try {
       const summaries = await worksheetStore.list();
-      if (summaries.length === 0) {
+      const { graphs } = await graphStore.list();
+      if (summaries.length === 0 && graphs.length === 0) {
         setError('There is nothing saved to back up yet.');
         return;
       }
@@ -378,17 +382,17 @@ export function StartScreen({
         if (worksheet) worksheets.push(worksheet);
         else unreadable += 1;
       }
-      if (worksheets.length === 0) {
+      if (worksheets.length === 0 && graphs.length === 0) {
         setError('There is nothing saved to back up yet.');
         return;
       }
       const filed = await worksheetStore.readFolders();
       const { path } = await target.write(
-        await buildBackup(worksheets, undefined, filed, await readPatternRegistry(patternStorage)),
+        await buildBackup(worksheets, undefined, filed, await readPatternRegistry(patternStorage), graphs),
       );
       setNotice({
         message:
-          `Backed up ${plural(worksheets.length, 'document')}.` +
+          `Backed up ${plural(worksheets.length, 'document')}${graphs.length > 0 ? ` and ${plural(graphs.length, 'graph')}` : ''}.` +
           (unreadable > 0
             ? ` ${plural(unreadable, 'document')} could not be read and ${unreadable === 1 ? 'is' : 'are'} not in it.`
             : ''),
@@ -410,12 +414,14 @@ export function StartScreen({
     setBusy('restore');
     try {
       const { readBackup, restoreBackup, restorePatterns, restoreSummary } = await import('@/storage/backup');
-      const { worksheets, failures, folders: filed, patterns } = await readBackup(data);
+      const { restoreGraphs } = await import('@/storage/graphs');
+      const { worksheets, failures, folders: filed, patterns, graphs } = await readBackup(data);
       const report = await restoreBackup(worksheetStore, worksheets, undefined, filed);
       await restorePatterns(patternStorage, patterns);
       reloadPatterns();
+      const graphReport = graphs.length > 0 ? await restoreGraphs(graphStore, graphs) : undefined;
       setNotice({
-        message: restoreSummary(report, failures.length),
+        message: restoreSummary(report, failures.length, graphReport),
         details: [...failures, ...report.failed].map((f) => `${f.name}: ${f.reason}`),
       });
     } catch (cause) {
@@ -530,9 +536,10 @@ export function StartScreen({
 
       for (const file of backups) {
         try {
-          const { worksheets: inside, failures, folders: filed, patterns } = await readBackup(await file.read());
+          const { worksheets: inside, failures, folders: filed, patterns, graphs } = await readBackup(await file.read());
           tally(await restoreBackup(worksheetStore, inside, undefined, filed));
           await restorePatterns(patternStorage, patterns);
+          if (graphs.length > 0) await (await import('@/storage/graphs')).restoreGraphs(graphStore, graphs);
           reloadPatterns();
           for (const failure of failures) unreadable(`${file.name}: ${failure.name}`, failure.reason);
         } catch (cause) {
@@ -659,7 +666,11 @@ export function StartScreen({
         documents already on it. The panel runs the full height like the editor's own
         rail, so the screen reads as the same room as the tool it opens.
       */}
-      {view === 'bank' ? (
+      {view === 'graphs' ? (
+        <div className="min-h-0 min-w-0 flex-1">
+          <GraphsScreen onHome={() => showView('home')} settings={<SettingsButton separated />} />
+        </div>
+      ) : view === 'bank' ? (
         <div className="min-h-0 min-w-0 flex-1">
           <QuestionBankScreen
             summaries={summaries}
@@ -753,6 +764,13 @@ export function StartScreen({
                   : 'Every question from your worksheets, by topic.'
               }
               onClick={() => showView('bank')}
+            />
+            <StartRow
+              icon={<DiagramIcon size={16} />}
+              title="Graphs 圖表庫"
+              trailing={graphTotal ? `${graphTotal} ${graphTotal === 1 ? 'graph' : 'graphs'}` : undefined}
+              hint="Draw a graph once. Reuse it in a question or copy it into Word."
+              onClick={() => showView('graphs')}
             />
           </div>
         </section>

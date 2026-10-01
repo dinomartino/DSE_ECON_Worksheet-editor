@@ -15,6 +15,7 @@ import {
   type FolderState,
 } from './folders';
 import type { PatternFile } from './patterns';
+import { GRAPH_SUFFIX, GRAPHS_DIR, type GraphFiles } from './graphs';
 
 /**
  * The desktop store: real files under the app's data directory.
@@ -142,6 +143,59 @@ export const patternsFile: PatternFile = {
     const opts = { baseDir: fs.BaseDirectory.AppData };
     if (!(await fs.exists(DIR, opts))) await fs.mkdir(DIR, { ...opts, recursive: true });
     await fs.writeTextFile(`${DIR}/patterns.corrupt-${new Date().toISOString().replace(/[:.]/g, '-')}.json`, text, opts);
+  },
+};
+
+/**
+ * Saved graphs (§ graphs.ts) as `worksheets/graphs/<id>.graph.json`: a subdirectory, so
+ * no build's rebuild-by-scan or `clear()` of `worksheets/` reads them. Inert on the web.
+ */
+export const graphDirFiles: GraphFiles = {
+  async ids(): Promise<string[]> {
+    if (!isDesktop()) return [];
+    const fs = await import('@tauri-apps/plugin-fs');
+    const opts = { baseDir: fs.BaseDirectory.AppData };
+    if (!(await fs.exists(GRAPHS_DIR, opts))) return [];
+    return (await fs.readDir(GRAPHS_DIR, opts))
+      .map((entry) => entry.name ?? '')
+      .filter((name) => name.endsWith(GRAPH_SUFFIX))
+      .map((name) => name.slice(0, -GRAPH_SUFFIX.length));
+  },
+  async read(id: string): Promise<string | undefined> {
+    if (!isDesktop()) return undefined;
+    const fs = await import('@tauri-apps/plugin-fs');
+    const opts = { baseDir: fs.BaseDirectory.AppData };
+    const path = `${GRAPHS_DIR}/${id}${GRAPH_SUFFIX}`;
+    if (!(await fs.exists(path, opts))) return undefined;
+    return fs.readTextFile(path, opts);
+  },
+  async write(id: string, text: string): Promise<void> {
+    if (!isDesktop()) return;
+    const fs = await import('@tauri-apps/plugin-fs');
+    const opts = { baseDir: fs.BaseDirectory.AppData };
+    if (!(await fs.exists(GRAPHS_DIR, opts))) await fs.mkdir(GRAPHS_DIR, { ...opts, recursive: true });
+    await fs.writeTextFile(`${GRAPHS_DIR}/${id}${GRAPH_SUFFIX}`, text, opts);
+  },
+  async remove(id: string): Promise<void> {
+    if (!isDesktop()) return;
+    const fs = await import('@tauri-apps/plugin-fs');
+    const opts = { baseDir: fs.BaseDirectory.AppData };
+    const path = `${GRAPHS_DIR}/${id}${GRAPH_SUFFIX}`;
+    if (await fs.exists(path, opts)) await fs.remove(path, opts);
+  },
+  async clear(): Promise<void> {
+    if (!isDesktop()) return;
+    const fs = await import('@tauri-apps/plugin-fs');
+    const opts = { baseDir: fs.BaseDirectory.AppData };
+    if (!(await fs.exists(GRAPHS_DIR, opts))) return;
+    for (const entry of await fs.readDir(GRAPHS_DIR, opts)) {
+      if (!entry.name?.endsWith(GRAPH_SUFFIX)) continue;
+      try {
+        await fs.remove(`${GRAPHS_DIR}/${entry.name}`, opts);
+      } catch {
+        // Keep going: one undeletable file must not keep the rest.
+      }
+    }
   },
 };
 
@@ -526,7 +580,7 @@ export class FileWorksheetStore implements WorksheetStore {
   /**
    * Forget every saved document — only this app's own worksheets directory, never the
    * wider app data tree, which other things (window state, settings) also live in.
-   * Trash, folders and the 題型 registry included.
+   * Trash, folders, the 題型 registry and saved graphs included.
    */
   async clear(): Promise<void> {
     // Unlike `localStorage`, a file save spans many awaits and can straddle a clear.
@@ -534,6 +588,7 @@ export class FileWorksheetStore implements WorksheetStore {
     const fs = await this.fs();
     const opts = await this.base();
     await this.clearTrashDir();
+    await graphDirFiles.clear().catch(() => undefined);
     for (const file of [FOLDERS, PATTERNS_FILE]) {
       try {
         if (await fs.exists(file, opts)) await fs.remove(file, opts);

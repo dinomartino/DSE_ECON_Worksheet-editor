@@ -1,0 +1,214 @@
+{
+  "id": "graph-corpus-v1",
+  "name": "Rice market",
+  "block": {
+    "kind": "diagram",
+    "id": "graph-corpus-block",
+    "diagram": {
+      "x": {
+        "title": {
+          "en": [
+            {
+              "text": "Quantity"
+            }
+          ],
+          "zh": [
+            {
+              "text": "數量"
+            }
+          ]
+        }
+      },
+      "y": {
+        "title": {
+          "en": [
+            {
+              "text": "Price"
+            }
+          ],
+          "zh": [
+            {
+              "text": "價格"
+            }
+          ]
+        }
+      },
+      "curves": [
+        {
+          "id": "4-GUNGOXzN",
+          "points": [
+            {
+              "x": 0.08,
+              "y": 0.88
+            },
+            {
+              "x": 0.86,
+              "y": 0.12
+            }
+          ],
+          "shape": "straight",
+          "label": {
+            "en": [
+              {
+                "text": "D"
+              }
+            ],
+            "zh": [
+              {
+                "text": "D"
+              }
+            ]
+          },
+          "labelAt": "end"
+        },
+        {
+          "id": "fPb_c6ZTnB",
+          "points": [
+            {
+              "x": 0.08,
+              "y": 0.12
+            },
+            {
+              "x": 0.86,
+              "y": 0.88
+            }
+          ],
+          "shape": "straight",
+          "label": {
+            "en": [
+              {
+                "text": "S"
+              }
+            ],
+            "zh": [
+              {
+                "text": "S"
+              }
+            ]
+          },
+          "labelAt": "end"
+        }
+      ],
+      "points": [
+        {
+          "id": "UnaC5P0I7e",
+          "at": {
+            "x": 0.47000000000000003,
+            "y": 0.5
+          },
+          "labelSide": "right",
+          "dot": true,
+          "dropTo": [
+            "x",
+            "y"
+          ],
+          "xTickLabel": {
+            "en": [
+              {
+                "text": "Q"
+              },
+              {
+                "text": "0",
+                "vertAlign": "subscript"
+              }
+            ],
+            "zh": [
+              {
+                "text": "Q"
+              },
+              {
+                "text": "0",
+                "vertAlign": "subscript"
+              }
+            ]
+          },
+          "yTickLabel": {
+            "en": [
+              {
+                "text": "P"
+              },
+              {
+                "text": "0",
+                "vertAlign": "subscript"
+              }
+            ],
+            "zh": [
+              {
+                "text": "P"
+              },
+              {
+                "text": "0",
+                "vertAlign": "subscript"
+              }
+            ]
+          },
+          "anchor": {
+            "cross": [
+              "4-GUNGOXzN",
+              "fPb_c6ZTnB"
+            ]
+          }
+        }
+      ],
+      "labels": [
+        {
+          "id": "corpus-label",
+          "at": {
+            "x": 0.8,
+            "y": 0.2
+          },
+          "text": {
+            "en": [
+              {
+                "text": "a"
+              }
+            ],
+            "zh": [
+              {
+                "text": "a"
+              }
+            ]
+          }
+        }
+      ],
+      "arrows": [],
+      "showOrigin": true,
+      "templateId": "supply-demand",
+      "title": {
+        "en": [
+          {
+            "text": "Market for rice"
+          }
+        ],
+        "zh": [
+          {
+            "text": "白米市場"
+          }
+        ]
+      }
+    },
+    "widthPx": 360,
+    "heightPx": 354,
+    "altText": {
+      "en": [
+        {
+          "text": "Demand and supply for rice"
+        }
+      ],
+      "zh": [
+        {
+          "text": "白米的供求"
+        }
+      ]
+    }
+  },
+  "language": "bilingual",
+  "fonts": {
+    "latin": "Times New Roman",
+    "eastAsia": "PMingLiU"
+  },
+  "schemaVersion": 1,
+  "templateId": "supply-demand",
+  "createdAt": "2026-10-02T09:00:00.000Z",
+  "updatedAt": "2026-10-02T09:05:00.000Z"
+}

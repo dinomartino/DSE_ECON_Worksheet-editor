@@ -1849,6 +1849,28 @@ name (`Worksheet.name`, never printed; every other field has a default).
   The document just left is clean and its editor unmounted, so nothing writes a
   trashed one back.
 
+### Graphs 圖表庫 (`model/graph.ts`, `storage/graphs.ts`, `components/graphs/`)
+
+A saved graph is a `DiagramBlock` outside any worksheet (`SavedGraph`: block, language,
+fonts, `schemaVersion`). Design: `docs/design/graph-library.md`.
+
+- **One migration chain.** `migrateGraph` wraps the block in a minimal worksheet at its
+  own `schemaVersion`, runs `migrate()`, unwraps. A newer graph opens read-only and
+  `save()` refuses to overwrite it (`NewerGraphError`). Unknown top-level fields ride in
+  `__unknown`. `src/test/corpus/graph-v1.json` is frozen like the v1 corpus.
+- **Never a worksheet.** One record per graph: `econ-graph:<id>` (outside
+  `econ-worksheet:`), `worksheets/graphs/<id>.graph.json` on desktop (a subdirectory no
+  rebuild reads). Listed per record; a bad one costs itself. `clear()` takes them.
+- **Backup entries are `graphs/*.graph`, never `.json`**: every shipped `readBackup`
+  restores any other `.json` entry as a (blank) worksheet. Restore never overwrites; a
+  clashing id gets a fresh one.
+- **The canvas takes the graph's own `language`/`fonts`** (props win over the store;
+  `FieldScopeContext` carries the language to the fields under it). `embedded` makes it a
+  page surface: no Done, Escape never leaves.
+- Thumbnails come from `diagramSvg`; images from `export/diagramImage.ts:rasterizeDiagram`.
+  Copy writes one `ClipboardItem` (3× PNG, plus `<img width height>` at print size so Word
+  pastes it printed size), started inside the click for Safari.
+
 ### The launch splash (`src/launch/`)
 
 The mark draws itself (axes, demand, supply, the point) and travels to the start screen's

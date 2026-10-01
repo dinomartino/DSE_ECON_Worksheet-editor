@@ -22,7 +22,8 @@ import {
 } from './folders';
 import type { TrashedSummary, WorksheetStore, WorksheetSummary } from './types';
 import { localPatternFile, PATTERNS_KEY, type PatternFile } from './patterns';
-import { patternsFile } from './fileStore';
+import { graphDirFiles, patternsFile } from './fileStore';
+import { browserStorage, GRAPH_PREFIX, GraphStore, localGraphFiles } from './graphs';
 
 export type { TrashedSummary, WorksheetStore, WorksheetSummary } from './types';
 export {
@@ -47,6 +48,7 @@ export {
   worksheetTitle,
 } from './document';
 export { onStoreChange, type StoreChangeListener } from './changes';
+export { NewerGraphError, type GraphListing } from './graphs';
 export {
   FileWorksheetStore,
   libraryIndexFile,
@@ -311,7 +313,8 @@ export class LocalStorageWorksheetStore implements WorksheetStore {
         key === TRASH_KEY ||
         key === FOLDERS_KEY ||
         key === PATTERNS_KEY ||
-        key.startsWith(PREFIX),
+        key.startsWith(PREFIX) ||
+        key.startsWith(GRAPH_PREFIX),
     );
     for (const key of mine) storage.removeItem(key);
   }
@@ -373,3 +376,6 @@ export const patternStorage: PatternFile = isDesktop()
         return undefined;
       }
     });
+
+/** Saved graphs (§ graphs.ts): files on desktop, `econ-graph:<id>` keys on the web. */
+export const graphStore = new GraphStore(isDesktop() ? graphDirFiles : localGraphFiles(browserStorage));

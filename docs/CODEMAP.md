@@ -219,6 +219,22 @@ Invariants:
 - In-page drags use pointer events, never HTML5 drag-and-drop — §The file dashboard.
 - The launch splash plays once per session and never under automation (`navigator.webdriver`, `?nosplash`; `?splash=1` forces it); it never waits on React and is removed when it ends — §The launch splash.
 
+## graphs — Graphs 圖表庫 (saved diagrams outside any worksheet)
+
+Design: `docs/design/graph-library.md`. The start screen's `view: 'graphs'`.
+
+- `src/model/graph.ts:SavedGraph` · `:createGraph` · `:migrateGraph` (wraps the block in a worksheet, runs `migrate`) · `:isGraphNewerThanBuild`
+- `src/storage/graphs.ts:GraphStore` · `:localGraphFiles` · `:restoreGraphs` · `src/storage/fileStore.ts:graphDirFiles` · `src/storage/index.ts:graphStore`
+- `src/storage/backup.ts:graphEntryName` — `graphs/*.graph` entries in the backup zip
+- `src/components/graphs/GraphsScreen.tsx:GraphsScreen` · `src/components/graphs/GraphLibrary.tsx:GraphLibrary` · `src/components/graphs/GraphEditor.tsx:GraphEditor` · `src/components/graphs/GraphPanel.tsx:GraphPanel`
+- `src/export/graphImage.ts:copyGraphImage` · `:graphClipboardHtml` · `src/export/diagramImage.ts:rasterizeDiagram`
+- `src/components/editor/fieldScope.ts:FieldScopeContext` — a graph's language for `BiTextField`, over the store
+
+Invariants:
+- Never under `econ-worksheet:`, never in the index, the dashboard or the bank — §Graphs 圖表庫.
+- `src/test/corpus/graph-v1.json` is frozen; never regenerate it (`src/model/graph.test.ts`).
+- No backup entry for a graph ends in `.json` (shipped builds restore those as worksheets).
+
 ## library — the question bank 題庫 (derived, never a source of truth)
 
 Design: `docs/design/question-library.md`. Every saved document's questions, indexed by a

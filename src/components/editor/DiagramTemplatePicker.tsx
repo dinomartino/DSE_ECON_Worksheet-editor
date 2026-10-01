@@ -49,12 +49,18 @@ function templateCards(): TemplateCard[] {
 export function DiagramTemplateCards({
   currentId,
   onPick,
+  only,
+  columns = 2,
 }: {
   /** The template the diagram started from, ringed so "which one is this" is visible. */
   currentId?: string;
   onPick: (templateId: string) => void;
+  /** Offer only these templates (Graphs: the ones the drawing canvas edits). */
+  only?: (templateId: string) => boolean;
+  columns?: number;
 }) {
-  const cards = useMemo(() => templateCards(), []);
+  const all = useMemo(() => templateCards(), []);
+  const cards = only ? all.filter((card) => only(card.id)) : all;
   const [search, setSearch] = useState('');
   const needle = search.trim().toLowerCase();
   const groups = DIAGRAM_TEMPLATE_GROUPS.map((group) => ({
@@ -87,7 +93,7 @@ export function DiagramTemplateCards({
       {groups.map((group) => (
         <section key={group.id} aria-label={group.name} data-template-group={group.id}>
           <h3 className="mb-1 px-0.5 text-[11px] font-semibold text-ink-muted">{group.name}</h3>
-          <TemplateGrid cards={group.cards} currentId={currentId} onPick={onPick} />
+          <TemplateGrid cards={group.cards} currentId={currentId} onPick={onPick} columns={columns} />
         </section>
       ))}
     </div>
@@ -98,13 +104,15 @@ function TemplateGrid({
   cards,
   currentId,
   onPick,
+  columns,
 }: {
   cards: TemplateCard[];
   currentId?: string;
   onPick: (templateId: string) => void;
+  columns: number;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-1.5">
+    <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
       {cards.map((card) => (
         <button
           key={card.id}

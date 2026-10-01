@@ -25,7 +25,7 @@ import { peekSecret } from '@/platform/secrets';
 import { AI_SETTINGS, useAiStatus } from '@/settings/aiSettings';
 import { appSettings } from '@/settings/store';
 import { useAppDialogs } from '@/store/appDialogs';
-import { useWorksheetStore } from '@/store/worksheetStore';
+import { useFieldScope } from './fieldScope';
 
 /**
  * Bilingual input (§5.2).
@@ -104,8 +104,7 @@ export function BiTextField({
 }: Props) {
   const name = ariaLabel ?? label;
   const id = useId();
-  const language = useWorksheetStore((s) => s.mode.language);
-  const readOnly = useWorksheetStore((s) => s.readOnly);
+  const { language, readOnly } = useFieldScope();
 
   const showEn = language === 'en' || language === 'bilingual';
   const showZh = language === 'zh' || language === 'bilingual';
