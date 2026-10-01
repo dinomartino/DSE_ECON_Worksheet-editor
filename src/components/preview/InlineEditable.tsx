@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { plain } from '@/model/text';
 import type { BiText, RichText } from '@/model/types';
 import { RichTextEditable } from './RichTextEditable';
+import { useMessages } from '@/i18n/language';
+import { PREVIEW_HANDLE_MESSAGES } from './messages';
 
 /**
  * One directly-editable run of text on the page: the field takes the exact place of
@@ -122,6 +124,7 @@ export function InlineEditable({
   quietPlaceholder = false,
   onTab,
 }: Props) {
+  const m = useMessages(PREVIEW_HANDLE_MESSAGES);
   const [editing, setEditing] = useState(false);
   const spanRef = useRef<HTMLSpanElement>(null);
 
@@ -415,7 +418,7 @@ export function InlineEditable({
         ref={spanRef}
         role="textbox"
       tabIndex={0}
-      aria-label={side === 'zh' ? 'Edit 中文 text' : 'Edit English text'}
+      aria-label={side === 'zh' ? m.editChinese : m.editEnglish}
       data-selected={selected ? 'true' : undefined}
       // Marks the prompt shown in place of an empty field. It is authoring guidance,
       // not content, so the print stylesheet hides it — otherwise "Double-click to add
@@ -506,7 +509,7 @@ export function InlineEditable({
         // removal so that it can pick the right unit for the target.
       }}
       >
-        {isEmpty ? (placeholder ?? 'Double-click to add text') : children}
+        {isEmpty ? (placeholder ?? m.addText) : children}
       </span>
     </>
   );

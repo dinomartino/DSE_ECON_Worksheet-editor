@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { MIN_BLOCK_WIDTH_PX } from '@/model/edits';
+import { useMessages } from '@/i18n/language';
+import { PREVIEW_HANDLE_MESSAGES } from './messages';
 
 /**
  * Drag-to-resize for an image or diagram, on the page. Width is the only output
@@ -66,6 +68,7 @@ export function ResizableBlock({
   // The width being dragged towards, or undefined when no gesture is in flight. Local
   // rather than in the store: it is transient interaction state that must never reach
   // an undo entry or an autosave.
+  const m = useMessages(PREVIEW_HANDLE_MESSAGES);
   const [draftWidth, setDraftWidth] = useState<number | undefined>();
 
   // Captured at pointer-down and replayed from, so the gesture is one idempotent
@@ -185,7 +188,7 @@ export function ResizableBlock({
           the boundary and must stay grabbable. */}
       <button
         type="button"
-        aria-label={onOpen ? 'Select image. Double-click to edit' : 'Select image to resize'}
+        aria-label={onOpen ? m.selectImageOpen : m.selectImageResize}
         data-print-hide
         onClick={(event) => {
           event.stopPropagation();
@@ -234,7 +237,7 @@ export function ResizableBlock({
             <button
               key={corner}
               type="button"
-              aria-label={`Resize image (${corner === 'nw' || corner === 'sw' ? 'left' : 'right'})`}
+              aria-label={corner === 'nw' || corner === 'sw' ? m.resizeImageLeft : m.resizeImageRight}
               data-print-hide
               // Handles keep a constant on-screen size by dividing out the preview
               // scale, so they stay grabbable at fit-to-width and do not become

@@ -10,7 +10,9 @@ import { relativeTime } from '@/components/start/dashboard';
 import { createGraph, type SavedGraph } from '@/model/graph';
 import { graphStore, NewerGraphError, type GraphListing } from '@/storage';
 import { graphCount, searchGraphs } from './graphList';
+import { GRAPH_LIBRARY_MESSAGES } from './messages';
 import { GraphThumb } from './GraphThumb';
+import { useMessages, useUiLanguage } from '@/i18n/language';
 
 /**
  * The Graphs library: every saved graph as a card drawn from its geometry (never a
@@ -26,6 +28,8 @@ export function GraphLibrary({
   onOpen: (id: string) => void;
   settings?: ReactNode;
 }) {
+  const m = useMessages(GRAPH_LIBRARY_MESSAGES);
+  const lang = useUiLanguage();
   const [graphs, setGraphs] = useState<SavedGraph[]>([]);
   const [unreadable, setUnreadable] = useState(0);
   const [loaded, setLoaded] = useState(false);
@@ -60,7 +64,7 @@ export function GraphLibrary({
       await graphStore.save(graph);
       onOpen(graph.id);
     } catch {
-      setError('Could not save a new graph. Storage may be full.');
+      setError(m.saveFailed);
     }
   };
 
@@ -69,7 +73,7 @@ export function GraphLibrary({
     try {
       await graphStore.duplicate(graph.id);
     } catch {
-      setError('Could not duplicate that graph.');
+      setError(m.duplicateFailed);
     }
     await refresh();
   };
@@ -83,8 +87,8 @@ export function GraphLibrary({
       setRenaming(undefined);
       setError(
         cause instanceof NewerGraphError
-          ? 'This graph was saved by a newer version of Econ Studio and cannot be renamed here.'
-          : 'Could not rename that graph.',
+          ? m.renameNewer
+          : m.renameFailed,
       );
     }
     await refresh();
@@ -96,7 +100,7 @@ export function GraphLibrary({
     try {
       await graphStore.remove(graph.id);
     } catch {
-      setError('Could not delete that graph.');
+      setError(m.deleteFailed);
     }
     await refresh();
   };
@@ -109,17 +113,17 @@ export function GraphLibrary({
           onClick={onHome}
           className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-[13px] text-ink-muted transition-colors duration-150 ease-out-soft hover:bg-surface-sunken hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
-          ← Home
+          {m.home}
         </button>
-        <h1 className="font-display text-[19px] font-normal text-ink">Graphs 圖表庫</h1>
+        <h1 className="font-display text-[19px] font-normal text-ink">{m.title}</h1>
         <span className="flex-1" />
         {graphs.length > 0 && (
           <label className="relative w-[min(300px,30vw)] min-w-[180px]">
-            <span className="sr-only">Search graphs</span>
+            <span className="sr-only">{m.searchLabel}</span>
             <input
               type="search"
               value={search}
-              placeholder="Search graphs by name"
+              placeholder={m.searchPlaceholder}
               onChange={(event) => setSearch(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === 'Escape' && search) {
@@ -132,11 +136,11 @@ export function GraphLibrary({
           </label>
         )}
         {loaded && graphs.length > 0 && (
-          <span className="text-[12px] tabular-nums text-ink-subtle">{graphCount(graphs.length)}</span>
+          <span className="text-[12px] tabular-nums text-ink-subtle">{graphCount(graphs.length, lang)}</span>
         )}
         <Button variant="primary" size="sm" onClick={() => setCreating(true)}>
           <PlusIcon size={14} className="mr-1" />
-          New graph
+          {m.newGraph}
         </Button>
         {settings}
       </header>
@@ -150,8 +154,7 @@ export function GraphLibrary({
           )}
           {unreadable > 0 && (
             <p className="rounded-lg bg-warn-soft px-2.5 py-1.5 text-xs text-warn-ink">
-              {unreadable === 1 ? '1 saved graph could not be read' : `${unreadable} saved graphs could not be read`} and
-              {unreadable === 1 ? ' is' : ' are'} left as it was.
+              {m.unreadable(unreadable)}
             </p>
           )}
         </div>
@@ -163,16 +166,16 @@ export function GraphLibrary({
             <span className="inline-flex text-ink-subtle">
               <DiagramIcon size={28} />
             </span>
-            <p className="mt-3 text-[14px] font-medium text-ink">No graphs yet</p>
+            <p className="mt-3 text-[14px] font-medium text-ink">{m.emptyTitle}</p>
             <p className="mt-1 text-[13px] leading-relaxed text-ink-muted">
-              Draw a graph once. Reuse it in a question or copy it into Word.
+              {m.emptyHint}
             </p>
             <Button variant="primary" className="mt-5" onClick={() => setCreating(true)}>
-              New graph
+              {m.newGraph}
             </Button>
           </div>
         ) : loaded && shown.length === 0 ? (
-          <p className="mx-auto mt-10 max-w-md text-center text-[13px] text-ink-muted">No graph is named like that.</p>
+          <p className="mx-auto mt-10 max-w-md text-center text-[13px] text-ink-muted">{m.noMatch}</p>
         ) : (
           <ul className="mx-auto grid max-w-[1280px] grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-x-5 gap-y-6">
             {shown.map((graph) => (
@@ -195,26 +198,26 @@ export function GraphLibrary({
       )}
       {deleting && (
         <Dialog
-          title={`Delete “${deleting.name}”?`}
+          title={m.deleteTitle(deleting.name)}
           width={420}
           onClose={() => setDeleting(undefined)}
           footer={
             <>
               <Button variant="subtle" onClick={() => setDeleting(undefined)}>
-                Cancel
+                {m.cancel}
               </Button>
               <button
                 type="button"
                 onClick={() => void remove(deleting)}
                 className="inline-flex h-[34px] cursor-pointer items-center justify-center rounded-lg border border-transparent bg-danger px-3 text-[13px] font-medium text-white shadow-sm transition-[background-color,filter,scale] duration-150 ease-out-soft hover:brightness-95 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
               >
-                Delete
+                {m.delete}
               </button>
             </>
           }
         >
           <p className="px-5 py-5 text-[13px] leading-relaxed text-ink-subtle">
-            It is deleted for good. Worksheets that already use a copy of it keep theirs.
+            {m.deleteBody}
           </p>
         </Dialog>
       )}
@@ -235,12 +238,13 @@ function GraphCard({
   onDuplicate: () => void;
   onDelete: () => void;
 }) {
+  const m = useMessages(GRAPH_LIBRARY_MESSAGES);
   return (
     <li className="group relative min-w-0">
       <button
         type="button"
         onClick={onOpen}
-        aria-label={`Open ${graph.name}`}
+        aria-label={m.open(graph.name)}
         className="block w-full cursor-pointer rounded-lg text-left focus-visible:outline-none"
       >
         {/* Hover is colour only: the accent ring fades in, the card stays put. */}
@@ -262,11 +266,11 @@ function GraphCard({
       </button>
       <div className="absolute bottom-0 right-0">
         <Menu
-          label={`Actions for ${graph.name}`}
+          label={m.actionsFor(graph.name)}
           items={[
-            { label: 'Rename…', onSelect: onRename },
-            { label: 'Duplicate', onSelect: onDuplicate },
-            { label: 'Delete…', onSelect: onDelete, danger: true, separated: true },
+            { label: m.renameItem, onSelect: onRename },
+            { label: m.duplicateItem, onSelect: onDuplicate },
+            { label: m.deleteItem, onSelect: onDelete, danger: true, separated: true },
           ]}
         />
       </div>
@@ -275,18 +279,19 @@ function GraphCard({
 }
 
 function NewGraphDialog({ onClose, onPick }: { onClose: () => void; onPick: (templateId: string) => void }) {
+  const m = useMessages(GRAPH_LIBRARY_MESSAGES);
   return (
     <Dialog
-      title="New graph"
-      description="Start from a template, or from blank axes. Everything on it can be changed."
+      title={m.newGraph}
+      description={m.newDialogDescription}
       width={760}
       onClose={onClose}
       footer={
         <>
           <Button variant="subtle" onClick={onClose}>
-            Cancel
+            {m.cancel}
           </Button>
-          <Button onClick={() => onPick('blank')}>Start blank</Button>
+          <Button onClick={() => onPick('blank')}>{m.startBlank}</Button>
         </>
       }
     >
@@ -306,22 +311,23 @@ function RenameGraphDialog({
   onClose: () => void;
   onDone: (name: string) => void;
 }) {
+  const m = useMessages(GRAPH_LIBRARY_MESSAGES);
   const [name, setName] = useState(graph.name);
   const trimmed = name.trim();
   const formId = 'rename-graph-form';
   return (
     <Dialog
-      title="Rename graph"
-      description="What this graph is called here and what a downloaded image is named. It is never printed."
+      title={m.renameTitle}
+      description={m.renameDescription}
       width={420}
       onClose={onClose}
       footer={
         <>
           <Button variant="subtle" onClick={onClose}>
-            Cancel
+            {m.cancel}
           </Button>
           <Button variant="primary" type="submit" form={formId} disabled={!trimmed}>
-            Rename
+            {m.rename}
           </Button>
         </>
       }
@@ -338,8 +344,8 @@ function RenameGraphDialog({
           type="text"
           value={name}
           autoFocus
-          aria-label="Graph name"
-          placeholder="Graph name"
+          aria-label={m.graphName}
+          placeholder={m.graphName}
           onChange={(event) => setName(event.target.value)}
           className="h-9 w-full rounded-lg border border-line bg-surface px-2.5 text-[13px] text-ink outline-none transition-colors duration-150 ease-out-soft placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
         />

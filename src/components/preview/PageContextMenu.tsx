@@ -14,6 +14,8 @@ import { useModalLayer } from '@/components/ui/modalLayer';
  */
 
 import type { EditTarget } from '@/render/ir';
+import { useMessages } from '@/i18n/language';
+import { PREVIEW_MESSAGES } from './messages';
 
 /** What was right-clicked — resolved by the render site, never by walking the DOM.
  *  `questionId` is the emitting question's, so it is told apart whatever is selected.
@@ -49,6 +51,7 @@ export function PageContextMenu({
   onClose: () => void;
 }) {
   useModalLayer();
+  const m = useMessages(PREVIEW_MESSAGES);
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState(at);
 
@@ -91,7 +94,7 @@ export function PageContextMenu({
     <div
       ref={ref}
       role="menu"
-      aria-label="Page actions"
+      aria-label={m.pageActions}
       className="fixed z-[70] min-w-[13rem] animate-pop-in overflow-hidden rounded-xl border border-line bg-surface-raised p-1 shadow-2xl"
       style={{
         left: pos.x,

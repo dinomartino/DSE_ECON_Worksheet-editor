@@ -69,8 +69,8 @@ describe('table chips stay out of the cells', () => {
     // Read from source: the column chips need pointer state that server rendering has
     // no way to produce, and these two numbers are the whole invariant.
     const source = readSource();
-    const insertTop = /aria-label=\{`Insert column before[\s\S]*?top: px\((-?\d+)\)/.exec(source);
-    const deleteTop = /aria-label=\{`Delete column[\s\S]*?top: px\((-?\d+)\)/.exec(source);
+    const insertTop = /aria-label=\{m\.insertColumnBefore[\s\S]*?top: px\((-?\d+)\)/.exec(source);
+    const deleteTop = /aria-label=\{m\.deleteColumnN[\s\S]*?top: px\((-?\d+)\)/.exec(source);
 
     expect(insertTop, 'the insert-column chip moved or was renamed').not.toBeNull();
     expect(deleteTop, 'the delete-column chip moved or was renamed').not.toBeNull();
