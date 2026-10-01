@@ -139,14 +139,23 @@ export const field = (page, i, j) => question(page, i).locator('[role=textbox]')
 export const flowRow = (page, text) =>
   page.locator('#print-root [data-flow-id]').filter({ hasText: text }).first();
 
+/**
+ * The start screen's way in: the panel's New worksheet button, on an empty desk or a full
+ * one (the welcome's kind cards show only while nothing is saved).
+ */
+export const newWorksheetButton = (page) => page.getByRole('button', { name: 'New worksheet', exact: true });
+/** The New worksheet dialog's Document type radio for `kind` (its title, e.g. 'LQ worksheet'). */
+export const kindRadio = (page, kind) =>
+  page.getByRole('dialog').getByRole('radio', { name: new RegExp(`^${kind.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`) });
+
 // ---- app actions (instant; used to build documents off camera) -------------
 
 export async function createWorksheet(d, template, { bilingual = false, name } = {}) {
   const { page } = d;
   await page.goto(d.url, { waitUntil: 'networkidle' });
-  await page.getByRole('button', { name: 'New worksheet' }).click();
+  await newWorksheetButton(page).click();
   await d.wait(300);
-  await page.getByRole('dialog').getByRole('radio', { name: new RegExp(`^${template}`) }).click();
+  await kindRadio(page, template).click();
   if (bilingual) await page.getByRole('dialog').getByTitle('Bilingual').click();
   // The dialog requires a name before it creates anything.
   await page.getByRole('dialog').getByLabel('Name', { exact: true }).fill(name ?? template);
