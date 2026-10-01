@@ -11,6 +11,8 @@ import { worksheetStore } from '@/storage';
 import { worksheetTitle } from '@/storage/document';
 import type { WorksheetSummary } from '@/storage/types';
 import { questionChoices, searchSummaries } from './graphList';
+import { useMessages } from '@/i18n/language';
+import { GRAPH_USE_MESSAGES } from './messages';
 
 const ROW =
   'flex w-full cursor-pointer items-baseline gap-3 rounded-lg px-3 py-2 text-left transition-colors duration-150 ease-out-soft hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent';
@@ -30,6 +32,7 @@ export function UseInWorksheetDialog({
   /** `questionId` undefined: a new question at the end. */
   onUse: (worksheetId: string, questionId?: string) => void;
 }) {
+  const m = useMessages(GRAPH_USE_MESSAGES);
   const [summaries, setSummaries] = useState<WorksheetSummary[] | undefined>();
   const [search, setSearch] = useState('');
   const [worksheet, setWorksheet] = useState<Worksheet | undefined>();
@@ -53,11 +56,11 @@ export function UseInWorksheetDialog({
     setError(undefined);
     const loaded = await worksheetStore.load(summary.id).catch(() => undefined);
     if (!loaded) {
-      setError(`“${summary.title}” is no longer saved here.`);
+      setError(m.gone(summary.title));
       return;
     }
     if (isNewerThanBuild(loaded)) {
-      setError(`“${summary.title}” was saved by a newer version of Econ Studio, so it cannot be changed here. Update to add a graph to it.`);
+      setError(m.newer(summary.title));
       return;
     }
     setWorksheet(loaded);
@@ -65,11 +68,11 @@ export function UseInWorksheetDialog({
 
   return (
     <Dialog
-      title={worksheet ? 'Where should the graph go?' : 'Use in a worksheet'}
+      title={worksheet ? m.whereTitle : m.title}
       description={
         worksheet
-          ? 'A copy is added at the end of the question. Later changes to the saved graph do not change it.'
-          : `Add a copy of “${graph.name}” to one of your worksheets.`
+          ? m.whereDescription
+          : m.description(graph.name)
       }
       width={560}
       height={600}
@@ -79,11 +82,11 @@ export function UseInWorksheetDialog({
         <>
           {worksheet && (
             <Button variant="subtle" className="mr-auto" onClick={() => setWorksheet(undefined)}>
-              ← Worksheets
+              {m.worksheets}
             </Button>
           )}
           <Button variant="subtle" onClick={onClose}>
-            Cancel
+            {m.cancel}
           </Button>
         </>
       }
@@ -94,8 +97,8 @@ export function UseInWorksheetDialog({
           <ul className="space-y-0.5">
             <li>
               <button type="button" className={ROW} onClick={() => onUse(worksheet.id)}>
-                <span className="w-32 shrink-0 truncate text-[12.5px] font-medium text-accent-ink">+ New question</span>
-                <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink-muted">As a new question at the end</span>
+                <span className="w-32 shrink-0 truncate text-[12.5px] font-medium text-accent-ink">{m.newQuestion}</span>
+                <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink-muted">{m.newQuestionHint}</span>
               </button>
             </li>
             {choices.map((choice) => (
@@ -103,7 +106,7 @@ export function UseInWorksheetDialog({
                 <button type="button" className={ROW} onClick={() => onUse(worksheet.id, choice.id)}>
                   <span className="w-32 shrink-0 truncate text-[12.5px] font-medium tabular-nums text-ink">{choice.label}</span>
                   <span className={`min-w-0 flex-1 truncate text-[12.5px] ${choice.excerpt ? 'text-ink-muted' : 'italic text-ink-subtle'}`}>
-                    {choice.excerpt || 'No text yet'}
+                    {choice.excerpt || m.noText}
                   </span>
                 </button>
               </li>
@@ -114,12 +117,12 @@ export function UseInWorksheetDialog({
         <div className="flex min-h-0 flex-1 flex-col" data-use-step="worksheet">
           <div className="shrink-0 px-5 pb-2 pt-4">
             <label className="block">
-              <span className="sr-only">Search worksheets by name</span>
+              <span className="sr-only">{m.searchWorksheets}</span>
               <input
                 type="search"
                 autoFocus
                 value={search}
-                placeholder="Search worksheets by name"
+                placeholder={m.searchWorksheets}
                 onChange={(event) => setSearch(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === 'Escape' && search) {
@@ -138,9 +141,9 @@ export function UseInWorksheetDialog({
           </div>
           <div className="scroll-slim min-h-0 flex-1 overflow-y-auto px-3 pb-3">
             {summaries === undefined ? null : summaries.length === 0 ? (
-              <p className="px-3 py-8 text-center text-[13px] text-ink-muted">No worksheets saved yet. Start one from Home.</p>
+              <p className="px-3 py-8 text-center text-[13px] text-ink-muted">{m.noWorksheets}</p>
             ) : shown.length === 0 ? (
-              <p className="px-3 py-8 text-center text-[13px] text-ink-muted">No worksheet is named like that.</p>
+              <p className="px-3 py-8 text-center text-[13px] text-ink-muted">{m.noMatch}</p>
             ) : (
               <ul className="space-y-0.5">
                 {shown.map((summary) => (
@@ -149,7 +152,7 @@ export function UseInWorksheetDialog({
                       <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink">{summary.title}</span>
                       <span className="shrink-0 text-[11.5px] tabular-nums text-ink-subtle">
                         {summary.questionCount !== undefined &&
-                          `${summary.questionCount} ${summary.questionCount === 1 ? 'question' : 'questions'} · `}
+                          `${m.questionCount(summary.questionCount)} · `}
                         {relativeTime(summary.updatedAt)}
                       </span>
                     </button>

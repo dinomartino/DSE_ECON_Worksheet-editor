@@ -1,6 +1,8 @@
 'use client';
 
 import { useLayoutEffect, useState } from 'react';
+import { useMessages } from '@/i18n/language';
+import { TABLE_CONTROLS_MESSAGES } from './messages';
 
 /**
  * Word's table affordances on the paper: insert a row/column where you point, delete
@@ -35,6 +37,7 @@ export function TableGridControls({
   onRemoveColumn,
 }: Props) {
   /** Each row's top and bottom edge in page pixels, measured from the DOM. */
+  const m = useMessages(TABLE_CONTROLS_MESSAGES);
   const [rows, setRows] = useState<{ top: number; bottom: number }[]>([]);
   /** Which row and column the pointer is in, or -1. */
   const [at, setAt] = useState<{ row: number; column: number }>({ row: -1, column: -1 });
@@ -131,8 +134,8 @@ export function TableGridControls({
           <button
             type="button"
             data-print-hide
-            aria-label={`Insert column before column ${column + 1}`}
-            title="Insert column to the left"
+            aria-label={m.insertColumnBefore(column + 1)}
+            title={m.insertColumnLeft}
             className={chip()}
             style={{
               ...chipStyle(16),
@@ -150,8 +153,8 @@ export function TableGridControls({
           <button
             type="button"
             data-print-hide
-            aria-label={`Insert column after column ${column + 1}`}
-            title="Insert column to the right"
+            aria-label={m.insertColumnAfter(column + 1)}
+            title={m.insertColumnRight}
             className={chip()}
             style={{
               ...chipStyle(16),
@@ -172,8 +175,8 @@ export function TableGridControls({
             <button
               type="button"
               data-print-hide
-              aria-label={`Delete column ${column + 1}`}
-              title="Delete this column"
+              aria-label={m.deleteColumnN(column + 1)}
+              title={m.deleteColumn}
               className={chip(true)}
               style={{
                 ...chipStyle(14),
@@ -210,8 +213,8 @@ export function TableGridControls({
           <button
             type="button"
             data-print-hide
-            aria-label={`Insert row above row ${row + 1}`}
-            title="Insert row above"
+            aria-label={m.insertRowAboveN(row + 1)}
+            title={m.insertRowAbove}
             className={chip()}
             style={{ ...chipStyle(16), top: here.top, left: px(-16), marginTop: px(-8) }}
             onClick={(event) => {
@@ -224,8 +227,8 @@ export function TableGridControls({
           <button
             type="button"
             data-print-hide
-            aria-label={`Insert row below row ${row + 1}`}
-            title="Insert row below"
+            aria-label={m.insertRowBelowN(row + 1)}
+            title={m.insertRowBelow}
             className={chip()}
             style={{ ...chipStyle(16), top: here.bottom, left: px(-16), marginTop: px(-8) }}
             onClick={(event) => {
@@ -239,8 +242,8 @@ export function TableGridControls({
             <button
               type="button"
               data-print-hide
-              aria-label={`Delete row ${row + 1}`}
-              title="Delete this row"
+              aria-label={m.deleteRowN(row + 1)}
+              title={m.deleteRow}
               className={chip(true)}
               style={{
                 ...chipStyle(14),

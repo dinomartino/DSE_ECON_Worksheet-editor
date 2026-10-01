@@ -5,6 +5,10 @@ import { sectionShortLabel } from '@/model/flow';
 import { computeNumbering } from '@/model/numbering';
 import type { LanguageMode, Worksheet } from '@/model/types';
 import type { WorksheetSummary } from '@/storage/types';
+import { resolveMessages } from '@/i18n/catalogue';
+import { uiLanguage } from '@/i18n/language';
+import type { UiLanguage } from '@/settings/language';
+import { GRAPH_EDITOR_MESSAGES, GRAPH_USE_MESSAGES } from './messages';
 
 /** Summaries whose title holds every word of the search, newest first. */
 export function searchSummaries(summaries: readonly WorksheetSummary[], search: string): WorksheetSummary[] {
@@ -48,8 +52,8 @@ export function searchGraphs(graphs: readonly SavedGraph[], search: string): Sav
 }
 
 /** "6 graphs", "1 graph". */
-export function graphCount(count: number): string {
-  return `${count} ${count === 1 ? 'graph' : 'graphs'}`;
+export function graphCount(count: number, lang: UiLanguage = uiLanguage()): string {
+  return resolveMessages(GRAPH_USE_MESSAGES, lang).graphCount(count);
 }
 
 /** A field that keeps its own ⌘Z: a text input, a textarea, or rich text. */
@@ -73,18 +77,16 @@ export function graphHistoryAction(
 /** The autosave's word for the top bar. */
 export type GraphSaveState = 'saved' | 'saving' | 'failed' | 'readOnly';
 
-export function graphSaveLabel(state: GraphSaveState): { word: string; detail: string } {
+export function graphSaveLabel(state: GraphSaveState, lang: UiLanguage = uiLanguage()): { word: string; detail: string } {
+  const m = resolveMessages(GRAPH_EDITOR_MESSAGES, lang);
   switch (state) {
     case 'saving':
-      return { word: 'Saving', detail: 'Saving your changes' };
+      return { word: m.saving, detail: m.savingDetail };
     case 'failed':
-      return { word: 'Not saved', detail: 'Your latest changes could not be saved. They are kept here; try again.' };
+      return { word: m.notSaved, detail: m.notSavedDetail };
     case 'readOnly':
-      return {
-        word: 'Read-only',
-        detail: 'Saved by a newer version of Econ Studio, so it cannot be changed here',
-      };
+      return { word: m.readOnly, detail: m.readOnlyDetail };
     default:
-      return { word: 'Saved', detail: 'All changes saved' };
+      return { word: m.saved, detail: m.savedDetail };
   }
 }

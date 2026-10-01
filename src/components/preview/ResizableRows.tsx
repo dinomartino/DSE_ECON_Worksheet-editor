@@ -1,6 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useMessages } from '@/i18n/language';
+import { PREVIEW_HANDLE_MESSAGES } from './messages';
 
 /**
  * Drag-to-extend for answer lines and spacers: a handle on the bottom edge turns a
@@ -70,6 +72,8 @@ export function ResizableRows({
   // The value being dragged towards, or undefined when no gesture is in flight. Local
   // rather than in the store: transient interaction state that must never reach an
   // undo entry or an autosave.
+  const m = useMessages(PREVIEW_HANDLE_MESSAGES);
+  const unitWord = (n: number) => m.unitName(n === 1 ? unit[0] : unit[1]);
   const [draft, setDraft] = useState<number | undefined>();
 
   const gesture = useRef<{
@@ -183,7 +187,7 @@ export function ResizableRows({
           so it never covers the drag handle. */}
       <button
         type="button"
-        aria-label={`Select to resize (${live} ${live === 1 ? unit[0] : unit[1]})`}
+        aria-label={m.selectToResize(live, unitWord(live))}
         data-print-hide
         onClick={(event) => {
           event.stopPropagation();
@@ -211,7 +215,7 @@ export function ResizableRows({
               is both easier to hit and an honest picture of what moves. */}
           <button
             type="button"
-            aria-label="Drag to add or remove lines"
+            aria-label={m.dragLines}
             data-print-hide
             style={{
               cursor: 'ns-resize',
@@ -252,8 +256,8 @@ export function ResizableRows({
                 lineHeight: 1.4,
               }}
             >
-              {live} {live === 1 ? unit[0] : unit[1]}
-              {atMax && ' · fills the page'}
+              {live} {unitWord(live)}
+              {atMax && m.fillsPage}
             </div>
           )}
         </>

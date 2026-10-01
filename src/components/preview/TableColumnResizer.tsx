@@ -7,6 +7,8 @@ import {
   MIN_TABLE_FRACTION,
 } from '@/model/table';
 import { ptToTwips } from '@/model/page';
+import { useMessages } from '@/i18n/language';
+import { PREVIEW_HANDLE_MESSAGES } from './messages';
 
 /**
  * Drag a table's geometry on the page: column boundaries, outer edges, row heights.
@@ -69,6 +71,7 @@ export function TableColumnResizer({
   onPreviewBox,
   onPreviewRow,
 }: Props) {
+  const m = useMessages(PREVIEW_HANDLE_MESSAGES);
   const gesture = useRef<{
     grip: Grip;
     startX: number;
@@ -329,7 +332,7 @@ export function TableColumnResizer({
         <button
           key={`col-${index}`}
           {...handleProps({ kind: 'column', index })}
-          aria-label={`Drag to resize column ${index + 1}`}
+          aria-label={m.resizeColumn(index + 1)}
           style={{
             left: `${offset * 100}%`,
             // Inverse-scaled so the grip keeps a constant on-screen size at any zoom, the
@@ -349,7 +352,7 @@ export function TableColumnResizer({
         <button
           key={`edge-${side}`}
           {...handleProps({ kind: 'edge', side })}
-          aria-label={`Drag to resize the table's ${side} edge`}
+          aria-label={m.resizeEdge(side)}
           style={{
             [side]: 0,
             width: 9 / (scale || 1),
@@ -371,7 +374,7 @@ export function TableColumnResizer({
           <button
             key={`row-${index}`}
             {...handleProps({ kind: 'row', index })}
-            aria-label={`Drag to resize row ${index + 1}`}
+            aria-label={m.resizeRow(index + 1)}
             style={{
               // Inset from both ends, so a horizontal grip never crosses the vertical
               // ones at the table's edges. They overlap otherwise, and the row grip —

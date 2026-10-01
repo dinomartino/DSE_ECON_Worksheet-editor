@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { TextAlign, TextFormat } from '@/model/types';
+import { useMessages } from '@/i18n/language';
+import type { TextKey } from '@/i18n/catalogue';
+import { FORMAT_TOOLBAR_MESSAGES } from './messages';
 
 /**
  * Contextual formatting toolbar, docked along the top of the page column (floating
@@ -12,20 +15,20 @@ import type { TextAlign, TextFormat } from '@/model/types';
 
 const SIZES = [9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 40];
 
-const COLORS: Array<{ value: string | undefined; label: string; swatch: string }> = [
-  { value: undefined, label: 'Default colour', swatch: '#0f172a' },
-  { value: 'C00000', label: 'Red', swatch: '#c00000' },
-  { value: '1F4E79', label: 'Blue', swatch: '#1f4e79' },
-  { value: '2E7D32', label: 'Green', swatch: '#2e7d32' },
-  { value: '6A1B9A', label: 'Purple', swatch: '#6a1b9a' },
-  { value: '777777', label: 'Grey', swatch: '#777777' },
+const COLORS: Array<{ value: string | undefined; label: TextKey<typeof FORMAT_TOOLBAR_MESSAGES>; swatch: string }> = [
+  { value: undefined, label: 'colourDefault', swatch: '#0f172a' },
+  { value: 'C00000', label: 'red', swatch: '#c00000' },
+  { value: '1F4E79', label: 'blue', swatch: '#1f4e79' },
+  { value: '2E7D32', label: 'green', swatch: '#2e7d32' },
+  { value: '6A1B9A', label: 'purple', swatch: '#6a1b9a' },
+  { value: '777777', label: 'grey', swatch: '#777777' },
 ];
 
-const ALIGNMENTS: Array<{ value: TextAlign; label: string; glyph: string }> = [
-  { value: 'left', label: 'Align left', glyph: '⇤' },
-  { value: 'center', label: 'Align centre', glyph: '↔' },
-  { value: 'right', label: 'Align right', glyph: '⇥' },
-  { value: 'justify', label: 'Justify', glyph: '≡' },
+const ALIGNMENTS: Array<{ value: TextAlign; label: TextKey<typeof FORMAT_TOOLBAR_MESSAGES>; glyph: string }> = [
+  { value: 'left', label: 'alignLeft', glyph: '⇤' },
+  { value: 'center', label: 'alignCentre', glyph: '↔' },
+  { value: 'right', label: 'alignRight', glyph: '⇥' },
+  { value: 'justify', label: 'justify', glyph: '≡' },
 ];
 
 interface Props {
@@ -111,6 +114,7 @@ export function FormatToolbar({
   onMove,
   onDuplicate,
 }: Props) {
+  const m = useMessages(FORMAT_TOOLBAR_MESSAGES);
   const ref = useRef<HTMLDivElement>(null);
   const [colorOpen, setColorOpen] = useState(false);
 
@@ -138,7 +142,7 @@ export function FormatToolbar({
     <div
       ref={ref}
       role="toolbar"
-      aria-label="Format selected element"
+      aria-label={m.toolbar}
       // Docked across the top of the page column. `flex-wrap` matters: the column is
       // narrow at small window widths, and a single non-wrapping row would push the
       // delete button out of reach rather than folding onto a second line.
@@ -183,8 +187,8 @@ export function FormatToolbar({
           clearing an override back to the style is something the teacher can actually
           ask for. */}
       <select
-        aria-label="Font size"
-        title="Font size"
+        aria-label={m.fontSize}
+        title={m.fontSize}
         className="h-7 cursor-pointer rounded bg-[#33302c] px-1 text-xs text-[#f1eee9] outline-none transition-[background-color] duration-150 ease-out-soft hover:bg-[#3d3a35] focus-visible:ring-2 focus-visible:ring-[#5ba8dd]"
         value={format?.fontSize ?? inheritedPt ?? ''}
         onChange={(event) =>
@@ -192,7 +196,7 @@ export function FormatToolbar({
         }
       >
         <option value="">
-          {format?.fontSize === undefined && inheritedPt === undefined ? 'Size' : 'Default'}
+          {format?.fontSize === undefined && inheritedPt === undefined ? m.size : m.sizeDefault}
         </option>
         {/* The steps, plus the inherited size merged in when it is not already one of
             them — a style at 15pt has to be selectable to be *displayed* as selected,
@@ -209,9 +213,9 @@ export function FormatToolbar({
 
       <button
         type="button"
-        aria-label="Bold"
+        aria-label={m.bold}
         aria-pressed={Boolean(format?.bold)}
-        title="Bold"
+        title={m.bold}
         className={`${BTN} ${format?.bold ? ACTIVE : IDLE} font-bold`}
         onClick={() => toggle('bold')}
       >
@@ -219,9 +223,9 @@ export function FormatToolbar({
       </button>
       <button
         type="button"
-        aria-label="Italic"
+        aria-label={m.italic}
         aria-pressed={Boolean(format?.italic)}
-        title="Italic"
+        title={m.italic}
         className={`${BTN} ${format?.italic ? ACTIVE : IDLE} italic`}
         onClick={() => toggle('italic')}
       >
@@ -229,9 +233,9 @@ export function FormatToolbar({
       </button>
       <button
         type="button"
-        aria-label="Underline"
+        aria-label={m.underline}
         aria-pressed={Boolean(format?.underline)}
-        title="Underline"
+        title={m.underline}
         className={`${BTN} ${format?.underline ? ACTIVE : IDLE} underline`}
         onClick={() => toggle('underline')}
       >
@@ -246,9 +250,9 @@ export function FormatToolbar({
         <>
           <button
             type="button"
-            aria-label="Subscript"
+            aria-label={m.subscript}
             aria-pressed={vertAlign === 'subscript'}
-            title="Subscript (S₁)"
+            title={m.subscriptTitle}
             className={`${BTN} ${vertAlign === 'subscript' ? ACTIVE : IDLE}`}
             onClick={() => onVertAlign(vertAlign === 'subscript' ? undefined : 'subscript')}
           >
@@ -258,9 +262,9 @@ export function FormatToolbar({
           </button>
           <button
             type="button"
-            aria-label="Superscript"
+            aria-label={m.superscript}
             aria-pressed={vertAlign === 'superscript'}
-            title="Superscript (m²)"
+            title={m.superscriptTitle}
             className={`${BTN} ${vertAlign === 'superscript' ? ACTIVE : IDLE}`}
             onClick={() => onVertAlign(vertAlign === 'superscript' ? undefined : 'superscript')}
           >
@@ -278,8 +282,8 @@ export function FormatToolbar({
       {onInsertBlank && (
         <button
           type="button"
-          aria-label="Insert blank"
-          title="Insert a fill-in blank"
+          aria-label={m.insertBlank}
+          title={m.insertBlankTitle}
           className={`${BTN} ${IDLE}`}
           onClick={onInsertBlank}
         >
@@ -293,9 +297,9 @@ export function FormatToolbar({
         <button
           key={option.value}
           type="button"
-          aria-label={option.label}
+          aria-label={m[option.label]}
           aria-pressed={format?.align === option.value}
-          title={option.label}
+          title={m[option.label]}
           className={`${BTN} ${format?.align === option.value ? ACTIVE : IDLE}`}
           onClick={() =>
             onChange({ align: format?.align === option.value ? undefined : option.value })
@@ -310,9 +314,9 @@ export function FormatToolbar({
       <div className="relative">
         <button
           type="button"
-          aria-label="Text colour"
+          aria-label={m.textColour}
           aria-expanded={colorOpen}
-          title="Text colour"
+          title={m.textColour}
           className={`${BTN} ${IDLE}`}
           onClick={() => setColorOpen((open) => !open)}
         >
@@ -327,8 +331,8 @@ export function FormatToolbar({
               <button
                 key={option.label}
                 type="button"
-                aria-label={option.label}
-                title={option.label}
+                aria-label={m[option.label]}
+                title={m[option.label]}
                 className="h-5 w-5 rounded-sm border border-[#57534a] transition-[transform,scale] duration-150 ease-out-soft hover:scale-110 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5ba8dd]"
                 style={{ background: option.swatch }}
                 onClick={() => {
@@ -349,8 +353,8 @@ export function FormatToolbar({
         <>
           <button
             type="button"
-            aria-label="Move up"
-            title="Move up"
+            aria-label={m.moveUp}
+            title={m.moveUp}
             className={`${BTN} ${IDLE}`}
             onClick={() => onMove(-1)}
           >
@@ -358,8 +362,8 @@ export function FormatToolbar({
           </button>
           <button
             type="button"
-            aria-label="Move down"
-            title="Move down"
+            aria-label={m.moveDown}
+            title={m.moveDown}
             className={`${BTN} ${IDLE}`}
             onClick={() => onMove(1)}
           >
@@ -370,8 +374,8 @@ export function FormatToolbar({
       {onDuplicate && (
         <button
           type="button"
-          aria-label="Duplicate"
-          title="Duplicate"
+          aria-label={m.duplicate}
+          title={m.duplicate}
           className={`${BTN} ${IDLE}`}
           onClick={onDuplicate}
         >
@@ -382,8 +386,8 @@ export function FormatToolbar({
       {hasOverrides && (
         <button
           type="button"
-          aria-label="Clear formatting"
-          title="Clear formatting"
+          aria-label={m.clearFormatting}
+          title={m.clearFormatting}
           className={`${BTN} ${IDLE}`}
           onClick={onReset}
         >
@@ -394,8 +398,8 @@ export function FormatToolbar({
       {onDelete && (
         <button
           type="button"
-          aria-label="Delete element"
-          title="Delete element"
+          aria-label={m.deleteElement}
+          title={m.deleteElement}
           className={`${BTN} text-[#d6d1c9] hover:bg-[#b4241f] hover:text-white`}
           onClick={onDelete}
         >
@@ -409,8 +413,8 @@ export function FormatToolbar({
         // be mistaken for "delete this element".
         <button
           type="button"
-          aria-label="Done formatting"
-          title="Done"
+          aria-label={m.doneFormatting}
+          title={m.done}
           className={`${BTN} ml-auto ${IDLE}`}
           onClick={onClose}
         >

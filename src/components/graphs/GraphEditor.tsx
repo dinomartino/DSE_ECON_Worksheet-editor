@@ -17,7 +17,9 @@ import { diagramSize, diagramSvg } from '@/render/diagram';
 import { graphStore } from '@/storage';
 import { GraphPanel } from './GraphPanel';
 import { graphHistoryAction, graphSaveLabel, isTypingTarget, type GraphSaveState } from './graphList';
+import { GRAPH_EDITOR_MESSAGES } from './messages';
 import { UseInWorksheetDialog } from './UseInWorksheetDialog';
+import { useMessages, useUiLanguage } from '@/i18n/language';
 
 /** The autosave's debounce, as for documents. */
 const AUTOSAVE_MS = 1200;
@@ -44,6 +46,8 @@ export function GraphEditor({
   /** Open that worksheet with a copy of the graph added (`questionId` undefined: a new question). */
   onUseInWorksheet?: (graph: SavedGraph, worksheetId: string, questionId?: string) => void;
 }) {
+  const m = useMessages(GRAPH_EDITOR_MESSAGES);
+  const lang = useUiLanguage();
   const [graph, setGraph] = useState<SavedGraph | undefined>();
   const [using, setUsing] = useState(false);
   const [missing, setMissing] = useState(false);
@@ -168,7 +172,7 @@ export function GraphEditor({
       await flush();
       onBack();
     } catch {
-      show({ tone: 'error', text: 'Could not save this graph. Your changes are still here; try again.' });
+      show({ tone: 'error', text: m.saveFailed });
     }
   };
 
@@ -177,8 +181,8 @@ export function GraphEditor({
     const current = graphRef.current;
     if (!current) return;
     copyGraphImage(current).then(
-      () => show({ tone: 'ok', text: 'Copied. Paste it into Word at its print size.' }),
-      () => show({ tone: 'error', text: 'Could not copy the image here. Use Download PNG instead.' }),
+      () => show({ tone: 'ok', text: m.copied }),
+      () => show({ tone: 'error', text: m.copyFailed }),
     );
   };
 
@@ -193,11 +197,11 @@ export function GraphEditor({
       const path = saved.path;
       show({
         tone: 'ok',
-        text: `Saved ${saved.name ?? graphFileName(current, 'png')}.`,
-        action: path ? { label: revealLabel(), run: () => void revealFile(path).catch(() => undefined) } : undefined,
+        text: m.savedFile(saved.name ?? graphFileName(current, 'png')),
+        action: path ? { label: revealText(), run: () => void revealFile(path).catch(() => undefined) } : undefined,
       });
     } catch {
-      show({ tone: 'error', text: 'Could not save the image.' });
+      show({ tone: 'error', text: m.saveImageFailed });
     }
   };
 
@@ -207,14 +211,19 @@ export function GraphEditor({
     try {
       await flush();
     } catch {
-      show({ tone: 'error', text: 'Could not save this graph. Your changes are still here; try again.' });
+      show({ tone: 'error', text: m.saveFailed });
       return;
     }
     const current = graphRef.current;
     if (current) onUseInWorksheet?.(current, worksheetId, questionId);
   };
 
-  const label = graphSaveLabel(saveState);
+  const label = graphSaveLabel(saveState, lang);
+  /** The platform's English label, in the interface language. */
+  const revealText = () => {
+    const english = revealLabel();
+    return english === 'Show in Finder' ? m.showInFinder : english === 'Show in Explorer' ? m.showInExplorer : m.showInFolder;
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-desk">
@@ -224,7 +233,7 @@ export function GraphEditor({
           onClick={() => void leave()}
           className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-[13px] text-ink-muted transition-colors duration-150 ease-out-soft hover:bg-surface-sunken hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
-          ← Graphs
+          {m.back}
         </button>
         <h1 className="min-w-0 truncate text-[13.5px] font-semibold text-ink">{graph?.name ?? ''}</h1>
         {graph && (
@@ -264,21 +273,21 @@ export function GraphEditor({
             )}
           </span>
         )}
-        <Button size="sm" disabled={!graph} onClick={copyImage} title="Copy as a picture, sized to print, to paste into Word">
-          Copy image
+        <Button size="sm" disabled={!graph} onClick={copyImage} title={m.copyImageTitle}>
+          {m.copyImage}
         </Button>
-        <Button size="sm" disabled={!graph} onClick={() => void downloadPng()} title="Save a PNG of the graph on white">
+        <Button size="sm" disabled={!graph} onClick={() => void downloadPng()} title={m.downloadPngTitle}>
           <DownloadIcon size={14} />
-          Download PNG
+          {m.downloadPng}
         </Button>
         {onUseInWorksheet && (
           <Button
             size="sm"
             disabled={!graph || readOnly}
             onClick={() => setUsing(true)}
-            title={readOnly ? 'Saved by a newer version of Econ Studio. Update to use it in a worksheet.' : 'Add a copy of this graph to a question in one of your worksheets'}
+            title={readOnly ? m.useNewer : m.useTitle}
           >
-            Use in a worksheet…
+            {m.useInWorksheet}
           </Button>
         )}
         {settings}
@@ -287,7 +296,7 @@ export function GraphEditor({
       <div className="min-h-0 flex-1">
         {missing ? (
           <div className="zone-light flex h-full items-center justify-center bg-surface">
-            <p className="text-[13px] text-ink-muted">This graph is no longer saved here.</p>
+            <p className="text-[13px] text-ink-muted">{m.missing}</p>
           </div>
         ) : !graph ? null : (
           <GraphSurface graph={graph} readOnly={readOnly} keysSuspended={using} onChange={update} />
@@ -316,6 +325,7 @@ function GraphSurface({
   keysSuspended: boolean;
   onChange: (graph: SavedGraph) => void;
 }) {
+  const m = useMessages(GRAPH_EDITOR_MESSAGES);
   const { block } = graph;
   const { diagram } = block;
   const setBlock = (next: DiagramBlock) => onChange({ ...graph, block: next });
@@ -326,8 +336,7 @@ function GraphSurface({
     return (
       <StaticGraph graph={graph} readOnly>
         <p className="text-[12.5px] leading-relaxed text-ink-muted">
-          This graph was saved by a newer version of Econ Studio, so it can be copied and downloaded here but not
-          changed. Update to edit it.
+          {m.newerNote}
         </p>
       </StaticGraph>
     );
@@ -353,7 +362,7 @@ function GraphSurface({
             <div className="mt-4 border-t border-line pt-4">
               <ForumFields
                 forum={diagram.forum}
-                resizeHint="Drag a bubble’s inner edge on the figure to resize it."
+                resizeHint={m.resizeHint}
                 onChange={(forum) => {
                   // Re-measured on every edit, as in a worksheet: bubble text sets the box.
                   const next = { ...diagram, forum };

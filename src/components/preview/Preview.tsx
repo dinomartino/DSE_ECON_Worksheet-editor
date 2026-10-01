@@ -103,21 +103,24 @@ import {
 } from "@/model/numbering";
 import { documentShape } from "@/model/documentShape";
 import { cssFontFamilies } from "@/model/fonts";
+import { resolveMessages, type TextKey } from "@/i18n/catalogue";
+import { uiLanguage, useMessages, useUiLanguage } from "@/i18n/language";
+import { PREVIEW_MESSAGES } from "./messages";
 
 /** The context menu's hidden image input, reached by id from the menu item. */
 const PAGE_MENU_IMAGE_INPUT = 'page-menu-image-input';
 
 /** Human name per layout kind, for the drag ghost. */
-const LAYOUT_DRAG_NAME: Record<string, string> = {
-  heading: "Heading",
-  text: "Text",
-  spacer: "Blank space",
-  divider: "Divider",
-  pageBreak: "New page",
-  answerLines: "Answer lines",
-  answerSpace: "Answer space",
-  partHeader: "Part header",
-  labelList: "Label list",
+const LAYOUT_DRAG_NAME: Record<string, TextKey<typeof PREVIEW_MESSAGES>> = {
+  heading: "layoutHeading",
+  text: "layoutText",
+  spacer: "layoutSpacer",
+  divider: "layoutDivider",
+  pageBreak: "layoutPageBreak",
+  answerLines: "layoutAnswerLines",
+  answerSpace: "layoutAnswerSpace",
+  partHeader: "layoutPartHeader",
+  labelList: "layoutLabelList",
 };
 import { IconButton } from "@/components/ui";
 import { DragGhost, hideNativeDragImage } from "@/components/ui/DragGhost";
@@ -369,8 +372,9 @@ function richNodes(
    */
   const prompt = (long: string, short: string) =>
     compactPlaceholder ? "·" : quietPrompt ? short : long;
-  const enPrompt = prompt("Double-click to add English", "Add English");
-  const zhPrompt = prompt("Double-click to add 中文", "Add 中文");
+  const pm = resolveMessages(PREVIEW_MESSAGES, uiLanguage());
+  const enPrompt = prompt(pm.addEnglishLong, pm.addEnglishShort);
+  const zhPrompt = prompt(pm.addChineseLong, pm.addChineseShort);
 
   if (language === "en") return editable("en", enPrompt);
   if (language === "zh") return editable("zh", zhPrompt);
@@ -604,28 +608,28 @@ function MarksTrail({
  * name it — a toolbar in a fixed place with no label leaves the user guessing which of
  * several selectable things it will change.
  */
-const TARGET_NAME: Record<EditTarget["kind"], string> = {
-  worksheetTitle: "Title",
-  worksheetInstructions: "Instructions",
-  blockText: "Paragraph",
-  blockCaption: "Caption",
-  tableCell: "Table cell",
-  mcqOption: "Option",
-  mcqStatement: "Statement",
-  mcqExplanation: "Explanation",
-  mcqRationale: "Rationale",
-  mcqProvenance: "Source note",
-  partAnswer: "Answer",
-  subPartAnswer: "Answer",
-  layoutText: "Text element",
-  sourceLabel: "Source label",
-  sourceFootnote: "Source footnote",
+const TARGET_NAME: Record<EditTarget["kind"], TextKey<typeof PREVIEW_MESSAGES>> = {
+  worksheetTitle: "targetTitle",
+  worksheetInstructions: "targetInstructions",
+  blockText: "targetParagraph",
+  blockCaption: "targetCaption",
+  tableCell: "targetTableCell",
+  mcqOption: "targetOption",
+  mcqStatement: "targetStatement",
+  mcqExplanation: "targetExplanation",
+  mcqRationale: "targetRationale",
+  mcqProvenance: "targetSourceNote",
+  partAnswer: "targetAnswer",
+  subPartAnswer: "targetAnswer",
+  layoutText: "targetTextElement",
+  sourceLabel: "targetSourceLabel",
+  sourceFootnote: "targetSourceFootnote",
   // One name for all five band lists — masthead, header, footer and their page-1
   // variants — because a `bandField` target does not say which one it came from.
-  bandField: "Field",
-  labelListCell: "Label row",
-  coverLine: "Cover line",
-  coverField: "Cover field",
+  bandField: "targetField",
+  labelListCell: "targetLabelRow",
+  coverLine: "targetCoverLine",
+  coverField: "targetCoverField",
 };
 
 /**
@@ -2014,6 +2018,7 @@ function CoverSheet({
   /** The page margins in twips, for pinning the foot block inside the bottom one. */
   margins: { left: number; right: number };
 }) {
+  const m = useMessages(PREVIEW_MESSAGES);
   const { left, gap, right } = cover.columns;
   const total = left + gap + right;
   const pct = (value: number) => `${(value / total) * 100}%`;
@@ -2059,8 +2064,8 @@ function CoverSheet({
                 >
                   <button
                     type="button"
-                    aria-label="Remove this instruction"
-                    title="Remove this instruction"
+                    aria-label={m.removeInstruction}
+                    title={m.removeInstruction}
                     onClick={() => ctx.coverLines?.onRemove(lineId)}
                     className="pointer-events-auto cursor-pointer px-1 py-0.5 text-[10px] leading-none text-[#a5a09b] transition-[color,scale] duration-150 ease-out-soft hover:text-[#dc2626] active:scale-[0.97]"
                   >
@@ -2086,7 +2091,7 @@ function CoverSheet({
               onClick={() => ctx.coverLines?.onAdd()}
               className="pointer-events-auto cursor-pointer rounded px-1.5 py-0.5 text-[9px] font-medium text-[#8f8a86] transition-[background-color,color,scale] duration-150 ease-out-soft hover:bg-[#d9ebf8] hover:text-[#0a5c9e] active:scale-[0.97]"
             >
-              + Instruction
+              {m.addInstruction}
             </button>
           </span>
         )}
@@ -2555,12 +2560,13 @@ function RegionWake({
    */
   single?: boolean;
 }) {
+  const m = useMessages(PREVIEW_MESSAGES);
   return (
     <button
       type="button"
       data-print-hide
       aria-label={label}
-      title={single ? label : `${label} (double-click)`}
+      title={single ? label : m.doubleClickSuffix(label)}
       className="paper-region-wake"
       onDoubleClick={(event) => {
         // The sheet's own click handler treats a landing on non-selectable space as
@@ -2642,6 +2648,7 @@ function HeaderFooterBand({
    * what Word puts there — the preview used to ignore this entirely, which is why a
    * header suppressed on page 1 still appeared on the first sheet on screen.
    */
+  const m = useMessages(PREVIEW_MESSAGES);
   const resolved =
     pageNumber === 1
       ? firstPageHeaderFooter(value)
@@ -2685,12 +2692,16 @@ function HeaderFooterBand({
       // change is made rather than only in a dialog that covers it.
       label={
         scope === "firstPage"
-          ? `Page 1 ${edge}`
+          ? edge === "header"
+            ? m.page1Header
+            : m.page1Footer
           : firstPageHeaderFooter(value).differs
-            ? `${edge === "header" ? "Header" : "Footer"} · pages 2+`
+            ? edge === "header"
+              ? m.headerPages2
+              : m.footerPages2
             : edge === "header"
-              ? "Header · every page"
-              : "Footer · every page"
+              ? m.headerEvery
+              : m.footerEvery
       }
       selection={editing.selection}
     />
@@ -2846,6 +2857,7 @@ function GapAdjuster({
   scale: number;
   onCommit: (lines: number) => void;
 }) {
+  const m = useMessages(PREVIEW_MESSAGES);
   const [draft, setDraft] = useState<number | undefined>();
   const gesture = useRef<{ startY: number; start: number; pointerId: number } | null>(null);
   const latest = useRef<number | undefined>(undefined);
@@ -2875,10 +2887,8 @@ function GapAdjuster({
     >
       <button
         type="button"
-        aria-label={`Drag to adjust the gap above this question (${live} ${
-          live === 1 ? "line" : "lines"
-        })`}
-        title="Drag to adjust the gap above this question"
+        aria-label={m.gapAdjustLabel(live)}
+        title={m.gapAdjustTitle}
         data-print-hide
         style={{
           cursor: "ns-resize",
@@ -2930,7 +2940,7 @@ function GapAdjuster({
             lineHeight: 1.4,
           }}
         >
-          {live} {live === 1 ? "line" : "lines"}
+          {m.lineCount(live)}
         </span>
       )}
     </span>
@@ -2997,6 +3007,7 @@ function DraggableItem({
   // while four others sat still, reading as "only this one is moving".
   const isDragging =
     dragId === id || (Boolean(dragId) && multiSelected && (dragCount ?? 1) > 1);
+  const m = useMessages(PREVIEW_MESSAGES);
   const isTarget = Boolean(dragId) && !isDragging;
 
   /*
@@ -3193,8 +3204,8 @@ function DraggableItem({
           <button
             type="button"
             data-print-hide
-            aria-label="Insert here"
-            title="Insert here"
+            aria-label={m.insertHere}
+            title={m.insertHere}
             onClick={(event) => {
               event.stopPropagation();
               onAnchorHere?.();
@@ -3244,8 +3255,8 @@ function DraggableItem({
         role="button"
         tabIndex={-1}
         data-print-hide
-        aria-label="Drag to reorder"
-        title="Drag to reorder"
+        aria-label={m.dragToReorder}
+        title={m.dragToReorder}
         /*
          * Literal hex throughout: this sits on the paper, which never themes, so a
          * semantic token would paint a dark chip on a white page in dark mode.
@@ -3663,6 +3674,7 @@ const MULTI_SELECTED_ITEM = "bg-[#0d77c9]/[0.10]";
  * find it on the sheet, `data-bank-ghost` so it is told apart.
  */
 function ProvisionalItem({ id, children }: { id: string; children: React.ReactNode }) {
+  const m = useMessages(PREVIEW_MESSAGES);
   return (
     <div
       data-flow-id={id}
@@ -3673,7 +3685,7 @@ function ProvisionalItem({ id, children }: { id: string; children: React.ReactNo
     >
       <div className="opacity-55">{children}</div>
       <span className="absolute -top-2 right-1 rounded-[3px] bg-[#0d77c9] px-1.5 py-px font-sans text-[9px] font-semibold leading-tight text-white">
-        題庫
+        {m.bankTag}
       </span>
     </div>
   );
@@ -4066,15 +4078,17 @@ interface Props {
  * buttons are simply *here*, doing what the sentence used to describe.
  */
 function EmptyState({ onAddQuestion, onOpenBank }: { onAddQuestion: (typeId: string) => void; onOpenBank?: () => void }) {
+  const m = useMessages(PREVIEW_MESSAGES);
+  const zh = useUiLanguage() === "zh-HK";
   return (
     <div className="mt-10 rounded-2xl border-2 border-dashed border-[#ddd8d2] px-6 py-12 text-center">
       <p className="text-[15px] font-semibold text-[#4a4643]">
-        Start your worksheet
+        {m.startTitle}
       </p>
       <p className="mt-1 text-[13px] text-[#8f8a86]">
-        Add your first question. Or pick one from the rail on the left.
+        {m.startHint}
       </p>
-      <p className="mt-1 text-[12px] text-[#a5a09b]">開始製作工作紙</p>
+      {!zh && <p className="mt-1 text-[12px] text-[#a5a09b]">開始製作工作紙</p>}
 
       <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
         {listQuestionTypes().map((definition, index) => (
@@ -4099,7 +4113,7 @@ function EmptyState({ onAddQuestion, onOpenBank }: { onAddQuestion: (typeId: str
             className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-[#ddd8d2] bg-white px-4 py-2.5 text-[13px] font-medium text-[#4a4643] transition-[background-color,border-color,color,opacity,filter,transform,scale] duration-150 ease-out-soft hover:bg-[#f6f5f4] active:scale-[0.97]"
           >
             <ListIcon size={16} />
-            From 題庫…
+            {m.fromBank}
           </button>
         )}
       </div>
@@ -4127,6 +4141,8 @@ function BlankPage({
   selected: boolean;
   onSelect: () => void;
 }) {
+  const m = useMessages(PREVIEW_MESSAGES);
+  const zh = useUiLanguage() === "zh-HK";
   const [over, setOver] = useState(false);
   const receiving = Boolean(dragId) && dragId !== breakId && Boolean(onDropItem);
 
@@ -4161,13 +4177,11 @@ function BlankPage({
       }`}
     >
       <p className="text-[13px] font-semibold text-[#6b6764]">
-        {over ? "Drop here to place on this page" : "New page"}
+        {over ? m.dropHere : m.newPage}
       </p>
-      <p className="mt-1 text-[12px] text-[#a5a09b]">
-        {over
-          ? "放置於此頁"
-          : "Drag a question here, or add one below · 新頁"}
-      </p>
+      {(!over || !zh) && (
+        <p className="mt-1 text-[12px] text-[#a5a09b]">{over ? "放置於此頁" : m.newPageHint}</p>
+      )}
 
       {onAddQuestion && !over && (
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
@@ -4193,7 +4207,7 @@ function BlankPage({
       )}
 
       <p className="mt-4 text-[11px] text-[#b5b0ab]">
-        This page is empty. It will still appear in the exported document.
+        {m.pageEmpty}
       </p>
     </div>
   );
@@ -4309,6 +4323,8 @@ export function Preview({
   const cellSelection = useWorksheetStore((s) => s.cellSelection);
   const setCellSelection = useWorksheetStore((s) => s.setCellSelection);
 
+  const m = useMessages(PREVIEW_MESSAGES);
+  const uiLang = useUiLanguage();
   const [fitScale, setFitScale] = useState(1);
   // User zoom, multiplied onto the auto-fit scale rather than replacing it, so
   // "100%" always means "as wide as this column allows" — the reading a teacher
@@ -5109,32 +5125,32 @@ export function Preview({
       if (table && at && cell) {
         if (onInsertTableRow && onRemoveTableRow && onInsertTableColumn && onRemoveTableColumn) {
           groups.push({
-            label: "Rows & columns",
+            label: m.rowsAndColumns,
             items: [
               {
-                label: "Insert row above",
+                label: m.insertRowAbove,
                 onSelect: () => onInsertTableRow(table.id, at.rowIndex),
               },
               {
-                label: "Insert row below",
+                label: m.insertRowBelow,
                 onSelect: () => onInsertTableRow(table.id, at.rowIndex + 1),
               },
               {
-                label: "Insert column left",
+                label: m.insertColumnLeft,
                 onSelect: () => onInsertTableColumn(table.id, at.cellIndex),
               },
               {
-                label: "Insert column right",
+                label: m.insertColumnRight,
                 onSelect: () => onInsertTableColumn(table.id, at.cellIndex + 1),
               },
               {
-                label: "Delete row",
+                label: m.deleteRow,
                 danger: true,
                 disabled: table.rows.length <= 1,
                 onSelect: () => onRemoveTableRow(table.id, at.rowIndex),
               },
               {
-                label: "Delete column",
+                label: m.deleteColumn,
                 danger: true,
                 disabled: columnCountOf(table) <= 1,
                 onSelect: () => onRemoveTableColumn(table.id, at.cellIndex),
@@ -5143,23 +5159,23 @@ export function Preview({
           });
         }
         groups.push({
-          label: "Cell",
+          label: m.cell,
           items: isMerged(cell)
             ? [
                 {
-                  label: "Split merged cell",
+                  label: m.splitCell,
                   onSelect: () =>
                     store.replaceBlock(table.id, unmerge(table, at.rowIndex, at.cellIndex)),
                 },
               ]
             : [
                 {
-                  label: "Merge with cell to the right",
+                  label: m.mergeRight,
                   onSelect: () =>
                     store.replaceBlock(table.id, mergeRight(table, at.rowIndex, at.cellIndex)),
                 },
                 {
-                  label: "Merge with cell below",
+                  label: m.mergeBelow,
                   onSelect: () =>
                     store.replaceBlock(table.id, mergeDown(table, at.rowIndex, at.cellIndex)),
                 },
@@ -5174,13 +5190,13 @@ export function Preview({
       const items: PageMenuItem[] = [];
       if (figure?.kind === "diagram" && !figure.diagram.pie && onOpenBlock) {
         items.push({
-          label: "Edit drawing",
+          label: m.editDrawing,
           onSelect: () => onOpenBlock(payload.blockId),
         });
       }
       if (onDelete) {
         items.push({
-          label: "Delete figure",
+          label: m.deleteFigure,
           danger: true,
           onSelect: () => onDelete({ kind: "blockText", blockId: payload.blockId }),
         });
@@ -5206,17 +5222,17 @@ export function Preview({
             : payload.blockId;
     if (insertAfterId) {
       groups.push({
-        label: payload.kind === "cell" ? "Insert below the table" : "Insert below",
+        label: payload.kind === "cell" ? m.insertBelowTable : m.insertBelow,
         items: [
           {
-            label: "Paragraph",
+            label: m.paragraph,
             onSelect: () =>
               store.insertBlockAfter(insertAfterId, createParagraphBlock(emptyBiText())),
           },
           {
             // A quick 3 × 3 at the stem's own indent; the sidebar strip keeps the
             // size grid and the named templates for everything this does not fit.
-            label: "Table (3 × 3)",
+            label: m.table33,
             onSelect: () =>
               store.insertBlockAfter(insertAfterId, {
                 ...createTableBlock(3, 3),
@@ -5224,7 +5240,7 @@ export function Preview({
               }),
           },
           {
-            label: "Image…",
+            label: m.image,
             onSelect: () => {
               const input = document.getElementById(
                 PAGE_MENU_IMAGE_INPUT,
@@ -5235,7 +5251,7 @@ export function Preview({
             },
           },
           {
-            label: "Diagram (blank axes)",
+            label: m.diagramBlank,
             onSelect: () => store.insertBlockAfter(insertAfterId, createDiagramBlock()),
           },
           // Withheld inside a source's body — a source may not contain another.
@@ -5243,7 +5259,7 @@ export function Preview({
             ? []
             : [
                 {
-                  label: "Source panel",
+                  label: m.sourcePanel,
                   onSelect: () =>
                     store.insertBlockAfter(
                       insertAfterId,
@@ -5277,7 +5293,7 @@ export function Preview({
         groups.push({
           items: [
             {
-              label: `Delete ${plan.label}`,
+              label: m.deleteThing(plan.label),
               danger: true,
               onSelect: () => onDelete(payload.target),
             },
@@ -5434,6 +5450,8 @@ export function Preview({
     selectedLayoutId ?? "",
     // The indent map is derived from the shape, so the shape stands in for it.
     shape,
+    // Empty-field prompts are chrome text read at render time.
+    uiLang,
   ].join("·");
 
   // Delete / Backspace removes the selected element. Scoped to the page and skipped
@@ -5790,7 +5808,7 @@ export function Preview({
             onAddField={bandEditing.onAddField}
             onAddRow={bandEditing.onAddRow ? () => bandEditing.onAddRow!("running") : undefined}
             onRemoveRow={bandEditing.onRemoveRow}
-            label="Title block"
+            label={m.titleBlock}
             selection={bandSelection}
           />
         ) : (
@@ -6094,8 +6112,8 @@ export function Preview({
     // gesture lying about its own scope.
     if (multiIds.has(dragId) && multiIds.size > 1) {
       return {
-        label: `${multiIds.size} items`,
-        detail: "Moving together",
+        label: m.itemCount(multiIds.size),
+        detail: m.movingTogether,
       };
     }
     const numbering = computeNumbering(worksheet);
@@ -6110,15 +6128,15 @@ export function Preview({
       // The type's own name comes from the registry, so a new question type labels
       // its ghost correctly without this file learning about it (§9).
       return {
-        label: number ? `Question ${number}` : "Question",
+        label: number ? m.questionN(number) : m.question,
         detail: excerpt || plain(requireQuestionType(question).displayName.en),
       };
     }
     const element = worksheet.layout.find((e) => e.id === dragId);
     if (element) {
-      return { label: LAYOUT_DRAG_NAME[element.kind], detail: "Layout element" };
+      return { label: m[LAYOUT_DRAG_NAME[element.kind]], detail: m.layoutElement };
     }
-    return { label: "Item" };
+    return { label: m.item };
   })();
 
   /*
@@ -6499,7 +6517,7 @@ export function Preview({
       <div className="pointer-events-none fixed bottom-4 right-[416px] z-30">
         <div className="pointer-events-auto flex items-center gap-0.5 rounded-lg border border-line bg-surface-raised p-1 shadow-md">
           <IconButton
-            label="Zoom out"
+            label={m.zoomOut}
             onClick={() => setZoom((z) => Math.max(0.5, Math.round((z - 0.1) * 10) / 10))}
             disabled={zoom <= 0.5}
           >
@@ -6508,13 +6526,13 @@ export function Preview({
           <button
             type="button"
             onClick={() => setZoom(1)}
-            title="Reset zoom to fit"
+            title={m.zoomReset}
             className="min-w-[3.25rem] cursor-pointer rounded-md px-1 text-center text-[11px] font-semibold tabular-nums text-ink-muted transition-[color,scale] duration-150 ease-out-soft hover:text-ink active:scale-[0.97]"
           >
             {Math.round(scale * 100)}%
           </button>
           <IconButton
-            label="Zoom in"
+            label={m.zoomIn}
             onClick={() => setZoom((z) => Math.min(2, Math.round((z + 0.1) * 10) / 10))}
             disabled={zoom >= 2}
           >
@@ -6649,7 +6667,7 @@ export function Preview({
                 />
                 {focusRegion !== "header" && (
                   <RegionWake
-                    label="Edit the header"
+                    label={m.editHeader}
                     onWake={() => enterRegion("header")}
                   />
                 )}
@@ -6668,7 +6686,7 @@ export function Preview({
                 {focusRegion !== "body" && (
                   <RegionWake
                     single
-                    label="Back to the document body"
+                    label={m.backToBody}
                     onWake={() => enterRegion("body")}
                   />
                 )}
@@ -6759,7 +6777,7 @@ export function Preview({
                 />
                 {focusRegion !== "footer" && (
                   <RegionWake
-                    label="Edit the footer"
+                    label={m.editFooter}
                     onWake={() => enterRegion("footer")}
                   />
                 )}
@@ -6831,15 +6849,15 @@ export function Preview({
         <div className="pointer-events-none fixed bottom-16 left-[76px] right-[400px] z-40 flex justify-center">
           <div className="pointer-events-auto flex animate-slide-up-in items-center gap-3 rounded-full border border-line bg-surface-raised/95 py-2 pl-4 pr-2 text-[12px] shadow-xl backdrop-blur">
             <span className="font-medium text-ink">
-              {multiIds.size + multiFields.size} selected
+              {m.selectedCount(multiIds.size + multiFields.size)}
             </span>
             <span className="text-[11px] text-ink-subtle">
-              ⌘C copy · ⌘V paste · ⌫ delete · Esc clear
+              {m.selectionKeys}
             </span>
             {multiIds.size > 0 && !readOnly && (
               <button
                 type="button"
-                title="AI tools for the selected items"
+                title={m.aiTools}
                 onClick={(event) => {
                   const box = event.currentTarget.getBoundingClientRect();
                   const worksheet = useWorksheetStore.getState().worksheet;
@@ -6855,7 +6873,7 @@ export function Preview({
               </button>
             )}
             <IconButton
-              label="Clear selection"
+              label={m.clearSelection}
               onClick={() => {
                 setMultiIds(new Set());
                 setMultiFields(new Set());
@@ -6888,8 +6906,8 @@ export function Preview({
              */
             subject={
               runRange
-                ? `${TARGET_NAME[selectedElement.target.kind]} · selected text`
-                : TARGET_NAME[selectedElement.target.kind]
+                ? m.selectedText(m[TARGET_NAME[selectedElement.target.kind]])
+                : m[TARGET_NAME[selectedElement.target.kind]]
             }
             onClose={() => setSelectedElement(undefined)}
             /*

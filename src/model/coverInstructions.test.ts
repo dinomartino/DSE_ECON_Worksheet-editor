@@ -151,8 +151,8 @@ describe('the instruction controls never print', () => {
   );
 
   it('marks both controls print-hidden', () => {
-    expect(region).toContain('+ Instruction');
-    expect(region).toContain('Remove this instruction');
+    expect(region).toContain('m.addInstruction');
+    expect(region).toContain('m.removeInstruction');
     // One `data-print-hide` per control — the ✕ strip and the add strip.
     expect(region.match(/data-print-hide/g) ?? []).toHaveLength(2);
   });
