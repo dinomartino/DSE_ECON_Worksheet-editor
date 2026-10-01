@@ -19,6 +19,7 @@ import { PartTopics } from './PartTopics';
 import { useShownTags, useShownTagState } from './sharedTopics';
 import { setQuestionTags, setQuestionTopics, topicSyncDeps } from './topicSync';
 import { StimulusEditorPanel } from './StimulusEditorPanel';
+import { markPanelTarget } from './panelTarget';
 
 /**
  * Inputs for whatever is currently selected.
@@ -246,13 +247,14 @@ export function Inspector({
   const shownState = useShownTagState(selected);
 
   /*
-   * Bring the control for the page's selection into view.
+   * Bring the control for the page's selection into view, and mark it.
    *
    * Clicking option C on the paper now selects the question too (§ Preview
    * `selectOwnerOf`), which opens this panel — but on a long question the matching
    * field can be well below the fold, so the panel appeared to respond by showing
    * something else. The page publishes an `editTargetKey`; each control carries the
-   * same key as `data-edit-target`; this finds it and scrolls.
+   * same key as `data-edit-target`; this finds it, scrolls, and marks it
+   * (`markPanelTarget`: a tint, the selection bar, one pulse as it arrives).
    *
    * `block: 'nearest'` and nothing else: a control already on screen must not be
    * yanked to the middle, because the common case is a teacher clicking around one
@@ -263,15 +265,30 @@ export function Inspector({
    * A layout effect, so the scroll happens in the same frame the panel mounts rather
    * than after a visible paint at the top. Keyed on the panel's own subject as well as
    * the target: selecting a *different* question remounts the panel (`key`), and an
-   * effect that only watched the key would run against the outgoing DOM.
+   * effect that only watched the key would run against the outgoing DOM. A row that
+   * remounts later (a part collapsed and reopened) is re-marked by the observer.
    */
   const panelRef = useRef<HTMLDivElement>(null);
   const selectedTargetKey = useWorksheetStore((s) => s.selectedTargetKey);
   useLayoutEffect(() => {
+    const root = panelRef.current;
+    if (!root) return;
+    markPanelTarget(root, selectedTargetKey)?.scrollIntoView({ block: 'nearest' });
     if (!selectedTargetKey) return;
-    panelRef.current
-      ?.querySelector(`[data-edit-target="${CSS.escape(selectedTargetKey)}"]`)
-      ?.scrollIntoView({ block: 'nearest' });
+    let frame = 0;
+    // Child lists only: the mark is an attribute, so marking never re-triggers this.
+    const observer = new MutationObserver(() => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        markPanelTarget(root, selectedTargetKey);
+      });
+    });
+    observer.observe(root, { childList: true, subtree: true });
+    return () => {
+      observer.disconnect();
+      if (frame) cancelAnimationFrame(frame);
+    };
   }, [selectedTargetKey, selectedQuestionId, selectedElementId]);
 
   // A question wins when both are somehow set — the page clears one selection as it

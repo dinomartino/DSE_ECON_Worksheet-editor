@@ -2133,6 +2133,12 @@ hover                      → margin drag grip → reorder
   control already on screen must not be yanked, since the common case is a teacher
   working within one question whose fields are all visible. Keys are built from
   **ids, not positions**, or a reordered option would scroll to its neighbour.
+  The match is also **marked** (`editor/panelTarget.ts`): `data-edit-current`, styled once
+  in `globals.css` as an accent tint, the selection bar and a one-shot ring (off under
+  reduced motion); background, shadow and a pseudo-element only, so nothing moves. A
+  component with no control of its own marks its owner's (a cell → its table). A
+  `MutationObserver` re-marks a row that remounts; `PartTopics` scrolls its row only if
+  the marked control stays in view.
 - **The finest selection owns Delete.** Four handlers, one per selection — text target,
   picture, table cell, whole item — and the whole-item one is destructive. Clicking any
   component inside a question also selects that question on the way up, so the

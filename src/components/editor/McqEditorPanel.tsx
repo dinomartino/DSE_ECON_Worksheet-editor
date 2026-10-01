@@ -389,6 +389,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
         </summary>
         <div className="animate-fade-in space-y-3 pt-2">
           <div
+            className="-mx-1.5 rounded-md px-1.5"
             data-edit-target={editTargetKey({
               kind: 'mcqExplanation',
               questionId: question.id,
@@ -416,7 +417,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
               });
               const excerpt = biExcerpt(option.rationale);
               return (
-                <div key={option.id} data-edit-target={key}>
+                <div key={option.id} data-edit-target={key} className="rounded-md">
                   <button
                     type="button"
                     aria-expanded={open}
@@ -463,6 +464,7 @@ export function McqEditorPanel({ question, onChange }: EditorPanelProps<McqQuest
           </div>
 
           <div
+            className="-mx-1.5 rounded-md px-1.5"
             data-edit-target={editTargetKey({
               kind: 'mcqProvenance',
               questionId: question.id,
