@@ -41,6 +41,8 @@ import {
   StructuredIcon,
   TextIcon,
 } from '@/components/ui/icons';
+import { useMessages, useUiLanguage } from '@/i18n/language';
+import { ADD_RAIL_MESSAGES } from './AddRail.messages';
 
 /**
  * The add rail: a permanent vertical strip of icon targets (Canva's shape), each
@@ -62,6 +64,8 @@ interface Entry {
 }
 
 export function AddRail() {
+  const m = useMessages(ADD_RAIL_MESSAGES);
+  const lang = useUiLanguage();
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const insertAnchorId = useWorksheetStore((s) => s.insertAnchorId);
   const addQuestion = useWorksheetStore((s) => s.addQuestion);
@@ -158,10 +162,12 @@ export function AddRail() {
   const questionEntries: Entry[] = listQuestionTypes().map((definition) => {
     const zh = plain(definition.displayName.zh);
     const destination = typeDestinations?.get(definition.id);
+    const where = destination ? m.inSection(destination) : m.atEnd;
+    const english = lang === 'en';
     return {
       id: definition.id,
-      label: plain(definition.displayName.en),
-      hint: splitDestinations ? `${zh} · ${destination ? `in ${destination}` : 'at the end'}` : zh,
+      label: english ? plain(definition.displayName.en) : zh,
+      hint: splitDestinations ? (english ? `${zh} · ${where}` : where) : english ? zh : '',
       icon: definition.id === 'mcq' ? <McqIcon size={18} /> : <StructuredIcon size={18} />,
       run: (afterId) => addQuestion(definition.id, afterId),
     };
@@ -170,8 +176,8 @@ export function AddRail() {
   // anchor line names the same destination this flyout does.
   questionEntries.push({
     id: 'fromBank',
-    label: 'From 題庫…',
-    hint: 'questions from your other worksheets',
+    label: m.fromBank,
+    hint: m.fromBankHint,
     icon: <ListIcon size={18} />,
     run: () => useBankSession.getState().openBank(),
   });
@@ -179,15 +185,15 @@ export function AddRail() {
   const layoutEntries: Entry[] = [
     {
       id: 'section',
-      label: 'Section',
-      hint: 'restarts numbering · 部分',
+      label: m.section,
+      hint: m.sectionHint,
       icon: layoutIcons.section,
       run: (afterId) => addLayoutElement(createSectionElement(), afterId),
     },
     {
       id: 'partHeader',
-      label: 'Part header',
-      hint: 'with marks total',
+      label: m.partHeader,
+      hint: m.partHeaderHint,
       icon: layoutIcons.partHeader,
       run: (afterId) =>
         addLayoutElement(
@@ -197,80 +203,80 @@ export function AddRail() {
     },
     {
       id: 'questionCount',
-      label: 'Question count',
+      label: m.questionCount,
       // The number is the point: it says what the element does that a text line cannot.
-      hint: 'There are 45 questions…',
+      hint: m.questionCountHint,
       icon: layoutIcons.questionCount,
       run: (afterId) => addLayoutElement(createQuestionCountElement(), afterId),
     },
     {
       id: 'stimulus',
-      label: 'Shared stimulus',
+      label: m.stimulus,
       // The derived range is the point: the sentence renumbers itself.
-      hint: '…answer Questions 8 and 9.',
+      hint: m.stimulusHint,
       icon: layoutIcons.stimulus,
       run: (afterId) => addLayoutElement(createStimulusElement(), afterId),
     },
     {
       id: 'heading',
-      label: 'Heading',
-      hint: '標題',
+      label: m.heading,
+      hint: m.headingHint,
       icon: layoutIcons.heading,
       run: (afterId) => addLayoutElement(createHeadingElement(), afterId),
     },
     {
       id: 'text',
-      label: 'Text / note',
-      hint: '文字',
+      label: m.text,
+      hint: m.textHint,
       icon: layoutIcons.text,
       run: (afterId) => addLayoutElement(createTextElement(), afterId),
     },
     {
       id: 'labelList',
-      label: 'Label list',
-      hint: 'side-by-side rows',
+      label: m.labelList,
+      hint: m.labelListHint,
       icon: layoutIcons.labelList,
       run: (afterId) => addLayoutElement(createLabelListElement(), afterId),
     },
     {
       id: 'answerLines',
-      label: 'Answer lines',
-      hint: 'ruled space',
+      label: m.answerLines,
+      hint: m.answerLinesHint,
       icon: layoutIcons.answerLines,
       run: (afterId) => addLayoutElement(createAnswerLinesElement(), afterId),
     },
     {
       id: 'answerSpace',
-      label: 'Answer space',
-      hint: 'dotted QAB lines',
+      label: m.answerSpace,
+      hint: m.answerSpaceHint,
       icon: layoutIcons.answerSpace,
       run: (afterId) => addLayoutElement(createAnswerSpaceElement(), afterId),
     },
     {
       id: 'answerSpaceFill',
-      label: 'Answer space · fill',
-      hint: 'dotted lines to page end',
+      label: m.answerSpaceFill,
+      hint: m.answerSpaceFillHint,
       icon: layoutIcons.answerSpace,
       run: (afterId) => addLayoutElement(createAnswerSpaceElement(8, true), afterId),
     },
     {
       id: 'spacer',
-      label: 'Blank space',
-      hint: '留白',
+      label: m.spacer,
+      hint: m.spacerHint,
       icon: layoutIcons.spacer,
       run: (afterId) => addLayoutElement(createSpacerElement(), afterId),
     },
     {
       id: 'divider',
-      label: 'Divider',
-      hint: '分隔線',
+      label: m.divider,
+      hint: m.dividerHint,
       icon: layoutIcons.divider,
       run: (afterId) => addLayoutElement(createDividerElement(), afterId),
     },
     {
       id: 'pageBreak',
-      label: 'New page',
-      hint: 'start a new page · 分頁',
+      label: m.pageBreak,
+      hint: m.pageBreakHint,
       icon: layoutIcons.pageBreak,
       run: (afterId) => addLayoutElement(createPageBreakElement(), afterId),
     },
@@ -300,21 +306,24 @@ export function AddRail() {
   const groups: Array<{
     id: Group;
     label: string;
+    title: string;
     sub: string;
     icon: React.ReactNode;
     entries: Entry[];
   }> = [
     {
       id: 'questions',
-      label: 'Question',
-      sub: '題目',
+      label: m.groupQuestion,
+      title: m.addQuestion,
+      sub: m.groupQuestionSub,
       icon: <PlusIcon size={20} />,
       entries: questionEntries,
     },
     {
       id: 'layout',
-      label: 'Element',
-      sub: '版面',
+      label: m.groupElement,
+      title: m.addElement,
+      sub: m.groupElementSub,
       icon: <TextIcon size={20} />,
       entries: offeredLayout,
     },
@@ -325,7 +334,7 @@ export function AddRail() {
   return (
     <div ref={rootRef} className="relative z-30 flex shrink-0">
       <nav
-        aria-label="Add to worksheet"
+        aria-label={m.nav}
         className="zone-dark flex w-[76px] shrink-0 flex-col items-center gap-1 border-r border-line bg-surface py-3"
       >
         {groups.map((group) => {
@@ -363,7 +372,7 @@ export function AddRail() {
         <div
           key={active.id}
           role="menu"
-          aria-label={`Add ${active.label}`}
+          aria-label={active.title}
           className="absolute left-[76px] top-2 w-[260px] origin-top-left animate-pop-in rounded-2xl border border-line bg-surface-raised p-2 shadow-2xl"
         >
           {/* The destination, stated before the click rather than discovered after it.
@@ -371,21 +380,21 @@ export function AddRail() {
               that changes as the teacher moves around the document, so it gets the
               colour and the first stays a quiet section label. */}
           <p className="px-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
-            Add {active.label}
+            {active.title}
           </p>
           <p className="px-2 pb-1.5 text-[11px] text-ink-muted">
             {anchorLabel ? (
               <>
-                Inserts after <span className="font-semibold text-ink">{anchorLabel}</span>
+                {m.insertsAfterPre}<span className="font-semibold text-ink">{anchorLabel}</span>{m.insertsAfterPost}
               </>
             ) : splitDestinations && active.id === 'questions' ? (
-              'Each type goes to its own section'
+              m.eachOwnSection
             ) : sharedSection && active.id === 'questions' ? (
               <>
-                Inserts in <span className="font-semibold text-ink">{sharedSection}</span>
+                {m.insertsInPre}<span className="font-semibold text-ink">{sharedSection}</span>{m.insertsInPost}
               </>
             ) : (
-              'Inserts at the end'
+              m.insertsAtEnd
             )}
           </p>
           {active.entries.map((entry) => (
@@ -404,7 +413,7 @@ export function AddRail() {
                 <span className="block truncate text-[13px] font-medium text-ink">
                   {entry.label}
                 </span>
-                <span className="block truncate text-[11px] text-ink-subtle">{entry.hint}</span>
+                {entry.hint && <span className="block truncate text-[11px] text-ink-subtle">{entry.hint}</span>}
               </span>
             </button>
           ))}

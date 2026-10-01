@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { worksheetTitle } from '@/storage';
+import { useMessages } from '@/i18n/language';
+import { SIDEBAR_MESSAGES } from './shell.messages';
 
 /**
  * What a typed name does to the stored name — the whole decision, as a pure function.
@@ -46,6 +48,7 @@ export function renamedName(current: string, typed: string): string | undefined 
 export function DocumentName() {
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const updateWorksheet = useWorksheetStore((s) => s.updateWorksheet);
+  const m = useMessages(SIDEBAR_MESSAGES);
 
   const name = worksheetTitle(worksheet);
   // The box opens on the stored name only. `worksheetTitle` may be showing a fallback —
@@ -80,8 +83,8 @@ export function DocumentName() {
         type="text"
         value={draft}
         autoFocus
-        aria-label="Document name"
-        placeholder="Document name"
+        aria-label={m.documentName}
+        placeholder={m.documentName}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={commit}
         onKeyDown={(event) => {
@@ -105,7 +108,7 @@ export function DocumentName() {
     <button
       type="button"
       onClick={open}
-      title={`${name}. Click to rename`}
+      title={m.renameTitle(name)}
       /* `max-w` with a truncate so a long title cannot push the export buttons off the
          bar; `min-w-0` lets it give way further when the bar is short. The full name
          stays available as the tooltip. */

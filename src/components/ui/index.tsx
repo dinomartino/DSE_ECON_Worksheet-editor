@@ -1,6 +1,8 @@
 'use client';
 
 import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react';
+import { useMessages } from '@/i18n/language';
+import { UI_MESSAGES } from './messages';
 
 /**
  * Shared UI primitives.
@@ -407,14 +409,15 @@ export function FigureAlignField({
   value: 'left' | 'center' | 'right' | undefined;
   onChange: (align: 'left' | 'center' | 'right' | undefined) => void;
 }) {
+  const m = useMessages(UI_MESSAGES);
   return (
     <Segmented<'left' | 'center' | 'right'>
-      label="Position"
+      label={m.position}
       value={value ?? 'center'}
       options={[
-        { value: 'left', label: 'Left', title: 'Align the figure with the text column' },
-        { value: 'center', label: 'Centre', title: 'Centre the figure (the usual choice)' },
-        { value: 'right', label: 'Right', title: 'Align the figure to the right margin' },
+        { value: 'left', label: m.left, title: m.alignLeftHint },
+        { value: 'center', label: m.centre, title: m.alignCentreHint },
+        { value: 'right', label: m.right, title: m.alignRightHint },
       ]}
       // Centre is written as *nothing*, so an untouched figure stores no alignment and
       // exports byte-identically to what it did before this control existed.

@@ -7,6 +7,8 @@ import { useWorksheetStore } from '@/store/worksheetStore';
 import { ChevronRightIcon, TrashIcon } from '@/components/ui/icons';
 import { useModalLayer } from '@/components/ui/modalLayer';
 import { PageThumb } from './PageThumb';
+import { useMessages, useUiLanguage } from '@/i18n/language';
+import { PAGE_RAIL_MESSAGES } from './shell.messages';
 
 /**
  * The page rail: the one view organised the way the output is. Pages are derived, so
@@ -72,6 +74,7 @@ export function PageRail({
   /** Collapse the rail. */
   onToggle?: () => void;
 }) {
+  const m = useMessages(PAGE_RAIL_MESSAGES);
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const removeMany = useWorksheetStore((s) => s.removeMany);
   const movePage = useWorksheetStore((s) => s.movePage);
@@ -182,16 +185,16 @@ export function PageRail({
       <div
         className="group/page-rail flex shrink-0 flex-col border-r border-line bg-surface"
         style={{ width: RAIL_WIDTH_PX }}
-        aria-label="Pages"
+        aria-label={m.pages}
       >
         <div className="flex items-center justify-between px-2 pb-1.5 pt-2.5">
           <p className="text-[9px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
-            Pages
+            {m.pages}
           </p>
           <button
             type="button"
-            aria-label="Collapse page rail"
-            title="Collapse"
+            aria-label={m.collapseAria}
+            title={m.collapse}
             onClick={onToggle}
             className="flex cursor-pointer items-center justify-center rounded-md p-0.5 text-ink-muted opacity-0 transition-[background-color,color,opacity,transform,scale] duration-150 ease-out-soft hover:bg-surface-hover hover:text-ink focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97] group-hover/page-rail:opacity-100"
           >
@@ -216,7 +219,7 @@ export function PageRail({
                 <button
                   type="button"
                   aria-current={activeIndex === -1}
-                  aria-label={`Cover page${activeIndex === -1 ? ', current' : ''}`}
+                  aria-label={m.coverAria(activeIndex === -1)}
                   onClick={() => goToPage(-1)}
                   className={`group/page relative block cursor-pointer overflow-hidden rounded-[3px] border bg-white outline-2 transition-[border-color,outline-color,opacity,transform,scale] duration-150 ease-out-soft focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.98] ${
                     activeIndex === -1
@@ -237,7 +240,7 @@ export function PageRail({
                     activeIndex === -1 ? 'font-semibold text-ink' : 'text-ink-subtle'
                   }`}
                 >
-                  Cover
+                  {m.cover}
                 </span>
               </li>
             )}
@@ -264,7 +267,7 @@ export function PageRail({
                       pages.length > 1 && isActionable(page) && !receivingItem
                     }
                     aria-current={isActive}
-                    aria-label={`Page ${index + 1}${isActive ? ', current' : ''}`}
+                    aria-label={m.pageAria(index + 1, isActive)}
                     onClick={() => goToPage(index)}
                     onDragStart={(event) => {
                       event.dataTransfer.effectAllowed = 'move';
@@ -350,8 +353,8 @@ export function PageRail({
                       <span
                         role="button"
                         tabIndex={-1}
-                        aria-label={`Delete page ${index + 1}`}
-                        title={`Delete page ${index + 1}`}
+                        aria-label={m.deletePage(index + 1)}
+                        title={m.deletePage(index + 1)}
                         onClick={(event) => {
                           event.stopPropagation();
                           setConfirming(index);
@@ -421,6 +424,8 @@ function ConfirmDelete({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const m = useMessages(PAGE_RAIL_MESSAGES);
+  const bilingual = useUiLanguage() === 'en';
   const confirmRef = useRef<HTMLButtonElement>(null);
 
   // A real modal: it claims the keyboard so Delete cannot reach the page underneath and
@@ -451,22 +456,25 @@ function ConfirmDelete({
         className="w-full max-w-[340px] animate-dialog-in rounded-2xl border border-line bg-surface-raised p-5 shadow-2xl"
       >
         <h2 id="delete-page-title" className="text-[15px] font-semibold text-ink">
-          Delete page {pageNumber}?
+          {m.deleteTitle(pageNumber)}
         </h2>
         <p className="mt-1.5 text-[13px] leading-relaxed text-ink-muted">
-          {itemCount === 1
-            ? 'The one item on this page will be removed.'
-            : `All ${itemCount} items on this page will be removed.`}{' '}
-          <span className="text-ink-subtle">此頁的所有內容將被刪除。</span>
+          {m.itemsRemoved(itemCount)}
+          {bilingual && (
+            <>
+              {' '}
+              <span className="text-ink-subtle">此頁的所有內容將被刪除。</span>
+            </>
+          )}
         </p>
-        <p className="mt-1 text-[12px] text-ink-subtle">You can undo this with ⌘Z.</p>
+        <p className="mt-1 text-[12px] text-ink-subtle">{m.undoHint}</p>
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
             onClick={onCancel}
             className="cursor-pointer rounded-lg border border-line px-3 py-1.5 text-[13px] font-medium text-ink transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent active:scale-[0.97]"
           >
-            Cancel
+            {m.cancel}
           </button>
           <button
             ref={confirmRef}
@@ -474,7 +482,7 @@ function ConfirmDelete({
             onClick={onConfirm}
             className="cursor-pointer rounded-lg bg-danger px-3 py-1.5 text-[13px] font-semibold text-white transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger active:scale-[0.97]"
           >
-            Delete page
+            {m.deleteButton}
           </button>
         </div>
       </div>

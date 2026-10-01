@@ -11,6 +11,8 @@ import {
 import { createPortal } from 'react-dom';
 import { IconButton } from './index';
 import { MoreIcon } from './icons';
+import { useMessages } from '@/i18n/language';
+import { UI_MESSAGES } from './messages';
 
 /**
  * A small overflow menu.
@@ -44,7 +46,7 @@ export interface MenuItem {
 
 export function Menu({
   items,
-  label = 'More actions',
+  label,
   align = 'right',
   trigger,
   onOpen,
@@ -56,6 +58,7 @@ export function Menu({
   /** Fires each time the menu opens, for items that have to be looked up first. */
   onOpen?: () => void;
 }) {
+  const m = useMessages(UI_MESSAGES);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -128,7 +131,7 @@ export function Menu({
     <div ref={rootRef} className="relative shrink-0">
       <IconButton
         ref={triggerRef}
-        label={label}
+        label={label ?? m.moreActions}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? id : undefined}

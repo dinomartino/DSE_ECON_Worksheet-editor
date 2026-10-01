@@ -45,6 +45,9 @@ import {
   type PlannedFile,
   type SavedPlace,
 } from './exportSession';
+import { resolveMessages, type Messages } from '@/i18n/catalogue';
+import { uiLanguage, useMessages } from '@/i18n/language';
+import { EXPORT_MESSAGES } from './ExportDialog.messages';
 
 export interface ExportDialogProps {
   worksheet: Worksheet;
@@ -145,32 +148,33 @@ const exportSaver = (): ExportSaver => ({
  */
 function formatOptions(
   desktop: boolean,
+  m: Messages<typeof EXPORT_MESSAGES>,
 ): Array<{ value: ExportFormat; label: string; title: string; hint: string }> {
   return [
     {
       value: 'docx',
       label: '.docx',
-      title: 'Word document',
-      hint: 'Word, to keep editing. Other apps writes a CSV or spreadsheet instead.',
+      title: m.docxTitle,
+      hint: m.docxHint,
     },
     desktop
       ? {
           value: 'pdf',
           label: 'PDF',
-          title: 'A PDF file of the sheets',
-          hint: 'Saves the sheets as they look here to a PDF file.',
+          title: m.pdfDesktopTitle,
+          hint: m.pdfDesktopHint,
         }
       : {
           value: 'pdf',
           label: 'PDF',
-          title: 'Print, or Save as PDF',
-          hint: 'Prints the sheets as they look here; pick Save as PDF in the print dialog.',
+          title: m.pdfWebTitle,
+          hint: m.pdfWebHint,
         },
     {
       value: 'json',
       label: '.json',
-      title: 'The worksheet file, to open again in this app',
-      hint: 'The worksheet itself, to open again here. The options below do not apply.',
+      title: m.jsonTitle,
+      hint: m.jsonHint,
     },
   ];
 }
@@ -181,11 +185,13 @@ async function pdfFileName(worksheet: Worksheet, mode: OutputMode): Promise<stri
   return docxFileName(worksheet, mode).replace(/\.docx$/, '.pdf');
 }
 
-const APP_OPTIONS: Array<{ value: AppFormat; label: string; title: string; hint: string }> = [
-  { value: 'zipgrade', label: 'ZipGrade', title: 'ZipGrade answer-key CSV', hint: 'MCQ key for ZipGrade: Import Key CSV.' },
-  { value: 'keyCsv', label: 'Key CSV', title: 'Question, Answer CSV', hint: 'MCQ number and letter, for Excel or any scanner.' },
-  { value: 'kahoot', label: 'Kahoot', title: 'Kahoot spreadsheet (.xlsx)', hint: 'MCQs as a Kahoot quiz: Import spreadsheet.' },
-  { value: 'blooket', label: 'Blooket', title: 'Blooket CSV import', hint: 'MCQs as a Blooket set: CSV Import.' },
+const appOptions = (
+  m: Messages<typeof EXPORT_MESSAGES>,
+): Array<{ value: AppFormat; label: string; title: string; hint: string }> => [
+  { value: 'zipgrade', label: 'ZipGrade', title: m.zipgradeTitle, hint: m.zipgradeHint },
+  { value: 'keyCsv', label: 'Key CSV', title: m.keyCsvTitle, hint: m.keyCsvHint },
+  { value: 'kahoot', label: 'Kahoot', title: m.kahootTitle, hint: m.kahootHint },
+  { value: 'blooket', label: 'Blooket', title: m.blooketTitle, hint: m.blooketHint },
 ];
 
 /** Warnings shown before the cut: the rest is a count. */
@@ -201,19 +207,20 @@ function report(
   folder?: SavedPlace,
 ): void {
   if (saved.length === 0) return;
+  const m = resolveMessages(EXPORT_MESSAGES, uiLanguage());
   const leftOut = saved.reduce((sum, { file }) => sum + (file.leftOut ?? 0), 0);
   const message = withPlace(
     saved.length > 1
-      ? `Exported ${saved.length} files`
+      ? m.exportedFiles(saved.length)
       : saved[0].file.kind === 'answerKey'
-        ? 'Exported answer key'
+        ? m.exportedKey
         : saved[0].file.kind === 'apps'
-          ? `Exported .${saved[0].file.name.split('.').pop()}`
-          : 'Exported .docx',
+          ? m.exportedExt(saved[0].file.name.split('.').pop() ?? '')
+          : m.exportedDocx,
     saved,
     folder,
   );
-  onExported(leftOut > 0 ? `${message}, ${leftOut} left out` : message, saved[saved.length - 1].path);
+  onExported(leftOut > 0 ? m.leftOut(message, leftOut) : message, saved[saved.length - 1].path);
 }
 
 /**
@@ -232,11 +239,13 @@ export function ExportDialog({
   documents: givenDocuments,
   loadDocument = loadSaved,
 }: ExportDialogProps) {
+  const m = useMessages(EXPORT_MESSAGES);
   const [format, setFormat] = useState<ExportFormat>(initialFormat);
   const desktop = isDesktop();
   // Firefox and Safari: no picker, so the browser's own download setting decides where.
   const downloadsOnly = !canChooseLocation();
-  const formats = formatOptions(desktop);
+  const formats = formatOptions(desktop, m);
+  const apps = appOptions(m);
   const [chosenWhat, setWhat] = useState<ExportWhat>(initialWhat);
   // PDF prints what is on the page, and only the question paper is; the choice is kept
   // for when the format goes back to .docx.
@@ -324,7 +333,7 @@ export function ExportDialog({
     report(saved, onExported, run.folder);
     const notes = savedNotes(saved.map(({ file }) => file));
     if (notes.length > 0) {
-      setLeftOut(notes.join('; '));
+      setLeftOut(notes.join(resolveMessages(EXPORT_MESSAGES, uiLanguage()).noteSeparator));
       return;
     }
     onClose();
@@ -341,7 +350,7 @@ export function ExportDialog({
     try {
       finish(await deliverFiles(await plan(), exportSaver()), before, retry);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Export failed.');
+      setError(cause instanceof Error ? cause.message : m.failed);
     } finally {
       setBusy(false);
     }
@@ -363,7 +372,7 @@ export function ExportDialog({
         choose: async () => chooseSavePath(await pdfFileName(worksheet, printMode), PDF_FILTERS),
       });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Export failed.');
+      setError(cause instanceof Error ? cause.message : m.failed);
       return;
     } finally {
       setBusy(false);
@@ -383,7 +392,7 @@ export function ExportDialog({
       onExported(withPlace(saved.message, [saved]), saved.path);
       onClose();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Export failed.');
+      setError(cause instanceof Error ? cause.message : m.failed);
     } finally {
       setBusy(false);
     }
@@ -419,44 +428,44 @@ export function ExportDialog({
 
   return (
     <Dialog
-      title="Export"
-      description="A Word document, a PDF, or the worksheet file itself."
+      title={m.title}
+      description={m.description}
       width={480}
       onClose={close}
       footer={
         <>
           <Button variant={leftOut ? 'primary' : 'subtle'} onClick={leftOut ? onClose : close}>
-            {leftOut ? 'Done' : waiting ? 'Skip' : 'Cancel'}
+            {leftOut ? m.done : waiting ? m.skip : m.cancel}
           </Button>
           {leftOut ? null : next ? (
             <Button variant="primary" onClick={handleNext} disabled={busy}>
               <DownloadIcon size={15} />
               {next.kind === 'answerKey'
-                ? 'Download answer key'
+                ? m.downloadKey
                 : next.variant
-                  ? `Download version ${next.variant}`
-                  : 'Download question paper'}
+                  ? m.downloadVersion(next.variant)
+                  : m.downloadPaper}
             </Button>
           ) : pdf ? (
             <Button variant="primary" onClick={() => void handlePrint()} disabled={!onPrint || busy}>
               <PdfIcon size={15} />
-              {desktop ? 'Save PDF…' : 'Print to PDF…'}
+              {desktop ? m.savePdf : m.printPdf}
             </Button>
           ) : json ? (
             <Button variant="primary" onClick={() => void handleJson()} disabled={busy}>
               <DownloadIcon size={15} />
-              {busy ? 'Exporting…' : 'Export .json'}
+              {busy ? m.exporting : m.exportJson}
             </Button>
           ) : (
             <Button variant="primary" onClick={handleExport} disabled={busy || appExport?.empty}>
               <DownloadIcon size={15} />
               {busy
-                ? 'Exporting…'
+                ? m.exporting
                 : appExport
-                  ? `Export .${appExport.fileName.split('.').pop()}`
+                  ? m.exportExt(appExport.fileName.split('.').pop() ?? '')
                   : fileCount > 1
-                    ? `Export ${fileCount} files`
-                    : 'Export .docx'}
+                    ? m.exportFiles(fileCount)
+                    : m.exportDocx}
             </Button>
           )}
         </>
@@ -467,26 +476,23 @@ export function ExportDialog({
 
         {leftOut ? (
           <p role="status" className="animate-fade-in rounded-lg bg-warn-soft px-2.5 py-2 text-[13px] leading-relaxed text-warn-ink">
-            The answer key was exported, but {leftOut}.
+            {m.keyExportedBut(leftOut)}
           </p>
         ) : waiting ? (
           <div className="animate-fade-in space-y-3">
             <p role="status" className="text-[13px] leading-relaxed text-ink-subtle">
-              {waiting.saved.length === 1 && waiting.saved[0].file.kind === 'paper'
-                ? 'The question paper has downloaded.'
-                : 'The first file has downloaded.'}{' '}
-              Browsers allow one download per click, so the next file waits for yours.
+              {m.waitingNote(waiting.saved.length === 1 && waiting.saved[0].file.kind === 'paper')}
             </p>
             {savedNotes(waiting.pending).length > 0 && (
               <p className="rounded-lg bg-warn-soft px-2.5 py-2 text-xs text-warn-ink">
-                In the answer key, {savedNotes(waiting.pending).join('; ')}.
+                {m.inKey(savedNotes(waiting.pending).join(m.noteSeparator))}
               </p>
             )}
           </div>
         ) : (
           <>
-            <Field label="Format" hint={formats.find((option) => option.value === format)?.hint}>
-              <Segmented label="Format" value={format} onChange={setFormat} options={formats} />
+            <Field label={m.format} hint={formats.find((option) => option.value === format)?.hint}>
+              <Segmented label={m.format} value={format} onChange={setFormat} options={formats} />
             </Field>
 
             {/* Greyed in place rather than hidden, so switching format does not move the
@@ -496,34 +502,34 @@ export function ExportDialog({
               className={`space-y-5 transition-opacity duration-200 ease-out-soft ${json ? 'opacity-40' : ''}`}
             >
               <Field
-                label="What"
+                label={m.what}
                 hint={
                   pdf
-                    ? 'PDF prints the question paper only; the others export under .docx.'
+                    ? m.hintPdf
                     : what === 'both'
                       ? canChooseFolder()
-                        ? `${fileCount} files, saved together in a folder you choose.`
-                        : `${fileCount} files. Each downloads on its own click.`
+                        ? m.hintBothFolder(fileCount)
+                        : m.hintBothClicks(fileCount)
                       : what === 'apps'
-                        ? 'The MCQs, for a bubble-sheet scanner or a quiz game.'
-                        : 'The answer key is a separate document: answer grid and marking scheme.'
+                        ? m.hintApps
+                        : m.hintKey
                 }
               >
                 <Segmented
-                  label="What to export"
+                  label={m.whatAria}
                   value={what}
                   onChange={setWhat}
                   options={[
-                    { value: 'paper', label: 'Question paper' },
+                    { value: 'paper', label: m.paper },
                     ...(
                       [
-                        { value: 'answerKey', label: 'Answer key' },
-                        { value: 'both', label: 'Both' },
-                        { value: 'apps', label: 'Other apps', title: 'Answer-key CSV, Kahoot or Blooket' },
+                        { value: 'answerKey', label: m.key },
+                        { value: 'both', label: m.both },
+                        { value: 'apps', label: m.apps, title: m.appsTitle },
                       ] as const
                     ).map((option) =>
                       pdf
-                        ? { ...option, disabled: true, title: 'Not as PDF: export it as .docx' }
+                        ? { ...option, disabled: true, title: m.notPdf }
                         : option,
                     ),
                   ]}
@@ -540,19 +546,19 @@ export function ExportDialog({
               )}
 
               {appExport && (
-                <Field label="App" hint={APP_OPTIONS.find((option) => option.value === app)?.hint}>
-                  <Segmented label="App" value={app} onChange={setApp} options={APP_OPTIONS} />
+                <Field label={m.app} hint={apps.find((option) => option.value === app)?.hint}>
+                  <Segmented label={m.app} value={app} onChange={setApp} options={apps} />
                   {(appExport.empty || appExport.warnings.length > 0) && (
                     <ul role="status" className="space-y-1 rounded-lg bg-warn-soft px-2.5 py-2 text-xs text-warn-ink">
                       {appExport.empty ? (
-                        <li>No multiple-choice questions to export.</li>
+                        <li>{m.noMcq}</li>
                       ) : (
                         <>
                           {appExport.warnings.slice(0, WARNINGS_SHOWN).map((warning) => (
                             <li key={warning}>{warning}</li>
                           ))}
                           {appExport.warnings.length > WARNINGS_SHOWN && (
-                            <li>And {appExport.warnings.length - WARNINGS_SHOWN} more.</li>
+                            <li>{m.andMore(appExport.warnings.length - WARNINGS_SHOWN)}</li>
                           )}
                         </>
                       )}
@@ -562,21 +568,17 @@ export function ExportDialog({
               )}
 
               <Field
-                label="Language"
-                hint={
-                  pdf
-                    ? `The page switches to this language and version, then ${desktop ? 'saves' : 'prints'}.`
-                    : undefined
-                }
+                label={m.language}
+                hint={pdf ? m.languageHint(desktop) : undefined}
               >
                 <Segmented
-                  label="Language"
+                  label={m.language}
                   value={language}
                   onChange={setLanguage}
                   options={[
-                    { value: 'en', label: 'EN', title: 'English only' },
-                    { value: 'zh', label: '中文', title: '中文 only' },
-                    { value: 'bilingual', label: 'EN+中', title: 'Bilingual' },
+                    { value: 'en', label: 'EN', title: m.langEn },
+                    { value: 'zh', label: '中文', title: m.langZh },
+                    { value: 'bilingual', label: 'EN+中', title: m.langBoth },
                   ]}
                 />
               </Field>
@@ -587,45 +589,37 @@ export function ExportDialog({
                 className={`transition-opacity duration-200 ease-out-soft ${keyOnly ? 'opacity-40' : ''}`}
               >
                 <Field
-                  label="Student or teacher copy"
-                  hint={
-                    keyOnly
-                      ? 'Applies to the question paper only.'
-                      : 'The teacher copy shows the answers inline.'
-                  }
+                  label={m.copy}
+                  hint={keyOnly ? m.copyKeyOnly : m.copyHint}
                 >
                   <Segmented
-                    label="Student or teacher copy"
+                    label={m.copy}
                     value={version}
                     onChange={setVersion}
                     options={[
-                      { value: 'student', label: 'Student', title: 'Student version: answers hidden' },
-                      { value: 'teacher', label: 'Teacher', title: 'Teacher version / 教師版: answers shown' },
+                      { value: 'student', label: m.student, title: m.studentTitle },
+                      { value: 'teacher', label: m.teacher, title: m.teacherTitle },
                     ]}
                   />
                 </Field>
                 {letters.length > 0 && (
                   <div className="mt-5">
                     <Field
-                      label="Shuffled versions"
-                      hint={
-                        pdf
-                          ? 'Options shuffle per version. PDF prints one version at a time.'
-                          : 'Options shuffle per version. One file each; the answer key covers them all.'
-                      }
+                      label={m.shuffled}
+                      hint={pdf ? m.shuffledPdf : m.shuffledFiles}
                     >
                       <Segmented
-                        label="Shuffled versions"
+                        label={m.shuffled}
                         value={pdf ? (printVariant ?? 'all') : variants && variants.length === 1 ? variants[0] : 'all'}
                         onChange={setVariantChoice}
                         options={[
                           {
                             value: 'all',
-                            label: 'All',
-                            title: pdf ? 'PDF prints one version at a time' : `Versions ${letters.join(', ')}`,
+                            label: m.all,
+                            title: pdf ? m.allPdf : m.allVersions(letters.join(', ')),
                             disabled: pdf,
                           },
-                          ...letters.map((letter) => ({ value: letter, label: letter, title: `Version ${letter} only` })),
+                          ...letters.map((letter) => ({ value: letter, label: letter, title: m.onlyVersion(letter) })),
                         ]}
                       />
                     </Field>
@@ -640,20 +634,16 @@ export function ExportDialog({
                   className={`transition-opacity duration-200 ease-out-soft ${keyOnly ? 'opacity-40' : ''}`}
                 >
                   <Field
-                    label="Include"
-                    hint={
-                      pdf
-                        ? 'Untick to leave it out of this print; the page gets it back after.'
-                        : 'Untick to leave it out of the question paper.'
-                    }
+                    label={m.include}
+                    hint={pdf ? m.includePdf : m.includePaper}
                   >
                     <div className="flex flex-wrap gap-x-5 gap-y-1.5">
                       {omittable.cover && (
-                        <CheckField label="Cover page" checked={includeCover} onChange={setIncludeCover} />
+                        <CheckField label={m.cover} checked={includeCover} onChange={setIncludeCover} />
                       )}
                       {omittable.answerSpace && (
                         <CheckField
-                          label="Answer space"
+                          label={m.answerSpace}
                           checked={includeAnswerSpace}
                           onChange={setIncludeAnswerSpace}
                         />
@@ -668,8 +658,7 @@ export function ExportDialog({
 
         {downloadsOnly && !pdf && !leftOut && (
           <p className="text-[11px] leading-relaxed text-ink-muted">
-            Your browser saves to its Downloads folder. To choose a folder each time, turn on
-            “Ask where to save” in the browser’s settings.
+            {m.downloadsOnly}
           </p>
         )}
 

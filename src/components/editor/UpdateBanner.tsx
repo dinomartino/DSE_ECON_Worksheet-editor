@@ -4,6 +4,8 @@ import { useEffect } from 'react';
 import { checkOnLaunch, useUpdateStore, type UpdateStatus } from '@/desktop/updateStore';
 import { Button, IconButton } from '@/components/ui';
 import { RefreshIcon } from '@/components/ui/icons';
+import { useMessages } from '@/i18n/language';
+import { UPDATE_MESSAGES } from './shell.messages';
 
 /**
  * "Version X is ready" — desktop only, shown once the update has downloaded silently.
@@ -26,6 +28,7 @@ export function UpdateBar({
   onInstall: () => void;
   onDismiss: () => void;
 }) {
+  const m = useMessages(UPDATE_MESSAGES);
   return (
     <div
       data-print-hide
@@ -34,10 +37,10 @@ export function UpdateBar({
     >
       <span className="min-w-0 flex-1 truncate">
         {state === 'installing'
-          ? `Installing version ${version}. The app will restart in a moment.`
+          ? m.installing(version)
           : state === 'failed'
-            ? `Version ${version} could not be installed. Try again, or download it from the releases page.`
-            : `Version ${version} is ready. Restart to finish updating. Your work is saved first.`}
+            ? m.failed(version)
+            : m.ready(version)}
       </span>
       <Button
         size="sm"
@@ -45,10 +48,10 @@ export function UpdateBar({
         disabled={state === 'installing'}
         onClick={onInstall}
       >
-        {state === 'failed' ? 'Try again' : 'Restart now'}
+        {state === 'failed' ? m.tryAgain : m.restartNow}
       </Button>
       <Button size="sm" variant="subtle" onClick={onDismiss}>
-        Later
+        {m.later}
       </Button>
     </div>
   );
@@ -95,13 +98,14 @@ export function VersionLine() {
   const available = useUpdateStore((s) => s.available);
   const check = useUpdateStore((s) => s.check);
   const restart = useUpdateStore((s) => s.restart);
+  const m = useMessages(UPDATE_MESSAGES);
 
   useEffect(checkOnLaunch, []);
   if (current === null && status === 'idle') return null;
 
   return (
     <p data-print-hide className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-ink-subtle">
-      <span className="tabular-nums">Version {current ?? '…'}</span>
+      <span className="tabular-nums">{m.versionLine(current ?? '…')}</span>
       <span aria-hidden>·</span>
       <VersionAction status={status} available={available} onCheck={() => void check()} onInstall={() => void restart()} />
     </p>
@@ -119,45 +123,46 @@ function VersionAction({
   onCheck: () => void;
   onInstall: () => void;
 }) {
+  const m = useMessages(UPDATE_MESSAGES);
   const link =
     'cursor-pointer font-medium text-accent-ink underline decoration-line-strong underline-offset-4 transition-colors duration-150 ease-out-soft hover:decoration-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent';
   switch (status) {
     case 'checking':
-      return <span role="status">Checking for updates…</span>;
+      return <span role="status">{m.checking}</span>;
     case 'downloading':
-      return <span role="status">Downloading {available} in the background…</span>;
+      return <span role="status">{m.downloadingBackground(String(available))}</span>;
     case 'installing':
-      return <span role="status">Installing {available}. The app will restart…</span>;
+      return <span role="status">{m.installingShort(String(available))}</span>;
     case 'ready':
     case 'installFailed':
       return (
         <>
-          <span>{status === 'installFailed' ? `${available} could not be installed.` : `${available} is ready.`}</span>
+          <span>{status === 'installFailed' ? m.installFailedShort(String(available)) : m.readyShort(String(available))}</span>
           <button type="button" className={link} onClick={onInstall}>
-            {status === 'installFailed' ? 'Try again' : 'Restart to update'}
+            {status === 'installFailed' ? m.tryAgain : m.restartToUpdate}
           </button>
         </>
       );
     case 'downloadFailed':
       return (
         <>
-          <span>{available} could not be downloaded.</span>
+          <span>{m.downloadFailed(String(available))}</span>
           <button type="button" className={link} onClick={onCheck}>
-            Try again
+            {m.tryAgain}
           </button>
         </>
       );
     case 'failed':
       return (
         <>
-          <span>Could not check for updates</span>
+          <span>{m.checkFailed}</span>
           <CheckButton onCheck={onCheck} />
         </>
       );
     case 'current':
       return (
         <>
-          <span>Up to date</span>
+          <span>{m.upToDate}</span>
           <CheckButton onCheck={onCheck} />
         </>
       );
@@ -168,8 +173,9 @@ function VersionAction({
 
 /** "Check for updates" as a small refresh glyph: the line stays one short row. */
 function CheckButton({ onCheck }: { onCheck: () => void }) {
+  const m = useMessages(UPDATE_MESSAGES);
   return (
-    <IconButton label="Check for updates" onClick={onCheck} className="-my-1.5 h-6 w-6">
+    <IconButton label={m.checkUpdates} onClick={onCheck} className="-my-1.5 h-6 w-6">
       <RefreshIcon size={13} />
     </IconButton>
   );

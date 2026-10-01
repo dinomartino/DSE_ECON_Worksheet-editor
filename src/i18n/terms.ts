@@ -116,6 +116,7 @@ export const STANDARD_TRANSLATIONS: Readonly<Record<string, string>> = {
   'Send feedback': '意見回饋',
   "What's new": '最新功能',
   'Open a file…': '開啟檔案…',
+  'Setup (page setup)': '頁面設定',
   // Added with the Settings and start screen catalogues.
   Light: '淺色',
   Dark: '深色',

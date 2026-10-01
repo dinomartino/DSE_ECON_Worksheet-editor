@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { IconButton } from './index';
 import { MinusIcon, PlusIcon } from './icons';
+import { useMessages } from '@/i18n/language';
+import { UI_MESSAGES } from './messages';
 
 /**
  * The size of an answer-lines block or a spacer, editable in place.
@@ -35,6 +37,7 @@ export function SizeStepper({
   label: string;
   onCommit: (next: number) => void;
 }) {
+  const m = useMessages(UI_MESSAGES);
   const [draft, setDraft] = useState<string | undefined>();
 
   const commit = (raw: string) => {
@@ -47,7 +50,7 @@ export function SizeStepper({
   return (
     <span className="flex min-w-0 flex-1 items-center gap-1">
       <IconButton
-        label={`Fewer (${label})`}
+        label={m.fewer(label)}
         disabled={value <= min}
         onClick={() => onCommit(Math.max(min, value - step))}
       >
@@ -77,7 +80,7 @@ export function SizeStepper({
         onPointerDown={(event) => event.stopPropagation()}
         className="w-9 rounded border border-line bg-surface px-1 py-0.5 text-center text-xs tabular-nums text-ink transition-colors duration-150 ease-out-soft hover:border-line-strong focus:border-accent focus:outline-none"
       />
-      <IconButton label={`More (${label})`} onClick={() => onCommit(value + step)}>
+      <IconButton label={m.more(label)} onClick={() => onCommit(value + step)}>
         <PlusIcon size={13} />
       </IconButton>
       <span className="truncate text-[11px] text-ink-subtle">{unit}</span>
