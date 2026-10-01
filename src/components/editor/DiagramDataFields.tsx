@@ -6,7 +6,10 @@ import { emptyBiText } from '@/model/text';
 import type { ForumBubble, ForumChart, ForumSlot, PieSlice } from '@/model/diagram';
 import { prepareImageForStorage } from '@/export/imageImport';
 import { Button, IconButton, NumberField, Segmented } from '@/components/ui';
+import type { TextKey } from '@/i18n/catalogue';
+import { useMessages } from '@/i18n/language';
 import { BiTextField } from './BiTextField';
+import { DIAGRAM_PANEL_MESSAGES } from './diagramEditing.messages';
 
 /*
  * The data of the chart kinds not drawn on axes: a pie's slices and a forum's bubbles.
@@ -15,11 +18,11 @@ import { BiTextField } from './BiTextField';
  */
 
 /** The four corner slots, in reading order, with the labels the picker shows. */
-const FORUM_SLOTS: Array<{ value: ForumSlot; label: string; title: string }> = [
-  { value: 'topLeft', label: '◤', title: 'Top left' },
-  { value: 'topRight', label: '◥', title: 'Top right' },
-  { value: 'bottomLeft', label: '◣', title: 'Bottom left' },
-  { value: 'bottomRight', label: '◢', title: 'Bottom right' },
+const FORUM_SLOTS: Array<{ value: ForumSlot; label: string; title: TextKey<typeof DIAGRAM_PANEL_MESSAGES> }> = [
+  { value: 'topLeft', label: '◤', title: 'topLeft' },
+  { value: 'topRight', label: '◥', title: 'topRight' },
+  { value: 'bottomLeft', label: '◣', title: 'bottomLeft' },
+  { value: 'bottomRight', label: '◢', title: 'bottomRight' },
 ];
 
 /**
@@ -30,14 +33,16 @@ const FORUM_SLOTS: Array<{ value: ForumSlot; label: string; title: string }> = [
 export function ForumFields({
   forum,
   onChange,
-  resizeHint = 'Click the preview above to resize a bubble by its edge.',
+  resizeHint,
 }: {
   forum: ForumChart;
   onChange: (forum: ForumChart) => void;
   /** Where the bubble widths are dragged: the worksheet's preview opens a canvas. */
   resizeHint?: string;
 }) {
+  const m = useMessages(DIAGRAM_PANEL_MESSAGES);
   const fileInput = useRef<HTMLInputElement>(null);
+  const slotOptions = FORUM_SLOTS.map((slot) => ({ ...slot, title: m[slot.title] }));
   const bubbles = forum.bubbles;
   const patch = (id: string, change: Partial<ForumBubble>) =>
     onChange({
@@ -66,7 +71,7 @@ export function ForumFields({
   return (
     <div className="space-y-1">
       <span className="text-[11px] font-medium text-ink-subtle">
-        Speech bubbles, around the picture
+        {m.bubblesHeading}
       </span>
       {bubbles.map((bubble, index) => (
         <div key={bubble.id} className="space-y-1 rounded border border-line p-1.5">
@@ -74,20 +79,20 @@ export function ForumFields({
             <div className="min-w-0 flex-1">
               <BiTextField
                 translate={{ kind: 'speaker', fallsBack: true }}
-                ariaLabel={`Bubble ${index + 1} speaker`}
+                ariaLabel={m.bubbleSpeaker(index + 1)}
                 value={bubble.speaker}
                 onChange={(speaker) => patch(bubble.id, { speaker })}
                 rows={1}
               />
             </div>
             <Segmented<ForumSlot>
-              label={`Bubble ${index + 1} corner`}
+              label={m.bubbleCorner(index + 1)}
               value={bubble.slot}
-              options={FORUM_SLOTS}
+              options={slotOptions}
               onChange={(slot) => patch(bubble.id, { slot })}
             />
             <IconButton
-              label={`Remove bubble ${index + 1}`}
+              label={m.bubbleRemove(index + 1)}
               onClick={() =>
                 onChange({
                   ...forum,
@@ -100,7 +105,7 @@ export function ForumFields({
           </div>
           <BiTextField
             translate={{ kind: 'bubble', fallsBack: true }}
-            ariaLabel={`Bubble ${index + 1} view`}
+            ariaLabel={m.bubbleView(index + 1)}
             value={bubble.text}
             onChange={(text) => patch(bubble.id, { text })}
             rows={2}
@@ -126,10 +131,10 @@ export function ForumFields({
             });
           }}
         >
-          + Bubble
+          {m.addBubble}
         </Button>
         <Button size="sm" variant="subtle" onClick={() => fileInput.current?.click()}>
-          {forum.image ? 'Replace picture' : '+ Picture'}
+          {forum.image ? m.replacePicture : m.addPicture}
         </Button>
         {forum.image && (
           <Button
@@ -137,7 +142,7 @@ export function ForumFields({
             variant="subtle"
             onClick={() => onChange({ ...forum, image: undefined })}
           >
-            Remove picture
+            {m.removePicture}
           </Button>
         )}
         <input
@@ -154,7 +159,7 @@ export function ForumFields({
         />
       </div>
       <span className="text-[11px] text-ink-subtle">
-        Bubbles point at the picture from their corner. {resizeHint}
+        {m.bubblesPoint} {resizeHint ?? m.resizeHint}
       </span>
     </div>
   );
@@ -175,33 +180,34 @@ export function PieSliceFields({
   slices: PieSlice[];
   onChange: (slices: PieSlice[]) => void;
 }) {
+  const m = useMessages(DIAGRAM_PANEL_MESSAGES);
   const patch = (id: string, change: Partial<PieSlice>) =>
     onChange(slices.map((slice) => (slice.id === id ? { ...slice, ...change } : slice)));
 
   return (
     <div className="space-y-1">
       <span className="text-[11px] font-medium text-ink-subtle">
-        Slices, clockwise from the top
+        {m.slicesHeading}
       </span>
       {slices.map((slice, index) => (
         <div key={slice.id} className="flex items-center gap-1">
           <div className="min-w-0 flex-1">
             <BiTextField
               translate={{ kind: 'diagramLabel', fallsBack: true }}
-              ariaLabel={`Slice ${index + 1} name`}
+              ariaLabel={m.sliceName(index + 1)}
               value={slice.label}
               onChange={(label) => patch(slice.id, { label })}
               rows={1}
             />
           </div>
           <NumberField
-            label="Share"
+            label={m.share}
             min={0}
             value={slice.value}
             onChange={(value) => patch(slice.id, { value })}
           />
           <IconButton
-            label={`Remove slice ${index + 1}`}
+            label={m.sliceRemove(index + 1)}
             onClick={() => onChange(slices.filter((other) => other.id !== slice.id))}
           >
             ✕
@@ -216,10 +222,10 @@ export function PieSliceFields({
             onChange([...slices, { id: nanoid(10), label: emptyBiText(), value: 10 }])
           }
         >
-          + Slice
+          {m.addSlice}
         </Button>
         <span className="text-[11px] text-ink-subtle">
-          Percentages are computed from the shares.
+          {m.percentNote}
         </span>
       </div>
     </div>

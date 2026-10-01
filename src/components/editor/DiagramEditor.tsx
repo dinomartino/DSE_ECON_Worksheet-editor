@@ -9,7 +9,10 @@ import type { CaptionPlacement, DiagramBlock } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { diagramSize, diagramSvg } from '@/render/diagram';
 import { Button, FigureAlignField, NumberField, Segmented } from '@/components/ui';
+import { sideOf } from '@/i18n/catalogue';
+import { useMessages, useUiLanguage } from '@/i18n/language';
 import { BiTextField } from './BiTextField';
+import { DIAGRAM_PANEL_MESSAGES } from './diagramEditing.messages';
 import { DiagramCanvas } from './DiagramCanvas';
 import { ForumFields, PieSliceFields } from './DiagramDataFields';
 import { DiagramTemplatePopover } from './DiagramTemplatePicker';
@@ -31,6 +34,8 @@ interface Props {
 }
 
 export function DiagramEditor({ block, onChange }: Props) {
+  const m = useMessages(DIAGRAM_PANEL_MESSAGES);
+  const side = sideOf(useUiLanguage());
   const language = useWorksheetStore((s) => s.mode.language);
   const fonts = useWorksheetStore((s) => s.worksheet.fonts);
   const [drawing, setDrawing] = useState(false);
@@ -45,9 +50,9 @@ export function DiagramEditor({ block, onChange }: Props) {
     let next: { text: string; tone: 'ok' | 'error' };
     try {
       await graphStore.save(graph);
-      next = { tone: 'ok', text: `Saved to Graphs as “${graph.name}”.` };
+      next = { tone: 'ok', text: m.savedToGraphs(graph.name) };
     } catch {
-      next = { tone: 'error', text: 'Could not save to Graphs. Storage may be full.' };
+      next = { tone: 'error', text: m.saveFailed };
     }
     setNotice(next);
     window.clearTimeout(noticeTimer.current);
@@ -104,10 +109,10 @@ export function DiagramEditor({ block, onChange }: Props) {
           type="button"
           title={
             diagram.flow
-              ? 'Edit this flow chart'
+              ? m.editFlowTitle
               : diagram.forum
-                ? 'Resize the bubbles on this figure'
-                : 'Draw on this diagram'
+                ? m.resizeForumTitle
+                : m.drawTitle
           }
           onClick={() => setDrawing(true)}
           className="group/preview relative block w-full overflow-hidden rounded border border-line bg-surface [&_svg]:h-auto [&_svg]:w-full "
@@ -116,7 +121,7 @@ export function DiagramEditor({ block, onChange }: Props) {
           <span dangerouslySetInnerHTML={{ __html: preview }} />
           <span className="absolute inset-0 flex items-center justify-center bg-accent/0 opacity-0 transition-[background-color,opacity] duration-150 ease-out-soft group-hover/preview:bg-accent/10 group-hover/preview:opacity-100 group-active/preview:bg-accent/15">
             <span className="translate-y-0.5 rounded-md bg-ink/80 px-2 py-1 text-[11px] font-medium leading-none text-white transition-transform duration-150 ease-out-soft group-hover/preview:translate-y-0">
-              {diagram.flow ? 'Edit' : diagram.forum ? 'Resize' : 'Draw'}
+              {diagram.flow ? m.overlayEdit : diagram.forum ? m.overlayResize : m.overlayDraw}
             </span>
           </span>
         </button>
@@ -160,12 +165,12 @@ export function DiagramEditor({ block, onChange }: Props) {
            same division the axes diagrams use. */
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={() => setDrawing(true)}>
-            ✎ Edit flow chart
+            {m.editFlowButton}
           </Button>
           <span className="text-[11px] text-ink-subtle">
             {diagram.flow.nodes.length === 0
-              ? 'Empty. Add boxes and arrows on the canvas'
-              : `${diagram.flow.nodes.length} ${diagram.flow.nodes.length === 1 ? 'box' : 'boxes'} · ${diagram.flow.arrows.length} ${diagram.flow.arrows.length === 1 ? 'arrow' : 'arrows'}`}
+              ? m.flowEmpty
+              : m.flowCount(diagram.flow.nodes.length, diagram.flow.arrows.length)}
           </span>
         </div>
       ) : (
@@ -178,20 +183,20 @@ export function DiagramEditor({ block, onChange }: Props) {
            to list them. */
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={() => setDrawing(true)}>
-            ✎ Draw
+            {m.drawButton}
           </Button>
           <span className="text-[11px] text-ink-subtle">
             {elementCount === 0
-              ? 'Empty. Draw curves, points and labels'
-              : `${elementCount} ${elementCount === 1 ? 'element' : 'elements'} · edit them on the canvas`}
+              ? m.drawEmpty
+              : m.elementCount(elementCount)}
           </span>
         </div>
       )}
 
       {/* A copy into Graphs 圖表庫. Nothing stays linked. */}
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" variant="subtle" onClick={() => void saveToGraphs()} title="Keep a copy in Graphs 圖表庫 to reuse or copy into Word">
-          Save to Graphs
+        <Button size="sm" variant="subtle" onClick={() => void saveToGraphs()} title={m.saveToGraphsHint}>
+          {m.saveToGraphs}
         </Button>
         {notice && (
           <span
@@ -209,7 +214,7 @@ export function DiagramEditor({ block, onChange }: Props) {
           squeezing instead clipped "Width" off the edge. */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-2">
-          <span className="text-[11px] text-ink-subtle">Template</span>
+          <span className="text-[11px] text-ink-subtle">{m.template}</span>
           {/* A visual picker, not a name list: a teacher chooses a *shape*, and the
               cards render each template through the real renderer. */}
           <DiagramTemplatePopover
@@ -219,8 +224,8 @@ export function DiagramEditor({ block, onChange }: Props) {
                 {plain(
                   DIAGRAM_TEMPLATES.find(
                     (template) => template.id === (diagram.templateId ?? 'blank'),
-                  )?.name.en ?? [],
-                ) || 'Blank axes'}{' '}
+                  )?.name[side] ?? [],
+                ) || (side === 'zh' ? '空白坐標軸' : 'Blank axes')}{' '}
                 ▾
               </>
             }
@@ -242,7 +247,7 @@ export function DiagramEditor({ block, onChange }: Props) {
           />
         </div>
         <NumberField
-          label="Width"
+          label={m.width}
           min={160}
           suffix="px"
           value={block.widthPx}
@@ -266,7 +271,7 @@ export function DiagramEditor({ block, onChange }: Props) {
           and drawn inside the image itself. */}
       <BiTextField
         translate={{ kind: 'altText' }}
-        label="Alt text"
+        label={m.altText}
         value={block.altText}
         onChange={(altText) => onChange({ ...block, altText })}
         rows={1}
@@ -280,7 +285,7 @@ export function DiagramEditor({ block, onChange }: Props) {
           address for a diagram's words, with no second surface to disagree with. */}
       <BiTextField
         translate={{ kind: 'diagramTitle', fallsBack: true }}
-        label="Title"
+        label={m.title}
         value={block.diagram.title ?? emptyBiText()}
         onChange={(title) => {
           /*
@@ -320,13 +325,13 @@ export function DiagramEditor({ block, onChange }: Props) {
           about something that does not exist. */}
       {!isBiTextEmpty(block.diagram.title) && (
         <div className="flex items-center gap-2">
-          <span className="text-[11px] text-ink-subtle">Title sits</span>
+          <span className="text-[11px] text-ink-subtle">{m.titleSits}</span>
           <Segmented<CaptionPlacement>
-            label="Title placement"
+            label={m.titlePlacement}
             value={block.diagram.titlePlacement ?? 'above'}
             options={[
-              { value: 'above', label: 'Above', title: 'Draw the title above the plot' },
-              { value: 'below', label: 'Below', title: 'Draw the title below the plot' },
+              { value: 'above', label: m.above, title: m.aboveHint },
+              { value: 'below', label: m.below, title: m.belowHint },
             ]}
             onChange={(titlePlacement) =>
               onChange({ ...block, diagram: { ...block.diagram, titlePlacement } })
