@@ -112,3 +112,9 @@ The full policy — collapsing migrations, their size budget, files from a newer
   an `isDesktop()` check, in `src/platform/`, `src/desktop/` or `src/storage/fileStore.ts`.
 - **Numbering and marks are derived, never stored.**
 - **New on-page chrome needs `data-print-hide`**, or it appears in the PDF.
+- **Every new interface string ships in English and Hong Kong Traditional Chinese.** Put it
+  in the area's `messages.ts` catalogue (`defineMessages({ key: { en, zh } })`, read with
+  `useMessages`), never as a bare literal in JSX, `aria-label`, `title` or `placeholder`.
+  Use the terms in `docs/design/ui-language.md` (Paper 1, MC, LQ, PDF, Word… stay English).
+  Printed text and anything reaching the `.docx` stay out of catalogues. Recipe:
+  `docs/RECIPES.md` § Translate an area's interface text. Guard: `src/i18n/` tests.
