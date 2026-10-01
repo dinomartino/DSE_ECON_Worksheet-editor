@@ -2,9 +2,12 @@
 
 import { IconButton } from '@/components/ui';
 import { SettingsIcon } from '@/components/ui/icons';
+import { resolveMessages } from '@/i18n/catalogue';
+import { uiLanguage } from '@/i18n/language';
 import { isDesktop } from '@/platform';
 import { useSettingsSections } from '@/settings/sections';
 import { useAppDialogs } from '@/store/appDialogs';
+import { SETTINGS_MESSAGES } from './messages';
 import { isMacPlatform } from './shortcut';
 
 /**
@@ -23,14 +26,17 @@ export function SettingsButton({
   className?: string;
 }) {
   const desktop = isDesktop();
+  // A snapshot, not a hook (its test calls it as a function): every screen holding the
+  // gear re-renders on a language change through its own useMessages.
+  const m = resolveMessages(SETTINGS_MESSAGES, uiLanguage());
   const sections = useSettingsSections({ desktop });
   if (sections.length === 0) return null;
   // The shortcut is named on desktop only, as in the ⋯ menu: a browser may claim it first.
   const hint = desktop ? (isMacPlatform() ? ' (⌘,)' : ' (Ctrl+,)') : '';
   const gear = (
     <IconButton
-      label="Settings"
-      title={`Settings${hint}`}
+      label={m.title}
+      title={m.gearTitle(hint)}
       size={size}
       className={separated ? '' : className}
       data-settings-gear

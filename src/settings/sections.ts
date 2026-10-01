@@ -1,4 +1,5 @@
 import { useSyncExternalStore, type ComponentType } from 'react';
+import type { UiText } from '@/i18n/catalogue';
 import type { SettingsEnv, SettingsSectionId } from './types';
 
 /**
@@ -26,12 +27,12 @@ export interface CloseGuard {
 export interface SettingsSectionDef {
   /** Unique; also the deep-link name. */
   id: SettingsSectionId;
-  /** Rail label: 'AI & translation'. */
-  label: string;
+  /** Rail label: 'AI & translation', or a catalogue entry. */
+  label: UiText;
   /** Rail sub-line: 'Provider, key, model'. */
-  hint?: string;
+  hint?: UiText;
   /** One line under the section heading. */
-  description: string;
+  description: UiText;
   order: number;
   /** e.g. a desktop-only section. */
   available?: (env: SettingsEnv) => boolean;

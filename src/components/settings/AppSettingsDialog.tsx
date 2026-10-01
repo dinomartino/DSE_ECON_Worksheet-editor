@@ -8,6 +8,8 @@ import {
 } from 'react';
 import { Button } from '@/components/ui';
 import { Dialog, DialogTabs } from '@/components/ui/Dialog';
+import { localize, resolveMessages } from '@/i18n/catalogue';
+import { uiLanguage, useMessages, useUiLanguage } from '@/i18n/language';
 import type {
   CloseGuard,
   SettingsSectionDef,
@@ -16,6 +18,7 @@ import type {
 import { appSettings } from '@/settings/store';
 import type { SettingsEnv } from '@/settings/types';
 import type { SettingsRequest } from '@/store/appDialogs';
+import { SETTINGS_MESSAGES } from './messages';
 
 /**
  * App Settings: this browser or computer, every worksheet — never the document (that is
@@ -23,10 +26,8 @@ import type { SettingsRequest } from '@/store/appDialogs';
  * on their own. Each pane loads only when shown.
  */
 
-export const settingsDescription = (env: SettingsEnv): string =>
-  `Saved ${env.desktop ? 'on this computer' : 'in this browser'}. Applies to every worksheet; never saved in a worksheet.`;
-export const STORAGE_BLOCKED =
-  "Settings can't be saved in this browser (private mode?). They last until you close the tab.";
+export const settingsDescription = (env: SettingsEnv, lang = uiLanguage()): string =>
+  resolveMessages(SETTINGS_MESSAGES, lang).description(env.desktop);
 
 /** A deep link to an unknown or unavailable section opens the first one. */
 export function initialSection(
@@ -74,6 +75,7 @@ function SectionPane({
   def,
   ...props
 }: { def: SettingsSectionDef } & SettingsSectionProps) {
+  const m = useMessages(SETTINGS_MESSAGES);
   const [loaded, setLoaded] = useState<{
     def: SettingsSectionDef;
     Pane: ComponentType<SettingsSectionProps> | null;
@@ -89,12 +91,10 @@ function SectionPane({
     };
   }, [def]);
   if (!loaded || loaded.def !== def)
-    return <p className="text-xs text-ink-subtle">Loading…</p>;
+    return <p className="text-xs text-ink-subtle">{m.loading}</p>;
   if (!loaded.Pane)
     return (
-      <p className="text-xs text-danger-ink">
-        This section couldn&rsquo;t load. Close Settings and try again.
-      </p>
+      <p className="text-xs text-danger-ink">{m.loadFailed}</p>
     );
   const Pane = loaded.Pane;
   return <Pane {...props} />;
@@ -118,6 +118,8 @@ export function AppSettingsDialog({
   const [guard, setGuard] = useState<CloseGuard | null>(null);
   const [asking, setAsking] = useState(false);
   const [saving, setSaving] = useState(false);
+  const lang = useUiLanguage();
+  const m = resolveMessages(SETTINGS_MESSAGES, lang);
   // Read each render: a write refused while the dialog is open shows the line on the next.
   const persistent = appSettings.persistent();
 
@@ -145,8 +147,8 @@ export function AppSettingsDialog({
 
   return (
     <Dialog
-      title="Settings"
-      description={settingsDescription(env)}
+      title={m.title}
+      description={settingsDescription(env, lang)}
       onClose={() => step('dismiss')}
       width={760}
       height={640}
@@ -167,11 +169,15 @@ export function AppSettingsDialog({
           if (id === active || guard) return;
           setActive(id);
         }}
-        tabs={sections.map((s) => ({ id: s.id, label: s.label, hint: s.hint }))}
+        tabs={sections.map((s) => ({
+          id: s.id,
+          label: localize(s.label, lang),
+          hint: s.hint === undefined ? undefined : localize(s.hint, lang),
+        }))}
       >
         {!persistent && (
           <p className="mb-4 rounded-lg bg-warn-soft px-3 py-2 text-xs text-warn-ink">
-            {STORAGE_BLOCKED}
+            {m.storageBlocked}
           </p>
         )}
         {def && (
@@ -180,10 +186,10 @@ export function AppSettingsDialog({
               id={`settings-${def.id}`}
               className="text-[15px] font-semibold text-ink"
             >
-              {def.label}
+              {localize(def.label, lang)}
             </h3>
             <p className="mb-4 mt-0.5 text-xs text-ink-muted">
-              {def.description}
+              {localize(def.description, lang)}
             </p>
             <SectionPane
               def={def}
@@ -213,6 +219,7 @@ export function AppSettingsFooter({
   onClose: (intent: 'done') => void;
   onAnswer: (answer: 'discard' | 'save') => void;
 }) {
+  const m = useMessages(SETTINGS_MESSAGES);
   if (asking && guard) {
     return (
       <>
@@ -220,21 +227,21 @@ export function AppSettingsFooter({
           {guard.message}
         </span>
         <Button disabled={saving} onClick={() => onAnswer('discard')}>
-          Discard
+          {m.discard}
         </Button>
         <Button
           variant="primary"
           disabled={saving}
           onClick={() => onAnswer('save')}
         >
-          {saving ? 'Testing…' : guard.save.label}
+          {saving ? m.testing : guard.save.label}
         </Button>
       </>
     );
   }
   return (
     <Button variant="primary" onClick={() => onClose('done')}>
-      Done
+      {m.done}
     </Button>
   );
 }

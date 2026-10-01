@@ -1,7 +1,10 @@
 'use client';
 
+import type { TextKey } from '@/i18n/catalogue';
+import { useMessages } from '@/i18n/language';
 import { APPEARANCE_SETTINGS, type ThemePreference } from '@/settings/appearance';
 import { useSettings } from '@/settings/store';
+import { APPEARANCE_MESSAGES } from './messages';
 
 /**
  * Settings → Appearance: System, Light or Dark, applied live. Each choice shows a small
@@ -9,10 +12,11 @@ import { useSettings } from '@/settings/store';
  * flip with the scheme they are meant to preview); the sheet in each stays white.
  */
 
-const OPTIONS: { value: ThemePreference; label: string; note: string }[] = [
-  { value: 'system', label: 'System', note: 'Follows your computer' },
-  { value: 'light', label: 'Light', note: 'Warm cream' },
-  { value: 'dark', label: 'Dark', note: 'Deep warm grey' },
+type Key = TextKey<typeof APPEARANCE_MESSAGES>;
+const OPTIONS: { value: ThemePreference; label: Key; note: Key }[] = [
+  { value: 'system', label: 'system', note: 'systemNote' },
+  { value: 'light', label: 'light', note: 'lightNote' },
+  { value: 'dark', label: 'dark', note: 'darkNote' },
 ];
 
 const SCHEMES = {
@@ -56,8 +60,9 @@ function Preview({ value }: { value: ThemePreference }) {
 
 export default function AppearanceSection() {
   const [{ theme }, update] = useSettings(APPEARANCE_SETTINGS);
+  const m = useMessages(APPEARANCE_MESSAGES);
   return (
-    <div role="radiogroup" aria-label="Colour scheme" className="grid grid-cols-3 gap-3">
+    <div role="radiogroup" aria-label={m.group} className="grid grid-cols-3 gap-3">
       {OPTIONS.map((option) => {
         const active = option.value === theme;
         return (
@@ -83,9 +88,9 @@ export default function AppearanceSection() {
               >
                 {active && <span className="size-1.5 rounded-full bg-on-accent" />}
               </span>
-              <span className={`text-xs font-medium ${active ? 'text-accent-ink' : 'text-ink'}`}>{option.label}</span>
+              <span className={`text-xs font-medium ${active ? 'text-accent-ink' : 'text-ink'}`}>{m[option.label]}</span>
             </div>
-            <p className="mt-0.5 pl-5 text-[11px] text-ink-muted">{option.note}</p>
+            <p className="mt-0.5 pl-5 text-[11px] text-ink-muted">{m[option.note]}</p>
           </button>
         );
       })}

@@ -42,6 +42,7 @@ src/
 ├── glossary/     the EDB Economics glossary: types · lazy load · attribution
 ├── ai/           provider layer: types · presets · response schema · client
 ├── settings/     app-wide Settings: typed schemas · section registry · AI settings
+├── i18n/         interface language: catalogues · useMessages · HK terms (§ Interface language)
 ├── components/   EditorApp · start/ · preview/ (the paper IS the editor) · editor/ · ui/
 └── test/         shared fixtures
 ```
@@ -2229,6 +2230,28 @@ hover                      → margin drag grip → reorder
 - **A scroll pane that can hide content shows an edge hint, not a forced scrollbar**
   (macOS overlay scrollbars are invisible until scrolled): `useScrollEdges` +
   `ScrollEdgeHints` (`src/components/ui/`), as on the start screen's aside.
+
+---
+
+## Interface language (`src/i18n/`)
+
+Settings → Language 語言 (`econgen.settings.language`, `{ ui: 'en' | 'zh-HK' }`) switches
+the chrome between English and Hong Kong Traditional Chinese. Design and wording:
+`docs/design/ui-language.md`.
+
+- **Chrome only.** The paper, the IR, `.docx`, clipboard and PDF, document defaults and
+  the editing language never read it; a document prints identically in either language.
+- **English is today's text exactly**, so English mode changes nothing and existing tests
+  hold. Chinese drops the English half of bilingual chrome.
+- **Catalogues are co-located** (`messages.ts` beside the components; `defineMessages`
+  nowhere else), so areas translate in parallel without a shared file. Both languages are
+  required by type; a function entry takes the same arguments on both sides.
+- **Read through the setting**: `useMessages` re-renders on change; non-React code takes
+  a `uiLanguage()` snapshot. `<html lang>` follows it (boot script, then `LanguageEffect`)
+  so the browser picks Hong Kong CJK fonts.
+- **Guard tests** (`src/i18n/catalogues.test.ts`) import every catalogue and check every
+  entry against `src/i18n/terms.ts`: terms kept in English, no Simplified or Taiwan forms,
+  full-width punctuation.
 
 ---
 

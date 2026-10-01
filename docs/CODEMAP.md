@@ -202,7 +202,7 @@ Invariants:
 `src/components/start/NewWorksheetForm.tsx:NewWorksheetForm` — once-per-document decisions.
 
 - `src/components/start/FileDashboard.tsx:FileDashboard` — grid of first pages / list; search, kind, order (the start screen's Question bank entry opens § library's own screen)
-- `src/components/start/StartScreen.tsx:StartNewSection` — the panel's New worksheet button (opens the form on `src/components/start/startKinds.ts:readLastKind`) and "Open a file…" (hidden on an empty desk); the Library rows follow it
+- `src/components/start/StartScreen.tsx:StartNewSection` — the panel's New worksheet button (opens the form on `src/components/start/startKinds.ts:readLastKind`) and "Open a file…" (hidden on an empty desk); the Library rows follow it; the panel's words are `src/components/start/messages.ts:START_PANEL_MESSAGES`
 - `src/components/start/WelcomeDesk.tsx:WelcomeDesk` — the desk while nothing is saved: welcome, the four papers sketched as cards opening the same form, open a file / restore a backup
 - `src/components/start/startKinds.ts:START_KINDS` — the one list of the four kinds; `src/components/start/PaperSketch.tsx:PaperSketch` draws each, for the welcome cards and the form's gallery
 - `src/components/start/dashboard.ts:visibleSummaries` · `:scopedSummaries` — folder scope, then filter and sort, pure
@@ -380,12 +380,17 @@ through `AppSettingsHost` alone.
 - `src/settings/store.ts:createSettingsStore` · `src/settings/store.ts:appSettings` · `src/settings/store.ts:useSettings` — per-field validation, unknown keys kept, never lowers `v`
 - `src/settings/aiSettings.ts:AI_SETTINGS` · `src/settings/aiSettings.ts:readAiStatus` · `src/settings/aiSettings.ts:useAiStatus` · `src/settings/aiSettings.ts:resolveAiConfig` — status never reads the keychain
 - `src/settings/appearance.ts:APPEARANCE_SETTINGS` · `src/settings/appearance.ts:THEME_BOOT_SCRIPT` — the colour scheme; dark tokens in `globals.css` key on `<html data-theme>`, never the OS query; `src/components/settings/sections/appearanceSection/AppearanceEffect.tsx:AppearanceEffect` follows the OS while System
+- `src/settings/language.ts:LANGUAGE_SETTINGS` · `src/settings/language.ts:LANGUAGE_BOOT_SCRIPT` — the interface language (`en` / `zh-HK`); `src/components/settings/sections/languageSection/LanguageEffect.tsx:LanguageEffect` keeps `<html lang>` in step
+- `src/i18n/catalogue.ts:defineMessages` · `src/i18n/catalogue.ts:resolveMessages` · `src/i18n/catalogue.ts:localize` · `src/i18n/catalogue.ts:TextKey` — co-located interface catalogues (§ Interface language; recipe: Translate an area's interface text)
+- `src/i18n/language.ts:useMessages` · `src/i18n/language.ts:uiLanguage` · `src/i18n/language.ts:UiLanguageOverride` — read a catalogue in the current language; the override pins a test render
+- `src/i18n/terms.ts:KEEP_ENGLISH` · `src/i18n/terms.ts:STANDARD_TRANSLATIONS` — HK wording; `src/i18n/catalogues.test.ts` guards every `messages.ts`
+- `src/i18n/format.ts:relativeTime` — "5 minutes ago" / 5 分鐘前
 - `src/platform/secrets.ts:readSecret` · `src/platform/secrets.ts:writeSecret` · `src/platform/secrets.ts:peekSecret` — the only holder of AI keys; `src-tauri/src/secrets.rs` the keychain commands
 - `src/components/settings/AppSettingsHost.tsx:AppSettingsHost` — mounted in `src/app/EditorHost.tsx`; Effects, ⌘, listener, the dialog
 - `src/components/settings/AppSettingsDialog.tsx:AppSettingsDialog` · `src/components/settings/AppSettingsDialog.tsx:AppSettingsFooter` · `src/components/settings/AppSettingsDialog.tsx:closeStep` — rail, lazy pane, close guard
 - `src/components/settings/shortcut.ts:shouldOpenSettings` — ⌘, / Ctrl+, rules
 - `src/components/settings/sections/index.ts` — one import per section
-- `src/components/settings/sections/ai.ts` — registers AI & translation
+- `src/components/settings/sections/ai.ts` — registers AI & translation; `src/components/settings/sections/language.ts` registers Language 語言; their rail text is `src/components/settings/sections/messages.ts`
 - `src/components/settings/sections/aiSection/aiSetup.ts:aiSetupReducer` · `src/components/settings/sections/aiSection/AiSection.tsx` · `src/components/settings/sections/aiSection/AiSectionView.tsx:AiSectionView` — the AI pane
 - `src/components/settings/sections/aiSection/aiSetupRunner.ts:createAiSetupRunner` — the pane's side effects, injected; a flow never outlives its card
 - `src/test/secretsNeverLeave.test.ts` — a key is in no document, backup, export or setting

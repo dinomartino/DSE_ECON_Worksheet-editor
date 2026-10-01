@@ -6,7 +6,7 @@ describe('the AI section registration', () => {
     expect(settingsSections({ desktop: false })).toEqual([]);
     await import('./ai');
     const [ai] = settingsSections({ desktop: false });
-    expect(ai).toMatchObject({ id: 'ai', label: 'AI & translation', hint: 'Provider, key, model' });
+    expect(ai).toMatchObject({ id: 'ai', label: { en: 'AI & translation' }, hint: { en: 'Provider, key, model' } });
     expect(settingsSections({ desktop: true }).map((s) => s.id)).toEqual(['ai']);
     const pane = await ai.load();
     expect(typeof pane.default).toBe('function');

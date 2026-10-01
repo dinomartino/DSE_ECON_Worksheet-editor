@@ -2,6 +2,8 @@ import { presetFor } from '@/ai/providers';
 import { PROVIDER_IDS, type ConnectionTest, type ModelInfo, type ProviderConfig, type ProviderId } from '@/ai/types';
 import type { SecretAccount, SecretError, SecretRead, SecretStore, SecretWrite } from '@/platform/secrets';
 import { AI_SETTINGS, providerChoice, type AiConfigResult, type AiSettings } from '@/settings/aiSettings';
+import { resolveMessages } from '@/i18n/catalogue';
+import { uiLanguage } from '@/i18n/language';
 import type { SettingsEnv } from '@/settings/types';
 import {
   aiSetupReducer,
@@ -12,6 +14,7 @@ import {
   type AiSetupEvent,
   type AiSetupState,
 } from './aiSetup';
+import { AI_SECTION_MESSAGES } from './messages';
 
 /**
  * The AI section's side effects over the pure `aiSetupReducer`, every dependency injected.
@@ -40,14 +43,15 @@ const account = (p: ProviderId): SecretAccount => `ai:${p}`;
 
 /** Why a saved key couldn't be tested, as a test failure. */
 function unresolved(result: Extract<AiConfigResult, { ok: false }>): ConnectionTest {
+  const m = resolveMessages(AI_SECTION_MESSAGES, uiLanguage());
   const message =
     result.reason === 'secretError'
       ? result.error.message
       : result.reason === 'noKey'
-        ? 'No key is saved for this provider.'
+        ? m.noSavedKey
         : result.reason === 'noModel'
-          ? 'Choose a model first.'
-          : 'Enter the server address first.';
+          ? m.chooseModel
+          : m.enterAddress;
   return { ok: false, error: { kind: 'notConfigured', provider: result.provider, message, fatal: true, actions: [] } };
 }
 

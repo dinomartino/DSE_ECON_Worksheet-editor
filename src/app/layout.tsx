@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Newsreader } from 'next/font/google';
 import { THEME_BOOT_SCRIPT } from '@/settings/appearance';
+import { LANGUAGE_BOOT_SCRIPT } from '@/settings/language';
 import { SPLASH_BOOT_SCRIPT, SPLASH_HTML } from '@/launch/splash';
 import './globals.css';
 import '@/launch/splash.css';
@@ -25,12 +26,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // The document language is English, but content is bilingual; individual
-    // elements carry their own lang so browsers pick correct CJK fonts. `data-theme` is
-    // set by the boot script before hydration, hence suppressHydrationWarning.
+    // `lang` is the interface language (Settings → Language); content is bilingual, so
+    // individual elements carry their own lang for correct CJK fonts. `lang` and
+    // `data-theme` are set by boot scripts before hydration, hence suppressHydrationWarning.
     <html lang="en" className={`h-full antialiased ${newsreader.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: LANGUAGE_BOOT_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: SPLASH_BOOT_SCRIPT }} />
       </head>
       <body className="min-h-full">

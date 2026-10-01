@@ -4,6 +4,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { PROVIDER_IDS, type ModelInfo, type ProviderId } from '@/ai/types';
 import { openExternal } from '@/platform';
 import { peekSecret, subscribeSecrets } from '@/platform/secrets';
+import { useMessages } from '@/i18n/language';
 import { AI_SETTINGS, useAiStatus } from '@/settings/aiSettings';
 import type { SettingsSectionProps } from '@/settings/sections';
 import { useSettings } from '@/settings/store';
@@ -11,6 +12,7 @@ import { initialAiSetup, needsCloseGuard, savedKeys } from './aiSetup';
 import { liveDeps, secretPlatform } from './aiSetupLive';
 import { createAiSetupRunner } from './aiSetupRunner';
 import { AiSectionView } from './AiSectionView';
+import { AI_SECTION_MESSAGES } from './messages';
 
 /**
  * Settings → AI & translation: your saved keys, then pick a provider, save and test its key,
@@ -19,8 +21,6 @@ import { AiSectionView } from './AiSectionView';
  */
 
 export { secretPlatform };
-
-export const UNSAVED_KEY = "You haven't saved this key.";
 
 type Peek = ReturnType<typeof peekSecret>;
 /** Every provider's peek (store and last4 only), as one string so a change re-renders. */
@@ -40,6 +40,7 @@ function subscribeKeys(listener: () => void): () => void {
 
 export default function AiSection({ env, focus, params, setCloseGuard }: SettingsSectionProps) {
   const [settings, update] = useSettings(AI_SETTINGS);
+  const m = useMessages(AI_SECTION_MESSAGES);
   const status = useAiStatus();
   const [runner] = useState(() =>
     createAiSetupRunner(liveDeps(env), initialAiSetup(settings, env, params, (p) => peekSecret(`ai:${p}`))),
@@ -54,8 +55,8 @@ export default function AiSection({ env, focus, params, setCloseGuard }: Setting
 
   const guarded = needsCloseGuard(state);
   useEffect(() => {
-    setCloseGuard(guarded ? { message: UNSAVED_KEY, save: { label: 'Save & test', run: () => runner.saveAndTest() } } : null);
-  }, [guarded, setCloseGuard, runner]);
+    setCloseGuard(guarded ? { message: m.unsavedKey, save: { label: m.saveAndTest, run: () => runner.saveAndTest() } } : null);
+  }, [guarded, setCloseGuard, runner, m]);
   useEffect(() => () => setCloseGuard(null), [setCloseGuard]);
 
   const actions: AiSectionActions = {

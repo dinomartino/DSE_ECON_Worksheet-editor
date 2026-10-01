@@ -1,12 +1,13 @@
 import { registerSettingsSection } from '@/settings/sections';
 import { AppearanceEffect } from './appearanceSection/AppearanceEffect';
+import { SECTION_MESSAGES as m } from './messages';
 
 /** Settings → Appearance. The Effect applies the scheme app-wide; the pane loads on demand. */
 registerSettingsSection({
   id: 'appearance',
-  label: 'Appearance',
-  hint: 'Light, dark or system',
-  description: 'The colour scheme around the page. Worksheets always print black on white.',
+  label: m.appearanceLabel,
+  hint: m.appearanceHint,
+  description: m.appearanceDescription,
   order: 20,
   load: () => import('./appearanceSection/AppearanceSection'),
   Effect: AppearanceEffect,
