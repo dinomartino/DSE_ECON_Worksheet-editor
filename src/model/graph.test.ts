@@ -11,7 +11,6 @@ import {
   duplicateGraph,
   graphFileName,
   GraphSchemaError,
-  isDrawableGraph,
   isGraphNewerThanBuild,
   migrateGraph,
   parseGraph,
@@ -106,9 +105,14 @@ describe('a new graph', () => {
     expect(copy.name).toBe('Supply and demand (copy)');
   });
 
-  it('knows which figures the drawing canvas edits', () => {
-    expect(isDrawableGraph(createGraph('supply-demand').block)).toBe(true);
-    expect(isDrawableGraph(createGraph('pie').block)).toBe(false);
+  it('saves and reopens every kind of figure: axes, pie, flow and forum', () => {
+    for (const templateId of ['supply-demand', 'pie', 'flow', 'forum']) {
+      const graph = createGraph(templateId);
+      expect(parseGraph(stringifyGraph(graph)), templateId).toEqual(graph);
+    }
+    expect(createGraph('pie').block.diagram.pie?.slices.length).toBeGreaterThan(0);
+    expect(createGraph('flow').block.diagram.flow?.nodes.length).toBeGreaterThan(0);
+    expect(createGraph('forum').block.diagram.forum?.bubbles.length).toBeGreaterThan(0);
   });
 
   it('names its files safely', () => {

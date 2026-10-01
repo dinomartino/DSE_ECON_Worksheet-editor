@@ -52,18 +52,14 @@ function templateCards(): TemplateCard[] {
 export function DiagramTemplateCards({
   currentId,
   onPick,
-  only,
   columns = 2,
 }: {
   /** The template the diagram started from, ringed so "which one is this" is visible. */
   currentId?: string;
   onPick: (templateId: string) => void;
-  /** Offer only these templates (Graphs: the ones the drawing canvas edits). */
-  only?: (templateId: string) => boolean;
   columns?: number;
 }) {
-  const all = useMemo(() => templateCards(), []);
-  const cards = only ? all.filter((card) => only(card.id)) : all;
+  const cards = useMemo(() => templateCards(), []);
   const [search, setSearch] = useState('');
   const needle = search.trim().toLowerCase();
   const groups = DIAGRAM_TEMPLATE_GROUPS.map((group) => ({

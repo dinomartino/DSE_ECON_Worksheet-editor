@@ -168,11 +168,6 @@ export function withGraphLanguage(graph: SavedGraph, language: LanguageMode): Sa
   return { ...graph, language, block: { ...block, ...diagramSize(block.diagram, block.widthPx, language) } };
 }
 
-/** Can the drawing canvas edit it? Pie, flow and forum figures have editors of their own. */
-export function isDrawableGraph(block: DiagramBlock): boolean {
-  return !block.diagram.pie && !block.diagram.flow && !block.diagram.forum;
-}
-
 /**
  * A worksheet's copy of a saved graph: a deep clone under a fresh block id, so nothing
  * links back (later edits to the graph never reach the worksheet). Diagram-internal ids

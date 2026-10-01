@@ -1,25 +1,17 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { nanoid } from 'nanoid';
 import { DIAGRAM_TEMPLATES, buildFromTemplate } from '@/model/diagramTemplates';
-import { graphFromBlock, isDrawableGraph, rebaseOnGraph } from '@/model/graph';
+import { graphFromBlock, rebaseOnGraph } from '@/model/graph';
 import { graphStore } from '@/storage';
 import { emptyBiText, isBiTextEmpty, plain } from '@/model/text';
-import type { ForumBubble, ForumChart, ForumSlot, PieSlice } from '@/model/diagram';
-import { prepareImageForStorage } from '@/export/imageImport';
 import type { CaptionPlacement, DiagramBlock } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { diagramSize, diagramSvg } from '@/render/diagram';
-import {
-  Button,
-  FigureAlignField,
-  IconButton,
-  NumberField,
-  Segmented,
-} from '@/components/ui';
+import { Button, FigureAlignField, NumberField, Segmented } from '@/components/ui';
 import { BiTextField } from './BiTextField';
 import { DiagramCanvas } from './DiagramCanvas';
+import { ForumFields, PieSliceFields } from './DiagramDataFields';
 import { DiagramTemplatePopover } from './DiagramTemplatePicker';
 import { FlowCanvas } from './FlowCanvas';
 import { ForumCanvas } from './ForumCanvas';
@@ -196,22 +188,20 @@ export function DiagramEditor({ block, onChange }: Props) {
         </div>
       )}
 
-      {/* A copy into Graphs 圖表庫, for the kinds its canvas edits. Nothing stays linked. */}
-      {isDrawableGraph(block) && (
-        <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" variant="subtle" onClick={() => void saveToGraphs()} title="Keep a copy in Graphs 圖表庫 to reuse or copy into Word">
-            Save to Graphs
-          </Button>
-          {notice && (
-            <span
-              role={notice.tone === 'error' ? 'alert' : 'status'}
-              className={`animate-fade-in text-[11px] ${notice.tone === 'error' ? 'text-danger-ink' : 'text-ink-muted'}`}
-            >
-              {notice.text}
-            </span>
-          )}
-        </div>
-      )}
+      {/* A copy into Graphs 圖表庫. Nothing stays linked. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" variant="subtle" onClick={() => void saveToGraphs()} title="Keep a copy in Graphs 圖表庫 to reuse or copy into Word">
+          Save to Graphs
+        </Button>
+        {notice && (
+          <span
+            role={notice.tone === 'error' ? 'alert' : 'status'}
+            className={`animate-fade-in text-[11px] ${notice.tone === 'error' ? 'text-danger-ink' : 'text-ink-muted'}`}
+          >
+            {notice.text}
+          </span>
+        )}
+      </div>
 
       {/* Wraps, because the controls have genuinely different needs: Width is sized by
           its content while the template button wants whatever is left. In a 400px column
@@ -344,216 +334,6 @@ export function DiagramEditor({ block, onChange }: Props) {
           />
         </div>
       )}
-    </div>
-  );
-}
-
-/**
- * The pie chart's slices: name + share per row, in draw order (clockwise from 12
- * o'clock). The printed percent is derived from share ÷ total, so the fields never
- * show it — a stored percent is exactly what would go stale when a slice is added.
- *
- * Slice edits never re-measure the block: the labels draw *inside* the circle, so no
- * name or value can change the picture's box (only the title does that, above).
- */
-/** The four corner slots, in reading order, with the labels the picker shows. */
-const FORUM_SLOTS: Array<{ value: ForumSlot; label: string; title: string }> = [
-  { value: 'topLeft', label: '◤', title: 'Top left' },
-  { value: 'topRight', label: '◥', title: 'Top right' },
-  { value: 'bottomLeft', label: '◣', title: 'Bottom left' },
-  { value: 'bottomRight', label: '◢', title: 'Bottom right' },
-];
-
-/**
- * The forum figure's data: a speech bubble per row (speaker + view + corner slot)
- * and the central picture. Placement is slot-based, never free — the same reason a
- * band's zones are — so the panel offers corners, not coordinates.
- */
-function ForumFields({
-  forum,
-  onChange,
-}: {
-  forum: ForumChart;
-  onChange: (forum: ForumChart) => void;
-}) {
-  const fileInput = useRef<HTMLInputElement>(null);
-  const bubbles = forum.bubbles;
-  const patch = (id: string, change: Partial<ForumBubble>) =>
-    onChange({
-      ...forum,
-      bubbles: bubbles.map((bubble) =>
-        bubble.id === id ? { ...bubble, ...change } : bubble,
-      ),
-    });
-
-  const handleImageFile = async (file: File) => {
-    // The same reduction every stored picture takes (§ `prepareImageForStorage`) —
-    // the figure rides inline in the document's JSON like an `ImageBlock` does.
-    const prepared = await prepareImageForStorage(file);
-    onChange({
-      ...forum,
-      image: {
-        src: prepared.src,
-        // Zero means it could not be decoded here; a 4:3 guess still gives the
-        // layout a ratio to draw by, the same fallback `BlockEditor` uses.
-        naturalWidthPx: prepared.naturalWidthPx || 400,
-        naturalHeightPx: prepared.naturalHeightPx || 300,
-      },
-    });
-  };
-
-  return (
-    <div className="space-y-1">
-      <span className="text-[11px] font-medium text-ink-subtle">
-        Speech bubbles, around the picture
-      </span>
-      {bubbles.map((bubble, index) => (
-        <div key={bubble.id} className="space-y-1 rounded border border-line p-1.5">
-          <div className="flex items-center gap-1">
-            <div className="min-w-0 flex-1">
-              <BiTextField
-                translate={{ kind: 'speaker', fallsBack: true }}
-                ariaLabel={`Bubble ${index + 1} speaker`}
-                value={bubble.speaker}
-                onChange={(speaker) => patch(bubble.id, { speaker })}
-                rows={1}
-              />
-            </div>
-            <Segmented<ForumSlot>
-              label={`Bubble ${index + 1} corner`}
-              value={bubble.slot}
-              options={FORUM_SLOTS}
-              onChange={(slot) => patch(bubble.id, { slot })}
-            />
-            <IconButton
-              label={`Remove bubble ${index + 1}`}
-              onClick={() =>
-                onChange({
-                  ...forum,
-                  bubbles: bubbles.filter((other) => other.id !== bubble.id),
-                })
-              }
-            >
-              ✕
-            </IconButton>
-          </div>
-          <BiTextField
-            translate={{ kind: 'bubble', fallsBack: true }}
-            ariaLabel={`Bubble ${index + 1} view`}
-            value={bubble.text}
-            onChange={(text) => patch(bubble.id, { text })}
-            rows={2}
-          />
-        </div>
-      ))}
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          size="sm"
-          variant="subtle"
-          onClick={() => {
-            // Seed the first corner nothing occupies, reading order — the reference
-            // figures fill top-left, top-right, then bottom-left.
-            const taken = new Set(bubbles.map((bubble) => bubble.slot));
-            const slot =
-              FORUM_SLOTS.find((option) => !taken.has(option.value))?.value ?? 'topLeft';
-            onChange({
-              ...forum,
-              bubbles: [
-                ...bubbles,
-                { id: nanoid(10), slot, speaker: emptyBiText(), text: emptyBiText() },
-              ],
-            });
-          }}
-        >
-          + Bubble
-        </Button>
-        <Button size="sm" variant="subtle" onClick={() => fileInput.current?.click()}>
-          {forum.image ? 'Replace picture' : '+ Picture'}
-        </Button>
-        {forum.image && (
-          <Button
-            size="sm"
-            variant="subtle"
-            onClick={() => onChange({ ...forum, image: undefined })}
-          >
-            Remove picture
-          </Button>
-        )}
-        <input
-          ref={fileInput}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            // Cleared so choosing the same file again still fires a change event.
-            event.target.value = '';
-            if (file) void handleImageFile(file);
-          }}
-        />
-      </div>
-      <span className="text-[11px] text-ink-subtle">
-        Bubbles point at the picture from their corner. Click the preview above to
-        resize a bubble by its edge.
-      </span>
-    </div>
-  );
-}
-
-function PieSliceFields({
-  slices,
-  onChange,
-}: {
-  slices: PieSlice[];
-  onChange: (slices: PieSlice[]) => void;
-}) {
-  const patch = (id: string, change: Partial<PieSlice>) =>
-    onChange(slices.map((slice) => (slice.id === id ? { ...slice, ...change } : slice)));
-
-  return (
-    <div className="space-y-1">
-      <span className="text-[11px] font-medium text-ink-subtle">
-        Slices, clockwise from the top
-      </span>
-      {slices.map((slice, index) => (
-        <div key={slice.id} className="flex items-center gap-1">
-          <div className="min-w-0 flex-1">
-            <BiTextField
-              translate={{ kind: 'diagramLabel', fallsBack: true }}
-              ariaLabel={`Slice ${index + 1} name`}
-              value={slice.label}
-              onChange={(label) => patch(slice.id, { label })}
-              rows={1}
-            />
-          </div>
-          <NumberField
-            label="Share"
-            min={0}
-            value={slice.value}
-            onChange={(value) => patch(slice.id, { value })}
-          />
-          <IconButton
-            label={`Remove slice ${index + 1}`}
-            onClick={() => onChange(slices.filter((other) => other.id !== slice.id))}
-          >
-            ✕
-          </IconButton>
-        </div>
-      ))}
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          size="sm"
-          variant="subtle"
-          onClick={() =>
-            onChange([...slices, { id: nanoid(10), label: emptyBiText(), value: 10 }])
-          }
-        >
-          + Slice
-        </Button>
-        <span className="text-[11px] text-ink-subtle">
-          Percentages are computed from the shares.
-        </span>
-      </div>
     </div>
   );
 }

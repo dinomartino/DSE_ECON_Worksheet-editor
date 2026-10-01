@@ -9,7 +9,7 @@ import { DiagramTemplateCards } from '@/components/editor/DiagramTemplatePicker'
 import { relativeTime } from '@/components/start/dashboard';
 import { createGraph, type SavedGraph } from '@/model/graph';
 import { graphStore, NewerGraphError, type GraphListing } from '@/storage';
-import { graphCount, isGraphTemplate, searchGraphs } from './graphList';
+import { graphCount, searchGraphs } from './graphList';
 import { GraphThumb } from './GraphThumb';
 
 /**
@@ -291,7 +291,7 @@ function NewGraphDialog({ onClose, onPick }: { onClose: () => void; onPick: (tem
       }
     >
       <div className="px-5 py-4">
-        <DiagramTemplateCards onPick={onPick} only={isGraphTemplate} columns={4} />
+        <DiagramTemplateCards onPick={onPick} columns={4} />
       </div>
     </Dialog>
   );

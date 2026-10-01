@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { docWith, partsQuestion } from '@/library/testKit';
+import { buildFromTemplate } from '@/model/diagramTemplates';
 import { createDiagramBlock } from '@/model/factories';
 import { flowOf } from '@/model/flow';
 import { createGraph, graphBlockCopy, graphFromBlock, isGraphNewerThanBuild, rebaseOnGraph } from '@/model/graph';
@@ -124,5 +125,43 @@ describe('Use in a worksheet…', () => {
     store().requestBlockSelection('x');
     store().replaceWorksheet(docWith([], { layout: [] }));
     expect(store().blockSelectRequest).toBeUndefined();
+  });
+});
+
+describe('every kind of chart', () => {
+  const kinds = ['supply-demand', 'pie', 'flow', 'forum'];
+
+  it('re-bases a block of one kind on a graph of another as picking that template would', () => {
+    for (const from of kinds) {
+      for (const to of kinds) {
+        const block: DiagramBlock = { ...createDiagramBlock(from, 360), altText: bi('Mine', '我的') };
+        const graph = createGraph(to, 'en');
+        const picked = buildFromTemplate(to);
+        const viaTemplate = { ...block, ...diagramSize(picked, block.widthPx, 'bilingual'), diagram: picked };
+        const viaGraph = rebaseOnGraph(block, graph, 'bilingual');
+        expect(viaGraph, `${from} → ${to}`).toEqual({ ...viaTemplate, diagram: graph.block.diagram });
+        expect({ widthPx: viaGraph.widthPx, heightPx: viaGraph.heightPx }).toEqual(diagramSize(graph.block.diagram, 360, 'bilingual'));
+      }
+    }
+  });
+
+  it('saves any worksheet diagram to Graphs and copies it back unchanged', () => {
+    for (const kind of kinds) {
+      const block = createDiagramBlock(kind, 420);
+      const graph = graphFromBlock(block, 'en');
+      expect(graph.block.diagram, kind).toEqual(block.diagram);
+      const copy = graphBlockCopy(graph, 'en');
+      expect(copy.diagram, kind).toEqual(block.diagram);
+      expect({ widthPx: copy.widthPx, heightPx: copy.heightPx }).toEqual(diagramSize(block.diagram, 420, 'en'));
+    }
+  });
+
+  it('places a pie graph in a worksheet like any other', () => {
+    const doc = docWith([partsQuestion('One')], { layout: [] });
+    store().replaceWorksheet(doc);
+    const placed = placeGraphInOpenDocument(createGraph('pie'), doc.questions[0].id);
+    const added = store().worksheet.questions[0].blocks.at(-1);
+    expect(added).toMatchObject({ kind: 'diagram', id: placed?.blockId });
+    expect(added?.kind === 'diagram' && added.diagram.pie?.slices.length).toBeGreaterThan(0);
   });
 });

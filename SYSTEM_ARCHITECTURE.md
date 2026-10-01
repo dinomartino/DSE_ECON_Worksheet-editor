@@ -1025,7 +1025,7 @@ re-measure, title mechanism — serves it unchanged. Modelled on
   monochrome patterns (white → hatch → grey → dots); labels sit on the slice centroid
   with a white halo (`paint-order: stroke`) so hatching cannot run through the letters.
 - **The axes canvas never opens for a pie** (guarded where `drawingBlockId` resolves in
-  `EditorApp`) — slices are edited in the sidebar panel (`PieSliceFields`), name + share
+  `EditorApp`) — slices are edited in the sidebar panel (`DiagramDataFields.tsx:PieSliceFields`), name + share
   per row. Slice edits never re-measure: labels draw inside the circle.
 - **The pie's title is bold and not underlined** (the reference pie's own setting);
   a lone slice draws as a `<circle>` (its wedge path would collapse), zero-value slices
@@ -1864,17 +1864,27 @@ fonts, `schemaVersion`). Design: `docs/design/graph-library.md`.
 - **Backup entries are `graphs/*.graph`, never `.json`**: every shipped `readBackup`
   restores any other `.json` entry as a (blank) worksheet. Restore never overwrites; a
   clashing id gets a fresh one.
-- **The canvas takes the graph's own `language`/`fonts`** (props win over the store;
-  `FieldScopeContext` carries the language to the fields under it). `embedded` makes it a
-  page surface: no Done, Escape never leaves.
-- Thumbnails come from `diagramSvg`; images from `export/diagramImage.ts:rasterizeDiagram`.
+- **Every diagram kind is a graph, edited by the worksheet's own surfaces** (no second
+  path): axes on `DiagramCanvas`, flow on `FlowCanvas`, forum on `ForumCanvas` (+
+  `ForumFields`), pie as its figure beside `PieSliceFields` (`DiagramDataFields.tsx`,
+  shared with `DiagramEditor`). Each canvas takes the graph's own `language`/`fonts`
+  (props win over the store; `FieldScopeContext` carries the language to the fields under
+  it); `embedded` makes it a page surface: no Done, Escape never leaves.
+- **A dialog over the editor owns ⌘Z**: the editor's undo stands down while `using` or any
+  `aria-modal` dialog is open (`graphHistoryAction`), and swallows the chord so the
+  browser's own undo cannot reach a field behind it. The canvases take `keysSuspended`.
+- Thumbnails come from `diagramSvg`, filling an absolute box by `viewBox` (WebKit lets
+  `max-height: 100%` overflow an aspect-ratio card, cropping a pie); images from
+  `export/diagramImage.ts:rasterizeDiagram`. A standalone PNG keeps the pie's `url(#…)`
+  patterns: the rasterized SVG is its own document.
   Copy writes one `ClipboardItem` (3× PNG, plus `<img width height>` at print size so Word
   pastes it printed size), started inside the click for Safari.
 - **In and out of worksheets is a copy, never a link.** `graphBlockCopy` deep-clones
   under a fresh block id (diagram-internal ids kept), re-measured for the worksheet's
   language at the graph's width (a slot's width wins: an MCQ option). Re-basing a diagram
-  on a graph (`rebaseOnGraph`) keeps the block's id, width and alt text. `graphFromBlock`
-  (Save to Graphs) only for kinds the canvas draws (`isDrawableGraph`).
+  on a graph (`rebaseOnGraph`) keeps the block's id, width and alt text, and is the same
+  re-measure as picking that template, across kinds. Save to Graphs (`graphFromBlock`)
+  takes every kind.
 - **Use in a worksheet… opens the document the start screen's way** (`openSaved`), then
   `placeGraphInOpenDocument` appends through the store (one commit, ⌘Z removes it),
   writes the document at once by value (autosave waits 1.2 s), and asks the page to select

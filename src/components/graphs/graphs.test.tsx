@@ -5,7 +5,7 @@ import { bi } from '@/model/text';
 import { dataUrlToBlob, graphClipboardHtml } from '@/export/graphImage';
 import { BiTextField } from '@/components/editor/BiTextField';
 import { FieldScopeContext } from '@/components/editor/fieldScope';
-import { graphCount, graphSaveLabel, isGraphTemplate, searchGraphs } from './graphList';
+import { graphCount, graphHistoryAction, graphSaveLabel, isTypingTarget, searchGraphs } from './graphList';
 
 describe('the Graphs library', () => {
   const graphs = [
@@ -25,10 +25,25 @@ describe('the Graphs library', () => {
     expect(graphCount(6)).toBe('6 graphs');
   });
 
-  it('offers only the templates the drawing canvas edits', () => {
-    expect(isGraphTemplate('supply-demand')).toBe(true);
-    expect(isGraphTemplate('blank')).toBe(true);
-    for (const id of ['pie', 'flow', 'forum']) expect(isGraphTemplate(id)).toBe(false);
+  it('undoes with ⌘Z and redoes with ⇧⌘Z, but not while a dialog is open or a field has the keys', () => {
+    const z = { key: 'z', metaKey: true, ctrlKey: false, shiftKey: false };
+    const free = { typing: false, dialogOpen: false };
+    expect(graphHistoryAction(z, free)).toBe('undo');
+    expect(graphHistoryAction({ ...z, shiftKey: true }, free)).toBe('redo');
+    expect(graphHistoryAction({ ...z, metaKey: false, ctrlKey: true }, free)).toBe('undo');
+    expect(graphHistoryAction(z, { typing: false, dialogOpen: true })).toBeNull();
+    expect(graphHistoryAction({ ...z, shiftKey: true }, { typing: false, dialogOpen: true })).toBeNull();
+    expect(graphHistoryAction(z, { typing: true, dialogOpen: false })).toBeNull();
+    expect(graphHistoryAction({ ...z, key: 'x' }, free)).toBeNull();
+  });
+
+  it('knows a text field from the page', () => {
+    const el = (tagName: string, isContentEditable = false) => ({ tagName, isContentEditable }) as unknown as Element;
+    expect(isTypingTarget(el('INPUT'))).toBe(true);
+    expect(isTypingTarget(el('TEXTAREA'))).toBe(true);
+    expect(isTypingTarget(el('DIV', true))).toBe(true);
+    expect(isTypingTarget(el('BUTTON'))).toBe(false);
+    expect(isTypingTarget(null)).toBe(false);
   });
 
   it('says what the autosave did, without a dash', () => {
