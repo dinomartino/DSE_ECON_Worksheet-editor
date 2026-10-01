@@ -7,6 +7,9 @@ import type { SavedGraph } from '@/model/graph';
 import { diagramSize, diagramSvg } from '@/render/diagram';
 import { Button, Segmented } from '@/components/ui';
 import { MyGraphsCards } from '@/components/graphs/MyGraphsCards';
+import { sideOf } from '@/i18n/catalogue';
+import { useMessages, useUiLanguage } from '@/i18n/language';
+import { DIAGRAM_PICKER_MESSAGES } from './diagramEditing.messages';
 
 /**
  * The diagram templates as a visual grid — a teacher picks a *shape*, so the picker
@@ -23,8 +26,8 @@ import { MyGraphsCards } from '@/components/graphs/MyGraphsCards';
 interface TemplateCard {
   id: string;
   group: string;
-  name: string;
-  hint: string;
+  names: { en: string; zh: string };
+  hints: { en: string; zh: string };
   /** Lower-cased names and hint in both languages, for the search box. */
   haystack: string;
   svg: string;
@@ -40,8 +43,8 @@ function templateCards(): TemplateCard[] {
     return {
       id: template.id,
       group: template.group,
-      name: plain(template.name.en),
-      hint: plain(template.hint.en),
+      names: { en: plain(template.name.en), zh: plain(template.name.zh) },
+      hints: { en: plain(template.hint.en), zh: plain(template.hint.zh) },
       haystack: words.map((text) => plain(text)).join(' ').toLowerCase(),
       svg: diagramSvg(diagram, { ...size, language: 'en' }),
     };
@@ -59,23 +62,25 @@ export function DiagramTemplateCards({
   onPick: (templateId: string) => void;
   columns?: number;
 }) {
+  const m = useMessages(DIAGRAM_PICKER_MESSAGES);
+  const side = sideOf(useUiLanguage());
   const cards = useMemo(() => templateCards(), []);
   const [search, setSearch] = useState('');
   const needle = search.trim().toLowerCase();
   const groups = DIAGRAM_TEMPLATE_GROUPS.map((group) => ({
     id: group.id,
-    name: plain(group.name.en),
+    name: plain(group.name[side]),
     cards: cards.filter((card) => card.group === group.id && (!needle || card.haystack.includes(needle))),
   })).filter((group) => group.cards.length > 0);
   return (
     <div className="flex flex-col gap-2">
       <label className="block">
-        <span className="sr-only">Search diagram templates</span>
+        <span className="sr-only">{m.searchLabel}</span>
         <input
           type="search"
           autoFocus
           value={search}
-          placeholder="Search templates"
+          placeholder={m.searchPlaceholder}
           onChange={(event) => setSearch(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === 'Escape' && search) {
@@ -87,12 +92,12 @@ export function DiagramTemplateCards({
         />
       </label>
       {groups.length === 0 && (
-        <p className="px-1 py-3 text-center text-[12px] text-ink-subtle">No template matches.</p>
+        <p className="px-1 py-3 text-center text-[12px] text-ink-subtle">{m.noMatch}</p>
       )}
       {groups.map((group) => (
         <section key={group.id} aria-label={group.name} data-template-group={group.id}>
           <h3 className="mb-1 px-0.5 text-[11px] font-semibold text-ink-muted">{group.name}</h3>
-          <TemplateGrid cards={group.cards} currentId={currentId} onPick={onPick} columns={columns} />
+          <TemplateGrid cards={group.cards} currentId={currentId} onPick={onPick} columns={columns} side={side} />
         </section>
       ))}
     </div>
@@ -104,11 +109,13 @@ function TemplateGrid({
   currentId,
   onPick,
   columns,
+  side,
 }: {
   cards: TemplateCard[];
   currentId?: string;
   onPick: (templateId: string) => void;
   columns: number;
+  side: 'en' | 'zh';
 }) {
   return (
     <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
@@ -116,7 +123,7 @@ function TemplateGrid({
         <button
           key={card.id}
           type="button"
-          title={card.hint}
+          title={card.hints[side]}
           aria-pressed={card.id === currentId}
           onClick={() => onPick(card.id)}
           className={
@@ -135,7 +142,7 @@ function TemplateGrid({
             dangerouslySetInnerHTML={{ __html: card.svg }}
           />
           <span className="mt-1 block truncate text-[11px] font-medium text-ink">
-            {card.name}
+            {card.names[side]}
           </span>
         </button>
       ))}
@@ -170,6 +177,7 @@ export function DiagramTemplatePopover({
   /** Offers a My graphs tab; the caller inserts a copy of the picked graph. */
   onPickGraph?: (graph: SavedGraph) => void;
 }) {
+  const m = useMessages(DIAGRAM_PICKER_MESSAGES);
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<PickerTab>(lastTab);
   /**
@@ -238,11 +246,11 @@ export function DiagramTemplatePopover({
           {onPickGraph && (
             <div className="mb-1.5 border-b border-line">
               <Segmented<PickerTab>
-                label="Diagram source"
+                label={m.source}
                 value={tab}
                 options={[
-                  { value: 'templates', label: 'Templates' },
-                  { value: 'graphs', label: 'My graphs', title: 'Graphs saved in Graphs 圖表庫' },
+                  { value: 'templates', label: m.templates },
+                  { value: 'graphs', label: m.myGraphs, title: m.myGraphsHint },
                 ]}
                 onChange={(next) => {
                   lastTab = next;

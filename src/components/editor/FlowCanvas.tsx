@@ -16,7 +16,9 @@ import { useWorksheetStore } from '@/store/worksheetStore';
 import { Button, CheckField, Eyebrow, IconButton, SelectField } from '@/components/ui';
 import { useModalLayer } from '@/components/ui/modalLayer';
 import { BiTextField } from './BiTextField';
+import { useMessages } from '@/i18n/language';
 import { FieldScopeContext } from './fieldScope';
+import { DIAGRAM_COMMON_MESSAGES, FLOW_CANVAS_MESSAGES } from './diagramEditing.messages';
 
 /**
  * The flow chart's editor: direct manipulation on the chart itself.
@@ -68,8 +70,8 @@ function distToSegment(p: { x: number; y: number }, seg: FlowArrowLayout): numbe
 }
 
 /** What an arrow endpoint select calls a box: its own words, or a positional name. */
-function nodeName(node: FlowNode, index: number): string {
-  return plain(node.label.en).trim() || plain(node.label.zh).trim() || `Box ${index + 1}`;
+function nodeName(node: FlowNode, index: number, m: { box: (n: number) => string }): string {
+  return plain(node.label.en).trim() || plain(node.label.zh).trim() || m.box(index + 1);
 }
 
 export function FlowCanvas({
@@ -96,6 +98,7 @@ export function FlowCanvas({
   keysSuspended?: boolean;
 }) {
   useModalLayer();
+  const m = useMessages(FLOW_CANVAS_MESSAGES);
   const storeLanguage = useWorksheetStore((s) => s.mode.language);
   const storeFonts = useWorksheetStore((s) => s.worksheet.fonts);
   const language = languageProp ?? storeLanguage;
@@ -468,11 +471,7 @@ export function FlowCanvas({
     editing?.kind === 'arrow' ? flow.arrows.find((a) => a.id === editing.id) : undefined;
 
   const hint =
-    tool === 'arrow'
-      ? 'Drag from one box to another to connect them. Release on empty paper for an open-ended stub.'
-      : flow.nodes.length === 0
-        ? 'Double-click the empty box (or press + Box) to add the first stage.'
-        : 'Drag a box to move it between columns. Click to select and edit. Double-click text to retype it.';
+    tool === 'arrow' ? m.hintArrowTool : flow.nodes.length === 0 ? m.hintEmpty : m.hintSelect;
 
   const surface = (
     <div
@@ -483,13 +482,13 @@ export function FlowCanvas({
       }
     >
       <header className="flex flex-wrap items-center gap-3 border-b border-line bg-surface px-5 py-3 text-ink">
-        {!embedded && <span className="text-sm font-semibold tracking-wide text-ink">Edit flow chart</span>}
+        {!embedded && <span className="text-sm font-semibold tracking-wide text-ink">{m.heading}</span>}
 
         <div className="flex gap-1.5">
           {(
             [
-              ['select', '↖', 'Select', 'Drag boxes between columns; click to select and edit.'],
-              ['arrow', '→', 'Arrow', 'Drag from one box to another to connect them.'],
+              ['select', '↖', m.select, m.selectHint],
+              ['arrow', '→', m.arrow, m.arrowHint],
             ] as const
           ).map(([id, glyph, name, title]) => (
             <button
@@ -519,25 +518,25 @@ export function FlowCanvas({
         <div className="flex gap-1.5">
           <button
             type="button"
-            title="Add a box to the selected column"
+            title={m.addBoxHint}
             onClick={() => addBox()}
             className="flex h-11 items-center rounded-lg border border-line-strong bg-surface-raised px-3 text-xs font-medium text-ink transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft active:scale-[0.97] hover:bg-surface-hover"
           >
-            + Box
+            {m.addBox}
           </button>
           <button
             type="button"
-            title="Add a new column on the right, with one box"
+            title={m.addColumnHint}
             onClick={() =>
               addBox(flow.nodes.length > 0 ? Math.max(...flow.nodes.map((n) => n.col)) + 1 : 0)
             }
             className="flex h-11 items-center rounded-lg border border-line-strong bg-surface-raised px-3 text-xs font-medium text-ink transition-[background-color,border-color,color,opacity,transform,scale] duration-150 ease-out-soft active:scale-[0.97] hover:bg-surface-hover"
           >
-            + Column
+            {m.addColumn}
           </button>
           <button
             type="button"
-            title="Delete the selection (⌫)"
+            title={m.deleteHint}
             onClick={doDelete}
             disabled={!selection}
             className={
@@ -549,11 +548,11 @@ export function FlowCanvas({
                 : 'border-line-strong bg-surface-raised text-ink')
             }
           >
-            Delete
+            {m.delete}
           </button>
           <button
             type="button"
-            title="Remove every box and arrow to start fresh"
+            title={m.clearHint}
             onClick={() => (confirmClear ? clearChart() : setConfirmClear(true))}
             disabled={flow.nodes.length === 0 && flow.arrows.length === 0}
             className={
@@ -565,14 +564,14 @@ export function FlowCanvas({
                 : 'border-line-strong bg-surface-raised text-ink hover:bg-surface-hover')
             }
           >
-            {confirmClear ? 'Click again to clear' : 'Clear chart'}
+            {confirmClear ? m.clearConfirm : m.clear}
           </button>
         </div>
 
         <span className="h-8 w-px bg-line-strong" />
 
         <label className="flex items-center gap-2 text-xs font-medium text-ink">
-          Zoom
+          {m.zoom}
           <select
             value={zoom}
             onChange={(event) => setZoom(Number(event.target.value))}
@@ -588,7 +587,7 @@ export function FlowCanvas({
 
         <span className="flex-1" />
         <span className="max-w-96 text-xs leading-snug text-ink-muted">{hint}</span>
-        {!embedded && <Button onClick={onClose}>Done</Button>}
+        {!embedded && <Button onClick={onClose}>{m.done}</Button>}
       </header>
 
       <div className="flex min-h-0 flex-1">
@@ -802,6 +801,7 @@ function FlowTextEditor({
   onCommit: (text: BiText) => void;
   onCancel: () => void;
 }) {
+  const m = useMessages(FLOW_CANVAS_MESSAGES);
   const side: 'en' | 'zh' = language === 'zh' ? 'zh' : 'en';
   const [draft, setDraft] = useState(() => serializeRuns(value[side]));
   const inputRef = useRef<HTMLInputElement>(null);
@@ -844,7 +844,7 @@ function FlowTextEditor({
           textAlign: 'center',
         }}
         className="rounded border-2 border-[#2563eb] bg-white px-1.5 py-0.5 text-slate-900 shadow-lg outline-none"
-        aria-label="Edit flow chart text"
+        aria-label={m.editText}
       />
     </div>
   );
@@ -868,6 +868,8 @@ function FlowInspector({
   onSelect: (selection: FlowSelection) => void;
   onDelete: () => void;
 }) {
+  const m = useMessages(FLOW_CANVAS_MESSAGES);
+  const common = useMessages(DIAGRAM_COMMON_MESSAGES);
   const node = selection?.kind === 'node' ? flow.nodes.find((n) => n.id === selection.id) : undefined;
   const arrow =
     selection?.kind === 'arrow' ? flow.arrows.find((a) => a.id === selection.id) : undefined;
@@ -876,7 +878,7 @@ function FlowInspector({
     <header className="mb-2 flex items-center gap-1">
       <Eyebrow>{title}</Eyebrow>
       <span className="flex-1" />
-      <IconButton label="Delete" variant="danger" onClick={onDelete}>
+      <IconButton label={common.delete} variant="danger" onClick={onDelete}>
         <span aria-hidden>✕</span>
       </IconButton>
     </header>
@@ -890,24 +892,21 @@ function FlowInspector({
       });
     return (
       <div>
-        {header(nodeName(node, flow.nodes.indexOf(node)))}
+        {header(nodeName(node, flow.nodes.indexOf(node), m))}
         <div className="space-y-2">
           <BiTextField
-            label="Text"
+            label={m.text}
             translate={{ kind: 'flowNode', fallsBack: true }}
             value={node.label}
             rows={2}
             onChange={(label) => patch({ label })}
           />
           <CheckField
-            label="Draw the box"
+            label={m.drawBox}
             checked={node.boxed !== false}
             onChange={(boxed) => patch({ boxed: boxed ? undefined : false })}
           />
-          <p className="text-[11px] leading-relaxed text-ink-muted">
-            Drag the box on the chart to move it. Past the outermost column starts a
-            new column.
-          </p>
+          <p className="text-[11px] leading-relaxed text-ink-muted">{m.moveNote}</p>
         </div>
       </div>
     );
@@ -920,21 +919,21 @@ function FlowInspector({
         arrows: flow.arrows.map((a) => (a.id === arrow.id ? { ...a, ...change } : a)),
       });
     const options = [
-      { value: '', label: '(open end)' },
-      ...flow.nodes.map((n, index) => ({ value: n.id, label: nodeName(n, index) })),
+      { value: '', label: m.openEnd },
+      ...flow.nodes.map((n, index) => ({ value: n.id, label: nodeName(n, index, m) })),
     ];
     return (
       <div>
-        {header('Arrow')}
+        {header(m.arrow)}
         <div className="space-y-2">
           <SelectField
-            label="From"
+            label={m.from}
             value={arrow.from ?? ''}
             options={options}
             onChange={(value) => patch({ from: value === '' ? undefined : String(value) })}
           />
           <SelectField
-            label="To"
+            label={m.to}
             value={arrow.to ?? ''}
             options={options}
             onChange={(value) => patch({ to: value === '' ? undefined : String(value) })}
@@ -943,14 +942,14 @@ function FlowInspector({
               above the shaft and "raw materials" below it, at once. */}
           <BiTextField
             translate={{ kind: 'flowNode', fallsBack: true }}
-            label="Label above"
+            label={m.labelAbove}
             value={arrow.label ?? emptyBiText()}
             rows={2}
             onChange={(label) => patch({ label: isBiTextEmpty(label) ? undefined : label })}
           />
           <BiTextField
             translate={{ kind: 'flowNode', fallsBack: true }}
-            label="Label below"
+            label={m.labelBelow}
             value={arrow.labelBelow ?? emptyBiText()}
             rows={2}
             onChange={(labelBelow) =>
@@ -967,18 +966,19 @@ function FlowInspector({
   const colValues = [...new Set(flow.nodes.map((n) => n.col))].sort((a, b) => a - b);
   return (
     <div>
-      <Eyebrow>On this chart</Eyebrow>
+      <Eyebrow>{m.onChart}</Eyebrow>
       {flow.nodes.length === 0 ? (
         <p className="mt-2 text-xs leading-relaxed text-ink-muted">
-          Nothing here yet. Press <strong>+ Box</strong> (or double-click the empty box)
-          to add the first stage.
+          {m.emptyPre}
+          <strong>{m.addBox}</strong>
+          {m.emptyPost}
         </p>
       ) : (
         <ul className="mt-2 space-y-1">
           {colValues.map((col, colIdx) => (
             <li key={col}>
               <span className="block px-2 text-[10px] font-medium uppercase tracking-wide text-ink-subtle">
-                Column {colIdx + 1}
+                {m.column(colIdx + 1)}
               </span>
               <ul>
                 {flow.nodes
@@ -992,11 +992,11 @@ function FlowInspector({
                         className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-ink transition-colors duration-150 ease-out-soft hover:bg-accent-soft"
                       >
                         <span className="truncate font-medium">
-                          {nodeName(n, flow.nodes.indexOf(n))}
+                          {nodeName(n, flow.nodes.indexOf(n), m)}
                         </span>
                         <span className="flex-1" />
                         <span className="shrink-0 text-[10px] uppercase tracking-wide text-ink-subtle">
-                          {n.boxed === false ? 'Text' : 'Box'}
+                          {n.boxed === false ? m.text : m.boxKind}
                         </span>
                       </button>
                     </li>
@@ -1007,7 +1007,7 @@ function FlowInspector({
           {flow.arrows.length > 0 && (
             <li className="pt-1">
               <span className="block px-2 text-[10px] font-medium uppercase tracking-wide text-ink-subtle">
-                Arrows
+                {m.arrows}
               </span>
               <ul>
                 {flow.arrows.map((a, index) => (
@@ -1020,11 +1020,11 @@ function FlowInspector({
                       <span className="truncate font-medium">
                         {plain(a.label?.en ?? []) ||
                           plain(a.labelBelow?.en ?? []) ||
-                          `Arrow ${index + 1}`}
+                          m.arrowN(index + 1)}
                       </span>
                       <span className="flex-1" />
                       <span className="shrink-0 text-[10px] uppercase tracking-wide text-ink-subtle">
-                        Arrow
+                        {m.arrow}
                       </span>
                     </button>
                   </li>
@@ -1035,10 +1035,9 @@ function FlowInspector({
         </ul>
       )}
       <p className="mt-4 border-t border-line pt-3 text-[11px] leading-relaxed text-ink-muted">
-        Drag a box to move it between columns. Past the outermost column starts a new
-        one. Double-click any text to retype it. Pick <strong>Arrow</strong> and drag
-        box-to-box to connect stages; release on empty paper for an open-ended stub.
-        ⌫ deletes the selection.
+        {m.helpPre}
+        <strong>{m.arrow}</strong>
+        {m.helpPost}
       </p>
     </div>
   );

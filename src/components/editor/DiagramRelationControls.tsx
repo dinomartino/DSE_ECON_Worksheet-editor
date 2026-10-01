@@ -23,7 +23,11 @@ import type { DiagramHandle } from '@/model/diagramDraw';
 import { emptyBiText, plain } from '@/model/text';
 import type { BiText } from '@/model/types';
 import { Button, Eyebrow, IconButton, SelectField } from '@/components/ui';
+import type { TextKey } from '@/i18n/catalogue';
+import { resolveMessages, sideOf } from '@/i18n/catalogue';
+import { uiLanguage, useMessages } from '@/i18n/language';
 import { BiTextField } from './BiTextField';
+import { DIAGRAM_RELATION_MESSAGES, pointTitleText } from './diagramEditing.messages';
 
 /**
  * The canvas's controls for relations: what an anchored point follows, derived curves
@@ -31,36 +35,49 @@ import { BiTextField } from './BiTextField';
  * set by dragging; these only name, create and cut relations.
  */
 
-export const SPAN_STYLES: Array<{ value: DiagramSpanStyle; label: string }> = [
-  { value: 'doubleArrow', label: 'Double arrow' },
-  { value: 'arrow', label: 'Arrow' },
-  { value: 'bracket', label: 'Bracket' },
-  { value: 'dimension', label: 'Dimension (t)' },
+type RelationKey = TextKey<typeof DIAGRAM_RELATION_MESSAGES>;
+
+export const SPAN_STYLES: Array<{ value: DiagramSpanStyle; label: RelationKey }> = [
+  { value: 'doubleArrow', label: 'doubleArrow' },
+  { value: 'arrow', label: 'arrow' },
+  { value: 'bracket', label: 'bracket' },
+  { value: 'dimension', label: 'dimension' },
 ];
 
 export type SpanAlong = 'none' | 'x' | 'y';
 
-export const SPAN_ALONG: Array<{ value: SpanAlong; label: string }> = [
-  { value: 'none', label: 'Between the ends' },
-  { value: 'x', label: 'On the x-axis' },
-  { value: 'y', label: 'On the y-axis' },
+export const SPAN_ALONG: Array<{ value: SpanAlong; label: RelationKey }> = [
+  { value: 'none', label: 'between' },
+  { value: 'x', label: 'onX' },
+  { value: 'y', label: 'onY' },
 ];
+
+/** The span options with their labels in the interface language. */
+export function spanOptions(m: { [K in RelationKey]: string }) {
+  return {
+    styles: SPAN_STYLES.map((entry) => ({ value: entry.value, label: m[entry.label] })),
+    along: SPAN_ALONG.map((entry) => ({ value: entry.value, label: m[entry.label] })),
+  };
+}
+
+const text = () => resolveMessages(DIAGRAM_RELATION_MESSAGES, uiLanguage());
 
 const same = (text: string): BiText => ({ en: [{ text }], zh: [{ text }] });
 
 const curveName = (diagram: Diagram, id: string) => {
+  const m = text();
   const index = diagram.curves.findIndex((c) => c.id === id);
   const curve = diagram.curves[index];
-  if (!curve) return 'a deleted curve';
-  return plain(curve.label?.en) || plain(curve.label?.zh) || `Curve ${index + 1}`;
+  if (!curve) return m.deletedCurve;
+  return plain(curve.label?.en) || plain(curve.label?.zh) || m.curveN(index + 1);
 };
 
 const pointName = (diagram: Diagram, id: string) => {
   const index = diagram.points.findIndex((p) => p.id === id);
   const mark = diagram.points[index];
-  if (!mark) return 'a deleted point';
+  if (!mark) return text().deletedPoint;
   const title = pointTitle(mark);
-  return title === 'Point' ? `Point ${index + 1}` : title;
+  return title === 'Point' ? text().pointN(index + 1) : pointTitleText(title, sideOf(uiLanguage()));
 };
 
 /** A reference in words: "D × S", "S at E₁'s level". */
@@ -71,14 +88,14 @@ export function anchorName(diagram: Diagram, ref: DiagramAnchorRef): string {
   if ('cross' in ref) return `${curveName(diagram, ref.cross[0])} × ${curveName(diagram, ref.cross[1])}`;
   if ('on' in ref) {
     return 'x' in ref
-      ? `${curveName(diagram, ref.on)} under ${anchorName(diagram, ref.x)}`
-      : `${curveName(diagram, ref.on)} level with ${part(ref.y, diagram.y)}`;
+      ? text().under(curveName(diagram, ref.on), anchorName(diagram, ref.x))
+      : text().levelWith(curveName(diagram, ref.on), part(ref.y, diagram.y));
   }
   return `(${part(ref.x, diagram.x)}, ${part(ref.y, diagram.y)})`;
 }
 
 export const placeName = (diagram: Diagram, place: DiagramPlace) =>
-  isFixedPlace(place) ? 'a free spot' : anchorName(diagram, place);
+  isFixedPlace(place) ? text().freeSpot : anchorName(diagram, place);
 
 /** What a derived curve is, in words. */
 export function deriveName(diagram: Diagram, derive: DiagramCurveDerive): string {
@@ -86,17 +103,17 @@ export function deriveName(diagram: Diagram, derive: DiagramCurveDerive): string
     typeof value === 'number' ? formatAxisValue(axisValue(axis, value)) : anchorName(diagram, value);
   switch (derive.kind) {
     case 'marginalRevenue':
-      return `MR of ${curveName(diagram, derive.of)}`;
+      return text().marginalRevenue(curveName(diagram, derive.of));
     case 'parallel':
-      return `Parallel to ${curveName(diagram, derive.to)} through ${placeName(diagram, derive.through)}`;
+      return text().parallel(curveName(diagram, derive.to), placeName(diagram, derive.through));
     case 'shift':
-      return `${curveName(diagram, derive.of)}, shifted`;
+      return text().shifted(curveName(diagram, derive.of));
     case 'tangent':
-      return `Tangent to ${curveName(diagram, derive.to)} at ${placeName(diagram, derive.at)}`;
+      return text().tangent(curveName(diagram, derive.to), placeName(diagram, derive.at));
     case 'level':
-      return `Horizontal at ${at(derive.y, diagram.y)}`;
+      return text().horizontalAt(at(derive.y, diagram.y));
     case 'vertical':
-      return `Vertical at ${at(derive.x, diagram.x)}`;
+      return text().verticalAt(at(derive.x, diagram.x));
   }
 }
 
@@ -179,6 +196,7 @@ export function CurveRelationControls({
   onSelect: (handles: DiagramHandle[]) => void;
   newId: () => string;
 }) {
+  const m = useMessages(DIAGRAM_RELATION_MESSAGES);
   const derive = curve.derive;
   if (derive) {
     const detach = () =>
@@ -196,11 +214,11 @@ export function CurveRelationControls({
     return (
       <div className="space-y-1.5 rounded-lg bg-surface-sunken p-2">
         <p className="text-[11px] leading-snug text-ink">
-          <span className="text-ink-muted">Follows:</span> {deriveName(diagram, derive)}
+          <span className="text-ink-muted">{m.follows}</span> {deriveName(diagram, derive)}
         </p>
         {numeric && (
           <ValueField
-            label={derive.kind === 'vertical' ? 'At x =' : 'At y ='}
+            label={derive.kind === 'vertical' ? m.atX : m.atY}
             value={axisValue(axis, derive.kind === 'vertical' ? (derive.x as number) : (derive.y as number))}
             onCommit={(value) => {
               if (value === undefined) return;
@@ -215,7 +233,7 @@ export function CurveRelationControls({
           />
         )}
         <Button size="sm" variant="subtle" onClick={detach}>
-          Detach: keep it where it is
+          {m.detach}
         </Button>
       </div>
     );
@@ -226,25 +244,25 @@ export function CurveRelationControls({
     onSelect([{ kind: 'curve', curveId: next.id }]);
   };
   const pointOptions = [
-    { value: '', label: 'Choose a point…' },
+    { value: '', label: m.choosePoint },
     ...diagram.points.map((p) => ({ value: p.id, label: pointName(diagram, p.id) })),
   ];
   return (
     <div className="space-y-1.5 border-t border-line pt-2">
-      <Eyebrow>Draw from this curve</Eyebrow>
+      <Eyebrow>{m.drawFrom}</Eyebrow>
       {curve.points.length === 2 && (
         <Button
           size="sm"
           variant="subtle"
           onClick={() => add(derivedCurve(newId(), { kind: 'marginalRevenue', of: curve.id }, curve.points, same('MR')))}
         >
-          MR: same intercept, twice as steep
+          {m.mrButton}
         </Button>
       )}
       {diagram.points.length > 0 && (
         <>
           <SelectField
-            label="Parallel through"
+            label={m.parallelThrough}
             value=""
             options={pointOptions}
             onChange={(pointId) =>
@@ -253,7 +271,7 @@ export function CurveRelationControls({
             }
           />
           <SelectField
-            label="Tangent at"
+            label={m.tangentAt}
             value=""
             options={pointOptions}
             onChange={(pointId) =>
@@ -276,6 +294,7 @@ export function PointRelationControls({
   mark: DiagramPointMark;
   onChange: (diagram: Diagram) => void;
 }) {
+  const m = useMessages(DIAGRAM_RELATION_MESSAGES);
   const patch = (next: (p: DiagramPointMark) => DiagramPointMark) =>
     onChange({ ...diagram, points: diagram.points.map((p) => (p.id === mark.id ? next(p) : p)) });
   const place = (axis: 'x' | 'y', value: number | undefined) => {
@@ -299,7 +318,7 @@ export function PointRelationControls({
       {mark.anchor && (
         <div className="space-y-1.5 rounded-lg bg-surface-sunken p-2">
           <p className="text-[11px] leading-snug text-ink">
-            <span className="text-ink-muted">Follows:</span> {anchorName(diagram, mark.anchor)}
+            <span className="text-ink-muted">{m.follows}</span> {anchorName(diagram, mark.anchor)}
           </p>
           <Button
             size="sm"
@@ -312,7 +331,7 @@ export function PointRelationControls({
               })
             }
           >
-            Detach: keep it where it is
+            {m.detach}
           </Button>
         </div>
       )}
@@ -334,21 +353,23 @@ export function SpanInspector({
 }) {
   const patch = (next: (s: DiagramSpan) => DiagramSpan) =>
     onChange({ ...diagram, spans: (diagram.spans ?? []).map((s) => (s.id === span.id ? next(s) : s)) });
+  const m = useMessages(DIAGRAM_RELATION_MESSAGES);
+  const options = spanOptions(m);
   const wedge = isShiftWedge(diagram, span);
-  const style = wedge ? 'Wedge' : (SPAN_STYLES.find((entry) => entry.value === span.style)?.label ?? 'Span');
+  const style = wedge ? m.wedge : (options.styles.find((entry) => entry.value === span.style)?.label ?? m.span);
   return (
     <div>
       <header className="mb-2 flex items-center gap-1">
         <Eyebrow>{plain(span.label?.en) || style}</Eyebrow>
         <span className="flex-1" />
-        <IconButton label="Delete" variant="danger" onClick={onDelete}>
+        <IconButton label={m.delete} variant="danger" onClick={onDelete}>
           <span aria-hidden>✕</span>
         </IconButton>
       </header>
       <div className="space-y-2">
         <BiTextField
           translate={{ kind: 'diagramLabel', fallsBack: true }}
-          label="Label"
+          label={m.label}
           value={span.label ?? emptyBiText()}
           rows={1}
           onChange={(label) => patch((s) => ({ ...s, label }))}
@@ -357,15 +378,15 @@ export function SpanInspector({
         {!wedge && (
           <>
             <SelectField
-              label="Style"
+              label={m.style}
               value={span.style}
-              options={SPAN_STYLES}
+              options={options.styles}
               onChange={(value) => patch((s) => ({ ...s, style: value }))}
             />
             <SelectField
-              label="Sits"
+              label={m.sits}
               value={span.along ?? 'none'}
-              options={SPAN_ALONG}
+              options={options.along}
               onChange={(value) =>
                 patch((s) => {
                   // The offset is measured from a different rest on an axis, so it restarts there.
@@ -384,8 +405,8 @@ export function SpanInspector({
           </>
         )}
         <p className="text-[11px] leading-snug text-ink">
-          <span className="text-ink-muted">From</span> {placeName(diagram, span.from)}{' '}
-          <span className="text-ink-muted">to</span> {placeName(diagram, span.to)}
+          <span className="text-ink-muted">{m.fromWord}</span> {placeName(diagram, span.from)}{' '}
+          <span className="text-ink-muted">{m.toWord}</span> {placeName(diagram, span.to)}
         </p>
         {span.labelOffset && (
           <Button
@@ -399,13 +420,10 @@ export function SpanInspector({
               })
             }
           >
-            Reset label position
+            {m.resetLabel}
           </Button>
         )}
-        <p className="text-[11px] text-ink-muted">
-          Drag the span to move it off its line. Drag an end onto a point or a crossing to attach it
-          there; drop it elsewhere to leave it free.
-        </p>
+        <p className="text-[11px] text-ink-muted">{m.spanNote}</p>
       </div>
     </div>
   );
@@ -423,6 +441,7 @@ export function DiagramScaleControls({
   onSelect: (handles: DiagramHandle[]) => void;
   newId: () => string;
 }) {
+  const m = useMessages(DIAGRAM_RELATION_MESSAGES);
   const setMax = (axis: 'x' | 'y', max: number | undefined) => {
     const next = { ...diagram[axis] };
     if (max && max > 0) next.max = max;
@@ -445,29 +464,29 @@ export function DiagramScaleControls({
   return (
     <div className="space-y-1.5">
       <div className="flex flex-wrap items-center gap-2">
-        <ValueField label="x max" clearable value={diagram.x.max} onCommit={(v) => setMax('x', v)} />
-        <ValueField label="y max" clearable value={diagram.y.max} onCommit={(v) => setMax('y', v)} />
+        <ValueField label={m.xMax} clearable value={diagram.x.max} onCommit={(v) => setMax('x', v)} />
+        <ValueField label={m.yMax} clearable value={diagram.y.max} onCommit={(v) => setMax('y', v)} />
       </div>
       {(diagram.x.max || diagram.y.max) && (
         <div className="flex animate-fade-in flex-wrap gap-1.5">
           {diagram.x.max ? (
             <Button size="sm" variant="subtle" onClick={() => addTick('x')}>
-              + x tick
+              {m.addXTick}
             </Button>
           ) : null}
           {diagram.y.max ? (
             <Button size="sm" variant="subtle" onClick={() => addTick('y')}>
-              + y tick
+              {m.addYTick}
             </Button>
           ) : null}
         </div>
       )}
       <div className="flex flex-wrap gap-1.5">
         <Button size="sm" variant="subtle" onClick={() => addLine('level')}>
-          + Horizontal line
+          {m.addHorizontal}
         </Button>
         <Button size="sm" variant="subtle" onClick={() => addLine('vertical')}>
-          + Vertical line
+          {m.addVertical}
         </Button>
       </div>
     </div>
@@ -486,12 +505,13 @@ export function TickValueField({
   tickId: string;
   onChange: (diagram: Diagram) => void;
 }) {
+  const m = useMessages(DIAGRAM_RELATION_MESSAGES);
   const scale = diagram[axis];
   const tick = (scale.ticks ?? []).find((t) => t.id === tickId);
   if (!scale.max || !tick) return null;
   return (
     <ValueField
-      label="Value"
+      label={m.value}
       value={axisValue(scale, tick.at)}
       onCommit={(value) => {
         if (value === undefined) return;

@@ -7,7 +7,9 @@ import { diagramSize, diagramSvg, forumChartLayout } from '@/render/diagram';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { Button } from '@/components/ui';
 import { useModalLayer } from '@/components/ui/modalLayer';
+import { useMessages } from '@/i18n/language';
 import { FieldScopeContext } from './fieldScope';
+import { DIAGRAM_COMMON_MESSAGES, FORUM_CANVAS_MESSAGES } from './diagramEditing.messages';
 
 /**
  * The forum figure's canvas: resizing bubbles on the picture itself.
@@ -67,6 +69,8 @@ export function ForumCanvas({
   keysSuspended?: boolean;
 }) {
   useModalLayer();
+  const m = useMessages(FORUM_CANVAS_MESSAGES);
+  const common = useMessages(DIAGRAM_COMMON_MESSAGES);
   const storeLanguage = useWorksheetStore((s) => s.mode.language);
   const storeFonts = useWorksheetStore((s) => s.worksheet.fonts);
   const language = languageProp ?? storeLanguage;
@@ -233,10 +237,10 @@ export function ForumCanvas({
       }
     >
       <header className="flex flex-wrap items-center gap-3 border-b border-line bg-surface px-5 py-3 text-ink">
-        {!embedded && <span className="text-sm font-semibold tracking-wide text-ink">Adjust forum bubbles</span>}
+        {!embedded && <span className="text-sm font-semibold tracking-wide text-ink">{m.heading}</span>}
 
         <label className="flex items-center gap-2 text-xs font-medium text-ink">
-          Zoom
+          {common.zoom}
           <select
             value={zoom}
             onChange={(event) => setZoom(Number(event.target.value))}
@@ -252,10 +256,9 @@ export function ForumCanvas({
 
         <span className="flex-1" />
         <span className="max-w-96 text-xs leading-snug text-ink-muted">
-          Drag a bubble&rsquo;s inner edge to resize it. The words re-wrap to fit. Wording,
-          corners and the picture are edited in the sidebar.
+          {m.hint}
         </span>
-        {!embedded && <Button onClick={onClose}>Done</Button>}
+        {!embedded && <Button onClick={onClose}>{common.done}</Button>}
       </header>
 
       <div className="flex min-h-0 flex-1">

@@ -60,17 +60,19 @@ import { spanLayout } from '@/render/diagramSpan';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { Button, CheckField, Eyebrow, IconButton, SelectField } from '@/components/ui';
 import { useModalLayer } from '@/components/ui/modalLayer';
+import { resolveMessages, sideOf, type TextKey } from '@/i18n/catalogue';
+import { uiLanguage, useMessages } from '@/i18n/language';
 import { BiTextField } from './BiTextField';
+import { DIAGRAM_CANVAS_MESSAGES, DIAGRAM_RELATION_MESSAGES, pointTitleText } from './diagramEditing.messages';
 import { FieldScopeContext } from './fieldScope';
 import { AreaInspector, ShadeMenu, ShiftCurveControls, areaName } from './DiagramAreaControls';
 import {
   CurveRelationControls,
   DiagramScaleControls,
   PointRelationControls,
-  SPAN_ALONG,
-  SPAN_STYLES,
   SpanInspector,
   TickValueField,
+  spanOptions,
   type SpanAlong,
 } from './DiagramRelationControls';
 
@@ -211,13 +213,15 @@ interface CropRect {
   bottom: number;
 }
 
-const TOOLS: Array<{ id: Tool; glyph: string; name: string; hint: string }> = [
-  { id: 'select', glyph: '↖', name: 'Select', hint: 'Drag to move. It lets go on release. Click to select and edit. Drag empty space to box-select.' },
-  { id: 'curve', glyph: '╱', name: 'Curve', hint: 'Drag to draw a line. A near-flat one straightens itself. Hold Shift to keep a shallow slope. Double-click text to retype it.' },
-  { id: 'point', glyph: '•', name: 'Point', hint: 'Click to mark a point. It snaps to curve intersections.' },
-  { id: 'label', glyph: 'A', name: 'Label', hint: 'Click to place free text, such as the "a b c d" areas of a tariff diagram.' },
-  { id: 'arrow', glyph: '→', name: 'Arrow', hint: 'Drag to draw a shift arrow between two curves. A near-flat one straightens itself. Hold Shift to keep a shallow angle.' },
-  { id: 'span', glyph: '↔', name: 'Span', hint: 'Click two ends. Points and crossings attach, so the bracket or arrow follows them. Pick a style, and whether it sits on an axis.' },
+type CanvasKey = TextKey<typeof DIAGRAM_CANVAS_MESSAGES>;
+
+const TOOLS: Array<{ id: Tool; glyph: string; name: CanvasKey; hint: CanvasKey }> = [
+  { id: 'select', glyph: '↖', name: 'toolSelect', hint: 'toolSelectHint' },
+  { id: 'curve', glyph: '╱', name: 'toolCurve', hint: 'toolCurveHint' },
+  { id: 'point', glyph: '•', name: 'toolPoint', hint: 'toolPointHint' },
+  { id: 'label', glyph: 'A', name: 'toolLabel', hint: 'toolLabelHint' },
+  { id: 'arrow', glyph: '→', name: 'toolArrow', hint: 'toolArrowHint' },
+  { id: 'span', glyph: '↔', name: 'toolSpan', hint: 'toolSpanHint' },
 ];
 
 interface Props {
@@ -261,6 +265,7 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
   // is selected underneath — deleting one curve took the entire picture with it.
   useModalLayer();
 
+  const m = useMessages(DIAGRAM_CANVAS_MESSAGES);
   const storeLanguage = useWorksheetStore((s) => s.mode.language);
   const storeFonts = useWorksheetStore((s) => s.worksheet.fonts);
   const language = languageProp ?? storeLanguage;
@@ -1149,12 +1154,12 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
   }, [editing, labelAnchors, projection, diagram, language, block.widthPx, spanClear]);
 
   const toolbarHint = cropping
-    ? 'Drag the frame edges. A wider frame is how a long title gets its room.'
+    ? m.hintCrop
     : spanDraft
-      ? 'Now click the other end. Esc cancels.'
+      ? m.hintSpanEnd
       : selected.length > 1
-        ? `${selected.length} selected`
-        : activeTool?.hint;
+        ? m.selectedCount(selected.length)
+        : activeTool && m[activeTool.hint];
 
   const surface = (
     <div
@@ -1165,14 +1170,14 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
       }
     >
       <header className="flex flex-wrap items-center gap-3 border-b border-line bg-surface px-5 py-3 text-ink">
-        {!embedded && <span className="text-sm font-semibold tracking-wide text-ink">Draw diagram</span>}
+        {!embedded && <span className="text-sm font-semibold tracking-wide text-ink">{m.heading}</span>}
 
         <div className="flex gap-1.5">
           {TOOLS.map((item) => (
             <button
               key={item.id}
               type="button"
-              title={`${item.name}: ${item.hint}`}
+              title={`${m[item.name]}: ${m[item.hint]}`}
               aria-pressed={tool === item.id}
               onClick={() => {
                 setTool(item.id);
@@ -1190,7 +1195,7 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
               <span aria-hidden className="text-lg leading-none">{item.glyph}</span>
               {/* Embedded below 2xl the tools are glyphs (the name stays for readers and in
                   the tooltip), so the toolbar keeps one row at 1280. */}
-              <span className={`text-xs font-medium ${embedded ? 'sr-only 2xl:not-sr-only' : ''}`}>{item.name}</span>
+              <span className={`text-xs font-medium ${embedded ? 'sr-only 2xl:not-sr-only' : ''}`}>{m[item.name]}</span>
             </button>
           ))}
           <ShadeMenu
@@ -1208,32 +1213,7 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
         </div>
 
         {tool === 'span' && (
-          <div className="flex items-center gap-1.5">
-            <select
-              aria-label="Span style"
-              value={spanStyle}
-              onChange={(event) => setSpanStyle(event.target.value as DiagramSpanStyle)}
-              className="h-9 rounded-md border border-line-strong bg-surface-raised px-2 text-xs text-ink"
-            >
-              {SPAN_STYLES.map((entry) => (
-                <option key={entry.value} value={entry.value}>
-                  {entry.label}
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label="Span position"
-              value={spanAlong}
-              onChange={(event) => setSpanAlong(event.target.value as SpanAlong)}
-              className="h-9 rounded-md border border-line-strong bg-surface-raised px-2 text-xs text-ink"
-            >
-              {SPAN_ALONG.map((entry) => (
-                <option key={entry.value} value={entry.value}>
-                  {entry.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <SpanSelects style={spanStyle} along={spanAlong} onStyle={setSpanStyle} onAlong={setSpanAlong} />
         )}
 
         <span className="h-8 w-px bg-line-strong" />
@@ -1242,11 +1222,11 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
             met ⌘D should still find "Duplicate", and the labels double as the place the
             shortcut is discovered. */}
         <div className="flex gap-1.5">
-          <ToolbarButton compact={embedded} label="Copy" hint="⌘C" onClick={doCopy} disabled={selected.length === 0} />
-          <ToolbarButton compact={embedded} label="Paste" hint="⌘V" onClick={doPaste} disabled={isClipEmpty(clip)} />
+          <ToolbarButton compact={embedded} label={m.copy} hint="⌘C" onClick={doCopy} disabled={selected.length === 0} />
+          <ToolbarButton compact={embedded} label={m.paste} hint="⌘V" onClick={doPaste} disabled={isClipEmpty(clip)} />
           <ToolbarButton
             compact={embedded}
-            label="Duplicate"
+            label={m.duplicate}
             hint="⌘D"
             disabled={selected.length === 0}
             onClick={() => {
@@ -1258,7 +1238,7 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
           />
           <ToolbarButton
             compact={embedded}
-            label="Delete"
+            label={m.delete}
             hint="⌫"
             danger
             onClick={doDelete}
@@ -1275,11 +1255,11 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
             checked={snapping}
             onChange={(event) => setSnapping(event.target.checked)}
           />
-          Snap
+          {m.snap}
         </label>
 
         <label className="flex items-center gap-2 text-xs font-medium text-ink">
-          Zoom
+          {m.zoom}
           <select
             value={zoom}
             onChange={(event) => setZoom(Number(event.target.value))}
@@ -1301,7 +1281,7 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
         <button
           type="button"
           aria-pressed={cropping}
-          title="Crop: drag the frame to choose the white space around the plot. The frame becomes the printed size; the plot keeps its own."
+          title={m.cropTitle}
           onClick={toggleCrop}
           className={
             'flex h-11 items-center gap-1.5 rounded-lg border px-3 text-base ' +
@@ -1312,10 +1292,10 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
           }
         >
           <span aria-hidden className="text-lg leading-none">⛶</span>
-          <span className="text-xs font-medium">Crop</span>
+          <span className="text-xs font-medium">{m.crop}</span>
         </button>
         {cropping && diagram.crop && (
-          <ToolbarButton label="Auto frame" hint="measure again" onClick={resetCrop} />
+          <ToolbarButton label={m.autoFrame} hint={m.autoFrameHint} onClick={resetCrop} />
         )}
 
         <span className="flex-1" />
@@ -1330,7 +1310,7 @@ export function DiagramCanvas({ block, onChange, onClose, language: languageProp
         >
           {toolbarHint}
         </span>
-        {!embedded && <Button onClick={onClose}>Done</Button>}
+        {!embedded && <Button onClick={onClose}>{m.done}</Button>}
       </header>
 
       <div className="flex min-h-0 flex-1">
@@ -1484,6 +1464,7 @@ function TextEditor({
   onCommit: (text: BiText) => void;
   onCancel: () => void;
 }) {
+  const m = useMessages(DIAGRAM_CANVAS_MESSAGES);
   // Which side is being edited: the one the canvas is currently showing. Editing the
   // English of a diagram displayed in Chinese would retype text that is not on screen.
   const side: 'en' | 'zh' = language === 'zh' ? 'zh' : 'en';
@@ -1567,7 +1548,7 @@ function TextEditor({
         textAlign: 'center',
       }}
       className="rounded border-2 border-[#2563eb] bg-white px-1.5 py-0.5 text-slate-900 shadow-lg outline-none"
-      aria-label="Edit diagram text"
+      aria-label={m.editText}
     />
       {/* Subscript and superscript, beside the field rather than in a menu: "S₁" is the
           commonest thing a curve label needs, and the storage marker `_{1}` is not
@@ -1578,8 +1559,8 @@ function TextEditor({
           would never run. Preventing the default keeps focus, and therefore the
           selection, on the field being formatted. */}
       {([
-        ['_', 'Subscript', <>X<sub>2</sub></>],
-        ['^', 'Superscript', <>X<sup>2</sup></>],
+        ['_', m.subscript, <>X<sub>2</sub></>],
+        ['^', m.superscript, <>X<sup>2</sup></>],
       ] as const).map(([marker, label, glyph]) => (
         <button
           key={marker}
@@ -2047,6 +2028,51 @@ function CropFrame({
 }
 
 /** A labelled toolbar button, sized for the larger canvas chrome. */
+/** The span tool's two selects: the end style and whether it sits on an axis. */
+function SpanSelects({
+  style,
+  along,
+  onStyle,
+  onAlong,
+}: {
+  style: DiagramSpanStyle;
+  along: SpanAlong;
+  onStyle: (style: DiagramSpanStyle) => void;
+  onAlong: (along: SpanAlong) => void;
+}) {
+  const m = useMessages(DIAGRAM_CANVAS_MESSAGES);
+  const choices = spanOptions(useMessages(DIAGRAM_RELATION_MESSAGES));
+  const selectClass = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2 text-xs text-ink';
+  return (
+    <div className="flex items-center gap-1.5">
+      <select
+        aria-label={m.spanStyle}
+        value={style}
+        onChange={(event) => onStyle(event.target.value as DiagramSpanStyle)}
+        className={selectClass}
+      >
+        {choices.styles.map((entry) => (
+          <option key={entry.value} value={entry.value}>
+            {entry.label}
+          </option>
+        ))}
+      </select>
+      <select
+        aria-label={m.spanPosition}
+        value={along}
+        onChange={(event) => onAlong(event.target.value as SpanAlong)}
+        className={selectClass}
+      >
+        {choices.along.map((entry) => (
+          <option key={entry.value} value={entry.value}>
+            {entry.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 function ToolbarButton({
   label,
   hint,
@@ -2114,6 +2140,7 @@ function SelectionInspector({
   /** Open the in-place editor on a handle — how "Add a title" gets a caret immediately. */
   onEdit: (handle: DiagramHandle) => void;
 }) {
+  const m = useMessages(DIAGRAM_CANVAS_MESSAGES);
   // Nothing selected is the state the panel is in most often, so it earns real content
   // rather than a sentence: an index of what is on the diagram, where each row selects
   // its element. Clicking a name is how you reach a curve whose line is under another.
@@ -2128,9 +2155,9 @@ function SelectionInspector({
     return (
       <div>
         <header className="mb-3 flex items-center gap-2">
-          <Eyebrow>{selected.length} selected</Eyebrow>
+          <Eyebrow>{m.selectedCount(selected.length)}</Eyebrow>
           <span className="flex-1" />
-          <IconButton label="Delete selection" variant="danger" onClick={onDelete}>
+          <IconButton label={m.deleteSelection} variant="danger" onClick={onDelete}>
             <span aria-hidden>✕</span>
           </IconButton>
         </header>
@@ -2144,11 +2171,7 @@ function SelectionInspector({
             </li>
           ))}
         </ul>
-        <p className="text-[11px] leading-relaxed text-ink-muted">
-          Drag any one of them to move the whole group, or nudge it with the arrow keys.
-          ⌘C copies, ⌘V pastes offset, ⌘D duplicates, ⌫ deletes. Shift-click a shape to
-          add or remove it.
-        </p>
+        <p className="text-[11px] leading-relaxed text-ink-muted">{m.groupNote}</p>
       </div>
     );
   }
@@ -2180,7 +2203,7 @@ function SelectionInspector({
     <header className="mb-2 flex items-center gap-1">
       <Eyebrow>{title}</Eyebrow>
       <span className="flex-1" />
-      <IconButton label="Delete" variant="danger" onClick={onDelete}>
+      <IconButton label={m.delete} variant="danger" onClick={onDelete}>
         <span aria-hidden>✕</span>
       </IconButton>
     </header>
@@ -2189,11 +2212,11 @@ function SelectionInspector({
   if (curve) {
     return (
       <div>
-        {header(plain(curve.label?.en) || 'Curve')}
+        {header(plain(curve.label?.en) || m.kindCurve)}
         <div className="space-y-2">
           <BiTextField
             translate={{ kind: 'diagramLabel', fallsBack: true }}
-            label="Label"
+            label={m.label}
             value={curve.label ?? emptyBiText()}
             rows={1}
             onChange={(next) =>
@@ -2204,11 +2227,11 @@ function SelectionInspector({
             }
           />
           <SelectField
-            label="Shape"
+            label={m.shape}
             value={curve.shape}
             options={[
-              { value: 'straight', label: 'Straight' },
-              { value: 'curved', label: 'Curved' },
+              { value: 'straight', label: m.straight },
+              { value: 'curved', label: m.curved },
             ]}
             onChange={(shape) =>
               onChange({
@@ -2220,11 +2243,11 @@ function SelectionInspector({
             }
           />
           <SelectField
-            label="Line"
+            label={m.line}
             value={curve.stroke ?? 'solid'}
             options={[
-              { value: 'solid', label: 'Solid' },
-              { value: 'dashed', label: 'Dashed' },
+              { value: 'solid', label: m.solid },
+              { value: 'dashed', label: m.dashed },
             ]}
             onChange={(stroke) =>
               onChange({
@@ -2236,11 +2259,11 @@ function SelectionInspector({
             }
           />
           <SelectField
-            label="Label at"
+            label={m.labelAt}
             value={curve.labelAt ?? 'end'}
             options={[
-              { value: 'end', label: 'End' },
-              { value: 'start', label: 'Start' },
+              { value: 'end', label: m.end },
+              { value: 'start', label: m.start },
             ]}
             onChange={(labelAt) =>
               onChange({
@@ -2262,10 +2285,7 @@ function SelectionInspector({
               })
             }
           />
-          <p className="text-[11px] text-ink-muted">
-            Double-click the line to add a kink. Drag a square handle to move one end.
-            Drag the label ring to move its name.
-          </p>
+          <p className="text-[11px] text-ink-muted">{m.curveNote}</p>
           <ShiftCurveControls
             diagram={diagram}
             curveId={id}
@@ -2303,11 +2323,11 @@ function SelectionInspector({
     };
     return (
       <div>
-        {header(pointTitle(mark))}
+        {header(shownPointTitle(mark))}
         <div className="space-y-2">
           <BiTextField
             translate={{ kind: 'diagramLabel', fallsBack: true }}
-            label="Label"
+            label={m.label}
             value={mark.label ?? emptyBiText()}
             rows={1}
             onChange={(next) => setLabel(next)}
@@ -2316,19 +2336,19 @@ function SelectionInspector({
           {!plain(mark.label?.en).trim() && !plain(mark.label?.zh).trim() && (
             <Button size="sm" variant="subtle" onClick={() => setLabel(nextEquilibriumName(diagram, mark))}>
               {/* Its subscript as a subscript digit: "Label E₀", as it will print. */}
-              Label E{plain(nextEquilibriumName(diagram, mark).en).slice(1).replace(/\d/g, (d) => '₀₁₂₃₄₅₆₇₈₉'[Number(d)])}
+              {m.labelAs(`E${plain(nextEquilibriumName(diagram, mark).en).slice(1).replace(/\d/g, (d) => '₀₁₂₃₄₅₆₇₈₉'[Number(d)])}`)}
             </Button>
           )}
           <PointRelationControls diagram={diagram} mark={mark} onChange={onChange} />
           <div className="flex flex-wrap gap-1">
-            <CheckField label="Dot" checked={mark.dot !== false} onChange={(dot) => patch({ dot })} />
+            <CheckField label={m.dot} checked={mark.dot !== false} onChange={(dot) => patch({ dot })} />
             <CheckField
-              label="Drop to x"
+              label={m.dropX}
               checked={(mark.dropTo ?? []).includes('x')}
               onChange={() => toggleDrop('x')}
             />
             <CheckField
-              label="Drop to y"
+              label={m.dropY}
               checked={(mark.dropTo ?? []).includes('y')}
               onChange={() => toggleDrop('y')}
             />
@@ -2337,17 +2357,17 @@ function SelectionInspector({
               the eight slots are the tidy defaults, so choosing one clears the free
               offset a drag wrote rather than fighting with it. */}
           <SelectField
-            label="Label side"
+            label={m.labelSide}
             value={mark.labelSide ?? 'right'}
             options={[
-              { value: 'upRight', label: 'Up-right' },
-              { value: 'up', label: 'Up' },
-              { value: 'upLeft', label: 'Up-left' },
-              { value: 'left', label: 'Left' },
-              { value: 'downLeft', label: 'Down-left' },
-              { value: 'down', label: 'Down' },
-              { value: 'downRight', label: 'Down-right' },
-              { value: 'right', label: 'Right' },
+              { value: 'upRight', label: m.upRight },
+              { value: 'up', label: m.up },
+              { value: 'upLeft', label: m.upLeft },
+              { value: 'left', label: m.left },
+              { value: 'downLeft', label: m.downLeft },
+              { value: 'down', label: m.down },
+              { value: 'downRight', label: m.downRight },
+              { value: 'right', label: m.right },
             ]}
             onChange={(labelSide) =>
               onChange({
@@ -2376,14 +2396,14 @@ function SelectionInspector({
           />
           <BiTextField
             translate={{ kind: 'tickLabel', fallsBack: true }}
-            label="x-axis tick"
+            label={m.xTick}
             value={mark.xTickLabel ?? emptyBiText()}
             rows={1}
             onChange={(xTickLabel) => patch({ xTickLabel })}
           />
           <BiTextField
             translate={{ kind: 'tickLabel', fallsBack: true }}
-            label="y-axis tick"
+            label={m.yTick}
             value={mark.yTickLabel ?? emptyBiText()}
             rows={1}
             onChange={(yTickLabel) => patch({ yTickLabel })}
@@ -2401,11 +2421,11 @@ function SelectionInspector({
       });
     return (
       <div>
-        {header(plain(label.text.en) || 'Label')}
+        {header(plain(label.text.en) || m.kindLabel)}
         <div className="space-y-2">
           <BiTextField
             translate={{ kind: 'diagramLabel', fallsBack: true }}
-            label="Text"
+            label={m.text}
             value={label.text}
             rows={1}
             onChange={(text) => patchLabel({ text })}
@@ -2414,17 +2434,17 @@ function SelectionInspector({
               which is set by dragging. It matters for the area letters of a tariff
               diagram, where "a" must sit inside a wedge rather than centred across it. */}
           <SelectField
-            label="Align"
+            label={m.align}
             value={label.align ?? 'center'}
             options={[
-              { value: 'center', label: 'Centre' },
-              { value: 'left', label: 'Left' },
-              { value: 'right', label: 'Right' },
+              { value: 'center', label: m.centre },
+              { value: 'left', label: m.alignLeft },
+              { value: 'right', label: m.alignRight },
             ]}
             onChange={(align) => patchLabel({ align: align as typeof label.align })}
           />
           <CheckField
-            label="Italic"
+            label={m.italic}
             checked={Boolean(label.italic)}
             onChange={(italic) => patchLabel({ italic })}
           />
@@ -2436,11 +2456,11 @@ function SelectionInspector({
   if (arrow) {
     return (
       <div>
-        {header(plain(arrow.label?.en) || 'Arrow')}
+        {header(plain(arrow.label?.en) || m.kindArrow)}
         <div className="space-y-2">
           <BiTextField
             translate={{ kind: 'diagramLabel', fallsBack: true }}
-            label="Label"
+            label={m.label}
             value={arrow.label ?? emptyBiText()}
             rows={1}
             onChange={(next) =>
@@ -2451,7 +2471,7 @@ function SelectionInspector({
             }
           />
           <CheckField
-            label="Curved"
+            label={m.curvedArrow}
             checked={Boolean(arrow.curved)}
             onChange={(curved) =>
               onChange({
@@ -2487,10 +2507,11 @@ function SelectionInspector({
  * there is something to reset, so it never advertises a state the diagram is not in.
  */
 function ResetLabelPosition({ moved, onReset }: { moved: boolean; onReset: () => void }) {
+  const m = useMessages(DIAGRAM_CANVAS_MESSAGES);
   if (!moved) return null;
   return (
     <Button size="sm" variant="subtle" onClick={onReset}>
-      Reset label position
+      {m.resetLabel}
     </Button>
   );
 }
@@ -2513,14 +2534,14 @@ function AxisInspector({
   onChange: (diagram: Diagram) => void;
   onDelete: () => void;
 }) {
+  const m = useMessages(DIAGRAM_CANVAS_MESSAGES);
   const axis = diagram[handle.axis];
-  const axisName = handle.axis === 'x' ? 'x-axis' : 'y-axis';
 
   const header = (title: string) => (
     <header className="mb-2 flex items-center gap-1">
       <Eyebrow>{title}</Eyebrow>
       <span className="flex-1" />
-      <IconButton label="Delete" variant="danger" onClick={onDelete}>
+      <IconButton label={m.delete} variant="danger" onClick={onDelete}>
         <span aria-hidden>✕</span>
       </IconButton>
     </header>
@@ -2529,11 +2550,11 @@ function AxisInspector({
   if (handle.kind === 'axisTitle') {
     return (
       <div>
-        {header(`${axisName} title`)}
+        {header(m.axisTitle(handle.axis))}
         <div className="space-y-2">
           <BiTextField
             translate={{ kind: 'axisTitle', fallsBack: true }}
-            label="Title"
+            label={m.title}
             value={axis.title ?? emptyBiText()}
             rows={1}
             onChange={(title) => onChange({ ...diagram, [handle.axis]: { ...axis, title } })}
@@ -2556,11 +2577,11 @@ function AxisInspector({
   if (!tick) return null;
   return (
     <div>
-      {header(`${axisName} tick`)}
+      {header(m.axisTickHeader(handle.axis))}
       <div className="space-y-2">
         <BiTextField
           translate={{ kind: 'tickLabel', fallsBack: true }}
-          label="Label"
+          label={m.label}
           value={tick.label}
           rows={1}
           onChange={(label) =>
@@ -2588,56 +2609,61 @@ function AxisInspector({
           }
         />
         <TickValueField diagram={diagram} axis={handle.axis} tickId={tick.id} onChange={onChange} />
-        <p className="text-[11px] text-ink-muted">
-          Drag it to slide along the {axisName}. It stays on the axis by design.
-        </p>
+        <p className="text-[11px] text-ink-muted">{m.axisSlide(handle.axis)}</p>
       </div>
     </div>
   );
 }
 
+const shownPointTitle = (mark: Parameters<typeof pointTitle>[0]) =>
+  pointTitleText(pointTitle(mark), sideOf(uiLanguage()));
+
 /** A short human name for whatever a handle addresses, for selection lists. */
 function describeHandle(diagram: Diagram, handle: DiagramHandle): string {
+  const m = resolveMessages(DIAGRAM_CANVAS_MESSAGES, uiLanguage());
   const id = handleId(handle);
 
   // Anchored text names both itself and what it belongs to, since selecting "S" and
   // selecting the supply curve are different things that would otherwise read alike.
-  if (handle.kind === 'axisTitle') return `${handle.axis}-axis title`;
+  if (handle.kind === 'axisTitle') return m.axisTitle(handle.axis);
   if (handle.kind === 'axisTick') {
     const tick = (diagram[handle.axis].ticks ?? []).find((t) => t.id === handle.tickId);
-    return `${handle.axis}-axis tick ${plain(tick?.label.en) || ''}`.trim();
+    return m.axisTickNamed(handle.axis, plain(tick?.label.en) || '');
   }
   if (handle.kind === 'pointTick') {
     const owner = diagram.points.find((p) => p.id === id);
     const text = handle.axis === 'x' ? owner?.xTickLabel : owner?.yTickLabel;
-    return `${plain(text?.en) || handle.axis + '-tick'} (tick)`;
+    return m.tickOf(handle.axis, plain(text?.en));
   }
   if (handle.kind === 'curveLabel') {
     const owner = diagram.curves.find((c) => c.id === id);
-    return `${plain(owner?.label?.en) || 'Curve'} (label)`;
+    return m.labelOf(plain(owner?.label?.en) || m.kindCurve);
   }
   if (handle.kind === 'pointLabel') {
     const owner = diagram.points.find((p) => p.id === id);
-    return `${owner ? pointTitle(owner) : 'Point'} (label)`;
+    return m.labelOf(owner ? shownPointTitle(owner) : m.kindPoint);
   }
   if (handle.kind === 'arrowLabel') {
     const owner = diagram.arrows.find((a) => a.id === id);
-    return `${plain(owner?.label?.en) || 'Arrow'} (label)`;
+    return m.labelOf(plain(owner?.label?.en) || m.kindArrow);
   }
   const area = (diagram.areas ?? []).find((a) => a.id === id);
-  if (area) return handle.kind === 'areaLabel' ? `${areaName(area)} (label)` : areaName(area);
+  if (area) return handle.kind === 'areaLabel' ? m.labelOf(areaName(area)) : areaName(area);
   const span = (diagram.spans ?? []).find((s) => s.id === id);
-  if (span) return `${plain(span.label?.en) || 'Span'}${handle.kind === 'spanLabel' ? ' (label)' : ''}`;
+  if (span) {
+    const name = plain(span.label?.en) || m.kindSpan;
+    return handle.kind === 'spanLabel' ? m.labelOf(name) : name;
+  }
 
   const curve = diagram.curves.find((c) => c.id === id);
-  if (curve) return plain(curve.label?.en) || plain(curve.label?.zh) || 'Curve';
+  if (curve) return plain(curve.label?.en) || plain(curve.label?.zh) || m.kindCurve;
   const mark = diagram.points.find((p) => p.id === id);
-  if (mark) return pointTitle(mark);
+  if (mark) return shownPointTitle(mark);
   const label = diagram.labels.find((l) => l.id === id);
-  if (label) return plain(label.text.en) || plain(label.text.zh) || 'Label';
+  if (label) return plain(label.text.en) || plain(label.text.zh) || m.kindLabel;
   const arrow = diagram.arrows.find((a) => a.id === id);
-  if (arrow) return plain(arrow.label?.en) || 'Arrow';
-  return 'Element';
+  if (arrow) return plain(arrow.label?.en) || m.kindArrow;
+  return m.element;
 }
 
 /**
@@ -2661,36 +2687,37 @@ function ElementIndex({
   onEdit: (handle: DiagramHandle) => void;
   newId: () => string;
 }) {
+  const m = useMessages(DIAGRAM_CANVAS_MESSAGES);
   const rows: Array<{ handle: DiagramHandle; name: string; kind: string }> = [
     ...diagram.curves.map((c) => ({
       handle: { kind: 'curve', curveId: c.id } as DiagramHandle,
-      name: plain(c.label?.en) || plain(c.label?.zh) || 'Curve',
-      kind: 'Curve',
+      name: plain(c.label?.en) || plain(c.label?.zh) || m.kindCurve,
+      kind: m.kindCurve,
     })),
     ...diagram.points.map((p) => ({
       handle: { kind: 'point', pointId: p.id } as DiagramHandle,
-      name: pointTitle(p),
-      kind: 'Point',
+      name: shownPointTitle(p),
+      kind: m.kindPoint,
     })),
     ...diagram.labels.map((l) => ({
       handle: { kind: 'label', labelId: l.id } as DiagramHandle,
-      name: plain(l.text.en) || plain(l.text.zh) || 'Label',
-      kind: 'Label',
+      name: plain(l.text.en) || plain(l.text.zh) || m.kindLabel,
+      kind: m.kindLabel,
     })),
     ...diagram.arrows.map((a) => ({
       handle: { kind: 'arrow', arrowId: a.id } as DiagramHandle,
-      name: plain(a.label?.en) || 'Arrow',
-      kind: 'Arrow',
+      name: plain(a.label?.en) || m.kindArrow,
+      kind: m.kindArrow,
     })),
     ...(diagram.areas ?? []).map((a) => ({
       handle: { kind: 'area', areaId: a.id } as DiagramHandle,
       name: areaName(a),
-      kind: 'Area',
+      kind: m.kindArea,
     })),
     ...(diagram.spans ?? []).map((sp) => ({
       handle: { kind: 'span', spanId: sp.id } as DiagramHandle,
-      name: plain(sp.label?.en) || plain(sp.label?.zh) || 'Span',
-      kind: 'Span',
+      name: plain(sp.label?.en) || plain(sp.label?.zh) || m.kindSpan,
+      kind: m.kindSpan,
     })),
   ];
 
@@ -2700,7 +2727,7 @@ function ElementIndex({
           The diagram's *title* is deliberately not among them — it is edited in the
           sidebar, so the canvas neither lists it nor lets it be clicked. */}
       <div className="mb-3 border-b border-line pb-3">
-        <Eyebrow>Axes</Eyebrow>
+        <Eyebrow>{m.axes}</Eyebrow>
         <div className="mt-1.5 space-y-1.5">
           {/* An axis whose title has been deleted draws nothing, so there is no text to
               double-click and no way back — every other route to an axis title is the
@@ -2717,12 +2744,12 @@ function ElementIndex({
                   onEdit({ kind: 'axisTitle', axis });
                 }}
               >
-                Name the {axis}-axis
+                {m.nameAxis(axis)}
               </Button>
             ) : null,
           )}
           <CheckField
-            label='Show "0" at the origin'
+            label={m.showOrigin}
             checked={diagram.showOrigin !== false}
             onChange={(showOrigin) => onChange({ ...diagram, showOrigin })}
           />
@@ -2730,11 +2757,14 @@ function ElementIndex({
         </div>
       </div>
 
-      <Eyebrow>On this diagram</Eyebrow>
+      <Eyebrow>{m.onDiagram}</Eyebrow>
       {rows.length === 0 ? (
         <p className="mt-2 text-xs leading-relaxed text-ink-muted">
-          Nothing here yet. Pick <strong>Curve</strong> and drag to draw a line, or{' '}
-          <strong>Point</strong> and click to mark an equilibrium.
+          {m.emptyPre}
+          <strong>{m.kindCurve}</strong>
+          {m.emptyMid}
+          <strong>{m.kindPoint}</strong>
+          {m.emptyPost}
         </p>
       ) : (
         <ul className="mt-2 space-y-1">
@@ -2756,10 +2786,7 @@ function ElementIndex({
         </ul>
       )}
       <p className="mt-4 border-t border-line pt-3 text-[11px] leading-relaxed text-ink-muted">
-        Drag anything to move it. Click it instead to select it and edit its properties
-        here. Drag empty space to box-select; shift-click adds. Arrow keys nudge a
-        selection. Hold Shift for bigger steps. ⌘C / ⌘V / ⌘D / ⌫ act on a selection,
-        ⌘A selects everything.
+        {m.indexHelp}
       </p>
     </div>
   );

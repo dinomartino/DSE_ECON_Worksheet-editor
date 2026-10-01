@@ -39,7 +39,10 @@ import type { DiagramHandle } from '@/model/diagramDraw';
 import { pointTitle, shiftCurve } from '@/model/diagramShift';
 import { emptyBiText, plain } from '@/model/text';
 import { AREA_PALETTE, areaFillMarkup } from '@/render/diagram';
+import { resolveMessages, sideOf, type TextKey } from '@/i18n/catalogue';
+import { uiLanguage, useMessages, useUiLanguage } from '@/i18n/language';
 import { BiTextField } from './BiTextField';
+import { DIAGRAM_AREA_MESSAGES, modelText, pointTitleText } from './diagramEditing.messages';
 import { Button, IconButton, NumberField, Segmented, SelectField, Eyebrow } from '@/components/ui';
 
 /**
@@ -47,24 +50,28 @@ import { Button, IconButton, NumberField, Segmented, SelectField, Eyebrow } from
  * Kept apart from `DiagramCanvas` so the canvas only routes selections here.
  */
 
+const text = () => resolveMessages(DIAGRAM_AREA_MESSAGES, uiLanguage());
+/** A model string (preset, role or colour name, a "why not") in the interface language. */
+const model = (english: string) => modelText(english, sideOf(uiLanguage()));
+
 /** A short name for an area, for lists and headers. */
 export function areaName(area: DiagramArea): string {
-  return plain(area.label?.en) || plain(area.label?.zh) || 'Shaded area';
+  return plain(area.label?.en) || plain(area.label?.zh) || text().shadedArea;
 }
 
 const curveName = (diagram: Diagram, id: string) => {
   const index = diagram.curves.findIndex((c) => c.id === id);
   const curve = diagram.curves[index];
-  if (!curve) return 'a deleted curve';
-  return plain(curve.label?.en) || plain(curve.label?.zh) || `Curve ${index + 1}`;
+  if (!curve) return text().deletedCurve;
+  return plain(curve.label?.en) || plain(curve.label?.zh) || text().curveN(index + 1);
 };
 
 const pointName = (diagram: Diagram, id: string) => {
   const index = diagram.points.findIndex((p) => p.id === id);
   const mark = diagram.points[index];
-  if (!mark) return 'a deleted point';
+  if (!mark) return text().deletedPoint;
   const title = pointTitle(mark);
-  return title === 'Point' ? `Point ${index + 1}` : title;
+  return title === 'Point' ? text().pointN(index + 1) : pointTitleText(title, sideOf(uiLanguage()));
 };
 
 function anchorName(diagram: Diagram, ref: DiagramAnchorRef): string {
@@ -74,10 +81,10 @@ function anchorName(diagram: Diagram, ref: DiagramAnchorRef): string {
   const loose = ref as { on?: string; x?: DiagramAnchorRef | number; y?: DiagramAnchorRef | number };
   const part = (value: DiagramAnchorRef | number) =>
     typeof value === 'number' ? `${Math.round(value * 100)}%` : anchorName(diagram, value);
-  if (loose.on !== undefined && loose.x !== undefined) return `${curveName(diagram, loose.on)} below ${part(loose.x)}`;
-  if (loose.on !== undefined && loose.y !== undefined) return `${curveName(diagram, loose.on)} at ${part(loose.y)}`;
-  if (loose.x !== undefined && loose.y !== undefined) return `${part(loose.x)} across, ${part(loose.y)} up`;
-  return 'a point';
+  if (loose.on !== undefined && loose.x !== undefined) return text().below(curveName(diagram, loose.on), part(loose.x));
+  if (loose.on !== undefined && loose.y !== undefined) return text().atLevel(curveName(diagram, loose.on), part(loose.y));
+  if (loose.x !== undefined && loose.y !== undefined) return text().across(part(loose.x), part(loose.y));
+  return text().aPoint;
 }
 
 /** A stable key for a reference, blind to the order of a crossing's two curves. */
@@ -106,19 +113,19 @@ function edgeOptions(diagram: Diagram, current: DiagramAreaEdge) {
     ...crossings(diagram),
   ];
   const options: Array<{ value: DiagramAreaEdge; label: string }> = [
-    ...diagram.curves.map((c) => ({ value: { curve: c.id }, label: `Curve ${curveName(diagram, c.id)}` })),
-    ...anchors.map((ref) => ({ value: { level: ref }, label: `Level of ${anchorName(diagram, ref)}` })),
-    { value: { level: 0 }, label: 'The x-axis' },
+    ...diagram.curves.map((c) => ({ value: { curve: c.id }, label: text().curveOption(curveName(diagram, c.id)) })),
+    ...anchors.map((ref) => ({ value: { level: ref }, label: text().levelOf(anchorName(diagram, ref)) })),
+    { value: { level: 0 }, label: text().xAxis },
   ];
   if (!options.some((o) => refKey(o.value) === refKey(current))) {
     options.push({
       value: current,
       label:
         'curve' in current
-          ? `Curve ${curveName(diagram, current.curve)}`
+          ? text().curveOption(curveName(diagram, current.curve))
           : typeof current.level === 'number'
-            ? `Level ${Math.round(current.level * 100)}%`
-            : `Level of ${anchorName(diagram, current.level)}`,
+            ? text().levelPct(Math.round(current.level * 100))
+            : text().levelOf(anchorName(diagram, current.level)),
     });
   }
   return options;
@@ -126,15 +133,15 @@ function edgeOptions(diagram: Diagram, current: DiagramAreaEdge) {
 
 function xOptions(diagram: Diagram, current: DiagramAreaX) {
   const options: Array<{ value: DiagramAreaX; label: string }> = [
-    { value: 0, label: 'The y-axis' },
-    ...diagram.points.map((p) => ({ value: { point: p.id }, label: `At ${pointName(diagram, p.id)}` })),
-    ...crossings(diagram).map((ref) => ({ value: ref, label: `At ${anchorName(diagram, ref)}` })),
-    { value: 1, label: 'The right edge' },
+    { value: 0, label: text().yAxis },
+    ...diagram.points.map((p) => ({ value: { point: p.id }, label: text().atPoint(pointName(diagram, p.id)) })),
+    ...crossings(diagram).map((ref) => ({ value: ref, label: text().atPoint(anchorName(diagram, ref)) })),
+    { value: 1, label: text().rightEdge },
   ];
   if (!options.some((o) => refKey(o.value) === refKey(current))) {
     options.push({
       value: current,
-      label: typeof current === 'number' ? `At ${Math.round(current * 100)}%` : `At ${anchorName(diagram, current)}`,
+      label: typeof current === 'number' ? text().atPct(Math.round(current * 100)) : text().atPoint(anchorName(diagram, current)),
     });
   }
   return options;
@@ -179,10 +186,10 @@ function RefSelect<T>({
 
 /** A curve, a point's level or a flat line's, named as the teacher sees it. */
 function levelName(diagram: Diagram, value: string | PriceLevel | null): string {
-  if (value === null) return 'None';
+  if (value === null) return text().none;
   if (typeof value === 'string') return curveName(diagram, value);
   if ('curve' in value) return curveName(diagram, value.curve);
-  return `Level of ${anchorName(diagram, value.level)}`;
+  return text().levelOf(anchorName(diagram, value.level));
 }
 
 /** The roles a preset needs, each a select over its candidates, then Add. */
@@ -201,6 +208,7 @@ function RolePicker({
   onAdd: () => void;
   onCancel: () => void;
 }) {
+  const m = useMessages(DIAGRAM_AREA_MESSAGES);
   const plan = planPreset(diagram, preset, roles, () => 'probe');
   return (
     <div className="mx-1 mb-1 animate-fade-in space-y-1.5 rounded-lg border border-line bg-surface p-2">
@@ -209,7 +217,7 @@ function RolePicker({
           diagram,
           role,
         ).map((value) => ({ value, label: levelName(diagram, value) }));
-        if (optional) options.unshift({ value: null, label: 'None' });
+        if (optional) options.unshift({ value: null, label: m.none });
         const value = roles[role] ?? null;
         if (!options.some((o) => refKey(o.value) === refKey(value))) {
           options.unshift({ value, label: levelName(diagram, value) });
@@ -217,20 +225,20 @@ function RolePicker({
         return (
           <RefSelect
             key={role}
-            label={name ?? ROLE_NAMES[role]}
+            label={model(name ?? ROLE_NAMES[role])}
             value={value}
             options={options}
             onChange={(next) => onRoles({ ...roles, [role]: next ?? undefined })}
           />
         );
       })}
-      {'why' in plan && <p className="text-[11px] text-ink-subtle">{plan.why}</p>}
+      {'why' in plan && <p className="text-[11px] text-ink-subtle">{model(plan.why)}</p>}
       <div className="flex justify-end gap-1">
         <Button size="sm" variant="subtle" onClick={onCancel}>
-          Cancel
+          {m.cancel}
         </Button>
         <Button size="sm" disabled={'why' in plan} onClick={onAdd}>
-          Add
+          {m.add}
         </Button>
       </div>
     </div>
@@ -256,43 +264,44 @@ function BetweenBuilder({
   onAdd: (band: Band) => void;
   onCancel: () => void;
 }) {
+  const m = useMessages(DIAGRAM_AREA_MESSAGES);
   const [band, setBand] = useState<Band>(() => defaultBand(diagram));
   const drawable = Boolean(areaPolygon(diagram, { id: 'probe', band }));
   return (
     <div className="mx-1 mb-1 animate-fade-in space-y-1.5 rounded-lg border border-line bg-surface p-2">
       <RefSelect
-        label="Edge A"
+        label={m.edgeA}
         value={band.edges[0]}
         options={edgeOptions(diagram, band.edges[0])}
         onChange={(edge) => setBand({ ...band, edges: [edge, band.edges[1]] })}
       />
       <RefSelect
-        label="Edge B"
+        label={m.edgeB}
         value={band.edges[1]}
         options={edgeOptions(diagram, band.edges[1])}
         onChange={(edge) => setBand({ ...band, edges: [band.edges[0], edge] })}
       />
       <RefSelect
-        label="From"
+        label={m.from}
         value={band.from}
         options={xOptions(diagram, band.from)}
         onChange={(from) => setBand({ ...band, from })}
       />
       <RefSelect
-        label="To"
+        label={m.to}
         value={band.to}
         options={xOptions(diagram, band.to)}
         onChange={(to) => setBand({ ...band, to })}
       />
       {!drawable && (
-        <p className="text-[11px] text-ink-subtle">Nothing to shade between those. Widen the range.</p>
+        <p className="text-[11px] text-ink-subtle">{m.nothingBetween}</p>
       )}
       <div className="flex justify-end gap-1">
         <Button size="sm" variant="subtle" onClick={onCancel}>
-          Cancel
+          {m.cancel}
         </Button>
         <Button size="sm" disabled={!drawable} onClick={() => onAdd(band)}>
-          Add
+          {m.add}
         </Button>
       </div>
     </div>
@@ -307,6 +316,18 @@ function suggestGroup(diagram: Diagram): ShadeGroup {
     'surplus'
   );
 }
+
+type AreaKey = TextKey<typeof DIAGRAM_AREA_MESSAGES>;
+
+const GROUP_KEYS: Record<ShadeGroup, AreaKey> = {
+  surplus: 'groupSurplus',
+  tax: 'groupTax',
+  control: 'groupControl',
+  trade: 'groupTrade',
+  monopoly: 'groupMonopoly',
+  revenue: 'groupRevenue',
+  custom: 'groupCustom',
+};
 
 const ITEM_CLASS =
   'flex w-full flex-col items-start rounded-lg px-2.5 py-1.5 text-left transition-colors duration-150 ease-out-soft hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent';
@@ -361,6 +382,7 @@ export function ShadeMenu({
   /** Glyph only below 2xl (the embedded canvas's narrow toolbar); the word stays for readers. */
   compact?: boolean;
 }) {
+  const m = useMessages(DIAGRAM_AREA_MESSAGES);
   const rootRef = useRef<HTMLDivElement>(null);
   const [chosenGroup, setGroup] = useState<ShadeGroup | null>(null);
   const [picking, setPicking] = useState<{ id: ShadePresetId | 'between'; roles: PresetRoles } | null>(null);
@@ -392,13 +414,13 @@ export function ShadeMenu({
     const area = revenueArea(preset.id, points, 'probe');
     const empty = area && !areaPolygon(diagram, area);
     const why = !points.before
-      ? 'Needs a marked point, such as an equilibrium E'
+      ? m.needsPoint
       : preset.id !== 'totalRevenue' && !points.after
-        ? 'Needs two equilibrium points. Shift a curve first'
+        ? m.needsTwoPoints
         : empty
           ? preset.id === 'revenueGain'
-            ? 'No gain: the new price and quantity are both lower'
-            : 'No loss: the new price and quantity are both higher'
+            ? m.noGain
+            : m.noLoss
           : undefined;
     return { preset, available: Boolean(area) && !empty, why };
   });
@@ -415,7 +437,7 @@ export function ShadeMenu({
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
-        title="Shade an area: surplus, tax and subsidy, price controls, trade, monopoly or revenue"
+        title={m.shadeTitle}
         onClick={() => (open ? close() : onOpenChange(true))}
         className={
           'flex h-11 items-center gap-1.5 rounded-lg border px-3 text-base ' +
@@ -426,7 +448,7 @@ export function ShadeMenu({
         }
       >
         <span aria-hidden className="text-lg leading-none">▨</span>
-        <span className={`text-xs font-medium ${compact ? 'sr-only 2xl:not-sr-only' : ''}`}>Shade</span>
+        <span className={`text-xs font-medium ${compact ? 'sr-only 2xl:not-sr-only' : ''}`}>{m.shade}</span>
         <span aria-hidden className="text-xs font-medium">▾</span>
       </button>
       {open && (
@@ -436,11 +458,11 @@ export function ShadeMenu({
         >
           <div
             role="tablist"
-            aria-label="Kinds of area"
+            aria-label={m.kinds}
             aria-orientation="vertical"
             className="flex w-32 shrink-0 flex-col gap-0.5 border-r border-line pr-1"
           >
-            {SHADE_GROUPS.map(({ id, name }) => (
+            {SHADE_GROUPS.map(({ id }) => (
               <button
                 key={id}
                 type="button"
@@ -459,7 +481,7 @@ export function ShadeMenu({
                       : 'text-ink hover:bg-surface-hover')
                 }
               >
-                {name}
+                {m[GROUP_KEYS[id]]}
               </button>
             ))}
           </div>
@@ -468,7 +490,7 @@ export function ShadeMenu({
               revenueItems.map(({ preset, available, why }) => (
                 <MenuItem
                   key={preset.id}
-                  name={preset.name}
+                  name={model(preset.name)}
                   hint={why}
                   disabled={!available}
                   onClick={() => {
@@ -480,8 +502,8 @@ export function ShadeMenu({
             {group === 'custom' && (
               <>
                 <MenuItem
-                  name="Between two edges…"
-                  hint="Any two curves or levels, across any range"
+                  name={m.betweenEdges}
+                  hint={m.betweenHint}
                   expanded={picking?.id === 'between'}
                   onClick={() => setPicking(picking?.id === 'between' ? null : { id: 'between', roles: {} })}
                 />
@@ -493,8 +515,8 @@ export function ShadeMenu({
                   />
                 )}
                 <MenuItem
-                  name="Free shape"
-                  hint="Drag its corners anywhere"
+                  name={m.freeShape}
+                  hint={m.freeShapeHint}
                   onClick={() =>
                     finish([
                       {
@@ -518,8 +540,16 @@ export function ShadeMenu({
               return (
                 <div key={preset.id}>
                   <MenuItem
-                    name={preset.name}
-                    hint={status.pick ? (expanded ? undefined : (status.why ?? 'Choose the curves…')) : status.why}
+                    name={model(preset.name)}
+                    hint={
+                      status.pick
+                        ? expanded
+                          ? undefined
+                          : status.why
+                            ? model(status.why)
+                            : m.chooseCurves
+                        : status.why && model(status.why)
+                    }
                     disabled={status.blocked}
                     expanded={status.pick ? expanded : undefined}
                     onClick={() => {
@@ -547,10 +577,10 @@ export function ShadeMenu({
   );
 }
 
-const PLACEMENTS: Array<{ value: DiagramAreaLabelPlacement; label: string; title: string }> = [
-  { value: 'auto', label: 'Auto', title: 'Inside when the label fits, else outside with an arrow' },
-  { value: 'inside', label: 'Inside', title: 'Always on the shading' },
-  { value: 'leader', label: 'Leader', title: 'Outside, with an arrow into the shading' },
+const PLACEMENTS: Array<{ value: DiagramAreaLabelPlacement; label: AreaKey; title: AreaKey }> = [
+  { value: 'auto', label: 'placeAuto', title: 'placeAutoHint' },
+  { value: 'inside', label: 'placeInside', title: 'placeInsideHint' },
+  { value: 'leader', label: 'placeLeader', title: 'placeLeaderHint' },
 ];
 
 /**
@@ -566,9 +596,11 @@ function AreaColorSwatches({
   fill: DiagramAreaFill;
   onChange: (color: DiagramAreaColor) => void;
 }) {
+  const m = useMessages(DIAGRAM_AREA_MESSAGES);
+  const side = sideOf(useUiLanguage());
   return (
-    <div role="radiogroup" aria-label="Colour" className="flex items-center gap-1.5">
-      <span className="mr-1 text-xs text-ink-muted">Colour</span>
+    <div role="radiogroup" aria-label={m.colour} className="flex items-center gap-1.5">
+      <span className="mr-1 text-xs text-ink-muted">{m.colour}</span>
       {(Object.keys(AREA_PALETTE) as DiagramAreaColor[]).map((key) => {
         const paint = AREA_PALETTE[key];
         const active = key === value;
@@ -578,8 +610,8 @@ function AreaColorSwatches({
             type="button"
             role="radio"
             aria-checked={active}
-            aria-label={paint.name}
-            title={paint.name}
+            aria-label={modelText(paint.name, side)}
+            title={modelText(paint.name, side)}
             onClick={() => onChange(key)}
             className={
               // Border and a press ease; the rings (selection and focus) are box-shadows
@@ -600,18 +632,18 @@ function AreaColorSwatches({
   );
 }
 
-const PATTERNS: Array<{ value: DiagramAreaPattern; name: string }> = [
-  { value: 'diagonal', name: 'Diagonal' },
-  { value: 'reverse', name: 'Reverse diagonal' },
-  { value: 'cross', name: 'Cross-hatch' },
-  { value: 'horizontal', name: 'Horizontal' },
-  { value: 'vertical', name: 'Vertical' },
-  { value: 'dots', name: 'Dots' },
+const PATTERNS: Array<{ value: DiagramAreaPattern; name: AreaKey }> = [
+  { value: 'diagonal', name: 'diagonal' },
+  { value: 'reverse', name: 'reverse' },
+  { value: 'cross', name: 'cross' },
+  { value: 'horizontal', name: 'horizontal' },
+  { value: 'vertical', name: 'vertical' },
+  { value: 'dots', name: 'dots' },
 ];
 
-const DENSITIES: Array<{ value: DiagramAreaDensity; label: string; title: string }> = [
-  { value: 'normal', label: 'Normal', title: 'The usual spacing' },
-  { value: 'dense', label: 'Dense', title: 'Lines or dots closer together: a darker area' },
+const DENSITIES: Array<{ value: DiagramAreaDensity; label: AreaKey; title: AreaKey }> = [
+  { value: 'normal', label: 'densityNormal', title: 'densityNormalHint' },
+  { value: 'dense', label: 'densityDense', title: 'densityDenseHint' },
 ];
 
 const SWATCH = 22;
@@ -633,11 +665,13 @@ function AreaPatternSwatches({
   area: DiagramArea;
   onChange: (pattern: DiagramAreaPattern) => void;
 }) {
+  const m = useMessages(DIAGRAM_AREA_MESSAGES);
   const value = area.pattern ?? 'diagonal';
   return (
-    <div role="radiogroup" aria-label="Pattern" className="flex items-center gap-1.5">
-      <span className="mr-1 text-xs text-ink-muted">Pattern</span>
-      {PATTERNS.map(({ value: pattern, name }) => {
+    <div role="radiogroup" aria-label={m.pattern} className="flex items-center gap-1.5">
+      <span className="mr-1 text-xs text-ink-muted">{m.pattern}</span>
+      {PATTERNS.map(({ value: pattern, name: nameKey }) => {
+        const name = m[nameKey];
         const active = pattern === value;
         const markup = areaFillMarkup(SWATCH_BOX, { ...area, fill: 'hatch', pattern }, 1);
         return (
@@ -680,18 +714,19 @@ function RevenueBounds({
   revenue: DiagramAreaRevenue;
   patch: (next: DiagramArea) => void;
 }) {
+  const m = useMessages(DIAGRAM_AREA_MESSAGES);
   const set = (next: Partial<DiagramAreaRevenue>) => patch({ ...area, revenue: { ...revenue, ...next } });
   return (
     <>
-      <Eyebrow className="block pt-1">{revenue.change === 'gain' ? 'Revenue gain' : 'Revenue loss'} between</Eyebrow>
+      <Eyebrow className="block pt-1">{m.revenueBetween(revenue.change === 'gain')}</Eyebrow>
       <RefSelect
-        label="Before (E₀)"
+        label={m.before}
         value={revenue.from}
         options={anchorOptions(diagram, revenue.from)}
         onChange={(from) => set({ from })}
       />
       <RefSelect
-        label="After (E₁)"
+        label={m.after}
         value={revenue.to}
         options={anchorOptions(diagram, revenue.to)}
         onChange={(to) => set({ to })}
@@ -699,11 +734,11 @@ function RevenueBounds({
       <p className="text-[11px] text-ink-muted">
         {areaPolygon(diagram, area)
           ? revenue.change === 'gain'
-            ? 'The part of the new P × Q rectangle outside the old one. It follows both points.'
-            : 'The part of the old P × Q rectangle outside the new one. It follows both points.'
+            ? m.gainNote
+            : m.lossNote
           : revenue.change === 'gain'
-            ? 'Nothing to shade: the new rectangle lies inside the old one.'
-            : 'Nothing to shade: the old rectangle lies inside the new one.'}
+            ? m.gainEmpty
+            : m.lossEmpty}
       </p>
     </>
   );
@@ -721,6 +756,7 @@ export function AreaInspector({
   onChange: (diagram: Diagram) => void;
   onDelete: () => void;
 }) {
+  const m = useMessages(DIAGRAM_AREA_MESSAGES);
   const patch = (next: DiagramArea) =>
     onChange({ ...diagram, areas: (diagram.areas ?? []).map((a) => (a.id === area.id ? next : a)) });
   const band = area.band;
@@ -730,26 +766,26 @@ export function AreaInspector({
       <header className="mb-2 flex items-center gap-1">
         <Eyebrow>{areaName(area)}</Eyebrow>
         <span className="flex-1" />
-        <IconButton label="Delete" variant="danger" onClick={onDelete}>
+        <IconButton label={m.delete} variant="danger" onClick={onDelete}>
           <span aria-hidden>✕</span>
         </IconButton>
       </header>
       <div className="space-y-2">
         <BiTextField
           translate={{ kind: 'diagramLabel', fallsBack: true }}
-          label="Label"
+          label={m.label}
           value={area.label ?? emptyBiText()}
           rows={1}
           onChange={(label) => patch({ ...area, label })}
         />
         <div className="flex items-center gap-1">
-          <span className="mr-1 text-xs text-ink-muted">Fill</span>
+          <span className="mr-1 text-xs text-ink-muted">{m.fill}</span>
           <Segmented<DiagramAreaFill>
-            label="Fill"
+            label={m.fill}
             value={area.fill ?? 'shade'}
             options={[
-              { value: 'shade', label: 'Shade', title: 'A flat tint' },
-              { value: 'hatch', label: 'Hatch', title: 'A pattern of lines or dots. Reads on a black-and-white copy' },
+              { value: 'shade', label: m.fillShade, title: m.fillShadeHint },
+              { value: 'hatch', label: m.fillHatch, title: m.fillHatchHint },
             ]}
             onChange={(fill) => patch({ ...area, fill })}
           />
@@ -766,11 +802,11 @@ export function AreaInspector({
               }}
             />
             <div className="flex items-center gap-1">
-              <span className="mr-1 text-xs text-ink-muted">Spacing</span>
+              <span className="mr-1 text-xs text-ink-muted">{m.spacing}</span>
               <Segmented<DiagramAreaDensity>
-                label="Pattern spacing"
+                label={m.patternSpacing}
                 value={area.density ?? 'normal'}
-                options={DENSITIES}
+                options={DENSITIES.map((entry) => ({ value: entry.value, label: m[entry.label], title: m[entry.title] }))}
                 onChange={(density) => {
                   const next: DiagramArea = { ...area, density };
                   if (density === 'normal') delete next.density;
@@ -791,11 +827,11 @@ export function AreaInspector({
           }}
         />
         <div className="flex items-center gap-1">
-          <span className="mr-1 text-xs text-ink-muted">Placement</span>
+          <span className="mr-1 text-xs text-ink-muted">{m.placement}</span>
           <Segmented<DiagramAreaLabelPlacement>
-            label="Label placement"
+            label={m.labelPlacement}
             value={area.labelPlacement ?? 'auto'}
-            options={PLACEMENTS}
+            options={PLACEMENTS.map((entry) => ({ value: entry.value, label: m[entry.label], title: m[entry.title] }))}
             onChange={(placement) => {
               // A new side starts from its own default spot, like a point label's slot.
               const next: DiagramArea = { ...area, labelPlacement: placement };
@@ -812,49 +848,44 @@ export function AreaInspector({
           </>
         ) : band ? (
           <>
-            <Eyebrow className="block pt-1">Bounded by</Eyebrow>
+            <Eyebrow className="block pt-1">{m.boundedBy}</Eyebrow>
             <RefSelect
-              label="Edge"
+              label={m.edge}
               value={band.edges[0]}
               options={edgeOptions(diagram, band.edges[0])}
               onChange={(edge) => patch({ ...area, band: { ...band, edges: [edge, band.edges[1]] } })}
             />
             <RefSelect
-              label="Edge"
+              label={m.edge}
               value={band.edges[1]}
               options={edgeOptions(diagram, band.edges[1])}
               onChange={(edge) => patch({ ...area, band: { ...band, edges: [band.edges[0], edge] } })}
             />
             <RefSelect
-              label="From"
+              label={m.from}
               value={band.from}
               options={xOptions(diagram, band.from)}
               onChange={(from) => patch({ ...area, band: { ...band, from } })}
             />
             <RefSelect
-              label="To"
+              label={m.to}
               value={band.to}
               options={xOptions(diagram, band.to)}
               onChange={(to) => patch({ ...area, band: { ...band, to } })}
             />
             {band.cap && (
               <RefSelect
-                label="Trimmed by"
+                label={m.trimmedBy}
                 value={band.cap}
                 options={edgeOptions(diagram, band.cap)}
                 onChange={(cap) => patch({ ...area, band: { ...band, cap } })}
               />
             )}
-            <p className="text-[11px] text-ink-muted">
-              The shading follows these curves and points when they move.
-            </p>
+            <p className="text-[11px] text-ink-muted">{m.followNote}</p>
             <FreezeButton diagram={diagram} area={area} patch={patch} />
           </>
         ) : (
-          <p className="text-[11px] text-ink-muted">
-            Drag a corner to reshape it, or the middle to move it. Delete a corner with ⌫
-            once it is selected.
-          </p>
+          <p className="text-[11px] text-ink-muted">{m.freeNote}</p>
         )}
         {area.labelOffset && (
           <Button
@@ -866,7 +897,7 @@ export function AreaInspector({
               patch(next);
             }}
           >
-            Reset label position
+            {m.resetLabel}
           </Button>
         )}
       </div>
@@ -883,6 +914,7 @@ function FreezeButton({
   area: DiagramArea;
   patch: (next: DiagramArea) => void;
 }) {
+  const m = useMessages(DIAGRAM_AREA_MESSAGES);
   return (
     <Button
       size="sm"
@@ -892,17 +924,17 @@ function FreezeButton({
         if (frozen) patch(frozen);
       }}
     >
-      Make it a free shape
+      {m.freeze}
     </Button>
   );
 }
 
 type Direction = 'left' | 'right' | 'up' | 'down';
-const DIRECTIONS: Array<{ value: Direction; label: string; title: string }> = [
-  { value: 'left', label: '←', title: 'Shift left: a decrease' },
-  { value: 'right', label: '→', title: 'Shift right: an increase' },
-  { value: 'up', label: '↑', title: 'Shift up, e.g. a per-unit tax on supply' },
-  { value: 'down', label: '↓', title: 'Shift down, e.g. a subsidy' },
+const DIRECTIONS: Array<{ value: Direction; label: string; title: AreaKey }> = [
+  { value: 'left', label: '←', title: 'shiftLeft' },
+  { value: 'right', label: '→', title: 'shiftRight' },
+  { value: 'up', label: '↑', title: 'shiftUp' },
+  { value: 'down', label: '↓', title: 'shiftDown' },
 ];
 
 /**
@@ -922,6 +954,7 @@ export function ShiftCurveControls({
   onSelect: (handles: DiagramHandle[]) => void;
   newId: () => string;
 }) {
+  const m = useMessages(DIAGRAM_AREA_MESSAGES);
   const [direction, setDirection] = useState<Direction>('right');
   const [percent, setPercent] = useState(15);
   const [failed, setFailed] = useState(false);
@@ -941,23 +974,23 @@ export function ShiftCurveControls({
 
   return (
     <div className="space-y-2 border-t border-line pt-3">
-      <Eyebrow>Shift curve</Eyebrow>
+      <Eyebrow>{m.shiftCurve}</Eyebrow>
       <div className="flex flex-wrap items-center gap-2">
         <Segmented<Direction>
-          label="Shift direction"
+          label={m.shiftDirection}
           value={direction}
-          options={DIRECTIONS}
+          options={DIRECTIONS.map((entry) => ({ ...entry, title: m[entry.title] }))}
           onChange={setDirection}
         />
-        <NumberField label="by" min={1} max={80} suffix="%" value={percent} onChange={setPercent} />
+        <NumberField label={m.by} min={1} max={80} suffix="%" value={percent} onChange={setPercent} />
       </div>
       <Button size="sm" onClick={shift}>
-        Shift a copy
+        {m.shiftCopy}
       </Button>
       <p className="text-[11px] text-ink-muted">
         {failed
-          ? 'That shift moves the curve off the diagram. Try a smaller one.'
-          : 'Moves a copy by that share of the axis, with a shift arrow and the new equilibrium dashed to both axes.'}
+          ? m.shiftFailed
+          : m.shiftNote}
       </p>
     </div>
   );
