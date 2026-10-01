@@ -24,6 +24,18 @@ off the bottom.** It is the first thing a fresh session reads — then
 - **Branching: work is on `develop`** (since 2026-09-24); `main` deploys to teachers.
   **v0.5.0 released 2026-09-28** (✦ AI, Check terms, Settings, light/dark, 標楷體, home
   navigation). Collecting features for the next release — merge to `main` only when the user says.
+- **2026-10-02 on `develop`, not released: home polish + Graphs 圖表庫** (design
+  `docs/design/graph-library.md`). Sidebar: one ink "New worksheet" CTA (opens on the last-used
+  type, `startKinds.ts:readLastKind`), Open a file, a Library section (bank + Graphs); the dialog's
+  type picker is a gallery of `PaperSketch`es. Graphs: `src/model/graph.ts` (migrates by wrapping
+  the block in a worksheet; frozen `src/test/corpus/graph-v1.json`), `src/storage/graphs.ts`
+  (`econ-graph:<id>` / `worksheets/graphs/`; backup entries are `.graph` so old builds don't read
+  them as worksheets), `src/components/graphs/` (library, embedded canvas editor, Copy image,
+  Download PNG, Use in a worksheet…); My graphs tab in the diagram picker; Save to Graphs.
+  Chromium + WebKit verified. **Open:** paste into Word not tried (clipboard has PNG + sized
+  `<img>` HTML); Tauri shell not clicked through; Chinese y-axis title overlaps the arrowhead with
+  Labels: Both (shared renderer, likely in worksheets too); film/demo scripts still click
+  "Classroom worksheet" on the start screen.
 - **2026-10-01 on `develop`, not released: Edit panel marks the page selection.** The panel
   control matching what was clicked gets `data-edit-current` (accent tint + bar, one 900ms ring;
   `src/components/editor/panelTarget.ts`, styled in `globals.css`); cell/caption/source fall back to
