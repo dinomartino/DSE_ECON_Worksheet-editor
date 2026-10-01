@@ -12,8 +12,12 @@ import {
 import { academicYear } from '@/model/cover';
 import { MARGIN_PRESETS } from '@/model/page';
 import type { LanguageMode, PageMargins, PaperSize, Worksheet } from '@/model/types';
+import { resolveMessages } from '@/i18n/catalogue';
+import { uiLanguage, useMessages, useUiLanguage } from '@/i18n/language';
+import type { UiLanguage } from '@/settings/language';
 import { PaperSketch } from './PaperSketch';
-import { START_KINDS, writeLastKind } from './startKinds';
+import { NEW_FORM_MESSAGES } from './screen.messages';
+import { kindText, START_KINDS, writeLastKind } from './startKinds';
 
 /**
  * The once-per-document decisions, asked before the first question exists.
@@ -41,17 +45,18 @@ import { START_KINDS, writeLastKind } from './startKinds';
 export const NEW_WORKSHEET_FORM_ID = 'new-worksheet-form';
 
 /** A realistic filing name per type, shown as the Name field's placeholder. */
-export function namePlaceholder(type: DocumentType, now?: Date): string {
+export function namePlaceholder(type: DocumentType, now?: Date, lang: UiLanguage = uiLanguage()): string {
+  const m = resolveMessages(NEW_FORM_MESSAGES, lang);
   const year = academicYear(now).short;
   switch (type) {
     case 'classroom':
-      return 'S5 Demand and supply quiz';
+      return m.placeholderClassroom;
     case 'lqWorksheet':
-      return 'S6 Market structure LQ practice';
+      return m.placeholderLq;
     case 'paper1':
-      return `S6 Mock Paper 1 ${year}`;
+      return m.placeholderPaper1(year);
     case 'lqMock':
-      return `S6 Mock Paper 2 ${year}`;
+      return m.placeholderPaper2(year);
   }
 }
 
@@ -60,7 +65,7 @@ export function newWorksheetName(typed: string): string | undefined {
   return typed.trim() || undefined;
 }
 
-export const NAME_REQUIRED_MESSAGE = 'Give it a name first.';
+export const NAME_REQUIRED_MESSAGE = NEW_FORM_MESSAGES.nameRequired.en;
 const NAME_ERROR_ID = 'new-worksheet-name-error';
 
 /** Which types carry a mock-exam cover, and so ask for its fields. */
@@ -94,6 +99,8 @@ export function NewWorksheetForm({
   initialType?: DocumentType;
   onCreate: (worksheet: Worksheet, language: LanguageMode) => void;
 }) {
+  const m = useMessages(NEW_FORM_MESSAGES);
+  const lang = useUiLanguage();
   const [documentType, setDocumentType] = useState<DocumentType>(initialType ?? 'classroom');
   const [name, setName] = useState('');
   const [nameMissing, setNameMissing] = useState(false);
@@ -141,17 +148,14 @@ export function NewWorksheetForm({
         submit();
       }}
     >
-      <Field
-        label="Name"
-        hint="What it's called in your list and the file name. It doesn't print on the paper."
-      >
+      <Field label={m.name} hint={m.nameHint}>
         <input
           ref={nameRef}
           type="text"
           value={name}
           autoFocus
-          placeholder={namePlaceholder(documentType)}
-          aria-label="Name"
+          placeholder={namePlaceholder(documentType, undefined, lang)}
+          aria-label={m.name}
           aria-invalid={nameMissing}
           aria-describedby={nameMissing ? NAME_ERROR_ID : undefined}
           className={`h-9 w-full rounded-lg border bg-surface px-2.5 text-[13px] text-ink outline-none transition-colors duration-150 ease-out-soft placeholder:text-ink-subtle focus:ring-2 ${
@@ -166,20 +170,18 @@ export function NewWorksheetForm({
         />
         {nameMissing && (
           <p id={NAME_ERROR_ID} role="alert" className="animate-fade-in text-xs text-danger-ink">
-            {NAME_REQUIRED_MESSAGE}
+            {m.nameRequired}
           </p>
         )}
       </Field>
 
-      <Field
-        label="Document type"
-        hint="Decides the cover, sections and page furniture. Everything else below is paper."
-      >
+      <Field label={m.documentType} hint={m.documentTypeHint}>
         {/* A gallery of first pages, the empty desk's own sketches: a teacher knows a
             paper by its shape sooner than by its name. */}
-        <div role="radiogroup" aria-label="Document type" className="grid grid-cols-4 gap-3">
+        <div role="radiogroup" aria-label={m.documentType} className="grid grid-cols-4 gap-3">
           {START_KINDS.map((kind) => {
             const selected = documentType === kind.type;
+            const words = kindText(kind.type, lang);
             return (
               <button
                 key={kind.type}
@@ -213,18 +215,20 @@ export function NewWorksheetForm({
                     selected ? 'text-accent-ink' : 'text-ink group-hover:text-accent-ink'
                   }`}
                 >
-                  {kind.title}
+                  {words.title}
                 </span>
-                <span lang="zh-HK" className="block text-[11px] leading-snug text-ink-subtle">
-                  {kind.titleZh}
-                </span>
+                {words.bilingual && (
+                  <span lang="zh-HK" className="block text-[11px] leading-snug text-ink-subtle">
+                    {kind.titleZh}
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
         {/* What the chosen type includes. Keyed, so it fades to the new wording. */}
         <p key={documentType} className="animate-fade-in text-[11px] leading-snug text-ink-muted">
-          {START_KINDS.find((kind) => kind.type === documentType)?.hint}
+          {kindText(documentType, lang).hint}
         </p>
       </Field>
 
@@ -234,13 +238,13 @@ export function NewWorksheetForm({
       {HAS_COVER[documentType] && (
         <div className="ml-0.5 grid animate-fade-in gap-3 border-l-2 border-accent/25 pl-3 sm:grid-cols-2">
           <TextField
-            label="School"
+            label={m.school}
             value={school}
             onChange={setSchool}
             placeholder="SCHOOL NAME"
           />
           <TextField
-            label="Examination"
+            label={m.examination}
             value={examName}
             onChange={setExamName}
             // Shortened from the cover's own full default: a placeholder that truncates
@@ -253,7 +257,7 @@ export function NewWorksheetForm({
 
       {ASKS_SECTIONS[documentType] ? (
         <CheckField
-          label="Start with Section A / Section B headings"
+          label={m.sectionsCheck}
           checked={sections}
           onChange={setSections}
         />
@@ -262,28 +266,21 @@ export function NewWorksheetForm({
         // vanished checkbox does not read as an option quietly taken away.
         // Keyed by type, so the sentence fades to its new wording instead of snapping.
         <p key={documentType} className="animate-fade-in text-[11px] text-ink-subtle">
-          {documentType === 'lqMock'
-            ? 'Starts with Sections A–C (derived marks totals) and one sample long question.'
-            : documentType === 'paper1'
-              ? 'Starts with the “There are N questions…” line, one sample question and “END OF PAPER”. No section headings.'
-              : 'Starts with one sample long question. No section headings.'}
+          {documentType === 'lqMock' ? m.startsLqMock : documentType === 'paper1' ? m.startsPaper1 : m.startsLq}
         </p>
       )}
 
       {/* No title field: the Name above is `Worksheet.name`, which never prints. The
           printed heading is typed onto the page, where it is seen. */}
-      <Field
-        label="Language"
-        hint="Which side the editor shows. Both are always stored."
-      >
+      <Field label={m.language} hint={m.languageHint}>
         <Segmented
-          label="Language"
+          label={m.language}
           value={language}
           onChange={setLanguage}
           options={[
-            { value: 'en', label: 'EN', title: 'English only' },
-            { value: 'zh', label: '中文', title: '中文 only' },
-            { value: 'bilingual', label: 'EN+中', title: 'Bilingual' },
+            { value: 'en', label: 'EN', title: m.onlyEnglish },
+            { value: 'zh', label: '中文', title: m.onlyChinese },
+            { value: 'bilingual', label: 'EN+中', title: m.bilingual },
           ]}
         />
       </Field>
@@ -298,7 +295,7 @@ export function NewWorksheetForm({
           even thirds the font name truncated under its own chevron, which is the one
           thing a select must never do — the value is the whole point of the control. */}
       <div className="grid gap-3 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.1fr)_minmax(0,1.5fr)]">
-        <Field label="Paper">
+        <Field label={m.paper}>
           <SelectField
             value={paper}
             onChange={setPaper}
@@ -310,14 +307,14 @@ export function NewWorksheetForm({
             ]}
           />
         </Field>
-        <Field label="Margins">
+        <Field label={m.margins}>
           {documentType === 'lqMock' || documentType === 'paper1' ? (
             // Both exam papers print on the reference's own margins — the booklet's
             // frame, dotted pitch and lines-per-page were measured against that
             // column, and the MCQ paper's indent scheme was measured against the
             // same one — so the answer is fixed rather than offered (§ `QAB_MARGINS`).
             <p className="flex h-9 items-center rounded-lg border border-line bg-surface-sunken px-2.5 text-[12px] text-ink-muted">
-              {documentType === 'lqMock' ? 'Booklet (fixed)' : 'Exam paper (fixed)'}
+              {documentType === 'lqMock' ? m.bookletFixed : m.examFixed}
             </p>
           ) : (
             <SelectField
@@ -330,7 +327,7 @@ export function NewWorksheetForm({
             />
           )}
         </Field>
-        <Field label="Fonts">
+        <Field label={m.fonts}>
           <SelectField
             value={fontIndex}
             onChange={setFontIndex}

@@ -13,7 +13,10 @@ import {
   type FolderState,
   type WorksheetSummary,
 } from '@/storage';
+import { resolveMessages } from '@/i18n/catalogue';
+import { uiLanguage, useMessages } from '@/i18n/language';
 import { PageThumbnail } from './PageThumbnail';
+import { DASHBOARD_MESSAGES } from './screen.messages';
 import {
   DEFAULT_QUERY,
   documentCount,
@@ -94,6 +97,7 @@ export function FileDashboard({
   /** Shown in place of the list while nothing is saved (the start screen's `WelcomeDesk`). */
   welcome?: ReactNode;
 }) {
+  const m = useMessages(DASHBOARD_MESSAGES);
   const [query, setQuery] = useState<DashboardQuery>(DEFAULT_QUERY);
   // Lazy initialiser: `EditorHost` renders the start screen only after hydration, so
   // reading storage on the first render cannot mismatch the prerendered tree.
@@ -107,7 +111,6 @@ export function FileDashboard({
   );
   const inScope = useMemo(() => scopedSummaries(summaries, scope), [summaries, scope]);
   const shown = useMemo(() => visibleSummaries(summaries, query, scope), [summaries, query, scope]);
-  const place = isDesktop() ? 'on this computer' : 'in this browser';
   const showFolders = !!folders && !!folderActions && loaded && summaries.length > 0;
   // In All documents a card says which folder it is in; inside a folder that is noise.
   const folderLabel = (summary: WorksheetSummary) =>
@@ -137,7 +140,7 @@ export function FileDashboard({
       {/* One row at every width: the label is what gives, so the gear keeps its corner. */}
       <div className="flex items-center justify-between gap-x-4">
         <h2 className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
-          {isDesktop() ? 'Saved on this computer' : 'Saved in this browser'}
+          {isDesktop() ? m.savedDesktop : m.savedWeb}
         </h2>
         {/* The saved documents' own tools sit with them: the count, the Trash, and the
             rare all-document actions behind ⋯ — never as a column of links. */}
@@ -146,12 +149,12 @@ export function FileDashboard({
             <span className="mr-2">
               {shown.length === inScope.length
                 ? documentCount(inScope)
-                : `${shown.length} shown · ${documentCount(inScope)}`}
+                : m.shownOf(shown.length, documentCount(inScope))}
             </span>
           )}
           {onShowTrash && (
             <IconButton
-              label={trashCount > 0 ? `Trash (${trashCount})` : 'Trash'}
+              label={trashCount > 0 ? m.trashN(trashCount) : m.trash}
               onClick={onShowTrash}
               className="relative"
             >
@@ -164,7 +167,7 @@ export function FileDashboard({
             </IconButton>
           )}
           {backupItems.length > 0 && (
-            <Menu label="Back up, restore and folders" items={backupItems} />
+            <Menu label={m.backupMenu} items={backupItems} />
           )}
           {settings}
         </span>
@@ -191,11 +194,11 @@ export function FileDashboard({
             // and tooltip, so the words go to the kind filter, which needs them.
             <div className={`${showFolders ? '' : 'mt-4 '}flex flex-wrap items-center gap-x-2 gap-y-2`}>
               <label className="relative min-w-[140px] flex-1">
-                <span className="sr-only">Search saved documents</span>
+                <span className="sr-only">{m.searchDocs}</span>
                 <input
                   type="search"
                   value={query.search}
-                  placeholder="Search by name"
+                  placeholder={m.searchByName}
                   onChange={(event) => setQuery((q) => ({ ...q, search: event.target.value }))}
                   onKeyDown={(event) => {
                     if (event.key === 'Escape' && query.search) {
@@ -208,33 +211,33 @@ export function FileDashboard({
                 <SearchGlyph />
               </label>
               <Segmented<KindFilter>
-                label="Kind of document"
+                label={m.kindOfDocument}
                 value={query.kind}
                 onChange={(kind) => setQuery((q) => ({ ...q, kind }))}
                 options={[
-                  { value: 'all', label: 'All' },
-                  { value: 'worksheet', label: 'Worksheets' },
-                  { value: 'mock', label: 'Mock papers' },
+                  { value: 'all', label: m.all },
+                  { value: 'worksheet', label: m.worksheets },
+                  { value: 'mock', label: m.mockPapers },
                 ]}
               />
               <span aria-hidden className="h-4 w-px bg-line" />
               <IconChoice<SortOrder>
-                label="Order"
+                label={m.order}
                 value={query.sort}
                 onChange={(sort) => setQuery((q) => ({ ...q, sort }))}
                 options={[
-                  { value: 'recent', label: 'Recent', title: 'Recent: last edited first', icon: <ClockGlyph /> },
-                  { value: 'name', label: 'A–Z', title: 'A–Z: by name', icon: <AzGlyph /> },
+                  { value: 'recent', label: m.recent, title: m.recentTitle, icon: <ClockGlyph /> },
+                  { value: 'name', label: 'A–Z', title: m.nameTitle, icon: <AzGlyph /> },
                 ]}
               />
               <span aria-hidden className="h-4 w-px bg-line" />
               <IconChoice<DashboardView>
-                label="View"
+                label={m.view}
                 value={view}
                 onChange={chooseView}
                 options={[
-                  { value: 'grid', label: 'Pages', title: 'Pages: first pages, as a grid', icon: <GridGlyph /> },
-                  { value: 'list', label: 'List', title: 'List: a compact list', icon: <RowsGlyph /> },
+                  { value: 'grid', label: m.pages, title: m.pagesTitle, icon: <GridGlyph /> },
+                  { value: 'list', label: m.list, title: m.listTitle, icon: <RowsGlyph /> },
                 ]}
               />
             </div>
@@ -244,31 +247,29 @@ export function FileDashboard({
               list — that reads as lost work — and "nothing matches" must not read as
               "nothing saved". */}
           {!loaded ? (
-            <p className="mt-5 text-[12px] text-ink-subtle">Reading saved documents…</p>
+            <p className="mt-5 text-[12px] text-ink-subtle">{m.reading}</p>
           ) : summaries.length === 0 ? (
             welcome ?? <div className="zone-light mt-4 rounded-xl border border-line bg-surface px-6 py-10">
               <p className="max-w-md text-[13px] leading-relaxed text-ink-muted">
-                Nothing saved yet. Worksheets you start are kept {place}. Save a .json copy to
-                move one to another machine.
+                {m.nothingSaved(isDesktop())}
               </p>
             </div>
           ) : openFolder && inScope.length === 0 ? (
             <div className="mt-5 rounded-xl border border-dashed border-line-strong px-6 py-8">
               <p className="max-w-md text-[13px] leading-relaxed text-ink-muted">
-                “{openFolder.name || 'Untitled folder'}” is empty. Choose Move to folder… on a
-                document, or drag one onto this folder.
+                {m.folderEmpty(openFolder.name || m.untitledFolder)}
               </p>
             </div>
           ) : shown.length === 0 ? (
             <div className="mt-6 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <p className="text-[13px] text-ink-muted">No saved document matches.</p>
+              <p className="text-[13px] text-ink-muted">{m.noMatch}</p>
               {isFiltered(query) && (
                 <button
                   type="button"
                   onClick={() => setQuery((q) => ({ ...DEFAULT_QUERY, sort: q.sort }))}
                   className="cursor-pointer text-[12px] font-medium text-accent-ink underline decoration-line-strong underline-offset-4 transition-[text-decoration-color] duration-150 ease-out-soft hover:decoration-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
-                  Clear filters
+                  {m.clearFilters}
                 </button>
               )}
             </div>
@@ -337,20 +338,21 @@ function FolderNav({
     [folders, summaries],
   );
   const list = sortedFolders(folders);
+  const m = useMessages(DASHBOARD_MESSAGES);
   return (
-    <nav aria-label="Folders" className="shrink-0 xl:w-44">
+    <nav aria-label={m.folders} className="shrink-0 xl:w-44">
       {/* As a row of chips (below `xl`) the + stays by its label, not across the pane. */}
       <div className="flex items-center gap-1 pb-1 pl-2 xl:justify-between">
         <span className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
-          Folders
+          {m.folders}
         </span>
-        <IconButton label="New folder…" onClick={actions.create}>
+        <IconButton label={m.newFolder} onClick={actions.create}>
           <PlusIcon size={14} />
         </IconButton>
       </div>
       <ul className="flex flex-wrap gap-1 xl:flex-col xl:flex-nowrap xl:gap-0.5">
         <FolderRow
-          name="All documents"
+          name={m.allDocuments}
           count={summaries.length}
           active={openId === undefined}
           onOpen={() => onOpen(undefined)}
@@ -360,7 +362,7 @@ function FolderNav({
         {list.map((folder) => (
           <FolderRow
             key={folder.id}
-            name={folder.name || 'Untitled folder'}
+            name={folder.name || m.untitledFolder}
             count={counts.get(folder.id) ?? 0}
             active={openId === folder.id}
             folder
@@ -368,9 +370,9 @@ function FolderNav({
             dropValue={dropTargetValue(folder.id)}
             over={over?.folderId === folder.id}
             menu={[
-              { label: 'Rename…', onSelect: () => actions.rename(folder) },
+              { label: m.renameEllipsis, onSelect: () => actions.rename(folder) },
               {
-                label: 'Delete folder…',
+                label: m.deleteFolder,
                 danger: true,
                 separated: true,
                 onSelect: () => actions.remove(folder),
@@ -381,7 +383,7 @@ function FolderNav({
       </ul>
       {list.length === 0 && (
         <p className="mt-2 hidden pl-2 text-[11px] leading-snug text-ink-subtle xl:block">
-          Group documents by class or term. Press + to make a folder.
+          {m.folderHelp}
         </p>
       )}
     </nav>
@@ -407,6 +409,7 @@ function FolderRow({
   over: boolean;
   menu?: MenuItem[];
 }) {
+  const m = useMessages(DASHBOARD_MESSAGES);
   return (
     <li
       data-folder-drop={dropValue}
@@ -442,7 +445,7 @@ function FolderRow({
             active ? 'opacity-100' : 'opacity-0'
           }`}
         >
-          <Menu label={`Actions for folder ${name}`} items={menu} />
+          <Menu label={m.folderActions(name)} items={menu} />
         </span>
       )}
       {/* The ⋯'s width, so every count sits in one column. */}
@@ -466,32 +469,29 @@ function entrance(index: number | undefined): { className: string; style?: CSSPr
   };
 }
 
-function plural(count: number, noun: string): string {
-  return count === 1 ? `1 ${noun}` : `${count} ${noun}s`;
-}
-
 /** The overflow menu both views share, so a card and a row can never offer different things. */
 function menuItems(summary: WorksheetSummary, actions: DocumentActions): MenuItem[] {
+  const m = resolveMessages(DASHBOARD_MESSAGES, uiLanguage());
   const items: MenuItem[] = [
-    { label: 'Open', onSelect: () => actions.open(summary) },
-    { label: 'Rename…', onSelect: () => actions.rename(summary) },
-    { label: 'Duplicate', onSelect: () => actions.duplicate(summary) },
+    { label: m.open, onSelect: () => actions.open(summary) },
+    { label: m.renameEllipsis, onSelect: () => actions.rename(summary) },
+    { label: m.duplicate, onSelect: () => actions.duplicate(summary) },
     // Desktop gets a save sheet and a real destination; the web gets a download.
     {
-      label: isDesktop() ? 'Save a .json copy…' : 'Download .json',
+      label: isDesktop() ? m.saveJson : m.downloadJson,
       onSelect: () => actions.download(summary),
     },
   ];
   if (actions.move) {
     const move = actions.move;
-    items.push({ label: 'Move to folder…', onSelect: () => move(summary) });
+    items.push({ label: m.moveToFolder, onSelect: () => move(summary) });
   }
   if (actions.reveal) {
     const reveal = actions.reveal;
     items.push({ label: revealLabel(), onSelect: () => reveal(summary) });
   }
   items.push({
-    label: 'Move to Trash…',
+    label: m.moveToTrash,
     onSelect: () => actions.remove(summary),
     danger: true,
     separated: true,
@@ -505,22 +505,21 @@ function menuItems(summary: WorksheetSummary, actions: DocumentActions): MenuIte
  * link/focus/selection, and a label that cannot be clicked must not wear it.
  */
 function KindAndCount({ summary }: { summary: WorksheetSummary }) {
+  const m = useMessages(DASHBOARD_MESSAGES);
   if (summary.kind === 'bank') {
     return (
       <>
-        <span className="text-ink-subtle">Question bank</span>
-        {summary.questionCount !== undefined && <> · {plural(summary.questionCount, 'question')}</>}
+        <span className="text-ink-subtle">{m.questionBank}</span>
+        {summary.questionCount !== undefined && <> · {m.questions(summary.questionCount)}</>}
       </>
     );
   }
   return (
     <>
       <span className={summary.hasCover ? 'font-semibold text-ink-muted' : 'text-ink-subtle'}>
-        {summary.hasCover ? 'Mock exam paper' : 'Worksheet'}
+        {summary.hasCover ? m.mockPaper : m.worksheet}
       </span>
-      {summary.questionCount !== undefined && (
-        <> · {plural(summary.questionCount, 'question')}</>
-      )}
+      {summary.questionCount !== undefined && <> · {m.questions(summary.questionCount)}</>}
     </>
   );
 }
@@ -551,6 +550,7 @@ function DocumentCard({
   /** Its place in the first-mount entrance; absent once that has played. */
   enter?: number;
 }) {
+  const m = useMessages(DASHBOARD_MESSAGES);
   const rise = entrance(enter);
   const isBank = summary.kind === 'bank';
   return (
@@ -562,7 +562,7 @@ function DocumentCard({
       <button
         type="button"
         onClick={() => actions.open(summary)}
-        aria-label={`Open ${summary.title}`}
+        aria-label={m.openTitle(summary.title)}
         className="group/open block w-full cursor-pointer rounded-lg text-left focus-visible:outline-none"
       >
         {/* Hover is colour only: the accent ring fades in, the paper stays put. The
@@ -585,10 +585,10 @@ function DocumentCard({
           <span className="mt-1 block truncate text-[11px] leading-tight text-ink-subtle">
             {isBank ? (
               // A bank's count is its kind line: "Question bank · 12 questions".
-              `Question bank${summary.questionCount !== undefined ? ` · ${plural(summary.questionCount, 'question')}` : ''}`
+              `${m.questionBank}${summary.questionCount !== undefined ? ` · ${m.questions(summary.questionCount)}` : ''}`
             ) : (
               <span className={summary.hasCover ? 'font-semibold text-ink-muted' : undefined}>
-                {summary.hasCover ? 'Mock exam paper' : 'Worksheet'}
+                {summary.hasCover ? m.mockPaper : m.worksheet}
               </span>
             )}
           </span>
@@ -602,13 +602,13 @@ function DocumentCard({
           <span className="mt-0.5 block truncate text-[11px] tabular-nums leading-tight text-ink-subtle">
             {!isBank &&
               summary.questionCount !== undefined &&
-              `${plural(summary.questionCount, 'question')} · `}
+              `${m.questions(summary.questionCount)} · `}
             {relativeTime(summary.updatedAt)}
           </span>
         </span>
       </button>
       <div className="absolute bottom-0 right-0">
-        <Menu label={`Actions for ${summary.title}`} items={menuItems(summary, actions)} />
+        <Menu label={m.actionsFor(summary.title)} items={menuItems(summary, actions)} />
       </div>
     </li>
   );
@@ -634,6 +634,7 @@ function SavedRow({
   dragging?: boolean;
   enter?: number;
 }) {
+  const m = useMessages(DASHBOARD_MESSAGES);
   const rise = entrance(enter);
   return (
     <li
@@ -662,20 +663,21 @@ function SavedRow({
           {relativeTime(summary.updatedAt)}
         </span>
       </button>
-      <Menu label={`Actions for ${summary.title}`} items={menuItems(summary, actions)} />
+      <Menu label={m.actionsFor(summary.title)} items={menuItems(summary, actions)} />
     </li>
   );
 }
 
 /** " · ▭ Mocks" — which folder, in the facts line. */
 function FolderTag({ name }: { name: string }) {
+  const m = useMessages(DASHBOARD_MESSAGES);
   return (
     <>
       {' · '}
       {/* Plain inline, not flex: the facts line truncates, and an inline-flex box
           cannot be clipped part-way — the whole name would turn into "…". */}
       <FolderIcon size={11} className="mr-0.5 inline-block align-[-1px]" />
-      {name || 'Untitled folder'}
+      {name || m.untitledFolder}
     </>
   );
 }

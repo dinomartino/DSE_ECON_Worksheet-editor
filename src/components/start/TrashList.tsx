@@ -4,7 +4,9 @@ import type { ReactNode } from 'react';
 import { Button } from '@/components/ui';
 import { SheetIcon } from '@/components/ui/icons';
 import { TRASH_RETENTION_DAYS, type TrashedSummary } from '@/storage';
+import { useMessages } from '@/i18n/language';
 import { trashAgeLabel } from './dashboard';
+import { TRASH_MESSAGES } from './screen.messages';
 
 /**
  * The Trash, in place of the dashboard. Rows only — no thumbnails: a trashed document
@@ -27,6 +29,7 @@ export function TrashList({
   /** The app's Settings gear, kept in the corner it holds on the dashboard. */
   settings?: ReactNode;
 }) {
+  const m = useMessages(TRASH_MESSAGES);
   return (
     // Fades in over the dashboard it replaces, so the swap reads as one view turning.
     <div className="mx-auto max-w-5xl animate-fade-in">
@@ -36,26 +39,26 @@ export function TrashList({
           onClick={onBack}
           className="cursor-pointer text-[12px] font-medium text-accent-ink underline decoration-line-strong underline-offset-4 transition-colors duration-150 ease-out-soft hover:decoration-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
-          ← All documents
+          {m.back}
         </button>
         {settings}
       </div>
       <div className="mt-5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">
-          Trash
+          {m.trash}
         </h2>
         {rows.length > 0 && (
           <Button variant="danger" size="sm" onClick={onEmpty}>
-            Empty Trash…
+            {m.empty}
           </Button>
         )}
       </div>
       <p className="mt-1 text-[12px] text-ink-subtle">
-        Deleted documents are kept for {TRASH_RETENTION_DAYS} days, then removed for good.
+        {m.kept(TRASH_RETENTION_DAYS)}
       </p>
 
       {rows.length === 0 ? (
-        <p className="mt-6 text-[13px] text-ink-muted">Trash is empty.</p>
+        <p className="mt-6 text-[13px] text-ink-muted">{m.isEmpty}</p>
       ) : (
         <ul className="zone-light mt-5 overflow-hidden rounded-xl border border-line bg-surface">
           {rows.map((row) => (
@@ -71,14 +74,14 @@ export function TrashList({
                   {row.title}
                 </span>
                 <span className="mt-1 block truncate text-[11px] tabular-nums leading-tight text-ink-subtle">
-                  {row.hasCover ? 'Mock exam paper' : 'Worksheet'} · {trashAgeLabel(row.deletedAt)}
+                  {row.hasCover ? m.mockPaper : m.worksheet} · {trashAgeLabel(row.deletedAt)}
                 </span>
               </span>
               <Button variant="subtle" size="sm" onClick={() => onRestore(row)}>
-                Restore
+                {m.restore}
               </Button>
               <Button variant="danger" size="sm" onClick={() => onPurge(row)}>
-                Delete forever…
+                {m.deleteForever}
               </Button>
             </li>
           ))}

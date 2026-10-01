@@ -1,4 +1,8 @@
+import { resolveMessages } from '@/i18n/catalogue';
+import { uiLanguage } from '@/i18n/language';
+import type { UiLanguage } from '@/settings/language';
 import { folderOf, trashAge, type FolderState, type WorksheetSummary } from '@/storage';
+import { DASHBOARD_MESSAGES } from './screen.messages';
 
 /**
  * The file dashboard's pure half: which saved documents show, in what order.
@@ -67,17 +71,16 @@ export function scopedSummaries(
   return summaries.filter((summary) => folderOf(scope.folders, summary.id)?.id === scope.folderId);
 }
 
-const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
-
 /**
  * The count beside the saved documents: papers and banks apart, so a bank never reads as
  * one more worksheet ("3 worksheets · 1 bank").
  */
-export function documentCount(summaries: readonly WorksheetSummary[]): string {
+export function documentCount(summaries: readonly WorksheetSummary[], lang: UiLanguage = uiLanguage()): string {
+  const m = resolveMessages(DASHBOARD_MESSAGES, lang);
   const banks = summaries.filter((summary) => summary.kind === 'bank').length;
   const papers = summaries.length - banks;
-  const parts = papers > 0 || banks === 0 ? [plural(papers, 'worksheet')] : [];
-  if (banks > 0) parts.push(plural(banks, 'bank'));
+  const parts = papers > 0 || banks === 0 ? [m.worksheetCount(papers)] : [];
+  if (banks > 0) parts.push(m.bankCount(banks));
   return parts.join(' · ');
 }
 
@@ -136,9 +139,9 @@ export function writeDashboardFolder(folderId: string | undefined): void {
 export { relativeTime } from '@/i18n/format';
 
 /** "deleted 3 days ago · removed in 27 days" — a Trash row's facts line. */
-export function trashAgeLabel(deletedAt: string, now = Date.now()): string {
+export function trashAgeLabel(deletedAt: string, now = Date.now(), lang: UiLanguage = uiLanguage()): string {
+  const m = resolveMessages(DASHBOARD_MESSAGES, lang);
   const { daysAgo, daysLeft } = trashAge(deletedAt, now);
-  const ago =
-    daysAgo === 0 ? 'Deleted today' : daysAgo === 1 ? 'Deleted yesterday' : `Deleted ${daysAgo} days ago`;
-  return `${ago} · removed in ${daysLeft === 1 ? '1 day' : `${daysLeft} days`}`;
+  const ago = daysAgo === 0 ? m.deletedToday : daysAgo === 1 ? m.deletedYesterday : m.deletedDaysAgo(daysAgo);
+  return `${ago} · ${m.removedIn(daysLeft)}`;
 }

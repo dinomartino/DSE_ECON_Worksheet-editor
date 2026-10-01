@@ -4,6 +4,10 @@ import type { BankRow } from '@/library/types';
 import type { Question } from '@/model/types';
 import { worksheetStore, type WorksheetStore } from '@/storage';
 import { useWorksheetStore } from '@/store/worksheetStore';
+import { resolveMessages } from '@/i18n/catalogue';
+import { uiLanguage } from '@/i18n/language';
+import type { UiLanguage } from '@/settings/language';
+import { BANK_REVIEW_MESSAGES } from './messages';
 import { outsidePaperNote } from './tabText';
 
 /**
@@ -61,7 +65,8 @@ export const useBankSession: UseBoundStore<StoreApi<BankSessionState>> = create<
 }));
 
 /** The review bar's line: how many copies the review holds. */
-export const reviewSummary = (n: number) => `${n} question${n === 1 ? '' : 's'} added from 題庫`;
+export const reviewSummary = (n: number, lang: UiLanguage = uiLanguage()) =>
+  resolveMessages(BANK_REVIEW_MESSAGES, lang).added(n);
 
 export interface InsertReport {
   /** Ids of the copies now in the paper, in order. */

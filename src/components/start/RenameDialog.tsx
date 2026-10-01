@@ -3,10 +3,12 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui';
 import { Dialog } from '@/components/ui/Dialog';
+import { resolveMessages } from '@/i18n/catalogue';
+import { uiLanguage, useMessages } from '@/i18n/language';
+import { RENAME_MESSAGES } from './screen.messages';
 import { NewerDocumentError, type WorksheetStore, type WorksheetSummary } from '@/storage';
 
-export const RENAME_NEWER_MESSAGE =
-  'This worksheet was saved by a newer version of Econ Studio and cannot be renamed here. Update to rename it.';
+export const RENAME_NEWER_MESSAGE = RENAME_MESSAGES.newer.en;
 
 /**
  * Rename a saved document, returning what to tell the teacher if it was refused.
@@ -21,7 +23,8 @@ export async function renameWorksheet(
     await store.rename(id, name);
     return undefined;
   } catch (error) {
-    return error instanceof NewerDocumentError ? RENAME_NEWER_MESSAGE : 'Could not rename that worksheet.';
+    const m = resolveMessages(RENAME_MESSAGES, uiLanguage());
+    return error instanceof NewerDocumentError ? m.newer : m.failed;
   }
 }
 
@@ -37,26 +40,27 @@ export function RenameDialog({
   onClose: () => void;
   onDone: (title: string) => void;
 }) {
+  const m = useMessages(RENAME_MESSAGES);
   const [title, setTitle] = useState(summary.title === 'Untitled' ? '' : summary.title);
   const trimmed = title.trim();
   const formId = 'rename-worksheet-form';
 
   return (
     <Dialog
-      title="Rename worksheet"
-      description="What this document is called here and what the exported file is named. The heading printed on the page is set in the document itself."
+      title={m.title}
+      description={m.description}
       width={420}
       onClose={onClose}
       footer={
         <>
           <Button variant="subtle" onClick={onClose}>
-            Cancel
+            {m.cancel}
           </Button>
           {/* Disabled on empty rather than falling back to "Untitled": an empty box here
               is a slip, and silently renaming a document to nothing is not what it asks
               for. */}
           <Button variant="primary" type="submit" form={formId} disabled={!trimmed}>
-            Rename
+            {m.rename}
           </Button>
         </>
       }
@@ -73,7 +77,7 @@ export function RenameDialog({
           type="text"
           value={title}
           autoFocus
-          placeholder="Document name"
+          placeholder={m.placeholder}
           aria-invalid={!!error}
           onChange={(event) => setTitle(event.target.value)}
           className="h-9 w-full rounded-lg border border-line bg-surface px-2.5 text-[13px] text-ink outline-none transition-colors duration-150 ease-out-soft placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"

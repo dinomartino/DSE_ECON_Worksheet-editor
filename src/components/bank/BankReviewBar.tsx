@@ -3,8 +3,10 @@
 import { useEffect, useRef } from 'react';
 import { useAiRun } from '@/assist/runStore';
 import { BarButton } from '@/components/ai/barParts';
+import { useMessages } from '@/i18n/language';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { reviewSummary, useBankSession } from './bankSession';
+import { BANK_REVIEW_MESSAGES } from './messages';
 
 /**
  * What 題庫 just inserted, reviewed the way ✦ AI's inserts are: the copies highlighted on
@@ -66,6 +68,7 @@ function revealIfHidden(id: string | undefined): void {
 }
 
 export function BankReviewBar() {
+  const m = useMessages(BANK_REVIEW_MESSAGES);
   const review = useBankSession((s) => s.review);
   // Re-render on every edit: Undo hides once its commit is no longer the latest.
   const worksheet = useWorksheetStore((s) => s.worksheet);
@@ -145,20 +148,20 @@ export function BankReviewBar() {
         {review.note && <span className="order-last basis-full pb-0.5 text-[12px] text-on-cta/70">{review.note}</span>}
         {count > 1 && (
           <span className="flex shrink-0 items-center">
-            <BarButton aria-label="Previous" onClick={() => step(-1)}>
+            <BarButton aria-label={m.previous} onClick={() => step(-1)}>
               ‹
             </BarButton>
             <span className="text-[11px] tabular-nums text-on-cta/70">
               {review.index + 1} / {count}
             </span>
-            <BarButton aria-label="Next" onClick={() => step(1)}>
+            <BarButton aria-label={m.next} onClick={() => step(1)}>
               ›
             </BarButton>
           </span>
         )}
-        {live && <BarButton onClick={session.undo}>Undo</BarButton>}
+        {live && <BarButton onClick={session.undo}>{m.undo}</BarButton>}
         <BarButton primary onClick={session.dismiss}>
-          Done
+          {m.done}
         </BarButton>
       </div>
     </div>

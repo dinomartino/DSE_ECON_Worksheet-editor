@@ -6,6 +6,7 @@ import { Button, Pill } from '@/components/ui';
 import { Dialog } from '@/components/ui/Dialog';
 import { ChevronRightIcon } from '@/components/ui/icons';
 import { currentVersion } from '@/desktop/updater';
+import { useMessages } from '@/i18n/language';
 import { openExternal } from '@/platform';
 import {
   findRelease,
@@ -18,6 +19,7 @@ import {
 import { inlineTokens, isOpenableLink, type InlineToken } from '@/whatsNew/inline';
 import { CHANGELOG, formatReleaseDate, SHOW_UNRELEASED } from '@/whatsNew/notes';
 import { decideWhatsNew, readLastSeen, writeLastSeen } from '@/whatsNew/seen';
+import { WHATS_NEW_MESSAGES } from './messages';
 
 /**
  * "What's new", read from the CHANGELOG.md bundled into this build.
@@ -40,6 +42,7 @@ export function WhatsNewDialog({
   current?: string;
   showUnreleased?: boolean;
 }) {
+  const m = useMessages(WHATS_NEW_MESSAGES);
   const [all, setAll] = useState(false);
   const featured = version && !all ? findRelease(changelog, version) : undefined;
 
@@ -47,17 +50,17 @@ export function WhatsNewDialog({
     const date = formatReleaseDate(featured.date);
     return (
       <Dialog
-        title={`What’s new in ${featured.version}`}
-        description={date ? `Released ${date}` : undefined}
+        title={m.titleIn(featured.version)}
+        description={date ? m.released(date) : undefined}
         width={560}
         onClose={onClose}
         footer={
           <>
             <Button variant="subtle" className="mr-auto" onClick={() => setAll(true)}>
-              See all releases
+              {m.seeAll}
             </Button>
             <Button variant="primary" onClick={onClose}>
-              Got it
+              {m.gotIt}
             </Button>
           </>
         }
@@ -78,19 +81,19 @@ export function WhatsNewDialog({
 
   return (
     <Dialog
-      title="What’s new"
-      description={`You have version ${current}. Every release, newest first.`}
+      title={m.title}
+      description={m.description(current)}
       width={560}
       onClose={onClose}
       footer={
         <Button variant="primary" onClick={onClose}>
-          Done
+          {m.done}
         </Button>
       }
     >
       <div className="divide-y divide-line px-5">
         {sections.length === 0 && (
-          <p className="py-5 text-[13px] text-ink-muted">No release notes in this build.</p>
+          <p className="py-5 text-[13px] text-ink-muted">{m.none}</p>
         )}
         {sections.map((section) => (
           <Fold
@@ -181,16 +184,17 @@ function Fold({
 }
 
 function SectionTitle({ section, current }: { section: ChangelogSection; current: string }) {
+  const m = useMessages(WHATS_NEW_MESSAGES);
   const unreleased = section.version === UNRELEASED;
   const date = formatReleaseDate(section.date);
   return (
     <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5">
       <span className="text-[14px] font-semibold text-ink tabular-nums">
-        {unreleased ? 'Unreleased' : section.version}
+        {unreleased ? m.unreleased : section.version}
       </span>
       {date && <span className="text-[12px] text-ink-subtle">{date}</span>}
-      {section.version === current && <Pill tone="accent">Your version</Pill>}
-      {unreleased && <Pill tone="warn">Dev build only</Pill>}
+      {section.version === current && <Pill tone="accent">{m.yourVersion}</Pill>}
+      {unreleased && <Pill tone="warn">{m.devOnly}</Pill>}
       <span className="ml-auto text-[11px] text-ink-subtle group-open:hidden">
         {countLine(section)}
       </span>

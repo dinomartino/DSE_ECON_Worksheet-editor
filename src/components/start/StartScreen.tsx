@@ -24,13 +24,12 @@ import { VersionLine } from '@/components/editor/UpdateBanner';
 import { FeedbackDialog } from '@/components/feedback/FeedbackDialog';
 import { WhatsNewDialog, WhatsNewOnLaunch } from '@/components/whatsNew/WhatsNewDialog';
 import { describeDocument } from '@/feedback/feedback';
-import { useMessages } from '@/i18n/language';
+import { uiLanguage, useMessages } from '@/i18n/language';
 import { FileDashboard, type DocumentActions, type FolderActions } from './FileDashboard';
 import { readDashboardFolder, writeDashboardFolder } from './dashboard';
 import { START_PANEL_MESSAGES } from './messages';
+import { START_SCREEN_MESSAGES } from './screen.messages';
 import {
-  DROP_HINT,
-  DROP_REJECTED,
   DROP_REJECTED_MS,
   droppedKind,
   fileNameOf,
@@ -126,6 +125,7 @@ export function StartScreen({
   onOpen: (worksheet: Worksheet, language?: LanguageMode) => void;
 }) {
   const m = useMessages(START_PANEL_MESSAGES);
+  const t = useMessages(START_SCREEN_MESSAGES);
   const [summaries, setSummaries] = useState<WorksheetSummary[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [creating, setCreating] = useState<DocumentType | undefined>();
@@ -233,7 +233,7 @@ export function StartScreen({
         // The index and the documents are separate keys, so an entry can outlive what it
         // names — a half-finished `clear`, or storage evicted under quota pressure.
         // Saying so and dropping the row beats an open button that silently does nothing.
-        setError(`That worksheet is no longer in this ${isDesktop() ? 'computer' : 'browser'}’s storage.`);
+        setError(t.notFound(isDesktop()));
         await worksheetStore.remove(id);
         await refresh();
         return;
@@ -241,7 +241,7 @@ export function StartScreen({
       onOpen(worksheet);
       then?.();
     } catch {
-      setError('Could not open that worksheet.');
+      setError(t.couldNotOpen);
     }
   };
 
@@ -250,7 +250,7 @@ export function StartScreen({
     try {
       onOpen(await readWorksheetFile(file));
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not open that file.');
+      setError(cause instanceof Error ? cause.message : t.couldNotOpenFile);
     }
   };
 
@@ -273,7 +273,7 @@ export function StartScreen({
       setFolders(await updateFolders(worksheetStore, recipe));
       return true;
     } catch {
-      setError('Could not save that folder change.');
+      setError(t.folderChangeFailed);
       return false;
     }
   };
@@ -327,12 +327,12 @@ export function StartScreen({
     }
     setError(undefined);
     try {
-      const picked = await pickFile(OPEN_FILTERS);
+      const picked = await pickFile([{ name: t.openFilterName, extensions: ['json', 'zip'] }]);
       if (!picked) return;
       if (picked.name.toLowerCase().endsWith('.zip')) await restoreFrom(picked.bytes);
       else onOpen(parseWorksheet(new TextDecoder().decode(picked.bytes)));
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not open that file.');
+      setError(cause instanceof Error ? cause.message : t.couldNotOpenFile);
     }
   };
 
@@ -341,7 +341,7 @@ export function StartScreen({
     try {
       await worksheetStore.trash(summary.id);
     } catch {
-      setError('Could not move that worksheet to the Trash.');
+      setError(t.trashFailed);
     }
     await refresh();
   };
@@ -350,10 +350,10 @@ export function StartScreen({
     setError(undefined);
     try {
       const id = await worksheetStore.restore(row.id);
-      if (id) setNotice({ message: `Restored “${row.title}”.` });
-      else setError('That worksheet is no longer in the Trash.');
+      if (id) setNotice({ message: t.restored(row.title) });
+      else setError(t.notInTrash);
     } catch {
-      setError('Could not restore that worksheet.');
+      setError(t.couldNotRestore);
     }
     await refresh();
   };
@@ -370,7 +370,7 @@ export function StartScreen({
       const summaries = await worksheetStore.list();
       const { graphs } = await graphStore.list();
       if (summaries.length === 0 && graphs.length === 0) {
-        setError('There is nothing saved to back up yet.');
+        setError(t.nothingToBackUp);
         return;
       }
       // Where first, inside the click: a browser's Save As needs it, and the zip takes a while.
@@ -387,7 +387,7 @@ export function StartScreen({
         else unreadable += 1;
       }
       if (worksheets.length === 0 && graphs.length === 0) {
-        setError('There is nothing saved to back up yet.');
+        setError(t.nothingToBackUp);
         return;
       }
       const filed = await worksheetStore.readFolders();
@@ -395,17 +395,13 @@ export function StartScreen({
         await buildBackup(worksheets, undefined, filed, await readPatternRegistry(patternStorage), graphs),
       );
       setNotice({
-        message:
-          `Backed up ${plural(worksheets.length, 'document')}${graphs.length > 0 ? ` and ${plural(graphs.length, 'graph')}` : ''}.` +
-          (unreadable > 0
-            ? ` ${plural(unreadable, 'document')} could not be read and ${unreadable === 1 ? 'is' : 'are'} not in it.`
-            : ''),
+        message: t.backedUp(worksheets.length, graphs.length, unreadable),
         action: path
           ? { label: revealLabel(), run: () => void revealFile(path).catch(() => undefined) }
           : undefined,
       });
     } catch {
-      setError('Could not write the backup.');
+      setError(t.couldNotWriteBackup);
     } finally {
       setBusy(undefined);
     }
@@ -429,7 +425,7 @@ export function StartScreen({
         details: [...failures, ...report.failed].map((f) => `${f.name}: ${f.reason}`),
       });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not read that backup.');
+      setError(cause instanceof Error ? cause.message : t.couldNotReadBackup);
     } finally {
       setBusy(undefined);
       await refresh();
@@ -445,7 +441,7 @@ export function StartScreen({
       const picked = await pickFile(ZIP_FILTERS);
       if (picked) await restoreFrom(picked.bytes);
     } catch {
-      setError('Could not open that file.');
+      setError(t.couldNotOpenFile);
     }
   };
 
@@ -476,8 +472,7 @@ export function StartScreen({
     try {
       data = await plan.file.read();
     } catch (cause) {
-      const reason = cause instanceof Error ? `: ${cause.message}` : '';
-      setError(`Could not read “${plan.file.name}”${reason}.`);
+      setError(t.couldNotReadFile(plan.file.name, cause instanceof Error ? cause.message : ''));
       return;
     }
     if (plan.kind === 'restore') {
@@ -487,7 +482,7 @@ export function StartScreen({
     try {
       onOpen(parseWorksheet(await textOf(data)));
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not open that file.');
+      setError(cause instanceof Error ? cause.message : t.couldNotOpenFile);
     }
   };
 
@@ -527,7 +522,7 @@ export function StartScreen({
         try {
           text = await textOf(await file.read());
         } catch (cause) {
-          unreadable(file.name, cause instanceof Error ? cause.message : 'could not be read');
+          unreadable(file.name, cause instanceof Error ? cause.message : t.couldNotBeRead);
           continue;
         }
         try {
@@ -547,12 +542,12 @@ export function StartScreen({
           reloadPatterns();
           for (const failure of failures) unreadable(`${file.name}: ${failure.name}`, failure.reason);
         } catch (cause) {
-          unreadable(file.name, cause instanceof Error ? cause.message : 'could not be read');
+          unreadable(file.name, cause instanceof Error ? cause.message : t.couldNotBeRead);
         }
       }
-      setNotice({ message: importSummary(counts), details });
+      setNotice({ message: importSummary(counts, uiLanguage()), details });
     } catch {
-      setError('Could not import those files.');
+      setError(t.couldNotImport);
     } finally {
       setBusy(undefined);
       await refresh();
@@ -564,27 +559,27 @@ export function StartScreen({
     handleDropRef.current = handleDrop;
   });
 
-  const showFolder = (label: string, locate: () => Promise<string | undefined>) => () =>
+  const showFolder = (failure: string, locate: () => Promise<string | undefined>) => () =>
     void (async () => {
       try {
         const path = await locate();
         if (path) await openFolder(path);
       } catch {
-        setError(`Could not open the ${label} folder.`);
+        setError(failure);
       }
     })();
 
   /** Backup, restore and (desktop) the folders on disk: the ⋯ beside the document count. */
   const backupItems: MenuItem[] = [
     {
-      label: busy === 'backup' ? 'Backing up…' : 'Back up all…',
+      label: busy === 'backup' ? t.backingUp : t.backUpAll,
       hint: '.zip',
       icon: <ArchiveIcon />,
       disabled: busy !== undefined,
       onSelect: () => void backUpAll(),
     },
     {
-      label: busy === 'restore' ? 'Restoring…' : 'Restore from backup…',
+      label: busy === 'restore' ? t.restoring : t.restoreFromBackup,
       icon: <FolderOpenIcon />,
       disabled: busy !== undefined,
       onSelect: () => void pickBackup(),
@@ -592,15 +587,15 @@ export function StartScreen({
     ...(isDesktop()
       ? [
           {
-            label: 'Show saved worksheets',
+            label: t.showSaved,
             icon: <FolderIcon />,
             separated: true,
-            onSelect: showFolder('saved worksheets', savedWorksheetsFolder),
+            onSelect: showFolder(t.couldNotOpenSavedFolder, savedWorksheetsFolder),
           },
           {
-            label: 'Show exports folder',
+            label: t.showExports,
             icon: <FolderIcon />,
-            onSelect: showFolder('exports', exportsFolder),
+            onSelect: showFolder(t.couldNotOpenExportsFolder, exportsFolder),
           },
         ]
       : []),
@@ -622,7 +617,7 @@ export function StartScreen({
               const path = await savedWorksheetPath(summary.id);
               if (path) await revealFile(path);
             } catch {
-              setError('Could not show that file.');
+              setError(t.couldNotShowFile);
             }
           })()
       : undefined,
@@ -691,7 +686,7 @@ export function StartScreen({
                 <div role="alert" className="flex animate-slide-down-in items-start gap-3 rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs text-danger-ink">
                   <p className="min-w-0 flex-1 py-0.5">{error}</p>
                   <Button variant="subtle" size="sm" onClick={() => setError(undefined)}>
-                    Dismiss
+                    {t.dismiss}
                   </Button>
                 </div>
               ) : notice ? (
@@ -903,15 +898,15 @@ export function StartScreen({
                 : 'animate-pop-in rounded-xl border-2 border-dashed border-accent bg-surface px-5 py-3 text-[13px] font-medium text-accent-ink'
             }
           >
-            {dropOverlay === 'rejected' ? DROP_REJECTED : DROP_HINT}
+            {dropOverlay === 'rejected' ? t.dropRejected : t.dropHint}
           </span>
         </div>
       )}
 
       {creating && (
         <Dialog
-          title="New worksheet"
-          description="Name it, then press Create. Everything else has a default and is awkward to change once questions are written."
+          title={t.newTitle}
+          description={t.newDescription}
           width={640}
           onClose={() => setCreating(undefined)}
           // Pinned outside the scrolling body, so Create stays reachable at any window
@@ -920,12 +915,12 @@ export function StartScreen({
           footer={
             <>
               <Button variant="subtle" onClick={() => setCreating(undefined)}>
-                Cancel
+                {t.cancel}
               </Button>
               {/* `form=` submits the form in the dialog's body across the DOM boundary,
                   so this button and Enter in any field take the identical path. */}
               <Button variant="primary" type="submit" form={NEW_WORKSHEET_FORM_ID}>
-                Create worksheet
+                {t.createWorksheet}
               </Button>
             </>
           }
@@ -1006,13 +1001,13 @@ export function StartScreen({
 
       {deletingFolder && (
         <Dialog
-          title={`Delete the folder “${deletingFolder.name || 'Untitled folder'}”?`}
+          title={t.deleteFolderTitle(deletingFolder.name || t.untitledFolder)}
           width={420}
           onClose={() => setDeletingFolder(undefined)}
           footer={
             <>
               <Button variant="subtle" onClick={() => setDeletingFolder(undefined)}>
-                Cancel
+                {t.cancel}
               </Button>
               <Button
                 variant="primary"
@@ -1022,7 +1017,7 @@ export function StartScreen({
                   void removeFolder(folder);
                 }}
               >
-                Delete folder
+                {t.deleteFolder}
               </Button>
             </>
           }
@@ -1031,7 +1026,7 @@ export function StartScreen({
             {(() => {
               const count =
                 folderCounts(folders, summaries.map((row) => row.id)).get(deletingFolder.id) ?? 0;
-              return `${count === 1 ? 'Its document moves' : `Its ${count} documents move`} to All documents. No document is deleted.`;
+              return t.folderDocsMove(count);
             })()}
           </p>
         </Dialog>
@@ -1039,13 +1034,13 @@ export function StartScreen({
 
       {confirmingDelete && (
         <Dialog
-          title={`Move “${confirmingDelete.title}” to Trash?`}
+          title={t.trashTitle(confirmingDelete.title)}
           width={420}
           onClose={() => setConfirmingDelete(undefined)}
           footer={
             <>
               <Button variant="subtle" onClick={() => setConfirmingDelete(undefined)}>
-                Cancel
+                {t.cancel}
               </Button>
               <Button
                 variant="primary"
@@ -1055,27 +1050,26 @@ export function StartScreen({
                   void moveToTrash(summary);
                 }}
               >
-                Move to Trash
+                {t.moveToTrash}
               </Button>
             </>
           }
         >
           <p className="px-5 py-5 text-[13px] leading-relaxed text-ink-subtle">
-            You can restore it from the Trash for {TRASH_RETENTION_DAYS} days. After that it is
-            deleted for good.
+            {t.trashBody(TRASH_RETENTION_DAYS)}
           </p>
         </Dialog>
       )}
 
       {confirmingPurge && (
         <Dialog
-          title={`Delete “${confirmingPurge.title}” forever?`}
+          title={t.purgeTitle(confirmingPurge.title)}
           width={420}
           onClose={() => setConfirmingPurge(undefined)}
           footer={
             <>
               <Button variant="subtle" onClick={() => setConfirmingPurge(undefined)}>
-                Cancel
+                {t.cancel}
               </Button>
               <DangerButton
                 onClick={() => {
@@ -1084,27 +1078,26 @@ export function StartScreen({
                   void worksheetStore.purge(id).then(refresh);
                 }}
               >
-                Delete forever
+                {t.deleteForever}
               </DangerButton>
             </>
           }
         >
           <p className="px-5 py-5 text-[13px] leading-relaxed text-ink-subtle">
-            It is stored {isDesktop() ? 'on this computer' : 'in this browser'} only, so this
-            cannot be undone.
+            {t.purgeBody(isDesktop())}
           </p>
         </Dialog>
       )}
 
       {confirmingEmpty && (
         <Dialog
-          title="Empty the Trash?"
+          title={t.emptyTitle}
           width={420}
           onClose={() => setConfirmingEmpty(false)}
           footer={
             <>
               <Button variant="subtle" onClick={() => setConfirmingEmpty(false)}>
-                Cancel
+                {t.cancel}
               </Button>
               <DangerButton
                 onClick={() => {
@@ -1112,14 +1105,13 @@ export function StartScreen({
                   void worksheetStore.emptyTrash().then(refresh);
                 }}
               >
-                Empty Trash
+                {t.emptyTrash}
               </DangerButton>
             </>
           }
         >
           <p className="px-5 py-5 text-[13px] leading-relaxed text-ink-subtle">
-            {plural(trashRows.length, 'document')} will be deleted for good. This cannot be
-            undone.
+            {t.emptyBody(trashRows.length)}
           </p>
         </Dialog>
       )}
@@ -1225,6 +1217,7 @@ function FolderNameDialog({
   onClose: () => void;
   onDone: (name: string) => void;
 }) {
+  const t = useMessages(START_SCREEN_MESSAGES);
   const [name, setName] = useState(folder?.name ?? '');
   const problem = folderNameProblem(folders, name, folder?.id);
   // "Give it a name" is not worth saying before anything is typed.
@@ -1232,21 +1225,17 @@ function FolderNameDialog({
   const formId = 'folder-name-form';
   return (
     <Dialog
-      title={folder ? 'Rename folder' : 'New folder'}
-      description={
-        filing
-          ? `“${filing.title}” will be filed in it.`
-          : 'Folders group documents here; a document can be in one folder.'
-      }
+      title={folder ? t.renameFolder : t.newFolder}
+      description={filing ? t.filedIn(filing.title) : t.folderHelp}
       width={420}
       onClose={onClose}
       footer={
         <>
           <Button variant="subtle" onClick={onClose}>
-            Cancel
+            {t.cancel}
           </Button>
           <Button variant="primary" type="submit" form={formId} disabled={!!problem}>
-            {folder ? 'Rename' : filing ? 'Create and move' : 'Create folder'}
+            {folder ? t.rename : filing ? t.createAndMove : t.createFolder}
           </Button>
         </>
       }
@@ -1264,7 +1253,7 @@ function FolderNameDialog({
           value={name}
           autoFocus
           maxLength={FOLDER_NAME_MAX}
-          placeholder="e.g. S5 2026-27, Mocks"
+          placeholder={t.folderPlaceholder}
           aria-invalid={!!shown}
           onChange={(event) => setName(event.target.value)}
           className="h-9 w-full rounded-lg border border-line bg-surface px-2.5 text-[13px] text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
@@ -1292,24 +1281,25 @@ function MoveDialog({
   onMove: (folderId: string | undefined) => void;
   onNewFolder: () => void;
 }) {
+  const t = useMessages(START_SCREEN_MESSAGES);
   const current = folderOf(folders, summary.id)?.id;
   const destinations: { id: string | undefined; name: string }[] = [
-    { id: undefined, name: 'No folder' },
-    ...sortedFolders(folders).map((f) => ({ id: f.id, name: f.name || 'Untitled folder' })),
+    { id: undefined, name: t.noFolder },
+    ...sortedFolders(folders).map((f) => ({ id: f.id, name: f.name || t.untitledFolder })),
   ];
   return (
     <Dialog
-      title={`Move “${summary.title}”`}
-      description="It stays in All documents wherever it is filed."
+      title={t.moveTitle(summary.title)}
+      description={t.moveDescription}
       width={420}
       onClose={onClose}
       footer={
         <>
           <Button variant="subtle" className="mr-auto" onClick={onNewFolder}>
-            New folder…
+            {t.newFolderEllipsis}
           </Button>
           <Button variant="subtle" onClick={onClose}>
-            Cancel
+            {t.cancel}
           </Button>
         </>
       }
@@ -1329,7 +1319,7 @@ function MoveDialog({
                   {destination.id === undefined ? <SheetIcon /> : <FolderIcon />}
                 </span>
                 <span className="min-w-0 flex-1 truncate">{destination.name}</span>
-                {here && <span className="shrink-0 text-[11px] text-ink-subtle">Here now</span>}
+                {here && <span className="shrink-0 text-[11px] text-ink-subtle">{t.hereNow}</span>}
               </button>
             </li>
           );
@@ -1377,6 +1367,7 @@ function TextLink({
 }
 
 function NoticeBox({ notice, onDismiss, flush }: { notice: Notice; onDismiss: () => void; flush?: boolean }) {
+  const t = useMessages(START_SCREEN_MESSAGES);
   const details = notice.details ?? [];
   return (
     <div
@@ -1391,7 +1382,7 @@ function NoticeBox({ notice, onDismiss, flush }: { notice: Notice; onDismiss: ()
           </Button>
         )}
         <Button variant="subtle" size="sm" onClick={onDismiss}>
-          Dismiss
+          {t.dismiss}
         </Button>
       </div>
       {details.length > 0 && (
@@ -1401,18 +1392,12 @@ function NoticeBox({ notice, onDismiss, flush }: { notice: Notice; onDismiss: ()
               {line}
             </li>
           ))}
-          {details.length > 8 && <li>and {details.length - 8} more</li>}
+          {details.length > 8 && <li>{t.andMore(details.length - 8)}</li>}
         </ul>
       )}
     </div>
   );
 }
-
-function plural(count: number, noun: string): string {
-  return count === 1 ? `1 ${noun}` : `${count} ${noun}s`;
-}
-
-const OPEN_FILTERS = [{ name: 'Worksheet or backup', extensions: ['json', 'zip'] }];
 
 function isZip(file: File): boolean {
   return (
