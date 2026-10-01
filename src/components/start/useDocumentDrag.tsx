@@ -10,6 +10,8 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { useMessages } from '@/i18n/language';
+import { START_SCREEN_MESSAGES } from './screen.messages';
 import { SheetIcon } from '@/components/ui/icons';
 import { useModalLayer } from '@/components/ui/modalLayer';
 import {
@@ -68,6 +70,7 @@ export interface SourceProps {
 export function useDocumentDrag(
   onDrop: ((docId: string, folderId: string | undefined) => void) | undefined,
 ): DocumentDrag {
+  const t = useMessages(START_SCREEN_MESSAGES);
   const state = useRef<DragState>(IDLE);
   const source = useRef<HTMLElement | null>(null);
   const ghostRef = useRef<HTMLDivElement | null>(null);
@@ -207,7 +210,7 @@ export function useDocumentDrag(
             <span className="shrink-0 text-ink-subtle">
               <SheetIcon size={15} />
             </span>
-            <span className="min-w-0 truncate">{active.title || 'Untitled'}</span>
+            <span className="min-w-0 truncate">{active.title || t.untitled}</span>
           </div>,
           document.body,
         )

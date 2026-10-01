@@ -179,6 +179,8 @@ export const PREVIEW_MESSAGES = defineMessages({
 
 /** Selection handles and resize grips on the page. */
 export const PREVIEW_HANDLE_MESSAGES = defineMessages({
+  editZhText: { en: 'Edit 中文 text', zh: '編輯中文文字' },
+  editEnText: { en: 'Edit English text', zh: '編輯英文文字' },
   selectImageOpen: { en: 'Select image. Double-click to edit', zh: '選取圖片。按兩下即可編輯' },
   selectImageResize: { en: 'Select image to resize', zh: '選取圖片以調整大小' },
   resizeImageLeft: { en: 'Resize image (left)', zh: '調整圖片大小（左）' },

@@ -46,7 +46,7 @@ import { CaptionField } from './CaptionField';
 import { biExcerpt, ExcerptRow } from './panelRows';
 import { DiagramEditor } from './DiagramEditor';
 import { DiagramTemplatePopover } from './DiagramTemplatePicker';
-import { useMessages } from '@/i18n/language';
+import { useMessages, useUiLanguage } from '@/i18n/language';
 import { BLOCK_EDITOR_MESSAGES } from './BlockEditor.messages';
 
 /**
@@ -340,6 +340,7 @@ function TableInsertButton({
   onPickTemplate: (templateId: string) => void;
 }) {
   const m = useMessages(BLOCK_EDITOR_MESSAGES);
+  const side = useUiLanguage() === 'zh-HK' ? 'zh' : 'en';
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -397,10 +398,10 @@ function TableInsertButton({
                 }}
               >
                 <span className="block text-xs font-medium text-ink">
-                  {plain(template.name.en)}
+                  {plain(template.name[side])}
                 </span>
                 <span className="block text-[10px] text-ink-subtle">
-                  {plain(template.hint.en)}
+                  {plain(template.hint[side])}
                 </span>
               </button>
             ))}

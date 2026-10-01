@@ -3,7 +3,7 @@ import { missingSide, type TextSlot } from '@/model/textSlots';
 import type { LanguageMode } from '@/model/types';
 import type { EditTarget } from '@/render/ir';
 import type { PageMenuPayload } from '@/components/preview/PageContextMenu';
-import { MENU_SETTINGS } from './copy';
+import { copyMessages } from './text';
 
 /**
  * The AI door's entry points, pure (slot sources injected): the scope a page right-click
@@ -87,5 +87,5 @@ export function toolbarSettingsEntries(opts: {
   settingsHint?: string;
 }): ToolbarEntry[] {
   if (!opts.hasSettings) return [];
-  return [{ label: MENU_SETTINGS, ...(opts.settingsHint ? { hint: opts.settingsHint } : {}) }];
+  return [{ label: copyMessages().menuSettings, ...(opts.settingsHint ? { hint: opts.settingsHint } : {}) }];
 }

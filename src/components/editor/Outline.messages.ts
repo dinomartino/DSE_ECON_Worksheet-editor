@@ -3,6 +3,8 @@ import { defineMessages } from '@/i18n/catalogue';
 /** The Content tab: the outline's rows, page groups, drag ghost and "Add here" menu. */
 export const OUTLINE_MESSAGES = defineMessages({
   untitled: { en: 'Untitled worksheet', zh: '未命名工作紙' },
+  noTopicYet: { en: 'No topic yet', zh: '尚未有課題' },
+  tagsLabel: { en: 'Tags:', zh: '標籤：' },
   setup: { en: 'Setup', zh: '頁面設定' },
   setupTitle: {
     en: 'Title, paper, margins, header and footer',

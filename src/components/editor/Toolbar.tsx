@@ -67,6 +67,7 @@ export function HomeCrumb({ onOpenFiles }: { onOpenFiles: () => void }) {
         <span className="flex text-ink">
           <AppMark size={22} />
         </span>
+        {/* i18n-ignore: brand */}
         <span className="hidden min-[1440px]:inline">Econ Studio</span>
       </button>
       <ChevronRightIcon size={13} className="hidden shrink-0 text-ink-subtle min-[1440px]:block" />

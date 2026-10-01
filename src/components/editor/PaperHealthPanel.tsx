@@ -10,8 +10,9 @@ import {
 import type { LanguageMode, VersionMode, Worksheet } from '@/model/types';
 import { useGlossary } from '@/glossary/useGlossary';
 import { termSummary } from '@/translate/termCheck';
-import { PAPER_CHECK_OPEN_AI } from '@/components/translate/copy';
-import { resolveMessages } from '@/i18n/catalogue';
+import { copyMessages } from '@/components/translate/text';
+import { resolveMessages, type Messages } from '@/i18n/catalogue';
+import { targetMisses } from '@/model/paperSummary';
 import { uiLanguage, useMessages, useUiLanguage } from '@/i18n/language';
 import type { UiLanguage } from '@/settings/language';
 import { PAPER_CHECK_MESSAGES } from './shell.messages';
@@ -75,7 +76,7 @@ export function PaperHealthPanel({
   );
   const actionFor = ({ id }: HealthFinding): FindingAction | undefined =>
     onOpenAi && (id === 'untranslated' || id === 'terminology')
-      ? { label: PAPER_CHECK_OPEN_AI, run: () => onOpenAi(id) }
+      ? { label: copyMessages().paperCheckOpenAi, run: () => onOpenAi(id) }
       : undefined;
 
   if (report.questionCount === 0) {
@@ -113,14 +114,16 @@ export function PaperHealthPanel({
       <p className="font-medium text-ink">{summaryLine(report, lang)}</p>
 
       {sections.length > 0 && (
-        <p>{sections.map((section) => `${section.label} ${section.marks}`).join(' · ')}</p>
+        <p>{sections
+            .map((section) => `${section.sectionId === undefined ? m.beforeFirstSection : section.label} ${section.marks}`)
+            .join(' · ')}</p>
       )}
 
       {report.letters.keyed > 0 && <LetterBar report={report} flagged={flagged} />}
 
       <ul className="space-y-1">
         {report.findings.map((finding, index) => (
-          <FindingRow key={`${finding.id}-${index}`} finding={finding} action={actionFor(finding)} />
+          <FindingRow key={`${finding.id}-${index}`} finding={finding} summary={report.summary} action={actionFor(finding)} />
         ))}
       </ul>
     </section>
@@ -156,8 +159,38 @@ function LetterBar({ report, flagged }: { report: PaperHealthReport; flagged: Se
 
 type FindingAction = { label: string; run: () => void };
 
-function FindingRow({ finding, action }: { finding: HealthFinding; action?: FindingAction }) {
+/** The finding's sentence in the interface language; English is the model's own message. */
+export function wording(
+  finding: HealthFinding,
+  summary: PaperHealthReport['summary'],
+  m: Messages<typeof PAPER_CHECK_MESSAGES>,
+  zh: boolean,
+): string {
+  if (finding.id === 'overTarget') return m.fOver(targetMisses(summary, zh ? 'zh' : 'en', zh).over.join(', '));
+  if (finding.id === 'underTarget') return m.fUnder(targetMisses(summary, zh ? 'zh' : 'en', zh).under.join(', '));
+  const a = finding.args;
+  if (!a) return finding.message;
+  const n = a.n as number;
+  switch (finding.id) {
+    case 'emptyQuestion': return m.fEmpty(n);
+    case 'unkeyed': return m.fUnkeyed(n);
+    case 'blankOptions': return m.fBlankOption(n);
+    case 'duplicateOptions': return m.fDuplicateOptions(n);
+    case 'letterBalance':
+      return m.fBalance(finding.letter ?? '', a.count as number, n, a.share as string, a.fairShare as string, a.only as boolean);
+    case 'letterRun': return m.fRun(n, finding.letter ?? '');
+    case 'untranslated': return m.fUntranslated(n);
+    case 'terminology': return m.fTerminology(n);
+    case 'unanswered': return m.fUnanswered(n);
+    case 'unmarked': return m.fUnmarked(n);
+    case 'timeMismatch': return m.fTime(a.minutes as number, a.stated as number, a.longer as boolean);
+    default: return finding.message;
+  }
+}
+
+function FindingRow({ finding, summary, action }: { finding: HealthFinding; summary: PaperHealthReport['summary']; action?: FindingAction }) {
   const m = useMessages(PAPER_CHECK_MESSAGES);
+  const zh = useUiLanguage() === 'zh-HK';
   const warn = finding.severity === 'warn';
   const refs = formatRefs(finding.questions);
   return (
@@ -167,7 +200,7 @@ function FindingRow({ finding, action }: { finding: HealthFinding; action?: Find
         className={`mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full ${warn ? 'bg-warn-ink' : 'bg-line-strong'}`}
       />
       <span className={warn ? 'text-ink' : ''}>
-        {finding.message}
+        {wording(finding, summary, m, zh)}
         {refs && <span className="text-ink-subtle"> {refs}</span>}
         {action && (
           <>

@@ -250,7 +250,7 @@ export function InlineEditable({
         // The caret opens where the click landed, which is what the I-beam promised.
         caretPoint={caretPointRef.current}
         lang={side === 'zh' ? 'zh-HK' : 'en'}
-        ariaLabel={side === 'zh' ? 'Edit 中文 text' : 'Edit English text'}
+        ariaLabel={side === 'zh' ? m.editZhText : m.editEnText}
         /*
          * A plain `inline` box, so the text keeps the *paragraph's* line boxes.
          *

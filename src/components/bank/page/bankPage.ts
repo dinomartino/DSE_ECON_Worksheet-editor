@@ -160,18 +160,18 @@ export interface BankFilters {
 export const DEFAULT_FILTERS: BankFilters = { text: '', topic: 'all', marks: 'any', since: 'ever', source: 'all' };
 
 export const MARKS_BANDS: { value: MarksBand; label: TextKey<typeof M>; min?: number; max?: number }[] = [
-  { value: 'any', label: 'marksAny' },
-  { value: '1', label: 'marks1', min: 1, max: 1 },
-  { value: '2-4', label: 'marks2_4', min: 2, max: 4 },
-  { value: '5-8', label: 'marks5_8', min: 5, max: 8 },
-  { value: '9+', label: 'marks9', min: 9 },
+  { value: 'any', label: 'marksAny' }, // i18n-ignore: catalogue key
+  { value: '1', label: 'marks1', min: 1, max: 1 }, // i18n-ignore: catalogue key
+  { value: '2-4', label: 'marks2_4', min: 2, max: 4 }, // i18n-ignore: catalogue key
+  { value: '5-8', label: 'marks5_8', min: 5, max: 8 }, // i18n-ignore: catalogue key
+  { value: '9+', label: 'marks9', min: 9 }, // i18n-ignore: catalogue key
 ];
 
 export const SINCE_CHOICES: { value: Since; label: TextKey<typeof M> }[] = [
-  { value: 'ever', label: 'sinceEver' },
-  { value: 'year', label: 'sinceYear' },
-  { value: '12m', label: 'since12m' },
-  { value: '6m', label: 'since6m' },
+  { value: 'ever', label: 'sinceEver' }, // i18n-ignore: catalogue key
+  { value: 'year', label: 'sinceYear' }, // i18n-ignore: catalogue key
+  { value: '12m', label: 'since12m' }, // i18n-ignore: catalogue key
+  { value: '6m', label: 'since6m' }, // i18n-ignore: catalogue key
 ];
 
 /** A marks band's words in the interface language. */

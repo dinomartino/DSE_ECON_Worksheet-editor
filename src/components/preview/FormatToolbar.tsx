@@ -16,19 +16,19 @@ import { FORMAT_TOOLBAR_MESSAGES } from './messages';
 const SIZES = [9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 40];
 
 const COLORS: Array<{ value: string | undefined; label: TextKey<typeof FORMAT_TOOLBAR_MESSAGES>; swatch: string }> = [
-  { value: undefined, label: 'colourDefault', swatch: '#0f172a' },
-  { value: 'C00000', label: 'red', swatch: '#c00000' },
-  { value: '1F4E79', label: 'blue', swatch: '#1f4e79' },
-  { value: '2E7D32', label: 'green', swatch: '#2e7d32' },
-  { value: '6A1B9A', label: 'purple', swatch: '#6a1b9a' },
-  { value: '777777', label: 'grey', swatch: '#777777' },
+  { value: undefined, label: 'colourDefault', swatch: '#0f172a' }, // i18n-ignore: catalogue key
+  { value: 'C00000', label: 'red', swatch: '#c00000' }, // i18n-ignore: catalogue key
+  { value: '1F4E79', label: 'blue', swatch: '#1f4e79' }, // i18n-ignore: catalogue key
+  { value: '2E7D32', label: 'green', swatch: '#2e7d32' }, // i18n-ignore: catalogue key
+  { value: '6A1B9A', label: 'purple', swatch: '#6a1b9a' }, // i18n-ignore: catalogue key
+  { value: '777777', label: 'grey', swatch: '#777777' }, // i18n-ignore: catalogue key
 ];
 
 const ALIGNMENTS: Array<{ value: TextAlign; label: TextKey<typeof FORMAT_TOOLBAR_MESSAGES>; glyph: string }> = [
-  { value: 'left', label: 'alignLeft', glyph: '⇤' },
-  { value: 'center', label: 'alignCentre', glyph: '↔' },
-  { value: 'right', label: 'alignRight', glyph: '⇥' },
-  { value: 'justify', label: 'justify', glyph: '≡' },
+  { value: 'left', label: 'alignLeft', glyph: '⇤' }, // i18n-ignore: catalogue key
+  { value: 'center', label: 'alignCentre', glyph: '↔' }, // i18n-ignore: catalogue key
+  { value: 'right', label: 'alignRight', glyph: '⇥' }, // i18n-ignore: catalogue key
+  { value: 'justify', label: 'justify', glyph: '≡' }, // i18n-ignore: catalogue key
 ];
 
 interface Props {

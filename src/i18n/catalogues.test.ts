@@ -134,6 +134,8 @@ describe('the guard itself', () => {
     expect(problems({ en: 'Press Enter to save', zh: '按 Enter 儲存' })).toEqual([]);
     expect(problems({ en: 'Enter the address', zh: '輸入位址' })).toEqual([]);
     expect(problems({ en: 'Margins 2 cm', zh: '邊界 2 厘米' })).toContain('"cm" must stay in English in zh');
+    expect(problems({ en: '4.2 × 3.3 in', zh: '4.2 × 3.3' })).toContain('"in" must stay in English in zh');
+    expect(problems({ en: 'Move 2 in your list', zh: '移動清單中的 2 項' })).toEqual([]);
     expect(problems({ en: 'Settings', zh: '设置' })[0]).toMatch(/Simplified/);
     expect(problems({ en: 'Software', zh: '軟體' })).toContain('Taiwan wording 軟體');
     expect(problems({ en: 'Done.', zh: '完成.' })[0]).toMatch(/half-width/);

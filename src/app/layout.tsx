@@ -16,8 +16,8 @@ const newsreader = Newsreader({
 });
 
 export const metadata: Metadata = {
-  title: 'Econ Studio 經濟備課室',
-  description: 'Worksheets, papers and notes for HKDSE Economics teachers.',
+  title: 'Econ Studio 經濟備課室', // i18n-ignore: static page metadata, read before any setting
+  description: 'Worksheets, papers and notes for HKDSE Economics teachers.', // i18n-ignore: static page metadata, read before any setting
 };
 
 export default function RootLayout({

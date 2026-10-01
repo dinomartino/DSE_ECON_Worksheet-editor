@@ -38,7 +38,7 @@ import {
   versionLetter,
   versionLetters,
 } from '@/model/versions';
-import { targetOf } from '@/model/paperSummary';
+import { chromeLabel, targetOf } from '@/model/paperSummary';
 import { cleanClasses, commitClassInput, isIsoDate } from '@/model/classes';
 import { cohortLabel } from '@/library/cohort';
 import { paperClasses } from '@/library/tabFilters';
@@ -49,7 +49,7 @@ import { BandPreview, BandPresetCard } from './BandPreview';
 import { BiTextField } from './BiTextField';
 import { CloseIcon } from '@/components/ui/icons';
 import { useMessages, useUiLanguage } from '@/i18n/language';
-import { DOCUMENT_SETTINGS_MESSAGES } from './DocumentSettings.messages';
+import { DOCUMENT_SETTINGS_MESSAGES, MARGIN_PRESET_KEYS } from './DocumentSettings.messages';
 import type { Messages as MessagesOf } from '@/i18n/catalogue';
 import type { UiLanguage } from '@/settings/language';
 
@@ -78,19 +78,11 @@ const MARGIN_EDGES: Array<{
   key: keyof PageMargins;
   label: 'marginTop' | 'marginBottom' | 'marginLeft' | 'marginRight';
 }> = [
-  { key: 'top', label: 'marginTop' },
-  { key: 'bottom', label: 'marginBottom' },
-  { key: 'left', label: 'marginLeft' },
-  { key: 'right', label: 'marginRight' },
+  { key: 'top', label: 'marginTop' }, // i18n-ignore: catalogue key
+  { key: 'bottom', label: 'marginBottom' }, // i18n-ignore: catalogue key
+  { key: 'left', label: 'marginLeft' }, // i18n-ignore: catalogue key
+  { key: 'right', label: 'marginRight' }, // i18n-ignore: catalogue key
 ];
-
-const MARGIN_PRESET_KEYS = [
-  'marginPreset0',
-  'marginPreset1',
-  'marginPreset2',
-  'marginPreset3',
-  'marginPreset4',
-] as const;
 
 /**
  * One margin edge, typed in centimetres but stored in twips.
@@ -304,9 +296,10 @@ function VersionsField() {
 function typeLabel(definition: AnyQuestionTypeDefinition, language: LanguageMode): string {
   const zh = language === 'zh';
   const summary = definition.summary;
-  const label =
-    (summary?.short ?? summary?.label)?.[zh ? 'zh' : 'en'] ??
-    plain(zh ? definition.displayName.zh : definition.displayName.en);
+  const named = summary?.short ?? summary?.label;
+  const label = named
+    ? chromeLabel(named, zh)
+    : plain(zh ? definition.displayName.zh : definition.displayName.en);
   // Beside "Marks" and "Time", so capitalised.
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
@@ -421,7 +414,9 @@ function TargetField() {
   const m = useMessages(DOCUMENT_SETTINGS_MESSAGES);
   const worksheet = useWorksheetStore((s) => s.worksheet);
   const updateWorksheet = useWorksheetStore((s) => s.updateWorksheet);
-  const language = useWorksheetStore((s) => s.mode.language);
+  const docLanguage = useWorksheetStore((s) => s.mode.language);
+  // Chinese chrome names the types in Chinese whatever the paper is written in.
+  const language: LanguageMode = useUiLanguage() === 'zh-HK' ? 'zh' : docLanguage;
   const target = worksheet.target ?? {};
   const set = (patch: PaperTarget) => {
     const next = { ...target, ...patch };

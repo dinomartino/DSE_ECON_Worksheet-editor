@@ -16,6 +16,7 @@ import { resolveMessages } from '@/i18n/catalogue';
 import { uiLanguage, useMessages, useUiLanguage } from '@/i18n/language';
 import type { UiLanguage } from '@/settings/language';
 import { PaperSketch } from './PaperSketch';
+import { DOCUMENT_SETTINGS_MESSAGES, MARGIN_PRESET_KEYS } from '@/components/editor/DocumentSettings.messages';
 import { NEW_FORM_MESSAGES } from './screen.messages';
 import { kindText, START_KINDS, writeLastKind } from './startKinds';
 
@@ -100,6 +101,7 @@ export function NewWorksheetForm({
   onCreate: (worksheet: Worksheet, language: LanguageMode) => void;
 }) {
   const m = useMessages(NEW_FORM_MESSAGES);
+  const marginNames = useMessages(DOCUMENT_SETTINGS_MESSAGES);
   const lang = useUiLanguage();
   const [documentType, setDocumentType] = useState<DocumentType>(initialType ?? 'classroom');
   const [name, setName] = useState('');
@@ -301,9 +303,9 @@ export function NewWorksheetForm({
             onChange={setPaper}
             options={[
               { value: 'A4' as PaperSize, label: 'A4' },
-              { value: 'Letter' as PaperSize, label: 'Letter' },
+              { value: 'Letter' as PaperSize, label: 'Letter' }, // i18n-ignore: paper size names
               { value: 'A3' as PaperSize, label: 'A3' },
-              { value: 'Legal' as PaperSize, label: 'Legal' },
+              { value: 'Legal' as PaperSize, label: 'Legal' }, // i18n-ignore: paper size names
             ]}
           />
         </Field>
@@ -322,7 +324,7 @@ export function NewWorksheetForm({
               onChange={setMarginIndex}
               options={MARGIN_PRESETS.map((preset, index) => ({
                 value: index,
-                label: preset.label,
+                label: MARGIN_PRESET_KEYS[index] ? marginNames[MARGIN_PRESET_KEYS[index]] : preset.label,
               }))}
             />
           )}

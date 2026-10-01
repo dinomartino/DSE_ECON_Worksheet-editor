@@ -222,7 +222,7 @@ function GroupBox({
             onChange={(each) => onChange(withRule(group, 'each', each))}
           />
         </Rule>
-        <Rule label="max">
+        <Rule label="max"> // i18n-ignore: catalogue key
           <MiniNumber
             label={m.groupMax(index + 1)}
             value={group.max}
@@ -381,7 +381,7 @@ function EcBlock({
     <div className="space-y-1.5">
       <div className="flex items-center gap-1.5">
         <span className="flex-1 text-[11px] font-medium text-ink-muted">{m.effectiveCommunication}</span>
-        <Rule label="max">
+        <Rule label="max"> // i18n-ignore: catalogue key
           <MiniNumber
             label={m.ecMax}
             value={ec.max}

@@ -3,6 +3,7 @@ import { defineMessages } from '@/i18n/catalogue';
 /** The start screen's dialogs, notices, errors and menus (the left panel is in `messages.ts`). */
 export const START_SCREEN_MESSAGES = defineMessages({
   dismiss: { en: 'Dismiss', zh: '關閉' },
+  untitled: { en: 'Untitled', zh: '未命名' },
   cancel: { en: 'Cancel', zh: '取消' },
   andMore: { en: (n: number) => `and ${n} more`, zh: (n: number) => `另外 ${n} 項` },
   // Errors and notices.
@@ -311,4 +312,29 @@ export const START_KIND_MESSAGES = defineMessages({
     zh: '試題答題簿：封面、Section A–C、頁面框架。',
   },
   lqMockCaption: { en: 'A Question-Answer Book, Sections A to C.', zh: '試題答題簿，包含 Section A–C。' },
+});
+
+/** The notice after restoring a backup (`storage/backup.ts:restoreSummary` is the English source). */
+export const RESTORE_MESSAGES = defineMessages({
+  restored: { en: (n: number) => `Restored ${n}`, zh: (n: number) => `已還原 ${n} 份` },
+  restoredWithCopies: {
+    en: (n: number, copies: number) => `Restored ${n} (${copies} as ${copies === 1 ? 'a copy' : 'copies'})`,
+    zh: (n: number, copies: number) => `已還原 ${n} 份（其中 ${copies} 份為副本）`,
+  },
+  skipped: { en: (n: number) => `skipped ${n} already here`, zh: (n: number) => `略過 ${n} 份（已存在）` },
+  unreadable: { en: (n: number) => `${n} unreadable`, zh: (n: number) => `${n} 份無法讀取` },
+  failed: { en: (n: number) => `${n} could not be saved`, zh: (n: number) => `${n} 份無法儲存` },
+  graphsRestored: {
+    en: (n: number) => `${n} ${n === 1 ? 'graph' : 'graphs'} restored`,
+    zh: (n: number) => `已還原 ${n} 幅圖表`,
+  },
+  graphsHere: {
+    en: (n: number) => `${n} ${n === 1 ? 'graph' : 'graphs'} already here`,
+    zh: (n: number) => `${n} 幅圖表已存在`,
+  },
+  graphsFailed: {
+    en: (n: number) => `${n} ${n === 1 ? 'graph' : 'graphs'} could not be saved`,
+    zh: (n: number) => `${n} 幅圖表無法儲存`,
+  },
+  empty: { en: 'That backup has no worksheets in it.', zh: '這個備份內沒有工作紙。' },
 });

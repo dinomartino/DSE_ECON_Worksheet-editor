@@ -299,3 +299,6 @@ export const DOCUMENT_SETTINGS_MESSAGES = defineMessages({
   addFillIn: { en: '+ Fill-in', zh: '+ 填寫線' },
   addFillInTitle: { en: 'A ruled line to write on', zh: '可供書寫的橫線' },
 });
+
+/** `MARGIN_PRESETS[i]`'s name, by index. */
+export const MARGIN_PRESET_KEYS = ['marginPreset0', 'marginPreset1', 'marginPreset2', 'marginPreset3', 'marginPreset4'] as const;

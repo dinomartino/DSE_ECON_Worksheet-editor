@@ -48,10 +48,10 @@ export interface StageAi {
 }
 
 const AI_TONE = {
-  inserted: { className: 'text-accent-ink', title: 'aiFilled' },
-  look: { className: 'text-warn-ink', title: 'aiLook' },
-  failed: { className: 'text-danger-ink', title: 'aiFailed' },
-  finding: { className: 'text-warn-ink', title: 'aiFinding' },
+  inserted: { className: 'text-accent-ink', title: 'aiFilled' }, // i18n-ignore: catalogue key
+  look: { className: 'text-warn-ink', title: 'aiLook' }, // i18n-ignore: catalogue key
+  failed: { className: 'text-danger-ink', title: 'aiFailed' }, // i18n-ignore: catalogue key
+  finding: { className: 'text-warn-ink', title: 'aiFinding' }, // i18n-ignore: catalogue key
 } as const;
 
 /** The rail's ✦ for a reviewed question. */

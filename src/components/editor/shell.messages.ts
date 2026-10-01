@@ -128,6 +128,58 @@ export const PAPER_CHECK_MESSAGES = defineMessages({
   overTarget: { en: (list: string) => `Over target: ${list}`, zh: (list: string) => `超出目標：${list}` },
   underTarget: { en: (list: string) => `Under target: ${list}`, zh: (list: string) => `低於目標：${list}` },
   setTarget: { en: 'Set a target in Setup', zh: '在頁面設定中設定目標' },
+  beforeFirstSection: { en: 'Before the first section', zh: '第一個部分之前' },
+  // Findings: the English is `model/paperHealth.ts`'s sentence, the Chinese its reading.
+  fEmpty: {
+    en: (n: number) => `${n} ${n === 1 ? 'question is' : 'questions are'} empty and will print as a bare number.`,
+    zh: (n: number) => `${n} 條題目是空白的，列印時只會顯示題號。`,
+  },
+  fUnkeyed: {
+    en: (n: number) => `${n} ${n === 1 ? 'MCQ has' : 'MCQs have'} no correct answer set.`,
+    zh: (n: number) => `${n} 條 MCQ 尚未設定正確答案。`,
+  },
+  fBlankOption: {
+    en: (n: number) => `${n} ${n === 1 ? 'MCQ has' : 'MCQs have'} a blank option.`,
+    zh: (n: number) => `${n} 條 MCQ 有空白選項。`,
+  },
+  fDuplicateOptions: {
+    en: (n: number) => `${n} ${n === 1 ? 'MCQ has' : 'MCQs have'} two options with the same wording.`,
+    zh: (n: number) => `${n} 條 MCQ 有兩個選項的文字相同。`,
+  },
+  fBalance: {
+    en: (letter: string, count: number, n: number, share: string, fair: string, only: boolean) =>
+      `${letter} is the answer to ${only ? 'only ' : ''}${count} of ${n} MCQs (${share}); a fair key gives each letter about ${fair}.`,
+    zh: (letter: string, count: number, n: number, share: string, fair: string, only: boolean) =>
+      `${n} 條 MCQ 中，${only ? '只有' : ''} ${count} 條的答案是 ${letter}（${share}）；均衡的答案每個選項約佔 ${fair}。`,
+  },
+  fRun: {
+    en: (n: number, letter: string) => `${n} questions in a row have answer ${letter}.`,
+    zh: (n: number, letter: string) => `連續 ${n} 條題目的答案都是 ${letter}。`,
+  },
+  fUntranslated: {
+    en: (n: number) => `${n} ${n === 1 ? 'string is' : 'strings are'} written in one language only.`,
+    zh: (n: number) => `${n} 段文字只有一種語言。`,
+  },
+  fTerminology: {
+    en: (n: number) => `${n} ${n === 1 ? 'term differs' : 'terms differ'} from the EDB glossary.`,
+    zh: (n: number) => `${n} 個詞語與教育局詞彙表不同。`,
+  },
+  fUnanswered: {
+    en: (n: number) => `${n} ${n === 1 ? 'question has' : 'questions have'} parts with no teacher answer.`,
+    zh: (n: number) => `${n} 條題目有分題沒有教師答案。`,
+  },
+  fUnmarked: {
+    en: (n: number) => `${n} ${n === 1 ? 'question carries' : 'questions carry'} no marks.`,
+    zh: (n: number) => `${n} 條題目沒有分數。`,
+  },
+  fTime: {
+    en: (est: number, stated: number, longer: boolean) =>
+      `The estimate (~${est} min) is ${longer ? 'longer' : 'shorter'} than the ${stated} min allowed.`,
+    zh: (est: number, stated: number, longer: boolean) =>
+      `預計時間（約 ${est} 分鐘）比限時 ${stated} 分鐘${longer ? '長' : '短'}。`,
+  },
+  fOver: { en: (list: string) => `Over target: ${list}.`, zh: (list: string) => `超出目標：${list}。` },
+  fUnder: { en: (list: string) => `Under target: ${list}.`, zh: (list: string) => `低於目標：${list}。` },
   summaryAria: { en: (parts: string) => `Paper summary: ${parts}`, zh: (parts: string) => `試卷摘要：${parts}` },
 });
 

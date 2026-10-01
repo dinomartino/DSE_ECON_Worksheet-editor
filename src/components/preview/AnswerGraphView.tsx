@@ -42,7 +42,7 @@ export function AnswerGraphView({
     <div
       data-answer-graph=""
       role="img"
-      aria-label="Blank axes for a diagram"
+      aria-label="Blank axes for a diagram" // i18n-ignore: alt text of a printed graph
       style={{
         height: `${node.lines * 12}pt`,
         display: 'flex',

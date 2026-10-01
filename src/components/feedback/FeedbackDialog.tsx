@@ -161,7 +161,7 @@ export function FeedbackDialog({
           <input
             type="email"
             value={email}
-            placeholder="you@school.edu.hk"
+            placeholder="you@school.edu.hk" // i18n-ignore: email example
             onChange={(event) => setEmail(event.target.value)}
             className={`${INPUT} h-9`}
           />

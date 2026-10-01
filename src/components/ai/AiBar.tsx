@@ -15,9 +15,9 @@ const NOTHING_DISMISS_MS = 4000;
 const NO_ITEMS: readonly ReviewItem[] = [];
 
 const CHIP: Record<Exclude<ReviewTone, 'inserted'>, { className: string; label: 'chipLook' | 'chipFailed' | 'chipFinding' }> = {
-  look: { className: 'bg-warn-soft text-warn-ink', label: 'chipLook' },
-  failed: { className: 'bg-danger-soft text-danger-ink', label: 'chipFailed' },
-  finding: { className: 'bg-warn-soft text-warn-ink', label: 'chipFinding' },
+  look: { className: 'bg-warn-soft text-warn-ink', label: 'chipLook' }, // i18n-ignore: catalogue key
+  failed: { className: 'bg-danger-soft text-danger-ink', label: 'chipFailed' }, // i18n-ignore: catalogue key
+  finding: { className: 'bg-warn-soft text-warn-ink', label: 'chipFinding' }, // i18n-ignore: catalogue key
 };
 
 /** Shows the item: scrolls to its page text, or selects its question when it has none. */
