@@ -4,13 +4,16 @@ import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui';
 import { SourceText } from '@/components/bank/BankRow';
 import type { BankRow } from '@/library/types';
-import { topicDisplay, topicHeading } from '@/model/topics';
+import { useMessages, useUiLanguage } from '@/i18n/language';
 import type { LanguageMode } from '@/model/types';
 import { suggestionLabel } from './bankScreen';
 import type { PartLine, PartTarget } from './partTopics';
 import { PaperPreview, SHEET_MAX_WIDTH } from './PaperPreview';
 import { shownLanguage } from './ReviewPage';
 import { useOwningDocument } from './useOwningDocument';
+import { BANK_PAGE_MESSAGES } from './bankPage.messages';
+import { TAG_AS_YOU_GO_MESSAGES } from './TagAsYouGo.messages';
+import { topicName, topicTitle } from './topicText';
 
 /**
  * Level 3: the untagged questions one at a time. The question large, then up to five
@@ -70,6 +73,8 @@ export function TagAsYouGo({
   /** Take the last save back (also ⌫ or ⌘Z). */
   onUndo?: () => void;
 }) {
+  const m = useMessages(TAG_AS_YOU_GO_MESSAGES);
+  const lang = useUiLanguage();
   const undoLine = lastSaved && onUndo && <UndoLine text={lastSaved} onUndo={onUndo} />;
   const { worksheet, failed } = useOwningDocument(row);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -82,11 +87,11 @@ export function TagAsYouGo({
     return (
       <div className="flex min-h-0 flex-1 items-start justify-center bg-surface px-8 py-20">
         <div className="max-w-md text-center">
-          <p className="font-display text-[26px] font-normal leading-tight text-ink">Every question has a topic.</p>
-          <p className="mt-2 text-[13px] text-ink-muted">New questions you write appear here until they are tagged.</p>
+          <p className="font-display text-[26px] font-normal leading-tight text-ink">{m.allTagged}</p>
+          <p className="mt-2 text-[13px] text-ink-muted">{m.allTaggedHint}</p>
           {undoLine && <div className="mt-4 flex justify-center">{undoLine}</div>}
           <Button className="mt-5" onClick={onDone}>
-            Back to topics
+            {m.backToTopics}
           </Button>
         </div>
       </div>
@@ -97,7 +102,7 @@ export function TagAsYouGo({
     <div ref={scrollRef} className="scroll-slim min-h-0 flex-1 overflow-y-auto bg-[var(--chrome-sunken)]">
       <div className="px-4 pt-[22px]">
         <div className="mx-auto flex items-start justify-center gap-3" style={{ maxWidth: SHEET_MAX_WIDTH + 2 * 46 }}>
-          <Nav label="Previous question (skip back)" disabled={position <= 0} onClick={() => onStep(-1)}>
+          <Nav label={m.previous} disabled={position <= 0} onClick={() => onStep(-1)}>
             ‹
           </Nav>
           <div className="min-w-0 flex-1" style={{ maxWidth: SHEET_MAX_WIDTH }}>
@@ -110,7 +115,7 @@ export function TagAsYouGo({
               highlight={parts?.at === undefined ? undefined : [parts.at]}
             />
           </div>
-          <Nav label="Next question (skip)" disabled={position >= left - 1} onClick={() => onStep(1)}>
+          <Nav label={m.next} disabled={position >= left - 1} onClick={() => onStep(1)}>
             ›
           </Nav>
         </div>
@@ -119,18 +124,18 @@ export function TagAsYouGo({
       <div className="mx-auto grid gap-3 px-[22px] pb-8 pt-4" style={{ maxWidth: SHEET_MAX_WIDTH + 44 }}>
         <div className="flex min-w-0 items-center gap-3">
           <p className="flex min-w-0 text-[12.5px] tabular-nums text-ink-muted">
-            <span className="shrink-0 whitespace-pre text-ink-subtle">Lives in </span>
+            <span className="shrink-0 whitespace-pre text-ink-subtle">{m.livesIn}</span>
             <SourceText title={row.docTitle} number={row.number} />
           </p>
-          <Button size="sm" onClick={onOpen} title="Open this question in its worksheet (O)" className="shrink-0">
-            Open in worksheet
+          <Button size="sm" onClick={onOpen} title={m.openTitle} className="shrink-0">
+            {m.open}
           </Button>
         </div>
         {undoLine}
         {parts && <PartStrip {...parts} />}
-        <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6" role="group" aria-label={parts ? `Topics for ${parts.name}` : 'Topics for this question'}>
+        <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6" role="group" aria-label={parts ? m.topicsFor(parts.name) : m.topicsForQuestion}>
           {suggestions.map((code, index) => {
-            const { code: coarse, name, zh } = suggestionLabel(code);
+            const { code: coarse, name, zh } = suggestionLabel(code, lang);
             const on = chosen.has(code);
             const some = on ? undefined : partial?.get(code);
             return (
@@ -139,7 +144,7 @@ export function TagAsYouGo({
                 type="button"
                 data-tag-key
                 aria-pressed={on ? true : some ? 'mixed' : false}
-                title={some ? `${topicHeading(code, 'both')}: on ${some.join(', ')} only. Press to put it on every part.` : topicHeading(code, 'both')}
+                title={some ? m.partialTitle(topicTitle(code, 'both', lang), some.join(', ')) : topicTitle(code, 'both', lang)}
                 onClick={() => onToggle(code)}
                 className={`relative grid min-w-0 cursor-pointer content-start rounded-[7px] border px-2 py-1.5 text-left text-[12px] transition-colors duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                   on
@@ -166,18 +171,16 @@ export function TagAsYouGo({
           >
             <span className="absolute right-1.5 top-1 text-[10.5px] tabular-nums text-ink-subtle">{suggestions.length + 1}</span>
             <b className="text-[13px] font-semibold text-ink">…</b>
-            <small className="text-[12px] leading-snug text-ink-muted">All topics</small>
+            <small className="text-[12px] leading-snug text-ink-muted">{m.allTopics}</small>
           </button>
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <p className="min-w-0 flex-1 text-[12.5px] text-ink-muted">
-            {suggestions.length > 0
-              ? `Suggestions come from topics used on the same worksheet, then your most used. Press 1 to ${suggestions.length + 1} or click; Enter saves and moves on.`
-              : 'Nothing to suggest yet: choose from All topics. Enter saves and moves on.'}
-            {parts && ' The keys tag the whole question until you pick a part (click it, or press [ and ]).'}
+            {suggestions.length > 0 ? m.hint(suggestions.length + 1) : m.hintNone}
+            {parts && m.hintParts}
           </p>
           <Button variant="primary" size="sm" disabled={busy || !canSave} onClick={onSave} data-tag-save>
-            Save and next
+            {m.saveNext}
           </Button>
         </div>
       </div>
@@ -190,9 +193,12 @@ export function TagAsYouGo({
  * far. Picked with a click, or [ and ] (`QuestionBankScreen`'s keys).
  */
 function PartStrip({ lines, at, onAt }: { lines: PartLine[]; at: PartTarget; onAt: (at: PartTarget) => void }) {
+  const m = useMessages(TAG_AS_YOU_GO_MESSAGES);
+  const w = useMessages(BANK_PAGE_MESSAGES);
+  const lang = useUiLanguage();
   return (
-    <div role="group" aria-label="Tag the whole question or one part" className="flex min-w-0 flex-wrap items-stretch gap-1.5">
-      <PartChip selected={at === undefined} label="Whole question" detail="Every part" onClick={() => onAt(undefined)} />
+    <div role="group" aria-label={m.partsLabel} className="flex min-w-0 flex-wrap items-stretch gap-1.5">
+      <PartChip selected={at === undefined} label={m.whole} detail={m.everyPart} onClick={() => onAt(undefined)} />
       {lines.map((line) => (
         <PartChip
           key={line.key}
@@ -201,16 +207,16 @@ function PartStrip({ lines, at, onAt }: { lines: PartLine[]; at: PartTarget; onA
           title={line.label}
           detail={
             line.inherits
-              ? `Same as ${line.parentLabel}`
+              ? m.sameAs(line.parentLabel ?? '')
               : line.codes.length === 0
-                ? 'No topic yet'
-                : line.codes.map((code) => topicDisplay(code)).join(', ')
+                ? m.noTopicYet
+                : line.codes.map((code) => topicName(code, 'en', lang)).join(w.sep)
           }
           quiet={line.inherits || line.codes.length === 0}
           onClick={() => onAt(line.key)}
         />
       ))}
-      <span className="self-center pl-1 text-[11.5px] text-ink-subtle">[ ] move</span>
+      <span className="self-center pl-1 text-[11.5px] text-ink-subtle">{m.move}</span>
     </div>
   );
 }
@@ -230,12 +236,13 @@ function PartChip({
   quiet?: boolean;
   onClick: () => void;
 }) {
+  const m = useMessages(TAG_AS_YOU_GO_MESSAGES);
   return (
     <button
       type="button"
       data-tag-part
       aria-pressed={selected}
-      title={title ? `${title}: ${detail}` : detail}
+      title={title ? m.chipTitle(title, detail) : detail}
       onClick={onClick}
       className={`grid min-w-0 max-w-[180px] cursor-pointer content-start rounded-[7px] border px-2 py-1 text-left transition-colors duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
         selected ? 'border-accent bg-accent-soft' : 'border-line bg-surface hover:bg-surface-hover'
@@ -249,18 +256,19 @@ function PartChip({
 
 /** The last save, and the way back: one quiet line, never a block. */
 function UndoLine({ text, onUndo }: { text: string; onUndo: () => void }) {
+  const m = useMessages(TAG_AS_YOU_GO_MESSAGES);
   return (
     <p role="status" className="flex min-w-0 items-center gap-2 text-[12.5px] text-ink-muted">
       <span className="min-w-0 truncate" title={text}>
-        {text}.
+        {m.saved(text)}
       </span>
       <button
         type="button"
         onClick={onUndo}
-        title="Take these topics off again (⌫ or ⌘Z)"
+        title={m.undoTitle}
         className="shrink-0 cursor-pointer rounded-md px-1.5 py-0.5 font-medium text-accent-ink transition-colors duration-150 ease-out-soft hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
-        Undo
+        {m.undo}
       </button>
       <span className="shrink-0 text-[11.5px] text-ink-subtle">⌫</span>
     </p>

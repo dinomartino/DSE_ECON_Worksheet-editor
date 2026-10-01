@@ -10,12 +10,15 @@ import type { BankItemTone, BankMark } from '@/assist/bankRun';
 import type { BankGroup, BankRow } from '@/library/types';
 import { isNewerThanBuild } from '@/model/migrations';
 import { isPatternTag } from '@/model/patterns';
-import { topicDisplay } from '@/model/topics';
+import { useMessages } from '@/i18n/language';
 import type { LanguageMode, VersionMode } from '@/model/types';
 import { distinctVersions, patternLines, rowKey, type ClassChoice } from './bankPage';
 import { alsoInText, partsTesting, testsThisText, testsWhatText, topicsByPart, type RailEntry, type RailSection } from './bankScreen';
 import { PaperPreview, SHEET_MAX_WIDTH } from './PaperPreview';
 import { useOwningDocument } from './useOwningDocument';
+import { BANK_PAGE_MESSAGES } from './bankPage.messages';
+import { REVIEW_PAGE_MESSAGES } from './ReviewPage.messages';
+import { topicName } from './topicText';
 
 export interface ReviewState {
   sections: RailSection[];
@@ -44,18 +47,19 @@ export interface StageAi {
   marks?: readonly BankMark[];
 }
 
-const AI_TONE: Record<BankItemTone, { className: string; title: string }> = {
-  inserted: { className: 'text-accent-ink', title: 'Filled by ✦ AI' },
-  look: { className: 'text-warn-ink', title: 'Filled by ✦ AI, worth a look' },
-  failed: { className: 'text-danger-ink', title: 'Some of it could not be translated' },
-  finding: { className: 'text-warn-ink', title: 'Check terms found something' },
-};
+const AI_TONE = {
+  inserted: { className: 'text-accent-ink', title: 'aiFilled' },
+  look: { className: 'text-warn-ink', title: 'aiLook' },
+  failed: { className: 'text-danger-ink', title: 'aiFailed' },
+  finding: { className: 'text-warn-ink', title: 'aiFinding' },
+} as const;
 
 /** The rail's ✦ for a reviewed question. */
 function AiGlyph({ tone }: { tone: BankItemTone | undefined }) {
+  const m = useMessages(REVIEW_PAGE_MESSAGES);
   if (!tone) return null;
   return (
-    <span data-bank-ai={tone} title={AI_TONE[tone].title} className={`shrink-0 whitespace-pre ${AI_TONE[tone].className}`}>
+    <span data-bank-ai={tone} title={m[AI_TONE[tone].title]} className={`shrink-0 whitespace-pre ${AI_TONE[tone].className}`}>
       {' ✦'}
     </span>
   );
@@ -147,6 +151,8 @@ function Rail({
   onHide: () => void;
 }) {
   const { sections, order, focused, picked, usedWith, index } = state;
+  const m = useMessages(REVIEW_PAGE_MESSAGES);
+  const w = useMessages(BANK_PAGE_MESSAGES);
   const listRef = useRef<HTMLDivElement>(null);
   const focusedEntry = focused ? order[index]?.key : undefined;
 
@@ -165,18 +171,21 @@ function Rail({
   const roots = new Set(order.map((entry) => entry.group.rootId));
   const pickedHere = [...roots].filter((root) => picked.has(root)).length;
   return (
-    <aside aria-label="Questions" className="flex min-h-0 flex-col border-r border-line bg-surface-sunken">
+    <aside aria-label={m.questions} className="flex min-h-0 flex-col border-r border-line bg-surface-sunken">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line px-3.5 py-2.5 text-[12px] tabular-nums text-ink-muted">
         <span className="truncate">
-          {roots.size} {roots.size === 1 ? 'question' : 'questions'}
-          {picked.size > 0 && ` · ${pickedHere === picked.size ? picked.size : `${pickedHere} of ${picked.size}`} in your list`}
+          {w.questions(roots.size)}
+          {picked.size > 0 &&
+            (pickedHere === picked.size
+              ? `${m.listPre}${picked.size}${m.listPost}`
+              : `${m.listPreOf}${pickedHere}${m.listOf}${picked.size}${m.listPost}`)}
         </span>
         <button
           type="button"
           onClick={onHide}
           className="shrink-0 cursor-pointer rounded-md px-1.5 py-0.5 text-ink-muted transition-colors duration-150 ease-out-soft hover:bg-surface-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
-          ‹ Hide list
+          {m.hideList}
         </button>
       </div>
       <div ref={listRef} className="scroll-slim min-h-0 flex-1 overflow-y-auto pb-3" role="list">
@@ -230,7 +239,7 @@ function Rail({
                       <input
                         type="checkbox"
                         tabIndex={-1}
-                        aria-label={`Select “${lead.excerpt.en || lead.excerpt.zh || 'question'}”`}
+                        aria-label={m.selectLabel(lead.excerpt.en || lead.excerpt.zh || m.questionWord)}
                         checked={picked.has(group.rootId)}
                         onClick={(event) => event.stopPropagation()}
                         onChange={() => onPick(lead)}
@@ -238,14 +247,14 @@ function Rail({
                       />
                       <div className="min-w-0">
                         <p className="line-clamp-2 text-[13px] leading-[1.4] text-ink" title={lead.excerpt.en || lead.excerpt.zh}>
-                          {lead.excerpt.en || lead.excerpt.zh || <span className="text-ink-subtle">Untitled question</span>}
+                          {lead.excerpt.en || lead.excerpt.zh || <span className="text-ink-subtle">{m.untitled}</span>}
                         </p>
                         {/* Look-alikes (a copy, a retyped question) read apart by where they live. */}
                         <p className="flex min-w-0 text-[11px] tabular-nums text-ink-subtle">
                           <span className="shrink-0 whitespace-pre">
                             {typeLabel(lead.typeId)} · {marksLabel(lead.marks)}
-                            {lead.hasDiagram && ' · diagram'}
-                            {group.versions > 1 && ` · ${group.versions} versions`}
+                            {lead.hasDiagram && m.diagram}
+                            {group.versions > 1 && m.versions(group.versions)}
                             {' · '}
                           </span>
                           <SourceText title={docLabel(state, lead)} number={lead.number} />
@@ -281,6 +290,7 @@ function NumberStrip({
   onShow: () => void;
 }) {
   const { order, focused, picked, index: focusedIndex } = state;
+  const m = useMessages(REVIEW_PAGE_MESSAGES);
   const listRef = useRef<HTMLDivElement>(null);
   const focusedEntry = focused ? order[focusedIndex]?.key : undefined;
   useEffect(() => {
@@ -288,12 +298,12 @@ function NumberStrip({
     listRef.current?.querySelector<HTMLElement>(`[data-rail-entry="${CSS.escape(focusedEntry)}"]`)?.scrollIntoView({ block: 'nearest' });
   }, [focusedEntry]);
   return (
-    <aside aria-label="Questions" className="flex min-h-0 flex-col border-r border-line bg-surface-sunken">
+    <aside aria-label={m.questions} className="flex min-h-0 flex-col border-r border-line bg-surface-sunken">
       <button
         type="button"
         onClick={onShow}
-        title="Show list"
-        aria-label="Show list"
+        title={m.showList}
+        aria-label={m.showList}
         className="shrink-0 cursor-pointer border-b border-line py-2.5 text-[13px] text-ink-muted transition-colors duration-150 ease-out-soft hover:bg-surface-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
       >
         ›
@@ -317,7 +327,7 @@ function NumberStrip({
             >
               <span aria-hidden className={`absolute inset-y-0 left-0 w-0.5 bg-accent ${on ? 'opacity-100' : 'opacity-0'}`} />
               {index + 1}
-              {picked.has(group.rootId) && <span aria-label="in your list" className="h-1.5 w-1.5 rounded-full bg-accent" />}
+              {picked.has(group.rootId) && <span aria-label={m.inList} className="h-1.5 w-1.5 rounded-full bg-accent" />}
               <AiGlyph tone={state.aiTones?.get(group.rootId)} />
             </button>
           );
@@ -357,6 +367,7 @@ function Stage({
   onPick: (row: BankRow) => void;
 }) {
   const { order, index, language, version, usedWith, picked } = state;
+  const m = useMessages(REVIEW_PAGE_MESSAGES);
   const inList = picked.has(row.rootId);
   const { worksheet, failed } = useOwningDocument(row);
   const topicTags = row.tags.filter((tag) => !isPatternTag(tag));
@@ -379,13 +390,13 @@ function Stage({
   }, [key]);
 
   return (
-    <section aria-label="Question" className="flex min-h-0 flex-col bg-surface">
+    <section aria-label={m.question} className="flex min-h-0 flex-col bg-surface">
       <div className="flex shrink-0 items-center gap-4 whitespace-nowrap border-b border-line px-[22px] py-1">
         <span className="text-[13px] tabular-nums text-ink-muted" aria-live="polite">
-          Question <b className="font-semibold text-ink">{index + 1}</b> of {order.length}
+          {m.positionBefore}<b className="font-semibold text-ink">{index + 1}</b>{m.positionAfter(order.length)}
         </span>
         <Segmented<LanguageMode>
-          label="Preview language"
+          label={m.previewLanguage}
           value={language}
           onChange={onLanguage}
           options={[
@@ -395,16 +406,16 @@ function Stage({
           ]}
         />
         <Segmented<VersionMode>
-          label="Preview version"
+          label={m.previewVersion}
           value={version}
           onChange={onVersion}
           options={[
-            { value: 'student', label: 'Student' },
-            { value: 'teacher', label: 'Teacher' },
+            { value: 'student', label: m.student },
+            { value: 'teacher', label: m.teacher },
           ]}
         />
         <span className="flex-1" />
-        <span className="hidden text-[12px] text-ink-subtle xl:inline">↑ ↓ to move · Space to add to your list · O to open in worksheet</span>
+        <span className="hidden text-[12px] text-ink-subtle xl:inline">{m.keysHint}</span>
       </div>
 
       {/* The stage is the one place the desk tone appears: the paper sits on it, and the
@@ -412,7 +423,7 @@ function Stage({
       <div ref={scrollRef} className="scroll-slim min-h-0 flex-1 overflow-y-auto bg-[var(--chrome-sunken)]">
         <div className="px-4 pt-[22px]">
           <div className="mx-auto flex items-start justify-center gap-3" style={{ maxWidth: SHEET_MAX_WIDTH + 2 * 46 }}>
-            <NavButton label="Previous question" disabled={index <= 0} onClick={() => onStep(-1)}>
+            <NavButton label={m.previousQuestion} disabled={index <= 0} onClick={() => onStep(-1)}>
               ‹
             </NavButton>
             <div className="min-w-0 flex-1" style={{ maxWidth: SHEET_MAX_WIDTH }}>
@@ -437,11 +448,11 @@ function Stage({
               />
               {shown !== language && (
                 <p className="mt-2 text-center text-[12px] text-ink-muted">
-                  {language === 'zh' ? 'No 中文 text yet. Showing English.' : language === 'en' ? 'No English text yet. Showing 中文.' : 'One language only. Showing what there is.'}
+                  {language === 'zh' ? m.noZh : language === 'en' ? m.noEn : m.oneLanguage}
                 </p>
               )}
             </div>
-            <NavButton label="Next question" disabled={index >= order.length - 1} onClick={() => onStep(1)}>
+            <NavButton label={m.nextQuestion} disabled={index >= order.length - 1} onClick={() => onStep(1)}>
               ›
             </NavButton>
           </div>
@@ -449,10 +460,10 @@ function Stage({
 
         <div className="mx-auto grid grid-cols-1 gap-x-6 gap-y-4 px-[22px] pb-8 pt-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]" style={{ maxWidth: SHEET_MAX_WIDTH + 44 }}>
           <Facts>
-            <dt className="text-ink-subtle">Topics</dt>
+            <dt className="text-ink-subtle">{m.topics}</dt>
             <dd className="min-w-0">
               {topicTags.length === 0 ? (
-                <span className="text-ink-subtle">None yet</span>
+                <span className="text-ink-subtle">{m.noneYet}</span>
               ) : byPart ? (
                 <span className="grid" data-fact-by-part>
                   {byPart.map((line) => {
@@ -461,14 +472,14 @@ function Stage({
                       <span key={line.label} className="flex min-w-0 gap-1.5" title={tagTitle(line.tags)}>
                         <span className="shrink-0 text-ink-muted">{line.label}</span>
                         <span className={`min-w-0 truncate ${names.length === 0 ? 'text-ink-subtle' : ''}`}>
-                          {names.length === 0 ? 'No topic yet' : names.map((tag) => topicDisplay(tag, 'both')).join(' · ')}
+                          {names.length === 0 ? m.noTopicYet : names.map((tag) => topicName(tag, 'both')).join(' · ')}
                         </span>
                       </span>
                     );
                   })}
                 </span>
               ) : (
-                <span title={tagTitle(topicTags)}>{topicTags.map((tag) => topicDisplay(tag, 'both')).join(' · ')}</span>
+                <span title={tagTitle(topicTags)}>{topicTags.map((tag) => topicName(tag, 'both')).join(' · ')}</span>
               )}
               {onEditTopics && worksheet && !isNewerThanBuild(worksheet) && (
                 <button
@@ -476,16 +487,16 @@ function Stage({
                   onClick={() => onEditTopics(row)}
                   className="ml-2 cursor-pointer font-medium text-accent-ink underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
-                  {row.tags.length === 0 ? 'Add' : 'Edit'}
+                  {row.tags.length === 0 ? m.add : m.edit}
                 </button>
               )}
             </dd>
             {patterns.length > 0 && (
               <>
-                <dt className="text-ink-subtle">題型</dt>
+                <dt className="text-ink-subtle">{m.pattern}</dt>
                 <dd className="min-w-0" data-fact-patterns>
                   {patterns.map((ref, i) => (
-                    <span key={`${ref.topic} ${ref.name}`} title={`${topicDisplay(ref.topic, 'both')} · ${ref.name}`}>
+                    <span key={`${ref.topic} ${ref.name}`} title={`${topicName(ref.topic, 'both')} · ${ref.name}`}>
                       {i > 0 && ' · '}
                       {ref.name}
                     </span>
@@ -493,19 +504,19 @@ function Stage({
                 </dd>
               </>
             )}
-            <dt className="text-ink-subtle">Lives in</dt>
+            <dt className="text-ink-subtle">{m.livesIn}</dt>
             <dd className="min-w-0">
               <SourceText title={docLabel(state, row)} number={row.number}>
-                {row.docKind === 'bank' && <span className="shrink-0 whitespace-pre text-ink-subtle"> · bank</span>}
+                {row.docKind === 'bank' && <span className="shrink-0 whitespace-pre text-ink-subtle">{m.bankSuffix}</span>}
               </SourceText>
             </dd>
           </Facts>
           <Facts>
-            <dt className="text-ink-subtle">Used in</dt>
+            <dt className="text-ink-subtle">{m.usedIn}</dt>
             <dd className="min-w-0">
               <UsedIn group={fullGroup} usedWith={usedWith} labels={state.docLabels} />
             </dd>
-            <dt className="text-ink-subtle">Versions</dt>
+            <dt className="text-ink-subtle">{m.versionsFact}</dt>
             <dd className="min-w-0">
               <Versions group={fullGroup} row={row} labels={state.docLabels} language={language} onFocus={onFocus} />
             </dd>
@@ -516,12 +527,12 @@ function Stage({
               variant={inList ? 'ghostAccent' : 'default'}
               aria-pressed={inList}
               onClick={() => onPick(row)}
-              title={inList ? 'Take it off your list (Space)' : 'Add it to your list (Space)'}
+              title={inList ? m.takeOffTitle : m.addTitle}
             >
-              {inList ? '✓ In your list' : 'Add to list'}
+              {inList ? m.inListButton : m.addToList}
             </Button>
-            <Button size="sm" onClick={() => onOpen(row)} title="Open this question in its worksheet (O)">
-              Open in worksheet
+            <Button size="sm" onClick={() => onOpen(row)} title={m.openTitle}>
+              {m.open}
             </Button>
           </div>
         </div>
@@ -548,8 +559,9 @@ function UsedIn({
   usedWith?: ClassChoice;
   labels?: ReadonlyMap<string, string>;
 }) {
+  const m = useMessages(REVIEW_PAGE_MESSAGES);
   const uses = group?.usedIn ?? [];
-  if (uses.length === 0) return <span className="text-ink-subtle">No paper yet</span>;
+  if (uses.length === 0) return <span className="text-ink-subtle">{m.noPaperYet}</span>;
   return (
     <ul className="space-y-1">
       {uses.slice(0, 3).map((use) => {
@@ -562,7 +574,7 @@ function UsedIn({
           </li>
         );
       })}
-      {uses.length > 3 && <li className="text-ink-subtle">and {uses.length - 3} more</li>}
+      {uses.length > 3 && <li className="text-ink-subtle">{m.andMore(uses.length - 3)}</li>}
     </ul>
   );
 }
@@ -584,6 +596,7 @@ function Versions({
   language: LanguageMode;
   onFocus: (row: BankRow) => void;
 }) {
+  const m = useMessages(REVIEW_PAGE_MESSAGES);
   if (!group || group.versions <= 1) return <span>1</span>;
   const versions = distinctVersions(group);
   return (
@@ -600,7 +613,7 @@ function Versions({
             className="grid cursor-pointer text-left text-accent-ink underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:text-ink disabled:no-underline"
           >
             <SourceText title={labels?.get(version.docId) ?? version.docTitle} number={version.number}>
-              {on && <span className="shrink-0 whitespace-pre text-ink-subtle"> · showing</span>}
+              {on && <span className="shrink-0 whitespace-pre text-ink-subtle">{m.showing}</span>}
             </SourceText>
             {!on && <span className="truncate text-[11.5px] text-ink-muted">{versionDiff(version, row, language)}</span>}
           </button>

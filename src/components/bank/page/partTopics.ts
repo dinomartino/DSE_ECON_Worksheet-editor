@@ -2,6 +2,10 @@ import { addTopics, atSlot, changeEdit, inheritAtSlot, removeTopics, stateEdit, 
 import { parsePatternTag, samePatternName, withPattern } from '@/model/patterns';
 import { collapseTagState, effectiveSlotTags, normalizeTagState, slotRef, type SlotState, type TagState } from '@/model/tagSlots';
 import { topicOf } from '@/model/topics';
+import { uiLanguage } from '@/i18n/language';
+import { resolveMessages } from '@/i18n/catalogue';
+import type { UiLanguage } from '@/settings/language';
+import { BANK_PAGE_MESSAGES as M } from './bankPage.messages';
 
 /**
  * Tagging a question part by part in the bank (Edit topics, tag as you go): a draft of the
@@ -178,9 +182,10 @@ export function savedByPart(state: TagState): { label?: string; codes: string[] 
 const sameList = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((tag) => b.includes(tag));
 
 /** How a target reads in teacher words: "the whole question", "part (b)", "sub-part (a)(ii)". */
-export function targetName(state: TagState, at: PartTarget): string {
-  if (at === undefined) return 'the whole question';
+export function targetName(state: TagState, at: PartTarget, lang: UiLanguage = uiLanguage()): string {
+  const m = resolveMessages(M, lang);
+  if (at === undefined) return m.wholeQuestion;
   const slot = state.slots.find((entry) => entry.key === at);
-  if (!slot) return 'the whole question';
-  return `${slot.parent !== undefined ? 'sub-part' : 'part'} ${slot.label}`;
+  if (!slot) return m.wholeQuestion;
+  return slot.parent !== undefined ? m.targetSubPart(slot.label) : m.targetPart(slot.label);
 }

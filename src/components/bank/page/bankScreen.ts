@@ -1,10 +1,17 @@
-import { rollupTopic, topicDisplay, topicOf, TOPICS } from '@/model/topics';
+import { rollupTopic, topicOf, TOPICS } from '@/model/topics';
+import { uiLanguage } from '@/i18n/language';
+import { resolveMessages } from '@/i18n/catalogue';
+import type { UiLanguage } from '@/settings/language';
 import type { BankGroup, BankRow, BankSlot } from '@/library/types';
 import { refsOf, rowUsedWith } from '@/library/history';
 import { comparePatterns, rowPatterns, type PatternId } from '@/library/patterns';
 import { slotsMatching, type SlotQuery } from '@/library/slotMatch';
 import { holdsPatterns } from '@/model/patterns';
 import { classChoices, typeName, type ClassChoice, type TopicPick } from './bankPage';
+import { BANK_PAGE_MESSAGES as M } from './bankPage.messages';
+import { topicName } from './topicText';
+
+const words = (lang: UiLanguage) => resolveMessages(M, lang);
 
 /**
  * The Question bank screen's pure half: which level is showing, how the review rail is
@@ -156,7 +163,8 @@ const unique = <T>(list: readonly T[]) => [...new Set(list)];
  * question is listed under every heading its tags (every part's) name, each entry saying
  * where else it is; groups keep their incoming order within a section.
  */
-export function railSections(groups: readonly BankGroup[], topic: TopicPick): RailSection[] {
+export function railSections(groups: readonly BankGroup[], topic: TopicPick, lang: UiLanguage = uiLanguage()): RailSection[] {
+  const m = words(lang);
   const picked = topic === 'all' || topic === 'untagged' ? undefined : topicOf(topic);
   const buckets = new Map<string, BankGroup[]>();
   const put = (key: string, group: BankGroup) => buckets.set(key, [...(buckets.get(key) ?? []), group]);
@@ -175,10 +183,10 @@ export function railSections(groups: readonly BankGroup[], topic: TopicPick): Ra
   }
 
   const label = (key: string) => {
-    if (key === 'general') return 'General';
-    if (key === 'none') return 'No topic';
+    if (key === 'general') return m.general;
+    if (key === 'none') return m.noTopic;
     const found = topicOf(key);
-    return found ? (found.parent ? found.en : `${found.code} · ${found.en}`) : key;
+    return found ? (found.parent ? topicName(key, 'en', lang) : `${found.code} · ${topicName(key, 'en', lang)}`) : key;
   };
   const query = (key: string): SlotQuery | undefined =>
     key === 'none' ? undefined : { topic: key === 'general' && picked ? picked.code : key };
@@ -186,7 +194,7 @@ export function railSections(groups: readonly BankGroup[], topic: TopicPick): Ra
   const sections = [...buckets]
     .sort(([a], [b]) => rank(a) - rank(b))
     .map(([key, list]) =>
-      withParts({
+      withParts(m.noPattern, {
         key,
         label: label(key),
         entries: list.map((group) => ({ key: `${key}||${group.rootId}`, group, query: query(key), alsoIn: [] })),
@@ -201,7 +209,7 @@ export function railSections(groups: readonly BankGroup[], topic: TopicPick): Ra
  * parts may differ). Entries keep their incoming order inside a part; the section's
  * `entries` follow the parts.
  */
-function withParts(section: RailSection): RailSection {
+function withParts(noPattern: string, section: RailSection): RailSection {
   if (!holdsPatterns(section.key)) return section;
   const parts = new Map<string, RailPart>();
   const none: RailEntry[] = [];
@@ -229,7 +237,7 @@ function withParts(section: RailSection): RailSection {
   }
   if (parts.size === 0) return section;
   const ordered = [...parts.values()].sort((a, b) => comparePatterns(a.pattern!, b.pattern!));
-  if (none.length > 0) ordered.push({ key: 'none', label: 'No 題型', entries: none });
+  if (none.length > 0) ordered.push({ key: 'none', label: noPattern, entries: none });
   return { ...section, entries: ordered.flatMap((part) => part.entries), parts: ordered };
 }
 
@@ -299,27 +307,30 @@ export function partsTesting(row: Pick<BankRow, 'typeId' | 'slots'>, query: Slot
 }
 
 /** "(a)", "(a)(ii) and (c)", "(a), (b) and (d)". */
-export function partList(labels: readonly string[]): string {
+export function partList(labels: readonly string[], lang: UiLanguage = uiLanguage()): string {
   if (labels.length <= 1) return labels[0] ?? '';
-  return `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`;
+  const m = words(lang);
+  return m.partsAnd(labels.slice(0, -1).join(m.sep), labels[labels.length - 1]);
 }
 
 /** The rail row's line: "Part (b) tests this", "Parts (a)(ii) and (c) test this". */
-export function testsThisText(labels: readonly string[]): string | undefined {
+export function testsThisText(labels: readonly string[], lang: UiLanguage = uiLanguage()): string | undefined {
   if (labels.length === 0) return undefined;
-  return labels.length === 1 ? `Part ${labels[0]} tests this` : `Parts ${partList(labels)} test this`;
+  const m = words(lang);
+  return labels.length === 1 ? m.partTestsThis(labels[0]) : m.partsTestThis(partList(labels, lang));
 }
 
 /** The stage's line: "Part (b) tests Price elasticity of demand", "Parts (a) and (c) test Calculate PED". */
-export function testsWhatText(labels: readonly string[], query: SlotQuery | undefined): string | undefined {
+export function testsWhatText(labels: readonly string[], query: SlotQuery | undefined, lang: UiLanguage = uiLanguage()): string | undefined {
   if (labels.length === 0 || !query) return undefined;
-  const what = 'topic' in query ? topicDisplay(query.topic, 'en') : query.pattern.name;
-  return labels.length === 1 ? `Part ${labels[0]} tests ${what}` : `Parts ${partList(labels)} test ${what}`;
+  const m = words(lang);
+  const what = 'topic' in query ? topicName(query.topic, 'en', lang) : query.pattern.name;
+  return labels.length === 1 ? m.partTests(labels[0], what) : m.partsTest(partList(labels, lang), what);
 }
 
 /** "Also in Law of demand", "Also in Law of demand and Price ceiling". */
-export function alsoInText(alsoIn: readonly string[]): string | undefined {
-  return alsoIn.length === 0 ? undefined : `Also in ${partList(alsoIn)}`;
+export function alsoInText(alsoIn: readonly string[], lang: UiLanguage = uiLanguage()): string | undefined {
+  return alsoIn.length === 0 ? undefined : words(lang).alsoIn(partList(alsoIn, lang));
 }
 
 /**
@@ -407,7 +418,7 @@ export interface ClassUsage {
  * The quiet strip beside the untagged one: how much of the bank the students of the most
  * recent use (by use date, never by edit) have already seen. Undefined when no paper names a class.
  */
-export function latestClassUsage(rows: readonly BankRow[]): ClassUsage | undefined {
+export function latestClassUsage(rows: readonly BankRow[], lang: UiLanguage = uiLanguage()): ClassUsage | undefined {
   let latest: BankRow | undefined;
   for (const row of rows) {
     if (row.docKind !== 'paper' || !row.classes?.length) continue;
@@ -421,15 +432,16 @@ export function latestClassUsage(rows: readonly BankRow[]): ClassUsage | undefin
   const used = new Set(rows.filter((row) => rowUsedWith(row, [choice.target])).map((row) => row.rootId));
   return {
     choice,
-    label: ref.cohort !== undefined ? `${ref.name} · ${choice.label}` : `Class ${ref.name}`,
+    label: ref.cohort !== undefined ? `${ref.name} · ${choice.label}` : words(lang).classLabel(ref.name),
     used: used.size,
     total: new Set(rows.map((row) => row.rootId)).size,
   };
 }
 
 /** The key's lines: the coarse code, then the sub-topic's (or topic's) own name, in English and 中文. */
-export function suggestionLabel(code: string): { code: string; name: string; zh?: string } {
+export function suggestionLabel(code: string, lang: UiLanguage = uiLanguage()): { code: string; name: string; zh?: string } {
   const topic = topicOf(code);
   if (!topic) return { code, name: code };
-  return { code: topic.parent ?? topic.code, name: topicDisplay(code, 'en'), zh: topicDisplay(code, 'zh') };
+  if (lang === 'zh-HK') return { code: topic.parent ?? topic.code, name: topic.zh };
+  return { code: topic.parent ?? topic.code, name: topic.en, zh: topic.zh };
 }

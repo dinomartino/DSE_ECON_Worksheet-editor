@@ -1,10 +1,15 @@
 import { create } from 'zustand';
 import { roundMinutes } from '@/model/paperSummary';
 import { isPatternTag } from '@/model/patterns';
-import { topicHeading, topicOf } from '@/model/topics';
+import { topicOf } from '@/model/topics';
+import { uiLanguage } from '@/i18n/language';
+import { resolveMessages } from '@/i18n/catalogue';
+import type { UiLanguage } from '@/settings/language';
 import { listQuestionTypes } from '@/registry';
 import type { BankRow } from '@/library/types';
 import { rowKey, rowMinutes, typeName } from './bankPage';
+import { BANK_PAGE_MESSAGES as M } from './bankPage.messages';
+import { topicTitle } from './topicText';
 
 /**
  * The bank screen's cart: the questions picked for a new worksheet, in the order they will
@@ -164,10 +169,10 @@ export function isSortedByType(typeIds: readonly string[]): boolean {
 }
 
 /** The label of the sort: the registry's types in order, "MCQ before LQ". */
-export function sortLabel(): string {
+export function sortLabel(lang: UiLanguage = uiLanguage()): string {
   return listQuestionTypes()
     .map((type) => typeName(type.id))
-    .join(' before ');
+    .join(resolveMessages(M, lang).before);
 }
 
 /** Picks whose question is still saved; the rest are counted, to say so once. */
@@ -202,15 +207,16 @@ export function cartTotals(rows: readonly Pick<BankRow, 'typeId' | 'marks'>[]): 
 }
 
 /** "3 MCQ, 2 LQ". */
-export function typeSplitLabel(totals: Pick<CartTotals, 'byType'>): string {
-  return totals.byType.map(({ label, count }) => `${count} ${label}`).join(', ');
+export function typeSplitLabel(totals: Pick<CartTotals, 'byType'>, lang: UiLanguage = uiLanguage()): string {
+  const m = resolveMessages(M, lang);
+  return totals.byType.map(({ label, count }) => m.typeSplit(count, label)).join(m.sep);
 }
 
 /** The row's first topic by name ("C · Law of demand"), "+1" for each more; free tags and 題型 are left out. */
-export function cartTopicLabel(tags: readonly string[]): string | undefined {
+export function cartTopicLabel(tags: readonly string[], lang: UiLanguage = uiLanguage()): string | undefined {
   const topics = tags.filter((tag) => !isPatternTag(tag) && topicOf(tag));
   if (topics.length === 0) return undefined;
-  const name = topicHeading(topics[0]);
+  const name = topicTitle(topics[0], 'en', lang);
   return topics.length > 1 ? `${name} +${topics.length - 1}` : name;
 }
 

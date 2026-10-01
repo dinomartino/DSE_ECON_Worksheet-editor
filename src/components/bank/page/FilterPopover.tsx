@@ -5,14 +5,18 @@ import { useModalLayer } from '@/components/ui/modalLayer';
 import { listQuestionTypes } from '@/registry';
 import { samePattern, type PatternItem } from '@/library/patterns';
 import { holdsPatterns } from '@/model/patterns';
-import { topicDisplay } from '@/model/topics';
+import { useMessages, useUiLanguage, uiLanguage } from '@/i18n/language';
+import { resolveMessages } from '@/i18n/catalogue';
+import type { UiLanguage } from '@/settings/language';
 import {
   activeFilters,
   classChoiceText,
   DEFAULT_FILTERS,
   MARKS_BANDS,
+  marksBandLabel,
   missingLabel,
   SINCE_CHOICES,
+  sinceLabel,
   typeName,
   type BankFilters,
   type ClassChoice,
@@ -20,6 +24,9 @@ import {
   type Since,
   type SourceFilter,
 } from './bankPage';
+import { FILTER_MESSAGES } from './FilterPopover.messages';
+import { BANK_PAGE_MESSAGES } from './bankPage.messages';
+import { topicName } from './topicText';
 
 /**
  * Every narrowing filter behind one "Filter" button: type, 題型, marks, not used with a
@@ -43,9 +50,11 @@ export function FilterPopover({
   scope: string;
   onChange: (next: BankFilters) => void;
 }) {
+  const m = useMessages(FILTER_MESSAGES);
+  const w = useMessages(BANK_PAGE_MESSAGES);
   const [open, setOpen] = useState(false);
   const on = activeFilters({ ...filters, text: '', topic: 'all' });
-  const label = on.length === 0 ? 'Filter' : `Filter · ${on.map((f) => f.label).join(', ')}`;
+  const label = on.length === 0 ? m.filter : m.filterWith(on.map((f) => f.label).join(w.sep));
   const shown = filterButtonLabel(on.map((f) => f.label));
   return (
     <div className="relative shrink-0">
@@ -85,10 +94,11 @@ const FILTER_LABEL_MAX = 22;
  * "Filters" and a count. The full list stays in its tooltip and accessible name, and the
  * button never truncates mid-word.
  */
-export function filterButtonLabel(labels: readonly string[]): { text: string; count?: number } {
-  if (labels.length === 0) return { text: 'Filter' };
-  if (labels.length === 1 && labels[0].length <= FILTER_LABEL_MAX) return { text: `Filter · ${labels[0]}` };
-  return { text: labels.length === 1 ? 'Filter' : 'Filters', count: labels.length };
+export function filterButtonLabel(labels: readonly string[], lang: UiLanguage = uiLanguage()): { text: string; count?: number } {
+  const m = resolveMessages(FILTER_MESSAGES, lang);
+  if (labels.length === 0) return { text: m.filter };
+  if (labels.length === 1 && labels[0].length <= FILTER_LABEL_MAX) return { text: m.filterWith(labels[0]) };
+  return { text: labels.length === 1 ? m.filter : m.filters, count: labels.length };
 }
 
 function Panel({
@@ -107,6 +117,8 @@ function Panel({
   onClose: () => void;
 }) {
   useModalLayer();
+  const m = useMessages(FILTER_MESSAGES);
+  const lang = useUiLanguage();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -132,83 +144,83 @@ function Panel({
     <div
       ref={ref}
       role="dialog"
-      aria-label="Filter questions"
+      aria-label={m.panel}
       className="absolute right-0 top-[calc(100%+6px)] z-30 grid w-[300px] origin-top-right animate-pop-in gap-3 rounded-xl border border-line-strong bg-surface-raised p-3.5 shadow-[0_12px_32px_-12px_rgba(40,36,30,0.35)]"
     >
-      <Field label="Type">
+      <Field label={m.type}>
         <Select
           value={filters.typeId ?? ''}
           onChange={(value) => set('typeId', value || undefined)}
-          options={[{ value: '', label: 'Any type' }, ...listQuestionTypes().map((type) => ({ value: type.id, label: typeName(type.id) }))]}
+          options={[{ value: '', label: m.anyType }, ...listQuestionTypes().map((type) => ({ value: type.id, label: typeName(type.id) }))]}
         />
       </Field>
-      <Field label="題型">
+      <Field label={m.pattern}>
         <Select
           value={patternValue(patterns, filters)}
           disabled={patterns.length === 0 && !filters.pattern}
-          title={patterns.length === 0 ? 'No question here has a 題型 yet' : undefined}
+          title={patterns.length === 0 ? m.noPatternTitle : undefined}
           onChange={(value) => set('pattern', patterns[Number(value)] ? toId(patterns[Number(value)]) : undefined)}
           options={[
-            { value: '', label: patterns.length === 0 ? 'No 題型 yet' : 'Any 題型' },
+            { value: '', label: patterns.length === 0 ? m.noPatternYet : m.anyPattern },
             // Closed, the chosen 題型 reads by its name: the sub-topic would push it out of view.
-            ...patterns.map((item, index) => ({ value: String(index), label: patternOption(item, scope), closedLabel: patternOption(item, item.topic) })),
+            ...patterns.map((item, index) => ({ value: String(index), label: patternOption(item, scope, lang), closedLabel: patternOption(item, item.topic, lang) })),
           ]}
         />
       </Field>
-      <Field label="Marks">
+      <Field label={m.marks}>
         <Select
           value={filters.marks}
           onChange={(value) => set('marks', value as MarksBand)}
-          options={MARKS_BANDS.map((band) => ({ value: band.value, label: band.label }))}
+          options={MARKS_BANDS.map((band) => ({ value: band.value, label: marksBandLabel(band, lang) }))}
         />
       </Field>
-      <Field label="Class" note={chosenClass && classChoiceText(chosenClass).note}>
+      <Field label={m.class} note={chosenClass && classChoiceText(chosenClass, lang).note}>
         <Select
           value={filters.notUsedWith?.id ?? ''}
           disabled={classes.length === 0}
-          title={classes.length === 0 ? 'Say which classes sat a paper in Setup to use this' : chosenClass ? classChoiceText(chosenClass).open : undefined}
+          title={classes.length === 0 ? m.classNeedsSetup : chosenClass ? classChoiceText(chosenClass, lang).open : undefined}
           onChange={(value) => {
             const choice = classes.find((entry) => entry.id === value);
             onChange({ ...filters, notUsedWith: choice, since: choice ? filters.since : 'ever' });
           }}
           options={[
-            { value: '', label: classes.length === 0 ? 'No classes yet' : 'Any class' },
+            { value: '', label: classes.length === 0 ? m.noClasses : m.anyClass },
             // The open list tells the whole story; the closed select shows the short form.
             ...classes.map((choice) => {
-              const text = classChoiceText(choice);
+              const text = classChoiceText(choice, lang);
               return { value: choice.id, label: text.open, closedLabel: text.closed };
             }),
           ]}
         />
       </Field>
       {filters.notUsedWith && (
-        <Field label="Since">
+        <Field label={m.since}>
           <Select
             value={filters.since}
             onChange={(value) => set('since', value as Since)}
-            options={SINCE_CHOICES.map((choice) => ({ value: choice.value, label: choice.label }))}
+            options={SINCE_CHOICES.map((choice) => ({ value: choice.value, label: sinceLabel(choice, lang) }))}
           />
         </Field>
       )}
-      <Field label="Language">
+      <Field label={m.language}>
         <Select
           value={filters.missing ?? ''}
           onChange={(value) => set('missing', value === 'zh' || value === 'en' ? value : undefined)}
           options={[
-            { value: '', label: 'Any language' },
-            { value: 'zh', label: missingLabel('zh') },
-            { value: 'en', label: missingLabel('en') },
+            { value: '', label: m.anyLanguage },
+            { value: 'zh', label: missingLabel('zh', lang) },
+            { value: 'en', label: missingLabel('en', lang) },
           ]}
         />
       </Field>
-      <Field label="Source">
+      <Field label={m.source}>
         <Select
           value={filters.source}
           onChange={(value) => set('source', value as SourceFilter)}
           options={[
-            { value: 'all', label: 'All sources' },
-            { value: 'paper', label: 'Worksheets' },
-            { value: 'bank', label: 'Banks' },
+            { value: 'all', label: m.allSources },
+            { value: 'paper', label: m.worksheets },
+            { value: 'bank', label: m.banks },
           ]}
         />
       </Field>
@@ -219,14 +231,14 @@ function Panel({
           onClick={() => onChange({ ...DEFAULT_FILTERS, text: filters.text, topic: filters.topic })}
           className="cursor-pointer text-[12px] font-medium text-accent-ink underline decoration-line-strong underline-offset-4 hover:decoration-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-default disabled:text-ink-subtle disabled:no-underline"
         >
-          Clear filters
+          {m.clear}
         </button>
         <button
           type="button"
           onClick={onClose}
           className="cursor-pointer rounded-md px-2 py-1 text-[12px] font-medium text-ink-muted hover:bg-surface-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
-          Done
+          {m.done}
         </button>
       </div>
     </div>
@@ -244,8 +256,8 @@ function patternValue(patterns: PatternItem[], filters: BankFilters): string {
 }
 
 /** "Calculate PED from TR · MCQ ×3"; the sub-topic's name first unless the page is that sub-topic. */
-function patternOption(item: PatternItem, scope: string): string {
-  const where = holdsPatterns(scope) ? '' : `${topicDisplay(item.topic)} · `;
+function patternOption(item: PatternItem, scope: string, lang: UiLanguage): string {
+  const where = holdsPatterns(scope) ? '' : `${topicName(item.topic, 'en', lang)} · `;
   return `${where}${item.name} · ${typeName(item.typeId)} ×${item.count}`;
 }
 

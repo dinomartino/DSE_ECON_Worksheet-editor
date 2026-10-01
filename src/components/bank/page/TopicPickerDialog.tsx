@@ -7,8 +7,10 @@ import type { StateEdit } from '@/library/tagWrites';
 import { thenState } from '@/library/tagWrites';
 import { holdsPatterns } from '@/model/patterns';
 import { sameTagState, type TagState } from '@/model/tagSlots';
-import { TOPICS, topicDisplay, topicHeading, topicOf, type Topic } from '@/model/topics';
-import { countOf } from '../bankText';
+import { TOPICS, topicOf, type Topic } from '@/model/topics';
+import { useMessages, useUiLanguage } from '@/i18n/language';
+import type { Messages } from '@/i18n/catalogue';
+import type { UiLanguage } from '@/settings/language';
 import { escapeClears } from '../escapeClears';
 import { PatternPicker } from '../PatternPicker';
 import {
@@ -23,6 +25,9 @@ import {
   type PartLine,
   type PartTarget,
 } from './partTopics';
+import { BANK_PAGE_MESSAGES } from './bankPage.messages';
+import { TOPIC_PICKER_MESSAGES } from './TopicPickerDialog.messages';
+import { topicName, topicTitle } from './topicText';
 
 /** A row of choices over the list (bulk: Add, Remove, Replace), owned by the caller. */
 export interface PickerModes<T extends string> {
@@ -98,6 +103,8 @@ export function TopicPickerDialog<M extends string = never>({
   onClose: () => void;
   onDone: (codes: string[], picked: PickedPatterns) => void;
 }) {
+  const m = useMessages(TOPIC_PICKER_MESSAGES);
+  const lang = useUiLanguage();
   const [chosenPatterns, setChosenPatterns] = useState<Record<string, string | null | undefined>>(() => ({ ...(patterns?.initial ?? {}) }));
   const [onlyPattern, setOnlyPattern] = useState<ReadonlySet<string>>(new Set());
   const [picked, setPicked] = useState<ReadonlySet<string>>(() => new Set(initial.filter((tag) => topicOf(tag))));
@@ -141,8 +148,8 @@ export function TopicPickerDialog<M extends string = never>({
             }
             className="h-3 w-3 shrink-0 translate-y-[1px] cursor-pointer accent-[var(--accent)]"
           />
-          Keep {child.en}, remove only its 題型
-          <span className="tabular-nums text-ink-subtle">(on {carrying})</span>
+          {m.keepOnly(lang === 'zh-HK' ? child.zh : child.en)}
+          <span className="tabular-nums text-ink-subtle">{m.onCount(carrying)}</span>
         </label>
       );
     }
@@ -174,10 +181,10 @@ export function TopicPickerDialog<M extends string = never>({
       footer={
         <>
           <span className="mr-auto text-[11.5px] tabular-nums text-ink-subtle">
-            {picked.size === 0 ? 'No topic ticked' : `${picked.size} ticked`}
+            {picked.size === 0 ? m.noneTicked : m.ticked(picked.size)}
           </span>
           <Button variant="subtle" onClick={onClose}>
-            Cancel
+            {m.cancel}
           </Button>
           <Button variant="primary" disabled={!allowEmpty && picked.size === 0} onClick={done}>
             {typeof confirmLabel === 'function' ? confirmLabel(picked.size) : confirmLabel}
@@ -232,6 +239,9 @@ export function PartTopicPickerDialog({
   onClose: () => void;
   onDone: (edit: StateEdit | undefined) => void;
 }) {
+  const m = useMessages(TOPIC_PICKER_MESSAGES);
+  const w = useMessages(BANK_PAGE_MESSAGES);
+  const lang = useUiLanguage();
   const [draft, setDraft] = useState(state);
   const [edits, setEdits] = useState<StateEdit[]>([]);
   const [at, setAt] = useState<PartTarget>(undefined);
@@ -250,7 +260,7 @@ export function PartTopicPickerDialog({
     const { name, mixed } = patternAt(draft, at, child.code);
     return (
       <div className="mb-1 ml-[28px] mr-2">
-        {mixed && <p className="mb-0.5 text-[11px] text-ink-subtle">The parts have different 題型 here. Pick one to set it on every part.</p>}
+        {mixed && <p className="mb-0.5 text-[11px] text-ink-subtle">{m.patternsDiffer}</p>}
         <PatternPicker
           topic={child.code}
           kind={patterns.kind}
@@ -275,13 +285,13 @@ export function PartTopicPickerDialog({
         <>
           <span className="mr-auto min-w-0 truncate text-[11.5px] text-ink-subtle">
             {untagged.length === 0
-              ? 'Every part has a topic'
+              ? m.everyPartHas
               : untagged.length === lines.filter((entry) => draft.slots.find((slot) => slot.key === entry.key)?.leaf).length
-                ? 'No part has a topic yet'
-                : `No topic yet on ${untagged.map((entry) => entry.label).join(', ')}`}
+                ? m.noPartHas
+                : m.noTopicOn(untagged.map((entry) => entry.label).join(w.sep))}
           </span>
           <Button variant="subtle" onClick={onClose}>
-            Cancel
+            {m.cancel}
           </Button>
           <Button variant="primary" onClick={() => onDone(changed ? thenState(...edits) : undefined)}>
             {confirmLabel}
@@ -290,8 +300,8 @@ export function PartTopicPickerDialog({
       }
     >
       <div className="flex min-h-0 flex-1">
-        <nav aria-label="Where the topics go" className="scroll-slim w-[196px] shrink-0 overflow-y-auto border-r border-line bg-surface-sunken px-2 py-3">
-          <PartButton selected={at === undefined} onClick={() => setAt(undefined)} label="Whole question" detail="Every part" />
+        <nav aria-label={m.whereLabel} className="scroll-slim w-[196px] shrink-0 overflow-y-auto border-r border-line bg-surface-sunken px-2 py-3">
+          <PartButton selected={at === undefined} onClick={() => setAt(undefined)} label={m.whole} detail={m.everyPart} />
           {lines.map((entry) => (
             <PartButton
               key={entry.key}
@@ -300,13 +310,13 @@ export function PartTopicPickerDialog({
               onClick={() => setAt(entry.key)}
               label={entry.sub ? entry.short : entry.label}
               title={entry.label}
-              detail={partDetail(entry)}
+              detail={partDetail(entry, m, w.sep, lang)}
               quiet={entry.inherits || entry.codes.length === 0}
             />
           ))}
         </nav>
         <div className="scroll-slim min-w-0 flex-1 overflow-y-auto px-5 pb-4 pt-3">
-          <TargetNote line={line} onSameAsPart={line ? () => apply(sameAsPart(draft, line.key)) : undefined} name={targetName(draft, at)} />
+          <TargetNote line={line} onSameAsPart={line ? () => apply(sameAsPart(draft, line.key)) : undefined} name={targetName(draft, at, lang)} />
           <TopicChecklist
             // Each target opens on its own topics.
             key={at ?? ''}
@@ -323,28 +333,29 @@ export function PartTopicPickerDialog({
 }
 
 /** A part's line in the column: its topics' names, "Same as (a)", or "No topic yet". */
-function partDetail(line: PartLine): string {
-  if (line.inherits) return `Same as ${line.parentLabel}`;
-  if (line.codes.length === 0) return 'No topic yet';
-  return line.codes.map((code) => topicDisplay(code)).join(', ');
+function partDetail(line: PartLine, m: Messages<typeof TOPIC_PICKER_MESSAGES>, sep: string, lang: UiLanguage): string {
+  if (line.inherits) return m.sameAs(line.parentLabel ?? '');
+  if (line.codes.length === 0) return m.noTopicYet;
+  return line.codes.map((code) => topicName(code, 'en', lang)).join(sep);
 }
 
 /** What ticking does here, in one line; a sub-part also says whose topics it has. */
 function TargetNote({ line, name, onSameAsPart }: { line?: PartLine; name: string; onSameAsPart?: () => void }) {
+  const m = useMessages(TOPIC_PICKER_MESSAGES);
   let text: ReactNode;
-  if (!line) text = 'Ticks here go on every part. Then pick a part to change it alone.';
-  else if (!line.sub) text = `Ticks here change ${name} only.`;
-  else if (line.inherits) text = `${line.label} has the same topics as ${line.parentLabel}. Tick or untick one to give it its own.`;
+  if (!line) text = m.noteWhole;
+  else if (!line.sub) text = m.notePart(name);
+  else if (line.inherits) text = m.noteInherits(line.label, line.parentLabel ?? '');
   else
     text = (
       <>
-        {line.label} has its own topics, in place of {line.parentLabel}’s.{' '}
+        {m.noteOwn(line.label, line.parentLabel ?? '')}{' '}
         <button
           type="button"
           onClick={onSameAsPart}
           className="cursor-pointer rounded px-1 font-medium text-accent-ink transition-colors duration-150 ease-out-soft hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
-          Same as {line.parentLabel}
+          {m.sameAs(line.parentLabel ?? '')}
         </button>
       </>
     );
@@ -368,11 +379,12 @@ function PartButton({
   detail: string;
   onClick: () => void;
 }) {
+  const m = useMessages(TOPIC_PICKER_MESSAGES);
   return (
     <button
       type="button"
       aria-pressed={selected}
-      title={title ? `${title}: ${detail}` : detail}
+      title={title ? m.partTitle(title, detail) : detail}
       onClick={onClick}
       className={`mb-0.5 grid w-full min-w-0 cursor-pointer rounded-md py-1.5 pr-2 text-left transition-colors duration-150 ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
         sub ? 'pl-6' : 'pl-2'
@@ -405,6 +417,7 @@ function TopicChecklist({
   /** Under a sub-topic: its 題型 picker, or nothing. */
   below: (child: Topic) => ReactNode;
 }) {
+  const m = useMessages(TOPIC_PICKER_MESSAGES);
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState<ReadonlySet<string>>(
     () => new Set(openFor.flatMap((tag) => (topicOf(tag)?.parent ? [topicOf(tag)!.parent!] : []))),
@@ -435,7 +448,7 @@ function TopicChecklist({
         type="search"
         value={query}
         autoFocus
-        placeholder="Find a topic by name or 中文"
+        placeholder={m.find}
         onChange={(event) => setQuery(event.target.value)}
         onKeyDown={(event) => void escapeClears(event, query, () => setQuery(''))}
         className="h-8 w-full rounded-lg border border-line bg-surface px-2.5 text-[12.5px] text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
@@ -462,8 +475,8 @@ function TopicChecklist({
                     className="shrink-0 cursor-pointer rounded px-1.5 py-0.5 text-[11px] tabular-nums text-ink-subtle hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                     aria-expanded={expanded}
                   >
-                    {expanded ? 'Hide' : countOf(topic.children.length, 'sub-topic')}
-                    {!expanded && inside > 0 && ` · ${inside} ticked`}
+                    {expanded ? m.hide : m.subTopics(topic.children.length)}
+                    {!expanded && inside > 0 && m.insideTicked(inside)}
                   </button>
                 )}
               </div>
@@ -480,7 +493,7 @@ function TopicChecklist({
             </li>
           );
         })}
-        {shown.length === 0 && <li className="py-2 text-[12px] text-ink-subtle">No topic matches “{query.trim()}”.</li>}
+        {shown.length === 0 && <li className="py-2 text-[12px] text-ink-subtle">{m.noMatch(query.trim())}</li>}
       </ul>
     </>
   );
@@ -504,6 +517,8 @@ function TopicCheck({
   count?: number;
   onToggle: () => void;
 }) {
+  const m = useMessages(TOPIC_PICKER_MESSAGES);
+  const lang = useUiLanguage();
   const partial = !checked && where !== undefined && where.length > 0;
   return (
     <label className="flex min-w-0 flex-1 cursor-pointer items-baseline gap-2 rounded-md px-1.5 py-1 text-[12.5px] text-ink transition-colors hover:bg-surface-hover">
@@ -519,16 +534,22 @@ function TopicCheck({
       />
       {/* A topic's letter, which its card shows too; a sub-topic reads by its name alone. */}
       {!topic.parent && <span className="w-7 shrink-0 text-[11px] font-semibold tabular-nums text-ink-subtle">{topic.code}</span>}
-      <span className="min-w-0 flex-1" title={topicHeading(topic.code, 'both')}>
-        {topic.en} <span className="text-ink-subtle">{topic.zh}</span>
+      <span className="min-w-0 flex-1" title={topicTitle(topic.code, 'both', lang)}>
+        {lang === 'zh-HK' ? (
+          topic.zh
+        ) : (
+          <>
+            {topic.en} <span className="text-ink-subtle">{topic.zh}</span>
+          </>
+        )}
       </span>
       {partial && (
-        <span className="shrink-0 text-[11px] tabular-nums text-ink-subtle" title={`On ${where.join(', ')} only. Tick to put it on every part.`}>
+        <span className="shrink-0 text-[11px] tabular-nums text-ink-subtle" title={m.partialTitle(where.join(', '))}>
           {where.join(' ')}
         </span>
       )}
       {count !== undefined && count > 0 && (
-        <span className="shrink-0 text-[11px] tabular-nums text-ink-subtle" title={`On ${count} selected`}>
+        <span className="shrink-0 text-[11px] tabular-nums text-ink-subtle" title={m.onSelected(count)}>
           ×{count}
         </span>
       )}

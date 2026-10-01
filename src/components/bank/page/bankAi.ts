@@ -20,6 +20,12 @@ import type { Glossary } from '@/glossary/types';
 import { restoreCopies, type CopyRecord, type CopyRef, type CopySkip } from '@/library/sameCopies';
 import { rootIdOf } from '@/model/lineage';
 import type { Side } from '@/model/textSlots';
+import { uiLanguage } from '@/i18n/language';
+import { resolveMessages } from '@/i18n/catalogue';
+import type { UiLanguage } from '@/settings/language';
+import { BANK_PAGE_MESSAGES as M } from './bankPage.messages';
+
+const words = (lang: UiLanguage = uiLanguage()) => resolveMessages(M, lang);
 
 /**
  * The question bank's ✦ run, one at a time: running → review (after writing) or error.
@@ -35,17 +41,17 @@ export const CONFIRM_OVER = 20;
 export const SECONDS_PER_QUESTION = 6;
 
 /** "about 2 minutes", "under a minute". */
-export function roughTime(questions: number): string {
+export function roughTime(questions: number, lang?: UiLanguage): string {
+  const m = words(lang);
   const seconds = questions * SECONDS_PER_QUESTION;
-  if (seconds < 60) return 'under a minute';
+  if (seconds < 60) return m.roughUnder;
   const minutes = Math.round(seconds / 60);
-  return minutes === 1 ? 'about a minute' : `about ${minutes} minutes`;
+  return minutes === 1 ? m.roughOne : m.roughMany(minutes);
 }
 
 /** The one-line confirm a big fill asks: "Translate 40 questions? About 4 minutes." */
-export function confirmLine(questions: number): string {
-  const time = roughTime(questions);
-  return `Translate ${questions} questions? This takes ${time}. You can stop at any time.`;
+export function confirmLine(questions: number, lang?: UiLanguage): string {
+  return words(lang).confirmFill(questions, roughTime(questions, lang));
 }
 
 export const needsConfirm = (questions: number): boolean => questions > CONFIRM_OVER;
@@ -100,8 +106,6 @@ export interface BankAiState {
   settle(): Promise<void>;
 }
 
-const count = (n: number, word: string) => `${n} ${n === 1 ? word : `${word}s`}`;
-
 export function createBankAi(deps: BankRunDeps): UseBoundStore<StoreApi<BankAiState>> {
   let controller: AbortController | null = null;
   let pending: Promise<void> = Promise.resolve();
@@ -144,7 +148,7 @@ export function createBankAi(deps: BankRunDeps): UseBoundStore<StoreApi<BankAiSt
           items,
           index: Math.min(index, Math.max(0, items.length - 1)),
           undoable: records.length > 0,
-          ...(safe > 0 ? { applyAll: { label: `Replace ${safe}` } } : {}),
+          ...(safe > 0 ? { applyAll: { label: words().replaceN(safe) } } : {}),
         },
       });
     };
@@ -182,7 +186,7 @@ export function createBankAi(deps: BankRunDeps): UseBoundStore<StoreApi<BankAiSt
         glossary = null;
         const own = new AbortController();
         controller = own;
-        const label = request.verb === 'fill' ? 'Translating' : 'Checking terms';
+        const label = request.verb === 'fill' ? words().translating : words().checkingTerms;
         set({ phase: { kind: 'running', verb: request.verb, label, done: 0, total: request.units.length } });
         const progress = (done: number, total: number, text: string) => {
           if (controller === own) set({ phase: { kind: 'running', verb: request.verb, label: text, done, total } });
@@ -217,7 +221,7 @@ export function createBankAi(deps: BankRunDeps): UseBoundStore<StoreApi<BankAiSt
             }
             findings = outcome.findings;
             glossary = outcome.glossary;
-            showFindings(outcome.stopped ? 'Stopped' : undefined);
+            showFindings(outcome.stopped ? words().stopped : undefined);
           } catch (err) {
             if (controller === own) set({ phase: { kind: 'error', verb: request.verb, error: isAiError(err) ? err.info : genericError(err) } });
           } finally {
@@ -264,7 +268,7 @@ export function createBankAi(deps: BankRunDeps): UseBoundStore<StoreApi<BankAiSt
         const questions = new Set(result.restored.map((ref) => roots.get(`${ref.docId}\u0000${ref.questionId}`))).size;
         records = [];
         if (result.skipped.length > 0) hooks?.onSkipped(result.skipped, result.saved.size);
-        else hooks?.onNotice(questions > 0 ? `Put back ${count(questions, 'question')} as ${questions === 1 ? 'it was' : 'they were'}.` : 'Nothing to put back.');
+        else hooks?.onNotice(questions > 0 ? words().putBack(questions) : words().nothingToPutBack);
       },
 
       applyAll: async () => {

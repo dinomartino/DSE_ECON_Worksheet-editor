@@ -1,5 +1,8 @@
 import { roundMinutes, MINUTES_PER_MARK } from '@/model/paperSummary';
-import { rollupTopic, topicDisplay, topicHeading, topicLabel, topicOf, TOPICS } from '@/model/topics';
+import { rollupTopic, topicOf, TOPICS } from '@/model/topics';
+import { uiLanguage } from '@/i18n/language';
+import { resolveMessages, type TextKey } from '@/i18n/catalogue';
+import type { UiLanguage } from '@/settings/language';
 import { getQuestionType, listQuestionTypes } from '@/registry';
 import { cohortLabel, schoolYearEnd, schoolYearLabel, type ClassTarget } from '@/library/cohort';
 import { refsOf, rowUsedWith } from '@/library/history';
@@ -8,6 +11,10 @@ import { searchRows } from '@/library/search';
 import { isPatternTag, parsePatternTag } from '@/model/patterns';
 import type { BankGroup, BankLang, BankRow } from '@/library/types';
 import type { WorksheetSummary } from '@/storage/types';
+import { BANK_PAGE_MESSAGES as M } from './bankPage.messages';
+import { tagName, topicName, topicTitle } from './topicText';
+
+const words = (lang: UiLanguage) => resolveMessages(M, lang);
 
 /**
  * The Question bank screen's data half: coverage (the topic cards), filters, the
@@ -152,20 +159,30 @@ export interface BankFilters {
 
 export const DEFAULT_FILTERS: BankFilters = { text: '', topic: 'all', marks: 'any', since: 'ever', source: 'all' };
 
-export const MARKS_BANDS: { value: MarksBand; label: string; min?: number; max?: number }[] = [
-  { value: 'any', label: 'Any marks' },
-  { value: '1', label: '1 mark', min: 1, max: 1 },
-  { value: '2-4', label: '2–4 marks', min: 2, max: 4 },
-  { value: '5-8', label: '5–8 marks', min: 5, max: 8 },
-  { value: '9+', label: '9+ marks', min: 9 },
+export const MARKS_BANDS: { value: MarksBand; label: TextKey<typeof M>; min?: number; max?: number }[] = [
+  { value: 'any', label: 'marksAny' },
+  { value: '1', label: 'marks1', min: 1, max: 1 },
+  { value: '2-4', label: 'marks2_4', min: 2, max: 4 },
+  { value: '5-8', label: 'marks5_8', min: 5, max: 8 },
+  { value: '9+', label: 'marks9', min: 9 },
 ];
 
-export const SINCE_CHOICES: { value: Since; label: string }[] = [
-  { value: 'ever', label: 'at any time' },
-  { value: 'year', label: 'this school year' },
-  { value: '12m', label: 'in the last 12 months' },
-  { value: '6m', label: 'in the last 6 months' },
+export const SINCE_CHOICES: { value: Since; label: TextKey<typeof M> }[] = [
+  { value: 'ever', label: 'sinceEver' },
+  { value: 'year', label: 'sinceYear' },
+  { value: '12m', label: 'since12m' },
+  { value: '6m', label: 'since6m' },
 ];
+
+/** A marks band's words in the interface language. */
+export function marksBandLabel(band: { label: TextKey<typeof M> }, lang: UiLanguage = uiLanguage()): string {
+  return words(lang)[band.label];
+}
+
+/** A "since" choice's words in the interface language. */
+export function sinceLabel(choice: { label: TextKey<typeof M> }, lang: UiLanguage = uiLanguage()): string {
+  return words(lang)[choice.label];
+}
 
 /** The first day (`YYYY-MM-DD`, local) a use date must reach; undefined = any time. School years start 1 Sep. */
 export function sinceDate(since: Since, now: Date): string | undefined {
@@ -193,10 +210,11 @@ export interface ClassChoice {
  * option shows it); `open` is the whole story, for the open list; `note` repeats a
  * cohort's classes under the select, since the closed label leaves them out.
  */
-export function classChoiceText(choice: ClassChoice): { closed: string; open: string; note?: string } {
-  const closed = `Not used with ${choice.label}`;
+export function classChoiceText(choice: ClassChoice, lang: UiLanguage = uiLanguage()): { closed: string; open: string; note?: string } {
+  const m = words(lang);
+  const closed = m.notUsedWith(choice.label);
   if (!choice.detail) return { closed, open: closed };
-  return { closed, open: `${closed} (${choice.detail})`, note: `Same students: ${choice.detail}` };
+  return { closed, open: m.notUsedWithOpen(closed, choice.detail), note: m.sameStudents(choice.detail) };
 }
 
 /**
@@ -239,7 +257,8 @@ export function classChoices(rows: readonly BankRow[]): ClassChoice[] {
 }
 
 /** "Missing 中文" / "Missing English": the filter's words for a language. */
-export const missingLabel = (side: BankLang): string => (side === 'zh' ? 'Missing 中文' : 'Missing English');
+export const missingLabel = (side: BankLang, lang: UiLanguage = uiLanguage()): string =>
+  side === 'zh' ? words(lang).missingZh : words(lang).missingEn;
 
 /**
  * The sides a row's printed text lacks: over the Teacher paper when teacher text counts
@@ -293,20 +312,24 @@ export interface ActiveFilter {
   label: string;
 }
 
-export function activeFilters(filters: BankFilters): ActiveFilter[] {
+export function activeFilters(filters: BankFilters, lang: UiLanguage = uiLanguage()): ActiveFilter[] {
+  const m = words(lang);
   const active: ActiveFilter[] = [];
-  if (filters.text.trim()) active.push({ key: 'text', label: `“${filters.text.trim()}”` });
-  if (filters.topic === 'untagged') active.push({ key: 'topic', label: 'untagged' });
-  else if (filters.topic !== 'all') active.push({ key: 'topic', label: topicHeading(filters.topic) });
+  if (filters.text.trim()) active.push({ key: 'text', label: m.quoted(filters.text.trim()) });
+  if (filters.topic === 'untagged') active.push({ key: 'topic', label: m.filterUntagged });
+  else if (filters.topic !== 'all') active.push({ key: 'topic', label: topicTitle(filters.topic, 'en', lang) });
   if (filters.typeId) active.push({ key: 'typeId', label: typeName(filters.typeId) });
-  if (filters.marks !== 'any') active.push({ key: 'marks', label: MARKS_BANDS.find((b) => b.value === filters.marks)?.label ?? '' });
-  if (filters.notUsedWith) {
-    const since = filters.since === 'ever' ? '' : ` ${SINCE_CHOICES.find((s) => s.value === filters.since)?.label}`;
-    active.push({ key: 'notUsedWith', label: `not used with ${filters.notUsedWith.label}${since}` });
+  if (filters.marks !== 'any') {
+    const band = MARKS_BANDS.find((b) => b.value === filters.marks);
+    active.push({ key: 'marks', label: band ? m[band.label] : '' });
   }
-  if (filters.source !== 'all') active.push({ key: 'source', label: filters.source === 'bank' ? 'from banks' : 'from worksheets' });
-  if (filters.pattern) active.push({ key: 'pattern', label: `題型 ${filters.pattern.name}` });
-  if (filters.missing) active.push({ key: 'missing', label: missingLabel(filters.missing) });
+  if (filters.notUsedWith) {
+    const choice = SINCE_CHOICES.find((s) => s.value === filters.since);
+    active.push({ key: 'notUsedWith', label: m.filterNotUsed(filters.notUsedWith.label, filters.since === 'ever' || !choice ? '' : m[choice.label]) });
+  }
+  if (filters.source !== 'all') active.push({ key: 'source', label: filters.source === 'bank' ? m.fromBanks : m.fromWorksheets });
+  if (filters.pattern) active.push({ key: 'pattern', label: m.filterPattern(filters.pattern.name) });
+  if (filters.missing) active.push({ key: 'missing', label: missingLabel(filters.missing, lang) });
   return active;
 }
 
@@ -374,10 +397,11 @@ export function traySummary(rows: readonly BankRow[]): TraySummary {
 }
 
 /** "Price elasticity of demand ×3, Market intervention ×1"; the first three, then "+N more". */
-export function mixLabel(mix: TraySummary['mix'], shown = 3): string {
-  const head = mix.slice(0, shown).map(({ code, count }) => `${topicDisplay(code)} ×${count}`);
+export function mixLabel(mix: TraySummary['mix'], shown = 3, lang: UiLanguage = uiLanguage()): string {
+  const m = words(lang);
+  const head = mix.slice(0, shown).map(({ code, count }) => `${topicName(code, 'en', lang)} ×${count}`).join(m.sep);
   const rest = mix.length - shown;
-  return rest > 0 ? `${head.join(', ')} +${rest} more` : head.join(', ');
+  return rest > 0 ? m.mixMore(head, rest) : head;
 }
 
 /** The key a picked or focused row is held by; a question is unique within its document. */
@@ -403,15 +427,15 @@ export function addTarget(
 }
 
 /** "11 questions · 3 worksheets · 1 bank". */
-export function bankCountLabel(coverage: Pick<Coverage, 'total' | 'papers' | 'banks'>): string {
+export function bankCountLabel(coverage: Pick<Coverage, 'total' | 'papers' | 'banks'>, lang: UiLanguage = uiLanguage()): string {
   // A no-break space: a narrow column wraps between the parts, never inside "1 bank".
-  const n = (count: number, noun: string) => `${count}\u00a0${noun}${count === 1 ? '' : 's'}`;
-  return [n(coverage.total, 'question'), n(coverage.papers, 'worksheet'), ...(coverage.banks ? [n(coverage.banks, 'bank')] : [])].join(' · ');
+  const m = words(lang);
+  return [m.countQuestions(coverage.total), m.countWorksheets(coverage.papers), ...(coverage.banks ? [m.countBanks(coverage.banks)] : [])].join(' · ');
 }
 
 /** "C.ped Price elasticity of demand" lines for the preview's Topics; 題型 are listed apart (`patternLines`). */
-export function tagLines(tags: readonly string[]): { code: string; name?: string }[] {
-  return tags.filter((tag) => !isPatternTag(tag)).map((tag) => (topicOf(tag) ? { code: tag, name: topicLabel(tag, 'en') } : { code: tag }));
+export function tagLines(tags: readonly string[], lang: UiLanguage = uiLanguage()): { code: string; name?: string }[] {
+  return tags.filter((tag) => !isPatternTag(tag)).map((tag) => (topicOf(tag) ? { code: tag, name: tagName(tag, lang) } : { code: tag }));
 }
 
 /** A row's 題型 as the preview lists them: sub-topic code and name. */
